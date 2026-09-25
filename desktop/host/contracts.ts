@@ -675,6 +675,7 @@ export interface DesktopUpdateContract {
 }
 
 export interface DesktopPackagingPlan {
+  contentProfile: 'release' | 'preview';
   apps?: Array<{ id: string; version: string; sha256: string; artifact: string }>;
   strategy: 'electron-sidecar-bundle';
   generatedAt: string;

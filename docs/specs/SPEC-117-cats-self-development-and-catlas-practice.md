@@ -36,6 +36,30 @@ verified collaboration tools/results separately. Those ordinary role procedures 
 ship in both profiles without the preview-only development/practice supplement.
 That work does not complete this spec's source-development or promotion gates.
 
+## Implemented preview content boundary (feature branches)
+
+The 2026-09-25 P1/P2 slices implement Runtime artifact eligibility, monotonic
+preview exposure, retained-context release admission and three managed preview
+skills. Desktop staging defaults to release, derives preview content from the
+explicit installer preview mode, and captures a closed selected resource tree
+before replacing its owned stage. Normal npm release and Desktop release omit
+the supplement physically; both ordinary knowledge bundles remain present.
+
+Real-library checks prove 36 preview versus 33 release skills and reject a source
+preview catalog override from a packaged release Runtime. The paired-artifact
+check can be repeated after building Platform host and Runtime:
+
+```text
+node tools/check-skill-distribution.mjs --runtime-root <Runtime checkout>
+```
+
+This developer-only check does not launch providers or touch installed state.
+Runtime's strict denial of previously unverified retained sessions requires its
+next minor before shipping. Unknown/reset contexts remain inspectable and use a
+fresh context for release execution. No version was bumped. Native installed
+transition, managed source-fix and practice/promotion acceptance remain pending;
+passing content checks does not close the broader G1/G2/G4 gates.
+
 ## Implemented Code-Entry Assistance
 
 The first authorized work package implements part of FR-09, FR-10, FR-13,
@@ -87,8 +111,9 @@ See the [HTTP contract](../api.md#code-catlas-help) and
 [agent control surface](../agent-control-surfaces.md#catlas-code-help).
 Fixture tests cover inline delivery through the real Runtime HTTP adapter;
 live-provider behavior and an installed Desktop are still separate pending
-acceptance checks. Development supplements, autonomous practice, reviewed
-promotion and product-operation execution remain later work packages.
+acceptance checks. The preview content boundary above is implemented separately;
+autonomous practice, reviewed promotion and broader product-operation execution
+remain later work packages.
 
 To maintain knowledge, verify the documented behavior against the owning
 implementation, edit the authoritative JSON, update changed entry revisions,

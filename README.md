@@ -286,6 +286,16 @@ under `release/`. `--sidecar-layout bundle` forces both sidecars into single-fil
 bundles for the packaged app, while `--sidecar-layout split` keeps the original
 multi-file layout.
 
+Managed skill content defaults to **release**, including unsigned local
+installers. The installer builder's `--preview` mode includes the three Cats
+development/practice skills; signing and release identity remain separate.
+For staging an explicit debug candidate after building the paired Runtime,
+use `node scripts/package-desktop.mjs --content-profile preview`. Normal staging
+physically excludes the supplement and replaces any prior preview stage. Both
+profiles retain ordinary Catlas/Orchestrator knowledge. See
+[PLAN-109](docs/plans/PLAN-109-cats-self-development-and-catlas-practice.md) for
+paired branch checkpoints and the required Runtime minor boundary.
+
 For macOS/Linux unsigned or test packages:
 
 ```bash

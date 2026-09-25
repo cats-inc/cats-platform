@@ -43,12 +43,49 @@ publish, alter an installed Desktop, or reuse consumed live-model approvals.
   checkpoint, then the current branch diff. PLAN-110 retains the completed K2,
   K3 and native projection evidence; those separate runs must not be repeated
   or described as one end-to-end acceptance.
-- Current slice: agree the concrete content/provenance and practice contracts
-  below, then implement Runtime filtering before adding supplement assets.
+- Current slice: P2 complete; next P3 on-demand practice and candidate artifacts.
+  Runtime P1 committed as `2c05544`, P2 skills as `ce98afc` on its feature branch;
+  do not replay P1/P2 work.
 - P0 contract review passed after adding artifact-root authority, durable
   exposure-before-delivery and local revocation invalidation. Documentation
   whitespace/link checks passed. No supplement or promotion is implemented
-  merely by this checkpoint. P1 Runtime implementation is in progress.
+  merely by this checkpoint. P1 independently reviewed and passed Runtime build,
+  137 targeted cases, three native-create fixture cases and 197 local doc links.
+  Runtime requires the next minor before strict retained-context admission ships;
+  no version bump or release was performed. Details and recovery are in Runtime
+  PLAN-041. P2 implementation and local evidence are complete below; P3/P4 remain
+  pending. No native or installed acceptance was run for these new slices.
+
+### P2 implementation and evidence
+
+- Runtime adds `cats-inc-development`, `cats-platform-operation` and
+  `cats-practice-and-distill`, with optional reference resources. Core procedures
+  remain usable via inline/file instructions; resources are not hidden required
+  dependencies. All 36 source packages pass Runtime metadata verification.
+- Desktop direct staging and unsigned installers default to release. Explicit
+  installer `--preview` derives preview content, independently of signing.
+  Direct staging accepts `--content-profile release|preview`. A captured closed
+  resource inventory is written with its own profile manifest; the source
+  manifest is never copied as authority. The owned stage is recreated, so
+  restaging preview as release removes stale supplement resources.
+- Runtime four actual-library delivery/inventory tests and 23 catalog tests
+  passed. Platform host/server builds and 28 staging tests passed, including
+  original knowledge loading in both profiles, omitted preview resources and
+  junction rejection. These checks use private fixtures only.
+- Actual npm dry-run inventory: 1,255 paths, 33 ordinary skills, zero preview
+  assets or source profile manifest. The reproducible developer checker
+  `node tools/check-skill-distribution.mjs --runtime-root ../cats-runtime-preview-skills`
+  passed against compiled Runtime modules in isolated package layouts: preview
+  36 skills/41 content files; release 33 skills/35 content files. Release rejects
+  a source-preview catalog override and explicit supplement resolution.
+- Independent code review found no blocker. Skill text was independently
+  exercised against four written scenarios; follow-ups clarified reuse of
+  existing source evidence and handling unknown mutation results. This is not
+  a real model run, procedural promotion or managed source-fix acceptance.
+- Final checker review fixed cold env-override loading, per-skill rejection
+  assertions and success-after-cleanup ordering. Its recheck passed. Documentation
+  whitespace checks and 59 Platform/7 Runtime local links passed. This Platform
+  slice pairs with Runtime `ce98afc`; future PR integration must preserve the pair.
 
 ### Continuous slices
 
