@@ -112,11 +112,11 @@ source before triggering it.
 
   The workflow creates the preview tag and publishes a GitHub prerelease, not
   latest. Current preview tag names still use plain `vX.Y.Z`.
-- **Unsigned preview:** append `-f unsigned=true` only when unsigned output is
-  requested. Preview status and signing are separate: the default signs where
-  credentials exist. Unsigned macOS previews require manual installation and
-  cannot self-update; preview publication alone does not guarantee update support
-  on every OS.
+- **Signing profile:** a preview uses the *standard* profile unless you append
+  `-f unsigned=true`, which selects the *unsigned override*. Append it only after
+  the operator confirms the consequences listed in
+  [Desktop signing profiles](#desktop-signing-profiles). Preview publication alone
+  does not guarantee update support on every OS.
 
 Desktop builds Runtime from source, so Runtime npm publication is unnecessary.
 For previews, pass the full Runtime SHA rather than accepting the default `main`.
@@ -136,6 +136,86 @@ the App version itself does not specify a compatible Desktop version.
 Confirm the complete workflow and the published release assets before reporting
 completion. Dispatching a workflow or uploading CI artifacts alone is not a
 published Desktop release.
+
+### Desktop signing profiles
+
+This section is the single definition of Desktop signing terms. Use these terms
+in release requests, dispatch confirmations, release notes and agent reports.
+Three independent properties describe a Desktop build:
+
+- **Release identity:** `official` (tag push, published as latest) or `preview`
+  (manual dispatch, published as a prerelease). It selects the update feed and
+  does not depend on signing ([ADR-117](decisions/117-separate-artifact-trust-from-desktop-release-identity.md)).
+- **Signing profile:** chosen per dispatch.
+  - **Standard** (標準簽章): the default, with `unsigned` not set. Each platform
+    signs with the credentials it has. This is the normal state for previews and
+    the only profile an official release can use.
+  - **Unsigned override** (強制不簽): `unsigned=true`. Credentials are withheld on
+    every platform. It is exceptional; see the confirmation rule below.
+- **Platform trust:** what each platform actually received. Report exactly one
+  of `signed + notarized`, `unsigned: no certificate`, `unsigned: withheld`, or
+  `n/a` (the Linux `.deb` is never signed).
+
+Current platform trust by profile:
+
+- Standard: macOS `signed + notarized` with the Developer ID certificate;
+  Windows `unsigned: no certificate` until `WIN_CSC_LINK` is configured; Linux
+  `n/a`.
+- Unsigned override: macOS `unsigned: withheld`. Windows and Linux are the same
+  as the standard profile, so today the override changes only macOS.
+- The DMG container is not signed under either profile (electron-builder's
+  `dmg.sign` defaults to false). The signed, notarized and stapled object is
+  `Cats.app`, which both the DMG and the updater ZIP carry.
+
+Wording and confirmation rules:
+
+- Do not describe a build as a bare "signed preview" or "unsigned preview"
+  (likewise 簽章版 or 未簽版 preview). Name the profile and list each platform's
+  trust, for example
+  `0.4.5 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
+- When an operator asks for an "unsigned" build, ask which outcome they want
+  before dispatching. State that Windows is already unsigned under the standard
+  profile, that the override changes only macOS today, and the macOS
+  consequences below. Dispatch `unsigned=true` only after the operator confirms
+  those consequences, not merely the word "unsigned".
+- Preparation and publication records state the profile and, for each platform,
+  whether installs of the previous published Desktop can self-update into the
+  new one.
+
+Self-update across trust states (electron-updater 6.x, verified 2026-09-25):
+
+- **Windows:** the NSIS installer runs the old uninstaller with
+  `/S /KEEP_APP_DATA --updated`, then installs; user data is kept. The only
+  signature gate is electron-updater's pre-install Authenticode check, which
+  runs only when the installed build's `app-update.yml` has `publisherName`.
+  electron-builder writes that field only when a Windows certificate signed the
+  build. Every Windows build so far is unsigned, so every transition works. Once
+  a certificate is in use, unsigned to signed works, signed to signed works
+  while the publisher name matches, and signed to unsigned is rejected as
+  `signature_rejected`.
+- **macOS:** self-update applies the ZIP through Squirrel.Mac, which requires
+  the running app to be signed and the new bundle to satisfy its designated
+  requirement. Only signed to signed with the same Developer ID team works. An
+  unsigned install cannot self-update, and a signed install cannot self-update
+  into an unsigned build. The update check still reports the newer version; the
+  failure appears during download.
+- **Linux:** `DebUpdater` installs the `.deb` with `dpkg -i` and verifies no
+  signature, so every transition works.
+
+Consequences of an unsigned-override preview while it is the newest prerelease:
+
+- Signed macOS installs see it but cannot apply it. They stay on their current
+  build and self-update directly into the next standard-profile preview.
+- A Mac that installs it manually must bypass Gatekeeper because it is not
+  notarized, and it cannot self-update until a standard-profile build is
+  installed manually.
+- Windows and Linux are unaffected.
+
+Published Desktop history (versions not listed were not published as Desktop):
+
+- 0.3.0 and 0.3.1: before macOS credentials existed; every platform unsigned.
+- Standard: 0.3.2, 0.3.6, 0.3.7, 0.3.8, 0.4.0, 0.4.1, 0.4.2, 0.4.3, 0.4.5.
+- Unsigned override: 0.3.3, 0.4.6.
 
 ### Product knowledge assets
 
@@ -667,12 +747,15 @@ diagnostic contract rather than creating a second source of truth.
 
 ### Desktop Release Signing
 
-Manual previews sign where credentials exist by default. To publish an explicitly
-unsigned preview, pass `unsigned=true` to the `desktop-release.yml` workflow
-dispatch along with the unused version tag and an exact `runtime_ref` commit.
-This skips signing/notarization for that run; it does not alter repository secrets
-or tag-triggered official releases. macOS unsigned previews require manual DMG
-installation and cannot be used to validate self-update (ADR-117).
+Manual previews use the standard signing profile by default: each platform signs
+where credentials exist. The unsigned override (`unsigned=true` on the
+`desktop-release.yml` dispatch, with the unused version tag and an exact
+`runtime_ref` commit) skips signing/notarization for that run; it does not alter
+repository secrets or tag-triggered official releases. Terms, the confirmation
+rule and per-platform update consequences are defined in
+[Desktop signing profiles](#desktop-signing-profiles). An unsigned macOS build
+requires manual DMG installation and cannot be used to validate self-update
+(ADR-117).
 
 macOS is the constrained platform: Developer ID certificates are issued only by
 Apple, so an official macOS build requires an Apple Developer Program
@@ -739,13 +822,15 @@ What the packaging configuration contributes:
   runtime `NSMicrophoneUsageDescription` alone no longer grants it.
 - `build.mac.notarize` is `false`. The wrapper passes `-c.mac.notarize=true`
   only for a release build that has credentials, so a local package or an
-  unsigned preview never waits on Apple.
+  unsigned-override preview never waits on Apple.
 
-**Existing unsigned macOS preview installs cannot self-update into the first
-signed preview.** Squirrel.Mac requires a valid signature on the *running*
-application before it will apply an update, so the unsigned-to-signed
-transition is a discontinuity: those users download the next preview manually,
-once. This applies only to that one transition.
+**macOS self-update needs a signed build on both sides.** Squirrel.Mac requires
+a valid signature on the *running* application and on the update, so any
+transition into or out of an unsigned macOS build is a discontinuity. A signed
+install cannot apply an unsigned build and waits for the next standard-profile
+build; an unsigned install must install a standard-profile build manually, once.
+This recurs with every unsigned-override preview, not only with the first signed
+preview; see [Desktop signing profiles](#desktop-signing-profiles).
 
 The release workflow verifies the output rather than trusting the build:
 `codesign --verify --deep --strict` on the bundle, an explicit `codesign`

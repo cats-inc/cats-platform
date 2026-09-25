@@ -301,8 +301,13 @@ pattern needs a code-level guardrail (e.g. dev-server seal mode).
   dispatch. A matching vX.Y.Z tag push triggers the official Desktop workflow;
   never create/push that tag as a side effect of an npm-only release.
 - Desktop previews use desktop-release.yml manual dispatch, which creates its
-  own matching tag. Do not push the preview tag first. Preview and unsigned are
-  separate choices; use unsigned=true only when requested.
+  own matching tag. Do not push the preview tag first.
+- Release identity and signing profile are separate choices; use the terms in
+  [Desktop signing profiles](docs/deployment.md#desktop-signing-profiles). Never
+  report a bare "signed preview" or "unsigned preview": name the profile
+  (standard or unsigned override) and each platform's trust. Before dispatching
+  unsigned=true, state its macOS self-update consequences and obtain the
+  operator's confirmation of them; the word "unsigned" alone is not enough.
 - Do not automatically bump/publish Runtime, cats-one or Apps. Pin `runtime_ref`
   for previews and exact App versions/URLs/hashes for Desktop. Official builds
   currently resolve Runtime main per OS; record those SHAs and the limitation in
