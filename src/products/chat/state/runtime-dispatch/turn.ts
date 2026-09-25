@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { resolveCollaborationPreparationBudget,
+  type CollaborationPreparationBudget } from '../../shared/collaborationPreparationBudget.js';
 import { collaborationToolDescriptors } from '../orchestratorCollaboration.js';
 import { collaborationExecutionDescriptors, collaborationExecutionManifests,
   resolveCollaborationOwnerChoice, REQUEST_COLLABORATION_ROLE } from '../collaborationExecutionSurface.js';
@@ -176,6 +178,7 @@ export interface PreparedDispatchTurn {
 }
 
 export interface PrepareDispatchTurnOptions {
+  preparationBudget?: Readonly<CollaborationPreparationBudget>;
   enableCollaborationReads?: boolean;
   enableCollaborationExecution?: boolean;
   deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
@@ -284,6 +287,7 @@ export function prepareDispatchTurnForUserMessage(
     naturalProductIntentMode: options.naturalProductIntentMode,
     enableCollaborationReads: options.enableCollaborationReads,
     enableCollaborationExecution: options.enableCollaborationExecution,
+    preparationBudget: options.preparationBudget,
     transport: options.transport,
     transportBindingId: options.transportBindingId,
   });
@@ -526,6 +530,7 @@ export function prepareDispatchTurnForUserMessage(
 }
 
 function buildProviderAgentObservationForTurn(input: {
+  preparationBudget?: Readonly<CollaborationPreparationBudget>;
   enableCollaborationReads?: boolean;
   enableCollaborationExecution?: boolean;
   state: ChatState;
@@ -892,7 +897,7 @@ function buildProviderAgentObservationForTurn(input: {
     }
   }
 
-  return buildChatProviderAgentObservation({
+  const observation = buildChatProviderAgentObservation({
     state: input.state,
     channelId: input.channelId,
     actorRef: providerAgentActorRef,
@@ -957,6 +962,10 @@ function buildProviderAgentObservationForTurn(input: {
     },
     now: new Date(input.nowIso),
   });
+  if (collaborationTools.length && !executionTools.length) {
+    observation.budget = { ...resolveCollaborationPreparationBudget(input.preparationBudget), hardStop: true };
+  }
+  return observation;
 }
 
 function resolveWorkTriageContextRefs(rawText: string): string[] {

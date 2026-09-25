@@ -319,6 +319,7 @@ export function resolveServerDependencies(
     ?? (
       dependencies.shared.config.chatProviderAgentDecisionEnabled === true
         ? createChatProviderAgentDecisionRequester({
+            preparationBudget: dependencies.shared.config.chatCollaborationPreparationBudget,
             failureMode: 'return_null', readState: () => dependencies.chat.chatStore.read(),
             chatStore: dependencies.chat.chatStore,
             deliveryClient: createRuntimeDeliveryClient({ baseUrl: dependencies.shared.config.runtimeBaseUrl,

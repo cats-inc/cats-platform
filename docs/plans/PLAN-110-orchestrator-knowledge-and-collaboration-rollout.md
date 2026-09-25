@@ -48,9 +48,14 @@ no release, version bump or publication is authorized.
   [full CI passes](https://github.com/cats-inc/cats-platform/actions/runs/36084948721),
   including `validate`, `nodejs (24)`, full typechecks and tests.
   No native model call, budget/grant change or new tool is part of this slice.
-- **Next slice:** resolve the preparation-budget follow-up below before another
-  real model-driven acceptance. K2 still
-  clips preparation to 30 seconds/8,000 tokens;
+- **Validated host-budget slice (full CI pending):** the reviewed contract now gives the opt-in host
+  an explicit immutable preparation policy. Defaults remain 30 seconds/8,000
+  tokens; documented configuration ceilings are 300 seconds/80,000 tokens.
+  Three regression cases fail against the prior build; server compilation,
+  test typechecking, all 190 focused cases and independent implementation review
+  pass. No normal host setting or native inference has changed.
+- **Next slice:** record host-budget full CI, then prepare the isolated
+  real model-driven K2 acceptance. K2's default remains 30 seconds/8,000 tokens;
   its budget is separate from the later owner-confirmed K3 execution budget.
   Do not infer native fit from wire bytes or raise limits just to pass a fixture.
   Keep PLAN-109 profile inventory a separate dependency; the private acceptance
@@ -66,8 +71,8 @@ no release, version bump or publication is authorized.
   [full CI passes](https://github.com/cats-inc/cats-platform/actions/runs/36086668719),
   including `validate`, `nodejs (24)`, full typechecks and tests. No native
   inference or changed budget/target/grant is part of this slice. Both K2
-  prerequisite slices are complete; the preparation-budget follow-up remains
-  proposed, not an implemented setting or an authorized numerical increase.
+  prerequisite slices are complete. The subsequent host-budget slice is active;
+  it does not itself configure a larger allowance or authorize another live run.
 - **Local evidence to reuse:** `%TEMP%/cats-k4-live-20260925-continuation-05/`
   contains `result.json`, `provider-calls.json` and private persisted product
   state. Successful revision is `8547f80885c8c6d1ca8e219194046a291ded2a7b`;
@@ -214,7 +219,7 @@ Orchestrator dispatch endpoint does not advertise it.
 
 The production continuation starts after ACK with an active cancellable turn.
 A maximum of four delegate operations/five model requests share one ephemeral
-decision session, 30-second elapsed cap and measured-usage checks. Structured
+decision session, a default 30-second elapsed cap and measured-usage checks. Structured
 results return to that session, then a localized transcript response records a
 validated proposal, missing input/capability, or a truthful stop. Current
 conversation/goal scope, distinct discovered IDs, exact target availability,
@@ -755,7 +760,7 @@ fixtures use fake Runtime or private stores; no live model/authentication or
 ordinary user state is involved. The following checkpoint changes documentation
 only and does not rerun completed native acceptance.
 
-#### Native K2 preparation-budget follow-up (proposed next slice)
+#### Native K2 preparation-budget follow-up (host wiring validated; full CI pending)
 
 Keep the configured Orchestrator target and preparation authority explicit.
 The completed Live05 K3 coordinator used 10,081 tokens on its first Runtime send
@@ -765,25 +770,35 @@ The current K2 protocol still needs four decisions for a successful proposal and
 feedback. Its byte reduction and K3 success cannot establish fit within the
 separate 30-second/8,000-token preparation limit.
 
-The next contract/implementation slice should preserve those defaults and make
-any larger preparation allowance an explicit host/owner policy resolved before
-the first request. First identify the policy source and its product presentation:
-current host configuration exposes only the provider-agent enable flag, the Chat
-observation supplies a fixed time limit and the preparation loop supplies the
-token ceiling. No preparation-budget setting or owner choice is implemented.
-Do not accept a model-authored budget, reuse the later K3 choice, substitute a
-cheaper target, or add a fixture-only bypass as that policy source.
+Independent contract review approves host configuration for the existing opt-in
+path. Two documented settings preserve the defaults and strictly reject invalid
+integers or values above 300 seconds/80,000 tokens. The requester copies/freezes
+one policy snapshot; begin/retry uses its non-writable property and the loop
+independently intersects narrower observation limits. Only the final selected K2
+descriptor surface receives the policy: K3's intermediate `collaborationTools`
+array is also nonempty, so the builder must explicitly exclude execution tools.
+The builder replaces its synthetic 30-second default for K2 instead of silently
+clipping an explicit host setting back to that default. An eligible first
+decision uses this budget even when it returns an ordinary reply; no second
+allowance starts after tool selection.
 
-Before implementation, specify bounded numeric validation, the precedence of
-any narrower current grant, target/context binding, cancellation and how the
-owner can inspect the preparation allowance. Reuse existing policy/config and
-Chat presentation owners; review any necessary frozen-contract change first.
-Keep the usage meter and terminal-failure behavior from the preceding slice.
-Test default, explicitly configured, invalid, reduced and stale-budget cases
-with fake Runtime before one bounded native preparation attempt. No numerical
-increase is selected or authorized by this follow-up note.
+This is host-operator configuration inspected before enabling the opt-in flow,
+with effective values recorded in existing usage metadata. A product-facing
+budget editor remains later. Model/message input and K3's execution choice do
+not configure it; target bindings and all grants remain unchanged. No persisted
+or frozen contract changes are needed. Restart establishes a new configuration
+snapshot; the active attempt does not reread environment settings. Numeric
+ceilings are not actual default increases or a native-fit claim. Three isolated
+configuration/HTTP/snapshot regressions fail against the prior compiled build.
+Server compilation, test typechecking and 190 focused configuration, preparation,
+execution, prompt-session and architecture cases pass. These include an
+authenticated preparation above the old token default, a fresh narrower retry,
+an immutable policy snapshot, narrower observation enforcement, and K3 execution
+with a deliberately tiny unused preparation policy. Independent implementation
+review approves the contract, scope, validation and compatibility. Full CI is
+pending. No normal host configuration or provider authentication has been changed.
 
-Only after that contract is concrete should the isolated live harness exercise
+After this wiring passes validation/CI, the isolated live harness should exercise
 the real production discovery/inspection/preparation path. Capture actual
 Runtime and native usage separately, reconcile the terminal snapshot, verify
 final feedback and close the private session. A prepared K2 proposal must still
@@ -837,6 +852,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | Added strict, immutable host-owned K2 preparation settings with unchanged 30-second/8,000-token defaults. Begin/retry receives the policy; the loop preserves narrower limits and K3 keeps its separate execution allowance. Three prior-build regressions fail as expected; server compilation, test typecheck, 190 focused cases and independent implementation review pass. Full CI pending. No normal host configuration, native inference, target/grant, persisted schema or frozen contract changed. |
 | 2026-09-25 | K2 failure accounting on `24205589` passes [full CI](https://github.com/cats-inc/cats-platform/actions/runs/36086668719), including `validate`, `nodejs (24)`, full typechecks and tests. Both context reuse and accounting prerequisites are integration-validated. The next preparation-budget contract is documented and independently reviewed as proposed; no numerical increase, target substitution or native call is authorized by that note. Native K2 and PLAN-109 profile/practice gates remain open. |
 | 2026-09-25 | K2 records Runtime usage before parsing and publishes a terminal report for attempted-inference failures, preventing an unreported ordinary Chat retry. Optional usage snapshots distinguish known subtotal from complete usage and stay fixed after late replies. Three red regressions confirm the original failure; 74 focused cases, server compilation, test typecheck and independent review pass. Original budgets, target, normal first-decision/setup fallback and K3 grants remain unchanged. Full CI pending; native K2/profile gates stay open. |
 | 2026-09-25 | K2 context reuse on `14c080fc` passes [full CI](https://github.com/cats-inc/cats-platform/actions/runs/36084948721), including `validate`, `nodejs (24)`, full typechecks and tests. The reset checkpoint and indexes now distinguish completed bounded K3/native projection and K2 cache evidence from still-open native preparation and profile/practice gates. This follow-up is documentation-only; no further model inference or budget change. |

@@ -161,12 +161,12 @@ The requester performs bounded, sequential calls in one ephemeral decision
 session, after the ordinary message ACK and active-turn persistence. Every
 delegate result returns as structured feedback to that session.
 At most four operations and five model requests fit within the original elapsed
-budget (capped at 30 seconds); measured usage is checked between calls. Tokens
+budget (30 seconds by default); measured usage is checked between calls. Tokens
 cannot be hard-capped inside a provider call with the current Runtime contract.
 Timeout/cancellation stops continuation and requests best-effort Runtime cancel
 and close. Fresh reads recheck scope, binding and relevant state before acting
 on a model response and before returning a proposal. No continuation survives a
-restart. Preparation budgets are suggestions, never execution grants.
+restart. The proposed work budget remains a suggestion until K3 execution admission.
 
 The ordinary cancel endpoint stops the active preparation and consumes its
 cancellation request. The existing mutation-gated dispatch merge preserves
@@ -195,8 +195,32 @@ inference. Explicit cancellation/stale-context/currency-policy failures retain
 their cause; known token or elapsed exhaustion takes precedence over malformed
 output, then missing returned usage, then a general decision/read failure.
 Pre-send setup failure and a valid ordinary first decision keep the existing
-fallback contract. This changes neither preparation limits nor K3 admission;
+fallback contract. The accounting correction changes neither defaults nor K3 admission;
 the later proposal's suggested budget cannot authorize a larger preparation.
+
+The opt-in host now configures preparation separately using
+`CATS_CHAT_COLLABORATION_PREPARATION_MAX_DURATION_MS` and
+`CATS_CHAT_COLLABORATION_PREPARATION_MAX_TOKENS`. Missing/blank settings retain
+30,000 milliseconds and 8,000 tokens. Explicit settings must be complete positive
+integer strings; limits above 300,000 milliseconds or 80,000 tokens, fractions,
+suffixes and non-finite values fail configuration loading. These are allowed
+configuration ceilings, not new defaults or evidence of native model fit.
+Programmatic requester configuration receives the same numeric validation.
+
+Host integration snapshots and freezes that policy in the requester. Authenticated
+message begin/retry obtains the same immutable snapshot for the turn builder;
+the loop independently intersects it with any narrower observation limits. Only
+the verified K2 read-descriptor surface receives it, after excluding K3 execution
+descriptors. It covers that entire attempt, including an ordinary first decision;
+no additional budget starts when a tool is selected. Other excluded Chat, direct,
+provider-default, Code/Work and external paths keep their existing budgets.
+Message/model input cannot set this policy. Host restart creates a new policy
+snapshot; no environment value is reread during an attempt. Existing K3 owner
+admission, model binding, grants and operation/request ceilings are unchanged.
+The operator inspects these documented host settings before enabling the existing
+opt-in flow; `preparationUsage.limits` records the effective attempt allowance.
+A product-facing budget editor is not implemented in this slice. No normal user
+configuration or native inference is changed by adding this setting.
 
 Decision sessions reuse the existing isolated `sandbox` / `read_only` / `default`
 Runtime request contract, request no native skills, instruct JSON-only decisions
@@ -311,7 +335,8 @@ entries and the digest of the actual wire payload. A session reference is not
 new inline delivery, proof of model understanding or an execution grant. Models
 must stop and report unavailable context if referenced content is absent.
 K2 retains its four-result delivery bound, five-request ceiling and unchanged
-30-second/8,000-token preparation budget. Cache selection does not inherit K3's
+30-second/8,000-token default preparation budget, with explicit host configuration
+and narrower-limit intersection as above. Cache selection does not inherit K3's
 eight-result delivery bound or owner-confirmed execution budget. Ordinary decisions
 outside these collaboration surfaces retain complete snapshots. Serialized
 wire limits and the existing response-boundary token threshold both apply;

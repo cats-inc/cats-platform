@@ -594,13 +594,14 @@ async function waitUntil(check) {
     await new Promise(resolve => setTimeout(resolve, 15));
   }
 }
-async function withApi(t, h, c, executeTest) {
+async function withApi(t, h, c, executeTest, preparationBudget) {
   const root = await mkdtemp(join(tmpdir(), 'cats-k3-api-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const store = new MemoryChatStore(h.state);
   const auth = await createAuthenticatedTestSession({ now: h.now });
   const mutationGate = createAsyncKeyedGate();
   const requester = createChatProviderAgentDecisionRequester({ chatStore: store, readState: () => store.read(), deliveryClient: c.delivery,
+    preparationBudget,
     runChatMutation: (channelId, operation) => mutationGate.run(channelId, operation) });
   const server = createServer({ shared: { config: { host: '127.0.0.1', port: 8181,
     runtimeBaseUrl: 'http://127.0.0.1:3110', runtimeApiKey: '',
@@ -633,6 +634,7 @@ test('authenticated Chat choice ACK runs K3 through the production continuation 
       const latest = await store.read();
       const report = latest.channels.find(ch => ch.id === h.channelId).messages.at(-1).metadata.collaborationPreparation;
       assert.equal(report.execution.status, 'completed', JSON.stringify(report));
+      assert.equal(report.preparationUsage, undefined, 'K3 does not enter the preparation budget/meter');
       assert.equal(report.feedbackDelivered, true);
       assert.equal(latest.channels.find(ch => ch.id === report.execution.channelId).catAssignments.filter(a => a.status === 'active').length, 2);
       assert.equal(latest.channels.find(ch => ch.id === h.channelId).roomRouting.workflow.activeTurn, null);
@@ -641,7 +643,7 @@ test('authenticated Chat choice ACK runs K3 through the production continuation 
       await waitUntil(async () => !(await store.read()).channels.find(ch => ch.id === h.channelId).roomRouting.workflow.activeTurn);
       assert.equal(c.calls.create.length, 3);
       assert.equal((await intents(store)).length, 1);
-    });
+    }, { maxDurationMs: 1, maxTokens: 1 });
   }
 });
 

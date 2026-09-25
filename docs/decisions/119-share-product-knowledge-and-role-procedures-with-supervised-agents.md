@@ -132,7 +132,7 @@ or failed request cannot inherit a cached delivery base. Provider-native coding
 instructions and tool inventories are a separate Runtime concern; reducing
 Platform payloads alone does not establish an adequate live token budget.
 K2 explicitly retains its four-result delivery bound, five-request ceiling and
-30-second/8,000-token preparation budget; it does not inherit K3's owner-confirmed
+30-second/8,000-token default preparation budget; it does not inherit K3's owner-confirmed
 execution budget. Ordinary decisions outside these collaboration surfaces retain
 complete snapshots.
 
@@ -144,6 +144,18 @@ is complete; late responses cannot change that snapshot. Existing reports may
 omit this additive metadata. A valid ordinary first decision and setup failure
 before any send retain their original fallback behavior. This is an accounting
 and failure-reporting correction, not authority to enlarge preparation budgets.
+
+The next slice gives the existing opt-in host explicit preparation-budget
+configuration, separate from execution admission. Defaults remain 30 seconds /
+8,000 tokens; strict settings may choose up to 300 seconds / 80,000 tokens.
+Those ceilings bound configuration and do not establish model fit. The requester
+owns one immutable snapshot, the verified K2 turn builder supplies it and the
+loop intersects any narrower current allowance. K3 and excluded routing surfaces
+keep their own budgets. A descriptor-eligible first decision uses the preparation
+allowance even if it chooses ordinary conversation. Settings are documented for
+the host operator before enabling the opt-in flow; effective limits remain in
+the usage receipt. A budget editor, numerical change to normal configuration
+and another live-model attempt are outside this wiring slice.
 
 The next measured run confirmed that per-primitive model decisions remain too
 expensive for the bounded fixture. An additive `request_execution({})` therefore

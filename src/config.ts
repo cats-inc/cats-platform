@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { readCollaborationPreparationBudget,
+  type CollaborationPreparationBudget } from './products/chat/shared/collaborationPreparationBudget.js';
 import path from 'node:path';
 import {
   DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS,
@@ -47,6 +49,7 @@ export interface AppConfig {
   debugLiveTrace: boolean;
   debugKeepRuntimeSessionsOnProductDelete: boolean;
   chatProviderAgentDecisionEnabled?: boolean;
+  chatCollaborationPreparationBudget?: Readonly<CollaborationPreparationBudget>;
   chatNaturalProductIntentMode: ChatNaturalProductIntentMode;
   mobilePairingEnabled: boolean;
   mobileBundleRoot: string;
@@ -298,6 +301,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       env.CATS_CHAT_PROVIDER_AGENT_DECISION_ENABLED,
       false,
     ),
+    chatCollaborationPreparationBudget: readCollaborationPreparationBudget(env),
     chatNaturalProductIntentMode: parseChatNaturalProductIntentMode(
       env.CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE,
     ),

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { CollaborationPreparationBudget } from '../../shared/collaborationPreparationBudget.js';
 import type { CollaborationReport } from '../orchestratorCollaboration.js';
 import { isCollaborationTool } from '../orchestratorCollaboration.js';
 import { isCollaborationExecutionTool } from '../collaborationExecutionSurface.js';
@@ -471,6 +472,7 @@ export type ProviderAgentDecisionRequester = ((input: {
   isCancelled?: () => boolean;
 }) => Promise<ProviderAgentDecision | null>) & {
   supportsCollaboration?: boolean; supportsCollaborationExecution?: boolean;
+  readonly preparationBudget?: Readonly<CollaborationPreparationBudget>;
 };
 
 interface RouteChannelMessageOptions {
@@ -7022,6 +7024,7 @@ export async function beginChannelMessageDispatch(
       transport: options.transport,
       enableCollaborationReads: options.enableCollaborationReads,
       enableCollaborationExecution: options.enableCollaborationExecution,
+      preparationBudget: options.providerAgentDecisionRequester?.preparationBudget,
       transportBindingId: options.transportBindingId,
     },
   );
@@ -7265,6 +7268,7 @@ export async function beginChannelMessageRetryDispatch(
       naturalProductIntentMode: options.naturalProductIntentMode,
       enableCollaborationReads: options.enableCollaborationReads,
       enableCollaborationExecution: options.enableCollaborationExecution,
+      preparationBudget: options.providerAgentDecisionRequester?.preparationBudget,
       transport: options.transport,
       transportBindingId: options.transportBindingId,
     },

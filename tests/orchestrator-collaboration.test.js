@@ -277,10 +277,15 @@ test('production turn exposes discovery only for verified local coordinator rout
     if (mode === 'multi') payload.messageMetadata = { recipientParticipantIds: ['orchestrator', channel.catAssignments[0].participantId], workflowShape: 'concurrent' };
     const appended = appendMessage(h.state, h.channelId, { senderKind: 'user', senderName: 'Owner', body: goal }, now);
     const prepared = prepareDispatchTurnForUserMessage(appended.state, h.channelId, payload, appended.message,
-      now, undefined, { enableCollaborationReads: mode !== 'unverified_entry', ...(mode === 'telegram' ? { transport: 'telegram' } : {}) });
+      now, undefined, { enableCollaborationReads: mode !== 'unverified_entry',
+        preparationBudget: { maxDurationMs: 60000, maxTokens: 12000 },
+        ...(mode === 'telegram' ? { transport: 'telegram' } : {}) });
     const tools = prepared.providerAgentObservation?.availableTools ?? [];
     assert.equal(tools.some(({ manifest }) => manifest.name === discover), mode === 'coordinator', mode);
     assert.equal(prepared.providerAgentObservation?.goal === goal, mode === 'coordinator');
+    if (prepared.providerAgentObservation) assert.deepEqual(prepared.providerAgentObservation.budget,
+      mode === 'coordinator' ? { maxDurationMs: 60000, maxTokens: 12000, hardStop: true }
+        : { maxDurationMs: 30000, hardStop: true }, mode);
   }
 });
 
@@ -289,10 +294,12 @@ test('production begin/retry returns a localized proposal with receipts and crea
   const store = new MemoryChatStore(h.state);
   const initialCore = await store.readCore();
   const runtime = client();
-  const requester = createChatProviderAgentDecisionRequester({ readState: () => store.read() });
+  const requester = createChatProviderAgentDecisionRequester({ readState: () => store.read(),
+    preparationBudget: { maxDurationMs: 60000, maxTokens: 12000 } });
   const begun = await beginChannelMessageDispatch(h.state, h.channelId, { body: goal }, runtime, now,
     { chatStore: store, providerAgentDecisionRequester: requester, enableCollaborationReads: true });
   assert.equal(runtime.calls.send.length, 0, 'ACK must precede inference');
+  assert.equal(begun.preparedTurn.providerAgentObservation.budget.maxTokens, 12000);
   assert.ok(begun.state.channels.find((entry) => entry.id === h.channelId).roomRouting.workflow.activeTurn);
   const completed = await continueBegunChannelMessageDispatch(begun, h.channelId, runtime, now,
     { chatStore: store, providerAgentDecisionRequester: requester, enableCollaborationReads: true });
@@ -311,11 +318,16 @@ test('production begin/retry returns a localized proposal with receipts and crea
   assert.ok(core.runs.every(run => run.id.startsWith('run-room-routing-')),
     'Only ordinary Chat turn projections may be added; no teammate execution run starts.');
   const retryRuntime = client();
+  const retryRequester = createChatProviderAgentDecisionRequester({ readState: () => store.read(),
+    preparationBudget: { maxDurationMs: 15000, maxTokens: 1000 } });
   const retry = await beginChannelMessageRetryDispatch(completed.state, h.channelId, begun.userMessage.id,
-    retryRuntime, now, { chatStore: store, providerAgentDecisionRequester: requester, enableCollaborationReads: true });
+    retryRuntime, now, { chatStore: store, providerAgentDecisionRequester: retryRequester, enableCollaborationReads: true });
+  assert.deepEqual(retry.preparedTurn.providerAgentObservation.budget,
+    { maxDurationMs: 15000, maxTokens: 1000, hardStop: true });
   await continueBegunChannelMessageDispatch(retry, h.channelId, retryRuntime, now,
-    { chatStore: store, providerAgentDecisionRequester: requester });
+    { chatStore: store, providerAgentDecisionRequester: retryRequester });
   assert.equal(retryRuntime.calls.send.length, 4);
+  assert.equal(retryRuntime.calls.send[0].envelope.observation.budget.maxTokens, 1000);
 });
 
 test('a rejected read is reported as incomplete, and native tool output fails closed', async () => {
@@ -470,7 +482,7 @@ test('valid ordinary first decisions and failures before inference retain the ex
   assert.equal(unavailable.calls.send.length, 0);
 });
 
-async function withApi(t, runtime, execute) {
+async function withApi(t, runtime, execute, preparationBudget) {
   const root = await mkdtemp(join(tmpdir(), 'cats-collaboration-api-'));
   t.after(async () => {
     assert.ok(root.startsWith(join(tmpdir(), 'cats-collaboration-api-')));
@@ -483,7 +495,8 @@ async function withApi(t, runtime, execute) {
   const server = createServer({ shared: { config: { host: '127.0.0.1', port: 8181,
     runtimeBaseUrl: 'http://127.0.0.1:3110', runtimeApiKey: '',
     runtimeDataDir: join(root, 'runtime', 'data'), chatStatePath: join(root, 'platform', 'state', 'chat-state.local.json'),
-    auth: authConfig, chatProviderAgentDecisionEnabled: true },
+    auth: authConfig, chatProviderAgentDecisionEnabled: true,
+    chatCollaborationPreparationBudget: preparationBudget },
     runtimeClient: runtime, authStore: auth.authStore, now: () => now,
   }, chat: { chatStore: store } });
   server.listen(0, '127.0.0.1');
@@ -505,6 +518,47 @@ async function waitUntil(check) {
 }
 const sendOwner = (base, channelId) => fetch(`${base}/api/channels/${channelId}/messages`, {
   method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ body: goal }),
+});
+
+test('explicit host preparation budget reaches authenticated Chat without becoming the proposed work budget', async (t) => {
+  const runtime = client();
+  const send = runtime.sendMessage.bind(runtime);
+  runtime.sendMessage = async (...args) => ({ ...await send(...args),
+    tokensUsed: runtime.calls.send.length === 1 ? 9001 : 20 });
+  await withApi(t, runtime, async ({ base, channelId, store }) => {
+    assert.equal((await sendOwner(base, channelId)).status, 200);
+    await waitUntil(async () => (await store.read()).channels.find(c => c.id === channelId)
+      .messages.some(message => message.metadata?.collaborationPreparation));
+    const report = (await store.read()).channels.find(c => c.id === channelId).messages.at(-1)
+      .metadata.collaborationPreparation;
+    assert.equal(report.status, 'prepared');
+    assert.deepEqual(report.preparationUsage, { limits: { maxDurationMs: 60000, maxTokens: 12000 },
+      requestsStarted: 4, responsesReceived: 4, measuredTokens: 9061, complete: true });
+    assert.equal(report.preparation.budget.maxTokens, 4000);
+    assert.equal(report.preparation.budget.admission, 'not_admitted');
+    assert.deepEqual(runtime.calls.send.map(call => call.envelope.observation.budget.maxTokens), [12000, 2999, 2979, 2959]);
+    assert.ok(runtime.calls.send[0].envelope.observation.budget.maxDurationMs > 30000);
+    assert.ok(runtime.calls.send.every(call => call.envelope.observation.budget.maxDurationMs <= 60000));
+    assert.equal(runtime.calls.create.length, 1);
+  }, { maxDurationMs: 60000, maxTokens: 12000 });
+});
+
+test('requester snapshots host preparation policy and the loop preserves narrower observation limits', async () => {
+  const configured = { maxDurationMs: 60000, maxTokens: 12000 };
+  const requester = createChatProviderAgentDecisionRequester({ preparationBudget: configured });
+  configured.maxTokens = 80000;
+  assert.deepEqual(requester.preparationBudget, { maxDurationMs: 60000, maxTokens: 12000 });
+  assert.throws(() => { requester.preparationBudget.maxTokens = 80000; }, TypeError);
+  assert.throws(() => { requester.preparationBudget = configured; }, TypeError);
+  const h = fixture();
+  h.observation.budget.maxDurationMs = 3000;
+  h.observation.budget.maxTokens = 1000;
+  const reports = [];
+  await requester({ ...h, runtimeClient: client(), payload: { body: goal }, now,
+    onCollaborationResult: report => reports.push(report) });
+  assert.equal(reports[0].status, 'prepared');
+  assert.deepEqual(reports[0].preparationUsage.limits, { maxDurationMs: 3000, maxTokens: 1000 });
+  assert.throws(() => createChatProviderAgentDecisionRequester({ preparationBudget: { maxTokens: 80001 } }), /MAX_TOKENS/u);
 });
 
 test('API publishes first-response budget failure and never falls through to ordinary Chat inference', async (t) => {

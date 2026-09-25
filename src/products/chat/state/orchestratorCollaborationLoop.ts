@@ -1,4 +1,6 @@
 import type { ChatState } from '../api/contracts.js';
+import { resolveCollaborationPreparationBudget,
+  type CollaborationPreparationBudget } from '../shared/collaborationPreparationBudget.js';
 import type { RuntimeClient, RuntimeProviderDiagnosticsPayload } from '../../../platform/runtime/client.js';
 import type {
   ProviderAgentBoundedObservation, ProviderAgentDecision,
@@ -18,6 +20,7 @@ import {
 } from './orchestratorCollaboration.js';
 
 export async function runCollaborationDecisionLoop(input: {
+  preparationBudget?: Readonly<CollaborationPreparationBudget>;
   state: ChatState;
   channelId: string;
   goal: string;
@@ -34,9 +37,12 @@ export async function runCollaborationDecisionLoop(input: {
   const registry = createSupervisedToolRegistry();
   collaborationToolManifests().forEach((manifest) => registry.register(manifest));
   const boundary = createToolBoundary({ registry, evidenceSink: createInMemoryToolEvidenceSink() });
-  const duration = Math.min(input.observation.budget.maxDurationMs ?? 30_000, 30_000);
+  const preparationBudget = resolveCollaborationPreparationBudget(input.preparationBudget);
+  const duration = Math.min(input.observation.budget.maxDurationMs ?? preparationBudget.maxDurationMs,
+    preparationBudget.maxDurationMs);
   const deadline = Date.now() + duration;
-  const maxTokens = Math.min(input.observation.budget.maxTokens ?? 8000, 8000);
+  const maxTokens = Math.min(input.observation.budget.maxTokens ?? preparationBudget.maxTokens,
+    preparationBudget.maxTokens);
   let tokens = 0;
   let requestsStarted = 0;
   let responsesReceived = 0;

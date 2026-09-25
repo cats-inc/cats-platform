@@ -243,3 +243,21 @@ test('loadConfig parses the Chat natural product-intent deployment mode', () => 
     /Invalid CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE/u,
   );
 });
+
+test('loadConfig keeps K2 preparation defaults and validates explicit host limits without enabling decisions', () => {
+  const defaults = loadConfig({});
+  assert.deepEqual(defaults.chatCollaborationPreparationBudget, { maxDurationMs: 30000, maxTokens: 8000 });
+  const configured = loadConfig({ CATS_CHAT_COLLABORATION_PREPARATION_MAX_DURATION_MS: '60000',
+    CATS_CHAT_COLLABORATION_PREPARATION_MAX_TOKENS: '12000' });
+  assert.deepEqual(configured.chatCollaborationPreparationBudget, { maxDurationMs: 60000, maxTokens: 12000 });
+  assert.equal(configured.chatProviderAgentDecisionEnabled, false);
+  assert.deepEqual(loadConfig({ CATS_CHAT_COLLABORATION_PREPARATION_MAX_TOKENS: '1000' }).chatCollaborationPreparationBudget,
+    { maxDurationMs: 30000, maxTokens: 1000 });
+  for (const [key, maximum] of [['CATS_CHAT_COLLABORATION_PREPARATION_MAX_DURATION_MS', 300000],
+    ['CATS_CHAT_COLLABORATION_PREPARATION_MAX_TOKENS', 80000]]) {
+    for (const invalid of ['0', '-1', '1.5', '1e4', 'NaN', 'Infinity', '1000ms', String(maximum + 1)]) {
+      assert.throws(() => loadConfig({ [key]: invalid }), new RegExp(key, 'u'), `${key}=${invalid}`);
+    }
+    assert.doesNotThrow(() => loadConfig({ [key]: String(maximum) }));
+  }
+});

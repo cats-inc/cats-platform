@@ -19,8 +19,11 @@ import { runCollaborationExecutionLoop } from './collaborationExecutionLoop.js';
 import type { ChatStore } from './store.js';
 import type { RuntimeDeliveryClient } from '../../../platform/runtime/deliveryClient.js';
 import { createProviderAgentPromptSession } from '../../../platform/orchestration/providerAgentPromptSession.js';
+import { resolveCollaborationPreparationBudget,
+  type CollaborationPreparationBudget } from '../shared/collaborationPreparationBudget.js';
 
 export interface ChatProviderAgentDecisionRequesterOptions {
+  preparationBudget?: Partial<CollaborationPreparationBudget>;
   failureMode?: 'throw' | 'return_null';
   knowledgeFilePath?: string;
   readState?: () => Promise<ChatState>;
@@ -33,6 +36,7 @@ export interface ChatProviderAgentDecisionRequesterOptions {
 export function createChatProviderAgentDecisionRequester(
   options: ChatProviderAgentDecisionRequesterOptions = {},
 ): ProviderAgentDecisionRequester {
+  const preparationBudget = resolveCollaborationPreparationBudget(options.preparationBudget);
   const requester: ProviderAgentDecisionRequester = async (input) => {
     const target = input.observation.actor.target;
     if (target.kind !== 'execution_target') {
@@ -140,6 +144,7 @@ export function createChatProviderAgentDecisionRequester(
       if (isOrchestrator && input.onCollaborationResult
         && input.observation.availableTools.some(({ manifest }) => isCollaborationTool(manifest.name))) {
         return runCollaborationDecisionLoop({
+          preparationBudget,
           state: input.state, channelId: input.channelId, goal: input.payload.body,
           observation: input.observation, runtimeClient: input.runtimeClient,
           readState: options.readState, isCancelled: input.isCancelled,
@@ -158,5 +163,6 @@ export function createChatProviderAgentDecisionRequester(
   };
   requester.supportsCollaboration = true;
   requester.supportsCollaborationExecution = Boolean(options.chatStore?.updateSnapshot && options.deliveryClient);
+  Object.defineProperty(requester, 'preparationBudget', { value: preparationBudget, enumerable: true });
   return requester;
 }
