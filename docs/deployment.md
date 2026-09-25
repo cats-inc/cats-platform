@@ -214,7 +214,7 @@ Consequences of an unsigned-override preview while it is the newest prerelease:
 Published Desktop history (versions not listed were not published as Desktop):
 
 - 0.3.0 and 0.3.1: before macOS credentials existed; every platform unsigned.
-- Standard: 0.3.2, 0.3.6, 0.3.7, 0.3.8, 0.4.0, 0.4.1, 0.4.2, 0.4.3, 0.4.5, 0.4.7, 0.5.0, 0.5.1.
+- Standard: 0.3.2, 0.3.6, 0.3.7, 0.3.8, 0.4.0, 0.4.1, 0.4.2, 0.4.3, 0.4.5, 0.4.7, 0.5.0, 0.5.1, 0.5.2.
 - Unsigned override: 0.3.3, 0.4.6.
 
 ### Product knowledge assets

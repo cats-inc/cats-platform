@@ -25,7 +25,7 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — integration and Desktop preview (2026-09-26)
+## Resume Checkpoint — integrated and Desktop preview published (2026-09-26)
 
 - Owner authorized normal auto-merge PR integration and a Desktop
   **standard-profile preview**, including its version preparation; explicitly
@@ -40,21 +40,40 @@ architecture review and release authorization remain separate gates.
   docs boundary; Platform 49 authoring/lifecycle/practice/promotion/docs-boundary
   cases; Runtime TypeScript and Platform server/host builds; 0.5.2 version guard.
   Independent integration review found no blocking code interactions.
-- Prepare compatible Desktop/Platform **0.5.2** (tag was absent on GitHub).
-  Keep Runtime's package version, existing Usage 0.4.0 pin and 0.5.x knowledge
-  compatibility; no migration or new App/npm release is needed. Merge Runtime
-  first, then Platform through full CI; dispatch Desktop from merged main with
-  the immutable Runtime merge SHA and standard profile (`unsigned=false`).
-- Publication is incomplete until the workflow, prerelease assets, source/runtime
-  identities and per-OS trust results are verified. Do not push the preview tag
-  manually or claim the unverified authored lesson is promoted. Preserve private
+- Published compatible Desktop/Platform **0.5.2** with Runtime's existing package
+  version, Usage 0.4.0 pin and 0.5.x knowledge compatibility. No migration or new
+  App/npm release was needed. Runtime merged first, then Platform through full
+  CI; Desktop used the immutable Runtime merge SHA and standard profile
+  (`unsigned=false`). The workflow created the preview tag.
+- The authored lesson remains unverified and is not promoted. Preserve private
   native evidence before local clean-build, which deletes `build/validation`.
   A private copy now exists outside both repos at
   `../.validation/knowledge-authoring-native-20260926` (129 files, each copy
   SHA-256 verified, no provider/UI authentication or Electron browser profile).
   Its `evidence-manifest.json` SHA-256 is
   `84b89a3d7594bd90d8b3cebc26913591a591132622d8181500e79d001beab9b9`.
-  Full PR CI and publication remain the next gates. No new inference ran.
+  No new inference ran.
+- Both normal auto-merge PRs passed their full required CI and merged:
+  [Runtime #97](https://github.com/cats-inc/cats-runtime/pull/97), source
+  `98b6755f8698300b2c1881c8018e303c02a29c69` (2,449 tests passed, 5 skipped);
+  [Platform #148](https://github.com/cats-inc/cats-platform/pull/148), source
+  `b2a56ece01f7c4ab6a662c69cef2d6307405e936` (4,864 passed, 59 skipped).
+  Type/build gates passed with no failed tests. The
+  [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36195340100)
+  was manually dispatched from that Platform main with `tag=v0.5.2`, the exact
+  Runtime source above and `unsigned=false`. All 7 jobs passed and
+  [0.5.2 is published](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.2).
+  The tag points to the stated Platform source; all ten assets and three update
+  metadata files were verified, including installer SHA-512/SHA-256. macOS is
+  signed + notarized with the same Developer ID/certificate as 0.5.1; downloaded
+  Windows installer is unsigned (no certificate); Linux trust is n/a. New
+  installed 0.5.1-to-0.5.2 self-update acceptance was not performed.
+  Workspace skill mirrors were synchronized and the follow-up check passed.
+- **Next work:** the integration/release slice is complete. Resume the bounded
+  topic-preservation and independent knowledge evaluation work described below;
+  broader G1/G2/G4, Orchestrator consumption and installed combined acceptance
+  remain open. Private publication logs and observations are retained outside
+  Git at `../.validation/desktop-0.5.2-integration`.
 
 ## Previous checkpoint — native candidate authoring accepted (2026-09-26)
 
