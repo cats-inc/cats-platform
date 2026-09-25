@@ -43,7 +43,7 @@ publish, alter an installed Desktop, or reuse consumed live-model approvals.
   checkpoint, then the current branch diff. PLAN-110 retains the completed K2,
   K3 and native projection evidence; those separate runs must not be repeated
   or described as one end-to-end acceptance.
-- Current slice: P2 complete; next P3 on-demand practice and candidate artifacts.
+- Current slice: P3 complete; next P4 independent review, export and revocation.
   Runtime P1 committed as `2c05544`, P2 skills as `ce98afc` on its feature branch;
   do not replay P1/P2 work.
 - P0 contract review passed after adding artifact-root authority, durable
@@ -53,7 +53,7 @@ publish, alter an installed Desktop, or reuse consumed live-model approvals.
   137 targeted cases, three native-create fixture cases and 197 local doc links.
   Runtime requires the next minor before strict retained-context admission ships;
   no version bump or release was performed. Details and recovery are in Runtime
-  PLAN-041. P2 implementation and local evidence are complete below; P3/P4 remain
+  PLAN-041. P2/P3 implementation and local evidence are complete below; P4 remains
   pending. No native or installed acceptance was run for these new slices.
 
 ### P2 implementation and evidence
@@ -86,6 +86,79 @@ publish, alter an installed Desktop, or reuse consumed live-model approvals.
   assertions and success-after-cleanup ordering. Its recheck passed. Documentation
   whitespace checks and 59 Platform/7 Runtime local links passed. This Platform
   slice pairs with Runtime `ce98afc`; future PR integration must preserve the pair.
+
+### P3/P4 concrete developer workflow
+
+P2 Platform checkpoint is `5d9bd502`. P3 adds a developer-only
+`tools/knowledge-practice/` workflow. This directory is
+outside npm/Desktop assets and adds no production endpoint or scheduler.
+
+- `candidate` turns an explicitly supplied sanitized bilingual draft into an
+  unverified content-addressed proposal. Existing development evidence is enough
+  for drafting; no model call or new exercise is required.
+- `admit` freezes an operator-supplied baseline bundle, scenario/check set,
+  evaluator module, metric, budget and evaluator identity in a new private run
+  root. It verifies an explicit preview Runtime artifact. The admitted author
+  workspace must be physically disjoint from evaluator inputs and run state.
+- An evaluator module is **trusted operator code**, not candidate code or a
+  model-provided executable. Its single attempt entry receives a bounded case
+  fixture and production-assembled knowledge context, with cancellation. It
+  returns bounded observed data, evidence IDs and measured usage/interventions;
+  it cannot supply pass/fail flags. The frozen engine computes assertions and
+  comparison. An operator may bind this seam to an independently owned product
+  harness; the shipped deterministic fixture tests plumbing only and does not
+  prove live-provider or UI competence.
+- `evaluate` captures the exact candidate and executes baseline/candidate over
+  ten or more frozen scenarios (at least four held out), each with three or more
+  new reset identities. Record intent before each attempt and terminal receipts
+  afterward. Unknown usage, timeout, interruption or budget exhaustion stops
+  continuation and remains visible; unresolved submitted attempts are never
+  silently replayed. Reopening a run can inspect it but cannot resume inference
+  or reset consumed budgets implicitly.
+- Evidence records bind content/input digests and are authenticated with a
+  private run-local key; candidate JSON or a claimed `success` field cannot mint
+  evaluation success. The operator must enforce the declared actor/grant
+  separation with actual Runtime/filesystem permissions. IDs, digests and local
+  signatures do not sandbox an actor that can rewrite this trusted tool/key.
+- P4 `review` records an explicit independent decision over the exact candidate
+  and evaluation digests, including sanitization/applicability/evidence checks.
+  Promotion requires complete repeated results, all critical checks, no
+  correctness/policy regression and improvement in the frozen metric.
+- P4 `export` emits only reviewed, compatible knowledge through the existing
+  production bundle loader. It writes a new reviewable artifact, never overwrites
+  an installed bundle or publishes. Local active reads check revocation on every
+  selection; `revoke` preserves history and removes future local selection/export.
+  Previously exported/published copies change only via a new reviewed release.
+
+Checks must cover forged/stale evidence, self-review, changed evaluator, failed
+critical checks despite an improved average, interrupted/budget-limited attempts,
+private content rejection, revocation and source-free consumer loading. Passing
+fixture evaluation must carry a fixture evidence label; it cannot promote a
+production claim or close SPEC-117's real practice acceptance.
+
+### P3 validation checkpoint (2026-09-25)
+
+- Candidate/admit/evaluate/inspect and a zero-provider fixture demo are implemented;
+  see [the operator guide](../knowledge-practice.md). P4 commands are not present
+  yet. Candidate/evaluation artifacts cannot activate knowledge by themselves.
+- Eleven distinct focused tests passed. The final boundary rerun proves a complete
+  128 KiB candidate (including newline) can be read back and an extra byte rejects;
+  it also covers non-JSON observations. Reused passing tests cover 60 clean resets,
+  changed evaluator, overlapping/junction grants, release denial, self-evaluation,
+  interruption/no-replay, incompatible capture, budgets, forged receipts and
+  private/developer-content rejection.
+- Independent review fixed usage lost on invalid/cleanup/cancelled responses,
+  monotonic deadline accounting, capture intent ordering, scope admission and
+  strict JSON/size boundaries. Known token usage survives failures; unknown usage
+  is explicitly incomplete. Final review found no remaining P1/P2 finding.
+- A real CLI fixture run against Runtime `ce98afc` completed all 60 attempts under
+  `build/validation/p3-practice-20260925-01/private-run`, with fixture gates passed,
+  zero provider calls and `productionEligible: false`. This private evidence is
+  ignored, not exported knowledge. The fixed engine digest means P4 tool changes
+  require a new admission; preserve this run as historical P3 evidence.
+- Whitespace checks and 239 affected local documentation links passed. No model,
+  real protected holdout, full installer, installed Desktop or other-OS acceptance
+  is claimed. Source code and ordinary knowledge bundles remain on feature branches.
 
 ### Continuous slices
 

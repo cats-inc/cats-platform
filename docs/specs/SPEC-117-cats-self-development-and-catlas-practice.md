@@ -60,6 +60,13 @@ fresh context for release execution. No version was bumped. Native installed
 transition, managed source-fix and practice/promotion acceptance remain pending;
 passing content checks does not close the broader G1/G2/G4 gates.
 
+P3 adds the [developer practice workflow](../knowledge-practice.md): explicit
+preview admission, frozen baseline/evaluator/curriculum, bounded isolated attempts,
+authenticated evidence and unverified candidate drafts. Its public deterministic
+fixture exercises the ten-case/four-held-out-slot/three-reset mechanics, not a
+real protected holdout or live model improvement. P4 review/export/revocation is
+still pending; a passing P3 receipt alone cannot promote knowledge.
+
 ## Implemented Code-Entry Assistance
 
 The first authorized work package implements part of FR-09, FR-10, FR-13,
