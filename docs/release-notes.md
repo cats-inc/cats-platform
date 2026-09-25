@@ -19,6 +19,31 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-25 (0.4.6 unsigned preview — preparation)
+
+Behavior change:
+
+Same release line as the 0.4.5 signed preview, republished unsigned per operator
+request: the 0.4.4-prepared desktop automation skill updates plus Runtime 0.2.1
+with the current provider model catalogs (including the Muse 1.3.0 refresh).
+The build takes the main tip at dispatch, so unrelated main commits landed
+after the 0.4.5 tag are included as ordinary preview content.
+No new model mapping is added to Platform product code. Unsigned macOS
+previews require manual installation and cannot self-update.
+
+Migration steps:
+
+No data migration or dependency change. Existing setup remains valid.
+Platform and Desktop share version 0.4.6; the authorized unsigned preview
+publication is pending. It will bundle Runtime 0.2.1 from immutable commit
+`b712da2faf233c2ec9e4ecb831566a29f6effaa7` and the existing Usage 0.3.0 artifact
+with SHA-256 `61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509`.
+No npm or new App publication is part of this release.
+
+Deprecations:
+
+None.
+
 ## 2026-09-25 (0.4.5 preview — publication)
 
 Behavior change:
