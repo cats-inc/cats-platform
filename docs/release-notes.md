@@ -19,7 +19,7 @@ Migration steps:
 Deprecations:
 ```
 
-## 2026-09-26 (0.5.1 preview, standard profile — preparation)
+## 2026-09-26 (0.5.1 preview, standard profile — publication)
 
 Behavior change:
 
@@ -46,8 +46,8 @@ compatible patch that bundles Runtime 0.3.1
 - **Runtime fixes.** Claude sessions group by their recorded working directory, and
   native Windows Codex provider and Code Mode host launches no longer open windows.
 
-Expected platform trust: macOS signed + notarized, Windows unsigned (no
-certificate), Linux n/a.
+Platform trust: macOS signed + notarized, Windows unsigned (no certificate),
+Linux n/a.
 
 Self-update into 0.5.1:
 
@@ -64,21 +64,49 @@ The first Runtime start after the update retires an app-seeded catalog copy
 automatically and keeps a byte-for-byte `.bak` beside it. A user-edited
 `curated-model-catalogs.yaml` is not changed. No other data migration applies.
 
-Platform and Desktop share version 0.5.1; the authorized standard-profile preview
-publication is pending. It will bundle Runtime 0.3.1 from immutable commit
+Platform and Desktop share version 0.5.1; the standard-profile preview is
+published. Every OS bundles Runtime 0.3.1 from immutable commit
 `e202eaf4037c648c73caa52c9a9d441793b2df71` and the existing
 [Usage 0.4.0](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.4.0)
 artifact with SHA-256 `7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`.
-The operator also authorized npm publication of `@cats-inc/cats-platform@0.5.1`
-and `@cats-inc/cats-runtime@0.3.1` on `latest`. cats-one 0.1.24 still depends on
-Runtime `^0.1.27` and Platform `^0.3.6`, so `npx cats-one` does not pick these
-versions until a separate launcher release.
+npm `latest` now carries `@cats-inc/cats-platform@0.5.1`,
+`@cats-inc/cats-runtime@0.3.1`, and launcher 0.2.0 under both
+`@cats-inc/cats-one` and `cats-one`. The launcher requires Runtime `^0.3.1` and
+Platform `^0.5.1`, so `npx cats-one@latest` resolves this release.
 
 Deprecations:
 
 None.
 
-## 2026-09-25 (0.5.0 preview, standard profile — preparation)
+Release verification:
+
+The [0.5.1 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.1)
+was published from Platform `ba9417bb83170136cfc3c041f163ee4ec6c90099`.
+The [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36184509729)
+passed 7/7 jobs with `unsigned=false` (standard profile) and
+`runtime_ref=e202eaf4037c648c73caa52c9a9d441793b2df71`; every OS build checked
+out that Runtime commit. The workflow created the tag; it was never pushed first.
+
+- Assets: all ten expected assets are present, and the release is a prerelease
+  (not latest). The releases feed lists 0.5.1 first. All three public update
+  metadata files name 0.5.1, with asset names and sizes that match the release.
+- macOS: electron-builder signed `Cats.app` with the Developer ID certificate,
+  notarization succeeded, and the workflow's verification step reported
+  `source=Notarized Developer ID`. This was not re-verified from the published
+  DMG, because the checking host runs Windows.
+- Windows: the downloaded `Cats-0.5.1-setup-x64.exe` reports Authenticode
+  `NotSigned`, which is expected without a certificate.
+- Linux: n/a.
+
+npm: [Runtime](https://github.com/cats-inc/cats-runtime/actions/runs/36183579493),
+[Platform](https://github.com/cats-inc/cats-platform/actions/runs/36184505061) and
+[cats-one](https://github.com/cats-inc/cats-one/actions/runs/36187020990) publish
+workflows passed. The logs show publication with `latest` and signed provenance.
+Registry entries and tarballs were available after propagation. A fresh-cache
+`npx --yes cats-one@latest --platform-only --help` installed cats-one 0.2.0,
+Platform 0.5.1 and Runtime 0.3.1.
+
+## 2026-09-25 (0.5.0 preview, standard profile — publication)
 
 Behavior change:
 
@@ -126,9 +154,13 @@ conversation whose retained context cannot be verified for release compatibility
 does not resume that context; release execution continues with a fresh verified
 context.
 
-Platform and Desktop share version 0.5.0; the authorized standard-profile preview
-publication is pending. It will bundle Runtime 0.3.0 from immutable commit
-`e464619644ff499cc1dc7da03b755b91aa73d7b0` and the published
+Platform and Desktop share version 0.5.0; the standard-profile preview was
+published on 2026-09-25 (recorded afterwards with 0.5.1). The
+[0.5.0 prerelease](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.0)
+comes from Platform `524e340667b2e4b2b76e8e87c2bbdbacf7b5ef53`. Its
+[Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36151491375)
+passed, and macOS reported `source=Notarized Developer ID`. It bundles Runtime 0.3.0
+from immutable commit `e464619644ff499cc1dc7da03b755b91aa73d7b0` and the published
 [Usage 0.4.0](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.4.0)
 artifact with SHA-256 `7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`.
 No npm publication of Platform or Runtime is part of this release.
