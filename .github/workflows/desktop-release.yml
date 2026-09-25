@@ -9,8 +9,9 @@ name: cats-platform desktop release
 # published latest stable release. Manual dispatch is a separate preview path:
 # it exercises the same draft/build/validate/publish sequence but publishes
 # only as a GitHub prerelease and never becomes latest. Per ADR-117 a preview
-# is signed wherever credentials exist unless the operator explicitly requests
-# an unsigned preview. Artifact trust never makes the preview official.
+# uses the standard signing profile (signed wherever credentials exist) unless
+# the operator confirms the unsigned override. Artifact trust never makes the
+# preview official. Terms: docs/deployment.md#desktop-signing-profiles.
 
 on:
   push:
@@ -31,7 +32,11 @@ on:
         default: main
         type: string
       unsigned:
-        description: 'Build this preview without signing or notarization (macOS requires manual installation).'
+        description: >-
+          Unsigned override: withhold signing and notarization on every platform.
+          Today only macOS changes; signed macOS installs cannot self-update into
+          this build, and a manual macOS install loses self-update. Leave unchecked
+          for the standard profile. See docs/deployment.md#desktop-signing-profiles.
         required: false
         default: false
         type: boolean

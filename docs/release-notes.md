@@ -19,6 +19,39 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-25 (Desktop signing profiles — correction for 0.4.5 and 0.4.6)
+
+Behavior change:
+
+No build or product behavior changes. Desktop signing now has named profiles,
+defined in [Desktop signing profiles](deployment.md#desktop-signing-profiles).
+This corrects the "signed preview" and "unsigned preview" wording in the 0.4.5
+and 0.4.6 entries below:
+
+- 0.4.5 used the **standard** profile, with the same platform trust as 0.3.6
+  through 0.4.3: macOS signed + notarized, Windows unsigned (no certificate),
+  Linux n/a. It did not differ from the previews before it.
+- 0.4.6 used the **unsigned override** (`unsigned=true`). It differs from 0.4.5
+  only on macOS, where the app is unsigned and not notarized. The 0.4.6 entry
+  covers only that 0.4.6 itself cannot self-update; signed macOS installs also
+  cannot self-update into 0.4.6.
+
+Migration steps:
+
+- Windows and Linux: installs of 0.4.3 or 0.4.5 self-update into 0.4.6 as usual.
+- macOS installs of a standard-profile build such as 0.4.3 or 0.4.5:
+  **Check for Update** reports 0.4.6 but fails with a signature error during
+  download. Stay on the current build; it self-updates directly into the next
+  standard-profile preview.
+- macOS installs of 0.4.6: a manual DMG install needs a Gatekeeper bypass, and
+  the result cannot self-update. Install the next standard-profile preview
+  manually, once.
+
+Deprecations:
+
+The bare terms "signed preview" and "unsigned preview" are retired for new
+records; use the profile name and each platform's trust instead.
+
 ## 2026-09-25 (0.4.6 unsigned preview — publication)
 
 Behavior change:
