@@ -25,7 +25,38 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — native candidate authoring accepted (2026-09-26)
+## Resume Checkpoint — integration and Desktop preview (2026-09-26)
+
+- Owner authorized normal auto-merge PR integration and a Desktop
+  **standard-profile preview**, including its version preparation; explicitly
+  **no npm publication**. No new provider inference is authorized or needed.
+- Latest main was fetched. Platform `b45f5d9c` is 0.5.1 with Muse default and
+  docs-only CI changes; Runtime `0a60f31` is 0.3.1 with Windows Codex hidden-host,
+  catalog-upgrade, discovery and CI updates. Both feature branches rebased cleanly:
+  Platform `8765f92b`, Runtime `546429d`. Native evidence below remains historical
+  to its recorded revision set. Range-diff confirms all implementation commits
+  were preserved unchanged. Rebased validation passed: Runtime 135 tests across
+  skills/hydration/content policy, hidden Windows Codex host/launcher/guard and
+  docs boundary; Platform 49 authoring/lifecycle/practice/promotion/docs-boundary
+  cases; Runtime TypeScript and Platform server/host builds; 0.5.2 version guard.
+  Independent integration review found no blocking code interactions.
+- Prepare compatible Desktop/Platform **0.5.2** (tag was absent on GitHub).
+  Keep Runtime's package version, existing Usage 0.4.0 pin and 0.5.x knowledge
+  compatibility; no migration or new App/npm release is needed. Merge Runtime
+  first, then Platform through full CI; dispatch Desktop from merged main with
+  the immutable Runtime merge SHA and standard profile (`unsigned=false`).
+- Publication is incomplete until the workflow, prerelease assets, source/runtime
+  identities and per-OS trust results are verified. Do not push the preview tag
+  manually or claim the unverified authored lesson is promoted. Preserve private
+  native evidence before local clean-build, which deletes `build/validation`.
+  A private copy now exists outside both repos at
+  `../.validation/knowledge-authoring-native-20260926` (129 files, each copy
+  SHA-256 verified, no provider/UI authentication or Electron browser profile).
+  Its `evidence-manifest.json` SHA-256 is
+  `84b89a3d7594bd90d8b3cebc26913591a591132622d8181500e79d001beab9b9`.
+  Full PR CI and publication remain the next gates. No new inference ran.
+
+## Previous checkpoint — native candidate authoring accepted (2026-09-26)
 
 - Code heads: Platform `4f92836e` (documentation checkpoint `3d3f12d9`) and Runtime
   `4bb1495`. Branches remain `feat/desktop-knowledge-candidate` and

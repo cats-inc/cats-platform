@@ -19,6 +19,47 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-26 (0.5.2 preview, standard profile — preparation)
+
+Behavior change:
+
+Desktop 0.5.2 is a compatible patch prepared for the standard signing profile.
+Runtime now prepares managed skill files for Codex in its own read-only sandboxes
+without granting the provider write access. Source/worktree directories remain protected,
+and strict skill delivery remains consistent during message rehydration.
+
+The developer-only authoring host can create an attributed, unverified knowledge
+draft using the normal Desktop-managed app lifecycle. Native Windows acceptance
+produced one draft within its token threshold. This host/tooling is excluded from
+shipping asset inventories; the preview does not add an end-user authoring button
+or promote the generated knowledge. Independent content evaluation remains open.
+
+Migration steps:
+
+None beyond the existing 0.5.1 upgrade behavior. This change adds no persisted
+format or breaking API. Existing Usage 0.4.0 and 0.5.x knowledge bundles remain
+compatible. Runtime is bundled from an identified merged source commit; its npm
+package and all other npm packages are not published by this release.
+
+Self-update from the previous standard-profile Desktop 0.5.1 is expected to work
+on Windows and Linux. On macOS it requires the new signed, notarized app to retain
+the same Developer ID team. These are compatibility expectations; this release
+has not yet passed an installed 0.5.1-to-0.5.2 update acceptance check.
+
+Deprecations:
+
+None.
+
+Release verification:
+
+Rebased focused validation passed: Runtime 135 cases, Platform 49 cases, Runtime
+TypeScript build, Platform server/host builds and the 0.5.2 version guard.
+Independent integration review found no code blockers.
+Pending full PR CI, merge and Desktop publication. Use an immutable Runtime SHA
+and standard profile (`unsigned=false`). Expected trust: macOS signed + notarized,
+Windows unsigned: no certificate, Linux n/a. Record actual build results and
+published assets before marking this release complete.
+
 ## 2026-09-26 (0.5.1 preview, standard profile — publication)
 
 Behavior change:
