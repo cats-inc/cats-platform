@@ -7,7 +7,7 @@
 | Status | In progress; initial Code knowledge assistance implemented, live/native acceptance pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; independent implementation reviewers unassigned |
-| Last updated | 2026-09-24 |
+| Last updated | 2026-09-25 |
 
 ## Related Spec
 
@@ -68,6 +68,48 @@ when work begins rather than copy its lifecycle or status into competing ledgers
 Every phase that introduces persistent state must pass its applicable atomic
 write, restart recovery and migration checks before closing that phase. The full
 AC-12 gate in G4 does not defer those earlier data-owner obligations.
+
+### G0 content-profile inventory checkpoint (2026-09-25)
+
+This read-only inventory prepares the next contract slice; it does not mark G0
+or G1 complete or add a new development grant. The inspected Platform baseline
+is `c5f73f7e`, Runtime is `a694104`. PLAN-110's isolated K3 execution and native
+candidate evidence can be reused at their documented scope; they do not prove
+release/preview content exclusion or knowledge promotion.
+
+| Content or boundary | Observed implementation | Consequence for the next slice |
+|---------------------|-------------------------|--------------------------------|
+| Normal Catlas and Orchestrator knowledge | Platform packages both curated JSON bundles; npm and Desktop inventory checks consume their contents | Keep normal role procedures and knowledge in both content profiles; distinguish them from practice/development instructions |
+| Runtime product skills | The source catalog contains 33 packages: Chat 5, Code 5, orchestration 7, Work 16; all are existing general product roles/procedures | Preserve these packages. `code`, `work`, `repo-maintainer`, or the generic memory/handoff names do not identify the Cats-only supplement |
+| Developer workspace skills | Member-owned developer skills are synchronized into workspace agent directories; Desktop already excludes Runtime's developer `skills/` tree | Workspace skill discovery is not delivery to a Desktop-managed product session. Do not copy the whole developer workspace inventory into release or preview |
+| Cats-specific development/practice supplement | No separate managed product supplement is present in the inspected library | Author a distinct, explicitly inventoried supplement after the delivery/exclusion contract is reviewed; generic role skills alone do not satisfy G2/G4 |
+| Artifact selection | Desktop copies `runtime-skills/` broadly; Runtime npm inventory includes that directory | A new supplement cannot simply be dropped into that broadly shipped root without profile-specific asset selection and transitive resource checks |
+| Runtime catalog and delivery | Catalog root is resolved from package override/module location; catalog cache identity uses root/watch key and package cache uses entry file/fingerprint. Codex delivery can materialize `.agents/skills`; supported other providers use instruction delivery and unsupported delivery remains explicit | Runtime must own generic content-policy filtering and cache identity; neither current cache carries content policy. A Desktop checkbox or hidden catalog entry cannot prove exclusion from materialized files or model input |
+| Resume/hydration | Explicit requested skills take precedence; otherwise persisted skill state is resolved again against the current catalog | Specify a release-compatible resume decision before enabling the supplement. Retained provider context needs rejection or a fresh context when its exclusion cannot be verified |
+| Build identity | Existing preview/official flags control release/update/trust behavior; no development-content policy is selected by those flags today | Bind a separate content profile to verified build/host configuration. Preview eligibility still does not authorize a source edit or practice run |
+| Candidate isolation | Platform has a dedicated candidate profile with separate roots, identity/lock handling, listeners and owned process checks; PLAN-110 records private Windows native evidence | Reuse this substrate. G1 still needs managed lifecycle/persistence and both content-profile/transition acceptance; do not repeat the old claim that no candidate isolation exists |
+
+Source seams: [Desktop asset staging](../../desktop/host/packaging.ts),
+[preview/release build entry](../../scripts/build-desktop-installer.mjs),
+[candidate isolation](../../desktop/host/candidateProfile.ts),
+[Runtime package inventory](../../../cats-runtime/package.json),
+[catalog and provider delivery](../../../cats-runtime/src/core/skills/catalog.ts),
+[session hydration](../../../cats-runtime/src/core/hydration/sessionHydration.ts),
+and [product skill authoring contract](../../../cats-runtime/runtime-skills/README.md).
+The source catalog was enumerated through its read-only compiled catalog API with
+an explicit `runtime-skills` root. No files were materialized, packaged, or sent
+to a model during this inventory.
+
+The next reviewable contract slice should fix the exact supplement ownership,
+content identifiers/resources, build-to-content-profile mapping and host policy
+source. Define additive manifest/provenance and cache keys before editing
+packaging, then map new/requested/resumed session rejection and fresh-context
+behavior to Runtime's existing delivery seams. Record any required compatibility
+boundary and tested persisted-data upgrade before implementing it; this audit
+does not approve a new required state field or version bump. Acceptance must
+cover physical artifacts, advertised catalogs, actual provider input and a
+preview-to-release transition with stale files/state, while retaining these 33
+ordinary product skills and both normal knowledge consumers.
 
 ## Implementation Phases
 
@@ -151,9 +193,10 @@ and public compatibility impact recorded. No release version is bumped here.
 - [ ] Prepare the first task's writable worktree through Runtime-owned
   primitives. Record physical paths, common Git metadata and task ownership.
   Keep other member inputs outside the writer's grant.
-- [ ] Implement a candidate profile with independently allocated Platform,
-  Runtime, Desktop and Electron state, identity/lock scope and listeners. Verify
-  the actual candidate build/endpoint; do not adopt the controller's Runtime.
+- [ ] Reuse and extend the existing candidate profile for managed ownership and
+  recovery, retaining separate Platform, Runtime, Desktop and Electron state,
+  identity/lock scope and listeners. Verify the actual candidate build/endpoint
+  in this workflow; do not adopt the controller's Runtime.
 - [ ] Add bounded startup, health, stop and inspection through existing host
   boundaries. Persist ownership before launching; reconcile after interruption.
 - [ ] Preserve diffs and receipts on stop/cancel/error. Make duplicate starts and
@@ -355,6 +398,7 @@ skill. Check both real artifact contents and effective session/model inputs.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | Read-only G0 inventory distinguishes 33 ordinary Runtime role/procedure packages and two normal knowledge bundles from the still-absent Cats-specific development/practice supplement. Recorded broad artifact staging, catalog cache identity, resumed-skill hydration and existing private candidate isolation. This documentation slice prepares ownership/profile contracts; no content filter, skill delivery, persisted schema, model inference, version or publication changed. G0/G1 and practice/promotion remain open. |
 | 2026-09-24 | PLAN-110 K1 now shares the Platform knowledge reader with Catlas and delivers normal Orchestrator procedures inline, with source-free asset fixtures. Catlas's 13 regressions pass within the 239-test scoped batch. This does not close this plan's preview development, practice/promotion, live-provider or installed-Desktop gates. |
 | 2026-09-24 | Drafted ADR-118, SPEC-117 and this plan at the owner's request. Recorded static source baselines, pending gaps, ownership, staged gates and acceptance criteria. No implementation, live-provider/native acceptance, version bump or publication is claimed. |
 | 2026-09-24 | Initial draft documentation validation passed: git diff whitespace checks and a filesystem-only check of all three new documents plus their new index references (51 local links, 19 unique functional requirements mapped to 12 acceptance criteria, balanced fences, no template placeholders, UTF-8/LF). Application tests/builds were not run for this documentation-only change. |
@@ -371,4 +415,4 @@ skill. Check both real artifact contents and effective session/model inputs.
 ---
 
 *Created: 2026-09-24*
-*Last updated: 2026-09-24*
+*Last updated: 2026-09-25*

@@ -9,7 +9,7 @@
 | Reviewer | Product owner; implementation reviewers not yet assigned |
 | Decision | [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
 | Plan | [PLAN-109](../plans/PLAN-109-cats-self-development-and-catlas-practice.md) |
-| Last updated | 2026-09-24 |
+| Last updated | 2026-09-25 |
 
 ## Summary
 
@@ -124,6 +124,10 @@ cats-one `af2e2d3`, and Apps `97e9005`. No installed-build or live-provider
 acceptance was performed for this proposal. Existing tests are references to
 coverage, not checks executed during this drafting task.
 
+The Desktop isolation row was updated on 2026-09-25 to reflect PLAN-110's later
+implementation/evidence. The dated G0 inventory in PLAN-109 records the current
+content and delivery boundaries without closing the profile/practice gates.
+
 | Area | Source evidence | Current limit relevant to this feature |
 |------|-----------------|----------------------------------------|
 | Session workspaces | [Runtime preparation](../../../cats-runtime/src/core/workspace/sessionWorkspace.ts), [worktree tests](../../../cats-runtime/src/http/sessionWorktree.test.ts) | Source/sandbox/worktree primitives exist; worktree preparation resolves one Git repository |
@@ -132,7 +136,7 @@ coverage, not checks executed during this drafting task.
 | Skill packaging | [Desktop staging](../../desktop/host/packaging.ts), [Runtime package inventory](../../../cats-runtime/package.json) | The Runtime skill library is included broadly today; preview/debug-only supplement filtering is not implemented |
 | Supervised operations | [tool boundary](../../src/platform/supervision/toolBoundary.ts), [tool registry documentation](../tool-calls.md) | Delegates and decision contracts exist; several agent-callable adapter/result loops remain pending |
 | Catlas assistance | [assist refresh](../../src/products/chat/api/guideCatAssist.ts), [sidecar](../../src/design/components/GuideCatSidecar.tsx) | Fixed navigation and deterministic/last-good cache hydration exist; runtime-generated assist and the proposed operation loop are absent |
-| Desktop isolation | [host config](../../desktop/host/config.ts), [host startup](../../desktop/host/main.ts) | Some state/port overrides exist; a complete candidate profile, including Electron identity and single-instance behavior, is not established |
+| Desktop isolation | [candidate profile](../../desktop/host/candidateProfile.ts), [host startup](../../desktop/host/main.ts) | PLAN-110 now has private candidate roots, Electron identity/lock/listener handling and Windows native evidence; managed lifecycle and release/preview content-transition acceptance remain open |
 | Product memory | [SPEC-031](SPEC-031-built-in-memory-extraction-durable-sync-and-retrieval-context.md), [SPEC-088](SPEC-088-companion-memory-bridge-contract-placeholder.md) | Evidence/memory/retrieval have defined boundaries; a validated-procedure promotion store is not implemented |
 
 ## Distribution and Knowledge Contract
@@ -503,4 +507,4 @@ remain later work, each requiring evidence and an explicit rollout decision.
 ---
 
 *Created: 2026-09-24*
-*Last updated: 2026-09-24*
+*Last updated: 2026-09-25*
