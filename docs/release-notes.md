@@ -19,11 +19,11 @@ Migration steps:
 Deprecations:
 ```
 
-## 2026-09-26 (0.5.2 preview, standard profile — preparation)
+## 2026-09-26 (0.5.2 preview, standard profile — publication)
 
 Behavior change:
 
-Desktop 0.5.2 is a compatible patch prepared for the standard signing profile.
+Desktop 0.5.2 is a published compatible patch using the standard signing profile.
 Runtime now prepares managed skill files for Codex in its own read-only sandboxes
 without granting the provider write access. Source/worktree directories remain protected,
 and strict skill delivery remains consistent during message rehydration.
@@ -38,13 +38,16 @@ Migration steps:
 
 None beyond the existing 0.5.1 upgrade behavior. This change adds no persisted
 format or breaking API. Existing Usage 0.4.0 and 0.5.x knowledge bundles remain
-compatible. Runtime is bundled from an identified merged source commit; its npm
-package and all other npm packages are not published by this release.
+compatible. Runtime 0.3.1 is bundled from source commit
+`98b6755f8698300b2c1881c8018e303c02a29c69`; its npm package and all other npm
+packages are not published by this release. The Usage 0.4.0 artifact retains
+SHA-256 `7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`.
 
 Self-update from the previous standard-profile Desktop 0.5.1 is expected to work
-on Windows and Linux. On macOS it requires the new signed, notarized app to retain
-the same Developer ID team. These are compatibility expectations; this release
-has not yet passed an installed 0.5.1-to-0.5.2 update acceptance check.
+on Windows and Linux. The macOS app retains the same Developer ID team
+`97JBZ3MFX5` and signing certificate as 0.5.1, confirmed in both build logs, so its
+signed-to-signed update remains compatible. This release has not passed a new
+installed 0.5.1-to-0.5.2 update acceptance check on any OS.
 
 Deprecations:
 
@@ -54,11 +57,33 @@ Release verification:
 
 Rebased focused validation passed: Runtime 135 cases, Platform 49 cases, Runtime
 TypeScript build, Platform server/host builds and the 0.5.2 version guard.
-Independent integration review found no code blockers.
-Pending full PR CI, merge and Desktop publication. Use an immutable Runtime SHA
-and standard profile (`unsigned=false`). Expected trust: macOS signed + notarized,
-Windows unsigned: no certificate, Linux n/a. Record actual build results and
-published assets before marking this release complete.
+Independent integration review found no code blockers. Full CI passed before
+normal auto-merge: [Runtime #97](https://github.com/cats-inc/cats-runtime/pull/97)
+(2,449 passed, 5 skipped) and
+[Platform #148](https://github.com/cats-inc/cats-platform/pull/148)
+(4,864 passed, 59 skipped); no failed tests.
+
+The [0.5.2 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.2)
+was published from Platform `b2a56ece01f7c4ab6a662c69cef2d6307405e936`.
+The [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36195340100)
+passed 7/7 jobs with `unsigned=false` and the immutable Runtime SHA above, checked
+out by every OS build. The workflow created the preview tag; it was not pushed.
+
+- All ten expected assets are published. The release is a prerelease and appears
+  first in the releases feed. All three update metadata files report 0.5.2 and
+  reference published assets with matching names and sizes.
+- macOS: signed + notarized. The app and native helper passed signature checks;
+  stapling validation passed and Gatekeeper reported `source=Notarized Developer ID`.
+  This is build-runner evidence; the published DMG was not rechecked on this
+  Windows host.
+- Windows: unsigned: no certificate. The downloaded 144,703,731-byte installer
+  reports Authenticode `NotSigned`; its SHA-512 matches `latest.yml` and SHA-256
+  matches the GitHub asset digest
+  `0510d7218931c2ba1bfc64a32e1908293b49066cd38e3459fa1b7f523e661444`.
+- Linux: n/a. All three builds passed bundled App version/offline activation
+  checks and retained preview content eligibility.
+
+No npm publish workflow or additional native provider inference was run.
 
 ## 2026-09-26 (0.5.1 preview, standard profile — publication)
 
