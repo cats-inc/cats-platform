@@ -10,6 +10,8 @@ import { stopRun } from '../build/server/platform/supervision/runCancellation.js
 import { upsertCoreTask, upsertCoreRun } from '../build/server/core/model/index.js';
 import { digest, writeNew } from '../tools/knowledge-practice/artifacts.mjs';
 import { validateAuthoringHost, waitForAuthoringStart } from '../tools/knowledge-practice/authoring-host.mjs';
+import { CatsRuntimeClient } from '../build/server/runtime/client.js';
+import { validateRuntimeSessionPolicyInput } from '../build/server/shared/runtimeSessionPolicy.js';
 
 const policyFingerprint = digest('cats.skill-content.v1:preview');
 async function fixture(t, overrides = {}) {
@@ -42,7 +44,7 @@ async function fixture(t, overrides = {}) {
     evidence: [{ id: 'test:workspace', summary: 'The product observes the created session workspace before confirming it.',
       sourceDigest: digest('independent-fixture') }] };
   const session = { id: 'session-author', providerName: 'codex', model: 'fixture-model', status: 'idle', cwd,
-    providerBackend: 'cli', providerInstanceId: 'native', permissionMode: 'whitelist', allowedTools: ['read_file', 'list_files'],
+    providerBackend: 'cli', providerInstanceId: 'native', permissionMode: 'default', allowedTools: ['read_file', 'list_files'],
     providerTarget: { provider: 'codex', backend: 'cli', instance: 'native', target: 'cli/native', resolved: true },
     workspace: { kind: 'sandbox', access: 'read_only', runtimeCwd: cwd },
     hydration: { metadata: { runtimeSkillContent: { schemaVersion: 1, sessionId: 'session-author', profile: 'preview',
@@ -58,6 +60,7 @@ async function fixture(t, overrides = {}) {
       const current = await inspectAuthoring(coreStore, request.id);
       assert.equal(current.phase, 'creating-session');
       assert.equal(input.workspaceAccess, 'read_only');
+      assert.equal(validateRuntimeSessionPolicyInput(input), null);
       assert.deepEqual(input.skills.requestedSkills, ['cats-practice-and-distill']);
       return session;
     },
@@ -102,6 +105,25 @@ test('concurrent duplicate admission and re-entry cannot repeat a session or inf
   assert.equal(f.calls.filter(([name]) => name === 'send').length, 1);
   const changed = structuredClone(f.request); changed.title = 'Changed';
   await assert.rejects(authorKnowledge({ ...f, request: changed }), /changed inputs/u);
+});
+
+test('authoring creation passes the real Runtime client policy guard and preserves the read-only wire grant', async t => {
+  const f = await fixture(t);
+  const client = new CatsRuntimeClient(f.runtimeBaseUrl);
+  let requests = 0;
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.equal(String(url), `${f.runtimeBaseUrl}/sessions`);
+    const input = JSON.parse(options.body);
+    assert.equal(input.workspaceAccess, 'read_only'); assert.equal(input.workspaceKind, 'sandbox');
+    assert.equal(input.permissionMode, 'default'); assert.equal(input.cwd, undefined);
+    assert.deepEqual(input.allowedTools, ['read_file', 'list_files']);
+    assert.deepEqual(input.skills, { requestedSkills: ['cats-practice-and-distill'], strict: true });
+    requests += 1;
+    return Response.json({ ...f.session, provider: 'codex' });
+  });
+  f.runtimeClient.createSession = client.createSession.bind(client);
+  const result = await authorKnowledge(f);
+  assert.equal(result.status, 'completed', result.error); assert.equal(requests, 1);
 });
 
 for (const failure of ['malformed', 'unknown-usage', 'over-budget', 'invented-evidence', 'private-content']) {

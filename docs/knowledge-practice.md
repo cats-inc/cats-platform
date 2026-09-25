@@ -62,7 +62,9 @@ tool allowlist and workspace before
 dispatch and again after response. It records delivery mode and distinguishes
 materialized resources from unestablished optional instruction resources. Session
 lifecycle supervision permits creation/cancellation; the worker's tool and
-filesystem grant remains read-only.
+filesystem grant remains read-only. Its permission gate is explicitly `default`,
+as required by the product's read-only session policy; the read/list tool allowlist
+is supplied separately and retained in the observed receipt.
 
 The host validates the returned JSON, writes `draft.json` and `candidate.json`
 under `<candidate root>/knowledge-authoring/<id>/`, and declares an attributed

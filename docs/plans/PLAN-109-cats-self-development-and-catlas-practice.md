@@ -67,8 +67,8 @@ separately. No version bump, publication or installed-profile mutation is includ
   practice/promotion regression run passed 27/28; the Catlas promotion case saw
   the tool-engine digest change while an authoring file was being edited, so
   its isolated rerun passed with tool files stable. Lifecycle
-  tests required outside-sandbox execution because sandbox spawn returned EPERM. Runtime's
-  generated build was refreshed; its source checkout remains unchanged.
+  tests required outside-sandbox execution because sandbox spawn returned EPERM.
+  Runtime's generated build was refreshed at this earlier checkpoint.
 - Native zero-provider preflight: Windows UIA observes the private Cats window.
   Desktop PID 8924 owned Runtime 3700 and Platform 13608; their lifecycle events
   and loopback listeners (57820/57819) matched the expected roots/entries.
@@ -76,7 +76,7 @@ separately. No version bump, publication or installed-profile mutation is includ
   The first private-wrapper import and readiness-wait failures were corrected
   before sidecars/inference; their logs are retained. All testing used the isolated
   profile; no installed Desktop or user product records were changed.
-- External inference is **not run**. Automatic approval review rejected
+- External inference is **not run at the preceding checkpoint**. Automatic approval review rejected
   `start-author.mjs`: it requires explicit owner authorization to send the admitted
   candidate knowledge/evidence to the external Codex provider. Do not bypass or
   silently retry this rejection. The prepared request is one `gpt-6-astra` draft,
@@ -85,9 +85,50 @@ separately. No version bump, publication or installed-profile mutation is includ
   gate was never opened. The candidate Desktop shut down normally (exit 0);
   independent process/listener observation confirms all three PIDs and both
   listeners are gone. No live authored candidate/UI projection is claimed.
-- Next entry: obtain only the missing
-  external-call authorization. On authorization, perform a fresh ownership
-  preflight, then the single bounded request; preserve failure evidence and do not
+- Owner authorization received in chat: `授權`, explicitly responding to the
+  one external Codex call above. Continue from implementation checkpoint
+  `64f3b013`; the authorization covers one `gpt-6-astra` request with the unchanged
+  180-second / 24,000-token threshold, supplied knowledge/evidence/author
+  instructions and temporary isolated authentication. Do not ask for this again.
+  New private run: `build/validation/knowledge-authoring-native/profile-authorized-01`.
+  Fresh preflight passed: Desktop 17160 owns Platform 17556 / Runtime 8648 on
+  loopback 60940 / 60941. The one-call gate opened at approximately 18:55 UTC
+  (2026-09-25); temporary auth was copied into this private profile. This attempt
+  failed in the real Platform client policy guard **before HTTP session creation**:
+  read-only sessions require `permissionMode: default`, not `whitelist`.
+  Core records zero inference attempts; Runtime/provider session directories and
+  Runtime create/message requests are empty. Desktop exited normally and the
+  temporary credential copy was removed. The single authorized inference remains
+  unused. Preserve `precheck-failure.json` and the failed Run; do not rewrite it.
+  The narrow correction changes creation and observed-policy assertions to
+  `default`, preserving read-only access and the exact read/list tool allowlist.
+  Independent source review confirms Runtime declines command/file-change approval
+  requests for this combination; the dynamic read-tool grant alone does not prove
+  every native provider tool is disabled. A regression through the actual CatsRuntimeClient now passes;
+  the other 17 authoring cases also passed. A private fixture-only setup mistake
+  (writing Core setup completion through the Chat adapter) was corrected before
+  the next native launch. Continue in new `profile-authorized-02`, under the same
+  unused one-call authorization; no automatic second inference is authorized.
+  Profile 02 ownership preflight passed: Desktop 10996 owns Platform 17260 /
+  Runtime 14884 on loopback 62439 / 62440. It failed strict Runtime skill delivery
+  before provider dispatch: the legacy read-only mode lost sandbox ownership at
+  the skill resolver. Core records zero inference attempts, provider history is
+  empty, and only the Runtime exposure marker exists. Preserve its failed Run and
+  `precheck-failure.json`. Desktop exited 0; independent CIM/listener observation
+  confirms all three PIDs and both listeners gone and temporary auth removed.
+  The actual Cats Code home rendered in the private window; this is not candidate
+  UI acceptance. The single authorized inference remains unused.
+- Runtime correction validated in `cats-runtime`, branch
+  `fix/readonly-sandbox-skill-delivery`, commit `4bb1495` (base `e464619`): canonical sandbox kind
+  controls Runtime-owned skill preparation, while read-only provider access stays
+  unchanged. Source/worktree locations remain non-writing. Message hydration now
+  preserves canonical topology. Runtime TypeScript build and 113 distinct focused
+  cases passed; independent review found no blockers. See Runtime PLAN-041.
+  Private preflight now records the actual Runtime revision and compiled entry,
+  catalog, hydration and message-route digests, rather than a stale baseline SHA.
+- Next entry: Platform policy/checkpoint commit, then prepare fresh `profile-authorized-03`,
+  perform a new ownership preflight, then the single bounded
+  request; preserve failure evidence and do not
   automatically spend another request. Candidate/UI attribution and model-skill
   delivery acceptance remain pending; no live authored candidate or promotion is
   claimed. Earlier P1–P4 work and consumed PLAN-110 live runs need no replay.

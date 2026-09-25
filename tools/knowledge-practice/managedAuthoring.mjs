@@ -40,7 +40,7 @@ export async function authoringDelivery(session, policy, target) {
   const skills = session.skills;
   assert.equal(session.workspace?.access, 'read_only', 'Runtime must confirm read-only access.');
   assert.equal(session.workspace?.kind, 'sandbox', 'Runtime must confirm an isolated sandbox.');
-  assert.equal(session.permissionMode, 'whitelist');
+  assert.equal(session.permissionMode, 'default');
   assert.deepEqual([...session.allowedTools].sort(), AUTHOR_TOOLS);
   assert.equal(session.providerName, target.provider);
   assert.equal(session.model, target.model);
@@ -239,7 +239,7 @@ export async function authorKnowledge({ coreStore, runtimeClient, request: input
     const created = await bounded(async () => {
       const result = await createSupervisedRuntimeSession({ runtimeClient, input: {
         ...request.target, workspaceKind: 'sandbox', workspaceAccess: 'read_only',
-        sharingMode: 'isolated', permissionMode: 'whitelist', allowedTools: ['read_file', 'list_files'],
+        sharingMode: 'isolated', permissionMode: 'default', allowedTools: ['read_file', 'list_files'],
         skills: { requestedSkills: [...AUTHOR_SKILLS], strict: true },
         context: { source: 'assignment', taskId, reason: SOURCE, metadata: { runId, requestDigest } },
         correlation: { taskId, product: 'code' },
