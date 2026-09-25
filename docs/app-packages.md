@@ -101,6 +101,8 @@ tags) independently of Desktop. It refuses to replace an existing release and
 does not mark utility releases as a repository-wide `latest` release.
 
 Desktop release CI reads the source-controlled `config/desktop-apps.lock.json`.
+Desktop 0.5.1 keeps the same Usage 0.4.0 artifact; its `^0.5.0` declaration accepts
+0.5.1, so no new App release is needed.
 Desktop 0.5.0 selects the published [Usage 0.4.0 release](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.4.0),
 with SHA-256 `7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`.
 Provenance identifies Apps commit `cb48b229295d5cb4bb6f3009fbe0b9e81afe1b63`.
