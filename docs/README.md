@@ -1,5 +1,8 @@
 # Documentation Index
 
+[Preview knowledge practice](knowledge-practice.md) documents the developer-only
+candidate, frozen evaluator and interruption/checkpoint workflow for PLAN-109.
+
 > This directory contains all project documentation.
 
 [Windows Terminal catalog pilot](research/2026-09-24-windows-terminal-catalog-pilot.md) records

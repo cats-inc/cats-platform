@@ -36,6 +36,46 @@ verified collaboration tools/results separately. Those ordinary role procedures 
 ship in both profiles without the preview-only development/practice supplement.
 That work does not complete this spec's source-development or promotion gates.
 
+## Implemented preview content boundary (feature branches)
+
+The 2026-09-25 P1/P2 slices implement Runtime artifact eligibility, monotonic
+preview exposure, retained-context release admission and three managed preview
+skills. Desktop staging defaults to release, derives preview content from the
+explicit installer preview mode, and captures a closed selected resource tree
+before replacing its owned stage. Normal npm release and Desktop release omit
+the supplement physically; both ordinary knowledge bundles remain present.
+
+Real-library checks prove 36 preview versus 33 release skills and reject a source
+preview catalog override from a packaged release Runtime. The paired-artifact
+check can be repeated after building Platform host and Runtime:
+
+```text
+node tools/check-skill-distribution.mjs --runtime-root <Runtime checkout>
+```
+
+This developer-only check does not launch providers or touch installed state.
+Runtime's strict denial of previously unverified retained sessions requires its
+next minor before shipping. Unknown/reset contexts remain inspectable and use a
+fresh context for release execution. No version was bumped. Native installed
+transition, managed source-fix and practice/promotion acceptance remain pending;
+passing content checks does not close the broader G1/G2/G4 gates.
+
+P3 adds the [developer practice workflow](../knowledge-practice.md): explicit
+preview admission, frozen baseline/evaluator/curriculum, bounded isolated attempts,
+authenticated evidence and unverified candidate drafts. Its public deterministic
+fixture exercises the ten-case/four-held-out-slot/three-reset mechanics, not a
+real protected holdout or live model improvement. P4 adds digest-bound independent
+review, complete-bundle/revision and actual consumer compatibility checks,
+knowledge-only export, and uncached local selection with revocation. The promoted
+projection must preserve the evaluated entries under the prompt-size budget.
+Fixture evidence is limited to explicit fixture exports and never authorizes
+product publication. Export creates a new reviewable artifact for the normal
+PR/release process; it does not replace an installed bundle. Prior exports are
+historical snapshots, while revocation prevents future local reads/exports.
+The operator guide defines the concurrent export/revocation snapshot boundary.
+A passing P3 receipt alone cannot promote knowledge. These developer tools do
+not add a shipped endpoint, automatic practice loop, or installed overlay.
+
 ## Implemented Code-Entry Assistance
 
 The first authorized work package implements part of FR-09, FR-10, FR-13,
@@ -87,8 +127,9 @@ See the [HTTP contract](../api.md#code-catlas-help) and
 [agent control surface](../agent-control-surfaces.md#catlas-code-help).
 Fixture tests cover inline delivery through the real Runtime HTTP adapter;
 live-provider behavior and an installed Desktop are still separate pending
-acceptance checks. Development supplements, autonomous practice, reviewed
-promotion and product-operation execution remain later work packages.
+acceptance checks. The preview content boundary above is implemented separately;
+autonomous practice, reviewed promotion and broader product-operation execution
+remain later work packages.
 
 To maintain knowledge, verify the documented behavior against the owning
 implementation, edit the authoritative JSON, update changed entry revisions,
@@ -435,9 +476,15 @@ shapes and new control-surface names are a Phase 0 integration deliverable.
 
 | Package | Canonical authoring owner | Delivery and scope |
 |---------|--------------------------|--------------------|
-| `cats-inc-development` | cats-one developer `skills/` | Preview/debug supplement; managed workspace discovery/delivery verified for the selected development session |
-| `cats-platform-operation` | Runtime `runtime-skills/` | Preview/debug operation-practice supplement; absent from release and not required for normal Catlas inference |
-| `cats-practice-and-distill` | Runtime `runtime-skills/` | Preview/debug practice supplement; consumes evaluator results and proposes knowledge candidates, never grants promotion authority |
+| `cats-inc-development` | Runtime `runtime-skills/preview/` | Preview/debug managed supplement; repository routing follows cats-one's workspace composition and member instructions |
+| `cats-platform-operation` | Runtime `runtime-skills/preview/` | Preview/debug operation-practice supplement; absent from release and not required for normal Catlas inference |
+| `cats-practice-and-distill` | Runtime `runtime-skills/preview/` | Preview/debug practice supplement; consumes evaluator results and proposes knowledge candidates, never grants promotion authority |
+
+The owner authorized this implementation on feature branches on 2026-09-25.
+PLAN-109's Resume Checkpoint defines the concrete artifact/provenance and
+practice contract. The managed `cats-inc-development` authoring owner is refined
+from the original cats-one proposal to Runtime so the product supplement is
+self-contained. cats-one continues to own developer workspace composition.
 
 Reuse existing handoff, project-memory, development/review roles, and native UI
 automation where appropriate. Do not copy all developer skills into the shipped

@@ -4,6 +4,10 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { decodeAppPackage, parseAppLock, supportsVersion, APP_SDK_VERSION, PLATFORM_VERSION, type ResolvedAppPin } from '#cats-app-package';
 
 import type { DesktopHostConfig } from './config.js';
+import {
+  collectRuntimeSkillContent, resolveDesktopSkillContentProfile, writeRuntimeSkillContent,
+  type DesktopSkillContentProfile,
+} from './skillContent.js';
 import type {
   DesktopPackagingArtifact,
   DesktopInstallerContract,
@@ -21,6 +25,7 @@ import {
 } from './setupAssets.js';
 
 interface DesktopPackagingPlanOptions {
+  contentProfile?: DesktopSkillContentProfile;
   apps?: ResolvedAppPin[];
   generatedAt?: Date;
   outputRoot?: string;
@@ -1079,6 +1084,7 @@ export function createDesktopPackagingPlan(
 
   return {
     strategy: 'electron-sidecar-bundle',
+    contentProfile: resolveDesktopSkillContentProfile(options.contentProfile),
     apps: (options.apps ?? []).map(({ id, version, sha256 }) => ({ id, version, sha256, artifact: `${id}-${version}.catsapp` })),
     generatedAt: generatedAt.toISOString(),
     outputRoot,
@@ -1175,6 +1181,7 @@ export async function stageDesktopPackagingOutputs(
       || !supportsVersion(APP_SDK_VERSION, manifest.compatibility?.appSdk)) throw new Error(`Incompatible app package: ${app.id}@${app.version}.`);
   }
   const plan = createDesktopPackagingPlan(config, {
+    contentProfile: options.contentProfile,
     generatedAt,
     outputRoot,
     platforms: options.platforms,
@@ -1185,6 +1192,12 @@ export async function stageDesktopPackagingOutputs(
 
   await ensureBuiltAssets(config);
   await ensureBundledPlatformAssets(config.packageRoot);
+  const skillContent = await collectRuntimeSkillContent(
+    join(config.runtimePackageRoot, 'runtime-skills'), plan.contentProfile,
+  ).catch((error: unknown) => {
+    throw new Error(`Desktop packaging requires the requested cats-runtime sidecar layout `
+      + `(${sidecarLayout.runtime}) with valid ${plan.contentProfile} skill content.`, { cause: error });
+  });
   await rm(outputRoot, { recursive: true, force: true });
   await mkdir(join(outputRoot, 'shared'), { recursive: true });
 
@@ -1246,7 +1259,9 @@ export async function stageDesktopPackagingOutputs(
     for (const asset of RUNTIME_OPTIONAL_ASSETS) {
       const sourcePath = join(config.runtimePackageRoot, asset.sourceRelativePath);
       const targetPath = join(outputRoot, asset.targetRelativePath);
-      if (asset.directory) {
+      if (asset.sourceRelativePath === 'runtime-skills') {
+        await writeRuntimeSkillContent(skillContent, targetPath);
+      } else if (asset.directory) {
         await copyDirectory(sourcePath, targetPath);
       } else {
         await copyFile(sourcePath, targetPath);

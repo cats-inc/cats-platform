@@ -118,6 +118,9 @@ async function seedRuntimeSidecar(runtimeRoot) {
   await seedFile(join(runtimeRoot, 'public', 'provider-setup.html'), '<!doctype html>');
   await seedFile(join(runtimeRoot, 'runtime-skills', 'README.md'), '# skills');
   await seedFile(join(runtimeRoot, 'runtime-skills', 'chat', 'fixture-product', 'SKILL.md'), 'Product fixture');
+  await seedFile(join(runtimeRoot, 'runtime-skills', 'content-profile.json'), JSON.stringify({ schemaVersion: 1, profile: 'preview' }));
+  await seedFile(join(runtimeRoot, 'runtime-skills', 'preview', 'fixture-preview', 'SKILL.md'), 'Preview fixture');
+  await seedFile(join(runtimeRoot, 'runtime-skills', 'preview', 'fixture-preview', 'references', 'workflow.md'), 'Preview resource');
   await seedFile(join(runtimeRoot, 'skills', 'developer-only', 'SKILL.md'), 'Developer fixture');
   await seedFile(join(runtimeRoot, 'config', 'management.yaml.example'), 'version: 1\n');
   await seedFile(join(runtimeRoot, 'config', 'providers.yaml.example'), 'version: 1\n');
@@ -1153,18 +1156,21 @@ test('buildInstallerEnvironment preserves explicit signing credentials when prov
 
 test('desktop packaging scripts keep icon selection outside the build flags', () => {
   assert.deepEqual(parsePackageDesktopArgs([]), {
+    contentProfile: 'release',
     help: false,
     platform: 'all',
     outputDir: null,
     sidecarLayout: 'split',
   });
   assert.deepEqual(parsePackageDesktopArgs(['--platform', 'windows']), {
+    contentProfile: 'release',
     help: false,
     platform: 'windows',
     outputDir: null,
     sidecarLayout: 'split',
   });
   assert.deepEqual(parsePackageDesktopArgs(['--platform', 'windows', '--sidecar-layout', 'bundle']), {
+    contentProfile: 'release',
     help: false,
     platform: 'windows',
     outputDir: null,
@@ -1384,6 +1390,9 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'public', 'provider-setup.html'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'runtime-skills', 'README.md'));
+  assert.equal(plan.contentProfile, 'release');
+  assert.deepEqual(JSON.parse(await readFile(join(plan.outputRoot, 'shared', 'cats-runtime', 'runtime-skills', 'content-profile.json'), 'utf8')), { schemaVersion: 1, profile: 'release' });
+  await assert.rejects(access(join(plan.outputRoot, 'shared', 'cats-runtime', 'runtime-skills', 'preview')));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'runtime-skills', 'chat', 'fixture-product', 'SKILL.md'));
   await assert.rejects(access(join(plan.outputRoot, 'shared', 'cats-runtime', 'skills')), { code: 'ENOENT' });
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'management.yaml.example'));
@@ -1774,6 +1783,46 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     ),
     false,
   );
+});
+
+test('stageDesktopPackagingOutputs replaces preview assets when restaged as release', async (t) => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-profile-restage-'));
+  t.after(() => rm(workingDir, { recursive: true, force: true }));
+  const packageRoot = join(workingDir, 'cats');
+  const runtimeRoot = join(workingDir, 'cats-runtime');
+  const outputRoot = join(workingDir, 'stage');
+  await seedFile(join(packageRoot, 'build', 'server', 'index.js'), 'export {};');
+  await seedFile(join(packageRoot, 'build', 'renderer', 'index.html'), '<!doctype html>');
+  await seedFile(join(packageRoot, 'build', 'desktop', 'main.js'), 'export {};');
+  await seedFile(join(packageRoot, 'build', 'desktop', 'preload.cjs'), 'module.exports = {};');
+  await seedFile(join(packageRoot, 'package.json'), '{"name":"@cats-inc/cats-platform","type":"module"}');
+  await seedWindowsSetupAssets(packageRoot);
+  await seedRuntimeSidecar(runtimeRoot);
+  const config = resolveDesktopHostConfig({ env: {
+    CATS_DESKTOP_APP_ENTRY: join(packageRoot, 'build', 'server', 'index.js'),
+    CATS_DESKTOP_RUNTIME_ENTRY: join(runtimeRoot, 'build', 'runtime', 'index.js'),
+    CATS_DESKTOP_RUNTIME_ROOT: runtimeRoot,
+  }, userDataDir: join(workingDir, 'profile'), catsHomeDir: join(workingDir, '.cats') });
+  const skillRoot = join(outputRoot, 'shared', 'cats-runtime', 'runtime-skills');
+  for (const contentProfile of ['preview', 'release']) {
+    const plan = await stageDesktopPackagingOutputs(config, { outputRoot, platforms: ['windows'], contentProfile });
+    assert.equal(plan.contentProfile, contentProfile);
+    assert.equal(JSON.parse(await readFile(join(skillRoot, 'content-profile.json'), 'utf8')).profile, contentProfile);
+    if (contentProfile === 'preview') {
+      assert.equal(await readFile(join(skillRoot, 'preview', 'fixture-preview', 'references', 'workflow.md'), 'utf8'), 'Preview resource');
+      await seedFile(join(skillRoot, 'preview', 'stale', 'secret.txt'), 'stale preview bytes');
+    } else {
+      await assert.rejects(access(join(skillRoot, 'preview')));
+    }
+    await access(join(skillRoot, 'chat', 'fixture-product', 'SKILL.md'));
+    assert.equal((await loadCatlasKnowledge({
+      filePath: join(outputRoot, 'shared', 'cats-platform', 'config', 'catlas-knowledge.json'), locale: 'en',
+    })).status, 'ready');
+    assert.equal((await loadProductKnowledge({
+      filePath: join(outputRoot, 'shared', 'cats-platform', 'config', 'orchestrator-knowledge.json'),
+      locale: 'en', capabilities: ['orchestrator-context-v1'],
+    })).status, 'ready');
+  }
 });
 
 test('stageDesktopPackagingOutputs honors bundle layout for both app and runtime sidecars', async () => {

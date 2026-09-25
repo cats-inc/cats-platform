@@ -37,6 +37,7 @@ Options:
   --platform <all|windows|macos|linux>  Filter staged target manifests
   --output-dir <path>                   Override packaging output root
   --sidecar-layout <split|bundle>       Choose loose-file or bundled sidecars for both app/runtime
+  --content-profile <release|preview>  Select managed skill content (default: release)
   --apps-lock <path>                    Exact App ID/version/SHA-256 selection (no latest resolution)
   --help                                Show this help text
 `);
@@ -54,6 +55,7 @@ function resolveSidecarLayout(value) {
 
 export function parseArgs(argv, env = process.env) {
   let platform = 'all';
+  let contentProfile = 'release';
   let outputDir = null;
   let sidecarLayout = resolveSidecarLayout(env.CATS_DESKTOP_SIDECAR_LAYOUT);
   let appsLock = env.CATS_DESKTOP_APPS_LOCK?.trim() || null;
@@ -61,11 +63,18 @@ export function parseArgs(argv, env = process.env) {
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') {
-      return { help: true, platform, outputDir, sidecarLayout, ...(appsLock ? { appsLock } : {}) };
+      return { help: true, platform, outputDir, sidecarLayout, contentProfile, ...(appsLock ? { appsLock } : {}) };
     }
     if (value === '--platform') {
       platform = argv[index + 1] ?? 'all';
       index += 1;
+      continue;
+    }
+    if (value === '--content-profile') {
+      contentProfile = argv[++index];
+      if (!['release', 'preview'].includes(contentProfile)) {
+        throw new Error('--content-profile requires release or preview.');
+      }
       continue;
     }
     if (value === '--apps-lock') {
@@ -86,7 +95,7 @@ export function parseArgs(argv, env = process.env) {
     throw new Error(`Unknown option: ${value}`);
   }
 
-  return { help: false, platform, outputDir, sidecarLayout, ...(appsLock ? { appsLock } : {}) };
+  return { help: false, platform, outputDir, sidecarLayout, contentProfile, ...(appsLock ? { appsLock } : {}) };
 }
 
 export function resolveRequiredDesktopIconPaths(projectRoot = PROJECT_ROOT) {
@@ -193,6 +202,7 @@ async function main() {
     userDataDir: resolve(PROJECT_ROOT, '.desktop-package-user'),
   });
   const plan = await stageDesktopPackagingOutputs(config, {
+    contentProfile: parsed.contentProfile,
     outputRoot: parsed.outputDir ? resolve(PROJECT_ROOT, parsed.outputDir) : undefined,
     platforms: allowedPlatforms,
     sidecarLayout: parsed.sidecarLayout,
@@ -203,6 +213,7 @@ async function main() {
     outputRoot: plan.outputRoot,
     apps: plan.apps,
     sidecarLayout: plan.sidecarLayout,
+    contentProfile: plan.contentProfile,
     targets: plan.targets.map((target) => ({
       id: target.id,
       platform: target.platform,
