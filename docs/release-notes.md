@@ -19,7 +19,7 @@ Migration steps:
 Deprecations:
 ```
 
-## 2026-09-25 (0.4.5 preview — preparation)
+## 2026-09-25 (0.4.5 preview — publication)
 
 Behavior change:
 
@@ -33,8 +33,8 @@ but never published; Desktop skips it.
 Migration steps:
 
 No data migration or dependency change. Existing setup remains valid.
-Platform and Desktop share version 0.4.5; the authorized preview publication is
-pending. It will bundle Runtime 0.2.1 from immutable commit
+Platform and Desktop share version 0.4.5; the preview is published.
+Every OS bundles Runtime 0.2.1 from immutable commit
 `b712da2faf233c2ec9e4ecb831566a29f6effaa7` and the existing Usage 0.3.0 artifact
 with SHA-256 `61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509`.
 No npm or new App publication is part of this release.
@@ -42,6 +42,23 @@ No npm or new App publication is part of this release.
 Deprecations:
 
 None.
+
+Release verification:
+
+The [0.4.5 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.4.5)
+was published from Platform `cc5d07ad5614847ce71aae5ff8674e29d9d0a523` (main tip at
+dispatch: the 0.4.5 preparation plus a later orchestrator commit).
+[Release-source CI](https://github.com/cats-inc/cats-platform/actions/runs/36088332391)
+and the [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36089195232)
+passed (7/7 jobs, signed preview). The workflow created the tag; it was never
+pushed first. All ten expected release assets are present as a prerelease (not
+latest), and all three public update metadata files name 0.4.5 with matching
+asset names and sizes.
+
+The downloaded Windows x64 installer (144,612,036 bytes) matches its update
+metadata: SHA-256 `8b85c28e2f6b47df61c832bf8aee8359bb33766b7896918d66f2559cb01c9aa1`
+and the `latest.yml` SHA-512. No signature, package-extraction, or installed
+upgrade acceptance was performed in this check; that remains pending.
 
 ## 2026-09-24 (0.4.4 — preparation)
 
