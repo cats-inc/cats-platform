@@ -19,6 +19,61 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-25 (0.5.0 preview, standard profile — preparation)
+
+Behavior change:
+
+Desktop 0.5.0 is a preview with the
+[standard signing profile](deployment.md#desktop-signing-profiles). It moves to
+the next minor because it bundles Runtime 0.3.0
+([cats-runtime #86](https://github.com/cats-inc/cats-runtime/pull/86)): release
+execution no longer resumes retained contexts whose release compatibility cannot
+be established ([cats-runtime #85](https://github.com/cats-inc/cats-runtime/pull/85)).
+It also includes:
+
+- **Update checks answer with the current feed** ([#140](https://github.com/cats-inc/cats-platform/pull/140)).
+  Check for Updates queries the feed again even after an earlier offer or
+  download, instead of redisplaying the remembered version, and a download
+  re-validates the offer first and fetches the newest release. This takes effect
+  once 0.5.0 is running.
+- **Preview-only development content** ([#139](https://github.com/cats-inc/cats-platform/pull/139)).
+  Desktop previews stage the Runtime preview supplement (Cats development,
+  operation and practice skills); release-profile builds exclude it. The
+  knowledge-practice tooling stays developer-only.
+- **Usage App 0.4.0.** It declares Platform `^0.5.0`; its content equals Usage
+  0.3.0, which declares `^0.4.0` and continues to serve Desktop 0.4.x.
+
+Expected platform trust: macOS signed + notarized, Windows unsigned (no
+certificate), Linux n/a.
+
+Self-update into 0.5.0:
+
+- Windows and Linux: installs of 0.4.3 through 0.4.7 self-update. The installed
+  build still uses its old update logic, so restart a Cats that has been open
+  since before 0.5.0 shipped, then check; otherwise it can offer the older
+  version it found earlier.
+- macOS: standard-profile installs such as 0.4.3, 0.4.5 and 0.4.7 self-update,
+  with the same restart advice. A 0.4.6 install (unsigned override) cannot
+  self-update; install the 0.5.0 DMG manually, once.
+
+Migration steps:
+
+No data migration: existing data is retained unchanged. After updating, a
+conversation whose retained context cannot be verified for release compatibility
+does not resume that context; release execution continues with a fresh verified
+context.
+
+Platform and Desktop share version 0.5.0; the authorized standard-profile preview
+publication is pending. It will bundle Runtime 0.3.0 from immutable commit
+`e464619644ff499cc1dc7da03b755b91aa73d7b0` and the published
+[Usage 0.4.0](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.4.0)
+artifact with SHA-256 `7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`.
+No npm publication of Platform or Runtime is part of this release.
+
+Deprecations:
+
+None.
+
 ## 2026-09-25 (0.4.7 preview, standard profile — publication)
 
 Behavior change:

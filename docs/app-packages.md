@@ -6,12 +6,12 @@ implementation is a renderer-only utility package, not another Platform product.
 ## Host and SDK compatibility
 
 An App declares supported hosts in `cats.app.json` independently of its own
-artifact version. Current Usage 0.3.0 declares:
+artifact version. Current Usage 0.4.0 declares:
 
 ```json
 {
   "compatibility": {
-    "catsPlatform": "^0.4.0",
+    "catsPlatform": "^0.5.0",
     "appSdk": "^1.2.0"
   }
 }
@@ -53,10 +53,10 @@ In cats-apps:
 
 ```powershell
 npm test
-npm run build -- --version 0.3.0
+npm run build -- --version 0.4.0
 ```
 
-This produces an archive, `usage-0.3.0.lock.json`, and provenance in `dist/`.
+This produces an archive, `usage-0.4.0.lock.json`, and provenance in `dist/`.
 The requested version must equal both App manifests. Rebuilding different bytes
 over an existing output version is rejected; use a separate development output
 directory or publish a new version. Release builds record their GitHub source SHA;
@@ -65,7 +65,7 @@ local builds report an unknown revision and an input-content digest.
 In cats-platform, build the Windows installer with that selection:
 
 ```powershell
-npm run desktop:package:windows -- --apps-lock ../cats-apps/dist/usage-0.3.0.lock.json --skip-mobile
+npm run desktop:package:windows -- --apps-lock ../cats-apps/dist/usage-0.4.0.lock.json --skip-mobile
 ```
 
 `--apps-lock` also works on the macOS/Linux installer entrypoints. The Windows
@@ -76,7 +76,7 @@ for automation. An explicit CLI argument takes precedence.
 To stage already-built host/runtime artifacts without creating an installer:
 
 ```powershell
-node scripts/package-desktop.mjs --platform windows --apps-lock ../cats-apps/dist/usage-0.3.0.lock.json
+node scripts/package-desktop.mjs --platform windows --apps-lock ../cats-apps/dist/usage-0.4.0.lock.json
 ```
 
 The lock format is `{ schemaVersion: 1, apps: [{ id, version, sha256, artifact }] }`.
@@ -96,12 +96,21 @@ Temporary build selections are safe to remove after the build is finished.
 
 ## Release policy and default selection
 
-The cats-apps shared tag workflow publishes `usage-v0.3.0` (and other utility
+The cats-apps shared tag workflow publishes `usage-v0.4.0` (and other utility
 tags) independently of Desktop. It refuses to replace an existing release and
 does not mark utility releases as a repository-wide `latest` release.
 
 Desktop release CI reads the source-controlled `config/desktop-apps.lock.json`.
-Desktop 0.4.0 selects the published [Usage 0.3.0 release](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.3.0),
+Desktop 0.5.0 selects the published [Usage 0.4.0 release](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.4.0),
+with SHA-256 `7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`.
+Provenance identifies Apps commit `cb48b229295d5cb4bb6f3009fbe0b9e81afe1b63`.
+The release workflow passed; downloaded archive, lock, provenance and GitHub digest
+agree. The SDK 1.2.0 matcher accepts Platform 0.5.x and rejects 0.4.x, and the
+decoded payload equals Usage 0.3.0. Only the App version and host range differ:
+Desktop 0.5.0 bundles Runtime 0.3.0 and moves to the next host minor, which Usage
+0.3.0's `^0.4.0` declaration excludes. Desktop 0.4.x retains Usage 0.3.0 unchanged.
+
+Desktop 0.4.0 selected the published [Usage 0.3.0 release](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.3.0),
 with SHA-256 `61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509`.
 Provenance identifies Apps commit `4c3f6057747032df24b1c1b1bb5ea873fa94f387`.
 The release workflow passed; downloaded archive, lock, provenance and GitHub digest
