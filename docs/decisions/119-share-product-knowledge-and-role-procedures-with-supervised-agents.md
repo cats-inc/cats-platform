@@ -9,8 +9,10 @@ teammate/context reads and collaboration preparation, with same-session feedback
 and isolated HTTP acceptance fixtures. K3 adds owner-confirmed conversation,
 membership and Work execution with durable recovery; scoped validation and full
 CI pass, as recorded in [PLAN-110](../plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md).
-K4's bounded live K3 and native saved-state projections pass; model-driven K2 and
-release/preview profile exclusion remain open. Publication remains a separate authorization.
+K4's separately bounded native K2/K3 and K3 saved-state projections pass. K2 uses
+an explicitly configured private preparation policy; unchanged defaults are not
+validated by that run. Release/preview profile exclusion and combined rollout
+acceptance remain open. Publication remains a separate authorization.
 
 ## Context
 
