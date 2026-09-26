@@ -1,21 +1,32 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
-import type { ChatCat } from '../../api/workspaceContracts.js';
-import { extractAttachments, segmentMessageBody } from './messageBodySegmenter.js';
+import { MessageBodyMarkdown } from './MessageBodyMarkdown.js';
+import {
+  extractAttachments,
+  segmentMessageBody,
+  type MentionResolverCat,
+} from './messageBodySegmenter.js';
+
+/** Agent replies are authored as markdown; other senders' text is shown literally. */
+export type MessageBodyFormat = 'plain' | 'markdown';
 
 export interface MessageBodyProps {
   body: string;
-  cats: ChatCat[];
+  cats: MentionResolverCat[];
   channelId: string;
   disabledMentionNames?: string[];
+  format?: MessageBodyFormat;
 }
+
+const NO_DISABLED_MENTION_NAMES: string[] = [];
 
 export function MessageBody({
   body,
   cats,
   channelId,
-  disabledMentionNames = [],
+  disabledMentionNames = NO_DISABLED_MENTION_NAMES,
+  format = 'plain',
 }: MessageBodyProps) {
   const { attachments, textBody } = useMemo(
     () => extractAttachments(body),
@@ -23,8 +34,8 @@ export function MessageBody({
   );
 
   const segments = useMemo(
-    () => segmentMessageBody(textBody, cats, disabledMentionNames),
-    [disabledMentionNames, textBody, cats],
+    () => (format === 'plain' ? segmentMessageBody(textBody, cats, disabledMentionNames) : []),
+    [disabledMentionNames, format, textBody, cats],
   );
 
   const imageAttachments = attachments.filter((attachment) => attachment.isImage);
@@ -74,7 +85,14 @@ export function MessageBody({
           ))}
         </div>
       ) : null}
-      {textBody ? (
+      {textBody && format === 'markdown' ? (
+        <MessageBodyMarkdown
+          text={textBody}
+          cats={cats}
+          disabledMentionNames={disabledMentionNames}
+        />
+      ) : null}
+      {textBody && format === 'plain' ? (
         <p className="messageBody">
           {segments.map((segment, index) => {
             switch (segment.kind) {

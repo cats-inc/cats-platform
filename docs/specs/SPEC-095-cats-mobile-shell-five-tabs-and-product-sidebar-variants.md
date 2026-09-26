@@ -191,6 +191,12 @@ posture are out of scope for this spec — they remain owned by the
     defined in NFR-002 below.
 26. Markdown, syntax highlighting, and other rich content kinds **not**
     present in the web `MessageBody` are out of scope for this spec.
+    - Update 2026-09-27: the web `MessageBody` renders agent-authored bodies
+      (`senderKind: 'agent'`, including live stream blocks) as markdown via
+      `format="markdown"`; user, system and orchestrator bodies stay plain.
+      Mobile still renders every body as plain text, so the NFR-002 visual
+      gate currently holds only for plain-format bubbles. Mobile markdown
+      rendering is an open follow-up.
 
 #### Type / package boundaries
 
