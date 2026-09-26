@@ -25,7 +25,57 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — actual Runtime empty-skill contract (2026-09-26)
+## Resume Checkpoint — native parent create-only transport (2026-09-26)
+
+- The actual empty-skill correction is committed at `c8466ad0`, with its earlier
+  **112/112** scoped checks and independent review. Next-stage owner authorization
+  remains active; no new provider credential read/copy, model call or publication.
+- A separate Linux command canary verified an empty, nonroot-owned private home
+  outside `/tmp`; the temporary-home helper warning disappeared with complete,
+  untruncated native output drainage. Both the named restricted-read command and
+  ordinary read-only control failed before execution because bubblewrap could
+  not create a namespace. **Native tool/read-isolation readiness did not
+  pass.** Independent exit observation and exact-owned removal completed.
+  Its original failed receipt retains a conservative unknown-profile matcher
+  miss; offline inspection establishes only the `undefined profile` negative
+  control. This does not rewrite the failed command outcome.
+- The namespace error does not identify its sole enforcement layer. Pinned the
+  installed Docker Engine `29.8.0` build `3ce5872b7950c63ba2ffbc5123101019ff3e6682`
+  and its actual `github.com/moby/profiles/seccomp v0.2.3` dependency at
+  `836ae4d37ef2ec995c77c99fc55f5b5f3af3a897` for investigation. No custom seccomp
+  profile, capability, daemon setting or host policy was changed.
+- A private parent transport then passed an actual create/observe/close canary
+  under the unchanged container restrictions. The real Platform HTTP client was
+  bundled from **13 compiled inputs**, with **65,661 bytes** and no external
+  imports. The image payloads, mounted bridge/client/skill helper and private
+  home were verified before import. Parent requests used authenticated,
+  lease-bound stdio to the exact container; Runtime's ephemeral API key remained
+  inside its process and the client used its private loopback endpoint. No host
+  port was published. An attempted send was rejected before reaching Runtime;
+  the retained HTTP trace contains only health/create/observe/close.
+- The real logical session and request identity were bound to Runtime PID1,
+  the native executable/start identity and the independently observed Docker VM
+  parent/child relationship. The child disappeared after close, Runtime shut down,
+  both transport pipes closed, and the container reached exit-zero/PID-zero/no-OOM
+  before exact-owned removal. No unknown create, unresolved request or pending CLI
+  remained. A first preparation failed the `StdinOnce` expectation before start;
+  it was separately removed, and a fresh run verified the actual `true` setting.
+- **9/9** separate offline child-process tests passed for authenticated replies,
+  receipt persistence before resolution, denied send, lost/late/duplicate replies,
+  UTF-8, invalid/oversized frames, journal failures and idempotent transport finish.
+  Independent review required invocation-uncertainty records and serialized,
+  durable receipts with immediate duplicate rejection; both were corrected and
+  checked before native execution. These are private harness checks, not a repeat
+  of the earlier application suite or a reusable production transport claim.
+- This establishes **parent create-only transport**, not inference, usage/cost
+  accounting, cancellation, native tool readiness, author read isolation or
+  knowledge quality. Next: resolve the supported native tool boundary, then bind
+  the reviewed parent send/judge/accounting/cancellation path and conduct the small
+  authorized pilot. The full exercise, promotion and release remain separate.
+  Private continuation records retain exact hashes, failure history and identities
+  in `NATIVE-TRANSPORT-RESUME.md`; do not replay earlier canary roots.
+
+## Previous checkpoint — actual Runtime empty-skill contract (2026-09-26)
 
 - The pinned native image checkpoint is committed at `19158596`. A subsequent
   no-message native session exposed a real integration error: Runtime drops an

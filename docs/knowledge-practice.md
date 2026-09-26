@@ -383,9 +383,43 @@ readiness or session cleanup. A further create/observe/close-only canary verifie
 the actual empty-skill assertion against Runtime, recorded a logical session and
 its direct native app-server child, observed child disappearance after close,
 and confirmed container exit before removal. No message was sent: the native
-thread remained uninitialized. This is contained process/session evidence;
-parent-owned transport and its frozen endpoint mapping, native tool readiness,
-and the bounded model pilot remain pending.
+thread remained uninitialized. This is contained process/session evidence.
+
+A subsequent private parent transport canary froze the real Platform HTTP client
+and used authenticated, lease-bound stdio to the exact dedicated container. Its
+verified bridge admitted one exact create request, own-session observation/close,
+and shutdown; a send request was rejected before Runtime. Runtime's API key stayed
+in process memory and the client used its private loopback endpoint without a
+published host port. The session/request/native process identities were recorded,
+then close, child disappearance, drained transport and independently observed
+container exit/removal passed. Request journals describe invocation uncertainty;
+successful replies become visible only after receipts of authenticated replies are
+flushed. Nine private offline process checks cover loss, forgery, duplicates,
+late replies and journal failures. This proves **parent create-only transport**.
+It does not establish a reusable production bridge, send/usage/cancellation,
+native tool readiness, author read isolation or model quality.
+
+A separate credential-free Linux command canary moved the private home to an
+empty, nonroot-owned `/home/cats` tmpfs and verified complete, untruncated native
+output drainage. The earlier temporary-home helper warning disappeared. Both the
+named restricted-read probe and its ordinary read-only control failed before
+executing their synthetic command because bubblewrap could not create a
+namespace. Neither read isolation nor native tool usability passed. The native
+process exited, independent container exit was observed, and the owned container
+was removed. The original outer failure also retains a conservative parser miss:
+the unknown-profile error said `undefined profile`, which its matcher omitted.
+Offline inspection confirms that negative control only; it cannot establish a
+successful command or change the original receipt.
+
+This namespace error is consistent with Docker's default restrictions but does
+not identify the sole enforcement layer. The installed Engine build and its
+seccomp dependency were pinned for investigation; no custom profile, capability,
+daemon or host policy was changed. Codex's [versioned Linux sandbox notes](https://github.com/openai/codex/blob/rust-v0.157.0/codex-rs/linux-sandbox/README.md)
+require bubblewrap for restricted filesystem execution. Any future dedicated
+container policy needs its own review, exact byte binding and native validation;
+ordinary syscall filters do not express that an operation is allowed only after
+entering a child namespace. See [Docker's seccomp contract](https://docs.docker.com/engine/security/seccomp/)
+and [the kernel filtering model](https://www.kernel.org/doc/html/latest/userspace-api/seccomp_filter.html).
 
 ## Parent-owned Catlas effects
 
