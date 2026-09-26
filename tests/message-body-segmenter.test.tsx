@@ -75,6 +75,36 @@ test('segmentMessageBody linkifies internal product routes without prose punctua
   ]);
 });
 
+test('segmentMessageBody ends links at CJK punctuation that directly follows them', () => {
+  const segments = segmentMessageBody(
+    '見（https://example.com/a）、https://example.com/b、再開 /work/tasks/task-1。',
+    [...cats],
+  );
+
+  assert.deepEqual(segments, [
+    { kind: 'text', value: '見（' },
+    { kind: 'url', value: 'https://example.com/a', href: 'https://example.com/a' },
+    { kind: 'text', value: '）、' },
+    { kind: 'url', value: 'https://example.com/b', href: 'https://example.com/b' },
+    { kind: 'text', value: '、再開 ' },
+    { kind: 'route', value: '/work/tasks/task-1', href: '/work/tasks/task-1' },
+    { kind: 'text', value: '。' },
+  ]);
+});
+
+test('segmentMessageBody keeps CJK letters that are part of a URL path', () => {
+  const segments = segmentMessageBody('https://zh.wikipedia.org/wiki/貓 很可愛', [...cats]);
+
+  assert.deepEqual(segments, [
+    {
+      kind: 'url',
+      value: 'https://zh.wikipedia.org/wiki/貓',
+      href: 'https://zh.wikipedia.org/wiki/貓',
+    },
+    { kind: 'text', value: ' 很可愛' },
+  ]);
+});
+
 test('MessageBody renders internal product routes as same-window links', () => {
   const markup = renderWithoutRouterServerWarnings(
     <MemoryRouter>
@@ -105,6 +135,114 @@ function renderWithoutRouterServerWarnings(element: React.ReactElement): string 
     console.error = originalError;
   }
 }
+
+function renderMessageBody(
+  body: string,
+  format: 'plain' | 'markdown',
+  disabledMentionNames?: string[],
+): string {
+  return renderWithoutRouterServerWarnings(
+    <MemoryRouter>
+      <MessageBody
+        body={body}
+        cats={[...cats]}
+        channelId="channel-1"
+        disabledMentionNames={disabledMentionNames}
+        format={format}
+      />
+    </MemoryRouter>,
+  );
+}
+
+test('MessageBody renders agent markdown emphasis, lists and links', () => {
+  const markup = renderMessageBody(
+    '今天是 **9 月 27 日**：\n\n'
+      + '- **第一則。** 詳見 [聲明](https://example.com/a)、[訪談](https://example.com/b)\n'
+      + '- 第二則',
+    'markdown',
+  );
+
+  assert.doesNotMatch(markup, /\*\*/u);
+  assert.match(markup, /<strong>9 月 27 日<\/strong>/u);
+  assert.match(markup, /<ul>\s*<li><strong>第一則。<\/strong>/u);
+  assert.match(
+    markup,
+    /<a class="messageBodyLink" href="https:\/\/example\.com\/a" target="_blank"[^>]*>聲明<\/a>、/u,
+  );
+  assert.match(markup, /、<a[^>]+href="https:\/\/example\.com\/b"[^>]*>訪談<\/a>/u);
+});
+
+test('MessageBody keeps single newlines in agent markdown as line breaks', () => {
+  const markup = renderMessageBody('已完成：\nsrc/a.ts\nsrc/b.ts', 'markdown');
+
+  assert.match(markup, /<p>已完成：<br\/>\s*src\/a\.ts<br\/>\s*src\/b\.ts<\/p>/u);
+});
+
+test('MessageBody applies plain-text link and mention rules inside agent markdown', () => {
+  const markup = renderMessageBody(
+    '**@Mochi** 看 https://example.com/a、然後開 /work/tasks/task-1。'
+      + '`@Mochi` [@Mochi](https://example.com/c)',
+    'markdown',
+  );
+
+  assert.match(
+    markup,
+    /<strong><span class="messageBodyMention"[^>]*style="background:#c9895b">@Mochi<\/span>/u,
+  );
+  assert.match(markup, /href="https:\/\/example\.com\/a" target="_blank"[^>]*>[^<]+<\/a>、然後開/u);
+  assert.match(markup, /<a[^>]+href="\/work\/tasks\/task-1"[^>]*>\/work\/tasks\/task-1<\/a>。/u);
+  assert.match(markup, /<code>@Mochi<\/code>/u);
+  assert.match(markup, /href="https:\/\/example\.com\/c"[^>]*>@Mochi<\/a>/u);
+  assert.equal(markup.match(/messageBodyMention/gu)?.length, 1);
+});
+
+test('MessageBody leaves excluded mentions as text in agent markdown', () => {
+  const markup = renderMessageBody('Ask @Mochi', 'markdown', ['Mochi']);
+
+  assert.doesNotMatch(markup, /messageBodyMention/u);
+  assert.match(markup, /<p>Ask @Mochi<\/p>/u);
+});
+
+test('MessageBody keeps markdown links to internal routes in the app window', () => {
+  const markup = renderMessageBody('[任務](/work/tasks/task-1)', 'markdown');
+
+  assert.match(markup, /<a class="messageBodyLink" href="\/work\/tasks\/task-1"[^>]*>任務<\/a>/u);
+  assert.doesNotMatch(markup, /target="_blank"/u);
+});
+
+test('MessageBody does not make non-web markdown links clickable', () => {
+  const markup = renderMessageBody(
+    '[main.ts](C:/repo/src/main.ts) [x](javascript:alert(1)) [top](#top)',
+    'markdown',
+  );
+
+  assert.doesNotMatch(markup, /<a /u);
+  assert.equal(markup.match(/class="messageBodyInertLink"/gu)?.length, 3);
+});
+
+test('MessageBody shows raw HTML and remote images in agent markdown as text or links', () => {
+  const markup = renderMessageBody(
+    '<img src="x" onerror="alert(1)"> ![diagram](https://example.com/d.png)',
+    'markdown',
+  );
+
+  assert.doesNotMatch(markup, /<img/u);
+  assert.match(markup, /&lt;img src=&quot;x&quot; onerror=&quot;alert\(1\)&quot;&gt;/u);
+  assert.match(markup, /<a[^>]+href="https:\/\/example\.com\/d\.png"[^>]*>diagram<\/a>/u);
+});
+
+test('MessageBody wraps agent markdown tables for horizontal scrolling', () => {
+  const markup = renderMessageBody('| a | b |\n| --- | --- |\n| 1 | 2 |', 'markdown');
+
+  assert.match(markup, /<div class="messageBodyTableScroll"><table><thead>/u);
+});
+
+test('MessageBody shows plain-format bodies literally', () => {
+  const markup = renderMessageBody('**not bold** in C:\\Users\\me\\.cats', 'plain');
+
+  assert.match(markup, /<span>\*\*not bold\*\* in C:\\Users\\me\\\.cats<\/span>/u);
+  assert.doesNotMatch(markup, /<strong>/u);
+});
 
 test('segmentMessageBody trims prose punctuation and unmatched closing parens', () => {
   const segments = segmentMessageBody(

@@ -220,6 +220,7 @@ export function TranscriptMessageItem({
             cats={cats}
             channelId={selectedChannelId}
             disabledMentionNames={disabledMentionNames}
+            format={message.senderKind === 'agent' ? 'markdown' : 'plain'}
           />
         ) : null}
         <CompanionMessageReferencePreviews

@@ -1107,6 +1107,131 @@ button.draftHeaderAvatar.draftHeaderAvatarEditable:hover .draftHeaderAvatarCamer
   background: #8B7E74;
 }
 
+/* ── Agent markdown ── */
+
+.messageBodyMarkdown {
+  word-break: break-word;
+}
+
+.messageBodyMarkdown :where(
+  p, ul, ol, blockquote, pre, hr, h1, h2, h3, h4, h5, h6, .messageBodyTableScroll
+) {
+  margin: 0 0 0.65em;
+}
+
+.messageBodyMarkdown :where(
+  p, ul, ol, blockquote, pre, hr, h1, h2, h3, h4, h5, h6, .messageBodyTableScroll
+):last-child {
+  margin-bottom: 0;
+}
+
+.messageBodyMarkdown :where(h1, h2, h3, h4, h5, h6) {
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.messageBodyMarkdown h1 {
+  font-size: 1.2em;
+}
+
+.messageBodyMarkdown h2 {
+  font-size: 1.1em;
+}
+
+.messageBodyMarkdown :where(h3, h4, h5, h6) {
+  font-size: 1em;
+}
+
+.messageBodyMarkdown :where(ul, ol) {
+  padding-left: 1.4em;
+}
+
+.messageBodyMarkdown li + li {
+  margin-top: 0.2em;
+}
+
+.messageBodyMarkdown li > :where(p, ul, ol) {
+  margin: 0.2em 0 0;
+}
+
+.messageBodyMarkdown li > p:first-child {
+  margin-top: 0;
+}
+
+.messageBodyMarkdown .contains-task-list {
+  padding-left: 0.2em;
+  list-style: none;
+}
+
+.messageBodyMarkdown .task-list-item input {
+  margin: 0 0.45em 0 0;
+  vertical-align: middle;
+}
+
+.messageBodyMarkdown blockquote {
+  padding-left: 10px;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.messageBodyMarkdown hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.messageBodyMarkdown code {
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+  background: var(--muted-bg);
+  font-size: 0.88em;
+}
+
+.messageBodyMarkdown pre {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-subtle);
+  overflow-x: auto;
+  line-height: 1.45;
+}
+
+.messageBodyMarkdown pre code {
+  padding: 0;
+  background: none;
+  font-size: 0.85em;
+  white-space: pre;
+  word-break: normal;
+}
+
+.messageBodyTableScroll {
+  overflow-x: auto;
+}
+
+.messageBodyMarkdown table {
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+.messageBodyMarkdown :where(th, td) {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.messageBodyMarkdown th {
+  background: var(--panel-subtle);
+  font-weight: 600;
+}
+
+.messageBodyMarkdown th:not([align]) {
+  text-align: start;
+}
+
+.messageBodyInertLink {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
 /* ── Message body attachments ── */
 
 .messageBodyWrapper {

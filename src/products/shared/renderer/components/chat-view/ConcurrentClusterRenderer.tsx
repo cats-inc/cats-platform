@@ -126,6 +126,7 @@ export function renderContentBlockSegment(
         cats={cats}
         channelId={channelId}
         disabledMentionNames={disabledMentionNames}
+        format="markdown"
       />
     );
   }

@@ -76,9 +76,18 @@ interface TokenSpan {
   avatarColor?: string | null;
 }
 
-const URL_REGEX = /https?:\/\/[^\s<>"'\]]+/gi;
-const INTERNAL_ROUTE_REGEX = /\/(?:work|chat|code)\/[^\s<>"'\]]+/g;
+// CJK prose continues straight after a URL without a space, as in
+// `https://example.com、下一句`, so CJK and full-width punctuation ends a link.
+const LINK_STOP_CHARS =
+  '\\s<>"\'\\]\\u3000-\\u303F\\uFF01-\\uFF0F\\uFF1A-\\uFF20\\uFF3B-\\uFF40\\uFF5B-\\uFF65';
+const URL_REGEX = new RegExp(`https?:\\/\\/[^${LINK_STOP_CHARS}]+`, 'gi');
+const INTERNAL_ROUTE_REGEX = new RegExp(`\\/(?:work|chat|code)\\/[^${LINK_STOP_CHARS}]+`, 'g');
+const INTERNAL_ROUTE_PREFIX_REGEX = /^\/(?:work|chat|code)\//;
 const TRAILING_TRIM_CHARS = new Set(['.', ',', ';']);
+
+export function isInternalProductRoute(href: string): boolean {
+  return INTERNAL_ROUTE_PREFIX_REGEX.test(href);
+}
 
 function hasUnmatchedTrailingParen(value: string): boolean {
   let balance = 0;
