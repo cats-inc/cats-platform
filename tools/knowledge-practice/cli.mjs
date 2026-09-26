@@ -8,6 +8,7 @@ import { createFixtureInputs } from './example.mjs';
 import { createPreservationFixture } from './preservationFixture.mjs';
 import { exportKnowledge, reviewCandidate, revokeKnowledge } from './promotion.mjs';
 import { readJson } from './artifacts.mjs';
+import { freezeEvaluator } from './freezeEvaluator.mjs';
 
 export async function main(argv) {
   const [command, ...rest] = argv;
@@ -25,6 +26,10 @@ export async function main(argv) {
     options(['--draft', '--out']);
     const candidate = await createCandidate({ draftFile: flags['--draft'], outputFile: flags['--out'] });
     return { state: candidate.state, digest: candidate.digest };
+  }
+  if (command === 'freeze-evaluator') {
+    options(['--entry', '--out', '--author-root']);
+    return freezeEvaluator({ entryFile: flags['--entry'], outputRoot: flags['--out'], authorRoots: [flags['--author-root']] });
   }
   if (command === 'admit') {
     options(['--out', '--author-root', '--exercise', '--baseline', '--evaluator', '--evaluator-id', '--runtime-root']);
@@ -72,7 +77,7 @@ export async function main(argv) {
     options(['--run', '--actor', '--reason']);
     return revokeKnowledge({ runRoot: flags['--run'], actorId: flags['--actor'], reason: flags['--reason'] });
   }
-  throw new Error('Commands: candidate, admit, evaluate, inspect, fixture-demo, review, export, revoke. See the practice guide before admission.');
+  throw new Error('Commands: candidate, freeze-evaluator, admit, evaluate, inspect, fixture-demo, review, export, revoke. See the practice guide before admission.');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

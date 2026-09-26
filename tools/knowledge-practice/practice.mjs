@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Worker } from 'node:worker_threads';
 import { loadProductKnowledge, assembleProductKnowledgeContext } from '../../build/server/platform/knowledge/productKnowledge.js';
-import { assertSeparated, canonical, digest, evidenceIds, fields, hasRecord, id, integer,
+import { EVALUATOR_MAX_BYTES, assertSeparated, canonical, digest, evidenceIds, fields, hasRecord, id, integer,
   readJson, readPlain, readRecord, safeText, writeNew, writeRecord } from './artifacts.mjs';
 import { candidateBundle, readCandidate } from './candidate.mjs';
 import { assertKnowledgeChanges, baselineKnowledge, preservationCheck, PRESERVATION_CHECK,
@@ -81,7 +81,7 @@ export async function admitPractice({ runRoot, authorRoots, exerciseFile, baseli
   assert.equal(policy.profile, 'preview', 'Practice requires an explicit preview Runtime artifact.');
   const exercise = validateExercise(await readJson(exerciseFile));
   const baseline = await readJson(baselineFile, 128 * 1024);
-  const evaluator = (await readPlain(evaluatorFile, 64 * 1024)).toString('utf8');
+  const evaluator = (await readPlain(evaluatorFile, EVALUATOR_MAX_BYTES)).toString('utf8');
   const baselineResult = await loadProductKnowledge({ filePath: baselineFile,
     platformVersion: exercise.platformVersion, capabilities: exercise.capabilities, locale: 'en' });
   assert.equal(baselineResult.status, 'ready', 'Baseline is incompatible with the frozen exercise.');
@@ -118,7 +118,7 @@ export async function frozenInputs(runRoot) {
   const baseline = await readJson(join(runRoot, 'baseline.json'), 128 * 1024);
   assert.equal(digest(exercise), admission.exerciseDigest, 'Exercise changed.');
   assert.equal(digest(baseline), admission.baselineDigest, 'Baseline changed.');
-  assert.equal(digest(await readPlain(join(runRoot, 'evaluator.mjs'))), admission.evaluatorDigest, 'Evaluator changed.');
+  assert.equal(digest(await readPlain(join(runRoot, 'evaluator.mjs'), EVALUATOR_MAX_BYTES)), admission.evaluatorDigest, 'Evaluator changed.');
   return { admission, exercise, baseline };
 }
 

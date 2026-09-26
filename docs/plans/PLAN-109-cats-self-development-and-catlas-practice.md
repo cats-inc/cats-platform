@@ -25,7 +25,43 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — protected quality preparation (2026-09-26)
+## Resume Checkpoint — evaluator closure freeze complete (2026-09-26)
+
+- Local checkpoint `6241b7e6` completed the semantic helper and protected
+  preparation below. Continue on `fix/knowledge-topic-preservation`, without
+  reusing earlier provider grants or publishing the branch.
+- Independent author-request review passed: exact normalized baseline and
+  applicability preserved, recovery-only evidence scope, snapshot hashes current,
+  and all protected questions absent from the author workspace. Claims are
+  limited to source/local-test cancellation and draft-materialization behavior.
+- Added `freeze-evaluator`: bundle trusted static JS/JSON without executing it,
+  enforce physical author separation throughout the closure, reject unresolved
+  executable dependencies, and retain source/compiler-byte digests and recipe.
+  Found and fixed relocation of App SDK's dynamic package version lookup using
+  an exact, recorded transform against the owning source/package. Output and
+  verification share a 256 KiB bound and explicit complete-manifest check.
+- **14/14 new tests passed**, including actual Catlas helper execution away from
+  checkout after deleting its source input directory, exact knowledge-byte
+  retention, frozen version metadata, source mutation, no compilation side
+  effects, dynamic loader rejection, alias isolation, partial/tampered artifacts
+  and the admission/verification byte boundary. esbuild needed its local compiler
+  subprocess outside the sandbox after `spawn EPERM`; automatic approval allowed
+  the compile/tests. No external inference or network call was involved.
+- Independent implementation review found no blocker; corrected docs distinguish
+  integrity against a supplied manifest from authenticated provenance, and input
+  digests/lengths from retained source bytes. Existing practice/promotion and
+  docs/collection regression passed **19/19**, no failures or skips, with output
+  at `../.validation/knowledge-quality-20260926/freeze-regression.log`.
+  No full application build/CI was repeated for this developer-only slice.
+- **Next:** a bundled test is still not a native evaluator. Final native
+  callbacks/immutable rubric and data must be fixed, and an out-of-worker
+  session/reviewer reconciliation boundary is still required before live use.
+  The independently prepared private curriculum/request remain unchanged; no
+  candidate, admission, external inference, promotion, publication or user-state
+  write occurred. The earlier 25 semantic-helper tests remain valid and were not
+  needlessly rerun. New engine hashes make earlier admissions historical.
+
+## Previous checkpoint — protected quality preparation (2026-09-26)
 
 - Owner authorized continued autonomous work and checkpoints while away. Start
   from local commit `4897c122` on `fix/knowledge-topic-preservation`; prior model

@@ -231,9 +231,12 @@ Role IDs do not establish reviewer independence. The native operator must enforc
 the author/evaluator read and write boundaries and inspect actual provider context.
 The judge sees the sanitized question, observation, locale, advice and cited
 knowledge IDs, with a reset ID. It does not receive baseline/candidate labels,
-bundle revisions, provider identity or author output. Criteria go only to the
-judge; neither they nor held-out case definitions enter the author workspace or
-Catlas model prompt. Meaning is judged independently, without keyword scoring.
+bundle revisions, the Catlas execution binding or the candidate author's draft.
+The observed coding target may identify its own provider. Criteria go only to
+the judge; the author receives neither the criteria nor the held-out curriculum.
+During evaluation, Catlas receives each admitted question and observation,
+including held-out cases, without rubric IDs, grading criteria or expected
+outcomes. Meaning is judged independently, without keyword scoring.
 
 Fixtures contain exactly `question`, `observation` and evaluator-only `rubricId`.
 The observation represents the existing **new Code** draft/readiness fields;
@@ -272,11 +275,62 @@ The create intent retains the actual product request ID for reconciliation.
 these promises. Before live use, provide an out-of-worker supervisor that owns
 and reconciles Runtime sessions and judge work, independently checks process
 disappearance, and retains unknown effects after interruption. Freeze the entire
-executable dependency/callback/rubric closure; hashing a wrapper that imports a
-mutable checkout is insufficient. The existing engine hash covers tool sources
-and the knowledge loader, not every transitive Catlas/Runtime import. Public
+static executable/callback/rubric closure using the preparation command below;
+hashing a wrapper that imports a mutable checkout is insufficient. Mutable data
+must still be embedded or independently digest-checked. The existing engine hash
+covers tool sources and the knowledge loader, not every transitive Catlas/Runtime
+import. Public
 callback tests establish plumbing only, not protected holdout isolation, live
 quality improvement or promotion eligibility.
+
+## Freeze a trusted evaluator
+
+Build the required product consumers first, then prepare a reviewed `.mjs` entry
+that exports `attempt`. From Platform:
+
+```text
+node tools/knowledge-practice/cli.mjs freeze-evaluator --entry <trusted entry.mjs> --out <new private artifact directory> --author-root <author workspace>
+```
+
+This command uses the installed esbuild compiler to bundle static JavaScript and
+JSON imports, including literal dynamic imports. It does not import or execute
+the entry, contact Runtime, invoke a judge or authorize inference. The entry and
+every physically resolved dependency must be outside the declared author scope;
+directory aliases do not bypass that check. Missing imports, nonliteral dynamic
+imports, direct `require`/`eval`/`Function` code loading, remaining `node:module`
+loading, compiler warnings and artifacts over 256 KiB are rejected. Admission and
+verification use that same size limit. The worker still checks that the exported
+`attempt` is a function when executing it.
+
+The explicit recipe targets Node 22 ESM with no source map. The manifest records
+Node/esbuild/parser versions, source hashes, digests and lengths of bytes passed to the
+compiler, the recipe, builtin imports and final artifact digest. The known App
+SDK version initializer is pinned to the checked Platform package version; both
+digests and lengths of its original/transformed bytes and the package digest are recorded. Any
+change to that initializer/import requires reviewing the narrow transform.
+Source bytes are rechecked before publishing the pair, so a concurrent edit
+cannot silently change the recorded closure.
+
+The new output directory contains `evaluator.mjs` and a flushed `manifest.json`
+completion marker. Failed or partial writes remain for inspection; never reuse
+or overwrite the directory. The exported `verifyFrozenEvaluator(root)` checks
+the code against the supplied completed manifest without executing code or
+consulting original source files, and returns the manifest digest. It does not
+authenticate provenance: an operator who rewrites both files can change the pair.
+Independently review that manifest and artifact before passing its evaluator
+file to `admit`. Admission binds the exact executable bytes; it is not automatic
+approval of the freeze manifest or of any callback's behavior. Existing trusted
+self-contained fixture modules may still be admitted directly.
+
+This freezes **static code and imported JSON**, not arbitrary runtime behavior.
+It is not a JavaScript sandbox or a defense against a malicious trusted operator.
+Node builtins, `import.meta.url` resources, callback filesystem access and external
+processes can still reach mutable data. Embed the rubric/immutable inputs or
+verify their independently frozen digests, and retain the actual Runtime/judge
+ownership and cleanup evidence. Do not resolve release knowledge paths from a
+relocated evaluator's default resource directory: supply the admitted knowledge
+file explicitly, preserving its exact bytes and consumer capabilities. A passing
+public frozen-module test proves relocation and plumbing, not native readiness.
 
 ## Frozen evaluator contract
 
