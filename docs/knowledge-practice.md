@@ -321,6 +321,54 @@ owned endpoint/process evidence and an independently reviewed cleanup observer.
 The tests use transport/observer doubles, including the real HTTP client over mock
 fetch; they make no provider call or product-quality claim.
 
+## Dedicated container exit observation
+
+`createDockerExitObserver` in `dockerObserver.mjs` records process disappearance
+for one dedicated container. Bind an exact local daemon ID, full container/image
+IDs, owner token, network ID (or `none`) and expected read-only bind mounts.
+`arm({ resetId, stage, sessionId })` must observe it running before dispatch.
+An exclusive claim indexed by container ID prevents reuse under another reset or
+observer instance within that evaluation root. The per-role journal retains only
+sanitized identity/state and configuration digests, without environment, command
+arguments, health logs or daemon diagnostics.
+
+`confirmExit` accepts the exact armed reset/stage/session tuple and requires two
+fresh, identical exited/PID-zero observations. Creation/start times, ownership,
+image, containment settings and restart count must match the armed identity.
+Read-only root/mounts, private PID/IPC/cgroup namespaces, nonroot UID, dropped
+capabilities, no-new-privileges, restart policy `no` and disabled auto-remove are
+checked. Identity/policy drift or failed receipts permanently invalidate the
+observer. Missing containers, transient read failures, concurrent confirmation and
+exhausted observation quota return incomplete. Nonzero exit and OOM remain visible
+even when process disappearance is confirmed. Removal does not turn a historical
+receipt into current observation.
+
+The explicit result scope is **`container-exit`**, not Runtime cleanup. A separately
+reviewed binding must prove the Runtime endpoint/session and every producer belong
+to that container before a parent callback may translate this result into cleanup
+evidence. Rejected/unknown Runtime creation stays unresolved. The daemon ID is a
+logical identity, and Docker's PID belongs to its Linux host/VM, not a Windows PID.
+Do not use it in Windows process operations. The observer neither starts nor stops
+containers and proves neither read blinding, network policy, usage nor quality.
+
+`createDockerReadClient` uses an explicit executable, private CLI config, working
+directory and local named-pipe/Unix-socket endpoint. Only projected inspect fields
+and daemon identity are requested; inherited Docker overrides are omitted. Each
+read-only CLI process has a five-second/128-KiB observation limit. Termination first
+signals that child, then escalates to SIGKILL after 250 ms. After one second of
+termination grace, an unconfirmed child latches the client unavailable, closes its
+owned pipes and leaves the pending PID visible through `inspectTransport`; late
+exit updates diagnostics but never replays a read. Container cleanup cannot be
+inferred from this failure. CLI/external image identities and dynamic binding
+data still need independent freezing/review for a native pilot.
+
+A native synthetic canary used a cached image with no credentials, Runtime or
+model, confirmed allowed-file access, outside-file absence and denied writes, then
+observed exit of its shell/background child and removed only the owned container.
+This validates the container observer/transport mechanism, not a credentialed
+Runtime or native model evaluation. The pilot image and Runtime/session mapping
+remain pending.
+
 ## Parent-owned Catlas effects
 
 The programmatic `evaluatePractice` accepts an optional `effectSupervisor` from

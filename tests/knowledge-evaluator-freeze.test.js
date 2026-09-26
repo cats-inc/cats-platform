@@ -191,6 +191,18 @@ test('freeze, admission and verification share the exact bounded evaluator size 
   await assert.rejects(frozenInputs(paths.runRoot), /bounded regular artifact/u);
 });
 
+test('container observer and read transport freeze without executing Docker or retaining checkout imports', async t => {
+  const f = await setup(t, `
+    export { createDockerExitObserver, createDockerReadClient } from ${modulePath('tools/knowledge-practice/dockerObserver.mjs')};
+    export function attempt() { throw new Error('Not an evaluation fixture'); }
+  `);
+  await f.freeze();
+  const { manifest } = await verifyFrozenEvaluator(f.outputRoot);
+  assert.ok(manifest.inputs.some(input => input.path === join(project,'tools/knowledge-practice/dockerObserver.mjs')));
+  assert.ok(manifest.imports.includes('node:child_process'));
+  assert.ok(manifest.imports.every(name => name.startsWith('node:')));
+});
+
 test('one frozen closure supplies Runtime judge, parent and worker after their source tree is removed', { timeout: 30_000 }, async t => {
   const f = await setup(t), paths = await createPreservationFixture(join(f.root, 'practice'));
   const exercise = await readJson(paths.exerciseFile);

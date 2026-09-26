@@ -25,7 +25,45 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — authorized native handlers and isolation preflight (2026-09-26)
+## Resume Checkpoint — dedicated container observation (2026-09-26)
+
+- Runtime judge/frozen integration checkpoint is committed at `b1b98d2e`, with
+  **86/86** scoped checks and independent review. Owner authorization remains valid
+  for the next bounded stage; no new model call, credential copy or publication.
+- Native Windows restricted-read policy failed its synthetic test as recorded
+  below. Existing Docker **29.8.0** Linux daemon and Ubuntu WSL were available.
+  Pulling the official Node image failed with daemon authentication errors even
+  with an empty private anonymous CLI config; user credentials were not inspected
+  or changed. A pinned cached image was used solely for synthetic canaries. The
+  official Node 24 base subsequently downloaded successfully from Docker's
+  [public ECR mirror](https://gallery.ecr.aws/docker/), still without authentication.
+- Synthetic container read isolation passed: allowed file readable, sibling and
+  host-path canaries absent, bind/root writes denied, no Docker socket, nonroot
+  UID, private process namespace and network disabled. A shell/background child
+  were observed while running; exited/PID-zero state was retained before removing
+  only that exact owned container. The failed first trial rejected an invalid
+  `--pid private` argument before creation; later trials used Docker's default
+  private namespace. No existing service/container was modified.
+- Implemented a read-only local Docker transport and observer with pinned
+  identity, exclusive container-ID claim, pre-dispatch running observation, two
+  fresh terminal reads, restart/policy drift rejection and durable receipts.
+  Final observer checks passed **35/35**. Independent review found and corrected
+  two races: validate/latch each identity read before the next await, and bound
+  read-only CLI termination even when the first signal is ignored. Pending CLI
+  identities remain visible and the client stays unavailable after unconfirmed
+  termination. Freeze/docs/collection verification passed **18/18**, for **53/53**
+  final scoped checks. Independent final review found no remaining source blocker.
+  The final native canary on the pinned official Node base captured the observer
+  source digest, passed read/write checks, reported container exit complete before
+  removal and incomplete after removal. No Runtime/session ownership claim is
+  inferred from it; all owned canary containers were removed, with zero inference.
+- Next: prepare/review a dedicated native Runtime
+  image and endpoint/session-to-container mapping, then freeze all actual parent
+  bindings and run the small authorized pilot. Container exit alone is not native
+  inference readiness or quality evidence. No elevated Windows setup is needed
+  to continue the offline preparation.
+
+## Previous checkpoint — authorized native handlers and isolation preflight (2026-09-26)
 
 - Owner explicitly authorized continuation (`授權, 做吧`). This supersedes the
   previous pending-authorization note for the next bounded native stage; historical
