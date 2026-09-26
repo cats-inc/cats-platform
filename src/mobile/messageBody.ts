@@ -23,3 +23,14 @@ export {
   type MessageBodySegment,
   type MessageBodySegmentKind,
 } from '../products/shared/renderer/components/messageBodySegmenter.js';
+
+// Agent replies render as markdown on both surfaces. The parser's npm
+// dependencies resolve from the platform root `node_modules`, which the mobile
+// Metro config already searches.
+export {
+  parseMessageBodyMarkdown,
+  readMarkdownMention,
+  type MarkdownMention,
+  type MessageBodyMarkdownNode,
+  type MessageBodyMarkdownRoot,
+} from '../products/shared/renderer/components/messageBodyMarkdownTree.js';

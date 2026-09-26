@@ -194,9 +194,13 @@ posture are out of scope for this spec — they remain owned by the
     - Update 2026-09-27: the web `MessageBody` renders agent-authored bodies
       (`senderKind: 'agent'`, including live stream blocks) as markdown via
       `format="markdown"`; user, system and orchestrator bodies stay plain.
-      Mobile still renders every body as plain text, so the NFR-002 visual
-      gate currently holds only for plain-format bubbles. Mobile markdown
-      rendering is an open follow-up.
+    - Update 2026-09-27 (mobile): `selectMobileMessages` parses agent bodies
+      with the shared `parseMessageBodyMarkdown`, which a test holds
+      identical to the web remark tree, and the RN `MessageBodyMarkdown`
+      draws it. Differences that remain: RN has no table layout, so column
+      widths are estimated from cell text; Desktop routes are inert because
+      the device cannot open them; reference-style links render as plain
+      text; and mention chips inherit RN nested-`Text` limits, as before.
 
 #### Type / package boundaries
 
@@ -305,6 +309,7 @@ cats-platform/mobile/
 | `<span className="messageBodyMention" style={{background}}>` | nested `<Text style={{backgroundColor}}>` |
 | `<img className="messageBodyImage">` | `expo-image` `<Image>` |
 | `<a className="messageBodyFileChip">` | `<Pressable>` with `react-native-svg` icon + filename |
+| `<div className="messageBodyMarkdown">` (agent replies) | `MessageBodyMarkdown`: blocks as `<View>` / `<Text>`, code and tables in horizontal `<ScrollView>` |
 
 CSS class styles are mapped to `StyleSheet.create` objects. The mapping
 lives in `cats-platform/mobile/src/renderer/styles/messageBody.ts` and is

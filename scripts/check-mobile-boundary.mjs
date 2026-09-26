@@ -142,6 +142,12 @@ const ALLOWED_CONSUMER_PROJECT_DIRS = [
   // used to live under `src/core/` until the `/core/` deny rule
   // landed — moved to keep the deny rule consistent with reality).
   'src/products/shared/renderer/components/messageBodySegmenter.ts',
+  // Markdown tree parser for agent replies, so mobile draws the same
+  // tree the web renderer builds. Imports only npm parser packages
+  // (micromark / mdast; their React Native entry points use no Node or
+  // DOM APIs), `mdast` types and `messageBodyMarkdownSegments.ts`,
+  // which in turn imports only the segmenter above.
+  'src/products/shared/renderer/components/messageBodyMarkdownTree.ts',
   // Cross-product i18n catalogs + key registry. The catalogs are
   // pure object literals and `messageKeys.ts` is a pure const map.
   // Directory-level allow-list because the convention here is
