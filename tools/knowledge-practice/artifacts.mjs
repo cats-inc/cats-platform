@@ -3,6 +3,8 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { lstat, mkdir, open, readFile, realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 
+export const EVALUATOR_MAX_BYTES = 256 * 1024;
+
 export function canonical(value) {
   const seen = new Set();
   function visit(item, depth) {

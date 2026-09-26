@@ -49,6 +49,15 @@ are also independent. Editing source does not update a running installation.
 
 ## Decision
 
+The owner's 2026-09-26 simplification accepts a separate manual Desktop path:
+paste agent-proposed bilingual text for one existing entry, save a draft, review,
+and explicitly adopt or revoke it in the local profile. It is marked
+`manual-local-unverified`, never as independently verified knowledge. Production
+Catlas and Orchestrator consume that profile's active text on their next matching
+request. IDs, applicability, tools and permissions stay unchanged; a shipped
+bundle change suspends the override. This additive local preference does not
+relax the independent evaluation, promoted-bundle or release gates below.
+
 ### 1. Separate development skills from end-user knowledge delivery
 
 Use two build profiles, provisionally called preview/debug and release:
@@ -180,6 +189,14 @@ repeatable outcome checks, held-out scenarios, a comparison with the previous
 version, and review independent of the author. The evaluator and its acceptance
 criteria are fixed outside the candidate's writable scope for each evaluation.
 Self-reported success and favorable prose are not acceptance evidence.
+
+Bounded knowledge editing uses an operator-owned entry scope linked to admitted
+evidence, and the evaluator independently freezes its scope against the baseline.
+Unrelated guidance and all applicability remain fixed. Critical preservation
+checks cover actual direct selection and assembled model contexts in both
+languages, so content-budget loss cannot be hidden by a favorable aggregate.
+This constrains edits; it does not certify the meaning or quality of an allowed
+lesson. Existing guidance within edited topics still needs independent checks.
 
 The retained unit is a versioned, attributable method with supporting receipts
 and invalidation conditions. Retire or revoke a method when its required product

@@ -959,6 +959,8 @@ GET /api/code/codespaces
 GET /api/code/codespaces/:codespaceId
 POST /api/code/codespaces/resolve
 POST /api/code/catlas/help
+GET /api/code/knowledge
+POST /api/code/knowledge
 GET /api/code/artifacts
 POST /api/code/artifacts/declarations
 GET /api/code/artifacts/:artifactId
@@ -1020,6 +1022,28 @@ GET /api/code/previews
   creating a second code-specific task or artifact schema. Richer project and
   live preview/build behavior should land through active Code entry/task
   surfaces, not through standalone sidebar Build or Relay surfaces.
+
+#### Local knowledge contributions
+
+`GET /api/code/knowledge` returns `{ revision, targets, drafts }` with each
+target's effective bilingual entries and each draft's `active`/`stale` state.
+GET and POST require an authenticated owner/admin; browser-cookie writes retain
+the normal CSRF requirement. Successful responses carry `Cache-Control: no-store`.
+POST accepts at most
+40 KiB and one of:
+
+- `{ action: "submit", revision, target: "catlas" | "orchestrator", entryId,
+  content: { en, "zh-TW" }, note? }`: existing entry, 1–4,000 characters in each
+  language; optional source note up to 1,000 characters. Saves an inactive draft.
+- `{ action: "adopt", revision, id, confirm: "manual-local-unverified" }`:
+  explicitly adopts the reviewed draft in this profile.
+- `{ action: "revoke", revision, id }`: removes that active override and restores
+  the shipped text.
+
+Success returns the refreshed workspace. Stale revisions, changed baselines and
+full/invalid stores reject edits; clients must reload and review again. This API
+makes no model calls and exposes no operation to agents for automatic adoption.
+See [the Desktop workflow](knowledge-practice.md) for storage and recovery.
 
 #### Code Catlas Help
 

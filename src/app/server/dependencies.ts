@@ -319,6 +319,7 @@ export function resolveServerDependencies(
     ?? (
       dependencies.shared.config.chatProviderAgentDecisionEnabled === true
         ? createChatProviderAgentDecisionRequester({
+            platformDir: dependencies.shared.config.platformDir,
             preparationBudget: dependencies.shared.config.chatCollaborationPreparationBudget,
             failureMode: 'return_null', readState: () => dependencies.chat.chatStore.read(),
             chatStore: dependencies.chat.chatStore,
@@ -331,6 +332,7 @@ export function resolveServerDependencies(
     );
   const orchestratorChannelRouter = dependencies.chat.orchestratorChannelRouter
     ?? createChatDeterministicChannelRouter({
+      platformDir: dependencies.shared.config.platformDir,
       runtimeRecovery: {
         staleSessionRetryLimit: dependencies.shared.config.runtimeStaleSessionRetryLimit,
       },
@@ -348,6 +350,7 @@ export function resolveServerDependencies(
     ?? createChatTaskExecutionLocator(dependencies.chat.chatStore);
   const telegramRoomBridge = dependencies.chat.telegramRoomBridge
     ?? createChatTelegramRoomBridge({
+      platformDir: dependencies.shared.config.platformDir,
       chatStore: dependencies.chat.chatStore,
       companionStore,
       mutationGate,
@@ -412,6 +415,7 @@ export function resolveServerDependencies(
       request,
       _options,
     ) => resumeStoredWorkflowContinuationDispatch({
+      platformDir: dependencies.shared.config.platformDir,
       request,
       chatStore: dependencies.chat.chatStore,
       runtimeClient: dependencies.shared.runtimeClient,
@@ -486,6 +490,7 @@ export function resolveServerDependencies(
         coreStore: dependencies.code?.coreStore ?? sharedCoreStore,
         runtimeClient: dependencies.code?.runtimeClient ?? dependencies.shared.runtimeClient,
         chatStatePath: (dependencies.code?.config ?? dependencies.shared.config).chatStatePath,
+        platformDir: (dependencies.code?.config ?? dependencies.shared.config).platformDir,
         now: dependencies.code?.now ?? dependencies.shared.now,
       }),
       evidenceDataDir: dependencies.code?.evidenceDataDir ?? dependencies.shared.config.chatStatePath,

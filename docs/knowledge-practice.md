@@ -9,6 +9,33 @@ the production knowledge loader and their configured provider/model.
 Implementation/checkpoints: [PLAN-109](plans/PLAN-109-cats-self-development-and-catlas-practice.md).
 Requirements: [SPEC-117](specs/SPEC-117-cats-self-development-and-catlas-practice.md).
 
+## Manual local contributions in Desktop
+
+For the simplest Desktop contribution, use **Code > Artifacts > Contribute / adopt
+knowledge** (`/code/knowledge`). Select Catlas or Orchestrator and an existing
+entry, paste the agent's proposed English and Traditional Chinese text, and save.
+Compare both versions, check the review box, then choose **Adopt locally**.
+Saving alone has no effect. **Revoke and restore bundled text** restores the
+shipped entry. This route makes no model request and needs no developer host.
+
+This is explicitly **manual local, unverified** adoption, accepted in the owner's
+2026-09-26 scope clarification. It affects the next matching request in the same
+Platform profile, preserves entry applicability and operation permissions, and
+does not establish independently verified promotion or publication. Each language
+is limited to 4,000 characters; storage is limited to 100 drafts / 2 MiB. A change
+to the shipped bundle suspends its old local overrides; submit a fresh draft.
+
+The additive schema-1 store lives under the profile's
+`knowledge/contributions.json`; existing Core data needs no migration. Each edit
+validates, checks its revision and byte limit, retains the previous valid state
+as `.bak`, then atomically replaces the primary file. Concurrent stale review
+is rejected. A damaged store blocks edits and consumers use shipped knowledge.
+For recovery, stop that profile's server, preserve the damaged file, restore the
+last valid `.bak` to the primary path, and restart; it must validate before use.
+This never modifies the bundled knowledge file or promotes the backup silently.
+
+The optional managed authoring workflow below remains a separate developer path.
+
 ## Managed authoring in an isolated preview Desktop
 
 The developer-only `tools/knowledge-practice/authoring-host.mjs` is an explicit
@@ -62,6 +89,19 @@ The model returns a revised draft; it cannot select new evidence references or
 claim independent verification. These operator-supplied summaries/digests need
 independent checking before later evaluation/promotion.
 
+The optional request `changeScope` is an operator-owned array of
+`{ "entryId": "code.recovery", "evidenceRefs": ["evidence:verified-stop"] }`.
+Each unique entry must already exist in the supplied draft and each unique
+supporting reference must be admitted in its evidence. Omission means no entry
+changes are permitted. The model cannot supply or broaden this scope. It may
+edit only scoped content, with a higher entry revision and a distinct bundle
+revision. Both languages, revisions and content of unrelated entries remain
+exactly unchanged. Entry order, IDs, roles, kind, surfaces, topics, operations
+and bundle applicability stay fixed. New entries or applicability changes need
+a separately designed admission; this bounded path does not accept them.
+Scope permits a proposed edit; independent evaluation still has to establish
+that its evidence is relevant and its guidance correct.
+
 The first slice distills existing development evidence. It creates one Core
 worker, Task and Run, then a fresh read-only Runtime sandbox with only the
 `cats-practice-and-distill` skill and read/list tools. The host checks Runtime's
@@ -78,7 +118,16 @@ is supplied separately and retained in the observed receipt.
 The host validates the returned JSON, writes `draft.json` and `candidate.json`
 under `<candidate root>/knowledge-authoring/<id>/`, and declares an attributed
 Code artifact with candidate disposition and draft status, linked to its Task,
-Run and Runtime session. `authoring-receipt.json` is a local inspection snapshot;
+Run and Runtime session. New authoring artifacts also retain an optional bounded
+candidate snapshot in their metadata. **Code > Artifacts > the draft** displays
+its Traditional Chinese text, expandable English text, and counterexamples as
+plain text, explicitly marked unverified and not adopted by Catlas/Orchestrator.
+Opening or expanding the preview makes no model request and reads no artifact
+file. Older artifacts without this snapshot retain their existing fallback;
+there is no automatic backfill or installed-state migration. This display does
+not itself evaluate/adopt a candidate; the manual contribution route above is
+available from both the artifact list and detail page.
+`authoring-receipt.json` is a local inspection snapshot;
 the Core run is authoritative for later usage/cleanup callbacks. Candidate
 knowledge remains **unverified**. A completed run means drafting completed, not
 that the lesson improves product behavior or can ship.
@@ -120,6 +169,19 @@ pair (60 attempts). Four public sample cases exercise the held-out plumbing;
 because the sample is public, it is **not a protected production holdout**.
 Successful fixture evidence is explicitly ineligible for production promotion.
 No observed improvement here establishes live model or UI competence.
+
+To exercise topic retention using the actual shipped Catlas baseline:
+
+```text
+node tools/knowledge-practice/cli.mjs fixture-demo --suite preservation --runtime-root <preview Runtime checkout> --out <new private directory> --consumer catlas
+```
+
+This public fixture appends one synthetic cancellation lesson only to recovery,
+checks ten bilingual cases with three resets per baseline/candidate pair, and
+checks retained guidance in actual production-assembled contexts. Its evaluator
+checks literal retention and lesson placement; it does not measure a model's
+understanding or real task success. Its four public holdout-shaped cases are
+not protected holdouts. Orchestrator applicability is not established by it.
 
 Use `--consumer orchestrator` in a separate new directory for its actual
 capability set, roles and operation scopes. Omitting `--consumer` retains the
@@ -182,6 +244,443 @@ must use separately protected inputs, independently sourced expected outcomes
 and an evaluator that checks the actual product result. Do not copy its public
 cases and label them a production holdout.
 
+## Catlas semantic evaluator preparation
+
+`tools/knowledge-practice/catlasEvaluator.mjs` exports `createCatlasEvaluator`
+for a trusted developer harness. It calls the actual `inferCatlasAdvice` seam
+with the production knowledge selector and checks the assembled context against
+the admitted inputs. This is not a native launcher, a new product endpoint or
+inference authorization. It has no default Runtime connection, credentials,
+model judge or process observer.
+
+The caller supplies the owned `runtimeClient`, explicit `guideCat` binding,
+`evaluationRoot`, separate `authorId`/`reviewerId`, and four trusted callbacks:
+
+| Callback | Required result |
+| --- | --- |
+| `loadKnowledge(digest, locale)` | The exact frozen, compatible production-loader result for the attempt |
+| `resolveRubric(rubricId)` | Independent criteria as `{ id, criterion }[]`, fixed before authoring |
+| `judge({ response, responseDigest, criteria, signal })` | Independent semantic decisions bound to the exact response, with measured usage |
+| `confirmCleanup(observation)` | Independent owned-process evidence as `{ status, evidenceRefs }` for each `stage`: `catlas` and `reviewer` |
+
+Role IDs do not establish reviewer independence. The native operator must enforce
+the author/evaluator read and write boundaries and inspect actual provider context.
+The judge sees the sanitized question, observation, locale, advice and cited
+knowledge IDs, with a reset ID. It does not receive baseline/candidate labels,
+bundle revisions, the Catlas execution binding or the candidate author's draft.
+The observed coding target may identify its own provider. Criteria go only to
+the judge; the author receives neither the criteria nor the held-out curriculum.
+During evaluation, Catlas receives each admitted question and observation,
+including held-out cases, without rubric IDs, grading criteria or expected
+outcomes. Meaning is judged independently, without keyword scoring.
+
+Fixtures contain exactly `question`, `observation` and evaluator-only `rubricId`.
+The observation represents the existing **new Code** draft/readiness fields;
+requested policies pass the actual Runtime policy validator. Effective session
+access is `not_started`, Git status is `unknown`, and all four ordinary Code-help
+topic groups are selected. Reports about an earlier task belong in the question;
+they cannot be invented as observed process telemetry. This seam does not test
+native UI, actual observation collection or the full Code-help service.
+
+Judgment has `reviewerId`, `responseDigest`, `usageTokens` and one decision per
+criterion: `{ id, verdict, rationale, evidenceSpans }`. Verdict is `pass` or
+`fail`; indeterminate, missing, stale or duplicate decisions make assessment
+incomplete. Spans are bounded UTF-16 offsets `{ start, end }` into the exact advice;
+a passing decision needs evidence. A whole-response span is appropriate for a
+universal absence-of-violation criterion when independently assessed as such.
+Usage is a measured nonnegative integer; zero is appropriate only for a review
+that used no inference. Any model judge needs applicable authorization and its
+own measured accounting; unknown spend is never zero.
+
+The attempt returns `complete`, `observed.responseValid` and
+`observed.semantic[id]`. An incomplete assessment stops evaluation in either
+phase; an invalid baseline cannot be scored as a low baseline that makes the
+candidate appear improved.
+Every admitted semantic scenario must require `responseValid === true` as a
+critical check, alongside its policy/correctness criteria. A complete negative
+decision is distinct from incomplete assessment. `usageTokens` includes Catlas
+and judge transport usage, including rejected results. `knownTokens` retains
+the measured subtotal when another effect's usage is unknown. Unknown usage prevents
+continuation. Cleanup requires independent confirmation for both stages; a
+session-close acknowledgement or completed judge response is insufficient.
+
+Exclusive intent precedes create/send/judge work. Private assessment files retain
+bounded sanitized advice, criteria, decisions and digests for this explicit QA
+workflow; this is not ordinary conversation capture. Cancellation fences late
+output. While the worker survives, late creation is closed without dispatch and
+late transport/grade usage is retained without changing an incomplete result.
+The create intent retains the actual product request ID for reconciliation.
+
+**Native readiness remains pending.** A forcibly terminated worker cannot finish
+these promises. The parent bridge below retains effects beyond that worker, but
+its native callbacks still must prove Runtime ownership, independently check
+process disappearance and reconcile interruption. Freeze the entire
+static executable/callback/rubric closure using the preparation command below;
+hashing a wrapper that imports a mutable checkout is insufficient. Mutable data
+must still be embedded or independently digest-checked. The existing engine hash
+covers tool sources and the knowledge loader, not every transitive Catlas/Runtime
+import. Public callback tests establish plumbing only, not protected holdout isolation, live
+quality improvement or promotion eligibility.
+
+## Runtime-backed independent judge
+
+`createRuntimeKnowledgeJudge` in `runtimeJudge.mjs` supplies a parent-only judge
+for the supervisor below. Bind an explicitly owned Runtime client, target,
+evaluation root, distinct reviewer/author IDs, and an independent
+`observeCleanup(snapshot)` callback. There is no endpoint discovery, credential
+loading or automatic retry. Wire its `judge` into the supervisor and route reviewer
+cleanup to its `confirmCleanup`; Catlas cleanup still needs its own observation.
+
+Each reset creates one fresh sandbox/read-only session and explicitly requests
+`{ requestedSkills: [], strict: true }`. Runtime omits skill state for an empty
+manifest. Both the Catlas evaluator and reviewer therefore require authoritative
+hydration/inspection snapshots and verify that skills are absent from the session,
+hydration and inspection before and after sending. A present skill state, even
+an empty object or null, and a truncated observation are rejected. This is absence
+of Runtime-delivered skills; the dropped strict flag is not a delivery receipt or
+proof of native read isolation. The empty request must not be used to clear a
+reused session. Observed target, model and workspace policy must also match.
+The reviewer receives only the sanitized response and rubric;
+the model returns decisions and exact quotes. Trusted code converts unique quotes
+into UTF-16 evidence spans and validates complete rubric coverage. A valid negative
+decision is complete even without a quote; indeterminate or malformed decisions
+are incomplete. Model-written usage is rejected; positive transport usage is saved
+before parsing, including usage from rejected or interrupted responses.
+
+Exclusive `resets/<resetId>/judge` journals retain intents, session identity,
+measured usage, cleanup and result evidence. The parent retains pending create/send
+promises and closes late sessions without another send. Cancellation, missing
+process proof or a failed final receipt clears decisions without erasing measured
+spend. An abort during the final receipt flush also clears the returned decisions;
+the parent abort/seal fence remains authoritative over a previously written result.
+The generic retained-effects inspector reads the supervisor ledger, not this judge
+subdirectory. Neither journal permits replay.
+
+**This adapter does not establish native blinding or process isolation.** A prompt
+omitting author labels is insufficient if native tools can read the evaluator tree.
+Legacy read-only policy restricts writes, not all reads; dynamic tools do not disable
+other native tool paths. Native use still requires a proven restricted read policy,
+owned endpoint/process evidence and an independently reviewed cleanup observer.
+The tests use transport/observer doubles, including the real HTTP client over mock
+fetch; they make no provider call or product-quality claim.
+
+## Dedicated container exit observation
+
+`createDockerExitObserver` in `dockerObserver.mjs` records process disappearance
+for one dedicated container. Bind an exact local daemon ID, full container/image
+IDs, owner token, network ID (or `none`) and expected read-only bind mounts.
+`arm({ resetId, stage, sessionId })` must observe it running before dispatch.
+An exclusive claim indexed by container ID prevents reuse under another reset or
+observer instance within that evaluation root. The per-role journal retains only
+sanitized identity/state and configuration digests, without environment, command
+arguments, health logs or daemon diagnostics.
+
+An optional `binding.seccompProfileSha256` pins a separately reviewed custom
+profile. Omission keeps the exact `['no-new-privileges']` security-option contract;
+explicit null/undefined or an invalid digest is rejected. A bound profile requires
+exactly `['no-new-privileges', 'seccomp=<JSON text>']`, in that order. The observer
+limits the text to 64 KiB of UTF-8 before parsing, requires an object with
+`defaultAction: 'SCMP_ACT_ERRNO'`, and hashes those exact bytes without trimming or
+canonicalizing them. Only the digest reaches sanitized snapshots and binding
+identity; the policy body is not journaled. The shape check does **not** audit the
+syscall rules. The caller must separately review and freeze the policy and parent
+binding. The hash identifies Docker's configured profile text, not the compiled
+kernel filter. No profile is supplied by default, and historical rejected observations
+cannot be recertified through this option.
+
+`confirmExit` accepts the exact armed reset/stage/session tuple and requires two
+fresh, identical exited/PID-zero observations. Creation/start times, ownership,
+image, containment settings and restart count must match the armed identity.
+Read-only root/mounts, private PID/IPC/cgroup namespaces, nonroot UID, dropped
+capabilities, no-new-privileges, restart policy `no` and disabled auto-remove are
+checked. Identity/policy drift or failed receipts permanently invalidate the
+observer. Missing containers, transient read failures, concurrent confirmation and
+exhausted observation quota return incomplete. Nonzero exit and OOM remain visible
+even when process disappearance is confirmed. Removal does not turn a historical
+receipt into current observation.
+
+The explicit result scope is **`container-exit`**, not Runtime cleanup. A separately
+reviewed binding must prove the Runtime endpoint/session and every producer belong
+to that container before a parent callback may translate this result into cleanup
+evidence. Rejected/unknown Runtime creation stays unresolved. The daemon ID is a
+logical identity, and Docker's PID belongs to its Linux host/VM, not a Windows PID.
+Do not use it in Windows process operations. The observer neither starts nor stops
+containers and proves neither read blinding, network policy, usage nor quality.
+
+`createDockerReadClient` uses an explicit executable, private CLI config, working
+directory and local named-pipe/Unix-socket endpoint. Only projected inspect fields
+and daemon identity are requested; inherited Docker overrides are omitted. Each
+read-only CLI process has a five-second/128-KiB observation limit. Termination first
+signals that child, then escalates to SIGKILL after 250 ms. After one second of
+termination grace, an unconfirmed child latches the client unavailable, closes its
+owned pipes and leaves the pending PID visible through `inspectTransport`; late
+exit updates diagnostics but never replays a read. Container cleanup cannot be
+inferred from this failure. CLI/external image identities and dynamic binding
+data still need independent freezing/review for a native pilot.
+
+A native synthetic canary used a cached image with no credentials, Runtime or
+model, confirmed allowed-file access, outside-file absence and denied writes, then
+observed exit of its shell/background child and removed only the owned container.
+This validates the container observer/transport mechanism, not a credentialed
+Runtime or native model evaluation. A subsequent private image preflight pinned
+the official Node base, verified the native archive and exact copied Runtime/CLI
+payloads, checked launch configuration before start, then passed native
+version/schema and idle Runtime health/shutdown inside a network-disabled
+container. The external observer confirmed exit before exact-owned removal.
+Neither that idle test nor its fresh private home establishes provider-thread
+readiness or session cleanup. A further create/observe/close-only canary verified
+the actual empty-skill assertion against Runtime, recorded a logical session and
+its direct native app-server child, observed child disappearance after close,
+and confirmed container exit before removal. No message was sent: the native
+thread remained uninitialized. This is contained process/session evidence.
+
+A subsequent private parent transport canary froze the real Platform HTTP client
+and used authenticated, lease-bound stdio to the exact dedicated container. Its
+verified bridge admitted one exact create request, own-session observation/close,
+and shutdown; a send request was rejected before Runtime. Runtime's API key stayed
+in process memory and the client used its private loopback endpoint without a
+published host port. The session/request/native process identities were recorded,
+then close, child disappearance, drained transport and independently observed
+container exit/removal passed. Request journals describe invocation uncertainty;
+successful replies become visible only after receipts of authenticated replies are
+flushed. Nine private offline process checks cover loss, forgery, duplicates,
+late replies and journal failures. This proves **parent create-only transport**.
+It does not establish a reusable production bridge, send/usage/cancellation,
+native tool readiness, author read isolation or model quality.
+
+A separate credential-free Linux command canary moved the private home to an
+empty, nonroot-owned `/home/cats` tmpfs and verified complete, untruncated native
+output drainage. The earlier temporary-home helper warning disappeared. Both the
+named restricted-read probe and its ordinary read-only control failed before
+executing their synthetic command because bubblewrap could not create a
+namespace. Neither read isolation nor native tool usability passed. The native
+process exited, independent container exit was observed, and the owned container
+was removed. The original outer failure also retains a conservative parser miss:
+the unknown-profile error said `undefined profile`, which its matcher omitted.
+Offline inspection confirms that negative control only; it cannot establish a
+successful command or change the original receipt.
+
+This namespace error alone does not identify the sole enforcement layer. A
+subsequent synthetic comparison pinned the installed Engine build and its seccomp
+dependency, then supplied two explicit profiles to fresh private containers. The
+baseline used that dependency's default source profile; the candidate added only
+an allow rule for `unshare(CLONE_NEWUSER)`. The same public user-namespace command
+failed with EPERM under the baseline and succeeded under the candidate, mapping
+one inner root UID to outer UID 65534. Outer identity, zero effective capabilities,
+no-new-privileges and seccomp filtering remained unchanged. Both containers exited
+and were removed; no daemon/host policy or container capability changed. The
+production observer deliberately rejected these custom profiles, so their private
+exit observations cannot become Runtime cleanup evidence. This establishes only
+the tested user-namespace operation; neither probe invoked Runtime or native Codex.
+A further native command diagnostic kept that one-rule policy unchanged. Its
+unknown-profile control and measurement completed, but both command policies still
+failed with the same namespace error; all owned processes and the container were
+closed and removed. Inspection of the [versioned vendored source](https://github.com/openai/codex/blob/00c972ed5d6ff6499317fd41b7f23605b8e6850d/codex-rs/vendor/bubblewrap/bubblewrap.c)
+locates that error at raw `clone` failure. This source-informed inference explains
+why allowing only `unshare` is insufficient; it is not an actual syscall trace or
+evidence that the rest of bubblewrap's setup would succeed.
+An independently reviewed differential then added only the exact `amd64` clone
+flag value for the requested namespaces. With the same native probe bytes, both
+commands reached a new error at the first mount operation (`Failed to make / slave`).
+The measurement and owned cleanup completed, while both tool/read-policy readiness
+flags remained false. No mount or pivot allowance was included in that comparison.
+A separately reviewed diagnostic then allowed `amd64` mount/pivot operations and
+`umount2` only with detach flags. The ordinary read-only control passed, while the
+restricted profile could not read its own native helper. A fresh diagnostic kept
+that syscall policy unchanged and explicitly granted read access to the one pinned
+helper executable. The restricted command then read the allowed synthetic file,
+could not read the outside file and could not write; the ordinary control read
+both files and also could not write. The unknown-profile control passed. Outer
+UID/GID, all zero capability sets, namespace identities, no-new-privileges and
+seccomp mode stayed unchanged; native output drained and the owned container was
+removed. Independent source and actual-result reviews passed. These receipts used
+the unbound observer and remain incomplete there. They establish sampled native
+command behavior, not Runtime turn policy propagation or author/grader blinding.
+
+A fresh canary then supplied the explicit policy digest to the production
+observer and repeated the same native controls successfully. The observer armed
+against a running container, confirmed two identical terminal snapshots before
+removal and returned incomplete after removal. Both its Docker client and the
+launcher's separate client reported no pending processes or unavailable state.
+Independent result review recomputed the sanitized binding/receipt digests and
+verified exact-owned removal. Source disk bytes were checked before execution and
+after cleanup with no concurrent edits; this is not a frozen executable closure.
+The evidence supports configured policy identity and container exit only, plus
+the separately sampled command behavior. Runtime's actual adapter currently
+requests legacy read-only policy; it does not inherit this named command profile.
+
+Codex's [versioned Linux sandbox notes](https://github.com/openai/codex/blob/rust-v0.157.0/codex-rs/linux-sandbox/README.md)
+require bubblewrap for restricted filesystem execution. Any future dedicated
+container policy needs its own review, exact byte binding and native validation;
+ordinary syscall filters do not express that an operation is allowed only after
+entering a child namespace. See [Docker's seccomp contract](https://docs.docker.com/engine/security/seccomp/)
+and [the kernel filtering model](https://www.kernel.org/doc/html/latest/userspace-api/seccomp_filter.html).
+
+## Parent-owned Catlas effects
+
+The programmatic `evaluatePractice` accepts an optional `effectSupervisor` from
+`createCatlasEffectSupervisor` in `catlasEffects.mjs`. Supply the exact evaluation
+root and target, an owned Runtime client, an independent `judge`,
+`confirmCleanup` and `reconcile` callbacks. There are no endpoint, credential or
+provider defaults. This API is not enabled by an ordinary `evaluate` CLI call.
+The worker receives `effectPort`; `createCatlasEffectClient({ port, resetId })`
+provides Runtime/judge/cleanup proxies for `createCatlasEvaluator`.
+
+The parent permits one create, one advice send and one judge per reset. It checks
+the explicit target, read-only sandbox grant, admitted question/observation and
+owned session ID; the port is not a general Runtime proxy. Slots are reserved
+before intent I/O, and flushed intent precedes callback invocation. New effects
+are sealed at the worker result, interruption or timeout, before the termination
+grace. A token threshold exhausted by advice prevents a subsequent judge call.
+Additional model selections, output paths, skills, strategies or routing fields
+are rejected before invoking Runtime. Advice usage must be positive: Runtime's
+default zero does not prove a measured zero-token provider response. Optional
+undefined SDK object fields are omitted during transfer; invalid JSON values
+still fail after their independently measured usage has been recorded in memory.
+
+Worker termination cannot discard parent-owned callback promises. The parent
+records late session IDs and measured usage under the reset's `effects` directory
+and invokes `reconcile(snapshot)` after disconnection and late changes. An
+observer's earlier cleanup result cannot certify a newer generation. Reconcile
+must operate only on the owned Runtime/profile and recorded session/request IDs,
+never launch inference, and use its own bounded cleanup deadline rather than the
+aborted inference signal. A rejected create without an ID remains unresolved,
+even if a point-in-time observer reports no session. Unknown effects are not
+permission to retry or guess ownership.
+
+`seal` is idempotent. `drain(timeoutMs)` waits at most the specified bound and
+returns current pending/cleanup state; it does not cancel remaining promises or
+prove native process exit. The host must keep the supervisor alive while dealing
+with that state. The engine uses parent measurements instead of worker reports,
+retains the known subtotal separately from complete usage, and refuses to proceed
+with pending or unconfirmed effects. This failure is fixed at the worker's result
+boundary even if a late effect settles during termination. Later evidence can
+resolve accounting and cleanup for inspection; it never rewrites an interrupted
+attempt as successful. Intent/result persistence failures prevent durable cleanup
+certification, even when measured spend remains available.
+
+This boundary has public tests with actual terminated worker threads and local
+callback doubles. Before native use, independently freeze/review the **parent**
+handler implementation, binding, rubric and observer too; the worker bundle does
+not freeze its parent's callbacks. Native endpoint/process identity, effective
+author read isolation and recovery after the **parent process** itself exits
+remain separate gates. Durable intent/result records preserve uncertainty and
+fence replay; they do not implement a restart that resumes model work.
+
+### Inspect retained effects after interruption
+
+Inspect one reset without loading its evaluator or calling Runtime:
+
+```sh
+node tools/knowledge-practice/cli.mjs inspect-effects --run PRIVATE_RUN_ROOT --reset RESET_UUID
+```
+
+The programmatic equivalent is `inspectCatlasEffects({ evaluationRoot, resetId })`.
+It reads only that reset's bounded parent journal, checks canonical records,
+intent/terminal pairing, call quotas, target/digest agreement and historical
+generation consistency, then checks that the recognized files stayed unchanged
+during the read. Directory aliases, hard links, torn writes and unexpected files
+cannot become consistent evidence. Diagnostics use fixed codes, without printing
+malformed contents or arbitrary file names. Inspection never writes a receipt,
+changes an evaluation, imports the evaluator or resumes any callback.
+
+`recordedKnownTokens` is the subtotal from unambiguous valid terminal records.
+`usageUncertain` remains true for incomplete, malformed or conflicting evidence;
+it also remains true without a valid seal, since admission has not been recorded
+as closed. An unstable read returns a null subtotal. An intent alone cannot establish that
+its callback was never invoked: `invoked: false` was written **before** invocation.
+The reader therefore reports unknown invocation/settlement until a matching
+terminal exists. A failed terminal can still retain measured usage and a created
+session ID. When result/failure records conflict, both validated claims remain
+visible but neither is counted; no winning record is guessed.
+
+These records are unauthenticated. Their consistent placement and digest do not
+prove their origin or bind them independently to an admitted reset. A stable
+snapshot also does not prove that the parent has exited, that no new effect can
+arrive, or that an external provider has stopped. Accordingly the report always
+keeps `currentCleanup: 'unobserved'` and `replayAllowed: false`; reconciliation
+records are historical observations only. Use retained session/request identities
+with a separately authorized, independent process observer before claiming native
+cleanup. Inspection supplies evidence for recovery; it does not grant a replay or
+recover a live evaluation after parent-process failure.
+
+## Freeze a trusted evaluator
+
+A reviewed entry can export both process roles from the same static closure:
+
+```js
+export { attempt } from './trusted-worker.mjs';
+export { createSupervisor } from './trusted-parent.mjs';
+```
+
+When the parent factory statically imports its Runtime/judge/cleanup implementations,
+target binding and rubric, those JS/JSON inputs are bundled and recorded alongside
+the worker helper. The parent can import `createSupervisor` from the verified frozen
+module, then pass its result to `evaluatePractice` as `effectSupervisor`. Compare the
+frozen code digest against both the independently reviewed digest and the admitted
+worker digest before importing it. The parent factory name is a composition
+convention, not a second export validated by the freeze command.
+
+An integration fixture exercises this composition through real admission, a worker
+thread, parent-owned callback dispatch, evaluation verification and retained-effect
+inspection after deleting the composition entry and JSON source inputs. Parent and
+worker use identical frozen bytes and the single baseline attempt records 49
+fixture tokens, including 7 measured by the actual Runtime judge adapter in a
+separate reviewer session/journal. It stops at the attempt limit without running
+candidate advice or a full comparison and stays ineligible for production. The
+Runtime transport and cleanup observer are public doubles; this proves the
+composition mechanism, not native
+ownership, a live judge's quality, author read isolation or provider cleanup.
+Injected callbacks and data read dynamically from files, environment, network or
+processes still require separate freezing/binding and review.
+
+Build the required product consumers first, then prepare a reviewed `.mjs` entry
+that exports `attempt`. From Platform:
+
+```text
+node tools/knowledge-practice/cli.mjs freeze-evaluator --entry <trusted entry.mjs> --out <new private artifact directory> --author-root <author workspace>
+```
+
+This command uses the installed esbuild compiler to bundle static JavaScript and
+JSON imports, including literal dynamic imports. It does not import or execute
+the entry, contact Runtime, invoke a judge or authorize inference. The entry and
+every physically resolved dependency must be outside the declared author scope;
+directory aliases do not bypass that check. Missing imports, nonliteral dynamic
+imports, direct `require`/`eval`/`Function` code loading, remaining `node:module`
+loading, compiler warnings and artifacts over 256 KiB are rejected. Admission and
+verification use that same size limit. The worker still checks that the exported
+`attempt` is a function when executing it.
+
+The explicit recipe targets Node 22 ESM with no source map. The manifest records
+Node/esbuild/parser versions, source hashes, digests and lengths of compiler input
+bytes, the recipe, builtin imports and final artifact digest. The known App
+SDK version initializer is pinned to the checked Platform package version; both
+digests and lengths of its original/transformed bytes and the package digest are
+recorded. Any change to that initializer/import requires reviewing the narrow transform.
+Source bytes are rechecked before publishing the pair, so a concurrent edit
+cannot silently change the recorded closure.
+
+The new output directory contains `evaluator.mjs` and a flushed `manifest.json`
+completion marker. Failed or partial writes remain for inspection; never reuse
+or overwrite the directory. The exported `verifyFrozenEvaluator(root)` checks
+the code against the supplied completed manifest without executing code or
+consulting original source files, and returns the manifest digest. It does not
+authenticate provenance: an operator who rewrites both files can change the pair.
+Independently review that manifest and artifact before passing its evaluator
+file to `admit`. Admission binds the exact executable bytes; it is not automatic
+approval of the freeze manifest or of any callback's behavior. Existing trusted
+self-contained fixture modules may still be admitted directly.
+
+This freezes **static code and imported JSON**, not arbitrary runtime behavior.
+It is not a JavaScript sandbox or a defense against a malicious trusted operator.
+Node builtins, `import.meta.url` resources, callback filesystem access and external
+processes can still reach mutable data. Embed the rubric/immutable inputs or
+verify their independently frozen digests, and retain the actual Runtime/judge
+ownership and cleanup evidence. Do not resolve release knowledge paths from a
+relocated evaluator's default resource directory: supply the admitted knowledge
+file explicitly, preserving its exact bytes and consumer capabilities. A passing
+public frozen-module test proves relocation and plumbing, not native readiness.
+
 ## Frozen evaluator contract
 
 Exercise schema 1 specifies an ID/revision, `evidenceMode` (`fixture` or `product`),
@@ -193,14 +692,36 @@ JSON-pointer path and expected JSON value. Every scenario needs a critical check
 Expected values and held-out case definitions are never supplied to the candidate
 author or as fields in the evaluator's model input.
 
+Product exercises must independently freeze `changeScope` with the same shape
+as authoring; scoped fixtures may opt in. The operator chooses this scope against
+the frozen baseline rather than trusting a candidate's own declarations.
+Admission requires scenarios that actually deliver every baseline entry in
+both languages. Evaluation retains its start/candidate records but refuses to
+dispatch the evaluator if the proposed content violates that scope or refers
+to evidence absent from the candidate. Verification checks it again. Legacy
+unscoped selection fixtures remain fixture-only; old receipts are historical
+and cannot be replayed under a changed engine digest.
+
+For scoped exercises, the engine appends the reserved critical check
+`baseline-guidance-preserved` to every attempt. It compares actual baseline and
+candidate direct Catlas selections and assembled role contexts, retaining all
+baseline entries and exact unscoped guidance and applicability, including cases
+where a longer edit exhausts either budget. The verifier recomputes it
+independently of evaluator output. Frozen
+scenario checks cannot use this reserved ID. Edited content still needs its
+own independent correctness checks: an allowed recovery edit can lose useful
+recovery guidance even while all unrelated entries remain intact.
+
 The trusted module exports:
 
 ```js
 export async function attempt({ fixture, fixtureRoot, resetId, context, signal }) {
   // Independently observe the admitted product harness; honor cancellation.
   return {
+    complete: false, // true only when the assessment itself completed
     observed: { /* bounded facts checked by the frozen engine */ },
     usageTokens: null, // measured nonnegative integer, or unknown
+    knownTokens: 0, // measured subtotal, even when total usage is unknown
     interventions: 0,
     evidenceRefs: ['evidence:stable-sanitized-id'],
     cleanup: 'complete', // only after owned activity is confirmed cleaned up
@@ -215,6 +736,9 @@ fixture/context data to a model. It must measure usage from the provider/harness
 and inspect actual results; a model's `success: true` is not an observation of a
 completed product action. Top-level self-reported success fields are rejected.
 The engine derives check results rather than trusting pass/fail flags.
+`complete` and `knownTokens` are additive for older generic fixture modules;
+Catlas always supplies them. If provided, false completion stops either phase,
+and known usage must equal the total whenever that total is complete.
 
 Budget fields are `maxAttempts`, `maxElapsedMs`, `attemptTimeoutMs`, `maxTokens`.
 Metrics are `passedChecks` (higher), or `elapsedMs`, `tokens`, `interventions`

@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Native Desktop candidate authoring accepted; knowledge evaluation/promotion and broader gates pending |
+| Status | Desktop manual contribution/adoption/revoke usable; independent knowledge evaluation/promotion and broader gates pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Last updated | 2026-09-26 |
@@ -25,7 +25,617 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — integrated and Desktop preview published (2026-09-26)
+## Resume Checkpoint — minimal Desktop contribution and local adoption (2026-09-26)
+
+- The owner explicitly requested the simplest acceptable contribution/adoption
+  flow. **Code > Artifacts > Contribute / adopt knowledge** now opens a bilingual
+  editor for one existing Catlas/Orchestrator entry. Save, compare both versions,
+  check the review box, then adopt locally; revoke restores bundled text.
+- Save alone is inert. Adoption is `manual-local-unverified`, with its own
+  provenance rather than the bundle's verification date. Default Catlas help,
+  visible Orchestrator dispatch and decision requests use their owning profile's
+  active text on the next matching request. Explicit evaluator files bypass it.
+  Applicability and permissions stay fixed; changed bundles suspend old overrides.
+- The additive schema-1 profile store validates revisions/limits, backs up and
+  atomically replaces data. Failed writes preserve the primary; corrupted data
+  blocks editing and consumers use bundled text. No Core migration is needed.
+- Independent review passed after fixing the serialized byte-limit check and
+  threading the owning profile through the real consumers. **35/35** focused
+  backend tests and **1/1** actual React flow test pass; server, renderer and test
+  TypeScript checks and the Vite renderer build pass.
+- Native Windows Electron acceptance used the normal built app sidecar and the
+  existing isolated viewer profile. Actual DOM controls saved a contribution,
+  required review, adopted it, and revoked it; API/persisted results restored
+  bundled content. Viewed native screenshots confirm the page renders. The
+  isolated window remains open; installed user data is untouched. No model call.
+- This completes the requested minimal manual flow. It does not finish automatic
+  authoring, independent quality evaluation, promoted-bundle release or the
+  broader development gates. Do not restart the retired native harness; those
+  tracks require a separately bounded user request. No version bump/publication.
+
+## Previous checkpoint — usable draft inspection; native harness stopped (2026-09-26)
+
+- Owner feedback explicitly prioritizes a usable Desktop flow and lower agent
+  token expenditure. Stop the expanding native isolation/evaluation harness;
+  do not automatically resume its old next-step list. Its 49 private gate,
+  channel and child-process checks do not establish user-facing acceptance.
+  No pre-inference native canary was launched.
+- Managed-authoring artifacts now retain an optional, bounded candidate display
+  snapshot. The Code artifact page renders both languages and counterexamples
+  as plain text, with an explicit unverified/not-adopted notice. It opens no
+  local artifact path and initiates no model call or promotion. Older artifacts
+  retain fallback behavior; no persisted-data upgrade is required.
+- Independent review found no blocker. **37/37** focused tests pass (managed
+  authoring 35; actual artifact-page/malformed-snapshot checks 2), renderer and
+  test TypeScript checks pass, and the renderer build passes. Native Desktop
+  inspection passed using a fresh private copy of the previously completed real
+  draft: the actual artifact page displays five bilingual entries and the
+  unverified notice, verified by a viewed Desktop capture. It does not rerun
+  authoring or change the historical receipt. The first private viewer launch
+  waited on Electron readiness at module top level; its owned process was
+  stopped and the wrapper corrected to register a callback. No product host
+  change or provider call was involved.
+- This slice makes the existing output inspectable. Starting a contribution is
+  still the explicitly admitted developer-host workflow, not a new button in an
+  ordinary installed Desktop. Evaluation, adoption and release remain separate.
+
+## Previous checkpoint — explicit policy exit observer passed natively (2026-09-26)
+
+- `acd4dc3f` checkpoints the optional exact seccomp profile binding, with
+  **89/89** scoped checks and independent source/test/docs review. Default
+  admission, permanent drift rejection and historical failed receipts remain
+  unchanged. No provider credential read/copy, model call, candidate or release.
+- A fresh no-credential/network-disabled container ran the identical pinned
+  native helper command, image and reviewed diagnostic syscall policy. The
+  production observer explicitly bound its policy hash, observed a running
+  container, then confirmed two fresh matching exit-zero/PID-zero/no-OOM
+  snapshots. Its sanitized journal retains the policy digest without the body.
+- Restricted/ordinary read-only and unknown-profile controls passed again.
+  Outer identity, zero capability sets, namespaces, no-new-privileges and seccomp
+  mode remained unchanged; native output drained. The exact owned container was
+  removed, and a subsequent observer query correctly returned incomplete.
+  Neither Docker transport retained an unresolved CLI process or unavailable
+  latch. No creation, harness, cleanup or source-integrity failure remained.
+- Pre-launch review required separate observer-CLI ownership accounting and a
+  final source-byte verification after cleanup on both paths; both corrections
+  were made and reviewed before launch. The source check compares disk bytes
+  before/after a run with no concurrent edits, not an immutable executable closure.
+  Actual-result review recomputed claim/receipt hashes and verified exact cleanup.
+- This proves configured policy identity, container exit and sampled synthetic
+  native command behavior. It does not adopt the diagnostic profile as a default,
+  establish Runtime turn policy propagation or author/grader blinding, or certify
+  Runtime cleanup, inference or quality. Earlier unbound receipts remain incomplete.
+  Private continuation: `BOUND-COMMAND-RESUME.md`; do not replay any guarded root.
+- Next: bind actual Runtime send/policy/usage/cancellation behavior to the parent
+  transport with a bounded no-credential canary before any model pilot. The
+  adapter currently requests legacy read-only policy; the named command profile
+  tested above is not automatically propagated into Runtime turns. The small
+  authorized pilot, full exercise and quality/promotion gates remain separate.
+
+## Previous checkpoint — private native read-policy commands passed (2026-09-26)
+
+- Parent create-only transport is checkpointed at `01475b67`; the synthetic user
+  namespace comparison is checkpointed at `99a2915a`. Next-stage owner
+  authorization remains active. No new model call, provider credential read/copy,
+  candidate, promotion or publication occurred.
+- Compared two explicit, digest-bound seccomp profiles in separate fresh private
+  containers on the pinned image and Engine. The baseline is the installed
+  Engine's pinned default **source profile**, supplied explicitly rather than
+  selected through the daemon builtin default. The candidate adds exactly one
+  rule allowing `unshare` with flags equal to `CLONE_NEWUSER`; the default errno
+  action and every other rule remain identical. Nonroot UID/GID, dropped
+  capabilities, no-new-privileges, read-only root/mounts and disabled networking
+  were unchanged. No daemon or host policy was modified.
+- The same public `unshare --user --map-root-user` command failed with EPERM under
+  the baseline and succeeded under the candidate, reporting UID `0` mapped to
+  outer UID `65534` for one ID. Outer UID/GID, zero effective capabilities,
+  no-new-privileges and active seccomp filtering were unchanged. This establishes
+  **user namespace feasibility under this one-rule container policy**, not
+  bubblewrap command readiness, native author read isolation or model quality.
+- Both probes drained their child output, completed without harness failure,
+  reached two matching valid exited/PID-zero/exit-zero/no-OOM observations, and
+  removed only their owned containers. No unknown create or pending CLI remained.
+  The production container observer deliberately rejected both custom profiles
+  and returned incomplete: these private observations are not Runtime cleanup
+  acceptance and do not broaden the production admission policy.
+- Source/policy review passed before execution after strengthening terminal-state
+  checks and extending the observation window. Actual-result and documentation
+  review also passed, including submitted profile bytes and owned cleanup.
+  Private exact digests and receipts are retained in `USERNS-EXPERIMENT-RESUME.md`.
+- A subsequent independently reviewed native `command/exec` diagnostic used the
+  **unchanged** one-rule policy. Initialization and the unknown-profile negative
+  control passed; both restricted-read and ordinary read-only commands still
+  returned the same namespace EPERM. Native output drained and the process exited
+  normally, followed by two valid container terminal observations and exact-owned
+  removal. This is a completed measurement with **both readiness flags false**.
+  The production observer remains incomplete. Private continuation is now
+  `USERNS-COMMAND-RESUME.md`; historical failed receipts remain unchanged.
+- Pinned the official Codex `0.157.0` source tag to
+  `00c972ed5d6ff6499317fd41b7f23605b8e6850d` and retained source-file digests. The
+  vendored code emits this message at a failed raw `clone`, whereas the first
+  diagnostic allowed only `unshare`. Its source also requests mount, user, PID,
+  IPC and network namespaces. This is source-informed failure localization,
+  not a syscall trace or reproducible-build proof. Each subsequent differential
+  was independently reviewed before execution; this source inspection alone
+  did not change the policy.
+- After independent source/flag and materialized-profile/launcher review, a fresh
+  private diagnostic added exactly one `amd64` `clone` argument-0 equality rule
+  for `2013397009` (`0x78020011`). Native command and verifier bytes stayed
+  unchanged. Both commands advanced from the namespace error to
+  `Failed to make / slave: Operation not permitted`, matching the source's first
+  mount call. Both readiness flags remain false. The measurement completed and
+  the container was removed without pending CLI or unresolved creation; actual
+  result review passed. That comparison added no mount/pivot allowance and is
+  retained in `CLONE-COMMAND-RESUME.md`.
+- A separately reviewed private diagnostic added `amd64` mount/pivot allowances
+  and `umount2` flags equal to detach. The ordinary read-only control passed;
+  the restricted profile failed to read its own helper executable. These syscall
+  rules do not identify bubblewrap or current namespace membership, and mount/
+  pivot arguments are unrestricted by seccomp. No outer capability, device,
+  network, daemon or host setting changed. Result review passed and is retained
+  in `MOUNT-COMMAND-RESUME.md`.
+- The next diagnostic kept that policy unchanged and added only an explicit
+  read grant for the pinned native helper file. Restricted access passed:
+  allowed synthetic file readable, outside file denied, writes denied. The
+  ordinary read-only control read both files and denied writes; the unknown
+  profile control also passed. Native exit/output drainage and before/after
+  outer identity, all zero capability sets and namespace checks passed. Two
+  matching valid container exits preceded exact-owned removal. No unresolved
+  create, pending CLI, harness failure or cleanup failure remained. Independent
+  source/launcher and actual-result reviews passed; latest private continuation
+  is `HELPER-COMMAND-RESUME.md`. All six diagnostic containers were removed.
+- Those runs used the unbound observer and their production exit receipts remain
+  incomplete. They establish only the sampled synthetic native command policy,
+  not Runtime turn policy propagation, author/grader blinding or model quality.
+- A separate observer extension now accepts an optional exact policy SHA-256,
+  with a 64 KiB UTF-8 limit, default-errno object shape and exact security options.
+  Default admission stays unchanged; explicit invalid bindings and observed
+  drift fail closed. Journals retain only the policy digest. This identifies a
+  separately reviewed policy and container exit; it does not audit arbitrary
+  syscall rules or adopt this experimental policy as a supported default.
+  **89/89** scoped checks passed: observer/freeze **86**, docs/collection **3**.
+  The initial sandboxed freeze run could not spawn esbuild; the focused rerun
+  with that child process permitted passed. Independent source/test review found
+  no blocker; its additional containment and prior-claim regressions also passed.
+- Next: validate that observer extension and run a fresh, explicitly bound
+  no-credential command canary. No retrospective acceptance of earlier receipts.
+  Runtime parent send/usage/cancellation, the small authorized pilot and all
+  knowledge-quality gates remain pending.
+
+## Previous checkpoint — native parent create-only transport (2026-09-26)
+
+- The actual empty-skill correction is committed at `c8466ad0`, with its earlier
+  **112/112** scoped checks and independent review. Next-stage owner authorization
+  remains active; no new provider credential read/copy, model call or publication.
+- A separate Linux command canary verified an empty, nonroot-owned private home
+  outside `/tmp`; the temporary-home helper warning disappeared with complete,
+  untruncated native output drainage. Both the named restricted-read command and
+  ordinary read-only control failed before execution because bubblewrap could
+  not create a namespace. **Native tool/read-isolation readiness did not
+  pass.** Independent exit observation and exact-owned removal completed.
+  Its original failed receipt retains a conservative unknown-profile matcher
+  miss; offline inspection establishes only the `undefined profile` negative
+  control. This does not rewrite the failed command outcome.
+- The namespace error does not identify its sole enforcement layer. Pinned the
+  installed Docker Engine `29.8.0` build `3ce5872b7950c63ba2ffbc5123101019ff3e6682`
+  and its actual `github.com/moby/profiles/seccomp v0.2.3` dependency at
+  `836ae4d37ef2ec995c77c99fc55f5b5f3af3a897` for investigation. No custom seccomp
+  profile, capability, daemon setting or host policy was changed.
+- A private parent transport then passed an actual create/observe/close canary
+  under the unchanged container restrictions. The real Platform HTTP client was
+  bundled from **13 compiled inputs**, with **65,661 bytes** and no external
+  imports. The image payloads, mounted bridge/client/skill helper and private
+  home were verified before import. Parent requests used authenticated,
+  lease-bound stdio to the exact container; Runtime's ephemeral API key remained
+  inside its process and the client used its private loopback endpoint. No host
+  port was published. An attempted send was rejected before reaching Runtime;
+  the retained HTTP trace contains only health/create/observe/close.
+- The real logical session and request identity were bound to Runtime PID1,
+  the native executable/start identity and the independently observed Docker VM
+  parent/child relationship. The child disappeared after close, Runtime shut down,
+  both transport pipes closed, and the container reached exit-zero/PID-zero/no-OOM
+  before exact-owned removal. No unknown create, unresolved request or pending CLI
+  remained. A first preparation failed the `StdinOnce` expectation before start;
+  it was separately removed, and a fresh run verified the actual `true` setting.
+- **9/9** separate offline child-process tests passed for authenticated replies,
+  receipt persistence before resolution, denied send, lost/late/duplicate replies,
+  UTF-8, invalid/oversized frames, journal failures and idempotent transport finish.
+  Independent review required invocation-uncertainty records and serialized,
+  durable receipts with immediate duplicate rejection; both were corrected and
+  checked before native execution. These are private harness checks, not a repeat
+  of the earlier application suite or a reusable production transport claim.
+- This establishes **parent create-only transport**, not inference, usage/cost
+  accounting, cancellation, native tool readiness, author read isolation or
+  knowledge quality. Next: resolve the supported native tool boundary, then bind
+  the reviewed parent send/judge/accounting/cancellation path and conduct the small
+  authorized pilot. The full exercise, promotion and release remain separate.
+  Private continuation records retain exact hashes, failure history and identities
+  in `NATIVE-TRANSPORT-RESUME.md`; do not replay earlier canary roots.
+
+## Previous checkpoint — actual Runtime empty-skill contract (2026-09-26)
+
+- The pinned native image checkpoint is committed at `19158596`. A subsequent
+  no-message native session exposed a real integration error: Runtime drops an
+  empty skill manifest and omits its skill state, while both evaluator helpers
+  and their mocks required a synthetic `skills.strict` state. Runtime source
+  inspection confirmed the omitted state is its current contract, not a missing
+  delivery or an API regression. Nonempty authoring skill receipts are unaffected.
+- Both Catlas evaluation and the independent judge now share an assertion that
+  requires hydration/inspection snapshots and rejects skill state in all three
+  session/hydration/inspection projections before and after sending. The explicit
+  `{ requestedSkills: [], strict: true }` request remains caller intent; absence
+  is not a retained strict-delivery acknowledgement or native read-isolation proof.
+  Existing fresh-session admission is essential; empty lists do not clear reuse.
+- **112/112** scoped checks passed: judge/evaluator **71**, parent/freeze **38**,
+  and docs/collection **3**. These include **24** new before/after consumer
+  regressions for injected, null and truncated observations; post-send spend is
+  retained and invalid Catlas state cannot reach the judge. Independent source,
+  fixture and native-launcher review found no remaining blocker.
+- A fresh, credential-free/network-disabled native canary mounted and hashed the
+  actual shared assertion, then passed real Runtime create/observe/close with
+  `codex/cli/native`, model `gpt-6-astra`, sandbox/read-only/default policy and no
+  Runtime-delivered skills. The in-container Runtime PID, executable/child start
+  identity and Docker VM PID/parent relationship were retained. The observer
+  armed with the actual logical session ID before any send; no message was sent.
+  The native child disappeared after close, idle Runtime shut down, and external
+  observation confirmed exited/PID-zero/exit-zero/no-OOM before exact-owned
+  removal. No pending CLI, unknown creation, credential copy or model call.
+- Three failed preparations remain separate evidence: missing explicit native
+  environment before startup; the skill-contract mismatch after create; and a
+  process-name assertion (`MainThread`, not `node`) after the corrected skill
+  check. Each owned container was removed. The final probe binds the Runtime VM
+  PID and Codex child PPID rather than a Node display name. These are Linux/Docker
+  VM identities, never Windows process IDs.
+- This proves **create-only app-server containment**, not an initialized native
+  thread or inference readiness. The CLI also warned that helper aliases cannot
+  be created under a `/tmp` home; prepare a supported fresh private home before
+  tool/model use. Next: parent-owned transport and frozen endpoint/session mapping,
+  then the small authorized native pilot. The full exercise, promotion and release
+  remain separate gates. Private continuation records retain all exact identities.
+
+## Previous checkpoint — pinned native image, no inference (2026-09-26)
+
+- Container observation is committed at `8507008d`, after **53/53** scoped checks
+  and independent review. The owner's next-stage authorization remains active.
+  No new provider credential read/copy, model call, installed-state write or release.
+- Built a private Linux image from a digest-pinned official Node 24 base, clean
+  Runtime `6afaf606` with a fresh successful build, four production dependencies,
+  public assets/skills/config and Codex CLI **0.157.0**. The Linux native archive
+  was resolved from the installed package's versioned alias and SHA-512 verified
+  before extraction. No author/evaluator inputs entered the build context.
+- The context's exact **1,622 files / 407,129,855 bytes** were independently
+  reconciled; the launcher reverified the inventory and hashes after building.
+  A separately mounted trusted verifier
+  then hashed the **1,621 copied payload files** inside the actual image before
+  executing its preflight. This binds those payloads to the context digest; base
+  OS/Node identity remains separately digest-pinned. Exact image environment,
+  launch settings, mounts, containment and resource limits were checked before
+  start. CLI timeout/unknown-create/cleanup-failure receipts remain explicit.
+- The credential-free, network-disabled native test passed: Node **24.21.0**,
+  native CLI version and experimental protocol export, Runtime **0.3.1** preview
+  health with matching in-container PID, and awaited idle shutdown. The external
+  observer captured the running container, then two terminal observations before
+  exact-owned removal. Exit was zero, with no OOM, pending CLI or cleanup failure.
+  Credential absence is an audited admission fact plus a fresh-home assertion;
+  idle shutdown does not establish future provider cleanup or native thread readiness.
+- Private build/probe manifests and resume records retain exact digests, image and
+  container identities. Next: a fresh no-network **create/observe/close-only**
+  Runtime Codex canary to bind the actual logical session and app-server process
+  to the container. Do not send even an empty message to force readiness: that
+  starts a model turn. Parent transport, frozen native bindings and the small
+  model pilot remain pending; none of these preflights are quality evidence.
+
+## Previous checkpoint — dedicated container observation (2026-09-26)
+
+- Runtime judge/frozen integration checkpoint is committed at `b1b98d2e`, with
+  **86/86** scoped checks and independent review. Owner authorization remains valid
+  for the next bounded stage; no new model call, credential copy or publication.
+- Native Windows restricted-read policy failed its synthetic test as recorded
+  below. Existing Docker **29.8.0** Linux daemon and Ubuntu WSL were available.
+  Pulling the official Node image failed with daemon authentication errors even
+  with an empty private anonymous CLI config; user credentials were not inspected
+  or changed. A pinned cached image was used solely for synthetic canaries. The
+  official Node 24 base subsequently downloaded successfully from Docker's
+  [public ECR mirror](https://gallery.ecr.aws/docker/), still without authentication.
+- Synthetic container read isolation passed: allowed file readable, sibling and
+  host-path canaries absent, bind/root writes denied, no Docker socket, nonroot
+  UID, private process namespace and network disabled. A shell/background child
+  were observed while running; exited/PID-zero state was retained before removing
+  only that exact owned container. The failed first trial rejected an invalid
+  `--pid private` argument before creation; later trials used Docker's default
+  private namespace. No existing service/container was modified.
+- Implemented a read-only local Docker transport and observer with pinned
+  identity, exclusive container-ID claim, pre-dispatch running observation, two
+  fresh terminal reads, restart/policy drift rejection and durable receipts.
+  Final observer checks passed **35/35**. Independent review found and corrected
+  two races: validate/latch each identity read before the next await, and bound
+  read-only CLI termination even when the first signal is ignored. Pending CLI
+  identities remain visible and the client stays unavailable after unconfirmed
+  termination. Freeze/docs/collection verification passed **18/18**, for **53/53**
+  final scoped checks. Independent final review found no remaining source blocker.
+  The final native canary on the pinned official Node base captured the observer
+  source digest, passed read/write checks, reported container exit complete before
+  removal and incomplete after removal. No Runtime/session ownership claim is
+  inferred from it; all owned canary containers were removed, with zero inference.
+- Next: prepare/review a dedicated native Runtime
+  image and endpoint/session-to-container mapping, then freeze all actual parent
+  bindings and run the small authorized pilot. Container exit alone is not native
+  inference readiness or quality evidence. No elevated Windows setup is needed
+  to continue the offline preparation.
+
+## Previous checkpoint — authorized native handlers and isolation preflight (2026-09-26)
+
+- Owner explicitly authorized continuation (`授權, 做吧`). This supersedes the
+  previous pending-authorization note for the next bounded native stage; historical
+  author grants remain consumed. Stage a small pilot after technical prerequisites,
+  not an implicit full 96-attempt exercise or release.
+- Implemented a Runtime-backed independent judge factory with explicit target and
+  reviewer identity, one fresh read-only/strict-skill session per reset, durable
+  request/session/usage/cleanup evidence, late-create/send cancellation fencing,
+  and exact quoted response evidence converted into validated UTF-16 spans.
+  The model cannot supply its own usage. **47/47** judge/semantic tests passed,
+  including cancellation during final receipt flush and a valid negative judgment.
+  Independent review confirmed the correction and found no remaining helper blocker.
+  The frozen parent/worker fixture now includes this actual judge with public
+  transport/observer doubles, retaining a separate reviewer session and 7 of the
+  total 49 fixture tokens. The complete freeze suite passed **15/15**; parent effects,
+  documentation-boundary and test collection checks passed **24/24** (86 total).
+- Read-only architecture review found a concrete native gap: current Runtime
+  Codex bootstrap selects legacy `sandbox: 'read-only'`, while its dynamic read
+  tools are not an exclusive allowlist over native tools/MCP/apps. This is not
+  proof of author read isolation or grader blinding. The installed native
+  App Server schema and no-inference policy canaries were checked before any
+  Runtime seam change. Installed Codex **0.157.0** exposes experimental named
+  permission profiles, not direct `readOnly.access` policies. With Windows sandbox
+  omitted, a recognized restricted profile still read an outside synthetic file.
+  With explicit `unelevated` mode and deny-by-default reads, it rejected the policy:
+  `windows unelevated restricted-token sandbox cannot enforce split filesystem read
+  restrictions directly; refusing to run unsandboxed`. Its legacy read-only control
+  denied both synthetic files, which is not an isolation/usability pass. Both owned
+  servers exited with zero model calls. The independent reviewer checked the raw
+  probe evidence. This locally observed limitation is consistent with
+  [official permissions guidance](https://learn.chatgpt.com/docs/permissions).
+- Existing Docker Linux daemon availability was confirmed read-only. Next, use a
+  synthetic container canary to assess an isolated alternative; do not infer that
+  an available daemon, private home or accepted config establishes isolation.
+  No elevated Windows sandbox setup, system account or firewall change occurred.
+- A dedicated private Runtime with explicit process identity and independent
+  observation is needed for the native pilot. Historical PID-only snapshots,
+  close ACKs and current pool counts are insufficient. No inference, auth copy,
+  installed-state write or publication has occurred in this new stage.
+
+## Previous checkpoint — frozen parent/worker composition complete (2026-09-26)
+
+- Retained-effect inspection is committed at `6d2d41f0`, with **22/22** final
+  scoped checks and independent review complete. No product source changed in
+  this next integration-only slice.
+- Added an integrated fixture that statically freezes the parent supervisor,
+  worker helper, RPC client, explicit target, rubric and baseline JSON into one
+  module with `attempt` and `createSupervisor` exports. It verifies parent/worker
+  byte identity with admission, removes the composition entry/JSON source tree,
+  then exercises the real worker, parent callback dispatch, evaluation verifier
+  and retained-effect inspector. No new freeze API or loader was introduced.
+- The attempt's semantic/preservation checks pass; both ledgers record exactly
+  **49 fixture tokens** and no current native cleanup claim. It runs one baseline
+  attempt and stops at its limit; candidate advice and a complete comparison are
+  not exercised. This public fixture cannot qualify a candidate for production.
+- Final freeze suite **15/15** passed. The prior parent/engine/inspection/CLI checks
+  remain applicable because this slice changes only a test and documentation.
+  Independent review found no blocker; its baseline-only clarification is explicit
+  in both the guide and phase/stop-reason assertions.
+- Next concrete live-preparation gates: choose and independently review actual
+  frozen parent Runtime/judge/observer implementations and bindings; prove native
+  endpoint/process ownership and author read isolation; obtain a fresh bounded
+  inference grant. No credential, installed state, provider, version or publication
+  change has occurred in these overnight local checkpoints.
+
+## Previous checkpoint — retained-effect inspection complete (2026-09-26)
+
+- Parent effects/completion/accounting are committed at `5f8cd505`, with **89/89**
+  focused checks and independent review complete. The checkpoint below is retained.
+- Implemented a read-only `inspect-effects --run ... --reset ...` CLI and API.
+  It checks bounded canonical records, exact effect pairing, target/digest/quotas,
+  aliases/hard links, historical generation relationships and a second inventory
+  and content pass. Malformed contents and arbitrary filenames are not printed.
+- Invocation stays unknown for an intent without a terminal; `invoked: false`
+  in pre-call intent does not prove a call never started. Conflicting terminals
+  retain separate claims without double-counting; measured usage survives valid
+  failed responses. Consistency and current process state remain separate.
+- Final **18/18** focused tests passed, including three actual isolated Node
+  parent-process exits during fake Runtime create/send and after create completion
+  before sealing. Inspection preserved retained bytes without replay. Review found
+  and fixed reconciliation predating seal, unsealed usage certainty, bounded
+  directory enumeration and cumulative byte bounds on both read passes.
+  **4/4** scoped CLI/docs/collection checks also passed, including the existing
+  full 60-reset CLI fixture. Only public fixtures were used, with no network,
+  credentials or provider inference.
+- Independent final re-review found no remaining blocker; **22/22** final scoped
+  checks passed and the diff check is clean. Records
+  remain unauthenticated; current cleanup is always unobserved and replay is never
+  allowed. This is recovery inspection, not automatic process recovery or new
+  permission to dispatch a model. Native gates below remain open.
+
+## Previous checkpoint — parent-owned evaluation effects complete (2026-09-26)
+
+- Checkpoint `3d0ae0b9` completes the static closure freeze below. Work continues
+  locally with no external inference, using only isolated fixtures.
+- This bounded implementation moves Runtime/judge effects outside the worker's
+  lifetime through an optional transferred-port bridge. The parent retains
+  write-before-call intent, known session IDs and measured usage, even if the
+  worker is terminated; it must fence replay and require independent cleanup.
+  Late creation must trigger parent reconciliation without sending advice.
+- Implemented an optional parent MessagePort supervisor with one create/send/judge
+  per reset, explicit bound target/read-only grant, owned-session checks, exclusive
+  intent, late usage capture and generation-bound serialized reconciliation.
+  Engine seals the parent on result/abort/exit and replaces worker usage with
+  parent measurements. Partial known spend is separate from unknown total usage;
+  promotion verification checks the same accounting. No new model dispatch is
+  permitted after the observed continuation threshold is exhausted.
+- Found an additional baseline-completion defect: a known-usage but indeterminate
+  baseline could previously be a low score in an otherwise passing comparison.
+  Catlas now returns explicit `complete`; the engine rejects false for either
+  phase while charging known spend. Complete negative semantic decisions remain
+  measurable failures. Generic public evaluator modules retain additive support.
+- Final parent/helper regression passed **48/48**; frozen-helper regression passed
+  **14/14**. Includes actual terminated workers during create/send/judge, late
+  evidence, duplicate/foreign calls, intent/result persistence failures, failed
+  cleanup observers, unresolved creation, the real Runtime SDK with mocked fetch,
+  and engine accounting that replaces fabricated totals while retaining partial
+  measured usage. An intermediate receipt polling race was fixed only in its test
+  helper; production artifact reads remain strict.
+- Independent re-review found no remaining blocker after four fixes: sticky
+  unresolved effects at result boundary, lost-wakeup-safe reconciliation, strict
+  create/context/send capability allowlists, and positive measured advice usage.
+  Final practice/promotion/preservation/docs/collection regression passed
+  **27/27**, including the incomplete-baseline regression. The complete slice has
+  **89 passing focused checks**, no skipped/cancelled tests and a clean diff check.
+- Actual native ownership/identity, freezing parent callbacks and a parent-process
+  crash remain separate gates; no journal permits model replay. Next offline work
+  is bounded inspection of retained effects after the parent itself has exited,
+  preserving unknown invocation/usage and never treating disk evidence as fresh
+  native process proof. No new provider grant has been consumed or inferred.
+
+## Previous checkpoint — evaluator closure freeze complete (2026-09-26)
+
+- Local checkpoint `6241b7e6` completed the semantic helper and protected
+  preparation below. Continue on `fix/knowledge-topic-preservation`, without
+  reusing earlier provider grants or publishing the branch.
+- Independent author-request review passed: exact normalized baseline and
+  applicability preserved, recovery-only evidence scope, snapshot hashes current,
+  and all protected questions absent from the author workspace. Claims are
+  limited to source/local-test cancellation and draft-materialization behavior.
+- Added `freeze-evaluator`: bundle trusted static JS/JSON without executing it,
+  enforce physical author separation throughout the closure, reject unresolved
+  executable dependencies, and retain source/compiler-byte digests and recipe.
+  Found and fixed relocation of App SDK's dynamic package version lookup using
+  an exact, recorded transform against the owning source/package. Output and
+  verification share a 256 KiB bound and explicit complete-manifest check.
+- **14/14 new tests passed**, including actual Catlas helper execution away from
+  checkout after deleting its source input directory, exact knowledge-byte
+  retention, frozen version metadata, source mutation, no compilation side
+  effects, dynamic loader rejection, alias isolation, partial/tampered artifacts
+  and the admission/verification byte boundary. esbuild needed its local compiler
+  subprocess outside the sandbox after `spawn EPERM`; automatic approval allowed
+  the compile/tests. No external inference or network call was involved.
+- Independent implementation review found no blocker; corrected docs distinguish
+  integrity against a supplied manifest from authenticated provenance, and input
+  digests/lengths from retained source bytes. Existing practice/promotion and
+  docs/collection regression passed **19/19**, no failures or skips, with output
+  at `../.validation/knowledge-quality-20260926/freeze-regression.log`.
+  No full application build/CI was repeated for this developer-only slice.
+- **Next:** a bundled test is still not a native evaluator. Final native
+  callbacks/immutable rubric and data must be fixed, and an out-of-worker
+  session/reviewer reconciliation boundary is still required before live use.
+  The independently prepared private curriculum/request remain unchanged; no
+  candidate, admission, external inference, promotion, publication or user-state
+  write occurred. The earlier 25 semantic-helper tests remain valid and were not
+  needlessly rerun. New engine hashes make earlier admissions historical.
+
+## Previous checkpoint — protected quality preparation (2026-09-26)
+
+- Owner authorized continued autonomous work and checkpoints while away. Start
+  from local commit `4897c122` on `fix/knowledge-topic-preservation`; prior model
+  turn grants remain consumed. Do not repeat publication or native inference.
+- Independent preparation completed a protected 16-case bilingual curriculum,
+  semantic rubric and exact baseline outside Git at
+  `../.validation/knowledge-quality-20260926/evaluator`. Future native author
+  inputs belong to the disjoint sibling `author` root; do not expose holdout
+  definitions/rubric in the author prompt or its workspace.
+- Source inspection fixes the product boundary: actual Code-help selects all
+  four topic groups, and observes only the new-Code draft/readiness/workspace/
+  requested-policy fields, with effective access `not_started`. Prior cancellation
+  reports belong in the user question, never invented process telemetry.
+- The private evaluator contains 16 bilingual cases, six held out, three repeats
+  and a proposal for 96 advice attempts. Canonical curriculum digest is
+  `936c692e73e6341bce8d8243679f1803aed6fc1aa7da3f755fc1098008562e0c`;
+  rubric digest is `52fc9d3acfead9f4dfa1788d93b6a25604981e8648c10b9412dbe4cf45dbc219`.
+  Baseline digest is `cee16799cdbf5aae4112548e0820a36fb859e7da3565d711febbd12acb412a0f`.
+  The private preparation manifest records actual policy validation and all-entry
+  bilingual coverage. This is not admission or inference authorization.
+- New disjoint `author/request.json` uses ID `native-recovery-v2`, scope only
+  `code.recovery` linked to `test:cancelled-task-candidate`, and exact current
+  baseline guidance. Its canonical digest is
+  `989302f4202e7afb616ea7ab4798cd86aadf8854f283320b08b68558ba97295b`.
+  Source snapshots and evidence-to-topic assertions are under sibling `sources`;
+  evidence digest is `a6d82b9ad1ffe7164ffac657eca6ed6ff30477525c6e51138576d3c3425d6bfa`.
+  Local private Git boundary was initialized and verified, with only minimal
+  guidance and request files. No credentials, launch/start gate or candidate was
+  created. Native instruction context and enforced read isolation remain pending.
+- Added a developer-only Catlas evaluator helper using the actual inference seam,
+  direct selection and assembled-context binding. It requires explicit trusted
+  Runtime, frozen knowledge/rubric, independent semantic judge and cleanup
+  callbacks; it never opens a default endpoint or copies authentication. Exact
+  decisions bind to the response digest and evidence spans, with a mandatory
+  critical completion check in the prepared curriculum. Indeterminate/stale
+  grades fail completion; combined measured advice/judge usage survives rejection.
+- Independent review corrected aggregate cleanup: Catlas close acknowledgements
+  and settled judgments each require separate process evidence. Aborted creation
+  fences dispatch; late session IDs and measured transport/judge spend are retained
+  while the worker survives, without retroactively passing an incomplete result.
+  **25/25 focused tests passed** using `node --test --test-isolation=none`, zero
+  provider calls, against the existing compiled product consumers. Independent
+  re-review found no blocker for this preparatory helper; docs-boundary and test
+  collection checks passed **3/3**. Public doubles do not
+  establish protected holdout isolation, live guidance quality or promotion.
+- **Next local work:** freeze the complete executable/callback dependency closure;
+  the current engine hash alone does not bind every Catlas/Runtime transitive
+  import. Native use additionally needs an out-of-worker owned-session/reviewer
+  observer: the existing worker is forcibly terminated after its abort grace and
+  cannot finish late promises. Review the new author evidence mapping and complete
+  those local preparations before requesting applicable new provider grants.
+  All previous author grants remain consumed. No new PR/main/release, npm publish,
+  installed-state write, live evaluation or promotion occurred.
+
+## Previous checkpoint — bounded topic-preservation slice complete (2026-09-26)
+
+- Owner authorized the next bounded local slice: preserve unrelated knowledge
+  during authoring and prepare independent baseline/candidate evaluation. Branch
+  `fix/knowledge-topic-preservation` starts from Platform main `c604970d`.
+  The 0.5.2 integration/publication below is complete; do not repeat it.
+- Fixed the original gaps: the host previously checked draft identity/evidence
+  and bundle applicability but did not enforce the prompt's entry constraints;
+  public selection fixtures checked presence rather than retained guidance.
+  Host-owned scope now permits only evidence-linked edits to existing entries.
+  Unrelated bilingual content/revisions, all applicability and entry order remain
+  fixed; missing scope permits no edits. Product evaluation independently freezes
+  scope and requires coverage of every baseline entry in both languages.
+- Implemented host-owned scope and independently frozen evaluation policy;
+  regressions cover topic overwrite, bilingual retention and scoped-content
+  quality loss. The archived native draft with digest `6c7ce9b832a987ab` was
+  rejected offline under recovery-only scope; archive unchanged, zero inference.
+  New private receipt is outside both repos at
+  `../.validation/knowledge-topic-preservation-20260926/historical-regression-final.json`.
+  Its final engine digest is
+  `1fefcf61ecf188e451f254e116bb1e955eaf09994e8f70fa13aacd7e06446330`.
+- Independent review found and drove a correction for direct Catlas selection
+  loss hidden by equal assembled contexts. The engine-owned critical check now
+  compares both paths; the verifier recomputes it from frozen inputs. The exact
+  budget-pressure regression covers both languages. Re-review found no remaining
+  code blockers. The final current-input suite passed **58/58** tests across
+  authoring, preservation, practice and promotion, including the 60-reset
+  bilingual positive fixture, critical scoped-content failure and both consumer
+  selection paths. The docs-boundary and test-collection checks passed **3/3**.
+  Commands used `node --test --test-isolation=none`; the default process-isolated
+  runner hit sandbox `spawn EPERM` before tests started. This matches the repo's
+  normal runner mode, requires no provider and passed without escalation.
+  Full application CI/native testing was not repeated for these developer-tool
+  changes; existing compiled product consumers were exercised. Final output is
+  retained in the private directory's `focused-tests.log`.
+- No new provider call, installed-state write, promotion,
+  version bump or publication is part of this local slice. Prior native model
+  authorizations remain consumed. Public deterministic cases cannot establish
+  protected holdout isolation or live model improvement.
+- **Next work:** independently prepare a protected product curriculum and a new
+  scoped author request against the current compatible baseline, review the
+  evidence-to-topic mapping and semantic assertions, then obtain the applicable
+  provider authorization before any native turn. Historical request/candidate
+  digests remain unchanged; do not replay them. The new public fixture is only a
+  regression starting point and must not be relabelled as a protected holdout.
+  Catlas live quality/promotion, separate Orchestrator applicability, G1/G2/G4
+  and installed combined acceptance remain open. Work remains on the local
+  feature branch; no new PR, main update or release is included in this slice.
+
+## Previous checkpoint — integrated and Desktop preview published (2026-09-26)
 
 - Owner authorized normal auto-merge PR integration and a Desktop
   **standard-profile preview**, including its version preparation; explicitly
@@ -973,6 +1583,7 @@ skill. Check both real artifact contents and effective session/model inputs.
 
 | Date | Update |
 |------|--------|
+| 2026-09-26 | Added evidence-linked authoring scope and independently frozen preservation policy. Engine-owned critical checks cover bilingual direct selection and assembled contexts; independent review caught and verified the fix for a masked Catlas selection loss. Final 58 focused knowledge tests and 3 docs/collection checks pass; the archived native overwrite is rejected offline. Public fixtures remain ineligible for product promotion. Local checkpoint only; no inference, installed-state mutation, version or publication. |
 | 2026-09-25 | P1/P2 enforce artifact content policy and add three preview-only Runtime skills with release/npm exclusion. P3/P4 implement on-demand candidate/evaluation/review/export/revocation through existing knowledge consumers. The Resume Checkpoint records each branch slice, validation and remaining native/managed-practice gates; the earlier inventory below is historical. No versions, release artifacts, installed state or main branch changed. |
 | 2026-09-25 | Read-only G0 inventory distinguishes 33 ordinary Runtime role/procedure packages and two normal knowledge bundles from the still-absent Cats-specific development/practice supplement. Recorded broad artifact staging, catalog cache identity, resumed-skill hydration and existing private candidate isolation. This documentation slice prepares ownership/profile contracts; no content filter, skill delivery, persisted schema, model inference, version or publication changed. G0/G1 and practice/promotion remain open. |
 | 2026-09-24 | PLAN-110 K1 now shares the Platform knowledge reader with Catlas and delivers normal Orchestrator procedures inline, with source-free asset fixtures. Catlas's 13 regressions pass within the 239-test scoped batch. This does not close this plan's preview development, practice/promotion, live-provider or installed-Desktop gates. |

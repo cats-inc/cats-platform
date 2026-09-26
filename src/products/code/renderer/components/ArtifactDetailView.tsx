@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { readKnowledgeCandidatePreview } from '../../shared/knowledgeCandidatePreview.js';
+import { KnowledgeCandidatePreview } from './KnowledgeCandidatePreview.js';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import {
@@ -155,6 +157,7 @@ export function ArtifactDetailView() {
   const previewActionLabel = previewTarget?.renderHint === 'download'
     ? t(messageKeys.codeArtifactDetailPreviewActionOpenArtifact)
     : t(messageKeys.codeArtifactDetailPreviewActionOpenPreview);
+  const knowledgePreview = readKnowledgeCandidatePreview(payload.artifact.metadata);
 
   return (
     <div className="codeArtifactDetailView">
@@ -165,6 +168,7 @@ export function ArtifactDetailView() {
             <h2>{payload.artifact.title}</h2>
           </div>
           <div className="operatorActionRow">
+            <button type="button" className="operatorActionButton" onClick={() => navigate('/code/knowledge')}>{t(messageKeys.codeKnowledgeManage)}</button>
             <button
               type="button"
               className="operatorActionButton"
@@ -208,7 +212,9 @@ export function ArtifactDetailView() {
           </div>
         </article>
 
-        {previewTarget?.inlineUrl ? (
+        {knowledgePreview ? (
+          <KnowledgeCandidatePreview preview={knowledgePreview} />
+        ) : previewTarget?.inlineUrl ? (
           <div className="codeBuildPreviewFrame">
             <IframeViewer
               title={payload.artifact.title}

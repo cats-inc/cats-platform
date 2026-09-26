@@ -146,7 +146,7 @@ export function ArtifactsListPage(): JSX.Element {
             </button>
           ))}
         </div>
-        <div className="channelTopBarEnd" />
+        <div className="channelTopBarEnd"><Link className="operatorActionButton" to="/code/knowledge">{t(messageKeys.codeKnowledgeManage)}</Link></div>
       </header>
       <div className="codeArtifactsList__statusBar" role="toolbar">
         <span className="codeArtifactsList__statusBarLabel">

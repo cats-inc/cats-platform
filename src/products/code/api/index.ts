@@ -33,6 +33,7 @@ import { routeCodeRelayApi } from './relayRoutes.js';
 import { routeCodeArtifactDeclarationApi } from './artifactDeclarationRoutes.js';
 import { routeCodeLivePreviewApi } from './livePreviewRoutes.js';
 import { routeCodeCatlasHelpApi } from './catlasHelpRoutes.js';
+import { routeCodeKnowledgeApi } from './knowledgeRoutes.js';
 import type { CodeCatlasHelpService } from '../state/catlasHelp.js';
 import {
   matchRoute,
@@ -198,6 +199,7 @@ export function readArtifactListFiltersFromQuery(
 export async function routeCodeApi(
   context: CodeApiRouteContext,
 ): Promise<boolean> {
+  if (await routeCodeKnowledgeApi(context)) return true;
   if (await routeCodeCatlasHelpApi(context)) {
     return true;
   }

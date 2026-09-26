@@ -5,6 +5,7 @@ import {
   type KnowledgeOperation,
 } from '../../../platform/knowledge/productKnowledge.js';
 import { resolveBundledPlatformConfigDir } from '../../../shared/platformPaths.js';
+import { applyLocalKnowledge } from '../../../platform/knowledge/localKnowledge.js';
 import { parseMessageLocale } from '../../../shared/i18n/index.js';
 import type { ChatChannelState, ChatChannelView } from '../api/contracts.js';
 import { activeAssignedParticipants } from '../shared/channelParticipants.js';
@@ -29,6 +30,7 @@ export async function loadOrchestratorKnowledge(input: {
   operations?: KnowledgeOperation[];
   policyDigest?: string;
   filePath?: string;
+  platformDir?: string;
 }) {
   const locale = parseMessageLocale(input.channel.responseLanguage)
     ?? parseMessageLocale(input.channel.language) ?? 'en';
@@ -44,11 +46,12 @@ export async function loadOrchestratorKnowledge(input: {
   if (input.surface === 'chat-visible' && !isDirectLaneChannel(input.channel) && participants.length > 0) {
     operations.push(CURRENT_ROOM_HANDOFF);
   }
-  const result = await loadProductKnowledge({
+  const bundled = await loadProductKnowledge({
     filePath: input.filePath ?? join(resolveBundledPlatformConfigDir(), ORCHESTRATOR_KNOWLEDGE_FILE),
     capabilities: ORCHESTRATOR_KNOWLEDGE_CAPABILITIES,
     locale,
   });
+  const result = input.filePath ? bundled : await applyLocalKnowledge(bundled, 'orchestrator', { platformDir: input.platformDir });
   return assembleProductKnowledgeContext(result, {
     role: 'orchestrator', surface: input.surface, locale, goal: input.body, topics,
     operations,

@@ -9,6 +9,7 @@ import {
 } from '../build/server/platform/knowledge/productKnowledge.js';
 import { loadOrchestratorKnowledge } from '../build/server/products/chat/state/orchestratorKnowledge.js';
 import { executeDispatch } from '../build/server/products/chat/state/runtime-dispatch/execution.js';
+import { inspectLocalKnowledge, mutateLocalKnowledge } from '../build/server/platform/knowledge/localKnowledge.js';
 import { createChatProviderAgentDecisionRequester } from '../build/server/products/chat/state/providerAgentDecisionRequester.js';
 import { createChatProviderAgentDecisionManifest, buildChatProviderAgentObservation } from '../build/server/products/chat/state/providerAgentObservation.js';
 import { resolveProviderCapabilityProfile } from '../build/server/platform/supervision/providerCapabilityProfiles.js';
@@ -193,6 +194,26 @@ test('serialized knowledge is bounded, and changes to scope or content invalidat
     ...selection, locale: 'en', goal: 'Long procedures', scope: {},
   });
   assert.ok(JSON.stringify(largeEnvelope).length <= 16_000);
+});
+
+test('visible dispatch and decision requester both read the explicit owning profile', async (t) => {
+  const f = await fixture(t), options = { platformDir: join(f.root, 'private-profile') };
+  const initial = await inspectLocalKnowledge(options);
+  const entry = initial.targets.find(row => row.target === 'orchestrator').entries[0];
+  const draft = await mutateLocalKnowledge({ action: 'submit', revision: initial.revision, target: 'orchestrator',
+    entryId: entry.id, content: { en: entry.content.en + ' Explicit profile lesson.', 'zh-TW': entry.content['zh-TW'] + ' 指定資料區知識。' } }, options);
+  await mutateLocalKnowledge({ action: 'adopt', revision: draft.revision, id: draft.drafts[0].id,
+    confirm: 'manual-local-unverified' }, options);
+  const h = harness(), client = runtime();
+  const result = await executeDispatch(h.state, h.channelId, h.request, client, now,
+    undefined, undefined, undefined, undefined, undefined, options.platformDir);
+  assert.equal(result.error, null);
+  assert.ok(deliveredContext(client.calls.send[0]).entries.some(row => row.content.includes('Explicit profile lesson.')));
+  const requester = createChatProviderAgentDecisionRequester(options), decisionClient = runtime(JSON.stringify(decision()));
+  assert.equal((await requester({ state: h.state, channelId: h.channelId, payload: { body: h.body },
+    observation: observation(h.channelId), runtimeClient: decisionClient, now })).kind, 'semantic_plan');
+  assert.ok(JSON.parse(decisionClient.calls.send[0].content).productKnowledge.entries.some(row =>
+    row.content.includes('Explicit profile lesson.') && row.adoption?.kind === 'manual-local-unverified'));
 });
 
 for (const group of [false, true]) {

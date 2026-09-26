@@ -18,6 +18,7 @@ export interface ProductKnowledgeEntry {
   kind: 'concept' | 'procedure';
   surfaces: KnowledgeSurface[];
   requiredOperations: KnowledgeOperation[];
+  adoption?: { kind: 'manual-local-unverified'; id: string; at: string };
 }
 export interface ProductKnowledgeBundle {
   revision: string;

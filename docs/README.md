@@ -2,9 +2,11 @@
 
 [Preview knowledge practice](knowledge-practice.md) documents the developer-only
 Desktop-managed candidate authoring, frozen evaluator and interruption/checkpoint
-workflow for PLAN-109. Native Windows authoring now produces an attributed,
-unverified draft within budget; independent content evaluation/promotion remains
-pending. Isolated authoring and lifecycle tests pass.
+workflow for PLAN-109. Native Windows authoring produces an attributed,
+unverified draft within budget. Bounded authoring now enforces evidence-linked
+entry scope; independent evaluation checks preserved bilingual guidance in both
+consumer delivery paths. Live quality evaluation and promotion remain pending;
+public deterministic fixtures cannot establish model improvement.
 
 > This directory contains all project documentation.
 

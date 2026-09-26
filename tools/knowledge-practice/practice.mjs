@@ -5,9 +5,11 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Worker } from 'node:worker_threads';
 import { loadProductKnowledge, assembleProductKnowledgeContext } from '../../build/server/platform/knowledge/productKnowledge.js';
-import { assertSeparated, canonical, digest, evidenceIds, fields, hasRecord, id, integer,
+import { EVALUATOR_MAX_BYTES, assertSeparated, canonical, digest, evidenceIds, fields, hasRecord, id, integer,
   readJson, readPlain, readRecord, safeText, writeNew, writeRecord } from './artifacts.mjs';
 import { candidateBundle, readCandidate } from './candidate.mjs';
+import { assertKnowledgeChanges, baselineKnowledge, preservationCheck, PRESERVATION_CHECK,
+  validateChangeScope } from './changes.mjs';
 
 const TOOL_ROOT = fileURLToPath(new URL('.', import.meta.url));
 export async function engineDigest() {
@@ -20,9 +22,10 @@ export async function engineDigest() {
 }
 
 export function validateExercise(spec) {
-  fields(spec, ['schemaVersion', 'id', 'revision', 'evidenceMode', 'platformVersion', 'capabilities', 'budget', 'metric', 'repeats', 'scenarios']);
+  fields(spec, ['schemaVersion', 'id', 'revision', 'evidenceMode', 'platformVersion', 'capabilities', 'budget', 'metric', 'repeats', 'scenarios', 'changeScope']);
   assert.equal(spec.schemaVersion, 1); id(spec.id); id(spec.revision);
   assert.ok(['fixture', 'product'].includes(spec.evidenceMode));
+  if (spec.evidenceMode === 'product' || spec.changeScope !== undefined) validateChangeScope(spec.changeScope);
   assert.match(spec.platformVersion, /^\d+\.\d+\.\d+$/u);
   assert.ok(Array.isArray(spec.capabilities) && spec.capabilities.length > 0 && spec.capabilities.length <= 16);
   spec.capabilities.forEach(id);
@@ -57,6 +60,7 @@ export function validateExercise(spec) {
     const checks = new Set();
     for (const check of item.checks) {
       fields(check, ['id', 'kind', 'critical', 'path', 'equals']); id(check.id);
+      assert.notEqual(check.id, PRESERVATION_CHECK, 'Reserved engine check ID.');
       assert.ok(!checks.has(check.id)); checks.add(check.id);
       assert.ok(['correctness', 'policy'].includes(check.kind)); assert.equal(typeof check.critical, 'boolean');
       assert.ok(typeof check.path === 'string' && /^\/(?:[a-zA-Z0-9_-]+\/?)+$/u.test(check.path));
@@ -77,10 +81,22 @@ export async function admitPractice({ runRoot, authorRoots, exerciseFile, baseli
   assert.equal(policy.profile, 'preview', 'Practice requires an explicit preview Runtime artifact.');
   const exercise = validateExercise(await readJson(exerciseFile));
   const baseline = await readJson(baselineFile, 128 * 1024);
-  const evaluator = (await readPlain(evaluatorFile, 64 * 1024)).toString('utf8');
+  const evaluator = (await readPlain(evaluatorFile, EVALUATOR_MAX_BYTES)).toString('utf8');
   const baselineResult = await loadProductKnowledge({ filePath: baselineFile,
     platformVersion: exercise.platformVersion, capabilities: exercise.capabilities, locale: 'en' });
   assert.equal(baselineResult.status, 'ready', 'Baseline is incompatible with the frozen exercise.');
+  if (exercise.changeScope !== undefined) {
+    validateChangeScope(exercise.changeScope, baselineKnowledge(baseline));
+    for (const locale of ['en', 'zh-TW']) {
+      const result = locale === 'en' ? baselineResult : await loadProductKnowledge({ filePath: baselineFile,
+        platformVersion: exercise.platformVersion, capabilities: exercise.capabilities, locale });
+      assert.equal(result.status, 'ready', 'Baseline must support both evaluation locales.');
+      const covered = new Set(exercise.scenarios.filter(scenario => scenario.context.locale === locale)
+        .flatMap(scenario => assembleProductKnowledgeContext(result, scenario.context).entries.map(entry => entry.id)));
+      assert.ok(result.bundle.entries.every(entry => covered.has(entry.id)),
+        `Preservation scenarios must deliver every baseline entry in ${locale}.`);
+    }
+  }
   await mkdir(runRoot, { recursive: false, mode: 0o700 });
   await writeNew(join(runRoot, '.receipt-key'), randomBytes(32).toString('hex'));
   await writeNew(join(runRoot, 'exercise.json'), exercise);
@@ -102,47 +118,89 @@ export async function frozenInputs(runRoot) {
   const baseline = await readJson(join(runRoot, 'baseline.json'), 128 * 1024);
   assert.equal(digest(exercise), admission.exerciseDigest, 'Exercise changed.');
   assert.equal(digest(baseline), admission.baselineDigest, 'Baseline changed.');
-  assert.equal(digest(await readPlain(join(runRoot, 'evaluator.mjs'))), admission.evaluatorDigest, 'Evaluator changed.');
+  assert.equal(digest(await readPlain(join(runRoot, 'evaluator.mjs'), EVALUATOR_MAX_BYTES)), admission.evaluatorDigest, 'Evaluator changed.');
   return { admission, exercise, baseline };
 }
 
-async function attemptInWorker(modulePath, input, timeoutMs, signal) {
+async function attemptInWorker(modulePath, input, timeoutMs, signal, effectSupervisor, remainingTokens) {
   if (signal?.aborted) return { error: 'interrupted', notStarted: true };
-  const worker = new Worker(new URL('./worker.mjs', import.meta.url), {
-    workerData: { modulePath, input }, resourceLimits: { maxOldGenerationSizeMb: 128 },
-  });
+  let lease, worker;
+  const start = performance.now();
+  try {
+    lease = await effectSupervisor?.open({ ...input, remainingTokens });
+    if (signal?.aborted || performance.now() - start >= timeoutMs) {
+      await lease?.seal('admission_interrupted'); lease?.port.close();
+      return { error: signal?.aborted ? 'interrupted' : 'timeout', notStarted: true };
+    }
+    worker = new Worker(new URL('./worker.mjs', import.meta.url), {
+      workerData: { modulePath, input: { ...input, ...(lease ? { effectPort: lease.port } : {}) } },
+      transferList: lease ? [lease.port] : [], resourceLimits: { maxOldGenerationSizeMb: 128 },
+    });
+  } catch {
+    await lease?.seal('worker_start_failed'); lease?.port.close();
+    return { error: 'evaluator_start_failed', notStarted: true };
+  }
   let timer, grace;
   let stopped;
   const stop = (reason) => {
     stopped ??= reason;
+    void lease?.seal(reason);
     worker.postMessage('abort');
     grace ??= setTimeout(() => { void worker.terminate(); }, 250);
   };
   const abort = () => stop('interrupted');
+  let response;
   try {
-    return await new Promise((resolveResult) => {
+    response = await new Promise((resolveResult) => {
       let finished = false;
-      const finish = (value) => { if (!finished) { finished = true; resolveResult(value); } };
+      const finish = (value) => {
+        if (!finished) {
+          finished = true;
+          // The result/exit boundary is irreversible. Late effects may resolve
+          // accounting during termination, never upgrade premature success.
+          const boundary = lease?.snapshot();
+          if (boundary && (!boundary.durable || boundary.pending || boundary.cleanup !== 'complete')) {
+            value = { ...value, error: value.error ?? 'unresolved_effects' };
+          }
+          void lease?.seal(value.error ?? 'worker_result'); resolveResult(value);
+        }
+      };
       worker.once('message', (message) => finish(stopped ? { ...message, error: stopped } : message));
       worker.once('error', () => finish({ error: stopped ?? 'evaluator_error' }));
       worker.once('exit', () => finish({ error: stopped ?? 'evaluator_error' }));
       signal?.addEventListener('abort', abort, { once: true });
-      timer = setTimeout(() => stop('timeout'), timeoutMs);
+      timer = setTimeout(() => stop('timeout'), Math.max(1, timeoutMs - (performance.now() - start)));
       if (signal?.aborted) abort();
     });
   } finally {
     clearTimeout(timer); clearTimeout(grace); signal?.removeEventListener('abort', abort);
     await worker.terminate();
+    await lease?.seal(stopped ?? 'worker_finished');
   }
+  if (lease) {
+    const parent = lease.snapshot();
+    response.parentEffects = { knownTokens: parent.knownTokens, usageComplete: parent.usageComplete,
+      cleanup: parent.cleanup, pending: parent.pending, durable: parent.durable };
+    // Parent measurements replace worker reports; never add them to the same spend.
+    response.result = { ...response.result, usageTokens: parent.usageComplete ? parent.knownTokens : null,
+      knownTokens: parent.knownTokens };
+    if (!parent.durable || parent.pending || parent.cleanup !== 'complete') response.error ??= 'unresolved_effects';
+  }
+  return response;
 }
 
 function checkObservation(result, checks) {
-  fields(result, ['observed', 'usageTokens', 'interventions', 'evidenceRefs', 'cleanup']);
+  fields(result, ['observed', 'usageTokens', 'knownTokens', 'interventions', 'evidenceRefs', 'cleanup', 'complete']);
+  if (result.complete !== undefined) assert.equal(result.complete, true, 'Evaluator assessment is incomplete.');
   assert.ok(Buffer.byteLength(canonical(result.observed)) <= 32_768, 'Observation exceeds its budget.');
   // Receipts contain assertions/digests, not automatic raw transcript capture.
   assert.equal(result.cleanup, 'complete', 'Evaluator cleanup was not confirmed.');
   integer(result.interventions, 0, 1_000); evidenceIds(result.evidenceRefs);
   if (result.usageTokens !== null) integer(result.usageTokens, 0, Number.MAX_SAFE_INTEGER);
+  if (result.knownTokens !== undefined) {
+    integer(result.knownTokens, 0, Number.MAX_SAFE_INTEGER);
+    if (result.usageTokens !== null) assert.equal(result.knownTokens, result.usageTokens);
+  }
   return checks.map((check) => {
     let observed = result.observed;
     for (const key of check.path.slice(1).split('/')) {
@@ -172,8 +230,8 @@ export function compareAttempts(exercise, attempts, stopReason) {
     gatesPassed: complete && criticalPassed && noRegression && improved };
 }
 
-export async function evaluatePractice({ runRoot, candidateFile, signal }) {
-  const { admission, exercise } = await frozenInputs(runRoot);
+export async function evaluatePractice({ runRoot, candidateFile, signal, effectSupervisor }) {
+  const { admission, exercise, baseline } = await frozenInputs(runRoot);
   assert.ok(!await hasRecord(runRoot, 'evaluation-started.json'), 'This run already started. Inspect retained evidence; do not replay it.');
   const candidate = await readCandidate(candidateFile);
   assert.notEqual(candidate.draft.authorId, admission.evaluatorId, 'Author cannot evaluate their own candidate.');
@@ -193,6 +251,8 @@ export async function evaluatePractice({ runRoot, candidateFile, signal }) {
     });
     assert.equal(bundles[`${phase}:${locale}`].status, 'ready', 'Practice knowledge is incompatible.');
   }
+  if (exercise.changeScope !== undefined) assertKnowledgeChanges(baselineKnowledge(baseline),
+    candidate.draft.knowledge, exercise.changeScope, candidate.draft.evidenceRefs);
   const attempts = [];
   let stopReason = null, tokens = 0;
   outer: for (const scenario of exercise.scenarios) for (let repeat = 0; repeat < exercise.repeats; repeat++) {
@@ -214,18 +274,26 @@ export async function evaluatePractice({ runRoot, candidateFile, signal }) {
       const response = attemptStart - monotonicStart >= exercise.budget.maxElapsedMs
         ? { error: 'budget_exhausted', notStarted: true } : await attemptInWorker(join(runRoot, 'evaluator.mjs'), {
         fixture: scenario.fixture, fixtureRoot, resetId, context,
-      }, Math.min(exercise.budget.attemptTimeoutMs, exercise.budget.maxElapsedMs - (attemptStart - monotonicStart)), signal);
+      }, Math.min(exercise.budget.attemptTimeoutMs, exercise.budget.maxElapsedMs - (attemptStart - monotonicStart)),
+      signal, effectSupervisor, exercise.budget.maxTokens - tokens);
       // Charge known provider usage even if cleanup, parsing or evidence validation fails.
       const measured = response.result?.usageTokens;
       const measuredTokens = response.notStarted ? 0
         : Number.isSafeInteger(measured) && measured >= 0 ? measured : null;
+      const partial = response.result?.knownTokens;
+      const knownTokens = response.parentEffects?.knownTokens ?? measuredTokens
+        ?? (Number.isSafeInteger(partial) && partial >= 0 ? partial : 0);
       let row = { ...intent, elapsedMs: Math.ceil(performance.now() - attemptStart), tokens: measuredTokens,
-        interventions: 0, failureClass: response.error ?? null, checks: null };
+        knownTokens, interventions: 0, failureClass: response.error ?? null, checks: null,
+        ...(response.parentEffects ? { parentEffects: response.parentEffects } : {}) };
       try {
         await frozenInputs(runRoot);
         assert.equal((await readCandidate(join(runRoot, 'candidate.json'))).digest, candidate.digest);
         if (!response.error) {
           const checks = checkObservation(response.result, scenario.checks);
+          if (exercise.changeScope !== undefined) checks.push(preservationCheck(
+            bundles[`baseline:${scenario.context.locale}`], bundles[`${phase}:${scenario.context.locale}`],
+            scenario.context, exercise.changeScope));
           row = { ...row, checks,
             interventions: response.result.interventions, evidenceRefs: response.result.evidenceRefs,
             observationDigest: digest(response.result.observed), contextDigest: context.contextDigest,
@@ -234,7 +302,7 @@ export async function evaluatePractice({ runRoot, candidateFile, signal }) {
           if (row.tokens === null) row.failureClass = 'unknown_usage';
         }
       } catch { row.failureClass = 'invalid_or_changed_evidence'; row.checks = null; }
-      tokens += row.tokens ?? 0;
+      tokens += row.knownTokens;
       await writeRecord(runRoot, `attempt-${attemptId}.json`, row);
       attempts.push(row);
       if (!row.checks || row.tokens === null) { stopReason = row.failureClass; break outer; }

@@ -3125,6 +3125,10 @@ export const enCatalog: MessageCatalog = {
   'code.artifactDetail.missingId': 'Artifact id is required.',
   'code.artifactDetail.noArtifactSummary': 'No artifact summary recorded.',
   'code.artifactDetail.noInlinePreview': 'No inline preview is available for this artifact yet.',
+  'code.knowledgeDraft.title': 'Knowledge draft',
+  'code.knowledgeDraft.manage': 'Contribute / adopt knowledge',
+  'code.knowledgeDraft.notice': 'Unverified agent contribution. Catlas and Orchestrator have not adopted this draft. Independent evaluation and review are still required.',
+  'code.knowledgeDraft.limits': 'Limits and counterexamples',
   'code.artifactDetail.notInlineSafe':
     'This artifact is available, but it is not inline-safe in the current Code surface.',
   'code.artifactDetail.previewOutput': 'Preview output',
