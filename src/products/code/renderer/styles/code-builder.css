@@ -1,5 +1,10 @@
 /* Code Builder — product-local styles for the Cats Code builder loop */
 
+.codeCatlasHelpLauncher {
+  display: flex;
+  justify-content: center;
+}
+
 .codeCatlasHelp {
   display: grid;
   gap: 12px;

@@ -75,9 +75,11 @@ export function CodeCatlasHelp({ guideCat, disabled = false, draft }: CodeCatlas
 
   if (!guideCat || guideCat.status === 'dismissed' || disabled) return null;
   if (!open) {
-    return <button type="button" className="promptChip" onClick={() => setOpen(true)}>
-      {t(messageKeys.codeCatlasHelpOpen)}
-    </button>;
+    return <div className="codeCatlasHelpLauncher">
+      <button type="button" className="promptChip" onClick={() => setOpen(true)}>
+        {t(messageKeys.codeCatlasHelpOpen)}
+      </button>
+    </div>;
   }
   return (
     <section className="codeCatlasHelp" aria-label={t(messageKeys.codeCatlasHelpTitle)}>
