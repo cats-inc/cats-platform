@@ -19,6 +19,50 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-27 (0.5.3 preview, standard profile — preparation)
+
+Behavior change:
+
+- Code > Artifacts > Contribute / adopt knowledge opens the minimal bilingual
+  Catlas/Orchestrator editor. Save a draft, compare it, explicitly confirm review,
+  then adopt locally. Revoke restores bundled content. Saving alone changes no
+  consumer behavior, and adopted text remains visibly unverified. Updated
+  bundles suspend stale overrides; applicability and permissions stay fixed.
+- Knowledge artifact previews display bilingual draft contents as plain text.
+  Page controls use the shared English and Traditional Chinese translations.
+- Model controls without a declared default select their first option. The
+  bundled Runtime includes Junie's full 15-model catalog and per-model effort
+  choices from the accepted 26.9.22 picker capture.
+
+Migration steps:
+
+No existing data conversion is required. Manual contributions use an additive,
+profile-local store with validation, backup and atomic replacement. The page
+does not invoke a model or automatically promote knowledge into shipped bundles.
+
+This compatible patch prepares Desktop only; no npm publication is requested.
+Runtime 0.3.1 is pinned to `8cdde2906b5c7175672664dd2fabbe8147555ced`.
+Usage 0.4.0 retains SHA-256
+`7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`.
+
+The standard signing profile is selected: expected platform trust is macOS
+signed + notarized, Windows unsigned: no certificate, and Linux n/a. Self-update
+from standard-profile 0.5.2 is expected to remain supported on Windows/Linux
+and on macOS with the same Developer ID team. Actual release signing and assets
+must be confirmed after publication; no new installed-update acceptance is claimed.
+
+Deprecations:
+
+None.
+
+Release verification:
+
+The feature and CI repair passed
+[full Platform CI](https://github.com/cats-inc/cats-platform/actions/runs/36262402507)
+at `182610f237c730d0ba0438453f055da2fec9601e`. The pinned Runtime passed its
+[release preflight](https://github.com/cats-inc/cats-runtime/actions/runs/36235872728).
+The version candidate still requires its CI and Desktop publication workflow.
+
 ## 2026-09-26 (0.5.2 preview, standard profile — publication)
 
 Behavior change:
