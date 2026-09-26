@@ -25,7 +25,48 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — frozen parent/worker composition complete (2026-09-26)
+## Resume Checkpoint — authorized native handlers and isolation preflight (2026-09-26)
+
+- Owner explicitly authorized continuation (`授權, 做吧`). This supersedes the
+  previous pending-authorization note for the next bounded native stage; historical
+  author grants remain consumed. Stage a small pilot after technical prerequisites,
+  not an implicit full 96-attempt exercise or release.
+- Implemented a Runtime-backed independent judge factory with explicit target and
+  reviewer identity, one fresh read-only/strict-skill session per reset, durable
+  request/session/usage/cleanup evidence, late-create/send cancellation fencing,
+  and exact quoted response evidence converted into validated UTF-16 spans.
+  The model cannot supply its own usage. **47/47** judge/semantic tests passed,
+  including cancellation during final receipt flush and a valid negative judgment.
+  Independent review confirmed the correction and found no remaining helper blocker.
+  The frozen parent/worker fixture now includes this actual judge with public
+  transport/observer doubles, retaining a separate reviewer session and 7 of the
+  total 49 fixture tokens. The complete freeze suite passed **15/15**; parent effects,
+  documentation-boundary and test collection checks passed **24/24** (86 total).
+- Read-only architecture review found a concrete native gap: current Runtime
+  Codex bootstrap selects legacy `sandbox: 'read-only'`, while its dynamic read
+  tools are not an exclusive allowlist over native tools/MCP/apps. This is not
+  proof of author read isolation or grader blinding. The installed native
+  App Server schema and no-inference policy canaries were checked before any
+  Runtime seam change. Installed Codex **0.157.0** exposes experimental named
+  permission profiles, not direct `readOnly.access` policies. With Windows sandbox
+  omitted, a recognized restricted profile still read an outside synthetic file.
+  With explicit `unelevated` mode and deny-by-default reads, it rejected the policy:
+  `windows unelevated restricted-token sandbox cannot enforce split filesystem read
+  restrictions directly; refusing to run unsandboxed`. Its legacy read-only control
+  denied both synthetic files, which is not an isolation/usability pass. Both owned
+  servers exited with zero model calls. The independent reviewer checked the raw
+  probe evidence. This locally observed limitation is consistent with
+  [official permissions guidance](https://learn.chatgpt.com/docs/permissions).
+- Existing Docker Linux daemon availability was confirmed read-only. Next, use a
+  synthetic container canary to assess an isolated alternative; do not infer that
+  an available daemon, private home or accepted config establishes isolation.
+  No elevated Windows sandbox setup, system account or firewall change occurred.
+- A dedicated private Runtime with explicit process identity and independent
+  observation is needed for the native pilot. Historical PID-only snapshots,
+  close ACKs and current pool counts are insufficient. No inference, auth copy,
+  installed-state write or publication has occurred in this new stage.
+
+## Previous checkpoint — frozen parent/worker composition complete (2026-09-26)
 
 - Retained-effect inspection is committed at `6d2d41f0`, with **22/22** final
   scoped checks and independent review complete. No product source changed in

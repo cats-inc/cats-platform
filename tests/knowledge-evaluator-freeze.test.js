@@ -191,7 +191,7 @@ test('freeze, admission and verification share the exact bounded evaluator size 
   await assert.rejects(frozenInputs(paths.runRoot), /bounded regular artifact/u);
 });
 
-test('one frozen closure supplies parent callbacks and a worker evaluator after their source tree is removed', { timeout: 30_000 }, async t => {
+test('one frozen closure supplies Runtime judge, parent and worker after their source tree is removed', { timeout: 30_000 }, async t => {
   const f = await setup(t), paths = await createPreservationFixture(join(f.root, 'practice'));
   const exercise = await readJson(paths.exerciseFile);
   const observation = { surface: 'code:new', observedAt: '2026-09-26T00:00:00Z', runtimeReachable: true,
@@ -219,6 +219,7 @@ test('one frozen closure supplies parent callbacks and a worker evaluator after 
     import { createCatlasEvaluator } from ${modulePath('tools/knowledge-practice/catlasEvaluator.mjs')};
     import { createCatlasEffectClient } from ${modulePath('tools/knowledge-practice/catlasEffectClient.mjs')};
     import { createCatlasEffectSupervisor } from ${modulePath('tools/knowledge-practice/catlasEffects.mjs')};
+    import { createRuntimeKnowledgeJudge } from ${modulePath('tools/knowledge-practice/runtimeJudge.mjs')};
     import { loadProductKnowledge } from ${modulePath('build/server/platform/knowledge/productKnowledge.js')};
     import binding from './binding.json';
     export function createSupervisor({ evaluationRoot }) {
@@ -226,18 +227,25 @@ test('one frozen closure supplies parent callbacks and a worker evaluator after 
         model: binding.target.model, providerTarget: { resolved: true, provider: binding.target.provider, target: binding.target.instance },
         workspace: { kind: 'sandbox', access: 'read_only' }, permissionMode: 'default',
         skills: { strict: true, requestedSkills: [], appliedSkillIds: [] } };
+      const reviewerSession = { ...session, id: 'public-reviewer-session' };
+      const reviewer = createRuntimeKnowledgeJudge({ evaluationRoot, target: binding.target,
+        authorId: 'public-author', reviewerId: 'public-reviewer',
+        runtimeClient: { createSession: async () => reviewerSession, observeSession: async () => ({ session: reviewerSession }),
+          sendMessage: async (_id, content) => {
+            const { response, responseDigest, criteria } = JSON.parse(content);
+            if (criteria[0].criterion !== binding.rubric[0].criterion) throw new Error('Rubric changed');
+            return { tokensUsed: 7, segments: [{ kind: 'text', text: JSON.stringify({ responseDigest,
+              decisions: [{ id: 'useful', verdict: 'pass', rationale: 'Public fixture.', evidenceQuotes: [response.advice] }] }) }] };
+          }, closeSession: async () => {}, cancelSession: async () => {} },
+        observeCleanup: async () => ({ status: 'complete', evidenceRefs: ['fixture:frozen-reviewer-cleanup'] }) });
       return createCatlasEffectSupervisor({ evaluationRoot, target: binding.target,
         runtimeClient: { createSession: async () => session, observeSession: async () => ({ session }),
           sendMessage: async () => ({ tokensUsed: 42, segments: [{ kind: 'text', text: JSON.stringify({
             advice: 'Select a coding target.', knowledgeIds: ['code.entry'] }) }] }),
           closeSession: async () => {}, cancelSession: async () => {} },
-        judge: async ({ response, responseDigest, criteria }) => {
-          if (criteria[0].criterion !== binding.rubric[0].criterion) throw new Error('Rubric changed');
-          return { responseDigest, reviewerId: 'public-reviewer', usageTokens: 7,
-            decisions: [{ id: 'useful', verdict: 'pass', rationale: 'Public fixture.',
-              evidenceSpans: [{ start: 0, end: response.advice.length }] }] };
-        },
-        confirmCleanup: async () => ({ status: 'complete', evidenceRefs: ['fixture:frozen-cleanup'] }),
+        judge: reviewer.judge,
+        confirmCleanup: async input => input.stage === 'reviewer' ? reviewer.confirmCleanup(input)
+          : { status: 'complete', evidenceRefs: ['fixture:frozen-cleanup'] },
         reconcile: async () => ({ status: 'complete', evidenceRefs: ['fixture:frozen-reconcile'] }) });
     }
     export async function attempt(args) {
@@ -250,7 +258,7 @@ test('one frozen closure supplies parent callbacks and a worker evaluator after 
         loadKnowledge: async () => knowledge, resolveRubric: async () => binding.rubric })(args);
     }`);
   const frozen = await f.freeze(), { manifest } = await verifyFrozenEvaluator(f.outputRoot);
-  for (const name of ['catlasEffects.mjs', 'catlasEffectClient.mjs', 'catlasEvaluator.mjs']) {
+  for (const name of ['catlasEffects.mjs', 'catlasEffectClient.mjs', 'catlasEvaluator.mjs', 'runtimeJudge.mjs']) {
     assert.ok(manifest.inputs.some(input => input.path === join(project, 'tools/knowledge-practice', name)));
   }
   assert.ok(manifest.inputs.some(input => input.path === join(f.sourceRoot, 'binding.json')));
@@ -278,4 +286,8 @@ test('one frozen closure supplies parent callbacks and a worker evaluator after 
   assert.equal(retained.structuralStatus, 'consistent'); assert.equal(retained.recordedKnownTokens, 49);
   assert.equal(retained.usageUncertain, false); assert.equal(retained.currentCleanup, 'unobserved');
   assert.equal(retained.replayAllowed, false);
+  const judge = await readJson(join(paths.runRoot, 'resets', row.resetId, 'judge/result.json'));
+  assert.equal(judge.sessionId, 'public-reviewer-session'); assert.equal(judge.usageTokens, 7);
+  assert.equal(judge.result.decisions[0].verdict, 'pass'); assert.equal(judge.cleanup, 'complete');
+  assert.equal(judge.failure, null);
 });

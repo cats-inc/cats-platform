@@ -34,7 +34,7 @@ export function validateCatlasEvaluationFixture(fixture) {
   return fixture;
 }
 
-function validateJudgment(value, responseDigest, reviewerId, criteria, advice) {
+export function validateCatlasJudgment(value, responseDigest, reviewerId, criteria, advice) {
   fields(value, ['reviewerId', 'responseDigest', 'decisions', 'usageTokens']);
   assert.ok(Number.isSafeInteger(value.usageTokens) && value.usageTokens >= 0, 'Reviewer usage is unknown.');
   assert.equal(value.reviewerId, reviewerId); assert.equal(value.responseDigest, responseDigest, 'Stale semantic judgment.');
@@ -206,7 +206,7 @@ export function createCatlasEvaluator({ evaluationRoot, runtimeClient, guideCat,
           await writeNew(join(fixtureRoot, 'assessment-usage.json'), { resetId, reviewerTokens });
           return value;
         }).finally(() => { reviewerSettled = true; });
-        judgment = validateJudgment(structuredClone(await abortable(pending, signal)),
+        judgment = validateCatlasJudgment(structuredClone(await abortable(pending, signal)),
           responseDigest, reviewerId, criteria, advice.advice);
         signal.throwIfAborted();
         await writeNew(join(fixtureRoot, 'assessment-result.json'), judgment);

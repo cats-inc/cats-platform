@@ -286,6 +286,41 @@ covers tool sources and the knowledge loader, not every transitive Catlas/Runtim
 import. Public callback tests establish plumbing only, not protected holdout isolation, live
 quality improvement or promotion eligibility.
 
+## Runtime-backed independent judge
+
+`createRuntimeKnowledgeJudge` in `runtimeJudge.mjs` supplies a parent-only judge
+for the supervisor below. Bind an explicitly owned Runtime client, target,
+evaluation root, distinct reviewer/author IDs, and an independent
+`observeCleanup(snapshot)` callback. There is no endpoint discovery, credential
+loading or automatic retry. Wire its `judge` into the supervisor and route reviewer
+cleanup to its `confirmCleanup`; Catlas cleanup still needs its own observation.
+
+Each reset creates one fresh sandbox/read-only session with strict empty skills.
+Requested and observed target, model, workspace policy and skills must match before
+and after the send. The reviewer receives only the sanitized response and rubric;
+the model returns decisions and exact quotes. Trusted code converts unique quotes
+into UTF-16 evidence spans and validates complete rubric coverage. A valid negative
+decision is complete even without a quote; indeterminate or malformed decisions
+are incomplete. Model-written usage is rejected; positive transport usage is saved
+before parsing, including usage from rejected or interrupted responses.
+
+Exclusive `resets/<resetId>/judge` journals retain intents, session identity,
+measured usage, cleanup and result evidence. The parent retains pending create/send
+promises and closes late sessions without another send. Cancellation, missing
+process proof or a failed final receipt clears decisions without erasing measured
+spend. An abort during the final receipt flush also clears the returned decisions;
+the parent abort/seal fence remains authoritative over a previously written result.
+The generic retained-effects inspector reads the supervisor ledger, not this judge
+subdirectory. Neither journal permits replay.
+
+**This adapter does not establish native blinding or process isolation.** A prompt
+omitting author labels is insufficient if native tools can read the evaluator tree.
+Legacy read-only policy restricts writes, not all reads; dynamic tools do not disable
+other native tool paths. Native use still requires a proven restricted read policy,
+owned endpoint/process evidence and an independently reviewed cleanup observer.
+The tests use transport/observer doubles, including the real HTTP client over mock
+fetch; they make no provider call or product-quality claim.
+
 ## Parent-owned Catlas effects
 
 The programmatic `evaluatePractice` accepts an optional `effectSupervisor` from
@@ -395,9 +430,11 @@ An integration fixture exercises this composition through real admission, a work
 thread, parent-owned callback dispatch, evaluation verification and retained-effect
 inspection after deleting the composition entry and JSON source inputs. Parent and
 worker use identical frozen bytes and the single baseline attempt records 49
-fixture tokens. It stops at the attempt limit without running candidate advice or
-a full comparison and stays ineligible for production. All Runtime/judge/cleanup callbacks
-in this test are public doubles; this proves the composition mechanism, not native
+fixture tokens, including 7 measured by the actual Runtime judge adapter in a
+separate reviewer session/journal. It stops at the attempt limit without running
+candidate advice or a full comparison and stays ineligible for production. The
+Runtime transport and cleanup observer are public doubles; this proves the
+composition mechanism, not native
 ownership, a live judge's quality, author read isolation or provider cleanup.
 Injected callbacks and data read dynamically from files, environment, network or
 processes still require separate freezing/binding and review.
