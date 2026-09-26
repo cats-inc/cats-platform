@@ -91,6 +91,7 @@ export interface ProcessDispatchQueueOptions {
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore' | 'updateCore'>;
   chatStatePath?: string;
+  platformDir?: string;
   runtimeDataDir?: string;
   runtimeRecovery: RuntimeDispatchRecoveryPolicy;
   cancellationRegistry?: ChannelDispatchCancellationRegistry;
@@ -697,6 +698,7 @@ export async function processDispatchQueue(
     const executions = await settleInCompletionOrder(
       readyRequests.map((readyRequest) =>
         executeDispatchWithRecovery({
+          platformDir: options.platformDir,
           state: stateSnapshot,
           channelId,
           request: readyRequest.request,

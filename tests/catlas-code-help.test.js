@@ -13,6 +13,7 @@ import { writeGuideCatAssistConfig } from '../build/server/shared/guideCatAssist
 import { classifyPlatformAuthRoute } from '../build/server/app/server/authGatePolicy.js';
 import { CatsRuntimeClient } from '../build/server/runtime/client.js';
 import { inferCatlasAdvice } from '../build/server/platform/catlas/inference.js';
+import { inspectLocalKnowledge, mutateLocalKnowledge } from '../build/server/platform/knowledge/localKnowledge.js';
 
 const sourceKnowledge = await readFile(resolve('config/catlas-knowledge.json'), 'utf8');
 const guideCat = {
@@ -72,6 +73,22 @@ async function fixture(t, runtimeOverrides = {}, options = {}) {
   });
   return { root, coreStore, runtimeClient, calls, knowledgeFilePath, chatStatePath, service };
 }
+
+test('help uses local adoption from its explicit owning profile', async (t) => {
+  const f = await fixture(t);
+  const options = { platformDir: join(f.root, 'platform') };
+  const initial = await inspectLocalKnowledge(options);
+  const entry = initial.targets.find(row => row.target === 'catlas').entries[0];
+  const draft = await mutateLocalKnowledge({ action: 'submit', revision: initial.revision, target: 'catlas',
+    entryId: entry.id, content: { en: entry.content.en + ' Explicit profile lesson.', 'zh-TW': entry.content['zh-TW'] + ' 指定資料區知識。' } }, options);
+  await mutateLocalKnowledge({ action: 'adopt', revision: draft.revision, id: draft.drafts[0].id,
+    confirm: 'manual-local-unverified' }, options);
+  const service = createCodeCatlasHelpService({ coreStore: f.coreStore, runtimeClient: f.runtimeClient,
+    chatStatePath: f.chatStatePath, ...options });
+  assert.equal((await service.help(request(), new AbortController().signal)).source, 'model');
+  const delivered = JSON.parse(f.calls.send[0].content).knowledge;
+  assert.ok(delivered.some(row => row.content.includes('Explicit profile lesson.') && row.adoption?.kind === 'manual-local-unverified'));
+});
 
 test('source-free bilingual knowledge has stable provenance and content digests', async (t) => {
   const f = await fixture(t);

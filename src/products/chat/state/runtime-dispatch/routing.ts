@@ -487,6 +487,7 @@ interface RouteChannelMessageOptions {
   latestState?: ChatState;
   runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
   chatStatePath?: string;
+  platformDir?: string;
   runtimeDataDir?: string;
   cancellationRegistry?: ChannelDispatchCancellationRegistry;
   onStateWritten?: (channelId: string) => void;
@@ -7580,6 +7581,7 @@ export async function continueBegunChannelMessageDispatch(
     memoryService: options.memoryService,
     chatStore: options.chatStore,
     chatStatePath: options.chatStatePath,
+    platformDir: options.platformDir,
     runtimeDataDir: options.runtimeDataDir,
     runtimeRecovery,
     cancellationRegistry: options.cancellationRegistry,

@@ -464,6 +464,7 @@ export async function resumeWorkflowContinuationReplay(input: {
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
   chatStatePath?: string;
+  platformDir?: string;
   runtimeDataDir?: string;
   transport?: RuntimeTransportContext;
   onStateWritten?: (channelId: string) => void;
@@ -642,6 +643,7 @@ export async function resumeWorkflowContinuationReplay(input: {
     memoryService: input.memoryService,
     chatStore: input.chatStore,
     chatStatePath: input.chatStatePath,
+    platformDir: input.platformDir,
     runtimeDataDir: input.runtimeDataDir,
     runtimeRecovery,
     onStateWritten: input.onStateWritten,

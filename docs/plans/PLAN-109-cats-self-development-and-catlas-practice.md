@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Native authoring accepted; scoped edits and preservation checks implemented; live knowledge evaluation/promotion and broader gates pending |
+| Status | Desktop manual contribution/adoption/revoke usable; independent knowledge evaluation/promotion and broader gates pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Last updated | 2026-09-26 |
@@ -25,7 +25,35 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — usable draft inspection; native harness stopped (2026-09-26)
+## Resume Checkpoint — minimal Desktop contribution and local adoption (2026-09-26)
+
+- The owner explicitly requested the simplest acceptable contribution/adoption
+  flow. **Code > Artifacts > Contribute / adopt knowledge** now opens a bilingual
+  editor for one existing Catlas/Orchestrator entry. Save, compare both versions,
+  check the review box, then adopt locally; revoke restores bundled text.
+- Save alone is inert. Adoption is `manual-local-unverified`, with its own
+  provenance rather than the bundle's verification date. Default Catlas help,
+  visible Orchestrator dispatch and decision requests use their owning profile's
+  active text on the next matching request. Explicit evaluator files bypass it.
+  Applicability and permissions stay fixed; changed bundles suspend old overrides.
+- The additive schema-1 profile store validates revisions/limits, backs up and
+  atomically replaces data. Failed writes preserve the primary; corrupted data
+  blocks editing and consumers use bundled text. No Core migration is needed.
+- Independent review passed after fixing the serialized byte-limit check and
+  threading the owning profile through the real consumers. **35/35** focused
+  backend tests and **1/1** actual React flow test pass; server, renderer and test
+  TypeScript checks and the Vite renderer build pass.
+- Native Windows Electron acceptance used the normal built app sidecar and the
+  existing isolated viewer profile. Actual DOM controls saved a contribution,
+  required review, adopted it, and revoked it; API/persisted results restored
+  bundled content. Viewed native screenshots confirm the page renders. The
+  isolated window remains open; installed user data is untouched. No model call.
+- This completes the requested minimal manual flow. It does not finish automatic
+  authoring, independent quality evaluation, promoted-bundle release or the
+  broader development gates. Do not restart the retired native harness; those
+  tracks require a separately bounded user request. No version bump/publication.
+
+## Previous checkpoint — usable draft inspection; native harness stopped (2026-09-26)
 
 - Owner feedback explicitly prioritizes a usable Desktop flow and lower agent
   token expenditure. Stop the expanding native isolation/evaluation harness;

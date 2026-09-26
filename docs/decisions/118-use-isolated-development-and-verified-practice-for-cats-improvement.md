@@ -49,6 +49,15 @@ are also independent. Editing source does not update a running installation.
 
 ## Decision
 
+The owner's 2026-09-26 simplification accepts a separate manual Desktop path:
+paste agent-proposed bilingual text for one existing entry, save a draft, review,
+and explicitly adopt or revoke it in the local profile. It is marked
+`manual-local-unverified`, never as independently verified knowledge. Production
+Catlas and Orchestrator consume that profile's active text on their next matching
+request. IDs, applicability, tools and permissions stay unchanged; a shipped
+bundle change suspends the override. This additive local preference does not
+relax the independent evaluation, promoted-bundle or release gates below.
+
 ### 1. Separate development skills from end-user knowledge delivery
 
 Use two build profiles, provisionally called preview/debug and release:

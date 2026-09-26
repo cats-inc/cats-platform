@@ -163,6 +163,7 @@ export async function executeDispatch(
   companionStore?: CompanionBoxStore,
   core?: CatsCoreState,
   coreStore?: RuntimeEffectCoreStore,
+  platformDir?: string,
 ): Promise<DispatchExecution> {
   let resolvedConversationId: string | null = null;
   let resolvedContainerId: string | null = null;
@@ -212,6 +213,7 @@ export async function executeDispatch(
           channel,
           body: request.promptSourceMessage?.body ?? request.sourceMessage.body,
           surface: 'chat-visible',
+          platformDir,
           target: { ...resolveExecutionMetadataForTarget(state, channelId, request.target), sessionId },
           // Tool intent is not proof of a provider's callable tool inventory.
           // Until verified here, only existing room routing is exposed.

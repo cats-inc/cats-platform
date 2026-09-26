@@ -3110,6 +3110,7 @@ export const messageKeys = {
   codeArtifactDetailNoArtifactSummary: 'code.artifactDetail.noArtifactSummary',
   codeArtifactDetailNoInlinePreview: 'code.artifactDetail.noInlinePreview',
   codeKnowledgeDraftTitle: 'code.knowledgeDraft.title',
+  codeKnowledgeManage: 'code.knowledgeDraft.manage',
   codeKnowledgeDraftNotice: 'code.knowledgeDraft.notice',
   codeKnowledgeDraftLimits: 'code.knowledgeDraft.limits',
   codeArtifactDetailNotInlineSafe:

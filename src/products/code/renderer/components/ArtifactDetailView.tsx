@@ -168,6 +168,7 @@ export function ArtifactDetailView() {
             <h2>{payload.artifact.title}</h2>
           </div>
           <div className="operatorActionRow">
+            <button type="button" className="operatorActionButton" onClick={() => navigate('/code/knowledge')}>{t(messageKeys.codeKnowledgeManage)}</button>
             <button
               type="button"
               className="operatorActionButton"

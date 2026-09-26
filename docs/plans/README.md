@@ -47,7 +47,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
 | [PLAN-110](PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md) | Orchestrator Knowledge and Collaboration Rollout | In progress; separate native K2/K3, K3 saved-state projections and full CI pass; profile/combined rollout gates open | [SPEC-118](../specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md), [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
-| [PLAN-109](PLAN-109-cats-self-development-and-catlas-practice.md) | Cats Self-Development and Catlas Practice | Native authoring accepted; scoped edits and bilingual preservation checks implemented; live quality/promotion and combined gates open | [SPEC-117](../specs/SPEC-117-cats-self-development-and-catlas-practice.md), [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
+| [PLAN-109](PLAN-109-cats-self-development-and-catlas-practice.md) | Cats Self-Development and Catlas Practice | Desktop manual contribution/adoption/revoke usable; independent quality/promotion and combined gates open | [SPEC-117](../specs/SPEC-117-cats-self-development-and-catlas-practice.md), [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
 | [PLAN-108](./PLAN-108-conversation-navigation-cache.md) | Conversation Navigation Cache | Implemented | [SPEC-076](../specs/SPEC-076-per-entity-state-subscription-protocol.md), [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md) |
 | [PLAN-106](./PLAN-106-official-app-package-hosting.md) | Official App Package Hosting | Host/SDK implemented; Desktop 0.2.5 preview selection prepared; native acceptance/catalog deferred | [SPEC-115](../specs/SPEC-115-versioned-official-app-packages-and-telemetry-bridge.md), [ADR-114](../decisions/114-separate-official-app-sources-and-coordinate-desktop-distribution.md) |
 | [PLAN-105](./PLAN-105-telegram-work-delivery-golden-path-rollout.md) | Telegram Work Delivery Golden Path Rollout | In Progress — gates G0-G5 passed and all 50 SPEC-114 requirements traced; `/work` runs end to end from Telegram ingress through a supervised continuation loop to a Cats-verified commit, a delivery receipt, and Desktop inspection/recovery (disabled by default). G6 outstanding: no provider, git, or Telegram credential has executed against it yet | [SPEC-114](../specs/SPEC-114-telegram-work-delivery-golden-path.md), [ADR-112](../decisions/112-adopt-a-core-owned-transport-work-delivery-golden-path.md) |
@@ -164,6 +164,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-09-26 (PLAN-109 records scoped authoring and preservation checks; live knowledge evaluation/promotion remains open.)*
+*Last updated: 2026-09-26 (PLAN-109 records the usable manual Desktop flow; independent evaluation/promotion remains open.)*
 
 *See also: [specs/](../specs/) for feature specifications*

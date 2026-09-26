@@ -134,8 +134,8 @@ export async function inferCatlasAdvice(input: {
       content: JSON.stringify({
         question: input.question,
         observation: input.observation,
-        knowledge: input.entries.map(({ id, revision, digest, content }) =>
-          ({ id, revision, digest, content })),
+        knowledge: input.entries.map(({ id, revision, digest, content, adoption }) =>
+          ({ id, revision, digest, content, ...(adoption ? { adoption } : {}) })),
       }),
       input: { instructions },
       supervision: { ...supervision, actionId: `${requestId}:send` },

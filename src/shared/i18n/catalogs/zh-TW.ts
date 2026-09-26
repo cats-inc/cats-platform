@@ -3045,6 +3045,7 @@ export const zhTWCatalog: MessageCatalog = {
   'code.artifactDetail.noArtifactSummary': '尚未記錄成品摘要。',
   'code.artifactDetail.noInlinePreview': '這個成品目前沒有可用的內嵌預覽。',
   'code.knowledgeDraft.title': '知識草稿',
+  'code.knowledgeDraft.manage': '貢獻／採用知識',
   'code.knowledgeDraft.notice': '這是 agent 貢獻的未驗證草稿，Catlas 與 Orchestrator 尚未採用。仍須經過獨立評估與審查。',
   'code.knowledgeDraft.limits': '限制與反例',
   'code.artifactDetail.notInlineSafe':

@@ -18,6 +18,7 @@ import { ActiveCodeComposerChips } from './components/ActiveCodeComposerChips.js
 import { CodeTaskPillsBar } from './components/CodeTaskPillsBar.js';
 import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSurfaceChip.js';
 import { ArtifactDetailView } from './components/ArtifactDetailView.js';
+import { KnowledgeContributionsPage } from './components/KnowledgeContributionsPage.js';
 import { ArtifactsListPage } from './components/artifacts/ArtifactsListPage.js';
 import { CodeBuilderView } from './components/CodeBuilderView.js';
 import { CodeTaskDetailPage } from './components/CodeTaskDetailPage.js';
@@ -96,6 +97,7 @@ export function AppRoutes({
     entryPath: resolveAppEntryPath(payload.setupCompleteAt),
     chatsPath: resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId),
     extraRoutes: [
+      <Route key="knowledge" path="knowledge" element={<KnowledgeContributionsPage />} />,
       <Route
         key="codespaces"
         path="codespaces"

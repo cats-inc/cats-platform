@@ -35,6 +35,7 @@ export function createChatDeterministicChannelRouter(
   options: {
     runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
     chatStatePath?: string;
+    platformDir?: string;
     runtimeDataDir?: string;
     providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
     providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
@@ -63,6 +64,7 @@ export function createChatDeterministicChannelRouter(
           chatStore: input.chatStore as ChatStore,
           runtimeRecovery: options.runtimeRecovery,
           chatStatePath: options.chatStatePath,
+          platformDir: options.platformDir,
           runtimeDataDir: options.runtimeDataDir,
           providerAgentDecisionRequester: options.providerAgentDecisionRequester,
           providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
@@ -104,6 +106,7 @@ export async function resumeStoredWorkflowContinuationDispatch(input: {
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
   chatStatePath?: string;
+  platformDir?: string;
   runtimeDataDir?: string;
   onStateWritten?: (channelId: string) => void;
 }) {

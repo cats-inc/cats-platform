@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { resolveBundledPlatformConfigDir } from '../../shared/platformPaths.js';
 import type { MessageLocale } from '../../shared/i18n/index.js';
+import { applyLocalKnowledge } from '../knowledge/localKnowledge.js';
 import {
   knowledgeDigest,
   loadProductKnowledge,
@@ -17,17 +18,19 @@ export type CatlasKnowledgeBundle = ProductKnowledgeBundle;
 export type CatlasKnowledgeResult = ProductKnowledgeResult;
 export const catlasDigest = knowledgeDigest;
 
-export function loadCatlasKnowledge(options: {
+export async function loadCatlasKnowledge(options: {
   filePath?: string;
+  platformDir?: string;
   platformVersion?: string;
   capabilities?: readonly string[];
   locale: MessageLocale;
 }): Promise<CatlasKnowledgeResult> {
-  return loadProductKnowledge({
+  const result = await loadProductKnowledge({
     ...options,
     filePath: options.filePath ?? join(resolveBundledPlatformConfigDir(), CATLAS_KNOWLEDGE_FILE),
     capabilities: options.capabilities ?? CATLAS_CODE_CAPABILITIES,
   });
+  return options.filePath ? result : applyLocalKnowledge(result, 'catlas', { platformDir: options.platformDir });
 }
 
 export function selectCatlasKnowledge(

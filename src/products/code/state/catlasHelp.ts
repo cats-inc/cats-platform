@@ -39,6 +39,7 @@ export function createCodeCatlasHelpService(options: {
   coreStore: CoreStore;
   runtimeClient: RuntimeClient;
   chatStatePath: string;
+  platformDir?: string;
   knowledgeFilePath?: string;
   timeoutMs?: number;
   now?: () => Date;
@@ -63,7 +64,7 @@ export function createCodeCatlasHelpService(options: {
           const [core, config, knowledge] = await Promise.all([
             options.coreStore.readCore(),
             readGuideCatAssistConfig(options.chatStatePath),
-            loadCatlasKnowledge({ locale: request.locale, filePath: options.knowledgeFilePath }),
+            loadCatlasKnowledge({ locale: request.locale, filePath: options.knowledgeFilePath, platformDir: options.platformDir }),
           ]);
           controller.signal.throwIfAborted();
           if (!core.guideCat || core.guideCat.status === 'dismissed'

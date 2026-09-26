@@ -282,6 +282,7 @@ export async function prepareReadyRequests(
 }
 
 export async function executeDispatchWithRecovery(input: {
+  platformDir?: string;
   state: ChatState;
   channelId: string;
   request: DispatchRequest;
@@ -319,6 +320,7 @@ export async function executeDispatchWithRecovery(input: {
       input.companionStore,
       core,
       input.chatStore,
+      input.platformDir,
     );
 
     if (!execution.error) {

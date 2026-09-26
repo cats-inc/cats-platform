@@ -26,6 +26,7 @@ export interface ChatProviderAgentDecisionRequesterOptions {
   preparationBudget?: Partial<CollaborationPreparationBudget>;
   failureMode?: 'throw' | 'return_null';
   knowledgeFilePath?: string;
+  platformDir?: string;
   readState?: () => Promise<ChatState>;
   chatStore?: ChatStore;
   deliveryClient?: RuntimeDeliveryClient;
@@ -78,6 +79,7 @@ export function createChatProviderAgentDecisionRequester(
               })),
               policyDigest: knowledgeDigest(JSON.stringify(observation.policy)),
               filePath: options.knowledgeFilePath,
+              platformDir: options.platformDir,
             })
           : undefined;
         const result = await requestProviderAgentDecision({

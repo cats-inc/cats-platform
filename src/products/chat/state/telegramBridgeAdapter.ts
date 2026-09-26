@@ -31,6 +31,7 @@ export function createChatTelegramRoomBridge(input: {
   mutationGate?: AsyncKeyedGate;
   runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
   chatStatePath?: string;
+  platformDir?: string;
   runtimeDataDir?: string;
   providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
@@ -157,6 +158,7 @@ export function createChatTelegramRoomBridge(input: {
           } },
           runtimeRecovery: input.runtimeRecovery,
           chatStatePath: input.chatStatePath,
+          platformDir: input.platformDir,
           runtimeDataDir: input.runtimeDataDir,
           providerAgentDecisionRequester: input.providerAgentDecisionRequester,
           providerCapabilityBootstrapConfig: input.providerCapabilityBootstrapConfig,

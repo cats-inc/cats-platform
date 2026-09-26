@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Native authoring accepted; scoped edits and preservation checks implemented; live evaluation/promotion and broader acceptance pending |
+| Status | Desktop manual contribution/adoption/revoke usable; independent evaluation/promotion and broader acceptance pending |
 | Owner | Platform integration, with member-owned work packages |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Decision | [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
@@ -37,6 +37,18 @@ ship in both profiles without the preview-only development/practice supplement.
 That work does not complete this spec's source-development or promotion gates.
 
 ## Implemented preview content boundary (feature branches)
+
+Owner simplification on 2026-09-26 adds a usable ordinary Desktop path at
+**Code > Artifacts > Contribute / adopt knowledge**. The owner pastes an agent's
+bilingual proposal for one existing entry, saves, reviews and explicitly adopts
+it in the local profile; revoke restores the shipped text. It makes no model
+request. Local adoption is labeled `manual-local-unverified`, preserves entry IDs,
+applicability and permissions, and affects the next matching Catlas/Orchestrator request.
+Changed shipped bundles suspend old overrides. This additive local store has
+validated, backed-up atomic writes and explicit recovery; existing Core data
+needs no migration. Focused tests and native isolated Desktop save/adopt/revoke
+acceptance passed; see PLAN-109. Independent evaluation and publication remain
+separate from this manual local path.
 
 The 2026-09-25 P1/P2 slices implement Runtime artifact eligibility, monotonic
 preview exposure, retained-context release admission and three managed preview

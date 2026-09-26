@@ -9,6 +9,33 @@ the production knowledge loader and their configured provider/model.
 Implementation/checkpoints: [PLAN-109](plans/PLAN-109-cats-self-development-and-catlas-practice.md).
 Requirements: [SPEC-117](specs/SPEC-117-cats-self-development-and-catlas-practice.md).
 
+## Manual local contributions in Desktop
+
+For the simplest Desktop contribution, use **Code > Artifacts > Contribute / adopt
+knowledge** (`/code/knowledge`). Select Catlas or Orchestrator and an existing
+entry, paste the agent's proposed English and Traditional Chinese text, and save.
+Compare both versions, check the review box, then choose **Adopt locally**.
+Saving alone has no effect. **Revoke and restore bundled text** restores the
+shipped entry. This route makes no model request and needs no developer host.
+
+This is explicitly **manual local, unverified** adoption, accepted in the owner's
+2026-09-26 scope clarification. It affects the next matching request in the same
+Platform profile, preserves entry applicability and operation permissions, and
+does not establish independently verified promotion or publication. Each language
+is limited to 4,000 characters; storage is limited to 100 drafts / 2 MiB. A change
+to the shipped bundle suspends its old local overrides; submit a fresh draft.
+
+The additive schema-1 store lives under the profile's
+`knowledge/contributions.json`; existing Core data needs no migration. Each edit
+validates, checks its revision and byte limit, retains the previous valid state
+as `.bak`, then atomically replaces the primary file. Concurrent stale review
+is rejected. A damaged store blocks edits and consumers use shipped knowledge.
+For recovery, stop that profile's server, preserve the damaged file, restore the
+last valid `.bak` to the primary path, and restart; it must validate before use.
+This never modifies the bundled knowledge file or promotes the backup silently.
+
+The optional managed authoring workflow below remains a separate developer path.
+
 ## Managed authoring in an isolated preview Desktop
 
 The developer-only `tools/knowledge-practice/authoring-host.mjs` is an explicit
@@ -98,7 +125,8 @@ plain text, explicitly marked unverified and not adopted by Catlas/Orchestrator.
 Opening or expanding the preview makes no model request and reads no artifact
 file. Older artifacts without this snapshot retain their existing fallback;
 there is no automatic backfill or installed-state migration. This display does
-not add a contribution-start button or evaluate/adopt a candidate.
+not itself evaluate/adopt a candidate; the manual contribution route above is
+available from both the artifact list and detail page.
 `authoring-receipt.json` is a local inspection snapshot;
 the Core run is authoritative for later usage/cleanup callbacks. Candidate
 knowledge remains **unverified**. A completed run means drafting completed, not
