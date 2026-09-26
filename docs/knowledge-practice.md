@@ -411,10 +411,19 @@ the unknown-profile error said `undefined profile`, which its matcher omitted.
 Offline inspection confirms that negative control only; it cannot establish a
 successful command or change the original receipt.
 
-This namespace error is consistent with Docker's default restrictions but does
-not identify the sole enforcement layer. The installed Engine build and its
-seccomp dependency were pinned for investigation; no custom profile, capability,
-daemon or host policy was changed. Codex's [versioned Linux sandbox notes](https://github.com/openai/codex/blob/rust-v0.157.0/codex-rs/linux-sandbox/README.md)
+This namespace error alone does not identify the sole enforcement layer. A
+subsequent synthetic comparison pinned the installed Engine build and its seccomp
+dependency, then supplied two explicit profiles to fresh private containers. The
+baseline used that dependency's default source profile; the candidate added only
+an allow rule for `unshare(CLONE_NEWUSER)`. The same public user-namespace command
+failed with EPERM under the baseline and succeeded under the candidate, mapping
+one inner root UID to outer UID 65534. Outer identity, zero effective capabilities,
+no-new-privileges and seccomp filtering remained unchanged. Both containers exited
+and were removed; no daemon/host policy or container capability changed. The
+production observer deliberately rejected these custom profiles, so their private
+exit observations cannot become Runtime cleanup evidence. This establishes only
+the tested user-namespace operation; neither probe invoked Runtime or native Codex.
+Codex's [versioned Linux sandbox notes](https://github.com/openai/codex/blob/rust-v0.157.0/codex-rs/linux-sandbox/README.md)
 require bubblewrap for restricted filesystem execution. Any future dedicated
 container policy needs its own review, exact byte binding and native validation;
 ordinary syscall filters do not express that an operation is allowed only after

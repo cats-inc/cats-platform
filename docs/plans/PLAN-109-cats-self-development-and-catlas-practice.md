@@ -25,7 +25,42 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — native parent create-only transport (2026-09-26)
+## Resume Checkpoint — synthetic user namespace comparison (2026-09-26)
+
+- Parent create-only transport is checkpointed at `01475b67`. Next-stage owner
+  authorization remains active. No new model call, provider credential read/copy,
+  candidate, promotion or publication occurred.
+- Compared two explicit, digest-bound seccomp profiles in separate fresh private
+  containers on the pinned image and Engine. The baseline is the installed
+  Engine's pinned default **source profile**, supplied explicitly rather than
+  selected through the daemon builtin default. The candidate adds exactly one
+  rule allowing `unshare` with flags equal to `CLONE_NEWUSER`; the default errno
+  action and every other rule remain identical. Nonroot UID/GID, dropped
+  capabilities, no-new-privileges, read-only root/mounts and disabled networking
+  were unchanged. No daemon or host policy was modified.
+- The same public `unshare --user --map-root-user` command failed with EPERM under
+  the baseline and succeeded under the candidate, reporting UID `0` mapped to
+  outer UID `65534` for one ID. Outer UID/GID, zero effective capabilities,
+  no-new-privileges and active seccomp filtering were unchanged. This establishes
+  **user namespace feasibility under this one-rule container policy**, not
+  bubblewrap command readiness, native author read isolation or model quality.
+- Both probes drained their child output, completed without harness failure,
+  reached two matching valid exited/PID-zero/exit-zero/no-OOM observations, and
+  removed only their owned containers. No unknown create or pending CLI remained.
+  The production container observer deliberately rejected both custom profiles
+  and returned incomplete: these private observations are not Runtime cleanup
+  acceptance and do not broaden the production admission policy.
+- Source/policy review passed before execution after strengthening terminal-state
+  checks and extending the observation window. Actual-result and documentation
+  review also passed, including submitted profile bytes and owned cleanup.
+  Private exact digests and receipts are retained in `USERNS-EXPERIMENT-RESUME.md`.
+  Next: review one native-command diagnostic under the unchanged candidate policy
+  to see whether the failure advances. A repeated generic EPERM would not identify
+  the missing operation. Do not infer that a syscall rule checks namespace membership
+  or automatically add more permissions. Parent send/usage/cancellation, the
+  small authorized pilot and all knowledge-quality gates remain pending.
+
+## Previous checkpoint — native parent create-only transport (2026-09-26)
 
 - The actual empty-skill correction is committed at `c8466ad0`, with its earlier
   **112/112** scoped checks and independent review. Next-stage owner authorization
