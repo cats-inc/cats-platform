@@ -91,7 +91,15 @@ is supplied separately and retained in the observed receipt.
 The host validates the returned JSON, writes `draft.json` and `candidate.json`
 under `<candidate root>/knowledge-authoring/<id>/`, and declares an attributed
 Code artifact with candidate disposition and draft status, linked to its Task,
-Run and Runtime session. `authoring-receipt.json` is a local inspection snapshot;
+Run and Runtime session. New authoring artifacts also retain an optional bounded
+candidate snapshot in their metadata. **Code > Artifacts > the draft** displays
+its Traditional Chinese text, expandable English text, and counterexamples as
+plain text, explicitly marked unverified and not adopted by Catlas/Orchestrator.
+Opening or expanding the preview makes no model request and reads no artifact
+file. Older artifacts without this snapshot retain their existing fallback;
+there is no automatic backfill or installed-state migration. This display does
+not add a contribution-start button or evaluate/adopt a candidate.
+`authoring-receipt.json` is a local inspection snapshot;
 the Core run is authoritative for later usage/cleanup callbacks. Candidate
 knowledge remains **unverified**. A completed run means drafting completed, not
 that the lesson improves product behavior or can ship.

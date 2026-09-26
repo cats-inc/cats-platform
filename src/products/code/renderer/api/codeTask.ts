@@ -279,7 +279,7 @@ export interface CodeArtifactDetailFocus {
 }
 
 export interface CodeArtifactDetailResponse {
-  artifact: CodeArtifactSummary;
+  artifact: CodeArtifactSummary & { metadata?: Record<string, unknown> };
   task: CodeArtifactLinkSummary | null;
   workItem: CodeArtifactWorkItemSummary | null;
   project: CodeArtifactLinkSummary | null;

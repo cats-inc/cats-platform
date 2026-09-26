@@ -91,6 +91,7 @@ test('managed authoring persists one correlated draft through actual Code projec
   const artifact = core.artifacts[0];
   assert.equal(artifact.status, 'draft'); assert.equal(artifact.taskId, result.taskId); assert.equal(artifact.runId, result.runId);
   assert.equal(artifact.metadata.codeArtifactDeclaration.idempotency.producerRuntimeSessionId, f.session.id);
+  assert.deepEqual(artifact.metadata.knowledgeCandidate, candidate);
   assert.ok(buildCodeTaskDetailProjection(core, core.tasks[0], []));
   assert.ok(buildCodeArtifactDetailProjection(core, artifact));
   const duplicate = await authorKnowledge(f);

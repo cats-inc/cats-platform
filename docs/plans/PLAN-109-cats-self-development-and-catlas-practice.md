@@ -25,7 +25,33 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — explicit policy exit observer passed natively (2026-09-26)
+## Resume Checkpoint — usable draft inspection; native harness stopped (2026-09-26)
+
+- Owner feedback explicitly prioritizes a usable Desktop flow and lower agent
+  token expenditure. Stop the expanding native isolation/evaluation harness;
+  do not automatically resume its old next-step list. Its 49 private gate,
+  channel and child-process checks do not establish user-facing acceptance.
+  No pre-inference native canary was launched.
+- Managed-authoring artifacts now retain an optional, bounded candidate display
+  snapshot. The Code artifact page renders both languages and counterexamples
+  as plain text, with an explicit unverified/not-adopted notice. It opens no
+  local artifact path and initiates no model call or promotion. Older artifacts
+  retain fallback behavior; no persisted-data upgrade is required.
+- Independent review found no blocker. **37/37** focused tests pass (managed
+  authoring 35; actual artifact-page/malformed-snapshot checks 2), renderer and
+  test TypeScript checks pass, and the renderer build passes. Native Desktop
+  inspection passed using a fresh private copy of the previously completed real
+  draft: the actual artifact page displays five bilingual entries and the
+  unverified notice, verified by a viewed Desktop capture. It does not rerun
+  authoring or change the historical receipt. The first private viewer launch
+  waited on Electron readiness at module top level; its owned process was
+  stopped and the wrapper corrected to register a callback. No product host
+  change or provider call was involved.
+- This slice makes the existing output inspectable. Starting a contribution is
+  still the explicitly admitted developer-host workflow, not a new button in an
+  ordinary installed Desktop. Evaluation, adoption and release remain separate.
+
+## Previous checkpoint — explicit policy exit observer passed natively (2026-09-26)
 
 - `acd4dc3f` checkpoints the optional exact seccomp profile binding, with
   **89/89** scoped checks and independent source/test/docs review. Default

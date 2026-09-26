@@ -301,7 +301,7 @@ export async function authorKnowledge({ coreStore, runtimeClient, request: input
           summary: 'Unverified knowledge candidate. Independent evaluation and review are still required.' },
         location: { kind: 'local_path', value: candidateFile },
         anchors: { taskId, runId, workspacePath: root },
-        metadata: { source: SOURCE, knowledgeAuthoring: metadata },
+        metadata: { source: SOURCE, knowledgeAuthoring: metadata, knowledgeCandidate: candidate },
       }).core;
       core = upsertCoreRun(core, { ...run, status: 'completed', completedAt: new Date().toISOString(),
         metadata: { ...run.metadata, knowledgeAuthoring: metadata } }).core;
