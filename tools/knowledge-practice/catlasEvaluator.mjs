@@ -162,7 +162,7 @@ export function createCatlasEvaluator({ evaluationRoot, runtimeClient, guideCat,
         signal.throwIfAborted();
         sent = true; tokens = null;
         const response = await runtimeClient.sendMessage(sessionId, content, input);
-        tokens = Number.isSafeInteger(response.tokensUsed) && response.tokensUsed >= 0 ? response.tokensUsed : null;
+        tokens = Number.isSafeInteger(response.tokensUsed) && response.tokensUsed > 0 ? response.tokensUsed : null;
         await writeNew(join(fixtureRoot, 'catlas-usage.json'), { resetId, sessionId, tokens });
         return response;
       },
@@ -223,13 +223,15 @@ export function createCatlasEvaluator({ evaluationRoot, runtimeClient, guideCat,
       judgment?.decisions.find(decision => decision.id === criterion.id)?.verdict === 'pass']));
     const usageTokens = tokens === null || reviewerTokens === null ? null : tokens + reviewerTokens;
     const result = { observed: { responseValid: advice !== null && judgment !== null, semantic }, usageTokens,
+      knownTokens: (tokens ?? 0) + (reviewerTokens ?? 0),
       interventions: 0, cleanup, evidenceRefs: [`evaluation:${resetId}`, ...cleanupRefs.slice(0, 7)] };
+    result.complete = result.observed.responseValid && usageTokens !== null && cleanup === 'complete';
     try {
       await writeNew(join(fixtureRoot, 'catlas-result.json'), { resetId, contextDigest: context.contextDigest,
         selectedEntries: entries.map(({ id, revision, digest }) => ({ id, revision, digest })),
         receipt: advice?.receipt ?? null, judgmentDigest: judgment ? digest(judgment) : null,
         usage: { catlasTokens: tokens, reviewerTokens }, catlasCleanup, reviewerStarted, reviewerSettled, failure, result });
-    } catch { result.observed.responseValid = false; }
+    } catch { result.observed.responseValid = false; result.complete = false; }
     return result;
   };
 }

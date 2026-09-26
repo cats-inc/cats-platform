@@ -46,6 +46,10 @@ export async function verifyEvaluation(runRoot) {
     assert.ok(typeof row.resetId === 'string' && !resets.has(row.resetId), 'Reset identity was reused.'); resets.add(row.resetId);
     integer(row.elapsedMs, 0, Number.MAX_SAFE_INTEGER);
     if (row.tokens !== null) integer(row.tokens, 0, Number.MAX_SAFE_INTEGER);
+    if (row.knownTokens !== undefined) {
+      integer(row.knownTokens, 0, Number.MAX_SAFE_INTEGER);
+      if (row.tokens !== null) assert.equal(row.knownTokens, row.tokens, 'Known usage differs from the complete measurement.');
+    }
     if (row.checks) {
       const context = assembleProductKnowledgeContext(bundles[row.phase][expected.scenario.context.locale], expected.scenario.context);
       const checks = [...expected.scenario.checks];
@@ -65,7 +69,7 @@ export async function verifyEvaluation(runRoot) {
   }
   const comparison = compareAttempts(exercise, attempts, evaluation.stopReason);
   assert.deepEqual(evaluation.comparison, comparison, 'Evaluation summary changed.');
-  assert.deepEqual(evaluation.usage, { measuredTokens: attempts.reduce((sum, row) => sum + (row.tokens ?? 0), 0),
+  assert.deepEqual(evaluation.usage, { measuredTokens: attempts.reduce((sum, row) => sum + (row.knownTokens ?? row.tokens ?? 0), 0),
     tokensComplete: attempts.every((row) => row.tokens !== null) });
   assert.equal(evaluation.productionEligible, comparison.gatesPassed && admission.evidenceMode === 'product');
   if (comparison.gatesPassed) {

@@ -256,11 +256,15 @@ Usage is a measured nonnegative integer; zero is appropriate only for a review
 that used no inference. Any model judge needs applicable authorization and its
 own measured accounting; unknown spend is never zero.
 
-The attempt returns `observed.responseValid` and `observed.semantic[id]`.
+The attempt returns `complete`, `observed.responseValid` and
+`observed.semantic[id]`. An incomplete assessment stops evaluation in either
+phase; an invalid baseline cannot be scored as a low baseline that makes the
+candidate appear improved.
 Every admitted semantic scenario must require `responseValid === true` as a
 critical check, alongside its policy/correctness criteria. A complete negative
 decision is distinct from incomplete assessment. `usageTokens` includes Catlas
-and judge transport usage, including rejected results. Unknown usage prevents
+and judge transport usage, including rejected results. `knownTokens` retains
+the measured subtotal when another effect's usage is unknown. Unknown usage prevents
 continuation. Cleanup requires independent confirmation for both stages; a
 session-close acknowledgement or completed judge response is insufficient.
 
@@ -272,16 +276,66 @@ late transport/grade usage is retained without changing an incomplete result.
 The create intent retains the actual product request ID for reconciliation.
 
 **Native readiness remains pending.** A forcibly terminated worker cannot finish
-these promises. Before live use, provide an out-of-worker supervisor that owns
-and reconciles Runtime sessions and judge work, independently checks process
-disappearance, and retains unknown effects after interruption. Freeze the entire
+these promises. The parent bridge below retains effects beyond that worker, but
+its native callbacks still must prove Runtime ownership, independently check
+process disappearance and reconcile interruption. Freeze the entire
 static executable/callback/rubric closure using the preparation command below;
 hashing a wrapper that imports a mutable checkout is insufficient. Mutable data
 must still be embedded or independently digest-checked. The existing engine hash
 covers tool sources and the knowledge loader, not every transitive Catlas/Runtime
-import. Public
-callback tests establish plumbing only, not protected holdout isolation, live
+import. Public callback tests establish plumbing only, not protected holdout isolation, live
 quality improvement or promotion eligibility.
+
+## Parent-owned Catlas effects
+
+The programmatic `evaluatePractice` accepts an optional `effectSupervisor` from
+`createCatlasEffectSupervisor` in `catlasEffects.mjs`. Supply the exact evaluation
+root and target, an owned Runtime client, an independent `judge`,
+`confirmCleanup` and `reconcile` callbacks. There are no endpoint, credential or
+provider defaults. This API is not enabled by an ordinary `evaluate` CLI call.
+The worker receives `effectPort`; `createCatlasEffectClient({ port, resetId })`
+provides Runtime/judge/cleanup proxies for `createCatlasEvaluator`.
+
+The parent permits one create, one advice send and one judge per reset. It checks
+the explicit target, read-only sandbox grant, admitted question/observation and
+owned session ID; the port is not a general Runtime proxy. Slots are reserved
+before intent I/O, and flushed intent precedes callback invocation. New effects
+are sealed at the worker result, interruption or timeout, before the termination
+grace. A token threshold exhausted by advice prevents a subsequent judge call.
+Additional model selections, output paths, skills, strategies or routing fields
+are rejected before invoking Runtime. Advice usage must be positive: Runtime's
+default zero does not prove a measured zero-token provider response. Optional
+undefined SDK object fields are omitted during transfer; invalid JSON values
+still fail after their independently measured usage has been recorded in memory.
+
+Worker termination cannot discard parent-owned callback promises. The parent
+records late session IDs and measured usage under the reset's `effects` directory
+and invokes `reconcile(snapshot)` after disconnection and late changes. An
+observer's earlier cleanup result cannot certify a newer generation. Reconcile
+must operate only on the owned Runtime/profile and recorded session/request IDs,
+never launch inference, and use its own bounded cleanup deadline rather than the
+aborted inference signal. A rejected create without an ID remains unresolved,
+even if a point-in-time observer reports no session. Unknown effects are not
+permission to retry or guess ownership.
+
+`seal` is idempotent. `drain(timeoutMs)` waits at most the specified bound and
+returns current pending/cleanup state; it does not cancel remaining promises or
+prove native process exit. The host must keep the supervisor alive while dealing
+with that state. The engine uses parent measurements instead of worker reports,
+retains the known subtotal separately from complete usage, and refuses to proceed
+with pending or unconfirmed effects. This failure is fixed at the worker's result
+boundary even if a late effect settles during termination. Later evidence can
+resolve accounting and cleanup for inspection; it never rewrites an interrupted
+attempt as successful. Intent/result persistence failures prevent durable cleanup
+certification, even when measured spend remains available.
+
+This boundary has public tests with actual terminated worker threads and local
+callback doubles. Before native use, independently freeze/review the **parent**
+handler implementation, binding, rubric and observer too; the worker bundle does
+not freeze its parent's callbacks. Native endpoint/process identity, effective
+author read isolation and recovery after the **parent process** itself exits
+remain separate gates. Durable intent/result records preserve uncertainty and
+fence replay; they do not implement a restart that resumes model work.
 
 ## Freeze a trusted evaluator
 
@@ -303,11 +357,11 @@ verification use that same size limit. The worker still checks that the exported
 `attempt` is a function when executing it.
 
 The explicit recipe targets Node 22 ESM with no source map. The manifest records
-Node/esbuild/parser versions, source hashes, digests and lengths of bytes passed to the
-compiler, the recipe, builtin imports and final artifact digest. The known App
+Node/esbuild/parser versions, source hashes, digests and lengths of compiler input
+bytes, the recipe, builtin imports and final artifact digest. The known App
 SDK version initializer is pinned to the checked Platform package version; both
-digests and lengths of its original/transformed bytes and the package digest are recorded. Any
-change to that initializer/import requires reviewing the narrow transform.
+digests and lengths of its original/transformed bytes and the package digest are
+recorded. Any change to that initializer/import requires reviewing the narrow transform.
 Source bytes are rechecked before publishing the pair, so a concurrent edit
 cannot silently change the recorded closure.
 
@@ -369,8 +423,10 @@ The trusted module exports:
 export async function attempt({ fixture, fixtureRoot, resetId, context, signal }) {
   // Independently observe the admitted product harness; honor cancellation.
   return {
+    complete: false, // true only when the assessment itself completed
     observed: { /* bounded facts checked by the frozen engine */ },
     usageTokens: null, // measured nonnegative integer, or unknown
+    knownTokens: 0, // measured subtotal, even when total usage is unknown
     interventions: 0,
     evidenceRefs: ['evidence:stable-sanitized-id'],
     cleanup: 'complete', // only after owned activity is confirmed cleaned up
@@ -385,6 +441,9 @@ fixture/context data to a model. It must measure usage from the provider/harness
 and inspect actual results; a model's `success: true` is not an observation of a
 completed product action. Top-level self-reported success fields are rejected.
 The engine derives check results rather than trusting pass/fail flags.
+`complete` and `knownTokens` are additive for older generic fixture modules;
+Catlas always supplies them. If provided, false completion stops either phase,
+and known usage must equal the total whenever that total is complete.
 
 Budget fields are `maxAttempts`, `maxElapsedMs`, `attemptTimeoutMs`, `maxTokens`.
 Metrics are `passedChecks` (higher), or `elapsedMs`, `tokens`, `interventions`

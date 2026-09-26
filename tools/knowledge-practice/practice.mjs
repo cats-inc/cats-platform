@@ -122,43 +122,85 @@ export async function frozenInputs(runRoot) {
   return { admission, exercise, baseline };
 }
 
-async function attemptInWorker(modulePath, input, timeoutMs, signal) {
+async function attemptInWorker(modulePath, input, timeoutMs, signal, effectSupervisor, remainingTokens) {
   if (signal?.aborted) return { error: 'interrupted', notStarted: true };
-  const worker = new Worker(new URL('./worker.mjs', import.meta.url), {
-    workerData: { modulePath, input }, resourceLimits: { maxOldGenerationSizeMb: 128 },
-  });
+  let lease, worker;
+  const start = performance.now();
+  try {
+    lease = await effectSupervisor?.open({ ...input, remainingTokens });
+    if (signal?.aborted || performance.now() - start >= timeoutMs) {
+      await lease?.seal('admission_interrupted'); lease?.port.close();
+      return { error: signal?.aborted ? 'interrupted' : 'timeout', notStarted: true };
+    }
+    worker = new Worker(new URL('./worker.mjs', import.meta.url), {
+      workerData: { modulePath, input: { ...input, ...(lease ? { effectPort: lease.port } : {}) } },
+      transferList: lease ? [lease.port] : [], resourceLimits: { maxOldGenerationSizeMb: 128 },
+    });
+  } catch {
+    await lease?.seal('worker_start_failed'); lease?.port.close();
+    return { error: 'evaluator_start_failed', notStarted: true };
+  }
   let timer, grace;
   let stopped;
   const stop = (reason) => {
     stopped ??= reason;
+    void lease?.seal(reason);
     worker.postMessage('abort');
     grace ??= setTimeout(() => { void worker.terminate(); }, 250);
   };
   const abort = () => stop('interrupted');
+  let response;
   try {
-    return await new Promise((resolveResult) => {
+    response = await new Promise((resolveResult) => {
       let finished = false;
-      const finish = (value) => { if (!finished) { finished = true; resolveResult(value); } };
+      const finish = (value) => {
+        if (!finished) {
+          finished = true;
+          // The result/exit boundary is irreversible. Late effects may resolve
+          // accounting during termination, never upgrade premature success.
+          const boundary = lease?.snapshot();
+          if (boundary && (!boundary.durable || boundary.pending || boundary.cleanup !== 'complete')) {
+            value = { ...value, error: value.error ?? 'unresolved_effects' };
+          }
+          void lease?.seal(value.error ?? 'worker_result'); resolveResult(value);
+        }
+      };
       worker.once('message', (message) => finish(stopped ? { ...message, error: stopped } : message));
       worker.once('error', () => finish({ error: stopped ?? 'evaluator_error' }));
       worker.once('exit', () => finish({ error: stopped ?? 'evaluator_error' }));
       signal?.addEventListener('abort', abort, { once: true });
-      timer = setTimeout(() => stop('timeout'), timeoutMs);
+      timer = setTimeout(() => stop('timeout'), Math.max(1, timeoutMs - (performance.now() - start)));
       if (signal?.aborted) abort();
     });
   } finally {
     clearTimeout(timer); clearTimeout(grace); signal?.removeEventListener('abort', abort);
     await worker.terminate();
+    await lease?.seal(stopped ?? 'worker_finished');
   }
+  if (lease) {
+    const parent = lease.snapshot();
+    response.parentEffects = { knownTokens: parent.knownTokens, usageComplete: parent.usageComplete,
+      cleanup: parent.cleanup, pending: parent.pending, durable: parent.durable };
+    // Parent measurements replace worker reports; never add them to the same spend.
+    response.result = { ...response.result, usageTokens: parent.usageComplete ? parent.knownTokens : null,
+      knownTokens: parent.knownTokens };
+    if (!parent.durable || parent.pending || parent.cleanup !== 'complete') response.error ??= 'unresolved_effects';
+  }
+  return response;
 }
 
 function checkObservation(result, checks) {
-  fields(result, ['observed', 'usageTokens', 'interventions', 'evidenceRefs', 'cleanup']);
+  fields(result, ['observed', 'usageTokens', 'knownTokens', 'interventions', 'evidenceRefs', 'cleanup', 'complete']);
+  if (result.complete !== undefined) assert.equal(result.complete, true, 'Evaluator assessment is incomplete.');
   assert.ok(Buffer.byteLength(canonical(result.observed)) <= 32_768, 'Observation exceeds its budget.');
   // Receipts contain assertions/digests, not automatic raw transcript capture.
   assert.equal(result.cleanup, 'complete', 'Evaluator cleanup was not confirmed.');
   integer(result.interventions, 0, 1_000); evidenceIds(result.evidenceRefs);
   if (result.usageTokens !== null) integer(result.usageTokens, 0, Number.MAX_SAFE_INTEGER);
+  if (result.knownTokens !== undefined) {
+    integer(result.knownTokens, 0, Number.MAX_SAFE_INTEGER);
+    if (result.usageTokens !== null) assert.equal(result.knownTokens, result.usageTokens);
+  }
   return checks.map((check) => {
     let observed = result.observed;
     for (const key of check.path.slice(1).split('/')) {
@@ -188,7 +230,7 @@ export function compareAttempts(exercise, attempts, stopReason) {
     gatesPassed: complete && criticalPassed && noRegression && improved };
 }
 
-export async function evaluatePractice({ runRoot, candidateFile, signal }) {
+export async function evaluatePractice({ runRoot, candidateFile, signal, effectSupervisor }) {
   const { admission, exercise, baseline } = await frozenInputs(runRoot);
   assert.ok(!await hasRecord(runRoot, 'evaluation-started.json'), 'This run already started. Inspect retained evidence; do not replay it.');
   const candidate = await readCandidate(candidateFile);
@@ -232,13 +274,18 @@ export async function evaluatePractice({ runRoot, candidateFile, signal }) {
       const response = attemptStart - monotonicStart >= exercise.budget.maxElapsedMs
         ? { error: 'budget_exhausted', notStarted: true } : await attemptInWorker(join(runRoot, 'evaluator.mjs'), {
         fixture: scenario.fixture, fixtureRoot, resetId, context,
-      }, Math.min(exercise.budget.attemptTimeoutMs, exercise.budget.maxElapsedMs - (attemptStart - monotonicStart)), signal);
+      }, Math.min(exercise.budget.attemptTimeoutMs, exercise.budget.maxElapsedMs - (attemptStart - monotonicStart)),
+      signal, effectSupervisor, exercise.budget.maxTokens - tokens);
       // Charge known provider usage even if cleanup, parsing or evidence validation fails.
       const measured = response.result?.usageTokens;
       const measuredTokens = response.notStarted ? 0
         : Number.isSafeInteger(measured) && measured >= 0 ? measured : null;
+      const partial = response.result?.knownTokens;
+      const knownTokens = response.parentEffects?.knownTokens ?? measuredTokens
+        ?? (Number.isSafeInteger(partial) && partial >= 0 ? partial : 0);
       let row = { ...intent, elapsedMs: Math.ceil(performance.now() - attemptStart), tokens: measuredTokens,
-        interventions: 0, failureClass: response.error ?? null, checks: null };
+        knownTokens, interventions: 0, failureClass: response.error ?? null, checks: null,
+        ...(response.parentEffects ? { parentEffects: response.parentEffects } : {}) };
       try {
         await frozenInputs(runRoot);
         assert.equal((await readCandidate(join(runRoot, 'candidate.json'))).digest, candidate.digest);
@@ -255,7 +302,7 @@ export async function evaluatePractice({ runRoot, candidateFile, signal }) {
           if (row.tokens === null) row.failureClass = 'unknown_usage';
         }
       } catch { row.failureClass = 'invalid_or_changed_evidence'; row.checks = null; }
-      tokens += row.tokens ?? 0;
+      tokens += row.knownTokens;
       await writeRecord(runRoot, `attempt-${attemptId}.json`, row);
       attempts.push(row);
       if (!row.checks || row.tokens === null) { stopReason = row.failureClass; break outer; }

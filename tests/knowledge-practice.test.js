@@ -132,6 +132,27 @@ test('critical failure defeats aggregate improvement and a regressed check defea
   assert.equal(result.noRegression, false); assert.equal(result.gatesPassed, false);
 });
 
+test('an incomplete baseline cannot become an artificially low score for a passing candidate', async t => {
+  const f = await setup(t, async ({ paths, exercise }) => {
+    const baseline = await readJson(paths.baselineFile);
+    for (const scenario of exercise.scenarios) scenario.checks = [
+      { id: 'quality', kind: 'correctness', critical: true, path: '/quality', equals: true },
+    ];
+    await writeFile(paths.evaluatorFile, `export async function attempt({context}) {
+      const complete = context.bundle.revision !== ${JSON.stringify(baseline.revision)};
+      return { complete, observed: { quality: complete }, usageTokens: 17, knownTokens: 17,
+        interventions: 0, cleanup: 'complete', evidenceRefs: ['fixture:indeterminate-baseline'] };
+    }`);
+  });
+  await f.admit();
+  const feedback = await evaluatePractice({ runRoot: f.paths.runRoot, candidateFile: f.paths.candidateFile });
+  assert.equal(feedback.completedAttempts, 1); assert.equal(feedback.gatesPassed, false);
+  const result = await readRecord(f.paths.runRoot, 'evaluation.json');
+  assert.equal(result.comparison.complete, false); assert.equal(result.comparison.improved, false);
+  assert.deepEqual(result.usage, { measuredTokens: 17, tokensComplete: true });
+  assert.equal((await readRecord(f.paths.runRoot, 'attempt-0001.json')).checks, null);
+});
+
 test('forged receipts, private text and developer instructions do not become knowledge', async (t) => {
   const f = await setup(t); await f.admit();
   const envelope = await readJson(join(f.paths.runRoot, 'admission.json'));

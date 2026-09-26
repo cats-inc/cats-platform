@@ -25,7 +25,47 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — evaluator closure freeze complete (2026-09-26)
+## Resume Checkpoint — parent-owned evaluation effects complete (2026-09-26)
+
+- Checkpoint `3d0ae0b9` completes the static closure freeze below. Work continues
+  locally with no external inference, using only isolated fixtures.
+- This bounded implementation moves Runtime/judge effects outside the worker's
+  lifetime through an optional transferred-port bridge. The parent retains
+  write-before-call intent, known session IDs and measured usage, even if the
+  worker is terminated; it must fence replay and require independent cleanup.
+  Late creation must trigger parent reconciliation without sending advice.
+- Implemented an optional parent MessagePort supervisor with one create/send/judge
+  per reset, explicit bound target/read-only grant, owned-session checks, exclusive
+  intent, late usage capture and generation-bound serialized reconciliation.
+  Engine seals the parent on result/abort/exit and replaces worker usage with
+  parent measurements. Partial known spend is separate from unknown total usage;
+  promotion verification checks the same accounting. No new model dispatch is
+  permitted after the observed continuation threshold is exhausted.
+- Found an additional baseline-completion defect: a known-usage but indeterminate
+  baseline could previously be a low score in an otherwise passing comparison.
+  Catlas now returns explicit `complete`; the engine rejects false for either
+  phase while charging known spend. Complete negative semantic decisions remain
+  measurable failures. Generic public evaluator modules retain additive support.
+- Final parent/helper regression passed **48/48**; frozen-helper regression passed
+  **14/14**. Includes actual terminated workers during create/send/judge, late
+  evidence, duplicate/foreign calls, intent/result persistence failures, failed
+  cleanup observers, unresolved creation, the real Runtime SDK with mocked fetch,
+  and engine accounting that replaces fabricated totals while retaining partial
+  measured usage. An intermediate receipt polling race was fixed only in its test
+  helper; production artifact reads remain strict.
+- Independent re-review found no remaining blocker after four fixes: sticky
+  unresolved effects at result boundary, lost-wakeup-safe reconciliation, strict
+  create/context/send capability allowlists, and positive measured advice usage.
+  Final practice/promotion/preservation/docs/collection regression passed
+  **27/27**, including the incomplete-baseline regression. The complete slice has
+  **89 passing focused checks**, no skipped/cancelled tests and a clean diff check.
+- Actual native ownership/identity, freezing parent callbacks and a parent-process
+  crash remain separate gates; no journal permits model replay. Next offline work
+  is bounded inspection of retained effects after the parent itself has exited,
+  preserving unknown invocation/usage and never treating disk evidence as fresh
+  native process proof. No new provider grant has been consumed or inferred.
+
+## Previous checkpoint — evaluator closure freeze complete (2026-09-26)
 
 - Local checkpoint `6241b7e6` completed the semantic helper and protected
   preparation below. Continue on `fix/knowledge-topic-preservation`, without

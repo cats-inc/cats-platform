@@ -20,7 +20,13 @@ function deferred() {
 }
 async function retained(file) {
   for (let retry = 0; retry < 200; retry++) {
-    try { return await readJson(file); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    try { return await readJson(file); } catch (error) {
+      // The late callback may have opened its exclusive receipt but not finished
+      // writing yet. Production reads reject that partial artifact; this test
+      // waits for completion without treating it as accepted evidence.
+      if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)
+        && error.message !== 'Artifact changed during read.') throw error;
+    }
     await delay(10);
   }
   assert.fail('Late reconciliation receipt was not retained.');
@@ -92,6 +98,7 @@ for (const locale of ['en', 'zh-TW']) test(`actual Catlas inference and independ
   const f = await fixture(t, locale), result = await f.run();
   assert.deepEqual(result.observed, { responseValid: true, semantic: { useful: true } });
   assert.equal(result.usageTokens, 49); assert.equal(result.cleanup, 'complete');
+  assert.equal(result.complete, true); assert.equal(result.knownTokens, 49);
   assert.equal(f.calls.create.length, 1); assert.equal(f.calls.send.length, 1); assert.equal(f.calls.close.length, 1);
   assert.deepEqual(f.calls.send[0].prompt.observation, f.args.fixture.observation);
   assert.equal(f.calls.send[0].prompt.question, f.args.fixture.question);
@@ -142,7 +149,7 @@ test('concurrent attempts with one reset cannot duplicate Runtime execution', as
   assert.equal(f.calls.create.length, 1); assert.equal(f.calls.send.length, 1);
 });
 
-for (const failure of ['malformed', 'tool', 'private', 'unknown-entry', 'unknown-usage', 'changed-delivery']) {
+for (const failure of ['malformed', 'tool', 'private', 'unknown-entry', 'unknown-usage', 'zero-usage', 'changed-delivery']) {
   test(`invalid Catlas ${failure} retains spend and cannot reach the judge`, async t => {
     const f = await fixture(t);
     const send = f.options.runtimeClient.sendMessage;
@@ -153,12 +160,13 @@ for (const failure of ['malformed', 'tool', 'private', 'unknown-entry', 'unknown
       if (failure === 'private') response.segments[0].text = JSON.stringify({ advice: 'Inspect C:/Users/private/project', knowledgeIds: ['code.entry'] });
       if (failure === 'unknown-entry') response.segments[0].text = JSON.stringify({ advice, knowledgeIds: ['invented'] });
       if (failure === 'unknown-usage') delete response.tokensUsed;
+      if (failure === 'zero-usage') response.tokensUsed = 0;
       if (failure === 'changed-delivery') f.session.workspace.access = 'read_write';
       return response;
     };
     const result = await f.run();
     assert.equal(result.observed.responseValid, false); assert.equal(f.calls.judge.length, 0);
-    assert.equal(result.usageTokens, failure === 'unknown-usage' ? null : 42);
+    assert.equal(result.usageTokens, ['unknown-usage', 'zero-usage'].includes(failure) ? null : 42);
     assert.equal(result.cleanup, 'complete'); assert.equal(f.calls.close.length, 1);
   });
 }
@@ -180,6 +188,7 @@ for (const failure of ['stale', 'wrong-reviewer', 'missing', 'duplicate', 'indet
     };
     const result = await f.run();
     assert.equal(result.observed.responseValid, false); assert.equal(result.observed.semantic.useful, false);
+    assert.equal(result.complete, false); assert.equal(result.knownTokens, failure === 'unknown-usage' ? 42 : 49);
     assert.equal(result.usageTokens, failure === 'unknown-usage' ? null : 49);
     assert.equal((await readJson(join(f.fixtureRoot, 'catlas-result.json'))).failure, 'semantic_judgment_incomplete');
   });
@@ -193,6 +202,7 @@ test('complete negative semantic decisions stay distinct from incomplete assessm
   };
   const result = await f.run();
   assert.deepEqual(result.observed, { responseValid: true, semantic: { useful: false } });
+  assert.equal(result.complete, true);
   assert.equal(result.usageTokens, 49);
 });
 
@@ -238,6 +248,7 @@ test('cancelled pending judge keeps aggregate cleanup incomplete and retains lat
   const pending = f.run(); await started.promise; f.controller.abort();
   const result = await pending;
   assert.equal(result.cleanup, 'incomplete'); assert.equal(result.usageTokens, null);
+  assert.equal(result.complete, false); assert.equal(result.knownTokens, 42);
   assert.equal(result.observed.responseValid, false);
   const receipt = await readJson(join(f.fixtureRoot, 'catlas-result.json'));
   assert.equal(receipt.catlasCleanup, 'complete'); assert.equal(receipt.reviewerSettled, false);
