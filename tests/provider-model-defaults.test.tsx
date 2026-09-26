@@ -234,6 +234,44 @@ test('Muse starts each model at its first listed effort and offers no synthetic 
   await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.controls?.['muse.reasoning_effort'], 'high'));
 });
 
+test('any enum control without an explicit default starts at its first option and never adds a synthetic Default', async (t) => {
+  reset(); t.after(reset);
+  // Not an allowlisted key: Desktop must not special-case providers to avoid a fabricated choice.
+  const junieWithEffort: ProviderAdvancedModelCatalog = {
+    ...junie, defaultSelection: { entryMode: 'explicit', entryId: 'Gemini 3.7 Flash' },
+    controls: [{
+      key: 'junie.reasoning_effort', label: 'Effort', kind: 'enum', scope: 'both',
+      values: [
+        { value: 'none', label: 'None', applicableEntryIds: ['GPT-5.6-SOL'] },
+        ...['Low', 'Medium', 'High'].map((label) => ({ value: label.toLowerCase(), label,
+          applicableEntryIds: ['Gemini 3.7 Flash', 'GPT-5.6-SOL'] })),
+      ],
+    }],
+  };
+  const changes: ProviderTargetSelection[] = [];
+  const registry = async () => ({ state: 'ready' as const, providers: listProductProviders().filter(p => p.id === 'junie') });
+  function EffortPicker() {
+    const [target, setTarget] = useState<ProviderTargetSelection>({ provider: 'junie', instance: 'cli/native', model: '', modelSelection: null });
+    const change = useCallback((next: ProviderTargetSelection) => { changes.push(next); setTarget(next); }, []);
+    return <I18nProvider locale="en"><ProviderModelFields provider={target.provider} instance={target.instance}
+      model={target.model} modelSelection={target.modelSelection} onTargetChange={change}
+      fetchProviderRegistry={registry} fetchProviderModels={async () => junieModels}
+      fetchAdvancedProviderModels={async () => junieWithEffort} /></I18nProvider>;
+  }
+  const view = render(<EffortPicker />);
+  const effort = () => view.getByRole('combobox', { name: 'Effort' }) as HTMLSelectElement;
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.controls?.['junie.reasoning_effort'], 'low'));
+  assert.equal(effort().value, 'low');
+  assert.deepEqual([...effort().options].map((option) => option.textContent), ['Low', 'Medium', 'High']);
+  assert.ok([...effort().options].every((option) => option.value !== ''));
+
+  fireEvent.change(view.getByRole('combobox', { name: /^Model/ }), { target: { value: 'GPT-5.6-SOL' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.controls?.['junie.reasoning_effort'], 'none'));
+  assert.equal(effort().value, 'none');
+  assert.deepEqual([...effort().options].map((option) => option.textContent), ['None', 'Low', 'Medium', 'High']);
+  assert.equal(view.queryByRole('option', { name: /^Default$/ }), null);
+});
+
 test('Grok selects the first effort for each model, keeps labels and restores saved effort', async (t) => {
   reset();
   t.after(reset);

@@ -390,11 +390,14 @@ test('late saves cannot replace another conversation or a newer effort choice', 
   const restoreFetch = installFetch(registry);
   t.after(() => { cleanup(); restoreFetch(); resetTestDom(); });
 
+  // Persisted defaults already carry the effort Desktop initializes from the catalog's first
+  // option, so reconciliation publishes nothing on its own and only the saves below count.
   const stableChat = {
     ...chat,
     newChatDefaults: {
       provider: 'claude', model: 'opus', instance: 'cli/native',
-      modelSelection: { entryId: 'opus', entryMode: 'explicit' as const },
+      modelSelection: { entryId: 'opus', entryMode: 'explicit' as const,
+        controls: { 'claude.reasoning_effort': 'low' } },
     },
   };
   const payload = { chat: stableChat };

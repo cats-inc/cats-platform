@@ -5,11 +5,9 @@ import type {
 import { useI18n } from '../../app/renderer/i18n/useI18n.js';
 import { messageKeys } from '../../shared/i18n/index.js';
 import {
-  hasExplicitDefaultEnumOption,
   listApplicableControlValueOptions,
   resolveDisplayedEnumControlValue,
   serializeControlInputValue,
-  usesFirstEnumOption,
 } from './providerModelFieldsSupport.js';
 
 export function ProviderModelFieldControls(input: {
@@ -55,10 +53,6 @@ export function ProviderModelFieldControls(input: {
         control,
         selectedCatalogEntryId,
       );
-      const showSyntheticDefaultOption = !usesFirstEnumOption(control) && !hasExplicitDefaultEnumOption(
-        control,
-        selectedCatalogEntryId,
-      );
       const displayedValue = resolveDisplayedEnumControlValue(
         control,
         selectedCatalogEntryId,
@@ -72,9 +66,6 @@ export function ProviderModelFieldControls(input: {
             value={displayedValue}
             onChange={(event) => onControlChange(control, event.target.value)}
           >
-            {showSyntheticDefaultOption
-              ? <option value="">{t(messageKeys.sharedProviderModelControlDefault)}</option>
-              : null}
             {controlValueOptions.map((option, index) => (
               <option
                 key={`${control.key}-${String(option.value)}-${index}`}
