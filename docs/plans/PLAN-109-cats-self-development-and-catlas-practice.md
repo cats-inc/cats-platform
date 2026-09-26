@@ -25,7 +25,62 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — bounded topic-preservation slice complete (2026-09-26)
+## Resume Checkpoint — protected quality preparation (2026-09-26)
+
+- Owner authorized continued autonomous work and checkpoints while away. Start
+  from local commit `4897c122` on `fix/knowledge-topic-preservation`; prior model
+  turn grants remain consumed. Do not repeat publication or native inference.
+- Independent preparation completed a protected 16-case bilingual curriculum,
+  semantic rubric and exact baseline outside Git at
+  `../.validation/knowledge-quality-20260926/evaluator`. Future native author
+  inputs belong to the disjoint sibling `author` root; do not expose holdout
+  definitions/rubric in the author prompt or its workspace.
+- Source inspection fixes the product boundary: actual Code-help selects all
+  four topic groups, and observes only the new-Code draft/readiness/workspace/
+  requested-policy fields, with effective access `not_started`. Prior cancellation
+  reports belong in the user question, never invented process telemetry.
+- The private evaluator contains 16 bilingual cases, six held out, three repeats
+  and a proposal for 96 advice attempts. Canonical curriculum digest is
+  `936c692e73e6341bce8d8243679f1803aed6fc1aa7da3f755fc1098008562e0c`;
+  rubric digest is `52fc9d3acfead9f4dfa1788d93b6a25604981e8648c10b9412dbe4cf45dbc219`.
+  Baseline digest is `cee16799cdbf5aae4112548e0820a36fb859e7da3565d711febbd12acb412a0f`.
+  The private preparation manifest records actual policy validation and all-entry
+  bilingual coverage. This is not admission or inference authorization.
+- New disjoint `author/request.json` uses ID `native-recovery-v2`, scope only
+  `code.recovery` linked to `test:cancelled-task-candidate`, and exact current
+  baseline guidance. Its canonical digest is
+  `989302f4202e7afb616ea7ab4798cd86aadf8854f283320b08b68558ba97295b`.
+  Source snapshots and evidence-to-topic assertions are under sibling `sources`;
+  evidence digest is `a6d82b9ad1ffe7164ffac657eca6ed6ff30477525c6e51138576d3c3425d6bfa`.
+  Local private Git boundary was initialized and verified, with only minimal
+  guidance and request files. No credentials, launch/start gate or candidate was
+  created. Native instruction context and enforced read isolation remain pending.
+- Added a developer-only Catlas evaluator helper using the actual inference seam,
+  direct selection and assembled-context binding. It requires explicit trusted
+  Runtime, frozen knowledge/rubric, independent semantic judge and cleanup
+  callbacks; it never opens a default endpoint or copies authentication. Exact
+  decisions bind to the response digest and evidence spans, with a mandatory
+  critical completion check in the prepared curriculum. Indeterminate/stale
+  grades fail completion; combined measured advice/judge usage survives rejection.
+- Independent review corrected aggregate cleanup: Catlas close acknowledgements
+  and settled judgments each require separate process evidence. Aborted creation
+  fences dispatch; late session IDs and measured transport/judge spend are retained
+  while the worker survives, without retroactively passing an incomplete result.
+  **25/25 focused tests passed** using `node --test --test-isolation=none`, zero
+  provider calls, against the existing compiled product consumers. Independent
+  re-review found no blocker for this preparatory helper; docs-boundary and test
+  collection checks passed **3/3**. Public doubles do not
+  establish protected holdout isolation, live guidance quality or promotion.
+- **Next local work:** freeze the complete executable/callback dependency closure;
+  the current engine hash alone does not bind every Catlas/Runtime transitive
+  import. Native use additionally needs an out-of-worker owned-session/reviewer
+  observer: the existing worker is forcibly terminated after its abort grace and
+  cannot finish late promises. Review the new author evidence mapping and complete
+  those local preparations before requesting applicable new provider grants.
+  All previous author grants remain consumed. No new PR/main/release, npm publish,
+  installed-state write, live evaluation or promotion occurred.
+
+## Previous checkpoint — bounded topic-preservation slice complete (2026-09-26)
 
 - Owner authorized the next bounded local slice: preserve unrelated knowledge
   during authoring and prepare independent baseline/candidate evaluation. Branch

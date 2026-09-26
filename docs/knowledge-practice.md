@@ -208,6 +208,76 @@ must use separately protected inputs, independently sourced expected outcomes
 and an evaluator that checks the actual product result. Do not copy its public
 cases and label them a production holdout.
 
+## Catlas semantic evaluator preparation
+
+`tools/knowledge-practice/catlasEvaluator.mjs` exports `createCatlasEvaluator`
+for a trusted developer harness. It calls the actual `inferCatlasAdvice` seam
+with the production knowledge selector and checks the assembled context against
+the admitted inputs. This is not a native launcher, a new product endpoint or
+inference authorization. It has no default Runtime connection, credentials,
+model judge or process observer.
+
+The caller supplies the owned `runtimeClient`, explicit `guideCat` binding,
+`evaluationRoot`, separate `authorId`/`reviewerId`, and four trusted callbacks:
+
+| Callback | Required result |
+| --- | --- |
+| `loadKnowledge(digest, locale)` | The exact frozen, compatible production-loader result for the attempt |
+| `resolveRubric(rubricId)` | Independent criteria as `{ id, criterion }[]`, fixed before authoring |
+| `judge({ response, responseDigest, criteria, signal })` | Independent semantic decisions bound to the exact response, with measured usage |
+| `confirmCleanup(observation)` | Independent owned-process evidence as `{ status, evidenceRefs }` for each `stage`: `catlas` and `reviewer` |
+
+Role IDs do not establish reviewer independence. The native operator must enforce
+the author/evaluator read and write boundaries and inspect actual provider context.
+The judge sees the sanitized question, observation, locale, advice and cited
+knowledge IDs, with a reset ID. It does not receive baseline/candidate labels,
+bundle revisions, provider identity or author output. Criteria go only to the
+judge; neither they nor held-out case definitions enter the author workspace or
+Catlas model prompt. Meaning is judged independently, without keyword scoring.
+
+Fixtures contain exactly `question`, `observation` and evaluator-only `rubricId`.
+The observation represents the existing **new Code** draft/readiness fields;
+requested policies pass the actual Runtime policy validator. Effective session
+access is `not_started`, Git status is `unknown`, and all four ordinary Code-help
+topic groups are selected. Reports about an earlier task belong in the question;
+they cannot be invented as observed process telemetry. This seam does not test
+native UI, actual observation collection or the full Code-help service.
+
+Judgment has `reviewerId`, `responseDigest`, `usageTokens` and one decision per
+criterion: `{ id, verdict, rationale, evidenceSpans }`. Verdict is `pass` or
+`fail`; indeterminate, missing, stale or duplicate decisions make assessment
+incomplete. Spans are bounded UTF-16 offsets `{ start, end }` into the exact advice;
+a passing decision needs evidence. A whole-response span is appropriate for a
+universal absence-of-violation criterion when independently assessed as such.
+Usage is a measured nonnegative integer; zero is appropriate only for a review
+that used no inference. Any model judge needs applicable authorization and its
+own measured accounting; unknown spend is never zero.
+
+The attempt returns `observed.responseValid` and `observed.semantic[id]`.
+Every admitted semantic scenario must require `responseValid === true` as a
+critical check, alongside its policy/correctness criteria. A complete negative
+decision is distinct from incomplete assessment. `usageTokens` includes Catlas
+and judge transport usage, including rejected results. Unknown usage prevents
+continuation. Cleanup requires independent confirmation for both stages; a
+session-close acknowledgement or completed judge response is insufficient.
+
+Exclusive intent precedes create/send/judge work. Private assessment files retain
+bounded sanitized advice, criteria, decisions and digests for this explicit QA
+workflow; this is not ordinary conversation capture. Cancellation fences late
+output. While the worker survives, late creation is closed without dispatch and
+late transport/grade usage is retained without changing an incomplete result.
+The create intent retains the actual product request ID for reconciliation.
+
+**Native readiness remains pending.** A forcibly terminated worker cannot finish
+these promises. Before live use, provide an out-of-worker supervisor that owns
+and reconciles Runtime sessions and judge work, independently checks process
+disappearance, and retains unknown effects after interruption. Freeze the entire
+executable dependency/callback/rubric closure; hashing a wrapper that imports a
+mutable checkout is insufficient. The existing engine hash covers tool sources
+and the knowledge loader, not every transitive Catlas/Runtime import. Public
+callback tests establish plumbing only, not protected holdout isolation, live
+quality improvement or promotion eligibility.
+
 ## Frozen evaluator contract
 
 Exercise schema 1 specifies an ID/revision, `evidenceMode` (`fixture` or `product`),
