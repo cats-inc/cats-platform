@@ -2,8 +2,10 @@ import { Image, Linking, Pressable, Text, View } from 'react-native';
 
 import {
   type MessageBodyAttachment,
+  type MessageBodyMarkdownRoot,
   type MessageBodySegment,
 } from '../../../src/mobile/index.js';
+import { MessageBodyMarkdown } from './MessageBodyMarkdown';
 import { messageBodyStyles as styles } from './styles/messageBody';
 
 /**
@@ -26,6 +28,11 @@ export interface MessageBodyProps {
    * resolution to the shared file is unwired.
    */
   segments: MessageBodySegment[];
+  /**
+   * Agent replies arrive as the shared markdown tree
+   * (`parseMessageBodyMarkdown`) instead of segments.
+   */
+  markdown?: MessageBodyMarkdownRoot | null;
   attachments: MessageBodyAttachment[];
   /**
    * Channel id used to build attachment URLs. Web renderer points at the
@@ -46,6 +53,7 @@ export interface MessageBodyProps {
 
 export function MessageBody({
   segments,
+  markdown = null,
   attachments,
   channelId,
   resolveAttachmentUrl,
@@ -129,6 +137,7 @@ export function MessageBody({
           })}
         </View>
       ) : null}
+      {markdown && markdown.children.length > 0 ? <MessageBodyMarkdown root={markdown} /> : null}
       {segments.length > 0 ? (
         <Text style={styles.text}>
           {segments.map((segment, index) => {

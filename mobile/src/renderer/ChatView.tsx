@@ -437,6 +437,7 @@ function MessageBubbleItem({
       <MessageBubble role={message.role}>
         <MessageBody
           segments={message.segments}
+          markdown={message.markdown}
           attachments={message.attachments}
           channelId={conversationKey}
           resolveAttachmentUrl={resolveAttachmentUrl}

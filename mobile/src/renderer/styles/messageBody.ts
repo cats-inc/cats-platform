@@ -1,6 +1,11 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 import { colors, radii, spacing, typography } from '../theme';
+
+// `code` in foundation.css uses Cascadia Code / SFMono / Consolas.
+const MONOSPACE_FONT = Platform.select({ ios: 'Menlo', default: 'monospace' });
+// Web markdown sizes are `em` of the bubble font size.
+const BUBBLE_EM = typography.bubble.fontSize;
 
 /**
  * StyleSheet mapping for the RN bubble renderer. Each entry corresponds
@@ -100,6 +105,127 @@ export const messageBodyStyles = StyleSheet.create({
   },
   fileChipTextDisabled: {
     color: colors.fg.muted,
+  },
+});
+
+/**
+ * Agent markdown styles, mirroring the `.messageBodyMarkdown` rules in
+ * chat-thread-base.css. Block margins become column gaps.
+ */
+export const messageBodyMarkdownStyles = StyleSheet.create({
+  // `:where(p, ul, …) { margin: 0 0 0.65em }` between blocks.
+  blocks: {
+    flexDirection: 'column',
+    gap: Math.round(BUBBLE_EM * 0.65),
+  },
+  // `:where(h1…h6)` — bold, tighter line height; h1 1.2em, h2 1.1em.
+  heading: {
+    fontWeight: '700',
+    lineHeight: 22,
+  },
+  heading1: {
+    fontSize: Math.round(BUBBLE_EM * 1.2 * 10) / 10,
+    lineHeight: 24,
+  },
+  heading2: {
+    fontSize: Math.round(BUBBLE_EM * 1.1 * 10) / 10,
+    lineHeight: 23,
+  },
+  // `ul, ol { padding-left: 1.4em }` and `li + li { margin-top: 0.2em }`.
+  list: {
+    flexDirection: 'column',
+    gap: Math.round(BUBBLE_EM * 0.2),
+  },
+  listItem: {
+    flexDirection: 'row',
+  },
+  listMarker: {
+    minWidth: Math.round(BUBBLE_EM * 1.4),
+    paddingRight: 4,
+    textAlign: 'right',
+  },
+  // `li > :where(p, ul, ol) { margin: 0.2em 0 0 }`.
+  listItemBody: {
+    flex: 1,
+    flexDirection: 'column',
+    gap: Math.round(BUBBLE_EM * 0.2),
+  },
+  // `blockquote` — left rule and muted text.
+  blockquote: {
+    paddingLeft: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.border.subtle,
+  },
+  quoteText: {
+    color: colors.fg.secondary,
+  },
+  // `hr` — 1px top border.
+  rule: {
+    height: 1,
+    backgroundColor: colors.border.subtle,
+  },
+  strong: {
+    fontWeight: '700',
+  },
+  emphasis: {
+    fontStyle: 'italic',
+  },
+  delete: {
+    textDecorationLine: 'line-through',
+  },
+  // `code` — muted background, 0.88em.
+  inlineCode: {
+    fontFamily: MONOSPACE_FONT,
+    fontSize: Math.round(BUBBLE_EM * 0.88 * 10) / 10,
+    backgroundColor: colors.status.mutedBg,
+  },
+  // `pre` — bordered panel that scrolls horizontally; `pre code` at 0.85em.
+  codeBlock: {
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    borderRadius: radii.md,
+    backgroundColor: colors.bg.panelSubtle,
+  },
+  codeBlockContent: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  codeBlockText: {
+    color: colors.fg.primary,
+    fontFamily: MONOSPACE_FONT,
+    fontSize: Math.round(BUBBLE_EM * 0.85 * 10) / 10,
+    lineHeight: 18,
+  },
+  // `table`, `th`, `td` — collapsed 1px grid; `th` on the subtle panel.
+  table: {
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  tableRow: {
+    flexDirection: 'row',
+  },
+  tableCell: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  tableHeaderCell: {
+    backgroundColor: colors.bg.panelSubtle,
+  },
+  tableText: {
+    fontSize: Math.round(BUBBLE_EM * 0.95 * 10) / 10,
+    lineHeight: 20,
+  },
+  tableHeaderText: {
+    fontWeight: '600',
+  },
+  // `.messageBodyInertLink` — a link target the device cannot open.
+  inertLink: {
+    textDecorationLine: 'underline',
+    textDecorationStyle: 'dotted',
   },
 });
 

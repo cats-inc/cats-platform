@@ -1,8 +1,10 @@
 import {
   type MentionResolverCat,
   type MessageBodyAttachment,
+  type MessageBodyMarkdownRoot,
   type MessageBodySegment,
   extractAttachments,
+  parseMessageBodyMarkdown,
   segmentMessageBody,
 } from './messageBody.js';
 import type { MobileChatMessage } from './contracts.js';
@@ -18,7 +20,9 @@ import type { MobileChatMessage } from './contracts.js';
  *      the trailing attachment block.
  *   3. Running `segmentMessageBody` on the remaining text so the
  *      mobile MessageBody component can render bubbles with mention
- *      chips, URLs, and plain text segments.
+ *      chips, URLs, and plain text segments — or, for agent replies,
+ *      `parseMessageBodyMarkdown`, matching the web transcript's
+ *      markdown format.
  *
  * The segmenter and attachment extractor are the canonical shared
  * versions re-exported from this same boundary — the segmenter narrow
@@ -32,7 +36,10 @@ export interface MobileRenderedMessage {
   id: string;
   role: MobileRenderedRole;
   authorName: string;
+  /** Plain-text body segments; empty when `markdown` carries the body. */
   segments: MessageBodySegment[];
+  /** Agent replies are parsed as markdown; other senders stay plain text. */
+  markdown: MessageBodyMarkdownRoot | null;
   attachments: MessageBodyAttachment[];
   /** Epoch milliseconds parsed from `createdAt`. */
   timestamp: number;
@@ -58,7 +65,10 @@ function projectMessage(
   cats: MentionResolverCat[],
 ): MobileRenderedMessage {
   const { textBody, attachments } = extractAttachments(message.body);
-  const segments = segmentMessageBody(textBody, cats);
+  const markdown = message.senderKind === 'agent'
+    ? parseMessageBodyMarkdown(textBody, { cats, disabledMentionNames: [] })
+    : null;
+  const segments = markdown ? [] : segmentMessageBody(textBody, cats);
   const role: MobileRenderedRole =
     message.senderKind === 'user' ? 'user' : 'assistant';
   const timestamp = Date.parse(message.createdAt);
@@ -67,6 +77,7 @@ function projectMessage(
     role,
     authorName: message.senderName,
     segments,
+    markdown,
     attachments,
     timestamp: Number.isFinite(timestamp) ? timestamp : 0,
   };

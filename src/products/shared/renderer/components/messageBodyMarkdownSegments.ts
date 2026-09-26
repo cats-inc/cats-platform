@@ -1,4 +1,6 @@
 import type { Link, Parent, RootContent, Text } from 'mdast';
+// Declares the `hName` / `hProperties` node data that turns a mention into a span.
+import type {} from 'mdast-util-to-hast';
 
 import {
   segmentMessageBody,
@@ -11,8 +13,13 @@ export interface MessageBodyMarkdownSegmentOptions {
   disabledMentionNames: string[];
 }
 
+export interface MarkdownMention {
+  avatarColor: string | null;
+}
+
 /** Link text stays literal: links cannot nest and mentions inside them are not pills. */
 const LITERAL_TEXT_PARENT_TYPES = new Set(['link', 'linkReference']);
+const MENTION_CLASS_NAME = 'messageBodyMention';
 
 /**
  * Remark plugin that applies the plain-text message body rules inside markdown
@@ -26,6 +33,17 @@ export function remarkMessageBodySegments(options: MessageBodyMarkdownSegmentOpt
   return (tree: Parent): undefined => {
     rewriteChildren(tree, options);
   };
+}
+
+/** Reads the cat mention this plugin marked on a text node, for renderers that skip hast. */
+export function readMarkdownMention(node: Text): MarkdownMention | null {
+  const properties = node.data?.hProperties;
+  const className = properties?.className;
+  if (!Array.isArray(className) || !className.includes(MENTION_CLASS_NAME)) {
+    return null;
+  }
+  const avatarColor = properties?.dataAvatarColor;
+  return { avatarColor: typeof avatarColor === 'string' ? avatarColor : null };
 }
 
 function rewriteChildren(parent: Parent, options: MessageBodyMarkdownSegmentOptions): void {
@@ -89,7 +107,7 @@ function toMarkdownNode(segment: MessageBodySegment): Link | Text {
         data: {
           hName: 'span',
           hProperties: {
-            className: ['messageBodyMention'],
+            className: [MENTION_CLASS_NAME],
             dataAvatarColor: segment.avatarColor ?? undefined,
           },
         },
