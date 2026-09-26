@@ -62,6 +62,15 @@ implementation; it was fast-forwarded without conflicts. This change is newer
 than that preview candidate and does not publish another build. Broader G1/G2
 and real-provider acceptance remain open.
 
+CI `36274808979` found four fixture failures among 5,191 tests: jsdom lacks
+native `showModal`, and other test bundles replace the global document after
+the new fixture's module-level polyfill ran (`--test-isolation=none`). The
+fixture now patches the active document's dialog prototype before each test
+and restores it afterwards. Product code and the passing Electron flow are
+unchanged. Independent review and a combined **14/14** UI regression suite pass,
+including another bundle that replaces the document; follow-up CI is the final
+full-suite gate.
+
 ## Resume checkpoint — minimal ordinary agent contribution (2026-09-27)
 
 - The owner requested the simplest ordinary Desktop agent entry. Chat/Code

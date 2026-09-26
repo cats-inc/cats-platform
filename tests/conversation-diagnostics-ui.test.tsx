@@ -1,15 +1,28 @@
-import { resetTestDom, testDomWindow } from './helpers/installDomBeforeReact.ts';
+import { resetTestDom } from './helpers/installDomBeforeReact.ts';
 import assert from 'node:assert/strict';
-import test, { afterEach } from 'node:test';
+import test, { afterEach, beforeEach } from 'node:test';
 import React from 'react';
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { I18nProvider } from '../src/app/renderer/i18n/I18nProvider.tsx';
 import { DiagnosticAttachmentAction } from '../src/products/shared/renderer/components/DiagnosticAttachmentAction.tsx';
 import type { AppShellPayload } from '../src/products/shared/api/workspaceContracts.ts';
 
-afterEach(() => { cleanup(); resetTestDom(); });
+let restoreDialog: (() => void) | undefined;
+afterEach(() => { cleanup(); restoreDialog?.(); restoreDialog = undefined; resetTestDom(); });
 // jsdom has no native top layer. Real dialog focus/layout is covered by the isolated browser smoke.
-testDomWindow.HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
+beforeEach(() => {
+  // --test-isolation=none imports other bundles that replace the global document.
+  // Patch the document used at test execution time, then restore its prototype.
+  const prototype = Object.getPrototypeOf(document.createElement('dialog')) as HTMLDialogElement;
+  const original = Object.getOwnPropertyDescriptor(prototype, 'showModal');
+  Object.defineProperty(prototype, 'showModal', { configurable: true, writable: true,
+    value(this: HTMLDialogElement) { this.setAttribute('open', ''); },
+  });
+  restoreDialog = () => {
+    if (original) Object.defineProperty(prototype, 'showModal', original);
+    else Reflect.deleteProperty(prototype, 'showModal');
+  };
+});
 const payload = { chat: { channels: [{ id: 'current', title: 'Debugger' }, { id: 'incident', title: 'Broken provider' }] } } as unknown as AppShellPayload;
 const filename = 'cats-diagnostics-20260927000000.txt';
 
