@@ -265,24 +265,14 @@ export function resolveDisplayedEnumControlValue(
     return serialized;
   }
 
+  // A catalog without an explicit default starts at the first listed value and submits it,
+  // matching Playground and the Runtime's first-value resolution. Never invent a "Default"
+  // choice the provider's own picker does not offer.
   const options = listApplicableControlValueOptions(control, entryId);
   const explicitDefault = options
     .find((option) => typeof option.label === 'string' && /\(default\)/iu.test(option.label));
-  const initialOption = explicitDefault
-    ?? (usesFirstEnumOption(control) ? options[0] : undefined);
+  const initialOption = explicitDefault ?? options[0];
   return initialOption ? String(initialOption.value) : '';
-}
-
-// These pickers declare no effort default, so the menu starts at the first listed value and
-// submits it instead of offering a synthetic Default (Runtime provider references).
-const FIRST_OPTION_CONTROL_KEYS: ReadonlySet<string> = new Set([
-  'antigravity.effort',
-  'grok.reasoning_effort',
-  'muse.reasoning_effort',
-]);
-
-export function usesFirstEnumOption(control: ProviderAdvancedCatalogControl): boolean {
-  return FIRST_OPTION_CONTROL_KEYS.has(control.key);
 }
 
 export function parseControlInputValue(
