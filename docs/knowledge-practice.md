@@ -62,6 +62,19 @@ The model returns a revised draft; it cannot select new evidence references or
 claim independent verification. These operator-supplied summaries/digests need
 independent checking before later evaluation/promotion.
 
+The optional request `changeScope` is an operator-owned array of
+`{ "entryId": "code.recovery", "evidenceRefs": ["evidence:verified-stop"] }`.
+Each unique entry must already exist in the supplied draft and each unique
+supporting reference must be admitted in its evidence. Omission means no entry
+changes are permitted. The model cannot supply or broaden this scope. It may
+edit only scoped content, with a higher entry revision and a distinct bundle
+revision. Both languages, revisions and content of unrelated entries remain
+exactly unchanged. Entry order, IDs, roles, kind, surfaces, topics, operations
+and bundle applicability stay fixed. New entries or applicability changes need
+a separately designed admission; this bounded path does not accept them.
+Scope permits a proposed edit; independent evaluation still has to establish
+that its evidence is relevant and its guidance correct.
+
 The first slice distills existing development evidence. It creates one Core
 worker, Task and Run, then a fresh read-only Runtime sandbox with only the
 `cats-practice-and-distill` skill and read/list tools. The host checks Runtime's
@@ -120,6 +133,19 @@ pair (60 attempts). Four public sample cases exercise the held-out plumbing;
 because the sample is public, it is **not a protected production holdout**.
 Successful fixture evidence is explicitly ineligible for production promotion.
 No observed improvement here establishes live model or UI competence.
+
+To exercise topic retention using the actual shipped Catlas baseline:
+
+```text
+node tools/knowledge-practice/cli.mjs fixture-demo --suite preservation --runtime-root <preview Runtime checkout> --out <new private directory> --consumer catlas
+```
+
+This public fixture appends one synthetic cancellation lesson only to recovery,
+checks ten bilingual cases with three resets per baseline/candidate pair, and
+checks retained guidance in actual production-assembled contexts. Its evaluator
+checks literal retention and lesson placement; it does not measure a model's
+understanding or real task success. Its four public holdout-shaped cases are
+not protected holdouts. Orchestrator applicability is not established by it.
 
 Use `--consumer orchestrator` in a separate new directory for its actual
 capability set, roles and operation scopes. Omitting `--consumer` retains the
@@ -192,6 +218,26 @@ inputs, and unique checks with an ID, `correctness`/`policy` kind, critical flag
 JSON-pointer path and expected JSON value. Every scenario needs a critical check.
 Expected values and held-out case definitions are never supplied to the candidate
 author or as fields in the evaluator's model input.
+
+Product exercises must independently freeze `changeScope` with the same shape
+as authoring; scoped fixtures may opt in. The operator chooses this scope against
+the frozen baseline rather than trusting a candidate's own declarations.
+Admission requires scenarios that actually deliver every baseline entry in
+both languages. Evaluation retains its start/candidate records but refuses to
+dispatch the evaluator if the proposed content violates that scope or refers
+to evidence absent from the candidate. Verification checks it again. Legacy
+unscoped selection fixtures remain fixture-only; old receipts are historical
+and cannot be replayed under a changed engine digest.
+
+For scoped exercises, the engine appends the reserved critical check
+`baseline-guidance-preserved` to every attempt. It compares actual baseline and
+candidate direct Catlas selections and assembled role contexts, retaining all
+baseline entries and exact unscoped guidance and applicability, including cases
+where a longer edit exhausts either budget. The verifier recomputes it
+independently of evaluator output. Frozen
+scenario checks cannot use this reserved ID. Edited content still needs its
+own independent correctness checks: an allowed recovery edit can lose useful
+recovery guidance even while all unrelated entries remain intact.
 
 The trusted module exports:
 

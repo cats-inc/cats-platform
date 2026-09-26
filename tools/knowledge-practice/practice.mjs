@@ -8,6 +8,8 @@ import { loadProductKnowledge, assembleProductKnowledgeContext } from '../../bui
 import { assertSeparated, canonical, digest, evidenceIds, fields, hasRecord, id, integer,
   readJson, readPlain, readRecord, safeText, writeNew, writeRecord } from './artifacts.mjs';
 import { candidateBundle, readCandidate } from './candidate.mjs';
+import { assertKnowledgeChanges, baselineKnowledge, preservationCheck, PRESERVATION_CHECK,
+  validateChangeScope } from './changes.mjs';
 
 const TOOL_ROOT = fileURLToPath(new URL('.', import.meta.url));
 export async function engineDigest() {
@@ -20,9 +22,10 @@ export async function engineDigest() {
 }
 
 export function validateExercise(spec) {
-  fields(spec, ['schemaVersion', 'id', 'revision', 'evidenceMode', 'platformVersion', 'capabilities', 'budget', 'metric', 'repeats', 'scenarios']);
+  fields(spec, ['schemaVersion', 'id', 'revision', 'evidenceMode', 'platformVersion', 'capabilities', 'budget', 'metric', 'repeats', 'scenarios', 'changeScope']);
   assert.equal(spec.schemaVersion, 1); id(spec.id); id(spec.revision);
   assert.ok(['fixture', 'product'].includes(spec.evidenceMode));
+  if (spec.evidenceMode === 'product' || spec.changeScope !== undefined) validateChangeScope(spec.changeScope);
   assert.match(spec.platformVersion, /^\d+\.\d+\.\d+$/u);
   assert.ok(Array.isArray(spec.capabilities) && spec.capabilities.length > 0 && spec.capabilities.length <= 16);
   spec.capabilities.forEach(id);
@@ -57,6 +60,7 @@ export function validateExercise(spec) {
     const checks = new Set();
     for (const check of item.checks) {
       fields(check, ['id', 'kind', 'critical', 'path', 'equals']); id(check.id);
+      assert.notEqual(check.id, PRESERVATION_CHECK, 'Reserved engine check ID.');
       assert.ok(!checks.has(check.id)); checks.add(check.id);
       assert.ok(['correctness', 'policy'].includes(check.kind)); assert.equal(typeof check.critical, 'boolean');
       assert.ok(typeof check.path === 'string' && /^\/(?:[a-zA-Z0-9_-]+\/?)+$/u.test(check.path));
@@ -81,6 +85,18 @@ export async function admitPractice({ runRoot, authorRoots, exerciseFile, baseli
   const baselineResult = await loadProductKnowledge({ filePath: baselineFile,
     platformVersion: exercise.platformVersion, capabilities: exercise.capabilities, locale: 'en' });
   assert.equal(baselineResult.status, 'ready', 'Baseline is incompatible with the frozen exercise.');
+  if (exercise.changeScope !== undefined) {
+    validateChangeScope(exercise.changeScope, baselineKnowledge(baseline));
+    for (const locale of ['en', 'zh-TW']) {
+      const result = locale === 'en' ? baselineResult : await loadProductKnowledge({ filePath: baselineFile,
+        platformVersion: exercise.platformVersion, capabilities: exercise.capabilities, locale });
+      assert.equal(result.status, 'ready', 'Baseline must support both evaluation locales.');
+      const covered = new Set(exercise.scenarios.filter(scenario => scenario.context.locale === locale)
+        .flatMap(scenario => assembleProductKnowledgeContext(result, scenario.context).entries.map(entry => entry.id)));
+      assert.ok(result.bundle.entries.every(entry => covered.has(entry.id)),
+        `Preservation scenarios must deliver every baseline entry in ${locale}.`);
+    }
+  }
   await mkdir(runRoot, { recursive: false, mode: 0o700 });
   await writeNew(join(runRoot, '.receipt-key'), randomBytes(32).toString('hex'));
   await writeNew(join(runRoot, 'exercise.json'), exercise);
@@ -173,7 +189,7 @@ export function compareAttempts(exercise, attempts, stopReason) {
 }
 
 export async function evaluatePractice({ runRoot, candidateFile, signal }) {
-  const { admission, exercise } = await frozenInputs(runRoot);
+  const { admission, exercise, baseline } = await frozenInputs(runRoot);
   assert.ok(!await hasRecord(runRoot, 'evaluation-started.json'), 'This run already started. Inspect retained evidence; do not replay it.');
   const candidate = await readCandidate(candidateFile);
   assert.notEqual(candidate.draft.authorId, admission.evaluatorId, 'Author cannot evaluate their own candidate.');
@@ -193,6 +209,8 @@ export async function evaluatePractice({ runRoot, candidateFile, signal }) {
     });
     assert.equal(bundles[`${phase}:${locale}`].status, 'ready', 'Practice knowledge is incompatible.');
   }
+  if (exercise.changeScope !== undefined) assertKnowledgeChanges(baselineKnowledge(baseline),
+    candidate.draft.knowledge, exercise.changeScope, candidate.draft.evidenceRefs);
   const attempts = [];
   let stopReason = null, tokens = 0;
   outer: for (const scenario of exercise.scenarios) for (let repeat = 0; repeat < exercise.repeats; repeat++) {
@@ -226,6 +244,9 @@ export async function evaluatePractice({ runRoot, candidateFile, signal }) {
         assert.equal((await readCandidate(join(runRoot, 'candidate.json'))).digest, candidate.digest);
         if (!response.error) {
           const checks = checkObservation(response.result, scenario.checks);
+          if (exercise.changeScope !== undefined) checks.push(preservationCheck(
+            bundles[`baseline:${scenario.context.locale}`], bundles[`${phase}:${scenario.context.locale}`],
+            scenario.context, exercise.changeScope));
           row = { ...row, checks,
             interventions: response.result.interventions, evidenceRefs: response.result.evidenceRefs,
             observationDigest: digest(response.result.observed), contextDigest: context.contextDigest,

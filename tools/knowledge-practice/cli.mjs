@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { createCandidate } from './candidate.mjs';
 import { admitPractice, evaluatePractice, inspectPractice } from './practice.mjs';
 import { createFixtureInputs } from './example.mjs';
+import { createPreservationFixture } from './preservationFixture.mjs';
 import { exportKnowledge, reviewCandidate, revokeKnowledge } from './promotion.mjs';
 import { readJson } from './artifacts.mjs';
 
@@ -43,9 +44,15 @@ export async function main(argv) {
     options(['--run']); return inspectPractice(flags['--run']);
   }
   if (command === 'fixture-demo') {
-    options(['--out', '--runtime-root'], ['--consumer']);
+    options(['--out', '--runtime-root'], ['--consumer', '--suite']);
+    const suite = flags['--suite'] ?? 'selection';
+    if (!['selection', 'preservation'].includes(suite)) throw new Error('Unknown fixture suite.');
+    if (suite === 'preservation' && flags['--consumer'] && flags['--consumer'] !== 'catlas') {
+      throw new Error('The preservation fixture covers Catlas only.');
+    }
     const root = resolve(flags['--out']); await mkdir(root, { recursive: false });
-    const input = await createFixtureInputs(root, { consumer: flags['--consumer'] });
+    const input = suite === 'preservation' ? await createPreservationFixture(root)
+      : await createFixtureInputs(root, { consumer: flags['--consumer'] });
     await createCandidate({ draftFile: input.draftFile, outputFile: input.candidateFile });
     await admitPractice({ ...input, runtimeRoot: flags['--runtime-root'] });
     const feedback = await evaluatePractice({ runRoot: input.runRoot, candidateFile: input.candidateFile });

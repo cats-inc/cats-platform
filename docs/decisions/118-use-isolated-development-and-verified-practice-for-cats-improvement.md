@@ -181,6 +181,14 @@ version, and review independent of the author. The evaluator and its acceptance
 criteria are fixed outside the candidate's writable scope for each evaluation.
 Self-reported success and favorable prose are not acceptance evidence.
 
+Bounded knowledge editing uses an operator-owned entry scope linked to admitted
+evidence, and the evaluator independently freezes its scope against the baseline.
+Unrelated guidance and all applicability remain fixed. Critical preservation
+checks cover actual direct selection and assembled model contexts in both
+languages, so content-budget loss cannot be hidden by a favorable aggregate.
+This constrains edits; it does not certify the meaning or quality of an allowed
+lesson. Existing guidance within edited topics still needs independent checks.
+
 The retained unit is a versioned, attributable method with supporting receipts
 and invalidation conditions. Retire or revoke a method when its required product
 capability changes or a counterexample invalidates it. Ordinary user activity

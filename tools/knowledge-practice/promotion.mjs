@@ -9,6 +9,7 @@ import { assembleProductKnowledgeContext, loadProductKnowledge, selectProductKno
 import { canonical, digest, evidenceIds, fields, hasRecord, id, integer, readJson, readRecord, safeText, writeNew, writeRecord } from './artifacts.mjs';
 import { candidateBundle, readCandidate, validateBundle } from './candidate.mjs';
 import { compareAttempts, frozenInputs } from './practice.mjs';
+import { assertKnowledgeChanges, baselineKnowledge, preservationCheck } from './changes.mjs';
 
 const REVIEW_CHECKS = ['evidence', 'privacy', 'applicability', 'independence', 'heldOutIsolation'];
 const consumers = { catlas: CATLAS_CODE_CAPABILITIES, orchestrator: ORCHESTRATOR_KNOWLEDGE_CAPABILITIES };
@@ -19,6 +20,8 @@ export async function verifyEvaluation(runRoot) {
   const start = await readRecord(runRoot, 'evaluation-started.json');
   const evaluation = await readRecord(runRoot, 'evaluation.json');
   const candidate = await readCandidate(join(runRoot, 'candidate.json'));
+  if (exercise.changeScope !== undefined) assertKnowledgeChanges(baselineKnowledge(baseline),
+    candidate.draft.knowledge, exercise.changeScope, candidate.draft.evidenceRefs);
   assert.equal(start.runId, admission.runId); assert.equal(evaluation.runId, admission.runId);
   assert.equal(start.candidateDigest, candidate.digest); assert.equal(evaluation.candidateDigest, candidate.digest);
   for (const key of ['exerciseDigest', 'evaluatorDigest', 'engineDigest', 'evaluatorId', 'evidenceMode']) {
@@ -44,13 +47,18 @@ export async function verifyEvaluation(runRoot) {
     integer(row.elapsedMs, 0, Number.MAX_SAFE_INTEGER);
     if (row.tokens !== null) integer(row.tokens, 0, Number.MAX_SAFE_INTEGER);
     if (row.checks) {
-      assert.equal(row.checks.length, expected.scenario.checks.length);
+      const context = assembleProductKnowledgeContext(bundles[row.phase][expected.scenario.context.locale], expected.scenario.context);
+      const checks = [...expected.scenario.checks];
+      if (exercise.changeScope !== undefined) checks.push(preservationCheck(
+        bundles.baseline[expected.scenario.context.locale], bundles[row.phase][expected.scenario.context.locale],
+        expected.scenario.context, exercise.changeScope));
+      assert.equal(row.checks.length, checks.length);
       row.checks.forEach((check, checkIndex) => {
-        const frozen = expected.scenario.checks[checkIndex];
+        const frozen = checks[checkIndex];
         for (const key of ['id', 'kind', 'critical']) assert.equal(check[key], frozen[key]);
         assert.equal(typeof check.passed, 'boolean');
+        if (Object.hasOwn(frozen, 'passed')) assert.equal(check.passed, frozen.passed, 'Preservation check changed.');
       });
-      const context = assembleProductKnowledgeContext(bundles[row.phase][expected.scenario.context.locale], expected.scenario.context);
       assert.equal(row.contextDigest, context.contextDigest, 'Delivered knowledge binding changed.');
     }
     attempts.push(row);

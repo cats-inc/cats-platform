@@ -98,6 +98,76 @@ test('managed authoring persists one correlated draft through actual Code projec
   assert.equal(f.calls.filter(([name]) => name === 'send').length, 1);
 });
 
+test('scoped authoring edits only evidence-linked recovery guidance and preserves other topics', async t => {
+  const f = await fixture(t);
+  f.request.changeScope = [{ entryId: 'code.recovery', evidenceRefs: ['test:workspace'] }];
+  const draft = structuredClone(f.request.draft);
+  draft.knowledge.revision = 'fixture.2';
+  const recovery = draft.knowledge.entries.find(entry => entry.id === 'code.recovery');
+  recovery.revision++;
+  recovery.content.en += ' Fixture: inspect the resulting workspace before retrying.';
+  recovery.content['zh-TW'] += ' 測試：重試前先檢查實際工作區。';
+  f.runtimeClient.sendMessage = async (_, prompt) => {
+    const supplied = JSON.parse(prompt.slice(prompt.indexOf('\n') + 1));
+    assert.deepEqual(supplied.changeScope, f.request.changeScope);
+    return { segments: [{ kind: 'text', text: JSON.stringify(draft) }], tokensUsed: 42 };
+  };
+  const result = await authorKnowledge(f);
+  assert.equal(result.status, 'completed', result.error);
+  const candidate = JSON.parse(await readFile(result.candidatePath, 'utf8'));
+  assert.deepEqual(candidate.draft, draft);
+  assert.deepEqual(candidate.draft.knowledge.entries.slice(0, 4), f.request.draft.knowledge.entries.slice(0, 4));
+});
+
+for (const failure of ['all-topic-overwrite', 'unscoped-translation', 'topic', 'role', 'surface', 'operation',
+  'removed', 'added', 'reordered', 'entry-revision', 'bundle-revision', 'unscoped-revision',
+  'unchanged-revision', 'no-scope', 'model-scope']) {
+  test(`authoring rejects ${failure} and retains usage without publishing a draft`, async t => {
+    const f = await fixture(t);
+    f.request.changeScope = [{ entryId: 'code.recovery', evidenceRefs: ['test:workspace'] }];
+    const draft = structuredClone(f.request.draft);
+    draft.knowledge.revision = 'fixture.2';
+    const recovery = draft.knowledge.entries.find(entry => entry.id === 'code.recovery');
+    recovery.revision++; recovery.content.en += ' Fixture: verify cleanup after cancellation.';
+    if (failure === 'all-topic-overwrite') for (const entry of draft.knowledge.entries) {
+      entry.revision++;
+      entry.content = { en: 'Cancellation requests a stop; verify cleanup.', 'zh-TW': '取消會要求停止；仍須確認清理。' };
+    }
+    if (failure === 'unscoped-translation') draft.knowledge.entries[2].content['zh-TW'] = '取消不代表清理完成。';
+    if (failure === 'topic') recovery.topics = ['always'];
+    if (failure === 'role') recovery.roles.push('orchestrator');
+    if (failure === 'surface') recovery.surfaces.push('chat-visible');
+    if (failure === 'operation') recovery.requiredOperations.push({ id: 'unsupported.action', version: '1.0' });
+    if (failure === 'removed') draft.knowledge.entries.shift();
+    if (failure === 'added') draft.knowledge.entries.push({ ...recovery, id: 'new.entry' });
+    if (failure === 'reordered') draft.knowledge.entries.reverse();
+    if (failure === 'entry-revision') recovery.revision--;
+    if (failure === 'bundle-revision') draft.knowledge.revision = f.request.draft.knowledge.revision;
+    if (failure === 'unscoped-revision') draft.knowledge.entries[0].revision++;
+    if (failure === 'unchanged-revision') recovery.content = f.request.draft.knowledge.entries.at(-1).content;
+    if (failure === 'no-scope') delete f.request.changeScope;
+    if (failure === 'model-scope') draft.changeScope = f.request.changeScope;
+    f.runtimeClient.sendMessage = async () => ({ segments: [{ kind: 'text', text: JSON.stringify(draft) }], tokensUsed: 42 });
+    const result = await authorKnowledge(f);
+    assert.equal(result.status, 'failed', failure);
+    assert.equal(result.usageTokens, 42); assert.equal(result.cleanup, 'requested');
+    assert.equal((await f.coreStore.readCore()).artifacts.length, 0);
+    await assert.rejects(readFile(join(f.outputRoot, 'candidate.json')), { code: 'ENOENT' });
+  });
+}
+
+test('invalid change scope is rejected before Core admission or Runtime work', async t => {
+  const f = await fixture(t);
+  const change = { entryId: 'code.recovery', evidenceRefs: ['test:workspace'] };
+  for (const scope of [null, [change, change], [{ ...change, entryId: 'invented.entry' }],
+    [{ ...change, evidenceRefs: [] }], [{ ...change, evidenceRefs: ['invented:evidence'] }],
+    [{ ...change, evidenceRefs: ['test:workspace', 'test:workspace'] }],
+    [{ ...change, topics: ['always'] }]]) {
+    await assert.rejects(authorKnowledge({ ...f, request: { ...f.request, changeScope: scope } }));
+  }
+  assert.equal(f.calls.length, 0); assert.equal((await f.coreStore.readCore()).runs.length, 0);
+});
+
 test('concurrent duplicate admission and re-entry cannot repeat a session or inference', async t => {
   const f = await fixture(t);
   await Promise.all([authorKnowledge(f), authorKnowledge(f)]);

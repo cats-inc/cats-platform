@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Native Desktop candidate authoring accepted; knowledge evaluation/promotion and broader gates pending |
+| Status | Native authoring accepted; scoped edits and preservation checks implemented; live knowledge evaluation/promotion and broader gates pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Last updated | 2026-09-26 |
@@ -25,7 +25,56 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — integrated and Desktop preview published (2026-09-26)
+## Resume Checkpoint — bounded topic-preservation slice complete (2026-09-26)
+
+- Owner authorized the next bounded local slice: preserve unrelated knowledge
+  during authoring and prepare independent baseline/candidate evaluation. Branch
+  `fix/knowledge-topic-preservation` starts from Platform main `c604970d`.
+  The 0.5.2 integration/publication below is complete; do not repeat it.
+- Fixed the original gaps: the host previously checked draft identity/evidence
+  and bundle applicability but did not enforce the prompt's entry constraints;
+  public selection fixtures checked presence rather than retained guidance.
+  Host-owned scope now permits only evidence-linked edits to existing entries.
+  Unrelated bilingual content/revisions, all applicability and entry order remain
+  fixed; missing scope permits no edits. Product evaluation independently freezes
+  scope and requires coverage of every baseline entry in both languages.
+- Implemented host-owned scope and independently frozen evaluation policy;
+  regressions cover topic overwrite, bilingual retention and scoped-content
+  quality loss. The archived native draft with digest `6c7ce9b832a987ab` was
+  rejected offline under recovery-only scope; archive unchanged, zero inference.
+  New private receipt is outside both repos at
+  `../.validation/knowledge-topic-preservation-20260926/historical-regression-final.json`.
+  Its final engine digest is
+  `1fefcf61ecf188e451f254e116bb1e955eaf09994e8f70fa13aacd7e06446330`.
+- Independent review found and drove a correction for direct Catlas selection
+  loss hidden by equal assembled contexts. The engine-owned critical check now
+  compares both paths; the verifier recomputes it from frozen inputs. The exact
+  budget-pressure regression covers both languages. Re-review found no remaining
+  code blockers. The final current-input suite passed **58/58** tests across
+  authoring, preservation, practice and promotion, including the 60-reset
+  bilingual positive fixture, critical scoped-content failure and both consumer
+  selection paths. The docs-boundary and test-collection checks passed **3/3**.
+  Commands used `node --test --test-isolation=none`; the default process-isolated
+  runner hit sandbox `spawn EPERM` before tests started. This matches the repo's
+  normal runner mode, requires no provider and passed without escalation.
+  Full application CI/native testing was not repeated for these developer-tool
+  changes; existing compiled product consumers were exercised. Final output is
+  retained in the private directory's `focused-tests.log`.
+- No new provider call, installed-state write, promotion,
+  version bump or publication is part of this local slice. Prior native model
+  authorizations remain consumed. Public deterministic cases cannot establish
+  protected holdout isolation or live model improvement.
+- **Next work:** independently prepare a protected product curriculum and a new
+  scoped author request against the current compatible baseline, review the
+  evidence-to-topic mapping and semantic assertions, then obtain the applicable
+  provider authorization before any native turn. Historical request/candidate
+  digests remain unchanged; do not replay them. The new public fixture is only a
+  regression starting point and must not be relabelled as a protected holdout.
+  Catlas live quality/promotion, separate Orchestrator applicability, G1/G2/G4
+  and installed combined acceptance remain open. Work remains on the local
+  feature branch; no new PR, main update or release is included in this slice.
+
+## Previous checkpoint — integrated and Desktop preview published (2026-09-26)
 
 - Owner authorized normal auto-merge PR integration and a Desktop
   **standard-profile preview**, including its version preparation; explicitly
@@ -973,6 +1022,7 @@ skill. Check both real artifact contents and effective session/model inputs.
 
 | Date | Update |
 |------|--------|
+| 2026-09-26 | Added evidence-linked authoring scope and independently frozen preservation policy. Engine-owned critical checks cover bilingual direct selection and assembled contexts; independent review caught and verified the fix for a masked Catlas selection loss. Final 58 focused knowledge tests and 3 docs/collection checks pass; the archived native overwrite is rejected offline. Public fixtures remain ineligible for product promotion. Local checkpoint only; no inference, installed-state mutation, version or publication. |
 | 2026-09-25 | P1/P2 enforce artifact content policy and add three preview-only Runtime skills with release/npm exclusion. P3/P4 implement on-demand candidate/evaluation/review/export/revocation through existing knowledge consumers. The Resume Checkpoint records each branch slice, validation and remaining native/managed-practice gates; the earlier inventory below is historical. No versions, release artifacts, installed state or main branch changed. |
 | 2026-09-25 | Read-only G0 inventory distinguishes 33 ordinary Runtime role/procedure packages and two normal knowledge bundles from the still-absent Cats-specific development/practice supplement. Recorded broad artifact staging, catalog cache identity, resumed-skill hydration and existing private candidate isolation. This documentation slice prepares ownership/profile contracts; no content filter, skill delivery, persisted schema, model inference, version or publication changed. G0/G1 and practice/promotion remain open. |
 | 2026-09-24 | PLAN-110 K1 now shares the Platform knowledge reader with Catlas and delivers normal Orchestrator procedures inline, with source-free asset fixtures. Catlas's 13 regressions pass within the 239-test scoped batch. This does not close this plan's preview development, practice/promotion, live-provider or installed-Desktop gates. |

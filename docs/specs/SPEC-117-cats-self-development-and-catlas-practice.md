@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Native managed candidate authoring accepted; independent evaluation/promotion and broader acceptance pending |
+| Status | Native authoring accepted; scoped edits and preservation checks implemented; live evaluation/promotion and broader acceptance pending |
 | Owner | Platform integration, with member-owned work packages |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Decision | [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
@@ -96,6 +96,17 @@ promotion without correction and evaluation. It targets Catlas/code-help only.
 It does not establish Orchestrator consumption, protected-holdout improvement,
 source-fix execution, installed-profile acceptance or publication. PLAN-109
 retains the exact revisions, prior failed attempts and next evaluation scope.
+
+The follow-up bounded authoring contract uses operator-owned, evidence-linked
+entry scope. Unrelated bilingual content/revisions and all entry applicability
+and ordering must remain unchanged; permitted content edits require new entry
+and bundle revisions. Product evaluation independently freezes that scope with
+its baseline, covers every baseline entry in both locales, and makes retained
+delivery an engine-owned critical check. The check covers direct Catlas
+selection and assembled role contexts, including context-budget omissions.
+Permitted edits still require independent correctness checks within their own
+topics. Public deterministic preservation fixtures are regression evidence;
+they do not establish live-model improvement or protected holdout isolation.
 
 ## Implemented Code-Entry Assistance
 

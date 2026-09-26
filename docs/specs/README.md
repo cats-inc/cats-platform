@@ -49,7 +49,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
 | [SPEC-118](SPEC-118-orchestrator-knowledge-and-collaboration-operations.md) | Orchestrator Knowledge and Collaboration Operations | In progress; separate native K2/K3, K3 saved-state projections and full CI pass; profile/combined rollout gates open | [PLAN-110](../plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md), [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
-| [SPEC-117](SPEC-117-cats-self-development-and-catlas-practice.md) | Cats Self-Development and Catlas Practice | Native managed candidate authoring accepted; knowledge quality/promotion and combined acceptance pending | [PLAN-109](../plans/PLAN-109-cats-self-development-and-catlas-practice.md), [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
+| [SPEC-117](SPEC-117-cats-self-development-and-catlas-practice.md) | Cats Self-Development and Catlas Practice | Native authoring accepted; scoped edits and preservation checks implemented; live quality/promotion and combined acceptance pending | [PLAN-109](../plans/PLAN-109-cats-self-development-and-catlas-practice.md), [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
 | [SPEC-115](./SPEC-115-versioned-official-app-packages-and-telemetry-bridge.md) | Versioned Official App Packages and Telemetry Bridge | Draft — direction accepted; implementation pending | [PLAN-106](../plans/PLAN-106-official-app-package-hosting.md), [ADR-114](../decisions/114-separate-official-app-sources-and-coordinate-desktop-distribution.md) |
 | [SPEC-114](./SPEC-114-telegram-work-delivery-golden-path.md) | Telegram Work Delivery Golden Path | Approved — all 50 requirements traced (47 done, 2 partial, 1 gap) | [PLAN-105](../plans/PLAN-105-telegram-work-delivery-golden-path-rollout.md), [ADR-112](../decisions/112-adopt-a-core-owned-transport-work-delivery-golden-path.md) |
 | [SPEC-113](./SPEC-113-admin-bootstrap-and-google-account-linking.md) | Admin Bootstrap and Google Account Linking | Approved | [PLAN-104](../plans/PLAN-104-admin-bootstrap-and-google-account-linking-rollout.md), [ADR-111](../decisions/111-keep-first-admin-local-and-require-step-up-for-google-linking.md) |
@@ -173,6 +173,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-09-26 (SPEC-117 records native candidate-authoring acceptance and remaining knowledge-quality gates.)*
+*Last updated: 2026-09-26 (SPEC-117 records scoped authoring and preservation checks; live knowledge-quality gates remain open.)*
 
 *See also: [plans/](../plans/) for implementation plans*
