@@ -7,6 +7,7 @@ import { canonical, digest, fields, integer, physical, safeText, writeNew } from
 const HASH = /^[a-f0-9]{64}$/u;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/u;
 const DATE = /^20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?Z$/u;
+const SECCOMP_MAX_BYTES = 64 * 1024;
 const incomplete = () => ({ scope: 'container-exit', status: 'incomplete', evidenceRefs: ['container:unconfirmed'] });
 // Whole inspect objects may contain credentials, environment, command text or logs.
 const PROJECTION = '{' + [
@@ -79,7 +80,7 @@ export function createDockerReadClient({ executable, configRoot, host, cwd }) {
 
 function validateBinding(raw) {
   const binding = structuredClone(raw);
-  fields(binding, ['engineId', 'containerId', 'imageId', 'ownerToken', 'networkMode', 'mounts']);
+  fields(binding, ['engineId', 'containerId', 'imageId', 'ownerToken', 'networkMode', 'mounts', 'seccompProfileSha256']);
   safeText(binding.engineId, 100); assert.match(binding.containerId, HASH);
   assert.match(binding.imageId, /^sha256:[a-f0-9]{64}$/u); assert.match(binding.ownerToken, UUID);
   assert.ok(binding.networkMode === 'none' || HASH.test(binding.networkMode), 'Pin a dedicated network ID or none.');
@@ -90,7 +91,28 @@ function validateBinding(raw) {
     assert.ok(typeof mount.destination === 'string' && /^\/[a-zA-Z0-9/._-]+$/u.test(mount.destination));
   }
   assert.equal(new Set(binding.mounts.map(mount => mount.destination)).size, binding.mounts.length);
+  if (Object.hasOwn(binding, 'seccompProfileSha256')) assert.match(binding.seccompProfileSha256, HASH);
   return binding;
+}
+
+function observedSeccomp(options, binding) {
+  if (!Object.hasOwn(binding, 'seccompProfileSha256')) {
+    assert.deepEqual(options, ['no-new-privileges']);
+    return undefined;
+  }
+  assert.ok(Array.isArray(options) && options.length === 2);
+  assert.equal(options[0], 'no-new-privileges');
+  assert.ok(typeof options[1] === 'string' && options[1].startsWith('seccomp='));
+  const text = options[1].slice('seccomp='.length);
+  assert.ok(Buffer.byteLength(text, 'utf8') <= SECCOMP_MAX_BYTES);
+  const profile = JSON.parse(text);
+  assert.ok(profile !== null && typeof profile === 'object' && !Array.isArray(profile));
+  // This shape check does not audit syscall rules. The caller reviews and freezes
+  // the exact policy separately; neither trimming nor JSON canonicalization applies.
+  assert.equal(profile.defaultAction, 'SCMP_ACT_ERRNO');
+  const sha256 = digest(text);
+  assert.equal(sha256, binding.seccompProfileSha256);
+  return sha256;
 }
 
 function observedSnapshot(raw, binding) {
@@ -101,7 +123,8 @@ function observedSnapshot(raw, binding) {
   assert.equal(h.PidMode, ''); assert.equal(h.IpcMode, 'private'); assert.equal(h.CgroupnsMode, 'private');
   assert.equal(h.NetworkMode, binding.networkMode); assert.equal(h.AutoRemove, false);
   assert.deepEqual(h.CapDrop, ['ALL']); assert.ok(h.CapAdd === null || Array.isArray(h.CapAdd) && h.CapAdd.length === 0);
-  assert.deepEqual(h.SecurityOpt, ['no-new-privileges']); assert.equal(h.RestartPolicy.Name, 'no');
+  const seccompProfileSha256 = observedSeccomp(h.SecurityOpt, binding);
+  assert.equal(h.RestartPolicy.Name, 'no');
   assert.equal(h.RestartPolicy.MaximumRetryCount, 0); assert.equal(c.RestartCount, 0);
   assert.ok(Array.isArray(c.Mounts) && c.Mounts.length === binding.mounts.length);
   const mounts = c.Mounts.map(mount => {
@@ -122,15 +145,18 @@ function observedSnapshot(raw, binding) {
   return { engineId: binding.engineId, containerId: c.Id, imageId: c.Image, ownerToken: binding.ownerToken,
     createdAt: c.Created, startedAt: s.StartedAt, finishedAt: s.Status === 'exited' ? s.FinishedAt : null,
     pid: s.Pid, status: s.Status, exitCode: s.ExitCode, oomKilled: s.OOMKilled,
+    ...(seccompProfileSha256 === undefined ? {} : { seccompProfileSha256 }),
     configurationDigest: digest({ user: c.Config.User, host: { privileged: h.Privileged, readOnly: h.ReadonlyRootfs,
       pid: h.PidMode, ipc: h.IpcMode, cgroup: h.CgroupnsMode, network: h.NetworkMode,
-      caps: h.CapDrop, security: h.SecurityOpt, restart: h.RestartPolicy }, mounts }) };
+      caps: h.CapDrop, security: seccompProfileSha256 === undefined ? h.SecurityOpt : { noNewPrivileges: true, seccompProfileSha256 },
+      restart: h.RestartPolicy }, mounts }) };
 }
 
 /**
  * Evidence for one dedicated, fully contained process tree. Arm before inference;
  * stop the owned container separately before confirming cleanup. No Runtime endpoint,
  * semantic quality, filesystem-read or egress guarantee is inferred from this proof.
+ * Optional seccompProfileSha256 binds exact policy bytes, not policy safety.
  */
 export function createDockerExitObserver({ evidenceRoot, binding: rawBinding, dockerClient }) {
   const binding = validateBinding(rawBinding);

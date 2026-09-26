@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import test from 'node:test';
-import { readJson, writeNew } from '../tools/knowledge-practice/artifacts.mjs';
+import { digest, readJson, writeNew } from '../tools/knowledge-practice/artifacts.mjs';
 import { createDockerExitObserver, createDockerReadClient } from '../tools/knowledge-practice/dockerObserver.mjs';
 
 async function setup(t) {
@@ -44,10 +44,116 @@ test('container exit needs prior running identity and two fresh stopped observat
   assert.deepEqual(Object.keys(await observer.confirmExit(f.claim)).sort(),['evidenceRefs','scope','status']);
   const receipt=await readJson(join(f.journal,'observation-0002.json'));
   assert.equal(receipt.complete,true); assert.equal(receipt.observation.pid,0); assert.equal(receipt.observation.status,'exited');
+  assert.equal(Object.hasOwn(receipt.observation,'seccompProfileSha256'),false);
   assert.equal(JSON.stringify(receipt).includes('must-not-persist'),false);
   assert.equal(f.calls(),5);
   await assert.rejects(observer.arm(f.claim),/already consumed/u);
   assert.equal((await observer.confirmExit({...f.claim,sessionId:'foreign'})).status,'incomplete'); assert.equal(f.calls(),5);
+});
+
+const policyText = '{ "defaultAction": "SCMP_ACT_ERRNO", "syscalls": [], "comment": "private-policy-marker" }\n';
+function bindPolicy(f, text = policyText) {
+  f.binding.seccompProfileSha256 = digest(text);
+  f.raw.container.HostConfig.SecurityOpt = ['no-new-privileges', `seccomp=${text}`];
+}
+
+test('an explicitly bound seccomp policy retains only its exact byte digest and confirms a fresh exit', async t => {
+  const f=await setup(t); bindPolicy(f); const bindingDigest=digest(f.binding), observer=f.create();
+  // Caller mutation after admission cannot change the observer's identity.
+  f.binding.seccompProfileSha256='c'.repeat(64);
+  assert.equal((await observer.arm(f.claim)).status,'armed');
+  f.exit(); const result=await observer.confirmExit(f.claim);
+  assert.equal(result.status,'complete'); assert.equal(result.scope,'container-exit'); assert.equal(f.calls(),3);
+  for(const file of ['armed.json','observation-0001.json']) {
+    const receipt=await readJson(join(f.journal,file));
+    assert.equal(receipt.observation.seccompProfileSha256,digest(policyText));
+    assert.equal(JSON.stringify(receipt).includes('private-policy-marker'),false);
+    assert.equal(JSON.stringify(receipt).includes('SCMP_ACT_ERRNO'),false);
+  }
+  for(const file of [join(f.journal,'intent.json'),join(f.root,'container-claims',`${f.binding.containerId}.json`)]) {
+    const receipt=await readJson(file); assert.equal(receipt.bindingDigest,bindingDigest);
+    assert.equal(JSON.stringify(receipt).includes('private-policy-marker'),false);
+  }
+  const next={...f.claim,resetId:randomUUID()}; await mkdir(join(f.root,'resets',next.resetId));
+  await assert.rejects(f.create().arm(next),{code:'EEXIST'}); assert.equal(f.calls(),3);
+});
+
+for(const [name,value] of Object.entries({null:null,undefined:undefined,empty:'',short:'a'.repeat(63),
+  uppercase:'A'.repeat(64),whitespace:'a'.repeat(64)+' ',number:123,array:['a'.repeat(64)]}))
+test(`explicit ${name} seccomp digest is rejected before any observation`,async t=>{
+  const f=await setup(t); f.binding.seccompProfileSha256=value;
+  assert.throws(()=>f.create()); assert.equal(f.calls(),0);
+});
+
+test('an omitted seccomp binding keeps rejecting custom profiles',async t=>{
+  const f=await setup(t); f.raw.container.HostConfig.SecurityOpt.push(`seccomp=${policyText}`);
+  const observer=f.create(); await assert.rejects(observer.arm(f.claim),/identity or containment changed/u);
+  assert.equal((await observer.confirmExit(f.claim)).status,'incomplete'); assert.equal(f.calls(),1);
+});
+
+test('explicit policy binding cannot reclaim a container rejected by the default observer',async t=>{
+  const f=await setup(t); f.raw.container.HostConfig.SecurityOpt.push(`seccomp=${policyText}`);
+  await assert.rejects(f.create().arm(f.claim),/identity or containment changed/u);
+  bindPolicy(f);
+  const next={...f.claim,resetId:randomUUID()}; await mkdir(join(f.root,'resets',next.resetId));
+  await assert.rejects(f.create().arm(next),{code:'EEXIST'}); assert.equal(f.calls(),1);
+});
+
+for(const [name,text] of Object.entries({malformed:'{"defaultAction":',unconfined:'unconfined',array:'[]',
+  null:'null',string:'"SCMP_ACT_ERRNO"',missing:'{}',allow:'{"defaultAction":"SCMP_ACT_ALLOW"}'}))
+test(`a matching hash cannot admit a ${name} seccomp profile`,async t=>{
+  const f=await setup(t); bindPolicy(f,text); const observer=f.create();
+  await assert.rejects(observer.arm(f.claim),/identity or containment changed/u);
+  assert.equal((await observer.confirmExit(f.claim)).status,'incomplete'); assert.equal(f.calls(),1);
+});
+
+for(const [name,options] of Object.entries({missing:['no-new-privileges'],
+  reordered:[`seccomp=${policyText}`,'no-new-privileges'],
+  extra:['no-new-privileges',`seccomp=${policyText}`,'apparmor=unconfined'],
+  duplicate:['no-new-privileges',`seccomp=${policyText}`,`seccomp=${policyText}`],
+  wrongPrefix:['no-new-privileges',`seccomp:${policyText}`],
+  missingNnp:[`seccomp=${policyText}`],notArray:{0:'no-new-privileges',1:`seccomp=${policyText}`,length:2}}))
+test(`bound policy rejects ${name} security options`,async t=>{
+  const f=await setup(t); bindPolicy(f); f.raw.container.HostConfig.SecurityOpt=options;
+  await assert.rejects(f.create().arm(f.claim),/identity or containment changed/u);
+});
+
+for(const [name,expected] of Object.entries({wrong:'0'.repeat(64),trimmed:digest(policyText.trim()),
+  canonical:digest(JSON.stringify(JSON.parse(policyText)))}))
+test(`a ${name} policy digest cannot substitute for exact raw bytes`,async t=>{
+  const f=await setup(t); bindPolicy(f); f.binding.seccompProfileSha256=expected;
+  await assert.rejects(f.create().arm(f.claim),/identity or containment changed/u);
+});
+
+test('the policy size budget counts UTF-8 bytes and is enforced before JSON parsing',async t=>{
+  const f=await setup(t);
+  const prefix='{"defaultAction":"SCMP_ACT_ERRNO","comment":"', suffix='"}';
+  const text=prefix+'界'.repeat(22000)+suffix;
+  assert.ok(text.length<64*1024); assert.ok(Buffer.byteLength(text)>64*1024); bindPolicy(f,text);
+  let parses=0; const parse=JSON.parse;
+  t.mock.method(JSON,'parse',(...args)=>{if(args[0]===text)parses++;return parse(...args);});
+  await assert.rejects(f.create().arm(f.claim),/identity or containment changed/u); assert.equal(parses,0);
+});
+
+test('an exact 64 KiB UTF-8 policy can be bound without persisting its body',async t=>{
+  const f=await setup(t), prefix='{"defaultAction":"SCMP_ACT_ERRNO","comment":"界', suffix='"}';
+  const text=prefix+'a'.repeat(64*1024-Buffer.byteLength(prefix+suffix))+suffix;
+  assert.equal(Buffer.byteLength(text),64*1024); bindPolicy(f,text);
+  const observer=f.create(); assert.equal((await observer.arm(f.claim)).status,'armed'); f.exit();
+  assert.equal((await observer.confirmExit(f.claim)).status,'complete');
+  const receipt=await readJson(join(f.journal,'observation-0001.json'));
+  assert.equal(receipt.observation.seccompProfileSha256,digest(text)); assert.ok(JSON.stringify(receipt).length<4096);
+});
+
+for(const position of [1,2]) test(`policy drift on read ${position} poisons immediately despite later transport failure or restoration`,async t=>{
+  const f=await setup(t); bindPolicy(f); const observer=f.create(); await observer.arm(f.claim); f.exit();
+  const drift=structuredClone(f.raw); drift.container.HostConfig.SecurityOpt[1]+=' ';
+  let reads=0;
+  f.setRead(async()=>{reads++;if(reads<position)return structuredClone(f.raw);if(reads===position)return drift;throw new Error('Later transport failure');});
+  assert.equal((await observer.confirmExit(f.claim)).status,'incomplete'); assert.equal(reads,position);
+  assert.equal((await readJson(join(f.journal,'failure-0001.json'))).poisoned,true);
+  f.setRead(async()=>structuredClone(f.raw));
+  assert.equal((await observer.confirmExit(f.claim)).status,'incomplete'); assert.equal(f.calls(),position+1);
 });
 
 test('a full container ID cannot be rebound under another reset after observer reconstruction', async t => {
@@ -103,6 +209,15 @@ const changed = {
 for(const [kind,change] of Object.entries(changed)) test(`observed ${kind} drift permanently invalidates the armed container`,async t=>{
   const f=await setup(t), observer=f.create(); await observer.arm(f.claim); f.exit();
   const original=structuredClone(f.raw); change(f);
+  assert.equal((await observer.confirmExit(f.claim)).status,'incomplete');
+  f.setRead(async()=>structuredClone(original)); const calls=f.calls();
+  assert.equal((await observer.confirmExit(f.claim)).status,'incomplete'); assert.equal(f.calls(),calls);
+});
+
+for(const kind of ['added-capability','writable-bind','network'])
+test(`explicit policy binding still rejects ${kind} containment drift`,async t=>{
+  const f=await setup(t); bindPolicy(f); const observer=f.create(); await observer.arm(f.claim); f.exit();
+  const original=structuredClone(f.raw); changed[kind](f);
   assert.equal((await observer.confirmExit(f.claim)).status,'incomplete');
   f.setRead(async()=>structuredClone(original)); const calls=f.calls();
   assert.equal((await observer.confirmExit(f.claim)).status,'incomplete'); assert.equal(f.calls(),calls);

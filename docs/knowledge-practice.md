@@ -339,6 +339,19 @@ observer instance within that evaluation root. The per-role journal retains only
 sanitized identity/state and configuration digests, without environment, command
 arguments, health logs or daemon diagnostics.
 
+An optional `binding.seccompProfileSha256` pins a separately reviewed custom
+profile. Omission keeps the exact `['no-new-privileges']` security-option contract;
+explicit null/undefined or an invalid digest is rejected. A bound profile requires
+exactly `['no-new-privileges', 'seccomp=<JSON text>']`, in that order. The observer
+limits the text to 64 KiB of UTF-8 before parsing, requires an object with
+`defaultAction: 'SCMP_ACT_ERRNO'`, and hashes those exact bytes without trimming or
+canonicalizing them. Only the digest reaches sanitized snapshots and binding
+identity; the policy body is not journaled. The shape check does **not** audit the
+syscall rules. The caller must separately review and freeze the policy and parent
+binding. The hash identifies Docker's configured profile text, not the compiled
+kernel filter. No profile is supplied by default, and historical rejected observations
+cannot be recertified through this option.
+
 `confirmExit` accepts the exact armed reset/stage/session tuple and requires two
 fresh, identical exited/PID-zero observations. Creation/start times, ownership,
 image, containment settings and restart count must match the armed identity.
@@ -430,6 +443,24 @@ closed and removed. Inspection of the [versioned vendored source](https://github
 locates that error at raw `clone` failure. This source-informed inference explains
 why allowing only `unshare` is insufficient; it is not an actual syscall trace or
 evidence that the rest of bubblewrap's setup would succeed.
+An independently reviewed differential then added only the exact `amd64` clone
+flag value for the requested namespaces. With the same native probe bytes, both
+commands reached a new error at the first mount operation (`Failed to make / slave`).
+The measurement and owned cleanup completed, while both tool/read-policy readiness
+flags remained false. No mount or pivot allowance was included in that comparison.
+A separately reviewed diagnostic then allowed `amd64` mount/pivot operations and
+`umount2` only with detach flags. The ordinary read-only control passed, while the
+restricted profile could not read its own native helper. A fresh diagnostic kept
+that syscall policy unchanged and explicitly granted read access to the one pinned
+helper executable. The restricted command then read the allowed synthetic file,
+could not read the outside file and could not write; the ordinary control read
+both files and also could not write. The unknown-profile control passed. Outer
+UID/GID, all zero capability sets, namespace identities, no-new-privileges and
+seccomp mode stayed unchanged; native output drained and the owned container was
+removed. Independent source and actual-result reviews passed. These receipts used
+the unbound observer and remain incomplete there. They establish sampled native
+command behavior, not Runtime turn policy propagation or author/grader blinding.
+
 Codex's [versioned Linux sandbox notes](https://github.com/openai/codex/blob/rust-v0.157.0/codex-rs/linux-sandbox/README.md)
 require bubblewrap for restricted filesystem execution. Any future dedicated
 container policy needs its own review, exact byte binding and native validation;

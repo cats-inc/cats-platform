@@ -25,7 +25,7 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — native namespace failure localized (2026-09-26)
+## Resume Checkpoint — private native read-policy commands passed (2026-09-26)
 
 - Parent create-only transport is checkpointed at `01475b67`; the synthetic user
   namespace comparison is checkpointed at `99a2915a`. Next-stage owner
@@ -68,15 +68,52 @@ architecture review and release authorization remain separate gates.
   vendored code emits this message at a failed raw `clone`, whereas the first
   diagnostic allowed only `unshare`. Its source also requests mount, user, PID,
   IPC and network namespaces. This is source-informed failure localization,
-  not a syscall trace or reproducible-build proof. Any next differential policy
-  remains subject to exact argument binding and independent review; broader
-  mount permissions have not been added.
-- Independent source/flag review supports preparing one extra `clone` argument-0
-  equality rule for `2013397009` (`0x78020011`) in the private diagnostic. Review
-  the actual resulting profile and launcher before execution, preserve command
-  inputs and leave other errors visible. No syscall filter is a condition on
-  current namespace membership. Parent send/usage/cancellation, the small
-  authorized pilot and all knowledge-quality gates remain pending.
+  not a syscall trace or reproducible-build proof. Each subsequent differential
+  was independently reviewed before execution; this source inspection alone
+  did not change the policy.
+- After independent source/flag and materialized-profile/launcher review, a fresh
+  private diagnostic added exactly one `amd64` `clone` argument-0 equality rule
+  for `2013397009` (`0x78020011`). Native command and verifier bytes stayed
+  unchanged. Both commands advanced from the namespace error to
+  `Failed to make / slave: Operation not permitted`, matching the source's first
+  mount call. Both readiness flags remain false. The measurement completed and
+  the container was removed without pending CLI or unresolved creation; actual
+  result review passed. That comparison added no mount/pivot allowance and is
+  retained in `CLONE-COMMAND-RESUME.md`.
+- A separately reviewed private diagnostic added `amd64` mount/pivot allowances
+  and `umount2` flags equal to detach. The ordinary read-only control passed;
+  the restricted profile failed to read its own helper executable. These syscall
+  rules do not identify bubblewrap or current namespace membership, and mount/
+  pivot arguments are unrestricted by seccomp. No outer capability, device,
+  network, daemon or host setting changed. Result review passed and is retained
+  in `MOUNT-COMMAND-RESUME.md`.
+- The next diagnostic kept that policy unchanged and added only an explicit
+  read grant for the pinned native helper file. Restricted access passed:
+  allowed synthetic file readable, outside file denied, writes denied. The
+  ordinary read-only control read both files and denied writes; the unknown
+  profile control also passed. Native exit/output drainage and before/after
+  outer identity, all zero capability sets and namespace checks passed. Two
+  matching valid container exits preceded exact-owned removal. No unresolved
+  create, pending CLI, harness failure or cleanup failure remained. Independent
+  source/launcher and actual-result reviews passed; latest private continuation
+  is `HELPER-COMMAND-RESUME.md`. All six diagnostic containers were removed.
+- Those runs used the unbound observer and their production exit receipts remain
+  incomplete. They establish only the sampled synthetic native command policy,
+  not Runtime turn policy propagation, author/grader blinding or model quality.
+- A separate observer extension now accepts an optional exact policy SHA-256,
+  with a 64 KiB UTF-8 limit, default-errno object shape and exact security options.
+  Default admission stays unchanged; explicit invalid bindings and observed
+  drift fail closed. Journals retain only the policy digest. This identifies a
+  separately reviewed policy and container exit; it does not audit arbitrary
+  syscall rules or adopt this experimental policy as a supported default.
+  **89/89** scoped checks passed: observer/freeze **86**, docs/collection **3**.
+  The initial sandboxed freeze run could not spawn esbuild; the focused rerun
+  with that child process permitted passed. Independent source/test review found
+  no blocker; its additional containment and prior-claim regressions also passed.
+- Next: validate that observer extension and run a fresh, explicitly bound
+  no-credential command canary. No retrospective acceptance of earlier receipts.
+  Runtime parent send/usage/cancellation, the small authorized pilot and all
+  knowledge-quality gates remain pending.
 
 ## Previous checkpoint — native parent create-only transport (2026-09-26)
 
