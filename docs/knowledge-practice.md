@@ -1,13 +1,33 @@
-# Preview knowledge practice
+# Knowledge contributions and preview practice
 
-This is an on-demand developer workflow for proposing and independently checking
-product knowledge. It does not train model weights, start a scheduler, change an
-installed Desktop, or add a release endpoint. The tools directory is outside the
-npm/Desktop asset lists. Ordinary release Catlas and Orchestrator continue using
-the production knowledge loader and their configured provider/model.
+Desktop supports local knowledge drafts and manual adoption. The optional
+developer workflow below independently checks proposed knowledge; its tools stay
+outside npm/Desktop asset lists. Neither path trains model weights, starts a
+scheduler or publishes a release. Catlas and Orchestrator keep their configured
+provider/model.
 
 Implementation/checkpoints: [PLAN-109](plans/PLAN-109-cats-self-development-and-catlas-practice.md).
 Requirements: [SPEC-117](specs/SPEC-117-cats-self-development-and-catlas-practice.md).
+
+## Ask an ordinary Desktop agent to submit a draft
+
+In a local Chat or Code conversation, ask: **「把這次經驗整理成 Catlas 知識草稿，
+先不要採用。」** Substitute Orchestrator when appropriate. The agent receives a
+temporary endpoint and uses its existing permitted HTTP/shell tool to read the
+current entries and submit one bilingual replacement. A successful response
+includes a draft ID and `pending_review`; text saying “submitted” alone is not
+proof. Open **Code > Artifacts > Contribute / adopt knowledge** to compare and
+adopt the pending draft using the manual flow below.
+
+This path requires a local Runtime and an agent tool able to reach Platform's
+loopback listener. It adds no native MCP tool or tool/network permission. The
+capability expires when the turn ends/cancels or after 15 minutes, whichever
+comes first, and cannot adopt/revoke. Identical retries share the first result;
+an uncertain error consumes that turn's submission attempt, so inspect the
+review page before requesting another. The draft records its conversation and
+Runtime session. Real HTTP integration with stub Runtime is covered; native
+provider HTTP/shell acceptance remains pending. This addition is newer than
+Desktop 0.5.3 and requires a subsequent Desktop build.
 
 ## Manual local contributions in Desktop
 
@@ -42,8 +62,8 @@ The developer-only `tools/knowledge-practice/authoring-host.mjs` is an explicit
 Platform sidecar entry for a candidate Desktop. It composes the normal app
 startup/shutdown with one admitted knowledge-authoring task. It uses the same
 FileChatStore instance and atomic mutation queue as that product server. It is
-outside npm/Desktop asset inventories; ordinary installed builds expose no new
-authoring endpoint or automatic practice loop.
+outside npm/Desktop asset inventories; ordinary builds do not expose this
+developer admission endpoint or an automatic practice loop.
 
 Build Platform server/host and the selected preview Runtime. Use the existing
 isolated Desktop candidate launch contract, including separate data/Electron

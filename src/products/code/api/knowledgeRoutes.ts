@@ -5,7 +5,7 @@ import type { CodeApiRouteContext } from './index.js';
 
 export async function routeCodeKnowledgeApi(context: CodeApiRouteContext): Promise<boolean> {
   if (context.url.pathname !== LOCAL_KNOWLEDGE_API) return false;
-  // A local owner reviews/adopts explicitly; no Runtime tool exposes this mutation.
+  // Owner API. Agents use a separate, turn-scoped submit-only capability.
   if (!context.auth?.principal?.membership.roles.some(role => role === 'owner' || role === 'admin')) {
     sendJson(context.response, 403, { error: { message: 'Administrator access is required.' } });
     return true;

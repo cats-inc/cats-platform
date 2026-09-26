@@ -64,6 +64,7 @@ validation and full CI pass; live/native and installed-profile acceptance remain
 |------|-------|--------|---------|--------|----------|
 | `cats.runtime.session.create` | Platform supervision | Implemented | `product_internal_delegate` | Platform runtime wrapper | [Runtime Supervision Tools](#runtime-supervision-tools) |
 | `cats.runtime.message.send` | Platform supervision | Implemented | `product_internal_delegate` | Platform runtime wrapper | [Runtime Supervision Tools](#runtime-supervision-tools) |
+| `/api/code/knowledge/agent` | Platform knowledge | Implemented; native provider acceptance pending | `http_route` via existing permitted HTTP/shell | Ordinary local Chat/Code agent with active turn grant | [Agent Knowledge Drafts](#agent-knowledge-drafts) |
 | `chat.collaboration.discover_cats` | Cats Chat | Implemented; opt-in K2 read/result loop | `provider_agent_tool_request` | Authenticated Chat Orchestrator with read scope | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
 | `chat.collaboration.inspect_context` | Cats Chat | Implemented; opt-in K2 read/result loop | `provider_agent_tool_request` | Authenticated Chat Orchestrator with read scope | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
 | `chat.collaboration.prepare` | Cats Chat | Implemented; proposal only | `provider_agent_tool_request` | Authenticated Chat Orchestrator after discovery/inspection | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
@@ -92,6 +93,21 @@ validation and full CI pass; live/native and installed-profile acceptance remain
 | `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
 | `show_in_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request canvas navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
 | `clear_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request parent-surface navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
+
+## Agent Knowledge Drafts
+
+`src/platform/knowledge/agentKnowledgeBridge.ts` provides GET current entries and
+POST a bilingual draft for one existing Catlas/Orchestrator entry. This is an
+HTTP capability advertised in ordinary turn instructions, not a registered
+native Runtime/MCP tool. The host resolves profile, conversation, session and
+submit-only authority; the caller supplies revision, target, entryId, content and
+optional note. No adoption, release or evaluation is implied by the receipt.
+
+One attempt per turn, identical retry results, expiry/revocation and errors are
+defined in [the API contract](api.md#local-knowledge-contributions). The existing
+local store retains an inactive draft and provenance; the owner reviews/adopts
+through the existing Desktop page. See [PLAN-109](plans/PLAN-109-cats-self-development-and-catlas-practice.md)
+and [the user workflow](knowledge-practice.md#ask-an-ordinary-desktop-agent-to-submit-a-draft).
 
 ## Supervised Tool Contract
 

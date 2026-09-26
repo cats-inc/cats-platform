@@ -1,8 +1,10 @@
 # Documentation Index
 
-[Preview knowledge practice](knowledge-practice.md) documents the developer-only
-Desktop-managed candidate authoring, frozen evaluator and interruption/checkpoint
-workflow for PLAN-109. Native Windows authoring produces an attributed,
+[Knowledge contributions and preview practice](knowledge-practice.md) documents
+ordinary local Chat/Code agent draft submission, Desktop manual review/adoption,
+and the optional developer authoring/evaluation workflow for PLAN-109. Agent
+submission is implemented after Desktop 0.5.3; native provider acceptance remains
+pending. Native Windows managed authoring produces an attributed,
 unverified draft within budget. Bounded authoring now enforces evidence-linked
 entry scope; independent evaluation checks preserved bilingual guidance in both
 consumer delivery paths. Live quality evaluation and promotion remain pending;
@@ -449,4 +451,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-09-24*
+*Last updated: 2026-09-27*

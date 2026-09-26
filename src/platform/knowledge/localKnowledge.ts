@@ -68,21 +68,22 @@ async function readState(options: Options): Promise<State> {
   }
   return value as unknown as State;
 }
-async function atomicWrite(path: string, bytes: string): Promise<void> {
+async function atomicWrite(path: string, bytes: string, assertAllowed?: () => void): Promise<void> {
   const temp = `${path}.${randomUUID()}.tmp`;
   try {
     const file = await open(temp, 'wx', 0o600);
     try { await file.writeFile(bytes); await file.sync(); } finally { await file.close(); }
+    assertAllowed?.();
     await rename(temp, path);
   } finally { await rm(temp, { force: true }); }
 }
-async function save(options: Options, previous: State, next: State): Promise<void> {
+async function save(options: Options, previous: State, next: State, assertAllowed?: () => void): Promise<void> {
   const bytes = JSON.stringify(next, null, 2) + '\n';
   check(Buffer.byteLength(bytes) <= MAX_STORE_BYTES, 'The local knowledge storage limit has been reached.', 409);
   const path = statePath(options);
   await mkdir(dirname(path), { recursive: true });
-  await atomicWrite(`${path}.bak`, JSON.stringify(previous, null, 2) + '\n');
-  await atomicWrite(path, bytes);
+  await atomicWrite(`${path}.bak`, JSON.stringify(previous, null, 2) + '\n', assertAllowed);
+  await atomicWrite(path, bytes, assertAllowed);
 }
 async function bundled(target: LocalKnowledgeTarget, options: Options) {
   const filePath = join(options.bundleDir ?? resolveBundledPlatformConfigDir(), `${target}-knowledge.json`);
@@ -113,9 +114,10 @@ export async function inspectLocalKnowledge(options: Options = {}): Promise<Loca
     stale: draft.bundleDigest !== bundles[targets.indexOf(draft.target)]!.digest,
   })).reverse() };
 }
-export async function mutateLocalKnowledge(input: unknown, options: Options = {}): Promise<LocalKnowledgeWorkspace> {
+export async function mutateLocalKnowledge(input: unknown, options: Options = {}, assertAllowed?: () => void): Promise<LocalKnowledgeWorkspace> {
   const path = statePath(options), previous = queues.get(path) ?? Promise.resolve();
   const task = previous.catch(() => {}).then(async () => {
+    assertAllowed?.();
     check(record(input), 'Invalid knowledge request.');
     const state = await readState(options), next = structuredClone(state);
     const bundles = await Promise.all(targets.map(target => bundled(target, options)));
@@ -150,7 +152,7 @@ export async function mutateLocalKnowledge(input: unknown, options: Options = {}
         draft.adoptedAt = new Date().toISOString(); next.active[entryKey] = draft.id;
       }
     }
-    await save(options, state, next);
+    await save(options, state, next, assertAllowed);
     return inspectLocalKnowledge(options);
   });
   queues.set(path, task);

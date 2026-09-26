@@ -61,6 +61,11 @@ corresponding tool, route, delegate, or lifecycle request through its boundary.
 
 ## Current Registry
 
+Ordinary local Chat/Code agents can submit an inactive knowledge draft through a
+turn-scoped HTTP capability. It preserves the owner's manual adoption boundary;
+see [Agent Knowledge Drafts](tool-calls.md#agent-knowledge-drafts) and its
+[HTTP contract](api.md#local-knowledge-contributions).
+
 Shared role-procedure context and Orchestrator collaboration operations
 are specified in [SPEC-118](specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md)
 and staged in [PLAN-110](plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md).
@@ -293,4 +298,4 @@ Then update:
 ---
 
 *Created: 2026-04-29*
-*Last updated: 2026-05-13*
+*Last updated: 2026-09-27*

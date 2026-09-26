@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Desktop manual contribution/adoption/revoke usable; independent knowledge evaluation/promotion and broader gates pending |
+| Status | Ordinary local agent draft submission implemented; Desktop manual review/adoption/revoke usable; native agent acceptance and independent evaluation/promotion pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Last updated | 2026-09-27 |
@@ -24,6 +24,31 @@ own staged acceptance and does not close G1/G2 development or G4 practice gates.
 This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
+
+## Resume checkpoint — minimal ordinary agent contribution (2026-09-27)
+
+- The owner requested the simplest ordinary Desktop agent entry. Chat/Code
+  Runtime turns now receive a short-lived local HTTP capability to inspect
+  existing Catlas/Orchestrator entries and submit one bilingual draft through
+  the agent's already-permitted HTTP/shell tool. No native MCP registration or
+  Runtime change is required. Remote Runtime turns receive no callback URL.
+- Submission enters the existing inactive-draft store and review page. The
+  host records conversation/session provenance; only the owner can adopt/revoke.
+  Per-server/profile grants expire at turn end/cancellation or after 15 minutes.
+  Identical retries share a result, including uncertain write failures; queued
+  writes recheck permission before atomic replacement. No store migration.
+- Independent review passed after closing cancellation during source lookup
+  and duplicate submission after uncertain commit errors. Server TypeScript
+  compilation and **119/119** focused tests pass: 18 knowledge tests, 3 Runtime
+  bridge, 3 startup recovery, and 95 server tests. Actual Chat/Code HTTP dispatch
+  uses stub Runtime and isolated profiles; it covers live-grant owner-API denial
+  and the existing manual adopt/revoke API. Native provider HTTP/shell execution
+  has not been exercised; no installed-profile or provider run was performed.
+- This implementation is newer than Desktop 0.5.3. Full-suite validation runs in
+  main CI; the focused result above is not a full-suite claim. No version bump
+  or publication is part of this request.
+  Independent quality evaluation/promotion and the broader gates remain open.
+  Do not resume the retired native harness from historical checkpoints below.
 
 ## Desktop 0.5.3 standard preview published (2026-09-27)
 

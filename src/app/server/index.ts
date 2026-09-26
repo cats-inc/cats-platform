@@ -5,6 +5,8 @@ import { sendJson } from '../../shared/http.js';
 import type { ServerDependencies } from './contracts.js';
 import { resolveServerDependencies } from './dependencies.js';
 import { routeRequest } from './requestRouter.js';
+import { createAgentKnowledgeBridge, AGENT_KNOWLEDGE_PATH } from '../../platform/knowledge/agentKnowledgeBridge.js';
+import { isLoopbackAuthHost } from '../../platform/auth/effectiveMode.js';
 import { runServerStartupRecoveryPasses } from './startupRecovery.js';
 import { startTransportFanout } from '../../platform/transports/fanout/subscriber.js';
 import {
@@ -24,6 +26,27 @@ function reportUnhandledServerError(error: unknown): void {
 }
 
 export function createServer(dependencies: ServerDependencies) {
+  let knowledgeEndpoint: string | null = null;
+  const knowledge = createAgentKnowledgeBridge({
+    platformDir: dependencies.shared.config.platformDir,
+    endpoint: () => knowledgeEndpoint,
+    async resolveSource(sessionId, input) {
+      const meta = input.context?.metadata;
+      if (meta?.supervisionProduct !== 'cats-chat' || meta.supervisionSurface !== 'runtime-dispatch'
+        || meta.supervisionToolName !== 'cats.runtime.message.send'
+        || typeof meta.supervisionRunId !== 'string' || typeof meta.sourceMessageId !== 'string') return null;
+      const state = await dependencies.chat.chatStore.read();
+      const channel = state.channels.find(row => row.id === meta.supervisionRunId);
+      if (!channel || channel.status !== 'active' || !channel.messages.some(row => row.id === meta.sourceMessageId)) return null;
+      return `Agent contribution: conversation ${channel.id}; session ${sessionId}`.slice(0, 190);
+    },
+  });
+  dependencies = {
+    ...dependencies,
+    shared: { ...dependencies.shared, runtimeClient: knowledge.wrapClient(dependencies.shared.runtimeClient) },
+    ...(dependencies.code?.runtimeClient ? { code: { ...dependencies.code, runtimeClient: knowledge.wrapClient(dependencies.code.runtimeClient) } } : {}),
+    ...(dependencies.work?.runtimeClient ? { work: { ...dependencies.work, runtimeClient: knowledge.wrapClient(dependencies.work.runtimeClient) } } : {}),
+  };
   const resolvedDependencies = resolveServerDependencies(dependencies);
   const stopTransportFanout = startTransportFanout({
     eventHub: resolvedDependencies.chat.eventHub,
@@ -69,7 +92,9 @@ export function createServer(dependencies: ServerDependencies) {
     : () => {};
 
   const server = createHttpServer((request, response) => {
-    void routeRequest(request, response, resolvedDependencies).catch((error) => {
+    void knowledge.route(request, response).then(handled => {
+      if (!handled) return routeRequest(request, response, resolvedDependencies);
+    }).catch((error) => {
       reportUnhandledServerError(error);
       sendJson(response, 500, {
         error: {
@@ -80,7 +105,17 @@ export function createServer(dependencies: ServerDependencies) {
     });
   });
 
+  server.on('listening', () => {
+    const address = server.address();
+    const runtimeHost = new URL(dependencies.shared.config.runtimeBaseUrl).hostname;
+    if (address && typeof address !== 'string' && isLoopbackAuthHost(runtimeHost)) {
+      const host = address.family === 'IPv6' ? '[::1]' : '127.0.0.1';
+      knowledgeEndpoint = `http://${host}:${address.port}${AGENT_KNOWLEDGE_PATH}`;
+    }
+  });
+
   server.on('close', () => {
+    knowledge.close();
     stopSchedulerLoop();
     stopTransportFanout();
     resolvedDependencies.chat.pollingSupervisor.stopAll();

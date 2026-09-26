@@ -1045,6 +1045,27 @@ full/invalid stores reject edits; clients must reload and review again. This API
 makes no model calls and exposes no operation to agents for automatic adoption.
 See [the Desktop workflow](knowledge-practice.md) for storage and recovery.
 
+`GET/POST /api/code/knowledge/agent` is a separate submit-only capability for
+ordinary local Chat/Code Runtime turns. The host supplies its actual loopback URL
+and a random bearer in turn instructions after resolving the source conversation.
+It requires that bearer and a loopback peer, rejects browser Origin headers, and
+never authenticates the owner API. Grants are isolated per server/profile and
+revoked on turn completion, session cancellation/closure/deletion or server close,
+with a 15-minute upper limit. Remote Runtime turns receive no endpoint.
+
+- GET returns only `{ revision, targets }`, not draft history.
+- POST accepts `{ revision, target, entryId, content: { en, "zh-TW" }, note? }`.
+  Only these fields are allowed. The owner API's 40 KiB/body and entry/content
+  limits apply; note is limited to 800 characters. The host adds conversation/
+  session provenance and forces `submit` into its own profile's existing store.
+- Success is `{ draftId, status: "pending_review", reviewPath: "/code/knowledge" }`.
+  One submission attempt is allowed per turn. Identical parsed payload retries
+  return the same result; a different payload returns 409, including after an
+  uncertain write failure. Inspect the review page before a fresh-turn retry.
+- Missing/expired/foreign grants return 403; invalid requests 400; stale revision
+  or exhausted submission slot 409; oversized body 413. Successful reads/writes
+  are `no-store`. Adoption/revocation still require the authenticated owner route.
+
 #### Code Catlas Help
 
 `POST /api/code/catlas/help` is an authenticated, explicit-help request for the
@@ -3541,4 +3562,4 @@ Errors use a minimal payload:
 
 ---
 
-*Last updated: 2026-09-16*
+*Last updated: 2026-09-27*
