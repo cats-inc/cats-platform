@@ -1,37 +1,50 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import { LOCAL_KNOWLEDGE_API, type LocalKnowledgeWorkspace,
   type LocalKnowledgeTarget } from '../../../../platform/knowledge/localKnowledgeContracts.js';
 import { expectJson } from '../../../shared/renderer/api/http.js';
 
-const copy = {
-  en: { title: 'Knowledge contributions', back: 'Artifacts', intro: 'Paste an agent’s proposed text, save a draft, then review and adopt it locally. No model call is made here. Local adoption affects the next Catlas or Orchestrator request; it is not verified publication.',
-    target: 'Used by', entry: 'Knowledge entry', source: 'Source / reason (optional)', save: 'Save contribution',
-    pending: 'Contributions', before: 'Text when submitted', after: 'Proposed text', empty: 'No contributions yet.',
-    review: 'I reviewed both languages and want to use this unverified contribution locally.', adopt: 'Adopt locally',
-    revoke: 'Revoke and restore bundled text', active: 'Locally adopted · manually reviewed', draft: 'Draft · not adopted',
-    stale: 'Bundled knowledge changed; submit a fresh draft.', refresh: 'Reload', failed: 'Unable to update knowledge.', saved: 'Saved.',
-    english: 'English', chinese: 'Traditional Chinese', limits: 'Only this entry’s text changes. Permissions and available operations stay the same.',
-  },
-  'zh-TW': { title: '知識貢獻', back: '成品', intro: '貼上 agent 提出的內容，儲存草稿，再檢查並採用到本機。這裡不會呼叫模型。採用後會在 Catlas 或 Orchestrator 下次請求生效，並不代表已驗證或發布。',
-    target: '使用對象', entry: '知識項目', source: '來源／修改原因（選填）', save: '儲存貢獻',
-    pending: '貢獻紀錄', before: '提交時的內容', after: '建議內容', empty: '尚無貢獻。',
-    review: '我已檢查兩種語言，願意在本機使用這份未驗證的貢獻。', adopt: '採用到本機',
-    revoke: '撤回並恢復隨附知識', active: '本機已採用・人工檢查', draft: '草稿・尚未採用',
-    stale: '隨附知識版本已變更，請重新提交草稿。', refresh: '重新載入', failed: '無法更新知識。', saved: '已儲存。',
-    english: '英文', chinese: '繁體中文', limits: '只修改這一筆知識的文字，不變更權限或可用操作。',
-  },
-};
+function useKnowledgeLabels() {
+  const { t } = useI18n();
+  return {
+    title: t(messageKeys.codeKnowledgeContributionsTitle),
+    back: t(messageKeys.codeKnowledgeContributionsBack),
+    intro: t(messageKeys.codeKnowledgeContributionsIntro),
+    target: t(messageKeys.codeKnowledgeContributionsTarget),
+    entry: t(messageKeys.codeKnowledgeContributionsEntry),
+    source: t(messageKeys.codeKnowledgeContributionsSource),
+    save: t(messageKeys.codeKnowledgeContributionsSave),
+    pending: t(messageKeys.codeKnowledgeContributionsPending),
+    before: t(messageKeys.codeKnowledgeContributionsBefore),
+    after: t(messageKeys.codeKnowledgeContributionsAfter),
+    empty: t(messageKeys.codeKnowledgeContributionsEmpty),
+    review: t(messageKeys.codeKnowledgeContributionsReview),
+    adopt: t(messageKeys.codeKnowledgeContributionsAdopt),
+    revoke: t(messageKeys.codeKnowledgeContributionsRevoke),
+    active: t(messageKeys.codeKnowledgeContributionsActive),
+    draft: t(messageKeys.codeKnowledgeContributionsDraft),
+    stale: t(messageKeys.codeKnowledgeContributionsStale),
+    refresh: t(messageKeys.codeKnowledgeContributionsRefresh),
+    failed: t(messageKeys.codeKnowledgeContributionsFailed),
+    saved: t(messageKeys.codeKnowledgeContributionsSaved),
+    english: t(messageKeys.codeKnowledgeLanguageEnglish),
+    chinese: t(messageKeys.codeKnowledgeLanguageChinese),
+    limits: t(messageKeys.codeKnowledgeContributionsLimits),
+    catlas: t(messageKeys.codeKnowledgeTargetCatlas),
+    orchestrator: t(messageKeys.codeKnowledgeTargetOrchestrator),
+  };
+}
 type Draft = LocalKnowledgeWorkspace['drafts'][number];
-type Labels = typeof copy.en;
+type Labels = ReturnType<typeof useKnowledgeLabels>;
 const textStyle = { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: '18rem', overflow: 'auto' } as const;
 
 function DraftCard({ draft, labels, busy, act }: { draft: Draft; labels: Labels; busy: boolean;
   act: (action: 'adopt' | 'revoke', id: string) => void }) {
   const [reviewed, setReviewed] = useState(false);
   return <article className="operatorCard">
-    <h3>{draft.target === 'catlas' ? 'Catlas' : 'Orchestrator'} · {draft.entryId}</h3>
+    <h3>{labels[draft.target]} · {draft.entryId}</h3>
     <p>{draft.active ? labels.active : labels.draft}</p>
     {draft.note && <p>{draft.note}</p>}
     {draft.stale && <p role="status">{labels.stale}</p>}
@@ -51,7 +64,7 @@ function DraftCard({ draft, labels, busy, act }: { draft: Draft; labels: Labels;
 }
 
 export function KnowledgeContributionsPage() {
-  const { locale } = useI18n(), labels = copy[locale];
+  const labels = useKnowledgeLabels();
   const [data, setData] = useState<LocalKnowledgeWorkspace | null>(null);
   const [target, setTarget] = useState<LocalKnowledgeTarget>('catlas');
   const [entryId, setEntryId] = useState('');
@@ -89,7 +102,7 @@ export function KnowledgeContributionsPage() {
       <form onSubmit={event => { event.preventDefault(); void change({ action: 'submit', target, entryId: selected?.id, content: { en, 'zh-TW': zh }, note }); }}>
         <fieldset disabled={busy || !selected} style={{ border: 0, padding: 0, display: 'grid', gap: '0.75rem' }}>
           <label>{labels.target} <select value={target} onChange={event => { setTarget(event.target.value as LocalKnowledgeTarget); setEntryId(''); }}>
-            <option value="catlas">Catlas</option><option value="orchestrator">Orchestrator</option>
+            <option value="catlas">{labels.catlas}</option><option value="orchestrator">{labels.orchestrator}</option>
           </select></label>
           <label>{labels.entry} <select value={selected?.id ?? ''} onChange={event => setEntryId(event.target.value)}>
             {entries.map(entry => <option key={entry.id} value={entry.id}>{entry.id}</option>)}

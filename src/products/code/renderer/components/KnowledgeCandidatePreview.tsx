@@ -13,7 +13,7 @@ export function KnowledgeCandidatePreview({ preview }: { preview: Preview }) {
           <h4>{entry.id}</h4>
           <p lang="zh-TW" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{entry.zhTW}</p>
           <details>
-            <summary>English</summary>
+            <summary>{t(messageKeys.codeKnowledgeLanguageEnglish)}</summary>
             <p lang="en" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{entry.en}</p>
           </details>
         </article>

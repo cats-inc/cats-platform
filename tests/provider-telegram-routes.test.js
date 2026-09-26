@@ -54,6 +54,7 @@ function createTempPlatformConfig(prefix = 'cats-telegram-routes-') {
     tempRoot,
     config: {
       ...baseConfig,
+      platformDir: path.join(tempRoot, 'platform'),
       chatStatePath: path.join(tempRoot, 'platform', 'state', 'chat-state.local.json'),
     },
   };
@@ -1191,6 +1192,14 @@ test('telegram webhook routes inbox traffic into a room and relays a reply back 
       assert.equal(roomPayload.channel.id, roomId);
       assert.equal(roomPayload.channel.roomRouting.mode, 'chat_channel');
 
+      // Linking the room precedes the detached assistant turn and delivery.
+      // Observe completion instead of assuming the reply exists at ingress.
+      await waitForAsync(async () => {
+        const response = await fetch(`${baseUrl}/api/transports/telegram`);
+        const payload = await response.json();
+        return payload.telegram.delivery.repliedCount === 1;
+      });
+
       const messagesResponse = await fetch(`${baseUrl}/api/channels/${roomId}/messages`);
       assert.equal(messagesResponse.status, 200);
       const messagesPayload = await messagesResponse.json();
@@ -2219,26 +2228,34 @@ test('telegram webhook answers before the assistant turn finishes', async () => 
   const runtime = createGatedRuntimeStub();
 
   await withServer(runtime.client, async (baseUrl) => {
-    await configureTelegramBossCat(baseUrl);
+    try {
+      await configureTelegramBossCat(baseUrl);
 
-    const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(telegramUpdate(101, 'take your time')),
-    });
+      const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(telegramUpdate(101, 'take your time')),
+      });
 
-    // Answered while the turn is demonstrably still running.
-    assert.equal(webhookResponse.status, 202);
-    await waitForAsync(async () => runtime.entered.length === 1);
+      // Answered while the turn is demonstrably still running.
+      assert.equal(webhookResponse.status, 202);
+      await waitForAsync(async () => runtime.entered.length === 1);
 
-    runtime.release();
+      const roomId = await waitForTelegramLinkedRoom(baseUrl);
+      const pendingResponse = await fetch(`${baseUrl}/api/channels/${roomId}/messages`);
+      const pendingPayload = await pendingResponse.json();
+      assert.equal(pendingPayload.messages.some((message) => message.body === 'Boss Cat relay reply'), false);
 
-    const roomId = await waitForTelegramLinkedRoom(baseUrl);
-    await waitForAsync(async () => {
-      const probe = await fetch(`${baseUrl}/api/channels/${roomId}/messages`);
-      const payload = await probe.json();
-      return payload.messages.some((message) => message.body === 'Boss Cat relay reply');
-    });
+      runtime.release();
+
+      await waitForAsync(async () => {
+        const probe = await fetch(`${baseUrl}/api/channels/${roomId}/messages`);
+        const payload = await probe.json();
+        return payload.messages.some((message) => message.body === 'Boss Cat relay reply');
+      });
+    } finally {
+      runtime.release();
+    }
   });
 });
 

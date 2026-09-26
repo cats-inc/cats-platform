@@ -7,7 +7,7 @@
 | Status | Desktop manual contribution/adoption/revoke usable; independent knowledge evaluation/promotion and broader gates pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
-| Last updated | 2026-09-26 |
+| Last updated | 2026-09-27 |
 
 ## Related Spec
 
@@ -24,6 +24,19 @@ own staged acceptance and does not close G1/G2 development or G4 practice gates.
 This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
+
+## CI follow-up — localization and detached Telegram completion (2026-09-27)
+
+- Main CI run `36259527686` found raw UI strings and a Telegram route test that
+  read assistant messages as soon as the room was linked, before the detached
+  turn necessarily completed. Knowledge page and preview chrome now use the
+  shared English/Traditional Chinese catalogs, including the target labels.
+- The Telegram test waits for recorded delivery completion. Its temporary
+  fixture explicitly owns `platformDir`; a gated Runtime stub also proves that
+  a linked room can exist before the reply. Production ingress stays detached.
+- Validation passed: **6/6** UI/audit tests (both languages for contribution and
+  draft preview), **35/35** Telegram route tests, renderer/test TypeScript checks,
+  and independent review. Full CI must pass after push; these are focused checks.
 
 ## Resume Checkpoint — minimal Desktop contribution and local adoption (2026-09-26)
 
