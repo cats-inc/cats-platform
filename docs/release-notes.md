@@ -19,6 +19,55 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-27 (0.5.5 preview, standard profile — preparation)
+
+Behavior change:
+
+- The Chat and Code composers can attach a conversation diagnostics report. An
+  owner or administrator chooses the conversation, previews the report, then
+  attaches it as a removable text file through the normal upload and send flow.
+  The report names the Platform/Runtime versions, the selected conversation and
+  working directory, up to eight linked sessions, recent system errors and, when
+  enabled, conversation live-trace summaries. It excludes raw provider logs,
+  transcripts, tool arguments, arbitrary files and browser console output, and
+  scrubs common credentials. Collecting it makes no provider request and writes
+  no product data.
+- The bundled Runtime includes Auggie's full 34-row 0.36.0 picker catalog in
+  picker order. Opus 4.8 is the only default, because the picker marks it; no
+  row has an effort control.
+- The mobile client source now renders agent replies as markdown. The mobile
+  client ships separately through the app stores, so this Desktop release does
+  not change it.
+
+Migration steps:
+
+No existing data conversion is required. The diagnostics endpoint is read-only.
+
+This compatible patch prepares Desktop only; no npm publication is requested.
+Runtime 0.3.1 is pinned to `3aae1a48e9d85d3d4cb903bb82cc1408882e69ed`.
+Usage 0.4.0 retains SHA-256
+`7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`; its
+`catsPlatform` range `^0.5.0` includes 0.5.5.
+
+The standard signing profile is selected: expected platform trust is macOS
+signed + notarized, Windows unsigned: no certificate, and Linux n/a. Self-update
+from standard-profile 0.5.4 is expected to remain supported on Windows/Linux
+and on macOS with the same Developer ID team. Actual release signing and assets
+must be confirmed after publication; no new installed-update acceptance is claimed.
+
+Deprecations:
+
+None.
+
+Release verification:
+
+Platform `0791d2797de9f10f10627c7d52952edb8c5a283e` passed
+[full Platform CI](https://github.com/cats-inc/cats-platform/actions/runs/36276722578).
+Two earlier main runs failed on the new diagnostics dialog test until
+`ad7f9b13` bound its mock to the active document. The pinned Runtime passed its
+[release preflight](https://github.com/cats-inc/cats-runtime/actions/runs/36277158825).
+The version candidate still requires its CI and Desktop publication workflow.
+
 ## 2026-09-27 (0.5.4 preview, standard profile — publication)
 
 Behavior change:
