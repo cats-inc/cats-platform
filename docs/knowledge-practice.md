@@ -461,6 +461,18 @@ removed. Independent source and actual-result reviews passed. These receipts use
 the unbound observer and remain incomplete there. They establish sampled native
 command behavior, not Runtime turn policy propagation or author/grader blinding.
 
+A fresh canary then supplied the explicit policy digest to the production
+observer and repeated the same native controls successfully. The observer armed
+against a running container, confirmed two identical terminal snapshots before
+removal and returned incomplete after removal. Both its Docker client and the
+launcher's separate client reported no pending processes or unavailable state.
+Independent result review recomputed the sanitized binding/receipt digests and
+verified exact-owned removal. Source disk bytes were checked before execution and
+after cleanup with no concurrent edits; this is not a frozen executable closure.
+The evidence supports configured policy identity and container exit only, plus
+the separately sampled command behavior. Runtime's actual adapter currently
+requests legacy read-only policy; it does not inherit this named command profile.
+
 Codex's [versioned Linux sandbox notes](https://github.com/openai/codex/blob/rust-v0.157.0/codex-rs/linux-sandbox/README.md)
 require bubblewrap for restricted filesystem execution. Any future dedicated
 container policy needs its own review, exact byte binding and native validation;

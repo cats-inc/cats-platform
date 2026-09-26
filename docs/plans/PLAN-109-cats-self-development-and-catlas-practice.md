@@ -25,7 +25,40 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — private native read-policy commands passed (2026-09-26)
+## Resume Checkpoint — explicit policy exit observer passed natively (2026-09-26)
+
+- `acd4dc3f` checkpoints the optional exact seccomp profile binding, with
+  **89/89** scoped checks and independent source/test/docs review. Default
+  admission, permanent drift rejection and historical failed receipts remain
+  unchanged. No provider credential read/copy, model call, candidate or release.
+- A fresh no-credential/network-disabled container ran the identical pinned
+  native helper command, image and reviewed diagnostic syscall policy. The
+  production observer explicitly bound its policy hash, observed a running
+  container, then confirmed two fresh matching exit-zero/PID-zero/no-OOM
+  snapshots. Its sanitized journal retains the policy digest without the body.
+- Restricted/ordinary read-only and unknown-profile controls passed again.
+  Outer identity, zero capability sets, namespaces, no-new-privileges and seccomp
+  mode remained unchanged; native output drained. The exact owned container was
+  removed, and a subsequent observer query correctly returned incomplete.
+  Neither Docker transport retained an unresolved CLI process or unavailable
+  latch. No creation, harness, cleanup or source-integrity failure remained.
+- Pre-launch review required separate observer-CLI ownership accounting and a
+  final source-byte verification after cleanup on both paths; both corrections
+  were made and reviewed before launch. The source check compares disk bytes
+  before/after a run with no concurrent edits, not an immutable executable closure.
+  Actual-result review recomputed claim/receipt hashes and verified exact cleanup.
+- This proves configured policy identity, container exit and sampled synthetic
+  native command behavior. It does not adopt the diagnostic profile as a default,
+  establish Runtime turn policy propagation or author/grader blinding, or certify
+  Runtime cleanup, inference or quality. Earlier unbound receipts remain incomplete.
+  Private continuation: `BOUND-COMMAND-RESUME.md`; do not replay any guarded root.
+- Next: bind actual Runtime send/policy/usage/cancellation behavior to the parent
+  transport with a bounded no-credential canary before any model pilot. The
+  adapter currently requests legacy read-only policy; the named command profile
+  tested above is not automatically propagated into Runtime turns. The small
+  authorized pilot, full exercise and quality/promotion gates remain separate.
+
+## Previous checkpoint — private native read-policy commands passed (2026-09-26)
 
 - Parent create-only transport is checkpointed at `01475b67`; the synthetic user
   namespace comparison is checkpointed at `99a2915a`. Next-stage owner
