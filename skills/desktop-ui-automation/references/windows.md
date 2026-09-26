@@ -188,8 +188,20 @@ Send-WindowsUiKey $target -Key Enter -ExpectedText $typedCommandPattern
 - Wait for a pattern that was absent before the key. For example, `model` already appears in a
   startup banner, so waiting for it after `/status` returns immediately with the old screen.
 - Match prompt separators with `\s`: Claude Code follows its `❯` prompt glyph with U+00A0.
-- A launch from inside an agent CLI session inherits that session's environment variables; record
-  any that change the launched CLI's behavior.
+- A launch from inside an agent CLI session inherits that session's environment variables.
+  Clear the ones that change terminal behavior before launching (`TERM`, `CI`, `NO_COLOR`,
+  pager and git-prompt variables, and the host agent's own variables), and record any you keep.
+  `TERM=dumb` alone made a JLine-based CLI (Junie) refuse to start.
+- If the launched program exits before its UI appears, read security-software history before
+  diagnosing anything else. On Windows, check Defender protection history or run
+  `Get-MpThreatDetection` for events after the launch time. An access-denied child process
+  (`CreateProcess error=5`) is a typical symptom.
+  - Do not relaunch to experiment: each blocked launch adds another detection.
+  - Never allow, exclude or restore a detection, or change any other protection setting, yourself.
+  - Report the detection, then give the operator the exact uniquely titled launch command. Attach
+    to the window they open, resolving it by that title.
+  - In one Junie run, Defender blocked the CLI's startup credential read
+    (`powershell -NoProfile -NonInteractive -EncodedCommand …`) only when an agent launched it.
 
 Native pilot lessons:
 
