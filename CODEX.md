@@ -347,6 +347,11 @@ Codex MUST treat the following as hard guardrails when refactoring `cats`.
 These notes capture the current user direction for `cats`. They are
 working memory for Codex, not yet a ratified product spec or ADR.
 
+- September 27, 2026 delivery instruction: the owner explicitly requests direct
+  commit and push to `main` from now on, superseding the default branch/PR flow
+  for this work. Preserve remote updates, use normal pushes, and keep applicable
+  validation. This changes delivery routing, not version-bump or release scope.
+
 - September 18, 2026 picker contract is ratified in SPEC-013 and ADR-115:
   retain successful provider/model display across tray idle, animate loading
   and retry automatically during transient failures. Never restore raw timeout
