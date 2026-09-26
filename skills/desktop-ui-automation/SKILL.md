@@ -66,6 +66,10 @@ pane, focus and input checks. Native validation of one terminal does not cover e
 - On ambiguous focus, changed layout or a failed attempt, re-observe before any
   retry. If the same readiness/permission failure remains, report it instead of
   retrying blindly or changing desktop security settings.
+- When a program the agent launched exits before its UI appears, check the OS
+  security-software history before other diagnosis. The platform reference
+  gives the steps. Relaunching a blocked program adds detections. Hand the
+  launch to the user rather than allowing or excluding anything.
 - When the task reaches a system authentication or security-consent dialog,
   let the user complete it locally; do not ask for passwords in chat, inject
   credentials, or read browser credential/cookie stores as a shortcut. Suspend
