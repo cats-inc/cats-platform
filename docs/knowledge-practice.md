@@ -376,6 +376,32 @@ recover a live evaluation after parent-process failure.
 
 ## Freeze a trusted evaluator
 
+A reviewed entry can export both process roles from the same static closure:
+
+```js
+export { attempt } from './trusted-worker.mjs';
+export { createSupervisor } from './trusted-parent.mjs';
+```
+
+When the parent factory statically imports its Runtime/judge/cleanup implementations,
+target binding and rubric, those JS/JSON inputs are bundled and recorded alongside
+the worker helper. The parent can import `createSupervisor` from the verified frozen
+module, then pass its result to `evaluatePractice` as `effectSupervisor`. Compare the
+frozen code digest against both the independently reviewed digest and the admitted
+worker digest before importing it. The parent factory name is a composition
+convention, not a second export validated by the freeze command.
+
+An integration fixture exercises this composition through real admission, a worker
+thread, parent-owned callback dispatch, evaluation verification and retained-effect
+inspection after deleting the composition entry and JSON source inputs. Parent and
+worker use identical frozen bytes and the single baseline attempt records 49
+fixture tokens. It stops at the attempt limit without running candidate advice or
+a full comparison and stays ineligible for production. All Runtime/judge/cleanup callbacks
+in this test are public doubles; this proves the composition mechanism, not native
+ownership, a live judge's quality, author read isolation or provider cleanup.
+Injected callbacks and data read dynamically from files, environment, network or
+processes still require separate freezing/binding and review.
+
 Build the required product consumers first, then prepare a reviewed `.mjs` entry
 that exports `attempt`. From Platform:
 

@@ -25,7 +25,32 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — retained-effect inspection complete (2026-09-26)
+## Resume Checkpoint — frozen parent/worker composition complete (2026-09-26)
+
+- Retained-effect inspection is committed at `6d2d41f0`, with **22/22** final
+  scoped checks and independent review complete. No product source changed in
+  this next integration-only slice.
+- Added an integrated fixture that statically freezes the parent supervisor,
+  worker helper, RPC client, explicit target, rubric and baseline JSON into one
+  module with `attempt` and `createSupervisor` exports. It verifies parent/worker
+  byte identity with admission, removes the composition entry/JSON source tree,
+  then exercises the real worker, parent callback dispatch, evaluation verifier
+  and retained-effect inspector. No new freeze API or loader was introduced.
+- The attempt's semantic/preservation checks pass; both ledgers record exactly
+  **49 fixture tokens** and no current native cleanup claim. It runs one baseline
+  attempt and stops at its limit; candidate advice and a complete comparison are
+  not exercised. This public fixture cannot qualify a candidate for production.
+- Final freeze suite **15/15** passed. The prior parent/engine/inspection/CLI checks
+  remain applicable because this slice changes only a test and documentation.
+  Independent review found no blocker; its baseline-only clarification is explicit
+  in both the guide and phase/stop-reason assertions.
+- Next concrete live-preparation gates: choose and independently review actual
+  frozen parent Runtime/judge/observer implementations and bindings; prove native
+  endpoint/process ownership and author read isolation; obtain a fresh bounded
+  inference grant. No credential, installed state, provider, version or publication
+  change has occurred in these overnight local checkpoints.
+
+## Previous checkpoint — retained-effect inspection complete (2026-09-26)
 
 - Parent effects/completion/accounting are committed at `5f8cd505`, with **89/89**
   focused checks and independent review complete. The checkpoint below is retained.

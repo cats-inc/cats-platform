@@ -8,9 +8,13 @@ import test from 'node:test';
 import { loadCatlasKnowledge } from '../build/server/platform/catlas/knowledge.js';
 import { assembleProductKnowledgeContext } from '../build/server/platform/knowledge/productKnowledge.js';
 import { freezeEvaluator, verifyFrozenEvaluator } from '../tools/knowledge-practice/freezeEvaluator.mjs';
-import { EVALUATOR_MAX_BYTES, digest, readJson } from '../tools/knowledge-practice/artifacts.mjs';
-import { admitPractice, frozenInputs } from '../tools/knowledge-practice/practice.mjs';
+import { EVALUATOR_MAX_BYTES, canonical, digest, readJson, readRecord } from '../tools/knowledge-practice/artifacts.mjs';
+import { admitPractice, evaluatePractice, frozenInputs } from '../tools/knowledge-practice/practice.mjs';
 import { createFixtureInputs } from '../tools/knowledge-practice/example.mjs';
+import { createPreservationFixture } from '../tools/knowledge-practice/preservationFixture.mjs';
+import { createCandidate } from '../tools/knowledge-practice/candidate.mjs';
+import { verifyEvaluation } from '../tools/knowledge-practice/promotion.mjs';
+import { inspectCatlasEffects } from '../tools/knowledge-practice/inspectEffects.mjs';
 import { main } from '../tools/knowledge-practice/cli.mjs';
 
 const project = fileURLToPath(new URL('../', import.meta.url));
@@ -185,4 +189,93 @@ test('freeze, admission and verification share the exact bounded evaluator size 
   assert.ok((await frozenInputs(paths.runRoot)).admission.evaluatorDigest);
   await writeFile(join(paths.runRoot, 'evaluator.mjs'), `${exact} `);
   await assert.rejects(frozenInputs(paths.runRoot), /bounded regular artifact/u);
+});
+
+test('one frozen closure supplies parent callbacks and a worker evaluator after their source tree is removed', { timeout: 30_000 }, async t => {
+  const f = await setup(t), paths = await createPreservationFixture(join(f.root, 'practice'));
+  const exercise = await readJson(paths.exerciseFile);
+  const observation = { surface: 'code:new', observedAt: '2026-09-26T00:00:00Z', runtimeReachable: true,
+    draftTarget: null, targetAvailability: 'unselected', effectiveSessionAccess: 'not_started',
+    workspace: { selection: 'unselected', inspectionHost: 'platform', gitStatus: 'unknown' },
+    requestedPolicy: { workspaceKind: 'sandbox', workspaceAccess: 'read_only', permissionMode: 'default' } };
+  for (const scenario of exercise.scenarios) {
+    scenario.fixture = { question: 'How do I begin?', observation, rubricId: 'public' };
+    scenario.context.goal = scenario.fixture.question; scenario.context.scope = observation;
+    scenario.context.topics = ['execution', 'workspace', 'permissions', 'recovery'];
+    scenario.checks = [
+      { id: 'valid', kind: 'correctness', critical: true, path: '/responseValid', equals: true },
+      { id: 'useful', kind: 'correctness', critical: true, path: '/semantic/useful', equals: true },
+    ];
+  }
+  exercise.budget.maxAttempts = 1; await writeFile(paths.exerciseFile, canonical(exercise));
+  await writeFile(join(f.sourceRoot, 'binding.json'), JSON.stringify({
+    target: { provider: 'fixture', instance: 'cli/public', model: 'public-model' },
+    rubric: [{ id: 'useful', criterion: 'Public frozen plumbing fixture.' }],
+    baselineText: await readFile(paths.baselineFile, 'utf8'),
+  }));
+  await writeFile(f.entryFile, `
+    import { dirname, join } from 'node:path';
+    import { writeFile } from 'node:fs/promises';
+    import { createCatlasEvaluator } from ${modulePath('tools/knowledge-practice/catlasEvaluator.mjs')};
+    import { createCatlasEffectClient } from ${modulePath('tools/knowledge-practice/catlasEffectClient.mjs')};
+    import { createCatlasEffectSupervisor } from ${modulePath('tools/knowledge-practice/catlasEffects.mjs')};
+    import { loadProductKnowledge } from ${modulePath('build/server/platform/knowledge/productKnowledge.js')};
+    import binding from './binding.json';
+    export function createSupervisor({ evaluationRoot }) {
+      const session = { id: 'public-session', provider: binding.target.provider, providerName: binding.target.provider,
+        model: binding.target.model, providerTarget: { resolved: true, provider: binding.target.provider, target: binding.target.instance },
+        workspace: { kind: 'sandbox', access: 'read_only' }, permissionMode: 'default',
+        skills: { strict: true, requestedSkills: [], appliedSkillIds: [] } };
+      return createCatlasEffectSupervisor({ evaluationRoot, target: binding.target,
+        runtimeClient: { createSession: async () => session, observeSession: async () => ({ session }),
+          sendMessage: async () => ({ tokensUsed: 42, segments: [{ kind: 'text', text: JSON.stringify({
+            advice: 'Select a coding target.', knowledgeIds: ['code.entry'] }) }] }),
+          closeSession: async () => {}, cancelSession: async () => {} },
+        judge: async ({ response, responseDigest, criteria }) => {
+          if (criteria[0].criterion !== binding.rubric[0].criterion) throw new Error('Rubric changed');
+          return { responseDigest, reviewerId: 'public-reviewer', usageTokens: 7,
+            decisions: [{ id: 'useful', verdict: 'pass', rationale: 'Public fixture.',
+              evidenceSpans: [{ start: 0, end: response.advice.length }] }] };
+        },
+        confirmCleanup: async () => ({ status: 'complete', evidenceRefs: ['fixture:frozen-cleanup'] }),
+        reconcile: async () => ({ status: 'complete', evidenceRefs: ['fixture:frozen-reconcile'] }) });
+    }
+    export async function attempt(args) {
+      const effects = createCatlasEffectClient({ port: args.effectPort, resetId: args.resetId });
+      const filePath = join(args.fixtureRoot, 'baseline.json'); await writeFile(filePath, binding.baselineText);
+      const knowledge = await loadProductKnowledge({ filePath, locale: args.context.locale, capabilities: ['code-entry-v1'] });
+      return createCatlasEvaluator({ evaluationRoot: dirname(dirname(args.fixtureRoot)), ...effects,
+        authorId: 'public-author', reviewerId: 'public-reviewer',
+        guideCat: { id: 'guide-cat-primary', modelSelection: null, executionTarget: binding.target },
+        loadKnowledge: async () => knowledge, resolveRubric: async () => binding.rubric })(args);
+    }`);
+  const frozen = await f.freeze(), { manifest } = await verifyFrozenEvaluator(f.outputRoot);
+  for (const name of ['catlasEffects.mjs', 'catlasEffectClient.mjs', 'catlasEvaluator.mjs']) {
+    assert.ok(manifest.inputs.some(input => input.path === join(project, 'tools/knowledge-practice', name)));
+  }
+  assert.ok(manifest.inputs.some(input => input.path === join(f.sourceRoot, 'binding.json')));
+  assert.ok(manifest.imports.every(name => name.startsWith('node:')));
+  const runtimeRoot = join(f.root, 'runtime'); await mkdir(join(runtimeRoot, 'build/runtime/core/skills'), { recursive: true });
+  await writeFile(join(runtimeRoot, 'package.json'), '{"name":"@cats-inc/cats-runtime","type":"module"}');
+  await writeFile(join(runtimeRoot, 'build/runtime/core/skills/contentPolicy.js'),
+    'export const getRuntimeSkillContentPolicy = () => ({profile:"preview",fingerprint:"fixture"});');
+  await createCandidate({ draftFile: paths.draftFile, outputFile: paths.candidateFile });
+  const admission = await admitPractice({ ...paths, evaluatorFile: frozen.evaluatorFile, runtimeRoot });
+  assert.equal(admission.evaluatorDigest, frozen.evaluatorDigest);
+  assert.equal(f.sourceRoot, join(f.root, 'source')); await rm(f.sourceRoot, { recursive: true });
+  assert.equal((await verifyFrozenEvaluator(f.outputRoot)).manifest.evaluatorDigest, admission.evaluatorDigest);
+  const { createSupervisor } = await import(pathToFileURL(frozen.evaluatorFile));
+  const supervisor = createSupervisor({ evaluationRoot: paths.runRoot });
+  const feedback = await evaluatePractice({ runRoot: paths.runRoot, candidateFile: paths.candidateFile, effectSupervisor: supervisor });
+  await supervisor.drain();
+  assert.equal(feedback.completedAttempts, 1); assert.equal(feedback.productionEligible, false);
+  assert.equal(feedback.stopReason, 'budget_exhausted');
+  const result = await verifyEvaluation(paths.runRoot), row = await readRecord(paths.runRoot, 'attempt-0001.json');
+  assert.equal(row.phase, 'baseline');
+  assert.deepEqual(result.evaluation.usage, { measuredTokens: 49, tokensComplete: true });
+  assert.equal(row.failureClass, null); assert.ok(row.checks.every(check => check.passed));
+  const retained = await inspectCatlasEffects({ evaluationRoot: paths.runRoot, resetId: row.resetId });
+  assert.equal(retained.structuralStatus, 'consistent'); assert.equal(retained.recordedKnownTokens, 49);
+  assert.equal(retained.usageUncertain, false); assert.equal(retained.currentCleanup, 'unobserved');
+  assert.equal(retained.replayAllowed, false);
 });
