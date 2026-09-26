@@ -109,7 +109,9 @@ export function createServer(dependencies: ServerDependencies) {
 
   server.on('listening', () => {
     const address = server.address();
-    const runtimeHost = new URL(dependencies.shared.config.runtimeBaseUrl).hostname;
+    const runtimeUrl = dependencies.shared.config.runtimeBaseUrl;
+    const runtimeHost = typeof runtimeUrl === 'string' && URL.canParse(runtimeUrl)
+      ? new URL(runtimeUrl).hostname : '';
     if (address && typeof address !== 'string' && isLoopbackAuthHost(runtimeHost)) {
       const host = address.family === 'IPv6' ? '[::1]' : '127.0.0.1';
       knowledgeEndpoint = `http://${host}:${address.port}${AGENT_KNOWLEDGE_PATH}`;

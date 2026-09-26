@@ -65,6 +65,13 @@ bootstrap/routes/catalog/snapshot and the actual Code policy chain. One knowledg
 test exceeded its old five-second budget during concurrent compilation; focused
 reruns pass and its disk-backed dispatch now has a bounded 15-second budget.
 
+The second CI run (`36268809149`) had no assertion failures before Node aborted
+at the Telegram token tests. A 68-test local subset reproduced the same abort:
+their minimal server configuration omits `runtimeBaseUrl`, and the new listening
+callback threw while parsing it. Missing/invalid URLs now leave the optional
+contribution endpoint unavailable without interrupting startup. Server compilation,
+independent review and the same **68/68** regression subset pass after this guard.
+
 ## Desktop 0.5.3 standard preview published (2026-09-27)
 
 - The owner authorized a version bump and Desktop standard preview. Version
