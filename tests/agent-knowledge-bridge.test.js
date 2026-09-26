@@ -212,7 +212,8 @@ for (const originSurface of ['code', 'chat']) test(`actual ordinary ${originSurf
   const sent = await fetch(`${base}/api/channels/${channel.id}/messages`, { method: 'POST', headers,
     body: JSON.stringify({ body: 'Please contribute the lesson as a knowledge draft.', messageMetadata: { recipientParticipantIds: ['contributor'] } }) });
   assert.equal(sent.status, 200, await sent.clone().text());
-  await waitForCondition(async () => receipt, { timeoutMs: 5000 });
+  // Dispatch includes real fsync/rename operations; allow a loaded build host to finish.
+  await waitForCondition(async () => receipt, { timeoutMs: 15_000 });
   const ownerResponse = await fetch(`${base}/api/code/knowledge`, { headers });
   assert.equal(ownerResponse.status, 200);
   const workspace = await ownerResponse.json();

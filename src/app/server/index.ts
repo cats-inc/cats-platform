@@ -26,6 +26,7 @@ function reportUnhandledServerError(error: unknown): void {
 }
 
 export function createServer(dependencies: ServerDependencies) {
+  const providerSelectorClient = dependencies.shared.runtimeClient;
   let knowledgeEndpoint: string | null = null;
   const knowledge = createAgentKnowledgeBridge({
     platformDir: dependencies.shared.config.platformDir,
@@ -48,6 +49,7 @@ export function createServer(dependencies: ServerDependencies) {
     ...(dependencies.work?.runtimeClient ? { work: { ...dependencies.work, runtimeClient: knowledge.wrapClient(dependencies.work.runtimeClient) } } : {}),
   };
   const resolvedDependencies = resolveServerDependencies(dependencies);
+  resolvedDependencies.shared.providerSelectorClient = providerSelectorClient;
   const stopTransportFanout = startTransportFanout({
     eventHub: resolvedDependencies.chat.eventHub,
     chatStore: resolvedDependencies.chat.chatStore,

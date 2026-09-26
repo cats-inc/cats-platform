@@ -412,6 +412,7 @@ export async function routeRequest(
     `http://${request.headers.host ?? 'localhost'}`,
   );
   const method = request.method ?? 'GET';
+  const providerSelectorClient = dependencies.shared.providerSelectorClient ?? dependencies.shared.runtimeClient;
 
   if (url.pathname === '/health') {
     if (method !== 'GET') {
@@ -622,7 +623,7 @@ export async function routeRequest(
     }
     const force = url.searchParams.get('force') === '1';
     await handleProviderRegistry(
-      { runtimeClient: dependencies.shared.runtimeClient },
+      { runtimeClient: providerSelectorClient },
       response,
       { force },
     );
@@ -661,7 +662,7 @@ export async function routeRequest(
       return;
     }
     await handleRefreshProviderCatalogs(
-      { runtimeClient: dependencies.shared.runtimeClient },
+      { runtimeClient: providerSelectorClient },
       response,
     );
     return;
@@ -679,7 +680,7 @@ export async function routeRequest(
     await handleProviderModels(
       response,
       {
-        runtimeClient: dependencies.shared.runtimeClient,
+        runtimeClient: providerSelectorClient,
       },
       providerModelsMatch[0]!,
       url.searchParams.get('instance'),
@@ -699,7 +700,7 @@ export async function routeRequest(
     await handleAdvancedProviderModels(
       response,
       {
-        runtimeClient: dependencies.shared.runtimeClient,
+        runtimeClient: providerSelectorClient,
       },
       advancedProviderModelsMatch[0]!,
       url.searchParams.get('instance'),

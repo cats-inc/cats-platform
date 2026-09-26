@@ -269,10 +269,9 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
     assert.equal(sendMessageResponse.status, 200, sendMessagePayload);
 
     await waitForCondition(async () => runtimeClient.sentMessages.length > 0);
-    assert.equal(
-      runtimeClient.sentMessages[0]?.input?.instructions ?? '',
-      '',
-    );
+    const turnInstructions = runtimeClient.sentMessages[0]?.input?.instructions ?? '';
+    assert.doesNotMatch(turnInstructions, /declare_artifact/u, 'session onboarding is not resent each turn');
+    assert.match(turnInstructions, /\/api\/code\/knowledge\/agent/u, 'ordinary turn can submit a knowledge draft');
     const turnArtifactContext =
       runtimeClient.sentMessages[0]?.input?.context?.metadata?.codeArtifactDeclaration as
         | Record<string, unknown>

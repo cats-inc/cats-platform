@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { waitForCondition } from './testUtils.js';
 
 import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
@@ -519,27 +520,31 @@ test('a stale forced probe returns the current error-backoff warning when a newe
 
     await withSeededServer(runtimeClient, snapshotPath, async (baseUrl) => {
       const staleForcedRequest = fetch(`${baseUrl}/api/providers?force=1`);
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      assert.equal(diagnosticsCalls, 1, 'first forced probe should be in flight');
+      try {
+        await waitForCondition(() => diagnosticsCalls === 1);
+        const newerForced = await fetch(`${baseUrl}/api/providers?force=1`, { signal: AbortSignal.timeout(5_000) });
+        assert.equal(newerForced.status, 200);
+        const newerPayload = await newerForced.json();
+        assert.equal(newerPayload.state, 'ready');
+        assert.ok(
+          newerPayload.warnings?.some((warning) => warning.toLowerCase().includes('diagnostics timed out')),
+          'newer forced response should disclose the failed runtime refresh',
+        );
 
-      const newerForced = await fetch(`${baseUrl}/api/providers?force=1`);
-      assert.equal(newerForced.status, 200);
-      const newerPayload = await newerForced.json();
-      assert.equal(newerPayload.state, 'ready');
-      assert.ok(
-        newerPayload.warnings?.some((warning) => warning.toLowerCase().includes('diagnostics timed out')),
-        'newer forced response should disclose the failed runtime refresh',
-      );
-
-      releaseFirstCall();
-      const staleForced = await staleForcedRequest;
-      assert.equal(staleForced.status, 200);
-      const stalePayload = await staleForced.json();
-      assert.equal(stalePayload.state, 'ready');
-      assert.ok(
-        stalePayload.warnings?.some((warning) => warning.toLowerCase().includes('diagnostics timed out')),
-        'stale forced response should return the current cached warning too',
-      );
+        releaseFirstCall();
+        const staleForced = await staleForcedRequest;
+        assert.equal(staleForced.status, 200);
+        const stalePayload = await staleForced.json();
+        assert.equal(stalePayload.state, 'ready');
+        assert.ok(
+          stalePayload.warnings?.some((warning) => warning.toLowerCase().includes('diagnostics timed out')),
+          'stale forced response should return the current cached warning too',
+        );
+      } finally {
+        // Do not leave server.close waiting for a gated response when an assertion fails.
+        releaseFirstCall();
+        await staleForcedRequest.then(response => response.bodyUsed ? undefined : response.arrayBuffer()).catch(() => {});
+      }
     });
   });
 });

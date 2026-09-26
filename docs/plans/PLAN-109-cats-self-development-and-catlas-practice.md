@@ -50,6 +50,21 @@ architecture review and release authorization remain separate gates.
   Independent quality evaluation/promotion and the broader gates remain open.
   Do not resume the retired native harness from historical checkpoints below.
 
+### CI integration follow-up
+
+CI `36267494915` exposed a real integration regression: wrapping the Runtime
+client split provider registry/catalog/snapshot caches from startup seed/warm
+and shutdown flush, which key by client identity. All four provider HTTP paths
+now retain the original client; execution/cancellation keeps the scoped wrapper.
+The Code policy-chain assertion now permits knowledge instructions while still
+rejecting repeated artifact onboarding. The provider regression releases and
+drains its delayed request even after an assertion failure, avoiding a five-minute
+teardown wait. Independent review passed. Server/test TypeScript and rebuilt test
+bundles pass; expanded local validation covers 162 tests, including provider
+bootstrap/routes/catalog/snapshot and the actual Code policy chain. One knowledge
+test exceeded its old five-second budget during concurrent compilation; focused
+reruns pass and its disk-backed dispatch now has a bounded 15-second budget.
+
 ## Desktop 0.5.3 standard preview published (2026-09-27)
 
 - The owner authorized a version bump and Desktop standard preview. Version

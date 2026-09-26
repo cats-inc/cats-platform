@@ -118,6 +118,8 @@ export interface ServerDependencies {
 }
 
 export interface ResolvedSharedServerDependencies extends SharedServerDependencies {
+  /** Preserve the bootstrap client's identity for provider caches and persistence. */
+  providerSelectorClient?: RuntimeClient;
   coreStore: CoreStore;
   startup: AppStartupState;
   authStore: PlatformAuthStore;
