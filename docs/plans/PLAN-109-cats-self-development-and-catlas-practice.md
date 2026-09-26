@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Ordinary local agent draft submission implemented; Desktop manual review/adoption/revoke usable; native agent acceptance and independent evaluation/promotion pending |
+| Status | Ordinary agent contribution and diagnostic attachment implemented; candidate verification and independent evaluation/promotion pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Last updated | 2026-09-27 |
@@ -24,6 +24,43 @@ own staged acceptance and does not close G1/G2 development or G4 practice gates.
 This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
+
+## Resume checkpoint — ordinary conversation diagnostics (2026-09-27)
+
+The owner authorized a minimal one-time diagnostic attachment before further
+self-development infrastructure. The shared Chat/Code composer now offers
+**Attach conversation diagnostics** in its plus menu. Select the current or
+another conversation, preview the running Platform/Runtime versions, linked
+sessions and available recent errors, then attach the report. The existing
+screenshot action supplies visual evidence. The report is removable before the
+ordinary Send action; unavailable evidence is explicit. Collection makes no
+provider request. Desktop host version comes from its existing read-only bridge.
+
+The owner/admin Chat route queries only linked sessions, limits errors and trace
+summaries, and scrubs common credentials. It does not export full transcripts or
+arbitrary files. Existing attachment delivery carries the report to the ordinary
+agent's working directory. Source-directory choice (including the non-Git
+`cats-inc` parent) stays in the composer. No persisted-data migration, Runtime change,
+version bump, release or npm publication is part of this slice. Commit/push
+directly to main is owner-authorized. Candidate Desktop launch and independent
+verification remain later work; this does not close the broader G1/G2 gates.
+
+Independent review passed after adding full Cookie/Set-Cookie and Cats session
+cookie scrubbing. Isolated Electron 41.2.0 rendered the actual shared composer
+and passed selecting another conversation, modal preview, attach, normal Send
+and removal with synthetic evidence; screenshots were inspected. No installed
+profile or real provider was exercised. Actual Chat/Code HTTP integration tests
+prove the file reaches a stub Runtime agent in its cwd, with auth rejection and
+partial reports for unavailable Runtime. Server compilation, renderer/test
+TypeScript checks and rebuilt test bundles pass. The integrated focused suite
+passes **86/86**, including report delivery/auth, both UI languages, screenshot
+and composer behavior, Runtime client/bridge and upstream Markdown rendering.
+Full-suite validation remains main CI.
+
+Remote main advanced to `bc967980` (Markdown rendering and Desktop 0.5.4) during
+implementation; it was fast-forwarded without conflicts. This change is newer
+than that preview candidate and does not publish another build. Broader G1/G2
+and real-provider acceptance remain open.
 
 ## Resume checkpoint — minimal ordinary agent contribution (2026-09-27)
 

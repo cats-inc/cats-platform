@@ -41,6 +41,7 @@ import {
 } from './chatNewChatDraftSidePanel.js';
 import { DraftHeader } from './DraftHeader.js';
 import { DraftComposerFooter } from './DraftComposerFooter.js';
+import { DiagnosticAttachmentAction } from './DiagnosticAttachmentAction.js';
 import { BranchAudienceRoster } from './BranchAudienceRoster.js';
 import { CollaborateIcon, CompareIcon } from './DraftBuilderIcons.js';
 import {
@@ -997,6 +998,8 @@ export function NewChatDraft({
             </button>
             {plusMenuOpen ? (
               <div className="composerPlusMenu">
+                <DiagnosticAttachmentAction payload={payload} disabled={isSubmittingFirstTurn}
+                  onAttach={file => { onDraftFilesChange([...draftFiles, file]); onTogglePlusMenu(); }} />
                 <button
                   className="composerPlusMenuItem"
                   type="button"

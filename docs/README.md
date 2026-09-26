@@ -62,6 +62,13 @@ evaluation/promotion, managed source development and combined installed-profile
 acceptance remain pending. ADR is Proposed overall and PLAN is in progress. Platform owns
 this joint design, with explicit Runtime, cats-one and Apps work packages.
 
+The owner-approved minimal follow-up adds **Attach conversation diagnostics** to
+the Chat/Code composer: choose an incident conversation, preview its running
+versions, linked sessions and recent errors, then send the report as a normal
+attachment. Existing screenshots supply visual evidence. This one-time handoff
+does not complete candidate launch or independent source-change verification;
+see PLAN-109 for validation and the current checkpoint.
+
 ## Provider Catalog Soft Patches
 
 Runtime owns the joint

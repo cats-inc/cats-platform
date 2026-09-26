@@ -14,6 +14,7 @@ import { ComposerHighlight } from '../ComposerHighlight.js';
 import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
 import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
 import { ChatComposerTargetSlot } from './ChatComposerTargetSlot.js';
+import { DiagnosticAttachmentAction } from '../DiagnosticAttachmentAction.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
@@ -297,6 +298,12 @@ export function ChatComposerArea({
             </button>
             {channelPlusMenuOpen ? (
               <div className="composerPlusMenu">
+                <DiagnosticAttachmentAction key={payload.chat.selectedChannelId} payload={payload}
+                  currentChannelId={payload.chat.selectedChannelId} disabled={composerBusy}
+                  onAttach={file => {
+                    onChannelFilesChange([...channelFiles, file]);
+                    onToggleChannelPlusMenu();
+                  }} />
                 <button
                   className="composerPlusMenuItem"
                   type="button"

@@ -92,12 +92,14 @@ export interface RuntimeProviderDiagnosticsQuery {
 }
 
 export interface RuntimeHealthPayload {
+  version?: string;
   service?: string;
   status?: string;
   backend?: unknown;
 }
 
 export interface RuntimeStatusSummary {
+  version?: string;
   baseUrl: string;
   reachable: boolean;
   status: string;
@@ -561,6 +563,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         reachable: true,
         status: typeof payload.status === 'string' ? payload.status : 'ok',
         service: typeof payload.service === 'string' ? payload.service : 'cats-runtime',
+        ...(typeof payload.version === 'string' ? { version: payload.version } : {}),
         backend: payload.backend,
       };
     } catch (error) {

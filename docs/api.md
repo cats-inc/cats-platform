@@ -1353,9 +1353,25 @@ POST /api/runtime/mcp
 ### Debug Routes
 
 ```text
+GET /api/channels/:channelId/diagnostics
 GET /api/debug/live-trace
 ```
 
+- `GET /api/channels/:channelId/diagnostics` requires an authenticated owner/admin
+  and returns `{ filename, text }` with `Cache-Control: no-store`. Unknown
+  conversations return 404; unsupported methods return 405. Collection makes no
+  provider request and writes no product data. The report identifies the executing
+  Platform/Runtime package versions, selected conversation/cwd and at most eight
+  linked session bindings/observations. Reads have a 5.5-second deadline; missing
+  Runtime/session/version evidence is explicit. It includes up to eight retained
+  system errors (1200 characters each) and 20 conversation-scoped live-trace
+  summaries when enabled. Raw provider logs, transcripts, tool arguments, arbitrary
+  files and browser console output are not exported. Free text is scrubbed for
+  common credentials; the owner can inspect the report before sharing it.
+  The Chat/Code composer adds the current view, Desktop bridge version and any
+  available conversation-scoped browser trace, then creates a removable text
+  attachment using the normal upload/send flow. Screenshots remain a separate
+  explicit attachment action. A source cwd is not proof of the running revision.
 - `GET /api/debug/live-trace` returns the current server live-trace buffer when
   `debugLiveTrace` is enabled; otherwise it returns `404` with
   `live_trace_disabled`.

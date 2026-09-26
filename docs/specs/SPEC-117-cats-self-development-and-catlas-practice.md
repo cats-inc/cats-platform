@@ -4,12 +4,12 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Desktop manual contribution/adoption/revoke usable; independent evaluation/promotion and broader acceptance pending |
+| Status | Ordinary agent contribution and diagnostic attachment usable; candidate verification and independent evaluation/promotion pending |
 | Owner | Platform integration, with member-owned work packages |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Decision | [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
 | Plan | [PLAN-109](../plans/PLAN-109-cats-self-development-and-catlas-practice.md) |
-| Last updated | 2026-09-26 |
+| Last updated | 2026-09-27 |
 
 ## Summary
 
@@ -35,6 +35,24 @@ implements shared product-knowledge consumption by Orchestrator and stages
 verified collaboration tools/results separately. Those ordinary role procedures can
 ship in both profiles without the preview-only development/practice supplement.
 That work does not complete this spec's source-development or promotion gates.
+
+## Minimal ordinary-agent diagnostic handoff (authorized 2026-09-27)
+
+The immediate source-development gap is access to the owner-selected incident.
+An ordinary Chat/Code conversation shall let the owner select the current or
+another conversation and add a one-time, read-only diagnostic text attachment.
+It shall identify the executing Platform/Runtime versions, source conversation,
+linked Runtime sessions, working directory and available bounded recent errors.
+Missing data shall be marked unavailable. A report must never imply that the
+running Desktop matches a source checkout simply because its cwd points there.
+
+Collection makes no model request. The owner can inspect/remove the attachment
+before sending it with the normal message. UI evidence uses the existing
+user-initiated screenshot attachment. Only sessions linked to the selected
+conversation are queried; secrets and full transcripts are excluded. This
+small handoff does not add background monitoring, arbitrary log-file access or
+automatic candidate build/launch/verification. Implementation and validation
+status live in PLAN-109.
 
 ## Implemented preview content boundary (feature branches)
 

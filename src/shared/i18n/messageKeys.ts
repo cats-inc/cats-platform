@@ -2048,6 +2048,17 @@ export const messageKeys = {
     'chat.newChatDraft.attachmentRemoveAria',
   chatNewChatDraftAddPhotosAndFiles: 'chat.newChatDraft.addPhotosAndFiles',
   chatNewChatDraftTakeScreenshot: 'chat.newChatDraft.takeScreenshot',
+  chatDiagnosticsAction: 'chat.diagnostics.action',
+  chatDiagnosticsHint: 'chat.diagnostics.hint',
+  chatDiagnosticsConversation: 'chat.diagnostics.conversation',
+  chatDiagnosticsCurrent: 'chat.diagnostics.current',
+  chatDiagnosticsPreview: 'chat.diagnostics.preview',
+  chatDiagnosticsRendererSection: 'chat.diagnostics.rendererSection',
+  chatDiagnosticsCollect: 'chat.diagnostics.collect',
+  chatDiagnosticsLoading: 'chat.diagnostics.loading',
+  chatDiagnosticsAttach: 'chat.diagnostics.attach',
+  chatDiagnosticsCancel: 'chat.diagnostics.cancel',
+  chatDiagnosticsFailed: 'chat.diagnostics.failed',
   sharedScreenshotCaptureTooltipDesktopRegion:
     'shared.screenshotCapture.tooltipDesktopRegion',
   sharedScreenshotCaptureTooltipWebPicker:
