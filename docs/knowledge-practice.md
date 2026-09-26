@@ -337,6 +337,43 @@ author read isolation and recovery after the **parent process** itself exits
 remain separate gates. Durable intent/result records preserve uncertainty and
 fence replay; they do not implement a restart that resumes model work.
 
+### Inspect retained effects after interruption
+
+Inspect one reset without loading its evaluator or calling Runtime:
+
+```sh
+node tools/knowledge-practice/cli.mjs inspect-effects --run PRIVATE_RUN_ROOT --reset RESET_UUID
+```
+
+The programmatic equivalent is `inspectCatlasEffects({ evaluationRoot, resetId })`.
+It reads only that reset's bounded parent journal, checks canonical records,
+intent/terminal pairing, call quotas, target/digest agreement and historical
+generation consistency, then checks that the recognized files stayed unchanged
+during the read. Directory aliases, hard links, torn writes and unexpected files
+cannot become consistent evidence. Diagnostics use fixed codes, without printing
+malformed contents or arbitrary file names. Inspection never writes a receipt,
+changes an evaluation, imports the evaluator or resumes any callback.
+
+`recordedKnownTokens` is the subtotal from unambiguous valid terminal records.
+`usageUncertain` remains true for incomplete, malformed or conflicting evidence;
+it also remains true without a valid seal, since admission has not been recorded
+as closed. An unstable read returns a null subtotal. An intent alone cannot establish that
+its callback was never invoked: `invoked: false` was written **before** invocation.
+The reader therefore reports unknown invocation/settlement until a matching
+terminal exists. A failed terminal can still retain measured usage and a created
+session ID. When result/failure records conflict, both validated claims remain
+visible but neither is counted; no winning record is guessed.
+
+These records are unauthenticated. Their consistent placement and digest do not
+prove their origin or bind them independently to an admitted reset. A stable
+snapshot also does not prove that the parent has exited, that no new effect can
+arrive, or that an external provider has stopped. Accordingly the report always
+keeps `currentCleanup: 'unobserved'` and `replayAllowed: false`; reconciliation
+records are historical observations only. Use retained session/request identities
+with a separately authorized, independent process observer before claiming native
+cleanup. Inspection supplies evidence for recovery; it does not grant a replay or
+recover a live evaluation after parent-process failure.
+
 ## Freeze a trusted evaluator
 
 Build the required product consumers first, then prepare a reviewed `.mjs` entry

@@ -25,7 +25,33 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — parent-owned evaluation effects complete (2026-09-26)
+## Resume Checkpoint — retained-effect inspection complete (2026-09-26)
+
+- Parent effects/completion/accounting are committed at `5f8cd505`, with **89/89**
+  focused checks and independent review complete. The checkpoint below is retained.
+- Implemented a read-only `inspect-effects --run ... --reset ...` CLI and API.
+  It checks bounded canonical records, exact effect pairing, target/digest/quotas,
+  aliases/hard links, historical generation relationships and a second inventory
+  and content pass. Malformed contents and arbitrary filenames are not printed.
+- Invocation stays unknown for an intent without a terminal; `invoked: false`
+  in pre-call intent does not prove a call never started. Conflicting terminals
+  retain separate claims without double-counting; measured usage survives valid
+  failed responses. Consistency and current process state remain separate.
+- Final **18/18** focused tests passed, including three actual isolated Node
+  parent-process exits during fake Runtime create/send and after create completion
+  before sealing. Inspection preserved retained bytes without replay. Review found
+  and fixed reconciliation predating seal, unsealed usage certainty, bounded
+  directory enumeration and cumulative byte bounds on both read passes.
+  **4/4** scoped CLI/docs/collection checks also passed, including the existing
+  full 60-reset CLI fixture. Only public fixtures were used, with no network,
+  credentials or provider inference.
+- Independent final re-review found no remaining blocker; **22/22** final scoped
+  checks passed and the diff check is clean. Records
+  remain unauthenticated; current cleanup is always unobserved and replay is never
+  allowed. This is recovery inspection, not automatic process recovery or new
+  permission to dispatch a model. Native gates below remain open.
+
+## Previous checkpoint — parent-owned evaluation effects complete (2026-09-26)
 
 - Checkpoint `3d0ae0b9` completes the static closure freeze below. Work continues
   locally with no external inference, using only isolated fixtures.
