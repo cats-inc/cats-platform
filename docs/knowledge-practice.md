@@ -366,8 +366,14 @@ A native synthetic canary used a cached image with no credentials, Runtime or
 model, confirmed allowed-file access, outside-file absence and denied writes, then
 observed exit of its shell/background child and removed only the owned container.
 This validates the container observer/transport mechanism, not a credentialed
-Runtime or native model evaluation. The pilot image and Runtime/session mapping
-remain pending.
+Runtime or native model evaluation. A subsequent private image preflight pinned
+the official Node base, verified the native archive and exact copied Runtime/CLI
+payloads, checked launch configuration before start, then passed native
+version/schema and idle Runtime health/shutdown inside a network-disabled
+container. The external observer confirmed exit before exact-owned removal.
+Neither that idle test nor its fresh private home establishes provider-thread
+readiness or session cleanup. Actual Runtime/session mapping, parent transport
+and the bounded native model pilot remain pending.
 
 ## Parent-owned Catlas effects
 

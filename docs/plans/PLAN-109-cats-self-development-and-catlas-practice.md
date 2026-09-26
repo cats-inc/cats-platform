@@ -25,7 +25,39 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — dedicated container observation (2026-09-26)
+## Resume Checkpoint — pinned native image, no inference (2026-09-26)
+
+- Container observation is committed at `8507008d`, after **53/53** scoped checks
+  and independent review. The owner's next-stage authorization remains active.
+  No new provider credential read/copy, model call, installed-state write or release.
+- Built a private Linux image from a digest-pinned official Node 24 base, clean
+  Runtime `6afaf606` with a fresh successful build, four production dependencies,
+  public assets/skills/config and Codex CLI **0.157.0**. The Linux native archive
+  was resolved from the installed package's versioned alias and SHA-512 verified
+  before extraction. No author/evaluator inputs entered the build context.
+- The context's exact **1,622 files / 407,129,855 bytes** were independently
+  reconciled; the launcher reverified the inventory and hashes after building.
+  A separately mounted trusted verifier
+  then hashed the **1,621 copied payload files** inside the actual image before
+  executing its preflight. This binds those payloads to the context digest; base
+  OS/Node identity remains separately digest-pinned. Exact image environment,
+  launch settings, mounts, containment and resource limits were checked before
+  start. CLI timeout/unknown-create/cleanup-failure receipts remain explicit.
+- The credential-free, network-disabled native test passed: Node **24.21.0**,
+  native CLI version and experimental protocol export, Runtime **0.3.1** preview
+  health with matching in-container PID, and awaited idle shutdown. The external
+  observer captured the running container, then two terminal observations before
+  exact-owned removal. Exit was zero, with no OOM, pending CLI or cleanup failure.
+  Credential absence is an audited admission fact plus a fresh-home assertion;
+  idle shutdown does not establish future provider cleanup or native thread readiness.
+- Private build/probe manifests and resume records retain exact digests, image and
+  container identities. Next: a fresh no-network **create/observe/close-only**
+  Runtime Codex canary to bind the actual logical session and app-server process
+  to the container. Do not send even an empty message to force readiness: that
+  starts a model turn. Parent transport, frozen native bindings and the small
+  model pilot remain pending; none of these preflights are quality evidence.
+
+## Previous checkpoint — dedicated container observation (2026-09-26)
 
 - Runtime judge/frozen integration checkpoint is committed at `b1b98d2e`, with
   **86/86** scoped checks and independent review. Owner authorization remains valid
