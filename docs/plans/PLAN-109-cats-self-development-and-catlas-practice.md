@@ -25,6 +25,24 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
+## Desktop 0.5.3 standard preview published (2026-09-27)
+
+- The owner authorized a version bump and Desktop standard preview. Version
+  `0.5.3` was committed directly to main at `c2864623`; its full CI passed with
+  5,102 tests passed, 59 skipped and zero failures.
+- The [preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.3)
+  ships the minimal manual knowledge contribution/adoption/revoke flow and draft
+  display. All seven [Desktop jobs](https://github.com/cats-inc/cats-platform/actions/runs/36264530657)
+  passed. Every OS bundles Runtime `8cdde2906b5c7175672664dd2fabbe8147555ced` and
+  the existing pinned Usage 0.4.0 artifact. No npm package was published.
+- Ten assets and all three update metadata files were verified. macOS is signed
+  and notarized; Windows has no certificate and is unsigned; Linux signing is
+  n/a. Windows installer hashes match update metadata and GitHub's asset digest.
+  See [release notes](../release-notes.md) for exact validation and upgrade limits.
+- Publication is complete. No new provider inference or installed-profile writes
+  were needed. Independent quality evaluation/promotion and broader development
+  gates remain separate; do not restart retired harness work from this checkpoint.
+
 ## CI follow-up — localization and detached Telegram completion (2026-09-27)
 
 - Main CI run `36259527686` found raw UI strings and a Telegram route test that
@@ -36,7 +54,8 @@ architecture review and release authorization remain separate gates.
   a linked room can exist before the reply. Production ingress stays detached.
 - Validation passed: **6/6** UI/audit tests (both languages for contribution and
   draft preview), **35/35** Telegram route tests, renderer/test TypeScript checks,
-  and independent review. Full CI must pass after push; these are focused checks.
+  and independent review. Subsequent main CI `36262402507` and the 0.5.3 candidate
+  CI `36263941765` both passed the full suite.
 
 ## Resume Checkpoint — minimal Desktop contribution and local adoption (2026-09-26)
 
