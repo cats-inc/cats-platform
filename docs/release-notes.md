@@ -19,6 +19,55 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-27 (0.5.4 preview, standard profile — preparation)
+
+Behavior change:
+
+- Agent replies in Chat, Work and Code transcripts, including live streamed text,
+  render as markdown: emphasis, lists, headings, quotes, code blocks, tables,
+  task lists and `[text](url)` links. Single newlines stay line breaks. User,
+  system and orchestrator messages remain plain text, and mobile still shows
+  every message as plain text.
+- Only http(s) links in agent replies are clickable and open in the system
+  browser. Other targets, such as local file paths, show as inert text with the
+  target as a tooltip. Raw HTML is shown as text; remote images appear as links
+  instead of loading.
+- Bare URLs and internal routes end at CJK and full-width punctuation, so text
+  such as `)、` directly after a URL no longer becomes part of the link.
+- The bundled Runtime includes Kiro's full 20-row 2.24.1 picker catalog. The ten
+  rows with an effort control send it as `--effort`; with no declared default,
+  selection starts at each row's first value and overrides Kiro's saved model
+  defaults.
+
+Migration steps:
+
+No existing data conversion is required. Stored messages are unchanged; only
+their display changes.
+
+This compatible patch prepares Desktop only; no npm publication is requested.
+Runtime 0.3.1 is pinned to `65e05d5af90182bb08b23a3d8210667abe3fd426`.
+Usage 0.4.0 retains SHA-256
+`7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`; its
+`catsPlatform` range `^0.5.0` includes 0.5.4.
+
+The standard signing profile is selected: expected platform trust is macOS
+signed + notarized, Windows unsigned: no certificate, and Linux n/a. Self-update
+from standard-profile 0.5.3 is expected to remain supported on Windows/Linux
+and on macOS with the same Developer ID team. Actual release signing and assets
+must be confirmed after publication; no new installed-update acceptance is claimed.
+
+Deprecations:
+
+None.
+
+Release verification:
+
+The markdown change passed
+[full Platform CI](https://github.com/cats-inc/cats-platform/actions/runs/36272436338)
+at `386fd2ac0a122cf2e7ebe551f8de9e8ad0c68717`. The pinned Runtime passed its
+[release preflight](https://github.com/cats-inc/cats-runtime/actions/runs/36272184397).
+The version candidate still requires its CI and Desktop publication workflow.
+
 ## 2026-09-27 (0.5.3 preview, standard profile — publication)
 
 Behavior change:
