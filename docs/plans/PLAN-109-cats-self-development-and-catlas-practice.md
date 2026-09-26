@@ -25,9 +25,10 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — synthetic user namespace comparison (2026-09-26)
+## Resume Checkpoint — native namespace failure localized (2026-09-26)
 
-- Parent create-only transport is checkpointed at `01475b67`. Next-stage owner
+- Parent create-only transport is checkpointed at `01475b67`; the synthetic user
+  namespace comparison is checkpointed at `99a2915a`. Next-stage owner
   authorization remains active. No new model call, provider credential read/copy,
   candidate, promotion or publication occurred.
 - Compared two explicit, digest-bound seccomp profiles in separate fresh private
@@ -54,11 +55,28 @@ architecture review and release authorization remain separate gates.
   checks and extending the observation window. Actual-result and documentation
   review also passed, including submitted profile bytes and owned cleanup.
   Private exact digests and receipts are retained in `USERNS-EXPERIMENT-RESUME.md`.
-  Next: review one native-command diagnostic under the unchanged candidate policy
-  to see whether the failure advances. A repeated generic EPERM would not identify
-  the missing operation. Do not infer that a syscall rule checks namespace membership
-  or automatically add more permissions. Parent send/usage/cancellation, the
-  small authorized pilot and all knowledge-quality gates remain pending.
+- A subsequent independently reviewed native `command/exec` diagnostic used the
+  **unchanged** one-rule policy. Initialization and the unknown-profile negative
+  control passed; both restricted-read and ordinary read-only commands still
+  returned the same namespace EPERM. Native output drained and the process exited
+  normally, followed by two valid container terminal observations and exact-owned
+  removal. This is a completed measurement with **both readiness flags false**.
+  The production observer remains incomplete. Private continuation is now
+  `USERNS-COMMAND-RESUME.md`; historical failed receipts remain unchanged.
+- Pinned the official Codex `0.157.0` source tag to
+  `00c972ed5d6ff6499317fd41b7f23605b8e6850d` and retained source-file digests. The
+  vendored code emits this message at a failed raw `clone`, whereas the first
+  diagnostic allowed only `unshare`. Its source also requests mount, user, PID,
+  IPC and network namespaces. This is source-informed failure localization,
+  not a syscall trace or reproducible-build proof. Any next differential policy
+  remains subject to exact argument binding and independent review; broader
+  mount permissions have not been added.
+- Independent source/flag review supports preparing one extra `clone` argument-0
+  equality rule for `2013397009` (`0x78020011`) in the private diagnostic. Review
+  the actual resulting profile and launcher before execution, preserve command
+  inputs and leave other errors visible. No syscall filter is a condition on
+  current namespace membership. Parent send/usage/cancellation, the small
+  authorized pilot and all knowledge-quality gates remain pending.
 
 ## Previous checkpoint — native parent create-only transport (2026-09-26)
 

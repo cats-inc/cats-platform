@@ -423,6 +423,13 @@ and were removed; no daemon/host policy or container capability changed. The
 production observer deliberately rejected these custom profiles, so their private
 exit observations cannot become Runtime cleanup evidence. This establishes only
 the tested user-namespace operation; neither probe invoked Runtime or native Codex.
+A further native command diagnostic kept that one-rule policy unchanged. Its
+unknown-profile control and measurement completed, but both command policies still
+failed with the same namespace error; all owned processes and the container were
+closed and removed. Inspection of the [versioned vendored source](https://github.com/openai/codex/blob/00c972ed5d6ff6499317fd41b7f23605b8e6850d/codex-rs/vendor/bubblewrap/bubblewrap.c)
+locates that error at raw `clone` failure. This source-informed inference explains
+why allowing only `unshare` is insufficient; it is not an actual syscall trace or
+evidence that the rest of bubblewrap's setup would succeed.
 Codex's [versioned Linux sandbox notes](https://github.com/openai/codex/blob/rust-v0.157.0/codex-rs/linux-sandbox/README.md)
 require bubblewrap for restricted filesystem execution. Any future dedicated
 container policy needs its own review, exact byte binding and native validation;
