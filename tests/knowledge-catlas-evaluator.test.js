@@ -54,7 +54,7 @@ async function fixture(t, locale = 'en') {
   const session = { id: 'public-session', provider: 'fixture', providerName: 'fixture', model: 'fixture-model',
     providerTarget: { resolved: true, provider: 'fixture', target: 'cli/public' },
     workspace: { kind: 'sandbox', access: 'read_only' }, permissionMode: 'default',
-    skills: { strict: true, requestedSkills: [], appliedSkillIds: [] } };
+    hydration: { trigger: 'create' }, inspection: { state: 'idle' } };
   const calls = { create: [], send: [], close: [], cancel: [], judge: [], cleanup: [] };
   const runtimeClient = {
     async createSession(value) {
@@ -115,6 +115,26 @@ for (const locale of ['en', 'zh-TW']) test(`actual Catlas inference and independ
   assert.equal(receipt.selectedEntries.length, 5);
   await assert.rejects(f.run(), { code: 'EEXIST' });
   assert.equal(f.calls.create.length, 1, 'A retained intent must prevent inference replay.');
+});
+
+for (const [state, mutate] of [
+  ['synthetic empty state', session => { session.skills = { strict: true, requestedSkills: [], appliedSkillIds: [] }; }],
+  ['hydrated skill', session => { session.hydration.skills = { appliedSkillIds: ['unexpected'] }; }],
+  ['inspected skill', session => { session.inspection.skills = { appliedSkillIds: ['unexpected'] }; }],
+  ['missing hydration', session => { delete session.hydration; }],
+  ['missing inspection', session => { delete session.inspection; }],
+  ['null state', session => { session.skills = null; }],
+]) for (const stage of ['before', 'after']) test(`Catlas rejects ${state} ${stage} send and retains measured usage`, async t => {
+  const f = await fixture(t); let observations = 0;
+  f.options.runtimeClient.observeSession = async () => {
+    const session = structuredClone(f.session);
+    if (++observations === (stage === 'before' ? 1 : 2)) mutate(session);
+    return { session };
+  };
+  const result = await f.run();
+  assert.equal(result.observed.responseValid, false); assert.equal(f.calls.judge.length, 0);
+  assert.equal(result.usageTokens, stage === 'before' ? 0 : 42);
+  assert.equal(f.calls.send.length, stage === 'before' ? 0 : 1); assert.equal(f.calls.close.length, 1);
 });
 
 test('preflight rejects impossible or unbound observations before a session is created', async t => {

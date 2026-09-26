@@ -30,7 +30,7 @@ async function setup(t) {
   const session = { id: 'owned-reviewer', provider: target.provider, providerName: target.provider, model: target.model,
     providerTarget: { resolved: true, provider: target.provider, target: target.instance },
     workspace: { kind: 'sandbox', access: 'read_only' }, permissionMode: 'default',
-    skills: { strict: true, requestedSkills: [], appliedSkillIds: [] } };
+    hydration: { trigger: 'create' }, inspection: { state: 'idle' } };
   const model = { responseDigest: input.responseDigest, decisions: [{ id: 'useful', verdict: 'pass',
     rationale: 'The answer gives a first action.', evidenceQuotes: ['先選擇 coding target'] }] };
   const transport = () => ({ tokensUsed: 19, segments: [{ kind: 'text', text: JSON.stringify(model) }] });
@@ -119,6 +119,26 @@ for (const stage of ['before', 'after']) test(`changed observed delivery ${stage
   assert.equal(f.calls.filter(row => row[0] === 'send').length, stage === 'before' ? 0 : 1);
 });
 
+for (const [state, mutate] of [
+  ['synthetic empty state', session => { session.skills = { strict: true, requestedSkills: [], appliedSkillIds: [] }; }],
+  ['hydrated skill', session => { session.hydration.skills = { appliedSkillIds: ['unexpected'] }; }],
+  ['inspected skill', session => { session.inspection.skills = { appliedSkillIds: ['unexpected'] }; }],
+  ['missing hydration', session => { delete session.hydration; }],
+  ['missing inspection', session => { delete session.inspection; }],
+  ['null state', session => { session.skills = null; }],
+]) for (const stage of ['before', 'after']) test(`judge rejects ${state} ${stage} send and retains measured usage`, async t => {
+  const f = await setup(t); let observations = 0;
+  f.options.runtimeClient.observeSession = async () => {
+    const session = structuredClone(f.session);
+    if (++observations === (stage === 'before' ? 1 : 2)) mutate(session);
+    return { session };
+  };
+  const result = await f.create().judge(f.input);
+  assert.deepEqual(result.decisions, []); assert.equal(result.usageTokens, stage === 'before' ? 0 : 19);
+  assert.equal(f.calls.filter(row => row[0] === 'send').length, stage === 'before' ? 0 : 1);
+  assert.equal(f.calls.filter(row => row[0] === 'close').length, 1);
+});
+
 test('close acknowledgement cannot replace independent cleanup evidence', async t => {
   const f = await setup(t); f.options.observeCleanup = async () => ({ status: 'incomplete', evidenceRefs: ['fixture:still-observed'] });
   const reviewer = f.create(), result = await reviewer.judge(f.input);
@@ -192,6 +212,7 @@ test('a complete negative judgment needs no quote and retains its measured usage
 
 test('real Runtime client transports fresh judge input and metered NDJSON through mocked HTTP only', async t => {
   const f = await setup(t), urls = [];
+  assert.equal(Object.hasOwn(f.session, 'skills'), false, 'Runtime omits skill state for the requested empty manifest.');
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     urls.push(url);
     if (url === 'http://runtime-fixture.invalid/sessions') return Response.json(f.session);

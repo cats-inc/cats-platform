@@ -4,6 +4,7 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { canonical, digest, evidenceIds, fields, id, physical, safeText, writeNew } from './artifacts.mjs';
 import { validateCatlasEvaluationFixture, validateCatlasJudgment } from './catlasEvaluator.mjs';
+import { assertNoRuntimeSkills } from './runtimeSkillState.mjs';
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/u;
 const INSTRUCTIONS = [
@@ -107,8 +108,7 @@ export function createRuntimeKnowledgeJudge({ evaluationRoot, runtimeClient, tar
       assert.equal(session.model, binding.model); assert.equal(session.providerTarget?.resolved, true);
       assert.equal(session.providerTarget.provider, binding.provider); assert.equal(session.providerTarget.target, binding.instance);
       assert.equal(session.workspace?.kind, 'sandbox'); assert.equal(session.workspace.access, 'read_only');
-      assert.equal(session.permissionMode, 'default'); assert.equal(session.skills?.strict, true);
-      assert.deepEqual(session.skills.requestedSkills, []); assert.deepEqual(session.skills.appliedSkillIds, []);
+      assert.equal(session.permissionMode, 'default'); assertNoRuntimeSkills(session);
     }
     const abort = () => { void closeOwned(true).catch(() => {}); };
     signal.addEventListener('abort', abort, { once: true });

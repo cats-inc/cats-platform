@@ -40,7 +40,7 @@ async function setup(t) {
   const session = { id: 'public-session', provider: target.provider, providerName: target.provider, model: target.model,
     providerTarget: { resolved: true, provider: target.provider, target: target.instance },
     workspace: { kind: 'sandbox', access: 'read_only' }, permissionMode: 'default',
-    skills: { strict: true, requestedSkills: [], appliedSkillIds: [] } };
+    hydration: { trigger: 'create' }, inspection: { state: 'idle' } };
   const calls = [], reconciled = [];
   const options = { evaluationRoot: root, target,
     runtimeClient: {

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { assertNoRuntimeSkills } from './runtimeSkillState.mjs';
 import { join } from 'node:path';
 import { inferCatlasAdvice } from '../../build/server/platform/catlas/inference.js';
 import { selectCatlasKnowledge } from '../../build/server/platform/catlas/knowledge.js';
@@ -127,8 +128,7 @@ export function createCatlasEvaluator({ evaluationRoot, runtimeClient, guideCat,
       assert.equal(actual.providerTarget.provider, binding.executionTarget.provider);
       assert.equal(actual.providerTarget.target, binding.executionTarget.instance);
       assert.equal(actual.workspace?.kind, 'sandbox'); assert.equal(actual.workspace.access, 'read_only');
-      assert.equal(actual.permissionMode, 'default'); assert.equal(actual.skills?.strict, true);
-      assert.deepEqual(actual.skills.requestedSkills, []); assert.deepEqual(actual.skills.appliedSkillIds, []);
+      assert.equal(actual.permissionMode, 'default'); assertNoRuntimeSkills(actual);
     }
     const tracked = {
       async createSession(input) {

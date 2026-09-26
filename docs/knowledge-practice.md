@@ -295,9 +295,16 @@ evaluation root, distinct reviewer/author IDs, and an independent
 loading or automatic retry. Wire its `judge` into the supervisor and route reviewer
 cleanup to its `confirmCleanup`; Catlas cleanup still needs its own observation.
 
-Each reset creates one fresh sandbox/read-only session with strict empty skills.
-Requested and observed target, model, workspace policy and skills must match before
-and after the send. The reviewer receives only the sanitized response and rubric;
+Each reset creates one fresh sandbox/read-only session and explicitly requests
+`{ requestedSkills: [], strict: true }`. Runtime omits skill state for an empty
+manifest. Both the Catlas evaluator and reviewer therefore require authoritative
+hydration/inspection snapshots and verify that skills are absent from the session,
+hydration and inspection before and after sending. A present skill state, even
+an empty object or null, and a truncated observation are rejected. This is absence
+of Runtime-delivered skills; the dropped strict flag is not a delivery receipt or
+proof of native read isolation. The empty request must not be used to clear a
+reused session. Observed target, model and workspace policy must also match.
+The reviewer receives only the sanitized response and rubric;
 the model returns decisions and exact quotes. Trusted code converts unique quotes
 into UTF-16 evidence spans and validates complete rubric coverage. A valid negative
 decision is complete even without a quote; indeterminate or malformed decisions
@@ -372,8 +379,13 @@ payloads, checked launch configuration before start, then passed native
 version/schema and idle Runtime health/shutdown inside a network-disabled
 container. The external observer confirmed exit before exact-owned removal.
 Neither that idle test nor its fresh private home establishes provider-thread
-readiness or session cleanup. Actual Runtime/session mapping, parent transport
-and the bounded native model pilot remain pending.
+readiness or session cleanup. A further create/observe/close-only canary verified
+the actual empty-skill assertion against Runtime, recorded a logical session and
+its direct native app-server child, observed child disappearance after close,
+and confirmed container exit before removal. No message was sent: the native
+thread remained uninitialized. This is contained process/session evidence;
+parent-owned transport and its frozen endpoint mapping, native tool readiness,
+and the bounded model pilot remain pending.
 
 ## Parent-owned Catlas effects
 

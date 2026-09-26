@@ -130,7 +130,7 @@ test('bundled production Catlas helper runs away from the checkout with frozen S
       const session = { id: 'public-session', provider: 'fixture', providerName: 'fixture', model: 'public-model',
         providerTarget: { resolved: true, provider: 'fixture', target: 'cli/public' },
         workspace: { kind: 'sandbox', access: 'read_only' }, permissionMode: 'default',
-        skills: { strict: true, requestedSkills: [], appliedSkillIds: [] } };
+        hydration: { trigger: 'create' }, inspection: { state: 'idle' } };
       return createCatlasEvaluator({ evaluationRoot: dirname(dirname(args.fixtureRoot)),
         authorId: 'public-author', reviewerId: 'public-reviewer',
         guideCat: { id: 'guide-cat-primary', modelSelection: null,
@@ -238,7 +238,7 @@ test('one frozen closure supplies Runtime judge, parent and worker after their s
       const session = { id: 'public-session', provider: binding.target.provider, providerName: binding.target.provider,
         model: binding.target.model, providerTarget: { resolved: true, provider: binding.target.provider, target: binding.target.instance },
         workspace: { kind: 'sandbox', access: 'read_only' }, permissionMode: 'default',
-        skills: { strict: true, requestedSkills: [], appliedSkillIds: [] } };
+        hydration: { trigger: 'create' }, inspection: { state: 'idle' } };
       const reviewerSession = { ...session, id: 'public-reviewer-session' };
       const reviewer = createRuntimeKnowledgeJudge({ evaluationRoot, target: binding.target,
         authorId: 'public-author', reviewerId: 'public-reviewer',

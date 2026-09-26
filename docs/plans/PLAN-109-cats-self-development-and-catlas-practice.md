@@ -25,7 +25,48 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — pinned native image, no inference (2026-09-26)
+## Resume Checkpoint — actual Runtime empty-skill contract (2026-09-26)
+
+- The pinned native image checkpoint is committed at `19158596`. A subsequent
+  no-message native session exposed a real integration error: Runtime drops an
+  empty skill manifest and omits its skill state, while both evaluator helpers
+  and their mocks required a synthetic `skills.strict` state. Runtime source
+  inspection confirmed the omitted state is its current contract, not a missing
+  delivery or an API regression. Nonempty authoring skill receipts are unaffected.
+- Both Catlas evaluation and the independent judge now share an assertion that
+  requires hydration/inspection snapshots and rejects skill state in all three
+  session/hydration/inspection projections before and after sending. The explicit
+  `{ requestedSkills: [], strict: true }` request remains caller intent; absence
+  is not a retained strict-delivery acknowledgement or native read-isolation proof.
+  Existing fresh-session admission is essential; empty lists do not clear reuse.
+- **112/112** scoped checks passed: judge/evaluator **71**, parent/freeze **38**,
+  and docs/collection **3**. These include **24** new before/after consumer
+  regressions for injected, null and truncated observations; post-send spend is
+  retained and invalid Catlas state cannot reach the judge. Independent source,
+  fixture and native-launcher review found no remaining blocker.
+- A fresh, credential-free/network-disabled native canary mounted and hashed the
+  actual shared assertion, then passed real Runtime create/observe/close with
+  `codex/cli/native`, model `gpt-6-astra`, sandbox/read-only/default policy and no
+  Runtime-delivered skills. The in-container Runtime PID, executable/child start
+  identity and Docker VM PID/parent relationship were retained. The observer
+  armed with the actual logical session ID before any send; no message was sent.
+  The native child disappeared after close, idle Runtime shut down, and external
+  observation confirmed exited/PID-zero/exit-zero/no-OOM before exact-owned
+  removal. No pending CLI, unknown creation, credential copy or model call.
+- Three failed preparations remain separate evidence: missing explicit native
+  environment before startup; the skill-contract mismatch after create; and a
+  process-name assertion (`MainThread`, not `node`) after the corrected skill
+  check. Each owned container was removed. The final probe binds the Runtime VM
+  PID and Codex child PPID rather than a Node display name. These are Linux/Docker
+  VM identities, never Windows process IDs.
+- This proves **create-only app-server containment**, not an initialized native
+  thread or inference readiness. The CLI also warned that helper aliases cannot
+  be created under a `/tmp` home; prepare a supported fresh private home before
+  tool/model use. Next: parent-owned transport and frozen endpoint/session mapping,
+  then the small authorized native pilot. The full exercise, promotion and release
+  remain separate gates. Private continuation records retain all exact identities.
+
+## Previous checkpoint — pinned native image, no inference (2026-09-26)
 
 - Container observation is committed at `8507008d`, after **53/53** scoped checks
   and independent review. The owner's next-stage authorization remains active.
