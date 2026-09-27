@@ -118,8 +118,12 @@ export function assertMainWindowVoiceCaptureIpcSender(
   );
 }
 
+// clipboard-sanitized-write backs navigator.clipboard.writeText (message copy
+// buttons); clipboard reads stay denied.
+const DESKTOP_RENDERER_ALLOWED_PERMISSIONS = new Set(['display-capture', 'clipboard-sanitized-write']);
+
 export function shouldAllowDesktopRendererPermission(permission: string): boolean {
-  return permission === 'display-capture';
+  return DESKTOP_RENDERER_ALLOWED_PERMISSIONS.has(permission);
 }
 
 function isVoiceCaptureMode(value: unknown): value is VoiceCaptureMode {

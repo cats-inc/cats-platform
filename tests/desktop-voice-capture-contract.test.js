@@ -67,8 +67,10 @@ test('desktop voice capture validates renderer payloads and sender identity', ()
   assert.equal(isMainWindowVoiceCaptureIpcSender({ sender: mainWebContents }, null), false);
 });
 
-test('desktop renderer permission policy denies media and allows display capture only', () => {
+test('desktop renderer permission policy denies media and allows display capture and clipboard writes only', () => {
   assert.equal(shouldAllowDesktopRendererPermission('display-capture'), true);
+  assert.equal(shouldAllowDesktopRendererPermission('clipboard-sanitized-write'), true);
+  assert.equal(shouldAllowDesktopRendererPermission('clipboard-read'), false);
   assert.equal(shouldAllowDesktopRendererPermission('media'), false);
   assert.equal(shouldAllowDesktopRendererPermission('microphone'), false);
   assert.equal(shouldAllowDesktopRendererPermission('camera'), false);
