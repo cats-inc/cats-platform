@@ -1,9 +1,9 @@
 import { sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
-import { attachWorkCandidateEvidence, type AttachCandidateRequest } from '../state/candidateEvidence.js';
+import { attachWorkCandidateEvidence, prepareWorkCandidate, type AttachCandidateRequest } from '../state/candidateEvidence.js';
 import type { WorkApiRouteContext } from './index.js';
 
 export async function routeWorkCandidateEvidenceApi(context: WorkApiRouteContext): Promise<boolean> {
-  const match = /^\/api\/work\/tasks\/([^/]+)\/candidate-evidence$/u.exec(context.url.pathname);
+  const match = /^\/api\/work\/tasks\/([^/]+)\/candidate-(evidence|preparation)$/u.exec(context.url.pathname);
   if (!match) return false;
   if (!context.auth?.principal?.membership.roles.some(role => role === 'owner' || role === 'admin')) {
     sendJson(context.response, 403, { error: { message: 'Administrator access is required.' } }); return true;
@@ -16,7 +16,17 @@ export async function routeWorkCandidateEvidenceApi(context: WorkApiRouteContext
       if (size > 8192) throw new Error('candidate_request_too_large');
       chunks.push(bytes);
     }
-    const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as AttachCandidateRequest;
+    const value: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    if (match[2] === 'preparation') {
+      const body = value as { requestId: string; root: string };
+      if (!body || typeof body !== 'object' || Array.isArray(body)
+        || Object.keys(body).sort().join(',') !== 'requestId,root'
+        || typeof body.requestId !== 'string' || typeof body.root !== 'string') throw new Error('invalid_candidate_request');
+      const result = await prepareWorkCandidate({ coreStore: context.dependencies.coreStore,
+        taskId: decodeURIComponent(match[1]!), request: body });
+      sendJson(context.response, result.created ? 201 : 200, result, { 'Cache-Control': 'no-store' }); return true;
+    }
+    const body = value as AttachCandidateRequest;
     if (!body || typeof body !== 'object' || Array.isArray(body)
       || Object.keys(body).some(key => !['root', 'launchId', 'instanceId'].includes(key))
       || typeof body.root !== 'string' || body.root.length > 4096

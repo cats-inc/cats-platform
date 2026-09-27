@@ -115,7 +115,7 @@ independent review found no remaining blockers. No model call,
 new persisted-data migration or release is involved.
 This slice is on main at `eff7cdfc`; full CI `36303720453` passed.
 
-The current slice adds an explicit Cats-development option to the existing
+The next slice (`5201175d`, full CI `36304999236` passed) adds an explicit Cats-development option to the existing
 owner-confirmed collaboration choice. It freezes catalog skill identity before
 atomic admission, preserving ordinary empty-skill behavior and the existing
 file-only worktree/review grants. Required preview delivery and session-bound
@@ -135,16 +135,49 @@ calls, also confirmed Claude instruction delivery, unchanged explicit repinning,
 implicit pin loss and strict Codex worktree rejection. Live fresh/resumed delivery
 remains pending.
 
-A prepared single ordinary-provider contribution acceptance remains unrun:
-automatic approval review rejected sending bundled knowledge/synthetic input to
-external Codex with a temporary authentication copy without authorization for
-that exact payload/destination. The owner question is pending. No authentication
-was copied or inference sent. Continue unaffected implementation; do not replay
-this check or reuse consumed older approvals. Consumer request assembly in that
-prepared check is explicitly stubbed, not live knowledge-quality evidence.
+The paired Runtime fix `679f32a4` (full CI `36305676449` passed) then closes the
+Codex managed-worktree delivery gap. Internal hydration passes canonical ownership;
+filesystem delivery requires the exact session-derived worktree/path, physical
+containment, shared source Git identity, ignored/untracked resource paths and
+no symbolic/hard links. Provider grants remain unchanged. The build and **71
+distinct focused tests** passed, including 17 real-Git create/message/resume and
+retained nested-root cases. Independent review cleared hardlink and retained-path
+fixes. This is real hydration/filesystem evidence with zero provider calls, not
+live model usage or a changed installed Desktop/Runtime pin.
 
-Next validate the ordinary provider contribution path and complete the independent
-knowledge handoff, preserving the pending authorization boundary. The read-only
+The current slice adds Work's prelaunch draft build record and downloadable
+ownership descriptor. CLI start optionally checks it before copying and against
+the snapshot receipt before building; complete commit-byte inspection stays at
+attachment. The same artifact becomes ready only after exact descriptor and
+source verification. Actual parent/implementation Task ownership is rechecked
+along with Core owner/revision; duplicate preparation cannot reset ready or
+overwrite another launch. UI task changes discard late responses. It adds no
+new scheduler or cancellation authority to the offline CLI; failures retain the
+draft and local receipts. All server/renderer/test typechecks and **21 focused
+tests** passed, including actual Git/HTTP association, ownership races, renderer
+task switching and the dependency graph. Independent review cleared the actual
+Task-owner fence fix. A second member remains a dependency baseline, not a second managed
+implementation.
+
+A single ordinary-provider contribution acceptance was initially blocked by
+automatic approval review for missing payload/destination authorization. The
+owner then explicitly authorized that exact brief test. One gpt-6-astra turn ran
+for **22.4 seconds**, consuming **21,570 measured tokens** (within the 24,000
+post-response threshold), against an isolated synthetic profile with Platform
+`5201175d` plus the candidate-preparation changes and Runtime `679f32a4`.
+The model received the contribution endpoint but native command policy rejected
+both shell attempts; it truthfully reported no draft ID. Zero drafts were created,
+so adoption/consumer assembly/revocation were not reached. Runtime recorded a
+read-write source workspace and skip permission, while the actual provider turn
+recorded read-only/restricted networking. This mismatch needs diagnosis; it is
+not a passing ordinary-agent acceptance. No second model turn or rerun is
+authorized by the consumed test. Runtime exit and temporary auth removal were
+confirmed with no cleanup errors. Private sanitized evidence is retained; no
+credential or raw trace is committed.
+
+Next diagnose the actual provider permission mismatch without repeating inference,
+then validate the ordinary contribution path and independent knowledge handoff
+under a new explicit bounded test authorization. The read-only
 audit confirmed existing Work
 collaboration already owns admission, implementation/review Runs, worktrees,
 revision capture and restart fencing; reuse it rather than creating a scheduler.

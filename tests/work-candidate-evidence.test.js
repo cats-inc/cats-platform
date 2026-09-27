@@ -8,9 +8,9 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { snapshotCandidateSource } from '../scripts/desktop-candidate.mjs';
+import { snapshotCandidateSource, readCandidateOwnershipFile, verifyCandidateOwnershipSources } from '../scripts/desktop-candidate.mjs';
 import { inspectCandidateBuild } from '../build/server/platform/development/candidateEvidence.js';
-import { attachWorkCandidateEvidence } from '../build/server/products/work/state/candidateEvidence.js';
+import { attachWorkCandidateEvidence, prepareWorkCandidate } from '../build/server/products/work/state/candidateEvidence.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { admitCollaboration, writeCollaborationIntent } from '../build/server/products/work/state/collaborationRecords.js';
 import { upsertCoreArtifact, upsertCoreRun } from '../build/server/core/model/index.js';
@@ -67,6 +67,74 @@ async function coreFixture(f) {
   await store.writeCore(writeCollaborationIntent(core, intent));
   return { store, intent, stage };
 }
+
+test('prepared candidate retains one artifact across CLI validation and verified attachment', async t => {
+  const f = await fixture(t), c = await coreFixture(f), root = path.join(f.directory, 'prepared-candidate');
+  const request = { requestId: 'candidate-request-one', root };
+  const prepared = await prepareWorkCandidate({ coreStore: c.store, taskId: c.intent.id, request });
+  assert.equal(prepared.created, true);
+  assert.equal((await c.store.readCore()).artifacts.find(row => row.id === prepared.artifactId).status, 'draft');
+  const descriptor = path.join(f.directory, 'ownership.json'); await writeFile(descriptor, JSON.stringify(prepared.ownership));
+  const workspace = { platformRoot: f.sources.platform.checkout, runtimeRoot: f.sources.runtime.checkout };
+  assert.deepEqual(await readCandidateOwnershipFile(descriptor, root, workspace), prepared.ownership);
+  verifyCandidateOwnershipSources(prepared.ownership, f.sources);
+  await assert.rejects(readCandidateOwnershipFile(descriptor, f.root, workspace), /does not match/u);
+  assert.throws(() => verifyCandidateOwnershipSources(prepared.ownership, { ...f.sources,
+    runtime: { ...f.sources.runtime, dirty: true } }), /clean revision/u);
+  await writeFile(path.join(f.sources.platform.checkout, 'src', 'feature.ts'), 'changed');
+  await assert.rejects(readCandidateOwnershipFile(descriptor, root, workspace), /clean revision/u);
+  await writeFile(path.join(f.sources.platform.checkout, 'src', 'feature.ts'), 'export const value = 1;\n');
+  await assert.rejects(prepareWorkCandidate({ coreStore: c.store, taskId: c.intent.id,
+    request: { ...request, root: path.join(f.directory, 'other') } }), /preparation_conflict/u);
+  await rename(f.root, root);
+  const control = JSON.parse(await readFile(path.join(root, 'control.json'), 'utf8'));
+  await writeFile(path.join(root, 'control.json'), JSON.stringify({ ...control, root }));
+  await writeFile(path.join(root, `exit-${f.request.instanceId}.json`), JSON.stringify({ ...f.request, root, pid: 1234, exitCode: 0 }));
+  await writeFile(path.join(root, 'launch.json'), JSON.stringify({ ...f.launch, root, ownership: prepared.ownership }));
+  const attached = await attachWorkCandidateEvidence({ coreStore: c.store, taskId: c.intent.id, request: { ...f.request, root } });
+  assert.equal(attached.artifactId, prepared.artifactId);
+  const after = (await c.store.readCore()).artifacts.find(row => row.id === prepared.artifactId);
+  assert.equal(after.status, 'ready'); assert.deepEqual(after.metadata.ownership, prepared.ownership);
+  assert.equal((await attachWorkCandidateEvidence({ coreStore: c.store, taskId: c.intent.id, request: { ...f.request, root } })).created, false);
+  assert.equal((await prepareWorkCandidate({ coreStore: c.store, taskId: c.intent.id, request })).created, false);
+  assert.equal((await c.store.readCore()).artifacts.find(row => row.id === prepared.artifactId).status, 'ready');
+  await assert.rejects(attachWorkCandidateEvidence({ coreStore: c.store, taskId: c.intent.id, request: { ...f.request, root },
+    inspect: async () => ({ ...after.metadata.candidate, launchId: 'c'.repeat(64) }) }), /artifact_conflict/u);
+});
+
+test('prepared ownership cannot impersonate another record or survive an owner change during inspection', async t => {
+  const f = await fixture(t), c = await coreFixture(f), root = path.join(f.directory, 'prepared-candidate');
+  const prepared = await prepareWorkCandidate({ coreStore: c.store, taskId: c.intent.id, request: { requestId: 'candidate-request-two', root } });
+  const observed = await inspectCandidateBuild(f.request);
+  await assert.rejects(attachWorkCandidateEvidence({ coreStore: c.store, taskId: c.intent.id, request: f.request,
+    inspect: async () => ({ ...observed, ownership: { ...prepared.ownership, commitId: 'a'.repeat(40) } }) }), /preparation_conflict/u);
+  const original = await c.store.readCore();
+  for (const changed of ['profile', c.intent.id, c.stage.taskId]) {
+    await c.store.writeCore(original);
+    await assert.rejects(attachWorkCandidateEvidence({ coreStore: c.store, taskId: c.intent.id, request: f.request,
+      inspect: async () => {
+        await c.store.updateCore(core => changed === 'profile'
+          ? { ...core, ownerProfile: { ...core.ownerProfile, actorId: 'changed-owner' } }
+          : { ...core, tasks: core.tasks.map(row => row.id === changed ? { ...row, ownerActorId: 'changed-owner' } : row) });
+        return { ...observed, root, ownership: prepared.ownership };
+      } }), /verified_revision_required|owner_revision_changed/u);
+  }
+  assert.equal((await c.store.readCore()).artifacts.find(row => row.id === prepared.artifactId).status, 'draft');
+});
+
+test('preparation rechecks actual Task ownership in its final atomic writer', async t => {
+  const f = await fixture(t), c = await coreFixture(f);
+  const before = await c.store.readCore();
+  await assert.rejects(prepareWorkCandidate({ taskId: c.intent.id,
+    request: { requestId: 'task-owner-race', root: path.join(f.directory, 'raced-candidate') },
+    coreStore: { readCore: () => c.store.readCore(), updateCore: async mutator => {
+      await c.store.updateCore(core => ({ ...core, tasks: core.tasks.map(row => row.id === c.stage.taskId
+        ? { ...row, ownerActorId: 'changed-owner' } : row) }));
+      return c.store.updateCore(mutator);
+    } },
+  }), /verified_revision_required|owner_revision_changed/u);
+  assert.deepEqual((await c.store.readCore()).artifacts, before.artifacts);
+});
 
 test('candidate inspection binds both commit input sets and excludes control credentials', async t => {
   const f = await fixture(t), observed = await inspectCandidateBuild(f.request);
@@ -169,10 +237,18 @@ test('candidate evidence HTTP entry requires owner/admin and checks the actual s
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   t.after(() => new Promise(resolve => server.close(resolve)));
   const url = `http://127.0.0.1:${server.address().port}/api/work/tasks/${h.intent.id}/candidate-evidence`;
-  const send = (role, body) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-fixture-role': role }, body: JSON.stringify(body) });
+  const send = (role, body, endpoint = url) => fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json', 'x-fixture-role': role }, body: JSON.stringify(body) });
   assert.equal((await send('member', f.request)).status, 403);
   assert.equal((await send('owner', { ...f.request, extra: 'not admitted' })).status, 409);
   assert.equal((await send('owner', { ...f.request, launchId: 'a'.repeat(64) })).status, 409);
   const first = await send('owner', f.request); assert.equal(first.status, 201, await first.clone().text());
   assert.equal((await send('admin', f.request)).status, 200);
+  const prepareUrl = url.replace('candidate-evidence', 'candidate-preparation');
+  const prepareBody = { requestId: 'http-owned-candidate', root: path.join(f.directory, 'http-candidate') };
+  assert.equal((await send('member', prepareBody, prepareUrl)).status, 403);
+  assert.equal((await send('owner', { ...prepareBody, grant: 'execute' }, prepareUrl)).status, 409);
+  const prepared = await send('owner', prepareBody, prepareUrl);
+  assert.equal(prepared.status, 201, await prepared.clone().text());
+  assert.equal((await prepared.json()).ownership.kind, 'cats-desktop-candidate');
+  assert.equal((await send('admin', prepareBody, prepareUrl)).status, 200);
 });

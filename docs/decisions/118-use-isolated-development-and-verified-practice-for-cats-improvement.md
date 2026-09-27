@@ -44,6 +44,13 @@ atomic record association. Attaching evidence runs read-only Git inspection; it
 never starts a Desktop/provider, sends a model request, changes a Run's lifecycle
 or broadens the file-only worker grant.
 
+Prelaunch ownership uses that same build artifact in draft state. A credential-free
+descriptor freezes the retained implementation and selected root; the CLI validates
+source identity and retains it. Only a matching Core descriptor can be promoted
+by evidence attachment, with current owner/Task/revision rechecks. This adds no
+Task/Run scheduler or lifecycle authority to the offline command. A dependency
+baseline remains distinct from a second independently executed implementation.
+
 The 2026-09-27 completion continuation adds the bounded owner-confirmed
 `code.session.open` operation. It reuses the common tool boundary, conversation
 delegate and Runtime activation instead of introducing another session engine.

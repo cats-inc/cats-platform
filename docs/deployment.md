@@ -396,6 +396,17 @@ is an explicit later filesystem action. This workflow does not depend on a new
 Desktop release; the candidate host comes from the selected source.
 
 For a managed Work task that already retains a verified implementation commit,
+open **Candidate Desktop → Prepare candidate record**, select a new absolute
+candidate folder and download the record before building. Add
+`--ownership <candidate-ownership.json>` to the ordinary `start` command, with
+the same root and recorded member checkout. The command verifies the clean
+revision before copying and checks the snapshot receipt before any build process starts.
+Work keeps a draft build artifact even if the command fails. The file contains
+association data, not credentials or permission; the offline command cannot
+observe later Core owner/cancellation changes. Use the existing authenticated
+`status`/`stop` command for that candidate; do not infer automatic Core control.
+
+After the candidate has been built,
 `evidence` writes `candidate-evidence.json` containing only the root, launch ID
 and host instance ID. It works while the candidate runs or after a successful
 drain. Open that task's **Candidate Desktop** section, select this JSON, and
@@ -405,7 +416,9 @@ the host receipt. One member must match the task's retained implementation
 workspace and commit; the other is recorded as its dependency baseline.
 
 A successful check adds a build artifact linked to the existing implementation
-Run and opens through Code artifacts. Duplicate attachment leaves that artifact
+Run, or promotes the same prepared artifact, and opens through Code artifacts.
+Prepared descriptors must exactly match Core; a different launch cannot replace
+an already attached instance. Duplicate attachment leaves that artifact
 unchanged; historical evidence may be attached after cancellation without
 restarting the task. A dirty snapshot may still be used for development, but it
 cannot be attached as verified commit evidence. Keep the source worktrees and

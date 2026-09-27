@@ -205,8 +205,9 @@ must verify the same policy, workspace, tool grant and applied skill before and
 after the worker goal. Full receipts stay in Core; coordinator feedback contains
 only bounded verification summaries. Missing or degraded delivery blocks work;
 the ordinary execution choice still requests no skills. Instruction delivery
-does not prove optional reference files were materialized. Current Codex CLI
-worktree delivery is degraded and is therefore rejected by this strict profile.
+does not prove optional reference files were materialized. Runtime `679f32a4`
+supports Codex filesystem delivery in verified managed worktrees with ignored
+skill paths; earlier versions reject this strict profile/worktree combination.
 
 Parent/child Task, Run, artifact and outcome IDs are durable. Repeated requests
 return the same attempt; repeated HTTP confirmation preserves its active turn

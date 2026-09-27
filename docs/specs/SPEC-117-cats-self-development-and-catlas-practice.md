@@ -51,10 +51,27 @@ live provider or filesystem-boundary acceptance result.
 Both session creation and message dispatch carry the same strict version and
 fingerprint refs, because supervised context delivery triggers Runtime hydration.
 The receipt distinguishes applied instruction text from optional resources whose
-materialization is not established. Current Codex CLI worktree skill delivery is
-degraded and rejected by strict mode; it is not accepted by this slice. Supported
-instruction delivery (such as Claude CLI) retains the original file-only grant.
+materialization is not established. Runtime `679f32a4` supports Codex filesystem
+delivery with actual references in verified managed worktrees, provided all
+skill paths are already ignored and untracked. Source/unverified targets and
+older Runtime versions reject strict worktree delivery. Instruction delivery
+(such as Claude CLI) retains the original file-only grant.
 No fallback to broader permissions or a different workspace kind is allowed.
+
+## Candidate preparation and evidence association
+
+An owner/admin can prepare a draft Core build artifact from a retained Work
+implementation before starting its source candidate. The downloaded descriptor
+freezes Task/Run/revision, member, checkout, commit and new candidate root, but
+contains no grant or credential. The CLI checks the clean revision before and
+after source capture and saves the descriptor in its launch receipt. Attachment
+must match the canonical Core descriptor, recheck actual parent/implementation
+Task ownership and revision, and verify both source snapshots and host receipt.
+It promotes the same artifact exactly once; duplicates cannot replace a bound
+launch or revert ready to draft. Failure retains the draft for inspection.
+Ordinary post-build attachment remains supported. The dependency member is a
+baseline, not a second completed implementation; review and integration quality
+are separate evidence. The offline CLI does not observe later Core cancellation.
 
 ## Owner-confirmed Code session operation (2026-09-27)
 

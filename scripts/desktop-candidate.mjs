@@ -36,7 +36,7 @@ export function parseCandidateArgs(args) {
   for (let i = 0; i < rest.length; i += 2) {
     const key = rest[i];
     const value = rest[i + 1];
-    if (!['--root', ...(command === 'start' ? ['--workspace', '--runtime-root', '--platform-dependencies', '--runtime-dependencies'] : []),
+    if (!['--root', ...(command === 'start' ? ['--workspace', '--runtime-root', '--platform-dependencies', '--runtime-dependencies', '--ownership'] : []),
       ...(command === 'input' ? ['--action'] : [])].includes(key)
       || !value || value.startsWith('--') || options[key.slice(2)] !== undefined) {
       throw new Error(`Invalid or repeated option: ${key}`);
@@ -295,10 +295,11 @@ export async function startCandidate(options) {
   for (const source of [...Object.values(workspace), ...Object.values(dependencySources)]) {
     if (within(source, root) || within(root, source)) throw new Error('Candidate root must be outside both source checkouts.');
   }
+  const ownership = options.ownership ? await readCandidateOwnershipFile(options.ownership, root, workspace) : undefined;
   await mkdir(root, { mode: 0o700 });
   const token = randomBytes(32).toString('hex');
   const launch = { schemaVersion: 1, launchId: sha256(token), root,
-    startedAt: new Date().toISOString(), stage: 'building', sources: {} };
+    startedAt: new Date().toISOString(), stage: 'building', sources: {}, ...(ownership ? { ownership } : {}) };
   const manifest = path.join(root, 'launch.json');
   await writeJson(manifest, launch);
   const environment = candidateEnvironment(process.env);
@@ -310,6 +311,7 @@ export async function startCandidate(options) {
     launch.sources.platform = await snapshotCandidateSource(workspace.platformRoot, platform, dependencySources.platform);
     launch.sources.runtime = await snapshotCandidateSource(workspace.runtimeRoot, runtime, dependencySources.runtime);
     await writeJson(manifest, launch);
+    if (ownership) verifyCandidateOwnershipSources(ownership, launch.sources);
     await runBuild(runtime, ['scripts/build-runtime-ui-css.mjs'], buildEnv);
     await runBuild(runtime, ['node_modules/typescript/bin/tsc', '-p', 'tsconfig.json'], buildEnv);
     await runBuild(platform, ['node_modules/typescript/bin/tsc', '-p', 'tsconfig.server.json'], buildEnv);
@@ -371,10 +373,41 @@ export async function startCandidate(options) {
   }
 }
 
+/** Credential-free association only; Work validates it against its saved artifact. */
+export async function readCandidateOwnershipFile(file, root, workspace) {
+  const info = await lstat(file);
+  if (!info.isFile() || info.isSymbolicLink() || info.size > 8192) throw new Error('Invalid candidate ownership file.');
+  const value = await readJson(file);
+  if (!value || typeof value !== 'object' || Array.isArray(value) || value.schemaVersion !== 1
+    || value.kind !== 'cats-desktop-candidate'
+    || Object.keys(value).sort().join(',') !== 'artifactId,checkout,commitId,kind,member,preparedAt,revisionArtifactId,root,runId,schemaVersion,taskId'
+    || !['platform', 'runtime'].includes(value.member)
+    || ['artifactId', 'taskId', 'runId', 'revisionArtifactId', 'root', 'checkout', 'commitId', 'preparedAt'].some(key =>
+      typeof value[key] !== 'string' || !value[key] || value[key].length > 4096)
+    || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u.test(value.commitId) || !Number.isFinite(Date.parse(value.preparedAt))
+    || value.root !== root || value.checkout !== workspace[`${value.member}Root`]) throw new Error('Candidate ownership does not match the selected workspace/root.');
+  const source = workspace[`${value.member}Root`];
+  const git = async (...args) => (await exec('git', ['-c', 'core.fsmonitor=false', ...args], {
+    cwd: source, windowsHide: true, timeout: 15000, maxBuffer: 1024 * 1024,
+    env: { ...candidateEnvironment(process.env), GIT_OPTIONAL_LOCKS: '0' },
+  })).stdout.trim();
+  if (await git('status', '--porcelain') || await git('rev-parse', 'HEAD') !== value.commitId) {
+    throw new Error('Candidate ownership requires the recorded clean revision.');
+  }
+  return value;
+}
+
+export function verifyCandidateOwnershipSources(ownership, sources) {
+  if (sources.platform.dirty !== false || sources.runtime.dirty !== false
+    || sources[ownership.member].head !== ownership.commitId
+    || sources[ownership.member].checkout !== ownership.checkout) throw new Error('Candidate ownership requires the recorded clean revision.');
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const options = parseCandidateArgs(process.argv.slice(2));
     if (options.command === 'help') {
+      console.log('For a prepared Work revision, add --ownership <candidate-ownership.json> to start with the same root and member checkout.');
       console.log('Usage: desktop-candidate.mjs start --workspace <cats-inc|cats-platform> --root <new-directory> [--runtime-root <checkout>] [--platform-dependencies <checkout>] [--runtime-dependencies <checkout>]\n       desktop-candidate.mjs <status|screenshot|stop|evidence> --root <directory>\n       desktop-candidate.mjs input --root <directory> --action <json-file>\nRequires existing development dependencies with identical package.json and package-lock.json. Dependency options support separate worktrees. Input requires a recent screenshot; inspect the next screenshot to check the result. No installs or release.');
     } else {
       console.log(JSON.stringify(options.command === 'start' ? await startCandidate(options)

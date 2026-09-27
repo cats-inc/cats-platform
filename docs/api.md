@@ -579,8 +579,9 @@ The implementation role passes identical strict refs at create and send and
 checks actual session/hydration policy and delivery before/after the goal. It
 retains receipts or a bounded failure on its stage. Ordinary collaboration keeps
 empty skills; the development choice does not change file tools, worktree or
-review permissions. Unsupported strict delivery remains blocked (currently Codex
-CLI worktree delivery); optional resources are reported separately from applied
+review permissions. Unsupported strict delivery remains blocked. Runtime
+`679f32a4` adds Codex delivery for verified managed worktrees with ignored skill
+paths; older Runtime versions still reject that combination. Optional resources are reported separately from applied
 instructions. Full receipts stay in Core; coordinator feedback carries only
 verified-before/after state, a receipt digest and bounded failure information.
 Submitting its exact `choiceResponse` admits K3 work bound to that persisted
@@ -887,6 +888,20 @@ non-owner/admin callers receive `403`, other invalid input `409`. Import is not
 independent verification, task approval or knowledge promotion.
 
 #### Candidate Desktop evidence
+
+`POST /api/work/tasks/{taskId}/candidate-preparation` requires owner/admin access
+and exactly `{ requestId, root }` (8 KiB maximum). It records a draft build
+artifact for the retained verified implementation before any build starts, and
+returns `{ artifactId, created, ownership }`. The credential-free descriptor
+freezes the member, checkout, commit, Task/Run/revision artifact and new candidate
+root. Repeating a request ID with the same inputs returns the original record;
+conflicts reject. An existing ready record is never reset to draft. The CLI's
+optional `--ownership` checks its source before/after snapshot and retains the
+descriptor in the launch receipt. Subsequent evidence attachment must match the
+saved canonical descriptor and promotes the same artifact. Another launch/instance
+cannot overwrite it. Preparation does not start a build, grant execution, or make
+the offline CLI obey later Core cancellation; failed builds leave the draft and
+local receipts available for inspection.
 
 `POST /api/work/tasks/{taskId}/candidate-evidence` requires normal authenticated
 owner/admin access and CSRF protection. Its JSON has exactly three string fields:

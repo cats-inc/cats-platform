@@ -4,6 +4,7 @@ import { lstat, mkdtemp, readFile, readdir, realpath, rm } from 'node:fs/promise
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { readCandidateOwnership, type CandidateOwnership } from './candidateOwnership.js';
 
 const exec = promisify(execFile);
 const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
@@ -35,6 +36,7 @@ export interface CandidateBuildEvidence extends CandidateEvidenceRequest {
   observedAt: string; state: 'running' | 'drained'; hostPid: number; builtAt: string;
   members: { platform: CandidateMemberEvidence; runtime: CandidateMemberEvidence };
   verification: 'commit_inputs_and_host_receipt';
+  ownership?: CandidateOwnership;
 }
 
 /** Reads one selected local candidate. Never starts it or imports its logs/token into Core. */
@@ -162,6 +164,10 @@ export async function inspectCandidateBuild(input: CandidateEvidenceRequest): Pr
   // Launch replacement during a slow repository check must not bind the old receipt.
   if (JSON.stringify(await json(path.join(root, 'launch.json'))) !== JSON.stringify(launch)
     || JSON.stringify(await json(path.join(root, 'control.json'))) !== JSON.stringify(control)) throw new Error('candidate_changed');
+  const ownership = launch.ownership === undefined ? undefined : readCandidateOwnership(launch.ownership);
+  if (ownership && (ownership.root !== root || ownership.commitId !== members[ownership.member].head
+    || !samePath(ownership.checkout, members[ownership.member].checkout))) throw new Error('candidate_ownership_mismatch');
   return { root, launchId: input.launchId, instanceId: input.instanceId, observedAt: new Date().toISOString(),
+    ...(ownership ? { ownership } : {}),
     state, hostPid: Number(control.pid), builtAt: launch.builtAt, members, verification: 'commit_inputs_and_host_receipt' };
 }
