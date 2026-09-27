@@ -257,8 +257,28 @@ not another native Desktop/provider launch. The source and paired build evidence
 remain intact. This closes explicit Core-associated control/re-entry, not
 automatic shutdown on ordinary task cancellation or independent OS exit proof.
 
-Next compose candidate cancellation and independent integration validation with
-these existing records. The read-only audit confirmed existing Work
+The explicit-control slice is on main at `2b1ce91d`; full CI `36329176646` passed.
+
+The following cancellation composition uses the same historical Core records.
+Explicit collaboration cancellation and accepted owner/admin Run/Mission commands
+select already-bound generations through either member's exact retained references.
+A blocked command does not touch the candidate; another Run on the same Task is
+not a match. Atomic stop intent permits only one request per generation. Recovery
+observes completed historical candidates as well as unfinished collaboration work,
+without claiming unbound hosts or replaying stops. A stale selection, revoked
+owner or removed binding blocks the final request. Per-artifact unknown outcomes
+retain source evidence and do not undo Runtime cancellation. Direct Task metadata
+edits and offline builds before binding remain outside this lifecycle.
+
+Independent review found and cleared exact-Run selection, blocked-Mission,
+reassigned-companion and removed-binding races. Server, renderer and test
+typechecks passed. **88 distinct focused checks** passed across the collaboration,
+dependency, candidate lifecycle and existing Run/Mission cancellation suites;
+the final affected rerun passed all 35 checks. No native Desktop/provider launch
+is involved. The optional artifact/intent metadata requires no data migration.
+
+Next compose independent integration validation with these existing records.
+The read-only audit confirmed existing Work
 collaboration already owns admission, implementation/review Runs, worktrees,
 revision capture and restart fencing; reuse it rather than creating a scheduler.
 AC-01–06 still need Cats-specific evidence/composition; AC-08 has the new operation

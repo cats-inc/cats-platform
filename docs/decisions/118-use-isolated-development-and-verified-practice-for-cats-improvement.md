@@ -180,6 +180,16 @@ Lifecycle observations merge the current artifact without replacing build
 evidence. Missing responses remain unconfirmed, with no automatic replay or PID
 killing. No new scheduler, persisted store or automatic cleanup is introduced.
 
+Explicit managed cancellation composes with this control for already-bound
+generations. Either paired collaboration member can select the candidate;
+accepted owner/admin Work Run/Mission commands use exact retained Run references.
+The final atomic writer retains the selected ownership and identity and admits
+at most one stop intent. Startup recovery, including completed historical tasks,
+only observes; it never claims an unbound host or retries an uncertain stop.
+Per-artifact outcome counts are additive reporting metadata, not a new execution
+grant or an override of Runtime cancellation. Direct Task metadata edits and
+offline pre-binding builds remain outside the composition.
+
 ### 4. Give Catlas bounded observations and supervised actions
 
 Catlas remains the optional Guide Cat capability described by ADR-061. It does

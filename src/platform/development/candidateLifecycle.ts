@@ -56,7 +56,7 @@ export async function operateOwnedCandidate(input: {
   ownership: CandidateOwnership;
   action: 'status' | 'stop';
   expected?: Pick<CandidateLifecycleObservation, 'launchId' | 'instanceId' | 'hostPid'>;
-  beforeStop(observation: CandidateLifecycleObservation): Promise<void>;
+  beforeStop(observation: CandidateLifecycleObservation): Promise<void | boolean>;
 }): Promise<CandidateLifecycleObservation> {
   const ownership = readCandidateOwnership(input.ownership);
   if (!['status', 'stop'].includes(input.action)) throw new Error('invalid_candidate_request');
@@ -118,7 +118,7 @@ export async function operateOwnedCandidate(input: {
   if (!observed.instanceBoundStop) throw new Error('candidate_control_upgrade_required');
   // All filesystem I/O precedes the final atomic Core admission. The next I/O
   // is the already instance-bound POST; no post-admission filesystem gap.
-  await input.beforeStop(observed);
+  if (await input.beforeStop(observed) === false) return observation('unconfirmed', true);
   let accepted = false;
   try { accepted = (await request('stop-instance', 'POST')).stopping === true; }
   catch { /* A lost response cannot establish whether stop was accepted. Never retry here. */ }

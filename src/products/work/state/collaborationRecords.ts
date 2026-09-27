@@ -7,6 +7,7 @@ import type { ProviderAgentToolFeedback } from '../../../platform/orchestration/
 import { writeTaskPlanningMetadata } from '../../../shared/taskPlanning.js';
 import { GOLDEN_PATH_LOCAL_FILE_TOOLS } from './workGoldenPathRuntimeExecutor.js';
 import { readDevelopmentSkillPin, type DevelopmentSkillPin, type DevelopmentDeliveryReceipt } from '../../../platform/development/developmentSkill.js';
+import type { CandidateCancellationSummary } from './candidateLifecycle.js';
 
 export const COLLABORATION_METADATA_KEY = 'collaborationIntent';
 export type CollaborationRole = 'implementation' | 'review';
@@ -50,12 +51,13 @@ export interface WorkCollaborationIntent {
   receipts: ProviderAgentToolFeedback[];
   implementationEvidence?: CollaborationRevisionEvidence;
   review?: { verdict: 'approved' | 'changes_requested'; commitId: string; summary: string };
+  candidateCancellation?: CandidateCancellationSummary;
   reason?: string;
 }
 export type CollaborationAdmission = Omit<WorkCollaborationIntent,
   'schemaVersion' | 'id' | 'inputDigest' | 'admittedAt' | 'deadline' | 'tokensUsed'
   | 'channelId' | 'conversationId' | 'membershipVerified' | 'status' | 'stages'
-  | 'coordinatorSessionId' | 'coordinatorClosed' | 'executionRequested' | 'executionGrant' | 'receipts' | 'implementationEvidence' | 'review' | 'reason'>;
+  | 'coordinatorSessionId' | 'coordinatorClosed' | 'executionRequested' | 'executionGrant' | 'receipts' | 'implementationEvidence' | 'review' | 'candidateCancellation' | 'reason'>;
 
 export const collaborationDigest = (value: unknown): string => createHash('sha256')
   .update(JSON.stringify(value)).digest('hex');
@@ -171,6 +173,7 @@ export function collaborationSummary(intent: WorkCollaborationIntent) {
     participants: Object.values(intent.workers).map(({ catId, actorId, name }) => ({ catId, actorId, name })),
     stages: structuredClone(intent.stages), implementationEvidence: intent.implementationEvidence,
     review: intent.review, reason: intent.reason, tokensUsed: intent.tokensUsed,
+    ...(intent.candidateCancellation ? { candidateCancellation: structuredClone(intent.candidateCancellation) } : {}),
     budget: intent.budget, deadline: intent.deadline };
 }
 export type CollaborationExecutionSummary = ReturnType<typeof collaborationSummary>;

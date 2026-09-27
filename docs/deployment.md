@@ -444,8 +444,15 @@ candidate. Work sends a stop bound to that exact host instance and retains its
 observation on the artifact. Check status again to confirm the host's shutdown
 receipt. An interrupted request is not automatically repeated. The source and
 candidate files stay available, including after the Work task was cancelled or
-its source checkout moved. This does not automatically stop a candidate when the
-task is cancelled. Older candidate hosts require their original CLI stop command.
+its source checkout moved. Once its generation is bound by a status check or
+evidence attachment, explicit managed collaboration cancellation also requests
+its stop. Owner/admin Work Run stop and accepted Mission cancellation select
+their exact saved Run references, including either member of a prepared pair.
+Duplicate cancellations and startup recovery only observe a retained stop intent;
+an unknown result requires a later status check. Unbound candidates are reported
+without contacting them. Direct Task metadata edits and the offline build before
+binding do not trigger this lifecycle. Older candidate hosts require their
+original CLI stop command.
 
 ### Provider selection contract
 

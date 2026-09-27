@@ -8,9 +8,12 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { admitCollaboration, writeCollaborationIntent } from '../build/server/products/work/state/collaborationRecords.js';
-import { upsertCoreArtifact, upsertCoreRun } from '../build/server/core/model/index.js';
+import { upsertCoreArtifact, upsertCoreRun, upsertCoreMission, upsertCoreTask } from '../build/server/core/model/index.js';
+import { createCandidateRevisionSet } from '../build/server/platform/development/candidateOwnership.js';
 import { prepareWorkCandidate } from '../build/server/products/work/state/candidateEvidence.js';
-import { controlWorkCandidate, listWorkCandidates } from '../build/server/products/work/state/candidateLifecycle.js';
+import { controlWorkCandidate, listWorkCandidates, reconcileWorkCandidates } from '../build/server/products/work/state/candidateLifecycle.js';
+import { recoverCollaborations, stopCollaboration } from '../build/server/products/work/state/collaborationExecution.js';
+import { routeWorkRunCancellationApi } from '../build/server/products/work/api/runCancellationRoutes.js';
 import { buildWorkTaskListProjection } from '../build/server/products/work/api/projection.js';
 import { routeWorkCandidateEvidenceApi } from '../build/server/products/work/api/candidateEvidenceRoutes.js';
 import { resolveDesktopCandidateProfile } from '../build/desktop/candidateProfile.js';
@@ -190,4 +193,156 @@ test('control HTTP entry only accepts owner/admin and bounded artifact actions, 
   const response = await post({ artifactId: f.prepared.artifactId, action: 'status' });
   assert.equal(response.status, 200); assert.equal((await response.json()).observation.state, 'running');
   assert.equal(f.stops(), 0);
+});
+
+test('primary and companion cancellation race sends only one stop, and duplicates only observe', async t => {
+  const f = await fixture(t);
+  await controlWorkCandidate({ ...f.options, action: 'status' });
+  const fetch = globalThis.fetch; let posts = 0;
+  t.mock.method(globalThis, 'fetch', (url, options) => { if (options?.method === 'POST') posts++; return fetch(url, options); });
+  await Promise.all(f.members.map(member => reconcileWorkCandidates({ coreStore: f.store, mode: 'cancel', taskIds: [member.intent.id] })));
+  await f.close(); assert.equal(posts, 1); assert.equal(f.stops(), 1);
+  const again = await reconcileWorkCandidates({ coreStore: f.store, mode: 'cancel', taskIds: [f.members[1].intent.id] });
+  assert.equal(again.drained, 1); assert.equal(posts, 1);
+});
+
+test('cancellation and recovery never claim an unbound generation or contact its endpoint', async t => {
+  const f = await fixture(t);
+  t.mock.method(globalThis, 'fetch', () => assert.fail('Unbound candidates must not be contacted'));
+  for (const mode of ['cancel', 'observe']) assert.deepEqual(await reconcileWorkCandidates({ coreStore: f.store,
+    mode, taskIds: [f.options.taskId] }), { drained: 0, failed: 0, pending: 0, unbound: 1 });
+  assert.equal(f.stops(), 0);
+  assert.equal((await f.store.readCore()).artifacts.find(row => row.id === f.prepared.artifactId).metadata.candidateLifecycle, undefined);
+});
+
+test('clearing the binding while status is pending prevents stop and never recreates the binding', async t => {
+  const f = await fixture(t);
+  await controlWorkCandidate({ ...f.options, action: 'status' });
+  const fetch = globalThis.fetch; let posts = 0;
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    if (options.method === 'POST') posts++;
+    const response = await fetch(url, options);
+    await f.store.updateCore(core => ({ ...core, artifacts: core.artifacts.map(row => row.id === f.prepared.artifactId
+      ? { ...row, metadata: { ...row.metadata, candidateLifecycle: undefined } } : row) }));
+    return response;
+  });
+  assert.deepEqual(await reconcileWorkCandidates({ coreStore: f.store, mode: 'cancel', taskIds: [f.options.taskId] }),
+    { drained: 0, failed: 0, pending: 1, unbound: 0 });
+  assert.equal(posts, 0); assert.equal(f.stops(), 0);
+  assert.equal((await f.store.readCore()).artifacts.find(row => row.id === f.prepared.artifactId).metadata.candidateLifecycle, undefined);
+});
+
+test('completed historical collaboration recovery only observes despite a retained cancelled reason', async t => {
+  const f = await fixture(t);
+  await controlWorkCandidate({ ...f.options, action: 'status' });
+  for (const member of f.members) {
+    member.intent.status = 'cancelled'; member.intent.reason = 'cancelled'; member.intent.coordinatorClosed = true;
+    for (const stage of Object.values(member.intent.stages)) { stage.status = 'reviewed'; stage.sessionClosed = true; }
+    await f.store.updateCore(core => writeCollaborationIntent(core, member.intent));
+  }
+  const restored = new MemoryChatStore(); await restored.writeCore(await f.store.readCore());
+  const fetch = globalThis.fetch; const methods = [];
+  t.mock.method(globalThis, 'fetch', (url, options) => { methods.push(options.method); return fetch(url, options); });
+  await recoverCollaborations(restored, { cancelSession: async () => assert.fail('No unfinished Runtime'), closeSession: async () => assert.fail('No unfinished Runtime') });
+  assert.deepEqual(methods, ['GET']); assert.equal(f.stops(), 0);
+  assert.equal((await listWorkCandidates(restored, f.options.taskId)).candidates[0].observation.state, 'running');
+});
+
+test('revoked ownership during automatic cancellation prevents POST and leaves the foreign artifact intact', async t => {
+  const f = await fixture(t);
+  await controlWorkCandidate({ ...f.options, action: 'status' });
+  const before = (await f.store.readCore()).artifacts, fetch = globalThis.fetch; let posts = 0;
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    if (options.method === 'POST') posts++;
+    const response = await fetch(url, options);
+    await f.store.updateCore(core => ({ ...core, tasks: core.tasks.map(task => task.id === f.members[1].stage.taskId
+      ? { ...task, ownerActorId: 'foreign-owner' } : task) })); return response;
+  });
+  const result = await reconcileWorkCandidates({ coreStore: f.store, mode: 'cancel', taskIds: [f.options.taskId] });
+  assert.equal(result.pending, 1); assert.equal(posts, 0); assert.equal(f.stops(), 0);
+  assert.deepEqual((await f.store.readCore()).artifacts, before);
+});
+
+test('explicit collaboration cancel reports its candidate outcome and retains the prepared source evidence', async t => {
+  const f = await fixture(t);
+  await controlWorkCandidate({ ...f.options, action: 'status' });
+  const runtime = { cancelSession: async () => {}, closeSession: async () => {} };
+  const result = await stopCollaboration(f.store, runtime, f.members[1].intent.id, 'cancelled', false, 'cancel');
+  await f.close(); assert.equal(f.stops(), 1); assert.equal(result.status, 'cancelled');
+  assert.equal(result.candidateCancellation.drained + result.candidateCancellation.pending, 1);
+  assert.ok((await f.store.readCore()).artifacts.some(row => row.id === f.prepared.artifactId));
+});
+
+test('public Work run stop also drains its bound candidate and preserves ordinary response fields', async t => {
+  const f = await fixture(t);
+  await controlWorkCandidate({ ...f.options, action: 'status' });
+  const server = createServer((request, response) => {
+    void routeWorkRunCancellationApi({ request, response, method: request.method,
+      url: new URL(request.url, 'http://localhost'), auth: { principal: { membership: { roles: ['owner'] } } },
+      dependencies: { coreStore: f.store, runtimeClient: {} } }).then(handled => { if (!handled) response.writeHead(404).end(); });
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  t.after(async () => { const closed = once(server, 'close'); server.close(); server.closeAllConnections(); await closed; });
+  await f.store.updateCore(core => upsertCoreRun(core, { id: 'another-run-on-same-task', taskId: f.members[1].stage.taskId,
+    title: 'Other historical run', status: 'completed' }).core);
+  const base = `http://127.0.0.1:${server.address().port}/api/work/runs`;
+  const unrelated = await fetch(`${base}/another-run-on-same-task/stop`, { method: 'POST' });
+  assert.equal(unrelated.status, 200); assert.equal((await unrelated.json()).candidateCancellation, undefined); assert.equal(f.stops(), 0);
+  const response = await fetch(`${base}/${f.members[1].stage.runId}/stop`, { method: 'POST' });
+  assert.equal(response.status, 200);
+  const result = await response.json(); assert.equal(result.status, 'already_terminal');
+  assert.equal(result.run.id, f.members[1].stage.runId); assert.ok(result.candidateCancellation);
+  await f.close(); assert.equal(f.stops(), 1);
+});
+
+test('a paired artifact reassigned after selector capture cannot be stopped for the former companion', async t => {
+  const f = await fixture(t);
+  await controlWorkCandidate({ ...f.options, action: 'status' });
+  let reads = 0, requests = 0;
+  t.mock.method(globalThis, 'fetch', () => { requests++; assert.fail('Changed selection must not contact the host'); });
+  const coreStore = { readCore: async () => {
+    if (++reads === 2) {
+      const ownership = { ...f.prepared.ownership, revisionSet: createCandidateRevisionSet(f.prepared.ownership.revisionSet.members.map(ref =>
+        ref.member === 'runtime' ? { ...ref, taskId: 'replacement-companion' } : ref)) };
+      await f.store.updateCore(core => {
+        const prior = core.tasks.find(row => row.id === f.members[1].intent.id);
+        core = upsertCoreTask(core, { ...prior, id: 'replacement-companion' }).core;
+        return { ...core,
+          tasks: core.tasks.map(row => row.id === f.members[1].stage.taskId ? { ...row, parentTaskId: 'replacement-companion' } : row),
+          runs: core.runs.map(row => row.id === f.members[1].stage.runId ? { ...row, metadata: { ...row.metadata, collaborationId: 'replacement-companion' } } : row),
+          artifacts: core.artifacts.map(row => row.id === f.prepared.artifactId ? { ...row, metadata: { ...row.metadata, ownership } } : row) };
+      });
+      const launchFile = path.join(f.root, 'launch.json'), launch = JSON.parse(await readFile(launchFile, 'utf8'));
+      await writeFile(launchFile, JSON.stringify({ ...launch, ownership }));
+    }
+    return f.store.readCore();
+  }, updateCore: mutator => f.store.updateCore(mutator) };
+  const result = await reconcileWorkCandidates({ coreStore, mode: 'cancel', taskIds: [f.members[1].intent.id] });
+  assert.equal(result.pending, 1); assert.equal(requests, 0); assert.equal(f.stops(), 0);
+});
+
+test('a blocked Mission leaves its candidate running; an accepted retry uses exact mission Run refs', async t => {
+  const f = await fixture(t);
+  await controlWorkCandidate({ ...f.options, action: 'status' });
+  await f.store.updateCore(core => {
+    core = upsertCoreMission(core, { id: 'candidate-mission', title: 'Owned mission', status: 'running' }).core;
+    const run = core.runs.find(row => row.id === f.members[1].stage.runId);
+    core = upsertCoreRun(core, { ...run, metadata: { ...run.metadata, missionId: 'candidate-mission' } }).core;
+    return upsertCoreRun(core, { id: 'unmanaged-running', title: 'Cannot safely stop', status: 'running',
+      metadata: { missionId: 'candidate-mission' } }).core;
+  });
+  const server = createServer((request, response) => {
+    void routeWorkRunCancellationApi({ request, response, method: request.method,
+      url: new URL(request.url, 'http://localhost'), auth: { principal: { membership: { roles: ['owner'] } } },
+      dependencies: { coreStore: f.store, runtimeClient: {} } }).then(handled => { if (!handled) response.writeHead(404).end(); });
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  t.after(async () => { const closed = once(server, 'close'); server.close(); server.closeAllConnections(); await closed; });
+  const url = `http://127.0.0.1:${server.address().port}/api/work/missions/candidate-mission/cancel`;
+  const blocked = await fetch(url, { method: 'POST' });
+  assert.equal(blocked.status, 409); assert.equal((await blocked.json()).candidateCancellation, undefined); assert.equal(f.stops(), 0);
+  await f.store.updateCore(core => ({ ...core, runs: core.runs.map(row => row.id === 'unmanaged-running' ? { ...row, status: 'completed' } : row) }));
+  const accepted = await fetch(url, { method: 'POST' });
+  assert.equal(accepted.status, 200); assert.ok((await accepted.json()).candidateCancellation);
+  await f.close(); assert.equal(f.stops(), 1);
 });

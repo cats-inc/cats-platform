@@ -173,6 +173,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-09-27 (SPEC-117 adds explicit candidate status/stop with retained ownership and paired revisions; automatic cancellation and knowledge-quality gates remain open.)*
+*Last updated: 2026-09-27 (SPEC-117 adds bound-candidate cancellation and observation-only recovery; integration and knowledge-quality gates remain open.)*
 
 *See also: [plans/](../plans/) for implementation plans*

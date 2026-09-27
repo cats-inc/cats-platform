@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { reconcileWorkCandidates } from './candidateLifecycle.js';
 import type { CatsCoreState } from '../../../core/types.js';
 import type { CoreStore } from '../../../core/store.js';
 import { upsertCoreRun, upsertCoreArtifact, upsertCoreOutcome, writeApprovalDecision } from '../../../core/model/index.js';
@@ -94,6 +95,7 @@ export async function settleCleanup(operation: () => Promise<unknown>): Promise<
 export async function stopCollaboration(
   coreStore: CoreStore, runtimeClient: RuntimeClient, intentId: string, reason: string,
   cancelCoordinator = false,
+  candidateMode: 'cancel' | 'observe' = 'observe',
 ): Promise<WorkCollaborationIntent | null> {
   await coreStore.updateCore((core) => {
     const intent = readCollaborationIntent(core, intentId);
@@ -145,6 +147,11 @@ export async function stopCollaboration(
   if (cancelCoordinator && intent.coordinatorSessionId && !intent.coordinatorClosed) {
     if (await cleanupSession(runtimeClient, intent.coordinatorSessionId, true)) await markSessionClosed(coreStore, intentId, 'coordinator');
   }
+  const candidateCancellation = await reconcileWorkCandidates({ coreStore, mode: candidateMode, taskIds: [intentId] });
+  if (candidateCancellation) await coreStore.updateCore(core => {
+    const latest = readCollaborationIntent(core, intentId);
+    return latest?.ownerActorId === core.ownerProfile.actorId ? writeCollaborationAudit(core, { ...latest, candidateCancellation }) : core;
+  });
   return readCollaborationIntent(await coreStore.readCore(), intentId);
 }
 
@@ -403,7 +410,7 @@ export async function executeCollaborationRole(port: CollaborationExecutionPort,
   } catch (error) {
     abandoned = true;
     await stopCollaboration(port.coreStore, port.runtimeClient, port.intentId,
-      error instanceof Error ? error.message : 'execution_failed');
+      error instanceof Error ? error.message : 'execution_failed', false, port.isCancelled?.() ? 'cancel' : 'observe');
   } finally {
     abandoned = true;
     if (sessionId && await cleanupSession(port.runtimeClient, sessionId, !finished)) {
@@ -424,8 +431,9 @@ export async function recoverCollaborations(coreStore: CoreStore, runtimeClient:
         || (intent.coordinatorSessionId && !intent.coordinatorClosed)
         || Object.values(intent.stages).some((stage) => (stage.sessionId && !stage.sessionClosed)
           || ['pending', 'queued', 'starting', 'running'].includes(stage.status)))) {
-        await stopCollaboration(coreStore, runtimeClient, task.id, intent.reason ?? 'interrupted_requires_new_proposal', true);
+        await stopCollaboration(coreStore, runtimeClient, task.id, intent.reason ?? 'interrupted_requires_new_proposal', true, 'observe');
       }
     } catch { /* Unknown metadata versions remain intact and cannot execute. */ }
   }
+  await reconcileWorkCandidates({ coreStore, mode: 'observe' });
 }

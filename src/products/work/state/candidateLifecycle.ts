@@ -71,17 +71,29 @@ export async function listWorkCandidates(coreStore: CoreStore, taskId: string) {
 /** Uses historical ownership, so cancelled tasks or removed source checkouts can still drain. */
 export async function controlWorkCandidate(options: {
   coreStore: CoreStore; taskId: string; artifactId: string; action: 'status' | 'stop';
+  existingOnly?: boolean; stopOnce?: boolean;
+  selection?: { ownershipDigest: string; identity: Identity };
   operate?: typeof operateOwnedCandidate;
 }) {
   const { coreStore, taskId, artifactId } = options;
   const initial = ownedCandidate(await coreStore.readCore(), taskId, artifactId);
+  if (options.selection && (digest(initial.ownership) !== options.selection.ownershipDigest
+    || digest(initial.expected) !== digest(options.selection.identity))) throw new Error('candidate_selection_changed');
+  if (options.existingOnly && !initial.expected) throw new Error('candidate_binding_required');
+  let stopAdmitted = false;
   const save = async (observation: CandidateLifecycleObservation, requestingStop = false) => {
     let saved = observation;
     await coreStore.updateCore(core => {
       const current = ownedCandidate(core, taskId, artifactId);
+      if ((options.selection || options.existingOnly) && (!current.expected
+        || digest(current.expected) !== digest(options.selection?.identity ?? initial.expected))) throw new Error('candidate_binding_changed');
       if (digest(current.ownership) !== digest(initial.ownership)
         || (current.expected && digest(current.expected) !== digest(identity(observation)))) throw new Error('candidate_owner_changed');
       const prior = readObservation(current.artifact.metadata.candidateLifecycle);
+      if (requestingStop && options.stopOnce && (prior?.stopRequestedAt || (prior && ['drained', 'failed'].includes(prior.state)))) {
+        saved = prior; return core;
+      }
+      if (requestingStop) stopAdmitted = true;
       const stopRequestedAt = prior?.stopRequestedAt ?? (requestingStop ? new Date().toISOString() : undefined);
       saved = { ...observation, ...(stopRequestedAt ? { stopRequestedAt } : {}) };
       if (prior && ['drained', 'failed'].includes(prior.state)) saved = prior;
@@ -93,7 +105,52 @@ export async function controlWorkCandidate(options: {
   };
   const observed = await (options.operate ?? operateOwnedCandidate)({ ownership: initial.ownership,
     expected: initial.expected, action: options.action,
-    beforeStop: async observed => { await save({ ...observed, state: 'unconfirmed' }, true); },
+    beforeStop: async observed => { await save({ ...observed, state: 'unconfirmed' }, true); return stopAdmitted; },
   });
   return { artifactId, observation: await save(observed) };
+}
+
+export interface CandidateCancellationSummary { drained: number; failed: number; pending: number; unbound: number }
+/** Explicit cancellation may stop a bound generation; recovery is observation-only. */
+export async function reconcileWorkCandidates(options: {
+  coreStore: CoreStore; mode: 'cancel' | 'observe'; taskIds?: readonly string[]; runIds?: readonly string[];
+}): Promise<CandidateCancellationSummary | undefined> {
+  const { coreStore } = options;
+  const snapshot = await coreStore.readCore(), selected = options.taskIds && new Set(options.taskIds);
+  const selectedRuns = options.runIds && new Set(options.runIds);
+  const summary = { drained: 0, failed: 0, pending: 0, unbound: 0 };
+  for (const artifact of snapshot.artifacts) {
+    if (!artifact.metadata.ownership || !['work-candidate-preparation', 'work-candidate'].includes(String(artifact.metadata.source))) continue;
+    let ownership;
+    try { ownership = readCandidateOwnership(artifact.metadata.ownership); } catch { continue; }
+    const refs = ownership.revisionSet?.members ?? [candidateRevisionRef(ownership)];
+    if ((selected || selectedRuns) && !refs.some(ref => selected?.has(ref.taskId) || selectedRuns?.has(ref.runId))) continue;
+    let expected: Identity | undefined;
+    try {
+      expected = candidateLifecycleIdentity(artifact.metadata);
+      if (!expected) { summary.unbound++; continue; }
+      const owned = ownedCandidate(await coreStore.readCore(), ownership.taskId, artifact.id);
+      if (digest(owned.ownership) !== digest(ownership) || digest(owned.expected) !== digest(expected)) throw new Error('candidate_selection_changed');
+      const prior = readObservation(owned.artifact.metadata.candidateLifecycle);
+      if (prior && ['drained', 'failed'].includes(prior.state)) { summary[prior.state === 'drained' ? 'drained' : 'failed']++; continue; }
+      const result = await controlWorkCandidate({ coreStore, taskId: ownership.taskId, artifactId: artifact.id,
+        action: options.mode === 'cancel' && !prior?.stopRequestedAt ? 'stop' : 'status', existingOnly: true, stopOnce: true,
+        selection: { ownershipDigest: digest(ownership), identity: expected } });
+      const state = result.observation.state;
+      summary[state === 'drained' ? 'drained' : state === 'failed' ? 'failed' : 'pending']++;
+    } catch {
+      summary.pending++;
+      // Preserve a bounded unknown result without changing a foreign or replaced record.
+      await coreStore.updateCore(core => {
+        const current = ownedCandidate(core, ownership.taskId, artifact.id);
+        if (!expected || digest(current.expected) !== digest(expected) || digest(current.ownership) !== digest(ownership)) return core;
+        const prior = readObservation(current.artifact.metadata.candidateLifecycle);
+        if (prior && ['drained', 'failed'].includes(prior.state)) return core;
+        return upsertCoreArtifact(core, { ...current.artifact, metadata: { ...current.artifact.metadata,
+          candidateLifecycle: { ...current.expected, ...prior, state: 'unconfirmed', observedAt: new Date().toISOString(),
+            instanceBoundStop: prior?.instanceBoundStop ?? false } } }).core;
+      }).catch(() => undefined);
+    }
+  }
+  return Object.values(summary).some(Boolean) ? summary : undefined;
 }

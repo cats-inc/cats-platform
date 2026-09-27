@@ -171,7 +171,8 @@ export async function runCollaborationExecutionLoop(input: ChatCollaborationExec
     if (port && reason) {
       const latest = readCollaborationIntent(await input.chatStore.readCore(), port.intentId);
       if (latest && ['admitted', 'running'].includes(latest.status)) {
-        await stopCollaboration(input.chatStore, input.runtimeClient, port.intentId, reason);
+        await stopCollaboration(input.chatStore, input.runtimeClient, port.intentId, reason, false,
+          port.isCancelled?.() ? 'cancel' : 'observe');
       } else if (latest?.reason) {
         // Failed reporting must not overwrite the retained execution failure.
         reason = latest.reason;

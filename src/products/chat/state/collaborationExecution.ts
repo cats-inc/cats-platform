@@ -260,7 +260,7 @@ export async function createChatCollaborationExecution(options: ChatCollaboratio
     else if (toolName === ENSURE_COLLABORATION_CONVERSATION) await ensureChat(false);
     else if (toolName === ENSURE_COLLABORATION_PARTICIPANTS) await ensureChat(true);
     else if (toolName === REQUEST_COLLABORATION_ROLE) await requestCollaborationRole(port, object.role as 'implementation' | 'review');
-    else if (toolName === STOP_COLLABORATION_WORK) await stopCollaboration(store, options.runtimeClient, intentId, 'cancelled');
+    else if (toolName === STOP_COLLABORATION_WORK) await stopCollaboration(store, options.runtimeClient, intentId, 'cancelled', false, 'cancel');
     else if (toolName !== INSPECT_COLLABORATION_WORK) return { status: 'rejected', error: {
       code: 'E_TOOL_SCOPE_DENIED', message: 'Unknown collaboration operation.' } };
     const intent = readCollaborationIntent(await store.readCore(), intentId)!;

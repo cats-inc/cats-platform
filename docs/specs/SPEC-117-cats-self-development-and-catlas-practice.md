@@ -125,8 +125,15 @@ physical files and the host identity, and atomically records stop intent after a
 final owner check. The host enforces the specific instance nonce. Re-entry only
 observes matching status/exit receipts; it never replays stop. The operation
 preserves source/evidence and does not require a clean or still-present checkout.
-It does not yet couple task cancellation to automatic candidate shutdown, nor
-prove OS process exit from the host's drain receipt.
+Explicit managed collaboration cancellation and accepted owner/admin Work
+Run/Mission cancellation now compose with this control for already-bound
+generations. Either paired member can select it; Run commands require the exact
+retained Run reference. Atomic admission checks the selected ownership and
+generation, deduplicates stop intent, and rejects removal/replacement during I/O.
+Restart recovery observes historical candidates without claiming an unbound host
+or replaying a stop. Per-candidate unknown results preserve execution cancellation
+and existing build evidence. Direct Task metadata edits and offline pre-binding
+builds remain outside this lifecycle; host drain does not prove OS process exit.
 
 Fresh worktrees may select existing Platform and Runtime dependency checkouts
 explicitly. The command requires identical package/lock bytes, records dependency

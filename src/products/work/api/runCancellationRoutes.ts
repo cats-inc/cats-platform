@@ -11,6 +11,7 @@
  */
 
 import { OWNER_ACTOR_ID } from '../../../core/actors.js';
+import { reconcileWorkCandidates } from '../state/candidateLifecycle.js';
 import { handleCoreError } from '../../../core/api/shared.js';
 import {
   cancelMission,
@@ -73,7 +74,9 @@ export async function routeWorkRunCancellationApi(
         });
         return true;
       }
-      sendJson(context.response, statusForRunStop(result), result);
+      const candidateCancellation = canControlCandidates(context) && result.status !== 'not_stoppable'
+        ? await reconcileWorkCandidates({ coreStore: context.dependencies.coreStore, mode: 'cancel', runIds: [result.run.id] }) : undefined;
+      sendJson(context.response, statusForRunStop(result), { ...result, ...(candidateCancellation ? { candidateCancellation } : {}) });
     } catch (error) {
       handleCoreError(context, error);
     }
@@ -117,7 +120,12 @@ export async function routeWorkRunCancellationApi(
         });
         return true;
       }
-      sendJson(context.response, statusForMissionCancel(result), result);
+      const core = canControlCandidates(context) && result.status !== 'blocked' ? await context.dependencies.coreStore.readCore() : null;
+      const runIds = core?.runs.filter(run => run.metadata.missionId === result.mission.id
+        && ['completed', 'cancelled', 'failed'].includes(run.status)).map(run => run.id) ?? [];
+      const candidateCancellation = runIds.length ? await reconcileWorkCandidates({ coreStore: context.dependencies.coreStore,
+        mode: 'cancel', runIds }) : undefined;
+      sendJson(context.response, statusForMissionCancel(result), { ...result, ...(candidateCancellation ? { candidateCancellation } : {}) });
     } catch (error) {
       handleCoreError(context, error);
     }
@@ -152,6 +160,10 @@ async function readOptionalCancellationBody(
         ? raw.idempotencyKey.trim()
         : undefined,
   };
+}
+
+function canControlCandidates(context: WorkApiRouteContext): boolean {
+  return context.auth?.principal?.membership.roles.some(role => role === 'owner' || role === 'admin') === true;
 }
 
 function statusForRunStop(result: WorkRunStopResponse): number {

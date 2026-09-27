@@ -961,9 +961,14 @@ is `unconfirmed`; explicit status checks reconcile it without replaying stop.
 
 Lifecycle metadata merges the latest artifact, preserving draft/ready, input
 evidence and terminal observations. Cancelled tasks and missing/dirty sources do
-not prevent control while their historical Core ownership still matches. This
-explicit operation does not yet make ordinary task cancellation stop a candidate
-automatically. Older hosts remain inspectable but need their original CLI to stop.
+not prevent control while their historical Core ownership still matches. Explicit
+managed collaboration cancellation also stops an already-bound candidate selected
+by either member's retained task reference. Cancellation persists a single stop
+intent for that generation; duplicates and startup recovery only observe. Recovery
+includes completed historical tasks. Neither path claims or contacts an unbound
+candidate. A removed binding or changed owner/revision set prevents the stop.
+Direct Task metadata edits do not trigger this composition. Older hosts remain
+inspectable but need their original CLI to stop.
 
 #### Run stop and Mission cancel (SPEC-096)
 
@@ -1038,6 +1043,17 @@ interface WorkMissionCancelResponse {
   message: string | null;
 }
 ```
+
+For owner/admin requests accepted by these commands, the Work HTTP response may
+also contain `candidateCancellation: { drained, failed, pending, unbound }` counts.
+Run stop selects only exact saved implementation Run references, including a
+paired member; another Run on the same Task does not authorize a candidate stop.
+A non-blocked Mission cancellation selects its terminal Run references. Blocked
+commands do not initiate candidate control. This optional result does not change
+the original Runtime cancellation outcome: `pending` means shutdown is not yet
+confirmed, `unbound` means no fixed generation was available and no endpoint was
+contacted. Drain/failure counts come from matching host receipts, not independent
+OS process checks. The managed collaboration summary retains the same counts.
 
 Both commands persist append-only audit metadata at
 `CoreRunRecord.metadata.cancellation` /
