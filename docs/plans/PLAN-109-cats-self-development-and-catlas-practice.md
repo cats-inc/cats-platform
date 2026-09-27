@@ -299,6 +299,20 @@ across an explicit snapshot reset; it now compares the restored snapshot and
 its targeted rerun passed. Independent review found no remaining blocker.
 No native Desktop/provider launch, schema migration or publication was involved.
 
+The manual-review slice is on main at `7627f7ad`; full CI `36332347272` passed.
+A separate auth-free Windows sandbox check then used only owned
+synthetic canaries. The returned workspace-write policy allowed an inside write;
+direct and junction writes to the sibling controller fixture both returned
+`EPERM`, and independent reads found every outside canary unchanged. Nested
+process creation itself returned `EPERM`, so the child-write path was not
+exercised. The first four-second probe failed result parsing; the corrected
+four-second probe retains an overall failed/partial result, not a full FR-04 or
+AC-03 pass. Both owned app-server PIDs were independently absent and both isolated
+authentication files absent. No setup, credentials, model turn or external
+network was used; no native policy or installed user profile was changed. Retain
+this bounded result rather than repeatedly expanding the probe. This native
+command probe is not a normal model/Runtime-session child-process acceptance.
+
 Next verify independent integration outcomes against these existing records.
 The read-only audit confirmed existing Work
 collaboration already owns admission, implementation/review Runs, worktrees,
@@ -319,6 +333,19 @@ should reconcile existing local evidence and exceptions. G5 retains separate
 OS/distribution validation. The second authorized model call is consumed; do not
 start new inference or credential copying while treating manual review entry
 or passing fixtures as completion of those acceptance gates.
+
+Local evidence reconciliation for the two remaining privacy/optional-flow rows:
+
+| Criterion | Existing evidence to reuse | Boundary still retained |
+|---|---|---|
+| AC-09 | Code help fixtures cover optional/no-request opening, disabled/missing/offline admission, cancellation and localized fallback. Guide sidecar fixtures cover dismissal/seen state, hidden-route deferral and duplicate-trigger suppression. | These are local behavior checks, not new native full-profile acceptance. The new work adds no implicit/background practice. |
+| AC-12 | Local knowledge fixtures cover per-target/profile selection, revocation to the bundled baseline, stale revision/bundle rejection, failed backup/write preservation and malformed-store recovery. Agent bridge fixtures reject foreign capabilities/path overrides and fence queued writes. Practice fixtures reject private text, developer instructions and forged receipts; promotion fixtures preserve operation scope. The authorized ordinary-agent draft also passed the zero-provider adopt/revoke continuation. | Manual contribution remains unverified local text. New candidate/report fields are additive metadata and require no old-profile migration. Do not substitute a fixture export for protected production promotion or native release acceptance. |
+
+The source suites are `catlas-code-help`, `code-catlas-help`,
+`guide-cat-sidecar-state`, `local-knowledge`, `agent-knowledge-bridge`,
+`knowledge-practice` and `knowledge-promotion`. They are reused from the recorded
+CI/focused evidence; this documentation audit does not rerun unchanged suites or
+turn AC-09/12 into a claim that all cross-profile/native gates have passed.
 
 ## Resume checkpoint — Desktop 0.5.7 standard preview published (2026-09-27)
 
