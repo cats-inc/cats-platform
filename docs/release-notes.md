@@ -19,6 +19,50 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-27 (0.5.7 preview, standard profile — preparation)
+
+Behavior change:
+
+- Source-development agents can operate their isolated Cats Candidate through
+  screenshot-bound click, text, key and scroll commands. Every action binds the
+  candidate instance and a recent single-use frame, with DPI/zoom conversion and
+  invalidation on navigation, resize or shutdown. Input stays in that candidate's
+  main web window; it exposes no arbitrary script or OS-wide input executor.
+- An input receipt confirms dispatch only. The agent must inspect a new screenshot
+  to verify the effect, including after an error/timeout that may follow partial
+  input. Native Windows validation covered all four actions at 125% zoom and
+  actual candidate setup navigation/text entry, followed by owned-process cleanup.
+- These are opt-in source-development commands. Normal installed Desktop launches
+  have no candidate controller. Existing user-facing behavior is otherwise unchanged.
+
+Migration steps:
+
+No existing data conversion is required. This compatible patch targets Desktop
+only; npm publication is not requested. Runtime 0.3.1 remains pinned to
+`5396566012c9cf7783bf05203806df8c849e348b`, the same source as Desktop 0.5.6.
+Usage 0.4.0 retains SHA-256
+`7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`;
+its `catsPlatform` range `^0.5.0` includes 0.5.7.
+
+The requested profile is standard: expected platform trust is macOS signed +
+notarized, Windows unsigned: no certificate, and Linux n/a. Self-update from
+standard-profile 0.5.6 should remain supported on Windows/Linux and on macOS
+with the same Developer ID team/certificate; final build evidence is pending.
+No new installed-update acceptance is claimed. The existing Windows voice input
+issue remains outside this change.
+
+Deprecations:
+
+None.
+
+Release verification:
+
+The functional source `c41fa3b772ec3bd8c3c639e00a65a595abdb331e` passed
+[full Platform CI](https://github.com/cats-inc/cats-platform/actions/runs/36291374832):
+5,155 passed, 59 skipped, zero failures. The pinned Runtime passed its
+[release preflight](https://github.com/cats-inc/cats-runtime/actions/runs/36288093804).
+Version-candidate CI and standard-profile Desktop publication are pending.
+
 ## 2026-09-27 (0.5.6 preview, standard profile — publication)
 
 Behavior change:
