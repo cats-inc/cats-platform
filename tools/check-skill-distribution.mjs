@@ -24,12 +24,10 @@ try {
     const content = await collectRuntimeSkillContent(join(runtimeRoot, 'runtime-skills'), profile);
     await writeRuntimeSkillContent(content, join(artifact, 'runtime-skills'));
     await writeFile(join(artifact, 'package.json'), JSON.stringify(manifest));
-    // These are the actual compiled catalog/policy modules used by the Runtime.
+    // Keep the compiled import closure intact as Runtime adds workspace helpers.
+    // A handpicked catalog/policy subset is not a runnable distribution anymore.
     const moduleDir = join('build', 'runtime', 'core', 'skills');
-    await mkdir(join(artifact, moduleDir), { recursive: true });
-    for (const name of ['catalog.js', 'contentPolicy.js', 'errors.js']) {
-      await cp(join(runtimeRoot, moduleDir, name), join(artifact, moduleDir, name));
-    }
+    await cp(join(runtimeRoot, 'build', 'runtime'), join(artifact, 'build', 'runtime'), { recursive: true });
     await cp(join(runtimeRoot, 'node_modules', 'yaml'), join(artifact, 'node_modules', 'yaml'), { recursive: true });
     delete process.env.CATS_RUNTIME_PACKAGE_ROOT;
     const catalog = await import(pathToFileURL(join(artifact, moduleDir, 'catalog.js')).href);

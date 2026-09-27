@@ -25,11 +25,41 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
+## Release verification checkpoint (2026-09-28)
+
+The owner subsequently authorized verification, corrective changes, Desktop
+standard-preview publication and npm publication. The selected compatible patches
+are Platform/Desktop **0.5.8** and Runtime **0.3.2** on npm `latest`. No launcher
+or App minimum changed; cats-one 0.2.0 and the existing Usage 0.4.0 pin remain.
+Publication is pending until successful workflows and published artifacts are
+verified; the earlier implementation-only restriction below is historical.
+
+A fresh isolated Windows Desktop profile passed the actual Electron-renderer and
+production-HTTP flow for both Catlas and Orchestrator: submit a synthetic draft,
+require owner review before adoption, adopt, cancel deletion without mutation,
+confirm deletion, restore bundled text and retain the result after reload. Disk
+state and Catlas's production loader confirmed the fallback. Before/after native
+screenshots were inspected. All owned processes exited; independent PID/start-time
+checks preserved all six original Cats processes. No provider authentication was
+copied and no model was called. The authenticated knowledge route bypassed provider
+onboarding, so this is not onboarding or end-to-end development acceptance.
+Three earlier fixture-preparation timeouts are retained in the private evidence;
+using canonical FileChatStore seeding and the explicit route corrected the fixture.
+
+The actual paired skill-distribution check exposed a stale verification helper
+that copied only part of Runtime's compiled import closure. The helper now copies
+the complete compiled tree without changing content filtering. Independent review
+found no blocker, and the rerun passed: preview **36 skills / 41 resources / 3
+supplement skills**, release **33 / 35 / 0**, with no provider calls. Platform's
+pre-release source CI `36347922431` passed. These checks close the bounded native
+manual-knowledge flow and distribution observations, not the wider live, quality
+or OS gates.
+
 ## Implementation closure checkpoint (2026-09-28)
 
-The owner now requests finishing implementation before further live acceptance.
-No additional model call, authentication copy, native probe or publication is
-authorized. The implementation-only audit confirmed and closed two narrow gaps:
+At this earlier checkpoint the owner requested finishing implementation before
+further live acceptance; additional model calls, authentication copies, native
+probes and publication were deferred. The implementation-only audit closed two narrow gaps:
 owner deletion of local contributions (FR-18), and exact bundled knowledge
 identity in Desktop staging inventories (FR-21). Both use existing persistence,
 UI and packaging paths. Independent final code review found no remaining required

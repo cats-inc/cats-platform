@@ -75,6 +75,16 @@ Watch supervisors retain terminal ownership across file-change/crash restarts.
 
 ### npm publication
 
+Platform **0.5.8** is prepared for npm `latest` together with the Desktop standard
+preview and Runtime **0.3.2**. It includes the ordinary-agent contribution and
+diagnostic entry points, owner-reviewed knowledge adoption/deletion, and isolated
+development/practice mechanisms described in PLAN-109. Compatibility review found
+no breaking public API, CLI/config or persisted-data contract since npm 0.5.1;
+no new data migration or launcher minimum is required. The bounded Windows native
+knowledge flow and paired skill-distribution check passed; wider live quality and
+other-OS acceptance remain separate. Publication receipts will follow successful
+workflows and artifact verification.
+
 Publish `@cats-inc/cats-platform` through the manual
 [npm publish workflow](../.github/workflows/npm-publish.yml), which runs the full
 test gate and fresh prepack build before trusted publication. Update the root
