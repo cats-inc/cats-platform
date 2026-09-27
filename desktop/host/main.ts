@@ -5,6 +5,7 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
+  Menu,
   session,
   shell,
   systemPreferences,
@@ -12,6 +13,7 @@ import {
 
 import { createLinuxDesktopRelaunch } from './linuxRelaunch.js';
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
+import { buildDesktopContextMenuTemplate } from './contextMenu.js';
 import {
   resolveDesktopBootstrapNavigation,
   shouldRevealDesktopBootstrapRecovery,
@@ -557,6 +559,17 @@ function configureDesktopWindowNavigation(
   });
   window.webContents.on('did-create-window', (childWindow: BrowserWindow) => {
     configureDesktopWindowNavigation(childWindow, config);
+    configureDesktopWindowContextMenu(childWindow);
+  });
+}
+
+function configureDesktopWindowContextMenu(window: BrowserWindow): void {
+  window.webContents.on('context-menu', (_event, params) => {
+    const template = buildDesktopContextMenuTemplate(params, app.getLocale());
+    if (template.length === 0 || window.isDestroyed()) {
+      return;
+    }
+    Menu.buildFromTemplate(template).popup({ window });
   });
 }
 
@@ -2134,6 +2147,7 @@ async function createMainWindow(
   });
 
   configureDesktopWindowNavigation(window, config);
+  configureDesktopWindowContextMenu(window);
 
   applyDesktopWindowChrome(window);
 
