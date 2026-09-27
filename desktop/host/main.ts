@@ -64,6 +64,7 @@ import {
 } from './hostState.js';
 import { createDesktopPackagingPlan } from './packaging.js';
 import { ManagedServiceSupervisor } from './processSupervisor.js';
+import { settleDesktopCandidateStartup, startDesktopCandidateControl } from './candidateControl.js';
 import {
   buildDesktopBootstrapSnapshot,
   fetchJson,
@@ -1874,6 +1875,7 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
   if (!hostConfig || !supervisor) {
     throw new Error('Desktop host is not initialized.');
   }
+  if (shuttingDown) return latestSnapshot ?? buildSnapshot();
   if (bootstrapPromise) {
     return bootstrapPromise;
   }
@@ -2134,7 +2136,7 @@ async function createMainWindow(
     minWidth: 960,
     minHeight: 700,
     show: false,
-    title: 'Cats',
+    title: config.candidateProfile ? 'Cats Candidate' : 'Cats',
     backgroundColor: '#f5f1e8',
     ...(windowIconPath ? { icon: windowIconPath } : {}),
     ...resolveDesktopWindowChromeOptions(),
@@ -2148,6 +2150,7 @@ async function createMainWindow(
 
   configureDesktopWindowNavigation(window, config);
   configureDesktopWindowContextMenu(window);
+  if (config.candidateProfile) window.on('page-title-updated', (event) => event.preventDefault());
 
   applyDesktopWindowChrome(window);
 
@@ -2155,7 +2158,8 @@ async function createMainWindow(
     if (!options.showWindowOnStartup || window.isDestroyed() || window.isVisible()) {
       return;
     }
-    window.show();
+    if (config.candidateProfile) window.showInactive();
+    else window.show();
   };
 
   window.webContents.once('did-finish-load', showBootstrapWindow);
@@ -2222,7 +2226,9 @@ async function drainManagedServices(): Promise<{ timedOut: boolean }> {
   return { timedOut: true };
 }
 
-async function shutdownHost(): Promise<void> {
+let candidateControl: Awaited<ReturnType<typeof startDesktopCandidateControl>> | null = null;
+
+async function shutdownHost(exitCode = 0): Promise<void> {
   if (shutdownPromise) {
     return shutdownPromise;
   }
@@ -2231,10 +2237,11 @@ async function shutdownHost(): Promise<void> {
   clearRuntimeCliInventoryPoll();
   shutdownPromise = (async () => {
     await setupHelperDrain!.drained;
-    let shutdownExitCode = 0;
+    let shutdownExitCode = exitCode;
     let forcedStopAttempted = false;
     const activeTrayController = trayController;
     try {
+      if (hostConfig?.candidateProfile) await settleDesktopCandidateStartup(bootstrapPromise);
       voiceCaptureController?.dispose();
       voiceCaptureController = null;
       activeTrayController?.updateMenu(buildDesktopTrayQuittingMenuState(app.getLocale()));
@@ -2264,6 +2271,9 @@ async function shutdownHost(): Promise<void> {
           `Desktop host tray dispose failed during shutdown: ${disposeError instanceof Error ? disposeError.message : String(disposeError)}\n`,
         );
       }
+      await candidateControl?.close(shutdownExitCode).catch((error: unknown) => {
+        process.stderr.write(`Candidate exit receipt failed: ${String(error)}\n`);
+      });
       exitingAfterShutdown = true;
       app.exit(shutdownExitCode);
     }
@@ -2690,6 +2700,29 @@ async function main(): Promise<void> {
     void showMainWindow();
   });
 
+  if (candidate && process.env.CATS_DESKTOP_CANDIDATE_CONTROL_TOKEN) {
+    candidateControl = await startDesktopCandidateControl({
+      profile: candidate,
+      token: process.env.CATS_DESKTOP_CANDIDATE_CONTROL_TOKEN,
+      status: () => ({
+        version: DESKTOP_HOST_VERSION,
+        appUrl: hostConfig!.appBaseUrl,
+        runtimeUrl: hostConfig!.runtimeBaseUrl,
+        phase: latestSnapshot?.phase ?? 'starting',
+        services: (latestSnapshot?.services ?? []).map(({ name, ready, status, pid }) =>
+          ({ name, ready, status, pid })),
+        window: mainWindow && !mainWindow.isDestroyed()
+          ? { visible: mainWindow.isVisible(), loading: mainWindow.webContents.isLoading(),
+            url: mainWindow.webContents.getURL().split(/[?#]/u)[0]?.replace(/^data:.*$/u, 'bootstrap') }
+          : null,
+      }),
+      screenshot: async () => {
+        if (!mainWindow || mainWindow.isDestroyed()) throw new Error('No candidate window.');
+        return (await mainWindow.webContents.capturePage()).toPNG();
+      },
+      stop: () => { void shutdownHost(); },
+    });
+  }
   await bootstrapDesktopHost(false);
   // SPEC-111 section 6: at most one silent check per launch, and only when the
   // build actually has update capability.
@@ -2700,5 +2733,6 @@ async function main(): Promise<void> {
 
 void main().catch((error) => {
   process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
-  process.exit(1);
+  if (hostConfig?.candidateProfile && supervisor) void shutdownHost(1);
+  else process.exit(1);
 });

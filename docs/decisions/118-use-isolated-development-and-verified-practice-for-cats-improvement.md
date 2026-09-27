@@ -85,6 +85,16 @@ reading instructions in a user-selected repository.
 
 ### 2. Keep the development controller separate from the candidate
 
+The owner's 2026-09-27 minimal continuation adds a developer command available to
+ordinary agents with shell permission. It builds snapshots of current Platform
+and Runtime source in a fresh private root, then reuses candidate identity/state
+isolation and the existing Desktop sidecar supervisor. A candidate-only local
+authenticated control surface provides status, main-window capture and normal
+shutdown. Linked installed dependencies are explicit; this is not a sandbox or
+the full managed worktree lifecycle. There is no new product scheduler, automatic
+credential transfer, provider inference or bug-fix verdict. See PLAN-109 for the
+implementation and acceptance boundary.
+
 An identified preview/debug Desktop manages sessions that prepare and test a
 candidate in explicitly owned workspaces. Candidate Platform, Runtime, Desktop
 state, Electron profile, listeners, and process ownership are separate from the

@@ -40,6 +40,7 @@
     "clean:build": "node scripts/clean-build.mjs",
     "desktop:icons": "node scripts/shared/generate-electron-icons.mjs --input assets/app-icon-silhouette.svg",
     "desktop:host": "electron build/desktop/main.js",
+    "desktop:candidate": "node scripts/desktop-candidate.mjs",
     "desktop:package": "node scripts/build-desktop-installer.mjs --target current",
     "desktop:package:linux": "node scripts/build-desktop-installer.mjs --target linux",
     "desktop:package:macos": "node scripts/build-desktop-installer.mjs --target macos",

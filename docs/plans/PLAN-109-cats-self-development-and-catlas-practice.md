@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Ordinary agent contribution and diagnostic attachment implemented; candidate verification and independent evaluation/promotion pending |
+| Status | Ordinary contribution, diagnostics and source-candidate commands implemented; broader managed development and independent promotion pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Last updated | 2026-09-27 |
@@ -24,6 +24,46 @@ own staged acceptance and does not close G1/G2 development or G4 practice gates.
 This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
+
+## Resume checkpoint — minimal source candidate workflow (2026-09-27)
+
+The owner authorized completing the remaining source-edit / candidate Desktop
+loop with the simplest usable implementation. The
+[developer command](../deployment.md#source-candidate-command) accepts the non-Git
+`cats-inc` parent or Platform checkout. It snapshots current build inputs
+(including local source edits), builds in a new private directory using linked
+installed dependencies, and launches the existing isolated candidate profile.
+Candidate-only status, screenshot and graceful stop commands let ordinary agents
+with shell access inspect the new Desktop. Source receipts survive interruption.
+
+This slice adds no new product UI, provider inference, automatic bug-fix verdict,
+credential copying, installer or publication. Candidate startup and a screenshot
+are evidence to inspect, not proof that an arbitrary bug is fixed. The original
+Desktop and source checkout build outputs must remain undisturbed. Full managed
+multi-repo worktree lifecycle and independent knowledge evaluation remain outside
+this minimal command. Direct main commit/push remains authorized.
+
+Windows native acceptance built both source snapshots, opened **Cats Candidate**,
+read actual host/service state, captured its 1264-by-821 initial selection screen,
+and requested normal shutdown. All three owned PIDs were independently confirmed
+gone while the pre-existing Cats processes remained. No credentials, model calls
+or installed-profile data were used. The first native run exposed a readiness
+condition that wrongly required a product URL before initial setup; the final run
+accepts the host's ready-for-setup screen. Platform/Runtime/host TypeScript and the
+private Vite build pass. This is a source-built Windows candidate, not installed
+acceptance, a provider reproduction or macOS/Linux native validation.
+
+Independent review identified relaunch receipt reuse and stopping during startup.
+Per-host nonces now bind control/status/drain receipts, and candidate shutdown
+settles admitted startup before draining (also before fallible UI disposal).
+New bootstrap requests are fenced once shutdown starts. Regression coverage uses
+the real service supervisor with deferred success/failure and replacement-host
+control instances. A concurrent HTTP disconnect reconciles only its matching
+drain receipt. `drained` is the host's report, not independent OS-exit proof.
+The initial affected host suite passed **66/66**; the final focused suite passed
+**19/19**, covering 67 distinct affected checks across those batches. Final
+Desktop compilation and independent review passed. Full-suite main CI follows
+the authorized push. No release/version change.
 
 ## Resume checkpoint — UI exception evidence (2026-09-27)
 

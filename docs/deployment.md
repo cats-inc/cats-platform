@@ -291,6 +291,66 @@ This acceptance identity neither enables development skills nor proves the
 release/preview cached-content exclusion required by PLAN-109. It does not
 authorize packaging publication or a version bump.
 
+### Source candidate command
+
+For an ordinary Desktop conversation developing Cats, give the agent the source
+workspace and shell/build permission. It can use the same commands as a terminal:
+
+```text
+# Run in cats-platform; ../ may be the non-Git cats-inc parent.
+npm run desktop:candidate -- start --workspace .. --root ../candidate-01
+npm run desktop:candidate -- status --root ../candidate-01
+npm run desktop:candidate -- screenshot --root ../candidate-01
+npm run desktop:candidate -- stop --root ../candidate-01
+```
+
+`--root` must be a new directory outside both source checkouts, with an existing
+parent. `--workspace` also accepts the Platform checkout itself; `--runtime-root`
+optionally selects a non-sibling Runtime checkout. Git, Node and already installed
+development dependencies in both checkouts are required. There is no dependency
+installation, mobile/installer build, version bump or publication.
+
+Start snapshots selected tracked and nonignored untracked build inputs, including
+uncommitted edits, into the private root, then compiles Platform, Runtime, renderer
+and Desktop there. Deleted source stays deleted. Dotenv, user state and input
+symlinks/junctions are excluded/rejected. It records source HEAD/dirty state and a
+digest of copied bytes. Installed `node_modules` are linked, not copied: this is
+not a hermetic build or OS filesystem sandbox. Keep dependencies unchanged during
+the run. Source checkouts and their normal build outputs are not modified.
+
+The **Cats Candidate** window uses the existing isolated profile and fresh
+loopback ports. It starts at normal first-run setup, with no copied conversations,
+provider selection, credentials or model requests. Inherited provider credentials
+and Cats/Node overrides are removed from its launch environment. To reproduce a
+stateful/provider issue, explicitly prepare suitable synthetic data or configure
+the candidate; do not copy the controlling profile wholesale.
+
+Start returns JSON once both owned services are ready and the candidate window
+has loaded a product URL or the initial provider-selection screen. Status reports the actual host version, service PIDs,
+window URL and source receipt. Screenshot captures only that candidate's main
+window to a local PNG and returns its path. The agent must inspect it and perform
+the relevant reproduction/check before claiming a fix. Readiness alone is not a
+bug-fix verdict, live-provider test or installed-release acceptance.
+
+Each opt-in candidate gets a loopback control listener with a random bearer token
+kept in its private `control.json`; normal Desktop starts have no control listener.
+It accepts only status, main-window capture and graceful stop, rejects browser
+Origin requests, and offers no arbitrary JavaScript, file or shell executor.
+Keep the private root/control file local. Stop uses the host's normal owned-sidecar
+drain after any pending startup settles and waits up to 120 seconds for its
+instance-bound receipt. `state: drained` means that host reported its sidecar drain
+complete, not an independent OS process-exit observation. Relaunch creates a new
+instance identifier and retains the preceding instance's receipt. It never kills a stored PID. If the host
+crashes without a receipt, status/stop reports failure rather than claiming cleanup;
+inspect its logs and OS process ownership before further cleanup.
+
+The private root keeps source/build evidence, `launch.json`, `desktop.log`,
+screenshots and `exit-<instanceId>.json` for resumption. Closing the window also drains its
+sidecars. After interruption, use status/stop with the same root; do not start over
+in it. Use a new root after further source changes. Removal of retained evidence
+is an explicit later filesystem action. This workflow does not depend on a new
+Desktop release; the candidate host comes from the selected source.
+
 ### Provider selection contract
 
 Selection-aware Platform/Desktop must connect to the matching Runtime contract

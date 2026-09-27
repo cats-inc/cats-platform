@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Ordinary agent contribution and diagnostic attachment usable; candidate verification and independent evaluation/promotion pending |
+| Status | Ordinary contribution, diagnostics and source-candidate commands usable; broader managed development and independent promotion pending |
 | Owner | Platform integration, with member-owned work packages |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Decision | [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
@@ -35,6 +35,25 @@ implements shared product-knowledge consumption by Orchestrator and stages
 verified collaboration tools/results separately. Those ordinary role procedures can
 ship in both profiles without the preview-only development/practice supplement.
 That work does not complete this spec's source-development or promotion gates.
+
+## Minimal source candidate workflow (authorized 2026-09-27)
+
+An ordinary agent with source access and permitted shell execution shall be able
+to build and open a separate Desktop from the selected Cats workspace, including
+when its working directory is the non-Git parent. A developer command snapshots
+the current Platform/Runtime build inputs into a fresh directory, records their
+identity and builds there with the already installed development dependencies.
+It shall reuse the candidate profile for private state, ports and process
+ownership. It shall not replace the running Desktop or rebuild its live outputs.
+
+The same command shall report actual candidate service/window readiness, capture
+only its window, and request normal shutdown of its owned sidecars. Its local
+control surface is authenticated and available only on explicitly opted-in
+candidate launches. Evidence survives CLI/conversation interruption; stale
+control data must not authorize killing a stored PID. No automatic credential
+copy or provider inference occurs. Startup success is not a bug-fix verdict:
+the agent must still reproduce/check the reported behavior. This is the minimal
+developer path, not the full managed G1/G2 lifecycle or an installed release test.
 
 ## Minimal ordinary-agent diagnostic handoff (authorized 2026-09-27)
 

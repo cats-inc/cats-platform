@@ -10,6 +10,7 @@
 | `cats` HTTP app | 8181 | TCP | Product-facing app shell and health endpoints | `npm start` |
 | `cats` Vite dev server | 5173 | TCP | Renderer development server with `/api` proxy | `npm run dev:web` |
 | Isolated candidate Desktop sidecars | Explicit distinct non-default ports | TCP, `127.0.0.1` only | Candidate-owned Platform and Runtime; occupied listeners fail launch | Desktop with `CATS_DESKTOP_CANDIDATE_ROOT` and explicit host/port pairs |
+| Source candidate control | OS-assigned available port | HTTP, `127.0.0.1` only | Explicit candidate-only bearer-authenticated status, main-window screenshot and graceful stop; no normal Desktop listener | `npm run desktop:candidate -- start --workspace .. --root ../candidate-01` |
 | K4 live collaboration fixture Runtime | OS-assigned available port | TCP, `127.0.0.1` only | Temporary authenticated Runtime, stopped after the bounded fixture | `node scripts/testing/orchestrator-collaboration-live.mjs --help` |
 
 The host repo/package target is now `cats-platform`, but the running local app

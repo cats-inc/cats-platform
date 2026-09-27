@@ -79,6 +79,17 @@ Update indexes when adding or changing tracked artifacts:
 
 ## Common Tasks SOP
 
+### Developing Cats from an ordinary Desktop conversation
+
+The selected working directory can be the non-Git `cats-inc` parent. Resolve the
+owning member before Git work. After source edits, use the
+[source candidate command](deployment.md#source-candidate-command) to snapshot,
+build and launch a separate Desktop, inspect status/screenshot and stop it.
+It uses existing shell permission, not a new Runtime tool or automatic grant.
+Use a fresh candidate root outside both source checkouts. Retain its launch/source
+receipt in the task checkpoint. Never treat startup success as verification of
+the reported bug, or write reproduction data into the controlling profile.
+
 ### Adding a New Feature
 
 1. Check `requirements.md` for related requirements

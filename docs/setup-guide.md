@@ -36,6 +36,21 @@ The cross-repository contract is [SPEC-002](../../cats-one/docs/specs/SPEC-002-i
   `Dependency install warnings` below)
 - `cats-runtime` running on `http://127.0.0.1:3110`
 
+## Develop Cats from a Desktop conversation
+
+Select the `cats-inc` parent or a member checkout as the conversation's working
+directory, with the provider's source-edit and shell permissions. The parent is
+not itself a Git repository; commit in the owning member. Attach the incident's
+conversation diagnostics and a screenshot when needed.
+
+After editing, the agent can build and open an independent **Cats Candidate** with
+`npm run desktop:candidate -- start --workspace .. --root ../candidate-01` from
+Platform, inspect status/capture, and stop it through the same command. Both
+Platform and Runtime need installed development dependencies. The candidate starts
+with empty private state and never replaces the controlling Desktop. See the
+[source candidate command](deployment.md#source-candidate-command) for the complete
+four-command workflow, retained evidence and provider/state limitations.
+
 ## Installation
 
 ### 1. Prepare the project
