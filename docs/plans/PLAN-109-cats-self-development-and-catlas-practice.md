@@ -25,6 +25,27 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
+## Resume checkpoint — Desktop 0.5.7 standard preview published (2026-09-27)
+
+The owner prioritized a version bump and Desktop standard preview. The
+[0.5.7 prerelease](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.7)
+is published from `fbd4093cf5abe4ada4962049cc180477f7abe9ae`, including candidate
+window input. Version CI `36296685016` passed 5,155 tests (59 skipped, zero failed);
+all seven release jobs in `36296711664` passed. Ten assets, update metadata and
+the downloaded Windows installer's hashes/signature were verified. macOS is
+signed + notarized with the same team/certificate as 0.5.6, Windows is unsigned:
+no certificate, Linux n/a. Runtime and Usage pins are unchanged from 0.5.6.
+No npm publication or installed-profile test was performed; full evidence is in
+[release notes](../release-notes.md).
+
+This publication does not make the overall plan 100% complete. The usable
+minimal paths are knowledge draft/review/local adoption, ordinary-conversation
+diagnostic attachment, and source build/launch/observe/input/stop in a candidate.
+Real ordinary-provider end-to-end acceptance and the broader managed lifecycle,
+independent knowledge evaluation/promotion and additional native OS evidence
+remain separate. Do not equate one completed slice or release with those gates,
+or resume the retired expanding native harness from historical checkpoints.
+
 ## Resume checkpoint — candidate window input (2026-09-27)
 
 The owner requested continuing in small slices. This slice lets an ordinary
@@ -63,8 +84,9 @@ is Windows-only; broader managed development and knowledge-quality gates remain.
 
 Direct main push and checkpoints remain authorized. Main advanced through the
 independently published 0.5.6 preview to `a43d8c9e`; this slice makes no version
-or release change. Full main CI follows the push. Prior source-candidate slice
-CI `36288282414` passed 5,148 tests with zero failures.
+or release change itself. Full main CI `36291374832` passed 5,155 tests with zero
+failures. The later authorized release is recorded above. Prior source-candidate
+slice CI `36288282414` passed 5,148 tests with zero failures.
 
 ## Resume checkpoint — minimal source candidate workflow (2026-09-27)
 
