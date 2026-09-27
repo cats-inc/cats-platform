@@ -159,6 +159,8 @@ task switching and the dependency graph. Independent review cleared the actual
 Task-owner fence fix. A second member remains a dependency baseline, not a second managed
 implementation.
 
+A follow-up CI run `36307013025` passed for this prelaunch slice `86af83b2`.
+
 A single ordinary-provider contribution acceptance was initially blocked by
 automatic approval review for missing payload/destination authorization. The
 owner then explicitly authorized that exact brief test. One gpt-6-astra turn ran
@@ -175,7 +177,22 @@ authorized by the consumed test. Runtime exit and temporary auth removal were
 confirmed with no cleanup errors. Private sanitized evidence is retained; no
 credential or raw trace is committed.
 
-Next diagnose the actual provider permission mismatch without repeating inference,
+A 2.6-second auth-free native handshake then reproduced the downgrade before any
+model turn: explicit `workspace-write` returned `readOnly`, and admin requirements
+were null. No credentials, commands, tools or inference were used. Runtime
+`7feb259f` now checks the actual bootstrap sandbox mode and approval policy before
+releasing the pending turn. Start/resume/fork require the correlated reply;
+notifications and late replies cannot revive a failure. It neither widens the
+policy nor retries the model. Runtime build and **139 focused tests** passed,
+including a real local Node transport that receives a downgrade and emits no
+`turn/start`. This is limited permission-field confirmation, not a solution for
+the native downgrade or passing ordinary contribution acceptance. Runtime's
+[evidence note](https://github.com/cats-inc/cats-runtime/blob/main/docs/research/2026-09-27-codex-bootstrap-permissions.md)
+records the distinction. Independent review found no blocker; full CI
+`36307946098` was still running when this checkpoint was written. Installed
+Desktop/Runtime pins and versions are unchanged.
+
+Next resolve the native provider permission mismatch without repeating inference,
 then validate the ordinary contribution path and independent knowledge handoff
 under a new explicit bounded test authorization. The read-only
 audit confirmed existing Work
