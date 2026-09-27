@@ -125,6 +125,17 @@ publishes Desktop nor creates its Git tag.
 
 ### Desktop publication
 
+Desktop **0.5.9** is prepared as a standard-profile preview only; Platform npm is not
+published at this version and npm `latest` stays 0.5.8. It bundles Runtime **0.3.3**,
+which fixes Windows launches that cut multi-line or quoted prompts short for Cline,
+Kilo, Cursor and Junie, stops Cursor segments before a tool call from appearing
+twice, removes OpenCode's withdrawn Union Alpha Free and logs each run's model and
+outcome. Platform stops copying a participant's current lease onto every earlier
+session in a room's history, so each session keeps the model and error it ran with.
+No public API, configuration or persisted-data contract changes; no migration,
+launcher minimum or App change is required. Publication receipts will follow the
+workflow and artifact verification.
+
 The [Desktop workflow](../.github/workflows/desktop-release.yml) validates that
 the tag matches the manifest and lockfile versions, builds into a draft, validates
 the assets, then publishes. Prepare the version files and commit/push the chosen
