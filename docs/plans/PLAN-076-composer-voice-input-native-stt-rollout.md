@@ -20,8 +20,9 @@ Swift helper that drives `SFSpeechRecognizer`. Windows uses a bundled .NET /
 WinRT helper that drives `Windows.Media.SpeechRecognition`. Linux and the web
 renderer fall through to the existing path and continue to surface failure
 through the existing toast pattern. No app-managed cloud STT, no bundled
-local model; Windows follows the user's OS speech privacy settings and
-surfaces `mode: 'unknown'` until a reliable locality detector exists.
+local model; the selected Windows dictation topic grammar uses Microsoft's
+online service and requires Online speech recognition. The helper currently
+surfaces `mode: 'unknown'`, which is not an offline guarantee.
 
 ## Implementation Phases
 
@@ -183,38 +184,42 @@ on a notarized installer.
 - [ ] Authenticode-sign the helper as part of the existing Windows
       packaging signing step.
 - [ ] Map `UnauthorizedAccessException` and equivalent permission
-      errors to `permission_denied`. Map missing-speech-pack /
-      unsupported-language errors from the SpeechRecognizer's
-      compilation step to `language_not_supported`. Map any other
+      errors to `permission_denied`. Map unsupported topic-language
+      errors from the SpeechRecognizer's compilation step to
+      `language_not_supported`. Map any other
       startup failure to `engine_unavailable`.
 - [ ] Emit `mode: 'unknown'` in the Windows `ready` event because the
       WinRT API does not expose the user's "Online speech recognition"
       privacy setting (SPEC-084 Req 21). Do not attempt to detect or
       override the user's OS privacy choice from inside the helper.
 - [ ] Route `mode: 'unknown'` to conservative renderer copy indicating
-      the session may use Microsoft online speech. Do not label it as
-      "cloud" or "local" unless future detection makes that assertion
-      reliable.
+      the selected dictation grammar requires Microsoft online speech.
+      Do not label a particular session "local" unless a different,
+      validated recognition path makes that assertion reliable.
 - [ ] Document, alongside the Phase 5 validation steps, the user-facing
-      requirement to disable "Online speech recognition" in Windows
-      Settings → Privacy → Speech and verify the speech pack for their
-      locale is installed in order to keep recognition fully local on
-      Windows.
+      requirement to enable "Online speech recognition" in Windows
+      Settings → Privacy → Speech for this dictation grammar, and the
+      absence of an offline free-form dictation path in the current helper.
 - [ ] Add a host smoke test that spawns the helper with a recorded
       WAV fixture (helper accepts an `--input <wav>` flag for testing
       only) and asserts `ready.mode === 'unknown'` plus at least one
       final event. Partial events may be asserted only if the helper
       emits them; they are not required for the v1 textarea contract.
 - [ ] Manually verify on a fresh Windows 10 / 11 user profile: first-run
-      microphone consent, first-utterance latency, locale matches
-      installed speech pack, stop and cancel cleanup, post-error
-      microphone release, AND both privacy postures: (a) "Online speech
-      recognition" enabled (recognition succeeds, audio leaves the
-      machine via Microsoft online dictation); (b) "Online speech
-      recognition" disabled with a matching speech pack installed
-      (recognition succeeds locally). Both should report
-      `mode: 'unknown'` in the `ready` event per Req 21 unless future
-      detection is added.
+      microphone consent, first-utterance latency, supported topic locale,
+      stop and cancel cleanup, post-error microphone release, AND both
+      privacy postures: (a) "Online speech recognition" enabled (a `final`
+      transcript reaches the composer through Microsoft online dictation);
+      (b) disabled (capture fails with actionable feedback, without a local
+      dictation claim). A ready/listening indicator is insufficient for (a).
+      The helper currently reports `mode: 'unknown'` on ready (Req 21).
+- [ ] Reproduce the installed 0.5.5 missing-transcript symptom with Online
+      speech recognition enabled. Trace whether `ResultGenerated` emits a
+      successful result, the helper writes `final`, the host forwards it,
+      and the renderer inserts it. Record which boundary fails before
+      assigning a cause or fix. Also verify the installed helper's package
+      identity against Microsoft's documented WinRT requirement; do not
+      infer that identity is the cause from the missing composer text alone.
 
 **Deliverables**: Windows Electron build produces real composer
 transcripts on a signed installer.
@@ -240,11 +245,9 @@ transcripts on a signed installer.
       behavior in `docs/setup-guide.md` (or the closest existing
       permission-docs file) after macOS validation lands.
 - [ ] Document Windows microphone permission AND speech privacy behavior
-      in the same place: the `mode: 'unknown'` posture, the conservative
-      "may use Microsoft online speech" renderer indicator, the
-      requirement to disable "Online speech recognition" in Windows
-      Settings → Privacy → Speech for fully-local recognition, and the
-      speech-pack install path.
+      in the same place: separate microphone and Online speech recognition
+      settings, the current `mode: 'unknown'` posture, and that the
+      selected dictation topic grammar uses Microsoft's online service.
 - [ ] Document the explicit Linux limitation: the composer voice button
       is non-functional on Linux for v1, by design, with a toast on
       click. Reference ADR-079.
@@ -285,8 +288,8 @@ when Phase 3 lands; existing packaging scripts are the source of truth.)
 
 - **Native engines only, no Cats-owned cloud STT and no bundled model.**
   Drives the whole architecture; explicitly rules out app-managed cloud
-  vendors while documenting that Windows may use Microsoft's OS speech
-  service according to the user's privacy settings.
+  vendors while documenting that the selected Windows dictation grammar
+  requires Microsoft's online speech service.
 - **Helper subprocess per session, not a long-lived helper.** Simpler
   lifetime model; matches the screenshot precedent of bounded host-owned
   capabilities. Cold-start cost is dominated by engine warm-up, not
@@ -332,7 +335,7 @@ when Phase 3 lands; existing packaging scripts are the source of truth.)
 | Helper subprocess hangs and never emits `ready` | High | Enforce the 3-second `ready` timeout in Phase 2; map to `engine_unavailable`; helper supervisor force-kills after timeout |
 | Microphone is held after error or unexpected helper exit | High | All session teardown paths route through the orchestrator's `finally` block; verify via a Phase 2 host-test that simulates each error path and asserts the helper is killed |
 | Selection-trust race overwrites user-typed text with transcripts | Medium | Reuse the existing `useVoiceInputComposer` selection-trust rules; add a renderer test that types into the composer mid-session and asserts ignored partials and later finals do not overwrite typed text |
-| Locale request is unsupported (no installed speech pack) | Medium | Map to `language_not_supported` with a toast; do not silently fall back to a different locale because the user's draft would silently change language |
+| Requested topic language is unsupported | Medium | Map to `language_not_supported` with a toast; do not silently fall back to a different locale because the user's draft would silently change language |
 | .NET runtime version mismatch on user's Windows install | Medium | Publish the Windows helper self-contained so the installer does not depend on a preinstalled .NET 8 runtime |
 | First utterance feels slow on target hardware | Medium | Measure startup, first final, and host forwarding latency during Phase 3/4 validation; if OS engine warm-up dominates, investigate prewarming after the user explicitly starts capture or defer live partial preview to the follow-up slice |
 | New helper subprocess broadens the host attack surface | Medium | Renderer access stays behind sender-validated IPC (Phase 2); helper accepts only line-delimited JSON commands; no shell, no eval |
@@ -340,7 +343,7 @@ when Phase 3 lands; existing packaging scripts are the source of truth.)
 | Cross-talk between rapid start/stop cycles | Medium | Session-id filtering on every event in the orchestrator; renderer ignores events for unknown session ids |
 | Future renderer change accidentally introduces `getUserMedia({ audio })` and bypasses the native helper | Medium | Phase 2 permission handler explicitly denies `media`; host contract test asserts the deny path so any future renderer code that tries to capture audio through Chromium fails loudly during tests rather than silently succeeding |
 | macOS user with an unsupported on-device locale is silently routed to Apple's servers under the helper's default settings | High | Helper sets `requiresOnDeviceRecognition = true` and fails closed with `language_not_supported` rather than network-fallback (SPEC-084 Req 4); helper smoke test asserts the closed-fail path with a known-unsupported locale fixture |
-| Windows users believe audio is local because the button label says "voice input", but Microsoft's online dictation may be in use (privacy mismatch) | High | Renderer surfaces a per-session privacy-mode chip when `mode !== 'on-device'`; Windows `mode: 'unknown'` copy must conservatively say the session may use Microsoft online speech rather than claiming a detected cloud/local path; user-facing documentation explains the Windows privacy-setting requirement; Phase 4 manual validation exercises both privacy postures |
+| Windows users believe audio is local because the button label says "voice input" (privacy mismatch) | High | State that the selected dictation topic grammar requires Microsoft online speech; `mode: 'unknown'` must not suggest an offline option. Document the setting and validate both enabled and disabled behavior. |
 
 ## Progress Log
 
@@ -354,6 +357,7 @@ when Phase 3 lands; existing packaging scripts are the source of truth.)
 | 2026-04-28 | Host/native slice landed: added Electron IPC channels, main-window sender validation, renderer permission allowlist (`display-capture` only), voice helper subprocess orchestration with ready timeout / stale-session filtering / stop-cancel cleanup, platform-gated preload methods, macOS Swift helper source, Windows WinRT helper source, native helper installer staging, macOS speech/microphone plist copy, and focused host/helper contract coverage. |
 | 2026-04-28 | Review follow-up hardening: macOS stop now ends audio and waits for a final/natural recognizer callback instead of immediately cancelling the task; Windows helper packaging switched to self-contained .NET publish; helper stdin commands parse JSON with session id matching; ready-timeout and finals-only regression coverage tightened; setup docs now call out the required fresh-profile macOS TCC validation before release. |
 | 2026-04-28 | Review follow-up #2: bounded macOS `isFinal` fallback (800 ms after `stopAudioInput`) closes the empty-utterance hang so the renderer indicator does not linger up to the full host stop cleanup window when the user clicks stop without speaking; Req 12 wording aligned with Windows WinRT graceful-stop reality so the spec no longer claims an immediate microphone release the WinRT API cannot guarantee; added contract test coverage that asserts the stop-vs-cancel cleanup-timeout split (cancel kills inside its short window, stop survives past the cancel window and is killed inside its longer window). |
+| 2026-09-27 | Corrected the Windows dictation-topic locality premise against Microsoft documentation: Online speech recognition is required; local speech packs do not provide offline free-form dictation for this grammar. Installed Desktop 0.5.5 observation: setting off produced an unavailable toast; setting on reached red listening state but inserted no text. End-to-end Windows transcript delivery remains unverified; the failure stage has not been isolated. |
 
 ---
 

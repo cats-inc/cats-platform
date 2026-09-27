@@ -20,11 +20,21 @@ Electron host using each desktop OS's free, system-native speech engine —
 Windows — exposed to the renderer through a typed preload bridge. The
 privacy posture is per-platform and surfaced to the renderer per session:
 macOS enforces on-device recognition (audio stays on the machine), while
-Windows routes through whichever path the user's Windows speech privacy
-setting permits and the slice surfaces a conservative privacy warning
-because the WinRT API cannot prove the active path. Linux and non-Electron contexts
-continue to use the existing `useWebSpeechInput` path and surface failure
+the Windows helper's predefined dictation topic grammar uses Microsoft's
+online service and requires Online speech recognition to be enabled. The
+current Windows `mode: 'unknown'` event does not detect that service route.
+Linux and non-Electron contexts continue to use the existing
+`useWebSpeechInput` path and surface failure
 through the existing platform toast pattern.
+
+### Installed Windows 0.5.5 validation note (2026-09-27)
+
+With Online speech recognition disabled, clicking the composer microphone
+showed the `engine_unavailable` toast. After enabling it, the helper reached
+the red listening state, but no spoken text appeared in the composer. The
+missing composer text has not been localized to the Windows service, helper,
+host bridge, or renderer. A ready/listening state is not evidence that
+the end-to-end transcription goal has been met.
 
 ## Goals
 
@@ -34,12 +44,10 @@ through the existing platform toast pattern.
 - Enforce on-device recognition on macOS so captured audio is guaranteed
   not to leave the user's machine; fail closed when the locale lacks
   on-device support rather than silently routing through Apple's servers.
-- Be honest about the Windows privacy posture: the chosen WinRT API does
-  not expose a runtime flag to force on-device recognition for free-form
-  dictation, so the actual route is governed by the user's OS-level
-  privacy setting; surface that Cats cannot prove the session is local
-  (`mode: 'unknown'`) and explain the configuration requirement in
-  user-facing docs.
+- Explain that the selected Windows dictation topic grammar requires
+  Microsoft online speech and does not become local when a speech pack is
+  installed. Keep `mode: 'unknown'` until the helper reports a verified
+  processing mode, without presenting it as a local option.
 - Reuse the existing voice-input composer hook surface
   (`useVoiceInputComposer`) so callers do not change.
 - Keep all OS audio capture, helper-process lifecycle, and permission state
@@ -55,9 +63,8 @@ through the existing platform toast pattern.
 - Do not introduce any app-managed cloud STT vendor (OpenAI Whisper,
   Deepgram, Azure Speech, Google STT, etc.) or any Cats-owned cloud STT
   key. The Windows OS speech service is not configured by Cats; when the
-  user's Windows privacy setting allows Microsoft online dictation, Cats
-  must surface that the session's locality cannot be proven rather than
-  presenting it as local.
+  user enables Windows Online speech recognition, Cats must state that the
+  selected dictation grammar uses Microsoft's online service.
 - Do not bundle a local STT model or runtime (whisper.cpp, faster-whisper,
   Vosk, sherpa-onnx, WASM Whisper). No model artifacts in this slice.
 - Do not integrate with `voice-gateway` or any other monorepo subproject's
@@ -79,17 +86,17 @@ through the existing platform toast pattern.
   words appear at the cursor without sending audio to a cloud service, so
   that I can keep my drafts private and offline.
 - As a Windows desktop user, I want the same dictation experience in the
-  composer using my installed Windows speech packs, so I do not need to
-  configure any vendor key.
+  composer through the Windows speech service, so I do not need to
+  configure a Cats-owned vendor key and can decide whether to enable
+  Microsoft's online speech processing.
 - As a Linux desktop user, I want the microphone button to remain
   visible and clickable on my platform and to surface a clear toast when
   recognition cannot proceed, so I do not get stuck wondering whether my
   microphone is broken.
 - As a privacy-sensitive Windows user, I want the renderer to clearly
-  show when Cats cannot prove audio stays on my machine, because Windows
-  may route free-form dictation through Microsoft online speech depending
-  on OS privacy settings, so I am not misled by a generic "voice input"
-  indicator into believing recognition is local.
+  show that the selected dictation path uses Microsoft online speech, so I
+  am not misled by a generic "voice input" indicator into believing
+  recognition is local.
 - As a user whose OS-level microphone permission is denied, I want a
   recovery toast that points me at the right system settings panel, so I
   can grant permission without leaving the app to search.
@@ -119,16 +126,13 @@ through the existing platform toast pattern.
    stay on the user's machine.
 5. On Windows, the host shall drive `Windows.Media.SpeechRecognition` via
    a bundled helper using `ContinuousRecognitionSession` with the user's
-   configured `SystemSpeechLanguage`. The WinRT API does not expose a
-   runtime flag to force on-device recognition for free-form dictation;
-   the actual route (on-device speech pack vs Microsoft's online speech
-   service) is governed by the user's Windows Privacy → Speech "Online
-   speech recognition" setting and the installed speech pack. The helper
-   shall not attempt to override or work around the user's OS-level
-   choice. The user-facing documentation shall explain that, to keep
-   audio fully local, the user must disable "Online speech recognition"
-   in Windows Settings and verify the speech pack for their locale is
-   installed.
+   configured `SystemSpeechLanguage` and a predefined dictation topic
+   constraint. Microsoft documents that topic grammars use an online
+   service, require a network connection and require Online speech
+   recognition to be enabled in Windows Settings. Local speech packs
+   apply to list/SRGS grammars; they do not make this free-form dictation
+   path local. The helper shall not work around the user's OS-level
+   choice, and user-facing documentation shall state this requirement.
 6. On Linux Electron and any non-Electron renderer (web app, mobile
    shell), the host bridge method shall be absent. The renderer's
    `useVoiceInputComposer` shall fall through to `useWebSpeechInput`.
@@ -247,13 +251,12 @@ through the existing platform toast pattern.
     sessions shall always emit `mode: 'on-device'` (Req 4 makes this
     enforceable). Windows sessions shall emit `mode: 'unknown'` because
     the WinRT API does not expose the user's "Online speech recognition"
-    privacy setting; the renderer shall surface a conservative
-    per-session indicator for non-`on-device` modes (e.g., a small chip
-    on the active microphone button saying the session may use Microsoft
-    online speech) so privacy-sensitive users are not misled into
-    believing audio stays local. Helper implementations MAY upgrade
-    `unknown` to `'on-device'` or `'cloud'` in the future if a reliable
-    detection path is found.
+    privacy setting; the renderer shall surface a per-session indicator
+    for non-`on-device` modes. For the selected Windows dictation topic
+    grammar, user-facing copy should identify Microsoft online speech as
+    a requirement; `unknown` must not be presented as a possible local
+    dictation mode. Helper implementations MAY report a verified mode in
+    the future if a reliable detection path is found.
 
 ### Non-Functional Requirements
 
@@ -261,13 +264,11 @@ through the existing platform toast pattern.
   the renderer per session via the `mode` field of the `ready` event
   (Req 21). On macOS, audio shall not leave the user's machine; the
   helper enforces on-device recognition (Req 4) and fails closed when
-  the locale is unsupported. On Windows, audio routing follows the
-  user's OS-level "Online speech recognition" privacy choice; the slice
-  cannot override this from inside the app and surfaces
-  `mode: 'unknown'` so the renderer can warn privacy-sensitive users
-  that Cats cannot prove locality for the session. The host shall not
-  write captured audio to disk on any platform. Documentation shall
-  explain the Windows configuration required for fully-local recognition.
+  the locale is unsupported. On Windows, the selected dictation grammar
+  uses Microsoft's online service; `mode: 'unknown'` means the helper has
+  not verified a per-session route, not that this grammar can run locally.
+  The host shall not write captured audio to disk on any platform.
+  Documentation shall explain the Windows online-service requirement.
 - **Security**: OS audio capture and helper-process control stay in the
   Electron host. Renderer access is limited to the typed bridge methods.
   The host shall additionally lock the renderer out of Chromium-mediated
@@ -287,8 +288,8 @@ through the existing platform toast pattern.
   reachable. The active recording state shall be conveyed via
   `aria-pressed` and visible label change, not by color alone.
 - **Compatibility**: Targets macOS 10.15+ for strict on-device recognition
-  and Windows 10 19041+ for the WinRT speech helper. Windows locality remains
-  governed by OS speech privacy settings (Req 5 / Req 21). Older OS versions
+  and Windows 10 19041+ for the WinRT speech helper. Windows dictation
+  requires Online speech recognition (Req 5 / Req 21). Older OS versions
   fall through to the unsupported path with a toast.
 
 ## Design Overview
@@ -411,8 +412,8 @@ behind one interface. Renderer code never branches on `process.platform`.
       recognition" privacy setting? No public WinRT API exists for the
       former, but a UWP app capability or undocumented registry probe
       may be possible. v1 default: emit `unknown`, show a conservative
-      "may use Microsoft online speech" indicator, and document the
-      requirement to users.
+      indicator. The UI copy needs updating to state that the current
+      dictation topic grammar requires Microsoft online speech.
 
 Resolved and promoted to Requirements:
 
@@ -434,10 +435,12 @@ Resolved and promoted to Requirements:
   (precedent for host-owned native capabilities)
 - Apple `SFSpeechRecognizer`: https://developer.apple.com/documentation/speech/sfspeechrecognizer
 - Microsoft `Windows.Media.SpeechRecognition`: https://learn.microsoft.com/uwp/api/windows.media.speechrecognition
+- Microsoft speech-recognition guide (predefined dictation grammar): https://learn.microsoft.com/en-us/windows/apps/develop/input/speech-recognition
+- Microsoft recognizer-language guide (topic vs local grammar languages): https://learn.microsoft.com/en-us/windows/apps/develop/input/specify-the-speech-recognizer-language
 
 ---
 
 *Created: 2026-04-28*
-*Last revised: 2026-04-28 (review follow-up #2: macOS now schedules a bounded `isFinal` fallback so empty/short utterances do not stall the host stop cleanup window; Req 12 wording aligned with Windows WinRT graceful-stop reality so the spec no longer claims an immediate microphone release the API cannot guarantee; cleanup-timeout split has dedicated contract test coverage; macOS TCC helper attribution remains a required fresh-profile validation item.)*
+*Last revised: 2026-09-27 (corrected the Windows dictation-topic service requirement and recorded installed Desktop 0.5.5 validation; end-to-end Windows transcription remains unverified.)*
 *Author: Claude*
 *Related Plan: [PLAN-076](../plans/PLAN-076-composer-voice-input-native-stt-rollout.md)*
