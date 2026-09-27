@@ -1195,6 +1195,11 @@ POST accepts at most
   explicitly adopts the reviewed draft in this profile.
 - `{ action: "revoke", revision, id }`: removes that active override and restores
   the shipped text.
+- `{ action: "delete", revision, id, confirm: "delete-local-contribution" }`:
+  deletes that draft and its active override, if any. Other active drafts remain
+  unchanged. The one-version recovery backup may retain the previous valid state;
+  later saves may overwrite it even if primary replacement fails. This is not
+  secure erasure.
 
 Success returns the refreshed workspace. Stale revisions, changed baselines and
 full/invalid stores reject edits; clients must reload and review again. This API
@@ -1220,7 +1225,7 @@ with a 15-minute upper limit. Remote Runtime turns receive no endpoint.
   uncertain write failure. Inspect the review page before a fresh-turn retry.
 - Missing/expired/foreign grants return 403; invalid requests 400; stale revision
   or exhausted submission slot 409; oversized body 413. Successful reads/writes
-  are `no-store`. Adoption/revocation still require the authenticated owner route.
+  are `no-store`. Adoption/revocation/deletion require the authenticated owner route.
 
 #### Code Catlas Help
 

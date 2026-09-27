@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Ordinary contribution, diagnostics and source-candidate build/input usable; broader managed development and independent promotion pending |
+| Status | Required mechanisms implemented; live, quality, OS and release acceptance pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Last updated | 2026-09-28 |
@@ -24,6 +24,47 @@ own staged acceptance and does not close G1/G2 development or G4 practice gates.
 This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
+
+## Implementation closure checkpoint (2026-09-28)
+
+The owner now requests finishing implementation before further live acceptance.
+No additional model call, authentication copy, native probe or publication is
+authorized. The implementation-only audit confirmed and closed two narrow gaps:
+owner deletion of local contributions (FR-18), and exact bundled knowledge
+identity in Desktop staging inventories (FR-21). Both use existing persistence,
+UI and packaging paths. Independent final code review found no remaining required
+mechanism gap across FR-01–FR-23. Implementation is complete on this source line;
+this is not a claim that all acceptance criteria passed or that Desktop 0.5.7
+already ships the later main changes. Do not create another evaluator engine or
+repeat delivered slices to compensate for pending acceptance.
+
+| Requirement | Implemented mechanism | Acceptance still distinct from implementation |
+| --- | --- | --- |
+| FR-01–03 | Source readiness, member/worktree ownership, clean revision pins and paired candidate revision sets reuse Code/Work admission and existing source preparation. | Real single- and two-member fixes, preserved unrelated edits, readiness on each supported environment. |
+| FR-04 | Runtime/provider sandbox configuration and actual-mode/approval guards constrain admitted execution; workspaces and private controller/evaluator roots are separated. | Full native out-of-grant and nested-process proof for supported provider/OS combinations. The earlier partial probe remains partial. |
+| FR-05–07 | Isolated candidate command, ownership descriptor, verified build attachment, status/stop/cancel/recovery, independent Work review actors and exact-input manual acceptance reports. | A real managed fix followed by independent checks of that exact revision. A manual attestation does not change `integrationValidation: not_observed`. |
+| FR-08 | Owner-selected development skills, pinned package/version/resource identity and actual session/hydration checks, including resume. | Fresh/resumed native provider delivery in the complete development scenario. |
+| FR-09, FR-22–23 | Compatible bilingual product bundles, role/surface/operation selection, bounded inline content and receipts, actual bound-model inference and truthful unavailable fallback. | Source-free installed consumers and live situational knowledge quality. |
+| FR-10 | Explicit target conversation diagnostics, running versions, recent bounded errors, renderer exception capture and existing screenshot attachments. | Combined live UI/provider incident debugging on the installed candidate. |
+| FR-11–13 | Shared operation definitions, supervised owner-confirmed `code.session.open`, postconditions and same-agent feedback; explicit optional help and deterministic fallback. | End-to-end native operation and quiet-assistance behavior; no automatic practice/proactive scheduler is enabled by this plan. |
+| FR-14–17 | Existing admitted/resettable practice, frozen independent evaluation, budgets, failure classification, sanitized Work proposals, candidate provenance and promotion/revocation/export receipts. | Protected quality gate with held-out/repeated scenarios, accepted and rejected real candidates. |
+| FR-18–19 | Profile-scoped drafts, owner adoption/revocation/deletion, submit-only agent capability, bounded exports, validated CAS/backup/atomic writes and additive Core metadata. | Relevant installed-profile recovery/upgrade and privacy acceptance; no new persisted format migration was introduced by the final slices. |
+| FR-20 | Preview/release supplement filtering, physical asset exclusion, Runtime catalog and retained-context admission guards. | Packaged/native checks on remaining supported OSes. |
+| FR-21 | Independent promotion exporter, reviewed config integration and existing consumers; staging now binds captured knowledge bytes to schema/revision/SHA-256/size in all artifact inventories. | A real reviewed promotion whose exact digest is consumed in a source-free release candidate; publication remains separately authorized. |
+
+Final closure changes make local deletion release its draft slot and remove only
+its own active override; they retain the existing one-version backup semantics.
+Packaging checks identity/compatibility metadata before replacing a stage, copies
+the captured bytes and inventories those bytes. Neither mechanism manufactures
+independent promotion, quality, integration or native execution evidence.
+
+Focused closure checks passed **62/62**: local storage/UI, ordinary-agent bridge,
+Orchestrator consumers, dependency boundaries and Desktop packaging. Server,
+Desktop host, renderer and affected UI-test TypeScript checks passed. The first
+default Node test-runner attempts were blocked by sandbox child-process `EPERM`;
+the repository's `--test-isolation=none` mode and the bounded packaging fixture
+process run passed. No model, authentication, native Desktop or release test ran.
+These are focused checks, not a full-suite or end-to-end acceptance claim.
 
 ## Active completion checkpoint (2026-09-27)
 

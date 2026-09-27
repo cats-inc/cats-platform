@@ -564,6 +564,8 @@ export interface DesktopPackagingArtifact {
   relativePath: string;
   role: 'electron_host' | 'app_server' | 'app_renderer' | 'runtime_sidecar' | 'manifest' | 'setup_asset';
   required: boolean;
+  /** Identity of the exact staged knowledge bytes, not a promotion receipt. */
+  knowledge?: { schemaVersion: 1 | 2; revision: string; sha256: string; bytes: number };
 }
 
 export interface DesktopPackagingTarget {

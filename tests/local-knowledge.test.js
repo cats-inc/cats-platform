@@ -25,6 +25,49 @@ async function submit(options, target = 'catlas') {
 }
 const adopt = (state, options) => mutateLocalKnowledge({ action: 'adopt', revision: state.revision,
   id: state.drafts[0].id, confirm: 'manual-local-unverified' }, options);
+const deleteDraft = (state, id, options) => mutateLocalKnowledge({ action: 'delete', revision: state.revision,
+  id, confirm: 'delete-local-contribution' }, options);
+
+for (const target of ['catlas', 'orchestrator']) test(`delete removes only the selected ${target} contribution and active retrieval; backup retains the prior state`, async t => {
+  const options = await fixture(t), before = await inspectLocalKnowledge(options);
+  let state = await adopt(await submit(options, target), options);
+  const activeId = state.drafts[0].id;
+  state = await submit(options, target);
+  const pendingId = state.drafts[0].id;
+  const activeTargets = state.targets;
+  const path = join(options.platformDir, 'knowledge/contributions.json');
+  const saved = await readFile(path, 'utf8');
+  await assert.rejects(mutateLocalKnowledge({ action: 'delete', revision: state.revision, id: pendingId }, options), /Confirm deletion/u);
+  assert.equal(await readFile(path, 'utf8'), saved);
+  const afterPendingDelete = await deleteDraft(state, pendingId, options);
+  assert.deepEqual(afterPendingDelete.targets, activeTargets);
+  assert.deepEqual(afterPendingDelete.drafts.map(row => row.id), [activeId]);
+  assert.equal(await readFile(path + '.bak', 'utf8'), saved);
+  await assert.rejects(deleteDraft(state, activeId, options), /Knowledge changed/u);
+  state = await deleteDraft(afterPendingDelete, activeId, options);
+  assert.equal(state.drafts.length, 0);
+  assert.deepEqual(state.targets, before.targets);
+  const catlas = await loadCatlasKnowledge({ ...options, locale: 'en' });
+  const chat = createChannel(createDefaultChatState(), { title: 'Deletion fixture', topic: 'Fixture', originSurface: 'chat', roomMode: 'chat_channel', responseLanguage: 'en' });
+  const orchestrator = await loadOrchestratorKnowledge({ ...options, channel: buildChannelView(chat, chat.selectedChannelId), body: 'Help', surface: 'chat-visible', target: { provider: 'claude', model: 'fixture' } });
+  assert.ok(!catlas.bundle.entries.some(row => row.adoption));
+  assert.ok(!orchestrator.entries.some(row => row.adoption));
+  await assert.rejects(deleteDraft(state, activeId, options), /not found/u);
+  await submit(options, target);
+  assert.equal((await readFile(path + '.bak', 'utf8')).includes(activeId), false);
+});
+
+test('delete frees the full 100-draft store and permits a fresh submission', async t => {
+  const options = await fixture(t), initial = await submit(options);
+  const drafts = Array.from({ length: 100 }, () => ({ ...initial.drafts[0], id: randomUUID() }));
+  const path = join(options.platformDir, 'knowledge/contributions.json');
+  await writeFile(path, JSON.stringify({ schemaVersion: 1, active: {}, drafts }));
+  await assert.rejects(submit(options), /draft limit/u);
+  const full = await inspectLocalKnowledge(options);
+  const smaller = await deleteDraft(full, drafts[0].id, options);
+  assert.equal(smaller.drafts.length, 99);
+  assert.equal((await submit(options)).drafts.length, 100);
+});
 
 test('submit is inert; adoption reaches actual Catlas input with provenance; revoke restores bundled knowledge', async t => {
   const options = await fixture(t);
@@ -92,6 +135,9 @@ test('bundled version changes suspend overrides and invalidate old review', asyn
   assert.equal(changed.drafts[0].stale, true); assert.equal(changed.drafts[0].active, false);
   assert.equal(changed.targets[0].entries[0].activeId, null);
   await assert.rejects(adopt(active, options), /Knowledge changed/u);
+  const deleted = await deleteDraft(changed, changed.drafts[0].id, options);
+  assert.equal(deleted.drafts.length, 0);
+  assert.deepEqual(JSON.parse(await readFile(join(options.platformDir, 'knowledge/contributions.json'), 'utf8')).active, {});
 });
 
 test('failed backup/write keeps previous state; malformed store fails editing and consumer uses bundle', async t => {
@@ -100,6 +146,7 @@ test('failed backup/write keeps previous state; malformed store fails editing an
   const previous = await readFile(path, 'utf8');
   await rm(path + '.bak'); await mkdir(path + '.bak'); await writeFile(join(path + '.bak', 'occupied'), 'fixture');
   await assert.rejects(adopt(draft, options));
+  await assert.rejects(deleteDraft(draft, draft.drafts[0].id, options));
   assert.equal(await readFile(path, 'utf8'), previous);
   await writeFile(path, '{invalid');
   await assert.rejects(inspectLocalKnowledge(options), /damaged/u);
@@ -140,9 +187,12 @@ test('near-limit multibyte state rejects growth before modifying primary or back
   await assert.rejects(submit(options), /storage limit/u);
   assert.equal(await readFile(path, 'utf8'), bytes);
   assert.equal(await readFile(path + '.bak', 'utf8'), backup);
+  const current = await inspectLocalKnowledge(options);
+  await deleteDraft(current, current.drafts[0].id, options);
+  assert.equal((await submit(options)).drafts.length, 99);
 });
 
-test('HTTP entry requires owner/admin and supports bounded submit/adopt/revoke', async t => {
+test('HTTP entry requires owner/admin and supports bounded submit/adopt/revoke/delete', async t => {
   const options = await fixture(t);
   const server = createServer(async (request, response) => {
     await routeCodeKnowledgeApi({ request, response, url: new URL(request.url, 'http://localhost'), method: request.method,
@@ -162,5 +212,8 @@ test('HTTP entry requires owner/admin and supports bounded submit/adopt/revoke',
   assert.equal(active.drafts[0].active, true);
   const restored = await post({ action: 'revoke', revision: active.revision, id: active.drafts[0].id });
   assert.deepEqual(restored.targets[0].entries[0].content, entry.content);
+  const deletion = { action: 'delete', revision: restored.revision, id: active.drafts[0].id, confirm: 'delete-local-contribution' };
+  assert.equal((await fetch(url, { method: 'POST', body: JSON.stringify(deletion) })).status, 403);
+  assert.equal((await post(deletion)).drafts.length, 0);
   assert.equal((await fetch(url, { method: 'POST', headers, body: 'x'.repeat(41 * 1024) })).status, 413);
 });

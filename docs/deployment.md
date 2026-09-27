@@ -668,6 +668,16 @@ npm run desktop:stage
 ./scripts/macos/build-desktop-package.sh macos
 ```
 
+Both Desktop content profiles carry the same ordinary Catlas and Orchestrator
+knowledge files. Before replacing the stage, packaging captures their bounded
+UTF-8 bytes and checks schema/revision/platform/capability inventory metadata.
+It copies those exact bytes and records `knowledge: { schemaVersion, revision,
+sha256, bytes }` on the corresponding artifacts in `desktop-package-plan.json`,
+each target's `installer-manifest.json`, and the entries in `shared/asset-map.json`.
+A plan produced without staging has no observed knowledge identity. The digest
+identifies shipped content; it is not a promotion receipt. Entry semantics remain
+subject to the product loaders, and publication still requires separate authorization.
+
 - actual Windows installer command:
 
 ```bash

@@ -86,7 +86,8 @@ test('capability rejects missing/foreign tokens, browser origins, invalid payloa
     assert.equal((await fetch(cap.url)).status, 403);
     assert.equal((await fetch(cap.url, { headers: { ...cap.headers, origin: 'https://untrusted.example' } })).status, 403);
     await other.turn(async foreign => { assert.equal((await fetch(foreign.url, { headers: cap.headers })).status, 403); });
-    for (const extra of [{ action: 'adopt', confirm: 'manual-local-unverified' }, { action: 'revoke' }, { platformDir: other.platformDir }, { note: 'x'.repeat(801) }]) {
+    for (const extra of [{ action: 'adopt', confirm: 'manual-local-unverified' }, { action: 'revoke' },
+      { action: 'delete', confirm: 'delete-local-contribution' }, { platformDir: other.platformDir }, { note: 'x'.repeat(801) }]) {
       assert.equal((await post(cap, { ...input, ...extra })).status, 400);
     }
     assert.equal((await post(cap, { ...input, revision: 'stale' })).status, 409);

@@ -11,13 +11,15 @@ import type { LocalKnowledgeWorkspace } from '../src/platform/knowledge/localKno
 afterEach(() => { cleanup(); resetTestDom(); });
 const locales = [
   { locale: 'en', title: 'Knowledge contributions', english: 'English', chinese: 'Traditional Chinese',
-    save: 'Save contribution', adopt: 'Adopt locally', revoke: 'Revoke and restore bundled text' },
+    save: 'Save contribution', adopt: 'Adopt locally', revoke: 'Revoke and restore bundled text',
+    delete: 'Delete contribution', confirm: 'Confirm deletion', cancel: 'Cancel' },
   { locale: 'zh-TW', title: '知識貢獻', english: '英文', chinese: '繁體中文',
-    save: '儲存貢獻', adopt: '採用到本機', revoke: '撤回並恢復隨附知識' },
+    save: '儲存貢獻', adopt: '採用到本機', revoke: '撤回並恢復隨附知識',
+    delete: '刪除貢獻', confirm: '確認刪除', cancel: '取消' },
 ] as const;
 
 for (const labels of locales) {
-  test(`user can submit, review, adopt and revoke in ${labels.locale}; saving alone never adopts`, async t => {
+  test(`user can submit, review, adopt, revoke and confirm deletion in ${labels.locale}; saving alone never adopts`, async t => {
     const original = { en: 'Original.', 'zh-TW': '原文。' };
     let state: LocalKnowledgeWorkspace = { revision: 'initial', targets: [
       { target: 'catlas', entries: [{ id: 'code.entry', content: original, activeId: null }] },
@@ -31,7 +33,10 @@ for (const labels of locales) {
         if (input.action === 'submit') state = { ...state, revision: 'saved', drafts: [{ id: 'draft',
           target: input.target, entryId: input.entryId, content: input.content, before: original, note: input.note,
           bundleDigest: 'baseline', createdAt: '', active: false, stale: false }] };
-        else state = { ...state, revision: input.action, drafts: state.drafts.map(draft => ({ ...draft, active: input.action === 'adopt' })) };
+        else if (input.action === 'delete') {
+          assert.equal(input.id, 'draft'); assert.equal(input.confirm, 'delete-local-contribution');
+          state = { ...state, revision: 'deleted', drafts: [] };
+        } else state = { ...state, revision: input.action, drafts: state.drafts.map(draft => ({ ...draft, active: input.action === 'adopt' })) };
         if (input.action === 'adopt') assert.equal(input.confirm, 'manual-local-unverified');
       }
       return Response.json(state);
@@ -53,5 +58,16 @@ for (const labels of locales) {
     await waitFor(() => assert.ok(view.getByRole('button', { name: labels.revoke })));
     fireEvent.click(view.getByRole('button', { name: labels.revoke }));
     await waitFor(() => assert.deepEqual(actions, ['submit', 'adopt', 'revoke']));
+    await waitFor(() => assert.ok(view.getByRole('button', { name: labels.adopt })));
+    fireEvent.click(view.getByRole('button', { name: labels.delete }));
+    assert.deepEqual(actions, ['submit', 'adopt', 'revoke']);
+    assert.ok(view.getByRole('button', { name: labels.confirm }));
+    fireEvent.click(view.getByRole('button', { name: labels.cancel }));
+    assert.equal(view.queryByRole('button', { name: labels.confirm }), null);
+    assert.deepEqual(actions, ['submit', 'adopt', 'revoke']);
+    fireEvent.click(view.getByRole('button', { name: labels.delete }));
+    fireEvent.click(view.getByRole('button', { name: labels.confirm }));
+    await waitFor(() => assert.equal(view.queryByRole('button', { name: labels.delete }), null));
+    assert.deepEqual(actions, ['submit', 'adopt', 'revoke', 'delete']);
   });
 }

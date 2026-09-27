@@ -2,6 +2,13 @@
 
 ## Status
 
+Implementation checkpoint, 2026-09-28: the required FR-01–FR-23 mechanisms are
+implemented and independently reviewed. The final missing owner draft deletion
+and exact knowledge artifact inventory are closed; focused checks passed 62/62.
+PLAN-109 maps the existing mechanisms and remaining acceptance. Overall decision
+acceptance, live quality, native OS and release validation remain pending; the
+history below must not be read as a fresh implementation backlog.
+
 Proposed overall, 2026-09-24. After the drafting pass, the owner authorized the
 initial Code-entry knowledge-consumption work package. That explain/guide slice
 is implemented; live-provider and installed-Desktop acceptance remain pending.
@@ -18,7 +25,7 @@ publication or a change to an installed Desktop.
 Owner clarification, 2026-09-24: preview/debug carries the extra Cats-development
 and practice skills and produces knowledge; end-user release omits those skills
 and uses accumulated knowledge with Catlas's bound provider/model. This audience
-split is the requested direction; the remaining implementation design is proposed.
+split is the implemented direction; overall acceptance remains open.
 
 ## Context
 

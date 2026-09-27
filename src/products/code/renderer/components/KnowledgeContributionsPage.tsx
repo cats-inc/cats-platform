@@ -23,6 +23,10 @@ function useKnowledgeLabels() {
     review: t(messageKeys.codeKnowledgeContributionsReview),
     adopt: t(messageKeys.codeKnowledgeContributionsAdopt),
     revoke: t(messageKeys.codeKnowledgeContributionsRevoke),
+    delete: t(messageKeys.codeKnowledgeContributionsDelete),
+    deleteNotice: t(messageKeys.codeKnowledgeContributionsDeleteNotice),
+    deleteConfirm: t(messageKeys.codeKnowledgeContributionsDeleteConfirm),
+    deleteCancel: t(messageKeys.codeKnowledgeContributionsDeleteCancel),
     active: t(messageKeys.codeKnowledgeContributionsActive),
     draft: t(messageKeys.codeKnowledgeContributionsDraft),
     stale: t(messageKeys.codeKnowledgeContributionsStale),
@@ -41,8 +45,9 @@ type Labels = ReturnType<typeof useKnowledgeLabels>;
 const textStyle = { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: '18rem', overflow: 'auto' } as const;
 
 function DraftCard({ draft, labels, busy, act }: { draft: Draft; labels: Labels; busy: boolean;
-  act: (action: 'adopt' | 'revoke', id: string) => void }) {
+  act: (action: 'adopt' | 'revoke' | 'delete', id: string) => void }) {
   const [reviewed, setReviewed] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   return <article className="operatorCard">
     <h3>{labels[draft.target]} · {draft.entryId}</h3>
     <p>{draft.active ? labels.active : labels.draft}</p>
@@ -60,6 +65,11 @@ function DraftCard({ draft, labels, busy, act }: { draft: Draft; labels: Labels;
         <label><input type="checkbox" checked={reviewed} disabled={busy} onChange={event => setReviewed(event.target.checked)} /> {labels.review}</label>
         <p><button className="operatorActionButton" disabled={busy || !reviewed} onClick={() => act('adopt', draft.id)}>{labels.adopt}</button></p>
       </div>}
+    {deleting ? <div>
+      <p>{labels.deleteNotice}</p>
+      <button className="operatorActionButton" disabled={busy} onClick={() => act('delete', draft.id)}>{labels.deleteConfirm}</button>{' '}
+      <button className="operatorActionButton" disabled={busy} onClick={() => setDeleting(false)}>{labels.deleteCancel}</button>
+    </div> : <button className="operatorActionButton" disabled={busy} onClick={() => setDeleting(true)}>{labels.delete}</button>}
   </article>;
 }
 
@@ -117,7 +127,8 @@ export function KnowledgeContributionsPage() {
     <section className="operatorPanel"><h2>{labels.pending}</h2>
       {!data?.drafts.length && <p>{labels.empty}</p>}
       {data?.drafts.map(draft => <DraftCard key={`${draft.id}:${data.revision}`} draft={draft} labels={labels} busy={busy}
-        act={(action, id) => void change({ action, id, ...(action === 'adopt' ? { confirm: 'manual-local-unverified' } : {}) })} />)}
+        act={(action, id) => void change({ action, id, ...(action === 'adopt' ? { confirm: 'manual-local-unverified' }
+          : action === 'delete' ? { confirm: 'delete-local-contribution' } : {}) })} />)}
     </section>
   </div>;
 }

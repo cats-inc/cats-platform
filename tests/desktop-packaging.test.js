@@ -1785,7 +1785,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
 });
 
-test('stageDesktopPackagingOutputs replaces preview assets when restaged as release', async (t) => {
+test('stageDesktopPackagingOutputs replaces preview assets as release, records exact knowledge identities and preserves the stage on invalid metadata', async (t) => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-profile-restage-'));
   t.after(() => rm(workingDir, { recursive: true, force: true }));
   const packageRoot = join(workingDir, 'cats');
@@ -1804,6 +1804,9 @@ test('stageDesktopPackagingOutputs replaces preview assets when restaged as rele
     CATS_DESKTOP_RUNTIME_ROOT: runtimeRoot,
   }, userDataDir: join(workingDir, 'profile'), catsHomeDir: join(workingDir, '.cats') });
   const skillRoot = join(outputRoot, 'shared', 'cats-runtime', 'runtime-skills');
+  const identities = new Map();
+  const unstaged = createDesktopPackagingPlan(config, { outputRoot, platforms: ['windows'] });
+  assert.ok(unstaged.targets.every(target => target.artifacts.every(artifact => !artifact.knowledge)));
   for (const contentProfile of ['preview', 'release']) {
     const plan = await stageDesktopPackagingOutputs(config, { outputRoot, platforms: ['windows'], contentProfile });
     assert.equal(plan.contentProfile, contentProfile);
@@ -1822,6 +1825,41 @@ test('stageDesktopPackagingOutputs replaces preview assets when restaged as rele
       filePath: join(outputRoot, 'shared', 'cats-platform', 'config', 'orchestrator-knowledge.json'),
       locale: 'en', capabilities: ['orchestrator-context-v1'],
     })).status, 'ready');
+    const assetMap = JSON.parse(await readFile(join(outputRoot, 'shared/asset-map.json'), 'utf8'));
+    const savedPlan = JSON.parse(await readFile(join(outputRoot, 'desktop-package-plan.json'), 'utf8'));
+    for (const role of ['catlas', 'orchestrator']) {
+      const relativePath = `shared/cats-platform/config/${role}-knowledge.json`;
+      const bytes = await readFile(join(outputRoot, relativePath));
+      assert.deepEqual(bytes, await readFile(join(packageRoot, `config/${role}-knowledge.json`)));
+      const raw = JSON.parse(bytes.toString('utf8'));
+      const identity = { schemaVersion: raw.schemaVersion, revision: raw.revision, sha256: sha256(bytes), bytes: bytes.length };
+      assert.deepEqual(assetMap.assets.find(asset => asset.target === relativePath).knowledge, identity);
+      for (const target of plan.targets) {
+        assert.deepEqual(target.artifacts.find(artifact => artifact.relativePath === relativePath).knowledge, identity);
+        const manifest = JSON.parse(await readFile(join(target.stageDirectory, 'installer-manifest.json'), 'utf8'));
+        assert.deepEqual(manifest.artifacts.find(artifact => artifact.relativePath === relativePath).knowledge, identity);
+        assert.deepEqual(savedPlan.targets.find(row => row.id === target.id).artifacts.find(artifact => artifact.relativePath === relativePath).knowledge, identity);
+      }
+      const loaded = await loadProductKnowledge({ filePath: join(outputRoot, relativePath), locale: 'zh-TW',
+        capabilities: [role === 'catlas' ? 'code-entry-v1' : 'orchestrator-context-v1'] });
+      assert.equal(loaded.status, 'ready');
+      assert.equal(loaded.bundle.digest, identity.sha256);
+      if (contentProfile === 'preview') identities.set(role, identity);
+      else assert.deepEqual(identity, identities.get(role));
+    }
+  }
+  const marker = join(outputRoot, 'preserve.txt');
+  await writeFile(marker, 'existing release stage');
+  const source = join(packageRoot, 'config/catlas-knowledge.json');
+  const original = await readFile(source);
+  const valid = JSON.parse(original.toString('utf8'));
+  for (const invalid of [Buffer.from([0xff]), Buffer.from('{broken'), Buffer.alloc(128 * 1024 + 1),
+    ...[{ schemaVersion: 99 }, { revision: '../bad' }, { platformRange: '999.x' },
+      { requiredCapabilities: ['unavailable'] }, { entries: [] }].map(override => Buffer.from(JSON.stringify({ ...valid, ...override })))]) {
+    await writeFile(source, invalid);
+    await assert.rejects(stageDesktopPackagingOutputs(config, { outputRoot, platforms: ['windows'] }), /valid knowledge metadata/u);
+    assert.equal(await readFile(marker, 'utf8'), 'existing release stage');
+    assert.deepEqual(await readFile(join(outputRoot, 'shared/cats-platform/config/catlas-knowledge.json')), original);
   }
 });
 

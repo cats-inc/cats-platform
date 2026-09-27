@@ -1,4 +1,4 @@
-import { access, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { dirname, join, relative, resolve } from 'node:path';
 import { decodeAppPackage, parseAppLock, supportsVersion, APP_SDK_VERSION, PLATFORM_VERSION, type ResolvedAppPin } from '#cats-app-package';
@@ -138,21 +138,52 @@ interface PlatformSidecarAsset {
 
 const PLATFORM_OPTIONAL_ASSETS: PlatformSidecarAsset[] = [
   {
-    sourceRelativePath: join('config', 'orchestrator-knowledge.json'),
-    targetRelativePath: join('shared', 'cats-platform', 'config', 'orchestrator-knowledge.json'),
-    directory: false,
-  },
-  {
-    sourceRelativePath: join('config', 'catlas-knowledge.json'),
-    targetRelativePath: join('shared', 'cats-platform', 'config', 'catlas-knowledge.json'),
-    directory: false,
-  },
-  {
     sourceRelativePath: join('config', 'provider-capability-bootstrap.yaml.example'),
     targetRelativePath: join('shared', 'cats-platform', 'config', 'provider-capability-bootstrap.yaml.example'),
     directory: false,
   },
 ];
+
+const PLATFORM_KNOWLEDGE_ASSETS = [
+  { target: 'catlas', capability: 'code-entry-v1' },
+  { target: 'orchestrator', capability: 'orchestrator-context-v1' },
+].map(({ target, capability }) => ({
+  id: `platform-${target}-knowledge`, capability,
+  sourceRelativePath: `config/${target}-knowledge.json`,
+  targetRelativePath: `shared/cats-platform/config/${target}-knowledge.json`,
+}));
+
+async function collectPlatformKnowledgeAssets(packageRoot: string) {
+  return Promise.all(PLATFORM_KNOWLEDGE_ASSETS.map(async (asset) => {
+    const sourcePath = join(packageRoot, asset.sourceRelativePath);
+    try {
+      const info = await stat(sourcePath);
+      if (!info.isFile() || info.size > 128 * 1024) throw new Error('Invalid knowledge file size.');
+      const bytes = await readFile(sourcePath);
+      if (bytes.length > 128 * 1024) throw new Error('Invalid knowledge file size.');
+      const raw = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) as Record<string, unknown> | null;
+      // Validate inventory identity/compatibility here. Entry semantics and promotion
+      // remain owned by the existing product loader and independent review workflow.
+      if (!raw || Array.isArray(raw) || (raw.schemaVersion !== 1 && raw.schemaVersion !== 2)
+        || typeof raw.revision !== 'string' || !/^[\w.-]{1,64}$/u.test(raw.revision)
+        || typeof raw.platformRange !== 'string'
+        || !supportsVersion(PLATFORM_VERSION, raw.platformRange)
+        || !Array.isArray(raw.requiredCapabilities) || raw.requiredCapabilities.length === 0
+        || raw.requiredCapabilities.length > 16
+        || !raw.requiredCapabilities.every((capability) => capability === asset.capability)
+        || !Array.isArray(raw.entries) || raw.entries.length === 0 || raw.entries.length > 32) {
+        throw new Error('Invalid or incompatible knowledge inventory metadata.');
+      }
+      const knowledge: NonNullable<DesktopPackagingArtifact['knowledge']> = {
+        schemaVersion: raw.schemaVersion, revision: raw.revision,
+        sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length,
+      };
+      return { ...asset, bytes, knowledge };
+    } catch (error) {
+      throw new Error(`Desktop packaging requires valid knowledge metadata: ${asset.sourceRelativePath}.`, { cause: error });
+    }
+  }));
+}
 
 // Server-side runtime dependencies that the cats-platform app sidecar requires
 // at process start (NOT renderer-only deps that Vite bundles into the renderer).
@@ -1014,16 +1045,9 @@ function buildPackagingTarget(
       relativePath: 'shared/cats-platform/config/provider-capability-bootstrap.yaml.example',
       role: 'app_server' as const,
     },
-    {
-      id: 'platform-catlas-knowledge',
-      relativePath: 'shared/cats-platform/config/catlas-knowledge.json',
-      role: 'app_server' as const,
-    },
-    {
-      id: 'platform-orchestrator-knowledge',
-      relativePath: 'shared/cats-platform/config/orchestrator-knowledge.json',
-      role: 'app_server' as const,
-    },
+    ...PLATFORM_KNOWLEDGE_ASSETS.map((asset) => ({
+      id: asset.id, relativePath: asset.targetRelativePath, role: 'app_server' as const,
+    })),
     { id: 'runtime-sidecar', relativePath: 'shared/cats-runtime/build/runtime/index.js', role: 'runtime_sidecar' as const },
     { id: 'runtime-package-manifest', relativePath: 'shared/cats-runtime/package.json', role: 'runtime_sidecar' as const },
     { id: 'runtime-setup-ui', relativePath: 'shared/cats-runtime/public/provider-setup.html', role: 'runtime_sidecar' as const },
@@ -1192,6 +1216,13 @@ export async function stageDesktopPackagingOutputs(
 
   await ensureBuiltAssets(config);
   await ensureBundledPlatformAssets(config.packageRoot);
+  const knowledgeAssets = await collectPlatformKnowledgeAssets(config.packageRoot);
+  for (const target of plan.targets) {
+    for (const artifact of target.artifacts) {
+      const captured = knowledgeAssets.find((asset) => asset.id === artifact.id);
+      if (captured) artifact.knowledge = captured.knowledge;
+    }
+  }
   const skillContent = await collectRuntimeSkillContent(
     join(config.runtimePackageRoot, 'runtime-skills'), plan.contentProfile,
   ).catch((error: unknown) => {
@@ -1215,6 +1246,11 @@ export async function stageDesktopPackagingOutputs(
     await writeFile(join(outputRoot, 'shared', 'official-apps', `${app.id}-${app.version}.catsapp`), app.bytes);
   }
   await writeFile(join(outputRoot, 'shared', 'official-apps', 'bundle.lock.json'), `${JSON.stringify({ schemaVersion: 1, apps: plan.apps ?? [] }, null, 2)}\n`);
+  for (const asset of knowledgeAssets) {
+    const targetPath = join(outputRoot, asset.targetRelativePath);
+    await mkdir(dirname(targetPath), { recursive: true });
+    await writeFile(targetPath, asset.bytes);
+  }
   for (const asset of PLATFORM_OPTIONAL_ASSETS) {
     const sourcePath = join(config.packageRoot, asset.sourceRelativePath);
     const targetPath = join(outputRoot, asset.targetRelativePath);
@@ -1309,6 +1345,11 @@ export async function stageDesktopPackagingOutputs(
       ...PLATFORM_OPTIONAL_ASSETS.map((asset) => ({
         source: relative(outputRoot, join(config.packageRoot, asset.sourceRelativePath)),
         target: asset.targetRelativePath,
+      })),
+      ...knowledgeAssets.map((asset) => ({
+        source: relative(outputRoot, join(config.packageRoot, asset.sourceRelativePath)),
+        target: asset.targetRelativePath,
+        knowledge: asset.knowledge,
       })),
       ...APP_SIDECAR_RUNTIME_DEPENDENCIES.map((dependency) => ({
         source: relative(outputRoot, join(config.packageRoot, 'node_modules', dependency)),

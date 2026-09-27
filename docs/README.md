@@ -47,7 +47,7 @@ stays off by default; PLAN-110's resume checkpoint records the next bounded slic
 
 [ADR-118](decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md),
 [SPEC-117](specs/SPEC-117-cats-self-development-and-catlas-practice.md), and
-[PLAN-109](plans/PLAN-109-cats-self-development-and-catlas-practice.md) propose
+[PLAN-109](plans/PLAN-109-cats-self-development-and-catlas-practice.md) define
 preview/debug-managed source development and knowledge-producing practice.
 The owner's clarified profile split gives only preview/debug the extra
 development/practice skills. End-user release omits that supplement and gives
@@ -57,9 +57,12 @@ ownership, artifact inventories, actual model-input delivery and reviewed
 knowledge promotion. The initial Code-entry knowledge reader, inline model
 context and explicit-help UI are implemented with fixture coverage. Preview
 supplements and developer practice/promotion mechanics are implemented; native
-managed authoring now produces a linked unverified candidate. Independent lesson
-evaluation/promotion, managed source development and combined installed-profile
-acceptance remain pending. ADR is Proposed overall and PLAN is in progress. Platform owns
+managed authoring now produces a linked unverified candidate. The required
+mechanisms are implemented, including owner draft deletion and exact knowledge
+identity in Desktop staging inventories. The 2026-09-28 closure table maps all
+FR-01–FR-23. Live managed development, independent lesson quality/promotion and
+combined installed-profile acceptance remain pending. ADR is Proposed overall;
+implementation closure is distinct from acceptance and publication. Platform owns
 this joint design, with explicit Runtime, cats-one and Apps work packages.
 
 Work now retains paired source inputs and candidate status/stop evidence. Explicit

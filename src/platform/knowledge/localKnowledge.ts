@@ -134,11 +134,15 @@ export async function mutateLocalKnowledge(input: unknown, options: Options = {}
       next.drafts.push({ id: randomUUID(), target, entryId: entry.id, bundleDigest: bundle.digest,
         before: entry.content, content, note: (input.note as string | undefined)?.trim() ?? '', createdAt: new Date().toISOString() });
     } else {
-      check(input.action === 'adopt' || input.action === 'revoke', 'Unknown knowledge action.');
+      check(input.action === 'adopt' || input.action === 'revoke' || input.action === 'delete', 'Unknown knowledge action.');
       const draft = next.drafts.find(row => row.id === input.id);
       check(draft, 'Knowledge draft not found.', 404);
       const entryKey = key(draft.target, draft.entryId);
-      if (input.action === 'revoke') {
+      if (input.action === 'delete') {
+        check(input.confirm === 'delete-local-contribution', 'Confirm deletion of this contribution.');
+        if (next.active[entryKey] === draft.id) delete next.active[entryKey];
+        next.drafts = next.drafts.filter(row => row.id !== draft.id);
+      } else if (input.action === 'revoke') {
         check(next.active[entryKey] === draft.id, 'This draft is no longer active.', 409);
         delete next.active[entryKey];
       } else {

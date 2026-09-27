@@ -22,7 +22,7 @@ adopt the pending draft using the manual flow below.
 This path requires a local Runtime and an agent tool able to reach Platform's
 loopback listener. It adds no native MCP tool or tool/network permission. The
 capability expires when the turn ends/cancels or after 15 minutes, whichever
-comes first, and cannot adopt/revoke. Identical retries share the first result;
+comes first, and cannot adopt/revoke/delete. Identical retries share the first result;
 an uncertain error consumes that turn's submission attempt, so inspect the
 review page before requesting another. The draft records its conversation and
 Runtime session. Real HTTP integration with stub Runtime is covered; native
@@ -36,7 +36,10 @@ knowledge** (`/code/knowledge`). Select Catlas or Orchestrator and an existing
 entry, paste the agent's proposed English and Traditional Chinese text, and save.
 Compare both versions, check the review box, then choose **Adopt locally**.
 Saving alone has no effect. **Revoke and restore bundled text** restores the
-shipped entry. This route makes no model request and needs no developer host.
+shipped entry. **Delete contribution**, followed by confirmation, removes a pending,
+revoked or stale draft to free space. Deleting an active contribution also restores
+the shipped entry; deleting another draft preserves the current adoption.
+This route makes no model request and needs no developer host.
 
 This is explicitly **manual local, unverified** adoption, accepted in the owner's
 2026-09-26 scope clarification. It affects the next matching request in the same
@@ -49,7 +52,12 @@ The additive schema-1 store lives under the profile's
 `knowledge/contributions.json`; existing Core data needs no migration. Each edit
 validates, checks its revision and byte limit, retains the previous valid state
 as `.bak`, then atomically replaces the primary file. Concurrent stale review
-is rejected. A damaged store blocks edits and consumers use shipped knowledge.
+is rejected. Deletion uses the same writer: the draft is immediately absent from
+the primary store and subsequent consumer requests. The recovery backup may retain
+the previous valid state; later saves may overwrite it even if primary replacement
+subsequently fails. Deletion is not secure
+erasure. Existing conversation transcripts and independent promotion receipts are
+not rewritten. A damaged store blocks edits and consumers use shipped knowledge.
 For recovery, stop that profile's server, preserve the damaged file, restore the
 last valid `.bak` to the primary path, and restart; it must validate before use.
 This never modifies the bundled knowledge file or promotes the backup silently.

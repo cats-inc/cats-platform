@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Ordinary contribution, diagnostics and source-candidate build/input usable; broader managed development and independent promotion pending |
+| Status | Required mechanisms implemented; live, quality, OS and release acceptance pending |
 | Owner | Platform integration, with member-owned work packages |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Decision | [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
@@ -26,9 +26,12 @@ learning output is versioned external knowledge, alongside reviewable code/skill
 changes; installing release does not require source access, development skills,
 or training/fine-tuning the user's selected model.
 
-The requirements describe the target architecture. The implemented subset is
-listed below; remaining named records are conceptual contracts, not existing
-APIs, schemas, CLI commands, or promised installed capabilities.
+The required mechanisms are implemented on the current source line. PLAN-109's
+2026-09-28 closure table maps FR-01–FR-23 to those mechanisms and separates pending
+live/quality/OS/release acceptance. Conceptual record names below describe
+responsibilities, not additional APIs or schemas that must be introduced.
+Implementation closure does not mean the latest published Desktop contains all
+subsequent main changes or that the acceptance criteria have all passed.
 
 The follow-up [SPEC-118](SPEC-118-orchestrator-knowledge-and-collaboration-operations.md)
 implements shared product-knowledge consumption by Orchestrator and stages
@@ -213,7 +216,11 @@ there is no persisted log, background request or provider execution.
 Owner simplification on 2026-09-26 adds a usable ordinary Desktop path at
 **Code > Artifacts > Contribute / adopt knowledge**. The owner pastes an agent's
 bilingual proposal for one existing entry, saves, reviews and explicitly adopts
-it in the local profile; revoke restores the shipped text. It makes no model
+it in the local profile; revoke restores the shipped text. Confirmed owner deletion
+removes the draft and any active override, freeing its storage slot. The existing
+one-version recovery backup may retain the prior valid state; later saves may
+overwrite it. Historical conversations and independent promotion history remain intact.
+It makes no model
 request. Local adoption is labeled `manual-local-unverified`, preserves entry IDs,
 applicability and permissions, and affects the next matching Catlas/Orchestrator request.
 Changed shipped bundles suspend old overrides. This additive local store has
@@ -228,6 +235,10 @@ skills. Desktop staging defaults to release, derives preview content from the
 explicit installer preview mode, and captures a closed selected resource tree
 before replacing its owned stage. Normal npm release and Desktop release omit
 the supplement physically; both ordinary knowledge bundles remain present.
+Staging records each bundle's schema, revision, exact SHA-256 and byte count in
+the existing artifact and asset inventories. Metadata checks and the copy use
+one captured byte sequence; identity inventory is distinct from independent
+promotion evidence and from a source-free installed-consumer acceptance result.
 
 Real-library checks prove 36 preview versus 33 release skills and reject a source
 preview catalog override from a packaged release Runtime. The paired-artifact
