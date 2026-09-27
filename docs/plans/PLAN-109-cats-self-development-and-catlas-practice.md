@@ -188,8 +188,11 @@ including a real local Node transport that receives a downgrade and emits no
 `turn/start`. This is limited permission-field confirmation, not a solution for
 the native downgrade or passing ordinary contribution acceptance. Runtime's
 [evidence note](https://github.com/cats-inc/cats-runtime/blob/main/docs/research/2026-09-27-codex-bootstrap-permissions.md)
-records the distinction. Independent review found no blocker; full CI
-`36307946098` was still running when this checkpoint was written. Installed
+records the distinction. Full CI `36307946098` caught one omitted initialization
+diagnostic event (2,507 passing tests, one failure, five skipped). Follow-up
+`34095d2b` preserves that correlated event without releasing the pending turn;
+the build and **41 guard/telemetry tests** passed, and independent review found
+no blocker. Final full CI `36308343716` passed for Runtime `34095d2b`. Installed
 Desktop/Runtime pins and versions are unchanged.
 
 Next resolve the native provider permission mismatch without repeating inference,
