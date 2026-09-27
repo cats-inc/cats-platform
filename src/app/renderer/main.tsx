@@ -8,7 +8,10 @@ import App from './App';
 import { installCsrfFetch } from './csrfFetch';
 import { initTooltipPortal } from '../../products/chat/renderer/tooltipPortal';
 import { sharedQueryClient } from '../../products/shared/renderer/queryClient.js';
+import { installBrowserErrorDiagnostics } from '../../products/shared/renderer/browserDiagnostics.js';
 
+const stopErrorDiagnostics = installBrowserErrorDiagnostics();
+import.meta.hot?.dispose(stopErrorDiagnostics);
 installCsrfFetch();
 initTooltipPortal();
 

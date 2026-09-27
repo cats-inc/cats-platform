@@ -1999,7 +1999,7 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.addPhotosAndFiles': 'Add photos and files',
   'chat.newChatDraft.takeScreenshot': 'Take screenshot',
   'chat.diagnostics.action': 'Attach conversation diagnostics',
-  'chat.diagnostics.hint': 'Choose the conversation with the problem. Review its versions, sessions and recent errors before attaching. Send normally to share with the agent. For visual problems, also use Take screenshot.',
+  'chat.diagnostics.hint': 'Choose the conversation with the problem. Review its versions, sessions and recent errors before attaching. UI errors are limited to those retained in this window since the page loaded. Send normally to share with the agent. For visual problems, also use Take screenshot.',
   'chat.diagnostics.conversation': 'Conversation to inspect',
   'chat.diagnostics.current': 'current',
   'chat.diagnostics.preview': 'Diagnostic report preview',

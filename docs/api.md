@@ -1369,9 +1369,16 @@ GET /api/debug/live-trace
   files and browser console output are not exported. Free text is scrubbed for
   common credentials; the owner can inspect the report before sharing it.
   The Chat/Code composer adds the current view, Desktop bridge version and any
-  available conversation-scoped browser trace, then creates a removable text
+  available conversation-scoped browser trace and retained UI exception evidence,
+  then creates a removable text
   attachment using the normal upload/send flow. Screenshots remain a separate
   explicit attachment action. A source cwd is not proof of the running revision.
+  Renderer exceptions are memory-only, capped at 20 per window since page load
+  and eight per selected report, captured on explicit conversation URLs. They
+  describe the page visible at failure time, not a proven cause. Common secrets
+  and source URL queries are scrubbed before retention. Arbitrary rejection
+  objects, other windows, direct-lane routes and full console output are excluded;
+  reload clears the buffer. Nothing is uploaded before the normal Send action.
 - `GET /api/debug/live-trace` returns the current server live-trace buffer when
   `debugLiveTrace` is enabled; otherwise it returns `404` with
   `live_trace_disabled`.

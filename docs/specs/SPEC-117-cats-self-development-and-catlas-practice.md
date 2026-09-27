@@ -54,6 +54,16 @@ small handoff does not add background monitoring, arbitrary log-file access or
 automatic candidate build/launch/verification. Implementation and validation
 status live in PLAN-109.
 
+The minimal follow-up adds a memory-only renderer exception buffer: up to 20
+uncaught JavaScript errors/unhandled rejections since this window loaded, with
+up to eight entries for the selected explicit conversation URL attached. Capture
+records the page visible when the exception surfaced, not a proven cause. It
+scrubs common credentials and source URL queries before retention, never stores
+arbitrary rejection objects, and does not intercept the console or suppress errors.
+Reload discards the buffer; other windows, direct-lane routes and caught errors
+are unavailable. Collection/sending retains the existing preview/attachment flow;
+there is no persisted log, background request or provider execution.
+
 ## Implemented preview content boundary (feature branches)
 
 Owner simplification on 2026-09-26 adds a usable ordinary Desktop path at

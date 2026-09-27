@@ -1950,7 +1950,7 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.newChatDraft.addPhotosAndFiles': '新增照片和檔案',
   'chat.newChatDraft.takeScreenshot': '拍攝畫面截圖',
   'chat.diagnostics.action': '附加對話診斷',
-  'chat.diagnostics.hint': '選擇發生問題的對話，檢視版本、session 與近期錯誤後附加；照常送出才會交給 agent。畫面問題請另外使用「拍攝畫面截圖」。',
+  'chat.diagnostics.hint': '選擇發生問題的對話，檢視版本、session 與近期錯誤後附加。UI 錯誤僅包含此視窗自頁面載入後保留的紀錄；照常送出才會交給 agent。畫面問題請另外使用「拍攝畫面截圖」。',
   'chat.diagnostics.conversation': '要檢查的對話',
   'chat.diagnostics.current': '目前',
   'chat.diagnostics.preview': '診斷報告預覽',

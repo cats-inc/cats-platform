@@ -6,6 +6,7 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { I18nProvider } from '../src/app/renderer/i18n/I18nProvider.tsx';
 import { DiagnosticAttachmentAction } from '../src/products/shared/renderer/components/DiagnosticAttachmentAction.tsx';
 import type { AppShellPayload } from '../src/products/shared/api/workspaceContracts.ts';
+import { installBrowserErrorDiagnostics } from '../src/products/shared/renderer/browserDiagnostics.ts';
 
 let restoreDialog: (() => void) | undefined;
 afterEach(() => { cleanup(); restoreDialog?.(); restoreDialog = undefined; resetTestDom(); });
@@ -76,4 +77,34 @@ test('closing or navigating while collecting aborts the request and cannot attac
   fireEvent.click(view.getByRole('button', { name: 'Collect diagnostics' }));
   view.unmount();
   assert.equal(signal?.aborted, true);
+});
+
+test('the attached report includes only the selected incident UI errors recorded earlier in this window', async t => {
+  const path = window.location.href;
+  const stop = installBrowserErrorDiagnostics();
+  t.after(() => { stop(); window.history.replaceState(null, '', path); });
+  window.history.replaceState(null, '', '/chat/chats/incident');
+  window.dispatchEvent(new window.ErrorEvent('error', { message: 'render failed token=private-ui-token' }));
+  window.history.replaceState(null, '', '/chat/chats/current');
+  window.dispatchEvent(new window.ErrorEvent('error', { message: 'unrelated debugger error' }));
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => {
+    calls += 1;
+    return Response.json({ filename, text: 'Selected incident evidence' });
+  });
+  const files: File[] = [];
+  const view = render(<DiagnosticAttachmentAction payload={payload} currentChannelId="current"
+    disabled={false} onAttach={file => files.push(file)} />);
+  fireEvent.click(view.getByRole('button', { name: 'Attach conversation diagnostics' }));
+  fireEvent.change(view.getByRole('combobox'), { target: { value: 'incident' } });
+  fireEvent.click(view.getByRole('button', { name: 'Collect diagnostics' }));
+  await waitFor(() => assert.ok(view.getByRole('button', { name: 'Attach report' })));
+  const preview = (view.getByRole('textbox', { name: 'Diagnostic report preview' }) as HTMLTextAreaElement).value;
+  assert.match(preview, /render failed token=\[redacted\]/u);
+  assert.doesNotMatch(preview, /private-ui-token|unrelated debugger error/u);
+  assert.match(preview, /this window/u);
+  assert.equal(files.length, 0);
+  fireEvent.click(view.getByRole('button', { name: 'Attach report' }));
+  assert.equal(await files[0]!.text(), preview);
+  assert.equal(calls, 1);
 });

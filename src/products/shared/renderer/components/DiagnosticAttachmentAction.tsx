@@ -4,6 +4,7 @@ import { getDesktopUpdateSnapshot } from '../../../../shared/desktopRecoveryBrid
 import { messageKeys } from '../../../../shared/i18n/index.js';
 import { isBrowserLiveTraceEnabled, readBrowserLiveTrace } from '../../../../shared/liveTrace.js';
 import { diagnosticText, diagnosticTrace, readDiagnosticWithin, type ConversationDiagnosticReport } from '../../diagnosticReport.js';
+import { readBrowserErrorDiagnostics } from '../browserDiagnostics.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 
 interface DiagnosticAttachmentActionProps {
@@ -53,6 +54,7 @@ export function DiagnosticAttachmentAction({ payload, currentChannelId, disabled
         destinationConversationId: currentChannelId ?? 'new conversation draft',
         desktopVersion: diagnosticText(desktop?.currentVersion, 80) ?? 'unavailable (web or older host)',
         browserTrace: isBrowserLiveTraceEnabled() ? diagnosticTrace(readBrowserLiveTrace(), selectedId) : 'unavailable (live trace disabled)',
+        browserErrors: readBrowserErrorDiagnostics(selectedId),
         screenshot: 'not collected; use the existing screenshot attachment action',
       };
       if (!controller.signal.aborted) setReport({ ...result,

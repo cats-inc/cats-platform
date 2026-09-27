@@ -25,6 +25,34 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
+## Resume checkpoint — UI exception evidence (2026-09-27)
+
+The owner authorized continuing with small useful backfills. This slice adds
+bounded, memory-only UI exception evidence to the existing diagnostic attachment,
+so an ordinary agent can inspect retained JavaScript failures alongside provider
+errors. It records only explicit conversation routes in the collecting window,
+scrubs text before retaining it, and keeps other conversations out of the selected
+report. Page-at-error is observation, not proof of causation. No console patch,
+persisted log, new permission, Runtime change or release is needed.
+
+Implementation and independent review passed. The focused suite passed **21/21**,
+covering scrubbed/bounded capture, window/conversation isolation, stale-disposer
+cleanup, real attachment preview/delivery, existing knowledge/screenshot UI,
+localization and browser imports. Renderer/test TypeScript, server compilation
+and Vite build passed; after placing the DOM helper in the renderer-only tree,
+the refreshed recorder/UI/audit subset passed **9/9**. Isolated Electron 41.2.0
+verified actual uncaught exceptions and rejected promises appear in the selected
+incident's report, secrets and other conversations are excluded, and preview,
+attach/send/remove still work. The screenshot was inspected. This was a synthetic
+fixture with zero provider calls or installed-profile writes, not full installed
+acceptance. Main CI remains the full-suite gate.
+
+The preceding diagnostic slice's full CI `36275812363` passed
+(5,132 passed, 59 skipped, zero failed).
+Main now includes the later 0.5.5 preview publication; historical 0.5.4 notes below
+describe the earlier implementation boundary. Candidate launch/evaluation stays
+outside this small follow-up.
+
 ## Resume checkpoint — ordinary conversation diagnostics (2026-09-27)
 
 The owner authorized a minimal one-time diagnostic attachment before further
