@@ -125,16 +125,31 @@ publishes Desktop nor creates its Git tag.
 
 ### Desktop publication
 
-Desktop **0.5.9** is prepared as a standard-profile preview only; Platform npm is not
-published at this version and npm `latest` stays 0.5.8. It bundles Runtime **0.3.3**,
-which fixes Windows launches that cut multi-line or quoted prompts short for Cline,
-Kilo, Cursor and Junie, stops Cursor segments before a tool call from appearing
-twice, removes OpenCode's withdrawn Union Alpha Free and logs each run's model and
-outcome. Platform stops copying a participant's current lease onto every earlier
-session in a room's history, so each session keeps the model and error it ran with.
-No public API, configuration or persisted-data contract changes; no migration,
-launcher minimum or App change is required. Publication receipts will follow the
-workflow and artifact verification.
+Desktop **0.5.9** was published on 2026-09-28 (Taipei) as a
+[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.9)
+from `177cc696c98d30783ddd5a510f153cc73479c8da`; Platform npm is not published at this
+version and npm `latest` stays 0.5.8. Every OS build bundles Runtime **0.3.3** at
+`d061e9b35bb527633d8448274b8fa6c13ffb8851`, which fixes Windows launches that cut
+multi-line or quoted prompts short for Cline, Kilo, Cursor and Junie, stops Cursor
+segments before a tool call from appearing twice, removes OpenCode's withdrawn Union
+Alpha Free and logs each run's model and outcome. Platform stops copying a
+participant's current lease onto every earlier session in a room's history, so each
+session keeps the model and error it ran with. No public API, configuration or
+persisted-data contract changes; no migration, launcher minimum or App change is
+required; the Usage 0.4.0 pin is unchanged.
+
+`0.5.9 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
+The macOS build log shows the Developer ID signature, successful notarization and a
+`Notarized Developer ID` Gatekeeper assessment. Installs of 0.5.8 can self-update on
+every OS: macOS stays signed to signed with the same team, Windows unsigned to unsigned
+and Linux verifies no signature. The [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36355606476)
+passed all seven jobs and published ten assets, and all three update metadata files
+reference the uploaded assets with matching sizes. The downloaded Windows installer and
+Linux package match their GitHub SHA-256 digests and updater SHA-512 values. The Linux
+package contains Runtime 0.3.3 with the Cursor and Junie launchers, the node-shim,
+Cursor-replay and run-log changes, the five-row OpenCode shortlist and the Platform
+session-history fix. PR CI for both source changes passed before merge; no installed
+upgrade was exercised.
 
 The [Desktop workflow](../.github/workflows/desktop-release.yml) validates that
 the tag matches the manifest and lockfile versions, builds into a draft, validates
@@ -256,7 +271,7 @@ Consequences of an unsigned-override preview while it is the newest prerelease:
 Published Desktop history (versions not listed were not published as Desktop):
 
 - 0.3.0 and 0.3.1: before macOS credentials existed; every platform unsigned.
-- Standard: 0.3.2, 0.3.6, 0.3.7, 0.3.8, 0.4.0, 0.4.1, 0.4.2, 0.4.3, 0.4.5, 0.4.7, 0.5.0, 0.5.1, 0.5.2, 0.5.3, 0.5.4, 0.5.5, 0.5.6, 0.5.7, 0.5.8.
+- Standard: 0.3.2, 0.3.6, 0.3.7, 0.3.8, 0.4.0, 0.4.1, 0.4.2, 0.4.3, 0.4.5, 0.4.7, 0.5.0, 0.5.1, 0.5.2, 0.5.3, 0.5.4, 0.5.5, 0.5.6, 0.5.7, 0.5.8, 0.5.9.
 - Unsigned override: 0.3.3, 0.4.6.
 
 ### Product knowledge assets
