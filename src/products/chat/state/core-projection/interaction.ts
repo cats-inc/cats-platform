@@ -622,6 +622,40 @@ function mapLaneStatus(
   }
 }
 
+const SESSION_LEASE_METADATA_KEYS = [
+  'leaseStatus',
+  'leaseProvider',
+  'leaseModel',
+  'leaseCwd',
+  'leaseLastError',
+  'leaseLastUsedAt',
+] as const;
+
+type SessionLeaseMetadata = Record<(typeof SESSION_LEASE_METADATA_KEYS)[number], string | null>;
+
+function buildSessionLeaseMetadata(lease: ParticipantExecutionLease): SessionLeaseMetadata {
+  return {
+    leaseStatus: lease.status ?? null,
+    leaseProvider: lease.provider ?? null,
+    leaseModel: lease.model ?? null,
+    leaseCwd: lease.cwd ?? null,
+    leaseLastError: lease.lastError ?? null,
+    leaseLastUsedAt: lease.lastUsedAt ?? null,
+  };
+}
+
+/** Lease fields a session recorded while it was current; null where it never had one. */
+function readRecordedSessionLeaseMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): SessionLeaseMetadata {
+  const recorded = {} as SessionLeaseMetadata;
+  for (const key of SESSION_LEASE_METADATA_KEYS) {
+    const value = metadata?.[key];
+    recorded[key] = typeof value === 'string' ? value : null;
+  }
+  return recorded;
+}
+
 function mapSessionStatus(
   target: RoomWorkflowTargetState,
   lease: ParticipantExecutionLease | null,
@@ -795,6 +829,11 @@ export function projectChatChannelInteractionToCore(
       ).core;
 
       if (sessionId) {
+        // The participant's lease describes only its current runtime session. Every projection
+        // replays the whole room, so applying it to earlier sessions overwrote their model and
+        // error with the latest turn's; those sessions keep what was recorded while current.
+        const sessionLease = lease?.sessionId === sessionId ? lease : null;
+        const existingSession = existingCore.sessions.find((candidate) => candidate.id === sessionId);
         nextCore = upsertCoreSession(
           nextCore,
           {
@@ -814,20 +853,17 @@ export function projectChatChannelInteractionToCore(
               responseMessages,
             ),
             runtimeKey: target.participant.participantName,
-            status: mapSessionStatus(target, lease, responseMessages),
-            createdAt: lease?.startedAt ?? turn.startedAt,
-            startedAt: target.startedAt ?? lease?.startedAt ?? turn.startedAt,
+            status: mapSessionStatus(target, sessionLease, responseMessages),
+            createdAt: sessionLease?.startedAt ?? turn.startedAt,
+            startedAt: target.startedAt ?? sessionLease?.startedAt ?? turn.startedAt,
             completedAt: target.completedAt,
             metadata: {
               channelId,
               containerId,
               targetStateId: target.id,
-              leaseStatus: lease?.status ?? null,
-              leaseProvider: lease?.provider ?? null,
-              leaseModel: lease?.model ?? null,
-              leaseCwd: lease?.cwd ?? null,
-              leaseLastError: lease?.lastError ?? null,
-              leaseLastUsedAt: lease?.lastUsedAt ?? null,
+              ...(sessionLease
+                ? buildSessionLeaseMetadata(sessionLease)
+                : readRecordedSessionLeaseMetadata(existingSession?.metadata)),
             },
           },
           now,
