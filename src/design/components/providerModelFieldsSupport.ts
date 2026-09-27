@@ -600,10 +600,14 @@ export function resolveExecutionLabelForProviderTarget(input: {
   effectiveCatalog: ProviderModelCatalog;
   effectiveAdvancedCatalog: ProviderAdvancedModelCatalog;
 }): string {
-  const entryId = input.model?.trim() || '';
   const entryOptions = input.effectiveAdvancedCatalog.entries.length > 0
     ? input.effectiveAdvancedCatalog.entries
     : input.effectiveCatalog.models;
+  const entryId = resolveTargetCatalogEntryId(
+    entryOptions,
+    input.model?.trim() || '',
+    input.modelSelection,
+  );
   const modelLabel = entryOptions.find((option) => option.id === entryId)?.label ?? null;
   const controlCatalog = entryId
     ? listPersistentControlOptions(input.effectiveAdvancedCatalog.entries.find(entry=>entry.id===entryId)?.controls ?? input.effectiveAdvancedCatalog.controls, entryId)
@@ -666,6 +670,34 @@ export function shouldDeferCatalogTargetReconciliation(input: {
     && input.advancedCatalogSource === 'static'
     && (Boolean(input.model) || Boolean(input.modelSelection))
   );
+}
+
+/**
+ * The catalog row a saved target selects. A room keeps the runtime's execution
+ * model beside the selection, and the two differ where a row executes as
+ * another ID, such as Pi's `openai-codex/gpt-6-sol` running as `gpt-6-sol`.
+ * Matching the model alone showed the first row instead, which could then not
+ * be picked, and a control change silently switched to it.
+ */
+export function resolveSelectedCatalogEntryId(
+  entryOptions: ReadonlyArray<{ id: string }>,
+  model: string,
+  modelSelection?: ProviderModelSelection | null,
+): string {
+  const entryId = resolveTargetCatalogEntryId(entryOptions, model, modelSelection);
+  return entryOptions.some((option) => option.id === entryId)
+    ? entryId
+    : entryOptions[0]?.id ?? '';
+}
+
+/** The selection's listed entry, else the model; unlike the picker, never the first row. */
+function resolveTargetCatalogEntryId(
+  entryOptions: ReadonlyArray<{ id: string }>,
+  model: string,
+  modelSelection?: ProviderModelSelection | null,
+): string {
+  const entryId = modelSelection?.entryId?.trim();
+  return entryId && entryOptions.some((option) => option.id === entryId) ? entryId : model;
 }
 
 export function shouldAllowLegacyManualModelEntry(input: {
@@ -860,9 +892,7 @@ export function resolveProviderModelFieldsViewState(input: {
   const selectedInstanceCapabilitySummary = formatProviderEventCapabilitiesSummary(
     selectedInstanceCapabilities,
   );
-  const selectedCatalogEntryId = entryOptions.some((option) => option.id === model)
-    ? model
-    : entryOptions[0]?.id ?? '';
+  const selectedCatalogEntryId = resolveSelectedCatalogEntryId(entryOptions, model, modelSelection);
   const selectedEntryId = isLegacyModelTarget ? CUSTOM_LEGACY_MODEL_VALUE : (
     selectedCatalogEntryId || ''
   );
