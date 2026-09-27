@@ -304,6 +304,7 @@ npm run desktop:candidate -- screenshot --root ../candidate-01
 npm run desktop:candidate -- input --root ../candidate-01 --action ../candidate-01/action.json
 npm run desktop:candidate -- screenshot --root ../candidate-01
 npm run desktop:candidate -- stop --root ../candidate-01
+npm run desktop:candidate -- evidence --root ../candidate-01
 ```
 
 `--root` must be a new directory outside both source checkouts, with an existing
@@ -393,6 +394,25 @@ sidecars. After interruption, use status/stop with the same root; do not start o
 in it. Use a new root after further source changes. Removal of retained evidence
 is an explicit later filesystem action. This workflow does not depend on a new
 Desktop release; the candidate host comes from the selected source.
+
+For a managed Work task that already retains a verified implementation commit,
+`evidence` writes `candidate-evidence.json` containing only the root, launch ID
+and host instance ID. It works while the candidate runs or after a successful
+drain. Open that task's **Candidate Desktop** section, select this JSON, and
+choose **Check and attach**. The owner/admin check reads the selected local
+candidate, verifies both clean source snapshots against their commits and checks
+the host receipt. One member must match the task's retained implementation
+workspace and commit; the other is recorded as its dependency baseline.
+
+A successful check adds a build artifact linked to the existing implementation
+Run and opens through Code artifacts. Duplicate attachment leaves that artifact
+unchanged; historical evidence may be attached after cancellation without
+restarting the task. A dirty snapshot may still be used for development, but it
+cannot be attached as verified commit evidence. Keep the source worktrees and
+candidate root until attachment completes. This records observed build inputs
+and a host receipt, not reproducible binaries, an OS process-exit check, a bug
+verdict or independent approval. It does not start a build, change grants or
+publish anything. Do not select the credential-bearing control file.
 
 ### Provider selection contract
 

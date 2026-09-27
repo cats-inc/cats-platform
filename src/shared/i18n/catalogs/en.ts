@@ -1,6 +1,13 @@
 import type { MessageCatalog } from '../index.js';
 
 export const enCatalog: MessageCatalog = {
+  'work.task.candidateTitle': 'Candidate Desktop',
+  'work.task.candidateDescription': 'Attach a candidate receipt to this implementation. Cats checks its source revision; testing the reported problem remains a separate step.',
+  'work.task.candidateFile': 'Candidate receipt',
+  'work.task.candidateAttach': 'Check and attach',
+  'work.task.candidateChecking': 'Checking…',
+  'work.task.candidateError': 'The candidate could not be matched to this implementation. Check the selected receipt and retained source revision.',
+  'work.task.candidateOpen': 'Open candidate build evidence',
   'app.brandName': 'CATS INC',
   'app.loadingWithSurface': 'Loading {surface}',
   'app.loadingEllipsis': 'Loading …',

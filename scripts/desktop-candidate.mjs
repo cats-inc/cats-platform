@@ -3,7 +3,7 @@
  * Build current Cats sources in a private snapshot and operate its Desktop.
  * Requires installed development dependencies in Platform and Runtime; no installs.
  * Usage: node scripts/desktop-candidate.mjs start --workspace <cats-inc|cats-platform> --root <new-directory>
- *        node scripts/desktop-candidate.mjs <status|screenshot|stop> --root <directory>
+ *        node scripts/desktop-candidate.mjs <status|screenshot|stop|evidence> --root <directory>
  *        node scripts/desktop-candidate.mjs input --root <directory> --action <json-file>
  * See docs/deployment.md#source-candidate-command. No installs or release.
  */
@@ -29,8 +29,8 @@ async function writeJson(filename, value) {
 export function parseCandidateArgs(args) {
   const [command, ...rest] = args;
   if (command === '--help' || command === '-h') return { command: 'help' };
-  if (!['start', 'status', 'screenshot', 'input', 'stop'].includes(command)) {
-    throw new Error('Expected start, status, screenshot, input or stop. Use --help.');
+  if (!['start', 'status', 'screenshot', 'input', 'stop', 'evidence'].includes(command)) {
+    throw new Error('Expected start, status, screenshot, input, stop or evidence. Use --help.');
   }
   const options = { command };
   for (let i = 0; i < rest.length; i += 2) {
@@ -211,6 +211,14 @@ async function exitReceipt(root, control) {
 }
 
 export async function operateCandidate(command, directory, actionFile) {
+  if (command === 'evidence') {
+    const status = await operateCandidate('status', directory);
+    if (!['running', 'drained'].includes(status.state)) throw new Error('Candidate build is unavailable.');
+    const receipt = { root: status.root, launchId: status.launchId, instanceId: status.instanceId };
+    const filename = path.join(status.root, 'candidate-evidence.json');
+    await writeJson(filename, receipt);
+    return { ...receipt, filename, purpose: 'Attach to the owning Work task; source/revision verification occurs at attachment.' };
+  }
   if (!['status', 'screenshot', 'input', 'stop'].includes(command)) throw new Error('Invalid candidate operation.');
   const root = await realpath(directory);
   const { launch, control } = await readCandidateControl(root);
@@ -367,7 +375,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   try {
     const options = parseCandidateArgs(process.argv.slice(2));
     if (options.command === 'help') {
-      console.log('Usage: desktop-candidate.mjs start --workspace <cats-inc|cats-platform> --root <new-directory> [--runtime-root <checkout>] [--platform-dependencies <checkout>] [--runtime-dependencies <checkout>]\n       desktop-candidate.mjs <status|screenshot|stop> --root <directory>\n       desktop-candidate.mjs input --root <directory> --action <json-file>\nRequires existing development dependencies with identical package.json and package-lock.json. Dependency options support separate worktrees. Input requires a recent screenshot; inspect the next screenshot to check the result. No installs or release.');
+      console.log('Usage: desktop-candidate.mjs start --workspace <cats-inc|cats-platform> --root <new-directory> [--runtime-root <checkout>] [--platform-dependencies <checkout>] [--runtime-dependencies <checkout>]\n       desktop-candidate.mjs <status|screenshot|stop|evidence> --root <directory>\n       desktop-candidate.mjs input --root <directory> --action <json-file>\nRequires existing development dependencies with identical package.json and package-lock.json. Dependency options support separate worktrees. Input requires a recent screenshot; inspect the next screenshot to check the result. No installs or release.');
     } else {
       console.log(JSON.stringify(options.command === 'start' ? await startCandidate(options)
         : await operateCandidate(options.command, options.root, options.action), null, 2));

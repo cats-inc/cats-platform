@@ -263,6 +263,7 @@ export interface WorkWorkItemDetailProjection {
 }
 
 export interface WorkTaskListItem {
+  candidateEvidenceAvailable?: boolean;
   id: string;
   title: string;
   status: CoreTaskStatus;
@@ -752,9 +753,11 @@ function buildTaskListItems(
         ? core.projects.find((candidate) => candidate.id === workItem.projectId) ?? null
         : null;
       const extras = readTaskRendererExtras(task.metadata);
+      const candidateEvidenceAvailable = Boolean(asRecord(asRecord(task.metadata.collaborationIntent)?.implementationEvidence));
 
       return {
         id: task.id,
+        ...(candidateEvidenceAvailable ? { candidateEvidenceAvailable: true } : {}),
         title: task.title,
         status: task.status,
         summary: task.summary,

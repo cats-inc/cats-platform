@@ -1,6 +1,13 @@
 import type { MessageCatalog } from '../index.js';
 
 export const zhTWCatalog: MessageCatalog = {
+  'work.task.candidateTitle': '候選 Desktop',
+  'work.task.candidateDescription': '將候選建置紀錄連到這次實作。Cats 會核對來源修訂；原問題是否修好仍需另外測試。',
+  'work.task.candidateFile': '候選建置紀錄',
+  'work.task.candidateAttach': '核對並附加',
+  'work.task.candidateChecking': '核對中…',
+  'work.task.candidateError': '無法將候選版本對應到這次實作。請檢查選取的紀錄與保留的來源修訂。',
+  'work.task.candidateOpen': '開啟候選建置證據',
   'app.brandName': 'CATS INC',
   'app.loadingWithSurface': '載入 {surface}',
   'app.loadingEllipsis': '載入中…',

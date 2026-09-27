@@ -62,13 +62,40 @@ Catlas entry is updated with capability-conditional advice, preserving the other
 four entries. No native provider evidence is claimed for this slice yet.
 
 The Code operation is on main at `576cb20b`; full CI `36300149039` passed.
-The next small fix lets fresh worktrees borrow explicitly selected matching
+The next small fix (`e801febd`, full CI `36300869856` passed) lets fresh worktrees borrow explicitly selected matching
 dependencies for the candidate command. Both package and lock bytes must match;
 the receipt records the dependency source and Git common directory. Electron is
 resolved through the candidate's selected dependency link. Independent review
 found no blockers and **5/5** candidate-command tests pass, including two real
 temporary Git worktrees, preservation of unrelated original edits and mismatches.
 This is two-member source preparation, not managed multi-repo execution.
+
+Windows native acceptance then built and opened a source candidate from detached
+Platform `e801febd` and Runtime `53965660` worktrees. Both source builds and the
+actual initial setup screen passed inspection. The candidate inspector matched
+both commits and copied input digests; no provider/authentication was configured.
+Normal shutdown drained its three owned processes, independently confirmed
+absent while all six original Cats process identities remained. The owned
+worktrees and candidate receipts are retained for resumption.
+
+The following composition slice attaches that kind of observed candidate evidence
+to an existing Work implementation revision. The candidate command emits a
+credential-free three-field descriptor. An owner/admin selects it on the Work
+task and explicitly checks/attaches; the server verifies both clean source input
+sets, exact launch/host receipt, retained workspace/commit and owning Core
+Task/Run/revision records before one atomic build-artifact write. Code's existing
+artifact view exposes it. Duplicate attachment is inert; cancellation history
+and task/run statuses stay unchanged. It starts no Desktop/provider and grants
+no new execution. A host receipt is not independent OS exit or bug-fix proof.
+
+Independent review cleared the composition after fixes for extra root inputs,
+inherited Git routing/shared-index writes, source changes during final host
+observation and parent junction replacement. Server, renderer and test TypeScript
+checks pass. Fifteen focused server/UI/command checks pass across the final runs;
+the two added junction regressions required correcting Windows fixture copying,
+then both passed. The prior architecture/dependency check also passed. This is
+an additive Core artifact, requiring no persisted-data migration. Full main CI
+follows the normal authorized push.
 
 A prepared single ordinary-provider contribution acceptance remains unrun:
 automatic approval review rejected sending bundled knowledge/synthetic input to
@@ -78,9 +105,9 @@ was copied or inference sent. Continue unaffected implementation; do not replay
 this check or reuse consumed older approvals. Consumer request assembly in that
 prepared check is explicitly stubbed, not live knowledge-quality evidence.
 
-Next compose retained Runtime workspaces and candidate receipts with existing
-Core records, validate the ordinary provider contribution path and complete the
-independent knowledge handoff. The read-only audit confirmed existing Work
+Next validate the ordinary provider contribution path and complete the independent
+knowledge handoff, preserving the pending authorization boundary. The read-only
+audit confirmed existing Work
 collaboration already owns admission, implementation/review Runs, worktrees,
 revision capture and restart fencing; reuse it rather than creating a scheduler.
 AC-01–06 still need Cats-specific evidence/composition; AC-08 has the new operation

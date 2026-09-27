@@ -155,6 +155,9 @@ test('candidate-only control authenticates, captures only its window and confirm
   const status = await operateCandidate('status', candidateRoot);
   assert.equal(status.launchId, launchId);
   assert.equal(status.services[0].ready, true);
+  const descriptor = await operateCandidate('evidence', candidateRoot);
+  assert.deepEqual(await json(descriptor.filename), { root: candidateRoot, launchId, instanceId: control.instanceId });
+  assert.equal((await readFile(descriptor.filename, 'utf8')).includes(token), false);
   const shot = await operateCandidate('screenshot', candidateRoot);
   assert.deepEqual(await readFile(shot.filename), png);
   assert.equal(captured, 1);
@@ -208,6 +211,8 @@ test('candidate-only control authenticates, captures only its window and confirm
   const terminal = await operateCandidate('stop', candidateRoot);
   assert.equal(terminal.state, 'drained');
   assert.equal(terminal.services[0].pid, null);
+  assert.deepEqual(await json((await operateCandidate('evidence', candidateRoot)).filename),
+    { root: candidateRoot, launchId, instanceId: control.instanceId });
   await assert.rejects(operateCandidate('screenshot', candidateRoot), /has stopped/u);
   await assert.rejects(operateCandidate('input', candidateRoot, actionFile), /has stopped/u);
   replacement = await startDesktopCandidateControl({ profile, token,

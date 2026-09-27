@@ -1,4 +1,11 @@
 export const messageKeys = {
+  workTaskCandidateTitle: 'work.task.candidateTitle',
+  workTaskCandidateDescription: 'work.task.candidateDescription',
+  workTaskCandidateFile: 'work.task.candidateFile',
+  workTaskCandidateAttach: 'work.task.candidateAttach',
+  workTaskCandidateChecking: 'work.task.candidateChecking',
+  workTaskCandidateError: 'work.task.candidateError',
+  workTaskCandidateOpen: 'work.task.candidateOpen',
   appBrandName: 'app.brandName',
   appLoadingWithSurface: 'app.loadingWithSurface',
   appLoadingEllipsis: 'app.loadingEllipsis',

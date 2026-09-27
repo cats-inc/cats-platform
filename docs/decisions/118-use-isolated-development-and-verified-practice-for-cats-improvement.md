@@ -22,6 +22,13 @@ split is the requested direction; the remaining implementation design is propose
 
 ## Context
 
+Candidate evidence composition reuses the existing Work implementation revision
+and Core build artifact, surfaced by Code's existing artifact projection. A
+Platform-owned local inspector validates source/control identity; Work owns the
+atomic record association. Attaching evidence runs read-only Git inspection; it
+never starts a Desktop/provider, sends a model request, changes a Run's lifecycle
+or broadens the file-only worker grant.
+
 The 2026-09-27 completion continuation adds the bounded owner-confirmed
 `code.session.open` operation. It reuses the common tool boundary, conversation
 delegate and Runtime activation instead of introducing another session engine.

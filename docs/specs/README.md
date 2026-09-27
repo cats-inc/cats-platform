@@ -173,6 +173,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-09-27 (SPEC-117 adds confirmed Code opening and matching candidate dependencies for fresh worktrees; broader managed development and knowledge-quality gates remain open.)*
+*Last updated: 2026-09-27 (SPEC-117 adds confirmed Code opening and verified candidate evidence attached to retained Work revisions; broader managed development and knowledge-quality gates remain open.)*
 
 *See also: [plans/](../plans/) for implementation plans*

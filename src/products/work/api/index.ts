@@ -72,6 +72,7 @@ import { routeWorkExternalIssueImportApi } from './externalIssueImportRoutes.js'
 import { routeWorkProductCrudApi } from './productCrudRoutes.js';
 import { routeWorkRunCancellationApi } from './runCancellationRoutes.js';
 import { routeWorkScheduleApi } from './scheduleRoutes.js';
+import { routeWorkCandidateEvidenceApi } from './candidateEvidenceRoutes.js';
 import {
   matchRoute,
   sendJson,
@@ -543,6 +544,7 @@ export function createWorkWorkItemDetailPayload(
 export async function routeWorkApi(
   context: WorkApiRouteContext,
 ): Promise<boolean> {
+  if (await routeWorkCandidateEvidenceApi(context)) return true;
   // SPEC-090 link routes (createLink / removeLink / listLinks)
   if (await routeWorkLinksApi(context)) {
     return true;

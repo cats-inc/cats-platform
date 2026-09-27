@@ -57,6 +57,20 @@ coding task or native/provider acceptance. See PLAN-109 for executed evidence.
 
 ## Minimal source candidate workflow (authorized 2026-09-27)
 
+The owner can attach an existing candidate to an existing Work
+implementation revision. An owner/admin supplies its root and exact launch/host
+identity. Platform reads the candidate's own control endpoint and source bytes;
+Work validates its existing Task/Run/revision artifact before and during one
+atomic artifact write. The two-member receipt distinguishes the implementation
+member from its dependency baseline. Copied build inputs must match the declared
+Git commit and source digest. The artifact is observed build evidence, not a bug
+verdict, independent approval, publication or a new execution grant. Duplicate
+attachment is inert and cancellation preserves existing evidence. The candidate
+command emits a credential-free descriptor; the Work task detail accepts it
+through an explicit check-and-attach action. Source inspection uses a private
+Git index and rejects changed input inventories, digests and physical boundaries
+again after the final host observation. It never starts a Desktop or provider.
+
 Fresh worktrees may select existing Platform and Runtime dependency checkouts
 explicitly. The command requires identical package/lock bytes, records dependency
 origins and Git common directories, and resolves Electron through the selected

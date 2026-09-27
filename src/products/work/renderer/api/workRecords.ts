@@ -48,6 +48,14 @@ export type {
   CoreWorkItemStatus,
 };
 
+export async function attachCandidateEvidence(taskId: string,
+  receipt: { root: string; launchId: string; instanceId: string }, errorMessage: string,
+): Promise<{ artifactId: string; created: boolean; path: string }> {
+  return expectJson(await fetch(`${buildWorkApiTaskPath(taskId)}/candidate-evidence`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(receipt),
+  }), errorMessage);
+}
+
 export interface CreateProjectInput {
   id?: string;
   title: string;

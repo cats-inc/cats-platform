@@ -750,6 +750,7 @@ GET /api/work/projects/{projectId}
 GET /api/work/work-items
 GET /api/work/work-items/{workItemId}
 GET /api/work/tasks/{taskId}
+POST /api/work/tasks/{taskId}/candidate-evidence
 GET /api/work/delivery-readiness
 POST /api/work/external-bindings
 DELETE /api/work/external-bindings
@@ -852,6 +853,34 @@ POST /api/work/external-issue-imports
 This first slice intentionally reuses `Cats Core v1` instead of inventing a
 separate Work schema. Broader team-operating-model surfaces and later Work
 boards still remain future product slices.
+
+#### Candidate Desktop evidence
+
+`POST /api/work/tasks/{taskId}/candidate-evidence` requires normal authenticated
+owner/admin access and CSRF protection. Its JSON has exactly three string fields:
+`root` (absolute local candidate directory), `launchId` and `instanceId`. The
+source candidate command's `evidence` operation emits this descriptor without
+credentials. Unknown fields or a body over 8 KiB are rejected.
+
+The task must retain a verified managed implementation revision, completed Run
+and matching revision artifact owned by the current profile. Platform inspects
+the selected candidate's launch/control/host receipt and both source snapshots
+against their Git commits, inventories and digests. Work requires one member to
+match the retained implementation workspace and commit, then atomically rechecks
+the owning records before adding a Core build artifact linked to that Run. It
+records the second member as a dependency baseline and excludes control tokens
+and logs. No build, provider or Desktop starts; inspection uses local read-only
+Git commands with a private index. Task and Run statuses remain unchanged.
+
+Success returns `{ artifactId, created, path }`: `201` for a new artifact, `200`
+for an identical previous attachment. `path` opens the existing Code artifact
+detail. A cancelled task may retain/attach historical implementation evidence;
+this does not restart execution. Invalid identity, changed source/revision,
+unavailable candidate or failed checks return `409` with a bounded reason;
+non-owner/admin callers receive `403`. The task projection exposes optional
+`candidateEvidenceAvailable: true` when it has a retained implementation revision;
+the POST still performs all authoritative checks. This is observed build evidence,
+not a bug-fix verdict, independent approval or publication permission.
 
 #### Run stop and Mission cancel (SPEC-096)
 
