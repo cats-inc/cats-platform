@@ -6,8 +6,15 @@ Implementation checkpoint, 2026-09-28: the required FR-01–FR-23 mechanisms are
 implemented and independently reviewed. The final missing owner draft deletion
 and exact knowledge artifact inventory are closed; focused checks passed 62/62.
 PLAN-109 maps the existing mechanisms and remaining acceptance. Overall decision
-acceptance, live quality, native OS and release validation remain pending; the
+acceptance, live quality and broader native OS validation remain pending; the
 history below must not be read as a fresh implementation backlog.
+
+Authorized verification/publication checkpoint, 2026-09-28: the bounded Windows
+manual-knowledge flow passed with no model call or installed-profile mutation.
+Desktop standard preview 0.5.8 and npm Platform 0.5.8 / Runtime 0.3.2 are published;
+CI, artifact identities and platform trust checks passed. PLAN-109 and the
+deployment record retain the exact evidence. This does not accept the broader
+managed-development or independent knowledge-quality scenarios.
 
 Proposed overall, 2026-09-24. After the drafting pass, the owner authorized the
 initial Code-entry knowledge-consumption work package. That explain/guide slice

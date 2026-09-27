@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Required mechanisms implemented; live, quality, OS and release acceptance pending |
+| Status | Required mechanisms implemented; bounded native and release checks passed; broader acceptance pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Last updated | 2026-09-28 |
@@ -31,8 +31,12 @@ The owner subsequently authorized verification, corrective changes, Desktop
 standard-preview publication and npm publication. The selected compatible patches
 are Platform/Desktop **0.5.8** and Runtime **0.3.2** on npm `latest`. No launcher
 or App minimum changed; cats-one 0.2.0 and the existing Usage 0.4.0 pin remain.
-Publication is pending until successful workflows and published artifacts are
-verified; the earlier implementation-only restriction below is historical.
+Both npm versions and the Desktop preview are now published; the earlier
+implementation-only restriction below is historical. Platform source is
+`072ba670dc8cb7459d7a1c245b88c3738759ac42`, with Runtime
+`9fefd8e41512f200de6b7d4f1ed93fb7aa5e4dcb` pinned identically on all three OSes.
+The [release](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.8) and
+[deployment record](../deployment.md#npm-publication) retain publication evidence.
 
 A fresh isolated Windows Desktop profile passed the actual Electron-renderer and
 production-HTTP flow for both Catlas and Orchestrator: submit a synthetic draft,
@@ -54,6 +58,23 @@ supplement skills**, release **33 / 35 / 0**, with no provider calls. Platform's
 pre-release source CI `36347922431` passed. These checks close the bounded native
 manual-knowledge flow and distribution observations, not the wider live, quality
 or OS gates.
+
+The final Platform source CI and npm gate each passed **5,231 / 0 failed / 59
+skipped**; Runtime's npm gate passed **2,510 / 0 failed / 5 skipped**. Desktop's
+seven jobs passed and published ten assets; metadata, downloaded Windows hashes,
+macOS signing/notarization and all Runtime pins were verified. The actual Linux
+`.deb` was inspected without execution: its public hash matches the downloaded
+build, both knowledge bytes match the embedded schema/revision/SHA-256/size
+inventories, and its preview profile physically contains 36 skills including the
+three development supplements. This is package-content evidence, not native Linux
+or a real knowledge-promotion quality verdict.
+
+The two public npm tarballs passed clean-prefix installation and CLI `--help`
+checks. Actual installed Platform consumers load Catlas and Orchestrator knowledge
+in English and Traditional Chinese without source-file overrides. Installed
+Runtime reports the release profile and 33 skills, with the preview supplement
+physically absent. No provider call was needed. Broader source-free live inference,
+reviewed promotion and existing-user upgrade scenarios remain distinct gates.
 
 ## Implementation closure checkpoint (2026-09-28)
 

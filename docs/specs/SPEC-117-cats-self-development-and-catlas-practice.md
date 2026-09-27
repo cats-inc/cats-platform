@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Required mechanisms implemented; live, quality, OS and release acceptance pending |
+| Status | Required mechanisms implemented; bounded native and release checks passed; broader acceptance pending |
 | Owner | Platform integration, with member-owned work packages |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Decision | [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
@@ -28,10 +28,12 @@ or training/fine-tuning the user's selected model.
 
 The required mechanisms are implemented on the current source line. PLAN-109's
 2026-09-28 closure table maps FR-01–FR-23 to those mechanisms and separates pending
-live/quality/OS/release acceptance. Conceptual record names below describe
+live/quality/OS acceptance. Conceptual record names below describe
 responsibilities, not additional APIs or schemas that must be introduced.
-Implementation closure does not mean the latest published Desktop contains all
-subsequent main changes or that the acceptance criteria have all passed.
+Desktop standard preview 0.5.8 and Platform npm 0.5.8 now ship this source with
+Runtime 0.3.2. Bounded Windows manual-knowledge and published-package checks passed;
+PLAN-109 records their exact scope. The broader acceptance criteria have not all
+passed, and subsequent main changes still require their own publication.
 
 The follow-up [SPEC-118](SPEC-118-orchestrator-knowledge-and-collaboration-operations.md)
 implements shared product-knowledge consumption by Orchestrator and stages

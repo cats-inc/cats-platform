@@ -62,7 +62,9 @@ mechanisms are implemented, including owner draft deletion and exact knowledge
 identity in Desktop staging inventories. The 2026-09-28 closure table maps all
 FR-01–FR-23. Live managed development, independent lesson quality/promotion and
 combined installed-profile acceptance remain pending. ADR is Proposed overall;
-implementation closure is distinct from acceptance and publication. Platform owns
+implementation closure is distinct from overall acceptance. Desktop standard
+preview 0.5.8 and npm Platform 0.5.8 / Runtime 0.3.2 are published, with bounded
+Windows manual-knowledge and artifact checks recorded in PLAN-109. Platform owns
 this joint design, with explicit Runtime, cats-one and Apps work packages.
 
 Work now retains paired source inputs and candidate status/stop evidence. Explicit

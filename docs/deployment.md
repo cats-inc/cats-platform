@@ -75,15 +75,36 @@ Watch supervisors retain terminal ownership across file-change/crash restarts.
 
 ### npm publication
 
-Platform **0.5.8** is prepared for npm `latest` together with the Desktop standard
-preview and Runtime **0.3.2**. It includes the ordinary-agent contribution and
+Platform **0.5.8** was published on 2026-09-28 (Taipei) to npm `latest` and as a
+[Desktop standard preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.8),
+from `072ba670dc8cb7459d7a1c245b88c3738759ac42`. Desktop bundles Runtime **0.3.2**
+at `9fefd8e41512f200de6b7d4f1ed93fb7aa5e4dcb` on every OS. It includes ordinary-agent contribution and
 diagnostic entry points, owner-reviewed knowledge adoption/deletion, and isolated
 development/practice mechanisms described in PLAN-109. Compatibility review found
 no breaking public API, CLI/config or persisted-data contract since npm 0.5.1;
 no new data migration or launcher minimum is required. The bounded Windows native
 knowledge flow and paired skill-distribution check passed; wider live quality and
-other-OS acceptance remain separate. Publication receipts will follow successful
-workflows and artifact verification.
+other-OS acceptance remain separate.
+
+[Source CI](https://github.com/cats-inc/cats-platform/actions/runs/36349951984) and
+the [npm publication gate](https://github.com/cats-inc/cats-platform/actions/runs/36350012826)
+both passed 5,231 tests, with 59 skipped and no failures. The
+[Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36350464314)
+passed all seven jobs and published ten assets. All three update metadata files
+reference the expected uploaded assets. The downloaded Windows installer matches
+GitHub SHA-256 and updater SHA-512; the inspected Linux package matches its public
+SHA-256 and contains the exact recorded knowledge identities and 36 preview skills.
+Both npm registry versions, source commits and tarball integrity are verified.
+Both public tarballs also passed installation into a new private prefix and CLI
+entry-point checks. The installed Platform loaders read both bundled knowledge
+files in English and Traditional Chinese; installed Runtime exposes 33 release
+skills with the preview directory physically absent. No provider calls were made.
+
+Trust is macOS **signed + notarized**, Windows **unsigned: no certificate** and
+Linux **n/a**. macOS retains team `97JBZ3MFX5` and the same certificate as 0.5.7;
+app/helper signature, stapled ticket and Gatekeeper checks passed. Standard 0.5.7
+Windows/macOS installations retain their self-update path; Linux still uses a
+manual `.deb` install. No installed user profile was replaced during verification.
 
 Publish `@cats-inc/cats-platform` through the manual
 [npm publish workflow](../.github/workflows/npm-publish.yml), which runs the full
@@ -224,7 +245,7 @@ Consequences of an unsigned-override preview while it is the newest prerelease:
 Published Desktop history (versions not listed were not published as Desktop):
 
 - 0.3.0 and 0.3.1: before macOS credentials existed; every platform unsigned.
-- Standard: 0.3.2, 0.3.6, 0.3.7, 0.3.8, 0.4.0, 0.4.1, 0.4.2, 0.4.3, 0.4.5, 0.4.7, 0.5.0, 0.5.1, 0.5.2, 0.5.3, 0.5.4, 0.5.5, 0.5.6, 0.5.7.
+- Standard: 0.3.2, 0.3.6, 0.3.7, 0.3.8, 0.4.0, 0.4.1, 0.4.2, 0.4.3, 0.4.5, 0.4.7, 0.5.0, 0.5.1, 0.5.2, 0.5.3, 0.5.4, 0.5.5, 0.5.6, 0.5.7, 0.5.8.
 - Unsigned override: 0.3.3, 0.4.6.
 
 ### Product knowledge assets
