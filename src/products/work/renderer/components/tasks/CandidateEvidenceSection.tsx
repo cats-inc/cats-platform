@@ -3,18 +3,21 @@ import { Link } from 'react-router-dom';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { attachCandidateEvidence, prepareCandidate } from '../../api/workRecords.js';
 
-export function CandidateEvidenceSection({ taskId }: { taskId: string }): JSX.Element {
+export function CandidateEvidenceSection({ taskId, companionTasks = [] }: {
+  taskId: string; companionTasks?: Array<{ id: string; title: string }>;
+}): JSX.Element {
   const { t } = useI18n();
   const [receipt, setReceipt] = useState<{ root: string; launchId: string; instanceId: string } | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [root, setRoot] = useState(''), [prepared, setPrepared] = useState<Record<string, unknown> | null>(null);
+  const [companionTaskId, setCompanionTaskId] = useState('');
   const requestId = useRef('');
   const selection = useRef(0);
   const lifetime = useRef(0);
   useEffect(() => {
     lifetime.current++; selection.current++;
-    setReceipt(null); setResult(null); setPrepared(null); setRoot(''); setBusy(false); setError(false); requestId.current = '';
+    setReceipt(null); setResult(null); setPrepared(null); setRoot(''); setCompanionTaskId(''); setBusy(false); setError(false); requestId.current = '';
     return () => { lifetime.current++; selection.current++; };
   }, [taskId]);
   return <section className="operatorPanel">
@@ -26,7 +29,8 @@ export function CandidateEvidenceSection({ taskId }: { taskId: string }): JSX.El
       <form onSubmit={event => { event.preventDefault(); if (!root.trim() || busy) return;
         const current = lifetime.current;
         requestId.current ||= crypto.randomUUID(); setBusy(true); setError(false);
-        void prepareCandidate(taskId, { root: root.trim(), requestId: requestId.current }, t('workTaskCandidateError'))
+        void prepareCandidate(taskId, { root: root.trim(), requestId: requestId.current,
+          ...(companionTaskId ? { companionTaskId } : {}) }, t('workTaskCandidateError'))
           .then(value => { if (current === lifetime.current) setPrepared(value.ownership); })
           .catch(() => { if (current === lifetime.current) setError(true); })
           .finally(() => { if (current === lifetime.current) setBusy(false); });
@@ -34,6 +38,12 @@ export function CandidateEvidenceSection({ taskId }: { taskId: string }): JSX.El
         <label>{t('workTaskCandidateRoot')}<input value={root} disabled={busy} onChange={event => {
           setRoot(event.target.value); setPrepared(null); requestId.current = '';
         }} /></label>
+        <label>{t('workTaskCandidateCompanion')}<select value={companionTaskId} disabled={busy} onChange={event => {
+          setCompanionTaskId(event.target.value); setPrepared(null); requestId.current = '';
+        }}>
+          <option value="">{t('workTaskCandidateSingleMember')}</option>
+          {companionTasks.filter(task => task.id !== taskId).map(task => <option key={task.id} value={task.id}>{task.title}</option>)}
+        </select></label>
         <button type="submit" disabled={!root.trim() || busy}>{t('workTaskCandidatePrepare')}</button>
       </form>
       {prepared ? <a href={`data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(prepared, null, 2))}`}

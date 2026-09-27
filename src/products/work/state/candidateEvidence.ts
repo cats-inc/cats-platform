@@ -6,7 +6,8 @@ import type { CatsCoreState } from '../../../core/types.js';
 import { upsertCoreArtifact } from '../../../core/model/index.js';
 import { inspectCandidateBuild, type CandidateEvidenceRequest, type CandidateBuildEvidence } from '../../../platform/development/candidateEvidence.js';
 import { readCollaborationIntent } from './collaborationRecords.js';
-import { readCandidateOwnership, type CandidateOwnership } from '../../../platform/development/candidateOwnership.js';
+import { candidateRevisionRef, createCandidateRevisionSet, readCandidateOwnership, type CandidateOwnership,
+  type CandidateRevisionRef } from '../../../platform/development/candidateOwnership.js';
 
 export type AttachCandidateRequest = CandidateEvidenceRequest;
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -33,36 +34,51 @@ function owningRevision(core: CatsCoreState, taskId: string) {
 }
 
 export async function prepareWorkCandidate(options: {
-  coreStore: CoreStore; taskId: string; request: { requestId: string; root: string };
+  coreStore: CoreStore; taskId: string; request: { requestId: string; root: string; companionTaskId?: string };
 }) {
   const { coreStore, taskId, request } = options;
   if (!/^[a-zA-Z0-9_-]{8,96}$/u.test(request.requestId) || !path.isAbsolute(request.root)
-    || request.root.length > 4096) throw new Error('invalid_candidate_request');
+    || request.root.length > 4096 || (request.companionTaskId !== undefined
+      && (typeof request.companionTaskId !== 'string' || !request.companionTaskId
+        || request.companionTaskId.length > 256 || request.companionTaskId === taskId))) throw new Error('invalid_candidate_request');
   const root = path.join(await realpath(path.dirname(request.root)), path.basename(request.root));
   const core = await coreStore.readCore(), before = owningRevision(core, taskId);
+  const owners = [{ taskId, revision: before }, ...(request.companionTaskId
+    ? [{ taskId: request.companionTaskId, revision: owningRevision(core, request.companionTaskId) }] : [])];
+  const refs: CandidateRevisionRef[] = [];
+  for (const owner of owners) {
+    const checkout = await realpath(owner.revision.evidence.workspacePath);
+    const manifest = JSON.parse(await readFile(path.join(checkout, 'package.json'), 'utf8')) as { name?: string };
+    const member = manifest.name === '@cats-inc/cats-platform' ? 'platform' : manifest.name === '@cats-inc/cats-runtime' ? 'runtime' : null;
+    if (!member) throw new Error('cats_member_required');
+    const relative = path.relative(checkout, root);
+    if (!relative || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`))) throw new Error('candidate_source_boundary');
+    refs.push({ member, taskId: owner.taskId, runId: owner.revision.stage.runId,
+      revisionArtifactId: owner.revision.evidence.artifactId, checkout, commitId: owner.revision.evidence.commitId });
+  }
+  if (refs.length === 2 && refs[0]!.member === refs[1]!.member) throw new Error('cats_distinct_members_required');
+  const primary = refs[0]!;
+  const revisionSet = refs.length === 2 ? createCandidateRevisionSet(refs) : undefined;
   const artifactId = `artifact-candidate-${digest({ taskId, requestId: request.requestId }).slice(0, 32)}`;
   const prior = core.artifacts.find(row => row.id === artifactId);
   if (prior) {
     const saved = readCandidateOwnership(prior.metadata.ownership);
     if (prior.metadata.ownerActorId !== before.owner || !samePath(saved.root, root)
       || saved.taskId !== taskId || saved.runId !== before.stage.runId
-      || saved.revisionArtifactId !== before.evidence.artifactId || saved.commitId !== before.evidence.commitId) throw new Error('candidate_preparation_conflict');
+      || saved.revisionArtifactId !== before.evidence.artifactId || saved.commitId !== before.evidence.commitId
+      || digest(candidateRevisionRef(saved)) !== digest(primary)
+      || saved.revisionSet?.sha256 !== revisionSet?.sha256) throw new Error('candidate_preparation_conflict');
+    const current = await coreStore.readCore();
+    for (const owner of owners) if (digest(owningRevision(current, owner.taskId)) !== digest(owner.revision)) throw new Error('candidate_owner_revision_changed');
     return { created: false, artifactId, ownership: saved };
   }
-  const checkout = await realpath(before.evidence.workspacePath);
-  const manifest = JSON.parse(await readFile(path.join(checkout, 'package.json'), 'utf8')) as { name?: string };
-  const member = manifest.name === '@cats-inc/cats-platform' ? 'platform' : manifest.name === '@cats-inc/cats-runtime' ? 'runtime' : null;
-  if (!member) throw new Error('cats_member_required');
   if (await lstat(root).catch(error => { if (error.code === 'ENOENT') return null; throw error; })) throw new Error('candidate_new_root_required');
-  const relative = path.relative(checkout, root);
-  if (!relative || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`))) throw new Error('candidate_source_boundary');
-  const ownership: CandidateOwnership = { schemaVersion: 1, kind: 'cats-desktop-candidate', artifactId,
-    taskId, runId: before.stage.runId, revisionArtifactId: before.evidence.artifactId,
-    root, member, checkout, commitId: before.evidence.commitId, preparedAt: new Date().toISOString() };
+  const ownership = readCandidateOwnership({ schemaVersion: 1, kind: 'cats-desktop-candidate', artifactId,
+    ...primary, root, preparedAt: new Date().toISOString(), ...(revisionSet ? { revisionSet } : {}) });
   if (Buffer.byteLength(JSON.stringify(ownership), 'utf8') > 8192) throw new Error('candidate_request_too_large');
   let created = false, result = ownership;
   await coreStore.updateCore(current => {
-    if (digest(owningRevision(current, taskId)) !== digest(before)) throw new Error('candidate_owner_revision_changed');
+    for (const owner of owners) if (digest(owningRevision(current, owner.taskId)) !== digest(owner.revision)) throw new Error('candidate_owner_revision_changed');
     const existing = current.artifacts.find(row => row.id === artifactId);
     if (existing) {
       const saved = readCandidateOwnership(existing.metadata.ownership);
@@ -74,7 +90,8 @@ export async function prepareWorkCandidate(options: {
     return upsertCoreArtifact(current, { id: artifactId, taskId: before.stage.taskId, runId: before.stage.runId,
       conversationId: before.conversationId, kind: 'build', status: 'draft', path: root,
       title: `Cats Desktop candidate ${ownership.commitId.slice(0, 12)}`,
-      summary: 'Prepared ownership record. Build and launch have not been observed.',
+      summary: revisionSet ? 'Prepared both managed member revisions. Integrated build and validation have not been observed.'
+        : 'Prepared ownership record. Build and launch have not been observed.',
       metadata: { source: 'work-candidate-preparation', ownerActorId: before.owner, ownership,
         collaborationId: taskId, revisionArtifactId: before.evidence.artifactId, claim: 'prepared_only' },
     }).core;
@@ -88,8 +105,21 @@ export async function attachWorkCandidateEvidence(options: {
   inspect?: (request: CandidateEvidenceRequest) => Promise<CandidateBuildEvidence>;
 }) {
   const { coreStore, taskId, request } = options;
-  const before = owningRevision(await coreStore.readCore(), taskId);
+  const baseline = await coreStore.readCore();
+  const before = owningRevision(baseline, taskId);
   const observed = await (options.inspect ?? inspectCandidateBuild)(request);
+  const ownership = observed.ownership === undefined ? undefined : readCandidateOwnership(observed.ownership);
+  const owners = [{ taskId, revision: before }];
+  if (ownership?.revisionSet) {
+    for (const ref of ownership.revisionSet.members) {
+      const revision = ref.taskId === taskId ? before : owningRevision(baseline, ref.taskId);
+      if (ref.taskId !== taskId) owners.push({ taskId: ref.taskId, revision });
+      if (ref.runId !== revision.stage.runId || ref.revisionArtifactId !== revision.evidence.artifactId
+        || ref.commitId !== revision.evidence.commitId || !samePath(ref.checkout, revision.evidence.workspacePath)
+        || observed.members[ref.member].head !== ref.commitId
+        || !samePath(observed.members[ref.member].checkout, ref.checkout)) throw new Error('candidate_implementation_revision_mismatch');
+    }
+  }
   const matches = (['platform', 'runtime'] as const).filter(key => observed.members[key].head === before.evidence.commitId
     && samePath(observed.members[key].checkout, before.evidence.workspacePath));
   const memberKey = matches[0];
@@ -98,12 +128,12 @@ export async function attachWorkCandidateEvidence(options: {
   }
   const member = observed.members[memberKey];
   const identity = { taskId, runId: before.stage.runId, revisionArtifactId: before.evidence.artifactId,
-    root: observed.root, launchId: observed.launchId, instanceId: observed.instanceId, member: memberKey, members: observed.members };
-  const ownership = observed.ownership;
+    root: observed.root, launchId: observed.launchId, instanceId: observed.instanceId, member: memberKey, members: observed.members,
+    ...(ownership?.revisionSet ? { revisionSet: ownership.revisionSet } : {}) };
   const id = ownership?.artifactId ?? `artifact-candidate-${digest(identity).slice(0, 32)}`;
   let created = false;
   await coreStore.updateCore(core => {
-    if (digest(owningRevision(core, taskId)) !== digest(before)) throw new Error('candidate_owner_revision_changed');
+    for (const owner of owners) if (digest(owningRevision(core, owner.taskId)) !== digest(owner.revision)) throw new Error('candidate_owner_revision_changed');
     const existing = core.artifacts.find(row => row.id === id);
     if (existing?.status === 'draft' && !ownership) throw new Error('candidate_preparation_conflict');
     if (ownership && (!existing || existing.metadata.ownerActorId !== before.owner
@@ -122,7 +152,8 @@ export async function attachWorkCandidateEvidence(options: {
       metadata: { source: 'work-candidate', candidateIdentity: digest(identity), revisionArtifactId: before.evidence.artifactId,
         ...(ownership ? { ownerActorId: before.owner, ownership } : {}),
         collaborationId: taskId, implementationTaskId: before.stage.taskId, implementationMember: memberKey,
-        dependencyMember: memberKey === 'platform' ? 'runtime' : 'platform', candidate: observed,
+        ...(ownership?.revisionSet ? { revisionSet: ownership.revisionSet, integrationValidation: 'not_observed' }
+          : { dependencyMember: memberKey === 'platform' ? 'runtime' : 'platform' }), candidate: observed,
         verification: observed.verification, claim: 'observed_build_evidence' },
     }).core;
   });

@@ -12,6 +12,8 @@ export const messageKeys = {
   workTaskCandidatePrepare: 'work.task.candidatePrepare',
   workTaskCandidatePreparationDescription: 'work.task.candidatePreparationDescription',
   workTaskCandidateRoot: 'work.task.candidateRoot',
+  workTaskCandidateCompanion: 'work.task.candidateCompanion',
+  workTaskCandidateSingleMember: 'work.task.candidateSingleMember',
   workTaskCandidateDownload: 'work.task.candidateDownload',
   workTaskCandidateDescription: 'work.task.candidateDescription',
   workTaskCandidateFile: 'work.task.candidateFile',

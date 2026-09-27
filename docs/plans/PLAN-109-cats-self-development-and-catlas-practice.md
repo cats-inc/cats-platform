@@ -33,6 +33,8 @@ remaining implementation and proportionate isolated validation, not another
 version bump, publication or mutation of the installed user profile. The earlier
 70% overall / 85% minimal-path figures were rough functional estimates, not
 acceptance measurements. Use AC-01–AC-15 and their actual evidence for closure.
+The owner clarified that bounding a live test does not authorize stopping the
+rest of the plan. Keep implementing unblocked slices after each checkpoint.
 
 Do not restart completed native authoring, preview publication or the retired
 expanding evaluator harness. Existing content-profile filtering, preview skills,
@@ -145,7 +147,7 @@ retained nested-root cases. Independent review cleared hardlink and retained-pat
 fixes. This is real hydration/filesystem evidence with zero provider calls, not
 live model usage or a changed installed Desktop/Runtime pin.
 
-The current slice adds Work's prelaunch draft build record and downloadable
+The prelaunch slice adds Work's draft build record and downloadable
 ownership descriptor. CLI start optionally checks it before copying and against
 the snapshot receipt before building; complete commit-byte inspection stays at
 attachment. The same artifact becomes ready only after exact descriptor and
@@ -195,10 +197,46 @@ the build and **41 guard/telemetry tests** passed, and independent review found
 no blocker. Final full CI `36308343716` passed for Runtime `34095d2b`. Installed
 Desktop/Runtime pins and versions are unchanged.
 
-Next resolve the native provider permission mismatch without repeating inference,
-then validate the ordinary contribution path and independent knowledge handoff
-under a new explicit bounded test authorization. The read-only
-audit confirmed existing Work
+Auth-free Windows diagnosis subsequently isolated the cause: the fresh test
+profile omitted `windows.sandbox`. Without it, native bootstrap returned readOnly;
+explicit elevated/unelevated modes returned workspaceWrite. The installed user's
+mode was already unelevated, so this does not establish an installed Desktop
+defect. A fresh auth-free unelevated probe reported ready and successfully wrote
+an owned file and queried an owned loopback fixture. No setup or policy widening
+was performed. Runtime `fad7d31b` adds a conditional sandbox-setup hint to the
+existing mismatch error; build, **43 focused checks**, review and full CI
+`36326165092` passed.
+
+After separate explicit owner authorization, one second gpt-6-astra turn used
+that mode and successfully submitted exactly one bilingual pending-review draft
+through the ordinary Code conversation capability. It ran **59.5 seconds** and
+used **33,587 measured tokens**, exceeding the 24,000 post-response threshold;
+the original acceptance report remains failed on that threshold. It is not a
+hard spending cap. No further model call followed. A zero-provider continuation
+read the persisted draft, confirmed provenance and preserved original content,
+adopted it through the owner HTTP API, observed the new text in production Catlas
+request assembly, then revoked it and verified the original bundle returned.
+The consuming model was stubbed, so this proves submission and handoff, not
+independent advice quality. Runtime exit and temporary authentication removal
+were independently confirmed; all synthetic state is isolated from user data.
+Private `ordinary-provider-02/result.json` and `local-followup.json` retain both
+the budget failure and passing local continuation.
+
+The next candidate slice optionally pairs a second retained Work implementation.
+It freezes exactly Platform/Runtime Task/Run/revision references with one canonical
+digest, verifies both clean CLI source checkouts and copied inputs, and rechecks
+both owners/revisions on preparation, retry and attachment. The existing artifact
+is promoted to build evidence; integration validation remains `not_observed`.
+Old single-member descriptors retain their dependency baseline. Work exposes one
+optional task selector; no scheduler, build grant or migration is introduced.
+Server/renderer/test typechecks and **24 distinct focused checks** passed,
+including a rerun of the preparation/ready retry owner-race regression. An initial
+ad-hoc UI bundle used incorrect dependency externalization; rebuilding with the
+repository's normal test-bundler settings passed all five UI checks. Independent
+review found no blocker. No Desktop or provider was launched by this slice.
+
+Next compose explicit candidate lifecycle control and independent integration
+validation with these existing records. The read-only audit confirmed existing Work
 collaboration already owns admission, implementation/review Runs, worktrees,
 revision capture and restart fencing; reuse it rather than creating a scheduler.
 AC-01–06 still need Cats-specific evidence/composition; AC-08 has the new operation

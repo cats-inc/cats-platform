@@ -380,27 +380,54 @@ export async function readCandidateOwnershipFile(file, root, workspace) {
   const value = await readJson(file);
   if (!value || typeof value !== 'object' || Array.isArray(value) || value.schemaVersion !== 1
     || value.kind !== 'cats-desktop-candidate'
-    || Object.keys(value).sort().join(',') !== 'artifactId,checkout,commitId,kind,member,preparedAt,revisionArtifactId,root,runId,schemaVersion,taskId'
+    || Object.keys(value).filter(key => key !== 'revisionSet').sort().join(',') !== 'artifactId,checkout,commitId,kind,member,preparedAt,revisionArtifactId,root,runId,schemaVersion,taskId'
     || !['platform', 'runtime'].includes(value.member)
     || ['artifactId', 'taskId', 'runId', 'revisionArtifactId', 'root', 'checkout', 'commitId', 'preparedAt'].some(key =>
       typeof value[key] !== 'string' || !value[key] || value[key].length > 4096)
     || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u.test(value.commitId) || !Number.isFinite(Date.parse(value.preparedAt))
     || value.root !== root || value.checkout !== workspace[`${value.member}Root`]) throw new Error('Candidate ownership does not match the selected workspace/root.');
-  const source = workspace[`${value.member}Root`];
-  const git = async (...args) => (await exec('git', ['-c', 'core.fsmonitor=false', ...args], {
-    cwd: source, windowsHide: true, timeout: 15000, maxBuffer: 1024 * 1024,
-    env: { ...candidateEnvironment(process.env), GIT_OPTIONAL_LOCKS: '0' },
-  })).stdout.trim();
-  if (await git('status', '--porcelain') || await git('rev-parse', 'HEAD') !== value.commitId) {
-    throw new Error('Candidate ownership requires the recorded clean revision.');
+  for (const ref of candidateOwnershipRevisions(value)) {
+    const source = workspace[`${ref.member}Root`];
+    if (source !== ref.checkout) throw new Error('Candidate ownership does not match the selected workspace/root.');
+    const git = async (...args) => (await exec('git', ['-c', 'core.fsmonitor=false', ...args], {
+      cwd: source, windowsHide: true, timeout: 15000, maxBuffer: 1024 * 1024,
+      env: { ...candidateEnvironment(process.env), GIT_OPTIONAL_LOCKS: '0' },
+    })).stdout.trim();
+    if (await git('status', '--porcelain') || await git('rev-parse', 'HEAD') !== ref.commitId) {
+      throw new Error('Candidate ownership requires the recorded clean revision.');
+    }
   }
   return value;
 }
 
+function candidateOwnershipRevisions(ownership) {
+  if (!Object.hasOwn(ownership, 'revisionSet')) return [ownership];
+  const set = ownership.revisionSet;
+  if (!set || typeof set !== 'object' || Object.keys(set).sort().join(',') !== 'members,sha256'
+    || !Array.isArray(set.members) || set.members.length !== 2
+    || set.members.some((ref, index) => !ref || typeof ref !== 'object' || Array.isArray(ref)
+      || Object.keys(ref).sort().join(',') !== 'checkout,commitId,member,revisionArtifactId,runId,taskId'
+      || ref.member !== (index === 0 ? 'platform' : 'runtime')
+      || ['taskId', 'runId', 'revisionArtifactId', 'checkout', 'commitId'].some(key =>
+        typeof ref[key] !== 'string' || !ref[key] || ref[key].length > 4096)
+      || !path.isAbsolute(ref.checkout) || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u.test(ref.commitId))
+    || ['taskId', 'runId', 'revisionArtifactId'].some(key => set.members[0][key] === set.members[1][key])) {
+    throw new Error('Invalid candidate revision set; use the matching current candidate command.');
+  }
+  const canonical = ref => ({ member: ref.member, taskId: ref.taskId, runId: ref.runId,
+    revisionArtifactId: ref.revisionArtifactId, checkout: ref.checkout, commitId: ref.commitId });
+  const members = set.members.map(canonical);
+  if (set.sha256 !== sha256(JSON.stringify(members))
+    || !members.some(ref => JSON.stringify(ref) === JSON.stringify(canonical(ownership)))) {
+    throw new Error('Invalid candidate revision set; use the matching current candidate command.');
+  }
+  return members;
+}
+
 export function verifyCandidateOwnershipSources(ownership, sources) {
   if (sources.platform.dirty !== false || sources.runtime.dirty !== false
-    || sources[ownership.member].head !== ownership.commitId
-    || sources[ownership.member].checkout !== ownership.checkout) throw new Error('Candidate ownership requires the recorded clean revision.');
+    || candidateOwnershipRevisions(ownership).some(ref => sources[ref.member].head !== ref.commitId
+      || sources[ref.member].checkout !== ref.checkout)) throw new Error('Candidate ownership requires the recorded clean revision.');
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

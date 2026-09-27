@@ -17,6 +17,7 @@ import { upsertCoreArtifact, upsertCoreRun } from '../build/server/core/model/in
 import { buildCodeArtifactDetailProjection, buildCodeArtifactListProjection } from '../build/server/products/code/api/projection.js';
 import { buildWorkTaskListProjection } from '../build/server/products/work/api/projection.js';
 import { routeWorkCandidateEvidenceApi } from '../build/server/products/work/api/candidateEvidenceRoutes.js';
+import { readCandidateOwnership, createCandidateRevisionSet } from '../build/server/platform/development/candidateOwnership.js';
 
 const exec = promisify(execFile);
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -47,26 +48,129 @@ async function fixture(t) {
   return { root, directory, sources, request, launch, save, token };
 }
 
-async function coreFixture(f) {
-  const store = new MemoryChatStore(); let core = await store.readCore();
+async function coreFixture(f, member = 'platform', store = new MemoryChatStore()) {
+  let core = await store.readCore();
+  const suffix = member === 'platform' ? '' : `-${member}`;
+  const revisionId = `revision-artifact${suffix}`, sessionId = `session${suffix}`;
   const admitted = admitCollaboration(core, { sourceChannelId: 'source', sourceConversationId: 'conversation-source',
-    proposalMessageId: 'proposal', originalMessageId: 'original', originalGoalDigest: 'goal', ownerActorId: core.ownerProfile.actorId,
-    confirmationMessageId: 'confirm', proposalDigest: 'proposal-digest', goal: 'Fixture change', expectedOutput: 'Local revision',
-    conversationIntent: 'create', contextRevision: 'context', workspacePath: f.sources.platform.checkout,
+    proposalMessageId: `proposal${suffix}`, originalMessageId: `original${suffix}`, originalGoalDigest: `goal${suffix}`, ownerActorId: core.ownerProfile.actorId,
+    confirmationMessageId: `confirm${suffix}`, proposalDigest: `proposal-digest${suffix}`, goal: 'Fixture change', expectedOutput: 'Local revision',
+    conversationIntent: 'create', contextRevision: `context${suffix}`, workspacePath: f.sources[member].checkout,
     workers: { implementation: { catId: 'author', actorId: 'author', name: 'Author', target: { provider: 'fixture' } },
       review: { catId: 'reviewer', actorId: 'reviewer', name: 'Reviewer', target: { provider: 'fixture' } } },
     budget: { maxTokens: 100, maxDurationMs: 60000 } });
   core = admitted.core; const intent = admitted.intent, stage = intent.stages.implementation;
-  stage.status = 'result_ready'; stage.sessionId = 'session'; stage.workspacePath = f.sources.platform.checkout;
-  intent.implementationEvidence = { artifactId: 'revision-artifact', runId: stage.runId, sessionId: 'session',
-    workspacePath: stage.workspacePath, baselineCommitId: 'a'.repeat(40), commitId: f.sources.platform.head, validation: 'runtime_clean_new_head' };
+  stage.status = 'result_ready'; stage.sessionId = sessionId; stage.workspacePath = f.sources[member].checkout;
+  intent.implementationEvidence = { artifactId: revisionId, runId: stage.runId, sessionId,
+    workspacePath: stage.workspacePath, baselineCommitId: 'a'.repeat(40), commitId: f.sources[member].head, validation: 'runtime_clean_new_head' };
   core = upsertCoreRun(core, { id: stage.runId, taskId: stage.taskId, title: 'Implementation', status: 'completed',
     metadata: { collaborationId: intent.id, role: 'implementation' } }).core;
-  core = upsertCoreArtifact(core, { id: 'revision-artifact', taskId: stage.taskId, runId: stage.runId, title: 'Revision', kind: 'report', status: 'ready',
-    metadata: { source: 'work-collaboration', commitId: f.sources.platform.head, sessionId: 'session' } }).core;
+  core = upsertCoreArtifact(core, { id: revisionId, taskId: stage.taskId, runId: stage.runId, title: 'Revision', kind: 'report', status: 'ready',
+    metadata: { source: 'work-collaboration', commitId: f.sources[member].head, sessionId } }).core;
   await store.writeCore(writeCollaborationIntent(core, intent));
   return { store, intent, stage };
 }
+
+test('two managed member revisions share a fixed digest through preparation, CLI and attachment', async t => {
+  const f = await fixture(t), primary = await coreFixture(f);
+  const companion = await coreFixture(f, 'runtime', primary.store);
+  const root = path.join(f.directory, 'paired-candidate');
+  const request = { requestId: 'paired-candidate-record', root, companionTaskId: companion.intent.id };
+  const prepared = await prepareWorkCandidate({ coreStore: primary.store, taskId: primary.intent.id, request });
+  const ownership = prepared.ownership;
+  const assertRetryOwnerFence = async () => {
+    const original = await primary.store.readCore();
+    let reads = 0;
+    try {
+      await assert.rejects(prepareWorkCandidate({ taskId: primary.intent.id, request,
+        coreStore: { readCore: async () => {
+          if (++reads === 2) await primary.store.updateCore(core => ({ ...core,
+            tasks: core.tasks.map(row => row.id === companion.stage.taskId
+              ? { ...row, ownerActorId: 'changed-after-first-read' } : row) }));
+          return primary.store.readCore();
+        }, updateCore: () => assert.fail('An existing record must not be rewritten') },
+      }), /verified_revision_required|owner_revision_changed/u);
+      assert.equal(reads, 2);
+      assert.deepEqual((await primary.store.readCore()).artifacts, original.artifacts);
+    } finally { await primary.store.writeCore(original); }
+  };
+  await assertRetryOwnerFence();
+  assert.deepEqual(ownership.revisionSet.members.map(row => row.member), ['platform', 'runtime']);
+  assert.deepEqual(readCandidateOwnership(ownership), ownership);
+  const reverse = await prepareWorkCandidate({ coreStore: primary.store, taskId: companion.intent.id,
+    request: { requestId: 'reverse-candidate-record', root: path.join(f.directory, 'reverse'), companionTaskId: primary.intent.id } });
+  assert.equal(reverse.ownership.revisionSet.sha256, ownership.revisionSet.sha256);
+  const file = path.join(f.directory, 'paired.json'); await writeFile(file, JSON.stringify(ownership));
+  const workspace = { platformRoot: f.sources.platform.checkout, runtimeRoot: f.sources.runtime.checkout };
+  assert.deepEqual(await readCandidateOwnershipFile(file, root, workspace), ownership);
+  verifyCandidateOwnershipSources(ownership, f.sources);
+  assert.equal((await prepareWorkCandidate({ coreStore: primary.store, taskId: primary.intent.id, request })).created, false);
+  await assert.rejects(prepareWorkCandidate({ coreStore: primary.store, taskId: primary.intent.id,
+    request: { requestId: request.requestId, root } }), /preparation_conflict/u);
+  await rename(f.root, root);
+  const control = JSON.parse(await readFile(path.join(root, 'control.json'), 'utf8'));
+  await writeFile(path.join(root, 'control.json'), JSON.stringify({ ...control, root }));
+  await writeFile(path.join(root, `exit-${f.request.instanceId}.json`), JSON.stringify({ ...f.request, root, pid: 1234, exitCode: 0 }));
+  await writeFile(path.join(root, 'launch.json'), JSON.stringify({ ...f.launch, root, ownership }));
+  const attached = await attachWorkCandidateEvidence({ coreStore: primary.store, taskId: primary.intent.id, request: { ...f.request, root } });
+  const record = (await primary.store.readCore()).artifacts.find(row => row.id === attached.artifactId);
+  assert.equal(record.status, 'ready'); assert.deepEqual(record.metadata.revisionSet, ownership.revisionSet);
+  await assertRetryOwnerFence();
+  assert.equal(record.metadata.dependencyMember, undefined); assert.equal(record.metadata.integrationValidation, 'not_observed');
+  assert.equal((await attachWorkCandidateEvidence({ coreStore: primary.store, taskId: primary.intent.id, request: { ...f.request, root } })).created, false);
+  assert.equal((await prepareWorkCandidate({ coreStore: primary.store, taskId: primary.intent.id, request })).created, false);
+});
+
+test('both validators reject changed hashes, mixed revisions and a stale second checkout', async t => {
+  const f = await fixture(t), primary = await coreFixture(f), companion = await coreFixture(f, 'runtime', primary.store);
+  const root = path.join(f.directory, 'paired-candidate');
+  const { ownership } = await prepareWorkCandidate({ coreStore: primary.store, taskId: primary.intent.id,
+    request: { requestId: 'validate-paired-record', root, companionTaskId: companion.intent.id } });
+  const file = path.join(f.directory, 'paired.json');
+  const workspace = { platformRoot: f.sources.platform.checkout, runtimeRoot: f.sources.runtime.checkout };
+  const members = ownership.revisionSet.members;
+  const badSets = [null, { ...ownership.revisionSet, sha256: '0'.repeat(64) },
+    { ...ownership.revisionSet, members: [...members].reverse() },
+    createCandidateRevisionSet([{ ...members[0], taskId: members[1].taskId }, members[1]]),
+    createCandidateRevisionSet([{ ...members[0], commitId: 'a'.repeat(40) }, members[1]]),
+    { ...ownership.revisionSet, extra: 'ignored-authority' }];
+  for (const revisionSet of badSets) {
+    const invalid = { ...ownership, revisionSet };
+    assert.throws(() => readCandidateOwnership(invalid), /invalid_candidate_revision_set/u);
+    await writeFile(file, JSON.stringify(invalid));
+    await assert.rejects(readCandidateOwnershipFile(file, root, workspace), /Invalid candidate revision set/u);
+  }
+  await writeFile(file, JSON.stringify(ownership));
+  assert.throws(() => verifyCandidateOwnershipSources(ownership, { ...f.sources,
+    runtime: { ...f.sources.runtime, head: 'a'.repeat(40) } }), /clean revision/u);
+  await writeFile(path.join(workspace.runtimeRoot, 'src/feature.ts'), 'changed-runtime');
+  await assert.rejects(readCandidateOwnershipFile(file, root, workspace), /clean revision/u);
+});
+
+test('second task changes cannot pass preparation or attachment and leave the saved draft intact', async t => {
+  const f = await fixture(t), primary = await coreFixture(f), companion = await coreFixture(f, 'runtime', primary.store);
+  const root = path.join(f.directory, 'paired-candidate');
+  const request = { requestId: 'paired-owner-race', root, companionTaskId: companion.intent.id };
+  const original = await primary.store.readCore();
+  const changeOwner = core => ({ ...core, tasks: core.tasks.map(row => row.id === companion.stage.taskId
+    ? { ...row, ownerActorId: 'foreign-owner' } : row) });
+  await assert.rejects(prepareWorkCandidate({ taskId: primary.intent.id, request,
+    coreStore: { readCore: () => primary.store.readCore(), updateCore: async mutator => {
+      await primary.store.updateCore(changeOwner); return primary.store.updateCore(mutator);
+    } } }), /verified_revision_required|owner_revision_changed/u);
+  assert.deepEqual((await primary.store.readCore()).artifacts, original.artifacts);
+  await primary.store.writeCore(original);
+  const prepared = await prepareWorkCandidate({ coreStore: primary.store, taskId: primary.intent.id, request });
+  const observed = { ...await inspectCandidateBuild(f.request), root, ownership: prepared.ownership };
+  await assert.rejects(attachWorkCandidateEvidence({ coreStore: primary.store, taskId: primary.intent.id,
+    request: f.request, inspect: async () => ({ ...observed, members: { ...observed.members,
+      runtime: { ...observed.members.runtime, head: 'a'.repeat(40) } } }) }), /revision_mismatch/u);
+  await assert.rejects(attachWorkCandidateEvidence({ coreStore: primary.store, taskId: primary.intent.id,
+    request: f.request, inspect: async () => {
+      await primary.store.updateCore(changeOwner); return observed;
+    } }), /verified_revision_required|owner_revision_changed/u);
+  assert.equal((await primary.store.readCore()).artifacts.find(row => row.id === prepared.artifactId).status, 'draft');
+});
 
 test('prepared candidate retains one artifact across CLI validation and verified attachment', async t => {
   const f = await fixture(t), c = await coreFixture(f), root = path.join(f.directory, 'prepared-candidate');

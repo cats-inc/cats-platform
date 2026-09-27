@@ -161,6 +161,13 @@ independent reviewer or evaluator. Concurrent writers get separate worktrees.
 Cross-repository changes record a revision set and explicit integration order;
 there is no claim of an atomic Git transaction across repositories.
 
+The minimal implemented composition optionally pairs two retained Work
+implementations in one candidate ownership descriptor. It adds a canonical
+Platform/Runtime revision set and digest to existing artifact metadata, checks
+both source inputs and rechecks both Core owners/revisions. Old single-member
+records keep their dependency baseline without migration. An attached pair is
+build evidence only; independent integration validation is still a separate gate.
+
 Stop, cancellation, provider failure, and controller restart preserve work and
 recoverable references. Cleanup follows ownership and delivery retention rules,
 not merely the end of a participant session. This feature must reconcile with

@@ -14,6 +14,8 @@ export const zhTWCatalog: MessageCatalog = {
   'work.task.candidatePrepare': '準備候選紀錄',
   'work.task.candidatePreparationDescription': '建置前，先保存這個任務的修訂與新的候選資料夾，再下載紀錄交給候選程式指令使用。這個動作不會開始建置。',
   'work.task.candidateRoot': '新的候選資料夾（完整路徑）',
+  'work.task.candidateCompanion': '加入另一個儲存庫的實作任務（選填）',
+  'work.task.candidateSingleMember': '只有這次實作；另一個儲存庫維持基準版本',
   'work.task.candidateDownload': '下載候選紀錄',
   'work.task.candidateDescription': '將候選建置紀錄連到這次實作。Cats 會核對來源修訂；原問題是否修好仍需另外測試。',
   'work.task.candidateFile': '候選建置紀錄',

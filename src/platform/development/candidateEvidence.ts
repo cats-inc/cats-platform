@@ -167,6 +167,8 @@ export async function inspectCandidateBuild(input: CandidateEvidenceRequest): Pr
   const ownership = launch.ownership === undefined ? undefined : readCandidateOwnership(launch.ownership);
   if (ownership && (ownership.root !== root || ownership.commitId !== members[ownership.member].head
     || !samePath(ownership.checkout, members[ownership.member].checkout))) throw new Error('candidate_ownership_mismatch');
+  if (ownership?.revisionSet?.members.some(ref => ref.commitId !== members[ref.member].head
+    || !samePath(ref.checkout, members[ref.member].checkout))) throw new Error('candidate_ownership_mismatch');
   return { root, launchId: input.launchId, instanceId: input.instanceId, observedAt: new Date().toISOString(),
     ...(ownership ? { ownership } : {}),
     state, hostPid: Number(control.pid), builtAt: launch.builtAt, members, verification: 'commit_inputs_and_host_receipt' };

@@ -890,7 +890,7 @@ independent verification, task approval or knowledge promotion.
 #### Candidate Desktop evidence
 
 `POST /api/work/tasks/{taskId}/candidate-preparation` requires owner/admin access
-and exactly `{ requestId, root }` (8 KiB maximum). It records a draft build
+and `{ requestId, root, companionTaskId? }` (8 KiB maximum; other keys reject). It records a draft build
 artifact for the retained verified implementation before any build starts, and
 returns `{ artifactId, created, ownership }`. The credential-free descriptor
 freezes the member, checkout, commit, Task/Run/revision artifact and new candidate
@@ -902,6 +902,16 @@ saved canonical descriptor and promotes the same artifact. Another launch/instan
 cannot overwrite it. Preparation does not start a build, grant execution, or make
 the offline CLI obey later Core cancellation; failed builds leave the draft and
 local receipts available for inspection.
+
+Optional `companionTaskId` selects the other Cats member's retained verified Work
+implementation. Both revisions are resolved from the same Core snapshot and
+rechecked before creation, on retry and at attachment. The schema-1 descriptor
+then includes `revisionSet`: exactly Platform followed by Runtime, each with its
+member, Task/Run/revision artifact, checkout and commit, plus a SHA-256 over that
+canonical ordered array. Both selected checkouts must match before the CLI
+builds. Duplicate members, altered hashes or mismatched ownership/revisions reject.
+Use the matching updated CLI for this optional field. Existing single-member
+descriptors remain valid without a migration; their other member stays a baseline.
 
 `POST /api/work/tasks/{taskId}/candidate-evidence` requires normal authenticated
 owner/admin access and CSRF protection. Its JSON has exactly three string fields:
@@ -915,7 +925,8 @@ the selected candidate's launch/control/host receipt and both source snapshots
 against their Git commits, inventories and digests. Work requires one member to
 match the retained implementation workspace and commit, then atomically rechecks
 the owning records before adding a Core build artifact linked to that Run. It
-records the second member as a dependency baseline and excludes control tokens
+records the second member as a dependency baseline, or retains the prepared
+two-managed-member revision set with `integrationValidation: 'not_observed'`, and excludes control tokens
 and logs. No build, provider or Desktop starts; inspection uses local read-only
 Git commands with a private index. Task and Run statuses remain unchanged.
 

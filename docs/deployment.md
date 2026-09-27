@@ -406,6 +406,13 @@ association data, not credentials or permission; the offline command cannot
 observe later Core owner/cancellation changes. Use the existing authenticated
 `status`/`stop` command for that candidate; do not infer automatic Core control.
 
+When both repositories have managed implementations, optionally select the other
+repository's Work task while preparing. Cats freezes both Task/Run/revision
+references and a shared revision-set digest in the same record. Supply both
+recorded checkouts to the updated candidate command; it checks both clean commits
+before building. Changing either task or revision requires a new preparation.
+Leaving this selection empty preserves the existing single-implementation flow.
+
 After the candidate has been built,
 `evidence` writes `candidate-evidence.json` containing only the root, launch ID
 and host instance ID. It works while the candidate runs or after a successful
@@ -413,7 +420,10 @@ drain. Open that task's **Candidate Desktop** section, select this JSON, and
 choose **Check and attach**. The owner/admin check reads the selected local
 candidate, verifies both clean source snapshots against their commits and checks
 the host receipt. One member must match the task's retained implementation
-workspace and commit; the other is recorded as its dependency baseline.
+workspace and commit; the other is recorded as its dependency baseline. For a
+prepared pair, both must match their own retained implementations, and both Core
+owners/revisions are rechecked at attachment. This binds the combined build's
+inputs; independent integration testing/review remains unobserved.
 
 A successful check adds a build artifact linked to the existing implementation
 Run, or promotes the same prepared artifact, and opens through Code artifacts.

@@ -108,6 +108,16 @@ through an explicit check-and-attach action. Source inspection uses a private
 Git index and rejects changed input inventories, digests and physical boundaries
 again after the final host observation. It never starts a Desktop or provider.
 
+Preparation can additionally select a second existing managed Work implementation,
+one per Cats member. An optional schema-1 `revisionSet` freezes Platform and Runtime
+Task/Run/revision references, checkouts and commits with a canonical digest. Both
+owners and revisions are checked before preparation, on retry and during atomic
+attachment; the candidate command checks both selected clean commits. Existing
+single-member records remain valid and retain their dependency baseline. The same
+prepared artifact becomes build evidence, with integration validation explicitly
+unobserved. This is input/ownership composition, not an integration verdict,
+automatic cross-repository scheduling or new cancellation authority.
+
 Fresh worktrees may select existing Platform and Runtime dependency checkouts
 explicitly. The command requires identical package/lock bytes, records dependency
 origins and Git common directories, and resolves Electron through the selected

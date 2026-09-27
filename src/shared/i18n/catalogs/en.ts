@@ -14,6 +14,8 @@ export const enCatalog: MessageCatalog = {
   'work.task.candidatePrepare': 'Prepare candidate record',
   'work.task.candidatePreparationDescription': 'Before building, save this task’s revision and a new candidate folder. Download the record for the candidate command. This does not start a build.',
   'work.task.candidateRoot': 'New candidate folder (absolute path)',
+  'work.task.candidateCompanion': 'Include the other repository’s implementation task (optional)',
+  'work.task.candidateSingleMember': 'Only this implementation; keep the other repository as a baseline',
   'work.task.candidateDownload': 'Download candidate record',
   'work.task.candidateDescription': 'Attach a candidate receipt to this implementation. Cats checks its source revision; testing the reported problem remains a separate step.',
   'work.task.candidateFile': 'Candidate receipt',

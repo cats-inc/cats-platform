@@ -18,10 +18,11 @@ export async function routeWorkCandidateEvidenceApi(context: WorkApiRouteContext
     }
     const value: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
     if (match[2] === 'preparation') {
-      const body = value as { requestId: string; root: string };
+      const body = value as { requestId: string; root: string; companionTaskId?: string };
       if (!body || typeof body !== 'object' || Array.isArray(body)
-        || Object.keys(body).sort().join(',') !== 'requestId,root'
-        || typeof body.requestId !== 'string' || typeof body.root !== 'string') throw new Error('invalid_candidate_request');
+        || Object.keys(body).some(key => !['requestId', 'root', 'companionTaskId'].includes(key))
+        || typeof body.requestId !== 'string' || typeof body.root !== 'string'
+        || ('companionTaskId' in body && (typeof body.companionTaskId !== 'string' || !body.companionTaskId))) throw new Error('invalid_candidate_request');
       const result = await prepareWorkCandidate({ coreStore: context.dependencies.coreStore,
         taskId: decodeURIComponent(match[1]!), request: body });
       sendJson(context.response, result.created ? 201 : 200, result, { 'Cache-Control': 'no-store' }); return true;

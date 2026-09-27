@@ -57,7 +57,7 @@ export async function attachCandidateEvidence(taskId: string,
   }), errorMessage);
 }
 
-export async function prepareCandidate(taskId: string, request: { requestId: string; root: string }, errorMessage: string
+export async function prepareCandidate(taskId: string, request: { requestId: string; root: string; companionTaskId?: string }, errorMessage: string
 ): Promise<{ artifactId: string; ownership: Record<string, unknown> }> {
   return expectJson(await fetch(`${buildWorkApiTaskPath(taskId)}/candidate-preparation`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(request),

@@ -73,3 +73,25 @@ test('switching tasks discards a late prepared download', async t => {
   await waitFor(() => assert.equal((view.getByLabelText('New candidate folder (absolute path)') as HTMLInputElement).value, ''));
   assert.equal(view.queryByRole('link', { name: 'Download candidate record' }), null);
 });
+
+test('selecting the companion task sends its identity and changing it clears prepared output', async t => {
+  const requests: Array<{ companionTaskId?: string; requestId: string }> = [];
+  t.mock.method(globalThis, 'fetch', async (_url: RequestInfo | URL, options?: RequestInit) => {
+    const body = JSON.parse(String(options?.body)); requests.push(body);
+    return Response.json({ ownership: { taskId: 'platform-task', companionTaskId: body.companionTaskId } });
+  });
+  const view = render(<MemoryRouter><CandidateEvidenceSection taskId="platform-task"
+    companionTasks={[{ id: 'runtime-task', title: 'Runtime fix' }]} /></MemoryRouter>);
+  fireEvent.change(view.getByLabelText('New candidate folder (absolute path)'), { target: { value: '/new/candidate' } });
+  const selector = view.getByLabelText('Include the other repository’s implementation task (optional)');
+  fireEvent.change(selector, { target: { value: 'runtime-task' } });
+  fireEvent.click(view.getByRole('button', { name: 'Prepare candidate record' }));
+  await view.findByRole('link', { name: 'Download candidate record' });
+  assert.equal(requests[0].companionTaskId, 'runtime-task');
+  fireEvent.change(selector, { target: { value: '' } });
+  assert.equal(view.queryByRole('link', { name: 'Download candidate record' }), null);
+  fireEvent.click(view.getByRole('button', { name: 'Prepare candidate record' }));
+  await view.findByRole('link', { name: 'Download candidate record' });
+  assert.equal(requests[1].companionTaskId, undefined);
+  assert.notEqual(requests[1].requestId, requests[0].requestId);
+});
