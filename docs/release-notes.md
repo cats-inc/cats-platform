@@ -19,6 +19,63 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-27 (0.5.6 preview, standard profile — preparation)
+
+Behavior change:
+
+- Right-clicking in Desktop opens a native edit menu: Copy for selected text,
+  and the full edit set in editable fields. Elsewhere no menu appears.
+- Message copy buttons work in Desktop. The renderer now allows clipboard
+  writes; clipboard reads stay denied.
+- Conversation diagnostics reports also include retained UI exceptions from the
+  collecting window: memory-only, at most 20 per window since page load and eight
+  per report, scrubbed of common secrets and URL queries, and cleared on reload.
+  They describe the page at failure time, not a proven cause.
+- The collapsed Catlas "help me get started" chip is centered on the new Code
+  conversation page.
+- Source checkouts gain `npm run desktop:candidate` to build and open an
+  independent Cats Candidate with empty private state from a development
+  conversation. It is a development command; installed Desktop behavior does not
+  change.
+- The bundled Runtime lists GitHub Copilot's full picker for a Copilot Pro
+  account (20 rows) with per-row reasoning, context and Auto tier controls, and
+  Pi's full `openai-codex` channel (8 rows) with per-model thinking levels that
+  default to medium. Rows without a marked default start at their first value.
+
+Known issue:
+
+The Windows voice input issue recorded under 0.5.5 is not fixed; only its setup
+guidance changed.
+
+Migration steps:
+
+No existing data conversion is required.
+
+This compatible patch prepares Desktop only; no npm publication is requested.
+Runtime 0.3.1 is pinned to `5396566012c9cf7783bf05203806df8c849e348b`.
+Usage 0.4.0 retains SHA-256
+`7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`; its
+`catsPlatform` range `^0.5.0` includes 0.5.6.
+
+The standard signing profile is selected: expected platform trust is macOS
+signed + notarized, Windows unsigned: no certificate, and Linux n/a. Self-update
+from standard-profile 0.5.5 is expected to remain supported on Windows/Linux
+and on macOS with the same Developer ID team. Actual release signing and assets
+must be confirmed after publication; no new installed-update acceptance is claimed.
+
+Deprecations:
+
+None.
+
+Release verification:
+
+Platform `9188a1104ce1f46e4f802b59e99c210a2f69987f` passed
+[full Platform CI](https://github.com/cats-inc/cats-platform/actions/runs/36285726614).
+The later source candidate command (`dfb7c4c1`) is covered by the version
+candidate's CI. The pinned Runtime passed its
+[release preflight](https://github.com/cats-inc/cats-runtime/actions/runs/36288093804).
+The version candidate still requires its CI and Desktop publication workflow.
+
 ## 2026-09-27 (0.5.5 preview, standard profile — publication)
 
 Behavior change:
