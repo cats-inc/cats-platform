@@ -198,6 +198,16 @@ reviewer's Task approved; its read-only session must observe that actual cwd and
 commit before and after review. A commit and attributed verdict are separate
 evidence and do not prove tests passed. No remote publishing is admitted.
 
+The separate owner choice `execute_cats_development` opts into the preview-only
+`cats-inc-development` skill. It pins the filtered Runtime catalog's version and
+fingerprint on both creation and message hydration. Actual session observations
+must verify the same policy, workspace, tool grant and applied skill before and
+after the worker goal. Full receipts stay in Core; coordinator feedback contains
+only bounded verification summaries. Missing or degraded delivery blocks work;
+the ordinary execution choice still requests no skills. Instruction delivery
+does not prove optional reference files were materialized. Current Codex CLI
+worktree delivery is degraded and is therefore rejected by this strict profile.
+
 Parent/child Task, Run, artifact and outcome IDs are durable. Repeated requests
 return the same attempt; repeated HTTP confirmation preserves its active turn
 and normal cancellation. Scope/approval/member changes stop further effects.

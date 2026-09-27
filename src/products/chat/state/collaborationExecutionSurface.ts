@@ -8,6 +8,7 @@ import { resolveOrchestratorExecutionTarget } from './runtimeTargeting.js';
 import type { CollaborationProposal, CollaborationReport } from './orchestratorCollaboration.js';
 
 export const ACCEPT_COLLABORATION = 'execute_collaboration';
+export const ACCEPT_CATS_DEVELOPMENT = 'execute_cats_development';
 export const REQUEST_COLLABORATION_EXECUTION = 'work.collaboration.request_execution';
 export const ENSURE_COLLABORATION_CONVERSATION = 'chat.collaboration.ensure_conversation';
 export const ENSURE_COLLABORATION_PARTICIPANTS = 'chat.collaboration.ensure_participants';
@@ -44,6 +45,7 @@ export function collaborationExecutionRevision(state: ChatState, channelId: stri
 export interface CollaborationOwnerChoice {
   proposalMessageId: string; originalMessageId: string; originalGoalDigest: string;
   proposal: CollaborationProposal;
+  developmentProfile?: 'cats-inc-development';
 }
 export function resolveCollaborationOwnerChoice(
   state: ChatState, channelId: string, response?: ChatMessageChoiceResponse | null,
@@ -51,13 +53,13 @@ export function resolveCollaborationOwnerChoice(
   if (response?.status !== 'submitted' || response.answers.length !== 1) return null;
   const answer = response.answers[0]!;
   if (answer.skipped || answer.customText?.trim() || answer.selectedOptionIds.length !== 1
-    || answer.selectedOptionIds[0] !== ACCEPT_COLLABORATION) return null;
+    || ![ACCEPT_COLLABORATION, ACCEPT_CATS_DEVELOPMENT].includes(answer.selectedOptionIds[0]!)) return null;
   const channel = state.channels.find((entry) => entry.id === channelId);
   const message = channel?.messages.find((entry) => entry.id === response.sourceMessageId);
   if (message?.senderKind !== 'orchestrator'
     || message.metadata.event !== 'orchestrator_collaboration_preparation'
     || !message.choices?.some((choice) => choice.question === answer.question
-      && choice.options.some((option) => option.id === ACCEPT_COLLABORATION))) return null;
+      && choice.options.some((option) => option.id === answer.selectedOptionIds[0]))) return null;
   const report = message.metadata.collaborationPreparation as CollaborationReport | undefined;
   const proposal = report?.preparation;
   if (report?.status !== 'prepared' || proposal?.status !== 'prepared'
@@ -65,7 +67,8 @@ export function resolveCollaborationOwnerChoice(
   const original = channel?.messages.find((entry) => entry.id === message.metadata.sourceMessageId);
   if (original?.senderKind !== 'user' || original.body !== proposal.goal) return null;
   return { proposalMessageId: message.id, originalMessageId: original.id,
-    originalGoalDigest: knowledgeDigest(original.body), proposal };
+    originalGoalDigest: knowledgeDigest(original.body), proposal,
+    ...(answer.selectedOptionIds[0] === ACCEPT_CATS_DEVELOPMENT ? { developmentProfile: 'cats-inc-development' as const } : {}) };
 }
 export function collaborationExecutionManifests(): SupervisedToolManifest[] {
   return EXECUTION_TOOL_NAMES.map((name) => ({ schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,

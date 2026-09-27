@@ -11,6 +11,7 @@ import { resolveChannelCanonicalIdentity } from '../shared/channelCanonicalIdent
 import { resolveChannelParticipantAssignments } from '../shared/channelParticipants.js';
 import { isCatPartOfChatProduct } from '../shared/directMessageSelectors.js';
 import { knowledgeDigest } from '../../../platform/knowledge/productKnowledge.js';
+import { preflightDevelopmentSkill } from '../../../platform/development/developmentSkill.js';
 import { collaborationExecutionRevision, resolveCollaborationOwnerChoice,
   ENSURE_COLLABORATION_CONVERSATION, ENSURE_COLLABORATION_PARTICIPANTS,
   REQUEST_COLLABORATION_ROLE, REQUEST_COLLABORATION_EXECUTION, INSPECT_COLLABORATION_WORK, STOP_COLLABORATION_WORK } from './collaborationExecutionSurface.js';
@@ -45,10 +46,12 @@ function assertContext(chat: ChatState, core: CatsCoreState, intent: WorkCollabo
     .filter((entry) => entry.senderKind === 'user').every((entry) => {
       const repeated = resolveCollaborationOwnerChoice(chat, intent.sourceChannelId, entry.choiceResponse);
       return repeated?.proposalMessageId === intent.proposalMessageId
+        && repeated.developmentProfile === intent.development?.profile
         && collaborationDigest(repeated.proposal) === intent.proposalDigest;
     });
   if (core.ownerProfile.actorId !== intent.ownerActorId || !equivalentConfirmations
     || !choice || collaborationDigest(choice.proposal) !== intent.proposalDigest
+    || choice.developmentProfile !== intent.development?.profile
     || !original || knowledgeDigest(original.body) !== intent.originalGoalDigest
     || intent.goal !== original.body || intent.expectedOutput !== choice.proposal.expectedOutput
     || intent.workers.implementation.catId !== choice.proposal.implementer.id
@@ -102,6 +105,17 @@ function assertContext(chat: ChatState, core: CatsCoreState, intent: WorkCollabo
 export async function createChatCollaborationExecution(options: ChatCollaborationExecutionOptions) {
   const store = options.chatStore;
   if (!store.updateSnapshot) throw new Error('atomic_store_required');
+  let initial!: { choice: ReturnType<typeof resolveCollaborationOwnerChoice>; ownerActorId: string; previous: WorkCollaborationIntent | null };
+  await store.updateSnapshot(({ chat, core }) => {
+    if (options.isCancelled?.()) throw new Error('cancelled');
+    const choice = resolveCollaborationOwnerChoice(chat, options.channelId, options.choiceResponse);
+    initial = { choice, ownerActorId: core.ownerProfile.actorId,
+      previous: choice ? readCollaborationIntent(core, collaborationIntentId(options.channelId, choice.proposalMessageId)) : null };
+    return { chat, core };
+  });
+  const { choice: initialChoice, previous } = initial;
+  const developmentSkill = initialChoice?.developmentProfile
+    ? previous?.development?.skill ?? await preflightDevelopmentSkill(options.runtimeClient) : undefined;
   let intentId = '';
   let created = false;
   await store.updateSnapshot(({ chat, core }) => {
@@ -111,10 +125,17 @@ export async function createChatCollaborationExecution(options: ChatCollaboratio
     if (!choice || !confirmation || collaborationDigest(confirmation.choiceResponse) !== collaborationDigest(options.choiceResponse)) {
       throw new Error('owner_confirmation_required');
     }
+    if (core.ownerProfile.actorId !== initial.ownerActorId
+      || initialChoice?.proposalMessageId !== choice.proposalMessageId
+      || initialChoice.developmentProfile !== choice.developmentProfile
+      || collaborationDigest(initialChoice.proposal) !== collaborationDigest(choice.proposal)
+      || (choice.developmentProfile && !developmentSkill)) throw new Error('stale_context');
     intentId = collaborationIntentId(options.channelId, choice.proposalMessageId);
     const existing = readCollaborationIntent(core, intentId);
     if (existing) {
       if (existing.proposalDigest !== collaborationDigest(choice.proposal)
+        || existing.ownerActorId !== core.ownerProfile.actorId
+        || existing.development?.profile !== choice.developmentProfile
         || existing.originalGoalDigest !== choice.originalGoalDigest) throw new Error('collaboration_input_conflict');
       return { chat, core }; // A duplicate can inspect its original attempt, never continue it.
     }
@@ -144,6 +165,7 @@ export async function createChatCollaborationExecution(options: ChatCollaboratio
       proposalDigest: collaborationDigest(proposal), ownerActorId: core.ownerProfile.actorId,
       goal: proposal.goal, expectedOutput: proposal.expectedOutput, conversationIntent: proposal.conversation.intent,
       contextRevision: proposal.executionRevision!, workspacePath: source.repoPath,
+      ...(choice.developmentProfile ? { development: { profile: choice.developmentProfile, skill: developmentSkill! } } : {}),
       budget: { maxDurationMs: proposal.budget.maxDurationMs, maxTokens: proposal.budget.maxTokens },
       workers: { implementation: worker(proposal.implementer.id), review: worker(proposal.reviewer.id) },
     });

@@ -5,7 +5,7 @@ import type { MessageLocale } from '../../../shared/i18n/index.js';
 import { parseMessageLocale } from '../../../shared/i18n/index.js';
 import type { ProviderAgentBoundedObservation } from '../../../platform/orchestration/providerAgentDecision.js';
 import { appendMessage } from './model/index.js';
-import { ACCEPT_COLLABORATION } from './collaborationExecutionSurface.js';
+import { ACCEPT_COLLABORATION, ACCEPT_CATS_DEVELOPMENT } from './collaborationExecutionSurface.js';
 import { collaborationSnapshot, DISCOVER_COLLABORATION_CATS, INSPECT_COLLABORATION_CONTEXT, type CollaborationReport,
   type CollaborationCandidate } from './orchestratorCollaboration.js';
 
@@ -25,6 +25,8 @@ export function appendCollaborationReport(input: {
       ? { choices: [{ question: input.locale === 'zh-TW' ? '依此範圍與預算執行協作？' : 'Execute this scope and budget?',
           options: [{ id: ACCEPT_COLLABORATION,
             label: input.locale === 'zh-TW' ? '執行方案' : 'Execute proposal', style: 'primary' as const },
+          { id: ACCEPT_CATS_DEVELOPMENT, label: input.locale === 'zh-TW'
+            ? '以 Cats 開發技能執行（需 preview）' : 'Execute with Cats development skill (requires preview)' },
           { id: 'decline_collaboration', label: input.locale === 'zh-TW' ? '暫不執行' : 'Not now' }],
           multiSelect: false, allowCustom: false, allowSkip: true }] } : {}),
     metadata: {
@@ -49,6 +51,7 @@ export function describeCollaborationReport(report: CollaborationReport, locale:
       ...(result.status === 'blocked' || result.status === 'cancelled'
         ? [zh ? '協作已停止；已建立的對話、工作與產物會保留。' : 'Collaboration stopped; created conversations, work and evidence are retained.'] : []),
       zh ? '版本確認不代表測試通過；審查結論來自所選審查者。' : 'Revision verification does not prove tests passed; the verdict is attributed to the selected reviewer.',
+      ...(result.reason?.startsWith('cats_development_') ? [developmentBlocker(zh)] : []),
     ].join('\n');
   }
   const clean = (value: string) => value.replace(/[\r\n]/gu, ' ');
@@ -79,7 +82,7 @@ export function describeCollaborationReport(report: CollaborationReport, locale:
     body = zh ? '目前尚無兩位已選定且執行設定可用的同伴。請先補齊同伴或其執行設定；工作尚未啟動。'
       : 'Two suitable Cats with available execution settings have not been selected. Resolve the teammate or provider gap first; no work has started.';
   } else if (report.status === 'stopped') {
-    const reason = report.reason === 'stale_context'
+    const reason = report.reason?.startsWith('cats_development_') ? developmentBlocker(zh) : report.reason === 'stale_context'
       ? (zh ? '對話或同伴設定已改變，需要重新查詢。' : 'Conversation or teammate settings changed; a fresh lookup is needed.')
       : report.reason === 'cancelled'
         ? (zh ? '這次準備已取消。' : 'This preparation was cancelled.')
@@ -102,6 +105,11 @@ export function describeCollaborationReport(report: CollaborationReport, locale:
       : `${description}${names ? ` Discovered Cats: ${names}.` : ''} Collaboration preparation is incomplete; no work has started. Roles are declared settings, not verified capabilities.`;
   }
   return body;
+}
+
+function developmentBlocker(zh: boolean): string {
+  return zh ? 'Cats 開發技能尚未確認可用或交付已改變。請使用包含此技能的 preview Runtime，檢查保留的交付紀錄，再建立新提案；原本的檔案權限不會擴大。'
+    : 'Cats development skill delivery is unavailable or changed. Use a preview Runtime containing the skill, inspect retained delivery evidence, then create a new proposal. Existing file permissions are unchanged.';
 }
 
 /** Called inside the existing merge writer's mutation gate, immediately before publication. */

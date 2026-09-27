@@ -113,6 +113,27 @@ also found an enum-coercion bug that could hide a malformed fixture label; the
 strict enum fix, final server rebuild and focused import regression passed, and
 independent review found no remaining blockers. No model call,
 new persisted-data migration or release is involved.
+This slice is on main at `eff7cdfc`; full CI `36303720453` passed.
+
+The current slice adds an explicit Cats-development option to the existing
+owner-confirmed collaboration choice. It freezes catalog skill identity before
+atomic admission, preserving ordinary empty-skill behavior and the existing
+file-only worktree/review grants. Required preview delivery and session-bound
+hydration are checked before the goal and after measured response usage; create
+and send carry the same strict pinned refs. Canonical stages retain full
+receipts, while model feedback contains bounded status/digest references.
+Independent review identified owner changes during catalog I/O and Runtime's
+message-time rehydration dropping implicit pins; both are corrected. The actual
+Codex CLI worktree path currently downgrades skills and is rejected by strict
+mode, so this slice must not claim Codex development support. Instruction-mode
+delivery does not establish optional reference-file materialization. Server,
+renderer and test typechecks passed. The focused suite has **103 distinct passing
+tests** across the initial run and affected rerun (two failures corrected, five
+development regressions rerun successfully); independent review found no remaining
+blocker. An isolated actual Runtime manifest-resolution check, with zero provider
+calls, also confirmed Claude instruction delivery, unchanged explicit repinning,
+implicit pin loss and strict Codex worktree rejection. Live fresh/resumed delivery
+remains pending.
 
 A prepared single ordinary-provider contribution acceptance remains unrun:
 automatic approval review rejected sending bundled knowledge/synthetic input to

@@ -22,6 +22,13 @@ split is the requested direction; the remaining implementation design is propose
 
 ## Context
 
+Managed development skill selection belongs to the explicit collaboration owner
+choice, not a Cat's global profile or a directory-name heuristic. Platform reads
+the executing Runtime's filtered catalog and pins its skill package identity;
+Work verifies actual session/hydration delivery before and after execution.
+No sibling Runtime module import or new Runtime protocol is needed. The
+development supplement does not add shell, network or publication authority.
+
 Practice diagnosis remains in the developer-only evaluator tooling, with an
 authenticated immutable record distinct from technical failure codes. A bounded
 sanitized proposal is the only product handoff: Work's owner-confirmed import

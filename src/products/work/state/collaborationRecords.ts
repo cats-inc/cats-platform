@@ -6,6 +6,7 @@ import type { ProviderModelSelection } from '../../../shared/providerSelection.j
 import type { ProviderAgentToolFeedback } from '../../../platform/orchestration/providerAgentAdapter.js';
 import { writeTaskPlanningMetadata } from '../../../shared/taskPlanning.js';
 import { GOLDEN_PATH_LOCAL_FILE_TOOLS } from './workGoldenPathRuntimeExecutor.js';
+import { readDevelopmentSkillPin, type DevelopmentSkillPin, type DevelopmentDeliveryReceipt } from '../../../platform/development/developmentSkill.js';
 
 export const COLLABORATION_METADATA_KEY = 'collaborationIntent';
 export type CollaborationRole = 'implementation' | 'review';
@@ -19,6 +20,8 @@ export interface CollaborationStage {
   sessionId: string | null; workspacePath: string | null;
   sessionClosed?: boolean;
   summary?: string; reason?: string;
+  skillDelivery?: { before?: DevelopmentDeliveryReceipt; after?: DevelopmentDeliveryReceipt;
+    failure?: { phase: 'before' | 'after'; reason: string; observedFingerprint: string | null } };
 }
 export interface CollaborationRevisionEvidence {
   artifactId: string; runId: string; sessionId: string; workspacePath: string;
@@ -31,6 +34,7 @@ export interface WorkCollaborationIntent {
   originalMessageId: string; originalGoalDigest: string; ownerActorId: string;
   confirmationMessageId: string; proposalDigest: string;
   goal: string; expectedOutput: string; conversationIntent: 'create' | 'reuse_current';
+  development?: { profile: 'cats-inc-development'; skill: DevelopmentSkillPin };
   contextRevision: string; workspacePath: string;
   workers: Record<CollaborationRole, CollaborationWorker>;
   budget: { maxDurationMs: number; maxTokens: number };
@@ -62,6 +66,10 @@ export function readCollaborationIntent(core: CatsCoreState, id: string): WorkCo
   const task = core.tasks.find((entry) => entry.id === id);
   const value = task?.metadata[COLLABORATION_METADATA_KEY] as WorkCollaborationIntent | undefined;
   if (!value) return null;
+  if (value.development !== undefined) {
+    if (value.development.profile !== 'cats-inc-development') throw new Error('invalid_collaboration_record');
+    readDevelopmentSkillPin({ ...value.development.skill, status: 'resolved', contentProfile: 'preview' });
+  }
   if (value.schemaVersion !== 1 || value.id !== id || !value.workers?.implementation
     || (value.executionRequested !== undefined && typeof value.executionRequested !== 'boolean')
     || !value.workers?.review || !value.stages?.implementation || !value.stages?.review
@@ -170,6 +178,8 @@ export type CollaborationExecutionSummary = ReturnType<typeof collaborationSumma
 /** Descriptive model feedback is bounded; canonical Run/Artifact evidence stays complete. */
 export function collaborationFeedbackSummary(summary: CollaborationExecutionSummary) {
   const result = structuredClone(summary);
+  const skillDelivery: Record<string, { beforeVerified: boolean; afterVerified: boolean; receiptDigest: string;
+    failure?: { phase: 'before' | 'after'; reason: string; observedFingerprint: string | null } }> = {};
   const truncatedSummaries: Record<string, {
     serializedDigest: string; originalCharacters: number; artifactId: string;
   }> = {};
@@ -188,8 +198,14 @@ export function collaborationFeedbackSummary(summary: CollaborationExecutionSumm
   };
   for (const role of ['implementation', 'review'] as const) {
     const stage = result.stages[role];
+    if (stage.skillDelivery) {
+      skillDelivery[role] = { beforeVerified: Boolean(stage.skillDelivery.before), afterVerified: Boolean(stage.skillDelivery.after),
+        receiptDigest: collaborationDigest(stage.skillDelivery), ...(stage.skillDelivery.failure ? { failure: stage.skillDelivery.failure } : {}) };
+      delete stage.skillDelivery; // Full Runtime receipts remain on the canonical intent, not repeated in model prompts.
+    }
     if (stage.summary !== undefined) stage.summary = project(stage.summary, `stages.${role}.summary`, role);
   }
   if (result.review) result.review.summary = project(result.review.summary, 'review.summary', 'review');
-  return { ...result, ...(Object.keys(truncatedSummaries).length ? { truncatedSummaries } : {}) };
+  return { ...result, ...(Object.keys(skillDelivery).length ? { skillDelivery } : {}),
+    ...(Object.keys(truncatedSummaries).length ? { truncatedSummaries } : {}) };
 }

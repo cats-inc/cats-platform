@@ -172,9 +172,10 @@ export interface RuntimeSkillManifestContext {
   metadata?: Record<string, unknown>;
 }
 
-export interface RuntimeSkillManifest {
+export interface RuntimeRequestedSkillRef { id: string; version: string; fingerprint: string }
+export interface RuntimeSkillManifest<T = string> {
   profileId?: string;
-  requestedSkills: string[];
+  requestedSkills: T[];
   context?: RuntimeSkillManifestContext;
   strict?: boolean;
 }
@@ -233,7 +234,7 @@ interface RuntimeSessionCreateInputBase extends RuntimeExecutionRequestInput {
   sharingMode?: 'shared' | 'isolated' | null;
   instructions?: string | null;
   context?: RuntimeSessionInvocationContext;
-  skills?: RuntimeSkillManifest;
+  skills?: RuntimeSkillManifest<string | RuntimeRequestedSkillRef>;
   /** Runtime-enforced provider tool allowlist when permissionMode is whitelist. */
   allowedTools?: string[];
 }
@@ -245,7 +246,7 @@ export interface RuntimeSendMessageInput extends RuntimeExecutionRequestInput {
   instructions?: string | null;
   context?: RuntimeSessionInvocationContext;
   outputDir?: string | null;
-  skills?: RuntimeSkillManifest;
+  skills?: RuntimeSkillManifest<string | RuntimeRequestedSkillRef>;
 }
 
 export interface RuntimeObservedSessionPayload {
@@ -300,6 +301,7 @@ export interface RuntimeDeleteSessionResult {
 }
 
 export interface RuntimeClient {
+  getSkillCatalog?(id: string): Promise<unknown>;
   getHealth(): Promise<RuntimeStatusSummary>;
   getUsageSnapshot?(): Promise<Record<string, unknown>>;
   refreshUsageQuota?(target: { provider: 'codex' | 'copilot' | 'claude' | 'antigravity'; instance: string }): Promise<Record<string, unknown>>;
@@ -574,6 +576,15 @@ export class CatsRuntimeClient implements RuntimeClient {
         error: error instanceof Error ? error.message : 'Unknown runtime error',
       };
     }
+  }
+
+  async getSkillCatalog(id: string): Promise<unknown> {
+    const response = await fetch(`${this.baseUrl}/skills/catalog?id=${encodeURIComponent(id)}&limit=2`, {
+      headers: { ...this.authHeaders(), Accept: 'application/json' },
+      signal: this.createTimeoutSignal(this.timeoutMs),
+    });
+    if (!response.ok) throw new Error('runtime_skill_catalog_unavailable');
+    return response.json();
   }
 
   async getProviderConfig(

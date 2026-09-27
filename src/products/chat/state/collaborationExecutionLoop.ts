@@ -164,7 +164,8 @@ export async function runCollaborationExecutionLoop(input: ChatCollaborationExec
     const message = failure instanceof Error ? failure.message : '';
     reason = ['cancelled', 'budget_exhausted', 'stale_context', 'usage_unavailable',
       'unsupported_cost_budget', 'owner_confirmation_required', 'repository_required',
-      'approval_revoked', 'run_stopped', 'membership_changed', 'feedback_limit'].includes(message) ? message : 'collaboration_failed';
+      'approval_revoked', 'run_stopped', 'membership_changed', 'feedback_limit',
+      'cats_development_skill_unavailable'].includes(message) ? message : 'collaboration_failed';
   } finally {
     stopped = true;
     if (port && reason) {

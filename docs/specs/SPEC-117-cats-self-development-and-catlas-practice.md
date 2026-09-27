@@ -36,6 +36,26 @@ verified collaboration tools/results separately. Those ordinary role procedures 
 ship in both profiles without the preview-only development/practice supplement.
 That work does not complete this spec's source-development or promotion gates.
 
+## Explicit managed Cats development profile
+
+The managed collaboration confirmation gains an explicit Cats development
+option. It freezes the required preview skill's catalog version/fingerprint in
+the existing owner-bound intent; ordinary collaboration continues with no skill.
+The required skill must be actually applied under a session-bound preview policy
+before the implementation goal is sent and remain unchanged afterward. Missing
+or degraded delivery blocks the role without expanding its existing file-only
+worktree grant. Review stays read-only. Existing cancellation/recovery retains
+receipts and never replays an uncertain provider turn; this does not claim a
+live provider or filesystem-boundary acceptance result.
+
+Both session creation and message dispatch carry the same strict version and
+fingerprint refs, because supervised context delivery triggers Runtime hydration.
+The receipt distinguishes applied instruction text from optional resources whose
+materialization is not established. Current Codex CLI worktree skill delivery is
+degraded and rejected by strict mode; it is not accepted by this slice. Supported
+instruction delivery (such as Claude CLI) retains the original file-only grant.
+No fallback to broader permissions or a different workspace kind is allowed.
+
 ## Owner-confirmed Code session operation (2026-09-27)
 
 Code help now shares one `code.session.open` definition between its observation,

@@ -10,6 +10,7 @@ import type { RuntimeDeliveryClient } from '../../../platform/runtime/deliveryCl
 import { createSupervisedRuntimeSession, sendSupervisedRuntimeMessage } from '../../../platform/supervision/runtimeBoundary.js';
 import { stopRun } from '../../../platform/supervision/runCancellation.js';
 import { GOLDEN_PATH_LOCAL_FILE_TOOLS } from './workGoldenPathRuntimeExecutor.js';
+import { verifyDevelopmentDelivery } from '../../../platform/development/developmentSkill.js';
 import { readCollaborationIntent, writeCollaborationIntent, writeCollaborationAudit, updateCollaborationChild,
   type WorkCollaborationIntent, type CollaborationRole } from './collaborationRecords.js';
 
@@ -237,6 +238,11 @@ export async function executeCollaborationRole(port: CollaborationExecutionPort,
     const stage = intent.stages[role];
     const revision = intent.implementationEvidence;
     const cwd = role === 'review' ? revision!.workspacePath : intent.workspacePath;
+    const development = role === 'implementation' ? intent.development : undefined;
+    const skills = { requestedSkills: development
+      ? [{ id: development.skill.id, version: development.skill.version, fingerprint: development.skill.fingerprint }] : [], strict: true };
+    const implementationTools = [...intent.executionGrant.implementationTools,
+      ...(intent.executionGrant.implementationTools.includes('list_dir') ? ['list_files'] : [])];
     const supervision = { product: 'cats-work', surface: 'collaboration', runId: stage.runId,
       actionId: `${stage.runId}:create`, actorRef: worker.actorId, reason: `collaboration_${role}`,
       budget: { ...intent.budget, hardStop: true }, policyToolScope: 'broad_write' as const };
@@ -265,11 +271,10 @@ export async function executeCollaborationRole(port: CollaborationExecutionPort,
             permissionMode: 'whitelist',
             // Runtime's canonical spelling of the already admitted list_dir capability.
             // Keep the persisted owner grant unchanged for existing collaboration records.
-            allowedTools: [...intent.executionGrant.implementationTools,
-              ...(intent.executionGrant.implementationTools.includes('list_dir') ? ['list_files'] : [])] } as const
+            allowedTools: implementationTools } as const
             : { workspaceKind: 'source', workspaceAccess: 'read_only', permissionMode: 'default',
               allowedTools: ['read_file', 'list_files'] } as const),
-          sharingMode: 'isolated', skills: { requestedSkills: [], strict: true } }, supervision });
+          sharingMode: 'isolated', skills }, supervision });
       sessionId = result.id;
       let canRun = false;
       // Persist the Runtime bridge before sending any goal, including invalid-cwd responses.
@@ -294,6 +299,39 @@ export async function executeCollaborationRole(port: CollaborationExecutionPort,
     if (!created.cwd || (role === 'implementation' ? samePath(created.cwd, cwd) : !samePath(created.cwd, cwd))) {
       throw new Error('workspace_mismatch');
     }
+    const observeDevelopment = async (phase: 'before' | 'after') => {
+      if (!development) return;
+      const observation = await bounded(() => port.runtimeClient.observeSession(created.id));
+      let receipt;
+      try {
+        receipt = verifyDevelopmentDelivery({ observation, pin: development.skill, sessionId: created.id,
+          cwd: created.cwd!, provider: worker.target.provider!, target: `${target.backend}/${target.id}`,
+          model: worker.target.model, tools: implementationTools });
+        const previous = (await port.current()).stages[role].skillDelivery?.before;
+        if (phase === 'after' && JSON.stringify(receipt) !== JSON.stringify(previous)) throw new Error('cats_development_delivery_changed');
+      } catch (error) {
+        const reason = error instanceof Error && /^cats_development_[a-z_]+$/u.test(error.message)
+          ? error.message : 'cats_development_delivery_unavailable';
+        const state = observation?.session?.skills as { resolvedSkills?: Array<{ fingerprint?: unknown }> } | undefined;
+        const fingerprint = Array.isArray(state?.resolvedSkills) ? state.resolvedSkills[0]?.fingerprint : null;
+        await port.coreStore.updateCore(core => {
+          const latest = readCollaborationIntent(core, port.intentId)!;
+          const current = latest.stages[role];
+          if (current.sessionId !== created.id) return core;
+          current.skillDelivery = { ...current.skillDelivery, failure: { phase, reason,
+            observedFingerprint: typeof fingerprint === 'string' && /^[a-f0-9]{64}$/u.test(fingerprint) ? fingerprint : null } };
+          return writeCollaborationAudit(core, latest);
+        });
+        throw new Error(reason);
+      }
+      await port.mutate((core, latest) => {
+        assertOpen(latest);
+        if (latest.stages[role].sessionId !== created.id) throw new Error('run_stopped');
+        latest.stages[role].skillDelivery = { ...latest.stages[role].skillDelivery, [phase]: receipt };
+        return writeCollaborationAudit(core, latest);
+      });
+    };
+    await observeDevelopment('before');
     const before = await bounded(() => port.deliveryClient.inspectRepo({ sessionId: created.id }));
     if (!before.supported || !before.repository || !before.clean || !fullCommit(before.headOid)
       || (role === 'review' && before.headOid !== revision!.commitId)) throw new Error('revision_precheck_failed');
@@ -302,9 +340,11 @@ export async function executeCollaborationRole(port: CollaborationExecutionPort,
       : `Independently review the actual repository revision ${revision!.commitId} against baseline ${revision!.baselineCommitId}.\nOwner goal: ${intent.goal}\nExpected output: ${intent.expectedOutput}\nYour assigned role is independent review only. Cats handles conversation setup, participant recruitment, revision capture and final reporting. Read only. Use read_file/list_files when provided for inspection, or provider-native read-only file tools; batch independent reads when possible. Do not change files, run project scripts or tests, publish, delegate, or execute commands with side effects. Return ONLY JSON: {"commitId":"${revision!.commitId}","verdict":"approved"|"changes_requested","summary":"specific findings and validation limitations"}. Your review is an attributed judgment, not proof that tests ran.`;
     const response = await bounded(() => sendSupervisedRuntimeMessage({
       runtimeClient: port.runtimeClient, sessionId: created.id, content: prompt,
+      ...(development ? { input: { skills } } : {}),
       supervision: { ...supervision, actionId: `${stage.runId}:execute` },
     }));
     await recordCollaborationUsage(port, response.tokensUsed);
+    await observeDevelopment('after');
     const text = resolveFullResponseText(response.segments);
     let commitId: string;
     let review: WorkCollaborationIntent['review'];

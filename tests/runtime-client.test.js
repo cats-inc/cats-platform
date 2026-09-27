@@ -59,6 +59,21 @@ test('runtime model reads preserve the explicit catalog configuration error code
   }
 });
 
+test('Runtime skill catalog uses the selected authenticated endpoint and create preserves pinned refs', async t => {
+  const calls = [];
+  t.mock.method(globalThis, 'fetch', async (url, init) => {
+    calls.push({ url: String(url), init });
+    return Response.json(String(url).includes('/skills/catalog') ? { skills: [] } : { id: 'session', status: 'ready' });
+  });
+  const client = new CatsRuntimeClient('http://runtime.test', { apiKey: 'fixture-key' });
+  await client.getSkillCatalog('cats-inc-development');
+  assert.equal(calls[0].url, 'http://runtime.test/skills/catalog?id=cats-inc-development&limit=2');
+  assert.ok(calls[0].init.headers);
+  const skills = { strict: true, requestedSkills: [{ id: 'cats-inc-development', version: '1.0.0', fingerprint: 'a'.repeat(64) }] };
+  await client.createSession({ provider: 'fixture', skills, workspaceKind: 'worktree', workspaceAccess: 'read_write', permissionMode: 'whitelist' });
+  assert.deepEqual(JSON.parse(calls[1].init.body).skills, skills);
+});
+
 test('runtime client reuses the shared execution-request serializer for outbound payloads', async () => {
   const requests = [];
   const originalFetch = globalThis.fetch;

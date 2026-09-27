@@ -13,7 +13,7 @@ import { appendCollaborationReport, describeCollaborationReport } from '../build
 import { collaborationSnapshot, executeCollaborationRead, collaborationToolDescriptors,
   DISCOVER_COLLABORATION_CATS as discover, INSPECT_COLLABORATION_CONTEXT as inspect,
   PREPARE_COLLABORATION as prepare } from '../build/server/products/chat/state/orchestratorCollaboration.js';
-import { ACCEPT_COLLABORATION, ENSURE_COLLABORATION_CONVERSATION as conversation,
+import { ACCEPT_COLLABORATION, ACCEPT_CATS_DEVELOPMENT, ENSURE_COLLABORATION_CONVERSATION as conversation,
   ENSURE_COLLABORATION_PARTICIPANTS as participants, REQUEST_COLLABORATION_ROLE as execute,
   INSPECT_COLLABORATION_WORK as inspectWork, STOP_COLLABORATION_WORK as stop,
   REQUEST_COLLABORATION_EXECUTION as executeAll,
@@ -45,7 +45,7 @@ function respond() { return { contractVersion: 1, kind: 'semantic_plan', decisio
   confidence: 'high', rationaleSummary: 'Acknowledge observed results.',
   steps: [{ stepId: 'report', summary: 'Report actual results only.', action: 'respond' }] }; }
 
-function fixture({ intent = 'create', confirm = true, budget = {}, old = false, instance = null } = {}) {
+function fixture({ intent = 'create', confirm = true, budget = {}, old = false, instance = null, development = false } = {}) {
   const now = new Date();
   let state = createDefaultChatState();
   state = createChannel(state, { title: 'Collaboration', topic: goal, originSurface: 'chat', repoPath: join(tmpdir(), 'cats-k3-source'),
@@ -81,7 +81,7 @@ function fixture({ intent = 'create', confirm = true, budget = {}, old = false, 
       feedbackDelivered: true, receipts }, locale: 'zh-TW', now, canExecute: true });
   state = published.state;
   const choiceResponse = { sourceMessageId: published.resultMessage.id, status: 'submitted',
-    answers: [{ question: published.resultMessage.choices?.[0].question ?? 'old', selectedOptionIds: [ACCEPT_COLLABORATION] }],
+    answers: [{ question: published.resultMessage.choices?.[0].question ?? 'old', selectedOptionIds: [development ? ACCEPT_CATS_DEVELOPMENT : ACCEPT_COLLABORATION] }],
     submittedAt: now.toISOString() };
   if (confirm) state = appendMessage(state, channelId, { body: '執行方案', senderKind: 'user', senderName: 'Owner' }, now,
     { choiceResponse }).state;
@@ -89,14 +89,38 @@ function fixture({ intent = 'create', confirm = true, budget = {}, old = false, 
     proposalMessageId: published.resultMessage.id };
 }
 
+const developmentSkill = { id: 'cats-inc-development', version: '1.0.0', fingerprint: 'd'.repeat(64),
+  status: 'resolved', contentProfile: 'preview', sourcePath: join(tmpdir(), 'cats-fixture-skill'),
+  entryFile: join(tmpdir(), 'cats-fixture-skill', 'SKILL.md') };
 function clients(h, hooks = {}) {
-  const calls = { config: [], diagnostics: [], create: [], send: [], cancel: [], close: [], commit: [] };
+  const calls = { config: [], diagnostics: [], create: [], send: [], cancel: [], close: [], commit: [], catalog: [], observe: [] };
   let changed = false, committed = false, coordinatorCalls = 0;
   const workspace = join(tmpdir(), 'cats-k3-owned-worktree');
   const backend = hooks.backend ?? 'cli';
   const native = { id: 'native', target: `${backend}/native`, backend,
     command: null, args: null, runner: null, runtime: null, transport: null, model: null, eventCapabilities: null };
   const runtime = {
+    async getSkillCatalog(id) { calls.catalog.push(id); return hooks.catalog ? hooks.catalog() : { skills: [developmentSkill] }; },
+    async observeSession(id) {
+      calls.observe.push(id);
+      const created = calls.create.find(row => row.role === 'implementation');
+      const contentPolicy = { profile: 'preview', fingerprint: 'e'.repeat(64), skillsRoot: join(tmpdir(), 'cats-fixture-library') };
+      const sent = calls.send.find(row => row.sessionId === id);
+      // Runtime context metadata triggers hydration; persisted rebuild drops pins unless send repeats them.
+      const refs = sent ? sent.input.skills?.requestedSkills ?? created.skills.requestedSkills.map(ref => ({ id: ref.id })) : created.skills.requestedSkills;
+      const common = { requestedSkills: ['cats-inc-development'], requestedSkillRefs: refs,
+        resolvedSkills: [developmentSkill], appliedSkillIds: ['cats-inc-development'], warnings: [] };
+      const delivery = { status: 'applied', mode: 'instructions', provider: created.provider, backend,
+        warnings: [], instructions: { byteLength: 4096 } };
+      const observed = { session: { id, providerName: created.provider, model: created.model ?? null,
+        providerBackend: backend, providerInstanceId: 'native', providerTarget: { resolved: true, provider: created.provider, target: `${backend}/native` },
+        cwd: workspace, workspace: { kind: 'worktree', access: 'read_write' }, permissionMode: 'whitelist', allowedTools: created.allowedTools,
+        skills: { ...common, strict: true, contentPolicy, delivery },
+        hydration: { workspace: { kind: 'worktree', access: 'read_write', runtimeCwd: workspace },
+          skills: { ...common, status: 'applied', mode: 'instructions', provider: created.provider, backend },
+          metadata: { runtimeSkillContent: { schemaVersion: 1, sessionId: id, profile: 'preview', policyFingerprint: contentPolicy.fingerprint, releaseCompatible: false } } } } };
+      return hooks.observe ? hooks.observe(structuredClone(observed), calls.observe.length) : observed;
+    },
     async getHealth() { return { baseUrl: 'http://127.0.0.1:3110', reachable: true, status: 'ok', service: 'cats-runtime' }; },
     async getProviderConfig() { calls.config.push(true); return { claude: {
       defaultInstance: 'native', defaultBackend: backend,
@@ -190,6 +214,8 @@ test('K3 executes the admitted goal, separate roles, verified revision and feedb
   assert.deepEqual(c.calls.create[2].allowedTools, ['read_file', 'list_files']);
   assert.equal(c.calls.create[0].allowedTools, undefined);
   assert.equal(c.calls.create[2].cwd, c.workspace);
+  assert.deepEqual(c.calls.create[1].skills.requestedSkills, []);
+  assert.equal(c.calls.catalog.length, 0); assert.equal(c.calls.observe.length, 0);
   assert.equal(report.execution.implementationEvidence.commitId, revision);
   assert.equal(report.execution.review.commitId, revision);
   assert.notEqual(report.execution.participants[0].catId, report.execution.participants[1].catId);
@@ -928,4 +954,95 @@ test('insufficient coordinator scope and unsupported cost caps cannot admit coll
     assert.equal((await intents(result.store)).length, 0);
     assert.equal(result.report.status, 'stopped');
   }
+});
+
+test('Cats development explicitly pins its preview skill and retains actual before/after delivery', async () => {
+  const h = fixture({ development: true }), c = clients(h);
+  const { store, report } = await run(h, c);
+  assert.equal(report.execution?.status, 'completed', JSON.stringify(report));
+  assert.deepEqual(c.calls.catalog, ['cats-inc-development']);
+  assert.deepEqual(c.calls.create[1].skills, { strict: true, requestedSkills: [{ id: developmentSkill.id,
+    version: developmentSkill.version, fingerprint: developmentSkill.fingerprint }] });
+  assert.deepEqual(c.calls.create[2].skills.requestedSkills, []);
+  const intent = (await intents(store))[0].metadata.collaborationIntent;
+  assert.equal(intent.development.profile, 'cats-inc-development');
+  assert.deepEqual(intent.stages.implementation.skillDelivery.before, intent.stages.implementation.skillDelivery.after);
+  assert.equal(intent.stages.implementation.skillDelivery.before.resources.status, 'not_established');
+  assert.deepEqual(c.calls.send.find(row => row.sessionId === 'session-implementation').input.skills, c.calls.create[1].skills);
+  const projected = collaborationFeedbackSummary(report.execution);
+  assert.equal(projected.stages.implementation.skillDelivery, undefined);
+  assert.equal(projected.skillDelivery.implementation.afterVerified, true);
+  assert.equal(intent.executionGrant.implementationTools.includes('shell'), false);
+  const creates = c.calls.create.length, catalogs = c.calls.catalog.length;
+  await service(h, c, store);
+  assert.equal(c.calls.create.length, creates); assert.equal(c.calls.catalog.length, catalogs);
+});
+
+test('Cats development unavailable in a release catalog cannot admit or create any session', async () => {
+  const h = fixture({ development: true }), c = clients(h, { catalog: () => ({ skills: [] }) });
+  const { store, report } = await run(h, c);
+  assert.equal(report.status, 'stopped'); assert.equal(report.reason, 'cats_development_skill_unavailable');
+  assert.equal(c.calls.create.length, 0); assert.equal((await intents(store)).length, 0);
+});
+
+test('Cats development blocks missing, mismatched or degraded authoritative delivery before sending a goal', async () => {
+  for (const kind of ['policy', 'session', 'fingerprint', 'warnings', 'hydration', 'extra-tool']) {
+    const h = fixture({ development: true }), c = clients(h, { observe: observation => {
+      const session = observation.session;
+      if (kind === 'policy') session.skills.contentPolicy.profile = 'release';
+      if (kind === 'session') session.hydration.metadata.runtimeSkillContent.sessionId = 'wrong-session';
+      if (kind === 'fingerprint') session.skills.resolvedSkills[0].fingerprint = 'a'.repeat(64);
+      if (kind === 'warnings') session.skills.delivery.warnings = ['degraded'];
+      if (kind === 'hydration') session.hydration.skills.appliedSkillIds = [];
+      if (kind === 'extra-tool') session.allowedTools.push('shell');
+      return observation;
+    } });
+    const { store, report } = await run(h, c);
+    assert.equal(report.execution?.status, 'blocked', kind);
+    assert.equal(c.calls.send.some(row => row.sessionId === 'session-implementation'), false, kind);
+    assert.equal(c.calls.commit.length, 0);
+    const intent = (await intents(store))[0].metadata.collaborationIntent;
+    assert.equal(intent.stages.implementation.skillDelivery.failure.phase, 'before');
+    assert.ok(c.calls.close.includes('session-implementation'));
+  }
+});
+
+test('Cats development delivery changes after a response retain usage and block revision capture', async () => {
+  const h = fixture({ development: true }), c = clients(h, { observe: (observation, count) => {
+    if (count === 2) observation.session.skills.resolvedSkills[0].fingerprint = 'a'.repeat(64);
+    return observation;
+  } });
+  const { store, report } = await run(h, c);
+  const intent = (await intents(store))[0].metadata.collaborationIntent;
+  assert.equal(report.execution.status, 'blocked'); assert.ok(intent.tokensUsed >= 100);
+  assert.equal(intent.stages.implementation.skillDelivery.before.skill.fingerprint, developmentSkill.fingerprint);
+  assert.equal(intent.stages.implementation.skillDelivery.failure.observedFingerprint, 'a'.repeat(64));
+  assert.equal(intent.stages.implementation.skillDelivery.after, undefined);
+  assert.equal(c.calls.commit.length, 0);
+  const sends = c.calls.send.length; await recoverCollaborations(store, c.runtime);
+  assert.equal(c.calls.send.length, sends);
+});
+
+test('Cats development cannot replace an ordinary owner confirmation or survive a changed context during preflight', async () => {
+  const h = fixture(), c = clients(h), s = await service(h, c);
+  const changed = structuredClone(h.choiceResponse); changed.answers[0].selectedOptionIds = [ACCEPT_CATS_DEVELOPMENT];
+  await s.store.updateSnapshot(({ chat, core }) => ({ core, chat: appendMessage(chat, h.channelId,
+    { body: 'Changed profile', senderKind: 'user', senderName: 'Owner' }, new Date(), { choiceResponse: changed }).state }));
+  await assert.rejects(service(h, c, s.store, { choiceResponse: changed }), /input_conflict/u);
+  assert.equal(c.calls.create.length, 0);
+  const dev = fixture({ development: true }), store = new MemoryChatStore(dev.state);
+  const next = clients(dev, { catalog: async () => {
+    await store.updateSnapshot(({ chat, core }) => ({ core, chat: { ...chat,
+      channels: chat.channels.map(row => row.id === dev.channelId ? { ...row, repoPath: 'changed-source' } : row) } }));
+    return { skills: [developmentSkill] };
+  } });
+  await assert.rejects(service(dev, next, store), /stale_context/u);
+  assert.equal(next.calls.create.length, 0); assert.equal((await intents(store)).length, 0);
+  const owner = fixture({ development: true }), ownerStore = new MemoryChatStore(owner.state);
+  const ownerClient = clients(owner, { catalog: async () => {
+    await ownerStore.updateCore(core => ({ ...core, ownerProfile: { ...core.ownerProfile, actorId: 'changed-owner' } }));
+    return { skills: [developmentSkill] };
+  } });
+  await assert.rejects(service(owner, ownerClient, ownerStore), /stale_context/u);
+  assert.equal(ownerClient.calls.create.length, 0); assert.equal((await intents(ownerStore)).length, 0);
 });

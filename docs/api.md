@@ -570,6 +570,19 @@ The richer route-resolution and wake-request contract lives in the persisted
 
 With provider-agent decisions explicitly enabled, an actual Orchestrator's
 prepared collaboration can offer the existing structured choice surface.
+The optional **Execute with Cats development skill (requires preview)** choice
+selects a fixed preview development profile for this proposal only. The host
+checks the executing Runtime's filtered skill catalog, freezes the required
+version/fingerprint alongside the owner/goal/target/budget, and rechecks the same
+owner and proposal after catalog I/O. A missing skill admits no task/session.
+The implementation role passes identical strict refs at create and send and
+checks actual session/hydration policy and delivery before/after the goal. It
+retains receipts or a bounded failure on its stage. Ordinary collaboration keeps
+empty skills; the development choice does not change file tools, worktree or
+review permissions. Unsupported strict delivery remains blocked (currently Codex
+CLI worktree delivery); optional resources are reported separately from applied
+instructions. Full receipts stay in Core; coordinator feedback carries only
+verified-before/after state, a receipt digest and bounded failure information.
 Submitting its exact `choiceResponse` admits K3 work bound to that persisted
 proposal's original goal, two Cats, repository and budget. A fabricated choice,
 stale proposal or plain message text cannot grant execution. Repeating the same
