@@ -4,7 +4,8 @@
  * Requires installed development dependencies in Platform and Runtime; no installs.
  * Usage: node scripts/desktop-candidate.mjs start --workspace <cats-inc|cats-platform> --root <new-directory>
  *        node scripts/desktop-candidate.mjs <status|screenshot|stop> --root <directory>
- * See docs/deployment.md#source-candidate-command. No provider calls or release.
+ *        node scripts/desktop-candidate.mjs input --root <directory> --action <json-file>
+ * See docs/deployment.md#source-candidate-command. No installs or release.
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { spawn, execFile } from 'node:child_process';
@@ -28,20 +29,22 @@ async function writeJson(filename, value) {
 export function parseCandidateArgs(args) {
   const [command, ...rest] = args;
   if (command === '--help' || command === '-h') return { command: 'help' };
-  if (!['start', 'status', 'screenshot', 'stop'].includes(command)) {
-    throw new Error('Expected start, status, screenshot or stop. Use --help.');
+  if (!['start', 'status', 'screenshot', 'input', 'stop'].includes(command)) {
+    throw new Error('Expected start, status, screenshot, input or stop. Use --help.');
   }
   const options = { command };
   for (let i = 0; i < rest.length; i += 2) {
     const key = rest[i];
     const value = rest[i + 1];
-    if (!['--root', ...(command === 'start' ? ['--workspace', '--runtime-root'] : [])].includes(key)
+    if (!['--root', ...(command === 'start' ? ['--workspace', '--runtime-root'] : []),
+      ...(command === 'input' ? ['--action'] : [])].includes(key)
       || !value || value.startsWith('--') || options[key.slice(2)] !== undefined) {
       throw new Error(`Invalid or repeated option: ${key}`);
     }
     options[key.slice(2)] = value;
   }
   if (!options.root) throw new Error('--root is required; start requires a new directory.');
+  if (command === 'input' && !options.action) throw new Error('input requires --action <json-file>.');
   options.root = path.resolve(options.root);
   return options;
 }
@@ -162,10 +165,19 @@ export async function readCandidateControl(root) {
   return { launch, control };
 }
 
-async function request(control, route, method = 'GET') {
-  const response = await fetch(`${control.url}/${route}`, { method, redirect: 'error',
-    headers: { Authorization: `Bearer ${control.token}` }, signal: AbortSignal.timeout(10_000) });
-  if (!response.ok) throw new Error(`Candidate ${route} failed (${response.status}).`);
+async function request(control, route, method = 'GET', body) {
+  let response;
+  try {
+    response = await fetch(`${control.url}/${route}`, { method, redirect: 'error',
+      headers: { Authorization: `Bearer ${control.token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(route === 'input' ? 20_000 : 10_000) });
+  } catch (error) {
+    if (route === 'input') throw new Error('Candidate input outcome unconfirmed; inspect a new screenshot before deciding whether to retry.');
+    throw error;
+  }
+  if (!response.ok) throw new Error(route === 'input'
+    ? `Candidate input outcome unconfirmed (${response.status}); inspect a new screenshot before deciding whether to retry.`
+    : `Candidate ${route} failed (${response.status}).`);
   return response;
 }
 
@@ -190,28 +202,59 @@ async function exitReceipt(root, control) {
   }
 }
 
-export async function operateCandidate(command, directory) {
+export async function operateCandidate(command, directory, actionFile) {
+  if (!['status', 'screenshot', 'input', 'stop'].includes(command)) throw new Error('Invalid candidate operation.');
   const root = await realpath(directory);
   const { launch, control } = await readCandidateControl(root);
   const exited = await exitReceipt(root, control);
   if (exited) {
-    if (command === 'screenshot') throw new Error('Candidate has stopped.');
+    if (command === 'screenshot' || command === 'input') throw new Error('Candidate has stopped.');
     return { state: exited.exitCode === 0 ? 'drained' : 'failed', launch, ...exited };
   }
   try {
     const status = await liveStatus(control); // Reconcile identity before any action.
     if (command === 'status') return { state: 'running', launch, ...status };
+    if (command === 'input') {
+      if (!actionFile) throw new Error('input requires an action JSON file.');
+      const file = await open(actionFile, 'r');
+      let action;
+      try {
+        const stat = await file.stat();
+        if (!stat.isFile() || stat.size > 32 * 1024) throw new Error('Action must be a JSON file of at most 32 KiB.');
+        const { buffer, bytesRead } = await file.read({ buffer: Buffer.alloc(32 * 1024 + 1) });
+        if (bytesRead > 32 * 1024) throw new Error('Action file is too large.');
+        try { action = JSON.parse(buffer.subarray(0, bytesRead).toString('utf8')); }
+        catch { throw new Error('Invalid action JSON.'); } // JSON errors can contain private input text.
+      } finally { await file.close(); }
+      if (!action || action.instanceId !== control.instanceId || !/^[a-f0-9]{32}$/u.test(action.frameId)) {
+        throw new Error('Action must include this candidate instanceId and a fresh screenshot frameId.');
+      }
+      const result = await (await request(control, 'input', 'POST', action)).json();
+      if (result.instanceId !== control.instanceId || result.launchId !== control.launchId || result.input !== 'applied') {
+        throw new Error('Candidate input response identity mismatch.');
+      }
+      return { ...result, next: 'Take a new screenshot and inspect the result before another action.' };
+    }
     if (command === 'screenshot') {
-      const bytes = Buffer.from(await (await request(control, 'screenshot', 'POST')).arrayBuffer());
+      const response = await request(control, 'screenshot', 'POST');
+      const frameId = response.headers.get('x-cats-frame-id');
+      const width = Number(response.headers.get('x-cats-image-width'));
+      const height = Number(response.headers.get('x-cats-image-height'));
+      if (frameId && (!/^[a-f0-9]{32}$/u.test(frameId)
+        || response.headers.get('x-cats-instance-id') !== control.instanceId
+        || !Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0)) {
+        throw new Error('Candidate screenshot identity or dimensions mismatch.');
+      }
+      const bytes = Buffer.from(await response.arrayBuffer());
       const filename = path.join(root, `screenshot-${Date.now()}.png`);
       await writeFile(filename, bytes, { flag: 'wx', mode: 0o600 });
-      return { filename, launchId: launch.launchId, ...status };
+      return { filename, launchId: launch.launchId, ...status, ...(frameId ? { frameId, width, height } : {}) };
     }
     await request(control, 'stop', 'POST');
   } catch (error) {
     // The window may have closed between the file read and the HTTP response.
     const receipt = await exitReceipt(root, control);
-    if (!receipt || command === 'screenshot') throw error;
+    if (!receipt || command === 'screenshot' || command === 'input') throw error;
     return { state: receipt.exitCode === 0 ? 'drained' : 'failed', ...receipt };
   }
   const deadline = Date.now() + 120_000;
@@ -312,10 +355,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   try {
     const options = parseCandidateArgs(process.argv.slice(2));
     if (options.command === 'help') {
-      console.log('Usage: desktop-candidate.mjs start --workspace <cats-inc|cats-platform> --root <new-directory> [--runtime-root <checkout>]\n       desktop-candidate.mjs <status|screenshot|stop> --root <directory>\nRequires existing development dependencies. No installs, provider calls or release.');
+      console.log('Usage: desktop-candidate.mjs start --workspace <cats-inc|cats-platform> --root <new-directory> [--runtime-root <checkout>]\n       desktop-candidate.mjs <status|screenshot|stop> --root <directory>\n       desktop-candidate.mjs input --root <directory> --action <json-file>\nRequires existing development dependencies. Input requires a recent screenshot; inspect the next screenshot to check the result. No installs or release.');
     } else {
       console.log(JSON.stringify(options.command === 'start' ? await startCandidate(options)
-        : await operateCandidate(options.command, options.root), null, 2));
+        : await operateCandidate(options.command, options.root, options.action), null, 2));
     }
   } catch (error) {
     console.error(error.message);

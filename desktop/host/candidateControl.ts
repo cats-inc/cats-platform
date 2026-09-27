@@ -2,6 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { writeFile, rename } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
+import type { CandidateScreenshot } from './candidateInteraction.js';
 import { assertDesktopCandidatePaths, type DesktopCandidateProfile } from './candidateProfile.js';
 
 /** Finish any already-admitted startup before draining; rejection still drains. */
@@ -14,15 +15,18 @@ export async function startDesktopCandidateControl(input: {
   profile: DesktopCandidateProfile;
   token: string;
   status(): object;
-  screenshot(): Promise<Buffer>;
+  screenshot(): Promise<CandidateScreenshot>;
+  input(action: unknown): Promise<void>;
+  invalidate(): void;
   stop(): void;
-}): Promise<{ close(exitCode: number): Promise<void> }> {
+}): Promise<{ revoke(): void; close(exitCode: number): Promise<void> }> {
   if (!/^[a-f0-9]{64}$/u.test(input.token)) throw new Error('Invalid candidate control token.');
   assertDesktopCandidatePaths(input.profile);
   const secret = Buffer.from(`Bearer ${input.token}`);
   const launchId = createHash('sha256').update(input.token).digest('hex');
   const instanceId = randomBytes(16).toString('hex');
   let stopping = false;
+  const revoke = () => { stopping = true; input.invalidate(); };
   const server = createServer((req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     const authorization = Buffer.from(req.headers.authorization ?? '');
@@ -39,13 +43,48 @@ export async function startDesktopCandidateControl(input: {
     } else if (req.method === 'POST' && req.url === '/stop') {
       json({ stopping: true });
       if (!stopping) {
-        stopping = true;
+        revoke();
         setImmediate(input.stop);
       }
     } else if (req.method === 'POST' && req.url === '/screenshot' && !stopping) {
-      void input.screenshot().then((png) => {
-        res.writeHead(200, { 'Content-Type': 'image/png' }).end(png);
+      void input.screenshot().then((shot) => {
+        if (stopping) throw new Error('Candidate stopping.');
+        res.writeHead(200, { 'Content-Type': 'image/png',
+          'X-Cats-Frame-Id': shot.frameId, 'X-Cats-Instance-Id': instanceId,
+          'X-Cats-Image-Width': shot.width, 'X-Cats-Image-Height': shot.height }).end(shot.png);
       }).catch(() => res.writeHead(409).end('Candidate window is unavailable.'));
+    } else if (req.method === 'POST' && req.url === '/input' && !stopping) {
+      // Bound buffered JSON even for chunked requests; never log input text.
+      if (!/^application\/json(?:;|$)/iu.test(req.headers['content-type'] ?? '')) {
+        res.writeHead(415).end();
+        req.resume();
+        return;
+      }
+      let size = 0;
+      const chunks: Buffer[] = [];
+      req.setTimeout(5000, () => req.destroy());
+      req.on('error', () => { if (!res.writableEnded) res.writeHead(400).end(); });
+      req.on('data', (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > 32 * 1024) {
+          chunks.length = 0;
+          if (!res.writableEnded) res.writeHead(413).end();
+        } else chunks.push(chunk);
+      });
+      req.on('end', () => {
+        req.setTimeout(0);
+        if (res.writableEnded) return;
+        let action: unknown;
+        try { action = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+        catch { res.writeHead(400).end(); return; }
+        if (stopping || !action || typeof action !== 'object'
+          || (action as { instanceId?: unknown }).instanceId !== instanceId) {
+          res.writeHead(409).end('Candidate instance changed or is stopping.');
+          return;
+        }
+        void input.input(action).then(() => json({ input: 'applied', instanceId, launchId }))
+          .catch(() => res.writeHead(409).end('Input outcome unconfirmed; inspect a new screenshot before deciding whether to retry.'));
+      });
     } else {
       res.writeHead(404).end();
     }
@@ -84,8 +123,9 @@ export async function startDesktopCandidateControl(input: {
     await rename(temporary, target);
   }
   return {
+    revoke,
     async close(exitCode) {
-      stopping = true;
+      revoke();
       // Called after the host's normal sidecar drain, before the host exits.
       await writeReceipt(`exit-${instanceId}`, { schemaVersion: 1, pid: process.pid, launchId,
         instanceId, root: input.profile.root, drainedAt: new Date().toISOString(), exitCode, ...input.status() });

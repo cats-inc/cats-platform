@@ -301,6 +301,8 @@ workspace and shell/build permission. It can use the same commands as a terminal
 npm run desktop:candidate -- start --workspace .. --root ../candidate-01
 npm run desktop:candidate -- status --root ../candidate-01
 npm run desktop:candidate -- screenshot --root ../candidate-01
+npm run desktop:candidate -- input --root ../candidate-01 --action ../candidate-01/action.json
+npm run desktop:candidate -- screenshot --root ../candidate-01
 npm run desktop:candidate -- stop --root ../candidate-01
 ```
 
@@ -328,14 +330,49 @@ the candidate; do not copy the controlling profile wholesale.
 Start returns JSON once both owned services are ready and the candidate window
 has loaded a product URL or the initial provider-selection screen. Status reports the actual host version, service PIDs,
 window URL and source receipt. Screenshot captures only that candidate's main
-window to a local PNG and returns its path. The agent must inspect it and perform
+window to a local PNG and returns its path, pixel dimensions, `instanceId` and
+single-use `frameId`. The agent must inspect it and perform
 the relevant reproduction/check before claiming a fix. Readiness alone is not a
 bug-fix verdict, live-provider test or installed-release acceptance.
 
+To operate that window, write a UTF-8 JSON action file using the identifiers from
+the latest screenshot, then run `input`. For example:
+
+```json
+{"instanceId":"<from screenshot>","frameId":"<from screenshot>","kind":"click","x":420,"y":260}
+```
+
+Coordinates are pixels in that exact PNG, measured from its top-left, not screen
+coordinates or a resized image preview. The host handles DPI and browser zoom.
+Each action consumes the frame; take and inspect another screenshot before the
+next action. Navigation, resize, shutdown, a newer capture or two minutes of age
+invalidate the frame. A different host instance cannot reuse it.
+
+| `kind` | Additional fields |
+| --- | --- |
+| `click` | `x`, `y`: a point inside the image; left click |
+| `text` | `text`: up to 4,096 UTF-16 code units; optional `replace: true` selects and replaces the focused editable field |
+| `key` | `key`: `Enter`, `Tab`, `Escape`, `Backspace`, `Delete`, `ArrowLeft`, `ArrowUp`, `ArrowRight`, `ArrowDown`, `Home`, `End`, `PageUp`, `PageDown`, or `SelectAll` |
+| `scroll` | `x`, `y`, `deltaY`: scroll at that point, up to ±2,000 CSS pixels; positive is down |
+
+Use one action per file/request (maximum 32 KiB); unknown fields and arbitrary
+scripts/protocol methods are refused. Text requires an already focused editable
+field. `input: applied` means input dispatch completed, not that an asynchronous
+UI change succeeded. Inspect the next screenshot. An error/timeout can follow
+partially applied input: observe before deciding whether to retry; never blindly
+repeat a Send/click. Input is not automatically retried. Normal UI actions can
+trigger provider calls or other effects and require the same task authorization
+as manual operation. Keep action files private, especially when they contain text.
+
 Each opt-in candidate gets a loopback control listener with a random bearer token
 kept in its private `control.json`; normal Desktop starts have no control listener.
-It accepts only status, main-window capture and graceful stop, rejects browser
-Origin requests, and offers no arbitrary JavaScript, file or shell executor.
+It accepts status, main-window capture, the four bounded input actions and graceful
+stop, rejects browser Origin requests, and offers no arbitrary JavaScript, file or
+shell executor. Input targets only this candidate's own web content through a
+temporary internal debugger attachment. No remote debugging port or OS-wide input
+is used, and the controller does not activate another window. Close this candidate's
+DevTools/debugger before input; concurrent capture/input is refused. Native dialogs,
+other windows and another conversation's Desktop are outside this input surface.
 Keep the private root/control file local. Stop uses the host's normal owned-sidecar
 drain after any pending startup settles and waits up to 120 seconds for its
 instance-bound receipt. `state: drained` means that host reported its sidecar drain

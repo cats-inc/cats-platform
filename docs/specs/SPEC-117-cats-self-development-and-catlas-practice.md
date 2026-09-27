@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Ordinary contribution, diagnostics and source-candidate commands usable; broader managed development and independent promotion pending |
+| Status | Ordinary contribution, diagnostics and source-candidate build/input usable; broader managed development and independent promotion pending |
 | Owner | Platform integration, with member-owned work packages |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Decision | [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
@@ -54,6 +54,17 @@ control data must not authorize killing a stored PID. No automatic credential
 copy or provider inference occurs. Startup success is not a bug-fix verdict:
 the agent must still reproduce/check the reported behavior. This is the minimal
 developer path, not the full managed G1/G2 lifecycle or an installed release test.
+
+The bounded input slice operates that same candidate main window. An agent
+can click, insert text, press supported keys and scroll from a recent screenshot,
+then inspect the result. Input must bind the exact host instance and consume a
+fresh frame; navigation/resize/expiry or shutdown requires another observation.
+The local controller exposes fixed input operations only, with bounded payloads
+and no arbitrary script/protocol execution or access to other desktop windows.
+Actions do not themselves establish successful bug reproduction or correction.
+An action may have partly applied before an error/timeout; observe again before
+deciding to retry. Normal UI effects, including provider requests, retain their
+usual authorization. Native Windows evidence and remaining limits are in PLAN-109.
 
 ## Minimal ordinary-agent diagnostic handoff (authorized 2026-09-27)
 

@@ -94,6 +94,13 @@ The current slices are:
 
 ## Current Status
 
+- [x] Ordinary source-development agents can build and launch an isolated Desktop
+      candidate from the `cats-inc` workspace, capture its window, and use bounded
+      screenshot-based click, text, key and scroll commands before checking the
+      result. See the [candidate workflow](docs/deployment.md#source-candidate-command).
+      Provider reproduction requires explicit candidate setup; this does not
+      close the broader managed development/practice gates in PLAN-109.
+
 - [x] Connect shared product knowledge and role procedures to the applicable
       Orchestrator reply and decision requests, with bounded inline content,
       provenance and normal npm/Desktop assets. Scoped fixtures pass in

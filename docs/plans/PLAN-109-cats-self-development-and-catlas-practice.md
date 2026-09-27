@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Ordinary contribution, diagnostics and source-candidate commands implemented; broader managed development and independent promotion pending |
+| Status | Ordinary contribution, diagnostics and source-candidate build/input usable; broader managed development and independent promotion pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Last updated | 2026-09-27 |
@@ -24,6 +24,47 @@ own staged acceptance and does not close G1/G2 development or G4 practice gates.
 This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
+
+## Resume checkpoint — candidate window input (2026-09-27)
+
+The owner requested continuing in small slices. This slice lets an ordinary
+agent use its shell to operate the candidate it already launched: click, insert
+text, press a supported key or scroll, then capture the result. Every action is
+bound to that host instance and a recent, single-use screenshot. Navigation,
+resize and shutdown invalidate the observation. Coordinates belong to the
+candidate image, not the desktop screen. Input uses the host's internal debugger
+transport with fixed Input commands; no remote debugging port, arbitrary protocol
+method, script evaluator, normal-profile input or new product UI is exposed.
+
+The [input command](../deployment.md#source-candidate-command) is implemented.
+Its JSON file includes the host instance and frame identifiers. `applied` means
+dispatch completed; inspect a new screenshot to check the effect. Errors/timeouts
+can follow partially applied input, so the command never automatically retries.
+Normal UI actions may trigger provider calls and retain their usual task
+authorization. Input text is not returned in control receipts or error messages.
+
+Desktop compilation and **21/21** focused candidate tests passed. The final
+HTTP-body/stop race addition passed the **4/4** command tests (within the same
+21-test set). Coverage includes stale/wrong-host frames, navigation/resize/zoom,
+concurrency, another debugger, shutdown while receiving JSON, held-input release
+and timeout with late completion. Independent review found an ambiguous error
+message after partial dispatch; it now reports an unconfirmed outcome.
+
+Windows native Electron validation passed all four actions at 125% zoom while
+the window remained inactive. It exposed Enter failing to insert a newline;
+the character event is now included and both native and focused checks pass.
+A fresh source-built Desktop then accepted empty-provider Apply/Continue,
+navigated to product setup and displayed synthetic text typed into its form.
+Each effect was checked in a new screenshot. Normal stop drained the host and
+both sidecars; all three owned PIDs were independently confirmed gone, and all
+six original Cats process identities remained. No account was submitted, provider
+inference run, credentials copied or installed profile changed. Native evidence
+is Windows-only; broader managed development and knowledge-quality gates remain.
+
+Direct main push and checkpoints remain authorized. Main advanced through the
+independently published 0.5.6 preview to `a43d8c9e`; this slice makes no version
+or release change. Full main CI follows the push. Prior source-candidate slice
+CI `36288282414` passed 5,148 tests with zero failures.
 
 ## Resume checkpoint — minimal source candidate workflow (2026-09-27)
 

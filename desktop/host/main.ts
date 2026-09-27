@@ -65,6 +65,7 @@ import {
 import { createDesktopPackagingPlan } from './packaging.js';
 import { ManagedServiceSupervisor } from './processSupervisor.js';
 import { settleDesktopCandidateStartup, startDesktopCandidateControl } from './candidateControl.js';
+import { createDesktopCandidateInteraction } from './candidateInteraction.js';
 import {
   buildDesktopBootstrapSnapshot,
   fetchJson,
@@ -2233,6 +2234,7 @@ async function shutdownHost(exitCode = 0): Promise<void> {
     return shutdownPromise;
   }
   shuttingDown = true;
+  candidateControl?.revoke();
   setupHelperDrain ??= pauseSelectedSetupHelpers();
   clearRuntimeCliInventoryPoll();
   shutdownPromise = (async () => {
@@ -2701,6 +2703,11 @@ async function main(): Promise<void> {
   });
 
   if (candidate && process.env.CATS_DESKTOP_CANDIDATE_CONTROL_TOKEN) {
+    const interaction = createDesktopCandidateInteraction(mainWindow!, {
+      stopping: () => shuttingDown,
+      allowedUrl: (url) => url === encodeDataUrl(buildDesktopBootstrapPage())
+        || url.startsWith(`${hostConfig!.appBaseUrl}/`),
+    });
     candidateControl = await startDesktopCandidateControl({
       profile: candidate,
       token: process.env.CATS_DESKTOP_CANDIDATE_CONTROL_TOKEN,
@@ -2716,10 +2723,9 @@ async function main(): Promise<void> {
             url: mainWindow.webContents.getURL().split(/[?#]/u)[0]?.replace(/^data:.*$/u, 'bootstrap') }
           : null,
       }),
-      screenshot: async () => {
-        if (!mainWindow || mainWindow.isDestroyed()) throw new Error('No candidate window.');
-        return (await mainWindow.webContents.capturePage()).toPNG();
-      },
+      screenshot: interaction.screenshot,
+      input: interaction.input,
+      invalidate: interaction.invalidate,
       stop: () => { void shutdownHost(); },
     });
   }

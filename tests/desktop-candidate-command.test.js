@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
+import { request as httpRequest } from 'node:http';
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -27,8 +28,9 @@ async function temporary(t) {
 
 test('candidate command validates options and strips inherited controller/credential settings', () => {
   assert.equal(parseCandidateArgs(['start', '--root', 'new', '--workspace', '..']).workspace, '..');
+  assert.equal(parseCandidateArgs(['input', '--root', 'new', '--action', 'action.json']).action, 'action.json');
   for (const args of [[], ['start'], ['stop', '--root', 'x', '--workspace', 'y'],
-    ['start', '--root', 'x', '--root', 'y'], ['start', '--root', '--workspace']]) {
+    ['start', '--root', 'x', '--root', 'y'], ['start', '--root', '--workspace'], ['input', '--root', 'x']]) {
     assert.throws(() => parseCandidateArgs(args));
   }
   assert.deepEqual(candidateEnvironment({ PATH: '/bin', HOME: '/home/user', DISPLAY: ':1',
@@ -92,13 +94,18 @@ test('candidate-only control authenticates, captures only its window and confirm
   await writeFile(path.join(candidateRoot, 'launch.json'), JSON.stringify({ launchId }));
   let stopped = 0;
   let captured = 0;
+  let applied = 0;
+  let invalidated = 0;
   let replacement;
   let releaseDrain;
   const drain = new Promise((resolve) => { releaseDrain = resolve; });
   const png = Buffer.from('candidate image');
+  const image = { png, frameId: randomBytes(16).toString('hex'), width: 800, height: 600 };
   const controller = await startDesktopCandidateControl({ profile, token,
     status: () => ({ services: [{ ready: stopped === 0, pid: stopped === 0 ? 42 : null }] }),
-    screenshot: async () => { captured += 1; return png; },
+    screenshot: async () => { captured += 1; return image; },
+    input: async () => { applied += 1; },
+    invalidate: () => { invalidated += 1; },
     stop: () => { stopped += 1; void drain.then(() => controller.close(0)); },
   });
   t.after(async () => {
@@ -118,10 +125,50 @@ test('candidate-only control authenticates, captures only its window and confirm
   const shot = await operateCandidate('screenshot', candidateRoot);
   assert.deepEqual(await readFile(shot.filename), png);
   assert.equal(captured, 1);
+  assert.equal(shot.frameId, image.frameId);
+  assert.equal(shot.width, 800);
+  assert.equal(shot.instanceId, control.instanceId);
+  const actionFile = path.join(root, 'action.json');
+  const action = { instanceId: control.instanceId, frameId: shot.frameId, kind: 'text', text: 'private sentinel' };
+  await writeFile(actionFile, JSON.stringify({ ...action, instanceId: 'wrong-host' }));
+  await assert.rejects(operateCandidate('input', candidateRoot, actionFile), /this candidate instanceId/u);
+  const post = (body, headers = { 'Content-Type': 'application/json' }) => fetch(`${control.url}/input`, {
+    method: 'POST', headers: { ...auth, ...headers }, body,
+  });
+  assert.equal((await post(JSON.stringify({ ...action, instanceId: 'wrong-host' }))).status, 409);
+  assert.equal((await post('bad json')).status, 400);
+  assert.equal((await post('x'.repeat(33 * 1024))).status, 413);
+  assert.equal((await post('{}', { 'Content-Type': 'text/plain' })).status, 415);
+  assert.equal(applied, 0);
+  await writeFile(actionFile, JSON.stringify(action));
+  const receipt = await operateCandidate('input', candidateRoot, actionFile);
+  assert.equal(receipt.input, 'applied');
+  assert.equal(JSON.stringify(receipt).includes('private sentinel'), false);
+  assert.equal(applied, 1);
+  await assert.rejects(operateCandidate('invalid', candidateRoot), /Invalid candidate operation/u);
   assert.equal(JSON.stringify(status).includes(token), false);
+  const body = JSON.stringify(action);
+  let partial;
+  let accepted;
+  const headersAccepted = new Promise((resolve) => { accepted = resolve; });
+  const pendingInput = new Promise((resolve, reject) => {
+    partial = httpRequest(`${control.url}/input`, { method: 'POST', headers: { ...auth,
+      'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), Expect: '100-continue' } },
+    (response) => { response.resume(); resolve(response.statusCode); });
+    partial.once('continue', accepted);
+    partial.once('error', reject);
+    partial.flushHeaders();
+  });
+  await headersAccepted;
+  partial.write(body.slice(0, 10));
   await fetch(`${control.url}/stop`, { method: 'POST', headers: auth });
+  partial.end(body.slice(10));
+  assert.equal(await pendingInput, 409, 'stop must fence an input whose body is still arriving');
   await fetch(`${control.url}/stop`, { method: 'POST', headers: auth });
   assert.equal(stopped, 1);
+  assert.equal(invalidated, 1);
+  assert.equal((await post(JSON.stringify(action))).status, 404);
+  assert.equal(applied, 1);
   const exitFile = path.join(candidateRoot, `exit-${control.instanceId}.json`);
   await assert.rejects(readFile(exitFile), { code: 'ENOENT' });
   releaseDrain();
@@ -129,8 +176,9 @@ test('candidate-only control authenticates, captures only its window and confirm
   assert.equal(terminal.state, 'drained');
   assert.equal(terminal.services[0].pid, null);
   await assert.rejects(operateCandidate('screenshot', candidateRoot), /has stopped/u);
+  await assert.rejects(operateCandidate('input', candidateRoot, actionFile), /has stopped/u);
   replacement = await startDesktopCandidateControl({ profile, token,
-    status: () => ({ services: [] }), screenshot: async () => png, stop() {} });
+    status: () => ({ services: [] }), screenshot: async () => image, input: async () => {}, invalidate() {}, stop() {} });
   const current = await operateCandidate('status', candidateRoot);
   assert.equal(current.state, 'running', 'an old exit receipt cannot describe a replacement host');
   assert.notEqual(current.instanceId, control.instanceId);
