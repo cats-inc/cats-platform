@@ -19,6 +19,7 @@ import {
   resolveExecutionLabelForProviderTarget,
   resolveProviderModelFieldsViewState,
   resolveProviderSupportBadge,
+  resolveSelectedCatalogEntryId,
   resolveSelectedInstanceEventCapabilities,
   resolveUnsupportedPersistentControlWarning,
   sanitizePersistentTargetSelection,
@@ -1391,6 +1392,94 @@ test('provider model field view state derives instance, entry, and catalog warni
   assert.equal(viewState.primaryCatalogWarning, 'Advanced catalog unavailable.');
   assert.equal(viewState.providerRegistrySetupHref, '/runtime/setup');
   assert.equal(viewState.canRetryProviderRegistry, false);
+});
+
+test('provider model field view state selects the saved entry when the saved model is its execution ID', () => {
+  // A Pi room keeps the runtime's execution model `gpt-6-sol` beside the entry
+  // `openai-codex/gpt-6-sol`. The static catalog defers reconciliation, so the
+  // picker must read the entry; the first row, Spark, used to show instead.
+  const entries = ['gpt-5.3-codex-spark', 'gpt-5.5', 'gpt-6-sol'].map((id) => ({
+    id: `openai-codex/${id}`,
+    label: `${id} [openai-codex]`,
+  }));
+  const selectedProvider: ProductProviderDescriptor = {
+    defaultModel: null,
+    defaultInstance: null,
+    defaultBackend: 'cli',
+    id: 'pi',
+    label: 'Pi',
+    modelsPath: '/api/providers/pi/models',
+    instances: [{ id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli' }],
+  };
+  const modelSelection = {
+    entryId: 'openai-codex/gpt-6-sol',
+    entryMode: 'explicit' as const,
+    controls: { 'pi.thinking': 'medium' },
+  };
+  assert.equal(shouldDeferCatalogTargetReconciliation({
+    catalogSource: 'static',
+    advancedCatalogSource: 'static',
+    model: 'gpt-6-sol',
+    modelSelection,
+  }), true);
+
+  const effectiveCatalog = {
+    provider: 'pi',
+    backend: 'cli' as const,
+    instance: 'native',
+    defaultModel: null,
+    source: 'static' as const,
+    cache: null,
+    models: entries,
+    warnings: [],
+  };
+  const effectiveAdvancedCatalog = {
+    provider: 'pi',
+    backend: 'cli' as const,
+    instance: 'native',
+    defaultModel: null,
+    source: 'static' as const,
+    cache: null,
+    entries,
+    presets: [],
+    controls: [],
+    defaultSelection: null,
+    support: { tier: 'full' as const, notes: [] },
+    warnings: [],
+  };
+  const viewState = resolveProviderModelFieldsViewState({
+    selectedProvider,
+    provider: 'pi',
+    instance: 'cli/native',
+    model: 'gpt-6-sol',
+    modelSelection,
+    catalogLoading: false,
+    providersLoaded: true,
+    providerRegistry: {
+      state: 'ready',
+      providers: [selectedProvider],
+      recovery: { retryable: true, openRuntimeSetupPath: '/runtime/setup' },
+      warnings: [],
+    },
+    effectiveCatalog,
+    effectiveAdvancedCatalog,
+    isLegacyModelTarget: false,
+  });
+
+  assert.equal(viewState.selectedCatalogEntryId, 'openai-codex/gpt-6-sol');
+  assert.equal(viewState.selectedEntryId, 'openai-codex/gpt-6-sol');
+  const executionLabel = resolveExecutionLabelForProviderTarget({
+    provider: 'pi',
+    instance: 'cli/native',
+    model: 'gpt-6-sol',
+    modelSelection,
+    effectiveCatalog,
+    effectiveAdvancedCatalog,
+  });
+  assert.ok(executionLabel.includes('gpt-6-sol [openai-codex]'), executionLabel);
+  assert.equal(resolveSelectedCatalogEntryId(entries, 'openai-codex/gpt-5.5', null), 'openai-codex/gpt-5.5');
+  assert.equal(resolveSelectedCatalogEntryId(entries, 'unlisted', { entryId: 'gone', entryMode: 'explicit' }),
+    'openai-codex/gpt-5.3-codex-spark');
 });
 
 test('model placeholder asks user to pick a provider first when runtime is unreachable but providers were preserved', () => {

@@ -50,6 +50,7 @@ export {
   resolveProviderRegistryPlaceholder,
   resolveProviderRegistrySetupHref,
   resolveProviderSupportBadge,
+  resolveSelectedCatalogEntryId,
   resolveSelectedInstanceEventCapabilities,
   resolveUnsupportedPersistentControlWarning,
   sanitizePersistentTargetSelection,
