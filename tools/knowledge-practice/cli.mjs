@@ -10,6 +10,7 @@ import { exportKnowledge, reviewCandidate, revokeKnowledge } from './promotion.m
 import { readJson } from './artifacts.mjs';
 import { freezeEvaluator } from './freezeEvaluator.mjs';
 import { inspectCatlasEffects } from './inspectEffects.mjs';
+import { diagnosePractice, exportDevelopmentProposal } from './diagnosis.mjs';
 
 export async function main(argv) {
   const [command, ...rest] = argv;
@@ -49,6 +50,15 @@ export async function main(argv) {
   if (command === 'inspect') {
     options(['--run']); return inspectPractice(flags['--run']);
   }
+  if (command === 'diagnose') {
+    options(['--run', '--attempt', '--assessment']);
+    const diagnosis = await diagnosePractice({ runRoot: flags['--run'], attemptId: flags['--attempt'], assessmentFile: flags['--assessment'] });
+    return { status: 'diagnosed', category: diagnosis.category, attemptId: diagnosis.attemptId, heldOut: diagnosis.heldOut };
+  }
+  if (command === 'propose-development') {
+    options(['--run', '--attempt', '--out']);
+    return exportDevelopmentProposal({ runRoot: flags['--run'], attemptId: flags['--attempt'], outputFile: flags['--out'] });
+  }
   if (command === 'inspect-effects') {
     options(['--run', '--reset']);
     return inspectCatlasEffects({ evaluationRoot: flags['--run'], resetId: flags['--reset'] });
@@ -82,7 +92,7 @@ export async function main(argv) {
     options(['--run', '--actor', '--reason']);
     return revokeKnowledge({ runRoot: flags['--run'], actorId: flags['--actor'], reason: flags['--reason'] });
   }
-  throw new Error('Commands: candidate, freeze-evaluator, admit, evaluate, inspect, inspect-effects, fixture-demo, review, export, revoke. See the practice guide before admission.');
+  throw new Error('Commands: candidate, freeze-evaluator, admit, evaluate, inspect, inspect-effects, diagnose, propose-development, fixture-demo, review, export, revoke. See the practice guide before admission.');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

@@ -854,6 +854,25 @@ This first slice intentionally reuses `Cats Core v1` instead of inventing a
 separate Work schema. Broader team-operating-model surfaces and later Work
 boards still remain future product slices.
 
+#### Practice development proposals
+
+`POST /api/work/practice-proposals` accepts `{ confirmed: true, proposal }` under
+normal authentication/CSRF protection and owner/admin access. The body is limited
+to 16 KiB. `proposal` is the strict schema-1 descriptor from the practice tool's
+`propose-development` command: `source: cats-practice`, `category: product_defect`,
+`evidenceMode`, `runId`, `attemptId`, `attemptDigest`, `candidateDigest`,
+`exerciseDigest`, `diagnosisDigest`, `diagnosedBy`, `title` and `summary`.
+Unknown fields, missing confirmation or invalid/sensitive text are rejected.
+
+The atomic write creates an ordinary pending-approval Task for the current owner,
+without a Run, assignment or execution grant. Uploaded source metadata is marked
+`owner_supplied_unverified`; fixture titles retain `[fixture]`. The immutable
+source identity is the owner/run/attempt tuple. Exact repeated input returns the
+existing task, preserving later edits/status; a conflicting proposal receives
+`409`. Success is `201` (`200` for a duplicate) with `{ taskId, created, path }`;
+non-owner/admin callers receive `403`, other invalid input `409`. Import is not
+independent verification, task approval or knowledge promotion.
+
 #### Candidate Desktop evidence
 
 `POST /api/work/tasks/{taskId}/candidate-evidence` requires normal authenticated

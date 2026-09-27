@@ -22,6 +22,14 @@ split is the requested direction; the remaining implementation design is propose
 
 ## Context
 
+Practice diagnosis remains in the developer-only evaluator tooling, with an
+authenticated immutable record distinct from technical failure codes. A bounded
+sanitized proposal is the only product handoff: Work's owner-confirmed import
+creates an ordinary pending-approval Task and preserves the claimed source
+digests. It cannot import evaluator authority, grants or active execution. The
+server treats an uploaded descriptor as unverified owner-supplied evidence;
+fixture labels survive import and held-out diagnoses cannot be exported.
+
 Candidate evidence composition reuses the existing Work implementation revision
 and Core build artifact, surfaced by Code's existing artifact projection. A
 Platform-owned local inspector validates source/control identity; Work owns the

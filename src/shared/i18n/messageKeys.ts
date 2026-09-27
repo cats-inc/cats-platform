@@ -1,4 +1,13 @@
 export const messageKeys = {
+  workPracticeProposalTitle: 'work.practiceProposal.title',
+  workPracticeProposalDescription: 'work.practiceProposal.description',
+  workPracticeProposalFile: 'work.practiceProposal.file',
+  workPracticeProposalFixture: 'work.practiceProposal.fixture',
+  workPracticeProposalUnverified: 'work.practiceProposal.unverified',
+  workPracticeProposalConfirm: 'work.practiceProposal.confirm',
+  workPracticeProposalCreate: 'work.practiceProposal.create',
+  workPracticeProposalError: 'work.practiceProposal.error',
+  workPracticeProposalOpen: 'work.practiceProposal.open',
   workTaskCandidateTitle: 'work.task.candidateTitle',
   workTaskCandidateDescription: 'work.task.candidateDescription',
   workTaskCandidateFile: 'work.task.candidateFile',

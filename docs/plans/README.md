@@ -164,6 +164,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-09-27 (PLAN-109 records confirmed Code opening, native worktree candidate evidence and attachment to retained Work revisions; broader managed development and promotion gates remain open.)*
+*Last updated: 2026-09-27 (PLAN-109 records candidate evidence and explicit practice diagnosis into pending Work proposals; managed skill delivery and live promotion gates remain open.)*
 
 *See also: [specs/](../specs/) for feature specifications*

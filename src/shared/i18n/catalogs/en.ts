@@ -1,6 +1,15 @@
 import type { MessageCatalog } from '../index.js';
 
 export const enCatalog: MessageCatalog = {
+  'work.practiceProposal.title': 'Import a practice finding',
+  'work.practiceProposal.description': 'Review a proposed product fix from a diagnosed practice failure. Import creates a task awaiting approval; it does not start work.',
+  'work.practiceProposal.file': 'Development proposal',
+  'work.practiceProposal.fixture': 'Synthetic test evidence. This does not establish a real product defect.',
+  'work.practiceProposal.unverified': 'Owner-supplied evidence. The diagnosis still requires independent verification.',
+  'work.practiceProposal.confirm': 'I reviewed this proposal and want to create a task awaiting approval.',
+  'work.practiceProposal.create': 'Create proposal task',
+  'work.practiceProposal.error': 'The proposal could not be imported. Check its contents and whether this finding already has a different proposal.',
+  'work.practiceProposal.open': 'Open proposed task',
   'work.task.candidateTitle': 'Candidate Desktop',
   'work.task.candidateDescription': 'Attach a candidate receipt to this implementation. Cats checks its source revision; testing the reported problem remains a separate step.',
   'work.task.candidateFile': 'Candidate receipt',

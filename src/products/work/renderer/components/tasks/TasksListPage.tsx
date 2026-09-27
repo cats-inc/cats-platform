@@ -11,6 +11,7 @@ import {
 import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import { useTasksQuery } from "../../state/queries/tasksQuery.js";
 import { NewTaskDialog } from "./NewTaskDialog";
+import { PracticeProposalSection } from "./PracticeProposalSection.js";
 import "./tasks.css";
 
 export function TasksListPage(): JSX.Element {
@@ -55,6 +56,7 @@ export function TasksListPage(): JSX.Element {
         </div>
       </header>
       <main className="tasksList__main">
+        <PracticeProposalSection />
         {tasksQuery.isPending ? (
           <p className="tasksList__empty">{t("workTasksListLoading")}</p>
         ) : tasksQuery.isError ? (

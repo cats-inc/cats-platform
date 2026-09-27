@@ -186,6 +186,18 @@ The operator guide defines the concurrent export/revocation snapshot boundary.
 A passing P3 receipt alone cannot promote knowledge. These developer tools do
 not add a shipped endpoint, automatic practice loop, or installed overlay.
 
+## Practice diagnosis and development proposals
+
+The bounded practice-to-Work handoff adds explicit operator diagnosis of a
+failed authenticated attempt: product defect, missing knowledge, procedure error
+or environment failure. It preserves the technical failure code and records the
+diagnosis separately. Only a non-held-out product-defect assessment with failed
+observable checks can export a sanitized development proposal. Work imports that
+proposal only after owner/admin confirmation, creating a pending-approval Task
+without a Run, assignment or execution grant. Source references remain claimed
+evidence until independently checked; importing is not verification or promotion.
+Fixture provenance remains visible and held-out inputs are never exported.
+
 ## Native managed candidate authoring
 
 On 2026-09-26, an explicitly selected developer authoring host in an isolated

@@ -1,6 +1,15 @@
 import type { MessageCatalog } from '../index.js';
 
 export const zhTWCatalog: MessageCatalog = {
+  'work.practiceProposal.title': '匯入練習發現',
+  'work.practiceProposal.description': '檢閱練習失敗診斷所提出的產品修正。匯入只會建立待核准任務，不會開始執行。',
+  'work.practiceProposal.file': '開發提案',
+  'work.practiceProposal.fixture': '這是合成測試證據，尚未證明真實產品有缺陷。',
+  'work.practiceProposal.unverified': '這是使用者提供的證據，診斷仍須獨立核實。',
+  'work.practiceProposal.confirm': '我已檢閱提案，要建立一個待核准任務。',
+  'work.practiceProposal.create': '建立提案任務',
+  'work.practiceProposal.error': '無法匯入提案。請檢查內容，以及這項發現是否已有不同的提案。',
+  'work.practiceProposal.open': '開啟提案任務',
   'work.task.candidateTitle': '候選 Desktop',
   'work.task.candidateDescription': '將候選建置紀錄連到這次實作。Cats 會核對來源修訂；原問題是否修好仍需另外測試。',
   'work.task.candidateFile': '候選建置紀錄',

@@ -95,7 +95,24 @@ checks pass. Fifteen focused server/UI/command checks pass across the final runs
 the two added junction regressions required correcting Windows fixture copying,
 then both passed. The prior architecture/dependency check also passed. This is
 an additive Core artifact, requiring no persisted-data migration. Full main CI
-follows the normal authorized push.
+`36302777698` passed for the pushed slice `ef4264f5`.
+
+The next bounded handoff adds four explicit operator diagnoses to authenticated
+practice failures: product defect, missing knowledge, procedure error and
+environment failure. It keeps technical failure codes and evaluation/promotion
+outcomes unchanged. Only non-held-out product defects with failed observable
+checks export a sanitized proposal. Work Tasks accepts that descriptor through
+owner/admin preview and confirmation, creating an ordinary pending-approval
+Task without a Run, assignment or execution grant. The source digests are
+owner-supplied/unverified in the product; fixture provenance stays visible.
+Exact retries preserve the same task and later state; conflicting proposals,
+held-out exports, outage-only code proposals and authority fields are rejected.
+Server/renderer/test TypeScript checks passed; focused practice, promotion,
+proposal UI/HTTP and architecture checks passed **24/24**. Independent review
+also found an enum-coercion bug that could hide a malformed fixture label; the
+strict enum fix, final server rebuild and focused import regression passed, and
+independent review found no remaining blockers. No model call,
+new persisted-data migration or release is involved.
 
 A prepared single ordinary-provider contribution acceptance remains unrun:
 automatic approval review rejected sending bundled knowledge/synthetic input to

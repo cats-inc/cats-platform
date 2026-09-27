@@ -173,6 +173,50 @@ review/export knowledge, or update a release bundle. The normal independent
 evaluation and promotion workflow below still applies. See PLAN-109 for actual
 fixture/native acceptance status and retained checkpoints.
 
+## Diagnose a failed attempt and propose development
+
+After evaluation, an operator can classify an authenticated failed attempt without
+changing its technical failure code, checks or promotion gates. Create a small
+sanitized assessment JSON with `category`, `diagnosedBy`, `summary` and (for a
+product defect) `title`. Categories are `product_defect`, `missing_knowledge`,
+`procedure_error` and `environment_failure`. The diagnosis is an explicit human
+assessment, not a conclusion inferred from a timeout. For example:
+
+```json
+{"category":"product_defect","diagnosedBy":"owner","title":"Investigate the reported mismatch","summary":"The retained observable check failed; reproduce and verify the cause before changing the product."}
+```
+
+```text
+node tools/knowledge-practice/cli.mjs diagnose --run <private run> --attempt 0001 --assessment <assessment.json>
+node tools/knowledge-practice/cli.mjs propose-development --run <private run> --attempt 0001 --out <new proposal.json>
+```
+
+Diagnosis checks the current frozen engine/curriculum, authenticated evaluation
+and selected attempt digest. It writes one immutable authenticated diagnosis;
+the same input is idempotent and a changed assessment cannot replace it. Existing
+attempts and evaluation remain unchanged. Older admissions whose engine changed
+stay inspectable but require a new evaluation before this handoff.
+
+Only product-defect diagnoses with a failed observable check can produce a code
+proposal. A technical outage alone, another category or a held-out scenario
+cannot export one. Held-out diagnoses remain inside the private evaluator run.
+The descriptor contains bounded title/summary and source digests, not the raw
+observation, source paths, curriculum, evaluator key, skills or execution grants.
+Fixture evidence is always labeled fixture. This handoff does not amend or
+promote knowledge, so an environment outage does not become a product rule.
+
+In **Work > Tasks > Import a practice finding**, select the descriptor, inspect
+the text and provenance, check the confirmation, and choose **Create proposal
+task**. Owner/admin access is required. The resulting ordinary Core Task awaits
+approval and has no Run, assigned agent or execution grant. Its source references
+are **owner-supplied, unverified**: an uploaded file cannot authenticate the
+local evaluator to another Platform profile. Independently inspect the retained
+evidence before approving any work. Fixture task titles retain `[fixture]`.
+Repeated import returns the same task without overwriting later edits or status;
+a different proposal for that same run/attempt is rejected. This creates no
+provider request and does not write into an installed profile unless its owner
+explicitly imports there.
+
 ## Try the fixture workflow
 
 Build Platform server/host and the paired Runtime first. From Platform, select a

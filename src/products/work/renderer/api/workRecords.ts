@@ -3,6 +3,7 @@ import type {
   WorkGoldenPathRunLifecycleResult,
 } from '../../api/index.js';
 import { expectJson } from './http.js';
+import type { PracticeDevelopmentProposal } from '../../shared/practiceProposal.js';
 import {
   buildWorkApiProjectPath,
   buildWorkApiTaskPath,
@@ -53,6 +54,13 @@ export async function attachCandidateEvidence(taskId: string,
 ): Promise<{ artifactId: string; created: boolean; path: string }> {
   return expectJson(await fetch(`${buildWorkApiTaskPath(taskId)}/candidate-evidence`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(receipt),
+  }), errorMessage);
+}
+
+export async function importPracticeDevelopmentProposal(proposal: PracticeDevelopmentProposal, errorMessage: string
+): Promise<{ taskId: string; created: boolean; path: string }> {
+  return expectJson(await fetch('/api/work/practice-proposals', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirmed: true, proposal }),
   }), errorMessage);
 }
 
