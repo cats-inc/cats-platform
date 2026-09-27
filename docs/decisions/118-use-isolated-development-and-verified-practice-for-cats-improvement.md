@@ -190,6 +190,14 @@ Per-artifact outcome counts are additive reporting metadata, not a new execution
 grant or an override of Runtime cancellation. Direct Task metadata edits and
 offline pre-binding builds remain outside the composition.
 
+Manual candidate acceptance reuses separate Core report artifacts. The host
+derives reviewer attribution from the authenticated principal and freezes the
+current owner, build/input identity and host generation. The atomic writer checks
+that binding and deduplicates candidate/reviewer/request-ID retries. New opinions
+retain old reports; readers validate stored binding and receipt integrity. Plain
+text notes carry no evaluator, task-approval, knowledge or publication authority.
+An owner/admin role alone does not establish independence from implementation.
+
 ### 4. Give Catlas bounded observations and supervised actions
 
 Catlas remains the optional Guide Cat capability described by ADR-061. It does

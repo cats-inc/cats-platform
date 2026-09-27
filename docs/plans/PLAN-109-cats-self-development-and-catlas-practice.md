@@ -7,7 +7,7 @@
 | Status | Ordinary contribution, diagnostics and source-candidate build/input usable; broader managed development and independent promotion pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
-| Last updated | 2026-09-27 |
+| Last updated | 2026-09-28 |
 
 ## Related Spec
 
@@ -277,7 +277,29 @@ dependency, candidate lifecycle and existing Run/Mission cancellation suites;
 the final affected rerun passed all 35 checks. No native Desktop/provider launch
 is involved. The optional artifact/intent metadata requires no data migration.
 
-Next compose independent integration validation with these existing records.
+The cancellation slice is on main at `ca28fce3`; full CI `36330789917` passed.
+
+The 2026-09-28 manual acceptance slice adds a small form to attached candidates.
+It saves the authenticated operator's actual checks and accepted/changes-requested
+opinion as a separate Core report, bound to the owner, exact combined build/input
+identity and host generation. Atomic ownership/revision checks reject stale
+forms; retries deduplicate by candidate/reviewer/request ID. Reports retain
+history, validate saved content on readback, and never change the build claim,
+automatic integration validation, Task/Run/Approval state or publishing authority.
+No candidate endpoint or model is called. This completes an evidence-entry
+workflow, not the independent execution or native acceptance gates.
+
+Independent review caught full-owner-transfer staleness, late GET replacement of
+a successful POST receipt, and trusting corrupted stored reports. Each is fixed
+with a focused regression; both GET and POST preserve the newer receipt.
+Server/renderer typechecks and the targeted final UI-test typecheck passed.
+**46 distinct focused checks** passed: 33 candidate/source/lifecycle/boundary
+checks and 13 UI cases. One initial fixture assertion compared Core timestamps
+across an explicit snapshot reset; it now compares the restored snapshot and
+its targeted rerun passed. Independent review found no remaining blocker.
+No native Desktop/provider launch, schema migration or publication was involved.
+
+Next verify independent integration outcomes against these existing records.
 The read-only audit confirmed existing Work
 collaboration already owns admission, implementation/review Runs, worktrees,
 revision capture and restart fencing; reuse it rather than creating a scheduler.
@@ -285,6 +307,18 @@ AC-01–06 still need Cats-specific evidence/composition; AC-08 has the new oper
 fixtures but native acceptance is open; AC-07/13–15 need combined source-free
 release consumption; AC-10–12 need real independent quality/promotion evidence.
 Additional claimed native OS/distribution and two-repo evidence remain G5 work.
+
+The 2026-09-28 closure review found no additional confirmed need for a general
+product interface or engine. The remaining completion work is evidence across
+existing flows: an actual managed source fix with independent acceptance
+(AC-01–05); fresh/resumed provider skill delivery and native Catlas operation
+(AC-06/08); a reviewed knowledge digest consumed in a source-free release-profile
+candidate (AC-07/13–15); and the fixed quality/promotion gate with at least ten
+scenarios, four held out and required reset repetitions (AC-10/11). AC-09/12
+should reconcile existing local evidence and exceptions. G5 retains separate
+OS/distribution validation. The second authorized model call is consumed; do not
+start new inference or credential copying while treating manual review entry
+or passing fixtures as completion of those acceptance gates.
 
 ## Resume checkpoint — Desktop 0.5.7 standard preview published (2026-09-27)
 

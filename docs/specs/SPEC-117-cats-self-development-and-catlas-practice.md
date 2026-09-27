@@ -9,7 +9,7 @@
 | Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Decision | [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
 | Plan | [PLAN-109](../plans/PLAN-109-cats-self-development-and-catlas-practice.md) |
-| Last updated | 2026-09-27 |
+| Last updated | 2026-09-28 |
 
 ## Summary
 
@@ -134,6 +134,16 @@ Restart recovery observes historical candidates without claiming an unbound host
 or replaying a stop. Per-candidate unknown results preserve execution cancellation
 and existing build evidence. Direct Task metadata edits and offline pre-binding
 builds remain outside this lifecycle; host drain does not prove OS process exit.
+
+The manual acceptance entry records an authenticated operator's checks and
+accepted/changes-requested opinion against a complete attached build. An atomic
+write validates the frozen owner, both input revisions, canonical ownership and
+host generation. Candidate/reviewer/request-ID retries are idempotent; later
+opinions add report artifacts without overwriting history. Saved reports are
+validated before readback. This supports FR-07/AC-05 evidence collection but is
+an operator attestation, not independent test execution or proof that the
+reviewer differs from the implementation author. Build/integration claims and
+Task/Run/Approval states stay unchanged; no provider or candidate call occurs.
 
 Fresh worktrees may select existing Platform and Runtime dependency checkouts
 explicitly. The command requires identical package/lock bytes, records dependency

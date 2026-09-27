@@ -454,6 +454,15 @@ without contacting them. Direct Task metadata edits and the offline build before
 binding do not trigger this lifecycle. Older candidate hosts require their
 original CLI stop command.
 
+After attaching build evidence, load the candidate records and expand **Record
+manual review**. Record the checks and observed results, choose a conclusion,
+and save. Cats binds this named opinion to the displayed Platform/Runtime
+revisions, owner and host generation. The same review can be retried after a
+lost response; changed opinions create separate reports. A stale build or owner
+requires loading its current record. Reports remain available with the task's
+Code artifacts. This records manual acceptance without running checks, changing
+task approval, claiming reviewer independence or granting publication.
+
 ### Provider selection contract
 
 Selection-aware Platform/Desktop must connect to the matching Runtime contract

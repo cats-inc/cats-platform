@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { CoreStore } from '../../../core/store.js';
-import type { CatsCoreState } from '../../../core/types.js';
+import type { CatsCoreState, CoreArtifactRecord } from '../../../core/types.js';
+import type { CandidateBuildEvidence } from '../../../platform/development/candidateEvidence.js';
+import type { CandidateReviewReceipt, CandidateReviewRequest, CandidateReviewTarget } from '../shared/candidateReview.js';
 import { upsertCoreArtifact } from '../../../core/model/index.js';
 import { candidateRevisionRef, readCandidateOwnership } from '../../../platform/development/candidateOwnership.js';
 import { operateOwnedCandidate, type CandidateLifecycleObservation } from '../../../platform/development/candidateLifecycle.js';
@@ -62,10 +64,106 @@ export async function listWorkCandidates(coreStore: CoreStore, taskId: string) {
     try {
       const { artifact, ownership } = ownedCandidate(core, taskId, row.id);
       const last = readObservation(artifact.metadata.candidateLifecycle);
-      candidates.push({ artifactId: artifact.id, root: ownership.root, ...(last ? { observation: last } : {}) });
+      let reviewTarget: CandidateReviewTarget | undefined, lastReview: CandidateReviewReceipt | undefined;
+      try {
+        const selected = candidateReviewBinding(core, taskId, artifact.id);
+        reviewTarget = selected.target;
+        const reports = core.artifacts.filter(report => report.metadata.source === 'work-candidate-review'
+          && report.metadata.candidateArtifactId === artifact.id && report.metadata.bindingDigest === reviewTarget!.bindingDigest);
+        const reviews = reports.reverse().flatMap(report => {
+          try { return [readCandidateReview(report, selected)]; } catch { return []; }
+        });
+        lastReview = reviews.sort((a, b) => b.reviewedAt.localeCompare(a.reviewedAt))[0];
+      } catch { /* Only complete attached build evidence can receive a review. */ }
+      candidates.push({ artifactId: artifact.id, root: ownership.root, ...(last ? { observation: last } : {}),
+        ...(reviewTarget ? { reviewTarget } : {}), ...(lastReview ? { lastReview } : {}) });
     } catch { /* A foreign or malformed record cannot authorize a control. */ }
   }
   return { candidates };
+}
+
+function candidateReviewBinding(core: CatsCoreState, taskId: string, artifactId: string) {
+  const owned = ownedCandidate(core, taskId, artifactId), { artifact, ownership, expected } = owned;
+  const observed = artifact.metadata.candidate as CandidateBuildEvidence | undefined;
+  if (artifact.status !== 'ready' || artifact.metadata.source !== 'work-candidate'
+    || artifact.metadata.claim !== 'observed_build_evidence' || !observed || !expected
+    || observed.verification !== 'commit_inputs_and_host_receipt' || observed.root !== ownership.root
+    || observed.launchId !== expected.launchId || observed.instanceId !== expected.instanceId || observed.hostPid !== expected.hostPid) {
+    throw new Error('candidate_review_requires_build');
+  }
+  const members = (['platform', 'runtime'] as const).map(member => {
+    const source = observed.members?.[member];
+    if (!source || !/^[a-f0-9]{40,64}$/u.test(source.head) || !/^[a-f0-9]{64}$/u.test(source.sourceDigest)) throw new Error('candidate_review_requires_build');
+    return { member, commitId: source.head };
+  });
+  const candidateIdentity = digest({ taskId, runId: ownership.runId, revisionArtifactId: ownership.revisionArtifactId,
+    root: observed.root, launchId: observed.launchId, instanceId: observed.instanceId, member: ownership.member,
+    members: observed.members, ...(ownership.revisionSet ? { revisionSet: ownership.revisionSet } : {}) });
+  if (candidateIdentity !== artifact.metadata.candidateIdentity) throw new Error('candidate_review_binding_changed');
+  const binding = { ownerActorId: core.ownerProfile.actorId, candidateIdentity, ownership, generation: expected, members: observed.members };
+  return { ...owned, binding, target: { bindingDigest: digest(binding), members } satisfies CandidateReviewTarget };
+}
+
+function reviewContentDigest(request: CandidateReviewRequest, reviewerActorId: string) {
+  return digest({ artifactId: request.artifactId, requestId: request.requestId, bindingDigest: request.bindingDigest,
+    verdict: request.verdict, checks: request.checks, reviewerActorId });
+}
+const validChecks = (value: unknown): value is string => typeof value === 'string' && !!value.trim() && Buffer.byteLength(value, 'utf8') <= 6000;
+function readCandidateReview(report: CoreArtifactRecord, selected: ReturnType<typeof candidateReviewBinding>): CandidateReviewReceipt {
+  const metadata = report.metadata, value = metadata.review as CandidateReviewReceipt | undefined;
+  if (report.kind !== 'report' || report.status !== 'ready' || report.taskId !== selected.artifact.taskId
+    || report.runId !== selected.artifact.runId || report.conversationId !== selected.artifact.conversationId
+    || metadata.source !== 'work-candidate-review' || metadata.claim !== 'manual_operator_attestation'
+    || metadata.candidateArtifactId !== selected.artifact.id || metadata.bindingDigest !== selected.target.bindingDigest
+    || digest(metadata.binding) !== selected.target.bindingDigest
+    || typeof metadata.requestId !== 'string' || !/^[a-zA-Z0-9_-]{8,96}$/u.test(metadata.requestId)
+    || !value || typeof value !== 'object' || Array.isArray(value) || value.artifactId !== report.id
+    || value.bindingDigest !== selected.target.bindingDigest || typeof value.reviewerActorId !== 'string'
+    || !value.reviewerActorId.trim() || value.reviewerActorId.length > 256 || typeof value.reviewedAt !== 'string' || value.reviewedAt.length > 32
+    || !Number.isFinite(Date.parse(value.reviewedAt)) || value.reviewedAt !== report.createdAt
+    || !['accepted', 'changes_requested'].includes(value.verdict) || !validChecks(value.checks)) throw new Error('candidate_review_invalid_record');
+  const request = { artifactId: selected.artifact.id, requestId: metadata.requestId, bindingDigest: value.bindingDigest,
+    verdict: value.verdict, checks: value.checks };
+  if (report.id !== 'artifact-candidate-review-' + digest({ candidate: request.artifactId, reviewerActorId: value.reviewerActorId,
+    requestId: request.requestId }).slice(0, 32) || metadata.contentDigest !== reviewContentDigest(request, value.reviewerActorId)) {
+    throw new Error('candidate_review_invalid_record');
+  }
+  return { artifactId: value.artifactId, bindingDigest: value.bindingDigest, reviewerActorId: value.reviewerActorId,
+    reviewedAt: value.reviewedAt, verdict: value.verdict, checks: value.checks };
+}
+
+/** Records the authenticated operator's plain-text attestation; does not evaluate or approve execution. */
+export async function recordWorkCandidateReview(options: {
+  coreStore: CoreStore; taskId: string; reviewerActorId: string; request: CandidateReviewRequest;
+}) {
+  const { coreStore, taskId, reviewerActorId, request } = options;
+  if (!reviewerActorId.trim() || reviewerActorId.length > 256 || !request || typeof request !== 'object' || Array.isArray(request)
+    || Object.keys(request).length !== 5 || Object.keys(request).some(key => !['artifactId', 'requestId', 'bindingDigest', 'verdict', 'checks'].includes(key))
+    || typeof request.artifactId !== 'string' || !request.artifactId || request.artifactId.length > 256
+    || typeof request.requestId !== 'string' || !/^[a-zA-Z0-9_-]{8,96}$/u.test(request.requestId)
+    || typeof request.bindingDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(request.bindingDigest)
+    || !['accepted', 'changes_requested'].includes(request.verdict) || !validChecks(request.checks)) throw new Error('invalid_candidate_review');
+  const id = 'artifact-candidate-review-' + digest({ candidate: request.artifactId, reviewerActorId, requestId: request.requestId }).slice(0, 32);
+  const contentDigest = reviewContentDigest(request, reviewerActorId);
+  let created = false, review: CandidateReviewReceipt | undefined;
+  await coreStore.updateCore(core => {
+    const selected = candidateReviewBinding(core, taskId, request.artifactId), { artifact, binding, target } = selected;
+    if (target.bindingDigest !== request.bindingDigest) throw new Error('candidate_review_binding_changed');
+    const existing = core.artifacts.find(row => row.id === id);
+    if (existing) {
+      if (existing.metadata.source !== 'work-candidate-review' || existing.metadata.contentDigest !== contentDigest) throw new Error('candidate_review_conflict');
+      review = readCandidateReview(existing, selected);
+      return core;
+    }
+    created = true;
+    review = { artifactId: id, bindingDigest: target.bindingDigest, reviewerActorId,
+      reviewedAt: new Date().toISOString(), verdict: request.verdict, checks: request.checks };
+    return upsertCoreArtifact(core, { id, taskId: artifact.taskId, runId: artifact.runId, conversationId: artifact.conversationId,
+      kind: 'report', status: 'ready', title: 'Candidate manual review', summary: request.checks, createdAt: review.reviewedAt,
+      metadata: { source: 'work-candidate-review', claim: 'manual_operator_attestation', candidateArtifactId: artifact.id,
+        bindingDigest: target.bindingDigest, binding, requestId: request.requestId, contentDigest, review } }).core;
+  });
+  return { created, review: review! };
 }
 
 /** Uses historical ownership, so cancelled tasks or removed source checkouts can still drain. */

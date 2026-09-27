@@ -64,7 +64,8 @@ this joint design, with explicit Runtime, cats-one and Apps work packages.
 
 Work now retains paired source inputs and candidate status/stop evidence. Explicit
 managed cancellation can drain an already-bound candidate; startup recovery only
-observes it. Independent integration validation remains a separate gate.
+observes it. Attached builds also accept named manual review reports bound to
+their exact inputs. Independent integration validation remains a separate gate.
 
 The owner-approved minimal follow-up adds **Attach conversation diagnostics** to
 the Chat/Code composer: choose an incident conversation, preview its running

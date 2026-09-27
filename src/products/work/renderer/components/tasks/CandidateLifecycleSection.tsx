@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { controlCandidate, listCandidates, type WorkCandidateControlRow } from '../../api/workRecords.js';
+import { CandidateReviewSection } from './CandidateReviewSection.js';
 
 export function CandidateLifecycleSection({ taskId }: { taskId: string }): JSX.Element {
   const { t } = useI18n();
@@ -43,6 +44,8 @@ export function CandidateLifecycleSection({ taskId }: { taskId: string }): JSX.E
       <button type="button" disabled={busy || row.observation?.state !== 'running' || !row.observation.instanceBoundStop}
         onClick={() => act(row, 'stop')}>{t('workTaskCandidateStop')}</button>
       {row.observation?.state === 'running' && !row.observation.instanceBoundStop ? <p>{t('workTaskCandidateUpgrade')}</p> : null}
+      {row.reviewTarget ? <CandidateReviewSection key={taskId + row.artifactId + row.reviewTarget.bindingDigest}
+        taskId={taskId} artifactId={row.artifactId} target={row.reviewTarget} lastReview={row.lastReview} /> : null}
     </div>)}
     {error ? <p role="alert">{t('workTaskCandidateControlError')}</p> : null}
   </details>;

@@ -6,8 +6,117 @@ import { MemoryRouter } from 'react-router-dom';
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { CandidateEvidenceSection } from '../src/products/work/renderer/components/tasks/CandidateEvidenceSection.tsx';
 import { CandidateLifecycleSection } from '../src/products/work/renderer/components/tasks/CandidateLifecycleSection.tsx';
+import { CandidateReviewSection } from '../src/products/work/renderer/components/tasks/CandidateReviewSection.tsx';
 
 afterEach(() => { cleanup(); resetTestDom(); });
+const reviewTarget = { bindingDigest: 'a'.repeat(64), members: [{ member: 'platform' as const, commitId: 'b'.repeat(40) },
+  { member: 'runtime' as const, commitId: 'c'.repeat(40) }] };
+
+test('manual review is explicit, retries the same request after a lost response and keeps the selected build', async t => {
+  const calls: Array<{ url: string; body: Record<string, string> }> = [];
+  t.mock.method(globalThis, 'fetch', async (url: RequestInfo | URL, options?: RequestInit) => {
+    const body = JSON.parse(String(options?.body)); calls.push({ url: String(url), body });
+    if (calls.length === 1) throw new Error('Lost saved response');
+    return Response.json({ created: false, review: { artifactId: 'review-record', bindingDigest: body.bindingDigest,
+      verdict: body.verdict, checks: body.checks, reviewerActorId: 'mapped-owner', reviewedAt: '2026-09-27T00:00:00Z' } });
+  });
+  const view = render(<CandidateReviewSection taskId="owned-task" artifactId="owned-build" target={reviewTarget} />);
+  fireEvent.click(view.getByText('Record manual review'));
+  assert.equal(calls.length, 0);
+  assert.equal((view.getByRole('button', { name: 'Save review' }) as HTMLButtonElement).disabled, true);
+  fireEvent.change(view.getByLabelText('Checks and observed results'), { target: { value: 'Checked opening and closing the candidate.' } });
+  fireEvent.change(view.getByLabelText('Conclusion'), { target: { value: 'accepted' } });
+  fireEvent.click(view.getByRole('button', { name: 'Save review' }));
+  await view.findByRole('alert');
+  fireEvent.click(view.getByRole('button', { name: 'Save review' }));
+  await view.findByText('Last recorded review: Accepted by reviewer');
+  assert.equal(calls.length, 2); assert.deepEqual(calls[1], calls[0]);
+  assert.equal(calls[0].url, '/api/work/tasks/owned-task/candidate-review');
+  assert.deepEqual(Object.keys(calls[0].body).sort(), ['artifactId', 'bindingDigest', 'checks', 'requestId', 'verdict']);
+  assert.equal(calls[0].body.bindingDigest, reviewTarget.bindingDigest); assert.equal(calls[0].body.artifactId, 'owned-build');
+  assert.equal((view.getByLabelText('Checks and observed results') as HTMLTextAreaElement).value, '');
+});
+
+test('switching a review target ignores late replies and clears the old draft', async t => {
+  let release!: (response: Response) => void;
+  t.mock.method(globalThis, 'fetch', () => new Promise<Response>(resolve => { release = resolve; }));
+  const view = render(<CandidateReviewSection taskId="first" artifactId="old-build" target={reviewTarget} />);
+  fireEvent.click(view.getByText('Record manual review'));
+  fireEvent.change(view.getByLabelText('Checks and observed results'), { target: { value: 'Old result' } });
+  fireEvent.click(view.getByRole('button', { name: 'Save review' }));
+  view.rerender(<CandidateReviewSection taskId="second" artifactId="new-build" target={{ ...reviewTarget, bindingDigest: 'd'.repeat(64) }} />);
+  release(Response.json({ review: { verdict: 'accepted', checks: 'Old result', reviewerActorId: 'old-owner' } }));
+  await waitFor(() => assert.equal((view.getByLabelText('Checks and observed results') as HTMLTextAreaElement).value, ''));
+  assert.equal(view.queryByText('Old result'), null); assert.equal(view.queryByRole('status'), null);
+});
+
+test('candidate management exposes the stored review only for a complete review target', async t => {
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => { calls++; return Response.json({ candidates: [
+    { artifactId: 'draft', root: '/draft' }, { artifactId: 'ready', root: '/ready', reviewTarget,
+      lastReview: { artifactId: 'review', bindingDigest: reviewTarget.bindingDigest, verdict: 'changes_requested', checks: 'The second window needs attention.',
+        reviewerActorId: 'owner', reviewedAt: '2026-09-27T00:00:00Z' } },
+  ] }); });
+  const view = render(<CandidateLifecycleSection taskId="owned" />);
+  fireEvent.click(view.getByText('Manage prepared candidates'));
+  fireEvent.click(view.getByRole('button', { name: 'Load candidate records' }));
+  await view.findByText('The second window needs attention.');
+  assert.equal(view.getAllByText('Record manual review').length, 1); assert.equal(calls, 1);
+});
+
+test('a late older or empty candidate list cannot replace a confirmed manual review', async t => {
+  let reads = 0, release!: (response: Response) => void;
+  const oldReview = { artifactId: 'old-review', bindingDigest: reviewTarget.bindingDigest, verdict: 'changes_requested',
+    checks: 'Older review.', reviewerActorId: 'owner', reviewedAt: '2026-09-27T00:00:00Z' };
+  const row = { artifactId: 'ready', root: '/ready', reviewTarget };
+  t.mock.method(globalThis, 'fetch', async (_url: RequestInfo | URL, options?: RequestInit) => {
+    if (options?.method === 'POST') {
+      const body = JSON.parse(String(options.body));
+      return Response.json({ review: { ...oldReview, artifactId: 'new-review', verdict: body.verdict,
+        checks: body.checks, reviewedAt: '2026-09-27T00:00:01Z' } });
+    }
+    if (++reads === 2) return new Promise<Response>(resolve => { release = resolve; });
+    return Response.json({ candidates: [{ ...row, ...(reads === 1 ? { lastReview: oldReview } : {}) }] });
+  });
+  const view = render(<CandidateLifecycleSection taskId="owned" />);
+  fireEvent.click(view.getByText('Manage prepared candidates'));
+  const load = view.getByRole('button', { name: 'Load candidate records' });
+  fireEvent.click(load); await view.findByText('Older review.');
+  fireEvent.click(view.getByText('Record manual review'));
+  fireEvent.click(load);
+  fireEvent.change(view.getByLabelText('Checks and observed results'), { target: { value: 'New confirmed review.' } });
+  fireEvent.click(view.getByRole('button', { name: 'Save review' }));
+  await view.findByText('New confirmed review.');
+  release(Response.json({ candidates: [{ ...row, lastReview: oldReview }] }));
+  await waitFor(() => assert.equal((load as HTMLButtonElement).disabled, false));
+  assert.equal(view.queryByText('Older review.'), null); assert.ok(view.getByText('New confirmed review.'));
+  fireEvent.click(load);
+  await waitFor(() => assert.equal(reads, 3));
+  assert.ok(view.getByText('New confirmed review.'));
+});
+
+test('a delayed review POST cannot replace a newer review already loaded from the server', async t => {
+  let reads = 0, release!: (response: Response) => void;
+  const row = { artifactId: 'ready', root: '/ready', reviewTarget };
+  const latest = { artifactId: 'latest', bindingDigest: reviewTarget.bindingDigest, verdict: 'accepted',
+    checks: 'Newer server review.', reviewerActorId: 'another-reviewer', reviewedAt: '2026-09-27T00:00:02Z' };
+  t.mock.method(globalThis, 'fetch', async (_url: RequestInfo | URL, options?: RequestInit) => {
+    if (options?.method === 'POST') return new Promise<Response>(resolve => { release = resolve; });
+    return Response.json({ candidates: [{ ...row, ...(++reads === 2 ? { lastReview: latest } : {}) }] });
+  });
+  const view = render(<CandidateLifecycleSection taskId="owned" />);
+  fireEvent.click(view.getByText('Manage prepared candidates'));
+  const load = view.getByRole('button', { name: 'Load candidate records' });
+  fireEvent.click(load); await view.findByText('Record manual review');
+  fireEvent.click(view.getByText('Record manual review'));
+  fireEvent.change(view.getByLabelText('Checks and observed results'), { target: { value: 'Earlier submitted review.' } });
+  fireEvent.click(view.getByRole('button', { name: 'Save review' }));
+  fireEvent.click(load); await view.findByText('Newer server review.');
+  release(Response.json({ review: { ...latest, artifactId: 'earlier', checks: 'Earlier submitted review.', reviewedAt: '2026-09-27T00:00:01Z' } }));
+  await waitFor(() => assert.equal((view.getByLabelText('Checks and observed results') as HTMLTextAreaElement).disabled, false));
+  assert.ok(view.getByText('Newer server review.')); assert.equal(view.queryByText('Earlier submitted review.'), null);
+});
+
 test('saved candidate controls load only on request and stop sends only the selected artifact action', async t => {
   const calls: Array<{ url: string; body?: { artifactId: string; action: string } }> = [];
   let stopped = false;

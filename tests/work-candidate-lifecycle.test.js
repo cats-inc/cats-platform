@@ -10,8 +10,8 @@ import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { admitCollaboration, writeCollaborationIntent } from '../build/server/products/work/state/collaborationRecords.js';
 import { upsertCoreArtifact, upsertCoreRun, upsertCoreMission, upsertCoreTask } from '../build/server/core/model/index.js';
 import { createCandidateRevisionSet } from '../build/server/platform/development/candidateOwnership.js';
-import { prepareWorkCandidate } from '../build/server/products/work/state/candidateEvidence.js';
-import { controlWorkCandidate, listWorkCandidates, reconcileWorkCandidates } from '../build/server/products/work/state/candidateLifecycle.js';
+import { prepareWorkCandidate, attachWorkCandidateEvidence } from '../build/server/products/work/state/candidateEvidence.js';
+import { controlWorkCandidate, listWorkCandidates, reconcileWorkCandidates, recordWorkCandidateReview } from '../build/server/products/work/state/candidateLifecycle.js';
 import { recoverCollaborations, stopCollaboration } from '../build/server/products/work/state/collaborationExecution.js';
 import { routeWorkRunCancellationApi } from '../build/server/products/work/api/runCancellationRoutes.js';
 import { buildWorkTaskListProjection } from '../build/server/products/work/api/projection.js';
@@ -76,6 +76,124 @@ async function fixture(t) {
       return JSON.parse(await readFile(path.join(root, 'control.json'), 'utf8'));
     } };
 }
+
+async function reviewFixture(t) {
+  const f = await fixture(t), members = {};
+  for (const ref of f.prepared.ownership.revisionSet.members) members[ref.member] = { checkout: ref.checkout,
+    gitCommonDirectory: path.join(ref.checkout, '.git'), head: ref.commitId, sourceDigest: 'c'.repeat(64),
+    dependencyRoot: ref.checkout, dependencyLockDigest: 'd'.repeat(64), packageDigest: 'e'.repeat(64) };
+  const observed = { root: f.root, launchId: f.control.launchId, instanceId: f.control.instanceId, hostPid: f.control.pid,
+    members, verification: 'commit_inputs_and_host_receipt', ownership: f.prepared.ownership,
+    observedAt: new Date().toISOString(), builtAt: new Date().toISOString(), state: 'running' };
+  await attachWorkCandidateEvidence({ coreStore: f.store, taskId: f.options.taskId,
+    request: observed, inspect: async () => observed });
+  const target = (await listWorkCandidates(f.store, f.options.taskId)).candidates[0].reviewTarget;
+  const request = { artifactId: f.prepared.artifactId, requestId: 'manual-review-one', bindingDigest: target.bindingDigest,
+    verdict: 'accepted', checks: 'Checked the combined candidate. The fixture interaction behaved as expected.' };
+  return { ...f, target, reviewOptions: { coreStore: f.store, taskId: f.options.taskId,
+    reviewerActorId: (await f.store.readCore()).ownerProfile.actorId, request } };
+}
+
+test('manual review freezes the exact paired build and is idempotent without approving or changing it', async t => {
+  const f = await reviewFixture(t), before = await f.store.readCore();
+  t.mock.method(globalThis, 'fetch', () => assert.fail('Manual review must not contact a candidate or provider'));
+  const results = await Promise.all([recordWorkCandidateReview(f.reviewOptions), recordWorkCandidateReview(f.reviewOptions)]);
+  assert.equal(results.filter(row => row.created).length, 1); assert.deepEqual(results[0].review, results[1].review);
+  const first = results[0].review, after = await f.store.readCore();
+  const report = after.artifacts.find(row => row.id === first.artifactId);
+  assert.equal(report.metadata.claim, 'manual_operator_attestation');
+  assert.deepEqual(report.metadata.binding.ownership.revisionSet, f.prepared.ownership.revisionSet);
+  assert.deepEqual(after.artifacts.find(row => row.id === f.prepared.artifactId), before.artifacts.find(row => row.id === f.prepared.artifactId));
+  for (const key of ['tasks', 'runs', 'approvals']) assert.deepEqual(after[key], before[key]);
+  const reordered = Object.fromEntries(Object.entries(f.reviewOptions.request).reverse());
+  assert.equal((await recordWorkCandidateReview({ ...f.reviewOptions, request: reordered })).created, false);
+  await assert.rejects(recordWorkCandidateReview({ ...f.reviewOptions,
+    request: { ...reordered, checks: 'A conflicting retry' } }), /candidate_review_conflict/u);
+  const second = await recordWorkCandidateReview({ ...f.reviewOptions,
+    request: { ...reordered, requestId: 'manual-review-two', verdict: 'changes_requested', checks: 'A later issue needs another revision.' } });
+  assert.notEqual(second.review.artifactId, first.artifactId);
+  assert.equal((await f.store.readCore()).artifacts.filter(row => row.metadata.source === 'work-candidate-review').length, 2);
+  const reopened = new MemoryChatStore(); await reopened.writeCore(await f.store.readCore());
+  assert.equal((await listWorkCandidates(reopened, f.options.taskId)).candidates[0].lastReview.artifactId, second.review.artifactId);
+  assert.equal(f.stops(), 0);
+});
+
+test('manual review rejects drafts, stale bindings, changed paired owners and revisions at the atomic write', async t => {
+  const f = await reviewFixture(t), baseline = await f.store.readCore();
+  for (const change of [
+    core => ({ ...core, ownerProfile: { ...core.ownerProfile, actorId: 'new-owner' },
+      tasks: core.tasks.map(row => ({ ...row, ownerActorId: 'new-owner' })),
+      artifacts: core.artifacts.map(row => row.id === f.prepared.artifactId
+        ? { ...row, metadata: { ...row.metadata, ownerActorId: 'new-owner' } } : row) }),
+    core => ({ ...core, artifacts: core.artifacts.map(row => row.id === f.prepared.artifactId ? { ...row, status: 'draft' } : row) }),
+    core => ({ ...core, artifacts: core.artifacts.map(row => row.id === f.prepared.artifactId
+      ? { ...row, metadata: { ...row.metadata, candidate: { ...row.metadata.candidate, instanceId: 'f'.repeat(32) } } } : row) }),
+    core => ({ ...core, tasks: core.tasks.map(row => row.id === f.members[1].stage.taskId ? { ...row, ownerActorId: 'foreign' } : row) }),
+    core => ({ ...core, artifacts: core.artifacts.map(row => row.id === 'revision-runtime'
+      ? { ...row, metadata: { ...row.metadata, commitId: 'f'.repeat(40) } } : row) }),
+  ]) {
+    await f.store.writeCore(baseline);
+    await assert.rejects(recordWorkCandidateReview({ ...f.reviewOptions, coreStore: {
+      readCore: () => f.store.readCore(), updateCore: async update => {
+        await f.store.updateCore(change); return f.store.updateCore(update);
+      },
+    } }), /candidate_review|candidate_owner_changed/u);
+    assert.equal((await f.store.readCore()).artifacts.some(row => row.metadata.source === 'work-candidate-review'), false);
+  }
+  await f.store.writeCore(baseline);
+  const restored = await f.store.readCore();
+  for (const request of [ { ...f.reviewOptions.request, reviewerActorId: 'spoof' },
+    { ...f.reviewOptions.request, checks: '界'.repeat(2001) }, { ...f.reviewOptions.request, checks: ' ' },
+    { ...f.reviewOptions.request, bindingDigest: '0'.repeat(64) } ]) {
+    await assert.rejects(recordWorkCandidateReview({ ...f.reviewOptions, request }), /invalid_candidate_review|candidate_review_binding_changed/u);
+  }
+  assert.deepEqual(await f.store.readCore(), restored);
+});
+
+test('malformed or changed saved reviews cannot be listed or returned as a successful retry', async t => {
+  const f = await reviewFixture(t), { review } = await recordWorkCandidateReview(f.reviewOptions);
+  const baseline = await f.store.readCore();
+  for (const corrupt of [
+    metadata => ({ ...metadata, review: { ...metadata.review, checks: { forged: 'not plain text' } } }),
+    metadata => ({ ...metadata, review: { ...metadata.review, verdict: 'changes_requested' } }),
+    metadata => ({ ...metadata, review: { ...metadata.review, reviewerActorId: 'another-person' } }),
+    metadata => ({ ...metadata, binding: { ...metadata.binding, ownerActorId: 'another-owner' } }),
+  ]) {
+    await f.store.writeCore({ ...baseline, artifacts: baseline.artifacts.map(row => row.id === review.artifactId
+      ? { ...row, metadata: corrupt(row.metadata) } : row) });
+    const before = await f.store.readCore();
+    await assert.rejects(recordWorkCandidateReview(f.reviewOptions), /candidate_review_invalid_record/u);
+    assert.deepEqual(await f.store.readCore(), before);
+    const row = (await listWorkCandidates(f.store, f.options.taskId)).candidates[0];
+    assert.ok(row.reviewTarget); assert.equal(row.lastReview, undefined);
+  }
+  await f.store.writeCore({ ...baseline, artifacts: baseline.artifacts.map(row => row.id === review.artifactId
+    ? { ...row, metadata: { ...row.metadata, review: { ...row.metadata.review, irrelevantPrivateField: 'must-not-be-returned' } } } : row) });
+  assert.deepEqual((await recordWorkCandidateReview(f.reviewOptions)).review, review);
+  assert.deepEqual((await listWorkCandidates(f.store, f.options.taskId)).candidates[0].lastReview, review);
+});
+
+test('manual review HTTP requires an authenticated Core actor and does not accept reviewer fields', async t => {
+  const f = await reviewFixture(t);
+  const server = createServer((request, response) => {
+    void routeWorkCandidateEvidenceApi({ request, response, method: request.method,
+      url: new URL(request.url, 'http://localhost'), auth: { principal: { membership: {
+        roles: [request.headers['x-test-role'] ?? 'member'], coreActorId: request.headers['x-test-actor'] ?? null,
+      } } }, dependencies: { coreStore: f.store } });
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  t.after(async () => { const closed = once(server, 'close'); server.close(); server.closeAllConnections(); await closed; });
+  const url = 'http://127.0.0.1:' + server.address().port + '/api/work/tasks/' + f.options.taskId + '/candidate-review';
+  const post = (headers, body = f.reviewOptions.request) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
+  assert.equal((await post({})).status, 403);
+  assert.equal((await post({ 'x-test-role': 'owner' })).status, 409);
+  const headers = { 'x-test-role': 'owner', 'x-test-actor': f.reviewOptions.reviewerActorId };
+  assert.equal((await post(headers, { ...f.reviewOptions.request, reviewerActorId: 'spoof' })).status, 409);
+  const accepted = await post(headers); assert.equal(accepted.status, 201);
+  assert.equal((await accepted.json()).review.reviewerActorId, headers['x-test-actor']);
+  assert.equal((await post(headers)).status, 200);
+  assert.equal((await f.store.readCore()).artifacts.filter(row => row.metadata.source === 'work-candidate-review').length, 1);
+});
 
 test('Work observes and drains its historical candidate without source or healthy services; restart does not replay stop', async t => {
   const f = await fixture(t);

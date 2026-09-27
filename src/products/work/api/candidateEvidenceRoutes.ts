@@ -1,10 +1,12 @@
 import { sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { attachWorkCandidateEvidence, prepareWorkCandidate, type AttachCandidateRequest } from '../state/candidateEvidence.js';
-import { controlWorkCandidate, listWorkCandidates } from '../state/candidateLifecycle.js';
+import { controlWorkCandidate, listWorkCandidates, recordWorkCandidateReview } from '../state/candidateLifecycle.js';
+import { requireCoreActorIdForPrincipal } from '../../../platform/auth/actorAttribution.js';
+import type { CandidateReviewRequest } from '../shared/candidateReview.js';
 import type { WorkApiRouteContext } from './index.js';
 
 export async function routeWorkCandidateEvidenceApi(context: WorkApiRouteContext): Promise<boolean> {
-  const match = /^\/api\/work\/tasks\/([^/]+)\/candidate-(evidence|preparation|control)$/u.exec(context.url.pathname);
+  const match = /^\/api\/work\/tasks\/([^/]+)\/candidate-(evidence|preparation|control|review)$/u.exec(context.url.pathname);
   if (!match) return false;
   if (!context.auth?.principal?.membership.roles.some(role => role === 'owner' || role === 'admin')) {
     sendJson(context.response, 403, { error: { message: 'Administrator access is required.' } }); return true;
@@ -23,6 +25,12 @@ export async function routeWorkCandidateEvidenceApi(context: WorkApiRouteContext
       chunks.push(bytes);
     }
     const value: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    if (match[2] === 'review') {
+      const result = await recordWorkCandidateReview({ coreStore: context.dependencies.coreStore,
+        taskId: decodeURIComponent(match[1]!), reviewerActorId: requireCoreActorIdForPrincipal(context.auth.principal!),
+        request: value as CandidateReviewRequest });
+      sendJson(context.response, result.created ? 201 : 200, result, { 'Cache-Control': 'no-store' }); return true;
+    }
     if (match[2] === 'control') {
       const body = value as { artifactId: string; action: 'status' | 'stop' };
       if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 2

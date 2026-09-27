@@ -164,6 +164,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-09-27 (ADR-118 composes bound candidate cancellation and observation-only recovery with existing Work records.)*
+*Last updated: 2026-09-28 (ADR-118 adds attributed manual acceptance reports without changing independent validation authority.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*

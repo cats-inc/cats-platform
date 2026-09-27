@@ -970,6 +970,34 @@ candidate. A removed binding or changed owner/revision set prevents the stop.
 Direct Task metadata edits do not trigger this composition. Older hosts remain
 inspectable but need their original CLI to stop.
 
+#### Candidate manual review
+
+The candidate-control listing additionally exposes `reviewTarget` only for a
+complete attached build. It contains a server-produced binding digest and the
+two member commit labels, plus an optional `lastReview` on the row. The binding
+includes the current owner, saved build identity, generation, canonical
+ownership/revision set and observed source inputs. Draft preparations cannot
+receive a review.
+
+`POST /api/work/tasks/{taskId}/candidate-review` accepts exactly
+`{ artifactId, requestId, bindingDigest, verdict, checks }`. `verdict` is
+`accepted` or `changes_requested`; `checks` is nonempty plain text, at most
+6,000 UTF-8 bytes. The route has the same owner/admin and CSRF boundary as
+candidate control, and requires the authenticated principal's Core actor
+mapping. Callers cannot supply a reviewer identity. Ownership, both retained
+revision references and the binding digest are rechecked in the atomic writer.
+
+The response is `{ created, review }` (`201` new, `200` exact retry). A request ID
+is scoped to candidate and reviewer; changed content under the same ID returns
+`409`. Each new opinion creates a separate report artifact with
+`claim: 'manual_operator_attestation'`, the frozen binding, actor, timestamp,
+verdict and checks. History is retained. Missing attribution or stale identity
+is rejected without a report. No candidate endpoint, path or provider is used.
+The text is not executed or automatically injected into knowledge/model context.
+An accepted manual opinion does not change the build claim, automatic integration
+validation, Task/Run/Approval states, or publication authority. It does not assert
+that the reviewer is independent of the implementation author.
+
 #### Run stop and Mission cancel (SPEC-096)
 
 ```text
