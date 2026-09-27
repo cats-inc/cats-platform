@@ -22,6 +22,15 @@ split is the requested direction; the remaining implementation design is propose
 
 ## Context
 
+The 2026-09-27 completion continuation adds the bounded owner-confirmed
+`code.session.open` operation. It reuses the common tool boundary, conversation
+delegate and Runtime activation instead of introducing another session engine.
+The existing conversation task owns its additive intent/outcome metadata; an
+interrupted create is retained and inspected, never replayed. Explanation,
+readiness guidance and execution use one definition, with actual Runtime and
+owning-state readback before completion. This refines the initial advice-only
+slice without granting the model arbitrary operation arguments or permissions.
+
 A development machine can have a preview/debug Cats Desktop and the four Cats
 source repositories. Its managed agents should improve those repositories and
 produce knowledge for Catlas. End users install a release without those extra

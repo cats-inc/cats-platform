@@ -26,6 +26,32 @@ function reply(advice = 'Choose the folder for your existing project.') {
   return Response.json({ source: 'model', advice, reason: null, knowledgeIds: ['code.workspace'], receipt: null });
 }
 
+test('opening requires owner confirmation and an uncertain retry preserves the original request', async t => {
+  const bodies: Array<Record<string, unknown>> = [];
+  t.mock.method(globalThis, 'fetch', async (_url: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)); bodies.push(body);
+    if (bodies.length === 2) return Response.json({ source: 'basic', reason: 'timeout', advice: 'Basic guidance.' });
+    return Response.json({ source: 'model', advice: 'Ready.', knowledgeIds: ['code.entry'], receipt: null,
+      operation: { revision: 'a'.repeat(64), ready: true, checks: { target: true, workspace: true, access: true } },
+      ...(bodies.length === 3 ? { outcome: { status: 'verified', path: '/code/chats/owned',
+        workspace: { cwd: 'selected-folder', kind: 'source', access: 'read_only' } } } : {}),
+    });
+  });
+  const view = render(<CodeCatlasHelp {...props()} />);
+  fireEvent.click(view.getByRole('button', { name: 'Help me get started' }));
+  fireEvent.click(view.getByRole('button', { name: 'Ask Catlas' }));
+  await waitFor(() => assert.ok(view.getByRole('button', { name: 'Open Code with these settings' })));
+  assert.equal(bodies[0].openSession, undefined);
+  fireEvent.click(view.getByRole('button', { name: 'Open Code with these settings' }));
+  await waitFor(() => assert.ok(view.getByRole('button', { name: 'Check this attempt' })));
+  fireEvent.click(view.getByRole('button', { name: 'Check this attempt' }));
+  await waitFor(() => assert.ok(view.getByRole('link', { name: 'Go to conversation' })));
+  assert.deepEqual(bodies[1].openSession, bodies[2].inspectSession);
+  assert.equal(bodies[2].openSession, undefined);
+  assert.equal(view.getByRole('link', { name: 'Go to conversation' }).getAttribute('href'), '/code/chats/owned');
+  assert.match(view.getByRole('status').textContent ?? '', /read_only/u);
+});
+
 test('Code help is optional and opens without making a model request', (t) => {
   const fetch = t.mock.method(globalThis, 'fetch', async () => reply());
   const view = render(<CodeCatlasHelp {...props()} />);

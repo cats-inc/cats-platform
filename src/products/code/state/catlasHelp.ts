@@ -9,6 +9,8 @@ import { createTranslator, messageKeys } from '../../../shared/i18n/index.js';
 import type {
   CodeCatlasHelpReason, CodeCatlasHelpRequest, CodeCatlasHelpResponse,
 } from '../shared/catlasHelp.js';
+import type { CodeSessionOperationService } from './codeSessionOperation.js';
+import type { CodeSessionOutcome } from '../shared/codeSessionOperation.js';
 
 export interface CodeCatlasHelpService {
   help(request: CodeCatlasHelpRequest, signal: AbortSignal): Promise<CodeCatlasHelpResponse>;
@@ -43,11 +45,16 @@ export function createCodeCatlasHelpService(options: {
   knowledgeFilePath?: string;
   timeoutMs?: number;
   now?: () => Date;
+  sessionOperation?: CodeSessionOperationService;
 }): CodeCatlasHelpService {
   // One admitted request per host service. No background refresh or automatic retries.
   let active = false;
   return {
     async help(request, signal) {
+      if (request.inspectSession) return {
+        ...basicCodeCatlasHelp(request, 'operation_inspection'),
+        ...(options.sessionOperation ? { outcome: await options.sessionOperation.inspectAttempt(request.draft, request.inspectSession, signal) } : {}),
+      };
       if (active) return basicCodeCatlasHelp(request, 'busy');
       if (signal.aborted) return basicCodeCatlasHelp(request, 'cancelled');
       active = true;
@@ -59,6 +66,7 @@ export function createCodeCatlasHelpService(options: {
         timedOut = true;
         controller.abort();
       }, options.timeoutMs ?? 90_000);
+      let outcome: CodeSessionOutcome | undefined;
       const task = (async (): Promise<CodeCatlasHelpResponse> => {
         try {
           const [core, config, knowledge] = await Promise.all([
@@ -103,13 +111,33 @@ export function createCodeCatlasHelpService(options: {
             },
             effectiveSessionAccess: 'not_started',
           };
+          const operation = await options.sessionOperation?.inspect(request.draft);
           const entries = selectCatlasKnowledge(knowledge.bundle,
             ['execution', 'workspace', 'permissions', 'recovery']);
           if (!entries.length) return basicCodeCatlasHelp(request, 'knowledge_unavailable');
           const result = await inferCatlasAdvice({
             runtimeClient: options.runtimeClient, guideCat: core.guideCat,
             locale: request.locale, question: request.question, surface: 'code:new',
-            observation, bundle: knowledge.bundle, entries, signal: controller.signal,
+            observation: { ...observation, ...(operation ? { operation } : {}) },
+            bundle: knowledge.bundle, entries, signal: controller.signal,
+            ...(request.openSession && options.sessionOperation ? { operation: async () => {
+              const assertAllowed = async () => {
+                controller.signal.throwIfAborted();
+                const current = await options.coreStore.readCore();
+                const currentConfig = await readGuideCatAssistConfig(options.chatStatePath);
+                controller.signal.throwIfAborted();
+                if (JSON.stringify(current.guideCat) !== JSON.stringify(core.guideCat)
+                  || currentConfig.disabledSurfaceKeys.includes('code:new:default:default')) {
+                  throw new Error('Catlas operation context changed.');
+                }
+              };
+              await assertAllowed();
+              outcome = await options.sessionOperation!.open(request.draft, request.openSession!, controller.signal, assertAllowed);
+              await assertAllowed();
+              // Paths are shown only to the owner; the guide needs the checked policy/result.
+              return { operationId: outcome.operationId, status: outcome.status, reason: outcome.reason,
+                workspace: outcome.workspace ? { kind: outcome.workspace.kind, access: outcome.workspace.access } : null };
+            } } : {}),
           });
           const [latestCore, latestConfig] = await Promise.all([
             options.coreStore.readCore(), readGuideCatAssistConfig(options.chatStatePath),
@@ -120,13 +148,13 @@ export function createCodeCatlasHelpService(options: {
             || JSON.stringify([latest.id, latest.executionTarget, latest.modelSelection])
               !== JSON.stringify([core.guideCat.id, core.guideCat.executionTarget,
                 core.guideCat.modelSelection])) {
-            return basicCodeCatlasHelp(request, 'cancelled');
+            return { ...basicCodeCatlasHelp(request, 'cancelled'), ...(outcome ? { outcome } : {}) };
           }
-          return { source: 'model', reason: null, ...result };
+          return { source: 'model', reason: null, ...result, ...(operation ? { operation } : {}), ...(outcome ? { outcome } : {}) };
         } catch (error) {
-          return basicCodeCatlasHelp(request, controller.signal.aborted
+          return { ...basicCodeCatlasHelp(request, controller.signal.aborted
             ? timedOut ? 'timeout' : 'cancelled'
-            : error instanceof CatlasAdviceError ? 'invalid_response' : 'model_unavailable');
+            : error instanceof CatlasAdviceError ? 'invalid_response' : 'model_unavailable'), ...(outcome ? { outcome } : {}) };
         } finally {
           active = false;
           clearTimeout(timer);
@@ -136,8 +164,8 @@ export function createCodeCatlasHelpService(options: {
       // Return promptly on disconnect/timeout. A late-created session still reaches
       // the inference function's finally block; keep admission occupied until cleanup.
       return new Promise<CodeCatlasHelpResponse>((resolve) => {
-        const finishAborted = () => resolve(basicCodeCatlasHelp(request,
-          timedOut ? 'timeout' : 'cancelled'));
+        const finishAborted = () => resolve({ ...basicCodeCatlasHelp(request,
+          timedOut ? 'timeout' : 'cancelled'), ...(outcome ? { outcome } : {}) });
         controller.signal.addEventListener('abort', finishAborted, { once: true });
         if (controller.signal.aborted) finishAborted();
         void task.then((result) => {

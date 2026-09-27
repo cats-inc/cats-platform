@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "revision": "2026-09-25.1",
+  "revision": "2026-09-27.1",
   "platformRange": "0.5.x",
   "requiredCapabilities": ["code-entry-v1"],
   "entries": [
     {
       "id": "code.entry",
-      "revision": 1,
+      "revision": 2,
       "topics": ["always"],
-      "verifiedAt": "2026-09-24",
+      "verifiedAt": "2026-09-27",
       "sources": ["Cats Code entry behavior", "SPEC-091", "SPEC-117"],
       "content": {
-        "en": "Cats Code starts a coding conversation from New Code. Select the execution target or Cat, choose the intended folder when working on an existing project, describe the task and send. A folder is optional for a new task: without one the session can use a managed sandbox. New Code, Team Code and Peer Code have different participant arrangements. This help explains the observed draft; it does not create a session, edit files or confirm completion. Draft selections are requested settings. Check the created session's actual workspace and access before claiming the intended setup succeeded.",
-        "zh-TW": "Cats Code 可從「新增程式」開始程式對話。選擇執行目標或 Cat；若要修改既有專案，選擇正確資料夾，再描述任務並送出。新任務可以不選資料夾，使用受管理的沙箱。新增、團隊與並列程式的參與者安排不同。這項求助會解釋目前草稿狀態，不會建立工作階段、修改檔案或宣告任務完成。草稿選項是預期設定；建立後仍須確認實際工作目錄與存取權限。"
+        "en": "Cats Code starts a coding conversation from New Code. Select the execution target or Cat, choose the intended folder for an existing project, describe the task and send. A folder is optional for a new task, which can use a managed sandbox. New Code, Team Code and Peer Code have different participant arrangements. Asking for help alone explains the observed draft and changes nothing. When the current observation advertises a ready code.session.open operation, the owner can explicitly open a separate Code conversation with the displayed provider, folder and access. That operation sends no coding prompt, edits no source and does not complete the coding task. Only a verified host outcome confirms the linked Runtime session's actual workspace and access. An interrupted or unconfirmed attempt must be inspected before any retry; an acknowledgement or model claim alone is insufficient.",
+        "zh-TW": "Cats Code 可從「新增程式」開始程式對話。選擇執行目標或 Cat；處理既有專案時，選擇正確資料夾，再描述任務並送出。新任務可以不選資料夾，使用受管理沙箱。新增、團隊與並列程式的參與者安排不同。單純詢問協助只解釋目前草稿，不會修改任何設定。當目前觀察明確提供已就緒的 code.session.open 操作時，擁有者可確認以顯示的 provider、資料夾與權限，另開 Code 對話。這項操作不會送出程式任務、修改 source，也不代表任務完成。只有主機回傳已驗證結果，才確認連結 Runtime 工作階段的實際目錄與權限。中斷或尚未確認的操作應先檢查，再決定是否重試；僅有收到請求的回覆或模型宣稱並不足夠。"
       }
     },
     {

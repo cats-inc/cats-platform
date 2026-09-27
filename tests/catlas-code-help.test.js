@@ -14,6 +14,7 @@ import { classifyPlatformAuthRoute } from '../build/server/app/server/authGatePo
 import { CatsRuntimeClient } from '../build/server/runtime/client.js';
 import { inferCatlasAdvice } from '../build/server/platform/catlas/inference.js';
 import { inspectLocalKnowledge, mutateLocalKnowledge } from '../build/server/platform/knowledge/localKnowledge.js';
+import { waitForCondition } from './testUtils.js';
 
 const sourceKnowledge = await readFile(resolve('config/catlas-knowledge.json'), 'utf8');
 const guideCat = {
@@ -31,6 +32,52 @@ function request(overrides = {}) {
     ...overrides,
   };
 }
+
+test('confirmed operation returns its authoritative outcome to the same guide session; feedback failure retains it', async t => {
+  for (const failFeedback of [false, true]) {
+    const outcome = { operationId: 'code.session.open', requestId: 'fixture', status: 'verified', reason: null,
+      channelId: 'channel-fixture', sessionId: 'coding-fixture', path: '/code/chats/channel-fixture',
+      workspace: { kind: 'source', access: 'read_only', cwd: 'private-owner-path' } };
+    const sent = [], opened = [];
+    const f = await fixture(t, { sendMessage: async (sessionId, content) => {
+      const prompt = JSON.parse(content); sent.push({ sessionId, prompt });
+      if (prompt.operation && failFeedback) throw new Error('feedback unavailable');
+      return { segments: [{ kind: 'text', text: JSON.stringify({ advice: prompt.operation
+        ? 'The session access was verified.' : 'The current settings are ready.', knowledgeIds: ['code.entry'] }) }] };
+    } }, { sessionOperation: { inspect: async () => ({ ready: true, revision: 'r', operation: { id: 'code.session.open' } }),
+      open: async (...args) => { opened.push(args); return outcome; } } });
+    const value = await f.service.help(request({ openSession: { requestId: 'fixture', revision: 'r' } }), new AbortController().signal);
+    assert.deepEqual(value.outcome, outcome);
+    assert.equal(value.source, failFeedback ? 'basic' : 'model');
+    assert.equal(opened.length, 1);
+    assert.equal(sent.length, 2);
+    assert.equal(sent[0].sessionId, sent[1].sessionId);
+    assert.equal(sent[1].prompt.operation.status, 'verified');
+    assert.ok(!JSON.stringify(sent).includes('private-owner-path'), 'the guide does not need the private cwd');
+    assert.deepEqual(f.calls.close, ['help-session']);
+  }
+});
+
+test('cancelling during the host operation never dispatches a result model turn', async t => {
+  let release, entered;
+  const started = new Promise(resolve => { entered = resolve; });
+  const operation = new Promise(resolve => { release = resolve; });
+  const f = await fixture(t, {}, { sessionOperation: {
+    inspect: async () => ({ ready: true, revision: 'r', operation: { id: 'code.session.open' } }),
+    open: async () => { entered(); return operation; },
+  } });
+  const controller = new AbortController();
+  const pending = f.service.help(request({ openSession: { requestId: 'fixture', revision: 'r' } }), controller.signal);
+  await started;
+  controller.abort();
+  release({ operationId: 'code.session.open', requestId: 'fixture', status: 'unconfirmed', reason: 'cancelled',
+    channelId: 'retained', sessionId: null, path: '/code/chats/retained' });
+  assert.equal((await pending).reason, 'cancelled');
+  await waitForCondition(() => f.calls.close.length === 1);
+  assert.equal(f.calls.send.length, 1);
+  assert.deepEqual(f.calls.cancel, ['help-session']);
+  assert.deepEqual(f.calls.close, ['help-session']);
+});
 
 async function fixture(t, runtimeOverrides = {}, options = {}) {
   const root = await mkdtemp(join(tmpdir(), 'cats-catlas-help-'));
@@ -341,6 +388,7 @@ test('Code help API validates input, stays protected and returns uncached contex
   const server = createServer(async (req, res) => {
     const handled = await routeCodeApi({ request: req, response: res,
       url: new URL(req.url, 'http://localhost'), method: req.method,
+      auth: { principal: { membership: { roles: [req.headers['x-test-role'] ?? 'member'] } } },
       dependencies: { coreStore: f.coreStore, runtimeClient: f.runtimeClient,
         config: {}, catlasHelp: f.service },
     });
@@ -349,6 +397,10 @@ test('Code help API validates input, stays protected and returns uncached contex
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const url = `http://127.0.0.1:${server.address().port}/api/code/catlas/help`;
+  const operation = { requestId: '00000000-0000-0000-0000-000000000001', revision: 'a'.repeat(64) };
+  for (const action of ['openSession', 'inspectSession']) {
+    assert.equal((await fetch(url, { method: 'POST', body: JSON.stringify(request({ [action]: operation })) })).status, 403);
+  }
   assert.equal((await fetch(url)).status, 405);
   const invalid = request(); invalid.draft.policy.permissionMode = 'skip';
   assert.equal((await fetch(url, { method: 'POST', body: JSON.stringify(invalid) })).status, 400);
@@ -360,7 +412,22 @@ test('Code help API validates input, stays protected and returns uncached contex
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), 'no-store');
   assert.equal((await response.json()).source, 'model');
+  for (const action of ['openSession', 'inspectSession']) for (const role of ['owner', 'admin']) {
+    assert.equal((await fetch(url, { method: 'POST', headers: { 'x-test-role': role },
+      body: JSON.stringify(request({ [action]: operation })) })).status, 200);
+  }
   for (const phase of ['pre_setup', 'post_setup', 'repair']) {
     assert.equal(classifyPlatformAuthRoute({ pathname: '/api/code/catlas/help', method: 'POST', phase }).access, 'protected');
   }
+});
+
+test('attempt inspection is available without starting a Catlas model session', async t => {
+  const f = await fixture(t, {}, { sessionOperation: {
+    inspectAttempt: async () => ({ operationId: 'code.session.open', status: 'unconfirmed', reason: 'attempt_not_admitted' }),
+  } });
+  const response = await f.service.help(request({ inspectSession: { requestId: 'fixture', revision: 'r' } }), new AbortController().signal);
+  assert.equal(response.reason, 'operation_inspection');
+  assert.equal(response.outcome.reason, 'attempt_not_admitted');
+  assert.equal(f.calls.create.length, 0);
+  assert.equal(f.calls.send.length, 0);
 });

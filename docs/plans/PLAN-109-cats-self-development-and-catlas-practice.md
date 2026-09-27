@@ -25,6 +25,52 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
+## Active completion checkpoint (2026-09-27)
+
+The owner explicitly requested continuing until the complete plan is delivered,
+with durable checkpoints and normal direct main commit/push. This authorizes
+remaining implementation and proportionate isolated validation, not another
+version bump, publication or mutation of the installed user profile. The earlier
+70% overall / 85% minimal-path figures were rough functional estimates, not
+acceptance measurements. Use AC-01–AC-15 and their actual evidence for closure.
+
+Do not restart completed native authoring, preview publication or the retired
+expanding evaluator harness. Existing content-profile filtering, preview skills,
+practice/promotion engine and ordinary contribution/diagnostic/candidate commands
+are reusable. Historical unchecked phase lists below are not instructions to
+reimplement them.
+
+The first completion slice implements owner-confirmed `code.session.open` from
+Catlas's New Code help. The shared definition drives the guide observation,
+visible checks and fixed supervised operation. It resolves the actual provider
+instance, checks local source/worktree readiness, retains an intent on the
+existing conversation task, and reuses ordinary conversation/session activation.
+It verifies the actual session's provider, workspace and access, then sends a
+bounded result to the same guide session. Pure attempt inspection calls no model
+and never repeats creation. It sends no coding prompt and edits no source.
+
+Independent review identified provider selector shape, cancellation dispatch,
+path-alias/state races, owner role checks and misleading retry semantics. These
+are corrected with focused regressions. A neutral host-injected conversation
+delegate preserves atomic admission and activation without a Code-to-Chat
+implementation dependency; independent review found no remaining blockers.
+Server and renderer/test compilation passed; the final focused operation,
+renderer, knowledge and architecture/dependency suite passed **144/144**.
+The additive
+intent uses existing atomic Core persistence and needs no data migration. The
+Catlas entry is updated with capability-conditional advice, preserving the other
+four entries. No native provider evidence is claimed for this slice yet.
+
+Next compose retained Runtime workspaces and candidate receipts with existing
+Core records, validate the ordinary provider contribution path and complete the
+independent knowledge handoff. The read-only audit confirmed existing Work
+collaboration already owns admission, implementation/review Runs, worktrees,
+revision capture and restart fencing; reuse it rather than creating a scheduler.
+AC-01–06 still need Cats-specific evidence/composition; AC-08 has the new operation
+fixtures but native acceptance is open; AC-07/13–15 need combined source-free
+release consumption; AC-10–12 need real independent quality/promotion evidence.
+Additional claimed native OS/distribution and two-repo evidence remain G5 work.
+
 ## Resume checkpoint — Desktop 0.5.7 standard preview published (2026-09-27)
 
 The owner prioritized a version bump and Desktop standard preview. The

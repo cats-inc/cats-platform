@@ -108,7 +108,13 @@ and instructs Catlas's Core-bound model to distinguish observed state, draft
 intent and inference. Existing supervised Runtime wrappers request an isolated
 read-only sandbox session with no requested skills or product-action executor.
 Provider enforcement is still Runtime-owned; unsupported execution yields basic
-guidance. No operation-decision envelope or new agent tool is exposed here.
+guidance. The shared `code.session.open` definition is included when supported.
+Only explicit owner/admin confirmation of the inspected draft lets the host run
+that fixed operation through its tool boundary and ordinary Chat/Code activation
+delegates. The model cannot choose or broaden its arguments. Authoritative
+Runtime readback, then a bounded result returned to the same guide session,
+distinguish confirmed setup from an acknowledgement. Pure attempt inspection
+uses no model and cannot create an operation which was never admitted.
 
 `CatlasAdvice` is exactly `{ advice: string, knowledgeIds: string[] }`. The gate
 requires bounded nonempty advice, known knowledge IDs and no extra fields. It

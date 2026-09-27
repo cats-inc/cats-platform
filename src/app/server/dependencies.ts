@@ -87,6 +87,8 @@ import {
 } from '../../products/code/state/sessionFinalization.js';
 import type { AppConfig } from '../../config.js';
 import { createCodeCatlasHelpService } from '../../products/code/state/catlasHelp.js';
+import { createCodeSessionOperationService } from '../../products/code/state/codeSessionOperation.js';
+import { createConversationSessionDelegate } from '../../products/chat/state/conversationSessionDelegate.js';
 
 type InjectedAppConfig = AppConfig & {
   auth?: Partial<PlatformAuthConfig>;
@@ -492,6 +494,12 @@ export function resolveServerDependencies(
         chatStatePath: (dependencies.code?.config ?? dependencies.shared.config).chatStatePath,
         platformDir: (dependencies.code?.config ?? dependencies.shared.config).platformDir,
         now: dependencies.code?.now ?? dependencies.shared.now,
+        sessionOperation: createCodeSessionOperationService({
+          coreStore: dependencies.chat.chatStore,
+          conversations: createConversationSessionDelegate(dependencies.chat.chatStore, dependencies.shared.config.runtimeDataDir),
+          runtimeClient: dependencies.code?.runtimeClient ?? dependencies.shared.runtimeClient,
+          runMutation: (channelId, operation) => mutationGate.run(channelId, operation),
+        }),
       }),
       evidenceDataDir: dependencies.code?.evidenceDataDir ?? dependencies.shared.config.chatStatePath,
       readEvidenceEvents: dependencies.code?.readEvidenceEvents

@@ -18,6 +18,12 @@ export function isCodeCatlasHelpRequest(value: unknown): value is CodeCatlasHelp
     || typeof value.question !== 'string' || !value.question.trim() || value.question.length > 1_000
     || !record(value.draft) || !optionalText(value.draft.cwd, 4_096)
     || !record(value.draft.policy)) return false;
+  if (value.openSession !== undefined && value.inspectSession !== undefined) return false;
+  const operation = value.openSession ?? value.inspectSession;
+  if (operation !== undefined && (!record(operation)
+    || typeof operation.requestId !== 'string' || !/^[a-f0-9-]{36}$/u.test(operation.requestId)
+    || typeof operation.revision !== 'string' || !/^[a-f0-9]{64}$/u.test(operation.revision)
+    || Object.keys(operation).some(key => key !== 'requestId' && key !== 'revision'))) return false;
   const { policy, target } = value.draft;
   if (policy.workspaceKind == null || policy.workspaceAccess == null || policy.permissionMode == null
     || validateRuntimeSessionPolicyInput(policy)) return false;
@@ -41,6 +47,11 @@ export async function routeCodeCatlasHelpApi(context: CodeApiRouteContext): Prom
     return true;
   }
   const controller = new AbortController();
+  if ((body.openSession || body.inspectSession)
+    && !context.auth?.principal?.membership.roles.some(role => role === 'owner' || role === 'admin')) {
+    sendJson(context.response, 403, { error: { message: 'Administrator access is required.' } });
+    return true;
+  }
   const onClose = () => { if (!context.response.writableEnded) controller.abort(); };
   context.response.once('close', onClose);
   try {

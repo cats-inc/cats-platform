@@ -1088,12 +1088,13 @@ default New Code draft. Opening the help panel does not invoke it.
 ```
 
 `locale` is `en` or `zh-TW`; `question` is nonempty and at most 1,000 characters.
-`cwd` is null or a bounded path used only for a local directory check. `target`
+`cwd` is null or a bounded path used for local directory inspection; an explicitly
+confirmed `openSession` also uses its resolved physical path. `target`
 is null or `{ provider, instance, model }`, with nullable instance/model. The
 explicit policy must satisfy the normal Runtime workspace/access/permission
 combination rules. Only declared observation fields reach the model. This
 coding target is context; Catlas's own provider/model binding comes from Core.
-The request cannot override that binding or grant product-operation authority.
+The request cannot override that binding. Advice alone grants no operation.
 
 A valid request returns HTTP 200 and `Cache-Control: no-store` with
 `{ source, advice, reason, knowledgeIds, receipt }`. `source: "model"` carries
@@ -1108,11 +1109,37 @@ The service admits one request at a time with a 90-second deadline. It creates
 a fresh read-only sandbox Runtime session, sends selected knowledge contents
 inline, and closes its owned session best effort after completion/cancellation.
 Caller disconnect cancels the turn; late creation still reaches cleanup. No
-product operation or Core task/memory write is performed. Runtime session
+product operation or Core task/memory write is performed for advice alone. Runtime session
 history follows normal Runtime retention. Catlas binding and surface enablement
 are rechecked before returning model advice. See
 [Catlas Code Help](agent-control-surfaces.md#catlas-code-help) and
 [SPEC-117](specs/SPEC-117-cats-self-development-and-catlas-practice.md).
+
+When the host supports `code.session.open`, advice also returns an `operation`
+inspection with its shared definition, readiness checks, resolved provider target
+and revision. An owner/admin may explicitly confirm the unchanged draft with
+`openSession: { requestId: <UUID>, revision: <inspection revision> }`. The host
+rechecks readiness/authority, creates a separate Code conversation through the
+ordinary delegate and activates its session through the existing supervised
+Runtime boundary. It sends no coding prompt and changes no access selection.
+Only local Runtime source/worktree directories are currently supported; a
+non-Git parent is valid for source access, but cannot itself be a worktree.
+
+The additive `outcome` is `verified`, `unconfirmed` or `rejected`, with a retained
+conversation link where available. Verification rereads the exact session's
+provider, workspace and access; it is not evidence of OS/provider enforcement
+or completion of a coding task. A bounded result goes back to the same guide
+session for explanation; model failure retains the host outcome. Paths remain
+owner-visible and are excluded from that model feedback.
+
+An idempotency intent is stored atomically on the existing channel Core task
+before session creation. Same-request retries inspect the existing attempt;
+uncertain creation is never automatically replayed after restart. Owner/admin
+`inspectSession: { requestId, revision }` with the same draft performs only
+inspection, even when the attempt never reached admission. It calls no model,
+creates no conversation/session and returns `reason: operation_inspection`.
+Do not supply both operation fields. Cancelling or timing out can leave a
+retained conversation; inspect it before another operation.
 
 ### Shell Helpers
 

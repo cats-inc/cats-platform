@@ -36,6 +36,25 @@ verified collaboration tools/results separately. Those ordinary role procedures 
 ship in both profiles without the preview-only development/practice supplement.
 That work does not complete this spec's source-development or promotion gates.
 
+## Owner-confirmed Code session operation (2026-09-27)
+
+Code help now shares one `code.session.open` definition between its observation,
+visible readiness checks and supervised host operation. Advice alone changes
+nothing. An owner/admin explicitly confirms the inspected provider, source or
+worktree folder and access; the host reuses ordinary conversation creation and
+Runtime activation. The physical source path and resolved provider instance are
+fixed at admission, and the existing Core task retains the idempotency intent
+before provider work. No coding prompt is sent.
+
+Completion requires a fresh readback of the linked Runtime session and a final
+owning-state check. A bounded result is returned to the same Catlas session for
+explanation. Failed explanation retains the host result. Cancelled/interrupted
+requests preserve the conversation and never replay uncertain creation; an
+explicit attempt inspection is read-only and invokes no model. This additive
+task metadata uses the existing atomic/backup store and needs no migration of
+existing records. It does not establish filesystem enforcement, a finished
+coding task or native/provider acceptance. See PLAN-109 for executed evidence.
+
 ## Minimal source candidate workflow (authorized 2026-09-27)
 
 An ordinary agent with source access and permitted shell execution shall be able
