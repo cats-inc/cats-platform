@@ -19,7 +19,7 @@ Migration steps:
 Deprecations:
 ```
 
-## 2026-09-27 (0.5.6 preview, standard profile — preparation)
+## 2026-09-27 (0.5.6 preview, standard profile — publication)
 
 Behavior change:
 
@@ -51,17 +51,17 @@ Migration steps:
 
 No existing data conversion is required.
 
-This compatible patch prepares Desktop only; no npm publication is requested.
+This compatible patch publishes Desktop only; no npm package was published.
 Runtime 0.3.1 is pinned to `5396566012c9cf7783bf05203806df8c849e348b`.
 Usage 0.4.0 retains SHA-256
 `7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`; its
 `catsPlatform` range `^0.5.0` includes 0.5.6.
 
-The standard signing profile is selected: expected platform trust is macOS
+The standard signing profile was used: verified platform trust is macOS
 signed + notarized, Windows unsigned: no certificate, and Linux n/a. Self-update
 from standard-profile 0.5.5 is expected to remain supported on Windows/Linux
-and on macOS with the same Developer ID team. Actual release signing and assets
-must be confirmed after publication; no new installed-update acceptance is claimed.
+and on macOS with the same Developer ID team `97JBZ3MFX5` and signing certificate,
+confirmed against the 0.5.5 build log. No new installed-update acceptance is claimed.
 
 Deprecations:
 
@@ -74,7 +74,27 @@ Platform `9188a1104ce1f46e4f802b59e99c210a2f69987f` passed
 The later source candidate command (`dfb7c4c1`) is covered by the version
 candidate's CI. The pinned Runtime passed its
 [release preflight](https://github.com/cats-inc/cats-runtime/actions/runs/36288093804).
-The version candidate still requires its CI and Desktop publication workflow.
+The [version candidate CI](https://github.com/cats-inc/cats-platform/actions/runs/36288365820)
+passed with 5,148 tests passed, 59 skipped and zero failures.
+
+The [0.5.6 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.6)
+was published from Platform `27489f3668c243629bfd2b94a887a4f652491c54`.
+The [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36288800513)
+passed all seven jobs with `unsigned=false`; all three OS builds recorded the
+same pinned Runtime SHA. The workflow created the matching preview tag.
+
+- All ten assets are published, the release is a prerelease, and it appears first
+  in the release feed. The three update metadata files report 0.5.6 and reference
+  published assets with matching names and sizes.
+- macOS: the app and native helper passed signature verification; notarization,
+  stapling validation and Gatekeeper assessment succeeded. This is build-runner
+  evidence, not a new published-DMG inspection on a Mac.
+- Windows: the downloaded 145,036,951-byte installer reports Authenticode
+  `NotSigned`. Its SHA-512 matches update metadata and its SHA-256 matches the
+  GitHub asset digest
+  `d7ac4d125e278c137868c1c846f6104ee4504203e05ed8ed38b14b692e7c3b9c`.
+- Linux: n/a for signing. Every OS passed bundled App version/offline activation
+  checks. No provider inference or installed user-profile writes were performed.
 
 ## 2026-09-27 (0.5.5 preview, standard profile — publication)
 
