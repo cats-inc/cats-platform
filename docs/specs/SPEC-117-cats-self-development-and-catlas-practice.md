@@ -118,6 +118,16 @@ prepared artifact becomes build evidence, with integration validation explicitly
 unobserved. This is input/ownership composition, not an integration verdict,
 automatic cross-repository scheduling or new cancellation authority.
 
+Work additionally offers explicit status/stop for a Core-prepared candidate.
+Historical ownership remains visible even after the current implementation intent
+changes. Control derives root and generation from the saved artifact, validates
+physical files and the host identity, and atomically records stop intent after a
+final owner check. The host enforces the specific instance nonce. Re-entry only
+observes matching status/exit receipts; it never replays stop. The operation
+preserves source/evidence and does not require a clean or still-present checkout.
+It does not yet couple task cancellation to automatic candidate shutdown, nor
+prove OS process exit from the host's drain receipt.
+
 Fresh worktrees may select existing Platform and Runtime dependency checkouts
 explicitly. The command requires identical package/lock bytes, records dependency
 origins and Git common directories, and resolves Electron through the selected
@@ -770,4 +780,4 @@ remain later work, each requiring evidence and an explicit rollout decision.
 ---
 
 *Created: 2026-09-24*
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-27*

@@ -164,6 +164,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-09-27 (PLAN-109 records paired managed candidate revisions and real ordinary contribution with zero-provider adoption/revocation; managed lifecycle and independent promotion gates remain open.)*
+*Last updated: 2026-09-27 (PLAN-109 adds Core-associated candidate status/stop and paired revisions; automatic cancellation and independent promotion gates remain open.)*
 
 *See also: [specs/](../specs/) for feature specifications*

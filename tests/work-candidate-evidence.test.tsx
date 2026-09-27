@@ -5,8 +5,71 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { CandidateEvidenceSection } from '../src/products/work/renderer/components/tasks/CandidateEvidenceSection.tsx';
+import { CandidateLifecycleSection } from '../src/products/work/renderer/components/tasks/CandidateLifecycleSection.tsx';
 
 afterEach(() => { cleanup(); resetTestDom(); });
+test('saved candidate controls load only on request and stop sends only the selected artifact action', async t => {
+  const calls: Array<{ url: string; body?: { artifactId: string; action: string } }> = [];
+  let stopped = false;
+  t.mock.method(globalThis, 'fetch', async (url: RequestInfo | URL, options?: RequestInit) => {
+    const body = options?.body ? JSON.parse(String(options.body)) : undefined;
+    calls.push({ url: String(url), ...(body ? { body } : {}) });
+    if (!body) return Response.json({ candidates: [{ artifactId: 'owned', root: '/owned/candidate' }] });
+    if (body.action === 'stop') stopped = true;
+    return Response.json({ artifactId: 'owned', observation: { state: stopped ? 'drained' : 'running', instanceBoundStop: true } });
+  });
+  const view = render(<CandidateEvidenceSection taskId="historical" evidenceAvailable={false} />);
+  assert.equal(view.queryByText('Prepare candidate record'), null);
+  assert.equal(calls.length, 0);
+  fireEvent.click(view.getByText('Manage prepared candidates'));
+  fireEvent.click(view.getByRole('button', { name: 'Load candidate records' }));
+  await view.findByText('/owned/candidate');
+  assert.equal((view.getByRole('button', { name: 'Stop candidate Desktop' }) as HTMLButtonElement).disabled, true);
+  fireEvent.click(view.getByRole('button', { name: 'Check candidate status' }));
+  await waitFor(() => assert.equal((view.getByRole('button', { name: 'Stop candidate Desktop' }) as HTMLButtonElement).disabled, false));
+  fireEvent.click(view.getByRole('button', { name: 'Stop candidate Desktop' }));
+  await view.findByText('Last check: candidate reported a successful shutdown.');
+  assert.deepEqual(calls.map(row => row.body), [undefined, { artifactId: 'owned', action: 'status' }, { artifactId: 'owned', action: 'stop' }]);
+  assert.ok(calls.every(row => row.url === '/api/work/tasks/historical/candidate-control'));
+  assert.equal((view.getByRole('button', { name: 'Stop candidate Desktop' }) as HTMLButtonElement).disabled, true);
+});
+
+test('switching tasks discards late candidate records and does not automatically send a stop', async t => {
+  let release!: (value: Response) => void; let calls = 0;
+  t.mock.method(globalThis, 'fetch', () => { calls++; return new Promise<Response>(resolve => { release = resolve; }); });
+  const view = render(<CandidateLifecycleSection taskId="first" />);
+  fireEvent.click(view.getByText('Manage prepared candidates'));
+  fireEvent.click(view.getByRole('button', { name: 'Load candidate records' }));
+  view.rerender(<CandidateLifecycleSection taskId="second" />);
+  release(Response.json({ candidates: [{ artifactId: 'foreign', root: '/old/candidate' }] }));
+  await waitFor(() => assert.equal((view.getByRole('button', { name: 'Load candidate records' }) as HTMLButtonElement).disabled, false));
+  assert.equal(view.queryByText('/old/candidate'), null); assert.equal(calls, 1);
+});
+
+test('a lost stop response stays unconfirmed and requires status inspection instead of showing the old running state', async t => {
+  const actions: string[] = [];
+  t.mock.method(globalThis, 'fetch', async (_url: RequestInfo | URL, options?: RequestInit) => {
+    if (!options?.body) return Response.json({ candidates: [{ artifactId: 'owned', root: '/candidate',
+      observation: { state: 'running', instanceBoundStop: true } }] });
+    const body = JSON.parse(String(options.body)); actions.push(body.action);
+    if (body.action === 'stop') throw new Error('Lost response');
+    return Response.json({ artifactId: 'owned', observation: { state: 'drained', instanceBoundStop: true } });
+  });
+  const view = render(<CandidateLifecycleSection taskId="owned-task" />);
+  fireEvent.click(view.getByText('Manage prepared candidates'));
+  fireEvent.click(view.getByRole('button', { name: 'Load candidate records' }));
+  await view.findByText('Last check: candidate is starting or running.');
+  fireEvent.click(view.getByRole('button', { name: 'Stop candidate Desktop' }));
+  await view.findByRole('alert');
+  assert.equal(view.queryByText('Last check: candidate is starting or running.'), null);
+  assert.ok(view.getByText('Candidate status is unconfirmed. Check again before another action.'));
+  assert.equal((view.getByRole('button', { name: 'Stop candidate Desktop' }) as HTMLButtonElement).disabled, true);
+  assert.equal((view.getByRole('button', { name: 'Check candidate status' }) as HTMLButtonElement).disabled, false);
+  assert.deepEqual(actions, ['stop']);
+  fireEvent.click(view.getByRole('button', { name: 'Check candidate status' }));
+  await view.findByText('Last check: candidate reported a successful shutdown.');
+  assert.deepEqual(actions, ['stop', 'status']);
+});
 const receipt = { root: 'C:/owned/candidate', launchId: 'a'.repeat(64), instanceId: 'b'.repeat(32) };
 const file = (value: unknown) => ({ name: 'candidate-evidence.json', size: 200, text: async () => JSON.stringify(value) });
 test('owner explicitly attaches selected receipt; only its bounded identity is sent', async t => {

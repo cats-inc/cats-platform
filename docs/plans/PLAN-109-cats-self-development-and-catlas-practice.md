@@ -234,9 +234,31 @@ including a rerun of the preparation/ready retry owner-race regression. An initi
 ad-hoc UI bundle used incorrect dependency externalization; rebuilding with the
 repository's normal test-bundler settings passed all five UI checks. Independent
 review found no blocker. No Desktop or provider was launched by this slice.
+This paired-input slice is on main at `c4868891`; full CI `36327661731` passed.
 
-Next compose explicit candidate lifecycle control and independent integration
-validation with these existing records. The read-only audit confirmed existing Work
+The next slice adds explicit Work status/stop for candidates with prepared Core
+ownership. Work derives the root and fixed launch/instance/PID from the artifact;
+an existing attachment is authoritative even before its first lifecycle check.
+Historical Task/Run/revision ownership is validated without requiring the source
+checkout to remain present or clean. The control entry remains visible when the
+latest implementation intent changes. Stop intent is saved atomically after
+filesystem checks, immediately before the host-enforced instance-bound request.
+No build, model call, PID kill, source deletion or automatic stop replay occurs.
+Late running observations cannot replace a terminal result or downgrade ready
+build evidence. Transport loss becomes unconfirmed and disables UI stop until
+the operator checks again. Old hosts retain their original CLI control.
+
+Independent review identified the post-admission I/O gap, file identity/exit
+receipt checks and stale UI state after a lost stop response; all were fixed and
+the review cleared. Server, Desktop host, renderer and test typechecks passed.
+**33 focused checks** passed: 25 Core/host/HTTP/source/architecture checks plus
+eight UI cases. Host tests use isolated Core and a real local control server,
+not another native Desktop/provider launch. The source and paired build evidence
+remain intact. This closes explicit Core-associated control/re-entry, not
+automatic shutdown on ordinary task cancellation or independent OS exit proof.
+
+Next compose candidate cancellation and independent integration validation with
+these existing records. The read-only audit confirmed existing Work
 collaboration already owns admission, implementation/review Runs, worktrees,
 revision capture and restart fencing; reuse it rather than creating a scheduler.
 AC-01–06 still need Cats-specific evidence/composition; AC-08 has the new operation

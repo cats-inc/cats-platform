@@ -112,9 +112,14 @@ test('two managed member revisions share a fixed digest through preparation, CLI
   await writeFile(path.join(root, 'control.json'), JSON.stringify({ ...control, root }));
   await writeFile(path.join(root, `exit-${f.request.instanceId}.json`), JSON.stringify({ ...f.request, root, pid: 1234, exitCode: 0 }));
   await writeFile(path.join(root, 'launch.json'), JSON.stringify({ ...f.launch, root, ownership }));
+  const lifecycle = { launchId: f.request.launchId, instanceId: f.request.instanceId, hostPid: 1234,
+    state: 'drained', observedAt: new Date().toISOString(), instanceBoundStop: true };
+  await primary.store.updateCore(core => ({ ...core, artifacts: core.artifacts.map(row => row.id === prepared.artifactId
+    ? { ...row, metadata: { ...row.metadata, candidateLifecycle: lifecycle } } : row) }));
   const attached = await attachWorkCandidateEvidence({ coreStore: primary.store, taskId: primary.intent.id, request: { ...f.request, root } });
   const record = (await primary.store.readCore()).artifacts.find(row => row.id === attached.artifactId);
   assert.equal(record.status, 'ready'); assert.deepEqual(record.metadata.revisionSet, ownership.revisionSet);
+  assert.deepEqual(record.metadata.candidateLifecycle, lifecycle);
   await assertRetryOwnerFence();
   assert.equal(record.metadata.dependencyMember, undefined); assert.equal(record.metadata.integrationValidation, 'not_observed');
   assert.equal((await attachWorkCandidateEvidence({ coreStore: primary.store, taskId: primary.intent.id, request: { ...f.request, root } })).created, false);

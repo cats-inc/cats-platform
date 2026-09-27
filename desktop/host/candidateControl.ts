@@ -39,8 +39,11 @@ export async function startDesktopCandidateControl(input: {
       res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(value));
     };
     if (req.method === 'GET' && req.url === '/status') {
-      json({ pid: process.pid, root: input.profile.root, launchId, instanceId, stopping, ...input.status() });
-    } else if (req.method === 'POST' && req.url === '/stop') {
+      json({ pid: process.pid, root: input.profile.root, launchId, instanceId, stopping, ...input.status(), instanceBoundStop: true });
+    } else if (req.method === 'POST' && (req.url === '/stop' || req.url === '/stop-instance')) {
+      if (req.url === '/stop-instance' && req.headers['x-cats-instance-id'] !== instanceId) {
+        res.writeHead(409).end('Candidate instance changed.'); return;
+      }
       json({ stopping: true });
       if (!stopping) {
         revoke();

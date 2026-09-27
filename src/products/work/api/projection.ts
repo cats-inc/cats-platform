@@ -264,6 +264,7 @@ export interface WorkWorkItemDetailProjection {
 
 export interface WorkTaskListItem {
   candidateEvidenceAvailable?: boolean;
+  candidateControlAvailable?: boolean;
   id: string;
   title: string;
   status: CoreTaskStatus;
@@ -754,10 +755,14 @@ function buildTaskListItems(
         : null;
       const extras = readTaskRendererExtras(task.metadata);
       const candidateEvidenceAvailable = Boolean(asRecord(asRecord(task.metadata.collaborationIntent)?.implementationEvidence));
+      const candidateControlAvailable = core.artifacts.some(artifact => artifact.kind === 'build'
+        && artifact.metadata.ownerActorId === core.ownerProfile.actorId
+        && asRecord(artifact.metadata.ownership)?.taskId === task.id);
 
       return {
         id: task.id,
         ...(candidateEvidenceAvailable ? { candidateEvidenceAvailable: true } : {}),
+        ...(candidateControlAvailable ? { candidateControlAvailable: true } : {}),
         title: task.title,
         status: task.status,
         summary: task.summary,

@@ -3,6 +3,7 @@ import type {
   WorkGoldenPathRunLifecycleResult,
 } from '../../api/index.js';
 import { expectJson } from './http.js';
+import type { CandidateLifecycleObservation } from '../../../../platform/development/candidateLifecycle.js';
 import type { PracticeDevelopmentProposal } from '../../shared/practiceProposal.js';
 import {
   buildWorkApiProjectPath,
@@ -61,6 +62,17 @@ export async function prepareCandidate(taskId: string, request: { requestId: str
 ): Promise<{ artifactId: string; ownership: Record<string, unknown> }> {
   return expectJson(await fetch(`${buildWorkApiTaskPath(taskId)}/candidate-preparation`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(request),
+  }), errorMessage);
+}
+
+export interface WorkCandidateControlRow { artifactId: string; root: string; observation?: CandidateLifecycleObservation }
+export async function listCandidates(taskId: string, errorMessage: string): Promise<{ candidates: WorkCandidateControlRow[] }> {
+  return expectJson(await fetch(`${buildWorkApiTaskPath(taskId)}/candidate-control`), errorMessage);
+}
+export async function controlCandidate(taskId: string, artifactId: string, action: 'status' | 'stop', errorMessage: string
+): Promise<{ artifactId: string; observation: CandidateLifecycleObservation }> {
+  return expectJson(await fetch(`${buildWorkApiTaskPath(taskId)}/candidate-control`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ artifactId, action }),
   }), errorMessage);
 }
 

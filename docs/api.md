@@ -940,6 +940,31 @@ non-owner/admin callers receive `403`. The task projection exposes optional
 the POST still performs all authoritative checks. This is observed build evidence,
 not a bug-fix verdict, independent approval or publication permission.
 
+`GET /api/work/tasks/{taskId}/candidate-control` lists that owner's prepared
+candidate artifacts and their last lifecycle observation. `POST` accepts only
+`{ artifactId, action: 'status' | 'stop' }`, with the same owner/admin and CSRF
+boundary. Roots, endpoints, credentials, PIDs and execution options cannot be
+supplied. The server resolves the existing canonical Core ownership, including
+both historical member tasks when paired, and binds the exact launch, host
+instance and PID before any stop request. Attached artifacts use their retained
+candidate identity even when no lifecycle observation exists yet.
+
+The candidate's local host exposes additive `/stop-instance`, requiring its
+current instance nonce; existing `/stop` remains available to its original CLI.
+Work requires the host's `instanceBoundStop` capability. It performs final atomic
+ownership admission and saves stop intent before the instance-bound POST. No
+build, provider request, PID kill, filesystem cleanup or automatic retry occurs.
+Shutdown uses the host's existing normal drain. `stopping` means accepted;
+`drained` requires the matching complete successful exit receipt, and remains a
+host report rather than independent OS process evidence. Missing/failed transport
+is `unconfirmed`; explicit status checks reconcile it without replaying stop.
+
+Lifecycle metadata merges the latest artifact, preserving draft/ready, input
+evidence and terminal observations. Cancelled tasks and missing/dirty sources do
+not prevent control while their historical Core ownership still matches. This
+explicit operation does not yet make ordinary task cancellation stop a candidate
+automatically. Older hosts remain inspectable but need their original CLI to stop.
+
 #### Run stop and Mission cancel (SPEC-096)
 
 ```text

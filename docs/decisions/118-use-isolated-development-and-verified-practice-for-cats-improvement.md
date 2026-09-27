@@ -173,6 +173,13 @@ recoverable references. Cleanup follows ownership and delivery retention rules,
 not merely the end of a participant session. This feature must reconcile with
 the pending workspace-lifecycle review before enabling automatic cleanup.
 
+Explicit Work candidate status/stop reuses the prepared artifact and the existing
+local host drain. Saved historical ownership authorizes only that fixed host
+generation; an atomic stop intent precedes a host-enforced instance-bound request.
+Lifecycle observations merge the current artifact without replacing build
+evidence. Missing responses remain unconfirmed, with no automatic replay or PID
+killing. No new scheduler, persisted store or automatic cleanup is introduced.
+
 ### 4. Give Catlas bounded observations and supervised actions
 
 Catlas remains the optional Guide Cat capability described by ADR-061. It does

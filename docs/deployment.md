@@ -437,6 +437,16 @@ and a host receipt, not reproducible binaries, an OS process-exit check, a bug
 verdict or independent approval. It does not start a build, change grants or
 publish anything. Do not select the credential-bearing control file.
 
+For candidates started with a prepared record, **Manage prepared candidates →
+Load candidate records** restores their saved association after reopening Work.
+Use **Check candidate status**, then **Stop candidate Desktop** for a running
+candidate. Work sends a stop bound to that exact host instance and retains its
+observation on the artifact. Check status again to confirm the host's shutdown
+receipt. An interrupted request is not automatically repeated. The source and
+candidate files stay available, including after the Work task was cancelled or
+its source checkout moved. This does not automatically stop a candidate when the
+task is cancelled. Older candidate hosts require their original CLI stop command.
+
 ### Provider selection contract
 
 Selection-aware Platform/Desktop must connect to the matching Runtime contract

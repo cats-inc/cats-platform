@@ -1,15 +1,21 @@
 import { sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { attachWorkCandidateEvidence, prepareWorkCandidate, type AttachCandidateRequest } from '../state/candidateEvidence.js';
+import { controlWorkCandidate, listWorkCandidates } from '../state/candidateLifecycle.js';
 import type { WorkApiRouteContext } from './index.js';
 
 export async function routeWorkCandidateEvidenceApi(context: WorkApiRouteContext): Promise<boolean> {
-  const match = /^\/api\/work\/tasks\/([^/]+)\/candidate-(evidence|preparation)$/u.exec(context.url.pathname);
+  const match = /^\/api\/work\/tasks\/([^/]+)\/candidate-(evidence|preparation|control)$/u.exec(context.url.pathname);
   if (!match) return false;
   if (!context.auth?.principal?.membership.roles.some(role => role === 'owner' || role === 'admin')) {
     sendJson(context.response, 403, { error: { message: 'Administrator access is required.' } }); return true;
   }
-  if (context.method !== 'POST') { sendMethodNotAllowed(context.response, ['POST']); return true; }
+  const listing = match[2] === 'control' && context.method === 'GET';
+  if (context.method !== 'POST' && !listing) { sendMethodNotAllowed(context.response, match[2] === 'control' ? ['GET', 'POST'] : ['POST']); return true; }
   try {
+    if (listing) {
+      sendJson(context.response, 200, await listWorkCandidates(context.dependencies.coreStore, decodeURIComponent(match[1]!)), { 'Cache-Control': 'no-store' });
+      return true;
+    }
     const chunks: Buffer[] = []; let size = 0;
     for await (const chunk of context.request) {
       const bytes = Buffer.from(chunk); size += bytes.length;
@@ -17,6 +23,14 @@ export async function routeWorkCandidateEvidenceApi(context: WorkApiRouteContext
       chunks.push(bytes);
     }
     const value: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    if (match[2] === 'control') {
+      const body = value as { artifactId: string; action: 'status' | 'stop' };
+      if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 2
+        || typeof body.artifactId !== 'string' || !body.artifactId || body.artifactId.length > 256
+        || !['status', 'stop'].includes(body.action)) throw new Error('invalid_candidate_request');
+      sendJson(context.response, 200, await controlWorkCandidate({ coreStore: context.dependencies.coreStore,
+        taskId: decodeURIComponent(match[1]!), ...body }), { 'Cache-Control': 'no-store' }); return true;
+    }
     if (match[2] === 'preparation') {
       const body = value as { requestId: string; root: string; companionTaskId?: string };
       if (!body || typeof body !== 'object' || Array.isArray(body)

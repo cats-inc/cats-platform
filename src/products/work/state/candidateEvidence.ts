@@ -6,6 +6,7 @@ import type { CatsCoreState } from '../../../core/types.js';
 import { upsertCoreArtifact } from '../../../core/model/index.js';
 import { inspectCandidateBuild, type CandidateEvidenceRequest, type CandidateBuildEvidence } from '../../../platform/development/candidateEvidence.js';
 import { readCollaborationIntent } from './collaborationRecords.js';
+import { candidateLifecycleIdentity } from './candidateLifecycle.js';
 import { candidateRevisionRef, createCandidateRevisionSet, readCandidateOwnership, type CandidateOwnership,
   type CandidateRevisionRef } from '../../../platform/development/candidateOwnership.js';
 
@@ -135,6 +136,9 @@ export async function attachWorkCandidateEvidence(options: {
   await coreStore.updateCore(core => {
     for (const owner of owners) if (digest(owningRevision(core, owner.taskId)) !== digest(owner.revision)) throw new Error('candidate_owner_revision_changed');
     const existing = core.artifacts.find(row => row.id === id);
+    const controlled = existing && candidateLifecycleIdentity(existing.metadata);
+    if (controlled && (controlled.launchId !== observed.launchId || controlled.instanceId !== observed.instanceId
+      || controlled.hostPid !== observed.hostPid)) throw new Error('candidate_artifact_conflict');
     if (existing?.status === 'draft' && !ownership) throw new Error('candidate_preparation_conflict');
     if (ownership && (!existing || existing.metadata.ownerActorId !== before.owner
       || digest(readCandidateOwnership(existing.metadata.ownership)) !== digest(ownership)
@@ -150,6 +154,7 @@ export async function attachWorkCandidateEvidence(options: {
       title: `Cats Desktop candidate ${member.head.slice(0, 12)}`, kind: 'build', status: 'ready', path: observed.root,
       summary: 'Candidate source inputs match the recorded implementation commit. Host receipt was inspected. This is build evidence; bug validation and independent approval remain separate.',
       metadata: { source: 'work-candidate', candidateIdentity: digest(identity), revisionArtifactId: before.evidence.artifactId,
+        ...(existing?.metadata.candidateLifecycle ? { candidateLifecycle: existing.metadata.candidateLifecycle } : {}),
         ...(ownership ? { ownerActorId: before.owner, ownership } : {}),
         collaborationId: taskId, implementationTaskId: before.stage.taskId, implementationMember: memberKey,
         ...(ownership?.revisionSet ? { revisionSet: ownership.revisionSet, integrationValidation: 'not_observed' }

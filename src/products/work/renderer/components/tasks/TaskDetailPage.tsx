@@ -434,7 +434,8 @@ export function TaskDetailPage(): JSX.Element {
         />
 
         <GoldenPathSection taskId={task.id} />
-        {task.candidateEvidenceAvailable ? <CandidateEvidenceSection key={task.id} taskId={task.id}
+        {task.candidateEvidenceAvailable || task.candidateControlAvailable ? <CandidateEvidenceSection key={task.id} taskId={task.id}
+          evidenceAvailable={task.candidateEvidenceAvailable === true}
           companionTasks={allTasks.filter(other => other.id !== task.id && other.candidateEvidenceAvailable)} /> : null}
 
         <section className="taskDetail__section">

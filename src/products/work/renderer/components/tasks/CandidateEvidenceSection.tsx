@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { attachCandidateEvidence, prepareCandidate } from '../../api/workRecords.js';
+import { CandidateLifecycleSection } from './CandidateLifecycleSection.js';
 
-export function CandidateEvidenceSection({ taskId, companionTasks = [] }: {
-  taskId: string; companionTasks?: Array<{ id: string; title: string }>;
+export function CandidateEvidenceSection({ taskId, companionTasks = [], evidenceAvailable = true }: {
+  taskId: string; companionTasks?: Array<{ id: string; title: string }>; evidenceAvailable?: boolean;
 }): JSX.Element {
   const { t } = useI18n();
   const [receipt, setReceipt] = useState<{ root: string; launchId: string; instanceId: string } | null>(null);
@@ -22,6 +23,7 @@ export function CandidateEvidenceSection({ taskId, companionTasks = [] }: {
   }, [taskId]);
   return <section className="operatorPanel">
     <h3>{t('workTaskCandidateTitle')}</h3>
+    {evidenceAvailable ? <>
     <p>{t('workTaskCandidateDescription')}</p>
     <details>
       <summary>{t('workTaskCandidatePrepare')}</summary>
@@ -74,5 +76,7 @@ export function CandidateEvidenceSection({ taskId, companionTasks = [] }: {
     </form>
     {error ? <p role="alert">{t('workTaskCandidateError')}</p> : null}
     {result ? <Link to={result}>{t('workTaskCandidateOpen')}</Link> : null}
+    </> : null}
+    <CandidateLifecycleSection taskId={taskId} />
   </section>;
 }
