@@ -88,6 +88,16 @@ same pinned Runtime SHA. The workflow created the matching preview tag.
 - Linux: n/a for signing. Every OS passed bundled App version/offline activation
   checks. No provider inference or installed user-profile writes were performed.
 
+Post-publication known issue (reported 2026-09-27): On an installed Windows
+0.5.5 Desktop app, the composer microphone showed "Voice input is not available
+on this device" while Windows Online speech recognition was off. Enabling that
+setting allowed the button to enter its red listening state, but no spoken text
+appeared in the composer. The missing-transcript cause is still unconfirmed;
+the listening indicator alone does not establish recognition or insertion.
+The Windows helper's predefined dictation grammar requires Microsoft online
+speech; installing a local speech pack does not make that grammar offline.
+See [Composer Voice Input Permissions](./setup-guide.md#composer-voice-input-permissions).
+
 ## 2026-09-27 (0.5.4 preview, standard profile — publication)
 
 Behavior change:

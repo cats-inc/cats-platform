@@ -21,10 +21,9 @@ slice:
 - **App-managed cloud STT vendors** (OpenAI Whisper, Deepgram, Azure Speech,
   Google STT, etc.) are out of scope. Voice input must not depend on a
   Cats-owned cloud key, paid service, or app-managed vendor route. The one
-  exception is the Windows OS speech stack itself: if the user's Windows
-  privacy settings allow Microsoft online dictation, Cats does not override
-  that OS-level choice and must surface a conservative privacy warning instead
-  of claiming the session is local.
+  exception is the Windows OS speech stack itself: its selected dictation
+  topic grammar requires Microsoft online speech, which the user may keep
+  disabled. Cats must not claim the session is local.
 - **Bundled local STT engines** (whisper.cpp, faster-whisper, Vosk,
   sherpa-onnx, Whisper WASM) are out of scope. The team does not want to ship
   model artifacts, native runtime binaries, or download-on-first-use flows
@@ -39,11 +38,11 @@ ADR-003 and ADR-078:
   installed for Siri / system dictation. It requires
   `NSSpeechRecognitionUsageDescription` and `NSMicrophoneUsageDescription`
   in the bundled Info.plist and a one-time user permission grant.
-- Windows provides `Windows.Media.SpeechRecognition` (WinRT). It can use
-  installed speech packs, but free-form dictation may route through Microsoft's
-  online speech service depending on the user's Windows Privacy → Speech
-  setting. The microphone permission flow is governed by Windows Settings >
-  Privacy > Microphone for desktop apps.
+- Windows provides `Windows.Media.SpeechRecognition` (WinRT). The predefined
+  dictation topic constraint selected for this slice uses Microsoft's online
+  speech service; local speech packs apply to list/SRGS grammars, not this
+  free-form dictation path. It requires the Windows Online speech recognition
+  setting, separately from microphone access.
 - Linux has **no** equivalent OS-provided STT engine. There is no
   cross-distribution native API to fall back to.
 
@@ -66,16 +65,12 @@ app-managed cloud dependency and no bundled model artifacts:
   servers. macOS audio is therefore guaranteed to stay on the user's
   machine.
 - **Windows desktop** uses a bundled .NET / WinRT helper that drives
-  `Windows.Media.SpeechRecognition`. The actual recognition route
-  (on-device speech pack vs Microsoft's online speech service) is governed
-  by the user's Windows Privacy → Speech "Online speech recognition"
-  setting and the installed speech pack; the WinRT API does **not** expose
-  a runtime flag to force on-device recognition for free-form dictation.
-  Windows audio therefore may or may not leave the machine depending on
-  the user's OS-level privacy choice. The host surfaces
-  `mode: 'unknown'` to the renderer as a conservative privacy posture
-  (SPEC-084 Req 21), and the user-facing documentation explains how to
-  keep recognition fully local on Windows.
+  `Windows.Media.SpeechRecognition` with a predefined dictation topic
+  constraint. Microsoft documents this grammar as online-only, requiring
+  Online speech recognition to be enabled. The current helper does not
+  provide fully local free-form dictation. It still emits `mode: 'unknown'`
+  because it does not determine the actual processing route at runtime;
+  that value must not be read as an offline guarantee (SPEC-084 Req 21).
 - **Linux desktop and any non-Electron context** keep the current
   `useWebSpeechInput` path. That path will continue to surface
   "speech recognition unavailable" through the existing platform toast
@@ -119,20 +114,16 @@ but separate decisions, not made here:
 
 ### Positive
 
-- The voice button works on macOS and Windows without requiring the user
-  to provide any API key, sign in to a vendor, or sign up for an external
-  paid service.
+- The native speech path does not require a Cats-owned API key, vendor
+  sign-in, or external paid-service account. End-to-end Windows composer
+  transcription remains unverified in installed Desktop 0.5.5.
 - macOS recognition is enforced to on-device mode and audio is guaranteed
   not to leave the user's machine. Sessions for locales without on-device
   support fail closed rather than silently routing through Apple's servers.
-- Windows recognition routes through the OS speech engine in whichever
-  mode the user has chosen via Windows Privacy settings. With "Online
-  speech recognition" disabled and a matching speech pack installed,
-  recognition stays fully local; otherwise audio is sent to Microsoft's
-  online dictation service. The slice cannot override this choice but
-  surfaces a conservative `unknown` privacy posture to the renderer per
-  session and documents the configuration required for fully-local
-  recognition.
+- Windows recognition uses the OS dictation API without a Cats-owned cloud
+  key. Its predefined topic grammar uses Microsoft's online service. The
+  renderer's `unknown` privacy posture is conservative but does not change
+  that service requirement.
 - The renderer does not import Electron, native modules, or audio runtime
   APIs. The capture surface stays consistent with the screenshot precedent.
 - Accuracy and language coverage track each OS vendor's investment in their
@@ -151,13 +142,10 @@ but separate decisions, not made here:
   on-device pack installed will not get useful recognition until they
   enable it; on macOS the session fails closed (we do not silently
   degrade to network recognition).
-- Windows users who have not turned off "Online speech recognition" in
-  Privacy settings will have their captured audio routed to Microsoft's
-  online speech service, because the WinRT API does not expose a runtime
-  flag to force on-device for free-form dictation. This is an OS-level
-  user choice the app cannot override; the slice surfaces a conservative
-  privacy warning to the renderer per session and documents the
-  configuration requirement, but cannot prevent it programmatically.
+- Windows users must enable Online speech recognition for this dictation
+  grammar, allowing Microsoft online processing. Users who keep it off do
+  not have a local free-form dictation path in the current helper. Installed
+  local speech packs do not change this grammar's routing.
 - Linux users continue to see a non-functional voice button that fails to
   a toast. This is an explicit, acknowledged gap, not a planning oversight.
 - Adding a new helper subprocess broadens the host's process supervision
@@ -222,23 +210,16 @@ but separate decisions, not made here:
 - **Why rejected**: The renderer cost is shared. Cutting one OS does not
   meaningfully reduce the slice; it just delays parity.
 
-### Alternative 5: Strict on-device-only on Windows (refuse to start when "Online speech recognition" is enabled)
+### Alternative 5: Strict on-device-only on Windows
 
-- **Pros**: Windows audio guaranteed not to leave the machine, matching
-  the macOS posture exactly.
-- **Cons**: There is no public WinRT API to read the "Online speech
-  recognition" privacy setting state, so the slice cannot reliably
-  detect it; refusing to start would have to rely on user-driven
-  configuration steps and best-effort heuristics. Users with online
-  speech enabled would see the button silently fail with no in-app
-  remedy. This trades a real working Windows feature for a hard
-  guarantee that we cannot enforce reliably from inside the app.
-- **Why rejected**: The cost (Windows feature broken for many default
-  user configurations with no programmatic recovery) outweighs the
-  privacy benefit. The chosen design (route per OS privacy choice,
-  surface a conservative `mode: 'unknown'` warning in UI, document the
-  requirement) puts the privacy decision in the user's hands while keeping
-  the feature usable and honest about what the app can and cannot prove.
+- **Pros**: Windows audio would stay on the machine, matching the macOS
+  posture.
+- **Cons**: The selected predefined dictation topic grammar is online-only.
+  An on-device Windows implementation would need a different recognition
+  path and validation, not just a privacy-setting check.
+- **Why rejected**: A local Windows engine or constrained grammar was out of
+  scope for this slice. The shipped helper therefore has an online-service
+  requirement that the user-facing guidance must state plainly.
 
 ## References
 
@@ -250,9 +231,11 @@ but separate decisions, not made here:
 - [PLAN-076: Composer Voice Input Native STT Rollout](../plans/PLAN-076-composer-voice-input-native-stt-rollout.md)
 - Apple `SFSpeechRecognizer`: https://developer.apple.com/documentation/speech/sfspeechrecognizer
 - Microsoft `Windows.Media.SpeechRecognition`: https://learn.microsoft.com/uwp/api/windows.media.speechrecognition
+- Microsoft speech-recognition guide (predefined grammars and privacy setting): https://learn.microsoft.com/en-us/windows/apps/develop/input/speech-recognition
+- Microsoft recognizer-language guide (topic vs local grammar languages): https://learn.microsoft.com/en-us/windows/apps/develop/input/specify-the-speech-recognizer-language
 
 ---
 
 *Decision proposed: 2026-04-28*
-*Last revised: 2026-04-28 (review pass: clarified per-platform privacy posture; macOS enforces on-device with fail-closed when locale unsupported, Windows is honest that recognition routes per OS privacy setting and surfaces conservative `mode: 'unknown'` rather than claiming active-mode detection; Alternative 5 explains why strict on-device-only on Windows was rejected)*
+*Last revised: 2026-09-27 (corrected the Windows dictation-topic locality and permission claims against Microsoft documentation; installed Desktop 0.5.5 still needs transcript validation)*
 *Decision makers: Sammy, Claude*

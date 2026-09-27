@@ -931,11 +931,24 @@ recognition where Cats has a host-owned helper:
 - Windows uses the bundled WinRT helper under `resources/native/windows-stt/`.
   The installer publishes this helper self-contained, so users do not need to
   install the .NET 8 runtime separately.
-  Windows decides whether free-form dictation uses an installed local speech
-  pack or Microsoft online speech based on Settings > Privacy & Security >
-  Speech > Online speech recognition and the installed language speech pack.
-  Cats reports this as `mode: 'unknown'` and shows the conservative in-app
-  privacy badge because the WinRT API does not expose the active route.
+  This helper uses a predefined dictation topic constraint. Microsoft documents
+  that this grammar is processed by an online service and requires Settings >
+  Privacy & Security > Speech > Online speech recognition to be enabled, as
+  well as separate microphone access. Installing a local speech pack does not
+  make this dictation path offline. If you do not want to enable Microsoft
+  online speech, leave the setting off; this Cats voice-input path is not a
+  local alternative. Cats currently reports `mode: 'unknown'` and shows a
+  conservative privacy badge; that badge does not establish where a particular
+  utterance was processed. See [Microsoft's speech-recognition guide](https://learn.microsoft.com/en-us/windows/apps/develop/input/speech-recognition)
+  and [language guide](https://learn.microsoft.com/en-us/windows/apps/develop/input/specify-the-speech-recognizer-language).
+
+  **Known issue in installed Desktop 0.5.5 (reported 2026-09-27):** With Online
+  speech recognition off, clicking the composer microphone showed the toast
+  "Voice input is not available on this device" (Traditional Chinese:
+  "此裝置無法使用語音輸入"). Turning the setting on allowed the button to enter its
+  red listening state, but spoken words did not appear in the composer. The red
+  state means the helper reported ready; it does not prove a transcript was
+  produced. The cause of the missing transcript has not been isolated.
 - Linux has no v1 native STT helper. The Electron renderer keeps the existing
   Web Speech fallback reachable so the microphone button can show the existing
   unavailable/error toast instead of silently disappearing.
@@ -1081,4 +1094,4 @@ See `Dependency install warnings` under `Installation`.
 
 ---
 
-*Last updated: 2026-09-16*
+*Last updated: 2026-09-27*
