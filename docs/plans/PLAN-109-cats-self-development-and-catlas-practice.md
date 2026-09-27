@@ -61,6 +61,23 @@ intent uses existing atomic Core persistence and needs no data migration. The
 Catlas entry is updated with capability-conditional advice, preserving the other
 four entries. No native provider evidence is claimed for this slice yet.
 
+The Code operation is on main at `576cb20b`; full CI `36300149039` passed.
+The next small fix lets fresh worktrees borrow explicitly selected matching
+dependencies for the candidate command. Both package and lock bytes must match;
+the receipt records the dependency source and Git common directory. Electron is
+resolved through the candidate's selected dependency link. Independent review
+found no blockers and **5/5** candidate-command tests pass, including two real
+temporary Git worktrees, preservation of unrelated original edits and mismatches.
+This is two-member source preparation, not managed multi-repo execution.
+
+A prepared single ordinary-provider contribution acceptance remains unrun:
+automatic approval review rejected sending bundled knowledge/synthetic input to
+external Codex with a temporary authentication copy without authorization for
+that exact payload/destination. The owner question is pending. No authentication
+was copied or inference sent. Continue unaffected implementation; do not replay
+this check or reuse consumed older approvals. Consumer request assembly in that
+prepared check is explicitly stubbed, not live knowledge-quality evidence.
+
 Next compose retained Runtime workspaces and candidate receipts with existing
 Core records, validate the ordinary provider contribution path and complete the
 independent knowledge handoff. The read-only audit confirmed existing Work

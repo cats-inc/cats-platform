@@ -308,15 +308,21 @@ npm run desktop:candidate -- stop --root ../candidate-01
 
 `--root` must be a new directory outside both source checkouts, with an existing
 parent. `--workspace` also accepts the Platform checkout itself; `--runtime-root`
-optionally selects a non-sibling Runtime checkout. Git, Node and already installed
-development dependencies in both checkouts are required. There is no dependency
+optionally selects a non-sibling Runtime checkout. For worktrees without installed
+dependencies, `--platform-dependencies <checkout>` and `--runtime-dependencies
+<checkout>` explicitly select each member's existing dependency checkout. Both
+`package.json` and `package-lock.json` must match the copied candidate bytes;
+a mismatch stops before building and requires separately prepared dependencies.
+The candidate root must also be outside these dependency checkouts. Git, Node
+and already installed development dependencies are required. There is no dependency
 installation, mobile/installer build, version bump or publication.
 
 Start snapshots selected tracked and nonignored untracked build inputs, including
 uncommitted edits, into the private root, then compiles Platform, Runtime, renderer
 and Desktop there. Deleted source stays deleted. Dotenv, user state and input
 symlinks/junctions are excluded/rejected. It records source HEAD/dirty state and a
-digest of copied bytes. Installed `node_modules` are linked, not copied: this is
+digest of copied bytes, Git common directory, dependency source and package/lock
+digests. Installed `node_modules` are linked, not copied: this is
 not a hermetic build or OS filesystem sandbox. Keep dependencies unchanged during
 the run. Source checkouts and their normal build outputs are not modified.
 

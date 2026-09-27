@@ -164,6 +164,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-09-27 (PLAN-109 adds owner-confirmed Code opening with authoritative session verification; broader managed development and promotion gates remain open.)*
+*Last updated: 2026-09-27 (PLAN-109 adds confirmed Code opening and explicit matching candidate dependencies for fresh worktrees; broader managed development and promotion gates remain open.)*
 
 *See also: [specs/](../specs/) for feature specifications*

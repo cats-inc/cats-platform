@@ -28,6 +28,7 @@ async function temporary(t) {
 
 test('candidate command validates options and strips inherited controller/credential settings', () => {
   assert.equal(parseCandidateArgs(['start', '--root', 'new', '--workspace', '..']).workspace, '..');
+  assert.equal(parseCandidateArgs(['start', '--root', 'new', '--platform-dependencies', '../base'])['platform-dependencies'], '../base');
   assert.equal(parseCandidateArgs(['input', '--root', 'new', '--action', 'action.json']).action, 'action.json');
   for (const args of [[], ['start'], ['stop', '--root', 'x', '--workspace', 'y'],
     ['start', '--root', 'x', '--root', 'y'], ['start', '--root', '--workspace'], ['input', '--root', 'x']]) {
@@ -78,6 +79,38 @@ test('source snapshot accepts a non-Git parent, includes edits and excludes igno
   const linked = path.join(platform, 'src', 'linked');
   await symlink(path.join(runtime, 'src'), linked, process.platform === 'win32' ? 'junction' : 'dir');
   await assert.rejects(snapshotCandidateSource(platform, path.join(root, 'snapshot-linked')), /Linked source input/u);
+});
+
+test('two member worktrees use explicit matching dependency checkouts without changing source work', async t => {
+  const root = await temporary(t);
+  for (const member of ['platform', 'runtime']) {
+    const source = path.join(root, `cats-${member}`), worktree = path.join(root, `work-${member}`);
+    await mkdir(path.join(source, 'src'), { recursive: true }); await mkdir(path.join(source, 'node_modules'));
+    await writeFile(path.join(source, 'package.json'), JSON.stringify({ name: `@cats-inc/cats-${member}` }));
+    await writeFile(path.join(source, 'package-lock.json'), '{}');
+    await writeFile(path.join(source, '.gitignore'), 'node_modules\n');
+    await writeFile(path.join(source, 'src', 'input.ts'), 'baseline');
+    const git = async (...args) => (await exec('git', args, { cwd: source, windowsHide: true })).stdout.trim();
+    await git('init', '--quiet'); await git('add', '.');
+    await git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'fixture');
+    const base = await git('rev-parse', 'HEAD');
+    await git('worktree', 'add', '--detach', worktree, base);
+    await writeFile(path.join(source, 'src', 'input.ts'), 'unrelated source edit');
+    await writeFile(path.join(worktree, 'src', 'input.ts'), 'candidate edit');
+    await assert.rejects(snapshotCandidateSource(worktree, path.join(root, `missing-${member}`)), { code: 'ENOENT' });
+    const target = path.join(root, `snapshot-${member}`);
+    const receipt = await snapshotCandidateSource(worktree, target, source);
+    assert.equal(receipt.head, base); assert.equal(receipt.dirty, true);
+    assert.equal(receipt.gitCommonDirectory, path.join(source, '.git'));
+    assert.equal(receipt.dependencyRoot, source);
+    assert.equal(await readFile(path.join(target, 'src', 'input.ts'), 'utf8'), 'candidate edit');
+    assert.equal(await readFile(path.join(source, 'src', 'input.ts'), 'utf8'), 'unrelated source edit');
+    await writeFile(path.join(source, 'package-lock.json'), '{"changed":true}');
+    await assert.rejects(snapshotCandidateSource(worktree, path.join(root, `mismatch-${member}`), source), /Dependency checkout package\/lock differs/u);
+    await writeFile(path.join(source, 'package-lock.json'), '{}');
+    await writeFile(path.join(source, 'package.json'), JSON.stringify({ name: `@cats-inc/cats-${member}`, version: 'different' }));
+    await assert.rejects(snapshotCandidateSource(worktree, path.join(root, `manifest-mismatch-${member}`), source), /Dependency checkout package\/lock differs/u);
+  }
 });
 
 test('candidate-only control authenticates, captures only its window and confirms graceful drain', async (t) => {

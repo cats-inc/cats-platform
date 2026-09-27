@@ -57,6 +57,13 @@ coding task or native/provider acceptance. See PLAN-109 for executed evidence.
 
 ## Minimal source candidate workflow (authorized 2026-09-27)
 
+Fresh worktrees may select existing Platform and Runtime dependency checkouts
+explicitly. The command requires identical package/lock bytes, records dependency
+origins and Git common directories, and resolves Electron through the selected
+dependencies. It does not install packages or extend the task's execution grant.
+Two real temporary worktrees are covered by focused tests; this does not itself
+establish coordinated managed multi-repo delivery.
+
 An ordinary agent with source access and permitted shell execution shall be able
 to build and open a separate Desktop from the selected Cats workspace, including
 when its working directory is the non-Git parent. A developer command snapshots
