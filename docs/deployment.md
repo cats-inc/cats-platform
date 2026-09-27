@@ -125,6 +125,18 @@ publishes Desktop nor creates its Git tag.
 
 ### Desktop publication
 
+Desktop **0.5.10** is prepared as a standard-profile preview only; Platform npm is not
+published at this version and npm `latest` stays 0.5.8. It bundles Runtime **0.3.4**,
+which stops Auggie and Kiro replies from flashing an empty bubble below them, completes
+turns that end without a result, reads Kiro 2.24's session store, runs Junie models by
+the setting IDs its `--model` accepts, and reports a request Pi ends with an error as a
+failure with Pi's message. Platform's model picker now selects a room's saved catalog
+entry when the saved model is that entry's execution ID, such as Pi's
+`openai-codex/gpt-6-sol` running as `gpt-6-sol`; it previously showed the first row,
+which then could not be picked. No public API, configuration or persisted-data contract
+changes; no migration, launcher minimum or App change is required. Publication receipts
+will follow the workflow and artifact verification.
+
 Desktop **0.5.9** was published on 2026-09-28 (Taipei) as a
 [standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.9)
 from `177cc696c98d30783ddd5a510f153cc73479c8da`; Platform npm is not published at this
