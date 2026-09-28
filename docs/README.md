@@ -51,6 +51,11 @@ recovery placeholder; Studio is optional and appears only while installed.
 The design covers SDK/catalog boundaries, repair, resource cleanup and profile
 upgrades. Implementation and publication have not started. App-side work is in
 [Apps PLAN-004](../../cats-apps/docs/plans/PLAN-004-independent-app-distribution.md).
+[ADR-123](decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md) proposes
+delivering the SDK developer contract first as an allowlisted
+`@cats-inc/cats-platform/app-sdk` subpath with an official cross-platform deterministic encoder,
+and a standalone `@cats-inc/app-sdk` only once third-party authoring opens; Apps and
+Plugins remain verified artifacts, not npm dependencies. Nothing is implemented or published.
 
 ## Orchestrator Knowledge and Collaboration
 
