@@ -2,7 +2,7 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
-## 2026-09-29 — Desktop 0.5.15 standard preview (prepared)
+## 2026-09-29 — Desktop 0.5.15 standard preview (published)
 
 - The 0.5.14 installed launcher could not start Platform because the sidecar
   omitted `fflate` 0.8.3, which the managed Plugin package reader imports at startup.
@@ -22,9 +22,31 @@
 - The owner authorized a 0.5.15 standard preview (`unsigned=false`). Runtime remains
   0.3.4 at `7c1b80c21ebe7031ec2c8f61677277bb781ec8fd`; Usage remains the exact 0.4.0
   artifact. This compatible packaging patch changes no stored-data contract and
-  publishes no Runtime, App or npm version. Hosted CI, three-OS startup receipts,
-  publication and public source downloads remain pending.
+  publishes no Runtime, App or npm version.
+- Verified trust: macOS signed and notarized with Developer ID team `97JBZ3MFX5`,
+  Windows unsigned because no certificate is configured, Linux n/a. No installed
+  0.5.15 upgrade or self-update acceptance was performed; the owner's confirmed
+  local recovery remains the repaired 0.5.14 installation.
 
+Published at 2026-09-29 06:06 Taipei from Platform
+`f84c7dfb50c23dd93467d5cf24918a9c435bb383`.
+[Full source CI](https://github.com/cats-inc/cats-platform/actions/runs/36488571818)
+passed (5,255 passed, 59 skipped, zero failures), after correcting a stale
+Orchestrator distribution test fixture exposed by the first CI run. All eight
+[release jobs](https://github.com/cats-inc/cats-platform/actions/runs/36489451173)
+passed, including actual isolated packaged Platform startup and offline Usage
+activation on Windows, macOS and Linux. All three receipts match the source manifest.
+
+The [published preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.15)
+includes the [complete source ZIP](https://github.com/cats-inc/cats-platform/releases/download/v0.5.15/Cats-v0.5.15-source.zip).
+Its 12,936,231 bytes have SHA-256
+`870ab043a1d367cbb956fdad40ae9500e664a2acb7159f05c6f237244f3523e2`.
+Unauthenticated public downloads match the published asset digests and draft
+downloads; all 4,225 archived files match the exact committed-source preflight
+payload (3,100 Platform, 1,053 Runtime and 70 Apps files, plus two archive documents).
+This verifies source integrity and includes the new startup verifier. A fresh
+extracted-source clean build was not repeated for 0.5.15; the 0.5.14 acceptance below
+records that separate check.
 
 ## 2026-09-29 — Desktop 0.5.14 standard preview (published)
 

@@ -502,8 +502,8 @@ valid, but did not establish installed startup success.
       custom TEMP/TMPDIR, early exit and hung shutdown. Independent review passed.
 - [x] Build a fresh unpublished Windows NSIS installer; offline Usage activation
       and isolated Platform startup pass under native Node and packaged Electron.
-- [ ] Record hosted CI before delivery.
-- [ ] Publish the owner-authorized 0.5.15 standard preview; never replace 0.5.14
+- [x] Record hosted CI before delivery.
+- [x] Publish the owner-authorized 0.5.15 standard preview; never replace 0.5.14
       assets. Keep Runtime `7c1b80c21ebe7031ec2c8f61677277bb781ec8fd` and Usage 0.4.0.
 
 Initial validation: 71 focused source/App/startup/packaging/release checks passed;
@@ -513,6 +513,24 @@ Use native pipe was unavailable, so no automated UI observation is claimed.
 The first hosted CI caught the Orchestrator distribution fixture's separate stale
 two-dependency setup. It now supplies fflate too, exercising the stricter production
 staging contract without weakening the missing-dependency check.
+
+Published [0.5.15 standard preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.15)
+at 2026-09-29 06:06 Taipei from Platform
+`f84c7dfb50c23dd93467d5cf24918a9c435bb383`.
+[Full source CI](https://github.com/cats-inc/cats-platform/actions/runs/36488571818)
+passed with 5,255 passing/59 skipped tests and no failures. All eight
+[release jobs](https://github.com/cats-inc/cats-platform/actions/runs/36489451173)
+passed; every OS receipt records actual packaged Platform startup and offline
+Usage activation, matching the fixed Runtime/App sources in the manifest.
+macOS signature/notarization passed (team `97JBZ3MFX5`), Windows has no certificate,
+and Linux trust is n/a. No installed 0.5.15 upgrade was performed.
+
+Unauthenticated public source downloads match the release asset digests. ZIP
+SHA-256 is `870ab043a1d367cbb956fdad40ae9500e664a2acb7159f05c6f237244f3523e2`;
+all 4,225 archived files match the committed-source preflight payload. Evidence is
+retained locally under `.cats-workspace/source-acceptance-v0.5.15/` in the parent
+workspace. This acceptance verifies integrity/receipts, not a repeated extracted
+clean build; that separate 0.5.14 result remains recorded below.
 
 ### Complete source bundle — 2026-09-29
 
