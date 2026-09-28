@@ -4,6 +4,13 @@
 
 ## Current Status
 
+Studio (2026-09-28): implemented SDK 1.3 and the scoped single-image host boundary.
+App/Core jobs, retained images, account/package grants, duplicate suppression,
+offline reads and cancellation passed isolated service/browser checks. Independent
+review corrections are covered by regressions. Local Desktop 0.5.11 is installed;
+Home shows Studio beside Usage and both pages open. No public publication or new paid generation. See
+[PLAN-111](docs/plans/PLAN-111-app-image-generation.md).
+
 Desktop acceptance correction (2026-09-17, 0.2.11 preview candidate): onboarding again uses
 the original classified compact cards, with Node.js/npm visible before any
 provider selection and Show more for the remaining tools. Desktop restores its

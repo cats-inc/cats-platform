@@ -5,6 +5,14 @@ implementation is a renderer-only utility package, not another Platform product.
 
 ## Host and SDK compatibility
 
+Studio 0.1.0 (`cats.studio`) is a separate image App beside Usage. Its first local
+Desktop delivery requires Platform `^0.5.11` and SDK `^1.3.0`. The additive
+`media.images` permission enables typed jobs and bounded JPEG preview/export;
+see [the SDK contract](specs/SPEC-119-app-image-generation.md). Runtime owns native
+Grok execution. App install/remove UI, editing/video and independent distribution
+remain follow-up work. The published Desktop App lock is still Usage-only;
+an authorized local build can select an additional immutable Studio archive.
+
 An App declares supported hosts in `cats.app.json` independently of its own
 artifact version. Current Usage 0.4.0 declares:
 
@@ -217,11 +225,11 @@ before preview publication; installed acceptance remains a separate task.
   verified archive and reads its renderer from those bytes instead of trusting loose files.
 - Renderer: one self-contained HTML entry with explicit `<head>`; inline JS/CSS,
   data images if needed. Server/worker execution and additional capabilities are rejected.
-- Compatibility: SDK `1.2.0`; exact stable versions, `major.x`, `major.minor.x` and
+- Compatibility: SDK `1.3.0`; exact stable versions, `major.x`, `major.minor.x` and
   caret ranges only. Unsupported ranges/prereleases fail rather than being guessed.
   Existing old releases with matching version strings do not imply the new host implementation is present.
 - SDK: host-injected `globalThis.catsApp`, with identity/version/locale/theme,
-  `usage.getSnapshot()` and `openLobby()`. Executable SDK and browser typings live
+  `usage.getSnapshot()`, `usage.refreshQuota()`, `images` and `openLobby()`. Executable SDK and browser typings live
   in `packages/app-sdk`; it is not a separately published npm package.
 - Renderer isolation: `sandbox="allow-scripts"` without same-origin access; CSP is
   inserted before any package markup, with default/network/frame/worker access denied.

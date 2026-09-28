@@ -167,3 +167,5 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 *Last updated: 2026-09-28 (PLAN-109 records bounded native checks and Desktop/npm publication; broader live, quality and OS acceptance remain open.)*
 
 *See also: [specs/](../specs/) for feature specifications*
+
+- [PLAN-111: App image generation](PLAN-111-app-image-generation.md) — local Desktop delivery.

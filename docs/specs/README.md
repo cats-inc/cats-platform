@@ -176,3 +176,5 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 *Last updated: 2026-09-28 (SPEC-117 required mechanisms implemented; acceptance evidence remains tracked separately in PLAN-109.)*
 
 *See also: [plans/](../plans/) for implementation plans*
+
+- [SPEC-119: App image generation](SPEC-119-app-image-generation.md) — SDK 1.3 single-image slice.

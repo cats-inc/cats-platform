@@ -469,3 +469,5 @@ The main platform-foundation docs are current, but these areas still need dedica
 ---
 
 *Last updated: 2026-09-27*
+
+- Studio: [SDK specification](specs/SPEC-119-app-image-generation.md) and [delivery plan](plans/PLAN-111-app-image-generation.md).

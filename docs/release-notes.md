@@ -2,6 +2,21 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-09-28 — Local Desktop 0.5.11 / Studio slice
+
+- Adds compatible App SDK 1.3 image jobs, cancellation, retained image preview and
+  download through Runtime. Studio 0.1.0 is a separate Home App beside Usage 0.4.0.
+- Local installer only; no public Desktop/App tag, release or npm publication.
+  The canonical published App selection remains unchanged. The local selection
+  pins the existing published Usage archive and the new Studio archive.
+- Existing Core/profile formats are preserved. Studio adds Core task/run/artifact
+  metadata and app-owned image files; no reset or migration is required.
+- Native Grok only, one square image per explicit submission, no automatic retries.
+  Editing/video and install/remove UX are deferred. Acceptance uses isolated
+  fixtures and the earlier single live-image spike; no new paid Grok call was made.
+
+See [PLAN-111](plans/PLAN-111-app-image-generation.md) for installation evidence.
+
 Newest dates go first. Each dated section should include behavior changes,
 migration steps, and any deprecations introduced in that release.
 

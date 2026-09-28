@@ -37,12 +37,21 @@
     });
   };
   Object.defineProperty(globalThis, 'catsApp', { value: Object.freeze({
-    sdkVersion: '1.2.0', appId: boot.appId, version: boot.version,
+    sdkVersion: '1.3.0', appId: boot.appId, version: boot.version,
     locale: boot.locale, theme: boot.theme,
     usage: Object.freeze({
       getSnapshot: () => request('usage.snapshot'),
       refreshQuota: (target) => request('usage.refreshQuota', target),
     }),
     openLobby: () => request('navigation.lobby'),
+    images: Object.freeze({
+      getCapabilities: () => request('images.capabilities'),
+      list: () => request('images.list'),
+      submit: (input) => request('images.submit', input),
+      cancel: (id) => request('images.cancel', { id }),
+      refresh: (id) => request('images.refresh', { id }),
+      read: (id) => request('images.read', { id }),
+      export: (id) => request('images.export', { id }),
+    }),
   }), writable: false, configurable: false });
 })();

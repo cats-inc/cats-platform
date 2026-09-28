@@ -5,6 +5,12 @@
 
 ## Overview
 
+Studio image App (2026-09-28): SDK 1.3 now supports permission-scoped image jobs,
+retained Core artifacts, binary preview/download and cancellation through Runtime.
+The independent Studio 0.1.0 App is installed in local Desktop 0.5.11 beside Usage.
+Isolated package/browser acceptance passed without new Grok calls; local install
+status is tracked in [PLAN-111](docs/plans/PLAN-111-app-image-generation.md).
+
 Official utility Apps (2026-09-10): **Usage** (`cats.usage`) is built in `cats-apps`
 and loaded through this repo's verified renderer host and App SDK v1. Desktop
 packaging accepts `--apps-lock` for exact App versions and SHA-256 hashes; no App

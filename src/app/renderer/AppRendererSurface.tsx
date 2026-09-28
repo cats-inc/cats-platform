@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { callAppImageBridge, ImageBridgeError } from './appImageBridge.js';
 import { createTranslator, parseMessageLocale, type MessageKey } from '../../shared/i18n/index.js';
 
-export const APP_RENDERER_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+export const APP_RENDERER_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; font-src 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
 export const APP_RENDERER_STARTUP_TIMEOUT_MS = 15_000;
 
 export function createAppBridgeNonce(cryptoSource: Pick<Crypto, 'getRandomValues'> = crypto): string {
@@ -48,10 +49,23 @@ export function AppRendererSurface({ appId, version, title, locale, onLobby }: {
       port = channel.port1;
       port.onmessage = async ({ data }) => {
         if (disposed || !Number.isSafeInteger(data?.id) || data.id < 1) return;
-        const reply = (ok: boolean, value?: unknown, message?: string) => {
-          if (!disposed) port?.postMessage({ id: data.id, ok, value, error: message });
+        const reply = (ok: boolean, value?: unknown, message?: string, transfer: Transferable[] = []) => {
+          if (!disposed) port?.postMessage({ id: data.id, ok, value, error: message }, transfer);
         };
         if (data.method === 'navigation.lobby') { reply(true); onLobbyRef.current(); return; }
+        if (typeof data.method === 'string' && data.method.startsWith('images.')) {
+          if (busy || Date.now() - (lastRequestAt.get(data.method) ?? 0) < 500) { reply(false, undefined, 'image_service_busy'); return; }
+          busy = true; lastRequestAt.set(data.method, Date.now());
+          try {
+            const value = await callAppImageBridge(data.method, data.params, { appId, version, signal: controller.signal });
+            const binary = value as { bytes?: ArrayBuffer } | undefined;
+            reply(true, value, undefined, binary?.bytes instanceof ArrayBuffer ? [binary.bytes] : []);
+          } catch (error) {
+            reply(false, undefined, error instanceof ImageBridgeError ? error.message : 'image_service_unavailable');
+            if (error instanceof ImageBridgeError && error.revoked) { setError('appHostRendererAccessChanged'); close(); }
+          } finally { busy = false; }
+          return;
+        }
         const refreshQuota = data.method === 'usage.refreshQuota';
         if (data.method !== 'usage.snapshot' && !refreshQuota) { reply(false, undefined, 'Unsupported app capability.'); return; }
         if (refreshQuota && (!['codex', 'copilot', 'claude', 'antigravity'].includes(data.params?.provider) || typeof data.params?.instance !== 'string'

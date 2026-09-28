@@ -29,11 +29,15 @@ import type { RuntimeClient } from '../../runtime/client.js';
 import { MAX_PACKAGE_BYTES } from '#cats-app-package';
 import { installRendererPackage, validateRendererPackage } from '../../platform/apps/packageInstaller.js';
 import { readAppRenderer } from '../../platform/apps/renderer.js';
+import type { CoreStore } from '../../core/store.js';
+import { appImages, type ImageRuntimeClient } from '../../platform/apps/images.js';
+import { routeAppImages } from './appImageRoutes.js';
 
 export interface AppPackageApiDependencies {
   config: Pick<AppConfig, 'chatStatePath'>;
   now?: () => Date;
-  runtimeClient?: Pick<RuntimeClient, 'getUsageSnapshot' | 'refreshUsageQuota'>;
+  runtimeClient?: Pick<RuntimeClient, 'getUsageSnapshot' | 'refreshUsageQuota'> & ImageRuntimeClient;
+  coreStore?: CoreStore;
 }
 
 export type AppPackageRouteContext = RouteContext<AppPackageApiDependencies>;
@@ -384,6 +388,10 @@ async function handleStateMutation(
   try {
     const registry = appRegistryFor(context);
     await registry.updateAppState(appId, { installState });
+    if (installState === 'disabled' && context.dependencies.coreStore && context.dependencies.runtimeClient) {
+      await appImages({ coreStore: context.dependencies.coreStore, runtimeClient: context.dependencies.runtimeClient,
+        chatStatePath: context.dependencies.config.chatStatePath }).revoke(appId);
+    }
     await handleDetail(context, appId);
   } catch (error) {
     sendJson(context.response, 404, {
@@ -399,6 +407,10 @@ async function handleUninstall(context: AppPackageRouteContext, appId: string): 
   const registry = appRegistryFor(context);
   const purge = ['1', 'true'].includes(context.url.searchParams.get('purge') ?? '');
   const app = await registry.uninstallApp(appId, { purge });
+  if (context.dependencies.coreStore && context.dependencies.runtimeClient) {
+    await appImages({ coreStore: context.dependencies.coreStore, runtimeClient: context.dependencies.runtimeClient,
+      chatStatePath: context.dependencies.config.chatStatePath }).revoke(appId);
+  }
   if (!app) {
     sendJson(context.response, 404, {
       error: { code: 'cats_app_not_found', message: `Cats app "${appId}" is not installed.` },
@@ -411,6 +423,7 @@ async function handleUninstall(context: AppPackageRouteContext, appId: string): 
 export async function routeAppPackageApi(
   context: AppPackageRouteContext,
 ): Promise<boolean> {
+  if (await routeAppImages(context)) return true;
   const rendererMatch = matchRoute(context.url.pathname, /^\/api\/apps\/([^/]+)\/(renderer|usage|usage\/refresh)$/u);
   if (rendererMatch) {
     const refresh = rendererMatch[1] === 'usage/refresh';

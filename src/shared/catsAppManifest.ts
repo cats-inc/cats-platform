@@ -27,6 +27,7 @@ export const CATS_APP_PERMISSIONS = [
   'runtime.adapter',
   'runtime.telemetry.read',
   'runtime.telemetry.refresh',
+  'media.images',
   'jobs.schedule',
   'core.read',
   'core.write',

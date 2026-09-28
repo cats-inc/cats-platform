@@ -1,6 +1,6 @@
 /** Host-injected browser API. No imports, secrets, filesystem or general network proxy. */
 export interface CatsAppBrowserSdkV1 {
-  readonly sdkVersion: '1.2.0';
+  readonly sdkVersion: '1.3.0';
   readonly appId: string;
   readonly version: string;
   readonly locale: string;
@@ -10,6 +10,24 @@ export interface CatsAppBrowserSdkV1 {
     refreshQuota(target: { provider: 'codex' | 'copilot' | 'claude' | 'antigravity'; instance: string }): Promise<UsageQuotaRefreshV1>;
   };
   openLobby(): Promise<void>;
+  readonly images: {
+    getCapabilities(): Promise<{ schemaVersion: 1; operation: 'image.generate'; aspectRatio: '1:1';
+      maxPromptLength: number; maxImageBytes: number;
+      targets: Array<{ provider: 'grok'; instance: string; agentModel: string }> }>;
+    submit(input: { requestId: string; instance: string; prompt: string }): Promise<CatsImageJob>;
+    list(): Promise<{ jobs: CatsImageJob[] }>;
+    cancel(id: string): Promise<CatsImageJob>;
+    refresh(id: string): Promise<CatsImageJob>;
+    read(id: string): Promise<{ bytes: ArrayBuffer; mimeType: 'image/jpeg' }>;
+    export(id: string): Promise<{ downloaded: true }>;
+  };
+}
+export interface CatsImageJob {
+  schemaVersion: 1; id: string; requestId: string; prompt: string; instance: string;
+  provider: 'grok'; agentModel: string | null;
+  status: 'submitting' | 'running' | 'collecting' | 'succeeded' | 'failed' | 'cancelling' | 'cancelled' | 'interrupted';
+  createdAt: string; updatedAt: string; error: string | null;
+  output: null | { mimeType: 'image/jpeg'; bytes: number; width: number; height: number; sha256: string };
 }
 export interface UsageTotalsV1 {
   observations: number;

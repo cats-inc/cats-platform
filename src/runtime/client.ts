@@ -1,3 +1,5 @@
+import { projectImageCapabilities, projectImageJob, readImageResponse,
+  type RuntimeImageCapabilities, type RuntimeImageJob, type RuntimeImageRequest } from './images.js';
 import {
   normalizeProviderAdvancedModelCatalog,
   normalizeProviderModelCatalog,
@@ -301,6 +303,11 @@ export interface RuntimeDeleteSessionResult {
 }
 
 export interface RuntimeClient {
+  getImageCapabilities?(): Promise<RuntimeImageCapabilities>;
+  submitImageJob?(input: RuntimeImageRequest): Promise<RuntimeImageJob>;
+  getImageJob?(id: string): Promise<RuntimeImageJob>;
+  cancelImageJob?(id: string): Promise<RuntimeImageJob>;
+  getImageBytes?(id: string): Promise<Uint8Array>;
   getSkillCatalog?(id: string): Promise<unknown>;
   getHealth(): Promise<RuntimeStatusSummary>;
   getUsageSnapshot?(): Promise<Record<string, unknown>>;
@@ -469,6 +476,18 @@ function readRuntimeSessionInfo(
 }
 
 export class CatsRuntimeClient implements RuntimeClient {
+  private async imageRequest(route: string, body?: unknown, binary = false): Promise<Uint8Array> {
+    const response = await fetch(`${this.baseUrl}/media/images/${route}`, {
+      headers: { ...this.authHeaders(), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+      signal: AbortSignal.timeout(10000), ...(body !== undefined ? { method: 'POST', body: JSON.stringify(body) } : {}),
+    });
+    return readImageResponse(response, binary);
+  }
+  async getImageCapabilities() { return projectImageCapabilities(JSON.parse(new TextDecoder().decode(await this.imageRequest('capabilities')))); }
+  async submitImageJob(input: RuntimeImageRequest) { return projectImageJob(JSON.parse(new TextDecoder().decode(await this.imageRequest('jobs', input)))); }
+  async getImageJob(id: string) { return projectImageJob(JSON.parse(new TextDecoder().decode(await this.imageRequest(`jobs/${encodeURIComponent(id)}`)))); }
+  async cancelImageJob(id: string) { return projectImageJob(JSON.parse(new TextDecoder().decode(await this.imageRequest(`jobs/${encodeURIComponent(id)}/cancel`, {})))); }
+  async getImageBytes(id: string) { return this.imageRequest(`jobs/${encodeURIComponent(id)}/image`, undefined, true); }
   async getUsageSnapshot(): Promise<Record<string, unknown>> {
     const response = await fetch(`${this.baseUrl}/usage/snapshot`, {
       headers: this.authHeaders(), signal: AbortSignal.timeout(8000),

@@ -167,3 +167,5 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 *Last updated: 2026-09-28 (ADR-118 adds attributed manual acceptance reports without changing independent validation authority.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*
+
+- [ADR-120: Scope App image jobs and assets](120-scope-app-image-jobs-and-assets.md) — accepted, 2026-09-28.
