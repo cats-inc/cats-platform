@@ -15,7 +15,7 @@ public deterministic fixtures cannot establish model improvement.
 [Windows Terminal catalog pilot](research/2026-09-24-windows-terminal-catalog-pilot.md) records
 native UI Automation capture, pane/focus guards and the Runtime-owned Codex catalog workflow.
 
-## Managed Plugins proposal
+## Managed Plugins
 
 [ADR-122](decisions/122-adopt-managed-plugins-for-upstream-capabilities.md),
 [SPEC-121](specs/SPEC-121-managed-plugin-capabilities.md), and
@@ -23,10 +23,11 @@ native UI Automation capture, pane/focus guards and the Runtime-owned Codex cata
 capability packages: thin bridges, Runtime provider/tool/skill registration,
 Desktop management, and separate internal-experiment and distribution policies.
 Existing Apps keep their renderer boundary; reusable lifecycle work is coordinated
-with the App Market proposal. The owner has authorized a project-bootstrap-based
-`cats-plugins` repository and an Agency Agents content-packaging MVP, with direct
-main commits/pushes there. Desktop/Runtime integration and product releases remain
-separate from this producer scope. The
+with the App Market proposal. The `cats-plugins` Agency producer is now connected to
+an explicitly enabled internal Desktop/Runtime pilot: exact archive admission,
+separate install/enable, Cat skill selection and confirmed removal with durable
+context fencing. See the [pilot guide](managed-plugins-pilot.md). Product releases
+remain separately authorized. The
 [research note](research/2026-09-28-managed-plugins-and-chatgpt-adapter-fit.md)
 records why OpenChatX/C2C are references rather than selected ChatGPT adapters.
 The [pinned C2C evaluation](research/2026-09-28-c2c-plugin-fit-evaluation.md)
@@ -37,7 +38,8 @@ recommends a small skills-only pilot using pinned upstream content and conversio
 with explicit source admission and no automatic replacement of built-in roles.
 The proposal also defines host-owned lifecycle phases, optional bounded hooks,
 fresh-context recovery, and source locks for upstreams without releases
-(SPEC-121 FR-09/FR-10). These contracts and the minimal SDK remain unimplemented.
+(SPEC-121 FR-09/FR-10). General executable hooks, provider plugins, public catalog
+and the minimal SDK remain future work; the delivered pilot accepts content only.
 
 ## App Market and Lifecycle
 

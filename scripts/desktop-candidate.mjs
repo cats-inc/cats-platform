@@ -36,7 +36,7 @@ export function parseCandidateArgs(args) {
   for (let i = 0; i < rest.length; i += 2) {
     const key = rest[i];
     const value = rest[i + 1];
-    if (!['--root', ...(command === 'start' ? ['--workspace', '--runtime-root', '--platform-dependencies', '--runtime-dependencies', '--ownership'] : []),
+    if (!['--root', ...(command === 'start' ? ['--workspace', '--runtime-root', '--platform-dependencies', '--runtime-dependencies', '--ownership', '--plugin-policy'] : []),
       ...(command === 'input' ? ['--action'] : [])].includes(key)
       || !value || value.startsWith('--') || options[key.slice(2)] !== undefined) {
       throw new Error(`Invalid or repeated option: ${key}`);
@@ -44,6 +44,7 @@ export function parseCandidateArgs(args) {
     options[key.slice(2)] = value;
   }
   if (!options.root) throw new Error('--root is required; start requires a new directory.');
+  if (options['plugin-policy'] && options['plugin-policy'] !== 'internal-experiment') throw new Error('Only internal-experiment Plugin policy is supported.');
   if (command === 'input' && !options.action) throw new Error('input requires --action <json-file>.');
   options.root = path.resolve(options.root);
   return options;
@@ -329,6 +330,7 @@ export async function startCandidate(options) {
       child = spawn(require('electron'), [path.join(platform, 'build', 'desktop', 'main.js')], {
         cwd: root, detached: true, windowsHide: true, stdio: ['ignore', log.fd, log.fd],
         env: { ...buildEnv, CATS_DESKTOP_CANDIDATE_ROOT: root,
+          ...(options['plugin-policy'] ? { CATS_PLUGIN_POLICY: 'internal-experiment', CATS_PLUGIN_MANAGEMENT_KEY: randomBytes(32).toString('hex') } : {}),
           CATS_DESKTOP_CANDIDATE_CONTROL_TOKEN: token,
           CATS_DESKTOP_APP_HOST: '127.0.0.1', CATS_DESKTOP_APP_PORT: String(appPort),
           CATS_DESKTOP_RUNTIME_HOST: '127.0.0.1', CATS_DESKTOP_RUNTIME_PORT: String(runtimePort),
@@ -435,7 +437,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const options = parseCandidateArgs(process.argv.slice(2));
     if (options.command === 'help') {
       console.log('For a prepared Work revision, add --ownership <candidate-ownership.json> to start with the same root and member checkout.');
-      console.log('Usage: desktop-candidate.mjs start --workspace <cats-inc|cats-platform> --root <new-directory> [--runtime-root <checkout>] [--platform-dependencies <checkout>] [--runtime-dependencies <checkout>]\n       desktop-candidate.mjs <status|screenshot|stop|evidence> --root <directory>\n       desktop-candidate.mjs input --root <directory> --action <json-file>\nRequires existing development dependencies with identical package.json and package-lock.json. Dependency options support separate worktrees. Input requires a recent screenshot; inspect the next screenshot to check the result. No installs or release.');
+      console.log('Usage: desktop-candidate.mjs start --workspace <cats-inc|cats-platform> --root <new-directory> [--runtime-root <checkout>] [--platform-dependencies <checkout>] [--runtime-dependencies <checkout>] [--plugin-policy internal-experiment]\n       desktop-candidate.mjs <status|screenshot|stop|evidence> --root <directory>\n       desktop-candidate.mjs input --root <directory> --action <json-file>\nRequires existing development dependencies with identical package.json and package-lock.json. Dependency options support separate worktrees. Input requires a recent screenshot; inspect the next screenshot to check the result. No installs or release.');
     } else {
       console.log(JSON.stringify(options.command === 'start' ? await startCandidate(options)
         : await operateCandidate(options.command, options.root, options.action), null, 2));

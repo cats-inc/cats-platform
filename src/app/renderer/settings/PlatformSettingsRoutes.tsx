@@ -7,6 +7,7 @@ import { WorkspaceSettingsCatsCanvas } from '../../../products/shared/renderer/c
 import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
 import { SettingsAssistants } from './SettingsAssistants.js';
 import { PlatformSettingsApps } from './PlatformSettingsApps.js';
+import { PlatformSettingsPlugins } from './PlatformSettingsPlugins.js';
 import { PlatformSettingsChat } from './PlatformSettingsChat.js';
 import { PlatformSettingsCode } from './PlatformSettingsCode.js';
 import { PlatformSettingsData } from './PlatformSettingsData.js';
@@ -60,6 +61,7 @@ export function resolveSettingsSectionConfig(
   if (isSettingsSectionPath(pathname, '/settings/apps')) {
     return { section: 'apps', title: translate('settingsRouteTitleApps') };
   }
+  if (isSettingsSectionPath(pathname, '/settings/plugins')) return { section: 'plugins', title: translate('pluginsTitle') };
   if (isSettingsSectionPath(pathname, '/settings/desktop')) {
     return { section: 'desktop', title: translate('settingsRouteTitleDesktop') };
   }
@@ -111,6 +113,7 @@ export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShel
 
   return (
     <Routes>
+      <Route path="plugins" element={<PlatformSettingsPlugins />} />
       <Route index element={<Navigate to="/settings/general" replace />} />
       <Route
         path="general"

@@ -1,4 +1,7 @@
 import { createServer as createHttpServer } from 'node:http';
+import { homedir } from 'node:os';
+import { resolve, join } from 'node:path';
+import { ManagedPluginManager, createPluginRuntimePort } from '../../platform/plugins/manager.js';
 
 import { sendJson } from '../../shared/http.js';
 
@@ -26,6 +29,10 @@ function reportUnhandledServerError(error: unknown): void {
 }
 
 export function createServer(dependencies: ServerDependencies) {
+  const pluginConfig = dependencies.shared.config;
+  const plugins = dependencies.shared.managedPlugins ?? new ManagedPluginManager(pluginConfig.platformDir,
+    pluginConfig.managedPluginPolicy === true && Boolean(pluginConfig.platformDir) && resolve(pluginConfig.platformDir) !== resolve(join(homedir(), '.cats', 'platform')),
+    createPluginRuntimePort(pluginConfig.runtimeBaseUrl, pluginConfig.managedPluginKey ?? pluginConfig.runtimeApiKey));
   const providerSelectorClient = dependencies.shared.runtimeClient;
   let knowledgeEndpoint: string | null = null;
   const knowledge = createAgentKnowledgeBridge({
@@ -44,11 +51,12 @@ export function createServer(dependencies: ServerDependencies) {
   });
   dependencies = {
     ...dependencies,
-    shared: { ...dependencies.shared, runtimeClient: knowledge.wrapClient(dependencies.shared.runtimeClient) },
-    ...(dependencies.code?.runtimeClient ? { code: { ...dependencies.code, runtimeClient: knowledge.wrapClient(dependencies.code.runtimeClient) } } : {}),
-    ...(dependencies.work?.runtimeClient ? { work: { ...dependencies.work, runtimeClient: knowledge.wrapClient(dependencies.work.runtimeClient) } } : {}),
+    shared: { ...dependencies.shared, managedPlugins: plugins, runtimeClient: plugins.wrapClient(knowledge.wrapClient(dependencies.shared.runtimeClient)) },
+    ...(dependencies.code?.runtimeClient ? { code: { ...dependencies.code, runtimeClient: plugins.wrapClient(knowledge.wrapClient(dependencies.code.runtimeClient)) } } : {}),
+    ...(dependencies.work?.runtimeClient ? { work: { ...dependencies.work, runtimeClient: plugins.wrapClient(knowledge.wrapClient(dependencies.work.runtimeClient)) } } : {}),
   };
   const resolvedDependencies = resolveServerDependencies(dependencies);
+  let pluginTimer: ReturnType<typeof setInterval> | undefined;
   resolvedDependencies.shared.providerSelectorClient = providerSelectorClient;
   const stopTransportFanout = startTransportFanout({
     eventHub: resolvedDependencies.chat.eventHub,
@@ -108,6 +116,9 @@ export function createServer(dependencies: ServerDependencies) {
   });
 
   server.on('listening', () => {
+    void plugins.tick().catch(reportUnhandledServerError);
+    pluginTimer = setInterval(() => { void plugins.tick().catch(reportUnhandledServerError); }, 10_000);
+    pluginTimer.unref();
     const address = server.address();
     const runtimeUrl = dependencies.shared.config.runtimeBaseUrl;
     const runtimeHost = typeof runtimeUrl === 'string' && URL.canParse(runtimeUrl)
@@ -119,6 +130,7 @@ export function createServer(dependencies: ServerDependencies) {
   });
 
   server.on('close', () => {
+    clearInterval(pluginTimer);
     knowledge.close();
     stopSchedulerLoop();
     stopTransportFanout();

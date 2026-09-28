@@ -48,7 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
-| [SPEC-121](SPEC-121-managed-plugin-capabilities.md) | Managed Plugin Capabilities | Draft proposal; not implemented | [PLAN-113](../plans/PLAN-113-managed-plugin-capabilities.md) |
+| [SPEC-121](SPEC-121-managed-plugin-capabilities.md) | Managed Plugin Capabilities | Internal Agency host pilot implemented; general SDK planned | [PLAN-113](../plans/PLAN-113-managed-plugin-capabilities.md) |
 | [SPEC-120](SPEC-120-app-market-and-lifecycle.md) | App Market and Lifecycle | Draft contract; direction accepted; not implemented | [PLAN-112](../plans/PLAN-112-app-market-and-lifecycle.md) |
 | [SPEC-118](SPEC-118-orchestrator-knowledge-and-collaboration-operations.md) | Orchestrator Knowledge and Collaboration Operations | In progress; separate native K2/K3, K3 saved-state projections and full CI pass; profile/combined rollout gates open | [PLAN-110](../plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md), [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
 | [SPEC-117](SPEC-117-cats-self-development-and-catlas-practice.md) | Cats Self-Development and Catlas Practice | Required mechanisms implemented; bounded native and release checks passed; broader acceptance pending | [PLAN-109](../plans/PLAN-109-cats-self-development-and-catlas-practice.md), [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |

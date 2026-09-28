@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Draft proposal; not implemented |
+| Status | Agency instruction pilot authorized and in implementation; general SDK remains proposed |
 | Owner | Platform integration；Runtime execution contracts；未來 Plugin artifact owner |
 | Reviewer | Product owner；跨 repo 契約 reviewer |
 | Decision | [ADR-122](../decisions/122-adopt-managed-plugins-for-upstream-capabilities.md) |
@@ -16,6 +16,18 @@
 固定與實作；producer MVP 不等於 Platform／Runtime 已支援 Plugin 安裝或全部 AC 通過。
 
 ## Summary
+
+2026-09-29 pilot 固定實作：本地檔案 inspect/install、独立 Settings Plugins 分頁、
+install/enable 分離、Cat 的明確技能選擇、影響預覽／確認、停用／移除與重啟 reconciliation。
+`GET /api/plugins` 提供 inventory；POST `inspect`, `install`, `enable`, `impact`,
+`disable`, `uninstall` 操作都有 host policy gate，mutation 使用 inventory revision。
+Runtime protocol 1 的 registration/renew/fence/stop 以 authenticated local endpoint
+執行。欲啟用須驗證相同 Runtime identity；過期 generation 不自動復活。
+新狀態 namespace schema 1，未知／損壞格式拒絕操作；不變更既有 App 或 Cat storage schema。
+UI 只提供當下已註冊、lease 有效的兩個 Agency skill profiles。移除不抹掉選擇或歷史。
+
+此受控 pilot 不承諾任意 archive、遠端 Runtime、hooks、SDK 穩定相容或 market download。
+CLI crash 後的 orphan receipt 需要運維復原；未驗證停止前不提供強制完成按鈕。
 
 讓使用者安裝經 Cats 包裝的外部能力，在 Desktop Settings／Market 管理，再由 Runtime
 或 Platform 消費其宣告能力。上游維持功能實作，Cats 提供薄橋接與可驗證的生命週期。
@@ -301,8 +313,9 @@ archive bytes 或驗證預先固定的檔案清單／內容 hash；遇 digest �
 | AC-15 | 移除前影響可見並重新核對；CLI／Desktop 重啟或舊 session resume／fork 不能清除暴露證據，無關 sessions 保留 | Agency 隔離多 session、確認範圍競爭、新 context 恢復與 required-action UI |
 | AC-16 | 無 tag／release 的 upstream 仍可按固定 commit 建置；ref 漂移／gitlink 不符／缺來源／錯 hash 拒絕，安裝／恢復 bytes 不依賴原 repo 在線 | Git／archive／mirror fixtures、子依賴／內容正規化驗證、已備 artifact 的離線安裝與前後 digest；不宣稱外部服務可離線執行 |
 
-以上皆為未執行的未來驗收。所有合成資料使用隔離 profile／暫存 registry，不接觸使用者
-真實資料、登入或付費 provider。靜態研究及文件檢查不代表任何 Plugin 已可安裝。
+以上為完整產品驗收範圍。Agency 內容套件的已完成子集與證據見 PLAN-113；通用 hooks、
+provider、catalog、跨 OS 與真實模型驗收仍待交付。所有合成資料使用隔離 profile／暫存
+registry，不接觸使用者真實資料、登入或付費 provider。
 
 ## Dependencies and open questions
 
@@ -312,7 +325,8 @@ archive bytes 或驗證預先固定的檔案清單／內容 hash；遇 digest �
 - [ ] 固定 package envelope／manifest、protocol 版本、大小／逾時／lease 與 OS 支援範圍。
 - [ ] 固定 lifecycle step／receipt／required-action schemas、helper runner／最小 SDK owner 與實際支援 hooks。
 - [ ] 固定 source lock／recipe schema、來源封存／mirror retention 與 archive／內容 hash 驗證規則。
-- [ ] 確認 `cats-plugins` repo／產物 owner 與 catalog promotion 責任；尚不建立或發布。
+- [x] `cats-plugins` 已建立並持有 Agency source lock、recipe 及固定 preview artifact；
+      catalog promotion／一般 Plugin 發布責任仍待確認。
 - [ ] 若外部 process 所需權限無法符合接納政策，縮減支援範圍或更換 pilot。
 
-*Last updated: 2026-09-28*
+*Last updated: 2026-09-29*

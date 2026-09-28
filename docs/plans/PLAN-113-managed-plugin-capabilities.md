@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Draft sequencing proposal; documentation only; implementation not started |
+| Status | Agency host pilot implemented and locally validated 2026-09-29; delivery CI separate |
 | Owner | Platform integration；Runtime execution；待確認 Plugin artifact owner |
 | Reviewer | Product owner；跨 repo 獨立 reviewer |
 | Spec | [SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md) |
@@ -13,9 +13,43 @@
 
 ## Overview
 
-先確認能力與上游接入方式，再固定 Platform／Runtime 契約，用隔離的本地套件打通生命週期，
-最後接入 Desktop 與受控目錄。各階段是提議的依賴順序，未取得實作授權；建立本 PLAN
-不代表 SPEC 已批准。實驗成果不自動成為正式發布。
+2026-09-29 execution update（優先於下方原提案的未授權敘述）：已開始 Platform＋Runtime
+獨立 worktree 實作。Producer 的固定 0.1.0 artifact 不變。
+
+- [x] Pinned archive gate、原子 inventory／套件寫入、install/enable 分離。
+- [x] Runtime authenticated management、lease/generation 與 source exposure。
+- [x] Settings Plugins、Cat skill profiles、影響確認與 pending removal。
+- [x] Conversation/native context 防止自動 replay 繞過撤銷；保留歷史。
+- [x] 跨 repo integration、隔離 Candidate renderer 操作與獨立 review。
+- [ ] 遠端交付與 CI（不代表 release）。
+
+驗證範圍與候選操作依 [pilot guide](../managed-plugins-pilot.md) 記錄。
+
+### 2026-09-29 validation evidence
+
+- Platform：28 個不同 focused tests 通過（Plugin state/replay 5、既有 Settings／Apps 18、
+  Candidate command 5）；server／Desktop／renderer／test TypeScript checks 通過。
+- Runtime：47 個 focused tests 通過，涵蓋 HTTP skills、直接 child close、Windows host
+  啟動取消、lease／generation／native rediscovery／fork reset；Runtime typecheck 通過。
+- Windows 隔離 Candidate `candidate-managed-plugins-20260929-03` 完成 Runtime、Platform
+  server、Desktop 及 renderer build。Launch ID
+  `ac12449e8609876484e15b7ef61f14131c646773380b0b56a33a85a4894b8f87`；Platform source digest
+  `081191d4a807b8540c4d72b737671580cf3038dc2ec713f6f31b8f18a1a6da83`，Runtime source digest
+  `6090aca083e794196e5eef8b8a7658fec28b31bb9dc385782c60dc9fa325fccb`。後續 CI 修正了無
+  platformDir 的 embedded/in-memory host 初始化，並改從既有 metadata 顯示 MIT license；
+  不改已驗收 Candidate 的有儲存空間流程或顯示文字。
+- 原生視窗確認正常 first-run；同一 Candidate server 的隔離 Edge renderer 自動操作完成
+  upload→install→enable→Runtime catalog 兩個 skills→Cat draft 選取→disable→remove。
+  `plugin-ui-report.json` 為全部成功、renderer errors 0、model requests 0；截圖已檢視。
+  沒有保存測試 Cat 或呼叫真實模型。Candidate 與兩個 sidecars 已確認 drained。
+- 獨立唯讀 reviewer 複查撤銷／conversation replay／owned-process startup，修正後無剩餘
+  actionable findings。完整遠端 CI 與跨 OS／真實模型驗收分開記錄，未宣稱已發布。
+- 首次完整 CI 抓到既有 JS fixture 省略 platformDir 的初始化相容性及 license raw-string
+  audit；未合併失敗版本。修正後補無儲存空間 regression（Plugin tests 共 6 個通過），
+  原失敗檔案的全部 451 個 tests 重跑通過；server build、獨立唯讀複查也通過。
+
+下方 P0–P4 保留完整產品規劃，尚未勾選的通用 SDK／provider／hooks／目錄工作仍未交付。
+本輪授權限於上方 Agency content pilot；實驗成果不自動成為正式發布。
 
 ## Ownership and integration seams
 
@@ -27,8 +61,8 @@
 | cats-apps | 既有 renderer Apps；共用基礎的相容驗證 | 不被迫接納任意背景 executor |
 | cats-one | 決定新 repo 後才更新 workspace／release 文件 | 不充當 Plugin runtime 或目錄服務 |
 
-本輪只在 Platform worktree 建立提案與索引。Runtime／Apps／cats-one 的 source、文件與
-版本均不變；採納後才在各 owner repo 開對應 worktree 與必要 ADR／SPEC／PLAN。
+本輪修改 Platform 與 Runtime 的隔離 worktree。Apps／cats-one 和既有 Plugin artifact
+不變；兩個 host 均不 bump／publish。
 
 ## P0 — 選候選並固定契約
 

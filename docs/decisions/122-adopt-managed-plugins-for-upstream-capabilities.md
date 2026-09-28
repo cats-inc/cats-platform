@@ -2,6 +2,24 @@
 
 ## Status
 
+2026-09-29：使用者已授權繼續 Desktop 安裝／移除及 Runtime 接入。
+採納下列 Agency skills-only pilot；一般 Plugin SDK、provider adapter、MCP、可執行 hooks
+與正式發布仍未納入。宿主以自己的固定 digest allowlist 接納既有
+`cats-plugin-producer-preview/v1` artifact，不更改 0.1.0 的不可變 bytes，也不把其
+`hostCompatibility.integration-pending` 建置描述當作任意套件的信任授權。
+
+Platform 單獨持有套件、意圖及 journal；Runtime protocol 1 持有觀察、30 秒 lease、
+generation fence、durable session/native exposure 及 CLI lifetime receipt。
+兩邊明確開啟 internal-experiment policy 並使用獨立資料目錄；Runtime 必須有 bearer key。
+首版只投遞 instructions 到原生、直接啟動的 Codex／Claude，不投影使用者專案檔案。
+停用先 fence，重新確認新增影響，再斷開受影響 CLI；只有實際 child close 與 owned
+Codex host closed 才視為停止。重啟遺留的未確認 receipt 保留為 pending，不自動刪除。
+Platform 另持久保存 conversation exposure，避免改 Cat／技能／新 Runtime UUID 時
+自動重播含已撤銷技能的對話。必須建立全新 conversation；歷史仍可閱讀。
+
+操作與限制見 [internal pilot guide](../managed-plugins-pilot.md)。以下保留原提案脈絡；
+超出這個 pilot 的條目仍為後續設計。
+
 Proposed, 2026-09-28。使用者已確認重用外部能力、可安裝移除、內部實驗與正式分發分開的
 方向，並要求建立 worktree 提案。後續已授權以 project-bootstrap 建立 `cats-plugins`、
 直接 commit／push main，並以 Agency Agents 建置首個內容封裝 MVP。此授權涵蓋該 repo
