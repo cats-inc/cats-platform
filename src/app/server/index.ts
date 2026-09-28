@@ -31,7 +31,7 @@ function reportUnhandledServerError(error: unknown): void {
 export function createServer(dependencies: ServerDependencies) {
   const pluginConfig = dependencies.shared.config;
   const plugins = dependencies.shared.managedPlugins ?? new ManagedPluginManager(pluginConfig.platformDir,
-    pluginConfig.managedPluginPolicy === true && resolve(pluginConfig.platformDir) !== resolve(join(homedir(), '.cats', 'platform')),
+    pluginConfig.managedPluginPolicy === true && Boolean(pluginConfig.platformDir) && resolve(pluginConfig.platformDir) !== resolve(join(homedir(), '.cats', 'platform')),
     createPluginRuntimePort(pluginConfig.runtimeBaseUrl, pluginConfig.managedPluginKey ?? pluginConfig.runtimeApiKey));
   const providerSelectorClient = dependencies.shared.runtimeClient;
   let knowledgeEndpoint: string | null = null;

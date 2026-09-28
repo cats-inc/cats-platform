@@ -35,13 +35,18 @@
   server、Desktop 及 renderer build。Launch ID
   `ac12449e8609876484e15b7ef61f14131c646773380b0b56a33a85a4894b8f87`；Platform source digest
   `081191d4a807b8540c4d72b737671580cf3038dc2ec713f6f31b8f18a1a6da83`，Runtime source digest
-  `6090aca083e794196e5eef8b8a7658fec28b31bb9dc385782c60dc9fa325fccb`。後續文件更新不改程式。
+  `6090aca083e794196e5eef8b8a7658fec28b31bb9dc385782c60dc9fa325fccb`。後續 CI 修正了無
+  platformDir 的 embedded/in-memory host 初始化，並改從既有 metadata 顯示 MIT license；
+  不改已驗收 Candidate 的有儲存空間流程或顯示文字。
 - 原生視窗確認正常 first-run；同一 Candidate server 的隔離 Edge renderer 自動操作完成
   upload→install→enable→Runtime catalog 兩個 skills→Cat draft 選取→disable→remove。
   `plugin-ui-report.json` 為全部成功、renderer errors 0、model requests 0；截圖已檢視。
   沒有保存測試 Cat 或呼叫真實模型。Candidate 與兩個 sidecars 已確認 drained。
 - 獨立唯讀 reviewer 複查撤銷／conversation replay／owned-process startup，修正後無剩餘
   actionable findings。完整遠端 CI 與跨 OS／真實模型驗收分開記錄，未宣稱已發布。
+- 首次完整 CI 抓到既有 JS fixture 省略 platformDir 的初始化相容性及 license raw-string
+  audit；未合併失敗版本。修正後補無儲存空間 regression（Plugin tests 共 6 個通過），
+  原失敗檔案的全部 451 個 tests 重跑通過；server build、獨立唯讀複查也通過。
 
 下方 P0–P4 保留完整產品規劃，尚未勾選的通用 SDK／provider／hooks／目錄工作仍未交付。
 本輪授權限於上方 Agency content pilot；實驗成果不自動成為正式發布。

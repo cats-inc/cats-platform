@@ -46,7 +46,7 @@ export function PlatformSettingsPlugins() {
     <SettingsSection header={<SettingsSectionHeader title={t('pluginsTitle')} description={t('pluginsDescription')} />}>
       {!inventory?.policyEnabled && <p>{t('pluginsPolicyDisabled')}</p>}
       <h3>{AGENCY_PLUGIN.name} · {AGENCY_PLUGIN.version}</h3>
-      <p><a href={AGENCY_PLUGIN.source} target="_blank" rel="noreferrer">{t('pluginsSource')}</a> · MIT · {t('pluginsNoPermissions')}</p>
+      <p><a href={AGENCY_PLUGIN.source} target="_blank" rel="noreferrer">{t('pluginsSource')}</a> · {AGENCY_PLUGIN.license} · {t('pluginsNoPermissions')}</p>
       <ul>{AGENCY_PLUGIN.skills.map(skill => <li key={skill.id}>{skill.title}</li>)}</ul>
       <p aria-live="polite">{t('pluginsStatus')}: {inventory ? t({ absent: 'pluginsAbsent', installed: 'pluginsInstalled', registering: 'pluginsRegistering', enabled: 'pluginsEnabled', fencing: 'pluginsFencing', 'confirmation-required': 'pluginsConfirmation', 'stop-pending': 'pluginsPending', disabled: 'pluginsDisabled' }[inventory.phase] as 'pluginsAbsent') : t('pluginsLoading')}</p>
       {inventory?.phase === 'enabled' && !inventory.availableSkills.length && <p>{t('pluginsUnavailable')}</p>}

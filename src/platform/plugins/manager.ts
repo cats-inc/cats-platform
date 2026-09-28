@@ -52,13 +52,16 @@ export class ManagedPluginManager {
   private queue: Promise<unknown> = Promise.resolve();
   private observation: PluginObservation | null = null;
   private error?: string;
-  constructor(platformDir: string, readonly policyEnabled: boolean, private readonly runtime: PluginRuntimePort) {
-    this.directory = join(platformDir, 'plugins');
-    this.stateFile = join(this.directory, 'state.json');
-    this.archive = join(this.directory, 'packages', `${AGENCY_PLUGIN.digest}.catsplugin`);
+  constructor(platformDir: string | undefined, readonly policyEnabled: boolean, private readonly runtime: PluginRuntimePort) {
+    // Embedded/in-memory hosts may omit persistent storage. Never derive a
+    // Plugin profile from cwd or the user's home just to construct their server.
+    this.policyEnabled = policyEnabled && Boolean(platformDir);
+    this.directory = platformDir ? join(platformDir, 'plugins') : '';
+    this.stateFile = this.directory ? join(this.directory, 'state.json') : '';
+    this.archive = this.directory ? join(this.directory, 'packages', `${AGENCY_PLUGIN.digest}.catsplugin`) : '';
   }
   private read(): State {
-    if (!existsSync(this.stateFile)) return { schema: 1, hostId: randomUUID(), revision: 0, generation: 0, installed: false, desired: 'removed', phase: 'absent', confirmedSessions: [], confirmedRuns: [], conversations: {}, sessions: {}, managedSessions: {} };
+    if (!this.stateFile || !existsSync(this.stateFile)) return { schema: 1, hostId: randomUUID(), revision: 0, generation: 0, installed: false, desired: 'removed', phase: 'absent', confirmedSessions: [], confirmedRuns: [], conversations: {}, sessions: {}, managedSessions: {} };
     assertUnlinked(this.stateFile);
     const state = JSON.parse(readFileSync(this.stateFile, 'utf8')) as State;
     if (state.schema !== 1 || !/^[a-zA-Z0-9-]{16,80}$/.test(state.hostId) || !Number.isSafeInteger(state.revision)

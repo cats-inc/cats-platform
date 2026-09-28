@@ -53,6 +53,17 @@ test('unused policy-off hosts preserve ordinary profiles behind a directory link
     assert.equal(existsSync(join(target, 'plugins')), false);
   } finally { f.cleanup(); }
 });
+
+test('in-memory hosts without a platform directory cannot activate Plugin storage', async () => {
+  const port: PluginRuntimePort = { request: async () => { throw new Error('must not contact Runtime'); } };
+  const manager = new ManagedPluginManager(undefined, true, port);
+  assert.equal(manager.inventory().policyEnabled, false);
+  assert.equal(manager.inventory().phase, 'absent');
+  await manager.tick();
+  await assert.rejects(manager.install(archive, 0), /isolated internal experiment/);
+  const client = manager.wrapClient({ createSession: async () => ({ id: 'ordinary' }) } as unknown as RuntimeClient);
+  assert.equal((await client.createSession({ provider: 'codex' })).id, 'ordinary');
+});
 test('offline removal persists intent; changed impact requires confirmation, real stop retains bytes', async () => {
   const f = fixture();
   try {
