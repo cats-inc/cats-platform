@@ -503,7 +503,8 @@ valid, but did not establish installed startup success.
 - [x] Build a fresh unpublished Windows NSIS installer; offline Usage activation
       and isolated Platform startup pass under native Node and packaged Electron.
 - [ ] Record hosted CI before delivery.
-- [ ] Publish a higher patch preview when authorized; never replace 0.5.14 assets.
+- [ ] Publish the owner-authorized 0.5.15 standard preview; never replace 0.5.14
+      assets. Keep Runtime `7c1b80c21ebe7031ec2c8f61677277bb781ec8fd` and Usage 0.4.0.
 
 Initial validation: 71 focused source/App/startup/packaging/release checks passed;
 the isolated startup verifier also passed against locally repaired installed

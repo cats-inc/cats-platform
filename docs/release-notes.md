@@ -2,7 +2,7 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
-## 2026-09-29 — Packaged Platform startup repair (unreleased)
+## 2026-09-29 — Desktop 0.5.15 standard preview (prepared)
 
 - The 0.5.14 installed launcher could not start Platform because the sidecar
   omitted `fflate` 0.8.3, which the managed Plugin package reader imports at startup.
@@ -19,6 +19,11 @@
 - Validation: 71 focused checks and independent review passed. A fresh unpublished
   Windows NSIS build includes fflate; its unpacked resources passed offline Usage
   activation and isolated Platform startup under native Node and packaged Electron.
+- The owner authorized a 0.5.15 standard preview (`unsigned=false`). Runtime remains
+  0.3.4 at `7c1b80c21ebe7031ec2c8f61677277bb781ec8fd`; Usage remains the exact 0.4.0
+  artifact. This compatible packaging patch changes no stored-data contract and
+  publishes no Runtime, App or npm version. Hosted CI, three-OS startup receipts,
+  publication and public source downloads remain pending.
 
 
 ## 2026-09-29 — Desktop 0.5.14 standard preview (published)
