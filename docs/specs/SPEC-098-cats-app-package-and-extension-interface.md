@@ -10,6 +10,14 @@
 
 ## Summary
 
+Follow-up proposal (2026-09-28):
+[SPEC-121](SPEC-121-managed-plugin-capabilities.md) and
+[ADR-122](../decisions/122-adopt-managed-plugins-for-upstream-capabilities.md)
+propose moving managed upstream capabilities into a public Plugins category.
+The connector vocabulary and execution scope below are historical proposals to
+reconcile on adoption; no existing App or manifest declaration is automatically
+converted into an executable Plugin. Delivered renderer contracts remain intact.
+
 Baseline update (2026-09-10): the original Lobby mock-replacement milestone below
 has landed through registry-backed entries. Manifest/SDK interfaces, local-path
 installation, and Settings management exist. The verified renderer/SDK v1 and

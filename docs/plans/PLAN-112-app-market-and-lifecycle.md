@@ -18,6 +18,10 @@
 
 ## Ownership and integration seams
 
+[PLAN-113](PLAN-113-managed-plugin-capabilities.md) 是另案的 managed Plugins 提案。
+M0 與其 P0 協調可共用的 installer／catalog／journal 契約；本案維持 renderer Apps，
+不等待 Plugin executor，也不新增任意背景程式。本段是交叉規劃，未新增已完成項目。
+
 | Owner | 工作／契約 | 不越界的項目 |
 | --- | --- | --- |
 | Platform | SDK、Catalog consumer、下載、registry、journal、管理／Home、Core 作品資料 | 不解析 provider CLI 或讓 App 操作 host shell |

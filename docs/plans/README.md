@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-113](PLAN-113-managed-plugin-capabilities.md) | Managed Plugin Capabilities | Draft sequencing proposal; implementation not started | [SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md) |
 | [PLAN-112](PLAN-112-app-market-and-lifecycle.md) | App Market and Lifecycle | Planned; implementation not started | [SPEC-120](../specs/SPEC-120-app-market-and-lifecycle.md) |
 | [PLAN-110](PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md) | Orchestrator Knowledge and Collaboration Rollout | In progress; separate native K2/K3, K3 saved-state projections and full CI pass; profile/combined rollout gates open | [SPEC-118](../specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md), [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
 | [PLAN-109](PLAN-109-cats-self-development-and-catlas-practice.md) | Cats Self-Development and Catlas Practice | Required mechanisms implemented; bounded native and release checks passed; broader acceptance pending | [SPEC-117](../specs/SPEC-117-cats-self-development-and-catlas-practice.md), [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |

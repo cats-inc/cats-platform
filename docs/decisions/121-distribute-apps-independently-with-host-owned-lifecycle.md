@@ -11,6 +11,10 @@ Accepted direction, 2026-09-28；使用者已核准整理規劃文件。實作�
 
 ## Context
 
+Related proposal (2026-09-28): [ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md)
+另案規劃可選裝的外部能力 Plugins。兩案協調共用安裝／來源／生命週期機制；本 ADR 的
+renderer App 範圍不因此擴大，也不以 Plugin 設計已完成作為本案實作前提。
+
 Usage 已是獨立版本的 `.catsapp`，隨公開 Desktop 預裝。Studio 已有獨立套件與 SDK 1.3
 生圖介面，但只在先前本機客製安裝時選入；公開 Desktop 0.5.13 的預設清單只有 Usage。
 現有本機登記與停用／移除 API 不是完整 Market：移除不刪套件、一般修復沒有完成，

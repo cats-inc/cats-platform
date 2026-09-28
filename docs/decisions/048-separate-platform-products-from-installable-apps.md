@@ -8,6 +8,11 @@
 
 Accepted
 
+Proposal note (2026-09-28): [ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md)
+proposes a separate public Plugins category for managed upstream capabilities.
+If adopted, it narrows this record's use of App as the universal installable unit;
+the Products distinction and delivered App contracts remain. ADR-122 is not yet accepted.
+
 ## Date
 
 2026-03-31

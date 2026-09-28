@@ -41,6 +41,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
+| [ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md) | Adopt Managed Plugins for Upstream Capabilities | Proposed; implementation not authorized | 2026-09-28 |
 | [ADR-121](121-distribute-apps-independently-with-host-owned-lifecycle.md) | Distribute Apps Independently with Host-Owned Lifecycle | Direction accepted; implementation planned | 2026-09-28 |
 | [ADR-119](119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) | Share Product Knowledge and Role Procedures with Supervised Agents | Accepted; K1-K3 CI and separate native K2/K3 pass; profile/combined rollout gates open | 2026-09-25 |
 | [ADR-118](118-use-isolated-development-and-verified-practice-for-cats-improvement.md) | Use Isolated Development and Verified Practice for Cats Improvement | Required mechanisms implemented; overall acceptance pending | 2026-09-28 |

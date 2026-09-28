@@ -15,6 +15,19 @@ public deterministic fixtures cannot establish model improvement.
 [Windows Terminal catalog pilot](research/2026-09-24-windows-terminal-catalog-pilot.md) records
 native UI Automation capture, pane/focus guards and the Runtime-owned Codex catalog workflow.
 
+## Managed Plugins proposal
+
+[ADR-122](decisions/122-adopt-managed-plugins-for-upstream-capabilities.md),
+[SPEC-121](specs/SPEC-121-managed-plugin-capabilities.md), and
+[PLAN-113](plans/PLAN-113-managed-plugin-capabilities.md) propose optional upstream
+capability packages: thin bridges, Runtime provider/tool/skill registration,
+Desktop management, and separate internal-experiment and distribution policies.
+Existing Apps keep their renderer boundary; reusable lifecycle work is coordinated
+with the App Market proposal. No Plugin implementation, upstream pilot, new repo,
+or release is authorized by these drafts. The
+[research note](research/2026-09-28-managed-plugins-and-chatgpt-adapter-fit.md)
+records why OpenChatX/C2C are references rather than selected ChatGPT adapters.
+
 ## App Market and Lifecycle
 
 [ADR-121](decisions/121-distribute-apps-independently-with-host-owned-lifecycle.md),
