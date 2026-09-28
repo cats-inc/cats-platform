@@ -4,16 +4,16 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Agency instruction pilot authorized and in implementation; general SDK remains proposed |
-| Owner | Platform integration；Runtime execution contracts；未來 Plugin artifact owner |
+| Status | Agency instruction pilot delivered with full CI; general SDK remains proposed |
+| Owner | Platform integration；Runtime execution contracts；cats-plugins Agency artifact |
 | Reviewer | Product owner；跨 repo 契約 reviewer |
 | Decision | [ADR-122](../decisions/122-adopt-managed-plugins-for-upstream-capabilities.md) |
 | Plan | [PLAN-113](../plans/PLAN-113-managed-plugin-capabilities.md) |
 | Baseline | Platform cbca3311；Runtime 3e47f46b；2026-09-28 source inspection |
 
-2026-09-28 execution scope：使用者已授權建立 `cats-plugins` repo 及 Agency Agents
-內容封裝 MVP，直接 commit／push main。此處的宿主 lifecycle／registry／SDK 契約仍待
-固定與實作；producer MVP 不等於 Platform／Runtime 已支援 Plugin 安裝或全部 AC 通過。
+2026-09-29 execution scope：Agency producer 與下列 Platform／Runtime content pilot 已交付，
+完整 CI 及隔離 Candidate 證據見 PLAN-113。一般 lifecycle SDK、hooks、provider plugins、
+公開目錄與全部 AC 仍是後續工作；沒有產品發布授權。
 
 ## Summary
 
