@@ -162,6 +162,12 @@ export interface ProviderAdvancedCatalogSupport {
   notes: string[];
 }
 
+/** What a catalog's list was captured against (Runtime SPEC-031 basis); display-only. */
+export interface ProviderCatalogBasis {
+  channel?: { id: string; label: string };
+  plan?: { label: string };
+}
+
 export interface ProviderAdvancedModelCatalog {
   catalogRevision?: string;
   catalogActivationId?: string;
@@ -176,6 +182,7 @@ export interface ProviderAdvancedModelCatalog {
   controls: ProviderAdvancedCatalogControl[];
   defaultSelection: ProviderModelSelection | null;
   support: ProviderAdvancedCatalogSupport;
+  basis?: ProviderCatalogBasis;
   warnings: string[];
 }
 
@@ -230,6 +237,19 @@ function unwrapCatalogEnvelope(value: unknown): Record<string, unknown> | null {
 
 function readNullableString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function readCatalogBasis(value: unknown): ProviderCatalogBasis | null {
+  const record = asRecord(value);
+  const channel = asRecord(record?.channel);
+  const channelId = readNullableString(channel?.id);
+  const channelLabel = readNullableString(channel?.label);
+  const planLabel = readNullableString(asRecord(record?.plan)?.label);
+  const basis: ProviderCatalogBasis = {
+    ...(channelId && channelLabel ? { channel: { id: channelId, label: channelLabel } } : {}),
+    ...(planLabel ? { plan: { label: planLabel } } : {}),
+  };
+  return basis.channel || basis.plan ? basis : null;
 }
 
 function readCapabilitySupport(
@@ -776,6 +796,7 @@ export function normalizeProviderAdvancedModelCatalog(
           : 'entry_only',
       notes: readStringArray(supportRecord?.notes),
     },
+    ...(readCatalogBasis(record.basis) ? { basis: readCatalogBasis(record.basis)! } : {}),
     warnings: Array.isArray(record.warnings)
       ? record.warnings.filter((warning): warning is string => typeof warning === 'string')
       : [],

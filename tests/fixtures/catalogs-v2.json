@@ -2508,6 +2508,11 @@
           "manifestId": "copilot/cli/"
         }
       },
+      "basis": {
+        "plan": {
+          "label": "Copilot Pro"
+        }
+      },
       "warnings": []
     }
   },
@@ -2611,6 +2616,12 @@
         "provenance": {
           "status": "verified_manifest",
           "manifestId": "opencode/cli/"
+        }
+      },
+      "basis": {
+        "channel": {
+          "id": "opencode-go",
+          "label": "opencode-go"
         }
       },
       "warnings": []
@@ -2718,6 +2729,12 @@
           "manifestId": "kilo/cli/"
         }
       },
+      "basis": {
+        "channel": {
+          "id": "kilo",
+          "label": "kilo"
+        }
+      },
       "warnings": []
     }
   },
@@ -2814,6 +2831,12 @@
           "manifestId": "goose/cli/"
         }
       },
+      "basis": {
+        "channel": {
+          "id": "chatgpt_codex",
+          "label": "chatgpt_codex"
+        }
+      },
       "warnings": []
     }
   },
@@ -2905,6 +2928,12 @@
         "provenance": {
           "status": "verified_manifest",
           "manifestId": "pi/cli/"
+        }
+      },
+      "basis": {
+        "channel": {
+          "id": "openai-codex",
+          "label": "openai-codex"
         }
       },
       "warnings": []
@@ -3300,6 +3329,12 @@
         "provenance": {
           "status": "verified_manifest",
           "manifestId": "cline/cli/"
+        }
+      },
+      "basis": {
+        "channel": {
+          "id": "cline-pass",
+          "label": "cline-pass"
         }
       },
       "warnings": []
