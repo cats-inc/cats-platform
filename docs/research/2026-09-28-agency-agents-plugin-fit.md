@@ -19,6 +19,10 @@ Agency Agents 比 C2C 更適合作為第一個 **內容型 Plugin** 的候選：
 Desktop 執行。安裝這類 Plugin 增加可選的角色／skills，不新增模型 provider、工具權限、
 持久記憶或自動建立 Cat／執行任務。
 
+後續規劃已在 [SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md) FR-09／10
+補入通用 lifecycle、context 撤銷與 source lock＋recipe；上游無 release 不影響以固定
+commit 建置 Cats 版本。Agency 預設走無 hooks 的內容路徑，Submodule 為可選開發方式。
+
 第一個候選範圍建議是 Code Reviewer 與 UX Researcher，先與 Cats 內建 skills 並存。
 不能直接把現有內建庫全部換掉：來源關係、內容範圍與使用中的 skill IDs 都尚未完成遷移盤點。
 本輪只完成 source fit 評估，沒有宣稱套件已可安裝、輸出品質已提升或 Plugin lifecycle 已交付。

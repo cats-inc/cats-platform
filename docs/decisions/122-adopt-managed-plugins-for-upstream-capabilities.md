@@ -48,6 +48,19 @@ Plugin 是分發單位；provider adapter、MCP／tool connector、skill 是它�
 授權捆綁上游 bytes，也可連接使用者已有的服務。本輪不建立新 repo，不改 workspace manifest。
 Plugin 版本與 upstream revision 分開記錄；不能在使用者機器上隱性追蹤 upstream main。
 
+#### Upstream source acquisition
+
+`cats-plugins` 預設維護每個套件的 source lock、build recipe、內容選單、必要 patch 與
+notices；source lock 固定 repository URL、完整 commit ID、來源內容校驗與依賴。
+上游沒有 tag／release 也能選定 commit，經驗證後發布獨立的 Cats Plugin 版本與 channel。
+build worker 取得該來源並產生可安裝 artifact；Desktop 不需要上游 Git checkout 或建置工具。
+
+Submodule 可用於需要經常閱讀／修改上游的開發情境，但不是 Plugin 分發契約，也不要求
+每個來源都以 submodule 加入。使用時 gitlink 必須與 source lock 一致，CI 不接受追蹤
+branch tip 的隱性更新。大型或授權要求的 vendored snapshot 可另選用，仍保留相同來源證據。
+來源封存／mirror 與 artifact retention 由 Cats 管理，不能只保留可能失去可取用性的 URL。
+具體取捨及驗收見 SPEC-121 FR-10；本輪只規劃，不建立 `cats-plugins` 或下載發布產物。
+
 ### 3. 共用套件機制，保留不同執行邊界
 
 Apps／Plugins 在 UI 分類、manifest kind 與驗證上明確區分，重用可適用的下載、來源驗證、
@@ -73,6 +86,22 @@ factory，但新協定仍須明確的 Runtime 契約工作。process 分離本�
 安裝不等於登入、可用或選用；新 provider 必須遵守既有 Runtime selection／readiness
 契約，不替換 Codex native 或其他目標。停用立即禁止新工作並撤銷註冊，停止與清理結果
 分別確認。使用者自行安裝的 MCP／skills／CLI 與外部共享服務不被接管或刪除。
+
+#### Host-owned lifecycle and optional hooks
+
+先固定 manifest 宣告、生命週期協定與宿主狀態機，再提供小型 SDK／validator／fixtures。
+純 skills Plugin 由宿主完成來源註冊、投遞與撤銷，不要求自行撰寫卸載程式。
+需要特殊設定或外部資源處理的套件，可宣告 pre/post-install、pre/post-uninstall 等有限
+hooks；由 Platform 編排，Runtime 依版本化協定執行已驗證的獨立 helper，無任意宿主內載入。
+
+Hooks 回傳結構化進度、完成證據、失敗及必要操作；不能自行修改 installer inventory、
+擴權或終止共享 provider。重試、逾時、崩潰恢復及外部副作用由 operation journal 協調，
+失敗不視為成功，也不假設跨外部服務具原子 rollback。停用准入不能被失敗的 hook 擋住。
+
+宿主負責找出受影響工作／sessions 並呈現操作影響。移除 skill 檔案、斷開 CLI、重新
+啟動 Desktop 都不證明模型 context 已清除；重新載入舊 session／fork 仍須檢查來源暴露。
+優先對受影響範圍建立乾淨 context，只有具體宿主限制才要求重啟自有服務或 Desktop。
+完整要求與驗收列於 SPEC-121 FR-09；SDK 是協定實作輔助，不是另一套 installer。
 
 ### 5. 內部實驗與正式分發分開
 

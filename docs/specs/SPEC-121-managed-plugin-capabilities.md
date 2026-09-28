@@ -40,7 +40,7 @@ Plugins 是新的套件種類；provider adapter 只是其中一種貢獻。
 | Agent adapters | 內建 OpenClaw／Agent SDK bridge／ACP transport 選擇 | 已驗證 Plugin descriptor 可註冊獨立目標 |
 | Provider readiness | Runtime selection、probe、session 契約已存在 | 加入 Plugin provenance 與撤銷，不繞過原規則 |
 | Skills | Runtime 擁有產品 skill delivery 與 preview policy | 加入受管理來源，保留出貨／實驗與既有 context 邊界 |
-| 外部 repo | 兩個 ChatGPT 案例僅文件研究 | P0 另選具許可與機器介面的真實 pilot |
+| 外部 repo | C2C 暫緩；Agency Agents 已靜態評估為 skills-only 候選 | P0 固定可驗證的接入／投遞介面；兩者皆未執行 pilot |
 
 ## FR-01 — 套件身分與來源
 
@@ -51,7 +51,8 @@ Cats bridge revision 與 upstream revision 分開，具體 build recipe 與必�
 
 同版不同 bytes 不可取代已發布產物；來源轉換、publisher／ID 衝突要明確處理。簽章證明
 來源，不能授予 `system` 或未宣告能力。套件內容不直接修改 host／Runtime 設定檔或
-執行任意安裝 hook；開發時 build upstream 與使用者安裝已驗證產物是兩個流程。
+執行任意安裝 hook；額外步驟只能使用 FR-09 宣告且經宿主接納的操作。開發時 build
+upstream 與使用者安裝已驗證產物是兩個流程；來源取得及無 release 情境依 FR-10。
 
 ## FR-02 — 貢獻與執行介面
 
@@ -135,6 +136,8 @@ Plugin 產生的 skill 投影需有檔案 ownership 與 collision 檢查，不�
 provenance 的 in-flight turn 依 FR-04 取消或標記停止待確認；這不取得該 session 或共享
 provider 的所有權。含已撤銷內容的 context 不可宣稱乾淨，需依既有 session 契約建立
 乾淨 context 才能再次執行。保留 release／preview skill admission 規則，不刪歷史偽裝撤回。
+關閉連線、停止 CLI process 或重啟 Desktop 不是 clean-context 證據；resume／fork／
+自動恢復若帶回原有內容，仍受同一撤銷規則約束。FR-09 定義宿主應呈現的受影響範圍與操作。
 
 ## FR-06 — Desktop 設定與目錄
 
@@ -171,11 +174,113 @@ Plugin，保留原狀並提供明確轉換規劃，不自動啟動。
 資料格式升級須 validation、backup、atomic replacement、repeat-start 與失敗恢復測試；
 程式回退不得讀不相容新資料，亦不得丟棄新成果。本輪不修改版本或持久化資料。
 
+## FR-09 — 生命週期協定、hooks 與最小 SDK
+
+### 宣告與執行分工
+
+Manifest 宣告 contribution／依賴／owned resources、資料保留需求，以及可選的 lifecycle
+helper 與所需權限；不存在的 hook 按宿主預設流程處理。Platform 是操作計畫、使用者意圖、
+journal 與 inventory 的唯一 writer；Runtime 提供影響／停止／投遞狀態並執行受控 helper。
+helper 不 import 宿主模組，不直接改 host config／inventory，不代替 Runtime 判定 context。
+Agency 等純內容套件的撤銷由宿主通用 skill policy 完成，通常不需 executable hooks。
+
+下列階段是契約語意；具體 wire names／schema／逾時在 P0 固定，不宣稱 SDK 已存在。
+
+| 階段 | 宿主保證與額外步驟 |
+| --- | --- |
+| Inspect／plan | 唯讀檢查相容性、依賴、資源、受影響工作／sessions 及必要操作，不執行安裝程式。無法觀察的項目標記 unknown，不推成沒有影響 |
+| pre-install | 來源／digest／路徑驗證並 staging 後，才執行已宣告的準備步驟；失敗不啟用貢獻 |
+| Install／post-install | 宿主記錄 artifact，執行受限設定／驗證；post 失敗保留可恢復的「已安裝、設定未完成」，不能冒充 ready。登入／啟用／provider 選用仍是各自的狀態 |
+| Disable／pre-uninstall | 接受移除意圖後立即阻擋新准入並開始撤銷；pre-uninstall 指檔案清理前的額外工作，可用於解除自有外部註冊。hook 失敗不能阻擋撤銷或讓舊能力繼續接新工作 |
+| Uninstall／post-uninstall | 協調受影響工作的停止並確認可清理後，移除 owned package／投影，執行必要後續驗證或外部收尾；所有必要步驟確認前維持「移除待完成」及 tombstone |
+| Update／repair | 使用同一 operation 契約，區分新舊版本及 generation；staging／切換／migration／恢復順序明列，不能以另一套腳本繞過活動工作與資料保護 |
+
+post-uninstall 需要的 helper／協定 metadata 及完整必要的自有執行依賴，必須在刪除套件前
+封存到受驗證的 operation cache，直到收尾完成才回收；包括 helper 引用的 libraries、
+resources 與自帶 interpreter，不能只保留 entrypoint。共享／外部 prerequisite 另記錄
+版本／定位／readiness 契約，不複製或接管其所有權；執行前重查，缺失即 pending。
+cache 不再提供 Plugin 業務能力。不得清檔後才發現無法恢復收尾，也不得在 retry 時下載
+另一版 hook／依賴。必要 helper 或依賴破損時由宿主處理已知 owned files，未能確認的
+外部副作用保留 pending／manual recovery，不能假稱已清除。
+
+### Hook I/O、失敗與恢復
+
+每個 step 帶有 operation／step ID、Plugin identity／digest、phase、generation、deadline
+與宿主核准的資源／權限範圍。helper entrypoint 固定於驗證後產物，執行參數不經任意
+shell 字串展開；process／網路／credentials 依 FR-05 限制，不把 out-of-process 當成完整 sandbox。
+
+回應至少區分 succeeded、failed、pending、requires-action；附 bounded progress／diagnostics、
+已完成副作用的 receipt、可重試性與必要操作清單。正常結果、stdout、log 均不得帶 secret。
+必要操作可包含建立新 session／context、重啟某個 owned service、具體理由的 Desktop
+restart 或使用者完成外部設定；每項都帶 target／scope／reason 與完成驗證方式。
+它們可同時存在，restart 不是 new-context 的替代品。helper 只回報需求，宿主驗證後呈現。
+
+宿主在執行前持久化 step 意圖，step 以相同 ID 安全重試／去重，完成後寫 receipt；
+不承諾外部副作用 exactly-once。若 helper 已做事但回應遺失，先 reconcile／query，
+無法確認時停在 pending，不能盲重跑非冪等操作。deadline／取消亦不代表副作用已撤回。
+列出可補償步驟、補償失敗與人工恢復；外部帳號／註冊不假設能隨 local rollback 復原。
+hook 不可讓停用無限等待或自行恢復 generation；更新失敗依已完成的 migration／資料
+相容性決定可否回退。P0 固定各類 timeout、retry budget 與步驟終止條件。
+
+### 使用者操作與 retained context
+
+執行有中斷影響的移除前，Platform 依 Runtime 回報呈現哪些 Cat／session 正在使用技能、
+哪些工作需要停止、哪些舊 context 之後不能續跑；使用者可取消本次移除，或確認停止並移除。
+接受操作後，Runtime 在同一版本化准入界限建立 fence 並取得影響快照，阻止新 work／
+delivery。Platform 對照已確認範圍，新增中斷影響需補充確認；期間維持 fence，不越權
+停止新增受影響工作。取消此階段不自動恢復能力，清楚呈現已停用狀態與重新啟用選項。
+停止狀態未知時保留「停止待確認」；已涵蓋相同影響的授權可沿用，不重複詢問。
+
+Agency 例：2 個對話載入了 skill，其中 1 個有 active turn；確認後撤銷新 delivery，
+取消／確認該 turn，清理安全可移除的檔案，保留兩段歷史及來源暴露記錄。即使 package
+已清理，舊 context 仍不得 resume／fork 成可執行狀態；應引導建立不含撤銷內容的新
+context。歷史仍可檢視，不能整段重播舊 skill 又宣稱乾淨。Desktop 重啟若恢復舊 session，
+同樣須擋下。不得因此終止其他 session 或共享 CLI process；手動安裝不被納入管理。
+
+SDK 初期只需 manifest／protocol types、validator、hook transport helpers 與 lifecycle
+fixtures，並包含無 hooks 的內容套件範例。wire protocol 是跨語言契約，SDK 為可選輔助；
+具體 package 名稱／owner 在 P0 固定。先實作 pilot 需要的部分，其餘不標為已支援。
+
+## FR-10 — 上游沒有 release 時的來源與封裝
+
+`cats-plugins` 建議預設使用 **source lock＋build recipe**，取得動作只在維護者／CI 的
+隔離 build workspace 進行。每個 Plugin 記錄上游 URL、完整 commit ID、選定 source paths、
+來源內容 hash／清單、license／notices、converter／bridge／patch revisions、build toolchain
+與 dependency lock。此處描述必要資訊，未固定 lock 檔名或完整 schema。
+
+| 取得方式 | 定位與要求 |
+| --- | --- |
+| Locked Git fetch／commit archive | 預設；按完整 commit 取得並驗證來源，輸出獨立 artifact。branch／tag 只供發現候選，入 lock 前必須解析成固定 revision |
+| Submodule | 可選開發方式，適合頻繁讀碼／修改上游；gitlink 與 lock 必須一致，CI 檢查乾淨且精確的 checkout。不能用 submodule --remote 的 branch tip 當發布輸入 |
+| Vendored snapshot／licensed mirror | 有保留來源或離線需求時採用；附來源、固定 revision、完整 notices 與變更差異，避免成為無來源的手工 fork |
+
+來源是否有 release 和 Cats 是否能發布 Plugin 是不同問題。Agency 可釘
+`479193dcce1cf6432ce0f5aa230ab8cc739a8c6b` 作候選，Cats Plugin 再依自身相容性規則
+給版本與 channel；這個 SHA 不是已批准的出貨版本。上游下一個 commit 只成為更新候選，
+經差異／授權／建置／契約與 pilot 驗證後，才產生新的 Cats artifact；不自動跟隨 main。
+
+如上游含 submodules、LFS 或外部下載，recipe 必須明列是否需要、各自來源／固定 revision
+或 digest，不能遞迴引入未釘選內容。commit ID 識別來源，不等於來源受信任或建置可重現；
+build inputs、工具鏈、依賴與相應驗證仍必須固定。commit 無法取得時明確失敗，不退回最新版本。
+
+保存已核對的來源 snapshot／build receipt 與授權所需材料，再保存 Cats 發布的 immutable
+artifact 及其 digest，避免只靠原 repo 持續存在。若授權不允許所需封裝／保留方式，改採
+其他接入方式或換候選。Desktop 只安裝已驗證 Cats artifact，不要求 Git、上游 build
+工具或安裝時跑 converter。對 skills Plugin，Markdown 本文就是必要 payload；「不依賴
+source checkout」不表示移除應交付的指令內容或授權要求的 source。
+
+[Git submodule 文件](https://git-scm.com/docs/gitsubmodules) 說明 gitlink 記錄確切 commit；
+[GitHub source archive 文件](https://docs.github.com/en/repositories/working-with-files/using-files/downloading-source-code-archives)
+允許直接取得 commit snapshot，也指出重新產生 archive 時壓縮 bytes 可能改變。
+因此 source-content identity 與 downloaded-archive／Cats-artifact digest 分開：保存已審查
+archive bytes 或驗證預先固定的檔案清單／內容 hash；遇 digest 不同不可直接重算後放行。
+解包前仍驗證來源及 archive 路徑／大小限制，解包驗證完成前不執行任何內容。
+
 ## Acceptance matrix
 
 | ID | 必須驗證的結果 | 方法 |
 | --- | --- | --- |
-| AC-01 | 真實上游套件經薄橋接安裝／設定／使用；來源、revision 與 notices 可查 | 已選 pilot 的 source-free artifact |
+| AC-01 | 真實上游套件經薄橋接安裝／設定／使用；來源、revision 與 notices 可查 | 已選 pilot 的獨立 artifact；安裝不依賴上游 checkout |
 | AC-02 | provider Plugin 增加獨立目標、提交 turn 並返回結果；Codex 不代跑，既有 ROI 不變 | Runtime 契約＋獨立 provider pilot；mock 不作真實接入證據 |
 | AC-03 | MCP／skills 正確投影且不冒充 provider；必要工具缺少可診斷 | contribution fixtures＋真實工具／skill pilot |
 | AC-04 | Platform→Runtime 註冊冪等、collision／舊 revision／錯 digest／不相容拒絕 | 邊界 fixtures、重啟／錯序測試 |
@@ -187,6 +292,10 @@ Plugin，保留原狀並提供明確轉換規劃，不自動啟動。
 | AC-10 | Settings 與 catalog 狀態一致，provider picker 不繞過 selection；錯誤有下一步 | 隔離 Desktop 多視窗與 Runtime fixture |
 | AC-11 | 未改 Apps 可照常執行；schema 變更可升級／恢復且不自動轉換舊 connector | 最低支援 host／App 契約與 migration |
 | AC-12 | 發布產物與目錄 promotion 有獨立許可／驗證，實驗不自動出貨 | artifact／catalog／Desktop bundle inventory |
+| AC-13 | 無 hook 的 skills 套件使用共通 lifecycle；有 hooks 時依序執行、post 失敗不冒充 ready／removed | content-only＋受控 helper fixtures、逐 phase fault injection |
+| AC-14 | hook deadline／重複呼叫／遺失回應／崩潰恢復不重複非冪等副作用；pre-uninstall 失敗不阻擋撤銷，post helper 可安全恢復 | journal／receipts／補償；清主套件後重啟，驗證 cache 執行依賴及外部 prerequisite 缺失 |
+| AC-15 | 移除前影響可見並重新核對；CLI／Desktop 重啟或舊 session resume／fork 不能清除暴露證據，無關 sessions 保留 | Agency 隔離多 session、確認範圍競爭、新 context 恢復與 required-action UI |
+| AC-16 | 無 tag／release 的 upstream 仍可按固定 commit 建置；ref 漂移／gitlink 不符／缺來源／錯 hash 拒絕，安裝／恢復 bytes 不依賴原 repo 在線 | Git／archive／mirror fixtures、子依賴／內容正規化驗證、已備 artifact 的離線安裝與前後 digest；不宣稱外部服務可離線執行 |
 
 以上皆為未執行的未來驗收。所有合成資料使用隔離 profile／暫存 registry，不接觸使用者
 真實資料、登入或付費 provider。靜態研究及文件檢查不代表任何 Plugin 已可安裝。
@@ -195,8 +304,10 @@ Plugin，保留原狀並提供明確轉換規劃，不自動啟動。
 
 - 共用生命週期來自 [SPEC-120](SPEC-120-app-market-and-lifecycle.md) 的契約協調，實作尚待交付。
 - Runtime owner 需在 P0 記錄協定、registration／revocation、ROI 與 skill policy 的確切變更。
-- [ ] 選擇可合法接入、具機器介面的 upstream pilot；provider 與 MCP／skill 各有驗收證據。
+- [ ] 選擇具許可與可驗證接入／投遞介面的 upstream pilot；provider 與 MCP／skill 各有驗收證據。
 - [ ] 固定 package envelope／manifest、protocol 版本、大小／逾時／lease 與 OS 支援範圍。
+- [ ] 固定 lifecycle step／receipt／required-action schemas、helper runner／最小 SDK owner 與實際支援 hooks。
+- [ ] 固定 source lock／recipe schema、來源封存／mirror retention 與 archive／內容 hash 驗證規則。
 - [ ] 確認 `cats-plugins` repo／產物 owner 與 catalog promotion 責任；尚不建立或發布。
 - [ ] 若外部 process 所需權限無法符合接納政策，縮減支援範圍或更換 pilot。
 

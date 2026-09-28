@@ -33,6 +33,9 @@ and the bridge-only subset is an unselected candidate. No upstream code was exec
 The [Agency Agents assessment](research/2026-09-28-agency-agents-plugin-fit.md)
 recommends a small skills-only pilot using pinned upstream content and conversion,
 with explicit source admission and no automatic replacement of built-in roles.
+The proposal also defines host-owned lifecycle phases, optional bounded hooks,
+fresh-context recovery, and source locks for upstreams without releases
+(SPEC-121 FR-09/FR-10). These contracts and the minimal SDK remain unimplemented.
 
 ## App Market and Lifecycle
 

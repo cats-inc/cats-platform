@@ -38,6 +38,8 @@
       完整 workflow 等待可用宿主／上游入口；bridge 子集仍未選定，沒有 live pilot 證據。
 - [x] 完成 [Agency Agents 靜態評估](../research/2026-09-28-agency-agents-plugin-fit.md)：
       推薦少量角色作 skills-only pilot；來源／投遞／遷移契約及實際驗收尚未完成。
+- [x] 補入生命週期／可選 hooks／最小 SDK 與無 release 上游的來源政策（SPEC-121 FR-09／10）；
+      此項只記文件需求完成，wire schema、runner、SDK、artifact 與驗收仍未交付。
 - [ ] 確認 ADR／SPEC 範圍，選第一個具清楚授權、可驗證接入／投遞介面的 upstream。
 - [ ] 明列 Plugin 外部能力、Cats 薄橋接、現有 Runtime transport；若需重造核心功能就換候選。
 - [ ] 選 MCP／skills 與 provider 的 pilot 證據；可同一 repo，但不能以 MCP 成功代替 provider。
@@ -47,6 +49,15 @@
 - [ ] 固定 manifest kind／envelope／相容語法／bounded I/O、OS／arch、process 權限與 secrets 邊界。
 - [ ] 固定 desired／observed 狀態與 journal、activation generation、lease 撤銷上限、崩潰調和、
       未支援 cancel 的處理；設計 migration／backup／atomic recovery fixtures。
+- [ ] 固定 inspect／pre-post install／pre-post uninstall／update／repair phase，step identity、
+      receipts、required-action／affected-session DTO、逾時與去重／補償／manual recovery。
+- [ ] 固定 Platform installer writer 與 Runtime helper runner 的權限／資源契約、post-uninstall
+      operation cache 與完整自有執行依賴／外部 prerequisite、最小 SDK owner；無 hook 的
+      skills 套件必須可只靠共通 lifecycle 運作。
+- [ ] 定義重新核對移除影響與 admission fence；CLI／Desktop restart 不作 clean-context 證據，
+      明列舊 session resume／fork、新 context 與歷史保留契約。
+- [ ] 固定 source lock＋recipe schema、完整 commit／內容 digest、submodule 一致性、LFS／
+      外部下載依賴、toolchain／patch pin 與來源封存；無上游 release 也可產生 Cats 候選版本。
 - [ ] 確認 artifact owner／repo；獨立 review 契約，記錄必要版本界線而不 bump／publish。
 
 Exit：有可 review 的精確契約、來源選擇與 failure fixtures，沒有「包一下就自動可用」假設。
@@ -54,14 +65,18 @@ Exit：有可 review 的精確契約、來源選擇與 failure fixtures，沒有
 
 ## P1 — 本地封裝與 Runtime 接入
 
-- [ ] 以 upstream 精確 revision／版本建立 source-free artifact、notices、digest 與薄橋接。
+- [ ] 以 source lock 取得 upstream 精確 revision，建立不依賴上游 checkout 的 artifact、
+      notices、digest 與薄橋接；skill 本文與授權要求的 source 仍隨包交付。
+- [ ] 以 Agency 等純內容套件驗證無 hooks 路徑；最小 SDK／validator／fixtures 與受控 helper
+      只實作已固定且需要的階段，未實作的 hook 明確拒絕，不宣稱全生命週期已支援。
 - [ ] Platform 建立 Plugin kind validator／registry namespace，重用已落地的驗證與操作機制。
 - [ ] Runtime 接受已驗證 descriptor，透過支援的 transport 註冊獨立 target／MCP／skills。
 - [ ] 補齊 identity collision、相容性、auth setup、capability truth 與 ROI 准入。
 - [ ] 驗證原有 Codex／其他 provider 設定不變，新安裝不自動選用或消耗模型額度。
 - [ ] 用授權清楚的真實 pilot 完成任務／工具呼叫；fixture 與 upstream live evidence 分開記錄。
 
-Exit：AC-01–AC-04 的本地路徑可驗證。若本階段只有 MCP／skill 成功，明列 provider 未完成，
+Exit：AC-01–AC-04、AC-13 安裝部分及 AC-16 來源封裝可驗證；SDK 支援矩陣明列。
+若本階段只有 MCP／skill 成功，明列 provider 未完成，
 不宣稱 adapter 分發已交付。不要求公開 catalog 或正式 Desktop 安裝。
 
 ## P2 — 撤銷、更新與恢復
@@ -73,25 +88,37 @@ Exit：AC-01–AC-04 的本地路徑可驗證。若本階段只有 MCP／skill �
 - [ ] staged update／同版 repair／新增權限確認；活動工作只在使用者明確停止後切換。
 - [ ] skill delivery 按來源撤銷，取消／標記既有 session 的受影響 turn，保留共享 provider／
       無關 session；殘留 context 不能在正式或重新啟用流程被視作乾淨。
+- [ ] 驗證 hook 回應遺失、重試／逾時／crash、補償失敗、無法確認外部副作用；停止准入
+      不被 pre-uninstall 失敗阻擋，post helper 在清檔後仍能由固定 operation cache 恢復。
+      包含清主套件並重啟後的自有執行依賴、共享 prerequisite 缺失與 pending 恢復。
+- [ ] 驗證先前 skill context 經 CLI／Desktop restart、resume／fork 仍受撤銷限制；新 context
+      不重播已撤銷技能，歷史、手動 skills、共享 CLI 與無關 sessions 保留。
 - [ ] 若改持久化 schema，執行驗證、備份、原子替換、失敗恢復與重跑測試。
 
-Exit：AC-05–AC-08／AC-11 有故障注入與真實 filesystem 證據；pending 狀態有恢復路徑。
+Exit：AC-05–AC-08／AC-11、AC-13 卸載部分／AC-14 與 AC-15 Runtime 部分有故障注入
+及真實 filesystem 證據；pending 狀態有恢復路徑。
 
 ## P3 — Desktop 與實驗政策
 
 - [ ] Settings Plugins 的 inventory／詳情／setup／啟停／移除／修復共用管理 client。
 - [ ] provider 仍由 Runtime catalog 投影；保留既有 picker continuity 與 selection 契約。
 - [ ] 宿主表單呈現設定，正常流程用一般語言，來源／digest／log 放展開診斷。
+- [ ] 操作前呈現受影響 Cat／session／工作與必要動作，執行前重新核對；可取消或確認停止
+      並移除。分辨「設定未完成」「停止待確認」「移除待完成」及「舊對話需新 session」。
+- [ ] required-action 可同時要求新 context、特定 owned service restart 或具理由的 Desktop
+      restart；由宿主驗證／執行，不能讓 Plugin 自行終止共享程序或宣稱 context 已清除。
 - [ ] 將 internal-experiment admission 綁定可信 build／profile policy，獨立於版本 channel。
 - [ ] 驗證實驗 profile／套件複製到一般 Desktop、一般 preview 或 Runtime 重啟後均不能提升權限。
 - [ ] 用隔離 Desktop 檢查多視窗更新、停止待確認、Runtime 離線與壞套件恢復。
 
-Exit：AC-09／AC-10 通過；本地實驗可完整管理，仍未公開分發。
+Exit：AC-09／AC-10 與 AC-15 UI 部分通過；本地實驗可完整管理，仍未公開分發。
 
 ## P4 — 受控目錄與發布準備
 
 - [ ] 接入共用 catalog trust／download 機制，分辨 App 與 Plugin schema／kind。
 - [ ] Plugin pin、來源／revision、授權、使用介面適用性、OS 驗證與 withdrawal 可追溯。
+- [ ] 封存已驗證來源、build receipt 與 Cats artifact；模擬原 repo／commit 不可取得與離線
+      安裝，禁止退回 main。上游 source pin、Cats Plugin version 與 channel 分開管理。
 - [ ] 相容版本選擇、手動更新、來源轉換確認與離線行為均不得擴張權限。
 - [ ] 證明正式 catalog／Desktop bundle 不含 internal-experiment 內容，沒有自動 promotion。
 - [ ] 完成所有 AC 對照與獨立 review；未驗證平台與能力逐項列出。
@@ -107,7 +134,9 @@ Exit：AC-12 及完整跨 OS／宿主驗收有證據，產物可供發布審查�
 | Platform Runtime client／host API／Settings | 版本化管理 DTO、inventory／setup／進度與 Runtime observed state |
 | Runtime agent adapter registry／bootstrap／provider config | 外部 descriptor 的准入、collision、selection、目錄與 transport 接入 |
 | Runtime managed execution／MCP／skills | 擁有者範圍、撤銷、租約／恢復與 skill provenance |
-| 新 Plugin artifact collection | upstream recipe／必要薄橋接／notices／compatibility／各 OS 產物 |
+| Platform operation journal／Runtime helper runner | lifecycle phases／step receipts／required actions／post-cleanup cache／補償與恢復 |
+| 最小 Plugin SDK（owner 待 P0 固定） | 協定 types／validator／transport helpers／無 hook 內容套件與故障 fixtures |
+| 新 Plugin artifact collection | source lock／recipe／來源封存／必要薄橋接／notices／compatibility／各 OS 產物 |
 | Desktop packaging／catalog consumer | internal-experiment policy、來源釘選與正式清單驗證 |
 
 這是工作範圍，不宣稱存在 Plugin SDK、安裝格式或 REST endpoint。P0 先完成各 owner
@@ -128,6 +157,9 @@ artifact 成功 build 不代表 upstream 可用；MCP server 可用也不代表 
 | 實驗流入正式版本 | build／profile policy、catalog／artifact inventory、skill context provenance |
 | 獨立更新與舊 host 不相容 | host／Runtime／protocol 版本交叉 fixtures、拒絕未知 schema |
 | 套件有開源授權但服務使用有疑慮 | 分別記錄 code license 與 service access；不把內測當豁免 |
+| 任意 hook 或重試擴張權限／重複外部副作用 | 受驗證 helper、步驟 receipts、先 reconcile、unknown 保持 pending |
+| 把重啟當作 skill 已清除 | 保留 exposure provenance，擋舊 context resume／fork，驗證新 context |
+| 上游沒 release、ref 漂移或消失 | 完整 commit＋內容校驗＋Cats 封存來源與 artifact，不退回 main |
 
 ## Progress log and resume checkpoint
 
@@ -172,6 +204,20 @@ Agency 文件驗證：4 份 Markdown 的 301 個本機連結目標及新研究 9
 連結路徑有效；LF、結尾換行、whitespace 與 diff 檢查通過。獨立唯讀 review 已完成，
 依建議釐清 Platform 為 installer writer，並移除標題對歷史 port 的預設。
 本輪沒有產品程式／Runtime 文件變更，沒有執行產品測試、上游 scripts 或模型品質評估。
+
+2026-09-28 lifecycle／source follow-up：依使用者要求補入 ADR-122、SPEC-121 FR-09／10
+與本 PLAN 的 P0–P4。新增 AC-13–AC-16，明列 Platform 編排／Runtime helper 執行、
+有界可選 hooks、無 hooks 內容套件、session 影響確認／准入 fence、新 context 恢復、
+step receipts／去重／補償，以及 post-uninstall 所需完整自有執行依賴的保留。
+來源預設為 source lock＋recipe；Submodule 可選且須一致性驗證，上游沒有 release
+可選完整 commit，再以獨立 Cats 版本／channel 發布。沒有建立 cats-plugins repo、
+SDK、source lock 實例或 artifact，沒有安裝／執行上游或改 Runtime／產品程式與版本。
+
+文件驗證：5 份 Markdown 的 265 個本機連結目標有效，FR-01–FR-10／AC-01–AC-16
+唯一且齊全；LF、結尾換行、whitespace 與 diff 檢查通過。獨立 review 指出的
+post-uninstall 執行依賴保留缺口已補入 FR-09、AC-14 與 P0／P2；回讀確認無剩餘阻擋項目。
+來源取得敘述已查核 Git／GitHub 官方文件。純文件改動未執行產品 tests／build，
+所有新增功能 AC 仍未執行。
 
 下一個工程階段仍為 P0，需確認提案與適合的候選；不要因本文件存在就開始實作 ChatGPT adapter、
 建立遠端 repo 或發布 Plugin。
