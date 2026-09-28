@@ -12,6 +12,10 @@
 
 ## Summary and scope
 
+Related proposal: [SPEC-121](SPEC-121-managed-plugin-capabilities.md) 另案定義可選裝外部能力
+Plugins，共用適用的安裝治理，但不放寬本 SPEC 的 renderer-only／無 install hook 邊界。
+兩案均未實作；共用契約需協調，不能相互當成已交付依賴。
+
 讓一般使用者從 Cats Home／Market 安裝、啟用、停用、更新、修復與移除官方 Apps。
 Usage 預裝啟用且保留恢復入口；Studio 選裝，沒有安裝就沒有 Home placeholder。
 同一 App 可獨立發布更新；停用與卸載的資源效果必須可驗證。

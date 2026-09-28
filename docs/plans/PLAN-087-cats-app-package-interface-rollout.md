@@ -2,6 +2,12 @@
 
 Status: Draft
 
+Follow-up proposal (2026-09-28):
+[PLAN-113](PLAN-113-managed-plugin-capabilities.md) proposes the managed upstream
+capability track. If adopted with ADR-122, its Plugin registration and lifecycle
+replace the relevant unimplemented connector work here. This does not complete
+those checkboxes, migrate existing Apps, or authorize general server execution.
+
 Implementation audit (2026-09-10): registry, manifest, Settings, and Lobby slices
 are present. [PLAN-106](./PLAN-106-official-app-package-hosting.md) now implements
 managed `.catsapp` installation, an opaque-frame renderer, SDK v1, and a narrowly

@@ -4,6 +4,12 @@
 
 Proposed
 
+Follow-up proposal (2026-09-28): [ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md)
+separates managed capability Plugins from user-facing Apps, with shared package
+governance and distinct execution contracts. If accepted, it replaces this proposal's
+Apps-only public vocabulary for capability connectors. Existing renderer Apps and
+deferred product modules are not converted or implemented by that proposal.
+
 ## Date
 
 2026-04-29
