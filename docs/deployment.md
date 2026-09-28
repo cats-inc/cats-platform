@@ -125,17 +125,32 @@ publishes Desktop nor creates its Git tag.
 
 ### Desktop publication
 
-Desktop **0.5.10** is prepared as a standard-profile preview only; Platform npm is not
-published at this version and npm `latest` stays 0.5.8. It bundles Runtime **0.3.4**,
-which stops Auggie and Kiro replies from flashing an empty bubble below them, completes
-turns that end without a result, reads Kiro 2.24's session store, runs Junie models by
-the setting IDs its `--model` accepts, and reports a request Pi ends with an error as a
-failure with Pi's message. Platform's model picker now selects a room's saved catalog
-entry when the saved model is that entry's execution ID, such as Pi's
-`openai-codex/gpt-6-sol` running as `gpt-6-sol`; it previously showed the first row,
-which then could not be picked. No public API, configuration or persisted-data contract
-changes; no migration, launcher minimum or App change is required. Publication receipts
-will follow the workflow and artifact verification.
+Desktop **0.5.10** was published on 2026-09-28 (Taipei) as a
+[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.10)
+from `c422d950302840d665778e8a5b45ff49bccb0c7d`; Platform npm is not published at this
+version and npm `latest` stays 0.5.8. Every OS build bundles Runtime **0.3.4** at
+`0804e238e1c9b6a29c3357301336400ea4e3ac64`, which stops Auggie and Kiro replies from
+flashing an empty bubble below them, completes turns that end without a result, reads
+Kiro 2.24's session store, runs Junie models by the setting IDs its `--model` accepts,
+and reports a request Pi ends with an error as a failure with Pi's message. Platform's
+model picker now selects a room's saved catalog entry when the saved model is that
+entry's execution ID, such as Pi's `openai-codex/gpt-6-sol` running as `gpt-6-sol`; it
+previously showed the first row, which then could not be picked. No public API,
+configuration or persisted-data contract changes; no migration, launcher minimum or App
+change is required; the Usage 0.4.0 pin is unchanged.
+
+`0.5.10 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
+The macOS build log shows the Developer ID signature, successful notarization and a
+`Notarized Developer ID` Gatekeeper assessment. Installs of 0.5.9 can self-update on
+every OS: macOS stays signed to signed with the same team, Windows unsigned to unsigned
+and Linux verifies no signature. The [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36361034630)
+passed all seven jobs and published ten assets, and all three update metadata files
+reference the uploaded assets with matching sizes. The downloaded Windows installer and
+Linux package match their GitHub SHA-256 digests and updater SHA-512 values. The Linux
+package contains Runtime 0.3.4 with the stream, turn-completion, Kiro store, stderr and
+Pi error changes and the 15 Junie setting IDs, and its renderer bundle contains the
+picker's entry-first selection. PR CI for both source changes passed before merge; no
+installed upgrade was exercised.
 
 Desktop **0.5.9** was published on 2026-09-28 (Taipei) as a
 [standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.9)
@@ -283,7 +298,7 @@ Consequences of an unsigned-override preview while it is the newest prerelease:
 Published Desktop history (versions not listed were not published as Desktop):
 
 - 0.3.0 and 0.3.1: before macOS credentials existed; every platform unsigned.
-- Standard: 0.3.2, 0.3.6, 0.3.7, 0.3.8, 0.4.0, 0.4.1, 0.4.2, 0.4.3, 0.4.5, 0.4.7, 0.5.0, 0.5.1, 0.5.2, 0.5.3, 0.5.4, 0.5.5, 0.5.6, 0.5.7, 0.5.8, 0.5.9.
+- Standard: 0.3.2, 0.3.6, 0.3.7, 0.3.8, 0.4.0, 0.4.1, 0.4.2, 0.4.3, 0.4.5, 0.4.7, 0.5.0, 0.5.1, 0.5.2, 0.5.3, 0.5.4, 0.5.5, 0.5.6, 0.5.7, 0.5.8, 0.5.9, 0.5.10.
 - Unsigned override: 0.3.3, 0.4.6.
 
 ### Product knowledge assets
