@@ -3,6 +3,10 @@
 Date: 2026-09-28
 Scope: 初步文件研究與 Cats 本機 source inspection；沒有執行、安裝或審計上游全部程式。
 
+Follow-up: [C2C pinned feasibility evaluation](2026-09-28-c2c-plugin-fit-evaluation.md)
+查核精確 revision 的程式入口、宿主依賴與 managed lifecycle 差異；完整 workflow 暫緩，
+bridge 子集另列未選定候選。下列初步研究保留原始範圍與 baseline。
+
 ## User direction
 
 使用者希望 Runtime、Platform／Products、Apps 之外有可安裝／移除的 Plugins。

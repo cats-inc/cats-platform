@@ -34,6 +34,8 @@
 
 - [x] 記錄使用者方向：重用上游、可管理能力、獨立 provider 可能性、實驗與分發分開。
 - [x] 查核 Apps／Runtime 現況與 OpenChatX／C2C 的呼叫方向，沒有安裝或連外執行。
+- [x] 釘定 C2C revision 並完成[靜態接入評估](../research/2026-09-28-c2c-plugin-fit-evaluation.md)：
+      完整 workflow 等待可用宿主／上游入口；bridge 子集仍未選定，沒有 live pilot 證據。
 - [ ] 確認 ADR／SPEC 範圍，選第一個具清楚授權、可機器呼叫的 upstream。
 - [ ] 明列 Plugin 外部能力、Cats 薄橋接、現有 Runtime transport；若需重造核心功能就換候選。
 - [ ] 選 MCP／skills 與 provider 的 pilot 證據；可同一 repo，但不能以 MCP 成功代替 provider。
@@ -140,7 +142,21 @@ artifact 成功 build 不代表 upstream 可用；MCP server 可用也不代表 
 turn／context 邊界，補 AC-08 與 P2，回讀確認無剩餘阻擋項目。精確 schema／協定／lease
 與 OS enforcement 仍是 P0 待固定的設計，不記作已實作。
 
-下一個工程階段為 P0，需先確認提案與候選；不要因本文件存在就開始實作 ChatGPT adapter、
+2026-09-28 follow-up：依使用者「開始」指示，在 `cats-platform-c2c-evaluation` worktree／
+`research/c2c-plugin-fit` 分支，釘定 C2C `9663b88753e35c76796c5bce000293e0bd22cd9e`
+並完成靜態 source 評估。Platform baseline 為已合併 PR #160 的 `55445aaf`，Runtime
+baseline 為 `73f9def9`。C2C 目前缺 Cats 可用的 browser host／task controller，且原版
+skill 更新／全域設定及程序停止語意需 managed 適配；不選為首個完整 workflow pilot。
+bridge-only 有可封裝入口，但需另確認產品價值，尚未 build、安裝、啟動或驗證。
+新增研究與索引，沒有改 ADR／SPEC 狀態、產品程式、版本、使用者設定或其他 repo。
+
+本輪驗證：5 份 Markdown 的 309 個本機連結目標皆存在；新研究的 20 個 immutable
+source links 對照本機 pinned checkout 的路徑／行號有效。LF、結尾換行、whitespace 與
+diff 檢查通過。獨立唯讀 review 確認 skill Plugin／獨立 provider 的判定未混淆、
+bridge-only 未過度承諾，沒有剩餘阻擋項目。沒有執行產品或上游測試；此為文件與靜態
+來源驗證，未證明 build／實際宿主相容性或完成整個 dependency license audit。
+
+下一個工程階段仍為 P0，需確認提案與適合的候選；不要因本文件存在就開始實作 ChatGPT adapter、
 建立遠端 repo 或發布 Plugin。
 
 *Last updated: 2026-09-28*

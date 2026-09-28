@@ -27,6 +27,9 @@ with the App Market proposal. No Plugin implementation, upstream pilot, new repo
 or release is authorized by these drafts. The
 [research note](research/2026-09-28-managed-plugins-and-chatgpt-adapter-fit.md)
 records why OpenChatX/C2C are references rather than selected ChatGPT adapters.
+The [pinned C2C evaluation](research/2026-09-28-c2c-plugin-fit-evaluation.md)
+checks actual entrypoints and host dependencies: the full workflow is on hold,
+and the bridge-only subset is an unselected candidate. No upstream code was executed.
 
 ## App Market and Lifecycle
 
