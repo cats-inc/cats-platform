@@ -125,6 +125,36 @@ publishes Desktop nor creates its Git tag.
 
 ### Desktop publication
 
+Desktop **0.5.13** was published on 2026-09-28 (Taipei) as a
+[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.13)
+from `d44e680800e2ba4c787f9c3182be5c7ca50e96ac`. All three OS builds bundle Runtime
+**0.3.4** at `9a35b7f4db77ed82715b229fb629f84f0115bfc5`, including native-session
+path matching, provider-reported served models/run logs, Copilot session model discovery,
+the Kiro v1 engine selection fix, bounded image operations and home-relative image-source
+recovery. Platform includes SDK **1.3.0** and image-job retention/recovery. The version
+preparation changed only version fields and release notes, preserving the other tracks'
+merged implementation. No npm, launcher or App release accompanies this Desktop preview;
+no persisted schema conversion is required.
+
+The default published App bundle still selects only Usage **0.4.0**, SHA-256
+`7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`. Studio 0.1.0 was
+included by the preceding local installer's extra lock and is not in the canonical public
+bundle. App/SDK/market architecture and Studio distribution policy remain a later task.
+
+`0.5.13 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
+The macOS log confirms Developer ID team `97JBZ3MFX5`, successful notarization, stapled-ticket
+validation and `Notarized Developer ID` Gatekeeper assessment. The standard-profile
+0.5.10 → 0.5.13 update path is expected to work on each OS: macOS retains the same signed
+team, Windows stays unsigned to unsigned, and Linux verifies no signature. No new installed
+upgrade was exercised; the earlier 0.5.12 local recovery acceptance is a separate result.
+
+[Candidate CI](https://github.com/cats-inc/cats-platform/actions/runs/36381628091) and all
+seven [Desktop workflow jobs](https://github.com/cats-inc/cats-platform/actions/runs/36382253778)
+passed. The published prerelease has ten assets. All three update metadata files name real
+uploaded files with matching sizes; downloaded Windows/Linux bytes match both GitHub
+SHA-256 and updater SHA-512. Linux package inspection confirms the Runtime changes,
+Platform 0.5.13, SDK 1.3.0 and the exact Usage pin. This verification made no provider calls.
+
 Desktop **0.5.10** was published on 2026-09-28 (Taipei) as a
 [standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.10)
 from `c422d950302840d665778e8a5b45ff49bccb0c7d`; Platform npm is not published at this

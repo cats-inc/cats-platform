@@ -2,7 +2,7 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
-## 2026-09-28 — Desktop 0.5.13 standard preview (prepared)
+## 2026-09-28 — Desktop 0.5.13 standard preview (published)
 
 - Packages all Platform changes through `b0c503bb877b20c341d3ba3f04c0eb4d44248dd6`,
   including App SDK 1.3 image operations and recovery of retained Grok images after
@@ -13,19 +13,27 @@
   alongside bounded image generation and source-path recovery.
 - Compatible Desktop patch; no persisted schema conversion or profile reset. Runtime,
   Platform npm, launcher and App publication are not part of this release.
-- Uses the standard preview signing profile (`unsigned=false`); actual per-platform
-  trust and published asset verification will be recorded after the workflow completes.
-  From published standard preview 0.5.10, the expected update path is macOS signed to
-  signed with the same Developer ID team, Windows unsigned to unsigned (no certificate),
-  and Linux n/a. Final trust must be confirmed from this build; no new installed-upgrade
-  acceptance is claimed by version preparation.
+- Uses the standard preview signing profile (`unsigned=false`). Verified trust:
+  macOS signed + notarized (Developer ID team `97JBZ3MFX5`), Windows unsigned:
+  no certificate, Linux n/a. The standard-preview 0.5.10 update path preserves
+  macOS signed to signed with the same team, Windows unsigned to unsigned and Linux
+  signature-independent updates. No new installed-upgrade acceptance was performed.
 - The published bundle retains the exact Usage 0.4.0 archive. Studio 0.1.0 was selected
   only by the preceding local installer, and is not in the published default App lock.
   App/SDK/market architecture and Studio distribution policy are deferred to the next
   discussion; this release changes no App selection or installation policy.
 
-Validation before version preparation: Platform CI for `b0c503bb` and Runtime release
-preflight for `9a35b7f4` passed. Release-candidate CI and Desktop publication are pending.
+Published from Platform `d44e680800e2ba4c787f9c3182be5c7ca50e96ac` at
+2026-09-28 13:37 Taipei. Platform/Runtime source CI and the exact
+[candidate CI](https://github.com/cats-inc/cats-platform/actions/runs/36381628091)
+passed. All seven [Desktop jobs](https://github.com/cats-inc/cats-platform/actions/runs/36382253778)
+passed and [the prerelease](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.13)
+contains ten assets. All three build logs confirm the fixed Runtime SHA; macOS notarization,
+stapled-ticket validation and Gatekeeper assessment passed. Update metadata names/sizes
+match the published assets. Downloaded Windows and Linux packages match their GitHub
+SHA-256 and updater SHA-512 values. Linux package inspection confirms SDK 1.3.0, Runtime
+0.3.4 with Kiro v1, reported-model run logs and image recovery, and the exact Usage pin.
+No new provider generation was performed.
 
 ## 2026-09-28 — Local Desktop 0.5.12 / Studio image collection fix
 
