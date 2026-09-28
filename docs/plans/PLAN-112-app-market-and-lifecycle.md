@@ -80,8 +80,15 @@ Catalog 暫存簽章 key 僅用於測試。
 
 ## M3 — Developer SDK and independent App delivery
 
-- [ ] 從既有 host-owned SDK 整理可獨立取得的型別、文件、範例與 conformance fixtures。
-- [ ] Apps 只依賴版本化開發契約；runtime bridge 不被重複打包或擴大能力。
+- [ ] 從既有 host-owned SDK 整理可獨立取得的型別、文件、範例與 conformance fixtures；
+      依 [ADR-123](../decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)
+      先以 `./app-sdk` subpath 提供 allowlist 契約與跨 OS byte-deterministic 官方 encoder，
+      公開入口不載入 `build/server` 內部模組，`APP_SDK_VERSION` 與
+      `packages/app-sdk/package.json` 版本以單一來源或 CI 斷言一致，Platform 測試 fixtures
+      改用同一 encoder。
+- [ ] Apps 只依賴版本化開發契約；runtime bridge 不被重複打包或擴大能力。最低宿主不低於
+      首個提供 subpath 版本的 App，以各自宣告的最低 `catsPlatform` 驗證產物，前提是該版本
+      已在 npm 發布；逐 App 的安裝或 CI matrix 由 cats-apps 設計。
 - [ ] Usage／Studio 對 candidate Desktop 新 minor 建立最低版本與實際驗證矩陣。
 - [ ] Apps build/release 產生 immutable bytes、lock、來源證據；catalog promotion 是另一動作。
 - [ ] 驗證 Usage 與 Studio 都在目錄，Desktop 只預裝 Usage，Studio 無預設 placeholder。
@@ -108,6 +115,7 @@ Exit：可 review 的 App／Catalog／SDK 候選產物與驗證紀錄齊備；�
 | `src/app/renderer/AppRendererSurface.tsx`, `AppHostRoute.tsx` | 主動 teardown、失效與宿主恢復 UI |
 | Home／Settings Apps／新 Market surface | 共用管理 client 與操作 DTO |
 | `packages/app-sdk`, Desktop bundle config／packaging | 可取得開發契約、信任根、Usage pins 與出貨政策 |
+| root `package.json` `exports` | `./app-sdk` 與 `./package.json`；minor 邊界交付並重做 deep-import 調查（ADR-123） |
 | Apps shared builder／release workflow／新 catalog tooling | immutable package 與獨立 promotion，見 Apps PLAN-004 |
 
 變更地圖是規劃，尚未建立新 endpoint 或宣稱現有 API 支援新參數。
@@ -153,5 +161,15 @@ Platform 本輪 10 份 Markdown 的 970 個本機連結目標存在；Apps 文�
 `npm run check:docs` 通過（38 份 Markdown、156 個本機目標，無略過 sibling links）。
 兩 repo 的 `git diff --check` 通過。未執行產品測試、build、安裝或 provider 呼叫；
 未將任何新增功能的 acceptance 標記完成。
+
+2026-09-29：新增 [ADR-123](../decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)
+（Proposed），記錄 SDK 開發契約先以 Platform npm 的 `./app-sdk` subpath 提供，第三方開發
+啟動後再獨立發布 `@cats-inc/app-sdk`；同步 M3、change map、SPEC-120 FR-10 與索引。
+僅文件變更，未修改 `package.json`、SDK、版本或發布。查證：npm registry 顯示 Platform
+`latest` 0.5.8（unpacked 約 18.9 MB、3,609 檔），0.5 線只有 0.5.1 與 0.5.8；Usage 與 Studio
+manifest 的最低宿主分別為 `^0.5.0` 與 `^0.5.11`。五個 checkout 分別搜尋裸套件名與
+`<subpath>`，程式碼只有 cats-one 的 `package.json` 解析。本機 Windows 的 `zlib.gzipSync`
+header OS byte 為 10，Linux／macOS 未驗證。6 份變更 Markdown 的 399 個本機連結目標
+（含 sibling repo）存在，`git diff --check` 通過。未執行產品測試、build、安裝或 provider 呼叫。
 
 *Last updated: 2026-09-29*

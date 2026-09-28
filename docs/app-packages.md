@@ -246,6 +246,8 @@ before preview publication; installed acceptance remains a separate task.
 - SDK: host-injected `globalThis.catsApp`, with identity/version/locale/theme,
   `usage.getSnapshot()`, `usage.refreshQuota()`, `images` and `openLobby()`. Executable SDK and browser typings live
   in `packages/app-sdk`; it is not a separately published npm package.
+  [ADR-123](decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md) proposes an
+  allowlisted `@cats-inc/cats-platform/app-sdk` subpath first; it is not implemented.
 - Renderer isolation: `sandbox="allow-scripts"` without same-origin access; CSP is
   inserted before any package markup, with default/network/frame/worker access denied.
   Source-window + opaque-origin + nonce bind a one-time MessageChannel handshake.
