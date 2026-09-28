@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-09-28-c2c-plugin-fit-evaluation](2026-09-28-c2c-plugin-fit-evaluation.md) | 2026-09-28 | Pinned C2C feasibility | Static assessment: host-dependent workflow on hold, no independent ChatGPT provider; bridge-only subset remains an unselected candidate |
 | [2026-09-28-managed-plugins-and-chatgpt-adapter-fit](2026-09-28-managed-plugins-and-chatgpt-adapter-fit.md) | 2026-09-28 | Managed Plugins and adapter fit | Upstream reuse, OpenChatX/C2C call direction, service-term distinction and current Cats integration gaps; no pilot selected or executed |
 | [2026-09-24-windows-terminal-catalog-pilot](./2026-09-24-windows-terminal-catalog-pilot.md) | 2026-09-24 | Native terminal catalog capture | UIA text, window screenshots, pane/focus guards and Runtime-owned Codex traversal |
 | [2026-09-23-linux-self-update-validation](./2026-09-23-linux-self-update-validation.md) | 2026-09-24 | Linux updates from 0.3.8 through 0.4.3 | Separates the privilege and download failures; records automatic 0.4.1 → 0.4.2 and 0.4.2 → 0.4.3 acceptance with NoNewPrivs 0→0, preserved settings/models, and the released tray fix |
