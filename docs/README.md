@@ -23,13 +23,21 @@ native UI Automation capture, pane/focus guards and the Runtime-owned Codex cata
 capability packages: thin bridges, Runtime provider/tool/skill registration,
 Desktop management, and separate internal-experiment and distribution policies.
 Existing Apps keep their renderer boundary; reusable lifecycle work is coordinated
-with the App Market proposal. No Plugin implementation, upstream pilot, new repo,
-or release is authorized by these drafts. The
+with the App Market proposal. The owner has authorized a project-bootstrap-based
+`cats-plugins` repository and an Agency Agents content-packaging MVP, with direct
+main commits/pushes there. Desktop/Runtime integration and product releases remain
+separate from this producer scope. The
 [research note](research/2026-09-28-managed-plugins-and-chatgpt-adapter-fit.md)
 records why OpenChatX/C2C are references rather than selected ChatGPT adapters.
 The [pinned C2C evaluation](research/2026-09-28-c2c-plugin-fit-evaluation.md)
 checks actual entrypoints and host dependencies: the full workflow is on hold,
 and the bridge-only subset is an unselected candidate. No upstream code was executed.
+The [Agency Agents assessment](research/2026-09-28-agency-agents-plugin-fit.md)
+recommends a small skills-only pilot using pinned upstream content and conversion,
+with explicit source admission and no automatic replacement of built-in roles.
+The proposal also defines host-owned lifecycle phases, optional bounded hooks,
+fresh-context recovery, and source locks for upstreams without releases
+(SPEC-121 FR-09/FR-10). These contracts and the minimal SDK remain unimplemented.
 
 ## App Market and Lifecycle
 
