@@ -2,6 +2,22 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-09-29 — Desktop 0.5.14 standard preview (prepared)
+
+- Adds a complete first-party source ZIP, SHA-256 checksum and source manifest to
+  Desktop releases, linked at the top of the release notes. GitHub's automatic
+  source downloads continue to contain Platform only.
+- Resolves Runtime once for all three OS builds and the source bundle. The archive
+  includes exact Platform/Runtime trees and the selected Usage producer revision,
+  validated against Usage 0.4.0's existing published bytes and rebuilt payload.
+- Publication is gated on source integrity and source identities read from all
+  three packaged hosts. Source archives cannot be selected as updater ZIPs.
+- Compatible patch: no persisted data migration, new App selection or Runtime/npm/
+  launcher publication. Managed Plugin experiments remain opt-in and unbundled.
+- The requested signing profile is standard. Actual per-OS trust, source revisions,
+  hosted CI/publication and downloaded-source acceptance will be recorded after
+  verification; this preparation does not claim the preview is already published.
+
 ## 2026-09-28 — Desktop 0.5.13 standard preview (published)
 
 - Packages all Platform changes through `b0c503bb877b20c341d3ba3f04c0eb4d44248dd6`,

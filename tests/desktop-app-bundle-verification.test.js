@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import test from 'node:test';
+import { createPackage } from '@electron/asar';
 import { sha256, PLATFORM_VERSION } from '#cats-app-package';
 import { verifyDesktopAppBundle } from '../scripts/verify-desktop-app-bundle.mjs';
 
@@ -41,6 +42,15 @@ test('installer verifier checks shipped bytes and source-free offline activation
     await writeFile(path.join(resources, 'desktop-package-plan.json'), JSON.stringify({ apps }));
     await writeFile(archive, bytes);
     assert.equal((await verifyDesktopAppBundle(resources, expectedLock)).offlineActivation, true);
+    const host = path.join(root, 'electron-host');
+    await mkdir(path.join(host, 'build/desktop'), { recursive: true });
+    const descriptor = { schemaVersion: 1, tag: `v${PLATFORM_VERSION}`, version: PLATFORM_VERSION,
+      platform: 'windows', commit: 'a'.repeat(40), runtimeCommit: 'b'.repeat(40) };
+    await writeFile(path.join(host, 'package.json'), JSON.stringify({ version: PLATFORM_VERSION }));
+    await writeFile(path.join(host, 'build/desktop/release-descriptor.json'), JSON.stringify(descriptor));
+    await createPackage(host, path.join(resources, 'app.asar'));
+    const receipt = (await verifyDesktopAppBundle(resources, expectedLock, { releaseReceipt: true })).receipt;
+    assert.deepEqual(receipt, { schemaVersion: 1, descriptor, apps: apps.map(({ id, version, sha256 }) => ({ id, version, sha256 })), offlineActivation: true });
     await writeFile(path.join(resources, 'desktop-package-plan.json'),
       JSON.stringify({ apps, sidecarLayout: { app: 'bundle', runtime: 'bundle' } }));
     await assert.rejects(verifyDesktopAppBundle(resources, expectedLock), /retain the SDK package import/);

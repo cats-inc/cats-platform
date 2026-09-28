@@ -287,6 +287,22 @@ result, and must never imply automatic installation.
 - **Why rejected**: CI build identity and product release identity are
   different concerns
 
+## Complete release sources (accepted 2026-09-29)
+
+Each subsequent Desktop release includes a Cats-produced source ZIP, a source
+manifest and its SHA-256 checksum alongside the existing installer/update assets.
+GitHub's automatic repository archives remain unchanged. The source bundle contains
+the exact Platform/Runtime trees and complete Apps producer trees selected by the
+bundled App artifacts, including licenses and build instructions. Runtime is resolved
+once before the build matrix. Published App provenance must name an immutable commit
+whose rebuilt payload matches the selected artifact. All three packaged identities
+must match the source manifest before the draft is published.
+
+The separate cats-one launcher and unbundled Plugins are not Desktop build inputs.
+Adding a bundled Plugin requires explicit source/provenance support rather than
+silently including an internal experiment. This is an additive release artifact
+contract; it changes no runtime API, persisted data or signing policy.
+
 ## References
 
 - [ADR-003: Electron host manages local services](./003-electron-host-manages-local-services.md)
@@ -301,5 +317,5 @@ result, and must never imply automatic installation.
 ---
 
 *Decision proposed: 2026-07-28*
-*Last updated: 2026-09-16*
+*Last updated: 2026-09-29*
 *Decision makers: User, with Codex support*

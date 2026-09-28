@@ -23,9 +23,13 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import yaml from 'js-yaml';
+import { verifySourceBundle, verifyBuildReceipts } from './desktop-source-bundle.mjs';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
+const SOURCE_ASSET = /^Cats-v\d+\.\d+\.\d+-(?:source\.zip(?:\.sha256)?|sources\.json)$/;
+const BUILD_RECEIPT = /^cats-build-(?:windows|macos|linux)\.json$/;
+const isSourceSupport = (name) => SOURCE_ASSET.test(name) || BUILD_RECEIPT.test(name);
 
 /**
  * electron-updater publishes one metadata file per platform. Each names the
@@ -81,6 +85,8 @@ function printHelp() {
 Options:
   --root <dir>   Directory to scan recursively. Defaults to release/.
   --json         Emit the machine-readable result instead of prose.
+  --source-tag <tag> --platform-commit <sha> --runtime-commit <sha>
+                 Also require the complete source bundle and three OS receipts.
   --help         Show this help text.
 
 Fails when generated update metadata references a file that is not present, or
@@ -103,6 +109,11 @@ export function parseArgs(argv) {
     }
     if (value === '--json') {
       options.json = true;
+      continue;
+    }
+    if (['--source-tag', '--platform-commit', '--runtime-commit'].includes(value)) {
+      if (!argv[index + 1] || argv[index + 1].startsWith('--')) throw new Error(`Missing ${value}`);
+      options[value.slice(2)] = argv[++index];
       continue;
     }
     throw new Error(`Unknown option: ${value}`);
@@ -231,7 +242,7 @@ export function resolveDisallowedArtifacts(fileNames, matrix = DESKTOP_RELEASE_M
   const extensions = releasedExtensions(matrix);
 
   return fileNames.filter((name) => {
-    if (isUpdateMetadata(name)) {
+    if (isUpdateMetadata(name) || isSourceSupport(name)) {
       return false;
     }
     const base = stripBlockmap(name);
@@ -249,7 +260,7 @@ export function resolveUnreleasedArchitectureArtifacts(
   matrix = DESKTOP_RELEASE_MATRIX,
 ) {
   return fileNames.filter((name) => {
-    if (isUpdateMetadata(name)) {
+    if (isUpdateMetadata(name) || isSourceSupport(name)) {
       return false;
     }
     const entry = platformForArtifact(name, matrix);
@@ -356,6 +367,9 @@ export function validateReleaseAssets({ files, metadataDocuments }) {
     }
 
     for (const target of referenced) {
+      if (isSourceSupport(target)) {
+        problems.push({ code: 'source_asset_used_as_update', message: `${name} must not reference source/support asset ${target}.` });
+      }
       if (!present.has(target)) {
         problems.push({
           code: 'referenced_artifact_missing',
@@ -366,6 +380,26 @@ export function validateReleaseAssets({ files, metadataDocuments }) {
   }
 
   return { ok: problems.length === 0, problems, fileNames: [...present].sort() };
+}
+
+export async function validateSourceAssets(files, { tag, platformCommit, runtimeCommit }) {
+  const named = (name) => {
+    const matches = files.filter((file) => basename(file) === name);
+    if (matches.length !== 1) throw new Error(`Expected exactly one ${name}, found ${matches.length}`);
+    return matches[0];
+  };
+  const expectedSources = [`Cats-${tag}-source.zip`, `Cats-${tag}-source.zip.sha256`, `Cats-${tag}-sources.json`];
+  if (files.some((file) => SOURCE_ASSET.test(basename(file)) && !expectedSources.includes(basename(file)))) throw new Error('Source assets from another version');
+  const manifest = verifySourceBundle({ tag, platformCommit, runtimeCommit,
+    archive: await readFile(named(expectedSources[0])), checksum: await readFile(named(expectedSources[1]), 'utf8'),
+    manifestBytes: await readFile(named(expectedSources[2])) });
+  const receipts = await Promise.all(['windows', 'macos', 'linux'].map(async (platform) => {
+    const receipt = JSON.parse(await readFile(named(`cats-build-${platform}.json`), 'utf8'));
+    if (receipt.descriptor?.platform !== platform) throw new Error('Build receipt platform mismatch');
+    return receipt;
+  }));
+  verifyBuildReceipts(manifest, receipts);
+  return manifest;
 }
 
 async function main() {
@@ -399,6 +433,14 @@ async function main() {
   }
 
   const result = validateReleaseAssets({ files, metadataDocuments });
+  if (parsed['source-tag']) {
+    try {
+      await validateSourceAssets(files, { tag: parsed['source-tag'], platformCommit: parsed['platform-commit'], runtimeCommit: parsed['runtime-commit'] });
+    } catch (error) {
+      result.ok = false;
+      result.problems.push({ code: 'source_bundle_invalid', message: error.message });
+    }
+  }
 
   if (parsed.json) {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

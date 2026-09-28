@@ -234,11 +234,10 @@ source before triggering it.
 
 Desktop builds Runtime from source, so Runtime npm publication is unnecessary.
 For previews, pass the full Runtime SHA rather than accepting the default `main`.
-**Current official-workflow limitation:** tag-triggered runs resolve Runtime
-`main` in each OS build and record the resulting SHA. The Platform tag does not
-pin Runtime, and the workflow does not currently resolve one shared Runtime SHA
-before the matrix. Record the actual revisions; adding that pin to official
-builds is a separate workflow change, not behavior supplied by this guide.
+The release guard resolves the requested ref (or `main` for official builds) once
+and passes that exact Runtime commit to every OS and the source job. The complete
+source manifest and three receipts read from the packaged hosts must agree before
+publication. Record the resolved commit; Runtime npm publication is still separate.
 
 Apps are selected separately through `config/desktop-apps.lock.json`, using exact
 versions, published URLs and SHA-256 values. Reuse the selected artifacts unless
@@ -250,6 +249,40 @@ the App version itself does not specify a compatible Desktop version.
 Confirm the complete workflow and the published release assets before reporting
 completion. Dispatching a workflow or uploading CI artifacts alone is not a
 published Desktop release.
+
+### Complete Desktop source downloads
+
+Starting with the prepared 0.5.14 release, the workflow builds
+`Cats-vX.Y.Z-source.zip`, its `.zip.sha256` checksum and `Cats-vX.Y.Z-sources.json`.
+The release description links this complete source set. GitHub's automatic
+`Source code` ZIP/tarball still contains only the tagged Platform repository.
+
+The custom archive contains full committed Platform and Runtime trees as siblings,
+plus the complete Cats Apps producer checkout at each selected App's recorded source
+commit under `cats-apps/<commit>`. It includes licenses, dependency lockfiles, an
+embedded `sources.json` and `BUILDING.md`. Published App provenance must match the
+selected ID/version/artifact hash; its source digest and rebuilt uncompressed payload
+must match before inclusion. No new App version is required for the source archive.
+
+Only actual Desktop inputs are included. cats-one is a separate launcher; no Plugin
+is currently bundled. Future bundled Plugins need explicit producer/upstream source
+handling before promotion. Git metadata, dependency installs, generated output and
+user profiles are not collected from local checkouts. Direct Git blob reads ignore
+local replace refs, checkout line-ending conversion and archive attributes;
+unsupported symlink/submodule entries fail source capture.
+
+Validate the downloaded ZIP with the published checksum and manifest using
+`node scripts/desktop-source-bundle.mjs verify --archive ZIP --manifest JSON --checksum FILE --tag vX.Y.Z --platform-commit SHA --runtime-commit SHA`.
+Build instructions inside the ZIP use the recorded Node version, sibling Runtime
+and Platform builds, and the local installer command. npm/network/OS tooling remain
+necessary; signing keys are separately held, and identical signed installer bytes
+are not promised. The workflow source gate also compares all three actual packaged
+release descriptors and the already-verified offline App selections.
+
+Source assets are uploaded only into the draft. Missing/mismatched source assets or
+receipts prevent publication, and source ZIPs are rejected as updater targets. The
+normal full source CI and standard signing checks remain required. Validate a real
+public download after release; local fixtures alone do not prove published content.
 
 ### Desktop signing profiles
 

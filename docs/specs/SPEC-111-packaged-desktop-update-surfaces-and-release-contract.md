@@ -548,6 +548,8 @@ One public release shall contain:
 - generated Windows, macOS, and Linux update metadata
 - any differential-update files generated and referenced by that metadata
 - checksums or provenance output required by the release workflow
+- `Cats-vX.Y.Z-source.zip`, `Cats-vX.Y.Z-source.zip.sha256` and
+  `Cats-vX.Y.Z-sources.json` for the complete first-party Desktop source set
 
 The release UI shall identify NSIS, DMG, and `.deb` as the primary choices.
 Updater-only metadata and the macOS ZIP may remain attached without being
@@ -587,6 +589,36 @@ somewhere, just not on the platform that produced it.
 The official Windows release workflow shall pass the sidecar layout explicitly;
 it shall not depend on the installer's current `split` default. The bundle
 selection applies to both `cats-platform` and `cats-runtime`.
+
+#### Complete source bundle (2026-09-29)
+
+The release guard resolves the requested Runtime ref once to an immutable commit;
+all three OS builds and the source job use it. The Platform commit is the selected
+release commit. The source job archives every tracked regular file from those
+commits and from each included App's exact producer commit, reading Git blobs directly
+without local replace refs or checkout/archive transformations. Unsupported
+symlinks/submodules, missing licenses/lockfiles, ambiguous App provenance
+or a payload that does not rebuild from its claimed source fail the job.
+
+The ZIP contains Platform and Runtime as siblings, plus `cats-apps/<commit>` for
+each distinct selected Apps revision. Its embedded manifest equals the separately
+downloadable manifest, recording repository commits, file counts, tree digests,
+executable paths, selected App hashes and source/payload verification. Build guidance
+includes required Node/npm/OS tooling; dependencies and signing credentials are not
+embedded. cats-one and unbundled Plugins are outside this Desktop input set.
+
+After normal bundled-App byte/offline checks, each OS records the release descriptor
+read from its actual `app.asar` and the verified App selection. Publication requires
+all three receipts to match the source manifest's Platform/Runtime commits, version
+and App set. Source ZIP/checksum/manifest must exist exactly once and pass integrity
+checks; update metadata must never select them as updater assets. Release notes link
+the complete source ZIP and explain GitHub's automatic archives are Platform-only.
+
+Acceptance covers omitted/tampered files, wrong source commits, mismatched App
+provenance, differing OS receipts, missing source assets, updater/source separation,
+and building from extracted source without the original worktrees or Git history.
+Public download verification is recorded for the actual release, separately from
+fixture checks. Published assets are never replaced to add this feature retroactively.
 
 ### 9. Security and Trust
 

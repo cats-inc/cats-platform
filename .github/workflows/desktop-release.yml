@@ -44,6 +44,12 @@ on:
 permissions:
   contents: read
 
+# Serialize retries/dispatches for the same draft so installers and source assets
+# cannot be overwritten by another run between validation and publication.
+concurrency:
+  group: desktop-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 env:
   CATS_SKIP_MOBILE: '1'
   # Source-controlled exact release URLs and SHA-256 hashes, never implicit latest.
@@ -59,6 +65,7 @@ jobs:
       preview: ${{ steps.resolve.outputs.preview }}
       unsigned: ${{ steps.resolve.outputs.unsigned }}
       source_commit: ${{ steps.source.outputs.commit }}
+      runtime_commit: ${{ steps.runtime.outputs.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -92,6 +99,18 @@ jobs:
       # Runs before any expensive platform build so a mismatched tag fails fast.
       - name: Check tag matches both package files
         run: node scripts/validate-release-version.mjs --tag "${{ steps.resolve.outputs.tag }}"
+
+      - name: Resolve one Runtime source for the whole release
+        uses: actions/checkout@v4
+        with:
+          repository: cats-inc/cats-runtime
+          ref: ${{ inputs.runtime_ref || 'main' }}
+          path: runtime-source
+
+      - name: Pin Runtime commit
+        id: runtime
+        working-directory: runtime-source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   draft:
     name: Create draft release
@@ -167,7 +186,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cats-inc/cats-runtime
-          ref: ${{ inputs.runtime_ref || 'main' }}
+          ref: ${{ needs.guard.outputs.runtime_commit }}
           path: cats-runtime
 
       # shell: bash is required. The default shell on windows-latest is
@@ -259,7 +278,15 @@ jobs:
           ${{ matrix.extra_args }}
 
       - name: Verify bundled App versions and offline activation
-        run: node scripts/verify-desktop-app-bundle.mjs --release-root release --expect-lock config/desktop-apps.lock.json
+        run: node scripts/verify-desktop-app-bundle.mjs --release-root release --expect-lock config/desktop-apps.lock.json --receipt receipts/cats-build-${{ matrix.platform }}.json
+
+      - name: Upload packaged source identity receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-receipt-${{ matrix.platform }}
+          path: cats-platform/receipts/cats-build-${{ matrix.platform }}.json
+          if-no-files-found: error
+          retention-days: 7
 
       # Verification follows the credentials, not the release identity: a
       # signed preview is verified, and a platform with no certificate says so
@@ -338,9 +365,54 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  sources:
+    name: Build complete source bundle
+    needs: [guard, draft]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: cats-platform
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.source_commit }}
+          path: cats-platform
+      - uses: actions/checkout@v4
+        with:
+          repository: cats-inc/cats-runtime
+          ref: ${{ needs.guard.outputs.runtime_commit }}
+          path: cats-runtime
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: cats-platform/.nvmrc
+      - run: npm ci --omit=dev
+      - name: Archive exact sources and verify selected App payloads
+        run: >
+          node scripts/desktop-source-bundle.mjs build
+          --tag ${{ needs.guard.outputs.tag }}
+          --platform-commit ${{ needs.guard.outputs.source_commit }}
+          --runtime-root ../cats-runtime
+          --runtime-commit ${{ needs.guard.outputs.runtime_commit }}
+          --output source-release
+      - name: Upload source assets to the draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.guard.outputs.tag }}
+        run: |
+          test "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = true
+          gh release upload "$TAG" source-release/* --clobber
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-sources
+          path: cats-platform/source-release/*
+          if-no-files-found: error
+          retention-days: 7
+
   validate-assets:
     name: Validate release assets
-    needs: [guard, build]
+    needs: [guard, build, sources]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -364,7 +436,11 @@ jobs:
           path: collected
 
       - name: Check update metadata references real files
-        run: node scripts/validate-release-assets.mjs --root collected
+        run: >
+          node scripts/validate-release-assets.mjs --root collected
+          --source-tag ${{ needs.guard.outputs.tag }}
+          --platform-commit ${{ needs.guard.outputs.source_commit }}
+          --runtime-commit ${{ needs.guard.outputs.runtime_commit }}
 
   publish:
     name: Publish release
@@ -384,6 +460,10 @@ jobs:
           TAG: ${{ needs.guard.outputs.tag }}
           PREVIEW: ${{ needs.guard.outputs.preview }}
         run: |
+          gh release view "$TAG" --json body --jq .body > original-notes.md
+          printf '## Complete Cats source code\n\n[Download the complete source ZIP](https://github.com/cats-inc/cats-platform/releases/download/%s/Cats-%s-source.zip) · [Source manifest](https://github.com/cats-inc/cats-platform/releases/download/%s/Cats-%s-sources.json)\n\nIncludes the exact Platform, Runtime and bundled App sources. GitHub\x27s automatic **Source code** links contain cats-platform only. See BUILDING.md inside the ZIP.\n\n' "$TAG" "$TAG" "$TAG" "$TAG" > release-notes.md
+          cat original-notes.md >> release-notes.md
+          gh release edit "$TAG" --notes-file release-notes.md
           if [ "$PREVIEW" = "true" ]; then
             gh release edit "$TAG" --draft=false --prerelease
           else

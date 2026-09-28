@@ -4,11 +4,12 @@
 // Alternatively pass --resources <resources-directory>. Uses only a temporary registry;
 // does not start provider CLIs, download Apps, or touch the user's installed state.
 import assert from 'node:assert/strict';
-import { access, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { access, mkdtemp, readFile, readdir, rm, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
+import { extractFile } from '@electron/asar';
 import { resolveDesktopHostConfig } from '../build/desktop/config.js';
 import { buildManagedServiceSpecs } from '../build/desktop/processSupervisor.js';
 import { installBundledApps } from '../build/server/platform/apps/packageInstaller.js';
@@ -17,7 +18,7 @@ import { readAppRenderer } from '../build/server/platform/apps/renderer.js';
 
 const pins = (apps) => apps.map(({ id, version, sha256 }) => ({ id, version, sha256 }));
 
-export async function verifyDesktopAppBundle(resourcesRoot, expectedLockPath) {
+export async function verifyDesktopAppBundle(resourcesRoot, expectedLockPath, { releaseReceipt = false } = {}) {
   const root = await mkdtemp(path.join(tmpdir(), 'cats-packaged-app-check-'));
   try {
     const config = resolveDesktopHostConfig({
@@ -65,7 +66,14 @@ export async function verifyDesktopAppBundle(resourcesRoot, expectedLockPath) {
       assert.ok(app.manifest.contributions.lobbyApps.length > 0);
       assert.ok((await readAppRenderer(app)).html.includes('<head>'));
     }
-    return { resources: path.resolve(resourcesRoot), apps: pins(bundled.apps), offlineActivation: true };
+    const result = { resources: path.resolve(resourcesRoot), apps: pins(bundled.apps), offlineActivation: true };
+    if (releaseReceipt) {
+      const descriptor = JSON.parse(extractFile(path.join(resourcesRoot, 'app.asar'),
+        path.join('build', 'desktop', 'release-descriptor.json')).toString('utf8'));
+      assert.equal(descriptor.version, JSON.parse(extractFile(path.join(resourcesRoot, 'app.asar'), 'package.json').toString('utf8')).version);
+      result.receipt = { schemaVersion: 1, descriptor, apps: result.apps, offlineActivation: true };
+    }
+    return result;
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -87,12 +95,12 @@ async function findResources(directory, depth = 0) {
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--help')) {
-    console.log('Usage: verify-desktop-app-bundle.mjs (--release-root <directory> | --resources <directory>) --expect-lock <lock>');
+    console.log('Usage: verify-desktop-app-bundle.mjs (--release-root <directory> | --resources <directory>) --expect-lock <lock> [--receipt <json-file>]');
     return;
   }
   const options = {};
   for (let index = 0; index < args.length; index += 2) {
-    if (!['--resources', '--release-root', '--expect-lock'].includes(args[index])
+    if (!['--resources', '--release-root', '--expect-lock', '--receipt'].includes(args[index])
       || !args[index + 1] || args[index + 1].startsWith('--')) throw new Error('Invalid verifier arguments. Use --help.');
     options[args[index]] = path.resolve(args[index + 1]);
   }
@@ -100,7 +108,17 @@ async function main() {
   assert.ok(Boolean(options['--resources']) !== Boolean(options['--release-root']), 'Select resources or release-root');
   const roots = options['--resources'] ? [options['--resources']] : await findResources(options['--release-root']);
   assert.ok(roots.length > 0, 'No unpacked installer resources found');
-  for (const resources of roots) console.log(JSON.stringify(await verifyDesktopAppBundle(resources, options['--expect-lock']), null, 2));
+  let receipt;
+  for (const resources of roots) {
+    const result = await verifyDesktopAppBundle(resources, options['--expect-lock'], { releaseReceipt: Boolean(options['--receipt']) });
+    if (receipt) assert.deepEqual(result.receipt, receipt, 'Unpacked release identities differ');
+    receipt = result.receipt;
+    console.log(JSON.stringify(result, null, 2));
+  }
+  if (options['--receipt']) {
+    await mkdir(path.dirname(options['--receipt']), { recursive: true });
+    await writeFile(options['--receipt'], `${JSON.stringify(receipt, null, 2)}\n`);
+  }
 }
 
 if (path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {

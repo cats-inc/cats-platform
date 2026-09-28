@@ -309,9 +309,10 @@ pattern needs a code-level guardrail (e.g. dev-server seal mode).
   unsigned=true, state its macOS self-update consequences and obtain the
   operator's confirmation of them; the word "unsigned" alone is not enough.
 - Do not automatically bump/publish Runtime, cats-one or Apps. Pin `runtime_ref`
-  for previews and exact App versions/URLs/hashes for Desktop. Official builds
-  currently resolve Runtime main per OS; record those SHAs and the limitation in
-  the SOP. Bundling Runtime does not require a preceding Runtime npm release.
+  for previews and exact App versions/URLs/hashes for Desktop. The release guard
+  resolves one Runtime commit shared by every OS and the complete source bundle;
+  source and packaged identity validation gate publication. Bundling Runtime
+  does not require a preceding Runtime npm release.
 - Publishing an App does not automatically change config/desktop-apps.lock.json
   or publish Desktop. Compatibility requirements determine coordinated changes.
 - Preserve App manifest `catsPlatform` and `appSdk` compatibility checks. The

@@ -7,7 +7,7 @@
 | **Status** | Draft |
 | **Owner** | User |
 | **Reviewer** | User |
-| **Last updated** | 2026-09-24 |
+| **Last updated** | 2026-09-29 |
 
 ## Related Spec
 
@@ -485,6 +485,28 @@ ownership boundaries in ADR-108 and SPEC-111.
 - Do not add a renderer fallback that fetches GitHub directly.
 
 ## Progress Log
+
+### Complete source bundle — 2026-09-29
+
+User authorized direct main implementation/commit/push and a Desktop standard
+preview for source-package acceptance. Prepared version 0.5.14 is a compatible
+patch; no data migration or Runtime/App/launcher version change is required.
+
+- [x] Resolve one Runtime commit for all OS builds and source capture.
+- [x] Archive full committed Platform/Runtime/selected Apps trees, validate App
+      provenance and reproduce the published App payload; exclude local state.
+- [x] Emit source manifest, ZIP, checksum and build instructions; compare all OS
+      packaged descriptors and App receipts before publishing the draft.
+- [x] Focused source/release tests: 73 passing, including missing/tampered source,
+      exact App identity, three-OS agreement and updater/source separation.
+- [x] Complete local packaging regression tests and independent review. The
+      Windows ASAR path regression was corrected and retested; exact Git blob
+      capture also covers archive attributes, replacement refs and checkout EOLs.
+- [ ] Complete hosted CI and exercise source capture against published App assets.
+- [ ] Publish standard preview, download/verify public source assets, and validate
+      an extracted source build. Record exact source identities and workflow evidence.
+
+### Earlier delivery
 
 | Date | Update |
 |------|--------|
