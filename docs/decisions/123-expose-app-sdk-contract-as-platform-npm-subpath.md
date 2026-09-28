@@ -2,8 +2,10 @@
 
 ## Status
 
-Proposed, 2026-09-29。使用者要求把本次 npm／SDK 分發討論的建議整理成文件；實作、
-`package.json` `exports` 變更、版本 bump 與任何 npm 發布都尚未授權，也不由本 ADR 授權。
+Accepted for Stage 1, 2026-09-29。使用者先要求把 npm／SDK 分發討論整理成文件，同日再要求
+開始第一階段實作（不含獨立 npm 發布）。第一階段已在 Platform 實作並附測試，但尚未隨任何
+Platform npm 版本發布；第二階段、版本 bump 與任何 npm 發布都仍需另外授權。
+[實作紀錄](#stage-1-implementation-2026-09-29)列出與原提案不同的兩處修正。
 
 本 ADR 採用 [ADR-094](094-adopt-cats-app-packages-as-extension-boundary.md)（Proposed）
 Interface Direction 已提出的 `@cats-inc/cats-platform/app-sdk` 入口名稱，並為
@@ -90,9 +92,10 @@ Interface Direction 已提出的 `@cats-inc/cats-platform/app-sdk` 入口名稱�
      （ADR-121 §7、SPEC-120 FR-10）。
    - 公開驗證必須就是安裝器使用的驗證，不另寫第二套 validator；App CI 通過的套件
      不能在同版本宿主安裝時因格式或 manifest 規則被拒。
-   - 公開入口必須能在不載入 `build/server` 內部模組或 Platform 執行期依賴的情況下
-     import。manifest 驗證目前在 `src/shared/*.ts` 且編譯進 server，讓它從單一來源同時
-     供安裝器與公開入口使用，是實作的主要工作。
+   - 公開入口不得載入 server 執行期模組（server entry、routes、store 等）或 Platform
+     執行期依賴，只能載入格式、encoder 與 manifest 驗證模組。manifest 驗證在
+     `src/shared/*.ts` 且編譯進 `build/server`，讓它從單一來源同時供安裝器與公開入口
+     使用，是實作的主要工作。
 
 3. **官方 encoder 必須跨 OS byte-deterministic。** 相同輸入在 Windows、macOS、Linux 上
    都必須產生相同 bytes，才能保留 cats-apps「同版本不同內容即失敗」的重建檢查與 SHA-256
@@ -101,14 +104,19 @@ Interface Direction 已提出的 `@cats-inc/cats-platform/app-sdk` 入口名稱�
    producer CI 已用同類方法比對 Windows、Linux、macOS。Platform 測試除了刻意構造的
    無效套件，也改用同一 encoder 產生 fixtures。
 
-4. **`exports` 是公開 import 契約變更，隨 minor 邊界交付。** 宣告 `exports` 會封鎖所有
-   未列出的套件路徑。
-   - 必須列出 `./package.json`，否則 cats-one 無法找到 Platform。
-   - `.` 目前解析到 Electron main，不是可 import 的函式庫 API；裸套件名與 subpath 調查都
-     沒有 import 使用者，預設不宣告。
-   - `bin` 與 Electron 的 `main` 不經 `exports` 解析，不受影響。
-   - 實作時重做上述 import 調查，並把變更放在下一個 minor 邊界；SPEC-120 FR-11 已規劃
-     0.6.0。本 ADR 不 bump 版本。
+4. **以相容方式加入 `exports`；收緊為 allowlist 才是 breaking，隨 minor 邊界交付。**
+   宣告 `exports` 會封鎖所有未列出的套件路徑，因此第一階段同時宣告：
+   - `.`：等同原本的 `main`（Electron main，不是可 import 的函式庫 API）。
+   - `./package.json`：cats-one 依賴它找到 Platform。
+   - `./app-sdk`：公開 SDK 入口。
+   - `./*`：讓先前可解析的套件路徑維持可解析。它只是相容措施，不是公開契約；文件只承諾
+     `./app-sdk` 與 `./package.json`。
+   - 如此加入 `exports` 本身不是 breaking，下一次 Platform npm 發布不會因此被迫升 minor。
+     唯一失去的是 CommonJS 對無副檔名深路徑的自動補副檔名；調查沒有這類使用者。
+   - 移除 `./*`（真正封鎖未列出路徑）是 breaking，放在下一個 minor 邊界，屆時重做 import
+     調查；SPEC-120 FR-11 已規劃 0.6.0。本 ADR 不 bump 版本。
+   - `bin` 與 Electron 的 `main` 不經 `exports` 解析，不受影響。消費端需使用
+     `node16`、`nodenext` 或 `bundler` module resolution；舊的 `node10` 解析不支援 subpath。
 
 5. **SDK 版本只有一個來源。** `packages/app-sdk/package.json` 的 `version` 為權威；
    `APP_SDK_VERSION` 由它衍生，或以 CI 斷言兩者相等。宿主宣告的 SDK 版本、subpath
@@ -134,6 +142,39 @@ Interface Direction 已提出的 `@cats-inc/cats-platform/app-sdk` 入口名稱�
    [cats-apps ADR-001](../../../cats-apps/docs/decisions/001-own-official-utility-apps-and-coordinate-desktop-distribution.md)
    對「每個 App 一個 repo」的評估相同。
 
+## Stage 1 implementation (2026-09-29)
+
+- 公開入口：`src/app-sdk/index.ts` 編譯為 `build/server/app-sdk/index.js` 與 `.d.ts`，由
+  `exports['./app-sdk']` 指向。它只 re-export `APP_SDK_VERSION`、`MAX_PACKAGE_BYTES`、
+  `decodeAppPackage`、`supportsVersion`、`encodeAppPackage`、`validateRendererAppPackage`、
+  `parseCatsAppManifestV1`、manifest 常數，以及 manifest、browser SDK 與驗證結果型別。
+- 套件格式拆分：`packages/app-sdk/format.js` 是宿主與公開入口共用的格式（解碼、版本比對、
+  限制常數）；`packages/app-sdk/encode.js` 是只供公開入口使用的 encoder；`package.js` 只留
+  宿主專用函式並 re-export 格式。內部以 `#cats-app-format`、`#cats-app-encode` alias 引用；
+  既有 `#cats-app-package` 的語意不變，server 執行路徑不載入 encoder。
+- 同一套驗證：`src/app-sdk/packageValidation.ts` 的 `validateRendererAppPackage` 就是安裝器
+  的完整檢查（解碼、manifest、`user-app` 與保留 ID、相容版本、renderer 權限）；安裝器的
+  `validateRendererPackage` 改為傳入宿主版本後呼叫它。呼叫端必須明確提供
+  `platformVersion`，`PLATFORM_VERSION` 不公開。
+- Encoder（修正第 3 點的實作方式）：使用 exact-pinned 的 fflate 0.8.3 純 JS deflate
+  （level 9）、固定 gzip header（mtime 0、OS byte 3）、檔案依路徑的 code-unit 順序排序、
+  manifest key 遞迴排序、拒絕非 JSON 值，並在回傳前以 `decodeAppPackage` 自我驗證。
+  - 取捨證據：以 Node zlib 在本機 Windows x64 重新壓縮已發布的 Usage 0.4.0（ubuntu 建置），
+    把 OS byte 改成 3 後 bytes 完全相同；但 Node 內建 zlib 可能隨 Node 版本或 CPU 路徑改變
+    輸出，arm64 無法在此驗證，因此改用建構上即 deterministic 的純 JS 實作。
+  - 代價：與先前用 Node zlib 建置的已發布 artifact 不 byte 相容，同輸入約大 2%。已發布版本
+    不可變，cats-apps 的重建檢查只比對同一輸出目錄，因此沒有功能影響。升級 fflate 等同改變
+    所有 App 的 bytes，由 golden hash 測試攔截。
+- `exports`（修正第 4 點）：以相容方式加入，見上方第 4 點。
+- 測試：`tests/app-sdk-public-entry.test.js` 固定公開名稱；以靜態 import 圖限制公開入口只
+  載入格式、encoder 與 manifest 驗證模組；檢查 SDK 版本三處一致、golden hash 與 header、
+  順序無關；並確認公開驗證與安裝器拒絕相同的套件。`tests/package-contract.test.js` 檢查
+  每個 `exports` 目標都在 npm tarball 內。
+- 跨 OS 證據：golden hash 測試在本機 Windows 通過，PR CI 在 Linux 執行同一測試；macOS
+  未驗證，純 JS 實作不依賴平台。
+- 尚未完成：Platform 既有測試中手組的有效 envelope 尚未改用 encoder；範例與 conformance
+  fixtures、含此入口的 Platform npm 發布，以及 cats-apps 的切換都是後續工作。
+
 ## Consequences
 
 ### Positive
@@ -154,7 +195,8 @@ Interface Direction 已提出的 `@cats-inc/cats-platform/app-sdk` 入口名稱�
   npm 目前落後 Desktop：0.5 線只有 0.5.1 與 0.5.8，Studio 宣告的 `^0.5.11` 在 npm 上
   沒有對應版本。首個提供 subpath 的 Platform 版本，以及之後各 App 採用的最低宿主版本，
   都必須先發布到 npm，cats-apps 才能切換；這些發布都需要另外授權。
-- `exports` 會封鎖未列出的 deep import，必須在 minor 邊界交付並重做 import 調查。
+- `./*` 讓 deep path 暫時仍可解析；allowlist 要到 minor 邊界移除 `./*` 後才真正強制，
+  在那之前只能靠文件與測試約束公開範圍。
 
 ### Neutral
 

@@ -220,11 +220,12 @@ SDK 1.3 image methods 本期可保留；Market 管理 API 屬宿主，不自動�
 開發工具對 Usage／Studio 的 minimum-host 與 candidate-host 都跑契約 fixtures。
 開發 SDK 的可取得產物與 npm 發布是另有發布範圍的交付，不因寫文件執行 publication。
 
-取得方式依 [ADR-123](../decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)（Proposed）
+取得方式依 [ADR-123](../decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)（第一階段已實作、未發布）
 分階段：第一階段由 Platform npm 的 `@cats-inc/cats-platform/app-sdk` subpath 提供 allowlist
 契約，包含型別、安裝器所用的同一套驗證與跨 OS byte-deterministic 的官方 encoder，不公開
 `browser.js` bridge 與宿主專用函式；第三方開發啟動後，再從同一目錄獨立發布
-`@cats-inc/app-sdk`。`exports` 變更屬公開 import 契約，隨 FR-11 的 minor 邊界交付。
+`@cats-inc/app-sdk`。`exports` 以保留 `.` 與 `./*` 的相容方式加入；移除 `./*` 收緊為
+allowlist 才是 breaking，隨 FR-11 的 minor 邊界交付。
 
 ## FR-11 — 現有 profile 升級與版本界線
 
