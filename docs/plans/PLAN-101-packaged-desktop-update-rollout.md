@@ -489,7 +489,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 ### Complete source bundle — 2026-09-29
 
 User authorized direct main implementation/commit/push and a Desktop standard
-preview for source-package acceptance. Prepared version 0.5.14 is a compatible
+preview for source-package acceptance. Published version 0.5.14 is a compatible
 patch; no data migration or Runtime/App/launcher version change is required.
 
 - [x] Resolve one Runtime commit for all OS builds and source capture.
@@ -502,9 +502,24 @@ patch; no data migration or Runtime/App/launcher version change is required.
 - [x] Complete local packaging regression tests and independent review. The
       Windows ASAR path regression was corrected and retested; exact Git blob
       capture also covers archive attributes, replacement refs and checkout EOLs.
-- [ ] Complete hosted CI and exercise source capture against published App assets.
-- [ ] Publish standard preview, download/verify public source assets, and validate
+- [x] Complete hosted CI and exercise source capture against published App assets.
+- [x] Publish standard preview, download/verify public source assets, and validate
       an extracted source build. Record exact source identities and workflow evidence.
+
+Accepted [0.5.14 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.14):
+[source CI](https://github.com/cats-inc/cats-platform/actions/runs/36482494829)
+passed with 5,254 passing/59 skipped tests and no failures; all eight
+[release jobs](https://github.com/cats-inc/cats-platform/actions/runs/36483520103)
+passed. Platform `ddfa30fb40ddf1ac0c5be4fd1c6640b46b7ef49c`, Runtime
+`7c1b80c21ebe7031ec2c8f61677277bb781ec8fd`, and Apps
+`cb48b229295d5cb4bb6f3009fbe0b9e81afe1b63` supply 4,221 repository files.
+Public ZIP SHA-256 is
+`a066869e4b68fe408a6aeb20d3f23fd80579c2f42197bef985404aabb437a445`.
+Public downloads exactly match the isolated, successfully built archive;
+Runtime/Platform builds and Usage payload reproduction passed on Windows with
+Node 24.21.0, and all three packaged receipts match the source manifest. macOS
+signature/notarization passed, Windows has no certificate, Linux trust is n/a.
+Local source acceptance did not install Desktop or validate an upgrade path.
 
 ### Earlier delivery
 

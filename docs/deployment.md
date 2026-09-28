@@ -252,7 +252,7 @@ published Desktop release.
 
 ### Complete Desktop source downloads
 
-Starting with the prepared 0.5.14 release, the workflow builds
+Starting with the published 0.5.14 standard preview, the workflow builds
 `Cats-vX.Y.Z-source.zip`, its `.zip.sha256` checksum and `Cats-vX.Y.Z-sources.json`.
 The release description links this complete source set. GitHub's automatic
 `Source code` ZIP/tarball still contains only the tagged Platform repository.

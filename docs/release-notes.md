@@ -2,7 +2,7 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
-## 2026-09-29 — Desktop 0.5.14 standard preview (prepared)
+## 2026-09-29 — Desktop 0.5.14 standard preview (published)
 
 - Adds a complete first-party source ZIP, SHA-256 checksum and source manifest to
   Desktop releases, linked at the top of the release notes. GitHub's automatic
@@ -14,9 +14,32 @@
   three packaged hosts. Source archives cannot be selected as updater ZIPs.
 - Compatible patch: no persisted data migration, new App selection or Runtime/npm/
   launcher publication. Managed Plugin experiments remain opt-in and unbundled.
-- The requested signing profile is standard. Actual per-OS trust, source revisions,
-  hosted CI/publication and downloaded-source acceptance will be recorded after
-  verification; this preparation does not claim the preview is already published.
+- Standard profile (`unsigned=false`): macOS signed and notarized with Developer ID
+  team `97JBZ3MFX5`, Windows unsigned because no certificate is configured, Linux n/a.
+  This source-package acceptance did not install Desktop or exercise self-update.
+
+Published at 2026-09-29 05:09 Taipei from Platform
+`ddfa30fb40ddf1ac0c5be4fd1c6640b46b7ef49c`, with Runtime 0.3.4 at
+`7c1b80c21ebe7031ec2c8f61677277bb781ec8fd` and Usage 0.4.0 producer sources at
+`cb48b229295d5cb4bb6f3009fbe0b9e81afe1b63`.
+[Full source CI](https://github.com/cats-inc/cats-platform/actions/runs/36482494829)
+passed (5,254 passed, 59 skipped, zero failures), and all eight jobs in the
+[standard-preview workflow](https://github.com/cats-inc/cats-platform/actions/runs/36483520103)
+succeeded, including the three packaged source receipts and source publication gate.
+
+The [published preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.14)
+links the [complete source ZIP](https://github.com/cats-inc/cats-platform/releases/download/v0.5.14/Cats-v0.5.14-source.zip)
+and [source manifest](https://github.com/cats-inc/cats-platform/releases/download/v0.5.14/Cats-v0.5.14-sources.json).
+The 12,928,754-byte ZIP contains 3,098 Platform, 1,053 Runtime and 70 Apps files,
+plus the manifest and build instructions. Its SHA-256 is
+`a066869e4b68fe408a6aeb20d3f23fd80579c2f42197bef985404aabb437a445`.
+Unauthenticated public downloads match both the release asset digests and the
+archive used for a clean Windows/Node 24.21.0 build: Runtime `npm ci` + `npm run build`,
+Platform `npm ci` + `npm rebuild electron` + `npm run build:no-mobile`, and the
+included Usage producer build all passed. Usage's decoded payload and source digest
+match its published artifact; all 4,223 archived files remained unchanged after
+building. No local checkout, Git metadata or pre-existing dependency directory was
+used by those extracted-source builds.
 
 ## 2026-09-28 — Desktop 0.5.13 standard preview (published)
 
