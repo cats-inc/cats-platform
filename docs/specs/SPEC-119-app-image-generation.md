@@ -35,6 +35,12 @@ later reads recover the same receipt/bytes. Cancellation is persistent and wins 
 Unknown Runtime outcomes remain explicitly interrupted. Saved images remain viewable when
 Runtime is offline. Current data is additive; no existing profile reset or conversion.
 
+After the native session-path correction, opening Studio also checks failed
+`invalid_image_source` jobs through Runtime GET only. If Runtime validates and recovers
+that same receipt/image, collection completes the original Core task/run and adds its
+artifact. A foreign receipt or unchanged failure leaves the work failed. No new submission
+or provider call is authorized by this repair.
+
 ## Acceptance
 
 Use actual Studio archive + real host renderer/SDK/routes, fixture Runtime and temporary

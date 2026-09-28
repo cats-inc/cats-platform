@@ -23,6 +23,7 @@ export interface AppImageInput { requestId: string; instance: string; prompt: st
 export type ImageRuntimeClient = Pick<RuntimeClient, 'getImageCapabilities' | 'submitImageJob' | 'getImageJob' | 'cancelImageJob' | 'getImageBytes'>;
 export interface AppImageDependencies { coreStore: CoreStore; runtimeClient: ImageRuntimeClient; chatStatePath: string; }
 const activeStatuses = new Set(['submitting', 'running', 'collecting', 'cancelling']);
+const sourceFailure = (job: AppImageJob) => job.status === 'failed' && job.error === 'invalid_image_source';
 const hash = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex');
 const taskId = (id: string) => `task-app-image-${id}`;
 const runId = (id: string) => `run-app-image-${id}`;
@@ -83,7 +84,7 @@ export class AppImageService {
   async list(scope: AppImageScope) {
     await this.authorize(scope);
     const own = jobs(await this.deps.coreStore.readCore()).filter((job) => job.appId === scope.appId && job.accountId === scope.accountId);
-    for (const job of own) if (activeStatuses.has(job.status)) this.watch(job);
+    for (const job of own) if (activeStatuses.has(job.status) || sourceFailure(job)) this.watch(job);
     return own.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100);
   }
   async submit(scope: AppImageScope, value: unknown): Promise<AppImageJob> {
@@ -156,7 +157,7 @@ export class AppImageService {
     try {
       for (let attempt = 0; attempt < 160; attempt++) {
         const current = jobs(await this.deps.coreStore.readCore()).find((entry) => entry.id === job.id);
-        if (!current || !activeStatuses.has(current.status)) return;
+        if (!current || (!activeStatuses.has(current.status) && !sourceFailure(current))) return;
         try { await this.authorize(this.scope(job)); } catch {
           await this.deps.runtimeClient.cancelImageJob?.(job.id);
           await this.update(job.id, { status: 'cancelled', error: 'app_context_revoked' }); return;
@@ -176,6 +177,16 @@ export class AppImageService {
           }
           await new Promise<void>((resolve) => { const timer = setTimeout(resolve, 2000); timer.unref?.(); });
           continue;
+        }
+        // Runtime can recollect an existing image after a source-path fix. Never resubmit a failed job.
+        if (sourceFailure(current)) {
+          if (remote.status !== 'succeeded') return;
+          if (remote.id !== job.id || remote.instance !== job.instance || remote.prompt !== job.prompt) return;
+          await this.mutate((core) => {
+            const latest = jobs(core).find((entry) => entry.id === job.id);
+            return latest && sourceFailure(latest)
+              ? replaceJob(core, { ...latest, status: 'collecting', error: null, updatedAt: new Date().toISOString() }) : core;
+          });
         }
         try { await this.accept(job, remote); }
         catch (error) {

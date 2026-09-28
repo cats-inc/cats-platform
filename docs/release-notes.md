@@ -2,6 +2,15 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-09-28 — Local Desktop 0.5.12 / Studio image collection fix
+
+- Resolves Grok's home-relative session directory before validating generated image paths.
+- Studio can recover a prior `invalid_image_source` result from its existing validated
+  image and matching session evidence. The original Runtime receipt is backed up; the
+  existing Core task/run is retained. Recovery never submits another generation.
+- Local installer update only. Studio 0.1.0, Usage 0.4.0 and SDK 1.3.0 remain unchanged.
+  No persisted schema changes or public release are involved.
+
 ## 2026-09-28 — Local Desktop 0.5.11 / Studio slice
 
 - Adds compatible App SDK 1.3 image jobs, cancellation, retained image preview and

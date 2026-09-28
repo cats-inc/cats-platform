@@ -94,6 +94,30 @@ test('transient Runtime read failure recovers the same attempt; no generating PO
   await waitFor(f, job.id); assert.equal(f.submissions(), 1);
 });
 
+test('reopening recollects a repaired source failure into the original task without resubmission', async (t) => {
+  const f = await setup(t);
+  const submit = f.client.submitImageJob;
+  f.client.submitImageJob = async (request) => {
+    const result = { ...await submit(request), status: 'failed', error: 'invalid_image_source', output: null };
+    f.records.set(request.id, result); return result;
+  };
+  const job = await f.service.submit(f.scope, input());
+  await waitFor(f, job.id, 'failed');
+  assert.equal((await f.deps.coreStore.readCore()).artifacts.length, 0);
+  f.service = new AppImageService(f.deps);
+  const remote = f.records.get(job.id);
+  // An unrelated receipt cannot repair this work.
+  f.records.set(job.id, { ...remote, status: 'succeeded', prompt: 'Foreign work', output: f.output });
+  await f.service.list(f.scope); await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.equal((await f.deps.coreStore.readCore()).tasks[0].metadata.appImage.status, 'failed');
+  f.records.set(job.id, { ...remote, status: 'succeeded', error: null, output: f.output });
+  await waitFor(f, job.id); assert.equal(f.submissions(), 1);
+  assert.ok((await f.service.image(f.scope, job.id)).equals(f.image));
+  const core = await f.deps.coreStore.readCore();
+  assert.equal(core.tasks.length, 1); assert.equal(core.runs.length, 1); assert.equal(core.artifacts.length, 1);
+  assert.equal(core.tasks[0].metadata.appImage.id, job.id);
+});
+
 test('cancel while submission is awaiting acknowledgement also cancels its late Runtime admission', async (t) => {
   const f = await setup(t); f.run(); f.hold();
   const job = await f.service.submit(f.scope, input());

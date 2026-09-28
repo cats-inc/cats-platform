@@ -39,3 +39,34 @@ manual installer update, not an automatic update or a public release.
 Local bundle selection preserves published Usage0.4.0 at its existing hash and adds a local
 immutable Studio archive. Synthetic tests never write the user's Core/profile. Installation
 is the actual user-requested operation. Further fresh Grok calls are deferred.
+
+## Subsequent real-attempt correction
+
+The user reported their actual Studio generation failed. Its Runtime receipt was
+`failed / invalid_image_source`; Grok's matching session contained a successfully generated
+1024 × 1024 JPEG. Runtime incorrectly treated configured `~/.grok/sessions` as a literal
+relative directory. The fix resolves the native home directory and revalidates existing
+session evidence/image without any provider execution, retaining the original failed
+receipt as a backup. Platform rechecks these failed receipts on list/open and collects a
+matching repaired result into the same task/run/artifact, with no new submission.
+
+- [x] Runtime home-path and collection-recovery regression tests (9 cases).
+- [x] Platform recovery regression (8 image cases) and installed original-image acceptance.
+- [x] Local Desktop 0.5.12 installer update; existing Studio/Usage archive pins unchanged.
+
+This follow-up repairs actual requested user work. Synthetic regression data remains
+isolated; no additional paid image attempt is part of the correction.
+
+The local 0.5.12 installer completed successfully after normal tray Quit. The replacement
+process runs 0.5.12, with SDK 1.3.0 and healthy App/Runtime services. Opening Studio
+automatically recovered the existing failed job; the actual UI shows its tabby-cat image,
+saved state and completed work, and image enlargement opens/closes successfully.
+Runtime and Platform retained bytes both match the original Grok image SHA-256. The
+Grok session's events, updates, usage and image are unchanged. The original failed Runtime
+receipt is backed up. Core preserves 1 task, 1 run, 4 turns and 0 conversations, adding
+exactly 1 image artifact. Setup completion and tray/background/close preferences persist.
+
+0.5.12 installer SHA-256: `ce2d6615254c22d0d3c79d495565379126e0ba3fc7ab884749696f100bed1be1`.
+Verification covered recovery of the user's actual generated image; a fresh paid generation
+after the fix was deliberately not performed. Private captures and hash checks are kept
+outside Git. Runtime 9 tests, Platform 8 tests, type/build gates and independent review pass.
