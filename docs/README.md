@@ -30,6 +30,9 @@ records why OpenChatX/C2C are references rather than selected ChatGPT adapters.
 The [pinned C2C evaluation](research/2026-09-28-c2c-plugin-fit-evaluation.md)
 checks actual entrypoints and host dependencies: the full workflow is on hold,
 and the bridge-only subset is an unselected candidate. No upstream code was executed.
+The [Agency Agents assessment](research/2026-09-28-agency-agents-plugin-fit.md)
+recommends a small skills-only pilot using pinned upstream content and conversion,
+with explicit source admission and no automatic replacement of built-in roles.
 
 ## App Market and Lifecycle
 

@@ -36,7 +36,9 @@
 - [x] 查核 Apps／Runtime 現況與 OpenChatX／C2C 的呼叫方向，沒有安裝或連外執行。
 - [x] 釘定 C2C revision 並完成[靜態接入評估](../research/2026-09-28-c2c-plugin-fit-evaluation.md)：
       完整 workflow 等待可用宿主／上游入口；bridge 子集仍未選定，沒有 live pilot 證據。
-- [ ] 確認 ADR／SPEC 範圍，選第一個具清楚授權、可機器呼叫的 upstream。
+- [x] 完成 [Agency Agents 靜態評估](../research/2026-09-28-agency-agents-plugin-fit.md)：
+      推薦少量角色作 skills-only pilot；來源／投遞／遷移契約及實際驗收尚未完成。
+- [ ] 確認 ADR／SPEC 範圍，選第一個具清楚授權、可驗證接入／投遞介面的 upstream。
 - [ ] 明列 Plugin 外部能力、Cats 薄橋接、現有 Runtime transport；若需重造核心功能就換候選。
 - [ ] 選 MCP／skills 與 provider 的 pilot 證據；可同一 repo，但不能以 MCP 成功代替 provider。
 - [ ] 在 Runtime owner repo 固定註冊／撤銷／租約／probe／skill delivery 的版本化契約與 fixtures，
@@ -155,6 +157,21 @@ source links 對照本機 pinned checkout 的路徑／行號有效。LF、結尾
 diff 檢查通過。獨立唯讀 review 確認 skill Plugin／獨立 provider 的判定未混淆、
 bridge-only 未過度承諾，沒有剩餘阻擋項目。沒有執行產品或上游測試；此為文件與靜態
 來源驗證，未證明 build／實際宿主相容性或完成整個 dependency license audit。
+
+2026-09-28 Agency follow-up：C2C 評估 PR #161 已以 auto-merge 合併為 `dec5af9b`，
+CI required checks 通過。另在 `cats-platform-agency-evaluation` worktree／
+`research/agency-plugin-fit` 分支，以此 commit 為 Platform baseline 評估 Agency Agents。
+使用者既有 reference pin 為 `00fb28a4`，另取目前上游 `479193dc` 做靜態查核；兩者均未修改。
+確認上游已有 SKILL.md converter，推薦 Code Reviewer／UX Researcher 為小型內容 Plugin
+候選，未執行 converter／installer、未建立可安裝產物。Cats 33 個 release／36 個含 preview
+skills 目前為 Runtime 自有內容；抽樣與上游不等價，不能視為可全數直接替換的 port。
+下一步契約工作需明列 Runtime ADR-018／SPEC-013 的來源邊界擴充、collision／provenance／
+撤銷與既有 skill refs 的遷移原則；本輪未改其 accepted 狀態，亦未進入 P1。
+
+Agency 文件驗證：4 份 Markdown 的 301 個本機連結目標及新研究 9 個 pinned source
+連結路徑有效；LF、結尾換行、whitespace 與 diff 檢查通過。獨立唯讀 review 已完成，
+依建議釐清 Platform 為 installer writer，並移除標題對歷史 port 的預設。
+本輪沒有產品程式／Runtime 文件變更，沒有執行產品測試、上游 scripts 或模型品質評估。
 
 下一個工程階段仍為 P0，需確認提案與適合的候選；不要因本文件存在就開始實作 ChatGPT adapter、
 建立遠端 repo 或發布 Plugin。
