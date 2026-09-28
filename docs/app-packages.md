@@ -3,6 +3,21 @@
 Usage is the display name; `cats.usage` remains the stable package ID. The first
 implementation is a renderer-only utility package, not another Platform product.
 
+## Planned Market and lifecycle follow-up
+
+[ADR-121](decisions/121-distribute-apps-independently-with-host-owned-lifecycle.md),
+[SPEC-120](specs/SPEC-120-app-market-and-lifecycle.md), and
+[PLAN-112](plans/PLAN-112-app-market-and-lifecycle.md) define the next phase:
+Usage remains preinstalled and keeps a host-owned Home placeholder after removal;
+Studio is optional and has no uninstalled Home entry. Both use independent App
+releases, a verified official catalog and the same install/update/repair lifecycle.
+
+This is not delivered by Desktop 0.5.13. Current uninstall marks registry state
+and requests image-job cancellation; it does not delete package files. Current
+`purge` removes the registry record, not App data. Complete resource reclamation,
+same-version repair, active-context revocation, catalog UX and schema upgrades
+are planned. SDK 1.3 image operations below remain the implemented boundary.
+
 ## Host and SDK compatibility
 
 Studio 0.1.0 (`cats.studio`) is a separate image App beside Usage. Its first local

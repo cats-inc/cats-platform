@@ -16,6 +16,11 @@ packages, load their renderers, enforce a public SDK boundary, and expose a scop
 read-only telemetry operation. Include pinned app versions with Desktop first;
 remote catalog discovery and independent app updates are later phases.
 
+That follow-up is now planned in [SPEC-120](SPEC-120-app-market-and-lifecycle.md)
+and [PLAN-112](../plans/PLAN-112-app-market-and-lifecycle.md), including Usage's
+preinstalled Home recovery entry, optional Studio and actual package cleanup.
+This does not retroactively mark those capabilities implemented by this slice.
+
 ## Baseline Before This Slice
 
 | Capability | Actual implementation |

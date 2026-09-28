@@ -8,6 +8,12 @@ extensions and catalog updates remain planned; see the [frozen v1 contract](../a
 
 ## Context
 
+Follow-up direction accepted on 2026-09-28:
+[ADR-121](121-distribute-apps-independently-with-host-owned-lifecycle.md) extends
+the initial coordinated delivery with independent official catalog distribution,
+Usage preinstallation/recovery and optional Studio. That phase remains planned;
+the implementation history and repository boundaries below remain applicable.
+
 ADR-048 distinguishes Products from installable Apps. ADR-094/SPEC-098 describe
 the App Package extension boundary, and PLAN-087 delivered its first registry,
 management, and Lobby foundations.

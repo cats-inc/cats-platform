@@ -15,6 +15,17 @@ public deterministic fixtures cannot establish model improvement.
 [Windows Terminal catalog pilot](research/2026-09-24-windows-terminal-catalog-pilot.md) records
 native UI Automation capture, pane/focus guards and the Runtime-owned Codex catalog workflow.
 
+## App Market and Lifecycle
+
+[ADR-121](decisions/121-distribute-apps-independently-with-host-owned-lifecycle.md),
+[SPEC-120](specs/SPEC-120-app-market-and-lifecycle.md), and
+[PLAN-112](plans/PLAN-112-app-market-and-lifecycle.md) plan independent official App
+distribution and real lifecycle management. Usage stays preinstalled with a Home
+recovery placeholder; Studio is optional and appears only while installed.
+The design covers SDK/catalog boundaries, repair, resource cleanup and profile
+upgrades. Implementation and publication have not started. App-side work is in
+[Apps PLAN-004](../../cats-apps/docs/plans/PLAN-004-independent-app-distribution.md).
+
 ## Orchestrator Knowledge and Collaboration
 
 [ADR-119](decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md),
@@ -468,6 +479,6 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-09-27*
+*Last updated: 2026-09-28*
 
 - Studio: [SDK specification](specs/SPEC-119-app-image-generation.md) and [delivery plan](plans/PLAN-111-app-image-generation.md).
