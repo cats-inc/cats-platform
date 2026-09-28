@@ -11,9 +11,10 @@ Accepted direction, 2026-09-28；使用者已核准整理規劃文件。實作�
 
 ## Context
 
-Related proposal (2026-09-28): [ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md)
-另案規劃可選裝的外部能力 Plugins。兩案協調共用安裝／來源／生命週期機制；本 ADR 的
-renderer App 範圍不因此擴大，也不以 Plugin 設計已完成作為本案實作前提。
+Related track: [ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md)
+另案管理可選裝的外部能力 Plugins。2026-09-29 已交付 Agency content pilot，一般 Plugin
+SDK／目錄仍待實作。兩案協調適用的安裝／來源／生命週期機制；本 ADR 的 renderer App
+範圍不因此擴大，也不以一般 Plugin SDK 已完成作為本案實作前提。
 
 Usage 已是獨立版本的 `.catsapp`，隨公開 Desktop 預裝。Studio 已有獨立套件與 SDK 1.3
 生圖介面，但只在先前本機客製安裝時選入；公開 Desktop 0.5.13 的預設清單只有 Usage。
@@ -50,6 +51,17 @@ Studio 未安裝時只在 Market 出現。兩者停用必須停止 App 活動，
    第三方投稿、付款、評分與任意背景程式執行另案規劃。
 9. **升級資料先於發布。** 新 registry、操作 journal 與來源／使用者意圖需要受測的升級與
    失敗恢復。詳見 SPEC-120；不得用清空 profile 或降版讀新資料替代 migration。
+10. **商店與已安裝管理各有入口。** Apps Marketplace 是獨立 Desktop 頁面，由 Home
+    醒目進入，可直接探索、查看詳情與安裝。Settings Apps 聚焦已安裝管理；兩者共用
+    同一生命週期服務與狀態，不要求先到 Settings 才能安裝。Plugins 使用獨立 Settings
+    分頁，Home 若提供 Plugin 管理入口則為小型捷徑，不套用到 Apps 商店入口。
+11. **管理權限由宿主驗證。** 使用者發起的安裝、啟停、更新、修復、移除與機器層級
+    設定變更，必須具備可驗證的 Desktop management context。一般 browser／remote
+    client、owner 登入、localhost 或前端環境旗標都不足以取得此權限；App SDK 也不
+    提供套件管理權。這不決定已安裝 App 的網頁可用性或 App 內一般偏好設定。
+
+2026-09-29 管理入口與授權補充為已接受的規劃要求；具體 transport／驗證契約與
+Desktop／browser 驗收仍在 PLAN-112 M0 起執行，不代表目前已實施此限制。
 
 ## Consequences
 
@@ -84,4 +96,4 @@ Studio 未安裝時只在 Market 出現。兩者停用必須停止 App 活動，
 - [目前套件能力](../app-packages.md)
 - [圖片與作品 ownership](../specs/SPEC-119-app-image-generation.md)
 
-*Last updated: 2026-09-28*
+*Last updated: 2026-09-29*

@@ -12,9 +12,10 @@
 
 ## Summary and scope
 
-Related proposal: [SPEC-121](SPEC-121-managed-plugin-capabilities.md) 另案定義可選裝外部能力
+Related track: [SPEC-121](SPEC-121-managed-plugin-capabilities.md) 另案定義可選裝外部能力
 Plugins，共用適用的安裝治理，但不放寬本 SPEC 的 renderer-only／無 install hook 邊界。
-兩案均未實作；共用契約需協調，不能相互當成已交付依賴。
+Agency content pilot 已交付；一般 Plugin SDK／目錄與本 SPEC 的 App Market 仍未實作，
+不能把 pilot 當成共用生命週期契約已完成的證據。
 
 讓一般使用者從 Cats Home／Market 安裝、啟用、停用、更新、修復與移除官方 Apps。
 Usage 預裝啟用且保留恢復入口；Studio 選裝，沒有安裝就沒有 Home placeholder。
@@ -60,13 +61,31 @@ Desktop 清單提供 `appId`、`preinstall`、`homePresence: pinned | installed-
 
 ## FR-02 — Market 與管理 UX
 
-Home 提供「探索 Apps」；Market 有探索、已安裝與更新視圖，Settings Apps 共用同一管理服務。
+Home 提供醒目的「探索 Apps」，直接開啟獨立 Desktop Marketplace；商店有探索、已安裝、
+更新與詳情視圖，可直接安裝，不必繞到 Settings。Settings Apps 聚焦已安裝清單、權限、
+機器層級設定、啟停、更新、修復與移除；商店詳情可提供適用操作，兩者共用管理服務與狀態。
+Home 保留既定 App 啟動／恢復卡片。Plugins 使用獨立 Settings 分頁；其 Home 管理捷徑
+若提供則維持小型入口，不限制 Apps 商店的醒目入口。
 詳情顯示名稱、用途、發布者、版本／更新說明、相容性、功能需求、權限與明確操作狀態。
 一般流程不要求使用者輸入檔案路徑、digest、CLI 指令或 API key。
 
 安裝不代表 provider 已準備好。Studio 缺少 Grok 設定／登入時，顯示現有 setup 導引；
 不因安裝而呼叫生圖、切換 provider 選擇或自動安裝 CLI。作品讀取不依賴生成服務在線。
 診斷 hash、路徑、來源與清理詳細資訊放進可展開區域；Settings 操作回饋沿用既有 toast 規則。
+
+### Desktop management authorization
+
+所有使用者發起的 install／enable／disable／update／repair／uninstall 與機器層級設定
+變更，必須在宿主管理服務邊界驗證 Desktop management context；拒絕未獲授權的請求時，
+不得改 registry、套件檔案或程序狀態。不能只藏 UI、信任 owner 登入、localhost、Origin
+或前端傳入的環境旗標。一般 browser／remote client 直接呼叫 endpoint 也適用此限制。
+M0 固定 context 的簽發／傳遞、生命週期與撤銷方式，以及拒絕偽造／重播的契約與 fixtures；
+本文件不把目前既有 API 宣稱為已符合要求。
+
+Desktop Marketplace、Settings 與 Home 恢復操作使用同一授權與生命週期服務，頁面路徑
+不是授權條件。App iframe／SDK 不取得管理權限。Desktop 自有的首次 bundled 初始化
+與重啟調和仍依 FR-01／FR-08 的宿主政策執行，不接受 browser 代為要求執行。
+已安裝 App 能否從授權網頁使用、一般 App 內偏好設定，與此管理限制分開決定。
 
 ## FR-03 — 版本化狀態與操作協調
 
@@ -238,8 +257,10 @@ Usage／Studio 的 ^0.5 範圍不接受 0.6，需另發布正確相容範圍的 
 | AC-12 | 新 SDK 不破壞既有 App；不相容 App 安裝前攔下 | minimum/candidate host 契約測試 |
 | AC-13 | 新 Studio artifact 可更新同一宿主，無需重打 Desktop | source-free 兩版本安裝演練 |
 | AC-14 | 卸載明示保留資料；重裝接回作品／設定；共用引用與其他帳號無變更；不提供假資料清除動作 | owner fixtures、前後資料 digest／引用檢查 |
+| AC-15 | Home 醒目入口直接開獨立 Marketplace，探索／詳情／安裝不跳 Settings；完成後 Home／Settings／Market 狀態一致 | 隔離 Desktop 與共用 lifecycle 操作證據 |
+| AC-16 | owner browser／remote、localhost、偽造環境旗標、失效／重播 context 與 App iframe 均不能管理套件；拒絕後 registry／package／process 無變更；已授權 Desktop 操作仍成功 | 直接 API 拒絕 fixtures、context 撤銷、多入口 Desktop 驗收 |
 
 以上均未執行。合成資料只能放暫存 profile／registry；不污染使用者狀態，不消耗 Grok 額度。
 量測以活動資源與檔案證據為主，RAM/RSS 僅輔助，不以固定 MB 或立刻下降當驗收門檻。
 
-*Last updated: 2026-09-28*
+*Last updated: 2026-09-29*
