@@ -85,7 +85,8 @@ Catalog 暫存簽章 key 僅用於測試。
       先以 `./app-sdk` subpath 提供 allowlist 契約與跨 OS byte-deterministic 官方 encoder，
       公開入口不載入 `build/server` 內部模組，`APP_SDK_VERSION` 與
       `packages/app-sdk/package.json` 版本以單一來源或 CI 斷言一致，Platform 測試 fixtures
-      改用同一 encoder。
+      改用同一 encoder。2026-09-29 已實作 subpath、encoder、共用驗證與版本一致檢查；
+      fixture 轉換、範例與 conformance fixtures 仍待完成。
 - [ ] Apps 只依賴版本化開發契約；runtime bridge 不被重複打包或擴大能力。最低宿主不低於
       首個提供 subpath 版本的 App，以各自宣告的最低 `catsPlatform` 驗證產物，前提是該版本
       已在 npm 發布；逐 App 的安裝或 CI matrix 由 cats-apps 設計。
@@ -115,7 +116,7 @@ Exit：可 review 的 App／Catalog／SDK 候選產物與驗證紀錄齊備；�
 | `src/app/renderer/AppRendererSurface.tsx`, `AppHostRoute.tsx` | 主動 teardown、失效與宿主恢復 UI |
 | Home／Settings Apps／新 Market surface | 共用管理 client 與操作 DTO |
 | `packages/app-sdk`, Desktop bundle config／packaging | 可取得開發契約、信任根、Usage pins 與出貨政策 |
-| root `package.json` `exports` | `./app-sdk` 與 `./package.json`；minor 邊界交付並重做 deep-import 調查（ADR-123） |
+| root `package.json` `exports` | 已加入 `.`、`./package.json`、`./app-sdk` 與相容用 `./*`；minor 邊界移除 `./*` 前重做 deep-import 調查（ADR-123） |
 | Apps shared builder／release workflow／新 catalog tooling | immutable package 與獨立 promotion，見 Apps PLAN-004 |
 
 變更地圖是規劃，尚未建立新 endpoint 或宣稱現有 API 支援新參數。
@@ -171,5 +172,14 @@ manifest 的最低宿主分別為 `^0.5.0` 與 `^0.5.11`。五個 checkout 分�
 `<subpath>`，程式碼只有 cats-one 的 `package.json` 解析。本機 Windows 的 `zlib.gzipSync`
 header OS byte 為 10，Linux／macOS 未驗證。6 份變更 Markdown 的 399 個本機連結目標
 （含 sibling repo）存在，`git diff --check` 通過。未執行產品測試、build、安裝或 provider 呼叫。
+
+2026-09-29：實作 ADR-123 第一階段（不含獨立 npm 發布）。新增 `./app-sdk` exports、
+`packages/app-sdk/format.js`／`encode.js`、`src/app-sdk/` 公開入口與共用驗證，安裝器改用同一
+驗證；`exports` 以保留 `.` 與 `./*` 的相容方式加入。未 bump 版本或發布。本機驗證：server、
+desktop、renderer 的 `tsc --noEmit` 通過；test 設定只剩 worktree 未安裝 mobile 依賴造成的
+2 個 `mobile/` 錯誤。`build:server`、`build:host`、`build:web`、`build:test-ui` 完成後，含新測試在內
+與 App／SDK／package／Desktop 打包相關的 17 個測試檔共 97 項通過。另以外部 consumer
+（NodeNext）完成型別檢查與執行期 import。未跑完整 `npm test`、mobile 檢查或 macOS；
+fixture 轉換與 cats-apps 切換仍待後續。
 
 *Last updated: 2026-09-29*

@@ -246,8 +246,14 @@ before preview publication; installed acceptance remains a separate task.
 - SDK: host-injected `globalThis.catsApp`, with identity/version/locale/theme,
   `usage.getSnapshot()`, `usage.refreshQuota()`, `images` and `openLobby()`. Executable SDK and browser typings live
   in `packages/app-sdk`; it is not a separately published npm package.
-  [ADR-123](decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md) proposes an
-  allowlisted `@cats-inc/cats-platform/app-sdk` subpath first; it is not implemented.
+- Developer contract: [ADR-123](decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)
+  exposes an allowlisted `@cats-inc/cats-platform/app-sdk` entry, first available from the
+  next Platform npm publication. It provides the manifest and browser SDK types,
+  `validateRendererAppPackage` (the installer's own check; pass the host `platformVersion`),
+  `decodeAppPackage`, `supportsVersion` and `encodeAppPackage`. The encoder is
+  cross-platform deterministic: pinned pure-JS deflate, fixed gzip header, sorted files and
+  manifest keys. Consumers need `node16`, `nodenext` or `bundler` module resolution.
+  The injected `browser.js` bridge and host lock helpers are not exported.
 - Renderer isolation: `sandbox="allow-scripts"` without same-origin access; CSP is
   inserted before any package markup, with default/network/frame/worker access denied.
   Source-window + opaque-origin + nonce bind a one-time MessageChannel handshake.

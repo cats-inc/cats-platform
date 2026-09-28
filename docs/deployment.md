@@ -37,6 +37,12 @@ Record the selected Runtime source and its upgrade capability; Desktop delegates
 Runtime-owned data migration to Runtime instead of rewriting the same file itself.
 These rules do not authorize version bumps or publication in a documentation task.
 
+The next Platform npm publication adds the public `@cats-inc/cats-platform/app-sdk`
+entry ([ADR-123](decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)). Its
+`exports` map keeps `.` and `./*` so existing package paths still resolve; this is a
+compatible addition and does not force a minor. Removing `./*` to enforce the allowlist
+is breaking and belongs to the next minor boundary.
+
 Platform npm and Cats Desktop share the root `package.json` version and the root
 and `packages[""]` version entries in `package-lock.json`. Keep this single version
 source for now; their publication timing is independent. For example, npm may

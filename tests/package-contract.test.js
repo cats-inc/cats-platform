@@ -181,6 +181,16 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal(packedPaths.has('packages/app-sdk/package.js'), true);
   assert.equal(packedPaths.has('packages/app-sdk/browser.js'), true);
   assert.equal(packedPaths.has('packages/app-sdk/browser.d.ts'), true);
+  for (const file of ['format.js', 'format.d.ts', 'encode.js', 'encode.d.ts', 'package.json']) {
+    assert.equal(packedPaths.has(`packages/app-sdk/${file}`), true, file);
+  }
+  // Every declared public entry must resolve inside the tarball (ADR-123).
+  for (const [subpath, target] of Object.entries(manifest.exports)) {
+    if (subpath === './*') continue;
+    for (const file of typeof target === 'string' ? [target] : Object.values(target)) {
+      assert.equal(packedPaths.has(file.replace(/^\.\//u, '')), true, `${subpath} -> ${file}`);
+    }
+  }
   assert.equal(packedPaths.has('packages/provider-setup/manager.js'), true);
   assert.equal(packedPaths.has('packages/provider-setup/manager.d.ts'), true);
   assert.equal(packedPaths.has('config/catlas-knowledge.json'), true);

@@ -41,7 +41,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| [ADR-123](123-expose-app-sdk-contract-as-platform-npm-subpath.md) | Expose the App SDK Contract as a Platform npm Subpath | Proposed; documentation only | 2026-09-29 |
+| [ADR-123](123-expose-app-sdk-contract-as-platform-npm-subpath.md) | Expose the App SDK Contract as a Platform npm Subpath | Accepted for Stage 1; implemented, not yet published | 2026-09-29 |
 | [ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md) | Adopt Managed Plugins for Upstream Capabilities | Internal Agency host pilot accepted; general contract proposed | 2026-09-29 |
 | [ADR-121](121-distribute-apps-independently-with-host-owned-lifecycle.md) | Distribute Apps Independently with Host-Owned Lifecycle | Direction accepted; implementation planned | 2026-09-28 |
 | [ADR-119](119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) | Share Product Knowledge and Role Procedures with Supervised Agents | Accepted; K1-K3 CI and separate native K2/K3 pass; profile/combined rollout gates open | 2026-09-25 |
@@ -167,7 +167,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-09-29 (ADR-123 proposes exposing the App SDK contract as a Platform npm subpath.)*
+*Last updated: 2026-09-29 (ADR-123 Stage 1 implements the App SDK contract as a Platform npm subpath.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*
 

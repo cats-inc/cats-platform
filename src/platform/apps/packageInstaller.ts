@@ -1,21 +1,13 @@
 import { mkdir, mkdtemp, readFile, rename, writeFile, lstat } from 'node:fs/promises';
 import path from 'node:path';
-import { APP_SDK_VERSION, PLATFORM_VERSION, decodeAppPackage, parseAppLock, resolveAppLock, supportsVersion, type AppPin } from '#cats-app-package';
-import { parseCatsAppManifestV1 } from '../../shared/catsAppValidation.js';
+import { APP_SDK_VERSION, PLATFORM_VERSION, decodeAppPackage, parseAppLock, resolveAppLock, type AppPin } from '#cats-app-package';
+import { validateRendererAppPackage } from '../../app-sdk/packageValidation.js';
 import type { CatsAppManifestV1 } from '../../shared/catsAppManifest.js';
 import { resolveCatsAppPackageInstallDir, resolveCatsAppStoragePathsFromChatState } from './paths.js';
 import { FileCatsAppRegistry } from './registry.js';
 
 export function validateRendererPackage(bytes: Uint8Array, pin: Pick<AppPin, 'id' | 'version' | 'sha256'>) {
-  const decoded = decodeAppPackage(bytes, pin);
-  const result = parseCatsAppManifestV1(decoded.manifest);
-  if (!result.ok) throw new Error(result.issues.map((issue) => issue.message).join(' '));
-  const manifest = result.manifest;
-  if (manifest.category !== 'user-app' || ['install', 'validate'].includes(manifest.id)) throw new Error('Only utility user-app packages are supported.');
-  if (!supportsVersion(PLATFORM_VERSION, manifest.compatibility.catsPlatform)
-    || !supportsVersion(APP_SDK_VERSION, manifest.compatibility.appSdk)) throw new Error('Incompatible platform or App SDK version.');
-  if (manifest.permissions.some((permission) => !['ui.route', 'ui.lobby', 'runtime.telemetry.read', 'runtime.telemetry.refresh', 'media.images'].includes(permission))) throw new Error('This package requests capabilities not supported by the renderer host.');
-  return { ...decoded, manifest };
+  return validateRendererAppPackage(bytes, { pin, platformVersion: PLATFORM_VERSION, appSdkVersion: APP_SDK_VERSION });
 }
 
 const installQueues = new Map<string, Promise<unknown>>();

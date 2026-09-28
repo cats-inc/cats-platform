@@ -6,7 +6,18 @@
   "homepage": "https://github.com/cats-inc/cats-platform",
   "type": "module",
   "imports": {
-    "#cats-app-package": "./packages/app-sdk/package.js"
+    "#cats-app-package": "./packages/app-sdk/package.js",
+    "#cats-app-format": "./packages/app-sdk/format.js",
+    "#cats-app-encode": "./packages/app-sdk/encode.js"
+  },
+  "exports": {
+    ".": "./build/desktop/main.js",
+    "./package.json": "./package.json",
+    "./app-sdk": {
+      "types": "./build/server/app-sdk/index.d.ts",
+      "default": "./build/server/app-sdk/index.js"
+    },
+    "./*": "./*"
   },
   "bin": {
     "cats-platform": "build/server/index.js"
