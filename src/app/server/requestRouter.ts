@@ -8,6 +8,7 @@ import { createPlatformChildProcessEnv } from '../../shared/platformChildProcess
 import { resolvePlatformPackageRoot } from '../../shared/platformPaths.js';
 import type { ResolvedServerDependencies } from './contracts.js';
 import { routeAppPackageApi } from './appPackageRoutes.js';
+import { routePluginApi } from './pluginRoutes.js';
 import { routeMobileAuthApi } from './mobileAuthRoutes.js';
 import { routeMobileManifestApi } from './mobileManifestRoutes.js';
 import { routePlatformAuthApi } from './authRoutes.js';
@@ -588,6 +589,7 @@ export async function routeRequest(
   if (await routeAppPackageApi(appPackageContext)) {
     return;
   }
+  if (await routePluginApi(request, response, url, dependencies.shared.managedPlugins)) return;
 
   if (await routeMobileAuthApi(authContext)) {
     return;

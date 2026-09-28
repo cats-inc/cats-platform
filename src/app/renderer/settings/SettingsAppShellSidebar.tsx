@@ -235,6 +235,9 @@ export function SettingsAppShellSidebar({
                 {t(messageKeys.settingsShellSectionApps)}
               </span>
             </button>
+            <button type="button" className={navItemClass(isSection('/settings/plugins'))} onClick={() => navigate('/settings/plugins')}>
+              <span className="navLabel">{t('pluginsTitle')}</span>
+            </button>
             {showDesktop ? (
               <button
                 type="button"

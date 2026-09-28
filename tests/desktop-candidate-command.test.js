@@ -27,6 +27,8 @@ async function temporary(t) {
 }
 
 test('candidate command validates options and strips inherited controller/credential settings', () => {
+  assert.equal(parseCandidateArgs(['start', '--root', 'new', '--plugin-policy', 'internal-experiment'])['plugin-policy'], 'internal-experiment');
+  assert.throws(() => parseCandidateArgs(['start', '--root', 'new', '--plugin-policy', 'public']));
   assert.equal(parseCandidateArgs(['start', '--root', 'new', '--workspace', '..']).workspace, '..');
   assert.equal(parseCandidateArgs(['start', '--root', 'new', '--platform-dependencies', '../base'])['platform-dependencies'], '../base');
   assert.equal(parseCandidateArgs(['input', '--root', 'new', '--action', 'action.json']).action, 'action.json');

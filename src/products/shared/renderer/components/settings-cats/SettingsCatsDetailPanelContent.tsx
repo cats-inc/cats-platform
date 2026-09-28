@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { PluginSkillOptions } from '../../../../../app/renderer/settings/PluginSkillOptions.js';
 
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import type {
@@ -191,6 +192,7 @@ export function SettingsCatsDetailPanelContent({
       {shouldRender('skill') ? (
         <div className="catDetailSection">
           <p className="sectionLabel">{t(messageKeys.sharedSettingsCatsSkillProfileLabel)}</p>
+          <PluginSkillOptions value={cat.skillProfile} disabled={isCatBusy(busy, 'skill', cat.id)} onChange={id => void onSkillChange(cat.id, id)} />
           <div className="skillPills">
             {SKILL_PROFILES.map((profile) => (
               <button

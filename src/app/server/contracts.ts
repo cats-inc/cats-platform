@@ -64,6 +64,7 @@ export type ResumeWorkflowContinuationDispatch = (
 ) => Promise<WorkflowContinuationReplayResult>;
 
 export interface SharedServerDependencies {
+  managedPlugins?: import('../../platform/plugins/manager.js').ManagedPluginManager;
   config: AppConfig;
   runtimeClient: RuntimeClient;
   coreStore?: CoreStore;

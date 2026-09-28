@@ -68,6 +68,7 @@ const BASE_RESERVED_SETTINGS_PATHS = [
   '/settings/cats',
   '/settings/assistants',
   '/settings/apps',
+  '/settings/plugins',
   '/settings/desktop',
   '/settings/runtime',
   '/settings/data',

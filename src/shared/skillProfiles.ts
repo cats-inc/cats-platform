@@ -1,4 +1,5 @@
 import type { RuntimeSkillManifest } from '../runtime/client.js';
+import { AGENCY_PLUGIN } from './managedPlugins.js';
 
 export interface SkillProfileOption {
   id: string;
@@ -20,6 +21,7 @@ function findSkillProfile(profileId: string | null | undefined): SkillProfileOpt
   if (!profileId) {
     return null;
   }
+  if (AGENCY_PLUGIN.skills.some(skill => skill.id === profileId)) return { id: profileId, requestedSkills: [profileId] };
 
   return SKILL_PROFILE_OPTIONS.find((profile) => profile.id === profileId) ?? null;
 }

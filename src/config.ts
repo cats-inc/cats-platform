@@ -42,6 +42,8 @@ export interface AppConfig {
   port: number;
   runtimeBaseUrl: string;
   runtimeApiKey: string;
+  managedPluginPolicy?: boolean;
+  managedPluginKey?: string;
   runtimeSessionCreateTimeoutMs: number;
   runtimeSessionCreateSlowWarningMs: number;
   runtimeMessageIdleTimeoutMs: number;
@@ -279,6 +281,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     runtimeCatalogPackageRoot: env.CATS_RUNTIME_PACKAGE_ROOT?.trim() || undefined,
     runtimeCatalogConfigPath: env.CATS_RUNTIME_CATALOG_CONFIG_PATH?.trim() || undefined,
     runtimeApiKey: resolveRuntimeApiKey(env),
+    managedPluginPolicy: env.CATS_PLUGIN_POLICY === 'internal-experiment' && Boolean(env.CATS_PLATFORM_DIR),
+    managedPluginKey: resolveRuntimeApiKey(env) || env.CATS_PLUGIN_MANAGEMENT_KEY,
     runtimeSessionCreateTimeoutMs,
     runtimeSessionCreateSlowWarningMs: parsePositiveInt(
       env.CATS_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS,

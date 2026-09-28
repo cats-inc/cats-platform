@@ -100,6 +100,11 @@ The current slices are:
 
 ## Current Status
 
+- [x] Settings → Plugins can install, enable, disable and remove the reviewed Agency
+      content package in an isolated internal experiment. Cats can select its two
+      skills; Runtime tracks exposure and actual CLI shutdown before cleanup.
+      See the [pilot guide](docs/managed-plugins-pilot.md) for limits and startup.
+
 - [x] Ordinary source-development agents can build and launch an isolated Desktop
       candidate from the `cats-inc` workspace, capture its window, and use bounded
       screenshot-based click, text, key and scroll commands before checking the

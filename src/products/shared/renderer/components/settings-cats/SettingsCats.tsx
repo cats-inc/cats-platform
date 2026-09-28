@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type Dispatch, type FormEvent, type SetStateAction } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { PluginSkillOptions } from '../../../../../app/renderer/settings/PluginSkillOptions.js';
 
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import { ConfirmDialog, useConfirmDialog } from '../../../../../design/components/ConfirmDialog.js';
@@ -731,6 +732,7 @@ export function SettingsCatsCanvas({
                   className="catsSubCard"
                   header={<SettingsSectionHeader title={t(messageKeys.sharedSettingsCatsSkillProfileLabel)} nested />}
                 >
+                  <PluginSkillOptions value={catForm.skillProfile} disabled={false} onChange={id => setCatForm({ ...catForm, skillProfile: id })} />
                   <div className="skillPills">
                     {SKILL_PROFILES.map((profile) => (
                       <button
@@ -954,6 +956,7 @@ export function SettingsCatsCanvas({
                   className="catsSubCard"
                   header={<SettingsSectionHeader title={t(messageKeys.sharedSettingsCatsSkillProfileLabel)} nested />}
                 >
+                  <PluginSkillOptions value={selectedCat.skillProfile} disabled={isArchived} onChange={id => { void commitCatProfile(selectedCat.id, { skillProfile: id }, t(messageKeys.sharedSettingsCatsChangeSkillProfileError)); }} />
                   <div className="skillPills">
                     {SKILL_PROFILES.map((profile) => {
                       const active = (selectedCat.skillProfile ?? 'chat-default') === profile.value;
