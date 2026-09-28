@@ -4,8 +4,8 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Agency host pilot implemented and locally validated 2026-09-29; delivery CI separate |
-| Owner | Platform integration；Runtime execution；待確認 Plugin artifact owner |
+| Status | Agency host pilot delivered with full CI 2026-09-29; general SDK and release remain separate |
+| Owner | Platform integration；Runtime execution；cats-plugins Agency artifact |
 | Reviewer | Product owner；跨 repo 獨立 reviewer |
 | Spec | [SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md) |
 | Decision | [ADR-122](../decisions/122-adopt-managed-plugins-for-upstream-capabilities.md) |
@@ -21,7 +21,7 @@
 - [x] Settings Plugins、Cat skill profiles、影響確認與 pending removal。
 - [x] Conversation/native context 防止自動 replay 繞過撤銷；保留歷史。
 - [x] 跨 repo integration、隔離 Candidate renderer 操作與獨立 review。
-- [ ] 遠端交付與 CI（不代表 release）。
+- [x] 遠端交付與 CI（不代表 release）。
 
 驗證範圍與候選操作依 [pilot guide](../managed-plugins-pilot.md) 記錄。
 
@@ -47,6 +47,13 @@
 - 首次完整 CI 抓到既有 JS fixture 省略 platformDir 的初始化相容性及 license raw-string
   audit；未合併失敗版本。修正後補無儲存空間 regression（Plugin tests 共 6 個通過），
   原失敗檔案的全部 451 個 tests 重跑通過；server build、獨立唯讀複查也通過。
+- [Platform PR #163](https://github.com/cats-inc/cats-platform/pull/163) 已合併為
+  `a9569f6f198a0e2c2d23bf1b4bec2d9a0f66ebab`；
+  [完整 CI](https://github.com/cats-inc/cats-platform/actions/runs/36465705096) 通過：
+  5,247 tests pass、59 skip、0 fail，包含 server／Desktop／renderer／test／mobile typecheck。
+  [Runtime PR #119](https://github.com/cats-inc/cats-runtime/pull/119) 亦已合併，完整
+  preflight 的 244 個 test files、build、skills 驗證與 package dry-run 通過。
+  沒有 bump、tag、publish 或 release；正式安裝版／跨 OS／真實模型驗收仍未宣稱完成。
 
 下方 P0–P4 保留完整產品規劃，尚未勾選的通用 SDK／provider／hooks／目錄工作仍未交付。
 本輪授權限於上方 Agency content pilot；實驗成果不自動成為正式發布。
