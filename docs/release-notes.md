@@ -2,6 +2,31 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-09-28 — Desktop 0.5.13 standard preview (prepared)
+
+- Packages all Platform changes through `b0c503bb877b20c341d3ba3f04c0eb4d44248dd6`,
+  including App SDK 1.3 image operations and recovery of retained Grok images after
+  a home-relative session-path collection failure.
+- Pins Runtime 0.3.4 source to `9a35b7f4db77ed82715b229fb629f84f0115bfc5` on every OS.
+  This includes the other delivery tracks' native-session path matching, provider-reported
+  served models/run logs, Copilot discovered-session model fields and Kiro v1 engine fix,
+  alongside bounded image generation and source-path recovery.
+- Compatible Desktop patch; no persisted schema conversion or profile reset. Runtime,
+  Platform npm, launcher and App publication are not part of this release.
+- Uses the standard preview signing profile (`unsigned=false`); actual per-platform
+  trust and published asset verification will be recorded after the workflow completes.
+  From published standard preview 0.5.10, the expected update path is macOS signed to
+  signed with the same Developer ID team, Windows unsigned to unsigned (no certificate),
+  and Linux n/a. Final trust must be confirmed from this build; no new installed-upgrade
+  acceptance is claimed by version preparation.
+- The published bundle retains the exact Usage 0.4.0 archive. Studio 0.1.0 was selected
+  only by the preceding local installer, and is not in the published default App lock.
+  App/SDK/market architecture and Studio distribution policy are deferred to the next
+  discussion; this release changes no App selection or installation policy.
+
+Validation before version preparation: Platform CI for `b0c503bb` and Runtime release
+preflight for `9a35b7f4` passed. Release-candidate CI and Desktop publication are pending.
+
 ## 2026-09-28 — Local Desktop 0.5.12 / Studio image collection fix
 
 - Resolves Grok's home-relative session directory before validating generated image paths.
