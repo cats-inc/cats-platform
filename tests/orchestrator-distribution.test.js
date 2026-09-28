@@ -68,7 +68,7 @@ async function packedPlatform(root) {
   await runFile('tar', ['-xzf', tarball, '-C', extracted], { windowsHide: true, timeout: 30_000 });
   const packageRoot = join(extracted, 'package');
   // Copy already installed production dependencies; no npm install or network access.
-  for (const dependency of ['js-yaml', 'argparse']) {
+  for (const dependency of ['js-yaml', 'argparse', 'fflate']) {
     await cp(join(repoRoot, 'node_modules', dependency), join(packageRoot, 'node_modules', dependency), { recursive: true });
   }
   return packageRoot;

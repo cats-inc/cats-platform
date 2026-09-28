@@ -510,6 +510,9 @@ Initial validation: 71 focused source/App/startup/packaging/release checks passe
 the isolated startup verifier also passed against locally repaired installed
 resources. Installed UI recovery was confirmed by the owner; the Windows Computer
 Use native pipe was unavailable, so no automated UI observation is claimed.
+The first hosted CI caught the Orchestrator distribution fixture's separate stale
+two-dependency setup. It now supplies fflate too, exercising the stricter production
+staging contract without weakening the missing-dependency check.
 
 ### Complete source bundle — 2026-09-29
 
