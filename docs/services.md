@@ -20,6 +20,12 @@ The isolated Usage package smoke binds `127.0.0.1` on port `0` (OS-assigned),
 serves fixtures only, and closes on completion. It reserves no fixed port and
 does not use the developer's running Platform/Runtime services or state.
 
+The packaged Platform startup verifier also uses temporary loopback listeners:
+an OS-assigned unavailable Runtime fixture and a free-port probe for the copied
+Platform sidecar. Child-owned readiness and HTTP PID checks prevent another process
+from satisfying the probe. Both listeners and temporary state are removed afterward;
+no fixed service port or real developer profile is used.
+
 ## Planned Dynamic Port Ranges
 
 | Service Name | Port Range | Protocol | Status | Description |

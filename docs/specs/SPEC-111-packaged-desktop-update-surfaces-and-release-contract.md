@@ -607,9 +607,16 @@ executable paths, selected App hashes and source/payload verification. Build gui
 includes required Node/npm/OS tooling; dependencies and signing credentials are not
 embedded. cats-one and unbundled Plugins are outside this Desktop input set.
 
-After normal bundled-App byte/offline checks, each OS records the release descriptor
+After normal bundled-App byte/offline checks, each OS must start its shipped Platform
+sidecar from a temporary copy whose physical ancestors cannot supply `node_modules`.
+The check uses the runner's native Node, isolated state and a loopback unavailable
+Runtime fixture, without provider CLIs. It requires the child-owned ready event and
+HTTP health PID/version, then drains or forcibly reaps that owned child. This tests
+packaged JavaScript dependency closure even when the installer architecture differs
+from the runner; it does not replace installed Electron/UI upgrade acceptance.
+Each OS records `platformStartup: true` alongside the release descriptor
 read from its actual `app.asar` and the verified App selection. Publication requires
-all three receipts to match the source manifest's Platform/Runtime commits, version
+all three startup checks to pass and receipts to match the source manifest's Platform/Runtime commits, version
 and App set. Source ZIP/checksum/manifest must exist exactly once and pass integrity
 checks; update metadata must never select them as updater assets. Release notes link
 the complete source ZIP and explain GitHub's automatic archives are Platform-only.

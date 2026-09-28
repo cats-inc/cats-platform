@@ -190,7 +190,7 @@ async function collectPlatformKnowledgeAssets(packageRoot: string) {
 // Each entry must appear at cats-platform/node_modules/<name> AND in the staging
 // output as shared/app-sidecar/node_modules/<name>. Transitive runtime deps must
 // be listed explicitly so packaging is deterministic.
-const APP_SIDECAR_RUNTIME_DEPENDENCIES = ['js-yaml', 'argparse'] as const;
+const APP_SIDECAR_RUNTIME_DEPENDENCIES = ['js-yaml', 'argparse', 'fflate'] as const;
 const RUNTIME_BUNDLE_EXTERNAL_DEPENDENCIES = ['playwright-core', 'yaml'] as const;
 
 const RUNTIME_OPTIONAL_ASSETS: RuntimeSidecarAsset[] = [

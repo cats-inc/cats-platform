@@ -277,7 +277,7 @@ jobs:
           --publish always
           ${{ matrix.extra_args }}
 
-      - name: Verify bundled App versions and offline activation
+      - name: Verify packaged Platform startup and offline App activation
         run: node scripts/verify-desktop-app-bundle.mjs --release-root release --expect-lock config/desktop-apps.lock.json --receipt receipts/cats-build-${{ matrix.platform }}.json
 
       - name: Upload packaged source identity receipt

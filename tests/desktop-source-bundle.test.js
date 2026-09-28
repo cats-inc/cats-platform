@@ -37,7 +37,7 @@ function fixture() {
     checksum: `${digest(result.archive)}  Cats-${tag}-source.zip` };
 }
 function receipts(manifest) {
-  return ['windows', 'macos', 'linux'].map((platform) => ({ schemaVersion: 1, offlineActivation: true,
+  return ['windows', 'macos', 'linux'].map((platform) => ({ schemaVersion: 1, offlineActivation: true, platformStartup: true,
     descriptor: { tag, version: tag.slice(1), platform, commit: platformCommit, runtimeCommit }, apps: manifest.apps }));
 }
 
@@ -97,6 +97,7 @@ test('all three actual packaged identities must match the source set', () => {
     (r) => { r[0].descriptor.platform = 'macos'; },
     (r) => { r[0].apps = []; },
     (r) => { r[0].offlineActivation = false; },
+    (r) => { delete r[0].platformStartup; },
   ]) { const changed = structuredClone(receipts(manifest)); mutate(changed); assert.throws(() => verifyBuildReceipts(manifest, changed)); }
 });
 

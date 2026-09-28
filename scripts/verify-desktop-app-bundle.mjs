@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Verify the actual unpacked installer resources and offline App activation.
+// Verify unpacked installer resources, offline App activation and actual Platform startup.
 // Usage: node scripts/verify-desktop-app-bundle.mjs --release-root release --expect-lock config/desktop-apps.lock.json
 // Alternatively pass --resources <resources-directory>. Uses only a temporary registry;
 // does not start provider CLIs, download Apps, or touch the user's installed state.
@@ -15,6 +15,7 @@ import { buildManagedServiceSpecs } from '../build/desktop/processSupervisor.js'
 import { installBundledApps } from '../build/server/platform/apps/packageInstaller.js';
 import { FileCatsAppRegistry } from '../build/server/platform/apps/registry.js';
 import { readAppRenderer } from '../build/server/platform/apps/renderer.js';
+import { verifyPackagedPlatformStartup } from './verify-packaged-platform-startup.mjs';
 
 const pins = (apps) => apps.map(({ id, version, sha256 }) => ({ id, version, sha256 }));
 
@@ -111,6 +112,8 @@ async function main() {
   let receipt;
   for (const resources of roots) {
     const result = await verifyDesktopAppBundle(resources, options['--expect-lock'], { releaseReceipt: Boolean(options['--receipt']) });
+    result.startup = await verifyPackagedPlatformStartup(resources);
+    if (result.receipt) result.receipt.platformStartup = result.startup.platformStartup;
     if (receipt) assert.deepEqual(result.receipt, receipt, 'Unpacked release identities differ');
     receipt = result.receipt;
     console.log(JSON.stringify(result, null, 2));

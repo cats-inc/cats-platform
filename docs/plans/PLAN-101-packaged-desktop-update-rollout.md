@@ -486,6 +486,30 @@ ownership boundaries in ADR-108 and SPEC-111.
 
 ## Progress Log
 
+### Packaged startup failure — 2026-09-29
+
+The owner's installed 0.5.14 update exposed a missed dependency: Platform imported
+`fflate`, while sidecar staging still copied only js-yaml/argparse. Runtime was
+ready; Platform exited before readiness. The complete-source acceptance below is
+valid, but did not establish installed startup success.
+
+- [x] Preserve failure logs and identify the missing locked fflate 0.8.3.
+- [x] Restore only that missing dependency locally; owner confirmed Retry reaches
+      Cats and the installed host emitted `app.ready` (0.5.14).
+- [x] Add fflate to sidecar staging and all OS file checks.
+- [x] Require real packaged Platform startup in an isolated copy before each
+      release receipt can pass publication. Cover ancestor dependency leakage,
+      custom TEMP/TMPDIR, early exit and hung shutdown. Independent review passed.
+- [x] Build a fresh unpublished Windows NSIS installer; offline Usage activation
+      and isolated Platform startup pass under native Node and packaged Electron.
+- [ ] Record hosted CI before delivery.
+- [ ] Publish a higher patch preview when authorized; never replace 0.5.14 assets.
+
+Initial validation: 71 focused source/App/startup/packaging/release checks passed;
+the isolated startup verifier also passed against locally repaired installed
+resources. Installed UI recovery was confirmed by the owner; the Windows Computer
+Use native pipe was unavailable, so no automated UI observation is claimed.
+
 ### Complete source bundle — 2026-09-29
 
 User authorized direct main implementation/commit/push and a Desktop standard

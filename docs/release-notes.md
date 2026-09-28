@@ -2,6 +2,25 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-09-29 — Packaged Platform startup repair (unreleased)
+
+- The 0.5.14 installed launcher could not start Platform because the sidecar
+  omitted `fflate` 0.8.3, which the managed Plugin package reader imports at startup.
+  Runtime started normally. Source-build and offline App checks did not execute
+  the actual packaged server, so they failed to catch this dependency omission.
+- Sidecar staging now includes `fflate` for split and bundle layouts. Every OS's
+  release check must start its packaged Platform from an isolated copy, verify
+  child-owned readiness and HTTP health, and record the result in the publish gate.
+  Ancestor dependency directories and hung shutdowns are covered by regression tests.
+- Local recovery added only the missing locked dependency to the installed 0.5.14;
+  after Retry, the user confirmed normal entry and the host recorded Platform ready.
+  This was a local repair, not a replacement of published 0.5.14 assets or an update
+  to another released version. No user profile reset or test conversations were used.
+- Validation: 71 focused checks and independent review passed. A fresh unpublished
+  Windows NSIS build includes fflate; its unpacked resources passed offline Usage
+  activation and isolated Platform startup under native Node and packaged Electron.
+
+
 ## 2026-09-29 — Desktop 0.5.14 standard preview (published)
 
 - Adds a complete first-party source ZIP, SHA-256 checksum and source manifest to

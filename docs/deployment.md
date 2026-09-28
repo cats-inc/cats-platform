@@ -277,7 +277,13 @@ Build instructions inside the ZIP use the recorded Node version, sibling Runtime
 and Platform builds, and the local installer command. npm/network/OS tooling remain
 necessary; signing keys are separately held, and identical signed installer bytes
 are not promised. The workflow source gate also compares all three actual packaged
-release descriptors and the already-verified offline App selections.
+release descriptors and the already-verified offline App selections. The verifier
+also starts a copied packaged Platform sidecar outside checkout dependency ancestry,
+using private temporary state, native Node and a loopback unavailable Runtime fixture.
+It requires its own ready event and HTTP health PID/version before adding
+`platformStartup: true` to the receipt. Provider CLIs are not started; installed
+Electron/UI upgrade acceptance remains a separate check. TEMP/TMPDIR locations
+whose physical ancestors contain `node_modules` are rejected to prevent false passes.
 
 Source assets are uploaded only into the draft. Missing/mismatched source assets or
 receipts prevent publication, and source ZIPs are rejected as updater targets. The
