@@ -18,9 +18,10 @@
 
 ## Ownership and integration seams
 
-[PLAN-113](PLAN-113-managed-plugin-capabilities.md) 是另案的 managed Plugins 提案。
-M0 與其 P0 協調可共用的 installer／catalog／journal 契約；本案維持 renderer Apps，
-不等待 Plugin executor，也不新增任意背景程式。本段是交叉規劃，未新增已完成項目。
+[PLAN-113](PLAN-113-managed-plugin-capabilities.md) 是另案的 managed Plugins 工作。
+Agency content pilot 已交付，一般 SDK／目錄仍待實作。M0 與其 P0 協調可共用的
+installer／catalog／journal 契約；本案維持 renderer Apps，不等待 Plugin executor，
+也不新增任意背景程式。本段是交叉規劃，未新增本案已完成項目。
 
 | Owner | 工作／契約 | 不越界的項目 |
 | --- | --- | --- |
@@ -37,6 +38,10 @@ Platform freeze shared DTO 後 Apps 可並行做 artifact/catalog fixtures。Run
 
 - [x] 確認 Usage／Studio 出貨與 Home 規則、資料與資源邊界。
 - [x] 查核既有 registry-only uninstall、corrupt same-version repair 與 bundle 選版缺口。
+- [x] 同步 Apps 規劃：獨立 Marketplace／Home 醒目入口、Settings 已安裝管理，以及
+      宿主驗證 Desktop management context 的要求；此項只完成規劃同步。
+- [ ] 固定 Desktop management context 的簽發／傳遞、撤銷與防偽造／重播契約；
+      所有管理入口共用授權，App SDK 不授予套件管理能力，建立 browser 拒絕 fixtures。
 - [ ] 固定 schema 2／operation journal／bootstrap marker、catalog signature envelope、
       source transition、錯誤／進度 DTO；設定下載／目錄大小與逾時界限。
 - [ ] 建立 schema 1 enabled／disabled／uninstalled／缺席／manifest-only／本機 Studio fixtures。
@@ -48,6 +53,8 @@ Exit：沒有未指定的刪除 owner 或以新 schema 覆蓋舊資料的捷徑�
 ## M1 — Local lifecycle, recovery and Home
 
 - [ ] 實作驗證／backup／atomic migration、operation lock／journal、崩潰重啟恢復。
+- [ ] 管理服務驗證 Desktop context；拒絕一般 browser／remote lifecycle mutation，
+      含 owner 登入與 localhost；被拒絕的操作不得修改 registry／package／process。
 - [ ] 實作宿主出貨／Home policy：Usage placeholder、Studio 安裝後卡片、跨視窗狀態同步。
 - [ ] 停用：立即撤銷新工作權限、卸載所有活躍 renderer、追蹤取消與待確認狀態。
 - [ ] 移除：真實清理 managed packages／cache，保留資料與 tombstone，支援 file-lock 重試。
@@ -55,18 +62,21 @@ Exit：沒有未指定的刪除 owner 或以新 schema 覆蓋舊資料的捷徑�
 - [ ] 改寫 bundled reconciliation：首裝與使用者意圖分開，不 downgrade、不復活移除項目。
 - [ ] 卸載說明資料保留，重裝接回作品／設定，不提供尚未實作的永久資料清除動作。
 
-Exit：先用暫存套件完成 AC-01–AC-08、AC-11、AC-14 的本機路徑；不需要真 Grok 或公開 Market。
+Exit：先用暫存套件完成 AC-01–AC-08、AC-11、AC-14 及 AC-16 的本機管理路徑；
+不需要真 Grok 或公開 Market，Market 入口的 AC-16 驗收留到 M2。
 
 ## M2 — Official Catalog and Market
 
 - [ ] 實作已簽章 Catalog 驗證、revision／expiry／withdrawal、信任根與 key rotation fixtures。
 - [ ] bounded host downloader、URL／redirect allowlist、artifact digest／manifest／相容驗證。
-- [ ] Market 探索／已安裝／更新／詳情；整合 Home 修復與 Settings，不複製安裝邏輯。
+- [ ] Home 醒目入口開獨立 Market，探索／已安裝／更新／詳情可直接安裝；
+      整合 Home 修復與 Settings 共用授權、生命週期服務與狀態，不複製安裝邏輯。
 - [ ] 安裝與手動更新 UX、新增權限確認、活動工作延後／停止選擇、離線／過期目錄提示。
 - [ ] 驗證同 ID local-user→官方來源轉接；不能隱性升權或覆蓋本機開發套件。
 - [ ] 整合 Apps 兩版本 fixture，驗證下載錯誤／中斷／同版修復／相容 rollback。
 
-Exit：AC-02／03／07–AC-10／13 透過實際 Market 路徑成功；Catalog 暫存簽章 key 僅用於測試。
+Exit：AC-02／03／07–AC-10／13／15 及 AC-16 的 Market 路徑成功；
+Catalog 暫存簽章 key 僅用於測試。
 
 ## M3 — Developer SDK and independent App delivery
 
@@ -121,6 +131,7 @@ scoped deletion／retention contract，再驗證共享引用、權限、部分�
 | 卸載只隱藏但持續工作 | 主動 revoke、多視窗、假 CLI 終止證據與 pending 狀態 |
 | 修復刪作品或越界 | 同版 staged replacement、資料外置、symlink/junction 與共享引用 tests |
 | 同 ID 偽裝官方／目錄 replay | 已信任根、digest identity、source transition confirmation、revision gate |
+| browser 或 App iframe 取得 Desktop 管理權 | 服務邊界驗證 context、拒絕偽造／失效／重播，並驗證無套件狀態副作用 |
 | scope 擴成一般 extension host | 僅官方 renderer；新 background executor 另案 |
 
 ## Resume checkpoint
@@ -135,4 +146,12 @@ Platform 本輪 10 份 Markdown 的 970 個本機連結目標存在；Apps 文�
 兩 repo 的 diff whitespace 檢查通過。未執行產品測試、build、安裝或 provider 呼叫；
 這些結果僅驗證規劃文件，不勾選任何新增功能的 acceptance。
 
-*Last updated: 2026-09-28*
+2026-09-29：補齊 Apps PLAN-004 的管理入口與 Desktop 授權要求，新增 AC-15／16 與
+對應 M0–M2 工作。Agency Plugin pilot 的交付狀態已同步，但不抵免 App Market 驗收。
+本次僅更新規劃，未實作管理限制、修改版本或發布。獨立唯讀審查無阻擋；兩 repo 的
+6 份變更 Markdown、35 個本機檔案／anchor 目標以對應 worktree 檢查通過，Apps 的
+`npm run check:docs` 通過（38 份 Markdown、156 個本機目標，無略過 sibling links）。
+兩 repo 的 `git diff --check` 通過。未執行產品測試、build、安裝或 provider 呼叫；
+未將任何新增功能的 acceptance 標記完成。
+
+*Last updated: 2026-09-29*
