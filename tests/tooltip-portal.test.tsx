@@ -140,6 +140,47 @@ test('tooltip portal hides immediately on click so stale tooltips do not survive
   }
 });
 
+class FakeFocusTooltipTarget extends FakeTooltipTarget {
+  override closest(selector: string): FakeTooltipTarget | null {
+    return selector === '[data-tooltip]' || selector === '[data-tooltip][data-tooltip-focus]' ? this : null;
+  }
+}
+
+test('opted-in tooltip targets show on focus and tap, while others still hide on click', async () => {
+  const previousDocument = globalThis.document;
+  const previousWindow = globalThis.window;
+  const documentStub = new FakeDocument();
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: documentStub });
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: { innerWidth: 1280 } });
+  const cleanup = initTooltipPortal();
+
+  try {
+    const info = new FakeFocusTooltipTarget('Models listed for the openai-codex channel.');
+    documentStub.dispatch('focusin', info);
+    const portal = documentStub.body.appendedNodes[0];
+    assert.ok(portal, 'focus on an opted-in target should create the portal');
+    assert.equal(portal.textContent, 'Models listed for the openai-codex channel.');
+    assert.equal(portal.classList.contains('tooltipVisible'), true);
+
+    documentStub.dispatch('focusout', info);
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    assert.equal(portal.classList.contains('tooltipVisible'), false);
+
+    documentStub.dispatch('click', info);
+    assert.equal(portal.classList.contains('tooltipVisible'), true, 'a tap keeps an opted-in tooltip visible');
+
+    const plain = new FakeTooltipTarget('Milo');
+    documentStub.dispatch('focusin', plain);
+    assert.equal(portal.textContent, 'Models listed for the openai-codex channel.', 'plain targets ignore focus');
+    documentStub.dispatch('click', plain);
+    assert.equal(portal.classList.contains('tooltipVisible'), false);
+  } finally {
+    cleanup();
+    Object.defineProperty(globalThis, 'document', { configurable: true, value: previousDocument });
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: previousWindow });
+  }
+});
+
 test('shouldPaintDelayedTooltipTarget rejects disconnected targets', () => {
   assert.equal(
     shouldPaintDelayedTooltipTarget({

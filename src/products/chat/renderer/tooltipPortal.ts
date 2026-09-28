@@ -134,18 +134,39 @@ export function initTooltipPortal(): () => void {
     if (target) hide();
   }
 
-  function onClick(): void {
+  // Targets that opt in with data-tooltip-focus also show their tooltip on keyboard focus and
+  // on click or tap, for informational controls whose only content is the tooltip.
+  function focusTarget(event: Event): HTMLElement | null {
+    return (event.target as HTMLElement | null)?.closest?.('[data-tooltip][data-tooltip-focus]') as HTMLElement | null;
+  }
+
+  function onClick(event: MouseEvent): void {
     hideImmediately();
+    const target = focusTarget(event);
+    if (target) show(target);
+  }
+
+  function onFocusIn(event: FocusEvent): void {
+    const target = focusTarget(event);
+    if (target) show(target);
+  }
+
+  function onFocusOut(event: FocusEvent): void {
+    if (focusTarget(event)) hide();
   }
 
   document.addEventListener('mouseover', onOver, true);
   document.addEventListener('mouseout', onOut, true);
   document.addEventListener('click', onClick, true);
+  document.addEventListener('focusin', onFocusIn, true);
+  document.addEventListener('focusout', onFocusOut, true);
 
   return () => {
     document.removeEventListener('mouseover', onOver, true);
     document.removeEventListener('mouseout', onOut, true);
     document.removeEventListener('click', onClick, true);
+    document.removeEventListener('focusin', onFocusIn, true);
+    document.removeEventListener('focusout', onFocusOut, true);
     hideImmediately();
     if (portal) {
       portal.remove();

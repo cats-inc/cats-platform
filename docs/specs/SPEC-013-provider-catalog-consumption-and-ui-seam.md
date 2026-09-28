@@ -488,6 +488,21 @@ labels, late responses, connection fences, persisted selection revisions, and sp
 bundle staged catalog module and CLI imports. The joint plan records installed
 Runtime acceptance and OS limits; no Desktop release is published by this change.
 
+### Catalog basis icon (2026-09-29)
+
+Runtime's
+[SPEC-031 basis amendment](../../../cats-runtime/docs/specs/SPEC-031-provider-catalog-data-and-local-overrides.md#amendment-2026-09-29-catalog-basis)
+adds an optional advanced-catalog `basis` (a routing channel or an account plan).
+The normalizer keeps it only with nonempty labels. The selector shows it as a small
+"i" beside the Model label whose tooltip names the channel or plan; nothing appears
+without a basis. The icon is a focusable span with the full text as its accessible
+name. It is not a button, which inside the Model `<label>` would become the label's
+control. Its click does not activate the label, and it is never part of the selection.
+The tooltip portal shows opted-in targets (`data-tooltip-focus`) on keyboard focus
+and tap; other tooltips keep their hover-only behavior. The frozen
+`tests/fixtures/catalogs-v2.json` gains only this field for six providers
+([PLAN-045](../../../cats-runtime/docs/plans/PLAN-045-catalog-basis-channel-and-plan.md)).
+
 ## Follow-up: catalog configuration failure after upgrade (2026-09-23)
 
 Desktop 0.3.8's cold picker repeatedly retried model reads when an existing
@@ -549,5 +564,5 @@ and existing-profile checks; release/installer validation is still a separate ga
 ---
 
 *Created: 2026-03-19*
-*Revised: 2026-09-23*
+*Revised: 2026-09-29*
 *Author: Codex*
