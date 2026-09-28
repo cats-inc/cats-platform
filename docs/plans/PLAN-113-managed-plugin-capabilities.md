@@ -219,7 +219,10 @@ post-uninstall 執行依賴保留缺口已補入 FR-09、AC-14 與 P0／P2；回
 來源取得敘述已查核 Git／GitHub 官方文件。純文件改動未執行產品 tests／build，
 所有新增功能 AC 仍未執行。
 
-下一個工程階段仍為 P0，需確認提案與適合的候選；不要因本文件存在就開始實作 ChatGPT adapter、
-建立遠端 repo 或發布 Plugin。
+2026-09-28 implementation authorization：使用者要求先送出本規劃 PR，再直接建立
+`cats-plugins`，透過 project-bootstrap 初始化，直接 commit／push main，並採 Agency
+Agents 為首個 MVP。下一步交付 producer repo、固定來源、兩角色封裝、校驗、文件與 CI；
+在 cats-plugins 自有 ADR／SPEC／PLAN 記錄精確實作及證據。Desktop／Runtime 完整接入、
+新 provider、模型品質驗收與正式發布仍未交付，不把 producer 成功算作本 PLAN 全部完成。
 
 *Last updated: 2026-09-28*

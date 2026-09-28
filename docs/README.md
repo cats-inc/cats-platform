@@ -23,8 +23,10 @@ native UI Automation capture, pane/focus guards and the Runtime-owned Codex cata
 capability packages: thin bridges, Runtime provider/tool/skill registration,
 Desktop management, and separate internal-experiment and distribution policies.
 Existing Apps keep their renderer boundary; reusable lifecycle work is coordinated
-with the App Market proposal. No Plugin implementation, upstream pilot, new repo,
-or release is authorized by these drafts. The
+with the App Market proposal. The owner has authorized a project-bootstrap-based
+`cats-plugins` repository and an Agency Agents content-packaging MVP, with direct
+main commits/pushes there. Desktop/Runtime integration and product releases remain
+separate from this producer scope. The
 [research note](research/2026-09-28-managed-plugins-and-chatgpt-adapter-fit.md)
 records why OpenChatX/C2C are references rather than selected ChatGPT adapters.
 The [pinned C2C evaluation](research/2026-09-28-c2c-plugin-fit-evaluation.md)

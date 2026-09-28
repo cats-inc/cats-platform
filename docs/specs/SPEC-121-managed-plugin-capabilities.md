@@ -11,6 +11,10 @@
 | Plan | [PLAN-113](../plans/PLAN-113-managed-plugin-capabilities.md) |
 | Baseline | Platform cbca3311；Runtime 3e47f46b；2026-09-28 source inspection |
 
+2026-09-28 execution scope：使用者已授權建立 `cats-plugins` repo 及 Agency Agents
+內容封裝 MVP，直接 commit／push main。此處的宿主 lifecycle／registry／SDK 契約仍待
+固定與實作；producer MVP 不等於 Platform／Runtime 已支援 Plugin 安裝或全部 AC 通過。
+
 ## Summary
 
 讓使用者安裝經 Cats 包裝的外部能力，在 Desktop Settings／Market 管理，再由 Runtime

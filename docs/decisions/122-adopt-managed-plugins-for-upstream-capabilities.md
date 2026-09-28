@@ -3,7 +3,9 @@
 ## Status
 
 Proposed, 2026-09-28。使用者已確認重用外部能力、可安裝移除、內部實驗與正式分發分開的
-方向，並要求建立 worktree 提案；本 ADR 的技術設計尚待確認，沒有授權實作或發布。
+方向，並要求建立 worktree 提案。後續已授權以 project-bootstrap 建立 `cats-plugins`、
+直接 commit／push main，並以 Agency Agents 建置首個內容封裝 MVP。此授權涵蓋該 repo
+的基礎與封裝驗證；完整宿主協定仍為提案，不代表 Desktop／Runtime 接入或產品 release 已交付。
 
 ## Context
 
@@ -45,7 +47,8 @@ Plugin 是分發單位；provider adapter、MCP／tool connector、skill 是它�
 自有版本。必要小 patch 要有理由、測試與上游追蹤；若接入必須重造主要功能，重新選候選。
 
 建議未來以 `cats-plugins` 維護整合 recipe、薄橋接、來源／授權證據與版本化產物；可依
-授權捆綁上游 bytes，也可連接使用者已有的服務。本輪不建立新 repo，不改 workspace manifest。
+授權捆綁上游 bytes，也可連接使用者已有的服務。使用者已授權建立該 repo 與 Agency MVP；
+workspace composition 依 cats-one 的 owner 契約同步。
 Plugin 版本與 upstream revision 分開記錄；不能在使用者機器上隱性追蹤 upstream main。
 
 #### Upstream source acquisition
@@ -59,7 +62,7 @@ Submodule 可用於需要經常閱讀／修改上游的開發情境，但不是 
 每個來源都以 submodule 加入。使用時 gitlink 必須與 source lock 一致，CI 不接受追蹤
 branch tip 的隱性更新。大型或授權要求的 vendored snapshot 可另選用，仍保留相同來源證據。
 來源封存／mirror 與 artifact retention 由 Cats 管理，不能只保留可能失去可取用性的 URL。
-具體取捨及驗收見 SPEC-121 FR-10；本輪只規劃，不建立 `cats-plugins` 或下載發布產物。
+具體取捨及驗收見 SPEC-121 FR-10；目前授權建立來源／封裝 MVP，沒有產品 release 授權。
 
 ### 3. 共用套件機制，保留不同執行邊界
 
