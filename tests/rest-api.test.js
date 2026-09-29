@@ -875,7 +875,6 @@ test('POST /api/channels supports direct Cat chat with existingCatIds and initia
         name: 'Companion',
         provider: 'claude',
         roles: ['companion'],
-        skillProfile: 'companion',
       }),
     });
     assert.equal(createCatResponse.status, 201);
@@ -913,6 +912,47 @@ test('POST /api/channels supports direct Cat chat with existingCatIds and initia
   });
 });
 
+test('PATCH /api/cats/:catId toggles the companion role and rejects the legacy skill profile', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const legacyCreateResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Legacy', provider: 'claude', skillProfile: 'companion' }),
+    });
+    assert.equal(legacyCreateResponse.status, 400);
+
+    const createResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Milo', provider: 'claude', roles: ['reviewer'] }),
+    });
+    assert.equal(createResponse.status, 201);
+    const catId = (await createResponse.json()).cat.id;
+    const patchCat = (body) => fetch(`${baseUrl}/api/cats/${catId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const enableResponse = await patchCat({
+      companion: true,
+      skillProfile: 'plugin:agency-agents/work/agency-code-reviewer',
+    });
+    assert.equal(enableResponse.status, 200);
+    const enabledCat = (await enableResponse.json()).chat.cats.find((cat) => cat.id === catId);
+    assert.deepEqual(enabledCat.roles, ['reviewer', 'companion']);
+    assert.equal(enabledCat.skillProfile, 'plugin:agency-agents/work/agency-code-reviewer');
+
+    assert.equal((await patchCat({ skillProfile: 'companion' })).status, 400);
+    assert.equal((await patchCat({ companion: 'yes' })).status, 400);
+
+    const disableResponse = await patchCat({ companion: false });
+    assert.equal(disableResponse.status, 200);
+    const disabledCat = (await disableResponse.json()).chat.cats.find((cat) => cat.id === catId);
+    assert.deepEqual(disabledCat.roles, ['reviewer']);
+  });
+});
+
 test('bot binding routes support multiple Telegram bots across Cats', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const createBossResponse = await fetch(`${baseUrl}/api/cats`, {
@@ -934,7 +974,7 @@ test('bot binding routes support multiple Telegram bots across Cats', async () =
       body: JSON.stringify({
         name: 'Companion',
         provider: 'claude',
-        skillProfile: 'companion',
+        roles: ['companion'],
       }),
     });
     assert.equal(createCompanionResponse.status, 201);

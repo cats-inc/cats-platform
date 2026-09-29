@@ -6,6 +6,7 @@ import type {
   ChatState,
 } from '../api/contracts.js';
 import type { MemoryCheckpointSummary } from '../../../core/types.js';
+import { isCompanionCat, withCompanionRole } from '../../../shared/companionRole.js';
 import { resolveChannelCanonicalIdentity } from './model/index.js';
 
 function normalizeText(value: string, maxLength = 160): string {
@@ -172,7 +173,10 @@ export function refreshDerivedMemoryLayers(
           ? {
               catId: cat.id,
               name: cat.name,
-              roles: assignment.roles.length > 0 ? structuredClone(assignment.roles) : structuredClone(cat.roles),
+              roles: withCompanionRole(
+                assignment.roles.length > 0 ? assignment.roles : cat.roles,
+                isCompanionCat(cat),
+              ),
               skillProfile: cat.skillProfile,
               mcpProfile: cat.mcpProfile,
               status: assignment.status,

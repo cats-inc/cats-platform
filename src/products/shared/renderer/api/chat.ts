@@ -589,6 +589,7 @@ export async function updateCatProfile(
   catId: string,
   input: {
     skillProfile?: string | null;
+    companion?: boolean;
     mcpProfile?: string | null;
     name?: string;
     makeBoss?: boolean;

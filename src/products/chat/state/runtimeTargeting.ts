@@ -21,6 +21,7 @@ import {
   resolvePrimaryParticipantExecutionAssignment,
   resolveParticipantCatId,
 } from '../shared/channelParticipants.js';
+import { isCompanionCat } from '../../../shared/companionRole.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import {
   isDirectLaneChannel,
@@ -327,6 +328,7 @@ function resolveSessionSkillManifestForTarget(
   const catId = participant ? resolveParticipantCatId(participant) : null;
   return resolveSkillProfileManifest({
     profileId: participant?.skillProfile ?? null,
+    companion: isCompanionCat(catId ? state.cats.find((cat) => cat.id === catId) : null),
     catId: catId ?? target.participantId,
     roomMode: channel.roomRouting?.mode ?? 'chat_channel',
     transport: resolvedTransport,

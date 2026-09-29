@@ -14,6 +14,7 @@ import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import {
   resolveExecutionTargetLabel,
 } from '../../../shared/executionLabel.js';
+import { isCompanionCat } from '../../../shared/companionRole.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
 import {
   PRODUCT_PROVIDER_ORDER,
@@ -298,10 +299,7 @@ export function isChatCat(cat: ChatCat): boolean {
 }
 
 export function hasCompanionSkill(cat: ChatCat | null | undefined): boolean {
-  if (!cat) {
-    return false;
-  }
-  return cat.skillProfile === 'companion' || cat.roles.includes('companion');
+  return isCompanionCat(cat);
 }
 
 export function executionLabel(cat: ChatCat): string {

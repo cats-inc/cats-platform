@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  COMPANION_PILL_LABEL,
+  describeCatSkillProfile,
   getCatMcpProfileLabel,
   getCatProductSurfaceLabel,
   getCatRecordStatusLabel,
@@ -17,8 +19,8 @@ import { messageKeys } from '../src/shared/i18n/messageKeys.ts';
 test('settings-cats view support keeps curated profile and memory category lists', () => {
   assert.deepEqual(SKILL_PROFILES, [
     { value: 'chat-default', label: messageKeys.sharedSettingsCatsSkillProfileDefaultLabel },
-    { value: 'companion', label: messageKeys.sharedSettingsCatsSkillProfileCompanionLabel },
   ]);
+  assert.equal(COMPANION_PILL_LABEL, messageKeys.sharedSettingsCatsSkillProfileCompanionLabel);
   assert.deepEqual(MCP_PROFILES, [
     { value: 'chat-memory', label: messageKeys.sharedSettingsCatsMcpProfileChatMemoryLabel },
     { value: 'work-memory', label: messageKeys.sharedSettingsCatsMcpProfileWorkMemoryLabel },
@@ -32,9 +34,10 @@ test('settings-cats view support keeps curated profile and memory category lists
     { value: 'lesson', label: messageKeys.sharedSettingsCatsMemoryCategoryLessonLabel },
   ]);
   assert.equal(
-    getCatSkillProfileLabel('companion'),
-    messageKeys.sharedSettingsCatsSkillProfileCompanionLabel,
+    getCatSkillProfileLabel('chat-default'),
+    messageKeys.sharedSettingsCatsSkillProfileDefaultLabel,
   );
+  assert.equal(getCatSkillProfileLabel('companion'), null);
   assert.equal(
     getCatMcpProfileLabel(null),
     messageKeys.sharedSettingsCatsMcpProfileChatMemoryLabel,
@@ -44,6 +47,33 @@ test('settings-cats view support keeps curated profile and memory category lists
     messageKeys.sharedSettingsCatsMcpProfileWorkMemoryLabel,
   );
   assert.equal(getCatMcpProfileLabel('custom'), null);
+});
+
+test('describeCatSkillProfile shows the companion role beside any non-default skill', () => {
+  const t = createTranslator('en');
+  const defaultLabel = messageKeys.sharedSettingsCatsRegistryDefaultSkillProfileLabel;
+  const companion = t(messageKeys.sharedSettingsCatsSkillProfileCompanionLabel);
+
+  assert.equal(
+    describeCatSkillProfile({ roles: [], skillProfile: null }, t, defaultLabel),
+    t(defaultLabel),
+  );
+  assert.equal(
+    describeCatSkillProfile({ roles: ['companion'], skillProfile: null }, t, defaultLabel),
+    companion,
+  );
+  assert.equal(
+    describeCatSkillProfile({ roles: ['companion'], skillProfile: 'chat-default' }, t, defaultLabel),
+    companion,
+  );
+  assert.equal(
+    describeCatSkillProfile(
+      { roles: ['reviewer', 'companion'], skillProfile: 'plugin:agency-agents/work/agency-code-reviewer' },
+      t,
+      defaultLabel,
+    ),
+    `${companion} · plugin:agency-agents/work/agency-code-reviewer`,
+  );
 });
 
 test('formatTransportTimestamp returns an em dash for empty values and delegates to Date localization otherwise', () => {

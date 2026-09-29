@@ -4,6 +4,7 @@ import {
   renameCat,
   requireCat,
   setBossCat,
+  setCatCompanion,
   updateCatExecutionTarget,
   updateCatMcpProfile,
   updateCatProducts,
@@ -69,6 +70,7 @@ async function handleCanonicalUpdateCat(
   try {
     const body = await readJsonBody<{
       skillProfile?: string | null;
+      companion?: boolean;
       mcpProfile?: string | null;
       name?: string;
       makeBoss?: boolean;
@@ -88,6 +90,12 @@ async function handleCanonicalUpdateCat(
       }
       if (body.skillProfile !== undefined) {
         state = updateCatSkillProfile(state, catId, body.skillProfile);
+      }
+      if (body.companion !== undefined) {
+        if (typeof body.companion !== 'boolean') {
+          throw new Error('Cat companion must be a boolean');
+        }
+        state = setCatCompanion(state, catId, body.companion);
       }
       if (body.mcpProfile !== undefined) {
         state = updateCatMcpProfile(state, catId, body.mcpProfile);

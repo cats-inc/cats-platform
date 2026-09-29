@@ -60,6 +60,7 @@ export interface CatFormState {
   makeBoss: boolean;
   products: string[];
   skillProfile: string;
+  companion: boolean;
   mcpProfile: string;
 }
 
@@ -73,6 +74,7 @@ export function emptyCatForm(): CatFormState {
     makeBoss: false,
     products: defaultCatProducts(),
     skillProfile: 'chat-default',
+    companion: false,
     mcpProfile: CHAT_MCP_PROFILE_ID,
   };
 }

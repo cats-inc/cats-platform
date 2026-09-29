@@ -51,6 +51,7 @@ export function useSettingsCatsRegistryActions(options: {
     onMcpProfileChange,
     onRenameCat,
     onSkillChange,
+    onCompanionChange,
   } = createSettingsCatsRegistryActions({
     expandedCatId,
     setExpandedCatId,
@@ -166,6 +167,7 @@ export function useSettingsCatsRegistryActions(options: {
     onMcpProfileChange,
     onRenameCat,
     onSkillChange,
+    onCompanionChange,
     onUnarchiveCat,
   };
 }

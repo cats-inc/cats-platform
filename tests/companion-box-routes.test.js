@@ -132,7 +132,6 @@ test('companion box routes ingest records, persist profile/memory, and expose se
         name: 'Companion',
         provider: 'claude',
         roles: ['companion'],
-        skillProfile: 'companion',
       }),
     });
     assert.equal(createCatResponse.status, 201);
@@ -226,7 +225,6 @@ test('companion source update/delete routes converge canonical retrieval and pru
         name: 'Companion',
         provider: 'claude',
         roles: ['companion'],
-        skillProfile: 'companion',
       }),
     });
     assert.equal(createCatResponse.status, 201);
@@ -348,7 +346,6 @@ test('direct companion chat routes hydrated companion session context into runti
         name: 'Companion',
         provider: 'claude',
         roles: ['companion'],
-        skillProfile: 'companion',
       }),
     });
     const { cat } = await createCatResponse.json();
@@ -500,7 +497,6 @@ test('mentioning a companion in a Recents thread hydrates the participant runtim
         name: 'Companion',
         provider: 'claude',
         roles: ['companion'],
-        skillProfile: 'companion',
       }),
     });
     const { cat } = await createCatResponse.json();

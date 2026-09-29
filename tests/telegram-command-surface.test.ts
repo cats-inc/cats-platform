@@ -39,7 +39,7 @@ const BINDING: BotBindingRecord = {
 
 function createChatStore(): ChatStore {
   const state = {
-    cats: [{ id: 'cat-1', name: 'Smelly', skillProfile: 'chat-default', status: 'active' }],
+    cats: [{ id: 'cat-1', name: 'Smelly', roles: [], skillProfile: 'chat-default', status: 'active' }],
     channels: [],
   };
   return {

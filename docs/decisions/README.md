@@ -41,6 +41,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
+| [ADR-124](124-model-companion-as-a-cat-role-not-a-skill-profile.md) | Model Companion as a Cat Role, Not a Skill Profile | Accepted; implemented via PLAN-114; release boundary 0.6.0 | 2026-09-29 |
 | [ADR-123](123-expose-app-sdk-contract-as-platform-npm-subpath.md) | Expose the App SDK Contract as a Platform npm Subpath | Accepted for Stage 1; implemented, not yet published | 2026-09-29 |
 | [ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md) | Adopt Managed Plugins for Upstream Capabilities | Internal Agency host pilot accepted; general contract proposed | 2026-09-29 |
 | [ADR-121](121-distribute-apps-independently-with-host-owned-lifecycle.md) | Distribute Apps Independently with Host-Owned Lifecycle | Direction accepted; implementation planned | 2026-09-28 |

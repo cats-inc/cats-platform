@@ -24,8 +24,7 @@ test('Cat MCP profile updates flow into assigned channel views', () => {
         {
           name: 'Planner Cat',
           provider: 'antigravity',
-          roles: ['planner'],
-          skillProfile: 'companion',
+          roles: ['planner', 'companion'],
           mcpProfile: CHAT_MCP_PROFILE_ID,
         },
       ],

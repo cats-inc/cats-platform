@@ -1,5 +1,10 @@
 # ADR-040: Make Companion a First-Class Chat Mode with Workspace and Presence
 
+> **2026-09-29 amendment**: [ADR-124](./124-model-companion-as-a-cat-role-not-a-skill-profile.md)
+> implements §6 by modeling companion as a Cat-level `'companion'` role instead
+> of a `skillProfile` value, so one Cat can be a companion and carry another
+> skill profile at the same time.
+
 > **2026-04-28 amendment**: This ADR is amended in part by
 > [ADR-084](./084-adopt-companion-profile-ia-and-shareable-content-references.md).
 > Still binding: companion as a first-class `Cats Chat` mode, product-owned

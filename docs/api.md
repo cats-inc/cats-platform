@@ -1376,7 +1376,8 @@ POST /api/transports/telegram/webhook/:bindingId
     - `/open`
     - `/mode`
   - handles `/mode companion` and `/mode agent` as product-owned Cat behavior
-    toggles for the bound Telegram bot
+    toggles for the bound Telegram bot; they add or remove the Cat's
+    `companion` role and leave its `skillProfile` unchanged
   - keeps recognized slash commands and their replies out of the normal private-
     lane transcript by default
   - best-effort syncs the canonical command registry to Telegram via
@@ -3480,6 +3481,10 @@ payload. `mcpProfile` is optional; omitted or `null` behaves as the
 `chat-memory` default. Supported Cat MCP profile IDs are `chat-memory` and
 `work-memory`; unsupported IDs return `400 bad_request`.
 
+Include `"companion"` in `roles` to create a companion Cat
+([ADR-124](decisions/124-model-companion-as-a-cat-role-not-a-skill-profile.md)).
+`skillProfile: "companion"` is not accepted and returns `400 bad_request`.
+
 ### Update Cat
 
 ```text
@@ -3497,6 +3502,14 @@ Request body:
 Updates mutable Cat profile fields and returns the updated app-shell payload.
 Supported `mcpProfile` values are the same as Cat creation. Unknown profile IDs
 return `400 bad_request` with an `Unsupported Cat MCP profile` message.
+
+`companion` (boolean) adds or removes the Cat's `companion` role without
+touching `skillProfile`. A non-boolean value, or `skillProfile: "companion"`,
+returns `400 bad_request`. The runtime `companion` skill is requested for
+companion Cats on a built-in skill profile; it is omitted when `skillProfile`
+selects a managed Plugin skill, because Runtime managed-plugin sessions accept
+managed skills only. The companion skill is resolved alongside `skillProfile`
+on each dispatch.
 
 ### Assign Cat to a Channel
 

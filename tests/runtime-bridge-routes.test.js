@@ -147,7 +147,6 @@ test('runtime bridge flushes cats-owned memory when runtime inspection advertise
         name: 'Bridge Cat',
         provider: 'claude',
         roles: ['companion'],
-        skillProfile: 'companion',
       }),
     });
     assert.equal(createCatResponse.status, 201);
