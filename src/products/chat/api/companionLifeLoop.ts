@@ -9,7 +9,7 @@ import {
   COMPANION_HEARTBEAT_METADATA_KEY,
   parseCompanionHeartbeatReply,
 } from '../companion/life/heartbeat.js';
-import { isCompanionCat } from '../../../shared/companionRole.js';
+import { COMPANION_HEARTBEAT_EVENT, isCompanionCat } from '../../../shared/companionRole.js';
 import { resolveFullResponseText } from '../../../platform/runtime/client.js';
 import { sendSupervisedRuntimeMessage } from '../../../platform/supervision/runtimeBoundary.js';
 import { appendMessage, requireChannel } from '../state/model/index.js';
@@ -28,7 +28,7 @@ import { buildRoomMessageMutationDetail, publishRoomMutation } from './transport
 export type ChatCompanionLifeLoopDependencies = ChannelLifecycleDependencies
   & Pick<ChatApiDependencies, 'mutationGate' | 'companionActivityStore'>;
 
-const RUNTIME_BUSY_PATTERN = /\bbusy\b|\b409\b/iu;
+const RUNTIME_BUSY_PATTERN = /\bbusy\b/iu;
 
 /**
  * SPEC-124 FR-21..FR-23: one hidden turn in the Cat's own lane session. A reply
@@ -102,7 +102,7 @@ export function createCompanionHeartbeatSpeaker(
           {
             metadata: {
               // Not an assistant turn segment: live indicators must not read it as a reply.
-              event: 'companion_heartbeat',
+              event: COMPANION_HEARTBEAT_EVENT,
               [COMPANION_HEARTBEAT_METADATA_KEY]: { kind: request.kind },
               targetKind: 'cat',
               targetId: request.catId,

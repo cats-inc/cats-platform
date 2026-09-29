@@ -84,10 +84,22 @@
   - 驗證：`tests/companion-life.test.js`（19）、`companion-box-store`、`companion-box-routes`、
     `channel-deactivate`、`config`、`architecture-boundaries` 等 13 個 server 測試檔共 286 個通過；
     renderer 相關 10 個測試檔 43 個通過。`provider-telegram-routes` 的「file-backed restart」
-    在合併執行時失敗一次，單獨與重跑皆通過（負載敏感，與本變更無關）。
+    在合併執行時失敗一次，重跑通過（原因見 Phase 2 紀錄）。
   - 尚未驗證：實機 Desktop 畫面（動態紀錄文字、狀態卡片在 loop 喚醒後的更新）。
   - 已確認 Desktop 讓他睡的三個入口（個人頁、私訊工具列、`useDirectLaneCompanionMode`）都走
     `POST /api/channels/:id/deactivate`，所以都會寫入 `sleepUntil`；進入私訊不會自動呼叫
     activation。在清醒時段按一次睡覺，他會睡到下一次起床時間；期間 owner 傳訊息仍會醒來
     回覆，閒置 15 分鐘後再睡回去。
   - 已知取捨：休息時段裡卡在 `initializing` 超過 15 分鐘且 lane 安靜的 session 也會被關掉。
+- 2026-09-29：Phase 1 以 #186 merge（`7e2efe17`）。Phase 2 完成。
+  - Telegram bridge 選回覆時跳過 `companion_heartbeat` 訊息：owner 那一輪失敗而 lane 上只剩
+    心跳訊息時，原本會把它當成回覆再送一次（fanout 已經送過）。
+  - `provider-telegram-routes` 的「file-backed restart」是既有的不穩定測試：單獨執行各 10 次，
+    Phase 1 之前（`19b52694`）失敗 1 次、Phase 1 後的 main（`7e2efe17`）失敗 2 次、Phase 2
+    分支失敗 2 次。失敗時都是 `waitForTelegramLinkedRoom` 的 4 秒逾時（成功約 1.1 秒），
+    呈雙峰分布，像寫入競爭而非變慢；companion 檔案 store 在該測試中完全沒有被讀寫。差距在
+    樣本誤差內，另案追蹤。
+  - 驗證：`companion-heartbeat`（11）、`transport-fanout`（6，含心跳送到 Telegram 一次）、
+    `telegram-work-delivery-bridge`（11，含心跳不會被當成回覆）等，server 12 檔 248 個、
+    `provider-telegram-routes` 35 個、bundled 4 檔 21 個通過。
+  - 尚未驗證：實機 Desktop 私訊裡心跳訊息的呈現，以及真的 Telegram bot。

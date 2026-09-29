@@ -316,6 +316,54 @@ test('with the golden path disabled, /work falls through to chat unchanged', asy
   assertFellThroughToChat(log);
 });
 
+test('a companion heartbeat that lands mid-turn is never re-sent as the Telegram reply', async () => {
+  const log: RecordedCall[] = [];
+  type Message = { senderKind: string; senderName: string; body: string; metadata?: Record<string, unknown> };
+  const roomState = (messages: Message[]) => ({
+    selectedChannelId: 'channel-1',
+    channels: [{ id: 'channel-1', title: 'Bridge Cat', messages }],
+    cats: [],
+  });
+  // The owner's turn failed, so the only Cat message since dispatch is the heartbeat
+  // that the transport fanout already mirrored.
+  const roomBridge = {
+    readState: async () => roomState([]),
+    writeState: async (state: unknown) => state,
+    createRoom: (state: unknown) => ({ state, roomId: 'channel-1' }),
+    findReusableRoomId: () => 'channel-1',
+    readRoom: (state: ReturnType<typeof roomState>) => state.channels[0],
+    routeRoomMessage: async ({ state }: { state: ReturnType<typeof roomState> }) => ({
+      state: roomState([
+        ...state.channels[0]!.messages,
+        { senderKind: 'user', senderName: 'Owner', body: 'are you up?' },
+        {
+          senderKind: 'agent',
+          senderName: 'Bridge Cat',
+          body: 'Good morning from the windowsill.',
+          metadata: { event: 'companion_heartbeat', origin: 'runtime' },
+        },
+        { senderKind: 'system', senderName: 'Cats', body: 'Bridge Cat could not answer right now.' },
+      ]),
+    }),
+  } as never;
+
+  await bridgeTelegramWebhookToRoom({
+    update: workUpdate('are you up?'),
+    receipt: acceptedReceipt(),
+    context: relayContext(),
+    roomBridge,
+    memoryService,
+    runtimeClient,
+    telegramRelay: createRecordingRelay(log),
+    goldenPath: null,
+  });
+
+  const replies = log.filter((entry) => entry.kind.startsWith('deliver:'));
+  assert.equal(replies.length, 1);
+  assert.doesNotMatch(replies[0]!.detail ?? '', /windowsill/u);
+  assert.match(replies[0]!.detail ?? '', /could not answer right now/u);
+});
+
 // --- FR-12: acknowledgement ordering -----------------------------------------
 
 test('a golden-path callback is captured before its Telegram acknowledgement (FR-12)', async () => {
