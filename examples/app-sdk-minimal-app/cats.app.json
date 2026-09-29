@@ -6,7 +6,7 @@
   "category": "user-app",
   "trustTier": "local-user",
   "publisher": { "name": "Example Publisher" },
-  "compatibility": { "catsPlatform": "^0.6.0", "appSdk": "^1.2.0" },
+  "compatibility": { "catsPlatform": "^0.7.0", "appSdk": "^1.2.0" },
   "entrypoints": { "renderer": "renderer/index.html" },
   "contributions": {
     "lobbyApps": [{ "id": "minimal", "title": "Minimal Example", "routePath": "/apps/example.minimal" }]

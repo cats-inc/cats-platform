@@ -18,9 +18,13 @@ migrations landed since 0.6.1; the only store change is a write-path fix (#193).
   change from 0.5.0 is the corrected publisher metadata. Studio 0.2.1 is published
   but stays outside the default bundle. Both declare `catsPlatform ^0.6.0`, which
   this host reads as a floor (ADR-128 below).
-- **Excluded from this source.** Platform [#211](https://github.com/cats-inc/cats-platform/pull/211)
-  (Telegram: let a Cat's own bot answer without a room note) was still open when the
-  version was prepared. The new Ask App (0.1.0) is not released.
+- **Bundled knowledge.** The Orchestrator and code-entry knowledge bundles move to
+  `platformRange: "0.7.x"` as revision `2026-09-30.1`; their entries are unchanged. The
+  loaders and Desktop staging reject a bundle whose range excludes the running Platform,
+  so this is part of every Platform minor.
+- **Excluded from this source.** The new Ask App (0.1.0) is not released. Platform
+  [#211](https://github.com/cats-inc/cats-platform/pull/211) (Telegram: a Cat's own bot
+  answers without a room note) merged before this version was finalized and is included.
 - **Not verified here.** An installed 0.6.1 → 0.7.0 upgrade on each OS; only the
   hosted release gates and the packaged-startup check run for this preparation.
 - **Also in this release** (merged PRs): companion Cats keep a daily rhythm, speak
