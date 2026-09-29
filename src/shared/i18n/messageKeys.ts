@@ -3211,6 +3211,7 @@ export const messageKeys = {
   codeCanvasPreviewLogsEmpty: 'code.canvasPreview.logsEmpty',
   codeCanvasPreviewOpenExternal: 'code.canvasPreview.openExternal',
   codeCanvasPreviewRestartFailed: 'code.canvasPreview.restartFailed',
+  codeCanvasPreviewNotRunning: 'code.canvasPreview.notRunning',
   codeNewDraftGreeting: 'code.newDraft.greeting',
   codeCatlasHelpOpen: 'code.catlasHelp.open',
   codeCatlasHelpTitle: 'code.catlasHelp.title',

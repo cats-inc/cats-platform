@@ -101,6 +101,12 @@ main.canvas:has(> .artifactCanvasSurfaceFrame) {
   color: var(--text-muted);
 }
 
+.artifactCanvasControlsHint {
+  flex: 1;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
 .artifactCanvasControlsStatus--ready {
   color: var(--success, var(--accent));
 }

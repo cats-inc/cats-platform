@@ -124,10 +124,12 @@ not bypass the existing viewer contract.
       `livePreview.useRealProcessAdapter` config flag + matching env var keep
       the inert adapter active unless explicitly opted in. Supervisor wiring
       remains a follow-up gated on Tasks 5.1 / 5.4.
-- [ ] Task 5.4: Add end-to-end validation that starts a real preview in an
+- [x] Task 5.4: Add end-to-end validation that starts a real preview in an
       isolated temporary workspace, waits for readiness, opens Artifact Canvas,
       and stops/cleans the preview without writing user dev state. *(Requires
-      Task 5.1 sign-off; defer until operator approval.)*
+      Task 5.1 sign-off; defer until operator approval.)* Closed by PLAN-116 M2
+      acceptance (2026-09-30), which recorded start, countdown, stop, restart,
+      graceful quit and the crash cleanup.
 - [x] Task 5.5: Update operator docs with the supported profile list, port
       range, logs path, and stop behavior. Landed as
       `docs/live-preview-operator-guide.md` plus the

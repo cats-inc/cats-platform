@@ -3152,6 +3152,7 @@ export const zhTWCatalog: MessageCatalog = {
   'code.canvasPreview.logsEmpty': '尚無記錄輸出。',
   'code.canvasPreview.openExternal': '在瀏覽器開啟',
   'code.canvasPreview.restartFailed': '預覽無法重新啟動：{message}',
+  'code.canvasPreview.notRunning': '重新啟動後即可再次看到預覽。',
   'code.newDraft.greeting': '準備開始寫程式。',
   'code.catlasHelp.open': '協助我開始',
   'code.catlasHelp.title': '詢問 Catlas',

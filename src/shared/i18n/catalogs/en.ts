@@ -3234,6 +3234,7 @@ export const enCatalog: MessageCatalog = {
   'code.canvasPreview.logsEmpty': 'No log output yet.',
   'code.canvasPreview.openExternal': 'Open in browser',
   'code.canvasPreview.restartFailed': 'The preview could not restart: {message}',
+  'code.canvasPreview.notRunning': 'Restart it to see the preview again.',
   'code.newDraft.greeting': 'Ready to code.',
   'code.catlasHelp.open': 'Help me get started',
   'code.catlasHelp.title': 'Ask Catlas',

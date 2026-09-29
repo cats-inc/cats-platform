@@ -308,9 +308,37 @@ call a Platform-hosted MCP tool and receive its result.
     - `POST /api/code/live-previews/:id/renew`.
 - [ ] D3: Add the `npm-script` profile with framework port adapters once node/npm
   discovery is proven in packaged Desktop.
-- [ ] **M2 acceptance** (isolated instance, closes PLAN-097 Task 5.4): a Vite
+- [x] **M2 acceptance** (isolated instance, closes PLAN-097 Task 5.4): a Vite
   pomodoro timer is started by the Cat and visibly counts down. Stopping it and
   quitting Platform leaves no orphan process.
+  Passed on 2026-09-30 in an isolated instance (temporary Platform, Runtime and
+  workspace directories; Runtime from main with R1–R4; Platform with D1 and D2):
+  - Setup: Claude Code (Opus 5.5) as the Cat `Builder Cat`, and the Settings
+    switch turned on through `/api/code/preview-settings`.
+  - The prompt was 「用 Vite 做一個番茄鐘」.
+  - The orchestrator planned `start_dev_preview` and handed off to
+    `@Builder Cat`.
+  - The Cat scaffolded a Vite 8 project, ran `npm install`, tested it and called
+    `start_dev_preview`. The canvas opened with the scripted iframe profile.
+  - Playwright on the canvas route:
+    - the controls read 「開發伺服器 · 執行中」;
+    - pressing 開始 counted down from 25:00 to 24:57;
+    - Logs showed Vite's ready banner.
+  - Stop ended the Vite process and closed port 47100. Restart started a new
+    process on the same artifact, which counted down again. There were no
+    console errors.
+  - Graceful quit (the `cats.shutdown` IPC that Desktop sends) stopped Vite,
+    closed the port and emptied the process registry.
+  - After Platform started again, the canvas showed the dev server as stopped
+    with Restart, which brought it back.
+  - A hard kill of Platform on Windows also ended Vite: it exits once its
+    output pipe closes. The next start cleared the registry, leaving no
+    orphan.
+  - The sweep's own kill path, which matters for POSIX process groups, is
+    covered by `tests/code-preview-lifecycle.test.tsx`.
+  - Electron as Node (`ELECTRON_RUN_AS_NODE=1`, Electron 41 / Node 24.14) served
+    both `node_modules/vite/bin/vite.js` and `npm-cli.js run dev`, which covers
+    the packaged-Desktop runtime path.
 
 ### P6: Behavioral acceptance and Codex parity (M3)
 

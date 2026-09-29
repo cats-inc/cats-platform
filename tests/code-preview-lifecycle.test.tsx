@@ -48,6 +48,7 @@ import { DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG } from '../src/products/shared/ar
 import { ArtifactCanvasRenderIntentHub } from '../src/products/shared/artifactCanvas/renderIntent.ts';
 
 const CHANNEL = 'channel-1';
+const ESC = String.fromCharCode(27);
 const SURFACE = { kind: 'code_conversation' as const, surfaceId: CHANNEL };
 const POLICY = {
   ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
@@ -359,7 +360,7 @@ test('canvas controls restart a lost static preview and offer dev server control
       return Response.json({ artifactId: 'dev-1', previewId: 'p2', kind: 'dev', restartable: true,
         previewUrl: 'http://127.0.0.1:47101', profileId: 'vite', stopReason: null, expiresAt: null, ...devState });
     }
-    if (url.endsWith('/logs')) return Response.json({ previewId: 'p2', logs: 'VITE ready\nlocal: http://127.0.0.1:47101/' });
+    if (url.endsWith('/logs')) return Response.json({ previewId: 'p2', logs: `${ESC}[32mVITE${ESC}[39m ready\nlocal: http://127.0.0.1:47101/` });
     return Response.json({ status: 'ready' });
   }) as typeof fetch;
   t.after(() => { globalThis.fetch = originalFetch; cleanup(); });
@@ -378,9 +379,11 @@ test('canvas controls restart a lost static preview and offer dev server control
   assert.equal(dev.getByRole('link', { name: /Open in browser/u }).getAttribute('href'), 'http://127.0.0.1:47101');
   fireEvent.click(dev.getByRole('button', { name: 'Logs' }));
   await dev.findByText(/VITE ready/u);
+  assert.equal(dev.container.querySelector('pre')?.textContent?.includes(ESC), false, 'color codes are stripped');
   devState = { status: 'stopped' };
   fireEvent.click(dev.getByRole('button', { name: 'Stop' }));
   await waitFor(() => assert.ok(calls.includes('POST /api/code/live-previews/p2/stop')));
+  await dev.findByText('Restart it to see the preview again.');
   fireEvent.click(await dev.findByRole('button', { name: 'Restart' }));
   await waitFor(() => assert.ok(calls.includes('POST /api/code/preview-artifacts/dev-1/restart')));
   assert.equal(dev.queryByRole('link', { name: /Open in browser/u }), null);

@@ -19,6 +19,8 @@ import {
  */
 
 export const CODE_PREVIEW_STATE_POLL_MS = 5_000;
+// Dev servers color their output; the log panel shows plain text.
+const ANSI_ESCAPE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*[A-Za-z]`, 'gu');
 export const CODE_PREVIEW_RENEW_MS = 5 * 60_000;
 
 const STATUS_KEYS = {
@@ -126,7 +128,7 @@ export function CodePreviewCanvasControls({ artifactId, onRefresh }: ArtifactCan
     }
     const response = await fetch(buildCodeApiLivePreviewLogsPath(state!.previewId));
     const body = response.ok ? await response.json() as { logs?: string } : {};
-    setLogs((body.logs ?? '').split(/\r?\n/u).slice(-200).join('\n'));
+    setLogs((body.logs ?? '').replace(ANSI_ESCAPE, '').split(/\r?\n/u).slice(-200).join('\n'));
   }
 
   return (
@@ -136,6 +138,9 @@ export function CodePreviewCanvasControls({ artifactId, onRefresh }: ArtifactCan
         {' · '}
         {t(STATUS_KEYS[state.status])}
       </span>
+      {!running && state.restartable ? (
+        <span className="artifactCanvasControlsHint">{t(messageKeys.codeCanvasPreviewNotRunning)}</span>
+      ) : null}
       <div className="artifactCanvasActions">
         {running ? (
           <button type="button" className="operatorActionButton" disabled={busy} onClick={() => { void stop(); }}>
