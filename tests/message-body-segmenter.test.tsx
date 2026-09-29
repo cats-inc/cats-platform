@@ -319,3 +319,16 @@ test('extractAttachments only marks raster formats as inline images', () => {
   ]);
   assert.equal(textBody, 'See attached');
 });
+
+test('segmentMessageBody highlights a Cat name that contains a space', () => {
+  const segments = segmentMessageBody(
+    '交給 @Builder Cat。',
+    [{ name: 'Builder Cat', avatarColor: '#4a7bd0' }],
+  );
+
+  assert.deepEqual(segments, [
+    { kind: 'text', value: '交給 ' },
+    { kind: 'mention', value: '@Builder Cat', avatarColor: '#4a7bd0' },
+    { kind: 'text', value: '。' },
+  ]);
+});

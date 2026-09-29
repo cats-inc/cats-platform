@@ -187,6 +187,20 @@ context transplant, but it does not own room policy.
 - `group_claim`
   - one group mention resolved through room policy and capability lookup
 
+### Mention Parsing
+
+- An `@` that does not follow an ASCII word character starts a mention.
+- The router first matches the room's names: active Cats plus the orchestrator
+  aliases.
+  - The longest matching name wins, so a name may contain spaces
+    (`@Builder Cat`).
+  - Case does not matter.
+  - The name must be followed by the end of the text, whitespace, punctuation
+    or a CJK character.
+- Otherwise the mention is the single token after the `@` (letters, digits,
+  `.`, `_` and `-`). That token is unresolved unless a room name equals it.
+- Renderer highlighting uses the same rule with the Cats it can display.
+
 ### Room Workflow
 
 - `RoomWorkflowPolicy`

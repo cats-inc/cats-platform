@@ -231,9 +231,6 @@ export function resolveMentionRoute(
     && defaultTarget.participant?.participantKind === 'cat'
     ? [defaultTarget.participant.participantName]
     : [];
-  const mentionNames = parseMentions(body, {
-    excludedNames: ignoredMentionNames,
-  });
   const activeCats = activeAssignedParticipants(channel);
   const catsByName = new Map(activeCats.map((cat) => [cat.name.toLowerCase(), cat]));
   const orchestratorTarget = buildOrchestratorTarget(state, channel);
@@ -242,6 +239,11 @@ export function resolveMentionRoute(
     ORCHESTRATOR_NAME.toLowerCase(),
     orchestratorTarget.participantName.toLowerCase(),
   ]);
+  // Room names can contain spaces ("Builder Cat"), which a bare @token cannot.
+  const mentionNames = parseMentions(body, {
+    excludedNames: ignoredMentionNames,
+    knownNames: [...catsByName.keys(), ...orchestratorMentionAliases],
+  });
   const targets: RoutingTarget[] = [];
   const unresolved: string[] = [];
 

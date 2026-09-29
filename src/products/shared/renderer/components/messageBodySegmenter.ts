@@ -172,6 +172,7 @@ export function segmentMessageBody(
 
   const mentionResult = parseMentionsWithPositions(body, {
     excludedNames: disabledMentionNames,
+    knownNames: catLookup.keys(),
   });
   const mentionTokens: TokenSpan[] = mentionResult.positions.flatMap((pos) => {
     const cat = catLookup.get(pos.name.toLowerCase()) ?? null;
