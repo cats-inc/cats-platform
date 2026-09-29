@@ -13,6 +13,8 @@ export interface TelegramFetchResponse {
   status: number;
   json(): Promise<unknown>;
   text(): Promise<string>;
+  /** Raw bytes, for file downloads; `fetch` responses provide it natively. */
+  arrayBuffer?(): Promise<ArrayBuffer>;
 }
 
 export type TelegramFetch = (
@@ -62,15 +64,18 @@ function normalizeBody(body: TelegramBodyInit | null | undefined): Buffer | null
   return Buffer.from(String(body));
 }
 
-function createTelegramResponse(status: number, body: string): TelegramFetchResponse {
+function createTelegramResponse(status: number, bytes: Buffer): TelegramFetchResponse {
   return {
     ok: status >= 200 && status < 300,
     status,
     async json() {
-      return JSON.parse(body) as unknown;
+      return JSON.parse(bytes.toString('utf8')) as unknown;
     },
     async text() {
-      return body;
+      return bytes.toString('utf8');
+    },
+    async arrayBuffer() {
+      return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
     },
   };
 }
@@ -114,7 +119,7 @@ export function createTelegramIpv4Fetch(
             resolve(
               createTelegramResponse(
                 response.statusCode ?? 500,
-                Buffer.concat(chunks).toString('utf8'),
+                Buffer.concat(chunks),
               ),
             );
           });

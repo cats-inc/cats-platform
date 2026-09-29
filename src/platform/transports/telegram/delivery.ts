@@ -80,6 +80,14 @@ export interface TelegramDeliveryClient {
   }): Promise<TelegramBotApiMutationResult>;
   /** Ephemeral presence ("typing..."); never a delivery, so never a receipt. */
   sendChatAction?(request: { chatId: string; action: 'typing' }): Promise<TelegramBotApiMutationResult>;
+  /** An inbound file's bytes (SPEC-124 FR-33); null when missing or over `maxBytes`. */
+  downloadFile?(request: { fileId: string; maxBytes: number }): Promise<TelegramDownloadedFile | null>;
+}
+
+export interface TelegramDownloadedFile {
+  bytes: Buffer;
+  /** Telegram's path for the file, e.g. `photos/file_3.jpg`. */
+  filePath: string;
 }
 
 export interface TelegramBotApiDeliveryClientOptions {
@@ -397,6 +405,28 @@ export function createTelegramBotApiDeliveryClient(
         ok,
         description: ok ? null : payload.description ?? `Telegram API ${response.status}`,
       };
+    },
+
+    async downloadFile({ fileId, maxBytes }): Promise<TelegramDownloadedFile | null> {
+      const { response, payload } = await postBotApi<{ file_path?: unknown; file_size?: unknown }>(
+        fetchImpl,
+        apiBaseUrl,
+        botToken,
+        'getFile',
+        { file_id: fileId },
+      );
+      const rawPath = response.ok && payload.ok === true ? payload.result?.file_path : null;
+      const filePath = typeof rawPath === 'string' && rawPath.length > 0 ? rawPath : null;
+      const declaredSize = payload.result?.file_size;
+      if (!filePath || (typeof declaredSize === 'number' && declaredSize > maxBytes)) {
+        return null;
+      }
+      const download = await fetchImpl(`${apiBaseUrl}/file/bot${botToken}/${filePath}`);
+      if (!download.ok || !download.arrayBuffer) {
+        return null;
+      }
+      const bytes = Buffer.from(await download.arrayBuffer());
+      return bytes.byteLength > 0 && bytes.byteLength <= maxBytes ? { bytes, filePath } : null;
     },
 
     async sendChatAction({ chatId, action }): Promise<TelegramBotApiMutationResult> {

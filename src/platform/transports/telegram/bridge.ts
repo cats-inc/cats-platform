@@ -18,6 +18,11 @@ import {
   stripTransportAttachmentBlock,
   type TransportPhoto,
 } from './media.js';
+import {
+  downloadInboundTelegramImages,
+  isInboundTelegramImage,
+  type InboundTelegramImage,
+} from './inboundMedia.js';
 import { normalizeTelegramAttachments } from './normalization.js';
 import {
   classifyTransportWorkInbound,
@@ -129,6 +134,15 @@ export interface TelegramRoomBridge<TState extends TelegramRoomBridgeState = Tel
     timestamp: Date;
   }): Promise<{ state: TState }>;
   buildRecoveryState(input: TelegramRoomBridgeRecoveryInput<TState>): TState;
+  /**
+   * SPEC-124 FR-33: stores inbound pictures beside the room and returns their
+   * paths relative to its working directory.
+   */
+  storeInboundAttachments?(input: {
+    state: TState;
+    roomId: string;
+    files: InboundTelegramImage[];
+  }): Promise<string[]>;
 }
 
 /** Telegram shows a chat action for about five seconds, so refresh a little sooner. */
@@ -182,25 +196,55 @@ function shouldCreateNewRoom(
     || body.startsWith('new topic:');
 }
 
-function buildInboundBody(message: TelegramMessagePayload | null): string {
+function buildInboundBody(
+  message: TelegramMessagePayload | null,
+  storedImagePaths: readonly string[] = [],
+): string {
   const rawText = extractMessageText(message);
   const strippedText = rawText ? stripNewRoomPrefix(rawText) : null;
-  const attachments = message ? normalizeTelegramAttachments(message) : [];
+  // Stored pictures are shown by the attachment block, so only the rest keep a label.
+  const attachments = (message ? normalizeTelegramAttachments(message) : [])
+    .filter((attachment) => storedImagePaths.length === 0 || !isInboundTelegramImage(attachment));
   const attachmentLabel = attachments.length > 0
     ? `Attachments: ${attachments.map((attachment) => attachment.kind).join(', ')}`
     : null;
+  const text = [strippedText, attachmentLabel].filter(Boolean).join('\n\n');
 
-  if (strippedText && attachmentLabel) {
-    return `${strippedText}\n\n${attachmentLabel}`;
+  if (storedImagePaths.length > 0) {
+    const refs = storedImagePaths.map((relativePath) => `- ${relativePath}`).join('\n');
+    return `[Attached files in working directory:]\n${refs}\n\n${text}`;
   }
-  if (strippedText) {
-    return strippedText;
-  }
-  if (attachmentLabel) {
-    return attachmentLabel;
-  }
+  return text || 'Telegram message received.';
+}
 
-  return 'Telegram message received.';
+/** SPEC-124 FR-33: best effort; any failure leaves the plain attachment label. */
+async function storeInboundTelegramImages<TState extends TelegramRoomBridgeState>(input: {
+  message: TelegramMessagePayload | null;
+  telegramRelay: TelegramRelay;
+  context: TelegramRelayContext;
+  roomBridge: TelegramRoomBridge<TState>;
+  state: TState;
+  roomId: string;
+}): Promise<string[]> {
+  if (!input.roomBridge.storeInboundAttachments) {
+    return [];
+  }
+  try {
+    const files = await downloadInboundTelegramImages({
+      message: input.message,
+      relay: input.telegramRelay,
+      context: input.context,
+    });
+    return files.length > 0
+      ? await input.roomBridge.storeInboundAttachments({
+          state: input.state,
+          roomId: input.roomId,
+          files,
+        })
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 function resolveSenderName(
@@ -1444,7 +1488,7 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
     let roomCreated = false;
     let dispatchedState: TState | null = null;
     let messageCountBeforeDispatch: number | null = null;
-    const inboundBody = buildInboundBody(message);
+    let inboundBody = buildInboundBody(message);
     const roomMode = resolveInternalRoomMode(activeBinding);
     const createRoomInput: TelegramRoomBridgeCreateRoomInput = {
       title: roomMode === 'direct_message' ? '' : buildRoomTitle(message, boundCat.catName),
@@ -1608,6 +1652,17 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
       );
       let dispatch: Awaited<ReturnType<typeof input.roomBridge.routeRoomMessage>>;
       try {
+        const storedImagePaths = await storeInboundTelegramImages({
+          message,
+          telegramRelay: input.telegramRelay,
+          context: input.context,
+          roomBridge: input.roomBridge,
+          state: nextState,
+          roomId,
+        });
+        if (storedImagePaths.length > 0) {
+          inboundBody = buildInboundBody(message, storedImagePaths);
+        }
         dispatch = await input.roomBridge.routeRoomMessage({
           state: nextState,
           roomId,

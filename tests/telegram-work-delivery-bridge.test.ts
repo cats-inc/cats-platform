@@ -528,6 +528,102 @@ test('an ordinary message carrying an attachment keeps its existing chat behavio
   assertFellThroughToChat(log);
 });
 
+function photoRoomBridge(stored: string[] | null) {
+  const calls = {
+    routedBodies: [] as string[],
+    storedFiles: [] as Array<{ name: string; bytes: Buffer }>,
+  };
+  const roomState = () => ({
+    selectedChannelId: 'channel-1',
+    channels: [{ id: 'channel-1', title: 'Bridge Cat', messages: [] }],
+    cats: [],
+  });
+  const roomBridge = {
+    readState: async () => roomState(),
+    writeState: async (state: unknown) => state,
+    createRoom: (state: unknown) => ({ state, roomId: 'channel-1' }),
+    findReusableRoomId: () => 'channel-1',
+    readRoom: (state: ReturnType<typeof roomState>) => state.channels[0],
+    routeRoomMessage: async ({ state, body }: { state: ReturnType<typeof roomState>; body: string }) => {
+      calls.routedBodies.push(body);
+      return { state };
+    },
+    ...(stored
+      ? {
+          storeInboundAttachments: async ({ files }: { files: Array<{ name: string; bytes: Buffer }> }) => {
+            calls.storedFiles.push(...files);
+            return stored;
+          },
+        }
+      : {}),
+  } as never;
+  return { roomBridge, calls };
+}
+
+function photoUpdate(caption: string | null) {
+  const update = workUpdate('');
+  const message = update.message as Record<string, unknown>;
+  delete message.text;
+  if (caption) message.caption = caption;
+  message.photo = [
+    { file_id: 'photo-small', width: 90, height: 90 },
+    { file_id: 'photo-large', width: 1280, height: 1280, file_size: 180_000 },
+  ];
+  return update;
+}
+
+test('a photo from Telegram is downloaded beside the room and shown to the Cat as an attachment', async () => {
+  const log: RecordedCall[] = [];
+  const { roomBridge, calls } = photoRoomBridge(['.cats-attachments/telegram-photo-55.jpg']);
+  const relay = createRecordingRelay(log);
+  const downloads: string[] = [];
+  relay.downloadFile = async ({ fileId }) => {
+    downloads.push(fileId);
+    return { bytes: Buffer.from('jpeg bytes'), filePath: 'photos/file_7.jpg' };
+  };
+
+  await bridgeTelegramWebhookToRoom({
+    update: photoUpdate('look at this sky'),
+    receipt: acceptedReceipt(),
+    context: relayContext(),
+    roomBridge,
+    memoryService,
+    runtimeClient,
+    telegramRelay: relay,
+    goldenPath: null,
+  });
+
+  assert.deepEqual(downloads, ['photo-large'], 'only the largest size is fetched');
+  assert.deepEqual(
+    calls.storedFiles.map((file) => [file.name, file.bytes.toString()]),
+    [['telegram-photo-55.jpg', 'jpeg bytes']],
+  );
+  assert.deepEqual(calls.routedBodies, [
+    '[Attached files in working directory:]\n- .cats-attachments/telegram-photo-55.jpg\n\nlook at this sky',
+  ]);
+});
+
+test('a photo that cannot be downloaded keeps the plain attachment label', async () => {
+  const log: RecordedCall[] = [];
+  const { roomBridge, calls } = photoRoomBridge(['unused']);
+  const relay = createRecordingRelay(log);
+  relay.downloadFile = async () => null;
+
+  await bridgeTelegramWebhookToRoom({
+    update: photoUpdate(null),
+    receipt: acceptedReceipt(),
+    context: relayContext(),
+    roomBridge,
+    memoryService,
+    runtimeClient,
+    telegramRelay: relay,
+    goldenPath: null,
+  });
+
+  assert.deepEqual(calls.storedFiles, []);
+  assert.deepEqual(calls.routedBodies, ['Attachments: photo']);
+});
+
 // --- Full stack: bridge -> port -> service -> Telegram send -------------------
 
 test('a /work message produces a Telegram proposal with inline actions', async () => {

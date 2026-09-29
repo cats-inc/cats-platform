@@ -10,7 +10,7 @@ import type {
   TelegramWebhookReceipt,
   TelegramWebhookUpdate,
 } from '../contracts.js';
-import type { TelegramDeliveryClient } from '../delivery.js';
+import type { TelegramDeliveryClient, TelegramDownloadedFile } from '../delivery.js';
 import {
   createTelegramConversationMapper,
   type TelegramConversationMapper,
@@ -18,6 +18,7 @@ import {
 import {
   createBridgeDispatchFailureReceipt,
   deliverTelegramRequest,
+  downloadTelegramFile,
   sendTelegramChatAction,
 } from './delivery.js';
 import { linkTelegramRoom, receiveTelegramUpdate } from './ingress.js';
@@ -76,6 +77,12 @@ export interface TelegramRelay {
     action: 'typing';
     context: TelegramRelayContext;
   }): Promise<void>;
+  /** SPEC-124 FR-33: best effort; null when the file cannot be fetched. */
+  downloadFile?(input: {
+    fileId: string;
+    maxBytes: number;
+    context: TelegramRelayContext;
+  }): Promise<TelegramDownloadedFile | null>;
 }
 
 interface TelegramRelayOptions {
@@ -250,6 +257,16 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         resolveDeliveryClient,
         chatId,
         action,
+        context,
+      });
+    },
+
+    async downloadFile({ fileId, maxBytes, context }): Promise<TelegramDownloadedFile | null> {
+      return await downloadTelegramFile({
+        deliveryClient,
+        resolveDeliveryClient,
+        fileId,
+        maxBytes,
         context,
       });
     },

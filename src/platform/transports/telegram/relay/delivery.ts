@@ -9,7 +9,7 @@ import type {
   TelegramRelayContext,
   TelegramWebhookReceipt,
 } from '../contracts.js';
-import type { TelegramDeliveryClient } from '../delivery.js';
+import type { TelegramDeliveryClient, TelegramDownloadedFile } from '../delivery.js';
 import type { TelegramConversationMapper } from '../mapping.js';
 import { normalizeTelegramDeliveryTextPreview } from '../normalization.js';
 import type { TelegramRelayStore } from '../store/index.js';
@@ -360,4 +360,18 @@ export async function sendTelegramChatAction(input: {
   const binding = input.context.selectedBotBinding ?? resolveActiveTelegramBinding(input.context);
   const client = input.resolveDeliveryClient?.(binding ?? null) ?? input.deliveryClient;
   await client?.sendChatAction?.({ chatId: input.chatId, action: input.action }).catch(() => undefined);
+}
+
+/** SPEC-124 FR-33: best effort; a failed download is null, never an error. */
+export async function downloadTelegramFile(input: {
+  deliveryClient: TelegramDeliveryClient | null;
+  resolveDeliveryClient?: (binding: BotBindingRecord | null) => TelegramDeliveryClient | null;
+  fileId: string;
+  maxBytes: number;
+  context: TelegramRelayContext;
+}): Promise<TelegramDownloadedFile | null> {
+  const binding = input.context.selectedBotBinding ?? resolveActiveTelegramBinding(input.context);
+  const client = input.resolveDeliveryClient?.(binding ?? null) ?? input.deliveryClient;
+  return await client?.downloadFile?.({ fileId: input.fileId, maxBytes: input.maxBytes })
+    .catch(() => null) ?? null;
 }
