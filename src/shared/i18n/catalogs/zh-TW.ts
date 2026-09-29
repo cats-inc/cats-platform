@@ -3132,6 +3132,7 @@ export const zhTWCatalog: MessageCatalog = {
   'catteryHome.notFound.body': '此工作區中沒有 id 為「{catteryId}」的貓窩。可能已被移除，或連結已失效。',
 
   'code.activeComposer.detachedBranch': '分離分支',
+  'code.canvasPreview.open': '開啟預覽',
   'code.newDraft.greeting': '準備開始寫程式。',
   'code.catlasHelp.open': '協助我開始',
   'code.catlasHelp.title': '詢問 Catlas',

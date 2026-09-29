@@ -13,8 +13,10 @@ import { readConversationScroll, rememberConversationScroll } from '../conversat
 const NEAR_BOTTOM_PX = 80;
 const COMPOSER_CLEARANCE_PX = 12;
 
+// On a canvas route the page column beside the artifact canvas scrolls, not
+// main.canvas (withSharedViewerRoutes.tsx).
 function findScrollContainer(element: HTMLDivElement | null): HTMLElement | null {
-  return element?.closest('.canvas') as HTMLElement | null;
+  return element?.closest('.artifactCanvasSurfaceMain, .canvas') as HTMLElement | null;
 }
 
 function readComposerOverlapInset(composerCardElement: HTMLElement): number {

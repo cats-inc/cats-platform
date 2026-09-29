@@ -158,6 +158,8 @@ export interface ChatOperatorView {
   governanceSummary: CoreGovernanceSummary | null;
   workflowSummary: CoreWorkflowSummary | null;
   latestWorkflowRecommendation: ChatWorkflowRecommendationView | null;
+  /** The artifact of the conversation's most recent canvas show intent. */
+  latestCanvasArtifactId: string | null;
   approvalActions: ChatApprovalActionView[];
   incidentActions: ChatOperatorActionView[];
 }

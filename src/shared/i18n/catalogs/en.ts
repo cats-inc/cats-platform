@@ -3212,6 +3212,7 @@ export const enCatalog: MessageCatalog = {
     'No Cattery with id "{catteryId}" exists in this workspace. It may have been removed, or the link is stale.',
 
   'code.activeComposer.detachedBranch': 'Detached branch',
+  'code.canvasPreview.open': 'Open preview',
   'code.newDraft.greeting': 'Ready to code.',
   'code.catlasHelp.open': 'Help me get started',
   'code.catlasHelp.title': 'Ask Catlas',

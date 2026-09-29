@@ -147,10 +147,16 @@ main.canvas:has(> .myPageWrapper) {
 
 The bar then uses `.channelTopBar`'s default `-28px` bleed — no per-viewport math needed. **Verify** any new top-bar-bearing surface with Playwright at viewports 1024 / 1249 / 1600 / 1920 — `bar.left === main.left && bar.right === main.right` at every size.
 
+On an Artifact Canvas route (`…/canvas/:artifactId`), the direct child of `main.canvas` is `.artifactCanvasSurfaceFrame`, so page `:has(> …)` rules do not apply. `artifact-canvas.css` counters the shell rules for the frame, and it gives the page column (`.artifactCanvasSurfaceMain`, which is the scroller there) the 28px gutter. On those routes, verify these instead:
+- `frame.left/right === main.left/right`
+- `bar.left === column.left`
+- `bar.right === column.left + column.clientWidth`
+- only the column scrolls
+
 ---
 
 ## Maintenance
 
 This file is maintained by Claude only. Other agents should not modify this file.
 
-Last updated: 2026-09-16
+Last updated: 2026-09-29

@@ -141,6 +141,10 @@ export function buildChatOperatorView(
     governanceSummary,
     workflowSummary,
     latestWorkflowRecommendation,
+    // Clear intents are ignored, so the last shown artifact stays reachable.
+    latestCanvasArtifactId: activities.find((activity) =>
+      activity.kind === 'artifact_canvas_show_intent' && activity.artifactId,
+    )?.artifactId ?? null,
     approvalActions,
     incidentActions: buildIncidentActions(
       task,
