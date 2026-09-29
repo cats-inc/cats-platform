@@ -30,6 +30,28 @@ export function supportsVersion(version, range) {
   return r[0] > 0 || (v[1] === r[1] && (r[1] > 0 || v[2] === r[2]));
 }
 
+// Lower bound of a supported range as [major, minor, patch], or null for unsupported grammar.
+// `^1.2.3` and exact versions start at themselves; `1.x` and `1.2.x` start at .0.
+export function minimumVersion(range) {
+  if (typeof range !== 'string') return null;
+  if (VERSION.test(range)) return range.split('.').map(Number);
+  const wildcard = /^(0|[1-9]\d*)\.(?:(0|[1-9]\d*)\.)?x$/.exec(range);
+  if (wildcard) return [Number(wildcard[1]), wildcard[2] === undefined ? 0 : Number(wildcard[2]), 0];
+  if (range.startsWith('^') && VERSION.test(range.slice(1))) return range.slice(1).split('.').map(Number);
+  return null;
+}
+
+// ADR-128: `compatibility.catsPlatform` is a minimum host version, not a range. The host
+// accepts any version at or above the declared range's lower bound; the App SDK version
+// (`supportsVersion`) is the only compatibility gate. Unsupported grammar still fails.
+export function meetsMinimumVersion(version, range) {
+  if (typeof version !== 'string' || !VERSION.test(version)) return false;
+  const floor = minimumVersion(range);
+  if (!floor) return false;
+  const v = version.split('.').map(Number);
+  return (v[0] - floor[0] || v[1] - floor[1] || v[2] - floor[2]) >= 0;
+}
+
 export function assertAppIdentity(id, version) {
   if (typeof id !== 'string' || id.length > 100 || !ID.test(id)
     || typeof version !== 'string' || !VERSION.test(version)) throw new Error('Invalid app ID or stable version.');

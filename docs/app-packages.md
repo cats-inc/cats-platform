@@ -64,32 +64,37 @@ artifact version. Current Usage 0.4.0 declares:
 }
 ```
 
-`catsPlatform` compares against the Platform root package version, also used by
-Desktop. `appSdk` compares against the host's independent SDK interface version.
-Both must match: a new SDK feature can require a newer SDK even within a supported
-Desktop line. No separate minimum-Desktop field is needed while versions are shared.
+The two fields have different roles
+([ADR-128](decisions/128-make-the-app-sdk-version-the-sole-app-compatibility-gate.md)):
 
-[Package installation validation](../src/platform/apps/packageInstaller.ts)
-checks both declarations using [the version matcher](../packages/app-sdk/package.js).
-The current grammar accepts exact stable `X.Y.Z`, `^X.Y.Z`, `major.x` and
-`major.minor.x`. It rejects prerelease strings and unsupported expressions such
-as `>=0.3.2 <0.4.0`, `~0.3.2` or unions. Do not describe it as a full npm semver parser.
+- `appSdk` is **the compatibility gate**. It compares against the host's
+  `APP_SDK_VERSION`, the version of everything an App can observe: the browser SDK,
+  the package format, the permission catalog and the Runtime bridge. A host is
+  compatible if and only if its SDK version satisfies this range.
+- `catsPlatform` is **a minimum host version**. The host compares itself against the
+  lower bound of the declared range and accepts any version at or above it, across
+  minors. `^0.5.0` therefore means "Platform 0.5.0 or newer"; it no longer excludes
+  0.6.0. Declare the oldest Platform the App was verified on.
 
-Use the actual minimum plus an upper compatibility boundary: `^0.3.2` accepts
-stable `0.3.2` and later `0.3.x`, excluding `0.4.0`; `^1.2.0` accepts SDK 1.2.0
-through 1.x, excluding 2.0.0. A broad `0.x` would admit all 0.x minors and does not
-express a useful minimum for an App requiring newer features.
+[Package installation validation](../src/platform/apps/packageInstaller.ts) and
+Desktop packaging apply both rules through [the version matcher](../packages/app-sdk/package.js)
+(`supportsVersion` for the SDK range, `meetsMinimumVersion` for the Platform floor).
+The grammar accepts exact stable `X.Y.Z`, `^X.Y.Z`, `major.x` and `major.minor.x`
+for both fields. It rejects prerelease strings and unsupported expressions such as
+`>=0.3.2 <0.4.0`, `~0.3.2` or unions. Do not describe it as a full npm semver parser.
 
-Required project release discipline preserves App-facing contracts within a 0.x minor
-line and changes the minor for breaking host changes; stable SDK breaking changes
-use a major bump. This is a project choice, not a promise of universal pre-1.0
-compatibility. If a compatible line is not yet supportable, declare an exact
-verified version. Record verification evidence separately from declared ranges.
-Pre-release permission to remove obsolete contracts does not justify silently
-accepting incompatible Apps.
+For the SDK, use the actual minimum plus an upper boundary: `^1.2.0` accepts SDK
+1.2.0 through 1.x, excluding 2.0.0. If a compatible line is not yet supportable,
+declare an exact verified SDK version. Record verification evidence separately from
+declared ranges.
 
-An App's unchanged range need not track every Desktop patch. Raise its minimum
-only when required capabilities/fixes demand it. Changing a published manifest
+The obligation this places on Platform: any change an App can observe must move
+`APP_SDK_VERSION` (minor for compatible additions, major for breaking changes).
+Platform version bumps carry no App-compatibility meaning, so a Platform minor does
+not require re-releasing published Apps.
+
+Raise an App's SDK minimum only when it needs a newly introduced API, behavior or
+fix. Changing a published manifest
 changes artifact bytes and requires a new App version when released. See the
 [App release SOP](https://github.com/cats-inc/cats-apps/blob/main/docs/deployment.md#host-and-sdk-compatibility)
 and [all-target release guide](https://github.com/cats-inc/cats-one/blob/main/docs/release-guide.md).

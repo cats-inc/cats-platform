@@ -1,6 +1,7 @@
 import {
   APP_SDK_VERSION,
   decodeAppPackage,
+  meetsMinimumVersion,
   supportsVersion,
   type AppPackageExpectation,
   type DecodedAppPackage,
@@ -21,9 +22,9 @@ const RENDERER_APP_PERMISSIONS: ReadonlyArray<CatsAppPermission> = [
 const RESERVED_APP_IDS = ['install', 'validate'];
 
 export interface RendererPackageValidationOptions {
-  /** Host Platform version that `compatibility.catsPlatform` must accept. */
+  /** Host Platform version; must be at or above the floor of `compatibility.catsPlatform` (ADR-128). */
   platformVersion: string;
-  /** Host App SDK version that `compatibility.appSdk` must accept; defaults to this SDK. */
+  /** Host App SDK version that `compatibility.appSdk` must accept; the sole compatibility gate. Defaults to this SDK. */
   appSdkVersion?: string;
   /** Expected identity and digest, as pinned by a lock or catalog entry. */
   pin?: AppPackageExpectation;
@@ -61,7 +62,8 @@ export function validateRendererAppPackage(
   if (manifest.category !== 'user-app' || RESERVED_APP_IDS.includes(manifest.id)) {
     throw new Error('Only utility user-app packages are supported.');
   }
-  if (!supportsVersion(options.platformVersion, manifest.compatibility.catsPlatform)
+  // ADR-128: the SDK range is the compatibility contract; the Platform declaration is only a floor.
+  if (!meetsMinimumVersion(options.platformVersion, manifest.compatibility.catsPlatform)
     || !supportsVersion(options.appSdkVersion ?? APP_SDK_VERSION, manifest.compatibility.appSdk)) {
     throw new Error('Incompatible platform or App SDK version.');
   }
