@@ -1,7 +1,7 @@
 import { access, cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { dirname, join, relative, resolve } from 'node:path';
-import { decodeAppPackage, parseAppLock, supportsVersion, APP_SDK_VERSION, PLATFORM_VERSION, type ResolvedAppPin } from '#cats-app-package';
+import { decodeAppPackage, meetsMinimumVersion, parseAppLock, supportsVersion, APP_SDK_VERSION, PLATFORM_VERSION, type ResolvedAppPin } from '#cats-app-package';
 
 import type { DesktopHostConfig } from './config.js';
 import { collectDesktopLicenses } from './licenses.js';
@@ -1233,7 +1233,7 @@ export async function stageDesktopPackagingOutputs(
   parseAppLock({ schemaVersion: 1, apps: options.apps ?? [] });
   for (const app of options.apps ?? []) {
     const { manifest } = decodeAppPackage(app.bytes, app);
-    if (!supportsVersion(PLATFORM_VERSION, manifest.compatibility?.catsPlatform)
+    if (!meetsMinimumVersion(PLATFORM_VERSION, manifest.compatibility?.catsPlatform) // ADR-128: Platform floor, SDK range
       || !supportsVersion(APP_SDK_VERSION, manifest.compatibility?.appSdk)) throw new Error(`Incompatible app package: ${app.id}@${app.version}.`);
   }
   const plan = createDesktopPackagingPlan(config, {

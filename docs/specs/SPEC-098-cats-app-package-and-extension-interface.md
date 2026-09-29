@@ -248,7 +248,9 @@ export interface CatsAppPublisher {
 }
 
 export interface CatsAppCompatibility {
+  /** Minimum host Platform version: the floor of this range, any newer host accepted (ADR-128). */
   catsPlatform: string;
+  /** The compatibility gate: the host's APP_SDK_VERSION must satisfy this range. */
   appSdk: string;
 }
 

@@ -4,6 +4,14 @@
 
 ## 2026-09-29 — Distribution hygiene (unreleased)
 
+- **App compatibility is decided by the App SDK version alone (ADR-128).** An App's
+  `compatibility.catsPlatform` is now read as a minimum host version: the host accepts any
+  Platform at or above the floor of the declared range, across minors. `compatibility.appSdk`
+  remains the range the host's `APP_SDK_VERSION` must satisfy. Published Apps therefore no
+  longer need a re-release when Platform bumps its minor; Usage 0.5.0 and Studio 0.2.0
+  (declared `^0.6.0`) stay installable on 0.7 and later. The change is strictly more
+  permissive; every previously accepted App is still accepted. Platform changes visible
+  to Apps must move `APP_SDK_VERSION` from now on.
 - **Renderer dependency notices ship with npm and Desktop.** Vite records the
   packages actually included in both renderer entries (including extracted CSS),
   preserves their original license and notice texts beside the renderer output,
