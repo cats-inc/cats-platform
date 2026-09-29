@@ -417,6 +417,8 @@ function buildLivePreviewArtifactMetadata(input: {
         rootPath: input.lease.workspaceRef.rootPath,
       },
       sourceSurface: cloneCanvasSurface(input.lease.surface),
+      // Lets a stopped or lost lease restart with the same profile and directory (CAP-13).
+      ...(input.lease.artifactDirectory ? { artifactDirectory: input.lease.artifactDirectory } : {}),
     },
   };
 }

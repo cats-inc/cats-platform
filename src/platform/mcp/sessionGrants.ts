@@ -64,6 +64,13 @@ export class McpSessionGrantStore<Binding> {
     return null;
   }
 
+  some(predicate: (grant: McpSessionGrant<Binding>) => boolean): boolean {
+    for (const grant of this.grants.values()) {
+      if (predicate(grant)) return true;
+    }
+    return false;
+  }
+
   revoke(token: string): void {
     this.grants.delete(hashToken(token));
   }

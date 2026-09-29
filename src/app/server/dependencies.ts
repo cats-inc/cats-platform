@@ -1,5 +1,8 @@
 import { DEFAULT_LIVE_PREVIEW_CONFIG } from '../../products/code/livePreview/contracts.js';
 import { createCodeLivePreviewSupervisor } from '../../products/code/livePreview/host.js';
+import { createCodeConversationPreviews } from '../../products/code/livePreview/conversationPreviews.js';
+import { createFileLivePreviewProcessRegistry } from '../../products/code/livePreview/processRegistry.js';
+import { resolveCodeLivePreviewProcessRegistryPath } from '../../products/code/livePreview/processRegistryPath.js';
 import { readCodePreviewServersEnabled } from '../../shared/platformPreferences.js';
 import { createChatEventHub } from '../../products/chat/api/chatEventHub.js';
 import { publishChannelMutation } from '../../products/chat/api/transportEventPublisher.js';
@@ -212,7 +215,12 @@ export function resolveServerDependencies(
   const livePreviewSupervisor = dependencies.code?.livePreviewSupervisor
     ?? createCodeLivePreviewSupervisor(
       dependencies.shared.config.codeLivePreview ?? DEFAULT_LIVE_PREVIEW_CONFIG,
-      { previewServersAllowed: () => readCodePreviewServersEnabled(dependencies.shared.config.chatStatePath) },
+      {
+        previewServersAllowed: () => readCodePreviewServersEnabled(dependencies.shared.config.chatStatePath),
+        processRegistry: createFileLivePreviewProcessRegistry(
+          resolveCodeLivePreviewProcessRegistryPath(dependencies.shared.config.chatStatePath),
+        ),
+      },
     );
 
   const sharedCoreStore = dependencies.shared.coreStore ?? dependencies.chat.chatStore;
@@ -523,6 +531,11 @@ export function resolveServerDependencies(
       livePreviewStore: dependencies.code?.livePreviewStore ?? livePreviewSupervisor,
       stopLivePreview: dependencies.code?.stopLivePreview
         ?? ((previewId: string, reason?: string) => livePreviewSupervisor.stop(previewId, reason)),
+      conversationPreviews: dependencies.code?.conversationPreviews ?? createCodeConversationPreviews({
+        supervisor: livePreviewSupervisor,
+        coreStore: dependencies.code?.coreStore ?? sharedCoreStore,
+        previewServersEnabled: () => readCodePreviewServersEnabled(dependencies.shared.config.chatStatePath),
+      }),
       now: dependencies.code?.now ?? dependencies.shared.now,
     },
   };

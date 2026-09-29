@@ -37,6 +37,16 @@ export interface LivePreviewSupervisorOptions {
    * example a second Cats instance) are skipped instead of failing the start.
    */
   portAvailable?: (host: string, port: number) => Promise<boolean>;
+  /**
+   * Records running process leases outside memory so the next Platform start
+   * can stop what a crash left behind (SPEC-123 CAP-13 orphan sweep).
+   */
+  processRegistry?: LivePreviewProcessRegistry;
+}
+
+export interface LivePreviewProcessRegistry {
+  record(entry: { previewId: string; processId: number; port: number; startedAt: string }): void;
+  forget(previewId: string): void;
 }
 
 interface ManagedPreview {
@@ -56,6 +66,7 @@ export class LivePreviewSupervisor {
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly idFactory: () => string;
   private readonly portAvailable: (host: string, port: number) => Promise<boolean>;
+  private readonly processRegistry: LivePreviewProcessRegistry | null;
   private readonly previews = new Map<string, ManagedPreview>();
   private readonly leasedPorts = new Set<number>();
 
@@ -68,6 +79,7 @@ export class LivePreviewSupervisor {
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.idFactory = options.idFactory ?? createPreviewId;
     this.portAvailable = options.portAvailable ?? canBindLoopbackPort;
+    this.processRegistry = options.processRegistry ?? null;
   }
 
   getLease(previewId: string): LivePreviewLease | null {
@@ -127,6 +139,7 @@ export class LivePreviewSupervisor {
       commandProfileId: validation.profile.id,
       surface: validation.request.surface,
       workspaceRef: validation.request.workspace,
+      artifactDirectory: validation.request.artifactDirectory ?? validation.request.workspace.rootPath,
       origin,
       host,
       port,
@@ -160,6 +173,9 @@ export class LivePreviewSupervisor {
       );
       managed.handle = handle;
       lease.processId = handle.processId;
+      if (handle.processId !== null && isProcessLivePreviewProfile(validation.profile.id)) {
+        this.processRegistry?.record({ previewId, processId: handle.processId, port, startedAt: lease.createdAt });
+      }
       this.attachProcessListeners(managed, handle);
     } catch (error) {
       lease.status = 'failed';
@@ -217,7 +233,7 @@ export class LivePreviewSupervisor {
     } catch (error) {
       managed.lease.status = 'failed';
       managed.lease.stopReason = 'stop_failed';
-      this.releasePort(managed.lease.port);
+      this.releaseLease(managed.lease);
       return rejected(
         'live_preview_stop_failed',
         error instanceof Error ? error.message : 'Live preview process failed to stop.',
@@ -226,6 +242,17 @@ export class LivePreviewSupervisor {
 
     this.markStopped(managed, 'stopped', reason);
     return { status: 'accepted', previewId, stopReason: reason };
+  }
+
+  /**
+   * Extend an active lease's TTL, e.g. while the canvas shows it (CAP-13).
+   * Returns null for an unknown or inactive lease.
+   */
+  renewLease(previewId: string): LivePreviewLease | null {
+    const managed = this.previews.get(previewId);
+    if (!managed || !ACTIVE_STATUSES.has(managed.lease.status)) return null;
+    managed.lease.expiresAt = new Date(this.now().getTime() + this.config.defaultLeaseTtlMs).toISOString();
+    return managed.lease;
   }
 
   /**
@@ -303,8 +330,9 @@ export class LivePreviewSupervisor {
     return null;
   }
 
-  private releasePort(port: number): void {
-    this.leasedPorts.delete(port);
+  private releaseLease(lease: LivePreviewLease): void {
+    this.leasedPorts.delete(lease.port);
+    this.processRegistry?.forget(lease.previewId);
   }
 
   private attachProcessListeners(
@@ -330,7 +358,11 @@ export class LivePreviewSupervisor {
     managed.lease.stopReason =
       `process_exited:${exit.code ?? 'null'}:${exit.signal ?? 'null'}`;
     managed.lease.stoppedAt = this.now().toISOString();
-    this.releasePort(managed.lease.port);
+    this.releaseLease(managed.lease);
+  }
+
+  private releasePort(port: number): void {
+    this.leasedPorts.delete(port);
   }
 
   private appendLog(managed: ManagedPreview, chunk: string): void {
@@ -381,7 +413,7 @@ export class LivePreviewSupervisor {
     managed.lease.status = 'failed';
     managed.lease.stopReason = 'readiness_timeout';
     managed.lease.stoppedAt = this.now().toISOString();
-    this.releasePort(managed.lease.port);
+    this.releaseLease(managed.lease);
     return rejected('live_preview_readiness_timeout', 'Live preview readiness timed out.');
   }
 
@@ -393,7 +425,7 @@ export class LivePreviewSupervisor {
     managed.lease.status = status;
     managed.lease.stopReason = reason;
     managed.lease.stoppedAt = this.now().toISOString();
-    this.releasePort(managed.lease.port);
+    this.releaseLease(managed.lease);
   }
 }
 

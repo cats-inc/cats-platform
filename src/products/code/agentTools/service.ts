@@ -30,6 +30,7 @@ import {
   CODE_ARTIFACT_DECLARATION_TOOL,
   CodeArtifactDeclarationError,
 } from '../shared/artifactDeclaration.js';
+import type { CodeConversationPreviews } from '../livePreview/conversationPreviews.js';
 import type { LivePreviewSupervisor } from '../livePreview/supervisor.js';
 import { materializeCodeArtifactDeclaration } from '../state/artifactMaterialization.js';
 import {
@@ -57,6 +58,8 @@ export interface CodeAgentToolsServiceOptions {
   livePreviewSupervisor?: LivePreviewSupervisor | null;
   /** Settings > Code "Cats may run preview servers"; absent means off (CAP-08). */
   previewServersEnabled?: () => Promise<boolean>;
+  /** Per-conversation leases shared with the Code canvas controls (CAP-13/14). */
+  conversationPreviews?: CodeConversationPreviews;
   grants?: McpSessionGrantStore<CodeAgentToolGrantBinding>;
   policyConfig?: ArtifactCanvasPolicyConfig;
   renderIntentHub?: ArtifactCanvasRenderIntentHub;
@@ -87,8 +90,8 @@ export function createCodeAgentToolsService(options: CodeAgentToolsServiceOption
   const now = options.now ?? (() => new Date());
   const policyConfig = options.policyConfig ?? DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG;
   const hub = options.renderIntentHub ?? getDefaultArtifactCanvasRenderIntentHub();
-  const staticLeases = new Map<string, { previewId: string; root: string }>();
-  const devLeases = new Map<string, string>();
+  const staticLeases = options.conversationPreviews?.staticLeases ?? new Map<string, { previewId: string; root: string }>();
+  const devLeases = options.conversationPreviews?.devLeases ?? new Map<string, string>();
   const previewServersEnabled = options.previewServersEnabled ?? (async () => false);
 
   const server: McpServerDefinition<CodeAgentToolGrant> = {
@@ -210,9 +213,11 @@ export function createCodeAgentToolsService(options: CodeAgentToolsServiceOption
   return {
     grants,
     clearForReset() {
-      grants.revokeWhere(() => true);
+      // Forget the leases first, so revoking every grant stops nothing twice.
+      options.conversationPreviews?.clearForReset();
       staticLeases.clear();
       devLeases.clear();
+      grants.revokeWhere(() => true);
     },
     async route(request, response) {
       const pathname = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;

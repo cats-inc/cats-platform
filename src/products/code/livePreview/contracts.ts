@@ -97,6 +97,8 @@ export interface LivePreviewLease {
   commandProfileId: string;
   surface: CanvasSurfaceRef;
   workspaceRef: LivePreviewWorkspaceRef;
+  /** The directory the lease serves or runs in; recorded so it can be restarted. */
+  artifactDirectory?: string | null;
   origin: string;
   host: '127.0.0.1' | '[::1]';
   port: number;

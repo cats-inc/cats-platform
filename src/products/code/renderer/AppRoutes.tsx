@@ -16,6 +16,7 @@ import {
 } from './components/ChatView.js';
 import { ActiveCodeComposerChips } from './components/ActiveCodeComposerChips.js';
 import { CodeCanvasPreviewButton } from './components/CodeCanvasPreviewButton.js';
+import { CodePreviewCanvasControls } from './components/CodePreviewCanvasControls.js';
 import { CodeTaskPillsBar } from './components/CodeTaskPillsBar.js';
 import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSurfaceChip.js';
 import { ArtifactDetailView } from './components/ArtifactDetailView.js';
@@ -98,6 +99,7 @@ export function AppRoutes({
     entryPath: resolveAppEntryPath(payload.setupCompleteAt),
     chatsPath: resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId),
     chatCanvasSurfaceKind: 'code_conversation',
+    chatCanvasControls: CodePreviewCanvasControls,
     extraRoutes: [
       <Route key="knowledge" path="knowledge" element={<KnowledgeContributionsPage />} />,
       <Route

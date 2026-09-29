@@ -1,11 +1,11 @@
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import type { AppShellPayload } from '../api/workspaceContracts.js';
 import type { SelectedChannelView } from './workspaceChatUtils.js';
 import type { CanvasSurfaceKind } from '../artifactCanvas/contracts.js';
-import { withSharedViewerRoutes } from './withSharedViewerRoutes.js';
+import { withSharedViewerRoutes, type ArtifactCanvasControlsProps } from './withSharedViewerRoutes.js';
 
 function noop(): void {}
 
@@ -22,6 +22,8 @@ export interface WorkspaceAppRoutesProps {
   extraRoutes?: ReactNode;
   /** Mounts the Artifact Canvas beside the conversation when set (Code only). */
   chatCanvasSurfaceKind?: CanvasSurfaceKind;
+  /** Product controls under that canvas's top bar. */
+  chatCanvasControls?: ComponentType<ArtifactCanvasControlsProps>;
   renderBootShell: () => ReactNode;
   renderChatView: (
     channel: SelectedChannelView,
@@ -56,6 +58,7 @@ export function WorkspaceAppRoutes({
   chatsPath,
   extraRoutes = null,
   chatCanvasSurfaceKind,
+  chatCanvasControls,
   renderBootShell,
   renderChatView,
   renderNewChatDraft,
@@ -82,6 +85,7 @@ export function WorkspaceAppRoutes({
             surfaceKind: chatCanvasSurfaceKind,
             surfaceIdParam: 'channelId',
             element: chatElement,
+            canvasControls: chatCanvasControls,
           })
           : <Route path="chats/:channelId" element={chatElement} />}
         <Route

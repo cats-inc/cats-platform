@@ -79,6 +79,62 @@ main.canvas:has(> .artifactCanvasSurfaceFrame) {
   grid-template-rows: auto;
 }
 
+/* Product controls (Code preview lease controls) sit between the top bar and the body. */
+.artifactCanvasPane:has(> .artifactCanvasControls) {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.artifactCanvasControls {
+  min-width: 0;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.artifactCanvasControlsStatus {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.artifactCanvasControlsHint {
+  flex: 1;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.artifactCanvasControlsStatus--ready {
+  color: var(--success, var(--accent));
+}
+
+.artifactCanvasControlsStatus--failed,
+.artifactCanvasControlsProblem {
+  color: var(--danger);
+}
+
+.artifactCanvasControlsProblem {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.artifactCanvasControlsLogs {
+  flex-basis: 100%;
+  max-height: 180px;
+  margin: 0;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .artifactCanvasTopBar {
   min-width: 0;
   padding: 14px;

@@ -34,7 +34,7 @@ export function CanvasPane(): JSX.Element {
     presentation?: string;
   }>();
   const { t } = useI18n();
-  const { surface, parentUrl } = useArtifactCanvasSurfaceOutletContext();
+  const { surface, parentUrl, canvasControls: CanvasControls } = useArtifactCanvasSurfaceOutletContext();
   const [collapsed, setCollapsed] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
   const [state, setState] = useState<CanvasPaneState>({ status: 'loading' });
@@ -166,6 +166,14 @@ export function CanvasPane(): JSX.Element {
           </button>
         </div>
       </header>
+
+      {CanvasControls && artifactId && !collapsed ? (
+        <CanvasControls
+          surface={surface}
+          artifactId={artifactId}
+          onRefresh={() => setRefreshToken((value) => value + 1)}
+        />
+      ) : null}
 
       {collapsed ? null : (
         <div className="artifactCanvasBody">

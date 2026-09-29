@@ -28,6 +28,7 @@ import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 
 interface TrackedSession {
   token: string;
+  channelId: string;
   report: RuntimeSessionMcpDeliveryReport | undefined;
 }
 
@@ -35,6 +36,10 @@ export interface CodeAgentToolsClientWrapperOptions {
   grants: McpSessionGrantStore<CodeAgentToolGrantBinding>;
   /** The loopback MCP URL, or null while Platform cannot offer it. */
   endpoint(): string | null;
+  /** A Code conversation gained a session with the `cats` server. */
+  onSessionStarted?(channelId: string): void;
+  /** A Code conversation's session was closed or deleted and its grant revoked. */
+  onSessionEnded?(channelId: string, reason: 'closed' | 'deleted'): void;
 }
 
 export interface CodeAgentToolsClientWrapper {
@@ -65,11 +70,12 @@ export function createCodeAgentToolsClientWrapper(
     }).token;
   }
 
-  function forget(sessionId: string): void {
+  function forget(sessionId: string, reason: 'closed' | 'deleted'): void {
     const tracked = sessions.get(sessionId);
     if (!tracked) return;
     options.grants.revoke(tracked.token);
     sessions.delete(sessionId);
+    options.onSessionEnded?.(tracked.channelId, reason);
   }
 
   function withPolicy(instructions: string | null | undefined): string {
@@ -95,7 +101,8 @@ export function createCodeAgentToolsClientWrapper(
                 options.grants.bind(token, session.id, {
                   workspacePath: session.cwd ?? input.cwd ?? marker.workspacePath,
                 });
-                sessions.set(session.id, { token, report: session.mcpServers });
+                sessions.set(session.id, { token, channelId: marker.channelId, report: session.mcpServers });
+                options.onSessionStarted?.(marker.channelId);
                 return session;
               } catch (error) {
                 options.grants.revoke(token);
@@ -114,8 +121,9 @@ export function createCodeAgentToolsClientWrapper(
                 if (marker) {
                   const token = issue(marker);
                   options.grants.bind(token, sessionId);
-                  tracked = { token, report: undefined };
+                  tracked = { token, channelId: marker.channelId, report: undefined };
                   sessions.set(sessionId, tracked);
+                  options.onSessionStarted?.(marker.channelId);
                 }
               }
               if (!tracked || !endpoint) return target.sendMessage(sessionId, content, input);
@@ -146,7 +154,7 @@ export function createCodeAgentToolsClientWrapper(
           }
           if (property === 'closeSession' || property === 'deleteSession') {
             return async (sessionId: string) => {
-              forget(sessionId);
+              forget(sessionId, property === 'deleteSession' ? 'deleted' : 'closed');
               return target[property](sessionId);
             };
           }
