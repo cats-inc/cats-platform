@@ -48,6 +48,7 @@ export function buildComposerHighlightFragments(
   );
   const mentionResult = parseMentionsWithPositions(text, {
     excludedNames: excludedMentionNames,
+    knownNames: catLookup.keys(),
   });
   const confirmedMentions: RangedFragment[] = mentionResult.positions
     .flatMap((pos) => {

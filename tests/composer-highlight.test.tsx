@@ -39,3 +39,13 @@ test('ComposerHighlight root class keeps the mirror bound to textarea metrics', 
     'composerInput composerHighlight',
   );
 });
+
+test('buildComposerHighlightFragments highlights a Cat name that contains a space', () => {
+  assert.deepEqual(
+    buildComposerHighlightFragments('@Builder Cat 請開始', [{ name: 'Builder Cat', avatarColor: '#4a7bd0' }]),
+    [
+      { kind: 'mention', value: '@Builder Cat', avatarColor: '#4a7bd0' },
+      { kind: 'text', value: ' 請開始' },
+    ],
+  );
+});
