@@ -24,6 +24,7 @@ export interface CanonicalMemoryReplaceResult {
 
 
 export interface CanonicalMemoryStore {
+  clearForReset?(): Promise<void>;
   readSnapshot(): Promise<CanonicalMemorySnapshot>;
   listRecords(filter?: {
     subjectKind?: CanonicalMemorySubjectKind;
@@ -52,6 +53,8 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
   private mutationQueue: Promise<void> = Promise.resolve();
 
   constructor(private readonly snapshotPath: string) {}
+
+  async clearForReset(): Promise<void> { await this.mutationQueue; }
 
   private async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
     const previous = this.mutationQueue;
@@ -242,6 +245,10 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
 
 export class MemoryCanonicalMemoryStore implements CanonicalMemoryStore {
   private snapshot: CanonicalMemorySnapshot;
+
+  async clearForReset(): Promise<void> {
+    this.snapshot = createEmptyCanonicalMemorySnapshot(new Date().toISOString());
+  }
 
   constructor(
     initialSnapshot: CanonicalMemorySnapshot = createEmptyCanonicalMemorySnapshot(

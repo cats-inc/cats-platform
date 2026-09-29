@@ -109,7 +109,7 @@ export async function startApp(extension: {
     chatStatePath: config.chatStatePath,
   });
   const server = createServer({
-    shared: { config, runtimeClient, startup },
+    shared: { config, runtimeClient, startup, runtimeClientDiagnosticSink },
     chat: { chatStore, startCompanionLifeLoop: config.companionLifeLoopEnabled !== false },
   });
   startupTrace.trace('server.created');

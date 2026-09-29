@@ -78,6 +78,7 @@ import {
 import { createCatActorId } from '../../core/model/index.js';
 
 export interface TransportWorkGoldenPathBundle {
+  clearForReset(): void;
   port: TransportWorkGoldenPathPort;
   service: WorkGoldenPathService;
   outbox: TransportWorkOutbox;
@@ -254,13 +255,11 @@ export function createTransportWorkGoldenPath(
     }
   }
 
+  const tokenStore = createTransportWorkActionTokenStore({ now: input.now, store: transportState });
   const service = createWorkGoldenPathService({
     coreStore: input.coreStore,
     outbox,
-    tokenStore: createTransportWorkActionTokenStore({
-      now: input.now,
-      store: transportState,
-    }),
+    tokenStore,
     deliveryClient,
     telemetry,
     now: input.now,
@@ -449,6 +448,11 @@ export function createTransportWorkGoldenPath(
 
   return {
     port,
+    clearForReset() {
+      outbox.clearForReset?.();
+      tokenStore.clearForReset?.();
+      transportState.clearForReset?.();
+    },
     service,
     outbox,
     runner,

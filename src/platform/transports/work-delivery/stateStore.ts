@@ -30,6 +30,7 @@ interface PersistedTransportWorkState {
 }
 
 export interface TransportWorkStateStore {
+  clearForReset?(): void;
   listDeliveries(): TransportWorkDeliveryV1[];
   putDelivery(row: TransportWorkDeliveryV1): void;
   listActionTokens(): TransportWorkActionTokenV1[];
@@ -159,6 +160,7 @@ function writeState(statePath: string, state: PersistedTransportWorkState): void
 }
 
 class MemoryTransportWorkStateStore implements TransportWorkStateStore {
+  clearForReset(): void { this.deliveries.clear(); this.actionTokens.clear(); }
   protected readonly deliveries = new Map<string, TransportWorkDeliveryV1>();
   protected readonly actionTokens = new Map<string, TransportWorkActionTokenV1>();
 

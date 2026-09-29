@@ -17,6 +17,11 @@ export interface CanonicalSyncAwareCompanionBoxStore extends CompanionBoxStore {
 export class MemoryAwareCompanionBoxStore implements CanonicalSyncAwareCompanionBoxStore {
   private readonly pendingCanonicalSync = new Map<string, CompanionCanonicalSyncResult>();
 
+  async clearForReset(): Promise<void> {
+    await this.delegate.clearForReset?.();
+    this.pendingCanonicalSync.clear();
+  }
+
   constructor(
     private readonly delegate: CompanionBoxStore,
     private readonly memoryService: CatsMemoryService,

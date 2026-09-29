@@ -64,6 +64,8 @@ export type ResumeWorkflowContinuationDispatch = (
 ) => Promise<WorkflowContinuationReplayResult>;
 
 export interface SharedServerDependencies {
+  runtimeClientDiagnosticSink?: import('../../runtime/clientDiagnostics.js').RuntimeClientDiagnosticSink;
+  withPlatformDataReset?: import('../../shared/platformDataReset.js').PlatformResetCoordinator;
   managedPlugins?: import('../../platform/plugins/manager.js').ManagedPluginManager;
   config: AppConfig;
   runtimeClient: RuntimeClient;

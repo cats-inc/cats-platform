@@ -75,6 +75,8 @@ export interface TransportWorkOutboxFlushResult {
 }
 
 export interface TransportWorkOutbox {
+  isIdle?(): boolean;
+  clearForReset?(): void;
   /** Idempotent: an existing key returns the stored row untouched. */
   enqueue(input: TransportWorkOutboxEnqueueInput): TransportWorkDeliveryV1;
   flush(idempotencyKey: string): Promise<TransportWorkOutboxFlushResult>;
@@ -263,6 +265,12 @@ export function createTransportWorkOutbox(
   }
 
   return {
+    isIdle: () => inFlight.size === 0,
+    clearForReset() {
+      if (inFlight.size) throw new Error('Cannot reset a busy delivery outbox');
+      rows.clear();
+      sequenceByWorkItem.clear();
+    },
     enqueue(input) {
       const existing = rows.get(input.idempotencyKey);
       if (existing) {

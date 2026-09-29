@@ -4,6 +4,21 @@
 
 ## 2026-09-29 — Distribution hygiene (unreleased)
 
+- **Reset Platform data removes the data it promises.** Reset now removes rotating
+  and migration backups, canonical and companion memory, local knowledge, evidence
+  logs, Telegram/LINE and work-delivery state, schedules, Platform-owned attachments
+  and runtime-history caches from an explicit ownership list. It clears live store
+  caches and polling bindings, closes authenticated event streams, pauses background
+  producers, and refuses to reset during active work. A bounded reset journal retains
+  attachment/evidence cleanup targets across interrupted erasure and restart.
+  Missing files are harmless; cleanup failures are reported for retry rather than
+  reported as success. Both UI locales list what remains: host preferences/configuration,
+  installed Apps/plugins and their data, Desktop/Runtime data, provider CLI logins
+  and native transcripts, and external workspace files. The button is now labelled
+  **Erase Platform data** to make that boundary clear.
+  For existing installs this fixes incomplete erasure after an explicit reset;
+  ordinary startup and persisted formats do not change. No migration, version bump
+  or publication is included. Fresh empty stores may be created by subsequent use.
 - **.NET runtime notices ship with the Windows voice helper.** Packaging now copies the
   self-contained .NET runtime pack's `LICENSE.TXT` and `THIRD-PARTY-NOTICES.TXT`, resolved
   from the exact version in the published `deps.json`, into `native/windows-stt/licenses/`

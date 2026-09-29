@@ -33,6 +33,7 @@ export interface RuntimeClientDiagnosticsFile {
 }
 
 export interface RuntimeClientDiagnosticSink {
+  clearForReset?(): void;
   emit(record: RuntimeClientDiagnosticRecord): void;
   list(): RuntimeClientDiagnosticRecord[];
 }
@@ -83,6 +84,7 @@ export function createRuntimeClientDiagnosticSink(
   let records = trimDiagnosticRecords(readPersistedRecords(persistPath));
 
   return {
+    clearForReset: () => { records = []; },
     emit(record) {
       records = trimDiagnosticRecords([...records, record]);
       persistRecords(persistPath, records);

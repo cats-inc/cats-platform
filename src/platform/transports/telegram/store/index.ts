@@ -27,6 +27,7 @@ export interface TelegramDeliveryStatsSnapshot {
 }
 
 export interface TelegramRelayStore {
+  clearForReset?(): void;
   getBinding(chatId: string, bindingId?: string | null): TelegramConversationBinding | null;
   getBindingByConversationId(conversationId: string): TelegramConversationBinding | null;
   listBindings(): TelegramConversationBinding[];
@@ -50,6 +51,17 @@ function createBindingKey(chatId: string, bindingId?: string | null): string {
 }
 
 class BaseTelegramRelayStore implements TelegramRelayStore {
+  clearForReset(): void {
+    this.processedUpdateOrder.length = 0;
+    this.bindingsByChatId.clear();
+    this.bindingsByConversationId.clear();
+    this.processedUpdateIds.clear();
+    this.lastProcessedUpdateId = null;
+    this.ingressAcceptedCount = this.ingressIgnoredCount = 0;
+    this.deliverySentCount = this.deliveryRepliedCount = this.deliveryEditedCount = 0;
+    this.deliveryDeletedCount = this.deliveryFailedCount = 0;
+    this.lastIngressReceipt = this.lastDeliveryReceipt = null;
+  }
   protected readonly processedUpdateOrder: number[] = [];
 
   protected readonly bindingsByChatId = new Map<string, TelegramConversationBinding>();

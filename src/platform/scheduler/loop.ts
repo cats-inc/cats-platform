@@ -6,7 +6,7 @@ export interface SchedulerLoopOptions {
   onTickResult?: (result: Awaited<ReturnType<SchedulerService['tick']>>) => Promise<void>;
 }
 
-export type StopSchedulerLoop = () => void;
+export type StopSchedulerLoop = (() => void) & { isIdle(): boolean };
 
 export function startSchedulerLoop(options: SchedulerLoopOptions): StopSchedulerLoop {
   const intervalMs = options.intervalMs ?? 60_000;
@@ -35,8 +35,8 @@ export function startSchedulerLoop(options: SchedulerLoopOptions): StopScheduler
   }, intervalMs);
   timer.unref?.();
 
-  return () => {
+  return Object.assign(() => {
     stopped = true;
     clearInterval(timer);
-  };
+  }, { isIdle: () => !ticking });
 }

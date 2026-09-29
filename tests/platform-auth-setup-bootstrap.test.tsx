@@ -575,7 +575,7 @@ for (const failedStore of ['chat', 'auth'] as const) {
     assert.equal(failed.status, 500);
     assert.deepEqual(failed.payload?.error, {
       code: 'internal_error',
-      message: 'Setup could not be reset.',
+      message: 'Platform data could not be fully reset. Retry to finish removing the remaining data.',
     });
     assert.equal(failed.setCookie, null);
     const restoredCore = await fixture.chatStore.readCore();

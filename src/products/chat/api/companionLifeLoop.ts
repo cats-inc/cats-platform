@@ -205,7 +205,7 @@ async function attachCompanionPhoto(
  */
 export function startChatCompanionLifeLoop(
   dependencies: ChatCompanionLifeLoopDependencies,
-): () => void {
+): (() => void) & { isIdle(): boolean } {
   const loop = createCompanionLifeLoop({
     readChatState: () => dependencies.chatStore.read(),
     readCompanionSnapshot: () => dependencies.companionStore.readSnapshot(),

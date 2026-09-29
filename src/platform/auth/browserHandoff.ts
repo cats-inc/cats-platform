@@ -31,6 +31,7 @@ export interface PlatformBrowserHandoffIssueResult {
 }
 
 export interface PlatformBrowserHandoffStore {
+  clearForReset?(): void;
   issue(input: {
     accountId: string;
     sourceSessionId: string;
@@ -58,6 +59,7 @@ interface StoredPlatformBrowserHandoff extends PlatformBrowserHandoffRecord {
 }
 
 export class MemoryPlatformBrowserHandoffStore implements PlatformBrowserHandoffStore {
+  clearForReset(): void { this.handoffs.clear(); }
   private readonly handoffs = new Map<string, StoredPlatformBrowserHandoff>();
 
   issue(input: {
