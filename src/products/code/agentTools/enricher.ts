@@ -48,7 +48,7 @@ export function registerCodeAgentToolsInvocationEnricher(): void {
 }
 
 export function readCodeAgentToolsInvocationMarker(
-  context: RuntimeSessionInvocationContext | undefined,
+  context: Pick<RuntimeSessionInvocationContext, 'metadata'> | undefined,
 ): CodeAgentToolsInvocationMarker | null {
   const value = context?.metadata?.[CODE_AGENT_TOOLS_CONTEXT_METADATA_KEY];
   if (!value || typeof value !== 'object') return null;

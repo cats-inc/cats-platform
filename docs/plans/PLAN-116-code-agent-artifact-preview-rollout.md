@@ -62,7 +62,7 @@ Cross-repo ownership:
 
 ### P1: Runtime session MCP servers (cats-runtime, blocks M1)
 
-- [ ] R1: Add runtime ADR/SPEC/PLAN, framed as the SPEC-121 FR-02 MCP delivery
+- [x] R1 (#130): Add runtime ADR/SPEC/PLAN, framed as the SPEC-121 FR-02 MCP delivery
   mechanism with Code as its first consumer. Accept `mcpServers` on session
   create, resume and message send, using the `auth` kinds and the server-name namespace
   (SPEC-123 CAP-16). Accept `bearer_env` and `none`; Code requires the former.
@@ -77,14 +77,14 @@ Cross-repo ownership:
   `connection` evidence. Delivered confirms configuration, not connectivity.
   Runtime worktree implementation is ahead of this integration plan; verify the
   release/pin before closing Platform gates.
-- [ ] R2: Claude adapter. Pass inline `--mcp-config` JSON using environment-variable
+- [x] R2 (#132): Claude adapter. Pass inline `--mcp-config` JSON using environment-variable
   expansion so the bearer never appears in argv. Runtime SPEC-035 records
   verification on Claude Code 2.1.284. Append
   `mcp__<name>` to `--allowedTools` in `default` and `whitelist` modes, because
   `-p` mode denies unapproved tools silently. Add spawn-argument unit tests that
   assert no secret appears in argv. Add an isolated live smoke that checks the
   tools are listed and a call reaches a stub server.
-- [ ] R3: Codex adapter. Add `-c mcp_servers.<name>.url=…` plus bearer
+- [x] R3 (#134): Codex adapter. Add `-c mcp_servers.<name>.url=…` plus bearer
   environment configuration through the existing app-server override
   composition, and auto-approve tool calls for that server only; elicitations
   remain declined.
@@ -173,6 +173,13 @@ call a Platform-hosted MCP tool and receive its result.
   artifact from show-intent Activity. This follows A-ii, once agent artifacts
   exist. Verify top-bar alignment with Playwright at 1024, 1249, 1600 and 1920 px
   in the isolated M1 acceptance instance.
+  Measured in the M1 instance on 2026-09-29. The plain conversation route is
+  unaffected. On `/code/chats/:channelId/canvas/:artifactId`:
+  - `.channelTopBar` overlaps the canvas column by 6 px at all four widths.
+    At 1920 px it also starts 156 px right of `main`.
+  - The split is centered, leaving 55 px (1024 to 1600 px) to 210 px
+    (1920 px) empty on the right.
+  - The conversation opens scrolled to the top instead of the latest reply.
 
 ### P4: Static preview lease (M1)
 
@@ -193,9 +200,26 @@ call a Platform-hosted MCP tool and receive its result.
     preflight that fails without CORS.
   - With auth disabled, simple cross-origin POSTs are possible from any page.
     That is pre-existing and not specific to previews (see Risks).
-- [ ] **M1 acceptance** (isolated instance): Claude Code builds a calculator
+- [x] **M1 acceptance** (isolated instance): Claude Code builds a calculator
   from "做一個計算機", the canvas opens with no preview wording in the prompt,
   and clicking `2 + 3 =` shows `5`.
+  Passed on 2026-09-29 with Claude Code (Opus) on this branch:
+  - The orchestrator handed the work to the Cat. The Cat wrote
+    `calculator/index.html`, `style.css` and `script.js`, tested them, then
+    called `show_in_canvas` without being asked.
+  - Result: a `preview` artifact on a static lease at `127.0.0.1:47100`, and a
+    `code_conversation` show intent resolved to `iframe` with
+    `scripted-cross-origin`.
+  - Headless Chromium on the canvas route: `2 + 3 =` shows `5`,
+    `12 × 3 =` shows `36` and `5 ÷ 0 =` shows `錯誤`, with no console errors.
+
+  Findings from the earlier runs:
+  - The grant used the channel's `chatCwd`, which is null for repo-backed
+    conversations, so `show_in_canvas` returned `workspace_unknown`. The grant
+    now binds to the session cwd that Runtime resolved, falling back to
+    `repoPath`.
+  - A Cat whose name contains a space cannot be reached by @mention (see
+    Risks), so the acceptance instance names its Cat `Builder`.
 
 ### P5: Dev preview (M2)
 
@@ -309,6 +333,7 @@ call a Platform-hosted MCP tool and receive its result.
 | Second supervisor next to SPEC-122 | Medium | F4 convergence; no App-specific logic in the preview supervisor |
 | Chat `chat_conversation` anchoring compares the raw channel ID with `conversation-channel-<id>` (`projection.ts`, `activity.ts`) | Low | Code uses `buildChatConversationId`; Chat is out of scope and recorded for its owner |
 | With Platform auth disabled (local development), any page, including a preview, can send simple cross-origin POSTs to loopback APIs | Medium | Pre-existing and not introduced by previews. The MCP tool endpoint rejects `Origin` and requires a bearer. Review CSRF posture for auth-disabled mode separately |
+| A Cat whose name contains a space cannot be reached by @mention: the regex in `src/shared/mentionParsing.ts` stops at whitespace, so an orchestrator hand-off to `@Builder Cat` resolves no target and ends with no visible message | Medium | Chat-owned, outside this plan; recorded for the owner. Code conversations share the Chat hand-off path |
 | Oversized PRs | Low | Phases split into R1–R4, A1–A3, B1–B2, C1–C2, D1–D3, each under about 400 lines |
 
 ## Progress Log
@@ -319,6 +344,7 @@ call a Platform-hosted MCP tool and receive its result.
 | 2026-09-29 | User approved SPEC-123 questions 1–4. Aligned with the Ask App MCP (cats-apps ADR-003/SPEC-004 and the runtime probe), SPEC-122 App services and SPEC-121 plugin MCP. cats-apps documents are unchanged. |
 | 2026-09-29 | Corrected the alignment after user review. Apps host MCP independently (Platform `8c8f44ae`, cats-apps `39ddcf7`). The Platform guard module and SDK pin are host-internal. Runtime `mcpServers` configures Cat sessions and never carries traffic. Only a documented security baseline is shared with Apps. |
 | 2026-09-29 | cats-runtime R1 (#130) merged; R2 Claude (#132) and R3 Codex were verified with isolated live smokes. M1 order: A0 client prerequisite → B surface → C static lease → A-i endpoint → A-ii tools/Proxy/retirement → acceptance. The `mcpServers` field and policy text travel through a Code runtime-client wrapper, not the enricher, so secrets stay outside supervision evidence. |
+| 2026-09-29 | R3 Codex (#134) merged, as were A0, B1, B2a, C1, C2, A1 and A2a. A2b and A3 wire the `cats` server into Code sessions and retire the observation path. M1 acceptance passed in an isolated instance. B2b now has measured layout defects to fix. |
 
 ---
 
