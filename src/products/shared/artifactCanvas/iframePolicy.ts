@@ -461,7 +461,8 @@ function isCanvasSurfaceKind(value: string | null): value is CanvasSurfaceRef['k
     || value === 'work_item'
     || value === 'work_project'
     || value === 'work_task'
-    || value === 'chat_conversation';
+    || value === 'chat_conversation'
+    || value === 'code_conversation';
 }
 
 function isSameCanvasSurface(left: CanvasSurfaceRef, right: CanvasSurfaceRef): boolean {

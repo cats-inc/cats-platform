@@ -96,6 +96,7 @@ export function AppRoutes({
     addCatOpen,
     entryPath: resolveAppEntryPath(payload.setupCompleteAt),
     chatsPath: resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId),
+    chatCanvasSurfaceKind: 'code_conversation',
     extraRoutes: [
       <Route key="knowledge" path="knowledge" element={<KnowledgeContributionsPage />} />,
       <Route

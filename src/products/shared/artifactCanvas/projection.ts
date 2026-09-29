@@ -20,6 +20,7 @@ import {
   type ArtifactCanvasProducerIdentity,
   type ArtifactCanvasSupervisorPreviewLeaseStore,
 } from './iframePolicy.js';
+import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 
 export type ArtifactCanvasProjectionResult =
   | {
@@ -159,6 +160,8 @@ export function isArtifactAnchoredToSurface(
       return artifact.projectId === surface.surfaceId;
     case 'chat_conversation':
       return artifact.conversationId === surface.surfaceId;
+    case 'code_conversation':
+      return artifact.conversationId === buildChatConversationId(surface.surfaceId);
     case 'code_codespace':
       return resolveArtifactCodespaceId(artifact) === surface.surfaceId;
     default: {

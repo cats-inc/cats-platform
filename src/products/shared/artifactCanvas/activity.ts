@@ -13,6 +13,7 @@ import type {
   CanvasSurfaceAnchorSource,
   CanvasSurfaceRef,
 } from './contracts.js';
+import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 
 export interface ArtifactCanvasIntentActivityInput {
   core: CatsCoreState;
@@ -102,6 +103,13 @@ export function resolveArtifactCanvasActivityAnchor(
         source: 'activity_conversation_anchor',
         surfaceKind: surface.kind,
         conversationId: surface.surfaceId,
+      };
+    case 'code_conversation':
+      // The surface id is the channel id; Core anchors on the conversation id.
+      return {
+        source: 'activity_conversation_anchor',
+        surfaceKind: surface.kind,
+        conversationId: buildChatConversationId(surface.surfaceId),
       };
     case 'code_codespace':
       return {
