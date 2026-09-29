@@ -123,6 +123,21 @@ the required `nodejs (24)` job still runs, so branch protection sees a passing c
 with a stable name, but it skips install, typecheck and tests. `validate` runs as
 usual. Any other path, a manual run or a failed detection runs every step.
 
+The same job also skips code that already passed. `changes` fingerprints the mode, blob
+and path of every tracked file outside `docs/` (for a pull request, the merge result)
+and looks up the Actions cache key `ci-green-v1-<fingerprint>`, which a fully passing
+`nodejs (24)` run saves. When a pull request is rebased only because main gained
+documentation or release notes, its fingerprint is unchanged, so the rerun reuses the
+earlier green result instead of the full suite. Any change outside `docs/`, including
+the workflow, lockfile or `.nvmrc`, changes the fingerprint and runs everything. A
+missing or evicted cache entry, or a manual run, also runs everything. Pull-request
+caches stay within that pull request's scope, so the post-merge push to main runs once
+in full.
+A pull request can also reuse a green run from main when its code outside `docs/` equals
+main's, which means that exact code already passed there. The skip trusts everyone who can
+push to the branch: such a person could save a marker for untested code. Pull requests from
+forks cannot write to the base branch's cache scope.
+
 Tests, scripts and tools must therefore not read repository documentation; keep
 executable inputs under `tests/fixtures/`. `tests/docs-boundary.test.js` enforces the
 rule. A line that names a docs path without reading it carries
