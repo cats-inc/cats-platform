@@ -13,7 +13,7 @@ import {
   verifyDotnetRuntimeNotices,
 } from '../scripts/shared/dotnet-runtime-notices.mjs';
 import { verifyDesktopLicenses } from '../scripts/verify-desktop-licenses.mjs';
-import { seedRuntimeNotices } from './fixtures/desktopLicenseFixture.js';
+import { seedRendererNotices, seedRuntimeNotices } from './fixtures/desktopLicenseFixture.js';
 
 const DOTNET_LICENSE = `The MIT License (MIT)
 
@@ -155,6 +155,10 @@ test('installed Desktop resources that ship the Windows voice helper must ship i
   await writeFile(join(resources, 'desktop-package-plan.json'), JSON.stringify({ sidecarLayout: { runtime: 'bundle' } }));
   await writeFile(join(bundle, 'index.js'), 'export {};');
   await seedRuntimeNotices(bundle, 'export {};');
+  const renderer = join(platform, 'build', 'renderer');
+  await mkdir(renderer, { recursive: true });
+  await writeFile(join(renderer, 'index.html'), '<html></html>');
+  await seedRendererNotices(renderer);
 
   // Helper binary present, notices absent: the gate must refuse.
   await writeFile(join(helper, 'cats-stt-windows.exe'), 'MZ');
@@ -166,7 +170,7 @@ test('installed Desktop resources that ship the Windows voice helper must ship i
   await writeFile(depsJsonPath, JSON.stringify(depsJson()));
   await stageDotnetRuntimeNotices({ outputDir: helper, depsJsonPath, helperName: 'cats-stt-windows.exe', nugetRoot });
   assert.deepEqual(await verifyDesktopLicenses(resources), {
-    catsLicenses: true, runtimeBundledNotices: true, nativeWindowsNotices: true,
+    catsLicenses: true, rendererNotices: true, runtimeBundledNotices: true, nativeWindowsNotices: true,
   });
 
   await writeFile(join(helper, 'licenses', 'README.txt'), 'notices elsewhere');
