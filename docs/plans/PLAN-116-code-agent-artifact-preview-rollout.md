@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft. Planning only, and no executable work has started. SPEC-123 decisions approved 2026-09-29; App/plugin MCP alignment awaits review |
+| **Status** | In progress (2026-09-30). M1, M2 and M3 accepted. M4: F1, F2, F4 and F5 done; F3 (more Runtime providers) in progress. Open for the user: the P0 App/plugin MCP alignment review and the Settings > Code preview-server default (shipped off; the approved default is on) |
 | **Owner** | Claude |
 | **Reviewer** | User |
 
@@ -366,15 +366,77 @@ call a Platform-hosted MCP tool and receive its result.
 
 ### P6: Behavioral acceptance and Codex parity (M3)
 
-- [ ] E1: Run the scenario matrix for Claude Code and Codex in an isolated
+- [x] E1: Run the scenario matrix for Claude Code and Codex in an isolated
   instance, and record results in this plan:
   - calculator, static
   - pomodoro, Vite
   - negative: a CSV-to-JSON CLI opens no canvas
   - follow-up edit: "make the buttons bigger" updates the preview
   - self-repair: dependencies are missing, the Cat installs them and retries
-- [ ] E2: Tune the policy text and tool descriptions until both providers pass.
+  Run on 2026-09-30:
+  - **Setup:** one isolated instance per provider, each with temporary
+    Platform, Runtime and workspace directories.
+    - Platform had D1 to D3, with the Settings switch turned on.
+    - Runtime was on main; Codex ran again on the #142 build (see findings).
+    - Each scenario had its own Code conversation, workspace and Cat, sent
+      through the normal orchestrator.
+  - **Pass criteria**, checked from Core and the Code API:
+    - calculator: a `static` preview is shown and ready;
+    - pomodoro: a `vite` or `npm-script` preview is shown and ready;
+    - negative: no show intent and no preview artifact;
+    - follow-up: the same preview is still ready and serves changed
+      HTML/CSS/JS;
+    - self-repair: `node_modules` was installed, and a dev preview is shown and
+      ready.
+  - **Claude Code** (Opus 5.5): 5/5.
+    - calculator: static, 249 s.
+    - pomodoro: `vite`, 770 s.
+    - negative: no canvas, 315 s.
+    - follow-up: served content changed on the same lease, 385 s.
+    - self-repair: `vite` after `npm install`, 534 s.
+  - **Codex** (`gpt-6-astra`): 5/5.
+    - calculator: static, 722 s.
+    - pomodoro: `vite`, 1,923 s.
+    - negative: no canvas, 518 s.
+    - follow-up: served content changed, 1,172 s.
+    - self-repair: `vite`, 1,313 s. This run was addressed to the Codex Cat
+      directly; see findings.
+  - **Findings:**
+    - Codex turns failed with `Runtime message stream idle timeout after
+      120000ms` and, in Runtime, `Controller is already closed`: Codex can work
+      for minutes without an event. Fixed in cats-runtime #142 (a 30-second
+      heartbeat, and a turn that finishes after the client leaves). All Codex
+      results above ran on that build.
+    - The orchestrator hands build work to the Cat, but did the plain "run
+      this project" self-repair request itself. That run is recorded
+      separately. The Codex self-repair verdict comes from a run addressed with
+      `@Builder Selfrepair`.
+    - Codex's own sandbox on Windows blocked child processes in tests
+      (`spawn EPERM`) and a recursive `Remove-Item`. The Cats adapted.
+    - Two instances on one machine share the 47100–47199 range. Both
+      self-repair runs started the same fixture at once and raced for one port;
+      one Cat stopped the other instance's Vite and recovered. A single
+      Platform does not race, because its probe and reservation are in one
+      process.
+    - Runtime's 10-session limit was reached after five conversations
+      (orchestrator plus Cat each). Deleting finished conversations frees
+      sessions.
+- [x] E2: Tune the policy text and tool descriptions until both providers pass.
   Record the prompts and the provider/model versions.
+  - Both providers passed with the policy and tool descriptions from D1–D3.
+    No text tuning was needed; the one fix was Runtime's heartbeat (#142).
+  - Prompts:
+    - calculator: 「做一個計算機」
+    - pomodoro: 「用 Vite 做一個番茄鐘」
+    - negative: 「寫一個把 CSV 轉成 JSON 的命令列工具（Node.js），讀檔案、輸出到 stdout」
+    - follow-up: 「做一個計算機」, then 「把按鈕做大一點」
+    - self-repair: 「counter/ 這個專案已經寫好了，幫我把它跑起來讓我看看」, on a
+      prepared Vite 6 project without `node_modules`
+  - Versions:
+    - Claude Code 2.1.284, which updated itself to 2.1.285 during the run,
+      reporting `claude-opus-5-5`;
+    - Codex CLI 0.158.0 with its default model `gpt-6-astra`;
+    - cats-runtime main with #140, plus #142 for the Codex runs.
 
 ### P7: Breadth (M4)
 
@@ -521,6 +583,7 @@ call a Platform-hosted MCP tool and receive its result.
 | 2026-09-29 | R3 Codex (#134) merged, as were A0, B1, B2a, C1, C2, A1 and A2a. A2b and A3 wire the `cats` server into Code sessions and retire the observation path. M1 acceptance passed in an isolated instance. B2b now has measured layout defects to fix. |
 | 2026-09-29 | A2b and A3 merged (#203) and the @mention fix merged (#204). B2b adds the Preview control, fixes the canvas-route layout and scroll, and was verified in a fresh acceptance instance. Next: M2. |
 | 2026-09-30 | D1: dev preview tools, the shell-permission gate, the Settings > Code preview-server switch (shipped off pending user confirmation), node resolution, and port probing. Real Vite smoke passed on Windows. |
+| 2026-09-30 | D2 (#216) with M2 acceptance, D3 (#217), F1 (#218), F2 and F4 notes (#219) and F5 (#220) merged; Runtime R4 (#140) and the message-stream heartbeat (#142) merged. M3: Claude Code 5/5 and Codex 5/5 with no policy tuning. Open: P0 user review of the App/plugin alignment, the Settings switch default, and F3 (Runtime providers). |
 
 ---
 
