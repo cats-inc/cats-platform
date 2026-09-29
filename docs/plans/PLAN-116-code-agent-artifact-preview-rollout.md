@@ -426,12 +426,25 @@ call a Platform-hosted MCP tool and receive its result.
     the direct child on Windows; that fix is a separate SPEC-122 item.
   - Share a contained-realpath primitive when a second caller changes.
   - Keep leases, sandbox profiles and routing separate, as above.
-- [ ] F5: When SPEC-121 plugin MCP or a user-granted App endpoint needs to reach
+- [x] F5: When SPEC-121 plugin MCP or a user-granted App endpoint needs to reach
   a Cat, configure the Cat session through the same runtime `mcpServers`
   descriptor (`oauth_ref`, and `app-<slug>` or plugin-ID names). The CLI connects
   to the independently hosted server directly. Do not add a second
   session-configuration mechanism. App traffic uses Platform's transparent router,
   without Runtime or the host-internal MCP domain module interpreting its tools.
+  Done:
+  - `src/platform/mcp/sessionMcpServerContributions.ts` is the one path for
+    further servers: `SessionMcpServerContributor`s return entries that
+    `composeSessionMcpServers` joins to `cats` in the same Runtime descriptor.
+  - Names are enforced per origin: `cats` for the host, `app-<slug>` for an App
+    and `plugin-<slug>` for a plugin, with a hash suffix past Runtime's
+    32-character limit. An App cannot claim `cats` or another origin's name.
+  - The Code runtime wrapper applies contributors on create, send and resume.
+    A contributor that throws or misnames a server is left out and reported,
+    and `cats` still arrives.
+  - There is no consumer yet: no plugin MCP or granted App endpoint reaches a
+    Cat today. `oauth_ref` stays reserved in Runtime until the first
+    OAuth-backed contributor.
 
 ## Files to Create/Modify
 

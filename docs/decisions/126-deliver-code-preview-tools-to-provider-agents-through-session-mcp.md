@@ -137,6 +137,9 @@ isolation, route authorization and shared ingress lifecycle to Platform.
    Only `bearer_env` is implemented first; the other kinds are reserved. Server
    names are namespaced: `cats` for the host, `app-<slug>` for Apps and a slug
    derived from the plugin ID for plugins (plugin IDs contain `/`).
+   Platform implements this as `SessionMcpServerContributor`s composed by
+   `composeSessionMcpServers` (`src/platform/mcp/sessionMcpServerContributions.ts`,
+   PLAN-116 F5), which enforces each origin's name (`plugin-<slug>` for plugins).
 2. **A documented security baseline, not a shared module.** The Ask probe's
    posture and SPEC-123 CAP-02 converge: stateless Streamable HTTP,
    `Origin`/`Host` checks, bounded bodies and rates, bearer or OAuth credentials
