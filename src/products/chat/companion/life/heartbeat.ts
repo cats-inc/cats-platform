@@ -20,6 +20,8 @@ export interface CompanionHeartbeatPromptInput {
   lastOwnerMessageAt: Date | null;
   /** The same companion-memory block the Cat gets on ordinary turns, if any. */
   companionContext: string | null;
+  /** FR-29: file names from the owner's photo folder the Cat may attach. */
+  photoCandidates?: readonly string[];
 }
 
 function describeDuration(fromMs: number, toMs: number): string | null {
@@ -71,6 +73,13 @@ export function buildCompanionHeartbeatPrompt(input: CompanionHeartbeatPromptInp
     'If you feel like saying something to your owner right now (a greeting, a passing thought,',
     'something you noticed), reply with only that message, in your own voice, one to three',
     'short sentences. It is sent to your owner exactly as you write it.',
+    ...(input.photoCandidates && input.photoCandidates.length > 0
+      ? [
+          'You may also send one photo from your album. You cannot see these pictures, so choose',
+          'by file name, and add a line [photo: <file name>] with the exact name:',
+          ...input.photoCandidates.map((name) => `- ${name}`),
+        ]
+      : []),
     `If you would rather stay quiet, reply with exactly ${COMPANION_HEARTBEAT_QUIET_TOKEN} and nothing else.`,
   ].join('\n');
 }

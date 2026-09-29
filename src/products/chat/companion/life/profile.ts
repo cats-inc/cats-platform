@@ -22,12 +22,21 @@ export function parseClockMinutes(value: unknown): number | null {
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }
 
+const PHOTO_FOLDER_MAX_LENGTH = 1024;
+/** POSIX root, a Windows drive, or a UNC share; no `node:path` so the renderer can share this. */
+const ABSOLUTE_HOST_PATH_PATTERN = /^(?:\/|[A-Za-z]:[\\/]|\\\\)/u;
+
 export function createDefaultCompanionLifeProfile(nowIso: string): CompanionLifeProfile {
   return {
     ...COMPANION_LIFE_DEFAULTS,
     sleepUntil: null,
+    photoFolder: null,
     updatedAt: nowIso,
   };
+}
+
+function readPhotoFolder(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
 function readClock(value: unknown, fallback: string): string {
@@ -49,6 +58,7 @@ export function normalizeCompanionLifeProfile(raw: unknown, nowIso: string): Com
     wakeWindowStart: readClock(record.wakeWindowStart, COMPANION_LIFE_DEFAULTS.wakeWindowStart),
     wakeWindowEnd: readClock(record.wakeWindowEnd, COMPANION_LIFE_DEFAULTS.wakeWindowEnd),
     sleepUntil,
+    photoFolder: readPhotoFolder(record.photoFolder),
     updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : nowIso,
   };
 }
@@ -69,6 +79,7 @@ export function applyCompanionLifeProfilePatch(
     wakeWindowStart: patch.wakeWindowStart ?? current.wakeWindowStart,
     wakeWindowEnd: patch.wakeWindowEnd ?? current.wakeWindowEnd,
     sleepUntil: patch.sleepUntil !== undefined ? patch.sleepUntil : current.sleepUntil,
+    photoFolder: patch.photoFolder !== undefined ? patch.photoFolder : current.photoFolder,
     updatedAt: nowIso,
   };
 }
@@ -94,6 +105,24 @@ export function validateCompanionLifeUpdate(
       return { ok: false, code: 'invalid_companion_life', message: 'enabled must be a boolean.' };
     }
     update.enabled = input.enabled;
+  }
+  if (input.photoFolder !== undefined) {
+    const folder = input.photoFolder === null ? null : readPhotoFolder(input.photoFolder);
+    if (
+      input.photoFolder !== null
+      && (
+        folder === null
+        || folder.length > PHOTO_FOLDER_MAX_LENGTH
+        || !ABSOLUTE_HOST_PATH_PATTERN.test(folder)
+      )
+    ) {
+      return {
+        ok: false,
+        code: 'invalid_companion_photo_folder',
+        message: 'photoFolder must be an absolute folder path, or null.',
+      };
+    }
+    update.photoFolder = folder;
   }
   for (const key of ['bedtime', 'wakeWindowStart', 'wakeWindowEnd'] as const) {
     if (input[key] === undefined) {

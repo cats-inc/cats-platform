@@ -3,20 +3,26 @@ import { Link } from 'react-router-dom';
 
 import type {
   CompanionExpressionMode,
+  CompanionLifeProfile,
   CompanionOutputMode,
   CompanionResponseProfile,
+  UpdateCompanionLifeProfileInput,
   UpdateCompanionResponseProfileInput,
 } from '../../../../products/chat/companion/contracts.js';
 import type { AppShellPayload } from '../../../../products/chat/api/contracts.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../i18n/useI18n.js';
+import { CompanionLifeCard } from './CompanionLifeCard.js';
 
 export interface CompanionSettingsSectionProps {
   catId: string;
+  catName: string;
   responseProfile: CompanionResponseProfile | null;
+  life: CompanionLifeProfile | null;
   payload: AppShellPayload;
   loading: boolean;
   onUpdateResponseProfile: (input: UpdateCompanionResponseProfileInput) => Promise<void>;
+  onUpdateLife: (input: UpdateCompanionLifeProfileInput) => Promise<void>;
 }
 
 const EXPRESSION_MODES: readonly { value: CompanionExpressionMode; label: string }[] = [
@@ -34,10 +40,13 @@ const OUTPUT_MODES: readonly { value: CompanionOutputMode; label: string }[] = [
 
 export function CompanionSettingsSection({
   catId,
+  catName,
   responseProfile,
+  life,
   payload,
   loading,
   onUpdateResponseProfile,
+  onUpdateLife,
 }: CompanionSettingsSectionProps) {
   const [notes, setNotes] = useState(responseProfile?.notes ?? '');
   const [saving, setSaving] = useState(false);
@@ -164,6 +173,8 @@ export function CompanionSettingsSection({
           </button>
         </div>
       </div>
+
+      {life ? <CompanionLifeCard catName={catName} life={life} onSave={onUpdateLife} /> : null}
 
       <div className="companionCard">
         <div className="companionCardHeader">

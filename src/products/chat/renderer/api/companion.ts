@@ -2,6 +2,7 @@ import { expectJson } from './http.js';
 import type {
   CompanionBoxSummary,
   CompanionDerivedRecord,
+  CompanionLifeProfile,
   CompanionMemoryRecord,
   CompanionResponseProfile,
   CompanionSourceDeleteResult,
@@ -10,6 +11,7 @@ import type {
   CompanionSourceUpdateResult,
   CreateCompanionMemoryInput,
   CreateCompanionSourceInput,
+  UpdateCompanionLifeProfileInput,
   UpdateCompanionResponseProfileInput,
   UpdateCompanionSourceInput,
 } from '../../companion/contracts.js';
@@ -325,4 +327,49 @@ export async function updateCompanionResponseProfile(
     response,
     `companion response profile update returned ${response.status}`,
   );
+}
+
+export async function getCompanionLife(
+  catId: string,
+  signal?: AbortSignal,
+): Promise<CompanionLifeProfile> {
+  const response = await fetch(`${catPath(catId)}/life`, {
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+  return (await expectJson<{ life: CompanionLifeProfile }>(
+    response,
+    `companion life returned ${response.status}`,
+  )).life;
+}
+
+/** Carries the server's error code so the settings card can say what to fix. */
+export class CompanionLifeUpdateError extends Error {
+  constructor(readonly code: string | null, message: string) {
+    super(message);
+    this.name = 'CompanionLifeUpdateError';
+  }
+}
+
+export async function updateCompanionLife(
+  catId: string,
+  input: UpdateCompanionLifeProfileInput,
+  signal?: AbortSignal,
+): Promise<CompanionLifeProfile> {
+  const response = await fetch(`${catPath(catId)}/life`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(input),
+    signal,
+  });
+  const payload = await response.json().catch(() => null) as
+    | { life?: CompanionLifeProfile; error?: { code?: string; message?: string } }
+    | null;
+  if (!response.ok || !payload?.life) {
+    throw new CompanionLifeUpdateError(
+      payload?.error?.code ?? null,
+      payload?.error?.message ?? `companion life update returned ${response.status}`,
+    );
+  }
+  return payload.life;
 }

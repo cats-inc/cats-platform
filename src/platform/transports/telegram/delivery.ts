@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import type {
   TelegramDeliveryMediaKind,
   TelegramDeliveryRequest,
@@ -199,6 +202,68 @@ function buildApiPayload(
   };
 }
 
+const MULTIPART_CONTENT_TYPES: Record<string, string> = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+};
+
+/** Telegram only needs a plausible name; keep the header ASCII and unbreakable. */
+function toMultipartFileName(fileName: string): string {
+  const safe = fileName.replace(/[^A-Za-z0-9._-]/gu, '_');
+  return safe.length > 0 ? safe : 'upload';
+}
+
+async function postBotApiMultipart<T>(
+  fetchImpl: TelegramFetch,
+  apiBaseUrl: string,
+  botToken: string,
+  method: string,
+  fields: Record<string, string | undefined>,
+  file: { field: string; fileName: string; bytes: Buffer },
+): Promise<{
+  response: TelegramFetchResponse;
+  payload: TelegramBotApiEnvelope<T>;
+}> {
+  const boundary = `----CatsTelegram${randomUUID().replace(/-/gu, '')}`;
+  const parts: Buffer[] = [];
+  for (const [name, value] of Object.entries(fields)) {
+    if (value === undefined) {
+      continue;
+    }
+    parts.push(Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+      'utf8',
+    ));
+  }
+  const extension = path.extname(file.fileName).toLowerCase();
+  parts.push(Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="${file.field}"; `
+      + `filename="${toMultipartFileName(file.fileName)}"\r\n`
+      + `Content-Type: ${MULTIPART_CONTENT_TYPES[extension] ?? 'application/octet-stream'}\r\n\r\n`,
+    'utf8',
+  ));
+  parts.push(file.bytes);
+  parts.push(Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8'));
+  const response = await fetchImpl(
+    `${apiBaseUrl}/bot${botToken}/${method}`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': `multipart/form-data; boundary=${boundary}`,
+      },
+      body: Buffer.concat(parts),
+    },
+  );
+
+  return {
+    response,
+    payload: await parseApiResponse<T>(response),
+  };
+}
+
 async function postBotApi<T>(
   fetchImpl: TelegramFetch,
   apiBaseUrl: string,
@@ -238,16 +303,36 @@ export function createTelegramBotApiDeliveryClient(
       request: TelegramDeliveryRequest & { chatId: string },
     ): Promise<TelegramDeliveryClientResult> {
       const method = resolveApiMethod(request);
+      const mediaFile = request.operation === 'send_media' && !request.fileId && !request.mediaUrl
+        ? request.mediaFile ?? null
+        : null;
       const {
         response,
         payload,
-      } = await postBotApi<TelegramBotApiDeleteResult | TelegramBotApiMessageResult>(
-        fetchImpl,
-        apiBaseUrl,
-        botToken,
-        method,
-        buildApiPayload(request),
-      );
+      } = mediaFile
+        ? await postBotApiMultipart<TelegramBotApiMessageResult>(
+          fetchImpl,
+          apiBaseUrl,
+          botToken,
+          method,
+          {
+            chat_id: request.chatId,
+            caption: request.caption ?? undefined,
+            parse_mode: request.parseMode ?? undefined,
+          },
+          {
+            field: resolveMediaApiSpec(request.mediaKind).payloadField,
+            fileName: mediaFile.fileName,
+            bytes: await readFile(mediaFile.path),
+          },
+        )
+        : await postBotApi<TelegramBotApiDeleteResult | TelegramBotApiMessageResult>(
+          fetchImpl,
+          apiBaseUrl,
+          botToken,
+          method,
+          buildApiPayload(request),
+        );
 
       if (request.operation === 'delete') {
         const ok = response.ok && payload.ok === true;

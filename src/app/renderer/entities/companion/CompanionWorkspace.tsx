@@ -200,10 +200,13 @@ export function CompanionWorkspace({
     settings: wrapSection(
       <CompanionSettingsSection
         catId={cat.id}
+        catName={cat.name}
         responseProfile={workspace.responseProfile}
+        life={workspace.life}
         payload={payload}
         loading={workspace.loading}
         onUpdateResponseProfile={workspace.editResponseProfile}
+        onUpdateLife={workspace.editLife}
       />,
     ),
     inspector: wrapSection(

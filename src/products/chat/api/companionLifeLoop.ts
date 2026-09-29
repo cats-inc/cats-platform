@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+
 import {
   createCompanionLifeLoop,
   startCompanionLifeLoop,
@@ -9,6 +12,12 @@ import {
   COMPANION_HEARTBEAT_METADATA_KEY,
   parseCompanionHeartbeatReply,
 } from '../companion/life/heartbeat.js';
+import {
+  extractCompanionPhotoDirective,
+  listCompanionPhotoCandidates,
+} from '../companion/life/photos.js';
+import { TRANSPORT_MEDIA_METADATA_KEY } from '../../../platform/transports/telegram/fanout.js';
+import { persistAttachmentsForChannels } from './attachmentSupport.js';
 import { COMPANION_HEARTBEAT_EVENT, isCompanionCat } from '../../../shared/companionRole.js';
 import { resolveFullResponseText } from '../../../platform/runtime/client.js';
 import { sendSupervisedRuntimeMessage } from '../../../platform/supervision/runtimeBoundary.js';
@@ -58,12 +67,17 @@ export function createCompanionHeartbeatSpeaker(
       transport: null,
       now: request.now,
     }).catch(() => null);
+    const photoFolder = (await dependencies.companionStore.getLifeProfile(cat.id, request.now)).photoFolder;
+    const photoCandidates = request.kind === 'bedtime'
+      ? []
+      : await listCompanionPhotoCandidates(photoFolder);
     const content = buildCompanionHeartbeatPrompt({
       kind: request.kind,
       now: request.now,
       awakeSince: request.awakeSince,
       lastOwnerMessageAt: request.lastOwnerMessageAt,
       companionContext: companionSession ? formatCompanionContext(companionSession, true) : null,
+      photoCandidates,
     });
 
     let replyText: string;
@@ -87,8 +101,19 @@ export function createCompanionHeartbeatSpeaker(
       return RUNTIME_BUSY_PATTERN.test(message) ? 'busy' : 'failed';
     }
 
-    const reply = parseCompanionHeartbeatReply(replyText);
-    if (reply.quiet) {
+    const directive = extractCompanionPhotoDirective(replyText, photoCandidates);
+    const reply = parseCompanionHeartbeatReply(directive.body);
+    if (reply.quiet && directive.photo === null) {
+      return 'quiet';
+    }
+    const text = reply.quiet ? '' : reply.body;
+    const photo = directive.photo && photoFolder
+      ? await attachCompanionPhoto(dependencies, request.laneId, photoFolder, directive.photo)
+      : null;
+    const body = photo?.relativePath
+      ? `[Attached files in working directory:]\n- ${photo.relativePath}\n\n${text}`
+      : text;
+    if (!body.trim() && !photo) {
       return 'quiet';
     }
     const message = await dependencies.mutationGate.run(request.laneId, async () => {
@@ -97,7 +122,7 @@ export function createCompanionHeartbeatSpeaker(
         const next = appendMessage(
           latest,
           request.laneId,
-          { senderKind: 'agent', senderName: cat.name, body: reply.body },
+          { senderKind: 'agent', senderName: cat.name, body },
           dependencies.now?.() ?? new Date(),
           {
             metadata: {
@@ -107,6 +132,15 @@ export function createCompanionHeartbeatSpeaker(
               targetKind: 'cat',
               targetId: request.catId,
               sessionId: request.sessionId,
+              ...(photo
+                ? {
+                    [TRANSPORT_MEDIA_METADATA_KEY]: {
+                      kind: 'photo',
+                      path: photo.sourcePath,
+                      fileName: photo.fileName,
+                    },
+                  }
+                : {}),
             },
             origin: 'runtime',
             incrementUnread: true,
@@ -132,6 +166,37 @@ export function createCompanionHeartbeatSpeaker(
     }
     return 'spoke';
   };
+}
+
+/**
+ * FR-30: copies the chosen photo into the lane's attachment folder so the
+ * Desktop shows it inline; Telegram uploads the original. A copy failure still
+ * lets the photo reach Telegram, just without the Desktop preview.
+ */
+async function attachCompanionPhoto(
+  dependencies: ChatCompanionLifeLoopDependencies,
+  laneId: string,
+  photoFolder: string,
+  fileName: string,
+): Promise<{ sourcePath: string; fileName: string; relativePath: string | null } | null> {
+  const sourcePath = path.join(photoFolder, fileName);
+  let bytes: Buffer;
+  try {
+    bytes = await readFile(sourcePath);
+  } catch {
+    return null;
+  }
+  try {
+    const stored = (await persistAttachmentsForChannels({
+      state: await dependencies.chatStore.read(),
+      channelIds: [laneId],
+      files: [{ name: fileName, data: bytes.toString('base64') }],
+      runtimeDataDir: dependencies.config.runtimeDataDir,
+    })).get(laneId)?.[0];
+    return { sourcePath, fileName, relativePath: stored?.relativePath ?? null };
+  } catch {
+    return { sourcePath, fileName, relativePath: null };
+  }
 }
 
 /**

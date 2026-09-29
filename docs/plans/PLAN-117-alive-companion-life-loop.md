@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress |
+| **Status** | Implemented; real-bot and Desktop visual acceptance pending |
 | **Owner** | Claude |
 | **Reviewer** | Owner |
 
@@ -62,16 +62,20 @@
 
 ## Phase 4: 照片
 
-- [ ] `life.photoFolder` 與陪伴設定欄位。
-- [ ] 心跳列出候選檔名，解析 `[photo: 檔名]`。
-- [ ] Telegram multipart `sendPhoto`；fanout 對帶照片的訊息送圖片。
+- [x] `life.photoFolder` 與陪伴設定的「作息與相簿」卡片（也涵蓋就寢時間與起床區間）。
+- [x] 心跳列出候選檔名（最多 6 個、≤ 10 MB），解析 `[photo: 檔名]`，只接受列出的檔名。
+- [x] Telegram multipart `sendPhoto`；fanout 對帶照片的訊息送圖片、文字當圖說；照片也複製到
+  lane 附件資料夾讓 Desktop 顯示。
 
 ## Follow-ups (not in this plan)
 
 - 陪伴貓私訊回合前的 companion 發文決策 sidecar 讓延遲約加倍，影響在職守的感覺；
   可改為只在需要時才做決策。
 - runtime 對同一 session 的併發訊息回 409，一般 owner 連發兩則訊息時也會碰到。
-- 作息設定頁的 UI。
+- 每次心跳照片都會複製一份到 lane 的 `.cats-attachments/`，同一張照片會累積 `x (1).png`、
+  `x (2).png`；可改為依內容雜湊重用既有副本。
+- 心跳候選照片固定抽 6 張；資料夾很大時也只列 6 個檔名，未做「最近傳過的不再挑」。
+- `provider-telegram-routes` 的「file-backed restart」既有不穩定測試（見 Phase 2 紀錄）。
 
 ## Progress Log
 
@@ -113,3 +117,8 @@
     （12，含 typing 在回合開始前送出且不產生 receipt）、`architecture-boundaries`、
     `provider-telegram-routes` 等，server 15 檔 236 個與 bundled 5 檔 55 個通過。
   - 尚未驗證：真的 Telegram bot 上的 typing 與 `/sleep` `/wake`。
+- 2026-09-29：Phase 3 以 #188 merge（`4ef1386f`）。Phase 4 完成。
+  - 驗證：`companion-photos`（5，含 multipart 實際上傳位元組）、`transport-fanout`（8，含心跳照片
+    在 Desktop 以附件顯示、Telegram 收到附圖說的照片、長文字先圖後文）、`companion-life`
+    （20，含相簿資料夾必須存在）、`companion-life-card`，server 12 檔 224 個與 bundled 8 檔通過。
+  - 尚未驗證：真的 Telegram bot、Desktop 上「作息與相簿」卡片與私訊照片的實際畫面。

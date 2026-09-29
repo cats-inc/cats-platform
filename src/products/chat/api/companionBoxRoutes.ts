@@ -1,3 +1,5 @@
+import { stat } from 'node:fs/promises';
+
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { isCompanionCat } from '../../../shared/companionRole.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
@@ -677,6 +679,16 @@ async function handleUpdateCompanionLifeProfile(
     const validation = validateCompanionLifeUpdate(current, await readJsonBody<unknown>(context.request));
     if (!validation.ok) {
       sendRestError(context, 400, validation.code, validation.message);
+      return;
+    }
+    const photoFolder = validation.update.photoFolder;
+    if (typeof photoFolder === 'string' && !(await stat(photoFolder).then((info) => info.isDirectory(), () => false))) {
+      sendRestError(
+        context,
+        400,
+        'companion_photo_folder_not_found',
+        'photoFolder must be an existing folder on this computer.',
+      );
       return;
     }
     const life = await context.dependencies.companionStore.updateLifeProfile(

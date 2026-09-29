@@ -47,6 +47,7 @@ test('life profile: a box written before SPEC-124 reads as the defaults', () => 
   assert.deepEqual(normalizeCompanionLifeProfile(undefined, NOW_ISO), {
     ...COMPANION_LIFE_DEFAULTS,
     sleepUntil: null,
+    photoFolder: null,
     updatedAt: NOW_ISO,
   });
 });
@@ -468,6 +469,22 @@ test('life route: reads defaults and rejects an invalid rhythm', async () => {
     })).json();
     assert.equal(updated.life.bedtime, '00:30');
     assert.equal(updated.life.sleepUntil, null, 'sleepUntil is not owner-editable');
+  });
+});
+
+test('life route: the photo folder must exist on this computer', async () => {
+  await withLifeServer(async ({ baseUrl, cat }) => {
+    const missing = await patchLife(baseUrl, cat.id, {
+      photoFolder: path.join(tmpdir(), 'cats-no-such-photo-folder'),
+    });
+    assert.equal(missing.status, 400);
+    assert.equal((await missing.json()).error.code, 'companion_photo_folder_not_found');
+
+    const folder = await mkdtemp(path.join(tmpdir(), 'cats-photo-folder-'));
+    const saved = await (await patchLife(baseUrl, cat.id, { photoFolder: folder })).json();
+    assert.equal(saved.life.photoFolder, folder);
+    const cleared = await (await patchLife(baseUrl, cat.id, { photoFolder: null })).json();
+    assert.equal(cleared.life.photoFolder, null);
   });
 });
 
