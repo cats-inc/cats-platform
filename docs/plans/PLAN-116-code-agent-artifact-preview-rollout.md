@@ -63,13 +63,15 @@ Cross-repo ownership:
 
 - [ ] R1: Add runtime ADR/SPEC/PLAN, framed as the SPEC-121 FR-02 MCP delivery
   mechanism with Code as its first consumer. Accept `mcpServers` on session
-  create and message send, using the `auth` kinds and the server-name namespace
+  create, resume and message send, using the `auth` kinds and the server-name namespace
   (SPEC-123 CAP-16). Implement `bearer_env` only and reserve `oauth_ref`.
   Validate names, `http` transport and loopback URLs. Keep secret
   values only in memory: exclude them from persistence, logs, session reads and
   diagnostics, and redact spawn arguments and environment. A new descriptor
-  applies at the next worker spawn. The create and send responses report
-  per-session delivery as `delivered`, `unsupported` or `failed`.
+  applies at the next worker spawn. Create and resume responses, and the first
+  send stream event (`progress` of kind `mcp_servers`), report per-session
+  delivery as `delivered`, `unsupported` or `failed`. In progress as cats-runtime
+  PLAN-046 R1.
 - [ ] R2: Claude adapter. Pass `--mcp-config` pointing to a config file. The
   bearer must never be in argv: reference it through environment-variable
   expansion (**verify** that the pinned Claude Code supports this). Otherwise use
@@ -111,9 +113,10 @@ call a Platform-hosted MCP tool and receive its result.
   index and the `artifactClaims[]` finalization gate (`sessionFinalization.ts`)
   that is fed only by that path. Before deleting, confirm that no adapter emits
   claims, and update the tests.
-- [ ] A3: Update the Code enricher. Send `mcpServers` for providers that report
-  support. Add the SPEC-123 policy text only when that session's response
-  reports `delivered`. Update the runtime pin.
+- [ ] A3: Update the Code enricher. Send `mcpServers` on create, on every send
+  and on resume after a Runtime restart, for providers that report support. Add
+  the SPEC-123 policy text only when the session's latest report is
+  `delivered`. Update the runtime pin.
 
 ### P3: Canvas beside the Code conversation (M1)
 
