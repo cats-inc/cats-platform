@@ -28,6 +28,8 @@
 - 不做時區設定；作息以主機本地時間計算。
 - 不做 session 上限的配額或搶占；滿了就退避重試。
 - Phase 1–3 不做圖片；圖片見 Phase 4。
+- 不做本機看圖或產圖模型；看不看得懂照片取決於陪伴貓的 provider。
+- 不強制相簿唯讀；這需要 runtime 支援唯讀存取。
 
 ## Definitions
 
@@ -124,14 +126,19 @@
 ### 照片（Phase 4）
 
 28. FR-28：`life.photoFolder: string | null`，owner 在陪伴設定填寫本機資料夾。
-29. FR-29：心跳時從資料夾抽最多 6 個圖片檔名（jpg、jpeg、png、gif、webp，≤ 10 MB）
-    列給他挑；他以獨立一行 `[photo: 檔名]` 表示要附上哪一張。檔名必須是資料夾內的
-    basename，不接受路徑。
-30. FR-30：Telegram 以 multipart `sendPhoto` 上傳本機檔案。貓只看得到檔名、看不到圖片內容。
-    選中的照片同時複製到 lane 的附件資料夾，Desktop 私訊以既有的附件區塊顯示圖片；
-    訊息 metadata 的 `transportMedia` 指向原始檔，Telegram fanout 送圖片並把文字當圖說，
-    文字超過 1024 字時先送圖片再送文字。
+29. FR-29：相簿資料夾是這隻陪伴貓的相簿。每個回合的陪伴脈絡告訴他相簿路徑、可以隨時用
+    自己的工具翻閱與打開照片、只能看不能改，以及送照片的方式。心跳不列候選檔名，只在
+    醒著的心跳（不含就寢）提一句「合適的話可以附一張相簿照片」。
+30. FR-30：他在回覆中以獨立一行 `[photo: 相對於相簿的路徑]` 表示要附上的照片，該行一律從
+    訊息移除。只送解析連結後仍在相簿內、副檔名為 jpg、jpeg、png、gif、webp 且 ≤ 10 MB
+    的檔案；副檔名大小寫不符時，以同一資料夾內不分大小寫的檔名比對。送出時照片複製到
+    lane 的附件資料夾，Desktop 以既有的附件區塊顯示；訊息 metadata 的 `transportMedia`
+    指向原始檔，Telegram 以 multipart `sendPhoto` 上傳並把文字當圖說，文字超過 1024 字時
+    先送圖片再送文字。
 31. FR-31：陪伴設定頁的「作息與相簿」卡片可調整是否啟用、就寢時間、起床區間與相簿資料夾。
+32. FR-32：一般回覆也能附照片，不限心跳。回覆的最後一段文字帶附件區塊與 `transportMedia`；
+    Telegram 進來的訊息由 bridge 直接送照片，其他來源由 transport fanout 送。照片不符合
+    FR-30 時不送；若回覆只剩那一行，保留原文，不以「沒有文字輸出」的預設句代替。
 
 ### Non-Functional Requirements
 

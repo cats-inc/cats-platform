@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, realpath, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -374,8 +374,9 @@ test('a heartbeat photo shows inline on Desktop and reaches Telegram as a captio
   try {
     const catId = (await fixture.chatStore.read()).cats[0].id;
     const photoFolder = await mkdtemp(path.join(tmpdir(), 'cats-heartbeat-photo-'));
-    const photoPath = path.join(photoFolder, 'window-sun.png');
-    await writeFile(photoPath, ONE_PIXEL_PNG);
+    await writeFile(path.join(photoFolder, 'window-sun.png'), ONE_PIXEL_PNG);
+    // The album check follows links, so the photo is sent from its real path.
+    const photoPath = await realpath(path.join(photoFolder, 'window-sun.png'));
     const companionStore = new MemoryCompanionBoxStore();
     await companionStore.updateLifeProfile(catId, { photoFolder });
     const speak = createCompanionHeartbeatSpeaker({

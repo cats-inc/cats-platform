@@ -20,7 +20,7 @@ import type {
   ChatState,
   ChannelDispatchOrchestratorSummary,
 } from '../contracts.js';
-import { persistAttachmentsForChannels } from '../attachmentSupport.js';
+import { persistAttachmentsForChannels } from '../../state/channelAttachments.js';
 import {
   buildAppShellPayload,
   nowFrom,

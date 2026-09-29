@@ -41,6 +41,7 @@ import {
 } from '../runtime-session/state.js';
 import { shouldRewriteOrchestratorReply } from '../runtime-session/index.js';
 import type { DispatchLeasePatch } from './recovery.js';
+import { applyCompanionPhotoDirective } from './companionPhoto.js';
 import { waitForSessionTurnGate } from './sessionTurnGate.js';
 import {
   buildDispatchRuntimeContextMetadata,
@@ -67,6 +68,8 @@ export interface DispatchExecution extends DispatchRequest {
   recoveredMessages?: ChatMessage[];
   runtimeAssistantMetadata?: Record<string, unknown>;
   runtimeFinalization?: Record<string, unknown> | null;
+  /** Stamped on the reply's terminal message, e.g. a companion photo (SPEC-124 FR-32). */
+  terminalMessageMetadata?: Record<string, unknown>;
 }
 
 type RuntimeEffectCoreStore = Pick<ChatStore, 'updateCore'>;
@@ -165,6 +168,7 @@ export async function executeDispatch(
   core?: CatsCoreState,
   coreStore?: RuntimeEffectCoreStore,
   platformDir?: string,
+  runtimeDataDir?: string,
 ): Promise<DispatchExecution> {
   let resolvedConversationId: string | null = null;
   let resolvedContainerId: string | null = null;
@@ -342,6 +346,14 @@ export async function executeDispatch(
         // Keep the original draft if the repair pass fails.
       }
     }
+    const companionPhoto = await applyCompanionPhotoDirective({
+      state,
+      channelId,
+      companionSession: runtimeEnvelope.companionSession,
+      segments: responseSegments,
+      runtimeDataDir,
+    });
+    responseSegments = companionPhoto.segments;
 
     return {
       ...request,
@@ -355,6 +367,7 @@ export async function executeDispatch(
         ? { runtimeAssistantMetadata }
         : {}),
       ...(runtimeResult.finalization ? { runtimeFinalization: runtimeResult.finalization } : {}),
+      ...(companionPhoto.metadata ? { terminalMessageMetadata: companionPhoto.metadata } : {}),
     };
   } catch (error) {
     const supervisedRejection = error instanceof RuntimeSupervisionRejectedError

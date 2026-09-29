@@ -110,6 +110,7 @@ export function buildCompanionSessionContext(input: {
     ownerNotes,
     constraints,
     retrieval: input.retrieval ?? null,
+    photoAlbum: input.box.life?.photoFolder ?? null,
     channelContext: {
       channelId: input.channel.id,
       roomMode: input.channel.roomRouting?.mode ?? null,

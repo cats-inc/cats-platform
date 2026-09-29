@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { GLOBAL_ORCHESTRATOR_ACTOR_ID, createCatActorId } from '../build/server/core/actors.js';
-import { persistAttachmentsForChannels } from '../build/server/products/chat/api/attachmentSupport.js';
+import { persistAttachmentsForChannels } from '../build/server/products/chat/state/channelAttachments.js';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import {
   assignCatToChannel,

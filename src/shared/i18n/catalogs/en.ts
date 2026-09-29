@@ -1940,7 +1940,7 @@ export const enCatalog: MessageCatalog = {
   'chat.companionLifeWakeWindowSeparator': 'and',
   'chat.companionLifePhotoFolderLabel': 'Photo folder',
   'chat.companionLifePhotoFolderPlaceholder': 'Full path of a folder with photos',
-  'chat.companionLifePhotoFolderHint': '{name} picks photos by file name and cannot see the pictures.',
+  'chat.companionLifePhotoFolderHint': '{name} can browse this folder, open the photos, and send you one.',
   'chat.companionLifeSave': 'Save',
   'chat.companionLifeSaving': 'Saving…',
   'chat.companionLifeFolderNotFound': 'That folder does not exist on this computer.',

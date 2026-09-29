@@ -199,6 +199,8 @@ export interface CompanionSessionContext {
   ownerNotes: string[];
   constraints: string[];
   retrieval: MemoryRetrievalContext | null;
+  /** SPEC-124 FR-29: the owner's photo folder the Cat may browse, if one is set. */
+  photoAlbum: string | null;
   channelContext: {
     channelId: string | null;
     roomMode: 'chat_channel' | 'direct_message' | null;

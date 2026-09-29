@@ -1,7 +1,7 @@
 import { access, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { requireChannel } from '../state/model/index.js';
+import { requireChannel } from './model/index.js';
 import {
   collectParticipantLeaseCwds,
   resolveOrchestratorLeaseAttachment,
@@ -9,8 +9,8 @@ import {
 import {
   ensureChannelAttachmentWorkspace,
   syncChannelAttachmentsToWorkspace,
-} from '../state/workspace.js';
-import type { SendParallelChatMessageInput, ChatState } from './contracts.js';
+} from './workspace.js';
+import type { SendParallelChatMessageInput, ChatState } from '../api/contracts.js';
 
 type EncodedAttachmentInput = NonNullable<SendParallelChatMessageInput['attachments']>[number];
 

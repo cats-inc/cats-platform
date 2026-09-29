@@ -321,6 +321,7 @@ export async function executeDispatchWithRecovery(input: {
       core,
       input.chatStore,
       input.platformDir,
+      input.runtimeDataDir,
     );
 
     if (!execution.error) {

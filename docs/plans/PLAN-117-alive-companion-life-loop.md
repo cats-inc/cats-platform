@@ -67,6 +67,17 @@
 - [x] Telegram multipart `sendPhoto`；fanout 對帶照片的訊息送圖片、文字當圖說；照片也複製到
   lane 附件資料夾讓 Desktop 顯示。
 
+## Phase 5: 貓自己翻相簿（ADR-127 §5）
+
+- [x] 陪伴脈絡（`CompanionSessionContext.photoAlbum`）帶相簿路徑；`formatCompanionContext`
+  只對陪伴貓說明相簿、唯讀約定與 `[photo: 路徑]`。心跳改為一句提示，不再抽候選檔名。
+- [x] `resolveCompanionAlbumPhoto`：相對或絕對路徑，`realpath` 後必須在相簿內；大小寫不符時
+  以同資料夾比對。
+- [x] 一般回覆：`executeDispatch` 在回合結束後處理 `[photo: …]`（`applyCompanionPhotoDirective`），
+  `results.ts` 把 `transportMedia` 蓋在最後一段；Telegram bridge 對帶照片的回覆直接送照片。
+- [x] 附件複製（`channelAttachments.ts`）從 `api/` 移到 `state/`，讓派送流程也能使用。
+- [ ] Telegram 傳進來的照片下載到 lane 附件資料夾，讓貓看得到（下一個 PR）。
+
 ## Follow-ups (not in this plan)
 
 - 陪伴貓私訊回合前的 companion 發文決策 sidecar 讓延遲約加倍，影響在職守的感覺；
@@ -74,7 +85,10 @@
 - runtime 對同一 session 的併發訊息回 409，一般 owner 連發兩則訊息時也會碰到。
 - 每次心跳照片都會複製一份到 lane 的 `.cats-attachments/`，同一張照片會累積 `x (1).png`、
   `x (2).png`；可改為依內容雜湊重用既有副本。
-- 心跳候選照片固定抽 6 張；資料夾很大時也只列 6 個檔名，未做「最近傳過的不再挑」。
+- 相簿很大時，貓每次都得自己翻；可讓他替看過的照片留筆記，或由平台提供「最近傳過的」清單。
+- Desktop 串流回覆時，`[photo: …]` 那一行可能在收尾前短暫出現，收尾後才被移除。
+- Telegram 私訊的每則回覆前面都有 `Continuing room "…" in Cats Chat.`（bridge 既有行為），
+  照片的圖說也會帶著它，破壞陪伴感。
 
 ## Progress Log
 
@@ -127,3 +141,14 @@
   若晚於同時進行的儲存才落地，就會把剛存的資料蓋回舊版（測試中被蓋掉的是 Telegram bot 名稱）。
   修正為讀取只讀；需要寫回時改在同一把寫入鎖內重新讀取再寫。修正後該測試單獨連跑 20 次全數通過
   （修正前約 15% 失敗）。
+- 2026-09-29：讀取修正以 #193 merge（`8a1e94f0`）。owner 指出「平台抽 6 個檔名」與他的想法不同：
+  指定資料夾後，貓應該能主動存取底下任何檔案。Phase 5 完成（ADR-127 §5、SPEC-124 FR-29～FR-32）。
+  - 測試 harness 的假 runtime 原本把每個 session 的工作目錄固定在系統暫存資料夾下的同一路徑，
+    附件會跨次執行殘留、造成檔名變成 `sunset-3.png`；改為放在每次 harness 自己的暫存資料夾，
+    並設定 `runtimeDataDir`，避免附件複製落到真的 `~/.cats/runtime/data`。
+  - 驗證：`companion-photos`（8，含 `../`、相簿外絕對路徑、指向相簿外的 junction、超過 10 MB）、
+    `companion-heartbeat`（12，含一般回覆從子資料夾送照片、相簿外路徑不送、提示含相簿路徑）、
+    `telegram-work-delivery-bridge`（Telegram 進來的回覆直接送照片）、`transport-fanout` 等，
+    server 26 檔 384 個與 bundled 173 個通過；`tsc` 的 server、desktop、root、test 專案通過
+    （mobile 因工作區未安裝 mobile 依賴未檢查）。
+  - 尚未驗證：真的 provider（Claude、Codex）是否會照提示翻相簿、打開圖片；真的 Telegram bot。
