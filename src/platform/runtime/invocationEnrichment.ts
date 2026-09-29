@@ -14,6 +14,7 @@ export interface RuntimeInvocationEnrichmentChannel {
   id?: string | null;
   title?: string | null;
   chatCwd?: string | null;
+  repoPath?: string | null;
 }
 
 export interface RuntimeInvocationEnrichmentInput {

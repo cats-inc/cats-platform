@@ -90,8 +90,8 @@ validation and full CI pass; live/native and installed-profile acceptance remain
 | `work.external.unlink_issue` | Cats Work | Product delegate, HTTP route, Work detail UI, and Chat provider-agent observation/tool-request executor implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.lookup` | Cats Work | Product delegate, Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Strong Cat / Boss Cat triage with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.create` | Cats Work | Product delegate, explicit Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
-| `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
-| `show_in_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request canvas navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
+| `declare_artifact` | Cats Code | Delivered through the Platform-hosted `cats` MCP server (ADR-126); results return to the agent in the same turn; the HTTP submit route remains for product callers | `mcp_tool` (runtime session MCP) | Code assistant / Code UI import flow | [Declare Artifact](#declare_artifact) |
+| `show_in_canvas` | Cats Code | Delivered through the `cats` MCP server (SPEC-123): workspace `path`, https `url` or `artifactId` | `mcp_tool` (runtime session MCP) | Code assistant | [Artifact Canvas Tools](#artifact-canvas-tools) |
 | `clear_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request parent-surface navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
 
 ## Agent Knowledge Drafts
@@ -466,12 +466,12 @@ callers.
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Code-origin active sessions receive the onboarding block at session create and runtime context metadata at session create / message send. Returned `declare_artifact` `tool_use` segments are observed, materialized through the Code delegate, persisted to Core, projected into local `tool_result` segments, and checked by structured finalization enforcement for `artifactClaims[]`. Runtime tool-result delivery back to the assistant remains pending. |
-| First channel | `runtime_tool` |
+| Current status | Served by the Platform-hosted `cats` MCP server, which Runtime configures into Code conversation sessions. Platform executes the call and returns the result in the same turn. The earlier `tool_use` observation path, runtime tool catalog, onboarding block and `artifactClaims[]` finalization gate were retired (ADR-126 decision 4). |
+| First channel | `mcp_tool` (runtime session MCP) |
 | Tool name | `declare_artifact` |
 | Implementation entry point | `src/products/code/shared/artifactDeclaration.ts` |
-| Active-session wiring | `src/products/code/state/runtimeArtifactTooling.ts` |
-| Finalization helper | `src/products/code/state/sessionFinalization.ts` |
+| MCP server | `src/products/code/agentTools/service.ts` |
+| Session wiring | `src/products/code/agentTools/enricher.ts`, `src/products/code/agentTools/runtimeClientWrapper.ts` |
 | Related SPEC | [SPEC-092](./specs/SPEC-092-code-artifact-declaration-contract.md) |
 | Related ADR | [ADR-088](./decisions/088-use-structured-artifact-declarations-for-code-materialization.md) |
 | Related PLAN | [PLAN-081](./plans/PLAN-081-code-artifact-declaration-rollout.md) |
@@ -536,60 +536,25 @@ rather than to a later hook that happened to receive the merged context.
 Assistant metadata contributions are stored under each enricher id rather than
 flattened into Chat metadata.
 
-When a chat/channel originates from Cats Code (`originSurface = "code"`),
-activation of `+New code`, `+Team code`, or a `+Peer code` member channel
-enriches the runtime session-create request with:
+When a chat/channel originates from Cats Code (`originSurface = "code"`), the
+Code agent-tools enricher adds a secret-free marker at
+`context.metadata.codeAgentTools` (`channelId`, `workspacePath`) on session
+create and message send.
 
-- the SPEC-092 onboarding block, including
-  `codeArtifactDeclaration.onboardingBlockVersion`;
-- runtime context metadata at `metadata.codeArtifactDeclaration` with the
-  tool name, schema version, onboarding version, agent-visible field list,
-  producer labels, finalization envelope name, source channel id/title, and
-  workspace path when known.
+The Code runtime-client wrapper sits inside the supervision boundary. It turns
+that marker into the `cats` MCP server:
 
-Each runtime message send repeats the lightweight context metadata so observers
-can identify the active Code artifact contract, but Platform does not resend the
-full onboarding block. The block is not a system prompt: cats-runtime stores it
-as session instructions and, for CLI providers, prepends it to every turn's
-user-message text (`cats-runtime/src/backends/cli/providers/prompt.ts`).
+- It issues a session grant before create, because the CLI connects while it
+  spawns, and binds the grant to the returned runtime session id.
+- It sends `mcpServers` on create, send and resume.
+- It adds the SPEC-123 preview policy to a turn's instructions only while
+  Runtime reports the server as `delivered` for that session.
+- It revokes the grant on close and delete.
 
-Delivery gap (2026-09-29): cats-runtime never reads `runtimeToolCatalog`, and no
-CLI adapter receives the Code tools. The onboarding text therefore names tools
-that the provider cannot call, and the observation path below fires only in tests.
-[ADR-126](decisions/126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md)
-replaces this path with a Platform-hosted MCP server that runtime delivers per
-session. [PLAN-116](plans/PLAN-116-code-agent-artifact-preview-rollout.md) P2
-retires the catalog and the observation processors.
-
-The current Cats Platform receiver also preserves `toolArgs` on runtime
-`tool_use` segments and records same-turn `declare_artifact` observations as
-`runtimeAssistantMetadata["cats-code.artifact-declaration"].codeArtifactToolCalls`
-metadata on the terminal assistant segment. These observations are shape
-summaries only.
-
-`src/products/code/state/runtimeArtifactExecution.ts` is the first native
-runtime execution helper. Given Code-origin channel metadata, observed runtime
-segments, and server-resolved producer / anchor context, it executes
-`declare_artifact` calls through the same Code materialization delegate used by
-the HTTP submit route and returns `CodeArtifactToolResult` values. This helper
-is registered behind the platform assistant-effect processor registry, so
-runtime surfaces can apply artifact side effects without importing Code
-internals. The chat runtime dispatch loop invokes that registry after a runtime
-message result and applies artifact side effects with `coreStore.updateCore`,
-so concurrent dispatches operate on the latest Core snapshot instead of
-overwriting one another with stale snapshots. Assistant-effect processors expose
-a turn predicate, so ordinary assistant text replies do not open a Core write
-when no product-owned tool call is present. Accepted / rejected declaration
-results are recorded in assistant-message metadata under
-`runtimeAssistantMetadata["cats-code.artifact-declaration"].codeArtifactToolResults`.
-The same results are also projected into local runtime `tool_result` segments
-so the persisted turn has a `tool_use` -> `tool_result` trace. These projected
-segments are not yet sent back to the assistant through a live runtime
-tool-result loop. The Code finalization gate is now registered at visible
-response commit time for structured `artifactClaims[]`. Runtime adapters can
-deliver that envelope as a `finalization` stream event or in
-`result.finalization` / `result.finalizationEnvelope`; unmatched claims block the
-assistant response before it is appended. Text heuristics are still not used.
+The bearer never enters context metadata, Core records or supervision evidence.
+The tools execute in Platform through `/api/code/agent-tools/mcp`, which is
+mounted before the router because it is bearer-only. The agent receives results
+and failures (`isError`) in the same turn. Runtime does not proxy MCP traffic.
 
 ### Output Summary
 
@@ -685,20 +650,15 @@ The full materialized flow is defined by SPEC-092:
 - idempotent no-op retries do not emit duplicate activity
 - Artifacts sidebar projections read materialized Core artifact rows
 
-The current implementation provides the tool contract classes, finalization
-gate helpers, the first Code-owned materialization delegate for normalized
-declarations, the Code product submit route, a runtime execution helper for
-observed `declare_artifact` `tool_use` segments, and a platform-registered
-assistant-effect processor. The delegate writes accepted declarations into
-`CoreArtifactRecord` with canonical idempotency metadata and deterministic
-artifact ids. The Code product API exposes
-`POST /api/code/artifacts/declarations` as the first authoritative submit route
-into that delegate. Materialized create/update operations emit idempotent
-background `artifact_recorded` activities keyed by the material-change
-signature; exact no-op replays do not duplicate activity. Live dispatch-loop
-registry invocation now persists observed Code declarations. Tool-result
-delivery back into the runtime loop and frozen-scope fallback recovery remain
-follow-up slices.
+The current implementation provides the tool contract classes, the Code-owned
+materialization delegate, the Code product submit route
+(`POST /api/code/artifacts/declarations`) and the `cats` MCP tool. The delegate
+writes accepted declarations into `CoreArtifactRecord` with canonical
+idempotency metadata and deterministic artifact ids. Materialized create/update
+operations emit idempotent background `artifact_recorded` activities keyed by
+the material-change signature, and exact no-op replays do not duplicate activity.
+The MCP tool writes through `coreStore.updateCore`, so concurrent calls operate
+on the latest Core snapshot.
 
 ### Idempotency
 
@@ -708,21 +668,13 @@ defined in SPEC-092.
 
 ### Final Response Gate
 
-If an assistant final response claims that an artifact was produced or recorded,
-the finalization envelope must include an `artifactClaims[]` entry whose
-`declarationId` matches an accepted same-turn `declare_artifact` result.
-Unmatched claims are blocked with `artifact_claim_without_declaration`.
-Runtime finalization data is namespaced under
-`runtimeFinalization.codeArtifactFinalization`; flat `runtimeFinalization`
-payloads are ignored so future product gates can coexist without key
-collisions.
+Retired with the observation path (ADR-126 decision 4). Tool results now reach
+the agent directly, so no `artifactClaims[]` finalization gate runs for Code.
 
 ### Error Codes
 
 The source of truth is [SPEC-092 § Error Code Registry](./specs/SPEC-092-code-artifact-declaration-contract.md#error-code-registry).
-The scaffolded TypeScript helper currently throws only the context-free
-shape/location/metadata subset from that registry, while finalization may return
-`artifact_claim_without_declaration`.
+The MCP tool returns these codes as `isError` results the agent can act on.
 
 ## Artifact Canvas Tools
 
@@ -734,27 +686,33 @@ active product surface opens in the shared Artifact Canvas.
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Code runtime tool catalog and first assistant-effect execution path wired; renderer consumption and full same-caller declaration-index matrix still pending |
-| First channel | `runtime_tool` |
+| Current status | Served by the `cats` MCP server beside the Code conversation (`code_conversation` surface). `show_in_canvas` takes a workspace `path`, an https `url` or an `artifactId` (SPEC-123 amends the `declarationId` input away). |
+| First channel | `mcp_tool` (runtime session MCP) |
 | Tool names | `show_in_canvas`, `clear_canvas` |
-| Implementation entry point | Planned: `src/products/code/state/runtimeArtifactCanvasExecution.ts` |
+| Implementation entry point | `src/products/code/agentTools/showInCanvas.ts`, `src/products/code/agentTools/service.ts` |
 | Related SPEC | [SPEC-101](./specs/SPEC-101-cats-code-artifact-canvas.md) |
 | Related ADR | [ADR-098](./decisions/098-url-driven-canvas-and-platform-shared-viewer.md) |
 | Related PLAN | [PLAN-090](./plans/PLAN-090-cats-code-artifact-canvas-rollout.md) |
 
 ### `show_in_canvas`
 
-Sets the right-hand Artifact Canvas focus to a canvas-eligible artifact.
-
-Caller-visible input:
+Sets the right-hand Artifact Canvas focus. SPEC-123 defines the MCP-facing
+input, which takes exactly one of `path`, `url` or `artifactId`:
 
 ```ts
 interface ShowInCanvasInput {
-  artifactId?: string | null;
-  declarationId?: string | null;
-  presentation?: 'auto' | 'iframe' | 'image' | 'pdf' | 'code' | null;
+  path?: string;      // workspace page, directory with index.html, image, PDF or text
+  url?: string;       // https only; shown without scripts
+  artifactId?: string;
+  title?: string;
+  presentation?: 'auto' | 'iframe' | 'image' | 'pdf' | 'code';
 }
 ```
+
+Workspace pages open on a supervisor-leased static preview origin with scripts
+(SPEC-108/123). The SPEC-101 material below still defines projection, audit and
+render intents. Its same-turn `declarationId` resolution was retired together
+with the observation path.
 
 Result:
 

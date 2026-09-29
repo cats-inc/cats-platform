@@ -32,6 +32,7 @@ import {
 } from '../shared/artifactDeclaration.js';
 import type { LivePreviewSupervisor } from '../livePreview/supervisor.js';
 import { materializeCodeArtifactDeclaration } from '../state/artifactMaterialization.js';
+import { CODE_AGENT_PREVIEW_POLICY } from './policy.js';
 import { runShowInCanvas, SHOW_IN_CANVAS_TOOL } from './showInCanvas.js';
 import {
   CODE_AGENT_TOOLS_MCP_PATH,
@@ -81,6 +82,7 @@ export function createCodeAgentToolsService(options: CodeAgentToolsServiceOption
   const server: McpServerDefinition<CodeAgentToolGrant> = {
     name: CODE_AGENT_TOOLS_SERVER_NAME,
     version: CODE_AGENT_TOOLS_SERVER_VERSION,
+    instructions: CODE_AGENT_PREVIEW_POLICY,
     listTools: () => [SHOW_IN_CANVAS_TOOL, DECLARE_TOOL, CLEAR_TOOL],
     async callTool(name, args, grant) {
       if (name === SHOW_IN_CANVAS_TOOL.name) {
