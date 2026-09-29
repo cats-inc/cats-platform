@@ -83,6 +83,33 @@ function formatActivityTimestamp(iso: string): string {
   }
 }
 
+/** SPEC-124 FR-13: presence entries carry `{presence, reason}` instead of a summary. */
+function resolvePresenceActivityKey(entry: CompanionActivityRenderEntry): MessageKey | null {
+  if (entry.group !== 'presence_changed') {
+    return null;
+  }
+  const presence = entry.metadata?.presence;
+  const reason = entry.metadata?.reason;
+  if (reason === 'no_capacity') return messageKeys.chatCompanionActivityPresenceNoCapacity;
+  if (reason === 'wake_failed') return messageKeys.chatCompanionActivityPresenceWakeFailed;
+  if (presence === 'awake') {
+    if (reason === 'owner') return messageKeys.chatCompanionActivityPresenceOwnerWoke;
+    if (reason === 'keep_alive') return messageKeys.chatCompanionActivityPresenceRevived;
+    return messageKeys.chatCompanionActivityPresenceWoke;
+  }
+  if (presence === 'sleeping') {
+    if (reason === 'owner') return messageKeys.chatCompanionActivityPresenceOwnerSlept;
+    if (reason === 'idle') return messageKeys.chatCompanionActivityPresenceDozed;
+    return messageKeys.chatCompanionActivityPresenceSlept;
+  }
+  return null;
+}
+
+export function describeActivityEntry(entry: CompanionActivityRenderEntry, translate: TranslateFn): string {
+  const presenceKey = resolvePresenceActivityKey(entry);
+  return presenceKey ? translate(presenceKey) : entry.summary;
+}
+
 function renderActivity(
   projection: CompanionActivityProjection | null | undefined,
   translate: TranslateFn,
@@ -99,7 +126,7 @@ function renderActivity(
             <time className="companionActivityTimestamp" dateTime={entry.occurredAt}>
               {formatActivityTimestamp(entry.occurredAt)}
             </time>
-            <span className="companionActivitySummary">{entry.summary}</span>
+            <span className="companionActivitySummary">{describeActivityEntry(entry, translate)}</span>
             {entry.count > 1 ? <span className="companionActivityCount">×{entry.count}</span> : null}
           </li>
         ))}

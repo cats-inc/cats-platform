@@ -132,6 +132,12 @@ their existing supervised platform surfaces.
 
 ### 5. Heartbeat is not a prerequisite for schedule rules
 
+> Amended 2026-09-29 by [ADR-127](127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md):
+> companion Cats now have a platform-owned life loop (keep-alive, rhythm, and a
+> heartbeat inside their own direct-message session). Schedule rules are
+> unchanged and still do not depend on it; a companion greeting that should come
+> from the live conversation uses the life loop, not a scheduled mission.
+
 Heartbeat can be useful later for liveness monitoring, lease recovery, or
 long-running scheduler diagnostics. It is not required before schedule rules
 exist.

@@ -27,6 +27,7 @@ import {
   type CompanionActivityTargetKind,
 } from '../companion/activityProjection.js';
 import { parseCompanionContentReference } from '../companion/contentReference.js';
+import { validateCompanionLifeUpdate } from '../companion/life/profile.js';
 import {
   resolveCompanionContentReference,
   type CompanionContentLookupResult,
@@ -43,6 +44,7 @@ import {
 import {
   handleCanonicalCatError,
   handleRestError,
+  nowFrom,
   sendRestError,
   type ChatApiRouteContext,
 } from './routeSupport.js';
@@ -650,6 +652,44 @@ async function handleUpdateCompanionResponseProfile(
   }
 }
 
+async function handleGetCompanionLifeProfile(
+  context: ChatApiRouteContext,
+  catId: string,
+): Promise<void> {
+  try {
+    await resolveCatContext(context, catId);
+    const life = await context.dependencies.companionStore.getLifeProfile(catId, nowFrom(context.dependencies));
+    sendJson(context.response, 200, { life });
+  } catch (error) {
+    handleCanonicalCatError(context, error);
+  }
+}
+
+/** SPEC-124 FR-3. `sleepUntil` is written only by wake/sleep actions. */
+async function handleUpdateCompanionLifeProfile(
+  context: ChatApiRouteContext,
+  catId: string,
+): Promise<void> {
+  try {
+    await resolveCatContext(context, catId);
+    const now = nowFrom(context.dependencies);
+    const current = await context.dependencies.companionStore.getLifeProfile(catId, now);
+    const validation = validateCompanionLifeUpdate(current, await readJsonBody<unknown>(context.request));
+    if (!validation.ok) {
+      sendRestError(context, 400, validation.code, validation.message);
+      return;
+    }
+    const life = await context.dependencies.companionStore.updateLifeProfile(
+      catId,
+      validation.update,
+      now,
+    );
+    sendJson(context.response, 200, { life });
+  } catch (error) {
+    handleCanonicalCatError(context, error);
+  }
+}
+
 async function handleGetCompanionSessionContext(
   context: ChatApiRouteContext,
   catId: string,
@@ -708,6 +748,23 @@ export async function routeCompanionBoxApi(
       return true;
     }
     await handleGetCompanionSessionContext(context, sessionContextMatch[0]!);
+    return true;
+  }
+
+  const lifeMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/cats\/([^/]+)\/companion-box\/life$/u,
+  );
+  if (lifeMatch) {
+    if (context.method === 'GET') {
+      await handleGetCompanionLifeProfile(context, lifeMatch[0]!);
+      return true;
+    }
+    if (context.method === 'PATCH') {
+      await handleUpdateCompanionLifeProfile(context, lifeMatch[0]!);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['GET', 'PATCH']);
     return true;
   }
 

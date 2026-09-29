@@ -54,6 +54,26 @@ export interface CompanionResponseProfile {
   updatedAt: string;
 }
 
+/**
+ * SPEC-124 daily rhythm. Clock values are host-local `HH:MM`; `sleepUntil`
+ * is written only by owner wake/sleep actions.
+ */
+export interface CompanionLifeProfile {
+  enabled: boolean;
+  bedtime: string;
+  wakeWindowStart: string;
+  wakeWindowEnd: string;
+  sleepUntil: string | null;
+  updatedAt: string;
+}
+
+export interface UpdateCompanionLifeProfileInput {
+  enabled?: boolean;
+  bedtime?: string;
+  wakeWindowStart?: string;
+  wakeWindowEnd?: string;
+}
+
 export interface CompanionBox {
   id: string;
   catId: string;
@@ -61,6 +81,7 @@ export interface CompanionBox {
   derivedIds: string[];
   memoryIds: string[];
   responseProfile: CompanionResponseProfile;
+  life: CompanionLifeProfile;
   createdAt: string;
   updatedAt: string;
   lastIngestedAt: string | null;

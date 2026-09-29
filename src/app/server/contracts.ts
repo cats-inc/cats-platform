@@ -105,6 +105,8 @@ export interface ChatServerDependencies {
   telegramCommandSurfaceSync?: TelegramCommandSurfaceSync;
   eventHub?: ChatEventHub;
   providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
+  /** SPEC-124: only the owner's entry point opts in; test servers stay inert. */
+  startCompanionLifeLoop?: boolean;
 }
 
 export interface WorkServerDependencies extends Partial<WorkApiDependencies> {}

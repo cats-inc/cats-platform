@@ -75,6 +75,8 @@ export interface CompanionActivityRenderEntry {
   count: number;
   summary: string;
   representativeEventIds: string[];
+  /** The newest event's metadata, for groups the renderer localizes itself. */
+  metadata?: Record<string, unknown>;
 }
 
 export interface CompanionActivityProjectionOptions {
@@ -125,6 +127,9 @@ export function projectCompanionActivity(
       existing.representativeEventIds.push(event.id);
       if (event.occurredAt > existing.occurredAt) {
         existing.occurredAt = event.occurredAt;
+        if (event.metadata) {
+          existing.metadata = event.metadata;
+        }
       }
       if (existing.count > 1) {
         existing.summary = describeBucketSummary(existing);
@@ -143,6 +148,7 @@ export function projectCompanionActivity(
         ? event.summary
         : describeSingleEvent(event),
       representativeEventIds: [event.id],
+      ...(event.metadata ? { metadata: event.metadata } : {}),
     });
   }
 

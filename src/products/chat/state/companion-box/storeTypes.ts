@@ -3,6 +3,7 @@ import type {
   CompanionBox,
   CompanionBoxSummary,
   CompanionDerivedRecord,
+  CompanionLifeProfile,
   CompanionMemoryRecord,
   CompanionResponseProfile,
   CompanionSessionContext,
@@ -16,6 +17,7 @@ import type {
   UpdateCompanionResponseProfileInput,
   UpdateCompanionSourceInput,
 } from '../../companion/contracts.js';
+import type { CompanionLifeProfilePatch } from '../../companion/life/profile.js';
 
 export interface CompanionSessionContextInput {
   cat: ChatCat;
@@ -81,5 +83,11 @@ export interface CompanionBoxStore {
     status: 'active' | 'archived',
     now?: Date,
   ): Promise<CompanionMemoryRecord>;
+  getLifeProfile(catId: string, now?: Date): Promise<CompanionLifeProfile>;
+  updateLifeProfile(
+    catId: string,
+    patch: CompanionLifeProfilePatch,
+    now?: Date,
+  ): Promise<CompanionLifeProfile>;
   buildSessionContext(input: CompanionSessionContextInput): Promise<CompanionSessionContext>;
 }

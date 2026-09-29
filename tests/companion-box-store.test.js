@@ -370,3 +370,41 @@ test('FileCompanionBoxStore rolls back snapshot when stored source materializati
   assert.equal(snapshot.memory.length, 0);
 });
 
+
+test('FileCompanionBoxStore reads a box written before SPEC-124 with the default rhythm', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-companion-store-'));
+  const snapshotPath = deriveCompanionBoxStatePath(path.join(tempDir, 'chat-state.json'));
+  const store = new FileCompanionBoxStore(snapshotPath);
+  const now = new Date('2026-09-29T08:00:00.000Z');
+  await store.getBox('cat-legacy', now);
+  const legacy = JSON.parse(await readFile(snapshotPath, 'utf-8'));
+  delete legacy.boxes[0].life;
+  await writeFile(snapshotPath, JSON.stringify(legacy), 'utf-8');
+
+  const reloaded = new FileCompanionBoxStore(snapshotPath);
+  const life = await reloaded.getLifeProfile('cat-legacy', now);
+  assert.equal(life.enabled, true);
+  assert.equal(life.bedtime, '23:00');
+  assert.equal(life.sleepUntil, null);
+  assert.equal(
+    JSON.parse(await readFile(snapshotPath, 'utf-8')).boxes[0].life,
+    undefined,
+    'reading does not rewrite the legacy file',
+  );
+
+  const updated = await reloaded.updateLifeProfile('cat-legacy', { sleepUntil: '2026-09-30T07:00:00.000Z' }, now);
+  assert.equal(updated.sleepUntil, '2026-09-30T07:00:00.000Z');
+  assert.equal(updated.bedtime, '23:00');
+});
+
+test('FileCompanionBoxStore surfaces a malformed snapshot instead of replacing it', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-companion-store-'));
+  const snapshotPath = deriveCompanionBoxStatePath(path.join(tempDir, 'chat-state.json'));
+  const store = new FileCompanionBoxStore(snapshotPath);
+  await store.getBox('cat-kept', new Date('2026-09-29T08:00:00.000Z'));
+  const partial = (await readFile(snapshotPath, 'utf-8')).slice(0, 40);
+  await writeFile(snapshotPath, partial, 'utf-8');
+
+  await assert.rejects(new FileCompanionBoxStore(snapshotPath).readSnapshot(), SyntaxError);
+  assert.equal(await readFile(snapshotPath, 'utf-8'), partial);
+});

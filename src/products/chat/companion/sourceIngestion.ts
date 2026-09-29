@@ -12,6 +12,7 @@ import type {
   UpdateCompanionSourceInput,
   UpdateCompanionResponseProfileInput,
 } from './contracts.js';
+import { createDefaultCompanionLifeProfile } from './life/profile.js';
 
 function trimOptionalText(value: string | null | undefined): string | null {
   const normalized = value?.trim() ?? '';
@@ -113,6 +114,7 @@ export function createCompanionBox(catId: string, nowIso: string): CompanionBox 
     derivedIds: [],
     memoryIds: [],
     responseProfile: createDefaultCompanionResponseProfile(nowIso),
+    life: createDefaultCompanionLifeProfile(nowIso),
     createdAt: nowIso,
     updatedAt: nowIso,
     lastIngestedAt: null,

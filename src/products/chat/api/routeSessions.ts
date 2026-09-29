@@ -7,7 +7,7 @@ import {
 import { requireChannel } from '../state/model/index.js';
 import { ChatApiError } from './routeErrors.js';
 import type { ChatState } from './contracts.js';
-import type { ChatApiRouteContext } from './routeSupport.js';
+import type { ChatApiDependencies, ChatApiRouteContext } from './routeSupport.js';
 
 function normalizeSessionIds(
   sessionIds: Array<string | null | undefined>,
@@ -28,7 +28,12 @@ function normalizeSessionIds(
 }
 
 export async function closeSessionIds(
-  context: ChatApiRouteContext,
+  context: {
+    dependencies: Pick<
+      ChatApiDependencies,
+      'runtimeClient' | 'memoryService' | 'companionStore' | 'chatStore' | 'now'
+    >;
+  },
   sessionIds: Array<string | null | undefined>,
 ): Promise<void> {
   const validSessionIds = normalizeSessionIds(sessionIds);
