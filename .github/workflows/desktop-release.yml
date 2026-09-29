@@ -448,11 +448,46 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # Sigstore build provenance for every downloadable asset (below).
+      id-token: write
+      attestations: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.guard.outputs.source_commit }}
+
+      # Provenance follows the bytes that are actually on the draft, not the
+      # workflow artifacts, so the hashes cannot drift from what users download.
+      # Windows and Linux ship without a code signature, so the SHA256SUMS file
+      # and the attestation are the only cryptographic link from a downloaded
+      # installer back to this run; verification: docs/deployment.md#desktop-signing-profiles.
+      - name: Download the draft's assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.guard.outputs.tag }}
+        run: |
+          mkdir release-assets
+          gh release download "$TAG" --dir release-assets
+          count=$(find release-assets -maxdepth 1 -type f | wc -l)
+          if [ "$count" -eq 0 ]; then echo 'The draft has no assets to attest.'; exit 1; fi
+          ls -l release-assets
+
+      - name: Write SHA256SUMS and upload it to the draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.guard.outputs.tag }}
+        working-directory: release-assets
+        run: |
+          rm -f SHA256SUMS
+          find . -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort | xargs sha256sum > SHA256SUMS
+          sha256sum -c SHA256SUMS
+          gh release upload "$TAG" SHA256SUMS --clobber
+
+      - name: Attest release assets
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: release-assets/*
 
       - name: Publish the draft
         env:
