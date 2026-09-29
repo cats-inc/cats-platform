@@ -168,6 +168,9 @@ export function parsePlatformPreferencesUpdate(
       uiLanguagePreference:
         parsePlatformUiLanguagePreference(body.uiLanguagePreference)
         ?? currentPrefs.uiLanguagePreference,
+      // Changed only through the Code preview settings route, which also stops
+      // running dev previews when it is turned off.
+      codePreviewServersEnabled: currentPrefs.codePreviewServersEnabled,
     },
   };
 }

@@ -31,6 +31,8 @@ export const CODE_API_DELIVERY_REPO_PUSH_PATH = `${CODE_API_PREFIX}/delivery/rep
 export const CODE_API_DELIVERY_ARTIFACT_EXPORT_PATH = `${CODE_API_PREFIX}/delivery/artifacts/export`;
 export const CODE_API_RELAY_THREADS_PATH = `${CODE_API_PREFIX}/relay/threads`;
 export const CODE_API_LIVE_PREVIEWS_PATH = `${CODE_API_PREFIX}/live-previews`;
+/** Settings > Code "Cats may run preview servers" (SPEC-123 CAP-08). */
+export const CODE_API_PREVIEW_SETTINGS_PATH = `${CODE_API_PREFIX}/preview-settings`;
 
 export const CODE_API_TASK_DETAIL_PATH_TEMPLATE = `${CODE_API_TASKS_PATH}/:taskId`;
 export const CODE_API_CODESPACE_DETAIL_PATH_TEMPLATE = `${CODE_API_CODESPACES_PATH}/:codespaceId`;

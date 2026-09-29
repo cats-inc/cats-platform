@@ -90,10 +90,12 @@ Cross-repo ownership:
   remain declined.
   **Verify** that the pinned Codex version supports streamable HTTP MCP. If it
   does not, record the minimum version or define the stdio fallback.
-- [ ] R4: Report `sessionMcpServers` support per provider in the provider
+- [x] R4 (cats-runtime #140): Report `sessionMcpServers` support per provider in the provider
   capability read. Record the release boundary: an additive optional field within
   the current 0.x line. Choose the version at release time. This plan authorizes
-  no bump.
+  no bump. Runtime reads now carry `continuity.sessionMcpServers`: true only for
+  native Claude Code and Codex CLI targets, and it uses the same check as delivery.
+  Runtime 0.4.0 shipped R1–R3 only, so this field first ships in a later 0.4.x.
 
 **Deliverables**: A runtime build in which Claude Code and Codex sessions can
 call a Platform-hosted MCP tool and receive its result.
@@ -256,12 +258,29 @@ call a Platform-hosted MCP tool and receive its result.
 
 ### P5: Dev preview (M2)
 
-- [ ] D1: Record sign-off on SPEC-123 question 1 (closes PLAN-097 Task 5.1).
+- [x] D1: Record sign-off on SPEC-123 question 1 (closes PLAN-097 Task 5.1).
   Implement `start_dev_preview`, `get_preview_status` and `stop_preview`: Vite
   detection mapped to the reviewed Vite profile, `dependencies_missing`, the
   CAP-08 permission gate, a log tail on failure and one dev preview per
   conversation. Resolve node for development (`process.execPath`) and for
   packaged Desktop (verify `ELECTRON_RUN_AS_NODE` or a discovered system node).
+  Done:
+  - The three tools are in `agentTools/devPreview.ts`, and the policy text
+    names them.
+  - The grant carries the session's shell posture
+    (`agentTools/shellPermission.ts`).
+  - The Settings > Code switch "Cats may run preview servers" is served by
+    `/api/code/preview-settings`; turning it off stops dev previews.
+  - The host's opt-in process adapter re-reads the switch before each spawn.
+  - `node` resolves to `process.execPath`, with `ELECTRON_RUN_AS_NODE=1` under
+    Electron.
+  - Static leases no longer count toward the process limits, and the supervisor
+    skips ports another program holds.
+  - A real Vite smoke on Windows started Vite through the host, served module
+    scripts, and on stop left neither Vite nor its esbuild child running.
+  Deviation: the switch ships **off**. The approved default is on, but enabling
+  process spawning by default was held back for the user's explicit
+  confirmation; flipping it is a one-line change in `platformPreferences.ts`.
 - [ ] D2: Add canvas top-bar lease controls (status, Stop, Restart, Logs, Open
   externally), reusing the `LivePreviewPanel` pieces. Implement lifecycle: stop on
   conversation deletion and grant revocation, TTL renewal while the canvas is
@@ -379,6 +398,7 @@ call a Platform-hosted MCP tool and receive its result.
 | 2026-09-29 | cats-runtime R1 (#130) merged; R2 Claude (#132) and R3 Codex were verified with isolated live smokes. M1 order: A0 client prerequisite → B surface → C static lease → A-i endpoint → A-ii tools/Proxy/retirement → acceptance. The `mcpServers` field and policy text travel through a Code runtime-client wrapper, not the enricher, so secrets stay outside supervision evidence. |
 | 2026-09-29 | R3 Codex (#134) merged, as were A0, B1, B2a, C1, C2, A1 and A2a. A2b and A3 wire the `cats` server into Code sessions and retire the observation path. M1 acceptance passed in an isolated instance. B2b now has measured layout defects to fix. |
 | 2026-09-29 | A2b and A3 merged (#203) and the @mention fix merged (#204). B2b adds the Preview control, fixes the canvas-route layout and scroll, and was verified in a fresh acceptance instance. Next: M2. |
+| 2026-09-30 | D1: dev preview tools, the shell-permission gate, the Settings > Code preview-server switch (shipped off pending user confirmation), node resolution, and port probing. Real Vite smoke passed on Windows. |
 
 ---
 

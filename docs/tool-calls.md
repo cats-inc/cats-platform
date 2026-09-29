@@ -93,6 +93,7 @@ validation and full CI pass; live/native and installed-profile acceptance remain
 | `declare_artifact` | Cats Code | Delivered through the Platform-hosted `cats` MCP server (ADR-126); results return to the agent in the same turn; the HTTP submit route remains for product callers | `mcp_tool` (runtime session MCP) | Code assistant / Code UI import flow | [Declare Artifact](#declare_artifact) |
 | `show_in_canvas` | Cats Code | Delivered through the `cats` MCP server (SPEC-123): workspace `path`, https `url` or `artifactId` | `mcp_tool` (runtime session MCP) | Code assistant | [Artifact Canvas Tools](#artifact-canvas-tools) |
 | `clear_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request parent-surface navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
+| `start_dev_preview` / `get_preview_status` / `stop_preview` | Cats Code | Delivered through the `cats` MCP server (SPEC-123 CAP-07 to CAP-09): Vite dev servers behind the Settings > Code opt-in and the session's shell permission | `mcp_tool` (runtime session MCP) | Code assistant | [Dev Preview Tools](#dev-preview-tools) |
 
 ## Agent Knowledge Drafts
 
@@ -874,6 +875,43 @@ scripted preview producer allowlist failure; both silently demote to
 `static`. The `iframeSandboxProfile` field on the accepted result is the
 assistant-visible signal that demotion happened, and `policyVersion`
 identifies the policy snapshot under which the decision was made.
+
+### Dev Preview Tools
+
+| Field | Value |
+|-------|-------|
+| Owning product | Cats Code |
+| Current status | Served by the `cats` MCP server. Dev servers run only through the reviewed Vite profile, never an assistant-supplied command. |
+| First channel | `mcp_tool` (runtime session MCP) |
+| Tool names | `start_dev_preview`, `get_preview_status`, `stop_preview` |
+| Implementation entry point | `src/products/code/agentTools/devPreview.ts` |
+| Related SPEC | [SPEC-123](./specs/SPEC-123-code-agent-artifact-preview.md), [SPEC-108](./specs/SPEC-108-cats-code-live-preview-substrate.md) |
+| Related PLAN | [PLAN-116](./plans/PLAN-116-code-agent-artifact-preview-rollout.md) |
+
+`start_dev_preview({ directory, script = "dev", title? })` checks, in order:
+- the Settings > Code "Cats may run preview servers" switch
+  (`preview_servers_disabled`);
+- the session's shell permission (`shell_permission_required`);
+- the directory, resolved inside the workspace like `show_in_canvas`
+  paths (`path_not_found`, `path_outside_workspace`, `path_not_allowed`,
+  `directory_required`);
+- `package.json` and the script (`package_json_missing`,
+  `package_json_invalid`, `script_missing`, `script_invalid`);
+- that the script runs Vite's dev server (`profile_unsupported`);
+- `node_modules/vite/bin/vite.js` in that directory
+  (`dependencies_missing`).
+
+Only then does it spawn. A new start replaces the conversation's running dev
+preview. On success it shows the preview beside the conversation and returns
+`{ previewId, artifactId, canvasPath, previewUrl, profileId }`. A spawn,
+exit or readiness failure returns `{ error, logTail }` with at most 80 log
+lines.
+
+`get_preview_status({ previewId, logLines? })` returns
+`{ status, profileId, previewUrl?, diagnostics?, logTail }` (at most 200
+lines). `stop_preview({ previewId })` returns `{ status: 'stopped' }` and is
+idempotent. Both refuse a preview of another conversation with
+`preview_not_found`.
 
 ### `clear_canvas`
 

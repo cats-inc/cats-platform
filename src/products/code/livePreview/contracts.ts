@@ -159,7 +159,8 @@ export interface LivePreviewStopAcceptedResult {
 
 export type LivePreviewStartResult =
   | LivePreviewStartAcceptedResult
-  | { status: 'rejected'; error: LivePreviewError };
+  /** `previewId` is present once a lease existed, so its logs stay readable. */
+  | { status: 'rejected'; error: LivePreviewError; previewId?: string };
 
 export type LivePreviewStopResult =
   | LivePreviewStopAcceptedResult
@@ -266,3 +267,8 @@ export function withBuiltinLivePreviewProfiles(config: LivePreviewConfig): LiveP
 export const BUILTIN_LIVE_PREVIEW_PROFILES: readonly LivePreviewCommandProfile[] = [
   VITE_LIVE_PREVIEW_PROFILE,
 ] as const;
+
+/** Whether a lease runs an OS process, as opposed to the in-process static server. */
+export function isProcessLivePreviewProfile(commandProfileId: string): boolean {
+  return commandProfileId !== STATIC_LIVE_PREVIEW_PROFILE.id;
+}

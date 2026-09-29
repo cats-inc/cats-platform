@@ -19,6 +19,11 @@ export interface PlatformPreferences {
   lobbyAnimationMode: PlatformLobbyAnimationMode;
   assistantResponseLanguage: AssistantResponseLanguage;
   uiLanguagePreference: PlatformUiLanguagePreference;
+  /**
+   * Settings > Code "Cats may run preview servers" (SPEC-123 CAP-08). Opt-in:
+   * off until the user turns it on.
+   */
+  codePreviewServersEnabled: boolean;
 }
 
 const DEFAULTS: PlatformPreferences = {
@@ -29,6 +34,7 @@ const DEFAULTS: PlatformPreferences = {
   lobbyAnimationMode: 'reduced',
   assistantResponseLanguage: 'unspecified',
   uiLanguagePreference: 'auto',
+  codePreviewServersEnabled: false,
 };
 
 export function parsePlatformLobbyAnimationMode(
@@ -81,6 +87,7 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
       parseAssistantResponseLanguage(record.assistantResponseLanguage)
       ?? DEFAULTS.assistantResponseLanguage,
     uiLanguagePreference: normalizePlatformUiLanguagePreference(record.uiLanguagePreference),
+    codePreviewServersEnabled: record.codePreviewServersEnabled === true,
   };
 }
 
@@ -116,4 +123,9 @@ export async function writePlatformPreferences(
   const filePath = resolvePlatformPreferencesPath(chatStatePath);
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, JSON.stringify(prefs, null, 2) + '\n', 'utf-8');
+}
+
+/** Settings > Code "Cats may run preview servers", read fresh for each check. */
+export async function readCodePreviewServersEnabled(chatStatePath: string): Promise<boolean> {
+  return (await readPlatformPreferences(chatStatePath)).codePreviewServersEnabled;
 }

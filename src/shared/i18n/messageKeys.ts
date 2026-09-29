@@ -326,6 +326,11 @@ export const messageKeys = {
   settingsAdvancedDraftControlsEnableLabel: 'settings.advancedDraftControls.enableLabel',
   settingsAdvancedDraftControlsToggleDescription:
     'settings.advancedDraftControls.toggleDescription',
+  settingsCodePreviewServersTitle: 'settings.codePreviewServers.title',
+  settingsCodePreviewServersDescription: 'settings.codePreviewServers.description',
+  settingsCodePreviewServersEnableLabel: 'settings.codePreviewServers.enableLabel',
+  settingsCodePreviewServersToggleDescription: 'settings.codePreviewServers.toggleDescription',
+  settingsCodePreviewServersLoadFailure: 'settings.codePreviewServers.loadFailure',
   settingsRuntimeStatusChipRuntimeUnavailable: 'settings.runtime.statusChip.runtimeUnavailable',
   settingsRuntimeStatusChipRuntimeDegraded: 'settings.runtime.statusChip.runtimeDegraded',
   settingsRuntimeStatusChipRuntimeReady: 'settings.runtime.statusChip.runtimeReady',

@@ -22,11 +22,40 @@ export interface RealLivePreviewProcessAdapterOptions {
    * Test seam for exercising Windows tree-kill behavior on non-Windows CI.
    */
   platform?: NodeJS.Platform;
+  /** Test seam: the host runtime that a profile's `node` executable resolves to. */
+  hostRuntime?: LivePreviewHostRuntime;
 }
 
 interface RealLivePreviewProcessRuntime {
   spawnProcess: SpawnProcess;
   platform: NodeJS.Platform;
+  hostRuntime: LivePreviewHostRuntime;
+}
+
+export interface LivePreviewHostRuntime {
+  execPath: string;
+  /** True when `execPath` is Electron, which runs as Node only with ELECTRON_RUN_AS_NODE. */
+  electron: boolean;
+}
+
+/**
+ * A profile's `node` runs on the host's own runtime: Node in development, and
+ * the Electron binary as Node in packaged Desktop, where no system Node is
+ * guaranteed (SPEC-123 CAP-07). Other executables are spawned as given.
+ */
+export function resolveLivePreviewExecutable(
+  executable: string,
+  hostRuntime: LivePreviewHostRuntime = currentHostRuntime(),
+): { executable: string; env: Record<string, string> } {
+  if (executable !== 'node') return { executable, env: {} };
+  return {
+    executable: hostRuntime.execPath,
+    env: hostRuntime.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {},
+  };
+}
+
+function currentHostRuntime(): LivePreviewHostRuntime {
+  return { execPath: process.execPath, electron: Boolean(process.versions.electron) };
 }
 
 /**
@@ -59,14 +88,17 @@ export function createRealLivePreviewProcessAdapter(
   const runtime: RealLivePreviewProcessRuntime = {
     spawnProcess: options.spawnProcess ?? spawn,
     platform: options.platform ?? process.platform,
+    hostRuntime: options.hostRuntime ?? currentHostRuntime(),
   };
   return {
     spawn(input: LivePreviewProcessSpawnInput): Promise<LivePreviewProcessHandle> {
+      const resolved = resolveLivePreviewExecutable(input.executable, runtime.hostRuntime);
       const childEnv = createPlatformChildProcessEnv({
         ...input.env,
+        ...resolved.env,
         PORT: String(input.port),
       });
-      const child = runtime.spawnProcess(input.executable, input.args, {
+      const child = runtime.spawnProcess(resolved.executable, input.args, {
         cwd: input.cwd,
         env: childEnv,
         shell: false,

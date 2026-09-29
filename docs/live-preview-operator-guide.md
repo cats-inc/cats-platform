@@ -2,10 +2,11 @@
 
 > Operator-facing reference for the supervised live-preview substrate
 > (PLAN-097 / SPEC-108, amended by SPEC-123). The host constructs the
-> supervisor. Static previews are on by default. Child-process previews stay
-> off until an operator opts in. This guide documents what the flags turn on,
-> the supported profile list, the approved port range and the lifecycle
-> expectations.
+> supervisor. Static previews are on by default. Child-process (dev server)
+> previews stay off until the user turns on Settings > Code "Cats may run
+> preview servers" or an operator opts in. This guide documents what the
+> switches turn on, the supported profile list, the approved port range and
+> the lifecycle expectations.
 
 ## TL;DR
 
@@ -24,19 +25,24 @@
   - The host sweeps expired leases every minute and stops all previews on
     shutdown.
   - `CATS_CODE_LIVE_PREVIEW_ENABLED=false` disables every preview.
-- Child-process spawning still uses the inert adapter unless it is opted into.
-  The steps below cover only that case.
-- Real spawning requires **all** of these to be true:
-  1. `CATS_CODE_LIVE_PREVIEW_ENABLED=true`
-  2. `CATS_CODE_LIVE_PREVIEW_USE_REAL_PROCESS_ADAPTER=true`
-  3. At least one approved command profile registered (start with the
-     reviewed Vite profile, see below)
-  4. The supervisor is wired with the real adapter via
-     `selectLivePreviewProcessAdapter(config)` (Phase 5 finalization
-     work; not enabled by default at the platform host level)
-- PLAN-097 Task 5.1 security review and Task 5.4 isolated end-to-end
-  validation must complete before any production-style operator turns
-  these on against real workspaces.
+- Dev servers (SPEC-123 `start_dev_preview`) spawn real processes only
+  through a reviewed profile, and only when one of these is on:
+  - **User opt-in (default path).** Settings > Code "Cats may run preview
+    servers" (`codePreviewServersEnabled` in `platform-preferences.json`,
+    default off). The host registers the reviewed Vite profile and spawns
+    through `createOptInProcessAdapter`, which re-reads the setting before
+    every spawn. Turning it off (`POST /api/code/preview-settings`) stops
+    every running dev preview.
+  - **Operator opt-in.** `CATS_CODE_LIVE_PREVIEW_USE_REAL_PROCESS_ADAPTER=true`
+    plus a profile in `CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES`, as before.
+- The `start_dev_preview` tool also requires the Cat's session to have
+  shell execution permission (permission mode `skip`, or a whitelist with
+  a shell tool; CAP-08). A read-only session is refused with
+  `shell_permission_required`, and a closed setting with
+  `preview_servers_disabled`.
+- The profile's `node` runs on the host's own runtime: `process.execPath`
+  in development, and the Electron binary with `ELECTRON_RUN_AS_NODE=1` in
+  packaged Desktop.
 
 ## Reviewed command profiles
 
@@ -49,11 +55,17 @@ unsupported placeholders, or shell metacharacters. Validation
 | `vite` | Reviewed; disabled by default | `artifactDirectory` | `node node_modules/vite/bin/vite.js --host 127.0.0.1 --port {port} --strictPort` | `5s` graceful, kill process tree | Bound to leased loopback port; readiness probes `/` for `200` within `30s`. Operators must install `vite` into the artifact directory's `node_modules` (or supply an alternative reviewed profile). |
 
 The `vite` profile lives as `VITE_LIVE_PREVIEW_PROFILE` and is also exposed
-as `BUILTIN_LIVE_PREVIEW_PROFILES`. Operators must explicitly merge it
-into `commandProfiles` (e.g., via
-`CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES=[{...}]` or by code-level
-config composition) and set `enabled: true` on the profile entry — the
-source ships with `enabled: false` so a bare merge stays dormant.
+as `BUILTIN_LIVE_PREVIEW_PROFILES`. The source ships with `enabled: false`.
+With the user opt-in, the host registers an enabled copy (unless the
+operator configured a profile with the same id). Operators can instead merge
+it into `commandProfiles` (for example with
+`CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES=[{...}]`) with `enabled: true`.
+
+`start_dev_preview` chooses this profile only when the requested
+`package.json` script runs Vite's dev server (`vite`, `vite dev` or
+`vite serve`, with any flags; the profile supplies host and port) and
+`node_modules/vite/bin/vite.js` exists in that directory. Otherwise it
+returns `profile_unsupported` or `dependencies_missing` without spawning.
 
 **Why `node` instead of `npx`:** the supervisor spawns with `shell: false`
 to keep agent inputs from reaching a shell. On Windows, `npx` resolves
@@ -71,9 +83,10 @@ shell-free profile pointing at their preferred dev server entry.
   is `3`, default per-workspace concurrency is `1`
 - `127.0.0.1` is the canonical bind host; `[::1]` is opt-in via
   `CATS_CODE_LIVE_PREVIEW_ALLOW_IPV6_LOOPBACK=true`
-- Conflicts with non-Cats services in the same range are not auto-detected
-  beyond the registry check below — keep this range free of unrelated
-  development servers
+- Before leasing a port the supervisor briefly binds it; a port that another
+  program holds (for example a second Cats instance) is skipped
+- Static (in-process) leases do not count toward the concurrency limits,
+  which bound OS processes only
 
 ## Logs
 
@@ -115,34 +128,23 @@ shell-free profile pointing at their preferred dev server entry.
   stdin; `stdio: ['ignore', 'pipe', 'pipe']` keeps the child silent on
   stdin and forwards bounded stdout/stderr only.
 
-## Enabling real spawning (manual, after security approval)
+## Enabling real spawning
 
-This guide does **not** enable real spawning by itself. Even with both
-env vars on, the platform host wiring still has to construct a
-supervisor with the real adapter. Today the platform host wires only
-the lease store; supervisor construction is left as an explicit
-follow-up because the security review (Task 5.1) and isolated E2E
-validation (Task 5.4) are operator responsibilities that depend on the
-target environment.
+SPEC-123 question 1 (approved 2026-09-29) closes PLAN-097 Task 5.1: dev
+previews run for sessions that already have shell execution permission,
+behind the Settings > Code "Cats may run preview servers" switch. The
+switch currently ships **off** until the user confirms the default. The
+supervisor wiring is in the host (`createCodeLivePreviewSupervisor` with
+`previewServersAllowed`).
 
-To enable in a manual / scripted setup:
+For a scripted or operator-managed setup without the Settings switch:
 
-1. Confirm Task 5.1 security review has passed for your environment
-2. Set `CATS_CODE_LIVE_PREVIEW_ENABLED=true`
-3. Set `CATS_CODE_LIVE_PREVIEW_USE_REAL_PROCESS_ADAPTER=true`
-4. Provide `CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES` with the reviewed
-   Vite profile (or your reviewed-and-approved equivalent), and set
-   `enabled: true` on that profile entry
-5. In your platform host wiring, build a `LivePreviewSupervisor` using
-   `selectLivePreviewProcessAdapter(config.codeLivePreview)` and pass it
-   to the dependencies that surface `livePreviewStore` /
-   `stopLivePreview`
-6. Run Task 5.4 isolated validation in a temporary workspace before
-   pointing the supervisor at real user dev state
-7. Watch the bounded log files and platform health endpoints for
-   orphan-process indicators after first run
+1. Set `CATS_CODE_LIVE_PREVIEW_ENABLED=true`
+2. Set `CATS_CODE_LIVE_PREVIEW_USE_REAL_PROCESS_ADAPTER=true`
+3. Provide `CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES` with the reviewed
+   Vite profile (or a reviewed equivalent) with `enabled: true`
+4. Validate in a temporary workspace (PLAN-116 M2 acceptance closes
+   PLAN-097 Task 5.4) before pointing it at real user dev state
 
-If any of these steps cannot complete, leave `useRealProcessAdapter`
-off; the inert adapter will refuse to spawn and the rest of the
-substrate (lease store, projection, canvas integration) continues to
-work for fake-adapter-driven tests and demos.
+The agent tool still checks the Settings switch, so an operator who wants
+agents to start dev servers also turns that on.

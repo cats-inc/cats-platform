@@ -1,5 +1,8 @@
+import { createServer } from 'node:net';
+
 import {
   DEFAULT_LIVE_PREVIEW_CONFIG,
+  isProcessLivePreviewProfile,
   type LivePreviewCommandProfile,
   type LivePreviewConfig,
   type LivePreviewError,
@@ -29,6 +32,11 @@ export interface LivePreviewSupervisorOptions {
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
   idFactory?: () => string;
+  /**
+   * Whether a loopback port can be bound. Ports another program holds (for
+   * example a second Cats instance) are skipped instead of failing the start.
+   */
+  portAvailable?: (host: string, port: number) => Promise<boolean>;
 }
 
 interface ManagedPreview {
@@ -47,6 +55,7 @@ export class LivePreviewSupervisor {
   private readonly now: () => Date;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly idFactory: () => string;
+  private readonly portAvailable: (host: string, port: number) => Promise<boolean>;
   private readonly previews = new Map<string, ManagedPreview>();
   private readonly leasedPorts = new Set<number>();
 
@@ -58,6 +67,7 @@ export class LivePreviewSupervisor {
     this.now = options.now ?? (() => new Date());
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.idFactory = options.idFactory ?? createPreviewId;
+    this.portAvailable = options.portAvailable ?? canBindLoopbackPort;
   }
 
   getLease(previewId: string): LivePreviewLease | null {
@@ -78,24 +88,30 @@ export class LivePreviewSupervisor {
       return validation;
     }
 
-    const activeGlobal = this.activePreviews().length;
-    if (activeGlobal >= this.config.maxConcurrentGlobal) {
-      return rejected(
-        'live_preview_concurrency_limit_exceeded',
-        'Global Cats Code live-preview concurrency limit reached.',
-      );
-    }
-    const activeWorkspace = this.activePreviews().filter(
-      (preview) => preview.lease.workspaceRef.id === validation.request.workspace.id,
-    ).length;
-    if (activeWorkspace >= this.config.maxConcurrentPerWorkspace) {
-      return rejected(
-        'live_preview_concurrency_limit_exceeded',
-        'Workspace Cats Code live-preview concurrency limit reached.',
-      );
+    // The limits bound OS processes. In-process static leases run no workspace
+    // code, so they neither count nor block (SPEC-123 CAP-05/07).
+    if (isProcessLivePreviewProfile(validation.profile.id)) {
+      const activeProcesses = this.activePreviews().filter((preview) =>
+        isProcessLivePreviewProfile(preview.lease.commandProfileId));
+      if (activeProcesses.length >= this.config.maxConcurrentGlobal) {
+        return rejected(
+          'live_preview_concurrency_limit_exceeded',
+          'Global Cats Code live-preview concurrency limit reached.',
+        );
+      }
+      const activeWorkspace = activeProcesses.filter(
+        (preview) => preview.lease.workspaceRef.id === validation.request.workspace.id,
+      ).length;
+      if (activeWorkspace >= this.config.maxConcurrentPerWorkspace) {
+        return rejected(
+          'live_preview_concurrency_limit_exceeded',
+          'Workspace Cats Code live-preview concurrency limit reached.',
+        );
+      }
     }
 
-    const port = this.allocatePort();
+    const host = this.config.allowIpv6Loopback ? '[::1]' : '127.0.0.1';
+    const port = await this.allocatePort(host);
     if (port === null) {
       return rejected(
         'live_preview_port_unavailable',
@@ -105,7 +121,6 @@ export class LivePreviewSupervisor {
 
     const previewId = this.idFactory();
     const startedAt = this.now();
-    const host = this.config.allowIpv6Loopback ? '[::1]' : '127.0.0.1';
     const origin = `http://${host}:${port}`;
     const lease: LivePreviewLease = {
       previewId,
@@ -151,15 +166,18 @@ export class LivePreviewSupervisor {
       lease.stopReason = 'spawn_failed';
       lease.stoppedAt = this.now().toISOString();
       this.releasePort(port);
-      return rejected(
-        'live_preview_spawn_failed',
-        error instanceof Error ? error.message : 'Live preview process failed to spawn.',
-      );
+      return {
+        ...rejected(
+          'live_preview_spawn_failed',
+          error instanceof Error ? error.message : 'Live preview process failed to spawn.',
+        ),
+        previewId,
+      };
     }
 
     const readiness = await this.waitForReadiness(managed);
     if (readiness.status === 'rejected') {
-      return readiness;
+      return { ...readiness, previewId };
     }
 
     return {
@@ -228,6 +246,14 @@ export class LivePreviewSupervisor {
     );
   }
 
+  /** Stop every active process preview, e.g. when preview servers are turned off (CAP-08). */
+  async stopProcessPreviews(reason: string): Promise<string[]> {
+    const targets = this.activePreviews().filter((managed) =>
+      isProcessLivePreviewProfile(managed.lease.commandProfileId));
+    await Promise.all(targets.map((managed) => this.stop(managed.lease.previewId, reason)));
+    return targets.map((managed) => managed.lease.previewId);
+  }
+
   /** The host excludes starts/stops and the expiry sweep while resetting. */
   async clearForReset(): Promise<void> {
     // Retry even failed/stopping handles: stopAll() is only best-effort and can
@@ -266,12 +292,13 @@ export class LivePreviewSupervisor {
     );
   }
 
-  private allocatePort(): number | null {
+  private async allocatePort(host: string): Promise<number | null> {
     for (let port = this.config.portRange.start; port <= this.config.portRange.end; port += 1) {
-      if (!this.leasedPorts.has(port)) {
-        this.leasedPorts.add(port);
-        return port;
-      }
+      if (this.leasedPorts.has(port)) continue;
+      // Reserve before probing so concurrent starts never pick the same port.
+      this.leasedPorts.add(port);
+      if (await this.portAvailable(host.replace(/^\[|\]$/gu, ''), port)) return port;
+      this.leasedPorts.delete(port);
     }
     return null;
   }
@@ -423,4 +450,12 @@ function rejected(
     status: 'rejected',
     error: { code, message, details },
   };
+}
+
+function canBindLoopbackPort(host: string, port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const probe = createServer();
+    probe.once('error', () => resolve(false));
+    probe.listen({ host, port, exclusive: true }, () => probe.close(() => resolve(true)));
+  });
 }

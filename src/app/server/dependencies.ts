@@ -1,5 +1,6 @@
 import { DEFAULT_LIVE_PREVIEW_CONFIG } from '../../products/code/livePreview/contracts.js';
 import { createCodeLivePreviewSupervisor } from '../../products/code/livePreview/host.js';
+import { readCodePreviewServersEnabled } from '../../shared/platformPreferences.js';
 import { createChatEventHub } from '../../products/chat/api/chatEventHub.js';
 import { publishChannelMutation } from '../../products/chat/api/transportEventPublisher.js';
 import { createRuntimeDeliveryClient } from '../../platform/runtime/deliveryClient.js';
@@ -211,6 +212,7 @@ export function resolveServerDependencies(
   const livePreviewSupervisor = dependencies.code?.livePreviewSupervisor
     ?? createCodeLivePreviewSupervisor(
       dependencies.shared.config.codeLivePreview ?? DEFAULT_LIVE_PREVIEW_CONFIG,
+      { previewServersAllowed: () => readCodePreviewServersEnabled(dependencies.shared.config.chatStatePath) },
     );
 
   const sharedCoreStore = dependencies.shared.coreStore ?? dependencies.chat.chatStore;

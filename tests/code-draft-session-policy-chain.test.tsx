@@ -256,6 +256,8 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
         | Record<string, unknown>
         | undefined;
     assert.equal(agentToolsMarker?.channelId, channelId);
+    // A read-only session cannot run shell commands, so it may not start dev previews.
+    assert.equal(agentToolsMarker?.shellExecution, false);
 
     const sendMessageResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
