@@ -1,3 +1,5 @@
+import { DEFAULT_LIVE_PREVIEW_CONFIG } from '../../products/code/livePreview/contracts.js';
+import { createCodeLivePreviewSupervisor } from '../../products/code/livePreview/host.js';
 import { createChatEventHub } from '../../products/chat/api/chatEventHub.js';
 import { publishChannelMutation } from '../../products/chat/api/transportEventPublisher.js';
 import { createRuntimeDeliveryClient } from '../../platform/runtime/deliveryClient.js';
@@ -215,6 +217,10 @@ export function resolveServerDependencies(
 
   registerCodeArtifactRuntimeInvocationEnrichers();
   registerCodeArtifactRuntimeAssistantEffectProcessor();
+  const livePreviewSupervisor = dependencies.code?.livePreviewSupervisor
+    ?? createCodeLivePreviewSupervisor(
+      dependencies.shared.config.codeLivePreview ?? DEFAULT_LIVE_PREVIEW_CONFIG,
+    );
   registerCodeArtifactRuntimeFinalizationGate();
 
   const sharedCoreStore = dependencies.shared.coreStore ?? dependencies.chat.chatStore;
@@ -521,8 +527,10 @@ export function resolveServerDependencies(
       readEvidenceEvents: dependencies.code?.readEvidenceEvents
         ?? ((conversationId: string) =>
           readPersistedEvidenceEvents(dependencies.shared.config.chatStatePath, conversationId)),
-      livePreviewStore: dependencies.code?.livePreviewStore,
-      stopLivePreview: dependencies.code?.stopLivePreview,
+      livePreviewSupervisor,
+      livePreviewStore: dependencies.code?.livePreviewStore ?? livePreviewSupervisor,
+      stopLivePreview: dependencies.code?.stopLivePreview
+        ?? ((previewId: string, reason?: string) => livePreviewSupervisor.stop(previewId, reason)),
       now: dependencies.code?.now ?? dependencies.shared.now,
     },
   };

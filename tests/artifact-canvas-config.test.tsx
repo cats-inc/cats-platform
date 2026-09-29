@@ -17,10 +17,16 @@ function baseEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
 test('loadConfig exposes the default Artifact Canvas viewer policy', () => {
   const config = loadConfig(baseEnv());
 
-  assert.deepEqual(config.artifactCanvas, DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG);
+  // Supervisor-owned live previews may run scripts by default (SPEC-123 CAP-11).
+  assert.deepEqual(config.artifactCanvas, {
+    ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+    scriptedPreviewProducerAllowlist: [
+      { producerKind: 'tool', producerIdentity: 'tool:cats_code_live_preview_supervisor' },
+    ],
+  });
   assert.equal(
     buildArtifactCanvasPolicyVersion(config.artifactCanvas).policyVersion,
-    '924ecad525730480',
+    'a821723ac32e220e',
   );
 });
 

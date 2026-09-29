@@ -130,7 +130,13 @@ export function createServer(dependencies: ServerDependencies) {
     });
   });
 
+  const livePreviewSupervisor = resolvedDependencies.code.livePreviewSupervisor;
+  let livePreviewSweep: ReturnType<typeof setInterval> | undefined;
   server.on('listening', () => {
+    livePreviewSweep = setInterval(() => {
+      void livePreviewSupervisor?.expireLeases().catch(reportUnhandledServerError);
+    }, 60_000);
+    livePreviewSweep.unref();
     void plugins.tick().catch(reportUnhandledServerError);
     pluginTimer = setInterval(() => { void plugins.tick().catch(reportUnhandledServerError); }, 10_000);
     pluginTimer.unref();
@@ -146,6 +152,8 @@ export function createServer(dependencies: ServerDependencies) {
 
   server.on('close', () => {
     clearInterval(pluginTimer);
+    clearInterval(livePreviewSweep);
+    void livePreviewSupervisor?.stopAll('platform_shutdown').catch(reportUnhandledServerError);
     knowledge.close();
     stopSchedulerLoop();
     stopCompanionLifeLoop();

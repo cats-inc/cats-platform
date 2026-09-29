@@ -31,13 +31,14 @@ import {
   createArtifactCanvasIntentId,
   getDefaultArtifactCanvasRenderIntentHub,
 } from '../../shared/artifactCanvas/renderIntent.js';
-import type { LivePreviewLease } from './contracts.js';
+import { CODE_LIVE_PREVIEW_PRODUCER_IDENTITY, type LivePreviewLease } from './contracts.js';
+import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 
 export const CODE_LIVE_PREVIEW_ARTIFACT_METADATA_SCHEMA_VERSION = '1.0' as const;
-export const CODE_LIVE_PREVIEW_PRODUCER_TOOL_NAME =
-  'cats_code_live_preview_supervisor' as const;
-export const CODE_LIVE_PREVIEW_PRODUCER_IDENTITY =
-  `tool:${CODE_LIVE_PREVIEW_PRODUCER_TOOL_NAME}` as const;
+export {
+  CODE_LIVE_PREVIEW_PRODUCER_IDENTITY,
+  CODE_LIVE_PREVIEW_PRODUCER_TOOL_NAME,
+} from './contracts.js';
 
 export type LivePreviewArtifactMaterializationSkippedReason =
   | 'lease_expired'
@@ -45,6 +46,8 @@ export type LivePreviewArtifactMaterializationSkippedReason =
   | 'lease_origin_invalid'
   | 'lease_origin_not_loopback'
   | 'task_anchor_unresolved'
+  | 'conversation_anchor_unresolved'
+  | 'entry_path_invalid'
   | 'workspace_anchor_unresolved'
   | 'unsupported_surface';
 
@@ -66,6 +69,8 @@ export type LivePreviewArtifactMaterializationResult =
 export interface LivePreviewArtifactMaterializationOptions {
   title?: string | null;
   summary?: string | null;
+  /** Page to open on the lease origin, e.g. `/calculator.html`; defaults to `/`. */
+  entryPath?: string | null;
   now?: Date;
 }
 
@@ -126,14 +131,20 @@ export function materializeLivePreviewArtifact(
     return { status: 'skipped', reason: validation, core, lease };
   }
 
+  const entryPath = options.entryPath?.trim() || '/';
+  if (!isSafeEntryPath(entryPath)) {
+    return { status: 'skipped', reason: 'entry_path_invalid', core, lease };
+  }
+  const previewUrl = entryPath === '/' ? lease.origin : new URL(entryPath, lease.origin).toString();
   const anchors = resolveLivePreviewArtifactAnchors(core, lease);
-  const artifactId = buildLivePreviewArtifactId(lease);
+  const artifactId = buildLivePreviewArtifactId(lease, entryPath);
   const declarationId = `live-preview:${lease.previewId}`;
   const metadata = buildLivePreviewArtifactMetadata({
     lease,
     declarationId,
     anchors,
-    materialChangeSignature: buildMaterialChangeSignature(lease, anchors),
+    previewUrl,
+    materialChangeSignature: buildMaterialChangeSignature(lease, anchors, entryPath),
   });
   const result = upsertCoreArtifact(core, {
     id: artifactId,
@@ -144,8 +155,8 @@ export function materializeLivePreviewArtifact(
     workItemId: anchors.workItemId,
     conversationId: anchors.conversationId,
     taskId: anchors.taskId,
-    path: lease.origin,
-    summary: options.summary?.trim() || `Supervised preview at ${lease.origin}.`,
+    path: previewUrl,
+    summary: options.summary?.trim() || `Supervised preview at ${previewUrl}.`,
     metadata,
   }, options.now ?? new Date());
 
@@ -170,6 +181,7 @@ export function materializeLivePreviewArtifactAndShowInCanvas(
   const materialized = materializeLivePreviewArtifact(core, lease, {
     title: options.title,
     summary: options.summary,
+    entryPath: options.entryPath,
     now,
   });
   if (materialized.status === 'skipped') {
@@ -262,7 +274,9 @@ function resolveLivePreviewArtifactAnchors(
     ? core.workItems.find((candidate) => candidate.taskId === task.id) ?? null
     : null;
   return {
-    conversationId: task?.conversationId ?? null,
+    conversationId: lease.surface.kind === 'code_conversation'
+      ? buildChatConversationId(lease.surface.surfaceId)
+      : task?.conversationId ?? null,
     projectId: workItem?.projectId ?? null,
     taskId: task?.id ?? (lease.surface.kind === 'code_task' ? lease.surface.surfaceId : null),
     workItemId: workItem?.id ?? null,
@@ -278,7 +292,11 @@ function validateLivePreviewLeaseForMaterialization(
   if (lease.status !== 'ready') {
     return 'lease_not_ready';
   }
-  if (lease.surface.kind !== 'code_task' && lease.surface.kind !== 'code_codespace') {
+  if (
+    lease.surface.kind !== 'code_task'
+    && lease.surface.kind !== 'code_codespace'
+    && lease.surface.kind !== 'code_conversation'
+  ) {
     return 'unsupported_surface';
   }
   const expiresAt = Date.parse(lease.expiresAt);
@@ -294,6 +312,14 @@ function validateLivePreviewLeaseForMaterialization(
     && !core.tasks.some((candidate) => candidate.id === lease.surface.surfaceId)
   ) {
     return 'task_anchor_unresolved';
+  }
+  if (
+    lease.surface.kind === 'code_conversation'
+    && !core.conversations.some(
+      (candidate) => candidate.id === buildChatConversationId(lease.surface.surfaceId),
+    )
+  ) {
+    return 'conversation_anchor_unresolved';
   }
   if (lease.surface.kind === 'code_codespace') {
     const expectedCodespaceId = createCodespaceId(lease.workspaceRef.rootPath);
@@ -344,6 +370,7 @@ function buildLivePreviewArtifactMetadata(input: {
   lease: LivePreviewLease;
   declarationId: string;
   anchors: ResolvedLivePreviewArtifactAnchors;
+  previewUrl: string;
   materialChangeSignature: string;
 }): CoreRecordMetadata {
   const idempotencyKey = hashStableJson({
@@ -361,7 +388,7 @@ function buildLivePreviewArtifactMetadata(input: {
       producerLabel: 'preview_url',
       disposition: 'record',
       candidate: false,
-      location: { kind: 'url', value: input.lease.origin },
+      location: { kind: 'url', value: input.previewUrl },
       anchors: {
         conversationId: input.anchors.conversationId,
         taskId: input.anchors.taskId,
@@ -461,7 +488,7 @@ function resolveLivePreviewArtifactScope(
     : { scopeKind: 'workspace', scopeId: normalizePathToken(anchors.workspacePath) };
 }
 
-function buildLivePreviewArtifactId(lease: LivePreviewLease): string {
+function buildLivePreviewArtifactId(lease: LivePreviewLease, entryPath: string): string {
   return `artifact-live-preview-${hashStableJson({
     previewId: lease.previewId,
     sourceSurface: lease.surface,
@@ -469,12 +496,15 @@ function buildLivePreviewArtifactId(lease: LivePreviewLease): string {
       id: lease.workspaceRef.id,
       rootPath: normalizePathToken(lease.workspaceRef.rootPath),
     },
+    // One lease can serve several pages; the root keeps the historical id.
+    ...(entryPath === '/' ? {} : { entryPath }),
   })}`;
 }
 
 function buildMaterialChangeSignature(
   lease: LivePreviewLease,
   anchors: ResolvedLivePreviewArtifactAnchors,
+  entryPath: string,
 ): string {
   return hashStableJson({
     previewId: lease.previewId,
@@ -483,7 +513,15 @@ function buildMaterialChangeSignature(
     sourceSurface: lease.surface,
     workspace: lease.workspaceRef,
     anchors,
+    ...(entryPath === '/' ? {} : { entryPath }),
   });
+}
+
+function isSafeEntryPath(entryPath: string): boolean {
+  if (!entryPath.startsWith('/') || entryPath.startsWith('//') || /[?#\\]/u.test(entryPath)) {
+    return false;
+  }
+  return entryPath.split('/').every((segment) => segment !== '..' && segment !== '.');
 }
 
 function cloneCanvasSurface(surface: CanvasSurfaceRef): CanvasSurfaceRef {

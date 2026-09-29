@@ -27,6 +27,7 @@ import {
   type ArtifactCanvasScriptedPreviewProducerAllowlistEntry,
 } from './products/shared/artifactCanvas/iframePolicy.js';
 import {
+  CODE_LIVE_PREVIEW_PRODUCER_IDENTITY,
   DEFAULT_LIVE_PREVIEW_CONFIG,
   type LivePreviewCommandProfile,
   type LivePreviewConfig,
@@ -360,10 +361,15 @@ function loadArtifactCanvasPolicyConfig(env: NodeJS.ProcessEnv): ArtifactCanvasP
       parseArtifactCanvasRuntimePreviewOriginAllowlist(
         env.CATS_ARTIFACT_CANVAS_RUNTIME_PREVIEW_ORIGIN_ALLOWLIST,
       ) ?? [...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG.runtimePreviewOriginAllowlist],
+    // Supervisor-owned previews run scripts by default: the lease predicate,
+    // not this allowlist alone, qualifies each origin (SPEC-123 CAP-11).
     scriptedPreviewProducerAllowlist:
       parseArtifactCanvasScriptedPreviewProducerAllowlist(
         env.CATS_ARTIFACT_CANVAS_SCRIPTED_PREVIEW_PRODUCER_ALLOWLIST,
-      ) ?? [...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG.scriptedPreviewProducerAllowlist],
+      ) ?? [
+        ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG.scriptedPreviewProducerAllowlist,
+        { producerKind: 'tool', producerIdentity: CODE_LIVE_PREVIEW_PRODUCER_IDENTITY },
+      ],
     catsShellOrigin:
       env.CATS_ARTIFACT_CANVAS_SHELL_ORIGIN?.trim()
       || DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG.catsShellOrigin,
