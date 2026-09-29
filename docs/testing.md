@@ -133,6 +133,10 @@ the workflow, lockfile or `.nvmrc`, changes the fingerprint and runs everything.
 missing or evicted cache entry, or a manual run, also runs everything. Pull-request
 caches stay within that pull request's scope, so the post-merge push to main runs once
 in full.
+A pull request can also reuse a green run from main when its code outside `docs/` equals
+main's, which means that exact code already passed there. The skip trusts everyone who can
+push to the branch: such a person could save a marker for untested code. Pull requests from
+forks cannot write to the base branch's cache scope.
 
 Tests, scripts and tools must therefore not read repository documentation; keep
 executable inputs under `tests/fixtures/`. `tests/docs-boundary.test.js` enforces the
