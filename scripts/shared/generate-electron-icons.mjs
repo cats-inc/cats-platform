@@ -17,6 +17,12 @@ const DEFAULT_ASSETS_ROOT = resolve(PROJECT_ROOT, 'assets');
 const DEFAULT_BUILD_RESOURCES_DIR = resolve(DEFAULT_ASSETS_ROOT, 'build');
 const DEFAULT_ICON_SHAPE = 'circle';
 const SUPPORTED_ICON_SHAPES = new Set(['square', 'circle']);
+// Apple's macOS icon grid draws the artwork on 824 of the 1024 canvas and leaves
+// the rest transparent, so a full-bleed tile looks oversized in the Dock. This
+// is the inset each side, as a fraction of the canvas; 0 keeps the artwork
+// full-bleed like the other platforms.
+const DEFAULT_MACOS_INSET = 0;
+const APPLE_MACOS_INSET = 100 / 1024;
 
 const LINUX_ICON_SIZES = [16, 24, 32, 48, 64, 128, 256, 512];
 const ICO_SIZES = [16, 24, 32, 48, 64, 128, 256];
@@ -44,8 +50,30 @@ Options:
   --assets-root <path>         Asset root for tray outputs. Defaults to assets/
   --build-resources <path>     Build-resource root for app icons. Defaults to assets/build
   --shape <square|circle>      Output mask shape. Defaults to circle
+  --tray-input <path>          Separate SVG for the macOS menu-bar template. Its alpha is
+                               kept and every opaque pixel is forced to black, so holes
+                               (eyes) stay transparent. Without it the template is derived
+                               from the app icon by removing the edge-connected background.
+  --macos-inset <fraction|apple>
+                               Transparent margin on each side of the .icns artwork.
+                               "apple" is Apple's 824/1024 grid (${APPLE_MACOS_INSET.toFixed(4)}).
+                               Defaults to 0 (full-bleed, same as other platforms).
   --help                       Show this help text.
 `);
+}
+
+function normalizeMacosInset(value) {
+  if (value === undefined || value === null || value === '') {
+    return DEFAULT_MACOS_INSET;
+  }
+  if (value === 'apple') {
+    return APPLE_MACOS_INSET;
+  }
+  const inset = Number(value);
+  if (!Number.isFinite(inset) || inset < 0 || inset >= 0.5) {
+    throw new Error(`Unsupported macOS inset: ${value}`);
+  }
+  return inset;
 }
 
 function normalizeIconShape(value) {
@@ -63,6 +91,8 @@ function parseArgs(argv) {
   let assetsRoot = DEFAULT_ASSETS_ROOT;
   let buildResourcesDir = DEFAULT_BUILD_RESOURCES_DIR;
   let iconShape = DEFAULT_ICON_SHAPE;
+  let trayInputSvgPath = null;
+  let macosInset = DEFAULT_MACOS_INSET;
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
@@ -73,7 +103,19 @@ function parseArgs(argv) {
         assetsRoot,
         buildResourcesDir,
         iconShape,
+        trayInputSvgPath,
+        macosInset,
       };
+    }
+    if (value === '--tray-input') {
+      trayInputSvgPath = resolve(PROJECT_ROOT, argv[index + 1] ?? '');
+      index += 1;
+      continue;
+    }
+    if (value === '--macos-inset') {
+      macosInset = normalizeMacosInset(argv[index + 1] ?? '');
+      index += 1;
+      continue;
     }
     if (value === '--input') {
       inputSvgPath = resolve(PROJECT_ROOT, argv[index + 1] ?? '');
@@ -104,6 +146,8 @@ function parseArgs(argv) {
     assetsRoot,
     buildResourcesDir,
     iconShape,
+    trayInputSvgPath,
+    macosInset,
   };
 }
 
@@ -244,6 +288,40 @@ async function renderTrayTemplate(svgBuffer, size, iconShape) {
   return applyIconShapeMask(templatePngBuffer, size, iconShape);
 }
 
+// A dedicated template source is authored as black-on-transparent art. Keep its
+// alpha exactly (holes such as knocked-out eyes stay transparent) and force the
+// colour to black; no background removal and no shape mask, because the artwork
+// already is the silhouette macOS will recolour.
+async function renderExplicitTrayTemplate(svgBuffer, size) {
+  const { data, info } = await sharp(svgBuffer, { density: 1024 })
+    .resize(size, size, { fit: 'contain' })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const output = Buffer.alloc(data.length);
+  for (let index = 0; index < data.length; index += 4) {
+    output[index + 3] = data[index + 3];
+  }
+  return sharp(output, { raw: { width: info.width, height: info.height, channels: 4 } })
+    .png()
+    .toBuffer();
+}
+
+// Scale the already-masked artwork into the centre of a transparent canvas so the
+// .icns follows Apple's grid while Windows and Linux keep the full-bleed tile.
+async function insetPng(pngBuffer, size, inset) {
+  if (inset <= 0) {
+    return pngBuffer;
+  }
+  const artworkSize = Math.max(1, Math.round(size * (1 - (inset * 2))));
+  const offset = Math.round((size - artworkSize) / 2);
+  const artwork = await sharp(pngBuffer).resize(artworkSize, artworkSize).png().toBuffer();
+  return sharp({ create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: artwork, left: offset, top: offset }])
+    .png()
+    .toBuffer();
+}
+
 function buildIcns(pngBuffersBySize) {
   const icns = new Icns();
   for (const variant of ICNS_VARIANTS) {
@@ -267,17 +345,25 @@ export async function generateElectronIcons(options = {}) {
     ? resolve(PROJECT_ROOT, options.buildResourcesDir)
     : DEFAULT_BUILD_RESOURCES_DIR;
   const iconShape = normalizeIconShape(options.iconShape);
+  const trayInputSvgPath = options.trayInputSvgPath
+    ? resolve(PROJECT_ROOT, options.trayInputSvgPath)
+    : null;
+  const macosInset = normalizeMacosInset(options.macosInset);
   const linuxIconDir = resolve(buildResourcesDir, 'icons', 'linux');
 
   const svgBuffer = await readFile(inputSvgPath);
+  const traySvgBuffer = trayInputSvgPath ? await readFile(trayInputSvgPath) : null;
   const pngBuffersBySize = new Map();
+  const icnsBuffersBySize = new Map();
 
   for (const size of new Set([
     ...LINUX_ICON_SIZES,
     ...ICO_SIZES,
     1024,
   ])) {
-    pngBuffersBySize.set(size, await renderSvgPng(svgBuffer, size, iconShape));
+    const png = await renderSvgPng(svgBuffer, size, iconShape);
+    pngBuffersBySize.set(size, png);
+    icnsBuffersBySize.set(size, await insetPng(png, size, macosInset));
   }
 
   await rm(linuxIconDir, { recursive: true, force: true });
@@ -291,7 +377,7 @@ export async function generateElectronIcons(options = {}) {
   }
 
   const icoBuffer = await pngToIco(ICO_SIZES.map((size) => pngBuffersBySize.get(size)));
-  const icnsBuffer = buildIcns(pngBuffersBySize);
+  const icnsBuffer = buildIcns(icnsBuffersBySize);
   const appPngPath = resolve(buildResourcesDir, 'icon.png');
   const iconIcoPath = resolve(buildResourcesDir, 'icon.ico');
   const installerIconPath = resolve(buildResourcesDir, 'installerIcon.ico');
@@ -312,12 +398,17 @@ export async function generateElectronIcons(options = {}) {
   await writeBuffer(iconIcnsPath, icnsBuffer);
   await writeBuffer(trayIconPath, pngBuffersBySize.get(32));
   await writeBuffer(trayIcon2xPath, pngBuffersBySize.get(64));
-  await writeBuffer(trayTemplatePath, await renderTrayTemplate(svgBuffer, 16, iconShape));
-  await writeBuffer(trayTemplate2xPath, await renderTrayTemplate(svgBuffer, 32, iconShape));
+  const renderTemplate = (size) => (traySvgBuffer
+    ? renderExplicitTrayTemplate(traySvgBuffer, size)
+    : renderTrayTemplate(svgBuffer, size, iconShape));
+  await writeBuffer(trayTemplatePath, await renderTemplate(16));
+  await writeBuffer(trayTemplate2xPath, await renderTemplate(32));
 
   const manifest = {
     sourceSvg: toProjectRelative(inputSvgPath),
+    traySourceSvg: trayInputSvgPath ? toProjectRelative(trayInputSvgPath) : null,
     shape: iconShape,
+    macosInset,
     app: {
       png: toProjectRelative(appPngPath),
       ico: toProjectRelative(iconIcoPath),

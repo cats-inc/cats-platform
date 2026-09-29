@@ -1,48 +1,71 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!--
+    Catlas (guide cat) avatar: the Cats app icon artwork clipped to a circle so it
+    sits in round avatar slots without navy corners. Keep in sync with
+    assets/app-icon-silhouette.svg.
+  -->
   <defs>
-    <clipPath id="circle-clip">
-      <circle cx="60" cy="60" r="60" />
+    <clipPath id="avatarCircle">
+      <circle cx="256" cy="256" r="256"/>
+    </clipPath>
+    <clipPath id="headClip">
+      <path d="
+        M 256 420
+        C 168 420, 96 364, 96 276
+        C 96 244, 104 214, 118 190
+        L 100 92
+        C 98 80, 110 74, 120 80
+        L 200 128
+        C 218 122, 236 120, 256 120
+        C 276 120, 294 122, 312 128
+        L 392 80
+        C 402 74, 414 80, 412 92
+        L 394 190
+        C 408 214, 416 244, 416 276
+        C 416 364, 344 420, 256 420 Z"/>
     </clipPath>
   </defs>
-  
-  <g clip-path="url(#circle-clip)">
-    <!-- Background -->
-    <rect width="120" height="120" fill="#8B7E74" />
-    
-    <!-- Ears -->
-    <polygon points="25,25 45,50 25,60" fill="#F2994A" />
-    <polygon points="95,25 75,50 95,60" fill="#F2994A" />
-    <polygon points="28,32 40,50 30,55" fill="#FDE1D3" />
-    <polygon points="92,32 80,50 90,55" fill="#FDE1D3" />
-    
-    <!-- Head -->
-    <ellipse cx="60" cy="65" rx="45" ry="35" fill="#F2994A" />
-    
-    <!-- Face marking (white area) -->
-    <path d="M 60,65 Q 20,65 25,85 Q 60,110 95,85 Q 100,65 60,65 Z" fill="#FFFFFF" />
-    
-    <!-- Eyes -->
-    <circle cx="42" cy="60" r="6" fill="#333333" />
-    <circle cx="78" cy="60" r="6" fill="#333333" />
-    <!-- Catchlights -->
-    <circle cx="44" cy="58" r="2" fill="#FFFFFF" />
-    <circle cx="80" cy="58" r="2" fill="#FFFFFF" />
-    
-    <!-- Nose -->
-    <polygon points="56,72 64,72 60,77" fill="#EB5757" />
-    
-    <!-- Mouth -->
-    <path d="M 52,80 Q 60,85 68,80" fill="none" stroke="#333333" stroke-width="2" stroke-linecap="round" />
-    
-    <!-- Whiskers -->
-    <line x1="15" y1="65" x2="30" y2="68" stroke="#333333" stroke-width="1.5" stroke-linecap="round" opacity="0.5" />
-    <line x1="12" y1="72" x2="28" y2="72" stroke="#333333" stroke-width="1.5" stroke-linecap="round" opacity="0.5" />
-    <line x1="105" y1="65" x2="90" y2="68" stroke="#333333" stroke-width="1.5" stroke-linecap="round" opacity="0.5" />
-    <line x1="108" y1="72" x2="92" y2="72" stroke="#333333" stroke-width="1.5" stroke-linecap="round" opacity="0.5" />
-    
-    <!-- Guide Scarf/Bandana -->
-    <path d="M 20,85 Q 60,105 100,85 L 110,120 L 10,120 Z" fill="#2D9CDB" />
-    <path d="M 60,100 L 75,120 L 45,120 Z" fill="#2285C2" />
-    <circle cx="60" cy="95" r="7" fill="#F2C94C" />
+  <g clip-path="url(#avatarCircle)">
+    <rect width="512" height="512" fill="#1B2233"/>
+    <path fill="#E8923A" d="
+      M 256 420
+      C 168 420, 96 364, 96 276
+      C 96 244, 104 214, 118 190
+      L 100 92
+      C 98 80, 110 74, 120 80
+      L 200 128
+      C 218 122, 236 120, 256 120
+      C 276 120, 294 122, 312 128
+      L 392 80
+      C 402 74, 414 80, 412 92
+      L 394 190
+      C 408 214, 416 244, 416 276
+      C 416 364, 344 420, 256 420 Z"/>
+    <g clip-path="url(#headClip)" fill="#B85C24">
+      <path d="M 226 132 C 234 160, 236 186, 232 214 C 224 196, 220 168, 214 138 Z"/>
+      <path d="M 256 128 C 262 158, 262 188, 256 218 C 250 188, 250 158, 256 128 Z"/>
+      <path d="M 286 132 C 278 160, 276 186, 280 214 C 288 196, 292 168, 298 138 Z"/>
+      <path d="M 96 248 C 128 244, 150 250, 168 262 C 148 262, 126 262, 96 270 Z"/>
+      <path d="M 100 296 C 130 290, 152 292, 170 302 C 150 304, 128 308, 104 318 Z"/>
+      <path d="M 116 344 C 140 336, 158 336, 176 342 C 158 348, 140 356, 124 366 Z"/>
+      <path d="M 416 248 C 384 244, 362 250, 344 262 C 364 262, 386 262, 416 270 Z"/>
+      <path d="M 412 296 C 382 290, 360 292, 342 302 C 362 304, 384 308, 408 318 Z"/>
+      <path d="M 396 344 C 372 336, 354 336, 336 342 C 354 348, 372 356, 388 366 Z"/>
+      <path d="M 104 84 L 130 100 L 118 160 Z"/>
+      <path d="M 408 84 L 382 100 L 394 160 Z"/>
+    </g>
+    <path fill="#F7C9A3" d="M 136 118 L 190 150 C 176 160, 166 172, 158 186 Z"/>
+    <path fill="#F7C9A3" d="M 376 118 L 322 150 C 336 160, 346 172, 354 186 Z"/>
+    <path fill="#FFF1DC" d="M 256 402 C 200 402, 160 372, 160 330 C 160 300, 190 292, 220 300 C 236 304, 246 312, 256 312 C 266 312, 276 304, 292 300 C 322 292, 352 300, 352 330 C 352 372, 312 402, 256 402 Z"/>
+    <ellipse cx="204" cy="258" rx="18" ry="28" fill="#1B2233"/>
+    <ellipse cx="308" cy="258" rx="18" ry="28" fill="#1B2233"/>
+    <path fill="#E2604A" d="M 236 316 L 276 316 L 256 340 Z"/>
+    <path d="M 256 340 L 256 358 M 256 358 C 244 374, 226 372, 218 360 M 256 358 C 268 374, 286 372, 294 360" fill="none" stroke="#1B2233" stroke-width="8" stroke-linecap="round"/>
+    <g stroke="#FFF1DC" stroke-width="10" stroke-linecap="round" fill="none">
+      <path d="M 168 328 L 62 306"/>
+      <path d="M 168 350 L 56 352"/>
+      <path d="M 344 328 L 450 306"/>
+      <path d="M 344 350 L 456 352"/>
+    </g>
   </g>
 </svg>
