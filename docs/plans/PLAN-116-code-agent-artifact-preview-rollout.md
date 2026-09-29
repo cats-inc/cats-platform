@@ -48,8 +48,9 @@ Cross-repo ownership:
   2026-09-29. This is the PLAN-097 Task 5.1 decision; implementation still
   records its security checks in D1.
 - [x] Align with App and plugin MCP (ADR-126, "Relationship to App and Plugin
-  MCP"). Apps host their MCP servers independently, with no Runtime or Platform
-  hop in App MCP traffic. The only shared pieces are runtime `mcpServers` as
+  MCP"). Apps host their MCP handlers independently behind Platform's shared
+  transparent ingress/router, without Runtime or host-internal MCP domain handling.
+  The shared MCP delivery pieces are runtime `mcpServers` as
   Cat-session configuration (never a traffic path) and a documented security
   baseline. `src/platform/mcp/` and its SDK pin are host-internal. Pointers were
   added to SPEC-122 and `docs/mcp-config.md`.
@@ -64,25 +65,29 @@ Cross-repo ownership:
 - [ ] R1: Add runtime ADR/SPEC/PLAN, framed as the SPEC-121 FR-02 MCP delivery
   mechanism with Code as its first consumer. Accept `mcpServers` on session
   create, resume and message send, using the `auth` kinds and the server-name namespace
-  (SPEC-123 CAP-16). Implement `bearer_env` only and reserve `oauth_ref`.
+  (SPEC-123 CAP-16). Accept `bearer_env` and `none`; Code requires the former.
+  Reserve/reject `oauth_ref`.
   Validate names, `http` transport and loopback URLs. Keep secret
   values only in memory: exclude them from persistence, logs, session reads and
-  diagnostics, and redact spawn arguments and environment. A new descriptor
-  applies at the next worker spawn. Create and resume responses, and the first
+  diagnostics, and redact spawn arguments and environment. A changed set on send
+  recycles a supported worker at the turn boundary without closing the logical
+  session or revoking Code grants/preview leases. Create and resume responses, and the first
   send stream event (`progress` of kind `mcp_servers`), report per-session
-  delivery as `delivered`, `unsupported` or `failed`. In progress as cats-runtime
-  PLAN-046 R1.
-- [ ] R2: Claude adapter. Pass `--mcp-config` pointing to a config file. The
-  bearer must never be in argv: reference it through environment-variable
-  expansion (**verify** that the pinned Claude Code supports this). Otherwise use
-  an owner-only file under the session dir that is removed at worker exit. Append
+  delivery as `delivered`, `unsupported` or `failed`, with separate per-server
+  `connection` evidence. Delivered confirms configuration, not connectivity.
+  Runtime worktree implementation is ahead of this integration plan; verify the
+  release/pin before closing Platform gates.
+- [ ] R2: Claude adapter. Pass inline `--mcp-config` JSON using environment-variable
+  expansion so the bearer never appears in argv. Runtime SPEC-035 records
+  verification on Claude Code 2.1.284. Append
   `mcp__<name>` to `--allowedTools` in `default` and `whitelist` modes, because
   `-p` mode denies unapproved tools silently. Add spawn-argument unit tests that
   assert no secret appears in argv. Add an isolated live smoke that checks the
   tools are listed and a call reaches a stub server.
 - [ ] R3: Codex adapter. Add `-c mcp_servers.<name>.url=…` plus bearer
   environment configuration through the existing app-server override
-  composition, and auto-approve tool calls and elicitations for that server only.
+  composition, and auto-approve tool calls for that server only; elicitations
+  remain declined.
   **Verify** that the pinned Codex version supports streamable HTTP MCP. If it
   does not, record the minimum version or define the stdio fallback.
 - [ ] R4: Report `sessionMcpServers` support per provider in the provider
@@ -196,17 +201,18 @@ call a Platform-hosted MCP tool and receive its result.
   or PDF), canvas tabs/stacking and reopening per artifact.
 - [ ] F3: Add other providers once their runtime adapters map `mcpServers`
   (Antigravity/Gemini, Copilot, Cursor, …).
-- [ ] F4: Converge process supervision with SPEC-122 App private services rather
-  than building a second supervisor. The static preview server and SPEC-122's
-  isolated App frontend origin are the same primitive: serve a root on an
-  isolated loopback origin with guards. Converge them when SPEC-122 serving
-  lands; do not merge them earlier.
+- [ ] F4: Evaluate reuse of process supervision, file containment and leases with
+  SPEC-122 App services. Browser trust policies differ: App HTML uses an opaque
+  sandbox on shared transport ingress; Canvas uses its own scripted preview
+  producer/lease predicate. Do not reuse `allow-same-origin` or that predicate
+  for App documents. Remote viewing of loopback Canvas leases needs separate
+  acceptance; this App ingress change does not make those URLs remotely usable.
 - [ ] F5: When SPEC-121 plugin MCP or a user-granted App endpoint needs to reach
   a Cat, configure the Cat session through the same runtime `mcpServers`
   descriptor (`oauth_ref`, and `app-<slug>` or plugin-ID names). The CLI connects
   to the independently hosted server directly. Do not add a second
-  session-configuration mechanism, and do not route App traffic through Runtime
-  or Platform.
+  session-configuration mechanism. App traffic uses Platform's transparent router,
+  without Runtime or the host-internal MCP domain module interpreting its tools.
 
 ## Files to Create/Modify
 
@@ -263,7 +269,7 @@ call a Platform-hosted MCP tool and receive its result.
 | Node unavailable in packaged Desktop | High | D1 verification; Vite via `ELECTRON_RUN_AS_NODE`; npm profile deferred to D3 |
 | Preview JS calls Platform APIs (CSRF) | High | `Origin` rejection on the tool endpoint; C2 audit of API origin trust |
 | Grant token leaks through argv, runtime logs or reads | High | R1/R2: no secrets in argv (env expansion or owner-only file), in-memory secrets, redaction tests |
-| Provider supports MCP but one spawn fails to load it | Medium | Per-session `delivered` status gates the policy text (A3) |
+| Provider supports MCP but one spawn fails to load it | Medium | Delivery gates policy text; per-server connection evidence determines whether the UI can claim connectivity |
 | Orphan dev servers | Medium | Process-tree stop, shutdown stop, startup sweep, M2 check |
 | Dev server ignores the leased port | Medium | Readiness timeout with log tail; framework adapters in D3 |
 | Second supervisor next to SPEC-122 | Medium | F4 convergence; no App-specific logic in the preview supervisor |

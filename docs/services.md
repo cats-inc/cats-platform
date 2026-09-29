@@ -9,6 +9,8 @@
 |--------------|------|----------|-------------|---------------|
 | `cats` HTTP app | 8181 | TCP | Product-facing app shell and health endpoints | `npm start` |
 | `cats` Vite dev server | 5173 | TCP | Renderer development server with `/api` proxy | `npm run dev:web` |
+| Platform shared ingress (candidate) | OS-assigned for managed ngrok; operator-selected fixed port for an external tunnel | HTTP, `127.0.0.1` only | One tunnel target for Platform/Mobile/App routes; excludes Code internal MCP and native management | Desktop Settings → Remote access |
+| App component services (candidate) | OS-assigned available ports | HTTP, `127.0.0.1` only | Private child services behind `/apps/<appId>/`; no per-App tunnel/listener | Host enables the complete App |
 | Isolated candidate Desktop sidecars | Explicit distinct non-default ports | TCP, `127.0.0.1` only | Candidate-owned Platform and Runtime; occupied listeners fail launch | Desktop with `CATS_DESKTOP_CANDIDATE_ROOT` and explicit host/port pairs |
 | Source candidate control | OS-assigned available port | HTTP, `127.0.0.1` only | Explicit candidate-only bearer-authenticated status, main-window screenshot and graceful stop; no normal Desktop listener | `npm run desktop:candidate -- start --workspace .. --root ../candidate-01` |
 | K4 live collaboration fixture Runtime | OS-assigned available port | TCP, `127.0.0.1` only | Temporary authenticated Runtime, stopped after the bounded fixture | `node scripts/testing/orchestrator-collaboration-live.mjs --help` |
@@ -32,8 +34,11 @@ no fixed service port or real developer profile is used.
 Platform-owned external listener/tunnel for Platform UI/APIs, remote Mobile and
 all Apps. Apps mount at `/apps/<appId>/`; services may retain private dynamic
 loopback ports/IPC. No fixed public port or tunnel is reserved per App. Disabling
-an App revokes its routes only. The unpublished local prototype's per-App
-gateways/ngrok workers must be replaced; shared ingress is not implemented.
+an App revokes its routes only. The candidate replaces the unpublished per-App
+gateways/ngrok workers with one host ingress. Bind failures leave it unavailable;
+no occupied port is silently reused. The normal Platform listener is internal
+and must not be selected as the public tunnel target. Live external acceptance
+remains separate from local fixtures.
 
 | Service Name | Port Range | Protocol | Status | Description |
 |--------------|------------|----------|--------|-------------|

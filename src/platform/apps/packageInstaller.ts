@@ -5,6 +5,7 @@ import { validateRendererAppPackage } from '../../app-sdk/packageValidation.js';
 import type { CatsAppManifestV1 } from '../../shared/catsAppManifest.js';
 import { resolveCatsAppPackageInstallDir, resolveCatsAppStoragePathsFromChatState } from './paths.js';
 import { FileCatsAppRegistry } from './registry.js';
+import type { AppComponentHost } from './componentHost.js';
 
 export function validateRendererPackage(bytes: Uint8Array, pin: Pick<AppPin, 'id' | 'version' | 'sha256'>) {
   return validateRendererAppPackage(bytes, { pin, platformVersion: PLATFORM_VERSION, appSdkVersion: APP_SDK_VERSION });
@@ -15,11 +16,13 @@ const installQueues = new Map<string, Promise<unknown>>();
 export async function installRendererPackage(options: {
   chatStatePath: string; bytes: Uint8Array; pin: Pick<AppPin, 'id' | 'version' | 'sha256'>;
   source: 'desktop-bundle' | 'local-package'; enable?: boolean;
+  componentHost?: AppComponentHost;
 }) {
   const paths = resolveCatsAppStoragePathsFromChatState(options.chatStatePath);
   const key = paths.registryPath.toLowerCase();
   const pending = (installQueues.get(key) ?? Promise.resolve()).catch(() => {}).then(async () => {
     const decoded = validateRendererPackage(options.bytes, options.pin);
+    if (decoded.manifest.components && !options.componentHost) throw new Error('Executable Apps require a Desktop component host.');
     const registry = new FileCatsAppRegistry({ registryPath: paths.registryPath });
     const previous = (await registry.readState()).apps.find((app) => app.id === decoded.manifest.id);
     // Desktop updates respect an explicit disable/uninstall. The owner's local install is explicit.
@@ -48,25 +51,36 @@ export async function installRendererPackage(options: {
       await writeFile(path.join(stage, 'payload.catsapp'), options.bytes, { flag: 'wx' });
       await writeFile(path.join(stage, 'cats.app.json'), `${JSON.stringify(manifest, null, 2)}\n`);
       await writeFile(path.join(stage, '.package.json'), `${JSON.stringify({ sha256: decoded.sha256, source: options.source })}\n`);
+      if (manifest.components) {
+        for (const file of decoded.files) {
+          const filePath = path.join(stage, 'files', file.path);
+          await mkdir(path.dirname(filePath), { recursive: true });
+          await writeFile(filePath, file.data, { flag: 'wx' });
+        }
+      }
       await rename(stage, target);
     }
     const enabled = options.source === 'desktop-bundle' && previous
       ? previous.enabled && previous.installState === 'enabled' : options.enable === true;
-    return registry.installApp({ manifest, packagePath: target, packageSha256: decoded.sha256,
-      packageSource: options.source, enabled, installState: enabled ? 'enabled' : 'disabled' });
+    const input = { manifest, packagePath: target, packageSha256: decoded.sha256,
+      packageSource: options.source, enabled, installState: enabled ? 'enabled' as const : 'disabled' as const };
+    return manifest.components ? options.componentHost!.install(input) : registry.installApp(input);
   });
   installQueues.set(key, pending);
   try { return await pending; }
   finally { if (installQueues.get(key) === pending) installQueues.delete(key); }
 }
 
-export async function installBundledApps(chatStatePath: string, lockPath: string): Promise<void> {
+export async function installBundledApps(chatStatePath: string, lockPath: string, componentHost?: AppComponentHost): Promise<void> {
   const selection = parseAppLock(JSON.parse(await readFile(lockPath, 'utf8')));
   if (selection.apps.some((app) => app.artifact !== `${app.id}-${app.version}.catsapp`)) {
     throw new Error('A Desktop bundle must use adjacent local archives; network/path traversal inputs are forbidden at startup.');
   }
   const apps = await resolveAppLock(lockPath);
   // Validate the entire selection before changing active registry entries.
-  for (const app of apps) validateRendererPackage(app.bytes, app);
-  for (const app of apps) await installRendererPackage({ chatStatePath, bytes: app.bytes, pin: app, source: 'desktop-bundle', enable: true });
+  for (const app of apps) {
+    const decoded = validateRendererPackage(app.bytes, app);
+    if (decoded.manifest.components && !componentHost) throw new Error('Executable Apps require a Desktop component host.');
+  }
+  for (const app of apps) await installRendererPackage({ chatStatePath, bytes: app.bytes, pin: app, source: 'desktop-bundle', enable: true, componentHost });
 }

@@ -2,10 +2,11 @@
 
 ## Status
 
-Shared-ingress correction documented, 2026-09-29; implementation pending.
-The unpublished `feat/app-components` local prototype passed focused Windows
-fixtures and installed Ask Electron acceptance. Its per-App origins/tunnels do
-not satisfy the required Platform/Mobile/App shared ingress.
+Shared-ingress candidate implemented and independently reviewed, 2026-09-29.
+Local integration and installed Ask Windows Electron acceptance pass. Live
+external tunnel/Bot, other operating systems and release compatibility remain
+open. Changes are in `feat/app-components`; commit, push and an auto-merge PR
+were authorized on 2026-09-29. Publication and version bumps are not authorized.
 [ADR-125](../decisions/125-own-multiple-frontends-and-backends-in-one-app.md) and
 [SPEC-122](../specs/SPEC-122-app-components-and-private-services.md) govern this work.
 Coordinate with [PLAN-112](PLAN-112-app-market-and-lifecycle.md) for the same App
@@ -19,7 +20,7 @@ registry/lifecycle machinery, not a second installer.
   component runtime/trust, bounds, lifecycle and migration hooks.
 - [x] Record the initial private service discovery/auth prototype.
 - [x] Amend ADR/SPEC for shared Platform/Mobile/App ingress and opaque App sandboxes.
-- [ ] Implement and validate the corrected serving/auth contract in P4 below.
+- [x] Implement and locally validate the corrected serving/auth contract in P4.
 - [x] Map current manifest/registry state to the new contract; record compatibility
   and executable upgrade/recovery fixtures before changing persistence.
 
@@ -36,7 +37,7 @@ registry/lifecycle machinery, not a second installer.
 
 - [x] Serve multiple frontends on the installation's isolated origin; route
   ordinary HTTP and declared streams to its services without App-domain SDK APIs.
-- [ ] Verify per-App/owner identity, backend discovery, cross-origin denial,
+- [x] Verify per-App/owner identity, backend discovery, cross-origin denial,
   stale-generation revocation, and host-capability permission boundaries.
 - [x] Complete two-frontend/two-service/worker fixture acceptance. A one-page,
   one-service Ask prototype alone does not validate general cardinality.
@@ -54,20 +55,20 @@ registry/lifecycle machinery, not a second installer.
 
 ## P4 — Shared Platform ingress (next implementation sequence)
 
-1. [ ] Replace per-App ingress ownership with the Platform router and one host
+1. [x] Replace per-App ingress ownership with the Platform router and one host
    remote-access configuration. Extend existing ingress diagnostics/settings;
    keep internal component ports private. Define exact settings/auth bootstrap
    fields before coding, including remote owner-bound view launch.
-2. [ ] Mount `/apps/<appId>/` launch/UI/API/MCP routes; enforce canonical path
+2. [x] Mount `/apps/<appId>/` launch/UI/API/MCP routes; enforce canonical path
    validation, generation binding and auth-specific dispatch. Generate reachable
    base URLs from trusted host settings; preserve query/stream/MCP semantics.
-3. [ ] Replace same-origin iframe permission with the opaque sandbox, HTTP CSP,
+3. [x] Replace same-origin iframe permission with the opaque sandbox, HTTP CSP,
    grant-based ordinary fetch and frame-bound bridge from SPEC-122. Validate
    Platform/other-App isolation and clipboard in actual browser/Electron.
-4. [ ] Move tunnel lifecycle to Platform. Disable/update/remove revokes only that
+4. [x] Move tunnel lifecycle to Platform. Disable/update/remove revokes only that
    App; implement validated/backed-up/atomic migration of prototype settings and
    reject unresolved account/domain conflicts without changing data.
-5. [ ] Coordinate Ask tutorial/status/connector URL changes with cats-apps
+5. [x] Coordinate Ask tutorial/status/connector URL changes with cats-apps
    PLAN-005 A4a; remove Ask-specific ngrok token setup. Keep manual Bot initiation
    and the existing question/receipt schema.
 6. [ ] Pass one-origin/port/tunnel Platform + remote Mobile + two-App acceptance,
@@ -77,7 +78,44 @@ registry/lifecycle machinery, not a second installer.
 
 ## Validation and delivery
 
-Shared-ingress documentation checkpoint: the user requested documents first.
+2026-09-29 shared-ingress candidate checkpoint:
+
+- Code Canvas comparison: public ingress denies the internal Code MCP before
+  dispatch, even with a bearer/no Origin and a loopback tunnel peer. Apps own
+  their MCP handlers behind the transparent shared router. Canvas preview
+  trust rules remain separate from the opaque App sandbox. ADR-126, SPEC-123
+  and PLAN-116 now track Runtime's actual session MCP contract.
+- Real Platform router fixture: Mobile auth, owner-bound remote App launch,
+  two App/MCP mounts, query/protocol-header preservation, cross-App/Platform
+  credential denial, one-App disable and logout-driven view revocation pass.
+  This simulates the tunnel's HTTP side locally; no external HTTPS tunnel ran.
+- Component fixtures cover multiple frontends/services/worker, data migration
+  and retained reinstall, streams and the two-restart limit. Stream cancellation
+  initially hung; forwarding upstream aborts to the downstream response fixed it.
+  Windows fixture readiness/restart deadlines now allow bounded process startup.
+- Ingress migration tests cover consistent/conflicting legacy settings, backups,
+  injected atomic-rename failure, interrupted staging/restart, unavailable auth,
+  late connection close and worker exit during setup. Gateway request/bridge
+  revocation races have executable regressions.
+- Existing App management/authority, SDK/ingress diagnostics and renderer/auth
+  suites pass. Server/Desktop/renderer builds pass. Full test-project typecheck
+  still requires the worktree's missing mobile packages; full CI is not claimed.
+- Ask archive `0f3853ca845b5435faf2f091b79049d5f960c4f3921565501d06eb1bed91e217`
+  passed isolated Windows Electron create → close → MCP get/submit → reopen →
+  actual Copy/paste, denied-copy feedback and host settings navigation. The
+  opaque frame cannot read host DOM/cookies/local storage. Screenshots were
+  inspected; all content came from disposable fixtures.
+- Independent reviewers found and rechecked fixes for lifecycle cleanup races,
+  bridge revocation, navigation permission mapping, stale ingress UI and
+  single-use launch retry. No remaining blocker in the reviewed candidate scope.
+- No live Bot/tunnel, real registry/profile install, release, version bump or
+  code commit/push. P4.6 remains open for external and cross-OS acceptance.
+- Documentation checks: 9 changed Markdown files / 59 mapped local targets,
+  no missing link targets; Apps check covers 43 files / 161 local targets.
+  Both worktree whitespace checks pass. Production CLI/shutdown regressions
+  pass all 11 cases.
+
+Historical shared-ingress documentation checkpoint: the user requested documents first.
 P4 above is the next implementation sequence. No executable changes, user config
 changes, new application builds/tests or live tunnel activity are part of this
 correction. Historical counts below are evidence for the prior local prototype.

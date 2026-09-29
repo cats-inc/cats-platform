@@ -1,4 +1,4 @@
-export const CATS_VITE_PROXY_PATHS = ['/api', '/health', '/runtime'] as const;
+export const CATS_VITE_PROXY_PATHS = ['/api', '/health', '/runtime', '^/apps/[^/]+/.+'] as const;
 
 export interface CatsViteProxyOptions {
   target: string;

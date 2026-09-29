@@ -9,6 +9,8 @@ import { MAX_PACKAGE_BYTES, SHA256_PATTERN, assertAppIdentity, decodeAppPackage,
 export { APP_SDK_VERSION, MAX_PACKAGE_BYTES, decodeAppPackage, sha256, supportsVersion } from './format.js';
 export const PLATFORM_VERSION = createRequire(import.meta.url)('../../package.json').version;
 export const readBrowserSdk = () => readFile(new URL('./browser.js', import.meta.url), 'utf8');
+export const componentRunnerUrl = new URL('./component-runner.mjs', import.meta.url);
+export const ingressServiceUrl = new URL('./ingress-service.mjs', import.meta.url);
 
 export function parseAppLock(value) {
   if (!isPlainObject(value) || value.schemaVersion !== 1 || !Array.isArray(value.apps) || value.apps.length > 64) throw new Error('Invalid app bundle lock.');

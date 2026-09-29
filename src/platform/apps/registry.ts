@@ -19,6 +19,7 @@ export interface CatsAppRegistryInstallInput {
   enabled?: boolean;
   packageSha256?: string;
   packageSource?: 'desktop-bundle' | 'local-package';
+  dataGeneration?: string;
 }
 
 export interface CatsAppRegistryUpdateStateInput {
@@ -133,6 +134,7 @@ export class FileCatsAppRegistry {
       installedAt: now,
       updatedAt: now,
       lastError: null,
+      ...(input.dataGeneration ? { dataGeneration: input.dataGeneration } : {}),
       ...(input.packageSha256 ? { packageSha256: input.packageSha256, packageSource: input.packageSource } : {}),
     };
     const existingIndex = state.apps.findIndex((record) => record.id === nextRecord.id);
