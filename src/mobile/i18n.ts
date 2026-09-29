@@ -170,9 +170,8 @@ export interface MobileProductSidebarCopy {
   /**
    * Label for the swipe-to-delete action revealed when the user
    * swipes a Recents row. Mirrors web's overflow-menu Delete entry
-   * (`messageKeys.conversationSidebarDeleteAllLabel`); same "no
-   * confirmation" semantics — the swipe gesture itself is the
-   * commit.
+   * (`messageKeys.conversationSidebarDeleteAllLabel`). Confirmation
+   * explains permanent transcript deletion before committing.
    */
   deleteAction: string;
   /**
@@ -722,6 +721,16 @@ export function getMobileProductSidebarCopy(
   locale?: string | null,
 ): MobileProductSidebarCopy {
   return MOBILE_PRODUCT_SIDEBAR_COPY[resolveMobileLocale(locale)];
+}
+
+export function getMobileDeleteConfirmationCopy(locale?: string | null) {
+  const catalog = resolveMobileLocale(locale) === 'zh-TW' ? zhTWCatalog : enCatalog;
+  return {
+    title: catalog['shared.delete.channel.title'],
+    message: catalog['shared.delete.unknownTranscriptWarning'],
+    confirm: catalog['shared.delete.permanently'],
+    cancel: catalog['shared.common.cancel'],
+  };
 }
 
 export function getMobileChannelTitle(

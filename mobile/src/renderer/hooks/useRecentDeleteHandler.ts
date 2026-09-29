@@ -7,6 +7,7 @@ import {
   resolveDefaultMobileLocale,
 } from '../../../../src/mobile/index.js';
 import { useDeleteRecent } from './useDeleteRecent';
+import { confirmRecentDeletion } from './recentDeleteConfirmation';
 
 export interface RecentDeleteHandlerHook {
   /**
@@ -26,8 +27,8 @@ export interface RecentDeleteHandlerHook {
  * Builds the `onDelete / isDeleting` pair the trimmed product
  * sidebar consumes. Centralised so chat / code / work `index.tsx`
  * don't each re-implement the lifecycle. Mirrors web's
- * `deleteChatChannel` semantics: no confirmation step — the swipe
- * is the commit. The list re-renders via SSE from
+ * `deleteChatChannel` semantics: confirm permanent deletion before
+ * the mutation. The list re-renders via SSE from
  * `useMobileAppShell`, NOT via an explicit refetch here, so the
  * delete is always reconciled against server truth.
  */
@@ -39,7 +40,7 @@ export function useRecentDeleteHandler(): RecentDeleteHandlerHook {
 
   const onDelete = useCallback(
     (channelId: string) => {
-      void (async () => {
+      confirmRecentDeletion(locale, Alert.alert, () => { void (async () => {
         try {
           await deleteRecent.delete(channelId);
           // Don't refetch here — `useMobileAppShell` subscribes to
@@ -51,9 +52,9 @@ export function useRecentDeleteHandler(): RecentDeleteHandlerHook {
             { text: tabsCopy.desktopOnlyOkAction, style: 'cancel' },
           ]);
         }
-      })();
+      })(); });
     },
-    [deleteRecent, sidebarCopy.deleteFailedTitle, tabsCopy.desktopOnlyOkAction],
+    [deleteRecent, locale, sidebarCopy.deleteFailedTitle, tabsCopy.desktopOnlyOkAction],
   );
 
   return { onDelete, isDeleting: deleteRecent.isDeleting };

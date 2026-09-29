@@ -2328,6 +2328,13 @@ export const enCatalog: MessageCatalog = {
   'shared.delete.cat.message':
     'Delete "{catName}"? This removes the Cat and cleans up linked runtime sessions. This cannot be undone.',
   'shared.delete.cat.confirm': 'Delete',
+  'shared.delete.nativeTranscriptWarning': 'Linked Runtime session data and any native transcripts kept by {providers} will be permanently deleted. There is no backup and they cannot be recovered.',
+  'shared.delete.sessionWarning': 'Linked Runtime session data will be permanently deleted, without a backup or recovery.',
+  'shared.delete.unknownTranscriptWarning': 'Linked Runtime session data and any provider-side native transcripts will be permanently deleted, without a backup or recovery.',
+  'shared.delete.channel.title': 'Permanently delete conversation?',
+  'shared.delete.channel.message': 'Delete "{title}" and its conversation history?',
+  'shared.delete.channel.fallback': 'this conversation',
+  'shared.delete.permanently': 'Delete permanently',
   'shared.delete.cat.fallback': 'this cat',
   'shared.transcript.deletedCat': 'Deleted Cat',
   'telegram.command.start.description': 'Start a conversation',

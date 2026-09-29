@@ -10,9 +10,8 @@ import {
 
 /**
  * Mutation hook for `DELETE /api/channels/{id}` (the Recents-row
- * delete action). Mirrors web's `deleteChatChannel` semantics: no
- * confirmation step on either surface — the swipe-to-reveal +
- * second-tap on the red button is the commit on mobile.
+ * delete action). The calling `useRecentDeleteHandler` confirms
+ * permanent transcript deletion before invoking this mutation.
  *
  * State shape is per-channelId (a `Set` of in-flight ids) rather
  * than a single state machine, because:
