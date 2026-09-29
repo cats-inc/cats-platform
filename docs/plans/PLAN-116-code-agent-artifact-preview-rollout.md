@@ -399,6 +399,11 @@ call a Platform-hosted MCP tool and receive its result.
     No CORS was added to the static server.
   - The path branch of `show_in_canvas` now returns the resolved
     `presentation`, as SPEC-123 specifies.
+  - Limits: text inlining follows the artifact the lease is currently
+    attached to, the same rule as the scripted profile, so an older file on a
+    reused lease needs a new `show_in_canvas`. An https Markdown URL renders
+    only when its host allows cross-origin reads; otherwise use Open
+    externally.
 - [x] F2: Research `.docx`/`.pptx` presentation (server-side conversion to HTML
   or PDF), canvas tabs/stacking and reopening per artifact.
   Done: [research note](../research/2026-09-30-canvas-office-documents-and-tabs.md).
