@@ -180,8 +180,9 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-09-29 (ADR-123 Stage 1 implements the App SDK contract as a Platform npm subpath.)*
+*Last updated: 2026-09-29 (ADR-128 makes the App SDK version the sole App compatibility gate; `catsPlatform` becomes a minimum host version.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*
 
 - [ADR-120: Scope App image jobs and assets](120-scope-app-image-jobs-and-assets.md) — accepted, 2026-09-28.
+- [ADR-128: Make the App SDK version the sole App compatibility gate](128-make-the-app-sdk-version-the-sole-app-compatibility-gate.md) — accepted, 2026-09-29.

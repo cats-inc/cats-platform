@@ -1,4 +1,4 @@
-export { APP_SDK_VERSION, MAX_PACKAGE_BYTES, decodeAppPackage, sha256, supportsVersion } from './format.js';
+export { APP_SDK_VERSION, MAX_PACKAGE_BYTES, decodeAppPackage, meetsMinimumVersion, minimumVersion, sha256, supportsVersion } from './format.js';
 export const PLATFORM_VERSION: string;
 export const componentRunnerUrl: URL;
 export const ingressServiceUrl: URL;

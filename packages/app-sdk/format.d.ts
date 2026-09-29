@@ -21,5 +21,9 @@ export interface DecodedAppPackage {
 export function isPlainObject(value: unknown): value is Record<string, any>;
 export function sha256(bytes: Uint8Array): string;
 export function supportsVersion(version: string, range: string): boolean;
+/** Lower bound of a supported range as [major, minor, patch]; null for unsupported grammar. */
+export function minimumVersion(range: string): [number, number, number] | null;
+/** ADR-128: true when version is at or above the floor of range; catsPlatform is a minimum, not a range. */
+export function meetsMinimumVersion(version: string, range: string): boolean;
 export function assertAppIdentity(id: unknown, version: unknown): void;
 export function decodeAppPackage(bytes: Uint8Array, expected?: AppPackageExpectation): DecodedAppPackage;

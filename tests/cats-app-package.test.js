@@ -4,7 +4,7 @@ import { gzipSync } from 'node:zlib';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { decodeAppPackage, materializeAppSelection, parseAppLock, resolveAppLock, sha256, supportsVersion } from '#cats-app-package';
+import { decodeAppPackage, materializeAppSelection, meetsMinimumVersion, minimumVersion, parseAppLock, resolveAppLock, sha256, supportsVersion } from '#cats-app-package';
 
 // Hand-built on purpose: the invalid variants below cannot come from the official encoder,
 // and a Node zlib archive keeps the decoder accepting Apps released before that encoder.
@@ -37,6 +37,25 @@ test('compatibility parser rejects unsupported ranges and honors 0.x caret seman
   assert.equal(supportsVersion('0.0.2', '^0.0.1'), false);
   assert.equal(supportsVersion('1.4.0', '^1.0.0'), true);
   assert.equal(supportsVersion('2.0.0', '^1.0.0'), false);
+});
+
+test('the Platform declaration is a floor: any newer host passes, older hosts and bad grammar fail (ADR-128)', () => {
+  assert.deepEqual(minimumVersion('^0.6.0'), [0, 6, 0]);
+  assert.deepEqual(minimumVersion('0.6.2'), [0, 6, 2]);
+  assert.deepEqual(minimumVersion('0.6.x'), [0, 6, 0]);
+  assert.deepEqual(minimumVersion('0.x'), [0, 0, 0]);
+  for (const range of ['*', 'latest', '>=0.6.0', '~0.6.0', '0.6.0-beta.1', '', 6]) assert.equal(minimumVersion(range), null, String(range));
+
+  // The same declarations supportsVersion would reject for a newer minor or major now pass.
+  for (const host of ['0.6.0', '0.6.99', '0.7.0', '0.50.0', '1.0.0']) assert.equal(meetsMinimumVersion(host, '^0.6.0'), true, host);
+  for (const host of ['0.5.99', '0.0.1']) assert.equal(meetsMinimumVersion(host, '^0.6.0'), false, host);
+  assert.equal(meetsMinimumVersion('0.7.0', '0.6.2'), true);
+  assert.equal(meetsMinimumVersion('0.6.1', '0.6.2'), false);
+  assert.equal(meetsMinimumVersion('0.5.0', '0.6.x'), false);
+  // Unsupported grammar and non-versions never pass, matching supportsVersion.
+  for (const range of ['>=0.6.0', '*', '0.6.0-beta.1']) assert.equal(meetsMinimumVersion('0.7.0', range), false, range);
+  assert.equal(meetsMinimumVersion('0.7.0-rc.1', '^0.6.0'), false);
+  assert.equal(meetsMinimumVersion(undefined, '^0.6.0'), false);
 });
 
 test('pin resolution produces an offline self-contained lock and rejects absent/moving/tampered inputs', async () => {

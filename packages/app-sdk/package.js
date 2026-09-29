@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 import { MAX_PACKAGE_BYTES, SHA256_PATTERN, assertAppIdentity, decodeAppPackage, isPlainObject } from './format.js';
 
-export { APP_SDK_VERSION, MAX_PACKAGE_BYTES, decodeAppPackage, sha256, supportsVersion } from './format.js';
+export { APP_SDK_VERSION, MAX_PACKAGE_BYTES, decodeAppPackage, meetsMinimumVersion, minimumVersion, sha256, supportsVersion } from './format.js';
 export const PLATFORM_VERSION = createRequire(import.meta.url)('../../package.json').version;
 export const readBrowserSdk = () => readFile(new URL('./browser.js', import.meta.url), 'utf8');
 export const componentRunnerUrl = new URL('./component-runner.mjs', import.meta.url);
