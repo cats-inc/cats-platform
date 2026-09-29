@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Approved (owner, 2026-09-29); Phases 1–3 implemented; Phase 4 (photos) pending |
+| **Status** | Implemented (owner approved 2026-09-29); real-bot and Desktop visual acceptance pending |
 | **Owner** | Claude |
 | **Reviewer** | Owner |
 
@@ -128,6 +128,10 @@
     列給他挑；他以獨立一行 `[photo: 檔名]` 表示要附上哪一張。檔名必須是資料夾內的
     basename，不接受路徑。
 30. FR-30：Telegram 以 multipart `sendPhoto` 上傳本機檔案。貓只看得到檔名、看不到圖片內容。
+    選中的照片同時複製到 lane 的附件資料夾，Desktop 私訊以既有的附件區塊顯示圖片；
+    訊息 metadata 的 `transportMedia` 指向原始檔，Telegram fanout 送圖片並把文字當圖說，
+    文字超過 1024 字時先送圖片再送文字。
+31. FR-31：陪伴設定頁的「作息與相簿」卡片可調整是否啟用、就寢時間、起床區間與相簿資料夾。
 
 ### Non-Functional Requirements
 

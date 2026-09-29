@@ -90,7 +90,8 @@ function isTelegramDeliveryMediaKind(
 
 function hasMediaReference(request: TelegramDeliveryRequest): boolean {
   return readTelegramString(request.fileId) !== null
-    || readTelegramString(request.mediaUrl) !== null;
+    || readTelegramString(request.mediaUrl) !== null
+    || readTelegramString(request.mediaFile?.path) !== null;
 }
 
 function recordFailedTelegramDelivery(

@@ -64,6 +64,8 @@ export interface CompanionLifeProfile {
   wakeWindowStart: string;
   wakeWindowEnd: string;
   sleepUntil: string | null;
+  /** SPEC-124 FR-28: a host folder the Cat may pick photos from. */
+  photoFolder: string | null;
   updatedAt: string;
 }
 
@@ -72,6 +74,7 @@ export interface UpdateCompanionLifeProfileInput {
   bedtime?: string;
   wakeWindowStart?: string;
   wakeWindowEnd?: string;
+  photoFolder?: string | null;
 }
 
 export interface CompanionBox {

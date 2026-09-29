@@ -303,6 +303,8 @@ export interface TelegramDeliveryRequest {
   mediaKind?: TelegramDeliveryMediaKind | null;
   mediaUrl?: string | null;
   fileId?: string | null;
+  /** A local file uploaded with multipart form data (SPEC-124 FR-30). */
+  mediaFile?: { path: string; fileName: string } | null;
   caption?: string | null;
   callbackQueryId?: string | null;
   showAlert?: boolean;

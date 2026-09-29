@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type {
   CompanionBoxSummary,
+  CompanionLifeProfile,
   CompanionMemoryRecord,
   CompanionResponseProfile,
   CompanionSourceRecord,
   CreateCompanionMemoryInput,
   CreateCompanionSourceInput,
+  UpdateCompanionLifeProfileInput,
   UpdateCompanionResponseProfileInput,
   UpdateCompanionSourceInput,
 } from '../../../../../products/chat/companion/contracts.js';
@@ -17,9 +19,11 @@ import {
   deleteCompanionMemory,
   deleteCompanionSource,
   getCompanionBoxSummary,
+  getCompanionLife,
   getCompanionResponseProfile,
   listCompanionMemory,
   listCompanionSources,
+  updateCompanionLife,
   updateCompanionResponseProfile,
   updateCompanionSource,
 } from '../../../../../products/chat/renderer/api/companion.js';
@@ -31,6 +35,7 @@ export interface CompanionWorkspaceData {
   sources: CompanionSourceRecord[];
   memory: CompanionMemoryRecord[];
   responseProfile: CompanionResponseProfile | null;
+  life: CompanionLifeProfile | null;
   loading: boolean;
   error: string | null;
 }
@@ -43,6 +48,8 @@ export interface CompanionWorkspaceActions {
   addMemory: (input: CreateCompanionMemoryInput) => Promise<void>;
   removeMemory: (memoryId: string) => Promise<void>;
   editResponseProfile: (input: UpdateCompanionResponseProfileInput) => Promise<void>;
+  /** Rejects with `CompanionLifeUpdateError` so the card can explain what to fix. */
+  editLife: (input: UpdateCompanionLifeProfileInput) => Promise<void>;
 }
 
 export function useCompanionWorkspace(
@@ -53,6 +60,7 @@ export function useCompanionWorkspace(
   const [sources, setSources] = useState<CompanionSourceRecord[]>([]);
   const [memory, setMemory] = useState<CompanionMemoryRecord[]>([]);
   const [responseProfile, setResponseProfile] = useState<CompanionResponseProfile | null>(null);
+  const [life, setLife] = useState<CompanionLifeProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -96,9 +104,13 @@ export function useCompanionWorkspace(
           break;
         }
         case 'settings': {
-          const profile = await getCompanionResponseProfile(catId, signal);
+          const [profile, lifeProfile] = await Promise.all([
+            getCompanionResponseProfile(catId, signal),
+            getCompanionLife(catId, signal),
+          ]);
           if (!signal.aborted) {
             setResponseProfile(profile);
+            setLife(lifeProfile);
           }
           break;
         }
@@ -156,11 +168,16 @@ export function useCompanionWorkspace(
     setResponseProfile(updated);
   }, [catId]);
 
+  const editLife = useCallback(async (input: UpdateCompanionLifeProfileInput) => {
+    setLife(await updateCompanionLife(catId, input));
+  }, [catId]);
+
   return {
     summary,
     sources,
     memory,
     responseProfile,
+    life,
     loading,
     error,
     refreshTab,
@@ -170,5 +187,6 @@ export function useCompanionWorkspace(
     addMemory,
     removeMemory,
     editResponseProfile,
+    editLife,
   };
 }

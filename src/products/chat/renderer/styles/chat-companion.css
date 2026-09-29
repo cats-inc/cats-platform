@@ -941,6 +941,12 @@
   font-size: 12px;
 }
 
+.companionTimeRange {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .companionTelegramInfo {
   font-size: 13px;
   display: flex;

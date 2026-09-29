@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { createDefaultCoreState } from '../build/server/core/model/index.js';
@@ -356,6 +359,97 @@ test('a companion heartbeat that speaks reaches the linked Telegram chat once', 
       fixture.deliveries.map((delivery) => [delivery.operation, delivery.chatId, delivery.text]),
       [['send', '12345', 'Good morning from the windowsill.']],
     );
+  } finally {
+    fixture.stop();
+  }
+});
+
+const ONE_PIXEL_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+test('a heartbeat photo shows inline on Desktop and reaches Telegram as a captioned photo', async () => {
+  const fixture = await createFanoutFixture();
+  try {
+    const catId = (await fixture.chatStore.read()).cats[0].id;
+    const photoFolder = await mkdtemp(path.join(tmpdir(), 'cats-heartbeat-photo-'));
+    const photoPath = path.join(photoFolder, 'window-sun.png');
+    await writeFile(photoPath, ONE_PIXEL_PNG);
+    const companionStore = new MemoryCompanionBoxStore();
+    await companionStore.updateLifeProfile(catId, { photoFolder });
+    const speak = createCompanionHeartbeatSpeaker({
+      chatStore: fixture.chatStore,
+      runtimeClient: {
+        async sendMessage() {
+          return {
+            segments: [{ kind: 'text', text: 'Good morning!\n[photo: window-sun.png]', toolName: null, toolId: null }],
+            inputTokens: 1,
+            outputTokens: 1,
+            tokensUsed: 2,
+          };
+        },
+      },
+      companionStore,
+      config: { runtimeDataDir: await mkdtemp(path.join(tmpdir(), 'cats-heartbeat-runtime-')) },
+      eventHub: fixture.eventHub,
+      mutationGate: { run: (_key, operation) => operation() },
+      now: () => new Date('2026-04-22T07:05:00.000Z'),
+    });
+
+    assert.equal(await speak({
+      catId,
+      laneId: fixture.channelId,
+      sessionId: 'session-heartbeat',
+      kind: 'wake',
+      now: new Date('2026-04-22T07:05:00.000Z'),
+      awakeSince: null,
+      lastOwnerMessageAt: null,
+    }), 'spoke');
+    await flushFanout();
+
+    const message = (await fixture.chatStore.read()).channels
+      .find((channel) => channel.id === fixture.channelId).messages.at(-1);
+    assert.match(
+      message.body,
+      /^\[Attached files in working directory:\]\n- \.cats-attachments\/window-sun\.png\n\nGood morning!$/u,
+    );
+    assert.deepEqual(message.metadata.transportMedia, {
+      kind: 'photo',
+      path: photoPath,
+      fileName: 'window-sun.png',
+    });
+    assert.deepEqual(
+      fixture.deliveries.map((delivery) => [delivery.operation, delivery.mediaKind, delivery.caption, delivery.mediaFile]),
+      [['send_media', 'photo', 'Good morning!', { path: photoPath, fileName: 'window-sun.png' }]],
+    );
+  } finally {
+    fixture.stop();
+  }
+});
+
+test('a photo whose text is too long for a caption is sent first, then the text', async () => {
+  const fixture = await createFanoutFixture();
+  try {
+    const longText = 'Purr. '.repeat(250).trim();
+    await appendAndPublish(
+      fixture,
+      {
+        senderKind: 'agent',
+        senderName: 'Companion Cat',
+        body: `[Attached files in working directory:]\n- .cats-attachments/window-sun.png\n\n${longText}`,
+      },
+      {
+        origin: 'runtime',
+        metadata: { transportMedia: { kind: 'photo', path: '/photos/window-sun.png', fileName: 'window-sun.png' } },
+      },
+    );
+
+    assert.deepEqual(
+      fixture.deliveries.map((delivery) => [delivery.operation, delivery.caption ?? null]),
+      [['send_media', null], ['send', null]],
+    );
+    assert.equal(fixture.deliveries[1].text, longText);
   } finally {
     fixture.stop();
   }

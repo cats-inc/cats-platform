@@ -1,8 +1,8 @@
 # Implementation Plans
 
 - [PLAN-117: Alive companion life loop](PLAN-117-alive-companion-life-loop.md)
-  — Phases 1–3 (keep-alive, rhythm, heartbeat, Telegram on-duty) implemented;
-  photos follow.
+  — implemented (keep-alive, rhythm, heartbeat, Telegram on-duty, photos);
+  real-bot and Desktop visual acceptance pending.
 - [PLAN-116: Cats Code agent artifact preview](PLAN-116-code-agent-artifact-preview-rollout.md)
   — planning only; M1 calculator (static), M2 pomodoro (Vite), M3 Claude/Codex
   behavioral acceptance, M4 viewer/provider breadth.
@@ -56,7 +56,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
-| [PLAN-117](PLAN-117-alive-companion-life-loop.md) | Alive Companion Life Loop | In progress; Phases 1–3 implemented | [SPEC-124](../specs/SPEC-124-alive-companion-life-loop.md), [ADR-127](../decisions/127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md) |
+| [PLAN-117](PLAN-117-alive-companion-life-loop.md) | Alive Companion Life Loop | Implemented; acceptance pending | [SPEC-124](../specs/SPEC-124-alive-companion-life-loop.md), [ADR-127](../decisions/127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md) |
 | [PLAN-114](PLAN-114-companion-as-cat-role.md) | Companion as a Cat Role | Implemented; Settings visual acceptance pending | [SPEC-019](../specs/SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md), [ADR-040](../decisions/040-make-companion-a-first-class-chat-mode-with-workspace-and-presence.md) |
 | [PLAN-113](PLAN-113-managed-plugin-capabilities.md) | Managed Plugin Capabilities | Internal Agency host pilot; delivery validation recorded in plan | [SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md) |
 | [PLAN-112](PLAN-112-app-market-and-lifecycle.md) | App Market and Lifecycle | Planned; implementation not started | [SPEC-120](../specs/SPEC-120-app-market-and-lifecycle.md) |

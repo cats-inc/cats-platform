@@ -298,11 +298,14 @@ shared core and does not move Cat-local storage into `cats-runtime`.
   response settings and returns `{ responseProfile, canonicalSync }`
 - `GET /api/cats/{catId}/companion-box/life` returns `{ life }`, the SPEC-124
   daily rhythm: `enabled`, `bedtime`, `wakeWindowStart`, `wakeWindowEnd`
-  (host-local `HH:MM`), `sleepUntil`, `updatedAt`. Boxes without one read as the
-  defaults (enabled, 23:00, 07:00–09:00).
+  (host-local `HH:MM`), `sleepUntil`, `photoFolder`, `updatedAt`. Boxes without
+  one read as the defaults (enabled, 23:00, 07:00–09:00, no photo folder).
 - `PATCH /api/cats/{catId}/companion-box/life` updates `enabled`, `bedtime`,
-  `wakeWindowStart` and `wakeWindowEnd`; malformed clocks, a wake window that ends
-  before it starts, or a bedtime inside the wake window return `400`.
+  `wakeWindowStart`, `wakeWindowEnd` and `photoFolder`; malformed clocks, a wake
+  window that ends before it starts, or a bedtime inside the wake window return
+  `400`. `photoFolder` must be an absolute path to an existing folder on the host
+  (`400 invalid_companion_photo_folder` / `companion_photo_folder_not_found`), or
+  `null` to clear it.
   `sleepUntil` is ignored here: it is written only when the owner wakes or puts
   the Cat to sleep (`POST /api/channels/{channelId}/activations` or `/deactivate`
   on the companion's direct lane), which also records a `presence_changed`

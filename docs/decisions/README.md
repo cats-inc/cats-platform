@@ -3,7 +3,7 @@
 - [ADR-127: Alive companion life loop](127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md)
   — accepted, 2026-09-29; platform-owned keep-alive, rhythm and heartbeat for
   companion Cats in their own direct-message session; keep-alive, rhythm and
-  heartbeat and Telegram on-duty implemented; photos next.
+  heartbeat, Telegram on-duty and photos implemented.
 - [ADR-126: Session MCP delivery of Code preview tools](126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md)
   — proposed, 2026-09-29; Platform-hosted `cats` MCP server delivered by
   runtime session descriptors; retires the undelivered tool catalog; not implemented.
@@ -52,7 +52,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| [ADR-127](127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md) | Keep Companion Cats Alive with a Platform-Owned Life Loop | Accepted; Phases 1–3 implemented via PLAN-117 | 2026-09-29 |
+| [ADR-127](127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md) | Keep Companion Cats Alive with a Platform-Owned Life Loop | Accepted; implemented via PLAN-117 | 2026-09-29 |
 | [ADR-124](124-model-companion-as-a-cat-role-not-a-skill-profile.md) | Model Companion as a Cat Role, Not a Skill Profile | Accepted; implemented via PLAN-114; release boundary 0.6.0 | 2026-09-29 |
 | [ADR-123](123-expose-app-sdk-contract-as-platform-npm-subpath.md) | Expose the App SDK Contract as a Platform npm Subpath | Accepted for Stage 1; implemented, not yet published | 2026-09-29 |
 | [ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md) | Adopt Managed Plugins for Upstream Capabilities | Internal Agency host pilot accepted; general contract proposed | 2026-09-29 |
