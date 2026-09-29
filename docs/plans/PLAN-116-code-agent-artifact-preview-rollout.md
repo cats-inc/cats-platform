@@ -127,14 +127,19 @@ call a Platform-hosted MCP tool and receive its result.
 
 ### P3: Canvas beside the Code conversation (M1)
 
-- [ ] B1: Add the `code_conversation` surface to the Artifact Canvas contracts,
+- [x] B1: Add the `code_conversation` surface to the Artifact Canvas contracts,
   route registry, Activity anchor derivation, projection and iframe policy scope
   checks. Add round-trip tests.
-- [ ] B2: Mount `withSharedViewerRoutes` on the `chats/:channelId` route of
-  `WorkspaceAppRoutes` for Code only, and parameterize it so Work is unchanged.
-  Add the top-bar Preview control, which reopens the most recent artifact from
-  show-intent Activity. Verify top-bar alignment with Playwright at 1024, 1249,
-  1600 and 1920 px.
+- [x] B2a: Mount `withSharedViewerRoutes` on the `chats/:channelId` route of
+  `WorkspaceAppRoutes` for Code only (`chatCanvasSurfaceKind`), so Work is
+  unchanged. `useWorkspaceLocationState` now matches `/chats/:channelId/*`, so
+  the channel stays selected on `/canvas/...` child routes. The surface ID is
+  the channel ID; Activity and artifact anchoring translate it with
+  `buildChatConversationId`.
+- [ ] B2b: Add the top-bar Preview control, which reopens the most recent
+  artifact from show-intent Activity. This follows A-ii, once agent artifacts
+  exist. Verify top-bar alignment with Playwright at 1024, 1249, 1600 and 1920 px
+  in the isolated M1 acceptance instance.
 
 ### P4: Static preview lease (M1)
 
@@ -262,6 +267,7 @@ call a Platform-hosted MCP tool and receive its result.
 | Orphan dev servers | Medium | Process-tree stop, shutdown stop, startup sweep, M2 check |
 | Dev server ignores the leased port | Medium | Readiness timeout with log tail; framework adapters in D3 |
 | Second supervisor next to SPEC-122 | Medium | F4 convergence; no App-specific logic in the preview supervisor |
+| Chat `chat_conversation` anchoring compares the raw channel ID with `conversation-channel-<id>` (`projection.ts`, `activity.ts`) | Low | Code uses `buildChatConversationId`; Chat is out of scope and recorded for its owner |
 | Oversized PRs | Low | Phases split into R1–R4, A1–A3, B1–B2, C1–C2, D1–D3, each under about 400 lines |
 
 ## Progress Log
