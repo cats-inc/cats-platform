@@ -7,7 +7,7 @@ import type { LivePreviewProcessAdapter } from './processAdapter.js';
 import { selectLivePreviewProcessAdapter } from './processAdapterFactory.js';
 import { createRealLivePreviewProcessAdapter } from './realProcessAdapter.js';
 import { createCodeLivePreviewProcessAdapter } from './staticAdapter.js';
-import { LivePreviewSupervisor } from './supervisor.js';
+import { LivePreviewSupervisor, type LivePreviewProcessRegistry } from './supervisor.js';
 
 export interface CodeLivePreviewHostOptions {
   /**
@@ -16,6 +16,8 @@ export interface CodeLivePreviewHostOptions {
    * only while this returns true (SPEC-123 CAP-07/CAP-08).
    */
   previewServersAllowed?: () => Promise<boolean>;
+  /** Records running dev servers for the next start's orphan sweep (CAP-13). */
+  processRegistry?: LivePreviewProcessRegistry;
 }
 
 /**
@@ -39,6 +41,7 @@ export function createCodeLivePreviewSupervisor(
   return new LivePreviewSupervisor({
     config: effective,
     processAdapter: createCodeLivePreviewProcessAdapter(processAdapter),
+    ...(options.processRegistry ? { processRegistry: options.processRegistry } : {}),
   });
 }
 

@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentType,
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
@@ -34,11 +35,21 @@ export interface SharedViewerRoutesInput {
   surfaceKind: CanvasSurfaceKind;
   surfaceIdParam: string;
   element: ReactNode;
+  /** Product controls shown under the canvas top bar, e.g. Code preview lease controls. */
+  canvasControls?: ComponentType<ArtifactCanvasControlsProps>;
+}
+
+export interface ArtifactCanvasControlsProps {
+  surface: CanvasSurfaceRef;
+  artifactId: string;
+  /** Reload the canvas projection, e.g. after the preview behind it restarted. */
+  onRefresh(): void;
 }
 
 export interface ArtifactCanvasSurfaceOutletContext {
   surface: CanvasSurfaceRef;
   parentUrl: string;
+  canvasControls?: ComponentType<ArtifactCanvasControlsProps>;
 }
 
 const ARTIFACT_CANVAS_PANE_WIDTH_DEFAULT = 460;
@@ -57,6 +68,7 @@ export function withSharedViewerRoutes(input: SharedViewerRoutesInput): ReactEle
         <SharedViewerSurfaceFrame
           surfaceKind={input.surfaceKind}
           surfaceIdParam={input.surfaceIdParam}
+          canvasControls={input.canvasControls}
         >
           {input.element}
         </SharedViewerSurfaceFrame>
@@ -75,10 +87,12 @@ export function useArtifactCanvasSurfaceOutletContext(): ArtifactCanvasSurfaceOu
 function SharedViewerSurfaceFrame({
   surfaceKind,
   surfaceIdParam,
+  canvasControls,
   children,
 }: {
   surfaceKind: CanvasSurfaceKind;
   surfaceIdParam: string;
+  canvasControls?: ComponentType<ArtifactCanvasControlsProps>;
   children: ReactNode;
 }): JSX.Element {
   const { t } = useI18n();
@@ -211,7 +225,7 @@ function SharedViewerSurfaceFrame({
         onKeyDown={handleResizeKeyDown}
         onPointerDown={handleResizePointerDown}
       />
-      <Outlet context={{ surface, parentUrl } satisfies ArtifactCanvasSurfaceOutletContext} />
+      <Outlet context={{ surface, parentUrl, canvasControls } satisfies ArtifactCanvasSurfaceOutletContext} />
     </div>
   );
 }

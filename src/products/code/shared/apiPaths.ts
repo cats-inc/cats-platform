@@ -77,6 +77,17 @@ export const CODE_API_LIVE_PREVIEW_LOGS_PATTERN =
   /^\/api\/code\/live-previews\/([^/]+)\/logs$/u;
 export const CODE_API_LIVE_PREVIEW_STOP_PATTERN =
   /^\/api\/code\/live-previews\/([^/]+)\/stop$/u;
+export const CODE_API_LIVE_PREVIEW_RENEW_PATTERN =
+  /^\/api\/code\/live-previews\/([^/]+)\/renew$/u;
+/** The preview behind a canvas artifact, and its restart (SPEC-123 CAP-13/14). */
+export const CODE_API_PREVIEW_ARTIFACT_PATTERN =
+  /^\/api\/code\/preview-artifacts\/([^/]+)$/u;
+export const CODE_API_PREVIEW_ARTIFACT_RESTART_PATTERN =
+  /^\/api\/code\/preview-artifacts\/([^/]+)\/restart$/u;
+
+export function buildCodeApiPreviewArtifactPath(artifactId: string): string {
+  return `${CODE_API_PREFIX}/preview-artifacts/${encodeURIComponent(artifactId)}`;
+}
 
 export function buildCodeApiTaskPath(taskId?: string | null): string {
   return buildCodeApiDetailPath(CODE_API_TASKS_PATH, taskId);

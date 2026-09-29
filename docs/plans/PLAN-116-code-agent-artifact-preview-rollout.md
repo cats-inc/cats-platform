@@ -281,10 +281,31 @@ call a Platform-hosted MCP tool and receive its result.
   Deviation: the switch ships **off**. The approved default is on, but enabling
   process spawning by default was held back for the user's explicit
   confirmation; flipping it is a one-line change in `platformPreferences.ts`.
-- [ ] D2: Add canvas top-bar lease controls (status, Stop, Restart, Logs, Open
+- [x] D2: Add canvas top-bar lease controls (status, Stop, Restart, Logs, Open
   externally), reusing the `LivePreviewPanel` pieces. Implement lifecycle: stop on
   conversation deletion and grant revocation, TTL renewal while the canvas is
   visible, shutdown stop and a startup orphan sweep.
+  Done:
+  - `CodePreviewCanvasControls` fills a new product slot under the canvas top
+    bar (`canvasControls` on `withSharedViewerRoutes`). For a dev server it
+    shows the status and Stop, Restart, Logs and Open in browser.
+  - A static preview whose lease is gone restarts transparently on the same
+    artifact, which fixes the M1/B2b blank iframe after a Platform restart.
+  - The lease renews every 5 minutes while the canvas shows it.
+  - `livePreview/conversationPreviews.ts` owns each conversation's leases and
+    restarts. It records `artifactDirectory` in the preview metadata, restarts
+    on the same artifact id and rebinds `previewId` and `path`.
+  - Dev restarts need the Settings switch.
+  - The Code runtime wrapper reports session start, close and delete:
+    - deleting a conversation's last session stops its previews at once;
+    - closing it stops them after 60 seconds, unless a new session starts first.
+  - Running dev servers are recorded in
+    `<platform>/state/code-live-preview-processes.json`. The next start stops
+    every recorded process that is alive and still holds its port.
+  - New Code API routes:
+    - `GET /api/code/preview-artifacts/:id`;
+    - `POST …/restart`;
+    - `POST /api/code/live-previews/:id/renew`.
 - [ ] D3: Add the `npm-script` profile with framework port adapters once node/npm
   discovery is proven in packaged Desktop.
 - [ ] **M2 acceptance** (isolated instance, closes PLAN-097 Task 5.4): a Vite

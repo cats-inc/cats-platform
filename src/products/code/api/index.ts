@@ -1,3 +1,4 @@
+import type { CodeConversationPreviews } from '../livePreview/conversationPreviews.js';
 import type { LivePreviewSupervisor } from '../livePreview/supervisor.js';
 import type { AppConfig } from '../../../config.js';
 import {
@@ -71,6 +72,8 @@ export interface CodeApiDependencies {
   stopLivePreview?: (previewId: string, reason?: string) => Promise<LivePreviewStopResult>;
   /** Starts supervised previews; the host constructs one when none is injected. */
   livePreviewSupervisor?: LivePreviewSupervisor;
+  /** Code conversation previews behind the canvas controls (SPEC-123 CAP-13/14). */
+  conversationPreviews?: CodeConversationPreviews;
   now?: () => Date;
 }
 

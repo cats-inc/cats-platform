@@ -27,6 +27,9 @@ import {
 } from '../../products/code/agentTools/contracts.js';
 import { createCodeAgentToolsClientWrapper } from '../../products/code/agentTools/runtimeClientWrapper.js';
 import { createCodeAgentToolsService } from '../../products/code/agentTools/service.js';
+import type { CodeConversationPreviews } from '../../products/code/livePreview/conversationPreviews.js';
+import { sweepOrphanLivePreviewProcesses } from '../../products/code/livePreview/processRegistry.js';
+import { resolveCodeLivePreviewProcessRegistryPath } from '../../products/code/livePreview/processRegistryPath.js';
 import { readCodePreviewServersEnabled } from '../../shared/platformPreferences.js';
 import { getDefaultArtifactCanvasRenderIntentHub } from '../../products/shared/artifactCanvas/renderIntent.js';
 import { startTransportFanout } from '../../platform/transports/fanout/subscriber.js';
@@ -59,9 +62,17 @@ export function createServer(dependencies: ServerDependencies) {
   const providerSelectorClient = dependencies.shared.runtimeClient;
   const codeAgentToolGrants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
   let codeAgentToolsEndpoint: string | null = null;
+  let codeConversationPreviews: CodeConversationPreviews | undefined;
   const codeAgentToolsClients = createCodeAgentToolsClientWrapper({
     grants: codeAgentToolGrants,
     endpoint: () => codeAgentToolsEndpoint,
+    // SPEC-123 CAP-13: a conversation's previews stop when its last session
+    // ends; a closed session waits a grace period in case it is being replaced.
+    onSessionStarted: (channelId) => codeConversationPreviews?.retain(channelId),
+    onSessionEnded: (channelId, reason) => codeConversationPreviews?.release(channelId, {
+      immediate: reason === 'deleted',
+      stillInUse: () => codeAgentToolGrants.some((grant) => grant.binding.channelId === channelId),
+    }),
   });
   let knowledgeEndpoint: string | null = null;
   const knowledge = createAgentKnowledgeBridge({
@@ -85,6 +96,7 @@ export function createServer(dependencies: ServerDependencies) {
     ...(dependencies.work?.runtimeClient ? { work: { ...dependencies.work, runtimeClient: plugins.wrapClient(knowledge.wrapClient(dependencies.work.runtimeClient)) } } : {}),
   };
   const resolvedDependencies = resolveServerDependencies(dependencies);
+  codeConversationPreviews = resolvedDependencies.code.conversationPreviews;
   let pluginTimer: ReturnType<typeof setInterval> | undefined;
   resolvedDependencies.shared.providerSelectorClient = providerSelectorClient;
   function startBackgroundLoops() {
@@ -158,6 +170,7 @@ export function createServer(dependencies: ServerDependencies) {
     coreStore: resolvedDependencies.code.coreStore,
     livePreviewSupervisor: resolvedDependencies.code.livePreviewSupervisor,
     previewServersEnabled: () => readCodePreviewServersEnabled(resolvedDependencies.shared.config.chatStatePath),
+    conversationPreviews: resolvedDependencies.code.conversationPreviews,
     grants: codeAgentToolGrants,
     policyConfig: resolvedDependencies.shared.config.artifactCanvas,
     now: resolvedDependencies.shared.now,
@@ -290,6 +303,10 @@ export function createServer(dependencies: ServerDependencies) {
   };
 
   server.on('listening', () => {
+    // Dev servers a crashed Platform left running still hold their ports.
+    void sweepOrphanLivePreviewProcesses(
+      resolveCodeLivePreviewProcessRegistryPath(resolvedDependencies.shared.config.chatStatePath),
+    ).catch(reportUnhandledServerError);
     appHostingReady = Promise.all([appComponents?.restore(), ingress?.restore()]).then(() => {});
     void appHostingReady.catch(reportUnhandledServerError);
     livePreviewSweep = setInterval(() => {

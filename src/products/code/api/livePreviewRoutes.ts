@@ -5,12 +5,16 @@ import {
   sendMethodNotAllowed,
 } from '../../../shared/http.js';
 import { readPlatformPreferences, writePlatformPreferences } from '../../../shared/platformPreferences.js';
+import { readLogTail } from '../agentTools/devPreview.js';
 import {
   CODE_API_LIVE_PREVIEWS_PATH,
   CODE_API_PREVIEW_SETTINGS_PATH,
   CODE_API_LIVE_PREVIEW_DETAIL_PATTERN,
   CODE_API_LIVE_PREVIEW_LOGS_PATTERN,
   CODE_API_LIVE_PREVIEW_STOP_PATTERN,
+  CODE_API_LIVE_PREVIEW_RENEW_PATTERN,
+  CODE_API_PREVIEW_ARTIFACT_PATTERN,
+  CODE_API_PREVIEW_ARTIFACT_RESTART_PATTERN,
 } from '../shared/apiPaths.js';
 import type { CodeApiRouteContext } from './index.js';
 import {
@@ -30,6 +34,7 @@ export async function routeCodeLivePreviewApi(
     await routePreviewSettings(context);
     return true;
   }
+  if (await routePreviewArtifact(context)) return true;
   if (context.url.pathname === CODE_API_LIVE_PREVIEWS_PATH) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
@@ -178,6 +183,68 @@ async function routePreviewSettings(context: CodeApiRouteContext): Promise<void>
     previewServersEnabled: body.previewServersEnabled,
     stoppedPreviewIds,
   });
+}
+
+/**
+ * The Code canvas controls (SPEC-123 CAP-13/14): the preview behind a canvas
+ * artifact, restarting it, and renewing its lease while the canvas shows it.
+ */
+async function routePreviewArtifact(context: CodeApiRouteContext): Promise<boolean> {
+  const renew = matchRoute(context.url.pathname, CODE_API_LIVE_PREVIEW_RENEW_PATTERN);
+  if (renew) {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    const lease = renew[0] ? context.dependencies.livePreviewSupervisor?.renewLease(renew[0]) : null;
+    if (!lease) {
+      sendJson(context.response, 404, {
+        error: { code: 'live_preview_not_found', message: 'No active live preview with that id.' },
+      });
+      return true;
+    }
+    sendJson(context.response, 200, { previewId: lease.previewId, expiresAt: lease.expiresAt });
+    return true;
+  }
+  const restart = matchRoute(context.url.pathname, CODE_API_PREVIEW_ARTIFACT_RESTART_PATTERN);
+  const detail = restart ? null : matchRoute(context.url.pathname, CODE_API_PREVIEW_ARTIFACT_PATTERN);
+  if (!restart && !detail) return false;
+  const previews = context.dependencies.conversationPreviews;
+  if (!previews) {
+    sendUnavailable(context);
+    return true;
+  }
+  const artifactId = (restart ?? detail)![0] ?? '';
+  if (detail) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    const state = await previews.describeArtifact(artifactId);
+    if (!state) {
+      sendJson(context.response, 404, {
+        error: { code: 'preview_not_found', message: 'That artifact is not a supervised preview.' },
+      });
+      return true;
+    }
+    sendJson(context.response, 200, state);
+    return true;
+  }
+  if (context.method !== 'POST') {
+    sendMethodNotAllowed(context.response, ['POST']);
+    return true;
+  }
+  const result = await previews.restartArtifact(artifactId);
+  if (result.status === 'rejected') {
+    const supervisor = context.dependencies.livePreviewSupervisor;
+    sendJson(context.response, result.error.code === 'preview_not_found' ? 404 : 409, {
+      error: result.error,
+      ...(result.previewId && supervisor ? { logTail: readLogTail(supervisor, result.previewId, 80) } : {}),
+    });
+    return true;
+  }
+  sendJson(context.response, 200, result);
+  return true;
 }
 
 function sendUnavailable(context: CodeApiRouteContext): void {
