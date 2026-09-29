@@ -1,3 +1,13 @@
+import {
+  readRuntimeSessionMcpDeliveryReport,
+  type RuntimeSessionMcpDeliveryReport,
+  type RuntimeSessionMcpServer,
+} from './sessionMcpServers.js';
+export type {
+  RuntimeSessionMcpDeliveryReport,
+  RuntimeSessionMcpServer,
+  RuntimeSessionMcpServerAuth,
+} from './sessionMcpServers.js';
 import { projectImageCapabilities, projectImageJob, readImageResponse,
   type RuntimeImageCapabilities, type RuntimeImageJob, type RuntimeImageRequest } from './images.js';
 import {
@@ -119,6 +129,8 @@ export interface RuntimeSessionInfo {
   status: string;
   cwd: string | null;
   skills?: RuntimeSessionSkillState;
+  /** Session MCP server delivery, present when the session has servers. */
+  mcpServers?: RuntimeSessionMcpDeliveryReport;
 }
 
 export interface RuntimeTextSegment {
@@ -154,6 +166,8 @@ export type RuntimeMessageSegmentKind = RuntimeMessageSegment['kind'];
 export interface RuntimeMessageResult {
   segments: RuntimeMessageSegment[];
   finalization?: Record<string, unknown> | null;
+  /** Session MCP server delivery reported at the start of this turn. */
+  mcpServers?: RuntimeSessionMcpDeliveryReport;
   inputTokens: number;
   outputTokens: number;
   tokensUsed: number;
@@ -239,6 +253,8 @@ interface RuntimeSessionCreateInputBase extends RuntimeExecutionRequestInput {
   skills?: RuntimeSkillManifest<string | RuntimeRequestedSkillRef>;
   /** Runtime-enforced provider tool allowlist when permissionMode is whitelist. */
   allowedTools?: string[];
+  /** Secret-bearing MCP servers for the provider CLI; `[]` clears them. */
+  mcpServers?: RuntimeSessionMcpServer[];
 }
 
 export type RuntimeSessionCreateInput =
@@ -249,6 +265,13 @@ export interface RuntimeSendMessageInput extends RuntimeExecutionRequestInput {
   context?: RuntimeSessionInvocationContext;
   outputDir?: string | null;
   skills?: RuntimeSkillManifest<string | RuntimeRequestedSkillRef>;
+  /** Replaces the session's MCP servers when present; `[]` clears them. */
+  mcpServers?: RuntimeSessionMcpServer[];
+}
+
+export interface RuntimeSessionResumeInput {
+  /** Needed after a Runtime restart, because descriptors are memory-only there. */
+  mcpServers?: RuntimeSessionMcpServer[];
 }
 
 export interface RuntimeObservedSessionPayload {
@@ -340,7 +363,7 @@ export interface RuntimeClient {
     onEvent: (event: RuntimeSessionStreamEvent) => void | Promise<void>,
     options?: RuntimeSessionStreamOptions,
   ): Promise<void>;
-  resumeSession?(sessionId: string): Promise<RuntimeSessionInfo>;
+  resumeSession?(sessionId: string, input?: RuntimeSessionResumeInput): Promise<RuntimeSessionInfo>;
   createWakeup(input: RuntimeWakeupCreateInput): Promise<RuntimeWakeupCreateResult>;
   callMcp(request: unknown): Promise<Record<string, unknown> | null>;
   cancelSession(sessionId: string): Promise<void>;
@@ -457,6 +480,7 @@ function readRuntimeSessionInfo(
     cwd: string | null;
   },
 ): RuntimeSessionInfo {
+  const mcpServers = readRuntimeSessionMcpDeliveryReport(data.mcpServers);
   return {
     id: String(data.id ?? ''),
     provider: String(data.providerName ?? data.provider ?? fallback.provider),
@@ -472,6 +496,7 @@ function readRuntimeSessionInfo(
     skills: data.skills && typeof data.skills === 'object'
       ? data.skills as RuntimeSessionSkillState
       : undefined,
+    ...(mcpServers ? { mcpServers } : {}),
   };
 }
 
@@ -866,6 +891,9 @@ export class CatsRuntimeClient implements RuntimeClient {
     if (input.skills) {
       payload.skills = input.skills;
     }
+    if (input.mcpServers) {
+      payload.mcpServers = input.mcpServers;
+    }
     appendTaskRuntimeExecutionRequestFields(payload, input);
 
     const startedAt = Date.now();
@@ -916,6 +944,9 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
     if (input?.skills) {
       payload.skills = input.skills;
+    }
+    if (input?.mcpServers) {
+      payload.mcpServers = input.mcpServers;
     }
     appendTaskRuntimeExecutionRequestFields(payload, input);
 
@@ -984,13 +1015,16 @@ export class CatsRuntimeClient implements RuntimeClient {
     await readRuntimeSseResponse(response, onEvent);
   }
 
-  async resumeSession(sessionId: string): Promise<RuntimeSessionInfo> {
+  async resumeSession(sessionId: string, input?: RuntimeSessionResumeInput): Promise<RuntimeSessionInfo> {
+    const body = input?.mcpServers ? JSON.stringify({ mcpServers: input.mcpServers }) : undefined;
     const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/resume`, {
       method: 'POST',
       headers: {
         ...this.authHeaders(),
+        ...(body ? { 'content-type': 'application/json' } : {}),
         Accept: 'application/json',
       },
+      ...(body ? { body } : {}),
       signal: this.createTimeoutSignal(this.timeoutMs),
     });
 
