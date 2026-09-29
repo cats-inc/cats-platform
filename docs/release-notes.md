@@ -2,7 +2,7 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
-## 2026-09-29 — Platform 0.6.0 npm and Desktop standard preview (prepared)
+## 2026-09-29 — Platform 0.6.0 npm and Desktop standard preview (published)
 
 - **Minor boundary.** A Cat's companion setting is now a Cat role instead of the
   `'companion'` `skillProfile` value ([ADR-124](decisions/124-model-companion-as-a-cat-role-not-a-skill-profile.md)).
@@ -37,7 +37,44 @@
   Desktop 0.6.0 standard preview (`unsigned=false`). Runtime is pinned to 0.3.4 at
   `ea45e95aba99ca5a4aec0532ef2db1db2bf512e3`, which provides the catalog basis. cats-one's
   `^0.5.1` range keeps `npx cats-one` on Platform 0.5.x until a separately authorized
-  launcher release. Hosted CI, publication and verification remain pending.
+  launcher release.
+- **Source.** npm 0.6.0 and Desktop 0.6.0 share source. Desktop was dispatched from
+  `release/0.6.0`: the npm source `170683c28097b1cf36242c08a4cfe67e33b45eb1` plus only the
+  Usage 0.5.0 lock commit (`e999bde5f340d0969ed44622fcc798e3c5ddc265`, tag `v0.6.0`).
+  #174 (companion memory in each Cat turn prompt) merged to main after the npm source and
+  is not in 0.6.0.
+- **Upgrade evidence.** `tests/companion-role.test.js` checks that the dedicated backup
+  equals the original bytes, the main file is rewritten, a second read is stable, and the
+  `.bak` recovery path migrates too. No installed
+  0.5.x → 0.6.0 profile upgrade or self-update was exercised.
+
+npm **0.6.0** was published to `latest` at 2026-09-29 09:17 Taipei from `170683c2`. The
+[npm publish workflow](https://github.com/cats-inc/cats-platform/actions/runs/36506467329)
+test gate passed 5,302 tests with 59 skipped and no failures; the tarball has 3,661 files
+and integrity `sha512-JhETtdy7ichsfHDC0blY4FWp7JS5e3wpz87tmz3LgixUnu6p3XhYiJMhF1pgC8eivaRY/4/uu6O1UCnO2EH0Dw==`.
+The downloaded registry tarball contains the `./app-sdk` targets and `packages/app-sdk`
+format and encoder files, and its `exports` allow only `.`, `./package.json` and `./app-sdk`.
+A fresh project installed it from npm, imported the entry, validated a package on host
+0.6.0, reproduced the encoder golden hash, typechecked with NodeNext and Bundler resolution,
+and got `ERR_PACKAGE_PATH_NOT_EXPORTED` for a deep path.
+
+The [Desktop 0.6.0 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.6.0)
+was published at 2026-09-29 09:52 Taipei. All eight
+[release jobs](https://github.com/cats-inc/cats-platform/actions/runs/36509427774) passed,
+including isolated packaged Platform startup (`platformStartup: true`) on Windows, macOS
+and Linux. The source manifest records Platform `e999bde5`, Runtime `ea45e95a` and cats-apps
+`2c077cbf` with Usage 0.5.0 `payloadVerified`, so the new `npm ci` App rebuild ran in CI.
+The [complete source ZIP](https://github.com/cats-inc/cats-platform/releases/download/v0.6.0/Cats-v0.6.0-source.zip)
+has SHA-256 `0203314858faeeed24c1760c5147b1f71f4fda5f76768049a65bd2d5980ce1e6`, matching its
+checksum file. All three update metadata files name uploaded assets with matching sizes;
+the downloaded Windows installer and Linux package match their GitHub SHA-256 digests and
+updater SHA-512 values.
+
+`0.6.0 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
+The macOS log shows Developer ID team `97JBZ3MFX5`, successful notarization, a valid stapled
+ticket and a `Notarized Developer ID` Gatekeeper assessment. Self-update from 0.5.15 is
+expected on each OS under the same standard profile but was not exercised. No provider calls
+were made.
 
 ## 2026-09-29 — Desktop 0.5.15 standard preview (published)
 
