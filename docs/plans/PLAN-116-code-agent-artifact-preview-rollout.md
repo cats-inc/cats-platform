@@ -102,15 +102,22 @@ call a Platform-hosted MCP tool and receive its result.
   - The leading Runtime-sourced `mcp_servers` stream event is kept on
     `RuntimeMessageResult`. Provider-sourced progress events are ignored.
   - Types live in `src/runtime/sessionMcpServers.ts`.
-- [ ] A1: Add the official MCP TypeScript SDK and a host-internal guard module
-  under `src/platform/mcp/` (ADR-126 decision 7; not used by Apps). Record its
-  checks as the documented MCP-over-HTTP security baseline: stateless Streamable HTTP
-  with a fresh server and transport per request, `Origin` rejection, `Host`
-  check, body and rate bounds, bearer verification and idempotent receipt
-  helpers. Add an in-memory grant store for host-owned servers: issue a grant at
-  Code session create, bind it as CAP-02 requires, and revoke it on session close
-  or conversation deletion. Mount the `cats` server at `/api/code/agent-tools/mcp`
-  behind the Code API delegate.
+- [x] A1: Add a host-internal, dependency-free MCP module under
+  `src/platform/mcp/` (`jsonRpcServer.ts`, `sessionGrants.ts`; ADR-126 decision 7
+  as amended). The official SDK's transitive footprint was disproportionate.
+  Claude Code and Codex were verified against the real module. Apps do not use
+  the module.
+  - Baseline: stateless Streamable HTTP, JSON-RPC errors, protocol negotiation,
+    a 1 MiB body bound, `Origin` rejection, loopback-only peers and a bearer.
+  - Grants are `issued` (valid for initialize/list while the CLI spawns) →
+    `bound` (required for `tools/call`) → revoked. Only token hashes are kept.
+  - The `cats` server (`src/products/code/agentTools/`) serves `declare_artifact`
+    and `clear_canvas` for the grant's conversation.
+  - It is mounted at `/api/code/agent-tools/mcp` before the router, like the
+    knowledge bridge, because the Platform auth gate protects every other
+    `/api/*` route.
+  - Issuing grants on session create and revoking them on close/delete is part
+    of the A2 client wrapper.
 - [ ] A2: Implement `show_in_canvas` (`path` / `url` / `artifactId`),
   `clear_canvas` and `declare_artifact` by calling the existing materialization,
   projection, Activity and render-intent functions. Static-lease and dev-preview
