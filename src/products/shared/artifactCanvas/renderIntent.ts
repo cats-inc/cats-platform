@@ -49,6 +49,8 @@ export class ArtifactCanvasRenderIntentHub {
   private readonly subscribers = new Map<number, ArtifactCanvasRenderIntentSubscriber>();
   private readonly pending = new Map<string, ArtifactCanvasRenderIntentPendingRecord>();
 
+  clearForReset(): void { this.pending.clear(); this.subscribers.clear(); }
+
   subscribe(input: {
     surface: CanvasSurfaceRef;
     sessionId: string;

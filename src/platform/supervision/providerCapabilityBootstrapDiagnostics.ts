@@ -28,6 +28,7 @@ export interface ProviderCapabilityBootstrapDiagnosticsFile {
 }
 
 export interface ProviderCapabilityBootstrapDiagnosticSink {
+  clearForReset?(): void;
   emit(record: SupervisionDiagnosticRecord): void;
   emitMany(records: readonly SupervisionDiagnosticRecord[]): void;
   list(): SupervisionDiagnosticRecord[];
@@ -87,6 +88,7 @@ export function createProviderCapabilityBootstrapDiagnosticSink(
   }
 
   const sink = {
+    clearForReset: () => { records = []; },
     emit,
     emitMany(nextRecords: readonly SupervisionDiagnosticRecord[]) {
       for (const record of nextRecords) {

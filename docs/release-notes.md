@@ -4,6 +4,24 @@
 
 ## 2026-09-29 — Distribution hygiene (unreleased)
 
+- **Reset Platform data removes the data it promises.** Reset now removes rotating
+  and migration backups, canonical and companion memory, local knowledge, evidence
+  logs, Telegram/LINE and work-delivery state, schedules, Platform-owned attachments
+  and runtime-history caches from an explicit ownership list. It clears live store
+  caches and polling bindings, closes authenticated event streams, pauses background
+  producers, and refuses to reset during active work. A bounded reset journal retains
+  attachment/evidence cleanup targets across interrupted erasure and restart.
+  The shared local/public ingress guard also revokes Code MCP grants, stops Code
+  previews and clears their leases/logs and pending canvas intents. Failed preview
+  cleanup remains retryable instead of silently forgetting a running server.
+  Missing files are harmless; cleanup failures are reported for retry rather than
+  reported as success. Both UI locales list what remains: host preferences/configuration,
+  installed Apps/plugins and their data, Desktop/Runtime data, provider CLI logins
+  and native transcripts, and external workspace files. The button is now labelled
+  **Erase Platform data** to make that boundary clear.
+  For existing installs this fixes incomplete erasure after an explicit reset;
+  ordinary startup and persisted formats do not change. No migration, version bump
+  or publication is included. Fresh empty stores may be created by subsequent use.
 - **New app icon.** The Desktop icon is now a front-facing orange tabby on a deep-navy
   rounded tile, replacing the light-on-dark cat silhouette in a circle. It applies to the
   Windows installer and taskbar, the macOS Dock (`.icns` now follows Apple's icon grid

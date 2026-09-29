@@ -34,6 +34,7 @@ export interface TelegramWebhookIngressConfig {
 }
 
 export interface TelegramRelay {
+  clearForReset?(): void;
   getIngressConfig(): TelegramWebhookIngressConfig;
   getStatus(context: TelegramRelayContext): TelegramRelayStatus;
   getDiagnostics(context: TelegramRelayContext): TelegramRelayDiagnostics;
@@ -155,6 +156,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
     });
 
   return {
+    clearForReset: () => store.clearForReset?.(),
     getIngressConfig(): TelegramWebhookIngressConfig {
       return {
         secretToken: webhookSecretToken,

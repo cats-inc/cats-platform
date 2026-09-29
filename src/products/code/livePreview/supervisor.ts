@@ -228,6 +228,23 @@ export class LivePreviewSupervisor {
     );
   }
 
+  /** The host excludes starts/stops and the expiry sweep while resetting. */
+  async clearForReset(): Promise<void> {
+    // Retry even failed/stopping handles: stopAll() is only best-effort and can
+    // otherwise leave a server serving files after its lease has disappeared.
+    for (const managed of this.previews.values()) {
+      if (managed.handle) {
+        await managed.handle.stop({ graceMs: managed.profile.stop.graceMs,
+          killProcessTree: managed.profile.stop.killProcessTree });
+        managed.handle = null;
+      }
+      this.markStopped(managed, 'stopped', 'platform_reset');
+      managed.logs = '';
+    }
+    this.previews.clear();
+    this.leasedPorts.clear();
+  }
+
   async expireLeases(now: Date = this.now()): Promise<string[]> {
     const expired: string[] = [];
     for (const managed of this.activePreviews()) {
