@@ -139,6 +139,10 @@
 32. FR-32：一般回覆也能附照片，不限心跳。回覆的最後一段文字帶附件區塊與 `transportMedia`；
     Telegram 進來的訊息由 bridge 直接送照片，其他來源由 transport fanout 送。照片不符合
     FR-30 時不送；若回覆只剩那一行，保留原文，不以「沒有文字輸出」的預設句代替。
+33. FR-33：owner 從 Telegram 傳來的照片（含以檔案傳送的圖片）以 Bot API `getFile` 下載，
+    存進該房間的附件資料夾；訊息以與 Desktop 上傳相同的附件區塊記下路徑，貓用自己的工具
+    打開來看，Desktop 也以附件顯示。超過 20 MB（Bot API 下載上限）或下載失敗時，
+    訊息維持原本的 `Attachments: photo` 標示。適用所有 Telegram 房間，不限陪伴貓。
 
 ### Non-Functional Requirements
 

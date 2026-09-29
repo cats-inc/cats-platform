@@ -76,7 +76,7 @@
 - [x] 一般回覆：`executeDispatch` 在回合結束後處理 `[photo: …]`（`applyCompanionPhotoDirective`），
   `results.ts` 把 `transportMedia` 蓋在最後一段；Telegram bridge 對帶照片的回覆直接送照片。
 - [x] 附件複製（`channelAttachments.ts`）從 `api/` 移到 `state/`，讓派送流程也能使用。
-- [ ] Telegram 傳進來的照片下載到 lane 附件資料夾，讓貓看得到（下一個 PR）。
+- [x] Telegram 傳進來的照片下載到房間附件資料夾，讓貓看得到（SPEC-124 FR-33）。
 
 ## Follow-ups (not in this plan)
 
@@ -152,3 +152,13 @@
     server 26 檔 384 個與 bundled 173 個通過；`tsc` 的 server、desktop、root、test 專案通過
     （mobile 因工作區未安裝 mobile 依賴未檢查）。
   - 尚未驗證：真的 provider（Claude、Codex）是否會照提示翻相簿、打開圖片；真的 Telegram bot。
+- 2026-09-29：Phase 5 相簿以 #206 merge（`ac33f5d3`）。Telegram 傳進來的照片（FR-33）完成。
+  - 平台的 Telegram HTTP 層原本把回應一律解成 UTF-8 文字，二進位下載會壞掉；改為保留原始位元組
+    並提供 `arrayBuffer()`。
+  - 下載是 best effort：relay 的 `downloadFile` 失敗一律回 null，bridge 退回原本的附件標示。
+    儲存由 room bridge 選配的 `storeInboundAttachments` 負責，平台不直接依賴 chat 的附件模組。
+  - 驗證：`telegram-inbound-photos`（4，含非 UTF-8 位元組完整、超過上限不下載、存進房間附件資料夾）、
+    `telegram-work-delivery-bridge`（15，含照片以附件區塊交給貓、下載失敗維持標示）、
+    `provider-telegram-routes`、`telegram-*`、`dependency-graph`、`architecture-boundaries` 等，
+    server 19 檔 233 個與 bundled Telegram 測試 64 個通過；`tsc` 的 server、desktop、root 專案通過。
+  - 尚未驗證：真的 Telegram bot 傳照片，以及貓實際打開照片。

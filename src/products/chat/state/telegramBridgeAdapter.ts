@@ -20,6 +20,7 @@ import {
 } from './model/index.js';
 import { routeChannelMessage } from './runtimeActions.js';
 import type { CompanionBoxStore } from './companion-box/index.js';
+import { persistAttachmentsForChannels } from './channelAttachments.js';
 import type { ChatStore } from './store.js';
 import { updateChatState } from './store.js';
 import { createLockedDispatchChatStore, mergeCompletedDispatchState } from './runtime-dispatch/merge.js';
@@ -168,6 +169,15 @@ export function createChatTelegramRoomBridge(input: {
         },
       );
       return { ...routed, state: recordWrite(routed.state, lastPersisted, roomId, timestamp) };
+    },
+    async storeInboundAttachments({ state, roomId, files }) {
+      const stored = await persistAttachmentsForChannels({
+        state,
+        channelIds: [roomId],
+        files: files.map((file) => ({ name: file.name, data: file.bytes.toString('base64') })),
+        runtimeDataDir: input.runtimeDataDir,
+      });
+      return (stored.get(roomId) ?? []).map((attachment) => attachment.relativePath);
     },
     buildRecoveryState({
       state,
