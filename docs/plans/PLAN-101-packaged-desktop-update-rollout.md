@@ -529,6 +529,11 @@ acceptance remain pending a separately authorized release. Trademark clearance,
 jurisdiction-specific privacy/consumer terms, and a full dependency legal review
 remain outside this implementation slice.
 
+Explicit notice follow-ups from PR review: collect and ship third-party notices
+for the Platform server bundle, Vite renderer bundle and bundled .NET runtime;
+extend the actual packaged-resource checks to verify each surface. The current
+Runtime bundle gate does not establish notice completeness for those artifacts.
+
 ### Packaged startup failure — 2026-09-29
 
 The owner's installed 0.5.14 update exposed a missed dependency: Platform imported

@@ -8,6 +8,9 @@
   warranty disclaimer. Runtime bundle dependencies ship their original license
   notices, generated from the actual bundle inputs and bound to that build by
   hashes. Missing or stale notices block staging and the installed-resource gate.
+- The new dependency-notice gate covers the Runtime bundle only. Third-party
+  notices for the Platform server/renderer bundles and bundled .NET runtime are
+  not yet included in this gate and remain distribution follow-up work.
 - The publisher is the individual maintainer `sammykenny2`. Cats / Cats Inc. remains
   the software brand; Windows metadata no longer represents it as the developer's
   company. Product name, appId, signing configuration and data paths are unchanged.
