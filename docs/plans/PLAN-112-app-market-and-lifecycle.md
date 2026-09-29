@@ -80,13 +80,13 @@ Catalog 暫存簽章 key 僅用於測試。
 
 ## M3 — Developer SDK and independent App delivery
 
-- [ ] 從既有 host-owned SDK 整理可獨立取得的型別、文件、範例與 conformance fixtures；
+- [x] 從既有 host-owned SDK 整理可獨立取得的型別、文件、範例與 conformance fixtures；
       依 [ADR-123](../decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)
       先以 `./app-sdk` subpath 提供 allowlist 契約與跨 OS byte-deterministic 官方 encoder，
       公開入口不載入 `build/server` 內部模組，`APP_SDK_VERSION` 與
       `packages/app-sdk/package.json` 版本以單一來源或 CI 斷言一致，Platform 測試 fixtures
       改用同一 encoder。2026-09-29 已實作 subpath、encoder、共用驗證與版本一致檢查，
-      並補齊 fixture 轉換、範例與 conformance 向量；待含此入口的 Platform npm 發布後完成。
+      並補齊 fixture 轉換、範例與 conformance 向量；Platform npm 0.6.0 已於同日發布此入口。
 - [ ] Apps 只依賴版本化開發契約；runtime bridge 不被重複打包或擴大能力。最低宿主不低於
       首個提供 subpath 版本的 App，以各自宣告的最低 `catsPlatform` 驗證產物，前提是該版本
       已在 npm 發布；逐 App 的安裝或 CI matrix 由 cats-apps 設計。

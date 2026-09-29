@@ -184,7 +184,9 @@ Interface Direction 已提出的 `@cats-inc/cats-platform/app-sdk` 入口名稱�
 - Desktop 源碼包在 App 發布 commit 重建 payload；若該 revision 的 `package.json` 宣告依賴
   （例如 exact-pin 的 Platform App SDK），先在該 checkout 執行 `npm ci --ignore-scripts`。
   切換前的 revision 沒有依賴，照舊直接重建。
-- 尚未完成：含此入口的 Platform npm 發布，以及 cats-apps 的切換。
+- 發布（同日）：Platform npm 0.6.0 以 `latest` 發布此入口；cats-apps #16 改以 exact-pin 的
+  0.6.0 建置，Usage 0.5.0 是第一個用它發布的 App，Desktop 0.6.0 preview 選用它。
+  CI（Linux）與本機 Windows 建出的同一 App bytes 相同。第二階段仍未開始。
 
 ## Consequences
 
