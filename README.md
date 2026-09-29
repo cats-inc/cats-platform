@@ -398,6 +398,31 @@ cats-platform/
 - Deleting a session or a Cat is permanent and removes provider-side native
   transcripts where a provider keeps them. Back up before destructive actions.
 
+## Code signing policy
+
+Free code signing on Windows provided by [SignPath.io](https://signpath.io),
+certificate by [SignPath Foundation](https://signpath.org).
+
+- **Committers and reviewers:** the maintainer, [sammykenny2](https://github.com/sammykenny2),
+  who is the only account with write access to the `cats-inc` repositories
+  (GitHub organization owner; branch protection and two-factor authentication
+  enabled). Changes are authored with AI coding agents under this account and are
+  merged only by the maintainer.
+- **Approvers:** the maintainer. Every release build originates from a tagged
+  commit in the public repository through GitHub Actions, and every signing
+  request is approved manually by the maintainer.
+- **Build provenance:** each release asset carries a Sigstore build-provenance
+  attestation and appears in `SHA256SUMS`; see
+  [Desktop signing profiles](docs/deployment.md#desktop-signing-profiles).
+- **Privacy:** this program will not transfer any information to other networked
+  systems unless specifically requested by the user or the person installing or
+  operating it. Providers, update checks and voice services are described under
+  [Data and privacy](#data-and-privacy) and are used only when you configure or
+  trigger them.
+
+macOS builds are signed and notarized with the maintainer's Apple Developer ID.
+Linux packages are not signed; verify them with `SHA256SUMS` and the attestation.
+
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](./LICENSE).

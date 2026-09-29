@@ -304,7 +304,9 @@ public download after release; local fixtures alone do not prove published conte
 
 This section is the single definition of Desktop signing terms. Use these terms
 in release requests, dispatch confirmations, release notes and agent reports.
-Three independent properties describe a Desktop build:
+The public statement of who may commit, review and approve signed releases is the
+README's [Code signing policy](../README.md#code-signing-policy); keep the two in
+sync. Three independent properties describe a Desktop build:
 
 - **Release identity:** `official` (tag push, published as latest) or `preview`
   (manual dispatch, published as a prerelease). It selects the update feed and

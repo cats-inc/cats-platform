@@ -496,7 +496,7 @@ jobs:
           PREVIEW: ${{ needs.guard.outputs.preview }}
         run: |
           gh release view "$TAG" --json body --jq .body > original-notes.md
-          printf '## Complete Cats source code\n\n[Download the complete source ZIP](https://github.com/cats-inc/cats-platform/releases/download/%s/Cats-%s-source.zip) · [Source manifest](https://github.com/cats-inc/cats-platform/releases/download/%s/Cats-%s-sources.json)\n\nIncludes the exact Platform, Runtime and bundled App sources. GitHub\x27s automatic **Source code** links contain cats-platform only. See BUILDING.md inside the ZIP.\n\n' "$TAG" "$TAG" "$TAG" "$TAG" > release-notes.md
+          printf '## Complete Cats source code\n\n[Download the complete source ZIP](https://github.com/cats-inc/cats-platform/releases/download/%s/Cats-%s-source.zip) · [Source manifest](https://github.com/cats-inc/cats-platform/releases/download/%s/Cats-%s-sources.json)\n\nIncludes the exact Platform, Runtime and bundled App sources. GitHub\x27s automatic **Source code** links contain cats-platform only. See BUILDING.md inside the ZIP.\n\nVerify downloads with `SHA256SUMS` and `gh attestation verify <file> --repo cats-inc/cats-platform`. Code signing policy: https://github.com/cats-inc/cats-platform#code-signing-policy\n\n' "$TAG" "$TAG" "$TAG" "$TAG" > release-notes.md
           cat original-notes.md >> release-notes.md
           gh release edit "$TAG" --notes-file release-notes.md
           if [ "$PREVIEW" = "true" ]; then
