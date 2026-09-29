@@ -2,10 +2,10 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
-## 2026-09-30 — Platform 0.7.0 npm and Desktop standard preview (prepared)
+## 2026-09-30 — Platform 0.7.0 npm and Desktop standard preview (published)
 
-Platform **0.7.0** is prepared for npm `latest` and for the Desktop 0.7.0
-standard-profile preview; the owner authorized both together with Runtime 0.4.0,
+Platform **0.7.0** was published to npm `latest` and as the Desktop 0.7.0
+standard-profile preview on 2026-09-30 (Taipei); the owner authorized both together with Runtime 0.4.0,
 Usage 0.5.1, Studio 0.2.1 and cats-one 0.4.0. It is a **minor** for two reasons:
 Desktop bundles Runtime **0.4.0**, itself a minor because an API key no longer
 implies binding every interface (Desktop is unaffected: the supervisor passes
@@ -115,6 +115,56 @@ migrations landed since 0.6.1; the only store change is a write-path fix (#193).
   `gh attestation verify <file> --repo cats-inc/cats-platform`. This covers the
   unsigned Windows installer and the Linux `.deb` as well as the signed macOS
   builds. Installed apps and the updater are unchanged.
+
+- **Release plan.** The owner authorized Platform npm 0.7.0 (`latest`) and a Desktop 0.7.0
+  standard preview (`unsigned=false`) together with Runtime 0.4.0, Usage 0.5.1, Studio 0.2.1
+  and cats-one 0.4.0. Both Platform releases were first dispatched from a temporary
+  `release/0.7.0` branch at `6d53fb568988c1884cf37abb3eb030a0bcea7f8c`; the Desktop
+  run was repeated from `main` at `2c637d54df014fd64f9a5be781e8d06640e059b3`, which
+  differs only by the workflow fix below, so the packaged sources are the same. The
+  branch was deleted afterwards and tag `v0.7.0` keeps the commit.
+
+npm **0.7.0** was published to `latest` from `6d53fb56`. The
+[npm publish workflow](https://github.com/cats-inc/cats-platform/actions/runs/36612412794)
+test gate passed 5,446 of 5,505 tests with 59 skipped and no failures; the tarball has
+3,816 files and a Sigstore provenance statement
+([transparency log 3004093939](https://search.sigstore.dev/?logIndex=3004093939)). The
+registry document lagged the successful publish by several minutes; no repeat
+publication was made. cats-one 0.4.0 (`^0.7.0`, Runtime `^0.4.0`) followed: a fresh-cache
+`npx --yes cats-one@latest --platform-only --help` resolved cats-one 0.4.0, Platform 0.7.0
+and Runtime 0.4.0.
+
+The first Desktop run
+([36612417820](https://github.com/cats-inc/cats-platform/actions/runs/36612417820)) built,
+validated and drafted every asset, then failed in the new publish job: the `SHA256SUMS`
+redirection created the file before `find` listed the directory, so the list hashed its
+own empty file and the self-check failed. Nothing was published or uploaded by that job.
+[#214](https://github.com/cats-inc/cats-platform/pull/214) excludes the file by name and
+the workflow was re-dispatched against the same draft.
+
+The [Desktop 0.7.0 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.0)
+was published at 2026-09-30 02:58 Taipei by the repeated run
+([36614546433](https://github.com/cats-inc/cats-platform/actions/runs/36614546433)); all
+eight jobs passed, including packaged Platform startup and the license gates
+(`catsLicenses`, `rendererNotices` on every OS; `runtimeBundledNotices` and
+`nativeWindowsNotices` on Windows, where the Runtime ships as a bundle and the voice
+helper carries the .NET 8.0.31 runtime notices). Tag `v0.7.0` points at `6d53fb56`,
+where the draft was created; the source manifest and the attestation record Platform
+`2c637d54`, Runtime `2f167ad5` and cats-apps `1c67c428` with Usage 0.5.1
+`payloadVerified`. `SHA256SUMS` covers all thirteen assets and its own self-check passed;
+the downloaded Windows installer, Linux package, update metadata and source manifest
+match it, and `gh attestation verify --repo cats-inc/cats-platform` succeeds for the
+installer and for `SHA256SUMS` (builder `refs/heads/main@2c637d54`, run 36614546433). The
+installer's SHA-512 equals `latest.yml`; `latest-mac.yml` and `latest-linux-arm64.yml`
+name uploaded assets with matching sizes. Windows metadata reads company `sammykenny2`,
+product `Cats`, version 0.7.0, and the file is unsigned as expected.
+
+`0.7.0 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
+The macOS log shows Developer ID team `97JBZ3MFX5`, successful notarization, a valid
+stapled ticket and a `Notarized Developer ID` Gatekeeper assessment. An installed
+0.6.1 → 0.7.0 upgrade was not exercised on any OS. No provider calls were made. The
+superseded 0.6.1 preview release was deleted afterwards at the owner's request; the
+`v0.6.1` tag remains because the tag ruleset forbids deleting release tags.
 
 ## 2026-09-29 — Platform 0.6.1 npm and Desktop standard preview (published)
 
