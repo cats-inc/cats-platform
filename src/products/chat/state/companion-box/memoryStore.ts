@@ -1,6 +1,7 @@
 import type {
   CompanionDerivedRecord,
   CompanionMemoryRecord,
+  CompanionLifeProfile,
   CompanionResponseProfile,
   CompanionSnapshot,
   CompanionSourceDeleteResult,
@@ -12,6 +13,10 @@ import type {
   UpdateCompanionResponseProfileInput,
   UpdateCompanionSourceInput,
 } from '../../companion/contracts.js';
+import {
+  createDefaultCompanionLifeProfile,
+  type CompanionLifeProfilePatch,
+} from '../../companion/life/profile.js';
 import {
   appendCompanionBoxMemory,
   buildCompanionBoxSessionContext,
@@ -25,6 +30,7 @@ import {
   listCompanionBoxSources,
   summarizeCompanionBox,
   updateCompanionBoxMemoryStatus,
+  updateCompanionBoxLifeProfile,
   updateCompanionBoxResponseProfile,
   updateCompanionSource,
 } from './operations.js';
@@ -184,6 +190,21 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     return structuredClone(
       updateCompanionBoxResponseProfile(this.snapshot, box, update, nowIso),
     );
+  }
+
+  async getLifeProfile(catId: string, now: Date = new Date()): Promise<CompanionLifeProfile> {
+    const box = this.snapshot.boxes.find((candidate) => candidate.catId === catId);
+    return structuredClone(box?.life ?? createDefaultCompanionLifeProfile(isoAt(now)));
+  }
+
+  async updateLifeProfile(
+    catId: string,
+    patch: CompanionLifeProfilePatch,
+    now: Date = new Date(),
+  ): Promise<CompanionLifeProfile> {
+    const nowIso = isoAt(now);
+    const { box } = ensureCompanionBox(this.snapshot, catId, nowIso);
+    return structuredClone(updateCompanionBoxLifeProfile(this.snapshot, box, patch, nowIso));
   }
 
   async buildSessionContext(input: CompanionSessionContextInput) {

@@ -22,6 +22,7 @@ import {
   COMPANION_SOURCE_STORAGE_MODES,
 } from '../../companion/validation.js';
 import { createDefaultCompanionResponseProfile } from '../../companion/sourceIngestion.js';
+import { normalizeCompanionLifeProfile } from '../../companion/life/profile.js';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -129,6 +130,7 @@ function normalizeBox(rawBox: unknown, nowIso: string): CompanionBox | null {
     derivedIds: readStringArray(boxRecord.derivedIds),
     memoryIds: readStringArray(boxRecord.memoryIds),
     responseProfile: normalizeResponseProfile(boxRecord.responseProfile, nowIso),
+    life: normalizeCompanionLifeProfile(boxRecord.life, nowIso),
     createdAt: readString(boxRecord.createdAt, nowIso),
     updatedAt: readString(boxRecord.updatedAt, nowIso),
     lastIngestedAt: readNullableString(boxRecord.lastIngestedAt),

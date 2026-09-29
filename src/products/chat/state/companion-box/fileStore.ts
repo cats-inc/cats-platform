@@ -1,9 +1,11 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type {
   CompanionDerivedRecord,
   CompanionMemoryRecord,
+  CompanionLifeProfile,
   CompanionResponseProfile,
   CompanionSnapshot,
   CompanionSourceDeleteResult,
@@ -15,6 +17,10 @@ import type {
   UpdateCompanionResponseProfileInput,
   UpdateCompanionSourceInput,
 } from '../../companion/contracts.js';
+import {
+  createDefaultCompanionLifeProfile,
+  type CompanionLifeProfilePatch,
+} from '../../companion/life/profile.js';
 import {
   appendCompanionBoxMemory,
   buildCompanionBoxSessionContext,
@@ -28,6 +34,7 @@ import {
   listCompanionBoxSources,
   summarizeCompanionBox,
   updateCompanionBoxMemoryStatus,
+  updateCompanionBoxLifeProfile,
   updateCompanionBoxResponseProfile,
   updateCompanionSource,
 } from './operations.js';
@@ -91,25 +98,46 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
 
   private async readOrCreateSnapshot(): Promise<CompanionSnapshot> {
     const nowIso = new Date().toISOString();
+    let raw: string;
     try {
-      return normalizeSnapshot(
-        JSON.parse(await readFile(this.snapshotPath, 'utf-8')) as unknown,
-        nowIso,
-      );
-    } catch {
+      raw = await readFile(this.snapshotPath, 'utf-8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
       const snapshot = createEmptySnapshot(nowIso);
       await this.writeSnapshot(snapshot);
       return snapshot;
     }
+    // A malformed file is surfaced, never replaced with an empty snapshot.
+    return normalizeSnapshot(JSON.parse(raw) as unknown, nowIso);
   }
 
+  /** Temp file + rename so a concurrent reader never sees a partial snapshot. */
   private async writeSnapshot(snapshot: CompanionSnapshot): Promise<void> {
     await mkdir(path.dirname(this.snapshotPath), { recursive: true });
-    await writeFile(
-      this.snapshotPath,
-      `${JSON.stringify(snapshot, null, 2)}\n`,
-      'utf-8',
+    const tempPath = path.join(
+      path.dirname(this.snapshotPath),
+      `.${path.basename(this.snapshotPath)}.${process.pid}.${randomUUID()}.tmp`,
     );
+    try {
+      await writeFile(tempPath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf-8');
+      // Windows can briefly refuse the replace while a reader holds the file.
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          await rename(tempPath, this.snapshotPath);
+          break;
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          if (attempt >= 9 || (code !== 'EPERM' && code !== 'EACCES' && code !== 'EBUSY')) {
+            throw error;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 5 * (attempt + 1)));
+        }
+      }
+    } finally {
+      await rm(tempPath, { force: true }).catch(() => {});
+    }
   }
 
   async readSnapshot(): Promise<CompanionSnapshot> {
@@ -364,6 +392,25 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
     const responseProfile = updateCompanionBoxResponseProfile(snapshot, box, update, nowIso);
     await this.writeSnapshot(snapshot);
     return structuredClone(responseProfile);
+  }
+
+  async getLifeProfile(catId: string, now: Date = new Date()): Promise<CompanionLifeProfile> {
+    const snapshot = await this.readOrCreateSnapshot();
+    const box = snapshot.boxes.find((candidate) => candidate.catId === catId);
+    return structuredClone(box?.life ?? createDefaultCompanionLifeProfile(isoAt(now)));
+  }
+
+  async updateLifeProfile(
+    catId: string,
+    patch: CompanionLifeProfilePatch,
+    now: Date = new Date(),
+  ): Promise<CompanionLifeProfile> {
+    const nowIso = isoAt(now);
+    const snapshot = await this.readOrCreateSnapshot();
+    const { box } = ensureCompanionBox(snapshot, catId, nowIso);
+    const life = updateCompanionBoxLifeProfile(snapshot, box, patch, nowIso);
+    await this.writeSnapshot(snapshot);
+    return structuredClone(life);
   }
 
   async buildSessionContext(input: CompanionSessionContextInput) {

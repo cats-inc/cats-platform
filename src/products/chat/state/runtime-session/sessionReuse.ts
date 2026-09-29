@@ -136,6 +136,25 @@ function readObservedSessionState(
     : null;
 }
 
+/**
+ * One runtime probe for callers that keep a session warm (SPEC-124 FR-10).
+ * `unknown` means the runtime could not answer, which is not the same as asleep.
+ */
+export async function observeRuntimeSessionLiveness(
+  runtimeClient: Pick<RuntimeClient, 'observeSession'>,
+  sessionId: string,
+): Promise<'live' | 'closed' | 'unknown'> {
+  try {
+    const observedState = readObservedSessionState(await runtimeClient.observeSession(sessionId));
+    return observedState && MANUALLY_REVIVABLE_SESSION_STATES.has(observedState) ? 'closed' : 'live';
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    return classifyRuntimeDispatchRecoveryError(message)?.reason === 'stale_session'
+      ? 'closed'
+      : 'unknown';
+  }
+}
+
 async function shouldReviveExistingTargetSession(input: {
   state: ChatState;
   channelId: string;

@@ -58,11 +58,16 @@ test('loadConfig derives storage paths from canonical root directories', () => {
   assert.equal(config.chatProviderAgentDecisionEnabled, false);
   assert.equal(config.chatNaturalProductIntentMode, 'off');
   assert.equal(config.mobilePairingEnabled, true);
+  assert.equal(config.companionLifeLoopEnabled, true);
   assert.equal(config.mobileBundleRoot, path.resolve(process.cwd(), 'build', 'mobile'));
   assert.equal(config.runtimeStaleSessionRetryLimit, 3);
   assert.equal(config.maxChatParticipants, 7);
   assert.equal(config.maxAudienceParticipants, 2);
   assert.equal(config.maxParallelChats, 3);
+});
+
+test('loadConfig lets the owner turn the companion life loop off', () => {
+  assert.equal(loadConfig({ CATS_COMPANION_LIFE_LOOP: 'false' }).companionLifeLoopEnabled, false);
 });
 
 test('loadConfig reads mobile pairing gate and bundle root', () => {

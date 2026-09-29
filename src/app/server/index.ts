@@ -12,6 +12,7 @@ import { createAgentKnowledgeBridge, AGENT_KNOWLEDGE_PATH } from '../../platform
 import { isLoopbackAuthHost } from '../../platform/auth/effectiveMode.js';
 import { runServerStartupRecoveryPasses } from './startupRecovery.js';
 import { startTransportFanout } from '../../platform/transports/fanout/subscriber.js';
+import { startChatCompanionLifeLoop } from '../../products/chat/api/index.js';
 import {
   createSchedulerService,
   startSchedulerLoop,
@@ -101,6 +102,20 @@ export function createServer(dependencies: ServerDependencies) {
       })
     : () => {};
 
+  const stopCompanionLifeLoop = resolvedDependencies.chat.startCompanionLifeLoop
+    ? startChatCompanionLifeLoop({
+        chatStore: resolvedDependencies.chat.chatStore,
+        mutationGate: resolvedDependencies.chat.mutationGate,
+        runtimeClient: resolvedDependencies.shared.runtimeClient,
+        companionStore: resolvedDependencies.chat.companionStore,
+        companionActivityStore: resolvedDependencies.chat.companionActivityStore,
+        memoryService: resolvedDependencies.chat.memoryService,
+        config: resolvedDependencies.shared.config,
+        eventHub: resolvedDependencies.chat.eventHub,
+        now: resolvedDependencies.shared.now,
+      })
+    : () => {};
+
   const server = createHttpServer((request, response) => {
     void knowledge.route(request, response).then(handled => {
       if (!handled) return routeRequest(request, response, resolvedDependencies);
@@ -133,6 +148,7 @@ export function createServer(dependencies: ServerDependencies) {
     clearInterval(pluginTimer);
     knowledge.close();
     stopSchedulerLoop();
+    stopCompanionLifeLoop();
     stopTransportFanout();
     resolvedDependencies.chat.pollingSupervisor.stopAll();
   });

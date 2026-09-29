@@ -1,28 +1,17 @@
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
-import { updateChatState } from '../../state/store.js';
-import { mergeCompletedDispatchState } from '../../state/runtime-dispatch/merge.js';
 import { pushServerLiveTrace } from '../../../../shared/liveTrace.js';
 import {
   buildRuntimeDeliveryContentBlocksFromResultPayload,
 } from '../../../../platform/orchestration/index.js';
 import { normalizeRuntimeContentBlock } from '../../../../shared/runtimeContentBlocks.js';
-import { activateChannelSessions } from '../../state/runtimeActions.js';
 import {
   resolveChannelCanonicalIdentity,
   requireChannel,
-  setChannelOrchestratorLease,
-  setChannelParticipantLease,
 } from '../../state/model/index.js';
-import {
-  resolveChannelParticipantAssignments,
-  resolveOrchestratorLeaseAttachment,
-  resolveParticipantLeaseAttachment,
-} from '../../shared/channelParticipants.js';
 import {
   buildAppShellPayload,
   cancelSessionIds,
   collectActiveChannelSessionIds,
-  closeSessionIds,
   DEFAULT_CHAT_SCOPE_ID,
   handleRestError,
   hasActiveChannelTurn,
@@ -47,10 +36,14 @@ import {
 } from './channelStreamSupport.js';
 import {
   awaitNextStreamTarget,
-  notifyStreamTargetChanged,
   readStreamTargetSignalVersion,
 } from './streamTargetSignal.js';
-import { publishRoomMutation } from '../transportEventPublisher.js';
+import {
+  activateChannelLocked,
+  deactivateChannelLocked,
+  publishChannelLifecycleEvents,
+} from './channelActivation.js';
+import { recordCompanionOwnerPresence } from '../../companion/life/presence.js';
 
 function buildStreamSpeakerPayload(input: {
   containerId?: string | null;
@@ -90,12 +83,7 @@ function publishStreamAttachMutationEvents(
   context: ChatApiRouteContext,
   channelId: string,
 ): void {
-  publishRoomMutation(context.dependencies.eventHub, channelId, 'updated');
-  context.dependencies.eventHub?.emit({
-    kind: 'recents_changed',
-    channelId,
-    timestamp: new Date().toISOString(),
-  });
+  publishChannelLifecycleEvents(context.dependencies, channelId);
 }
 
 function isAbortError(error: unknown): boolean {
@@ -402,47 +390,20 @@ async function handleRestDeactivateChannel(
   try {
     requireValidChatScopeId(chatScopeId);
     await context.dependencies.mutationGate.run(channelId, async () => {
-      const now = nowFrom(context.dependencies);
-      const state = await context.dependencies.chatStore.read();
-      const channel = requireChannel(state, channelId);
-      const sessionIds = collectActiveChannelSessionIds(channel);
-
-      await closeSessionIds(context, sessionIds);
-
-      let nextState = state;
-      for (const assignment of resolveChannelParticipantAssignments(channel)) {
-        const attachment = resolveParticipantLeaseAttachment(channel, assignment.participantId, {
-          statuses: ['ready', 'initializing'],
-        });
-        if (attachment) {
-          nextState = setChannelParticipantLease(
-            nextState,
-            channelId,
-            assignment.participantId,
-            { status: 'closed', sessionId: null },
-            now,
-          );
-        }
-      }
-      if (resolveOrchestratorLeaseAttachment(channel, {
-        statuses: ['ready', 'initializing'],
-      })) {
-        nextState = setChannelOrchestratorLease(
-          nextState,
-          channelId,
-          { status: 'closed', sessionId: null },
-          now,
-        );
-      }
-
-      await updateChatState(context.dependencies.chatStore, (latest) =>
-        mergeCompletedDispatchState(latest, state, nextState, channelId, now));
-      notifyStreamTargetChanged(channelId);
+      const deactivation = await deactivateChannelLocked(context.dependencies, channelId);
+      await recordCompanionOwnerPresence({
+        state: await context.dependencies.chatStore.read(),
+        channelId,
+        presence: 'sleeping',
+        changed: deactivation.closedSessionCount > 0,
+        companionStore: context.dependencies.companionStore,
+        activityStore: context.dependencies.companionActivityStore,
+        now: new Date(deactivation.closedAt),
+      });
       sendJson(context.response, 200, {
         deactivation: {
           channelId,
-          closedAt: now.toISOString(),
-          closedSessionCount: sessionIds.length,
+          ...deactivation,
         },
       });
       publishStreamAttachMutationEvents(context, channelId);
@@ -460,23 +421,17 @@ async function handleRestActivateChannel(
   try {
     requireValidChatScopeId(chatScopeId);
     await context.dependencies.mutationGate.run(channelId, async () => {
-      const now = nowFrom(context.dependencies);
-      const baseline = await context.dependencies.chatStore.read();
-      const activation = await activateChannelSessions(
-        baseline,
+      const activation = await activateChannelLocked(context.dependencies, channelId);
+      const now = new Date(activation.startedAt);
+      await recordCompanionOwnerPresence({
+        state: await context.dependencies.chatStore.read(),
         channelId,
-        context.dependencies.runtimeClient,
+        presence: 'awake',
+        changed: activation.results.some((result) => result.status === 'started'),
+        companionStore: context.dependencies.companionStore,
+        activityStore: context.dependencies.companionActivityStore,
         now,
-        {
-          companionStore: context.dependencies.companionStore,
-          memoryService: context.dependencies.memoryService,
-          chatStatePath: context.dependencies.config.chatStatePath,
-          runtimeDataDir: context.dependencies.config.runtimeDataDir,
-        },
-      );
-      await updateChatState(context.dependencies.chatStore, (latest) =>
-        mergeCompletedDispatchState(latest, baseline, activation.state, channelId, now));
-      notifyStreamTargetChanged(channelId);
+      });
       if (activation.results.some((result) =>
         result.targetKind === 'orchestrator'
         && (result.status === 'started' || result.status === 'already_started'))) {
@@ -485,7 +440,7 @@ async function handleRestActivateChannel(
       sendJson(context.response, 200, {
         activation: {
           channelId,
-          startedAt: now.toISOString(),
+          startedAt: activation.startedAt,
           results: activation.results,
         },
       });

@@ -1,0 +1,86 @@
+# PLAN-117: Alive Companion Life Loop
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| **Status** | In Progress |
+| **Owner** | Claude |
+| **Reviewer** | Owner |
+
+## Related Spec
+
+[SPEC-124: Alive Companion Life Loop](../specs/SPEC-124-alive-companion-life-loop.md)
+
+## Related Decision
+
+[ADR-127: Keep Companion Cats Alive with a Platform-Owned Life Loop](../decisions/127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md)
+
+## Overview
+
+分四個可以各自展示的 PR：先讓「醒著」變成真的並有作息，再讓他主動開口，
+接著補 Telegram 的在職守體驗，最後加照片。
+
+## Phase 1: 真的醒著與作息
+
+- [x] `CompanionBox.life` 型別、讀取時補預設值、記憶體與檔案 store 的讀寫。
+- [x] `GET/PATCH /api/cats/:catId/companion-box/life` 與驗證。
+- [x] `rhythm.ts`：每天固定的起床時間、清醒／休息時段判斷、下一次起床時間。
+- [x] 從 REST handler 抽出 channel activation / deactivate 本體，REST 與 loop 共用。
+- [x] life loop：期望狀態、以 runtime 觀察確認 session、喚醒、閒置後入睡、上限退避。
+- [x] `presence_changed` 動態紀錄（喚醒、入睡、owner 操作、無法喚醒）。
+- [x] owner 的 activation / deactivate 作用在陪伴貓私訊 lane 時更新 `sleepUntil`。
+- [x] 正式入口開啟 loop；測試用 `createServer` 預設不啟動。
+- [x] 測試：舊檔讀取補預設、作息邊界（含跨午夜）、同日起床時間固定、loop 在 session
+  已活著時不寫狀態、runtime 重啟後自動醒回、上限滿時退避且只記一次、休息時段閒置後入睡、
+  owner 睡覺後不會被 loop 叫醒。
+
+**Exit**：重啟 runtime 後一分鐘內，陪伴貓私訊 session 自動回到 ready；就寢時間後閒置
+15 分鐘釋放 session；動態紀錄看得到醒來與入睡。
+
+## Phase 2: 心跳
+
+- [ ] 以 runtime session 為鍵的程序內 gate；`executeDispatch` 送出前等待。
+- [ ] 心跳排程（記憶體、隨機間隔、醒來後的 `wake` 心跳、延後條件、重啟不重複道早安）。
+- [ ] 心跳 prompt（本地時間、醒了多久、主人上次說話、陪伴記憶）與 `[quiet]` 判斷。
+- [ ] 回覆寫入 lane（與一般 Cat 回覆相同的訊息形狀），發出 `message_added`，由 fanout
+  送到 Telegram；確認不會重複送出。
+- [ ] 入睡前的 `bedtime` 心跳。
+- [ ] 測試：安靜不寫入、開口寫入並鏡像、心跳進行中 owner 訊息會等待、runtime busy 時放棄重排。
+
+**Exit**：清醒時段內他會在同一段對話裡自己開口，Telegram 收得到。
+
+## Phase 3: Telegram 在職守
+
+- [ ] 私訊進來立即送 `typing`，回覆前每 4 秒續送。
+- [ ] `/sleep`、`/wake` 指令。
+- [ ] 綁定變更與重新連線重建的 polling consumer 帶入 transport 指令。
+
+## Phase 4: 照片
+
+- [ ] `life.photoFolder` 與陪伴設定欄位。
+- [ ] 心跳列出候選檔名，解析 `[photo: 檔名]`。
+- [ ] Telegram multipart `sendPhoto`；fanout 對帶照片的訊息送圖片。
+
+## Follow-ups (not in this plan)
+
+- 陪伴貓私訊回合前的 companion 發文決策 sidecar 讓延遲約加倍，影響在職守的感覺；
+  可改為只在需要時才做決策。
+- runtime 對同一 session 的併發訊息回 409，一般 owner 連發兩則訊息時也會碰到。
+- 作息設定頁的 UI。
+
+## Progress Log
+
+- 2026-09-29：ADR-127、SPEC-124、PLAN-117 建立；Phase 1 開始。
+- 2026-09-29：Phase 1 完成。
+  - 順手修掉 `FileCompanionBoxStore` 的既有風險：原本寫入不是原子的，讀取遇到任何錯誤
+    （包括讀到寫到一半的檔案）都會把整份 companion 資料蓋成空的。loop 每分鐘讀一次會放大
+    這個風險，所以改為暫存檔加 rename，且只在檔案不存在時建立新檔；格式損壞時回報錯誤、
+    保留原檔。
+  - 活動紀錄的 render entry 帶上最新事件的 `metadata`，`presence_changed` 由 renderer 以
+    在地化文字顯示。
+  - 驗證：`tests/companion-life.test.js`（19）、`companion-box-store`、`companion-box-routes`、
+    `channel-deactivate`、`config`、`architecture-boundaries` 等 13 個 server 測試檔共 286 個通過；
+    renderer 相關 10 個測試檔 43 個通過。`provider-telegram-routes` 的「file-backed restart」
+    在合併執行時失敗一次，單獨與重跑皆通過（負載敏感，與本變更無關）。
+  - 尚未驗證：實機 Desktop 畫面（動態紀錄文字、狀態卡片在 loop 喚醒後的更新）。

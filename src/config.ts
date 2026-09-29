@@ -53,6 +53,8 @@ export interface AppConfig {
   chatProviderAgentDecisionEnabled?: boolean;
   chatCollaborationPreparationBudget?: Readonly<CollaborationPreparationBudget>;
   chatNaturalProductIntentMode: ChatNaturalProductIntentMode;
+  /** SPEC-124 companion life loop; `CATS_COMPANION_LIFE_LOOP=false` turns it off. */
+  companionLifeLoopEnabled?: boolean;
   mobilePairingEnabled: boolean;
   mobileBundleRoot: string;
   runtimeDataDir: string;
@@ -309,6 +311,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     chatNaturalProductIntentMode: parseChatNaturalProductIntentMode(
       env.CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE,
     ),
+    companionLifeLoopEnabled: parseBoolean(env.CATS_COMPANION_LIFE_LOOP, true),
     mobilePairingEnabled: parseBoolean(env.CATS_DESKTOP_MOBILE_PAIRING_ENABLED, true),
     mobileBundleRoot: env.CATS_MOBILE_BUNDLE_ROOT?.trim()
       || path.resolve(process.cwd(), 'build', 'mobile'),

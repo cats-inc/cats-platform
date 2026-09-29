@@ -143,6 +143,25 @@ the specific binding can accept work. These lines cannot prove the host has been
 up continuously: if the platform process itself is asleep, no process exists to
 answer `/status` at all.
 
+## Companion life loop (SPEC-124)
+
+While the platform process runs, a background loop checks every companion Cat
+once a minute (first pass about five seconds after startup). Inside the Cat's
+awake hours it keeps the Cat's direct-message session alive: a session the
+runtime closed, including after a runtime restart, is resumed through the same
+wake path the Desktop uses. After bedtime, once the lane has been quiet for 15
+minutes, the loop closes the session so it no longer holds a runtime slot. The
+rhythm is `CompanionBox.life`, in host-local time.
+
+- Each awake companion holds one of the runtime's `CATS_RUNTIME_MAX_SESSIONS`
+  slots (default 10). When the cap is full the loop does not evict anything; it
+  retries every five minutes and records one `presence_changed` activity.
+- An unreachable runtime is treated as unknown: the loop does nothing that pass.
+- The host-offline limit above applies: when Cats is not running, companions
+  neither wake nor sleep.
+- `CATS_COMPANION_LIFE_LOOP=false` turns the loop off. Test servers created
+  through `createServer` never start it unless `chat.startCompanionLifeLoop` is set.
+
 ## Cross-Project Port Coordination
 
 This project was created from **project-bootstrap**, which maintains a central port registry at:

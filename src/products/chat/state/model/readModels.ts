@@ -126,6 +126,16 @@ function hydrateChannelParticipant(
 function resolveLeadParticipantLeaseStatus(
   channel: ChatChannelState,
 ): ParticipantSessionStatus | null {
+  return resolveLeadParticipantLease(channel)?.status ?? null;
+}
+
+/**
+ * The lease behind `defaultRecipientLeaseStatus`; server-side presence
+ * readers use it so they agree with what the Desktop shows.
+ */
+export function resolveLeadParticipantLease(
+  channel: ChatChannelState,
+): ReturnType<typeof resolveParticipantLeaseAttachment> {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   const participantAssignments = normalizeChannelAssignmentsForRoomMode(
     resolveChannelParticipantAssignments(channel, { clone: true }),
@@ -143,7 +153,7 @@ function resolveLeadParticipantLeaseStatus(
     (candidate) => candidate.participantId === leadId && candidate.status === 'active',
   );
   return assignment
-    ? resolveParticipantLeaseAttachment(channel, assignment.participantId)?.status ?? null
+    ? resolveParticipantLeaseAttachment(channel, assignment.participantId)
     : null;
 }
 

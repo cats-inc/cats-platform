@@ -13,6 +13,7 @@ import type {
   CompanionBox,
   CompanionBoxSummary,
   CompanionDerivedRecord,
+  CompanionLifeProfile,
   CompanionMemoryRecord,
   CompanionResponseProfile,
   CompanionSessionContext,
@@ -27,6 +28,10 @@ import type {
   UpdateCompanionSourceInput,
 } from '../../companion/contracts.js';
 import { buildStorageLayout } from './snapshot.js';
+import {
+  applyCompanionLifeProfilePatch,
+  type CompanionLifeProfilePatch,
+} from '../../companion/life/profile.js';
 
 function sortNewestFirst<T extends { updatedAt: string }>(records: T[]): T[] {
   return [...records].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
@@ -378,4 +383,16 @@ export function buildCompanionBoxSessionContext(
     transport: input.transport,
     hydratedAt: input.hydratedAt,
   });
+}
+
+export function updateCompanionBoxLifeProfile(
+  snapshot: CompanionSnapshot,
+  box: CompanionBox,
+  patch: CompanionLifeProfilePatch,
+  nowIso: string,
+): CompanionLifeProfile {
+  box.life = applyCompanionLifeProfilePatch(box.life, patch, nowIso);
+  box.updatedAt = nowIso;
+  snapshot.updatedAt = nowIso;
+  return box.life;
 }

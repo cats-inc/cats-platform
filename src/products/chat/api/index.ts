@@ -14,6 +14,7 @@ import {
 } from './routeSupport.js';
 
 export { CHAT_API_SLICE };
+export { startChatCompanionLifeLoop } from './companionLifeLoop.js';
 export type { ChatApiDependencies };
 
 export async function routeChatApi(

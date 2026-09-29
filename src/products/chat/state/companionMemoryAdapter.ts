@@ -137,6 +137,18 @@ export class MemoryAwareCompanionBoxStore implements CanonicalSyncAwareCompanion
     return result;
   }
 
+  async getLifeProfile(catId: string, now?: Date) {
+    return this.delegate.getLifeProfile(catId, now);
+  }
+
+  async updateLifeProfile(
+    catId: string,
+    patch: Parameters<CompanionBoxStore['updateLifeProfile']>[1],
+    now?: Date,
+  ) {
+    return this.delegate.updateLifeProfile(catId, patch, now);
+  }
+
   async buildSessionContext(input: Parameters<CompanionBoxStore['buildSessionContext']>[0]) {
     const context = await this.delegate.buildSessionContext(input);
     return {

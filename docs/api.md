@@ -263,6 +263,8 @@ GET   /api/cats/{catId}/companion-box/memory
 POST  /api/cats/{catId}/companion-box/memory
 GET   /api/cats/{catId}/companion-box/response-profile
 PATCH /api/cats/{catId}/companion-box/response-profile
+GET   /api/cats/{catId}/companion-box/life
+PATCH /api/cats/{catId}/companion-box/life
 GET   /api/cats/{catId}/companion-box/session-context
 DELETE /api/cats/{catId}/companion-box/posts/{postId}
 ```
@@ -294,6 +296,17 @@ shared core and does not move Cat-local storage into `cats-runtime`.
   `{ responseProfile }`
 - `PATCH /api/cats/{catId}/companion-box/response-profile` updates product-owned
   response settings and returns `{ responseProfile, canonicalSync }`
+- `GET /api/cats/{catId}/companion-box/life` returns `{ life }`, the SPEC-124
+  daily rhythm: `enabled`, `bedtime`, `wakeWindowStart`, `wakeWindowEnd`
+  (host-local `HH:MM`), `sleepUntil`, `updatedAt`. Boxes without one read as the
+  defaults (enabled, 23:00, 07:00–09:00).
+- `PATCH /api/cats/{catId}/companion-box/life` updates `enabled`, `bedtime`,
+  `wakeWindowStart` and `wakeWindowEnd`; malformed clocks, a wake window that ends
+  before it starts, or a bedtime inside the wake window return `400`.
+  `sleepUntil` is ignored here: it is written only when the owner wakes or puts
+  the Cat to sleep (`POST /api/channels/{channelId}/activations` or `/deactivate`
+  on the companion's direct lane), which also records a `presence_changed`
+  activity.
 - `GET /api/cats/{catId}/companion-box/session-context` returns the normalized
   product-owned hydration payload for direct companion sessions
 - `DELETE /api/cats/{catId}/companion-box/posts/{postId}` is owner moderation for

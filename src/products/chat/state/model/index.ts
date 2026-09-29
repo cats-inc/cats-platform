@@ -101,6 +101,7 @@ export {
   buildChannelView,
   exportChannel,
   resolveChannelEntryParticipant,
+  resolveLeadParticipantLease,
   resolveOrchestratorDisplayName,
   resolveParticipantLifecycleState,
   summarizeState,
