@@ -84,3 +84,8 @@
     renderer 相關 10 個測試檔 43 個通過。`provider-telegram-routes` 的「file-backed restart」
     在合併執行時失敗一次，單獨與重跑皆通過（負載敏感，與本變更無關）。
   - 尚未驗證：實機 Desktop 畫面（動態紀錄文字、狀態卡片在 loop 喚醒後的更新）。
+  - 已確認 Desktop 讓他睡的三個入口（個人頁、私訊工具列、`useDirectLaneCompanionMode`）都走
+    `POST /api/channels/:id/deactivate`，所以都會寫入 `sleepUntil`；進入私訊不會自動呼叫
+    activation。在清醒時段按一次睡覺，他會睡到下一次起床時間；期間 owner 傳訊息仍會醒來
+    回覆，閒置 15 分鐘後再睡回去。
+  - 已知取捨：休息時段裡卡在 `initializing` 超過 15 分鐘且 lane 安靜的 session 也會被關掉。
