@@ -3192,6 +3192,7 @@ export const messageKeys = {
   chatNewChatDraftViewCatProfileAction: 'chatNewChatDraft.viewCatProfileAction',
   chatTopBarOpenCatProfileAriaLabel: 'chatTopBar.openCatProfileAriaLabel',
   codeActiveComposerDetachedBranch: 'code.activeComposer.detachedBranch',
+  codeCanvasPreviewOpen: 'code.canvasPreview.open',
   codeNewDraftGreeting: 'code.newDraft.greeting',
   codeCatlasHelpOpen: 'code.catlasHelp.open',
   codeCatlasHelpTitle: 'code.catlasHelp.title',

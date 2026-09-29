@@ -15,6 +15,7 @@ import {
   type ChatViewProps,
 } from './components/ChatView.js';
 import { ActiveCodeComposerChips } from './components/ActiveCodeComposerChips.js';
+import { CodeCanvasPreviewButton } from './components/CodeCanvasPreviewButton.js';
 import { CodeTaskPillsBar } from './components/CodeTaskPillsBar.js';
 import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSurfaceChip.js';
 import { ArtifactDetailView } from './components/ArtifactDetailView.js';
@@ -156,6 +157,12 @@ export function AppRoutes({
         )}
         renderComposerFooterAccessory={() => <CodeTaskPillsBar />}
         renderComposerSurfaceTag={() => <ComposerSurfaceChip surface="code" />}
+        renderTopBarExtraActions={(ctx) => (
+          <CodeCanvasPreviewButton
+            channelId={ctx.selectedChannel.id}
+            artifactId={ctx.operatorView?.latestCanvasArtifactId ?? null}
+          />
+        )}
       />
     ),
     renderNewChatDraft: (options) => (

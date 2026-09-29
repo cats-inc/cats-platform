@@ -35,3 +35,29 @@ test('restores conversation scroll and cancels the previous conversation animati
   view.rerender(<Transcript id="b" />);
   assert.equal(canvas.scrollTop, 444);
 });
+
+test('on a canvas route the page column beside the canvas scrolls to the latest message', (t) => {
+  const frames: FrameRequestCallback[] = [];
+  const oldRequest = globalThis.requestAnimationFrame;
+  const oldCancel = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = (callback) => { frames.push(callback); return frames.length; };
+  globalThis.cancelAnimationFrame = () => {};
+  t.after(() => { cleanup(); clearConversationViewMemory(); resetTestDom(); globalThis.requestAnimationFrame = oldRequest; globalThis.cancelAnimationFrame = oldCancel; });
+  const scrollable = (element: HTMLElement | null) => {
+    if (!element) return;
+    Object.defineProperties(element, { scrollHeight: { value: 3000, configurable: true }, clientHeight: { value: 500, configurable: true } });
+    element.scrollTo = (options) => { element.scrollTop = (options as ScrollToOptions).top ?? 0; };
+  };
+  function Transcript() {
+    const refs = useTranscriptAutoScroll({ channelId: 'c', scopeKey: 'canvas-route-test', scrollKey: 'c' });
+    return <main className="canvas" ref={scrollable}>
+      <div className="artifactCanvasSurfaceMain" ref={scrollable}>
+        <div ref={refs.transcriptListRef}>Transcript</div><div ref={refs.bottomSentinelRef} />
+      </div>
+    </main>;
+  }
+  const view = render(<Transcript />);
+  act(() => { for (const frame of frames.splice(0)) frame(0); });
+  assert.equal(view.container.querySelector<HTMLElement>('.artifactCanvasSurfaceMain')!.scrollTop, 3000);
+  assert.equal(view.container.querySelector<HTMLElement>('main.canvas')!.scrollTop, 0);
+});

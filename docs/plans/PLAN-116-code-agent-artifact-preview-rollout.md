@@ -169,7 +169,7 @@ call a Platform-hosted MCP tool and receive its result.
   the channel stays selected on `/canvas/...` child routes. The surface ID is
   the channel ID; Activity and artifact anchoring translate it with
   `buildChatConversationId`.
-- [ ] B2b: Add the top-bar Preview control, which reopens the most recent
+- [x] B2b: Add the top-bar Preview control, which reopens the most recent
   artifact from show-intent Activity. This follows A-ii, once agent artifacts
   exist. Verify top-bar alignment with Playwright at 1024, 1249, 1600 and 1920 px
   in the isolated M1 acceptance instance.
@@ -180,6 +180,39 @@ call a Platform-hosted MCP tool and receive its result.
   - The split is centered, leaving 55 px (1024 to 1600 px) to 210 px
     (1920 px) empty on the right.
   - The conversation opens scrolled to the top instead of the latest reply.
+
+  Done on 2026-09-29:
+  - `artifact-canvas.css` undoes the shell's gutter, scrollbar gutter and
+    centering for `main.canvas:has(> .artifactCanvasSurfaceFrame)`. The frame
+    takes the full width and height, and the page column
+    (`.artifactCanvasSurfaceMain`) gets the 28px gutter, so the
+    `.channelTopBar` bleed lands on the column. This applies to every canvas
+    route.
+  - `useTranscriptAutoScroll` scrolls the page column on canvas routes.
+  - `ChatOperatorView.latestCanvasArtifactId` holds the newest
+    `artifact_canvas_show_intent` of the conversation. Clear intents are
+    ignored, so the last shown artifact stays reachable.
+  - Code passes `CodeCanvasPreviewButton` through `renderTopBarExtraActions`.
+    It opens that artifact on the canvas route and is hidden while that
+    conversation's canvas is open.
+
+  Verified in a fresh acceptance instance (Opus, Cat named `Builder Cat`):
+  - At 1024, 1249, 1600 and 1920 px:
+    - The frame spans `main`.
+    - The top bar spans the page column's client box and ends at the resize
+      handle.
+    - Only the column scrolls, and it opens at the latest reply.
+  - From the conversation, Preview opens the canvas and hides itself.
+  - In the canvas, `2 + 3 =` shows `5`.
+  - Close returns to the conversation, and Preview reappears.
+
+  Findings:
+  - Static leases are memory-only. After a Platform restart, a reopened
+    preview shows an empty iframe until the agent shows it again. CAP-13
+    requires a transparent lease restart, which is D2 lifecycle work.
+  - Transcript text shows through the translucent composer chips when the
+    list is scrolled up. This already happens on the plain conversation
+    route and is not part of B2b.
 
 ### P4: Static preview lease (M1)
 
@@ -218,8 +251,8 @@ call a Platform-hosted MCP tool and receive its result.
     conversations, so `show_in_canvas` returned `workspace_unknown`. The grant
     now binds to the session cwd that Runtime resolved, falling back to
     `repoPath`.
-  - A Cat whose name contains a space cannot be reached by @mention (see
-    Risks), so the acceptance instance names its Cat `Builder`.
+  - A Cat whose name contains a space could not be reached by @mention, so
+    this run named its Cat `Builder`. That is fixed in #204 (see Risks).
 
 ### P5: Dev preview (M2)
 
@@ -333,7 +366,7 @@ call a Platform-hosted MCP tool and receive its result.
 | Second supervisor next to SPEC-122 | Medium | F4 convergence; no App-specific logic in the preview supervisor |
 | Chat `chat_conversation` anchoring compares the raw channel ID with `conversation-channel-<id>` (`projection.ts`, `activity.ts`) | Low | Code uses `buildChatConversationId`; Chat is out of scope and recorded for its owner |
 | With Platform auth disabled (local development), any page, including a preview, can send simple cross-origin POSTs to loopback APIs | Medium | Pre-existing and not introduced by previews. The MCP tool endpoint rejects `Origin` and requires a bearer. Review CSRF posture for auth-disabled mode separately |
-| A Cat whose name contains a space cannot be reached by @mention: the regex in `src/shared/mentionParsing.ts` stops at whitespace, so an orchestrator hand-off to `@Builder Cat` resolves no target and ends with no visible message | Medium | Chat-owned, outside this plan; recorded for the owner. Code conversations share the Chat hand-off path |
+| A Cat whose name contains a space could not be reached by @mention: the regex in `src/shared/mentionParsing.ts` stopped at whitespace, so an orchestrator hand-off to `@Builder Cat` resolved no target | Medium | Fixed in #204: the parser matches the room's known names first (SPEC-026 Mention Parsing). The B2b acceptance run verified an `@Builder Cat` hand-off live |
 | Oversized PRs | Low | Phases split into R1–R4, A1–A3, B1–B2, C1–C2, D1–D3, each under about 400 lines |
 
 ## Progress Log
@@ -345,6 +378,7 @@ call a Platform-hosted MCP tool and receive its result.
 | 2026-09-29 | Corrected the alignment after user review. Apps host MCP independently (Platform `8c8f44ae`, cats-apps `39ddcf7`). The Platform guard module and SDK pin are host-internal. Runtime `mcpServers` configures Cat sessions and never carries traffic. Only a documented security baseline is shared with Apps. |
 | 2026-09-29 | cats-runtime R1 (#130) merged; R2 Claude (#132) and R3 Codex were verified with isolated live smokes. M1 order: A0 client prerequisite → B surface → C static lease → A-i endpoint → A-ii tools/Proxy/retirement → acceptance. The `mcpServers` field and policy text travel through a Code runtime-client wrapper, not the enricher, so secrets stay outside supervision evidence. |
 | 2026-09-29 | R3 Codex (#134) merged, as were A0, B1, B2a, C1, C2, A1 and A2a. A2b and A3 wire the `cats` server into Code sessions and retire the observation path. M1 acceptance passed in an isolated instance. B2b now has measured layout defects to fix. |
+| 2026-09-29 | A2b and A3 merged (#203) and the @mention fix merged (#204). B2b adds the Preview control, fixes the canvas-route layout and scroll, and was verified in a fresh acceptance instance. Next: M2. |
 
 ---
 
