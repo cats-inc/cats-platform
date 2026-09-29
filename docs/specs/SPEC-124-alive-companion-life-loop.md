@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Approved (owner, 2026-09-29); Phase 1 implemented; Phases 2–4 pending |
+| **Status** | Approved (owner, 2026-09-29); Phases 1–2 implemented; Phases 3–4 pending |
 | **Owner** | Claude |
 | **Reviewer** | Owner |
 
@@ -101,15 +101,18 @@
 18. FR-18：只在「應醒著、session 活著、清醒時段」時排心跳。間隔為 30–120 分鐘隨機，
     存在記憶體；重啟後重新抽。
 19. FR-19：醒來後第一次心跳在 2–10 分鐘內，類型為 `wake`；但今天 `W(d)` 之後 lane 已經有
-    心跳訊息時改為一般心跳，重啟不會重複道早安。
-20. FR-20：lane 最後一則訊息在 10 分鐘內、或 session 正在處理訊息時延後。
+    `wake` 心跳訊息、或已超過 `W(d)` 3 小時時改為一般心跳，重啟不會重複道早安。
+20. FR-20：lane 最後一則訊息在 10 分鐘內時，延後到那則訊息後 10 分鐘再重新抽一般心跳
+    （已經在聊天就不再道早安）；session 正在處理訊息時延後 4 分鐘。
 21. FR-21：心跳回合送進同一個 session，內容包含本地時間、醒了多久、主人上次說話距今多久、
     陪伴記憶摘要，並要求不想說話時只回 `[quiet]`。
 22. FR-22：回覆是 `[quiet]`（忽略大小寫與前後空白）時丟棄；否則以該 Cat 的一般訊息
     （origin `runtime`，metadata `companionHeartbeat`）寫入 lane，並發出 `message_added`，
     由 transport fanout 鏡像到 Telegram。
 23. FR-23：心跳持有以 runtime session 為鍵的程序內 gate；一般派送送出前等待該 gate。
-    心跳本身若遇到 runtime busy（409），直接放棄並重排。
+    心跳本身若遇到 runtime busy（409），直接放棄並在 4 分鐘後重試同一次心跳。
+    心跳訊息的事件是 `companion_heartbeat`，不是 `assistant_turn_segment`，
+    不會被當成 owner 訊息的回覆。
 24. FR-24：因休息時段入睡前，可送一次 `bedtime` 心跳讓他道晚安，規則同 FR-21–22。
 
 ### Telegram 在職守（Phase 3）

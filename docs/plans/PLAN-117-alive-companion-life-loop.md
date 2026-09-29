@@ -40,13 +40,15 @@
 
 ## Phase 2: 心跳
 
-- [ ] 以 runtime session 為鍵的程序內 gate；`executeDispatch` 送出前等待。
-- [ ] 心跳排程（記憶體、隨機間隔、醒來後的 `wake` 心跳、延後條件、重啟不重複道早安）。
-- [ ] 心跳 prompt（本地時間、醒了多久、主人上次說話、陪伴記憶）與 `[quiet]` 判斷。
-- [ ] 回覆寫入 lane（與一般 Cat 回覆相同的訊息形狀），發出 `message_added`，由 fanout
-  送到 Telegram；確認不會重複送出。
-- [ ] 入睡前的 `bedtime` 心跳。
-- [ ] 測試：安靜不寫入、開口寫入並鏡像、心跳進行中 owner 訊息會等待、runtime busy 時放棄重排。
+- [x] 以 runtime session 為鍵的程序內 gate；`executeDispatch` 送出前等待。
+- [x] 心跳排程（記憶體、隨機間隔、醒來後的 `wake` 心跳、延後條件、重啟不重複道早安）。
+- [x] 心跳 prompt（本地時間、醒了多久、主人上次說話、陪伴記憶）與 `[quiet]` 判斷。
+- [x] 回覆以該 Cat 的一般訊息寫入 lane（`senderKind: 'agent'`、origin `runtime`），但事件是
+  `companion_heartbeat` 而不是 `assistant_turn_segment`，避免 live indicator 把它當成 owner
+  訊息的回覆；發出 `message_added`，由 fanout 送到 Telegram 一次。
+- [x] 入睡前的 `bedtime` 心跳。
+- [x] 測試：安靜不寫入、開口寫入並鏡像到 Telegram、心跳進行中 owner 訊息會等待、runtime busy
+  時重排、重啟後不重複道早安、正在聊天時不插話。
 
 **Exit**：清醒時段內他會在同一段對話裡自己開口，Telegram 收得到。
 

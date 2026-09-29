@@ -487,7 +487,7 @@ function formatMemoryCheckpoint(memory: MemoryCheckpointSummary): string {
   return lines.length > 0 ? lines.join('\n') : 'No saved memory checkpoint yet.';
 }
 
-function formatCompanionContext(
+export function formatCompanionContext(
   context: PromptCompanionContext,
   isCompanion: boolean,
 ): string | null {
