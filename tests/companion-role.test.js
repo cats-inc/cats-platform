@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -134,6 +134,26 @@ test('FileChatStore migrates legacy companion skill profiles once, with a dedica
   await new FileChatStore(statePath).read();
   assert.equal(await readFile(statePath, 'utf-8'), afterFirstRead);
   assert.equal(await readFile(backupPath, 'utf-8'), raw);
+});
+
+test('FileChatStore does not migrate while something other than a file occupies the backup path', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-companion-role-'));
+  const statePath = path.join(tempDir, 'chat-state.json');
+  const { miloId } = await writeLegacyCompanionSnapshot(statePath);
+  const backupPath = resolveCompanionRoleMigrationBackupPath(statePath);
+  await mkdir(backupPath);
+
+  const blocked = await new FileChatStore(statePath).read();
+  assert.equal(blocked.cats.find((cat) => cat.id === miloId).skillProfile, 'companion');
+  const stored = JSON.parse(await readFile(statePath, 'utf-8'));
+  assert.equal(stored.chat.cats.find((cat) => cat.id === miloId).skillProfile, 'companion',
+    'without a backup the stored profile keeps its legacy value');
+
+  await rm(backupPath, { recursive: true });
+  const beforeMigration = await readFile(statePath, 'utf-8');
+  const migrated = await new FileChatStore(statePath).read();
+  assert.deepEqual(migrated.cats.find((cat) => cat.id === miloId).roles, ['reviewer', 'companion']);
+  assert.equal(await readFile(backupPath, 'utf-8'), beforeMigration);
 });
 
 test('FileChatStore migrates a legacy .bak during recovery and backs up the .bak bytes', async () => {
