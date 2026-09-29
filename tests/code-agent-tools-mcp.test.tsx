@@ -34,6 +34,7 @@ const BINDING: CodeAgentToolGrantBinding = {
   conversationId: 'conversation-channel-channel-1',
   workspacePath: '/workspace/calculator',
   actorId: 'cat-1',
+  shellExecution: true,
 };
 
 interface Harness {
@@ -144,7 +145,14 @@ test('initialize, tools/list and protocol methods follow JSON-RPC and MCP', asyn
     assert.deepEqual((await rpc(harness, token, 'ping')).json.result, {});
     assert.equal((await rpc(harness, token, 'server/discover')).json.error.code, -32601);
     const list = await rpc(harness, token, 'tools/list');
-    assert.deepEqual(list.json.result.tools.map((tool: { name: string }) => tool.name), ['show_in_canvas', 'declare_artifact', 'clear_canvas']);
+    assert.deepEqual(list.json.result.tools.map((tool: { name: string }) => tool.name), [
+      'show_in_canvas',
+      'start_dev_preview',
+      'get_preview_status',
+      'stop_preview',
+      'declare_artifact',
+      'clear_canvas',
+    ]);
     assert.equal((await rpc(harness, token, 'tools/call', { name: 'nope', arguments: {} })).status, 401);
   } finally {
     await harness.close();

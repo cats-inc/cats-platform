@@ -27,6 +27,7 @@ import {
 } from '../../products/code/agentTools/contracts.js';
 import { createCodeAgentToolsClientWrapper } from '../../products/code/agentTools/runtimeClientWrapper.js';
 import { createCodeAgentToolsService } from '../../products/code/agentTools/service.js';
+import { readCodePreviewServersEnabled } from '../../shared/platformPreferences.js';
 import { getDefaultArtifactCanvasRenderIntentHub } from '../../products/shared/artifactCanvas/renderIntent.js';
 import { startTransportFanout } from '../../platform/transports/fanout/subscriber.js';
 import { startChatCompanionLifeLoop } from '../../products/chat/api/index.js';
@@ -156,6 +157,7 @@ export function createServer(dependencies: ServerDependencies) {
   const codeAgentTools = createCodeAgentToolsService({
     coreStore: resolvedDependencies.code.coreStore,
     livePreviewSupervisor: resolvedDependencies.code.livePreviewSupervisor,
+    previewServersEnabled: () => readCodePreviewServersEnabled(resolvedDependencies.shared.config.chatStatePath),
     grants: codeAgentToolGrants,
     policyConfig: resolvedDependencies.shared.config.artifactCanvas,
     now: resolvedDependencies.shared.now,

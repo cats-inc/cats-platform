@@ -32,6 +32,14 @@ import {
 } from '../shared/artifactDeclaration.js';
 import type { LivePreviewSupervisor } from '../livePreview/supervisor.js';
 import { materializeCodeArtifactDeclaration } from '../state/artifactMaterialization.js';
+import {
+  GET_PREVIEW_STATUS_TOOL,
+  START_DEV_PREVIEW_TOOL,
+  STOP_PREVIEW_TOOL,
+  runGetPreviewStatus,
+  runStartDevPreview,
+  runStopPreview,
+} from './devPreview.js';
 import { CODE_AGENT_PREVIEW_POLICY } from './policy.js';
 import { runShowInCanvas, SHOW_IN_CANVAS_TOOL } from './showInCanvas.js';
 import {
@@ -47,6 +55,8 @@ export interface CodeAgentToolsServiceOptions {
   coreStore: Pick<CoreStore, 'updateCore'>;
   /** Starts static previews for `show_in_canvas(path)`; absent means unavailable. */
   livePreviewSupervisor?: LivePreviewSupervisor | null;
+  /** Settings > Code "Cats may run preview servers"; absent means off (CAP-08). */
+  previewServersEnabled?: () => Promise<boolean>;
   grants?: McpSessionGrantStore<CodeAgentToolGrantBinding>;
   policyConfig?: ArtifactCanvasPolicyConfig;
   renderIntentHub?: ArtifactCanvasRenderIntentHub;
@@ -78,13 +88,42 @@ export function createCodeAgentToolsService(options: CodeAgentToolsServiceOption
   const policyConfig = options.policyConfig ?? DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG;
   const hub = options.renderIntentHub ?? getDefaultArtifactCanvasRenderIntentHub();
   const staticLeases = new Map<string, { previewId: string; root: string }>();
+  const devLeases = new Map<string, string>();
+  const previewServersEnabled = options.previewServersEnabled ?? (async () => false);
 
   const server: McpServerDefinition<CodeAgentToolGrant> = {
     name: CODE_AGENT_TOOLS_SERVER_NAME,
     version: CODE_AGENT_TOOLS_SERVER_VERSION,
     instructions: CODE_AGENT_PREVIEW_POLICY,
-    listTools: () => [SHOW_IN_CANVAS_TOOL, DECLARE_TOOL, CLEAR_TOOL],
+    listTools: () => [
+      SHOW_IN_CANVAS_TOOL,
+      START_DEV_PREVIEW_TOOL,
+      GET_PREVIEW_STATUS_TOOL,
+      STOP_PREVIEW_TOOL,
+      DECLARE_TOOL,
+      CLEAR_TOOL,
+    ],
     async callTool(name, args, grant) {
+      const supervisor = options.livePreviewSupervisor ?? null;
+      if (name === START_DEV_PREVIEW_TOOL.name) {
+        return runStartDevPreview(args, {
+          binding: grant.binding,
+          supervisor,
+          devLeases,
+          staticLeases,
+          previewServersEnabled,
+          updateCore: (mutator) => options.coreStore.updateCore(mutator),
+          policyConfig,
+          hub,
+          now,
+        });
+      }
+      if (name === GET_PREVIEW_STATUS_TOOL.name) {
+        return runGetPreviewStatus(args, { binding: grant.binding, supervisor });
+      }
+      if (name === STOP_PREVIEW_TOOL.name) {
+        return runStopPreview(args, { binding: grant.binding, supervisor, devLeases, staticLeases });
+      }
       if (name === SHOW_IN_CANVAS_TOOL.name) {
         return runShowInCanvas(args, {
           binding: grant.binding,
@@ -173,6 +212,7 @@ export function createCodeAgentToolsService(options: CodeAgentToolsServiceOption
     clearForReset() {
       grants.revokeWhere(() => true);
       staticLeases.clear();
+      devLeases.clear();
     },
     async route(request, response) {
       const pathname = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;

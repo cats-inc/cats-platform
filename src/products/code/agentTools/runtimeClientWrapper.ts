@@ -12,6 +12,7 @@ import type {
 import { CODE_AGENT_TOOLS_SERVER_NAME, type CodeAgentToolGrantBinding } from './contracts.js';
 import { readCodeAgentToolsInvocationMarker, type CodeAgentToolsInvocationMarker } from './enricher.js';
 import { CODE_AGENT_PREVIEW_POLICY } from './policy.js';
+import { hasShellExecutionPermission } from './shellPermission.js';
 import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 
 /**
@@ -54,12 +55,13 @@ export function createCodeAgentToolsClientWrapper(
     }];
   }
 
-  function issue(marker: CodeAgentToolsInvocationMarker): string {
+  function issue(marker: CodeAgentToolsInvocationMarker, shellExecution = marker.shellExecution): string {
     return options.grants.issue({
       channelId: marker.channelId,
       conversationId: buildChatConversationId(marker.channelId),
       workspacePath: marker.workspacePath,
       actorId: null,
+      shellExecution,
     }).token;
   }
 
@@ -83,7 +85,9 @@ export function createCodeAgentToolsClientWrapper(
               const marker = readCodeAgentToolsInvocationMarker(input.context);
               const endpoint = options.endpoint();
               if (!marker || !endpoint) return target.createSession(input);
-              const token = issue(marker);
+              // The create input carries the effective posture, including a
+              // whitelist's allowed tools.
+              const token = issue(marker, hasShellExecutionPermission(input));
               try {
                 const session = await target.createSession({ ...input, mcpServers: descriptor(endpoint, token) });
                 // Runtime's resolved cwd is the workspace the Cat writes to

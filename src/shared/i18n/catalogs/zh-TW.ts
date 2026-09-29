@@ -341,6 +341,12 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.advancedDraftControls.enableLabel': '啟用進階草稿控制',
   'settings.advancedDraftControls.toggleDescription':
     '顯示每則草稿預設隱藏的 +collaborate 或 +compare 按鈕。',
+  'settings.codePreviewServers.title': '預覽',
+  'settings.codePreviewServers.description': 'Cat 做好的網頁會顯示在對話旁的畫布中。',
+  'settings.codePreviewServers.enableLabel': '允許 Cat 啟動預覽伺服器',
+  'settings.codePreviewServers.toggleDescription':
+    '讓已經能執行指令的 Cat 在這台電腦上啟動專案的開發伺服器（例如 Vite）。關閉後會停止執行中的開發伺服器。靜態網頁不受影響。',
+  'settings.codePreviewServers.loadFailure': '無法載入預覽伺服器設定。',
   'settings.runtime.statusChip.runtimeUnavailable': '執行階段無法使用',
   'settings.runtime.statusChip.runtimeDegraded': '執行階段不穩定',
   'settings.runtime.statusChip.runtimeReady': '執行階段已就緒',

@@ -18,6 +18,7 @@ function baselinePreferences(): PlatformPreferences {
     lobbyAnimationMode: 'reduced',
     assistantResponseLanguage: 'unspecified',
     uiLanguagePreference: 'auto',
+    codePreviewServersEnabled: false,
   };
 }
 

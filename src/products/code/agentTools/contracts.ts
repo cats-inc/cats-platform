@@ -16,4 +16,6 @@ export interface CodeAgentToolGrantBinding {
   workspacePath: string | null;
   /** The Cat actor the grant was issued for. */
   actorId: string | null;
+  /** Whether the session may run shell commands, which dev previews require (CAP-08). */
+  shellExecution: boolean;
 }

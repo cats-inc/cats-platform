@@ -62,8 +62,44 @@ test('the marker enricher tags Code conversations only', () => {
   const enricher = createCodeAgentToolsInvocationEnricher();
   const phase = { phase: 'session_create' as const };
   const code = enricher.enrich({ originSurface: 'code', id: 'channel-1', chatCwd: '/workspace' }, {}, phase);
-  assert.deepEqual(readCodeAgentToolsInvocationMarker(code?.context), { channelId: 'channel-1', workspacePath: '/workspace' });
+  assert.deepEqual(readCodeAgentToolsInvocationMarker(code?.context), {
+    channelId: 'channel-1',
+    workspacePath: '/workspace',
+    shellExecution: true,
+  });
   assert.equal(enricher.enrich({ originSurface: 'chat', id: 'channel-2' }, {}, phase), null);
+  const readOnly = enricher.enrich({
+    originSurface: 'code', id: 'channel-3', runtimeWorkspaceAccess: 'read_only', runtimePermissionMode: 'default',
+  }, {}, phase);
+  assert.equal(readCodeAgentToolsInvocationMarker(readOnly?.context)?.shellExecution, false);
+  const whitelist = enricher.enrich({
+    originSurface: 'code', id: 'channel-4', runtimeWorkspaceAccess: 'read_write', runtimePermissionMode: 'whitelist',
+  }, {}, phase);
+  assert.equal(readCodeAgentToolsInvocationMarker(whitelist?.context)?.shellExecution, false,
+    'a channel whitelist without its tools counts as no shell');
+});
+
+test('the grant records whether the session may run shell commands (SPEC-123 CAP-08)', async () => {
+  const { grants, wrapper } = setup();
+  async function postureFor(input: Partial<RuntimeSessionCreateInput>): Promise<boolean | undefined> {
+    const { client, calls } = fakeClient();
+    await wrapper.wrapClient(client).createSession({ provider: 'claude', context: MARKER_CONTEXT, ...input } as RuntimeSessionCreateInput);
+    const server = calls.create[0]!.mcpServers![0]!;
+    return grants.resolve(server.auth.kind === 'bearer_env' ? server.auth.token : '')?.binding.shellExecution;
+  }
+  assert.equal(await postureFor({}), true, 'unset means the client default, skip');
+  assert.equal(await postureFor({ workspaceAccess: 'read_write', permissionMode: 'skip' }), true);
+  assert.equal(await postureFor({ workspaceAccess: 'read_only', permissionMode: 'default' }), false);
+  assert.equal(await postureFor({ workspaceAccess: 'read_write', permissionMode: 'whitelist', allowedTools: ['Read', 'Edit'] }), false);
+  assert.equal(await postureFor({ workspaceAccess: 'read_write', permissionMode: 'whitelist', allowedTools: ['Read', 'Bash(npm run *)'] }), true);
+  assert.equal(await postureFor({ workspaceAccess: 'read_write', permissionMode: 'whitelist', allowedTools: ['shell'] }), true);
+
+  // After a Platform restart the turn's marker supplies the channel posture.
+  const { client, calls } = fakeClient();
+  const context = { metadata: { codeAgentTools: { channelId: 'channel-1', workspacePath: '/workspace', shellExecution: false } } };
+  await wrapper.wrapClient(client).sendMessage('rt-restarted', 'hi', { context });
+  const server = calls.send[0]!.mcpServers![0]!;
+  assert.equal(grants.resolve(server.auth.kind === 'bearer_env' ? server.auth.token : '')?.binding.shellExecution, false);
 });
 
 test('create attaches the cats server with a grant bound to the new session', async () => {

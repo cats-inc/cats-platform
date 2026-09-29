@@ -73,7 +73,7 @@ export interface ShowInCanvasContext {
   now(): Date;
 }
 
-type ShowFailure = { code: string; message: string };
+export type ShowFailure = { code: string; message: string };
 
 export async function runShowInCanvas(
   args: Record<string, unknown>,
@@ -175,6 +175,24 @@ async function resolveWorkspaceTarget(
   workspace: string,
   requestedPath: string,
 ): Promise<{ path: string; isDirectory: boolean; workspaceRoot: string } | ShowFailure> {
+  const target = await resolveWorkspacePath(workspace, requestedPath);
+  if ('code' in target || !target.isDirectory) return target;
+  try {
+    await stat(join(target.path, 'index.html'));
+  } catch {
+    return { code: 'index_missing', message: 'The directory has no index.html to open.' };
+  }
+  return target;
+}
+
+/**
+ * SPEC-123 CAP-04: resolve a workspace-relative or absolute path through
+ * `realpath` and keep it inside the workspace, outside hidden segments.
+ */
+export async function resolveWorkspacePath(
+  workspace: string,
+  requestedPath: string,
+): Promise<{ path: string; isDirectory: boolean; workspaceRoot: string } | ShowFailure> {
   let workspaceRoot: string;
   try {
     workspaceRoot = await realpath(workspace);
@@ -196,13 +214,6 @@ async function resolveWorkspaceTarget(
     return { code: 'path_not_allowed', message: 'Hidden files and directories cannot be previewed.' };
   }
   const info = await stat(resolved);
-  if (info.isDirectory()) {
-    try {
-      await stat(join(resolved, 'index.html'));
-    } catch {
-      return { code: 'index_missing', message: 'The directory has no index.html to open.' };
-    }
-  }
   return { path: resolved, isDirectory: info.isDirectory(), workspaceRoot };
 }
 

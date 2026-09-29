@@ -106,9 +106,13 @@ not bypass the existing viewer contract.
 
 ### Phase 5: Real Process Enablement Gate
 
-- [ ] Task 5.1: Review SPEC-108 / PLAN-097 security posture and command profile
+- [x] Task 5.1: Review SPEC-108 / PLAN-097 security posture and command profile
       defaults before enabling real subprocess execution. *(Operator/reviewer
-      action; not a code change.)*
+      action; not a code change.)* Closed by SPEC-123 question 1 (approved
+      2026-09-29): dev previews run for sessions that already have shell
+      execution permission, behind the Settings > Code "Cats may run preview
+      servers" switch. PLAN-116 D1 wires it; the switch ships off until the
+      user confirms the default.
 - [x] Task 5.2: Add the first real command profile. Prefer Vite-only unless the
       review explicitly approves a broader `npm run dev` profile. Landed as
       `VITE_LIVE_PREVIEW_PROFILE` and `BUILTIN_LIVE_PREVIEW_PROFILES` in

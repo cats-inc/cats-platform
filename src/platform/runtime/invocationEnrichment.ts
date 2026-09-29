@@ -15,6 +15,8 @@ export interface RuntimeInvocationEnrichmentChannel {
   title?: string | null;
   chatCwd?: string | null;
   repoPath?: string | null;
+  runtimeWorkspaceAccess?: string | null;
+  runtimePermissionMode?: string | null;
 }
 
 export interface RuntimeInvocationEnrichmentInput {

@@ -344,6 +344,14 @@ export const enCatalog: MessageCatalog = {
   'settings.advancedDraftControls.enableLabel': 'Enable advanced draft controls',
   'settings.advancedDraftControls.toggleDescription':
     'Shows whichever +collaborate or +compare button each draft entry hides by default.',
+  'settings.codePreviewServers.title': 'Previews',
+  'settings.codePreviewServers.description':
+    'Cats show the web pages they build in a canvas beside the conversation.',
+  'settings.codePreviewServers.enableLabel': 'Cats may run preview servers',
+  'settings.codePreviewServers.toggleDescription':
+    "Lets a Cat that can already run commands start a project's dev server (such as Vite) on this computer. "
+    + 'Turning this off stops running dev servers. Static pages open either way.',
+  'settings.codePreviewServers.loadFailure': 'Could not load the preview server setting.',
   'settings.runtime.statusChip.runtimeUnavailable': 'Runtime unavailable',
   'settings.runtime.statusChip.runtimeDegraded': 'Runtime degraded',
   'settings.runtime.statusChip.runtimeReady': 'Runtime ready',

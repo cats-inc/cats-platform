@@ -726,6 +726,7 @@ test('POST /api/platform/preferences updates lastProductSurface', async () => {
       lobbyAnimationMode: 'reduced',
       assistantResponseLanguage: 'unspecified',
       uiLanguagePreference: 'auto',
+      codePreviewServersEnabled: false,
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
@@ -755,6 +756,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       lobbyAnimationMode: 'reduced',
       assistantResponseLanguage: 'unspecified',
       uiLanguagePreference: 'auto',
+      codePreviewServersEnabled: false,
     });
 
     const secondResponse = await fetch(`${baseUrl}/api/platform/preferences`, {
@@ -774,6 +776,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       lobbyAnimationMode: 'reduced',
       assistantResponseLanguage: 'unspecified',
       uiLanguagePreference: 'auto',
+      codePreviewServersEnabled: false,
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);

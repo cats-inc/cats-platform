@@ -8,6 +8,7 @@ import {
   normalizeAdvancedDraftControlsPreferences,
 } from '../../../products/shared/advancedDraftControls.js';
 import { useI18n } from '../i18n/index.js';
+import { CodePreviewServersSection } from './CodePreviewServersSection.js';
 import { ProductAdvancedDraftControlsSection } from './ProductAdvancedDraftControlsSection.js';
 import { ProductConversationBehaviorSection } from './ProductConversationBehaviorSection.js';
 import { formatSettingsPreferenceMutationError } from './settingsPreferenceErrorLabels.js';
@@ -70,6 +71,7 @@ export function PlatformSettingsCode({
           void updateAdvancedDraftControls(nextEnabled);
         }}
       />
+      <CodePreviewServersSection showToast={showToast} />
       <ToastContainer toasts={toasts} />
     </>
   );

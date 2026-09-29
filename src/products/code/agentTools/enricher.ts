@@ -4,6 +4,7 @@ import {
   registerRuntimeInvocationEnricher,
   type RuntimeInvocationEnricher,
 } from '../../../platform/runtime/invocationEnrichment.js';
+import { hasShellExecutionPermission } from './shellPermission.js';
 
 /**
  * Marks Code conversation invocations so the Code runtime-client wrapper can
@@ -17,6 +18,12 @@ export const CODE_AGENT_TOOLS_CONTEXT_METADATA_KEY = 'codeAgentTools' as const;
 export interface CodeAgentToolsInvocationMarker {
   channelId: string;
   workspacePath: string | null;
+  /**
+   * The channel's shell posture, used when a session's create input is not
+   * available (after a Platform restart). A whitelist here counts as no shell,
+   * because the channel does not carry the allowed tools.
+   */
+  shellExecution: boolean;
 }
 
 export function createCodeAgentToolsInvocationEnricher(): RuntimeInvocationEnricher {
@@ -28,6 +35,10 @@ export function createCodeAgentToolsInvocationEnricher(): RuntimeInvocationEnric
       const marker: CodeAgentToolsInvocationMarker = {
         channelId: channel.id,
         workspacePath: channel.chatCwd ?? channel.repoPath ?? null,
+        shellExecution: hasShellExecutionPermission({
+          workspaceAccess: channel.runtimeWorkspaceAccess,
+          permissionMode: channel.runtimePermissionMode,
+        }),
       };
       return {
         context: {
@@ -52,7 +63,11 @@ export function readCodeAgentToolsInvocationMarker(
 ): CodeAgentToolsInvocationMarker | null {
   const value = context?.metadata?.[CODE_AGENT_TOOLS_CONTEXT_METADATA_KEY];
   if (!value || typeof value !== 'object') return null;
-  const { channelId, workspacePath } = value as Record<string, unknown>;
+  const { channelId, workspacePath, shellExecution } = value as Record<string, unknown>;
   if (typeof channelId !== 'string' || !channelId) return null;
-  return { channelId, workspacePath: typeof workspacePath === 'string' ? workspacePath : null };
+  return {
+    channelId,
+    workspacePath: typeof workspacePath === 'string' ? workspacePath : null,
+    shellExecution: shellExecution === true,
+  };
 }
