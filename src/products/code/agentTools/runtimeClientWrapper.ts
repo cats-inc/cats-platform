@@ -14,6 +14,11 @@ import { readCodeAgentToolsInvocationMarker, type CodeAgentToolsInvocationMarker
 import { CODE_AGENT_PREVIEW_POLICY } from './policy.js';
 import { hasShellExecutionPermission } from './shellPermission.js';
 import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
+import {
+  composeSessionMcpServers,
+  type SessionMcpServerContribution,
+  type SessionMcpServerContributor,
+} from '../../../platform/mcp/sessionMcpServerContributions.js';
 
 /**
  * Attaches the `cats` MCP server to Code conversation sessions (ADR-126).
@@ -29,6 +34,7 @@ import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 interface TrackedSession {
   token: string;
   channelId: string;
+  workspacePath: string | null;
   report: RuntimeSessionMcpDeliveryReport | undefined;
 }
 
@@ -40,6 +46,13 @@ export interface CodeAgentToolsClientWrapperOptions {
   onSessionStarted?(channelId: string): void;
   /** A Code conversation's session was closed or deleted and its grant revoked. */
   onSessionEnded?(channelId: string, reason: 'closed' | 'deleted'): void;
+  /**
+   * Further MCP servers for the same descriptor, such as a user-granted App
+   * endpoint or a plugin server (ADR-126, PLAN-116 F5). They are composed with
+   * `cats`; a contributor that fails or names a server wrongly is left out.
+   */
+  contributors?: readonly SessionMcpServerContributor[];
+  onContributionError?(contributorId: string, error: unknown): void;
 }
 
 export interface CodeAgentToolsClientWrapper {
@@ -51,13 +64,31 @@ export function createCodeAgentToolsClientWrapper(
 ): CodeAgentToolsClientWrapper {
   const sessions = new Map<string, TrackedSession>();
 
-  function descriptor(endpoint: string, token: string): RuntimeSessionMcpServer[] {
-    return [{
-      name: CODE_AGENT_TOOLS_SERVER_NAME,
-      transport: 'http',
-      url: endpoint,
-      auth: { kind: 'bearer_env', token },
+  function descriptor(
+    endpoint: string,
+    token: string,
+    session: { channelId: string; workspacePath: string | null },
+  ): RuntimeSessionMcpServer[] {
+    const contributions: SessionMcpServerContribution[] = [{
+      origin: { kind: 'host' },
+      server: { name: CODE_AGENT_TOOLS_SERVER_NAME, transport: 'http', url: endpoint, auth: { kind: 'bearer_env', token } },
     }];
+    const context = {
+      channelId: session.channelId,
+      conversationId: buildChatConversationId(session.channelId),
+      workspacePath: session.workspacePath,
+    };
+    for (const contributor of options.contributors ?? []) {
+      try {
+        const offered = contributor.contribute(context);
+        // Validate each contributor on its own, so one bad entry drops only its contributor.
+        composeSessionMcpServers([...contributions, ...offered]);
+        contributions.push(...offered);
+      } catch (error) {
+        options.onContributionError?.(contributor.id, error);
+      }
+    }
+    return composeSessionMcpServers(contributions);
   }
 
   function issue(marker: CodeAgentToolsInvocationMarker, shellExecution = marker.shellExecution): string {
@@ -95,13 +126,18 @@ export function createCodeAgentToolsClientWrapper(
               // whitelist's allowed tools.
               const token = issue(marker, hasShellExecutionPermission(input));
               try {
-                const session = await target.createSession({ ...input, mcpServers: descriptor(endpoint, token) });
+                const session = await target.createSession({ ...input, mcpServers: descriptor(endpoint, token, marker) });
                 // Runtime's resolved cwd is the workspace the Cat writes to
                 // (a worktree or sandbox can differ from the channel's repo path).
                 options.grants.bind(token, session.id, {
                   workspacePath: session.cwd ?? input.cwd ?? marker.workspacePath,
                 });
-                sessions.set(session.id, { token, channelId: marker.channelId, report: session.mcpServers });
+                sessions.set(session.id, {
+                  token,
+                  channelId: marker.channelId,
+                  workspacePath: marker.workspacePath,
+                  report: session.mcpServers,
+                });
                 options.onSessionStarted?.(marker.channelId);
                 return session;
               } catch (error) {
@@ -121,7 +157,7 @@ export function createCodeAgentToolsClientWrapper(
                 if (marker) {
                   const token = issue(marker);
                   options.grants.bind(token, sessionId);
-                  tracked = { token, channelId: marker.channelId, report: undefined };
+                  tracked = { token, channelId: marker.channelId, workspacePath: marker.workspacePath, report: undefined };
                   sessions.set(sessionId, tracked);
                   options.onSessionStarted?.(marker.channelId);
                 }
@@ -129,7 +165,7 @@ export function createCodeAgentToolsClientWrapper(
               if (!tracked || !endpoint) return target.sendMessage(sessionId, content, input);
               const result = await target.sendMessage(sessionId, content, {
                 ...input,
-                mcpServers: descriptor(endpoint, tracked.token),
+                mcpServers: descriptor(endpoint, tracked.token, tracked),
                 instructions: tracked.report?.status === 'delivered'
                   ? withPolicy(input?.instructions)
                   : input?.instructions,
@@ -145,7 +181,7 @@ export function createCodeAgentToolsClientWrapper(
               if (!tracked || !endpoint) return target.resumeSession!(sessionId, input);
               const session = await target.resumeSession!(sessionId, {
                 ...input,
-                mcpServers: descriptor(endpoint, tracked.token),
+                mcpServers: descriptor(endpoint, tracked.token, tracked),
               });
               if (session.mcpServers) tracked.report = session.mcpServers;
               if (session.cwd) options.grants.bind(tracked.token, sessionId, { workspacePath: session.cwd });
