@@ -20,7 +20,7 @@
 |-------|-------|
 | **Status** | Draft |
 | **Owner** | Codex |
-| **Reviewer** | middl |
+| **Reviewer** | Ken Chou |
 | **Related Plan** | [PLAN-090](../plans/PLAN-090-cats-code-artifact-canvas-rollout.md) |
 
 ## Summary

@@ -10,7 +10,7 @@
 |-------|-------|
 | **Status** | Draft |
 | **Owner** | Codex |
-| **Reviewer** | middl |
+| **Reviewer** | Ken Chou |
 | **Related ADR** | [ADR-088](../decisions/088-use-structured-artifact-declarations-for-code-materialization.md) |
 | **Related Plan** | [PLAN-081](../plans/PLAN-081-code-artifact-declaration-rollout.md) |
 

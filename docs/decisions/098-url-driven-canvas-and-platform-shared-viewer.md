@@ -294,4 +294,4 @@ needs a platform-shared viewer vs a product-owned one.
 ---
 
 *Decision made: 2026-04-30*
-*Decision makers: middl, Claude*
+*Decision makers: Ken Chou, Claude*

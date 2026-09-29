@@ -15,7 +15,7 @@
 |-------|-------|
 | **Status** | Draft |
 | **Owner** | Codex |
-| **Reviewer** | middl |
+| **Reviewer** | Ken Chou |
 | **Related Plan** | [PLAN-097](../plans/PLAN-097-cats-code-live-preview-substrate-rollout.md) |
 
 ## Summary

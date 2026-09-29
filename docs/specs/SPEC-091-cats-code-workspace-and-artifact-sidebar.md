@@ -9,7 +9,7 @@
 |-------|-------|
 | **Status** | Draft |
 | **Owner** | Codex |
-| **Reviewer** | middl |
+| **Reviewer** | Ken Chou |
 | **Related Plan** | TBD for full sidebar rollout; [PLAN-081](../plans/PLAN-081-code-artifact-declaration-rollout.md) covers artifact declarations |
 
 ## Summary
