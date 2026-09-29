@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -242,12 +242,18 @@ export class FileChatStore implements ChatStore {
     try {
       await writeFile(backupPath, raw, { encoding: 'utf-8', flag: 'wx' });
     } catch (error) {
-      if (!(isErrnoException(error) && error.code === 'EEXIST')) {
+      // Only a regular file left by an earlier attempt counts as the kept backup.
+      // Anything else occupying the path (a directory, say) is no backup at all.
+      const existing = isErrnoException(error) && error.code === 'EEXIST'
+        ? await lstat(backupPath).catch(() => null)
+        : null;
+      if (!existing?.isFile()) {
         reportStoreDiagnostic('companion_role_migration_failed', {
           filePath: this.filePath,
           stage: 'backup',
           backupPath,
-          message: error instanceof Error ? error.message : String(error),
+          message: existing ? 'Backup path is not a regular file.'
+            : error instanceof Error ? error.message : String(error),
         });
         return snapshot;
       }
