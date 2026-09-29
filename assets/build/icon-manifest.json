@@ -1,6 +1,8 @@
 {
   "sourceSvg": "assets/app-icon-silhouette.svg",
-  "shape": "circle",
+  "traySourceSvg": "assets/tray-icon-template.svg",
+  "shape": "square",
+  "macosInset": 0.09765625,
   "app": {
     "png": "assets/build/icon.png",
     "ico": "assets/build/icon.ico",
