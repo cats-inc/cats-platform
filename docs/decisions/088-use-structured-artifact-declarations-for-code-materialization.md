@@ -163,4 +163,4 @@ preview, build output, screenshot, or review report.
 ---
 
 *Decision made: 2026-04-29*
-*Decision makers: middl, Codex*
+*Decision makers: Ken Chou, Codex*

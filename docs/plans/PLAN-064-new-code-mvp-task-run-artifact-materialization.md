@@ -10,7 +10,7 @@
 |-------|-------|
 | **Status** | Draft (Build/Relay sidebar dependencies retired) |
 | **Owner** | Codex |
-| **Reviewer** | middl |
+| **Reviewer** | Ken Chou |
 
 ## Related Spec / Dependencies
 
