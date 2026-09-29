@@ -2296,6 +2296,13 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.delete.cat.message':
     '要刪除「{catName}」嗎？這會移除這隻貓咪並清理連結的執行階段工作階段。此動作無法復原。',
   'shared.delete.cat.confirm': '刪除',
+  'shared.delete.nativeTranscriptWarning': '連結的 Runtime 工作階段資料，以及 {providers} 保留的任何原生對話紀錄，都將永久刪除。不會保留備份，且無法復原。',
+  'shared.delete.sessionWarning': '連結的 Runtime 工作階段資料將永久刪除，不會保留備份，且無法復原。',
+  'shared.delete.unknownTranscriptWarning': '連結的 Runtime 工作階段資料，以及供應器端的任何原生對話紀錄，都將永久刪除，不會保留備份，且無法復原。',
+  'shared.delete.channel.title': '永久刪除對話？',
+  'shared.delete.channel.message': '要刪除「{title}」及其對話紀錄嗎？',
+  'shared.delete.channel.fallback': '這個對話',
+  'shared.delete.permanently': '永久刪除',
   'shared.delete.cat.fallback': '這隻貓',
   'shared.transcript.deletedCat': '已刪除的貓',
   'telegram.command.start.description': '開始對話',

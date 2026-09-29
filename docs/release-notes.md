@@ -2,6 +2,21 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-09-29 — Session deletion warnings (unreleased)
+
+- Conversation deletion now asks for confirmation before calling Runtime. The
+  destructive button says **Delete permanently**. English and Traditional Chinese
+  dialogs explain that linked Runtime data and provider-side native transcripts
+  are permanently erased without a backup or recovery, naming known CLI providers.
+  Providers without native transcripts get the generic Runtime-data warning.
+- Direct-lane Clear, parallel-chat deletion and Cat deletion include the same
+  warning. Active lease providers take precedence over a Cat's current default;
+  when session metadata is unavailable the warning covers any provider transcript.
+- Mobile's revealed Delete action also opens a native confirmation alert before
+  sending DELETE, using the same localized irreversible-transcript warning.
+- Compatible with existing installs: deletion behavior and persisted formats are
+  unchanged; this adds truthful confirmation. No version bump or publication.
+
 ## 2026-09-29 — Distribution hygiene (unreleased)
 
 - **App compatibility is decided by the App SDK version alone (ADR-128).** An App's

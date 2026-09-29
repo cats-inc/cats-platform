@@ -45,7 +45,11 @@ import type { DeleteChatChannelResult } from '../api/chat.js';
 import { resetComposerDraftState } from '../composerDraftState.js';
 import {
   buildDeleteCatConfirmation,
+  buildDeleteChannelConfirmation,
   buildDeleteParallelChatGroupConfirmation,
+  channelDeleteTargets,
+  type DeleteChannelContext,
+  type DeleteProviderTarget,
 } from '../deleteConfirmations.js';
 import { formatSettingsCatsRegistryMutationError } from './settingsCatsRegistryErrorLabels.js';
 import { formatWorkspaceNavigationMutationError } from './workspaceNavigationErrorLabels.js';
@@ -70,6 +74,7 @@ type WorkspaceNavigationTranslator = (
 export interface WorkspaceNavigationChannelRef {
   id: string;
   title?: string | null;
+  pendingProvider?: string | null;
   originSurface?: PlatformSurfaceId | null;
   channelKind?: 'chat_channel' | 'direct_message' | null;
   defaultRecipientCatId?: string | null;
@@ -91,13 +96,16 @@ export interface WorkspaceNavigationPayloadLike {
   }>;
   chat: {
     channels: ReadonlyArray<WorkspaceNavigationChannelRef>;
+    selectedChannel?: DeleteChannelContext['selectedChannel'];
     cats?: ReadonlyArray<{
       id: string;
       name?: string | null;
+      defaultExecutionTarget?: DeleteProviderTarget;
     }>;
     parallelChatGroups?: ReadonlyArray<{
       id: string;
       title: string;
+      members?: ReadonlyArray<DeleteProviderTarget>;
     }>;
     selectedChannelId: string | null;
   };
@@ -395,6 +403,12 @@ export function useWorkspaceAppNavigationActions<
   ]);
 
   const onDeleteChannel = useCallback(async (channelId: string): Promise<void> => {
+    const chat = state.status === 'ready' ? state.payload.chat : null;
+    const channel = chat?.channels.find((entry) => entry.id === channelId);
+    const confirmed = confirmDialog ? await confirmDialog(buildDeleteChannelConfirmation(
+      channel?.title, chat ? channelDeleteTargets(chat, channelId) : [], t,
+    )) : false;
+    if (!confirmed) return;
     setBusy(createChannelBusyState('delete', channelId));
     try {
       const result = await navigationApi.deleteChatChannel(channelId);
@@ -424,6 +438,7 @@ export function useWorkspaceAppNavigationActions<
     }
   }, [
     chatPrefix,
+    confirmDialog,
     navigate,
     navigationApi,
     platformShellSurface,
@@ -431,6 +446,7 @@ export function useWorkspaceAppNavigationActions<
     setBusy,
     setFeedback,
     setState,
+    state,
     t,
   ]);
 

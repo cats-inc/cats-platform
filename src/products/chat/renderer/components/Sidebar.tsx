@@ -26,6 +26,7 @@ import { sortChatCatsByRecency } from '../../shared/directMessageSelectors.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import { messageKeys, type MessageKey } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import { channelDeleteTargets, sessionDeletionWarning } from '../../../shared/renderer/deleteConfirmations.js';
 
 export interface SidebarProps {
   payload: AppShellPayload;
@@ -170,8 +171,8 @@ export function Sidebar(props: SidebarProps) {
       title: t(messageKeys.conversationSidebarClearButton),
       message: t(messageKeys.conversationSidebarClearConfirmMessage, {
         catName,
-      }),
-      confirmLabel: t(messageKeys.conversationSidebarClearButton),
+      }) + ' ' + sessionDeletionWarning(channelDeleteTargets(props.payload.chat, channel.id), t),
+      confirmLabel: t(messageKeys.sharedDeletePermanently),
     });
     if (!confirmed) return;
     props.onClearDirectLane(catId, channel.id);
