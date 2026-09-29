@@ -24,7 +24,8 @@ export interface WorkspaceLocationState {
 
 export function useWorkspaceLocationState(chatPrefix: string): WorkspaceLocationState {
   const location = useLocation();
-  const channelMatch = useMatch(`${chatPrefix}/chats/:channelId`);
+  // `/*` keeps the channel selected while a canvas child route is open.
+  const channelMatch = useMatch(`${chatPrefix}/chats/:channelId/*`);
   const myCatMatch = useMatch(`${chatPrefix}/dm/:catId`);
   const routeChannelId = channelMatch?.params.channelId ?? null;
   const routeMyCatId = myCatMatch?.params.catId ?? null;

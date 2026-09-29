@@ -4,6 +4,8 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import type { AppShellPayload } from '../api/workspaceContracts.js';
 import type { SelectedChannelView } from './workspaceChatUtils.js';
+import type { CanvasSurfaceKind } from '../artifactCanvas/contracts.js';
+import { withSharedViewerRoutes } from './withSharedViewerRoutes.js';
 
 function noop(): void {}
 
@@ -18,6 +20,8 @@ export interface WorkspaceAppRoutesProps {
   entryPath: string;
   chatsPath: string;
   extraRoutes?: ReactNode;
+  /** Mounts the Artifact Canvas beside the conversation when set (Code only). */
+  chatCanvasSurfaceKind?: CanvasSurfaceKind;
   renderBootShell: () => ReactNode;
   renderChatView: (
     channel: SelectedChannelView,
@@ -51,6 +55,7 @@ export function WorkspaceAppRoutes({
   entryPath,
   chatsPath,
   extraRoutes = null,
+  chatCanvasSurfaceKind,
   renderBootShell,
   renderChatView,
   renderNewChatDraft,
@@ -59,6 +64,9 @@ export function WorkspaceAppRoutes({
   onOpenDraftAddCat,
   onChangeDraftDefaultRecipient,
 }: WorkspaceAppRoutesProps) {
+  const chatElement = selectedChannel
+    ? renderChatView(selectedChannel, { onOpenAddCat: onToggleAddCat })
+    : renderBootShell();
   return (
     <>
       <Routes>
@@ -67,14 +75,15 @@ export function WorkspaceAppRoutes({
           element={<Navigate to={entryPath} replace />}
         />
         {extraRoutes}
-        <Route
-          path="chats/:channelId"
-          element={
-            selectedChannel
-              ? renderChatView(selectedChannel, { onOpenAddCat: onToggleAddCat })
-              : renderBootShell()
-          }
-        />
+        {chatCanvasSurfaceKind
+          ? withSharedViewerRoutes({
+            key: 'chat-conversation',
+            path: 'chats/:channelId',
+            surfaceKind: chatCanvasSurfaceKind,
+            surfaceIdParam: 'channelId',
+            element: chatElement,
+          })
+          : <Route path="chats/:channelId" element={chatElement} />}
         <Route
           path="chats"
           element={<Navigate to={chatsPath} replace />}

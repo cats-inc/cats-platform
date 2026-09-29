@@ -7,6 +7,7 @@ export const ARTIFACT_CANVAS_SURFACE_KINDS = [
   'work_project',
   'work_task',
   'chat_conversation',
+  'code_conversation',
 ] as const;
 
 export type CanvasSurfaceKind = (typeof ARTIFACT_CANVAS_SURFACE_KINDS)[number];
@@ -175,7 +176,7 @@ export type CanvasSurfaceAnchorSource =
   | { source: 'activity_task_anchor'; surfaceKind: 'code_task' | 'work_task'; taskId: string }
   | {
       source: 'activity_conversation_anchor';
-      surfaceKind: 'chat_conversation';
+      surfaceKind: 'chat_conversation' | 'code_conversation';
       conversationId: string;
     }
   | { source: 'activity_metadata_anchor'; surfaceKind: 'code_codespace'; codespaceId: string };
@@ -250,6 +251,7 @@ const SURFACE_ROUTE_PREFIXES: Record<CanvasSurfaceKind, string> = {
   work_project: '/work/projects',
   work_task: '/work/tasks',
   chat_conversation: '/chat/chats',
+  code_conversation: '/code/chats',
 };
 
 export interface CanvasSurfaceRouteRegistry {
