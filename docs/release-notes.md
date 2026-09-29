@@ -2,7 +2,43 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
-## 2026-09-29 — Session deletion warnings (unreleased)
+## 2026-09-30 — Platform 0.7.0 npm and Desktop standard preview (prepared)
+
+Platform **0.7.0** is prepared for npm `latest` and for the Desktop 0.7.0
+standard-profile preview; the owner authorized both together with Runtime 0.4.0,
+Usage 0.5.1, Studio 0.2.1 and cats-one 0.4.0. It is a **minor** for two reasons:
+Desktop bundles Runtime **0.4.0**, itself a minor because an API key no longer
+implies binding every interface (Desktop is unaffected: the supervisor passes
+`CATS_RUNTIME_HOST=127.0.0.1` explicitly), and main since 0.6.1 carries new
+features, listed below, not only fixes. No persisted-data format changes or
+migrations landed since 0.6.1; the only store change is a write-path fix (#193).
+
+- **Bundled App selection.** Desktop pins Usage **0.5.1** (SHA-256
+  `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`), whose only
+  change from 0.5.0 is the corrected publisher metadata. Studio 0.2.1 is published
+  but stays outside the default bundle. Both declare `catsPlatform ^0.6.0`, which
+  this host reads as a floor (ADR-128 below).
+- **Bundled knowledge.** The Orchestrator and code-entry knowledge bundles move to
+  `platformRange: "0.7.x"` as revision `2026-09-30.1`; their entries are unchanged. The
+  loaders and Desktop staging reject a bundle whose range excludes the running Platform,
+  so this is part of every Platform minor.
+- **Excluded from this source.** The new Ask App (0.1.0) is not released. Platform
+  [#211](https://github.com/cats-inc/cats-platform/pull/211) (Telegram: a Cat's own bot
+  answers without a room note) merged before this version was finalized and is included.
+- **Not verified here.** An installed 0.6.1 → 0.7.0 upgrade on each OS; only the
+  hosted release gates and the packaged-startup check run for this preparation.
+- **Also in this release** (merged PRs): companion Cats keep a daily rhythm, speak
+  first when awake and send photos from their album (#186, #187, #189, #206), the
+  owner's Telegram photos reach the Cat and the companion answers like it is on duty
+  (#188, #208), the Artifact Canvas beside the Code conversation with static previews
+  from supervisor-leased loopback origins, `show_in_canvas`, the Cats Code MCP
+  endpoint and server, and the reopen-latest-preview control (#191, #195, #196, #198,
+  #203, #207), session MCP servers carried through the runtime client (#190),
+  complete Apps hosted behind shared Platform ingress (#194), @mentions of Cat names
+  containing a space (#204), and the chat store no longer writing from an unlocked
+  read (#193).
+
+### Session deletion warnings
 
 - Conversation deletion now asks for confirmation before calling Runtime. The
   destructive button says **Delete permanently**. English and Traditional Chinese
@@ -17,7 +53,7 @@
 - Compatible with existing installs: deletion behavior and persisted formats are
   unchanged; this adds truthful confirmation. No version bump or publication.
 
-## 2026-09-29 — Distribution hygiene (unreleased)
+### Distribution hygiene
 
 - **App compatibility is decided by the App SDK version alone (ADR-128).** An App's
   `compatibility.catsPlatform` is now read as a minimum host version: the host accepts any
