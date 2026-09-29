@@ -76,6 +76,27 @@ test('Artifact Canvas registry preserves explicit presentation in route and API 
   });
 });
 
+test('Artifact Canvas registry round-trips the markdown presentation', () => {
+  const canvasUrl = canvasSurfaceRouteRegistry.canvasUrl(SURFACE, 'artifact-123', 'markdown');
+  assert.equal(canvasUrl, '/code/tasks/task-abc/canvas/artifact-123/view/markdown');
+  assert.equal(
+    (canvasSurfaceRouteRegistry.parse(canvasUrl) as { presentationRequested?: string } | null)
+      ?.presentationRequested,
+    'markdown',
+  );
+  assert.equal(
+    canvasSurfaceRouteRegistry.parseProjectionApiPath(
+      '/api/canvas/code_task/task-abc/artifacts/artifact-123/view/markdown',
+    )?.presentationRequested,
+    'markdown',
+  );
+  const normalized = normalizeArtifactCanvasShowToolInput(
+    { artifactId: 'artifact-123', presentation: 'markdown' },
+    SURFACE,
+  );
+  assert.equal(normalized.status === 'shape_ok' ? normalized.input.presentation : null, 'markdown');
+});
+
 test('Artifact Canvas registry matches mounted Work and Chat product paths', () => {
   const workItem: CanvasSurfaceRef = {
     kind: 'work_item',
@@ -192,7 +213,7 @@ test('Artifact Canvas runtime tool definitions expose only canvas command fields
   );
   assert.deepEqual(
     ARTIFACT_CANVAS_SHOW_TOOL_DEFINITION.inputSchema.properties.presentation.enum,
-    ['auto', 'iframe', 'image', 'pdf', 'code'],
+    ['auto', 'iframe', 'image', 'pdf', 'code', 'markdown'],
   );
   assert.equal(
     Array.from(

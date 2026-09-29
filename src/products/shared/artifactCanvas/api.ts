@@ -8,6 +8,7 @@ import {
 import {
   canvasSurfaceRouteRegistry,
 } from './contracts.js';
+import { inlineArtifactCanvasLeaseText } from './leaseText.js';
 import {
   buildArtifactCanvasProjection,
 } from './projection.js';
@@ -57,8 +58,9 @@ export async function routeArtifactCanvasApi(
     return true;
   }
 
+  const core = await context.dependencies.coreStore.readCore();
   const result = buildArtifactCanvasProjection({
-    core: await context.dependencies.coreStore.readCore(),
+    core,
     surface: route.surface,
     artifactId: route.artifactId,
     presentationRequested: route.presentationRequested,
@@ -70,7 +72,11 @@ export async function routeArtifactCanvasApi(
     return true;
   }
 
-  sendJson(context.response, 200, result.projection);
+  sendJson(context.response, 200, await inlineArtifactCanvasLeaseText({
+    core,
+    projection: result.projection,
+    supervisorPreviewLeaseStore: context.dependencies.supervisorPreviewLeaseStore,
+  }));
   return true;
 }
 

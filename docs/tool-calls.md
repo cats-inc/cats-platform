@@ -702,13 +702,20 @@ input, which takes exactly one of `path`, `url` or `artifactId`:
 
 ```ts
 interface ShowInCanvasInput {
-  path?: string;      // workspace page, directory with index.html, image, PDF or text
+  path?: string;      // workspace page, directory with index.html, image, PDF, Markdown or text
   url?: string;       // https only; shown without scripts
   artifactId?: string;
   title?: string;
-  presentation?: 'auto' | 'iframe' | 'image' | 'pdf' | 'code';
+  presentation?: 'auto' | 'iframe' | 'image' | 'pdf' | 'code' | 'markdown';
 }
 ```
+
+Under `auto`, a workspace `.md` or `.markdown` file opens in the sanitized
+`markdown` viewer, which applies the chat markdown renderer's rules (raw HTML
+shown as text, unsafe URL protocols dropped, remote images not loaded).
+`presentation: 'code'` shows its source instead. The MCP result is
+`{ artifactId, canvasPath, presentation, previewId?, previewUrl? }`, where
+`presentation` is the resolved viewer.
 
 Workspace pages open on a supervisor-leased static preview origin with scripts
 (SPEC-108/123). The SPEC-101 material below still defines projection, audit and
@@ -725,7 +732,7 @@ type ShowInCanvasResult =
       // for transcript / UI surfaces; intentId is never exposed here.
       activityId: string;
       artifactId: string;
-      presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
+      presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'markdown' | 'unsupported';
       iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
       policyVersion: string | null;
       // Full nested-route URL the renderer was asked to navigate to.
@@ -767,9 +774,9 @@ table):
 - exactly one of `artifactId` or `declarationId` is required;
 - `'unsupported'` is **not** a valid input; it is a server-resolved output
   state for `presentation: 'auto'` only;
-- explicit `iframe` / `image` / `pdf` / `code` requests that cannot be
-  served reject with `artifact_canvas_presentation_unsupported`; `auto`
-  accepts and opens the metadata-only `unsupported` pane instead;
+- explicit `iframe` / `image` / `pdf` / `code` / `markdown` requests that
+  cannot be served reject with `artifact_canvas_presentation_unsupported`;
+  `auto` accepts and opens the metadata-only `unsupported` pane instead;
 - `declarationId` resolves only against the current turn's per-turn index
   keyed by `(turnId, producerKey, scopeKey, declarationId)` — the
   SPEC-092 idempotency components plus `turnId`.

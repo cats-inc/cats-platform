@@ -16,7 +16,11 @@ export interface MessageBodyMarkdownProps {
 /** The Desktop host only hands http(s) URLs to the system browser. */
 const EXTERNAL_URL_REGEX = /^https?:\/\//i;
 
-const MARKDOWN_COMPONENTS: Components = {
+/**
+ * Link and image handling for agent-authored markdown, shared with the Artifact
+ * Canvas markdown viewer so both surfaces neutralize content the same way.
+ */
+export const MESSAGE_BODY_MARKDOWN_COMPONENTS: Components = {
   a({ href, children }) {
     if (href && isInternalProductRoute(href)) {
       return <Link className="messageBodyLink" to={href}>{children}</Link>;
@@ -79,7 +83,7 @@ export const MessageBodyMarkdown = memo(function MessageBodyMarkdown({
 
   return (
     <div className="messageBodyMarkdown">
-      <Markdown remarkPlugins={remarkPlugins} components={MARKDOWN_COMPONENTS}>
+      <Markdown remarkPlugins={remarkPlugins} components={MESSAGE_BODY_MARKDOWN_COMPONENTS}>
         {text}
       </Markdown>
     </div>

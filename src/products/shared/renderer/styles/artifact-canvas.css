@@ -284,3 +284,24 @@ main.canvas:has(> .artifactCanvasSurfaceFrame) {
     box-shadow: 0 -12px 36px rgba(12, 23, 40, 0.14);
   }
 }
+
+/* Markdown viewer (PLAN-116 F1): chat markdown rules on a document surface. */
+.artifactCanvasMarkdown {
+  width: 100%;
+  min-height: 420px;
+  box-sizing: border-box;
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: auto;
+  background: var(--panel);
+  line-height: 1.6;
+}
+
+.artifactCanvasMarkdown.messageBodyMarkdown h1 {
+  font-size: 1.5em;
+}
+
+.artifactCanvasMarkdown.messageBodyMarkdown h2 {
+  font-size: 1.25em;
+}
