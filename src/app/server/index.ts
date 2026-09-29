@@ -166,10 +166,26 @@ export function createServer(dependencies: ServerDependencies) {
   resolvedDependencies.shared.platformIngress = ingress;
   if (ingress) appComponents?.setIngressSnapshot(() => ingress.snapshot());
   let appHostingReady = Promise.resolve();
+  const livePreviewSupervisor = resolvedDependencies.code.livePreviewSupervisor;
+  let livePreviewSweep: ReturnType<typeof setInterval> | undefined;
+  let hostingClose: Promise<void> | undefined;
+  const closeAppHosting = () => {
+    clearInterval(livePreviewSweep);
+    return hostingClose ??= Promise.allSettled([
+      ingress?.close(), appComponents?.close(), livePreviewSupervisor?.stopAll('platform_shutdown'),
+    ]).then(results => {
+      const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected');
+      if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Hosted service cleanup failed.');
+    });
+  };
 
   server.on('listening', () => {
     appHostingReady = Promise.all([appComponents?.restore(), ingress?.restore()]).then(() => {});
     void appHostingReady.catch(reportUnhandledServerError);
+    livePreviewSweep = setInterval(() => {
+      void livePreviewSupervisor?.expireLeases().catch(reportUnhandledServerError);
+    }, 60_000);
+    livePreviewSweep.unref();
     void plugins.tick().catch(reportUnhandledServerError);
     pluginTimer = setInterval(() => { void plugins.tick().catch(reportUnhandledServerError); }, 10_000);
     pluginTimer.unref();
@@ -189,8 +205,7 @@ export function createServer(dependencies: ServerDependencies) {
   });
 
   server.on('close', () => {
-    void ingress?.close().catch(reportUnhandledServerError);
-    void appComponents?.close().catch(reportUnhandledServerError);
+    void closeAppHosting().catch(reportUnhandledServerError);
     clearInterval(pluginTimer);
     knowledge.close();
     stopSchedulerLoop();
@@ -203,5 +218,5 @@ export function createServer(dependencies: ServerDependencies) {
   // Callers with private state can await this before submitting work or cleaning up.
   return Object.assign(server, { startupRecovery: runServerStartupRecoveryPasses(resolvedDependencies),
     appHostingReady: () => appHostingReady,
-    closeAppHosting: async () => { await Promise.all([ingress?.close(), appComponents?.close()]); } });
+    closeAppHosting });
 }

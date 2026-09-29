@@ -42,7 +42,7 @@ remains separate from local fixtures.
 
 | Service Name | Port Range | Protocol | Status | Description |
 |--------------|------------|----------|--------|-------------|
-| `Cats Code` live previews | 47100-47199 | TCP | Planned / disabled by default | Reserved candidate range for supervised loopback-only preview child processes under SPEC-108 / PLAN-097. No process spawning is enabled until the live-preview supervisor approval gate lands. |
+| `Cats Code` live previews | 47100-47199 | TCP | Static previews active; process previews opt-in | Supervised loopback-only preview origins (SPEC-108, SPEC-123). The in-process static file server leases ports here by default. Child-process previews such as Vite stay off until `CATS_CODE_LIVE_PREVIEW_USE_REAL_PROCESS_ADAPTER` and an enabled profile are set. |
 
 ## Planned Shared Service Boundaries
 
@@ -77,7 +77,7 @@ Port numbers should be configurable via environment variables so developers can 
 | `CATS_WORK_GOLDEN_PATH_ENABLED` | `false` | Telegram work delivery | Enables the SPEC-114 `/work` golden path; disabled by default. Turning it off is the rollback: Core and transport records survive and `/work` reverts to ordinary chat routing |
 | `CATS_WORK_GOLDEN_PATH_OWNERS` | empty | Telegram work delivery | Comma-separated Telegram user ids allowed to delegate work (SPEC-114 FR-1). Empty means nobody is authorized and the bot says so; there is no trust-on-first-use path |
 | `CATS_WORK_GOLDEN_PATH_WORKSPACE` | empty | Telegram work delivery | Absolute workspace the first slice executes against. Unset reports `workspace_missing` readiness rather than guessing |
-| `CATS_CODE_LIVE_PREVIEW_ENABLED` | `false` | Cats Code live preview | Enables the supervised live-preview substrate after PLAN-097 approval; disabled by default |
+| `CATS_CODE_LIVE_PREVIEW_ENABLED` | `true` | Cats Code live preview | Enables the supervised live-preview substrate (approved 2026-09-29, SPEC-123). With the default settings only the in-process static profile can start. `false` disables every preview |
 | `CATS_CODE_LIVE_PREVIEW_USE_REAL_PROCESS_ADAPTER` | `false` | Cats Code live preview | Switches the supervisor from the inert adapter to the real `child_process.spawn` adapter; only takes effect when `_ENABLED` is also true and an approved profile is registered |
 | `CATS_CODE_LIVE_PREVIEW_PORT_RANGE` | `47100-47199` | Cats Code live preview | Candidate loopback port range for supervised preview child processes |
 | `CATS_CODE_LIVE_PREVIEW_MAX_GLOBAL` | `3` | Cats Code live preview | Global concurrent live-preview lease limit |
@@ -85,7 +85,7 @@ Port numbers should be configurable via environment variables so developers can 
 | `CATS_CODE_LIVE_PREVIEW_LEASE_TTL_MS` | `1800000` | Cats Code live preview | Default live-preview lease TTL |
 | `CATS_CODE_LIVE_PREVIEW_LOG_MAX_BYTES` | `1048576` | Cats Code live preview | Bounded stdout/stderr capture size per preview |
 | `CATS_CODE_LIVE_PREVIEW_ALLOW_IPV6_LOOPBACK` | `false` | Cats Code live preview | Allows `[::1]` leases when explicitly enabled |
-| `CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES` | `[]` | Cats Code live preview | JSON array of declarative command profiles; assistants cannot provide raw shell commands |
+| `CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES` | `[]` | Cats Code live preview | JSON array of declarative command profiles; assistants cannot provide raw shell commands. The built-in in-process `static` profile is always added |
 
 ## Telegram work delegation: rollout, rollback, and the offline limit
 

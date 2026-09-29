@@ -88,7 +88,14 @@ registry/lifecycle machinery, not a second installer.
   registry non-mutation, SPA landing routes, and an explicit non-executable
   cross-OS native inventory fixture. Focused checks passed all 13 host/proxy
   tests and all 3 distribution tests. Independent fixture review found no
-  blocker. The updated full CI gate remains required before Platform can merge.
+  blocker. Full CI then passed on `95e892d2` (run `36549520763`).
+- Concurrent Code static-preview PR #195 required a host-listening merge. Both
+  App restore and Code lease sweeping are retained. Independent review found
+  preview cleanup was not awaited by the production shutdown path; the shared
+  cached shutdown now awaits ingress, App components and Code previews, including
+  cleanup failure settlement. All 14 ingress/static-preview/config/profile
+  integration tests passed; the added delayed-preview shutdown regression and
+  shared-ingress test also passed. The combined head must pass CI before merge.
 - No version bump, publication, live tunnel/Bot or user-profile installation.
 
 2026-09-29 shared-ingress candidate checkpoint:

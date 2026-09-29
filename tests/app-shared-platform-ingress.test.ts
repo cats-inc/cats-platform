@@ -14,6 +14,36 @@ import { createEmptyPlatformAuthState, createFirstAdminLocalAuthState, issueMobi
 import { AppComponentHost } from '../src/platform/apps/componentHost.ts';
 import { installRendererPackage } from '../src/platform/apps/packageInstaller.ts';
 
+test('Platform shutdown waits for Code preview cleanup and shares completion with the close event', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'cats-hosted-shutdown-'));
+  const config = loadConfig({ HOME: root, CATS_PLATFORM_DIR: path.join(root, 'platform') });
+  let releasePreview!: () => void;
+  const previewCleanup = new Promise<void>(resolve => { releasePreview = resolve; });
+  let stops = 0;
+  const server = createServer({ shared: { config, coreStore: new MemoryCoreStore(), desktopAppsKey: 'disabled-in-fixture',
+    runtimeClient: { getHealth: async () => ({ reachable: false, baseUrl: 'http://127.0.0.1:1' }) } as never },
+    chat: { chatStore: new MemoryChatStore() },
+    code: { livePreviewSupervisor: { async stopAll(reason: string) {
+      assert.equal(reason, 'platform_shutdown'); stops++; await previewCleanup;
+    }, async expireLeases() {} } as never } });
+  t.after(async () => {
+    releasePreview(); await server.closeAppHosting(); await server.startupRecovery;
+    if (server.listening) await new Promise<void>(resolve => server.close(() => resolve()));
+    await rm(root, { recursive: true, force: true });
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  let finished = false;
+  const closing = server.closeAppHosting();
+  void closing.then(() => { finished = true; });
+  assert.equal(server.closeAppHosting(), closing);
+  await new Promise<void>(resolve => server.close(() => resolve()));
+  assert.equal(stops, 1);
+  assert.equal(finished, false);
+  releasePreview(); await closing;
+  assert.equal(finished, true);
+  assert.equal(stops, 1);
+});
+
 test('real Platform router shares one public entry for Mobile and two Apps with separate MCP credentials', { timeout: 90_000 }, async t => {
   const root = await mkdtemp(path.join(tmpdir(), 'cats-shared-platform-'));
   const secret = 'fixture-session-secret-at-least-sixteen';
