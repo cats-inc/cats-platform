@@ -3,6 +3,12 @@
 > The multi-agent collaboration layer of the
 > [Cats Inc](https://github.com/cats-inc) project, running on `cats-runtime`.
 
+Cats / Cats Inc. is a software project name maintained by the individual
+developer [sammykenny2](https://github.com/sammykenny2), not a registered company.
+The software is provided under the [MIT License](LICENSE), including its warranty
+disclaimer and limitation of liability. Back up important files before allowing
+agents to modify them.
+
 ## Overview
 
 Studio image App (2026-09-28): SDK 1.3 now supports permission-scoped image jobs,

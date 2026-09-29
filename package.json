@@ -2,7 +2,7 @@
   "name": "@cats-inc/cats-platform",
   "version": "0.6.0",
   "description": "Technical host package for the Cats platform, backed by cats-runtime.",
-  "author": "Cats Inc. <sammykenny2@gmail.com>",
+  "author": "sammykenny2 <sammykenny2@gmail.com>",
   "homepage": "https://github.com/cats-inc/cats-platform",
   "type": "module",
   "imports": {
@@ -138,6 +138,7 @@
   "build": {
     "appId": "io.catsinc.cats",
     "productName": "Cats",
+    "copyright": "Copyright (c) 2025 sammykenny2 and contributors",
     "extraMetadata": {
       "name": "Cats"
     },
@@ -163,9 +164,14 @@
       "assets/build/icon.ico",
       "assets/build/icon.png",
       "assets/tray-icon*.png",
+      "LICENSE",
       "package.json"
     ],
     "extraResources": [
+      {
+        "from": "build/desktop-packaging/shared/app-sidecar/LICENSE",
+        "to": "app-sidecar/LICENSE"
+      },
       {
         "from": "build/desktop-packaging/shared/official-apps",
         "to": "app-sidecar/official-apps",

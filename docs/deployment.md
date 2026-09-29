@@ -871,6 +871,28 @@ node scripts/build-desktop-installer.mjs --target linux --arch arm64 --format de
     `package-desktop.mjs`, `cats-platform`, and `cats-runtime` so the packaged
     app never mixes app/runtime layouts by accident
 
+- distribution licenses and publisher identity:
+
+  Distribution licenses are required for both sidecar layouts. The host ASAR and
+  Platform sidecar carry the Platform `LICENSE`; the Runtime sidecar carries its
+  own `LICENSE`. Bundle layout also ships Runtime's `THIRD-PARTY-NOTICES.txt` and
+  matching JSON from `build/runtime-bundle`. These contain the original licenses
+  of dependencies selected by the Runtime bundler. External dependency directories
+  keep their original license and notice files.
+
+  Missing or stale notices fail staging before the previous stage is removed.
+  The release verifier reads the actual unpacked installer, including `app.asar`,
+  and checks license presence and the Runtime bundle/notice hashes before its
+  startup receipt can be written. Pin a Runtime revision that generates these
+  notices; older bundle producers must be rebuilt from a compatible revision.
+  This changes the private packaging contract, with no stored-data migration or
+  public API break and no requirement to publish Runtime to npm first.
+
+  Cats / Cats Inc. is the software brand. The individual maintainer is
+  `sammykenny2`; package author and Windows publisher/copyright metadata must not
+  assert a registered Cats company. Product name, appId and user-data paths remain
+  the existing identifiers. Publisher metadata does not constitute code signing.
+
 - refresh the packaged/tray icon set from `assets/app-icon-silhouette.svg`:
 
 ```bash

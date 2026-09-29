@@ -486,6 +486,54 @@ ownership boundaries in ADR-108 and SPEC-111.
 
 ## Progress Log
 
+### Distribution audit hardening — 2026-09-29 (unreleased)
+
+The owner confirmed that Cats / Cats Inc. is a software brand maintained by an
+individual, without a registered company. The bounded fix separates product name
+from publisher metadata and preserves appId, signing policy and stored-data paths.
+The Platform and Runtime copyright notices name `sammykenny2 and contributors`.
+
+Desktop staging now requires full Cats MIT licenses and Runtime bundle notices;
+the producer derives third-party texts from actual esbuild inputs. The release
+gate checks the host ASAR, both sidecars and Runtime entry/notice hashes. Failed
+license preflight preserves the prior stage. A coordinated Runtime revision is
+required for bundle builds; this is a private packaging contract, with no public
+API break or stored-data migration. Existing release artifacts remain untouched.
+
+The companion Runtime work also prevents query credentials entering access logs
+and includes compaction archives in permanent deletion, reporting final removal
+failure as retained/retryable. This does not claim secure erasure of filesystem
+backups, provider history, browser/proxy logs or remote services.
+
+Validation: host/server builds, focused staging/ASAR/distribution regressions,
+and the actual Runtime-generated license assets passed locally. Runtime's new
+bundle includes Hono, Hono Node server and jpeg-js notices, including the decoder's
+Apache-2.0 text and Adobe's encoder copyright. Missing/changed jpeg-js source
+requires a renewed license review. A production afterPack run on an isolated
+Electron executable copy yielded `ProductName=Cats`, `CompanyName=sammykenny2`
+and the personal copyright. The copy was neither launched nor installed.
+
+Independent PR review found that checking MIT marker strings could accept a
+truncated disclaimer. The gate now validates the complete normalized MIT body
+while preserving the original bytes. Staging and installed-resource regressions
+cover missing liability tails and omitted notice conditions, plus alternate
+copyright text and line endings.
+
+The Runtime retry guard adds optional session metadata; existing records without
+it remain readable. This records unresolved staged files, not permission to delete
+arbitrary persisted paths. Registry write failure must be surfaced without claiming
+that the guard survived a restart.
+
+Three-OS release CI, a new signed/notarized artifact and installed upgrade
+acceptance remain pending a separately authorized release. Trademark clearance,
+jurisdiction-specific privacy/consumer terms, and a full dependency legal review
+remain outside this implementation slice.
+
+Explicit notice follow-ups from PR review: collect and ship third-party notices
+for the Platform server bundle, Vite renderer bundle and bundled .NET runtime;
+extend the actual packaged-resource checks to verify each surface. The current
+Runtime bundle gate does not establish notice completeness for those artifacts.
+
 ### Packaged startup failure — 2026-09-29
 
 The owner's installed 0.5.14 update exposed a missed dependency: Platform imported

@@ -10,6 +10,9 @@ import { sha256, PLATFORM_VERSION } from '#cats-app-package';
 import { encodeAppPackage } from '#cats-app-encode';
 import { loadCatlasKnowledge } from '../build/server/platform/catlas/knowledge.js';
 import { loadProductKnowledge } from '../build/server/platform/knowledge/productKnowledge.js';
+import { seedRuntimeNotices } from './fixtures/desktopLicenseFixture.js';
+import { AppInfo } from 'app-builder-lib/out/appInfo.js';
+import { readPackageJson } from 'app-builder-lib/out/util/packageMetadata.js';
 
 import { resolveDesktopHostConfig } from '../build/desktop/config.js';
 import { resolveDesktopWindowIconPath } from '../build/desktop/windowIcon.js';
@@ -100,6 +103,7 @@ function createDesktopIconManifest(overrides = {}) {
 }
 
 async function seedRuntimeSidecar(runtimeRoot) {
+  await seedFile(join(runtimeRoot, 'LICENSE'), await readFile(new URL('../LICENSE', import.meta.url)));
   await seedFile(join(runtimeRoot, 'build', 'runtime', 'index.js'), 'export {};');
   await seedFile(join(runtimeRoot, 'package.json'), JSON.stringify({
     name: 'cats-runtime',
@@ -158,9 +162,11 @@ async function seedPlatformServerBundle(packageRoot, contents = 'export const la
 async function seedRuntimeBundle(runtimeRoot, contents = 'export const layout = "bundle";') {
   await seedFile(join(runtimeRoot, 'build', 'runtime-bundle', 'index.js'), contents);
   await seedFile(join(runtimeRoot, 'build', 'runtime-bundle', 'index.js.map'), '{"version":3}');
+  await seedRuntimeNotices(join(runtimeRoot, 'build/runtime-bundle'), contents);
 }
 
 async function seedAppSidecarRuntimeDependencies(packageRoot) {
+  await seedFile(join(packageRoot, 'LICENSE'), await readFile(new URL('../LICENSE', import.meta.url)));
   await seedFile(join(packageRoot, 'config', 'orchestrator-knowledge.json'),
     await readFile(new URL('../config/orchestrator-knowledge.json', import.meta.url), 'utf8'));
   await seedFile(join(packageRoot, 'config', 'catlas-knowledge.json'),
@@ -829,24 +835,14 @@ test('resolveDesktopWindowIconPath finds packaged window icons for supported des
   assert.equal(resolveDesktopWindowIconPath(workingDir, 'linux'), null);
 });
 
-test('Windows afterPack hook edits the packaged executable icon without re-enabling signing', () => {
+test('Windows afterPack hook preserves the real individual publisher without re-enabling signing', async () => {
+  const manifest = await readPackageJson(join(process.cwd(), 'package.json'));
   const plan = resolveWindowsExecutableEditPlan({
     electronPlatformName: 'win32',
     appOutDir: 'C:/release/win-unpacked',
     packager: {
       buildResourcesDir: 'C:/repo/assets/build',
-      appInfo: {
-        productName: 'Cats',
-        productFilename: 'Cats',
-        copyright: 'Copyright (c) Cats Inc.',
-        shortVersion: '0.1.0',
-        buildVersion: '0.1.0',
-        shortVersionWindows: '0.1.0.0',
-        companyName: 'Cats Inc.',
-        getVersionInWeirdWindowsForm() {
-          return '0.1.0.0';
-        },
-      },
+      appInfo: new AppInfo({ metadata: manifest, config: manifest.build }),
       platformSpecificBuildOptions: {
         requestedExecutionLevel: 'asInvoker',
       },
@@ -856,7 +852,8 @@ test('Windows afterPack hook edits the packaged executable icon without re-enabl
   assert.equal(plan?.executablePath, join('C:/release/win-unpacked', 'Cats.exe'));
   assert.equal(plan?.options.icon, join('C:/repo/assets/build', 'icon.ico'));
   assert.equal(plan?.options['version-string'].ProductName, 'Cats');
-  assert.equal(plan?.options['version-string'].CompanyName, 'Cats Inc.');
+  assert.equal(plan?.options['version-string'].CompanyName, 'sammykenny2');
+  assert.equal(plan?.options['version-string'].LegalCopyright, 'Copyright (c) 2025 sammykenny2 and contributors');
   assert.equal(Object.hasOwn(plan?.options ?? {}, 'requested-execution-level'), false);
 
   assert.equal(
@@ -872,7 +869,7 @@ test('Windows afterPack hook edits the packaged executable icon without re-enabl
           shortVersion: '0.1.0',
           buildVersion: '0.1.0',
           shortVersionWindows: '0.1.0.0',
-          companyName: 'Cats Inc.',
+          companyName: manifest.author.name,
           getVersionInWeirdWindowsForm() {
             return '0.1.0.0';
           },
@@ -891,12 +888,12 @@ test('Windows executable edit options preserve metadata while setting the packag
     executablePath: 'C:/release/win-unpacked/Cats.exe',
     iconPath: 'C:/repo/assets/build/icon.ico',
     productName: 'Cats',
-    copyright: 'Copyright (c) Cats Inc.',
+    copyright: 'Copyright (c) 2025 sammykenny2 and contributors',
     shortVersion: '0.1.0',
     buildVersion: '0.1.0',
     shortVersionWindows: '0.1.0.0',
     weirdWindowsVersion: '0.1.0.0',
-    companyName: 'Cats Inc.',
+    companyName: 'sammykenny2',
     internalName: 'Cats',
     requestedExecutionLevel: 'highestAvailable',
   });
@@ -1400,6 +1397,10 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'providers.yaml.example'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'curated-model-catalogs.yaml.example'));
   await smokeStagedCatalog(join(plan.outputRoot, 'shared', 'cats-runtime'));
+  assert.deepEqual(await readFile(join(plan.outputRoot, 'shared/app-sidecar/LICENSE')),
+    await readFile(join(packageRoot, 'LICENSE')));
+  assert.deepEqual(await readFile(join(plan.outputRoot, 'shared/cats-runtime/LICENSE')),
+    await readFile(join(runtimeRoot, 'LICENSE')));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'yaml', 'package.json'));
   await assert.rejects(
     access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'vitest', 'package.json')),
@@ -1864,8 +1865,9 @@ test('stageDesktopPackagingOutputs replaces preview assets as release, records e
   }
 });
 
-test('stageDesktopPackagingOutputs honors bundle layout for both app and runtime sidecars', async () => {
+test('stageDesktopPackagingOutputs honors bundle layout for both app and runtime sidecars', async (t) => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-desktop-package-bundle-'));
+  t.after(() => rm(workingDir, { recursive: true, force: true }));
   const packageRoot = join(workingDir, 'cats');
   const runtimeRoot = join(workingDir, 'cats-runtime');
   const outputRoot = join(workingDir, 'desktop-packaging');
@@ -1897,6 +1899,7 @@ test('stageDesktopPackagingOutputs honors bundle layout for both app and runtime
   });
   const plan = await stageDesktopPackagingOutputs(config, {
     generatedAt: new Date('2026-03-24T12:05:00.000Z'),
+    outputRoot,
     platforms: ['windows'],
     sidecarLayout: 'bundle',
   });
@@ -1959,6 +1962,19 @@ test('stageDesktopPackagingOutputs honors bundle layout for both app and runtime
     ),
     true,
   );
+  for (const file of ['LICENSE', 'THIRD-PARTY-NOTICES.txt', 'THIRD-PARTY-NOTICES.json']) {
+    const source = file === 'LICENSE' ? join(runtimeRoot, file) : join(runtimeRoot, 'build/runtime-bundle', file);
+    const target = file === 'LICENSE' ? join(outputRoot, 'shared/cats-runtime', file)
+      : join(outputRoot, 'shared/cats-runtime/build/runtime', file);
+    const original = await readFile(source);
+    assert.deepEqual(await readFile(target), original);
+    await rm(source);
+    await assert.rejects(stageDesktopPackagingOutputs(config, {
+      outputRoot, platforms: ['windows'], sidecarLayout: 'bundle',
+    }), /ENOENT/);
+    assert.deepEqual(await readFile(target), original, 'failed preflight preserves the previous stage');
+    await writeFile(source, original);
+  }
 });
 
 test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is missing', async () => {
