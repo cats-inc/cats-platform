@@ -2525,3 +2525,62 @@ test('recovers from the backup snapshot when the primary file goes missing', asy
   assert.equal(recoveredState.channels.length, 1);
   assert.equal(recoveredState.channels[0].title, 'Survives restart');
 });
+
+test('FileChatStore never lets a read-triggered repair revert a concurrent save', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-chat-store-race-'));
+  const filePath = path.join(tempDir, 'chat-state.json');
+  const now = new Date('2026-09-29T08:00:00.000Z');
+  try {
+    // A Cat exists but setup completion was never persisted, so a read wants a repair.
+    await new FileChatStore(filePath).writeSnapshot(
+      createCat(createDefaultChatState(), { name: 'Smelly', provider: 'claude' }, now),
+      createDefaultCoreState(now),
+    );
+    const seeded = JSON.parse(await readFile(filePath, 'utf-8'));
+    seeded.setupCompleteAt = null;
+    await writeFile(filePath, JSON.stringify(seeded), 'utf-8');
+
+    const store = new FileChatStore(filePath);
+    // The read starts first, as the webhook's context read did; then a save takes the lock.
+    const reading = store.read();
+    let readSettled = false;
+    void reading.then(() => { readSettled = true; });
+    let releaseSave = () => {};
+    const saveGate = new Promise((resolve) => { releaseSave = resolve; });
+    const saving = store.updateCore(async (core) => {
+      await saveGate;
+      return { ...core, ownerProfile: { ...core.ownerProfile, displayName: 'Kenny' } };
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(readSettled, false, 'the repair waits for the save instead of writing around it');
+    releaseSave();
+    await Promise.all([reading, saving]);
+
+    const persisted = JSON.parse(await readFile(filePath, 'utf-8'));
+    assert.equal(persisted.ownerProfile.displayName, 'Kenny', 'the save survives');
+    assert.ok(persisted.setupCompleteAt, 'the repair is persisted as well');
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('FileChatStore reads a clean snapshot without writing to disk', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-chat-store-clean-read-'));
+  const filePath = path.join(tempDir, 'chat-state.json');
+  const now = new Date('2026-09-29T08:00:00.000Z');
+  try {
+    await new FileChatStore(filePath).writeSnapshot(
+      createCat(createDefaultChatState(), { name: 'Smelly', provider: 'claude' }, now),
+      createDefaultCoreState(now),
+    );
+    // The first read persists the setup repair; after that the snapshot is clean.
+    await new FileChatStore(filePath).read();
+    const before = await readFile(filePath, 'utf-8');
+    const store = new FileChatStore(filePath);
+    await Promise.all([store.read(), store.readCore(), store.read()]);
+    assert.equal(await readFile(filePath, 'utf-8'), before);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});

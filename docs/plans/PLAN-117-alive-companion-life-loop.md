@@ -75,7 +75,6 @@
 - 每次心跳照片都會複製一份到 lane 的 `.cats-attachments/`，同一張照片會累積 `x (1).png`、
   `x (2).png`；可改為依內容雜湊重用既有副本。
 - 心跳候選照片固定抽 6 張；資料夾很大時也只列 6 個檔名，未做「最近傳過的不再挑」。
-- `provider-telegram-routes` 的「file-backed restart」既有不穩定測試（見 Phase 2 紀錄）。
 
 ## Progress Log
 
@@ -122,3 +121,9 @@
     在 Desktop 以附件顯示、Telegram 收到附圖說的照片、長文字先圖後文）、`companion-life`
     （20，含相簿資料夾必須存在）、`companion-life-card`，server 12 檔 224 個與 bundled 8 檔通過。
   - 尚未驗證：真的 Telegram bot、Desktop 上「作息與相簿」卡片與私訊照片的實際畫面。
+- 2026-09-29：Phase 4 以 #189 merge（`d96ea611`）。追查 `provider-telegram-routes` 的「file-backed
+  restart」不穩定測試，確認是產品 bug：`FileChatStore` 的讀取只等待、不持有寫入鎖，卻會在讀取時
+  寫回檔案（初始設定完成時間的修正、ADR-124 的 companion 轉換、備份還原、建立預設檔）。這個寫回
+  若晚於同時進行的儲存才落地，就會把剛存的資料蓋回舊版（測試中被蓋掉的是 Telegram bot 名稱）。
+  修正為讀取只讀；需要寫回時改在同一把寫入鎖內重新讀取再寫。修正後該測試單獨連跑 20 次全數通過
+  （修正前約 15% 失敗）。
