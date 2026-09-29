@@ -1,3 +1,4 @@
+import { parseAppComponents } from './catsAppComponents.js';
 import {
   CATS_APP_CATEGORIES,
   CATS_APP_MANIFEST_SCHEMA_VERSION,
@@ -191,6 +192,13 @@ export function parseCatsAppManifestV1(
           addIssue(issues, 'invalid_cats_app_entrypoint', `entrypoints.${key} must be a non-empty string.`, `entrypoints.${key}`);
         }
       }
+    }
+  }
+
+  if (input.components !== undefined) {
+    try { parseAppComponents(input.components); }
+    catch (error) {
+      addIssue(issues, 'invalid_app_components', error instanceof Error ? error.message : 'Invalid components.', 'components');
     }
   }
 

@@ -29,7 +29,7 @@ export function encodeAppPackage({ manifest, files }) {
     }
     return { path: file.path, base64: Buffer.from(file.data.buffer, file.data.byteOffset, file.data.byteLength).toString('base64') };
   }).sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-  const envelope = { schemaVersion: 1, kind: 'cats-app', manifest: canonicalJson(manifest, 'manifest'), files: entries };
+  const envelope = { schemaVersion: manifest.components ? 2 : 1, kind: 'cats-app', manifest: canonicalJson(manifest, 'manifest'), files: entries };
   const bytes = Buffer.from(gzipSync(Buffer.from(JSON.stringify(envelope)), { level: 9, mtime: 0 }));
   // Header bytes are outside the CRC. Pin mtime (4-7) and the OS byte (9, Unix) explicitly.
   bytes.fill(0, 4, 8);

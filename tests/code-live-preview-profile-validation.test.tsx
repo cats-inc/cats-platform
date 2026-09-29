@@ -62,7 +62,10 @@ test('Cats Code live preview command profiles reject raw shell forms', () => {
 });
 
 test('Cats Code live preview start validation requires enabled profiles', () => {
-  const disabled = validateLivePreviewStartRequest(validStartRequest(), DEFAULT_LIVE_PREVIEW_CONFIG);
+  const disabled = validateLivePreviewStartRequest(validStartRequest(), {
+    ...DEFAULT_LIVE_PREVIEW_CONFIG,
+    enabled: false,
+  });
   assert.equal(disabled.status, 'rejected');
   if (disabled.status === 'rejected') {
     assert.equal(disabled.error.code, 'live_preview_disabled');

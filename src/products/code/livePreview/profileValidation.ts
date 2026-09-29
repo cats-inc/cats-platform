@@ -1,3 +1,5 @@
+import { isAbsolute, relative, resolve, sep } from 'node:path';
+
 import {
   ARTIFACT_CANVAS_SURFACE_KINDS,
   type CanvasSurfaceRef,
@@ -19,6 +21,7 @@ const FORBIDDEN_SHELL_TOKENS = /[;&|<>`$]/u;
 const PLACEHOLDER_PATTERN = /\{([A-Za-z][A-Za-z0-9]*)\}/gu;
 const RAW_COMMAND_KEYS = ['args', 'command', 'env', 'executable', 'shell'] as const;
 const START_REQUEST_KEYS = [
+  'artifactDirectory',
   'artifactTitle',
   'commandProfileId',
   'readinessTimeoutMs',
@@ -166,6 +169,14 @@ export function validateLivePreviewStartRequest(
   if (!surface) {
     return rejected('live_preview_request_invalid', 'surface is required.');
   }
+  const artifactDirectory = readOptionalString(record.artifactDirectory);
+  if (record.artifactDirectory !== undefined && record.artifactDirectory !== null
+    && (!artifactDirectory || !isContainedDirectory(workspace.rootPath, artifactDirectory))) {
+    return rejected(
+      'live_preview_request_invalid',
+      'artifactDirectory must be an absolute path inside the workspace root.',
+    );
+  }
   const artifactTitle = readOptionalString(record.artifactTitle);
   const readinessTimeoutMs = readOptionalPositiveInt(record.readinessTimeoutMs);
   if (record.readinessTimeoutMs !== undefined && readinessTimeoutMs === null) {
@@ -177,6 +188,7 @@ export function validateLivePreviewStartRequest(
     request: {
       commandProfileId,
       workspace,
+      ...(artifactDirectory ? { artifactDirectory } : {}),
       surface,
       artifactTitle,
       readinessTimeoutMs,
@@ -311,6 +323,13 @@ function validateShellSafeTemplate(value: unknown, field: string): void {
   if (FORBIDDEN_SHELL_TOKENS.test(withoutPlaceholders)) {
     throw new Error(`${field} contains shell metacharacters.`);
   }
+}
+
+/** Lexical containment; the static server also re-checks real paths per request. */
+function isContainedDirectory(rootPath: string, directory: string): boolean {
+  if (!isAbsolute(directory) || !isAbsolute(rootPath)) return false;
+  const path = relative(resolve(rootPath), resolve(directory));
+  return path === '' || (!path.startsWith(`..${sep}`) && path !== '..' && !isAbsolute(path));
 }
 
 function readWorkspaceRef(input: unknown): LivePreviewWorkspaceRef | null {

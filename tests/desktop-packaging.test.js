@@ -32,6 +32,7 @@ import {
 import {
   createDesktopPackagingPlan,
   stageDesktopPackagingOutputs,
+  appIngressNativePackages,
 } from '../build/desktop/packaging.js';
 
 async function seedFile(path, contents = '') {
@@ -174,15 +175,18 @@ async function seedAppSidecarRuntimeDependencies(packageRoot) {
   await seedFile(join(packageRoot, 'packages', 'app-sdk', 'package.json'), '{"version":"1.0.0","type":"module"}');
   await seedFile(join(packageRoot, 'packages', 'app-sdk', 'package.js'), 'export {};');
   await seedFile(join(packageRoot, 'packages', 'app-sdk', 'browser.js'), '// SDK fixture');
-  for (const dependency of ['js-yaml', 'argparse', 'fflate']) {
+  const natives = appIngressNativePackages(['windows', 'macos', 'linux']);
+  for (const dependency of ['js-yaml', 'argparse', 'fflate', '@ngrok/ngrok', ...natives]) {
     await seedFile(
       join(packageRoot, 'node_modules', dependency, 'package.json'),
-      JSON.stringify({ name: dependency, version: '0.0.0-test', main: 'index.js' }, null, 2),
+      JSON.stringify({ name: dependency, version: '0.0.0-test', main: 'index.js',
+        ...(dependency === '@ngrok/ngrok' ? { optionalDependencies: Object.fromEntries(natives.map(name => [name, '0.0.0-test'])) } : {}) }, null, 2),
     );
     await seedFile(
       join(packageRoot, 'node_modules', dependency, 'index.js'),
       'module.exports = {};\n',
     );
+    if (natives.includes(dependency)) await seedFile(join(packageRoot, 'node_modules', dependency, 'fixture.node'));
   }
 }
 

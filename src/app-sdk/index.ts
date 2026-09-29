@@ -18,6 +18,8 @@ export type { CatsAppPackageFile, CatsAppPackageInput } from '#cats-app-encode';
 export { validateRendererAppPackage } from './packageValidation.js';
 export type { RendererPackageValidationOptions, ValidatedRendererPackage } from './packageValidation.js';
 export { parseCatsAppManifestV1 } from '../shared/catsAppValidation.js';
+export { parseAppComponents } from '../shared/catsAppComponents.js';
+export type { CatsAppComponents, CatsAppFrontend, CatsAppService, CatsAppWorker } from '../shared/catsAppComponents.js';
 export type {
   CatsAppManifestParseResult,
   CatsAppManifestValidationIssue,

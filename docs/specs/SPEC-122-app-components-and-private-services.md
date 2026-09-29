@@ -61,7 +61,7 @@ Example public origin: `https://cats.example` (illustrative, not provisioned).
 | Public path | Destination and authority |
 | --- | --- |
 | `/`, `/chat`, `/work`, existing product routes | Platform UI; existing session/auth rules |
-| `/api/...` and existing approved Platform proxy routes | Platform/Mobile APIs; existing session/device auth and capability checks |
+| `/api/...` and existing approved Platform proxy routes | Publicly eligible Platform/Mobile APIs only; existing session/device auth and capability checks; internal agent/management routes excluded |
 | `/apps/<appId>/` | Host launch shell; authenticates the viewer before issuing an App view grant |
 | `/apps/<appId>/ui/<frontendId>` | Declared self-contained App HTML, served in an opaque sandbox |
 | `/apps/<appId>/api/...` | Declared private App API; scoped owner/App/generation view grant |
@@ -94,10 +94,27 @@ Frontend bootstrap supplies the reachable App base URL and scoped authorization
 headers. A remote client must never receive a server-loopback URL. Resolve local,
 LAN and public URLs against trusted host configuration; generate absolute MCP
 URLs from the configured public origin, never arbitrary Host/X-Forwarded input.
-Existing `/api/platform/ingress` diagnostics remain the host contract to extend;
-exact new settings fields are an implementation task, not a new documented API.
+Existing `GET /api/platform/ingress` diagnostics include `remoteAccess`: provider,
+state, enabled/configured, public URL/configured origin and listen port. Only
+Desktop also receives the local tunnel target and legacy migration choices.
+`POST /api/platform/ingress` requires the exact Desktop management credential
+through main-frame IPC; its bounded body accepts `enabled`, `provider`,
+`authtoken`, `publicOrigin`, `listenPort` and optional `migrationSource`.
+Secrets are never included in responses. Apps read a scoped GET
+`/apps/<appId>/_cats/ingress` through their view grant and may open host settings
+through `catsApp.openRemoteAccess()`.
 
 ### Authorization and browser isolation
+
+The one tunnel targets a Platform-owned ingress listener, shared by all public
+Platform/Mobile/App routes. The existing internal Platform listener stays private
+for Desktop management and Code session MCP. Both use the same product router;
+the public entry enforces its route boundary before dispatch. This requires no
+second public port/tunnel and does not move MCP handlers into the ingress layer.
+Never tunnel the internal listener. Deny `/api/code/agent-tools/mcp` and other
+internal agent/management paths at public entry even with valid internal grants,
+no Origin header and a loopback proxy peer. Do not derive entry classification
+from client-controlled headers. Retain Host/origin checks on the internal entry.
 
 Sharing a path-routed origin is not browser isolation. The initial per-port
 iframe's `allow-same-origin` policy cannot be used for shared-origin App HTML.
@@ -143,6 +160,15 @@ public port is required. Apps show shared readiness and their scoped endpoint
 and may open host setup; they do not collect/store tunnel account credentials.
 Keep credentials host-owned and out of App environments/logs.
 
+The candidate implementation stores schema v2 in
+`platform/config/ingress.local.json`. `ngrok` uses the bundled official SDK
+worker and permits a dynamic local ingress port. `external` uses an existing
+operator-managed tunnel, requires a fixed local ingress port and HTTPS public
+origin, and reports `configured` rather than claiming a verified connection.
+That tunnel must target the displayed ingress address and preserve the public
+Host header. Platform authentication setup must be complete before enabling
+either provider; unsafe-disabled authentication cannot expose a public entry.
+
 App close leaves declared background work running. Disable/update/remove revokes
 that App's routes, grants and streams and stops its components; the shared tunnel,
 Platform/Mobile sessions and other Apps keep working. Host shutdown ends local
@@ -161,7 +187,9 @@ host/SDK floor before publishing; this document changes no version or user state
 
 ## Acceptance
 
-The following shared-ingress gates are open; prior local fixtures do not satisfy them.
+These are release acceptance gates. PLAN-115 records the new local shared-entry
+and opaque-sandbox evidence; live external tunnel/Bot and other-OS checks remain
+open. Historical per-App fixtures alone do not satisfy shared-ingress acceptance.
 
 - Through one external HTTPS origin/port/tunnel, exercise Platform/Mobile APIs
   and at least two installed Apps concurrently, including two distinct MCP
@@ -172,6 +200,10 @@ The following shared-ingress gates are open; prior local fixtures do not satisfy
 - Verify App A cannot use App B's grants, Platform cookies or management auth;
   opaque-frame fetch, bridge spoofing, direct HTML navigation and service-worker
   attempts cannot cross the boundary. Exercise real browser/Electron Copy.
+- At public entry, reject Code session MCP even with its valid grant and no
+  Origin, including a loopback tunnel peer and forged Host/forwarded headers.
+  Verify the same authorized session can reach its internal endpoint. App MCP
+  remains reachable on its own path without sharing the Code grant or lifecycle.
 - Disable/update/remove App A during a stream: only A is revoked; Mobile and B
   keep working over the same live tunnel. Stop/restart the host and validate
   route/config recovery without resending questions.
@@ -203,7 +235,8 @@ The following records `feat/app-components` before the shared-ingress correction
 Package/process/data behavior remains the starting point. Per-App origins,
 external listeners and per-App ngrok setup below are historical implementation
 facts to replace, not alternatives to the required shared ingress above.
-This code is uncommitted/unpublished; main does not deliver envelope-2 hosting.
+This historical prototype was uncommitted/unpublished. PLAN-115 records the
+shared-ingress implementation and PR delivery; release acceptance is separate.
 
 - Component packages use archive envelope **2** and manifest `components.schemaVersion: 1`.
   Renderer packages retain envelope 1 and their existing entrypoint/SDK behavior.

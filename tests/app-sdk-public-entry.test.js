@@ -15,7 +15,7 @@ const manifestJson = JSON.parse(await readFile(path.join(root, 'package.json'), 
 const PUBLIC_NAMES = [
   'APP_SDK_VERSION', 'CATS_APP_CATEGORIES', 'CATS_APP_MANIFEST_SCHEMA_VERSION', 'CATS_APP_PERMISSIONS',
   'CATS_APP_TRUST_TIERS', 'MAX_PACKAGE_BYTES', 'decodeAppPackage', 'encodeAppPackage',
-  'parseCatsAppManifestV1', 'supportsVersion', 'validateRendererAppPackage',
+  'parseAppComponents', 'parseCatsAppManifestV1', 'supportsVersion', 'validateRendererAppPackage',
 ];
 
 const appManifest = (overrides = {}) => ({
@@ -56,6 +56,7 @@ test('the public entry loads only the package format, encoder and manifest valid
   const allowedBare = new Set(['fflate']);
   const expected = [
     'build/server/app-sdk/index.js', 'build/server/app-sdk/packageValidation.js',
+    'build/server/shared/catsAppComponents.js',
     'build/server/shared/catsAppManifest.js', 'build/server/shared/catsAppValidation.js',
     'packages/app-sdk/encode.js', 'packages/app-sdk/format.js',
   ];

@@ -148,10 +148,23 @@ That tool turns one source SVG into the Electron app/tray icon set needed for:
 - Linux desktop/package PNG icon sizes
 - packaged tray icons, including a macOS template tray icon
 
-It also supports shape-controlled outputs:
+The repo's own icon set is produced by `npm run desktop:icons`, which passes:
 
-- default circular avatar clip: `npm run desktop:icons`
-- explicit square output: `npm run desktop:icons -- --shape square`
+- `--input assets/app-icon-silhouette.svg`: the tabby-face tile. Its rounded
+  corners are part of the artwork, so it runs with `--shape square`; the circle
+  mask (the generator's default) remains available for other sources.
+- `--tray-input assets/tray-icon-template.svg`: a black-on-transparent silhouette
+  with whiskers and knocked-out eyes, used verbatim for the macOS menu-bar
+  template (`tray-iconTemplate*.png`). Only its alpha is used; macOS recolours it
+  per menu-bar appearance, so the eye holes show the bar colour. Without this
+  flag the template is derived from the app icon by removing the edge-connected
+  background, which cannot keep interior holes.
+- `--macos-inset apple`: the `.icns` artwork is scaled to Apple's 824/1024 grid
+  inside a transparent canvas so it matches the size of neighbouring Dock icons.
+  Windows and Linux icons stay full-bleed.
+
+`assets/guide-cat-avatar.svg` (the Catlas avatar) is the same artwork clipped to
+a circle; update it together with the app icon.
 
 Desktop packaging does not regenerate these icon assets. Prepare the files you
 want first, then run the packaging scripts and let them consume the existing
