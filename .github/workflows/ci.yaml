@@ -8,15 +8,19 @@ on:
     branches: [main, master]
 
 jobs:
-  # A change confined to docs/ skips install, typecheck and tests. The required
-  # nodejs (24) job still runs and passes, so branch protection is satisfied;
-  # its matrix name stays stable because only steps are skipped. Any other path,
-  # a manual run or a failed detection runs every step.
+  # A change confined to docs/ skips install, typecheck and tests. So does code
+  # that already passed: the fingerprint covers every tracked file outside docs/,
+  # so a rebase that only brings in docs from main reuses the earlier green run.
+  # The required nodejs (24) job still runs and passes, so branch protection is
+  # satisfied; its matrix name stays stable because only steps are skipped. Any
+  # other path, a manual run or a failed detection runs every step.
   # tests/docs-boundary.test.js keeps tests, scripts and tools from reading docs/.
   changes:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.paths.outputs.code }}
+      fingerprint: ${{ steps.fingerprint.outputs.fingerprint }}
+      skip: ${{ steps.plan.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,6 +46,35 @@ jobs:
           fi
           echo "code=$code" | tee -a "$GITHUB_OUTPUT"
 
+      - name: Fingerprint the code under test
+        id: fingerprint
+        run: |
+          set -euo pipefail
+          # Mode, blob and path of every tracked file outside docs/. For a pull
+          # request this is the merge result that the tests would exercise.
+          fingerprint=$(git ls-tree -r --full-tree HEAD | awk -F '\t' '$2 !~ /^docs\//' | sha256sum | cut -d ' ' -f 1)
+          echo "fingerprint=$fingerprint" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Look for an earlier green run of this exact code
+        id: green
+        if: steps.paths.outputs.code == 'true' && github.event_name != 'workflow_dispatch'
+        uses: actions/cache/restore@v4
+        with:
+          path: .ci-green
+          key: ci-green-v1-${{ steps.fingerprint.outputs.fingerprint }}
+          lookup-only: true
+
+      - name: Decide what to skip
+        id: plan
+        env:
+          CODE: ${{ steps.paths.outputs.code }}
+          GREEN: ${{ steps.green.outputs.cache-hit }}
+        run: |
+          set -euo pipefail
+          skip=
+          if [ "$CODE" = "false" ]; then skip=docs; elif [ "$GREEN" = "true" ]; then skip=tested; fi
+          echo "skip=$skip" | tee -a "$GITHUB_OUTPUT"
+
   nodejs:
     needs: changes
     if: ${{ !cancelled() }}
@@ -53,33 +86,54 @@ jobs:
 
     steps:
       - name: Documentation-only change
-        if: needs.changes.outputs.code == 'false'
+        if: needs.changes.outputs.skip == 'docs'
         run: echo "Only docs/ changed; install, typecheck and tests are skipped."
 
+      - name: Already tested
+        if: needs.changes.outputs.skip == 'tested'
+        run: echo "This exact code outside docs/ already passed; install, typecheck and tests are skipped."
+
       - uses: actions/checkout@v4
-        if: needs.changes.outputs.code != 'false'
+        if: needs.changes.outputs.skip == ''
 
       - name: Use Node.js ${{ matrix.node-version }}
-        if: needs.changes.outputs.code != 'false'
+        if: needs.changes.outputs.skip == ''
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
-        if: needs.changes.outputs.code != 'false'
+        if: needs.changes.outputs.skip == ''
         run: npm ci
 
       - name: Install mobile dependencies
-        if: needs.changes.outputs.code != 'false'
+        if: needs.changes.outputs.skip == ''
         run: npm ci --prefix mobile
 
       - name: Typecheck
-        if: needs.changes.outputs.code != 'false'
+        if: needs.changes.outputs.skip == ''
         run: npm run typecheck
 
       - name: Test
-        if: needs.changes.outputs.code != 'false'
+        if: needs.changes.outputs.skip == ''
         run: npm test
+
+      # Reached only when every step above passed. A failed detection leaves no
+      # fingerprint, so nothing is recorded.
+      - name: Record this code as tested
+        if: needs.changes.outputs.skip == '' && needs.changes.outputs.fingerprint != ''
+        env:
+          FINGERPRINT: ${{ needs.changes.outputs.fingerprint }}
+        run: |
+          mkdir -p .ci-green
+          echo "$FINGERPRINT $GITHUB_RUN_ID" > .ci-green/marker
+
+      - name: Save the tested marker
+        if: needs.changes.outputs.skip == '' && needs.changes.outputs.fingerprint != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .ci-green
+          key: ci-green-v1-${{ needs.changes.outputs.fingerprint }}
 
   validate:
     runs-on: ubuntu-latest
