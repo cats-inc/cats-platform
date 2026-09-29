@@ -330,6 +330,24 @@ Current platform trust by profile:
   `dmg.sign` defaults to false). The signed, notarized and stapled object is
   `Cats.app`, which both the DMG and the updater ZIP carry.
 
+Build provenance, independent of the signing profile: the publish job downloads
+every asset from the draft release, writes `SHA256SUMS` beside them, and records
+a Sigstore build-provenance attestation for each file through
+`actions/attest-build-provenance`. This applies to every platform, so an unsigned
+Windows installer or the Linux `.deb` can still be traced to the exact workflow
+run and commit that produced it. To verify a download:
+
+```bash
+# All assets: checksums (ignore assets you did not download)
+sha256sum -c --ignore-missing SHA256SUMS
+
+# One asset: provenance recorded by GitHub for this repository
+gh attestation verify Cats-0.6.2-setup-x64.exe --repo cats-inc/cats-platform
+```
+
+The attestation proves which run built the file; it does not replace platform
+code signing, so Windows SmartScreen and macOS Gatekeeper behaviour is unchanged.
+
 Wording and confirmation rules:
 
 - Do not describe a build as a bare "signed preview" or "unsigned preview"
