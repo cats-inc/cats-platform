@@ -18,6 +18,13 @@
 
 ## Ownership and integration seams
 
+[PLAN-115](PLAN-115-app-components-and-private-services.md) extends the same App
+installation with multiple frontends/services/workers. Coordinate manifest,
+journal, migration and lifecycle work in M0; each release activates/stops/removes
+its components together. The renderer-only scope below describes this plan's
+initial consumer coverage, not a permanent restriction on Apps or a reason to
+install their backends separately.
+
 [PLAN-113](PLAN-113-managed-plugin-capabilities.md) 是另案的 managed Plugins 工作。
 Agency content pilot 已交付，一般 SDK／目錄仍待實作。M0 與其 P0 協調可共用的
 installer／catalog／journal 契約；本案維持 renderer Apps，不等待 Plugin executor，

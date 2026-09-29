@@ -1,5 +1,9 @@
 # Implementation Plans
 
+- [PLAN-115: App components and private services](PLAN-115-app-components-and-private-services.md)
+  — boundary documented; component hosting, direct communication and complete
+  Ask package acceptance remain implementation work.
+
 > This directory contains implementation plans that define *how* to build features.
 
 ## Purpose

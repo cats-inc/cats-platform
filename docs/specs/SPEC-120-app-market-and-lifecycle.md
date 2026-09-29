@@ -2,6 +2,12 @@
 
 ## Metadata
 
+Component extension (2026-09-29): [SPEC-122](SPEC-122-app-components-and-private-services.md)
+applies this App lifecycle to multiple frontends/services/workers as one selected
+release. Its execution work shares this registry/transaction contract; no separate
+backend installation, update or inventory item is introduced. Both tracks retain
+their explicit implementation status.
+
 | Field | Value |
 | --- | --- |
 | Status | Draft implementation contract; product direction accepted; not implemented |
@@ -167,7 +173,11 @@ Desktop 或等待相容 App；不能以略過檢查解決。
 
 僅 retained、verified、相容且未撤回的候選可用於 rollback。資料若已升級，必須有經驗證的
 一致備份／還原路徑；不得只降程式版本讀新資料，也不得丟掉升級後新增作品。
-第一期 App 更新不執行任意 App 提供的資料 migration；必要轉換由資料 owner 的宿主版本交付。
+既有 renderer／host-owned data slice 的必要轉換由資料 owner 的宿主版本交付。
+新增 App-owned data 依 SPEC-122 由 App 套件提供受信任、版本化且限該 App 資料的
+migration hooks，Platform 協調鎖定、備份、驗證與原子啟用／恢復；App schema 更新
+不必因此發布新的宿主版本。這是受限資料升級契約，不開放任意 install hook、shell
+或 install-time npm build；相關執行能力尚未實作。
 
 ## FR-08 — 預裝調和與損壞隔離
 

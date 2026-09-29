@@ -65,6 +65,11 @@ Desktop／browser 驗收仍在 PLAN-112 M0 起執行，不代表目前已實施�
 
 ## Consequences
 
+2026-09-29 component clarification: [ADR-125](125-own-multiple-frontends-and-backends-in-one-app.md)
+applies this lifecycle to every frontend/service/worker inside an App as one
+management unit. Multiple components never become separate user installations.
+Current renderer delivery is the baseline; component execution remains planned.
+
 ### Positive
 
 - Usage 保有初次開箱與損壞恢復入口，Studio 證明 App 能按需安裝與獨立更新。

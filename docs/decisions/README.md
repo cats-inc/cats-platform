@@ -1,5 +1,9 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-125: Multiple frontends and backends in one App](125-own-multiple-frontends-and-backends-in-one-app.md)
+  — accepted product boundary, 2026-09-29; unified installation/lifecycle and
+  App-owned direct API traffic; execution not implemented.
+
 > This directory contains Architecture Decision Records for documenting significant technical decisions.
 
 ## Purpose

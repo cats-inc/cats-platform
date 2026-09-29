@@ -10,6 +10,13 @@
 
 ## Summary
 
+Accepted clarification (2026-09-29):
+[SPEC-122](SPEC-122-app-components-and-private-services.md) requires one App to
+own multiple frontends/services/workers under a unified installation and release,
+with ordinary App-owned API traffic and SDK use for host capabilities. Its
+versioned component collections will supersede the singular entrypoint examples
+when implemented; current declarations remain a baseline, not execution proof.
+
 Follow-up proposal (2026-09-28):
 [SPEC-121](SPEC-121-managed-plugin-capabilities.md) and
 [ADR-122](../decisions/122-adopt-managed-plugins-for-upstream-capabilities.md)

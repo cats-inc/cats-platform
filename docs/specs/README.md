@@ -1,5 +1,9 @@
 # Feature Specifications
 
+- [SPEC-122: App components and private services](SPEC-122-app-components-and-private-services.md)
+  — confirmed product requirements, technical draft; multiple frontends/services
+  in one App and ordinary internal API traffic; implementation not started.
+
 > This directory contains feature specifications that define *what* to build and *why*.
 
 ## Purpose

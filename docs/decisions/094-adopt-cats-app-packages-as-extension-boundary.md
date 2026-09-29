@@ -4,6 +4,12 @@
 
 Proposed
 
+Accepted clarification (2026-09-29): [ADR-125](125-own-multiple-frontends-and-backends-in-one-app.md)
+requires multiple frontends/backends to remain components of one App installation
+and lifecycle. App-owned API requests use normal web protocols; host SDK methods
+are for host capabilities. This clarifies the original server/worker direction
+without marking the broader proposals or component execution implemented.
+
 Follow-up proposal (2026-09-28): [ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md)
 separates managed capability Plugins from user-facing Apps, with shared package
 governance and distinct execution contracts. If accepted, it replaces this proposal's

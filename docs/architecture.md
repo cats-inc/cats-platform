@@ -25,6 +25,15 @@ same engine and provenance model.
 
 ## Official Utility App Boundary (Renderer Slice Implemented)
 
+The accepted complete-App model in [ADR-125](decisions/125-own-multiple-frontends-and-backends-in-one-app.md)
+allows multiple frontends/services/workers within one installation and release.
+Apps own their internal APIs and data schemas; Platform supplies isolated origins,
+direct HTTP/stream routing, supervision and unified lifecycle. The SDK provides
+Cats host capabilities rather than mandatory App-domain request wrappers.
+[SPEC-122](specs/SPEC-122-app-components-and-private-services.md) records requirements
+and [PLAN-115](plans/PLAN-115-app-components-and-private-services.md) the implementation
+sequence. The current renderer-only execution below remains the delivered baseline.
+
 `cats-apps` owns official utility source and versioned build artifacts. This
 repository keeps the App manifest/SDK, install registry, permission enforcement,
 renderer hosting, and Desktop distribution. `cats-runtime` remains the owner of
