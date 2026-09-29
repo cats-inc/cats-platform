@@ -2,6 +2,36 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-09-29 — Platform 0.6.0 npm and Desktop standard preview (prepared)
+
+- **Minor boundary.** A Cat's companion setting is now a Cat role instead of the
+  `'companion'` `skillProfile` value ([ADR-124](decisions/124-model-companion-as-a-cat-role-not-a-skill-profile.md)).
+  The API no longer accepts that value. On first start, existing chat state is migrated
+  once: the original bytes are kept in `<state>.pre-companion-role.bak`, the converted
+  snapshot is validated and atomically replaced, and a failed validation or backup
+  leaves the file unchanged and reports `companion_role_migration_failed`.
+- **App SDK entry.** npm consumers can import `@cats-inc/cats-platform/app-sdk`
+  ([ADR-123](decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)): manifest and
+  browser SDK types, the installer's own `validateRendererAppPackage`, `decodeAppPackage`,
+  `supportsVersion` and a cross-platform deterministic `encodeAppPackage`. `exports` allows
+  only `.`, `./package.json` and `./app-sdk`; other deep package paths no longer resolve.
+- **App packages.** The installer now accepts App files up to the documented 8 MiB. Earlier
+  hosts rejected files above about 3 MiB with `Maximum call stack size exceeded`.
+- **Bundled knowledge.** The Orchestrator and code-entry knowledge bundles move to
+  `platformRange: "0.6.x"` as revision `2026-09-29.1`; their entries are unchanged. The
+  loaders and Desktop staging reject a bundle whose range excludes the running Platform.
+- **Model picker.** With a catalog that provides it, a small "i" beside the Model label names
+  the catalog basis (channel or plan).
+- **Desktop Apps.** Usage 0.4.0 declares `catsPlatform ^0.5.0` and cannot install on 0.6.0.
+  Desktop 0.6.0 selects Usage 0.5.0, which only raises that range to `^0.6.0` and is built
+  with the App SDK encoder; its renderer and permissions are unchanged. Studio 0.1.0 declares
+  `^0.5.11`, so the 0.6.0 installer rejects it; a Studio release for 0.6.x is not included.
+- **Release plan.** The owner authorized Platform npm 0.6.0 (`latest`), Usage 0.5.0 and a
+  Desktop 0.6.0 standard preview (`unsigned=false`). Runtime is pinned to 0.3.4 at
+  `ea45e95aba99ca5a4aec0532ef2db1db2bf512e3`, which provides the catalog basis. cats-one's
+  `^0.5.1` range keeps `npx cats-one` on Platform 0.5.x until a separately authorized
+  launcher release. Hosted CI, publication and verification remain pending.
+
 ## 2026-09-29 — Desktop 0.5.15 standard preview (published)
 
 - The 0.5.14 installed launcher could not start Platform because the sidecar

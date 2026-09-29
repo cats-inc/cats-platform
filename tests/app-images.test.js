@@ -6,6 +6,7 @@ import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { encodeAppPackage } from '#cats-app-encode';
+import { PLATFORM_VERSION } from '#cats-app-package';
 import { AppImageService } from '../build/server/platform/apps/images.js';
 import { MemoryCoreStore } from '../build/server/core/store.js';
 import { installRendererPackage } from '../build/server/platform/apps/packageInstaller.js';
@@ -22,7 +23,7 @@ async function setup(t) {
   const chatStatePath = path.join(root, 'state', 'chat-state.local.json');
   const manifest = { schemaVersion: 1, id: 'cats.studio', displayName: 'Studio', version: '0.1.0',
     category: 'user-app', trustTier: 'local-user', publisher: { name: 'Cats' },
-    compatibility: { catsPlatform: '^0.5.0', appSdk: '^1.3.0' }, entrypoints: { renderer: 'renderer/index.html' },
+    compatibility: { catsPlatform: PLATFORM_VERSION, appSdk: '^1.3.0' }, entrypoints: { renderer: 'renderer/index.html' },
     permissions: ['ui.route', 'ui.lobby', 'media.images'], contributions: { lobbyApps: [{ id: 'studio', title: 'Studio', routePath: '/apps/cats.studio' }] } };
   const archive = encodeAppPackage({ manifest,
     files: [{ path: 'renderer/index.html', data: Buffer.from('<html><head></head><body>Studio</body></html>') }] });
