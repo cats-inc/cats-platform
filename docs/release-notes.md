@@ -2,25 +2,52 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
-## Unreleased — distribution license and publisher corrections
+## 2026-09-29 — Platform 0.6.1 npm and Desktop standard preview (prepared)
 
-- Desktop host and sidecars now retain the Cats MIT licenses, including the
-  warranty disclaimer. Runtime bundle dependencies ship their original license
-  notices, generated from the actual bundle inputs and bound to that build by
-  hashes. Missing or stale notices block staging and the installed-resource gate.
-- The new dependency-notice gate covers the Runtime bundle only. Third-party
-  notices for the Platform server/renderer bundles and bundled .NET runtime are
-  not yet included in this gate and remain distribution follow-up work.
-- The publisher is the individual maintainer `sammykenny2`. Cats / Cats Inc. remains
-  the software brand; Windows metadata no longer represents it as the developer's
-  company. Product name, appId, signing configuration and data paths are unchanged.
-- The next Desktop build must pin the companion Runtime license producer. That
-  Runtime change also omits URL queries from access logs and removes session
-  compaction archives during permanent deletion, retaining the session if final
-  file removal fails. These fixes require a new build; existing installations and
-  previously published artifacts are not modified by these source changes.
-- No version bump, publication, user-data migration or broader legal-policy change
-  is included in this work.
+- **Companion memory in each Cat turn (#174).** A bounded excerpt of the stored companion
+  session reaches every provider's per-turn Cat prompt: up to 8 active memory records and 6
+  owner notes, each clipped to 280 characters. Expression guidance applies only to Cats
+  with the companion role.
+- **Companion profile posts (#179).** Companion Cats can publish profile posts, and the
+  owner can remove them.
+- **Cat profile wake and sleep (#180).** The buttons on `/entities/cats/:catId` now activate
+  and deactivate the Cat's direct lane through the same channel routes as Chat.
+- **Companion migration backup (#178).** 0.6.0 treated anything already at
+  `<state>.pre-companion-role.bak`, including a directory, as the kept backup and migrated
+  without one. Only a regular file now counts; otherwise the migration reports
+  `companion_role_migration_failed` and retries on a later read. Found by the isolated
+  0.5.8 → 0.6.0 profile upgrade acceptance below.
+- **Distribution licenses and publisher (#176):**
+  - Desktop host and sidecars now retain the Cats MIT licenses, including the
+    warranty disclaimer. Runtime bundle dependencies ship their original license
+    notices, generated from the actual bundle inputs and bound to that build by
+    hashes. Missing or stale notices block staging and the installed-resource gate.
+  - The new dependency-notice gate covers the Runtime bundle only. Third-party
+    notices for the Platform server/renderer bundles and bundled .NET runtime are
+    not yet included in this gate and remain distribution follow-up work.
+  - The publisher is the individual maintainer `sammykenny2`. Cats / Cats Inc. remains
+    the software brand; Windows metadata no longer represents it as the developer's
+    company. Product name, appId, signing configuration and data paths are unchanged.
+- **Runtime.** Desktop pins Runtime 0.3.4 at `af7b0b3a825f866fd5016ed22c3e2d342208b54e`, which
+  produces the Runtime bundle license notices, omits URL queries from access logs and
+  removes session compaction archives during permanent deletion, retaining the session if
+  final file removal fails.
+- **Compatibility.** A compatible patch: no new stored-data change beyond 0.6.0's companion
+  migration. Usage 0.5.0 (bundled), Studio 0.2.0, the bundled knowledge and the SDK example
+  all accept 0.6.x. cats-one 0.3.0 follows with a `^0.6.0` Platform range.
+- **Upgrade evidence (0.6.0, isolated temporary profiles).** A profile written by npm
+  0.5.8's own model code, with a Cat on the `'companion'` skill profile, restarts cleanly on
+  0.5.8 and then migrates on 0.6.0: the Cat gains the companion role, the dedicated backup
+  equals the original bytes, other Cats and the Cat count are unchanged, and a repeat
+  startup leaves the backup untouched. With a write-denied state directory, 0.6.0 started on
+  in-memory defaults and left the file intact; after access was restored it migrated with
+  a correct backup. The occupied-backup-path case failed on 0.6.0 and is fixed here.
+- **Windows self-update.** The owner's installed Desktop updated itself to 0.6.0 through
+  electron-updater; the downloaded installer's SHA-512 matches `latest.yml` and Platform
+  0.6.0 reached ready on the existing profile, which needed no companion migration. macOS
+  and Linux self-update were not exercised.
+- **Release plan.** The owner authorized Platform npm 0.6.1 (`latest`) and a Desktop 0.6.1
+  standard preview (`unsigned=false`). Hosted CI, publication and verification are pending.
 
 ## 2026-09-29 — Platform 0.6.0 npm and Desktop standard preview (published)
 
