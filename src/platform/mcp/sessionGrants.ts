@@ -40,12 +40,20 @@ export class McpSessionGrantStore<Binding> {
     return this.grants.get(hashToken(token)) ?? null;
   }
 
-  /** Attach the runtime session id reported by the create response. */
-  bind(token: string, runtimeSessionId: string): McpSessionGrant<Binding> | null {
+  /**
+   * Attach the runtime session id reported by the create response, optionally
+   * refining the binding with what Runtime resolved (for example its cwd).
+   */
+  bind(
+    token: string,
+    runtimeSessionId: string,
+    bindingPatch: Partial<Binding> = {},
+  ): McpSessionGrant<Binding> | null {
     const grant = this.resolve(token);
     if (!grant) return null;
     grant.state = 'bound';
     grant.runtimeSessionId = runtimeSessionId;
+    grant.binding = { ...grant.binding, ...bindingPatch };
     return grant;
   }
 

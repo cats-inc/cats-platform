@@ -21,7 +21,11 @@ import { createAgentKnowledgeBridge, AGENT_KNOWLEDGE_PATH } from '../../platform
 import { isLoopbackAuthHost } from '../../platform/auth/effectiveMode.js';
 import { runServerStartupRecoveryPasses } from './startupRecovery.js';
 import { McpSessionGrantStore } from '../../platform/mcp/sessionGrants.js';
-import type { CodeAgentToolGrantBinding } from '../../products/code/agentTools/contracts.js';
+import {
+  CODE_AGENT_TOOLS_MCP_PATH,
+  type CodeAgentToolGrantBinding,
+} from '../../products/code/agentTools/contracts.js';
+import { createCodeAgentToolsClientWrapper } from '../../products/code/agentTools/runtimeClientWrapper.js';
 import { createCodeAgentToolsService } from '../../products/code/agentTools/service.js';
 import { getDefaultArtifactCanvasRenderIntentHub } from '../../products/shared/artifactCanvas/renderIntent.js';
 import { startTransportFanout } from '../../platform/transports/fanout/subscriber.js';
@@ -53,6 +57,11 @@ export function createServer(dependencies: ServerDependencies) {
     createPluginRuntimePort(pluginConfig.runtimeBaseUrl, pluginConfig.managedPluginKey ?? pluginConfig.runtimeApiKey));
   const providerSelectorClient = dependencies.shared.runtimeClient;
   const codeAgentToolGrants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
+  let codeAgentToolsEndpoint: string | null = null;
+  const codeAgentToolsClients = createCodeAgentToolsClientWrapper({
+    grants: codeAgentToolGrants,
+    endpoint: () => codeAgentToolsEndpoint,
+  });
   let knowledgeEndpoint: string | null = null;
   const knowledge = createAgentKnowledgeBridge({
     platformDir: dependencies.shared.config.platformDir,
@@ -70,8 +79,8 @@ export function createServer(dependencies: ServerDependencies) {
   });
   dependencies = {
     ...dependencies,
-    shared: { ...dependencies.shared, managedPlugins: plugins, runtimeClient: plugins.wrapClient(knowledge.wrapClient(dependencies.shared.runtimeClient)) },
-    ...(dependencies.code?.runtimeClient ? { code: { ...dependencies.code, runtimeClient: plugins.wrapClient(knowledge.wrapClient(dependencies.code.runtimeClient)) } } : {}),
+    shared: { ...dependencies.shared, managedPlugins: plugins, runtimeClient: plugins.wrapClient(knowledge.wrapClient(codeAgentToolsClients.wrapClient(dependencies.shared.runtimeClient))) },
+    ...(dependencies.code?.runtimeClient ? { code: { ...dependencies.code, runtimeClient: plugins.wrapClient(knowledge.wrapClient(codeAgentToolsClients.wrapClient(dependencies.code.runtimeClient))) } } : {}),
     ...(dependencies.work?.runtimeClient ? { work: { ...dependencies.work, runtimeClient: plugins.wrapClient(knowledge.wrapClient(dependencies.work.runtimeClient)) } } : {}),
   };
   const resolvedDependencies = resolveServerDependencies(dependencies);
@@ -302,6 +311,7 @@ export function createServer(dependencies: ServerDependencies) {
     if (address && typeof address !== 'string' && isLoopbackAuthHost(runtimeHost)) {
       const host = address.family === 'IPv6' ? '[::1]' : '127.0.0.1';
       knowledgeEndpoint = `http://${host}:${address.port}${AGENT_KNOWLEDGE_PATH}`;
+      codeAgentToolsEndpoint = `http://${host}:${address.port}${CODE_AGENT_TOOLS_MCP_PATH}`;
     }
   });
 
