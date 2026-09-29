@@ -918,7 +918,7 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
   participantAssignment.execution.lease = {
     sessionId: 'session-stale',
     status: 'ready',
-    cwd: 'C:/Users/middl/.cats/runtime/sessions/session-stale',
+    cwd: 'C:/Users/tester/.cats/runtime/sessions/session-stale',
     lastError: null,
     provider: 'claude',
     model: 'claude-opus-4-6',
@@ -946,7 +946,7 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
         id: 'session-recovered',
         provider: input.provider,
         model: input.model,
-        cwd: 'C:/Users/middl/.cats/runtime/sessions/session-recovered',
+        cwd: 'C:/Users/tester/.cats/runtime/sessions/session-recovered',
         status: 'ready',
         instance: input.instance,
         modelSelection: input.modelSelection,
@@ -986,7 +986,7 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
     && message.metadata?.terminal === true
     && message.metadata?.sessionId === 'session-recovered');
 
-  assert.equal(settledChannel.chatCwd, 'C:/Users/middl/.cats/runtime/sessions/session-recovered');
+  assert.equal(settledChannel.chatCwd, 'C:/Users/tester/.cats/runtime/sessions/session-recovered');
   assert.ok(recoveredSessionStartedIndex >= 0);
   assert.ok(recoveredResponseIndex > recoveredSessionStartedIndex);
   assert.equal(typeof recoveredTargetStateId, 'string');
