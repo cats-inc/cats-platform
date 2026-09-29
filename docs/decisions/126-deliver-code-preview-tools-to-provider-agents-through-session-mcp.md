@@ -116,8 +116,8 @@ changes that.
    Cats that should use the endpoint. The descriptor uses
    `auth: { kind: 'bearer_env' | 'oauth_ref' | 'none' }` rather than raw headers.
    Only `bearer_env` is implemented first; the other kinds are reserved. Server
-   names are namespaced: `cats` for the host, `app-<slug>` for Apps and the
-   plugin ID for plugins.
+   names are namespaced: `cats` for the host, `app-<slug>` for Apps and a slug
+   derived from the plugin ID for plugins (plugin IDs contain `/`).
 2. **A documented security baseline, not a shared module.** The Ask probe's
    posture and SPEC-123 CAP-02 converge: stateless Streamable HTTP,
    `Origin`/`Host` checks, bounded bodies and rates, bearer or OAuth credentials
