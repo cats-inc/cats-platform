@@ -23,7 +23,7 @@ const ENDPOINT = 'http://127.0.0.1:8181/api/code/agent-tools/mcp';
 const MARKER_CONTEXT = { metadata: { codeAgentTools: { channelId: 'channel-1', workspacePath: '/workspace' } } };
 const DELIVERED: RuntimeSessionMcpDeliveryReport = { status: 'delivered', servers: [{ name: 'cats', connection: 'unknown' }] };
 
-function fakeClient(options: { createReport?: RuntimeSessionMcpDeliveryReport; sendReports?: RuntimeSessionMcpDeliveryReport[]; failCreate?: boolean } = {}) {
+function fakeClient(options: { createReport?: RuntimeSessionMcpDeliveryReport; sendReports?: RuntimeSessionMcpDeliveryReport[]; failCreate?: boolean; createCwd?: string } = {}) {
   const calls = {
     create: [] as RuntimeSessionCreateInput[],
     send: [] as Array<RuntimeSendMessageInput | undefined>,
@@ -35,7 +35,7 @@ function fakeClient(options: { createReport?: RuntimeSessionMcpDeliveryReport; s
     async createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo> {
       calls.create.push(input);
       if (options.failCreate) throw new Error('runtime unavailable');
-      return { id: 'rt-1', provider: 'claude', model: null, status: 'ready', cwd: null, ...(options.createReport ? { mcpServers: options.createReport } : {}) };
+      return { id: 'rt-1', provider: 'claude', model: null, status: 'ready', cwd: options.createCwd ?? null, ...(options.createReport ? { mcpServers: options.createReport } : {}) };
     },
     async sendMessage(_sessionId: string, _content: string, input?: RuntimeSendMessageInput): Promise<RuntimeMessageResult> {
       calls.send.push(input);
@@ -98,6 +98,25 @@ test('create attaches the cats server with a grant bound to the new session', as
 
   await wrapped.closeSession('rt-1');
   assert.equal(grants.resolve(token), null);
+});
+
+test('the grant uses the workspace Runtime resolved for the session', async () => {
+  const { grants, wrapper } = setup();
+  const withCwd = fakeClient({ createCwd: '/runtime/worktrees/rt-1' });
+  await wrapper.wrapClient(withCwd.client).createSession({ provider: 'claude', cwd: '/repo', context: MARKER_CONTEXT } as RuntimeSessionCreateInput);
+  const server = withCwd.calls.create[0]!.mcpServers![0]!;
+  const token = server.auth.kind === 'bearer_env' ? server.auth.token : '';
+  assert.equal(grants.resolve(token)?.binding.workspacePath, '/runtime/worktrees/rt-1');
+
+  const noCwd = fakeClient();
+  await wrapper.wrapClient(noCwd.client).createSession({ provider: 'claude', cwd: '/repo', context: MARKER_CONTEXT } as RuntimeSessionCreateInput);
+  const second = noCwd.calls.create[0]!.mcpServers![0]!;
+  const secondToken = second.auth.kind === 'bearer_env' ? second.auth.token : '';
+  assert.equal(grants.resolve(secondToken)?.binding.workspacePath, '/repo');
+
+  const enricher = createCodeAgentToolsInvocationEnricher();
+  const repoOnly = enricher.enrich({ originSurface: 'code', id: 'channel-9', repoPath: '/repo' }, {}, { phase: 'session_create' });
+  assert.equal(readCodeAgentToolsInvocationMarker(repoOnly?.context)?.workspacePath, '/repo');
 });
 
 test('non-Code sessions, a missing endpoint and failed creates stay untouched', async () => {

@@ -86,7 +86,11 @@ export function createCodeAgentToolsClientWrapper(
               const token = issue(marker);
               try {
                 const session = await target.createSession({ ...input, mcpServers: descriptor(endpoint, token) });
-                options.grants.bind(token, session.id);
+                // Runtime's resolved cwd is the workspace the Cat writes to
+                // (a worktree or sandbox can differ from the channel's repo path).
+                options.grants.bind(token, session.id, {
+                  workspacePath: session.cwd ?? input.cwd ?? marker.workspacePath,
+                });
                 sessions.set(session.id, { token, report: session.mcpServers });
                 return session;
               } catch (error) {
@@ -132,6 +136,7 @@ export function createCodeAgentToolsClientWrapper(
                 mcpServers: descriptor(endpoint, tracked.token),
               });
               if (session.mcpServers) tracked.report = session.mcpServers;
+              if (session.cwd) options.grants.bind(tracked.token, sessionId, { workspacePath: session.cwd });
               return session;
             };
           }

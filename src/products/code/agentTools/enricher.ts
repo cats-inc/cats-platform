@@ -27,7 +27,7 @@ export function createCodeAgentToolsInvocationEnricher(): RuntimeInvocationEnric
       if (channel.originSurface !== 'code' || !channel.id) return null;
       const marker: CodeAgentToolsInvocationMarker = {
         channelId: channel.id,
-        workspacePath: channel.chatCwd ?? null,
+        workspacePath: channel.chatCwd ?? channel.repoPath ?? null,
       };
       return {
         context: {
