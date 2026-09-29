@@ -30,6 +30,7 @@ export function buildComposerHighlightFragments(
   );
   const result = parseMentionsWithPositions(text, {
     excludedNames: excludedMentionNames,
+    knownNames: catLookup.keys(),
   });
   const confirmed = result.positions.flatMap((pos) => {
     const cat = catLookup.get(pos.name.toLowerCase());
