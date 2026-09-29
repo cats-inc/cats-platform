@@ -380,16 +380,28 @@ call a Platform-hosted MCP tool and receive its result.
 
 - [ ] F1: A sanitized markdown viewer (reusing the chat markdown renderer), with
   `.md` switched to `markdown`.
-- [ ] F2: Research `.docx`/`.pptx` presentation (server-side conversion to HTML
+- [x] F2: Research `.docx`/`.pptx` presentation (server-side conversion to HTML
   or PDF), canvas tabs/stacking and reopening per artifact.
+  Done: [research note](../research/2026-09-30-canvas-office-documents-and-tabs.md).
+  - A probe converted a `.docx` with mammoth in about 150 ms, keeping
+    headings and tables and escaping script text.
+  - `.pptx` has no pure-JS renderer. It gets a text outline, or LibreOffice to
+    PDF when that is installed; Cats does not bundle LibreOffice.
+  - Recommended: one "Recent" switcher built from show Activity, not tabs.
+    Implementation needs a SPEC-123 amendment first.
 - [ ] F3: Add other providers once their runtime adapters map `mcpServers`
   (Antigravity/Gemini, Copilot, Cursor, …).
-- [ ] F4: Evaluate reuse of process supervision, file containment and leases with
+- [x] F4: Evaluate reuse of process supervision, file containment and leases with
   SPEC-122 App services. Browser trust policies differ: App HTML uses an opaque
   sandbox on shared transport ingress; Canvas uses its own scripted preview
   producer/lease predicate. Do not reuse `allow-same-origin` or that predicate
   for App documents. Remote viewing of loopback Canvas leases needs separate
   acceptance; this App ingress change does not make those URLs remotely usable.
+  Done: [evaluation](../research/2026-09-30-canvas-preview-and-app-service-reuse.md).
+  - Share the tree kill and the orphan registry. App stop currently ends only
+    the direct child on Windows; that fix is a separate SPEC-122 item.
+  - Share a contained-realpath primitive when a second caller changes.
+  - Keep leases, sandbox profiles and routing separate, as above.
 - [ ] F5: When SPEC-121 plugin MCP or a user-granted App endpoint needs to reach
   a Cat, configure the Cat session through the same runtime `mcpServers`
   descriptor (`oauth_ref`, and `app-<slug>` or plugin-ID names). The CLI connects

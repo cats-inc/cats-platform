@@ -6,6 +6,8 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-09-30-canvas-office-documents-and-tabs](2026-09-30-canvas-office-documents-and-tabs.md) | 2026-09-30 | Canvas Office documents, tabs and reopening (PLAN-116 F2) | mammoth `.docx`→HTML is fast and escapes scripts; `.pptx` needs LibreOffice for rendering, else a text outline; recommends one Recent switcher from show Activity instead of tabs |
+| [2026-09-30-canvas-preview-and-app-service-reuse](2026-09-30-canvas-preview-and-app-service-reuse.md) | 2026-09-30 | Canvas previews vs App services reuse (PLAN-116 F4) | Share tree-kill and the orphan registry (App stop kills only the direct child on Windows), share a contained-realpath primitive, keep leases and browser trust separate; remote Canvas viewing needs its own acceptance |
 | [2026-09-28-agency-agents-plugin-fit](2026-09-28-agency-agents-plugin-fit.md) | 2026-09-28 | Agency Agents skills Plugin candidate | Pinned upstream content and converter assessment; recommends a small optional role pack, with provenance and explicit migration before replacing built-in skills |
 | [2026-09-28-c2c-plugin-fit-evaluation](2026-09-28-c2c-plugin-fit-evaluation.md) | 2026-09-28 | Pinned C2C feasibility | Static assessment: host-dependent workflow on hold, no independent ChatGPT provider; bridge-only subset remains an unselected candidate |
 | [2026-09-28-managed-plugins-and-chatgpt-adapter-fit](2026-09-28-managed-plugins-and-chatgpt-adapter-fit.md) | 2026-09-28 | Managed Plugins and adapter fit | Upstream reuse, OpenChatX/C2C call direction, service-term distinction and current Cats integration gaps; no pilot selected or executed |
