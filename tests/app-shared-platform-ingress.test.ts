@@ -117,7 +117,12 @@ test('real Platform router shares one public entry for Mobile and two Apps with 
     const result = await send(`/apps/${id}/mcp?test=1`, credential, 'POST');
     assert.equal(result.status, 200); assert.equal(result.text, '/mcp?test=1'); assert.equal(result.headers['mcp-session-id'], 'fixture-session');
   }
-  assert.equal((await send('/api/code/agent-tools/mcp', 'valid-internal-grant', 'POST')).status, 403);
+  const internalMcp = await fetch(local + '/api/code/agent-tools/mcp', { method: 'POST' });
+  assert.equal(internalMcp.status, 401);
+  assert.equal(internalMcp.headers.get('www-authenticate'), 'Bearer', 'the internal listener mounts Code MCP before cookie auth');
+  const publicMcp = await send('/api/code/agent-tools/mcp', 'fixture-internal-bearer', 'POST');
+  assert.equal(publicMcp.status, 403);
+  assert.equal(JSON.parse(publicMcp.text).error, 'internal_route', 'the public listener denies Code MCP before its bearer handler');
   await host.setEnabled('test.one', false);
   assert.equal((await send('/apps/test.one/mcp', '1'.repeat(64), 'POST')).status, 404);
   assert.equal((await send('/apps/test.two/mcp', '2'.repeat(64), 'POST')).status, 200);

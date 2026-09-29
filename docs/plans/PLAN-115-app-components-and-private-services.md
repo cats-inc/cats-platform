@@ -95,7 +95,13 @@ registry/lifecycle machinery, not a second installer.
   cached shutdown now awaits ingress, App components and Code previews, including
   cleanup failure settlement. All 14 ingress/static-preview/config/profile
   integration tests passed; the added delayed-preview shutdown regression and
-  shared-ingress test also passed. The combined head must pass CI before merge.
+  shared-ingress test also passed. Full CI passed on `ff462005` (run
+  `36551283233`).
+- Concurrent Code MCP endpoint PR #196 required a dispatch merge. Internal Code
+  bearer MCP stays ahead of cookie auth; public ingress rejects it before the
+  handler. All 5 shared-ingress/shutdown/Code MCP tests passed, including the
+  internal bearer challenge versus public `internal_route` denial. The combined
+  head must pass CI before merge.
 - No version bump, publication, live tunnel/Bot or user-profile installation.
 
 2026-09-29 shared-ingress candidate checkpoint:

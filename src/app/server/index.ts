@@ -16,6 +16,9 @@ import { routeRequest } from './requestRouter.js';
 import { createAgentKnowledgeBridge, AGENT_KNOWLEDGE_PATH } from '../../platform/knowledge/agentKnowledgeBridge.js';
 import { isLoopbackAuthHost } from '../../platform/auth/effectiveMode.js';
 import { runServerStartupRecoveryPasses } from './startupRecovery.js';
+import { McpSessionGrantStore } from '../../platform/mcp/sessionGrants.js';
+import type { CodeAgentToolGrantBinding } from '../../products/code/agentTools/contracts.js';
+import { createCodeAgentToolsService } from '../../products/code/agentTools/service.js';
 import { startTransportFanout } from '../../platform/transports/fanout/subscriber.js';
 import { startChatCompanionLifeLoop } from '../../products/chat/api/index.js';
 import {
@@ -44,6 +47,7 @@ export function createServer(dependencies: ServerDependencies) {
     pluginConfig.managedPluginPolicy === true && Boolean(pluginConfig.platformDir) && resolve(pluginConfig.platformDir) !== resolve(join(homedir(), '.cats', 'platform')),
     createPluginRuntimePort(pluginConfig.runtimeBaseUrl, pluginConfig.managedPluginKey ?? pluginConfig.runtimeApiKey));
   const providerSelectorClient = dependencies.shared.runtimeClient;
+  const codeAgentToolGrants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
   let knowledgeEndpoint: string | null = null;
   const knowledge = createAgentKnowledgeBridge({
     platformDir: dependencies.shared.config.platformDir,
@@ -125,6 +129,15 @@ export function createServer(dependencies: ServerDependencies) {
       })
     : () => {};
 
+  // Internal bearer MCP precedes Platform cookie auth. The public ingress
+  // rejects this route before dispatch, including traffic from a loopback tunnel.
+  const codeAgentTools = createCodeAgentToolsService({
+    coreStore: resolvedDependencies.code.coreStore,
+    grants: codeAgentToolGrants,
+    policyConfig: resolvedDependencies.shared.config.artifactCanvas,
+    now: resolvedDependencies.shared.now,
+  });
+
   const dispatch = async (request: IncomingMessage, response: ServerResponse) => {
     const entry = platformRequestEntry(request);
     if (entry && appComponents && await appComponents.route(request, response, entry.origin)) return;
@@ -132,7 +145,9 @@ export function createServer(dependencies: ServerDependencies) {
     if (request.headers.origin === 'null') {
       sendJson(response, 403, { error: 'opaque_origin_denied' }); return;
     }
-    if (!await knowledge.route(request, response)) await routeRequest(request, response, resolvedDependencies);
+    if (await codeAgentTools.route(request, response)) return;
+    if (await knowledge.route(request, response)) return;
+    await routeRequest(request, response, resolvedDependencies);
   };
   let localOrigins: string[] = [];
   const server = createHttpServer((request, response) => {

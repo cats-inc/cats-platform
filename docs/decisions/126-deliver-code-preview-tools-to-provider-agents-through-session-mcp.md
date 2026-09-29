@@ -82,15 +82,28 @@ As a result, no provider agent in Cats Code can open a preview today.
 6. **Initial providers.** The first providers are Claude Code and Codex, the
    current `strong_agent` candidates. Other adapters join once their mapping is
    implemented and verified.
-7. **Platform's MCP implementation is host-internal.** Platform's host-owned
-   servers use the official MCP TypeScript SDK with stateless Streamable HTTP and
-   a fresh server and transport per request, the pattern the Ask probe validated.
-   Their guards live in `src/platform/mcp/`: `Origin` rejection, `Host` check,
-   bounded body and rate, bearer verification and idempotent receipt helpers.
-   This module and its SDK pin serve Platform's own servers only. Apps may not
-   import Platform source (cats-apps SPEC-001 item 5), and they choose and
-   version their own MCP stack. The Code handlers and route stay in the Code API
-   delegate. No cross-product MCP URL namespace is introduced.
+7. **Platform's MCP implementation is host-internal and dependency-free.**
+   Platform's host-owned servers use a small stateless Streamable HTTP JSON-RPC
+   module in `src/platform/mcp/`. It implements `initialize` (with version
+   negotiation), `ping`, `tools/list` and `tools/call`, returns standard JSON-RPC
+   errors, never issues `Mcp-Session-Id` and bounds request bodies. Its guards
+   are `Origin` rejection, a loopback-only peer and bearer verification, and
+   tool failures are returned as `isError` results that the agent can act on.
+
+   *Amended 2026-09-29 (PLAN-116 A-i).* The official SDK was the first choice.
+   Its 1.31 line pulls in express, hono, jose, ajv, cors and rate limiting, far
+   too much for a five-method loopback endpoint shipped in Desktop. The module
+   was verified directly against the pinned clients. Claude Code 2.1.284 first
+   sends `server/discover` with protocol `2026-07-28`; it receives 400, falls
+   back to `initialize` at `2025-06-18`, connects and completes `tools/call`.
+   Codex 0.158.0 completes `initialize` → `tools/list` → `tools/call` and
+   receives `structuredContent`.
+
+   This module serves Platform's own servers only. Apps may not import Platform
+   source (cats-apps SPEC-001 item 5), and they choose and version their own MCP
+   stack. The Code handlers live in the Code product. The endpoint is mounted
+   before the router because every other `/api/*` route is behind the Platform
+   auth gate. No cross-product MCP URL namespace is introduced.
 
 ## Relationship to App and Plugin MCP
 
