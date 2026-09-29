@@ -143,17 +143,23 @@ call a Platform-hosted MCP tool and receive its result.
 
 ### P4: Static preview lease (M1)
 
-- [ ] C1: Add an in-process static server adapter and a `static` profile to the
+- [x] C1: Add an in-process static server adapter and a `static` profile to the
   supervisor. It serves the entry directory, checks `Host`, sends `no-store`,
   guards against traversal, dotfiles and symlinks, and binds with an immediate
   failure report. Test it with isolated temporary directories.
-- [ ] C2: Integration wiring. Construct the `LivePreviewSupervisor` at the host,
+- [x] C2: Integration wiring. Construct the `LivePreviewSupervisor` at the host,
   with the static profile always available, and connect the lease store to the
   live-preview routes and canvas projection. Add the supervisor producer to the
   default scripted allowlist, and make `preview` artifacts resolve to `iframe`.
   Add a regression test showing that an agent-producer artifact on a valid lease
-  still gets `static`.
-  Verify that Platform APIs do not trust preview origins.
+  still gets `static`. Supervisor `attachArtifact` stamps the lease with the
+  artifact it shows, so later projections keep the scripted profile.
+  Verified 2026-09-29 that Platform APIs do not trust preview origins:
+  - Platform sends no CORS headers, so a preview cannot read API responses.
+  - Cookie-authenticated mutations need `x-cats-csrf-token`, which triggers a
+    preflight that fails without CORS.
+  - With auth disabled, simple cross-origin POSTs are possible from any page.
+    That is pre-existing and not specific to previews (see Risks).
 - [ ] **M1 acceptance** (isolated instance): Claude Code builds a calculator
   from "做一個計算機", the canvas opens with no preview wording in the prompt,
   and clicking `2 + 3 =` shows `5`.
@@ -268,6 +274,7 @@ call a Platform-hosted MCP tool and receive its result.
 | Dev server ignores the leased port | Medium | Readiness timeout with log tail; framework adapters in D3 |
 | Second supervisor next to SPEC-122 | Medium | F4 convergence; no App-specific logic in the preview supervisor |
 | Chat `chat_conversation` anchoring compares the raw channel ID with `conversation-channel-<id>` (`projection.ts`, `activity.ts`) | Low | Code uses `buildChatConversationId`; Chat is out of scope and recorded for its owner |
+| With Platform auth disabled (local development), any page, including a preview, can send simple cross-origin POSTs to loopback APIs | Medium | Pre-existing and not introduced by previews. The MCP tool endpoint rejects `Origin` and requires a bearer. Review CSRF posture for auth-disabled mode separately |
 | Oversized PRs | Low | Phases split into R1–R4, A1–A3, B1–B2, C1–C2, D1–D3, each under about 400 lines |
 
 ## Progress Log

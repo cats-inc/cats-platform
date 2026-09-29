@@ -1,5 +1,10 @@
 import type { CanvasSurfaceRef } from '../../shared/artifactCanvas/contracts.js';
 
+export const CODE_LIVE_PREVIEW_PRODUCER_TOOL_NAME =
+  'cats_code_live_preview_supervisor' as const;
+export const CODE_LIVE_PREVIEW_PRODUCER_IDENTITY =
+  `tool:${CODE_LIVE_PREVIEW_PRODUCER_TOOL_NAME}` as const;
+
 export const LIVE_PREVIEW_ALLOWED_PLACEHOLDERS = [
   'artifactDirectory',
   'port',
@@ -72,6 +77,8 @@ export interface LivePreviewWorkspaceRef {
 export interface LivePreviewStartRequest {
   commandProfileId: string;
   workspace: LivePreviewWorkspaceRef;
+  /** Absolute directory inside `workspace.rootPath`; defaults to the root. */
+  artifactDirectory?: string | null;
   surface: CanvasSurfaceRef;
   artifactTitle?: string | null;
   readinessTimeoutMs?: number | null;
@@ -159,7 +166,9 @@ export type LivePreviewStopResult =
   | { status: 'rejected'; error: LivePreviewError };
 
 export const DEFAULT_LIVE_PREVIEW_CONFIG: LivePreviewConfig = {
-  enabled: false,
+  // SPEC-123 (approved 2026-09-29): previews are on by default. Spawning real
+  // processes still needs `useRealProcessAdapter` and an enabled profile.
+  enabled: true,
   useRealProcessAdapter: false,
   portRange: { start: 47_100, end: 47_199 },
   maxConcurrentGlobal: 3,
@@ -214,6 +223,40 @@ export const VITE_LIVE_PREVIEW_PROFILE: LivePreviewCommandProfile = {
     killProcessTree: true,
   },
 };
+
+export const STATIC_LIVE_PREVIEW_READINESS_PATH = '/.cats-preview-ready';
+
+/**
+ * SPEC-123 CAP-05 static profile. It never spawns a process: the supervisor's
+ * composite adapter serves the artifact directory from an in-process loopback
+ * server. Always registered and enabled; see `withBuiltinLivePreviewProfiles`.
+ */
+export const STATIC_LIVE_PREVIEW_PROFILE: LivePreviewCommandProfile = {
+  id: 'static',
+  label: 'Static files (in-process)',
+  enabled: true,
+  executable: 'cats-static-preview',
+  args: [],
+  workingDirectory: 'artifactDirectory',
+  port: { mode: 'env', name: 'PORT' },
+  readiness: {
+    path: STATIC_LIVE_PREVIEW_READINESS_PATH,
+    timeoutMs: 5_000,
+    intervalMs: 50,
+    expectedStatus: 204,
+  },
+  stop: {
+    graceMs: 1,
+    killProcessTree: false,
+  },
+};
+
+/** Configured profiles plus the always-available in-process static profile. */
+export function withBuiltinLivePreviewProfiles(config: LivePreviewConfig): LivePreviewConfig {
+  return config.commandProfiles.some((profile) => profile.id === STATIC_LIVE_PREVIEW_PROFILE.id)
+    ? config
+    : { ...config, commandProfiles: [STATIC_LIVE_PREVIEW_PROFILE, ...config.commandProfiles] };
+}
 
 /**
  * Reviewed-but-disabled built-in profiles operators may opt into. The platform
