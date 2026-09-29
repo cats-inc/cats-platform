@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "revision": "2026-09-27.1",
-  "platformRange": "0.5.x",
+  "revision": "2026-09-29.1",
+  "platformRange": "0.6.x",
   "requiredCapabilities": ["code-entry-v1"],
   "entries": [
     {

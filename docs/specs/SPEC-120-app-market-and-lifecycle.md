@@ -241,7 +241,8 @@ enabled／disabled／uninstalled 映射保留，manifest-only 未驗證項目不
 不能為轉接先移除作品或重送生成。未知 schema 原樣保留並提供宿主恢復指引。
 
 schema 2 無法由舊 host 安全解讀，規劃下一個 Platform／Desktop 0.x minor 邊界
-（目前基線 0.5.13，因此為 0.6.0；本輪不 bump）。舊執行檔不能直接使用已升級 profile。
+（原以 0.5.13 為基線定為 0.6.0；2026-09-29 #171 的 companion 遷移已使用 0.6.0，
+schema 2 改為 0.6.0 之後的下一個 minor）。舊執行檔不能直接使用已升級 profile。
 Usage／Studio 的 ^0.5 範圍不接受 0.6，需另發布正確相容範圍的 immutable App 版本；
 不可覆寫舊 artifact 或略過 compatibility check。發版時重新核對當時實際版本與其他團隊進度。
 

@@ -171,7 +171,8 @@ Cats Work 不讀 `skillProfile`，Cat 是否參與 Work 由 `products[]` 決定�
       registry），以及 `settingsCatsRegistryActions` 的 `onCompanionChange`。
 - [x] 文件：`docs/api.md`、SPEC-019、SPEC-121、ADR-040 amendment、ADR-124。
 - [ ] 以 source candidate 截圖給 owner 確認 Settings 面板。
-- [ ] `docs/release-notes.md` 在 release 時記錄 `0.6.0` 邊界（依 release guide，不在本分支 bump）。
+- [x] `docs/release-notes.md` 在 release 時記錄 `0.6.0` 邊界（依 release guide，不在本分支 bump）。
+      2026-09-29 由 0.6.0 版本準備記錄；發布與驗證結果另行補上。
 
 ## Testing
 
