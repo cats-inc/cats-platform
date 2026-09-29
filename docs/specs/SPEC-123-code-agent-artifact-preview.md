@@ -192,7 +192,9 @@ On 2026-09-29 the user approved the proposal in each of the four questions below
   is easier for the model to use correctly.
 - [x] **3. Provider scope.** Proposal: Claude Code and Codex only for the MVP.
   Providers without MCP delivery (Antigravity, Grok, Devin, Cline, Muse) get no
-  preview policy until their adapters gain a mapping.
+  preview policy until their adapters gain a mapping. PLAN-116 F3 added GitHub
+  Copilot (cats-runtime #143); SPEC-035 records why the other CLIs cannot take
+  the set yet.
 - [x] **4. Dev-preview scope.** Proposal: Vite first (profile already reviewed).
   The generic `npm run <script>` profile follows once node/npm discovery works in
   packaged Desktop.

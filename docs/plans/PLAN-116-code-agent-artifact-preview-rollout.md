@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In progress (2026-09-30). M1, M2 and M3 accepted. M4: F1, F2, F4 and F5 done; F3 (more Runtime providers) in progress. Open for the user: the P0 App/plugin MCP alignment review and the Settings > Code preview-server default (shipped off; the approved default is on) |
+| **Status** | Implementation complete (2026-09-30). M1, M2 and M3 accepted; M4 F1–F5 done. Open for the user: the P0 App/plugin MCP alignment review and the Settings > Code preview-server default (shipped off; the approved default is on) |
 | **Owner** | Claude |
 | **Reviewer** | User |
 
@@ -475,8 +475,25 @@ call a Platform-hosted MCP tool and receive its result.
     PDF when that is installed; Cats does not bundle LibreOffice.
   - Recommended: one "Recent" switcher built from show Activity, not tabs.
     Implementation needs a SPEC-123 amendment first.
-- [ ] F3: Add other providers once their runtime adapters map `mcpServers`
+- [x] F3: Add other providers once their runtime adapters map `mcpServers`
   (Antigravity/Gemini, Copilot, Cursor, …).
+  Done in cats-runtime #143:
+  - **GitHub Copilot CLI** takes the set through inline
+    `--additional-mcp-config` JSON with `Authorization: Bearer ${…}`. Copilot
+    expands the variable from its own environment (1.0.89), so the token
+    stays in the child environment only.
+  - Its session MCP status events become `mcp_servers` progress events, and it
+    reports `continuity.sessionMcpServers: true`.
+  - A live smoke showed the stub server receiving `initialize` and
+    `tools/list` with the bearer. A `tools/call` could not run: the test
+    account's Copilot quota returned 402.
+  - Platform needs no change: the `cats` server goes to every Code session,
+    and the policy follows Runtime's `delivered` report.
+  - Recorded in SPEC-035 as unsupported, with CLI versions, flags, docs and,
+    for Auggie, Grok and Kiro, loopback probes: Antigravity, Auggie, Cline,
+    Cursor, Devin, Goose, Grok, Junie, Kilo, Kiro, Muse, OpenCode and Pi. Their
+    CLIs offer no per-invocation MCP configuration that keeps the bearer
+    outside argv and disk.
 - [x] F4: Evaluate reuse of process supervision, file containment and leases with
   SPEC-122 App services. Browser trust policies differ: App HTML uses an opaque
   sandbox on shared transport ingress; Canvas uses its own scripted preview
