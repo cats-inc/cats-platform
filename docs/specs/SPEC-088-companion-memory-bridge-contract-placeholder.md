@@ -43,6 +43,12 @@ The companion profile shall not render `CompanionMemoryRecord` and
 authoritative for v1: companion side-panel `Memory` uses `CompanionMemoryRecord`
 only.
 
+The per-turn Cat prompt (SPEC-029 2026-09-29 amendment) follows the same rule:
+it carries `CompanionMemoryRecord` entries only. Durable-memory retrieval hits
+stay out of the prompt because they include mirrored copies of those records;
+Settings-side `DurableMemoryItem` entries therefore still do not reach the model
+until this bridge is decided.
+
 ## Expansion Triggers
 
 This placeholder must be expanded before any of these changes ship:

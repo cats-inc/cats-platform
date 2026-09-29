@@ -164,6 +164,59 @@ test('cat prompt omits blank transport sections when no transport context is pro
   assert.ok(!prompt.includes('\n\n\n'));
 });
 
+function buildCompanionCatPrompt(roles, companionContext) {
+  const channel = createChannel();
+  return buildCatPrompt(
+    channel,
+    createOrchestrator(),
+    { ...channel.assignedCats[0], sourceKind: 'cat', roles },
+    createSourceMessage(),
+    { reason: 'System routing selected you for the current turn.', recentMessages: [] },
+    companionContext,
+  );
+}
+
+test('cat prompt carries owner-curated companion memory, notes and expression style', () => {
+  const prompt = buildCompanionCatPrompt(['companion'], {
+    memory: [
+      { category: 'preference', content: 'Likes a slow blink hello.', summary: null },
+      { category: 'fact', content: '  ', summary: 'Naps by the window' },
+      { category: 'fact', content: 'x'.repeat(400), summary: null },
+    ],
+    ownerNotes: ['Keep replies warm.'],
+    responseProfile: { expressionMode: 'mixed' },
+  });
+
+  assert.match(prompt, /Your companion memory \(curated by your owner/u);
+  assert.match(prompt, /- \(preference\) Likes a slow blink hello\./u);
+  assert.match(prompt, /- \(fact\) Naps by the window/u);
+  assert.match(prompt, /- \(fact\) x{279}…/u);
+  assert.ok(!prompt.includes('x'.repeat(281)));
+  assert.match(prompt, /Owner notes:\n- Keep replies warm\./u);
+  assert.match(prompt, /Expression style: Mix animal-like sounds/u);
+  assert.ok(prompt.indexOf('Your memory checkpoint') < prompt.indexOf('Your companion memory'));
+  assert.ok(prompt.indexOf('Your companion memory') < prompt.indexOf('Channel roster'));
+});
+
+test('cat prompt gives ordinary Cats their companion memory without a persona change', () => {
+  const prompt = buildCompanionCatPrompt(['support'], {
+    memory: [{ category: 'fact', content: 'Owner works night shifts.', summary: null }],
+    ownerNotes: [],
+    responseProfile: { expressionMode: 'animalistic' },
+  });
+
+  assert.match(prompt, /- \(fact\) Owner works night shifts\./u);
+  assert.ok(!prompt.includes('Expression style'));
+  assert.ok(!prompt.includes('Owner notes'));
+});
+
+test('cat prompt omits the companion section when there is nothing to carry', () => {
+  const empty = { memory: [], ownerNotes: [], responseProfile: { expressionMode: 'mixed' } };
+  assert.ok(!buildCompanionCatPrompt(['support'], empty).includes('Your companion memory'));
+  assert.ok(!buildCompanionCatPrompt(['support'], null).includes('Your companion memory'));
+  assert.match(buildCompanionCatPrompt(['companion'], empty), /Expression style: Mix/u);
+});
+
 test('default chat bootstrap instructions are absent without prior conversational messages', () => {
   assert.equal(buildBoundedRecentContextInstructions([]), null);
 });

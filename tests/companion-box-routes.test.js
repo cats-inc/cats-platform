@@ -371,6 +371,15 @@ test('direct companion chat routes hydrated companion session context into runti
         notes: 'Keep replies warm and lightly playful.',
       }),
     });
+    const createMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/companion-box/memory`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        category: 'preference',
+        content: 'Owner likes being greeted with a slow blink.',
+      }),
+    });
+    assert.equal(createMemoryResponse.status, 201);
 
     const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
@@ -442,6 +451,11 @@ test('direct companion chat routes hydrated companion session context into runti
       sentMessage.input.skills.context.metadata.companionSession.responseProfile.outputMode,
       'text',
     );
+    // Runtime only stores hydration metadata, so the per-turn prompt must carry it.
+    assert.match(sentMessage.content, /Your companion memory/u);
+    assert.match(sentMessage.content, /- \(preference\) Owner likes being greeted with a slow blink\./u);
+    assert.match(sentMessage.content, /- Keep replies warm and lightly playful\./u);
+    assert.match(sentMessage.content, /Expression style: Express yourself mainly through animal-like/u);
 
     const flushCatMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/flush`, {
       method: 'POST',

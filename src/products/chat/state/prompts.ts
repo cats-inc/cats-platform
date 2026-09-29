@@ -11,8 +11,28 @@ import {
   parseAssistantResponseLanguage,
 } from '../../../shared/assistantResponseLanguage.js';
 import { WORK_MCP_PROFILE_ID } from '../../../shared/catMcpProfiles.js';
+import { isCompanionCat } from '../../../shared/companionRole.js';
 import { buildChoiceResponseBody } from '../shared/messageChoices.js';
 import { ORCHESTRATOR_NAME } from './model/index.js';
+
+/**
+ * Owner-curated companion box content for one Cat. Shape-compatible with the
+ * hydrated `CompanionSessionContext`, which already caps and orders the lists.
+ */
+export interface PromptCompanionContext {
+  memory: ReadonlyArray<{ category: string; content: string; summary: string | null }>;
+  ownerNotes: readonly string[];
+  responseProfile: { expressionMode: string };
+}
+
+const COMPANION_PROMPT_TEXT_LIMIT = 280;
+
+const COMPANION_EXPRESSION_GUIDANCE: Record<string, string> = {
+  animalistic:
+    'Express yourself mainly through animal-like sounds, gestures, and actions, not human speech.',
+  anthropomorphic: 'Speak in natural human language.',
+  mixed: 'Mix animal-like sounds, gestures, and actions with natural human language.',
+};
 
 export interface PromptRoutingContext {
   reason: string;
@@ -463,6 +483,40 @@ function formatMemoryCheckpoint(memory: MemoryCheckpointSummary): string {
   return lines.length > 0 ? lines.join('\n') : 'No saved memory checkpoint yet.';
 }
 
+function formatCompanionContext(
+  context: PromptCompanionContext,
+  isCompanion: boolean,
+): string | null {
+  const memoryLines = context.memory
+    .map((record) => {
+      const text = truncateContinuityText(
+        record.content.trim() || record.summary?.trim() || '',
+        COMPANION_PROMPT_TEXT_LIMIT,
+      );
+      return text ? `- (${record.category}) ${text}` : null;
+    })
+    .filter((line): line is string => line !== null);
+  const noteLines = context.ownerNotes
+    .map((note) => truncateContinuityText(note, COMPANION_PROMPT_TEXT_LIMIT))
+    .filter((note) => note.length > 0)
+    .map((note) => `- ${note}`);
+  // Expression style is companion identity (ADR-124): ordinary Cats in a direct lane
+  // still get their owner's memory and notes, but not a persona change.
+  const expressionGuidance = isCompanion
+    ? COMPANION_EXPRESSION_GUIDANCE[context.responseProfile.expressionMode] ?? null
+    : null;
+  if (memoryLines.length === 0 && noteLines.length === 0 && !expressionGuidance) {
+    return null;
+  }
+
+  return [
+    'Your companion memory (curated by your owner; use it naturally, do not recite it):',
+    ...memoryLines,
+    ...(noteLines.length > 0 ? ['Owner notes:', ...noteLines] : []),
+    ...(expressionGuidance ? [`Expression style: ${expressionGuidance}`] : []),
+  ].join('\n');
+}
+
 function formatSharedContext(
   channel: ChatChannelView,
   orchestrator: GlobalOrchestratorSummary,
@@ -672,6 +726,7 @@ export function buildCatPrompt(
   cat: PromptParticipant,
   sourceMessage: ChatMessage,
   routingContext?: PromptRoutingContext,
+  companionContext?: PromptCompanionContext | null,
 ): string {
   const roleLabel = cat.roles.length > 0
     ? cat.roles.join(', ')
@@ -702,6 +757,9 @@ export function buildCatPrompt(
     `Global orchestrator guidance:\n${orchestrator.systemPrompt}`,
     `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
     `Your memory checkpoint:\n${formatMemoryCheckpoint(cat.memory)}`,
+    companionContext
+      ? formatCompanionContext(companionContext, cat.sourceKind === 'cat' && isCompanionCat(cat))
+      : null,
     `Channel roster:\n${formatParticipantRoster(channel)}`,
     `Recent messages:\n${formatRecentMessages(recentMessages)}`,
     `${sourceLabel}:\n${sourceMessage.body}`,

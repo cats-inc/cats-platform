@@ -4,6 +4,15 @@
 > product-owned companion box, structured ingestion, per-Cat response modes,
 > and runtime session hydration for companion conversations.
 
+> **2026-09-29 amendment**: `cats-runtime` stores the `companionSession`
+> hydration payload but no runtime code renders it for the model, so companion
+> memory never reached replies. Until a runtime consumer exists (PLAN-019), the
+> Chat dispatch path also renders a bounded excerpt into each Cat turn prompt:
+> up to 8 active `CompanionMemoryRecord` entries and 6 owner notes, 280
+> characters each, plus expression-style guidance for Cats with the companion
+> role. The normalized hydration payload stays the contract; the prompt section
+> is a bounded projection of it, not a replacement.
+
 ## Metadata
 
 | Field | Value |
