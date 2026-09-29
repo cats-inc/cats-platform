@@ -55,6 +55,7 @@ import {
   buildTargetedChatHandoffPackage,
   buildCatPrompt,
   MAX_BOUNDED_RECENT_CONTEXT_MESSAGES,
+  type PromptCompanionContext,
 } from './prompts.js';
 import { resolveRoomRoutingState } from './room-routing/index.js';
 import type { DispatchRequest } from './room-routing/runtime.js';
@@ -878,6 +879,7 @@ export function buildPromptForTarget(
   request: DispatchRequest,
   transport?: RuntimeTransportContext,
   core?: CatsCoreState,
+  companionContext?: PromptCompanionContext | null,
 ): DispatchPrompt {
   const channel = buildChannelView(state, channelId);
   const promptSourceMessage = request.promptSourceMessage ?? request.sourceMessage;
@@ -973,6 +975,7 @@ export function buildPromptForTarget(
       participant,
       promptSourceMessage,
       routingContext,
+      companionContext,
     ),
     instructions: joinRuntimeInstructions(instructions, slashModeInstructions),
     continuityMode,

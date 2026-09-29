@@ -60,6 +60,8 @@ independently of core chat state.
 - [x] Keep runtime skill selection profile-driven instead of moving Cat-local
       data into runtime skill hosting
 - [ ] Let runtime-side consumers actively interpret the new hydration payload
+      (2026-09-29: still open in `cats-runtime`; meanwhile the Chat dispatch
+      path renders a bounded excerpt into each Cat turn prompt, see SPEC-029)
 
 **Deliverables**: a stable additive hydration seam for later runtime work.
 

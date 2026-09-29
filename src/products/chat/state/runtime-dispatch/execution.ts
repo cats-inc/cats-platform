@@ -173,7 +173,6 @@ export async function executeDispatch(
     : null;
   try {
     const sessionId = requireDispatchSessionId(request.target);
-    const dispatchPrompt = buildPromptForTarget(state, channelId, request, transport, core);
     const channel = buildChannelView(state, channelId);
     const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
       state,
@@ -183,6 +182,16 @@ export async function executeDispatch(
       transportBindingId,
       now,
       companionStore,
+    );
+    // Companion memory rides in the per-turn prompt: Runtime only stores the
+    // hydration metadata, so the model would otherwise never see it.
+    const dispatchPrompt = buildPromptForTarget(
+      state,
+      channelId,
+      request,
+      transport,
+      core,
+      runtimeEnvelope.companionSession,
     );
     resolvedConversationId = readRuntimeEnvelopeMetadataString(
       runtimeEnvelope,
