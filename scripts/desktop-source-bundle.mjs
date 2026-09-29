@@ -39,6 +39,14 @@ async function run(command, args, cwd, options = {}) {
   return result.stdout;
 }
 
+// App revisions that build with the Platform App SDK declare it as a locked devDependency.
+// Install exactly the lockfile, without lifecycle scripts, before running their builder.
+export function appBuildInstallCommand(manifest, platform = process.platform) {
+  if (!manifest.dependencies && !manifest.devDependencies) return null;
+  const args = ['ci', '--ignore-scripts', '--no-audit', '--no-fund'];
+  return platform === 'win32' ? { command: 'npm.cmd', args, shell: true } : { command: 'npm', args, shell: false };
+}
+
 export async function archiveRepository(root, commit, repository, directory) {
   assert.match(commit, SHA, 'Source commit must be immutable');
   assert.ok(safePath(directory), 'Invalid source directory');
@@ -111,9 +119,11 @@ export function createSourceBundle({ tag, repositories, apps }) {
     + 'For a local installer run node scripts/build-desktop-installer.mjs --target current --apps-lock config/desktop-apps.lock.json --skip-mobile. '
     + 'This downloads the exact published App artifacts named by the lock, as the release workflow does. '
     + 'These local commands do not publish or grant official release identity. Network access and OS build tools are required.\n\n'
-    + 'To rebuild an included App, enter its sourceDirectory from sources.json and run '
+    + 'To rebuild an included App, enter its sourceDirectory from sources.json, run npm ci --ignore-scripts '
+    + 'when its package.json declares dependencies, then run '
     + 'node scripts/build-app.mjs --app SLUG --version VERSION --output-dir dist. '
-    + 'Compare decoded package content with the selected artifact; gzip bytes can differ with the Node/zlib version. '
+    + 'Compare decoded package content with the selected artifact. Revisions built with the Platform App SDK '
+    + 'encoder reproduce the gzip bytes too; older revisions can differ with the Node/zlib version. '
     + 'Each repository includes its LICENSE and build instructions. ZIP tools that omit Unix modes can restore '
     + 'the executableFiles listed for each repository. Signing/notarization requires separately held credentials; '
     + 'the archive does not promise bit-identical signed installers.\n');
@@ -239,6 +249,8 @@ export async function buildSourceBundle({ platformRoot, platformCommit, runtimeR
       }
       const checkout = path.join(staging, provenance.sourceRevision);
       const built = path.join(staging, `built-${slug}`);
+      const install = appBuildInstallCommand(parseJson(await readFile(path.join(checkout, 'package.json'))));
+      if (install) await run(install.command, install.args, checkout, { shell: install.shell, timeout: 600_000 });
       await run(process.execPath, ['scripts/build-app.mjs', '--app', slug, '--version', pin.version, '--output-dir', built], checkout);
       const rebuilt = await readFile(path.join(built, provenance.artifact));
       assert.deepEqual(gunzipSync(rebuilt, { maxOutputLength: MAX_BYTES }), gunzipSync(published, { maxOutputLength: MAX_BYTES }), 'App source does not reproduce selected payload');

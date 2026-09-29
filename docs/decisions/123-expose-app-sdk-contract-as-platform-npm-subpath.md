@@ -114,7 +114,10 @@ Interface Direction 已提出的 `@cats-inc/cats-platform/app-sdk` 入口名稱�
    - 如此加入 `exports` 本身不是 breaking，下一次 Platform npm 發布不會因此被迫升 minor。
      唯一失去的是 CommonJS 對無副檔名深路徑的自動補副檔名；調查沒有這類使用者。
    - 移除 `./*`（真正封鎖未列出路徑）是 breaking，放在下一個 minor 邊界，屆時重做 import
-     調查；SPEC-120 FR-11 已規劃 0.6.0。本 ADR 不 bump 版本。
+     調查。本 ADR 不 bump 版本。
+   - 2026-09-29 補充：#171 已把下一版定為 0.6.0 minor（ADR-124），`./*` 隨 0.6.0 移除；
+     `exports` 只剩 `.`、`./package.json` 與 `./app-sdk`。npm 上從未發布過含 `./*` 的版本，
+     重做的 import 調查仍只有 `package.json` 解析。
    - `bin` 與 Electron 的 `main` 不經 `exports` 解析，不受影響。消費端需使用
      `node16`、`nodenext` 或 `bundler` module resolution；舊的 `node10` 解析不支援 subpath。
 
@@ -170,10 +173,18 @@ Interface Direction 已提出的 `@cats-inc/cats-platform/app-sdk` 入口名稱�
   載入格式、encoder 與 manifest 驗證模組；檢查 SDK 版本三處一致、golden hash 與 header、
   順序無關；並確認公開驗證與安裝器拒絕相同的套件。`tests/package-contract.test.js` 檢查
   每個 `exports` 目標都在 npm tarball 內。
-- 跨 OS 證據：golden hash 測試在本機 Windows 通過，PR CI 在 Linux 執行同一測試；macOS
+- 跨 OS 證據：golden hash 測試在本機 Windows 與 PR #170 的 CI（Linux）都通過；macOS
   未驗證，純 JS 實作不依賴平台。
-- 尚未完成：Platform 既有測試中手組的有效 envelope 尚未改用 encoder；範例與 conformance
-  fixtures、含此入口的 Platform npm 發布，以及 cats-apps 的切換都是後續工作。
+- 後續補齊（同日）：Platform 測試中有效的手組套件改用 encoder，刻意構造的無效套件與一份
+  Node zlib 產生的基準包保留手組，後者確保 decoder 仍接受先前發布的 App。新增
+  `examples/app-sdk-minimal-app` 範例與 `tests/fixtures/app-sdk-conformance-v1.json`
+  的 accept／reject 向量，兩者都由測試執行。向量發現 decoder 的 base64 regex 在檔案超過約
+  3 MiB 時會 stack overflow，使 3–8 MiB 的合法檔案被拒；改為線性檢查加上既有的 round trip，
+  接受的範圍仍是 canonical base64。
+- Desktop 源碼包在 App 發布 commit 重建 payload；若該 revision 的 `package.json` 宣告依賴
+  （例如 exact-pin 的 Platform App SDK），先在該 checkout 執行 `npm ci --ignore-scripts`。
+  切換前的 revision 沒有依賴，照舊直接重建。
+- 尚未完成：含此入口的 Platform npm 發布，以及 cats-apps 的切換。
 
 ## Consequences
 
@@ -195,8 +206,8 @@ Interface Direction 已提出的 `@cats-inc/cats-platform/app-sdk` 入口名稱�
   npm 目前落後 Desktop：0.5 線只有 0.5.1 與 0.5.8，Studio 宣告的 `^0.5.11` 在 npm 上
   沒有對應版本。首個提供 subpath 的 Platform 版本，以及之後各 App 採用的最低宿主版本，
   都必須先發布到 npm，cats-apps 才能切換；這些發布都需要另外授權。
-- `./*` 讓 deep path 暫時仍可解析；allowlist 要到 minor 邊界移除 `./*` 後才真正強制，
-  在那之前只能靠文件與測試約束公開範圍。
+- 移除 `./*` 後，npm 0.5.8 以前可行的 deep import 在 0.6.0 會被 Node 擋下；調查沒有這類
+  使用者，並隨 0.6.0 minor 交付。
 
 ### Neutral
 

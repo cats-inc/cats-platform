@@ -37,11 +37,12 @@ Record the selected Runtime source and its upgrade capability; Desktop delegates
 Runtime-owned data migration to Runtime instead of rewriting the same file itself.
 These rules do not authorize version bumps or publication in a documentation task.
 
-The next Platform npm publication adds the public `@cats-inc/cats-platform/app-sdk`
-entry ([ADR-123](decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)). Its
-`exports` map keeps `.` and `./*` so existing package paths still resolve; this is a
-compatible addition and does not force a minor. Removing `./*` to enforce the allowlist
-is breaking and belongs to the next minor boundary.
+The next Platform npm publication, the 0.6.0 minor, adds the public
+`@cats-inc/cats-platform/app-sdk` entry
+([ADR-123](decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)). Its `exports`
+map allows only `.` (the existing `main`), `./package.json` and `./app-sdk`; other deep
+package paths no longer resolve. A fresh import survey found only `package.json`
+resolution, which cats-one uses to find the Platform bin.
 
 Platform npm and Cats Desktop share the root `package.json` version and the root
 and `packages[""]` version entries in `package-lock.json`. Keep this single version
@@ -269,6 +270,9 @@ commit under `cats-apps/<commit>`. It includes licenses, dependency lockfiles, a
 embedded `sources.json` and `BUILDING.md`. Published App provenance must match the
 selected ID/version/artifact hash; its source digest and rebuilt uncompressed payload
 must match before inclusion. No new App version is required for the source archive.
+An App revision that declares dependencies, such as the exact-pinned Platform App SDK
+([ADR-123](decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)), first runs
+`npm ci --ignore-scripts` in that checkout; revisions without dependencies rebuild directly.
 
 Only actual Desktop inputs are included. cats-one is a separate launcher; no Plugin
 is currently bundled. Future bundled Plugins need explicit producer/upstream source

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "description": "Cats App v1 renderer package contract vectors. Each case patches the base manifest (null deletes a key), optionally replaces the files, and names the host versions to validate against. expect is \"accept\" or a case-insensitive error pattern; stage \"encode\" means the encoder itself must refuse the input.",
+  "host": { "platformVersion": "0.5.16", "appSdkVersion": "1.3.0" },
+  "base": {
+    "schemaVersion": 1,
+    "id": "conformance.app",
+    "displayName": "Conformance",
+    "version": "1.0.0",
+    "category": "user-app",
+    "trustTier": "local-user",
+    "publisher": { "name": "Cats Inc" },
+    "compatibility": { "catsPlatform": "^0.5.0", "appSdk": "^1.2.0" },
+    "entrypoints": { "renderer": "renderer/index.html" },
+    "contributions": {
+      "lobbyApps": [{ "id": "conformance", "title": "Conformance", "routePath": "/apps/conformance.app" }]
+    },
+    "permissions": ["ui.route", "ui.lobby"]
+  },
+  "cases": [
+    { "name": "baseline renderer App", "expect": "accept" },
+    { "name": "major.minor.x ranges", "manifest": { "compatibility": { "catsPlatform": "0.5.x", "appSdk": "1.x" } }, "expect": "accept" },
+    { "name": "exact host version", "manifest": { "compatibility": { "catsPlatform": "0.5.16", "appSdk": "1.3.0" } }, "expect": "accept" },
+    { "name": "every renderer permission", "manifest": { "permissions": ["ui.route", "ui.lobby", "runtime.telemetry.read", "runtime.telemetry.refresh", "media.images"] }, "expect": "accept" },
+    { "name": "host below the declared floor", "manifest": { "compatibility": { "catsPlatform": "^0.5.99", "appSdk": "^1.2.0" } }, "expect": "Incompatible" },
+    { "name": "0.x caret excludes the next minor", "host": { "platformVersion": "0.6.0" }, "expect": "Incompatible" },
+    { "name": "SDK newer than the host", "manifest": { "compatibility": { "catsPlatform": "^0.5.0", "appSdk": "^1.4.0" } }, "expect": "Incompatible" },
+    { "name": "unsupported range grammar", "manifest": { "compatibility": { "catsPlatform": ">=0.5.0 <0.6.0", "appSdk": "^1.2.0" } }, "expect": "Incompatible" },
+    { "name": "prerelease range", "manifest": { "compatibility": { "catsPlatform": "^0.5.16-beta.1", "appSdk": "^1.2.0" } }, "expect": "Incompatible" },
+    { "name": "permission outside the renderer host", "manifest": { "permissions": ["ui.route", "ui.lobby", "core.write"] }, "expect": "capabilities" },
+    { "name": "category other than user-app", "manifest": { "category": "capability-connector" }, "expect": "user-app" },
+    { "name": "reserved App ID", "manifest": { "id": "install", "contributions": { "lobbyApps": [{ "id": "install", "title": "Install", "routePath": "/apps/install" }] } }, "expect": "user-app" },
+    { "name": "lobby entry without ui.lobby", "manifest": { "permissions": ["ui.route"] }, "expect": "requires? ui.lobby" },
+    { "name": "missing display name", "manifest": { "displayName": null }, "expect": "displayName" },
+    { "name": "prerelease App version", "manifest": { "version": "1.0.0-beta.1" }, "stage": "encode", "expect": "stable version" },
+    { "name": "server entrypoint", "manifest": { "entrypoints": { "renderer": "renderer/index.html", "server": "server.js" } }, "stage": "encode", "expect": "server/worker" },
+    { "name": "renderer that is not HTML", "manifest": { "entrypoints": { "renderer": "renderer/app.js" } }, "files": [{ "path": "renderer/app.js", "text": "" }], "stage": "encode", "expect": "self-contained HTML" },
+    { "name": "renderer file absent", "files": [{ "path": "LICENSE", "text": "MIT" }], "stage": "encode", "expect": "self-contained HTML" },
+    { "name": "path traversal", "files": [{ "path": "renderer/index.html", "text": "<html><head></head></html>" }, { "path": "../escape", "text": "" }], "stage": "encode", "expect": "Unsafe" },
+    { "name": "Windows device name", "files": [{ "path": "renderer/index.html", "text": "<html><head></head></html>" }, { "path": "con.txt", "text": "" }], "stage": "encode", "expect": "Unsafe" },
+    { "name": "reserved manifest path", "files": [{ "path": "renderer/index.html", "text": "<html><head></head></html>" }, { "path": "cats.app.json", "text": "{}" }], "stage": "encode", "expect": "Unsafe" },
+    { "name": "case-colliding paths", "files": [{ "path": "renderer/index.html", "text": "<html><head></head></html>" }, { "path": "Renderer/Index.html", "text": "" }], "stage": "encode", "expect": "duplicate" },
+    { "name": "file of exactly 8 MiB", "files": [{ "path": "renderer/index.html", "text": "<html><head></head></html>" }, { "path": "large.bin", "size": 8388608 }], "expect": "accept" },
+    { "name": "file above 8 MiB", "files": [{ "path": "renderer/index.html", "text": "<html><head></head></html>" }, { "path": "large.bin", "size": 8388609 }], "stage": "encode", "expect": "payload" },
+    { "name": "more than 128 files", "files": [{ "path": "renderer/index.html", "text": "<html><head></head></html>" }, { "repeat": 128, "path": "asset-{n}.txt", "text": "" }], "stage": "encode", "expect": "file count" }
+  ]
+}

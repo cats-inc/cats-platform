@@ -16,8 +16,7 @@
     "./app-sdk": {
       "types": "./build/server/app-sdk/index.d.ts",
       "default": "./build/server/app-sdk/index.js"
-    },
-    "./*": "./*"
+    }
   },
   "bin": {
     "cats-platform": "build/server/index.js"

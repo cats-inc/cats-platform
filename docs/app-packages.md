@@ -254,6 +254,11 @@ before preview publication; installed acceptance remains a separate task.
   cross-platform deterministic: pinned pure-JS deflate, fixed gzip header, sorted files and
   manifest keys. Consumers need `node16`, `nodenext` or `bundler` module resolution.
   The injected `browser.js` bridge and host lock helpers are not exported.
+  [`examples/app-sdk-minimal-app`](../examples/app-sdk-minimal-app/README.md) builds a
+  validated archive with it, and `tests/fixtures/app-sdk-conformance-v1.json` pins the
+  accept/reject vectors for the encoder and validator. The decoder accepts files up to the
+  full 8 MiB limit. Earlier hosts' base64 check overflowed the regexp stack for files above
+  about 3 MiB and rejected them with `Maximum call stack size exceeded`.
 - Renderer isolation: `sandbox="allow-scripts"` without same-origin access; CSP is
   inserted before any package markup, with default/network/frame/worker access denied.
   Source-window + opaque-origin + nonce bind a one-time MessageChannel handshake.

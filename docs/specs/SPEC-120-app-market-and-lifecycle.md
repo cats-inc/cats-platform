@@ -224,8 +224,7 @@ SDK 1.3 image methods 本期可保留；Market 管理 API 屬宿主，不自動�
 分階段：第一階段由 Platform npm 的 `@cats-inc/cats-platform/app-sdk` subpath 提供 allowlist
 契約，包含型別、安裝器所用的同一套驗證與跨 OS byte-deterministic 的官方 encoder，不公開
 `browser.js` bridge 與宿主專用函式；第三方開發啟動後，再從同一目錄獨立發布
-`@cats-inc/app-sdk`。`exports` 以保留 `.` 與 `./*` 的相容方式加入；移除 `./*` 收緊為
-allowlist 才是 breaking，隨 FR-11 的 minor 邊界交付。
+`@cats-inc/app-sdk`。`exports` 隨 0.6.0 minor 只允許 `.`、`./package.json` 與 `./app-sdk`。
 
 ## FR-11 — 現有 profile 升級與版本界線
 

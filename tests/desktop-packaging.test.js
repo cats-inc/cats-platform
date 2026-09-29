@@ -6,8 +6,8 @@ import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promise
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
-import { gzipSync } from 'node:zlib';
 import { sha256, PLATFORM_VERSION } from '#cats-app-package';
+import { encodeAppPackage } from '#cats-app-encode';
 import { loadCatlasKnowledge } from '../build/server/platform/catlas/knowledge.js';
 import { loadProductKnowledge } from '../build/server/platform/knowledge/productKnowledge.js';
 
@@ -38,7 +38,7 @@ async function seedFile(path, contents = '') {
 
 function createPinnedApp(compatibility = PLATFORM_VERSION) {
   const manifest = { id: 'cats.usage', version: '0.1.0', compatibility: { catsPlatform: compatibility, appSdk: '1.x' }, entrypoints: { renderer: 'renderer/index.html' } };
-  const bytes = gzipSync(Buffer.from(JSON.stringify({ schemaVersion: 1, kind: 'cats-app', manifest, files: [{ path: 'renderer/index.html', base64: Buffer.from('<head></head><body>Usage</body>').toString('base64') }] })));
+  const bytes = encodeAppPackage({ manifest, files: [{ path: 'renderer/index.html', data: Buffer.from('<head></head><body>Usage</body>') }] });
   return { id: manifest.id, version: manifest.version, sha256: sha256(bytes), artifact: 'usage-0.1.0.catsapp', bytes, manifest };
 }
 

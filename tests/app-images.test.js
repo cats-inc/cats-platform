@@ -4,8 +4,8 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
-import { gzipSync } from 'node:zlib';
 import { Readable } from 'node:stream';
+import { encodeAppPackage } from '#cats-app-encode';
 import { AppImageService } from '../build/server/platform/apps/images.js';
 import { MemoryCoreStore } from '../build/server/core/store.js';
 import { installRendererPackage } from '../build/server/platform/apps/packageInstaller.js';
@@ -24,8 +24,8 @@ async function setup(t) {
     category: 'user-app', trustTier: 'local-user', publisher: { name: 'Cats' },
     compatibility: { catsPlatform: '^0.5.0', appSdk: '^1.3.0' }, entrypoints: { renderer: 'renderer/index.html' },
     permissions: ['ui.route', 'ui.lobby', 'media.images'], contributions: { lobbyApps: [{ id: 'studio', title: 'Studio', routePath: '/apps/cats.studio' }] } };
-  const archive = gzipSync(Buffer.from(JSON.stringify({ schemaVersion: 1, kind: 'cats-app', manifest,
-    files: [{ path: 'renderer/index.html', base64: Buffer.from('<html><head></head><body>Studio</body></html>').toString('base64') }] })));
+  const archive = encodeAppPackage({ manifest,
+    files: [{ path: 'renderer/index.html', data: Buffer.from('<html><head></head><body>Studio</body></html>') }] });
   await installRendererPackage({ chatStatePath, bytes: archive, pin: { id: manifest.id, version: manifest.version, sha256: digest(archive) }, source: 'local-package', enable: true });
   const image = Buffer.from([255, 216, 255, 217]); // Runtime stub owns decoding; host asserts digest/transfer only.
   const output = { mimeType: 'image/jpeg', bytes: image.length, width: 1024, height: 1024, sha256: digest(image) };
