@@ -321,6 +321,29 @@ export async function activateChatChannel(
   return { appShell, results: activation.results };
 }
 
+/** Closes the channel's runtime sessions (a companion "sleep") and returns the fresh shell. */
+export async function deactivateChatChannel(
+  channelId: string,
+  signal?: AbortSignal,
+): Promise<{ appShell: AppShellPayload; closedSessionCount: number }> {
+  const response = await fetch(`/api/channels/${encodeURIComponent(channelId)}/deactivate`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    signal,
+  });
+  const { deactivation } = await expectJson<{
+    deactivation: { channelId: string; closedAt: string; closedSessionCount: number };
+  }>(response, `cats channel deactivation returned ${response.status}`);
+
+  return {
+    appShell: await fetchAppShell(signal),
+    closedSessionCount: deactivation.closedSessionCount,
+  };
+}
+
 export async function uploadChannelAttachments(
   channelId: string,
   files: File[],

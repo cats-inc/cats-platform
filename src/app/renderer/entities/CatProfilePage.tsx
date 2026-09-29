@@ -3,7 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
-import { fetchAppShell, updateCatProfile } from '../../../products/shared/renderer/api/index.js';
+import {
+  activateChatChannel,
+  deactivateChatChannel,
+  fetchAppShell,
+  updateCatProfile,
+} from '../../../products/shared/renderer/api/index.js';
 import { hasCompanionSkill } from '../../../products/chat/renderer/chatUtils.js';
 import { buildWorkspaceNewChatPath } from '../../../products/shared/channelPaths.js';
 import { messageKeys } from '../../../shared/i18n/index.js';
@@ -87,12 +92,38 @@ export function CatProfilePage() {
       .catch(() => {});
   };
 
-  // Wake / Sleep mutations are not yet wired at the platform level —
-  // the chat product owns the session-lifecycle pipeline. Stub them
-  // out so the buttons stay clickable but no-op until the platform
-  // gets its own wake/sleep API surface.
-  const onWake = (): void => undefined;
-  const onSleep = (): void => undefined;
+  // Presence is the direct lane's runtime session: wake activates the lane
+  // and sleep deactivates it, the same routes the chat surface used. Without
+  // a lane there is nothing to wake (the presence card says so instead).
+  const findDirectLane = (targetCatId: string) => payload.chat.channels.find(
+    (channel) =>
+      channel.channelKind === 'direct_message'
+      && channel.defaultRecipientCatId === targetCatId,
+  ) ?? null;
+  const onWake = async (targetCatId: string): Promise<void> => {
+    const lane = findDirectLane(targetCatId);
+    if (!lane) {
+      return;
+    }
+    try {
+      setPayload((await activateChatChannel(lane.id)).appShell);
+    } catch (error) {
+      refreshPayload();
+      throw error;
+    }
+  };
+  const onSleep = async (targetCatId: string): Promise<void> => {
+    const lane = findDirectLane(targetCatId);
+    if (!lane) {
+      return;
+    }
+    try {
+      setPayload((await deactivateChatChannel(lane.id)).appShell);
+    } catch (error) {
+      refreshPayload();
+      throw error;
+    }
+  };
 
   // No back-to-chat path here; Entities sidebar already provides
   // navigation back to /lobby via its surface switcher.

@@ -593,10 +593,15 @@ suite unless explicitly asked.
         entry) creation route and removing only `/settings/cats`.
         Settings sidebar's CATS group + My Cats row would need to be removed; Assistants
         un-indents to align with the rest of the settings entries.
-- [ ] **Wake / sleep on `CatProfilePage`.** Currently stubbed —
-      the chat product owns the session-lifecycle pipeline. Need
-      a platform-level entry point or proxy to chat's
-      `useCompanionPresence`-driven flow.
+- [x] **Wake / sleep on `CatProfilePage`.** (2026-09-29) Wired to the
+      Cat's direct lane through the existing channel routes: wake is
+      `POST /api/channels/:id/activations`, sleep is
+      `POST /api/channels/:id/deactivate`, and the returned app shell
+      replaces the page payload. While a request is in flight the
+      presence card reads "Waking up" (wake) or hides its actions
+      (sleep); failures surface as a toast. A Cat without a direct lane
+      has nothing to wake, so the card shows "Start a direct message to
+      wake this Cat." instead of a button, rather than creating a lane.
 - [ ] **Old `chat/renderer/components/companion/` cleanup.** The
       original chat-internal companion folder still exists alongside
       the platform copy. Once the platform copy is the only mount

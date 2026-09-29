@@ -36,6 +36,7 @@ export {
   createChatChannel,
   createParallelChatGroup,
   createGlobalCat,
+  deactivateChatChannel,
   deleteChatChannel,
   deleteParallelChatGroup,
   renameChatChannel,

@@ -83,6 +83,11 @@ export function CompanionOverviewSection({
               {t(messageKeys.chatCompanionOverviewPresenceSleepButton)}
             </button>
           )}
+          {presence.needsDirectLane && (
+            <span className="companionMuted">
+              {t(messageKeys.chatCompanionOverviewPresenceNeedsDirectLane)}
+            </span>
+          )}
         </div>
       </div>
 
