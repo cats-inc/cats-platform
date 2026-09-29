@@ -61,7 +61,12 @@ As a result, no provider agent in Cats Code can open a preview today.
 3. **Session-scoped capability grant.** Every runtime session that receives the
    server gets a bearer grant bound to that runtime session, one Code
    conversation, its workspace root and the Cat actor. The endpoint accepts
-   loopback callers only and rejects requests that carry an `Origin` header. The
+   loopback callers only and rejects requests that carry an `Origin` header.
+   It is internal-only: the shared public ingress rejects
+   `/api/code/agent-tools/mcp` even with a valid grant. Tunnel upstream peers can
+   be loopback; peer address and client-supplied forwarded headers are not proof
+   of local entry. SPEC-122 keeps the public ingress listener separate from the
+   internal listener, with the same Platform router behind an explicit boundary. The
    grant is revoked when the session closes or the conversation is deleted. It
    never appears in transcripts, Activity, URLs, logs or runtime session reads.
 4. **Retire the dead path in the same change.** When MCP execution lands, remove
@@ -184,8 +189,9 @@ isolation, route authorization and shared ingress lifecycle to Platform.
 
 ### Neutral
 
-- Apps keep hosting their MCP servers independently. This ADR adds no Platform
-  or Runtime hop to App MCP traffic.
+- Apps keep hosting their MCP handlers independently. Their public traffic passes
+  through Platform's shared transparent ingress/router, without Runtime or the
+  host-internal MCP domain module handling App tools.
 - ADR-105's Work decision-envelope surface is unchanged. It may migrate later.
 - `declare_artifact` remains available for artifacts that have no preview.
 

@@ -243,7 +243,7 @@ async function resolveNodeCliScript(command) {
   return null;
 }
 
-async function resolveCommandInvocation(command, args) {
+export async function resolveCommandInvocation(command, args) {
   if (command === 'npm' || command === 'npx') {
     const cliScript = await resolveNodeCliScript(command);
     if (cliScript) {
@@ -882,6 +882,8 @@ async function main() {
   }
 
   await buildNativeVoiceHelpers(resolvedTarget, parsed.arch);
+  await runCommand('node', ['scripts/prepare-app-ingress.mjs', '--platform', resolvedTarget],
+    PROJECT_ROOT, {}, envOptions);
   await runCommand(
     'node',
     [

@@ -48,11 +48,14 @@ async function setup() {
   return { root, chatStatePath, paths, registry: new FileCatsAppRegistry({ registryPath: paths.registryPath }) };
 }
 
-async function request(chatStatePath: string, pathname: string, client?: AppPackageRouteContext['dependencies']['runtimeClient'], body?: unknown) {
+async function request(chatStatePath: string, pathname: string, client?: AppPackageRouteContext['dependencies']['runtimeClient'], body?: unknown, desktopAuthority = false) {
   const result = { statusCode: 0, headers: {} as Record<string, string>, body: '' };
   const response = { writeHead(status: number, headers: Record<string, string>) { result.statusCode = status; result.headers = headers; }, end(body: string) { result.body = body; } };
-  const handled = await routeAppPackageApi({ request: Readable.from(body ? [JSON.stringify(body)] : []) as never, response: response as never,
-    url: new URL(`http://localhost${pathname}`), method: body ? 'POST' : 'GET', dependencies: { config: { chatStatePath }, runtimeClient: client } });
+  const incoming = Readable.from(body ? [JSON.stringify(body)] : []);
+  const desktopAppsKey = 'a'.repeat(64);
+  Object.assign(incoming, { headers: desktopAuthority ? { 'x-cats-desktop-apps': desktopAppsKey } : {}, socket: { remoteAddress: '127.0.0.1' } });
+  const handled = await routeAppPackageApi({ request: incoming as never, response: response as never,
+    url: new URL(`http://localhost${pathname}`), method: body ? 'POST' : 'GET', dependencies: { config: { chatStatePath }, runtimeClient: client, desktopAppsKey } });
   assert.equal(handled, true);
   return { ...result, payload: JSON.parse(result.body) };
 }
@@ -116,11 +119,13 @@ test('scoped telemetry is permission/version bound and disabled or in-flight rev
   assert.equal((await request(state.chatStatePath, url.replace('0.1.0', '0.2.0'), client)).statusCode, 403); assert.equal(reads, 1);
 });
 
-test('local install endpoint requires explicit pins and renderer errors never disclose internal paths', async () => {
+test('local install endpoint requires Desktop authority and explicit pins, and renderer errors never disclose internal paths', async () => {
   const state = await setup(); const app = fixture(); const artifact = path.join(state.root, 'usage.catsapp');
   await writeFile(artifact, app.bytes);
-  assert.equal((await request(state.chatStatePath, '/api/apps/install', undefined, { packagePath: artifact })).statusCode, 400);
-  assert.equal((await request(state.chatStatePath, '/api/apps/install', undefined, { packagePath: artifact, ...app.pin, enable: true })).statusCode, 201);
+  assert.equal((await request(state.chatStatePath, '/api/apps/install', undefined, { packagePath: artifact, ...app.pin, enable: true })).statusCode, 403);
+  assert.equal(await state.registry.getInstalledApp(app.pin.id), null);
+  assert.equal((await request(state.chatStatePath, '/api/apps/install', undefined, { packagePath: artifact }, true)).statusCode, 400);
+  assert.equal((await request(state.chatStatePath, '/api/apps/install', undefined, { packagePath: artifact, ...app.pin, enable: true }, true)).statusCode, 201);
   const installed = (await state.registry.getInstalledApp(app.pin.id))!;
   const healthy = await request(state.chatStatePath, '/api/apps/cats.usage/renderer?version=0.1.0');
   assert.equal(healthy.statusCode, 200); assert.match(healthy.payload.html, /Usage/);

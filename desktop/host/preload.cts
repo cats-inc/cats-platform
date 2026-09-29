@@ -176,6 +176,9 @@ function assertBrowserHandoffLaunchPath(value: unknown): string {
 }
 
 const bridge = {
+  requestApp(input: { path: string; method: string; body?: unknown }): Promise<{ status: number; body: unknown }> {
+    return ipcRenderer.invoke('cats-host:app-request', input);
+  },
   screenshotRegionCaptureAvailable: true,
   getSnapshot(): Promise<DesktopBootstrapSnapshot> {
     return ipcRenderer.invoke('cats-host:get-snapshot');

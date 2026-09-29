@@ -15,6 +15,8 @@ const RENDERER_APP_PERMISSIONS: ReadonlyArray<CatsAppPermission> = [
   'runtime.telemetry.read',
   'runtime.telemetry.refresh',
   'media.images',
+  'storage.appData',
+  'clipboard.write',
 ];
 const RESERVED_APP_IDS = ['install', 'validate'];
 
@@ -44,6 +46,18 @@ export function validateRendererAppPackage(
   const result = parseCatsAppManifestV1(decoded.manifest);
   if (!result.ok) throw new Error(result.issues.map((issue) => issue.message).join(' '));
   const manifest = result.manifest;
+  if (manifest.components) {
+    if (manifest.trustTier === 'third-party') throw new Error('Executable Apps require explicit local-user or system trust.');
+    if (!manifest.permissions.includes('storage.appData')) throw new Error('Component Apps require storage.appData.');
+    const entries = [...manifest.components.frontends, ...manifest.components.services, ...manifest.components.workers]
+      .map(component => component.entrypoint);
+    if (manifest.components.data.migration) entries.push(manifest.components.data.migration);
+    if (entries.some(entry => !decoded.files.some(file => file.path === entry))) throw new Error('An App component entrypoint is missing from the archive.');
+    // Executable archives must be self contained and cannot shadow the host launcher's metadata.
+    if (decoded.files.some(file => ['package.json', 'payload.catsapp'].includes(file.path.toLowerCase()))) {
+      throw new Error('Reserved component package file.');
+    }
+  }
   if (manifest.category !== 'user-app' || RESERVED_APP_IDS.includes(manifest.id)) {
     throw new Error('Only utility user-app packages are supported.');
   }
