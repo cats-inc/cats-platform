@@ -25,9 +25,11 @@ const START_REQUEST_KEYS = [
   'artifactTitle',
   'commandProfileId',
   'readinessTimeoutMs',
+  'script',
   'surface',
   'workspace',
 ] as const;
+const SCRIPT_NAME = /^[A-Za-z0-9:_.-]+$/u;
 
 export function validateLivePreviewConfig(
   config: LivePreviewConfig = DEFAULT_LIVE_PREVIEW_CONFIG,
@@ -178,6 +180,10 @@ export function validateLivePreviewStartRequest(
     );
   }
   const artifactTitle = readOptionalString(record.artifactTitle);
+  const script = readOptionalString(record.script);
+  if (record.script !== undefined && record.script !== null && (!script || !SCRIPT_NAME.test(script))) {
+    return rejected('live_preview_request_invalid', 'script must be a package.json script name.');
+  }
   const readinessTimeoutMs = readOptionalPositiveInt(record.readinessTimeoutMs);
   if (record.readinessTimeoutMs !== undefined && readinessTimeoutMs === null) {
     return rejected('live_preview_request_invalid', 'readinessTimeoutMs must be positive.');
@@ -192,6 +198,7 @@ export function validateLivePreviewStartRequest(
       surface,
       artifactTitle,
       readinessTimeoutMs,
+      ...(script ? { script } : {}),
     },
     profile,
   };

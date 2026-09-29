@@ -93,7 +93,7 @@ validation and full CI pass; live/native and installed-profile acceptance remain
 | `declare_artifact` | Cats Code | Delivered through the Platform-hosted `cats` MCP server (ADR-126); results return to the agent in the same turn; the HTTP submit route remains for product callers | `mcp_tool` (runtime session MCP) | Code assistant / Code UI import flow | [Declare Artifact](#declare_artifact) |
 | `show_in_canvas` | Cats Code | Delivered through the `cats` MCP server (SPEC-123): workspace `path`, https `url` or `artifactId` | `mcp_tool` (runtime session MCP) | Code assistant | [Artifact Canvas Tools](#artifact-canvas-tools) |
 | `clear_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request parent-surface navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
-| `start_dev_preview` / `get_preview_status` / `stop_preview` | Cats Code | Delivered through the `cats` MCP server (SPEC-123 CAP-07 to CAP-09): Vite dev servers behind the Settings > Code opt-in and the session's shell permission | `mcp_tool` (runtime session MCP) | Code assistant | [Dev Preview Tools](#dev-preview-tools) |
+| `start_dev_preview` / `get_preview_status` / `stop_preview` | Cats Code | Delivered through the `cats` MCP server (SPEC-123 CAP-07 to CAP-09): Vite and npm-script dev servers behind the Settings > Code opt-in and the session's shell permission | `mcp_tool` (runtime session MCP) | Code assistant | [Dev Preview Tools](#dev-preview-tools) |
 
 ## Agent Knowledge Drafts
 
@@ -881,7 +881,7 @@ identifies the policy snapshot under which the decision was made.
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Served by the `cats` MCP server. Dev servers run only through the reviewed Vite profile, never an assistant-supplied command. |
+| Current status | Served by the `cats` MCP server. Dev servers run only through reviewed profiles (Vite, npm-script with framework adapters), never an assistant-supplied command. |
 | First channel | `mcp_tool` (runtime session MCP) |
 | Tool names | `start_dev_preview`, `get_preview_status`, `stop_preview` |
 | Implementation entry point | `src/products/code/agentTools/devPreview.ts` |
@@ -897,9 +897,21 @@ identifies the policy snapshot under which the decision was made.
   `directory_required`);
 - `package.json` and the script (`package_json_missing`,
   `package_json_invalid`, `script_missing`, `script_invalid`);
-- that the script runs Vite's dev server (`profile_unsupported`);
-- `node_modules/vite/bin/vite.js` in that directory
+- that the script starts a server; `vite build` returns
+  `profile_unsupported`;
+- installed dependencies when `package.json` declares any: a
+  `node_modules` in the directory or a parent inside the workspace
   (`dependencies_missing`).
+
+It then picks the profile:
+- `vite`, `vite dev` or `vite serve` with Vite in the directory's own
+  `node_modules` runs Vite directly;
+- any other script runs as `npm run <script>` through npm's JS entry, with a
+  framework adapter chosen from the script's last command (Vite, Astro,
+  Next.js, Nuxt, webpack, Parcel) or `PORT` from the environment.
+
+Without an npm installation, the start returns
+`live_preview_npm_unavailable`.
 
 Only then does it spawn. A new start replaces the conversation's running dev
 preview. On success it shows the preview beside the conversation and returns

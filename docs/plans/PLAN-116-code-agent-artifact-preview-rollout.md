@@ -306,8 +306,32 @@ call a Platform-hosted MCP tool and receive its result.
     - `GET /api/code/preview-artifacts/:id`;
     - `POST …/restart`;
     - `POST /api/code/live-previews/:id/renew`.
-- [ ] D3: Add the `npm-script` profile with framework port adapters once node/npm
+- [x] D3: Add the `npm-script` profile with framework port adapters once node/npm
   discovery is proven in packaged Desktop.
+  Done:
+  - `NPM_SCRIPT_LIVE_PREVIEW_PROFILES` run `{npmCli} run {script}`
+    shell-free, with `PORT`, `HOST=127.0.0.1` and `BROWSER=none`.
+  - Framework adapters pass the leased port after `--`: Vite-based, Astro,
+    Next.js, Nuxt, webpack dev server and Parcel. Anything else reads `PORT`.
+  - The last command of the script picks the adapter, since npm appends
+    arguments there, so `tsc && vite` works.
+  - `vite`/`vite dev` with Vite installed in the directory still uses the
+    direct `vite` profile.
+  - A hoisted `node_modules` in a parent inside the workspace counts as
+    installed. A project without dependencies needs none. `vite build` is
+    refused as not a server.
+  - `findNpmCli` checks `npm_execpath`, the host runtime's own npm, and each
+    PATH directory in the Windows and POSIX layouts. Without npm, the start
+    returns `live_preview_npm_unavailable`.
+  - The script is recorded on the lease and the preview metadata, so Restart
+    runs it again.
+  - Real smokes on Windows through the host:
+    - a plain `node server.js` reading `PORT` served its page;
+    - a hoisted Vite package in an npm-workspaces monorepo served the Vite page;
+    - Stop ended npm, cmd, node and esbuild, and closed the port.
+  - Packaged Desktop: Electron as Node ran `npm-cli.js run dev` (M2 notes).
+    npm must still come from the user's installation, because Desktop bundles
+    none.
 - [x] **M2 acceptance** (isolated instance, closes PLAN-097 Task 5.4): a Vite
   pomodoro timer is started by the Cat and visibly counts down. Stopping it and
   quitting Platform leaves no orphan process.

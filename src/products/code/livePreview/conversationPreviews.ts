@@ -65,6 +65,7 @@ interface PreviewMetadata {
   workspace: { id: string; rootPath: string };
   sourceSurface: CanvasSurfaceRef;
   artifactDirectory: string | null;
+  script: string | null;
 }
 
 export function createCodeConversationPreviews(options: CodeConversationPreviewsOptions): CodeConversationPreviews {
@@ -164,6 +165,7 @@ export function createCodeConversationPreviews(options: CodeConversationPreviews
         workspace: { kind: 'code_workspace', id: meta.workspace.id, rootPath: meta.workspace.rootPath },
         artifactDirectory: meta.artifactDirectory,
         surface: meta.sourceSurface,
+        ...(meta.script ? { script: meta.script } : {}),
       });
       if (started.status === 'rejected') {
         return { status: 'rejected', error: started.error, ...(started.previewId ? { previewId: started.previewId } : {}) };
@@ -222,6 +224,7 @@ function readPreviewMetadata(artifact: CoreArtifactRecord): PreviewMetadata | nu
     workspace: { id: workspace.id, rootPath: workspace.rootPath },
     sourceSurface: { kind: surface.kind as CanvasSurfaceRef['kind'], surfaceId: surface.surfaceId },
     artifactDirectory: typeof raw.artifactDirectory === 'string' ? raw.artifactDirectory : null,
+    script: typeof raw.script === 'string' ? raw.script : null,
   };
 }
 

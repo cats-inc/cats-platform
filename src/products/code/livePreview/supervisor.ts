@@ -42,6 +42,8 @@ export interface LivePreviewSupervisorOptions {
    * can stop what a crash left behind (SPEC-123 CAP-13 orphan sweep).
    */
   processRegistry?: LivePreviewProcessRegistry;
+  /** npm's JS entry for `{npmCli}` profiles (PLAN-116 D3); null when npm is not installed. */
+  resolveNpmCli?: () => string | null;
 }
 
 export interface LivePreviewProcessRegistry {
@@ -67,6 +69,7 @@ export class LivePreviewSupervisor {
   private readonly idFactory: () => string;
   private readonly portAvailable: (host: string, port: number) => Promise<boolean>;
   private readonly processRegistry: LivePreviewProcessRegistry | null;
+  private readonly resolveNpmCli: () => string | null;
   private readonly previews = new Map<string, ManagedPreview>();
   private readonly leasedPorts = new Set<number>();
 
@@ -80,6 +83,7 @@ export class LivePreviewSupervisor {
     this.idFactory = options.idFactory ?? createPreviewId;
     this.portAvailable = options.portAvailable ?? canBindLoopbackPort;
     this.processRegistry = options.processRegistry ?? null;
+    this.resolveNpmCli = options.resolveNpmCli ?? (() => null);
   }
 
   getLease(previewId: string): LivePreviewLease | null {
@@ -122,6 +126,18 @@ export class LivePreviewSupervisor {
       }
     }
 
+    const usesNpm = validation.profile.args.some((arg) => arg.includes('{npmCli}'));
+    const npmCli = usesNpm ? this.resolveNpmCli() : null;
+    if (usesNpm && !npmCli) {
+      return rejected(
+        'live_preview_npm_unavailable',
+        'npm was not found on this computer. Install Node.js with npm, then try again.',
+      );
+    }
+    if (validation.profile.args.some((arg) => arg.includes('{script}')) && !validation.request.script) {
+      return rejected('live_preview_request_invalid', `Profile ${validation.profile.id} needs a script.`);
+    }
+
     const host = this.config.allowIpv6Loopback ? '[::1]' : '127.0.0.1';
     const port = await this.allocatePort(host);
     if (port === null) {
@@ -140,6 +156,7 @@ export class LivePreviewSupervisor {
       surface: validation.request.surface,
       workspaceRef: validation.request.workspace,
       artifactDirectory: validation.request.artifactDirectory ?? validation.request.workspace.rootPath,
+      script: validation.request.script ?? null,
       origin,
       host,
       port,
@@ -169,6 +186,7 @@ export class LivePreviewSupervisor {
           validation.request.artifactDirectory ?? validation.request.workspace.rootPath,
           port,
           origin,
+          { npmCli: npmCli ?? '', script: validation.request.script ?? '' },
         ),
       );
       managed.handle = handle;
@@ -435,10 +453,13 @@ function buildSpawnInput(
   artifactDirectory: string,
   port: number,
   origin: string,
+  extra: { npmCli: string; script: string } = { npmCli: '', script: '' },
 ): LivePreviewProcessSpawnInput {
   const replacements = {
     artifactDirectory,
+    npmCli: extra.npmCli,
     port: String(port),
+    script: extra.script,
     workspaceRoot,
   };
   const env = Object.fromEntries(
