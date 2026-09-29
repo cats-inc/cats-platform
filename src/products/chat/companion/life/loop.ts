@@ -392,7 +392,7 @@ export interface StartCompanionLifeLoopOptions {
 export function startCompanionLifeLoop(
   loop: CompanionLifeLoop,
   options: StartCompanionLifeLoopOptions = {},
-): () => void {
+): (() => void) & { isIdle(): boolean } {
   let stopped = false;
   let ticking = false;
   const report = options.report ?? ((line: string) => {
@@ -421,9 +421,9 @@ export function startCompanionLifeLoop(
   startup.unref?.();
   const timer = setInterval(() => { void runTick(); }, options.intervalMs ?? 60_000);
   timer.unref?.();
-  return () => {
+  return Object.assign(() => {
     stopped = true;
     clearTimeout(startup);
     clearInterval(timer);
-  };
+  }, { isIdle: () => !ticking });
 }

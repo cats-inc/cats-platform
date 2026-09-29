@@ -122,6 +122,16 @@ interface ProviderSnapshotPersistenceState {
 
 const providerSnapshotPersistence = new WeakMap<RuntimeClient, ProviderSnapshotPersistenceState>();
 
+export async function clearProviderCachesForReset(runtimeClient: RuntimeClient): Promise<void> {
+  const persistence = providerSnapshotPersistence.get(runtimeClient);
+  if (persistence?.pendingTimer) clearTimeout(persistence.pendingTimer);
+  if (persistence) persistence.pendingTimer = null;
+  truthfulProviderRegistryCache.delete(runtimeClient);
+  providerCatalogCache.delete(runtimeClient);
+  // An already-started atomic write must settle before the owning file is erased.
+  await persistence?.writing;
+}
+
 function configureProviderSnapshotPersistence(
   runtimeClient: RuntimeClient,
   snapshotPath: string,

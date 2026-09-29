@@ -1,4 +1,5 @@
 export interface AsyncKeyedGate {
+  isIdle?(): boolean;
   run<T>(key: string, operation: () => Promise<T>): Promise<T>;
 }
 
@@ -10,6 +11,7 @@ export function createAsyncKeyedGate(): AsyncKeyedGate {
   const queues = new Map<string, Promise<void>>();
 
   return {
+    isIdle: () => queues.size === 0,
     async run<T>(key: string, operation: () => Promise<T>): Promise<T> {
       const previous = queues.get(key) ?? Promise.resolve();
       let release: () => void = () => {};

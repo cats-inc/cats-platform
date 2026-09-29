@@ -1,6 +1,7 @@
 import type { LivePreviewLease } from './contracts.js';
 
 export interface LivePreviewLeaseStore {
+  clearForReset?(): void | Promise<void>;
   listLeases(): LivePreviewLease[];
   getLease(previewId: string): LivePreviewLease | null;
   readLogs(previewId: string): string | null;
@@ -9,6 +10,8 @@ export interface LivePreviewLeaseStore {
 export class InMemoryLivePreviewLeaseStore implements LivePreviewLeaseStore {
   private readonly leases = new Map<string, LivePreviewLease>();
   private readonly logs = new Map<string, string>();
+
+  clearForReset(): void { this.leases.clear(); this.logs.clear(); }
 
   listLeases(): LivePreviewLease[] {
     return [...this.leases.values()].map(cloneLease);

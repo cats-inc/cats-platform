@@ -148,7 +148,7 @@ export function createAgentKnowledgeBridge(options: {
     return true;
   }
 
-  return { wrapClient, route, close: () => {
+  return { wrapClient, route, revoke: () => { grants.clear(); }, close: () => {
     closed = true;
     for (const turn of pendingTurns) turn.cancelled = true;
     grants.clear();

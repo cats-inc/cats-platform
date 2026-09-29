@@ -19,6 +19,37 @@ Before upgrading an existing local workspace, review
 [release-notes.md](./release-notes.md) for behavior changes and migration
 notes.
 
+## Reset Platform data
+
+Settings > Data erases Platform-owned conversation/account/setup data using the
+explicit file/directory inventory in `src/shared/platformDataReset.ts`. This
+includes all rotating and migration `.bak` entries directly in `state/`, abandoned
+state-write temporary files, canonical/companion memory and sources, local
+knowledge, evidence, transport delivery state, schedules, Platform attachments
+and history caches. Referenced attachment/evidence directories are erased only
+when contained within the Platform root; redirected ancestors are rejected.
+Deletion outcomes are logged by relative path without record contents.
+
+Host preferences/configuration and installation identity, installed Apps/plugins
+and their data, Desktop/Runtime profiles, provider CLI logins/native transcripts,
+and external workspace files remain. The bilingual UI lists these boundaries.
+This operation is not an uninstall or provider-account logout.
+
+Stop active tasks/conversations first. Reset refuses busy work, pauses background
+producers, drains aborted polling, closes existing authenticated event streams,
+excludes other requests while erasing, and clears live caches before removing
+files. A bounded pending-reset journal preserves discovered attachment/evidence
+paths for retry after process restart. The clean primary survives until old backups are removed, so an
+interrupted purge cannot recover the old chats. A chat/auth write failure before
+erasure preserves the authenticated workspace; a later cleanup failure reports
+failure and can be retried to finish the remaining erasure. Fresh empty state can
+be created by subsequent use. Existing data formats and normal startup do not
+change; only an explicit reset deletes the additional retained remnants.
+The request guard covers both local and public ingress. Code MCP grants, preview
+servers/leases/logs and pending canvas intents are cleared; preview-stop failures
+are reported and their handles retained for retry. Installed Apps and ingress
+configuration stay in place, while old browser App grants lose their auth session.
+
 ## Release boundaries
 
 Apply the [cross-repository compatibility and data-upgrade policy](https://github.com/cats-inc/cats-one/blob/main/docs/release-guide.md#compatibility-and-data-upgrades):

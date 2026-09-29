@@ -34,6 +34,7 @@ export interface CompanionSessionContextInput {
 }
 
 export interface CompanionBoxStore {
+  clearForReset?(): Promise<void>;
   readSnapshot(): Promise<CompanionSnapshot>;
   getBox(catId: string, now?: Date): Promise<CompanionBox>;
   getBoxSummary(catId: string, now?: Date): Promise<CompanionBoxSummary>;

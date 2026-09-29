@@ -15,6 +15,7 @@ import type { CompanionActivityEvent } from './activityProjection.js';
  */
 
 export interface CompanionActivityStore {
+  clearForReset?(): Promise<void>;
   list(catId: string): Promise<CompanionActivityEvent[]>;
   append(event: CompanionActivityEvent): Promise<void>;
 }
@@ -60,6 +61,7 @@ function parseSnapshot(raw: string): StoredActivitySnapshot {
 export function createMemoryCompanionActivityStore(): CompanionActivityStore {
   const events: CompanionActivityEvent[] = [];
   return {
+    async clearForReset() { events.length = 0; },
     async list(catId: string) {
       return events.filter((event) => event.catId === catId);
     },
@@ -102,6 +104,7 @@ export function createFileCompanionActivityStore(
   }
 
   return {
+    async clearForReset() { await writeQueue; cache = emptySnapshot(); },
     async list(catId: string) {
       const snapshot = await readSnapshot();
       return snapshot.events.filter((event) => event.catId === catId);

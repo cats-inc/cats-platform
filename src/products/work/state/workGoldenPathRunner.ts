@@ -154,6 +154,7 @@ export interface WorkGoldenPathRunnerOptions {
 }
 
 export interface WorkGoldenPathRunner {
+  isIdle?(): boolean;
   /**
    * Drives one Run to a terminal or owner-blocking state.
    *
@@ -380,6 +381,7 @@ export function createWorkGoldenPathRunner(
   }
 
   return {
+    isIdle: () => inFlight.size === 0,
     drive({ runId }) {
       const existing = inFlight.get(runId);
       if (existing !== undefined) {

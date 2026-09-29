@@ -249,16 +249,13 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
     assert.equal(runtimeClient.createdSessions[0]?.workspaceKind, 'worktree');
     assert.equal(runtimeClient.createdSessions[0]?.workspaceAccess, 'read_only');
     assert.equal(runtimeClient.createdSessions[0]?.permissionMode, 'default');
-    assert.match(
-      runtimeClient.createdSessions[0]?.instructions ?? '',
-      /declare_artifact/u,
-    );
-    const artifactContext =
-      runtimeClient.createdSessions[0]?.context?.metadata?.codeArtifactDeclaration as
+    // Code sessions carry the agent-tools marker; the tools arrive as MCP, not prompt text.
+    assert.doesNotMatch(runtimeClient.createdSessions[0]?.instructions ?? '', /declare_artifact/u);
+    const agentToolsMarker =
+      runtimeClient.createdSessions[0]?.context?.metadata?.codeAgentTools as
         | Record<string, unknown>
         | undefined;
-    assert.equal(artifactContext?.toolName, 'declare_artifact');
-    assert.equal(artifactContext?.onboardingBlockVersion, 'v1');
+    assert.equal(agentToolsMarker?.channelId, channelId);
 
     const sendMessageResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
@@ -270,249 +267,13 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
 
     await waitForCondition(async () => runtimeClient.sentMessages.length > 0);
     const turnInstructions = runtimeClient.sentMessages[0]?.input?.instructions ?? '';
-    assert.doesNotMatch(turnInstructions, /declare_artifact/u, 'session onboarding is not resent each turn');
+    // Without a delivered report from Runtime the preview policy is not sent.
+    assert.doesNotMatch(turnInstructions, /show_in_canvas/u);
     assert.match(turnInstructions, /\/api\/code\/knowledge\/agent/u, 'ordinary turn can submit a knowledge draft');
-    const turnArtifactContext =
-      runtimeClient.sentMessages[0]?.input?.context?.metadata?.codeArtifactDeclaration as
+    const turnMarker =
+      runtimeClient.sentMessages[0]?.input?.context?.metadata?.codeAgentTools as
         | Record<string, unknown>
         | undefined;
-    assert.equal(turnArtifactContext?.toolName, 'declare_artifact');
-  });
-});
-
-test('code-origin runtime declare_artifact calls persist artifacts during dispatch', async () => {
-  const runtimeClient = createRuntimeStub({
-    messageSegments: [
-      {
-        kind: 'tool_use',
-        toolName: 'declare_artifact',
-        toolId: 'tool-preview',
-        text: '',
-        toolArgs: {
-          declarationId: 'preview-localhost:preview_url',
-          label: 'preview_url',
-          title: 'Local preview',
-          location: {
-            kind: 'url',
-            value: 'http://127.0.0.1:5173',
-          },
-          summary: 'Preview is available.',
-        },
-      },
-      {
-        kind: 'text',
-        text: 'Preview is ready.',
-        toolName: null,
-        toolId: null,
-      },
-    ],
-    finalization: {
-      codeArtifactFinalization: {
-        artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
-      },
-    },
-  });
-
-  const createInput = buildNewChatChannelInput({
-    body: 'Create a preview artifact',
-    existingCount: 0,
-    originSurface: 'code',
-    entryKind: 'default',
-    repoPath: 'C:/repo/cats-platform',
-    draftSessionPolicy: {
-      workspaceKind: 'source',
-      workspaceAccess: 'read_write',
-      permissionMode: 'whitelist',
-    },
-  });
-
-  await withServer(runtimeClient, async (baseUrl, chatStore) => {
-    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ...createInput,
-        originSurface: 'code',
-        skipBossCatGreeting: true,
-      }),
-    });
-    assert.equal(createChannelResponse.status, 201);
-    const createChannelPayload = await createChannelResponse.json();
-    const channelId = createChannelPayload.channel.id;
-
-    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        name: 'Artifact Cat',
-        provider: 'claude',
-        model: 'claude-opus-4-6',
-      }),
-    });
-    assert.equal(createCatResponse.status, 201);
-    const createCatPayload = await createCatResponse.json();
-
-    const assignResponse = await fetch(
-      `${baseUrl}/api/channels/${channelId}/cats/${createCatPayload.cat.id}`,
-      {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          provider: 'claude',
-          model: 'claude-opus-4-6',
-        }),
-      },
-    );
-    assert.equal(assignResponse.status, 201);
-
-    const sendMessageResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Generate the preview.' }),
-    });
-    const sendMessagePayload = await sendMessageResponse.text();
-    assert.equal(sendMessageResponse.status, 200, sendMessagePayload);
-
-    await waitForCondition(async () => (await chatStore.readCore()).artifacts.length > 0);
-
-    const core = await chatStore.readCore();
-    assert.equal(core.artifacts.length, 1);
-    assert.equal(core.artifacts[0]?.title, 'Local preview');
-    assert.equal(core.artifacts[0]?.kind, 'preview');
-    assert.equal(core.artifacts[0]?.status, 'ready');
-    assert.equal(core.artifacts[0]?.path, 'http://127.0.0.1:5173/');
-    assert.equal(core.artifacts[0]?.conversationId, buildChatConversationId(channelId));
-    assert.equal(core.activities.filter((activity) =>
-      activity.kind === 'artifact_recorded').length, 1);
-
-    const state = await chatStore.read();
-    const channel = state.channels.find((candidate) => candidate.id === channelId);
-    assert.ok(channel);
-    const assistantMessage = channel.messages.find((message) =>
-      message.body === 'Preview is ready.');
-    const runtimeMetadata = assistantMessage?.metadata.runtimeAssistantMetadata as
-      | Record<string, unknown>
-      | undefined;
-    const artifactMetadata = runtimeMetadata?.['cats-code.artifact-declaration'] as
-      | Record<string, unknown>
-      | undefined;
-    assert.deepEqual(artifactMetadata?.codeArtifactToolResults, [
-      {
-        toolId: 'tool-preview',
-        declarationId: 'preview-localhost:preview_url',
-        result: {
-          status: 'accepted',
-          declarationId: 'preview-localhost:preview_url',
-          disposition: 'record',
-          artifactId: core.artifacts[0]?.id,
-          artifactStatus: 'ready',
-        },
-      },
-    ]);
-    assert.deepEqual(artifactMetadata?.codeArtifactFinalization, {
-      status: 'accepted',
-      artifactClaims: [
-        { declarationId: 'preview-localhost:preview_url', label: null, title: null },
-      ],
-    });
-  });
-});
-
-test('code-origin finalization claims without accepted declarations are blocked', async () => {
-  const runtimeClient = createRuntimeStub({
-    messageSegments: [
-      {
-        kind: 'text',
-        text: 'I recorded the preview artifact.',
-        toolName: null,
-        toolId: null,
-      },
-    ],
-    finalization: {
-      codeArtifactFinalization: {
-        artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
-      },
-    },
-  });
-
-  const createInput = buildNewChatChannelInput({
-    body: 'Create a preview artifact',
-    existingCount: 0,
-    originSurface: 'code',
-    entryKind: 'default',
-    repoPath: 'C:/repo/cats-platform',
-    draftSessionPolicy: {
-      workspaceKind: 'source',
-      workspaceAccess: 'read_write',
-      permissionMode: 'whitelist',
-    },
-  });
-
-  await withServer(runtimeClient, async (baseUrl, chatStore) => {
-    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ...createInput,
-        originSurface: 'code',
-        skipBossCatGreeting: true,
-      }),
-    });
-    assert.equal(createChannelResponse.status, 201);
-    const createChannelPayload = await createChannelResponse.json();
-    const channelId = createChannelPayload.channel.id;
-
-    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        name: 'Finalization Cat',
-        provider: 'claude',
-        model: 'claude-opus-4-6',
-      }),
-    });
-    assert.equal(createCatResponse.status, 201);
-    const createCatPayload = await createCatResponse.json();
-
-    const assignResponse = await fetch(
-      `${baseUrl}/api/channels/${channelId}/cats/${createCatPayload.cat.id}`,
-      {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          provider: 'claude',
-          model: 'claude-opus-4-6',
-        }),
-      },
-    );
-    assert.equal(assignResponse.status, 201);
-
-    const sendMessageResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Generate the preview.' }),
-    });
-    assert.equal(sendMessageResponse.status, 200, await sendMessageResponse.text());
-
-    await waitForCondition(async () => {
-      const state = await chatStore.read();
-      const channel = state.channels.find((candidate) => candidate.id === channelId);
-      return channel?.messages.some((message) =>
-        message.metadata.event === 'assistant_finalization_rejected') ?? false;
-    });
-
-    const state = await chatStore.read();
-    const channel = state.channels.find((candidate) => candidate.id === channelId);
-    assert.ok(channel);
-    assert.equal(
-      channel.messages.some((message) => message.body === 'I recorded the preview artifact.'),
-      false,
-    );
-    const blockedMessage = channel.messages.find((message) =>
-      message.metadata.event === 'assistant_finalization_rejected');
-    assert.ok(blockedMessage);
-    assert.match(blockedMessage.body, /Blocked .+ response/u);
-    assert.equal(blockedMessage.metadata.code, 'artifact_claim_without_declaration');
-    assert.equal((await chatStore.readCore()).artifacts.length, 0);
+    assert.equal(turnMarker?.channelId, channelId);
   });
 });

@@ -481,6 +481,10 @@ export async function routeRequest(
   const chatContext = {
     ...context,
     dependencies: {
+      withPlatformDataReset: dependencies.shared.withPlatformDataReset,
+      resetEvidenceDirectories: [dependencies.work.evidenceDataDir, dependencies.code.evidenceDataDir]
+        .filter((directory): directory is string => typeof directory === 'string')
+        .map(directory => `${directory}/evidence`),
       config: dependencies.shared.config,
       runtimeClient: dependencies.shared.runtimeClient,
       chatStore: dependencies.chat.chatStore,

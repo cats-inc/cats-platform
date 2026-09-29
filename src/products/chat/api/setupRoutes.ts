@@ -1,7 +1,7 @@
+import path from 'node:path';
+import { preparePlatformOwnedDataReset, removePlatformOwnedData, PlatformResetBusyError } from '../../../shared/platformDataReset.js';
 import { createDefaultCoreState } from '../../../core/model/index.js';
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
-import { clearGuideCatAssistCache } from '../../../shared/guideCatAssistStore.js';
-import { resetPlatformOnboardingHistory } from '../../../shared/platformOnboardingHistory.js';
 import { runExclusiveSetupOperation } from '../../../shared/platformSetupOperation.js';
 import {
   readPlatformPreferences,
@@ -42,58 +42,42 @@ async function handleSetupReset(
     if (!(await authorizeSetupReset(context, core.setupCompleteAt))) {
       return;
     }
-    const chatState = await context.dependencies.chatStore.read();
-    await context.dependencies.chatStore.writeSnapshot(
-      createDefaultChatState(),
-      createDefaultCoreState(),
-    );
-    try {
-      // First-run setup always creates a new Admin. Retaining the previous
-      // account leaves the wizard permanently failing with already_complete.
-      await context.dependencies.authStore?.writeState(createEmptyPlatformAuthState(now));
-    } catch (error) {
-      // Keep the existing authenticated workspace usable when auth reset fails.
-      await context.dependencies.chatStore.writeSnapshot(chatState, core);
-      throw error;
-    }
-    try {
+    const withReset = context.dependencies.withPlatformDataReset
+      ?? (async (operation: (clear: () => Promise<void>) => Promise<void>) => operation(async () => {}));
+    await withReset(async clearCaches => {
+      // Assist refreshes can write after their initiating HTTP request finishes.
       await waitForGuideCatAssistRefreshIdle(context.dependencies.config.chatStatePath);
-      await clearGuideCatAssistCache(context.dependencies.config.chatStatePath, now);
-    } catch (error) {
-      reportSetupRouteFailure('setup_reset_assist_cache', error);
-    }
-    try {
+      const chatState = await context.dependencies.chatStore.read();
+      const previousCore = await context.dependencies.chatStore.readCore();
+      const removal = {
+        attachmentDirectories: chatState.channels.flatMap(channel => [channel.repoPath, channel.chatCwd])
+          .filter((directory): directory is string => typeof directory === 'string' && Boolean(directory.trim()))
+          .map(directory => path.join(directory, '.cats-attachments')),
+        evidenceDirectories: context.dependencies.resetEvidenceDirectories,
+      };
+      await preparePlatformOwnedDataReset(context.dependencies.config.chatStatePath, removal);
+      await context.dependencies.chatStore.writeSnapshot(createDefaultChatState(), createDefaultCoreState());
+      try {
+        await context.dependencies.authStore?.writeState(createEmptyPlatformAuthState(now));
+      } catch (error) {
+        // Before erasure begins, retain the authenticated workspace on failure.
+        await context.dependencies.chatStore.writeSnapshot(chatState, previousCore);
+        throw error;
+      }
       const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
-      await writePlatformPreferences(context.dependencies.config.chatStatePath, {
-        ...currentPrefs,
-        lastProductSurface: null,
-      });
-    } catch (error) {
-      reportSetupRouteFailure('setup_reset_prefs', error);
-    }
-    try {
-      await context.dependencies.memoryService.flushOwnerProfile({
-        reason: 'owner_profile_sync',
-        now,
-      });
-    } catch (error) {
-      reportSetupRouteFailure('setup_reset', error);
-    }
-    try {
-      await resetPlatformOnboardingHistory(context.dependencies.config.chatStatePath);
-    } catch (error) {
-      reportSetupRouteFailure('setup_reset_history', error);
-    }
-    sendJson(
-      context.response,
-      200,
-      await buildAppShellPayload(context.dependencies),
-      { 'Set-Cookie': clearAuthSessionCookie() },
-    );
+      await writePlatformPreferences(context.dependencies.config.chatStatePath, { ...currentPrefs, lastProductSurface: null });
+      await clearCaches();
+      // Build the fresh shell before removing snapshots, so read-time helpers
+      // cannot regenerate reset backups or memory files after the purge.
+      const payload = await buildAppShellPayload(context.dependencies);
+      await removePlatformOwnedData(context.dependencies.config.chatStatePath, removal);
+      sendJson(context.response, 200, payload, { 'Set-Cookie': clearAuthSessionCookie() });
+    });
   } catch (error) {
     reportSetupRouteFailure('setup_reset', error);
-    sendJson(context.response, 500, {
-      error: { code: 'internal_error', message: 'Setup could not be reset.' },
+    sendJson(context.response, error instanceof PlatformResetBusyError ? 409 : 500, {
+      error: { code: error instanceof PlatformResetBusyError ? 'platform_reset_busy' : 'internal_error',
+        message: error instanceof PlatformResetBusyError ? error.message : 'Platform data could not be fully reset. Retry to finish removing the remaining data.' },
     });
   }
 }

@@ -240,3 +240,17 @@ async function readUntil(
   }
   return buffer;
 }
+
+test('reset clears pending intents and existing subscribers', () => {
+  const hub = new ArtifactCanvasRenderIntentHub();
+  const delivered: string[] = [];
+  hub.subscribe({ surface: SURFACE, sessionId: 'old-owner', now: NOW,
+    send: intent => delivered.push(intent.intentId) });
+  hub.publish({ intent: createIntent('before-reset'), now: NOW });
+  assert.equal(hub.pendingCount, 1);
+  hub.clearForReset();
+  assert.equal(hub.pendingCount, 0);
+  assert.equal(hub.getPendingIntent('before-reset'), null);
+  assert.equal(hub.publish({ intent: createIntent('after-reset'), now: NOW }).delivered, false);
+  assert.deepEqual(delivered, ['before-reset']);
+});

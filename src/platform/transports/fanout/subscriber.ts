@@ -177,6 +177,8 @@ function reportFanoutError(error: unknown): void {
 }
 
 export class TransportFanout {
+  private pending = 0;
+  isIdle(): boolean { return this.pending === 0; }
   private readonly registry = new TransportDelivererRegistry();
 
   private readonly processedPairs = new Map<string, true>();
@@ -199,7 +201,8 @@ export class TransportFanout {
       return;
     }
 
-    void this.process(event).catch(reportFanoutError);
+    this.pending += 1;
+    void this.process(event).catch(reportFanoutError).finally(() => { this.pending -= 1; });
   }
 
   private async process(event: ChatEvent): Promise<void> {
@@ -276,7 +279,7 @@ export class TransportFanout {
   }
 }
 
-export function startTransportFanout(options: TransportFanoutOptions): () => void {
+export function startTransportFanout(options: TransportFanoutOptions): (() => void) & { isIdle(): boolean } {
   const fanout = new TransportFanout(options);
-  return options.eventHub.subscribe((event) => fanout.handle(event));
+  return Object.assign(options.eventHub.subscribe((event) => fanout.handle(event)), { isIdle: () => fanout.isIdle() });
 }
