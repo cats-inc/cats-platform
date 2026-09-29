@@ -4,6 +4,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { decodeAppPackage, parseAppLock, supportsVersion, APP_SDK_VERSION, PLATFORM_VERSION, type ResolvedAppPin } from '#cats-app-package';
 
 import type { DesktopHostConfig } from './config.js';
+import { collectDesktopLicenses } from './licenses.js';
 import {
   collectRuntimeSkillContent, resolveDesktopSkillContentProfile, writeRuntimeSkillContent,
   type DesktopSkillContentProfile,
@@ -1229,6 +1230,9 @@ export async function stageDesktopPackagingOutputs(
     throw new Error(`Desktop packaging requires the requested cats-runtime sidecar layout `
       + `(${sidecarLayout.runtime}) with valid ${plan.contentProfile} skill content.`, { cause: error });
   });
+  // Capture licenses before replacing any prior stage. Bundle notices are tied
+  // to the actual Runtime bytes, so stale/missing build outputs fail closed.
+  const licenseAssets = await collectDesktopLicenses(config.packageRoot, config.runtimePackageRoot, sidecarLayout.runtime);
   await rm(outputRoot, { recursive: true, force: true });
   await mkdir(join(outputRoot, 'shared'), { recursive: true });
 
@@ -1240,6 +1244,11 @@ export async function stageDesktopPackagingOutputs(
   await copyDirectory(join(config.packageRoot, 'build', 'renderer'), join(outputRoot, 'shared', 'build', 'renderer'));
   await copyDirectory(join(config.packageRoot, 'build', 'desktop'), join(outputRoot, 'shared', 'build', 'desktop'));
   await copyFile(join(config.packageRoot, 'package.json'), join(outputRoot, 'shared', 'app-sidecar', 'package.json'));
+  for (const asset of licenseAssets) {
+    const targetPath = join(outputRoot, asset.target);
+    await mkdir(dirname(targetPath), { recursive: true });
+    await writeFile(targetPath, asset.bytes);
+  }
   await copyDirectory(join(config.packageRoot, 'packages', 'app-sdk'), join(outputRoot, 'shared', 'app-sidecar', 'packages', 'app-sdk'));
   await mkdir(join(outputRoot, 'shared', 'official-apps'), { recursive: true });
   for (const app of options.apps ?? []) {
@@ -1330,6 +1339,7 @@ export async function stageDesktopPackagingOutputs(
       runtime: '../cats-runtime',
     },
     assets: [
+      ...licenseAssets.map((asset) => ({ source: relative(outputRoot, asset.source), target: asset.target })),
       {
         source: relative(outputRoot, appServerStageSource.sourceEntryPath),
         target: 'shared/build/server/index.js',

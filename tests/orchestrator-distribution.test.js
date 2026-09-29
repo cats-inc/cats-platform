@@ -9,6 +9,7 @@ import test from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { bundleServer } from '../scripts/bundle-server.mjs';
+import { seedRuntimeNotices } from './fixtures/desktopLicenseFixture.js';
 
 const runFile = promisify(execFile);
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -78,6 +79,7 @@ async function runtimePackagingFixture(root) {
   // Only fulfills staging's Runtime asset contract. No Runtime execution is claimed.
   const factory = 'schema_version: 2\ncatalogs: []\n';
   const files = {
+    'LICENSE': await readFile(new URL('../LICENSE', import.meta.url)),
     'package.json': JSON.stringify({ name: 'cats-runtime', version: '0.1.0', type: 'module',
       dependencies: { 'playwright-core': '^1.58.2', yaml: '^2.8.2' } }),
     'build/runtime/index.js': 'export {};',
@@ -98,6 +100,7 @@ async function runtimePackagingFixture(root) {
     'node_modules/yaml/package.json': '{"name":"yaml"}',
   };
   await Promise.all(Object.entries(files).map(([file, contents]) => seedFile(join(root, file), contents)));
+  await seedRuntimeNotices(join(root, 'build/runtime-bundle'), 'export {};');
 }
 
 async function stageDesktop(packageRoot, root, layout) {

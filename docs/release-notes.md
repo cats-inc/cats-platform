@@ -2,6 +2,23 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## Unreleased — distribution license and publisher corrections
+
+- Desktop host and sidecars now retain the Cats MIT licenses, including the
+  warranty disclaimer. Runtime bundle dependencies ship their original license
+  notices, generated from the actual bundle inputs and bound to that build by
+  hashes. Missing or stale notices block staging and the installed-resource gate.
+- The publisher is the individual maintainer `sammykenny2`. Cats / Cats Inc. remains
+  the software brand; Windows metadata no longer represents it as the developer's
+  company. Product name, appId, signing configuration and data paths are unchanged.
+- The next Desktop build must pin the companion Runtime license producer. That
+  Runtime change also omits URL queries from access logs and removes session
+  compaction archives during permanent deletion, retaining the session if final
+  file removal fails. These fixes require a new build; existing installations and
+  previously published artifacts are not modified by these source changes.
+- No version bump, publication, user-data migration or broader legal-policy change
+  is included in this work.
+
 ## 2026-09-29 — Platform 0.6.0 npm and Desktop standard preview (published)
 
 - **Minor boundary.** A Cat's companion setting is now a Cat role instead of the
