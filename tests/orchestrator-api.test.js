@@ -1010,9 +1010,12 @@ test('POST /api/orchestrator/dispatch forwards Work triage tool intent to runtim
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.equal(payload.dispatch.status, 'dispatched');
-    assert.equal(runtimeClient.sentMessages.length, 1);
+    // Companion direct lanes also send a provider-agent decision (companion posts).
+    const replyMessages = runtimeClient.sentMessages
+      .filter((message) => message.input?.context?.reason !== 'chat-provider-agent-decision');
+    assert.equal(replyMessages.length, 1);
 
-    const toolIntent = runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent;
+    const toolIntent = replyMessages[0]?.input?.context?.metadata?.toolIntent;
     assert.ok(toolIntent);
     assert.deepEqual(toolIntent.allowedTools, [
       WORK_ITEM_ASSIGN_PROJECT_TOOL,
@@ -1079,9 +1082,12 @@ test('POST /api/orchestrator/dispatch forwards external binding tool intent to r
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.equal(payload.dispatch.status, 'dispatched');
-    assert.equal(runtimeClient.sentMessages.length, 1);
+    // Companion direct lanes also send a provider-agent decision (companion posts).
+    const replyMessages = runtimeClient.sentMessages
+      .filter((message) => message.input?.context?.reason !== 'chat-provider-agent-decision');
+    assert.equal(replyMessages.length, 1);
 
-    const toolIntent = runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent;
+    const toolIntent = replyMessages[0]?.input?.context?.metadata?.toolIntent;
     assert.ok(toolIntent);
     assert.deepEqual(toolIntent.allowedTools, [
       WORK_EXTERNAL_LINK_ISSUE_TOOL,
@@ -1145,9 +1151,12 @@ test('POST /api/orchestrator/dispatch forwards Boss execution tool intent to run
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.equal(payload.dispatch.status, 'dispatched');
-    assert.equal(runtimeClient.sentMessages.length, 1);
+    // Companion direct lanes also send a provider-agent decision (companion posts).
+    const replyMessages = runtimeClient.sentMessages
+      .filter((message) => message.input?.context?.reason !== 'chat-provider-agent-decision');
+    assert.equal(replyMessages.length, 1);
 
-    const toolIntent = runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent;
+    const toolIntent = replyMessages[0]?.input?.context?.metadata?.toolIntent;
     assert.ok(toolIntent);
     assert.deepEqual(toolIntent.allowedTools, [
       WORK_ITEM_PREPARE_EXECUTION_TOOL,

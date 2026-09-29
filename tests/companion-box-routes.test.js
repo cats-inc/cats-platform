@@ -27,6 +27,7 @@ function createRuntimeStub() {
   return {
     createdSessions: [],
     sentMessages: [],
+    closedSessionIds: [],
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -73,11 +74,18 @@ function createRuntimeStub() {
         tokensUsed: 21,
       };
     },
-    async closeSession() {},
+    async closeSession(sessionId) {
+      this.closedSessionIds.push(sessionId);
+    },
   };
 }
 
-async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
+async function withServer(
+  runtimeClient,
+  callback,
+  chatStore = new MemoryChatStore(),
+  chatDependencies = {},
+) {
   const workingDir = await mkdtemp(path.join(tmpdir(), 'cats-companion-routes-'));
   const now = new Date('2026-03-23T12:00:00.000Z');
   const auth = await createAuthenticatedTestSession({
@@ -97,6 +105,7 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
     },
     chat: {
       chatStore,
+      ...chatDependencies,
     },
   });
 
@@ -120,6 +129,85 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
     await once(server, 'close');
   }
 }
+
+test('companion Cat posts from a direct lane and the owner can remove the post', async () => {
+  const runtimeClient = createRuntimeStub();
+  const providerAgentDecisionRequester = async ({ observation }) => (
+    observation.availableTools.some(({ manifest }) =>
+      manifest.name === 'companion.content.post.create')
+      ? {
+          contractVersion: 1,
+          kind: 'tool_request',
+          decisionId: 'decision-route-post-1',
+          confidence: 'high',
+          toolName: 'companion.content.post.create',
+          target: { kind: 'worker_tool', toolName: 'companion.content.post.create' },
+          input: { title: 'Window birds', body: 'Three sparrows visited today.' },
+          rationaleSummary: 'The owner asked for a post.',
+        }
+      : null
+  );
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const { cat } = await (await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Mochi', provider: 'claude', roles: ['companion'] }),
+    })).json();
+    const { channel } = await (await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: '',
+        topic: 'Private companion lane',
+        originSurface: 'chat',
+        roomMode: 'direct_message',
+        participantCatIds: [cat.id],
+      }),
+    })).json();
+
+    const sendResponse = await fetch(`${baseUrl}/api/channels/${channel.id}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body: 'Write a post about the birds.' }),
+    });
+    assert.equal(sendResponse.status, 200, await sendResponse.clone().text());
+
+    const profileBefore = (await (await fetch(
+      `${baseUrl}/api/cats/${cat.id}/companion-box/profile`,
+    )).json()).profile;
+    const post = profileBefore.posts.find((candidate) => candidate.title === 'Window birds');
+    assert.equal(post?.status, 'active');
+
+    // The Cat's own reply still runs and sees the post it just published.
+    await waitForCondition(
+      () => runtimeClient.sentMessages.some((message) =>
+        message.input?.context?.reason !== 'chat-provider-agent-decision'),
+      { timeoutMs: 1000 },
+    );
+    const reply = runtimeClient.sentMessages.find((message) =>
+      message.input?.context?.reason !== 'chat-provider-agent-decision');
+    assert.match(reply.content, /Your recent profile posts \(newest first\):\n- Window birds/u);
+
+    const removeResponse = await fetch(
+      `${baseUrl}/api/cats/${cat.id}/companion-box/posts/${encodeURIComponent(post.id)}`,
+      { method: 'DELETE' },
+    );
+    assert.equal(removeResponse.status, 200);
+    assert.deepEqual(await removeResponse.json(), { removed: true, postId: post.id });
+
+    const profileAfter = (await (await fetch(
+      `${baseUrl}/api/cats/${cat.id}/companion-box/profile`,
+    )).json()).profile;
+    assert.equal(profileAfter.posts.find((candidate) => candidate.id === post.id)?.status, 'removed');
+
+    const missingResponse = await fetch(
+      `${baseUrl}/api/cats/${cat.id}/companion-box/posts/post%3Amissing`,
+      { method: 'DELETE' },
+    );
+    assert.equal(missingResponse.status, 404);
+  }, undefined, { providerAgentDecisionRequester });
+});
 
 test('companion box routes ingest records, persist profile/memory, and expose session context', async () => {
   const runtimeClient = createRuntimeStub();
@@ -406,8 +494,17 @@ test('direct companion chat routes hydrated companion session context into runti
     assert.equal(sendMessageResponse.status, 200, await sendMessageResponse.clone().text());
     const sendMessagePayload = await sendMessageResponse.json();
 
-    assert.equal(runtimeClient.createdSessions.length, 1, JSON.stringify(sendMessagePayload));
-    const createdSession = runtimeClient.createdSessions[0];
+    // Companion direct lanes also open a provider-agent decision session (companion posts).
+    const replySessions = runtimeClient.createdSessions
+      .filter((session) => session.context?.reason !== 'chat-provider-agent-decision-session');
+    assert.equal(replySessions.length, 1, JSON.stringify(sendMessagePayload));
+    // The one-shot decision session is closed even though the stub reply is not a decision.
+    const decisionSessions = runtimeClient.createdSessions
+      .filter((session) => session.context?.reason === 'chat-provider-agent-decision-session');
+    assert.equal(decisionSessions.length, 1);
+    assert.ok(runtimeClient.closedSessionIds.includes(decisionSessions[0].id));
+    assert.ok(!runtimeClient.closedSessionIds.includes(replySessions[0].id));
+    const createdSession = replySessions[0];
     assert.ok(createdSession.context.metadata.companionSession.retrieval);
     assert.ok(createdSession.context.metadata.companionSession.retrieval.hits.length > 0);
     assert.deepEqual(createdSession.skills.requestedSkills, ['companion']);
@@ -434,11 +531,13 @@ test('direct companion chat routes hydrated companion session context into runti
       ),
     );
 
+    const replyMessages = () => runtimeClient.sentMessages
+      .filter((message) => message.input?.context?.reason !== 'chat-provider-agent-decision');
     await waitForCondition(
-      () => runtimeClient.sentMessages.length === 1,
+      () => replyMessages().length === 1,
       { timeoutMs: 1000 },
     );
-    const sentMessage = runtimeClient.sentMessages[0];
+    const sentMessage = replyMessages()[0];
     assert.equal(
       sentMessage.input.context.metadata.companionSession.channelContext.channelId,
       channelId,

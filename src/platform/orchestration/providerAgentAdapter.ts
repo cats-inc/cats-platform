@@ -68,6 +68,11 @@ export interface ProviderAgentAdapterInput {
   /** Optional, ephemeral delivery cache owned by one collaboration coordinator attempt. */
   promptSession?: ProviderAgentPromptSession;
   supervision: RuntimeSupervisionContext;
+  /**
+   * Close a session this call created once the decision settles, success or not.
+   * One-shot decisions set this; collaboration loops reuse and close sessions themselves.
+   */
+  closeCreatedSession?: boolean;
 }
 
 export interface ProviderAgentToolFeedback {
@@ -133,6 +138,23 @@ async function requestDecision(input: ProviderAgentAdapterInput): Promise<Provid
   const createdSession = input.target.sessionId
     ? null
     : await createProviderAgentSession(input);
+  try {
+    return await sendDecisionRequest(input, content, prepared, createdSession);
+  } finally {
+    if (input.closeCreatedSession && createdSession) {
+      await Promise.resolve()
+        .then(() => input.runtimeClient.closeSession(createdSession.id))
+        .catch(() => {});
+    }
+  }
+}
+
+async function sendDecisionRequest(
+  input: ProviderAgentAdapterInput,
+  content: string,
+  prepared: ReturnType<NonNullable<ProviderAgentAdapterInput['promptSession']>['prepare']> | undefined,
+  createdSession: RuntimeSessionInfo | null,
+): Promise<ProviderAgentAdapterResult> {
   const sessionId = input.target.sessionId ?? createdSession?.id;
   if (!sessionId) {
     throw new ProviderAgentAdapterError(

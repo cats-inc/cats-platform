@@ -88,6 +88,8 @@ export function createChatProviderAgentDecisionRequester(
           productKnowledge,
           toolResults: receipts,
           promptSession,
+          // One-shot decisions own their session; collaboration loops reuse theirs.
+          closeCreatedSession: !promptSession && !receipts,
           target: {
             sessionId,
             provider: target.provider,

@@ -66,6 +66,7 @@ import {
   resumeStoredWorkflowContinuationDispatch,
 } from '../../products/chat/state/deterministicRouterAdapter.js';
 import { createChatProviderAgentDecisionRequester } from '../../products/chat/state/providerAgentDecisionRequester.js';
+import { createCompanionContentDecisionRequester } from '../../products/chat/state/companionContentDecisionScope.js';
 import { createLockedDispatchChatStore } from '../../products/chat/state/runtime-dispatch/merge.js';
 import {
   createProviderCapabilityBootstrapDiagnosticSink,
@@ -317,20 +318,23 @@ export function resolveServerDependencies(
   const companionActivityStore = dependencies.chat.companionActivityStore
     ?? createDefaultCompanionActivityStore(dependencies.shared, dependencies.chat);
   const chatEventHub = dependencies.chat.eventHub ?? createChatEventHub();
+  const chatProviderAgentDecisionRequester = createChatProviderAgentDecisionRequester({
+    platformDir: dependencies.shared.config.platformDir,
+    preparationBudget: dependencies.shared.config.chatCollaborationPreparationBudget,
+    failureMode: 'return_null', readState: () => dependencies.chat.chatStore.read(),
+    chatStore: dependencies.chat.chatStore,
+    deliveryClient: createRuntimeDeliveryClient({ baseUrl: dependencies.shared.config.runtimeBaseUrl,
+      apiKey: dependencies.shared.config.runtimeApiKey }),
+    publishCollaboration: (channelId, action) => publishChannelMutation(chatEventHub, channelId, action),
+    runChatMutation: (channelId, operation) => mutationGate.run(channelId, operation),
+  });
+  // With the flag off, decisions still run for companion posts only (PLAN-077);
+  // the flag widens them to every provider-agent tool.
   const providerAgentDecisionRequester = dependencies.chat.providerAgentDecisionRequester
     ?? (
       dependencies.shared.config.chatProviderAgentDecisionEnabled === true
-        ? createChatProviderAgentDecisionRequester({
-            platformDir: dependencies.shared.config.platformDir,
-            preparationBudget: dependencies.shared.config.chatCollaborationPreparationBudget,
-            failureMode: 'return_null', readState: () => dependencies.chat.chatStore.read(),
-            chatStore: dependencies.chat.chatStore,
-            deliveryClient: createRuntimeDeliveryClient({ baseUrl: dependencies.shared.config.runtimeBaseUrl,
-              apiKey: dependencies.shared.config.runtimeApiKey }),
-            publishCollaboration: (channelId, action) => publishChannelMutation(chatEventHub, channelId, action),
-            runChatMutation: (channelId, operation) => mutationGate.run(channelId, operation),
-          })
-        : undefined
+        ? chatProviderAgentDecisionRequester
+        : createCompanionContentDecisionRequester(chatProviderAgentDecisionRequester)
     );
   const orchestratorChannelRouter = dependencies.chat.orchestratorChannelRouter
     ?? createChatDeterministicChannelRouter({

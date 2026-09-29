@@ -256,6 +256,7 @@ POST  /api/cats/{catId}/companion-box/memory
 GET   /api/cats/{catId}/companion-box/response-profile
 PATCH /api/cats/{catId}/companion-box/response-profile
 GET   /api/cats/{catId}/companion-box/session-context
+DELETE /api/cats/{catId}/companion-box/posts/{postId}
 ```
 
 The companion-box slice is product-owned and Cat-scoped. It does not extend
@@ -287,6 +288,21 @@ shared core and does not move Cat-local storage into `cats-runtime`.
   response settings and returns `{ responseProfile, canonicalSync }`
 - `GET /api/cats/{catId}/companion-box/session-context` returns the normalized
   product-owned hydration payload for direct companion sessions
+- `DELETE /api/cats/{catId}/companion-box/posts/{postId}` is owner moderation for
+  agent-authored profile posts. `postId` is the profile item id (`post:<derivedId>`)
+  or the bare derived id. It soft-removes the post (status `removed`, record kept),
+  records a `post_removed` activity, and returns `{ removed: true, postId }`;
+  unknown ids return `404 companion_post_not_found`.
+
+Agent-authored posts: in a direct lane (web or a bound Telegram bot) whose single
+target is a Cat with the `companion` role, the provider-agent decision offers
+`companion.content.post.create`. An accepted decision publishes through the
+supervised tool boundary on that Cat's own profile only, appends a
+`companion_post_published` system notice, and the Cat's reply still runs with
+its recent posts in the prompt. These companion decisions run by default;
+`CATS_CHAT_PROVIDER_AGENT_DECISION_ENABLED` widens decisions to every
+provider-agent tool. Each such turn costs one extra decision runtime session; a
+failed decision degrades to an ordinary reply.
 
 Supported source kinds:
 

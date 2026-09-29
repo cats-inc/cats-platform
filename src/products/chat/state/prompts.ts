@@ -12,6 +12,7 @@ import {
 } from '../../../shared/assistantResponseLanguage.js';
 import { WORK_MCP_PROFILE_ID } from '../../../shared/catMcpProfiles.js';
 import { isCompanionCat } from '../../../shared/companionRole.js';
+import { COMPANION_PROFILE_METADATA_KEYS } from '../companion/profileReadModel.js';
 import { buildChoiceResponseBody } from '../shared/messageChoices.js';
 import { ORCHESTRATOR_NAME } from './model/index.js';
 
@@ -23,9 +24,12 @@ export interface PromptCompanionContext {
   memory: ReadonlyArray<{ category: string; content: string; summary: string | null }>;
   ownerNotes: readonly string[];
   responseProfile: { expressionMode: string };
+  /** Newest first; profile posts are the entries marked with the post surface. */
+  derived?: ReadonlyArray<{ title: string | null; metadata: Record<string, unknown> }>;
 }
 
 const COMPANION_PROMPT_TEXT_LIMIT = 280;
+const COMPANION_PROMPT_RECENT_POST_LIMIT = 3;
 
 const COMPANION_EXPRESSION_GUIDANCE: Record<string, string> = {
   animalistic:
@@ -500,12 +504,32 @@ function formatCompanionContext(
     .map((note) => truncateContinuityText(note, COMPANION_PROMPT_TEXT_LIMIT))
     .filter((note) => note.length > 0)
     .map((note) => `- ${note}`);
+  // A post published earlier in this turn is already in the store, so the Cat can
+  // acknowledge it truthfully instead of guessing whether the decision ran.
+  const postLines = (context.derived ?? [])
+    .filter((record) =>
+      record.metadata[COMPANION_PROFILE_METADATA_KEYS.surface]
+        === COMPANION_PROFILE_METADATA_KEYS.postSurface
+      && record.metadata[COMPANION_PROFILE_METADATA_KEYS.postStatus] !== 'removed')
+    .slice(0, COMPANION_PROMPT_RECENT_POST_LIMIT)
+    .map((record) => {
+      const title = truncateContinuityText(record.title?.trim() || '(untitled)', 120);
+      const publishedAt = record.metadata[COMPANION_PROFILE_METADATA_KEYS.publishedAt];
+      return typeof publishedAt === 'string' && publishedAt.length >= 10
+        ? `- ${title} (${publishedAt.slice(0, 10)})`
+        : `- ${title}`;
+    });
   // Expression style is companion identity (ADR-124): ordinary Cats in a direct lane
   // still get their owner's memory and notes, but not a persona change.
   const expressionGuidance = isCompanion
     ? COMPANION_EXPRESSION_GUIDANCE[context.responseProfile.expressionMode] ?? null
     : null;
-  if (memoryLines.length === 0 && noteLines.length === 0 && !expressionGuidance) {
+  if (
+    memoryLines.length === 0
+    && noteLines.length === 0
+    && postLines.length === 0
+    && !expressionGuidance
+  ) {
     return null;
   }
 
@@ -513,6 +537,7 @@ function formatCompanionContext(
     'Your companion memory (curated by your owner; use it naturally, do not recite it):',
     ...memoryLines,
     ...(noteLines.length > 0 ? ['Owner notes:', ...noteLines] : []),
+    ...(postLines.length > 0 ? ['Your recent profile posts (newest first):', ...postLines] : []),
     ...(expressionGuidance ? [`Expression style: ${expressionGuidance}`] : []),
   ].join('\n');
 }
