@@ -10,6 +10,8 @@ export interface CatsAppBrowserSdkV1 {
     refreshQuota(target: { provider: 'codex' | 'copilot' | 'claude' | 'antigravity'; instance: string }): Promise<UsageQuotaRefreshV1>;
   };
   openLobby(): Promise<void>;
+  openRemoteAccess(): Promise<void>;
+  readonly clipboard: { writeText(text: string): Promise<void> };
   readonly images: {
     getCapabilities(): Promise<{ schemaVersion: 1; operation: 'image.generate'; aspectRatio: '1:1';
       maxPromptLength: number; maxImageBytes: number;

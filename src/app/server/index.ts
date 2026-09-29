@@ -1,4 +1,9 @@
-import { createServer as createHttpServer, type ServerResponse } from 'node:http';
+import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { AppComponentHost } from '../../platform/apps/componentHost.js';
+import { PlatformIngress } from '../../platform/apps/platformIngress.js';
+import { platformRequestEntry, setPlatformRequestEntry, canonicalIngressPath } from '../../platform/apps/ingressBoundary.js';
+import { resolvePlatformStorageLayout } from '../../shared/platformPaths.js';
+import { summarizePlatformIngress } from './platformIngressSummary.js';
 import { homedir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { ManagedPluginManager, createPluginRuntimePort } from '../../platform/plugins/manager.js';
@@ -15,6 +20,10 @@ import { clearProviderCachesForReset } from '../../server/routes/providers.js';
 import { createAgentKnowledgeBridge, AGENT_KNOWLEDGE_PATH } from '../../platform/knowledge/agentKnowledgeBridge.js';
 import { isLoopbackAuthHost } from '../../platform/auth/effectiveMode.js';
 import { runServerStartupRecoveryPasses } from './startupRecovery.js';
+import { McpSessionGrantStore } from '../../platform/mcp/sessionGrants.js';
+import type { CodeAgentToolGrantBinding } from '../../products/code/agentTools/contracts.js';
+import { createCodeAgentToolsService } from '../../products/code/agentTools/service.js';
+import { getDefaultArtifactCanvasRenderIntentHub } from '../../products/shared/artifactCanvas/renderIntent.js';
 import { startTransportFanout } from '../../platform/transports/fanout/subscriber.js';
 import { startChatCompanionLifeLoop } from '../../products/chat/api/index.js';
 import {
@@ -34,11 +43,16 @@ function reportUnhandledServerError(error: unknown): void {
 }
 
 export function createServer(dependencies: ServerDependencies) {
+  const desktopAppsKey = dependencies.shared.desktopAppsKey ?? process.env.CATS_DESKTOP_APPS_KEY;
+  const appComponents = dependencies.shared.appComponents ?? (/^[a-f0-9]{64}$/.test(desktopAppsKey ?? '')
+    ? new AppComponentHost({ chatStatePath: dependencies.shared.config.chatStatePath, ownerId: 'desktop-owner' }) : undefined);
+  dependencies = { ...dependencies, shared: { ...dependencies.shared, appComponents, desktopAppsKey } };
   const pluginConfig = dependencies.shared.config;
   const plugins = dependencies.shared.managedPlugins ?? new ManagedPluginManager(pluginConfig.platformDir,
     pluginConfig.managedPluginPolicy === true && Boolean(pluginConfig.platformDir) && resolve(pluginConfig.platformDir) !== resolve(join(homedir(), '.cats', 'platform')),
     createPluginRuntimePort(pluginConfig.runtimeBaseUrl, pluginConfig.managedPluginKey ?? pluginConfig.runtimeApiKey));
   const providerSelectorClient = dependencies.shared.runtimeClient;
+  const codeAgentToolGrants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
   let knowledgeEndpoint: string | null = null;
   const knowledge = createAgentKnowledgeBridge({
     platformDir: dependencies.shared.config.platformDir,
@@ -128,7 +142,28 @@ export function createServer(dependencies: ServerDependencies) {
   const activeRequests = new Set<Promise<unknown>>();
   const openStreams = new Set<ServerResponse>();
 
-  const server = createHttpServer((request, response) => {
+  // Internal bearer MCP precedes Platform cookie auth. The public ingress
+  // rejects this route before dispatch, including traffic from a loopback tunnel.
+  const codeAgentTools = createCodeAgentToolsService({
+    coreStore: resolvedDependencies.code.coreStore,
+    livePreviewSupervisor: resolvedDependencies.code.livePreviewSupervisor,
+    grants: codeAgentToolGrants,
+    policyConfig: resolvedDependencies.shared.config.artifactCanvas,
+    now: resolvedDependencies.shared.now,
+  });
+
+  const dispatchProduct = async (request: IncomingMessage, response: ServerResponse) => {
+    const entry = platformRequestEntry(request);
+    if (entry && appComponents && await appComponents.route(request, response, entry.origin)) return;
+    // An opaque App frame can only use its App view grant, never Platform cookies.
+    if (request.headers.origin === 'null') {
+      sendJson(response, 403, { error: 'opaque_origin_denied' }); return;
+    }
+    if (await codeAgentTools.route(request, response)) return;
+    if (await knowledge.route(request, response)) return;
+    await routeRequest(request, response, resolvedDependencies);
+  };
+  const dispatch = async (request: IncomingMessage, response: ServerResponse) => {
     response.on('close', () => openStreams.delete(response));
     const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
     const serializedSetup = pathname === '/api/setup/reset' || pathname === '/api/platform/setup/complete';
@@ -136,9 +171,25 @@ export function createServer(dependencies: ServerDependencies) {
       sendJson(response, 503, { error: { code: 'platform_reset_in_progress', message: 'Platform data reset is in progress.' } });
       return;
     }
-    const task = knowledge.route(request, response).then(handled => {
-      if (!handled) return routeRequest(request, response, resolvedDependencies);
-    }).catch((error) => {
+    const task = dispatchProduct(request, response);
+    // Setup mutations already share a mutex; counting queued setup callers here
+    // would deadlock reset/completion. Both local and public ingress use this guard.
+    if (!serializedSetup) activeRequests.add(task);
+    try { await task; }
+    finally {
+      activeRequests.delete(task);
+      if (!serializedSetup && !response.writableEnded && !response.destroyed) openStreams.add(response);
+    }
+  };
+  let localOrigins: string[] = [];
+  const server = createHttpServer((request, response) => {
+    const origin = [...localOrigins, ...resolvedDependencies.shared.config.auth.allowedBrowserOrigins]
+      .find(value => new URL(value).host === request.headers.host);
+    if (origin) setPlatformRequestEntry(request, origin, false);
+    if ((request.url ?? '').startsWith('/apps/') && (!origin || !canonicalIngressPath(request.url!))) {
+      sendJson(response, 400, { error: 'invalid_app_entry' }); return;
+    }
+    void dispatch(request, response).catch((error) => {
       reportUnhandledServerError(error);
       sendJson(response, 500, {
         error: {
@@ -147,21 +198,13 @@ export function createServer(dependencies: ServerDependencies) {
         },
       });
     });
-    // Setup mutations already share runExclusiveSetupOperation. Counting queued
-    // setup callers here would deadlock reset/completion serialization.
-    if (!serializedSetup) {
-      activeRequests.add(task);
-      void task.finally(() => {
-        activeRequests.delete(task);
-        if (!response.writableEnded && !response.destroyed) openStreams.add(response);
-      });
-    }
+
   });
 
   resolvedDependencies.shared.withPlatformDataReset = async operation => {
     const chat = resolvedDependencies.chat;
     const golden = chat.transportWorkGoldenPath;
-    if (!startupSettled || activeRequests.size || chat.mutationGate.isIdle?.() === false
+    if (!startupSettled || livePreviewSweepPending || activeRequests.size || chat.mutationGate.isIdle?.() === false
       || !loops.stopSchedulerLoop.isIdle() || !loops.stopCompanionLifeLoop.isIdle()
       || !loops.stopTransportFanout.isIdle() || golden?.runner?.isIdle?.() === false
       || golden?.outbox.isIdle?.() === false) throw new PlatformResetBusyError();
@@ -180,6 +223,12 @@ export function createServer(dependencies: ServerDependencies) {
         // well as revoking auth, so close handlers remove listeners/heartbeats.
         for (const response of openStreams) response.end();
         knowledge.revoke();
+        codeAgentTools.clearForReset();
+        getDefaultArtifactCanvasRenderIntentHub().clearForReset();
+        await resolvedDependencies.code.livePreviewSupervisor?.clearForReset();
+        if (resolvedDependencies.code.livePreviewStore !== resolvedDependencies.code.livePreviewSupervisor) {
+          await resolvedDependencies.code.livePreviewStore?.clearForReset?.();
+        }
         await clearProviderCachesForReset(providerSelectorClient);
         resolvedDependencies.shared.runtimeClientDiagnosticSink?.clearForReset?.();
         resolvedDependencies.shared.providerCapabilityBootstrapDiagnosticSink.clearForReset?.();
@@ -202,11 +251,51 @@ export function createServer(dependencies: ServerDependencies) {
     }
   };
 
+  const auth = resolvedDependencies.shared.config.auth;
+  const configuredOrigins = [...auth.allowedBrowserOrigins];
+  const ingress = resolvedDependencies.shared.platformIngress ?? (appComponents ? new PlatformIngress({
+    platformDir: resolvePlatformStorageLayout(dependencies.shared.config.chatStatePath).platformDir,
+    dispatch,
+    ready: async () => auth.mode !== 'unsafe_disabled' && !!auth.sessionSecret
+      && !!(await resolvedDependencies.shared.coreStore.readCore()).setupCompleteAt
+      && (await resolvedDependencies.shared.authStore.readStateStatus()).status === 'ready',
+    onOrigin: origin => { auth.allowedBrowserOrigins = [...new Set([...configuredOrigins, ...(origin ? [origin] : [])])]; },
+  }) : undefined);
+  resolvedDependencies.shared.platformIngress = ingress;
+  if (ingress) appComponents?.setIngressSnapshot(() => ingress.snapshot());
+  let appHostingReady = Promise.resolve();
+  const livePreviewSupervisor = resolvedDependencies.code.livePreviewSupervisor;
+  let livePreviewSweep: ReturnType<typeof setInterval> | undefined;
+  let livePreviewSweepPending: Promise<unknown> | undefined;
+  let hostingClose: Promise<void> | undefined;
+  const closeAppHosting = () => {
+    clearInterval(livePreviewSweep);
+    return hostingClose ??= Promise.allSettled([
+      ingress?.close(), appComponents?.close(), livePreviewSupervisor?.stopAll('platform_shutdown'),
+    ]).then(results => {
+      const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected');
+      if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Hosted service cleanup failed.');
+    });
+  };
+
   server.on('listening', () => {
+    appHostingReady = Promise.all([appComponents?.restore(), ingress?.restore()]).then(() => {});
+    void appHostingReady.catch(reportUnhandledServerError);
+    livePreviewSweep = setInterval(() => {
+      if (resetting || livePreviewSweepPending) return;
+      livePreviewSweepPending = livePreviewSupervisor?.expireLeases().catch(reportUnhandledServerError)
+        .finally(() => { livePreviewSweepPending = undefined; });
+    }, 60_000);
+    livePreviewSweep.unref();
     void plugins.tick().catch(reportUnhandledServerError);
     pluginTimer = setInterval(() => { void plugins.tick().catch(reportUnhandledServerError); }, 10_000);
     pluginTimer.unref();
     const address = server.address();
+    if (address && typeof address !== 'string') {
+      const urls = summarizePlatformIngress({ host: dependencies.shared.config.host, port: address.port }).urls;
+      localOrigins = [...urls.localUrls, ...urls.lanUrls, ...urls.overlayUrls,
+        `http://127.0.0.1:${address.port}`, `http://localhost:${address.port}`, `http://[::1]:${address.port}`];
+    }
     const runtimeUrl = dependencies.shared.config.runtimeBaseUrl;
     const runtimeHost = typeof runtimeUrl === 'string' && URL.canParse(runtimeUrl)
       ? new URL(runtimeUrl).hostname : '';
@@ -217,6 +306,7 @@ export function createServer(dependencies: ServerDependencies) {
   });
 
   server.on('close', () => {
+    void closeAppHosting().catch(reportUnhandledServerError);
     clearInterval(pluginTimer);
     knowledge.close();
     loops.stopSchedulerLoop();
@@ -228,5 +318,5 @@ export function createServer(dependencies: ServerDependencies) {
   // Resolution means all best-effort passes settled, not that every pass succeeded.
   // Callers with private state can await this before submitting work or cleaning up.
   const startupRecovery = runServerStartupRecoveryPasses(resolvedDependencies).finally(() => { startupSettled = true; });
-  return Object.assign(server, { startupRecovery });
+  return Object.assign(server, { startupRecovery, appHostingReady: () => appHostingReady, closeAppHosting });
 }

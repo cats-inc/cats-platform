@@ -45,6 +45,10 @@ erasure preserves the authenticated workspace; a later cleanup failure reports
 failure and can be retried to finish the remaining erasure. Fresh empty state can
 be created by subsequent use. Existing data formats and normal startup do not
 change; only an explicit reset deletes the additional retained remnants.
+The request guard covers both local and public ingress. Code MCP grants, preview
+servers/leases/logs and pending canvas intents are cleared; preview-stop failures
+are reported and their handles retained for retry. Installed Apps and ingress
+configuration stay in place, while old browser App grants lose their auth session.
 
 ## Release boundaries
 

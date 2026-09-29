@@ -9,10 +9,20 @@ installation to own multiple frontends, services and workers with unified
 management. App-owned API traffic uses ordinary web protocols under
 `/apps/<appId>/`; SDK methods expose Cats host capabilities. One Platform-owned
 public origin/port/tunnel serves Platform, Mobile and all Apps with independent
-authorization and opaque browser sandboxes. A local prototype has Windows fixture
-evidence; the shared-ingress correction is pending. The renderer/SDK slice below
-does not implement the component contract. An App's backend
+authorization and opaque browser sandboxes. The shared-ingress candidate has
+local Platform/Mobile/two-App and Windows Electron evidence in PLAN-115;
+external tunnel/Bot, cross-OS and release gates remain open. The released
+renderer/SDK slice described below predates the component contract. An App's backend
 must not become a separately installed or manually launched user-facing package.
+
+Candidate component frontends receive `catsAppConnection.baseUrl` as a relative
+`/apps/<appId>/` URL plus scoped authorization headers. Resolve API routes
+relative to it, preserving the prefix, and use `credentials: 'omit'`.
+`catsApp.clipboard.writeText(text)` requires `clipboard.write`, a live view grant
+and user activation; it returns success only after the host clipboard write.
+`catsApp.openRemoteAccess()` requires `ui.route` and opens the host's
+`/settings/remote-access` page. These candidate additions do not introduce an
+Ask-domain HTTP SDK, answer deep links or host history synchronization.
 
 Usage is the display name; `cats.usage` remains the stable package ID. The first
 implementation is a renderer-only utility package, not another Platform product.

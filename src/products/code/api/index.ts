@@ -1,3 +1,4 @@
+import type { LivePreviewSupervisor } from '../livePreview/supervisor.js';
 import type { AppConfig } from '../../../config.js';
 import {
   CORE_ARTIFACT_KINDS,
@@ -68,6 +69,8 @@ export interface CodeApiDependencies {
   readEvidenceEvents?: (conversationId: string) => EvidenceEvent[];
   livePreviewStore?: LivePreviewLeaseStore;
   stopLivePreview?: (previewId: string, reason?: string) => Promise<LivePreviewStopResult>;
+  /** Starts supervised previews; the host constructs one when none is injected. */
+  livePreviewSupervisor?: LivePreviewSupervisor;
   now?: () => Date;
 }
 

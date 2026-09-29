@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { createServer as createHttpServer, request as httpRequest } from 'node:http';
 import { loadConfig } from '../build/server/config.js';
 import { createServer } from '../build/server/app/server/index.js';
 import { FileChatStore } from '../build/server/products/chat/state/store.js';
@@ -80,13 +81,16 @@ test('real reset route purges backups and cached transport/activity data, reject
   await activity.append({ id: 'old', catId: 'cat-old', group: 'memory', targetKind: 'memory', targetId: 'old', occurredAt: new Date().toISOString() });
   const gate = createAsyncKeyedGate();
   const eventHub = createChatEventHub();
-  const server = createServer({ shared: { config, runtimeClient: {
+  const desktopKey = 'a'.repeat(64);
+  const server = createServer({ shared: { config, desktopAppsKey: desktopKey, runtimeClient: {
     async getHealth() { return { reachable: false, status: 'unavailable' }; },
   } }, chat: { chatStore: store, mutationGate: gate, companionActivityStore: activity, eventHub,
     telegramRelay: createTelegramRelay({ store: relayStore }) } });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   await server.startupRecovery;
+  await server.appHostingReady();
   t.after(async () => {
+    await server.closeAppHosting();
     await new Promise(resolve => server.close(resolve));
     await rm(home, { recursive: true, force: true });
   });
@@ -97,6 +101,15 @@ test('real reset route purges backups and cached transport/activity data, reject
   const setup = await complete('before@example.test');
   assert.equal(setup.status, 200, await setup.text());
   const cookie = setup.headers.get('set-cookie').split(';')[0];
+  const probe = createHttpServer();
+  await new Promise(resolve => probe.listen(0, '127.0.0.1', resolve));
+  const port = probe.address().port;
+  await new Promise(resolve => probe.close(resolve));
+  const ingressResponse = await fetch(`${url}/api/platform/ingress`, { method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-cats-desktop-apps': desktopKey },
+    body: JSON.stringify({ enabled: true, provider: 'external', listenPort: port, publicOrigin: 'https://reset.example' }) });
+  assert.equal(ingressResponse.status, 200, await ingressResponse.clone().text());
+  const ingressTarget = (await ingressResponse.json()).remoteAccess.target;
   const status = await (await fetch(`${url}/api/auth/status`, { headers: { cookie } })).json();
   const reset = () => fetch(`${url}/api/setup/reset`, { method: 'POST', headers: { cookie, 'x-cats-csrf-token': status.csrfToken } });
   await seed(`${config.chatStatePath}.pre-companion-role.bak`);
@@ -114,6 +127,18 @@ test('real reset route purges backups and cached transport/activity data, reject
   const stream = await fetch(`${url}/api/events/chat`, { headers: { cookie }, signal: controller.signal });
   assert.equal(stream.status, 200);
   const streamText = stream.text();
+  const remoteStream = await new Promise((resolve, reject) => {
+    const request = httpRequest(`${ingressTarget}/api/events/chat`, { headers: { host: 'reset.example', cookie } }, response => {
+      assert.equal(response.statusCode, 200);
+      let text = '';
+      response.setEncoding('utf8');
+      response.on('data', chunk => { text += chunk; });
+      const ended = new Promise(done => response.on('end', () => done(text)));
+      resolve({ response, ended });
+    });
+    request.on('error', reject); request.end();
+  });
+  t.after(() => remoteStream.response.destroy());
   const response = await reset();
   assert.equal(response.status, 200, await response.text());
   assert.equal(relayStore.getProcessedUpdateCount(), 0);
@@ -124,10 +149,10 @@ test('real reset route purges backups and cached transport/activity data, reject
   eventHub.emit({ kind: 'room_updated', channelId: 'new-profile-private-id', timestamp: new Date().toISOString() });
   let streamTimeout;
   try {
-    const text = await Promise.race([streamText, new Promise((_, reject) => {
+    const texts = await Promise.race([Promise.all([streamText, remoteStream.ended]), new Promise((_, reject) => {
       streamTimeout = setTimeout(() => { controller.abort(); reject(new Error('old authenticated stream remains open')); }, 2_000);
     })]);
-    assert.ok(!text.includes('new-profile-private-id'));
+    assert.ok(texts.every(text => !text.includes('new-profile-private-id')));
   } finally { clearTimeout(streamTimeout); }
   relayStore.markProcessedUpdate(202);
   const persistedRelay = JSON.parse(await readFile(path.join(config.platformStateDir, 'chat-state.local.telegram-relay.json'), 'utf8'));

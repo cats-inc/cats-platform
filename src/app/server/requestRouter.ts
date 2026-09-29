@@ -8,6 +8,8 @@ import { createPlatformChildProcessEnv } from '../../shared/platformChildProcess
 import { resolvePlatformPackageRoot } from '../../shared/platformPaths.js';
 import type { ResolvedServerDependencies } from './contracts.js';
 import { routeAppPackageApi } from './appPackageRoutes.js';
+import { hasDesktopAppAuthority } from '../../platform/apps/desktopAuthority.js';
+import { summarizePlatformIngress } from './platformIngressSummary.js';
 import { routePluginApi } from './pluginRoutes.js';
 import { routeMobileAuthApi } from './mobileAuthRoutes.js';
 import { routeMobileManifestApi } from './mobileManifestRoutes.js';
@@ -336,6 +338,10 @@ async function handlePlatformAuthGate(
   method: string,
   dependencies: ResolvedServerDependencies,
 ): Promise<PlatformAuthGateHandlingResult> {
+  if ((url.pathname === '/api/apps' || url.pathname.startsWith('/api/apps/') || url.pathname === '/api/platform/ingress')
+    && hasDesktopAppAuthority(request, dependencies.shared.desktopAppsKey)) {
+    return { handled: false, auth: null };
+  }
   const { auth } = dependencies.shared.config;
   const [core, authStateStatus] = await Promise.all([
     dependencies.shared.coreStore.readCore(),
@@ -429,6 +435,28 @@ export async function routeRequest(
     return;
   }
 
+  if (url.pathname === '/api/platform/ingress' && dependencies.shared.platformIngress) {
+    const ingress = dependencies.shared.platformIngress;
+    const desktop = hasDesktopAppAuthority(request, dependencies.shared.desktopAppsKey);
+    if (method === 'POST') {
+      if (!desktop) { sendJson(response, 403, { error: 'desktop_ingress_management_required' }); return; }
+      try {
+        const chunks: Buffer[] = []; let length = 0;
+        for await (const chunk of request) {
+          length += chunk.length; if (length > 4096) throw new Error('Invalid settings.'); chunks.push(Buffer.from(chunk));
+        }
+        const remoteAccess = await ingress.configure(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+        sendJson(response, 200, { remoteAccess }, { 'cache-control': 'no-store' });
+      } catch { sendJson(response, 400, { error: 'ingress_configuration_failed', message: 'Check the settings and complete Cats sign-in setup before enabling remote access.' }); }
+      return;
+    }
+    if (method !== 'GET') { sendMethodNotAllowed(response, ['GET', 'POST']); return; }
+    const { target, legacySources, ...status } = ingress.snapshot();
+    sendJson(response, 200, { ...summarizePlatformIngress({ host: dependencies.shared.config.host, port: dependencies.shared.config.port }),
+      remoteAccess: { ...status, ...(desktop ? { target, legacySources } : {}) } }, { 'cache-control': 'no-store' });
+    return;
+  }
+
   const context = {
     request,
     response,
@@ -511,6 +539,9 @@ export async function routeRequest(
   const appPackageContext = {
     ...context,
     dependencies: {
+      appComponents: dependencies.shared.appComponents,
+      desktopAppsKey: dependencies.shared.desktopAppsKey,
+      authStore: dependencies.shared.authStore,
       config: dependencies.shared.config,
       runtimeClient: dependencies.shared.runtimeClient,
       coreStore: dependencies.shared.coreStore,

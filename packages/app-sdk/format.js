@@ -40,7 +40,7 @@ export function decodeAppPackage(bytes, expected) {
   const digest = sha256(bytes);
   if (expected && (!SHA256_PATTERN.test(expected.sha256) || digest !== expected.sha256)) throw new Error('App package SHA-256 mismatch.');
   const envelope = JSON.parse(gunzipSync(bytes, { maxOutputLength: MAX_EXPANDED_BYTES }).toString('utf8'));
-  if (!isPlainObject(envelope) || envelope.schemaVersion !== 1 || envelope.kind !== 'cats-app'
+  if (!isPlainObject(envelope) || ![1, 2].includes(envelope.schemaVersion) || envelope.kind !== 'cats-app'
     || !isPlainObject(envelope.manifest) || !Array.isArray(envelope.files)) throw new Error('Invalid Cats App v1 archive.');
   const { manifest } = envelope;
   assertAppIdentity(manifest.id, manifest.version);
@@ -65,7 +65,10 @@ export function decodeAppPackage(bytes, expected) {
     if (data.length > MAX_APP_FILE_BYTES || data.toString('base64') !== file.base64) throw new Error('Invalid app file payload.');
     return { path: file.path, data };
   });
-  if (typeof manifest.entrypoints?.renderer !== 'string'
+  if (envelope.schemaVersion === 2) {
+    if (!isPlainObject(manifest.components) || manifest.components.schemaVersion !== 1
+      || manifest.entrypoints !== undefined) throw new Error('v2 archives require a components deployment without legacy entrypoints.');
+  } else if (manifest.components !== undefined || typeof manifest.entrypoints?.renderer !== 'string'
     || !files.some((file) => file.path === manifest.entrypoints.renderer)
     || !manifest.entrypoints.renderer.endsWith('.html')
     || manifest.entrypoints.server || manifest.entrypoints.worker) throw new Error('v1 packages require a self-contained HTML renderer; server/worker execution is unsupported.');

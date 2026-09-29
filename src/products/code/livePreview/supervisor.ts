@@ -135,7 +135,13 @@ export class LivePreviewSupervisor {
 
     try {
       const handle = await this.processAdapter.spawn(
-        buildSpawnInput(validation.profile, validation.request.workspace.rootPath, port, origin),
+        buildSpawnInput(
+          validation.profile,
+          validation.request.workspace.rootPath,
+          validation.request.artifactDirectory ?? validation.request.workspace.rootPath,
+          port,
+          origin,
+        ),
       );
       managed.handle = handle;
       lease.processId = handle.processId;
@@ -202,6 +208,41 @@ export class LivePreviewSupervisor {
 
     this.markStopped(managed, 'stopped', reason);
     return { status: 'accepted', previewId, stopReason: reason };
+  }
+
+  /**
+   * Record the artifact that shows this lease. Artifact Canvas grants the
+   * scripted profile only to the artifact a ready lease names.
+   */
+  attachArtifact(previewId: string, artifactId: string): LivePreviewLease | null {
+    const managed = this.previews.get(previewId);
+    if (!managed || managed.lease.status !== 'ready') return null;
+    managed.lease.artifactId = artifactId;
+    return managed.lease;
+  }
+
+  /** Stop every active preview, e.g. on Platform shutdown (SPEC-123 CAP-13). */
+  async stopAll(reason: string): Promise<void> {
+    await Promise.all(
+      this.activePreviews().map((managed) => this.stop(managed.lease.previewId, reason)),
+    );
+  }
+
+  /** The host excludes starts/stops and the expiry sweep while resetting. */
+  async clearForReset(): Promise<void> {
+    // Retry even failed/stopping handles: stopAll() is only best-effort and can
+    // otherwise leave a server serving files after its lease has disappeared.
+    for (const managed of this.previews.values()) {
+      if (managed.handle) {
+        await managed.handle.stop({ graceMs: managed.profile.stop.graceMs,
+          killProcessTree: managed.profile.stop.killProcessTree });
+        managed.handle = null;
+      }
+      this.markStopped(managed, 'stopped', 'platform_reset');
+      managed.logs = '';
+    }
+    this.previews.clear();
+    this.leasedPorts.clear();
   }
 
   async expireLeases(now: Date = this.now()): Promise<string[]> {
@@ -332,11 +373,12 @@ export class LivePreviewSupervisor {
 function buildSpawnInput(
   profile: LivePreviewCommandProfile,
   workspaceRoot: string,
+  artifactDirectory: string,
   port: number,
   origin: string,
 ): LivePreviewProcessSpawnInput {
   const replacements = {
-    artifactDirectory: workspaceRoot,
+    artifactDirectory,
     port: String(port),
     workspaceRoot,
   };

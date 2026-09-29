@@ -365,9 +365,39 @@ export class FileChatStore implements ChatStore {
     }
   }
 
+  /**
+   * Reads never write. A snapshot that needs a write-back (a missing or corrupt
+   * file, a setup repair, the ADR-124 migration) is re-read under the mutation
+   * lock, so that write-back can never land after, and revert, a concurrent save.
+   */
   private async readPersistedSnapshot(): Promise<PersistedChatSnapshot> {
     await this.mutationQueue;
-    return this.readPersistedSnapshotUnsafe();
+    const clean = await this.tryReadCleanSnapshot();
+    if (clean) {
+      // An unlocked read may predate a save that already refreshed the cache.
+      if (!this.lastKnownSnapshot) {
+        this.cacheSnapshot(clean);
+      }
+      return clean;
+    }
+    return this.runExclusive(() => this.readPersistedSnapshotUnsafe());
+  }
+
+  /** The primary snapshot as persisted, or null when reading it needs a write. */
+  private async tryReadCleanSnapshot(): Promise<PersistedChatSnapshot | null> {
+    try {
+      const raw = await readFile(this.filePath, 'utf-8');
+      if (!raw.trim()) {
+        return null;
+      }
+      const snapshot = normalizePersistedChatSnapshot(JSON.parse(raw) as unknown);
+      return repairPersistedSetupCompletion(snapshot) === snapshot
+        && migrateCompanionSkillProfiles(snapshot) === null
+        ? snapshot
+        : null;
+    } catch {
+      return null;
+    }
   }
 
   async read(): Promise<ChatState> {

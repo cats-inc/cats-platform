@@ -11,6 +11,9 @@
   caches and polling bindings, closes authenticated event streams, pauses background
   producers, and refuses to reset during active work. A bounded reset journal retains
   attachment/evidence cleanup targets across interrupted erasure and restart.
+  The shared local/public ingress guard also revokes Code MCP grants, stops Code
+  previews and clears their leases/logs and pending canvas intents. Failed preview
+  cleanup remains retryable instead of silently forgetting a running server.
   Missing files are harmless; cleanup failures are reported for retry rather than
   reported as success. Both UI locales list what remains: host preferences/configuration,
   installed Apps/plugins and their data, Desktop/Runtime data, provider CLI logins
@@ -19,6 +22,13 @@
   For existing installs this fixes incomplete erasure after an explicit reset;
   ordinary startup and persisted formats do not change. No migration, version bump
   or publication is included. Fresh empty stores may be created by subsequent use.
+- **New app icon.** The Desktop icon is now a front-facing orange tabby on a deep-navy
+  rounded tile, replacing the light-on-dark cat silhouette in a circle. It applies to the
+  Windows installer and taskbar, the macOS Dock (`.icns` now follows Apple's icon grid
+  inset), Linux desktop entries, the colour tray icon, the macOS menu-bar template (a
+  silhouette with whiskers and knocked-out eyes, generated from its own SVG), the
+  renderer favicon and the Catlas guide-cat avatar. Existing installs pick it up with the
+  next update; no data or settings change.
 - **.NET runtime notices ship with the Windows voice helper.** Packaging now copies the
   self-contained .NET runtime pack's `LICENSE.TXT` and `THIRD-PARTY-NOTICES.TXT`, resolved
   from the exact version in the published `deps.json`, into `native/windows-stt/licenses/`
