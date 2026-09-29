@@ -80,15 +80,7 @@ import { MemoryChatStore } from '../../products/chat/state/store.js';
 import { createAsyncKeyedGate } from '../../products/chat/shared/asyncControl.js';
 import { createChatTaskExecutionLocator } from '../../products/chat/state/taskExecutionLocator.js';
 import { createChatTelegramRoomBridge } from '../../products/chat/state/telegramBridgeAdapter.js';
-import {
-  registerCodeArtifactRuntimeInvocationEnrichers,
-} from '../../products/code/state/runtimeArtifactTooling.js';
-import {
-  registerCodeArtifactRuntimeAssistantEffectProcessor,
-} from '../../products/code/state/runtimeArtifactExecution.js';
-import {
-  registerCodeArtifactRuntimeFinalizationGate,
-} from '../../products/code/state/sessionFinalization.js';
+import { registerCodeAgentToolsInvocationEnricher } from '../../products/code/agentTools/enricher.js';
 import type { AppConfig } from '../../config.js';
 import { createCodeCatlasHelpService } from '../../products/code/state/catlasHelp.js';
 import { createCodeSessionOperationService } from '../../products/code/state/codeSessionOperation.js';
@@ -215,13 +207,11 @@ export function resolveServerDependencies(
     },
   };
 
-  registerCodeArtifactRuntimeInvocationEnrichers();
-  registerCodeArtifactRuntimeAssistantEffectProcessor();
+  registerCodeAgentToolsInvocationEnricher();
   const livePreviewSupervisor = dependencies.code?.livePreviewSupervisor
     ?? createCodeLivePreviewSupervisor(
       dependencies.shared.config.codeLivePreview ?? DEFAULT_LIVE_PREVIEW_CONFIG,
     );
-  registerCodeArtifactRuntimeFinalizationGate();
 
   const sharedCoreStore = dependencies.shared.coreStore ?? dependencies.chat.chatStore;
   const authStore = dependencies.shared.authStore

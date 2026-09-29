@@ -132,19 +132,31 @@ call a Platform-hosted MCP tool and receive its result.
     `declare_artifact`.
   - https URLs become agent-declared artifacts, which stay `static`.
   - `artifactId` re-shows through the shared projection, Activity and intent.
-- [ ] A2b: Implement the rest of `show_in_canvas` (`path` / `url` / `artifactId`),
-  `clear_canvas` and `declare_artifact` by calling the existing materialization,
-  projection, Activity and render-intent functions. Static-lease and dev-preview
-  artifacts use the supervisor producer identity, with the Cat recorded as the
-  requester (SPEC-123 CAP-11). In the same PR, retire `runtimeToolCatalog`, the
-  exact-name `tool_use` observation processors, the same-turn `declarationId`
-  index and the `artifactClaims[]` finalization gate (`sessionFinalization.ts`)
-  that is fed only by that path. Before deleting, confirm that no adapter emits
-  claims, and update the tests.
-- [ ] A3: Update the Code enricher. Send `mcpServers` on create, on every send
-  and on resume after a Runtime restart, for providers that report support. Add
-  the SPEC-123 policy text only when the session's latest report is
-  `delivered`. Update the runtime pin.
+- [x] A2b: Retired the observation path in the same change:
+  - the runtime tool catalog and onboarding block (`runtimeArtifactTooling.ts`)
+  - the exact-name `tool_use` processors and the same-turn `declarationId`
+    index (`runtimeArtifactExecution.ts`)
+  - the `artifactClaims[]` finalization gate (`sessionFinalization.ts`), which
+    no adapter fed
+
+  The generic platform enricher, effect-processor and finalization-gate
+  registries stay as extension points. Static-lease artifacts carry the
+  supervisor producer identity. Grants do not yet carry the Cat actor
+  (`actorId: null`), so Activity records no requester until the enricher can
+  see the Cat.
+- [x] A3: A secret-free enricher marker (`context.metadata.codeAgentTools`)
+  identifies Code conversations. The Code runtime-client wrapper (inside the
+  supervision boundary) handles grants and descriptors:
+  - It issues the grant before create, binds it to the session and revokes it
+    on close or delete.
+  - It sends `mcpServers` on create, send and resume, and re-issues the grant
+    on send after a Platform restart.
+  - It adds `CODE_AGENT_PREVIEW_POLICY` to a turn only while the latest report
+    is `delivered`. The same text is the `cats` server's MCP `instructions`.
+
+  The Desktop runtime pin still has to move to a Runtime build that contains
+  #130/#132/#134 at the next Desktop release; this is a release boundary, not
+  a code change.
 
 ### P3: Canvas beside the Code conversation (M1)
 
