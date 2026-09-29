@@ -2,7 +2,10 @@
 
 ## Status
 
-Architecture correction documented, 2026-09-29; executable work not started.
+Shared-ingress correction documented, 2026-09-29; implementation pending.
+The unpublished `feat/app-components` local prototype passed focused Windows
+fixtures and installed Ask Electron acceptance. Its per-App origins/tunnels do
+not satisfy the required Platform/Mobile/App shared ingress.
 [ADR-125](../decisions/125-own-multiple-frontends-and-backends-in-one-app.md) and
 [SPEC-122](../specs/SPEC-122-app-components-and-private-services.md) govern this work.
 Coordinate with [PLAN-112](PLAN-112-app-market-and-lifecycle.md) for the same App
@@ -12,41 +15,107 @@ registry/lifecycle machinery, not a second installer.
 
 - [x] Record one App with multiple frontends/backends and unified management.
 - [x] Separate ordinary App-owned service requests from Cats host SDK capabilities.
-- [ ] Freeze versioned manifest collections, dependency graph, route declarations,
+- [x] Freeze versioned manifest collections, dependency graph, route declarations,
   component runtime/trust, bounds, lifecycle and migration hooks.
-- [ ] Freeze isolated serving origins, private service discovery/auth and external
-  ingress policy. Keep host credentials outside App frontend authority.
-- [ ] Map current manifest/registry state to the new contract; record compatibility
+- [x] Record the initial private service discovery/auth prototype.
+- [x] Amend ADR/SPEC for shared Platform/Mobile/App ingress and opaque App sandboxes.
+- [ ] Implement and validate the corrected serving/auth contract in P4 below.
+- [x] Map current manifest/registry state to the new contract; record compatibility
   and executable upgrade/recovery fixtures before changing persistence.
 
 ## P1 — Install and supervise one complete App
 
-- [ ] Extend validation/build artifacts and host install transaction for all
+- [x] Extend validation/build artifacts and host install transaction for all
   components, with no install-time source builds or separate backend product.
-- [ ] Implement dependency-aware readiness, bounded supervision, generation
-  revocation and coordinated stop/disable/remove/repair.
-- [ ] Implement data migration/backup/activation recovery with PLAN-112.
+- [x] Implement dependency-aware readiness, bounded supervision, generation
+  revocation and coordinated stop/disable/remove; same-version file repair remains
+  a separate PLAN-112 follow-up.
+- [x] Implement data migration/backup/activation recovery with PLAN-112.
 
-## P2 — Native frontend/service communication
+## P2 — Initial local frontend/service communication (historical prototype)
 
-- [ ] Serve multiple frontends on the installation's isolated origin; route
+- [x] Serve multiple frontends on the installation's isolated origin; route
   ordinary HTTP and declared streams to its services without App-domain SDK APIs.
 - [ ] Verify per-App/owner identity, backend discovery, cross-origin denial,
   stale-generation revocation, and host-capability permission boundaries.
-- [ ] Complete two-frontend/two-service/worker fixture acceptance. A one-page,
+- [x] Complete two-frontend/two-service/worker fixture acceptance. A one-page,
   one-service Ask prototype alone does not validate general cardinality.
 
 ## P3 — Ask consumer and external ingress
 
-- [ ] cats-apps packages Ask UI, question storage/API and MCP together, depending
-  on the published/versioned host contract rather than sibling source imports.
-- [ ] Select and implement integrated public ingress for the local Ask endpoint;
-  show connection setup/status inside Ask. No separate backend installation.
+- [x] cats-apps packages Ask UI, question storage/API and MCP together, consuming
+  a built/versioned candidate SDK tarball without sibling source imports. The
+  required host contract is not published; release compatibility remains a gate.
+- [x] Build a per-App ngrok prototype with connection setup/status inside Ask.
+  This approach is superseded by P4; it is not shared-ingress acceptance.
 - [ ] Verify real Bot read/submit with request correlation and reopening/Copy.
   Keep manual Bot initiation, unavailable save timestamps and unverified video
   understanding explicit. Local host shutdown still bounds local availability.
 
+## P4 — Shared Platform ingress (next implementation sequence)
+
+1. [ ] Replace per-App ingress ownership with the Platform router and one host
+   remote-access configuration. Extend existing ingress diagnostics/settings;
+   keep internal component ports private. Define exact settings/auth bootstrap
+   fields before coding, including remote owner-bound view launch.
+2. [ ] Mount `/apps/<appId>/` launch/UI/API/MCP routes; enforce canonical path
+   validation, generation binding and auth-specific dispatch. Generate reachable
+   base URLs from trusted host settings; preserve query/stream/MCP semantics.
+3. [ ] Replace same-origin iframe permission with the opaque sandbox, HTTP CSP,
+   grant-based ordinary fetch and frame-bound bridge from SPEC-122. Validate
+   Platform/other-App isolation and clipboard in actual browser/Electron.
+4. [ ] Move tunnel lifecycle to Platform. Disable/update/remove revokes only that
+   App; implement validated/backed-up/atomic migration of prototype settings and
+   reject unresolved account/domain conflicts without changing data.
+5. [ ] Coordinate Ask tutorial/status/connector URL changes with cats-apps
+   PLAN-005 A4a; remove Ask-specific ngrok token setup. Keep manual Bot initiation
+   and the existing question/receipt schema.
+6. [ ] Pass one-origin/port/tunnel Platform + remote Mobile + two-App acceptance,
+   including separate MCP paths, revocation, auth, streaming and restart tests.
+   Only then repeat the actual Ask package and real Bot round trip. Track other
+   OS execution separately; do not infer it from Windows fixtures.
+
 ## Validation and delivery
+
+Shared-ingress documentation checkpoint: the user requested documents first.
+P4 above is the next implementation sequence. No executable changes, user config
+changes, new application builds/tests or live tunnel activity are part of this
+correction. Historical counts below are evidence for the prior local prototype.
+
+Documentation validation: Apps `check:docs` passed (43 Markdown files, 161 local
+targets; 39 unavailable sibling links skipped). The mapped check across these
+36 changed documents resolved all 1,244 local/sibling targets; both diffs passed
+whitespace checks. Independent reviews found an ADR-126 ingress conflict,
+overstated external-account/deletion-policy claims and editing residue; corrected
+and rechecked with no remaining blocker. This evidence covers documents only.
+
+2026-09-29 historical local-prototype implementation checkpoint (before P4):
+
+- Focused suites: component lifecycle/public SDK 13; management routes/credential
+  filtering 11; archive/conformance/Desktop packaging 56; ingress/authority/legacy
+  renderer 8. All passed, using isolated state.
+- Server/Desktop/renderer compilation and new authority/ingress test typecheck
+  passed. Full test-project typecheck found missing mobile packages in this
+  worktree; full CI/mobile and macOS/Linux native execution were not run.
+- Two-frontends/two-services/worker fixture covers direct HTTP, cross-origin and
+  wrong-owner denial, disable revocation, retained reinstall, readiness failure,
+  failed/successful migration, bundled install, repeat host startup and shared
+  concurrent shutdown completion.
+- Ask archive `9e362b428837928457bbb6b3d0aa85e645fa344625d16d7cfe61c53c4933b6f6`
+  passed Windows Electron AppRendererSurface + main-frame IPC installation,
+  create, close, MCP fetch/return, reopen and actual clipboard paste. Fixture-only
+  Chinese/multiline/link content; literal script text stayed inert.
+- Independent reviews fixed retained-data/lifecycle, environment credential,
+  close-race, native packaging and App concurrency/UI issues; final checks found
+  no remaining blocker for that prototype. This is not review of P4. Stream
+  interruption and the two-restart limit also passed real process tests.
+  Windows x64 ngrok native loading and isolated-prefix
+  Windows x64/ARM64 dependency preparation passed. External tunnel/Bot and
+  non-Windows native execution remain separate acceptance.
+- No release, user-profile installation, live X call or code commit/push.
+  Follow the compatibility boundary in SPEC-122 before publication.
+- Final mapped link check: all 441 targets in modified documents across both
+  worktrees exist; both diffs pass whitespace checks.
 
 Documentation-only work uses diff/link checks and independent review. Executable
 changes require focused package, process, routing, migration and host tests from

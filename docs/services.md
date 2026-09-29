@@ -28,6 +28,13 @@ no fixed service port or real developer profile is used.
 
 ## Planned Dynamic Port Ranges
 
+[SPEC-122](specs/SPEC-122-app-components-and-private-services.md) requires one
+Platform-owned external listener/tunnel for Platform UI/APIs, remote Mobile and
+all Apps. Apps mount at `/apps/<appId>/`; services may retain private dynamic
+loopback ports/IPC. No fixed public port or tunnel is reserved per App. Disabling
+an App revokes its routes only. The unpublished local prototype's per-App
+gateways/ngrok workers must be replaced; shared ingress is not implemented.
+
 | Service Name | Port Range | Protocol | Status | Description |
 |--------------|------------|----------|--------|-------------|
 | `Cats Code` live previews | 47100-47199 | TCP | Planned / disabled by default | Reserved candidate range for supervised loopback-only preview child processes under SPEC-108 / PLAN-097. No process spawning is enabled until the live-preview supervisor approval gate lands. |

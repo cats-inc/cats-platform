@@ -8,6 +8,16 @@ This document outlines security practices for developers and AI agents working o
 
 ## Sensitive Data Handling
 
+Planned shared App ingress must follow
+[SPEC-122](specs/SPEC-122-app-components-and-private-services.md): URL paths do
+not isolate browser origins. App HTML needs an opaque iframe and response-level
+CSP sandbox, owner/App/generation grants, credential-free fetch, bounded CORS
+and a frame-bound host bridge. Platform cookies/management secrets stay outside
+component requests; App response cookies cannot acquire host authority. MCP
+bearers do not authorize private App APIs or Platform. Trusted native components
+are not OS-sandboxed. These gates remain open; per-port prototype tests are not
+shared-origin security evidence.
+
 ### Never Commit
 
 - API keys and secrets

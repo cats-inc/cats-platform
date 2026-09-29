@@ -4,8 +4,8 @@
   — proposed, 2026-09-29; Platform-hosted `cats` MCP server delivered by
   runtime session descriptors; retires the undelivered tool catalog; not implemented.
 - [ADR-125: Multiple frontends and backends in one App](125-own-multiple-frontends-and-backends-in-one-app.md)
-  — accepted product boundary, 2026-09-29; unified installation/lifecycle and
-  App-owned direct API traffic; execution not implemented.
+  — accepted and amended, 2026-09-29; complete Apps, direct internal HTTP and
+  shared Platform/Mobile/App ingress. Shared ingress remains unimplemented.
 
 > This directory contains Architecture Decision Records for documenting significant technical decisions.
 

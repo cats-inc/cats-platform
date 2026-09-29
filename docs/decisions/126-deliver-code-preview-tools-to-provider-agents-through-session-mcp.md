@@ -97,12 +97,13 @@ plugins ([SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md)).
 
 **Governing rule: an App hosts its MCP server independently.** The server runs
 in the App's own service component, with its own SDK and version, its own
-credentials and its own ingress inside the App lifecycle (ADR-125 items 3, 5
-and 6). External clients such as Grok Bot connect to it directly. Runtime is
-not on that path (SPEC-004), and Platform does not terminate, guard or
-interpret App MCP traffic. Platform's role is limited to what SPEC-122 assigns:
-installation, supervision, isolation and lifecycle. Nothing in this ADR
-changes that.
+MCP connection credentials (ADR-125 items 3, 5 and 6). Under the shared-ingress
+amendment, Platform mounts `/apps/<appId>/mcp` on the same listener/tunnel as
+Platform, Mobile and other Apps. It transparently routes traffic and enforces
+the hosting boundary; the App validates MCP connection/operation credentials
+and interprets its domain tools. Runtime and Platform's host-internal MCP
+module are not on that path. SPEC-122 assigns installation, supervision,
+isolation, route authorization and shared ingress lifecycle to Platform.
 
 **Shared (configuration and conventions only, not code or traffic):**
 
@@ -131,11 +132,13 @@ changes that.
 1. **Hosting and ownership.** App MCP servers, handlers, API, data and external
    credentials belong to the App (ADR-125, cats-apps ADR-003 item 5, SPEC-004
    FR-10). This ADR's session grant store and `src/platform/mcp/` serve
-   host-owned servers only. Platform does not issue or verify App credentials.
+   host-owned servers only. App MCP connection credentials remain App-owned;
+   Platform separately issues/verifies frontend view grants under SPEC-122.
 2. **Direction and audience.** A Cat session connects outbound and locally to
    servers it was configured with; its threat model is loopback. External
-   clients reach App endpoints inbound over public ingress that the App lifecycle
-   manages. The two paths are not merged, and neither passes through Runtime.
+   clients reach App endpoints inbound over Platform-managed shared ingress.
+   App lifecycle revokes its own routes without stopping that ingress. Session
+   MCP and App MCP retain separate handlers/grants; neither passes through Runtime.
 3. **Runtime's own `/mcp` facade.** This host/orchestrator surface, proxied at
    `/api/runtime/mcp`, is never injected into Cat sessions and never exposed as
    an App public entry.

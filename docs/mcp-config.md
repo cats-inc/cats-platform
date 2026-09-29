@@ -18,10 +18,13 @@ baseline, never code or a traffic path.
   way later. Planned; not implemented.
 - **App-hosted servers for external clients (inbound, public).** An App such as
   Ask hosts its MCP server independently in its own service component, with its
-  own SDK, credentials and ingress inside the App lifecycle
+  own SDK and credentials. Platform mounts its declared endpoint at
+  `/apps/<appId>/mcp` on the shared Platform/Mobile/App ingress; App lifecycle
+  controls its routes, while Platform controls the tunnel
   ([SPEC-122](specs/SPEC-122-app-components-and-private-services.md)). External
-  clients connect directly. Neither Runtime nor Platform's host-internal MCP
-  module is on this path. Planned; not implemented.
+  clients reach the App handler through Platform's transparent router. Neither
+  Runtime nor Platform's host-internal MCP module handles its domain tools.
+  Shared ingress is planned; a separate local prototype is unpublished.
 - **Runtime's own `/mcp` facade (host/orchestrator).** This guide covers it
   below. It is proxied at `/api/runtime/mcp`. It is never injected into Cat
   sessions and never exposed as an App public entry.

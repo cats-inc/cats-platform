@@ -27,12 +27,16 @@ same engine and provenance model.
 
 The accepted complete-App model in [ADR-125](decisions/125-own-multiple-frontends-and-backends-in-one-app.md)
 allows multiple frontends/services/workers within one installation and release.
-Apps own their internal APIs and data schemas; Platform supplies isolated origins,
-direct HTTP/stream routing, supervision and unified lifecycle. The SDK provides
+Apps own their internal APIs and data schemas; Platform supplies sandbox isolation,
+path-routed HTTP/streams, supervision and unified lifecycle. Platform, remote
+Mobile and all Apps share one public origin/port/tunnel, with `/apps/<appId>/`
+mounts and distinct scoped authentication. Path prefixes are not browser isolation. The SDK provides
 Cats host capabilities rather than mandatory App-domain request wrappers.
 [SPEC-122](specs/SPEC-122-app-components-and-private-services.md) records requirements
 and [PLAN-115](plans/PLAN-115-app-components-and-private-services.md) the implementation
-sequence. The current renderer-only execution below remains the delivered baseline.
+sequence. Shared ingress is pending; a local per-App origin/tunnel prototype has
+Windows fixture evidence only. Renderer-only execution below remains the delivered
+baseline on main; no component release is implied.
 
 `cats-apps` owns official utility source and versioned build artifacts. This
 repository keeps the App manifest/SDK, install registry, permission enforcement,

@@ -674,7 +674,12 @@ Current decision:
 
 - trusted LAN binds may use `CATS_HOST=0.0.0.0` for self-hosted/dev web
 - Tailscale/ngrok should target the local `cats-platform` port, not the runtime
-- a dedicated `CATS_PUBLIC_BASE_URL` is not required in the current slice
+- the App component extension also targets this same Platform listener: one
+  public origin/HTTPS port/tunnel serves Platform, Mobile and `/apps/<appId>/`
+  routes. Per-App tunnels are superseded; shared routing/auth/sandbox and trusted
+  public URL configuration are planned in
+  [SPEC-122](specs/SPEC-122-app-components-and-private-services.md), not yet delivered
+- a dedicated `CATS_PUBLIC_BASE_URL` is not required in the existing browser slice
   because browser-facing runtime/recovery links are same-origin relative paths
 - this remains a trusted operator workflow, not a public-internet deployment
 - `GET /api/platform/ingress` exposes the current bind mode plus candidate

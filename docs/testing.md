@@ -1,5 +1,13 @@
 # Testing Strategy
 
+For the planned shared App ingress, follow
+[SPEC-122 acceptance](specs/SPEC-122-app-components-and-private-services.md#acceptance)
+and [PLAN-115 P4](plans/PLAN-115-app-components-and-private-services.md#p4--shared-platform-ingress-next-implementation-sequence).
+Require a remote client plus Platform/Mobile and two Apps/MCP paths through one
+origin/port/tunnel, cross-App/Platform auth denial, App-scoped revocation and real
+opaque-sandbox Copy. The historical local per-App Windows fixture does not pass
+these gates. Documentation-only changes use diff/link checks, no product builds.
+
 > Testing approach, standards, and procedures for `Cats`.
 
 ## Overview

@@ -4,8 +4,8 @@
   — planning only; M1 calculator (static), M2 pomodoro (Vite), M3 Claude/Codex
   behavioral acceptance, M4 viewer/provider breadth.
 - [PLAN-115: App components and private services](PLAN-115-app-components-and-private-services.md)
-  — boundary documented; component hosting, direct communication and complete
-  Ask package acceptance remain implementation work.
+  — local prototype fixtures passed; P4 shared Platform/Mobile/App ingress,
+  sandbox and remote acceptance are the next implementation phase.
 
 > This directory contains implementation plans that define *how* to build features.
 

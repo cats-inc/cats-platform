@@ -6,9 +6,12 @@
 [SPEC-122](specs/SPEC-122-app-components-and-private-services.md), and
 [PLAN-115](plans/PLAN-115-app-components-and-private-services.md) require one App
 installation to own multiple frontends, services and workers with unified
-management. App-owned API traffic uses ordinary web protocols on an isolated
-application origin; SDK methods expose Cats host capabilities. This extension
-is not implemented by the renderer/SDK slice described below. An App's backend
+management. App-owned API traffic uses ordinary web protocols under
+`/apps/<appId>/`; SDK methods expose Cats host capabilities. One Platform-owned
+public origin/port/tunnel serves Platform, Mobile and all Apps with independent
+authorization and opaque browser sandboxes. A local prototype has Windows fixture
+evidence; the shared-ingress correction is pending. The renderer/SDK slice below
+does not implement the component contract. An App's backend
 must not become a separately installed or manually launched user-facing package.
 
 Usage is the display name; `cats.usage` remains the stable package ID. The first

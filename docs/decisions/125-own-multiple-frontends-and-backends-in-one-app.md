@@ -2,8 +2,9 @@
 
 ## Status
 
-Accepted product boundary, 2026-09-29. Execution and manifest changes are not
-implemented. [SPEC-122](../specs/SPEC-122-app-components-and-private-services.md)
+Accepted product boundary, amended 2026-09-29 for one shared Platform ingress.
+A local component prototype exists in an unpublished worktree; shared ingress
+and remote App access are not implemented. [SPEC-122](../specs/SPEC-122-app-components-and-private-services.md)
 and [PLAN-115](../plans/PLAN-115-app-components-and-private-services.md) track delivery.
 
 ## Context
@@ -24,7 +25,7 @@ and unsupported server declarations are implementation limits, not the App model
    Users do not install a companion backend package or run a server command to
    use an installed App. Component diagnostics may appear in advanced details.
 3. App frontends call their App's declared services using ordinary web protocols.
-   Platform supplies an isolated application origin, routing and access control;
+   Platform supplies sandbox isolation, path routing and access control;
    it does not define or interpret each App's business API. Relative URLs or
    deployment-injected service URLs must work without App SDK request wrappers.
    A transparent reverse proxy is an infrastructure detail, not a domain API.
@@ -37,11 +38,16 @@ and unsupported server declarations are implementation limits, not the App model
    identity, process supervision, route binding and lifecycle transactions.
    Runtime owns provider execution and genuinely shared execution primitives;
    App-specific persistence or MCP handlers do not automatically belong there.
-6. An App may expose a declared backend endpoint, including MCP, to an external
-   client through configured ingress. Public exposure and connection credentials
-   are scoped to that App and endpoint. They cannot expose the host or Runtime
-   tool surface by implication. Ingress operation is integrated into the App's
-   lifecycle and connection UX, not a separately installed user-facing App.
+6. Platform UI/APIs, remote Cats Mobile access and every App share one configured
+   public origin, HTTPS port and tunnel. Platform owns the listener/router and
+   tunnel lifecycle. App mounts live under `/apps/<appId>/`; internal components
+   may use dynamic loopback ports or IPC without consuming public endpoints.
+   App disable/update/removal revokes only its routes and grants, not the shared
+   ingress. Users configure remote access once in Platform; an App shows shared
+   readiness and its own endpoint rather than managing another tunnel.
+   Declared App MCP routes use App connection credentials; Platform/Mobile and
+   private App APIs retain their respective authentication. Sharing a listener
+   grants no cross-App, Platform management or Runtime tool authority.
 7. Apps remain independently versioned under ADR-121. Frontend/backend components
    activate as one coherent release. Failed updates preserve recoverable data
    and the last coherent installation; rollback must respect data-schema support.
@@ -51,6 +57,17 @@ hosting is a separate deployment option with explicit availability/data terms;
 installing a local package does not provision an unspecified cloud service.
 
 ## Consequences
+
+The amendment extends [ADR-074](074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels.md):
+tunnels target Platform, including App routes. The initial per-App ngrok worker
+and separate renderer ports are prototype evidence, not the delivery architecture.
+Path prefixes do not isolate browser origins. SPEC-122 requires opaque App
+sandboxes, scoped view grants and an authenticated host bridge before serving
+App documents through the shared origin. The implementation plan reopens these
+gates; existing local Copy tests do not validate the new sandbox.
+
+The stable App mount is infrastructure routing. Per-answer deep links and host
+back/forward synchronization remain outside the Ask MVP.
 
 - Ask ships its UI, question API, storage and MCP as one `cats.ask` package.
 - The current single-renderer schema/loader and no-network iframe need deliberate

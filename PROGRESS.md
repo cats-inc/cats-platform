@@ -4,6 +4,13 @@
 
 ## Current Status
 
+Shared App ingress (2026-09-29): Platform, remote Cats Mobile and every App
+must share one public origin/HTTPS port/tunnel, with `/apps/<appId>/` routing.
+The local component/Ask prototype passed isolated Windows fixtures but uses
+per-App origins/tunnels. Shared routing, opaque sandbox and remote acceptance
+are pending; see [PLAN-115](docs/plans/PLAN-115-app-components-and-private-services.md).
+This is a documentation correction; no component code or release is delivered.
+
 Studio (2026-09-28): implemented SDK 1.3 and the scoped single-image host boundary.
 App/Core jobs, retained images, account/package grants, duplicate suppression,
 offline reads and cancellation passed isolated service/browser checks. Independent

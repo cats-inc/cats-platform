@@ -4,6 +4,14 @@
 
 ## Overview
 
+Planned component extension: `/apps/<appId>/` mounts launch/UI, private API and
+declared MCP routes on the same ingress as Platform/Mobile APIs. App API requests
+use ordinary HTTP with scoped view grants; MCP uses App connection credentials.
+Neither token authorizes Platform management. Remote launch must receive reachable
+URLs; install/update/remove stays Desktop-only. Route/auth/bootstrap requirements
+are in [SPEC-122](specs/SPEC-122-app-components-and-private-services.md); exact new
+bootstrap fields and implementation remain pending.
+
 The current Phase 2 API provides:
 
 - service and runtime reachability health

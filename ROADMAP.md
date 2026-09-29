@@ -23,6 +23,12 @@ contracts.
 - [ ] Later: introduce a remote App Catalog and independently installable updates
       when the package/host contract is stable.
 
+- [x] Document complete Apps and one shared Platform/Mobile/App ingress.
+- [x] Validate the unpublished local component/Ask prototype on Windows fixtures.
+- [ ] Replace per-App ingress/origins with shared routing and opaque sandboxes;
+      pass remote Mobile + two-App/MCP, revocation, Copy and live Bot acceptance
+      under [PLAN-115](docs/plans/PLAN-115-app-components-and-private-services.md).
+
 Details: [SPEC-115](./docs/specs/SPEC-115-versioned-official-app-packages-and-telemetry-bridge.md)
 and [PLAN-106](./docs/plans/PLAN-106-official-app-package-hosting.md). Source checkout
 paths and development servers are not production deployment inputs.

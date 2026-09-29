@@ -11,8 +11,9 @@ planning only, with sign-offs pending.
 [App components](decisions/125-own-multiple-frontends-and-backends-in-one-app.md)
 records the accepted one-App/multiple-frontends-and-backends boundary, native
 App-owned API traffic and unified lifecycle. [SPEC-122](specs/SPEC-122-app-components-and-private-services.md)
-and [PLAN-115](plans/PLAN-115-app-components-and-private-services.md) are planning
-contracts; component hosting is not implemented.
+and [PLAN-115](plans/PLAN-115-app-components-and-private-services.md) require one
+shared Platform/Mobile/App ingress. Local Windows prototype fixtures passed in
+unpublished worktrees; shared routing/sandbox/remote acceptance remain pending.
 
 [Knowledge contributions and preview practice](knowledge-practice.md) documents
 ordinary local Chat/Code agent draft submission, Desktop manual review/adoption,
