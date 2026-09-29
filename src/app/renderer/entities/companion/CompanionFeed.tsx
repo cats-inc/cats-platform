@@ -16,6 +16,7 @@ import { useI18n } from '../../i18n/useI18n.js';
 type FeedTab = 'posts' | 'photos' | 'videos' | 'music' | 'files' | 'activity';
 type CompanionFeedSurface = 'photo' | 'video' | 'music' | 'file';
 type TranslateFn = (key: MessageKey, values?: MessageInterpolationValues) => string;
+type CompanionProfilePost = CompanionProfileReadModel['posts'][number];
 
 const FEED_TABS: ReadonlyArray<{ id: FeedTab; labelKey: MessageKey }> = [
   { id: 'posts', labelKey: messageKeys.chatCompanionFeedTabPosts },
@@ -117,6 +118,7 @@ function renderProfilePosts(
   catName: string,
   translate: TranslateFn,
   mediaItemsLabel: (count: number) => string,
+  onRemovePost?: (post: CompanionProfilePost) => void,
 ): ReactNode {
   const posts = profile?.posts ?? [];
   const active = posts.filter((post) => post.status === 'active');
@@ -132,6 +134,15 @@ function renderProfilePosts(
             <time className="companionProfilePostTimestamp" dateTime={post.publishedAt}>
               {post.publishedAt}
             </time>
+            {onRemovePost ? (
+              <button
+                type="button"
+                className="companionActionButton companionActionSecondary"
+                onClick={() => onRemovePost(post)}
+              >
+                {translate(messageKeys.chatCompanionPostRemoveAction)}
+              </button>
+            ) : null}
           </header>
           {post.body ? <p className="companionProfilePostBody">{post.body}</p> : null}
           {post.tags.length > 0 ? (
@@ -220,9 +231,16 @@ export interface CompanionFeedProps {
    * stable.
    */
   activity?: CompanionActivityProjection | null;
+  /** Owner moderation for agent-authored posts; omitted, the cards stay read-only. */
+  onRemovePost?: (post: CompanionProfilePost) => void;
 }
 
-export function CompanionFeed({ cat, profile = null, activity = null }: CompanionFeedProps) {
+export function CompanionFeed({
+  cat,
+  profile = null,
+  activity = null,
+  onRemovePost,
+}: CompanionFeedProps) {
   const [activeTab, setActiveTab] = useState<FeedTab>('posts');
   const { t } = useI18n();
 
@@ -253,6 +271,7 @@ export function CompanionFeed({ cat, profile = null, activity = null }: Companio
         cat.name,
         t,
         (count) => mediaItemsLabel(count, t(messageKeys.chatCompanionFeedMediaItemDefaultLabel)),
+        onRemovePost,
       );
       break;
     case 'photos':

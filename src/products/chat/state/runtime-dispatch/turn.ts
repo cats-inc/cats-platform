@@ -6,6 +6,12 @@ import { collaborationExecutionDescriptors, collaborationExecutionManifests,
   resolveCollaborationOwnerChoice, REQUEST_COLLABORATION_ROLE } from '../collaborationExecutionSurface.js';
 import { isOrchestratorKnowledgeChannel } from '../orchestratorKnowledge.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
+import { isCompanionCat } from '../../../../shared/companionRole.js';
+import {
+  COMPANION_CONTENT_POST_CREATE_TOOL,
+  createCompanionContentToolManifests,
+  createCompanionPostToolObservation,
+} from '../../companion/supervisedContentTools.js';
 
 import type {
   ChannelDispatchResult,
@@ -862,6 +868,38 @@ function buildProviderAgentObservationForTurn(input: {
     observationPolicy = workExternalBindingPolicyDecision.result.policy;
   }
 
+  // Companion Cats publish on their own profile (ADR-084 agent-only authorship).
+  // Bounded to one companion Cat in a direct lane, so the extra decision call
+  // stays on the companion surface.
+  const companionPostManifest = createCompanionContentToolManifests()
+    .find((manifest) => manifest.name === COMPANION_CONTENT_POST_CREATE_TOOL);
+  const companionPostCat = singleCatTarget && isDirectLaneChannel(channel)
+    ? input.state.cats.find((cat) => cat.id === singleCatTarget.participantId) ?? null
+    : null;
+  const companionPostPolicyDecision = companionPostManifest && isCompanionCat(companionPostCat)
+    ? decideSupervisionPolicy({
+        actionId: `${input.userMessage.id}:companion-post-observation`,
+        runId: `chat:${input.channelId}`,
+        actorRef: providerAgentActorRef,
+        targetRef: COMPANION_CONTENT_POST_CREATE_TOOL,
+        providerRef: capabilityProfile.profileId,
+        actionType: 'companion_content_post',
+        evaluatedAt: input.nowIso,
+        capabilityAssessment: capabilityProfile.assessment,
+        toolManifest: companionPostManifest,
+      })
+    : null;
+  const companionPostToolObservation = createCompanionPostToolObservation({
+    enabled: companionPostPolicyDecision?.status === 'applied'
+      && companionPostPolicyDecision.result.policy.toolScope !== 'read_only',
+  });
+  if (
+    companionPostPolicyDecision?.status === 'applied'
+    && companionPostToolObservation.descriptors.length > 0
+  ) {
+    observationPolicy = companionPostPolicyDecision.result.policy;
+  }
+
   const collaborationTools = input.enableCollaborationReads === true
     && providerAgentActorRef === 'orchestrator'
     && input.initialResolution.targets.length === 1
@@ -921,6 +959,7 @@ function buildProviderAgentObservationForTurn(input: {
       ...workProjectCreateToolObservation.descriptors,
       ...workItemUpdateToolObservation.descriptors,
       ...workItemAssignProjectToolObservation.descriptors,
+      ...companionPostToolObservation.descriptors,
     ],
     additionalContextRefs: [
       ...workIntakeSourceContext.contextRefs,
@@ -949,6 +988,7 @@ function buildProviderAgentObservationForTurn(input: {
       ...workProjectCreateToolObservation.invariants,
       ...workItemUpdateToolObservation.invariants,
       ...workItemAssignProjectToolObservation.invariants,
+      ...companionPostToolObservation.invariants,
     ],
     messageCharacterCount: input.payload.body.length,
     goal: executionTools.length ? ownerChoice!.proposal.goal

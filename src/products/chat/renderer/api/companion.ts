@@ -134,6 +134,26 @@ export async function getCompanionProfile(
   return data.profile;
 }
 
+/** Owner moderation: hides an agent-authored post from the companion profile. */
+export async function removeCompanionProfilePost(
+  catId: string,
+  postId: string,
+  signal?: AbortSignal,
+): Promise<{ removed: true; postId: string }> {
+  const response = await fetch(
+    `${catPath(catId)}/posts/${encodeURIComponent(postId)}`,
+    {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' },
+      signal,
+    },
+  );
+  return expectJson<{ removed: true; postId: string }>(
+    response,
+    `companion post remove returned ${response.status}`,
+  );
+}
+
 import type { CompanionActivityProjection } from '../../companion/activityProjection.js';
 
 export async function getCompanionActivity(

@@ -12,6 +12,7 @@ import {
   type SupervisedToolManifest,
   type ToolResult,
 } from '../../../platform/supervision/contracts.js';
+import type { ProviderAgentToolDescriptor } from '../../../platform/orchestration/providerAgentDecision.js';
 import type { SupervisionRejectionCode } from '../../../platform/supervision/errors.js';
 import type { SupervisedToolExecutor } from '../../../platform/supervision/toolBoundary.js';
 import type { SupervisedToolRegistry } from '../../../platform/supervision/toolRegistry.js';
@@ -178,6 +179,48 @@ export function createCompanionContentToolManifests(): SupervisedToolManifest[] 
       ],
     }),
   ];
+}
+
+export const COMPANION_CONTENT_TOOL_PREFIX = 'companion.content.';
+
+export function isCompanionContentTool(toolName: string | null | undefined): boolean {
+  return typeof toolName === 'string' && toolName.startsWith(COMPANION_CONTENT_TOOL_PREFIX);
+}
+
+/**
+ * Provider-agent decision exposure for a companion Cat. Only post creation is
+ * offered: the decision sidecar is single-shot, so read tools would return
+ * results that no model turn ever sees.
+ */
+export function createCompanionPostToolObservation(input: { enabled: boolean }): {
+  descriptors: ProviderAgentToolDescriptor[];
+  invariants: string[];
+} {
+  const manifest = createCompanionContentToolManifests()
+    .find((entry) => entry.name === COMPANION_CONTENT_POST_CREATE_TOOL);
+  if (!input.enabled || !manifest) {
+    return { descriptors: [], invariants: [] };
+  }
+
+  return {
+    descriptors: [{
+      manifest,
+      reason: 'You are a companion Cat and may publish a post on your own companion profile.',
+      inputHints: [
+        `Input: { title: string (max ${COMPANION_CONTENT_POST_TITLE_LIMIT} chars); `
+          + `body: string (max ${COMPANION_CONTENT_POST_BODY_LIMIT} chars); `
+          + `tags?: string[] (max ${COMPANION_CONTENT_POST_TAG_LIMIT}) }.`,
+        'Cats publishes on your own profile; do not provide a Cat id, source ids, or timestamps.',
+        'Write the post in your own voice and in the language of the conversation.',
+      ],
+    }],
+    invariants: [
+      `${COMPANION_CONTENT_POST_CREATE_TOOL} publishes on your own companion profile; request it `
+        + 'only when the owner asks you to post or sharing a moment clearly fits.',
+      `Never use ${COMPANION_CONTENT_POST_CREATE_TOOL} for an ordinary reply; `
+        + 'at most one post per turn.',
+    ],
+  };
 }
 
 export function normalizeCompanionContentResourceScopes(

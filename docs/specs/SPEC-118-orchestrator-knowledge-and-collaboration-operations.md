@@ -138,6 +138,8 @@ not required. K2 adds the read/preparation loop below; mutation tools remain K3.
 K2 uses Chat-owned supervised delegates, delivered through the existing opt-in
 provider-agent decision path (`CATS_CHAT_PROVIDER_AGENT_DECISION_ENABLED`). It
 does not change the default setting or expose a public HTTP/MCP endpoint.
+(Since 2026-09-29, with the flag off, decisions still run for the companion
+post tool only; see SPEC-085. The K2 read surface still requires the flag.)
 Existing Work intake/triage phases retain their own tools; the new read surface
 is offered only when no such product operation phase is selected.
 Only the authenticated Chat message/retry entry explicitly enables this surface;

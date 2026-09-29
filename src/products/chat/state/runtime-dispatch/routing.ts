@@ -80,6 +80,7 @@ import {
   buildCanonicalChatUserMessage,
 } from '../chatCoreInterop.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
+import { appendCompanionPostResultSidecar } from './companionPostSidecar.js';
 import {
   resolveNextPendingExecutionTarget,
 } from '../pendingExecutionTarget.js';
@@ -7164,6 +7165,18 @@ export async function beginChannelMessageDispatch(
     now,
   });
   nextState = workItemAssignProjectSidecar.state;
+  // Not part of providerToolSidecarHandled: the companion Cat still replies.
+  const companionPostSidecar = await appendCompanionPostResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: preparedTurn.userMessage,
+    providerAgentDecision,
+    observation: preparedTurn.providerAgentObservation,
+    companionStore: options.companionStore,
+    locale: ordinaryOwnerVisibleLocale,
+    now,
+  });
+  nextState = companionPostSidecar.state;
   const providerToolSidecarHandled = Boolean(
     catProposalSidecar.proposalMessage
     || workIntakeProposalSidecar.proposalMessage
@@ -7436,6 +7449,18 @@ export async function beginChannelMessageRetryDispatch(
     now,
   });
   nextState = workItemAssignProjectSidecar.state;
+  // Not part of providerToolSidecarHandled: the companion Cat still replies.
+  const companionPostSidecar = await appendCompanionPostResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: sourceMessage,
+    providerAgentDecision,
+    observation: preparedTurn.providerAgentObservation,
+    companionStore: options.companionStore,
+    locale: retryOwnerVisibleLocale,
+    now,
+  });
+  nextState = companionPostSidecar.state;
   const providerToolSidecarHandled = Boolean(
     catProposalSidecar.proposalMessage
     || workIntakeProposalSidecar.proposalMessage

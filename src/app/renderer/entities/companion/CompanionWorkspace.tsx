@@ -7,6 +7,9 @@ import {
   type CompanionWorkspaceTab,
 } from '../../../../products/chat/renderer/companionViewTypes.js';
 import { SidePanel } from '../../../../design/components/SidePanel.js';
+import { ConfirmDialog, useConfirmDialog } from '../../../../design/components/ConfirmDialog.js';
+import { ToastContainer, useToast } from '../../../../design/components/Toast.js';
+import { removeCompanionProfilePost } from '../../../../products/chat/renderer/api/companion.js';
 import { DraftHeader } from '../../../../products/shared/renderer/components/DraftHeader.js';
 import { catInitials } from '../../../../products/chat/renderer/chatUtils.js';
 import { useCompanionActivity } from './hooks/useCompanionActivity.js';
@@ -75,6 +78,31 @@ export function CompanionWorkspace({
     catId: cat.id,
     enabled: true,
   });
+
+  const { dialog: confirmDialog, confirm, handleClose: onConfirmClose } = useConfirmDialog();
+  const { toasts, showToast } = useToast();
+  const { refresh: refreshProfile } = profile;
+  const handleRemovePost = useCallback(async (post: { id: string; title: string }) => {
+    const confirmed = await confirm({
+      title: t(messageKeys.chatCompanionPostRemoveConfirmTitle),
+      message: t(messageKeys.chatCompanionPostRemoveConfirmMessage, {
+        title: post.title,
+        name: cat.name,
+      }),
+      confirmLabel: t(messageKeys.chatCompanionPostRemoveAction),
+    });
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await removeCompanionProfilePost(cat.id, post.id);
+      refreshProfile();
+    } catch (error) {
+      showToast(t(messageKeys.chatCompanionPostRemoveError, {
+        error: error instanceof Error ? error.message : String(error),
+      }));
+    }
+  }, [cat.id, cat.name, confirm, refreshProfile, showToast, t]);
 
   const handleWake = useCallback(() => {
     onWake(cat.id);
@@ -299,6 +327,7 @@ export function CompanionWorkspace({
               cat={cat}
               profile={profile.profile}
               activity={activity.projection}
+              onRemovePost={(post) => void handleRemovePost(post)}
             />
           )}
         </div>
@@ -314,6 +343,8 @@ export function CompanionWorkspace({
           sections={sidePanelSections}
         />
       ) : null}
+      <ConfirmDialog dialog={confirmDialog} onClose={onConfirmClose} />
+      <ToastContainer toasts={toasts} />
     </>
   );
 }

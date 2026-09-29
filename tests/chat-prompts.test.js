@@ -210,6 +210,38 @@ test('cat prompt gives ordinary Cats their companion memory without a persona ch
   assert.ok(!prompt.includes('Owner notes'));
 });
 
+test('cat prompt lists recent active profile posts so the Cat knows what it published', () => {
+  const post = (title, publishedAt, status = 'active') => ({
+    title,
+    metadata: {
+      profileSurface: 'post',
+      profilePostStatus: status,
+      profilePublishedAt: publishedAt,
+    },
+  });
+  const prompt = buildCompanionCatPrompt(['companion'], {
+    memory: [],
+    ownerNotes: [],
+    responseProfile: { expressionMode: 'anthropomorphic' },
+    derived: [
+      post('Sunny nap', '2026-09-29T12:00:00.000Z'),
+      { title: 'Ingested summary', metadata: {} },
+      post('Hidden post', '2026-09-28T12:00:00.000Z', 'removed'),
+      post('Rainy day', '2026-09-27T12:00:00.000Z'),
+      post('Window birds', '2026-09-26T12:00:00.000Z'),
+      post('Fourth post', '2026-09-25T12:00:00.000Z'),
+    ],
+  });
+
+  assert.match(
+    prompt,
+    /Your recent profile posts \(newest first\):\n- Sunny nap \(2026-09-29\)\n- Rainy day \(2026-09-27\)\n- Window birds \(2026-09-26\)/u,
+  );
+  assert.ok(!prompt.includes('Hidden post'));
+  assert.ok(!prompt.includes('Ingested summary'));
+  assert.ok(!prompt.includes('Fourth post'));
+});
+
 test('cat prompt omits the companion section when there is nothing to carry', () => {
   const empty = { memory: [], ownerNotes: [], responseProfile: { expressionMode: 'mixed' } };
   assert.ok(!buildCompanionCatPrompt(['support'], empty).includes('Your companion memory'));

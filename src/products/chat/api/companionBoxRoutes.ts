@@ -16,7 +16,10 @@ import type {
   UpdateCompanionSourceInput,
   UpdateCompanionResponseProfileInput,
 } from '../companion/contracts.js';
-import { projectCompanionProfile } from '../companion/profileReadModel.js';
+import {
+  COMPANION_PROFILE_METADATA_KEYS,
+  projectCompanionProfile,
+} from '../companion/profileReadModel.js';
 import {
   projectCompanionActivity,
   type CompanionActivityEvent,
@@ -328,6 +331,56 @@ async function handleGetCompanionProfileReadModel(
     const derived = await context.dependencies.companionStore.listDerived(catId);
     const profile = projectCompanionProfile({ derived });
     sendJson(context.response, 200, { profile });
+  } catch (error) {
+    handleCanonicalCatError(context, error);
+  }
+}
+
+const COMPANION_POST_ID_PREFIX = 'post:';
+
+/**
+ * Owner moderation for agent-authored profile posts (ADR-084): a soft remove that
+ * hides the post from the profile projection but keeps the derived record.
+ */
+async function handleRemoveCompanionProfilePost(
+  context: ChatApiRouteContext,
+  catId: string,
+  postId: string,
+): Promise<void> {
+  try {
+    await resolveCatContext(context, catId);
+    const derivedId = postId.startsWith(COMPANION_POST_ID_PREFIX)
+      ? postId.slice(COMPANION_POST_ID_PREFIX.length)
+      : postId;
+    const derived = await context.dependencies.companionStore.listDerived(catId);
+    const record = derived.find((candidate) => candidate.id === derivedId);
+    if (
+      !record
+      || record.metadata[COMPANION_PROFILE_METADATA_KEYS.surface]
+        !== COMPANION_PROFILE_METADATA_KEYS.postSurface
+    ) {
+      sendRestError(context, 404, 'companion_post_not_found', `Companion post not found: ${postId}`);
+      return;
+    }
+    const canonicalPostId = `${COMPANION_POST_ID_PREFIX}${record.id}`;
+    if (record.metadata[COMPANION_PROFILE_METADATA_KEYS.postStatus] !== 'removed') {
+      const now = new Date();
+      await context.dependencies.companionStore.upsertDerived(catId, {
+        ...record,
+        metadata: {
+          ...record.metadata,
+          [COMPANION_PROFILE_METADATA_KEYS.postStatus]: 'removed',
+        },
+        updatedAt: now.toISOString(),
+      }, now);
+      await recordCompanionActivity(context, {
+        catId,
+        group: 'post_removed',
+        targetKind: 'post',
+        targetId: canonicalPostId,
+      });
+    }
+    sendJson(context.response, 200, { removed: true, postId: canonicalPostId });
   } catch (error) {
     handleCanonicalCatError(context, error);
   }
@@ -706,6 +759,19 @@ export async function routeCompanionBoxApi(
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  const postItemMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/cats\/([^/]+)\/companion-box\/posts\/([^/]+)$/u,
+  );
+  if (postItemMatch) {
+    if (context.method !== 'DELETE') {
+      sendMethodNotAllowed(context.response, ['DELETE']);
+      return true;
+    }
+    await handleRemoveCompanionProfilePost(context, postItemMatch[0]!, postItemMatch[1]!);
     return true;
   }
 
