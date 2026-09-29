@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, request as httpRequest, type Server } from 'node:http';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import test from 'node:test';
 
@@ -13,6 +16,17 @@ import {
 } from '../src/products/code/agentTools/contracts.ts';
 import { createCodeAgentToolsService } from '../src/products/code/agentTools/service.ts';
 import type { ArtifactCanvasNavigateIntent } from '../src/products/shared/artifactCanvas/contracts.ts';
+import {
+  DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+  type ArtifactCanvasPolicyConfig,
+} from '../src/products/shared/artifactCanvas/iframePolicy.ts';
+import { buildArtifactCanvasProjection } from '../src/products/shared/artifactCanvas/projection.ts';
+import {
+  CODE_LIVE_PREVIEW_PRODUCER_IDENTITY,
+  DEFAULT_LIVE_PREVIEW_CONFIG,
+} from '../src/products/code/livePreview/contracts.ts';
+import { createCodeLivePreviewSupervisor } from '../src/products/code/livePreview/host.ts';
+import type { LivePreviewSupervisor } from '../src/products/code/livePreview/supervisor.ts';
 import { ArtifactCanvasRenderIntentHub } from '../src/products/shared/artifactCanvas/renderIntent.ts';
 
 const BINDING: CodeAgentToolGrantBinding = {
@@ -30,7 +44,11 @@ interface Harness {
   close(): Promise<void>;
 }
 
-async function startHarness(): Promise<Harness> {
+async function startHarness(options: {
+  workspacePath?: string;
+  supervisor?: LivePreviewSupervisor;
+  policyConfig?: ArtifactCanvasPolicyConfig;
+} = {}): Promise<Harness> {
   const core = upsertCoreConversation(createDefaultCoreState(), {
     id: BINDING.conversationId,
     title: 'Calculator',
@@ -40,7 +58,13 @@ async function startHarness(): Promise<Harness> {
   const store = new MemoryCoreStore(core);
   const grants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
   const hub = new ArtifactCanvasRenderIntentHub();
-  const service = createCodeAgentToolsService({ coreStore: store, grants, renderIntentHub: hub });
+  const service = createCodeAgentToolsService({
+    coreStore: store,
+    grants,
+    renderIntentHub: hub,
+    livePreviewSupervisor: options.supervisor ?? null,
+    policyConfig: options.policyConfig,
+  });
   const server: Server = createServer((request, response) => {
     void service.route(request, response).then((handled) => {
       if (!handled) response.writeHead(404).end();
@@ -120,7 +144,7 @@ test('initialize, tools/list and protocol methods follow JSON-RPC and MCP', asyn
     assert.deepEqual((await rpc(harness, token, 'ping')).json.result, {});
     assert.equal((await rpc(harness, token, 'server/discover')).json.error.code, -32601);
     const list = await rpc(harness, token, 'tools/list');
-    assert.deepEqual(list.json.result.tools.map((tool: { name: string }) => tool.name), ['declare_artifact', 'clear_canvas']);
+    assert.deepEqual(list.json.result.tools.map((tool: { name: string }) => tool.name), ['show_in_canvas', 'declare_artifact', 'clear_canvas']);
     assert.equal((await rpc(harness, token, 'tools/call', { name: 'nope', arguments: {} })).status, 401);
   } finally {
     await harness.close();
@@ -170,5 +194,93 @@ test('tool calls need a bound grant and act only on its conversation', async () 
     assert.equal((await rpc(harness, token, 'tools/list')).status, 401);
   } finally {
     await harness.close();
+  }
+});
+
+test('show_in_canvas opens workspace pages on a supervisor lease and refuses unsafe targets', async () => {
+  const base = mkdtempSync(join(tmpdir(), 'cats-agent-show-'));
+  const workspace = join(base, 'workspace');
+  mkdirSync(join(workspace, 'calculator'), { recursive: true });
+  writeFileSync(join(workspace, 'calculator', 'index.html'), '<!doctype html><title>Calc</title>');
+  writeFileSync(join(workspace, 'calculator', 'notes.md'), '# Notes');
+  writeFileSync(join(workspace, 'calculator', 'bundle.zip'), 'zip');
+  writeFileSync(join(workspace, '.env'), 'SECRET=1');
+  writeFileSync(join(base, 'secret.txt'), 'outside');
+  const policyConfig = {
+    ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+    scriptedPreviewProducerAllowlist: [
+      { producerKind: 'tool' as const, producerIdentity: CODE_LIVE_PREVIEW_PRODUCER_IDENTITY },
+    ],
+  };
+  const supervisor = createCodeLivePreviewSupervisor({
+    ...DEFAULT_LIVE_PREVIEW_CONFIG,
+    portRange: { start: 47180, end: 47189 },
+  });
+  const harness = await startHarness({ workspacePath: workspace, supervisor, policyConfig });
+  try {
+    const { token } = harness.grants.issue({ ...BINDING, workspacePath: workspace });
+    harness.grants.bind(token, 'runtime-session-1');
+    const intents: ArtifactCanvasNavigateIntent[] = [];
+    harness.hub.subscribe({
+      surface: { kind: 'code_conversation', surfaceId: BINDING.channelId },
+      sessionId: 'browser-1',
+      send: (intent) => intents.push(intent),
+    });
+    const call = async (args: Record<string, unknown>) =>
+      (await rpc(harness, token, 'tools/call', { name: 'show_in_canvas', arguments: args })).json.result;
+
+    const page = await call({ path: 'calculator/index.html', title: 'Calculator' });
+    assert.equal(page.isError, undefined, JSON.stringify(page));
+    const shown = page.structuredContent as { artifactId: string; canvasPath: string; previewUrl: string; previewId: string };
+    assert.equal(shown.canvasPath, `/code/chats/channel-1/canvas/${shown.artifactId}`);
+    assert.match(shown.previewUrl, /^http:\/\/127\.0\.0\.1:4718\d\/index\.html$/u);
+    assert.equal((await fetch(shown.previewUrl)).status, 200);
+    assert.equal(intents.at(-1)?.artifactId, shown.artifactId);
+
+    const core = await harness.store.readCore();
+    const projection = buildArtifactCanvasProjection({
+      core,
+      surface: { kind: 'code_conversation', surfaceId: BINDING.channelId },
+      artifactId: shown.artifactId,
+      policyConfig,
+      supervisorPreviewLeaseStore: supervisor,
+    });
+    assert.equal(projection.status === 'ok' ? projection.projection.iframeSandboxProfile?.name : null, 'scripted-cross-origin');
+
+    const directory = await call({ path: 'calculator' });
+    assert.equal((directory.structuredContent as { previewId: string }).previewId, shown.previewId, 'same root reuses the lease');
+    const notes = await call({ path: join(workspace, 'calculator', 'notes.md') });
+    assert.equal(notes.isError, undefined, JSON.stringify(notes));
+
+    for (const [path, code] of [
+      ['../secret.txt', 'path_outside_workspace'],
+      ['.env', 'path_not_allowed'],
+      ['calculator/missing.html', 'path_not_found'],
+      ['calculator/bundle.zip', 'presentation_unsupported'],
+    ] as const) {
+      const result = await call({ path });
+      assert.equal(result.isError, true, path);
+      assert.equal(result.structuredContent.error.code, code, path);
+    }
+
+    assert.equal((await call({ url: 'http://example.com/' })).structuredContent.error.code, 'url_not_allowed');
+    const external = await call({ url: 'https://example.com/docs' });
+    assert.equal(external.isError, undefined, JSON.stringify(external));
+    const externalProjection = buildArtifactCanvasProjection({
+      core: await harness.store.readCore(),
+      surface: { kind: 'code_conversation', surfaceId: BINDING.channelId },
+      artifactId: (external.structuredContent as { artifactId: string }).artifactId,
+      policyConfig,
+      supervisorPreviewLeaseStore: supervisor,
+    });
+    assert.equal(externalProjection.status === 'ok' ? externalProjection.projection.iframeSandboxProfile?.name : null, 'static');
+
+    const again = await call({ artifactId: shown.artifactId });
+    assert.equal(again.isError, undefined, JSON.stringify(again));
+    assert.equal((await call({})).structuredContent.error.code, 'identity_required');
+  } finally {
+    await supervisor.stopAll('test_cleanup');
+    await harness.close();
+    rmSync(base, { recursive: true, force: true });
   }
 });
