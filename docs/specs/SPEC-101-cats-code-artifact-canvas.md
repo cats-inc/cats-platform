@@ -9,6 +9,11 @@
 > (sandbox profiles, allowlists, `policyVersion`) is centralized with
 > the platform viewer.
 
+> Amended by [SPEC-123](./SPEC-123-code-agent-artifact-preview.md) (proposed):
+> adds the `code_conversation` surface, lets `show_in_canvas` take a workspace
+> `path` or `url`, and retires the same-turn `declarationId` input together with
+> the `tool_use` observation path.
+
 ## Metadata
 
 | Field | Value |

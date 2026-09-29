@@ -1,5 +1,13 @@
 # Documentation Index
 
+[Code agent artifact preview](decisions/126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md)
+proposes how Cats in Cats Code open what they built beside the conversation. A
+Platform-hosted `cats` MCP server is delivered to provider CLIs through runtime
+session descriptors. [SPEC-123](specs/SPEC-123-code-agent-artifact-preview.md)
+and [PLAN-116](plans/PLAN-116-code-agent-artifact-preview-rollout.md) define
+static and dev-server previews and the calculator/pomodoro acceptance. This is
+planning only, with sign-offs pending.
+
 [App components](decisions/125-own-multiple-frontends-and-backends-in-one-app.md)
 records the accepted one-App/multiple-frontends-and-backends boundary, native
 App-owned API traffic and unified lifecycle. [SPEC-122](specs/SPEC-122-app-components-and-private-services.md)

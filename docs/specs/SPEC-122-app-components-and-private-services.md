@@ -75,6 +75,14 @@ and readiness protocol; upgrade transaction and App data migration hooks; ingres
 provider/configuration and endpoint lifetime. These are implementation choices
 within the accepted requirements, not permission to split the App installation.
 
+MCP note ([ADR-126](../decisions/126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md)):
+an App hosts its MCP server independently in its own service component, with its
+own SDK, credentials and ingress (for example Ask). External MCP traffic passes
+through neither Runtime nor Platform's host-internal MCP module. If a user later
+grants a Cat access to an App endpoint, Runtime session `mcpServers` only
+configures that Cat's CLI (as `app-<slug>`), and the CLI connects to the App
+endpoint directly.
+
 ## Compatibility
 
 Preserve existing supported App contracts within the current minor line. Record
