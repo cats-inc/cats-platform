@@ -2,10 +2,11 @@ import { createHash } from 'node:crypto';
 import { realpath, stat } from 'node:fs/promises';
 import { basename, dirname, extname, isAbsolute, join, relative, sep } from 'node:path';
 
-import type { CatsCoreState } from '../../../core/types.js';
+import type { CatsCoreState, CoreRecordMetadata } from '../../../core/types.js';
 import { mcpTextResult, type McpToolCallResult, type McpToolDefinition } from '../../../platform/mcp/jsonRpcServer.js';
 import { appendArtifactCanvasIntentActivity } from '../../shared/artifactCanvas/activity.js';
 import {
+  ARTIFACT_CANVAS_INPUT_PRESENTATIONS,
   canvasSurfaceRouteRegistry,
   composeArtifactCanvasNavigateIntent,
   type ArtifactCanvasPresentationInput,
@@ -36,9 +37,11 @@ export const SHOW_IN_CANVAS_TOOL: McpToolDefinition = {
   name: 'show_in_canvas',
   description: [
     'Open something a person should look at in the preview canvas beside this Cats Code conversation.',
-    'Pass exactly one of: path (a workspace HTML page, a directory with index.html, an image, a PDF or a text file),',
+    'Pass exactly one of: path (a workspace HTML page, a directory with index.html, an image, a PDF,',
+    'a Markdown document or a text file),',
     'url (an https page, shown without scripts) or artifactId.',
     'HTML pages run with scripts on an isolated preview origin; edits show on refresh.',
+    'Markdown renders as a formatted document; pass presentation code to show its source.',
     'Use start_dev_preview instead for projects that need a dev server or bundler.',
   ].join(' '),
   inputSchema: {
@@ -49,17 +52,18 @@ export const SHOW_IN_CANVAS_TOOL: McpToolDefinition = {
       url: { type: 'string', minLength: 1 },
       artifactId: { type: 'string', minLength: 1 },
       title: { type: 'string', minLength: 1 },
-      presentation: { type: 'string', enum: ['auto', 'iframe', 'image', 'pdf', 'code'] },
+      presentation: { type: 'string', enum: [...ARTIFACT_CANVAS_INPUT_PRESENTATIONS] },
     },
   },
 };
 
 const PAGE_EXTENSIONS = new Set(['.html', '.htm']);
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico']);
+const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown']);
 const TEXT_EXTENSIONS = new Set([
-  '.md', '.txt', '.json', '.csv', '.css', '.js', '.mjs', '.ts', '.tsx', '.log', '.diff', '.patch',
+  '.txt', '.json', '.csv', '.css', '.js', '.mjs', '.ts', '.tsx', '.log', '.diff', '.patch',
 ]);
-const PRESENTATIONS = new Set<ArtifactCanvasPresentationInput>(['auto', 'iframe', 'image', 'pdf', 'code']);
+const PRESENTATIONS = new Set<ArtifactCanvasPresentationInput>(ARTIFACT_CANVAS_INPUT_PRESENTATIONS);
 
 export interface ShowInCanvasContext {
   binding: CodeAgentToolGrantBinding;
@@ -85,7 +89,7 @@ export async function runShowInCanvas(
   }
   const presentation = (args.presentation ?? 'auto') as ArtifactCanvasPresentationInput;
   if (!PRESENTATIONS.has(presentation)) {
-    return failure({ code: 'presentation_invalid', message: 'presentation must be auto, iframe, image, pdf or code.' });
+    return failure({ code: 'presentation_invalid', message: 'presentation must be auto, iframe, image, pdf, code or markdown.' });
   }
   const title = typeof args.title === 'string' ? args.title.trim() : '';
   const surface: CanvasSurfaceRef = { kind: 'code_conversation', surfaceId: context.binding.channelId };
@@ -128,8 +132,9 @@ async function showWorkspacePath(
     : PAGE_EXTENSIONS.has(extension) ? 'auto'
       : IMAGE_EXTENSIONS.has(extension) ? 'image'
         : extension === '.pdf' ? 'pdf'
-          : TEXT_EXTENSIONS.has(extension) ? 'code'
-            : null;
+          : MARKDOWN_EXTENSIONS.has(extension) ? 'markdown'
+            : TEXT_EXTENSIONS.has(extension) ? 'code'
+              : null;
   if (!presentation) {
     return failure({
       code: 'presentation_unsupported',
@@ -166,6 +171,7 @@ async function showWorkspacePath(
   return mcpTextResult({
     artifactId: shown.artifact.id,
     canvasPath: shown.intent.targetUrl,
+    presentation: readResolvedPresentation(shown.activity.metadata) ?? presentation,
     previewUrl: shown.artifact.path,
     previewId: lease.previewId,
   });
@@ -338,6 +344,16 @@ async function showArtifact(
   // Publish only once the Activity is durable.
   if (intent) context.hub.publish({ intent, now: at });
   return outcome!;
+}
+
+/** The presentation the show intent Activity recorded (SPEC-123 result `presentation`). */
+function readResolvedPresentation(metadata: CoreRecordMetadata): string | null {
+  const artifactCanvas = metadata.artifactCanvas;
+  if (!artifactCanvas || typeof artifactCanvas !== 'object' || Array.isArray(artifactCanvas)) {
+    return null;
+  }
+  const resolved = (artifactCanvas as { presentationResolved?: unknown }).presentationResolved;
+  return typeof resolved === 'string' ? resolved : null;
 }
 
 function failure(error: ShowFailure): McpToolCallResult {

@@ -80,6 +80,25 @@ function createCanvasStore() {
     },
   }).core;
   core = upsertCoreArtifact(core, {
+    id: 'artifact-markdown',
+    title: 'Readme',
+    kind: 'document',
+    status: 'ready',
+    conversationId: 'conversation-canvas',
+    taskId: 'task-canvas',
+    path: 'http://127.0.0.1:4321/docs/README.md',
+    metadata: {
+      codeArtifactDeclaration: {
+        producerKind: 'agent',
+        producerIdentity: 'actor:cat-canvas',
+        location: {
+          kind: 'url',
+          value: 'http://127.0.0.1:4321/docs/README.md',
+        },
+      },
+    },
+  }).core;
+  core = upsertCoreArtifact(core, {
     id: 'artifact-empty',
     title: 'Empty artifact',
     kind: 'report',
@@ -276,6 +295,57 @@ test('GET /api/canvas resolves inline and server-served text as code', async (t)
   assert.equal(explicitCode.status, 200);
   assert.equal(explicitCode.payload?.presentationRequested, 'code');
   assert.equal(explicitCode.payload?.presentationResolved, 'code');
+});
+
+test('GET /api/canvas resolves Markdown documents to markdown unless code is requested', async (t) => {
+  const store = createCanvasStore();
+  const server = createTestServer(store);
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const auto = await request(
+    server,
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-markdown',
+  );
+  assert.equal(auto.status, 200);
+  assert.equal(auto.payload?.presentationRequested, 'auto');
+  assert.equal(auto.payload?.presentationResolved, 'markdown');
+  assert.equal(auto.payload?.safeUrl, 'http://127.0.0.1:4321/docs/README.md');
+  assert.equal(auto.payload?.iframeSandboxProfile, null);
+  assert.equal(auto.payload?.textContent, null, 'text off a supervisor lease is never fetched');
+
+  const explicitMarkdown = await request(
+    server,
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-markdown/view/markdown',
+  );
+  assert.equal(explicitMarkdown.status, 200);
+  assert.equal(explicitMarkdown.payload?.presentationRequested, 'markdown');
+  assert.equal(explicitMarkdown.payload?.presentationResolved, 'markdown');
+
+  const source = await request(
+    server,
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-markdown/view/code',
+  );
+  assert.equal(source.status, 200);
+  assert.equal(source.payload?.presentationRequested, 'code');
+  assert.equal(source.payload?.presentationResolved, 'code');
+
+  const plainTextAsMarkdown = await request(
+    server,
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-text-url/view/markdown',
+  );
+  assert.equal(plainTextAsMarkdown.status, 200);
+  assert.equal(plainTextAsMarkdown.payload?.presentationResolved, 'markdown');
+
+  const imageAsMarkdown = await request(
+    server,
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-image/view/markdown',
+  );
+  assert.equal(imageAsMarkdown.status, 422);
+  assert.equal(
+    (imageAsMarkdown.payload?.error as { code?: string } | undefined)?.code,
+    'artifact_canvas_presentation_unsupported',
+  );
 });
 
 test('GET /api/canvas surfaces missing, anchor, presentation, and URL policy errors', async (t) => {

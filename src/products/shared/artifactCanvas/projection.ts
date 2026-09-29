@@ -129,7 +129,7 @@ export function buildArtifactCanvasProjection(input: {
       iframeSandboxProfile:
         safeUrl
         && policy?.status === 'accepted'
-        && resolvedPresentation !== 'code'
+        && !isArtifactCanvasTextPresentation(resolvedPresentation)
         ? policy.profile
         : null,
       safeUrl,
@@ -217,6 +217,10 @@ function resolveProjectionPresentation(input: {
   presentationRequested: ArtifactCanvasPresentationInput;
 }): ArtifactCanvasProjection['presentationResolved'] | null {
   if (input.presentationRequested === 'auto') {
+    // A Markdown document is read, not run, even on a preview lease (SPEC-123 CAP-06).
+    if (isMarkdownPresentationArtifact(input.artifact, input.safeUrl)) {
+      return 'markdown';
+    }
     // A preview is a page to run, even when its URL ends in `.html` (SPEC-123 CAP-11).
     if (input.safeUrl && input.artifact.kind === 'preview') {
       return 'iframe';
@@ -245,12 +249,27 @@ function resolveProjectionPresentation(input: {
       ? 'pdf'
       : null;
   }
-  if (input.presentationRequested === 'code') {
+  if (input.presentationRequested === 'code' || input.presentationRequested === 'markdown') {
     return isCodePresentationArtifact(input.artifact, input.safeUrl, input.textContent)
-      ? 'code'
+      ? input.presentationRequested
       : null;
   }
   return null;
+}
+
+/** Whether the resolved presentation shows the artifact's text in a Cats viewer. */
+export function isArtifactCanvasTextPresentation(
+  presentation: ArtifactCanvasProjection['presentationResolved'],
+): presentation is 'code' | 'markdown' {
+  return presentation === 'code' || presentation === 'markdown';
+}
+
+function isMarkdownPresentationArtifact(
+  artifact: CoreArtifactRecord,
+  safeUrl: string | null,
+): boolean {
+  return artifact.mimeType === 'text/markdown'
+    || (safeUrl ? hasPathExtension(safeUrl, ['.md', '.markdown']) : false);
 }
 
 function isImagePresentationArtifact(
@@ -294,6 +313,7 @@ function isCodePresentationArtifact(
           '.js',
           '.json',
           '.log',
+          '.markdown',
           '.md',
           '.patch',
           '.ts',

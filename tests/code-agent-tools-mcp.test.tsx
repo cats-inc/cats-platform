@@ -20,6 +20,7 @@ import {
   DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
   type ArtifactCanvasPolicyConfig,
 } from '../src/products/shared/artifactCanvas/iframePolicy.ts';
+import { routeArtifactCanvasApi } from '../src/products/shared/artifactCanvas/api.ts';
 import { buildArtifactCanvasProjection } from '../src/products/shared/artifactCanvas/projection.ts';
 import {
   CODE_LIVE_PREVIEW_PRODUCER_IDENTITY,
@@ -239,8 +240,15 @@ test('show_in_canvas opens workspace pages on a supervisor lease and refuses uns
 
     const page = await call({ path: 'calculator/index.html', title: 'Calculator' });
     assert.equal(page.isError, undefined, JSON.stringify(page));
-    const shown = page.structuredContent as { artifactId: string; canvasPath: string; previewUrl: string; previewId: string };
+    const shown = page.structuredContent as {
+      artifactId: string;
+      canvasPath: string;
+      presentation: string;
+      previewUrl: string;
+      previewId: string;
+    };
     assert.equal(shown.canvasPath, `/code/chats/channel-1/canvas/${shown.artifactId}`);
+    assert.equal(shown.presentation, 'iframe');
     assert.match(shown.previewUrl, /^http:\/\/127\.0\.0\.1:4718\d\/index\.html$/u);
     assert.equal((await fetch(shown.previewUrl)).status, 200);
     assert.equal(intents.at(-1)?.artifactId, shown.artifactId);
@@ -259,6 +267,47 @@ test('show_in_canvas opens workspace pages on a supervisor lease and refuses uns
     assert.equal((directory.structuredContent as { previewId: string }).previewId, shown.previewId, 'same root reuses the lease');
     const notes = await call({ path: join(workspace, 'calculator', 'notes.md') });
     assert.equal(notes.isError, undefined, JSON.stringify(notes));
+    const notesShown = notes.structuredContent as { artifactId: string; canvasPath: string; presentation: string };
+    assert.equal(notesShown.presentation, 'markdown');
+    assert.equal(notesShown.canvasPath, `/code/chats/channel-1/canvas/${notesShown.artifactId}/view/markdown`);
+    assert.equal(intents.at(-1)?.presentationRequested, 'markdown');
+    const notesSource = await call({ path: 'calculator/notes.md', presentation: 'code' });
+    assert.equal((notesSource.structuredContent as { presentation: string }).presentation, 'code');
+    assert.equal(
+      (notesSource.structuredContent as { canvasPath: string }).canvasPath,
+      `/code/chats/channel-1/canvas/${notesShown.artifactId}/view/code`,
+    );
+
+    // The shell cannot read the lease cross-origin, so the projection API inlines the file.
+    const canvasApi = createServer((request, response) => {
+      void routeArtifactCanvasApi({
+        request,
+        response,
+        url: new URL(request.url ?? '/', 'http://localhost'),
+        method: request.method ?? 'GET',
+        dependencies: { coreStore: harness.store, policyConfig, supervisorPreviewLeaseStore: supervisor },
+      }).then((handled) => {
+        if (!handled) response.writeHead(404).end();
+      });
+    });
+    await new Promise<void>((resolve) => canvasApi.listen(0, '127.0.0.1', resolve));
+    try {
+      const { port } = canvasApi.address() as AddressInfo;
+      const projectionResponse = await fetch(
+        `http://127.0.0.1:${port}/api/canvas/code_conversation/channel-1/artifacts/${notesShown.artifactId}/view/markdown`,
+      );
+      const notesProjection = await projectionResponse.json() as {
+        presentationResolved: string;
+        textContent: string | null;
+        iframeSandboxProfile: unknown;
+      };
+      assert.equal(projectionResponse.status, 200);
+      assert.equal(notesProjection.presentationResolved, 'markdown');
+      assert.equal(notesProjection.textContent, '# Notes');
+      assert.equal(notesProjection.iframeSandboxProfile, null);
+    } finally {
+      await new Promise<void>((resolve) => canvasApi.close(() => resolve()));
+    }
 
     for (const [path, code] of [
       ['../secret.txt', 'path_outside_workspace'],

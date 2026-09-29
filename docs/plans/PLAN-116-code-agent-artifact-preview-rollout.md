@@ -378,8 +378,27 @@ call a Platform-hosted MCP tool and receive its result.
 
 ### P7: Breadth (M4)
 
-- [ ] F1: A sanitized markdown viewer (reusing the chat markdown renderer), with
+- [x] F1: A sanitized markdown viewer (reusing the chat markdown renderer), with
   `.md` switched to `markdown`.
+  Done:
+  - `markdown` is a canvas presentation (input, resolved, `/view/markdown`
+    routes and the `show_in_canvas` enum). `.md` and `.markdown` resolve to it
+    under `auto`, also on a lease-backed preview. An explicit `code` still
+    shows the source.
+  - `MarkdownViewer` renders with react-markdown, `remark-gfm` and the chat
+    renderer's exported link and image components
+    (`MESSAGE_BODY_MARKDOWN_COMPONENTS`). Raw HTML shows as text, `javascript:`
+    links become inert, remote images are not loaded and relative links stay
+    inert. It omits `remark-breaks` and mentions, because documents are
+    hard-wrapped.
+  - Found while building it: the shell cannot read a static lease
+    cross-origin (no CORS headers, confirmed in headless Chromium), so the
+    `code` viewer could not show lease-served text files either. The canvas
+    projection API now reads `code`/`markdown` text from the artifact's own
+    live lease over loopback (at most 2 MiB) and returns it as `textContent`.
+    No CORS was added to the static server.
+  - The path branch of `show_in_canvas` now returns the resolved
+    `presentation`, as SPEC-123 specifies.
 - [x] F2: Research `.docx`/`.pptx` presentation (server-side conversion to HTML
   or PDF), canvas tabs/stacking and reopening per artifact.
   Done: [research note](../research/2026-09-30-canvas-office-documents-and-tabs.md).

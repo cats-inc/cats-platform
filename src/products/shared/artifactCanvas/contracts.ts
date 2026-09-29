@@ -23,6 +23,7 @@ export const ARTIFACT_CANVAS_INPUT_PRESENTATIONS = [
   'image',
   'pdf',
   'code',
+  'markdown',
 ] as const;
 
 export const ARTIFACT_CANVAS_RESOLVED_PRESENTATIONS = [
@@ -49,7 +50,7 @@ export const ARTIFACT_CANVAS_SHOW_TOOL_DEFINITION = {
   description: [
     'Open a canvas-eligible artifact in the active product surface Artifact Canvas.',
     'Pass exactly one of artifactId or declarationId.',
-    'Use presentation auto unless the user or artifact type requires iframe, image, pdf, or code.',
+    'Use presentation auto unless the user or artifact type requires iframe, image, pdf, code, or markdown.',
   ].join(' '),
   inputSchema: {
     type: 'object',
