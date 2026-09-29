@@ -11,12 +11,37 @@ import {
   findCompanionDirectLane,
   type CompanionPresenceReason,
 } from './presence.js';
-import { resolveCompanionDesiredPresence } from './rhythm.js';
+import { resolveCompanionDesiredPresence, resolveCompanionRhythm } from './rhythm.js';
+import {
+  findLastOwnerMessageAt,
+  laneHasHeartbeatSince,
+  pickCompanionHeartbeatDelayMs,
+  type CompanionHeartbeatKind,
+} from './heartbeat.js';
 
 /** SPEC-124 FR-12: a lane quieter than this may fall asleep. */
 export const COMPANION_IDLE_SLEEP_MS = 15 * 60_000;
 /** SPEC-124 FR-11. */
 export const COMPANION_WAKE_BACKOFF_MS = 5 * 60_000;
+
+/** SPEC-124 FR-20: never talk over a conversation that is still going. */
+export const COMPANION_HEARTBEAT_QUIET_LANE_MS = 10 * 60_000;
+/** A morning greeting only makes sense this soon after the wake time. */
+const WAKE_GREETING_WINDOW_MS = 3 * 60 * 60_000;
+const HEARTBEAT_BUSY_RETRY_MS = 4 * 60_000;
+const HEARTBEAT_FAILED_RETRY_MS = 30 * 60_000;
+
+export interface CompanionHeartbeatRequest {
+  catId: string;
+  laneId: string;
+  sessionId: string;
+  kind: CompanionHeartbeatKind;
+  now: Date;
+  awakeSince: Date | null;
+  lastOwnerMessageAt: Date | null;
+}
+
+export type CompanionHeartbeatResult = 'spoke' | 'quiet' | 'busy' | 'failed';
 
 const MAX_SESSIONS_PATTERN = /\bmax sessions\b[^.]*\breached\b/iu;
 
@@ -29,6 +54,9 @@ export interface CompanionLifeLoopDependencies {
   activateLane(channelId: string): Promise<ChannelActivationResult[]>;
   /** Runs the REST deactivate body under the lane's mutation gate. */
   deactivateLane(channelId: string): Promise<{ closedSessionCount: number }>;
+  /** SPEC-124 Phase 2: one hidden turn in the lane's session. Omitted, the loop only keeps Cats awake. */
+  speak?(request: CompanionHeartbeatRequest): Promise<CompanionHeartbeatResult>;
+  random?(): number;
   now(): Date;
 }
 
@@ -48,11 +76,15 @@ export interface CompanionLifeTickEntry {
   laneId: string;
   outcome: CompanionLifeOutcome;
   reason?: CompanionPresenceReason;
+  heartbeat?: { kind: CompanionHeartbeatKind; result: CompanionHeartbeatResult };
 }
 
 interface CatLifeMemory {
   backoffUntil: number;
   failureRecorded: boolean;
+  awakeSince: number | null;
+  nextHeartbeatAt: number | null;
+  heartbeatKind: 'wake' | 'regular';
 }
 
 /** The most recent local bedtime at or before `now`. */
@@ -72,14 +104,46 @@ function resolveRestStartedAt(bedtime: string, now: Date): Date {
 
 export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependencies) {
   const memory = new Map<string, CatLifeMemory>();
+  const random = dependencies.random ?? Math.random;
 
   function rememberFor(catId: string): CatLifeMemory {
     let entry = memory.get(catId);
     if (!entry) {
-      entry = { backoffUntil: 0, failureRecorded: false };
+      entry = {
+        backoffUntil: 0,
+        failureRecorded: false,
+        awakeSince: null,
+        nextHeartbeatAt: null,
+        heartbeatKind: 'regular',
+      };
       memory.set(catId, entry);
     }
     return entry;
+  }
+
+  function scheduleHeartbeat(remembered: CatLifeMemory, kind: 'wake' | 'regular', fromMs: number): void {
+    remembered.heartbeatKind = kind;
+    remembered.nextHeartbeatAt = fromMs + pickCompanionHeartbeatDelayMs(kind, random);
+  }
+
+  /**
+   * FR-19: greet once per morning. The lane is the record, so a restart after
+   * the greeting schedules an ordinary heartbeat instead of a second one.
+   */
+  function scheduleFirstHeartbeat(
+    remembered: CatLifeMemory,
+    lane: Pick<ChatState['channels'][number], 'messages'>,
+    wakeAt: Date,
+    now: Date,
+  ): void {
+    const greetable = now.getTime() - wakeAt.getTime() < WAKE_GREETING_WINDOW_MS
+      && !laneHasHeartbeatSince(lane, wakeAt, ['wake']);
+    scheduleHeartbeat(remembered, greetable ? 'wake' : 'regular', now.getTime());
+  }
+
+  function forgetAwake(remembered: CatLifeMemory): void {
+    remembered.awakeSince = null;
+    remembered.nextHeartbeatAt = null;
   }
 
   async function tick(): Promise<CompanionLifeTickEntry[]> {
@@ -134,7 +198,23 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
           if (liveness === 'live') {
             remembered.backoffUntil = 0;
             remembered.failureRecorded = false;
-            record('awake');
+            remembered.awakeSince ??= now.getTime();
+            if (remembered.nextHeartbeatAt === null) {
+              scheduleFirstHeartbeat(remembered, lane, resolveCompanionRhythm(life, cat.id, now).wakeAt, now);
+            }
+            const heartbeat = await maybeSpeak({
+              remembered,
+              catId: cat.id,
+              lane,
+              sessionId: lease.sessionId,
+              now,
+            });
+            entries.push({
+              catId: cat.id,
+              laneId: lane.id,
+              outcome: 'awake',
+              ...(heartbeat ? { heartbeat } : {}),
+            });
             continue;
           }
         }
@@ -170,6 +250,10 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
         }
         remembered.backoffUntil = 0;
         remembered.failureRecorded = false;
+        if (wakeReason === 'rhythm') {
+          remembered.awakeSince = now.getTime();
+          scheduleFirstHeartbeat(remembered, lane, resolveCompanionRhythm(life, cat.id, now).wakeAt, now);
+        }
         if (result.status === 'started') {
           await appendCompanionPresenceActivity(dependencies.activityStore, {
             catId: cat.id,
@@ -184,6 +268,7 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
       }
 
       if (lease?.status !== 'ready' && lease?.status !== 'initializing') {
+        forgetAwake(remembered);
         record('asleep');
         continue;
       }
@@ -201,6 +286,29 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
           && lastMessageAt >= resolveRestStartedAt(life.bedtime, now).getTime())
         ? 'idle'
         : 'rest';
+      // FR-24: a Cat going to bed on its own rhythm may say good night first.
+      let bedtime: CompanionLifeTickEntry['heartbeat'];
+      if (
+        reason === 'rest'
+        && dependencies.speak
+        && lease.status === 'ready'
+        && lease.sessionId
+        && !laneHasHeartbeatSince(lane, resolveRestStartedAt(life.bedtime, now), ['bedtime'])
+      ) {
+        bedtime = {
+          kind: 'bedtime',
+          result: await dependencies.speak({
+            catId: cat.id,
+            laneId: lane.id,
+            sessionId: lease.sessionId,
+            kind: 'bedtime',
+            now,
+            awakeSince: remembered.awakeSince === null ? null : new Date(remembered.awakeSince),
+            lastOwnerMessageAt: findLastOwnerMessageAt(lane),
+          }),
+        };
+      }
+      forgetAwake(remembered);
       const deactivation = await dependencies.deactivateLane(lane.id);
       if (deactivation.closedSessionCount > 0) {
         await appendCompanionPresenceActivity(dependencies.activityStore, {
@@ -211,9 +319,62 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
           now,
         });
       }
-      record('slept', reason);
+      entries.push({
+        catId: cat.id,
+        laneId: lane.id,
+        outcome: 'slept',
+        reason,
+        ...(bedtime ? { heartbeat: bedtime } : {}),
+      });
     }
     return entries;
+  }
+
+  /** FR-18..FR-20: speak when due, unless the lane is mid-conversation. */
+  async function maybeSpeak(input: {
+    remembered: CatLifeMemory;
+    catId: string;
+    lane: ChatState['channels'][number];
+    sessionId: string;
+    now: Date;
+  }): Promise<CompanionLifeTickEntry['heartbeat'] | undefined> {
+    const { remembered, lane, now } = input;
+    if (
+      !dependencies.speak
+      || remembered.nextHeartbeatAt === null
+      || now.getTime() < remembered.nextHeartbeatAt
+    ) {
+      return undefined;
+    }
+    if (lane.roomRouting?.workflow?.activeTurn) {
+      remembered.nextHeartbeatAt = now.getTime() + HEARTBEAT_BUSY_RETRY_MS;
+      return undefined;
+    }
+    const lastMessageAt = lane.lastMessageAt ? Date.parse(lane.lastMessageAt) : Number.NaN;
+    if (Number.isFinite(lastMessageAt) && now.getTime() - lastMessageAt < COMPANION_HEARTBEAT_QUIET_LANE_MS) {
+      // Already talking: a later good-morning would be odd, so fall back to an ordinary beat.
+      scheduleHeartbeat(remembered, 'regular', lastMessageAt + COMPANION_HEARTBEAT_QUIET_LANE_MS);
+      return undefined;
+    }
+    const kind = remembered.heartbeatKind;
+    const result = await dependencies.speak({
+      catId: input.catId,
+      laneId: lane.id,
+      sessionId: input.sessionId,
+      kind,
+      now,
+      awakeSince: remembered.awakeSince === null ? null : new Date(remembered.awakeSince),
+      lastOwnerMessageAt: findLastOwnerMessageAt(lane),
+    });
+    if (result === 'busy') {
+      remembered.nextHeartbeatAt = now.getTime() + HEARTBEAT_BUSY_RETRY_MS;
+    } else if (result === 'failed') {
+      remembered.heartbeatKind = 'regular';
+      remembered.nextHeartbeatAt = now.getTime() + HEARTBEAT_FAILED_RETRY_MS;
+    } else {
+      scheduleHeartbeat(remembered, 'regular', now.getTime());
+    }
+    return { kind, result };
   }
 
   return { tick };

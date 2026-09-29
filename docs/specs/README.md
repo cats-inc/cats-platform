@@ -2,7 +2,7 @@
 
 - [SPEC-124: Alive companion life loop](SPEC-124-alive-companion-life-loop.md)
   — approved, 2026-09-29; keep-alive, sleep rhythm, heartbeat, Telegram on-duty
-  and photos for companion Cats; Phase 1 (keep-alive and rhythm) implemented.
+  and photos for companion Cats; Phases 1–2 (keep-alive, rhythm, heartbeat) implemented.
 - [SPEC-123: Cats Code agent artifact preview](SPEC-123-code-agent-artifact-preview.md)
   — draft, 2026-09-29; agent-opened static/dev-server/document previews beside
   the Code conversation; open sign-offs; implementation not started.
@@ -58,7 +58,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
-| [SPEC-124](SPEC-124-alive-companion-life-loop.md) | Alive Companion Life Loop | Approved; Phase 1 implemented; Phases 2–4 pending | [PLAN-117](../plans/PLAN-117-alive-companion-life-loop.md) |
+| [SPEC-124](SPEC-124-alive-companion-life-loop.md) | Alive Companion Life Loop | Approved; Phases 1–2 implemented; Phases 3–4 pending | [PLAN-117](../plans/PLAN-117-alive-companion-life-loop.md) |
 | [SPEC-121](SPEC-121-managed-plugin-capabilities.md) | Managed Plugin Capabilities | Internal Agency host pilot implemented; general SDK planned | [PLAN-113](../plans/PLAN-113-managed-plugin-capabilities.md) |
 | [SPEC-120](SPEC-120-app-market-and-lifecycle.md) | App Market and Lifecycle | Draft contract; direction accepted; not implemented | [PLAN-112](../plans/PLAN-112-app-market-and-lifecycle.md) |
 | [SPEC-118](SPEC-118-orchestrator-knowledge-and-collaboration-operations.md) | Orchestrator Knowledge and Collaboration Operations | In progress; separate native K2/K3, K3 saved-state projections and full CI pass; profile/combined rollout gates open | [PLAN-110](../plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md), [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |

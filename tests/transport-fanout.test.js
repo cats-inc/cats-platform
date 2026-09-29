@@ -15,6 +15,8 @@ import {
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { startTransportFanout } from '../build/server/platform/transports/fanout/subscriber.js';
 import { createTelegramRelay } from '../build/server/platform/transports/telegram/relay/index.js';
+import { createCompanionHeartbeatSpeaker } from '../build/server/products/chat/api/companionLifeLoop.js';
+import { MemoryCompanionBoxStore } from '../build/server/products/chat/state/companion-box/memoryStore.js';
 
 function createDeliveryClient(deliveries) {
   return {
@@ -310,6 +312,50 @@ test('transport fanout respects disabled outbound fanout bindings', async () => 
     );
 
     assert.equal(fixture.deliveries.length, 0);
+  } finally {
+    fixture.stop();
+  }
+});
+
+test('a companion heartbeat that speaks reaches the linked Telegram chat once', async () => {
+  const fixture = await createFanoutFixture();
+  try {
+    const catId = (await fixture.chatStore.read()).cats[0].id;
+    const speak = createCompanionHeartbeatSpeaker({
+      chatStore: fixture.chatStore,
+      runtimeClient: {
+        async sendMessage() {
+          return {
+            segments: [{ kind: 'text', text: 'Good morning from the windowsill.', toolName: null, toolId: null }],
+            inputTokens: 1,
+            outputTokens: 1,
+            tokensUsed: 2,
+          };
+        },
+      },
+      companionStore: new MemoryCompanionBoxStore(),
+      config: {},
+      eventHub: fixture.eventHub,
+      mutationGate: { run: (_key, operation) => operation() },
+      now: () => new Date('2026-04-22T07:05:00.000Z'),
+    });
+
+    const result = await speak({
+      catId,
+      laneId: fixture.channelId,
+      sessionId: 'session-heartbeat',
+      kind: 'wake',
+      now: new Date('2026-04-22T07:05:00.000Z'),
+      awakeSince: null,
+      lastOwnerMessageAt: null,
+    });
+    await flushFanout();
+
+    assert.equal(result, 'spoke');
+    assert.deepEqual(
+      fixture.deliveries.map((delivery) => [delivery.operation, delivery.chatId, delivery.text]),
+      [['send', '12345', 'Good morning from the windowsill.']],
+    );
   } finally {
     fixture.stop();
   }

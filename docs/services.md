@@ -162,6 +162,16 @@ rhythm is `CompanionBox.life`, in host-local time.
 - `CATS_COMPANION_LIFE_LOOP=false` turns the loop off. Test servers created
   through `createServer` never start it unless `chat.startCompanionLifeLoop` is set.
 
+While a companion is awake the same loop runs a heartbeat: every 30–120 minutes
+(2–10 minutes after the morning wake) it sends one hidden turn into the Cat's own
+direct-lane session, telling it the local time and when the owner last wrote,
+and the Cat either replies `[quiet]` or says something. What it says is written
+to the lane as its own message and mirrored to a linked Telegram chat by the
+transport fanout. The loop never beats while the lane had a message in the last
+ten minutes, and it holds the session while it runs so an owner message waits
+instead of hitting the runtime's busy response. Every heartbeat is a real
+provider turn, including the quiet ones.
+
 ## Cross-Project Port Coordination
 
 This project was created from **project-bootstrap**, which maintains a central port registry at:

@@ -20,6 +20,7 @@ import {
 import type { TransportWorkGoldenPathPort } from '../work-delivery/port.js';
 import type { TelegramCommandPort } from './commandPort.js';
 import { normalizeMessageLocale } from '../../../shared/i18n/index.js';
+import { COMPANION_HEARTBEAT_EVENT } from '../../../shared/companionRole.js';
 import type { TelegramRelay } from './relay/index.js';
 import {
   pickTelegramMessage,
@@ -1084,7 +1085,11 @@ function buildTelegramReplyText<TState extends TelegramRoomBridgeState>(input: {
   messageCountBeforeDispatch: number;
 }): string {
   const channel = input.roomBridge.readRoom(input.state, input.roomId);
-  const newMessages = channel.messages.slice(input.messageCountBeforeDispatch);
+  // A heartbeat that landed during this turn is already mirrored by the transport
+  // fanout; picking it as the reply would send it to Telegram a second time.
+  const newMessages = channel.messages
+    .slice(input.messageCountBeforeDispatch)
+    .filter((message) => message.metadata?.event !== COMPANION_HEARTBEAT_EVENT);
   const replyMessage = [...newMessages].reverse().find((message) =>
     message.senderKind === 'orchestrator' || message.senderKind === 'agent',
   ) ?? [...newMessages].reverse().find((message) => message.senderKind === 'system') ?? null;

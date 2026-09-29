@@ -41,6 +41,7 @@ import {
 } from '../runtime-session/state.js';
 import { shouldRewriteOrchestratorReply } from '../runtime-session/index.js';
 import type { DispatchLeasePatch } from './recovery.js';
+import { waitForSessionTurnGate } from './sessionTurnGate.js';
 import {
   buildDispatchRuntimeContextMetadata,
   mergeRuntimeInvocationContextMetadata,
@@ -242,6 +243,7 @@ export async function executeDispatch(
       ),
       skills: runtimeEnvelope.skills,
     }, { phase: 'message_send' });
+    await waitForSessionTurnGate(sessionId);
     const runtimeResult = await sendSupervisedRuntimeMessage({
       runtimeClient,
       sessionId,

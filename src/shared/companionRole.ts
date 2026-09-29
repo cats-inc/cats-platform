@@ -8,6 +8,12 @@ export const COMPANION_ROLE = 'companion';
 /** Runtime skill requested for companion Cats on a built-in skill profile. */
 export const COMPANION_SKILL_ID = 'companion';
 
+/**
+ * Event on a lane message a companion said on its own (SPEC-124 heartbeat).
+ * It is not a reply to anything, so reply pickers must skip it.
+ */
+export const COMPANION_HEARTBEAT_EVENT = 'companion_heartbeat';
+
 export function isCompanionCat(cat: { roles: readonly string[] } | null | undefined): boolean {
   return cat?.roles.includes(COMPANION_ROLE) ?? false;
 }

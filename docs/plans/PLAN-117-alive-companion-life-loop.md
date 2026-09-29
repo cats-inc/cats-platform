@@ -40,13 +40,15 @@
 
 ## Phase 2: 心跳
 
-- [ ] 以 runtime session 為鍵的程序內 gate；`executeDispatch` 送出前等待。
-- [ ] 心跳排程（記憶體、隨機間隔、醒來後的 `wake` 心跳、延後條件、重啟不重複道早安）。
-- [ ] 心跳 prompt（本地時間、醒了多久、主人上次說話、陪伴記憶）與 `[quiet]` 判斷。
-- [ ] 回覆寫入 lane（與一般 Cat 回覆相同的訊息形狀），發出 `message_added`，由 fanout
-  送到 Telegram；確認不會重複送出。
-- [ ] 入睡前的 `bedtime` 心跳。
-- [ ] 測試：安靜不寫入、開口寫入並鏡像、心跳進行中 owner 訊息會等待、runtime busy 時放棄重排。
+- [x] 以 runtime session 為鍵的程序內 gate；`executeDispatch` 送出前等待。
+- [x] 心跳排程（記憶體、隨機間隔、醒來後的 `wake` 心跳、延後條件、重啟不重複道早安）。
+- [x] 心跳 prompt（本地時間、醒了多久、主人上次說話、陪伴記憶）與 `[quiet]` 判斷。
+- [x] 回覆以該 Cat 的一般訊息寫入 lane（`senderKind: 'agent'`、origin `runtime`），但事件是
+  `companion_heartbeat` 而不是 `assistant_turn_segment`，避免 live indicator 把它當成 owner
+  訊息的回覆；發出 `message_added`，由 fanout 送到 Telegram 一次。
+- [x] 入睡前的 `bedtime` 心跳。
+- [x] 測試：安靜不寫入、開口寫入並鏡像到 Telegram、心跳進行中 owner 訊息會等待、runtime busy
+  時重排、重啟後不重複道早安、正在聊天時不插話。
 
 **Exit**：清醒時段內他會在同一段對話裡自己開口，Telegram 收得到。
 
@@ -82,10 +84,22 @@
   - 驗證：`tests/companion-life.test.js`（19）、`companion-box-store`、`companion-box-routes`、
     `channel-deactivate`、`config`、`architecture-boundaries` 等 13 個 server 測試檔共 286 個通過；
     renderer 相關 10 個測試檔 43 個通過。`provider-telegram-routes` 的「file-backed restart」
-    在合併執行時失敗一次，單獨與重跑皆通過（負載敏感，與本變更無關）。
+    在合併執行時失敗一次，重跑通過（原因見 Phase 2 紀錄）。
   - 尚未驗證：實機 Desktop 畫面（動態紀錄文字、狀態卡片在 loop 喚醒後的更新）。
   - 已確認 Desktop 讓他睡的三個入口（個人頁、私訊工具列、`useDirectLaneCompanionMode`）都走
     `POST /api/channels/:id/deactivate`，所以都會寫入 `sleepUntil`；進入私訊不會自動呼叫
     activation。在清醒時段按一次睡覺，他會睡到下一次起床時間；期間 owner 傳訊息仍會醒來
     回覆，閒置 15 分鐘後再睡回去。
   - 已知取捨：休息時段裡卡在 `initializing` 超過 15 分鐘且 lane 安靜的 session 也會被關掉。
+- 2026-09-29：Phase 1 以 #186 merge（`7e2efe17`）。Phase 2 完成。
+  - Telegram bridge 選回覆時跳過 `companion_heartbeat` 訊息：owner 那一輪失敗而 lane 上只剩
+    心跳訊息時，原本會把它當成回覆再送一次（fanout 已經送過）。
+  - `provider-telegram-routes` 的「file-backed restart」是既有的不穩定測試：單獨執行各 10 次，
+    Phase 1 之前（`19b52694`）失敗 1 次、Phase 1 後的 main（`7e2efe17`）失敗 2 次、Phase 2
+    分支失敗 2 次。失敗時都是 `waitForTelegramLinkedRoom` 的 4 秒逾時（成功約 1.1 秒），
+    呈雙峰分布，像寫入競爭而非變慢；companion 檔案 store 在該測試中完全沒有被讀寫。差距在
+    樣本誤差內，另案追蹤。
+  - 驗證：`companion-heartbeat`（11）、`transport-fanout`（6，含心跳送到 Telegram 一次）、
+    `telegram-work-delivery-bridge`（11，含心跳不會被當成回覆）等，server 12 檔 248 個、
+    `provider-telegram-routes` 35 個、bundled 4 檔 21 個通過。
+  - 尚未驗證：實機 Desktop 私訊裡心跳訊息的呈現，以及真的 Telegram bot。

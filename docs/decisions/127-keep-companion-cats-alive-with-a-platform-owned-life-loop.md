@@ -5,8 +5,8 @@
 Accepted, 2026-09-29。owner 在對話中同意方向與分段（先做「真的醒著」與心跳，
 睡眠採自主作息 A 方案；早安圖來源為 companion 設定的相簿資料夾）。
 規格見 [SPEC-124](../specs/SPEC-124-alive-companion-life-loop.md)，
-實作見 [PLAN-117](../plans/PLAN-117-alive-companion-life-loop.md)；Phase 1（清醒與作息）已實作，
-心跳（§4）待 Phase 2。
+實作見 [PLAN-117](../plans/PLAN-117-alive-companion-life-loop.md)；Phase 1（清醒與作息）與
+Phase 2（心跳，§4）已實作。
 
 ## Context
 
