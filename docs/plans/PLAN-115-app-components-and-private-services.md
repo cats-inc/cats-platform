@@ -78,6 +78,19 @@ registry/lifecycle machinery, not a second installer.
 
 ## Validation and delivery
 
+2026-09-29 PR delivery checkpoint:
+
+- Apps PR #24 merged; Platform PR #194 has squash auto-merge enabled. Full CI
+  typecheck passed after CI installed Mobile dependencies. The test gate found
+  three stale fixtures: Desktop install authority, Vite App endpoint routing,
+  and the source-free Desktop package's ngrok dependency inventory.
+- Updated those fixtures while retaining unauthenticated install rejection and
+  registry non-mutation, SPA landing routes, and an explicit non-executable
+  cross-OS native inventory fixture. Focused checks passed all 13 host/proxy
+  tests and all 3 distribution tests. Independent fixture review found no
+  blocker. The updated full CI gate remains required before Platform can merge.
+- No version bump, publication, live tunnel/Bot or user-profile installation.
+
 2026-09-29 shared-ingress candidate checkpoint:
 
 - Code Canvas comparison: public ingress denies the internal Code MCP before

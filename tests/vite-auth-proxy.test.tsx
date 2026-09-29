@@ -19,8 +19,16 @@ test('vite auth proxy preserves browser origin and rewrites cookies to renderer 
   assert.equal(proxy.cookiePathRewrite, '/');
 });
 
-test('vite auth proxy covers api, health, and runtime ingress paths', () => {
-  assert.deepEqual([...CATS_VITE_PROXY_PATHS], ['/api', '/health', '/runtime']);
+test('vite auth proxy covers App endpoints while retaining App landing routes in the renderer', () => {
+  assert.deepEqual([...CATS_VITE_PROXY_PATHS], ['/api', '/health', '/runtime', '^/apps/[^/]+/.+']);
+  const isProxied = (url: string) => CATS_VITE_PROXY_PATHS.some(pattern =>
+    pattern.startsWith('^') ? new RegExp(pattern).test(url) : url.startsWith(pattern));
+  for (const url of ['/apps/cats.ask/ui/main?ticket=fixture', '/apps/cats.ask/api/requests', '/apps/cats.ask/mcp']) {
+    assert.equal(isProxied(url), true, url);
+  }
+  for (const url of ['/apps/cats.ask', '/apps/cats.ask?view=library', '/apps/cats.ask/']) {
+    assert.equal(isProxied(url), false, url);
+  }
 });
 
 test('browser auth cookies remain host-only for built server and dev proxy', () => {
