@@ -414,9 +414,53 @@ test('a reply carrying an album photo reaches Telegram as that photo, captioned 
 
   assert.deepEqual(requests.map((request) => request.operation), ['send_media']);
   assert.deepEqual(requests[0]!.mediaFile, photo);
-  assert.match(requests[0]!.caption ?? '', /Here is last summer\.$/u);
-  assert.doesNotMatch(requests[0]!.caption ?? '', /Attached files/u);
+  assert.equal(requests[0]!.caption, 'Here is last summer.', 'the caption is the Cat\'s words alone');
 });
+
+function directLaneRoomBridge(options: { roomExists: boolean }) {
+  type Channel = { id: string; title: string; messages: Array<{ senderKind: string; senderName: string; body: string }> };
+  const roomState = (channels: Channel[]) => ({ selectedChannelId: 'channel-1', channels, cats: [] });
+  return {
+    readState: async () => roomState(options.roomExists ? [{ id: 'channel-1', title: '', messages: [] }] : []),
+    writeState: async (state: unknown) => state,
+    createRoom: (state: ReturnType<typeof roomState>) => ({
+      state: roomState([...state.channels, { id: 'channel-1', title: '', messages: [] }]),
+      roomId: 'channel-1',
+    }),
+    findReusableRoomId: (state: ReturnType<typeof roomState>) => state.channels[0]?.id ?? null,
+    readRoom: (state: ReturnType<typeof roomState>) => state.channels[0],
+    routeRoomMessage: async ({ state }: { state: ReturnType<typeof roomState> }) => ({
+      state: roomState([{
+        ...state.channels[0]!,
+        messages: [
+          ...state.channels[0]!.messages,
+          { senderKind: 'user', senderName: 'Owner', body: 'are you up?' },
+          { senderKind: 'agent', senderName: 'Bridge Cat', body: 'Purr. Right here.' },
+        ],
+      }]),
+    }),
+  } as never;
+}
+
+for (const roomExists of [true, false]) {
+  test(`a Cat's own bot answers with its words alone (${roomExists ? 'ongoing lane' : 'first message'})`, async () => {
+    const log: RecordedCall[] = [];
+
+    await bridgeTelegramWebhookToRoom({
+      update: workUpdate('are you up?'),
+      receipt: acceptedReceipt(),
+      context: relayContext(),
+      roomBridge: directLaneRoomBridge({ roomExists }),
+      memoryService,
+      runtimeClient,
+      telegramRelay: createRecordingRelay(log),
+      goldenPath: null,
+    });
+
+    const replies = log.filter((entry) => entry.kind.startsWith('deliver:'));
+    assert.deepEqual(replies.map((entry) => entry.detail), ['Purr. Right here.']);
+  });
+}
 
 test('an ordinary message shows the Cat typing before the turn runs, without a delivery receipt', async () => {
   const log: RecordedCall[] = [];

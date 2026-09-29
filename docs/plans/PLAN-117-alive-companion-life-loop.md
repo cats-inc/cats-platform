@@ -87,8 +87,6 @@
   `x (2).png`；可改為依內容雜湊重用既有副本。
 - 相簿很大時，貓每次都得自己翻；可讓他替看過的照片留筆記，或由平台提供「最近傳過的」清單。
 - Desktop 串流回覆時，`[photo: …]` 那一行可能在收尾前短暫出現，收尾後才被移除。
-- Telegram 私訊的每則回覆前面都有 `Continuing room "…" in Cats Chat.`（bridge 既有行為），
-  照片的圖說也會帶著它，破壞陪伴感。
 
 ## Progress Log
 
@@ -162,3 +160,9 @@
     `provider-telegram-routes`、`telegram-*`、`dependency-graph`、`architecture-boundaries` 等，
     server 19 檔 233 個與 bundled Telegram 測試 64 個通過；`tsc` 的 server、desktop、root 專案通過。
   - 尚未驗證：真的 Telegram bot 傳照片，以及貓實際打開照片。
+- 2026-09-30：Telegram 照片以 #208 merge（`206e2488`）。拿掉 Telegram 回覆前的房間說明：原本每則回覆
+  都以 `Continuing room "…" in Cats Chat.` 開頭，照片圖說也會帶著。現在只有群組 bot 開新房間時才加
+  `Opened room "…"`；Cat 自己的 bot（私訊 lane）只送他說的話，第一則也不加。
+  - 驗證：`telegram-work-delivery-bridge`（17，含私訊 lane 進行中與第一則訊息都只有 Cat 的話、照片圖說
+    只有回覆文字）、`provider-telegram-routes`（群組開新房間仍有 `Opened room`）等，server 8 檔 181 個與
+    bundled Telegram 測試 66 個通過；`tsc` 的 server 與 test 專案通過（mobile 依賴未安裝）。
