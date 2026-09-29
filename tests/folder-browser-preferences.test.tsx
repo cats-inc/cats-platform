@@ -78,7 +78,7 @@ test('browseFolderWithHomeFallback falls back to the user home browse when remem
         };
       }
       return {
-        current: 'C:/Users/kenne',
+        current: 'C:/Users/tester',
         parent: 'C:/Users',
         entries: [],
       };
@@ -86,7 +86,7 @@ test('browseFolderWithHomeFallback falls back to the user home browse when remem
   });
 
   assert.deepEqual(calls, ['C:/missing/path', null]);
-  assert.equal(result.current, 'C:/Users/kenne');
+  assert.equal(result.current, 'C:/Users/tester');
   assert.equal(result.error, undefined);
 });
 
@@ -98,7 +98,7 @@ test('browseFolderWithHomeFallback preserves explicit requested path errors', as
     browse: async (targetPath?: string) => {
       calls.push(targetPath ?? null);
       return {
-        current: targetPath ?? 'C:/Users/kenne',
+        current: targetPath ?? 'C:/Users/tester',
         parent: 'C:/missing',
         entries: [],
         error: targetPath ? `Not a directory: ${targetPath}` : undefined,

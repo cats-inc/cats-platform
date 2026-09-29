@@ -11,24 +11,24 @@ const PRODUCT_SURFACES = ['chat', 'work', 'code'];
 test('resolveComposerWorkspacePath keeps assigned chat folders visible in the composer chip', () => {
   assert.equal(
     resolveComposerWorkspacePath(
-      'C:\\Users\\kenne\\Source\\cats',
-      'C:\\Users\\kenne\\.cats\\runtime\\sessions\\abc123',
+      'C:\\Users\\tester\\Source\\cats',
+      'C:\\Users\\tester\\.cats\\runtime\\sessions\\abc123',
     ),
-    'C:\\Users\\kenne\\Source\\cats',
+    'C:\\Users\\tester\\Source\\cats',
   );
   assert.equal(
     resolveComposerWorkspacePath(
       null,
-      'C:\\Users\\kenne\\.cats\\runtime\\sessions\\abc123',
+      'C:\\Users\\tester\\.cats\\runtime\\sessions\\abc123',
     ),
-    'C:\\Users\\kenne\\.cats\\runtime\\sessions\\abc123',
+    'C:\\Users\\tester\\.cats\\runtime\\sessions\\abc123',
   );
   assert.equal(
     resolveComposerWorkspacePath(
       null,
-      'C:\\Users\\kenne\\Documents\\notes',
+      'C:\\Users\\tester\\Documents\\notes',
     ),
-    'C:\\Users\\kenne\\Documents\\notes',
+    'C:\\Users\\tester\\Documents\\notes',
   );
 });
 

@@ -13,7 +13,7 @@ import {
 test('normalizePreviewSurfaceUrl accepts web-safe preview URLs and rejects filesystem paths', () => {
   assert.equal(normalizePreviewSurfaceUrl('https://example.test/preview'), 'https://example.test/preview');
   assert.equal(normalizePreviewSurfaceUrl('/artifacts/preview/index.html'), '/artifacts/preview/index.html');
-  assert.equal(normalizePreviewSurfaceUrl('C:\\Users\\kenne\\project\\dist\\index.html'), null);
+  assert.equal(normalizePreviewSurfaceUrl('C:\\Users\\tester\\project\\dist\\index.html'), null);
   assert.equal(normalizePreviewSurfaceUrl('./build/renderer/index.html'), null);
   assert.equal(normalizePreviewSurfaceUrl('file:///tmp/index.html'), null);
 });
@@ -47,7 +47,7 @@ test('createPreviewSurfaceFallbackCandidates keeps non-web artifact paths from b
       id: 'artifact-local-file',
       kind: 'preview',
       title: 'Preview HTML',
-      path: 'C:\\Users\\kenne\\project\\dist\\index.html',
+      path: 'C:\\Users\\tester\\project\\dist\\index.html',
     },
   ]);
 

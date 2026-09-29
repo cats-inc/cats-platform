@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 
 import { parseStableReleaseTag } from './validate-release-version.mjs';
 import { DESCRIPTOR_RELATIVE_PATH } from './generate-desktop-release-descriptor.mjs';
+import { stageDotnetRuntimeNotices } from './shared/dotnet-runtime-notices.mjs';
 import { resolveAppLock, materializeAppSelection } from '#cats-app-package';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
@@ -648,6 +649,13 @@ async function buildWindowsVoiceHelper(archOverride) {
     ],
     PROJECT_ROOT,
   );
+  // dotnet publish copies the self-contained runtime but not its license texts.
+  const notices = await stageDotnetRuntimeNotices({
+    outputDir,
+    depsJsonPath: resolve(outputDir, 'cats-stt-windows.deps.json'),
+    helperName: 'cats-stt-windows.exe',
+  });
+  console.log(`Staged .NET runtime notices for ${notices.runtime.id} ${notices.runtime.version}`);
 }
 
 async function buildNativeVoiceHelpers(target, archOverride) {

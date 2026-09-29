@@ -534,6 +534,14 @@ for the Platform server bundle, Vite renderer bundle and bundled .NET runtime;
 extend the actual packaged-resource checks to verify each surface. The current
 Runtime bundle gate does not establish notice completeness for those artifacts.
 
+Status 2026-09-29: the Windows voice helper now stages the .NET runtime pack's
+`LICENSE.TXT` and `THIRD-PARTY-NOTICES.TXT` (resolved from the published
+`deps.json` version, copied from the NuGet cache) plus an index naming the
+Windows SDK .NET projection assemblies and their license URL, under
+`native/windows-stt/licenses/`; the packaged-resource gate verifies them whenever
+the helper binary ships. The server bundle marks all packages external, so it
+inlines no third-party code. The Vite renderer bundle remains the open item.
+
 ### Packaged startup failure — 2026-09-29
 
 The owner's installed 0.5.14 update exposed a missed dependency: Platform imported

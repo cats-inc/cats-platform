@@ -9,7 +9,7 @@
     "version": "1.0.0",
     "category": "user-app",
     "trustTier": "local-user",
-    "publisher": { "name": "Cats Inc" },
+    "publisher": { "name": "Example Publisher" },
     "compatibility": { "catsPlatform": "^0.5.0", "appSdk": "^1.2.0" },
     "entrypoints": { "renderer": "renderer/index.html" },
     "contributions": {
