@@ -479,8 +479,10 @@ jobs:
           TAG: ${{ needs.guard.outputs.tag }}
         working-directory: release-assets
         run: |
+          # The redirection creates SHA256SUMS before find lists the directory, so
+          # exclude it or the list hashes its own empty file and the check fails.
           rm -f SHA256SUMS
-          find . -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort | xargs sha256sum > SHA256SUMS
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | LC_ALL=C sort | xargs sha256sum > SHA256SUMS
           sha256sum -c SHA256SUMS
           gh release upload "$TAG" SHA256SUMS --clobber
 
