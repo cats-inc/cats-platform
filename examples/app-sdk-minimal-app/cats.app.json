@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "example.minimal",
+  "displayName": "Minimal Example",
+  "version": "0.1.0",
+  "category": "user-app",
+  "trustTier": "local-user",
+  "publisher": { "name": "Cats Inc" },
+  "compatibility": { "catsPlatform": "^0.5.0", "appSdk": "^1.2.0" },
+  "entrypoints": { "renderer": "renderer/index.html" },
+  "contributions": {
+    "lobbyApps": [{ "id": "minimal", "title": "Minimal Example", "routePath": "/apps/example.minimal" }]
+  },
+  "permissions": ["ui.route", "ui.lobby"]
+}

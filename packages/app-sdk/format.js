@@ -55,7 +55,9 @@ export function decodeAppPackage(bytes, expected) {
         || /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(part) || part.endsWith('.'))
       || ['cats.app.json', '.package.json'].includes(file.path.toLowerCase())
       || seen.has(file.path.toLowerCase()) || typeof file.base64 !== 'string'
-      || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(file.base64)) {
+      // A grouped repetition here overflows the regexp stack for files above ~3 MiB.
+      // This linear pre-check plus the round trip below accepts exactly canonical base64.
+      || file.base64.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(file.base64)) {
       throw new Error('Unsafe, duplicate, or invalid app file.');
     }
     seen.add(file.path.toLowerCase());

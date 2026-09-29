@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { decodeAppPackage, materializeAppSelection, parseAppLock, resolveAppLock, sha256, supportsVersion } from '#cats-app-package';
 
+// Hand-built on purpose: the invalid variants below cannot come from the official encoder,
+// and a Node zlib archive keeps the decoder accepting Apps released before that encoder.
 const envelope = () => ({ schemaVersion: 1, kind: 'cats-app', manifest: { id: 'cats.usage', version: '0.1.0', entrypoints: { renderer: 'renderer/index.html' } }, files: [{ path: 'renderer/index.html', base64: Buffer.from('<html><head></head><body>Usage</body></html>').toString('base64') }] });
 const encode = (value) => gzipSync(Buffer.from(JSON.stringify(value)));
 

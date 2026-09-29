@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
-import { gzipSync } from 'node:zlib';
 import { mkdtemp, readFile, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { sha256, materializeAppSelection, PLATFORM_VERSION } from '#cats-app-package';
+import { encodeAppPackage } from '#cats-app-encode';
 import { installBundledApps, installRendererPackage, validateRendererPackage } from '../src/platform/apps/packageInstaller.ts';
 import { readAppRenderer } from '../src/platform/apps/renderer.ts';
 import { FileCatsAppRegistry } from '../src/platform/apps/registry.ts';
@@ -20,8 +20,8 @@ function fixture(version = '0.1.0', permissions = ['ui.route', 'ui.lobby', 'runt
   const manifest = { schemaVersion: 1, id: 'cats.usage', displayName: 'Usage', version, category: 'user-app', trustTier: 'system',
     publisher: { name: 'Test' }, compatibility: { catsPlatform: PLATFORM_VERSION, appSdk: '1.x' },
     entrypoints: { renderer: 'renderer/index.html' }, contributions: { lobbyApps: [{ id: 'usage', title: 'Usage', routePath: '/apps/cats.usage' }] }, permissions };
-  const bytes = gzipSync(Buffer.from(JSON.stringify({ schemaVersion: 1, kind: 'cats-app', manifest,
-    files: [{ path: 'renderer/index.html', base64: Buffer.from('<html><head></head><body><h1>Usage</h1></body></html>').toString('base64') }] })));
+  const bytes = encodeAppPackage({ manifest,
+    files: [{ path: 'renderer/index.html', data: Buffer.from('<html><head></head><body><h1>Usage</h1></body></html>') }] });
   return { manifest, bytes, pin: { id: manifest.id, version, sha256: sha256(bytes), artifact: `usage-${version}.catsapp` } };
 }
 

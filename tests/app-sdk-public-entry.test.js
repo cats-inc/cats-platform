@@ -39,15 +39,17 @@ test('the ./app-sdk subpath exposes exactly the allowlisted contract', () => {
   }
 });
 
-test('exports keep every previously resolvable path while adding the SDK entry', () => {
+test('exports allow only the SDK entry, the manifest and the existing main', () => {
   const { exports } = manifestJson;
+  // Adding a public path is a feature; removing one needs a minor release (ADR-123).
+  assert.deepEqual(Object.keys(exports), ['.', './package.json', './app-sdk']);
   assert.equal(exports['.'], `./${manifestJson.main}`);
   assert.equal(exports['./package.json'], './package.json');
-  assert.equal(exports['./*'], './*', 'Removing ./* blocks undeclared paths and needs a minor release (ADR-123)');
   assert.deepEqual(exports['./app-sdk'], { types: './build/server/app-sdk/index.d.ts', default: './build/server/app-sdk/index.js' });
   // cats-one locates the Platform bin through the package manifest.
   const requireFromHere = createRequire(import.meta.url);
   assert.equal(requireFromHere.resolve('@cats-inc/cats-platform/package.json'), path.join(root, 'package.json'));
+  assert.throws(() => requireFromHere.resolve('@cats-inc/cats-platform/packages/app-sdk/package.js'), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' });
 });
 
 test('the public entry loads only the package format, encoder and manifest validation', async () => {

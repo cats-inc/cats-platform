@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { gzipSync } from 'node:zlib';
 import test from 'node:test';
 import { createPackage } from '@electron/asar';
 import { sha256, PLATFORM_VERSION } from '#cats-app-package';
+import { encodeAppPackage } from '#cats-app-encode';
 import { verifyDesktopAppBundle } from '../scripts/verify-desktop-app-bundle.mjs';
 
 test('installer verifier checks shipped bytes and source-free offline activation, rejecting omissions and corruption', async () => {
@@ -29,9 +29,8 @@ test('installer verifier checks shipped bytes and source-free offline activation
       contributions: { lobbyApps: [{ id: 'usage', title: 'Usage', routePath: '/apps/cats.usage' }] },
       permissions: ['ui.route', 'ui.lobby', 'runtime.telemetry.read'],
     };
-    const bytes = gzipSync(Buffer.from(JSON.stringify({ schemaVersion: 1, kind: 'cats-app', manifest,
-      files: [{ path: 'renderer/index.html', base64: Buffer.from('<html><head></head><body>Usage</body></html>').toString('base64') }],
-    })));
+    const bytes = encodeAppPackage({ manifest,
+      files: [{ path: 'renderer/index.html', data: Buffer.from('<html><head></head><body>Usage</body></html>') }] });
     const apps = [{ id: manifest.id, version: manifest.version, sha256: sha256(bytes), artifact: 'cats.usage-0.1.0.catsapp' }];
     const lock = JSON.stringify({ schemaVersion: 1, apps });
     const expectedLock = path.join(root, 'expected.lock.json');

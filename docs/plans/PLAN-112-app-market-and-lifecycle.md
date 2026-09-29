@@ -85,8 +85,8 @@ Catalog 暫存簽章 key 僅用於測試。
       先以 `./app-sdk` subpath 提供 allowlist 契約與跨 OS byte-deterministic 官方 encoder，
       公開入口不載入 `build/server` 內部模組，`APP_SDK_VERSION` 與
       `packages/app-sdk/package.json` 版本以單一來源或 CI 斷言一致，Platform 測試 fixtures
-      改用同一 encoder。2026-09-29 已實作 subpath、encoder、共用驗證與版本一致檢查；
-      fixture 轉換、範例與 conformance fixtures 仍待完成。
+      改用同一 encoder。2026-09-29 已實作 subpath、encoder、共用驗證與版本一致檢查，
+      並補齊 fixture 轉換、範例與 conformance 向量；待含此入口的 Platform npm 發布後完成。
 - [ ] Apps 只依賴版本化開發契約；runtime bridge 不被重複打包或擴大能力。最低宿主不低於
       首個提供 subpath 版本的 App，以各自宣告的最低 `catsPlatform` 驗證產物，前提是該版本
       已在 npm 發布；逐 App 的安裝或 CI matrix 由 cats-apps 設計。
@@ -116,7 +116,7 @@ Exit：可 review 的 App／Catalog／SDK 候選產物與驗證紀錄齊備；�
 | `src/app/renderer/AppRendererSurface.tsx`, `AppHostRoute.tsx` | 主動 teardown、失效與宿主恢復 UI |
 | Home／Settings Apps／新 Market surface | 共用管理 client 與操作 DTO |
 | `packages/app-sdk`, Desktop bundle config／packaging | 可取得開發契約、信任根、Usage pins 與出貨政策 |
-| root `package.json` `exports` | 已加入 `.`、`./package.json`、`./app-sdk` 與相容用 `./*`；minor 邊界移除 `./*` 前重做 deep-import 調查（ADR-123） |
+| root `package.json` `exports` | 只允許 `.`、`./package.json` 與 `./app-sdk`；相容用的 `./*` 隨 0.6.0 移除（ADR-123） |
 | Apps shared builder／release workflow／新 catalog tooling | immutable package 與獨立 promotion，見 Apps PLAN-004 |
 
 變更地圖是規劃，尚未建立新 endpoint 或宣稱現有 API 支援新參數。
@@ -181,5 +181,13 @@ desktop、renderer 的 `tsc --noEmit` 通過；test 設定只剩 worktree 未安
 與 App／SDK／package／Desktop 打包相關的 17 個測試檔共 97 項通過。另以外部 consumer
 （NodeNext）完成型別檢查與執行期 import。未跑完整 `npm test`、mobile 檢查或 macOS；
 fixture 轉換與 cats-apps 切換仍待後續。
+
+2026-09-29：Platform 測試中有效的手組套件改用官方 encoder（無效套件與一份 zlib 基準包保留
+手組）；新增 `examples/app-sdk-minimal-app` 與 25 個 conformance 向量。向量發現 decoder 的
+base64 regex 對約 3 MiB 以上的檔案 stack overflow，已改為線性檢查。Desktop 源碼包在重建
+宣告依賴的 App revision 前先 `npm ci --ignore-scripts`。#171 把下一版定為 0.6.0，
+`exports` 隨之移除相容用的 `./*`，重做的 import 調查仍只有 `package.json` 解析。本機驗證：server、
+desktop、renderer 的 `tsc --noEmit` 通過，test 設定只剩 2 個 `mobile/` 依賴錯誤；mobile
+boundary 通過；重建後 15 個相關測試檔共 121 項通過。未跑完整 `npm test`、mobile 或 macOS。
 
 *Last updated: 2026-09-29*

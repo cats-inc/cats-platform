@@ -4,9 +4,9 @@ import { cp, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { gzipSync } from 'node:zlib';
 import { Readable } from 'node:stream';
 import { sha256, readBrowserSdk, PLATFORM_VERSION } from '#cats-app-package';
+import { encodeAppPackage } from '#cats-app-encode';
 import { bundleServer } from '../scripts/bundle-server.mjs';
 import { installRendererPackage } from '../build/server/platform/apps/packageInstaller.js';
 
@@ -35,9 +35,7 @@ test('bundled sidecar serves an installed renderer using the shipped SDK, not bu
     permissions: ['ui.route', 'ui.lobby', 'runtime.telemetry.read'],
   };
   const html = '<html><head></head><body>Usage</body></html>';
-  const bytes = gzipSync(Buffer.from(JSON.stringify({ schemaVersion: 1, kind: 'cats-app', manifest,
-    files: [{ path: 'renderer/index.html', base64: Buffer.from(html).toString('base64') }],
-  })));
+  const bytes = encodeAppPackage({ manifest, files: [{ path: 'renderer/index.html', data: Buffer.from(html) }] });
   await installRendererPackage({ chatStatePath, bytes, source: 'desktop-bundle', enable: true,
     pin: { id: manifest.id, version: manifest.version, sha256: sha256(bytes) } });
   let status = 0; let body = '';

@@ -7,7 +7,7 @@ import path from 'node:path';
 import { unzipSync, zipSync } from 'fflate';
 import { load } from 'js-yaml';
 import { archiveRepository, createSourceBundle, verifySourceBundle, validateAppProvenance,
-  verifyBuildReceipts, buildSourceBundle, digest } from '../scripts/desktop-source-bundle.mjs';
+  verifyBuildReceipts, buildSourceBundle, digest, appBuildInstallCommand } from '../scripts/desktop-source-bundle.mjs';
 import { validateSourceAssets, validateReleaseAssets } from '../scripts/validate-release-assets.mjs';
 
 const platformCommit = 'a'.repeat(40);
@@ -179,4 +179,16 @@ test('release workflow shares one Runtime pin and gates publication on source an
   assert.ok(jobs.build.steps.some((s) => s.run?.includes('verify-desktop-app-bundle') && s.run.includes('--receipt')));
   assert.ok(jobs.sources.steps.some((s) => s.run?.includes('gh release upload')));
   assert.ok(jobs.publish.steps.some((s) => s.run?.includes('Complete Cats source code')));
+});
+
+test('App revisions that declare dependencies install their lockfile before rebuilding', () => {
+  // Apps built before the Platform App SDK have no dependencies and rebuild directly.
+  assert.equal(appBuildInstallCommand({ private: true, workspaces: ['apps/*'] }), null);
+  const locked = { devDependencies: { '@cats-inc/cats-platform': '0.5.16' } };
+  assert.deepEqual(appBuildInstallCommand(locked, 'linux'),
+    { command: 'npm', args: ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], shell: false });
+  assert.equal(appBuildInstallCommand(locked, 'win32').command, 'npm.cmd');
+  const bundle = createSourceBundle({ tag, repositories: [], apps: [] });
+  const building = Buffer.from(unzipSync(bundle.archive)['BUILDING.md']).toString();
+  assert.match(building, /npm ci --ignore-scripts\s+when its package\.json declares dependencies/);
 });
