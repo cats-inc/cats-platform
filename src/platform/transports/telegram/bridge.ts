@@ -1155,7 +1155,8 @@ function buildTelegramReply<TState extends TelegramRoomBridgeState>(input: {
   roomBridge: TelegramRoomBridge<TState>;
   state: TState;
   roomId: string;
-  roomCreated: boolean;
+  /** Only a newly opened group room is announced; a direct lane just answers. */
+  announceNewRoom: boolean;
   messageCountBeforeDispatch: number;
 }): { text: string; photo: TransportPhoto | null } {
   const channel = input.roomBridge.readRoom(input.state, input.roomId);
@@ -1168,14 +1169,12 @@ function buildTelegramReply<TState extends TelegramRoomBridgeState>(input: {
     message.senderKind === 'orchestrator' || message.senderKind === 'agent',
   ) ?? [...newMessages].reverse().find((message) => message.senderKind === 'system') ?? null;
   const photo = replyMessage ? readTransportPhoto(replyMessage) : null;
-  const roomNote = input.roomCreated
-    ? `Opened room "${channel.title}" in Cats Chat.`
-    : `Continuing room "${channel.title}" in Cats Chat.`;
+  const roomNote = input.announceNewRoom ? `Opened room "${channel.title}" in Cats Chat.` : null;
   const replyBody = photo && replyMessage
     ? stripTransportAttachmentBlock(replyMessage.body).trim()
     : replyMessage?.body?.trim();
   const detail = replyBody || (photo ? null : 'The inbox has been routed into Cats Chat.');
-  const combined = detail ? `${roomNote}\n\n${detail}` : roomNote;
+  const combined = [roomNote, detail].filter(Boolean).join('\n\n');
   const text = combined.length <= TELEGRAM_REPLY_LIMIT
     ? combined
     : `${combined.slice(0, TELEGRAM_REPLY_LIMIT - 1)}…`;
@@ -1607,7 +1606,7 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
           roomBridge: input.roomBridge,
           state: persistedState,
           roomId,
-          roomCreated,
+          announceNewRoom: roomCreated && roomMode !== 'direct_message',
           messageCountBeforeDispatch,
         });
         if (reply.photo) {
@@ -1691,7 +1690,7 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
         roomBridge: input.roomBridge,
         state: persistedState,
         roomId,
-        roomCreated,
+        announceNewRoom: roomCreated && roomMode !== 'direct_message',
         messageCountBeforeDispatch,
       });
       let deliveryReceipt: TelegramDeliveryReceipt | null = null;
