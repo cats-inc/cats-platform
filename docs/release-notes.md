@@ -26,6 +26,13 @@
   Desktop 0.6.0 selects Usage 0.5.0, which only raises that range to `^0.6.0` and is built
   with the App SDK encoder; its renderer and permissions are unchanged. Studio 0.1.0 declares
   `^0.5.11`, so the 0.6.0 installer rejects it; a Studio release for 0.6.x is not included.
+- **Usage 0.5.0 published.** [usage-v0.5.0](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.5.0)
+  from cats-apps `2c077cbf9265ff0207292ca54754b3298fa28144`, SHA-256
+  `66bbb0acbee92cf114a7836dccbfbad261e702caeb268007f12536c804b7c47d`, built with the npm
+  0.6.0 App SDK. The downloaded archive, asset digest, lock and provenance agree; host 0.6.0
+  with SDK 1.3.0 accepts it through the pinned lock. Its LICENSE and renderer payloads equal
+  Usage 0.4.0. A local rebuild at that commit after `npm ci --ignore-scripts`, as the
+  source bundle now does, reproduced the payload, bytes and source digest.
 - **Release plan.** The owner authorized Platform npm 0.6.0 (`latest`), Usage 0.5.0 and a
   Desktop 0.6.0 standard preview (`unsigned=false`). Runtime is pinned to 0.3.4 at
   `ea45e95aba99ca5a4aec0532ef2db1db2bf512e3`, which provides the catalog basis. cats-one's
