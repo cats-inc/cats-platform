@@ -16,6 +16,12 @@
   Desktop state live, what leaves the machine, and that deletions are permanent.
 - Documentation and test fixtures no longer carry the maintainer's private machine
   addresses, home paths or unpublished project names. No behavior change.
+- **Release assets carry checksums and build provenance.** The Desktop release
+  workflow now uploads `SHA256SUMS` covering every asset and records a Sigstore
+  build-provenance attestation for each file, verifiable with
+  `gh attestation verify <file> --repo cats-inc/cats-platform`. This covers the
+  unsigned Windows installer and the Linux `.deb` as well as the signed macOS
+  builds. Installed apps and the updater are unchanged.
 
 ## 2026-09-29 — Platform 0.6.1 npm and Desktop standard preview (published)
 

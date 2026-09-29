@@ -423,6 +423,34 @@ test('the release workflow publishes stable or preview releases only after valid
   assert.match(publishBlock, /--latest/u);
 });
 
+test('the publish job checksums and attests the draft assets before the release goes public', async () => {
+  const workflow = await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
+    'utf8',
+  );
+  const publishBlock = workflow.slice(workflow.indexOf('  publish:'));
+
+  // Provenance needs an OIDC token and the attestations API; nothing else in the
+  // workflow may gain them, because those permissions can mint provenance.
+  assert.match(publishBlock, /permissions:\n\s+contents: write\n(?:\s+#.*\n)*\s+id-token: write\n\s+attestations: write/u);
+  assert.equal((workflow.match(/id-token: write/gu) ?? []).length, 1);
+
+  // Hashes come from the draft's own assets, cover every file, and are
+  // self-checked before upload; the attestation covers the same directory.
+  const download = publishBlock.indexOf('gh release download "$TAG" --dir release-assets');
+  const sums = publishBlock.indexOf('sha256sum > SHA256SUMS');
+  const check = publishBlock.indexOf('sha256sum -c SHA256SUMS');
+  const upload = publishBlock.indexOf('gh release upload "$TAG" SHA256SUMS --clobber');
+  const attest = publishBlock.indexOf('uses: actions/attest-build-provenance@v4');
+  const publish = publishBlock.indexOf('--draft=false');
+  for (const [name, index] of Object.entries({ download, sums, check, upload, attest, publish })) {
+    assert.notEqual(index, -1, `publish job is missing the ${name} step`);
+  }
+  assert.ok(download < sums && sums < check && check < upload && upload < attest && attest < publish,
+    'assets must be downloaded, hashed, checked, uploaded and attested before publication');
+  assert.match(publishBlock, /subject-path: release-assets\/\*/u);
+});
+
 test('manual release workflow publishes a prerelease preview, signed where credentials exist', async () => {
   const workflow = await readFile(
     join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
