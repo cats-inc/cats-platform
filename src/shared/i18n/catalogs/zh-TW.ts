@@ -1895,7 +1895,7 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.companionLifeWakeWindowSeparator': '到',
   'chat.companionLifePhotoFolderLabel': '相簿資料夾',
   'chat.companionLifePhotoFolderPlaceholder': '放照片的資料夾完整路徑',
-  'chat.companionLifePhotoFolderHint': '{name} 只看得到檔名，看不到照片內容。',
+  'chat.companionLifePhotoFolderHint': '{name} 可以自己翻這個資料夾、打開照片來看，挑一張傳給你。',
   'chat.companionLifeSave': '儲存',
   'chat.companionLifeSaving': '儲存中…',
   'chat.companionLifeFolderNotFound': '這台電腦上找不到這個資料夾。',

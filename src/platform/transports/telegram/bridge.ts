@@ -12,6 +12,12 @@ import type {
   TelegramWebhookUpdate,
 } from './contracts.js';
 import { describeTelegramRoomRouting } from './mapping.js';
+import {
+  deliverTelegramPhoto,
+  readTransportPhoto,
+  stripTransportAttachmentBlock,
+  type TransportPhoto,
+} from './media.js';
 import { normalizeTelegramAttachments } from './normalization.js';
 import {
   classifyTransportWorkInbound,
@@ -1101,13 +1107,13 @@ function restoreSelection<TState extends TelegramRoomBridgeState>(
   };
 }
 
-function buildTelegramReplyText<TState extends TelegramRoomBridgeState>(input: {
+function buildTelegramReply<TState extends TelegramRoomBridgeState>(input: {
   roomBridge: TelegramRoomBridge<TState>;
   state: TState;
   roomId: string;
   roomCreated: boolean;
   messageCountBeforeDispatch: number;
-}): string {
+}): { text: string; photo: TransportPhoto | null } {
   const channel = input.roomBridge.readRoom(input.state, input.roomId);
   // A heartbeat that landed during this turn is already mirrored by the transport
   // fanout; picking it as the reply would send it to Telegram a second time.
@@ -1117,15 +1123,20 @@ function buildTelegramReplyText<TState extends TelegramRoomBridgeState>(input: {
   const replyMessage = [...newMessages].reverse().find((message) =>
     message.senderKind === 'orchestrator' || message.senderKind === 'agent',
   ) ?? [...newMessages].reverse().find((message) => message.senderKind === 'system') ?? null;
+  const photo = replyMessage ? readTransportPhoto(replyMessage) : null;
   const roomNote = input.roomCreated
     ? `Opened room "${channel.title}" in Cats Chat.`
     : `Continuing room "${channel.title}" in Cats Chat.`;
-  const detail = replyMessage?.body?.trim() || 'The inbox has been routed into Cats Chat.';
-  const combined = `${roomNote}\n\n${detail}`;
-
-  return combined.length <= TELEGRAM_REPLY_LIMIT
+  const replyBody = photo && replyMessage
+    ? stripTransportAttachmentBlock(replyMessage.body).trim()
+    : replyMessage?.body?.trim();
+  const detail = replyBody || (photo ? null : 'The inbox has been routed into Cats Chat.');
+  const combined = detail ? `${roomNote}\n\n${detail}` : roomNote;
+  const text = combined.length <= TELEGRAM_REPLY_LIMIT
     ? combined
     : `${combined.slice(0, TELEGRAM_REPLY_LIMIT - 1)}…`;
+
+  return { text, photo };
 }
 
 function roomHasInboundMessage<TState extends TelegramRoomBridgeState>(input: {
@@ -1548,14 +1559,24 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
           .readRoom(persistedState, roomId)
           .messages
           .slice(messageCountBeforeDispatch);
-        const replyText = buildTelegramReplyText({
+        const reply = buildTelegramReply({
           roomBridge: input.roomBridge,
           state: persistedState,
           roomId,
           roomCreated,
           messageCountBeforeDispatch,
         });
-        const chunks = chunkTelegramReply(replyText, TELEGRAM_REPLY_LIMIT);
+        if (reply.photo) {
+          deliveryReceipt = await deliverTelegramPhoto({
+            relay: input.telegramRelay,
+            context: input.context,
+            conversationId: input.receipt.mappedConversationId,
+            chatId: input.receipt.chatId,
+            photo: reply.photo,
+            text: reply.text,
+          });
+        }
+        const chunks = reply.photo ? [] : chunkTelegramReply(reply.text, TELEGRAM_REPLY_LIMIT);
         for (const chunk of chunks) {
           deliveryReceipt = await input.telegramRelay.deliver({
             request: {
@@ -1611,15 +1632,25 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
         .messages
         .slice(messageCountBeforeDispatch);
 
-      const replyText = buildTelegramReplyText({
+      const reply = buildTelegramReply({
         roomBridge: input.roomBridge,
         state: persistedState,
         roomId,
         roomCreated,
         messageCountBeforeDispatch,
       });
-      const chunks = chunkTelegramReply(replyText, TELEGRAM_REPLY_LIMIT);
       let deliveryReceipt: TelegramDeliveryReceipt | null = null;
+      if (reply.photo) {
+        deliveryReceipt = await deliverTelegramPhoto({
+          relay: input.telegramRelay,
+          context: input.context,
+          conversationId: input.receipt.mappedConversationId,
+          chatId: input.receipt.chatId,
+          photo: reply.photo,
+          text: reply.text,
+        });
+      }
+      const chunks = reply.photo ? [] : chunkTelegramReply(reply.text, TELEGRAM_REPLY_LIMIT);
       for (const chunk of chunks) {
         deliveryReceipt = await input.telegramRelay.deliver({
           request: {

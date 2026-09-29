@@ -10,7 +10,7 @@ import {
   requireValidChatScopeId,
   sendRestError,
 } from '../routeSupport.js';
-import { persistAttachmentsForChannels, sanitizeAttachmentName } from '../attachmentSupport.js';
+import { persistAttachmentsForChannels, sanitizeAttachmentName } from '../../state/channelAttachments.js';
 
 async function handleRestUploadAttachments(
   context: ChatApiRouteContext,

@@ -20,6 +20,7 @@ import type { BotBindingRecord } from '../src/core/types.js';
 import { bridgeTelegramWebhookToRoom } from '../src/platform/transports/telegram/bridge.js';
 import type {
   TelegramDeliveryReceipt,
+  TelegramDeliveryRequest,
   TelegramRelayContext,
   TelegramWebhookReceipt,
   TelegramWebhookUpdate,
@@ -362,6 +363,59 @@ test('a companion heartbeat that lands mid-turn is never re-sent as the Telegram
   assert.equal(replies.length, 1);
   assert.doesNotMatch(replies[0]!.detail ?? '', /windowsill/u);
   assert.match(replies[0]!.detail ?? '', /could not answer right now/u);
+});
+
+test('a reply carrying an album photo reaches Telegram as that photo, captioned with the reply', async () => {
+  const log: RecordedCall[] = [];
+  const photo = { path: '/album/trips/sunset.png', fileName: 'sunset.png' };
+  type Message = { senderKind: string; senderName: string; body: string; metadata?: Record<string, unknown> };
+  const roomState = (messages: Message[]) => ({
+    selectedChannelId: 'channel-1',
+    channels: [{ id: 'channel-1', title: 'Bridge Cat', messages }],
+    cats: [],
+  });
+  const roomBridge = {
+    readState: async () => roomState([]),
+    writeState: async (state: unknown) => state,
+    createRoom: (state: unknown) => ({ state, roomId: 'channel-1' }),
+    findReusableRoomId: () => 'channel-1',
+    readRoom: (state: ReturnType<typeof roomState>) => state.channels[0],
+    routeRoomMessage: async ({ state }: { state: ReturnType<typeof roomState> }) => ({
+      state: roomState([
+        ...state.channels[0]!.messages,
+        { senderKind: 'user', senderName: 'Owner', body: 'show me the beach' },
+        {
+          senderKind: 'agent',
+          senderName: 'Bridge Cat',
+          body: '[Attached files in working directory:]\n- .cats-attachments/sunset.png\n\nHere is last summer.',
+          metadata: { event: 'assistant_turn_segment', transportMedia: { kind: 'photo', ...photo } },
+        },
+      ]),
+    }),
+  } as never;
+  const relay = createRecordingRelay(log);
+  const requests: TelegramDeliveryRequest[] = [];
+  const recordDelivery = relay.deliver;
+  relay.deliver = async (input) => {
+    requests.push(input.request);
+    return recordDelivery(input);
+  };
+
+  await bridgeTelegramWebhookToRoom({
+    update: workUpdate('show me the beach'),
+    receipt: acceptedReceipt(),
+    context: relayContext(),
+    roomBridge,
+    memoryService,
+    runtimeClient,
+    telegramRelay: relay,
+    goldenPath: null,
+  });
+
+  assert.deepEqual(requests.map((request) => request.operation), ['send_media']);
+  assert.deepEqual(requests[0]!.mediaFile, photo);
+  assert.match(requests[0]!.caption ?? '', /Here is last summer\.$/u);
+  assert.doesNotMatch(requests[0]!.caption ?? '', /Attached files/u);
 });
 
 test('an ordinary message shows the Cat typing before the turn runs, without a delivery receipt', async () => {

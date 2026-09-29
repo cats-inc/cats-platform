@@ -850,6 +850,7 @@ export function applyDispatchExecutions(
             ...(isLastSegment && serializedWorkflowRecommendation
               ? { workflowRecommendation: serializedWorkflowRecommendation }
               : {}),
+            ...(isLastSegment ? execution.terminalMessageMetadata : {}),
           },
           usage: isLastSegment ? execution.usage : null,
           execution: executionMeta,

@@ -20,7 +20,7 @@ test('the rhythm card shows the saved rhythm, the photo folder and what the Cat 
   assert.match(markup, /value="07:00"/u);
   assert.match(markup, /value="09:00"/u);
   assert.match(markup, /value="C:\\Photos\\Mochi"/u);
-  assert.match(markup, /Mochi picks photos by file name and cannot see the pictures\./u);
+  assert.match(markup, /Mochi can browse this folder, open the photos, and send you one\./u);
   assert.match(markup, /aria-pressed="true"[^>]*>On</u);
   assert.match(markup, /<button[^>]*disabled=""[^>]*>Save<\/button>/u, 'nothing to save until something changes');
 });

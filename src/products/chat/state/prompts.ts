@@ -26,6 +26,8 @@ export interface PromptCompanionContext {
   responseProfile: { expressionMode: string };
   /** Newest first; profile posts are the entries marked with the post surface. */
   derived?: ReadonlyArray<{ title: string | null; metadata: Record<string, unknown> }>;
+  /** SPEC-124 FR-29: the owner's photo folder, shown to companion Cats only. */
+  photoAlbum?: string | null;
 }
 
 const COMPANION_PROMPT_TEXT_LIMIT = 280;
@@ -524,11 +526,21 @@ export function formatCompanionContext(
   const expressionGuidance = isCompanion
     ? COMPANION_EXPRESSION_GUIDANCE[context.responseProfile.expressionMode] ?? null
     : null;
+  const albumLines = isCompanion && context.photoAlbum
+    ? [
+        `Your photo album: ${context.photoAlbum}`,
+        'It is your owner\'s folder of photos. Browse it and open pictures with your own tools',
+        'whenever you like. It is read-only for you: never change, move, rename, or delete',
+        'anything in it. To send your owner one photo from it, add a line',
+        '[photo: <path relative to the album>] to your reply; it is sent with your message.',
+      ]
+    : [];
   if (
     memoryLines.length === 0
     && noteLines.length === 0
     && postLines.length === 0
     && !expressionGuidance
+    && albumLines.length === 0
   ) {
     return null;
   }
@@ -539,6 +551,7 @@ export function formatCompanionContext(
     ...(noteLines.length > 0 ? ['Owner notes:', ...noteLines] : []),
     ...(postLines.length > 0 ? ['Your recent profile posts (newest first):', ...postLines] : []),
     ...(expressionGuidance ? [`Expression style: ${expressionGuidance}`] : []),
+    ...albumLines,
   ].join('\n');
 }
 

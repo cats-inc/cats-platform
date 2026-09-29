@@ -1,9 +1,14 @@
-import { readdir, stat } from 'node:fs/promises';
+import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 
+import { TRANSPORT_MEDIA_METADATA_KEY } from '../../../../platform/transports/telegram/media.js';
+import type { ChatState } from '../../api/contracts.js';
+import { persistAttachmentsForChannels } from '../../state/channelAttachments.js';
+
 /**
- * SPEC-124 FR-29..FR-30: the Cat picks a photo from the owner's folder by file
- * name. It never sees the image, so the prompt says so.
+ * SPEC-124 FR-29..FR-32: the owner's photo folder is the Cat's album. The Cat
+ * browses and opens it with its own tools and names a photo to send with a
+ * `[photo: <path>]` line; the platform only sends a file that is inside the album.
  */
 
 export const COMPANION_PHOTO_EXTENSIONS: ReadonlySet<string> = new Set([
@@ -15,54 +20,145 @@ export const COMPANION_PHOTO_EXTENSIONS: ReadonlySet<string> = new Set([
 ]);
 /** Telegram's multipart photo limit. */
 export const COMPANION_PHOTO_MAX_BYTES = 10 * 1024 * 1024;
-export const COMPANION_PHOTO_CANDIDATE_LIMIT = 6;
 
 const PHOTO_DIRECTIVE_PATTERN = /^[ \t]*\[photo:[ \t]*([^\]\r\n]+?)[ \t]*\][ \t]*$/gimu;
 
-/** Up to `limit` random image names directly inside `folder`; none when it is unreadable. */
-export async function listCompanionPhotoCandidates(
-  folder: string | null,
-  random: () => number = Math.random,
-  limit: number = COMPANION_PHOTO_CANDIDATE_LIMIT,
-): Promise<string[]> {
-  if (!folder) {
-    return [];
-  }
-  let names: string[];
+export interface CompanionAlbumPhoto {
+  /** Real path of the photo, inside the album. */
+  sourcePath: string;
+  fileName: string;
+}
+
+/** Removes every `[photo: ...]` line and returns the first requested path. */
+export function extractCompanionPhotoDirective(
+  text: string,
+): { body: string; requested: string | null } {
+  let requested: string | null = null;
+  const body = text.replace(PHOTO_DIRECTIVE_PATTERN, (_line, value: string) => {
+    requested ??= value.trim();
+    return '';
+  });
+  return { body: body.replace(/\n{3,}/gu, '\n\n').trim(), requested };
+}
+
+function isInside(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return relative.length > 0 && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+/** Models often lower-case an extension ("breakfast.jpg" for "breakfast.JPG"). */
+async function findCaseInsensitive(target: string): Promise<string | null> {
+  const wanted = path.basename(target).toLowerCase();
   try {
-    names = (await readdir(folder, { withFileTypes: true }))
-      .filter((entry) => entry.isFile() && COMPANION_PHOTO_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
-      .map((entry) => entry.name);
+    const match = (await readdir(path.dirname(target)))
+      .find((name) => name.toLowerCase() === wanted);
+    return match ? path.join(path.dirname(target), match) : null;
   } catch {
-    return [];
+    return null;
   }
-  // Partial Fisher-Yates: only the picked prefix is shuffled.
-  const picked: string[] = [];
-  for (let index = 0; index < names.length && picked.length < limit; index += 1) {
-    const swap = index + Math.floor(random() * (names.length - index));
-    [names[index], names[swap]] = [names[swap]!, names[index]!];
-    const size = await stat(path.join(folder, names[index]!)).then((info) => info.size, () => Infinity);
-    if (size <= COMPANION_PHOTO_MAX_BYTES) {
-      picked.push(names[index]!);
-    }
-  }
-  return picked;
 }
 
 /**
- * Pulls `[photo: name]` lines out of a reply. Only a name that was offered is
- * honoured, so a reply can never reach a path outside the folder.
+ * Resolves a requested photo against the album: relative to it or absolute,
+ * after symlinks, it must stay inside the album and be a sendable image.
  */
-export function extractCompanionPhotoDirective(
-  text: string,
-  candidates: readonly string[],
-): { body: string; photo: string | null } {
-  let photo: string | null = null;
-  const body = text.replace(PHOTO_DIRECTIVE_PATTERN, (_line, name: string) => {
-    // Models often lower-case an extension ("breakfast.jpg" for "breakfast.JPG").
-    const wanted = name.trim().toLowerCase();
-    photo ??= candidates.find((candidate) => candidate.toLowerCase() === wanted) ?? null;
-    return '';
-  });
-  return { body: body.replace(/\n{3,}/gu, '\n\n').trim(), photo };
+export async function resolveCompanionAlbumPhoto(
+  album: string | null,
+  requested: string | null,
+): Promise<CompanionAlbumPhoto | null> {
+  if (!album || !requested) {
+    return null;
+  }
+  let albumReal: string;
+  try {
+    albumReal = await realpath(album);
+  } catch {
+    return null;
+  }
+  const target = path.resolve(album, requested);
+  let targetReal: string;
+  try {
+    targetReal = await realpath(target);
+  } catch {
+    const match = await findCaseInsensitive(target);
+    if (!match) {
+      return null;
+    }
+    try {
+      targetReal = await realpath(match);
+    } catch {
+      return null;
+    }
+  }
+  if (
+    !isInside(albumReal, targetReal)
+    || !COMPANION_PHOTO_EXTENSIONS.has(path.extname(targetReal).toLowerCase())
+  ) {
+    return null;
+  }
+  const info = await stat(targetReal).catch(() => null);
+  if (!info?.isFile() || info.size > COMPANION_PHOTO_MAX_BYTES) {
+    return null;
+  }
+  return { sourcePath: targetReal, fileName: path.basename(targetReal) };
+}
+
+export interface AttachedCompanionPhoto extends CompanionAlbumPhoto {
+  /** Lane-relative copy the Desktop shows inline; null when the copy failed. */
+  relativePath: string | null;
+}
+
+/**
+ * Resolves the requested photo and copies it into the lane's attachment folder
+ * so the Desktop shows it inline; Telegram uploads the original. A copy failure
+ * still lets the photo reach Telegram, just without the Desktop preview.
+ */
+export async function attachCompanionAlbumPhoto(input: {
+  state: ChatState;
+  laneId: string;
+  album: string | null;
+  requested: string | null;
+  runtimeDataDir?: string | null;
+}): Promise<AttachedCompanionPhoto | null> {
+  const photo = await resolveCompanionAlbumPhoto(input.album, input.requested);
+  if (!photo) {
+    return null;
+  }
+  let bytes: Buffer;
+  try {
+    bytes = await readFile(photo.sourcePath);
+  } catch {
+    return null;
+  }
+  try {
+    const stored = (await persistAttachmentsForChannels({
+      state: input.state,
+      channelIds: [input.laneId],
+      files: [{ name: photo.fileName, data: bytes.toString('base64') }],
+      runtimeDataDir: input.runtimeDataDir,
+    })).get(input.laneId)?.[0];
+    return { ...photo, relativePath: stored?.relativePath ?? null };
+  } catch {
+    return { ...photo, relativePath: null };
+  }
+}
+
+/** The leading block the Desktop renders as an inline attachment. */
+export function formatCompanionPhotoAttachmentBlock(photo: AttachedCompanionPhoto): string {
+  return photo.relativePath
+    ? `[Attached files in working directory:]\n- ${photo.relativePath}\n\n`
+    : '';
+}
+
+/** Message metadata that makes transports upload the original photo. */
+export function buildCompanionPhotoTransportMetadata(
+  photo: AttachedCompanionPhoto,
+): Record<string, unknown> {
+  return {
+    [TRANSPORT_MEDIA_METADATA_KEY]: {
+      kind: 'photo',
+      path: photo.sourcePath,
+      fileName: photo.fileName,
+    },
+  };
 }

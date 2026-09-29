@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -258,11 +258,12 @@ test('heartbeat: going to bed on the rhythm says good night once, then sleeps', 
   assert.deepEqual(already.spoken, []);
 });
 
-function createHeartbeatRuntimeStub() {
+function createHeartbeatRuntimeStub(workingDir) {
   let nextSession = 1;
   const stub = {
     sentMessages: [],
     heartbeatReply: '[quiet]',
+    ownerReply: 'Purr, I am here.',
     async getHealth() {
       return { baseUrl: 'http://127.0.0.1:3110', reachable: true, status: 'ok', service: 'cats-runtime' };
     },
@@ -288,7 +289,7 @@ function createHeartbeatRuntimeStub() {
         provider: input.provider,
         model: input.model ?? null,
         status: 'ready',
-        cwd: path.join(tmpdir(), '.cats', 'runtime', 'sessions', id),
+        cwd: path.join(workingDir, '.cats', 'runtime', 'sessions', id),
       };
     },
     async observeSession(sessionId) {
@@ -296,7 +297,7 @@ function createHeartbeatRuntimeStub() {
     },
     async sendMessage(sessionId, content) {
       stub.sentMessages.push({ sessionId, content });
-      const text = content.startsWith('[Cats heartbeat') ? stub.heartbeatReply : 'Purr, I am here.';
+      const text = content.startsWith('[Cats heartbeat') ? stub.heartbeatReply : stub.ownerReply;
       return {
         segments: [{ kind: 'text', text, toolName: null, toolId: null }],
         inputTokens: 1,
@@ -318,7 +319,7 @@ async function withHeartbeatServer(callback) {
     sessionSecret: authConfig.sessionSecret,
     sessionTtlMs: authConfig.sessionTtlMs,
   });
-  const runtimeClient = createHeartbeatRuntimeStub();
+  const runtimeClient = createHeartbeatRuntimeStub(workingDir);
   const chatStore = new MemoryChatStore();
   const companionStore = new MemoryCompanionBoxStore();
   const config = {
@@ -328,6 +329,8 @@ async function withHeartbeatServer(callback) {
     runtimeApiKey: '',
     auth: authConfig,
     chatStatePath: path.join(workingDir, 'platform', 'state', 'chat-state.local.json'),
+    // Attachment copies default to the real ~/.cats/runtime/data otherwise.
+    runtimeDataDir: path.join(workingDir, 'runtime-data'),
   };
   const server = createServer({
     shared: { config, runtimeClient, authStore: auth.authStore, now: () => now },
@@ -364,7 +367,17 @@ async function withHeartbeatServer(callback) {
       mutationGate: { run: (_key, operation) => operation() },
       now: () => now,
     });
-    await callback({ post, cat, lane: channel, sessionId: lease.sessionId, now, runtimeClient, chatStore, speak });
+    await callback({
+      baseUrl,
+      post,
+      cat,
+      lane: channel,
+      sessionId: lease.sessionId,
+      now,
+      runtimeClient,
+      chatStore,
+      speak,
+    });
   } finally {
     restoreFetch();
     server.close();
@@ -431,5 +444,46 @@ test('an owner message sent during a heartbeat waits for it instead of hitting a
       () => laneSends().slice(sendsBefore).some((message) => message.content.includes('Are you up?')),
       { timeoutMs: 2000 },
     );
+  });
+});
+
+test('an ordinary companion reply can send any photo from the album, and nothing outside it', async () => {
+  await withHeartbeatServer(async ({ baseUrl, post, cat, lane, sessionId, runtimeClient, chatStore }) => {
+    const album = await mkdtemp(path.join(tmpdir(), 'cats-companion-album-'));
+    await mkdir(path.join(album, 'trips'));
+    await writeFile(path.join(album, 'trips', 'sunset.png'), 'png bytes');
+    const patched = await fetch(`${baseUrl}/api/cats/${cat.id}/companion-box/life`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ photoFolder: album }),
+    });
+    assert.equal(patched.status, 200);
+    const catReplies = async () => (await chatStore.read()).channels
+      .find((candidate) => candidate.id === lane.id).messages
+      .filter((message) => message.senderKind === 'agent');
+
+    runtimeClient.ownerReply = 'Here is last summer.\n[photo: trips/sunset.png]';
+    assert.equal((await post(`/api/channels/${lane.id}/messages`, { body: 'Show me the beach' })).status, 200);
+    await waitForCondition(async () => (await catReplies()).some((message) => message.body.includes('summer')));
+    const sent = (await catReplies()).find((message) => message.body.includes('summer'));
+    assert.equal(
+      sent.body,
+      '[Attached files in working directory:]\n- .cats-attachments/sunset.png\n\nHere is last summer.',
+    );
+    assert.deepEqual(sent.metadata.transportMedia, {
+      kind: 'photo',
+      path: await realpath(path.join(album, 'trips', 'sunset.png')),
+      fileName: 'sunset.png',
+    });
+    const ownerTurn = runtimeClient.sentMessages
+      .filter((message) => message.sessionId === sessionId)
+      .find((message) => message.content.includes('Show me the beach'));
+    assert.ok(ownerTurn.content.includes(`Your photo album: ${album}`), 'the Cat is told where its album is');
+
+    runtimeClient.ownerReply = 'Try this one.\n[photo: ../secret.png]';
+    assert.equal((await post(`/api/channels/${lane.id}/messages`, { body: 'Another?' })).status, 200);
+    await waitForCondition(async () => (await catReplies()).some((message) => message.body === 'Try this one.'));
+    const refused = (await catReplies()).find((message) => message.body === 'Try this one.');
+    assert.equal(refused.metadata.transportMedia, undefined, 'a path outside the album is never sent');
   });
 });
