@@ -63,6 +63,7 @@ export interface ResolveTransportWorkActionTokenInput {
 }
 
 export interface TransportWorkActionTokenStore {
+  clearForReset?(): void;
   issue(input: IssueTransportWorkActionTokenInput): TransportWorkActionTokenV1;
   resolve(input: ResolveTransportWorkActionTokenInput): TransportWorkActionTokenResolution;
   /** Drops every outstanding token for a work item; used when scope changes. */
@@ -142,6 +143,7 @@ export function createTransportWorkActionTokenStore(
   }
 
   return {
+    clearForReset: () => tokens.clear(),
     issue(input) {
       removeExpired();
       const issuedAt = now();

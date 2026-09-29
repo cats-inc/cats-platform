@@ -53,6 +53,7 @@ export interface CodeAgentToolsServiceOptions {
 }
 
 export interface CodeAgentToolsService {
+  clearForReset(): void;
   grants: McpSessionGrantStore<CodeAgentToolGrantBinding>;
   /** Serve the MCP endpoint; returns false for any other path. */
   route(request: IncomingMessage, response: ServerResponse): Promise<boolean>;
@@ -167,6 +168,10 @@ export function createCodeAgentToolsService(options: CodeAgentToolsServiceOption
 
   return {
     grants,
+    clearForReset() {
+      grants.revokeWhere(() => true);
+      staticLeases.clear();
+    },
     async route(request, response) {
       const pathname = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
       if (pathname !== CODE_AGENT_TOOLS_MCP_PATH) return false;

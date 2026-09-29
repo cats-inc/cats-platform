@@ -71,6 +71,7 @@ export type PlatformAuthActionGrantConsumeOutcome =
   | { ok: false; reason: PlatformAuthActionGrantRejectionReason };
 
 export interface PlatformAuthActionGrantStore {
+  clearForReset?(): void;
   issue(input: PlatformAuthActionGrantIssueInput): PlatformAuthActionGrantIssueResult;
   consume(input: PlatformAuthActionGrantConsumeInput): PlatformAuthActionGrantConsumeOutcome;
   revokeForSession(sessionId: string): void;
@@ -86,6 +87,7 @@ interface StoredPlatformAuthActionGrant {
 }
 
 export class MemoryPlatformAuthActionGrantStore implements PlatformAuthActionGrantStore {
+  clearForReset(): void { this.grants.clear(); }
   private readonly grants = new Map<string, StoredPlatformAuthActionGrant>();
 
   issue(input: PlatformAuthActionGrantIssueInput): PlatformAuthActionGrantIssueResult {

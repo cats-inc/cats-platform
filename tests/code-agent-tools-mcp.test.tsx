@@ -284,3 +284,15 @@ test('show_in_canvas opens workspace pages on a supervisor lease and refuses uns
     rmSync(base, { recursive: true, force: true });
   }
 });
+
+test('reset revokes every Code MCP session grant', () => {
+  const grants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
+  const issued = grants.issue(BINDING);
+  grants.bind(issued.token, 'old-runtime-session');
+  const service = createCodeAgentToolsService({ grants, coreStore: new MemoryCoreStore() });
+  assert.ok(grants.resolve(issued.token));
+  service.clearForReset();
+  assert.equal(grants.resolve(issued.token), null);
+  assert.equal(grants.findBySession('old-runtime-session'), null);
+  assert.ok(grants.resolve(grants.issue(BINDING).token), 'new setup can issue new grants');
+});

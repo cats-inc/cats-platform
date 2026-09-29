@@ -42,6 +42,10 @@ import type {
 
 export class MemoryCompanionBoxStore implements CompanionBoxStore {
   private snapshot: CompanionSnapshot;
+
+  async clearForReset(): Promise<void> {
+    this.snapshot = createEmptySnapshot(new Date().toISOString());
+  }
   private readonly snapshotPath: string;
 
   constructor(

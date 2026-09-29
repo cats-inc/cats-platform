@@ -9,16 +9,21 @@ import { resolve, join } from 'node:path';
 import { ManagedPluginManager, createPluginRuntimePort } from '../../platform/plugins/manager.js';
 
 import { sendJson } from '../../shared/http.js';
+import { PlatformResetBusyError } from '../../shared/platformDataReset.js';
+import { createEmptySchedulerState } from '../../platform/scheduler/validation.js';
 
 import type { ServerDependencies } from './contracts.js';
 import { resolveServerDependencies } from './dependencies.js';
 import { routeRequest } from './requestRouter.js';
+import { reconcilePollingOnStartup } from './polling.js';
+import { clearProviderCachesForReset } from '../../server/routes/providers.js';
 import { createAgentKnowledgeBridge, AGENT_KNOWLEDGE_PATH } from '../../platform/knowledge/agentKnowledgeBridge.js';
 import { isLoopbackAuthHost } from '../../platform/auth/effectiveMode.js';
 import { runServerStartupRecoveryPasses } from './startupRecovery.js';
 import { McpSessionGrantStore } from '../../platform/mcp/sessionGrants.js';
 import type { CodeAgentToolGrantBinding } from '../../products/code/agentTools/contracts.js';
 import { createCodeAgentToolsService } from '../../products/code/agentTools/service.js';
+import { getDefaultArtifactCanvasRenderIntentHub } from '../../products/shared/artifactCanvas/renderIntent.js';
 import { startTransportFanout } from '../../platform/transports/fanout/subscriber.js';
 import { startChatCompanionLifeLoop } from '../../products/chat/api/index.js';
 import {
@@ -72,62 +77,70 @@ export function createServer(dependencies: ServerDependencies) {
   const resolvedDependencies = resolveServerDependencies(dependencies);
   let pluginTimer: ReturnType<typeof setInterval> | undefined;
   resolvedDependencies.shared.providerSelectorClient = providerSelectorClient;
-  const stopTransportFanout = startTransportFanout({
-    eventHub: resolvedDependencies.chat.eventHub,
-    chatStore: resolvedDependencies.chat.chatStore,
-    telegramRelay: resolvedDependencies.chat.telegramRelay,
-    now: resolvedDependencies.shared.now,
-  });
-  const stopSchedulerLoop = resolvedDependencies.work.scheduleStore
-    ? startSchedulerLoop({
-        service: createSchedulerService({
-          scheduleStore: resolvedDependencies.work.scheduleStore,
-          coreStore: resolvedDependencies.work.coreStore,
-          now: resolvedDependencies.work.now,
-          replaceActiveRun: async (request) => {
-            await cancelScheduledRunThroughSupervision({
-              coreStore: resolvedDependencies.work.coreStore,
-              runtimeClient: resolvedDependencies.work.runtimeClient,
-              evidenceDataDir: resolvedDependencies.work.evidenceDataDir,
-              now: () => new Date(request.requestedAt),
-            }, request.runId, {
-              requestedAt: request.requestedAt,
-              reasonNote: [
-                `Replaced by schedule rule ${request.ruleId}`,
-                `trigger ${request.triggerReceiptId}.`,
-              ].join(' '),
-            });
-          },
-        }),
-        async onTickResult(result) {
-          for (const admission of result.results) {
-            if (admission.status !== 'admitted' || !admission.run) {
-              continue;
+  function startBackgroundLoops() {
+    const stopTransportFanout = startTransportFanout({
+      eventHub: resolvedDependencies.chat.eventHub,
+      chatStore: resolvedDependencies.chat.chatStore,
+      telegramRelay: resolvedDependencies.chat.telegramRelay,
+      now: resolvedDependencies.shared.now,
+    });
+    const stopSchedulerLoop = resolvedDependencies.work.scheduleStore
+      ? startSchedulerLoop({
+          service: createSchedulerService({
+            scheduleStore: resolvedDependencies.work.scheduleStore,
+            coreStore: resolvedDependencies.work.coreStore,
+            now: resolvedDependencies.work.now,
+            replaceActiveRun: async (request) => {
+              await cancelScheduledRunThroughSupervision({
+                coreStore: resolvedDependencies.work.coreStore,
+                runtimeClient: resolvedDependencies.work.runtimeClient,
+                evidenceDataDir: resolvedDependencies.work.evidenceDataDir,
+                now: () => new Date(request.requestedAt),
+              }, request.runId, {
+                requestedAt: request.requestedAt,
+                reasonNote: [
+                  `Replaced by schedule rule ${request.ruleId}`,
+                  `trigger ${request.triggerReceiptId}.`,
+                ].join(' '),
+              });
+            },
+          }),
+          async onTickResult(result) {
+            for (const admission of result.results) {
+              if (admission.status !== 'admitted' || !admission.run) {
+                continue;
+              }
+              await launchScheduledRunThroughSupervision({
+                coreStore: resolvedDependencies.work.coreStore,
+                runtimeClient: resolvedDependencies.work.runtimeClient,
+                evidenceDataDir: resolvedDependencies.work.evidenceDataDir,
+                now: resolvedDependencies.work.now,
+              }, admission.run.id);
             }
-            await launchScheduledRunThroughSupervision({
-              coreStore: resolvedDependencies.work.coreStore,
-              runtimeClient: resolvedDependencies.work.runtimeClient,
-              evidenceDataDir: resolvedDependencies.work.evidenceDataDir,
-              now: resolvedDependencies.work.now,
-            }, admission.run.id);
-          }
-        },
-      })
-    : () => {};
+          },
+        })
+      : Object.assign(() => {}, { isIdle: () => true });
 
-  const stopCompanionLifeLoop = resolvedDependencies.chat.startCompanionLifeLoop
-    ? startChatCompanionLifeLoop({
-        chatStore: resolvedDependencies.chat.chatStore,
-        mutationGate: resolvedDependencies.chat.mutationGate,
-        runtimeClient: resolvedDependencies.shared.runtimeClient,
-        companionStore: resolvedDependencies.chat.companionStore,
-        companionActivityStore: resolvedDependencies.chat.companionActivityStore,
-        memoryService: resolvedDependencies.chat.memoryService,
-        config: resolvedDependencies.shared.config,
-        eventHub: resolvedDependencies.chat.eventHub,
-        now: resolvedDependencies.shared.now,
-      })
-    : () => {};
+    const stopCompanionLifeLoop = resolvedDependencies.chat.startCompanionLifeLoop
+      ? startChatCompanionLifeLoop({
+          chatStore: resolvedDependencies.chat.chatStore,
+          mutationGate: resolvedDependencies.chat.mutationGate,
+          runtimeClient: resolvedDependencies.shared.runtimeClient,
+          companionStore: resolvedDependencies.chat.companionStore,
+          companionActivityStore: resolvedDependencies.chat.companionActivityStore,
+          memoryService: resolvedDependencies.chat.memoryService,
+          config: resolvedDependencies.shared.config,
+          eventHub: resolvedDependencies.chat.eventHub,
+          now: resolvedDependencies.shared.now,
+        })
+      : Object.assign(() => {}, { isIdle: () => true });
+    return { stopTransportFanout, stopSchedulerLoop, stopCompanionLifeLoop };
+  }
+  let loops = startBackgroundLoops();
+  let resetting = false;
+  let startupSettled = false;
+  const activeRequests = new Set<Promise<unknown>>();
+  const openStreams = new Set<ServerResponse>();
 
   // Internal bearer MCP precedes Platform cookie auth. The public ingress
   // rejects this route before dispatch, including traffic from a loopback tunnel.
@@ -139,7 +152,7 @@ export function createServer(dependencies: ServerDependencies) {
     now: resolvedDependencies.shared.now,
   });
 
-  const dispatch = async (request: IncomingMessage, response: ServerResponse) => {
+  const dispatchProduct = async (request: IncomingMessage, response: ServerResponse) => {
     const entry = platformRequestEntry(request);
     if (entry && appComponents && await appComponents.route(request, response, entry.origin)) return;
     // An opaque App frame can only use its App view grant, never Platform cookies.
@@ -149,6 +162,24 @@ export function createServer(dependencies: ServerDependencies) {
     if (await codeAgentTools.route(request, response)) return;
     if (await knowledge.route(request, response)) return;
     await routeRequest(request, response, resolvedDependencies);
+  };
+  const dispatch = async (request: IncomingMessage, response: ServerResponse) => {
+    response.on('close', () => openStreams.delete(response));
+    const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
+    const serializedSetup = pathname === '/api/setup/reset' || pathname === '/api/platform/setup/complete';
+    if (resetting && !serializedSetup) {
+      sendJson(response, 503, { error: { code: 'platform_reset_in_progress', message: 'Platform data reset is in progress.' } });
+      return;
+    }
+    const task = dispatchProduct(request, response);
+    // Setup mutations already share a mutex; counting queued setup callers here
+    // would deadlock reset/completion. Both local and public ingress use this guard.
+    if (!serializedSetup) activeRequests.add(task);
+    try { await task; }
+    finally {
+      activeRequests.delete(task);
+      if (!serializedSetup && !response.writableEnded && !response.destroyed) openStreams.add(response);
+    }
   };
   let localOrigins: string[] = [];
   const server = createHttpServer((request, response) => {
@@ -167,7 +198,58 @@ export function createServer(dependencies: ServerDependencies) {
         },
       });
     });
+
   });
+
+  resolvedDependencies.shared.withPlatformDataReset = async operation => {
+    const chat = resolvedDependencies.chat;
+    const golden = chat.transportWorkGoldenPath;
+    if (!startupSettled || livePreviewSweepPending || activeRequests.size || chat.mutationGate.isIdle?.() === false
+      || !loops.stopSchedulerLoop.isIdle() || !loops.stopCompanionLifeLoop.isIdle()
+      || !loops.stopTransportFanout.isIdle() || golden?.runner?.isIdle?.() === false
+      || golden?.outbox.isIdle?.() === false) throw new PlatformResetBusyError();
+    resetting = true;
+    loops.stopSchedulerLoop();
+    loops.stopCompanionLifeLoop();
+    loops.stopTransportFanout();
+    chat.pollingSupervisor.stopAll();
+    try {
+      await chat.pollingSupervisor.drain();
+      const [state, core] = await Promise.all([chat.chatStore.read(), chat.chatStore.readCore()]);
+      if (state.channels.some(channel => channel.roomRouting?.workflow.activeTurn)
+        || core.runs.some(run => run.status === 'running')) throw new PlatformResetBusyError();
+      await operation(async () => {
+        // Streaming handlers return after subscribing. Close their responses as
+        // well as revoking auth, so close handlers remove listeners/heartbeats.
+        for (const response of openStreams) response.end();
+        knowledge.revoke();
+        codeAgentTools.clearForReset();
+        getDefaultArtifactCanvasRenderIntentHub().clearForReset();
+        await resolvedDependencies.code.livePreviewSupervisor?.clearForReset();
+        if (resolvedDependencies.code.livePreviewStore !== resolvedDependencies.code.livePreviewSupervisor) {
+          await resolvedDependencies.code.livePreviewStore?.clearForReset?.();
+        }
+        await clearProviderCachesForReset(providerSelectorClient);
+        resolvedDependencies.shared.runtimeClientDiagnosticSink?.clearForReset?.();
+        resolvedDependencies.shared.providerCapabilityBootstrapDiagnosticSink.clearForReset?.();
+        resolvedDependencies.shared.providerCapabilityBootstrapDiagnostics = [];
+        await chat.memoryStore.clearForReset?.();
+        await chat.companionStore.clearForReset?.();
+        await chat.companionActivityStore.clearForReset?.();
+        chat.telegramRelay.clearForReset?.();
+        chat.pollingSupervisor.clearForReset?.();
+        golden?.clearForReset();
+        await resolvedDependencies.work.scheduleStore?.writeState(createEmptySchedulerState());
+        resolvedDependencies.shared.browserHandoffStore.clearForReset?.();
+        resolvedDependencies.shared.actionGrantStore.clearForReset?.();
+        await resolvedDependencies.shared.setAuthRecoveryTokenState?.(null);
+      });
+    } finally {
+      resetting = false;
+      loops = startBackgroundLoops();
+      await reconcilePollingOnStartup(resolvedDependencies).catch(reportUnhandledServerError);
+    }
+  };
 
   const auth = resolvedDependencies.shared.config.auth;
   const configuredOrigins = [...auth.allowedBrowserOrigins];
@@ -184,6 +266,7 @@ export function createServer(dependencies: ServerDependencies) {
   let appHostingReady = Promise.resolve();
   const livePreviewSupervisor = resolvedDependencies.code.livePreviewSupervisor;
   let livePreviewSweep: ReturnType<typeof setInterval> | undefined;
+  let livePreviewSweepPending: Promise<unknown> | undefined;
   let hostingClose: Promise<void> | undefined;
   const closeAppHosting = () => {
     clearInterval(livePreviewSweep);
@@ -199,7 +282,9 @@ export function createServer(dependencies: ServerDependencies) {
     appHostingReady = Promise.all([appComponents?.restore(), ingress?.restore()]).then(() => {});
     void appHostingReady.catch(reportUnhandledServerError);
     livePreviewSweep = setInterval(() => {
-      void livePreviewSupervisor?.expireLeases().catch(reportUnhandledServerError);
+      if (resetting || livePreviewSweepPending) return;
+      livePreviewSweepPending = livePreviewSupervisor?.expireLeases().catch(reportUnhandledServerError)
+        .finally(() => { livePreviewSweepPending = undefined; });
     }, 60_000);
     livePreviewSweep.unref();
     void plugins.tick().catch(reportUnhandledServerError);
@@ -224,15 +309,14 @@ export function createServer(dependencies: ServerDependencies) {
     void closeAppHosting().catch(reportUnhandledServerError);
     clearInterval(pluginTimer);
     knowledge.close();
-    stopSchedulerLoop();
-    stopCompanionLifeLoop();
-    stopTransportFanout();
+    loops.stopSchedulerLoop();
+    loops.stopCompanionLifeLoop();
+    loops.stopTransportFanout();
     resolvedDependencies.chat.pollingSupervisor.stopAll();
   });
 
   // Resolution means all best-effort passes settled, not that every pass succeeded.
   // Callers with private state can await this before submitting work or cleaning up.
-  return Object.assign(server, { startupRecovery: runServerStartupRecoveryPasses(resolvedDependencies),
-    appHostingReady: () => appHostingReady,
-    closeAppHosting });
+  const startupRecovery = runServerStartupRecoveryPasses(resolvedDependencies).finally(() => { startupSettled = true; });
+  return Object.assign(server, { startupRecovery, appHostingReady: () => appHostingReady, closeAppHosting });
 }

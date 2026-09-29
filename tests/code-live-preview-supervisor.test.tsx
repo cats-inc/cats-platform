@@ -245,6 +245,27 @@ test('LivePreviewSupervisor reports cleanup failure and releases the port', asyn
   assert.equal(adapter.spawned[1]?.port, 47100);
 });
 
+test('reset retries failed preview handles before erasing leases, logs and ports', async () => {
+  const adapter = new FakeProcessAdapter();
+  const supervisor = new LivePreviewSupervisor({ config: baseConfig(), processAdapter: adapter,
+    readinessProbe: async () => ({ status: 200 }), idFactory: createSequentialId('reset-preview') });
+  assert.equal((await supervisor.start(startRequest())).status, 'accepted');
+  const handle = adapter.handles[0]!;
+  handle.emitStdout('private preview log');
+  handle.nextStopError = new Error('injected stop failure');
+  assert.equal((await supervisor.stop('reset-preview-0')).status, 'rejected');
+  handle.nextStopError = new Error('still locked');
+  await assert.rejects(supervisor.clearForReset(), /still locked/);
+  assert.equal(supervisor.readLogs('reset-preview-0'), 'private preview log');
+  await supervisor.clearForReset();
+  assert.equal(handle.stopCalls.length, 3, 'retry a failed handle instead of skipping it');
+  assert.deepEqual(supervisor.listLeases(), []);
+  assert.equal(supervisor.readLogs('reset-preview-0'), null);
+  assert.equal((await supervisor.start(startRequest())).status, 'accepted');
+  assert.equal(adapter.spawned[1]?.port, 47100);
+  await supervisor.clearForReset();
+});
+
 function baseConfig(overrides: Partial<LivePreviewConfig> = {}): LivePreviewConfig {
   return {
     ...DEFAULT_LIVE_PREVIEW_CONFIG,

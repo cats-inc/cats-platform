@@ -24,6 +24,7 @@ import type {
 import type { TelegramRelay } from './relay/index.js';
 
 export interface TelegramPollingSupervisor {
+  clearForReset?(): void;
   /**
    * Waits for bridge work dispatched by the poll loops to settle.
    *
@@ -127,11 +128,12 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 export async function telegramDeleteWebhook(
   botToken: string,
   fetchImpl: TelegramFetch = telegramIpv4Fetch,
+  signal?: AbortSignal,
 ): Promise<boolean> {
   try {
     const response = await fetchImpl(
       `https://api.telegram.org/bot${botToken}/deleteWebhook`,
-      { method: 'POST' },
+      { method: 'POST', signal },
     );
     if (!response.ok) {
       return false;
@@ -207,6 +209,7 @@ export function createTelegramPollingSupervisor(
   options: TelegramPollingSupervisorOptions = {},
 ): TelegramPollingSupervisor {
   const consumers = new Map<string, PollingConsumer>();
+  const runningLoops = new Set<Promise<void>>();
   const now = options.now ?? (() => new Date());
   const fetchImpl = options.fetchImpl ?? telegramIpv4Fetch;
   const pollingTimeout = options.pollingTimeout ?? 30;
@@ -245,7 +248,7 @@ export function createTelegramPollingSupervisor(
     const signal = consumer.abortController.signal;
 
     try {
-      await telegramDeleteWebhook(botToken, fetchImpl);
+      await telegramDeleteWebhook(botToken, fetchImpl, signal);
     } catch {
       // Best-effort; continue to polling even if deleteWebhook fails
     }
@@ -401,8 +404,17 @@ export function createTelegramPollingSupervisor(
   }
 
   return {
-    drain(): Promise<void> {
-      return dispatcher.drain();
+    clearForReset(): void {
+      this.stopAll();
+      consumers.clear();
+    },
+    async drain(): Promise<void> {
+      // After stopAll, an aborted long poll can still be settling before it
+      // hands work to the dispatcher. Drain both layers before erasing state.
+      if ([...consumers.values()].every(consumer => consumer.abortController.signal.aborted)) {
+        await Promise.allSettled([...runningLoops]);
+      }
+      await dispatcher.drain();
     },
 
     async startPolling(input: StartPollingInput): Promise<void> {
@@ -432,7 +444,8 @@ export function createTelegramPollingSupervisor(
       consumers.set(input.bindingId, consumer);
 
       // Fire and forget the polling loop
-      void runPollingLoop(consumer, input);
+      const running = runPollingLoop(consumer, input).finally(() => runningLoops.delete(running));
+      runningLoops.add(running);
     },
 
     stopPolling(bindingId: string): void {
