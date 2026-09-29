@@ -2164,7 +2164,7 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
         status: 'active',
         participantActorIds: ['actor-owner', 'actor-stakeholder-1'],
         sourceChannelId: 'channel-system-1',
-        repoPath: 'C:/repo/one-man-digital-company',
+        repoPath: 'C:/repo/alpha-project',
         responseLanguage: 'en',
         createdAt: '2026-03-21T01:00:00.000Z',
         updatedAt: '2026-03-21T01:00:00.000Z',

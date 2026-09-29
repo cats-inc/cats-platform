@@ -259,7 +259,7 @@ test('Code workspace projection derives codespaces from real Code task metadata'
   const core = createDefaultCoreState();
   const conversationId = 'conversation-code-codespace';
   const taskId = 'task-code-codespace';
-  const workspacePath = 'C:\\Users\\middl\\Source\\SK2\\one-man-digital-company\\cats-platform';
+  const workspacePath = 'C:\\Users\\tester\\Source\\Fixtures\\alpha-project\\cats-platform';
 
   core.conversations.push({
     id: conversationId,

@@ -388,7 +388,7 @@ test('supervised Telegram media delivery rejects undeclared bindings and local p
     relay,
     allowedTargets: [{ platform: 'telegram', bindingId: binding.id }],
     toolInput: {
-      mediaUrl: 'C:\\Users\\sammy\\Pictures\\morning.jpg',
+      mediaUrl: 'C:\\Users\\tester\\Pictures\\morning.jpg',
     },
   });
   assert.equal(localPath.result.status, 'rejected');

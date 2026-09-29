@@ -32,7 +32,7 @@ commit 建置 Cats 版本。Agency 預設走無 hooks 的內容路徑，Submodul
 | Evidence | Pinned observation |
 | --- | --- |
 | Original upstream | [msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents)；由使用者指定本機 checkout 的 Git remote 確認 |
-| Existing local reference | `../sammykenny2/one-man-digital-company/agency-agents/`，detached `00fb28a4cf60a719363dce0de67fafc6301857ce`，commit 日期 2026-07-12；保留原樣 |
+| Existing local reference | a local checkout of the upstream repository，detached `00fb28a4cf60a719363dce0de67fafc6301857ce`，commit 日期 2026-07-12；保留原樣 |
 | Current upstream reviewed | [`479193dcce1cf6432ce0f5aa230ab8cc739a8c6b`](https://github.com/msitarzewski/agency-agents/tree/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b)，commit 日期 2026-09-27；另 clone 至 Cats workspace 的隔離研究目錄 |
 | Cats baselines | Platform `dec5af9b58939b973920d72f3d870390f501c2df`；Runtime `73f9def922e27e4b0bb3156db7a9b62026b22f5e` |
 
