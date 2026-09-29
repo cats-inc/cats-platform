@@ -9,8 +9,8 @@ IPv4 address.
 
 Both probes passed:
 
-- `http://192.168.1.251:8281`
-- `http://100.66.45.5:8281`
+- `http://<wifi-ipv4>:8281`
+- `http://<tailscale-ipv4>:8281`
 
 The probe confirmed that:
 
@@ -29,8 +29,8 @@ The probe confirmed that:
 
 Observed interface candidates during the probe:
 
-- Wi-Fi: `192.168.1.251`
-- Tailscale: `100.66.45.5`
+- Wi-Fi: `<wifi-ipv4>`
+- Tailscale: `<tailscale-ipv4>`
 - Virtual adapters (excluded from browser-entry suggestions):
   - `172.23.160.1`
   - `172.21.80.1`
@@ -49,8 +49,8 @@ node build/server/index.js
 Ingress probes:
 
 ```bash
-npm run ingress:smoke -- --base-url http://192.168.1.251:8281
-npm run ingress:smoke -- --base-url http://100.66.45.5:8281
+npm run ingress:smoke -- --base-url http://<wifi-ipv4>:8281
+npm run ingress:smoke -- --base-url http://<tailscale-ipv4>:8281
 ```
 
 ## Results

@@ -9,6 +9,12 @@ The software is provided under the [MIT License](LICENSE), including its warrant
 disclaimer and limitation of liability. Back up important files before allowing
 agents to modify them.
 
+Cats drives third-party agent CLIs, model APIs and local models that you install
+and sign in to yourself, through `cats-runtime`. Runtime only launches the official
+CLIs and never reads or reuses their credentials, but each provider's terms decide
+what your plan allows. Check the terms that apply to your account before connecting
+a provider; staying within them is your responsibility.
+
 ## Overview
 
 Studio image App (2026-09-28): SDK 1.3 now supports permission-scoped image jobs,
@@ -367,6 +373,23 @@ cats-platform/
 ├── config/        # Future app and orchestration config
 └── assets/        # Future product assets
 ```
+
+## Data and privacy
+
+- Platform state is plain files under `~/.cats/platform` (`CATS_PLATFORM_DIR` moves it);
+  the Desktop host keeps its own files under `~/.cats/desktop`. Chats, Cat profiles,
+  accounts and messaging-bot tokens (Telegram, LINE) are stored there unencrypted, so
+  protect that directory like any other credential store.
+- Prompts, attachments and workspace files go to the provider you select, through
+  `cats-runtime`, under that provider's retention terms. Nothing is sent to the Cats
+  maintainer: there is no telemetry, crash reporting or account.
+- The Desktop update check contacts GitHub Releases and sends a random per-install
+  identifier that electron-updater generates; it is off at startup by default and
+  downloads only when you confirm.
+- Voice input on Windows may use Microsoft online speech recognition; the browser
+  fallback uses the browser vendor's speech service (Google in Chromium builds).
+- Deleting a session or a Cat is permanent and removes provider-side native
+  transcripts where a provider keeps them. Back up before destructive actions.
 
 ## License
 

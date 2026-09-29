@@ -3430,7 +3430,7 @@ Request body:
   "title": "Ops Radar",
   "topic": "Track runtime regressions before the desktop host arrives.",
   "originSurface": "chat",
-  "repoPath": "C:/Users/kenne/Source/SK2/one-man-digital-company",
+  "repoPath": "C:/Users/tester/Source/Fixtures/alpha-project",
   "language": "TypeScript",
   "responseLanguage": "zh-TW",
   "formationMode": "manual",

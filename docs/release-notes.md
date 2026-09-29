@@ -2,6 +2,21 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-09-29 — Distribution hygiene (unreleased)
+
+- **.NET runtime notices ship with the Windows voice helper.** Packaging now copies the
+  self-contained .NET runtime pack's `LICENSE.TXT` and `THIRD-PARTY-NOTICES.TXT`, resolved
+  from the exact version in the published `deps.json`, into `native/windows-stt/licenses/`
+  together with an index naming the Windows SDK .NET projection assemblies and their
+  license terms. Staging fails when the NuGet runtime pack texts are missing, and the
+  installed-resource gate verifies them whenever the helper binary is present. The Vite
+  renderer bundle notices remain a follow-up.
+- **README states provider responsibility and data handling.** The README now says that
+  each provider's terms govern what a user's plan allows, and describes where Platform and
+  Desktop state live, what leaves the machine, and that deletions are permanent.
+- Documentation and test fixtures no longer carry the maintainer's private machine
+  addresses, home paths or unpublished project names. No behavior change.
+
 ## 2026-09-29 — Platform 0.6.1 npm and Desktop standard preview (published)
 
 - **Companion memory in each Cat turn (#174).** A bounded excerpt of the stored companion

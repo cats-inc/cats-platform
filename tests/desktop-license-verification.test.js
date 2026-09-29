@@ -28,7 +28,9 @@ test('installed Desktop must retain its own licenses and notices matching the sh
   await writeFile(join(resources, 'desktop-package-plan.json'), JSON.stringify({ sidecarLayout: { runtime: 'bundle' } }));
   await writeFile(join(bundle, 'index.js'), 'export {};');
   await seedRuntimeNotices(bundle, 'export {};');
-  assert.deepEqual(await verifyDesktopLicenses(resources), { catsLicenses: true, runtimeBundledNotices: true });
+  assert.deepEqual(await verifyDesktopLicenses(resources), {
+    catsLicenses: true, runtimeBundledNotices: true, nativeWindowsNotices: false,
+  });
   for (const file of [join(platform, 'LICENSE'), join(runtime, 'LICENSE'), join(bundle, 'THIRD-PARTY-NOTICES.txt')]) {
     const original = await readFile(file);
     await rm(file);
@@ -45,7 +47,9 @@ test('installed Desktop must retain its own licenses and notices matching the sh
   await writeFile(join(bundle, 'index.js'), 'export const changed = true;');
   await assert.rejects(verifyDesktopLicenses(resources), /stale/);
   await writeFile(join(resources, 'desktop-package-plan.json'), JSON.stringify({ sidecarLayout: { runtime: 'split' } }));
-  assert.deepEqual(await verifyDesktopLicenses(resources), { catsLicenses: true, runtimeBundledNotices: false });
+  assert.deepEqual(await verifyDesktopLicenses(resources), {
+    catsLicenses: true, runtimeBundledNotices: false, nativeWindowsNotices: false,
+  });
   await writeFile(join(host, 'LICENSE'), Buffer.concat([license, Buffer.from('\nDifferent license identity\n')]));
   await createPackage(host, join(resources, 'app.asar'));
   await assert.rejects(verifyDesktopLicenses(resources), /same Cats license/);
