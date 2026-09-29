@@ -17,10 +17,12 @@ import {
 } from '../../../../../shared/workspaceBusy.js';
 import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
 import { CHAT_MCP_PROFILE_ID } from '../../../../../shared/catMcpProfiles.js';
+import { isCompanionCat } from '../../../../../shared/companionRole.js';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { MemoryEditorDialog } from './MemoryEditorDialog.js';
 import { TelegramConnectDialog } from './TelegramConnectDialog.js';
 import {
+  COMPANION_PILL_LABEL,
   getMemoryCategoryLabel,
   MCP_PROFILES,
   SKILL_PROFILES,
@@ -38,6 +40,7 @@ export interface SettingsCatsDetailPanelRegistryController {
   onMcpProfileChange: (catId: string, mcpProfile: string) => Promise<void>;
   onRenameCat: (catId: string) => Promise<void>;
   onSkillChange: (catId: string, skillProfile: string) => Promise<void>;
+  onCompanionChange: (catId: string, companion: boolean) => Promise<void>;
 }
 
 export type SettingsCatsDetailSectionKey =
@@ -86,6 +89,7 @@ export function SettingsCatsDetailPanelContent({
     onMcpProfileChange,
     onRenameCat,
     onSkillChange,
+    onCompanionChange,
   } = registryController;
   const {
     memoryForm,
@@ -209,6 +213,15 @@ export function SettingsCatsDetailPanelContent({
                 {t(profile.label)}
               </button>
             ))}
+            <button
+              className={isCompanionCat(cat) ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
+              type="button"
+              aria-pressed={isCompanionCat(cat)}
+              disabled={isCatBusy(busy, 'skill', cat.id)}
+              onClick={() => void onCompanionChange(cat.id, !isCompanionCat(cat))}
+            >
+              {t(COMPANION_PILL_LABEL)}
+            </button>
           </div>
         </div>
       ) : null}

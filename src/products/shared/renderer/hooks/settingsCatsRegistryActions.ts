@@ -21,6 +21,7 @@ import {
   updateCatProfile,
 } from '../api/index.js';
 import { CHAT_MCP_PROFILE_ID } from '../../../../shared/catMcpProfiles.js';
+import { COMPANION_ROLE } from '../../../../shared/companionRole.js';
 import type { CatFormState } from '../workspaceChatUtils.js';
 import { formatSettingsCatsRegistryMutationError } from './settingsCatsRegistryErrorLabels.js';
 
@@ -78,6 +79,7 @@ export function createSettingsCatsRegistryActions(
         makeBoss: context.catForm.makeBoss || undefined,
         products: context.catForm.products.length > 0 ? context.catForm.products : undefined,
         skillProfile: context.catForm.skillProfile || undefined,
+        roles: context.catForm.companion ? [COMPANION_ROLE] : undefined,
         mcpProfile:
           context.catForm.mcpProfile && context.catForm.mcpProfile !== CHAT_MCP_PROFILE_ID
             ? context.catForm.mcpProfile
@@ -183,6 +185,22 @@ export function createSettingsCatsRegistryActions(
     }
   }
 
+  async function onCompanionChange(catId: string, companion: boolean): Promise<void> {
+    context.onBusy(createCatBusyState('skill', catId));
+    try {
+      const result = await updateCatProfile(catId, { companion });
+      context.onPayloadUpdate(result);
+    } catch (error) {
+      context.onFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsSkillUpdateError),
+        t,
+      ));
+    } finally {
+      context.onBusy(clearBusyState());
+    }
+  }
+
   async function onMcpProfileChange(catId: string, mcpProfile: string): Promise<void> {
     context.onBusy(createCatBusyState('skill', catId));
     try {
@@ -257,5 +275,6 @@ export function createSettingsCatsRegistryActions(
     onMcpProfileChange,
     onRenameCat,
     onSkillChange,
+    onCompanionChange,
   };
 }

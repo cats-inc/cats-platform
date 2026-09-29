@@ -25,6 +25,8 @@ Runtime protocol 1 的 registration/renew/fence/stop 以 authenticated local end
 執行。欲啟用須驗證相同 Runtime identity；過期 generation 不自動復活。
 新狀態 namespace schema 1，未知／損壞格式拒絕操作；不變更既有 App 或 Cat storage schema。
 UI 只提供當下已註冊、lease 有效的兩個 Agency skill profiles。移除不抹掉選擇或歷史。
+companion 是 Cat role，不佔 skill profile（ADR-124）；選了 Agency skill 的陪伴者保留
+companion 身分，但 Runtime 只接受 managed skills，因此不會同時請求內建 companion skill。
 
 此受控 pilot 不承諾任意 archive、遠端 Runtime、hooks、SDK 穩定相容或 market download。
 CLI crash 後的 orphan receipt 需要運維復原；未驗證停止前不提供強制完成按鈕。

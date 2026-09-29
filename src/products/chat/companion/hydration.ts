@@ -8,6 +8,7 @@ import type {
 } from './contracts.js';
 import type { MemoryRetrievalContext } from '../../../platform/memory/contracts.js';
 import { uniqueStrings } from '../../../platform/memory/utils.js';
+import { isCompanionCat } from '../../../shared/companionRole.js';
 
 function sortNewestFirst<T extends { updatedAt: string }>(records: T[]): T[] {
   return [...records].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
@@ -26,7 +27,7 @@ export function shouldHydrateCompanionSession(
     return true;
   }
 
-  if (cat.skillProfile === 'companion' || cat.roles.includes('companion')) {
+  if (isCompanionCat(cat)) {
     return true;
   }
 

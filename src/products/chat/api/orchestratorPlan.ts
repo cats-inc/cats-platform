@@ -4,6 +4,7 @@ import type {
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
 } from '../../../shared/roomRouting.js';
+import { isCompanionCat } from '../../../shared/companionRole.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import type { CatsCoreState } from '../../../core/types.js';
 import type {
@@ -175,6 +176,8 @@ function buildCatParticipantPlan(
     mcpProfile: cat.mcpProfile,
     runtimeSkills: resolveSkillProfileManifest({
       profileId: cat.skillProfile,
+      // Channel cat views project the Cat's companion role onto assignment roles.
+      companion: isCompanionCat(cat),
       catId: cat.catId,
       roomMode: channelContext.channel.roomRouting?.mode ?? 'chat_channel',
       transport: channelContext.transport,

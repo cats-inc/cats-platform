@@ -20,6 +20,10 @@ import {
   extractCoreState,
 } from './core-snapshot/index.js';
 import { resolveSetupCompletionTimestamp } from './setupCompletion.js';
+import {
+  migrateCompanionSkillProfiles,
+  resolveCompanionRoleMigrationBackupPath,
+} from './companionRoleMigration.js';
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && 'code' in error;
@@ -206,7 +210,67 @@ export class FileChatStore implements ChatStore {
     if (repaired.setupCompleteAt !== normalized.setupCompleteAt) {
       await writePersistedChatSnapshot(filePath, repaired);
     }
-    return repaired;
+    return this.applyCompanionRoleMigration(repaired, raw, filePath);
+  }
+
+  /**
+   * ADR-124 one-time upgrade. The original bytes are kept in a dedicated backup
+   * that later writes never rotate; on the `.bak` recovery path the migrated
+   * snapshot is only returned, and `recoverFromBackup` writes it to the primary.
+   */
+  private async applyCompanionRoleMigration(
+    snapshot: PersistedChatSnapshot,
+    raw: string,
+    sourcePath: string,
+  ): Promise<PersistedChatSnapshot> {
+    let migration: ReturnType<typeof migrateCompanionSkillProfiles>;
+    try {
+      migration = migrateCompanionSkillProfiles(snapshot);
+    } catch (error) {
+      reportStoreDiagnostic('companion_role_migration_failed', {
+        filePath: this.filePath,
+        stage: 'validate',
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return snapshot;
+    }
+    if (!migration) {
+      return snapshot;
+    }
+
+    const backupPath = resolveCompanionRoleMigrationBackupPath(this.filePath);
+    try {
+      await writeFile(backupPath, raw, { encoding: 'utf-8', flag: 'wx' });
+    } catch (error) {
+      if (!(isErrnoException(error) && error.code === 'EEXIST')) {
+        reportStoreDiagnostic('companion_role_migration_failed', {
+          filePath: this.filePath,
+          stage: 'backup',
+          backupPath,
+          message: error instanceof Error ? error.message : String(error),
+        });
+        return snapshot;
+      }
+    }
+
+    if (sourcePath === this.filePath) {
+      try {
+        await writePersistedChatSnapshot(this.filePath, migration.snapshot);
+      } catch (error) {
+        reportStoreDiagnostic('companion_role_migration_failed', {
+          filePath: this.filePath,
+          stage: 'write',
+          backupPath,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+    reportStoreDiagnostic('companion_role_migrated', {
+      filePath: this.filePath,
+      backupPath,
+      catIds: migration.migratedCatIds,
+    });
+    return migration.snapshot;
   }
 
   private async recoverFromBackup(): Promise<PersistedChatSnapshot | null> {
@@ -390,7 +454,8 @@ export class MemoryChatStore implements ChatStore {
   constructor(
     initialState: ChatState | CatsCoreState | PersistedChatSnapshot = createDefaultChatState(),
   ) {
-    const snapshot = repairPersistedSetupCompletion(normalizePersistedChatSnapshot(initialState));
+    const repaired = repairPersistedSetupCompletion(normalizePersistedChatSnapshot(initialState));
+    const snapshot = migrateCompanionSkillProfiles(repaired)?.snapshot ?? repaired;
     this.chatState = snapshot.chat;
     this.coreState = extractCoreState(snapshot);
   }

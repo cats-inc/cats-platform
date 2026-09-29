@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-114](PLAN-114-companion-as-cat-role.md) | Companion as a Cat Role | Implemented; Settings visual acceptance pending | [SPEC-019](../specs/SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md), [ADR-040](../decisions/040-make-companion-a-first-class-chat-mode-with-workspace-and-presence.md) |
 | [PLAN-113](PLAN-113-managed-plugin-capabilities.md) | Managed Plugin Capabilities | Internal Agency host pilot; delivery validation recorded in plan | [SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md) |
 | [PLAN-112](PLAN-112-app-market-and-lifecycle.md) | App Market and Lifecycle | Planned; implementation not started | [SPEC-120](../specs/SPEC-120-app-market-and-lifecycle.md) |
 | [PLAN-110](PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md) | Orchestrator Knowledge and Collaboration Rollout | In progress; separate native K2/K3, K3 saved-state projections and full CI pass; profile/combined rollout gates open | [SPEC-118](../specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md), [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |

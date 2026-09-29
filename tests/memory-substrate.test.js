@@ -27,7 +27,7 @@ function buildCompanionCat(catId, nowIso) {
     id: catId,
     name: 'Companion',
     roles: ['companion'],
-    skillProfile: 'companion',
+    skillProfile: null,
     mcpProfile: null,
     status: 'active',
     createdAt: nowIso,

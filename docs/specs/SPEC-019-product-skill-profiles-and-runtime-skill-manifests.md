@@ -1,5 +1,11 @@
 # SPEC-019: Product Skill Profiles and Runtime Skill Manifests
 
+> **2026-09-29 amendment**: Companion is not a `SkillProfile`. Per
+> [ADR-124](../decisions/124-model-companion-as-a-cat-role-not-a-skill-profile.md),
+> a Cat is a companion when its roles include `companion`, and the runtime
+> `companion` skill is derived from that role on top of a built-in profile
+> (omitted when a managed Plugin profile is selected).
+
 ## Metadata
 
 | Field | Value |

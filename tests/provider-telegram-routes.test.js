@@ -1280,7 +1280,7 @@ test('telegram slash commands stay transport-owned and can switch the bound cat 
         body: JSON.stringify({
           name: 'Companion',
           provider: 'claude',
-          skillProfile: 'companion',
+          roles: ['companion'],
         }),
       });
       assert.equal(createCompanionResponse.status, 201);
@@ -1359,7 +1359,8 @@ test('telegram slash commands stay transport-owned and can switch the bound cat 
       const catAfterAgentResponse = await fetch(`${baseUrl}/api/cats/${catId}`);
       assert.equal(catAfterAgentResponse.status, 200);
       const catAfterAgentPayload = await catAfterAgentResponse.json();
-      assert.equal(catAfterAgentPayload.cat.skillProfile, 'chat-default');
+      assert.equal(catAfterAgentPayload.cat.roles.includes('companion'), false);
+      assert.equal(catAfterAgentPayload.cat.skillProfile, null);
 
       const statusResponse = await fetch(
         `${baseUrl}/api/transports/telegram/webhook/${bindingId}`,
@@ -1408,7 +1409,8 @@ test('telegram slash commands stay transport-owned and can switch the bound cat 
       const catAfterCompanionResponse = await fetch(`${baseUrl}/api/cats/${catId}`);
       assert.equal(catAfterCompanionResponse.status, 200);
       const catAfterCompanionPayload = await catAfterCompanionResponse.json();
-      assert.equal(catAfterCompanionPayload.cat.skillProfile, 'companion');
+      assert.equal(catAfterCompanionPayload.cat.roles.includes('companion'), true);
+      assert.equal(catAfterCompanionPayload.cat.skillProfile, null);
 
       const diagnosticsResponse = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
       assert.equal(diagnosticsResponse.status, 200);
@@ -1831,7 +1833,7 @@ test('telegram webhook routes can scope ingress to a specific bot binding path a
       body: JSON.stringify({
         name: 'Companion',
         provider: 'claude',
-        skillProfile: 'companion',
+        roles: ['companion'],
       }),
     });
     assert.equal(createCompanionResponse.status, 201);
@@ -1920,7 +1922,7 @@ test('telegram webhook for a cat binding reuses that cat direct lane', async () 
       body: JSON.stringify({
         name: 'Companion',
         provider: 'claude',
-        skillProfile: 'companion',
+        roles: ['companion'],
       }),
     });
     assert.equal(createCompanionResponse.status, 201);

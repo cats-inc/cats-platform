@@ -13,6 +13,7 @@ import type {
   GlobalOrchestratorSummary,
   ParticipantExecutionLease,
 } from '../../api/contracts.js';
+import { isCompanionCat, withCompanionRole } from '../../../../shared/companionRole.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
 import { resolveChannelCanonicalIdentity } from '../../shared/channelCanonicalIdentity.js';
 import { createChannelExportFilename } from '../../shared/channelPaths.js';
@@ -58,7 +59,10 @@ function hydrateChannelCat(
     sourceRefId: assignment.sourceRefId,
     catId: cat.id,
     name: cat.name,
-    roles: assignment.roles.length > 0 ? structuredClone(assignment.roles) : structuredClone(cat.roles),
+    roles: withCompanionRole(
+      assignment.roles.length > 0 ? assignment.roles : cat.roles,
+      isCompanionCat(cat),
+    ),
     roleHint: assignment.roleHint,
     skillProfile: cat.skillProfile,
     mcpProfile: cat.mcpProfile,

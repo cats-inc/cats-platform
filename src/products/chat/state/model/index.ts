@@ -115,6 +115,7 @@ export {
   pickAvatarColor,
   renameCat,
   setBossCat,
+  setCatCompanion,
   unarchiveCat,
   updateCatExecutionTarget,
   updateCatMcpProfile,

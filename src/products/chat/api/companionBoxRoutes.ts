@@ -1,4 +1,5 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
+import { isCompanionCat } from '../../../shared/companionRole.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import { createDefaultRoomRoutingState } from '../state/room-routing/index.js';
 import { requireCat, requireChannel } from '../state/model/index.js';
@@ -617,6 +618,7 @@ async function handleGetCompanionSessionContext(
         };
     const requestedSkills = resolveSkillProfileManifest({
       profileId: cat.skillProfile,
+      companion: isCompanionCat(cat),
       catId: cat.id,
       roomMode: channel.roomRouting?.mode ?? 'direct_message',
       transport: 'web',

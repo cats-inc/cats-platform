@@ -9,6 +9,8 @@ import {
   normalizePlatformSurfaceList,
 } from '../../../../shared/platformSurfaces.js';
 import { normalizeCatMcpProfile } from '../../../../shared/catMcpProfiles.js';
+import { withCompanionRole } from '../../../../shared/companionRole.js';
+import { normalizeCatSkillProfile } from '../../../../shared/skillProfiles.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { createCatRecord } from './recordBuilders.js';
 import {
@@ -332,7 +334,22 @@ export function updateCatSkillProfile(
   if (!cat) {
     throw new Error(`Cat not found: ${catId}`);
   }
-  cat.skillProfile = skillProfile;
+  cat.skillProfile = normalizeCatSkillProfile(skillProfile);
+  cat.updatedAt = new Date().toISOString();
+  return nextState;
+}
+
+export function setCatCompanion(
+  state: ChatState,
+  catId: string,
+  companion: boolean,
+): ChatState {
+  const nextState = cloneState(state);
+  const cat = nextState.cats.find((p) => p.id === catId);
+  if (!cat) {
+    throw new Error(`Cat not found: ${catId}`);
+  }
+  cat.roles = withCompanionRole(cat.roles, companion);
   cat.updatedAt = new Date().toISOString();
   return nextState;
 }

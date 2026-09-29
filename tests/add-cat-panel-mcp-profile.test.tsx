@@ -60,9 +60,9 @@ test('Add Cat panel existing Cat list surfaces Work memory Cats', () => {
       {
         id: 'cat-work',
         name: 'Work Planner',
-        roles: ['planner'],
+        roles: ['planner', 'companion'],
+        skillProfile: null,
         status: 'active',
-        skillProfile: 'companion',
         mcpProfile: 'work-memory',
         avatarColor: null,
         avatarUrl: null,

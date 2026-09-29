@@ -41,7 +41,8 @@ import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { SettingsCatsDetailPanelContent } from './SettingsCatsDetailPanelContent.js';
 import { SettingsCatsRegistry } from './SettingsCatsRegistry.js';
 import { findNewlyCreatedActiveCat } from './settingsCatsSupport.js';
-import { MCP_PROFILES, SKILL_PROFILES } from './viewSupport.js';
+import { COMPANION_PILL_LABEL, MCP_PROFILES, SKILL_PROFILES } from './viewSupport.js';
+import { isCompanionCat } from '../../../../../shared/companionRole.js';
 
 export interface SettingsCatsRegistryController<TBotForm> {
   botForm: TBotForm;
@@ -57,6 +58,7 @@ export interface SettingsCatsRegistryController<TBotForm> {
   onMcpProfileChange: (catId: string, mcpProfile: string) => Promise<void>;
   onRenameCat: (catId: string) => Promise<void>;
   onSkillChange: (catId: string, skillProfile: string) => Promise<void>;
+  onCompanionChange: (catId: string, companion: boolean) => Promise<void>;
 }
 
 export interface SettingsCatsRegistryActionsHookResult<TBotForm>
@@ -154,6 +156,7 @@ export function SettingsCatsCanvas({
     onUnarchiveCat,
     onRenameCat,
     onSkillChange,
+    onCompanionChange,
   } = actions;
   const {
     botBindings,
@@ -744,6 +747,14 @@ export function SettingsCatsCanvas({
                         {t(profile.label)}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      className={catForm.companion ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
+                      aria-pressed={catForm.companion}
+                      onClick={() => setCatForm({ ...catForm, companion: !catForm.companion })}
+                    >
+                      {t(COMPANION_PILL_LABEL)}
+                    </button>
                   </div>
                 </SettingsSubSection>
 
@@ -978,6 +989,21 @@ export function SettingsCatsCanvas({
                         </button>
                       );
                     })}
+                    <button
+                      type="button"
+                      className={isCompanionCat(selectedCat) ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
+                      aria-pressed={isCompanionCat(selectedCat)}
+                      disabled={isArchived}
+                      onClick={() => {
+                        void commitCatProfile(
+                          selectedCat.id,
+                          { companion: !isCompanionCat(selectedCat) },
+                          t(messageKeys.sharedSettingsCatsChangeSkillProfileError),
+                        );
+                      }}
+                    >
+                      {t(COMPANION_PILL_LABEL)}
+                    </button>
                   </div>
                 </SettingsSubSection>
 
@@ -1030,6 +1056,7 @@ export function SettingsCatsCanvas({
                       onMcpProfileChange,
                       onRenameCat,
                       onSkillChange,
+                      onCompanionChange,
                     }}
                     telegramDiagnostics={telegramDiagnostics}
                     confirm={confirm}
@@ -1058,6 +1085,7 @@ export function SettingsCatsCanvas({
                       onMcpProfileChange,
                       onRenameCat,
                       onSkillChange,
+                      onCompanionChange,
                     }}
                     telegramDiagnostics={telegramDiagnostics}
                     confirm={confirm}

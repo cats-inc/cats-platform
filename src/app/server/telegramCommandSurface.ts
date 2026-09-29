@@ -25,7 +25,8 @@ import type {
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
-import { updateCatSkillProfile } from '../../products/chat/state/model/index.js';
+import { setCatCompanion } from '../../products/chat/state/model/index.js';
+import { isCompanionCat } from '../../shared/companionRole.js';
 import { shouldBridgeTelegramProductIntentCommand } from '../../server/telegramProductIntentCommands.js';
 import {
   resolveTransportWorkLocalExecutionStatus,
@@ -50,14 +51,11 @@ function findBindingChatCat(chatState: ChatState, binding: BotBindingRecord) {
   ) ?? null;
 }
 
+/** `/mode` toggles the Cat's companion role and leaves its skill profile alone. */
 function resolveInteractionMode(
-  skillProfile: string | null | undefined,
+  cat: { roles: readonly string[] } | null | undefined,
 ): TelegramInteractionMode {
-  return skillProfile === 'companion' ? 'companion' : 'agent';
-}
-
-function resolveSkillProfileForInteractionMode(mode: TelegramInteractionMode): string {
-  return mode === 'companion' ? 'companion' : 'chat-default';
+  return isCompanionCat(cat) ? 'companion' : 'agent';
 }
 
 async function setInteractionMode(
@@ -67,10 +65,10 @@ async function setInteractionMode(
 ): Promise<TelegramInteractionMode> {
   const state = await chatStore.read();
   const persisted = await chatStore.write(
-    updateCatSkillProfile(state, catId, resolveSkillProfileForInteractionMode(mode)),
+    setCatCompanion(state, catId, mode === 'companion'),
   );
   const cat = persisted.cats.find((candidate) => candidate.id === catId);
-  return resolveInteractionMode(cat?.skillProfile ?? null);
+  return resolveInteractionMode(cat);
 }
 
 export function createTelegramCommandSurface(
@@ -162,7 +160,7 @@ export function createTelegramCommandSurface(
         botName: binding?.botName ?? 'CatsBot',
         catName: cat?.name ?? null,
         catId: cat?.id ?? null,
-        currentMode: cat ? resolveInteractionMode(cat.skillProfile) : null,
+        currentMode: cat ? resolveInteractionMode(cat) : null,
         inboundMode: binding?.inboundMode ?? null,
         locale: commandInput.locale,
         delegation: await resolveDelegation(binding?.id ?? null),
