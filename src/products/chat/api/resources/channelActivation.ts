@@ -4,6 +4,7 @@ import { mergeCompletedDispatchState } from '../../state/runtime-dispatch/merge.
 import { activateChannelSessions } from '../../state/runtimeActions.js';
 import {
   requireChannel,
+  resolveLeadParticipantLease,
   setChannelOrchestratorLease,
   setChannelParticipantLease,
 } from '../../state/model/index.js';
@@ -47,9 +48,18 @@ export function publishChannelLifecycleEvents(
 export async function activateChannelLocked(
   dependencies: ChannelLifecycleDependencies,
   channelId: string,
-): Promise<{ startedAt: string; results: ChannelActivationResult[] }> {
+): Promise<{
+  startedAt: string;
+  results: ChannelActivationResult[];
+  /**
+   * Whether the lead participant was already awake. Activation reports `started`
+   * even for a live session, so this is what tells "woke up" from "already up".
+   */
+  leadWasReady: boolean;
+}> {
   const now = dependencies.now?.() ?? new Date();
   const baseline = await dependencies.chatStore.read();
+  const leadWasReady = resolveLeadParticipantLease(requireChannel(baseline, channelId))?.status === 'ready';
   const activation = await activateChannelSessions(
     baseline,
     channelId,
@@ -65,7 +75,7 @@ export async function activateChannelLocked(
   await updateChatState(dependencies.chatStore, (latest) =>
     mergeCompletedDispatchState(latest, baseline, activation.state, channelId, now));
   notifyStreamTargetChanged(channelId);
-  return { startedAt: now.toISOString(), results: activation.results };
+  return { startedAt: now.toISOString(), results: activation.results, leadWasReady };
 }
 
 export async function deactivateChannelLocked(

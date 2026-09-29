@@ -18,6 +18,7 @@ import {
 import {
   createBridgeDispatchFailureReceipt,
   deliverTelegramRequest,
+  sendTelegramChatAction,
 } from './delivery.js';
 import { linkTelegramRoom, receiveTelegramUpdate } from './ingress.js';
 import {
@@ -68,6 +69,12 @@ export interface TelegramRelay {
     deliveredAt?: string | null;
     errorMessage: string;
   }): TelegramDeliveryReceipt;
+  /** SPEC-124 FR-25: best effort; it records nothing and never throws. */
+  sendChatAction?(input: {
+    chatId: string;
+    action: 'typing';
+    context: TelegramRelayContext;
+  }): Promise<void>;
 }
 
 interface TelegramRelayOptions {
@@ -231,6 +238,16 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         deliveryClient,
         resolveDeliveryClient,
         request,
+        context,
+      });
+    },
+
+    async sendChatAction({ chatId, action, context }): Promise<void> {
+      await sendTelegramChatAction({
+        deliveryClient,
+        resolveDeliveryClient,
+        chatId,
+        action,
         context,
       });
     },

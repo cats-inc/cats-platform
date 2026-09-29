@@ -36,6 +36,7 @@ import {
 } from '../../platform/auth/index.js';
 import { createTelegramIngressDispatcher } from '../../platform/transports/telegram/ingressDispatch.js';
 import { createTelegramCommandSurface } from './telegramCommandSurface.js';
+import { setCatDirectLanePresence } from '../../products/chat/api/companionPresenceControl.js';
 import { createTelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import { createTransportWorkGoldenPath } from './transportWorkGoldenPath.js';
 import { readTelegramPollingContext } from '../../server/routes/telegram.js';
@@ -394,6 +395,17 @@ export function resolveServerDependencies(
       pollingSupervisor,
       readiness: transportWorkGoldenPath?.readiness,
       runtimeHealth: dependencies.shared.runtimeClient,
+      setCatPresence: (catId, presence) => setCatDirectLanePresence({
+        chatStore: dependencies.chat.chatStore,
+        mutationGate,
+        runtimeClient: dependencies.shared.runtimeClient,
+        companionStore,
+        companionActivityStore,
+        memoryService,
+        config: dependencies.shared.config,
+        eventHub: chatEventHub,
+        now: dependencies.shared.now,
+      }, catId, presence),
     });
 
   const resumePendingOrchestratorDispatch =

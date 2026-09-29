@@ -54,9 +54,11 @@
 
 ## Phase 3: Telegram 在職守
 
-- [ ] 私訊進來立即送 `typing`，回覆前每 4 秒續送。
-- [ ] `/sleep`、`/wake` 指令。
-- [ ] 綁定變更與重新連線重建的 polling consumer 帶入 transport 指令。
+- [x] 私訊進來立即送 `typing`，回覆前每 4 秒續送；走獨立的 `sendChatAction`，不產生 delivery
+  receipt，也不更新 `lastOutboundMessageId`。
+- [x] `/sleep`、`/wake` 指令，與 Desktop 按鈕共用 owner 意圖（`setCatDirectLanePresence`）。
+- [x] 綁定變更與手動重新連線重建的 polling consumer 帶入 transport 指令（重新連線也補上 `/work`
+  的 golden path）。
 
 ## Phase 4: 照片
 
@@ -103,3 +105,11 @@
     `telegram-work-delivery-bridge`（11，含心跳不會被當成回覆）等，server 12 檔 248 個、
     `provider-telegram-routes` 35 個、bundled 4 檔 21 個通過。
   - 尚未驗證：實機 Desktop 私訊裡心跳訊息的呈現，以及真的 Telegram bot。
+- 2026-09-29：Phase 2 以 #187 merge（`015acac1`）。Phase 3 完成。
+  - 修正「喚醒」的變化判斷：channel activation 對已經活著的 session 也回報 `started`，原本會讓
+    Desktop 喚醒按鈕在已醒著時多記一筆「被你叫醒了」，`/wake` 也會回「醒來了」。改為看喚醒前
+    lead lease 是否已是 `ready`（`activateChannelLocked` 回傳 `leadWasReady`）。
+  - 驗證：`companion-telegram-duty`（3）、`telegram-commands-i18n`、`telegram-work-delivery-bridge`
+    （12，含 typing 在回合開始前送出且不產生 receipt）、`architecture-boundaries`、
+    `provider-telegram-routes` 等，server 15 檔 236 個與 bundled 5 檔 55 個通過。
+  - 尚未驗證：真的 Telegram bot 上的 typing 與 `/sleep` `/wake`。

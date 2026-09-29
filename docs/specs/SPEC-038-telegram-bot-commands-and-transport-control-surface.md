@@ -98,6 +98,13 @@ This spec defines the first command surface for Telegram-bound Cats.
    - update product-owned Cat behavior state without delegating the mode switch
      itself to runtime
 
+> Amended 2026-09-29 by [SPEC-124](SPEC-124-alive-companion-life-loop.md) FR-26:
+> `/sleep` and `/wake` put the bound Cat's direct lane to sleep or wake it
+> through the same owner path as the Desktop buttons, so a companion's life
+> loop honours them. Consumers restarted after a binding change or a manual
+> reconnect now keep these transport commands (they used to fall through to
+> ordinary chat until the app restarted).
+
 #### Unknown commands
 
 12. Unknown slash commands shall not silently fall through to ordinary chat by

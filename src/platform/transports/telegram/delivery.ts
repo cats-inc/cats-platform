@@ -75,6 +75,8 @@ export interface TelegramDeliveryClient {
     chatId?: string | null;
     menuButton: TelegramBotApiMenuButton;
   }): Promise<TelegramBotApiMutationResult>;
+  /** Ephemeral presence ("typing..."); never a delivery, so never a receipt. */
+  sendChatAction?(request: { chatId: string; action: 'typing' }): Promise<TelegramBotApiMutationResult>;
 }
 
 export interface TelegramBotApiDeliveryClientOptions {
@@ -304,6 +306,21 @@ export function createTelegramBotApiDeliveryClient(
           scope: request.scope ?? undefined,
           language_code: request.languageCode ?? undefined,
         },
+      );
+      const ok = response.ok && payload.ok === true;
+      return {
+        ok,
+        description: ok ? null : payload.description ?? `Telegram API ${response.status}`,
+      };
+    },
+
+    async sendChatAction({ chatId, action }): Promise<TelegramBotApiMutationResult> {
+      const { response, payload } = await postBotApi<boolean>(
+        fetchImpl,
+        apiBaseUrl,
+        botToken,
+        'sendChatAction',
+        { chat_id: chatId, action },
       );
       const ok = response.ok && payload.ok === true;
       return {

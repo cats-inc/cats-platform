@@ -157,6 +157,7 @@ import type {
   ChatState,
 } from './contracts.js';
 import type { TransportWorkGoldenPathPort } from '../../../platform/transports/work-delivery/port.js';
+import type { TelegramCommandPort } from '../../../platform/transports/telegram/commandPort.js';
 
 export interface ChatApiDependencies {
   config: AppConfig;
@@ -168,6 +169,8 @@ export interface ChatApiDependencies {
   telegramRelay?: TelegramRelay;
   telegramRoomBridge: TelegramRoomBridge<ChatState>;
   pollingSupervisor?: TelegramPollingSupervisor;
+  /** Transport-owned slash commands; restarted polling consumers must keep them. */
+  telegramCommands?: TelegramCommandPort;
   /** SPEC-114 golden path, injected by the host. */
   transportWorkGoldenPath?: TransportWorkGoldenPathPort | null;
   telegramCommandSurfaceSync?: {
@@ -268,6 +271,7 @@ export async function reconcileTelegramTransportAfterBindingMutation(
     runtimeClient,
     eventHub,
     transportWorkGoldenPath,
+    telegramCommands,
   } = context.dependencies;
   if (telegramCommandSurfaceSync) {
     try {
@@ -290,6 +294,7 @@ export async function reconcileTelegramTransportAfterBindingMutation(
       runtimeClient,
       telegramRelay,
       goldenPath: transportWorkGoldenPath ?? null,
+      commands: telegramCommands ?? null,
       onBridgeResult: (bridgeResult) => publishTelegramBridgeResult(eventHub, bridgeResult),
     });
   } catch {

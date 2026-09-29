@@ -2267,6 +2267,8 @@ export const zhTWCatalog: MessageCatalog = {
   'telegram.command.status.description': '顯示連線與執行狀態',
   'telegram.command.open.description': '開啟新的聊天室',
   'telegram.command.mode.description': '查看或切換陪伴與代理模式',
+  'telegram.command.sleep.description': '讓貓睡到下一次起床時間',
+  'telegram.command.wake.description': '叫醒貓',
   'telegram.command.chat.description': '使用一般聊天模式',
   'telegram.command.work.description': '釐清並建立 Work Item',
   'telegram.command.code.description': '釐清 Code 工作',
@@ -2280,6 +2282,8 @@ export const zhTWCatalog: MessageCatalog = {
     '/mode - 顯示目前模式',
     '/mode companion - 切換到陪伴行為',
     '/mode agent - 切換到代理行為',
+    '/sleep - 讓貓睡到下一次起床時間',
+    '/wake - 叫醒貓',
     '/chat - 使用一般聊天模式',
     '/work - 釐清並建立 Work Item',
     '/code - 釐清 Code 工作',
@@ -2317,6 +2321,18 @@ export const zhTWCatalog: MessageCatalog = {
     '這個 bot 綁定目前無法切換模式。',
   'telegram.command.mode.switched':
     '已將 {name} 切換為{mode}模式。\n之後此聊天中的一般訊息會使用該模式。',
+  'telegram.command.presence.noLane':
+    '請先傳一則訊息給 {name}，目前還沒有可以叫醒或哄睡的私訊。',
+  'telegram.command.sleep.changed':
+    '晚安。{name} 會睡到下一次起床時間；傳訊息仍會醒來回覆。',
+  'telegram.command.sleep.unchanged':
+    '{name} 已經在睡了。',
+  'telegram.command.wake.changed':
+    '{name} 醒來了。',
+  'telegram.command.wake.unchanged':
+    '{name} 本來就醒著。',
+  'telegram.command.wake.failed':
+    '{name} 醒不來：{error}',
   'telegram.command.unknownCommand':
     '未知指令：/{command}\n輸入 /help 查看可用指令。',
   'workDelivery.action.startWork': '開始執行',

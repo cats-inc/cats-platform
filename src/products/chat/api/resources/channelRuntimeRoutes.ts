@@ -427,7 +427,8 @@ async function handleRestActivateChannel(
         state: await context.dependencies.chatStore.read(),
         channelId,
         presence: 'awake',
-        changed: activation.results.some((result) => result.status === 'started'),
+        changed: !activation.leadWasReady
+          && activation.results.some((result) => result.status === 'started'),
         companionStore: context.dependencies.companionStore,
         activityStore: context.dependencies.companionActivityStore,
         now,
