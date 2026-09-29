@@ -8,6 +8,11 @@ import { collectDesktopLicenses } from '../build/desktop/licenses.js';
 import { verifyDesktopLicenses } from '../scripts/verify-desktop-licenses.mjs';
 import { seedRuntimeNotices } from './fixtures/desktopLicenseFixture.js';
 
+const incompleteMitBodies = (text) => [
+  text.slice(0, text.indexOf('LIABILITY, WHETHER')),
+  text.replace('copies or substantial portions of the Software.', ''),
+];
+
 test('installed Desktop must retain its own licenses and notices matching the shipped Runtime bundle', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'cats-desktop-licenses-'));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -32,6 +37,11 @@ test('installed Desktop must retain its own licenses and notices matching the sh
     await assert.rejects(verifyDesktopLicenses(resources), /license|notices/);
     await writeFile(file, original);
   }
+  for (const incomplete of incompleteMitBodies(license.toString('utf8'))) {
+    await writeFile(join(runtime, 'LICENSE'), incomplete);
+    await assert.rejects(verifyDesktopLicenses(resources), /incomplete Runtime MIT license/);
+  }
+  await writeFile(join(runtime, 'LICENSE'), license);
   await writeFile(join(bundle, 'index.js'), 'export const changed = true;');
   await assert.rejects(verifyDesktopLicenses(resources), /stale/);
   await writeFile(join(resources, 'desktop-package-plan.json'), JSON.stringify({ sidecarLayout: { runtime: 'split' } }));
@@ -52,6 +62,16 @@ test('staging captures complete license bytes and rejects missing or stale Runti
   await cp(license, join(platform, 'LICENSE'));
   await cp(license, join(runtime, 'LICENSE'));
   assert.equal((await collectDesktopLicenses(platform, runtime, 'split')).length, 2);
+  for (const incomplete of incompleteMitBodies(await readFile(license, 'utf8'))) {
+    await writeFile(join(runtime, 'LICENSE'), incomplete);
+    await assert.rejects(collectDesktopLicenses(platform, runtime, 'split'), /incomplete .* MIT license/);
+  }
+  // Different line endings/wrapping and copyright text remain valid; copy bytes verbatim.
+  const wrapped = (await readFile(license, 'utf8')).replace('sammykenny2 and contributors', 'Example contributors')
+    .replaceAll('\n', '\r\n');
+  await writeFile(join(runtime, 'LICENSE'), wrapped);
+  const split = await collectDesktopLicenses(platform, runtime, 'split');
+  assert.deepEqual(split[1].bytes, Buffer.from(wrapped));
   await writeFile(join(bundle, 'index.js'), 'export {};');
   await assert.rejects(collectDesktopLicenses(platform, runtime, 'bundle'), /ENOENT/);
   await seedRuntimeNotices(bundle, 'export {};');

@@ -513,6 +513,12 @@ requires a renewed license review. A production afterPack run on an isolated
 Electron executable copy yielded `ProductName=Cats`, `CompanyName=sammykenny2`
 and the personal copyright. The copy was neither launched nor installed.
 
+Independent PR review found that checking MIT marker strings could accept a
+truncated disclaimer. The gate now validates the complete normalized MIT body
+while preserving the original bytes. Staging and installed-resource regressions
+cover missing liability tails and omitted notice conditions, plus alternate
+copyright text and line endings.
+
 The Runtime retry guard adds optional session metadata; existing records without
 it remain readable. This records unresolved staged files, not permission to delete
 arbitrary persisted paths. Registry write failure must be surfaced without claiming

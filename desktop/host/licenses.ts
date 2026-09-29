@@ -4,11 +4,33 @@ import { join } from 'node:path';
 
 const sha256 = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 
+// Validate the complete standard permission/condition/disclaimer body, allowing
+// different copyright holders and line wrapping. Staging still copies raw bytes.
+const MIT_BODY = `Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.`.replace(/\s+/g, ' ');
+
 export function assertCatsLicense(bytes: Uint8Array, label: string): void {
   const text = Buffer.from(bytes).toString('utf8');
-  for (const required of ['MIT License', 'Copyright', 'Permission is hereby granted',
-    'The above copyright notice', 'WITHOUT WARRANTY', 'LIABLE FOR ANY CLAIM']) {
-    if (!text.includes(required)) throw new Error(`Missing or incomplete ${label} MIT license`);
+  const copyright = text.split(/\r?\n/).find((line) => line.startsWith('Copyright'));
+  if (!text.trimStart().startsWith('MIT License')
+    || !copyright?.slice('Copyright'.length).trim()
+    || !text.replace(/\s+/g, ' ').includes(MIT_BODY)) {
+    throw new Error(`Missing or incomplete ${label} MIT license`);
   }
 }
 
