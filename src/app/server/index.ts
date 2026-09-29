@@ -133,6 +133,7 @@ export function createServer(dependencies: ServerDependencies) {
   // rejects this route before dispatch, including traffic from a loopback tunnel.
   const codeAgentTools = createCodeAgentToolsService({
     coreStore: resolvedDependencies.code.coreStore,
+    livePreviewSupervisor: resolvedDependencies.code.livePreviewSupervisor,
     grants: codeAgentToolGrants,
     policyConfig: resolvedDependencies.shared.config.artifactCanvas,
     now: resolvedDependencies.shared.now,
