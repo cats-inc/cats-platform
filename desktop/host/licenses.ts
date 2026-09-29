@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { verifyRendererNotices } from './rendererLicenses.js';
 
 const sha256 = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 
@@ -59,6 +60,9 @@ export async function collectDesktopLicenses(
   ];
   const assets = await Promise.all(sources.map(async (asset) => ({ ...asset, bytes: await readFile(asset.source) })));
   for (const asset of assets) assertCatsLicense(asset.bytes, asset.target);
+  // Staging calls this preflight before replacing an existing stage. The whole
+  // renderer tree (including both notice files) is copied by the package plan.
+  await verifyRendererNotices(join(packageRoot, 'build/renderer'));
   if (runtimeLayout === 'bundle') {
     const directory = join(runtimeRoot, 'build/runtime-bundle');
     const notices = await Promise.all(['THIRD-PARTY-NOTICES.txt', 'THIRD-PARTY-NOTICES.json'].map(async (name) => ({

@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv, type ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
+import { rendererLicensePlugin } from './scripts/renderer-license-plugin.js';
 import { resolve } from 'node:path';
 import {
   CATS_VITE_PROXY_PATHS,
@@ -50,7 +51,7 @@ export default defineConfig(({ mode }) => {
   const proxyOptions: ProxyOptions = createCatsViteProxyOptions(proxyTarget);
 
   return {
-    plugins: [react()],
+    plugins: [react(), rendererLicensePlugin()],
     server: {
       host: webHost,
       port: devPort,

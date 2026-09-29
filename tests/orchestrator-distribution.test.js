@@ -9,7 +9,7 @@ import test from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { bundleServer } from '../scripts/bundle-server.mjs';
-import { seedRuntimeNotices } from './fixtures/desktopLicenseFixture.js';
+import { seedRuntimeNotices, seedRendererNotices } from './fixtures/desktopLicenseFixture.js';
 
 const runFile = promisify(execFile);
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -112,6 +112,7 @@ async function stageDesktop(packageRoot, root, layout) {
   const rendererRoot = childPath(packageRoot, join(packageRoot, 'build/renderer'));
   await rm(rendererRoot, { recursive: true, force: true });
   await seedFile(join(rendererRoot, 'index.html'), '<!doctype html><title>Knowledge staging fixture</title>\n');
+  await seedRendererNotices(rendererRoot);
   const runtimeRoot = join(root, 'runtime-fixture');
   await runtimePackagingFixture(runtimeRoot);
   if (layout === 'bundle') {

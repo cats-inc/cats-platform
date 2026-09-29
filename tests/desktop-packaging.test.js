@@ -10,7 +10,7 @@ import { sha256, PLATFORM_VERSION } from '#cats-app-package';
 import { encodeAppPackage } from '#cats-app-encode';
 import { loadCatlasKnowledge } from '../build/server/platform/catlas/knowledge.js';
 import { loadProductKnowledge } from '../build/server/platform/knowledge/productKnowledge.js';
-import { seedRuntimeNotices } from './fixtures/desktopLicenseFixture.js';
+import { seedRuntimeNotices, seedRendererNotices } from './fixtures/desktopLicenseFixture.js';
 import { AppInfo } from 'app-builder-lib/out/appInfo.js';
 import { readPackageJson } from 'app-builder-lib/out/util/packageMetadata.js';
 
@@ -1323,6 +1323,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
 
   await seedFile(join(packageRoot, 'build', 'server', 'index.js'), 'export {};');
   await seedFile(join(packageRoot, 'build', 'renderer', 'index.html'), '<!doctype html>');
+  await seedRendererNotices(join(packageRoot, 'build/renderer'));
   await seedFile(join(packageRoot, 'build', 'desktop', 'main.js'), 'export {};');
   await seedFile(join(packageRoot, 'build', 'desktop', 'preload.cjs'), 'module.exports = {};');
   await seedFile(join(packageRoot, 'package.json'), JSON.stringify({
@@ -1345,7 +1346,19 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     userDataDir: join(workingDir, 'user-data'),
     catsHomeDir: join(workingDir, '.cats'),
   });
+  const marker = join(outputRoot, 'keep.txt');
+  await seedFile(marker, 'previous stage');
+  const rendererNotice = join(packageRoot, 'build/renderer/THIRD-PARTY-NOTICES.txt');
+  const originalNotice = await readFile(rendererNotice);
+  await rm(rendererNotice);
+  await assert.rejects(stageDesktopPackagingOutputs(config, { outputRoot, platforms: ['windows'] }), /ENOENT/);
+  assert.equal(await readFile(marker, 'utf8'), 'previous stage');
+  await writeFile(rendererNotice, 'stale');
+  await assert.rejects(stageDesktopPackagingOutputs(config, { outputRoot, platforms: ['windows'] }), /Renderer.*stale/);
+  assert.equal(await readFile(marker, 'utf8'), 'previous stage');
+  await writeFile(rendererNotice, originalNotice);
   const plan = await stageDesktopPackagingOutputs(config, {
+    outputRoot,
     generatedAt: new Date('2026-03-24T12:05:00.000Z'),
     platforms: ['windows', 'linux'],
     apps: [createPinnedApp()],
@@ -1378,6 +1391,10 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'desktop-package-plan.json'));
   await access(join(plan.outputRoot, 'shared', 'build', 'server', 'index.js'));
   await access(join(plan.outputRoot, 'shared', 'build', 'renderer', 'index.html'));
+  for (const name of ['THIRD-PARTY-NOTICES.txt', 'THIRD-PARTY-NOTICES.json']) {
+    assert.deepEqual(await readFile(join(plan.outputRoot, 'shared/build/renderer', name)),
+      await readFile(join(packageRoot, 'build/renderer', name)));
+  }
   await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'node_modules', 'js-yaml', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'node_modules', 'argparse', 'package.json'));
@@ -1795,6 +1812,7 @@ test('stageDesktopPackagingOutputs replaces preview assets as release, records e
   const outputRoot = join(workingDir, 'stage');
   await seedFile(join(packageRoot, 'build', 'server', 'index.js'), 'export {};');
   await seedFile(join(packageRoot, 'build', 'renderer', 'index.html'), '<!doctype html>');
+  await seedRendererNotices(join(packageRoot, 'build/renderer'));
   await seedFile(join(packageRoot, 'build', 'desktop', 'main.js'), 'export {};');
   await seedFile(join(packageRoot, 'build', 'desktop', 'preload.cjs'), 'module.exports = {};');
   await seedFile(join(packageRoot, 'package.json'), '{"name":"@cats-inc/cats-platform","type":"module"}');
@@ -1875,6 +1893,7 @@ test('stageDesktopPackagingOutputs honors bundle layout for both app and runtime
   await seedFile(join(packageRoot, 'build', 'server', 'index.js'), 'export const layout = "split-app";');
   await seedPlatformServerBundle(packageRoot, 'export const layout = "bundle-app";');
   await seedFile(join(packageRoot, 'build', 'renderer', 'index.html'), '<!doctype html>');
+  await seedRendererNotices(join(packageRoot, 'build/renderer'));
   await seedFile(join(packageRoot, 'build', 'desktop', 'main.js'), 'export {};');
   await seedFile(join(packageRoot, 'build', 'desktop', 'preload.cjs'), 'module.exports = {};');
   await seedFile(join(packageRoot, 'package.json'), JSON.stringify({
@@ -1985,6 +2004,7 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
 
   await seedFile(join(packageRoot, 'build', 'server', 'index.js'), 'export {};');
   await seedFile(join(packageRoot, 'build', 'renderer', 'index.html'), '<!doctype html>');
+  await seedRendererNotices(join(packageRoot, 'build/renderer'));
   await seedFile(join(packageRoot, 'build', 'desktop', 'main.js'), 'export {};');
   await seedFile(join(packageRoot, 'build', 'desktop', 'preload.cjs'), 'module.exports = {};');
   await seedFile(join(packageRoot, 'package.json'), JSON.stringify({
