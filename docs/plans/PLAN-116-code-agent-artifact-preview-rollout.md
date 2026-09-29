@@ -95,6 +95,13 @@ call a Platform-hosted MCP tool and receive its result.
 
 ### P2: Platform agent tool server (M1)
 
+- [x] A0: The Platform runtime client carries session MCP servers.
+  - `mcpServers` is added to create and send inputs.
+  - `resumeSession(id, { mcpServers })` sends a body.
+  - The create/resume report is kept on `RuntimeSessionInfo`.
+  - The leading Runtime-sourced `mcp_servers` stream event is kept on
+    `RuntimeMessageResult`. Provider-sourced progress events are ignored.
+  - Types live in `src/runtime/sessionMcpServers.ts`.
 - [ ] A1: Add the official MCP TypeScript SDK and a host-internal guard module
   under `src/platform/mcp/` (ADR-126 decision 7; not used by Apps). Record its
   checks as the documented MCP-over-HTTP security baseline: stateless Streamable HTTP
@@ -264,6 +271,7 @@ call a Platform-hosted MCP tool and receive its result.
 | 2026-09-29 | Plan created from a gap audit of the Artifact Canvas, live preview and runtime delivery code. Documentation only, with no executable changes. Awaiting P0 sign-offs. |
 | 2026-09-29 | User approved SPEC-123 questions 1–4. Aligned with the Ask App MCP (cats-apps ADR-003/SPEC-004 and the runtime probe), SPEC-122 App services and SPEC-121 plugin MCP. cats-apps documents are unchanged. |
 | 2026-09-29 | Corrected the alignment after user review. Apps host MCP independently (Platform `8c8f44ae`, cats-apps `39ddcf7`). The Platform guard module and SDK pin are host-internal. Runtime `mcpServers` configures Cat sessions and never carries traffic. Only a documented security baseline is shared with Apps. |
+| 2026-09-29 | cats-runtime R1 (#130) merged; R2 Claude (#132) and R3 Codex were verified with isolated live smokes. M1 order: A0 client prerequisite → B surface → C static lease → A-i endpoint → A-ii tools/Proxy/retirement → acceptance. The `mcpServers` field and policy text travel through a Code runtime-client wrapper, not the enricher, so secrets stay outside supervision evidence. |
 
 ---
 

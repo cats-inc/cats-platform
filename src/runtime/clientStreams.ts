@@ -9,6 +9,10 @@ import {
   readRuntimeMessageResultSegments,
   readRuntimeMessageResultText,
 } from './messageSegments.js';
+import {
+  readRuntimeMcpServersProgressEvent,
+  type RuntimeSessionMcpDeliveryReport,
+} from './sessionMcpServers.js';
 
 export interface RuntimeNdjsonReadOptions {
   onChunk?: () => void;
@@ -27,6 +31,7 @@ export async function readRuntimeNdjsonResponse(
   let buffer = '';
   const segments: RuntimeMessageSegment[] = [];
   let finalization: Record<string, unknown> | null = null;
+  let mcpServers: RuntimeSessionMcpDeliveryReport | undefined;
   let inputTokens = 0;
   let outputTokens = 0;
 
@@ -69,6 +74,11 @@ function processEvent(event: Record<string, unknown>): void {
 
     if (type === 'finalization') {
       finalization = readRuntimeMessageResultFinalization(event) ?? finalization;
+      return;
+    }
+
+    if (type === 'progress') {
+      mcpServers = readRuntimeMcpServersProgressEvent(event) ?? mcpServers;
       return;
     }
 
@@ -148,6 +158,7 @@ function processEvent(event: Record<string, unknown>): void {
   return {
     segments,
     ...(finalization ? { finalization } : {}),
+    ...(mcpServers ? { mcpServers } : {}),
     inputTokens,
     outputTokens,
     tokensUsed: inputTokens + outputTokens,
