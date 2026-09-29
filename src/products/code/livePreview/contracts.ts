@@ -7,7 +7,9 @@ export const CODE_LIVE_PREVIEW_PRODUCER_IDENTITY =
 
 export const LIVE_PREVIEW_ALLOWED_PLACEHOLDERS = [
   'artifactDirectory',
+  'npmCli',
   'port',
+  'script',
   'workspaceRoot',
 ] as const;
 
@@ -82,6 +84,8 @@ export interface LivePreviewStartRequest {
   surface: CanvasSurfaceRef;
   artifactTitle?: string | null;
   readinessTimeoutMs?: number | null;
+  /** The `package.json` script an npm-script profile runs (`{script}`). */
+  script?: string | null;
 }
 
 export type LivePreviewStatus =
@@ -99,6 +103,8 @@ export interface LivePreviewLease {
   workspaceRef: LivePreviewWorkspaceRef;
   /** The directory the lease serves or runs in; recorded so it can be restarted. */
   artifactDirectory?: string | null;
+  /** The script an npm-script lease runs; recorded so it can be restarted. */
+  script?: string | null;
   origin: string;
   host: '127.0.0.1' | '[::1]';
   port: number;
@@ -121,6 +127,7 @@ export type LivePreviewErrorCode =
   | 'live_preview_config_invalid'
   | 'live_preview_disabled'
   | 'live_preview_not_found'
+  | 'live_preview_npm_unavailable'
   | 'live_preview_port_unavailable'
   | 'live_preview_process_exited'
   | 'live_preview_raw_command_not_allowed'
@@ -226,6 +233,42 @@ export const VITE_LIVE_PREVIEW_PROFILE: LivePreviewCommandProfile = {
     killProcessTree: true,
   },
 };
+
+/**
+ * SPEC-123 CAP-07 / PLAN-116 D3: run a `package.json` script through npm's JS
+ * entry (`{npmCli}`, found by `findNpmCli`), shell-free. `PORT` and `HOST`
+ * come from the environment; each framework adapter below also passes the
+ * leased port on the command line where that framework takes it. `{script}`
+ * is a script name checked against `package.json`, never a command string.
+ */
+function npmScriptProfile(
+  id: string,
+  label: string,
+  portArgs: string[],
+): LivePreviewCommandProfile {
+  return {
+    id,
+    label,
+    enabled: false,
+    executable: 'node',
+    args: ['{npmCli}', 'run', '{script}', ...(portArgs.length ? ['--', ...portArgs] : [])],
+    workingDirectory: 'artifactDirectory',
+    env: { HOST: '127.0.0.1', BROWSER: 'none' },
+    port: { mode: 'env', name: 'PORT' },
+    readiness: { path: '/', timeoutMs: 60_000, intervalMs: 500, expectedStatus: 200 },
+    stop: { graceMs: 5_000, killProcessTree: true },
+  };
+}
+
+export const NPM_SCRIPT_LIVE_PREVIEW_PROFILES: readonly LivePreviewCommandProfile[] = [
+  npmScriptProfile('npm-script', 'npm run (PORT from the environment)', []),
+  npmScriptProfile('npm-script:vite', 'npm run, Vite-based', ['--host', '127.0.0.1', '--port', '{port}', '--strictPort']),
+  npmScriptProfile('npm-script:astro', 'npm run, Astro', ['--host', '127.0.0.1', '--port', '{port}']),
+  npmScriptProfile('npm-script:next', 'npm run, Next.js', ['-H', '127.0.0.1', '-p', '{port}']),
+  npmScriptProfile('npm-script:nuxt', 'npm run, Nuxt', ['--host', '127.0.0.1', '--port', '{port}']),
+  npmScriptProfile('npm-script:webpack', 'npm run, webpack dev server', ['--host', '127.0.0.1', '--port', '{port}']),
+  npmScriptProfile('npm-script:parcel', 'npm run, Parcel', ['--host', '127.0.0.1', '--port', '{port}']),
+];
 
 export const STATIC_LIVE_PREVIEW_READINESS_PATH = '/.cats-preview-ready';
 

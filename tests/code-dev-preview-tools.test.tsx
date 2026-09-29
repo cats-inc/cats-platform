@@ -11,8 +11,9 @@ import { MemoryCoreStore } from '../src/core/store.ts';
 import { routeCodeLivePreviewApi } from '../src/products/code/api/livePreviewRoutes.ts';
 import type { CodeAgentToolGrantBinding } from '../src/products/code/agentTools/contracts.ts';
 import {
-  detectViteDevScript,
+  detectDevServerProfile,
   isViteDevCommand,
+  parseScriptCommand,
   runGetPreviewStatus,
   runStartDevPreview,
   runStopPreview,
@@ -152,19 +153,58 @@ test('Vite dev scripts are recognized from the command, not the script name', ()
   assert.equal(isViteDevCommand('tsc && vite'), false);
 });
 
-test('dev preview detection names the missing piece', async () => {
+test('dev preview detection names the missing piece and picks a profile', async () => {
   const workspace = makeWorkspace();
   try {
     const dir = writeViteProject(workspace.root, { installed: false });
-    assert.equal((await detectViteDevScript(dir, 'dev'))?.code, 'dependencies_missing');
-    assert.equal((await detectViteDevScript(dir, 'start'))?.code, 'script_missing');
-    assert.match((await detectViteDevScript(dir, 'start'))?.message ?? '', /scripts: dev, build/u);
-    assert.equal((await detectViteDevScript(dir, 'build'))?.code, 'profile_unsupported');
-    assert.equal((await detectViteDevScript(workspace.root, 'dev'))?.code, 'package_json_missing');
+    const code = async (directory: string, script: string) => {
+      const detected = await detectDevServerProfile(directory, script, workspace.root);
+      return 'code' in detected ? detected.code : detected.profileId;
+    };
+    assert.equal(await code(dir, 'dev'), 'dependencies_missing');
+    assert.equal(await code(dir, 'start'), 'script_missing');
+    const missing = await detectDevServerProfile(dir, 'start');
+    assert.match('message' in missing ? missing.message : '', /scripts: dev, build/u);
+    assert.equal(await code(dir, 'build'), 'profile_unsupported');
+    assert.equal(await code(workspace.root, 'dev'), 'package_json_missing');
     writeFileSync(join(dir, 'package.json'), '{');
-    assert.equal((await detectViteDevScript(dir, 'dev'))?.code, 'package_json_invalid');
+    assert.equal(await code(dir, 'dev'), 'package_json_invalid');
     const installed = writeViteProject(join(workspace.root, 'other'));
-    assert.equal(await detectViteDevScript(installed, 'dev'), null);
+    assert.equal(await code(installed, 'dev'), 'vite', 'Vite in the directory runs directly');
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test('npm-script adapters follow the last command of the script (PLAN-116 D3)', async () => {
+  const workspace = makeWorkspace();
+  try {
+    const project = (name: string, scripts: Record<string, string>, dependencies: Record<string, string> = { x: '1' }) => {
+      const dir = join(workspace.root, name);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'package.json'), JSON.stringify({ scripts, dependencies }));
+      return dir;
+    };
+    // Dependencies hoisted to a parent (a monorepo) count as installed.
+    mkdirSync(join(workspace.root, 'node_modules'));
+    const pick = async (dir: string, script = 'dev') => {
+      const detected = await detectDevServerProfile(dir, script, workspace.root);
+      return 'code' in detected ? detected.code : detected.profileId;
+    };
+    assert.equal(await pick(project('hoisted-vite', { dev: 'vite' })), 'npm-script:vite');
+    assert.equal(await pick(project('built-first', { dev: 'tsc -b && vite --open' })), 'npm-script:vite');
+    assert.equal(await pick(project('env-vite', { dev: 'cross-env NODE_ENV=development vite' })), 'npm-script:vite');
+    assert.equal(await pick(project('next', { dev: 'next dev --turbo' })), 'npm-script:next');
+    assert.equal(await pick(project('astro', { dev: 'astro dev' })), 'npm-script:astro');
+    assert.equal(await pick(project('nuxt', { dev: 'nuxi dev' })), 'npm-script:nuxt');
+    assert.equal(await pick(project('webpack', { start: 'webpack serve --mode development' }), 'start'), 'npm-script:webpack');
+    assert.equal(await pick(project('parcel', { dev: 'parcel index.html' })), 'npm-script:parcel');
+    assert.equal(await pick(project('cra', { start: 'react-scripts start' }), 'start'), 'npm-script');
+    const bare = join(workspace.root, 'outside');
+    mkdirSync(bare);
+    writeFileSync(join(bare, 'package.json'), JSON.stringify({ scripts: { dev: 'node server.js' } }));
+    assert.equal(await pick(bare), 'npm-script', 'no dependencies, nothing to install');
+    assert.deepEqual(parseScriptCommand('FOO=1 BAR=2 next dev'), { tool: 'next', subcommand: 'dev', simple: false });
   } finally {
     workspace.cleanup();
   }

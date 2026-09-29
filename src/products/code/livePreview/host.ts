@@ -1,8 +1,10 @@
 import {
+  NPM_SCRIPT_LIVE_PREVIEW_PROFILES,
   VITE_LIVE_PREVIEW_PROFILE,
   withBuiltinLivePreviewProfiles,
   type LivePreviewConfig,
 } from './contracts.js';
+import { findNpmCli } from './npmDiscovery.js';
 import type { LivePreviewProcessAdapter } from './processAdapter.js';
 import { selectLivePreviewProcessAdapter } from './processAdapterFactory.js';
 import { createRealLivePreviewProcessAdapter } from './realProcessAdapter.js';
@@ -18,6 +20,8 @@ export interface CodeLivePreviewHostOptions {
   previewServersAllowed?: () => Promise<boolean>;
   /** Records running dev servers for the next start's orphan sweep (CAP-13). */
   processRegistry?: LivePreviewProcessRegistry;
+  /** npm's JS entry for the npm-script profiles; defaults to `findNpmCli`. */
+  resolveNpmCli?: () => string | null;
 }
 
 /**
@@ -31,8 +35,12 @@ export function createCodeLivePreviewSupervisor(
 ): LivePreviewSupervisor {
   const allowed = options.previewServersAllowed;
   const operatorEnabled = config.enabled && config.useRealProcessAdapter === true;
-  const withOptIn = allowed && !config.commandProfiles.some((profile) => profile.id === VITE_LIVE_PREVIEW_PROFILE.id)
-    ? { ...config, commandProfiles: [...config.commandProfiles, { ...VITE_LIVE_PREVIEW_PROFILE, enabled: true }] }
+  // The reviewed Vite and npm-script profiles, unless the operator configured the same ids.
+  const optInProfiles = [VITE_LIVE_PREVIEW_PROFILE, ...NPM_SCRIPT_LIVE_PREVIEW_PROFILES]
+    .filter((builtin) => !config.commandProfiles.some((profile) => profile.id === builtin.id))
+    .map((builtin) => ({ ...builtin, enabled: true }));
+  const withOptIn = allowed && optInProfiles.length > 0
+    ? { ...config, commandProfiles: [...config.commandProfiles, ...optInProfiles] }
     : config;
   const effective = withBuiltinLivePreviewProfiles(withOptIn);
   const processAdapter = !operatorEnabled && allowed
@@ -42,6 +50,7 @@ export function createCodeLivePreviewSupervisor(
     config: effective,
     processAdapter: createCodeLivePreviewProcessAdapter(processAdapter),
     ...(options.processRegistry ? { processRegistry: options.processRegistry } : {}),
+    resolveNpmCli: options.resolveNpmCli ?? (() => findNpmCli()),
   });
 }
 

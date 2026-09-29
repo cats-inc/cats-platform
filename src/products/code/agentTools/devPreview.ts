@@ -1,5 +1,5 @@
 import { readFile, stat } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 
 import type { CatsCoreState } from '../../../core/types.js';
 import { mcpTextResult, type McpToolCallResult, type McpToolDefinition } from '../../../platform/mcp/jsonRpcServer.js';
@@ -27,7 +27,8 @@ export const START_DEV_PREVIEW_TOOL: McpToolDefinition = {
   name: 'start_dev_preview',
   description: [
     'Start the dev server of a web project in this conversation\'s workspace and open it in the preview canvas.',
-    'Pass directory (the folder that has package.json); script defaults to "dev". Vite projects are supported.',
+    'Pass directory (the folder that has package.json); script defaults to "dev". Vite runs directly; other dev',
+    'scripts (Next.js, Astro, Nuxt, webpack, Parcel, or any server that reads PORT) run through npm.',
     'Install dependencies first (npm install in that folder). If the start fails, read logTail, fix the cause',
     'and call it again. A new call replaces this conversation\'s running dev preview. The page hot-reloads',
     'after edits, so there is no need to restart it for code changes.',
@@ -126,8 +127,8 @@ export async function runStartDevPreview(
   if (!target.isDirectory) {
     return failure({ code: 'directory_required', message: 'directory must be a folder that has package.json.' });
   }
-  const detected = await detectViteDevScript(target.path, script);
-  if (detected) return failure(detected);
+  const detected = await detectDevServerProfile(target.path, script, target.workspaceRoot);
+  if ('code' in detected) return failure(detected);
 
   const surface: CanvasSurfaceRef = { kind: 'code_conversation', surfaceId: context.binding.channelId };
   const current = context.devLeases.get(surface.surfaceId);
@@ -136,7 +137,9 @@ export async function runStartDevPreview(
     context.devLeases.delete(surface.surfaceId);
   }
   const started = await supervisor.start({
-    commandProfileId: VITE_LIVE_PREVIEW_PROFILE.id,
+    commandProfileId: detected.profileId,
+    // The direct Vite profile runs vite itself; npm-script profiles run the script.
+    ...(detected.profileId === VITE_LIVE_PREVIEW_PROFILE.id ? {} : { script }),
     // A distinct id per conversation keeps one dev preview per conversation.
     workspace: { kind: 'code_workspace', id: `code-conversation:${surface.surfaceId}:dev`, rootPath: target.workspaceRoot },
     artifactDirectory: target.path,
@@ -216,10 +219,20 @@ export async function runStopPreview(
 }
 
 /**
- * CAP-07: the `script` must run Vite's dev server, and Vite must be installed
- * in the directory's own `node_modules`, which is the entry the profile runs.
+ * CAP-07 profile choice (PLAN-116 D3). The script must exist in
+ * `package.json`, and a project with dependencies must have installed them
+ * (`node_modules` in the directory or a parent inside the workspace).
+ * - `vite`, `vite dev` or `vite serve`, with Vite installed in the directory
+ *   itself, runs Vite directly with the reviewed `vite` profile.
+ * - Any other script runs through npm (`npm-script` profiles). The last command
+ *   of the script decides the framework adapter that passes the leased port on
+ *   the command line; others read `PORT` from the environment.
  */
-export async function detectViteDevScript(directory: string, script: string): Promise<ShowFailure | null> {
+export async function detectDevServerProfile(
+  directory: string,
+  script: string,
+  workspaceRoot: string = directory,
+): Promise<{ profileId: string } | ShowFailure> {
   let manifest: unknown;
   try {
     manifest = JSON.parse(await readFile(join(directory, 'package.json'), 'utf8'));
@@ -228,7 +241,8 @@ export async function detectViteDevScript(directory: string, script: string): Pr
       ? { code: 'package_json_missing', message: 'The directory has no package.json.' }
       : { code: 'package_json_invalid', message: 'package.json is not valid JSON.' };
   }
-  const scripts = isRecord(manifest) && isRecord(manifest.scripts) ? manifest.scripts : {};
+  const record = isRecord(manifest) ? manifest : {};
+  const scripts = isRecord(record.scripts) ? record.scripts : {};
   const command = scripts[script];
   if (typeof command !== 'string') {
     const names = Object.keys(scripts);
@@ -237,30 +251,88 @@ export async function detectViteDevScript(directory: string, script: string): Pr
       message: `package.json has no "${script}" script (scripts: ${names.length ? names.join(', ') : 'none'}).`,
     };
   }
-  if (!isViteDevCommand(command)) {
+  const parsed = parseScriptCommand(command);
+  if (parsed.tool === 'vite' && parsed.subcommand === 'build') {
     return {
       code: 'profile_unsupported',
-      message: `Only Vite dev servers can be started; the "${script}" script runs \`${command}\`. `
-        + 'Build static files and open them with show_in_canvas instead.',
+      message: `The "${script}" script runs \`${command}\`, which builds files without starting a server. `
+        + 'Pass the dev script, or open the built index.html with show_in_canvas.',
     };
   }
-  try {
-    await stat(join(directory, 'node_modules', 'vite', 'bin', 'vite.js'));
-  } catch {
+  const dependencies = [record.dependencies, record.devDependencies]
+    .flatMap((entry) => (isRecord(entry) ? Object.keys(entry) : []));
+  if (dependencies.length > 0 && !await hasNodeModules(directory, workspaceRoot)) {
     return {
       code: 'dependencies_missing',
-      message: 'Vite is not installed in this project. Run npm install in that folder, then call start_dev_preview again.',
+      message: 'Dependencies are not installed. Run npm install in that folder, then call start_dev_preview again.',
     };
   }
-  return null;
+  if (parsed.simple && isViteDevCommand(command) && await exists(join(directory, 'node_modules', 'vite', 'bin', 'vite.js'))) {
+    return { profileId: VITE_LIVE_PREVIEW_PROFILE.id };
+  }
+  return { profileId: (parsed.tool && NPM_SCRIPT_ADAPTERS[parsed.tool]) || 'npm-script' };
+}
+
+/** The framework tools whose dev servers take the port on the command line. */
+const NPM_SCRIPT_ADAPTERS: Record<string, string> = {
+  vite: 'npm-script:vite',
+  astro: 'npm-script:astro',
+  next: 'npm-script:next',
+  nuxt: 'npm-script:nuxt',
+  nuxi: 'npm-script:nuxt',
+  'webpack-dev-server': 'npm-script:webpack',
+  webpack: 'npm-script:webpack',
+  parcel: 'npm-script:parcel',
+};
+
+/**
+ * The tool and subcommand of a script's last command; npm appends extra
+ * arguments to the end of the script, so the last command receives the port.
+ */
+export function parseScriptCommand(command: string): { tool: string | null; subcommand: string | null; simple: boolean } {
+  const segments = command.split(/&&|\|\||;/u);
+  const tokens = segments[segments.length - 1]!.trim().split(/\s+/u).filter(Boolean);
+  let index = 0;
+  if (tokens[index] === 'cross-env' || tokens[index] === 'env') index += 1;
+  while (tokens[index]?.includes('=')) index += 1;
+  const tool = tokens[index] ?? null;
+  const next = tokens[index + 1];
+  return {
+    tool,
+    subcommand: next && !next.startsWith('-') ? next : null,
+    simple: segments.length === 1 && index === 0,
+  };
 }
 
 /** `vite`, `vite dev` or `vite serve`, with any flags; the profile sets host and port. */
 export function isViteDevCommand(command: string): boolean {
-  const tokens = command.trim().split(/\s+/u);
-  if (tokens[0] !== 'vite') return false;
-  const subcommand = tokens[1] && !tokens[1].startsWith('-') ? tokens[1] : null;
-  return subcommand === null || subcommand === 'dev' || subcommand === 'serve';
+  const parsed = parseScriptCommand(command);
+  return parsed.simple && parsed.tool === 'vite'
+    && (parsed.subcommand === null || parsed.subcommand === 'dev' || parsed.subcommand === 'serve');
+}
+
+async function hasNodeModules(directory: string, workspaceRoot: string): Promise<boolean> {
+  let current = directory;
+  for (;;) {
+    if (await exists(join(current, 'node_modules'))) return true;
+    const parent = dirname(current);
+    if (parent === current || !isInside(workspaceRoot, parent)) return false;
+    current = parent;
+  }
+}
+
+function isInside(root: string, candidate: string): boolean {
+  const inside = relative(root, candidate);
+  return inside === '' || (!inside.startsWith('..') && !isAbsolute(inside));
+}
+
+async function exists(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function ownedLease(

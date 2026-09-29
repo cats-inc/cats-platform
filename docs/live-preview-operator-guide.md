@@ -61,6 +61,20 @@ operator configured a profile with the same id). Operators can instead merge
 it into `commandProfiles` (for example with
 `CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES=[{...}]`) with `enabled: true`.
 
+### npm-script profiles (PLAN-116 D3)
+
+`NPM_SCRIPT_LIVE_PREVIEW_PROFILES` (`npm-script`, `npm-script:vite`,
+`:astro`, `:next`, `:nuxt`, `:webpack`, `:parcel`) run
+`node <npm-cli.js> run <script> [-- <port args>]` shell-free:
+- `PORT` and `HOST=127.0.0.1` come from the environment, with `BROWSER=none`.
+- Readiness probes `/` for `200` within 60 s.
+- The user opt-in registers enabled copies, like the Vite profile.
+- `findNpmCli` locates `npm-cli.js` from `npm_execpath`, next to the host
+  runtime, or on PATH, in both the Windows (`<dir>/node_modules/npm`) and
+  POSIX (`<prefix>/lib/node_modules/npm`) layouts.
+- Packaged Desktop bundles no npm, so dev servers other than a directly
+  installed Vite need the user's Node.js installation on PATH.
+
 `start_dev_preview` chooses this profile only when the requested
 `package.json` script runs Vite's dev server (`vite`, `vite dev` or
 `vite serve`, with any flags; the profile supplies host and port) and
