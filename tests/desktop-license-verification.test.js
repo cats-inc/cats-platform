@@ -6,7 +6,7 @@ import test from 'node:test';
 import { createPackage } from '@electron/asar';
 import { collectDesktopLicenses } from '../build/desktop/licenses.js';
 import { verifyDesktopLicenses } from '../scripts/verify-desktop-licenses.mjs';
-import { seedRuntimeNotices } from './fixtures/desktopLicenseFixture.js';
+import { seedRuntimeNotices, seedRendererNotices } from './fixtures/desktopLicenseFixture.js';
 
 const incompleteMitBodies = (text) => [
   text.slice(0, text.indexOf('LIABILITY, WHETHER')),
@@ -28,10 +28,14 @@ test('installed Desktop must retain its own licenses and notices matching the sh
   await writeFile(join(resources, 'desktop-package-plan.json'), JSON.stringify({ sidecarLayout: { runtime: 'bundle' } }));
   await writeFile(join(bundle, 'index.js'), 'export {};');
   await seedRuntimeNotices(bundle, 'export {};');
+  const renderer = join(platform, 'build/renderer');
+  await mkdir(renderer, { recursive: true });
+  await writeFile(join(renderer, 'index.html'), '<html>fixture</html>');
+  await seedRendererNotices(renderer);
   assert.deepEqual(await verifyDesktopLicenses(resources), {
-    catsLicenses: true, runtimeBundledNotices: true, nativeWindowsNotices: false,
+    catsLicenses: true, rendererNotices: true, runtimeBundledNotices: true, nativeWindowsNotices: false,
   });
-  for (const file of [join(platform, 'LICENSE'), join(runtime, 'LICENSE'), join(bundle, 'THIRD-PARTY-NOTICES.txt')]) {
+  for (const file of [join(platform, 'LICENSE'), join(runtime, 'LICENSE'), join(bundle, 'THIRD-PARTY-NOTICES.txt'), join(renderer, 'THIRD-PARTY-NOTICES.txt')]) {
     const original = await readFile(file);
     await rm(file);
     await assert.rejects(verifyDesktopLicenses(resources), /ENOENT/);
@@ -48,8 +52,11 @@ test('installed Desktop must retain its own licenses and notices matching the sh
   await assert.rejects(verifyDesktopLicenses(resources), /stale/);
   await writeFile(join(resources, 'desktop-package-plan.json'), JSON.stringify({ sidecarLayout: { runtime: 'split' } }));
   assert.deepEqual(await verifyDesktopLicenses(resources), {
-    catsLicenses: true, runtimeBundledNotices: false, nativeWindowsNotices: false,
+    catsLicenses: true, rendererNotices: true, runtimeBundledNotices: false, nativeWindowsNotices: false,
   });
+  await writeFile(join(renderer, 'index.html'), '<html>changed</html>');
+  await assert.rejects(verifyDesktopLicenses(resources), /Renderer.*stale/);
+  await seedRendererNotices(renderer);
   await writeFile(join(host, 'LICENSE'), Buffer.concat([license, Buffer.from('\nDifferent license identity\n')]));
   await createPackage(host, join(resources, 'app.asar'));
   await assert.rejects(verifyDesktopLicenses(resources), /same Cats license/);
@@ -65,6 +72,11 @@ test('staging captures complete license bytes and rejects missing or stale Runti
   const license = new URL('../LICENSE', import.meta.url);
   await cp(license, join(platform, 'LICENSE'));
   await cp(license, join(runtime, 'LICENSE'));
+  const renderer = join(platform, 'build/renderer');
+  await mkdir(renderer, { recursive: true });
+  await writeFile(join(renderer, 'index.html'), '<html>fixture</html>');
+  await assert.rejects(collectDesktopLicenses(platform, runtime, 'split'), /ENOENT/);
+  await seedRendererNotices(renderer);
   assert.equal((await collectDesktopLicenses(platform, runtime, 'split')).length, 2);
   for (const incomplete of incompleteMitBodies(await readFile(license, 'utf8'))) {
     await writeFile(join(runtime, 'LICENSE'), incomplete);
@@ -82,6 +94,9 @@ test('staging captures complete license bytes and rejects missing or stale Runti
   const assets = await collectDesktopLicenses(platform, runtime, 'bundle');
   assert.equal(assets.length, 4);
   for (const asset of assets) assert.deepEqual(asset.bytes, await readFile(asset.source));
+  await writeFile(join(renderer, 'unexpected.js'), 'alert(1);');
+  await assert.rejects(collectDesktopLicenses(platform, runtime, 'split'), /Renderer.*stale/);
+  await rm(join(renderer, 'unexpected.js'));
   await writeFile(join(bundle, 'index.js'), 'export const changed = true;');
   await assert.rejects(collectDesktopLicenses(platform, runtime, 'bundle'), /stale/);
 });

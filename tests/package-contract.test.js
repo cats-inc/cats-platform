@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { verifyRendererNotices } from '../build/desktop/rendererLicenses.js';
 
 const testsDir = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(testsDir, '..');
@@ -175,6 +176,8 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal(packedPaths.has('LICENSE'), true);
   assert.equal(packedPaths.has('README.md'), true);
   assert.equal(packedPaths.has('build/renderer/index.html'), true);
+  assert.equal(packedPaths.has('build/renderer/THIRD-PARTY-NOTICES.txt'), true);
+  assert.equal(packedPaths.has('build/renderer/THIRD-PARTY-NOTICES.json'), true);
   assert.equal(packedPaths.has('build/server/index.js'), true);
   assert.equal(packedPaths.has('build/desktop/main.js'), true);
   assert.equal(packedPaths.has('build/desktop/preload.cjs'), true);
@@ -271,7 +274,7 @@ test('build removes stale packaged output before npm pack snapshots it', () => {
   assert.equal(packedPaths.has('build/desktop/stale/old-artifact.txt'), false);
 });
 
-test('local tarball install exposes the cats-platform executable entrypoint', () => {
+test('local tarball install exposes the cats-platform executable entrypoint', async () => {
   ensureBuild();
 
   const installRoot = mkdtempSync(join(tmpdir(), 'cats-pack-install-'));
@@ -298,6 +301,11 @@ test('local tarball install exposes the cats-platform executable entrypoint', ()
     });
 
     const installedRoot = join(consumerDir, 'node_modules', '@cats-inc', 'cats-platform');
+    await verifyRendererNotices(join(installedRoot, 'build/renderer'));
+    for (const name of ['THIRD-PARTY-NOTICES.txt', 'THIRD-PARTY-NOTICES.json']) {
+      assert.deepEqual(readFileSync(join(installedRoot, 'build/renderer', name)),
+        readFileSync(join(projectRoot, 'build/renderer', name)));
+    }
     const linkedBinPath = join(
       consumerDir,
       'node_modules',
