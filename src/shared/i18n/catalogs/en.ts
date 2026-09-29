@@ -2321,6 +2321,8 @@ export const enCatalog: MessageCatalog = {
   'telegram.command.status.description': 'Show connection and execution status',
   'telegram.command.open.description': 'Open a new chat room',
   'telegram.command.mode.description': 'Show or switch companion and agent mode',
+  'telegram.command.sleep.description': 'Put the Cat to sleep until its next wake time',
+  'telegram.command.wake.description': 'Wake the Cat up',
   'telegram.command.chat.description': 'Use ordinary chat mode',
   'telegram.command.work.description': 'Clarify and create a Work Item',
   'telegram.command.code.description': 'Clarify coding work',
@@ -2334,6 +2336,8 @@ export const enCatalog: MessageCatalog = {
     '/mode - Show the current mode',
     '/mode companion - Switch to companion behavior',
     '/mode agent - Switch to agent behavior',
+    '/sleep - Put the Cat to sleep until its next wake time',
+    '/wake - Wake the Cat up',
     '/chat - Use ordinary chat mode',
     '/work - Clarify and create a Work Item',
     '/code - Clarify coding work',
@@ -2371,6 +2375,18 @@ export const enCatalog: MessageCatalog = {
     'Mode switching is unavailable for this bot binding right now.',
   'telegram.command.mode.switched':
     'Switched {name} to {mode} mode.\nFuture normal messages in this chat will use that mode.',
+  'telegram.command.presence.noLane':
+    'Send {name} a message first; there is no direct conversation to wake or put to sleep yet.',
+  'telegram.command.sleep.changed':
+    'Good night. {name} is asleep until the next wake time; a message still wakes {name} up to answer.',
+  'telegram.command.sleep.unchanged':
+    '{name} is already asleep.',
+  'telegram.command.wake.changed':
+    '{name} is awake.',
+  'telegram.command.wake.unchanged':
+    '{name} is already awake.',
+  'telegram.command.wake.failed':
+    '{name} could not wake up: {error}',
   'telegram.command.unknownCommand':
     'Unknown command: /{command}\nType /help to see available commands.',
   'workDelivery.action.startWork': 'Start work',

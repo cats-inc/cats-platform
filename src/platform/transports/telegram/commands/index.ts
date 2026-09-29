@@ -206,6 +206,51 @@ const modeCommand: TelegramCommand = {
   },
 };
 
+function createPresenceCommand(input: {
+  name: 'sleep' | 'wake';
+  presence: 'awake' | 'sleeping';
+  descriptionKey: MessageKey;
+  changedKey: MessageKey;
+  unchangedKey: MessageKey;
+}): TelegramCommand {
+  return {
+    name: input.name,
+    description: commandDescription(input.descriptionKey),
+    descriptionKey: input.descriptionKey,
+    async execute(context: TelegramCommandContext): Promise<TelegramCommandResult> {
+      const t = readTelegramTranslator(context);
+      if (!context.catId || !context.setPresence) {
+        return ok(t(messageKeys.telegramCommandModeNotConfigurable));
+      }
+      const name = context.catName ?? context.botName;
+      const change = await context.setPresence(input.presence);
+      if (change.outcome === 'no_lane') {
+        return ok(t(messageKeys.telegramCommandPresenceNoLane, { name }));
+      }
+      if (change.outcome === 'failed') {
+        return ok(t(messageKeys.telegramCommandWakeFailed, { name, error: change.error ?? '' }));
+      }
+      return ok(t(change.outcome === 'changed' ? input.changedKey : input.unchangedKey, { name }));
+    },
+  };
+}
+
+const sleepCommand = createPresenceCommand({
+  name: 'sleep',
+  presence: 'sleeping',
+  descriptionKey: messageKeys.telegramCommandSleepDescription,
+  changedKey: messageKeys.telegramCommandSleepChanged,
+  unchangedKey: messageKeys.telegramCommandSleepUnchanged,
+});
+
+const wakeCommand = createPresenceCommand({
+  name: 'wake',
+  presence: 'awake',
+  descriptionKey: messageKeys.telegramCommandWakeDescription,
+  changedKey: messageKeys.telegramCommandWakeChanged,
+  unchangedKey: messageKeys.telegramCommandWakeUnchanged,
+});
+
 export function createDefaultCommands(): TelegramCommand[] {
   return [
     startCommand,
@@ -214,6 +259,8 @@ export function createDefaultCommands(): TelegramCommand[] {
     statusCommand,
     openCommand,
     modeCommand,
+    sleepCommand,
+    wakeCommand,
   ];
 }
 

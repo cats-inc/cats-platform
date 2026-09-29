@@ -463,6 +463,7 @@ export async function routeRequest(
       telegramRoomBridge: dependencies.chat.telegramRoomBridge,
       transportWorkGoldenPath: dependencies.chat.transportWorkGoldenPath?.port ?? null,
       pollingSupervisor: dependencies.chat.pollingSupervisor,
+      telegramCommands: dependencies.chat.telegramCommands,
       telegramCommandSurfaceSync: dependencies.chat.telegramCommandSurfaceSync,
       companionStore: dependencies.chat.companionStore,
       companionActivityStore: dependencies.chat.companionActivityStore,
@@ -792,6 +793,8 @@ export async function routeRequest(
       telegramRelay: dependencies.chat.telegramRelay,
       runtimeClient: dependencies.shared.runtimeClient,
       pollingSupervisor: dependencies.chat.pollingSupervisor,
+      goldenPath: dependencies.chat.transportWorkGoldenPath?.port ?? null,
+      commands: dependencies.chat.telegramCommands,
       eventHub: dependencies.chat.eventHub,
       now: dependencies.shared.now,
     });

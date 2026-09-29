@@ -347,3 +347,16 @@ export async function deliverTelegramRequest(
     });
   }
 }
+
+/** SPEC-124 FR-25: best-effort "typing..."; it records nothing and never throws. */
+export async function sendTelegramChatAction(input: {
+  deliveryClient: TelegramDeliveryClient | null;
+  resolveDeliveryClient?: (binding: BotBindingRecord | null) => TelegramDeliveryClient | null;
+  chatId: string;
+  action: 'typing';
+  context: TelegramRelayContext;
+}): Promise<void> {
+  const binding = input.context.selectedBotBinding ?? resolveActiveTelegramBinding(input.context);
+  const client = input.resolveDeliveryClient?.(binding ?? null) ?? input.deliveryClient;
+  await client?.sendChatAction?.({ chatId: input.chatId, action: input.action }).catch(() => undefined);
+}

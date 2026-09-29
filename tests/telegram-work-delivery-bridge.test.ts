@@ -364,6 +364,32 @@ test('a companion heartbeat that lands mid-turn is never re-sent as the Telegram
   assert.match(replies[0]!.detail ?? '', /could not answer right now/u);
 });
 
+test('an ordinary message shows the Cat typing before the turn runs, without a delivery receipt', async () => {
+  const log: RecordedCall[] = [];
+  const relay: TelegramRelay = {
+    ...createRecordingRelay(log),
+    sendChatAction: async ({ chatId, action }) => {
+      log.push({ kind: `chatAction:${action}`, detail: chatId });
+    },
+  };
+  await runBridge({
+    update: workUpdate('are you up?'),
+    log,
+    goldenPath: null,
+    telegramRelay: relay,
+  });
+
+  const kinds = log.map((entry) => entry.kind);
+  assert.deepEqual(log.filter((entry) => entry.kind === 'chatAction:typing'), [
+    { kind: 'chatAction:typing', detail: CHAT_ID },
+  ]);
+  assert.ok(
+    kinds.indexOf('chatAction:typing') < kinds.indexOf('roomBridge:routeRoomMessage'),
+    'typing starts before the Cat works on the message',
+  );
+  assert.ok(kinds.some((kind) => kind.startsWith('deliver:')), 'the reply is still delivered');
+});
+
 // --- FR-12: acknowledgement ordering -----------------------------------------
 
 test('a golden-path callback is captured before its Telegram acknowledgement (FR-12)', async () => {

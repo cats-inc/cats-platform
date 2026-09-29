@@ -14,6 +14,7 @@ import {
   createTelegramCommandRouter,
   type TelegramCommandDelegationStatus,
   type TelegramInteractionMode,
+  type TelegramPresenceChange,
 } from '../../platform/transports/telegram/commandRouter.js';
 import { createDefaultCommands } from '../../platform/transports/telegram/commands/index.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
@@ -43,6 +44,8 @@ export interface CreateTelegramCommandSurfaceInput {
   readiness?: { describe(): Promise<TransportWorkReadinessReport> };
   /** Runtime health is still shown when work delegation itself is disabled. */
   runtimeHealth?: Pick<RuntimeClient, 'getHealth'>;
+  /** `/sleep` and `/wake`; absent, those commands say the bot is not configurable. */
+  setCatPresence?: (catId: string, presence: 'awake' | 'sleeping') => Promise<TelegramPresenceChange>;
 }
 
 function findBindingChatCat(chatState: ChatState, binding: BotBindingRecord) {
@@ -166,6 +169,9 @@ export function createTelegramCommandSurface(
         delegation: await resolveDelegation(binding?.id ?? null),
         setMode: cat?.id
           ? async (mode) => setInteractionMode(input.chatStore, cat.id, mode)
+          : undefined,
+        setPresence: cat?.id && input.setCatPresence
+          ? async (presence) => input.setCatPresence!(cat.id, presence)
           : undefined,
       });
       return result?.handled ? { replyText: result.replyText } : null;

@@ -123,3 +123,44 @@ test('Telegram mode command localizes switch outcomes and preserves English fall
     'Unknown mode: weird\nUse /mode companion or /mode agent.',
   );
 });
+
+test('Telegram /sleep and /wake report what happened to the bound Cat', async () => {
+  const router = createTelegramCommandRouter();
+  router.registerAll(createDefaultCommands());
+  const calls: string[] = [];
+
+  const slept = await router.dispatch('/sleep', createContext({
+    setPresence: async (presence) => {
+      calls.push(presence);
+      return { outcome: 'changed' };
+    },
+  }));
+  assert.equal(slept?.replyText, '晚安。Milo 會睡到下一次起床時間；傳訊息仍會醒來回覆。');
+
+  const awake = await router.dispatch('/wake', createContext({
+    locale: 'en',
+    setPresence: async (presence) => {
+      calls.push(presence);
+      return { outcome: 'unchanged' };
+    },
+  }));
+  assert.equal(awake?.replyText, 'Milo is already awake.');
+
+  const full = await router.dispatch('/wake', createContext({
+    setPresence: async () => ({ outcome: 'failed', error: 'Max sessions (10) reached' }),
+  }));
+  assert.equal(full?.replyText, 'Milo 醒不來：Max sessions (10) reached');
+
+  const noLane = await router.dispatch('/sleep', createContext({
+    setPresence: async () => ({ outcome: 'no_lane' }),
+  }));
+  assert.match(noLane?.replyText ?? '', /請先傳一則訊息給 Milo/u);
+
+  const unbound = await router.dispatch('/sleep', createContext({ catId: null }));
+  assert.equal(unbound?.replyText, '這個 bot 目前沒有綁定可設定的貓咪。');
+  assert.deepEqual(calls, ['sleeping', 'awake']);
+
+  const catalog = createTelegramBotCommandCatalog('zh-TW');
+  assert.equal(catalog.find((command) => command.command === 'sleep')?.description, '讓貓睡到下一次起床時間');
+  assert.equal(catalog.find((command) => command.command === 'wake')?.description, '叫醒貓');
+});

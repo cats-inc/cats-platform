@@ -125,6 +125,30 @@ export interface TelegramRoomBridge<TState extends TelegramRoomBridgeState = Tel
   buildRecoveryState(input: TelegramRoomBridgeRecoveryInput<TState>): TState;
 }
 
+/** Telegram shows a chat action for about five seconds, so refresh a little sooner. */
+const TELEGRAM_TYPING_REFRESH_MS = 4_000;
+
+/**
+ * SPEC-124 FR-25: an owner writing to an awake Cat sees it start typing at once
+ * instead of a silent wait until the whole reply is ready.
+ */
+function startTelegramTypingIndicator(
+  relay: TelegramRelay,
+  chatId: string | null,
+  context: TelegramRelayContext,
+): () => void {
+  if (!chatId || !relay.sendChatAction) {
+    return () => undefined;
+  }
+  const send = () => {
+    void relay.sendChatAction?.({ chatId, action: 'typing', context });
+  };
+  send();
+  const timer = setInterval(send, TELEGRAM_TYPING_REFRESH_MS);
+  timer.unref?.();
+  return () => clearInterval(timer);
+}
+
 function collapseWhitespace(value: string | null | undefined): string | null {
   return readTelegramString(value)?.replace(/\s+/gu, ' ') ?? null;
 }
@@ -1493,18 +1517,28 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
             messages: [],
           };
         }
-        const dispatch = await input.roomBridge.routeRoomMessage({
-          state: nextState,
-          roomId,
-          body: choicePayload.body,
-          senderName,
-          choiceResponse: choicePayload.choiceResponse,
-          bindingId: input.receipt.bindingId,
-          transportLocale: input.update.callback_query?.from?.language_code ?? null,
-          runtimeClient: input.runtimeClient,
-          memoryService: input.memoryService,
-          timestamp,
-        });
+        const stopTyping = startTelegramTypingIndicator(
+          input.telegramRelay,
+          input.receipt.chatId,
+          input.context,
+        );
+        let dispatch: Awaited<ReturnType<typeof input.roomBridge.routeRoomMessage>>;
+        try {
+          dispatch = await input.roomBridge.routeRoomMessage({
+            state: nextState,
+            roomId,
+            body: choicePayload.body,
+            senderName,
+            choiceResponse: choicePayload.choiceResponse,
+            bindingId: input.receipt.bindingId,
+            transportLocale: input.update.callback_query?.from?.language_code ?? null,
+            runtimeClient: input.runtimeClient,
+            memoryService: input.memoryService,
+            timestamp,
+          });
+        } finally {
+          stopTyping();
+        }
         dispatchedState = dispatch.state;
         const persistedState = await input.roomBridge.writeState(
           restoreSelection(dispatch.state, currentState.selectedChannelId),
@@ -1546,17 +1580,27 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
           messages: appendedMessages,
         };
       }
-      const dispatch = await input.roomBridge.routeRoomMessage({
-        state: nextState,
-        roomId,
-        body: inboundBody,
-        senderName,
-        bindingId: input.receipt.bindingId,
-        transportLocale: message?.from?.language_code ?? null,
-        runtimeClient: input.runtimeClient,
-        memoryService: input.memoryService,
-        timestamp,
-      });
+      const stopTyping = startTelegramTypingIndicator(
+        input.telegramRelay,
+        input.receipt.chatId,
+        input.context,
+      );
+      let dispatch: Awaited<ReturnType<typeof input.roomBridge.routeRoomMessage>>;
+      try {
+        dispatch = await input.roomBridge.routeRoomMessage({
+          state: nextState,
+          roomId,
+          body: inboundBody,
+          senderName,
+          bindingId: input.receipt.bindingId,
+          transportLocale: message?.from?.language_code ?? null,
+          runtimeClient: input.runtimeClient,
+          memoryService: input.memoryService,
+          timestamp,
+        });
+      } finally {
+        stopTyping();
+      }
       dispatchedState = dispatch.state;
       const persistedState = await input.roomBridge.writeState(
         restoreSelection(dispatch.state, currentState.selectedChannelId),

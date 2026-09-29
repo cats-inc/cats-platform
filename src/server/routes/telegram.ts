@@ -427,6 +427,9 @@ interface TelegramPollingReconnectDependencies {
   telegramRelay: TelegramRelay;
   runtimeClient: RuntimeClient;
   pollingSupervisor: TelegramPollingSupervisor;
+  /** A reconnected consumer keeps `/work` and the transport commands, as at startup. */
+  goldenPath?: TransportWorkGoldenPathPort | null;
+  commands?: TelegramCommandPort | null;
   eventHub?: ChatEventHub;
   now?: () => Date;
 }
@@ -474,6 +477,8 @@ export async function handleTelegramPollingReconnect(
       memoryService: dependencies.memoryService,
       runtimeClient: dependencies.runtimeClient,
       telegramRelay: dependencies.telegramRelay,
+      goldenPath: dependencies.goldenPath ?? null,
+      commands: dependencies.commands ?? null,
       onBridgeResult: (bridgeResult) => publishTelegramBridgeResult(
         dependencies.eventHub,
         bridgeResult,

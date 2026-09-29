@@ -40,6 +40,13 @@ export interface TelegramCommandContext {
   /** Absent means the host could not resolve it, which `/status` says plainly. */
   delegation?: TelegramCommandDelegationStatus | null;
   setMode?: (mode: TelegramInteractionMode) => Promise<TelegramInteractionMode>;
+  /** SPEC-124 FR-26: the same owner wake/sleep the Desktop uses, on the Cat's direct lane. */
+  setPresence?: (presence: 'awake' | 'sleeping') => Promise<TelegramPresenceChange>;
+}
+
+export interface TelegramPresenceChange {
+  outcome: 'changed' | 'unchanged' | 'no_lane' | 'failed';
+  error?: string | null;
 }
 
 export interface TelegramCommandResult {

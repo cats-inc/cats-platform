@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Approved (owner, 2026-09-29); Phases 1–2 implemented; Phases 3–4 pending |
+| **Status** | Approved (owner, 2026-09-29); Phases 1–3 implemented; Phase 4 (photos) pending |
 | **Owner** | Claude |
 | **Reviewer** | Owner |
 
