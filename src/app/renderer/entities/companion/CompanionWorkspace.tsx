@@ -13,7 +13,10 @@ import { removeCompanionProfilePost } from '../../../../products/chat/renderer/a
 import { DraftHeader } from '../../../../products/shared/renderer/components/DraftHeader.js';
 import { catInitials } from '../../../../products/chat/renderer/chatUtils.js';
 import { useCompanionActivity } from './hooks/useCompanionActivity.js';
-import { useCompanionPresence } from './hooks/useCompanionPresence.js';
+import {
+  useCompanionPresence,
+  type CompanionPresencePending,
+} from './hooks/useCompanionPresence.js';
 import { useCompanionProfile } from './hooks/useCompanionProfile.js';
 import { useCompanionWorkspace } from './hooks/useCompanionWorkspace.js';
 import { CompanionFeed } from './CompanionFeed.js';
@@ -29,8 +32,9 @@ export interface CompanionWorkspaceProps {
   payload: AppShellPayload;
   cat: ChatCat;
   onBackToChat: () => void;
-  onWake: (catId: string) => void;
-  onSleep: (catId: string) => void;
+  /** Resolves once the new presence is loaded; a rejection is reported as a toast. */
+  onWake: (catId: string) => void | Promise<void>;
+  onSleep: (catId: string) => void | Promise<void>;
   onCatAvatarSave?: (catId: string, dataUrl: string) => void;
   /** Open the cat's direct-lane chat. Wired by `CatProfilePage` to
    * the same `/chat/dm/:catId` URL the Entities sidebar's "Direct
@@ -66,7 +70,8 @@ export function CompanionWorkspace({
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<CompanionWorkspaceTab | null>('overview');
   const { t } = useI18n();
-  const presence = useCompanionPresence(cat.id, payload);
+  const [presencePending, setPresencePending] = useState<CompanionPresencePending>(null);
+  const presence = useCompanionPresence(cat.id, payload, presencePending);
   const workspace = useCompanionWorkspace(cat.id, activeTab ?? 'overview');
 
   const profile = useCompanionProfile({
@@ -104,13 +109,35 @@ export function CompanionWorkspace({
     }
   }, [cat.id, cat.name, confirm, refreshProfile, showToast, t]);
 
+  const changePresence = useCallback(async (
+    pending: 'wake' | 'sleep',
+    change: (catId: string) => void | Promise<void>,
+  ) => {
+    setPresencePending(pending);
+    try {
+      await change(cat.id);
+    } catch (error) {
+      showToast(t(
+        pending === 'wake'
+          ? messageKeys.chatCompanionPresenceWakeError
+          : messageKeys.chatCompanionPresenceSleepError,
+        {
+          name: cat.name,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      ));
+    } finally {
+      setPresencePending(null);
+    }
+  }, [cat.id, cat.name, showToast, t]);
+
   const handleWake = useCallback(() => {
-    onWake(cat.id);
-  }, [cat.id, onWake]);
+    void changePresence('wake', onWake);
+  }, [changePresence, onWake]);
 
   const handleSleep = useCallback(() => {
-    onSleep(cat.id);
-  }, [cat.id, onSleep]);
+    void changePresence('sleep', onSleep);
+  }, [changePresence, onSleep]);
 
   const initials = catInitials(cat.name);
   const avatarStyle = cat.avatarUrl
