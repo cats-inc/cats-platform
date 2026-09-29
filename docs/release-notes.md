@@ -2,7 +2,7 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
-## 2026-09-29 — Platform 0.6.1 npm and Desktop standard preview (prepared)
+## 2026-09-29 — Platform 0.6.1 npm and Desktop standard preview (published)
 
 - **Companion memory in each Cat turn (#174).** A bounded excerpt of the stored companion
   session reaches every provider's per-turn Cat prompt: up to 8 active memory records and 6
@@ -47,7 +47,37 @@
   0.6.0 reached ready on the existing profile, which needed no companion migration. macOS
   and Linux self-update were not exercised.
 - **Release plan.** The owner authorized Platform npm 0.6.1 (`latest`) and a Desktop 0.6.1
-  standard preview (`unsigned=false`). Hosted CI, publication and verification are pending.
+  standard preview (`unsigned=false`). Both were dispatched from a temporary `release/0.6.1`
+  branch at `db445ee645b9f444e267970b13895329de71e956` so they share source; the branch was
+  deleted afterwards and tag `v0.6.1` keeps the commit.
+- **Upgrade evidence (0.6.1).** Repeated on npm 0.6.1 with the same isolated harness: a
+  0.5.8-written profile migrates with a backup equal to its original bytes, a repeat start
+  leaves it untouched, a directory at the backup path now leaves the stored legacy value
+  intact and reports `companion_role_migration_failed`, clearing it lets the next start
+  migrate with a backup, and a write-denied state directory leaves the file intact until
+  access returns.
+
+npm **0.6.1** was published to `latest`. The
+[npm publish workflow](https://github.com/cats-inc/cats-platform/actions/runs/36520443917)
+test gate passed 5,318 tests with 59 skipped and no failures; the tarball has 3,674 files.
+cats-one 0.3.0 (`^0.6.0`) followed: a fresh-cache `npx --yes cats-one@latest --platform-only --help`
+resolved cats-one 0.3.0, Platform 0.6.1 and Runtime 0.3.2.
+
+The [Desktop 0.6.1 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.6.1)
+was published at 2026-09-29 12:17 Taipei. All eight
+[release jobs](https://github.com/cats-inc/cats-platform/actions/runs/36520446539) passed,
+including packaged Platform startup and the new Cats license check (`catsLicenses: true`) on
+Windows, macOS and Linux. The source manifest records Platform `db445ee6`, Runtime `af7b0b3a`
+and cats-apps `2c077cbf` with Usage 0.5.0 `payloadVerified`; the source ZIP matches its
+checksum file. All three update metadata files name uploaded assets with matching sizes, and
+the downloaded Windows installer and Linux package match their GitHub SHA-256 digests and
+updater SHA-512 values.
+
+`0.6.1 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
+The macOS log shows Developer ID team `97JBZ3MFX5`, successful notarization, a valid stapled
+ticket and a `Notarized Developer ID` Gatekeeper assessment. Self-update from 0.6.0 is expected
+under the same profile; macOS and Linux self-update were not exercised. No provider calls
+were made.
 
 ## 2026-09-29 — Platform 0.6.0 npm and Desktop standard preview (published)
 
