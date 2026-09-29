@@ -173,3 +173,83 @@ test('generateElectronIcons removes edge-connected gradient backgrounds from tra
   );
   assert.equal(trayTemplateForeground.alpha > 0, true);
 });
+
+// A black square with a transparent hole in the middle: the hole must survive as
+// transparency (knocked-out eyes) and nothing may be treated as background.
+const TRAY_TEMPLATE_SVG = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs><mask id="hole"><rect width="512" height="512" fill="#fff"/><circle cx="256" cy="256" r="96" fill="#000"/></mask></defs>
+  <rect x="64" y="64" width="384" height="384" fill="#ff0000" mask="url(#hole)"/>
+</svg>
+`;
+
+test('generateElectronIcons renders a dedicated tray template source with its holes intact', async () => {
+  const workspace = await createWorkspace();
+  const inputSvgPath = join(workspace, 'icon-source.svg');
+  const trayInputSvgPath = join(workspace, 'tray-source.svg');
+  const assetsRoot = join(workspace, 'assets');
+  const buildResourcesDir = join(assetsRoot, 'build');
+
+  await writeFile(inputSvgPath, SOURCE_SVG);
+  await writeFile(trayInputSvgPath, TRAY_TEMPLATE_SVG);
+
+  const manifest = await generateElectronIcons({
+    inputSvgPath,
+    trayInputSvgPath,
+    assetsRoot,
+    buildResourcesDir,
+    iconShape: 'square',
+  });
+  assert.equal(manifest.traySourceSvg.endsWith('tray-source.svg'), true);
+
+  const templatePath = join(assetsRoot, 'tray-iconTemplate@2x.png');
+  assert.deepEqual(await readImageSize(templatePath), { width: 32, height: 32 });
+  const outside = await readPixel(templatePath, 1, 1);
+  assert.equal(outside.alpha, 0, 'transparent source pixels stay transparent');
+  const body = await readPixel(templatePath, 6, 6);
+  assert.equal(body.alpha > 0, true, 'opaque source pixels are kept');
+  assert.deepEqual([body.red, body.green, body.blue], [0, 0, 0], 'template colour is forced to black');
+  const hole = await readPixel(templatePath, 16, 16);
+  assert.equal(hole.alpha, 0, 'a hole inside the silhouette is not treated as background');
+
+  // The colour tray icons and the app icon still come from the app source.
+  const trayColour = await readPixel(join(assetsRoot, 'tray-icon.png'), 16, 16);
+  assert.equal(trayColour.alpha > 0, true);
+});
+
+test('generateElectronIcons insets only the macOS icns artwork when asked', async () => {
+  const workspace = await createWorkspace();
+  const inputSvgPath = join(workspace, 'icon-source.svg');
+  const assetsRoot = join(workspace, 'assets');
+  const buildResourcesDir = join(assetsRoot, 'build');
+  await writeFile(inputSvgPath, SOURCE_SVG);
+
+  const manifest = await generateElectronIcons({
+    inputSvgPath,
+    assetsRoot,
+    buildResourcesDir,
+    iconShape: 'square',
+    macosInset: 'apple',
+  });
+  assert.equal(manifest.macosInset, 100 / 1024);
+
+  // Windows/Linux stay full-bleed.
+  const appCorner = await readPixel(join(buildResourcesDir, 'icon.png'), 0, 0);
+  assert.equal(appCorner.alpha > 0, true);
+
+  // The 1024 icns image is transparent in the Apple margin and opaque inside it.
+  const icns = Icns.from(await readFile(join(buildResourcesDir, 'icon.icns')));
+  const largest = icns.images.find((image) => image.osType === 'ic10');
+  const largestPng = join(workspace, 'ic10.png');
+  await writeFile(largestPng, largest.image);
+  assert.deepEqual(await readImageSize(largestPng), { width: 1024, height: 1024 });
+  const margin = await readPixel(largestPng, 40, 512);
+  assert.equal(margin.alpha, 0);
+  const inside = await readPixel(largestPng, 140, 512);
+  assert.equal(inside.alpha > 0, true);
+
+  await assert.rejects(
+    generateElectronIcons({ inputSvgPath, assetsRoot, buildResourcesDir, macosInset: '0.5' }),
+    /Unsupported macOS inset/u,
+  );
+});

@@ -238,6 +238,9 @@ export function SettingsAppShellSidebar({
             <button type="button" className={navItemClass(isSection('/settings/plugins'))} onClick={() => navigate('/settings/plugins')}>
               <span className="navLabel">{t('pluginsTitle')}</span>
             </button>
+            <button type="button" className={navItemClass(isSection('/settings/remote-access'))} onClick={() => navigate('/settings/remote-access')}>
+              <span className="navLabel">{t('remoteAccessTitle')}</span>
+            </button>
             {showDesktop ? (
               <button
                 type="button"

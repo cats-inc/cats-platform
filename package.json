@@ -48,7 +48,7 @@
     "build:web": "vite build",
     "build:test-ui": "node scripts/build-test-ui.mjs",
     "clean:build": "node scripts/clean-build.mjs",
-    "desktop:icons": "node scripts/shared/generate-electron-icons.mjs --input assets/app-icon-silhouette.svg",
+    "desktop:icons": "node scripts/shared/generate-electron-icons.mjs --input assets/app-icon-silhouette.svg --shape square --tray-input assets/tray-icon-template.svg --macos-inset apple",
     "desktop:host": "electron build/desktop/main.js",
     "desktop:candidate": "node scripts/desktop-candidate.mjs",
     "desktop:package": "node scripts/build-desktop-installer.mjs --target current",
@@ -92,6 +92,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@ngrok/ngrok": "1.7.0",
     "@tanstack/react-query": "^5.100.6",
     "electron-updater": "^6.8.9",
     "fflate": "0.8.3",

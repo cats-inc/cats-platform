@@ -64,6 +64,9 @@ export type ResumeWorkflowContinuationDispatch = (
 ) => Promise<WorkflowContinuationReplayResult>;
 
 export interface SharedServerDependencies {
+  appComponents?: import('../../platform/apps/componentHost.js').AppComponentHost;
+  platformIngress?: import('../../platform/apps/platformIngress.js').PlatformIngress;
+  desktopAppsKey?: string;
   managedPlugins?: import('../../platform/plugins/manager.js').ManagedPluginManager;
   config: AppConfig;
   runtimeClient: RuntimeClient;

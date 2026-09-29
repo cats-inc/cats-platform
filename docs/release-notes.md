@@ -13,6 +13,13 @@
   gate. Existing installs and persisted data are unchanged; the next build adds
   these files without a new compatibility boundary. No version bump or release
   is part of this change.
+- **New app icon.** The Desktop icon is now a front-facing orange tabby on a deep-navy
+  rounded tile, replacing the light-on-dark cat silhouette in a circle. It applies to the
+  Windows installer and taskbar, the macOS Dock (`.icns` now follows Apple's icon grid
+  inset), Linux desktop entries, the colour tray icon, the macOS menu-bar template (a
+  silhouette with whiskers and knocked-out eyes, generated from its own SVG), the
+  renderer favicon and the Catlas guide-cat avatar. Existing installs pick it up with the
+  next update; no data or settings change.
 - **.NET runtime notices ship with the Windows voice helper.** Packaging now copies the
   self-contained .NET runtime pack's `LICENSE.TXT` and `THIRD-PARTY-NOTICES.TXT`, resolved
   from the exact version in the published `deps.json`, into `native/windows-stt/licenses/`

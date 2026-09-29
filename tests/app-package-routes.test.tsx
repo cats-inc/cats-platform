@@ -111,12 +111,14 @@ async function routeJson(
     ? Readable.from([])
     : Readable.from([Buffer.from(JSON.stringify(body))]);
   const response = new TestResponse();
+  Object.assign(request, { headers: { 'x-cats-desktop-apps': 'a'.repeat(64) }, socket: { remoteAddress: '127.0.0.1' } });
   const context: AppPackageRouteContext = {
     request: request as never,
     response: response as never,
     url: new URL(`http://localhost${pathname}`),
     method,
     dependencies: {
+      desktopAppsKey: 'a'.repeat(64),
       config: {
         chatStatePath: path.join(platformDir, 'state', 'chat-state.local.json'),
       },

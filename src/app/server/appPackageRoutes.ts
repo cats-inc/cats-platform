@@ -27,13 +27,21 @@ import { FileCatsAppRegistry } from '../../platform/apps/registry.js';
 import { PLATFORM_ENTITY_PATH_PREFIXES } from '../../shared/platformRoutePaths.js';
 import type { RuntimeClient } from '../../runtime/client.js';
 import { MAX_PACKAGE_BYTES } from '#cats-app-package';
+import { decodeAppPackage } from '#cats-app-package';
 import { installRendererPackage, validateRendererPackage } from '../../platform/apps/packageInstaller.js';
 import { readAppRenderer } from '../../platform/apps/renderer.js';
 import type { CoreStore } from '../../core/store.js';
 import { appImages, type ImageRuntimeClient } from '../../platform/apps/images.js';
 import { routeAppImages } from './appImageRoutes.js';
+import { hasDesktopAppAuthority } from '../../platform/apps/desktopAuthority.js';
+import type { AppComponentHost } from '../../platform/apps/componentHost.js';
+import type { PlatformAuthStore } from '../../platform/auth/store.js';
+import { isSessionChainActive } from '../../platform/auth/session.js';
 
 export interface AppPackageApiDependencies {
+  appComponents?: AppComponentHost;
+  desktopAppsKey?: string;
+  authStore?: PlatformAuthStore;
   config: Pick<AppConfig, 'chatStatePath'>;
   now?: () => Date;
   runtimeClient?: Pick<RuntimeClient, 'getUsageSnapshot' | 'refreshUsageQuota'> & ImageRuntimeClient;
@@ -41,6 +49,23 @@ export interface AppPackageApiDependencies {
 }
 
 export type AppPackageRouteContext = RouteContext<AppPackageApiDependencies>;
+
+function appViewer(context: AppPackageRouteContext, desktop: boolean) {
+  if (desktop) return { subject: 'desktop-owner', authorized: async () => true };
+  const principal = context.auth?.principal;
+  const store = context.dependencies.authStore;
+  if (!principal?.membership.roles.includes('owner') || !store) return undefined;
+  const accountId = principal.account.id; const sessionId = principal.session.id;
+  return { subject: accountId, authorized: async () => {
+    const status = await store.readStateStatus();
+    if (status.status !== 'ready') return false;
+    const state = status.state;
+    const session = state.sessions.find(row => row.id === sessionId && row.accountId === accountId);
+    return !!session && isSessionChainActive(state.sessions, session, new Date())
+      && state.accounts.some(row => row.id === accountId && row.status === 'active')
+      && state.memberships.some(row => row.accountId === accountId && row.roles.includes('owner'));
+  } };
+}
 
 interface AppPackagePathInput {
   packagePath?: string;
@@ -68,6 +93,7 @@ const BASE_RESERVED_SETTINGS_PATHS = [
   '/settings/cats',
   '/settings/assistants',
   '/settings/apps',
+  '/settings/remote-access',
   '/settings/plugins',
   '/settings/desktop',
   '/settings/runtime',
@@ -248,6 +274,19 @@ async function handleValidate(context: AppPackageRouteContext): Promise<void> {
     return;
   }
 
+  if (body.packagePath?.endsWith('.catsapp')) {
+    try {
+      if ((await stat(body.packagePath)).size > MAX_PACKAGE_BYTES) throw new Error('App package exceeds size limit.');
+      const bytes = await readFile(body.packagePath);
+      const decoded = decodeAppPackage(bytes);
+      const pin = { id: decoded.manifest.id, version: decoded.manifest.version, sha256: decoded.sha256 };
+      const validated = validateRendererPackage(bytes, pin);
+      sendJson(context.response, 200, { ok: true, packagePath: body.packagePath, manifest: validated.manifest, pin });
+    } catch (error) {
+      sendJson(context.response, 400, { ok: false, issues: [badRequestIssue(error instanceof Error ? error.message : 'Invalid App package.')] });
+    }
+    return;
+  }
   const result = await validateLocalManifestPackage(context, body);
   sendJson(context.response, result.ok ? 200 : 400, result);
 }
@@ -272,7 +311,7 @@ async function handleInstall(context: AppPackageRouteContext): Promise<void> {
       const pin = { id: body.id, version: body.version, sha256: body.sha256 };
       validateRendererPackage(bytes, pin);
       const record = await installRendererPackage({ chatStatePath: context.dependencies.config.chatStatePath,
-        bytes, pin, source: 'local-package', enable: body.enable });
+        bytes, pin, source: 'local-package', enable: body.enable, componentHost: context.dependencies.appComponents });
       sendJson(context.response, 201, { ok: true, app: toPlatformInstalledAppDescriptor(record) });
     } catch (error) {
       sendJson(context.response, 400, { ok: false, issues: [badRequestIssue(error instanceof Error ? error.message : 'Invalid app archive.')] });
@@ -286,6 +325,9 @@ async function handleInstall(context: AppPackageRouteContext): Promise<void> {
   }
 
   const registry = appRegistryFor(context);
+  if (result.manifest.components) {
+    sendJson(context.response, 400, { error: { code: 'app_archive_required', message: 'Executable Apps must be installed as a verified .catsapp archive.' } }); return;
+  }
   const record = await registry.installApp({
     manifest: result.manifest,
     packagePath: result.packagePath,
@@ -388,7 +430,8 @@ async function handleStateMutation(
 ): Promise<void> {
   try {
     const registry = appRegistryFor(context);
-    await registry.updateAppState(appId, { installState });
+    if (context.dependencies.appComponents) await context.dependencies.appComponents.setEnabled(appId, installState === 'enabled');
+    else await registry.updateAppState(appId, { installState });
     if (installState === 'disabled' && context.dependencies.coreStore && context.dependencies.runtimeClient) {
       await appImages({ coreStore: context.dependencies.coreStore, runtimeClient: context.dependencies.runtimeClient,
         chatStatePath: context.dependencies.config.chatStatePath }).revoke(appId);
@@ -407,7 +450,12 @@ async function handleStateMutation(
 async function handleUninstall(context: AppPackageRouteContext, appId: string): Promise<void> {
   const registry = appRegistryFor(context);
   const purge = ['1', 'true'].includes(context.url.searchParams.get('purge') ?? '');
-  const app = await registry.uninstallApp(appId, { purge });
+  if (purge && (await registry.readState()).apps.find(app => app.id === appId)?.manifest.components) {
+    sendJson(context.response, 409, { error: { code: 'cats_app_data_retained', message: 'Component App data must remain recoverable; purge is not supported.' } });
+    return;
+  }
+  const app = context.dependencies.appComponents ? await context.dependencies.appComponents.remove(appId, purge)
+    : await registry.uninstallApp(appId, { purge });
   if (context.dependencies.coreStore && context.dependencies.runtimeClient) {
     await appImages({ coreStore: context.dependencies.coreStore, runtimeClient: context.dependencies.runtimeClient,
       chatStatePath: context.dependencies.config.chatStatePath }).revoke(appId);
@@ -424,6 +472,23 @@ async function handleUninstall(context: AppPackageRouteContext, appId: string): 
 export async function routeAppPackageApi(
   context: AppPackageRouteContext,
 ): Promise<boolean> {
+  const desktop = hasDesktopAppAuthority(context.request, context.dependencies.desktopAppsKey);
+  const management = context.url.pathname === '/api/apps/validate' || context.url.pathname === '/api/apps/install'
+    || /^\/api\/apps\/[^/]+\/(enable|disable|inspect)$/.test(context.url.pathname)
+    || (context.method === 'DELETE' && /^\/api\/apps\/[^/]+$/.test(context.url.pathname));
+  if (management && !desktop) {
+    sendJson(context.response, 403, { error: { code: 'desktop_app_management_required', message: 'Manage Apps from Cats Desktop.' } }); return true;
+  }
+  const capabilityMatch = /^\/api\/apps\/([a-z][a-z0-9.-]{0,99})\/authorize$/.exec(context.url.pathname);
+  if (capabilityMatch) {
+    if (context.method !== 'GET') { sendMethodNotAllowed(context.response, ['GET']); return true; }
+    const viewer = appViewer(context, desktop);
+    const nonce = context.url.searchParams.get('nonce') ?? '';
+    const permission = context.url.searchParams.get('capability');
+    const allowed = (permission === 'clipboard.write' || permission === 'ui.route') && viewer && await viewer.authorized() && /^[a-f0-9]{32}$/.test(nonce)
+      && await context.dependencies.appComponents?.authorizeBridge(capabilityMatch[1]!, context.url.searchParams.get('version') ?? '', nonce, permission);
+    sendJson(context.response, allowed ? 200 : 403, { allowed: !!allowed }, { 'cache-control': 'no-store' }); return true;
+  }
   if (await routeAppImages(context)) return true;
   const rendererMatch = matchRoute(context.url.pathname, /^\/api\/apps\/([^/]+)\/(renderer|usage|usage\/refresh)$/u);
   if (rendererMatch) {
@@ -443,7 +508,19 @@ export async function routeAppPackageApi(
     }
     try {
       if (rendererMatch[1] === 'renderer') {
-        sendJson(context.response, 200, { ...(await readAppRenderer(record)), version: record.manifest.version }, headers);
+        if (record.manifest.components) {
+          const viewer = appViewer(context, desktop);
+          if (!viewer || !await viewer.authorized() || !context.dependencies.appComponents) {
+            sendJson(context.response, 403, { error: { code: 'app_owner_required', message: 'Sign in as the owner to open this App.' } }, headers); return true;
+          }
+          const nonce = context.url.searchParams.get('nonce') ?? '';
+          if (!/^[a-f0-9]{32}$/.test(nonce)) throw new Error('Invalid App bootstrap nonce.');
+          const surface = await context.dependencies.appComponents.open(record.id, record.manifest.version, {
+            nonce, locale: context.url.searchParams.get('locale') === 'zh-TW' ? 'zh-TW' : 'en',
+            theme: context.url.searchParams.get('theme') === 'dark' ? 'dark' : 'light',
+          }, 'desktop-owner', context.url.searchParams.get('frontend') ?? undefined, viewer);
+          sendJson(context.response, 200, { ...surface, version: record.manifest.version }, headers);
+        } else sendJson(context.response, 200, { ...(await readAppRenderer(record)), version: record.manifest.version }, headers);
       } else if (!record.manifest.permissions.includes('runtime.telemetry.read')
         || (refresh && !record.manifest.permissions.includes('runtime.telemetry.refresh'))) {
         sendJson(context.response, 403, { error: { code: 'app_permission_denied', message: 'The requested telemetry permission is required.' } }, headers);

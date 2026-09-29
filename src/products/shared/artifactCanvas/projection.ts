@@ -217,6 +217,10 @@ function resolveProjectionPresentation(input: {
   presentationRequested: ArtifactCanvasPresentationInput;
 }): ArtifactCanvasProjection['presentationResolved'] | null {
   if (input.presentationRequested === 'auto') {
+    // A preview is a page to run, even when its URL ends in `.html` (SPEC-123 CAP-11).
+    if (input.safeUrl && input.artifact.kind === 'preview') {
+      return 'iframe';
+    }
     if (input.safeUrl && isImagePresentationArtifact(input.artifact, input.safeUrl)) {
       return 'image';
     }

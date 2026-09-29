@@ -44,6 +44,8 @@
       refreshQuota: (target) => request('usage.refreshQuota', target),
     }),
     openLobby: () => request('navigation.lobby'),
+    openRemoteAccess: () => request('navigation.ingress'),
+    clipboard: Object.freeze({ writeText: (text) => request('clipboard.write', { text }) }),
     images: Object.freeze({
       getCapabilities: () => request('images.capabilities'),
       list: () => request('images.list'),

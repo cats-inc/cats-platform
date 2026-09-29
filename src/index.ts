@@ -41,6 +41,7 @@ import {
 } from './server/routes/providers.js';
 import { resolveProviderSnapshotPathFromChatState } from './shared/platformPaths.js';
 import { installBundledApps } from './platform/apps/packageInstaller.js';
+import { AppComponentHost } from './platform/apps/componentHost.js';
 
 let startup = createAppStartupState();
 
@@ -102,14 +103,19 @@ export async function startApp(extension: {
   });
   startupTrace.trace('runtime.client.created');
   const chatStore = new FileChatStore(config.chatStatePath);
+  const desktopAppsKey = process.env.CATS_DESKTOP_APPS_KEY;
+  const appComponents = /^[a-f0-9]{64}$/.test(desktopAppsKey ?? '')
+    ? new AppComponentHost({ chatStatePath: config.chatStatePath, ownerId: 'desktop-owner' }) : undefined;
   if (process.env.CATS_APP_BUNDLE_PATH?.trim()) {
-    await installBundledApps(config.chatStatePath, process.env.CATS_APP_BUNDLE_PATH.trim());
+    try {
+      await installBundledApps(config.chatStatePath, process.env.CATS_APP_BUNDLE_PATH.trim(), appComponents);
+    } catch (error) { await appComponents?.close(); throw error; }
   }
   startupTrace.trace('chat.store.created', {
     chatStatePath: config.chatStatePath,
   });
   const server = createServer({
-    shared: { config, runtimeClient, startup },
+    shared: { config, runtimeClient, startup, appComponents, desktopAppsKey },
     chat: { chatStore, startCompanionLifeLoop: config.companionLifeLoopEnabled !== false },
   });
   startupTrace.trace('server.created');
@@ -163,6 +169,7 @@ export async function startApp(extension: {
       .then(async () => {
         try { await extension.shutdown?.(); } catch (error) { reportShutdownError(error); }
         try { await closeAppServerGracefully(server); } catch (error) { reportShutdownError(error); }
+        try { await server.closeAppHosting(); } catch (error) { reportShutdownError(error); }
         // Flush any pending provider snapshot before exiting so a recent
         // successful refresh isn't lost when the debounce timer hadn't fired
         // yet. Best-effort: failures must not block the lifecycle event.

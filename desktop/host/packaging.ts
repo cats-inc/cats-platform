@@ -1,4 +1,4 @@
-import { access, cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { dirname, join, relative, resolve } from 'node:path';
 import { decodeAppPackage, parseAppLock, supportsVersion, APP_SDK_VERSION, PLATFORM_VERSION, type ResolvedAppPin } from '#cats-app-package';
@@ -191,7 +191,38 @@ async function collectPlatformKnowledgeAssets(packageRoot: string) {
 // Each entry must appear at cats-platform/node_modules/<name> AND in the staging
 // output as shared/app-sidecar/node_modules/<name>. Transitive runtime deps must
 // be listed explicitly so packaging is deterministic.
-const APP_SIDECAR_RUNTIME_DEPENDENCIES = ['js-yaml', 'argparse', 'fflate'] as const;
+const APP_SIDECAR_RUNTIME_DEPENDENCIES = ['js-yaml', 'argparse', 'fflate', '@ngrok/ngrok'] as const;
+export function appIngressNativePackages(platforms: readonly string[]): string[] {
+  const modules: Record<string, string[]> = {
+    windows: ['win32-x64-msvc', 'win32-arm64-msvc'],
+    macos: ['darwin-universal'],
+    linux: ['linux-x64-gnu', 'linux-arm64-gnu'],
+  };
+  return [...new Set(platforms.flatMap(platform => {
+    if (!modules[platform]) throw new Error('Unsupported App ingress platform.');
+    return modules[platform].map(name => `@ngrok/ngrok-${name}`);
+  }))];
+}
+async function appSidecarDependencies(packageRoot: string, platforms: readonly string[]): Promise<string[]> {
+  const dependencies: string[] = [...APP_SIDECAR_RUNTIME_DEPENDENCIES];
+  const manifest = JSON.parse(await readFile(join(packageRoot, 'node_modules/@ngrok/ngrok/package.json'), 'utf8')) as {
+    optionalDependencies?: Record<string, string>;
+  };
+  for (const name of appIngressNativePackages(platforms)) {
+    const required = manifest.optionalDependencies?.[name];
+    if (!required) throw new Error(`Unsupported ngrok native target: ${name}`);
+    try {
+      const installed = JSON.parse(await readFile(join(packageRoot, 'node_modules', name, 'package.json'), 'utf8'));
+      if (installed.version !== required) throw new Error('Native module version mismatch.');
+      const nativeFiles = await readdir(join(packageRoot, 'node_modules', name));
+      if (!nativeFiles.some(file => file.endsWith('.node'))) throw new Error('Missing native binary.');
+    } catch (error) {
+      throw new Error(`Prepare App ingress native target ${name}@${required} before staging; use scripts/prepare-app-ingress.mjs.`, { cause: error });
+    }
+    dependencies.push(name);
+  }
+  return dependencies;
+}
 const RUNTIME_BUNDLE_EXTERNAL_DEPENDENCIES = ['playwright-core', 'yaml'] as const;
 
 const RUNTIME_OPTIONAL_ASSETS: RuntimeSidecarAsset[] = [
@@ -1143,11 +1174,11 @@ async function ensureBuiltAssets(config: DesktopHostConfig): Promise<void> {
   await ensureRequiredFile(join(config.packageRoot, 'package.json'));
 }
 
-async function ensureBundledPlatformAssets(packageRoot: string): Promise<void> {
+async function ensureBundledPlatformAssets(packageRoot: string, dependencies: readonly string[]): Promise<void> {
   await Promise.all([
     ...PLATFORM_OPTIONAL_ASSETS.map((asset) =>
       ensureRequiredFile(join(packageRoot, asset.sourceRelativePath))),
-    ...APP_SIDECAR_RUNTIME_DEPENDENCIES.map((dependency) =>
+    ...dependencies.map((dependency) =>
       ensureRequiredFile(join(packageRoot, 'node_modules', dependency, 'package.json'))),
   ]);
 }
@@ -1216,7 +1247,8 @@ export async function stageDesktopPackagingOutputs(
   const allowedPlatforms = new Set(plan.targets.map((target) => target.platform));
 
   await ensureBuiltAssets(config);
-  await ensureBundledPlatformAssets(config.packageRoot);
+  const appDependencies = await appSidecarDependencies(config.packageRoot, [...allowedPlatforms]);
+  await ensureBundledPlatformAssets(config.packageRoot, appDependencies);
   const knowledgeAssets = await collectPlatformKnowledgeAssets(config.packageRoot);
   for (const target of plan.targets) {
     for (const artifact of target.artifacts) {
@@ -1269,7 +1301,7 @@ export async function stageDesktopPackagingOutputs(
       await copyFile(sourcePath, targetPath);
     }
   }
-  for (const dependency of APP_SIDECAR_RUNTIME_DEPENDENCIES) {
+  for (const dependency of appDependencies) {
     await copyDirectory(
       join(config.packageRoot, 'node_modules', dependency),
       join(outputRoot, 'shared', 'app-sidecar', 'node_modules', dependency),
@@ -1361,7 +1393,7 @@ export async function stageDesktopPackagingOutputs(
         target: asset.targetRelativePath,
         knowledge: asset.knowledge,
       })),
-      ...APP_SIDECAR_RUNTIME_DEPENDENCIES.map((dependency) => ({
+      ...appDependencies.map((dependency) => ({
         source: relative(outputRoot, join(config.packageRoot, 'node_modules', dependency)),
         target: join('shared', 'app-sidecar', 'node_modules', dependency).replace(/\\/g, '/'),
       })),

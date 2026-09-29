@@ -167,6 +167,7 @@ export interface DesktopUpdateSnapshot {
 }
 
 export interface DesktopHostBridge extends Partial<ProviderManagerBridge> {
+  requestApp?: (input: { path: string; method: string; body?: unknown }) => Promise<{ status: number; body: unknown }>;
   getSetupSnapshot?: () => Promise<DesktopSetupSnapshot>;
   runAction?: (actionId: string) => Promise<DesktopBootstrapSnapshot>;
   runSetupHelper?: (

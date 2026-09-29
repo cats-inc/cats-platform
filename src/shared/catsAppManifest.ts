@@ -1,3 +1,5 @@
+import type { CatsAppComponents } from './catsAppComponents.js';
+
 export const CATS_APP_MANIFEST_SCHEMA_VERSION = 1;
 
 export const CATS_APP_CATEGORIES = [
@@ -19,6 +21,7 @@ export type CatsAppTrustTier = typeof CATS_APP_TRUST_TIERS[number];
 export const CATS_APP_PERMISSIONS = [
   'ui.route',
   'ui.lobby',
+  'clipboard.write',
   'settings.app',
   'storage.appData',
   'agent.tools.register',
@@ -137,6 +140,7 @@ export interface CatsAppManifestV1 {
   publisher: CatsAppPublisher;
   compatibility: CatsAppCompatibility;
   entrypoints?: CatsAppEntrypoints;
+  components?: CatsAppComponents;
   contributions: CatsAppContributions;
   permissions: CatsAppPermission[];
 }
@@ -160,6 +164,8 @@ export interface CatsInstalledAppRecord {
   lastError?: string | null;
   packageSha256?: string;
   packageSource?: 'desktop-bundle' | 'local-package';
+  /** Component data generations are selected atomically with the active package record. */
+  dataGeneration?: string;
 }
 
 export interface PlatformInstalledAppDescriptor {

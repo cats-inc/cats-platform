@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { appHostRequest } from './appHostRequest.js';
 import { callAppImageBridge, ImageBridgeError } from './appImageBridge.js';
 import { createTranslator, parseMessageLocale, type MessageKey } from '../../shared/i18n/index.js';
 
@@ -25,6 +26,7 @@ export function AppRendererSurface({ appId, version, title, locale, onLobby }: {
   const onLobbyRef = useRef(onLobby);
   onLobbyRef.current = onLobby;
   const [html, setHtml] = useState<string | null>(null);
+  const [source, setSource] = useState<string | null>(null);
   const [error, setError] = useState<MessageKey | null>(null);
   const [attempt, setAttempt] = useState(0);
   const loads = useRef(0);
@@ -32,18 +34,19 @@ export function AppRendererSurface({ appId, version, title, locale, onLobby }: {
   useEffect(() => {
     const controller = new AbortController();
     let nonce: string;
+    let expectedOrigin = 'null';
     let port: MessagePort | null = null;
     let disposed = false;
     let busy = false;
     const lastRequestAt = new Map<string, number>();
     loads.current = 0;
-    setHtml(null); setError(null);
+    setHtml(null); setSource(null); setError(null);
     let startupTimer: ReturnType<typeof setTimeout> | undefined;
     const close = () => { disposed = true; clearTimeout(startupTimer); controller.abort(); port?.close(); };
     const fail = (key: MessageKey) => { if (!disposed) { setError(key); close(); } };
     revoke.current = close;
     const bridge = (event: MessageEvent) => {
-      if (disposed || port || event.source !== frame.current?.contentWindow || event.origin !== 'null'
+      if (disposed || port || event.source !== frame.current?.contentWindow || event.origin !== expectedOrigin
         || event.data?.type !== 'cats.app.ready' || event.data.nonce !== nonce) return;
       const channel = new MessageChannel();
       port = channel.port1;
@@ -53,6 +56,23 @@ export function AppRendererSurface({ appId, version, title, locale, onLobby }: {
           if (!disposed) port?.postMessage({ id: data.id, ok, value, error: message }, transfer);
         };
         if (data.method === 'navigation.lobby') { reply(true); onLobbyRef.current(); return; }
+        if (data.method === 'clipboard.write' || data.method === 'navigation.ingress') {
+          if (!navigator.userActivation?.isActive || busy
+            || (data.method === 'clipboard.write' && (typeof data.params?.text !== 'string' || data.params.text.length > 128_000))) {
+            reply(false, undefined, 'A user click is required.'); return;
+          }
+          busy = true;
+          try {
+            const query = new URLSearchParams({ version, nonce, capability: data.method === 'navigation.ingress' ? 'ui.route' : data.method });
+            const allowed = await appHostRequest(`/api/apps/${encodeURIComponent(appId)}/authorize?${query}`, { signal: controller.signal });
+            if (!allowed.ok || disposed) throw new Error('App capability unavailable.');
+            if (data.method === 'clipboard.write') await navigator.clipboard.writeText(data.params.text);
+            else window.location.assign('/settings/remote-access');
+            reply(true);
+          } catch { reply(false, undefined, 'App capability unavailable.'); }
+          finally { busy = false; }
+          return;
+        }
         if (typeof data.method === 'string' && data.method.startsWith('images.')) {
           if (busy || Date.now() - (lastRequestAt.get(data.method) ?? 0) < 500) { reply(false, undefined, 'image_service_busy'); return; }
           busy = true; lastRequestAt.set(data.method, Date.now());
@@ -98,15 +118,24 @@ export function AppRendererSurface({ appId, version, title, locale, onLobby }: {
     void (async () => {
       try {
         nonce = createAppBridgeNonce();
-        const response = await fetch(`/api/apps/${encodeURIComponent(appId)}/renderer?version=${encodeURIComponent(version)}`, { signal: controller.signal, cache: 'no-store' });
+        const theme = document.documentElement.dataset.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        const query = new URLSearchParams({ version, nonce, locale, theme });
+        const response = await appHostRequest(`/api/apps/${encodeURIComponent(appId)}/renderer?${query}`, { signal: controller.signal, cache: 'no-store' });
         if ([401, 403, 409].includes(response.status)) { fail('appHostRendererAccessChanged'); return; }
         if (!response.ok) throw new Error('This app has no available, verified renderer.');
-        const payload = await response.json() as { html: string; sdk: string; version: string };
+        const payload = await response.json() as { html: string; sdk: string; version: string; url?: string; origin?: string };
         if (disposed) return;
         if (payload.version !== version) { fail('appHostRendererAccessChanged'); return; }
+        if (payload.url && payload.origin) {
+          const source = new URL(payload.url, location.origin);
+          if (source.origin !== location.origin || payload.origin !== 'null'
+            || !source.pathname.startsWith(`/apps/${encodeURIComponent(appId)}/ui/`)
+            || !/^[a-f0-9]{64}$/.test(source.searchParams.get('ticket') ?? '')) throw new Error('Invalid App origin.');
+          expectedOrigin = 'null'; setSource(payload.url); return;
+        }
         if (!disposed) setHtml(createAppDocument(payload.html, payload.sdk, {
           nonce, appId, version, locale,
-          theme: document.documentElement.dataset.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
+          theme,
         }));
       } catch {
         fail('appHostRendererUnavailable');
@@ -120,8 +149,9 @@ export function AppRendererSurface({ appId, version, title, locale, onLobby }: {
       {t('appHostRendererRetry')}
     </button>
   </div>;
-  if (!html) return <p role="status">{t('appLoadingWithSurface', { surface: title })}</p>;
-  return <iframe key={`${appId}:${version}:${locale}:${attempt}`} ref={frame} title={title} sandbox="allow-scripts" referrerPolicy="no-referrer"
-    srcDoc={html} style={{ width: '100%', height: 'calc(100dvh - 160px)', minHeight: 520, border: 0, borderRadius: 16 }}
+  if (!html && !source) return <p role="status">{t('appLoadingWithSurface', { surface: title })}</p>;
+  return <iframe key={`${appId}:${version}:${locale}:${attempt}`} ref={frame} title={title}
+    sandbox="allow-scripts" referrerPolicy="no-referrer"
+    src={source ?? undefined} srcDoc={html ?? undefined} style={{ width: '100%', height: 'calc(100dvh - 160px)', minHeight: 520, border: 0, borderRadius: 16 }}
     onLoad={() => { if (++loads.current > 1) { revoke.current(); setError('appHostRendererNavigatedAway'); } }} />;
 }

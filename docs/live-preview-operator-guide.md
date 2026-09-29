@@ -1,17 +1,31 @@
 # Cats Code Live Preview Operator Guide
 
 > Operator-facing reference for the supervised live-preview substrate
-> (PLAN-097 / SPEC-108). The substrate is **disabled by default** and stays
-> disabled until an operator opts in via two independent flags. This guide
-> documents what those flags turn on, the supported profile list, the
-> approved port range, and the lifecycle expectations.
+> (PLAN-097 / SPEC-108, amended by SPEC-123). The host constructs the
+> supervisor. Static previews are on by default. Child-process previews stay
+> off until an operator opts in. This guide documents what the flags turn on,
+> the supported profile list, the approved port range and the lifecycle
+> expectations.
 
 ## TL;DR
 
-- Default behavior: nothing spawns. `livePreview.enabled = false` blocks
-  every code path that would call `LivePreviewSupervisor.start`. The
-  process adapter is also inert, so even an accidental supervisor wiring
-  cannot spawn.
+- Default behavior: `livePreview.enabled = true`, and the host builds the
+  supervisor (`createCodeLivePreviewSupervisor`).
+  - Only the built-in `static` profile can start. It is an in-process loopback
+    file server that serves one directory inside the workspace, so no process
+    spawns.
+  - Guards:
+    - The `Host` header must match the leased origin.
+    - Hidden and dot segments, traversal and symlink escapes are refused.
+    - Only GET and HEAD are accepted, and responses are `no-store`.
+  - Scripts run only inside the canvas iframe on that distinct origin.
+  - Artifact Canvas grants the scripted profile only to the artifact that a
+    ready lease names (`supervisor.attachArtifact`).
+  - The host sweeps expired leases every minute and stops all previews on
+    shutdown.
+  - `CATS_CODE_LIVE_PREVIEW_ENABLED=false` disables every preview.
+- Child-process spawning still uses the inert adapter unless it is opted into.
+  The steps below cover only that case.
 - Real spawning requires **all** of these to be true:
   1. `CATS_CODE_LIVE_PREVIEW_ENABLED=true`
   2. `CATS_CODE_LIVE_PREVIEW_USE_REAL_PROCESS_ADAPTER=true`

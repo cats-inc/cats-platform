@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { appHostRequest } from '../appHostRequest.js';
 import { useNavigate } from 'react-router-dom';
 
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog.js';
@@ -32,6 +33,7 @@ interface AppPackageMutationResult {
 }
 
 interface AppPackageValidationResult {
+  pin?: { id: string; version: string; sha256: string };
   ok: boolean;
   packagePath?: string;
   manifestPath?: string;
@@ -40,6 +42,7 @@ interface AppPackageValidationResult {
 }
 
 interface LocalInstallReview {
+  pin?: { id: string; version: string; sha256: string };
   packagePath: string;
   manifestPath: string | null;
   manifest: CatsAppManifestV1;
@@ -256,7 +259,7 @@ export function PlatformSettingsApps({
     const busyKey = `${app.id}:${mutation}`;
     setBusyAction(busyKey);
     try {
-      const response = await fetch(
+      const response = await appHostRequest(
         mutation === 'uninstall'
           ? `/api/apps/${encodeURIComponent(app.id)}`
           : `/api/apps/${encodeURIComponent(app.id)}/${mutation}`,
@@ -310,7 +313,7 @@ export function PlatformSettingsApps({
 
     setInstallBusy(true);
     try {
-      const response = await fetch('/api/apps/validate', {
+      const response = await appHostRequest('/api/apps/validate', {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -326,6 +329,7 @@ export function PlatformSettingsApps({
         packagePath: result.packagePath ?? packagePath,
         manifestPath: result.manifestPath ?? null,
         manifest: result.manifest,
+        pin: result.pin,
       });
     } catch (error) {
       setInstallReview(null);
@@ -357,7 +361,7 @@ export function PlatformSettingsApps({
 
     setInstallBusy(true);
     try {
-      const response = await fetch('/api/apps/install', {
+      const response = await appHostRequest('/api/apps/install', {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -365,6 +369,7 @@ export function PlatformSettingsApps({
         },
         body: JSON.stringify({
           packagePath: installReview.packagePath,
+          ...installReview.pin,
           enable: true,
         }),
       });

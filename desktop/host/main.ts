@@ -1,4 +1,6 @@
 import { dirname, join } from 'node:path';
+import { randomBytes } from 'node:crypto';
+import { validateDesktopAppRequest } from './appRequests.js';
 
 import {
   app,
@@ -2401,7 +2403,9 @@ async function main(): Promise<void> {
       'cats-platform',
     ]);
   }
+  const appManagementKey = randomBytes(32).toString('hex');
   supervisor = new ManagedServiceSupervisor(hostConfig, {
+    env: { ...process.env, CATS_DESKTOP_APPS_KEY: appManagementKey },
     onStateChange: () => {
       if (hostConfig && supervisor) {
         publishSnapshot(buildSnapshot());
@@ -2420,6 +2424,20 @@ async function main(): Promise<void> {
 
   ipcMain.handle('cats-host:get-snapshot', async () => {
     return latestSnapshot ?? buildSnapshot(null);
+  });
+  ipcMain.handle('cats-host:app-request', async (event, payload: unknown) => {
+    assertMainWindowIpcSender(event, mainWindow, 'Apps are managed from the main Cats window.');
+    if (event.senderFrame !== mainWindow!.webContents.mainFrame || !hostConfig
+      || new URL(event.senderFrame.url).origin !== new URL(hostConfig.appBaseUrl).origin) {
+      throw new Error('App management requires the trusted Desktop main frame.');
+    }
+    const input = validateDesktopAppRequest(payload);
+    const response = await fetch(new URL(input.path, hostConfig.appBaseUrl), {
+      method: input.method, headers: { 'x-cats-desktop-apps': appManagementKey, 'content-type': 'application/json' },
+      ...(input.body !== undefined ? { body: JSON.stringify(input.body) } : {}),
+      redirect: 'error', signal: AbortSignal.timeout(90_000),
+    });
+    return { status: response.status, body: await response.json() };
   });
   if (updateManager) {
     const updateHandlers = createDesktopUpdateIpcHandlers({
