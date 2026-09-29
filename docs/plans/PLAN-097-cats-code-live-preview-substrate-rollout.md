@@ -6,6 +6,10 @@
 > This plan is the Phase 4 continuation of PLAN-090. It does not permit process
 > spawning until the approval gate in Phase 5 is complete.
 
+> Continued by [PLAN-116](./PLAN-116-code-agent-artifact-preview-rollout.md):
+> its P5 sign-off is the Task 5.1 decision, and its M2 isolated acceptance
+> closes Task 5.4.
+
 ## Metadata
 
 | Field | Value |

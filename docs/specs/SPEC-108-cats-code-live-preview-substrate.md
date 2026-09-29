@@ -4,6 +4,11 @@
 > `preview_url` artifacts for the Artifact Canvas without giving assistants
 > arbitrary shell execution or broad iframe privilege.
 
+> Amended by [SPEC-123](./SPEC-123-code-agent-artifact-preview.md) (proposed):
+> adds an in-process `static` profile, agent-requested starts through the
+> Platform-hosted `cats` MCP tools under a session-permission gate, and host
+> construction of the supervisor.
+
 ## Metadata
 
 | Field | Value |

@@ -548,10 +548,18 @@ enriches the runtime session-create request with:
   workspace path when known.
 
 Each runtime message send repeats the lightweight context metadata so observers
-can identify the active Code artifact contract, but it does not resend the full
-onboarding block. The first implementation relies on the session-create system
-prompt retaining the onboarding block; resume / compaction re-injection remains
-the follow-up path from SPEC-092 / PLAN-081.
+can identify the active Code artifact contract, but Platform does not resend the
+full onboarding block. The block is not a system prompt: cats-runtime stores it
+as session instructions and, for CLI providers, prepends it to every turn's
+user-message text (`cats-runtime/src/backends/cli/providers/prompt.ts`).
+
+Delivery gap (2026-09-29): cats-runtime never reads `runtimeToolCatalog`, and no
+CLI adapter receives the Code tools. The onboarding text therefore names tools
+that the provider cannot call, and the observation path below fires only in tests.
+[ADR-126](decisions/126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md)
+replaces this path with a Platform-hosted MCP server that runtime delivers per
+session. [PLAN-116](plans/PLAN-116-code-agent-artifact-preview-rollout.md) P2
+retires the catalog and the observation processors.
 
 The current Cats Platform receiver also preserves `toolArgs` on runtime
 `tool_use` segments and records same-turn `declare_artifact` observations as

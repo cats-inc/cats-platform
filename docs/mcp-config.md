@@ -2,6 +2,30 @@
 
 > Runtime MCP usage for orchestrator-style agents in `cats`.
 
+## MCP roles in Cats
+
+Cats uses MCP in three roles with separate ownership, hosting, credentials and
+audiences. Per [ADR-126](decisions/126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md)
+they share only a session-configuration descriptor and a documented security
+baseline, never code or a traffic path.
+
+- **Servers configured into Cat sessions (outbound, local).** Runtime session
+  `mcpServers` descriptors tell a Runtime-spawned provider CLI (a Cat) which
+  servers to connect to. The CLI connects directly; Runtime does not proxy. The
+  first server is the Platform-hosted `cats` server for Cats Code previews
+  ([SPEC-123](specs/SPEC-123-code-agent-artifact-preview.md)). SPEC-121 plugin
+  MCP, remote servers and user-granted App endpoints can be configured the same
+  way later. Planned; not implemented.
+- **App-hosted servers for external clients (inbound, public).** An App such as
+  Ask hosts its MCP server independently in its own service component, with its
+  own SDK, credentials and ingress inside the App lifecycle
+  ([SPEC-122](specs/SPEC-122-app-components-and-private-services.md)). External
+  clients connect directly. Neither Runtime nor Platform's host-internal MCP
+  module is on this path. Planned; not implemented.
+- **Runtime's own `/mcp` facade (host/orchestrator).** This guide covers it
+  below. It is proxied at `/api/runtime/mcp`. It is never injected into Cat
+  sessions and never exposed as an App public entry.
+
 ## Overview
 
 MCP (Model Context Protocol) is the tool-facing protocol this project plans to

@@ -1,5 +1,8 @@
 # Feature Specifications
 
+- [SPEC-123: Cats Code agent artifact preview](SPEC-123-code-agent-artifact-preview.md)
+  — draft, 2026-09-29; agent-opened static/dev-server/document previews beside
+  the Code conversation; open sign-offs; implementation not started.
 - [SPEC-122: App components and private services](SPEC-122-app-components-and-private-services.md)
   — confirmed product requirements, technical draft; multiple frontends/services
   in one App and ordinary internal API traffic; implementation not started.

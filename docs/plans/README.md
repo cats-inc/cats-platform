@@ -1,5 +1,8 @@
 # Implementation Plans
 
+- [PLAN-116: Cats Code agent artifact preview](PLAN-116-code-agent-artifact-preview-rollout.md)
+  — planning only; M1 calculator (static), M2 pomodoro (Vite), M3 Claude/Codex
+  behavioral acceptance, M4 viewer/provider breadth.
 - [PLAN-115: App components and private services](PLAN-115-app-components-and-private-services.md)
   — boundary documented; component hosting, direct communication and complete
   Ask package acceptance remain implementation work.
