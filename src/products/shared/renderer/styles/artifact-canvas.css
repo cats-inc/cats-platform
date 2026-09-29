@@ -12,7 +12,6 @@ main.canvas:has(> .artifactCanvasSurfaceFrame) {
   justify-items: stretch;
   padding: 0;
   scrollbar-gutter: auto;
-  overflow: hidden;
 }
 
 .artifactCanvasSurfaceFrame {
