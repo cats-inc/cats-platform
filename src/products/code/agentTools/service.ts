@@ -30,7 +30,9 @@ import {
   CODE_ARTIFACT_DECLARATION_TOOL,
   CodeArtifactDeclarationError,
 } from '../shared/artifactDeclaration.js';
+import type { LivePreviewSupervisor } from '../livePreview/supervisor.js';
 import { materializeCodeArtifactDeclaration } from '../state/artifactMaterialization.js';
+import { runShowInCanvas, SHOW_IN_CANVAS_TOOL } from './showInCanvas.js';
 import {
   CODE_AGENT_TOOLS_MCP_PATH,
   CODE_AGENT_TOOLS_SERVER_NAME,
@@ -42,6 +44,8 @@ export type CodeAgentToolGrant = McpSessionGrant<CodeAgentToolGrantBinding>;
 
 export interface CodeAgentToolsServiceOptions {
   coreStore: Pick<CoreStore, 'updateCore'>;
+  /** Starts static previews for `show_in_canvas(path)`; absent means unavailable. */
+  livePreviewSupervisor?: LivePreviewSupervisor | null;
   grants?: McpSessionGrantStore<CodeAgentToolGrantBinding>;
   policyConfig?: ArtifactCanvasPolicyConfig;
   renderIntentHub?: ArtifactCanvasRenderIntentHub;
@@ -71,12 +75,25 @@ export function createCodeAgentToolsService(options: CodeAgentToolsServiceOption
   const now = options.now ?? (() => new Date());
   const policyConfig = options.policyConfig ?? DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG;
   const hub = options.renderIntentHub ?? getDefaultArtifactCanvasRenderIntentHub();
+  const staticLeases = new Map<string, { previewId: string; root: string }>();
 
   const server: McpServerDefinition<CodeAgentToolGrant> = {
     name: CODE_AGENT_TOOLS_SERVER_NAME,
     version: CODE_AGENT_TOOLS_SERVER_VERSION,
-    listTools: () => [DECLARE_TOOL, CLEAR_TOOL],
+    listTools: () => [SHOW_IN_CANVAS_TOOL, DECLARE_TOOL, CLEAR_TOOL],
     async callTool(name, args, grant) {
+      if (name === SHOW_IN_CANVAS_TOOL.name) {
+        return runShowInCanvas(args, {
+          binding: grant.binding,
+          runtimeSessionId: grant.runtimeSessionId,
+          updateCore: (mutator) => options.coreStore.updateCore(mutator),
+          supervisor: options.livePreviewSupervisor ?? null,
+          staticLeases,
+          policyConfig,
+          hub,
+          now,
+        });
+      }
       if (name === DECLARE_TOOL.name) return declareArtifact(args, grant);
       if (name === CLEAR_TOOL.name) return clearCanvas(grant);
       return mcpTextResult({ error: { code: 'unknown_tool', message: `Unknown tool: ${name}` } }, true);

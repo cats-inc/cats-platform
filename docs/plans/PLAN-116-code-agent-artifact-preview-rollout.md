@@ -118,7 +118,16 @@ call a Platform-hosted MCP tool and receive its result.
     `/api/*` route.
   - Issuing grants on session create and revoking them on close/delete is part
     of the A2 client wrapper.
-- [ ] A2: Implement `show_in_canvas` (`path` / `url` / `artifactId`),
+- [x] A2a: `show_in_canvas` (`path` / `url` / `artifactId`) on the `cats` server.
+  - Workspace paths resolve through `realpath` inside the conversation
+    workspace; hidden segments are refused.
+  - Pages and directories open on one reused static lease per conversation,
+    stamped with `attachArtifact`.
+  - Images, PDFs and text use their viewers; unsupported types point to
+    `declare_artifact`.
+  - https URLs become agent-declared artifacts, which stay `static`.
+  - `artifactId` re-shows through the shared projection, Activity and intent.
+- [ ] A2b: Implement the rest of `show_in_canvas` (`path` / `url` / `artifactId`),
   `clear_canvas` and `declare_artifact` by calling the existing materialization,
   projection, Activity and render-intent functions. Static-lease and dev-preview
   artifacts use the supervisor producer identity, with the Cat recorded as the

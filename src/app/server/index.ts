@@ -124,6 +124,7 @@ export function createServer(dependencies: ServerDependencies) {
   // because the platform auth gate protects every other `/api/*` route.
   const codeAgentTools = createCodeAgentToolsService({
     coreStore: resolvedDependencies.code.coreStore,
+    livePreviewSupervisor: resolvedDependencies.code.livePreviewSupervisor,
     grants: codeAgentToolGrants,
     policyConfig: resolvedDependencies.shared.config.artifactCanvas,
     now: resolvedDependencies.shared.now,
