@@ -540,7 +540,15 @@ Status 2026-09-29: the Windows voice helper now stages the .NET runtime pack's
 Windows SDK .NET projection assemblies and their license URL, under
 `native/windows-stt/licenses/`; the packaged-resource gate verifies them whenever
 the helper binary ships. The server bundle marks all packages external, so it
-inlines no third-party code. The Vite renderer bundle remains the open item.
+inlines no third-party code. The Vite renderer now generates
+`build/renderer/THIRD-PARTY-NOTICES.txt` and `.json` from Rollup's included module
+inputs, including both renderer entry points and extracted dependency CSS.
+Original package LICENSE/COPYING/NOTICE texts ship with the npm package and
+Desktop renderer tree. Staging and installed-resource gates verify the notice
+text and every renderer output against the build manifest, rejecting missing,
+changed or unlisted files. The remaining notice follow-up is closed at the
+implementation level; three-OS installer acceptance still requires an authorized
+release. This package-level notice inventory is not a full file-level legal audit.
 
 ### Packaged startup failure — 2026-09-29
 

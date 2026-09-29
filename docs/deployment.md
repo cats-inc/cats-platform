@@ -934,9 +934,19 @@ node scripts/build-desktop-installer.mjs --target linux --arch arm64 --format de
   of dependencies selected by the Runtime bundler. External dependency directories
   keep their original license and notice files.
 
+  Vite produces `build/renderer/THIRD-PARTY-NOTICES.txt` and `.json` from the
+  dependencies included in both renderer entries, including extracted CSS.
+  These preserve upstream package LICENSE/COPYING/NOTICE texts and bind them to
+  every shipped renderer output. The existing recursive renderer package/staging
+  rules include both files in npm and installers. Missing upstream license text
+  fails the build; missing, changed or extra output files fail the staging and
+  installed-resource gates. Rebuild the renderer after changing any output.
+  This package-level inventory does not replace review of dependency-specific
+  file headers, attribution requirements or license compatibility.
+
   Missing or stale notices fail staging before the previous stage is removed.
   The release verifier reads the actual unpacked installer, including `app.asar`,
-  and checks license presence and the Runtime bundle/notice hashes before its
+  and checks license presence and the Runtime and renderer notice hashes before its
   startup receipt can be written. Pin a Runtime revision that generates these
   notices; older bundle producers must be rebuilt from a compatible revision.
   This changes the private packaging contract, with no stored-data migration or

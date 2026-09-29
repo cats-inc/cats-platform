@@ -5,6 +5,7 @@ import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { extractFile, uncache } from '@electron/asar';
 import { assertCatsLicense, verifyRuntimeBundleNotices } from '../build/desktop/licenses.js';
+import { verifyRendererNotices } from '../build/desktop/rendererLicenses.js';
 import { verifyDotnetRuntimeNotices } from './shared/dotnet-runtime-notices.mjs';
 
 const WINDOWS_HELPER_DIRECTORY = 'native/windows-stt';
@@ -28,6 +29,7 @@ export async function verifyDesktopLicenses(resourcesRoot) {
   assertCatsLicense(platform, 'Platform');
   assertCatsLicense(runtime, 'Runtime');
   assert.deepEqual(host, platform, 'Desktop host and Platform sidecar must ship the same Cats license');
+  await verifyRendererNotices(join(resourcesRoot, 'app-sidecar/build/renderer'));
   const plan = JSON.parse(await readFile(join(resourcesRoot, 'desktop-package-plan.json'), 'utf8'));
   if (plan.sidecarLayout?.runtime === 'bundle') {
     const directory = join(resourcesRoot, 'cats-runtime/build/runtime');
@@ -47,6 +49,7 @@ export async function verifyDesktopLicenses(resourcesRoot) {
     : false;
   return {
     catsLicenses: true,
+    rendererNotices: true,
     runtimeBundledNotices: plan.sidecarLayout.runtime === 'bundle',
     nativeWindowsNotices,
   };

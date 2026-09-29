@@ -4,6 +4,15 @@
 
 ## 2026-09-29 — Distribution hygiene (unreleased)
 
+- **Renderer dependency notices ship with npm and Desktop.** Vite records the
+  packages actually included in both renderer entries (including extracted CSS),
+  preserves their original license and notice texts beside the renderer output,
+  and hashes the resulting notice and all output files. Missing upstream license
+  text fails the build; missing, changed or unlisted renderer resources fail
+  Desktop staging before replacing an existing stage and fail the installed-resource
+  gate. Existing installs and persisted data are unchanged; the next build adds
+  these files without a new compatibility boundary. No version bump or release
+  is part of this change.
 - **Reset Platform data removes the data it promises.** Reset now removes rotating
   and migration backups, canonical and companion memory, local knowledge, evidence
   logs, Telegram/LINE and work-delivery state, schedules, Platform-owned attachments
@@ -35,7 +44,7 @@
   together with an index naming the Windows SDK .NET projection assemblies and their
   license terms. Staging fails when the NuGet runtime pack texts are missing, and the
   installed-resource gate verifies them whenever the helper binary is present. The Vite
-  renderer bundle notices remain a follow-up.
+  renderer bundle notices are now covered by the separate renderer gate above.
 - **README states provider responsibility and data handling.** The README now says that
   each provider's terms govern what a user's plan allows, and describes where Platform and
   Desktop state live, what leaves the machine, and that deletions are permanent.
