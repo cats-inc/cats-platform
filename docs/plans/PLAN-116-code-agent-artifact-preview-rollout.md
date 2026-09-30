@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Implementation complete (2026-09-30). M1, M2 and M3 accepted; M4 F1–F5 done. The Settings > Code preview-server switch stays off by default (user decision, 2026-09-30). Open for the user: the P0 App/plugin MCP alignment review |
+| **Status** | Implementation complete (2026-09-30). M1, M2 and M3 accepted; M4 F1–F5 done. The Settings > Code preview-server switch stays off by default, and the App/plugin MCP alignment is accepted (user decisions, 2026-09-30). No open items |
 | **Owner** | Claude |
 | **Reviewer** | User |
 
@@ -54,7 +54,7 @@ Cross-repo ownership:
   Cat-session configuration (never a traffic path) and a documented security
   baseline. `src/platform/mcp/` and its SDK pin are host-internal. Pointers were
   added to SPEC-122 and `docs/mcp-config.md`.
-- [ ] Get user review of that alignment.
+- [x] Get user review of that alignment. The user accepted it on 2026-09-30.
 - [x] Correct `docs/tool-calls.md`. It said the onboarding block persists in a
   session-create system prompt, but CLI runtime actually re-sends it in every
   turn's user message. Record the `runtimeToolCatalog` delivery gap until P2

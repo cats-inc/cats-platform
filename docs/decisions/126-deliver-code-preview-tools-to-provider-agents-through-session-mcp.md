@@ -2,11 +2,12 @@
 
 ## Status
 
-Proposed, 2026-09-29. Not implemented. On 2026-09-29 the user approved the four
+Accepted, 2026-09-30. Implemented through PLAN-116. On 2026-09-29 the user approved the four
 [SPEC-123](../specs/SPEC-123-code-agent-artifact-preview.md) decisions: execution
-posture, one-call tool shape, Claude Code and Codex first, and Vite first. The
-alignment with App and plugin MCP described in [Relationship to App and Plugin
-MCP](#relationship-to-app-and-plugin-mcp) awaits review.
+posture, one-call tool shape, Claude Code and Codex first, and Vite first. On
+2026-09-30 the user accepted the alignment with App and plugin MCP described in
+[Relationship to App and Plugin MCP](#relationship-to-app-and-plugin-mcp), and
+decided that the Settings > Code preview-server switch stays off by default.
 Delivery: [PLAN-116](../plans/PLAN-116-code-agent-artifact-preview-rollout.md).
 
 ## Context
