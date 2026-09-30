@@ -2,10 +2,13 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
-## 2026-09-30 — Desktop 0.7.1 standard preview (prepared)
+## 2026-09-30 — Desktop 0.7.1 standard preview (published)
 
-Desktop **0.7.1** is prepared as a standard-profile preview from the source after
-Platform 0.7.0 (`6d53fb56`). The owner authorized this Desktop preview only:
+Desktop **0.7.1** was published on 2026-09-30 (Taipei) as a
+[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.1)
+from `8fc4d9dae28282e9f19534efdd30c89c6b247a86`, the source after Platform 0.7.0
+(`6d53fb56`). `0.7.1 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
+The owner authorized this Desktop preview only:
 Platform npm is not published at this version, so npm `latest` stays 0.7.0, and
 Runtime, cats-one and Apps are not released. It is a **patch**. Every change since
 0.7.0 is compatible. There are no public API, configuration or persisted-data
@@ -43,6 +46,26 @@ contract breaks, and no migration.
   0.7.0 ignores all three, so moving back needs no conversion.
 - **Unchanged:** the Usage 0.5.1 App pin, and the knowledge bundles'
   `platformRange: "0.7.x"`.
+- **Publication evidence.**
+  - All eight [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36675594193)
+    jobs passed, and the prerelease has 14 assets.
+  - `SHA256SUMS` verifies every downloaded asset. The three update metadata
+    files name the uploaded files with matching sizes, and the Windows installer
+    and Linux package match their updater SHA-512.
+  - `Cats-v0.7.1-sources.json` records Platform `8fc4d9da`, Runtime `6dd398f9`,
+    cats-apps `1c67c428` and Usage 0.5.1 (SHA-256 `8189edbf…`).
+  - The Linux package carries Platform 0.7.1, with the dev-preview tools and the
+    shared process-tree module. It also carries Runtime at `6dd398f9` (package
+    version still 0.4.0), with the stream heartbeat and Copilot session MCP
+    delivery.
+  - The macOS log shows the Developer ID Application signature (team
+    `97JBZ3MFX5`), successful notarization and a `Notarized Developer ID`
+    Gatekeeper assessment. The Windows installer is unsigned, because no
+    certificate is configured.
+  - Standard-profile 0.7.0 installs should self-update on every OS: macOS stays
+    signed with the same team, Windows unsigned to unsigned, and Linux verifies
+    no signature.
+  - No provider calls were made.
 - **Not verified here.** An installed 0.7.0 → 0.7.1 upgrade on each OS. The Code
   preview acceptance (PLAN-116 M2/M3) ran in isolated instances on Windows, and
   the App process-tree tests ran on Windows locally and on Linux in CI.

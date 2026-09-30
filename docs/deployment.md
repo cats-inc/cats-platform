@@ -163,6 +163,27 @@ publishes Desktop nor creates its Git tag.
 
 ### Desktop publication
 
+Desktop **0.7.1** was published on 2026-09-30 (Taipei) as a
+[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.1)
+from `8fc4d9dae28282e9f19534efdd30c89c6b247a86`. Platform npm is not published at this
+version, so npm `latest` stays 0.7.0. Every OS build bundles Runtime main at
+`6dd398f9f717a82402c270c2b06848e26845229e`, whose package version is still 0.4.0. That
+Runtime adds provider-read `sessionMcpServers`, the message-stream heartbeat and Copilot
+session MCP delivery.
+- Platform adds Code dev previews behind the opt-in Settings > Code switch, canvas
+  controls and lifecycle, the Markdown viewer, App process-tree stop and the session MCP
+  composition point.
+- No public API, configuration or persisted-data contract changes. The new stored state
+  is optional, so no migration, launcher minimum or App change is required, and the
+  Usage 0.5.1 pin is unchanged.
+
+`0.7.1 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
+All eight [Desktop workflow jobs](https://github.com/cats-inc/cats-platform/actions/runs/36675594193)
+passed, and the prerelease has 14 assets. `SHA256SUMS` verifies the downloaded assets.
+The update metadata names the uploaded files with matching sizes, and the Windows and
+Linux bytes match their updater SHA-512. The sources manifest and the Linux package
+confirm the recorded Platform and Runtime commits. No installed upgrade was exercised.
+
 Desktop **0.5.13** was published on 2026-09-28 (Taipei) as a
 [standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.13)
 from `d44e680800e2ba4c787f9c3182be5c7ca50e96ac`. All three OS builds bundle Runtime
