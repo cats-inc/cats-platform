@@ -12,8 +12,13 @@ API, configuration or persisted-data contract change and no migration.
 - **Runtime.** Pin `8729cd6cb17ab52a034e2365baffcd82915a8af8` (package version
   remains 0.4.0) on every OS and in the complete source archive. Since 0.7.1's
   `6dd398f9`, the Claude CLI catalog adds Sonnet 5.5 and the Codex CLI catalog adds
-  GPT-6.1-Sol as its model default, with Low reasoning. Existing selections remain
-  available; the picker observations and validation are recorded in Runtime.
+  GPT-6.1-Sol as its model default, with Low reasoning. All previous model IDs
+  remain available; existing session bindings retain their recorded arguments.
+  Claude's `sonnet` alias now follows Sonnet 5.5, with Sonnet 5 kept as an explicit
+  model ID. Ultracode moves out of the upstream effort picker into a separate
+  toggle, so the catalog no longer offers it as an effort; the CLI still accepts
+  the old argument as a legacy alias of xhigh. Picker observations and validation
+  are recorded in Runtime.
 - **Apps.** Reuse Usage 0.5.1, SHA-256
   `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
   Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
