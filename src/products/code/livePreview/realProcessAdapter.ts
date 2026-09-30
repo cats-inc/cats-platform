@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 
 import { createPlatformChildProcessEnv } from '../../../shared/platformChildProcessEnv.js';
+import { signalChildProcessTree } from '../../../platform/process/processTree.js';
 
 import type {
   LivePreviewProcessAdapter,
@@ -220,14 +221,14 @@ async function terminateChildProcess(
   options: LivePreviewProcessStopOptions,
   runtime: RealLivePreviewProcessRuntime,
 ): Promise<void> {
-  trySendSignal(child, 'SIGTERM', options.killProcessTree, /* force */ false, runtime);
+  signalChildProcessTree(child, 'SIGTERM', { killProcessTree: options.killProcessTree, force: false }, runtime);
   await new Promise<void>((resolve) => {
     if (child.exitCode !== null || child.signalCode) {
       resolve();
       return;
     }
     const timer = setTimeout(() => {
-      trySendSignal(child, 'SIGKILL', options.killProcessTree, /* force */ true, runtime);
+      signalChildProcessTree(child, 'SIGKILL', { killProcessTree: options.killProcessTree, force: true }, runtime);
       resolve();
     }, Math.max(0, options.graceMs));
     child.once('exit', () => {
@@ -235,87 +236,4 @@ async function terminateChildProcess(
       resolve();
     });
   });
-}
-
-function trySendSignal(
-  child: ChildProcess,
-  signal: NodeJS.Signals,
-  killProcessTree: boolean,
-  force: boolean,
-  runtime: RealLivePreviewProcessRuntime,
-): void {
-  try {
-    if (!killProcessTree || child.pid === undefined) {
-      child.kill(signal);
-      return;
-    }
-    if (runtime.platform === 'win32') {
-      tryTaskkill(child, signal, force, runtime);
-      return;
-    }
-    try {
-      process.kill(-child.pid, signal);
-    } catch {
-      child.kill(signal);
-    }
-  } catch {
-    // child has already exited; nothing to signal
-  }
-}
-
-function tryTaskkill(
-  child: ChildProcess,
-  fallbackSignal: NodeJS.Signals,
-  force: boolean,
-  runtime: RealLivePreviewProcessRuntime,
-): void {
-  if (child.pid === undefined) {
-    child.kill(fallbackSignal);
-    return;
-  }
-  // Honour the documented stop contract: graceful first (taskkill /T sends
-  // WM_CLOSE / Ctrl+Break-style termination to the tree without /F so
-  // children can run their shutdown handlers), then escalate to /F on
-  // SIGKILL when the grace period expires.
-  const args = force
-    ? ['/pid', String(child.pid), '/T', '/F']
-    : ['/pid', String(child.pid), '/T'];
-  try {
-    const tree = runtime.spawnProcess('taskkill', args, {
-      env: createPlatformChildProcessEnv(),
-      windowsHide: true,
-      stdio: 'ignore',
-    });
-    // Swallow taskkill's own error events so a missing taskkill (extremely
-    // unlikely on Windows) does not crash the host. Direct kill fallback only
-    // runs in the force phase so graceful failures still respect `graceMs`.
-    tree.once('error', () => {
-      fallbackFromTaskkillFailure(child, fallbackSignal, force);
-    });
-    tree.once('exit', (code) => {
-      if (code !== 0) {
-        fallbackFromTaskkillFailure(child, fallbackSignal, force);
-      }
-    });
-  } catch {
-    fallbackFromTaskkillFailure(child, fallbackSignal, force);
-  }
-}
-
-function fallbackFromTaskkillFailure(
-  child: ChildProcess,
-  fallbackSignal: NodeJS.Signals,
-  force: boolean,
-): void {
-  if (!force) {
-    // Preserve the grace window. If graceful tree termination fails, the stop
-    // timer will escalate and retry with `/F` before we fall back to direct
-    // process kill.
-    return;
-  }
-  try {
-    child.kill(fallbackSignal);
-  } catch {
-    // child already gone
-  }
 }

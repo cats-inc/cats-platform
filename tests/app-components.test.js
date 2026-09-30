@@ -4,6 +4,7 @@ import { mkdtemp, readFile, rm, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createServer } from 'node:http';
+import { spawn } from 'node:child_process';
 import { encodeAppPackage } from '../packages/app-sdk/encode.js';
 import { sha256 } from '../packages/app-sdk/format.js';
 import { AppComponentHost } from '../build/server/platform/apps/componentHost.js';
@@ -11,6 +12,7 @@ import { installRendererPackage, installBundledApps } from '../build/server/plat
 import { FileCatsAppRegistry } from '../build/server/platform/apps/registry.js';
 import { resolveCatsAppStoragePathsFromChatState } from '../build/server/platform/apps/paths.js';
 import { parseAppComponents } from '../build/server/shared/catsAppComponents.js';
+import { createFileProcessRecordRegistry } from '../build/server/platform/process/processRegistry.js';
 
 const boot = { nonce: 'a'.repeat(32), locale: 'zh-TW', theme: 'light' };
 const fixture = (version = '0.1.0', extra = {}) => {
@@ -199,4 +201,76 @@ test('a repeatedly crashing component stops after two automatic restarts', async
   assert.match(host.status('test.ask').error ?? '', /repeated/);
   assert.equal(host.status('test.ask').running, false);
   assert.equal(await readFile(path.join(root, 'apps', 'data', 'test.ask', 'generations', record.dataGeneration, 'starts'), 'utf8'), 'xxx');
+});
+
+// PLAN-115 P1: stopping an App ends what its components started. The grandchild
+// is detached on Windows (non-detached ones already end with the component
+// through Node's kill-on-close job) and stays in the component's process group
+// on POSIX, where the operating system would otherwise reparent and keep it.
+const grandchildService = `import {spawn} from 'node:child_process';import {writeFile} from 'node:fs/promises';import path from 'node:path';
+  export async function start(c){
+    const child=spawn(process.execPath,['-e','setInterval(()=>{},1e6)'],{stdio:'ignore',detached:process.platform==='win32'});
+    await writeFile(path.join(c.dataDir,c.componentId+'-'+Date.now()+'.pid'),String(child.pid));
+    return {handle(req,res){if(req.url==='/api/crash'){res.end('bye');setTimeout(()=>process.exit(1),50);return;}res.end('ok')}}}`;
+const alive = pid => { try { process.kill(pid, 0); return true; } catch { return false; } };
+async function until(check, timeoutMs = 20_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (!(await check())) {
+    if (Date.now() > deadline) throw new Error('Timed out waiting for the process state.');
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+}
+async function grandchildPids(dataDir) {
+  const names = (await readdir(dataDir).catch(() => [])).filter(name => name.endsWith('.pid')).sort();
+  return Promise.all(names.map(async name => Number(await readFile(path.join(dataDir, name), 'utf8'))));
+}
+const singleService = { workers: [], services: [
+  { id: 'api', entrypoint: 'service.mjs', routes: [{ path: '/api', methods: ['GET'], exposure: 'private' }] }] };
+
+test('disable, remove and a crash restart end the processes a component started', { timeout: 90_000 }, async t => {
+  const { host, install, root } = await setup(t);
+  const record = await install(fixture('0.1.0', { components: singleService, service: grandchildService }));
+  const dataDir = path.join(root, 'apps', 'data', 'test.ask', 'generations', record.dataGeneration);
+  await until(async () => (await grandchildPids(dataDir)).length === 1);
+  const [first] = await grandchildPids(dataDir);
+  t.after(() => { for (const pid of [first]) { try { process.kill(pid, 'SIGKILL'); } catch {} } });
+  assert.equal(alive(first), true);
+  await host.setEnabled('test.ask', false);
+  await until(() => !alive(first));
+
+  await host.setEnabled('test.ask', true);
+  await until(async () => (await grandchildPids(dataDir)).length === 2);
+  const second = (await grandchildPids(dataDir)).find(pid => pid !== first);
+  const main = await view(host);
+  assert.equal(await (await fetch(`${main.origin}/api/crash`, { headers: main.headers })).text(), 'bye');
+  await until(async () => (await grandchildPids(dataDir)).length === 3, 30_000);
+  await until(() => !alive(second));
+  const third = (await grandchildPids(dataDir)).find(pid => pid !== first && pid !== second);
+  assert.equal(alive(third), true, 'the restarted component runs its own subprocess');
+
+  await host.remove('test.ask', false);
+  await until(() => !alive(third));
+});
+
+test('the next host start ends component trees a crashed host left running', { timeout: 60_000 }, async t => {
+  const { chatStatePath } = await setup(t);
+  const recordPath = path.join(path.dirname(resolveCatsAppStoragePathsFromChatState(chatStatePath).registryPath), 'component-processes.json');
+  const startedAt = Date.now();
+  // A stand-in component: its own group on POSIX, with a grandchild that survives it.
+  const script = `const c=require('child_process').spawn(process.execPath,['-e','setInterval(()=>{},1e6)'],`
+    + `{stdio:'ignore',detached:process.platform==='win32'});process.stdout.write(String(c.pid));setInterval(()=>{},1e6)`;
+  const component = spawn(process.execPath, ['-e', script], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true,
+    detached: process.platform !== 'win32' });
+  const grandchild = await new Promise(resolve => component.stdout.once('data', chunk => resolve(Number(String(chunk)))));
+  t.after(() => { for (const pid of [component.pid, grandchild]) { try { process.kill(pid, 'SIGKILL'); } catch {} } });
+  createFileProcessRecordRegistry(recordPath).record({ id: 'test.ask/api/crashed', processId: component.pid, startedAt });
+  process.kill(component.pid, 'SIGKILL');
+  await until(() => !alive(component.pid));
+  assert.equal(alive(grandchild), true, 'the crash left the grandchild running');
+
+  const next = new AppComponentHost({ chatStatePath, ownerId: 'owner', readinessTimeoutMs: 10_000 });
+  t.after(() => next.close());
+  await next.restore();
+  await until(() => !alive(grandchild));
+  assert.deepEqual(JSON.parse(await readFile(recordPath, 'utf8')), []);
 });
