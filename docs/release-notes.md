@@ -2,9 +2,11 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
-## 2026-10-01 — Desktop 0.7.2 standard preview (prepared)
+## 2026-10-01 — Desktop 0.7.2 standard preview (published)
 
-Desktop **0.7.2** is prepared for the owner-requested standard-profile preview.
+Desktop **0.7.2** was published on 2026-10-01 (Taipei) as the owner-requested
+[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.2)
+from `4fa55d9781950fc87c10d97a12367f1b0c13cc41` ([preparation PR #226](https://github.com/cats-inc/cats-platform/pull/226)).
 The Platform source differs from Desktop 0.7.1 only by release documentation and
 the shared manifest/lockfile version. This is a compatible patch with no public
 API, configuration or persisted-data contract change and no migration.
@@ -23,17 +25,33 @@ API, configuration or persisted-data contract change and no migration.
   `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
   Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
   compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
-- **Signing and updates.** Dispatch `desktop-release.yml` with `tag=v0.7.2`, the
-  full Runtime SHA above and `unsigned=false`; the workflow creates the preview
-  tag. Expected trust: macOS signed + notarized, Windows unsigned (no certificate),
+- **Signing and updates.** The manual `desktop-release.yml` dispatch used
+  `tag=v0.7.2`, the full Runtime SHA above and `unsigned=false`; the workflow
+  created the preview tag. Verified trust: macOS signed + notarized, Windows unsigned (no certificate),
   Linux n/a. Standard-profile 0.7.1 installs retain their update path: macOS uses
   the same Developer ID team, Windows stays unsigned to unsigned, and Linux uses
   the `.deb` update path. Installed upgrades are not exercised by this version bump.
 - **Validation.** The `v0.7.2` version identity guard and all 12 release-version
-  tests passed locally (Node test isolation disabled for the sandbox). Full candidate
-  CI and all Desktop workflow gates are required before publication. Published
-  downloads, source identity, checksums and actual platform trust will be recorded
-  after verification.
+  tests passed locally (Node test isolation disabled for the sandbox). Full
+  [candidate CI](https://github.com/cats-inc/cats-platform/actions/runs/36789839354)
+  passed 5,490 tests with 59 skipped and zero failures; the final documentation
+  refinement reused that exact code fingerprint in the passing required CI.
+  All eight [Desktop workflow jobs](https://github.com/cats-inc/cats-platform/actions/runs/36790847442)
+  succeeded, including packaged Platform startup, offline App activation, source
+  receipts and release-asset validation. The published prerelease has 14 assets.
+- **Public downloads.** Every asset covered by `SHA256SUMS` matches its SHA-256
+  and public size. All three update metadata files name real assets with matching
+  size and SHA-512. The downloaded source ZIP passes the complete-source verifier
+  for Platform `4fa55d97`, Runtime `8729cd6c`, cats-apps `1c67c428` and Usage 0.5.1.
+  The Linux `.deb` carries Platform 0.7.2 and the matching source descriptor;
+  its Runtime catalog has digest
+  `bbfb0c764dd04457859f51bd5bc34c11e089ef5a45d2cc986e16a4f310e79f9c`, eight Codex
+  CLI models and `gpt-6.1-sol` as the default.
+- **Platform trust evidence.** macOS uses Developer ID team `97JBZ3MFX5`, with
+  successful notarization, stapled-ticket validation and `Notarized Developer ID`
+  Gatekeeper assessment. The downloaded Windows installer reports `NotSigned`,
+  matching the standard profile's absent Windows certificate. Linux signing is n/a.
+  No installed 0.7.1 to 0.7.2 upgrade or provider inference call was exercised.
 
 ## 2026-09-30 — Desktop 0.7.1 standard preview (published)
 

@@ -163,6 +163,25 @@ publishes Desktop nor creates its Git tag.
 
 ### Desktop publication
 
+Desktop **0.7.2** was published on 2026-10-01 (Taipei) as a
+[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.2)
+from `4fa55d9781950fc87c10d97a12367f1b0c13cc41`. All OS builds bundle Runtime
+`8729cd6cb17ab52a034e2365baffcd82915a8af8` (package version 0.4.0), including the
+Claude Sonnet 5.5 and Codex GPT-6.1-Sol CLI catalog refreshes. Usage 0.5.1 remains
+pinned; Platform npm, Runtime npm, cats-one and Apps are not published with this
+Desktop release. There is no breaking contract or data migration.
+
+`0.7.2 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
+All eight [Desktop workflow jobs](https://github.com/cats-inc/cats-platform/actions/runs/36790847442)
+passed, and the published prerelease has 14 assets. Public downloads pass
+`SHA256SUMS`, all three updater metadata size/SHA-512 checks, and complete-source
+identity verification. The Linux package contains the recorded Platform/Runtime
+identity and the matching catalog digest with eight Codex models and GPT-6.1-Sol
+as default. macOS retained Developer ID team `97JBZ3MFX5`; its notarization,
+stapled-ticket and Gatekeeper checks passed. Windows remains unsigned without a
+certificate. Standard-profile 0.7.1 installations retain the same update trust
+path on each OS; no installed upgrade was exercised. See [release notes](release-notes.md).
+
 Desktop **0.7.1** was published on 2026-09-30 (Taipei) as a
 [standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.1)
 from `8fc4d9dae28282e9f19534efdd30c89c6b247a86`. Platform npm is not published at this
