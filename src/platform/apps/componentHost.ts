@@ -6,7 +6,12 @@ import { validateRendererPackage } from './packageInstaller.js';
 import { resolveCatsAppStoragePathsFromChatState, resolveCatsAppDataDir } from './paths.js';
 import { FileCatsAppRegistry, type CatsAppRegistryInstallInput } from './registry.js';
 import type { CatsInstalledAppRecord } from '../../shared/catsAppManifest.js';
-import { startAppProcess, type AppProcess } from './componentProcess.js';
+import { settleAppProcessCleanups, startAppProcess, type AppProcess } from './componentProcess.js';
+import {
+  createFileProcessRecordRegistry,
+  sweepRecordedProcessTrees,
+  type ProcessRecordRegistry,
+} from '../process/processRegistry.js';
 import { createAppGateway, type AppViewAuthority } from './componentGateway.js';
 
 interface RunningApp {
@@ -20,6 +25,8 @@ interface RunningApp {
 export class AppComponentHost {
   private readonly registry: FileCatsAppRegistry;
   private readonly paths;
+  /** Running component roots, for the crash sweep at the next start (PLAN-115 P1). */
+  private readonly processes: ProcessRecordRegistry;
   private readonly running = new Map<string, RunningApp>();
   private readonly queues = new Map<string, Promise<unknown>>();
   private readonly restarts = new Map<string, number>();
@@ -32,6 +39,9 @@ export class AppComponentHost {
   constructor(private readonly options: { chatStatePath: string; ownerId: string; readinessTimeoutMs?: number }) {
     this.paths = resolveCatsAppStoragePathsFromChatState(options.chatStatePath);
     this.registry = new FileCatsAppRegistry({ registryPath: this.paths.registryPath });
+    this.processes = createFileProcessRecordRegistry(
+      path.join(path.dirname(this.paths.registryPath), 'component-processes.json'),
+    );
   }
 
   async install(input: CatsAppRegistryInstallInput): Promise<CatsInstalledAppRecord> {
@@ -70,7 +80,7 @@ export class AppComponentHost {
             entrypoint: path.join(record.packagePath, 'files', components.data.migration),
             context: { appId: record.id, componentId: 'migration', dataDir: target, services: {},
               fromSchemaVersion: oldSchema, toSchemaVersion: components.data.schemaVersion },
-            timeoutMs: this.options.readinessTimeoutMs });
+            timeoutMs: this.options.readinessTimeoutMs, registry: this.processes });
           await migration.stop();
         }
         // Readiness runs on the new data copy before the single registry activation write.
@@ -170,6 +180,8 @@ export class AppComponentHost {
   }
 
   async restore() {
+    // Components a crashed host left running, and what they started.
+    await sweepRecordedProcessTrees(this.processes).catch(() => {});
     for (const record of await this.registry.listInstalledApps()) {
       if (record.enabled && record.manifest.components) {
         await this.serialize(record.id, () => this.startUnlocked(record)).catch(() => this.failures.set(record.id, 'App startup failed.'));
@@ -186,6 +198,7 @@ export class AppComponentHost {
     this.shutdown = (async () => {
       await Promise.allSettled([...this.queues.values()]);
       await Promise.all([...this.running.keys()].map(id => this.stopUnlocked(id)));
+      await settleAppProcessCleanups();
     })();
     return this.shutdown;
   }
@@ -258,7 +271,7 @@ export class AppComponentHost {
           return dependency.url ? [[id, { url: dependency.url, headers: { 'x-cats-component-key': dependency.key } }]] : [];
         }));
         processes.set(item.id, await startAppProcess({ entrypoint: path.join(record.packagePath, 'files', item.entrypoint),
-          kind: item.kind, timeoutMs: this.options.readinessTimeoutMs,
+          kind: item.kind, timeoutMs: this.options.readinessTimeoutMs, registry: this.processes,
           context: { appId: record.id, componentId: item.id, dataDir: this.dataDir(record.id, record.dataGeneration!), services },
           onExit: () => { if (!stopping) void this.recover(record.id); } }));
       }

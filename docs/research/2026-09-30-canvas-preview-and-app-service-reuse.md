@@ -40,8 +40,11 @@
   an HTTP probe, and a restart means re-running a profile. Merging the two
   supervisors would either force IPC on dev servers or drop it from Apps.
 - **Tree kill is worth sharing, and Apps need it.** `componentProcess.ts` stops
-  with `child.kill('SIGKILL')`. On Windows that ends only the direct Node child.
-  An App service that starts its own subprocesses would leave them running. The
+  with `child.kill('SIGKILL')`. On POSIX the component's subprocesses are then
+  reparented and keep running. On Windows, Node's kill-on-close job ends
+  non-detached ones with the component, so only detached ones survive. (The
+  first version of this note said the gap was on Windows; a probe during
+  PLAN-115 P1 corrected it.) The
   live-preview adapter already implements a graceful-then-forced tree kill
   (`taskkill /T` then `/T /F`, or process-group signals on POSIX).
   - Recommendation: move it to `src/platform/process/killTree.ts` and use it in
@@ -88,8 +91,8 @@
 
 1. Extract `killTree` and the process registry to `src/platform/process/`, adopt
    them in `componentProcess.ts`, and add a test that an App service's
-   grandchild dies on stop on Windows. This is a behavior fix for Apps, so it
-   needs its own plan item under SPEC-122's owner.
+   grandchild dies on stop. This is a behavior fix for Apps, so it needs its
+   own plan item under SPEC-122's owner. Done in PLAN-115 P1.
 2. Extract `containedRealpath` when a second caller changes; do not refactor
    ahead of that.
 3. Leave leases, browser sandbox profiles and routing separate. Add a

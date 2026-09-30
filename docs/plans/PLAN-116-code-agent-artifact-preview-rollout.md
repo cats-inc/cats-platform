@@ -501,8 +501,9 @@ call a Platform-hosted MCP tool and receive its result.
   for App documents. Remote viewing of loopback Canvas leases needs separate
   acceptance; this App ingress change does not make those URLs remotely usable.
   Done: [evaluation](../research/2026-09-30-canvas-preview-and-app-service-reuse.md).
-  - Share the tree kill and the orphan registry. App stop currently ends only
-    the direct child on Windows; that fix is tracked in PLAN-115 P1.
+  - Share the tree kill and the orphan registry. App stop left a component's
+    subprocesses running (on POSIX, and detached ones on Windows); fixed in
+    PLAN-115 P1.
   - Share a contained-realpath primitive when a second caller changes.
   - Keep leases, sandbox profiles and routing separate, as above.
 - [x] F5: When SPEC-121 plugin MCP or a user-granted App endpoint needs to reach

@@ -32,12 +32,14 @@ registry/lifecycle machinery, not a second installer.
   revocation and coordinated stop/disable/remove; same-version file repair remains
   a separate PLAN-112 follow-up.
 - [x] Implement data migration/backup/activation recovery with PLAN-112.
-- [ ] Stop a component's whole process tree (opened 2026-09-30 from the PLAN-116
+- [x] Stop a component's whole process tree (opened 2026-09-30 from the PLAN-116
   F4 [evaluation](../research/2026-09-30-canvas-preview-and-app-service-reuse.md)).
-  `componentProcess.ts` sends IPC `stop`, then `child.kill('SIGKILL')` after
-  3.5 s. On Windows that ends only the component's Node process, so a
-  subprocess the App started (a helper server, a CLI) keeps running and can
-  hold its port after stop, disable, remove or a Platform crash.
+  `componentProcess.ts` sent IPC `stop`, then `child.kill('SIGKILL')` after
+  3.5 s. A subprocess the App started (a helper server, a CLI) could keep
+  running and hold its port after stop, disable, remove or a Platform crash.
+  Correction found while fixing it: this was a POSIX gap. On Windows, Node puts
+  non-detached subprocesses in a kill-on-close job, so only detached ones
+  survived there.
   - Move the Code live-preview tree kill to a shared `src/platform/process/`
     helper and use it here: graceful `taskkill /T`, then `/T /F`; process-group
     signals on POSIX, which needs the component spawned as its own group.
@@ -48,6 +50,31 @@ registry/lifecycle machinery, not a second installer.
   - Acceptance, on Windows and POSIX: a fixture service that starts a long-lived
     grandchild leaves no process after stop, disable, remove, a generation
     restart, and a Platform crash followed by a start.
+  Done:
+  - `src/platform/process/processTree.ts` holds the shared tree signal (moved
+    from the live-preview adapter) and the remnant cleanup:
+    - it lists processes (PowerShell CIM on Windows, `ps` on POSIX) and walks
+      parent ids on Windows or the process group on POSIX;
+    - start times guard against reused ids;
+    - it ends leaves first.
+  - Components run as their own POSIX process group. After a component exits,
+    for any reason, the group is ended; on Windows, detached remnants are ended
+    in the background, because listing processes takes about 2 s there.
+  - The forced exit ends the tree.
+  - `apps/component-processes.json` records running roots, and
+    `AppComponentHost.restore()` sweeps it before starting Apps.
+  - The port check was dropped: workers have no port, and the recorded start
+    time identifies the root instead.
+  - Tests:
+    - `tests/platform-process-tree.test.ts` covers listing parsers,
+      Windows/POSIX tree rules, the reuse guard and the one-listing sweep. Its
+      real root→grandchild case shows the grandchild outliving its root until
+      the cleanup ends it.
+    - `tests/app-components.test.js` covers disable, a crash restart and
+      remove ending the grandchild, and a new host's `restore()` ending a
+      recorded crashed tree.
+    - These pass on Windows locally, where they fail with the cleanup disabled.
+      PR CI runs them on Linux.
 
 ## P2 — Initial local frontend/service communication (historical prototype)
 
