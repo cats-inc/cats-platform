@@ -496,9 +496,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.guard.outputs.tag }}
           PREVIEW: ${{ needs.guard.outputs.preview }}
+          WINDOWS_SIGNED: ${{ needs.guard.outputs.unsigned != 'true' && secrets.WIN_CSC_LINK != '' }}
         run: |
           gh release view "$TAG" --json body --jq .body > original-notes.md
-          printf '## Complete Cats source code\n\n[Download the complete source ZIP](https://github.com/cats-inc/cats-platform/releases/download/%s/Cats-%s-source.zip) · [Source manifest](https://github.com/cats-inc/cats-platform/releases/download/%s/Cats-%s-sources.json)\n\nIncludes the exact Platform, Runtime and bundled App sources. GitHub\x27s automatic **Source code** links contain cats-platform only. See BUILDING.md inside the ZIP.\n\n' "$TAG" "$TAG" "$TAG" "$TAG" > release-notes.md
+          : > release-notes.md
+          # Same condition as the build job's Windows signature check.
+          if [ "$WINDOWS_SIGNED" != "true" ]; then
+            printf '## Installing on Windows\n\nThe Windows installer is not code-signed yet. When you run `Cats-%s-setup-x64.exe`, Microsoft Defender SmartScreen shows **Windows protected your PC** (「Windows 已保護您的電腦」). Click **More info** (「其他資訊」), then **Run anyway** (「仍要執行」). Only the first install needs this; later versions install through the in-app updater (**Check for Update**). Windows 11 Smart App Control blocks unsigned installers with no **Run anyway** option. See [Install the Desktop app](https://github.com/cats-inc/cats-platform#install-the-desktop-app).\n\n' "${TAG#v}" >> release-notes.md
+          fi
+          printf '## Complete Cats source code\n\n[Download the complete source ZIP](https://github.com/cats-inc/cats-platform/releases/download/%s/Cats-%s-source.zip) · [Source manifest](https://github.com/cats-inc/cats-platform/releases/download/%s/Cats-%s-sources.json)\n\nIncludes the exact Platform, Runtime and bundled App sources. GitHub\x27s automatic **Source code** links contain cats-platform only. See BUILDING.md inside the ZIP.\n\n' "$TAG" "$TAG" "$TAG" "$TAG" >> release-notes.md
           cat original-notes.md >> release-notes.md
           gh release edit "$TAG" --notes-file release-notes.md
           if [ "$PREVIEW" = "true" ]; then

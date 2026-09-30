@@ -399,6 +399,9 @@ gh attestation verify Cats-0.6.2-setup-x64.exe --repo cats-inc/cats-platform
 
 The attestation proves which run built the file; it does not replace platform
 code signing, so Windows SmartScreen and macOS Gatekeeper behaviour is unchanged.
+While Windows has no certificate, the publish step puts SmartScreen install steps
+(More info, then Run anyway) at the top of the release description. They match the
+README's [Install the Desktop app](../README.md#install-the-desktop-app) section.
 
 Wording and confirmation rules:
 
