@@ -2,6 +2,55 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-09-30 — Desktop 0.7.1 standard preview (prepared)
+
+Desktop **0.7.1** is prepared as a standard-profile preview from the source after
+Platform 0.7.0 (`6d53fb56`). The owner authorized this Desktop preview only:
+Platform npm is not published at this version, so npm `latest` stays 0.7.0, and
+Runtime, cats-one and Apps are not released. It is a **patch**. Every change since
+0.7.0 is compatible. There are no public API, configuration or persisted-data
+contract breaks, and no migration.
+
+- **Runtime.** Desktop bundles Runtime main at `6dd398f9` (Runtime 0.4.0 plus #140,
+  #142 and #143). These add:
+  - `continuity.sessionMcpServers` in provider reads;
+  - a message-stream heartbeat, so long silent Codex work no longer hits
+    Platform's 120 s idle timeout;
+  - session MCP delivery for GitHub Copilot CLI.
+  Runtime npm is not published.
+- **Code previews** (PLAN-116). Cats can start a project's dev server with
+  `start_dev_preview`: Vite directly, or other scripts through npm with framework
+  port adapters.
+  - This needs Settings > Code "Cats may run preview servers", which is **off by
+    default** (opt-in), and a session that can already run shell commands.
+  - The canvas gains a controls row for dev servers: status, Stop, Restart, Logs
+    and Open in browser.
+  - A static preview whose lease was lost, for example after a Platform restart,
+    restarts on the same artifact.
+  - A conversation's previews stop when its sessions end, and the next start
+    cleans up dev servers a crash left behind.
+  - Markdown files open in a sanitized viewer.
+  - Code/Markdown files served by a preview lease now load in the canvas.
+- **Apps** (PLAN-115 P1). Stopping an App component ends the processes it
+  started. Components run as their own process group on POSIX, detached Windows
+  remnants are cleaned up, and the next start sweeps trees a crash left behind.
+- **Session MCP** (PLAN-116 F5). App and plugin servers can join a Cat session
+  through one composition point. No consumer uses it yet.
+- **New stored state:**
+  - the preference `codePreviewServersEnabled`; an absent value reads as off;
+  - `state/code-live-preview-processes.json`;
+  - `apps/component-processes.json`.
+  0.7.0 ignores all three, so moving back needs no conversion.
+- **Unchanged:** the Usage 0.5.1 App pin, and the knowledge bundles'
+  `platformRange: "0.7.x"`.
+- **Not verified here.** An installed 0.7.0 → 0.7.1 upgrade on each OS. The Code
+  preview acceptance (PLAN-116 M2/M3) ran in isolated instances on Windows, and
+  the App process-tree tests ran on Windows locally and on Linux in CI.
+- **Merged PRs:**
+  - features: #213, #216, #217, #218, #220 and #224;
+  - release fix: #214;
+  - documentation: #219 and #221–#223.
+
 ## 2026-09-30 — Platform 0.7.0 npm and Desktop standard preview (published)
 
 Platform **0.7.0** was published to npm `latest` and as the Desktop 0.7.0
