@@ -2,6 +2,39 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-01 — Desktop 0.7.2 standard preview (prepared)
+
+Desktop **0.7.2** is prepared for the owner-requested standard-profile preview.
+The Platform source differs from Desktop 0.7.1 only by release documentation and
+the shared manifest/lockfile version. This is a compatible patch with no public
+API, configuration or persisted-data contract change and no migration.
+
+- **Runtime.** Pin `8729cd6cb17ab52a034e2365baffcd82915a8af8` (package version
+  remains 0.4.0) on every OS and in the complete source archive. Since 0.7.1's
+  `6dd398f9`, the Claude CLI catalog adds Sonnet 5.5 and the Codex CLI catalog adds
+  GPT-6.1-Sol as its model default, with Low reasoning. All previous model IDs
+  remain available; existing session bindings retain their recorded arguments.
+  Claude's `sonnet` alias now follows Sonnet 5.5, with Sonnet 5 kept as an explicit
+  model ID. Ultracode moves out of the upstream effort picker into a separate
+  toggle, so the catalog no longer offers it as an effort; the CLI still accepts
+  the old argument as a legacy alias of xhigh. Picker observations and validation
+  are recorded in Runtime.
+- **Apps.** Reuse Usage 0.5.1, SHA-256
+  `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
+  Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
+  compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
+- **Signing and updates.** Dispatch `desktop-release.yml` with `tag=v0.7.2`, the
+  full Runtime SHA above and `unsigned=false`; the workflow creates the preview
+  tag. Expected trust: macOS signed + notarized, Windows unsigned (no certificate),
+  Linux n/a. Standard-profile 0.7.1 installs retain their update path: macOS uses
+  the same Developer ID team, Windows stays unsigned to unsigned, and Linux uses
+  the `.deb` update path. Installed upgrades are not exercised by this version bump.
+- **Validation.** The `v0.7.2` version identity guard and all 12 release-version
+  tests passed locally (Node test isolation disabled for the sandbox). Full candidate
+  CI and all Desktop workflow gates are required before publication. Published
+  downloads, source identity, checksums and actual platform trust will be recorded
+  after verification.
+
 ## 2026-09-30 — Desktop 0.7.1 standard preview (published)
 
 Desktop **0.7.1** was published on 2026-09-30 (Taipei) as a
