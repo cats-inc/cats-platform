@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { componentRunnerUrl } from '#cats-app-package';
-import { killProcessTreeRemnants, signalChildProcessTree } from '../process/processTree.js';
+import { killProcessTreeRemnants, listProcesses, signalChildProcessTree, type ProcessEntry } from '../process/processTree.js';
 import type { ProcessRecordRegistry } from '../process/processRegistry.js';
 
 export interface AppProcessContext {
@@ -38,6 +38,30 @@ export interface AppProcess {
  */
 const pendingCleanups = new Set<Promise<unknown>>();
 
+/**
+ * Windows remnant cleanups are batched: components stopped together (an App,
+ * or host shutdown) share one process listing, which is taken after all of
+ * them exited, so it still sees every remnant.
+ */
+let windowsBatch: { roots: { pid: number; startedAt: number; done: () => void }[] } | null = null;
+function cleanUpWindowsRemnants(pid: number, startedAt: number): Promise<void> {
+  return new Promise((resolve) => {
+    if (!windowsBatch) {
+      const batch = { roots: [] as { pid: number; startedAt: number; done: () => void }[] };
+      windowsBatch = batch;
+      setTimeout(() => {
+        windowsBatch = null;
+        const entries: Promise<ProcessEntry[]> = listProcesses('win32').catch(() => []);
+        void Promise.all(batch.roots.map((root) =>
+          killProcessTreeRemnants(root.pid, root.startedAt, { platform: 'win32', listProcesses: () => entries })
+            .catch(() => [])
+            .finally(root.done)));
+      }, 250).unref();
+    }
+    windowsBatch.roots.push({ pid, startedAt, done: resolve });
+  });
+}
+
 /** Wait for background tree cleanups, e.g. before the host exits. */
 export async function settleAppProcessCleanups(timeoutMs = 10_000): Promise<void> {
   await Promise.race([
@@ -62,7 +86,10 @@ export async function startAppProcess(options: {
   const startedAt = Date.now();
   const child = spawn(process.execPath, ['--max-old-space-size=192', fileURLToPath(componentRunnerUrl)], {
     cwd: path.dirname(options.entrypoint), env, windowsHide: true,
-    // Its own process group on POSIX, so its whole tree can be ended.
+    // Its own process group on POSIX, so its whole tree can be ended. It then
+    // leaves the host's terminal group (a Ctrl-C to a dev host no longer
+    // reaches it); it stops on IPC 'stop' or 'disconnect', which also fires when
+    // the host dies.
     detached: process.platform !== 'win32',
     stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   });
@@ -82,11 +109,13 @@ export async function startAppProcess(options: {
     const pid = child.pid;
     if (!pid) return;
     if (process.platform !== 'win32') {
+      // The group is this component's: its id is the component's pid, and a
+      // restarted component runs as a new group with a new pid.
       try { process.kill(-pid, 'SIGKILL'); } catch { /* the group is already gone */ }
       options.registry?.forget(recordId);
       return;
     }
-    const background = killProcessTreeRemnants(pid, startedAt).catch(() => [])
+    const background = cleanUpWindowsRemnants(pid, startedAt)
       .then(() => options.registry?.forget(recordId));
     pendingCleanups.add(background);
     void background.finally(() => pendingCleanups.delete(background));
