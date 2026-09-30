@@ -150,7 +150,7 @@ shell-free profile pointing at their preferred dev server entry.
 SPEC-123 question 1 (approved 2026-09-29) closes PLAN-097 Task 5.1: dev
 previews run for sessions that already have shell execution permission,
 behind the Settings > Code "Cats may run preview servers" switch. The
-switch currently ships **off** until the user confirms the default. The
+switch is **off by default** (opt-in; user decision 2026-09-30). The
 supervisor wiring is in the host (`createCodeLivePreviewSupervisor` with
 `previewServersAllowed`).
 

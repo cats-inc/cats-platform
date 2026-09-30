@@ -264,6 +264,10 @@ shared-ingress implementation and PR delivery; release acceptance is separate.
   for services and optional `close` for services/workers. This is trusted native code,
   not an OS sandbox. Readiness is 15 seconds; shutdown forces exit after 3.5 seconds;
   two automatic generation restarts are allowed before an explicit enable retry.
+  Known gap (found 2026-09-30, PLAN-116 F4): the forced exit is `child.kill('SIGKILL')`,
+  which on Windows ends only the component's own Node process. Processes the
+  component started keep running after stop, disable, remove or a Platform crash.
+  Stop must end the component's whole process tree; PLAN-115 P1 tracks the fix.
 - Updates quiesce the App, copy data to a new generation, run its declared
   `migrate({dataDir, fromSchemaVersion, toSchemaVersion})`, then check readiness.
   One atomic registry write selects package and data generation together. Old and

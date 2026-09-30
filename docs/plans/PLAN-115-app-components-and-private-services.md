@@ -32,6 +32,22 @@ registry/lifecycle machinery, not a second installer.
   revocation and coordinated stop/disable/remove; same-version file repair remains
   a separate PLAN-112 follow-up.
 - [x] Implement data migration/backup/activation recovery with PLAN-112.
+- [ ] Stop a component's whole process tree (opened 2026-09-30 from the PLAN-116
+  F4 [evaluation](../research/2026-09-30-canvas-preview-and-app-service-reuse.md)).
+  `componentProcess.ts` sends IPC `stop`, then `child.kill('SIGKILL')` after
+  3.5 s. On Windows that ends only the component's Node process, so a
+  subprocess the App started (a helper server, a CLI) keeps running and can
+  hold its port after stop, disable, remove or a Platform crash.
+  - Move the Code live-preview tree kill to a shared `src/platform/process/`
+    helper and use it here: graceful `taskkill /T`, then `/T /F`; process-group
+    signals on POSIX, which needs the component spawned as its own group.
+  - Record running component process ids and ports, like
+    `code-live-preview-processes.json`, and sweep survivors at Platform start,
+    killing only processes that are still alive and still hold their recorded
+    port.
+  - Acceptance, on Windows and POSIX: a fixture service that starts a long-lived
+    grandchild leaves no process after stop, disable, remove, a generation
+    restart, and a Platform crash followed by a start.
 
 ## P2 — Initial local frontend/service communication (historical prototype)
 

@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Implementation complete (2026-09-30). M1, M2 and M3 accepted; M4 F1–F5 done. Open for the user: the P0 App/plugin MCP alignment review and the Settings > Code preview-server default (shipped off; the approved default is on) |
+| **Status** | Implementation complete (2026-09-30). M1, M2 and M3 accepted; M4 F1–F5 done. The Settings > Code preview-server switch stays off by default (user decision, 2026-09-30). Open for the user: the P0 App/plugin MCP alignment review |
 | **Owner** | Claude |
 | **Reviewer** | User |
 
@@ -278,9 +278,9 @@ call a Platform-hosted MCP tool and receive its result.
     skips ports another program holds.
   - A real Vite smoke on Windows started Vite through the host, served module
     scripts, and on stop left neither Vite nor its esbuild child running.
-  Deviation: the switch ships **off**. The approved default is on, but enabling
-  process spawning by default was held back for the user's explicit
-  confirmation; flipping it is a one-line change in `platformPreferences.ts`.
+  Decision (2026-09-30): the switch stays **off by default** (opt-in). The
+  original proposal was default on; the user confirmed opt-in after D1 shipped
+  it off.
 - [x] D2: Add canvas top-bar lease controls (status, Stop, Restart, Logs, Open
   externally), reusing the `LivePreviewPanel` pieces. Implement lifecycle: stop on
   conversation deletion and grant revocation, TTL renewal while the canvas is
@@ -502,7 +502,7 @@ call a Platform-hosted MCP tool and receive its result.
   acceptance; this App ingress change does not make those URLs remotely usable.
   Done: [evaluation](../research/2026-09-30-canvas-preview-and-app-service-reuse.md).
   - Share the tree kill and the orphan registry. App stop currently ends only
-    the direct child on Windows; that fix is a separate SPEC-122 item.
+    the direct child on Windows; that fix is tracked in PLAN-115 P1.
   - Share a contained-realpath primitive when a second caller changes.
   - Keep leases, sandbox profiles and routing separate, as above.
 - [x] F5: When SPEC-121 plugin MCP or a user-granted App endpoint needs to reach
