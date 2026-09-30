@@ -237,6 +237,28 @@ several Phase 3 items remain:
 - LINE entrypoints, richer Telegram room-rotation policy, and fuller desktop
   packaging beyond the current host slice
 
+## Install the Desktop app
+
+Download the installer for your platform from
+[GitHub Releases](https://github.com/cats-inc/cats-platform/releases).
+
+The Windows installer is not code-signed yet. When you run the downloaded
+`Cats-<version>-setup-x64.exe`, Microsoft Defender SmartScreen shows
+**Windows protected your PC** (「Windows 已保護您的電腦」) with an unknown
+publisher. To install:
+
+1. Click **More info** (「其他資訊」).
+2. Click **Run anyway** (「仍要執行」).
+
+Only the first install needs this. Later versions install through the in-app
+updater (**Check for Update**). To verify a download before running it, use
+`SHA256SUMS` and the build attestation described in
+[Desktop signing profiles](docs/deployment.md#desktop-signing-profiles).
+
+Windows 11 Smart App Control blocks unsigned installers outright and offers no
+**Run anyway** option. On a machine where it is on, Cats cannot be installed
+unless Smart App Control is turned off.
+
 ## Quick Start
 
 For the npm entrypoint, run `npx @cats-inc/cats-platform`. After readiness, an
