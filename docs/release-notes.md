@@ -2,10 +2,9 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
-## 2026-10-01 — Desktop 0.7.3 standard preview (prepared)
+## 2026-10-01 — Desktop 0.7.3 standard preview
 
-Desktop **0.7.3** is prepared for the owner-requested standard-profile preview. It
-fixes saved model selections that Desktop 0.7.2's refreshed Runtime catalog
+Desktop **0.7.3** is the owner-requested standard-profile preview. It fixes saved model selections that Desktop 0.7.2's refreshed Runtime catalog
 rejected. Chats, cats and Catlas failed to start with `Catalog changed; choose the
 model again from the current catalog.` Saved selections record the catalog revision
 they were chosen under, so 0.7.2's "no persisted-data contract change" did not hold
@@ -32,22 +31,23 @@ A re-stamped selection is written back when its chat's next session starts.
   Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
   compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
 - **Signing and updates.**
-  - Dispatch `desktop-release.yml` with `tag=v0.7.3`, the full Runtime SHA above and
-    `unsigned=false`; the workflow creates the preview tag.
-  - Expected trust: macOS signed + notarized, Windows unsigned (no certificate),
+  - The manual `desktop-release.yml` dispatch uses `tag=v0.7.3`, the full Runtime SHA
+    above and `unsigned=false`; the workflow creates the preview tag.
+  - Trust profile: macOS signed + notarized, Windows unsigned (no certificate),
     Linux n/a.
   - Standard-profile 0.7.2 installs keep their update path: macOS uses the same
     Developer ID team, Windows stays unsigned to unsigned, and Linux uses the `.deb`
-    update path. Installed upgrades are not exercised by this version bump.
+    update path. No installed upgrade is exercised.
 - **Validation.**
-  - Passed locally:
+  - Local checks before merge:
     - 120 focused Node tests: client recovery, selection classification and routing;
     - 98 bundled reconcile and picker tests;
     - the server, desktop, renderer and test TypeScript projects;
     - the catalog boundary, test-collection and docs-boundary checks.
-  - Not run locally: the mobile typecheck, because this worktree has no mobile
-    dependencies.
-  - Required before publication: full candidate CI and all Desktop workflow gates.
+  - Not run locally: the mobile typecheck, because the worktree had no mobile
+    dependencies. Full PR CI and the Desktop workflow gates cover the rest.
+  - Publication results: the [`v0.7.3` GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.3)
+    and its [workflow run](https://github.com/cats-inc/cats-platform/actions/runs/36800526570).
 
 ## 2026-10-01 — Desktop 0.7.2 standard preview (published)
 
