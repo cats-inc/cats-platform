@@ -57,6 +57,8 @@ prepare all release documentation and pins in the original version change.
 Verify publication using existing hosted Release/Actions/registry evidence, then
 report and finish. Do not add tracked publication reports, status-only commits
 or follow-up PRs, or chase unrelated main updates after verification.
+Write release notes so they stay true after publication, and keep this document
+to procedures rather than a list of published versions.
 
 Apply the [cross-repository compatibility and data-upgrade policy](https://github.com/cats-inc/cats-one/blob/main/docs/release-guide.md#compatibility-and-data-upgrades):
 breaking public APIs, configuration, stored-data requirements or supported user
@@ -119,36 +121,9 @@ Watch supervisors retain terminal ownership across file-change/crash restarts.
 
 ### npm publication
 
-Platform **0.5.8** was published on 2026-09-28 (Taipei) to npm `latest` and as a
-[Desktop standard preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.8),
-from `072ba670dc8cb7459d7a1c245b88c3738759ac42`. Desktop bundles Runtime **0.3.2**
-at `9fefd8e41512f200de6b7d4f1ed93fb7aa5e4dcb` on every OS. It includes ordinary-agent contribution and
-diagnostic entry points, owner-reviewed knowledge adoption/deletion, and isolated
-development/practice mechanisms described in PLAN-109. Compatibility review found
-no breaking public API, CLI/config or persisted-data contract since npm 0.5.1;
-no new data migration or launcher minimum is required. The bounded Windows native
-knowledge flow and paired skill-distribution check passed; wider live quality and
-other-OS acceptance remain separate.
-
-[Source CI](https://github.com/cats-inc/cats-platform/actions/runs/36349951984) and
-the [npm publication gate](https://github.com/cats-inc/cats-platform/actions/runs/36350012826)
-both passed 5,231 tests, with 59 skipped and no failures. The
-[Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36350464314)
-passed all seven jobs and published ten assets. All three update metadata files
-reference the expected uploaded assets. The downloaded Windows installer matches
-GitHub SHA-256 and updater SHA-512; the inspected Linux package matches its public
-SHA-256 and contains the exact recorded knowledge identities and 36 preview skills.
-Both npm registry versions, source commits and tarball integrity are verified.
-Both public tarballs also passed installation into a new private prefix and CLI
-entry-point checks. The installed Platform loaders read both bundled knowledge
-files in English and Traditional Chinese; installed Runtime exposes 33 release
-skills with the preview directory physically absent. No provider calls were made.
-
-Trust is macOS **signed + notarized**, Windows **unsigned: no certificate** and
-Linux **n/a**. macOS retains team `97JBZ3MFX5` and the same certificate as 0.5.7;
-app/helper signature, stapled ticket and Gatekeeper checks passed. Standard 0.5.7
-Windows/macOS installations retain their self-update path; Linux still uses a
-manual `.deb` install. No installed user profile was replaced during verification.
+Published npm versions are listed by the npm registry; [release notes](release-notes.md)
+describe each version's changes, pins and verification. This section keeps only the
+procedure.
 
 Publish `@cats-inc/cats-platform` through the manual
 [npm publish workflow](../.github/workflows/npm-publish.yml), which runs the full
@@ -169,128 +144,10 @@ publishes Desktop nor creates its Git tag.
 
 ### Desktop publication
 
-Desktop **0.7.2** was published on 2026-10-01 (Taipei) as a
-[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.2)
-from `4fa55d9781950fc87c10d97a12367f1b0c13cc41`. All OS builds bundle Runtime
-`8729cd6cb17ab52a034e2365baffcd82915a8af8` (package version 0.4.0), including the
-Claude Sonnet 5.5 and Codex GPT-6.1-Sol CLI catalog refreshes. Usage 0.5.1 remains
-pinned; Platform npm, Runtime npm, cats-one and Apps are not published with this
-Desktop release. There is no breaking contract or data migration.
-
-`0.7.2 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
-All eight [Desktop workflow jobs](https://github.com/cats-inc/cats-platform/actions/runs/36790847442)
-passed, and the published prerelease has 14 assets. Public downloads pass
-`SHA256SUMS`, all three updater metadata size/SHA-512 checks, and complete-source
-identity verification. The Linux package contains the recorded Platform/Runtime
-identity and the matching catalog digest with eight Codex models and GPT-6.1-Sol
-as default. macOS retained Developer ID team `97JBZ3MFX5`; its notarization,
-stapled-ticket and Gatekeeper checks passed. Windows remains unsigned without a
-certificate. Standard-profile 0.7.1 installations retain the same update trust
-path on each OS; no installed upgrade was exercised. See [release notes](release-notes.md).
-
-Desktop **0.7.1** was published on 2026-09-30 (Taipei) as a
-[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.1)
-from `8fc4d9dae28282e9f19534efdd30c89c6b247a86`. Platform npm is not published at this
-version, so npm `latest` stays 0.7.0. Every OS build bundles Runtime main at
-`6dd398f9f717a82402c270c2b06848e26845229e`, whose package version is still 0.4.0. That
-Runtime adds provider-read `sessionMcpServers`, the message-stream heartbeat and Copilot
-session MCP delivery.
-- Platform adds Code dev previews behind the opt-in Settings > Code switch, canvas
-  controls and lifecycle, the Markdown viewer, App process-tree stop and the session MCP
-  composition point.
-- No public API, configuration or persisted-data contract changes. The new stored state
-  is optional, so no migration, launcher minimum or App change is required, and the
-  Usage 0.5.1 pin is unchanged.
-
-`0.7.1 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
-All eight [Desktop workflow jobs](https://github.com/cats-inc/cats-platform/actions/runs/36675594193)
-passed, and the prerelease has 14 assets. `SHA256SUMS` verifies the downloaded assets.
-The update metadata names the uploaded files with matching sizes, and the Windows and
-Linux bytes match their updater SHA-512. The sources manifest and the Linux package
-confirm the recorded Platform and Runtime commits. No installed upgrade was exercised.
-
-Desktop **0.5.13** was published on 2026-09-28 (Taipei) as a
-[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.13)
-from `d44e680800e2ba4c787f9c3182be5c7ca50e96ac`. All three OS builds bundle Runtime
-**0.3.4** at `9a35b7f4db77ed82715b229fb629f84f0115bfc5`, including native-session
-path matching, provider-reported served models/run logs, Copilot session model discovery,
-the Kiro v1 engine selection fix, bounded image operations and home-relative image-source
-recovery. Platform includes SDK **1.3.0** and image-job retention/recovery. The version
-preparation changed only version fields and release notes, preserving the other tracks'
-merged implementation. No npm, launcher or App release accompanies this Desktop preview;
-no persisted schema conversion is required.
-
-The default published App bundle still selects only Usage **0.4.0**, SHA-256
-`7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`. Studio 0.1.0 was
-included by the preceding local installer's extra lock and is not in the canonical public
-bundle. App/SDK/market architecture and Studio distribution policy remain a later task.
-
-`0.5.13 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
-The macOS log confirms Developer ID team `97JBZ3MFX5`, successful notarization, stapled-ticket
-validation and `Notarized Developer ID` Gatekeeper assessment. The standard-profile
-0.5.10 → 0.5.13 update path is expected to work on each OS: macOS retains the same signed
-team, Windows stays unsigned to unsigned, and Linux verifies no signature. No new installed
-upgrade was exercised; the earlier 0.5.12 local recovery acceptance is a separate result.
-
-[Candidate CI](https://github.com/cats-inc/cats-platform/actions/runs/36381628091) and all
-seven [Desktop workflow jobs](https://github.com/cats-inc/cats-platform/actions/runs/36382253778)
-passed. The published prerelease has ten assets. All three update metadata files name real
-uploaded files with matching sizes; downloaded Windows/Linux bytes match both GitHub
-SHA-256 and updater SHA-512. Linux package inspection confirms the Runtime changes,
-Platform 0.5.13, SDK 1.3.0 and the exact Usage pin. This verification made no provider calls.
-
-Desktop **0.5.10** was published on 2026-09-28 (Taipei) as a
-[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.10)
-from `c422d950302840d665778e8a5b45ff49bccb0c7d`; Platform npm is not published at this
-version and npm `latest` stays 0.5.8. Every OS build bundles Runtime **0.3.4** at
-`0804e238e1c9b6a29c3357301336400ea4e3ac64`, which stops Auggie and Kiro replies from
-flashing an empty bubble below them, completes turns that end without a result, reads
-Kiro 2.24's session store, runs Junie models by the setting IDs its `--model` accepts,
-and reports a request Pi ends with an error as a failure with Pi's message. Platform's
-model picker now selects a room's saved catalog entry when the saved model is that
-entry's execution ID, such as Pi's `openai-codex/gpt-6-sol` running as `gpt-6-sol`; it
-previously showed the first row, which then could not be picked. No public API,
-configuration or persisted-data contract changes; no migration, launcher minimum or App
-change is required; the Usage 0.4.0 pin is unchanged.
-
-`0.5.10 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
-The macOS build log shows the Developer ID signature, successful notarization and a
-`Notarized Developer ID` Gatekeeper assessment. Installs of 0.5.9 can self-update on
-every OS: macOS stays signed to signed with the same team, Windows unsigned to unsigned
-and Linux verifies no signature. The [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36361034630)
-passed all seven jobs and published ten assets, and all three update metadata files
-reference the uploaded assets with matching sizes. The downloaded Windows installer and
-Linux package match their GitHub SHA-256 digests and updater SHA-512 values. The Linux
-package contains Runtime 0.3.4 with the stream, turn-completion, Kiro store, stderr and
-Pi error changes and the 15 Junie setting IDs, and its renderer bundle contains the
-picker's entry-first selection. PR CI for both source changes passed before merge; no
-installed upgrade was exercised.
-
-Desktop **0.5.9** was published on 2026-09-28 (Taipei) as a
-[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.9)
-from `177cc696c98d30783ddd5a510f153cc73479c8da`; Platform npm is not published at this
-version and npm `latest` stays 0.5.8. Every OS build bundles Runtime **0.3.3** at
-`d061e9b35bb527633d8448274b8fa6c13ffb8851`, which fixes Windows launches that cut
-multi-line or quoted prompts short for Cline, Kilo, Cursor and Junie, stops Cursor
-segments before a tool call from appearing twice, removes OpenCode's withdrawn Union
-Alpha Free and logs each run's model and outcome. Platform stops copying a
-participant's current lease onto every earlier session in a room's history, so each
-session keeps the model and error it ran with. No public API, configuration or
-persisted-data contract changes; no migration, launcher minimum or App change is
-required; the Usage 0.4.0 pin is unchanged.
-
-`0.5.9 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
-The macOS build log shows the Developer ID signature, successful notarization and a
-`Notarized Developer ID` Gatekeeper assessment. Installs of 0.5.8 can self-update on
-every OS: macOS stays signed to signed with the same team, Windows unsigned to unsigned
-and Linux verifies no signature. The [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36355606476)
-passed all seven jobs and published ten assets, and all three update metadata files
-reference the uploaded assets with matching sizes. The downloaded Windows installer and
-Linux package match their GitHub SHA-256 digests and updater SHA-512 values. The Linux
-package contains Runtime 0.3.3 with the Cursor and Junie launchers, the node-shim,
-Cursor-replay and run-log changes, the five-row OpenCode shortlist and the Platform
-session-history fix. PR CI for both source changes passed before merge; no installed
-upgrade was exercised.
+Published Desktop versions, their assets and workflow runs are on
+[GitHub Releases](https://github.com/cats-inc/cats-platform/releases);
+[release notes](release-notes.md) describe each version's changes, pins and
+verification. This section keeps only the procedure.
 
 The [Desktop workflow](../.github/workflows/desktop-release.yml) validates that
 the tag matches the manifest and lockfile versions, builds into a draft, validates

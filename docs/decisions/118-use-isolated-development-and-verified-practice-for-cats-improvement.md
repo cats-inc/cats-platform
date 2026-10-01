@@ -13,7 +13,7 @@ Authorized verification/publication checkpoint, 2026-09-28: the bounded Windows
 manual-knowledge flow passed with no model call or installed-profile mutation.
 Desktop standard preview 0.5.8 and npm Platform 0.5.8 / Runtime 0.3.2 are published;
 CI, artifact identities and platform trust checks passed. PLAN-109 and the
-deployment record retain the exact evidence. This does not accept the broader
+[release notes](../release-notes.md#2026-09-28--platform-058-npm-and-desktop-standard-preview-published) retain the exact evidence. This does not accept the broader
 managed-development or independent knowledge-quality scenarios.
 
 Proposed overall, 2026-09-24. After the drafting pass, the owner authorized the

@@ -36,7 +36,7 @@ implementation-only restriction below is historical. Platform source is
 `072ba670dc8cb7459d7a1c245b88c3738759ac42`, with Runtime
 `9fefd8e41512f200de6b7d4f1ed93fb7aa5e4dcb` pinned identically on all three OSes.
 The [release](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.8) and
-[deployment record](../deployment.md#npm-publication) retain publication evidence.
+[release notes](../release-notes.md#2026-09-28--platform-058-npm-and-desktop-standard-preview-published) retain publication evidence.
 
 A fresh isolated Windows Desktop profile passed the actual Electron-renderer and
 production-HTTP flow for both Catlas and Orchestrator: submit a synthetic draft,

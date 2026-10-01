@@ -629,6 +629,96 @@ No new provider generation was performed.
 
 See [PLAN-111](plans/PLAN-111-app-image-generation.md) for installation evidence.
 
+## 2026-09-28 — Desktop 0.5.10 standard preview (published)
+
+Desktop **0.5.10** was published on 2026-09-28 (Taipei) as a
+[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.10)
+from `c422d950302840d665778e8a5b45ff49bccb0c7d`; Platform npm is not published at this
+version and npm `latest` stays 0.5.8. Every OS build bundles Runtime **0.3.4** at
+`0804e238e1c9b6a29c3357301336400ea4e3ac64`, which stops Auggie and Kiro replies from
+flashing an empty bubble below them, completes turns that end without a result, reads
+Kiro 2.24's session store, runs Junie models by the setting IDs its `--model` accepts,
+and reports a request Pi ends with an error as a failure with Pi's message. Platform's
+model picker now selects a room's saved catalog entry when the saved model is that
+entry's execution ID, such as Pi's `openai-codex/gpt-6-sol` running as `gpt-6-sol`; it
+previously showed the first row, which then could not be picked. No public API,
+configuration or persisted-data contract changes; no migration, launcher minimum or App
+change is required; the Usage 0.4.0 pin is unchanged.
+
+`0.5.10 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
+The macOS build log shows the Developer ID signature, successful notarization and a
+`Notarized Developer ID` Gatekeeper assessment. Installs of 0.5.9 can self-update on
+every OS: macOS stays signed to signed with the same team, Windows unsigned to unsigned
+and Linux verifies no signature. The [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36361034630)
+passed all seven jobs and published ten assets, and all three update metadata files
+reference the uploaded assets with matching sizes. The downloaded Windows installer and
+Linux package match their GitHub SHA-256 digests and updater SHA-512 values. The Linux
+package contains Runtime 0.3.4 with the stream, turn-completion, Kiro store, stderr and
+Pi error changes and the 15 Junie setting IDs, and its renderer bundle contains the
+picker's entry-first selection. PR CI for both source changes passed before merge; no
+installed upgrade was exercised.
+
+## 2026-09-28 — Desktop 0.5.9 standard preview (published)
+
+Desktop **0.5.9** was published on 2026-09-28 (Taipei) as a
+[standard-profile preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.9)
+from `177cc696c98d30783ddd5a510f153cc73479c8da`; Platform npm is not published at this
+version and npm `latest` stays 0.5.8. Every OS build bundles Runtime **0.3.3** at
+`d061e9b35bb527633d8448274b8fa6c13ffb8851`, which fixes Windows launches that cut
+multi-line or quoted prompts short for Cline, Kilo, Cursor and Junie, stops Cursor
+segments before a tool call from appearing twice, removes OpenCode's withdrawn Union
+Alpha Free and logs each run's model and outcome. Platform stops copying a
+participant's current lease onto every earlier session in a room's history, so each
+session keeps the model and error it ran with. No public API, configuration or
+persisted-data contract changes; no migration, launcher minimum or App change is
+required; the Usage 0.4.0 pin is unchanged.
+
+`0.5.9 preview · standard · macOS signed + notarized / Windows unsigned (no certificate) / Linux n/a`.
+The macOS build log shows the Developer ID signature, successful notarization and a
+`Notarized Developer ID` Gatekeeper assessment. Installs of 0.5.8 can self-update on
+every OS: macOS stays signed to signed with the same team, Windows unsigned to unsigned
+and Linux verifies no signature. The [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36355606476)
+passed all seven jobs and published ten assets, and all three update metadata files
+reference the uploaded assets with matching sizes. The downloaded Windows installer and
+Linux package match their GitHub SHA-256 digests and updater SHA-512 values. The Linux
+package contains Runtime 0.3.3 with the Cursor and Junie launchers, the node-shim,
+Cursor-replay and run-log changes, the five-row OpenCode shortlist and the Platform
+session-history fix. PR CI for both source changes passed before merge; no installed
+upgrade was exercised.
+
+## 2026-09-28 — Platform 0.5.8 npm and Desktop standard preview (published)
+
+Platform **0.5.8** was published on 2026-09-28 (Taipei) to npm `latest` and as a
+[Desktop standard preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.5.8),
+from `072ba670dc8cb7459d7a1c245b88c3738759ac42`. Desktop bundles Runtime **0.3.2**
+at `9fefd8e41512f200de6b7d4f1ed93fb7aa5e4dcb` on every OS. It includes ordinary-agent contribution and
+diagnostic entry points, owner-reviewed knowledge adoption/deletion, and isolated
+development/practice mechanisms described in PLAN-109. Compatibility review found
+no breaking public API, CLI/config or persisted-data contract since npm 0.5.1;
+no new data migration or launcher minimum is required. The bounded Windows native
+knowledge flow and paired skill-distribution check passed; wider live quality and
+other-OS acceptance remain separate.
+
+[Source CI](https://github.com/cats-inc/cats-platform/actions/runs/36349951984) and
+the [npm publication gate](https://github.com/cats-inc/cats-platform/actions/runs/36350012826)
+both passed 5,231 tests, with 59 skipped and no failures. The
+[Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36350464314)
+passed all seven jobs and published ten assets. All three update metadata files
+reference the expected uploaded assets. The downloaded Windows installer matches
+GitHub SHA-256 and updater SHA-512; the inspected Linux package matches its public
+SHA-256 and contains the exact recorded knowledge identities and 36 preview skills.
+Both npm registry versions, source commits and tarball integrity are verified.
+Both public tarballs also passed installation into a new private prefix and CLI
+entry-point checks. The installed Platform loaders read both bundled knowledge
+files in English and Traditional Chinese; installed Runtime exposes 33 release
+skills with the preview directory physically absent. No provider calls were made.
+
+Trust is macOS **signed + notarized**, Windows **unsigned: no certificate** and
+Linux **n/a**. macOS retains team `97JBZ3MFX5` and the same certificate as 0.5.7;
+app/helper signature, stapled ticket and Gatekeeper checks passed. Standard 0.5.7
+Windows/macOS installations retain their self-update path; Linux still uses a
+manual `.deb` install. No installed user profile was replaced during verification.
+
 Newest dates go first. Each dated section should include behavior changes,
 migration steps, and any deprecations introduced in that release.
 
