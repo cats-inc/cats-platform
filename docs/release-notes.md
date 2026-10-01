@@ -2,6 +2,32 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-01 — Model choices the catalog no longer offers
+
+When a catalog update removes a saved model, option value (such as an effort) or
+mode, Cats now marks it and leaves the choice to the user instead of quietly
+substituting one. Choices that are still offered keep starting automatically, as in
+0.7.3. No stored format changes and no migration is needed; the marks are derived
+from the current catalog when shown.
+
+- **Default chats.** The composer chip keeps the saved label and shows a red mark
+  that says what is gone. Clicking it opens the model panel. That panel lists the
+  removed choice as "no longer offered" and saves only when you pick.
+- **Cats and Catlas.** A red mark appears at the bottom-left of the cat's avatar in
+  the sidebar, the Settings cat list and the chat header, and on Catlas's pill.
+  Clicking a marked avatar opens that cat's model field in Settings (Catlas: Settings
+  > Assistants). Picking a model there also fixes the cat's chats that ran the gone
+  choice; chats that chose another model keep it.
+- **Failed starts.** When a chat cannot start because its saved choice is gone, the
+  message names the missing choice and no longer shows the internal rejection
+  prefix.
+- **Pickers and reconciliation.** Settings, side panels and Code relay pickers no
+  longer turn a removed model into a custom model string or replace a removed option
+  without asking.
+- **Not covered.** Group-chat composer chips and assistant presets show no mark yet.
+  See [SPEC-013](specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md) for
+  these and the other known limits.
+
 ## 2026-10-01 — Desktop 0.7.3 standard preview
 
 Desktop **0.7.3** is the owner-requested standard-profile preview. It fixes saved model selections that Desktop 0.7.2's refreshed Runtime catalog
