@@ -673,3 +673,11 @@ body.guideCatDragging
     to   { transform: translateY(0); }
   }
 }
+
+/* Positions the docked pill's model-choice mark; the pill itself clips. */
+.guideCatPillAttentionWrap {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  border-radius: 50%;
+}

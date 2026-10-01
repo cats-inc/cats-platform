@@ -142,3 +142,11 @@
   border: 1px solid rgba(255, 255, 255, 0.92);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
 }
+
+.selectionAttentionAvatarTarget {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  cursor: pointer;
+}

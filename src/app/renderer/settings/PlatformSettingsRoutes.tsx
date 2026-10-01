@@ -6,6 +6,7 @@ import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import { WorkspaceSettingsCatsCanvas } from '../../../products/shared/renderer/components/settings-cats/SettingsCats.js';
 import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
 import { SettingsAssistants } from './SettingsAssistants.js';
+import { ModelSettingsFocusOnArrival } from '../SavedSelectionAvatarAttention.js';
 import { PlatformSettingsApps } from './PlatformSettingsApps.js';
 import { PlatformSettingsRemoteAccess } from './PlatformSettingsRemoteAccess.js';
 import { PlatformSettingsPlugins } from './PlatformSettingsPlugins.js';
@@ -132,10 +133,13 @@ export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShel
       <Route
         path="assistants"
         element={(
-          <SettingsAssistants
-            payload={payload}
-            onPayloadUpdate={onWorkspacePayloadUpdate}
-          />
+          <>
+            <SettingsAssistants
+              payload={payload}
+              onPayloadUpdate={onWorkspacePayloadUpdate}
+            />
+            <ModelSettingsFocusOnArrival />
+          </>
         )}
       />
       <Route

@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import {
@@ -14,6 +15,8 @@ import {
   type SavedSelectionCatalogReader,
   type SavedSelectionTarget,
 } from '../src/app/renderer/savedSelectionAttention.ts';
+import { CatAvatarSelectionAttention } from '../src/app/renderer/SavedSelectionAvatarAttention.tsx';
+import { readModelSettingsFocusState } from '../src/app/renderer/savedSelectionAttention.ts';
 import { AudienceChip } from '../src/products/shared/renderer/components/AudienceChip.tsx';
 import { listProductProviders } from '../src/shared/providerCatalog.ts';
 
@@ -102,3 +105,45 @@ test('the audience chip shows the attention mark with how to fix it', () => {
     <AudienceChip audienceParticipants={[participant as never]} />,
   ), /selectionAttentionBadge/u);
 });
+
+function SettingsProbe() {
+  const focus = readModelSettingsFocusState(useLocation().state);
+  return <span>{`settings:${focus?.catId ?? 'none'}:${focus?.focus ?? 'none'}`}</span>;
+}
+
+test('a marked cat avatar opens its model field in Settings instead of its usual action', async (t) => {
+  resetTestDom();
+  t.after(() => { cleanup(); resetTestDom(); });
+  let rowClicks = 0;
+  const view = render(
+    <I18nProvider locale="en">
+      <MemoryRouter initialEntries={['/chat']}>
+        <Routes>
+          <Route path="/chat" element={(
+            <button type="button" onClick={() => { rowClicks += 1; }}>
+              <span className="catAvatar">
+                <CatAvatarSelectionAttention catId="cat-1" target={ultracode} reader={reader()} />
+              </span>
+            </button>
+          )} />
+          <Route path="/settings/cats" element={<SettingsProbe />} />
+        </Routes>
+      </MemoryRouter>
+    </I18nProvider>,
+  );
+  const mark = await waitFor(() => view.getByRole('button', {
+    name: 'Model choice needs attention: Opus 5.5 no longer offers Reasoning effort ultracode. Choose it again. '
+      + 'Click to choose again in Settings.',
+  }));
+  fireEvent.click(mark);
+  await waitFor(() => assert.ok(view.getByText('settings:cat-1:model')));
+  assert.equal(rowClicks, 0, 'the row action does not run');
+});
+
+test('model focus state is read only from a model request', () => {
+  assert.deepEqual(readModelSettingsFocusState({ focus: 'model', catId: 'cat-1' }), { focus: 'model', catId: 'cat-1' });
+  assert.deepEqual(readModelSettingsFocusState({ focus: 'model' }), { focus: 'model' });
+  assert.equal(readModelSettingsFocusState({ platformShellSurface: 'chat' }), null);
+  assert.equal(readModelSettingsFocusState(null), null);
+});
+

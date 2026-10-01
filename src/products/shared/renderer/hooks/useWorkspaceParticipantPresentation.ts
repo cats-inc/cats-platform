@@ -2,6 +2,7 @@ import {
   useMemo,
   type CSSProperties,
 } from 'react';
+import type { SavedSelectionTarget } from '../../../../app/renderer/savedSelectionAttention.js';
 
 import type {
   AppShellPayload,
@@ -22,6 +23,20 @@ import {
   type ResolvedChannelParticipant,
 } from '../../channelParticipants.js';
 
+/** The model choice a chat participant runs: the chat's own copy, not the cat's default. */
+function participantSelectionTarget(
+  participant: ResolvedChannelParticipant | null | undefined,
+): SavedSelectionTarget | null {
+  const execution = participant?.execution;
+  return execution?.target?.provider
+    ? {
+        provider: execution.target.provider,
+        instance: execution.target.instance ?? null,
+        modelSelection: execution.modelSelection ?? null,
+      }
+    : null;
+}
+
 export interface TopBarParticipant {
   key: string;
   label: string;
@@ -32,6 +47,7 @@ export interface TopBarParticipant {
   useNeutralAvatar: boolean;
   pulseParticipantId: string | null;
   pulseCatId: string | null;
+  selectionTarget: SavedSelectionTarget | null;
 }
 
 export function useWorkspaceParticipantPresentation(options: {
@@ -227,6 +243,7 @@ export function useWorkspaceParticipantPresentation(options: {
           useNeutralAvatar: false,
           pulseParticipantId: defaultRecipientParticipant?.participantId ?? null,
           pulseCatId: defaultRecipientCatRecord.id,
+          selectionTarget: participantSelectionTarget(defaultRecipientParticipant),
         });
       }
     } else {
@@ -241,6 +258,7 @@ export function useWorkspaceParticipantPresentation(options: {
           useNeutralAvatar: false,
           pulseParticipantId: null,
           pulseCatId: bossCatRecord.id,
+          selectionTarget: null,
         });
       }
       for (const participant of activeRoomParticipants) {
@@ -255,6 +273,7 @@ export function useWorkspaceParticipantPresentation(options: {
           useNeutralAvatar: participantUsesNeutralAvatar(participant, catRecord),
           pulseParticipantId: participant.participantId,
           pulseCatId: catRecord?.id ?? null,
+          selectionTarget: catRecord ? participantSelectionTarget(participant) : null,
         });
       }
     }

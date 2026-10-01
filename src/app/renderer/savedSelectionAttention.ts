@@ -1,5 +1,7 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useNavigate } from 'react-router-dom';
 
+import type { GuideCatRecord } from '../../core/types.js';
 import { messageKeys, type MessageInterpolationValues, type MessageKey } from '../../shared/i18n/index.js';
 import type {
   ProductProviderRegistryReadModel,
@@ -146,4 +148,54 @@ export function useSavedSelectionAttention(
   }, [key, reader]);
 
   return state?.key === key && state.value ? describeUnmappableSavedSelection(state.value, t) : null;
+}
+
+/** Element id of a settings page's model field, the target of a model focus request. */
+export const MODEL_SETTINGS_FIELD_ID = 'model-settings-field';
+
+/** Navigation state asking a settings page to select a cat and show its model field. */
+export interface ModelSettingsFocusState {
+  focus: 'model';
+  catId?: string;
+}
+
+export function readModelSettingsFocusState(state: unknown): ModelSettingsFocusState | null {
+  if (!state || typeof state !== 'object' || (state as { focus?: unknown }).focus !== 'model') {
+    return null;
+  }
+  const catId = (state as { catId?: unknown }).catId;
+  return { focus: 'model', ...(typeof catId === 'string' && catId ? { catId } : {}) };
+}
+
+/** Open a saved cat's model field in Settings, where its saved choice is replaced. */
+export function useOpenCatModelSettings(): (catId: string) => void {
+  const navigate = useNavigate();
+  return useCallback((catId: string) => {
+    navigate('/settings/cats', { state: { focus: 'model', catId } satisfies ModelSettingsFocusState });
+  }, [navigate]);
+}
+
+/** Open Catlas's model field, the first card on the Assistants settings page. */
+export function useOpenCatlasModelSettings(): () => void {
+  const navigate = useNavigate();
+  return useCallback(() => {
+    navigate('/settings/assistants', { state: { focus: 'model' } satisfies ModelSettingsFocusState });
+  }, [navigate]);
+}
+
+/** Bring the model field into view once the page shows the requested target. */
+export function scrollModelSettingsFieldIntoView(): void {
+  if (typeof document === 'undefined') return;
+  document.getElementById(MODEL_SETTINGS_FIELD_ID)?.scrollIntoView({ block: 'center' });
+}
+
+/** Catlas runs its own saved model choice, separate from every cat. */
+export function catlasSelectionTarget(guideCat: GuideCatRecord | null | undefined): SavedSelectionTarget | null {
+  return guideCat?.executionTarget.provider
+    ? {
+        provider: guideCat.executionTarget.provider,
+        instance: guideCat.executionTarget.instance ?? null,
+        modelSelection: guideCat.modelSelection ?? null,
+      }
+    : null;
 }

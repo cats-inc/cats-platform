@@ -1048,6 +1048,8 @@ export function ChatView({
             avatarUrl: participant.avatarUrl,
             isBoss: participant.isBoss,
             useNeutralAvatar: participant.useNeutralAvatar,
+            catId: participant.pulseCatId,
+            selectionTarget: participant.selectionTarget,
             pulsing: Boolean(
               (participant.pulseParticipantId
                 && activeTopBarParticipantIdSet.has(participant.pulseParticipantId))

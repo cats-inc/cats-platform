@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import { catInitials } from '../../workspaceChatUtils.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
+import { CatAvatarSelectionAttention } from '../../../../../app/renderer/SavedSelectionAvatarAttention.js';
+import type { SavedSelectionTarget } from '../../../../../app/renderer/savedSelectionAttention.js';
 
 export interface ChatViewTopBarAvatar {
   key: string;
@@ -14,6 +16,9 @@ export interface ChatViewTopBarAvatar {
   useNeutralAvatar?: boolean;
   showLeadBadge?: boolean;
   pulsing?: boolean;
+  /** A cat participant and the model copy this chat runs for it. */
+  catId?: string | null;
+  selectionTarget?: SavedSelectionTarget | null;
 }
 
 export interface ChatViewTopBarProps {
@@ -69,6 +74,9 @@ export function ChatViewTopBar({
                 >
                   {avatar.avatarUrl ? null : catInitials(avatar.label)}
                   {avatar.showLeadBadge ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
+                  {avatar.catId ? (
+                    <CatAvatarSelectionAttention catId={avatar.catId} target={avatar.selectionTarget ?? null} />
+                  ) : null}
                 </div>
               );
             })}

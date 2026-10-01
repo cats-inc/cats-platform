@@ -21,6 +21,8 @@ import {
 } from '../../shared/guideCatIdentity.js';
 import { messageKeys } from '../../shared/i18n/index.js';
 import { GUIDE_CAT_AVATAR_URL } from './GuideCatSidecar.js';
+import { CatlasAvatarSelectionAttention } from '../../app/renderer/SavedSelectionAvatarAttention.js';
+import { catlasSelectionTarget } from '../../app/renderer/savedSelectionAttention.js';
 
 export interface GuideCatDockSlotProps {
   slotKind: GuideCatDockSlotKind;
@@ -114,22 +116,25 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
     >
       {isActive ? (
         <>
-          <button
-            type="button"
-            className="guideCatPill guideCatPill--docked"
-            onPointerDown={handleDockPointerDown}
-            onClick={handlePillClick}
-            aria-label={openGuideLabel}
-            data-tooltip={tooltip}
-            data-tooltip-delay="1000"
-          >
-            <img
-              className="guideCatPillAvatar"
-              src={GUIDE_CAT_AVATAR_URL}
-              alt=""
-              aria-hidden="true"
-            />
-          </button>
+          <span className="guideCatPillAttentionWrap">
+            <button
+              type="button"
+              className="guideCatPill guideCatPill--docked"
+              onPointerDown={handleDockPointerDown}
+              onClick={handlePillClick}
+              aria-label={openGuideLabel}
+              data-tooltip={tooltip}
+              data-tooltip-delay="1000"
+            >
+              <img
+                className="guideCatPillAvatar"
+                src={GUIDE_CAT_AVATAR_URL}
+                alt=""
+                aria-hidden="true"
+              />
+            </button>
+            {dragActive ? null : <CatlasAvatarSelectionAttention target={catlasSelectionTarget(guideCat)} />}
+          </span>
           {slotKind === 'workspace' ? (
             <>
               <span className="guideCatDockName">{displayName}</span>

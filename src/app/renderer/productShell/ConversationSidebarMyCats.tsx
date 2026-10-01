@@ -7,6 +7,7 @@ import type {
 } from './ConversationSidebar.js';
 import { messageKeys, type MessageKey } from '../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../i18n/index.js';
+import { CatAvatarSelectionAttention } from '../SavedSelectionAvatarAttention.js';
 import { SidebarFloatingMenuPortal } from './SidebarFloatingMenuPortal.js';
 import { useFloatingSidebarMenu } from './useFloatingSidebarMenu.js';
 
@@ -96,6 +97,16 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
         >
           {cat.avatarUrl ? null : catInitials(cat.name)}
           {dotClass ? <span className={dotClass} data-tooltip={dotTitle} /> : null}
+          <CatAvatarSelectionAttention
+            catId={cat.id}
+            target={cat.defaultExecutionTarget?.provider
+              ? {
+                  provider: cat.defaultExecutionTarget.provider,
+                  instance: cat.defaultExecutionTarget.instance ?? null,
+                  modelSelection: cat.defaultModelSelection ?? null,
+                }
+              : null}
+          />
         </span>
         <span className="myCatName">{cat.name}</span>
       </button>
