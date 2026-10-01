@@ -544,6 +544,67 @@ explicit retry after correction. Unknown mappings remain actionable configuratio
 errors handled by the picker behavior above. The joint Runtime plan tracks package
 and existing-profile checks; release/installer validation is still a separate gate.
 
+## Follow-up: saved selections after a catalog update (2026-10-01)
+
+Saved selections carry the `catalogRevision` they were chosen under, and Runtime
+rejects a new session whose revision is stale (SPEC-031). The revision digests the
+whole catalog, so any catalog change, including one to another provider, made every
+saved chat target, cat and Catlas selection fail after the Desktop 0.7.1 → 0.7.2
+update with `Catalog changed; choose the model again from the current catalog.` The
+renderer re-stamps a mounted or default-chat selection, but a send could reach
+Runtime before that catalog read finished, and other launch paths (cats, Code relay,
+Work collaboration, Catlas) were never re-stamped.
+
+`classifyCatalogSelection` (`src/shared/providerSelection.ts`) judges a saved
+selection against one coherent model/advanced snapshot:
+
+- **Restampable**: its entry, every saved control value and its preset are still
+  offered; only the revision differs. This is never shown to the user.
+- **Unmappable**: the entry, a saved control value (for example a removed effort)
+  or the preset is gone. It needs a new choice, never a silent substitute.
+
+Implemented now:
+
+- The Runtime client's `createSession`, which every launch path uses, answers a 409
+  for a stale saved revision by reading the target's coherent catalog pair. It
+  retries once with the current revision when the selection is restampable. When
+  the selection is unmappable, the client error carries `catalog_selection_unmappable`
+  and a message naming the missing model, option value or preset. The supervision
+  boundary passes on only that message, under its `E_PRECHECK_FAILED` prefix. The
+  client never retries with a split base/advanced pair or after other failures.
+- Session reuse and default-chat dispatch compare selections without the revision
+  (`providerModelSelectionsEquivalent`), so a re-stamp no longer closes and restarts
+  a live session.
+- A new Chat/Code/Work draft default whose entry was removed starts from the
+  provider picker's default model and controls. A removed control value already
+  falls back to the picker's default for that entry. Existing conversation targets
+  keep their previous behavior until the badge below lands.
+
+Planned with the owner's confirmation:
+
+- Existing conversations keep the chip label of an unmappable selection and add a
+  red attention mark. Clicking it opens the model panel, which explains the change
+  and does not rewrite the selection until the user picks. App-level, picker and
+  Code relay reconciliation stop converting an unmappable selection into a custom
+  model string or a substitute option.
+- Saved cats (My Cats) and Catlas show the mark at the avatar's bottom-left, the only
+  corner free on every surface. Clicking a marked avatar opens the cat's settings
+  model field (`/settings/cats`, or `/settings/assistants` for Catlas). Re-picking a
+  cat there also updates that cat's unmappable copies in existing chats. Assistant
+  presets are deferred.
+- The supervision boundary or the failed-start message keeps the
+  `catalog_selection_unmappable` code, so the UI can point at the mark instead of
+  showing a raw rejection.
+- Cats, Code relay rosters, Work collaboration and Catlas do not write the re-stamped
+  selection back yet. Until they do, each new session for a stale saved selection
+  costs one rejected create, a catalog read and one retry.
+
+Validation for the implemented part: 120 focused Node tests (client recovery,
+classification, routing) and 98 bundled reconcile/picker tests passed. Server,
+desktop, renderer and test TypeScript projects and the catalog boundary check
+passed. The mobile typecheck could not run in this worktree without mobile
+dependencies.
+
 ## Open Questions
 
 - [ ] Keep `GET /api/providers` as the selector route name, or introduce a new

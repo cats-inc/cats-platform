@@ -16,6 +16,7 @@ import {
   isProductProviderDefaultModelPlaceholder,
 } from '../../../../shared/providerCatalog.js';
 import {
+  classifyCatalogSelection,
   cloneProviderModelSelection,
   resolveCatalogTargetSelection,
   resolveSelectedProviderInstance,
@@ -299,6 +300,9 @@ function toProviderTargetSelection(
 
 export async function reconcileRuntimeBackedExecutionTargetValue(input: {
   target: ExecutionTargetValue;
+  // A new draft's default has no conversation to preserve. When its saved
+  // entry is gone, start from the provider picker's default model and options.
+  fallbackUnmappableSelection?: boolean;
   fetchProviderRegistryFn?: typeof fetchProviderRegistry;
   fetchProviderModelsFn?: typeof fetchProviderModels;
   fetchAdvancedProviderModelsFn?: typeof fetchAdvancedProviderModels;
@@ -372,13 +376,23 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
       modelSelection: nextTarget.modelSelection,
     });
   if (!shouldDeferReconciliation && effectiveCatalog.models.length > 0) {
-    const preserveExistingSelection =
+    const fit = input.fallbackUnmappableSelection && nextTarget.modelSelection
+      ? classifyCatalogSelection({
+          selection: nextTarget.modelSelection,
+          catalog: effectiveCatalog,
+          advancedCatalog: effectiveAdvancedCatalog,
+        })
+      : null;
+    // A removed control value or preset is dropped below, and sanitizing then
+    // fills the picker's default for it; only a removed entry needs a new model.
+    const entryRemoved = fit?.status === 'unmappable' && fit.mismatch.kind === 'entry';
+    const preserveExistingSelection = !entryRemoved && (
       Boolean(nextTarget.modelSelection)
       || shouldTreatPersistedTargetAsLegacyModel({
         catalog: effectiveCatalog,
         model: nextTarget.model,
         modelSelection: nextTarget.modelSelection,
-      });
+      }));
     nextTarget = sanitizePersistentTargetSelection({
       target: resolveCatalogTargetSelection({
         target: nextTarget,
@@ -556,6 +570,7 @@ export function useWorkspaceExecutionTargetState<
 
     void reconcileRuntimeBackedExecutionTargetValue({
       target: draftExecutionTarget,
+      fallbackUnmappableSelection: true,
     }).then((nextDraftExecutionTarget) => {
       if (cancelled) {
         return;

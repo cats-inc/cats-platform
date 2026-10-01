@@ -476,6 +476,63 @@ test('runtime-backed draft reconciliation replaces unsupported effort with the e
   );
 });
 
+function reconcileRemovedClaudeEntry(fallbackUnmappableSelection: boolean) {
+  const models = [
+    { id: 'opus', label: 'Opus 5.5', default: true },
+    { id: 'sonnet', label: 'Sonnet 5.5' },
+  ];
+  const base = {
+    catalogRevision: 'R2', catalogActivationId: 'A2', provider: 'claude', backend: 'cli', instance: 'native',
+    defaultModel: 'opus', source: 'config' as const, cache: null, warnings: [],
+  };
+  return reconcileRuntimeBackedExecutionTargetValue({
+    target: {
+      provider: 'claude',
+      instance: 'native',
+      model: 'claude-opus-4-5',
+      modelSelection: {
+        entryId: 'claude-opus-4-5',
+        entryMode: 'explicit',
+        catalogRevision: 'R1',
+        controls: { 'claude.reasoning_effort': 'max' },
+      },
+      executionLabel: 'Claude-CLI · Opus 4.5 · Max',
+    },
+    fallbackUnmappableSelection,
+    fetchProviderRegistryFn: async () => createProviderRegistry(),
+    fetchProviderModelsFn: async () => ({ ...base, models }),
+    fetchAdvancedProviderModelsFn: async () => normalizeProviderAdvancedModelCatalog({
+      ...base,
+      entries: models,
+      presets: [],
+      controls: [{
+        key: 'claude.reasoning_effort', label: 'Reasoning effort', kind: 'enum', scope: 'both',
+        values: [{ value: 'medium', label: 'Medium (default)' }, { value: 'max', label: 'Max' }],
+      }],
+      defaultSelection: { entryId: 'opus', entryMode: 'explicit', controls: { 'claude.reasoning_effort': 'medium' } },
+      support: { tier: 'full', notes: [] },
+    }, 'claude'),
+  });
+}
+
+test('a new draft whose saved model was removed starts from the provider picker defaults', async () => {
+  const reconciled = await reconcileRemovedClaudeEntry(true);
+  assert.equal(reconciled.model, 'opus');
+  assert.deepEqual(reconciled.modelSelection, {
+    catalogRevision: 'R2',
+    entryId: 'opus',
+    entryMode: 'explicit',
+    controls: { 'claude.reasoning_effort': 'medium' },
+  });
+  assert.equal(reconciled.executionLabel, 'Claude-CLI · Opus 5.5 · Medium');
+});
+
+test('reconciliation without the draft fallback keeps a removed model instead of the provider default', async () => {
+  const reconciled = await reconcileRemovedClaudeEntry(false);
+  assert.equal(reconciled.model, 'claude-opus-4-5');
+  assert.equal(reconciled.modelSelection, null);
+});
+
 test('runtime-backed execution target reconciliation preserves an unlisted model without alias guessing', async () => {
   const reconciled = await reconcileRuntimeBackedExecutionTargetValue({
     target: {
