@@ -52,6 +52,12 @@ configuration stay in place, while old browser App grants lose their auth sessio
 
 ## Release boundaries
 
+Follow the [shared release preparation/completion policy](https://github.com/cats-inc/cats-one/blob/main/docs/release-guide.md#release-preparation-and-completion):
+prepare all release documentation and pins in the original version change.
+Verify publication using existing hosted Release/Actions/registry evidence, then
+report and finish. Do not add tracked publication reports, status-only commits
+or follow-up PRs, or chase unrelated main updates after verification.
+
 Apply the [cross-repository compatibility and data-upgrade policy](https://github.com/cats-inc/cats-one/blob/main/docs/release-guide.md#compatibility-and-data-upgrades):
 breaking public APIs, configuration, stored-data requirements or supported user
 flows move `0.x` to the next minor, and stable `1.x+` to the next major. Compatible
