@@ -27,7 +27,11 @@ import {
   type ChatApiRouteContext,
 } from './routeSupport.js';
 import { publishChannelMutation } from './transportEventPublisher.js';
-import { findUnmappableCatSelectionCopies, repairCatSelectionCopies } from './catSelectionRepair.js';
+import {
+  catSelectionStillMaps,
+  findUnmappableCatSelectionCopies,
+  repairCatSelectionCopies,
+} from './catSelectionRepair.js';
 
 async function handleCanonicalListCats(
   context: ChatApiRouteContext,
@@ -83,15 +87,25 @@ async function handleCanonicalUpdateCat(
       model?: string | null;
       modelSelection?: ProviderModelSelection | null;
       avatarUrl?: string | null;
+      repairSelectionCopies?: boolean;
     }>(context.request);
     const currentState = await context.dependencies.chatStore.read();
     const updatesExecution = body.provider !== undefined || body.instance !== undefined
       || body.model !== undefined || body.modelSelection !== undefined;
     // A new pick for the cat also replaces its chat copies whose saved choice is
     // gone, so re-picking once in Settings repairs every chat that would fail.
-    const unmappableCopies = updatesExecution && !body.archive && !body.unarchive
+    // Opening the cat from a marked chat avatar asks for the same repair when the
+    // cat's own choice still maps but a chat copy does not; nothing else changes.
+    const repairOnly = body.repairSelectionCopies === true && !updatesExecution;
+    const unmappableCopies = (updatesExecution && !body.archive && !body.unarchive)
+      || (repairOnly && await catSelectionStillMaps(
+        context.dependencies.runtimeClient, requireCat(currentState, catId)))
       ? await findUnmappableCatSelectionCopies(context.dependencies.runtimeClient, currentState, catId)
       : [];
+    if (repairOnly && unmappableCopies.length === 0 && Object.keys(body).length === 1) {
+      sendJson(context.response, 200, await buildAppShellPayload(context.dependencies, currentState));
+      return;
+    }
     const patch = (state: typeof currentState) => {
       if (body.name !== undefined) {
         state = renameCat(state, catId, body.name);
@@ -121,6 +135,8 @@ async function handleCanonicalUpdateCat(
           model: body.model,
           modelSelection: body.modelSelection,
         });
+        state = repairCatSelectionCopies(state, catId, unmappableCopies, new Date());
+      } else if (repairOnly) {
         state = repairCatSelectionCopies(state, catId, unmappableCopies, new Date());
       }
       if (body.avatarUrl !== undefined) {

@@ -393,6 +393,19 @@ export function SettingsCatsCanvas({
     [onPayloadUpdate, t, toastFeedback],
   );
 
+  // Arriving from a marked avatar also asks the server to give this cat's chat
+  // copies whose saved choice is gone its current choice, when that still maps.
+  const repairedModelFocusKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!modelFocus?.catId || repairedModelFocusKey.current === location.key) return;
+    repairedModelFocusKey.current = location.key;
+    void commitCatProfile(
+      modelFocus.catId,
+      { repairSelectionCopies: true },
+      t(messageKeys.sharedSettingsCatsUpdateBrainError),
+    );
+  }, [commitCatProfile, location.key, modelFocus?.catId, t]);
+
   const handleCreateCat = async () => {
     const next = await performCreateCat();
     const newCat = next ? findNewlyCreatedActiveCat(activeCats, next.chat.cats) : null;

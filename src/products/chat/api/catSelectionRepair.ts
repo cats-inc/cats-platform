@@ -8,7 +8,7 @@ import {
   classifyCatalogSelection,
 } from '../../../shared/providerSelection.js';
 import { setChannelParticipantExecutionTarget } from '../state/model/index.js';
-import type { ChatState } from './contracts.js';
+import type { ChatCat, ChatState } from './contracts.js';
 
 export interface CatSelectionCopy {
   channelId: string;
@@ -61,6 +61,26 @@ export async function findUnmappableCatSelectionCopies(
     }
   }
   return copies;
+}
+
+/** Whether the cat's own saved choice is still offered, so its copies may take it. */
+export async function catSelectionStillMaps(runtimeClient: CatalogReader, cat: ChatCat): Promise<boolean> {
+  const selection = cat.defaultModelSelection;
+  const provider = cat.defaultExecutionTarget.provider;
+  if (!selection || !provider) {
+    return false;
+  }
+  try {
+    const instance = cat.defaultExecutionTarget.instance ?? null;
+    const [catalog, advancedCatalog] = await Promise.all([
+      runtimeClient.getProviderModels(provider, instance),
+      runtimeClient.getAdvancedProviderModels(provider, instance),
+    ]);
+    return canClassifyCatalogSelection(catalog, advancedCatalog)
+      && classifyCatalogSelection({ selection, catalog, advancedCatalog }).status !== 'unmappable';
+  } catch {
+    return false;
+  }
 }
 
 /** Give the listed copies the cat's current saved target, skipping any that left the chat. */

@@ -615,7 +615,10 @@ Attention marks (second change, confirmed by the owner):
   - The navigation hooks run only while a mark is shown.
 - **Copy repair.** Saving a cat's model in Settings also replaces its active chat
   copies that the catalog no longer offers. Copies that still map, including ones
-  a chat changed on purpose, keep their choice.
+  a chat changed on purpose, keep their choice. Arriving from a marked avatar also
+  sends a repair-only request (`repairSelectionCopies`). When the cat's own choice
+  still maps, its unmappable copies take it; otherwise nothing is written. This
+  covers a copy that diverged from a default that still maps.
 - **Failure message.** The supervision boundary passes the client's error code in
   its rejection `details`. A failed start for an unmappable selection names the
   missing choice without the rejection prefix and records `reason:
@@ -623,10 +626,6 @@ Attention marks (second change, confirmed by the owner):
 
 Known limits:
 
-- **Dead end for diverged copies.** If a cat's default still maps but a chat copy
-  does not (the copy diverged, or the default was re-picked before this change),
-  the marked header avatar opens a Settings page with nothing to pick. Settings
-  saves only on change, so the copy stays until the cat's model is picked again.
 - **Not marked.** Group-chat composer chips do not mark cat participants (the header
   roster does), and assistant presets are deferred.
 - **No write-back.** Code relay rosters need none because their mounted pickers

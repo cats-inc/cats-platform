@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  catSelectionStillMaps,
   findUnmappableCatSelectionCopies,
   repairCatSelectionCopies,
 } from '../build/server/products/chat/api/catSelectionRepair.js';
@@ -109,5 +110,16 @@ test('a copy is judged against the target it runs, not the cat default', async (
   const runtime = runtimeCatalogs();
   await findUnmappableCatSelectionCopies(runtime, state, catId);
   assert.deepEqual(runtime.reads.sort(), ['claude:cli/native', 'claude:null']);
+});
+
+test('copies take the cat default only while the cat’s own choice still maps', async () => {
+  const runtime = runtimeCatalogs();
+  const cat = (controls) => ({
+    defaultExecutionTarget: { provider: 'claude', instance: 'cli/native', model: 'opus' },
+    defaultModelSelection: { catalogRevision: 'R1', entryId: 'opus', entryMode: 'explicit', controls },
+  });
+  assert.equal(await catSelectionStillMaps(runtime, cat({ 'claude.reasoning_effort': 'xhigh' })), true);
+  assert.equal(await catSelectionStillMaps(runtime, cat({ 'claude.reasoning_effort': 'ultracode' })), false);
+  assert.equal(await catSelectionStillMaps(runtime, { ...cat(), defaultModelSelection: null }), false);
 });
 
