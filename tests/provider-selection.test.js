@@ -3,7 +3,10 @@ import {createFixtureProviderModelCatalog} from './helpers/catalogFixture.js';
 import test from 'node:test';
 
 import {
+  classifyCatalogSelection,
   isLegacyProviderModelTarget,
+  providerModelSelectionsEqual,
+  providerModelSelectionsEquivalent,
   resolveCatalogTargetSelection,
   resolveSelectedProviderInstance,
 } from '../build/server/shared/providerSelection.js';
@@ -915,4 +918,68 @@ test('Pi preserves six subscription labels, initializes Luna and keeps custom in
   });
   assert.equal(custom.model, 'Vendor/CaseSensitive.Model');
   assert.equal(custom.modelSelection, null);
+});
+
+function revisedClaudeCatalogs() {
+  const models = [{ id: 'opus', label: 'Opus 5.5', default: true }, { id: 'sonnet', label: 'Sonnet 5.5' }];
+  const base = {
+    catalogRevision: 'R2', catalogActivationId: 'A2', provider: 'claude', backend: 'cli', instance: 'cli/native',
+    defaultModel: 'opus', source: 'config', cache: null, warnings: [],
+  };
+  return {
+    catalog: { ...base, models },
+    advancedCatalog: normalizeProviderAdvancedModelCatalog({
+      ...base,
+      entries: models,
+      presets: [{ id: 'fast', label: 'Fast', applicableEntryIds: ['sonnet'] }],
+      controls: [{
+        key: 'claude.reasoning_effort', label: 'Reasoning effort', kind: 'enum', scope: 'session_default',
+        values: [{ value: 'medium', label: 'Medium' }, { value: 'xhigh', label: 'xHigh' }],
+      }],
+      defaultSelection: { entryId: 'opus', entryMode: 'explicit' },
+      support: { tier: 'full', notes: [] },
+    }, 'claude'),
+  };
+}
+
+const savedOpus = {
+  entryId: 'opus', entryMode: 'explicit', catalogRevision: 'R1', controls: { 'claude.reasoning_effort': 'medium' },
+};
+
+test('classifyCatalogSelection only re-stamps a saved choice the new catalog still offers', () => {
+  const catalogs = revisedClaudeCatalogs();
+  assert.deepEqual(classifyCatalogSelection({ selection: savedOpus, ...catalogs }), {
+    status: 'restampable', selection: { ...savedOpus, catalogRevision: 'R2' },
+  });
+  assert.deepEqual(
+    classifyCatalogSelection({ selection: { ...savedOpus, catalogRevision: 'R2' }, ...catalogs }),
+    { status: 'current' },
+  );
+});
+
+test('classifyCatalogSelection reports the removed entry, option value or preset', () => {
+  const catalogs = revisedClaudeCatalogs();
+  assert.deepEqual(classifyCatalogSelection({ selection: { ...savedOpus, entryId: 'claude-opus-4-5' }, ...catalogs }), {
+    status: 'unmappable', mismatch: { kind: 'entry', entryId: 'claude-opus-4-5' },
+  });
+  assert.deepEqual(classifyCatalogSelection({
+    selection: { ...savedOpus, controls: { 'claude.reasoning_effort': 'ultracode' } }, ...catalogs,
+  }), {
+    status: 'unmappable',
+    mismatch: { kind: 'control', entryId: 'opus', key: 'claude.reasoning_effort', value: 'ultracode' },
+  });
+  assert.deepEqual(classifyCatalogSelection({ selection: { ...savedOpus, presetId: 'fast' }, ...catalogs }), {
+    status: 'unmappable', mismatch: { kind: 'preset', entryId: 'opus', presetId: 'fast' },
+  });
+});
+
+test('a catalog re-stamp is equivalent to the saved choice but other changes are not', () => {
+  const restamped = { ...savedOpus, catalogRevision: 'R2' };
+  assert.equal(providerModelSelectionsEqual(savedOpus, restamped), false);
+  assert.equal(providerModelSelectionsEquivalent(savedOpus, restamped), true);
+  assert.equal(providerModelSelectionsEquivalent(savedOpus, {
+    ...restamped, controls: { 'claude.reasoning_effort': 'xhigh' },
+  }), false);
+  assert.equal(providerModelSelectionsEquivalent(null, null), true);
+  assert.equal(providerModelSelectionsEquivalent(savedOpus, null), false);
 });

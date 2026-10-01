@@ -229,6 +229,28 @@ export function providerModelSelectionsEqual(
   return serializeProviderModelSelection(left) === serializeProviderModelSelection(right);
 }
 
+function withoutCatalogRevision(
+  selection: ProviderModelSelection | null | undefined,
+): ProviderModelSelection | null {
+  const cloned = cloneProviderModelSelection(selection);
+  if (cloned) {
+    delete cloned.catalogRevision;
+  }
+  return cloned;
+}
+
+/**
+ * Compare the user's choice, ignoring the catalog revision that recorded it.
+ * Re-stamping a selection for a new catalog is not a model change and must not
+ * restart a live session.
+ */
+export function providerModelSelectionsEquivalent(
+  left: ProviderModelSelection | null | undefined,
+  right: ProviderModelSelection | null | undefined,
+): boolean {
+  return providerModelSelectionsEqual(withoutCatalogRevision(left), withoutCatalogRevision(right));
+}
+
 export function cloneProviderModelResolution(
   resolution: ProviderModelResolution | null | undefined,
 ): ProviderModelResolution | null {
@@ -400,6 +422,63 @@ export function isLegacyProviderModelTarget(input: {
   }
 
   return !input.catalog.models.some((option) => option.id === normalizedModel);
+}
+
+export type CatalogSelectionMismatch =
+  | { kind: 'entry'; entryId: string }
+  | { kind: 'control'; entryId: string; key: string; value: ProviderAdvancedControlValue }
+  | { kind: 'preset'; entryId: string | null; presetId: string };
+
+export type CatalogSelectionFit =
+  | { status: 'current' }
+  | { status: 'restampable'; selection: ProviderModelSelection }
+  | { status: 'unmappable'; mismatch: CatalogSelectionMismatch };
+
+/**
+ * Classify a saved selection against one coherent catalog snapshot. A selection
+ * whose entry, control values and preset are all still offered only needs the
+ * current revision. A removed entry, control value or preset is unmappable: it
+ * needs a new choice instead of a silent substitute.
+ */
+export function classifyCatalogSelection(input: {
+  selection: ProviderModelSelection;
+  catalog: ProviderModelCatalog;
+  advancedCatalog: ProviderAdvancedModelCatalog;
+}): CatalogSelectionFit {
+  const { catalog, advancedCatalog } = input;
+  const selection = cloneProviderModelSelection(input.selection)!;
+  const entryId = normalizeProductProviderModelId(catalog.provider, selection.entryId);
+  if (entryId) {
+    selection.entryId = entryId;
+    if (!catalog.models.some((option) => option.id === entryId)) {
+      return { status: 'unmappable', mismatch: { kind: 'entry', entryId } };
+    }
+  }
+
+  if (selection.presetId && !(entryId
+    ? isApplicablePreset(advancedCatalog, entryId, selection.presetId)
+    : advancedCatalog.presets.some((preset) => preset.id === selection.presetId))) {
+    return {
+      status: 'unmappable',
+      mismatch: { kind: 'preset', entryId: entryId ?? null, presetId: selection.presetId },
+    };
+  }
+
+  if (entryId && selection.controls) {
+    const applicable = filterApplicableControls(advancedCatalog, entryId, selection.controls) ?? {};
+    const removed = Object.entries(selection.controls).find(([key]) => !(key in applicable));
+    if (removed) {
+      return {
+        status: 'unmappable',
+        mismatch: { kind: 'control', entryId, key: removed[0], value: removed[1] },
+      };
+    }
+  }
+
+  if (catalog.catalogRevision && selection.catalogRevision !== catalog.catalogRevision) {
+    return { status: 'restampable', selection: { ...selection, catalogRevision: catalog.catalogRevision } };
+  }
+  return { status: 'current' };
 }
 
 export function resolveCatalogTargetSelection(input: {

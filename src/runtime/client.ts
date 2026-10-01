@@ -18,8 +18,10 @@ import {
   type ProviderModelCatalog,
 } from '../shared/providerCatalog.js';
 import {
+  classifyCatalogSelection,
   parseProviderModelResolution,
   parseProviderModelSelection,
+  type CatalogSelectionMismatch,
   type ProviderModelResolution,
   type ProviderModelSelection,
 } from '../shared/providerSelection.js';
@@ -471,6 +473,30 @@ export class RuntimeRequestError extends Error {
   }
 }
 
+function describeUnmappableCatalogSelection(
+  mismatch: CatalogSelectionMismatch,
+  catalog: ProviderModelCatalog,
+  advancedCatalog: ProviderAdvancedModelCatalog,
+): string {
+  const entryLabel = (entryId: string) =>
+    catalog.models.find((option) => option.id === entryId)?.label ?? entryId;
+  switch (mismatch.kind) {
+    case 'entry':
+      return `The saved model "${mismatch.entryId}" is no longer in the current ${catalog.provider} model list. `
+        + 'Choose the model again.';
+    case 'control': {
+      const control = advancedCatalog.entries.find((entry) => entry.id === mismatch.entryId)?.controls
+        ?.find((candidate) => candidate.key === mismatch.key)
+        ?? advancedCatalog.controls.find((candidate) => candidate.key === mismatch.key);
+      return `The saved ${control?.label ?? mismatch.key} "${String(mismatch.value)}" is no longer offered for `
+        + `${entryLabel(mismatch.entryId)}. Choose the model again.`;
+    }
+    case 'preset':
+      return `The saved preset "${mismatch.presetId}" is no longer offered`
+        + `${mismatch.entryId ? ` for ${entryLabel(mismatch.entryId)}` : ''}. Choose the model again.`;
+  }
+}
+
 function readRuntimeSessionInfo(
   data: Record<string, unknown>,
   fallback: {
@@ -839,6 +865,61 @@ export class CatsRuntimeClient implements RuntimeClient {
   }
 
   async createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo> {
+    try {
+      return await this.postSession(input);
+    } catch (error) {
+      const restampedInput = await this.restampStaleCatalogSelection(input, error);
+      if (!restampedInput) {
+        throw error;
+      }
+      return this.postSession(restampedInput);
+    }
+  }
+
+  // Runtime rejects a selection recorded under an older catalog revision. Saved
+  // selections (chat targets, cats, Catlas) outlive Desktop updates, so re-stamp
+  // one whose entry and option values are still offered, and name the saved
+  // choice that is gone otherwise.
+  private async restampStaleCatalogSelection(
+    input: RuntimeSessionCreateInput,
+    error: unknown,
+  ): Promise<RuntimeSessionCreateInput | null> {
+    const selection = input.modelSelection;
+    if (!(error instanceof RuntimeRequestError) || error.status !== 409 || !selection?.catalogRevision) {
+      return null;
+    }
+
+    let catalog: ProviderModelCatalog;
+    let advancedCatalog: ProviderAdvancedModelCatalog;
+    try {
+      [catalog, advancedCatalog] = await Promise.all([
+        this.getProviderModels(input.provider, input.instance),
+        this.getAdvancedProviderModels(input.provider, input.instance),
+      ]);
+    } catch {
+      return null;
+    }
+    if (
+      !catalog.catalogRevision
+      || catalog.catalogRevision === selection.catalogRevision
+      || advancedCatalog.catalogRevision !== catalog.catalogRevision
+      || advancedCatalog.catalogActivationId !== catalog.catalogActivationId
+    ) {
+      return null;
+    }
+
+    const fit = classifyCatalogSelection({ selection, catalog, advancedCatalog });
+    if (fit.status === 'unmappable') {
+      throw new RuntimeRequestError(
+        describeUnmappableCatalogSelection(fit.mismatch, catalog, advancedCatalog),
+        409,
+        'catalog_selection_unmappable',
+      );
+    }
+    return fit.status === 'restampable' ? { ...input, modelSelection: fit.selection } : null;
+  }
+
+  private async postSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo> {
     // Defensive guard for any untyped caller that bypasses the discriminated
     // transport input. Boundary-owned callers should already be type-safe.
     const runtimePolicyIssue = validateRuntimeSessionPolicyInput({
@@ -910,7 +991,11 @@ export class CatsRuntimeClient implements RuntimeClient {
 
     if (!response.ok) {
       const rawBody = await response.text();
-      throw new Error(readRuntimeErrorText(rawBody, `Failed to create session (${response.status})`));
+      throw new RuntimeRequestError(
+        readRuntimeErrorText(rawBody, `Failed to create session (${response.status})`),
+        response.status,
+        readRuntimeErrorCode(rawBody),
+      );
     }
 
     const data = (await response.json()) as Record<string, unknown>;

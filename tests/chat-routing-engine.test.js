@@ -2049,6 +2049,52 @@ test('provider default chat restarts orchestrator sessions when the pending mode
   );
 });
 
+test('provider default chat keeps its session when only the catalog revision of the selection changes', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+  const selection = (catalogRevision) => ({
+    catalogRevision,
+    entryId: 'opus',
+    entryMode: 'explicit',
+    controls: { 'claude.reasoning_effort': 'medium' },
+  });
+
+  state = createChannel(
+    state,
+    {
+      title: 'Default Thread',
+      topic: 'A Desktop update re-stamps the saved selection.',
+      skipBossCatGreeting: true,
+      pendingProvider: 'claude',
+      pendingModel: 'opus',
+      pendingModelSelection: selection('R1'),
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
+    usage(`response from ${sessionId}`));
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'First turn', pendingProvider: 'claude', pendingModel: 'opus', pendingModelSelection: selection('R1') },
+    runtimeClient,
+    now,
+  );
+  const secondDispatch = await routeChannelMessage(
+    firstDispatch.state,
+    channelId,
+    { body: 'Second turn', pendingProvider: 'claude', pendingModel: 'opus', pendingModelSelection: selection('R2') },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.deepEqual(runtimeClient.closedSessions, []);
+  assert.deepEqual(buildChannelView(secondDispatch.state, channelId).pendingModelSelection, selection('R2'));
+});
+
 test('participant sessions restart when a participant model selection changes', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');

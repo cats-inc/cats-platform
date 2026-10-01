@@ -57,7 +57,7 @@ import {
   setChannelOrchestratorLease,
 } from '../model/index.js';
 import {
-  sameProviderModelSelection,
+  providerModelSelectionsEquivalent,
 } from '../../../../shared/providerSelection.js';
 import {
   createTranslator,
@@ -6836,7 +6836,7 @@ export async function beginChannelMessageDispatch(
       nextTarget.provider !== channelBeforeMessage.pendingProvider
       || nextTarget.model !== channelBeforeMessage.pendingModel
       || nextTarget.instance !== channelBeforeMessage.pendingInstance
-      || !sameProviderModelSelection(
+      || !providerModelSelectionsEquivalent(
         channelBeforeMessage.pendingModelSelection,
         nextTarget.modelSelection,
       )

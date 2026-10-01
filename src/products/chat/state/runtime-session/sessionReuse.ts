@@ -6,7 +6,7 @@ import type {
 } from '../../../../shared/roomRouting.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
-import { providerModelSelectionsEqual } from '../../../../shared/providerSelection.js';
+import { providerModelSelectionsEquivalent } from '../../../../shared/providerSelection.js';
 import {
   requireChannel,
   setChannelParticipantLease,
@@ -104,7 +104,7 @@ function hasParticipantExecutionTargetDrift(input: {
     return true;
   }
 
-  return !providerModelSelectionsEqual(
+  return !providerModelSelectionsEquivalent(
     participantLease.modelSelection ?? null,
     assignment.execution.modelSelection === undefined
       ? participantLease.modelSelection ?? null
@@ -426,7 +426,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
         orchestratorLease?.provider !== executionTarget.provider
         || orchestratorLease?.instance !== executionTarget.instance
         || orchestratorLease?.model !== executionTarget.model
-        || !providerModelSelectionsEqual(
+        || !providerModelSelectionsEquivalent(
           orchestratorLease?.modelSelection ?? null,
           executionTarget.modelSelection ?? null,
         )
