@@ -2913,6 +2913,16 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.providerModel.field.requestScopedWarning':
     '這裡隱藏了只可套用於個別請求的覆寫，因為這組選擇器會寫回聊天/會話預設。',
   'shared.providerModel.field.openRuntimeSetupLabel': '開啟 Cats 執行階段設定',
+  'shared.providerModel.attention.entryRemoved':
+    '「{model}」已不在目前的模型清單，請重新選擇模型。',
+  'shared.providerModel.attention.controlRemoved':
+    '{model} 已不再提供{control}「{value}」，請重新選擇。',
+  'shared.providerModel.attention.presetRemoved':
+    '已不再提供模式「{preset}」，請重新選擇。',
+  'shared.providerModel.attention.noLongerOffered': '{value}（已不再提供）',
+  'shared.providerModel.attention.chooseHere': '點此重新選擇。',
+  'shared.providerModel.attention.chooseInSettings': '點此到設定重新選擇。',
+  'shared.providerModel.attention.badgeLabel': '模型選擇需要處理',
   'shared.providerModel.field.advancedCatalogUnavailable':
     '執行階段進階模型目錄無法使用。',
   'shared.providerModel.field.catalogKindModel': '模型',

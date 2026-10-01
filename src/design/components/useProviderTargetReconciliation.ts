@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
   ProviderAdvancedModelCatalog,
@@ -6,8 +6,11 @@ import type {
 } from '../../shared/providerCatalog.js';
 import { isProductProviderDefaultModelPlaceholder } from '../../shared/providerCatalog.js';
 import {
+  canClassifyCatalogSelection,
+  classifyCatalogSelection,
   resolveCatalogTargetSelection,
   sameProviderModelSelection,
+  type CatalogSelectionMismatch,
   type ProviderModelSelection,
   type ProviderTargetSelection,
 } from '../../shared/providerSelection.js';
@@ -56,6 +59,21 @@ export function useProviderTargetReconciliation(input: {
     legacyManualTargetKey === targetKey
     && (input.model?.trim() || '').length === 0
     && !input.modelSelection;
+  // A saved choice the catalog no longer offers stays as saved until the user
+  // picks again; the picker explains what is gone instead of substituting.
+  const unmappableSelection = useMemo<CatalogSelectionMismatch | null>(() => {
+    if (!input.modelSelection || input.catalogLoading && !input.catalogResolved
+      || !canClassifyCatalogSelection(input.effectiveCatalog, input.effectiveAdvancedCatalog)) {
+      return null;
+    }
+    const fit = classifyCatalogSelection({
+      selection: input.modelSelection,
+      catalog: input.effectiveCatalog,
+      advancedCatalog: input.effectiveAdvancedCatalog,
+    });
+    return fit.status === 'unmappable' ? fit.mismatch : null;
+  }, [input.catalogLoading, input.catalogResolved, input.effectiveAdvancedCatalog,
+    input.effectiveCatalog, input.modelSelection]);
   const preserveExistingSelection =
     manualSelectionTargetKey.current === targetKey
     || Boolean(input.model.trim())
@@ -96,7 +114,8 @@ export function useProviderTargetReconciliation(input: {
   ]);
 
   useEffect(() => {
-    if (input.catalogLoading || input.effectiveCatalog.models.length === 0 || hasBlankLegacyDraft) {
+    if (input.catalogLoading || input.effectiveCatalog.models.length === 0 || hasBlankLegacyDraft
+      || unmappableSelection) {
       return;
     }
 
@@ -165,6 +184,7 @@ export function useProviderTargetReconciliation(input: {
     preserveExistingSelection,
     targetKey,
     hasBlankLegacyDraft,
+    unmappableSelection,
   ]);
 
   function clearManualSelection(): void {
@@ -185,6 +205,7 @@ export function useProviderTargetReconciliation(input: {
   return {
     persistedLegacyModelTarget,
     isLegacyModelTarget,
+    unmappableSelection,
     clearManualSelection,
     markManualSelection,
     markLegacyManualSelection,

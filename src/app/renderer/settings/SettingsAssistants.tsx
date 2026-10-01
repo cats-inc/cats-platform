@@ -27,6 +27,7 @@ import { CapabilityBootstrapSection } from './CapabilityBootstrapSection.js';
 import { useI18n } from '../i18n/index.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import { readSettingsAssistantsApiErrorMessage } from './settingsAssistantsApiErrors.js';
+import { MODEL_SETTINGS_FIELD_ID } from '../savedSelectionAttention.js';
 
 export interface SettingsAssistantsProps {
   payload: AppShellPayload;
@@ -445,7 +446,7 @@ export function SettingsAssistants({
                 </div>
               </SettingsSubSection>
             </div>
-            <div className="catsDetailColumn">
+            <div className="catsDetailColumn" id={MODEL_SETTINGS_FIELD_ID}>
               <ProviderModelBrainCard
                 provider={guideCat?.executionTarget.provider ?? 'claude'}
                 instance={guideCat?.executionTarget.instance ?? ''}

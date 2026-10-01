@@ -5,6 +5,7 @@ import {
 } from 'react';
 
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type {
   ParticipantSessionStatus,
   RoomRoutingMode,
@@ -33,6 +34,9 @@ export interface ConversationSidebarCat {
   status: string;
   avatarColor: string | null;
   avatarUrl: string | null;
+  /** Saved model choice; its avatar is marked when the catalog no longer offers it. */
+  defaultExecutionTarget?: { provider?: string | null; instance?: string | null } | null;
+  defaultModelSelection?: ProviderModelSelection | null;
 }
 
 export interface ConversationSidebarChannel {

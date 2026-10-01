@@ -16,6 +16,7 @@ import {
   isProductProviderDefaultModelPlaceholder,
 } from '../../../../shared/providerCatalog.js';
 import {
+  canClassifyCatalogSelection,
   classifyCatalogSelection,
   cloneProviderModelSelection,
   resolveCatalogTargetSelection,
@@ -190,6 +191,7 @@ async function readProviderCatalogBundle(input: {
 }): Promise<{
   effectiveCatalog: Awaited<ReturnType<typeof fetchProviderModels>>;
   effectiveAdvancedCatalog: Awaited<ReturnType<typeof fetchAdvancedProviderModels>>;
+  advancedCatalogSubstituted: boolean;
 }> {
   const [modelsResult, advancedResult] = await Promise.allSettled([
     input.fetchProviderModelsFn(input.provider, input.instance),
@@ -208,6 +210,7 @@ async function readProviderCatalogBundle(input: {
       advancedCatalogResult: advancedResult,
       modelsResult,
     }),
+    advancedCatalogSubstituted: advancedResult.status !== 'fulfilled',
   };
 }
 
@@ -332,6 +335,7 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
   );
   let effectiveCatalog: Awaited<ReturnType<typeof fetchProviderModels>>;
   let effectiveAdvancedCatalog: Awaited<ReturnType<typeof fetchAdvancedProviderModels>>;
+  let advancedCatalogSubstituted: boolean;
   try {
     const bundle = await readProviderCatalogBundle({
       provider, instance: resolvedInstance || null, fetchProviderModelsFn, fetchAdvancedProviderModelsFn,
@@ -339,6 +343,7 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
     if (!isCurrent()) return input.target;
     effectiveCatalog = bundle.effectiveCatalog;
     effectiveAdvancedCatalog = bundle.effectiveAdvancedCatalog;
+    advancedCatalogSubstituted = bundle.advancedCatalogSubstituted;
   } catch {
     if (!isCurrent()) return input.target;
     const normalizedFallbackTarget: ExecutionTargetValue = {
@@ -376,14 +381,20 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
       modelSelection: nextTarget.modelSelection,
     });
   if (!shouldDeferReconciliation && effectiveCatalog.models.length > 0) {
-    const fit = input.fallbackUnmappableSelection && nextTarget.modelSelection
+    const fit = nextTarget.modelSelection && !advancedCatalogSubstituted
+      && canClassifyCatalogSelection(effectiveCatalog, effectiveAdvancedCatalog)
       ? classifyCatalogSelection({
           selection: nextTarget.modelSelection,
           catalog: effectiveCatalog,
           advancedCatalog: effectiveAdvancedCatalog,
         })
       : null;
-    // A removed control value or preset is dropped below, and sanitizing then
+    // A conversation keeps a choice the catalog no longer offers until the user
+    // picks again. Rewriting it would hide the attention mark and run a substitute.
+    if (fit?.status === 'unmappable' && !input.fallbackUnmappableSelection) {
+      return input.target;
+    }
+    // A draft drops a removed control value or preset below, and sanitizing then
     // fills the picker's default for it; only a removed entry needs a new model.
     const entryRemoved = fit?.status === 'unmappable' && fit.mismatch.kind === 'entry';
     const preserveExistingSelection = !entryRemoved && (

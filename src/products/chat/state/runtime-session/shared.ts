@@ -218,6 +218,8 @@ export function appendFailedRuntimeSessionMessage(
     provider: string | null;
     instance: string | null;
     error: string;
+    /** Machine-readable cause, such as a saved model choice that is gone. */
+    reason?: string;
     now: Date;
     targetStateId?: string | null;
     laneId?: string | null;
@@ -240,6 +242,7 @@ export function appendFailedRuntimeSessionMessage(
     {
       metadata: {
         event: 'session_start_failed',
+        ...(input.reason ? { reason: input.reason } : {}),
         ...(input.containerId ? { containerId: input.containerId } : {}),
         ...(input.conversationId ? { conversationId: input.conversationId } : {}),
         targetKind: input.target.participantKind,

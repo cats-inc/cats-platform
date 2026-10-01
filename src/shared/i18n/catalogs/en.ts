@@ -2982,6 +2982,16 @@ export const enCatalog: MessageCatalog = {
   'shared.providerModel.field.requestScopedWarning':
     'Request-only runtime overrides are hidden here because this selector persists chat/session defaults.',
   'shared.providerModel.field.openRuntimeSetupLabel': 'Open Cats Runtime setup',
+  'shared.providerModel.attention.entryRemoved':
+    '{model} is no longer in the current model list. Choose the model again.',
+  'shared.providerModel.attention.controlRemoved':
+    '{model} no longer offers {control} {value}. Choose it again.',
+  'shared.providerModel.attention.presetRemoved':
+    'Mode {preset} is no longer offered. Choose it again.',
+  'shared.providerModel.attention.noLongerOffered': '{value} (no longer offered)',
+  'shared.providerModel.attention.chooseHere': 'Click to choose again.',
+  'shared.providerModel.attention.chooseInSettings': 'Click to choose again in Settings.',
+  'shared.providerModel.attention.badgeLabel': 'Model choice needs attention',
   'shared.providerModel.field.advancedCatalogUnavailable':
     'Runtime advanced model catalog unavailable.',
   'shared.providerModel.field.catalogKindModel': 'model',

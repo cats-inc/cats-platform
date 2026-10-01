@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import {createFixtureProviderModelCatalog} from './helpers/catalogFixture.js';
+import {
+  createFixtureProviderAdvancedCatalog,
+  createFixtureProviderModelCatalog,
+} from './helpers/catalogFixture.js';
+import catalogFixture from './fixtures/catalogs-v2.json' with { type: 'json' };
 import test from 'node:test';
 
 import {
@@ -983,3 +987,34 @@ test('a catalog re-stamp is equivalent to the saved choice but other changes are
   assert.equal(providerModelSelectionsEquivalent(null, null), true);
   assert.equal(providerModelSelectionsEquivalent(savedOpus, null), false);
 });
+
+test('every choice a fixture picker offers classifies as current, never as gone', () => {
+  let checked = 0;
+  for (const provider of Object.keys(catalogFixture)) {
+    const revision = { catalogRevision: 'R', catalogActivationId: 'A' };
+    const catalog = createFixtureProviderModelCatalog(provider, revision);
+    const advancedCatalog = normalizeProviderAdvancedModelCatalog(
+      createFixtureProviderAdvancedCatalog(provider, revision), provider);
+    for (const entry of advancedCatalog.entries) {
+      const picks = [undefined];
+      for (const control of entry.controls ?? advancedCatalog.controls) {
+        if (control.kind !== 'enum' || control.applicableEntryIds?.length && !control.applicableEntryIds.includes(entry.id)) {
+          continue;
+        }
+        for (const option of control.values ?? []) {
+          if (!option.applicableEntryIds?.length || option.applicableEntryIds.includes(entry.id)) {
+            picks.push({ [control.key]: option.value });
+          }
+        }
+      }
+      for (const controls of picks) {
+        checked += 1;
+        const selection = { entryId: entry.id, entryMode: 'explicit', catalogRevision: 'R', ...(controls ? { controls } : {}) };
+        assert.deepEqual(classifyCatalogSelection({ selection, catalog, advancedCatalog }), { status: 'current' },
+          `${provider} ${entry.id} ${JSON.stringify(controls ?? {})}`);
+      }
+    }
+  }
+  assert.ok(checked > 100);
+});
+

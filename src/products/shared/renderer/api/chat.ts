@@ -624,6 +624,8 @@ export async function updateCatProfile(
     model?: string | null;
     modelSelection?: import('../../../../shared/providerSelection.js').ProviderModelSelection | null;
     avatarUrl?: string | null;
+    /** Give chat copies whose saved choice is gone this cat's current choice, if it still maps. */
+    repairSelectionCopies?: boolean;
   },
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {

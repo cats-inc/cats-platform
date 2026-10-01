@@ -1,6 +1,8 @@
 import type { ChatState } from '../../api/contracts.js';
 import type { RoomWakeRequest } from '../../../../shared/roomRouting.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
+import { RuntimeSupervisionRejectedError } from '../../../../platform/supervision/runtimeBoundary.js';
+import { CATALOG_SELECTION_UNMAPPABLE_CODE } from '../../../../shared/providerSelection.js';
 import {
   buildChannelView,
   requireChannel,
@@ -283,12 +285,19 @@ export async function startAttachedTargetSession(input: {
       taskExecutionContext,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown runtime error';
+    // A saved choice the catalog no longer offers is the user's to replace; say
+    // what is gone instead of the supervision boundary's rejection prefix.
+    const unmappableSelection = error instanceof RuntimeSupervisionRejectedError
+      && error.causeCode === CATALOG_SELECTION_UNMAPPABLE_CODE;
+    const message = unmappableSelection
+      ? error.detail
+      : error instanceof Error ? error.message : 'Unknown runtime error';
     nextState = persistFailedTargetSessionStart({
       state: nextState,
       channelId,
       target: attachedTarget,
       error: message,
+      ...(unmappableSelection ? { reason: CATALOG_SELECTION_UNMAPPABLE_CODE } : {}),
       targetLabelProvider: createdExecutionTarget?.provider ?? null,
       targetLabelInstance: createdExecutionTarget?.instance ?? null,
       metadata: sessionLifecycleMetadata,

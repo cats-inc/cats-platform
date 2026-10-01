@@ -67,9 +67,11 @@ export class RuntimeSupervisionRejectedError extends Error {
   constructor(
     readonly toolName: string,
     readonly rejectionCode: string,
-    message: string,
+    readonly detail: string,
+    /** The failed tool's own error code, when it reported one. */
+    readonly causeCode: string | null = null,
   ) {
-    super(`${toolName} rejected: ${rejectionCode} ${message}`);
+    super(`${toolName} rejected: ${rejectionCode} ${detail}`);
     this.name = 'RuntimeSupervisionRejectedError';
   }
 }
@@ -242,10 +244,16 @@ function requireAppliedToolResult<TResult>(
     return result.result;
   }
   if (result.status === 'rejected') {
+    const details = result.error.details;
+    const causeCode = details && typeof details === 'object'
+      && typeof (details as { causeCode?: unknown }).causeCode === 'string'
+      ? (details as { causeCode: string }).causeCode
+      : null;
     throw new RuntimeSupervisionRejectedError(
       toolName,
       result.error.code,
       result.error.message,
+      causeCode,
     );
   }
 

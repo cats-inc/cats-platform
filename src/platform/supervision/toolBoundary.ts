@@ -121,11 +121,15 @@ export function createToolBoundary(options: ToolBoundaryOptions): ToolBoundary {
         appendBoundaryEvidence(options.evidenceSink, now, invocation, result, manifest);
         return result;
       } catch (error) {
+        const causeCode = readToolExecutionErrorCode(error);
         const result: ToolResult<TOutput> = {
           status: 'rejected',
           error: {
             code: 'E_PRECHECK_FAILED',
             message: formatToolExecutionError(error),
+            // Callers can still tell which failure the tool hit, such as a saved
+            // model selection the current catalog no longer offers.
+            ...(causeCode ? { details: { causeCode } } : {}),
           },
         };
         appendBoundaryEvidence(options.evidenceSink, now, invocation, result, manifest);
@@ -169,6 +173,11 @@ function appendBoundaryEvidence<TInput, TOutput>(
     cancellationContext: invocation.cancellationContext,
     summary: result.status === 'pending_approval' ? result.summary : undefined,
   });
+}
+
+function readToolExecutionErrorCode(error: unknown): string | null {
+  const code = error && typeof error === 'object' ? (error as { code?: unknown }).code : undefined;
+  return typeof code === 'string' && code.trim() !== '' ? code : null;
 }
 
 function formatToolExecutionError(error: unknown): string {

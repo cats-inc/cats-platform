@@ -424,6 +424,9 @@ export function isLegacyProviderModelTarget(input: {
   return !input.catalog.models.some((option) => option.id === normalizedModel);
 }
 
+/** Error code for a saved selection whose entry, option value or preset is gone. */
+export const CATALOG_SELECTION_UNMAPPABLE_CODE = 'catalog_selection_unmappable';
+
 export type CatalogSelectionMismatch =
   | { kind: 'entry'; entryId: string }
   | { kind: 'control'; entryId: string; key: string; value: ProviderAdvancedControlValue }
@@ -433,6 +436,19 @@ export type CatalogSelectionFit =
   | { status: 'current' }
   | { status: 'restampable'; selection: ProviderModelSelection }
   | { status: 'unmappable'; mismatch: CatalogSelectionMismatch };
+
+/**
+ * Only a revisioned base/advanced pair from the same activation can judge a saved
+ * selection. A withheld or substitute advanced catalog has no controls to offer.
+ */
+export function canClassifyCatalogSelection(
+  catalog: ProviderModelCatalog,
+  advancedCatalog: ProviderAdvancedModelCatalog,
+): boolean {
+  return Boolean(catalog.catalogRevision)
+    && advancedCatalog.catalogRevision === catalog.catalogRevision
+    && advancedCatalog.catalogActivationId === catalog.catalogActivationId;
+}
 
 /**
  * Classify a saved selection against one coherent catalog snapshot. A selection

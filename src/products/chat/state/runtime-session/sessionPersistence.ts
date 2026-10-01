@@ -136,6 +136,7 @@ export function persistFailedTargetSessionStart(input: {
   channelId: string;
   target: RoutingTarget;
   error: string;
+  reason?: string;
   targetLabelProvider: string | null;
   targetLabelInstance: string | null;
   metadata: TargetSessionLifecycleMetadata;
@@ -164,6 +165,7 @@ export function persistFailedTargetSessionStart(input: {
       provider: input.targetLabelProvider,
       instance: input.targetLabelInstance,
       error: input.error,
+      ...(input.reason ? { reason: input.reason } : {}),
       now: input.metadata.now,
       targetStateId: input.metadata.targetStateId,
       laneId: input.metadata.laneId,

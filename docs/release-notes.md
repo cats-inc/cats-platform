@@ -2,6 +2,61 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-01 — Desktop 0.7.4 standard preview
+
+Desktop **0.7.4** is the owner-requested standard-profile preview. When a catalog
+update removes a saved model, option value (such as an effort) or mode, Cats marks
+it and leaves the choice to the user instead of quietly substituting one. Choices
+that are still offered keep starting automatically, as in 0.7.3. This is a
+compatible patch with no public API, configuration or stored-format change and no
+migration; the marks are derived from the current catalog when shown.
+
+- **Default chats.** The composer chip keeps the saved label and shows a red mark
+  that says what is gone. Clicking it opens the model panel. That panel lists the
+  removed choice as "no longer offered" and saves only when you pick.
+- **Cats and Catlas.**
+  - A red mark appears at the bottom-left of the cat's avatar in the sidebar, the
+    Settings cat list and the chat header, and on Catlas's pill.
+  - Clicking a marked avatar opens that cat's model field in Settings (Catlas:
+    Settings > Assistants).
+  - Picking a model there also fixes the cat's chats that ran the gone choice.
+    When the cat's own choice is still offered, opening it from the mark fixes
+    those chats with it. Chats that chose another model keep it.
+- **Failed starts.** When a chat cannot start because its saved choice is gone, the
+  message names the missing choice and no longer shows the internal rejection
+  prefix.
+- **Pickers and reconciliation.** Settings, side panels and Code relay pickers no
+  longer turn a removed model into a custom model string or replace a removed option
+  without asking.
+- **Not covered.** Group-chat composer chips and assistant presets show no mark yet.
+  See [SPEC-013](specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md) for
+  these and the other known limits.
+- **Runtime.** Keep the 0.7.3 pin, `8729cd6cb17ab52a034e2365baffcd82915a8af8`
+  (package version 0.4.0), on every OS and in the complete source archive.
+- **Apps.** Reuse Usage 0.5.1, SHA-256
+  `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
+  Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
+  compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
+- **Signing and updates.**
+  - The manual `desktop-release.yml` dispatch uses `tag=v0.7.4`, the full Runtime
+    SHA above and `unsigned=false`; the workflow creates the preview tag.
+  - Trust profile: macOS signed + notarized, Windows unsigned (no certificate),
+    Linux n/a.
+  - Standard-profile 0.7.3 installs keep their update path: macOS uses the same
+    Developer ID team, Windows stays unsigned to unsigned, and Linux uses the
+    `.deb` update path. No installed upgrade is exercised.
+- **Validation.**
+  - The full local Node suite ran because the change spans shared contracts and
+    many surfaces. Failures needed only the desktop host build, plus two
+    environment cases on this Windows machine: Unix scripts resolving `bash` to WSL
+    and a `tar` drive-letter path.
+  - Also run: the four TypeScript projects (the mobile one lacked dependencies),
+    the catalog boundary, docs-boundary and test-collection checks, and a check
+    that every choice in the frozen catalog fixture classifies as current.
+  - No live Desktop screen check was made.
+  - Publication results: the [`v0.7.4` GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.4)
+    and its workflow run.
+
 ## 2026-10-01 — Desktop 0.7.3 standard preview
 
 Desktop **0.7.3** is the owner-requested standard-profile preview. It fixes saved model selections that Desktop 0.7.2's refreshed Runtime catalog

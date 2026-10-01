@@ -29,6 +29,7 @@
     "src/app/renderer/setup/**/*",
     "src/app/renderer/**/*.tsx",
     "src/app/renderer/guideCatPanelDetection.ts",
+    "src/app/renderer/savedSelectionAttention.ts",
     "src/products/*/renderer/**/*",
     "node_modules",
     "build",

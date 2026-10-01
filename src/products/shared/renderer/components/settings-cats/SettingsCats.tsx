@@ -43,6 +43,12 @@ import { SettingsCatsRegistry } from './SettingsCatsRegistry.js';
 import { findNewlyCreatedActiveCat } from './settingsCatsSupport.js';
 import { COMPANION_PILL_LABEL, MCP_PROFILES, SKILL_PROFILES } from './viewSupport.js';
 import { isCompanionCat } from '../../../../../shared/companionRole.js';
+import { CatAvatarSelectionAttention } from '../../../../../app/renderer/SavedSelectionAvatarAttention.js';
+import {
+  MODEL_SETTINGS_FIELD_ID,
+  readModelSettingsFocusState,
+  scrollModelSettingsFieldIntoView,
+} from '../../../../../app/renderer/savedSelectionAttention.js';
 
 export interface SettingsCatsRegistryController<TBotForm> {
   botForm: TBotForm;
@@ -200,8 +206,13 @@ export function SettingsCatsCanvas({
       && payload.chat.cats.some((c) => c.status === 'archived'),
   );
 
+  // A marked avatar elsewhere opens this page on that cat's model field.
+  const modelFocus = readModelSettingsFocusState(location.state);
   const [selectedCatId, setSelectedCatId] = useState<string | null>(
-    () => sortedActiveCats[0]?.id ?? sortedArchivedCats[0]?.id ?? null,
+    () => (modelFocus?.catId && payload.chat.cats.some((cat) => cat.id === modelFocus.catId)
+      ? modelFocus.catId
+      : null)
+      ?? sortedActiveCats[0]?.id ?? sortedArchivedCats[0]?.id ?? null,
   );
   const hasAnyCat = activeCatCount > 0 || sortedArchivedCats.length > 0;
   const effectiveMode: 'create' | 'view' = isCreateRoute || !hasAnyCat ? 'create' : 'view';
@@ -230,6 +241,18 @@ export function SettingsCatsCanvas({
       setExpandedCatId(selectedCatId);
     }
   }, [effectiveMode, selectedCatId]);
+
+  const handledModelFocusKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!modelFocus?.catId || handledModelFocusKey.current === location.key) return;
+    if (selectedCatId !== modelFocus.catId) {
+      if (payload.chat.cats.some((cat) => cat.id === modelFocus.catId)) setSelectedCatId(modelFocus.catId);
+      return;
+    }
+    if (effectiveMode !== 'view') return;
+    handledModelFocusKey.current = location.key;
+    requestAnimationFrame(scrollModelSettingsFieldIntoView);
+  }, [effectiveMode, location.key, modelFocus?.catId, payload.chat.cats, selectedCatId]);
 
   const prevActiveCatCountRef = useMemo(() => ({ current: activeCatCount }), []);
   const prevActiveCatIdsRef = useMemo(() => ({ current: new Set<string>(activeCats.map((c) => c.id)) }), []);
@@ -370,6 +393,19 @@ export function SettingsCatsCanvas({
     [onPayloadUpdate, t, toastFeedback],
   );
 
+  // Arriving from a marked avatar also asks the server to give this cat's chat
+  // copies whose saved choice is gone its current choice, when that still maps.
+  const repairedModelFocusKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!modelFocus?.catId || repairedModelFocusKey.current === location.key) return;
+    repairedModelFocusKey.current = location.key;
+    void commitCatProfile(
+      modelFocus.catId,
+      { repairSelectionCopies: true },
+      t(messageKeys.sharedSettingsCatsUpdateBrainError),
+    );
+  }, [commitCatProfile, location.key, modelFocus?.catId, t]);
+
   const handleCreateCat = async () => {
     const next = await performCreateCat();
     const newCat = next ? findNewlyCreatedActiveCat(activeCats, next.chat.cats) : null;
@@ -427,6 +463,16 @@ export function SettingsCatsCanvas({
                 aria-label={cat.name}
               >
                 {cat.avatarUrl ? null : catInitials(cat.name)}
+                <CatAvatarSelectionAttention
+                  catId={cat.id}
+                  target={cat.defaultExecutionTarget?.provider
+                    ? {
+                        provider: cat.defaultExecutionTarget.provider,
+                        instance: cat.defaultExecutionTarget.instance ?? null,
+                        modelSelection: cat.defaultModelSelection ?? null,
+                      }
+                    : null}
+                />
               </button>
             );
           })}
@@ -1094,7 +1140,7 @@ export function SettingsCatsCanvas({
                 </SettingsSubSection>
               </div>
 
-              <div className="catsDetailColumn">
+              <div className="catsDetailColumn" id={MODEL_SETTINGS_FIELD_ID}>
                 <ProviderModelBrainCard
                   provider={selectedCat.defaultExecutionTarget.provider ?? ''}
                   instance={selectedCat.defaultExecutionTarget.instance ?? ''}

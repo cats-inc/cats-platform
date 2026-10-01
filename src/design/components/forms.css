@@ -69,6 +69,10 @@
   margin-top: 2px;
 }
 
+.providerSelectionAttention {
+  color: var(--danger);
+}
+
 .providerPickerLoading {
   display: inline-flex;
   align-items: center;

@@ -578,26 +578,61 @@ Implemented now:
 - A new Chat/Code/Work draft default whose entry was removed starts from the
   provider picker's default model and controls. A removed control value already
   falls back to the picker's default for that entry. Existing conversation targets
-  keep their previous behavior until the badge below lands.
+  keep an unmappable selection as saved (see the attention marks below).
 
-Planned with the owner's confirmation:
+Attention marks (second change, confirmed by the owner):
 
-- Existing conversations keep the chip label of an unmappable selection and add a
-  red attention mark. Clicking it opens the model panel, which explains the change
-  and does not rewrite the selection until the user picks. App-level, picker and
-  Code relay reconciliation stop converting an unmappable selection into a custom
-  model string or a substitute option.
-- Saved cats (My Cats) and Catlas show the mark at the avatar's bottom-left, the only
-  corner free on every surface. Clicking a marked avatar opens the cat's settings
-  model field (`/settings/cats`, or `/settings/assistants` for Catlas). Re-picking a
-  cat there also updates that cat's unmappable copies in existing chats. Assistant
-  presets are deferred.
-- The supervision boundary or the failed-start message keeps the
-  `catalog_selection_unmappable` code, so the UI can point at the mark instead of
-  showing a raw rejection.
-- Cats, Code relay rosters, Work collaboration and Catlas do not write the re-stamped
-  selection back yet. Until they do, each new session for a stale saved selection
-  costs one rejected create, a catalog read and one retry.
+- **Rewrites stop.** An unmappable saved selection is never rewritten except by an
+  explicit pick. This covers the app-level default-chat reconcile, mounted pickers
+  (settings, side panels, and Code relay rosters, which stay mounted) and the
+  direct-lane picker. Rewriting turned a removed entry into a custom model string
+  and a removed value into a substitute, which hid the change. Classification
+  needs a revisioned base/advanced pair from one activation, so a withheld or
+  substituted advanced catalog never judges a selection.
+- **Picker display.** The picker shows the removed model, mode or option value as
+  a disabled "no longer offered" choice beside a localized notice, never as the
+  first row, and hides controls derived from a substitute row. This notice is a
+  selection-validity message, not a transport error, so the picker continuity
+  contract allows it; the unsupported-control warning was the precedent.
+- **Detection.** `useSavedSelectionAttention` derives the mark when the selection
+  is read; it is never stored, so a later catalog update clears it. It resolves
+  the provider instance from the registry, reads the cached catalog pair, and
+  re-reads on catalog refresh or client invalidation.
+- **Default chats.** A model-only chat's composer chip keeps its saved label and
+  shows a red mark with why and how to fix it. The existing click opens the model
+  panel.
+- **Cats and Catlas.**
+  - A red mark sits at the avatar's bottom-left, the one corner no other overlay
+    uses. It appears on:
+    - the sidebar's My Cats rows and the Settings selector strip, which judge the
+      cat's default;
+    - the chat header roster, which judges the copy that chat runs;
+    - Catlas's docked and floating pills.
+  - A click anywhere on a marked avatar opens the model field instead of the
+    avatar's usual action: `/settings/cats` with navigation state
+    `{focus: 'model', catId}` (which selects and scrolls to that cat), or
+    `/settings/assistants` for Catlas.
+  - The navigation hooks run only while a mark is shown.
+- **Copy repair.** Saving a cat's model in Settings also replaces its active chat
+  copies that the catalog no longer offers. Copies that still map, including ones
+  a chat changed on purpose, keep their choice. Arriving from a marked avatar also
+  sends a repair-only request (`repairSelectionCopies`). When the cat's own choice
+  still maps, its unmappable copies take it; otherwise nothing is written. This
+  covers a copy that diverged from a default that still maps.
+- **Failure message.** The supervision boundary passes the client's error code in
+  its rejection `details`. A failed start for an unmappable selection names the
+  missing choice without the rejection prefix and records `reason:
+  catalog_selection_unmappable` in its metadata.
+
+Known limits:
+
+- **Not marked.** Group-chat composer chips do not mark cat participants (the header
+  roster does), and assistant presets are deferred.
+- **No write-back.** Code relay rosters need none because their mounted pickers
+  re-stamp when shown. Catlas does not write back, because changing `guideCat`
+  during a request trips its operation-context check. Work collaboration snapshots
+  are per run. Each of these pays one rejected create, a catalog read and a retry
+  for a stale but mappable saved selection.
 
 Validation for the implemented part: 120 focused Node tests (client recovery,
 classification, routing) and 98 bundled reconcile/picker tests passed. Server,

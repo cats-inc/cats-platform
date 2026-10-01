@@ -58,6 +58,9 @@ export function ProviderModelFieldControls(input: {
         selectedCatalogEntryId,
         value,
       );
+      // A saved value the catalog no longer offers stays visible until replaced.
+      const staleValue = value !== undefined
+        && !controlValueOptions.some((option) => String(option.value) === displayedValue);
       return (
         <label className="fieldLabel providerControlField" key={control.key}>
           <span>{control.label}</span>
@@ -66,6 +69,11 @@ export function ProviderModelFieldControls(input: {
             value={displayedValue}
             onChange={(event) => onControlChange(control, event.target.value)}
           >
+            {staleValue ? (
+              <option value={displayedValue} disabled>
+                {t(messageKeys.sharedProviderModelAttentionNoLongerOffered, { value: displayedValue })}
+              </option>
+            ) : null}
             {controlValueOptions.map((option, index) => (
               <option
                 key={`${control.key}-${String(option.value)}-${index}`}

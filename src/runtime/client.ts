@@ -18,6 +18,7 @@ import {
   type ProviderModelCatalog,
 } from '../shared/providerCatalog.js';
 import {
+  CATALOG_SELECTION_UNMAPPABLE_CODE,
   classifyCatalogSelection,
   parseProviderModelResolution,
   parseProviderModelSelection,
@@ -913,7 +914,7 @@ export class CatsRuntimeClient implements RuntimeClient {
       throw new RuntimeRequestError(
         describeUnmappableCatalogSelection(fit.mismatch, catalog, advancedCatalog),
         409,
-        'catalog_selection_unmappable',
+        CATALOG_SELECTION_UNMAPPABLE_CODE,
       );
     }
     return fit.status === 'restampable' ? { ...input, modelSelection: fit.selection } : null;

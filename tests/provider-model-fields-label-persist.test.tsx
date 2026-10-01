@@ -176,23 +176,54 @@ test('label publication stays bounded with changing parent callbacks and cloned 
   assert.equal(changes.length, count, 'same catalog/target label is published once per picker identity');
 });
 
-test('label publication never restores an old revision or a removed control after reconciliation', async (t) => {
+test('label publication never restores an old revision after reconciliation', async (t) => {
   resetSharedState(); t.after(resetSharedState);
   const changes: ProviderTargetSelection[] = [];
   const models = Promise.resolve({ ...runtimeCatalog(), catalogRevision: 'R2', catalogActivationId: 'A2' });
   const advanced = Promise.resolve({ ...runtimeAdvancedCatalog(), catalogRevision: 'R2', catalogActivationId: 'A2' });
   const onChange = (target: ProviderTargetSelection) => { changes.push(target); };
   render(<ControlledPicker models={models} advanced={advanced} onChange={onChange} bump={0}
-    initialSelection={{ entryId: MODEL_ID, entryMode: 'explicit', catalogRevision: 'R1',
-      controls: { 'codex.removed_control': 'stale' } }} />);
+    initialSelection={{ entryId: MODEL_ID, entryMode: 'explicit', catalogRevision: 'R1' }} />);
   await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.catalogRevision, 'R2'));
   await settle();
   assert.ok(changes.length > 0);
   for (const change of changes) {
     assert.equal(change.modelSelection?.catalogRevision, 'R2', 'a label write cannot restore R1');
-    assert.equal(change.modelSelection?.controls?.['codex.removed_control'], undefined);
     assert.ok(change.executionLabel?.includes(RUNTIME_LABEL));
   }
+});
+
+test('a saved control the catalog no longer offers is kept and explained instead of dropped', async (t) => {
+  resetSharedState(); t.after(resetSharedState);
+  const changes: ProviderTargetSelection[] = [];
+  const models = Promise.resolve({ ...runtimeCatalog(), catalogRevision: 'R2', catalogActivationId: 'A2' });
+  const advanced = Promise.resolve({ ...runtimeAdvancedCatalog(), catalogRevision: 'R2', catalogActivationId: 'A2' });
+  const view = render(<ControlledPicker models={models} advanced={advanced} onChange={(target) => changes.push(target)}
+    bump={0} initialSelection={{ entryId: MODEL_ID, entryMode: 'explicit', catalogRevision: 'R1',
+      controls: { 'codex.removed_control': 'stale' } }} />);
+  await waitFor(() => assert.ok(view.queryByText(
+    `${RUNTIME_LABEL} no longer offers codex.removed_control stale. Choose it again.`)));
+  await settle();
+  assert.equal(changes.length, 0, 'an unmappable selection is not rewritten before the user picks');
+});
+
+test('a removed saved model shows as no longer offered until the user picks a replacement', async (t) => {
+  resetSharedState(); t.after(resetSharedState);
+  const changes: ProviderTargetSelection[] = [];
+  const models = Promise.resolve({ ...runtimeCatalog(), catalogRevision: 'R2', catalogActivationId: 'A2' });
+  const advanced = Promise.resolve({ ...runtimeAdvancedCatalog(), catalogRevision: 'R2', catalogActivationId: 'A2' });
+  const view = render(<ControlledPicker models={models} advanced={advanced} onChange={(target) => changes.push(target)}
+    bump={0} initialSelection={{ entryId: 'removed-model', entryMode: 'explicit', catalogRevision: 'R1' }} />);
+  await waitFor(() => assert.ok(view.queryByText(
+    'removed-model is no longer in the current model list. Choose the model again.')));
+  await settle();
+  assert.equal(changes.length, 0);
+  const modelSelect = view.getByText('removed-model (no longer offered)').closest('select')!;
+  assert.equal((view.getByText('removed-model (no longer offered)') as HTMLOptionElement).selected, true);
+  fireEvent.change(modelSelect, { target: { value: MODEL_ID } });
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.entryId, MODEL_ID));
+  assert.equal(changes.at(-1)?.modelSelection?.catalogRevision, 'R2');
+  await waitFor(() => assert.equal(view.queryByText('removed-model (no longer offered)'), null));
 });
 
 test('a saved plain model remains selected when it differs from the current catalog default', async (t) => {

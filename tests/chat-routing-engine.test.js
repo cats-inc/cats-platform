@@ -3987,6 +3987,41 @@ test('direct message records targetStateId on session_start_failed messages', as
   assert.equal(sessionStartFailed?.metadata?.laneId, laneId);
 });
 
+test('a saved model choice the catalog no longer offers fails to start with what is gone', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+  state = createChannel(
+    state,
+    {
+      title: 'Default Thread',
+      topic: 'Explain a removed effort instead of the supervision prefix.',
+      skipBossCatGreeting: true,
+      pendingProvider: 'claude',
+      pendingModel: 'opus',
+      pendingModelSelection: {
+        catalogRevision: 'R1', entryId: 'opus', entryMode: 'explicit',
+        controls: { 'claude.reasoning_effort': 'ultracode' },
+      },
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async () => usage('unused'));
+  const detail = 'The saved Reasoning effort "ultracode" is no longer offered for Opus 5.5. Choose the model again.';
+  runtimeClient.createSession = async () => {
+    throw Object.assign(new Error(detail), { status: 409, code: 'catalog_selection_unmappable' });
+  };
+
+  const dispatched = await routeChannelMessage(state, channelId, { body: 'Start.' }, runtimeClient, now);
+  const failed = requireChannel(dispatched.state, channelId).messages.find((message) =>
+    message.metadata?.event === 'session_start_failed');
+
+  assert.ok(failed);
+  assert.equal(failed.metadata?.reason, 'catalog_selection_unmappable');
+  assert.match(failed.body, /: The saved Reasoning effort "ultracode" is no longer offered for Opus 5\.5\./u);
+  assert.doesNotMatch(failed.body, /E_PRECHECK_FAILED|rejected:/u);
+});
+
 test('ensureTargetSession preserves sanitized participant execution targets when workspace sync fails', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();

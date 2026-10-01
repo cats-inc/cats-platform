@@ -9,6 +9,11 @@ import React, {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { CatlasAvatarSelectionAttention } from '../../app/renderer/SavedSelectionAvatarAttention.js';
+import {
+  catlasSelectionTarget,
+  type SavedSelectionTarget,
+} from '../../app/renderer/savedSelectionAttention.js';
 
 import {
   useConfirmDialog,
@@ -77,6 +82,7 @@ export function CollapsedPill({
   style,
   className,
   dragging,
+  attentionTarget,
 }: {
   name: string;
   tooltip: string;
@@ -87,6 +93,8 @@ export function CollapsedPill({
   style?: CSSProperties;
   className?: string;
   dragging?: boolean;
+  /** Catlas's saved model choice; a mark replaces the pill click when it is gone. */
+  attentionTarget?: SavedSelectionTarget | null;
 }) {
   const { t } = useI18n();
   const displayName = resolveClientGuideCatName();
@@ -110,6 +118,7 @@ export function CollapsedPill({
           <span className="guideCatPillBadge">{unreadCount}</span>
         ) : null}
       </button>
+      {dragging ? null : <CatlasAvatarSelectionAttention target={attentionTarget ?? null} />}
       {onDismissClick && !dragging ? (
         <button
           type="button"
@@ -357,6 +366,7 @@ export function GuideCatSidecarView({
         onPointerDown={onPillPointerDown}
         style={pillStyle}
         dragging={dragging}
+        attentionTarget={catlasSelectionTarget(guideCat)}
       />
     );
   } else if (viewState === 'welcome-peek') {
@@ -372,6 +382,7 @@ export function GuideCatSidecarView({
             onPointerDown={onPillPointerDown}
             style={pillStyle}
             dragging={dragging}
+            attentionTarget={catlasSelectionTarget(guideCat)}
           />
         )}
         <WelcomePeek
