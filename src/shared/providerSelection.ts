@@ -435,6 +435,19 @@ export type CatalogSelectionFit =
   | { status: 'unmappable'; mismatch: CatalogSelectionMismatch };
 
 /**
+ * Only a revisioned base/advanced pair from the same activation can judge a saved
+ * selection. A withheld or substitute advanced catalog has no controls to offer.
+ */
+export function canClassifyCatalogSelection(
+  catalog: ProviderModelCatalog,
+  advancedCatalog: ProviderAdvancedModelCatalog,
+): boolean {
+  return Boolean(catalog.catalogRevision)
+    && advancedCatalog.catalogRevision === catalog.catalogRevision
+    && advancedCatalog.catalogActivationId === catalog.catalogActivationId;
+}
+
+/**
  * Classify a saved selection against one coherent catalog snapshot. A selection
  * whose entry, control values and preset are all still offered only needs the
  * current revision. A removed entry, control value or preset is unmappable: it

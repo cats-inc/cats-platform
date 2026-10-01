@@ -116,3 +116,29 @@
   background: var(--accent-soft);
   color: var(--accent);
 }
+
+/* A saved model choice the current catalog no longer offers. */
+.selectionAttentionBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #ffffff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Bottom-left is the one avatar corner no other overlay uses. */
+.selectionAttentionBadge.isAvatarCorner {
+  position: absolute;
+  left: -4px;
+  bottom: -4px;
+  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+}

@@ -3045,6 +3045,13 @@ export const messageKeys = {
     'shared.providerModel.field.modeOnlyBaseHint',
   sharedProviderModelFieldRequestScopedWarning:
     'shared.providerModel.field.requestScopedWarning',
+  sharedProviderModelAttentionEntryRemoved: 'shared.providerModel.attention.entryRemoved',
+  sharedProviderModelAttentionControlRemoved: 'shared.providerModel.attention.controlRemoved',
+  sharedProviderModelAttentionPresetRemoved: 'shared.providerModel.attention.presetRemoved',
+  sharedProviderModelAttentionNoLongerOffered: 'shared.providerModel.attention.noLongerOffered',
+  sharedProviderModelAttentionChooseHere: 'shared.providerModel.attention.chooseHere',
+  sharedProviderModelAttentionChooseInSettings: 'shared.providerModel.attention.chooseInSettings',
+  sharedProviderModelAttentionBadgeLabel: 'shared.providerModel.attention.badgeLabel',
   sharedProviderModelFieldOpenRuntimeSetupLabel:
     'shared.providerModel.field.openRuntimeSetupLabel',
   sharedProviderModelFieldAdvancedCatalogUnavailable:

@@ -476,7 +476,12 @@ test('runtime-backed draft reconciliation replaces unsupported effort with the e
   );
 });
 
-function reconcileRemovedClaudeEntry(fallbackUnmappableSelection: boolean) {
+function reconcileRemovedClaudeEntry(
+  fallbackUnmappableSelection: boolean,
+  saved: { model: string; controls: Record<string, string> } = {
+    model: 'claude-opus-4-5', controls: { 'claude.reasoning_effort': 'max' },
+  },
+) {
   const models = [
     { id: 'opus', label: 'Opus 5.5', default: true },
     { id: 'sonnet', label: 'Sonnet 5.5' },
@@ -489,12 +494,12 @@ function reconcileRemovedClaudeEntry(fallbackUnmappableSelection: boolean) {
     target: {
       provider: 'claude',
       instance: 'native',
-      model: 'claude-opus-4-5',
+      model: saved.model,
       modelSelection: {
-        entryId: 'claude-opus-4-5',
+        entryId: saved.model,
         entryMode: 'explicit',
         catalogRevision: 'R1',
-        controls: { 'claude.reasoning_effort': 'max' },
+        controls: saved.controls,
       },
       executionLabel: 'Claude-CLI · Opus 4.5 · Max',
     },
@@ -527,10 +532,36 @@ test('a new draft whose saved model was removed starts from the provider picker 
   assert.equal(reconciled.executionLabel, 'Claude-CLI · Opus 5.5 · Medium');
 });
 
-test('reconciliation without the draft fallback keeps a removed model instead of the provider default', async () => {
+test('an existing conversation re-stamps a saved choice the new catalog still offers', async () => {
+  const reconciled = await reconcileRemovedClaudeEntry(false, {
+    model: 'opus', controls: { 'claude.reasoning_effort': 'max' },
+  });
+  assert.deepEqual(reconciled.modelSelection, {
+    catalogRevision: 'R2',
+    entryId: 'opus',
+    entryMode: 'explicit',
+    controls: { 'claude.reasoning_effort': 'max' },
+  });
+});
+
+test('an existing conversation keeps a removed option value verbatim for the user to replace', async () => {
+  const reconciled = await reconcileRemovedClaudeEntry(false, {
+    model: 'opus', controls: { 'claude.reasoning_effort': 'ultracode' },
+  });
+  assert.deepEqual(reconciled.modelSelection?.controls, { 'claude.reasoning_effort': 'ultracode' });
+  assert.equal(reconciled.modelSelection?.catalogRevision, 'R1');
+});
+
+test('an existing conversation keeps an unmappable selection verbatim for the user to replace', async () => {
   const reconciled = await reconcileRemovedClaudeEntry(false);
   assert.equal(reconciled.model, 'claude-opus-4-5');
-  assert.equal(reconciled.modelSelection, null);
+  assert.deepEqual(reconciled.modelSelection, {
+    entryId: 'claude-opus-4-5',
+    entryMode: 'explicit',
+    catalogRevision: 'R1',
+    controls: { 'claude.reasoning_effort': 'max' },
+  });
+  assert.equal(reconciled.executionLabel, 'Claude-CLI · Opus 4.5 · Max');
 });
 
 test('runtime-backed execution target reconciliation preserves an unlisted model without alias guessing', async () => {

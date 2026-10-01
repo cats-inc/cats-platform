@@ -28,6 +28,7 @@ import {
 import { useProviderRegistryState } from './useProviderRegistryState.js';
 import { useProviderTargetReconciliation } from './useProviderTargetReconciliation.js';
 import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import { describeUnmappableSavedSelection } from '../../app/renderer/savedSelectionAttention.js';
 import { messageKeys } from '../../shared/i18n/index.js';
 
 export {
@@ -123,6 +124,7 @@ export function ProviderModelFields({
   const {
     persistedLegacyModelTarget,
     isLegacyModelTarget,
+    unmappableSelection,
     clearManualSelection,
     markManualSelection,
     markLegacyManualSelection,
@@ -203,6 +205,18 @@ export function ProviderModelFields({
     onTargetChange,
   });
 
+  // Show a saved choice the catalog no longer offers as itself, never as the
+  // first row, until the user picks a replacement.
+  const staleEntryId = unmappableSelection?.kind === 'entry' ? unmappableSelection.entryId : null;
+  const stalePresetId = unmappableSelection?.kind === 'preset' ? unmappableSelection.presetId : null;
+  const selectionNotice = unmappableSelection
+    ? describeUnmappableSavedSelection({
+        mismatch: unmappableSelection,
+        catalog: effectiveCatalog,
+        advancedCatalog: effectiveAdvancedCatalog,
+      }, t)
+    : unsupportedSelectionWarning;
+
   return (
     <>
       <label className="fieldLabel">
@@ -272,10 +286,15 @@ export function ProviderModelFields({
         </div>
         <select
           className="textInput"
-          value={selectedEntryId}
+          value={staleEntryId ? UNMAPPABLE_SELECTION_VALUE : selectedEntryId}
           disabled={!isLegacyModelTarget && entryOptions.length === 0}
           onChange={(event) => onModelEntryChange(event.target.value)}
         >
+          {staleEntryId ? (
+            <option value={UNMAPPABLE_SELECTION_VALUE} disabled>
+              {t(messageKeys.sharedProviderModelAttentionNoLongerOffered, { value: staleEntryId })}
+            </option>
+          ) : null}
           {!isLegacyModelTarget && entryOptions.length === 0 ? (
             <option value="" disabled>
               {modelPlaceholder}
@@ -317,15 +336,20 @@ export function ProviderModelFields({
             {t(messageKeys.sharedProviderModelFieldLegacyModelIdHint)}
           </span>
         </label>
-      ) : (
+      ) : staleEntryId ? null : (
         <label className="fieldLabel">
           <span>{t(messageKeys.sharedProviderModelFieldModeLabel)}</span>
           <select
             className="textInput"
-            value={selectedPresetId}
-            disabled={presetOptions.length === 0}
+            value={stalePresetId ? UNMAPPABLE_SELECTION_VALUE : selectedPresetId}
+            disabled={presetOptions.length === 0 && !stalePresetId}
             onChange={(event) => onPresetChange(event.target.value)}
           >
+            {stalePresetId ? (
+              <option value={UNMAPPABLE_SELECTION_VALUE} disabled>
+                {t(messageKeys.sharedProviderModelAttentionNoLongerOffered, { value: stalePresetId })}
+              </option>
+            ) : null}
             <option value="">
               {presetOptions.length > 0
                 ? t(messageKeys.sharedProviderModelFieldModeStandardLabel)
@@ -359,15 +383,20 @@ export function ProviderModelFields({
           ) : null}
         </label>
       )}
-      <ProviderModelFieldControls
-        controlOptions={controlOptions}
-        selectedCatalogEntryId={selectedCatalogEntryId}
-        controlValues={controlValues}
-        onControlChange={onControlChange}
-      />
-      {unsupportedSelectionWarning ? (
-        <span className="fieldHint providerCatalogHint">
-          {unsupportedSelectionWarning}
+      {staleEntryId ? null : (
+        <ProviderModelFieldControls
+          controlOptions={controlOptions}
+          selectedCatalogEntryId={selectedCatalogEntryId}
+          controlValues={controlValues}
+          onControlChange={onControlChange}
+        />
+      )}
+      {selectionNotice ? (
+        <span
+          className={`fieldHint providerCatalogHint${unmappableSelection ? ' providerSelectionAttention' : ''}`}
+          role={unmappableSelection ? 'status' : undefined}
+        >
+          {selectionNotice}
         </span>
       ) : null}
       {requestScopedControlCount > 0 ? (
@@ -378,6 +407,9 @@ export function ProviderModelFields({
     </>
   );
 }
+
+// Holds a removed saved entry or preset in its select without matching any listed choice.
+const UNMAPPABLE_SELECTION_VALUE = '__cats_unmappable_selection__';
 
 // Read-only note on what the model list was captured against. It is a focusable span, not a
 // button: a button inside this <label> would become the label's control instead of the select.
