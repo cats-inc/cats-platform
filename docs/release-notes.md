@@ -2,6 +2,53 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-01 — Desktop 0.7.3 standard preview (prepared)
+
+Desktop **0.7.3** is prepared for the owner-requested standard-profile preview. It
+fixes saved model selections that Desktop 0.7.2's refreshed Runtime catalog
+rejected. Chats, cats and Catlas failed to start with `Catalog changed; choose the
+model again from the current catalog.` Saved selections record the catalog revision
+they were chosen under, so 0.7.2's "no persisted-data contract change" did not hold
+for them, even when the saved model and effort were unchanged. This is a compatible
+patch with no public API, configuration or stored-format change and no migration.
+A re-stamped selection is written back when its chat's next session starts.
+
+- **Saved selections.**
+  - A saved selection whose model, option values and preset are still offered now
+    starts under the current catalog with no user action. This covers chats, cats,
+    Code relay, Work collaboration and Catlas.
+  - Only a removed model, option value or preset still fails. The message now names
+    the missing choice.
+  - A catalog update no longer closes and restarts a live chat session.
+  - A new chat's saved default whose model was removed starts from the provider's
+    default model and options.
+  - Attention marks for existing conversations, cats and Catlas are planned
+    separately ([SPEC-013 follow-up](specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md#follow-up-saved-selections-after-a-catalog-update-2026-10-01)).
+- **Runtime.** Keep 0.7.2's pin, `8729cd6cb17ab52a034e2365baffcd82915a8af8` (package
+  version 0.4.0), on every OS and in the complete source archive. Runtime's later
+  main commit changes only documentation.
+- **Apps.** Reuse Usage 0.5.1, SHA-256
+  `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
+  Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
+  compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
+- **Signing and updates.**
+  - Dispatch `desktop-release.yml` with `tag=v0.7.3`, the full Runtime SHA above and
+    `unsigned=false`; the workflow creates the preview tag.
+  - Expected trust: macOS signed + notarized, Windows unsigned (no certificate),
+    Linux n/a.
+  - Standard-profile 0.7.2 installs keep their update path: macOS uses the same
+    Developer ID team, Windows stays unsigned to unsigned, and Linux uses the `.deb`
+    update path. Installed upgrades are not exercised by this version bump.
+- **Validation.**
+  - Passed locally:
+    - 120 focused Node tests: client recovery, selection classification and routing;
+    - 98 bundled reconcile and picker tests;
+    - the server, desktop, renderer and test TypeScript projects;
+    - the catalog boundary, test-collection and docs-boundary checks.
+  - Not run locally: the mobile typecheck, because this worktree has no mobile
+    dependencies.
+  - Required before publication: full candidate CI and all Desktop workflow gates.
+
 ## 2026-10-01 — Desktop 0.7.2 standard preview (published)
 
 Desktop **0.7.2** was published on 2026-10-01 (Taipei) as the owner-requested
