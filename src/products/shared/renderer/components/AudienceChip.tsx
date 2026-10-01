@@ -4,6 +4,7 @@ import { nameInitials } from '../../../../shared/nameInitials.js';
 import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { SelectionAttentionBadge } from '../../../../design/components/SelectionAttentionBadge.js';
 import type { DraftComposerStackParticipant } from './chatNewChatDraftSupport.js';
 
 export interface AudienceChipProps {
@@ -15,6 +16,8 @@ export interface AudienceChipProps {
   maxSelectedParticipants?: number;
   workflowShape?: RoomWorkflowShape;
   onToggleWorkflowShape?: () => void;
+  /** Why the single target's saved model choice needs a new pick; shown as a red mark. */
+  attention?: string | null;
 }
 
 function shouldShowAvatar(participant: DraftComposerStackParticipant): boolean {
@@ -38,6 +41,7 @@ export function AudienceChip({
   maxSelectedParticipants,
   workflowShape = 'sequential',
   onToggleWorkflowShape,
+  attention,
 }: AudienceChipProps) {
   const { t } = useI18n();
   const isMulti = audienceParticipants.length > 1;
@@ -177,6 +181,9 @@ export function AudienceChip({
           </div>
         ) : null}
         <span className="audienceChipLabel">{chipLabel}</span>
+        {attention ? (
+          <SelectionAttentionBadge hint={`${attention} ${t(messageKeys.sharedProviderModelAttentionChooseHere)}`} />
+        ) : null}
         <svg className="audienceChipChevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2.5 4 5 6.5 7.5 4" />
         </svg>

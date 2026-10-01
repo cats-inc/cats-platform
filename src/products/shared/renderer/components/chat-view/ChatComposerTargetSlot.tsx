@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
 import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
+import { useSavedSelectionAttention } from '../../../../../app/renderer/savedSelectionAttention.js';
 import { AudienceChip } from '../AudienceChip.js';
 import {
   buildAudienceParticipantFromCat,
@@ -89,6 +90,21 @@ export function ChatComposerTargetSlot({
   onSetActiveAudienceKeys,
   onOpenSection,
 }: ChatComposerTargetSlotProps) {
+  // Implicit recipient (model-only)
+  const implicitRecipient =
+    composerRecipients.length === 1 && composerRecipients[0]?.kind === 'implicit'
+      ? composerRecipients[0]
+      : null;
+  const implicitAttention = useSavedSelectionAttention(
+    !directLaneCat && isDefaultChatComposer && implicitRecipient?.provider
+      ? {
+          provider: implicitRecipient.provider,
+          instance: implicitRecipient.instance ?? null,
+          modelSelection: implicitRecipient.modelSelection ?? null,
+        }
+      : null,
+  );
+
   // Direct lane: single cat
   if (directLaneCat) {
     return (
@@ -116,11 +132,6 @@ export function ChatComposerTargetSlot({
     );
   }
 
-  // Implicit recipient (model-only)
-  const implicitRecipient =
-    composerRecipients.length === 1 && composerRecipients[0]?.kind === 'implicit'
-      ? composerRecipients[0]
-      : null;
   if (implicitRecipient) {
     return (
       <AudienceChip
@@ -133,6 +144,7 @@ export function ChatComposerTargetSlot({
         })]}
         onSingleClick={() => onOpenSection('execution')}
         disabled={composerBusy}
+        attention={implicitAttention}
       />
     );
   }

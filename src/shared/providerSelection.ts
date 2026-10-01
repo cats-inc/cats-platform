@@ -424,6 +424,9 @@ export function isLegacyProviderModelTarget(input: {
   return !input.catalog.models.some((option) => option.id === normalizedModel);
 }
 
+/** Error code for a saved selection whose entry, option value or preset is gone. */
+export const CATALOG_SELECTION_UNMAPPABLE_CODE = 'catalog_selection_unmappable';
+
 export type CatalogSelectionMismatch =
   | { kind: 'entry'; entryId: string }
   | { kind: 'control'; entryId: string; key: string; value: ProviderAdvancedControlValue }
