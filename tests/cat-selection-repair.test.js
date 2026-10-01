@@ -99,3 +99,15 @@ test('a catalog that cannot judge selections repairs nothing', async () => {
   runtime.getAdvancedProviderModels = async () => { throw new Error('advanced catalog unavailable'); };
   assert.deepEqual(await findUnmappableCatSelectionCopies(runtime, state, catId), []);
 });
+
+test('a copy is judged against the target it runs, not the cat default', async () => {
+  const { state, catId, channelIds } = await twoChatsWithOneCat();
+  const copy = state.channels.find((channel) => channel.id === channelIds[0])
+    .catAssignments.find((assignment) => assignment.catId === catId);
+  copy.execution.target.instance = null;
+  state.cats.find((cat) => cat.id === catId).defaultExecutionTarget.instance = 'agent/bridge';
+  const runtime = runtimeCatalogs();
+  await findUnmappableCatSelectionCopies(runtime, state, catId);
+  assert.deepEqual(runtime.reads.sort(), ['claude:cli/native', 'claude:null']);
+});
+

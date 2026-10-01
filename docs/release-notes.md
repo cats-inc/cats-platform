@@ -5,7 +5,7 @@
 ## 2026-10-01 — Model choices the catalog no longer offers
 
 When a catalog update removes a saved model, option value (such as an effort) or
-mode, Cats now marks it and leaves the choice to the user instead of quietly
+mode, Cats marks it and leaves the choice to the user instead of quietly
 substituting one. Choices that are still offered keep starting automatically, as in
 0.7.3. No stored format changes and no migration is needed; the marks are derived
 from the current catalog when shown.
