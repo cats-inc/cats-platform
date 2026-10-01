@@ -27,6 +27,7 @@ import {
   type ChatApiRouteContext,
 } from './routeSupport.js';
 import { publishChannelMutation } from './transportEventPublisher.js';
+import { findUnmappableCatSelectionCopies, repairCatSelectionCopies } from './catSelectionRepair.js';
 
 async function handleCanonicalListCats(
   context: ChatApiRouteContext,
@@ -84,6 +85,13 @@ async function handleCanonicalUpdateCat(
       avatarUrl?: string | null;
     }>(context.request);
     const currentState = await context.dependencies.chatStore.read();
+    const updatesExecution = body.provider !== undefined || body.instance !== undefined
+      || body.model !== undefined || body.modelSelection !== undefined;
+    // A new pick for the cat also replaces its chat copies whose saved choice is
+    // gone, so re-picking once in Settings repairs every chat that would fail.
+    const unmappableCopies = updatesExecution && !body.archive && !body.unarchive
+      ? await findUnmappableCatSelectionCopies(context.dependencies.runtimeClient, currentState, catId)
+      : [];
     const patch = (state: typeof currentState) => {
       if (body.name !== undefined) {
         state = renameCat(state, catId, body.name);
@@ -106,13 +114,14 @@ async function handleCanonicalUpdateCat(
       if (body.products !== undefined) {
         state = updateCatProducts(state, catId, body.products);
       }
-      if (body.provider !== undefined || body.instance !== undefined || body.model !== undefined || body.modelSelection !== undefined) {
+      if (updatesExecution) {
         state = updateCatExecutionTarget(state, catId, {
           provider: body.provider,
           instance: body.instance,
           model: body.model,
           modelSelection: body.modelSelection,
         });
+        state = repairCatSelectionCopies(state, catId, unmappableCopies, new Date());
       }
       if (body.avatarUrl !== undefined) {
         const cat = state.cats.find((c) => c.id === catId);
