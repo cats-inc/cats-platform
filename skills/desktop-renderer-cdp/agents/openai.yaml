@@ -1,0 +1,3 @@
+interface:
+  display_name: "Desktop Renderer CDP"
+  short_description: "Inspect the installed Desktop renderer over CDP"
