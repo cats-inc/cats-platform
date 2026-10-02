@@ -28,6 +28,8 @@ const REQUIRED_DESKTOP_ICON_RELATIVE_PATHS = [
   'assets/tray-icon@2x.png',
   'assets/tray-iconTemplate.png',
   'assets/tray-iconTemplate@2x.png',
+  'assets/window-icon.ico',
+  'assets/window-icon.png',
 ];
 
 function printHelp() {
@@ -118,6 +120,8 @@ function listDesktopIconManifestAssetPaths(manifest) {
     manifest?.tray?.retina,
     manifest?.tray?.template,
     manifest?.tray?.templateRetina,
+    manifest?.window?.ico,
+    manifest?.window?.png,
   ].filter((value) => typeof value === 'string' && value.length > 0);
 }
 
