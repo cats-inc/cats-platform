@@ -152,10 +152,20 @@ The repo's own icon set is produced by `npm run desktop:icons`, which passes:
 
 - `--input assets/app-icon-silhouette.svg`: the tabby-face tile. Its rounded
   corners are part of the artwork, so it runs with `--shape square`; the circle
-  mask (the generator's default) remains available for other sources.
+  mask (the generator's default) remains available for other sources. It feeds
+  the Linux icons and `icon.png`.
+- `--macos-input assets/app-icon-macos.svg`: the same cat on a white tile with
+  navy whiskers (cream ones vanish on white), used for the `.icns`.
+- `--windows-input assets/app-icon-windows.svg`: the same cat with no tile on a
+  transparent background, cropped to the cat, with mid-grey whiskers that read on
+  light and dark taskbars. It produces `icon.ico`, the NSIS installer,
+  uninstaller and header icons, and the colour tray icon (`tray-icon*.png`), which
+  the Linux tray uses as well.
 - `--tray-input assets/tray-icon-template.svg`: a black-on-transparent silhouette
-  with whiskers and knocked-out eyes, used verbatim for the macOS menu-bar
-  template (`tray-iconTemplate*.png`). Only its alpha is used; macOS recolours it
+  of the app icon's head with knocked-out eyes and thickened whiskers (update it
+  together with the app icon), used verbatim for the macOS menu-bar
+  template (`tray-iconTemplate*.png`, 20pt with a 40px @2x file; the size is
+  `MACOS_TRAY_TEMPLATE_SIZE` in the generator). Only its alpha is used; macOS recolours it
   per menu-bar appearance, so the eye holes show the bar colour. Without this
   flag the template is derived from the app icon by removing the edge-connected
   background, which cannot keep interior holes.
@@ -163,8 +173,9 @@ The repo's own icon set is produced by `npm run desktop:icons`, which passes:
   inside a transparent canvas so it matches the size of neighbouring Dock icons.
   Windows and Linux icons stay full-bleed.
 
-`assets/guide-cat-avatar.svg` (the Catlas avatar) is the same artwork clipped to
-a circle; update it together with the app icon.
+`assets/guide-cat-avatar.svg` (the Catlas avatar) is the same artwork scaled up
+1.04x and clipped to a circle, so the face reads in the 28px pill without
+clipping ears or whiskers; update it together with the app icon and keep that scale.
 
 Desktop packaging does not regenerate these icon assets. Prepare the files you
 want first, then run the packaging scripts and let them consume the existing

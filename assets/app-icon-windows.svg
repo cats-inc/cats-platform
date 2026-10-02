@@ -1,14 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="36 27 440 440">
   <!--
-    Cats Desktop app icon: front-facing orange tabby on a deep-navy rounded tile.
-    Source of truth for the cat artwork and for the Linux icons and icon.png.
-    macOS (white tile) and Windows plus the colour tray (transparent) use the variants
-    app-icon-macos.svg and app-icon-windows.svg; regenerate with `npm run desktop:icons`.
-    The rounded corners are part of the artwork, so the generator runs with
-    `shape square`; the macOS .icns additionally insets the tile per Apple's grid.
-    The menu-bar template is a separate file, assets/tray-icon-template.svg.
+    Windows app and NSIS installer icons (.ico) and the colour tray icon: the cat of
+    assets/app-icon-silhouette.svg with no tile, on a transparent background. The
+    viewBox is cropped to the cat so it fills small taskbar sizes, and the whiskers
+    are a mid grey that reads on both light and dark taskbars. Keep the cat in sync
+    with app-icon-silhouette.svg; regenerate with `npm run desktop:icons`.
   -->
-  <rect width="512" height="512" rx="116" fill="#1B2233"/>
   <defs>
     <clipPath id="headClip">
       <path d="
@@ -72,7 +69,7 @@
   <path fill="#E2604A" d="M 236 316 L 276 316 L 256 340 Z"/>
   <path d="M 256 340 L 256 358 M 256 358 C 244 374, 226 372, 218 360 M 256 358 C 268 374, 286 372, 294 360" fill="none" stroke="#1B2233" stroke-width="8" stroke-linecap="round"/>
   <!-- whiskers -->
-  <g stroke="#FFF1DC" stroke-width="10" stroke-linecap="round" fill="none">
+  <g stroke="#8A909C" stroke-width="10" stroke-linecap="round" fill="none">
     <path d="M 168 328 L 62 306"/>
     <path d="M 168 350 L 56 352"/>
     <path d="M 344 328 L 450 306"/>
