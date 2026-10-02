@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!--
+    Windows and Linux tray icon: the app icon's deep-navy rounded tile with the
+    menu-bar silhouette in white on it. The head, thickened whiskers and the
+    knocked-out eyes and mouth are the ones in assets/tray-icon-template.svg, at
+    the app icon's scale, so the holes show the navy tile. Keep it in sync with
+    both files. Regenerate with `npm run desktop:icons`.
+  -->
+  <rect width="512" height="512" rx="116" fill="#1B2233"/>
+  <defs>
+    <mask id="holes">
+      <rect width="512" height="512" fill="#fff"/>
+      <ellipse cx="204" cy="258" rx="18" ry="28" fill="#000"/>
+      <ellipse cx="308" cy="258" rx="18" ry="28" fill="#000"/>
+      <path d="M 256 340 L 256 358 M 256 358 C 244 374, 226 372, 218 360 M 256 358 C 268 374, 286 372, 294 360" fill="none" stroke="#000" stroke-width="14" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <g mask="url(#holes)">
+    <g stroke="#FFFFFF" stroke-width="26" stroke-linecap="round" fill="none">
+      <path d="M 168 328 L 62 306"/>
+      <path d="M 168 350 L 56 352"/>
+      <path d="M 344 328 L 450 306"/>
+      <path d="M 344 350 L 456 352"/>
+    </g>
+    <path fill="#FFFFFF" d="
+      M 256 420
+      C 168 420, 96 364, 96 276
+      C 96 244, 104 214, 118 190
+      L 100 92
+      C 98 80, 110 74, 120 80
+      L 200 128
+      C 218 122, 236 120, 256 120
+      C 276 120, 294 122, 312 128
+      L 392 80
+      C 402 74, 414 80, 412 92
+      L 394 190
+      C 408 214, 416 244, 416 276
+      C 416 364, 344 420, 256 420 Z"/>
+  </g>
+</svg>
