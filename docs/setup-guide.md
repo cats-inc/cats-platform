@@ -631,7 +631,8 @@ pulled back inside its work area.
 Without saved bounds, the window takes 85% of the primary display's work area,
 centered, kept between 1280×800 and 1680×1050. A work area smaller than 1280×800
 opens the window maximized, with 85% of the work area as its restored size. The
-window can be resized down to 960×600.
+window can be resized down to 960×600. Settings > Data > Reset Platform data also
+returns the window to this default size and position.
 
 In Chat, Work and Code, opening an Artifact Canvas collapses the sidebar to its
 icon rail, and closing the canvas expands it again. This does not change the
@@ -1128,4 +1129,4 @@ See `Dependency install warnings` under `Installation`.
 
 ---
 
-*Last updated: 2026-10-02*
+*Last updated: 2026-10-03*

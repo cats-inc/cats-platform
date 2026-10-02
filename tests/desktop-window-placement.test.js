@@ -11,6 +11,7 @@ import {
   readDesktopWindowState,
   resolveDefaultDesktopWindowPlacement,
   resolveDesktopWindowPlacement,
+  resetDesktopWindowPlacement,
   resolveRestoredDesktopWindowPlacement,
   trackDesktopWindowPlacement,
   writeDesktopWindowState,
@@ -304,4 +305,90 @@ test('placement tracker skips destroyed windows and survives write failures', (t
   destroyed.destroyed = true;
   destroyedTracker.flush();
   assert.deepEqual(writes, []);
+});
+
+class FakeResettableWindow extends EventEmitter {
+  calls = [];
+  maximized = false;
+  fullScreen = false;
+
+  isFullScreen() {
+    return this.fullScreen;
+  }
+
+  setFullScreen(flag) {
+    this.calls.push(['setFullScreen', flag]);
+  }
+
+  isMaximized() {
+    return this.maximized;
+  }
+
+  unmaximize() {
+    this.calls.push(['unmaximize']);
+    this.maximized = false;
+  }
+
+  maximize() {
+    this.calls.push(['maximize']);
+    this.maximized = true;
+  }
+
+  setBounds(bounds) {
+    this.calls.push(['setBounds', bounds]);
+  }
+}
+
+test('placement reset forgets the saved state and moves the window to the default placement', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'cats-window-reset-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const statePath = join(dir, 'window-state.json');
+  writeDesktopWindowState(statePath, { bounds: { x: 5, y: 5, width: 1000, height: 700 }, maximized: true });
+  const window = new FakeResettableWindow();
+  window.maximized = true;
+
+  const placement = resetDesktopWindowPlacement(window, {
+    statePath,
+    workArea: workArea(1920, 1032),
+    allowMaximize: true,
+  });
+
+  assert.deepEqual(placement, resolveDefaultDesktopWindowPlacement(workArea(1920, 1032)));
+  assert.deepEqual(window.calls, [['unmaximize'], ['setBounds', placement.bounds]]);
+  assert.equal(readDesktopWindowState(statePath), null);
+  assert.deepEqual(await readdir(dir), []);
+});
+
+test('placement reset maximizes on a small work area unless the window must not take focus', () => {
+  const statePath = join(tmpdir(), 'cats-window-reset-missing', 'window-state.json');
+  const window = new FakeResettableWindow();
+  const placement = resetDesktopWindowPlacement(window, {
+    statePath,
+    workArea: workArea(1280, 672),
+    allowMaximize: true,
+  });
+  assert.deepEqual(window.calls, [['setBounds', placement.bounds], ['maximize']]);
+
+  const candidate = new FakeResettableWindow();
+  resetDesktopWindowPlacement(candidate, {
+    statePath,
+    workArea: workArea(1280, 672),
+    allowMaximize: false,
+  });
+  assert.deepEqual(candidate.calls, [['setBounds', placement.bounds]]);
+});
+
+test('placement reset waits for full screen to end before moving the window', () => {
+  const window = new FakeResettableWindow();
+  window.fullScreen = true;
+  const placement = resetDesktopWindowPlacement(window, {
+    statePath: join(tmpdir(), 'cats-window-reset-missing', 'window-state.json'),
+    workArea: workArea(1920, 1032),
+    allowMaximize: true,
+  });
+
+  assert.deepEqual(window.calls, [['setFullScreen', false]]);
+  window.fullScreen = false;
+  window.emit('leave-full-screen');
+  assert.deepEqual(window.calls, [['setFullScreen', false], ['setBounds', placement.bounds]]);
 });

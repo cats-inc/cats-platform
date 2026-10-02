@@ -14,7 +14,10 @@ import {
   createSetupBusyState,
   type WorkspaceBusyState,
 } from '../../../shared/workspaceBusy.js';
-import { syncDesktopHostPlatformShellState } from '../setup/desktopHostBridge.js';
+import {
+  resetDesktopHostWindowPlacement,
+  syncDesktopHostPlatformShellState,
+} from '../setup/desktopHostBridge.js';
 import { invalidateProviderClientSession } from '../providerClientInvalidation.js';
 import { messageKeys } from '../../../shared/i18n/index.js';
 import { useI18n } from '../i18n/index.js';
@@ -74,6 +77,7 @@ export function SettingsCanvasContent() {
         setupCompleteAt: next.setupCompleteAt ?? null,
         products: Array.isArray(next.products) ? [...next.products] : [],
       });
+      await resetDesktopHostWindowPlacement();
       window.location.href = '/';
     } catch (error) {
       setBusy(clearBusyState());

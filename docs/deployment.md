@@ -33,6 +33,8 @@ Deletion outcomes are logged by relative path without record contents.
 Host preferences/configuration and installation identity, installed Apps/plugins
 and their data, Desktop/Runtime profiles, provider CLI logins/native transcripts,
 and external workspace files remain. The bilingual UI lists these boundaries.
+The one Desktop exception is the main window placement: on Desktop, reset forgets
+`window-state.json` and returns the window to its default size and position.
 This operation is not an uninstall or provider-account logout.
 
 Stop active tasks/conversations first. Reset refuses busy work, pauses background
@@ -1188,7 +1190,8 @@ ticket Gatekeeper reads offline, and `spctl --assess`.
   holds the main window's normal bounds and maximized flag, saved once the window
   stops moving or resizing and again on quit. A missing, unreadable or
   other-version file, or bounds that no longer overlap a display, falls back to
-  the default placement; deleting the file resets the window
+  the default placement. Reset Platform data, or deleting the file, resets the
+  window
 - **Desktop security posture**: sandboxed preload bridge, validated host env
   overrides, validated host action ids, and HTTP/HTTPS-only host-controlled
   external URLs
@@ -1268,4 +1271,4 @@ per-user path.
 
 ---
 
-*Last updated: 2026-10-02*
+*Last updated: 2026-10-03*
