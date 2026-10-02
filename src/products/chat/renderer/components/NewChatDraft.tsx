@@ -1,9 +1,9 @@
 import { type ReactNode } from 'react';
 
 import {
-  NewChatDraft as SharedChatNewChatDraft,
-  type NewChatDraftProps as SharedNewChatDraftProps,
-} from '../../../shared/renderer/components/ChatNewChatDraft.js';
+  NewConversationDraft,
+  type NewConversationDraftProps,
+} from '../../../shared/renderer/components/NewConversationDraft.js';
 import { ComposerSurfaceChip } from '../../../shared/renderer/components/ComposerSurfaceChip.js';
 import {
   DEFAULT_PERMISSION_MODE,
@@ -16,7 +16,7 @@ import { prefetchCrossSurfaceNavigationTarget } from '../../../shared/renderer/c
 import { messageKeys, type MessageKey } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
-export interface NewChatDraftProps extends SharedNewChatDraftProps {
+export interface NewChatDraftProps extends NewConversationDraftProps {
   draftSurface: PlatformSurfaceId;
   onDraftSurfaceChange: (surface: PlatformSurfaceId) => void;
 }
@@ -131,7 +131,7 @@ function NewChatDraftInner(props: NewChatDraftProps) {
     : t(messageKeys.chatNewChatDraftFolderActionLabel);
 
   return (
-    <SharedChatNewChatDraft
+    <NewConversationDraft
       {...props}
       draftChrome={{
         headerAccessory: composerHeaderAccessory,

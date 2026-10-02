@@ -995,7 +995,7 @@ test('group draft keeps runtime-origin helper chips visible while the user types
 test('direct-lane draft ignores deterministic payload-backed starter prompts', () => {
   const payload = createPayload();
   // The direct-lane suppression rule lives in the renderer
-  // (`isDirectLaneContext` in `chatNewChatDraftSupport.ts`) — the payload
+  // (`isDirectLaneContext` in `newConversationDraftSupport.ts`) — the payload
   // bundle still carries the +New chat assist; the chip simply never
   // surfaces while the user is in the DM surface.
   payload.chat.newChatAssist = {

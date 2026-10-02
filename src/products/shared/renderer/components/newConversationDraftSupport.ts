@@ -32,7 +32,7 @@ import {
   buildAudienceParticipantFromTemporaryParticipant,
 } from '../audienceParticipantBuilder.js';
 
-type ChatNewChatDraftTranslator = (
+type NewConversationDraftTranslator = (
   key: MessageKey,
   values?: MessageInterpolationValues,
 ) => string;
@@ -65,7 +65,7 @@ export interface DraftComposerStackParticipant {
 function resolvePayloadDraftAssist(input: {
   payload: AppShellPayload;
   isDirectLaneContext: boolean;
-  t: ChatNewChatDraftTranslator;
+  t: NewConversationDraftTranslator;
 }) {
   const assist = input.payload.chat.newChatAssist ?? null;
   if (!assist) {
@@ -89,7 +89,7 @@ function resolvePayloadDraftAssist(input: {
   };
 }
 
-export function resolveChatNewChatDraftViewState(input: {
+export function resolveNewConversationDraftViewState(input: {
   payload: AppShellPayload;
   draftDefaultRecipientCatId: string | null;
   draftCatIds: string[];
@@ -103,7 +103,7 @@ export function resolveChatNewChatDraftViewState(input: {
   draftCatExecutionTargetOverrides: Map<string, ExecutionTargetValue>;
   selectedExecutionTarget?: ExecutionTargetValue | undefined;
   busy: WorkspaceBusyState;
-  t: ChatNewChatDraftTranslator;
+  t: NewConversationDraftTranslator;
 }) {
   const chatCats = input.payload.chat.cats.filter(isChatCat);
   const assistantPresets = input.payload.assistantPresets ?? [];

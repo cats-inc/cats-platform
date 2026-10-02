@@ -1,5 +1,5 @@
 import { catInitials } from '../workspaceChatUtils.js';
-import type { DraftComposerStackParticipant } from './chatNewChatDraftSupport.js';
+import type { DraftComposerStackParticipant } from './newConversationDraftSupport.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 

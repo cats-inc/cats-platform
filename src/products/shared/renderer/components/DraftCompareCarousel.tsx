@@ -88,7 +88,7 @@ export function DraftCompareCarousel({
       <div className="draftCompareCarouselTrack">
         {/* Owner directive (2026-05-01): nav arrows + the +compare slot
             are owned by the active card's `draftBranchFormAnchor` (in
-            `ChatNewChatDraft`) so all three buttons share the form's
+            `NewConversationDraft`) so all three buttons share the form's
             vertical centre. Carousel-level rendering would anchor at
             `top: 50%` of the cell, which tracks the tallest branch's
             chrome and drifted higher than the form on single-branch

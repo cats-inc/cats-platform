@@ -5,14 +5,14 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import {
-  buildChatNewChatDraftSidePanelSections,
-  resolveChatNewChatDraftSidePanelCopy,
-} from '../src/products/shared/renderer/components/chatNewChatDraftSidePanel.tsx';
+  buildNewConversationDraftSidePanelSections,
+  resolveNewConversationDraftSidePanelCopy,
+} from '../src/products/shared/renderer/components/newConversationDraftSidePanel.tsx';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 
 test('chat new draft side panel copy can be product-owned by callers', () => {
   const t = createTranslator('en');
-  const copy = resolveChatNewChatDraftSidePanelCopy(
+  const copy = resolveNewConversationDraftSidePanelCopy(
     {
       title: 'New Code Setup',
       participants: {
@@ -31,7 +31,7 @@ test('chat new draft side panel copy can be product-owned by callers', () => {
     },
     t,
   );
-  const sections = buildChatNewChatDraftSidePanelSections({
+  const sections = buildNewConversationDraftSidePanelSections({
     payload: { chat: { bossCatId: null, cats: [] }, assistantPresets: [] } as unknown as AppShellPayload,
     chatCats: [],
     draftCatIds: [],

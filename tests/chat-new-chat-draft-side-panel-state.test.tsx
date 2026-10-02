@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import {
   shouldBrowseFolderOnDraftSidePanelSectionOpen,
-} from '../src/products/shared/renderer/components/chatNewChatDraftSidePanelState.ts';
+} from '../src/products/shared/renderer/components/newConversationDraftSidePanelState.ts';
 
 test('draft side panel folder section opens the browser only when needed', () => {
   assert.equal(

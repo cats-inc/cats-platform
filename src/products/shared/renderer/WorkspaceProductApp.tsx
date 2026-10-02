@@ -39,7 +39,7 @@ import type { AppShellPayload } from "../api/workspaceContracts.js";
 import type { AddCatPanelProps } from "./components/AddCatPanel.js";
 import type { FolderBrowserContentProps } from "./components/FolderBrowser.js";
 import type { ExecutionTargetValue } from "./components/ExecutionTarget.js";
-import type { NewChatDraftProps as ChatNewChatDraftProps } from "./components/ChatNewChatDraft.js";
+import type { NewConversationDraftProps } from "./components/NewConversationDraft.js";
 import type { ChatViewProps } from "./components/chat-view/ChatView.js";
 import {
   activateChatChannel,
@@ -147,14 +147,14 @@ import {
 } from "./draftChatUtils.js";
 import { resolveActiveChannelAudienceState } from "./composerMessageMetadata.js";
 import { isAdvancedDraftControlsEnabled } from "../advancedDraftControls.js";
-import { resolveChatNewChatDraftBuilderControls } from "./draftBuilderControls.js";
+import { resolveNewConversationDraftBuilderControls } from "./draftBuilderControls.js";
 import {
 } from "../channelPaths.js";
 
 type ChatSurfaceProps = Omit<ChatViewProps, "payload" | "selectedChannel">;
 
 type DraftSurfaceProps = Omit<
-  ChatNewChatDraftProps,
+  NewConversationDraftProps,
   "payload" | "onOpenAddCat" | "onDraftDefaultRecipientChange" | "allowAddCat"
 > & {
   greeting: string;
@@ -1972,7 +1972,7 @@ export function createWorkspaceProductApp({
                           ? onDraftParallelBranchGroupAddButtonClick
                           : undefined,
                     },
-                    builderControls: resolveChatNewChatDraftBuilderControls({
+                    builderControls: resolveNewConversationDraftBuilderControls({
                       advancedDraftControlsEnabled,
                       entryPreset: effectiveNewChatPreset,
                       showStructuredDraftControls:

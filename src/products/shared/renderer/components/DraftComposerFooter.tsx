@@ -7,11 +7,10 @@ import { CompareIcon } from './DraftBuilderIcons.js';
 export interface DraftComposerFooterProps {
   accessory?: ReactNode;
   /**
-   * Legacy single-card layouts (`shared/renderer/components/NewChatDraft.tsx`,
-   * used by Cats Work) still surface a +compare add button in the
-   * footer. Chat / Code drafts have moved +compare to the carousel's
-   * last-branch slot and per-branch remove to the composer's
-   * top-right corner; those callers stop passing this prop.
+   * Footer +compare add button from the retired single-card draft
+   * (ADR-129). Every draft now puts +compare in the carousel's
+   * last-branch slot and per-branch remove in the composer's top-right
+   * corner, so no caller passes this prop.
    */
   showParallelAddButton?: boolean;
   hideParallelHint?: boolean;

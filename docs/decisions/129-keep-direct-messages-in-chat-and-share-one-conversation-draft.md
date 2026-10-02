@@ -58,6 +58,20 @@ and replaces the renderer-ownership split in
    renaming them adds regression risk without making the code clearer. The
    `chat-view/ChatView*` family has the same naming problem and is out of scope.
    The deletion and rename land as a separate change with no behavior change.
+   Earlier ADRs, specs and plans keep the old names; they map as follows (all in
+   `src/products/shared/renderer/components/`):
+   - `ChatNewChatDraft.tsx` → `NewConversationDraft.tsx` (`NewChatDraft` →
+     `NewConversationDraft`, `NewChatDraftProps` → `NewConversationDraftProps`)
+   - `chatNewChatDraftSupport.ts` → `newConversationDraftSupport.ts`
+   - `chatNewChatDraftSidePanel.tsx` → `newConversationDraftSidePanel.tsx`
+   - `chatNewChatDraftSidePanelState.ts` → `newConversationDraftSidePanelState.ts`
+   - `useChatNewChatDraftPanelState.ts` → `useNewConversationDraftPanelState.ts`
+   - Identifiers containing `ChatNewChat` now say `NewConversation`.
+   - Deleted with the legacy draft: `NewChatDraft.tsx`,
+     `WorkspaceNewChatDraftTargetSlot.tsx`, `DraftComposerStack.tsx`,
+     `ChatNewChatDraftTargetSlot.tsx`, `ComposerCatStack.tsx` and the Code and Work
+     re-exports of it. The `.composerCatStack` CSS stays for
+     `ComposerParticipantStack`.
 
 ## Consequences
 

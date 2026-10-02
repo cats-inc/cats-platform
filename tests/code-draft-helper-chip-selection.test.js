@@ -9,7 +9,7 @@ test('code draft helper chip selection keeps chips visible across default, team,
     'utf8',
   );
   const sharedDraftSource = await readFile(
-    path.join(process.cwd(), 'src', 'products', 'shared', 'renderer', 'components', 'ChatNewChatDraft.tsx'),
+    path.join(process.cwd(), 'src', 'products', 'shared', 'renderer', 'components', 'NewConversationDraft.tsx'),
     'utf8',
   );
 

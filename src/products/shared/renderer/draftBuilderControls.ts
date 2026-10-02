@@ -1,12 +1,12 @@
 import type { NewChatPreset } from './draftStarterSuggestionContext.js';
-import type { ChatNewChatDraftBuilderControls } from './components/ChatNewChatDraft.js';
+import type { NewConversationDraftBuilderControls } from './components/NewConversationDraft.js';
 
-export function resolveChatNewChatDraftBuilderControls(input: {
+export function resolveNewConversationDraftBuilderControls(input: {
   advancedDraftControlsEnabled: boolean;
   entryPreset: NewChatPreset;
   showStructuredDraftControls: boolean;
   hasVisibleParallelDraftTargets: boolean;
-}): ChatNewChatDraftBuilderControls {
+}): NewConversationDraftBuilderControls {
   return {
     showParallelAddButton:
       input.showStructuredDraftControls

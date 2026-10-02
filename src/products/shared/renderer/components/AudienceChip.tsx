@@ -5,7 +5,7 @@ import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { SelectionAttentionBadge } from '../../../../design/components/SelectionAttentionBadge.js';
-import type { DraftComposerStackParticipant } from './chatNewChatDraftSupport.js';
+import type { DraftComposerStackParticipant } from './newConversationDraftSupport.js';
 
 export interface AudienceChipProps {
   audienceParticipants: DraftComposerStackParticipant[];

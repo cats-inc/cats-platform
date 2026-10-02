@@ -120,7 +120,7 @@ export function resolveLobbyGuideCatAssistBaseline(options: {
  * preset state is renderer state, not a guide-cat-assist scope axis, so the
  * baseline does not switch on it. The renderer ignores
  * deterministic-origin chips today (only runtime-origin chips render —
- * see `chatNewChatDraftSupport.ts`'s `resolvePayloadDraftAssist`), so the
+ * see `newConversationDraftSupport.ts`'s `resolvePayloadDraftAssist`), so the
  * baseline ships an empty `entryChips` array; the cached bundle still
  * carries a stable greeting for offline / first-paint use.
  */

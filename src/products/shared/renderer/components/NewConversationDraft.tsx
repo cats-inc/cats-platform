@@ -31,14 +31,13 @@ import {
   useDraftHelperChipVisibility,
 } from '../draftHelperChips.js';
 import { isChatCat, truncatePath } from '../workspaceChatUtils.js';
-import { ChatNewChatDraftTargetSlot } from './ChatNewChatDraftTargetSlot.js';
 import { type ExecutionTargetValue } from './ExecutionTarget.js';
 import {
-  buildChatNewChatDraftSidePanelSections,
-  resolveChatNewChatDraftSidePanelCopy,
-  type BuildChatNewChatDraftSidePanelSectionsInput,
-  type ChatNewChatDraftSidePanelCopy,
-} from './chatNewChatDraftSidePanel.js';
+  buildNewConversationDraftSidePanelSections,
+  resolveNewConversationDraftSidePanelCopy,
+  type BuildNewConversationDraftSidePanelSectionsInput,
+  type NewConversationDraftSidePanelCopy,
+} from './newConversationDraftSidePanel.js';
 import { DraftHeader } from './DraftHeader.js';
 import { DraftComposerFooter } from './DraftComposerFooter.js';
 import { DiagnosticAttachmentAction } from './DiagnosticAttachmentAction.js';
@@ -48,8 +47,8 @@ import {
   DraftCompareCarousel,
   type DraftCompareCarouselCard,
 } from './DraftCompareCarousel.js';
-import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
-import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
+import { resolveNewConversationDraftViewState } from './newConversationDraftSupport.js';
+import { useNewConversationDraftPanelState } from './useNewConversationDraftPanelState.js';
 import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
 import {
   completeRuntimeSessionPolicy,
@@ -78,14 +77,14 @@ import {
 } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
-type ChatNewChatDraftTranslator = (
+type NewConversationDraftTranslator = (
   key: MessageKey,
   values?: MessageInterpolationValues,
 ) => string;
 
 function formatBranchRuntimeSessionPolicy(
   policy: RuntimeSessionPolicy,
-  t: ChatNewChatDraftTranslator,
+  t: NewConversationDraftTranslator,
 ): string {
   const workspaceLabel = policy.workspaceKind === 'worktree'
     ? t(messageKeys.chatNewChatDraftBranchPolicyWorkspaceWorktree)
@@ -139,7 +138,7 @@ export interface ParallelBranchDraftActions {
   onQuickAddTemporaryParticipant?: (index: number) => void;
 }
 
-export interface ChatNewChatDraftChrome {
+export interface NewConversationDraftChrome {
   headerAccessory?: ReactNode;
   headerWhereExtras?: ReactNode;
   footerAccessory?: ReactNode;
@@ -148,20 +147,20 @@ export interface ChatNewChatDraftChrome {
   chooseFolderPlacement?: 'header' | 'plusMenu';
 }
 
-export interface ChatNewChatDraftBuilderControls {
+export interface NewConversationDraftBuilderControls {
   showGroupAddButton?: boolean;
   showParallelAddButton?: boolean;
   hideGroupHint?: boolean;
   hideParallelHint?: boolean;
 }
 
-export interface ChatNewChatDraftCopy {
+export interface NewConversationDraftCopy {
   composerPlaceholder?: string;
   folderActionLabel?: string;
-  sidePanel?: ChatNewChatDraftSidePanelCopy;
+  sidePanel?: NewConversationDraftSidePanelCopy;
 }
 
-export interface ChatNewChatDraftStarterChips {
+export interface NewConversationDraftStarterChips {
   leading?: ReadonlyArray<{
     id: string;
     label: string;
@@ -170,10 +169,10 @@ export interface ChatNewChatDraftStarterChips {
   preserveOnSelect?: boolean;
 }
 
-export interface ChatNewChatDraftSidePanelComposition {
+export interface NewConversationDraftSidePanelComposition {
   title?: string;
   buildSections?: (
-    input: BuildChatNewChatDraftSidePanelSectionsInput,
+    input: BuildNewConversationDraftSidePanelSectionsInput,
   ) => SidePanelSection[];
 }
 
@@ -291,7 +290,7 @@ function BranchRuntimeSessionPolicyControls({
   );
 }
 
-export interface NewChatDraftProps {
+export interface NewConversationDraftProps {
   payload: AppShellPayload;
   composerDraft: string;
   busy: WorkspaceBusyState;
@@ -347,7 +346,7 @@ export interface NewChatDraftProps {
   onAddParallelTarget?: () => void;
   onRemoveParallelTarget?: (index: number) => void;
   parallelBranchActions?: ParallelBranchDraftActions;
-  builderControls?: ChatNewChatDraftBuilderControls;
+  builderControls?: NewConversationDraftBuilderControls;
   folderBrowsePath?: string;
   folderBrowseCurrentPath?: string;
   folderBrowseParentPath?: string;
@@ -364,13 +363,13 @@ export interface NewChatDraftProps {
   draftRuntimeSessionPolicy?: RuntimeSessionPolicy | null;
   onDraftRuntimeSessionPolicyChange?: (policy: RuntimeSessionPolicy) => void;
   onCatAvatarSave?: (catId: string, dataUrl: string) => void;
-  draftChrome?: ChatNewChatDraftChrome;
-  draftCopy?: ChatNewChatDraftCopy;
-  starterChips?: ChatNewChatDraftStarterChips;
-  sidePanel?: ChatNewChatDraftSidePanelComposition;
+  draftChrome?: NewConversationDraftChrome;
+  draftCopy?: NewConversationDraftCopy;
+  starterChips?: NewConversationDraftStarterChips;
+  sidePanel?: NewConversationDraftSidePanelComposition;
 }
 
-export function NewChatDraft({
+export function NewConversationDraft({
   payload,
   composerDraft,
   busy,
@@ -440,7 +439,7 @@ export function NewChatDraft({
   draftCopy,
   starterChips,
   sidePanel,
-}: NewChatDraftProps) {
+}: NewConversationDraftProps) {
   const navigate = useNavigate();
   const {
     headerAccessory: composerHeaderAccessory = null,
@@ -472,12 +471,12 @@ export function NewChatDraft({
   const onToggleParallelBranchWorkflowShape = parallelBranchActions?.onToggleWorkflowShape;
   const onQuickAddParallelBranchTemporaryParticipant =
     parallelBranchActions?.onQuickAddTemporaryParticipant;
-  const resolvedSidePanelCopy = resolveChatNewChatDraftSidePanelCopy(sidePanelCopy, t);
+  const resolvedSidePanelCopy = resolveNewConversationDraftSidePanelCopy(sidePanelCopy, t);
   const sidePanelTitle = sidePanel?.title ?? resolvedSidePanelCopy.title;
   const buildDraftSidePanelSections =
     sidePanel?.buildSections
-    ?? ((input: BuildChatNewChatDraftSidePanelSectionsInput) =>
-      buildChatNewChatDraftSidePanelSections(input));
+    ?? ((input: BuildNewConversationDraftSidePanelSectionsInput) =>
+      buildNewConversationDraftSidePanelSections(input));
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const [activeBranchIndex, setActiveBranchIndex] = useState(0);
   const parallelCount = parallelTargets?.length ?? 0;
@@ -537,7 +536,7 @@ export function NewChatDraft({
     isSubmittingFirstTurn,
     draftComposerRecipients,
     groupComposerParticipants,
-  } = resolveChatNewChatDraftViewState({
+  } = resolveNewConversationDraftViewState({
     payload,
     draftDefaultRecipientCatId,
     draftCatIds,
@@ -708,7 +707,7 @@ export function NewChatDraft({
     beginTemporaryParticipantRename,
     cancelTemporaryParticipantRename,
     submitTemporaryParticipantRename,
-  } = useChatNewChatDraftPanelState({
+  } = useNewConversationDraftPanelState({
     payload,
     folderBrowseCurrentPath,
     folderBrowseLoading,

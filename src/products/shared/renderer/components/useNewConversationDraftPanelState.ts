@@ -5,10 +5,10 @@ import {
   createDraftTemporaryParticipant,
   type DraftTemporaryParticipant,
 } from '../draftChatUtils.js';
-import type { ChatNewChatTemporaryParticipantFormState } from './chatNewChatDraftSidePanel.js';
-import { shouldBrowseFolderOnDraftSidePanelSectionOpen } from './chatNewChatDraftSidePanelState.js';
+import type { NewConversationTemporaryParticipantFormState } from './newConversationDraftSidePanel.js';
+import { shouldBrowseFolderOnDraftSidePanelSectionOpen } from './newConversationDraftSidePanelState.js';
 
-export function useChatNewChatDraftPanelState(input: {
+export function useNewConversationDraftPanelState(input: {
   payload: AppShellPayload;
   folderBrowseCurrentPath: string;
   folderBrowseLoading: boolean;
@@ -27,7 +27,7 @@ export function useChatNewChatDraftPanelState(input: {
     update: { name?: string | null; roleHint?: string | null },
   ) => void;
 }) {
-  function createTemporaryParticipantFormValue(): ChatNewChatTemporaryParticipantFormState {
+  function createTemporaryParticipantFormValue(): NewConversationTemporaryParticipantFormState {
     return {
       roleHint: '',
       provider: input.payload.chat.newChatDefaults?.provider ?? 'claude',
@@ -42,7 +42,7 @@ export function useChatNewChatDraftPanelState(input: {
   const [temporaryParticipantFormOpen, setTemporaryParticipantFormOpen] = useState(false);
   const [editingTemporaryParticipantId, setEditingTemporaryParticipantId] = useState<string | null>(null);
   const [editingTemporaryParticipantName, setEditingTemporaryParticipantName] = useState('');
-  const [temporaryParticipantForm, setTemporaryParticipantForm] = useState<ChatNewChatTemporaryParticipantFormState>(
+  const [temporaryParticipantForm, setTemporaryParticipantForm] = useState<NewConversationTemporaryParticipantFormState>(
     createTemporaryParticipantFormValue,
   );
 
