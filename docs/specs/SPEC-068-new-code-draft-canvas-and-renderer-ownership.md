@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Draft; renderer ownership superseded by [ADR-129](../decisions/129-keep-direct-messages-in-chat-and-share-one-conversation-draft.md) (2026-10-03): every Code draft renders through the one shared draft, and Code has no direct-lane draft |
 | **Owner** | Codex |
 | **Reviewer** | User |
 | **Related ADR** | [ADR-067](../decisions/067-use-shared-draft-primitives-with-product-owned-code-entry-drafts.md) |

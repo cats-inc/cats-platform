@@ -224,7 +224,6 @@ test('work draft presets expose the screenshot attachment action when wired', ()
       onTakeScreenshot: () => {},
     })),
     renderDraft(createProps({
-      allowAddCat: false,
       draftCatIds: ['cat-lead'],
       draftDefaultRecipientCatId: 'cat-lead',
       plusMenuOpen: true,

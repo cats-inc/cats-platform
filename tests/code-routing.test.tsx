@@ -42,8 +42,6 @@ function createProps(): AppRoutesProps {
   return {
     payload,
     selectedChannel: null,
-    directLaneChannel: null,
-    showDirectLaneBoot: false,
     feedback: '',
     busy: clearBusyState(),
     chatSurfaceProps: {} as AppRoutesProps['chatSurfaceProps'],
@@ -71,4 +69,9 @@ test('Code AppRoutes keeps relay, builder, and artifact detail surfaces reachabl
   const artifactRoute = routes.find((entry) => entry.path === 'artifacts/:artifactId');
   assert.ok(artifactRoute, 'expected /code/artifacts/:artifactId route');
   assert.ok(isValidElement(artifactRoute?.element));
+});
+
+test('Code AppRoutes registers no direct-message route (ADR-129)', () => {
+  const routes = collectRoutes(AppRoutes(createProps()));
+  assert.equal(routes.some((entry) => entry.path.startsWith('dm')), false);
 });

@@ -80,6 +80,10 @@ import {
   isProductsPath,
 } from '../../shared/platformRoutePaths.js';
 import { createLazyProductSurface } from './productSurfaceEntries.js';
+import {
+  LEGACY_DIRECT_MESSAGE_SURFACES,
+  LegacyDirectMessageRedirect,
+} from './productShell/LegacyDirectMessageRedirect.js';
 
 type PlatformLoadState =
   | { status: 'loading' }
@@ -748,6 +752,13 @@ export default function PlatformApp() {
           <Route element={<SettingsShell envelope={readyEnvelope} />}>
             <Route path="/settings/*" element={<SettingsCanvasContent />} />
           </Route>
+          {LEGACY_DIRECT_MESSAGE_SURFACES.map((surface) => (
+            <Route
+              key={`legacy-dm-${surface}`}
+              path={`${PLATFORM_SURFACE_ROUTES[surface].routePrefix}/dm/:catId`}
+              element={<LegacyDirectMessageRedirect />}
+            />
+          ))}
           <Route
             path={`${PLATFORM_SURFACE_ROUTES.chat.routePrefix}/*`}
             element={renderProductSurface('chat', setProductSurfaceFallbackActive, t)}

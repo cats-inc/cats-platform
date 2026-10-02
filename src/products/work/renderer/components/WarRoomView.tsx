@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import type { WorkDashboardProjection } from '../../api/projection.js';
-import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
+import { buildChannelPath } from '../../shared/channelPaths.js';
 import type { CoreTaskActionEnvelope } from '../../../../core/taskActionEnvelopes.js';
 import { performWorkTaskActionEnvelope } from '../api/workRecords.js';
 import { listCatActorLinks } from '../actorLinks.js';
@@ -268,7 +268,7 @@ function WorkWarRoomTaskContextActions({
           className="operatorActionButton"
           onClick={() => {
             startTransition(() => {
-              navigate(buildMyCatPath(actor.catId));
+              navigate(`/entities/cats/${encodeURIComponent(actor.catId)}`);
             });
           }}
         >
@@ -726,7 +726,7 @@ function WorkItemsSection({
                     className="operatorActionButton"
                     onClick={() => {
                       startTransition(() => {
-                        navigate(buildMyCatPath(actor.catId));
+                        navigate(`/entities/cats/${encodeURIComponent(actor.catId)}`);
                       });
                     }}
                   >

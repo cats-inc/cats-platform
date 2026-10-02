@@ -69,7 +69,12 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
   assert.match(warRoomSource, /useWorkDashboardQuery/u);
   assert.match(warRoomSource, /performWorkTaskActionEnvelope/u);
   assert.match(warRoomSource, /buildChannelPath/u);
-  assert.match(warRoomSource, /buildMyCatPath/u);
+  // ADR-129: "Open {actorName}" views the Cat profile; direct messages are Chat-owned.
+  assert.doesNotMatch(warRoomSource, /buildMyCatPath/u);
+  assert.equal(
+    warRoomSource.match(/navigate\(`\/entities\/cats\/\$\{encodeURIComponent\(actor\.catId\)\}`\)/gu)?.length,
+    2,
+  );
   assert.match(warRoomSource, /taskContext\.conversationSourceChannelId/u);
   assert.match(warRoomSource, /taskContext\.projectId/u);
   assert.match(warRoomSource, /taskContext\.workItemId/u);

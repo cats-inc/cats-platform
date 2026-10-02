@@ -7,13 +7,9 @@ import type { SelectedChannelView } from './workspaceChatUtils.js';
 import type { CanvasSurfaceKind } from '../artifactCanvas/contracts.js';
 import { withSharedViewerRoutes, type ArtifactCanvasControlsProps } from './withSharedViewerRoutes.js';
 
-function noop(): void {}
-
 export interface WorkspaceAppRoutesProps {
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView | null;
-  directLaneChannel: SelectedChannelView | null;
-  showDirectLaneBoot: boolean;
   feedback: string;
   busy: WorkspaceBusyState;
   addCatOpen: boolean;
@@ -49,8 +45,6 @@ export interface WorkspaceAppRoutesProps {
 export function WorkspaceAppRoutes({
   payload,
   selectedChannel,
-  directLaneChannel,
-  showDirectLaneBoot,
   feedback,
   busy,
   addCatOpen,
@@ -91,23 +85,6 @@ export function WorkspaceAppRoutes({
         <Route
           path="chats"
           element={<Navigate to={chatsPath} replace />}
-        />
-        <Route
-          path="dm/:catId"
-          element={
-            showDirectLaneBoot
-              ? renderBootShell()
-              : directLaneChannel
-                ? renderChatView(directLaneChannel, {
-                    onOpenAddCat: noop,
-                    showAddCatButton: false,
-                  })
-                : renderNewChatDraft({
-                    onOpenAddCat: noop,
-                    onDraftDefaultRecipientChange: noop,
-                    allowAddCat: false,
-                  })
-          }
         />
         <Route
           path="new"

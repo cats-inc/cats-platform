@@ -5,7 +5,9 @@
 
 ## Status
 
-Proposed
+Superseded by [ADR-129](129-keep-direct-messages-in-chat-and-share-one-conversation-draft.md)
+(2026-10-03). Every Code entry draft now renders through the one shared draft;
+the legacy `WorkspaceNewChatDraft` is retired.
 
 ## Context
 

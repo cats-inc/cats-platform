@@ -52,6 +52,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
+| [ADR-129](129-keep-direct-messages-in-chat-and-share-one-conversation-draft.md) | Keep Direct Messages in Chat and Share One Conversation Draft | Accepted; supersedes ADR-067 | 2026-10-03 |
 | [ADR-127](127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md) | Keep Companion Cats Alive with a Platform-Owned Life Loop | Accepted; implemented via PLAN-117 | 2026-09-29 |
 | [ADR-124](124-model-companion-as-a-cat-role-not-a-skill-profile.md) | Model Companion as a Cat Role, Not a Skill Profile | Accepted; implemented via PLAN-114; release boundary 0.6.0 | 2026-09-29 |
 | [ADR-123](123-expose-app-sdk-contract-as-platform-npm-subpath.md) | Expose the App SDK Contract as a Platform npm Subpath | Accepted for Stage 1; implemented, not yet published | 2026-09-29 |
@@ -180,7 +181,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-09-29 (ADR-128 makes the App SDK version the sole App compatibility gate; `catsPlatform` becomes a minimum host version.)*
+*Last updated: 2026-10-03 (ADR-129 keeps direct messages in Chat and leaves one shared conversation draft.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*
 

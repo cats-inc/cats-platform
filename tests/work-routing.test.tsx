@@ -42,8 +42,6 @@ function createProps(): AppRoutesProps {
   return {
     payload,
     selectedChannel: null,
-    directLaneChannel: null,
-    showDirectLaneBoot: false,
     feedback: '',
     busy: clearBusyState(),
     addCatOpen: false,
@@ -93,4 +91,9 @@ test('Work AppRoutes keeps operational and manual Work surfaces reachable', () =
   const workItemRoute = routes.find((entry) => entry.path === 'work-items/:workItemId');
   assert.ok(workItemRoute, 'expected /work/work-items/:workItemId route');
   assert.ok(isValidElement(workItemRoute?.element));
+});
+
+test('Work AppRoutes registers no direct-message route (ADR-129)', () => {
+  const routes = collectRoutes(AppRoutes(createProps()));
+  assert.equal(routes.some((entry) => entry.path.startsWith('dm')), false);
 });

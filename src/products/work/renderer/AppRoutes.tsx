@@ -71,8 +71,6 @@ export interface AppRoutesProps extends Omit<
 export function AppRoutes({
   payload,
   selectedChannel,
-  directLaneChannel,
-  showDirectLaneBoot,
   feedback,
   busy,
   chatSurfaceProps,
@@ -89,8 +87,6 @@ export function AppRoutes({
   return WorkspaceAppRoutes({
     payload,
     selectedChannel,
-    directLaneChannel,
-    showDirectLaneBoot,
     feedback,
     busy,
     addCatOpen,
