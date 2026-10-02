@@ -99,6 +99,10 @@ function createDesktopIconManifest(overrides = {}) {
       template: 'assets/tray-iconTemplate.png',
       templateRetina: 'assets/tray-iconTemplate@2x.png',
     },
+    window: {
+      ico: 'assets/window-icon.ico',
+      png: 'assets/window-icon.png',
+    },
     ...overrides,
   };
 }
@@ -731,8 +735,8 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   assert.equal(packageJson.build.nsis.installerIcon, 'installerIcon.ico');
   assert.equal(packageJson.build.nsis.uninstallerIcon, 'uninstallerIcon.ico');
   assert.equal(packageJson.build.nsis.installerHeaderIcon, 'installerHeaderIcon.ico');
-  assert.equal(packageJson.build.files.includes('assets/build/icon.ico'), true);
-  assert.equal(packageJson.build.files.includes('assets/build/icon.png'), true);
+  assert.equal(packageJson.build.files.includes('assets/window-icon.ico'), true);
+  assert.equal(packageJson.build.files.includes('assets/window-icon.png'), true);
   assert.equal(packageJson.build.extraResources.some(
     (entry) => entry.to === 'desktop/setup-assets',
   ), true);
@@ -822,8 +826,8 @@ test('macOS packaging hardens the runtime and ships the entitlements it then nee
 
 test('resolveDesktopWindowIconPath finds packaged window icons for supported desktop platforms', async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-window-icon-'));
-  const iconIcoPath = join(workingDir, 'assets', 'build', 'icon.ico');
-  const iconPngPath = join(workingDir, 'assets', 'build', 'icon.png');
+  const iconIcoPath = join(workingDir, 'assets', 'window-icon.ico');
+  const iconPngPath = join(workingDir, 'assets', 'window-icon.png');
 
   await seedFile(iconIcoPath, 'ico');
   await seedFile(iconPngPath, 'png');
