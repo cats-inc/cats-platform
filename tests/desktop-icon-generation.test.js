@@ -253,3 +253,62 @@ test('generateElectronIcons insets only the macOS icns artwork when asked', asyn
     /Unsupported macOS inset/u,
   );
 });
+
+// png-to-ico stores each size as a bottom-up BGRA DIB after a 40-byte header.
+async function readIcoPixel(path, size, x, y) {
+  const ico = await readFile(path);
+  for (let entry = 0; entry < ico.readUInt16LE(4); entry += 1) {
+    const directory = 6 + (entry * 16);
+    if ((ico[directory] || 256) !== size) {
+      continue;
+    }
+    const offset = ico.readUInt32LE(directory + 12) + 40 + ((((size - 1 - y) * size) + x) * 4);
+    return { blue: ico[offset], green: ico[offset + 1], red: ico[offset + 2], alpha: ico[offset + 3] };
+  }
+  throw new Error(`No ${size}px image in ${path}`);
+}
+
+test('generateElectronIcons takes separate macOS and Windows sources', async () => {
+  const workspace = await createWorkspace();
+  const inputSvgPath = join(workspace, 'icon-source.svg');
+  const macosInputSvgPath = join(workspace, 'icon-macos.svg');
+  const windowsInputSvgPath = join(workspace, 'icon-windows.svg');
+  const assetsRoot = join(workspace, 'assets');
+  const buildResourcesDir = join(assetsRoot, 'build');
+  await writeFile(inputSvgPath, SOURCE_SVG);
+  await writeFile(macosInputSvgPath, SOURCE_SVG.replace('#1f2937', '#ffffff'));
+  await writeFile(windowsInputSvgPath, SOURCE_SVG.replace(/ {2}<rect [^\n]*\n/u, ''));
+
+  const manifest = await generateElectronIcons({
+    inputSvgPath,
+    macosInputSvgPath,
+    windowsInputSvgPath,
+    assetsRoot,
+    buildResourcesDir,
+    iconShape: 'square',
+  });
+  assert.equal(manifest.macosSourceSvg.endsWith('icon-macos.svg'), true);
+  assert.equal(manifest.windowsSourceSvg.endsWith('icon-windows.svg'), true);
+
+  // Linux and icon.png keep the default source's dark tile.
+  const linuxCorner = await readPixel(join(buildResourcesDir, 'icons', 'linux', '256x256.png'), 0, 0);
+  assert.deepEqual([linuxCorner.red, linuxCorner.alpha], [0x1f, 255]);
+
+  // The .icns comes from the macOS source.
+  const icns = Icns.from(await readFile(join(buildResourcesDir, 'icon.icns')));
+  const largestPng = join(workspace, 'ic10.png');
+  await writeFile(largestPng, icns.images.find((image) => image.osType === 'ic10').image);
+  const macosCorner = await readPixel(largestPng, 0, 0);
+  assert.deepEqual([macosCorner.red, macosCorner.alpha], [255, 255]);
+
+  // The app .ico, every NSIS icon and the colour tray icon come from the Windows source.
+  const icoPath = join(buildResourcesDir, 'icon.ico');
+  assert.equal((await readIcoPixel(icoPath, 32, 0, 0)).alpha, 0);
+  assert.equal((await readIcoPixel(icoPath, 32, 16, 16)).alpha, 255);
+  const ico = await readFile(icoPath);
+  for (const name of ['installerIcon.ico', 'uninstallerIcon.ico', 'installerHeaderIcon.ico']) {
+    assert.equal(ico.equals(await readFile(join(buildResourcesDir, name))), true, name);
+  }
+  assert.equal((await readPixel(join(assetsRoot, 'tray-icon.png'), 0, 0)).alpha, 0);
+  assert.equal((await readPixel(join(assetsRoot, 'tray-icon@2x.png'), 32, 32)).alpha, 255);
+});

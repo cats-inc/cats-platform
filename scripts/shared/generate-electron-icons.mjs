@@ -55,6 +55,9 @@ Options:
   --assets-root <path>         Asset root for tray outputs. Defaults to assets/
   --build-resources <path>     Build-resource root for app icons. Defaults to assets/build
   --shape <square|circle>      Output mask shape. Defaults to circle
+  --macos-input <path>         Separate SVG for the macOS .icns. Defaults to --input.
+  --windows-input <path>       Separate SVG for the Windows app and NSIS .ico files and
+                               the colour tray icon (shared with Linux). Defaults to --input.
   --tray-input <path>          Separate SVG for the macOS menu-bar template. Its alpha is
                                kept and every opaque pixel is forced to black, so holes
                                (eyes) stay transparent. Without it the template is derived
@@ -97,6 +100,8 @@ function parseArgs(argv) {
   let buildResourcesDir = DEFAULT_BUILD_RESOURCES_DIR;
   let iconShape = DEFAULT_ICON_SHAPE;
   let trayInputSvgPath = null;
+  let macosInputSvgPath = null;
+  let windowsInputSvgPath = null;
   let macosInset = DEFAULT_MACOS_INSET;
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -109,11 +114,23 @@ function parseArgs(argv) {
         buildResourcesDir,
         iconShape,
         trayInputSvgPath,
+        macosInputSvgPath,
+        windowsInputSvgPath,
         macosInset,
       };
     }
     if (value === '--tray-input') {
       trayInputSvgPath = resolve(PROJECT_ROOT, argv[index + 1] ?? '');
+      index += 1;
+      continue;
+    }
+    if (value === '--macos-input') {
+      macosInputSvgPath = resolve(PROJECT_ROOT, argv[index + 1] ?? '');
+      index += 1;
+      continue;
+    }
+    if (value === '--windows-input') {
+      windowsInputSvgPath = resolve(PROJECT_ROOT, argv[index + 1] ?? '');
       index += 1;
       continue;
     }
@@ -152,6 +169,8 @@ function parseArgs(argv) {
     buildResourcesDir,
     iconShape,
     trayInputSvgPath,
+    macosInputSvgPath,
+    windowsInputSvgPath,
     macosInset,
   };
 }
@@ -353,11 +372,19 @@ export async function generateElectronIcons(options = {}) {
   const trayInputSvgPath = options.trayInputSvgPath
     ? resolve(PROJECT_ROOT, options.trayInputSvgPath)
     : null;
+  const macosInputSvgPath = options.macosInputSvgPath
+    ? resolve(PROJECT_ROOT, options.macosInputSvgPath)
+    : null;
+  const windowsInputSvgPath = options.windowsInputSvgPath
+    ? resolve(PROJECT_ROOT, options.windowsInputSvgPath)
+    : null;
   const macosInset = normalizeMacosInset(options.macosInset);
   const linuxIconDir = resolve(buildResourcesDir, 'icons', 'linux');
 
   const svgBuffer = await readFile(inputSvgPath);
   const traySvgBuffer = trayInputSvgPath ? await readFile(trayInputSvgPath) : null;
+  const macosSvgBuffer = macosInputSvgPath ? await readFile(macosInputSvgPath) : null;
+  const windowsSvgBuffer = windowsInputSvgPath ? await readFile(windowsInputSvgPath) : null;
   const pngBuffersBySize = new Map();
   const icnsBuffersBySize = new Map();
 
@@ -368,7 +395,8 @@ export async function generateElectronIcons(options = {}) {
   ])) {
     const png = await renderSvgPng(svgBuffer, size, iconShape);
     pngBuffersBySize.set(size, png);
-    icnsBuffersBySize.set(size, await insetPng(png, size, macosInset));
+    const macosPng = macosSvgBuffer ? await renderSvgPng(macosSvgBuffer, size, iconShape) : png;
+    icnsBuffersBySize.set(size, await insetPng(macosPng, size, macosInset));
   }
 
   await rm(linuxIconDir, { recursive: true, force: true });
@@ -381,7 +409,14 @@ export async function generateElectronIcons(options = {}) {
     linuxIcons[size] = toProjectRelative(filePath);
   }
 
-  const icoBuffer = await pngToIco(ICO_SIZES.map((size) => pngBuffersBySize.get(size)));
+  // The app .ico doubles as the NSIS installer, uninstaller and header icon.
+  const windowsPngs = [];
+  for (const size of ICO_SIZES) {
+    windowsPngs.push(windowsSvgBuffer
+      ? await renderSvgPng(windowsSvgBuffer, size, iconShape)
+      : pngBuffersBySize.get(size));
+  }
+  const icoBuffer = await pngToIco(windowsPngs);
   const icnsBuffer = buildIcns(icnsBuffersBySize);
   const appPngPath = resolve(buildResourcesDir, 'icon.png');
   const iconIcoPath = resolve(buildResourcesDir, 'icon.ico');
@@ -401,8 +436,12 @@ export async function generateElectronIcons(options = {}) {
   await writeBuffer(uninstallerIconPath, icoBuffer);
   await writeBuffer(installerHeaderIconPath, icoBuffer);
   await writeBuffer(iconIcnsPath, icnsBuffer);
-  await writeBuffer(trayIconPath, pngBuffersBySize.get(32));
-  await writeBuffer(trayIcon2xPath, pngBuffersBySize.get(64));
+  // The colour tray icon is what Windows (and Linux) show in the notification area.
+  const renderColourTray = async (size) => (windowsSvgBuffer
+    ? renderSvgPng(windowsSvgBuffer, size, iconShape)
+    : pngBuffersBySize.get(size));
+  await writeBuffer(trayIconPath, await renderColourTray(32));
+  await writeBuffer(trayIcon2xPath, await renderColourTray(64));
   const renderTemplate = (size) => (traySvgBuffer
     ? renderExplicitTrayTemplate(traySvgBuffer, size)
     : renderTrayTemplate(svgBuffer, size, iconShape));
@@ -412,6 +451,8 @@ export async function generateElectronIcons(options = {}) {
   const manifest = {
     sourceSvg: toProjectRelative(inputSvgPath),
     traySourceSvg: trayInputSvgPath ? toProjectRelative(trayInputSvgPath) : null,
+    macosSourceSvg: toProjectRelative(macosInputSvgPath ?? inputSvgPath),
+    windowsSourceSvg: toProjectRelative(windowsInputSvgPath ?? inputSvgPath),
     shape: iconShape,
     macosInset,
     app: {

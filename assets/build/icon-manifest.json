@@ -1,6 +1,8 @@
 {
   "sourceSvg": "assets/app-icon-silhouette.svg",
   "traySourceSvg": "assets/tray-icon-template.svg",
+  "macosSourceSvg": "assets/app-icon-macos.svg",
+  "windowsSourceSvg": "assets/app-icon-windows.svg",
   "shape": "square",
   "macosInset": 0.09765625,
   "app": {
