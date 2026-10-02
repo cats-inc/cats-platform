@@ -2,6 +2,56 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-03 — Desktop 0.7.6 standard preview
+
+Desktop **0.7.6** is the owner-requested standard-profile preview. A direct-message
+draft with a cover keeps its composer level with the Catlas pill, the macOS menu-bar
+icon gains Catlas's mouth, and Windows and Linux get their own tray and window
+icons. This is a compatible patch with no public API, configuration or
+stored-format change to existing data and no migration.
+
+- **Direct-message draft with a cover.** The cover stays at the top of the draft,
+  and the large avatar, the name and **View cat profile** sit directly above the
+  composer, whose center stays at half the window height, level with the Catlas
+  pill. In a short window the avatar first overlaps the cover's bottom edge, by at
+  most 32px (40px when narrow), before it pushes the composer down. Other draft
+  headers keep the stacked cover.
+- **macOS menu-bar icon.** Catlas's mouth is cut out next to the eyes, so it shows
+  the menu-bar colour like they do.
+- **Windows and Linux tray icon.** Still the navy tile, now with the menu-bar
+  silhouette in white on it: the head, thicker white whiskers, and the eyes and
+  mouth cut out to the tile.
+- **Windows and Linux window icon.** The title bar, and the taskbar button of an
+  unpinned running window, show Catlas's colour face on a transparent background,
+  cropped to fill the icon. Its cream whiskers are faint on a light title bar.
+  Pinned taskbar and Start-menu entries use the app icon, and the app icons on
+  every platform are unchanged from 0.7.5.
+- **Runtime.** Keep the 0.7.5 pin, `8729cd6cb17ab52a034e2365baffcd82915a8af8`
+  (package version 0.4.0), on every OS and in the complete source archive.
+- **Apps.** Reuse Usage 0.5.1, SHA-256
+  `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
+  Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
+  compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
+- **Signing and updates.**
+  - The manual `desktop-release.yml` dispatch uses `tag=v0.7.6`, the full Runtime
+    SHA above and `unsigned=false`; the workflow creates the preview tag.
+  - Expected trust profile: macOS signed + notarized, Windows unsigned (no
+    certificate), Linux n/a.
+  - Standard-profile 0.7.5 installs keep their update path: macOS uses the same
+    Developer ID team, Windows stays unsigned to unsigned, and Linux uses the
+    `.deb` update path. No installed upgrade is exercised.
+- **Validation.**
+  - Both changes ran their own full PR CI.
+  - The draft layout was previewed in an installed Desktop 0.7.5 renderer over CDP
+    with the CSS injected.
+  - For the icons, the icon generator and Desktop packaging tests ran locally, and
+    the icons were checked in rendered previews only, not on a Windows or Linux
+    desktop.
+  - No packaged installer with these changes was checked on a desktop before the
+    dispatch.
+  - Publication results: the [`v0.7.6` GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.6)
+    and its workflow run.
+
 ## 2026-10-02 — Desktop 0.7.5 standard preview
 
 Desktop **0.7.5** is the owner-requested standard-profile preview. The window now
