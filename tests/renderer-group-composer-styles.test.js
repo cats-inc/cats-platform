@@ -36,4 +36,26 @@ test('chat drafts center the composer at half the viewport height, level with th
   assert.doesNotMatch(draftShellRule, /padding-top:/u);
   // Content above the composer grows upward from the end of the first row.
   assert.match(draftShellLeadRule, /align-self:\s*end;/u);
+  // A cover no longer opts the draft out of the anchored composer.
+  assert.doesNotMatch(stylesheet, /\.draftShell:has\(\.draftHeaderWithCover\)\s*\{[^}]*grid-template-rows/u);
+});
+
+test('direct-lane drafts keep the cover at the top and the avatar block with the composer', () => {
+  const stylesheet = readStylesheetSync(
+    new URL('../src/products/shared/renderer/styles/chat-thread-base.css', import.meta.url),
+  );
+
+  const coverRule = stylesheet.match(
+    /\.draftShell \.draftHeaderWithCover \.draftHeaderCover\s*\{[^}]+\}/u,
+  )?.[0] ?? '';
+  const reserveRules = stylesheet.match(
+    /\.draftShell \.draftHeaderProfile\.draftHeaderWithCover\s*\{[^}]+\}/gu,
+  ) ?? [];
+
+  assert.match(coverRule, /position:\s*absolute;/u);
+  assert.match(coverRule, /top:\s*0;/u);
+  assert.deepEqual(
+    reserveRules.map((rule) => rule.match(/padding-top:\s*([^;]+);/u)?.[1]),
+    ['calc(100% * 6 / 16 - 32px)', 'calc(100% * 6 / 16 - 40px)'],
+  );
 });
