@@ -185,6 +185,10 @@
   `useWorkspaceLocationState` all emit / match `/dm/:catId` now.
   Helper / constant names still say `MyCats` (the shared-agent
   concept per ADR-065) but the URLs are `/dm/`.
+  Since ADR-129 (2026-10-03) direct messages are Chat-owned:
+  `WorkspaceAppRoutes` no longer registers `dm/:catId`, and the
+  platform router redirects `/code/dm/:catId` and `/work/dm/:catId`
+  to `/chat/dm/:catId`.
 - `PlatformLobbyCatSummary` gains a required `createdAt: string`
   field (post-phase-7 contract bump for sort tiebreaks).
 - `PlatformLobbyClowderSummary` and `PlatformLobbyCatterySummary`

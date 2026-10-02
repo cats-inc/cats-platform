@@ -195,34 +195,10 @@ test('new code draft publishes code-specific copy overrides for the shared works
 });
 
 test('new code draft resolves product-owned surfaces before shared primitive render', () => {
-  assert.equal(
-    resolveCodeNewChatDraftSurfaceKind({
-      draftDefaultRecipientCatId: 'cat-lead',
-      entryPreset: 'parallel',
-    }),
-    'direct-lane',
-  );
-  assert.equal(
-    resolveCodeNewChatDraftSurfaceKind({
-      draftDefaultRecipientCatId: null,
-      entryPreset: 'default',
-    }),
-    'default',
-  );
-  assert.equal(
-    resolveCodeNewChatDraftSurfaceKind({
-      draftDefaultRecipientCatId: null,
-      entryPreset: 'group',
-    }),
-    'team',
-  );
-  assert.equal(
-    resolveCodeNewChatDraftSurfaceKind({
-      draftDefaultRecipientCatId: null,
-      entryPreset: 'parallel',
-    }),
-    'peer',
-  );
+  assert.equal(resolveCodeNewChatDraftSurfaceKind({ entryPreset: 'default' }), 'default');
+  assert.equal(resolveCodeNewChatDraftSurfaceKind({}), 'default');
+  assert.equal(resolveCodeNewChatDraftSurfaceKind({ entryPreset: 'group' }), 'team');
+  assert.equal(resolveCodeNewChatDraftSurfaceKind({ entryPreset: 'parallel' }), 'peer');
 });
 
 test('new code draft owns shared side panel sections through its product builder', () => {
@@ -479,48 +455,22 @@ test('new code default drafts without an explicit direct-lane route do not rende
   assert.doesNotMatch(markup, /class="composerCatStack"/u);
 });
 
-test('new code direct-lane drafts keep the participant stack in the composer row', () => {
+// ADR-129: direct messages belong to Chat, so a cat-scoped
+// `/code/new?cat=<id>` is an ordinary draft with that Cat preselected,
+// not the retired direct-lane draft (profile header + composer stack).
+test('new code cat-scoped drafts render the shared draft without the direct-lane profile header', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        allowAddCat: false,
         draftCatIds: ['cat-lead'],
         draftDefaultRecipientCatId: 'cat-lead',
       })}
     />,
   );
 
-  assert.match(markup, /draftHeaderProfile/u);
-  assert.match(markup, /<h1 class="draftHeaderTitle">Milo<\/h1>/u);
-  assert.match(markup, /Choose codespace/u);
-  assert.match(markup, /class="composerCatStack"/u);
-});
-
-test('new code direct-lane drafts keep the same profile header when the participant is telegram-bound', () => {
-  const markup = renderToStaticMarkup(
-    <NewChatDraft
-      {...createProps({
-        allowAddCat: false,
-        payload: createPayload({
-          botBindings: [
-            {
-              id: 'binding-telegram',
-              platform: 'telegram',
-              status: 'active',
-              catId: 'cat-lead',
-            },
-          ] as unknown as AppShellPayload['chat']['botBindings'],
-        }),
-        draftCatIds: ['cat-lead'],
-        draftDefaultRecipientCatId: 'cat-lead',
-      })}
-    />,
-  );
-
-  assert.match(markup, /draftHeaderProfile/u);
-  assert.match(markup, /<h1 class="draftHeaderTitle">Milo<\/h1>/u);
-  assert.match(markup, /Choose codespace/u);
-  assert.doesNotMatch(markup, /Focused Code Session/u);
+  assert.doesNotMatch(markup, /draftHeaderProfile/u);
+  assert.doesNotMatch(markup, /class="composerCatStack"/u);
+  assert.match(markup, /class="draftShell"/u);
 });
 
 test('team code and peer code drafts render through code-owned shared primitives', () => {
@@ -688,7 +638,6 @@ test('code draft presets expose the screenshot attachment action when wired', ()
     renderToStaticMarkup(
       <NewChatDraft
         {...createProps({
-          allowAddCat: false,
           draftCatIds: ['cat-lead'],
           draftDefaultRecipientCatId: 'cat-lead',
           plusMenuOpen: true,

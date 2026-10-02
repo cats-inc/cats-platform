@@ -2,9 +2,6 @@ import {
   NewChatDraft as ChatNewChatDraft,
   type NewChatDraftProps as SharedNewChatDraftProps,
 } from '../../../shared/renderer/components/ChatNewChatDraft.js';
-import {
-  NewChatDraft as SharedNewChatDraft,
-} from '../../../shared/renderer/components/NewChatDraft.js';
 import { ComposerSurfaceChip } from '../../../shared/renderer/components/ComposerSurfaceChip.js';
 import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
 import { resolveChatNewChatDraftBuilderControls } from '../../../shared/renderer/draftBuilderControls.js';
@@ -82,10 +79,11 @@ function buildWorkSurfaceTag(props: NewChatDraftProps) {
 }
 
 /**
- * Generic +New Work (no direct-lane recipient), +Group Work, and
- * +Parallel Work all render through `ChatNewChatDraft` so
+ * +New Work (including a cat-scoped `/work/new?cat=<id>`), +Group
+ * Work, and +Parallel Work all render through `ChatNewChatDraft` so
  * +collaborate seeds temps in place and +compare appends a shadow
- * row without navigating off the current URL.
+ * row without navigating off the current URL. Direct messages belong
+ * to Chat (ADR-129), so Work has no direct-lane draft.
  */
 function WorkChatDraft(props: NewChatDraftProps) {
   const { t } = useI18n();
@@ -114,24 +112,6 @@ function WorkChatDraft(props: NewChatDraftProps) {
   );
 }
 
-/**
- * Direct-lane drafts keep the workspace draft surface so the
- * profile header / ComposerCatStack stay intact.
- */
-function WorkDirectLaneDraft(props: NewChatDraftProps) {
-  const sharedGreeting = props.greeting ?? undefined;
-  return (
-    <SharedNewChatDraft
-      {...props}
-      greeting={sharedGreeting}
-      surfaceTag={buildWorkSurfaceTag(props)}
-    />
-  );
-}
-
 export function NewChatDraft(props: NewChatDraftProps) {
-  if (props.draftDefaultRecipientCatId) {
-    return <WorkDirectLaneDraft {...props} />;
-  }
   return <WorkChatDraft {...props} />;
 }

@@ -19,10 +19,9 @@ test('code draft helper chip selection keeps chips visible across default, team,
     codeDraftSource,
     /onClick:\s*buildCodeChipOnClick\(chip,\s*props\)/u,
   );
-  assert.match(
-    codeDraftSource,
-    /onSelectHelperChip:\s*\(chip\)\s*=>\s*buildCodeChipOnClick\(chip,\s*props\)\(\)/u,
-  );
+  // ADR-129 retired the direct-lane draft, the only `onSelectHelperChip`
+  // path; every Code draft now goes through starterChips.
+  assert.doesNotMatch(codeDraftSource, /onSelectHelperChip/u);
   assert.match(
     codeDraftSource,
     /props\.onComposerChange\(chip\.prompt\);[\s\S]*props\.onDraftSurfaceChange\(target\);/u,

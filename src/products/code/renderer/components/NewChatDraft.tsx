@@ -15,17 +15,12 @@ import {
   type ChatNewChatDraftSidePanelCopy,
 } from '../../../shared/renderer/components/chatNewChatDraftSidePanel.js';
 import type { SidePanelSection } from '../../../../design/components/SidePanel.js';
-import {
-  NewChatDraft as WorkspaceNewChatDraft,
-  type NewChatDraftProps as WorkspaceDraftProps,
-  type WorkspaceNewChatDraftCopy,
-} from '../../../shared/renderer/components/NewChatDraft.js';
+import type { WorkspaceNewChatDraftCopy } from '../../../shared/renderer/components/NewChatDraft.js';
 import { ComposerSurfaceChip } from '../../../shared/renderer/components/ComposerSurfaceChip.js';
 import { PermissionModeChip } from '../../../shared/renderer/components/PermissionModeChip.js';
 import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
 import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
 import { resolveChatNewChatDraftBuilderControls } from '../../../shared/renderer/draftBuilderControls.js';
-import { isComposerBusyForDraft } from '../../../../shared/composer.js';
 import {
   createTranslator,
   messageKeys,
@@ -198,15 +193,11 @@ export function buildCodeNewChatDraftSidePanelSections(
   ];
 }
 
-export type CodeNewChatDraftSurfaceKind = 'direct-lane' | 'default' | 'team' | 'peer';
+export type CodeNewChatDraftSurfaceKind = 'default' | 'team' | 'peer';
 
 export function resolveCodeNewChatDraftSurfaceKind(input: {
-  draftDefaultRecipientCatId: string | null;
   entryPreset?: NewChatDraftProps['entryPreset'];
 }): CodeNewChatDraftSurfaceKind {
-  if (input.draftDefaultRecipientCatId) {
-    return 'direct-lane';
-  }
   if (input.entryPreset === 'group') {
     return 'team';
   }
@@ -351,131 +342,12 @@ function resolveCodeDraftGreeting(
   return draftCopy.greeting;
 }
 
-function buildWorkspaceDraftProps(input: {
-  props: NewChatDraftProps;
-  draftCopy: WorkspaceNewChatDraftCopy;
-  t: CodeDraftTranslate;
-  visibleHelperChips: Array<{
-    id: string;
-    label?: string | null;
-    prompt: string;
-  }>;
-  onSelectHelperChip: (chip: { id: string; prompt: string }) => void;
-}): WorkspaceDraftProps {
-  const { props, draftCopy, t, visibleHelperChips, onSelectHelperChip } = input;
-  const {
-    greetingPool,
-    draftTemporaryParticipants,
-    onAddDraftTemporaryParticipant,
-    onQuickAddDraftTemporaryParticipant,
-    onRemoveDraftTemporaryParticipant,
-    onUpdateDraftTemporaryParticipant,
-    entryPreset,
-    parallelTargets,
-    onParallelTargetChange,
-    onAddParallelTarget,
-    onRemoveParallelTarget,
-    draftWorkflowShape,
-    onToggleDraftWorkflowShape,
-    draftAudienceKeys,
-    onSetAudienceKeys,
-    draftRuntimeSessionPolicy,
-    onDraftRuntimeSessionPolicyChange,
-    onCancelPendingSend,
-    builderControls,
-    sidePanel,
-    ...workspaceProps
-  } = props;
-  const isSubmittingFirstTurn = isComposerBusyForDraft(props.busy);
-
-  // Direct-lane +New Code still renders the workspace draft surface
-  // (profile header + ComposerCatStack). It intentionally ignores
-  // the chat-group / parallel draft fields — those live in the
-  // ChatNewChatDraft path for group / parallel presets.
-  void greetingPool;
-  void draftTemporaryParticipants;
-  void onAddDraftTemporaryParticipant;
-  void onQuickAddDraftTemporaryParticipant;
-  void onRemoveDraftTemporaryParticipant;
-  void onUpdateDraftTemporaryParticipant;
-  void entryPreset;
-  void parallelTargets;
-  void onParallelTargetChange;
-  void onAddParallelTarget;
-  void onRemoveParallelTarget;
-  void draftWorkflowShape;
-  void onToggleDraftWorkflowShape;
-  void draftAudienceKeys;
-  void onSetAudienceKeys;
-  void draftRuntimeSessionPolicy;
-  void onDraftRuntimeSessionPolicyChange;
-  void onCancelPendingSend;
-  void builderControls;
-  void sidePanel;
-
-  return {
-    ...workspaceProps,
-    greeting: resolveCodeDraftGreeting(props, draftCopy, t) ?? undefined,
-    postComposerAccessory: visibleHelperChips.length > 0 ? (
-      <div className="draftPromptSuggestions">
-        <div className="chipRow">
-          {visibleHelperChips.map((chip) => (
-            <button
-              key={chip.id}
-              className="promptChip draftPromptChip"
-              type="button"
-              disabled={isSubmittingFirstTurn}
-              onClick={() => onSelectHelperChip({ id: chip.id, prompt: chip.prompt })}
-            >
-              {chip.label?.trim() || chip.prompt}
-            </button>
-          ))}
-        </div>
-      </div>
-    ) : null,
-  };
-}
-
 /**
- * Direct-lane drafts (`draftDefaultRecipientCatId` present) keep the
- * workspace draft surface so the profile header + ComposerCatStack
- * stay intact. Teaching +collaborate / +compare are suppressed here
- * because direct-lane is a 1×1 context.
- */
-function CodeDirectLaneDraft(props: NewChatDraftProps) {
-  const { t } = useI18n();
-  const draftCopy = buildNewCodeDraftCopy(t);
-  const helperChips = resolveCodeDraftHelperChips(props, t);
-  const { permissionChip, whereExtras } = useDraftSessionChips({
-    draftCwd: props.draftCwd,
-    busy: props.busy,
-    draftRuntimeSessionPolicy: props.draftRuntimeSessionPolicy,
-    onDraftRuntimeSessionPolicyChange: props.onDraftRuntimeSessionPolicyChange,
-  });
-  const workspaceProps = buildWorkspaceDraftProps({
-    props,
-    draftCopy,
-    t,
-    visibleHelperChips: helperChips,
-    onSelectHelperChip: (chip) => buildCodeChipOnClick(chip, props)(),
-  });
-
-  return (
-    <WorkspaceNewChatDraft
-      {...workspaceProps}
-      copy={draftCopy}
-      composerHeaderAccessory={permissionChip}
-      composerHeaderWhereExtras={whereExtras}
-      surfaceTag={buildCodeSurfaceTag(props)}
-    />
-  );
-}
-
-/**
- * Generic +New Code (no direct-lane recipient), +Team Code, and
- * +Peer Code all render through `ChatNewChatDraft` so +collaborate
+ * +New Code (including a cat-scoped `/code/new?cat=<id>`), +Team Code,
+ * and +Peer Code all render through `ChatNewChatDraft` so +collaborate
  * seeds temps in place and +compare appends a shadow row without
- * navigating off the current URL — matching +New Chat.
+ * navigating off the current URL — matching +New Chat. Direct messages
+ * belong to Chat (ADR-129), so Code has no direct-lane draft.
  */
 function CodeChatDraft(props: NewChatDraftProps) {
   const { t } = useI18n();
@@ -568,12 +440,8 @@ function CodePeerDraft(props: NewChatDraftProps) {
 
 export function NewChatDraft(props: NewChatDraftProps) {
   const surfaceKind = resolveCodeNewChatDraftSurfaceKind({
-    draftDefaultRecipientCatId: props.draftDefaultRecipientCatId,
     entryPreset: props.entryPreset,
   });
-  if (surfaceKind === 'direct-lane') {
-    return <CodeDirectLaneDraft {...props} />;
-  }
   if (surfaceKind === 'team') {
     return <CodeTeamDraft {...props} />;
   }
