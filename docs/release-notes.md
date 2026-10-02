@@ -2,6 +2,56 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-02 — Desktop 0.7.5 standard preview
+
+Desktop **0.7.5** is the owner-requested standard-profile preview. The window now
+sizes itself from the screen and reopens where you left it, an open Artifact Canvas
+gets more room, and the Catlas pill and macOS menu-bar icon read better. This is a
+compatible patch with no public API, configuration or stored-format change to
+existing data and no migration.
+
+- **Window size and placement.**
+  - The main window reopens with its last normal size, position and maximized
+    state. These are saved in `<CATS_DESKTOP_DIR>/window-state.json` (version 1),
+    a new file; without it, or when the saved display is gone, the default applies.
+  - The default is 85% of the primary screen's work area, centered, between
+    1280×800 and 1680×1050. Screens below 1280×800 open maximized.
+  - The smallest drag size drops from 960×700 to 960×600.
+- **Artifact Canvas.** Opening a canvas collapses an expanded product sidebar to its
+  rail, and closing it expands the sidebar again. The saved sidebar preference is
+  not changed, and a sidebar you collapsed yourself stays collapsed.
+- **New-chat composer.** A new chat's composer sits at half the window height, level
+  with the floating Catlas pill. The +Group toolbar is back to 28px high.
+- **Catlas pill.** The avatar fills its round pill instead of showing as a narrow
+  navy bar, and the face is slightly larger.
+- **macOS menu-bar icon.** The template is 20pt (40px @2x) instead of 16pt and
+  follows Catlas's head, eyes and whiskers, with thicker whiskers. The Windows and
+  Linux tray icons and the app icons on every platform are unchanged from 0.7.4.
+- **Runtime.** Keep the 0.7.4 pin, `8729cd6cb17ab52a034e2365baffcd82915a8af8`
+  (package version 0.4.0), on every OS and in the complete source archive.
+- **Apps.** Reuse Usage 0.5.1, SHA-256
+  `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
+  Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
+  compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
+- **Signing and updates.**
+  - The manual `desktop-release.yml` dispatch uses `tag=v0.7.5`, the full Runtime
+    SHA above and `unsigned=false`; the workflow creates the preview tag.
+  - Expected trust profile: macOS signed + notarized, Windows unsigned (no
+    certificate), Linux n/a.
+  - Standard-profile 0.7.4 installs keep their update path: macOS uses the same
+    Developer ID team, Windows stays unsigned to unsigned, and Linux uses the
+    `.deb` update path. No installed upgrade is exercised.
+- **Validation.**
+  - Window placement, the canvas sidebar and the composer changes ran their own
+    full PR CI.
+  - For the icons and the Catlas pill, the icon generator, Desktop packaging and
+    Catlas sidecar tests ran locally, and the pill fix was previewed in an
+    installed Desktop renderer over CDP.
+  - No packaged installer with these changes was checked on a desktop before the
+    dispatch.
+  - Publication results: the [`v0.7.5` GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.5)
+    and its workflow run.
+
 ## 2026-10-01 — Desktop 0.7.4 standard preview
 
 Desktop **0.7.4** is the owner-requested standard-profile preview. When a catalog
