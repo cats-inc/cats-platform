@@ -1,9 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <!--
     Cats Desktop app icon: front-facing orange tabby on a deep-navy rounded tile.
-    Source of truth for the cat artwork and for the Linux icons and icon.png.
-    macOS (white tile) and Windows plus the colour tray (transparent) use the variants
-    app-icon-macos.svg and app-icon-windows.svg; regenerate with `npm run desktop:icons`.
+    Source of truth for every platform icon; regenerate with `npm run desktop:icons`.
     The rounded corners are part of the artwork, so the generator runs with
     `shape square`; the macOS .icns additionally insets the tile per Apple's grid.
     The menu-bar template is a separate file, assets/tray-icon-template.svg.
