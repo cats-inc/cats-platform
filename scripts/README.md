@@ -152,15 +152,7 @@ The repo's own icon set is produced by `npm run desktop:icons`, which passes:
 
 - `--input assets/app-icon-silhouette.svg`: the tabby-face tile. Its rounded
   corners are part of the artwork, so it runs with `--shape square`; the circle
-  mask (the generator's default) remains available for other sources. It feeds
-  the Linux icons and `icon.png`.
-- `--macos-input assets/app-icon-macos.svg`: the same cat on a white tile with
-  navy whiskers (cream ones vanish on white), used for the `.icns`.
-- `--windows-input assets/app-icon-windows.svg`: the same cat with no tile on a
-  transparent background, cropped to the cat, with mid-grey whiskers that read on
-  light and dark taskbars. It produces `icon.ico`, the NSIS installer,
-  uninstaller and header icons, and the colour tray icon (`tray-icon*.png`), which
-  the Linux tray uses as well.
+  mask (the generator's default) remains available for other sources.
 - `--tray-input assets/tray-icon-template.svg`: a black-on-transparent silhouette
   of the app icon's head with knocked-out eyes and thickened whiskers (update it
   together with the app icon), used verbatim for the macOS menu-bar

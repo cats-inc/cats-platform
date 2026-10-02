@@ -1,6 +1,6 @@
 {
   "name": "@cats-inc/cats-platform",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "description": "Technical host package for the Cats platform, backed by cats-runtime.",
   "author": "sammykenny2 <sammykenny2@gmail.com>",
   "homepage": "https://github.com/cats-inc/cats-platform",
@@ -48,7 +48,7 @@
     "build:web": "vite build",
     "build:test-ui": "node scripts/build-test-ui.mjs",
     "clean:build": "node scripts/clean-build.mjs",
-    "desktop:icons": "node scripts/shared/generate-electron-icons.mjs --input assets/app-icon-silhouette.svg --shape square --macos-input assets/app-icon-macos.svg --windows-input assets/app-icon-windows.svg --tray-input assets/tray-icon-template.svg --macos-inset apple",
+    "desktop:icons": "node scripts/shared/generate-electron-icons.mjs --input assets/app-icon-silhouette.svg --shape square --tray-input assets/tray-icon-template.svg --macos-inset apple",
     "desktop:host": "electron build/desktop/main.js",
     "desktop:candidate": "node scripts/desktop-candidate.mjs",
     "desktop:package": "node scripts/build-desktop-installer.mjs --target current",
