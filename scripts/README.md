@@ -154,8 +154,10 @@ The repo's own icon set is produced by `npm run desktop:icons`, which passes:
   corners are part of the artwork, so it runs with `--shape square`; the circle
   mask (the generator's default) remains available for other sources.
 - `--tray-input assets/tray-icon-template.svg`: a black-on-transparent silhouette
-  with whiskers and knocked-out eyes, used verbatim for the macOS menu-bar
-  template (`tray-iconTemplate*.png`). Only its alpha is used; macOS recolours it
+  of the app icon's head with knocked-out eyes and thickened whiskers (update it
+  together with the app icon), used verbatim for the macOS menu-bar
+  template (`tray-iconTemplate*.png`, 20pt with a 40px @2x file; the size is
+  `MACOS_TRAY_TEMPLATE_SIZE` in the generator). Only its alpha is used; macOS recolours it
   per menu-bar appearance, so the eye holes show the bar colour. Without this
   flag the template is derived from the app icon by removing the edge-connected
   background, which cannot keep interior holes.
@@ -163,8 +165,9 @@ The repo's own icon set is produced by `npm run desktop:icons`, which passes:
   inside a transparent canvas so it matches the size of neighbouring Dock icons.
   Windows and Linux icons stay full-bleed.
 
-`assets/guide-cat-avatar.svg` (the Catlas avatar) is the same artwork clipped to
-a circle; update it together with the app icon.
+`assets/guide-cat-avatar.svg` (the Catlas avatar) is the same artwork scaled up
+1.04x and clipped to a circle, so the face reads in the 28px pill without
+clipping ears or whiskers; update it together with the app icon and keep that scale.
 
 Desktop packaging does not regenerate these icon assets. Prepare the files you
 want first, then run the packaging scripts and let them consume the existing

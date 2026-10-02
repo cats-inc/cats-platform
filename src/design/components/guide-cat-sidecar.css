@@ -15,6 +15,9 @@
   display: grid;
   width: 28px;
   height: 28px;
+  /* A <button> keeps the UA padding (1px 6px), which would squeeze the avatar
+     into a 16x26 strip that object-fit crops into a bar. */
+  padding: 0;
   place-items: center;
   border-radius: 50%;
   background: #8B7E74;

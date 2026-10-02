@@ -90,7 +90,7 @@ test('generateElectronIcons creates the cross-platform app and tray icon set fro
   assert.deepEqual(trayRetinaSize, { width: 64, height: 64 });
 
   const trayTemplateSize = await readImageSize(join(assetsRoot, 'tray-iconTemplate.png'));
-  assert.deepEqual(trayTemplateSize, { width: 16, height: 16 });
+  assert.deepEqual(trayTemplateSize, { width: 20, height: 20 });
 
   const linux256Size = await readImageSize(join(buildResourcesDir, 'icons', 'linux', '256x256.png'));
   assert.deepEqual(linux256Size, { width: 256, height: 256 });
@@ -161,15 +161,15 @@ test('generateElectronIcons removes edge-connected gradient backgrounds from tra
 
   const trayTemplateBackground = await readPixel(
     join(assetsRoot, 'tray-iconTemplate.png'),
-    15,
-    15,
+    19,
+    19,
   );
   assert.equal(trayTemplateBackground.alpha, 0);
 
   const trayTemplateForeground = await readPixel(
     join(assetsRoot, 'tray-iconTemplate.png'),
-    8,
-    8,
+    10,
+    10,
   );
   assert.equal(trayTemplateForeground.alpha > 0, true);
 });
@@ -203,13 +203,13 @@ test('generateElectronIcons renders a dedicated tray template source with its ho
   assert.equal(manifest.traySourceSvg.endsWith('tray-source.svg'), true);
 
   const templatePath = join(assetsRoot, 'tray-iconTemplate@2x.png');
-  assert.deepEqual(await readImageSize(templatePath), { width: 32, height: 32 });
+  assert.deepEqual(await readImageSize(templatePath), { width: 40, height: 40 });
   const outside = await readPixel(templatePath, 1, 1);
   assert.equal(outside.alpha, 0, 'transparent source pixels stay transparent');
   const body = await readPixel(templatePath, 6, 6);
   assert.equal(body.alpha > 0, true, 'opaque source pixels are kept');
   assert.deepEqual([body.red, body.green, body.blue], [0, 0, 0], 'template colour is forced to black');
-  const hole = await readPixel(templatePath, 16, 16);
+  const hole = await readPixel(templatePath, 20, 20);
   assert.equal(hole.alpha, 0, 'a hole inside the silhouette is not treated as background');
 
   // The colour tray icons and the app icon still come from the app source.

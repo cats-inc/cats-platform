@@ -1,38 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="41 32 430 430">
   <!--
     macOS menu-bar template for the Cats Desktop tray: solid head silhouette with
     whiskers, eyes knocked out. Only alpha matters; the generator forces every
     opaque pixel to black and macOS recolours the template for light and dark bars,
-    so the eye holes always show the bar colour. Whiskers are drawn thick enough to
-    survive the 16px rendering. Regenerate with `npm run desktop:icons`.
+    so the eye holes always show the bar colour. The head, eyes and whisker
+    positions are the ones in assets/app-icon-silhouette.svg (the Catlas avatar
+    artwork); only the whiskers are thickened so they survive the 20pt rendering.
+    The viewBox is cropped square to the artwork so the head fills the canvas.
+    Regenerate with `npm run desktop:icons`.
   -->
   <defs>
     <mask id="eyes">
       <rect width="512" height="512" fill="#fff"/>
-      <ellipse cx="204" cy="262" rx="26" ry="40" fill="#000"/>
-      <ellipse cx="308" cy="262" rx="26" ry="40" fill="#000"/>
+      <ellipse cx="204" cy="258" rx="18" ry="28" fill="#000"/>
+      <ellipse cx="308" cy="258" rx="18" ry="28" fill="#000"/>
     </mask>
   </defs>
-  <g stroke="#000" stroke-width="30" stroke-linecap="round" fill="none">
-    <path d="M 150 300 L 30 276"/>
-    <path d="M 150 340 L 24 344"/>
-    <path d="M 362 300 L 482 276"/>
-    <path d="M 362 340 L 488 344"/>
+  <g stroke="#000" stroke-width="26" stroke-linecap="round" fill="none">
+    <path d="M 168 328 L 62 306"/>
+    <path d="M 168 350 L 56 352"/>
+    <path d="M 344 328 L 450 306"/>
+    <path d="M 344 350 L 456 352"/>
   </g>
   <g mask="url(#eyes)" fill="#000">
     <path d="
-      M 256 440
-      C 152 440, 72 372, 72 276
-      C 72 240, 82 208, 98 182
-      L 78 82
-      C 76 66, 92 58, 104 66
-      L 196 122
-      C 216 116, 236 112, 256 112
-      C 276 112, 296 116, 316 122
-      L 408 66
-      C 420 58, 436 66, 434 82
-      L 414 182
-      C 430 208, 440 240, 440 276
-      C 440 372, 360 440, 256 440 Z"/>
+      M 256 420
+      C 168 420, 96 364, 96 276
+      C 96 244, 104 214, 118 190
+      L 100 92
+      C 98 80, 110 74, 120 80
+      L 200 128
+      C 218 122, 236 120, 256 120
+      C 276 120, 294 122, 312 128
+      L 392 80
+      C 402 74, 414 80, 412 92
+      L 394 190
+      C 408 214, 416 244, 416 276
+      C 416 364, 344 420, 256 420 Z"/>
   </g>
 </svg>

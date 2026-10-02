@@ -24,6 +24,11 @@ const SUPPORTED_ICON_SHAPES = new Set(['square', 'circle']);
 const DEFAULT_MACOS_INSET = 0;
 const APPLE_MACOS_INSET = 100 / 1024;
 
+// The menu-bar template's size in points (@1x); the @2x file doubles it. The
+// silhouette is wide because of its whiskers, so a 16pt canvas left the head
+// only about 12pt tall next to the system glyphs.
+const MACOS_TRAY_TEMPLATE_SIZE = 20;
+
 const LINUX_ICON_SIZES = [16, 24, 32, 48, 64, 128, 256, 512];
 const ICO_SIZES = [16, 24, 32, 48, 64, 128, 256];
 const ICNS_VARIANTS = [
@@ -401,8 +406,8 @@ export async function generateElectronIcons(options = {}) {
   const renderTemplate = (size) => (traySvgBuffer
     ? renderExplicitTrayTemplate(traySvgBuffer, size)
     : renderTrayTemplate(svgBuffer, size, iconShape));
-  await writeBuffer(trayTemplatePath, await renderTemplate(16));
-  await writeBuffer(trayTemplate2xPath, await renderTemplate(32));
+  await writeBuffer(trayTemplatePath, await renderTemplate(MACOS_TRAY_TEMPLATE_SIZE));
+  await writeBuffer(trayTemplate2xPath, await renderTemplate(MACOS_TRAY_TEMPLATE_SIZE * 2));
 
   const manifest = {
     sourceSvg: toProjectRelative(inputSvgPath),
