@@ -8,17 +8,24 @@ import {
   type RefObject,
   type SetStateAction,
 } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import {
   readSidebarOpenPreference,
   writeSidebarOpenPreference,
 } from '../../../../shared/sidebarPreference.js';
+import { canvasSurfaceRouteRegistry } from '../../artifactCanvas/contracts.js';
+import {
+  createProductSidebarState,
+  isProductSidebarOpen,
+  setProductSidebarOpen,
+  syncProductSidebarSplitView,
+} from './productSidebarState.js';
 
 export interface AppChromeController {
   accountMenuOpen: boolean;
   setAccountMenuOpen: Dispatch<SetStateAction<boolean>>;
   sidebarOpen: boolean;
-  setSidebarOpen: Dispatch<SetStateAction<boolean>>;
   overflowMenuOpenId: string | null;
   setOverflowMenuOpenId: Dispatch<SetStateAction<string | null>>;
   plusMenuOpen: boolean;
@@ -40,9 +47,21 @@ export interface AppChromeController {
 
 export function useAppChrome(): AppChromeController {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(() =>
+  const location = useLocation();
+  const splitViewActive = canvasSurfaceRouteRegistry.parse(location.pathname)?.kind === 'canvas';
+  const [sidebarState, setSidebarState] = useState(() => createProductSidebarState(
     readSidebarOpenPreference(typeof window === 'undefined' ? null : window.localStorage),
-  );
+    splitViewActive,
+  ));
+  // Sync during render rather than in an effect so a canvas that opens, or a
+  // canvas URL loaded directly, never paints one frame with the full sidebar.
+  if (sidebarState.splitViewActive !== splitViewActive) {
+    setSidebarState((current) => syncProductSidebarSplitView(current, splitViewActive));
+    if (splitViewActive) {
+      setAccountMenuOpen(false);
+    }
+  }
+  const sidebarOpen = isProductSidebarOpen(sidebarState);
   const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [addCatOpen, setAddCatOpen] = useState(false);
@@ -86,9 +105,9 @@ export function useAppChrome(): AppChromeController {
   useEffect(() => {
     writeSidebarOpenPreference(
       typeof window === 'undefined' ? null : window.localStorage,
-      sidebarOpen,
+      sidebarState.preferenceOpen,
     );
-  }, [sidebarOpen]);
+  }, [sidebarState.preferenceOpen]);
 
   const autoResize = useCallback((element: HTMLTextAreaElement) => {
     element.style.height = 'auto';
@@ -103,12 +122,10 @@ export function useAppChrome(): AppChromeController {
   }, []);
 
   function onToggleSidebar(): void {
-    setSidebarOpen((current) => {
-      if (current) {
-        setAccountMenuOpen(false);
-      }
-      return !current;
-    });
+    if (sidebarOpen) {
+      setAccountMenuOpen(false);
+    }
+    setSidebarState((current) => setProductSidebarOpen(current, !isProductSidebarOpen(current)));
   }
 
   function onCollapsedSidebarClick(event: ReactMouseEvent<HTMLElement>): void {
@@ -124,14 +141,13 @@ export function useAppChrome(): AppChromeController {
       return;
     }
 
-    setSidebarOpen(true);
+    setSidebarState((current) => setProductSidebarOpen(current, true));
   }
 
   return {
     accountMenuOpen,
     setAccountMenuOpen,
     sidebarOpen,
-    setSidebarOpen,
     overflowMenuOpenId,
     setOverflowMenuOpenId,
     plusMenuOpen,

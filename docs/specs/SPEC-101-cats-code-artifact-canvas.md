@@ -292,7 +292,10 @@ This spec covers the Phase 1 contract:
 - **Separation**: artifact materialization and artifact presentation remain
   distinct contracts.
 - **Responsiveness**: the split-pane layout must preserve usable minimum widths
-  for the chat and preview pane.
+  for the chat and preview pane. While a canvas is open, the product sidebar
+  collapses to its icon rail without changing the saved sidebar preference;
+  closing the canvas restores it, and a user who expands it keeps it expanded
+  until the next canvas opens.
 - **Extensibility**: viewer selection must be registry-shaped so image, PDF,
   code, and future app preview viewers can be added without changing tool names.
 

@@ -8,6 +8,7 @@ import {
   dialog,
   ipcMain,
   Menu,
+  screen,
   session,
   shell,
   systemPreferences,
@@ -154,6 +155,13 @@ import {
 } from './windowChrome.js';
 import { resolveDesktopWindowIconPath } from './windowIcon.js';
 import {
+  DESKTOP_MAIN_WINDOW_MIN_SIZE,
+  readDesktopWindowState,
+  resolveDesktopWindowPlacement,
+  trackDesktopWindowPlacement,
+  type DesktopWindowPlacementTracker,
+} from './windowPlacement.js';
+import {
   readDesktopStartupPreferences,
   resolveDesktopStartupLaunchContext,
   syncDesktopStartupPreferences,
@@ -246,6 +254,7 @@ const relaunchDesktopHost = process.platform === 'linux'
   : () => app.relaunch();
 
 let mainWindow: BrowserWindow | null = null;
+let mainWindowPlacementTracker: DesktopWindowPlacementTracker | null = null;
 let hostConfig: DesktopHostConfig | null = null;
 let supervisor: ManagedServiceSupervisor | null = null;
 let latestSnapshot: DesktopBootstrapSnapshot | null = null;
@@ -2133,11 +2142,15 @@ async function createMainWindow(
   },
 ): Promise<BrowserWindow> {
   const windowIconPath = resolveDesktopWindowIconPath(app.getAppPath());
+  const placement = resolveDesktopWindowPlacement({
+    saved: readDesktopWindowState(config.paths.windowStatePath),
+    workAreas: screen.getAllDisplays().map((display) => display.workArea),
+    primaryWorkArea: screen.getPrimaryDisplay().workArea,
+  });
   const window = new BrowserWindow({
-    width: 1280,
-    height: 860,
-    minWidth: 960,
-    minHeight: 700,
+    ...placement.bounds,
+    minWidth: DESKTOP_MAIN_WINDOW_MIN_SIZE.width,
+    minHeight: DESKTOP_MAIN_WINDOW_MIN_SIZE.height,
     show: false,
     title: config.candidateProfile ? 'Cats Candidate' : 'Cats',
     backgroundColor: '#f5f1e8',
@@ -2157,11 +2170,31 @@ async function createMainWindow(
 
   applyDesktopWindowChrome(window);
 
+  // Maximizing a hidden window also shows it, so apply the saved maximized
+  // state on first show, whichever path reveals the window. A candidate must
+  // never take focus, so it always opens in its normal bounds.
+  let pendingMaximize = placement.maximized && !config.candidateProfile;
+  const applyPendingMaximize = () => {
+    if (!pendingMaximize || window.isDestroyed()) {
+      return;
+    }
+    pendingMaximize = false;
+    window.maximize();
+  };
+  window.once('show', applyPendingMaximize);
+  mainWindowPlacementTracker = trackDesktopWindowPlacement(window, {
+    statePath: config.paths.windowStatePath,
+    maximized: placement.maximized,
+  });
+
   const showBootstrapWindow = () => {
     if (!options.showWindowOnStartup || window.isDestroyed() || window.isVisible()) {
       return;
     }
-    if (config.candidateProfile) window.showInactive();
+    if (pendingMaximize) {
+      applyPendingMaximize();
+      window.focus();
+    } else if (config.candidateProfile) window.showInactive();
     else window.show();
   };
 
@@ -2236,6 +2269,8 @@ async function shutdownHost(exitCode = 0): Promise<void> {
     return shutdownPromise;
   }
   shuttingDown = true;
+  // The exit path reaches app.exit() without emitting the window's close.
+  mainWindowPlacementTracker?.flush();
   candidateControl?.revoke();
   setupHelperDrain ??= pauseSelectedSetupHelpers();
   clearRuntimeCliInventoryPoll();

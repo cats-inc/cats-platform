@@ -31,6 +31,7 @@ export interface DesktopHostPaths {
   runtimeCuratedModelCatalogPath: string;
   mobileBundleRoot: string;
   hostStatePath: string;
+  windowStatePath: string;
   hostLogsDir: string;
   packagingOutputRoot: string;
 }
@@ -365,6 +366,7 @@ export function resolveDesktopHostConfig(
           ),
       ),
       hostStatePath: resolveDesktopPath(joinDesktopPath(desktopDir, 'state.json')),
+      windowStatePath: resolveDesktopPath(joinDesktopPath(desktopDir, 'window-state.json')),
       hostLogsDir: resolveDesktopPath(joinDesktopPath(desktopDir, 'logs')),
       packagingOutputRoot: resolveDesktopPath(
         env.CATS_DESKTOP_PACKAGING_OUTPUT_ROOT?.trim()
