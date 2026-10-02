@@ -377,9 +377,30 @@
   min-width: 0;
 }
 
-/* A cover header starts flush at the top instead of anchoring the composer. */
+/* A cover header splits on drafts: the cover stays flush at the top of the
+ * draft while the avatar, name and actions stay in the lead above the
+ * anchored composer. The header reserves the cover's height (16:6 of the
+ * draft width, as width-relative padding) minus the 32px the avatar may
+ * overlap it, so in a short window the avatar slides up over the cover's
+ * bottom edge before it pushes the composer down. Scoped to .draftShell so
+ * other DraftHeader hosts keep the stacked cover. */
 .draftShell:has(.draftHeaderWithCover) {
-  grid-template-rows: none;
+  position: relative;
+}
+
+.draftShell .draftHeaderProfile.draftHeaderWithCover {
+  padding-top: calc(100% * 6 / 16 - 32px);
+}
+
+.draftShell .draftHeaderWithCover .draftHeaderCover {
+  position: absolute;
+  /* .draftShell is a grid and now the containing block, so the header's
+   * `grid-area: cover` would place the cover in a missing area of size 0. */
+  grid-area: auto;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin-bottom: 0;
 }
 
 .composerCard {
@@ -730,6 +751,10 @@ button.draftHeaderAvatar.draftHeaderAvatarEditable:hover .draftHeaderAvatarCamer
   .draftHeaderWithCover .draftHeaderBody {
     margin-top: 8px;
     padding: 0 12px;
+  }
+
+  .draftShell .draftHeaderProfile.draftHeaderWithCover {
+    padding-top: calc(100% * 6 / 16 - 40px);
   }
 }
 
