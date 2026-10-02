@@ -1010,7 +1010,7 @@ for the planned desktop host model.
 | `CATS_HOST` | Yes | Host interface to bind (`CATS_INC_HOST` remains a compatibility alias) |
 | `CATS_PORT` | Yes | Service port (`CATS_INC_PORT` remains a compatibility alias) |
 | `CATS_PLATFORM_DIR` | No | Override the platform root used for `state/chat-state.local.json`, `state/platform-onboarding-history.json`, and `config/platform-preferences.json` |
-| `CATS_DESKTOP_DIR` | No | Override the desktop root used for `state.json` and `logs/` |
+| `CATS_DESKTOP_DIR` | No | Override the desktop root used for `state.json`, `window-state.json` and `logs/` |
 | `CATS_DESKTOP_CANDIDATE_ROOT` | No | Opt into [isolated candidate acceptance](#isolated-candidate-acceptance); explicit loopback hosts and distinct non-default ports are required |
 | `CATS_RUNTIME_DIR` | No | Override the runtime root used for `config/`, `data/`, and `sessions/` |
 | `CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG` | No | Override the provider capability bootstrap YAML path. Defaults to `<platform config dir>/provider-capability-bootstrap.yaml` |
@@ -1184,6 +1184,11 @@ ticket Gatekeeper reads offline, and `spctl --assess`.
 - **Desktop host state**: JSON snapshot at `<CATS_DESKTOP_DIR>/state.json`
   containing bootstrap phase, issues, remediation actions, progress steps,
   tray/background state, update status, and packaging metadata
+- **Desktop window placement**: `<CATS_DESKTOP_DIR>/window-state.json` (version 1)
+  holds the main window's normal bounds and maximized flag, saved once the window
+  stops moving or resizing and again on quit. A missing, unreadable or
+  other-version file, or bounds that no longer overlap a display, falls back to
+  the default placement; deleting the file resets the window
 - **Desktop security posture**: sandboxed preload bridge, validated host env
   overrides, validated host action ids, and HTTP/HTTPS-only host-controlled
   external URLs
@@ -1263,4 +1268,4 @@ per-user path.
 
 ---
 
-*Last updated: 2026-09-27*
+*Last updated: 2026-10-02*

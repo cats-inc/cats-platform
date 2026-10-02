@@ -169,6 +169,7 @@ test('desktop host config keeps Electron userData separate from cats home', () =
   assert.equal(config.paths.runtimeManagementConfigPath, 'C:\\Users\\test\\.cats\\runtime\\config\\management.yaml');
   assert.equal(config.paths.runtimeCuratedModelCatalogPath, 'C:\\Users\\test\\.cats\\runtime\\config\\curated-model-catalogs.yaml');
   assert.equal(config.paths.hostStatePath, 'C:\\Users\\test\\.cats\\desktop\\state.json');
+  assert.equal(config.paths.windowStatePath, 'C:\\Users\\test\\.cats\\desktop\\window-state.json');
   assert.equal(config.paths.hostLogsDir, 'C:\\Users\\test\\.cats\\desktop\\logs');
 });
 

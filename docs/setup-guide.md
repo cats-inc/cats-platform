@@ -620,6 +620,19 @@ showing only provider remediation.
 Once setup is complete, the desktop host keeps runtime/provider regressions in
 recovery: it opens Cats or runtime diagnostics instead of routing the user
 back into onboarding.
+
+### Main window size
+
+The main window reopens with the size, position and maximized state it had when
+last moved, resized or closed, kept in `<CATS_DESKTOP_DIR>/window-state.json`.
+Saved bounds that no longer overlap a connected display, or hang off one, are
+pulled back inside its work area.
+
+Without saved bounds, the window takes 85% of the primary display's work area,
+centered, kept between 1280×800 and 1680×1050. A work area smaller than 1280×800
+opens the window maximized, with 85% of the work area as its restored size. The
+window can be resized down to 960×600.
+
 ### Select Providers before Inventory
 
 On Windows, macOS, and Linux, the first bootstrap page reads the connected
@@ -1109,4 +1122,4 @@ See `Dependency install warnings` under `Installation`.
 
 ---
 
-*Last updated: 2026-09-27*
+*Last updated: 2026-10-02*
