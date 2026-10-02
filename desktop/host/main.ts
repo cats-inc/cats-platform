@@ -157,6 +157,7 @@ import { resolveDesktopWindowIconPath } from './windowIcon.js';
 import {
   DESKTOP_MAIN_WINDOW_MIN_SIZE,
   readDesktopWindowState,
+  resetDesktopWindowPlacement,
   resolveDesktopWindowPlacement,
   trackDesktopWindowPlacement,
   type DesktopWindowPlacementTracker,
@@ -2673,6 +2674,19 @@ async function main(): Promise<void> {
   ipcMain.handle('cats-host:relaunch', () => {
     relaunchDesktopHost();
     app.quit();
+  });
+  // Takes no arguments: the renderer may ask for the default placement but
+  // never choose bounds.
+  ipcMain.handle('cats-host:reset-window-placement', (event) => {
+    assertMainWindowIpcSender(event, mainWindow, 'Window placement is only reset from the main Cats window.');
+    if (!hostConfig) {
+      throw new Error('Desktop host is not initialized.');
+    }
+    resetDesktopWindowPlacement(mainWindow!, {
+      statePath: hostConfig.paths.windowStatePath,
+      workArea: screen.getPrimaryDisplay().workArea,
+      allowMaximize: !hostConfig.candidateProfile,
+    });
   });
   ipcMain.handle('cats-host:update-platform-shell', async (_event, payload: unknown) => {
     const nextState = applyDesktopHostPlatformShellUpdate({

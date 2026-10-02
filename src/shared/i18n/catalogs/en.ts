@@ -604,7 +604,7 @@ export const enCatalog: MessageCatalog = {
   'settings.apps.openPairingUrl': 'Open pairing URL',
   'settings.data.resetAllDataTitle': 'Reset Platform data',
   'settings.data.resetAllDataDescription':
-    'Permanently erases Platform chats, cats, accounts, login sessions, setup state, backups (including migration backups), memory and companion data, local knowledge, evidence logs, Telegram / LINE bindings and delivery state, schedules, diagnostic caches, and attachments and runtime-history caches stored in the Platform directory. Keeps host preferences, configuration and installation identity, installed Apps/plugins and their data, Desktop and Runtime data, provider CLI logins and native transcripts, and files in external workspaces. Stop active conversations and tasks first. Returns to the setup wizard; erased data cannot be recovered.',
+    'Permanently erases Platform chats, cats, accounts, login sessions, setup state, backups (including migration backups), memory and companion data, local knowledge, evidence logs, Telegram / LINE bindings and delivery state, schedules, diagnostic caches, and attachments and runtime-history caches stored in the Platform directory. Keeps host preferences, configuration and installation identity, installed Apps/plugins and their data, Desktop and Runtime data, provider CLI logins and native transcripts, and files in external workspaces. The Desktop window returns to its default size and position. Stop active conversations and tasks first. Returns to the setup wizard; erased data cannot be recovered.',
   'settings.data.resetButtonResetting': 'Resetting...',
   'settings.data.resetButtonLabel': 'Erase Platform data',
   'settings.data.resetFailure': 'Failed to reset setup.',

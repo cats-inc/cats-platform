@@ -53,7 +53,10 @@ import {
 } from '../deleteConfirmations.js';
 import { formatSettingsCatsRegistryMutationError } from './settingsCatsRegistryErrorLabels.js';
 import { formatWorkspaceNavigationMutationError } from './workspaceNavigationErrorLabels.js';
-import { syncDesktopHostPlatformShellState } from '../../../../app/renderer/setup/desktopHostBridge.js';
+import {
+  resetDesktopHostWindowPlacement,
+  syncDesktopHostPlatformShellState,
+} from '../../../../app/renderer/setup/desktopHostBridge.js';
 import { invalidateProviderClientSession } from '../../../../app/renderer/providerClientInvalidation.js';
 import {
   clearBusyState,
@@ -627,6 +630,7 @@ export function useWorkspaceAppNavigationActions<
         setupCompleteAt: payload.setupCompleteAt ?? null,
         products: Array.isArray(payload.products) ? [...payload.products] : [],
       });
+      await resetDesktopHostWindowPlacement();
       window.location.href = '/';
     } catch (error) {
       setBusy(clearBusyState());

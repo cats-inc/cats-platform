@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 /**
@@ -183,6 +183,52 @@ export function writeDesktopWindowState(statePath: string, placement: DesktopWin
     maximized: placement.maximized,
   }, null, 2)}\n`);
   renameSync(tempPath, statePath);
+}
+
+export interface DesktopResettableWindow {
+  isFullScreen(): boolean;
+  setFullScreen(flag: boolean): void;
+  isMaximized(): boolean;
+  unmaximize(): void;
+  maximize(): void;
+  setBounds(bounds: DesktopWindowRect): void;
+  once(event: string, listener: () => void): unknown;
+}
+
+/**
+ * Forgets the saved placement and moves the window to the default placement
+ * for the given work area, as Reset Platform data does. The window's own
+ * move/resize events then save that default placement again.
+ */
+export function resetDesktopWindowPlacement(
+  window: DesktopResettableWindow,
+  options: {
+    statePath: string;
+    workArea: DesktopWindowRect;
+    /** False for windows that must never take focus, such as candidates. */
+    allowMaximize: boolean;
+  },
+): DesktopWindowPlacement {
+  rmSync(options.statePath, { force: true });
+  rmSync(`${options.statePath}.tmp`, { force: true });
+  const placement = resolveDefaultDesktopWindowPlacement(options.workArea);
+  const apply = () => {
+    if (window.isMaximized()) {
+      window.unmaximize();
+    }
+    window.setBounds(placement.bounds);
+    if (placement.maximized && options.allowMaximize) {
+      window.maximize();
+    }
+  };
+  // Leaving full screen animates on macOS; bounds set before it ends are lost.
+  if (window.isFullScreen()) {
+    window.once('leave-full-screen', apply);
+    window.setFullScreen(false);
+  } else {
+    apply();
+  }
+  return placement;
 }
 
 export interface DesktopPlacementWindow {
