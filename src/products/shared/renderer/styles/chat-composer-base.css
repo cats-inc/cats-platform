@@ -317,12 +317,14 @@
   border-color: rgb(var(--draft-teaching-accent) / 0.6);
 }
 
+/* No vertical padding: this row sits in the composer bottom row, and any
+ * extra height makes the group draft's toolbar taller than +New and
+ * +Parallel, shifting its buttons and the card's bottom edge. */
 .composerGroupAddRow {
   display: flex;
   align-items: center;
   gap: 6px;
   justify-content: flex-end;
-  padding-bottom: 4px;
 }
 
 .composerGroupAvatarSlot {

@@ -350,7 +350,15 @@
   height: 100%;
   align-content: start;
   justify-items: center;
-  padding-top: 20vh;
+  /* The first row holds .draftShellLead and ends where the composer block
+   * starts, which puts the composer card's center at half the viewport
+   * height, level with the floating guide cat's default anchor
+   * (GUIDE_CAT_FLOATING_ANCHOR_DEFAULT, y: 0.5 of the window). 91px is the
+   * composer header row with its bottom margin (30 + 12px) plus half the
+   * composer card (49px). More content above the composer grows upward and
+   * content below grows downward, so neither moves the composer; the row
+   * only grows, pushing the composer down, once the lead no longer fits. */
+  grid-template-rows: minmax(max(24px, calc(50vh - 91px)), auto);
   max-width: 720px;
   margin: 0 auto;
   /* Match the transcript width used by every active chat layout mode
@@ -360,8 +368,18 @@
   --chat-transcript-max-width: 720px;
 }
 
+/* Header and custom region, laid out as they were as direct grid items. */
+.draftShellLead {
+  display: grid;
+  align-self: end;
+  justify-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+/* A cover header starts flush at the top instead of anchoring the composer. */
 .draftShell:has(.draftHeaderWithCover) {
-  padding-top: 0;
+  grid-template-rows: none;
 }
 
 .composerCard {
