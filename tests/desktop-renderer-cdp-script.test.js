@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile as execFileCallback } from 'node:child_process';
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -220,3 +220,73 @@ test('macOS Desktop CDP restart helper exposes help text without touching the ap
   assert.match(stdout, /Usage:/u);
   assert.match(stdout, /--disable/u);
 });
+
+const STUB_COMMANDS = {
+  // `open` launches the fake app; pgrep then reports it running and no runtime children.
+  open: 'printf "%s\\n" "$@" > "$STUB_LOG/open.args"\ntouch "$STUB_LOG/opened"\n',
+  pgrep: '[ "$1" = "-P" ] && exit 1\n[ -f "$STUB_LOG/opened" ] && { echo 4242; exit 0; }\nexit 1\n',
+  osascript: 'touch "$STUB_LOG/osascript.called"\n',
+};
+
+async function createDisableFixture() {
+  const root = await mkdtemp(join(tmpdir(), 'cats-cdp-disable-'));
+  const bin = join(root, 'bin');
+  const log = join(root, 'log');
+  const home = join(root, 'home');
+  const app = join(root, 'Cats.app');
+  await mkdir(bin);
+  await mkdir(log);
+  await mkdir(join(app, 'Contents', 'MacOS'), { recursive: true });
+  await writeFile(join(app, 'Contents', 'Info.plist'), [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<plist version="1.0"><dict>',
+    '<key>CFBundleIdentifier</key><string>io.catsinc.test</string>',
+    '<key>CFBundleExecutable</key><string>Cats</string>',
+    '</dict></plist>',
+  ].join('\n'));
+  for (const [name, body] of Object.entries(STUB_COMMANDS)) {
+    await writeFile(join(bin, name), `#!/bin/sh\n${body}`);
+    await chmod(join(bin, name), 0o755);
+  }
+  const userData = join(home, 'Library', 'Application Support', 'Cats');
+  await mkdir(userData, { recursive: true });
+  return {
+    root,
+    app,
+    log,
+    portFile: join(userData, 'DevToolsActivePort'),
+    env: { ...process.env, HOME: home, STUB_LOG: log, PATH: `${bin}:/usr/bin:/bin` },
+  };
+}
+
+test(
+  'macOS Desktop CDP restart helper removes the stale DevToolsActivePort on --disable',
+  { skip: process.platform !== 'darwin' && 'requires macOS PlistBuddy' },
+  async () => {
+    const fixture = await createDisableFixture();
+    try {
+      await writeFile(fixture.portFile, '9222\n/devtools/browser/stale\n');
+      const { stdout } = await execFile(
+        'bash',
+        ['scripts/macos/restart-desktop-with-cdp.sh', '--disable', '--app', fixture.app],
+        { encoding: 'utf8', env: fixture.env },
+      );
+
+      assert.match(stdout, /Removed .*DevToolsActivePort/u);
+      await assert.rejects(stat(fixture.portFile), { code: 'ENOENT' });
+      assert.equal(await readFile(join(fixture.log, 'open.args'), 'utf8'), `-a\n${fixture.app}\n`);
+      await assert.rejects(stat(join(fixture.log, 'osascript.called')), { code: 'ENOENT' });
+
+      // Not running again, and nothing left to remove.
+      await rm(join(fixture.log, 'opened'));
+      const second = await execFile(
+        'bash',
+        ['scripts/macos/restart-desktop-with-cdp.sh', '--disable', '--app', fixture.app],
+        { encoding: 'utf8', env: fixture.env },
+      );
+      assert.doesNotMatch(second.stdout, /Removed/u);
+    } finally {
+      await rm(fixture.root, { recursive: true, force: true });
+    }
+  },
+);

@@ -11,7 +11,8 @@
 # Options:
 #   --port <n>     Remote debugging port (default: 9222)
 #   --app <path>   Cats.app bundle (default: /Applications/Cats.app)
-#   --disable      Relaunch without the debugging port
+#   --disable      Relaunch without the debugging port and remove the stale
+#                  DevToolsActivePort file Electron leaves in its user data
 #   --force        Restart even when the managed runtime has child processes
 #   -h, --help     Show this help message
 #
@@ -77,6 +78,8 @@ fi
 BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$INFO_PLIST")"
 EXECUTABLE_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$INFO_PLIST")"
 EXECUTABLE="$APP/Contents/MacOS/$EXECUTABLE_NAME"
+# Fixed by DESKTOP_USER_DATA_DIR_NAME in desktop/host/config.ts, not by the bundle name.
+DEVTOOLS_ACTIVE_PORT_FILE="$HOME/Library/Application Support/Cats/DevToolsActivePort"
 
 # The host and its sidecars all run through the bundle executable.
 app_pids() {
@@ -118,6 +121,11 @@ if [[ -n "$(app_pids)" ]]; then
 fi
 
 if [[ "$DISABLE" -eq 1 ]]; then
+  # Electron writes this on a debugging launch and never removes it.
+  if [[ -f "$DEVTOOLS_ACTIVE_PORT_FILE" ]]; then
+    rm -f -- "$DEVTOOLS_ACTIVE_PORT_FILE"
+    echo "Removed $DEVTOOLS_ACTIVE_PORT_FILE"
+  fi
   open -a "$APP"
   for (( waited = 0; waited < WAIT_SECONDS * 2; waited += 1 )); do
     [[ -n "$(app_pids)" ]] && break

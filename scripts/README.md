@@ -179,7 +179,8 @@ query it over the Chrome DevTools Protocol:
 - `scripts/macos/restart-desktop-with-cdp.sh` asks the installed app to quit through
   its normal path, then relaunches it with `--remote-debugging-port` (default
   `9222`). It refuses when the managed runtime has child processes unless
-  `--force`, and `--disable` relaunches it normally. No Windows/Linux helper yet.
+  `--force`, and `--disable` relaunches it normally and removes the stale
+  `DevToolsActivePort` file Electron leaves behind. No Windows/Linux helper yet.
 - `scripts/testing/desktop-renderer-cdp.mjs` is a dependency-free CDP client with
   `targets`, `info`, `screenshot`, `text` and `eval` commands against `127.0.0.1`.
 
