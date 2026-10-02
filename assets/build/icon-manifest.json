@@ -2,7 +2,7 @@
   "sourceSvg": "assets/app-icon-silhouette.svg",
   "traySourceSvg": "assets/tray-icon-template.svg",
   "trayIconSourceSvg": "assets/tray-icon.svg",
-  "windowSourceSvg": "assets/window-icon.svg",
+  "windowsLinuxSourceSvg": "assets/app-icon-windows-linux.svg",
   "shape": "square",
   "macosInset": 0.09765625,
   "app": {
@@ -28,9 +28,5 @@
     "retina": "assets/tray-icon@2x.png",
     "template": "assets/tray-iconTemplate.png",
     "templateRetina": "assets/tray-iconTemplate@2x.png"
-  },
-  "window": {
-    "ico": "assets/window-icon.ico",
-    "png": "assets/window-icon.png"
   }
 }

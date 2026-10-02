@@ -141,20 +141,27 @@ Desktop icon generation is also repo-owned now:
 - `scripts/shared/generate-electron-icons.mjs`
 - `npm run desktop:icons`
 
-That tool turns one source SVG, plus optional separate tray and window sources,
-into the Electron app/tray/window icon set needed for:
+That tool turns one source SVG, plus optional separate Windows/Linux and tray
+sources, into the Electron app/tray icon set needed for:
 
 - Windows app, shortcut, and NSIS installer icons
 - macOS app bundle icon (`.icns`)
 - Linux desktop/package PNG icon sizes
 - packaged tray icons, including a macOS template tray icon
-- the Windows/Linux window icon (`assets/window-icon.ico` / `.png`)
 
 The repo's own icon set is produced by `npm run desktop:icons`, which passes:
 
-- `--input assets/app-icon-silhouette.svg`: the tabby-face tile. Its rounded
-  corners are part of the artwork, so it runs with `--shape square`; the circle
-  mask (the generator's default) remains available for other sources.
+- `--input assets/app-icon-silhouette.svg`: the tabby-face tile, used for the
+  macOS `.icns`. Its rounded corners are part of the artwork, so it runs with
+  `--shape square`; the circle mask (the generator's default) remains available
+  for other sources.
+- `--windows-linux-input assets/app-icon-windows-linux.svg`: the same face without
+  the tile, on a transparent background and cropped to the artwork. It is every
+  Windows and Linux app icon: `icon.ico` (written into `Cats.exe`, so its
+  shortcuts and the taskbar button, which follows the shortcut through the app's
+  AppUserModelID), the NSIS installer icons, `icons/linux` and `icon.png`. The
+  window icon (`desktop/host/windowIcon.ts`) reads `icon.ico` / `icon.png`.
+  Without this flag those icons use `--input` too.
 - `--tray-input assets/tray-icon-template.svg`: a black-on-transparent silhouette
   of the app icon's head with knocked-out eyes and mouth and thickened whiskers (update it
   together with the app icon), used verbatim for the macOS menu-bar
@@ -166,12 +173,7 @@ The repo's own icon set is produced by `npm run desktop:icons`, which passes:
 - `--tray-icon-input assets/tray-icon.svg`: the Windows/Linux tray icon
   (`tray-icon*.png`): the app icon's navy tile with the same silhouette in white,
   so the eye and mouth holes show the tile. Without this flag the tray icon is the
-  app icon.
-- `--window-input assets/window-icon.svg`: the Windows/Linux window icon (title bar
-  and taskbar button, `window-icon.ico` / `.png`, read by `desktop/host/windowIcon.ts`):
-  the app icon's face without the tile, on a transparent background, cropped to the
-  artwork. Pinned taskbar and Start-menu entries use the exe icon, which stays the
-  tile. Without this flag the window icon is the app icon.
+  Windows/Linux app icon.
 - `--macos-inset apple`: the `.icns` artwork is scaled to Apple's 824/1024 grid
   inside a transparent canvas so it matches the size of neighbouring Dock icons.
   Windows and Linux icons stay full-bleed.
@@ -182,7 +184,7 @@ clipping ears or whiskers; update it together with the app icon and keep that sc
 
 Desktop packaging does not regenerate these icon assets. Prepare the files you
 want first, then run the packaging scripts and let them consume the existing
-files under `assets/build/`, `assets/tray-icon*.png` and `assets/window-icon.*`.
+files under `assets/build/` and `assets/tray-icon*.png`.
 
 ### Installed Desktop renderer inspection (CDP)
 

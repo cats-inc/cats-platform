@@ -48,8 +48,8 @@ const ICNS_VARIANTS = [
 function printHelp() {
   process.stdout.write(`Usage: node scripts/shared/generate-electron-icons.mjs [options]
 
-Generate cross-platform Electron app, tray and window icons from one SVG source,
-with optional separate sources for the tray and window icons.
+Generate cross-platform Electron app and tray icons from one SVG source, with
+optional separate sources for the Windows/Linux app icons and the tray icons.
 
 Options:
   --input <path>               Source SVG. Defaults to assets/app-icon-silhouette.svg
@@ -62,9 +62,10 @@ Options:
                                from the app icon by removing the edge-connected background.
   --tray-icon-input <path>     Separate SVG for the Windows/Linux tray icon (tray-icon*.png),
                                rendered as is. Without it the app icon is used.
-  --window-input <path>        Separate SVG for the Windows/Linux window icon
-                               (window-icon.ico/.png), rendered as is, so a transparent
-                               background stays transparent. Without it the app icon is used.
+  --windows-linux-input <path> Separate SVG for the Windows and Linux app icons (icon.ico,
+                               the NSIS icons, icons/linux and icon.png), rendered as is so a
+                               transparent background stays transparent. The .icns keeps
+                               --input. Without it every platform uses --input.
   --macos-inset <fraction|apple>
                                Transparent margin on each side of the .icns artwork.
                                "apple" is Apple's 824/1024 grid (${APPLE_MACOS_INSET.toFixed(4)}).
@@ -104,7 +105,7 @@ function parseArgs(argv) {
   let iconShape = DEFAULT_ICON_SHAPE;
   let trayInputSvgPath = null;
   let trayIconInputSvgPath = null;
-  let windowInputSvgPath = null;
+  let windowsLinuxInputSvgPath = null;
   let macosInset = DEFAULT_MACOS_INSET;
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -118,7 +119,7 @@ function parseArgs(argv) {
         iconShape,
         trayInputSvgPath,
         trayIconInputSvgPath,
-        windowInputSvgPath,
+        windowsLinuxInputSvgPath,
         macosInset,
       };
     }
@@ -132,8 +133,8 @@ function parseArgs(argv) {
       index += 1;
       continue;
     }
-    if (value === '--window-input') {
-      windowInputSvgPath = resolve(PROJECT_ROOT, argv[index + 1] ?? '');
+    if (value === '--windows-linux-input') {
+      windowsLinuxInputSvgPath = resolve(PROJECT_ROOT, argv[index + 1] ?? '');
       index += 1;
       continue;
     }
@@ -173,7 +174,7 @@ function parseArgs(argv) {
     iconShape,
     trayInputSvgPath,
     trayIconInputSvgPath,
-    windowInputSvgPath,
+    windowsLinuxInputSvgPath,
     macosInset,
   };
 }
@@ -335,7 +336,7 @@ async function renderExplicitTrayTemplate(svgBuffer, size) {
 }
 
 // Scale the already-masked artwork into the centre of a transparent canvas so the
-// .icns follows Apple's grid while Windows and Linux keep the full-bleed tile.
+// .icns follows Apple's grid while the Windows and Linux icons stay full-bleed.
 async function insetPng(pngBuffer, size, inset) {
   if (inset <= 0) {
     return pngBuffer;
@@ -378,8 +379,8 @@ export async function generateElectronIcons(options = {}) {
   const trayIconInputSvgPath = options.trayIconInputSvgPath
     ? resolve(PROJECT_ROOT, options.trayIconInputSvgPath)
     : null;
-  const windowInputSvgPath = options.windowInputSvgPath
-    ? resolve(PROJECT_ROOT, options.windowInputSvgPath)
+  const windowsLinuxInputSvgPath = options.windowsLinuxInputSvgPath
+    ? resolve(PROJECT_ROOT, options.windowsLinuxInputSvgPath)
     : null;
   const macosInset = normalizeMacosInset(options.macosInset);
   const linuxIconDir = resolve(buildResourcesDir, 'icons', 'linux');
@@ -387,7 +388,9 @@ export async function generateElectronIcons(options = {}) {
   const svgBuffer = await readFile(inputSvgPath);
   const traySvgBuffer = trayInputSvgPath ? await readFile(trayInputSvgPath) : null;
   const trayIconSvgBuffer = trayIconInputSvgPath ? await readFile(trayIconInputSvgPath) : null;
-  const windowSvgBuffer = windowInputSvgPath ? await readFile(windowInputSvgPath) : null;
+  const windowsLinuxSvgBuffer = windowsLinuxInputSvgPath
+    ? await readFile(windowsLinuxInputSvgPath)
+    : null;
   const pngBuffersBySize = new Map();
   const icnsBuffersBySize = new Map();
 
@@ -397,8 +400,12 @@ export async function generateElectronIcons(options = {}) {
     1024,
   ])) {
     const png = await renderSvgPng(svgBuffer, size, iconShape);
-    pngBuffersBySize.set(size, png);
     icnsBuffersBySize.set(size, await insetPng(png, size, macosInset));
+    // The Windows/Linux source carries its own background (or none), so it
+    // skips the shape mask.
+    pngBuffersBySize.set(size, windowsLinuxSvgBuffer
+      ? await rasterizeSvgPng(windowsLinuxSvgBuffer, size)
+      : png);
   }
 
   await rm(linuxIconDir, { recursive: true, force: true });
@@ -423,8 +430,6 @@ export async function generateElectronIcons(options = {}) {
   const trayIcon2xPath = resolve(assetsRoot, 'tray-icon@2x.png');
   const trayTemplatePath = resolve(assetsRoot, 'tray-iconTemplate.png');
   const trayTemplate2xPath = resolve(assetsRoot, 'tray-iconTemplate@2x.png');
-  const windowIcoPath = resolve(assetsRoot, 'window-icon.ico');
-  const windowPngPath = resolve(assetsRoot, 'window-icon.png');
   const manifestPath = resolve(buildResourcesDir, 'icon-manifest.json');
 
   await writeBuffer(appPngPath, pngBuffersBySize.get(512));
@@ -433,22 +438,13 @@ export async function generateElectronIcons(options = {}) {
   await writeBuffer(uninstallerIconPath, icoBuffer);
   await writeBuffer(installerHeaderIconPath, icoBuffer);
   await writeBuffer(iconIcnsPath, icnsBuffer);
-  // The dedicated tray and window sources carry their own background (or none),
-  // so they skip the shape mask; without them both reuse the app icon renders.
+  // The dedicated tray source carries its own background, so it skips the shape
+  // mask; without it the tray reuses the Windows/Linux app icon renders.
   const renderTrayIcon = (size) => (trayIconSvgBuffer
     ? rasterizeSvgPng(trayIconSvgBuffer, size)
     : pngBuffersBySize.get(size));
   await writeBuffer(trayIconPath, await renderTrayIcon(32));
   await writeBuffer(trayIcon2xPath, await renderTrayIcon(64));
-  const renderWindowIcon = (size) => (windowSvgBuffer
-    ? rasterizeSvgPng(windowSvgBuffer, size)
-    : pngBuffersBySize.get(size));
-  const windowIcoBuffers = [];
-  for (const size of ICO_SIZES) {
-    windowIcoBuffers.push(await renderWindowIcon(size));
-  }
-  await writeBuffer(windowIcoPath, await pngToIco(windowIcoBuffers));
-  await writeBuffer(windowPngPath, await renderWindowIcon(512));
   const renderTemplate = (size) => (traySvgBuffer
     ? renderExplicitTrayTemplate(traySvgBuffer, size)
     : renderTrayTemplate(svgBuffer, size, iconShape));
@@ -459,7 +455,9 @@ export async function generateElectronIcons(options = {}) {
     sourceSvg: toProjectRelative(inputSvgPath),
     traySourceSvg: trayInputSvgPath ? toProjectRelative(trayInputSvgPath) : null,
     trayIconSourceSvg: trayIconInputSvgPath ? toProjectRelative(trayIconInputSvgPath) : null,
-    windowSourceSvg: windowInputSvgPath ? toProjectRelative(windowInputSvgPath) : null,
+    windowsLinuxSourceSvg: windowsLinuxInputSvgPath
+      ? toProjectRelative(windowsLinuxInputSvgPath)
+      : null,
     shape: iconShape,
     macosInset,
     app: {
@@ -476,10 +474,6 @@ export async function generateElectronIcons(options = {}) {
       retina: toProjectRelative(trayIcon2xPath),
       template: toProjectRelative(trayTemplatePath),
       templateRetina: toProjectRelative(trayTemplate2xPath),
-    },
-    window: {
-      ico: toProjectRelative(windowIcoPath),
-      png: toProjectRelative(windowPngPath),
     },
   };
   await writeBuffer(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);

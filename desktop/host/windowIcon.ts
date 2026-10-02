@@ -6,9 +6,9 @@ export function resolveDesktopWindowIconPath(
   platform: NodeJS.Platform = process.platform,
 ): string | null {
   const relativePath = platform === 'win32'
-    ? ['assets', 'window-icon.ico']
+    ? ['assets', 'build', 'icon.ico']
     : platform === 'linux'
-      ? ['assets', 'window-icon.png']
+      ? ['assets', 'build', 'icon.png']
       : null;
 
   if (!relativePath) {
