@@ -1709,10 +1709,14 @@ export function NewChatDraft({
   return (
     <div className="viewShell viewShellDraft">
       <section className="draftShell">
-        {draftHeaderJsx}
-        {draftCustomRegion ? (
-          <div className="draftCustomRegion">{draftCustomRegion}</div>
-        ) : null}
+        {/* Everything above the composer, bottom-aligned in the first
+            grid row so it grows upward and never moves the composer. */}
+        <div className="draftShellLead">
+          {draftHeaderJsx}
+          {draftCustomRegion ? (
+            <div className="draftCustomRegion">{draftCustomRegion}</div>
+          ) : null}
+        </div>
         <DraftCompareCarousel
           cards={branchCards}
           activeIndex={activeBranchIndex}

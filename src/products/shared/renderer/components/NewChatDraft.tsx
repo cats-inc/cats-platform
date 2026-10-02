@@ -393,23 +393,27 @@ export function WorkspaceNewChatDraft({
   return (
     <div className="viewShell viewShellDraft">
       <section className="draftShell">
-        {isDirectLaneContext && defaultRecipientCat ? (
-          <DraftHeader
-            variant="profile"
-            title={defaultRecipientCat.name}
-            avatarName={defaultRecipientCat.name}
-            avatarUrl={defaultRecipientCat.avatarUrl}
-            avatarColor={defaultRecipientCat.avatarColor}
-          />
-        ) : (
-          <DraftHeader
-            variant="intro"
-            title={resolvedGreeting}
-          />
-        )}
-        {draftCustomRegion ? (
-          <div className="draftCustomRegion">{draftCustomRegion}</div>
-        ) : null}
+        {/* Everything above the composer, bottom-aligned in the first
+            grid row so it grows upward and never moves the composer. */}
+        <div className="draftShellLead">
+          {isDirectLaneContext && defaultRecipientCat ? (
+            <DraftHeader
+              variant="profile"
+              title={defaultRecipientCat.name}
+              avatarName={defaultRecipientCat.name}
+              avatarUrl={defaultRecipientCat.avatarUrl}
+              avatarColor={defaultRecipientCat.avatarColor}
+            />
+          ) : (
+            <DraftHeader
+              variant="intro"
+              title={resolvedGreeting}
+            />
+          )}
+          {draftCustomRegion ? (
+            <div className="draftCustomRegion">{draftCustomRegion}</div>
+          ) : null}
+        </div>
         {/* Always render `.composerHeaderRow` so the composer card stays
             anchored at the same vertical position across +New / +Group /
             +Parallel presets. Parallel's carousel grid already reserves the
