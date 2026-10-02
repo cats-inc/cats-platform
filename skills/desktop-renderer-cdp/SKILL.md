@@ -78,5 +78,7 @@ Return the app to normal unless the user wants to keep inspecting:
 ./scripts/macos/restart-desktop-with-cdp.sh --disable
 ```
 
-Electron's own relaunch, for example after a self-update, keeps the debugging flag.
+`--disable` also removes the `DevToolsActivePort` file that Electron writes to
+`~/Library/Application Support/Cats` and never cleans up. Electron's own relaunch,
+for example after a self-update, keeps the debugging flag.
 Report whether the port is still open when you stop.
