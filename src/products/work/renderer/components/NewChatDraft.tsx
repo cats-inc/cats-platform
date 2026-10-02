@@ -1,15 +1,15 @@
 import {
-  NewChatDraft as ChatNewChatDraft,
-  type NewChatDraftProps as SharedNewChatDraftProps,
-} from '../../../shared/renderer/components/ChatNewChatDraft.js';
+  NewConversationDraft,
+  type NewConversationDraftProps,
+} from '../../../shared/renderer/components/NewConversationDraft.js';
 import { ComposerSurfaceChip } from '../../../shared/renderer/components/ComposerSurfaceChip.js';
 import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
-import { resolveChatNewChatDraftBuilderControls } from '../../../shared/renderer/draftBuilderControls.js';
+import { resolveNewConversationDraftBuilderControls } from '../../../shared/renderer/draftBuilderControls.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import { messageKeys, type MessageKey } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
-export interface NewChatDraftProps extends SharedNewChatDraftProps {
+export interface NewChatDraftProps extends NewConversationDraftProps {
   draftSurface: PlatformSurfaceId;
   onDraftSurfaceChange: (surface: PlatformSurfaceId) => void;
 }
@@ -80,7 +80,7 @@ function buildWorkSurfaceTag(props: NewChatDraftProps) {
 
 /**
  * +New Work (including a cat-scoped `/work/new?cat=<id>`), +Group
- * Work, and +Parallel Work all render through `ChatNewChatDraft` so
+ * Work, and +Parallel Work all render through `NewConversationDraft` so
  * +collaborate seeds temps in place and +compare appends a shadow
  * row without navigating off the current URL. Direct messages belong
  * to Chat (ADR-129), so Work has no direct-lane draft.
@@ -91,7 +91,7 @@ function WorkChatDraft(props: NewChatDraftProps) {
     props.payload.chat.advancedDraftControls,
     'work',
   );
-  const builderControls = resolveChatNewChatDraftBuilderControls({
+  const builderControls = resolveNewConversationDraftBuilderControls({
     advancedDraftControlsEnabled,
     entryPreset: props.entryPreset ?? 'default',
     showStructuredDraftControls: true,
@@ -99,7 +99,7 @@ function WorkChatDraft(props: NewChatDraftProps) {
   });
 
   return (
-    <ChatNewChatDraft
+    <NewConversationDraft
       {...props}
       draftChrome={{
         surfaceTag: buildWorkSurfaceTag(props),

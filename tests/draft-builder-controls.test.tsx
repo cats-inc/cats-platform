@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveChatNewChatDraftBuilderControls } from '../src/products/shared/renderer/draftBuilderControls.ts';
+import { resolveNewConversationDraftBuilderControls } from '../src/products/shared/renderer/draftBuilderControls.ts';
 
 test('draft builder controls expose advanced add buttons without duplicating policy', () => {
   assert.deepEqual(
-    resolveChatNewChatDraftBuilderControls({
+    resolveNewConversationDraftBuilderControls({
       advancedDraftControlsEnabled: true,
       entryPreset: 'default',
       showStructuredDraftControls: true,
@@ -22,7 +22,7 @@ test('draft builder controls expose advanced add buttons without duplicating pol
 
 test('draft builder controls keep dedicated group and parallel hints visible', () => {
   assert.equal(
-    resolveChatNewChatDraftBuilderControls({
+    resolveNewConversationDraftBuilderControls({
       advancedDraftControlsEnabled: true,
       entryPreset: 'group',
       showStructuredDraftControls: true,
@@ -31,7 +31,7 @@ test('draft builder controls keep dedicated group and parallel hints visible', (
     false,
   );
   assert.equal(
-    resolveChatNewChatDraftBuilderControls({
+    resolveNewConversationDraftBuilderControls({
       advancedDraftControlsEnabled: true,
       entryPreset: 'parallel',
       showStructuredDraftControls: true,
@@ -43,7 +43,7 @@ test('draft builder controls keep dedicated group and parallel hints visible', (
 
 test('draft builder controls still show compare button for existing visible branches', () => {
   assert.deepEqual(
-    resolveChatNewChatDraftBuilderControls({
+    resolveNewConversationDraftBuilderControls({
       advancedDraftControlsEnabled: false,
       entryPreset: 'default',
       showStructuredDraftControls: true,

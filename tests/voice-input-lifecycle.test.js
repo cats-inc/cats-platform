@@ -67,8 +67,7 @@ test('useWebSpeechInput cancel aborts and invalidates stale recognition callback
 test('composer entry points route voice input through useVoiceInputComposer', async () => {
   const entries = [
     path.join(COMPONENTS_DIR, 'chat-view', 'ChatComposerArea.tsx'),
-    path.join(COMPONENTS_DIR, 'NewChatDraft.tsx'),
-    path.join(COMPONENTS_DIR, 'ChatNewChatDraft.tsx'),
+    path.join(COMPONENTS_DIR, 'NewConversationDraft.tsx'),
   ];
   for (const file of entries) {
     const source = await readFile(file, 'utf8');

@@ -3,7 +3,7 @@ import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import { buildAudienceParticipantFromExecutionTarget } from '../audienceParticipantBuilder.js';
 import { BranchAudienceRoster } from './BranchAudienceRoster.js';
-import type { DraftComposerStackParticipant } from './chatNewChatDraftSupport.js';
+import type { DraftComposerStackParticipant } from './newConversationDraftSupport.js';
 import type { ExecutionTargetValue } from './ExecutionTarget.js';
 import { AudienceChip } from './AudienceChip.js';
 import { CollaborateIcon } from './DraftBuilderIcons.js';

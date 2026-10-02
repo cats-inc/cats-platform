@@ -9,7 +9,6 @@ import {
   NewChatDraft,
   type NewChatDraftProps,
 } from '../src/products/code/renderer/components/NewChatDraft.tsx';
-import { NewChatDraft as WorkspaceNewChatDraft } from '../src/products/shared/renderer/components/NewChatDraft.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
 function renderToStaticMarkup(element: React.ReactElement): string {
@@ -77,16 +76,6 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
   };
 }
 
-/**
- * The shared draft declares `greeting?: string` while the code draft allows null,
- * and this file renders both from one props factory. Coercing here keeps the
- * single factory rather than widening the shared component's prop.
- */
-function createWorkspaceProps(overrides: Partial<NewChatDraftProps> = {}) {
-  const { greeting, ...rest } = createProps(overrides);
-  return { ...rest, greeting: greeting ?? undefined };
-}
-
 test('new code default draft initial render does not show the branch or workspace mode chip before the repo probe resolves', () => {
   const markup = renderToStaticMarkup(<NewChatDraft {...createProps({ draftCwd: '/tmp/my-repo' })} />);
 
@@ -122,33 +111,4 @@ test('new code default draft renders the permission chip in the header when a cw
     /class="composerHeaderRight"[\s\S]*?composerPermissionChipWrapper/u,
   );
   assert.match(markup, /composerPermissionChip[\s\S]*?Full access/u);
-});
-
-test('shared workspace draft renders composerFooterAccessory below the composer card when provided', () => {
-  const markup = renderToStaticMarkup(
-    <WorkspaceNewChatDraft
-      {...createWorkspaceProps({ draftCwd: '/tmp/my-repo' })}
-      composerFooterAccessory={
-        <>
-          <span className="composerBranchChip">
-            <span>main</span>
-          </span>
-          <button className="composerSelectChip composerWorkspaceModeChip" type="button">
-            <span>Current folder</span>
-          </button>
-        </>
-      }
-    />,
-  );
-
-  assert.match(
-    markup,
-    /<\/form>[\s\S]*?class="composerFooterRow"[\s\S]*?class="composerBranchChip"/u,
-  );
-  assert.match(
-    markup,
-    /class="composerBranchChip"[\s\S]*?class="composerSelectChip composerWorkspaceModeChip"/u,
-  );
-  assert.match(markup, />main</u);
-  assert.match(markup, />Current folder</u);
 });

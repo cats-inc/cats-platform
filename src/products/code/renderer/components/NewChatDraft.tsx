@@ -1,26 +1,25 @@
 import {
-  NewChatDraft as ChatNewChatDraft,
-  type NewChatDraftProps as SharedNewChatDraftProps,
-} from '../../../shared/renderer/components/ChatNewChatDraft.js';
+  NewConversationDraft,
+  type NewConversationDraftProps,
+} from '../../../shared/renderer/components/NewConversationDraft.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import { prefetchCrossSurfaceNavigationTarget } from '../../../shared/renderer/crossSurfaceNavigationRegistry.js';
 
-export interface NewChatDraftProps extends SharedNewChatDraftProps {
+export interface NewChatDraftProps extends NewConversationDraftProps {
   draftSurface: PlatformSurfaceId;
   onDraftSurfaceChange: (surface: PlatformSurfaceId) => void;
 }
 import {
-  buildChatNewChatDraftSidePanelSections,
-  type BuildChatNewChatDraftSidePanelSectionsInput,
-  type ChatNewChatDraftSidePanelCopy,
-} from '../../../shared/renderer/components/chatNewChatDraftSidePanel.js';
+  buildNewConversationDraftSidePanelSections,
+  type BuildNewConversationDraftSidePanelSectionsInput,
+  type NewConversationDraftSidePanelCopy,
+} from '../../../shared/renderer/components/newConversationDraftSidePanel.js';
 import type { SidePanelSection } from '../../../../design/components/SidePanel.js';
-import type { WorkspaceNewChatDraftCopy } from '../../../shared/renderer/components/NewChatDraft.js';
 import { ComposerSurfaceChip } from '../../../shared/renderer/components/ComposerSurfaceChip.js';
 import { PermissionModeChip } from '../../../shared/renderer/components/PermissionModeChip.js';
 import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
 import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
-import { resolveChatNewChatDraftBuilderControls } from '../../../shared/renderer/draftBuilderControls.js';
+import { resolveNewConversationDraftBuilderControls } from '../../../shared/renderer/draftBuilderControls.js';
 import {
   createTranslator,
   messageKeys,
@@ -45,9 +44,34 @@ type CodeDraftTranslate = (
 
 const defaultCodeDraftTranslator = createTranslator('en');
 
+/** Code-owned draft copy: the greeting, composer and side-panel labels. */
+export interface NewCodeDraftCopy {
+  greeting?: string;
+  composer?: {
+    placeholder?: string;
+  };
+  sidePanel?: {
+    title?: string;
+  };
+  participants?: {
+    sectionTitle?: string;
+    emptyState?: string;
+  };
+  execution?: {
+    sectionTitle?: string;
+    actionLabel?: string;
+    emptyState?: string;
+  };
+  folder?: {
+    sectionTitle?: string;
+    actionLabel?: string;
+    emptyState?: string;
+  };
+}
+
 export function buildNewCodeDraftCopy(
   t: CodeDraftTranslate = defaultCodeDraftTranslator,
-): WorkspaceNewChatDraftCopy {
+): NewCodeDraftCopy {
   return {
     greeting: t(messageKeys.codeNewDraftGreeting),
     composer: {
@@ -74,8 +98,8 @@ export function buildNewCodeDraftCopy(
 }
 
 export function buildNewCodeChatDraftSidePanelCopy(
-  draftCopy: WorkspaceNewChatDraftCopy,
-): ChatNewChatDraftSidePanelCopy {
+  draftCopy: NewCodeDraftCopy,
+): NewConversationDraftSidePanelCopy {
   return {
     title: draftCopy.sidePanel?.title,
     participants: {
@@ -94,10 +118,10 @@ export function buildNewCodeChatDraftSidePanelCopy(
   };
 }
 
-export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy =
+export const NEW_CODE_DRAFT_COPY: NewCodeDraftCopy =
   buildNewCodeDraftCopy(defaultCodeDraftTranslator);
 
-export const NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY: ChatNewChatDraftSidePanelCopy =
+export const NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY: NewConversationDraftSidePanelCopy =
   buildNewCodeChatDraftSidePanelCopy(NEW_CODE_DRAFT_COPY);
 
 function formatCodeSessionWorkspace(
@@ -123,7 +147,7 @@ function formatCodeSessionPermission(
 }
 
 export function buildCodeNewChatDraftSessionProfileSection(
-  input: BuildChatNewChatDraftSidePanelSectionsInput,
+  input: BuildNewConversationDraftSidePanelSectionsInput,
   t: CodeDraftTranslate = defaultCodeDraftTranslator,
 ): SidePanelSection {
   const currentSessionPolicy = resolveCreateRuntimeSessionPolicy({
@@ -172,11 +196,11 @@ export function buildCodeNewChatDraftSessionProfileSection(
 }
 
 export function buildCodeNewChatDraftSidePanelSections(
-  input: BuildChatNewChatDraftSidePanelSectionsInput,
+  input: BuildNewConversationDraftSidePanelSectionsInput,
   t: CodeDraftTranslate = defaultCodeDraftTranslator,
 ): SidePanelSection[] {
   const draftCopy = buildNewCodeDraftCopy(t);
-  const sections = buildChatNewChatDraftSidePanelSections({
+  const sections = buildNewConversationDraftSidePanelSections({
     ...input,
     t,
     sidePanelCopy: buildNewCodeChatDraftSidePanelCopy(draftCopy),
@@ -330,7 +354,7 @@ function buildCodeSurfaceTag(props: NewChatDraftProps) {
 
 function resolveCodeDraftGreeting(
   props: NewChatDraftProps,
-  draftCopy: WorkspaceNewChatDraftCopy,
+  draftCopy: NewCodeDraftCopy,
   t: CodeDraftTranslate,
 ): string | undefined {
   const assistGreeting = resolveGuideCatAssistGreeting(
@@ -344,7 +368,7 @@ function resolveCodeDraftGreeting(
 
 /**
  * +New Code (including a cat-scoped `/code/new?cat=<id>`), +Team Code,
- * and +Peer Code all render through `ChatNewChatDraft` so +collaborate
+ * and +Peer Code all render through `NewConversationDraft` so +collaborate
  * seeds temps in place and +compare appends a shadow row without
  * navigating off the current URL — matching +New Chat. Direct messages
  * belong to Chat (ADR-129), so Code has no direct-lane draft.
@@ -363,7 +387,7 @@ function CodeChatDraft(props: NewChatDraftProps) {
     draftRuntimeSessionPolicy: props.draftRuntimeSessionPolicy,
     onDraftRuntimeSessionPolicyChange: props.onDraftRuntimeSessionPolicyChange,
   });
-  const builderControls = resolveChatNewChatDraftBuilderControls({
+  const builderControls = resolveNewConversationDraftBuilderControls({
     advancedDraftControlsEnabled,
     entryPreset: props.entryPreset ?? 'default',
     showStructuredDraftControls: true,
@@ -377,7 +401,7 @@ function CodeChatDraft(props: NewChatDraftProps) {
     : props.selectedExecutionTarget;
 
   return (
-    <ChatNewChatDraft
+    <NewConversationDraft
       {...props}
       greeting={codeGreeting}
       starterChips={{

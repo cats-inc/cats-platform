@@ -24,12 +24,12 @@ import {
   type MessageKey,
 } from '../../../../shared/i18n/index.js';
 
-type ChatNewChatDraftTranslator = (
+type NewConversationDraftTranslator = (
   key: MessageKey,
   values?: MessageInterpolationValues,
 ) => string;
 
-export interface ChatNewChatTemporaryParticipantFormState {
+export interface NewConversationTemporaryParticipantFormState {
   roleHint: string;
   provider: string;
   instance: string;
@@ -37,7 +37,7 @@ export interface ChatNewChatTemporaryParticipantFormState {
   modelSelection: ExecutionTargetValue['modelSelection'];
 }
 
-export interface ChatNewChatDraftSidePanelCopy {
+export interface NewConversationDraftSidePanelCopy {
   title?: string;
   participants?: {
     catsSectionTitle?: string;
@@ -54,16 +54,16 @@ export interface ChatNewChatDraftSidePanelCopy {
   };
 }
 
-type ResolvedChatNewChatDraftSidePanelCopy = Required<{
+type ResolvedNewConversationDraftSidePanelCopy = Required<{
   title: string;
-  participants: Required<NonNullable<ChatNewChatDraftSidePanelCopy['participants']>>;
-  execution: Required<NonNullable<ChatNewChatDraftSidePanelCopy['execution']>>;
-  folder: Required<NonNullable<ChatNewChatDraftSidePanelCopy['folder']>>;
+  participants: Required<NonNullable<NewConversationDraftSidePanelCopy['participants']>>;
+  execution: Required<NonNullable<NewConversationDraftSidePanelCopy['execution']>>;
+  folder: Required<NonNullable<NewConversationDraftSidePanelCopy['folder']>>;
 }>;
 
-const defaultChatNewChatDraftSidePanelCopy = (
-  t: ChatNewChatDraftTranslator,
-): ResolvedChatNewChatDraftSidePanelCopy => ({
+const defaultNewConversationDraftSidePanelCopy = (
+  t: NewConversationDraftTranslator,
+): ResolvedNewConversationDraftSidePanelCopy => ({
   title: t(messageKeys.chatNewChatDraftSidePanelTitle),
   participants: {
     catsSectionTitle: t(messageKeys.chatNewChatDraftSidePanelParticipantsCatsTitle),
@@ -80,11 +80,11 @@ const defaultChatNewChatDraftSidePanelCopy = (
   },
 });
 
-export function resolveChatNewChatDraftSidePanelCopy(
-  copy: ChatNewChatDraftSidePanelCopy | undefined,
-  t: ChatNewChatDraftTranslator,
-): ResolvedChatNewChatDraftSidePanelCopy {
-  const defaultCopy = defaultChatNewChatDraftSidePanelCopy(t);
+export function resolveNewConversationDraftSidePanelCopy(
+  copy: NewConversationDraftSidePanelCopy | undefined,
+  t: NewConversationDraftTranslator,
+): ResolvedNewConversationDraftSidePanelCopy {
+  const defaultCopy = defaultNewConversationDraftSidePanelCopy(t);
   return {
     title: copy?.title ?? defaultCopy.title,
     participants: {
@@ -102,7 +102,7 @@ export function resolveChatNewChatDraftSidePanelCopy(
   };
 }
 
-export interface BuildChatNewChatDraftSidePanelSectionsInput {
+export interface BuildNewConversationDraftSidePanelSectionsInput {
   payload: AppShellPayload;
   chatCats: AppShellPayload['chat']['cats'];
   draftCatIds: string[];
@@ -117,7 +117,7 @@ export interface BuildChatNewChatDraftSidePanelSectionsInput {
   editingTemporaryParticipantId: string | null;
   editingTemporaryParticipantName: string;
   temporaryParticipantFormOpen: boolean;
-  temporaryParticipantForm: ChatNewChatTemporaryParticipantFormState;
+  temporaryParticipantForm: NewConversationTemporaryParticipantFormState;
   hasReachedGroupParticipantLimit: boolean;
   isSubmittingFirstTurn: boolean;
   defaultRecipientCat: AppShellPayload['chat']['cats'][number] | null;
@@ -135,10 +135,10 @@ export interface BuildChatNewChatDraftSidePanelSectionsInput {
   onSubmitTemporaryParticipantRename: (participantId: string) => void;
   onEditingTemporaryParticipantNameChange: (value: string) => void;
   onTemporaryParticipantFormChange: (
-    updater: (current: ChatNewChatTemporaryParticipantFormState) =>
-      ChatNewChatTemporaryParticipantFormState,
+    updater: (current: NewConversationTemporaryParticipantFormState) =>
+      NewConversationTemporaryParticipantFormState,
   ) => void;
-  createTemporaryParticipantFormValue: () => ChatNewChatTemporaryParticipantFormState;
+  createTemporaryParticipantFormValue: () => NewConversationTemporaryParticipantFormState;
   onTemporaryParticipantFormOpenChange: (open: boolean) => void;
   onSubmitTemporaryParticipant: () => void;
   selectedExecutionTarget?: ExecutionTargetValue;
@@ -159,20 +159,20 @@ export interface BuildChatNewChatDraftSidePanelSectionsInput {
   draftRuntimeSessionPolicy: RuntimeSessionPolicy | null;
   onDraftRuntimeSessionPolicyChange?: (policy: RuntimeSessionPolicy) => void;
   onCloseSidePanel: () => void;
-  sidePanelCopy?: ChatNewChatDraftSidePanelCopy;
+  sidePanelCopy?: NewConversationDraftSidePanelCopy;
   // Translator must be passed in by the caller (a real component) — calling
   // `useI18n()` here would violate Rules of Hooks because this builder is
   // invoked conditionally (only when the side panel is open), inserting an
   // extra hook into the parent's call order on toggle.
-  t: ChatNewChatDraftTranslator;
+  t: NewConversationDraftTranslator;
 }
 
-export function buildChatNewChatDraftSidePanelSections(
-  input: BuildChatNewChatDraftSidePanelSectionsInput,
+export function buildNewConversationDraftSidePanelSections(
+  input: BuildNewConversationDraftSidePanelSectionsInput,
 ): SidePanelSection[] {
   const sections: SidePanelSection[] = [];
   const { t } = input;
-  const copy = resolveChatNewChatDraftSidePanelCopy(input.sidePanelCopy, t);
+  const copy = resolveNewConversationDraftSidePanelCopy(input.sidePanelCopy, t);
 
   sections.push({
     id: 'cats',

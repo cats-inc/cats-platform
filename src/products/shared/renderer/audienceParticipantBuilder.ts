@@ -2,7 +2,7 @@ import type { ChatCat } from '../api/workspaceContracts.js';
 import type { DraftTemporaryParticipant } from './draftChatUtils.js';
 import type { RecipientChipTarget } from './components/ComposerRecipientChip.js';
 import { buildExecutionTargetLabel, type ExecutionTargetValue } from './components/ExecutionTarget.js';
-import type { DraftComposerStackParticipant } from './components/chatNewChatDraftSupport.js';
+import type { DraftComposerStackParticipant } from './components/newConversationDraftSupport.js';
 import {
   buildCatExecutionLabel,
   resolveExecutionTargetLabel,

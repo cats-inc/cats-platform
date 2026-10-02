@@ -354,7 +354,7 @@
 /* Shadow-branch read-only textareas surface a click-to-jump affordance:
  * tapping them returns the carousel to the lead branch where the prompt
  * is editable. Hint via cursor + hover highlight; the actual jump is wired
- * in `ChatNewChatDraft.buildShadowCardContent`. */
+ * in `NewConversationDraft.buildShadowCardContent`. */
 .composerInputJumpToLead {
   cursor: pointer;
 }

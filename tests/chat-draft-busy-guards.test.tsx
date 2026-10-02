@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveChatNewChatDraftViewState } from '../src/products/shared/renderer/components/chatNewChatDraftSupport.ts';
+import { resolveNewConversationDraftViewState } from '../src/products/shared/renderer/components/newConversationDraftSupport.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 import {
   createChannelComposerBusyScope,
@@ -39,8 +39,8 @@ function createPayload() {
   } as never;
 }
 
-test('resolveChatNewChatDraftViewState keeps unrelated active-channel busy state out of draft composers', () => {
-  const result = resolveChatNewChatDraftViewState({
+test('resolveNewConversationDraftViewState keeps unrelated active-channel busy state out of draft composers', () => {
+  const result = resolveNewConversationDraftViewState({
     payload: createPayload(),
     draftDefaultRecipientCatId: null,
     draftCatIds: [],
@@ -60,8 +60,8 @@ test('resolveChatNewChatDraftViewState keeps unrelated active-channel busy state
   assert.equal(result.isSubmittingFirstTurn, false);
 });
 
-test('resolveChatNewChatDraftViewState keeps draft send busy local to the active draft route', () => {
-  const result = resolveChatNewChatDraftViewState({
+test('resolveNewConversationDraftViewState keeps draft send busy local to the active draft route', () => {
+  const result = resolveNewConversationDraftViewState({
     payload: createPayload(),
     draftDefaultRecipientCatId: null,
     draftCatIds: [],
