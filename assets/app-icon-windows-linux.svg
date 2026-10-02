@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="41 32 430 430">
   <!--
-    Windows and Linux window icon (title bar and taskbar button): the app icon's
-    tabby face without its navy tile, on a transparent background. Without the
+    Windows and Linux app icon: Cats.exe and its shortcuts (so the taskbar
+    button), the NSIS installer icons, the Linux desktop icons and the window
+    icon. It is the tabby face from assets/app-icon-silhouette.svg without the
+    navy tile, on a transparent background; macOS keeps the tile. Without the
     tile the viewBox is cropped square to the artwork so the head fills the
     canvas. Keep the artwork in sync with assets/app-icon-silhouette.svg.
     Regenerate with `npm run desktop:icons`.

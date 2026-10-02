@@ -2,6 +2,58 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-03 — Desktop 0.7.7 standard preview
+
+Desktop **0.7.7** is the owner-requested standard-profile preview. Windows and Linux
+show Catlas's colour face without the navy tile everywhere the app icon appears,
+and Reset Platform data also returns the window to its default placement. This is
+a compatible patch with no public API, configuration or stored-format change to
+existing data and no migration.
+
+- **Windows and Linux app icons.** Catlas's colour face on a transparent background,
+  cropped to fill the icon, replaces the navy tile for `Cats.exe` and its desktop
+  and Start-menu shortcuts, the NSIS installer, uninstaller and installer-header
+  icons, the Linux desktop icons and the window icon.
+  - The taskbar button follows the Start-menu shortcut through the app's
+    AppUserModelID, so it now shows the face too. In 0.7.6 only the title bar did,
+    and the taskbar button kept the tile.
+  - The cream whiskers are faint on light backgrounds such as Windows 11's default
+    light taskbar.
+  - Windows can keep showing an existing shortcut's old icon until its icon cache
+    refreshes.
+  - The macOS app icon keeps the navy tile, and the tray and menu-bar icons on every
+    platform are unchanged from 0.7.6.
+- **Reset Platform data.** Besides erasing the data, reset deletes
+  `<CATS_DESKTOP_DIR>/window-state.json` and moves the main window back to the
+  default placement (85% of the primary work area, between 1280×800 and 1680×1050,
+  maximized when that does not fit) before the setup page loads. It leaves full
+  screen first. Restoring the window is best effort: if it fails, the reset is
+  still reported as successful. The en and zh-TW reset descriptions say so.
+- **Runtime.** Keep the 0.7.6 pin, `8729cd6cb17ab52a034e2365baffcd82915a8af8`
+  (package version 0.4.0), on every OS and in the complete source archive.
+- **Apps.** Reuse Usage 0.5.1, SHA-256
+  `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
+  Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
+  compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
+- **Signing and updates.**
+  - The manual `desktop-release.yml` dispatch uses `tag=v0.7.7`, the full Runtime
+    SHA above and `unsigned=false`; the workflow creates the preview tag.
+  - Expected trust profile: macOS signed + notarized, Windows unsigned (no
+    certificate), Linux n/a.
+  - Standard-profile 0.7.6 installs keep their update path: macOS uses the same
+    Developer ID team, Windows stays unsigned to unsigned, and Linux uses the
+    `.deb` update path. No installed upgrade is exercised.
+- **Validation.**
+  - Both changes ran full PR CI.
+  - For the icons, the icon generator and Desktop packaging tests also ran locally,
+    and the icons were checked in rendered previews only, not on a Windows or Linux
+    desktop.
+  - The window reset was not exercised live, because that erases real Platform data.
+  - No packaged installer with these changes was checked on a desktop before the
+    dispatch.
+  - Publication results: the [`v0.7.7` GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.7)
+    and its workflow run.
+
 ## 2026-10-03 — Desktop 0.7.6 standard preview
 
 Desktop **0.7.6** is the owner-requested standard-profile preview. A direct-message

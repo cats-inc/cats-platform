@@ -75,8 +75,6 @@ test('generateElectronIcons creates the cross-platform app and tray icon set fro
   assert.equal(manifest.app.icns.endsWith('assets/build/icon.icns'), true);
   assert.equal(manifest.tray.default.endsWith('assets/tray-icon.png'), true);
   assert.equal(manifest.tray.template.endsWith('assets/tray-iconTemplate.png'), true);
-  assert.equal(manifest.window.ico.endsWith('assets/window-icon.ico'), true);
-  assert.equal(manifest.window.png.endsWith('assets/window-icon.png'), true);
   assert.deepEqual(
     Object.keys(manifest.app.linuxIcons),
     ['16', '24', '32', '48', '64', '128', '256', '512'],
@@ -220,34 +218,35 @@ test('generateElectronIcons renders a dedicated tray template source with its ho
 });
 
 // A transparent-background source: nothing outside the circle may gain a tile.
-const WINDOW_SVG = `<?xml version="1.0" encoding="UTF-8"?>
+const WINDOWS_LINUX_SVG = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <circle cx="256" cy="256" r="200" fill="#00ff00"/>
 </svg>
 `;
 
-test('generateElectronIcons renders dedicated tray and window icon sources as is', async () => {
+test('generateElectronIcons renders dedicated tray and Windows/Linux sources as is', async () => {
   const workspace = await createWorkspace();
   const inputSvgPath = join(workspace, 'icon-source.svg');
   const trayIconInputSvgPath = join(workspace, 'tray-icon-source.svg');
-  const windowInputSvgPath = join(workspace, 'window-source.svg');
+  const windowsLinuxInputSvgPath = join(workspace, 'windows-linux-source.svg');
   const assetsRoot = join(workspace, 'assets');
   const buildResourcesDir = join(assetsRoot, 'build');
 
   await writeFile(inputSvgPath, SOURCE_SVG);
   await writeFile(trayIconInputSvgPath, TRAY_TEMPLATE_SVG);
-  await writeFile(windowInputSvgPath, WINDOW_SVG);
+  await writeFile(windowsLinuxInputSvgPath, WINDOWS_LINUX_SVG);
 
   const manifest = await generateElectronIcons({
     inputSvgPath,
     trayIconInputSvgPath,
-    windowInputSvgPath,
+    windowsLinuxInputSvgPath,
     assetsRoot,
     buildResourcesDir,
     iconShape: 'square',
+    macosInset: 'apple',
   });
   assert.equal(manifest.trayIconSourceSvg.endsWith('tray-icon-source.svg'), true);
-  assert.equal(manifest.windowSourceSvg.endsWith('window-source.svg'), true);
+  assert.equal(manifest.windowsLinuxSourceSvg.endsWith('windows-linux-source.svg'), true);
 
   // The tray icon keeps the source's own colours and its hole, not the app tile.
   const trayPath = join(assetsRoot, 'tray-icon@2x.png');
@@ -257,17 +256,24 @@ test('generateElectronIcons renders dedicated tray and window icon sources as is
   assert.deepEqual([trayBody.red, trayBody.green, trayBody.blue, trayBody.alpha], [255, 0, 0, 255]);
   assert.equal((await readPixel(trayPath, 32, 32)).alpha, 0);
 
-  // The window icon stays transparent around the artwork.
-  const windowPng = join(assetsRoot, 'window-icon.png');
-  assert.deepEqual(await readImageSize(windowPng), { width: 512, height: 512 });
-  assert.equal((await readPixel(windowPng, 0, 0)).alpha, 0);
-  const windowCentre = await readPixel(windowPng, 256, 256);
-  assert.deepEqual([windowCentre.green, windowCentre.alpha], [255, 255]);
-  assert.equal((await readFile(join(assetsRoot, 'window-icon.ico'))).length > 0, true);
+  // The Windows and Linux app icons stay transparent around the artwork.
+  for (const pngPath of [
+    join(buildResourcesDir, 'icon.png'),
+    join(buildResourcesDir, 'icons', 'linux', '256x256.png'),
+  ]) {
+    assert.equal((await readPixel(pngPath, 0, 0)).alpha, 0);
+    const size = (await readImageSize(pngPath)).width;
+    const centre = await readPixel(pngPath, size / 2, size / 2);
+    assert.deepEqual([centre.green, centre.alpha], [255, 255]);
+  }
 
-  // The app icon still comes from the app source.
-  const appCorner = await readPixel(join(buildResourcesDir, 'icon.png'), 0, 0);
-  assert.equal(appCorner.alpha > 0, true);
+  // The .icns keeps the app source's tile inside Apple's margin.
+  const icns = Icns.from(await readFile(join(buildResourcesDir, 'icon.icns')));
+  const largestPng = join(workspace, 'ic10.png');
+  await writeFile(largestPng, icns.images.find((image) => image.osType === 'ic10').image);
+  assert.equal((await readPixel(largestPng, 40, 512)).alpha, 0);
+  const tile = await readPixel(largestPng, 140, 140);
+  assert.deepEqual([tile.red, tile.green, tile.blue, tile.alpha], [31, 41, 55, 255]);
 });
 
 test('generateElectronIcons insets only the macOS icns artwork when asked', async () => {
