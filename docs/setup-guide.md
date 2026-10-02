@@ -633,6 +633,12 @@ centered, kept between 1280×800 and 1680×1050. A work area smaller than 1280×
 opens the window maximized, with 85% of the work area as its restored size. The
 window can be resized down to 960×600.
 
+In Chat, Work and Code, opening an Artifact Canvas collapses the sidebar to its
+icon rail, and closing the canvas expands it again. This does not change the
+saved sidebar preference. Expanding the sidebar while a canvas is open keeps it
+expanded until the next canvas opens; a sidebar that was already collapsed stays
+collapsed.
+
 ### Select Providers before Inventory
 
 On Windows, macOS, and Linux, the first bootstrap page reads the connected
