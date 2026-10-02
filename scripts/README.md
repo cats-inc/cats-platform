@@ -170,6 +170,22 @@ Desktop packaging does not regenerate these icon assets. Prepare the files you
 want first, then run the packaging scripts and let them consume the existing
 files under `assets/build/` and `assets/tray-icon*.png`.
 
+### Installed Desktop renderer inspection (CDP)
+
+To read what the installed app's own window renders (logged-in session, desktop
+bridge, real viewport), relaunch it with a loopback remote-debugging port and
+query it over the Chrome DevTools Protocol:
+
+- `scripts/macos/restart-desktop-with-cdp.sh` asks the installed app to quit through
+  its normal path, then relaunches it with `--remote-debugging-port` (default
+  `9222`). It refuses when the managed runtime has child processes unless
+  `--force`, and `--disable` relaunches it normally. No Windows/Linux helper yet.
+- `scripts/testing/desktop-renderer-cdp.mjs` is a dependency-free CDP client with
+  `targets`, `info`, `screenshot`, `text` and `eval` commands against `127.0.0.1`.
+
+While the port is open, any local process can drive the logged-in renderer. The
+`desktop-renderer-cdp` skill holds the usage rules.
+
 ## Collaboration Helpers
 
 `cats` also keeps repo-owned cross-platform skill sync helpers so local agent

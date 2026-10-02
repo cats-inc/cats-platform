@@ -74,7 +74,8 @@ pane, focus and input checks. Native validation of one terminal does not cover e
   let the user complete it locally; do not ask for passwords in chat, inject
   credentials, or read browser credential/cookie stores as a shortcut. Suspend
   synthetic input while the user interacts. Do not enable remote debugging on
-  their existing browser/profile merely to gain UI access.
+  their existing browser/profile merely to gain UI access. For the Cats Desktop
+  web contents, `desktop-renderer-cdp` covers a user-approved relaunch with CDP.
 - For verification, do not create demo chats, tasks or other test records in
   real user state. Use disposable fixtures/profiles when such writes are needed.
   This does not prohibit data changes the user actually requested. A live

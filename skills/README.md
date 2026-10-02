@@ -78,6 +78,7 @@ Note: `allowed-tools` is experimental and may be ignored by some agents.
 |-------|-------------|
 | `a2a-handoff` | bounded handoff preparation across protocol, project-memory, and skill layers |
 | [desktop-ui-automation](desktop-ui-automation/SKILL.md) | native UI inspection and operation on a ready Windows/macOS/Linux session, with environment checks and platform-specific recipes |
+| [desktop-renderer-cdp](desktop-renderer-cdp/SKILL.md) | read the installed Desktop app's real renderer (session, desktop bridge, viewport) over loopback CDP; macOS relaunch helper |
 | `project-memory-sync` | durable markdown-state synchronization during collaboration |
 
 `desktop-ui-automation` is optional guidance, not an installed desktop-control
