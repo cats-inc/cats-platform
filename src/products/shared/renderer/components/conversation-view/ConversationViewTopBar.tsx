@@ -6,7 +6,7 @@ import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import { CatAvatarSelectionAttention } from '../../../../../app/renderer/SavedSelectionAvatarAttention.js';
 import type { SavedSelectionTarget } from '../../../../../app/renderer/savedSelectionAttention.js';
 
-export interface ChatViewTopBarAvatar {
+export interface ConversationViewTopBarAvatar {
   key: string;
   label: string;
   executionLabel?: string | null;
@@ -21,8 +21,8 @@ export interface ChatViewTopBarAvatar {
   selectionTarget?: SavedSelectionTarget | null;
 }
 
-export interface ChatViewTopBarProps {
-  avatars: ChatViewTopBarAvatar[];
+export interface ConversationViewTopBarProps {
+  avatars: ConversationViewTopBarAvatar[];
   showRosterAvatars: boolean;
   isDirectLane: boolean;
   topBarTitle: string;
@@ -37,7 +37,7 @@ export interface ChatViewTopBarProps {
   onOpenCatProfile?: () => void;
 }
 
-export function ChatViewTopBar({
+export function ConversationViewTopBar({
   avatars,
   showRosterAvatars,
   isDirectLane,
@@ -47,7 +47,7 @@ export function ChatViewTopBar({
   extraActions,
   onToggleSidePanel,
   onOpenCatProfile,
-}: ChatViewTopBarProps) {
+}: ConversationViewTopBarProps) {
   const { t } = useI18n();
   return (
     <header className="channelTopBar">

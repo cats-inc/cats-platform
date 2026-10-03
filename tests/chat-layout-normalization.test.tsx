@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import { resolveLayoutMetrics } from '../src/design/chatLayout.ts';
 import { resolveProjectPath } from './helpers/projectRoot.js';
-import { readProductChatViewSource } from './helpers/readProductChatViewSource.js';
+import { readProductConversationViewSource } from './helpers/readProductConversationViewSource.js';
 
 test('resolveLayoutMetrics keeps the unified 720px transcript width and surfaces the side secondary panel for wide participant chat rooms', () => {
   const metrics = resolveLayoutMetrics('participant_chat', 1280);
@@ -34,11 +34,11 @@ test('SidePanel exposes a shared bottom-position seam in design', () => {
   assert.match(styles, /\.sidePanel\.sidePanelBottom/u);
 });
 
-test('ChatView consumes layout metrics for transcript sizing and secondary-surface position', async () => {
+test('ConversationView consumes layout metrics for transcript sizing and secondary-surface position', async () => {
   const sources = await Promise.all([
-    readProductChatViewSource('chat'),
-    readProductChatViewSource('work'),
-    readProductChatViewSource('code'),
+    readProductConversationViewSource('chat'),
+    readProductConversationViewSource('work'),
+    readProductConversationViewSource('code'),
   ]);
 
   for (const source of sources) {
@@ -48,7 +48,7 @@ test('ChatView consumes layout metrics for transcript sizing and secondary-surfa
     assert.match(source, /data-composer-variant=\{composerVariant\}/u);
     assert.match(
       source,
-      /(?:position=\{sidePanelPosition\}|sidePanelPosition=\{layoutMetrics\.secondarySurfacePosition === 'bottom' \? 'bottom' : 'side'\})/u,
+      /position=\{layoutMetrics\.secondarySurfacePosition === 'bottom' \? 'bottom' : 'side'\}/u,
     );
     assert.match(source, /'--chat-transcript-max-width': layoutMetrics\.transcriptMaxWidth/u);
   }

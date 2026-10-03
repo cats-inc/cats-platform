@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import {
   RelayActionIcon,
   TranscriptMessageActions,
-} from '../src/products/shared/renderer/components/chat-view/TranscriptMessageActions.tsx';
+} from '../src/products/shared/renderer/components/conversation-view/TranscriptMessageActions.tsx';
 
 test('chat transcript message actions keep copy and relay controls available for compare groups', () => {
   const markup = renderToStaticMarkup(

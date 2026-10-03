@@ -11,9 +11,9 @@ import {
 } from './components/AddCatPanel.js';
 import type { FolderBrowserContentProps } from './components/FolderBrowser.js';
 import {
-  ChatView,
-  type ChatViewProps,
-} from './components/ChatView.js';
+  ConversationView,
+  type ConversationViewProps,
+} from '../../shared/renderer/components/conversation-view/ConversationView.js';
 import { ActiveSessionPermissionChip } from '../../shared/renderer/components/ActiveSessionPermissionChip.js';
 import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSurfaceChip.js';
 import {
@@ -43,7 +43,7 @@ import {
 import { withSharedViewerRoutes } from '../../shared/renderer/withSharedViewerRoutes.js';
 
 type ChatSurfaceProps = Omit<
-  ChatViewProps,
+  ConversationViewProps,
   'payload' | 'selectedChannel'
 >;
 
@@ -58,7 +58,7 @@ export interface AppRoutesProps extends Omit<
   | 'chatsPath'
   | 'extraRoutes'
   | 'renderBootShell'
-  | 'renderChatView'
+  | 'renderConversationView'
   | 'renderNewChatDraft'
   | 'renderAddCatPanel'
 > {
@@ -129,8 +129,8 @@ export function AppRoutes({
       <Route key="broken-links" path="broken-links" element={<BrokenLinksPage />} />,
     ],
     renderBootShell: () => <BootShell />,
-    renderChatView: (channel, options) => (
-      <ChatView
+    renderConversationView: (channel, options) => (
+      <ConversationView
         {...chatSurfaceProps}
         payload={payload}
         selectedChannel={channel}

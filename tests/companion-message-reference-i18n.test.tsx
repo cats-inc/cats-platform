@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import {
   labelCompanionReferenceInvalidReason,
-} from '../src/products/shared/renderer/components/chat-view/CompanionMessageReferencePreviews.tsx';
+} from '../src/products/shared/renderer/components/conversation-view/CompanionMessageReferencePreviews.tsx';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 
 test('companion message reference invalid reasons localize parser tokens', () => {

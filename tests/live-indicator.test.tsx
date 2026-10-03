@@ -35,12 +35,12 @@ import {
   type LiveIndicatorState,
 } from '../src/shared/liveIndicator.ts';
 import {
-  resolveChatViewTopBarPresenceState,
-} from '../src/products/shared/renderer/components/chat-view/chatViewSupport.ts';
+  resolveConversationViewTopBarPresenceState,
+} from '../src/products/shared/renderer/components/conversation-view/conversationViewSupport.ts';
 import {
   shouldRenderLiveTranscriptBlock,
   shouldShowLiveTranscriptTrailingDots,
-} from '../src/products/shared/renderer/components/chat-view/liveTranscriptBlockSupport.ts';
+} from '../src/products/shared/renderer/components/conversation-view/liveTranscriptBlockSupport.ts';
 import {
   buildChatLaneId,
 } from '../src/shared/chatCoreIds.ts';
@@ -4872,7 +4872,7 @@ test('resolveVisibleLiveIndicator hides sealed segments with null targetStateId 
 });
 
 test('chat top-bar presence stays anonymous while the live indicator is still waiting for session startup', () => {
-  const presence = resolveChatViewTopBarPresenceState({
+  const presence = resolveConversationViewTopBarPresenceState({
     visibleLiveIndicator: {
       ...EMPTY_LIVE_INDICATOR,
       active: true,
@@ -4909,7 +4909,7 @@ test('chat top-bar presence stays anonymous while the live indicator is still wa
 });
 
 test('chat top-bar presence does not pin live speaker to the default recipient once stream metadata names someone else', () => {
-  const presence = resolveChatViewTopBarPresenceState({
+  const presence = resolveConversationViewTopBarPresenceState({
     visibleLiveIndicator: {
       ...EMPTY_LIVE_INDICATOR,
       active: true,

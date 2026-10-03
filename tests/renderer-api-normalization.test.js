@@ -61,15 +61,15 @@ test('renderer cat memory client reads the single-record create response shape',
   assert.match(sharedSource, /expectJson<\{\s*memory:\s*DurableMemoryItem\s*\}>/u);
 });
 
-test('ChatView reads roomRouting from the normalized selected-channel view without casts', async () => {
+test('ConversationView reads roomRouting from the normalized selected-channel view without casts', async () => {
   const source = await readFile(
-    path.join(process.cwd(), 'src/products/shared/renderer/components/chat-view/ChatView.tsx'),
+    path.join(process.cwd(), 'src/products/shared/renderer/components/conversation-view/ConversationView.tsx'),
     'utf8',
   );
 
   assert.equal(
     source.includes('(selectedChannel as'),
     false,
-    'ChatView should rely on the normalized SelectedChannelView type instead of roomRouting casts',
+    'ConversationView should rely on the normalized SelectedChannelView type instead of roomRouting casts',
   );
 });

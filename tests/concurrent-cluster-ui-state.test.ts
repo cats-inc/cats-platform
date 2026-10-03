@@ -13,7 +13,7 @@ import {
   resolveConcurrentClusterPresentationMode,
   type ConcurrentClusterUiStateMap,
   writeConcurrentClusterUiStateMap,
-} from '../src/products/shared/renderer/components/chat-view/concurrentClusterUiState.js';
+} from '../src/products/shared/renderer/components/conversation-view/concurrentClusterUiState.js';
 
 test('dismissConcurrentClusterUiState scopes dismissal by channel and turn', () => {
   const dismissed = dismissConcurrentClusterUiState({}, {

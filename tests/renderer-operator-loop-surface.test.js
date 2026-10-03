@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { readProductChatViewSource } from './helpers/readProductChatViewSource.js';
+import { readProductConversationViewSource } from './helpers/readProductConversationViewSource.js';
 
-test('ChatView keeps operator loop surfaces inside the chat side panel workspace', async () => {
-  const source = await readProductChatViewSource('chat');
+test('ConversationView keeps operator loop surfaces inside the chat side panel workspace', async () => {
+  const source = await readProductConversationViewSource('chat');
 
   assert.match(source, /ApprovalQueuePanel/u);
   assert.match(source, /ProgressSummaryPanel/u);

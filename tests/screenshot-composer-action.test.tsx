@@ -6,7 +6,7 @@ import React, { type ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
-import { ChatComposerArea } from '../src/products/shared/renderer/components/chat-view/ChatComposerArea.tsx';
+import { ConversationComposerArea } from '../src/products/shared/renderer/components/conversation-view/ConversationComposerArea.tsx';
 import {
   captureScreenshotFile,
   createScreenshotFilename,
@@ -17,7 +17,7 @@ import {
 } from '../src/products/shared/renderer/screenshotCapture.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 
-type ChatComposerAreaRenderProps = ComponentProps<typeof ChatComposerArea>;
+type ConversationComposerAreaRenderProps = ComponentProps<typeof ConversationComposerArea>;
 
 function createPayload(): AppShellPayload {
   return {
@@ -32,8 +32,8 @@ function createPayload(): AppShellPayload {
 }
 
 function createComposerProps(
-  overrides: Partial<ChatComposerAreaRenderProps> = {},
-): ChatComposerAreaRenderProps {
+  overrides: Partial<ConversationComposerAreaRenderProps> = {},
+): ConversationComposerAreaRenderProps {
   return {
     hasConversationStarted: true,
     isCompareGroup: false,
@@ -85,7 +85,7 @@ function createComposerProps(
 
 test('chat composer shows the screenshot attachment action when wired', () => {
   const markup = renderToStaticMarkup(
-    <ChatComposerArea
+    <ConversationComposerArea
       {...createComposerProps({
         channelPlusMenuOpen: true,
         onTakeScreenshot: () => {},
@@ -104,7 +104,7 @@ test('chat composer shows the screenshot attachment action when wired', () => {
 
 test('chat composer can send an attachment-only screenshot draft', () => {
   const markup = renderToStaticMarkup(
-    <ChatComposerArea
+    <ConversationComposerArea
       {...createComposerProps({
         composerDraft: '   ',
         channelFiles: [

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
-import { readProductChatViewSource } from './helpers/readProductChatViewSource.js';
+import { readProductConversationViewSource } from './helpers/readProductConversationViewSource.js';
 
 test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async () => {
   const source = await readFile(
@@ -75,16 +75,16 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
 });
 
 test('chat composer surfaces cancel-send during ACK and stop during dispatch', async () => {
-  const chatViewSource = await readProductChatViewSource('chat');
-  const chatViewSupportSource = await readFile(
-    path.join(process.cwd(), 'src/products/shared/renderer/components/chat-view/chatViewSupport.ts'),
+  const chatViewSource = await readProductConversationViewSource('chat');
+  const conversationViewSupportSource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/components/conversation-view/conversationViewSupport.ts'),
     'utf8',
   );
 
-  assert.match(chatViewSupportSource, /isComposerAckBusyForChannel/u);
-  assert.match(chatViewSupportSource, /isComposerDispatchBusyForChannel/u);
+  assert.match(conversationViewSupportSource, /isComposerAckBusyForChannel/u);
+  assert.match(conversationViewSupportSource, /isComposerDispatchBusyForChannel/u);
   assert.match(chatViewSource, /onCancelPendingSend\?: \(\) => void;/u);
-  assert.match(chatViewSupportSource, /showCancelComposerAction = composerAckBusy && input\.onCancelPendingSend != null/u);
+  assert.match(conversationViewSupportSource, /showCancelComposerAction = composerAckBusy && input\.onCancelPendingSend != null/u);
   assert.match(chatViewSource, /aria-label=\{t\(messageKeys\.chatNewChatDraftCancelSendAria\)\}/u);
   assert.match(chatViewSource, /composerCancelButton/u);
   assert.match(chatViewSource, /aria-label=\{composerStopLabel\}/u);

@@ -13,12 +13,12 @@ import { truncatePath } from '../../workspaceChatUtils.js';
 import { ComposerHighlight } from '../ComposerHighlight.js';
 import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
 import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
-import { ChatComposerTargetSlot } from './ChatComposerTargetSlot.js';
+import { ConversationComposerTargetSlot } from './ConversationComposerTargetSlot.js';
 import { DiagnosticAttachmentAction } from '../DiagnosticAttachmentAction.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
-export interface ChatComposerAreaProps {
+export interface ConversationComposerAreaProps {
   hasConversationStarted: boolean;
   isCompareGroup: boolean;
   isNearBottom: boolean;
@@ -67,7 +67,7 @@ export interface ChatComposerAreaProps {
   autoResize: (element: HTMLTextAreaElement) => void;
 }
 
-export function ChatComposerArea({
+export function ConversationComposerArea({
   hasConversationStarted,
   isCompareGroup,
   isNearBottom,
@@ -114,7 +114,7 @@ export function ChatComposerArea({
   onCancelPendingSend,
   onStopMessage,
   autoResize,
-}: ChatComposerAreaProps) {
+}: ConversationComposerAreaProps) {
   const directLaneRecipient =
     isDirectLane && composerRecipients.length === 1 && composerRecipients[0]?.kind === 'named'
       ? composerRecipients[0]
@@ -337,7 +337,7 @@ export function ChatComposerArea({
         </div>
         <div className="composerRightGroup">
           {composerTargetSlot ?? (
-            <ChatComposerTargetSlot
+            <ConversationComposerTargetSlot
               payload={payload}
               composerBusy={composerBusy}
               composerRecipients={composerRecipients}

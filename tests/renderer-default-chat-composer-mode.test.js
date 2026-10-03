@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
-import { readProductChatViewSource } from './helpers/readProductChatViewSource.js';
+import { readProductConversationViewSource } from './helpers/readProductConversationViewSource.js';
 
 test('persisted chat view wires the default audience chip and suppresses visible boss chrome', async () => {
   const appSource = await readFile(
@@ -18,11 +18,11 @@ test('persisted chat view wires the default audience chip and suppresses visible
     path.join(process.cwd(), 'src/products/shared/renderer/workspaceAppViewState.ts'),
     'utf8',
   );
-  const chatViewSource = await readProductChatViewSource('chat');
+  const chatViewSource = await readProductConversationViewSource('chat');
   const composerTargetSlotSource = await readFile(
     path.join(
       process.cwd(),
-      'src/products/shared/renderer/components/chat-view/ChatComposerTargetSlot.tsx',
+      'src/products/shared/renderer/components/conversation-view/ConversationComposerTargetSlot.tsx',
     ),
     'utf8',
   );
@@ -44,13 +44,13 @@ test('persisted chat view wires the default audience chip and suppresses visible
   );
   assert.match(
     chatViewSource,
-    /ChatComposerTargetSlot/,
-    'ChatView should render the shared audience-chip slot for persisted chats',
+    /ConversationComposerTargetSlot/,
+    'ConversationView should render the shared audience-chip slot for persisted chats',
   );
   assert.match(
     chatViewSource,
     /const conversationMode = resolveConversationMode\(selectedChannel\)/u,
-    'ChatView should branch on the shared conversation-mode helper when rendering chat modes',
+    'ConversationView should branch on the shared conversation-mode helper when rendering chat modes',
   );
   assert.match(
     composerTargetSlotSource,

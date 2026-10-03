@@ -15,15 +15,15 @@ import {
 import { CatStatusRow } from './components/CatStatusRow.js';
 import type { FolderBrowserContentProps } from './components/FolderBrowser.js';
 import {
-  ChatView,
-  type ChatViewProps,
-} from '../../shared/renderer/components/chat-view/ChatView.js';
+  ConversationView,
+  type ConversationViewProps,
+} from '../../shared/renderer/components/conversation-view/ConversationView.js';
 import { ActiveSessionPermissionChip } from '../../shared/renderer/components/ActiveSessionPermissionChip.js';
 import {
   NewChatDraft,
   type NewChatDraftProps,
 } from './components/NewChatDraft.js';
-import { ChatComposerTargetSlot } from '../../shared/renderer/components/chat-view/ChatComposerTargetSlot.js';
+import { ConversationComposerTargetSlot } from '../../shared/renderer/components/conversation-view/ConversationComposerTargetSlot.js';
 import { CompanionModeToggleChip } from './components/companion/CompanionModeToggleChip.js';
 import {
   CompanionWorkspace,
@@ -33,7 +33,7 @@ import { withSharedViewerRoutes } from '../../shared/renderer/withSharedViewerRo
 function noop(): void {}
 
 type ChatSurfaceProps = Omit<
-  ChatViewProps,
+  ConversationViewProps,
   'payload' | 'selectedChannel'
 >;
 
@@ -104,7 +104,7 @@ export function AppRoutes({
           surfaceKind: 'chat_conversation',
           surfaceIdParam: 'channelId',
           element: selectedChannel ? (
-            <ChatView
+            <ConversationView
               {...chatSurfaceProps}
               payload={payload}
               selectedChannel={selectedChannel}
@@ -114,7 +114,7 @@ export function AppRoutes({
                 <ActiveSessionPermissionChip channel={ctx.selectedChannel} />
               )}
               renderComposerTargetSlot={(context) => (
-                <ChatComposerTargetSlot
+                <ConversationComposerTargetSlot
                   payload={context.payload}
                   composerBusy={context.composerBusy}
                   composerRecipients={context.composerRecipients}
@@ -180,7 +180,7 @@ export function AppRoutes({
             showDirectLaneBoot ? (
               <BootShell />
             ) : directLaneChannel ? (
-              <ChatView
+              <ConversationView
                 {...chatSurfaceProps}
                 payload={payload}
                 selectedChannel={directLaneChannel}
@@ -190,7 +190,7 @@ export function AppRoutes({
                   <ActiveSessionPermissionChip channel={ctx.selectedChannel} />
                 )}
                 renderComposerTargetSlot={(context) => (
-                  <ChatComposerTargetSlot
+                  <ConversationComposerTargetSlot
                     payload={context.payload}
                     composerBusy={context.composerBusy}
                     composerRecipients={context.composerRecipients}

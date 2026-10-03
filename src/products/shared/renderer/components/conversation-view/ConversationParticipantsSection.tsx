@@ -9,7 +9,7 @@ import {
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
-export interface ChatParticipantsSectionProps {
+export interface ConversationParticipantsSectionProps {
   assignedCatRecords: ChatCat[];
   assignedAdhocParticipants: ResolvedChannelParticipant[];
   bossCatId: string | null;
@@ -27,7 +27,7 @@ export interface ChatParticipantsSectionProps {
   onCloseSidePanel: () => void;
 }
 
-export function ChatParticipantsSection({
+export function ConversationParticipantsSection({
   assignedCatRecords,
   assignedAdhocParticipants,
   bossCatId,
@@ -43,7 +43,7 @@ export function ChatParticipantsSection({
   onSubmitParticipantRename,
   onOpenAddCat,
   onCloseSidePanel,
-}: ChatParticipantsSectionProps) {
+}: ConversationParticipantsSectionProps) {
   const { t } = useI18n();
   const isBusyForParticipant = (participantId: string): boolean =>
     isChannelParticipantBusy(busy, participantId);

@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { readProductChatViewSource } from './helpers/readProductChatViewSource.js';
+import { readProductConversationViewSource } from './helpers/readProductConversationViewSource.js';
 
-test('ChatView renders inline structured choices with transcript-backed responses', async () => {
-  const source = await readProductChatViewSource('chat');
+test('ConversationView renders inline structured choices with transcript-backed responses', async () => {
+  const source = await readProductConversationViewSource('chat');
 
   assert.match(source, /MessageChoices/u);
   assert.match(source, /choiceResponsesBySource/u);

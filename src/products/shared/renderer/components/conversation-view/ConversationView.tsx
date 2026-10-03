@@ -52,13 +52,13 @@ import {
 } from '../../../../../app/renderer/productShell/conversationMode.js';
 import { useTranscriptAutoScroll } from '../../hooks/useTranscriptAutoScroll.js';
 import { useWorkspaceParticipantPresentation } from '../../hooks/useWorkspaceParticipantPresentation.js';
-import { ChatViewFrame } from './ChatViewFrame.js';
-import { ChatViewTopBar } from './ChatViewTopBar.js';
-import { buildChatSidePanelSections, type BuildChatSidePanelSectionsOptions } from './ChatSidePanelSections.js';
-import { ChatComposerArea } from './ChatComposerArea.js';
-import { ChatComposerTargetSlot } from './ChatComposerTargetSlot.js';
+import { ConversationViewFrame } from './ConversationViewFrame.js';
+import { ConversationViewTopBar } from './ConversationViewTopBar.js';
+import { buildConversationSidePanelSections, type BuildConversationSidePanelSectionsOptions } from './ConversationSidePanelSections.js';
+import { ConversationComposerArea } from './ConversationComposerArea.js';
+import { ConversationComposerTargetSlot } from './ConversationComposerTargetSlot.js';
 import { ParallelFooterBar } from './ParallelFooterBar.js';
-import { ChatTranscriptPanel, type TranscriptMessageActionContext } from './ChatTranscriptPanel.js';
+import { ConversationTranscriptPanel, type TranscriptMessageActionContext } from './ConversationTranscriptPanel.js';
 import {
   dismissConcurrentClusterUiState,
   loadConcurrentClusterUiStateMap,
@@ -74,12 +74,12 @@ import {
   buildChoiceResponsesBySource,
   messageStackTone,
   resolveChatComposerViewState,
-  resolveChatViewCompareState,
-  resolveChatViewTopBarPresenceState,
-  resolveChatViewTopBarTitle,
+  resolveConversationViewCompareState,
+  resolveConversationViewTopBarPresenceState,
+  resolveConversationViewTopBarTitle,
   resolveShowRosterAvatars,
   type ChatComposerStackParticipantView,
-} from './chatViewSupport.js';
+} from './conversationViewSupport.js';
 import type { TranscriptMessageActionDescriptor } from './TranscriptMessageActions.js';
 import {
   presentChannelTitle,
@@ -152,7 +152,7 @@ function useIsoLayoutEffect(effect: EffectCallback, deps: DependencyList): void 
   hook(effect, deps);
 }
 
-export interface ChatViewRenderContext {
+export interface ConversationViewRenderContext {
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView;
   activeAssignedCats: SelectedChannelView['assignedCats'];
@@ -171,7 +171,7 @@ export interface ChatViewRenderContext {
   openSidePanelTo: (section: string) => void;
 }
 
-export interface ChatViewComposerTargetSlotContext {
+export interface ConversationViewComposerTargetSlotContext {
   payload: AppShellPayload;
   composerBusy: boolean;
   selectedExecutionTarget?: ExecutionTargetValue;
@@ -191,7 +191,7 @@ export interface ChatViewComposerTargetSlotContext {
   onOpenSection: (section: string) => void;
 }
 
-export interface ChatViewProps {
+export interface ConversationViewProps {
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView;
   routeChannelId?: string | null;
@@ -262,20 +262,20 @@ export interface ChatViewProps {
   buildTranscriptMessageActions?: (
     input: TranscriptMessageActionContext,
   ) => ReadonlyArray<TranscriptMessageActionDescriptor>;
-  renderStatusRow?: (context: ChatViewRenderContext) => ReactNode;
-  renderTopBarExtraActions?: (context: ChatViewRenderContext) => ReactNode;
-  renderComposerTargetSlot?: (context: ChatViewComposerTargetSlotContext) => ReactNode;
-  renderComposerHeaderAccessory?: (context: ChatViewRenderContext) => ReactNode;
-  renderComposerHeaderWhereExtras?: (context: ChatViewRenderContext) => ReactNode;
-  renderComposerFooterAccessory?: (context: ChatViewRenderContext) => ReactNode;
-  renderComposerSurfaceTag?: (context: ChatViewRenderContext) => ReactNode;
+  renderStatusRow?: (context: ConversationViewRenderContext) => ReactNode;
+  renderTopBarExtraActions?: (context: ConversationViewRenderContext) => ReactNode;
+  renderComposerTargetSlot?: (context: ConversationViewComposerTargetSlotContext) => ReactNode;
+  renderComposerHeaderAccessory?: (context: ConversationViewRenderContext) => ReactNode;
+  renderComposerHeaderWhereExtras?: (context: ConversationViewRenderContext) => ReactNode;
+  renderComposerFooterAccessory?: (context: ConversationViewRenderContext) => ReactNode;
+  renderComposerSurfaceTag?: (context: ConversationViewRenderContext) => ReactNode;
   buildSidePanelSections?: (
-    options: BuildChatSidePanelSectionsOptions,
+    options: BuildConversationSidePanelSectionsOptions,
   ) => SidePanelSection[];
   sidePanelTitle?: string;
 }
 
-export function ChatView({
+export function ConversationView({
   payload,
   selectedChannel,
   routeChannelId = null,
@@ -337,7 +337,7 @@ export function ChatView({
   renderComposerSurfaceTag,
   buildSidePanelSections,
   sidePanelTitle = '',
-}: ChatViewProps) {
+}: ConversationViewProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const resolvedSidePanelTitle = sidePanelTitle || t(messageKeys.chatNewChatDraftSidePanelTitle);
@@ -370,7 +370,7 @@ export function ChatView({
   const { visibleLiveIndicator, transcriptScrollKey } = transcriptFollowState;
   const conversationMode = resolveConversationMode(selectedChannel);
   const compareState = useMemo(
-    () => resolveChatViewCompareState({
+    () => resolveConversationViewCompareState({
       compareGroup,
       channels: payload.chat.channels,
       routeChannelId,
@@ -485,7 +485,7 @@ export function ChatView({
     setSidePanelSection(section);
   }
 
-  const topBarTitle = resolveChatViewTopBarTitle({
+  const topBarTitle = resolveConversationViewTopBarTitle({
     isDirectLane,
     directLaneCat,
     defaultRecipientCatRecord,
@@ -649,7 +649,7 @@ export function ChatView({
     [operatorView],
   );
   const topBarPresenceState = useMemo(
-    () => resolveChatViewTopBarPresenceState({
+    () => resolveConversationViewTopBarPresenceState({
       visibleLiveIndicator,
       selectedChannel,
       activeRoomParticipants,
@@ -911,7 +911,7 @@ export function ChatView({
     cancelParticipantRename();
   }
 
-  const viewContext: ChatViewRenderContext = {
+  const viewContext: ConversationViewRenderContext = {
     payload,
     selectedChannel,
     activeAssignedCats,
@@ -929,7 +929,7 @@ export function ChatView({
     sidePanelOpen,
     openSidePanelTo,
   };
-  const composerTargetSlotContext: ChatViewComposerTargetSlotContext = {
+  const composerTargetSlotContext: ConversationViewComposerTargetSlotContext = {
     payload,
     composerBusy,
     selectedExecutionTarget,
@@ -949,7 +949,7 @@ export function ChatView({
     onOpenSection: openSidePanelTo,
   };
   const composerTargetSlot = renderComposerTargetSlot?.(composerTargetSlotContext) ?? (
-    <ChatComposerTargetSlot
+    <ConversationComposerTargetSlot
       payload={payload}
       composerBusy={composerBusy}
       composerRecipients={composerRecipients}
@@ -965,7 +965,7 @@ export function ChatView({
       onOpenSection={openSidePanelTo}
     />
   );
-  const sidePanelSections = (buildSidePanelSections ?? buildChatSidePanelSections)({
+  const sidePanelSections = (buildSidePanelSections ?? buildConversationSidePanelSections)({
     payload,
     selectedChannel,
     busy,
@@ -1030,7 +1030,7 @@ export function ChatView({
   }
 
   return (
-    <ChatViewFrame
+    <ConversationViewFrame
       conversationMode={conversationMode}
       layoutMode={layoutMode}
       composerVariant={layoutMetrics.composerVariant}
@@ -1039,7 +1039,7 @@ export function ChatView({
       hasConversationStarted={hasConversationStarted}
       activeDirectCatId={isDirectLane && hasConversationStarted ? (defaultRecipientCat?.catId ?? null) : null}
       topBar={(
-        <ChatViewTopBar
+        <ConversationViewTopBar
           avatars={topBarParticipants.map((participant) => ({
             key: participant.key,
             label: participant.label,
@@ -1086,7 +1086,7 @@ export function ChatView({
         />
       ) : null}
     >
-      <ChatTranscriptPanel
+      <ConversationTranscriptPanel
         hasConversationStarted={hasConversationStarted}
         greeting={greeting}
         transcriptListRef={transcriptListRef}
@@ -1116,7 +1116,7 @@ export function ChatView({
               .map((message) => {
                 // Body length bin (no content preview) keeps the trace
                 // useful for diffing transcripts without leaking real
-                // message text into the shared ChatView log surface.
+                // message text into the shared ConversationView log surface.
                 const bodyLength = message.body?.trim().length ?? 0;
                 const bodyHint = bodyLength === 0
                   ? '∅'
@@ -1168,7 +1168,7 @@ export function ChatView({
         buildConcurrentClusterActions={buildConcurrentClusterActions}
         buildTranscriptMessageActions={buildTranscriptMessageActions}
       />
-      <ChatComposerArea
+      <ConversationComposerArea
         hasConversationStarted={hasConversationStarted}
         isCompareGroup={isCompareGroup}
         isNearBottom={isNearBottom}
@@ -1227,6 +1227,6 @@ export function ChatView({
           onNavigateNext={() => navigateCompareMember('next')}
         />
       ) : null}
-    </ChatViewFrame>
+    </ConversationViewFrame>
   );
 }
