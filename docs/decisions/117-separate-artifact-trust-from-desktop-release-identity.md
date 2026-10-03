@@ -133,6 +133,10 @@ iteration, which is a cost paid on every development cycle. SPEC-111 section 8
 records this as a stage-specific narrowing of ADR-108 section 6, together with
 the conditions for revisiting it.
 
+Update 2026-10-03: an Apple Silicon machine is now available to execute the
+arm64 slice, so that condition is met and macOS ships universal again. The rule
+below is unchanged.
+
 Neither trust nor architecture coverage is a property to maximize on principle.
 Each is claimed when it can be honoured and verified, and narrowing either one
 is a decision rather than a defect.

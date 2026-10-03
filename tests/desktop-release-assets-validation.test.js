@@ -35,10 +35,10 @@ const COMPLETE_FILES = [
   'collected/preview-windows/Cats-0.2.0-setup-x64.exe',
   'collected/preview-windows/Cats-0.2.0-setup-x64.exe.blockmap',
   'collected/preview-windows/latest.yml',
-  'collected/preview-macos/Cats-0.2.0-x64.dmg',
-  'collected/preview-macos/Cats-0.2.0-x64.dmg.blockmap',
-  'collected/preview-macos/Cats-0.2.0-x64.zip',
-  'collected/preview-macos/Cats-0.2.0-x64.zip.blockmap',
+  'collected/preview-macos/Cats-0.2.0-universal.dmg',
+  'collected/preview-macos/Cats-0.2.0-universal.dmg.blockmap',
+  'collected/preview-macos/Cats-0.2.0-universal.zip',
+  'collected/preview-macos/Cats-0.2.0-universal.zip.blockmap',
   'collected/preview-macos/latest-mac.yml',
   'collected/preview-linux/Cats-0.2.0-arm64.deb',
   'collected/preview-linux/latest-linux-arm64.yml',
@@ -58,10 +58,10 @@ function metadata(name, overrides = {}) {
     'latest-mac.yml': {
       version: '0.2.0',
       // The real feed lists both the updater archive and the DMG.
-      path: 'Cats-0.2.0-x64.zip',
+      path: 'Cats-0.2.0-universal.zip',
       files: [
-        { url: 'Cats-0.2.0-x64.zip' },
-        { url: 'Cats-0.2.0-x64.dmg' },
+        { url: 'Cats-0.2.0-universal.zip' },
+        { url: 'Cats-0.2.0-universal.dmg' },
       ],
     },
     'latest-linux-arm64.yml': {
@@ -93,7 +93,7 @@ test('a complete release passes validation', () => {
 
 test('artifacts outside the release contract fail validation', () => {
   for (const forbidden of [
-    'Cats-0.2.0-x64.pkg',
+    'Cats-0.2.0-universal.pkg',
     'Cats-0.2.0-arm64.AppImage',
     'Cats-0.2.0-x86_64.tar.gz',
   ]) {
@@ -170,11 +170,16 @@ test('architecture is judged per platform, not across the whole matrix', () => {
     resolveUnreleasedArchitectureArtifacts(['Cats-0.2.0-setup-arm64.exe']),
     ['Cats-0.2.0-setup-arm64.exe'],
   );
+  // macOS ships universal, so a per-architecture macOS build is outside it.
+  assert.deepEqual(
+    resolveUnreleasedArchitectureArtifacts(['Cats-0.2.0-x64.dmg', 'Cats-0.2.0-arm64.zip']),
+    ['Cats-0.2.0-x64.dmg', 'Cats-0.2.0-arm64.zip'],
+  );
   // The declared pairings still pass.
   assert.deepEqual(
     resolveUnreleasedArchitectureArtifacts([
       'Cats-0.2.0-setup-x64.exe',
-      'Cats-0.2.0-x64.dmg',
+      'Cats-0.2.0-universal.dmg',
       'Cats-0.2.0-arm64.deb',
     ]),
     [],
@@ -547,7 +552,7 @@ test('the release matrix pins every platform to its contracted formats and arch'
   );
 
   assert.match(workflow, /platform: windows[\s\S]*?--format nsis --arch x64/u);
-  assert.match(workflow, /platform: macos[\s\S]*?--format dmg,zip --arch x64/u);
+  assert.match(workflow, /platform: macos[\s\S]*?--format dmg,zip --arch universal/u);
   assert.match(workflow, /platform: linux[\s\S]*?--format deb --arch arm64/u);
 });
 

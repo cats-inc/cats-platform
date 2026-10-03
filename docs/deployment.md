@@ -820,9 +820,13 @@ npm run desktop:package:windows -- --sidecar-layout split
 ```bash
 npm run desktop:package:macos
 npm run desktop:package:linux
-node scripts/build-desktop-installer.mjs --target macos --arch x64 --format dmg --sidecar-layout split
+node scripts/build-desktop-installer.mjs --target macos --arch universal --format dmg --sidecar-layout split
 node scripts/build-desktop-installer.mjs --target linux --arch arm64 --format deb --sidecar-layout bundle
 ```
+
+- a universal macOS build (the package.json default) needs full Xcode for the
+  multi-architecture Swift voice helper; with Command Line Tools only, pass
+  `--arch x64` or `--arch arm64`.
 
 - sidecar layout contract:
   - `--sidecar-layout split` keeps the original multi-file `cats` and
