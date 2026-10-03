@@ -374,7 +374,7 @@ async function handleRestCreateChannel(
     const originSurface = resolveCreateOriginSurface(body.originSurface, {
       targetNoun: 'Channel create request',
     });
-    const persisted = await persistCreatedChannel(context, {
+    const { state: persisted, reusedDirectLane } = await persistCreatedChannel(context, {
       ...body,
       originSurface,
     });
@@ -382,10 +382,12 @@ async function handleRestCreateChannel(
     if (!createdChannelId) {
       throw new Error('Failed to select created channel');
     }
-    sendJson(context.response, 201, {
+    // A reused direct lane answers 200 with the existing channel; the client
+    // sends its first message there exactly as it would to a new lane.
+    sendJson(context.response, reusedDirectLane ? 200 : 201, {
       channel: buildChannelView(persisted, createdChannelId),
     });
-    publishChannelMutationEvents(context, createdChannelId, 'created');
+    publishChannelMutationEvents(context, createdChannelId, reusedDirectLane ? 'updated' : 'created');
   } catch (error) {
     handleRestError(context, error);
   }
