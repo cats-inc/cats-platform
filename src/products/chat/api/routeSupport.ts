@@ -53,6 +53,7 @@ import {
   createChannel,
   createCat,
   deleteChannel,
+  findReusableDirectLaneForCreate,
   deleteParallelChatGroup,
   deleteCat,
   renameChannel,
@@ -429,10 +430,16 @@ export async function buildAppShellPayload(
   );
 }
 
+export interface PersistedChannelCreate {
+  state: ChatState;
+  /** True when a one-to-one direct message reused the Cat's existing lane. */
+  reusedDirectLane: boolean;
+}
+
 export async function persistCreatedChannel(
   context: ChatApiRouteContext,
   input: CreateChatChannelInput,
-): Promise<ChatState> {
+): Promise<PersistedChannelCreate> {
   // Single parse step at the HTTP boundary: validate the raw policy payload
   // and resolve it into a fully narrowed RuntimeSessionPolicy at the same
   // time, instead of running validate-then-resolve as two separate stages.
@@ -459,7 +466,17 @@ export async function persistCreatedChannel(
     (input.cats?.length ?? 0)
     + (input.participantCatIds?.length ?? 0)
     + (input.temporaryParticipants?.length ?? 0);
-  return updateChatState(context.dependencies.chatStore, (state) => {
+  let reusedDirectLane = false;
+  const persistedState = await updateChatState(context.dependencies.chatStore, (state) => {
+    // One direct lane per Cat: a client whose payload has not seen a lane
+    // created elsewhere (another client, Telegram) must not add a second one.
+    const existingLane = findReusableDirectLaneForCreate(state, input);
+    if (existingLane) {
+      reusedDirectLane = true;
+      return { ...state, selectedChannelId: existingLane.id };
+    }
+    reusedDirectLane = false;
+
     let nextState = createChannel(
       state,
       input,
@@ -478,6 +495,7 @@ export async function persistCreatedChannel(
 
     return nextState;
   });
+  return { state: persistedState, reusedDirectLane };
 }
 
 export function resolveCreateOriginSurface(
