@@ -1521,27 +1521,18 @@ test('renderer app consumes dedicated draft-ui actions instead of defining menu 
     new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
-  const hookSource = await readFile(
-    new URL('../src/products/chat/renderer/hooks/useAppDraftUiActions.ts', import.meta.url),
-    'utf8',
-  );
-  const sharedHookSource = await readFile(
+  const hookImplementationSource = await readFile(
     new URL('../src/products/shared/renderer/hooks/useWorkspaceAppDraftUiActions.ts', import.meta.url),
     'utf8',
   );
-  const hookImplementationSource = hookSource.includes('useWorkspaceAppDraftUiActions')
-    ? sharedHookSource
-    : hookSource;
 
   assert.match(appSource, /useWorkspaceAppDraftUiActions/u);
   assert.doesNotMatch(appSource, /setAddCatOpen\(!addCatOpen\)/u);
   assert.doesNotMatch(appSource, /setPlusMenuOpen\(!plusMenuOpen\)/u);
   assert.doesNotMatch(appSource, /fileInputRef\.current\?\.click\(\)/u);
-  assert.doesNotMatch(appSource, /navigate\(buildNewChatPath\(catId\), \{ replace: true \}\)/u);
-  assert.match(hookSource, /export function useAppDraftUiActions/u);
+  assert.match(hookImplementationSource, /export function useWorkspaceAppDraftUiActions/u);
   assert.match(hookImplementationSource, /openDraftFilePicker/u);
   assert.match(hookImplementationSource, /openDraftAddCatPanel/u);
-  assert.match(hookImplementationSource, /changeDraftDefaultRecipient/u);
 });
 
 test('settings cats consumes dedicated telegram and memory hooks instead of defining side effects inline', async () => {

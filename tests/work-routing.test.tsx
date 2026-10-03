@@ -51,7 +51,6 @@ function createProps(): AppRoutesProps {
     folderBrowserProps: {} as AppRoutesProps['folderBrowserProps'],
     onToggleAddCat: () => {},
     onOpenDraftAddCat: () => {},
-    onChangeDraftDefaultRecipient: () => {},
   };
 }
 
