@@ -2,6 +2,62 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-03 — Desktop 0.7.8 standard preview
+
+Desktop **0.7.8** is the owner-requested standard-profile preview. Direct messages
+now live only in Chat, and a Cat can no longer end up with two direct-message
+lanes. This is a compatible patch. `POST /api/channels` can now answer `200` with
+a Cat's existing direct lane, as documented in `docs/api.md`. There is no
+configuration or stored-format change to existing data and no migration.
+
+- **Direct messages live in Chat**
+  ([ADR-129](decisions/129-keep-direct-messages-in-chat-and-share-one-conversation-draft.md)).
+  - `/code/dm/:catId` and `/work/dm/:catId` now open `/chat/dm/:catId` before the
+    Code or Work app starts, so old links and bookmarks keep working, in Chat.
+  - A direct message started from Code or Work before this release opens in Chat
+    as the same channel.
+  - The Work War Room "Open {name}" button opens the Cat's profile page instead
+    of a Work direct message.
+  - In Code and Work, `/new?cat=<id>` opens an ordinary new draft with that Cat
+    preselected, as Chat does, instead of the old direct-message draft.
+- **One direct-message lane per Cat.**
+  - Sending the first message of a one-to-one direct message reuses the Cat's
+    existing, non-archived lane instead of adding a second one.
+  - Before, a second lane could appear when the lane had been created in
+    another window or by Telegram before the draft refreshed.
+  - Drafts that add other Cats or temporary participants still create their own
+    room.
+  - Existing duplicate lanes are left as they are.
+- **Internal cleanup with no visible change.**
+  - The legacy shared draft was removed and the remaining shared draft renamed
+    `NewConversationDraft`.
+  - Unused per-product view-state and navigation modules were removed.
+- **Runtime.** Keep the 0.7.7 pin, `8729cd6cb17ab52a034e2365baffcd82915a8af8`
+  (package version 0.4.0), on every OS and in the complete source archive.
+- **Apps.** Reuse Usage 0.5.1, SHA-256
+  `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
+  Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
+  compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
+- **Signing and updates.**
+  - The manual `desktop-release.yml` dispatch uses `tag=v0.7.8`, the full Runtime
+    SHA above and `unsigned=false`; the workflow creates the preview tag.
+  - Expected trust profile: macOS signed + notarized, Windows unsigned (no
+    certificate), Linux n/a.
+  - Standard-profile 0.7.7 installs keep their update path: macOS uses the same
+    Developer ID team, Windows stays unsigned to unsigned, and Linux uses the
+    `.deb` update path. No installed upgrade is exercised.
+- **Validation.**
+  - Each change (#241, #242, #243, #244) ran full PR CI. Focused local suites and
+    type checks ran before each PR.
+  - The direct-lane reuse is covered by model tests and an HTTP test that creates
+    the same direct message twice.
+  - The redirects and the War Room link are covered by route and source tests,
+    not exercised in a running desktop app.
+  - No packaged installer with these changes was checked on a desktop before the
+    dispatch.
+  - Publication results: the [`v0.7.8` GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.8)
+    and its workflow run.
+
 ## 2026-10-03 — Desktop 0.7.7 standard preview
 
 Desktop **0.7.7** is the owner-requested standard-profile preview. Windows and Linux
