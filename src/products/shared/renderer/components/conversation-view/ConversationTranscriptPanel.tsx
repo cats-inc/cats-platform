@@ -30,14 +30,14 @@ import {
   type WorkspaceBusyState,
 } from '../../../../../shared/workspaceBusy.js';
 import { TranscriptMessageItem } from './TranscriptMessageItem.js';
-import { ConcurrentClusterRenderer } from '../../../../shared/renderer/components/chat-view/ConcurrentClusterRenderer.js';
-import { buildConcurrentTranscriptRenderItems } from '../../../../shared/renderer/components/chat-view/concurrentTranscriptProjection.js';
+import { ConcurrentClusterRenderer } from '../../../../shared/renderer/components/conversation-view/ConcurrentClusterRenderer.js';
+import { buildConcurrentTranscriptRenderItems } from '../../../../shared/renderer/components/conversation-view/concurrentTranscriptProjection.js';
 import type {
   ConcurrentClusterAction,
   ConcurrentClusterActionContext,
   ConcurrentClusterContext,
-} from '../../../../shared/renderer/components/chat-view/concurrentClusterUiState.js';
-import { LiveTranscriptIndicator } from '../../../../shared/renderer/components/chat-view/LiveTranscriptIndicator.js';
+} from '../../../../shared/renderer/components/conversation-view/concurrentClusterUiState.js';
+import { LiveTranscriptIndicator } from '../../../../shared/renderer/components/conversation-view/LiveTranscriptIndicator.js';
 import type { TranscriptMessageActionDescriptor } from './TranscriptMessageActions.js';
 
 export interface TranscriptMessageActionContext {
@@ -45,7 +45,7 @@ export interface TranscriptMessageActionContext {
   selectedChannel: SelectedChannelView;
 }
 
-export interface ChatTranscriptPanelProps {
+export interface ConversationTranscriptPanelProps {
   hasConversationStarted: boolean;
   greeting: string;
   transcriptListRef: Ref<HTMLDivElement>;
@@ -107,7 +107,7 @@ export interface ChatTranscriptPanelProps {
   ) => ReadonlyArray<TranscriptMessageActionDescriptor>;
 }
 
-export function ChatTranscriptPanel({
+export function ConversationTranscriptPanel({
   hasConversationStarted,
   greeting,
   transcriptListRef,
@@ -143,7 +143,7 @@ export function ChatTranscriptPanel({
   resolveConcurrentClusterPresentationMode,
   buildConcurrentClusterActions,
   buildTranscriptMessageActions,
-}: ChatTranscriptPanelProps) {
+}: ConversationTranscriptPanelProps) {
   const [openRelayMenuId, setOpenRelayMenuId] = useState<string | null>(null);
 
   useEffect(() => {

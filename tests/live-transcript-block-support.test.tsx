@@ -7,7 +7,7 @@ import {
   shouldRenderLiveTranscriptBlock,
   shouldShowLiveTranscriptTrailingDots,
   stripLeadingLiveTranscriptBlankLines,
-} from '../src/products/shared/renderer/components/chat-view/liveTranscriptBlockSupport.ts';
+} from '../src/products/shared/renderer/components/conversation-view/liveTranscriptBlockSupport.ts';
 
 function createBlock(
   overrides: Partial<LiveIndicatorContentBlock> = {},

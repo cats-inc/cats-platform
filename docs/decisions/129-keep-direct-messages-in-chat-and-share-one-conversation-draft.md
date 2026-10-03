@@ -56,8 +56,7 @@ and replaces the renderer-ownership split in
    file names and exported identifiers. i18n message keys (`chat.newChatDraft.*`)
    and CSS class names keep their names, because they are runtime strings and
    renaming them adds regression risk without making the code clearer. The
-   `chat-view/ChatView*` family has the same naming problem and is out of scope.
-   The deletion and rename land as a separate change with no behavior change.
+   deletion and rename land as a separate change with no behavior change.
    Earlier ADRs, specs and plans keep the old names; they map as follows (all in
    `src/products/shared/renderer/components/`):
    - `ChatNewChatDraft.tsx` → `NewConversationDraft.tsx` (`NewChatDraft` →
@@ -72,6 +71,21 @@ and replaces the renderer-ownership split in
      `ChatNewChatDraftTargetSlot.tsx`, `ComposerCatStack.tsx` and the Code and Work
      re-exports of it. The `.composerCatStack` CSS stays for
      `ComposerParticipantStack`.
+5. **The shared conversation view follows the same rule** (amended 2026-10-03).
+   `components/chat-view/` becomes `components/conversation-view/`, under the same
+   scope: file names and exported identifiers change, i18n keys and CSS classes
+   keep their names. The mapping:
+   - `ChatView.tsx` → `ConversationView.tsx`, and the same prefix change for
+     `ChatViewFrame`, `ChatViewTopBar`, `ChatComposerArea`,
+     `ChatComposerTargetSlot`, `ChatParticipantsSection`, `ChatSidePanelSections`
+     and `ChatTranscriptPanel` (`Chat…` → `Conversation…`).
+   - `chatViewSupport.ts` → `conversationViewSupport.ts`.
+   - Identifiers containing `ChatView` now say `ConversationView`, including
+     `WorkspaceAppRoutes`' `renderConversationView`.
+   - Deleted because nothing imported them: `ChatViewSidePanel.tsx`,
+     `WorkspaceComposerTargetSlot.tsx`, Chat's
+     `chat-view/convergencePolicyOverlay.ts`, and the Code and Work `ChatView.tsx`
+     re-exports. Code and Work import the shared view directly.
 
 ## Consequences
 

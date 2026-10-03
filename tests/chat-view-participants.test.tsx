@@ -12,7 +12,7 @@ import type {
   ChatChannelView,
 } from '../src/products/chat/api/contracts.ts';
 import type { SelectedChannelView } from '../src/products/chat/shared/channelEntry.ts';
-import { ChatView, type ChatViewProps } from '../src/products/shared/renderer/components/chat-view/ChatView.tsx';
+import { ConversationView, type ConversationViewProps } from '../src/products/shared/renderer/components/conversation-view/ConversationView.tsx';
 import { buildDraftParticipantExecutionLabel } from '../src/products/chat/renderer/chatUtils.tsx';
 import { EMPTY_LIVE_INDICATOR } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 import { clearLiveProviderModelLabels, recordLiveProviderModelLabels } from '../src/shared/providerModelLabelRegistry.ts';
@@ -286,7 +286,7 @@ function createChannel(overrides: Partial<SelectedChannelView> = {}): SelectedCh
   };
 }
 
-function createProps(overrides: Partial<ChatViewProps> = {}): ChatViewProps {
+function createProps(overrides: Partial<ConversationViewProps> = {}): ConversationViewProps {
   const selectedChannel = createChannel();
   return {
     payload: createPayload(),
@@ -321,9 +321,9 @@ function createProps(overrides: Partial<ChatViewProps> = {}): ChatViewProps {
   };
 }
 
-test('ChatView shows temporary participants in the top bar and composer avatar stack', () => {
+test('ConversationView shows temporary participants in the top bar and composer avatar stack', () => {
   const markup = renderToStaticMarkup(
-    <ChatView {...createProps()} />,
+    <ConversationView {...createProps()} />,
   );
 
   assert.match(markup, /data-tooltip="Antigravity-CLI · gemini-3.8-flash-low"/u);
@@ -334,7 +334,7 @@ test('ChatView shows temporary participants in the top bar and composer avatar s
   assert.doesNotMatch(markup, /#F04A70|#2B9CF0/u);
 });
 
-test('ChatView resolves verbose-message visibility from the current product surface', () => {
+test('ConversationView resolves verbose-message visibility from the current product surface', () => {
   const selectedChannel = createChannel({
     messages: [
       {
@@ -378,7 +378,7 @@ test('ChatView resolves verbose-message visibility from the current product surf
   } as unknown as AppShellPayload;
 
   const chatMarkup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         payload,
         selectedChannel,
@@ -386,7 +386,7 @@ test('ChatView resolves verbose-message visibility from the current product surf
     />,
   );
   const workMarkup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         payload,
         selectedChannel,
@@ -399,13 +399,13 @@ test('ChatView resolves verbose-message visibility from the current product surf
   assert.match(workMarkup, /Verbose routing detail\./u);
 });
 
-test('ChatView keeps Cat visuals in room stacks while the composer stack preserves boss styling', () => {
+test('ConversationView keeps Cat visuals in room stacks while the composer stack preserves boss styling', () => {
   const leadCat = createChatCat();
   const leadParticipant = createCatParticipant(leadCat, {
     participantId: 'participant-cat-lead',
   });
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         payload: {
           ...createPayload(),
@@ -453,7 +453,7 @@ test('ChatView keeps Cat visuals in room stacks while the composer stack preserv
   );
 });
 
-test('ChatView reuses target-scoped Runtime-observed labels for Cat avatars and participant stacks', () => {
+test('ConversationView reuses target-scoped Runtime-observed labels for Cat avatars and participant stacks', () => {
   clearLiveProviderModelLabels();
   recordLiveProviderModelLabels('claude', [{ id: 'opus', label: 'Opus 4.7 with 1M context' }], { target: 'cli/native', catalogRevision: 'fixture' });
 
@@ -498,7 +498,7 @@ test('ChatView reuses target-scoped Runtime-observed labels for Cat avatars and 
     },
   });
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         payload: {
           ...createPayload(),
@@ -526,9 +526,9 @@ test('ChatView reuses target-scoped Runtime-observed labels for Cat avatars and 
   clearLiveProviderModelLabels();
 });
 
-test('ChatView renders temporary participant transcript speakers as room members', () => {
+test('ConversationView renders temporary participant transcript speakers as room members', () => {
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -557,9 +557,9 @@ test('ChatView renders temporary participant transcript speakers as room members
   assert.doesNotMatch(markup, /catAvatarLeadBadge/u);
 });
 
-test('ChatView resolves temporary participant transcript speakers by execution label snapshot', () => {
+test('ConversationView resolves temporary participant transcript speakers by execution label snapshot', () => {
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -589,9 +589,9 @@ test('ChatView resolves temporary participant transcript speakers by execution l
   assert.doesNotMatch(markup, /#F04A70/u);
 });
 
-test('ChatView prefers room participants over fallback Cat names in transcript speakers', () => {
+test('ConversationView prefers room participants over fallback Cat names in transcript speakers', () => {
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         payload: {
           ...createPayload(),
@@ -631,10 +631,10 @@ test('ChatView prefers room participants over fallback Cat names in transcript s
   assert.doesNotMatch(markup, /#11AA55/u);
 });
 
-test('ChatView gives temporary participants a live progress avatar and top-bar pulse once session startup has promoted the assistant bubble', () => {
+test('ConversationView gives temporary participants a live progress avatar and top-bar pulse once session startup has promoted the assistant bubble', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -740,10 +740,10 @@ test('ChatView gives temporary participants a live progress avatar and top-bar p
   assert.match(markup, /catAvatarPulsing/u);
 });
 
-test('ChatView promotes default orchestrator progress once the session_started system message is visible', () => {
+test('ConversationView promotes default orchestrator progress once the session_started system message is visible', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           title: 'Default runtime chat',
@@ -826,10 +826,10 @@ test('ChatView promotes default orchestrator progress once the session_started s
   assert.doesNotMatch(markup, /userTurnStatusProcessing/u);
 });
 
-test('ChatView shows an anonymous assistant typing bubble until session startup is persisted', () => {
+test('ConversationView shows an anonymous assistant typing bubble until session startup is persisted', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -932,10 +932,10 @@ test('ChatView shows an anonymous assistant typing bubble until session startup 
   assert.doesNotMatch(markup, /catAvatarPulsing/u);
 });
 
-test('ChatView keeps queued user turns free of inline dots while the prior group turn is still streaming', () => {
+test('ConversationView keeps queued user turns free of inline dots while the prior group turn is still streaming', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -1096,10 +1096,10 @@ test('ChatView keeps queued user turns free of inline dots while the prior group
   assert.match(markup, /typingIndicator/u);
 });
 
-test('ChatView shows retry only on the latest failed acknowledged user turn', () => {
+test('ConversationView shows retry only on the latest failed acknowledged user turn', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -1174,9 +1174,9 @@ test('ChatView shows retry only on the latest failed acknowledged user turn', ()
   assert.match(markup, /title="Retry response"/u);
 });
 
-test('ChatView keeps live assistant progress collapsed when progress details are off', () => {
+test('ConversationView keeps live assistant progress collapsed when progress details are off', () => {
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         payload: {
           ...createPayload(),
@@ -1263,9 +1263,9 @@ test('ChatView keeps live assistant progress collapsed when progress details are
   assert.doesNotMatch(markup, /toolSegmentChip/u);
 });
 
-test('ChatView shows provider-specific live assistant progress when progress details are on', () => {
+test('ConversationView shows provider-specific live assistant progress when progress details are on', () => {
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         payload: {
           ...createPayload(),
@@ -1353,9 +1353,9 @@ test('ChatView shows provider-specific live assistant progress when progress det
   assert.match(markup, /Searching for draft reviews/u);
 });
 
-test('ChatView keeps speaker headers on every persisted assistant segment bubble', () => {
+test('ConversationView keeps speaker headers on every persisted assistant segment bubble', () => {
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -1413,9 +1413,9 @@ test('ChatView keeps speaker headers on every persisted assistant segment bubble
   assert.equal((markup.match(/<strong>Claude-CLI<\/strong>/gu) ?? []).length, 2);
 });
 
-test('ChatView hides terminal live status details when progress details are off', () => {
+test('ConversationView hides terminal live status details when progress details are off', () => {
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -1460,9 +1460,9 @@ test('ChatView hides terminal live status details when progress details are off'
   assert.match(markup, /typingDots/u);
 });
 
-test('ChatView skips sealed status-only live segments when progress details are off', () => {
+test('ConversationView skips sealed status-only live segments when progress details are off', () => {
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -1565,9 +1565,9 @@ test('ChatView skips sealed status-only live segments when progress details are 
   assert.doesNotMatch(markup, /Finalizing/u);
 });
 
-test('ChatView keeps typing dots visible for an initial streaming session phase without visible blocks', () => {
+test('ConversationView keeps typing dots visible for an initial streaming session phase without visible blocks', () => {
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -1600,9 +1600,9 @@ test('ChatView keeps typing dots visible for an initial streaming session phase 
   assert.match(markup, /typingDots/u);
 });
 
-test('ChatView keeps a follow-up live bubble visible before tool blocks arrive', () => {
+test('ConversationView keeps a follow-up live bubble visible before tool blocks arrive', () => {
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -1709,9 +1709,9 @@ test('ChatView keeps a follow-up live bubble visible before tool blocks arrive',
   assert.equal((markup.match(/<strong>Inline Reviewer<\/strong>/gu) ?? []).length, 2);
 });
 
-test('ChatView opens a follow-up live bubble when a hidden completed tool phase follows visible text', () => {
+test('ConversationView opens a follow-up live bubble when a hidden completed tool phase follows visible text', () => {
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -1769,9 +1769,9 @@ test('ChatView opens a follow-up live bubble when a hidden completed tool phase 
   assert.equal((markup.match(/<strong>Inline Reviewer<\/strong>/gu) ?? []).length, 2);
 });
 
-test('ChatView streams text content directly in the assistant bubble body when progress details are on', () => {
+test('ConversationView streams text content directly in the assistant bubble body when progress details are on', () => {
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         payload: {
           ...createPayload(),
@@ -1846,10 +1846,10 @@ test('ChatView streams text content directly in the assistant bubble body when p
   assert.doesNotMatch(markup, /typingContentBlocks/u);
 });
 
-test('ChatView drops stale live progress once the routed reply is already visible', () => {
+test('ConversationView drops stale live progress once the routed reply is already visible', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -1923,10 +1923,10 @@ test('ChatView drops stale live progress once the routed reply is already visibl
   assert.doesNotMatch(markup, /catAvatarPulsing/u);
 });
 
-test('ChatView keeps the next sequential speaker bubble visible after the prior speaker has already replied', () => {
+test('ConversationView keeps the next sequential speaker bubble visible after the prior speaker has already replied', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -2093,10 +2093,10 @@ test('ChatView keeps the next sequential speaker bubble visible after the prior 
   assert.doesNotMatch(markup, /userTurnStatusProcessing/u);
 });
 
-test('ChatView resolves a pending sequential follow-up bubble from the live segment participant id', () => {
+test('ConversationView resolves a pending sequential follow-up bubble from the live segment participant id', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -2263,10 +2263,10 @@ test('ChatView resolves a pending sequential follow-up bubble from the live segm
   assert.match(markup, /typingDots/u);
 });
 
-test('ChatView shows an anonymous waiting assistant bubble during sequential handoff before the next session starts', () => {
+test('ConversationView shows an anonymous waiting assistant bubble during sequential handoff before the next session starts', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -2412,7 +2412,7 @@ test('ChatView shows an anonymous waiting assistant bubble during sequential han
   assert.doesNotMatch(markup, /userTurnStatusProcessing/u);
 });
 
-test('ChatView keeps concurrent inline-stack waiting bubbles anonymous before session_started is visible', () => {
+test('ConversationView keeps concurrent inline-stack waiting bubbles anonymous before session_started is visible', () => {
   const baseChannel = createChannel({
     assignedParticipants: [
       createTemporaryParticipant(),
@@ -2425,7 +2425,7 @@ test('ChatView keeps concurrent inline-stack waiting bubbles anonymous before se
     ],
   });
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           assignedParticipants: baseChannel.assignedParticipants,
@@ -2561,7 +2561,7 @@ test('ChatView keeps concurrent inline-stack waiting bubbles anonymous before se
   assert.doesNotMatch(markup, /<strong>Runtime Verifier<\/strong>/u);
 });
 
-test('ChatView reveals only the concurrent waiting speaker whose session_started message is visible', () => {
+test('ConversationView reveals only the concurrent waiting speaker whose session_started message is visible', () => {
   const baseChannel = createChannel({
     assignedParticipants: [
       createTemporaryParticipant(),
@@ -2574,7 +2574,7 @@ test('ChatView reveals only the concurrent waiting speaker whose session_started
     ],
   });
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           assignedParticipants: baseChannel.assignedParticipants,
@@ -2724,10 +2724,10 @@ test('ChatView reveals only the concurrent waiting speaker whose session_started
   assert.doesNotMatch(markup, /Runtime Verifier/u);
 });
 
-test('ChatView promotes a waiting next sequential speaker placeholder instead of returning to the user bubble', () => {
+test('ConversationView promotes a waiting next sequential speaker placeholder instead of returning to the user bubble', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [
@@ -2874,9 +2874,9 @@ test('ChatView promotes a waiting next sequential speaker placeholder instead of
   assert.doesNotMatch(markup, /userTurnStatusProcessing/u);
 });
 
-test('ChatView keeps transcript stack layout and hover-only user copy actions', () => {
+test('ConversationView keeps transcript stack layout and hover-only user copy actions', () => {
   const markup = renderToStaticMarkup(
-    <ChatView
+    <ConversationView
       {...createProps({
         selectedChannel: createChannel({
           messages: [

@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { isScrollNearBottom } from '../src/core/scrolling.ts';
 import { resolveComposerWorkspacePath } from '../src/core/workspacePaths.ts';
-import { readProductChatViewSource } from './helpers/readProductChatViewSource.js';
+import { readProductConversationViewSource } from './helpers/readProductConversationViewSource.js';
 import { readProductTranscriptAutoScrollSource } from './helpers/readProductTranscriptAutoScrollSource.js';
 
 const PRODUCT_SURFACES = ['chat', 'work', 'code'];
@@ -54,8 +54,8 @@ test('isScrollNearBottom treats near-bottom positions as auto-follow eligible', 
 });
 
 for (const product of PRODUCT_SURFACES) {
-  test(`${product} ChatView uses transcript auto-follow and keeps assigned workspace chips visible`, async () => {
-    const source = await readProductChatViewSource(product);
+  test(`${product} ConversationView uses transcript auto-follow and keeps assigned workspace chips visible`, async () => {
+    const source = await readProductConversationViewSource(product);
 
     assert.match(source, /useTranscriptAutoScroll/u);
     assert.match(source, /resolveComposerWorkspacePath/u);

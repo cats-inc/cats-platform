@@ -11,9 +11,9 @@ import {
 } from './components/AddCatPanel.js';
 import type { FolderBrowserContentProps } from './components/FolderBrowser.js';
 import {
-  ChatView,
-  type ChatViewProps,
-} from './components/ChatView.js';
+  ConversationView,
+  type ConversationViewProps,
+} from '../../shared/renderer/components/conversation-view/ConversationView.js';
 import { ActiveCodeComposerChips } from './components/ActiveCodeComposerChips.js';
 import { CodeCanvasPreviewButton } from './components/CodeCanvasPreviewButton.js';
 import { CodePreviewCanvasControls } from './components/CodePreviewCanvasControls.js';
@@ -38,7 +38,7 @@ import {
 import { withSharedViewerRoutes } from '../../shared/renderer/withSharedViewerRoutes.js';
 
 type ChatSurfaceProps = Omit<
-  ChatViewProps,
+  ConversationViewProps,
   'payload' | 'selectedChannel'
 >;
 
@@ -53,7 +53,7 @@ export interface AppRoutesProps extends Omit<
   | 'chatsPath'
   | 'extraRoutes'
   | 'renderBootShell'
-  | 'renderChatView'
+  | 'renderConversationView'
   | 'renderNewChatDraft'
   | 'renderAddCatPanel'
 > {
@@ -138,8 +138,8 @@ export function AppRoutes({
       />,
     ],
     renderBootShell: () => <BootShell />,
-    renderChatView: (channel, options) => (
-      <ChatView
+    renderConversationView: (channel, options) => (
+      <ConversationView
         {...chatSurfaceProps}
         payload={payload}
         selectedChannel={channel}

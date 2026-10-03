@@ -40,7 +40,7 @@ import type { AddCatPanelProps } from "./components/AddCatPanel.js";
 import type { FolderBrowserContentProps } from "./components/FolderBrowser.js";
 import type { ExecutionTargetValue } from "./components/ExecutionTarget.js";
 import type { NewConversationDraftProps } from "./components/NewConversationDraft.js";
-import type { ChatViewProps } from "./components/chat-view/ChatView.js";
+import type { ConversationViewProps } from "./components/conversation-view/ConversationView.js";
 import {
   activateChatChannel,
   fetchAppShell,
@@ -151,7 +151,7 @@ import { resolveNewConversationDraftBuilderControls } from "./draftBuilderContro
 import {
 } from "../channelPaths.js";
 
-type ChatSurfaceProps = Omit<ChatViewProps, "payload" | "selectedChannel">;
+type ChatSurfaceProps = Omit<ConversationViewProps, "payload" | "selectedChannel">;
 
 type DraftSurfaceProps = Omit<
   NewConversationDraftProps,

@@ -13,7 +13,7 @@ import type { CoreActivityKind, CoreActivityRecord } from '../src/core/types.ts'
 import { CodeCanvasPreviewButton } from '../src/products/code/renderer/components/CodeCanvasPreviewButton.tsx';
 import { buildChatOperatorView } from '../src/products/shared/operator-loop/index.ts';
 import { canvasSurfaceRouteRegistry } from '../src/products/shared/artifactCanvas/contracts.ts';
-import { ChatViewTopBar } from '../src/products/shared/renderer/components/chat-view/ChatViewTopBar.tsx';
+import { ConversationViewTopBar } from '../src/products/shared/renderer/components/conversation-view/ConversationViewTopBar.tsx';
 import { buildChatConversationId } from '../src/shared/chatCoreIds.ts';
 
 function activity(id: string, kind: CoreActivityKind, channelId: string, artifactId: string | null, createdAt: string): CoreActivityRecord {
@@ -84,7 +84,7 @@ test('Preview is absent without a shown artifact or while that canvas is open', 
 
 test('the chat top bar renders extra actions before the side-panel toggle', () => {
   const markup = renderToStaticMarkup(
-    <ChatViewTopBar
+    <ConversationViewTopBar
       avatars={[]}
       showRosterAvatars={false}
       isDirectLane={false}

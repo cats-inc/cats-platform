@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { readCatCover, subscribeCatCover } from '../../catCoverStorage.js';
 
-export interface ChatViewFrameProps {
+export interface ConversationViewFrameProps {
   conversationMode: string;
   layoutMode: string;
   composerVariant: string;
@@ -16,7 +16,7 @@ export interface ChatViewFrameProps {
   activeDirectCatId?: string | null;
 }
 
-export function ChatViewFrame({
+export function ConversationViewFrame({
   conversationMode,
   layoutMode,
   composerVariant,
@@ -28,7 +28,7 @@ export function ChatViewFrame({
   children,
   sidePanel,
   activeDirectCatId = null,
-}: ChatViewFrameProps) {
+}: ConversationViewFrameProps) {
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!activeDirectCatId) {

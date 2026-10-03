@@ -37,12 +37,12 @@ import {
   type MessageKey,
 } from '../../../../../shared/i18n/index.js';
 
-type ChatViewSupportTranslator = (
+type ConversationViewSupportTranslator = (
   key: MessageKey,
   values?: MessageInterpolationValues,
 ) => string;
 
-const defaultChatViewSupportTranslator = createTranslator('en');
+const defaultConversationViewSupportTranslator = createTranslator('en');
 
 export interface ChatComposerStackParticipantView {
   participantId: string;
@@ -54,7 +54,7 @@ export interface ChatComposerStackParticipantView {
   useNeutralAvatar: boolean;
 }
 
-export interface ChatViewCompareState {
+export interface ConversationViewCompareState {
   compareMembers: ParallelChatGroupSummary['members'];
   isCompareGroup: boolean;
   activeCompareChannelId: string;
@@ -64,7 +64,7 @@ export interface ChatViewCompareState {
   compareNextChannelId: string | null;
 }
 
-export interface ChatViewTopBarPresenceState {
+export interface ConversationViewTopBarPresenceState {
   activeTopBarCatIds: string[];
   activeTopBarParticipantIds: string[];
   liveSpeakerParticipant: ResolvedChannelParticipant | null;
@@ -88,13 +88,13 @@ export function messageStackTone(senderKind: string): string {
   }
 }
 
-export function resolveChatViewCompareState(input: {
+export function resolveConversationViewCompareState(input: {
   compareGroup: ParallelChatGroupSummary | null;
   channels: AppShellPayload['chat']['channels'];
   routeChannelId: string | null;
   selectedChannelId: string;
   busy: WorkspaceBusyState;
-}): ChatViewCompareState {
+}): ConversationViewCompareState {
   const compareMembers = input.compareGroup?.members ?? [];
   const isCompareGroup = compareMembers.length > 1;
   const activeCompareChannelId = resolveActiveCompareChannelId(
@@ -128,16 +128,16 @@ export function resolveChatViewCompareState(input: {
   };
 }
 
-export function resolveChatViewTopBarTitle(input: {
+export function resolveConversationViewTopBarTitle(input: {
   isDirectLane: boolean;
   directLaneCat: AppShellPayload['chat']['cats'][number] | null;
   defaultRecipientCatRecord: AppShellPayload['chat']['cats'][number] | null;
   selectedChannelTitle: string;
   isCompareGroup: boolean;
   compareGroup: ParallelChatGroupSummary | null;
-  t?: ChatViewSupportTranslator;
+  t?: ConversationViewSupportTranslator;
 }): string {
-  const t = input.t ?? defaultChatViewSupportTranslator;
+  const t = input.t ?? defaultConversationViewSupportTranslator;
   return input.isDirectLane
     ? (
       input.directLaneCat?.name
@@ -351,11 +351,11 @@ export function resolveLatestUserTurnPresentationState(input: {
   };
 }
 
-export function resolveChatViewTopBarPresenceState(input: {
+export function resolveConversationViewTopBarPresenceState(input: {
   visibleLiveIndicator: LiveIndicatorState | null | undefined;
   selectedChannel: SelectedChannelView;
   activeRoomParticipants: ResolvedChannelParticipant[];
-}): ChatViewTopBarPresenceState {
+}): ConversationViewTopBarPresenceState {
   const liveIndicatorStreaming = input.visibleLiveIndicator?.phase === 'streaming';
   const liveIndicatorHasExplicitSpeaker = Boolean(
     liveIndicatorStreaming && (
@@ -535,9 +535,9 @@ export function resolveChatComposerViewState(input: {
   onStopMessage?: (() => void) | null;
   repoPath?: string | null;
   chatCwd?: string | null;
-  t?: ChatViewSupportTranslator;
+  t?: ConversationViewSupportTranslator;
 }): ChatComposerViewState {
-  const t = input.t ?? defaultChatViewSupportTranslator;
+  const t = input.t ?? defaultConversationViewSupportTranslator;
   const composerAckBusy =
     isParallelChatBusy(input.busy, 'ack')
     || isComposerAckBusyForChannel(input.busy, input.selectedChannelId);

@@ -12,7 +12,7 @@ import {
   buildAudienceParticipantFromStackParticipant,
 } from '../../audienceParticipantBuilder.js';
 
-export interface ChatComposerTargetSlotProps {
+export interface ConversationComposerTargetSlotProps {
   payload: AppShellPayload;
   composerBusy: boolean;
   composerRecipients: RecipientChipTarget[];
@@ -76,7 +76,7 @@ function ChatComposerAudienceChip({
   );
 }
 
-export function ChatComposerTargetSlot({
+export function ConversationComposerTargetSlot({
   payload,
   composerBusy,
   composerRecipients,
@@ -89,7 +89,7 @@ export function ChatComposerTargetSlot({
   activeAudienceKeys,
   onSetActiveAudienceKeys,
   onOpenSection,
-}: ChatComposerTargetSlotProps) {
+}: ConversationComposerTargetSlotProps) {
   // Implicit recipient (model-only)
   const implicitRecipient =
     composerRecipients.length === 1 && composerRecipients[0]?.kind === 'implicit'

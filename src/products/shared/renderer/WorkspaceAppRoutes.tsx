@@ -21,7 +21,7 @@ export interface WorkspaceAppRoutesProps {
   /** Product controls under that canvas's top bar. */
   chatCanvasControls?: ComponentType<ArtifactCanvasControlsProps>;
   renderBootShell: () => ReactNode;
-  renderChatView: (
+  renderConversationView: (
     channel: SelectedChannelView,
     options: {
       onOpenAddCat: () => void;
@@ -52,14 +52,14 @@ export function WorkspaceAppRoutes({
   chatCanvasSurfaceKind,
   chatCanvasControls,
   renderBootShell,
-  renderChatView,
+  renderConversationView,
   renderNewChatDraft,
   renderAddCatPanel,
   onToggleAddCat,
   onOpenDraftAddCat,
 }: WorkspaceAppRoutesProps) {
   const chatElement = selectedChannel
-    ? renderChatView(selectedChannel, { onOpenAddCat: onToggleAddCat })
+    ? renderConversationView(selectedChannel, { onOpenAddCat: onToggleAddCat })
     : renderBootShell();
   return (
     <>

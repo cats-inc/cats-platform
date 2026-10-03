@@ -4,7 +4,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
-import { ChatComposerArea } from '../src/products/shared/renderer/components/chat-view/ChatComposerArea.tsx';
+import { ConversationComposerArea } from '../src/products/shared/renderer/components/conversation-view/ConversationComposerArea.tsx';
 import { clearLiveProviderModelLabels, recordLiveProviderModelLabels } from '../src/shared/providerModelLabelRegistry.ts';
 
 function createPayload(): AppShellPayload {
@@ -21,7 +21,7 @@ function createPayload(): AppShellPayload {
 
 test('chat composer keeps default implicit recipient controls on the active audience chip tooltip', () => {
   const markup = renderToStaticMarkup(
-    <ChatComposerArea
+    <ConversationComposerArea
       hasConversationStarted
       isCompareGroup={false}
       isNearBottom
@@ -86,7 +86,7 @@ test('chat composer keeps default implicit recipient controls on the active audi
 test('chat composer preserves runtime-backed implicit audience labels instead of rebuilding static fallback text', () => {
   clearLiveProviderModelLabels();
   const markup = renderToStaticMarkup(
-    <ChatComposerArea
+    <ConversationComposerArea
       hasConversationStarted
       isCompareGroup={false}
       isNearBottom
@@ -176,7 +176,7 @@ test('chat composer renders a cat-backed audience chip for direct lanes', () => 
   ] as never;
 
   const markup = renderToStaticMarkup(
-    <ChatComposerArea
+    <ConversationComposerArea
       hasConversationStarted
       isCompareGroup={false}
       isNearBottom
@@ -251,7 +251,7 @@ test('chat composer renders a cat-backed audience chip for direct lanes', () => 
 test('chat composer renders a multi-audience chip for group chats', () => {
   const payload = createPayload();
   const markup = renderToStaticMarkup(
-    <ChatComposerArea
+    <ConversationComposerArea
       hasConversationStarted
       isCompareGroup={false}
       isNearBottom

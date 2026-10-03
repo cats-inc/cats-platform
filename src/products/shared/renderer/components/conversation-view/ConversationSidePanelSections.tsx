@@ -24,12 +24,12 @@ import { ProgressSummaryPanel } from '../ProgressSummaryPanel.js';
 import { ProviderModelFields } from '../ProviderModelFields.js';
 import { RunInspector } from '../RunInspector.js';
 import { getCatMcpProfileLabel } from '../settings-cats/viewSupport.js';
-import { ChatParticipantsSection } from './ChatParticipantsSection.js';
+import { ConversationParticipantsSection } from './ConversationParticipantsSection.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
-export interface BuildChatSidePanelSectionsOptions {
+export interface BuildConversationSidePanelSectionsOptions {
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView;
   busy: WorkspaceBusyState;
@@ -81,7 +81,7 @@ export interface BuildChatSidePanelSectionsOptions {
   ) => CSSProperties | undefined;
 }
 
-export function buildChatSidePanelSections({
+export function buildConversationSidePanelSections({
   payload,
   selectedChannel,
   busy,
@@ -116,7 +116,7 @@ export function buildChatSidePanelSections({
   onDirectLaneExecutionTargetChange,
   onDirectLaneParticipantTargetChange,
   buildParticipantAvatarStyle,
-}: BuildChatSidePanelSectionsOptions): SidePanelSection[] {
+}: BuildConversationSidePanelSectionsOptions): SidePanelSection[] {
   const { t } = useI18n();
   const sections: SidePanelSection[] = [];
   const startFreshBusy = isChannelBusy(busy, 'reset');
@@ -128,7 +128,7 @@ export function buildChatSidePanelSections({
         ? t(messageKeys.chatNewChatDraftSidePanelParticipantsGroupTitle)
         : t(messageKeys.chatNewChatDraftSidePanelParticipantsCatsTitle),
       children: (
-        <ChatParticipantsSection
+        <ConversationParticipantsSection
           assignedCatRecords={assignedCatRecords}
           assignedAdhocParticipants={assignedAdhocParticipants}
           bossCatId={payload.chat.bossCatId}

@@ -5,11 +5,11 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import type { JSX } from 'react';
 
 import { IDLE_BUSY_STATE } from '../src/shared/workspaceBusy.ts';
-import { ChatTranscriptPanel } from '../src/products/shared/renderer/components/chat-view/ChatTranscriptPanel.tsx';
+import { ConversationTranscriptPanel } from '../src/products/shared/renderer/components/conversation-view/ConversationTranscriptPanel.tsx';
 import {
   buildConcurrentTranscriptRenderItems,
   resolveDurableConcurrentClusterMaxSegmentCount,
-} from '../src/products/shared/renderer/components/chat-view/concurrentTranscriptProjection.ts';
+} from '../src/products/shared/renderer/components/conversation-view/concurrentTranscriptProjection.ts';
 import type { ResolvedChannelParticipant } from '../src/products/chat/shared/channelParticipants.js';
 import type { ChatMessage } from '../src/products/chat/api/contracts.ts';
 import type { SelectedChannelView } from '../src/products/chat/shared/channelEntry.ts';
@@ -241,7 +241,7 @@ test('buildConcurrentTranscriptRenderItems projects a completed concurrent turn 
   );
 });
 
-test('ChatTranscriptPanel keeps compare_cards layout for completed concurrent turns', () => {
+test('ConversationTranscriptPanel keeps compare_cards layout for completed concurrent turns', () => {
   const { visibleMessages, workflow } = createCompletedConcurrentTurnFixture();
   const participants = new Map([
     ['participant-claude', createParticipant('participant-claude', 'Claude-CLI')],
@@ -249,7 +249,7 @@ test('ChatTranscriptPanel keeps compare_cards layout for completed concurrent tu
   ]);
 
   const markup = renderToStaticMarkup(
-    <ChatTranscriptPanel
+    <ConversationTranscriptPanel
       hasConversationStarted
       greeting="Hello"
       transcriptListRef={createRef<HTMLDivElement>()}
@@ -293,7 +293,7 @@ test('ChatTranscriptPanel keeps compare_cards layout for completed concurrent tu
   assert.match(markup, /Codex answer\./u);
 });
 
-test('ChatTranscriptPanel falls back to raw transcript bubbles when a durable cluster resolves to inline_stack', () => {
+test('ConversationTranscriptPanel falls back to raw transcript bubbles when a durable cluster resolves to inline_stack', () => {
   const { visibleMessages, workflow } = createCompletedConcurrentTurnFixture();
   const participants = new Map([
     ['participant-claude', createParticipant('participant-claude', 'Claude-CLI')],
@@ -301,7 +301,7 @@ test('ChatTranscriptPanel falls back to raw transcript bubbles when a durable cl
   ]);
 
   const markup = renderToStaticMarkup(
-    <ChatTranscriptPanel
+    <ConversationTranscriptPanel
       hasConversationStarted
       greeting="Hello"
       transcriptListRef={createRef<HTMLDivElement>()}
@@ -349,11 +349,11 @@ test('ChatTranscriptPanel falls back to raw transcript bubbles when a durable cl
   assert.match(markup, /Codex answer\./u);
 });
 
-test('ChatTranscriptPanel keeps compare_cards layout when driven with stub participant resolvers', () => {
+test('ConversationTranscriptPanel keeps compare_cards layout when driven with stub participant resolvers', () => {
   const { visibleMessages, workflow } = createCompletedConcurrentTurnFixture();
 
   const markup = renderToStaticMarkup(
-    <ChatTranscriptPanel
+    <ConversationTranscriptPanel
       hasConversationStarted
       greeting="Hello"
       transcriptListRef={createRef<HTMLDivElement>()}
@@ -396,9 +396,9 @@ test('ChatTranscriptPanel keeps compare_cards layout when driven with stub parti
   assert.match(markup, /Codex answer\./u);
 });
 
-test('ChatTranscriptPanel renders copy actions for completed assistant bubbles and accepts extra message actions', () => {
+test('ConversationTranscriptPanel renders copy actions for completed assistant bubbles and accepts extra message actions', () => {
   const markup = renderToStaticMarkup(
-    <ChatTranscriptPanel
+    <ConversationTranscriptPanel
       hasConversationStarted
       greeting="Hello"
       transcriptListRef={createRef<HTMLDivElement>()}
@@ -426,7 +426,7 @@ test('ChatTranscriptPanel renders copy actions for completed assistant bubbles a
           usage: null,
           createdAt: '2026-04-16T12:00:01.000Z',
         },
-      ] as Parameters<typeof ChatTranscriptPanel>[0]['visibleMessages']}
+      ] as Parameters<typeof ConversationTranscriptPanel>[0]['visibleMessages']}
       workflow={{
         activeTurn: null,
         turnHistory: [],
@@ -481,10 +481,10 @@ test('ChatTranscriptPanel renders copy actions for completed assistant bubbles a
   assert.match(markup, /title="Share to other chats"/u);
 });
 
-test('ChatTranscriptPanel shows typing dots for a streaming segment that has identity but no visible content yet', () => {
+test('ConversationTranscriptPanel shows typing dots for a streaming segment that has identity but no visible content yet', () => {
   // Covers the +New code "Claude-CLI is working" state: assistant identity is known
   // but no streaming text, tools, or events have landed yet. Without dots we would
-  // render an orphan avatar and no bubble, which made shared ChatView look broken in
+  // render an orphan avatar and no bubble, which made shared ConversationView look broken in
   // code/work compared to chat.
   const liveIndicator = {
     active: true,
@@ -511,7 +511,7 @@ test('ChatTranscriptPanel shows typing dots for a streaming segment that has ide
   };
 
   const markup = renderToStaticMarkup(
-    <ChatTranscriptPanel
+    <ConversationTranscriptPanel
       hasConversationStarted
       greeting="Hello"
       transcriptListRef={createRef<HTMLDivElement>()}
@@ -536,7 +536,7 @@ test('ChatTranscriptPanel shows typing dots for a streaming segment that has ide
       onChoiceSubmit={() => {}}
       latestUserTurnMessageId={null}
       latestUserTurnStatus="idle"
-      liveIndicator={liveIndicator as Parameters<typeof ChatTranscriptPanel>[0]['liveIndicator']}
+      liveIndicator={liveIndicator as Parameters<typeof ConversationTranscriptPanel>[0]['liveIndicator']}
       liveSpeakerParticipant={null}
       liveSpeakerParticipantCat={null}
       resolveLiveIndicatorSegmentParticipant={() => null}

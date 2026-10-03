@@ -8,11 +8,11 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
-import { buildChatSidePanelSections } from '../src/products/shared/renderer/components/chat-view/ChatSidePanelSections.tsx';
+import { buildConversationSidePanelSections } from '../src/products/shared/renderer/components/conversation-view/ConversationSidePanelSections.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 import { clearProviderRegistryClientCache } from '../src/app/renderer/providerRegistryClient.ts';
 
-type SidePanelOptions = Parameters<typeof buildChatSidePanelSections>[0];
+type SidePanelOptions = Parameters<typeof buildConversationSidePanelSections>[0];
 
 function createExecutionOptions(overrides: Partial<SidePanelOptions> = {}): SidePanelOptions {
   return {
@@ -57,7 +57,7 @@ function createExecutionOptions(overrides: Partial<SidePanelOptions> = {}): Side
 }
 
 function ExecutionSection({ options }: { options: SidePanelOptions }) {
-  const sections = buildChatSidePanelSections(options);
+  const sections = buildConversationSidePanelSections(options);
   const executionSection = sections.find((section) => section.id === 'execution');
   assert.ok(executionSection);
   return <>{executionSection.children}</>;

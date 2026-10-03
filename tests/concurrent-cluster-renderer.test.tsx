@@ -8,9 +8,9 @@ import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import {
   ConcurrentClusterRenderer,
   type ConcurrentClusterRendererProps,
-} from '../src/products/shared/renderer/components/chat-view/ConcurrentClusterRenderer.tsx';
-import { resolveCompareCardsWindow } from '../src/products/shared/renderer/components/chat-view/CompareCardsLayout.tsx';
-import { shouldShowFocusRailSecondaryAnonymousIndicator } from '../src/products/shared/renderer/components/chat-view/FocusRailLayout.tsx';
+} from '../src/products/shared/renderer/components/conversation-view/ConcurrentClusterRenderer.tsx';
+import { resolveCompareCardsWindow } from '../src/products/shared/renderer/components/conversation-view/CompareCardsLayout.tsx';
+import { shouldShowFocusRailSecondaryAnonymousIndicator } from '../src/products/shared/renderer/components/conversation-view/FocusRailLayout.tsx';
 import type { ResolvedChannelParticipant } from '../src/products/chat/shared/channelParticipants.js';
 
 function createParticipant(
