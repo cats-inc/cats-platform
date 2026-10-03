@@ -360,7 +360,7 @@ For macOS/Linux unsigned or test packages:
 ```bash
 npm run desktop:package:macos
 npm run desktop:package:linux
-node scripts/build-desktop-installer.mjs --target macos --arch x64 --format dmg --sidecar-layout split
+node scripts/build-desktop-installer.mjs --target macos --arch universal --format dmg --sidecar-layout split
 node scripts/build-desktop-installer.mjs --target linux --arch arm64 --format deb --sidecar-layout bundle
 ```
 

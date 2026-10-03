@@ -7,7 +7,7 @@
 | **Status** | Draft |
 | **Owner** | User |
 | **Reviewer** | User |
-| **Last updated** | 2026-09-24 |
+| **Last updated** | 2026-10-03 |
 
 ## Summary
 
@@ -542,8 +542,8 @@ When later enabled:
 One public release shall contain:
 
 - Windows x64 NSIS installer built with `--sidecar-layout bundle`
-- macOS x64 DMG
-- macOS x64 ZIP required by the updater
+- macOS universal DMG
+- macOS universal ZIP required by the updater
 - Linux arm64 `.deb`
 - generated Windows, macOS, and Linux update metadata
 - any differential-update files generated and referenced by that metadata
@@ -555,28 +555,28 @@ The release UI shall identify NSIS, DMG, and `.deb` as the primary choices.
 Updater-only metadata and the macOS ZIP may remain attached without being
 presented as additional user installation choices.
 
-Two consequences of this target set are deliberate and shall not be treated as
-defects:
+macOS ships one universal build, so Apple Silicon runs natively rather than
+under Rosetta 2. The updater keeps a single `latest-mac.yml` feed, and its
+universal ZIP carries no `arm64` token, so electron-updater selects it on Intel,
+Apple Silicon and Rosetta 2 hosts alike; existing x64 installs update into it.
 
-- macOS ships x64 only, so Apple Silicon runs it under Rosetta 2.
+From 2026-09-18 to 2026-10-03 the target was x64 only. The project had no macOS
+arm64 machine to execute that slice before release, so a universal build would
+have shipped a slice nobody ran. That exit condition was met on 2026-10-03, when
+an Apple Silicon machine became available, and the target returned to the
+universal DMG of ADR-108 section 6.
 
-  The reason is test coverage, not preference. The project has no macOS arm64
-  machine: the available hardware is an Intel Mac and a Linux arm64 board, and
-  the board's architecture does not help with a different operating system. A
-  universal build would therefore ship a slice that nobody executed before
-  release, and would add packaging and notarization time to every preview
-  iteration -- a cost paid on each development cycle for a slice that cannot be
-  verified.
+The universal merge refuses a single-architecture Mach-O that is byte-identical
+in the x64 and arm64 bundles. The Swift voice helper is therefore built
+universal, and the macOS package excludes ngrok's per-architecture addons so that
+only `@ngrok/ngrok-darwin-universal`, which ngrok loads first, ships. A
+single-architecture local build shall still build the helper for its target
+explicitly, because an unqualified `swift build` follows the host and would
+bundle a host-architecture helper inside an app for the other one.
 
-  This is a deliberate, stage-specific narrowing of ADR-108 section 6, which
-  targets a universal DMG. It is revisited when an Apple Silicon test machine
-  exists, or when builds are distributed beyond the maintainer. Until then,
-  changing this target set is a decision, not a defect fix.
+One consequence of this target set is deliberate and shall not be treated as a
+defect:
 
-  The macOS runner is arm64, which makes every macOS build a cross-compile: the
-  Swift voice helper shall be built for the target architecture explicitly,
-  because an unqualified `swift build` follows the host and would bundle an
-  arm64 helper inside an x64 app.
 - Installing a `.deb` update runs `dpkg`, which requires elevation. Section 4's
   "no elevation prompt" guarantee is specific to the per-user Windows installer
   and does not extend to Linux.

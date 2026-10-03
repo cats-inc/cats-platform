@@ -717,8 +717,15 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   );
   assert.deepEqual(
     packageJson.build.mac.target,
-    [{ target: 'dmg', arch: ['x64'] }, { target: 'zip', arch: ['x64'] }],
+    [{ target: 'dmg', arch: ['universal'] }, { target: 'zip', arch: ['universal'] }],
   );
+  // The universal merge refuses a single-arch Mach-O that is identical in the
+  // x64 and arm64 bundles. npm installs ngrok's host-arch addon next to the
+  // universal one, which ngrok loads first, so only the universal one ships.
+  assert.deepEqual(packageJson.build.mac.files, [
+    '!node_modules/@ngrok/ngrok-darwin-x64/**',
+    '!node_modules/@ngrok/ngrok-darwin-arm64/**',
+  ]);
   assert.deepEqual(
     packageJson.build.linux.target,
     [{ target: 'deb', arch: ['arm64'] }],
@@ -1108,6 +1115,9 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   // A universal DMG merges x64 and arm64 bundles, so the Swift helper has to
   // be universal too or electron-builder refuses the identical binary.
   assert.match(script, /'--arch',\s*'x86_64',\s*'--arch',\s*'arm64',/);
+  // Without --arch, electron-builder packages the universal mac target matrix
+  // from package.json, so the default helper has to be universal as well.
+  assert.match(script, /if \(archOverride === null \|\| archOverride === 'universal'\)/);
   // The output directory is asked of SwiftPM rather than reconstructed: a plain
   // build, a single --arch cross-build, and a multi-arch build each land
   // somewhere different, and guessing wrong fails after the compile succeeds,

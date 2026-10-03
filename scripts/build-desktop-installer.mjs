@@ -579,7 +579,9 @@ async function buildMacosVoiceHelper(archOverride) {
   const outputDir = resolve(NATIVE_BUILD_ROOT, 'macos-stt');
   await mkdir(outputDir, { recursive: true });
 
-  if (archOverride === 'universal') {
+  // Without --arch, electron-builder packages the package.json mac target
+  // matrix, which is universal, so the helper follows it.
+  if (archOverride === null || archOverride === 'universal') {
     // A universal DMG merges an x64 and an arm64 app bundle. electron-builder
     // refuses when a binary is byte-identical in both, because it cannot tell
     // whether that is a resource to share or a single-arch executable that
@@ -604,10 +606,10 @@ async function buildMacosVoiceHelper(archOverride) {
     return;
   }
 
-  // Cross-compilation is the normal case now: the macOS runner is arm64 while
-  // the release targets x64, and an unqualified `swift build` follows the host.
-  // That would quietly bundle an arm64 helper inside an x64 app, which only
-  // fails when a user tries to dictate.
+  // A single-architecture build can be a cross-compile, and an unqualified
+  // `swift build` follows the host. That would quietly bundle a host-arch
+  // helper inside an app for the other architecture, which only fails when a
+  // user tries to dictate.
   const swiftArch = archOverride === 'arm64' ? 'arm64' : 'x86_64';
   const swiftArgs = [
     'build',

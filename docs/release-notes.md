@@ -2,6 +2,59 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-03 — Desktop 0.7.9 standard preview
+
+Desktop **0.7.9** is the owner-requested standard-profile preview. On macOS it is
+a universal build again, so Apple Silicon runs Cats natively instead of under
+Rosetta 2. This is a compatible patch with no public API, configuration or
+stored-format change to existing data and no migration.
+
+- **macOS universal build.**
+  - The macOS assets are now `Cats-0.7.9-universal.dmg` and
+    `Cats-0.7.9-universal.zip`, replacing the `-x64` names. One app contains both
+    the Intel and the Apple Silicon code.
+  - The x64-only target was chosen on 2026-09-18 because no Apple Silicon machine
+    could run the arm64 half before release. One is now available, which was the
+    recorded condition for going back to universal (SPEC-111 section 8, ADR-117
+    section 6).
+  - The voice-input helper is built for both architectures. The App ingress
+    addon ships only ngrok's universal binary, which ngrok loads first; its
+    single-architecture copies are left out of the macOS app.
+  - A local `npm run desktop:package:macos` without `--arch` now builds the
+    voice helper universal, to match the package.json target.
+- **Internal cleanup with no visible change.**
+  - The shared chat view folder and its components were renamed to
+    `conversation-view` / `Conversation*` (ADR-129 naming), and modules nothing
+    imported were removed (#247).
+  - The unused draft default-recipient change chain was removed (#246).
+- **Runtime.** Keep the 0.7.8 pin, `8729cd6cb17ab52a034e2365baffcd82915a8af8`
+  (package version 0.4.0), on every OS and in the complete source archive.
+- **Apps.** Reuse Usage 0.5.1, SHA-256
+  `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
+  Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
+  compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
+- **Signing and updates.**
+  - The manual `desktop-release.yml` dispatch uses `tag=v0.7.9`, the full Runtime
+    SHA above and `unsigned=false`; the workflow creates the preview tag.
+  - Expected trust profile: macOS signed + notarized, Windows unsigned (no
+    certificate), Linux n/a.
+  - The macOS update feed keeps its name, `latest-mac.yml`. Its universal ZIP has
+    no `arm64` in the name, so electron-updater picks it on Intel Macs, on Apple
+    Silicon, and for an x64 0.7.8 running under Rosetta 2. Standard-profile 0.7.8
+    installs therefore update into the universal app, signed by the same
+    Developer ID team. Windows stays unsigned to unsigned, and Linux uses the
+    `.deb` update path. No installed upgrade is exercised before the dispatch.
+- **Validation.**
+  - #246 and #247 ran full PR CI. This change ran its packaging and release-asset
+    tests locally before the PR.
+  - The universal package is first built by the dispatch's macOS job. A
+    multi-architecture Swift build needs full Xcode, which the hosted runner has
+    and the Intel Mac with Command Line Tools only does not.
+  - The arm64 half of the app had not run anywhere before the dispatch. The
+    first Apple Silicon run is the owner's install of this preview.
+  - Publication results: the [`v0.7.9` GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.9)
+    and its workflow run.
+
 ## 2026-10-03 — Desktop 0.7.8 standard preview
 
 Desktop **0.7.8** is the owner-requested standard-profile preview. Direct messages

@@ -486,6 +486,17 @@ ownership boundaries in ADR-108 and SPEC-111.
 
 ## Progress Log
 
+### macOS universal target — 2026-10-03
+
+An Apple Silicon machine is now available, which meets the exit condition SPEC-111
+section 8 recorded for the x64-only macOS target. The release set, workflow matrix
+and package target return to one universal DMG and updater ZIP. The universal merge
+refuses an identical single-architecture Mach-O, so the macOS package now excludes
+ngrok's per-architecture addons and keeps only the universal one, and a local
+build without `--arch` builds the Swift voice helper universal to match the
+package.json target. Prepared with Desktop 0.7.9; the arm64 slice is first
+executed on that machine with the 0.7.9 preview.
+
 ### Distribution audit hardening — 2026-09-29 (unreleased)
 
 The owner confirmed that Cats / Cats Inc. is a software brand maintained by an
