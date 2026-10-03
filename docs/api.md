@@ -523,6 +523,13 @@ DELETE /api/channels/{channelId}
 
 - `GET` collection returns `{ channels: [...summaries] }`.
 - `POST` returns `201` with `{ channel: { ...view } }`.
+  - A one-to-one direct message (`roomMode: "direct_message"`, or
+    `entryKind: "direct"`, for exactly one existing Cat with no other Cats,
+    inline Cats or temporary participants) reuses that Cat's direct lane when
+    one exists and is not archived. The response is then `200` with the existing
+    channel, which also becomes the selected channel; the request's title,
+    folder and runtime settings are not applied to it. Chat keeps one direct
+    lane per Cat.
 - `GET` detail returns
   `{ channel: { ...view with messages, assignedCats, and roomRouting } }`.
 - `DELETE` returns `{ deleted: true, channelId }`.

@@ -1,6 +1,7 @@
 import type { ChatChannelState, ChatState } from '../../api/contracts.js';
 import type { CompanionBoxStore } from '../../state/companion-box/index.js';
 import { resolveRoomRoutingState } from '../../state/room-routing/index.js';
+import { findDirectLaneChannelForCat } from '../../state/model/channelState.js';
 import { isCompanionCat } from '../../../../shared/companionRole.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import type { CompanionActivityStore } from '../activityStore.js';
@@ -26,11 +27,7 @@ export function findCompanionDirectLane(
   state: Pick<ChatState, 'channels'>,
   catId: string,
 ): ChatChannelState | null {
-  return state.channels.find((channel) =>
-    channel.status !== 'archived'
-    && isDirectLaneChannel(channel)
-    && resolveRoomRoutingState(channel.roomRouting).defaultRecipientId === catId,
-  ) ?? null;
+  return findDirectLaneChannelForCat(state, catId);
 }
 
 /** The companion Cat whose direct lane this channel is, if any. */

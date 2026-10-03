@@ -75,6 +75,8 @@ export {
   ungroupParallelChatGroup,
 } from './channelGroups.js';
 export {
+  findDirectLaneChannelForCat,
+  findReusableDirectLaneForCreate,
   replaceState,
   setChannelChatCwd,
   setChannelRoomRouting,
