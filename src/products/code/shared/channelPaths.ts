@@ -4,13 +4,11 @@ import {
   buildWorkspaceNewGroupChatPath,
   buildWorkspaceNewParallelChatPath,
   buildWorkspaceChannelPath,
-  buildWorkspaceMyCatPath,
   buildWorkspaceNewChatPath,
   readWorkspaceNewChatPreset,
   readWorkspaceNewChatLeadCatId,
   resolveWorkspaceAppEntryPath,
   resolveWorkspaceDefaultChatPath,
-  resolveWorkspaceMyCatsPathPrefix,
   resolveWorkspaceNewChatPath,
   resolveWorkspaceVisibleChatPath,
 } from '../../shared/channelPaths.js';
@@ -30,7 +28,6 @@ export {
 
 export const CHAT_PREFIX = resolvePlatformSurfaceRoutePrefix('code');
 export const NEW_CHAT_PATH = resolveWorkspaceNewChatPath(CHAT_PREFIX);
-export const MY_CATS_PATH_PREFIX = resolveWorkspaceMyCatsPathPrefix(CHAT_PREFIX);
 
 export function resolveAppEntryPath(setupCompleteAt: string | null | undefined): string {
   return resolveWorkspaceAppEntryPath(CHAT_PREFIX, setupCompleteAt);
@@ -46,10 +43,6 @@ export function buildNewGroupChatPath(): string {
 
 export function buildNewParallelChatPath(): string {
   return buildWorkspaceNewParallelChatPath(CHAT_PREFIX);
-}
-
-export function buildMyCatPath(catId: string): string {
-  return buildWorkspaceMyCatPath(CHAT_PREFIX, catId);
 }
 
 export function readNewChatDefaultRecipientCatId(search: string): string | null {

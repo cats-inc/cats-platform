@@ -15,7 +15,7 @@ test('persisted chat view wires the default audience chip and suppresses visible
     'utf8',
   );
   const viewStateSource = await readFile(
-    path.join(process.cwd(), 'src/products/chat/renderer/appViewState.ts'),
+    path.join(process.cwd(), 'src/products/shared/renderer/workspaceAppViewState.ts'),
     'utf8',
   );
   const chatViewSource = await readProductChatViewSource('chat');

@@ -8,9 +8,9 @@ import { buildDirectMessagePath } from '../src/shared/channelPaths.ts';
 import { isChatCat } from '../src/products/chat/renderer/chatUtils.tsx';
 import {
   findDirectLaneForCat,
-  resolveMyCatNavigationTarget,
   resolveMyCatStatusDot,
 } from '../src/products/chat/renderer/myCatNavigation.ts';
+import { resolveMyCatNavigationTargetForPrefix } from '../src/app/renderer/productShell/myCatNavigation.ts';
 import { isDirectLaneSummary } from '../src/products/chat/shared/channelTopology.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 import {
@@ -182,7 +182,8 @@ function resolveDirectMessagesClickPath(
   payload: AppShellPayload,
   catId: string,
 ): string {
-  return resolveMyCatNavigationTarget(payload.chat.channels, catId).path;
+  // Chat's sidebar runs the shared navigation hook's `onDirectChatCat`.
+  return resolveMyCatNavigationTargetForPrefix('/chat', payload.chat.channels, catId).path;
 }
 
 function readRecentChannels(

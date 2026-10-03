@@ -1,11 +1,7 @@
 import type { ChatChannelSummary } from '../api/contracts.js';
 import type { ParticipantSessionStatus } from '../../../shared/roomRouting.js';
-import { buildDirectMessagePath } from '../shared/channelPaths.js';
 import { isDirectLaneSummary } from '../shared/channelTopology.js';
 import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
-
-export type MyCatNavigationTarget =
-  | { kind: 'direct_message'; path: string };
 
 export type MyCatStatusDot = 'no_dot' | 'sleeping' | 'waking_up' | 'awake' | 'error';
 
@@ -55,11 +51,4 @@ export function statusDotLabel(dot: MyCatStatusDot): MessageKey | null {
     case 'error': return messageKeys.chatCatStatusErrorLabel;
     default: return null;
   }
-}
-
-export function resolveMyCatNavigationTarget(
-  _channels: ChatChannelSummary[],
-  catId: string,
-): MyCatNavigationTarget {
-  return { kind: 'direct_message', path: buildDirectMessagePath(catId) };
 }

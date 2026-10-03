@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
-import { deriveAppViewState } from '../src/products/chat/renderer/appViewState.ts';
+// Chat derives its view state through the shared workspace app.
+import { deriveAppViewState } from '../src/products/shared/renderer/workspaceAppViewState.ts';
 
 function createPayload(): AppShellPayload {
   return {
@@ -266,7 +267,7 @@ test('deriveAppViewState shows Boss Cat avatar without auto-inserting Boss Cat i
     pathname: '/chat/chats/channel-1',
     payload,
     draftDefaultRecipientCatId: null,
-    showingGenericNewChatDraft: false,
+    showingNewChatDraft: false,
     selectedChannel: selectedChannel as never,
     selectedDirectLane: null,
     routeDirectLaneSummary: null,
@@ -377,7 +378,7 @@ test('deriveAppViewState still shows Boss Cat avatar for participant chats witho
     pathname: '/chat/chats/channel-1',
     payload,
     draftDefaultRecipientCatId: null,
-    showingGenericNewChatDraft: false,
+    showingNewChatDraft: false,
     selectedChannel: selectedChannel as never,
     selectedDirectLane: null,
     routeDirectLaneSummary: null,

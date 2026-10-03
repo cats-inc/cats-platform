@@ -98,7 +98,9 @@ and replaces the renderer-ownership split in
   `onClearDirectLane`) stays, because Chat also runs through
   `createWorkspaceProductApp`. The Code and Work leftovers (`MY_CATS_PATH_PREFIX`,
   `buildMyCatPath`, and `resolveMyCatNavigationTarget` in their
-  `myCatNavigation.ts`) are a follow-up cleanup.
+  `myCatNavigation.ts`) were removed in a follow-up, together with the unused
+  per-product `appViewState.ts`, `useAppShellRouting.ts` and
+  `useAppNavigationActions.ts` that predate the shared workspace app.
 - No persisted data, API or contract changes; this is a renderer route change
   within the current 0.x minor line.
 

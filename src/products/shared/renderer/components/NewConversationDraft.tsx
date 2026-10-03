@@ -1260,10 +1260,7 @@ export function NewConversationDraft({
   // carousel's last-branch addBranchSlot. The footer only renders when
   // a product passes a separate `composerFooterAccessory`.
   const draftComposerFooterJsx = (
-    <DraftComposerFooter
-      accessory={composerFooterAccessory}
-      disabled={isSubmittingFirstTurn}
-    />
+    <DraftComposerFooter accessory={composerFooterAccessory} />
   );
 
   const helperRegionJsx = (() => {

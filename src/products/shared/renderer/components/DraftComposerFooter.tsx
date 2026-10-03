@@ -1,60 +1,22 @@
 import type { ReactNode } from 'react';
 
-import { useI18n } from '../../../../app/renderer/i18n/index.js';
-import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
-import { CompareIcon } from './DraftBuilderIcons.js';
-
 export interface DraftComposerFooterProps {
   accessory?: ReactNode;
-  /**
-   * Footer +compare add button from the retired single-card draft
-   * (ADR-129). Every draft now puts +compare in the carousel's
-   * last-branch slot and per-branch remove in the composer's top-right
-   * corner, so no caller passes this prop.
-   */
-  showParallelAddButton?: boolean;
-  hideParallelHint?: boolean;
-  accentParallelAddButton?: boolean;
-  disabled?: boolean;
-  onAddParallelTarget?: () => void;
 }
 
-export function DraftComposerFooter({
-  accessory = null,
-  showParallelAddButton = false,
-  hideParallelHint = false,
-  accentParallelAddButton = false,
-  disabled = false,
-  onAddParallelTarget,
-}: DraftComposerFooterProps) {
-  const { t } = useI18n();
-  const renderParallelAddButton =
-    showParallelAddButton && onAddParallelTarget != null;
-  if (!accessory && !renderParallelAddButton) {
+/**
+ * Footer row under the draft composer card for a product-supplied
+ * accessory. +compare lives in the carousel's last-branch slot, so the
+ * footer renders nothing without an accessory.
+ */
+export function DraftComposerFooter({ accessory = null }: DraftComposerFooterProps) {
+  if (!accessory) {
     return null;
   }
 
   return (
     <div className="composerFooterRow">
-      {accessory ? <div className="composerFooterAccessory">{accessory}</div> : null}
-      {renderParallelAddButton ? (
-        <div className="parallelAddRow parallelAddRowInline">
-          {hideParallelHint ? null : (
-            <span className={`parallelAddHint${accentParallelAddButton ? ' parallelAddHintAccent' : ''}`}>
-              {t(messageKeys.chatNewChatDraftBranchAddCompareHint)}
-            </span>
-          )}
-          <button
-            type="button"
-            className={`parallelAddButton${accentParallelAddButton ? ' parallelAddButtonAccent' : ''}`}
-            disabled={disabled}
-            onClick={onAddParallelTarget}
-            aria-label={t(messageKeys.chatNewChatDraftBranchAddParallelAria)}
-          >
-            <CompareIcon />
-          </button>
-        </div>
-      ) : null}
+      <div className="composerFooterAccessory">{accessory}</div>
     </div>
   );
 }
