@@ -332,7 +332,6 @@ export interface NewConversationDraftProps {
   autoResize: (el: HTMLTextAreaElement) => void;
   draftDefaultRecipientCatId: string | null;
   entryPreset?: NewChatPreset;
-  onDraftDefaultRecipientChange: (catId: string | null) => void;
   allowAddCat?: boolean;
   selectedExecutionTarget?: ExecutionTargetValue;
   onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
@@ -404,7 +403,6 @@ export function NewConversationDraft({
   autoResize,
   draftDefaultRecipientCatId,
   entryPreset = 'default',
-  onDraftDefaultRecipientChange,
   allowAddCat = true,
   selectedExecutionTarget,
   onExecutionTargetChange,
