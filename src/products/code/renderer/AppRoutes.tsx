@@ -44,7 +44,7 @@ type ChatSurfaceProps = Omit<
 
 type DraftSurfaceProps = Omit<
   NewChatDraftProps,
-  'payload' | 'onOpenAddCat' | 'onDraftDefaultRecipientChange' | 'allowAddCat'
+  'payload' | 'onOpenAddCat' | 'allowAddCat'
 >;
 
 export interface AppRoutesProps extends Omit<
@@ -75,7 +75,6 @@ export function AppRoutes({
   addCatPanelProps,
   folderBrowserProps,
   onOpenDraftAddCat,
-  onChangeDraftDefaultRecipient,
 }: AppRoutesProps) {
   const folderBrowserSurfaceProps = folderBrowserProps;
   const selectedChannelContext = payload.chat.selectedChannel
@@ -168,7 +167,6 @@ export function AppRoutes({
         {...draftSurfaceProps}
         payload={payload}
         onOpenAddCat={options.onOpenAddCat}
-        onDraftDefaultRecipientChange={options.onDraftDefaultRecipientChange}
         allowAddCat={options.allowAddCat}
         folderBrowsePath={folderBrowserSurfaceProps.folderBrowsePath}
         folderBrowseCurrentPath={folderBrowserSurfaceProps.folderBrowseCurrentPath}
@@ -190,6 +188,5 @@ export function AppRoutes({
     ),
     onToggleAddCat,
     onOpenDraftAddCat,
-    onChangeDraftDefaultRecipient,
   });
 }

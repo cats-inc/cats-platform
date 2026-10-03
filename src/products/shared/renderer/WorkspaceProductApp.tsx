@@ -155,7 +155,7 @@ type ChatSurfaceProps = Omit<ConversationViewProps, "payload" | "selectedChannel
 
 type DraftSurfaceProps = Omit<
   NewConversationDraftProps,
-  "payload" | "onOpenAddCat" | "onDraftDefaultRecipientChange" | "allowAddCat"
+  "payload" | "onOpenAddCat" | "allowAddCat"
 > & {
   greeting: string;
   draftSurface: PlatformSurfaceId;
@@ -181,7 +181,6 @@ export interface WorkspaceProductAppRoutesProps {
   folderBrowserProps: FolderBrowserContentProps;
   onToggleAddCat: () => void;
   onOpenDraftAddCat: () => void;
-  onChangeDraftDefaultRecipient: (catId: string | null) => void;
   companionMode: boolean;
   companionCat: AppShellPayload['chat']['cats'][number] | null;
   onToggleCompanionMode: () => void;
@@ -640,15 +639,11 @@ export function createWorkspaceProductApp({
       captureAndAttachDraftScreenshot,
       openDraftFolderPicker,
       openDraftAddCatPanel,
-      changeDraftDefaultRecipient,
     } = useWorkspaceAppDraftUiActions({
       addCatOpen,
       channelPlusMenuOpen,
       plusMenuOpen,
       draftCwd,
-      draftDefaultRecipientCatId,
-      navigate,
-      chatPrefix,
       emptyCatForm,
       setAddCatOpen,
       setAddCatTab,
@@ -2031,7 +2026,6 @@ export function createWorkspaceProductApp({
                     selectCurrentFolder,
                   })}
                   onOpenDraftAddCat={openDraftAddCatPanel}
-                  onChangeDraftDefaultRecipient={changeDraftDefaultRecipient}
                   companionMode={companionMode}
                   companionCat={companionCat}
                   onToggleCompanionMode={onToggleCompanionMode}

@@ -39,7 +39,7 @@ type ChatSurfaceProps = Omit<
 
 type DraftSurfaceProps = Omit<
   NewChatDraftProps,
-  'payload' | 'onOpenAddCat' | 'onDraftDefaultRecipientChange' | 'allowAddCat'
+  'payload' | 'onOpenAddCat' | 'allowAddCat'
 >;
 
 export interface AppRoutesProps {
@@ -57,7 +57,6 @@ export interface AppRoutesProps {
   addCatPanelProps: Omit<AddCatPanelProps, 'busy' | 'feedback'>;
   folderBrowserProps: FolderBrowserContentProps;
   onOpenDraftAddCat: () => void;
-  onChangeDraftDefaultRecipient: (catId: string | null) => void;
   companionMode: boolean;
   companionCat: AppShellPayload['chat']['cats'][number] | null;
   onToggleCompanionMode: () => void;
@@ -81,7 +80,6 @@ export function AppRoutes({
   addCatPanelProps,
   folderBrowserProps,
   onOpenDraftAddCat,
-  onChangeDraftDefaultRecipient,
   companionMode,
   companionCat,
   onToggleCompanionMode,
@@ -212,7 +210,6 @@ export function AppRoutes({
                 {...draftSurfaceProps}
                 payload={payload}
                 onOpenAddCat={noop}
-                onDraftDefaultRecipientChange={noop}
                 allowAddCat={false}
                 folderBrowsePath={folderBrowserSurfaceProps.folderBrowsePath}
                 folderBrowseCurrentPath={folderBrowserSurfaceProps.folderBrowseCurrentPath}
@@ -234,7 +231,6 @@ export function AppRoutes({
               {...draftSurfaceProps}
               payload={payload}
               onOpenAddCat={onOpenDraftAddCat}
-              onDraftDefaultRecipientChange={onChangeDraftDefaultRecipient}
               folderBrowsePath={folderBrowserSurfaceProps.folderBrowsePath}
               folderBrowseCurrentPath={folderBrowserSurfaceProps.folderBrowseCurrentPath}
               folderBrowseParentPath={folderBrowserSurfaceProps.folderBrowseParentPath}

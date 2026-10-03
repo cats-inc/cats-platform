@@ -30,7 +30,6 @@ export interface WorkspaceAppRoutesProps {
   ) => ReactNode;
   renderNewChatDraft: (options: {
     onOpenAddCat: () => void;
-    onDraftDefaultRecipientChange: (catId: string | null) => void;
     allowAddCat: boolean;
   }) => ReactNode;
   renderAddCatPanel: (options: {
@@ -39,7 +38,6 @@ export interface WorkspaceAppRoutesProps {
   }) => ReactNode;
   onToggleAddCat: () => void;
   onOpenDraftAddCat: () => void;
-  onChangeDraftDefaultRecipient: (catId: string | null) => void;
 }
 
 export function WorkspaceAppRoutes({
@@ -59,7 +57,6 @@ export function WorkspaceAppRoutes({
   renderAddCatPanel,
   onToggleAddCat,
   onOpenDraftAddCat,
-  onChangeDraftDefaultRecipient,
 }: WorkspaceAppRoutesProps) {
   const chatElement = selectedChannel
     ? renderConversationView(selectedChannel, { onOpenAddCat: onToggleAddCat })
@@ -90,7 +87,6 @@ export function WorkspaceAppRoutes({
           path="new"
           element={renderNewChatDraft({
             onOpenAddCat: onOpenDraftAddCat,
-            onDraftDefaultRecipientChange: onChangeDraftDefaultRecipient,
             allowAddCat: true,
           })}
         />
