@@ -4,7 +4,6 @@ import test from 'node:test';
 import {
   buildChannelPath as buildCodeChannelPath,
   buildNewGroupChatPath as buildCodeNewGroupChatPath,
-  buildMyCatPath as buildCodeMyCatPath,
   buildNewChatPath as buildCodeNewChatPath,
   buildNewParallelChatPath as buildCodeNewParallelChatPath,
   readNewChatPreset as readCodeNewChatPreset,
@@ -14,7 +13,6 @@ import { resolveWorkspaceVisibleChatPath } from '../src/products/shared/channelP
 import {
   buildChannelPath as buildWorkChannelPath,
   buildNewGroupChatPath as buildWorkNewGroupChatPath,
-  buildMyCatPath as buildWorkMyCatPath,
   buildNewChatPath as buildWorkNewChatPath,
   buildNewParallelChatPath as buildWorkNewParallelChatPath,
   readNewChatPreset as readWorkNewChatPreset,
@@ -37,8 +35,6 @@ test('workspace channel paths keep product prefixes while sharing visible-chat s
   assert.equal(buildCodeNewGroupChatPath(), '/code/new?preset=group');
   assert.equal(buildWorkNewParallelChatPath(), '/work/new?preset=parallel');
   assert.equal(buildCodeNewParallelChatPath(), '/code/new?preset=parallel');
-  assert.equal(buildWorkMyCatPath('companion-cat'), '/work/dm/companion-cat');
-  assert.equal(buildCodeMyCatPath('companion-cat'), '/code/dm/companion-cat');
   assert.equal(buildWorkChannelPath('boss-1'), '/work/chats/boss-1');
   assert.equal(buildCodeChannelPath('boss-1'), '/code/chats/boss-1');
   assert.equal(readWorkNewChatPreset('?preset=group'), 'group');

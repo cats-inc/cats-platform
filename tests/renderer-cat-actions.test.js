@@ -11,27 +11,21 @@ function resolveSharedImplementationSource(productSource, sharedSource, sharedPa
   return sharedPattern.test(productSource) ? sharedSource : productSource;
 }
 
-for (const product of ['chat', 'work', 'code']) {
-  test(`${product} app navigation actions confirm before archiving cats from My Cats`, async () => {
-    const source = await readFile(
-      path.join(
-        process.cwd(),
-        'src',
-        'products',
-        product,
-        'renderer',
-        'hooks',
-        'useAppNavigationActions.ts',
-      ),
-      'utf8',
-    );
+// Chat, Work and Code share one app shell (createWorkspaceProductApp), so the
+// My Cats archive action and its confirmation live in WorkspaceProductApp.
+test('workspace app confirms before archiving cats from My Cats', async () => {
+  const source = await readText(
+    path.join('src', 'products', 'shared', 'renderer', 'WorkspaceProductApp.tsx'),
+  );
 
-    assert.match(source, /const onArchiveCat = useCallback\(async \(catId: string\): Promise<void> => \{/u);
-    assert.match(source, /title: t\(messageKeys\.sharedSettingsCatsArchiveConfirmTitle\)/u);
-    assert.match(source, /confirmLabel: t\(messageKeys\.sharedSettingsCatsArchiveLabel\)/u);
-    assert.match(source, /if \(!confirmed\) return;/u);
-    assert.match(source, /updateCatProfile\(catId, \{ archive: true \}\)/u);
-  });
+  assert.match(source, /const onArchiveCat = useCallback\(\s*async \(catId: string\): Promise<void> => \{/u);
+  assert.match(source, /title: t\(messageKeys\.sharedSettingsCatsArchiveConfirmTitle\)/u);
+  assert.match(source, /confirmLabel: t\(messageKeys\.sharedSettingsCatsArchiveLabel\)/u);
+  assert.match(source, /if \(!confirmed\) \{\s*return;\s*\}/u);
+  assert.match(source, /updateCatProfile\(catId, \{ archive: true \}\)/u);
+});
+
+for (const product of ['chat', 'work', 'code']) {
 
   test(`${product} settings cats registry confirms before archiving cats`, async () => {
     const productSource = await readText(

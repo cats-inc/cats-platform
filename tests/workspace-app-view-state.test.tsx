@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type { AppShellPayload } from '../src/products/shared/api/workspaceContracts.ts';
-import { deriveAppRouteState as deriveChatAppRouteState } from '../src/products/chat/renderer/appViewState.ts';
-import { deriveAppRouteState as deriveCodeAppRouteState } from '../src/products/code/renderer/appViewState.ts';
-import { deriveAppViewState as deriveWorkAppViewState } from '../src/products/work/renderer/appViewState.ts';
+// Chat, Code and Work all derive route and view state through the shared
+// workspace app (createWorkspaceProductApp).
+import {
+  deriveAppRouteState,
+  deriveAppViewState,
+} from '../src/products/shared/renderer/workspaceAppViewState.ts';
 import { normalizeSelectedChannelView } from '../src/products/chat/shared/channelEntry.ts';
 
 function createPayload(): AppShellPayload {
@@ -236,7 +239,7 @@ function createPayload(): AppShellPayload {
 test('Code app route state keeps shared direct-lane selection semantics', () => {
   const payload = createPayload();
 
-  const routeState = deriveCodeAppRouteState({
+  const routeState = deriveAppRouteState({
     state: { status: 'ready', payload },
     routeChannelId: 'direct-lane-1',
     draftDefaultRecipientCatId: 'companion-cat',
@@ -252,7 +255,7 @@ test('Code app route state keeps shared direct-lane selection semantics', () => 
 test('Chat app route state reuses the shared direct-lane selection semantics', () => {
   const payload = createPayload();
 
-  const routeState = deriveChatAppRouteState({
+  const routeState = deriveAppRouteState({
     state: { status: 'ready', payload },
     routeChannelId: 'direct-lane-1',
     draftDefaultRecipientCatId: 'companion-cat',
@@ -269,7 +272,7 @@ test('Work app view state keeps shared settings and direct-lane derivation seman
   const payload = createPayload();
   const selectedDirectLane = normalizeSelectedChannelView(payload.chat.selectedChannel);
 
-  const viewState = deriveWorkAppViewState({
+  const viewState = deriveAppViewState({
     pathname: '/settings/cats',
     payload,
     draftDefaultRecipientCatId: null,
@@ -288,12 +291,13 @@ test('Work app view state keeps shared settings and direct-lane derivation seman
   assert.deepEqual(Array.from(viewState.assignedCatIds), ['companion-cat']);
 });
 
-test('Work app view state keeps the direct-lane boot surface only until the lane hydrates', () => {
+// Direct messages are Chat-owned (ADR-129).
+test('Chat app view state keeps the direct-lane boot surface only until the lane hydrates', () => {
   const payload = createPayload();
   const routeDirectLaneSummary = payload.chat.channels[0] ?? null;
 
-  const bootingViewState = deriveWorkAppViewState({
-    pathname: '/work/dm/companion-cat',
+  const bootingViewState = deriveAppViewState({
+    pathname: '/chat/dm/companion-cat',
     payload,
     draftDefaultRecipientCatId: 'companion-cat',
     selectedChannel: null,
@@ -304,8 +308,8 @@ test('Work app view state keeps the direct-lane boot surface only until the lane
     showingNewChatDraft: false,
     draftCatIds: [],
   });
-  const hydratedViewState = deriveWorkAppViewState({
-    pathname: '/work/dm/companion-cat',
+  const hydratedViewState = deriveAppViewState({
+    pathname: '/chat/dm/companion-cat',
     payload,
     draftDefaultRecipientCatId: 'companion-cat',
     selectedChannel: null,
@@ -324,7 +328,7 @@ test('Work app view state keeps the direct-lane boot surface only until the lane
 test('Work app view state only opens Add Cat for existing rooms or generic drafts', () => {
   const payload = createPayload();
 
-  const existingRoomViewState = deriveWorkAppViewState({
+  const existingRoomViewState = deriveAppViewState({
     pathname: '/work/chats/direct-lane-1',
     payload,
     draftDefaultRecipientCatId: null,
@@ -336,7 +340,7 @@ test('Work app view state only opens Add Cat for existing rooms or generic draft
     showingNewChatDraft: false,
     draftCatIds: [],
   });
-  const genericDraftViewState = deriveWorkAppViewState({
+  const genericDraftViewState = deriveAppViewState({
     pathname: '/work/new',
     payload,
     draftDefaultRecipientCatId: null,
@@ -348,7 +352,7 @@ test('Work app view state only opens Add Cat for existing rooms or generic draft
     showingNewChatDraft: true,
     draftCatIds: [],
   });
-  const directDraftViewState = deriveWorkAppViewState({
+  const directDraftViewState = deriveAppViewState({
     pathname: '/work/new/companion-cat',
     payload,
     draftDefaultRecipientCatId: 'companion-cat',

@@ -7,27 +7,14 @@ import {
   statusDotClassName,
   statusDotLabel,
 } from '../src/products/shared/renderer/myCatNavigation.ts';
-import { resolveMyCatNavigationTarget as resolveCodeMyCatNavigationTarget } from '../src/products/code/renderer/myCatNavigation.ts';
-import { resolveMyCatNavigationTarget as resolveWorkMyCatNavigationTarget } from '../src/products/work/renderer/myCatNavigation.ts';
 import { messageKeys } from '../src/shared/i18n/messageKeys.ts';
 
-test('buildMyCatPathForPrefix trims and encodes cat ids without leaking the chat prefix', () => {
+test('buildMyCatPathForPrefix trims and encodes cat ids under the given prefix', () => {
   assert.equal(
-    buildMyCatPathForPrefix('/work', '  companion/cat  '),
-    '/work/dm/companion%2Fcat',
+    buildMyCatPathForPrefix('/chat', '  companion/cat  '),
+    '/chat/dm/companion%2Fcat',
   );
-  assert.equal(buildMyCatPathForPrefix('/code', '   '), '/code/dm');
-});
-
-test('workspace My Cats navigation targets stay product-local for work and code', () => {
-  assert.deepEqual(resolveWorkMyCatNavigationTarget([], 'companion-cat'), {
-    kind: 'direct_message',
-    path: '/work/dm/companion-cat',
-  });
-  assert.deepEqual(resolveCodeMyCatNavigationTarget([], 'companion-cat'), {
-    kind: 'direct_message',
-    path: '/code/dm/companion-cat',
-  });
+  assert.equal(buildMyCatPathForPrefix('/chat', '   '), '/chat/dm');
 });
 
 test('My Cats status dots map runtime lease states onto stable class and label contracts', () => {

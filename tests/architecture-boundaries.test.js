@@ -1168,10 +1168,6 @@ test('renderer app consumes a dedicated app-shell routing hook instead of defini
     new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
-  const chatHookSource = await readFile(
-    new URL('../src/products/chat/renderer/hooks/useAppShellRouting.ts', import.meta.url),
-    'utf8',
-  );
   const sharedHookSource = await readFile(
     new URL('../src/products/shared/renderer/hooks/useWorkspaceAppShellRouting.ts', import.meta.url),
     'utf8',
@@ -1180,7 +1176,6 @@ test('renderer app consumes a dedicated app-shell routing hook instead of defini
   assert.match(appSource, /useWorkspaceAppShellRouting/u);
   assert.doesNotMatch(appSource, /void fetchAppShell\(controller\.signal\)/u);
   assert.doesNotMatch(appSource, /updateSelectedChannel\(routeChannelId,\s*controller\.signal\)/u);
-  assert.match(chatHookSource, /useWorkspaceAppShellRouting/u);
   assert.match(sharedHookSource, /fetchAppShell/u);
   assert.match(sharedHookSource, /selectedChannelPersistence\.select/u);
 });
@@ -1483,7 +1478,7 @@ test('renderer app consumes dedicated derived-state helpers instead of defining 
     'utf8',
   );
   const viewStateSource = await readFile(
-    new URL('../src/products/chat/renderer/appViewState.ts', import.meta.url),
+    new URL('../src/products/shared/renderer/workspaceAppViewState.ts', import.meta.url),
     'utf8',
   );
 
@@ -1502,18 +1497,10 @@ test('renderer app consumes dedicated navigation actions instead of defining rou
     new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
-  const hookSource = await readFile(
-    new URL('../src/products/chat/renderer/hooks/useAppNavigationActions.ts', import.meta.url),
-    'utf8',
-  );
-  const sharedHookSource = await readFile(
+  const hookImplementationSource = await readFile(
     new URL('../src/products/shared/renderer/hooks/useWorkspaceAppNavigationActions.ts', import.meta.url),
     'utf8',
   );
-  const hookImplementationSource =
-    /shared\/renderer\/hooks\/useWorkspaceAppNavigationActions\.js/u.test(hookSource)
-      ? sharedHookSource
-      : hookSource;
 
   assert.match(appSource, /useWorkspaceAppNavigationActions/u);
   assert.doesNotMatch(appSource, /async function onDeleteChannel\(/u);
@@ -1521,7 +1508,7 @@ test('renderer app consumes dedicated navigation actions instead of defining rou
   assert.doesNotMatch(appSource, /async function onStartNewChat\(/u);
   assert.doesNotMatch(appSource, /function onOpenChatsOverview\(/u);
   assert.doesNotMatch(appSource, /function onSelect\(/u);
-  assert.match(hookSource, /export function useAppNavigationActions/u);
+  assert.match(hookImplementationSource, /export function useWorkspaceAppNavigationActions/u);
   assert.match(hookImplementationSource, /deleteChatChannel/u);
   assert.match(hookImplementationSource, /deleteGlobalCat/u);
   assert.match(hookImplementationSource, /resolveMyCatNavigationTarget(?:ForPrefix)?/u);
