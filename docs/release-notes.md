@@ -2,6 +2,46 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-04 — Desktop 0.7.10 standard preview
+
+Desktop **0.7.10** is the owner-requested standard-profile preview with the
+current provider catalogs from Runtime **0.4.1**. This is a compatible patch:
+public APIs, configuration contracts and persisted formats are unchanged, and
+no data migration is required.
+
+- **Provider model choices.** Antigravity now offers Claude Opus 5.5 and Sonnet
+  5.5, each with low, medium and high effort, replacing the withdrawn Claude
+  4.6 Thinking families. The bundled Runtime also includes the intervening
+  Junie, Copilot, Auggie, Kiro and Pi catalog refreshes. Cursor's signed-in
+  follow-up confirms its six curated families.
+- **Catalog maintenance.** Runtime's operator probe produces a compact handoff
+  with actionable scopes and retained evidence. Permission failures remain
+  operator actions, and degraded evidence cannot falsely confirm catalog rows.
+- **Runtime source.** Pin `f64f347d2820a08fc24b4e82448c69542fc88771` (package version 0.4.1)
+  on all three operating systems and in the complete source archive. The
+  Platform source is the immutable merge commit selected for the dispatch and
+  recorded by its release descriptor and source manifest.
+- **Apps.** Reuse Usage 0.5.1 from
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.1/usage-0.5.1.catsapp`,
+  SHA-256 `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
+  Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
+  compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
+- **Signing and updates.** Dispatch `desktop-release.yml` with `tag=v0.7.10`,
+  the full Runtime SHA above and `unsigned=false`; the workflow creates the
+  preview tag. Expected trust is macOS signed + notarized, Windows unsigned
+  (no certificate), Linux n/a. Standard-profile 0.7.9 installs keep their update
+  path: macOS uses the universal ZIP and the same Developer ID team, Windows
+  stays unsigned to unsigned, and Linux uses the `.deb` path. No installed
+  upgrade is exercised before dispatch.
+- **Validation.** Runtime's focused catalog, probe, Antigravity, Playground and
+  HTTP tests passed, with independent review. Version consistency is checked
+  locally; required PR CI gates both merges. The release workflow must validate
+  all three packaged source receipts, offline App activation, isolated sidecar
+  startup, complete source archive and update metadata before publication.
+  Publication results belong to the
+  [`v0.7.10` GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.10)
+  and its workflow run; downloaded public source assets are verified afterward.
+
 ## 2026-10-03 — Desktop 0.7.9 standard preview
 
 Desktop **0.7.9** is the owner-requested standard-profile preview. On macOS it is
