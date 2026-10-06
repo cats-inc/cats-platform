@@ -654,6 +654,10 @@
   margin-top: 12px;
 }
 
+.audiencePopoverActionHint {
+  margin: 6px 0 0;
+}
+
 .audiencePopoverSettingsLink {
   margin-top: 12px;
   padding: 0;

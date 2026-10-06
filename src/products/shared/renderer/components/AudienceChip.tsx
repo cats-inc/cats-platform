@@ -22,6 +22,7 @@ export interface AudienceTargetEditor {
   /** One conversation-level action shown under the picker, e.g. start fresh. */
   action?: {
     label: string;
+    hint?: string;
     disabled?: boolean;
     onSelect: () => void;
   };
@@ -323,6 +324,9 @@ export function AudienceChip({
             >
               {editingEditor.action.label}
             </button>
+          ) : null}
+          {editingEditor.action?.hint ? (
+            <p className="operatorEmptyState audiencePopoverActionHint">{editingEditor.action.hint}</p>
           ) : null}
           {editingEditor.onOpenSettings ? (
             <button

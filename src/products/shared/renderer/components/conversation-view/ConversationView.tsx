@@ -936,6 +936,7 @@ export function ConversationView({
                 label: startFreshBusy
                   ? t(messageKeys.chatSidePanelStartingFreshBusy)
                   : t(messageKeys.chatSidePanelStartFresh),
+                hint: t(messageKeys.chatSidePanelStartFreshHint),
                 disabled: startFreshBusy,
                 onSelect: onStartFresh,
               }

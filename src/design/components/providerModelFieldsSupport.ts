@@ -313,6 +313,26 @@ export function buildSelectionForEntry(
 
 export const CUSTOM_LEGACY_MODEL_VALUE = '__custom_legacy_model__';
 
+export function resolveProviderSupportBadge(
+  supportTier: ProviderAdvancedModelCatalog['support']['tier'] | null | undefined,
+): {
+  labelKey: MessageKey;
+  tone: 'advanced' | 'readOnly';
+} | null {
+  if (supportTier === 'full') {
+    return {
+      labelKey: messageKeys.sharedProviderModelSupportAdvanced,
+      tone: 'advanced',
+    };
+  }
+  if (supportTier === 'read_only') {
+    return {
+      labelKey: messageKeys.sharedProviderModelSupportReadOnly,
+      tone: 'readOnly',
+    };
+  }
+  return null;
+}
 
 export function resolveCatalogEntryStatusSuffix(
   status: string | null | undefined,
@@ -802,6 +822,10 @@ export function resolveProviderModelFieldsViewState(input: {
   controlOptions: ProviderAdvancedCatalogControl[];
   unsupportedSelectionWarning: string | null;
   controlValues: Record<string, ProviderAdvancedControlValue>;
+  supportBadge: {
+    labelKey: MessageKey;
+    tone: 'advanced' | 'readOnly';
+  } | null;
   primaryCatalogWarning: string | null;
   providerPlaceholder: string;
   modelPlaceholder: string;
@@ -868,6 +892,7 @@ export function resolveProviderModelFieldsViewState(input: {
       })
     : null;
   const controlValues = { ...controlDefaults, ...modelSelection?.controls };
+  const supportBadge = resolveProviderSupportBadge(effectiveAdvancedCatalog.support.tier);
   const primaryCatalogWarning = effectiveAdvancedCatalog.warnings[0]
     ?? effectiveCatalog.warnings[0]
     ?? null;
@@ -911,6 +936,7 @@ export function resolveProviderModelFieldsViewState(input: {
     controlOptions,
     unsupportedSelectionWarning,
     controlValues,
+    supportBadge,
     primaryCatalogWarning,
     providerPlaceholder,
     modelPlaceholder,

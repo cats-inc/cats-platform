@@ -55,6 +55,7 @@ export {
   resolveProviderRegistryHint,
   resolveProviderRegistryPlaceholder,
   resolveProviderRegistrySetupHref,
+  resolveProviderSupportBadge,
   resolveSelectedCatalogEntryId,
   resolveUnsupportedPersistentControlWarning,
   sanitizePersistentTargetSelection,
@@ -159,6 +160,7 @@ export function ProviderModelFields({
     controlOptions,
     unsupportedSelectionWarning,
     controlValues,
+    supportBadge,
     providerPlaceholder,
     modelPlaceholder,
     allowLegacyManualModelEntry,
@@ -275,6 +277,11 @@ export function ProviderModelFields({
           {catalogLoading ? (
             <ProviderPickerLoading label={t(messageKeys.sharedProviderModelFieldLoadingModels)} />
           ) : null}
+          {supportBadge ? (
+            <span className={`providerSupportBadge providerSupportBadge${supportBadge.tone}`}>
+              {t(supportBadge.labelKey)}
+            </span>
+          ) : null}
         </div>
         <select
           className="textInput"
@@ -320,12 +327,13 @@ export function ProviderModelFields({
             onChange={(event) => onLegacyModelChange(event.target.value)}
           />
         </label>
-      ) : staleEntryId || (presetOptions.length === 0 && !stalePresetId) ? null : (
+      ) : staleEntryId ? null : (
         <label className="fieldLabel">
           <span>{t(messageKeys.sharedProviderModelFieldModeLabel)}</span>
           <select
             className="textInput"
             value={stalePresetId ? UNMAPPABLE_SELECTION_VALUE : selectedPresetId}
+            disabled={presetOptions.length === 0 && !stalePresetId}
             onChange={(event) => onPresetChange(event.target.value)}
           >
             {stalePresetId ? (
@@ -334,7 +342,9 @@ export function ProviderModelFields({
               </option>
             ) : null}
             <option value="">
-              {t(messageKeys.sharedProviderModelFieldModeStandardLabel)}
+              {presetOptions.length > 0
+                ? t(messageKeys.sharedProviderModelFieldModeStandardLabel)
+                : t(messageKeys.sharedProviderModelFieldModeStandardOnlyLabel)}
             </option>
             {presetOptions.map((preset) => (
               <option

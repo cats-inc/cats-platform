@@ -44,12 +44,16 @@ export function useProviderCatalogState(input: {
     const models = hasSelectedProvider
       ? peekProviderModelCatalogFromClientCache({ provider, instance }) : null;
     const advanced = hasSelectedProvider && peekProviderAdvancedCatalogFromClientCache({ provider, instance });
+    const complete = Boolean(models && advanced && coherent(models, advanced));
     return {
       key,
       models: models ?? createEmptyProviderModelCatalog(provider, instance),
       resolved: models !== null,
-      advanced: models && advanced && coherent(models, advanced) ? advanced : createEmptyProviderAdvancedModelCatalog(provider, instance),
-      loading: hasSelectedProvider && Boolean(provider),
+      // A coherent observed snapshot is shown as is; only its absence or a
+      // recovering read shows the spinner.
+      complete,
+      advanced: complete && advanced ? advanced : createEmptyProviderAdvancedModelCatalog(provider, instance),
+      loading: hasSelectedProvider && Boolean(provider) && !complete,
       configurationRequired: false,
     };
   }
@@ -57,7 +61,9 @@ export function useProviderCatalogState(input: {
 
   useEffect(() => {
     let cancelled = false;
-    const current = state.key === key ? { ...state, loading: !state.configurationRequired && hasSelectedProvider && Boolean(provider) } : initialState();
+    const current = state.key === key
+      ? { ...state, loading: !state.configurationRequired && hasSelectedProvider && Boolean(provider) && !state.complete }
+      : initialState();
     let modelsReady = false;
     let advancedReady = false;
     let candidateModels: ProviderModelCatalog | null = null;
@@ -76,7 +82,8 @@ export function useProviderCatalogState(input: {
       // Retry just the failed half. Successful base models remain usable while
       // advanced controls load, and a failed refresh never erases either half.
       if (modelsReady && advancedReady) { modelsReady = false; advancedReady = false; }
-      current.loading = !current.configurationRequired;
+      // Revalidating a complete snapshot happens quietly in the background.
+      current.loading = !current.configurationRequired && !current.complete;
       publish();
       const reads = await Promise.allSettled([
         modelsReady ? Promise.resolve() : input.fetchProviderModels(provider, instance).then((value) => {
@@ -97,6 +104,7 @@ export function useProviderCatalogState(input: {
         current.models = candidateModels;
         current.advanced = candidateAdvanced;
         current.resolved = true;
+        current.complete = true;
         if (modelsReady && advancedReady) current.configurationRequired = false;
       } else {
         // Keep a coherent observed snapshot across mixed reload responses. On a

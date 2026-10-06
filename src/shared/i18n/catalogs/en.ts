@@ -1873,6 +1873,8 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.greeting.onDuty': 'This cat doesn\'t sleep on the job.',
   'chat.sidePanel.startFresh': 'Start fresh',
   'chat.sidePanel.startingFreshBusy': 'Starting fresh...',
+  'chat.sidePanel.startFreshHint':
+    'Keep this chat open, but reset default continuity so the next turn starts a new branch.',
   'chat.sidePanel.runStatusTitle': 'Run Status',
   'chat.sidePanel.runStatusUnavailableTitle': 'Status unavailable',
   'chat.sidePanel.loadingTitle': 'Loading',
@@ -2342,6 +2344,8 @@ export const enCatalog: MessageCatalog = {
   'shared.composerSurface.label.work': 'Work',
   'shared.composerSurface.label.code': 'Code',
   'shared.composerSurface.clearAria': 'Clear {surfaceLabel} surface',
+  'shared.providerModel.support.advanced': 'Advanced',
+  'shared.providerModel.support.readOnly': 'Read-only',
   'shared.delete.parallelChatGroup.title': 'Delete all conversations',
   'shared.delete.parallelChatGroup.message':
     'Delete all conversations in "{groupTitle}"? This removes each conversation and cleans up linked runtime sessions. This cannot be undone.',
@@ -2964,6 +2968,7 @@ export const enCatalog: MessageCatalog = {
   'shared.providerModel.field.legacyModelIdPlaceholder': 'e.g. claude-sonnet-4-6',
   'shared.providerModel.field.modeLabel': 'Mode',
   'shared.providerModel.field.modeStandardLabel': 'Standard',
+  'shared.providerModel.field.modeStandardOnlyLabel': 'Standard only',
   'shared.providerModel.field.presetPreviewSuffix': ' (preview)',
   'shared.providerModel.field.presetUnavailableSuffix': ' (unavailable)',
   'shared.providerModel.field.openRuntimeSetupLabel': 'Open Cats Runtime setup',

@@ -29,6 +29,10 @@
   flex-direction: row;
 }
 
+.fieldLabelInline .providerSupportBadge {
+  margin-left: auto;
+}
+
 /* Unobtrusive "i" beside the Model label; its content is the tooltip. */
 .catalogBasisInfo {
   display: inline-flex;
@@ -90,6 +94,31 @@
 
 @media (prefers-reduced-motion: reduce) {
   .providerPickerSpinner { animation-duration: 2s; }
+}
+
+.providerSupportBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  background: var(--panel);
+}
+
+.providerSupportBadgeadvanced {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border) 72%);
+}
+
+.providerSupportBadgereadOnly {
+  color: var(--muted-text);
+  background: var(--muted-bg);
+  border-color: color-mix(in srgb, var(--muted-text) 20%, var(--border) 80%);
 }
 
 .textInput {

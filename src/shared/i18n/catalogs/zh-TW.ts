@@ -1828,6 +1828,8 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.newChatDraft.greeting.onDuty': '保持在線，準備接手。',
   'chat.sidePanel.startFresh': '重新開始',
   'chat.sidePanel.startingFreshBusy': '重新開始中…',
+  'chat.sidePanel.startFreshHint':
+    '保留此聊天室開啟，但重置單人連續對話，讓下一回合從新分支開始。',
   'chat.sidePanel.runStatusTitle': '執行狀態',
   'chat.sidePanel.runStatusUnavailableTitle': '狀態無法取得',
   'chat.sidePanel.loadingTitle': '載入中',
@@ -2286,6 +2288,8 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.composerSurface.label.work': 'Work',
   'shared.composerSurface.label.code': 'Code',
   'shared.composerSurface.clearAria': '清除 {surfaceLabel} 介面標籤',
+  'shared.providerModel.support.advanced': '進階',
+  'shared.providerModel.support.readOnly': '唯讀',
   'shared.delete.parallelChatGroup.title': '刪除所有對話',
   'shared.delete.parallelChatGroup.message':
     '要刪除「{groupTitle}」中的所有對話嗎？這會移除每個對話並清理連結的執行階段工作階段。此動作無法復原。',
@@ -2895,6 +2899,7 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.providerModel.field.legacyModelIdPlaceholder': '例如 claude-sonnet-4-6',
   'shared.providerModel.field.modeLabel': '模式',
   'shared.providerModel.field.modeStandardLabel': '標準',
+  'shared.providerModel.field.modeStandardOnlyLabel': '僅標準',
   'shared.providerModel.field.presetPreviewSuffix': '（預覽）',
   'shared.providerModel.field.presetUnavailableSuffix': '（不可用）',
   'shared.providerModel.field.openRuntimeSetupLabel': '開啟 Cats 執行階段設定',
