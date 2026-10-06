@@ -250,6 +250,8 @@ export async function prepareComposerChannelDispatch<
   originalDraftFiles: File[];
   originalChannelFiles: File[];
   buildChannelPath: (channelId: string) => string;
+  /** Captures the created identity before any follow-up model-setting await. */
+  onChannelPrepared?: (prepared: PrepareComposerChannelDispatchResult<TPayload>) => void;
   signal?: AbortSignal;
 }): Promise<PrepareComposerChannelDispatchResult<TPayload>> {
   const {
@@ -324,6 +326,9 @@ export async function prepareComposerChannelDispatch<
       if (!channelId) {
         throw new Error(t(messageKeys.chatComposerErrorNoChatForSending));
       }
+      const createdPayload = insertCreatedChannelIntoPayload(initialPayload, createdChannel);
+      options.onChannelPrepared?.({ payload: createdPayload, rollbackPayload: createdPayload,
+        channelId, rollbackPath, restoreFiles });
       payload = insertCreatedChannelIntoPayload(initialPayload, await settleCreatedChannel(createdChannel));
       rollbackPayload = payload;
       setState({ status: 'ready', payload });
@@ -365,6 +370,9 @@ export async function prepareComposerChannelDispatch<
       throw new Error(t(messageKeys.chatComposerErrorNoChatForSending));
     }
     rollbackPath = buildChannelPath(channelId);
+    const createdPayload = insertCreatedChannelIntoPayload(initialPayload, createdChannel);
+    options.onChannelPrepared?.({ payload: createdPayload, rollbackPayload: createdPayload,
+      channelId, rollbackPath, restoreFiles });
     payload = insertCreatedChannelIntoPayload(initialPayload, await settleCreatedChannel(createdChannel));
     rollbackPayload = payload;
     setState({ status: 'ready', payload });
@@ -450,6 +458,7 @@ export async function prepareWorkspaceSendContext<
     signal?: AbortSignal,
   ) => Promise<Array<{ relativePath: string }>>;
   signal?: AbortSignal;
+  onChannelPrepared?: (prepared: PrepareComposerChannelDispatchResult<TPayload>) => void;
 }): Promise<PrepareWorkspaceSendContextResult<TPayload>> {
   const {
     initialPayload,
@@ -518,8 +527,10 @@ export async function prepareWorkspaceSendContext<
     originalChannelFiles,
     buildChannelPath,
     signal,
+    onChannelPrepared: options.onChannelPrepared,
   });
   payload = preparedChannel.payload;
+  options.onChannelPrepared?.(preparedChannel);
 
   const defaultDispatchTarget = buildDefaultChatDispatchTarget({
     wasDraftingNewChat,

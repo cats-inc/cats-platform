@@ -8,7 +8,7 @@ import {
 import {
   resolveCrossSurfaceDraftDispatchState,
   stageCrossSurfaceDraftNavigationHandoff,
-} from '../src/products/chat/renderer/hooks/useComposerSubmit.ts';
+} from '../src/products/shared/renderer/composerCrossSurfaceDispatch.ts';
 
 function createSnapshotPayload(selectedChannelId: string | null) {
   return {
@@ -21,6 +21,7 @@ function createSnapshotPayload(selectedChannelId: string | null) {
 test('resolveCrossSurfaceDraftDispatchState keeps non-draft submits on chat and flags cross-surface drafts only when needed', () => {
   assert.deepEqual(
     resolveCrossSurfaceDraftDispatchState({
+      sourceSurface: 'chat',
       showingNewChatDraft: false,
       draftSurface: 'code',
     }),
@@ -32,6 +33,7 @@ test('resolveCrossSurfaceDraftDispatchState keeps non-draft submits on chat and 
 
   assert.deepEqual(
     resolveCrossSurfaceDraftDispatchState({
+      sourceSurface: 'chat',
       showingNewChatDraft: true,
       draftSurface: 'chat',
     }),
@@ -43,6 +45,7 @@ test('resolveCrossSurfaceDraftDispatchState keeps non-draft submits on chat and 
 
   assert.deepEqual(
     resolveCrossSurfaceDraftDispatchState({
+      sourceSurface: 'chat',
       showingNewChatDraft: true,
       draftSurface: 'code',
     }),

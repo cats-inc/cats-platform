@@ -233,7 +233,7 @@ test('actual first-send failure restores text and files to the created conversat
     const target = { provider: 'codex', model: 'model-1', instance: 'cli/native', modelSelection: null };
     const submit = useWorkspaceComposerSubmit({
       state: navigation.state, setState: navigation.setState, navigate: (to) => { if (typeof to === 'string') setRoute(to); },
-      chatPrefix: '/chat', originSurface: 'chat', currentPath: route,
+      chatPrefix: '/chat', surface: 'chat', originSurface: 'chat', currentPath: route,
       composerDraft: composer.composerDraft, setComposerDraft: composer.setComposerDraft,
       restoreConversationComposer: (channelId, text, files) => writeConversationComposer('navigation-test', `channel:${channelId}`, { text, files }, composer.generation),
       showingNewChatDraft: !id, showingMyCatDirectLane: false, draftDefaultRecipientCatId: null,

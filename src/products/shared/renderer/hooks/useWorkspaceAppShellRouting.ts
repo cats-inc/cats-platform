@@ -25,6 +25,7 @@ import {
 import type { SelectedChannelView } from '../../channelEntry.js';
 import { selectedChannelPersistence } from '../selectedChannelPersistence.js';
 import type { ChatLifecycleState } from '../../lifecycle.js';
+import { resolveConversationOriginRoute } from '../crossSurfaceConversationNavigation.js';
 import {
   consumeCrossSurfaceNavigationSnapshot,
   type CrossSurfaceNavigationRouteTarget,
@@ -75,6 +76,7 @@ export interface WorkspaceAppShellRoutingOptions<
   showingMyCatDirectLane: boolean;
   routeDirectLaneSummary: { id: string } | null;
   readySelectedChannel: SelectedChannelView | null;
+  onConversationOriginRedirect?: (target: CrossSurfaceNavigationRouteTarget) => void;
   unknownRendererErrorMessage: string;
   fetchAppShell?: (signal: AbortSignal) => Promise<TPayload>;
   isRouteSelectionBlocked?: (
@@ -271,6 +273,14 @@ export function useWorkspaceAppShellRouting<
     resolveMissingDraftDefaultRecipientPath,
   } = options;
   const readyPayload = state.status === 'ready' ? state.payload : null;
+  const routeOriginRedirect = resolveConversationOriginRoute({
+    sourceSurface: surface,
+    currentPath,
+    channel: readyPayload?.chat.channels.find((channel) => channel.id === routeChannelId),
+  });
+  const routeOriginRedirectPath = routeOriginRedirect?.path ?? null;
+  const originRedirectRef = useRef(options.onConversationOriginRedirect);
+  originRedirectRef.current = options.onConversationOriginRedirect;
   const routeSelectionVisibleChatPath = readyPayload
     ? resolveWorkspaceVisibleChatPath(
         chatPrefix,
@@ -418,6 +428,12 @@ export function useWorkspaceAppShellRouting<
       return;
     }
 
+    if (routeOriginRedirectPath) {
+      if (routeOriginRedirect) originRedirectRef.current?.(routeOriginRedirect);
+      navigate(routeOriginRedirectPath, { replace: true });
+      return;
+    }
+
     if (!routeChannelExists) {
       navigate(routeSelectionVisibleChatPath, { replace: true });
       return;
@@ -432,6 +448,7 @@ export function useWorkspaceAppShellRouting<
     navigate,
     routeChannelExists,
     routeChannelId,
+    routeOriginRedirectPath,
     routeSelectionVisibleChatPath,
     readyPayload?.scopeId,
     state.status,
