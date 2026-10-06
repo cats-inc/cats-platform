@@ -2,6 +2,66 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-06 — Desktop 0.7.12 standard preview
+
+Desktop **0.7.12** is the owner-requested standard-profile preview that moves
+model selection into the composer and cleans up the provider/model picker. This
+is a compatible patch: existing public APIs, configuration contracts and
+persisted formats remain compatible, and no data migration is required.
+
+- **Composer model popover.** Clicking the composer's audience chip opens a
+  popover beside it instead of the side panel. The default chat and a single cat
+  open straight into the provider/model picker. In a group, the audience list
+  shows each participant's model and drills into that participant's picker in
+  the same popover, with a back button, so only one floating layer is ever open.
+  Start fresh moves under the default chat's picker. The side panel's execution
+  section is removed, including the read-only participant summary that group
+  conversations showed. Parallel-chat lanes keep their side-panel pickers.
+- **Where a model choice is saved.** In a conversation, a pick changes that
+  conversation's own participant target, which is what a send uses. In a new
+  conversation, cat picks stay draft overrides and are applied to the created
+  conversation through the participant update API before the first message is
+  sent; the create contract is unchanged. A draft direct lane no longer changes
+  the cat's default model. A cat's default model changes only in its own
+  settings (the cat page, linked from the popover, or Settings → Cats and
+  Assistants).
+- **Picker cleanup.** The picker no longer prints long descriptive text: the
+  instance's event-capability summary, model picker notes, mode descriptions,
+  the base-mode-only and request-scope notes, and control descriptions. Problem
+  notices, the Advanced/Read-only badge, the model-list basis icon and the Mode
+  row stay.
+- **Picker loading indicator.** Reopening a picker over a complete cached
+  catalog no longer flashes the loading indicator, and background re-reads of a
+  complete catalog stay quiet. The indicator still shows during the first load
+  and while a read is recovering, as SPEC-013 requires.
+- **Runtime source.** Keep the Runtime pin from 0.7.10 and 0.7.11,
+  `f64f347d2820a08fc24b4e82448c69542fc88771` (package version 0.4.1), on all
+  three operating systems and in the complete source archive. The Platform source
+  is the immutable merge commit selected for dispatch and recorded by the release
+  descriptor and source manifest.
+- **Apps.** Reuse Usage 0.5.1 from
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.1/usage-0.5.1.catsapp`,
+  SHA-256 `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
+  Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
+  compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
+- **Signing and updates.** Dispatch `desktop-release.yml` with `tag=v0.7.12`,
+  the full Runtime SHA above and `unsigned=false`; the workflow creates the preview
+  tag. Expected trust is macOS signed + notarized, Windows unsigned (no
+  certificate), Linux n/a. Standard-profile 0.7.11 installs keep their update path:
+  macOS uses the universal ZIP and the same Developer ID team, Windows stays
+  unsigned to unsigned, and Linux uses the `.deb` path. No installed upgrade is
+  exercised before dispatch.
+- **Validation.** Renderer, server, desktop and test typechecks pass locally; the
+  mobile typecheck is left to CI. 631 focused tests pass across the picker,
+  popover, side-panel, draft, settings, setup and boundary suites, including new
+  tests for the popover, its write targets, draft pick application and the quiet
+  reopen. Version consistency is checked locally; required PR CI gates the merge.
+  The release workflow validates all three packaged source receipts, offline App
+  activation, isolated sidecar startup, complete source archive and update
+  metadata before publication. Publication results belong to the
+  [`v0.7.12` GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.12)
+  and its workflow run.
+
 ## 2026-10-06 — Desktop 0.7.11 standard preview
 
 Desktop **0.7.11** is the owner-requested standard-profile preview with the
