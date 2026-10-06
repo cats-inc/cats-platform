@@ -3029,7 +3029,6 @@ export const messageKeys = {
     'shared.providerModel.field.legacyModelIdLabel',
   sharedProviderModelFieldLegacyModelIdPlaceholder:
     'shared.providerModel.field.legacyModelIdPlaceholder',
-  sharedProviderModelFieldLegacyModelIdHint: 'shared.providerModel.field.legacyModelIdHint',
   sharedProviderModelFieldModeLabel: 'shared.providerModel.field.modeLabel',
   sharedProviderModelFieldModeStandardLabel:
     'shared.providerModel.field.modeStandardLabel',
@@ -3039,12 +3038,6 @@ export const messageKeys = {
     'shared.providerModel.field.presetPreviewSuffix',
   sharedProviderModelFieldPresetUnavailableSuffix:
     'shared.providerModel.field.presetUnavailableSuffix',
-  sharedProviderModelFieldPresetTuningDescriptionFallback:
-    'shared.providerModel.field.presetTuningDescriptionFallback',
-  sharedProviderModelFieldModeOnlyBaseHint:
-    'shared.providerModel.field.modeOnlyBaseHint',
-  sharedProviderModelFieldRequestScopedWarning:
-    'shared.providerModel.field.requestScopedWarning',
   sharedProviderModelAttentionEntryRemoved: 'shared.providerModel.attention.entryRemoved',
   sharedProviderModelAttentionControlRemoved: 'shared.providerModel.attention.controlRemoved',
   sharedProviderModelAttentionPresetRemoved: 'shared.providerModel.attention.presetRemoved',

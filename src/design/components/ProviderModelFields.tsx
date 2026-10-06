@@ -44,7 +44,6 @@ export {
   PROVIDER_LOAD_FAILED_WARNING,
   PROVIDER_REFRESH_FAILED_WARNING,
   catalogMatchesTarget,
-  countRequestScopedControls,
   filterPersistentControlValues,
   formatCatalogEntryLabel,
   hasExplicitDefaultEnumOption,
@@ -58,7 +57,6 @@ export {
   resolveProviderRegistrySetupHref,
   resolveProviderSupportBadge,
   resolveSelectedCatalogEntryId,
-  resolveSelectedInstanceEventCapabilities,
   resolveUnsupportedPersistentControlWarning,
   sanitizePersistentTargetSelection,
   shouldAllowLegacyManualModelEntry,
@@ -155,17 +153,14 @@ export function ProviderModelFields({
     entryOptions,
     instanceOptions,
     showInstanceField,
-    selectedInstanceCapabilitySummary,
     selectedCatalogEntryId,
     selectedEntryId,
     presetOptions,
     selectedPresetId,
     controlOptions,
     unsupportedSelectionWarning,
-    requestScopedControlCount,
     controlValues,
     supportBadge,
-    selectedEntryNotes,
     providerPlaceholder,
     modelPlaceholder,
     allowLegacyManualModelEntry,
@@ -275,11 +270,6 @@ export function ProviderModelFields({
           </select>
         </label>
       ) : null}
-      {selectedInstanceCapabilitySummary ? (
-        <span className="fieldHint providerCatalogHint">
-          {selectedInstanceCapabilitySummary}
-        </span>
-      ) : null}
       <label className="fieldLabel">
         <div className="fieldLabelInline">
           <span>{t(messageKeys.sharedProviderModelFieldModelLabel)}</span>
@@ -325,11 +315,6 @@ export function ProviderModelFields({
             {t(messageKeys.sharedProviderModelFieldCatalogConfigurationRequired)}
           </span>
         ) : null}
-        {selectedEntryNotes.length > 0 ? (
-          <span className="fieldHint">
-            {selectedEntryNotes[0]}
-          </span>
-        ) : null}
       </label>
       {isLegacyModelTarget ? (
         <label className="fieldLabel">
@@ -341,9 +326,6 @@ export function ProviderModelFields({
             placeholder={t(messageKeys.sharedProviderModelFieldLegacyModelIdPlaceholder)}
             onChange={(event) => onLegacyModelChange(event.target.value)}
           />
-          <span className="fieldHint">
-            {t(messageKeys.sharedProviderModelFieldLegacyModelIdHint)}
-          </span>
         </label>
       ) : staleEntryId ? null : (
         <label className="fieldLabel">
@@ -380,16 +362,6 @@ export function ProviderModelFields({
               </option>
             ))}
           </select>
-          {selectedPresetId ? (
-            <span className="fieldHint">
-              {presetOptions.find((preset) => preset.id === selectedPresetId)?.description
-                ?? t(messageKeys.sharedProviderModelFieldPresetTuningDescriptionFallback)}
-            </span>
-          ) : presetOptions.length === 0 ? (
-            <span className="fieldHint">
-              {t(messageKeys.sharedProviderModelFieldModeOnlyBaseHint)}
-            </span>
-          ) : null}
         </label>
       )}
       {staleEntryId ? null : (
@@ -406,11 +378,6 @@ export function ProviderModelFields({
           role={unmappableSelection ? 'status' : undefined}
         >
           {selectionNotice}
-        </span>
-      ) : null}
-      {requestScopedControlCount > 0 ? (
-        <span className="fieldHint providerCatalogHint">
-          {t(messageKeys.sharedProviderModelFieldRequestScopedWarning)}
         </span>
       ) : null}
     </>

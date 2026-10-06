@@ -1,8 +1,6 @@
 import {
   createProviderAdvancedCatalogFromModelCatalog,
   isProductProviderDefaultModelPlaceholder,
-  providerInstanceTarget,
-  type ProductProviderEventCapabilities,
   type ProductProviderInstanceDescriptor,
   type ProductProviderRegistryReadModel,
   type ProductProviderRegistryState,
@@ -22,7 +20,6 @@ import {
   type ProviderTargetSelection,
   type ProviderModelSelection,
 } from '../../shared/providerSelection.js';
-import { formatProviderEventCapabilitiesSummary } from '../../shared/providerEventCapabilities.js';
 import {
   buildExecutionLabel,
   resolveControlDisplayLabels,
@@ -398,15 +395,6 @@ export function listPersistentControlOptions(
     }));
 }
 
-export function countRequestScopedControls(
-  controls: ProviderAdvancedCatalogControl[],
-  entryId: string,
-): number {
-  return controls.filter((control) =>
-    control.scope === 'request'
-    && controlAppliesToEntry(control, entryId)).length;
-}
-
 export function resolveEntryControlDefaults(
   catalog: ProviderAdvancedModelCatalog,
   entryId: string,
@@ -719,13 +707,6 @@ export function shouldShowInstanceField(input: {
   return input.instanceOptions.length > 1;
 }
 
-export function resolveSelectedInstanceEventCapabilities(input: {
-  resolvedInstance: string;
-  instanceOptions: ProductProviderInstanceDescriptor[];
-}): ProductProviderEventCapabilities | null {
-  return input.instanceOptions.find((option) => providerInstanceTarget(option) === input.resolvedInstance)?.eventCapabilities ?? null;
-}
-
 export function catalogMatchesTarget(input: {
   catalogProvider: string;
   catalogInstance: string | null | undefined;
@@ -833,7 +814,6 @@ export function resolveProviderModelFieldsViewState(input: {
   resolvedInstance: string;
   instanceOptions: ProductProviderInstanceDescriptor[];
   showInstanceField: boolean;
-  selectedInstanceCapabilitySummary: string | null;
   entryOptions: ProviderAdvancedModelCatalog['entries'] | ProviderModelCatalog['models'];
   selectedCatalogEntryId: string;
   selectedEntryId: string;
@@ -841,13 +821,11 @@ export function resolveProviderModelFieldsViewState(input: {
   selectedPresetId: string;
   controlOptions: ProviderAdvancedCatalogControl[];
   unsupportedSelectionWarning: string | null;
-  requestScopedControlCount: number;
   controlValues: Record<string, ProviderAdvancedControlValue>;
   supportBadge: {
     labelKey: MessageKey;
     tone: 'advanced' | 'readOnly';
   } | null;
-  selectedEntryNotes: string[];
   primaryCatalogWarning: string | null;
   providerPlaceholder: string;
   modelPlaceholder: string;
@@ -885,13 +863,6 @@ export function resolveProviderModelFieldsViewState(input: {
     resolvedInstance,
     instanceOptions,
   });
-  const selectedInstanceCapabilities = resolveSelectedInstanceEventCapabilities({
-    resolvedInstance,
-    instanceOptions,
-  });
-  const selectedInstanceCapabilitySummary = formatProviderEventCapabilitiesSummary(
-    selectedInstanceCapabilities,
-  );
   const selectedCatalogEntryId = resolveSelectedCatalogEntryId(entryOptions, model, modelSelection);
   const selectedEntryId = isLegacyModelTarget ? CUSTOM_LEGACY_MODEL_VALUE : (
     selectedCatalogEntryId || ''
@@ -920,14 +891,8 @@ export function resolveProviderModelFieldsViewState(input: {
         modelSelection,
       })
     : null;
-  const requestScopedControlCount = !isLegacyModelTarget
-    ? countRequestScopedControls(effectiveAdvancedCatalog.entries.find(entry=>entry.id===selectedCatalogEntryId)?.controls ?? effectiveAdvancedCatalog.controls, selectedCatalogEntryId)
-    : 0;
   const controlValues = { ...controlDefaults, ...modelSelection?.controls };
   const supportBadge = resolveProviderSupportBadge(effectiveAdvancedCatalog.support.tier);
-  const selectedEntryNotes = !isLegacyModelTarget
-    ? entryOptions.find((option) => option.id === selectedCatalogEntryId)?.notes ?? []
-    : [];
   const primaryCatalogWarning = effectiveAdvancedCatalog.warnings[0]
     ?? effectiveCatalog.warnings[0]
     ?? null;
@@ -963,7 +928,6 @@ export function resolveProviderModelFieldsViewState(input: {
     resolvedInstance,
     instanceOptions,
     showInstanceField,
-    selectedInstanceCapabilitySummary,
     entryOptions,
     selectedCatalogEntryId,
     selectedEntryId,
@@ -971,10 +935,8 @@ export function resolveProviderModelFieldsViewState(input: {
     selectedPresetId,
     controlOptions,
     unsupportedSelectionWarning,
-    requestScopedControlCount,
     controlValues,
     supportBadge,
-    selectedEntryNotes,
     primaryCatalogWarning,
     providerPlaceholder,
     modelPlaceholder,

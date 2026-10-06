@@ -2969,18 +2969,11 @@ export const enCatalog: MessageCatalog = {
   'shared.providerModel.field.customLegacyModelLabel': 'Custom legacy model...',
   'shared.providerModel.field.legacyModelIdLabel': 'Legacy model ID',
   'shared.providerModel.field.legacyModelIdPlaceholder': 'e.g. claude-sonnet-4-6',
-  'shared.providerModel.field.legacyModelIdHint':
-    'Manual model id passthrough. Runtime resolves this as the legacy `model` field, not a structured entry/preset selection.',
   'shared.providerModel.field.modeLabel': 'Mode',
   'shared.providerModel.field.modeStandardLabel': 'Standard',
   'shared.providerModel.field.modeStandardOnlyLabel': 'Standard only',
   'shared.providerModel.field.presetPreviewSuffix': ' (preview)',
   'shared.providerModel.field.presetUnavailableSuffix': ' (unavailable)',
-  'shared.providerModel.field.presetTuningDescriptionFallback': 'Extra tuning for this model.',
-  'shared.providerModel.field.modeOnlyBaseHint':
-    'This provider target exposes only the base catalog entry for persisted chat/session settings.',
-  'shared.providerModel.field.requestScopedWarning':
-    'Request-only runtime overrides are hidden here because this selector persists chat/session defaults.',
   'shared.providerModel.field.openRuntimeSetupLabel': 'Open Cats Runtime setup',
   'shared.providerModel.attention.entryRemoved':
     '{model} is no longer in the current model list. Choose the model again.',

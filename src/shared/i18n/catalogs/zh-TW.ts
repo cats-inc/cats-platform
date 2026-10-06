@@ -2900,18 +2900,11 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.providerModel.field.customLegacyModelLabel': '自訂舊版模型…',
   'shared.providerModel.field.legacyModelIdLabel': '舊版模型 ID',
   'shared.providerModel.field.legacyModelIdPlaceholder': '例如 claude-sonnet-4-6',
-  'shared.providerModel.field.legacyModelIdHint':
-    '手動輸入模型 ID 會直接傳遞。執行階段會把它視為舊版 `model` 欄位，而不是結構化項目/預設選擇。',
   'shared.providerModel.field.modeLabel': '模式',
   'shared.providerModel.field.modeStandardLabel': '標準',
   'shared.providerModel.field.modeStandardOnlyLabel': '僅標準',
   'shared.providerModel.field.presetPreviewSuffix': '（預覽）',
   'shared.providerModel.field.presetUnavailableSuffix': '（不可用）',
-  'shared.providerModel.field.presetTuningDescriptionFallback': '這個模型的額外參數。',
-  'shared.providerModel.field.modeOnlyBaseHint':
-    '此供應器目標只會對持久化的聊天/會話設定曝光基礎模型。',
-  'shared.providerModel.field.requestScopedWarning':
-    '這裡隱藏了只可套用於個別請求的覆寫，因為這組選擇器會寫回聊天/會話預設。',
   'shared.providerModel.field.openRuntimeSetupLabel': '開啟 Cats 執行階段設定',
   'shared.providerModel.attention.entryRemoved':
     '「{model}」已不在目前的模型清單，請重新選擇模型。',
