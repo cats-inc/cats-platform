@@ -239,6 +239,11 @@ export async function prepareComposerChannelDispatch<
     payload: TPayload,
     createdChannel: TCreatedChannel,
   ) => TPayload;
+  /** Settles a just-created conversation, such as applying draft model picks. */
+  afterChannelCreated?: (
+    createdChannel: TCreatedChannel,
+    signal?: AbortSignal,
+  ) => Promise<TCreatedChannel>;
   setState: (state: { status: 'ready'; payload: TPayload }) => void;
   navigate: (path: string, options: { replace: boolean }) => void;
   setChannelFiles: (files: File[]) => void;
@@ -268,6 +273,7 @@ export async function prepareComposerChannelDispatch<
     t = defaultComposerDispatchTranslator,
     createChatChannel,
     insertCreatedChannelIntoPayload,
+    afterChannelCreated,
     setState,
     navigate,
     setChannelFiles,
@@ -276,6 +282,8 @@ export async function prepareComposerChannelDispatch<
     buildChannelPath,
     signal,
   } = options;
+  const settleCreatedChannel = (createdChannel: TCreatedChannel): Promise<TCreatedChannel> =>
+    afterChannelCreated ? afterChannelCreated(createdChannel, signal) : Promise.resolve(createdChannel);
 
   let payload = initialPayload;
   let rollbackPayload = initialPayload;
@@ -316,7 +324,7 @@ export async function prepareComposerChannelDispatch<
       if (!channelId) {
         throw new Error(t(messageKeys.chatComposerErrorNoChatForSending));
       }
-      payload = insertCreatedChannelIntoPayload(initialPayload, createdChannel);
+      payload = insertCreatedChannelIntoPayload(initialPayload, await settleCreatedChannel(createdChannel));
       rollbackPayload = payload;
       setState({ status: 'ready', payload });
       navigate(rollbackPath, { replace: true });
@@ -357,7 +365,7 @@ export async function prepareComposerChannelDispatch<
       throw new Error(t(messageKeys.chatComposerErrorNoChatForSending));
     }
     rollbackPath = buildChannelPath(channelId);
-    payload = insertCreatedChannelIntoPayload(initialPayload, createdChannel);
+    payload = insertCreatedChannelIntoPayload(initialPayload, await settleCreatedChannel(createdChannel));
     rollbackPayload = payload;
     setState({ status: 'ready', payload });
     navigate(rollbackPath, { replace: true });
@@ -422,6 +430,10 @@ export async function prepareWorkspaceSendContext<
     payload: TPayload,
     createdChannel: TCreatedChannel,
   ) => TPayload;
+  afterChannelCreated?: (
+    createdChannel: TCreatedChannel,
+    signal?: AbortSignal,
+  ) => Promise<TCreatedChannel>;
   setState: (state: { status: 'ready'; payload: TPayload }) => void;
   navigate: (path: string, options: { replace: boolean }) => void;
   setChannelFiles: (files: File[]) => void;
@@ -464,6 +476,7 @@ export async function prepareWorkspaceSendContext<
     channelFiles,
     createChatChannel,
     insertCreatedChannelIntoPayload,
+    afterChannelCreated,
     setState,
     navigate,
     setChannelFiles,
@@ -497,6 +510,7 @@ export async function prepareWorkspaceSendContext<
     t,
     createChatChannel,
     insertCreatedChannelIntoPayload,
+    afterChannelCreated,
     setState,
     navigate,
     setChannelFiles,

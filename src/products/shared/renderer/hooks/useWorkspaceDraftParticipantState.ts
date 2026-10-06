@@ -8,6 +8,7 @@ import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import {
   createDraftTemporaryParticipant,
   type DraftTemporaryParticipant,
+  type DraftTemporaryParticipantUpdate,
 } from '../draftChatUtils.js';
 import { resolveDraftParticipantSelection } from '../draftParticipants.js';
 
@@ -74,7 +75,7 @@ export function useWorkspaceDraftParticipantState(
 
   const onUpdateDraftTemporaryParticipant = useCallback((
     participantId: string,
-    input: { name?: string | null; roleHint?: string | null },
+    input: DraftTemporaryParticipantUpdate,
   ) => {
     setDraftTemporaryParticipants((prev) =>
       prev.map((participant) =>
@@ -85,6 +86,10 @@ export function useWorkspaceDraftParticipantState(
               ...(input.roleHint !== undefined
                 ? { roleHint: input.roleHint?.trim() || undefined }
                 : {}),
+              ...(input.provider !== undefined ? { provider: input.provider } : {}),
+              ...(input.instance !== undefined ? { instance: input.instance ?? undefined } : {}),
+              ...(input.model !== undefined ? { model: input.model ?? undefined } : {}),
+              ...(input.modelSelection !== undefined ? { modelSelection: input.modelSelection } : {}),
             }
           : participant),
     );

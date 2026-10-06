@@ -38,6 +38,16 @@ export interface DraftTemporaryParticipant {
   roleHint?: string;
 }
 
+/** Fields a draft temporary participant can change before the conversation exists. */
+export interface DraftTemporaryParticipantUpdate {
+  name?: string | null;
+  roleHint?: string | null;
+  provider?: string;
+  instance?: string | null;
+  model?: string | null;
+  modelSelection?: ProviderModelSelection | null;
+}
+
 export interface DraftParticipantPolicyDials {
   autonomy?: 'none' | 'single_step' | 'milestone_plan' | 'outcome_delegation';
   toolScope?: 'none' | 'read_only' | 'narrow_write' | 'broad_write';

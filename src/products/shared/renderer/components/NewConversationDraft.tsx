@@ -18,6 +18,7 @@ import { type NewChatPreset } from '../draftStarterSuggestionContext.js';
 import {
   type DraftParallelTarget,
   type DraftTemporaryParticipant,
+  type DraftTemporaryParticipantUpdate,
 } from '../draftChatUtils.js';
 import { createDraftCompareShadowCardId } from './draftCompareShadowCardId.js';
 import {
@@ -47,7 +48,10 @@ import {
   DraftCompareCarousel,
   type DraftCompareCarouselCard,
 } from './DraftCompareCarousel.js';
-import { resolveNewConversationDraftViewState } from './newConversationDraftSupport.js';
+import {
+  resolveNewConversationDraftViewState,
+  type DraftComposerStackParticipant,
+} from './newConversationDraftSupport.js';
 import { useNewConversationDraftPanelState } from './useNewConversationDraftPanelState.js';
 import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
 import {
@@ -65,7 +69,7 @@ import {
   buildAudienceParticipantFromExecutionTarget,
   buildAudienceParticipantFromTemporaryParticipant,
 } from '../audienceParticipantBuilder.js';
-import { AudienceChip } from './AudienceChip.js';
+import { AudienceChip, type AudienceTargetEditor } from './AudienceChip.js';
 import { PermissionModeChip } from './PermissionModeChip.js';
 import { WorkspaceModeChip } from './WorkspaceModeChip.js';
 import { useRepoProbe } from '../hooks/useRepoProbe.js';
@@ -327,7 +331,7 @@ export interface NewConversationDraftProps {
   onRemoveDraftTemporaryParticipant: (participantId: string) => void;
   onUpdateDraftTemporaryParticipant: (
     participantId: string,
-    input: { name?: string | null; roleHint?: string | null },
+    input: DraftTemporaryParticipantUpdate,
   ) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
   draftDefaultRecipientCatId: string | null;
@@ -687,6 +691,58 @@ export function NewConversationDraft({
     }
     return () => openSidePanelTo('execution');
   })();
+  // The chip edits what this new conversation will use. A cat's pick stays a
+  // draft override, applied to the conversation once it exists; the cat's
+  // own default model only changes on the cat's page.
+  const resolveDraftTargetEditor = (
+    participant: DraftComposerStackParticipant,
+  ): AudienceTargetEditor | null => {
+    if (isParallelMode) {
+      return null;
+    }
+    if (participant.key === 'implicit:execution_target') {
+      return selectedExecutionTarget && onExecutionTargetChange
+        ? { target: selectedExecutionTarget, onChange: onExecutionTargetChange }
+        : null;
+    }
+    if (participant.catId) {
+      const cat = payload.chat.cats.find((candidate) => candidate.id === participant.catId);
+      if (!cat) {
+        return null;
+      }
+      const catId = cat.id;
+      return {
+        target: draftCatExecutionTargetOverrides.get(catId) ?? {
+          provider: cat.defaultExecutionTarget.provider,
+          model: cat.defaultExecutionTarget.model,
+          instance: cat.defaultExecutionTarget.instance,
+          modelSelection: cat.defaultModelSelection ?? null,
+        },
+        onChange: (value) => onDraftCatExecutionTargetOverride(catId, value),
+        onOpenSettings: () => navigate(`/entities/cats/${encodeURIComponent(catId)}`),
+      };
+    }
+    const temporary = participant.participantId
+      ? draftTemporaryParticipants.find((candidate) => candidate.participantId === participant.participantId)
+      : null;
+    if (!temporary) {
+      return null;
+    }
+    return {
+      target: {
+        provider: temporary.provider,
+        instance: temporary.instance ?? null,
+        model: temporary.model ?? null,
+        modelSelection: temporary.modelSelection ?? null,
+      },
+      onChange: (value) => onUpdateDraftTemporaryParticipant(temporary.participantId, {
+        provider: value.provider,
+        instance: value.instance,
+        model: value.model,
+        modelSelection: value.modelSelection,
+      }),
+    };
+  };
   const {
     createTemporaryParticipantFormValue,
     sidePanelOpen,
@@ -1095,6 +1151,7 @@ export function NewConversationDraft({
                   : (isGroupDraft ? onSetAudienceKeys : undefined)
               }
               onSingleClick={audienceSingleClick}
+              resolveTargetEditor={resolveDraftTargetEditor}
               disabled={isSubmittingFirstTurn}
               maxSelectedParticipants={
                 (isParallelMode && hasPrimaryParallelBranchAudience) || isGroupDraft
