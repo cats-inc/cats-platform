@@ -233,13 +233,28 @@ test('show_in_canvas opens workspace pages on a supervisor lease and refuses uns
     harness.hub.subscribe({
       surface: { kind: 'code_conversation', surfaceId: BINDING.channelId },
       sessionId: 'browser-1',
-      send: (intent) => intents.push(intent),
+      send: (intent) => {
+        intents.push(intent);
+        // Read via the store as the real renderer would: publication must follow commit.
+        void harness.store.readCore().then((core) => {
+          assert.ok(core.artifacts.some((artifact) => artifact.id === intent.artifactId));
+          assert.ok(core.activities.some((activity) => activity.id === intent.activityId));
+          if (intent.artifactId) {
+            const lease = supervisor.listLeases().find((entry) => entry.artifactId === intent.artifactId);
+            if (intents.length === 1) assert.ok(lease, 'the first path show must attach before publication');
+          }
+          harness.hub.acknowledge({ intentId: intent.intentId, sessionId: 'browser-1',
+            receipt: { intentId: intent.intentId, artifactId: intent.artifactId, status: 'rendered' } });
+        });
+      },
     });
     const call = async (args: Record<string, unknown>) =>
       (await rpc(harness, token, 'tools/call', { name: 'show_in_canvas', arguments: args })).json.result;
 
     const page = await call({ path: 'calculator/index.html', title: 'Calculator' });
     assert.equal(page.isError, undefined, JSON.stringify(page));
+    assert.equal(page.structuredContent.status, 'shown');
+    assert.equal(page.structuredContent.confirmation, 'viewer_loaded');
     const shown = page.structuredContent as {
       artifactId: string;
       canvasPath: string;
@@ -352,4 +367,26 @@ test('reset revokes every Code MCP session grant', () => {
   assert.equal(grants.resolve(issued.token), null);
   assert.equal(grants.findBySession('old-runtime-session'), null);
   assert.ok(grants.resolve(grants.issue(BINDING).token), 'new setup can issue new grants');
+});
+
+test('show_in_canvas preserves the artifact but returns a coded error when no viewer loads it', async () => {
+  const harness = await startHarness();
+  try {
+    const { token } = harness.grants.issue(BINDING);
+    harness.grants.bind(token, 'runtime-session-1');
+    const call = () => rpc(harness, token, 'tools/call', { name: 'show_in_canvas', arguments: { url: 'https://example.com/docs' } });
+    const absent = (await call()).json.result;
+    assert.equal(absent.isError, true);
+    assert.equal(absent.structuredContent.status, 'not_shown');
+    assert.equal(absent.structuredContent.error.code, 'canvas_not_open');
+    assert.ok((await harness.store.readCore()).artifacts.some((entry) => entry.id === absent.structuredContent.artifactId));
+    harness.hub.subscribe({ surface: { kind: 'code_conversation', surfaceId: BINDING.channelId },
+      sessionId: 'browser-1', send: (intent) => harness.hub.acknowledge({
+        intentId: intent.intentId, sessionId: 'browser-1',
+        receipt: { intentId: intent.intentId, artifactId: intent.artifactId, status: 'failed' },
+      }) });
+    const failed = (await call()).json.result;
+    assert.equal(failed.isError, true);
+    assert.equal(failed.structuredContent.error.code, 'canvas_render_failed');
+  } finally { await harness.close(); }
 });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import {
@@ -16,6 +16,8 @@ import { MarkdownViewer } from './viewers/MarkdownViewer.js';
 import { PdfViewer } from './viewers/PdfViewer.js';
 import { useArtifactCanvasSurfaceOutletContext } from './withSharedViewerRoutes.js';
 import { useEntitySubscription } from './entitySubscriptionHub.js';
+import { ackArtifactCanvasNavigateIntent } from './useCanvasNavigateIntent.js';
+import type { ArtifactCanvasViewerLoadProps } from './viewers/useArtifactCanvasViewerLoad.js';
 import {
   shouldRefreshArtifactCanvasForPatch,
   shouldRefreshArtifactCanvasForSnapshot,
@@ -25,8 +27,8 @@ import {
 
 type CanvasPaneState =
   | { status: 'loading' }
-  | { status: 'ready'; projection: ArtifactCanvasProjection }
-  | { status: 'error'; message: string };
+  | { status: 'ready'; projection: ArtifactCanvasProjection; requestKey: string }
+  | { status: 'error'; message: string; requestKey: string };
 
 export function CanvasPane(): JSX.Element {
   const navigate = useNavigate();
@@ -35,13 +37,29 @@ export function CanvasPane(): JSX.Element {
     presentation?: string;
   }>();
   const { t } = useI18n();
-  const { surface, parentUrl, canvasControls: CanvasControls } = useArtifactCanvasSurfaceOutletContext();
+  const { surface, parentUrl, canvasControls: CanvasControls, renderIntent } = useArtifactCanvasSurfaceOutletContext();
   const [collapsed, setCollapsed] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
   const [state, setState] = useState<CanvasPaneState>({ status: 'loading' });
   const skippedInitialSnapshotRef = useRef<string | null>(null);
+  const acknowledgedIntentRef = useRef<string | null>(null);
 
   const presentationRequested = normalizePresentation(presentation);
+  const intentId = renderIntent && renderIntent.artifactId === artifactId
+    && renderIntent.presentationRequested === presentationRequested
+    ? renderIntent.intentId : null;
+  const reportLoad = useCallback((status: 'rendered' | 'failed') => {
+    if (!intentId || collapsed || document.visibilityState !== 'visible'
+      || acknowledgedIntentRef.current === intentId) return;
+    acknowledgedIntentRef.current = intentId;
+    void ackArtifactCanvasNavigateIntent(intentId, fetch, {
+      intentId, artifactId: artifactId ?? null, status,
+    });
+  }, [intentId, artifactId, collapsed]);
+  const onLoaded = useCallback(() => reportLoad('rendered'), [reportLoad]);
+  const onLoadFailed = useCallback(() => reportLoad('failed'), [reportLoad]);
+
+  useEffect(() => { if (intentId) setCollapsed(false); }, [intentId]);
   const projectionUrl = useMemo(() => {
     if (!artifactId || !presentationRequested) {
       return null;
@@ -52,6 +70,15 @@ export function CanvasPane(): JSX.Element {
       presentationRequested,
     );
   }, [artifactId, presentationRequested, surface]);
+  const requestKey = `${projectionUrl}:${intentId}:${refreshToken}`;
+  const displayState: CanvasPaneState = state.status === 'loading' || state.requestKey === requestKey
+    ? state : { status: 'loading' };
+  useEffect(() => {
+    if (displayState.status === 'error'
+      || (displayState.status === 'ready' && displayState.projection.presentationResolved === 'unsupported')) {
+      onLoadFailed();
+    }
+  }, [displayState, onLoadFailed]);
 
   useEntitySubscription<ArtifactSubscriptionState, ArtifactSubscriptionPatch>({
     kind: 'artifact',
@@ -77,6 +104,7 @@ export function CanvasPane(): JSX.Element {
     if (!projectionUrl) {
       setState({
         status: 'error',
+        requestKey,
         message: t(messageKeys.sharedArtifactCanvasInvalidRoute),
       });
       return;
@@ -94,13 +122,14 @@ export function CanvasPane(): JSX.Element {
       })
       .then((projection) => {
         if (!cancelled) {
-          setState({ status: 'ready', projection });
+          setState({ status: 'ready', projection, requestKey });
         }
       })
       .catch((error: unknown) => {
         if (!cancelled) {
           setState({
             status: 'error',
+            requestKey,
             message: error instanceof Error
               ? error.message
               : t(messageKeys.sharedArtifactCanvasLoadFailed),
@@ -111,9 +140,9 @@ export function CanvasPane(): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [projectionUrl, refreshToken, t]);
+  }, [projectionUrl, requestKey, t]);
 
-  const projection = state.status === 'ready' ? state.projection : null;
+  const projection = displayState.status === 'ready' ? displayState.projection : null;
 
   return (
     <aside
@@ -178,7 +207,9 @@ export function CanvasPane(): JSX.Element {
 
       {collapsed ? null : (
         <div className="artifactCanvasBody">
-          {renderCanvasPaneBody(state, t)}
+          <div key={requestKey}>
+            {renderCanvasPaneBody(displayState, t, { onLoaded, onLoadFailed })}
+          </div>
         </div>
       )}
     </aside>
@@ -188,6 +219,7 @@ export function CanvasPane(): JSX.Element {
 function renderCanvasPaneBody(
   state: CanvasPaneState,
   t: ReturnType<typeof useI18n>['t'],
+  loadProps: ArtifactCanvasViewerLoadProps,
 ): JSX.Element {
   if (state.status === 'loading') {
     return (
@@ -207,23 +239,23 @@ function renderCanvasPaneBody(
 
   const projection = state.projection;
   if (projection.presentationResolved === 'image') {
-    return <ImageViewer projection={projection} />;
+    return <ImageViewer projection={projection} {...loadProps} />;
   }
   if (projection.presentationResolved === 'pdf') {
-    return <PdfViewer projection={projection} />;
+    return <PdfViewer projection={projection} {...loadProps} />;
   }
   if (projection.presentationResolved === 'code') {
-    return <CodeViewer projection={projection} />;
+    return <CodeViewer projection={projection} {...loadProps} />;
   }
   if (projection.presentationResolved === 'markdown') {
-    return <MarkdownViewer projection={projection} />;
+    return <MarkdownViewer projection={projection} {...loadProps} />;
   }
   if (
     projection.safeUrl
     && projection.iframeSandboxProfile
     && projection.presentationResolved === 'iframe'
   ) {
-    return <IframeViewer projection={projection} />;
+    return <IframeViewer projection={projection} {...loadProps} />;
   }
 
   return (

@@ -98,7 +98,7 @@ test('Artifact Canvas pane routes the markdown presentation to the Markdown view
   );
   assert.match(
     source,
-    /presentationResolved === 'markdown'\) \{\s+return <MarkdownViewer projection=\{projection\} \/>;/u,
+    /presentationResolved === 'markdown'\) \{\s+return <MarkdownViewer projection=\{projection\}/u,
   );
 });
 

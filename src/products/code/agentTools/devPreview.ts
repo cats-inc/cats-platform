@@ -6,11 +6,12 @@ import { mcpTextResult, type McpToolCallResult, type McpToolDefinition } from '.
 import type { CanvasSurfaceRef } from '../../shared/artifactCanvas/contracts.js';
 import type { ArtifactCanvasPolicyConfig } from '../../shared/artifactCanvas/iframePolicy.js';
 import type { ArtifactCanvasRenderIntentHub } from '../../shared/artifactCanvas/renderIntent.js';
-import { materializeLivePreviewArtifactAndShowInCanvas } from '../livePreview/artifactMaterialization.js';
+import { prepareLivePreviewArtifactCanvasShow } from '../livePreview/artifactMaterialization.js';
 import { VITE_LIVE_PREVIEW_PROFILE } from '../livePreview/contracts.js';
 import type { LivePreviewSupervisor } from '../livePreview/supervisor.js';
 import type { CodeAgentToolGrantBinding } from './contracts.js';
 import { resolveWorkspacePath, type ShowFailure } from './showInCanvas.js';
+import { confirmCanvasPresentation } from './canvasConfirmation.js';
 
 /**
  * SPEC-123 dev previews: `start_dev_preview`, `get_preview_status` and
@@ -155,16 +156,15 @@ export async function runStartDevPreview(
   context.devLeases.set(surface.surfaceId, started.previewId);
   const lease = supervisor.getLease(started.previewId)!;
 
-  let shown!: ReturnType<typeof materializeLivePreviewArtifactAndShowInCanvas>;
+  let shown!: ReturnType<typeof prepareLivePreviewArtifactCanvasShow>;
   await context.updateCore((core) => {
-    shown = materializeLivePreviewArtifactAndShowInCanvas(core, lease, {
+    shown = prepareLivePreviewArtifactCanvasShow(core, lease, {
       entryPath: '/',
       title: title || basename(target.path),
       presentationRequested: 'auto',
       actorId: context.binding.actorId,
       policyConfig: context.policyConfig,
       supervisorPreviewLeaseStore: supervisor,
-      renderIntentHub: context.hub,
       now: context.now(),
     });
     return shown.core;
@@ -176,13 +176,13 @@ export async function runStartDevPreview(
     return failure({ code: shown.error.code, message: shown.error.message });
   }
   supervisor.attachArtifact(lease.previewId, shown.artifact.id);
-  return mcpTextResult({
+  return confirmCanvasPresentation(shown.intent, {
     previewId: lease.previewId,
     artifactId: shown.artifact.id,
     canvasPath: shown.intent.targetUrl,
     previewUrl: `${lease.origin}/`,
     profileId: lease.commandProfileId,
-  });
+  }, context.hub);
 }
 
 export function runGetPreviewStatus(

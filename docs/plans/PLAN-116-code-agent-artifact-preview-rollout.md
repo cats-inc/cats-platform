@@ -602,6 +602,15 @@ call a Platform-hosted MCP tool and receive its result.
 | 2026-09-29 | A2b and A3 merged (#203) and the @mention fix merged (#204). B2b adds the Preview control, fixes the canvas-route layout and scroll, and was verified in a fresh acceptance instance. Next: M2. |
 | 2026-09-30 | D1: dev preview tools, the shell-permission gate, the Settings > Code preview-server switch (shipped off pending user confirmation), node resolution, and port probing. Real Vite smoke passed on Windows. |
 | 2026-09-30 | D2 (#216) with M2 acceptance, D3 (#217), F1 (#218), F2 and F4 notes (#219) and F5 (#220) merged; Runtime R4 (#140) and the message-stream heartbeat (#142) merged. M3: Claude Code 5/5 and Codex 5/5 with no policy tuning. Open: P0 user review of the App/plugin alignment, the Settings switch default, and F3 (Runtime providers). |
+| 2026-10-06 | Post-M3 correctness: preserve persisted lease model selections so unchanged Code turns keep their session/cwd/files; recover already missing options from the matching Runtime session, preserving the session on unavailable/invalid evidence and allowing closed-session resume. Prepare artifact/Activity purely, persist and attach the lease before publishing, and wait outside the store lock for a visible viewer's session-bound load receipt. Missing, failed and timed-out renderers return coded errors with reusable artifact handles. Validation: 59 routing and 74 preview/snapshot/lease/catalog checks pass with natural process exit; bundled DOM tests use waitFor rather than async act, which leaks MessagePorts in the ESM test environment. Server/renderer/test typechecks and the integrated source candidate build pass. A separate Electron fixture using the product canvas, tool and supervisor confirmed actual pane loading, same-artifact reopening, no-subscriber failure, hidden-viewer timeout and a scripted Start interaction. Broader guardrails had 5 pre-existing failures (4 direct-session lifecycle, 1 historical session projection), reproduced on the unmodified main checkout; they are outside this fix. No user-profile writes, schema change, bump or publication. |
+
+Final source candidate receipt: local root
+`C:/Users/sammy/Source/cats-inc/.codex/code-preview-candidate-integrated-20261006`,
+Platform base `c6cc63f7` with source digest
+`1cadd03a1ea3d77c6766e204db0415b8f477d0c10daf7d0df9bf2d0186dbaa2d`,
+Runtime `f64f347d`. Candidate readiness/screenshot verifies full build and startup;
+the synthetic Electron flow and routing fixtures provide the bug-specific evidence.
+
 
 ---
 

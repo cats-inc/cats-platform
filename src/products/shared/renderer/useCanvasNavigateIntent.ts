@@ -1,17 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
   ARTIFACT_CANVAS_RENDER_INTENT_ACK_PATH,
   buildArtifactCanvasRenderIntentStreamUrl,
   type ArtifactCanvasNavigateIntent,
+  type ArtifactCanvasRenderReceipt,
   type CanvasSurfaceRef,
 } from '../artifactCanvas/contracts.js';
 
 const ACK_RETRY_DELAYS_MS = [250, 500, 1000] as const;
 
-export function useCanvasNavigateIntent(surface: CanvasSurfaceRef | null): void {
+export function useCanvasNavigateIntent(surface: CanvasSurfaceRef | null): ArtifactCanvasNavigateIntent | null {
   const navigate = useNavigate();
+  const [pendingIntent, setPendingIntent] = useState<ArtifactCanvasNavigateIntent | null>(null);
 
   useEffect(() => {
     if (!surface || typeof EventSource === 'undefined') {
@@ -24,10 +26,12 @@ export function useCanvasNavigateIntent(surface: CanvasSurfaceRef | null): void 
       if (!intent || !surfacesEqual(intent.surface, surface)) {
         return;
       }
+      setPendingIntent(intent);
       navigate(intent.targetUrl);
-      globalThis.setTimeout(() => {
-        void ackArtifactCanvasNavigateIntent(intent.intentId);
-      }, 0);
+      // A clear has no viewer. A show is acknowledged by CanvasPane on load.
+      if (intent.artifactId === null) {
+        globalThis.setTimeout(() => void ackArtifactCanvasNavigateIntent(intent.intentId), 0);
+      }
     };
 
     source.addEventListener('artifact_canvas_intent', handleIntent);
@@ -36,11 +40,14 @@ export function useCanvasNavigateIntent(surface: CanvasSurfaceRef | null): void 
       source.close();
     };
   }, [navigate, surface]);
+  return surface && pendingIntent && surfacesEqual(pendingIntent.surface, surface)
+    ? pendingIntent : null;
 }
 
 export async function ackArtifactCanvasNavigateIntent(
   intentId: string,
   fetcher: typeof fetch = fetch,
+  receipt?: ArtifactCanvasRenderReceipt,
 ): Promise<void> {
   for (const delay of [0, ...ACK_RETRY_DELAYS_MS]) {
     if (delay > 0) {
@@ -50,7 +57,7 @@ export async function ackArtifactCanvasNavigateIntent(
       const response = await fetcher(ARTIFACT_CANVAS_RENDER_INTENT_ACK_PATH, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ intentId }),
+        body: JSON.stringify(receipt ?? { intentId }),
       });
       if (response.ok) {
         return;

@@ -20,5 +20,8 @@ export const CODE_AGENT_PREVIEW_POLICY = [
   'Do not open previews for command-line tools, libraries, backend-only services, tests or refactors',
   'without visible output. Static previews and dev servers pick up later edits by themselves, so call',
   'show_in_canvas or start_dev_preview again only to show a different item. Briefly say in your reply what',
-  'you opened.',
+  'you opened only when the tool reports status shown. A ready preview URL or a navigation request',
+  'does not confirm the canvas opened. Report a canvas error truthfully; use the returned artifactId',
+  'to retry show_in_canvas without recreating the files or restarting a ready preview server.',
+  'Viewer loading does not verify app interactions; claim those checks only if you actually performed them.',
 ].join(' ');

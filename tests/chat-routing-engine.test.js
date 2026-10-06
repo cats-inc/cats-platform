@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -24,7 +24,7 @@ import {
   routeChannelMessage,
 } from '../build/server/products/chat/state/runtimeActions.js';
 import { ensureTargetSession } from '../build/server/products/chat/state/runtime-session/wake.js';
-import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { FileChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { patchTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
 import {
   buildChatConversationId,
@@ -93,6 +93,7 @@ function createRuntimeStub(responder) {
         id: sessionId,
         provider: input.provider,
         model: input.model ?? null,
+        modelSelection: input.modelSelection ?? null,
         status: 'ready',
         cwd: input.cwd ?? path.join(tmpdir(), '.cats', 'runtime', 'sessions', sessionId),
       };
@@ -2093,6 +2094,112 @@ test('provider default chat keeps its session when only the catalog revision of 
   assert.equal(runtimeClient.createdSessions.length, 1);
   assert.deepEqual(runtimeClient.closedSessions, []);
   assert.deepEqual(buildChannelView(secondDispatch.state, channelId).pendingModelSelection, selection('R2'));
+});
+
+test('Code continuation after disk round trips retains the session, cwd and artifact; real controls changes still restart', async (t) => {
+  const fixture = await mkdtemp(path.join(tmpdir(), 'cats-code-continuity-'));
+  t.after(() => rm(fixture, { recursive: true, force: true }));
+  const store = new FileChatStore(path.join(fixture, 'state.json'));
+  const selection = (revision, effort = 'medium') => ({
+    entryMode: 'explicit', entryId: 'opus', catalogRevision: revision,
+    controls: { 'claude.reasoning_effort': effort },
+  });
+  const state = createModelChannel(await store.read(), {
+    originSurface: 'code', title: 'Timer', topic: 'Continue a timer', skipBossCatGreeting: true,
+    pendingProvider: 'claude', pendingModel: 'opus', pendingModelSelection: selection('R1'),
+  }, new Date());
+  const id = state.selectedChannelId;
+  const runtime = createRuntimeStub(async ({ sessionId }) => usage(sessionId));
+  const originalCreate = runtime.createSession;
+  runtime.createSession = async function(input) {
+    const session = await originalCreate.call(this, input);
+    session.cwd = path.join(fixture, session.id);
+    await mkdir(session.cwd);
+    return session;
+  };
+  const dispatch = (current, revision, effort = 'medium') => routeChannelMessage(current, id, {
+    body: 'Open the timer', pendingProvider: 'claude', pendingModel: 'opus',
+    pendingModelSelection: selection(revision, effort),
+  }, runtime, new Date());
+  const first = await dispatch(state, 'R1');
+  await store.write(first.state);
+  const saved = await store.read();
+  const lease = requireChannel(saved, id).orchestratorLease;
+  assert.deepEqual(lease.modelSelection, selection('R1'));
+  const artifactPath = path.join(lease.cwd, 'index.html');
+  await writeFile(artifactPath, '<title>Original timer</title>');
+  const second = await dispatch(saved, 'R2');
+  await store.write(second.state);
+  const continued = requireChannel(await store.read(), id).orchestratorLease;
+  assert.equal(continued.sessionId, lease.sessionId);
+  assert.equal(continued.cwd, lease.cwd);
+  assert.equal(await readFile(path.join(continued.cwd, 'index.html'), 'utf8'), '<title>Original timer</title>');
+  assert.equal(runtime.createdSessions.length, 1);
+  assert.deepEqual(runtime.closedSessions, []);
+  await dispatch(await store.read(), 'R2', 'high');
+  assert.equal(runtime.createdSessions.length, 2);
+  assert.deepEqual(runtime.closedSessions, [lease.sessionId]);
+});
+
+test('missing saved selection is recovered from the actual Runtime session and still detects changed controls', async () => {
+  for (const [effort, status] of [['medium', 'ready'], ['high', 'ready'], ['medium', 'closed']]) {
+    const choice = (value) => ({ entryMode: 'explicit', entryId: 'opus', controls: { 'claude.reasoning_effort': value } });
+    const state = createChannel(await new MemoryChatStore().read(), {
+      title: 'Recovered thread', topic: 'Recover missing selection', skipBossCatGreeting: true,
+      pendingProvider: 'claude', pendingModel: 'opus', pendingModelSelection: choice('medium'),
+    }, new Date());
+    const id = state.selectedChannelId;
+    const runtime = createRuntimeStub(async ({ sessionId }) => usage(sessionId));
+    runtime.observeSession = async (sessionId) => ({ session: {
+      id: sessionId, status: 'ready', modelSelection: choice('medium'),
+    } });
+    const first = await routeChannelMessage(state, id, { body: 'Build it' }, runtime, new Date());
+    const lease = requireChannel(first.state, id).orchestratorLease;
+    delete lease.modelSelection; // Reproduce the previously discarded snapshot field.
+    lease.status = status;
+    runtime.resumeSession = async (sessionId) => ({ id: sessionId, provider: 'claude', model: 'opus',
+      status: 'ready', cwd: lease.cwd, modelSelection: choice('medium') });
+    const second = await routeChannelMessage(first.state, id, {
+      body: 'Open it', pendingModelSelection: choice(effort),
+    }, runtime, new Date());
+    assert.equal(runtime.createdSessions.length, effort === 'medium' ? 1 : 2);
+    assert.equal(runtime.closedSessions.length, effort === 'medium' ? 0 : 1);
+    if (effort === 'medium') assert.deepEqual(requireChannel(second.state, id).orchestratorLease.modelSelection, choice('medium'));
+  }
+});
+
+test('unavailable Runtime selection preserves the existing session and retries recovery on the next turn', async () => {
+  const choice = { entryMode: 'explicit', entryId: 'opus', controls: { 'claude.reasoning_effort': 'medium' } };
+  const state = createChannel(await new MemoryChatStore().read(), {
+    title: 'Unavailable observation', topic: 'Preserve workspace', skipBossCatGreeting: true,
+    pendingProvider: 'claude', pendingModel: 'opus', pendingModelSelection: choice,
+  }, new Date());
+  const id = state.selectedChannelId;
+  const runtime = createRuntimeStub(async ({ sessionId }) => usage(sessionId));
+  const first = await routeChannelMessage(state, id, { body: 'Build it' }, runtime, new Date());
+  const lease = requireChannel(first.state, id).orchestratorLease;
+  delete lease.modelSelection;
+  runtime.observeSession = async () => { throw new Error('Runtime unavailable'); };
+  const failed = await routeChannelMessage(first.state, id, { body: 'Open it' }, runtime, new Date());
+  assert.equal(runtime.createdSessions.length, 1);
+  assert.deepEqual(runtime.closedSessions, []);
+  assert.equal(requireChannel(failed.state, id).orchestratorLease.sessionId, lease.sessionId);
+  assert.equal(runtime.sentMessages.length, 1, 'unknown options must not silently run the requested choice');
+  for (const observed of [
+    { id: 'other-session', modelSelection: choice },
+    { id: lease.sessionId, modelSelection: { entryMode: 'invalid' } },
+  ]) {
+    runtime.observeSession = async () => ({ session: observed });
+    await routeChannelMessage(failed.state, id, { body: 'Retry with incomplete observation' }, runtime, new Date());
+    assert.equal(runtime.createdSessions.length, 1);
+    assert.deepEqual(runtime.closedSessions, []);
+    assert.equal(runtime.sentMessages.length, 1);
+  }
+  runtime.observeSession = async (sessionId) => ({ session: { id: sessionId, status: 'ready', modelSelection: choice } });
+  const recovered = await routeChannelMessage(failed.state, id, { body: 'Retry opening it' }, runtime, new Date());
+  assert.equal(runtime.createdSessions.length, 1);
+  assert.equal(requireChannel(recovered.state, id).orchestratorLease.sessionId, lease.sessionId);
+  assert.equal(runtime.sentMessages.length, 2);
 });
 
 test('participant sessions restart when a participant model selection changes', async () => {

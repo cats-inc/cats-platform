@@ -6,6 +6,7 @@ import {
   ARTIFACT_CANVAS_RENDER_INTENT_ACK_PATH,
   ARTIFACT_CANVAS_RENDER_INTENT_STREAM_PATH,
   type ArtifactCanvasNavigateIntent,
+  type ArtifactCanvasRenderReceipt,
   type CanvasSurfaceKind,
   type CanvasSurfaceRef,
 } from './contracts.js';
@@ -37,6 +38,16 @@ export interface ArtifactCanvasRenderIntentAckResult {
   acknowledged: boolean;
 }
 
+export interface ArtifactCanvasRenderConfirmation {
+  status: 'rendered' | 'failed' | 'not_delivered' | 'timed_out';
+  delivery: ArtifactCanvasRenderIntentDeliveryResult;
+}
+
+interface RenderWaiter {
+  record: ArtifactCanvasRenderIntentPendingRecord | null;
+  resolve(status: ArtifactCanvasRenderConfirmation['status']): void;
+}
+
 interface ArtifactCanvasRenderIntentSubscriber {
   id: number;
   surface: CanvasSurfaceRef;
@@ -48,8 +59,38 @@ export class ArtifactCanvasRenderIntentHub {
   private nextSubscriberId = 1;
   private readonly subscribers = new Map<number, ArtifactCanvasRenderIntentSubscriber>();
   private readonly pending = new Map<string, ArtifactCanvasRenderIntentPendingRecord>();
+  private readonly renderWaiters = new Map<string, RenderWaiter>();
 
-  clearForReset(): void { this.pending.clear(); this.subscribers.clear(); }
+  clearForReset(): void {
+    for (const waiter of this.renderWaiters.values()) waiter.resolve('failed');
+    this.renderWaiters.clear();
+    this.pending.clear();
+    this.subscribers.clear();
+  }
+
+  async publishAndWaitForRender(input: {
+    intent: ArtifactCanvasNavigateIntent;
+    targetSessionId?: string | null;
+    now?: Date;
+    timeoutMs?: number;
+  }): Promise<ArtifactCanvasRenderConfirmation> {
+    let finish!: RenderWaiter['resolve'];
+    const completion = new Promise<ArtifactCanvasRenderConfirmation['status']>((resolve) => {
+      finish = resolve;
+    });
+    // Register before publish: an in-process subscriber can acknowledge synchronously.
+    this.renderWaiters.set(input.intent.intentId, { record: null, resolve: finish });
+    const delivery = this.publish(input);
+    if (!delivery.delivered) finish('not_delivered');
+    const timer = setTimeout(() => finish('timed_out'), input.timeoutMs ?? 10_000);
+    try {
+      return { status: await completion, delivery };
+    } finally {
+      clearTimeout(timer);
+      this.renderWaiters.delete(input.intent.intentId);
+      this.pending.delete(input.intent.intentId);
+    }
+  }
 
   subscribe(input: {
     surface: CanvasSurfaceRef;
@@ -115,12 +156,16 @@ export class ArtifactCanvasRenderIntentHub {
       sessionId: ownerSessionId,
       acknowledgedAt: null,
     });
-    for (const subscriber of targetSubscribers) {
-      safeSend(subscriber, input.intent);
+    const waiter = this.renderWaiters.get(input.intent.intentId);
+    if (waiter) waiter.record = this.pending.get(input.intent.intentId)!;
+    const subscriberCount = targetSubscribers.filter((subscriber) => safeSend(subscriber, input.intent)).length;
+    if (subscriberCount === 0) {
+      this.pending.delete(input.intent.intentId);
+      return { delivered: false, subscriberCount: 0, ownerSessionId: null };
     }
     return {
       delivered: true,
-      subscriberCount: targetSubscribers.length,
+      subscriberCount,
       ownerSessionId,
     };
   }
@@ -129,6 +174,7 @@ export class ArtifactCanvasRenderIntentHub {
     intentId: string | null;
     sessionId: string;
     now?: Date;
+    receipt?: ArtifactCanvasRenderReceipt | null;
   }): ArtifactCanvasRenderIntentAckResult {
     const now = input.now ?? new Date();
     this.pruneExpired(now);
@@ -137,11 +183,18 @@ export class ArtifactCanvasRenderIntentHub {
       return { status: 'ok', acknowledged: false };
     }
 
-    const record = this.pending.get(intentId);
+    const waiter = this.renderWaiters.get(intentId);
+    const record = this.pending.get(intentId) ?? waiter?.record;
     if (!record || record.sessionId !== input.sessionId || isIntentExpired(record.intent, now)) {
       return { status: 'ok', acknowledged: false };
     }
 
+    if (input.receipt) {
+      if (input.receipt.artifactId !== record.intent.artifactId) {
+        return { status: 'ok', acknowledged: false };
+      }
+      waiter?.resolve(input.receipt.status);
+    }
     this.pending.delete(intentId);
     return { status: 'ok', acknowledged: true };
   }
@@ -158,6 +211,7 @@ export class ArtifactCanvasRenderIntentHub {
     for (const [intentId, record] of this.pending) {
       if (isIntentExpired(record.intent, now)) {
         this.pending.delete(intentId);
+        this.renderWaiters.get(intentId)?.resolve('timed_out');
       }
     }
   }
@@ -213,11 +267,13 @@ export function writeArtifactCanvasRenderIntentSseEvent(
 function safeSend(
   subscriber: ArtifactCanvasRenderIntentSubscriber,
   intent: ArtifactCanvasNavigateIntent,
-): void {
+): boolean {
   try {
     subscriber.send(structuredClone(intent));
+    return true;
   } catch {
     // Subscriber failures are isolated so one broken stream cannot block delivery.
+    return false;
   }
 }
 

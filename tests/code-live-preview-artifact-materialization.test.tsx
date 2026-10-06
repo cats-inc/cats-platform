@@ -11,7 +11,7 @@ import { ArtifactCanvasRenderIntentHub } from '../src/products/shared/artifactCa
 import {
   CODE_LIVE_PREVIEW_PRODUCER_IDENTITY,
   createCodespaceId,
-  materializeLivePreviewArtifactAndShowInCanvas,
+  prepareLivePreviewArtifactCanvasShow,
   materializeLivePreviewArtifact,
 } from '../src/products/code/livePreview/artifactMaterialization.ts';
 import type { LivePreviewLease } from '../src/products/code/livePreview/contracts.ts';
@@ -221,7 +221,7 @@ test('live-preview materialization can trigger the shared Artifact Canvas show i
     now: new Date('2026-05-09T00:00:00.000Z'),
   });
   try {
-    const result = materializeLivePreviewArtifactAndShowInCanvas(
+    const result = prepareLivePreviewArtifactCanvasShow(
       core,
       createLease({
         previewId: 'preview-show',
@@ -230,8 +230,6 @@ test('live-preview materialization can trigger the shared Artifact Canvas show i
       {
         now: new Date('2026-05-09T00:00:02.000Z'),
         intentIdFactory: () => 'intent-live-preview',
-        renderIntentHub: hub,
-        targetSessionId: 'session-owner',
         policyConfig: {
           ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
           scriptedPreviewProducerAllowlist: [
@@ -241,11 +239,12 @@ test('live-preview materialization can trigger the shared Artifact Canvas show i
       },
     );
 
-    assert.equal(result.status, 'shown');
-    if (result.status !== 'shown') {
+    assert.equal(result.status, 'prepared');
+    if (result.status !== 'prepared') {
       return;
     }
-    assert.equal(result.delivery.delivered, true);
+    assert.equal(deliveries.length, 0, 'preparation cannot publish before persistence');
+    assert.equal(hub.publish({ intent: result.intent, now: new Date(result.intent.triggeredAt) }).delivered, true);
     assert.equal(result.activity.kind, 'artifact_canvas_show_intent');
     assert.equal(result.activity.artifactId, result.artifact.id);
     assert.equal(result.intent.intentId, 'intent-live-preview');
@@ -290,7 +289,7 @@ test('live-preview canvas show uses canonical supervisor lease state before synt
     stoppedAt: '2026-05-09T00:00:02.000Z',
     stopReason: 'operator',
   }));
-  const result = materializeLivePreviewArtifactAndShowInCanvas(
+  const result = prepareLivePreviewArtifactCanvasShow(
     core,
     createLease({
       previewId: 'preview-show-static',
@@ -304,13 +303,12 @@ test('live-preview canvas show uses canonical supervisor lease state before synt
           { producerKind: 'tool', producerIdentity: CODE_LIVE_PREVIEW_PRODUCER_IDENTITY },
         ],
       },
-      renderIntentHub: new ArtifactCanvasRenderIntentHub(),
       supervisorPreviewLeaseStore: fallbackStore,
     },
   );
 
-  assert.equal(result.status, 'shown');
-  if (result.status === 'shown') {
+  assert.equal(result.status, 'prepared');
+  if (result.status === 'prepared') {
     assert.equal(
       ((result.activity.metadata.artifactCanvas as Record<string, unknown>)
         .iframeSandboxProfile as { name?: string } | null)?.name,
@@ -340,7 +338,7 @@ test('live-preview canvas show keeps scripted iframe when supervisor lease is re
     artifactId: null,
     surface: { kind: 'code_task', surfaceId: 'task-live' },
   }));
-  const result = materializeLivePreviewArtifactAndShowInCanvas(
+  const result = prepareLivePreviewArtifactCanvasShow(
     core,
     createLease({
       previewId: 'preview-show-ready',
@@ -354,13 +352,12 @@ test('live-preview canvas show keeps scripted iframe when supervisor lease is re
           { producerKind: 'tool', producerIdentity: CODE_LIVE_PREVIEW_PRODUCER_IDENTITY },
         ],
       },
-      renderIntentHub: new ArtifactCanvasRenderIntentHub(),
       supervisorPreviewLeaseStore: fallbackStore,
     },
   );
 
-  assert.equal(result.status, 'shown');
-  if (result.status === 'shown') {
+  assert.equal(result.status, 'prepared');
+  if (result.status === 'prepared') {
     assert.equal(
       ((result.activity.metadata.artifactCanvas as Record<string, unknown>)
         .iframeSandboxProfile as { name?: string } | null)?.name,
@@ -389,7 +386,7 @@ test('live-preview codespace show keeps scripted iframe when supervisor lease is
     workspaceRef,
   }));
 
-  const result = materializeLivePreviewArtifactAndShowInCanvas(
+  const result = prepareLivePreviewArtifactCanvasShow(
     createDefaultCoreState(),
     createLease({
       previewId: 'preview-codespace-ready',
@@ -404,13 +401,12 @@ test('live-preview codespace show keeps scripted iframe when supervisor lease is
           { producerKind: 'tool', producerIdentity: CODE_LIVE_PREVIEW_PRODUCER_IDENTITY },
         ],
       },
-      renderIntentHub: new ArtifactCanvasRenderIntentHub(),
       supervisorPreviewLeaseStore: fallbackStore,
     },
   );
 
-  assert.equal(result.status, 'shown');
-  if (result.status === 'shown') {
+  assert.equal(result.status, 'prepared');
+  if (result.status === 'prepared') {
     assert.equal(
       ((result.activity.metadata.artifactCanvas as Record<string, unknown>)
         .iframeSandboxProfile as { name?: string } | null)?.name,
@@ -438,10 +434,9 @@ test('live-preview canvas show leaves core and lease untouched when projection r
     surface: { kind: 'code_task', surfaceId: 'task-live' },
   });
 
-  const result = materializeLivePreviewArtifactAndShowInCanvas(core, lease, {
+  const result = prepareLivePreviewArtifactCanvasShow(core, lease, {
     now: new Date('2026-05-09T00:00:03.000Z'),
     presentationRequested: 'pdf',
-    renderIntentHub: new ArtifactCanvasRenderIntentHub(),
   });
 
   assert.equal(result.status, 'rejected');

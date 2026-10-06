@@ -4,8 +4,9 @@ import remarkGfm from 'remark-gfm';
 import type { ArtifactCanvasProjection } from '../../artifactCanvas/contracts.js';
 import { MESSAGE_BODY_MARKDOWN_COMPONENTS } from '../components/MessageBodyMarkdown.js';
 import { ArtifactCanvasTextStatus, useArtifactCanvasText } from './useArtifactCanvasText.js';
+import { useArtifactCanvasViewerLoad, type ArtifactCanvasViewerLoadProps } from './useArtifactCanvasViewerLoad.js';
 
-export interface MarkdownViewerProps {
+export interface MarkdownViewerProps extends ArtifactCanvasViewerLoadProps {
   projection: ArtifactCanvasProjection;
 }
 
@@ -20,8 +21,9 @@ const DOCUMENT_REMARK_PLUGINS: Options['remarkPlugins'] = [remarkGfm];
  * is shown as text, unsafe URL protocols are dropped, remote images are not
  * loaded and local or relative links stay inert.
  */
-export function MarkdownViewer({ projection }: MarkdownViewerProps): JSX.Element {
+export function MarkdownViewer({ projection, ...loadProps }: MarkdownViewerProps): JSX.Element {
   const state = useArtifactCanvasText(projection);
+  useArtifactCanvasViewerLoad(state.status, loadProps);
   if (state.status !== 'ready') {
     return <ArtifactCanvasTextStatus state={state} />;
   }

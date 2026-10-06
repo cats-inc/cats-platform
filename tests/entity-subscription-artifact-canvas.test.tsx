@@ -18,6 +18,7 @@ import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import type {
   ArtifactCanvasProjection,
 } from '../src/products/shared/artifactCanvas/contracts.ts';
+import { composeArtifactCanvasNavigateIntent } from '../src/products/shared/artifactCanvas/contracts.ts';
 
 class FakeEventSource {
   listeners = new Map<string, Array<(event: MessageEvent) => void>>();
@@ -122,9 +123,79 @@ test('Artifact Canvas refreshes a mounted projection after two artifact subscrip
   }
 });
 
+test('Code canvas confirms only its loaded viewer and reloads the same artifact for a new intent', async () => {
+  const sources: FakeEventSource[] = [];
+  const restore = installDom(sources);
+  const originalFetch = globalThis.fetch;
+  const receipts: Array<{ intentId: string; artifactId: string; status: string }> = [];
+  const loads: Array<(response: Response) => void> = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, options?: RequestInit) => {
+    if (String(input) === '/api/canvas/intents/ack') {
+      receipts.push(JSON.parse(String(options?.body)));
+      return jsonResponse({ status: 'ok' });
+    }
+    return new Promise<Response>((resolve) => loads.push(resolve));
+  }) as typeof fetch;
+  const { withSharedViewerRoutes } = await import('../src/products/shared/renderer/withSharedViewerRoutes.tsx');
+  const surface = { kind: 'code_conversation' as const, surfaceId: 'channel-1' };
+  const projection: ArtifactCanvasProjection = {
+    ...createProjection('Timer', ''), surface,
+    presentationResolved: 'iframe', safeUrl: 'http://127.0.0.1:47100/index.html', textContent: null,
+  };
+  const intent = (intentId: string) => composeArtifactCanvasNavigateIntent({
+    intentId, activityId: 'activity-1', surface, artifactId: 'artifact-1',
+    presentationRequested: 'auto', policyVersion: 'policy-v1', triggeredAt: new Date().toISOString(),
+  });
+  try {
+    const view = render(<I18nProvider locale="en"><MemoryRouter initialEntries={['/code/chats/channel-1']}>
+      <Routes>{withSharedViewerRoutes({ key: 'conversation', path: '/code/chats/:channelId',
+        surfaceKind: 'code_conversation', surfaceIdParam: 'channelId', element: <div>Conversation</div> })}</Routes>
+    </MemoryRouter></I18nProvider>);
+    assert.equal(view.container.querySelector('aside'), null);
+    const source = sources.find((entry) => entry.url.startsWith('/api/canvas/intents/stream'))!;
+    assert.ok(source);
+    act(() => source.emit('artifact_canvas_intent', { intent: intent('first') }));
+    await waitFor(() => assert.equal(loads.length, 1));
+    assert.ok(view.container.querySelector('aside'));
+    assert.equal(receipts.length, 0, 'navigation is not viewer completion');
+    // Async act leaks MessageChannel ports in bundled ESM tests; waitFor flushes updates.
+    loads[0]!(jsonResponse(projection));
+    await waitFor(() => assert.ok(view.container.querySelector('iframe')));
+    const iframe = view.container.querySelector('iframe')!;
+    assert.ok(iframe);
+    assert.equal(receipts.length, 0, 'projection readiness is not iframe loading');
+    act(() => iframe.dispatchEvent(new Event('load')));
+    await waitFor(() => assert.equal(receipts.length, 1));
+    assert.deepEqual(receipts[0], { intentId: 'first', artifactId: 'artifact-1', status: 'rendered' });
+    act(() => sources.filter((entry) => !entry.closed && entry.url.startsWith('/api/canvas/intents/stream'))
+      .at(-1)!.emit('artifact_canvas_intent', { intent: intent('second') }));
+    await waitFor(() => assert.equal(loads.length, 2));
+    assert.equal(receipts.length, 1, 'the previous loaded viewer cannot confirm a new intent');
+    loads[1]!(jsonResponse(projection));
+    await waitFor(() => {
+      assert.ok(view.container.querySelector('iframe'));
+      assert.notEqual(view.container.querySelector('iframe'), iframe);
+    });
+    const reloaded = view.container.querySelector('iframe')!;
+    assert.notEqual(reloaded, iframe);
+    act(() => reloaded.dispatchEvent(new Event('load')));
+    await waitFor(() => assert.equal(receipts.length, 2));
+    assert.equal(receipts[1]?.intentId, 'second');
+    act(() => sources.filter((entry) => !entry.closed && entry.url.startsWith('/api/canvas/intents/stream'))
+      .at(-1)!.emit('artifact_canvas_intent', { intent: intent('failed') }));
+    await waitFor(() => assert.equal(loads.length, 3));
+    loads[2]!(jsonResponse({ error: { message: 'Missing artifact' } }, { status: 404 }));
+    await waitFor(() => assert.equal(receipts.length, 3));
+    assert.equal(receipts[2]?.status, 'failed');
+  } finally {
+    cleanup(); globalThis.fetch = originalFetch; restore();
+  }
+});
+
 function installDom(eventSources: FakeEventSource[]): () => void {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     url: 'http://localhost/',
+    pretendToBeVisual: true,
   });
   const EventSourceCtor = class extends FakeEventSource {
     constructor(url: string) {

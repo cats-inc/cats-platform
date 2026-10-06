@@ -21,12 +21,13 @@ import {
   createArtifactCanvasIntentId,
   type ArtifactCanvasRenderIntentHub,
 } from '../../shared/artifactCanvas/renderIntent.js';
-import { materializeLivePreviewArtifactAndShowInCanvas } from '../livePreview/artifactMaterialization.js';
+import { prepareLivePreviewArtifactCanvasShow } from '../livePreview/artifactMaterialization.js';
 import { STATIC_LIVE_PREVIEW_PROFILE } from '../livePreview/contracts.js';
 import type { LivePreviewSupervisor } from '../livePreview/supervisor.js';
 import { CODE_ARTIFACT_DECLARATION_TOOL, CodeArtifactDeclarationError } from '../shared/artifactDeclaration.js';
 import { materializeCodeArtifactDeclaration } from '../state/artifactMaterialization.js';
 import type { CodeAgentToolGrantBinding } from './contracts.js';
+import { confirmCanvasPresentation } from './canvasConfirmation.js';
 
 /**
  * SPEC-123 `show_in_canvas`: open a workspace file, an https URL or an existing
@@ -43,6 +44,7 @@ export const SHOW_IN_CANVAS_TOOL: McpToolDefinition = {
     'HTML pages run with scripts on an isolated preview origin; edits show on refresh.',
     'Markdown renders as a formatted document; pass presentation code to show its source.',
     'Use start_dev_preview instead for projects that need a dev server or bundler.',
+    'Only status shown confirms the canvas viewer loaded; this does not test the app interactions.',
   ].join(' '),
   inputSchema: {
     type: 'object',
@@ -147,16 +149,15 @@ async function showWorkspacePath(
   const lease = await ensureStaticLease(root, target.workspaceRoot, surface, context);
   if ('code' in lease) return failure(lease);
 
-  let shown!: ReturnType<typeof materializeLivePreviewArtifactAndShowInCanvas>;
+  let shown!: ReturnType<typeof prepareLivePreviewArtifactCanvasShow>;
   await context.updateCore((core) => {
-    shown = materializeLivePreviewArtifactAndShowInCanvas(core, lease, {
+    shown = prepareLivePreviewArtifactCanvasShow(core, lease, {
       entryPath,
       title: title || basename(target.path),
       presentationRequested: presentation,
       actorId: context.binding.actorId,
       policyConfig: context.policyConfig,
       supervisorPreviewLeaseStore: context.supervisor,
-      renderIntentHub: context.hub,
       now: context.now(),
     });
     return shown.core;
@@ -168,13 +169,13 @@ async function showWorkspacePath(
     return failure({ code: shown.error.code, message: shown.error.message });
   }
   context.supervisor.attachArtifact(lease.previewId, shown.artifact.id);
-  return mcpTextResult({
+  return confirmCanvasPresentation(shown.intent, {
     artifactId: shown.artifact.id,
     canvasPath: shown.intent.targetUrl,
     presentation: readResolvedPresentation(shown.activity.metadata) ?? presentation,
     previewUrl: shown.artifact.path,
     previewId: lease.previewId,
-  });
+  }, context.hub);
 }
 
 async function resolveWorkspaceTarget(
@@ -296,6 +297,7 @@ async function showArtifact(
 ): Promise<McpToolCallResult> {
   let outcome: McpToolCallResult | null = null;
   let intent: ReturnType<typeof composeArtifactCanvasNavigateIntent> | null = null;
+  let payload: Record<string, unknown> | null = null;
   const at = context.now();
   await context.updateCore((core) => {
     const projection = buildArtifactCanvasProjection({
@@ -334,16 +336,15 @@ async function showArtifact(
       policyVersion: projection.projection.policyVersion,
       triggeredAt: at.toISOString(),
     });
-    outcome = mcpTextResult({
+    payload = {
       artifactId,
       canvasPath: targetUrl,
       presentation: projection.projection.presentationResolved,
-    });
+    };
     return activity.core;
   });
   // Publish only once the Activity is durable.
-  if (intent) context.hub.publish({ intent, now: at });
-  return outcome!;
+  return intent && payload ? confirmCanvasPresentation(intent, payload, context.hub) : outcome!;
 }
 
 /** The presentation the show intent Activity recorded (SPEC-123 result `presentation`). */

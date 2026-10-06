@@ -25,6 +25,7 @@ import {
   canvasSurfaceRouteRegistry,
   type CanvasSurfaceKind,
   type CanvasSurfaceRef,
+  type ArtifactCanvasNavigateIntent,
 } from '../artifactCanvas/contracts.js';
 import { CanvasPane } from './CanvasPane.js';
 import { useCanvasNavigateIntent } from './useCanvasNavigateIntent.js';
@@ -50,6 +51,7 @@ export interface ArtifactCanvasSurfaceOutletContext {
   surface: CanvasSurfaceRef;
   parentUrl: string;
   canvasControls?: ComponentType<ArtifactCanvasControlsProps>;
+  renderIntent?: ArtifactCanvasNavigateIntent | null;
 }
 
 const ARTIFACT_CANVAS_PANE_WIDTH_DEFAULT = 460;
@@ -104,7 +106,7 @@ function SharedViewerSurfaceFrame({
     () => surfaceId ? { kind: surfaceKind, surfaceId } : null,
     [surfaceId, surfaceKind],
   );
-  useCanvasNavigateIntent(surface);
+  const renderIntent = useCanvasNavigateIntent(surface);
   const canvasRoute = surface
     ? canvasSurfaceRouteRegistry.parse(location.pathname)
     : null;
@@ -225,7 +227,7 @@ function SharedViewerSurfaceFrame({
         onKeyDown={handleResizeKeyDown}
         onPointerDown={handleResizePointerDown}
       />
-      <Outlet context={{ surface, parentUrl, canvasControls } satisfies ArtifactCanvasSurfaceOutletContext} />
+      <Outlet context={{ surface, parentUrl, canvasControls, renderIntent } satisfies ArtifactCanvasSurfaceOutletContext} />
     </div>
   );
 }

@@ -13,7 +13,7 @@ import {
   DEFAULT_LIVE_PREVIEW_CONFIG,
   STATIC_LIVE_PREVIEW_PROFILE,
 } from '../src/products/code/livePreview/contracts.ts';
-import { materializeLivePreviewArtifactAndShowInCanvas } from '../src/products/code/livePreview/artifactMaterialization.ts';
+import { prepareLivePreviewArtifactCanvasShow } from '../src/products/code/livePreview/artifactMaterialization.ts';
 import { createCodeLivePreviewSupervisor } from '../src/products/code/livePreview/host.ts';
 import { DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG } from '../src/products/shared/artifactCanvas/iframePolicy.ts';
 import { buildArtifactCanvasProjection } from '../src/products/shared/artifactCanvas/projection.ts';
@@ -150,15 +150,14 @@ test('a static lease on a Code conversation opens as a scripted canvas iframe', 
       ],
     };
 
-    const shown = materializeLivePreviewArtifactAndShowInCanvas(core, lease, {
+    const shown = prepareLivePreviewArtifactCanvasShow(core, lease, {
       entryPath: '/index.html',
       title: 'Calculator',
       policyConfig,
       supervisorPreviewLeaseStore: supervisor,
-      renderIntentHub: new ArtifactCanvasRenderIntentHub(),
     });
-    assert.equal(shown.status, 'shown', JSON.stringify(shown.status === 'skipped' ? shown.reason : null));
-    if (shown.status !== 'shown') return;
+    assert.equal(shown.status, 'prepared', JSON.stringify(shown.status === 'skipped' ? shown.reason : null));
+    if (shown.status !== 'prepared') return;
     assert.equal(shown.artifact.conversationId, 'conversation-channel-channel-1');
     assert.equal(shown.artifact.path, `${started.origin}/index.html`);
     // Until the lease names its artifact, a direct projection stays static.
@@ -206,7 +205,7 @@ test('a static lease on a Code conversation opens as a scripted canvas iframe', 
     });
     assert.equal(agentProjection.status === 'ok' ? agentProjection.projection.iframeSandboxProfile?.name : null, 'static');
 
-    const unsafe = materializeLivePreviewArtifactAndShowInCanvas(core, lease, {
+    const unsafe = prepareLivePreviewArtifactCanvasShow(core, lease, {
       entryPath: '/../secret.txt',
       policyConfig,
       supervisorPreviewLeaseStore: supervisor,
