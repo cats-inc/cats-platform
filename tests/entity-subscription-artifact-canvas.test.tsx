@@ -158,7 +158,9 @@ test('Code canvas confirms only its loaded viewer and reloads the same artifact 
     await waitFor(() => assert.equal(loads.length, 1));
     assert.ok(view.container.querySelector('aside'));
     assert.equal(receipts.length, 0, 'navigation is not viewer completion');
-    await act(async () => loads[0]!(jsonResponse(projection)));
+    // Async act leaks MessageChannel ports in bundled ESM tests; waitFor flushes updates.
+    loads[0]!(jsonResponse(projection));
+    await waitFor(() => assert.ok(view.container.querySelector('iframe')));
     const iframe = view.container.querySelector('iframe')!;
     assert.ok(iframe);
     assert.equal(receipts.length, 0, 'projection readiness is not iframe loading');
@@ -169,7 +171,11 @@ test('Code canvas confirms only its loaded viewer and reloads the same artifact 
       .at(-1)!.emit('artifact_canvas_intent', { intent: intent('second') }));
     await waitFor(() => assert.equal(loads.length, 2));
     assert.equal(receipts.length, 1, 'the previous loaded viewer cannot confirm a new intent');
-    await act(async () => loads[1]!(jsonResponse(projection)));
+    loads[1]!(jsonResponse(projection));
+    await waitFor(() => {
+      assert.ok(view.container.querySelector('iframe'));
+      assert.notEqual(view.container.querySelector('iframe'), iframe);
+    });
     const reloaded = view.container.querySelector('iframe')!;
     assert.notEqual(reloaded, iframe);
     act(() => reloaded.dispatchEvent(new Event('load')));
@@ -178,7 +184,7 @@ test('Code canvas confirms only its loaded viewer and reloads the same artifact 
     act(() => sources.filter((entry) => !entry.closed && entry.url.startsWith('/api/canvas/intents/stream'))
       .at(-1)!.emit('artifact_canvas_intent', { intent: intent('failed') }));
     await waitFor(() => assert.equal(loads.length, 3));
-    await act(async () => loads[2]!(jsonResponse({ error: { message: 'Missing artifact' } }, { status: 404 })));
+    loads[2]!(jsonResponse({ error: { message: 'Missing artifact' } }, { status: 404 }));
     await waitFor(() => assert.equal(receipts.length, 3));
     assert.equal(receipts[2]?.status, 'failed');
   } finally {
