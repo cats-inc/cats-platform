@@ -2,6 +2,63 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-06 — Desktop 0.7.13 standard preview
+
+Desktop **0.7.13** is the owner-requested standard-profile preview that brings
+the composer model popover to parallel drafts and opens Code tasks on their own
+conversation surface. This is a compatible patch: existing public APIs,
+configuration contracts and persisted formats remain compatible, and no data
+migration is required.
+
+- **Parallel lane pickers.** Parallel drafts (parallel chat, peer coding and
+  parallel work) use the composer chip's popover like the rest of the composer.
+  A lane that is just a model edits that lane's target; a lane with cats or
+  temporary participants edits them like any draft participant. The side
+  panel's per-lane picker sections are removed. Started parallel conversations
+  already used the popover in 0.7.12, because each lane is its own conversation.
+- **Cat picks in parallel drafts.** A cat's pick is one draft choice shared by
+  every lane the cat joins. After the parallel group is created, the pick is
+  applied to each of those lane conversations through the participant update
+  API, before the first message is sent; the cat's default model is untouched
+  and the create contract is unchanged.
+- **Code tasks open on their own surface.** Starting a Code task from Chat now
+  opens the created conversation on Code's route with a first-dispatch handoff,
+  so Code preview tools find the open canvas instead of returning
+  `canvas_not_open`. Conversations already shown under the wrong product return
+  to their stored origin, keeping canvas routes, running controls and identity.
+  A failed first send keeps the created conversation or parallel group, the
+  error, the text and the attachments, including model-save and upload failures,
+  and draft controls stay locked and cancellable while the send is acknowledged.
+- **Runtime source.** Keep the Runtime pin from 0.7.10 through 0.7.12,
+  `f64f347d2820a08fc24b4e82448c69542fc88771` (package version 0.4.1), on all
+  three operating systems and in the complete source archive. The Platform source
+  is the immutable merge commit selected for dispatch and recorded by the release
+  descriptor and source manifest.
+- **Apps.** Reuse Usage 0.5.1 from
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.1/usage-0.5.1.catsapp`,
+  SHA-256 `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
+  Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
+  compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
+- **Signing and updates.** Dispatch `desktop-release.yml` with `tag=v0.7.13`,
+  the full Runtime SHA above and `unsigned=false`; the workflow creates the preview
+  tag. Expected trust is macOS signed + notarized, Windows unsigned (no
+  certificate), Linux n/a. Standard-profile 0.7.12 installs keep their update path:
+  macOS uses the universal ZIP and the same Developer ID team, Windows stays
+  unsigned to unsigned, and Linux uses the `.deb` path. No installed upgrade is
+  exercised before dispatch.
+- **Validation.** The Code surface change merged through its own focused checks,
+  isolated Electron checks and required PR CI (#254). For the parallel change,
+  renderer, server, desktop and test typechecks pass locally; the mobile typecheck
+  is left to CI. 765 focused tests pass across the picker, popover, draft,
+  parallel, cross-surface, composer, settings, setup and boundary suites,
+  including new tests for lane pickers, the lane membership rule and the parallel
+  create, update, send order. Version consistency is checked locally; required PR
+  CI gates the merge. The release workflow validates all three packaged source
+  receipts, offline App activation, isolated sidecar startup, complete source
+  archive and update metadata before publication. Publication results belong to
+  the [`v0.7.13` GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.13)
+  and its workflow run.
+
 ## 2026-10-06 — Desktop 0.7.12 standard preview
 
 Desktop **0.7.12** is the owner-requested standard-profile preview that moves
