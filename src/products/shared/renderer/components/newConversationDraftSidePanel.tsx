@@ -44,10 +44,6 @@ export interface NewConversationDraftSidePanelCopy {
     groupSectionTitle?: string;
     emptyState?: string;
   };
-  execution?: {
-    sectionTitle?: string;
-    emptyState?: string;
-  };
   folder?: {
     sectionTitle?: string;
     emptyState?: string;
@@ -57,7 +53,6 @@ export interface NewConversationDraftSidePanelCopy {
 type ResolvedNewConversationDraftSidePanelCopy = Required<{
   title: string;
   participants: Required<NonNullable<NewConversationDraftSidePanelCopy['participants']>>;
-  execution: Required<NonNullable<NewConversationDraftSidePanelCopy['execution']>>;
   folder: Required<NonNullable<NewConversationDraftSidePanelCopy['folder']>>;
 }>;
 
@@ -69,10 +64,6 @@ const defaultNewConversationDraftSidePanelCopy = (
     catsSectionTitle: t(messageKeys.chatNewChatDraftSidePanelParticipantsCatsTitle),
     groupSectionTitle: t(messageKeys.chatNewChatDraftSidePanelParticipantsGroupTitle),
     emptyState: t(messageKeys.chatNewChatDraftSidePanelParticipantsEmptyState),
-  },
-  execution: {
-    sectionTitle: t(messageKeys.chatNewChatDraftSidePanelExecutionTitle),
-    emptyState: t(messageKeys.chatNewChatDraftSidePanelExecutionEmptyState),
   },
   folder: {
     sectionTitle: t(messageKeys.chatNewChatDraftSidePanelFolderTitle),
@@ -91,10 +82,6 @@ export function resolveNewConversationDraftSidePanelCopy(
       ...defaultCopy.participants,
       ...copy?.participants,
     },
-    execution: {
-      ...defaultCopy.execution,
-      ...copy?.execution,
-    },
     folder: {
       ...defaultCopy.folder,
       ...copy?.folder,
@@ -109,7 +96,6 @@ export interface BuildNewConversationDraftSidePanelSectionsInput {
   draftHighlightedCatId: string | null;
   effectiveDefaultRecipientCat: AppShellPayload['chat']['cats'][number] | null;
   isGroupDraft: boolean;
-  isDirectLaneContext: boolean;
   isParallelMode: boolean;
   groupDraftSelectionLabel: string;
   assistantPresets: NonNullable<AppShellPayload['assistantPresets']>;
@@ -120,8 +106,6 @@ export interface BuildNewConversationDraftSidePanelSectionsInput {
   temporaryParticipantForm: NewConversationTemporaryParticipantFormState;
   hasReachedGroupParticipantLimit: boolean;
   isSubmittingFirstTurn: boolean;
-  defaultRecipientCat: AppShellPayload['chat']['cats'][number] | null;
-  activePanelExecutionTarget: ExecutionTargetValue | null;
   onToggleDraftCat: (catId: string) => void;
   onHighlightDraftCat: (catId: string | null) => void;
   onAddDraftTemporaryParticipant: (
@@ -141,9 +125,6 @@ export interface BuildNewConversationDraftSidePanelSectionsInput {
   createTemporaryParticipantFormValue: () => NewConversationTemporaryParticipantFormState;
   onTemporaryParticipantFormOpenChange: (open: boolean) => void;
   onSubmitTemporaryParticipant: () => void;
-  selectedExecutionTarget?: ExecutionTargetValue;
-  onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
-  onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
   parallelTargets?: ExecutionTargetValue[];
   onParallelTargetChange?: (index: number, value: ExecutionTargetValue) => void;
   folderBrowsePath?: string;
@@ -410,64 +391,6 @@ export function buildNewConversationDraftSidePanelSections(
         ) : null}
       </div>
     ),
-  });
-
-  const executionChildren = (() => {
-    if (input.isDirectLaneContext && input.defaultRecipientCat && input.activePanelExecutionTarget) {
-      return (
-        <>
-          <CatAvatarRow
-            cats={[input.defaultRecipientCat]}
-            bossCatId={input.payload.chat.bossCatId}
-            selectedIds={[input.defaultRecipientCat.id]}
-            highlightedId={input.defaultRecipientCat.id}
-            defaultRecipientCatId={input.defaultRecipientCat.id}
-            toggleable={false}
-            onToggle={() => {}}
-            onHighlight={() => {}}
-          />
-          <ProviderModelFields
-            provider={input.activePanelExecutionTarget.provider}
-            instance={input.activePanelExecutionTarget.instance ?? ''}
-            model={input.activePanelExecutionTarget.model ?? ''}
-            modelSelection={input.activePanelExecutionTarget.modelSelection}
-            onTargetChange={(target: ProviderTargetSelection) => {
-              input.onDirectLaneExecutionTargetChange?.(
-                input.defaultRecipientCat!.id,
-                createExecutionTargetValueFromProviderSelection(target),
-              );
-            }}
-          />
-        </>
-      );
-    }
-    if (input.activePanelExecutionTarget) {
-      return (
-        <div
-          style={input.effectiveDefaultRecipientCat && !input.isDirectLaneContext
-            ? { pointerEvents: 'none', opacity: 0.45 }
-            : undefined}
-        >
-          <ProviderModelFields
-            provider={input.activePanelExecutionTarget.provider}
-            instance={input.activePanelExecutionTarget.instance ?? ''}
-            model={input.activePanelExecutionTarget.model ?? ''}
-            modelSelection={input.activePanelExecutionTarget.modelSelection}
-            onTargetChange={(target: ProviderTargetSelection) => {
-              if (!input.effectiveDefaultRecipientCat && input.onExecutionTargetChange) {
-                input.onExecutionTargetChange(createExecutionTargetValueFromProviderSelection(target));
-              }
-            }}
-          />
-        </div>
-      );
-    }
-    return <p className="operatorEmptyState">{copy.execution.emptyState}</p>;
-  })();
-  sections.push({
-    id: 'execution',
-    title: copy.execution.sectionTitle,
-    children: executionChildren,
   });
 
   if (input.isParallelMode && input.parallelTargets) {

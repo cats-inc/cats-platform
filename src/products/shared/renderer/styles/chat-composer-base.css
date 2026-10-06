@@ -577,6 +577,103 @@
   accent-color: var(--accent);
 }
 
+/* Rows whose model can be changed drill into the picker in place. */
+.audiencePopover:has(.audiencePopoverRowButton) {
+  min-width: 300px;
+}
+
+.audiencePopoverRowButton {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.audiencePopoverModel {
+  min-width: 0;
+  max-width: 55%;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audiencePopoverRowChevron {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.audiencePopoverEditor {
+  width: min(340px, calc(100vw - 32px));
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  padding: 10px 12px 12px;
+}
+
+.audiencePopoverEditorHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.audiencePopoverBack {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  margin-left: -4px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.audiencePopoverBack:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.audiencePopoverEditorFields {
+  display: grid;
+  gap: 10px;
+}
+
+.audiencePopoverAction {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.audiencePopoverActionHint {
+  margin: 6px 0 0;
+}
+
+.audiencePopoverSettingsLink {
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.audiencePopoverSettingsLink:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
 .folderBrowserOverlay {
   position: fixed;
   inset: 0;

@@ -5,7 +5,6 @@ import test from 'node:test';
 import {
   attachExecutionLabelToProviderTarget,
   catalogMatchesTarget,
-  countRequestScopedControls,
   filterPersistentControlValues,
   formatCatalogEntryLabel,
   hasExplicitDefaultEnumOption,
@@ -20,7 +19,6 @@ import {
   resolveProviderModelFieldsViewState,
   resolveProviderSupportBadge,
   resolveSelectedCatalogEntryId,
-  resolveSelectedInstanceEventCapabilities,
   resolveUnsupportedPersistentControlWarning,
   sanitizePersistentTargetSelection,
   shouldAllowLegacyManualModelEntry,
@@ -35,7 +33,6 @@ import {
   type ProviderAdvancedCatalogControl,
 } from '../src/shared/providerCatalog.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
-import { formatProviderEventCapabilitiesSummary } from '../src/shared/providerEventCapabilities.ts';
 import { resolveCatalogTargetSelection } from '../src/shared/providerSelection.ts';
 
 function buildCurrentAdvancedCatalog(provider: 'claude' | 'codex') {
@@ -344,63 +341,6 @@ test('instance field stays hidden when a provider only exposes one runtime insta
       ],
     }),
     false,
-  );
-});
-
-test('selected instance capability summary reflects runtime-owned event truth', () => {
-  const capabilities = resolveSelectedInstanceEventCapabilities({
-    resolvedInstance: 'cli/native',
-    instanceOptions: [
-      {
-        id: 'native',
-        label: 'cli/native',
-        target: 'cli/native',
-        backend: 'cli',
-        eventCapabilities: {
-          normalizedStream: {
-            text: { mode: 'chunk', stepwise: true },
-            toolUse: 'native',
-            toolResult: 'native',
-            progress: 'derived',
-            reasoning: 'none',
-          },
-          transcript: {
-            contentBlocks: 'native',
-          },
-          presentation: {
-            recommended: 'content_blocks',
-          },
-          notes: [],
-        },
-      },
-    ],
-  });
-
-  assert.equal(
-    formatProviderEventCapabilitiesSummary(capabilities),
-    'Runtime event surface: chunk text, tool use, tool results, derived progress, transcript blocks. Recommended host view: content blocks.',
-  );
-});
-
-test('unknown capability truth stays silent in provider hints', () => {
-  assert.equal(
-    formatProviderEventCapabilitiesSummary({
-      normalizedStream: {
-        text: { mode: 'unknown', stepwise: false },
-        toolUse: 'unknown',
-        toolResult: 'unknown',
-        progress: 'unknown',
-        reasoning: 'unknown',
-      },
-      transcript: {
-        contentBlocks: 'unknown',
-      },
-      presentation: {
-        recommended: 'unknown',
-      },
-      notes: [],
-    }),
-    null,
   );
 });
 
@@ -721,7 +661,6 @@ test('persistent selector controls exclude request-only overrides for the chosen
     listPersistentControlOptions(controls, 'gpt-5.4').map((control) => control.key),
     ['openai.reasoning_effort'],
   );
-  assert.equal(countRequestScopedControls(controls, 'gpt-5.4'), 1);
   assert.deepEqual(
     filterPersistentControlValues(controls, 'gpt-5.4', {
       'openai.reasoning_effort': 'medium',

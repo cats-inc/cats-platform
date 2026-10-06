@@ -48,9 +48,11 @@ import {
   fetchAppShell,
   retryChatMessage,
   sendChatMessage,
+  updateChannelParticipantApi,
   updateSelectedChannel,
   uploadChannelAttachments,
 } from '../api/index.js';
+import { applyDraftCatExecutionTargets } from '../draftCatExecutionTargets.js';
 import {
   applyOptimisticPendingExecutionTarget,
   appendOptimisticUserMessage,
@@ -114,6 +116,8 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftTemporaryParticipants?: Dispatch<SetStateAction<DraftTemporaryParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
+  /** Per-cat model picks made in the draft; applied to the conversation it creates. */
+  draftCatExecutionTargetOverrides?: ReadonlyMap<string, ModelValue>;
   setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, ModelValue>>>;
   setDraftRuntimeSessionPolicy?: Dispatch<SetStateAction<RuntimeSessionPolicy>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
@@ -137,6 +141,8 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   setFeedback: Dispatch<SetStateAction<string>>;
   hydratePendingDispatch?: PendingDispatchHydration | null;
 }
+
+const EMPTY_DRAFT_CAT_TARGETS: ReadonlyMap<string, never> = new Map<string, never>();
 
 function isChannelDispatchRunning(
   payload: AppShellPayload,
@@ -177,6 +183,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setDraftCatIds,
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
+    draftCatExecutionTargetOverrides = EMPTY_DRAFT_CAT_TARGETS,
     setDraftCatExecutionTargetOverrides,
     setDraftRuntimeSessionPolicy,
     setDraftFiles,
@@ -405,6 +412,12 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         channelFiles,
         createChatChannel,
         insertCreatedChannelIntoPayload,
+        afterChannelCreated: (createdChannel, signal) => applyDraftCatExecutionTargets(
+          createdChannel,
+          draftCatExecutionTargetOverrides,
+          updateChannelParticipantApi,
+          signal,
+        ),
         setState,
         navigate,
         setChannelFiles,
@@ -593,6 +606,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setDraftCatIds,
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
+    draftCatExecutionTargetOverrides,
     setDraftCatExecutionTargetOverrides,
     setDraftRuntimeSessionPolicy,
     setDraftCwd,

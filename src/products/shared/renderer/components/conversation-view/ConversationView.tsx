@@ -23,7 +23,7 @@ import type {
   ParallelChatRelayCommandKind,
 } from '../../../api/workspaceContracts.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
-import { isParallelChatBusy } from '../../../../../shared/workspaceBusy.js';
+import { isChannelBusy, isParallelChatBusy } from '../../../../../shared/workspaceBusy.js';
 import type {
   LiveIndicatorSegmentState,
   LiveIndicatorState,
@@ -43,7 +43,10 @@ import {
   buildRunInspectorView,
 } from '../../../operator-loop/index.js';
 import type { ResolvedChannelParticipant } from '../../../channelParticipants.js';
+import type { AudienceTargetEditor } from '../AudienceChip.js';
 import { type ExecutionTargetValue } from '../ExecutionTarget.js';
+import type { DraftComposerStackParticipant } from '../newConversationDraftSupport.js';
+import { resolveConversationTargetEditor } from './conversationTargetEditor.js';
 import type { MessageChoicesSubmitInput } from '../MessageChoices.js';
 import {
   isDirectConversationMode,
@@ -189,6 +192,7 @@ export interface ConversationViewComposerTargetSlotContext {
   activeAudienceKeys: string[] | null;
   onSetActiveAudienceKeys?: (keys: string[]) => void;
   onOpenSection: (section: string) => void;
+  resolveTargetEditor: (participant: DraftComposerStackParticipant) => AudienceTargetEditor | null;
 }
 
 export interface ConversationViewProps {
@@ -911,6 +915,61 @@ export function ConversationView({
     cancelParticipantRename();
   }
 
+  // The composer chip edits the same target the send path uses: the
+  // conversation's own participant target, or the default chat's target.
+  // A cat's default model stays on the cat's own page.
+  const resolveTargetEditor = useCallback(
+    (participant: DraftComposerStackParticipant): AudienceTargetEditor | null => {
+      const startFreshBusy = isChannelBusy(busy, 'reset');
+      return resolveConversationTargetEditor(participant, {
+        activeRoomParticipants,
+        defaultRecipientParticipant,
+        directLaneCat,
+        directLaneExecutionTarget,
+        isDirectLane,
+        selectedExecutionTarget,
+        onExecutionTargetChange,
+        onDirectLaneExecutionTargetChange,
+        onUpdateParticipantTarget: onUpdateChannelParticipant
+          ? (participantId, value) => {
+              void onUpdateChannelParticipant(participantId, {
+                provider: value.provider,
+                instance: value.instance,
+                model: value.model,
+                modelSelection: value.modelSelection,
+              });
+            }
+          : undefined,
+        startFresh: onStartFresh
+          ? {
+              label: startFreshBusy
+                ? t(messageKeys.chatSidePanelStartingFreshBusy)
+                : t(messageKeys.chatSidePanelStartFresh),
+              hint: t(messageKeys.chatSidePanelStartFreshHint),
+              disabled: startFreshBusy,
+              onSelect: onStartFresh,
+            }
+          : undefined,
+        openCatPage: (catId) => navigate(`/entities/cats/${encodeURIComponent(catId)}`),
+      });
+    },
+    [
+      activeRoomParticipants,
+      busy,
+      defaultRecipientParticipant,
+      directLaneCat,
+      directLaneExecutionTarget,
+      isDirectLane,
+      navigate,
+      onDirectLaneExecutionTargetChange,
+      onExecutionTargetChange,
+      onStartFresh,
+      onUpdateChannelParticipant,
+      selectedExecutionTarget,
+      t,
+    ],
+  );
+
   const viewContext: ConversationViewRenderContext = {
     payload,
     selectedChannel,
@@ -947,6 +1006,7 @@ export function ConversationView({
     activeAudienceKeys,
     onSetActiveAudienceKeys,
     onOpenSection: openSidePanelTo,
+    resolveTargetEditor,
   };
   const composerTargetSlot = renderComposerTargetSlot?.(composerTargetSlotContext) ?? (
     <ConversationComposerTargetSlot
@@ -963,6 +1023,7 @@ export function ConversationView({
       activeAudienceKeys={activeAudienceKeys}
       onSetActiveAudienceKeys={onSetActiveAudienceKeys}
       onOpenSection={openSidePanelTo}
+      resolveTargetEditor={resolveTargetEditor}
     />
   );
   const sidePanelSections = (buildSidePanelSections ?? buildConversationSidePanelSections)({
@@ -975,12 +1036,6 @@ export function ConversationView({
     assignedCatRecords,
     assignedAdhocParticipants,
     defaultRecipientCatId: defaultRecipientCat?.catId ?? null,
-    defaultRecipientParticipant,
-    directLaneCat,
-    directLaneExecutionTarget,
-    isDirectLane,
-    isDefaultChatComposer,
-    selectedExecutionTarget,
     inspectedRun,
     showAddCatButton,
     editingParticipantId,
@@ -997,20 +1052,6 @@ export function ConversationView({
     onInspectRun: setInspectedRunId,
     onApprovalDecision,
     onOperatorAction,
-    onExecutionTargetChange,
-    onStartFresh,
-    onDirectLaneExecutionTargetChange,
-    onDirectLaneParticipantTargetChange: onUpdateChannelParticipant
-      ? (participantId, value) => {
-          void onUpdateChannelParticipant(participantId, {
-            provider: value.provider,
-            instance: value.instance,
-            model: value.model,
-            modelSelection: value.modelSelection,
-          });
-        }
-      : undefined,
-    buildParticipantAvatarStyle,
   });
 
   const topBarExtraActions = renderTopBarExtraActions?.(viewContext) ?? null;

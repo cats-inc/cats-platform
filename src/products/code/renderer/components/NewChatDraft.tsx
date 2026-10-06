@@ -57,11 +57,6 @@ export interface NewCodeDraftCopy {
     sectionTitle?: string;
     emptyState?: string;
   };
-  execution?: {
-    sectionTitle?: string;
-    actionLabel?: string;
-    emptyState?: string;
-  };
   folder?: {
     sectionTitle?: string;
     actionLabel?: string;
@@ -84,11 +79,6 @@ export function buildNewCodeDraftCopy(
       sectionTitle: t(messageKeys.codeNewDraftParticipantsTitle),
       emptyState: t(messageKeys.codeNewDraftParticipantsEmpty),
     },
-    execution: {
-      sectionTitle: t(messageKeys.codeNewDraftExecutionTitle),
-      actionLabel: t(messageKeys.codeNewDraftExecutionAction),
-      emptyState: t(messageKeys.codeNewDraftExecutionEmpty),
-    },
     folder: {
       sectionTitle: t(messageKeys.codeNewDraftFolderTitle),
       actionLabel: t(messageKeys.codeNewDraftFolderAction),
@@ -106,10 +96,6 @@ export function buildNewCodeChatDraftSidePanelCopy(
       catsSectionTitle: draftCopy.participants?.sectionTitle,
       groupSectionTitle: draftCopy.participants?.sectionTitle,
       emptyState: draftCopy.participants?.emptyState,
-    },
-    execution: {
-      sectionTitle: draftCopy.execution?.sectionTitle,
-      emptyState: draftCopy.execution?.emptyState,
     },
     folder: {
       sectionTitle: draftCopy.folder?.sectionTitle,

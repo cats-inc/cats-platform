@@ -41,9 +41,6 @@ export function ProviderModelFieldControls(input: {
             <option value="true">{t(messageKeys.sharedProviderModelControlEnabled)}</option>
             <option value="false">{t(messageKeys.sharedProviderModelControlDisabled)}</option>
           </select>
-          {control.description ? (
-            <span className="fieldHint">{control.description}</span>
-          ) : null}
         </label>
       );
     }
@@ -83,9 +80,6 @@ export function ProviderModelFieldControls(input: {
               </option>
             ))}
           </select>
-          {control.description ? (
-            <span className="fieldHint">{control.description}</span>
-          ) : null}
         </label>
       );
     }
@@ -103,9 +97,6 @@ export function ProviderModelFieldControls(input: {
           placeholder={t(messageKeys.sharedProviderModelControlOptionalPlaceholder)}
           onChange={(event) => onControlChange(control, event.target.value)}
         />
-        {control.description ? (
-          <span className="fieldHint">{control.description}</span>
-        ) : null}
       </label>
     );
   });

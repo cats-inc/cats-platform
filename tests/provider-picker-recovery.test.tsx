@@ -362,6 +362,32 @@ test('retained server responses keep a spinner until background revalidation suc
   assert.equal(view.container.querySelectorAll('[role="status"]').length, 0);
 });
 
+test('reopening over a complete cached snapshot shows no spinner until a read needs recovery', async (t) => {
+  // The composer popover remounts the picker on every open.
+  const clock = installClock(t);
+  const { state, props } = api();
+  const first = render(<I18nProvider locale="en"><ProviderModelBrainCard {...props} /></I18nProvider>);
+  await settle();
+  assert.ok(first.container.querySelector('option[value="model-a"]'));
+  first.unmount();
+
+  const next = render(<I18nProvider locale="en"><ProviderModelBrainCard {...props} /></I18nProvider>);
+  assert.ok(next.container.querySelector('option[value="model-a"]'), 'the first frame shows the cached choices');
+  assert.equal(next.container.querySelectorAll('.providerPickerLoading').length, 0);
+  await settle();
+  assert.equal(next.container.querySelectorAll('.providerPickerLoading').length, 0);
+
+  // A background re-read of a complete snapshot stays quiet.
+  await clock.advance(60_000);
+  assert.equal(next.container.querySelectorAll('.providerPickerLoading').length, 0);
+
+  // A read the server reports as revalidating is recovery and shows the spinner.
+  state.revalidating = true;
+  await clock.advance(60_000);
+  assert.ok(next.container.querySelectorAll('.providerPickerLoading').length > 0);
+  assert.ok(next.container.querySelector('option[value="model-a"]'));
+});
+
 test('unmounted catalog requests cannot overwrite a remounted picker after a selection reset', async (t) => {
   installClock(t);
   const { props } = api();

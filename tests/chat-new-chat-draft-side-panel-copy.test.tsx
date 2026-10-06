@@ -20,10 +20,6 @@ test('chat new draft side panel copy can be product-owned by callers', () => {
         groupSectionTitle: 'Participants',
         emptyState: 'No participants available yet.',
       },
-      execution: {
-        sectionTitle: 'Execution',
-        emptyState: 'No execution target set yet.',
-      },
       folder: {
         sectionTitle: 'Workspace',
         emptyState: 'No workspace selected yet.',
@@ -38,7 +34,6 @@ test('chat new draft side panel copy can be product-owned by callers', () => {
     draftHighlightedCatId: null,
     effectiveDefaultRecipientCat: null,
     isGroupDraft: true,
-    isDirectLaneContext: false,
     isParallelMode: false,
     groupDraftSelectionLabel: 'No participants selected.',
     assistantPresets: [],
@@ -55,8 +50,6 @@ test('chat new draft side panel copy can be product-owned by callers', () => {
     },
     hasReachedGroupParticipantLimit: false,
     isSubmittingFirstTurn: false,
-    defaultRecipientCat: null,
-    activePanelExecutionTarget: null,
     onToggleDraftCat: () => {},
     onHighlightDraftCat: () => {},
     onAddDraftTemporaryParticipant: () => {},
@@ -84,7 +77,8 @@ test('chat new draft side panel copy can be product-owned by callers', () => {
 
   assert.equal(copy.title, 'New Code Setup');
   assert.equal(sections.find((section) => section.id === 'cats')?.title, 'Participants');
-  assert.equal(sections.find((section) => section.id === 'execution')?.title, 'Execution');
+  // The model picker lives in the composer chip's popover now.
+  assert.equal(sections.find((section) => section.id === 'execution'), undefined);
   assert.equal(sections.find((section) => section.id === 'cwd')?.title, 'Workspace');
 
   const markup = renderToStaticMarkup(
@@ -95,6 +89,5 @@ test('chat new draft side panel copy can be product-owned by callers', () => {
     </>,
   );
   assert.match(markup, /No participants available yet\./u);
-  assert.match(markup, /No execution target set yet\./u);
   assert.match(markup, /No workspace selected yet\./u);
 });

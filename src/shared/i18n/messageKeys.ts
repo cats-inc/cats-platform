@@ -1883,10 +1883,8 @@ export const messageKeys = {
   chatNewChatDraftPomodoroPrompt: 'chat.newChatDraft.pomodoroPrompt',
   chatNewChatDraftStartProjectChipLabel: 'chat.newChatDraft.startProjectChipLabel',
   chatNewChatDraftStartProjectPrompt: 'chat.newChatDraft.startProjectPrompt',
-  chatNewChatDraftSidePanelExecutionTitle: 'chat.newChatDraft.execution.title',
   chatNewChatDraftSidePanelExecutionActionLabel:
     'chat.newChatDraft.execution.actionLabel',
-  chatNewChatDraftSidePanelExecutionEmptyState: 'chat.newChatDraft.execution.emptyState',
   chatNewChatDraftSidePanelFolderTitle: 'chat.newChatDraft.folder.title',
   chatNewChatDraftSidePanelFolderEmptyState: 'chat.newChatDraft.folder.emptyState',
   chatNewChatDraftDefaultGreeting: 'chat.newChatDraft.defaultGreeting',
@@ -1928,10 +1926,6 @@ export const messageKeys = {
   chatNewChatDraftTemporaryParticipantSubmit: 'chat.newChatDraft.temporaryParticipantSubmit',
   chatNewChatDraftTemporaryParticipantOpenForm:
     'chat.newChatDraft.temporaryParticipantOpenForm',
-  chatSidePanelTemporaryParticipantLabel: 'chat.sidePanel.temporaryParticipantLabel',
-  chatSidePanelRoleLabel: 'chat.sidePanel.roleLabel',
-  chatSidePanelAiServiceLabel: 'chat.sidePanel.aiServiceLabel',
-  chatSidePanelConnectionLabel: 'chat.sidePanel.connectionLabel',
   chatApprovalQueueEyebrow: 'chat.approvalQueue.eyebrow',
   chatApprovalQueuePendingTitle: 'chat.approvalQueue.pendingTitle',
   chatApprovalQueueEmptyState: 'chat.approvalQueue.emptyState',
@@ -2770,6 +2764,9 @@ export const messageKeys = {
   sharedAudienceWorkflowConcurrent: 'shared.audience.workflowConcurrent',
   sharedAudienceSwitchToSequentialModeLabel: 'shared.audience.switchToSequentialModeLabel',
   sharedAudienceSwitchToConcurrentModeLabel: 'shared.audience.switchToConcurrentModeLabel',
+  sharedAudienceBackToListLabel: 'shared.audience.backToListLabel',
+  sharedAudienceChangeModelLabel: 'shared.audience.changeModelLabel',
+  sharedAudienceOpenCatSettingsLabel: 'shared.audience.openCatSettingsLabel',
   sharedWorkspaceModeCurrentLabel: 'shared.workspaceMode.currentLabel',
   sharedWorkspaceModeWorktreeLabel: 'shared.workspaceMode.worktreeLabel',
   sharedWorkspaceModeCurrentTooltip: 'shared.workspaceMode.currentTooltip',
@@ -3029,7 +3026,6 @@ export const messageKeys = {
     'shared.providerModel.field.legacyModelIdLabel',
   sharedProviderModelFieldLegacyModelIdPlaceholder:
     'shared.providerModel.field.legacyModelIdPlaceholder',
-  sharedProviderModelFieldLegacyModelIdHint: 'shared.providerModel.field.legacyModelIdHint',
   sharedProviderModelFieldModeLabel: 'shared.providerModel.field.modeLabel',
   sharedProviderModelFieldModeStandardLabel:
     'shared.providerModel.field.modeStandardLabel',
@@ -3039,12 +3035,6 @@ export const messageKeys = {
     'shared.providerModel.field.presetPreviewSuffix',
   sharedProviderModelFieldPresetUnavailableSuffix:
     'shared.providerModel.field.presetUnavailableSuffix',
-  sharedProviderModelFieldPresetTuningDescriptionFallback:
-    'shared.providerModel.field.presetTuningDescriptionFallback',
-  sharedProviderModelFieldModeOnlyBaseHint:
-    'shared.providerModel.field.modeOnlyBaseHint',
-  sharedProviderModelFieldRequestScopedWarning:
-    'shared.providerModel.field.requestScopedWarning',
   sharedProviderModelAttentionEntryRemoved: 'shared.providerModel.attention.entryRemoved',
   sharedProviderModelAttentionControlRemoved: 'shared.providerModel.attention.controlRemoved',
   sharedProviderModelAttentionPresetRemoved: 'shared.providerModel.attention.presetRemoved',
@@ -3250,9 +3240,6 @@ export const messageKeys = {
   codeNewDraftSetupTitle: 'code.newDraft.setupTitle',
   codeNewDraftParticipantsTitle: 'code.newDraft.participants.title',
   codeNewDraftParticipantsEmpty: 'code.newDraft.participants.empty',
-  codeNewDraftExecutionTitle: 'code.newDraft.execution.title',
-  codeNewDraftExecutionAction: 'code.newDraft.execution.action',
-  codeNewDraftExecutionEmpty: 'code.newDraft.execution.empty',
   codeNewDraftFolderTitle: 'code.newDraft.folder.title',
   codeNewDraftFolderAction: 'code.newDraft.folder.action',
   codeNewDraftFolderEmpty: 'code.newDraft.folder.empty',

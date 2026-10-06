@@ -1,29 +1,16 @@
-import type { CSSProperties } from 'react';
-
 import type { SidePanelSection } from '../../../../../design/components/SidePanel.js';
-import { isChannelBusy } from '../../../../../shared/workspaceBusy.js';
 import type { AppShellPayload, ChatCat } from '../../../api/workspaceContracts.js';
+import type { ResolvedChannelParticipant } from '../../../channelParticipants.js';
 import type {
   ChatOperatorView,
   ChatRunInspectorView,
 } from '../../../operator-loop/index.js';
-import {
-  resolveParticipantCatId,
-  type ResolvedChannelParticipant,
-} from '../../../channelParticipants.js';
 import { openFolderInExplorer } from '../../api/index.js';
-import { catInitials, type SelectedChannelView } from '../../workspaceChatUtils.js';
+import type { SelectedChannelView } from '../../workspaceChatUtils.js';
 import { ActivityFeed } from '../ActivityFeed.js';
 import { ApprovalQueuePanel } from '../ApprovalQueuePanel.js';
-import {
-  buildExecutionTargetSummary,
-  createExecutionTargetValueFromProviderSelection,
-  type ExecutionTargetValue,
-} from '../../../../shared/renderer/components/ExecutionTarget.js';
 import { ProgressSummaryPanel } from '../ProgressSummaryPanel.js';
-import { ProviderModelFields } from '../../../../../design/components/ProviderModelFields.js';
 import { RunInspector } from '../RunInspector.js';
-import { getCatMcpProfileLabel } from '../settings-cats/viewSupport.js';
 import { ConversationParticipantsSection } from './ConversationParticipantsSection.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
@@ -39,12 +26,6 @@ export interface BuildConversationSidePanelSectionsOptions {
   assignedCatRecords: ChatCat[];
   assignedAdhocParticipants: ResolvedChannelParticipant[];
   defaultRecipientCatId: string | null;
-  defaultRecipientParticipant: ResolvedChannelParticipant | null;
-  directLaneCat: ChatCat | null;
-  directLaneExecutionTarget: ExecutionTargetValue | null;
-  isDirectLane: boolean;
-  isDefaultChatComposer: boolean;
-  selectedExecutionTarget?: ExecutionTargetValue;
   inspectedRun: ChatRunInspectorView | null;
   showAddCatButton: boolean;
   editingParticipantId: string | null;
@@ -65,20 +46,6 @@ export interface BuildConversationSidePanelSectionsOptions {
     checkpointId?: string | null;
     outcomeId?: string | null;
   }) => void;
-  onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
-  onStartFresh?: () => void;
-  onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
-  /**
-   * Saves the pick as this conversation's own target for the participant.
-   * When provided and the conversation has a participant, the panel edits
-   * that instead of the cat profile, which every conversation with the cat
-   * shares.
-   */
-  onDirectLaneParticipantTargetChange?: (participantId: string, value: ExecutionTargetValue) => void;
-  buildParticipantAvatarStyle: (
-    participant: ResolvedChannelParticipant,
-    catRecord?: ChatCat | null,
-  ) => CSSProperties | undefined;
 }
 
 export function buildConversationSidePanelSections({
@@ -91,12 +58,6 @@ export function buildConversationSidePanelSections({
   assignedCatRecords,
   assignedAdhocParticipants,
   defaultRecipientCatId,
-  defaultRecipientParticipant,
-  directLaneCat,
-  directLaneExecutionTarget,
-  isDirectLane,
-  isDefaultChatComposer,
-  selectedExecutionTarget,
   inspectedRun,
   showAddCatButton,
   editingParticipantId,
@@ -111,15 +72,9 @@ export function buildConversationSidePanelSections({
   onInspectRun,
   onApprovalDecision,
   onOperatorAction,
-  onExecutionTargetChange,
-  onStartFresh,
-  onDirectLaneExecutionTargetChange,
-  onDirectLaneParticipantTargetChange,
-  buildParticipantAvatarStyle,
 }: BuildConversationSidePanelSectionsOptions): SidePanelSection[] {
   const { t } = useI18n();
   const sections: SidePanelSection[] = [];
-  const startFreshBusy = isChannelBusy(busy, 'reset');
 
   if (showAddCatButton || assignedCatRecords.length > 0 || assignedAdhocParticipants.length > 0) {
     sections.push({
@@ -148,201 +103,6 @@ export function buildConversationSidePanelSections({
       ),
     });
   }
-
-  const executionChildren = (() => {
-    if (isDirectLane && directLaneCat && directLaneExecutionTarget) {
-      const mcpProfileLabel = getCatMcpProfileLabel(directLaneCat.mcpProfile);
-      // The conversation's own target is what the chip shows and what a send
-      // uses (`assignment.execution.target`). The cat profile default is only
-      // the seed for a conversation that has no participant yet; showing it
-      // here for an existing conversation put another conversation's last
-      // pick into this panel, and edits went to the profile, not the chat.
-      const conversationExecutionTarget: ExecutionTargetValue = defaultRecipientParticipant
-        ? {
-            provider: defaultRecipientParticipant.execution.target.provider,
-            instance: defaultRecipientParticipant.execution.target.instance ?? null,
-            model: defaultRecipientParticipant.execution.target.model ?? null,
-            modelSelection: defaultRecipientParticipant.execution.modelSelection ?? null,
-          }
-        : directLaneExecutionTarget;
-      return (
-        <>
-          <div className="sidePanelSectionStack">
-            <div className="catInspectIdentity">
-              <div
-                className={directLaneCat.id === payload.chat.bossCatId ? 'catAvatar catAvatarBoss catInspectAvatar' : 'catAvatar catInspectAvatar'}
-                style={directLaneCat.avatarUrl
-                  ? { backgroundImage: `url(${directLaneCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                  : directLaneCat.avatarColor ? { background: directLaneCat.avatarColor } : undefined}
-              >
-                {directLaneCat.avatarUrl ? null : catInitials(directLaneCat.name)}
-              </div>
-              <div>
-                <strong>{directLaneCat.name}</strong>
-                {directLaneCat.id === payload.chat.bossCatId ? (
-                  <span className="catInspectBadge">{t(messageKeys.sharedCatInspectBossLabel)}</span>
-                ) : null}
-              </div>
-            </div>
-            <div className="catInspectField">
-              <span className="catInspectFieldLabel">
-                {t(messageKeys.sharedSettingsCatsMcpProfileLabel)}
-              </span>
-              <span>{mcpProfileLabel ? t(mcpProfileLabel) : directLaneCat.mcpProfile}</span>
-            </div>
-          </div>
-          <ProviderModelFields
-            provider={conversationExecutionTarget.provider}
-            instance={conversationExecutionTarget.instance ?? ''}
-            model={conversationExecutionTarget.model ?? ''}
-            modelSelection={conversationExecutionTarget.modelSelection}
-            onTargetChange={(target) => {
-              const value = createExecutionTargetValueFromProviderSelection(target);
-              if (defaultRecipientParticipant && onDirectLaneParticipantTargetChange) {
-                onDirectLaneParticipantTargetChange(defaultRecipientParticipant.participantId, value);
-                return;
-              }
-              onDirectLaneExecutionTargetChange?.(directLaneCat.id, value);
-            }}
-          />
-        </>
-      );
-    }
-    if (isDefaultChatComposer && selectedExecutionTarget && onExecutionTargetChange) {
-      return (
-        <>
-          <ProviderModelFields
-            provider={selectedExecutionTarget.provider}
-            instance={selectedExecutionTarget.instance ?? ''}
-            model={selectedExecutionTarget.model ?? ''}
-            modelSelection={selectedExecutionTarget.modelSelection}
-            onTargetChange={(target) => {
-              onExecutionTargetChange(createExecutionTargetValueFromProviderSelection(target));
-            }}
-          />
-          {onStartFresh ? (
-            <div className="sidePanelSectionStack">
-              <button
-                type="button"
-                className="operatorActionButton"
-                onClick={() => void onStartFresh()}
-                disabled={startFreshBusy}
-              >
-                {startFreshBusy ? t(messageKeys.chatSidePanelStartingFreshBusy) : t(messageKeys.chatSidePanelStartFresh)}
-              </button>
-              <p className="operatorEmptyState">
-                {t(messageKeys.chatSidePanelStartFreshHint)}
-              </p>
-            </div>
-          ) : null}
-        </>
-      );
-    }
-    if (!isDefaultChatComposer && defaultRecipientParticipant) {
-      const executionSummary = buildExecutionTargetSummary({
-        provider: defaultRecipientParticipant.execution.target.provider,
-        instance: defaultRecipientParticipant.execution.target.instance ?? null,
-        model: defaultRecipientParticipant.execution.target.model ?? null,
-        modelSelection: defaultRecipientParticipant.execution.modelSelection ?? null,
-      });
-      if (defaultRecipientParticipant.sourceKind !== 'cat') {
-        return (
-          <div className="catInspectPanelBody">
-            <div className="catInspectIdentity">
-              <div
-                className="catAvatar catInspectAvatar channelParticipantAvatar"
-                style={buildParticipantAvatarStyle(defaultRecipientParticipant)}
-              >
-                {defaultRecipientParticipant.avatarUrl ? null : catInitials(defaultRecipientParticipant.name)}
-              </div>
-              <div>
-                <strong>{defaultRecipientParticipant.name}</strong>
-                <span className="catInspectBadge">
-                  {t(messageKeys.chatSidePanelTemporaryParticipantLabel)}
-                </span>
-              </div>
-            </div>
-            {defaultRecipientParticipant.roleHint ? (
-              <div className="catInspectField">
-                <span className="catInspectFieldLabel">{t(messageKeys.chatSidePanelRoleLabel)}</span>
-                <span>{defaultRecipientParticipant.roleHint}</span>
-              </div>
-            ) : null}
-            <div className="catInspectField">
-              <span className="catInspectFieldLabel">
-                {t(messageKeys.chatSidePanelAiServiceLabel)}
-              </span>
-              <span>{executionSummary.providerLabel}</span>
-            </div>
-            {executionSummary.instanceLabel ? (
-              <div className="catInspectField">
-                <span className="catInspectFieldLabel">
-                  {t(messageKeys.chatSidePanelConnectionLabel)}
-                </span>
-                <span>{executionSummary.instanceLabel}</span>
-              </div>
-            ) : null}
-            <div className="catInspectField">
-              <span className="catInspectFieldLabel">{t(messageKeys.sharedCatInspectModelLabel)}</span>
-              <span>{executionSummary.modelLabel}</span>
-            </div>
-          </div>
-        );
-      }
-
-      const defaultRecipientCatRef = resolveParticipantCatId(defaultRecipientParticipant);
-      const catRecord = defaultRecipientCatRef
-        ? payload.chat.cats.find((cat) => cat.id === defaultRecipientCatRef) ?? null
-        : null;
-      const mcpProfileLabel = getCatMcpProfileLabel(catRecord?.mcpProfile);
-      return (
-        <div className="catInspectPanelBody">
-            <div className="catInspectIdentity">
-              <div
-                className={defaultRecipientCatRef === payload.chat.bossCatId ? 'catAvatar catAvatarBoss catInspectAvatar' : 'catAvatar catInspectAvatar'}
-                style={catRecord?.avatarUrl
-                  ? { backgroundImage: `url(${catRecord.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                  : defaultRecipientParticipant.avatarColor ? { background: defaultRecipientParticipant.avatarColor } : undefined}
-            >
-              {catRecord?.avatarUrl ? null : catInitials(defaultRecipientParticipant.name)}
-            </div>
-            <div>
-              <strong>{defaultRecipientParticipant.name}</strong>
-              {defaultRecipientCatRef === payload.chat.bossCatId ? (
-                <span className="catInspectBadge">{t(messageKeys.sharedCatInspectBossLabel)}</span>
-              ) : null}
-            </div>
-          </div>
-          <div className="catInspectField">
-            <span className="catInspectFieldLabel">{t(messageKeys.chatSidePanelAiServiceLabel)}</span>
-            <span>{executionSummary.providerLabel}</span>
-          </div>
-          {executionSummary.instanceLabel ? (
-            <div className="catInspectField">
-              <span className="catInspectFieldLabel">{t(messageKeys.chatSidePanelConnectionLabel)}</span>
-              <span>{executionSummary.instanceLabel}</span>
-            </div>
-          ) : null}
-          <div className="catInspectField">
-            <span className="catInspectFieldLabel">{t(messageKeys.sharedCatInspectModelLabel)}</span>
-            <span>{executionSummary.modelLabel}</span>
-          </div>
-          <div className="catInspectField">
-            <span className="catInspectFieldLabel">
-              {t(messageKeys.sharedSettingsCatsMcpProfileLabel)}
-            </span>
-            <span>{mcpProfileLabel ? t(mcpProfileLabel) : catRecord?.mcpProfile}</span>
-          </div>
-        </div>
-      );
-    }
-    return <p className="operatorEmptyState">{t(messageKeys.chatNewChatDraftSidePanelExecutionEmptyState)}</p>;
-  })();
-  sections.push({
-    id: 'execution',
-    title: t(messageKeys.chatNewChatDraftSidePanelExecutionTitle),
-    children: executionChildren,
-  });
 
   const cwd = selectedChannel.repoPath ?? selectedChannel.chatCwd;
   sections.push({
