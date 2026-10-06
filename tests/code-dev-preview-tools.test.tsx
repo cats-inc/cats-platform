@@ -257,7 +257,11 @@ test('start_dev_preview runs the reviewed Vite profile, shows it and replaces th
     hub.subscribe({
       surface: { kind: 'code_conversation', surfaceId: CHANNEL },
       sessionId: 'browser-1',
-      send: (intent) => intents.push(intent),
+      send: (intent) => {
+        intents.push(intent);
+        hub.acknowledge({ intentId: intent.intentId, sessionId: 'browser-1',
+          receipt: { intentId: intent.intentId, artifactId: intent.artifactId, status: 'rendered' } });
+      },
     });
 
     // A static page is already open, as in the M2 path; it must not block the dev server.
@@ -273,6 +277,7 @@ test('start_dev_preview runs the reviewed Vite profile, shows it and replaces th
 
     const started = result(await runStartDevPreview({ directory: 'pomodoro', title: 'Pomodoro' }, context));
     assert.equal(started.error, undefined, JSON.stringify(started));
+    assert.equal(started.status, 'shown');
     assert.equal(started.profileId, 'vite');
     assert.match(String(started.canvasPath), /^\/code\/chats\/channel-1\/canvas\//u);
     assert.match(String(started.previewUrl), /^http:\/\/127\.0\.0\.1:471\d\d\/$/u);

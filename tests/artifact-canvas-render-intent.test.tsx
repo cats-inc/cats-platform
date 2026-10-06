@@ -66,6 +66,45 @@ test('Artifact Canvas render intents are delivered only to active surface subscr
   unsubscribeOtherSurface();
 });
 
+test('render completion requires a viewer receipt from the owning session for the intended artifact', async () => {
+  const hub = new ArtifactCanvasRenderIntentHub();
+  hub.subscribe({ surface: SURFACE, sessionId: 'owner', send: () => {}, now: NOW });
+  const intent = createIntent('intent-render');
+  const completion = hub.publishAndWaitForRender({ intent, now: NOW, timeoutMs: 100 });
+  let finished = false;
+  void completion.then(() => { finished = true; });
+  // Old navigation-only acks cannot cause the tool to report viewer loading.
+  hub.acknowledge({ intentId: intent.intentId, sessionId: 'owner', now: NOW });
+  const receipt = { intentId: intent.intentId, artifactId: intent.artifactId, status: 'rendered' as const };
+  assert.equal(hub.acknowledge({ intentId: intent.intentId, sessionId: 'intruder', receipt, now: NOW }).acknowledged, false);
+  assert.equal(hub.acknowledge({ intentId: intent.intentId, sessionId: 'owner', receipt: { ...receipt, artifactId: 'other' }, now: NOW }).acknowledged, false);
+  await Promise.resolve();
+  assert.equal(finished, false);
+  hub.acknowledge({ intentId: intent.intentId, sessionId: 'owner', receipt, now: NOW });
+  assert.equal((await completion).status, 'rendered');
+  assert.equal(hub.pendingCount, 0);
+});
+
+test('render completion reports absent, failed, timed-out and reset renderers without claiming success', async () => {
+  const hub = new ArtifactCanvasRenderIntentHub();
+  assert.equal((await hub.publishAndWaitForRender({ intent: createIntent('absent'), now: NOW })).status, 'not_delivered');
+  const broken = hub.subscribe({ surface: SURFACE, sessionId: 'broken', now: NOW, send: () => { throw new Error('closed'); } });
+  assert.equal((await hub.publishAndWaitForRender({ intent: createIntent('closed-stream'), now: NOW })).status, 'not_delivered');
+  broken();
+  hub.subscribe({ surface: SURFACE, sessionId: 'owner', now: NOW, send: (intent) => {
+    if (intent.intentId === 'failed') hub.acknowledge({
+      intentId: intent.intentId, sessionId: 'owner', now: NOW,
+      receipt: { intentId: intent.intentId, artifactId: intent.artifactId, status: 'failed' },
+    });
+  } });
+  assert.equal((await hub.publishAndWaitForRender({ intent: createIntent('failed'), now: NOW })).status, 'failed');
+  assert.equal((await hub.publishAndWaitForRender({ intent: createIntent('timeout'), now: NOW, timeoutMs: 5 })).status, 'timed_out');
+  const reset = hub.publishAndWaitForRender({ intent: createIntent('reset'), now: NOW });
+  hub.clearForReset();
+  assert.equal((await reset).status, 'failed');
+  assert.equal(hub.pendingCount, 0);
+});
+
 test('Artifact Canvas ack endpoint uses fixed responses and session-bound ownership', async (t) => {
   const hub = new ArtifactCanvasRenderIntentHub();
   const ownerDeliveries: ArtifactCanvasNavigateIntent[] = [];

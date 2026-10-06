@@ -5,6 +5,7 @@ import type {
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { resolveArtifactCanvasRendererSafeUrl } from './viewerUrl.js';
+import { useArtifactCanvasViewerLoad, type ArtifactCanvasViewerLoadProps } from './useArtifactCanvasViewerLoad.js';
 
 export const ARTIFACT_CANVAS_RENDERER_STATIC_IFRAME_PROFILE:
   ArtifactCanvasIframeSandboxProfile = {
@@ -14,7 +15,7 @@ export const ARTIFACT_CANVAS_RENDERER_STATIC_IFRAME_PROFILE:
   allow: '',
 };
 
-export interface IframeViewerProps {
+export interface IframeViewerProps extends ArtifactCanvasViewerLoadProps {
   projection?: ArtifactCanvasProjection;
   title?: string;
   safeUrl?: string | null;
@@ -28,6 +29,8 @@ export function IframeViewer({
   safeUrl,
   iframeSandboxProfile,
   className = 'artifactCanvasIframe',
+  onLoaded,
+  onLoadFailed,
 }: IframeViewerProps): JSX.Element {
   const { t } = useI18n();
   const decision = resolveRendererIframeDecision({
@@ -36,6 +39,7 @@ export function IframeViewer({
     iframeSandboxProfile:
       projection?.iframeSandboxProfile ?? iframeSandboxProfile ?? null,
   });
+  useArtifactCanvasViewerLoad(decision.status === 'unsupported' ? 'unsupported' : 'loading', { onLoadFailed });
   if (decision.status === 'unsupported') {
     return (
       <div className="artifactCanvasUnsupported">
@@ -52,6 +56,8 @@ export function IframeViewer({
       sandbox={decision.profile.sandbox}
       referrerPolicy={decision.profile.referrerPolicy}
       allow={decision.profile.allow}
+      onLoad={onLoaded}
+      onError={onLoadFailed}
     />
   );
 }

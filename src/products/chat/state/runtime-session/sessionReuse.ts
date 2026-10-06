@@ -6,7 +6,7 @@ import type {
 } from '../../../../shared/roomRouting.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
-import { providerModelSelectionsEquivalent } from '../../../../shared/providerSelection.js';
+import { parseProviderModelSelection, providerModelSelectionsEquivalent } from '../../../../shared/providerSelection.js';
 import {
   requireChannel,
   setChannelParticipantLease,
@@ -19,6 +19,7 @@ import {
   resolveOrchestratorLeaseAttachment,
   resolvePrimaryParticipantExecutionAssignment,
   resolveParticipantLeaseAttachment,
+  resolveExecutionLeaseSnapshot,
 } from '../../shared/channelParticipants.js';
 import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
 import {
@@ -300,7 +301,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
   >;
 }): Promise<ExistingTargetSessionOutcome> {
   const {
-    state,
+    state: initialState,
     channelId,
     attachedTarget,
     runtimeClient,
@@ -316,7 +317,55 @@ export async function resolveExistingTargetSessionOutcome(input: {
     return { kind: 'continue' };
   }
 
+  // Older snapshots discarded this existing lease field. Recover only Runtime's
+  // observed choice; copying the requested choice would conceal a real change.
+  let state = initialState;
+  const channel = requireChannel(state, channelId);
+  const lease = resolveExecutionLeaseSnapshot(channel, attachedTarget);
+  if (lease && lease.modelSelection === undefined
+    && (lease.status === 'ready' || lease.status === 'error' || lease.status === 'initializing')) {
+    try {
+      const { session } = await runtimeClient.observeSession(attachedTarget.sessionId);
+      if (session && typeof session === 'object') {
+        const observed = session as Record<string, unknown>;
+        const observedSelection = parseProviderModelSelection(observed.modelSelection);
+        if (observed.id === attachedTarget.sessionId
+          && (observed.modelSelection === null || observedSelection)) {
+          const patch = { modelSelection: observedSelection };
+          state = attachedTarget.participantKind === 'cat'
+            ? setChannelParticipantLease(state, channelId, attachedTarget.participantId, patch, now)
+            : setChannelOrchestratorLease(state, channelId, patch, now);
+        }
+      }
+    } catch {
+      // Unknown Runtime state is not evidence that the requested choice ran.
+    }
+  }
+
   const channelState = requireChannel(state, channelId);
+  const assignment = attachedTarget.participantKind === 'cat'
+    ? resolvePrimaryParticipantExecutionAssignment(channelState, attachedTarget.participantId) : null;
+  const configuredTarget = attachedTarget.participantKind === 'cat'
+    ? assignment && { ...assignment.execution.target, modelSelection: assignment.execution.modelSelection }
+    : isProviderDefaultChatChannel(channelState) ? resolveOrchestratorExecutionTarget(state, channelState) : null;
+  const currentLease = resolveExecutionLeaseSnapshot(channelState, attachedTarget);
+  if (currentLease && currentLease.modelSelection === undefined && configuredTarget?.modelSelection
+    && (currentLease.status === 'ready' || currentLease.status === 'error' || currentLease.status === 'initializing')
+    && currentLease.provider === configuredTarget.provider
+    && (attachedTarget.participantKind === 'cat' && !configuredTarget.instance
+      || normalizeOptionalExecutionValue(currentLease.instance) === normalizeOptionalExecutionValue(configuredTarget.instance))
+    && (attachedTarget.participantKind === 'cat' && !configuredTarget.model
+      || normalizeOptionalExecutionValue(currentLease.model) === normalizeOptionalExecutionValue(configuredTarget.model))) {
+    const error = 'Cannot verify the existing session model options. Retry when Runtime can report them; the session and workspace have been preserved.';
+    const patch = { status: 'error' as const, lastError: error, lastUsedAt: now.toISOString() };
+    const errorState = attachedTarget.participantKind === 'cat'
+      ? setChannelParticipantLease(state, channelId, attachedTarget.participantId, patch, now)
+      : setChannelOrchestratorLease(state, channelId, patch, now);
+    return { kind: 'resolved', result: {
+      state: applyLeaseLaneAttachmentToTarget(errorState, channelId, attachedTarget, laneId, now),
+      target: attachedTarget, error, wakeRequest: recordTargetWake('failed', error), taskExecutionContext,
+    } };
+  }
   const hasDirectCatExecutionTargetDrift = attachedTarget.participantKind === 'cat'
     && hasParticipantExecutionTargetDrift({
       participantLease: resolveParticipantLeaseAttachment(

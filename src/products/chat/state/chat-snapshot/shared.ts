@@ -8,6 +8,7 @@ import type {
   MemoryCheckpointSummary,
 } from '../../../../core/types.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
+import { parseProviderModelSelection } from '../../../../shared/providerSelection.js';
 
 export function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -89,6 +90,9 @@ export function normalizeExecutionLease(
     provider: readNullableString(leaseRecord?.provider) ?? fallbackTarget.provider,
     ...(normalizedInstance !== null ? { instance: normalizedInstance } : {}),
     model: readNullableString(leaseRecord?.model) ?? fallbackTarget.model,
+    ...(leaseRecord && 'modelSelection' in leaseRecord
+      ? { modelSelection: parseProviderModelSelection(leaseRecord.modelSelection) }
+      : {}),
     startedAt: readNullableString(leaseRecord?.startedAt),
     lastUsedAt: readNullableString(leaseRecord?.lastUsedAt),
   };
@@ -117,6 +121,9 @@ export function normalizeExecutionState(
 
   return {
     target,
+    ...(executionRecord && 'modelSelection' in executionRecord
+      ? { modelSelection: parseProviderModelSelection(executionRecord.modelSelection) }
+      : {}),
     lease: normalizeExecutionLease(
       executionRecord?.lease ?? rawExecution,
       target,

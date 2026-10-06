@@ -26,10 +26,7 @@ import {
 } from '../../shared/artifactCanvas/iframePolicy.js';
 import { buildArtifactCanvasProjection } from '../../shared/artifactCanvas/projection.js';
 import {
-  type ArtifactCanvasRenderIntentDeliveryResult,
-  type ArtifactCanvasRenderIntentHub,
   createArtifactCanvasIntentId,
-  getDefaultArtifactCanvasRenderIntentHub,
 } from '../../shared/artifactCanvas/renderIntent.js';
 import { CODE_LIVE_PREVIEW_PRODUCER_IDENTITY, type LivePreviewLease } from './contracts.js';
 import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
@@ -76,11 +73,10 @@ export interface LivePreviewArtifactMaterializationOptions {
 
 export type LivePreviewArtifactCanvasShowResult =
   | {
-      status: 'shown';
+      status: 'prepared';
       core: CatsCoreState;
       artifact: CoreArtifactRecord;
       activity: CoreActivityRecord;
-      delivery: ArtifactCanvasRenderIntentDeliveryResult;
       intent: ArtifactCanvasNavigateIntent;
       lease: LivePreviewLease;
     }
@@ -104,9 +100,7 @@ export interface LivePreviewArtifactCanvasShowOptions
   intentIdFactory?: () => string;
   policyConfig?: ArtifactCanvasPolicyConfig;
   presentationRequested?: ArtifactCanvasPresentationInput;
-  renderIntentHub?: ArtifactCanvasRenderIntentHub;
   supervisorPreviewLeaseStore?: ArtifactCanvasSupervisorPreviewLeaseStore | null;
-  targetSessionId?: string | null;
 }
 
 interface ResolvedLivePreviewArtifactAnchors {
@@ -172,7 +166,8 @@ export function materializeLivePreviewArtifact(
   };
 }
 
-export function materializeLivePreviewArtifactAndShowInCanvas(
+/** Pure preparation. Persist core and attach the lease before publishing intent. */
+export function prepareLivePreviewArtifactCanvasShow(
   core: CatsCoreState,
   lease: LivePreviewLease,
   options: LivePreviewArtifactCanvasShowOptions = {},
@@ -245,19 +240,11 @@ export function materializeLivePreviewArtifactAndShowInCanvas(
     policyVersion: projection.projection.policyVersion,
     triggeredAt: now.toISOString(),
   });
-  const hub = options.renderIntentHub ?? getDefaultArtifactCanvasRenderIntentHub();
-  const delivery = hub.publish({
-    intent,
-    targetSessionId: options.targetSessionId,
-    now,
-  });
-
   return {
-    status: 'shown',
+    status: 'prepared',
     core: activity.core,
     artifact: materialized.artifact,
     activity: activity.activity,
-    delivery,
     intent,
     lease: materialized.lease,
   };

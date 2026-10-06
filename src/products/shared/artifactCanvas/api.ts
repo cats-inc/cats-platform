@@ -7,6 +7,7 @@ import {
 } from '../../../shared/http.js';
 import {
   canvasSurfaceRouteRegistry,
+  type ArtifactCanvasRenderReceipt,
 } from './contracts.js';
 import { inlineArtifactCanvasLeaseText } from './leaseText.js';
 import {
@@ -89,9 +90,14 @@ async function handleArtifactCanvasIntentAck(
   }
 
   let intentId: string | null = null;
+  let receipt: ArtifactCanvasRenderReceipt | null = null;
   try {
-    const body = await readJsonBody<{ intentId?: unknown }>(context.request);
+    const body = await readJsonBody<{ intentId?: unknown; status?: unknown; artifactId?: unknown }>(context.request);
     intentId = typeof body.intentId === 'string' ? body.intentId.trim() : null;
+    if (intentId && (body.status === 'rendered' || body.status === 'failed')
+      && (body.artifactId === null || typeof body.artifactId === 'string')) {
+      receipt = { intentId, artifactId: body.artifactId, status: body.status };
+    }
   } catch {
     intentId = null;
   }
@@ -100,6 +106,7 @@ async function handleArtifactCanvasIntentAck(
     ?? getDefaultArtifactCanvasRenderIntentHub();
   hub.acknowledge({
     intentId,
+    receipt,
     sessionId: resolveArtifactCanvasRequestSessionId(context.request),
   });
   sendJson(context.response, 200, { status: 'ok' });
@@ -137,8 +144,8 @@ function handleArtifactCanvasIntentStream(
     surface,
     sessionId,
     send: (intent) => {
-      if (context.response.writableEnded) {
-        return;
+      if (context.response.writableEnded || context.response.destroyed) {
+        throw new Error('Canvas render-intent stream is closed.');
       }
       writeArtifactCanvasRenderIntentSseEvent(context.response, 'artifact_canvas_intent', {
         type: 'artifact_canvas_intent',

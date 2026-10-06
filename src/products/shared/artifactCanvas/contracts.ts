@@ -44,6 +44,13 @@ export const ARTIFACT_CANVAS_RENDER_INTENT_STREAM_PATH =
 export const ARTIFACT_CANVAS_RENDER_INTENT_ACK_PATH =
   '/api/canvas/intents/ack' as const;
 
+/** Navigation acknowledgement alone is not evidence that a viewer loaded. */
+export interface ArtifactCanvasRenderReceipt {
+  intentId: string;
+  artifactId: string | null;
+  status: 'rendered' | 'failed';
+}
+
 export const ARTIFACT_CANVAS_SHOW_TOOL_DEFINITION = {
   name: ARTIFACT_CANVAS_SHOW_TOOL_NAME,
   schemaVersion: ARTIFACT_CANVAS_TOOL_SCHEMA_VERSION,

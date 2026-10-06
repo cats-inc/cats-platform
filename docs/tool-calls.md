@@ -714,8 +714,17 @@ Under `auto`, a workspace `.md` or `.markdown` file opens in the sanitized
 `markdown` viewer, which applies the chat markdown renderer's rules (raw HTML
 shown as text, unsafe URL protocols dropped, remote images not loaded).
 `presentation: 'code'` shows its source instead. The MCP result is
-`{ artifactId, canvasPath, presentation, previewId?, previewUrl? }`, where
+`{ status: 'shown', confirmation: 'viewer_loaded', artifactId, canvasPath, presentation, previewId?, previewUrl? }`, where
 `presentation` is the resolved viewer.
+
+Success waits for the visible viewer's session-bound load receipt after the artifact
+and Activity are durable and the lease is attached. A navigation ack alone cannot
+confirm loading. No subscribed renderer, viewer failure, or a 10-second receipt
+timeout returns `isError: true` and `status: 'not_shown'` with
+`canvas_not_open`, `canvas_render_failed`, or `canvas_render_timeout`. Artifact,
+canvas and preview handles remain available to retry; a receipt does not verify
+app interactions or the content/HTTP status of a cross-origin iframe. The same
+completion rule applies to `start_dev_preview`.
 
 Workspace pages open on a supervisor-leased static preview origin with scripts
 (SPEC-108/123). The SPEC-101 material below still defines projection, audit and
