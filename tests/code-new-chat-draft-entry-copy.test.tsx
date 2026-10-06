@@ -204,7 +204,6 @@ test('new code draft owns shared side panel sections through its product builder
     draftHighlightedCatId: null,
     effectiveDefaultRecipientCat: null,
     isGroupDraft: true,
-    isDirectLaneContext: false,
     isParallelMode: false,
     groupDraftSelectionLabel: 'No participants selected.',
     assistantPresets: [],
@@ -221,8 +220,6 @@ test('new code draft owns shared side panel sections through its product builder
     },
     hasReachedGroupParticipantLimit: false,
     isSubmittingFirstTurn: false,
-    defaultRecipientCat: null,
-    activePanelExecutionTarget: null,
     onToggleDraftCat: () => {},
     onHighlightDraftCat: () => {},
     onAddDraftTemporaryParticipant: () => {},
@@ -253,9 +250,6 @@ test('new code draft owns shared side panel sections through its product builder
       participants: {
         emptyState: 'Chat participant fallback should not render.',
       },
-      execution: {
-        emptyState: 'Chat execution fallback should not render.',
-      },
       folder: {
         emptyState: 'Chat workspace fallback should not render.',
       },
@@ -271,14 +265,13 @@ test('new code draft owns shared side panel sections through its product builder
   );
 
   assert.equal(sections.find((section) => section.id === 'cats')?.title, 'Participants');
-  assert.equal(sections.find((section) => section.id === 'execution')?.title, 'Execution');
+  assert.equal(sections.find((section) => section.id === 'execution'), undefined);
   assert.equal(
     sections.find((section) => section.id === 'code:session-profile')?.title,
     'Session Profile',
   );
   assert.equal(sections.find((section) => section.id === 'cwd')?.title, 'Codespace');
   assert.match(markup, /No participants available yet\./u);
-  assert.match(markup, /No execution target set yet\./u);
   assert.match(markup, /Independent worktree/u);
   assert.match(markup, /Read only/u);
   assert.match(markup, /No codespace selected yet\./u);

@@ -42,14 +42,11 @@ import {
   buildChatOperatorView,
   buildRunInspectorView,
 } from '../../../operator-loop/index.js';
-import {
-  resolveParticipantCatId,
-  type ResolvedChannelParticipant,
-} from '../../../channelParticipants.js';
+import type { ResolvedChannelParticipant } from '../../../channelParticipants.js';
 import type { AudienceTargetEditor } from '../AudienceChip.js';
 import { type ExecutionTargetValue } from '../ExecutionTarget.js';
 import type { DraftComposerStackParticipant } from '../newConversationDraftSupport.js';
-import { sameExecutionTargetValue } from '../../hooks/useWorkspaceExecutionTargetState.js';
+import { resolveConversationTargetEditor } from './conversationTargetEditor.js';
 import type { MessageChoicesSubmitInput } from '../MessageChoices.js';
 import {
   isDirectConversationMode,
@@ -923,71 +920,38 @@ export function ConversationView({
   // A cat's default model stays on the cat's own page.
   const resolveTargetEditor = useCallback(
     (participant: DraftComposerStackParticipant): AudienceTargetEditor | null => {
-      if (participant.key === 'implicit:execution_target') {
-        if (!selectedExecutionTarget || !onExecutionTargetChange) {
-          return null;
-        }
-        const startFreshBusy = isChannelBusy(busy, 'reset');
-        return {
-          target: selectedExecutionTarget,
-          onChange: onExecutionTargetChange,
-          action: onStartFresh
-            ? {
-                label: startFreshBusy
-                  ? t(messageKeys.chatSidePanelStartingFreshBusy)
-                  : t(messageKeys.chatSidePanelStartFresh),
-                hint: t(messageKeys.chatSidePanelStartFreshHint),
-                disabled: startFreshBusy,
-                onSelect: onStartFresh,
-              }
-            : undefined,
-        };
-      }
-      const openCatPage = (catId: string) => () => navigate(`/entities/cats/${encodeURIComponent(catId)}`);
-      const matches = (candidate: ResolvedChannelParticipant) => (
-        participant.participantId
-          ? candidate.participantId === participant.participantId
-          : participant.catId != null && resolveParticipantCatId(candidate) === participant.catId
-      );
-      const roomParticipant = activeRoomParticipants.find(matches)
-        ?? (defaultRecipientParticipant && matches(defaultRecipientParticipant) ? defaultRecipientParticipant : null);
-      if (roomParticipant && onUpdateChannelParticipant) {
-        const target: ExecutionTargetValue = {
-          provider: roomParticipant.execution.target.provider,
-          instance: roomParticipant.execution.target.instance ?? null,
-          model: roomParticipant.execution.target.model ?? null,
-          modelSelection: roomParticipant.execution.modelSelection ?? null,
-        };
-        const catId = resolveParticipantCatId(roomParticipant);
-        return {
-          target,
-          onChange: (value) => {
-            // The picker republishes labels; only a real change is saved.
-            if (sameExecutionTargetValue(target, value)) return;
-            void onUpdateChannelParticipant(roomParticipant.participantId, {
-              provider: value.provider,
-              instance: value.instance,
-              model: value.model,
-              modelSelection: value.modelSelection,
-            });
-          },
-          onOpenSettings: catId ? openCatPage(catId) : undefined,
-        };
-      }
-      if (
-        isDirectLane
-        && directLaneCat
-        && participant.catId === directLaneCat.id
-        && directLaneExecutionTarget
-        && onDirectLaneExecutionTargetChange
-      ) {
-        return {
-          target: directLaneExecutionTarget,
-          onChange: (value) => onDirectLaneExecutionTargetChange(directLaneCat.id, value),
-          onOpenSettings: openCatPage(directLaneCat.id),
-        };
-      }
-      return null;
+      const startFreshBusy = isChannelBusy(busy, 'reset');
+      return resolveConversationTargetEditor(participant, {
+        activeRoomParticipants,
+        defaultRecipientParticipant,
+        directLaneCat,
+        directLaneExecutionTarget,
+        isDirectLane,
+        selectedExecutionTarget,
+        onExecutionTargetChange,
+        onDirectLaneExecutionTargetChange,
+        onUpdateParticipantTarget: onUpdateChannelParticipant
+          ? (participantId, value) => {
+              void onUpdateChannelParticipant(participantId, {
+                provider: value.provider,
+                instance: value.instance,
+                model: value.model,
+                modelSelection: value.modelSelection,
+              });
+            }
+          : undefined,
+        startFresh: onStartFresh
+          ? {
+              label: startFreshBusy
+                ? t(messageKeys.chatSidePanelStartingFreshBusy)
+                : t(messageKeys.chatSidePanelStartFresh),
+              hint: t(messageKeys.chatSidePanelStartFreshHint),
+              disabled: startFreshBusy,
+              onSelect: onStartFresh,
+            }
+          : undefined,
+        openCatPage: (catId) => navigate(`/entities/cats/${encodeURIComponent(catId)}`),
+      });
     },
     [
       activeRoomParticipants,
