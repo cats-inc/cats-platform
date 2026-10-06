@@ -23,7 +23,7 @@ import type {
   ParallelChatRelayCommandKind,
 } from '../../../api/workspaceContracts.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
-import { isParallelChatBusy } from '../../../../../shared/workspaceBusy.js';
+import { isChannelBusy, isParallelChatBusy } from '../../../../../shared/workspaceBusy.js';
 import type {
   LiveIndicatorSegmentState,
   LiveIndicatorState,
@@ -924,9 +924,23 @@ export function ConversationView({
   const resolveTargetEditor = useCallback(
     (participant: DraftComposerStackParticipant): AudienceTargetEditor | null => {
       if (participant.key === 'implicit:execution_target') {
-        return selectedExecutionTarget && onExecutionTargetChange
-          ? { target: selectedExecutionTarget, onChange: onExecutionTargetChange }
-          : null;
+        if (!selectedExecutionTarget || !onExecutionTargetChange) {
+          return null;
+        }
+        const startFreshBusy = isChannelBusy(busy, 'reset');
+        return {
+          target: selectedExecutionTarget,
+          onChange: onExecutionTargetChange,
+          action: onStartFresh
+            ? {
+                label: startFreshBusy
+                  ? t(messageKeys.chatSidePanelStartingFreshBusy)
+                  : t(messageKeys.chatSidePanelStartFresh),
+                disabled: startFreshBusy,
+                onSelect: onStartFresh,
+              }
+            : undefined,
+        };
       }
       const openCatPage = (catId: string) => () => navigate(`/entities/cats/${encodeURIComponent(catId)}`);
       const matches = (candidate: ResolvedChannelParticipant) => (
@@ -976,6 +990,7 @@ export function ConversationView({
     },
     [
       activeRoomParticipants,
+      busy,
       defaultRecipientParticipant,
       directLaneCat,
       directLaneExecutionTarget,
@@ -983,8 +998,10 @@ export function ConversationView({
       navigate,
       onDirectLaneExecutionTargetChange,
       onExecutionTargetChange,
+      onStartFresh,
       onUpdateChannelParticipant,
       selectedExecutionTarget,
+      t,
     ],
   );
 
@@ -1054,12 +1071,6 @@ export function ConversationView({
     assignedCatRecords,
     assignedAdhocParticipants,
     defaultRecipientCatId: defaultRecipientCat?.catId ?? null,
-    defaultRecipientParticipant,
-    directLaneCat,
-    directLaneExecutionTarget,
-    isDirectLane,
-    isDefaultChatComposer,
-    selectedExecutionTarget,
     inspectedRun,
     showAddCatButton,
     editingParticipantId,
@@ -1076,20 +1087,6 @@ export function ConversationView({
     onInspectRun: setInspectedRunId,
     onApprovalDecision,
     onOperatorAction,
-    onExecutionTargetChange,
-    onStartFresh,
-    onDirectLaneExecutionTargetChange,
-    onDirectLaneParticipantTargetChange: onUpdateChannelParticipant
-      ? (participantId, value) => {
-          void onUpdateChannelParticipant(participantId, {
-            provider: value.provider,
-            instance: value.instance,
-            model: value.model,
-            modelSelection: value.modelSelection,
-          });
-        }
-      : undefined,
-    buildParticipantAvatarStyle,
   });
 
   const topBarExtraActions = renderTopBarExtraActions?.(viewContext) ?? null;

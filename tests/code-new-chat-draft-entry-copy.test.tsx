@@ -179,9 +179,6 @@ test('new code draft publishes code-specific copy overrides for the shared works
     'What should this code session build, fix, or investigate?',
   );
   assert.equal(NEW_CODE_DRAFT_COPY.sidePanel?.title, 'New Code Setup');
-  assert.equal(NEW_CODE_DRAFT_COPY.execution?.sectionTitle, 'Execution');
-  assert.equal(NEW_CODE_DRAFT_COPY.execution?.actionLabel, 'Choose execution target');
-  assert.equal(NEW_CODE_DRAFT_COPY.execution?.emptyState, 'No execution target set yet.');
   assert.equal(NEW_CODE_DRAFT_COPY.folder?.sectionTitle, 'Codespace');
   assert.equal(NEW_CODE_DRAFT_COPY.participants?.emptyState, 'No participants available yet.');
   assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.title, 'New Code Setup');
@@ -189,7 +186,6 @@ test('new code draft publishes code-specific copy overrides for the shared works
     NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.participants?.groupSectionTitle,
     'Participants',
   );
-  assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.execution?.sectionTitle, 'Execution');
   assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.folder?.sectionTitle, 'Codespace');
 });
 

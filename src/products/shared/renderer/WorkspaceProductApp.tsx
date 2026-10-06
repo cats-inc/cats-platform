@@ -556,10 +556,6 @@ export function createWorkspaceProductApp({
         publishReadyPayload,
         onError: onDirectLaneModelSaveError,
       });
-    // The new-chat draft's direct lane keeps the pick as a draft override, like
-    // any other draft cat; the composer applies it to the conversation it
-    // creates. The cat's own default model is not touched.
-    const onDraftDirectLaneExecutionTargetChange = onDraftCatExecutionTargetOverride;
 
     const {
       accountMenuOpen,
@@ -1882,7 +1878,6 @@ export function createWorkspaceProductApp({
                     onHighlightDraftCat: setDraftHighlightedCatId,
                     draftCatExecutionTargetOverrides,
                     onDraftCatExecutionTargetOverride,
-                    onDirectLaneExecutionTargetChange: onDraftDirectLaneExecutionTargetChange,
                     parallelTargets:
                       supportsStructuredDraftModes
                         && showingGenericNewChatDraft

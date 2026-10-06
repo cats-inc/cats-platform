@@ -649,6 +649,11 @@
   gap: 10px;
 }
 
+.audiencePopoverAction {
+  width: 100%;
+  margin-top: 12px;
+}
+
 .audiencePopoverSettingsLink {
   margin-top: 12px;
   padding: 0;

@@ -19,6 +19,12 @@ export interface AudienceTargetEditor {
   onChange: (value: ExecutionTargetValue) => void;
   /** Opens the cat's own page, where its default model lives. */
   onOpenSettings?: () => void;
+  /** One conversation-level action shown under the picker, e.g. start fresh. */
+  action?: {
+    label: string;
+    disabled?: boolean;
+    onSelect: () => void;
+  };
 }
 
 export interface AudienceChipProps {
@@ -305,6 +311,19 @@ export function AudienceChip({
               }}
             />
           </div>
+          {editingEditor.action ? (
+            <button
+              type="button"
+              className="operatorActionButton audiencePopoverAction"
+              disabled={editingEditor.action.disabled}
+              onClick={() => {
+                closePopover();
+                editingEditor.action?.onSelect();
+              }}
+            >
+              {editingEditor.action.label}
+            </button>
+          ) : null}
           {editingEditor.onOpenSettings ? (
             <button
               type="button"

@@ -343,7 +343,6 @@ export interface NewConversationDraftProps {
   onHighlightDraftCat: (catId: string | null) => void;
   draftCatExecutionTargetOverrides: Map<string, ExecutionTargetValue>;
   onDraftCatExecutionTargetOverride: (catId: string, value: ExecutionTargetValue) => void;
-  onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
   parallelTargets?: DraftParallelTarget[];
   onParallelTargetChange?: (index: number, value: ExecutionTargetValue) => void;
   onAddParallelTarget?: () => void;
@@ -414,7 +413,6 @@ export function NewConversationDraft({
   onHighlightDraftCat,
   draftCatExecutionTargetOverrides,
   onDraftCatExecutionTargetOverride,
-  onDirectLaneExecutionTargetChange,
   parallelTargets,
   onParallelTargetChange,
   onAddParallelTarget,
@@ -685,11 +683,11 @@ export function NewConversationDraft({
         ? () => openSidePanelTo('cats')
         : () => openSidePanelTo('parallel:0');
     }
-    if (isDirectLaneContext) return () => openSidePanelTo('execution');
+    if (isDirectLaneContext) return () => openSidePanelTo('cats');
     if (effectiveDefaultRecipientCat || effectiveDefaultRecipientTemporaryParticipant) {
       return () => openSidePanelTo('cats');
     }
-    return () => openSidePanelTo('execution');
+    return undefined;
   })();
   // The chip edits what this new conversation will use. A cat's pick stays a
   // draft override, applied to the conversation once it exists; the cat's
@@ -1386,7 +1384,6 @@ export function NewConversationDraft({
         draftHighlightedCatId,
         effectiveDefaultRecipientCat,
         isGroupDraft,
-        isDirectLaneContext,
         isParallelMode,
         groupDraftSelectionLabel,
         assistantPresets,
@@ -1397,8 +1394,6 @@ export function NewConversationDraft({
         temporaryParticipantForm,
         hasReachedGroupParticipantLimit,
         isSubmittingFirstTurn,
-        defaultRecipientCat,
-        activePanelExecutionTarget,
         onToggleDraftCat,
         onHighlightDraftCat,
         onAddDraftTemporaryParticipant,
@@ -1412,9 +1407,6 @@ export function NewConversationDraft({
         createTemporaryParticipantFormValue,
         onTemporaryParticipantFormOpenChange: setTemporaryParticipantFormOpen,
         onSubmitTemporaryParticipant: submitTemporaryParticipant,
-        selectedExecutionTarget,
-        onExecutionTargetChange,
-        onDirectLaneExecutionTargetChange,
         parallelTargets,
         onParallelTargetChange,
         folderBrowsePath,

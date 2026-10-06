@@ -71,7 +71,7 @@ function ChatComposerAudienceChip({
       audienceParticipants={audienceParticipants}
       allParticipants={allParticipants}
       onSetAudienceKeys={onSetActiveAudienceKeys}
-      onSingleClick={() => onOpenSection('execution')}
+      onSingleClick={() => onOpenSection('cats')}
       resolveTargetEditor={resolveTargetEditor}
       disabled={composerBusy}
       maxSelectedParticipants={maxAudienceParticipants}
@@ -116,7 +116,7 @@ export function ConversationComposerTargetSlot({
     return (
       <AudienceChip
         audienceParticipants={[buildAudienceParticipantFromCat(directLaneCat)]}
-        onSingleClick={() => onOpenSection('execution')}
+        onSingleClick={() => onOpenSection('cats')}
         resolveTargetEditor={resolveTargetEditor}
         disabled={composerBusy}
       />
@@ -150,7 +150,6 @@ export function ConversationComposerTargetSlot({
           modelSelection: implicitRecipient.modelSelection ?? null,
           executionLabel: implicitRecipient.executionLabel ?? implicitRecipient.name,
         })]}
-        onSingleClick={() => onOpenSection('execution')}
         resolveTargetEditor={resolveTargetEditor}
         disabled={composerBusy}
         attention={implicitAttention}
@@ -164,9 +163,7 @@ export function ConversationComposerTargetSlot({
     return (
       <AudienceChip
         audienceParticipants={participants}
-        onSingleClick={() => onOpenSection(
-          isDirectLane || isDefaultChatComposer ? 'execution' : 'cats',
-        )}
+        onSingleClick={() => onOpenSection('cats')}
         resolveTargetEditor={resolveTargetEditor}
         disabled={composerBusy}
       />
