@@ -37,6 +37,8 @@ export interface CrossSurfaceNavigationSnapshot {
 export interface CrossSurfaceNavigationOptimisticState {
   pendingExecution: boolean;
   selectedChannelId?: string | null;
+  /** Transient first-send feedback carried to the created conversation on a failed ACK. */
+  feedback?: string;
 }
 
 export interface CrossSurfaceNavigationHandoffBundle {

@@ -7,7 +7,26 @@ import {
 } from '../src/products/shared/renderer/crossSurfaceNavigationHandoff.ts';
 import {
   stageCrossSurfaceConversationNavigationHandoff,
+  resolveConversationOriginRoute,
 } from '../src/products/shared/renderer/crossSurfaceConversationNavigation.ts';
+
+test('a Code conversation left under Chat returns to Code with the same conversation and canvas', () => {
+  assert.deepEqual(resolveConversationOriginRoute({ sourceSurface: 'chat',
+    currentPath: '/chat/chats/code-1/canvas/artifact-1/view/iframe?mode=preview',
+    channel: { id: 'code-1', originSurface: 'code' },
+  }), { surface: 'code', path: '/code/chats/code-1/canvas/artifact-1/view/iframe?mode=preview' });
+  assert.deepEqual(resolveConversationOriginRoute({ sourceSurface: 'chat',
+    currentPath: '/chat/chats/code-1', channel: { id: 'code-1', originSurface: 'code' },
+  }), { surface: 'code', path: '/code/chats/code-1' });
+  for (const channel of [undefined, { id: 'code-1' }, { id: 'code-1', originSurface: 'chat' as const }]) {
+    assert.equal(resolveConversationOriginRoute({ sourceSurface: 'chat',
+      currentPath: '/chat/chats/code-1', channel,
+    }), null);
+  }
+  assert.equal(resolveConversationOriginRoute({ sourceSurface: 'chat',
+    currentPath: '/chat/chats/code-11', channel: { id: 'code-1', originSurface: 'code' },
+  }), null);
+});
 
 test('conversation navigation helper stages non-draft handoffs and skips same-surface selects', () => {
   clearCrossSurfaceNavigationHandoff();

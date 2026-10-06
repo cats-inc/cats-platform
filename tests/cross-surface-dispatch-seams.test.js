@@ -7,7 +7,7 @@ import {
   consumeCrossSurfaceNavigationSnapshot,
   stageCrossSurfaceNavigationHandoff,
 } from '../src/products/shared/renderer/crossSurfaceNavigationHandoff.ts';
-import { resolveCrossSurfaceParallelGroupHandoffId } from '../src/products/chat/renderer/crossSurfaceDispatchUtils.ts';
+import { resolveCrossSurfaceParallelGroupHandoffId } from '../src/products/shared/renderer/crossSurfaceDispatchUtils.ts';
 
 test('parallel draft handoff resolves the created group from the active channel', () => {
   assert.equal(

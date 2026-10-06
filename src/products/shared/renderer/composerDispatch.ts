@@ -450,6 +450,7 @@ export async function prepareWorkspaceSendContext<
     signal?: AbortSignal,
   ) => Promise<Array<{ relativePath: string }>>;
   signal?: AbortSignal;
+  onChannelPrepared?: (prepared: PrepareComposerChannelDispatchResult<TPayload>) => void;
 }): Promise<PrepareWorkspaceSendContextResult<TPayload>> {
   const {
     initialPayload,
@@ -520,6 +521,7 @@ export async function prepareWorkspaceSendContext<
     signal,
   });
   payload = preparedChannel.payload;
+  options.onChannelPrepared?.(preparedChannel);
 
   const defaultDispatchTarget = buildDefaultChatDispatchTarget({
     wasDraftingNewChat,

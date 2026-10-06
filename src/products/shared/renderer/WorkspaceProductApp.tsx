@@ -92,6 +92,7 @@ import { formatWorkspaceChatActionError } from "./hooks/workspaceChatActionError
 import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiActions.js";
 import { useWorkspaceAppNavigationActions } from "./hooks/useWorkspaceAppNavigationActions.js";
 import { useWorkspaceAppShellRouting } from "./hooks/useWorkspaceAppShellRouting.js";
+import { stageCrossSurfaceConversationNavigationHandoff } from "./crossSurfaceConversationNavigation.js";
 import {
   isDefaultChatChannel,
   supportsParticipantAudienceSelection,
@@ -310,7 +311,7 @@ export function createWorkspaceProductApp({
         return null;
       }
       const { entityKind, entityId } = bundle.destination;
-      if (entityKind === 'channel') {
+      if (entityKind === 'channel' || entityKind === 'conversation') {
         const channelId =
           bundle.optimisticState.selectedChannelId
           ?? initialWarmPayload.chat.selectedChannelId
@@ -362,6 +363,9 @@ export function createWorkspaceProductApp({
         : { status: "loading" },
       createEmptyCatForm: emptyCatForm,
       pickGreeting: () => pickGreeting(t),
+      initialFeedback: peekCrossSurfaceNavigationHandoffForMatch({
+        surface: shellSurface, path: currentNavigationPath,
+      })?.optimisticState?.feedback,
     });
     const { state, setState, channelId: navigationChannelId, subscriptionScope } = useConversationNavigationState({
       state: storedState,
@@ -1376,6 +1380,7 @@ export function createWorkspaceProductApp({
       setState,
       navigate,
       originSurface: draftSurface,
+      surface: shellSurface,
       currentPath: `${location.pathname}${location.search}`,
       composerDraft,
       setComposerDraft,
@@ -1528,6 +1533,22 @@ export function createWorkspaceProductApp({
       showingMyCatDirectLane,
       routeDirectLaneSummary,
       readySelectedChannel,
+      onConversationOriginRedirect: (destination) => {
+        if (state.status !== 'ready' || !routeChannelId) return;
+        const group = state.payload.chat.parallelChatGroups.find((candidate) =>
+          candidate.memberChannelIds.includes(routeChannelId));
+        const ids = group?.memberChannelIds ?? [routeChannelId];
+        stageCrossSurfaceConversationNavigationHandoff({
+          sourceSurface: shellSurface,
+          targetSurface: destination.surface,
+          channelId: routeChannelId,
+          snapshotPayload: state.payload,
+          destinationPath: destination.path,
+          parallelGroupId: group?.id,
+          pendingExecution: state.payload.chat.channels.some((channel) =>
+            ids.includes(channel.id) && channel.routingStatus === 'running'),
+        });
+      },
       unknownRendererErrorMessage: t(messageKeys.sharedProductRendererUnknownError),
     });
     // ADR-041 owns collection-tier chat invalidations on every product shell.

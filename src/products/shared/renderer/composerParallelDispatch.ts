@@ -5,7 +5,7 @@ import type {
 } from '../../../shared/platform-contract.js';
 import type { DraftRoomWorkflowShape } from '../../../shared/roomRouting.js';
 import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
-import type { CreateParallelChatGroupInput } from './api/chat.js';
+import type { CreateParallelChatGroupInput, CreateParallelChatGroupResponse } from './api/chat.js';
 import {
   createParallelChatGroup,
   encodeAttachmentFiles,
@@ -75,6 +75,7 @@ export interface SubmitNewParallelChatDraftOptions {
   draftParticipantCatIds?: string[];
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
   buildChannelPath: (channelId: string) => string;
+  onCreated?: (created: CreateParallelChatGroupResponse, activeChannelId: string) => void;
   t?: WorkspaceChatTranslator;
   signal?: AbortSignal;
 }
@@ -162,6 +163,7 @@ export async function submitNewParallelChatDraft({
   draftParticipantCatIds = [],
   draftTemporaryParticipants = [],
   buildChannelPath,
+  onCreated,
   t = defaultParallelDispatchTranslator,
   signal,
 }: SubmitNewParallelChatDraftOptions): Promise<SubmitNewParallelChatDraftResult> {
@@ -204,6 +206,7 @@ export async function submitNewParallelChatDraft({
   if (!activeChannelId) {
     throw new Error(t(messageKeys.chatComposerErrorNoActiveParallelThread));
   }
+  onCreated?.(created, activeChannelId);
 
   const encodedAttachments = draftFiles.length > 0
     ? await encodeAttachmentFiles(draftFiles)

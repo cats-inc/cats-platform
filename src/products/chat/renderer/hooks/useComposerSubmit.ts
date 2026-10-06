@@ -49,6 +49,11 @@ import {
 } from '../../../shared/renderer/composerNavigation.js';
 import { resetComposerDraftState } from '../../../shared/renderer/composerDraftState.js';
 import {
+  resolveCrossSurfaceDraftDispatchState,
+  stageCrossSurfaceDraftNavigationHandoff,
+} from '../../../shared/renderer/composerCrossSurfaceDispatch.js';
+import { resolveCrossSurfaceParallelGroupHandoffId } from '../../../shared/renderer/crossSurfaceDispatchUtils.js';
+import {
   submitNewParallelChatDraft,
   submitParallelCompareMessage,
 } from '../composerParallelDispatch.js';
@@ -67,7 +72,6 @@ import {
   resolveDraftRouteContext,
   resolveDraftRoutePath,
 } from '../draftParticipants';
-import { resolveCrossSurfaceParallelGroupHandoffId } from '../crossSurfaceDispatchUtils.js';
 import type { ExecutionTargetValue } from '../../../shared/renderer/components/ExecutionTarget.js';
 import {
   reconcileRuntimeBackedExecutionTargetValue,
@@ -79,11 +83,9 @@ import type { DraftParallelTargetBranchFields } from '../../../shared/renderer/d
 import {
   buildCrossSurfaceChannelPath,
   prefetchCrossSurfaceNavigationTarget,
-  resolveCrossSurfaceNavigationRouteTarget,
 } from '../../../shared/renderer/crossSurfaceNavigationRegistry.js';
 import {
   clearCrossSurfaceNavigationHandoff,
-  stageCrossSurfaceNavigationHandoff,
 } from '../../../shared/renderer/crossSurfaceNavigationHandoff.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
@@ -132,59 +134,6 @@ export async function resolveDispatchExecutionTargetValue(
     }
     return target;
   }
-}
-
-export function resolveCrossSurfaceDraftDispatchState(input: {
-  showingNewChatDraft: boolean;
-  draftSurface: PlatformSurfaceId;
-}): {
-  targetSurface: PlatformSurfaceId;
-  isCrossSurfaceDraftDispatch: boolean;
-} {
-  const targetSurface = input.showingNewChatDraft ? input.draftSurface : 'chat';
-  return {
-    targetSurface,
-    isCrossSurfaceDraftDispatch: input.showingNewChatDraft && targetSurface !== 'chat',
-  };
-}
-
-export function stageCrossSurfaceDraftNavigationHandoff(input: {
-  kind: 'draft-create-channel' | 'draft-create-parallel-group';
-  sourceSurface: PlatformSurfaceId;
-  targetSurface: PlatformSurfaceId;
-  entityId: string;
-  entityKind: 'channel' | 'parallel-group';
-  activeChannelId?: string | null;
-  snapshotPayload: AppShellPayload;
-  pendingExecution: boolean;
-}): void {
-  if (input.targetSurface === 'chat' || !input.entityId.trim()) {
-    return;
-  }
-
-  stageCrossSurfaceNavigationHandoff({
-    kind: input.kind,
-    sourceSurface: input.sourceSurface,
-    targetSurface: input.targetSurface,
-    destination: {
-      entityKind: input.entityKind,
-      entityId: input.entityId,
-      route: resolveCrossSurfaceNavigationRouteTarget({
-        surface: input.targetSurface,
-        entityKind: input.entityKind,
-        entityId: input.entityId,
-        activeChannelId: input.activeChannelId,
-      }),
-    },
-    createdAt: new Date().toISOString(),
-    snapshot: {
-      appShellPayload: input.snapshotPayload,
-    },
-    optimisticState: {
-      pendingExecution: input.pendingExecution,
-      selectedChannelId: input.snapshotPayload.chat.selectedChannelId,
-    },
-  });
 }
 
 export function useComposerSubmit(options: {
@@ -329,6 +278,7 @@ export function useComposerSubmit(options: {
       targetSurface,
       isCrossSurfaceDraftDispatch,
     } = resolveCrossSurfaceDraftDispatchState({
+      sourceSurface: 'chat',
       showingNewChatDraft: wasDraftingNewChat,
       draftSurface,
     });

@@ -604,6 +604,33 @@ call a Platform-hosted MCP tool and receive its result.
 | 2026-09-30 | D2 (#216) with M2 acceptance, D3 (#217), F1 (#218), F2 and F4 notes (#219) and F5 (#220) merged; Runtime R4 (#140) and the message-stream heartbeat (#142) merged. M3: Claude Code 5/5 and Codex 5/5 with no policy tuning. Open: P0 user review of the App/plugin alignment, the Settings switch default, and F3 (Runtime providers). |
 | 2026-10-06 | Post-M3 correctness: preserve persisted lease model selections so unchanged Code turns keep their session/cwd/files; recover already missing options from the matching Runtime session, preserving the session on unavailable/invalid evidence and allowing closed-session resume. Prepare artifact/Activity purely, persist and attach the lease before publishing, and wait outside the store lock for a visible viewer's session-bound load receipt. Missing, failed and timed-out renderers return coded errors with reusable artifact handles. Validation: 59 routing and 74 preview/snapshot/lease/catalog checks pass with natural process exit; bundled DOM tests use waitFor rather than async act, which leaks MessagePorts in the ESM test environment. Server/renderer/test typechecks and the integrated source candidate build pass. A separate Electron fixture using the product canvas, tool and supervisor confirmed actual pane loading, same-artifact reopening, no-subscriber failure, hidden-viewer timeout and a scripted Start interaction. Broader guardrails had 5 pre-existing failures (4 direct-session lifecycle, 1 historical session projection), reproduced on the unmodified main checkout; they are outside this fix. No user-profile writes, schema change, bump or publication. |
 
+Chat-to-Code navigation correction (2026-10-06): the installed 0.7.11 could
+create a Code-origin conversation from Chat's pomodoro starter while the active
+shared composer still navigated to a Chat URL. Code tools correctly targeted
+`code_conversation`, which had no matching subscriber there. The shared submit
+path now hands the created identity and first-dispatch snapshot to the selected
+product after the ACK; old mismatched conversation URLs redirect to the stored
+origin without creating a new channel/session. The handoff retains running
+channel/group controls and first-send error feedback, composer text and files,
+including failures after creation but before attachment upload or first send.
+Source draft controls remain locked and cancellable during the ACK, and a
+synchronous submission guard prevents duplicate creates. Independent agent
+review found and verified the ACK-scope correction.
+
+Validation for this correction: focused composer/navigation, handoff, origin,
+parallel and canvas/MCP consumer tests; renderer and test TypeScript checks;
+production renderer build. The new actual shared-composer regression fails
+against the unmodified 0.7.11 composer on its `/chat/chats/<code-id>` navigation.
+An isolated Electron run using the production Chat/Code renderers, in-memory
+records, the real Code MCP tool, supervisor and canvas API confirmed the
+pomodoro starter's same-id Code handoff, locked source draft with Cancel,
+`shown`/`viewer_loaded`, a visible iframe and scripted Start interaction,
+same-artifact reopening and existing wrong-route repair. Existing isolated
+single/group/parallel/direct Chat UI smoke checks also passed. Provider CLI
+generation was stubbed in this UI run; preview service and viewer delivery were
+real. No user-profile writes, storage migration, version bump or publication.
+The installed 0.7.11 does not contain this follow-up source correction.
+
 Final source candidate receipt: local root
 `C:/Users/sammy/Source/cats-inc/.codex/code-preview-candidate-integrated-20261006`,
 Platform base `c6cc63f7` with source digest
