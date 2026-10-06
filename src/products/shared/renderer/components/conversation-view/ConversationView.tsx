@@ -42,8 +42,14 @@ import {
   buildChatOperatorView,
   buildRunInspectorView,
 } from '../../../operator-loop/index.js';
-import type { ResolvedChannelParticipant } from '../../../channelParticipants.js';
+import {
+  resolveParticipantCatId,
+  type ResolvedChannelParticipant,
+} from '../../../channelParticipants.js';
+import type { AudienceTargetEditor } from '../AudienceChip.js';
 import { type ExecutionTargetValue } from '../ExecutionTarget.js';
+import type { DraftComposerStackParticipant } from '../newConversationDraftSupport.js';
+import { sameExecutionTargetValue } from '../../hooks/useWorkspaceExecutionTargetState.js';
 import type { MessageChoicesSubmitInput } from '../MessageChoices.js';
 import {
   isDirectConversationMode,
@@ -189,6 +195,7 @@ export interface ConversationViewComposerTargetSlotContext {
   activeAudienceKeys: string[] | null;
   onSetActiveAudienceKeys?: (keys: string[]) => void;
   onOpenSection: (section: string) => void;
+  resolveTargetEditor: (participant: DraftComposerStackParticipant) => AudienceTargetEditor | null;
 }
 
 export interface ConversationViewProps {
@@ -911,6 +918,76 @@ export function ConversationView({
     cancelParticipantRename();
   }
 
+  // The composer chip edits the same target the send path uses: the
+  // conversation's own participant target, or the default chat's target.
+  // A cat's default model stays on the cat's own page.
+  const resolveTargetEditor = useCallback(
+    (participant: DraftComposerStackParticipant): AudienceTargetEditor | null => {
+      if (participant.key === 'implicit:execution_target') {
+        return selectedExecutionTarget && onExecutionTargetChange
+          ? { target: selectedExecutionTarget, onChange: onExecutionTargetChange }
+          : null;
+      }
+      const openCatPage = (catId: string) => () => navigate(`/entities/cats/${encodeURIComponent(catId)}`);
+      const matches = (candidate: ResolvedChannelParticipant) => (
+        participant.participantId
+          ? candidate.participantId === participant.participantId
+          : participant.catId != null && resolveParticipantCatId(candidate) === participant.catId
+      );
+      const roomParticipant = activeRoomParticipants.find(matches)
+        ?? (defaultRecipientParticipant && matches(defaultRecipientParticipant) ? defaultRecipientParticipant : null);
+      if (roomParticipant && onUpdateChannelParticipant) {
+        const target: ExecutionTargetValue = {
+          provider: roomParticipant.execution.target.provider,
+          instance: roomParticipant.execution.target.instance ?? null,
+          model: roomParticipant.execution.target.model ?? null,
+          modelSelection: roomParticipant.execution.modelSelection ?? null,
+        };
+        const catId = resolveParticipantCatId(roomParticipant);
+        return {
+          target,
+          onChange: (value) => {
+            // The picker republishes labels; only a real change is saved.
+            if (sameExecutionTargetValue(target, value)) return;
+            void onUpdateChannelParticipant(roomParticipant.participantId, {
+              provider: value.provider,
+              instance: value.instance,
+              model: value.model,
+              modelSelection: value.modelSelection,
+            });
+          },
+          onOpenSettings: catId ? openCatPage(catId) : undefined,
+        };
+      }
+      if (
+        isDirectLane
+        && directLaneCat
+        && participant.catId === directLaneCat.id
+        && directLaneExecutionTarget
+        && onDirectLaneExecutionTargetChange
+      ) {
+        return {
+          target: directLaneExecutionTarget,
+          onChange: (value) => onDirectLaneExecutionTargetChange(directLaneCat.id, value),
+          onOpenSettings: openCatPage(directLaneCat.id),
+        };
+      }
+      return null;
+    },
+    [
+      activeRoomParticipants,
+      defaultRecipientParticipant,
+      directLaneCat,
+      directLaneExecutionTarget,
+      isDirectLane,
+      navigate,
+      onDirectLaneExecutionTargetChange,
+      onExecutionTargetChange,
+      onUpdateChannelParticipant,
+      selectedExecutionTarget,
+    ],
+  );
+
   const viewContext: ConversationViewRenderContext = {
     payload,
     selectedChannel,
@@ -947,6 +1024,7 @@ export function ConversationView({
     activeAudienceKeys,
     onSetActiveAudienceKeys,
     onOpenSection: openSidePanelTo,
+    resolveTargetEditor,
   };
   const composerTargetSlot = renderComposerTargetSlot?.(composerTargetSlotContext) ?? (
     <ConversationComposerTargetSlot
@@ -963,6 +1041,7 @@ export function ConversationView({
       activeAudienceKeys={activeAudienceKeys}
       onSetActiveAudienceKeys={onSetActiveAudienceKeys}
       onOpenSection={openSidePanelTo}
+      resolveTargetEditor={resolveTargetEditor}
     />
   );
   const sidePanelSections = (buildSidePanelSections ?? buildConversationSidePanelSections)({

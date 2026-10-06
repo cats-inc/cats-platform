@@ -4,7 +4,8 @@ import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
 import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
 import { useSavedSelectionAttention } from '../../../../../app/renderer/savedSelectionAttention.js';
-import { AudienceChip } from '../AudienceChip.js';
+import { AudienceChip, type AudienceTargetEditor } from '../AudienceChip.js';
+import type { DraftComposerStackParticipant } from '../newConversationDraftSupport.js';
 import {
   buildAudienceParticipantFromCat,
   buildAudienceParticipantFromExecutionTarget,
@@ -26,6 +27,7 @@ export interface ConversationComposerTargetSlotProps {
   activeAudienceKeys: string[] | null;
   onSetActiveAudienceKeys?: (keys: string[]) => void;
   onOpenSection: (section: string) => void;
+  resolveTargetEditor?: (participant: DraftComposerStackParticipant) => AudienceTargetEditor | null;
 }
 
 function ChatComposerAudienceChip({
@@ -37,6 +39,7 @@ function ChatComposerAudienceChip({
   onSetActiveAudienceKeys,
   maxAudienceParticipants,
   onOpenSection,
+  resolveTargetEditor,
 }: {
   composerStackParticipants: ComposerStackParticipant[];
   composerBusy: boolean;
@@ -46,6 +49,7 @@ function ChatComposerAudienceChip({
   onSetActiveAudienceKeys?: (keys: string[]) => void;
   maxAudienceParticipants?: number;
   onOpenSection: (section: string) => void;
+  resolveTargetEditor?: (participant: DraftComposerStackParticipant) => AudienceTargetEditor | null;
 }) {
   const allParticipants = useMemo(
     () => composerStackParticipants.map(buildAudienceParticipantFromStackParticipant),
@@ -68,6 +72,7 @@ function ChatComposerAudienceChip({
       allParticipants={allParticipants}
       onSetAudienceKeys={onSetActiveAudienceKeys}
       onSingleClick={() => onOpenSection('execution')}
+      resolveTargetEditor={resolveTargetEditor}
       disabled={composerBusy}
       maxSelectedParticipants={maxAudienceParticipants}
       workflowShape={activeWorkflowShape}
@@ -89,6 +94,7 @@ export function ConversationComposerTargetSlot({
   activeAudienceKeys,
   onSetActiveAudienceKeys,
   onOpenSection,
+  resolveTargetEditor,
 }: ConversationComposerTargetSlotProps) {
   // Implicit recipient (model-only)
   const implicitRecipient =
@@ -111,6 +117,7 @@ export function ConversationComposerTargetSlot({
       <AudienceChip
         audienceParticipants={[buildAudienceParticipantFromCat(directLaneCat)]}
         onSingleClick={() => onOpenSection('execution')}
+        resolveTargetEditor={resolveTargetEditor}
         disabled={composerBusy}
       />
     );
@@ -128,6 +135,7 @@ export function ConversationComposerTargetSlot({
         onSetActiveAudienceKeys={onSetActiveAudienceKeys}
         maxAudienceParticipants={payload.chat.capabilities.maxAudienceParticipants}
         onOpenSection={onOpenSection}
+        resolveTargetEditor={resolveTargetEditor}
       />
     );
   }
@@ -143,6 +151,7 @@ export function ConversationComposerTargetSlot({
           executionLabel: implicitRecipient.executionLabel ?? implicitRecipient.name,
         })]}
         onSingleClick={() => onOpenSection('execution')}
+        resolveTargetEditor={resolveTargetEditor}
         disabled={composerBusy}
         attention={implicitAttention}
       />
@@ -158,6 +167,7 @@ export function ConversationComposerTargetSlot({
         onSingleClick={() => onOpenSection(
           isDirectLane || isDefaultChatComposer ? 'execution' : 'cats',
         )}
+        resolveTargetEditor={resolveTargetEditor}
         disabled={composerBusy}
       />
     );

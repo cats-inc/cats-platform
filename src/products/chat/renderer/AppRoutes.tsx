@@ -126,6 +126,7 @@ export function AppRoutes({
                   activeAudienceKeys={context.activeAudienceKeys}
                   onSetActiveAudienceKeys={context.onSetActiveAudienceKeys}
                   onOpenSection={context.onOpenSection}
+                  resolveTargetEditor={context.resolveTargetEditor}
                 />
               )}
               renderStatusRow={(context) => {
@@ -202,6 +203,7 @@ export function AppRoutes({
                     activeAudienceKeys={context.activeAudienceKeys}
                     onSetActiveAudienceKeys={context.onSetActiveAudienceKeys}
                     onOpenSection={context.onOpenSection}
+                    resolveTargetEditor={context.resolveTargetEditor}
                   />
                 )}
               />
