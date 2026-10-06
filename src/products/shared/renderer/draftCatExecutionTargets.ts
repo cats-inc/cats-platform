@@ -82,3 +82,56 @@ export async function applyDraftCatExecutionTargets<
       : {}),
   };
 }
+
+/**
+ * The cats a parallel lane's conversation is created with, by the server's
+ * rule: the lane's audience cats when it names an audience, else every cat.
+ */
+export function resolveParallelLaneCatIds(
+  audienceKeys: readonly string[] | null | undefined,
+  participantCatIds: readonly string[],
+): string[] {
+  if (!Array.isArray(audienceKeys)) {
+    return [...participantCatIds];
+  }
+  const allowed = new Set(participantCatIds);
+  return audienceKeys
+    .filter((key) => key.startsWith('cat:'))
+    .map((key) => key.slice(4))
+    .filter((catId, index, source) => allowed.has(catId) && source.indexOf(catId) === index);
+}
+
+/**
+ * Applies the draft's per-cat picks to every lane conversation a parallel
+ * group created, before its first message is sent.
+ */
+export async function applyDraftCatExecutionTargetsToLanes(
+  lanes: ReadonlyArray<{ channelId: string; catIds: readonly string[] }>,
+  overrides: ReadonlyMap<string, DraftCatExecutionTarget>,
+  updateParticipant: (
+    channelId: string,
+    participantId: string,
+    input: UpdateChannelParticipantInput,
+    signal?: AbortSignal,
+  ) => Promise<unknown>,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (overrides.size === 0) {
+    return;
+  }
+  for (const lane of lanes) {
+    for (const catId of lane.catIds) {
+      const target = overrides.get(catId);
+      if (!target) {
+        continue;
+      }
+      // A newly created conversation keys a cat's participant by the cat id.
+      await updateParticipant(lane.channelId, catId, {
+        provider: target.provider,
+        instance: target.instance,
+        model: target.model,
+        modelSelection: target.modelSelection,
+      }, signal);
+    }
+  }
+}

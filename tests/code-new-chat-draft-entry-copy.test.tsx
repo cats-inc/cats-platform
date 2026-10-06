@@ -204,7 +204,6 @@ test('new code draft owns shared side panel sections through its product builder
     draftHighlightedCatId: null,
     effectiveDefaultRecipientCat: null,
     isGroupDraft: true,
-    isParallelMode: false,
     groupDraftSelectionLabel: 'No participants selected.',
     assistantPresets: [],
     draftTemporaryParticipants: [],

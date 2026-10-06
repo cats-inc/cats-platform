@@ -34,7 +34,6 @@ test('chat new draft side panel copy can be product-owned by callers', () => {
     draftHighlightedCatId: null,
     effectiveDefaultRecipientCat: null,
     isGroupDraft: true,
-    isParallelMode: false,
     groupDraftSelectionLabel: 'No participants selected.',
     assistantPresets: [],
     draftTemporaryParticipants: [],

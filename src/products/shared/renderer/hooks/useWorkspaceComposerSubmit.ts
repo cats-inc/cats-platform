@@ -322,6 +322,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           draftParallelChatTargets,
           draftParticipantCatIds: draftCatIds,
           draftTemporaryParticipants,
+          draftCatExecutionTargetOverrides,
           buildChannelPath: buildTargetChannelPath,
           onCreated: (created, activeId) => {
             rollbackPayload = created.appShell;
