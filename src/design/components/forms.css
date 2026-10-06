@@ -29,6 +29,33 @@
   flex-direction: row;
 }
 
+/* Unobtrusive "i" beside the Model label; its content is the tooltip. */
+.catalogBasisInfo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: -4px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: var(--muted-soft);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: help;
+}
+
+.catalogBasisInfo:hover,
+.catalogBasisInfo:focus-visible {
+  color: inherit;
+}
+
+.catalogBasisInfo:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
 .providerControlField {
   margin-top: 2px;
 }

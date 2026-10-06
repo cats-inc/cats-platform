@@ -3004,6 +3004,9 @@ export const messageKeys = {
   sharedProviderModelFieldProviderInstanceLabel:
     'shared.providerModel.field.providerInstanceLabel',
   sharedProviderModelFieldModelLabel: 'shared.providerModel.field.modelLabel',
+  sharedProviderModelFieldBasisLabel: 'shared.providerModel.field.basisLabel',
+  sharedProviderModelFieldBasisChannelHint: 'shared.providerModel.field.basisChannelHint',
+  sharedProviderModelFieldBasisPlanHint: 'shared.providerModel.field.basisPlanHint',
   sharedProviderModelFieldRetryProvidersFirst:
     'shared.providerModel.field.retryProvidersFirst',
   sharedProviderModelFieldSelectProviderFirst:

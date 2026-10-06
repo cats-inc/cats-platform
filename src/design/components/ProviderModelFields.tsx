@@ -4,6 +4,7 @@ import {
   providerInstanceTarget,
   type ProductProviderRegistryReadModel,
   type ProviderAdvancedModelCatalog,
+  type ProviderCatalogBasis,
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
 import {
@@ -270,6 +271,7 @@ export function ProviderModelFields({
       <label className="fieldLabel">
         <div className="fieldLabelInline">
           <span>{t(messageKeys.sharedProviderModelFieldModelLabel)}</span>
+          {effectiveAdvancedCatalog?.basis ? <CatalogBasisInfo basis={effectiveAdvancedCatalog.basis} /> : null}
           {catalogLoading ? (
             <ProviderPickerLoading label={t(messageKeys.sharedProviderModelFieldLoadingModels)} />
           ) : null}
@@ -374,6 +376,31 @@ export function ProviderModelFields({
 
 // Holds a removed saved entry or preset in its select without matching any listed choice.
 const UNMAPPABLE_SELECTION_VALUE = '__cats_unmappable_selection__';
+
+// Read-only note on what the model list was captured against. It is a focusable span, not a
+// button: a button inside this <label> would become the label's control instead of the select.
+// Clicking it must not activate the label, so the tooltip portal can show the text on tap.
+function CatalogBasisInfo({ basis }: { basis: ProviderCatalogBasis }) {
+  const { t } = useI18n();
+  const hint = [
+    ...(basis.channel ? [t(messageKeys.sharedProviderModelFieldBasisChannelHint, { channel: basis.channel.label })] : []),
+    ...(basis.plan ? [t(messageKeys.sharedProviderModelFieldBasisPlanHint, { plan: basis.plan.label })] : []),
+  ].join(' ');
+  const summary = [basis.channel?.label, basis.plan?.label].filter(Boolean).join(' · ');
+  return (
+    <span
+      className="catalogBasisInfo"
+      role="img"
+      tabIndex={0}
+      aria-label={t(messageKeys.sharedProviderModelFieldBasisLabel, { basis: summary, hint })}
+      data-tooltip={hint}
+      data-tooltip-focus="true"
+      onClick={(event) => event.preventDefault()}
+    >
+      i
+    </span>
+  );
+}
 
 function ProviderPickerLoading({ label }: { label: string }) {
   return (
