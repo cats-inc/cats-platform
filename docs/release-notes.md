@@ -2,6 +2,55 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-06 — Desktop 0.7.11 standard preview
+
+Desktop **0.7.11** is the owner-requested standard-profile preview with the
+Code session-continuity and Artifact Canvas confirmation fixes. This is a
+compatible patch: existing public APIs, configuration contracts and persisted
+formats remain compatible, and no data migration is required.
+
+- **Code session continuity.** Persisted execution leases retain their existing
+  model options, so unchanged conversation turns reuse the same Runtime session,
+  working directory and files. Older leases missing those options recover them
+  from the matching Runtime session. Unavailable or invalid evidence preserves
+  the session and workspace and returns an actionable retry error. Actual model
+  or option changes still follow the normal session-switching rules.
+- **Artifact Canvas confirmation.** Canvas tools commit the artifact and activity
+  and attach its lease before publishing the navigation intent. Success requires
+  a visible viewer's load receipt bound to its renderer session, intent and
+  artifact. Missing, failed or timed-out viewers return coded errors with reusable
+  artifact handles. Successful confirmation certifies viewer loading.
+- **Shared provider/model reads.** Pickers use the shared registry and catalog
+  reads by default, keeping successful observations and retry behavior consistent
+  across their product surfaces.
+- **Runtime source.** Keep the 0.7.10 pin,
+  `f64f347d2820a08fc24b4e82448c69542fc88771` (package version 0.4.1), on all
+  three operating systems and in the complete source archive. The Platform source
+  is the immutable merge commit selected for dispatch and recorded by the release
+  descriptor and source manifest.
+- **Apps.** Reuse Usage 0.5.1 from
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.1/usage-0.5.1.catsapp`,
+  SHA-256 `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
+  Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
+  compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
+- **Signing and updates.** Dispatch `desktop-release.yml` with `tag=v0.7.11`,
+  the full Runtime SHA above and `unsigned=false`; the workflow creates the preview
+  tag. Expected trust is macOS signed + notarized, Windows unsigned (no
+  certificate), Linux n/a. Standard-profile 0.7.10 installs keep their update path:
+  macOS uses the universal ZIP and the same Developer ID team, Windows stays
+  unsigned to unsigned, and Linux uses the `.deb` path. No installed upgrade is
+  exercised before dispatch.
+- **Validation.** The implementation's 133 focused checks pass with natural test
+  process exit. Its full PR CI passed with 5,560 passing tests and zero failures;
+  isolated Electron checks confirmed viewer loading, same-artifact reopening,
+  missing-subscriber failure, hidden-viewer timeout and a Start-button interaction.
+  Version consistency is checked locally; required PR CI gates the bump merge.
+  The release workflow validates all three packaged source receipts, offline App
+  activation, isolated sidecar startup, complete source archive and update
+  metadata before publication. Publication results belong to the
+  [`v0.7.11` GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.11)
+  and its workflow run; downloaded public source assets are verified afterward.
+
 ## 2026-10-04 — Desktop 0.7.10 standard preview
 
 Desktop **0.7.10** is the owner-requested standard-profile preview with the
