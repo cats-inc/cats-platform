@@ -15,11 +15,6 @@ import {
 } from '../../../design/components/settings/index.js';
 import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import {
-  fetchAdvancedProviderModels,
-  fetchProviderModels,
-  fetchProviderRegistry,
-} from '../../../products/shared/renderer/api/index.js';
-import {
   isGuideCatEnabledStatus,
   resolveClientGuideCatName,
 } from '../../../shared/guideCatIdentity.js';
@@ -460,9 +455,6 @@ export function SettingsAssistants({
                     modelSelection: target.modelSelection ?? null,
                   });
                 }}
-                fetchProviderRegistry={fetchProviderRegistry}
-                fetchProviderModels={fetchProviderModels}
-                fetchAdvancedProviderModels={fetchAdvancedProviderModels}
               />
             </div>
           </div>
@@ -625,9 +617,6 @@ export function SettingsAssistants({
                       model: target.model,
                       modelSelection: target.modelSelection ?? null,
                     }))}
-                  fetchProviderRegistry={fetchProviderRegistry}
-                  fetchProviderModels={fetchProviderModels}
-                  fetchAdvancedProviderModels={fetchAdvancedProviderModels}
                 />
               </div>
             </div>
@@ -709,9 +698,6 @@ export function SettingsAssistants({
                       t(messageKeys.settingsAssistantsBrainUpdateFailed),
                     );
                   }}
-                  fetchProviderRegistry={fetchProviderRegistry}
-                  fetchProviderModels={fetchProviderModels}
-                  fetchAdvancedProviderModels={fetchAdvancedProviderModels}
                 />
               </div>
             </div>

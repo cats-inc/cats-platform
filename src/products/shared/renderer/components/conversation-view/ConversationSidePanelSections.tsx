@@ -21,7 +21,7 @@ import {
   type ExecutionTargetValue,
 } from '../../../../shared/renderer/components/ExecutionTarget.js';
 import { ProgressSummaryPanel } from '../ProgressSummaryPanel.js';
-import { ProviderModelFields } from '../ProviderModelFields.js';
+import { ProviderModelFields } from '../../../../../design/components/ProviderModelFields.js';
 import { RunInspector } from '../RunInspector.js';
 import { getCatMcpProfileLabel } from '../settings-cats/viewSupport.js';
 import { ConversationParticipantsSection } from './ConversationParticipantsSection.js';

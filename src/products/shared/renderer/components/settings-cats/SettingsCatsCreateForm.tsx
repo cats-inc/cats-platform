@@ -3,11 +3,6 @@ import { useEffect, useRef, type FormEvent } from 'react';
 import { CatCreationFields } from '../../../../../design/components/CatCreationFields.js';
 import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
-import {
-  fetchAdvancedProviderModels,
-  fetchProviderModels,
-  fetchProviderRegistry,
-} from '../../api/index.js';
 import { type CatFormState } from '../../workspaceChatUtils.js';
 import {
   isCatBusy,
@@ -121,9 +116,6 @@ export function SettingsCatsCreateForm({
         onProductsChange={(products) => onCatFormChange({ ...catForm, products })}
         availableSurfaces={availableSurfaces}
         enabledSurfaces={enabledSurfaces}
-        fetchProviderRegistry={fetchProviderRegistry}
-        fetchProviderModels={fetchProviderModels}
-        fetchAdvancedProviderModels={fetchAdvancedProviderModels}
       />
       <div className="catsCreateActions">
         {collapsible ? (

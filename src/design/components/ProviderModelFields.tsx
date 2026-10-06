@@ -28,6 +28,11 @@ import {
 import { useProviderRegistryState } from './useProviderRegistryState.js';
 import { useProviderTargetReconciliation } from './useProviderTargetReconciliation.js';
 import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import {
+  fetchAdvancedProviderModels as defaultFetchAdvancedProviderModels,
+  fetchProviderModels as defaultFetchProviderModels,
+  fetchProviderRegistry as defaultFetchProviderRegistry,
+} from '../../app/renderer/providerPickerReads.js';
 import { describeUnmappableSavedSelection } from '../../app/renderer/savedSelectionAttention.js';
 import { messageKeys } from '../../shared/i18n/index.js';
 
@@ -64,18 +69,22 @@ export {
   updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
 
-interface SharedProviderModelFieldsProps {
+/** Reads default to the shared client caches; tests inject their own. */
+export interface ProviderModelFieldsReads {
+  fetchProviderRegistry?: (options?: { force?: boolean }) => Promise<ProductProviderRegistryReadModel>;
+  fetchProviderModels?: (provider: string, instance?: string | null) => Promise<ProviderModelCatalog>;
+  fetchAdvancedProviderModels?: (
+    provider: string,
+    instance?: string | null,
+  ) => Promise<ProviderAdvancedModelCatalog>;
+}
+
+export interface ProviderModelFieldsProps extends ProviderModelFieldsReads {
   provider: string;
   instance: string;
   model: string;
   modelSelection?: ProviderModelSelection | null;
   onTargetChange: (target: ProviderTargetSelection) => void;
-  fetchProviderRegistry: (options?: { force?: boolean }) => Promise<ProductProviderRegistryReadModel>;
-  fetchProviderModels: (provider: string, instance?: string | null) => Promise<ProviderModelCatalog>;
-  fetchAdvancedProviderModels: (
-    provider: string,
-    instance?: string | null,
-  ) => Promise<ProviderAdvancedModelCatalog>;
   onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
 }
 
@@ -85,11 +94,11 @@ export function ProviderModelFields({
   model,
   modelSelection,
   onTargetChange,
-  fetchProviderRegistry,
-  fetchProviderModels,
-  fetchAdvancedProviderModels,
+  fetchProviderRegistry = defaultFetchProviderRegistry,
+  fetchProviderModels = defaultFetchProviderModels,
+  fetchAdvancedProviderModels = defaultFetchAdvancedProviderModels,
   onProviderRegistryChange,
-}: SharedProviderModelFieldsProps) {
+}: ProviderModelFieldsProps) {
   const { t } = useI18n();
 
   const {

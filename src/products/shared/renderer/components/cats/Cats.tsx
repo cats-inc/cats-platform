@@ -13,12 +13,7 @@ import {
   SettingsSubSection,
 } from '../../../../../design/components/settings/index.js';
 import { isCatBusy, type WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
-import {
-  fetchAdvancedProviderModels,
-  fetchProviderModels,
-  fetchProviderRegistry,
-  updateCatProfile,
-} from '../../api/index.js';
+import { updateCatProfile } from '../../api/index.js';
 import type { CatFormState } from '../../workspaceChatUtils.js';
 import { catInitials, sortChatCatsForDisplay } from '../../workspaceChatUtils.js';
 import { useSettingsCatsMemory } from '../../hooks/useSettingsCatsMemory.js';
@@ -836,9 +831,6 @@ export function CatsCanvas({
                     model: target.model,
                     modelSelection: target.modelSelection ?? null,
                   })}
-                  fetchProviderRegistry={fetchProviderRegistry}
-                  fetchProviderModels={fetchProviderModels}
-                  fetchAdvancedProviderModels={fetchAdvancedProviderModels}
                 />
               </div>
             </div>
@@ -1158,9 +1150,6 @@ export function CatsCanvas({
                       t(messageKeys.sharedSettingsCatsUpdateBrainError),
                     );
                   }}
-                  fetchProviderRegistry={fetchProviderRegistry}
-                  fetchProviderModels={fetchProviderModels}
-                  fetchAdvancedProviderModels={fetchAdvancedProviderModels}
                 />
               </div>
             </fieldset>
