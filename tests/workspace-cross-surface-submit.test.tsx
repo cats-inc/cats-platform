@@ -14,7 +14,7 @@ import { useWorkspaceComposerSubmit } from '../src/products/shared/renderer/hook
 import { useWorkspaceAppShellRouting } from '../src/products/shared/renderer/hooks/useWorkspaceAppShellRouting.ts';
 import { clearCrossSurfaceNavigationHandoff, consumeCrossSurfaceNavigationHandoff } from '../src/products/shared/renderer/crossSurfaceNavigationHandoff.ts';
 import { createConversationNavigationFixture } from './fixtures/conversationNavigation.ts';
-import { createParallelChatGroup } from '../src/products/chat/state/model/index.ts';
+import { assignCatToChannel, createParallelChatGroup } from '../src/products/chat/state/model/index.ts';
 import { stageCrossSurfaceConversationNavigationHandoff } from '../src/products/shared/renderer/crossSurfaceConversationNavigation.ts';
 import { conversationScope } from '../src/products/shared/renderer/conversationNavigationCache.ts';
 import { clearConversationViewMemory, useConversationComposerState, writeConversationComposer } from '../src/products/shared/renderer/conversationViewMemory.ts';
@@ -146,11 +146,12 @@ test('actual routing repairs an existing Code conversation displayed through a C
 
 for (const [parallel, outcome] of [
   [false, 'creation-failed'], [false, 'upload-failed'], [false, 'send-failed'], [false, 'cancelled'],
+  [false, 'override-failed'], [false, 'override-cancelled'],
   [true, 'send-failed'], [true, 'cancelled'], [true, 'running'],
 ] as Array<[boolean, string]>) {
   test(`cross-surface ${parallel ? 'parallel' : 'single'} draft retains created identity and composer on ${outcome}`, async (t) => {
     const root = await mkdtemp(path.join(tmpdir(), 'cats-cross-failure-'));
-    const f = await createConversationNavigationFixture(root);
+    const f = await createConversationNavigationFixture(root, outcome.startsWith('override-'));
     const target = { provider: 'claude', model: 'model-1', instance: 'cli/native', modelSelection: null };
     let id = f.ids[3];
     const initial = f.payload();
@@ -161,6 +162,8 @@ for (const [parallel, outcome] of [
       f.state.channels.find((channel) => channel.id === id)!.originSurface = 'code';
       initial.chat.channels = initial.chat.channels.filter((channel) => channel.id !== id);
     }
+    const overrideCat = outcome.startsWith('override-') ? f.state.cats.find((cat) => cat.id !== f.state.bossCatId) : null;
+    if (overrideCat) Object.assign(f.state, assignCatToChannel(f.state, id, { catId: overrideCat.id }));
     const createdPayload = f.payload(id);
     const group = createdPayload.chat.parallelChatGroups[0];
     const dispatched = f.payload(id);
@@ -183,6 +186,10 @@ for (const [parallel, outcome] of [
       const url = String(input); requests.push(url);
       if (url === '/api/preferences') return Response.json({ preferences: { selectedChannelId: id } });
       if (url === '/api/app-shell') return Response.json(createdPayload);
+      if (url.includes('/participants/')) {
+        if (outcome === 'override-cancelled') throw Object.assign(new Error('Cancelled'), { name: 'AbortError' });
+        throw new Error('Fixture override failed');
+      }
       if (url === '/api/channels' || url === '/api/parallel-chat-groups') {
         if (outcome === 'creation-failed') throw new Error('Fixture creation failed');
         return Response.json(parallel ? { group, appShell: createdPayload } : { channel: f.snapshot(id).selectedChannel });
@@ -216,6 +223,7 @@ for (const [parallel, outcome] of [
           writeConversationComposer(conversationScope(createdPayload), `channel:${channelId}`, { text, files: attachments });
         },
         draftDefaultRecipientCatId: null, draftCatIds: [], draftCwd: null, draftFiles: files, channelFiles: [],
+        draftCatExecutionTargetOverrides: new Map(overrideCat ? [[overrideCat.id, target]] : []),
         setDraftCwd: noop, setDraftCatIds: noop, setDraftHighlightedCatId: noop,
         setDraftCatExecutionTargetOverrides: noop, setDraftFiles: noop, setChannelFiles: noop,
         draftExecutionTarget: target, defaultChannelExecutionTarget: target, selectedChannel: null,
@@ -248,8 +256,8 @@ for (const [parallel, outcome] of [
       if (outcome === 'running') assert.deepEqual(restored, []);
       else {
         assert.deepEqual(restored, [{ id, text: 'Build a timer', files }]);
-        if (outcome === 'cancelled') assert.equal(handoff.optimisticState?.feedback, undefined);
-        else assert.match(handoff.optimisticState?.feedback ?? '', /Fixture (upload|send) failed/u);
+        if (outcome === 'cancelled' || outcome === 'override-cancelled') assert.equal(handoff.optimisticState?.feedback, undefined);
+        else assert.match(handoff.optimisticState?.feedback ?? '', /Fixture (upload|send|override) failed/u);
         hook.unmount();
         const targetMount = renderHook(() => ({
           transient: useWorkspaceAppTransientState({ initialState: { status: 'ready', payload: handoff.snapshot?.appShellPayload },
@@ -262,6 +270,10 @@ for (const [parallel, outcome] of [
       }
       assert.equal(requests.filter((url) => url === (parallel ? '/api/parallel-chat-groups' : '/api/channels')).length, 1);
       if (outcome === 'upload-failed') assert.ok(requests.some((url) => url.endsWith('/attachments')));
+      else if (outcome.startsWith('override-')) {
+        assert.ok(requests.some((url) => url.includes('/participants/')));
+        assert.equal(requests.some((url) => url.endsWith('/messages')), false);
+      }
       else assert.ok(requests.some((url) => url.endsWith('/messages')));
     }
   });

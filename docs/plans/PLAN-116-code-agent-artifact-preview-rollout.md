@@ -612,7 +612,9 @@ path now hands the created identity and first-dispatch snapshot to the selected
 product after the ACK; old mismatched conversation URLs redirect to the stored
 origin without creating a new channel/session. The handoff retains running
 channel/group controls and first-send error feedback, composer text and files,
-including failures after creation but before attachment upload or first send.
+including failures after creation while saving draft model picks, uploading
+attachments or sending the first message. Creation identity is captured before
+those follow-up awaits; a successful model save updates the handoff snapshot.
 Source draft controls remain locked and cancellable during the ACK, and a
 synchronous submission guard prevents duplicate creates. Independent agent
 review found and verified the ACK-scope correction.
