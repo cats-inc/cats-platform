@@ -4,6 +4,8 @@ import test from 'node:test';
 import type { ChatChannelView, UpdateChannelParticipantInput } from '../src/products/shared/api/workspaceContracts.ts';
 import {
   applyDraftCatExecutionTargets,
+  applyDraftCatExecutionTargetsToLanes,
+  resolveParallelLaneCatIds,
   type DraftCatExecutionTarget,
 } from '../src/products/shared/renderer/draftCatExecutionTargets.ts';
 
@@ -66,4 +68,37 @@ test('a draft without picks sends no participant update', async () => {
     async () => assert.fail('no update expected'),
   );
   assert.equal(settled, channel);
+});
+
+test('a parallel lane gets the cats its audience names, or every cat when it names none', () => {
+  const cats = ['mochi', 'tora'];
+  assert.deepEqual(resolveParallelLaneCatIds(undefined, cats), ['mochi', 'tora']);
+  assert.deepEqual(resolveParallelLaneCatIds(null, cats), ['mochi', 'tora']);
+  assert.deepEqual(resolveParallelLaneCatIds([], cats), []);
+  assert.deepEqual(
+    resolveParallelLaneCatIds(['temp:helper', 'cat:tora', 'cat:ghost', 'cat:tora'], cats),
+    ['tora'],
+    'only draft cats, once each',
+  );
+});
+
+test('draft cat picks are applied to every lane conversation the cat joins', async () => {
+  const calls: Array<[string, string, string | undefined]> = [];
+  await applyDraftCatExecutionTargetsToLanes(
+    [
+      { channelId: 'lane-1', catIds: ['mochi'] },
+      { channelId: 'lane-2', catIds: ['mochi', 'tora'] },
+      { channelId: 'lane-3', catIds: [] },
+    ],
+    new Map([['mochi', codex]]),
+    async (channelId, participantId, input) => { calls.push([channelId, participantId, input.provider]); },
+  );
+  // A newly created conversation keys a cat's participant by the cat id.
+  assert.deepEqual(calls, [['lane-1', 'mochi', 'codex'], ['lane-2', 'mochi', 'codex']]);
+
+  await applyDraftCatExecutionTargetsToLanes(
+    [{ channelId: 'lane-1', catIds: ['mochi'] }],
+    new Map(),
+    async () => assert.fail('no update expected without picks'),
+  );
 });
