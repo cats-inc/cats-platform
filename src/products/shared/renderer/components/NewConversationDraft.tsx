@@ -52,6 +52,7 @@ import {
   resolveNewConversationDraftViewState,
   type DraftComposerStackParticipant,
 } from './newConversationDraftSupport.js';
+import { resolveDraftTargetEditor } from './newConversationDraftTargetEditor.js';
 import { useNewConversationDraftPanelState } from './useNewConversationDraftPanelState.js';
 import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
 import {
@@ -678,69 +679,27 @@ export function NewConversationDraft({
   // Determine click action for single-participant chip
   const audienceSingleClick = (() => {
     if (isGroupDraft) return undefined;
-    if (isParallelMode) {
-      return hasPrimaryParallelBranchAudience
-        ? () => openSidePanelTo('cats')
-        : () => openSidePanelTo('parallel:0');
-    }
+    if (isParallelMode) return () => openSidePanelTo('cats');
     if (isDirectLaneContext) return () => openSidePanelTo('cats');
     if (effectiveDefaultRecipientCat || effectiveDefaultRecipientTemporaryParticipant) {
       return () => openSidePanelTo('cats');
     }
     return undefined;
   })();
-  // The chip edits what this new conversation will use. A cat's pick stays a
-  // draft override, applied to the conversation once it exists; the cat's
-  // own default model only changes on the cat's page.
-  const resolveDraftTargetEditor = (
+  const resolveChipTargetEditor = (
     participant: DraftComposerStackParticipant,
-  ): AudienceTargetEditor | null => {
-    if (isParallelMode) {
-      return null;
-    }
-    if (participant.key === 'implicit:execution_target') {
-      return selectedExecutionTarget && onExecutionTargetChange
-        ? { target: selectedExecutionTarget, onChange: onExecutionTargetChange }
-        : null;
-    }
-    if (participant.catId) {
-      const cat = payload.chat.cats.find((candidate) => candidate.id === participant.catId);
-      if (!cat) {
-        return null;
-      }
-      const catId = cat.id;
-      return {
-        target: draftCatExecutionTargetOverrides.get(catId) ?? {
-          provider: cat.defaultExecutionTarget.provider,
-          model: cat.defaultExecutionTarget.model,
-          instance: cat.defaultExecutionTarget.instance,
-          modelSelection: cat.defaultModelSelection ?? null,
-        },
-        onChange: (value) => onDraftCatExecutionTargetOverride(catId, value),
-        onOpenSettings: () => navigate(`/entities/cats/${encodeURIComponent(catId)}`),
-      };
-    }
-    const temporary = participant.participantId
-      ? draftTemporaryParticipants.find((candidate) => candidate.participantId === participant.participantId)
-      : null;
-    if (!temporary) {
-      return null;
-    }
-    return {
-      target: {
-        provider: temporary.provider,
-        instance: temporary.instance ?? null,
-        model: temporary.model ?? null,
-        modelSelection: temporary.modelSelection ?? null,
-      },
-      onChange: (value) => onUpdateDraftTemporaryParticipant(temporary.participantId, {
-        provider: value.provider,
-        instance: value.instance,
-        model: value.model,
-        modelSelection: value.modelSelection,
-      }),
-    };
-  };
+  ): AudienceTargetEditor | null => resolveDraftTargetEditor(participant, {
+    cats: payload.chat.cats,
+    selectedExecutionTarget,
+    onExecutionTargetChange,
+    parallelTargets,
+    onParallelTargetChange,
+    draftCatExecutionTargetOverrides,
+    onDraftCatExecutionTargetOverride,
+    draftTemporaryParticipants,
+    onUpdateDraftTemporaryParticipant,
+    openCatPage: (catId) => navigate(`/entities/cats/${encodeURIComponent(catId)}`),
+  });
   const {
     createTemporaryParticipantFormValue,
     sidePanelOpen,
@@ -1149,7 +1108,7 @@ export function NewConversationDraft({
                   : (isGroupDraft ? onSetAudienceKeys : undefined)
               }
               onSingleClick={audienceSingleClick}
-              resolveTargetEditor={resolveDraftTargetEditor}
+              resolveTargetEditor={resolveChipTargetEditor}
               disabled={isSubmittingFirstTurn}
               maxSelectedParticipants={
                 (isParallelMode && hasPrimaryParallelBranchAudience) || isGroupDraft
@@ -1384,7 +1343,6 @@ export function NewConversationDraft({
         draftHighlightedCatId,
         effectiveDefaultRecipientCat,
         isGroupDraft,
-        isParallelMode,
         groupDraftSelectionLabel,
         assistantPresets,
         draftTemporaryParticipants,
@@ -1407,8 +1365,6 @@ export function NewConversationDraft({
         createTemporaryParticipantFormValue,
         onTemporaryParticipantFormOpenChange: setTemporaryParticipantFormOpen,
         onSubmitTemporaryParticipant: submitTemporaryParticipant,
-        parallelTargets,
-        onParallelTargetChange,
         folderBrowsePath,
         folderBrowseCurrentPath,
         folderBrowseParentPath,
@@ -1606,6 +1562,7 @@ export function NewConversationDraft({
                     : undefined
                 }
                 onSingleClick={() => openSidePanelTo('cats')}
+                resolveTargetEditor={resolveChipTargetEditor}
                 disabled={isSubmittingFirstTurn}
                 maxSelectedParticipants={maxAudienceParticipants}
                 workflowShape={branchWorkflowShape}

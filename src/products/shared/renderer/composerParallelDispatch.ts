@@ -10,7 +10,13 @@ import {
   createParallelChatGroup,
   encodeAttachmentFiles,
   sendParallelChatMessage,
+  updateChannelParticipantApi,
 } from './api/index.js';
+import {
+  applyDraftCatExecutionTargetsToLanes,
+  resolveParallelLaneCatIds,
+  type DraftCatExecutionTarget,
+} from './draftCatExecutionTargets.js';
 import type { WorkspaceExecutionTargetValue } from './hooks/useWorkspaceComposerSubmit.js';
 import {
   resolveDraftAudienceParticipantIds,
@@ -74,6 +80,8 @@ export interface SubmitNewParallelChatDraftOptions {
   draftParallelChatTargets: ParallelDispatchTarget[];
   draftParticipantCatIds?: string[];
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
+  /** Per-cat model picks made in the draft; applied to every lane the cat joins. */
+  draftCatExecutionTargetOverrides?: ReadonlyMap<string, DraftCatExecutionTarget>;
   buildChannelPath: (channelId: string) => string;
   onCreated?: (created: CreateParallelChatGroupResponse, activeChannelId: string) => void;
   t?: WorkspaceChatTranslator;
@@ -162,6 +170,7 @@ export async function submitNewParallelChatDraft({
   draftParallelChatTargets,
   draftParticipantCatIds = [],
   draftTemporaryParticipants = [],
+  draftCatExecutionTargetOverrides = new Map(),
   buildChannelPath,
   onCreated,
   t = defaultParallelDispatchTranslator,
@@ -207,6 +216,15 @@ export async function submitNewParallelChatDraft({
     throw new Error(t(messageKeys.chatComposerErrorNoActiveParallelThread));
   }
   onCreated?.(created, activeChannelId);
+  await applyDraftCatExecutionTargetsToLanes(
+    created.group.memberChannelIds.map((channelId, index) => ({
+      channelId,
+      catIds: resolveParallelLaneCatIds(resolvedBranches[index]?.effectiveAudienceKeys, draftParticipantCatIds),
+    })),
+    draftCatExecutionTargetOverrides,
+    updateChannelParticipantApi,
+    signal,
+  );
 
   const encodedAttachments = draftFiles.length > 0
     ? await encodeAttachmentFiles(draftFiles)

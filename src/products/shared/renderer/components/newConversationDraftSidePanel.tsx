@@ -10,8 +10,6 @@ import {
 import { CatAvatarRow } from './CatAvatarRow.js';
 import { FolderBrowserContent } from './FolderBrowser.js';
 import {
-  buildExecutionTargetLabel,
-  createExecutionTargetValueFromProviderSelection,
   type ExecutionTargetValue,
 } from './ExecutionTarget.js';
 import { ProviderModelFields } from '../../../../design/components/ProviderModelFields.js';
@@ -96,7 +94,6 @@ export interface BuildNewConversationDraftSidePanelSectionsInput {
   draftHighlightedCatId: string | null;
   effectiveDefaultRecipientCat: AppShellPayload['chat']['cats'][number] | null;
   isGroupDraft: boolean;
-  isParallelMode: boolean;
   groupDraftSelectionLabel: string;
   assistantPresets: NonNullable<AppShellPayload['assistantPresets']>;
   draftTemporaryParticipants: DraftTemporaryParticipant[];
@@ -125,8 +122,6 @@ export interface BuildNewConversationDraftSidePanelSectionsInput {
   createTemporaryParticipantFormValue: () => NewConversationTemporaryParticipantFormState;
   onTemporaryParticipantFormOpenChange: (open: boolean) => void;
   onSubmitTemporaryParticipant: () => void;
-  parallelTargets?: ExecutionTargetValue[];
-  onParallelTargetChange?: (index: number, value: ExecutionTargetValue) => void;
   folderBrowsePath?: string;
   folderBrowseCurrentPath?: string;
   folderBrowseParentPath?: string;
@@ -393,28 +388,6 @@ export function buildNewConversationDraftSidePanelSections(
     ),
   });
 
-  if (input.isParallelMode && input.parallelTargets) {
-    input.parallelTargets.forEach((target, index) => {
-      sections.push({
-        id: `parallel:${index}`,
-        title: buildExecutionTargetLabel(target),
-        children: (
-          <ProviderModelFields
-            provider={target.provider}
-            instance={target.instance ?? ''}
-            model={target.model ?? ''}
-            modelSelection={target.modelSelection}
-            onTargetChange={(next: ProviderTargetSelection) => {
-              input.onParallelTargetChange?.(
-                index,
-                createExecutionTargetValueFromProviderSelection(next),
-              );
-            }}
-          />
-        ),
-      });
-    });
-  }
 
   sections.push({
     id: 'cwd',

@@ -449,3 +449,81 @@ test('workspace parallel submit sends branch prompt override bodies', async () =
     ],
   });
 });
+
+test('workspace parallel submit applies draft cat picks to each lane before the first send', async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ method: string; url: string; body: unknown }> = [];
+  const json = (body: unknown) => new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
+
+  globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+    const method = init.method ?? 'GET';
+    requests.push({ method, url, body: typeof init.body === 'string' ? JSON.parse(init.body) : null });
+    if (url === '/api/parallel-chat-groups') {
+      return json({
+        appShell: { chat: { selectedChannelId: 'lane-1' } },
+        group: {
+          id: 'group-1',
+          memberChannelIds: ['lane-1', 'lane-2'],
+          members: [{ channelId: 'lane-1' }, { channelId: 'lane-2' }],
+        },
+      });
+    }
+    if (method === 'PATCH') {
+      return json({});
+    }
+    if (url === '/api/app-shell') {
+      return json({ chat: { channels: [], cats: [], selectedChannelId: 'lane-1' } });
+    }
+    return json({
+      appShell: { chat: { channels: [{ id: 'lane-1', routingStatus: 'running' }] } },
+      groupId: 'group-1',
+      phase: 'acknowledged',
+      results: [],
+    });
+  };
+
+  try {
+    await submitNewParallelChatDraft({
+      body: 'Compare these',
+      payload: {
+        chat: { channels: [], capabilities: { maxAudienceParticipants: 4 } },
+      } as unknown as AppShellPayload,
+      originSurface: 'chat',
+      draftCwd: null,
+      draftFiles: [],
+      draftParticipantCatIds: ['mochi', 'tora'],
+      draftParallelChatTargets: [
+        { provider: 'claude', instance: null, model: 'opus', modelSelection: null,
+          audienceKeys: ['cat:mochi'], workflowShape: 'sequential' },
+        { provider: 'codex', instance: null, model: 'gpt-5.6-sol', modelSelection: null,
+          audienceKeys: ['cat:mochi', 'cat:tora'], workflowShape: 'sequential' },
+      ],
+      draftCatExecutionTargetOverrides: new Map([[
+        'mochi',
+        { provider: 'codex', instance: 'native', model: 'gpt-5.6-sol', modelSelection: null },
+      ]]),
+      buildChannelPath: (channelId) => `/chat/chats/${channelId}`,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const patches = requests.filter((request) => request.method === 'PATCH');
+  assert.deepEqual(patches.map((request) => request.url), [
+    '/api/channels/lane-1/participants/mochi',
+    '/api/channels/lane-2/participants/mochi',
+  ]);
+  assert.deepEqual(patches[0]?.body, {
+    provider: 'codex', instance: 'native', model: 'gpt-5.6-sol', modelSelection: null,
+  });
+  const createIndex = requests.findIndex((request) => request.url === '/api/parallel-chat-groups');
+  const sendIndex = requests.findIndex((request) =>
+    request.method === 'POST' && request.url !== '/api/parallel-chat-groups');
+  const lastPatchIndex = requests.indexOf(patches[patches.length - 1]!);
+  assert.ok(createIndex < requests.indexOf(patches[0]!), 'picks are applied after the lanes exist');
+  assert.ok(lastPatchIndex < sendIndex, 'every pick lands before the first message is sent');
+});
