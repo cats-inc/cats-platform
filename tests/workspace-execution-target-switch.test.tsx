@@ -7,7 +7,7 @@ import { act, cleanup, render, renderHook, waitFor } from '@testing-library/reac
 import React, { startTransition, useState } from 'react';
 
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
-import { ProviderModelFields } from '../src/products/shared/renderer/components/ProviderModelFields.tsx';
+import { ProviderModelFields } from '../src/design/components/ProviderModelFields.tsx';
 import { createExecutionTargetValueFromProviderSelection, type ExecutionTargetValue } from '../src/products/shared/renderer/components/ExecutionTarget.ts';
 import { AudienceChip } from '../src/products/shared/renderer/components/AudienceChip.tsx';
 import { buildAudienceParticipantFromExecutionTarget } from '../src/products/shared/renderer/audienceParticipantBuilder.ts';

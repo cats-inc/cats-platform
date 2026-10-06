@@ -6,14 +6,10 @@ import type {
   ProviderModelSelection,
   ProviderTargetSelection,
 } from '../../shared/providerSelection.js';
-import type {
-  ProductProviderRegistryReadModel,
-  ProviderAdvancedModelCatalog,
-  ProviderModelCatalog,
-} from '../../shared/providerCatalog.js';
-import { ProviderModelFields } from './ProviderModelFields.js';
+import type { ProductProviderRegistryReadModel } from '../../shared/providerCatalog.js';
+import { ProviderModelFields, type ProviderModelFieldsReads } from './ProviderModelFields.js';
 
-export interface CatCreationFieldsProps {
+export interface CatCreationFieldsProps extends ProviderModelFieldsReads {
   name: string;
   onNameChange: (name: string) => void;
   nameReadOnly?: boolean;
@@ -34,12 +30,6 @@ export interface CatCreationFieldsProps {
   availableSurfaces?: string[];
   enabledSurfaces?: string[];
   hideProductToggles?: boolean;
-  fetchProviderRegistry: () => Promise<ProductProviderRegistryReadModel>;
-  fetchProviderModels: (provider: string, instance?: string | null) => Promise<ProviderModelCatalog>;
-  fetchAdvancedProviderModels: (
-    provider: string,
-    instance?: string | null,
-  ) => Promise<ProviderAdvancedModelCatalog>;
   onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
 }
 

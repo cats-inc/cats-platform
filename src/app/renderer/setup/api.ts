@@ -1,20 +1,10 @@
 import type {
-  ProductProviderRegistryReadModel,
-  ProviderAdvancedModelCatalog,
-  ProviderModelCatalog,
-} from '../../../shared/providerCatalog.js';
-import type {
   ProductBootstrapDiagnosticsReadModel,
 } from '../../../shared/bootstrapDiagnostics.js';
 import type {
   PlatformHostEnvelope,
   PlatformSetupCompleteInput,
 } from '../../../shared/platform-contract.js';
-import {
-  fetchProviderAdvancedCatalogFromClientCache,
-  fetchProviderModelCatalogFromClientCache,
-} from '../providerCatalogClient.js';
-import { fetchProviderRegistryFromClientCache } from '../providerRegistryClient.js';
 import { PLATFORM_AUTH_ERROR_CODES } from '../../../platform/auth/errorCodes.js';
 
 interface SetupApiRequestOptions {
@@ -182,24 +172,4 @@ export async function markPlatformSetupOpened(
   }
 
   return (await response.json()) as ProductBootstrapDiagnosticsReadModel;
-}
-
-export async function fetchProviderRegistry(options?: {
-  force?: boolean;
-}): Promise<ProductProviderRegistryReadModel> {
-  return fetchProviderRegistryFromClientCache(options);
-}
-
-export async function fetchProviderModels(
-  provider: string,
-  instance?: string | null,
-): Promise<ProviderModelCatalog> {
-  return fetchProviderModelCatalogFromClientCache({ provider, instance });
-}
-
-export async function fetchAdvancedProviderModels(
-  provider: string,
-  instance?: string | null,
-): Promise<ProviderAdvancedModelCatalog> {
-  return fetchProviderAdvancedCatalogFromClientCache({ provider, instance });
 }

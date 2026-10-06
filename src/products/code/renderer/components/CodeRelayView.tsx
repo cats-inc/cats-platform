@@ -12,7 +12,7 @@ import {
   type CodeRelayThreadPayload,
   type CodeRelayThreadsPayload,
 } from '../api/relay.js';
-import { ProviderModelFields } from './ProviderModelFields.js';
+import { ProviderModelFields } from '../../../../design/components/ProviderModelFields.js';
 import {
   labelCodeRelayModeForLocale,
   labelCodeRelayRoleForLocale,

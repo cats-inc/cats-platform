@@ -4,10 +4,6 @@ import type {
   RefObject,
 } from 'react';
 
-import type {
-  ProviderModelSelection,
-  ProviderTargetSelection,
-} from '../../../../shared/providerSelection.js';
 import {
   isCatBusy,
   type WorkspaceBusyState,
@@ -17,7 +13,10 @@ import {
   executionLabel,
   type CatFormState,
 } from '../workspaceChatUtils.js';
-import { ProviderModelFields } from './ProviderModelFields.js';
+import {
+  ProviderModelFields,
+  type ProviderModelFieldsProps,
+} from '../../../../design/components/ProviderModelFields.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { CHAT_MCP_PROFILE_ID } from '../../../../shared/catMcpProfiles.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
@@ -25,14 +24,6 @@ import {
   getCatMcpProfileLabel,
   MCP_PROFILES,
 } from './catRegistryViewSupport.js';
-
-interface ProviderModelFieldsProps {
-  provider: string;
-  instance: string;
-  model: string;
-  modelSelection?: ProviderModelSelection | null;
-  onTargetChange: (target: ProviderTargetSelection) => void;
-}
 
 export interface WorkspaceAddCatPanelProps {
   panelRef?: RefObject<HTMLDivElement>;

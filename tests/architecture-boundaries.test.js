@@ -1973,6 +1973,36 @@ test('ProviderModelFields composes dedicated support helpers instead of defining
   assert.match(supportSource, /export function sanitizeProviderRegistryReadModel/u);
 });
 
+test('provider/model pickers default to the shared reads instead of per-surface wrappers', async () => {
+  for (const removedWrapper of [
+    '../src/products/shared/renderer/components/ProviderModelFields.tsx',
+    '../src/products/shared/renderer/components/CatCreationFields.tsx',
+    '../src/app/renderer/setup/ProviderModelFields.tsx',
+    '../src/app/renderer/setup/CatCreationFields.tsx',
+  ]) {
+    await assert.rejects(readFile(new URL(removedWrapper, import.meta.url), 'utf8'));
+  }
+
+  const pickerSource = await readFile(
+    new URL('../src/design/components/ProviderModelFields.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(pickerSource, /app\/renderer\/providerPickerReads\.js/u);
+  assert.doesNotMatch(pickerSource, /from '[^']*\/products\//u);
+
+  for (const surfaceRoot of ['../src/app', '../src/products']) {
+    const surfaceRootPath = fileURLToPath(new URL(surfaceRoot, import.meta.url));
+    for await (const filePath of walkSourceFiles(surfaceRootPath)) {
+      const source = await readFile(filePath, 'utf8');
+      assert.doesNotMatch(
+        source,
+        /fetchProviderRegistry=\{fetchProviderRegistry\}/u,
+        `${path.relative(surfaceRootPath, filePath)} re-injects the picker's default reads`,
+      );
+    }
+  }
+});
+
 test('platform setup routes consume dedicated parser helpers instead of keeping validation inline', async () => {
   const routeSource = await readFile(
     new URL('../src/app/server/platformSetupRoutes.ts', import.meta.url),

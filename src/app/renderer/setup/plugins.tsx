@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { CatCreationFields } from './CatCreationFields.js';
+import { CatCreationFields } from '../../../design/components/CatCreationFields.js';
 import type { ProductProviderRegistryReadModel } from '../../../shared/providerCatalog.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { messageKeys } from '../../../shared/i18n/messageKeys.js';
