@@ -1940,7 +1940,6 @@ export const messageKeys = {
   chatApprovalQueueRequestedByPrefix: 'chat.approvalQueue.requestedByPrefix',
   chatSidePanelStartFresh: 'chat.sidePanel.startFresh',
   chatSidePanelStartingFreshBusy: 'chat.sidePanel.startingFreshBusy',
-  chatSidePanelStartFreshHint: 'chat.sidePanel.startFreshHint',
   chatSidePanelRunStatusTitle: 'chat.sidePanel.runStatusTitle',
   chatSidePanelRunStatusUnavailableTitle: 'chat.sidePanel.runStatusUnavailableTitle',
   chatSidePanelLoadingTitle: 'chat.sidePanel.loadingTitle',
@@ -2801,8 +2800,6 @@ export const messageKeys = {
   sharedComposerSurfaceLabelWork: 'shared.composerSurface.label.work',
   sharedComposerSurfaceLabelCode: 'shared.composerSurface.label.code',
   sharedComposerSurfaceClearAria: 'shared.composerSurface.clearAria',
-  sharedProviderModelSupportAdvanced: 'shared.providerModel.support.advanced',
-  sharedProviderModelSupportReadOnly: 'shared.providerModel.support.readOnly',
   sharedDeleteParallelChatGroupTitle: 'shared.delete.parallelChatGroup.title',
   sharedDeleteParallelChatGroupMessage: 'shared.delete.parallelChatGroup.message',
   sharedDeleteParallelChatGroupConfirm: 'shared.delete.parallelChatGroup.confirm',
@@ -3010,9 +3007,6 @@ export const messageKeys = {
   sharedProviderModelFieldProviderInstanceLabel:
     'shared.providerModel.field.providerInstanceLabel',
   sharedProviderModelFieldModelLabel: 'shared.providerModel.field.modelLabel',
-  sharedProviderModelFieldBasisLabel: 'shared.providerModel.field.basisLabel',
-  sharedProviderModelFieldBasisChannelHint: 'shared.providerModel.field.basisChannelHint',
-  sharedProviderModelFieldBasisPlanHint: 'shared.providerModel.field.basisPlanHint',
   sharedProviderModelFieldRetryProvidersFirst:
     'shared.providerModel.field.retryProvidersFirst',
   sharedProviderModelFieldSelectProviderFirst:
@@ -3032,8 +3026,6 @@ export const messageKeys = {
   sharedProviderModelFieldModeLabel: 'shared.providerModel.field.modeLabel',
   sharedProviderModelFieldModeStandardLabel:
     'shared.providerModel.field.modeStandardLabel',
-  sharedProviderModelFieldModeStandardOnlyLabel:
-    'shared.providerModel.field.modeStandardOnlyLabel',
   sharedProviderModelFieldPresetPreviewSuffix:
     'shared.providerModel.field.presetPreviewSuffix',
   sharedProviderModelFieldPresetUnavailableSuffix:

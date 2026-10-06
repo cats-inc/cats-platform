@@ -17,7 +17,6 @@ import {
   resolveDisplayedEnumControlValue,
   resolveExecutionLabelForProviderTarget,
   resolveProviderModelFieldsViewState,
-  resolveProviderSupportBadge,
   resolveSelectedCatalogEntryId,
   resolveUnsupportedPersistentControlWarning,
   sanitizePersistentTargetSelection,
@@ -342,18 +341,6 @@ test('instance field stays hidden when a provider only exposes one runtime insta
     }),
     false,
   );
-});
-
-test('support badge labels match runtime catalog support tiers', () => {
-  assert.deepEqual(resolveProviderSupportBadge('full'), {
-    labelKey: 'shared.providerModel.support.advanced',
-    tone: 'advanced',
-  });
-  assert.equal(resolveProviderSupportBadge('entry_only'), null);
-  assert.deepEqual(resolveProviderSupportBadge('read_only'), {
-    labelKey: 'shared.providerModel.support.readOnly',
-    tone: 'readOnly',
-  });
 });
 
 test('catalog entry labels hide available markers but keep actionable statuses', () => {

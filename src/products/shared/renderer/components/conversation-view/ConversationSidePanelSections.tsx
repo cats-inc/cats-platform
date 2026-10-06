@@ -230,9 +230,6 @@ export function buildConversationSidePanelSections({
               >
                 {startFreshBusy ? t(messageKeys.chatSidePanelStartingFreshBusy) : t(messageKeys.chatSidePanelStartFresh)}
               </button>
-              <p className="operatorEmptyState">
-                {t(messageKeys.chatSidePanelStartFreshHint)}
-              </p>
             </div>
           ) : null}
         </>
