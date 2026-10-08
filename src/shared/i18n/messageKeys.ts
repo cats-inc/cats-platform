@@ -1883,8 +1883,6 @@ export const messageKeys = {
   chatNewChatDraftPomodoroPrompt: 'chat.newChatDraft.pomodoroPrompt',
   chatNewChatDraftStartProjectChipLabel: 'chat.newChatDraft.startProjectChipLabel',
   chatNewChatDraftStartProjectPrompt: 'chat.newChatDraft.startProjectPrompt',
-  chatNewChatDraftSidePanelExecutionActionLabel:
-    'chat.newChatDraft.execution.actionLabel',
   chatNewChatDraftSidePanelFolderTitle: 'chat.newChatDraft.folder.title',
   chatNewChatDraftSidePanelFolderEmptyState: 'chat.newChatDraft.folder.emptyState',
   chatNewChatDraftDefaultGreeting: 'chat.newChatDraft.defaultGreeting',
@@ -3010,8 +3008,6 @@ export const messageKeys = {
   sharedProviderModelFieldBasisLabel: 'shared.providerModel.field.basisLabel',
   sharedProviderModelFieldBasisChannelHint: 'shared.providerModel.field.basisChannelHint',
   sharedProviderModelFieldBasisPlanHint: 'shared.providerModel.field.basisPlanHint',
-  sharedProviderModelFieldRetryProvidersFirst:
-    'shared.providerModel.field.retryProvidersFirst',
   sharedProviderModelFieldSelectProviderFirst:
     'shared.providerModel.field.selectProviderFirst',
   sharedProviderModelFieldWaitingProviders:
@@ -3042,18 +3038,8 @@ export const messageKeys = {
   sharedProviderModelAttentionChooseHere: 'shared.providerModel.attention.chooseHere',
   sharedProviderModelAttentionChooseInSettings: 'shared.providerModel.attention.chooseInSettings',
   sharedProviderModelAttentionBadgeLabel: 'shared.providerModel.attention.badgeLabel',
-  sharedProviderModelFieldOpenRuntimeSetupLabel:
-    'shared.providerModel.field.openRuntimeSetupLabel',
   sharedProviderModelFieldAdvancedCatalogUnavailable:
     'shared.providerModel.field.advancedCatalogUnavailable',
-  sharedProviderModelFieldCatalogKindModel:
-    'shared.providerModel.field.catalogKindModel',
-  sharedProviderModelFieldCatalogKindAdvancedModel:
-    'shared.providerModel.field.catalogKindAdvancedModel',
-  sharedProviderModelFieldRuntimeCatalogUnavailable:
-    'shared.providerModel.field.runtimeCatalogUnavailable',
-  sharedProviderModelFieldRuntimeCatalogUnavailableWarning:
-    'shared.providerModel.field.runtimeCatalogUnavailableWarning',
   sharedMemoryEditorDialogTitle: 'shared.memoryEditorDialog.title',
   sharedMemoryEditorDialogCategoryLabel: 'shared.memoryEditorDialog.categoryLabel',
   sharedMemoryEditorDialogContentLabel: 'shared.memoryEditorDialog.contentLabel',

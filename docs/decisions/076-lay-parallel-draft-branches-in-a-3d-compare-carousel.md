@@ -191,7 +191,8 @@ all three products without per-product duplication.
   `maxParallelChats = 3` in the default capability set.
 - `ParallelDraftShadowBranchRow` is no longer imported by the only
   consumer. We keep the file on disk for one release cycle in case
-  callers surface later.
+  callers surface later. No consumer surfaced; the file and its
+  `parallelStub*` styles were removed on 2026-10-08.
 
 ### Neutral
 

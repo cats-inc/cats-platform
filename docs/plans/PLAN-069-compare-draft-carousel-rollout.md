@@ -135,7 +135,7 @@ docs/plans/README.md                                                    (index u
 
 `ParallelDraftShadowBranchRow.tsx` is no longer imported by
 `ChatNewChatDraft` but is left on disk for one release cycle in case
-a stray consumer surfaces.
+a stray consumer surfaces. None did; it was removed on 2026-10-08.
 
 ## Verification
 

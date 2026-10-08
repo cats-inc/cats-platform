@@ -584,9 +584,10 @@ Attention marks (second change, confirmed by the owner):
 
 - **Rewrites stop.** An unmappable saved selection is never rewritten except by an
   explicit pick. This covers the app-level default-chat reconcile, mounted pickers
-  (settings, side panels, and Code relay rosters, which stay mounted) and the
-  direct-lane picker. Rewriting turned a removed entry into a custom model string
-  and a removed value into a substitute, which hid the change. Classification
+  (settings and Code relay rosters, which stay mounted) and the composer chip's
+  model popover, including a direct lane's. Rewriting turned a removed entry into
+  a custom model string and a removed value into a substitute, which hid the
+  change. Classification
   needs a revisioned base/advanced pair from one activation, so a withheld or
   substituted advanced catalog never judges a selection.
 - **Picker display.** The picker shows the removed model, mode or option value as
@@ -599,8 +600,8 @@ Attention marks (second change, confirmed by the owner):
   the provider instance from the registry, reads the cached catalog pair, and
   re-reads on catalog refresh or client invalidation.
 - **Default chats.** A model-only chat's composer chip keeps its saved label and
-  shows a red mark with why and how to fix it. The existing click opens the model
-  panel.
+  shows a red mark with why and how to fix it. Clicking the chip opens its model
+  popover.
 - **Cats and Catlas.**
   - A red mark sits at the avatar's bottom-left, the one corner no other overlay
     uses. It appears on:
@@ -626,8 +627,9 @@ Attention marks (second change, confirmed by the owner):
 
 Known limits:
 
-- **Not marked.** Group-chat composer chips do not mark cat participants (the header
-  roster does), and assistant presets are deferred.
+- **Not marked.** Group-chat composer chips and the participant rows in their
+  popover do not mark cat participants (the header roster does). Draft composer
+  chips are not marked either, and assistant presets are deferred.
 - **No write-back.** Code relay rosters need none because their mounted pickers
   re-stamp when shown. Catlas does not write back, because changing `guideCat`
   during a request trips its operation-context check. Work collaboration snapshots
@@ -639,6 +641,22 @@ classification, routing) and 98 bundled reconcile/picker tests passed. Server,
 desktop, renderer and test TypeScript projects and the catalog boundary check
 passed. The mobile typecheck could not run in this worktree without mobile
 dependencies.
+
+### Composer popover hosts (2026-10-06)
+
+Desktop 0.7.12 and 0.7.13 (#253, #255) moved the picker for conversation and
+draft targets from the side panels into the composer chip's popover. The side
+panels no longer host a picker, except the draft's add-temporary-participant
+form, which picks the new participant's model.
+
+- The popover mounts the picker only while it is open, so a started
+  conversation's participant target is re-stamped only when its picker opens.
+  The re-stamp changes `catalogRevision`, which `sameProviderModelSelection`
+  treats as a real change, so the conversation saves it.
+- Until then, a stale but mappable participant selection pays the Runtime
+  client's rejected create, catalog read and retry, like the paths under
+  **No write-back** above.
+- A default chat's own target still goes through the app-level reconcile.
 
 ## Open Questions
 
