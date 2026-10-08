@@ -172,9 +172,9 @@
   color: var(--text);
 }
 
-/* Parallel preset: hover signals destructive intent in red, matching
- * the legacy `parallelStubRemoveDanger` palette so the move from the
- * footer slot to the top-right corner doesn't lose the danger cue. */
+/* Parallel preset: hover signals destructive intent in red, keeping
+ * the danger palette the remove button had in the footer slot so the
+ * move to the top-right corner doesn't lose the danger cue. */
 .composerCardBranchRemoveAccent:hover:not(:disabled) {
   background: rgba(140, 60, 50, 0.1);
   color: #8f4f3f;
