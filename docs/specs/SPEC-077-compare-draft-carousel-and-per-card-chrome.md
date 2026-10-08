@@ -123,15 +123,20 @@ Every branch in the carousel renders a three-part card:
     {lead && composerHeaderAccessory ? <div .composerHeaderRight>}
   </div>
 
-  <form .composerCard.composerCardFresh>    ← composer body
-    ... attachments / textarea / composerBottomRow / file input ...
-  </form>
-
-  <div .composerFooterRow>          ← per-branch chrome
-    {per-branch .parallelAddRow.parallelAddRowInline}
+  <div .draftBranchFormAnchor>
+    <form .composerCard.composerCardFresh>    ← composer body
+      {.composerCardBranchRemove, top-right}
+      ... attachments / textarea / composerBottomRow / file input ...
+    </form>
+    {active card: prev / next / +compare nav}
   </div>
+
+  {lead && composerFooterAccessory ? <div .composerFooterRow>}
 </div>
 ```
+
+The remove button, `+compare` and the footer moved after the first slice;
+see [Chrome placement (2026-05-01)](#chrome-placement-2026-05-01).
 
 ### Lead card (index 0)
 
@@ -142,10 +147,10 @@ Every branch in the carousel renders a three-part card:
   attachments with add/remove, plus button, per-branch roster +
   `+collaborate` row (group preset) or the shared audience chip
   (other presets), send button.
-- **Footer**: the existing `DraftComposerFooter` component, which
-  still renders the `+compare` button (now with plain `+` glyph) and
-  the teaching hint when `entryPreset === 'parallel'`. No `-remove`
-  button — lead cannot be removed without collapsing the draft.
+- **Footer**: `DraftComposerFooter`, which renders only a product's
+  `composerFooterAccessory` and nothing otherwise. The remove button
+  and `+compare` live in the form and the nav slot (see
+  [Chrome placement](#chrome-placement-2026-05-01)).
 
 ### Non-lead card (index >= 1)
 
@@ -163,23 +168,14 @@ Every branch in the carousel renders a three-part card:
     interactive.
   - Send button is not rendered — all branches ship together from
     lead's send.
-- **Footer**: an inline `.composerFooterRow` containing:
-  - `-remove` button (`parallelStubRemove`, with
-    `parallelStubRemoveDanger` when `entryPreset === 'parallel'`),
-    visible iff `parallelTargets.length > minParallelTargetCount`.
-  - `+compare` button (`parallelAddButton` with `parallelAddButtonAccent`
-    when `entryPreset === 'parallel'`), visible iff
-    `onAddParallelTarget` is provided and
-    `parallelTargets.length < maxParallelChats`.
-  - Teaching hint `"Add another model to compare"` with
-    `parallelAddHintAccent` when `accentParallelAddButton` is true
-    and `hideDraftParallelHint` is false.
+- **Footer**: none. The remove button and `+compare` live in the form
+  and the nav slot (see [Chrome placement](#chrome-placement-2026-05-01)).
 
 ## Preset-Gated Accent Rules (Preserved)
 
 These rules existed before this spec and remain untouched by the
-carousel layout. Restated here because they now fire on every card's
-footer rather than on a single draft-shell-level footer:
+carousel layout. Restated here because they now attach to each card's
+chrome rather than to a single draft-shell-level footer:
 
 | Surface / preset                               | `+collaborate` accent | `+compare` accent |
 |------------------------------------------------|-----------------------|-------------------|
@@ -272,14 +268,14 @@ inherits the shape automatically.
 
 ### Removing the active card
 
-- Removing a non-lead branch via its `-remove` button calls
+- Removing a branch via its top-right remove button calls
   `onRemoveParallelTarget(branchIndex)`; the `useEffect` in
   `ChatNewChatDraft` clamps `activeBranchIndex` if it referred to the
   removed index.
-- Lead (index 0) is not removable through the carousel. Dismantling
-  a parallel draft back to default happens by removing branches until
-  `length < 2`, at which point the carousel unmounts and the single-
-  card layout takes over.
+- The lead (index 0) carries the same button while there are at least
+  two branches, and it calls `onRemoveParallelTarget(0)`. Removing
+  branches until `length < 2` unmounts the carousel, and the single-card
+  layout takes over.
 
 ## First Slice Status
 
@@ -296,12 +292,38 @@ Landed in commit `5dca6938`:
 
 Remaining work is tracked in [PLAN-069](../plans/PLAN-069-compare-draft-carousel-rollout.md).
 
+## Chrome placement (2026-05-01)
+
+Owner directives after the first slice moved the per-card chrome off the
+footer. `NewConversationDraft.tsx` implements this placement:
+
+- **Remove**: `.composerCardBranchRemove` (an X) sits in the form's
+  top-right corner, with `.composerCardBranchRemoveAccent` for the danger
+  hover when `entryPreset === 'parallel'`.
+  - A non-lead card shows it whenever `onRemoveParallelTarget` is provided.
+  - The lead shows it once there are at least two branches.
+  - It is disabled, not hidden, at `minParallelTargetCount`: 2 for the
+    parallel preset, otherwise 1.
+- **`+compare`**: no longer in a footer. The active card's nav slot,
+  beside the form inside `.draftBranchFormAnchor`, holds prev / next and,
+  on the last branch, `.draftCompareCarouselAddBranch`. It uses
+  `.draftCompareCarouselAddBranchAccent` under the parallel preset and is
+  shown while `parallelTargets.length < maxParallelChats` and
+  `onAddParallelTargetAndFollow` is provided. Under the parallel preset
+  the `"Add another model to compare"` hint (`.parallelAddHintAccent`)
+  sits beside it.
+- **Footer**: `DraftComposerFooter` renders only a product's
+  `composerFooterAccessory`; non-lead cards have none.
+
+The `parallelStub*` classes the first slice named were removed on
+2026-10-08 with `ParallelDraftShadowBranchRow`.
+
 ## Open Questions
 
 1. **Task chip**. The mock prototype explored a per-card "task N"
    chip in the footer. Spec not yet written. If adopted, the chip
-   would go in the `.composerFooterRow`'s left slot (leaving the
-   right slot for the existing `-remove` / `+compare` cluster).
+   would go in a per-card `.composerFooterRow`, which no longer holds
+   the remove or `+compare` buttons.
 2. **Detach semantics**. Once per-branch cwd (and eventually
    per-branch prompt) becomes real, we need a UX token for
    transitioning a card from "Follows lead" to "Detached". The
