@@ -649,14 +649,19 @@ draft targets from the side panels into the composer chip's popover. The side
 panels no longer host a picker, except the draft's add-temporary-participant
 form, which picks the new participant's model.
 
-- The popover mounts the picker only while it is open, so a started
-  conversation's participant target is re-stamped only when its picker opens.
-  The re-stamp changes `catalogRevision`, which `sameProviderModelSelection`
-  treats as a real change, so the conversation saves it.
-- Until then, a stale but mappable participant selection pays the Runtime
-  client's rejected create, catalog read and retry, like the paths under
-  **No write-back** above.
-- A default chat's own target still goes through the app-level reconcile.
+- The popover mounts the picker only while it is open. Opening a participant's
+  picker re-stamps a stale selection; the re-stamp changes `catalogRevision`,
+  which `sameProviderModelSelection` treats as a real change, so the
+  conversation saves it.
+- Chat does not depend on the popover for this. A stale but mappable
+  participant selection pays the Runtime client's rejected create, catalog
+  read and retry once. The chat session launch then saves the session's
+  re-stamped selection back to the participant
+  (`createParticipantTargetRuntimeSession`, `persistCreatedTargetExecutionTarget`),
+  so each participant pays the retry once per catalog change. Live sessions
+  are reused across a re-stamp (see above).
+- The same launch path saves a default chat's re-stamped target, which the
+  app-level reconcile also re-stamps.
 
 ## Open Questions
 
