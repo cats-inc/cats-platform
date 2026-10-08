@@ -1850,7 +1850,6 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.participants.catsTitle': 'Cats',
   'chat.newChatDraft.participants.groupTitle': 'Participants',
   'chat.newChatDraft.participants.emptyState': 'No cats are available yet.',
-  'chat.newChatDraft.execution.actionLabel': 'Choose AI reply',
   'chat.newChatDraft.planMyDayChipLabel': 'Plan my day',
   'chat.newChatDraft.planMyDayPrompt': 'Help me plan today’s priorities.',
   'chat.newChatDraft.brainstormNameChipLabel': 'Brainstorm a name',
@@ -2956,7 +2955,6 @@ export const enCatalog: MessageCatalog = {
   'shared.providerModel.field.basisLabel': 'Model list basis: {basis}. {hint}',
   'shared.providerModel.field.basisChannelHint': 'Models listed for the {channel} channel. Enter a custom model to use another channel.',
   'shared.providerModel.field.basisPlanHint': 'Models listed for a {plan} account. Other plans can offer different models.',
-  'shared.providerModel.field.retryProvidersFirst': 'Retry loading providers first',
   'shared.providerModel.field.selectProviderFirst': 'Select an available provider first',
   'shared.providerModel.field.waitingProviders': 'Waiting for available providers...',
   'shared.providerModel.field.loadingModels': 'Loading available models...',
@@ -2971,7 +2969,6 @@ export const enCatalog: MessageCatalog = {
   'shared.providerModel.field.modeStandardOnlyLabel': 'Standard only',
   'shared.providerModel.field.presetPreviewSuffix': ' (preview)',
   'shared.providerModel.field.presetUnavailableSuffix': ' (unavailable)',
-  'shared.providerModel.field.openRuntimeSetupLabel': 'Open Cats Runtime setup',
   'shared.providerModel.attention.entryRemoved':
     '{model} is no longer in the current model list. Choose the model again.',
   'shared.providerModel.attention.controlRemoved':
@@ -2984,12 +2981,6 @@ export const enCatalog: MessageCatalog = {
   'shared.providerModel.attention.badgeLabel': 'Model choice needs attention',
   'shared.providerModel.field.advancedCatalogUnavailable':
     'Runtime advanced model catalog unavailable.',
-  'shared.providerModel.field.catalogKindModel': 'model',
-  'shared.providerModel.field.catalogKindAdvancedModel': 'advanced model',
-  'shared.providerModel.field.runtimeCatalogUnavailable':
-    'Runtime {catalogKind} catalog unavailable.',
-  'shared.providerModel.field.runtimeCatalogUnavailableWarning':
-    'Using the product {catalogKind} catalog while cats-runtime refreshes: {message}',
   'shared.memoryEditorDialog.title': 'Add memory',
   'shared.memoryEditorDialog.categoryLabel': 'Category',
   'shared.memoryEditorDialog.contentLabel': 'Content',

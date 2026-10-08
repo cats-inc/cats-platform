@@ -1805,7 +1805,6 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.newChatDraft.participants.catsTitle': '貓咪',
   'chat.newChatDraft.participants.groupTitle': '參與者',
   'chat.newChatDraft.participants.emptyState': '尚未有可用的貓咪。',
-  'chat.newChatDraft.execution.actionLabel': '選擇 AI 回覆',
   'chat.newChatDraft.planMyDayChipLabel': '規劃今天',
   'chat.newChatDraft.planMyDayPrompt': '幫我規劃今天的優先事項。',
   'chat.newChatDraft.brainstormNameChipLabel': '想個名字',
@@ -2887,7 +2886,6 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.providerModel.field.basisLabel': '模型清單依據：{basis}。{hint}',
   'shared.providerModel.field.basisChannelHint': '此清單依據 {channel} 渠道擷取。其他渠道請用自訂模型輸入。',
   'shared.providerModel.field.basisPlanHint': '此清單依據 {plan} 帳號擷取。其他方案可用的模型可能不同。',
-  'shared.providerModel.field.retryProvidersFirst': '請先重新載入供應器',
   'shared.providerModel.field.selectProviderFirst': '請先選擇可用的供應器',
   'shared.providerModel.field.waitingProviders': '正在等待可用的供應器…',
   'shared.providerModel.field.loadingModels': '正在載入可用模型…',
@@ -2902,7 +2900,6 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.providerModel.field.modeStandardOnlyLabel': '僅標準',
   'shared.providerModel.field.presetPreviewSuffix': '（預覽）',
   'shared.providerModel.field.presetUnavailableSuffix': '（不可用）',
-  'shared.providerModel.field.openRuntimeSetupLabel': '開啟 Cats 執行階段設定',
   'shared.providerModel.attention.entryRemoved':
     '「{model}」已不在目前的模型清單，請重新選擇模型。',
   'shared.providerModel.attention.controlRemoved':
@@ -2915,12 +2912,6 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.providerModel.attention.badgeLabel': '模型選擇需要處理',
   'shared.providerModel.field.advancedCatalogUnavailable':
     '執行階段進階模型目錄無法使用。',
-  'shared.providerModel.field.catalogKindModel': '模型',
-  'shared.providerModel.field.catalogKindAdvancedModel': '進階模型',
-  'shared.providerModel.field.runtimeCatalogUnavailable':
-    '執行階段{catalogKind}目錄無法使用。',
-  'shared.providerModel.field.runtimeCatalogUnavailableWarning':
-    'cats-runtime 重新整理時，先使用產品內建的{catalogKind}目錄：{message}',
   'shared.memoryEditorDialog.title': '新增記憶',
   'shared.memoryEditorDialog.categoryLabel': '分類',
   'shared.memoryEditorDialog.contentLabel': '內容',
