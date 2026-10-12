@@ -7,7 +7,7 @@
 | **Status** | Draft |
 | **Owner** | User |
 | **Reviewer** | User |
-| **Last updated** | 2026-10-03 |
+| **Last updated** | 2026-10-13 |
 
 ## Summary
 
@@ -168,8 +168,8 @@ Gated off deliberately:
    install handoff.
 6. Publish intentional, tag-versioned GitHub Releases instead of creating a
    user-facing version for each commit.
-7. Support one primary desktop artifact on Windows, macOS, and Linux, plus
-   updater metadata/support files.
+7. Support one primary desktop artifact per released architecture on Windows,
+   macOS, and Linux, plus updater metadata/support files.
 8. Preserve sandboxing: the renderer may request bounded update actions but may
    not choose feeds, URLs, files, commands, or installer arguments.
 
@@ -183,18 +183,21 @@ Gated off deliberately:
 - Automatically downloading an update in Phase 1.
 - Supporting downgrade or rollback through the updater.
 - Supporting private GitHub repositories that require end-user GitHub tokens.
-- Making PKG, tarball, AppImage, RPM, Windows arm64, or Linux x64 part of the
-  Phase 1 self-update matrix.
+- Making PKG, tarball, AppImage, or RPM part of the Phase 1 self-update matrix.
 - Finalizing alpha/beta promotion and downgrade behavior.
 - Treating unsigned development packages as official update clients.
 
 The Linux arm64 `.deb` is deliberately **in** scope and is not covered by the
-exclusion above. It is the only Linux artifact section 8 requires, acceptance
-criterion 9 covers its old-to-new upgrade, and PLAN-101 Phase 6 validates it on
-a real arm64 host. An earlier revision of this list excluded both `DEB` and
+exclusion above. Section 8 requires it, acceptance criterion 9 covers its
+old-to-new upgrade, and PLAN-101 Phase 6 validates it on a real arm64 host. An earlier revision of this list excluded both `DEB` and
 `Linux arm64`, which together removed the entire Linux self-update path that the
 rest of this specification requires; that wording is corrected here rather than
 preserved.
+
+Windows arm64 and the Linux x64 `.deb` were non-goals here until 2026-10-13,
+when the owner added them to the release set
+([ADR-130](../decisions/130-ship-per-architecture-windows-and-linux-desktop-installers.md));
+section 8 lists them.
 
 ## Distribution and Visibility Matrix
 
@@ -541,11 +544,13 @@ When later enabled:
 
 One public release shall contain:
 
-- Windows x64 NSIS installer built with `--sidecar-layout bundle`
+- Windows x64 and Windows arm64 NSIS installers built with
+  `--sidecar-layout bundle`
 - macOS universal DMG
 - macOS universal ZIP required by the updater
-- Linux arm64 `.deb`
-- generated Windows, macOS, and Linux update metadata
+- Linux amd64 and Linux arm64 `.deb` packages
+- generated update metadata: `latest.yml` for both Windows installers,
+  `latest-mac.yml`, `latest-linux.yml` and `latest-linux-arm64.yml`
 - any differential-update files generated and referenced by that metadata
 - checksums or provenance output required by the release workflow
 - `Cats-vX.Y.Z-source.zip`, `Cats-vX.Y.Z-source.zip.sha256` and
@@ -559,6 +564,17 @@ macOS ships one universal build, so Apple Silicon runs natively rather than
 under Rosetta 2. The updater keeps a single `latest-mac.yml` feed, and its
 universal ZIP carries no `arm64` token, so electron-updater selects it on Intel,
 Apple Silicon and Rosetta 2 hosts alike; existing x64 installs update into it.
+
+Windows ships one NSIS installer per architecture rather than a combined
+installer, so each download stays single-architecture and the x64 asset keeps
+its name. One electron-builder run produces both, and they share the single
+`latest.yml` feed, x64 first; electron-updater picks the file whose name
+contains the running `process.arch`. Each Windows app carries the voice helper
+published for its own architecture. Linux ships one `.deb` per architecture,
+each with its own feed. Release asset validation requires every declared
+platform architecture's installer and checks that each feed offers an update
+for every architecture it serves and none for another. See
+[ADR-130](../decisions/130-ship-per-architecture-windows-and-linux-desktop-installers.md).
 
 From 2026-09-18 to 2026-10-03 the target was x64 only. The project had no macOS
 arm64 machine to execute that slice before release, so a universal build would
@@ -582,9 +598,10 @@ defect:
   and does not extend to Linux.
 
 Architecture shall be validated per platform rather than across the whole target
-set. With Windows on x64 and Linux on arm64, a flattened list of released
-architecture tokens accepts an x64 `.deb` and an arm64 `.exe` -- each is released
-somewhere, just not on the platform that produced it.
+set. With Windows and Linux on x64 and arm64 and macOS universal, a flattened list
+of released architecture tokens accepts a universal `.exe` or an arm64 `.dmg` --
+each architecture is released somewhere, just not on the platform that produced
+it.
 
 The official Windows release workflow shall pass the sidecar layout explicitly;
 it shall not depend on the installer's current `split` default. The bundle

@@ -2,6 +2,75 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-13 — Desktop 0.7.14 standard preview
+
+Desktop **0.7.14** is the owner-requested standard-profile preview that adds a
+Windows arm64 installer and a Linux x86_64 `.deb` to the GitHub release. This
+is a compatible patch: existing public APIs, configuration contracts and
+persisted formats remain compatible, and no data migration is required.
+
+- **New release assets.** Windows now ships `Cats-0.7.14-setup-x64.exe` and
+  `Cats-0.7.14-setup-arm64.exe`, macOS keeps `Cats-0.7.14-universal.dmg` with its
+  updater ZIP, and Linux ships `Cats-0.7.14-amd64.deb` (x86_64) and
+  `Cats-0.7.14-arm64.deb`. Windows uses one installer per architecture rather
+  than a combined installer, so each download stays single-architecture and the
+  x64 asset keeps its name ([ADR-130](decisions/130-ship-per-architecture-windows-and-linux-desktop-installers.md)).
+- **Update feeds.** Both Windows installers are listed in the one `latest.yml`,
+  and electron-updater picks the installer named for the running architecture.
+  Linux x64 reads the new `latest-linux.yml`; Linux arm64 keeps
+  `latest-linux-arm64.yml`; macOS keeps `latest-mac.yml`.
+- **Native voice helper.** Each Windows installer carries the self-contained
+  .NET voice helper published for its own architecture, so Windows on Arm runs
+  it natively rather than under x64 emulation.
+- **Release gates.** Windows and Linux each package both architectures in one
+  release job. Asset validation now requires an installer for every released
+  platform architecture and the four update feeds, and checks that each feed
+  offers an update for every architecture it serves and none for another. The
+  bundle verifier checks every unpacked Windows app's voice helper has the same
+  PE machine as its `Cats.exe`, and the Windows signature step checks every
+  installer.
+- **Not yet run on the new hardware.** The Windows arm64 and Linux x64 builds
+  are cross-packaged on x64 runners and pass the architecture-independent CI
+  checks (resources, offline App activation, isolated sidecar startup under the
+  runner's Node, licenses, helper architecture). Their Electron hosts have not
+  run on Windows on Arm or x86_64 Linux before dispatch.
+- **Other changes since 0.7.13.** A repository bound to a channel no longer shows
+  `.cats-attachments/` as untracked: Cats writes a `*` `.gitignore` inside the
+  folder and leaves the repository's own ignore files alone (#257). Unused
+  parallel draft, provider catalog and picker message leftovers from the
+  composer popover change are removed, with no behavior change (#256).
+- **Runtime source.** Keep the Runtime pin from 0.7.10 through 0.7.13,
+  `f64f347d2820a08fc24b4e82448c69542fc88771` (package version 0.4.1), on every
+  OS build and in the complete source archive. The Platform source is the
+  immutable merge commit selected for dispatch and recorded by the release
+  descriptor and source manifest.
+- **Apps.** Reuse Usage 0.5.1 from
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.1/usage-0.5.1.catsapp`,
+  SHA-256 `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`.
+  Its host/SDK requirements and the knowledge bundles' `0.7.x` ranges remain
+  compatible. No App, Runtime npm, Platform npm or cats-one publication is selected.
+- **Signing and updates.** Dispatch `desktop-release.yml` with `tag=v0.7.14`,
+  the full Runtime SHA above and `unsigned=false`; the workflow creates the preview
+  tag. Expected trust is macOS signed + notarized, Windows unsigned (no
+  certificate) for both installers, Linux n/a for both packages. Standard-profile
+  0.7.13 installs keep their update path: macOS uses the universal ZIP and the
+  same Developer ID team, Windows x64 stays unsigned to unsigned through
+  `Cats-0.7.14-setup-x64.exe`, and Linux arm64 uses the arm64 `.deb`. Windows
+  arm64 and Linux x64 have no earlier Desktop release, so they start with a
+  manual install. No installed upgrade is exercised before dispatch.
+- **Validation.** 128 focused tests pass locally across release asset
+  validation, installer arguments, Windows helper architecture, packaging
+  configuration, source bundle, App bundle verification and native notices,
+  including new tests for multi-architecture arguments, per-architecture
+  installers, feed coverage and the helper's PE machine. A local `win-arm64`
+  publish of the voice helper succeeded and its .NET notices staged. Version
+  consistency is checked locally; required PR CI gates the merge. The release
+  workflow validates all three packaged source receipts, offline App activation,
+  isolated sidecar startup, complete source archive and update metadata before
+  publication. Publication results belong to the
+  [`v0.7.14` GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.7.14)
+  and its workflow run.
+
 ## 2026-10-06 — Desktop 0.7.13 standard preview
 
 Desktop **0.7.13** is the owner-requested standard-profile preview that brings

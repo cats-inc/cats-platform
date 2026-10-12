@@ -17,6 +17,7 @@ import { FileCatsAppRegistry } from '../build/server/platform/apps/registry.js';
 import { readAppRenderer } from '../build/server/platform/apps/renderer.js';
 import { verifyPackagedPlatformStartup } from './verify-packaged-platform-startup.mjs';
 import { verifyDesktopLicenses } from './verify-desktop-licenses.mjs';
+import { verifyWindowsVoiceHelperArch } from './shared/windows-voice-helper-arch.mjs';
 
 const pins = (apps) => apps.map(({ id, version, sha256 }) => ({ id, version, sha256 }));
 
@@ -114,6 +115,7 @@ async function main() {
   for (const resources of roots) {
     const result = await verifyDesktopAppBundle(resources, options['--expect-lock'], { releaseReceipt: Boolean(options['--receipt']) });
     result.licenses = await verifyDesktopLicenses(resources);
+    result.windowsVoiceHelper = await verifyWindowsVoiceHelperArch(resources);
     result.startup = await verifyPackagedPlatformStartup(resources);
     if (result.receipt) result.receipt.platformStartup = result.startup.platformStartup;
     if (receipt) assert.deepEqual(result.receipt, receipt, 'Unpacked release identities differ');

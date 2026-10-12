@@ -6,10 +6,11 @@ import { load } from 'js-yaml';
 
 import {
   DESKTOP_RELEASE_MATRIX,
-  PRIMARY_ARTIFACT_PATTERNS,
+  PRIMARY_ARTIFACTS,
   UPDATE_METADATA_FILES,
   collectReferencedFiles,
   parseArgs,
+  resolveFeedArchitectureProblems,
   resolveMissingMetadataFiles,
   resolveDisallowedArtifacts,
   resolveUnreleasedArchitectureArtifacts,
@@ -34,12 +35,16 @@ const FORMAT_EXTENSIONS_FOR_TEST = {
 const COMPLETE_FILES = [
   'collected/preview-windows/Cats-0.2.0-setup-x64.exe',
   'collected/preview-windows/Cats-0.2.0-setup-x64.exe.blockmap',
+  'collected/preview-windows/Cats-0.2.0-setup-arm64.exe',
+  'collected/preview-windows/Cats-0.2.0-setup-arm64.exe.blockmap',
   'collected/preview-windows/latest.yml',
   'collected/preview-macos/Cats-0.2.0-universal.dmg',
   'collected/preview-macos/Cats-0.2.0-universal.dmg.blockmap',
   'collected/preview-macos/Cats-0.2.0-universal.zip',
   'collected/preview-macos/Cats-0.2.0-universal.zip.blockmap',
   'collected/preview-macos/latest-mac.yml',
+  'collected/preview-linux/Cats-0.2.0-amd64.deb',
+  'collected/preview-linux/latest-linux.yml',
   'collected/preview-linux/Cats-0.2.0-arm64.deb',
   'collected/preview-linux/latest-linux-arm64.yml',
 ];
@@ -50,10 +55,11 @@ function withExtraFile(name) {
 
 function metadata(name, overrides = {}) {
   const byName = {
+    // electron-builder writes one Windows feed for both installers, x64 first.
     'latest.yml': {
       version: '0.2.0',
       path: 'Cats-0.2.0-setup-x64.exe',
-      files: [{ url: 'Cats-0.2.0-setup-x64.exe' }],
+      files: [{ url: 'Cats-0.2.0-setup-x64.exe' }, { url: 'Cats-0.2.0-setup-arm64.exe' }],
     },
     'latest-mac.yml': {
       version: '0.2.0',
@@ -63,6 +69,11 @@ function metadata(name, overrides = {}) {
         { url: 'Cats-0.2.0-universal.zip' },
         { url: 'Cats-0.2.0-universal.dmg' },
       ],
+    },
+    'latest-linux.yml': {
+      version: '0.2.0',
+      path: 'Cats-0.2.0-amd64.deb',
+      files: [{ url: 'Cats-0.2.0-amd64.deb' }],
     },
     'latest-linux-arm64.yml': {
       version: '0.2.0',
@@ -113,7 +124,7 @@ test('artifacts outside the release contract fail validation', () => {
 
 test('an architecture the declared set omits fails validation', () => {
   const result = validateReleaseAssets({
-    files: [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-amd64.deb'],
+    files: [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-armv7l.deb'],
     metadataDocuments: completeDocuments(),
   });
 
@@ -122,13 +133,13 @@ test('an architecture the declared set omits fails validation', () => {
 });
 
 test('widening the declared set is all it takes to ship another architecture', () => {
-  // The rule is "what we declared", not "x64 Linux is forbidden". Declaring it
-  // makes the same artifact valid without touching the validator.
+  // The rule is "what we declared", not "armv7l Linux is forbidden". Declaring
+  // it makes the same artifact valid without touching the validator.
   const widened = DESKTOP_RELEASE_MATRIX.map((entry) => (entry.platform === 'linux'
-    ? { ...entry, arches: [...entry.arches, 'x64'] }
+    ? { ...entry, arches: [...entry.arches, 'armv7l'] }
     : entry));
 
-  const names = [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-amd64.deb']
+  const names = [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-armv7l.deb']
     .map((path) => path.split('/').pop());
 
   assert.deepEqual(resolveUnreleasedArchitectureArtifacts(names, widened), []);
@@ -136,7 +147,7 @@ test('widening the declared set is all it takes to ship another architecture', (
   // Still rejected under the current declaration.
   assert.deepEqual(
     resolveUnreleasedArchitectureArtifacts(names),
-    ['Cats-0.2.0-amd64.deb'],
+    ['Cats-0.2.0-armv7l.deb'],
   );
 });
 
@@ -159,16 +170,17 @@ test('the declared release set is fully allowed', () => {
 });
 
 test('architecture is judged per platform, not across the whole matrix', () => {
-  // Windows ships x64 and Linux ships arm64, so a flattened token list would
-  // accept both an x64 .deb and an arm64 .exe -- each is released somewhere,
-  // just not on the platform that built it.
+  // Windows and Linux ship x64 and arm64 while macOS ships universal, so a
+  // flattened token list would accept a universal .exe or .deb and an x64 or
+  // arm64 .dmg -- each architecture is released somewhere, just not on the
+  // platform that built it.
   assert.deepEqual(
-    resolveUnreleasedArchitectureArtifacts(['Cats-0.2.0-amd64.deb']),
-    ['Cats-0.2.0-amd64.deb'],
+    resolveUnreleasedArchitectureArtifacts(['Cats-0.2.0-universal.deb']),
+    ['Cats-0.2.0-universal.deb'],
   );
   assert.deepEqual(
-    resolveUnreleasedArchitectureArtifacts(['Cats-0.2.0-setup-arm64.exe']),
-    ['Cats-0.2.0-setup-arm64.exe'],
+    resolveUnreleasedArchitectureArtifacts(['Cats-0.2.0-setup-universal.exe']),
+    ['Cats-0.2.0-setup-universal.exe'],
   );
   // macOS ships universal, so a per-architecture macOS build is outside it.
   assert.deepEqual(
@@ -179,7 +191,9 @@ test('architecture is judged per platform, not across the whole matrix', () => {
   assert.deepEqual(
     resolveUnreleasedArchitectureArtifacts([
       'Cats-0.2.0-setup-x64.exe',
+      'Cats-0.2.0-setup-arm64.exe',
       'Cats-0.2.0-universal.dmg',
+      'Cats-0.2.0-amd64.deb',
       'Cats-0.2.0-arm64.deb',
     ]),
     [],
@@ -225,8 +239,20 @@ test('metadata names follow electron-builder architecture suffixing', () => {
     ]),
     ['latest.yml', 'latest-mac.yml', 'latest-linux-arm64.yml'],
   );
+  // Only Linux suffixes its feed, and only for a non-x64 architecture: both
+  // Windows installers share latest.yml.
+  assert.deepEqual(
+    expectedMetadataFiles([
+      { platform: 'windows', formats: ['nsis'], arches: ['x64', 'arm64'] },
+      { platform: 'linux', formats: ['deb'], arches: ['x64', 'arm64'] },
+    ]),
+    ['latest.yml', 'latest-linux.yml', 'latest-linux-arm64.yml'],
+  );
   // The declared set resolves to what this repository actually publishes.
-  assert.deepEqual(UPDATE_METADATA_FILES, ['latest.yml', 'latest-mac.yml', 'latest-linux-arm64.yml']);
+  assert.deepEqual(
+    UPDATE_METADATA_FILES,
+    ['latest.yml', 'latest-mac.yml', 'latest-linux.yml', 'latest-linux-arm64.yml'],
+  );
 });
 
 test('the workflow matrix matches the declared release set', async () => {
@@ -244,13 +270,11 @@ test('the workflow matrix matches the declared release set', async () => {
       new RegExp(`--format ${entry.formats.join(',')}\\b`, 'u'),
       `${entry.platform} formats drifted from DESKTOP_RELEASE_MATRIX`,
     );
-    for (const arch of entry.arches) {
-      assert.match(
-        extraArgs,
-        new RegExp(`--arch ${arch}\\b`, 'u'),
-        `${entry.platform} arch ${arch} drifted from DESKTOP_RELEASE_MATRIX`,
-      );
-    }
+    assert.match(
+      extraArgs,
+      new RegExp(`--arch ${entry.arches.join(',')}(?:\\s|$)`, 'u'),
+      `${entry.platform} arches drifted from DESKTOP_RELEASE_MATRIX`,
+    );
   }
 });
 
@@ -266,22 +290,39 @@ test('a missing primary artifact fails validation per platform', () => {
   assert.equal(problemCodes(result).includes('primary_artifact_missing'), true);
 });
 
+test('each released architecture needs its own installer', () => {
+  const result = validateReleaseAssets({
+    files: COMPLETE_FILES.filter((path) => !path.includes('setup-arm64.exe')),
+    metadataDocuments: completeDocuments(),
+  });
+
+  assert.equal(result.ok, false);
+  const missing = result.problems.filter((problem) => problem.code === 'primary_artifact_missing');
+  assert.deepEqual(missing.map((problem) => problem.message), [
+    'No primary user-facing artifact was produced for windows arm64.',
+  ]);
+});
+
 test('metadata that references an unbuilt file fails validation', () => {
   const result = validateReleaseAssets({
     files: COMPLETE_FILES,
     metadataDocuments: [
       metadata('latest.yml', {
-        path: 'Cats-0.2.0-setup-arm64.exe',
-        files: [{ url: 'Cats-0.2.0-setup-arm64.exe' }],
+        files: [
+          { url: 'Cats-0.2.0-setup-x64.exe' },
+          { url: 'Cats-0.2.0-setup-arm64.exe' },
+          { url: 'Cats-0.1.9-setup-arm64.exe' },
+        ],
       }),
       metadata('latest-mac.yml'),
+      metadata('latest-linux.yml'),
       metadata('latest-linux-arm64.yml'),
     ],
   });
 
   assert.equal(result.ok, false);
   assert.deepEqual(problemCodes(result), ['referenced_artifact_missing']);
-  assert.match(result.problems[0].message, /Cats-0\.2\.0-setup-arm64\.exe/u);
+  assert.match(result.problems[0].message, /Cats-0\.1\.9-setup-arm64\.exe/u);
 });
 
 test('a missing metadata file fails validation even when the installer exists', () => {
@@ -336,14 +377,56 @@ test('referenced files are matched by name regardless of url form', () => {
   assert.deepEqual(collectReferencedFiles({ files: 'nope' }), []);
 });
 
-test('primary artifact detection covers the three declared release targets', () => {
+test('primary artifact detection covers every declared platform architecture', () => {
   assert.deepEqual(
-    PRIMARY_ARTIFACT_PATTERNS.map((entry) => entry.platform),
-    ['windows', 'macos', 'linux'],
+    PRIMARY_ARTIFACTS.map(({ platform, arch, format }) => `${platform} ${arch} ${format}`),
+    ['windows x64 nsis', 'windows arm64 nsis', 'macos universal dmg', 'linux x64 deb', 'linux arm64 deb'],
   );
-  assert.deepEqual(resolveMissingPrimaryArtifacts(['a.exe', 'b.dmg', 'c.deb']), []);
-  assert.deepEqual(resolveMissingPrimaryArtifacts([]), ['windows', 'macos', 'linux']);
-  assert.deepEqual(resolveMissingPrimaryArtifacts(['a.exe']), ['macos', 'linux']);
+  assert.deepEqual(resolveMissingPrimaryArtifacts([
+    'Cats-0.2.0-setup-x64.exe', 'Cats-0.2.0-setup-arm64.exe', 'Cats-0.2.0-universal.dmg',
+    'Cats-0.2.0-amd64.deb', 'Cats-0.2.0-arm64.deb',
+  ]), []);
+  assert.deepEqual(resolveMissingPrimaryArtifacts([]),
+    ['windows x64', 'windows arm64', 'macos universal', 'linux x64', 'linux arm64']);
+  // A blockmap or an unmarked name is not an installer for an architecture.
+  assert.deepEqual(resolveMissingPrimaryArtifacts([
+    'Cats-0.2.0-setup.exe', 'Cats-0.2.0-setup-arm64.exe.blockmap', 'Cats-0.2.0-universal.dmg',
+    'Cats-0.2.0-amd64.deb', 'Cats-0.2.0-arm64.deb',
+  ]), ['windows x64', 'windows arm64']);
+});
+
+test('every feed offers an update for each architecture it serves and no other', () => {
+  assert.deepEqual(resolveFeedArchitectureProblems(completeDocuments()), []);
+
+  // electron-updater falls back to the first file when none names process.arch,
+  // so a Windows feed missing arm64 would hand arm64 installs the x64 installer.
+  const withoutArm64 = resolveFeedArchitectureProblems([
+    metadata('latest.yml', { files: [{ url: 'Cats-0.2.0-setup-x64.exe' }] }),
+  ]);
+  assert.deepEqual(withoutArm64.map((problem) => problem.message), [
+    'Update metadata latest.yml offers no windows arm64 nsis update.',
+  ]);
+
+  // A Linux feed is per architecture; the other one's .deb does not belong.
+  const crossed = resolveFeedArchitectureProblems([
+    metadata('latest-linux.yml', {
+      path: 'Cats-0.2.0-arm64.deb',
+      files: [{ url: 'Cats-0.2.0-arm64.deb' }],
+    }),
+  ]);
+  assert.deepEqual(crossed.map((problem) => problem.code), [
+    'update_metadata_architecture_missing',
+    'update_metadata_architecture_mismatch',
+  ]);
+
+  // macOS reads the universal ZIP; the DMG alone cannot update.
+  const dmgOnly = resolveFeedArchitectureProblems([
+    metadata('latest-mac.yml', {
+      path: 'Cats-0.2.0-universal.dmg',
+      files: [{ url: 'Cats-0.2.0-universal.dmg' }],
+    }),
+  ]);
+  assert.deepEqual(dmgOnly.map((problem) => problem.code), ['update_metadata_architecture_missing']);
 });
 
 test('metadata presence detection covers every updater feed', () => {
@@ -551,9 +634,9 @@ test('the release matrix pins every platform to its contracted formats and arch'
     'utf8',
   );
 
-  assert.match(workflow, /platform: windows[\s\S]*?--format nsis --arch x64/u);
-  assert.match(workflow, /platform: macos[\s\S]*?--format dmg,zip --arch universal/u);
-  assert.match(workflow, /platform: linux[\s\S]*?--format deb --arch arm64/u);
+  assert.match(workflow, /platform: windows[\s\S]*?--format nsis --arch x64,arm64$/mu);
+  assert.match(workflow, /platform: macos[\s\S]*?--format dmg,zip --arch universal$/mu);
+  assert.match(workflow, /platform: linux[\s\S]*?--format deb --arch x64,arm64$/mu);
 });
 
 test('both repositories are checked out inside the workspace', async () => {

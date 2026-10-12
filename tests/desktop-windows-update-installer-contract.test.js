@@ -65,8 +65,11 @@ test('the uninstaller only removes user data when the user opts in', () => {
   );
 });
 
-test('the Windows target stays the x64 NSIS build the release matrix publishes', () => {
+test('the Windows target stays the x64 and arm64 NSIS builds the release matrix publishes', () => {
   const [target] = buildConfig.win.target;
   assert.equal(target.target, 'nsis');
-  assert.deepEqual(target.arch, ['x64']);
+  assert.deepEqual(target.arch, ['x64', 'arm64']);
+  // One installer per architecture, both in the single latest.yml feed. A
+  // combined installer would rename the x64 asset existing installs update to.
+  assert.equal(buildConfig.nsis.buildUniversalInstaller, false);
 });

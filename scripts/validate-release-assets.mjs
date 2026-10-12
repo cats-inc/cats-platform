@@ -37,14 +37,18 @@ const isSourceSupport = (name) => SOURCE_ASSET.test(name) || BUILD_RECEIPT.test(
  * that platform cannot self-update even if its installer uploaded fine.
  */
 export const DESKTOP_RELEASE_MATRIX = [
-  { platform: 'windows', formats: ['nsis'], arches: ['x64'] },
+  // Windows ships one NSIS installer per architecture. Both are listed in the
+  // single latest.yml feed, and electron-updater picks the entry whose name
+  // contains the running process.arch.
+  { platform: 'windows', formats: ['nsis'], arches: ['x64', 'arm64'] },
   // macOS ships one universal binary rather than two per-architecture builds:
   // Apple Silicon runs natively instead of under Rosetta 2, and the updater
   // keeps a single latest-mac.yml feed that existing x64 installs also read.
   { platform: 'macos', formats: ['dmg', 'zip'], arches: ['universal'] },
-  // Linux ships an arm64 .deb. electron-updater installs it with dpkg, which
-  // needs elevation -- unlike the per-user Windows path.
-  { platform: 'linux', formats: ['deb'], arches: ['arm64'] },
+  // Linux ships an amd64 and an arm64 .deb, each with its own feed.
+  // electron-updater installs them with dpkg, which needs elevation -- unlike
+  // the per-user Windows path.
+  { platform: 'linux', formats: ['deb'], arches: ['x64', 'arm64'] },
 ];
 
 const METADATA_BASENAMES = {
@@ -54,29 +58,31 @@ const METADATA_BASENAMES = {
 };
 
 /**
- * Derives the channel file each platform will emit.
+ * Names the channel file that serves one platform architecture.
  *
- * electron-builder suffixes the name with the architecture for anything other
- * than x64, so an arm64 Linux target writes `latest-linux-arm64.yml`. Hardcoding
- * the three unsuffixed names meant a retarget reported the real file as an
+ * electron-builder suffixes the name with the architecture only on Linux, and
+ * only for something other than x64, so an arm64 Linux target writes
+ * `latest-linux-arm64.yml` while both Windows architectures share `latest.yml`.
+ * Hardcoding unsuffixed names meant a retarget reported the real file as an
  * unknown artifact *and* the expected file as missing -- two errors for one
  * naming rule.
  */
+export function metadataFileFor(platform, arch) {
+  const base = METADATA_BASENAMES[platform];
+  return platform === 'linux' && arch !== 'x64' ? `${base}-${arch}.yml` : `${base}.yml`;
+}
+
 export function expectedMetadataFiles(matrix = DESKTOP_RELEASE_MATRIX) {
-  return matrix.map((entry) => {
-    const base = METADATA_BASENAMES[entry.platform];
-    const [arch] = entry.arches;
-    return arch === 'x64' || arch === 'universal' ? `${base}.yml` : `${base}-${arch}.yml`;
-  });
+  return [...new Set(matrix.flatMap(
+    (entry) => entry.arches.map((arch) => metadataFileFor(entry.platform, arch)),
+  ))];
 }
 
 export const UPDATE_METADATA_FILES = expectedMetadataFiles();
 
-export const PRIMARY_ARTIFACT_PATTERNS = [
-  { platform: 'windows', pattern: /\.exe$/iu },
-  { platform: 'macos', pattern: /\.dmg$/iu },
-  { platform: 'linux', pattern: /\.deb$/iu },
-];
+// The format electron-updater downloads: the macOS ZIP, and the installer
+// itself on Windows and Linux.
+const UPDATER_FORMATS = { windows: 'nsis', macos: 'zip', linux: 'deb' };
 
 function printHelp() {
   process.stdout.write(`Usage: node scripts/validate-release-assets.mjs [options]
@@ -188,6 +194,30 @@ const ARCH_TOKENS = {
 
 const ALL_ARCH_TOKENS = Object.values(ARCH_TOKENS).flat();
 
+function archTokensIn(name) {
+  const lowered = name.toLowerCase();
+  return ALL_ARCH_TOKENS.filter(
+    (token) => new RegExp(`(^|[-_.])${token}([-_.]|$)`, 'iu').test(lowered),
+  );
+}
+
+function hasArchToken(name, arch) {
+  return archTokensIn(name).some((token) => (ARCH_TOKENS[arch] ?? [arch]).includes(token));
+}
+
+function hasFormatExtension(name, format) {
+  return (FORMAT_EXTENSIONS[format] ?? [])
+    .some((extension) => name.toLowerCase().endsWith(extension.toLowerCase()));
+}
+
+/**
+ * One required user-facing installer per released platform architecture. The
+ * first declared format is the one users install.
+ */
+export const PRIMARY_ARTIFACTS = DESKTOP_RELEASE_MATRIX.flatMap((entry) => entry.arches.map(
+  (arch) => ({ platform: entry.platform, arch, format: entry.formats[0] }),
+));
+
 function releasedExtensions(matrix = DESKTOP_RELEASE_MATRIX) {
   return matrix.flatMap((entry) => entry.formats.flatMap(
     (format) => FORMAT_EXTENSIONS[format] ?? [],
@@ -227,10 +257,62 @@ function stripBlockmap(name) {
   return name.endsWith('.blockmap') ? name.slice(0, -'.blockmap'.length) : name;
 }
 
-export function resolveMissingPrimaryArtifacts(fileNames) {
-  return PRIMARY_ARTIFACT_PATTERNS
-    .filter(({ pattern }) => !fileNames.some((name) => pattern.test(name)))
-    .map(({ platform }) => platform);
+export function resolveMissingPrimaryArtifacts(fileNames, primaryArtifacts = PRIMARY_ARTIFACTS) {
+  return primaryArtifacts
+    .filter(({ arch, format }) => !fileNames.some(
+      (name) => hasFormatExtension(name, format) && hasArchToken(name, arch),
+    ))
+    .map(({ platform, arch }) => `${platform} ${arch}`);
+}
+
+/**
+ * Checks that every released architecture can actually update.
+ *
+ * electron-updater takes the first file when none names process.arch, so a
+ * Windows feed without its arm64 entry would quietly hand arm64 installs the
+ * x64 installer, and a Linux feed naming the other architecture's .deb would
+ * download a package dpkg refuses. Each feed must therefore offer an updater
+ * file for every architecture it serves and nothing for any other.
+ */
+export function resolveFeedArchitectureProblems(metadataDocuments, matrix = DESKTOP_RELEASE_MATRIX) {
+  const served = new Map();
+  for (const entry of matrix) {
+    for (const arch of entry.arches) {
+      const name = metadataFileFor(entry.platform, arch);
+      served.set(name, [...(served.get(name) ?? []), { platform: entry.platform, arch }]);
+    }
+  }
+
+  const problems = [];
+  for (const { name, document, error } of metadataDocuments) {
+    const targets = served.get(name);
+    if (!targets || error) {
+      continue;
+    }
+    const referenced = collectReferencedFiles(document);
+    if (referenced.length === 0) {
+      // Already reported as update_metadata_empty.
+      continue;
+    }
+    for (const { platform, arch } of targets) {
+      const format = UPDATER_FORMATS[platform];
+      if (!referenced.some((file) => hasFormatExtension(file, format) && hasArchToken(file, arch))) {
+        problems.push({
+          code: 'update_metadata_architecture_missing',
+          message: `Update metadata ${name} offers no ${platform} ${arch} ${format} update.`,
+        });
+      }
+    }
+    for (const file of referenced) {
+      if (archTokensIn(file).length > 0 && !targets.some(({ arch }) => hasArchToken(file, arch))) {
+        problems.push({
+          code: 'update_metadata_architecture_mismatch',
+          message: `Update metadata ${name} references ${file}, built for an architecture it does not serve.`,
+        });
+      }
+    }
+  }
+  return problems;
 }
 
 /**
@@ -269,10 +351,7 @@ export function resolveUnreleasedArchitectureArtifacts(
       return false;
     }
     const released = archTokensFor(entry).map((token) => token.toLowerCase());
-    const lowered = name.toLowerCase();
-    const present = ALL_ARCH_TOKENS.filter(
-      (token) => new RegExp(`(^|[-_.])${token}([-_.]|$)`, 'iu').test(lowered),
-    );
+    const present = archTokensIn(name);
     if (present.length === 0) {
       return false;
     }
@@ -317,10 +396,10 @@ export function validateReleaseAssets({ files, metadataDocuments }) {
   const problems = [];
   const fileNames = files.map((path) => basename(path));
 
-  for (const platform of resolveMissingPrimaryArtifacts(fileNames)) {
+  for (const target of resolveMissingPrimaryArtifacts(fileNames)) {
     problems.push({
       code: 'primary_artifact_missing',
-      message: `No primary user-facing artifact was produced for ${platform}.`,
+      message: `No primary user-facing artifact was produced for ${target}.`,
     });
   }
 
@@ -378,6 +457,8 @@ export function validateReleaseAssets({ files, metadataDocuments }) {
       }
     }
   }
+
+  problems.push(...resolveFeedArchitectureProblems(metadataDocuments));
 
   return { ok: problems.length === 0, problems, fileNames: [...present].sort() };
 }

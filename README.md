@@ -240,10 +240,16 @@ several Phase 3 items remain:
 ## Install the Desktop app
 
 Download the installer for your platform from
-[GitHub Releases](https://github.com/cats-inc/cats-platform/releases).
+[GitHub Releases](https://github.com/cats-inc/cats-platform/releases):
 
-The Windows installer is not code-signed yet. When you run the downloaded
-`Cats-<version>-setup-x64.exe`, Microsoft Defender SmartScreen shows
+- Windows: `Cats-<version>-setup-x64.exe` for Intel or AMD PCs, or
+  `Cats-<version>-setup-arm64.exe` for Windows on Arm.
+- macOS: `Cats-<version>-universal.dmg` for Intel and Apple Silicon Macs.
+- Linux (Debian/Ubuntu): `Cats-<version>-amd64.deb` for x86_64, or
+  `Cats-<version>-arm64.deb` for arm64.
+
+The Windows installers are not code-signed yet. When you run the downloaded
+installer, Microsoft Defender SmartScreen shows
 **Windows protected your PC** (「Windows 已保護您的電腦」) with an unknown
 publisher. To install:
 
@@ -340,8 +346,9 @@ npm run desktop:package:windows -- --sidecar-layout bundle
 npm run desktop:package:windows -- --sidecar-layout split
 ```
 
-Those commands build `cats-runtime`, build `cats-platform`, and produce an NSIS installer
-under `release/`. `--sidecar-layout bundle` forces both sidecars into single-file
+Those commands build `cats-runtime`, build `cats-platform`, and produce x64 and arm64
+NSIS installers under `release/`; add `--arch x64` or `--arch arm64` to build one.
+`--sidecar-layout bundle` forces both sidecars into single-file
 bundles for the packaged app, while `--sidecar-layout split` keeps the original
 multi-file layout.
 
@@ -361,7 +368,7 @@ For macOS/Linux unsigned or test packages:
 npm run desktop:package:macos
 npm run desktop:package:linux
 node scripts/build-desktop-installer.mjs --target macos --arch universal --format dmg --sidecar-layout split
-node scripts/build-desktop-installer.mjs --target linux --arch arm64 --format deb --sidecar-layout bundle
+node scripts/build-desktop-installer.mjs --target linux --arch x64,arm64 --format deb --sidecar-layout bundle
 ```
 
 For unpacked validation on Unix targets:
