@@ -1,4 +1,4 @@
-import { access, cp, mkdir } from 'node:fs/promises';
+import { access, cp, mkdir, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -76,6 +76,26 @@ async function exists(targetPath: string): Promise<boolean> {
   }
 }
 
+/**
+ * Creates `<workspace>/.cats-attachments` holding a `*` .gitignore. A channel
+ * bound to a repo writes attachments inside that checkout, and the marker keeps
+ * them out of its Git status in subdirectories and worktrees alike, without
+ * Cats editing the repo's own ignore files. The marker is written before any
+ * attachment is named, so an upload called `.gitignore` is renamed instead.
+ */
+export async function ensureAttachmentsDirectory(workspacePath: string): Promise<string> {
+  const directory = path.join(workspacePath, '.cats-attachments');
+  await mkdir(directory, { recursive: true });
+  try {
+    await writeFile(path.join(directory, '.gitignore'), '*\n', { flag: 'wx' });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+      throw error;
+    }
+  }
+  return directory;
+}
+
 async function copyAttachmentsDirectory(
   sourceWorkspacePath: string,
   targetWorkspacePath: string,
@@ -89,8 +109,7 @@ async function copyAttachmentsDirectory(
     return false;
   }
 
-  const targetPath = path.join(targetWorkspacePath, '.cats-attachments');
-  await mkdir(targetPath, { recursive: true });
+  const targetPath = await ensureAttachmentsDirectory(targetWorkspacePath);
   await cp(sourcePath, targetPath, {
     recursive: true,
     force: false,
