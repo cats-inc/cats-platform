@@ -117,6 +117,49 @@ test('persistAttachmentsForChannels syncs files to orchestrator and participant 
   }
 });
 
+test('persistAttachmentsForChannels keeps the ignore marker when an upload is named .gitignore', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-attachment-marker-'));
+  try {
+    const {
+      state,
+      channelId,
+      orchestratorWorkspace,
+      participantWorkspace,
+    } = await createStateWithRuntimeAttachments(tempDir);
+
+    const attachments = await persistAttachmentsForChannels({
+      state,
+      channelIds: [channelId],
+      files: [
+        {
+          name: '.gitignore',
+          data: Buffer.from('node_modules/\n', 'utf8').toString('base64'),
+        },
+      ],
+      runtimeDataDir: tempDir,
+    });
+
+    assert.deepEqual(attachments.get(channelId), [
+      {
+        name: '.gitignore-2',
+        relativePath: '.cats-attachments/.gitignore-2',
+      },
+    ]);
+
+    for (const workspace of [
+      path.join(tempDir, 'channels', channelId),
+      orchestratorWorkspace,
+      participantWorkspace,
+    ]) {
+      const directory = path.join(workspace, '.cats-attachments');
+      assert.equal(await readFile(path.join(directory, '.gitignore'), 'utf8'), '*\n');
+      assert.equal(await readFile(path.join(directory, '.gitignore-2'), 'utf8'), 'node_modules/\n');
+    }
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test('createChatTaskExecutionLocator resolves lane and session attachments for orchestrator and cat participants', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-task-exec-'));
   try {

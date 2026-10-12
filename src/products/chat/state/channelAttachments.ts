@@ -1,4 +1,4 @@
-import { access, mkdir, writeFile } from 'node:fs/promises';
+import { access, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { requireChannel } from './model/index.js';
@@ -7,6 +7,7 @@ import {
   resolveOrchestratorLeaseAttachment,
 } from '../shared/channelParticipants.js';
 import {
+  ensureAttachmentsDirectory,
   ensureChannelAttachmentWorkspace,
   syncChannelAttachmentsToWorkspace,
 } from './workspace.js';
@@ -88,8 +89,7 @@ async function writeAttachmentsToWorkspace(
   attachmentWorkspacePath: string,
   files: EncodedAttachmentInput[],
 ): Promise<StoredChannelAttachment[]> {
-  const attachDir = path.join(attachmentWorkspacePath, '.cats-attachments');
-  await mkdir(attachDir, { recursive: true });
+  const attachDir = await ensureAttachmentsDirectory(attachmentWorkspacePath);
 
   const attachments: StoredChannelAttachment[] = [];
   const reservedNames = new Set<string>();
