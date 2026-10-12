@@ -8,10 +8,12 @@ import {
   hasMacosNotarizationCredentials,
   hasMacosSigningCredentials,
   hasWindowsSigningCredentials,
+  normalizeArches,
   parseArgs,
   resolvePublishPolicy,
   resolveReleaseModeProblems,
   resolveSigningProblems,
+  resolveWindowsHelperArches,
 } from '../scripts/build-desktop-installer.mjs';
 
 function problemCodes(problems) {
@@ -51,6 +53,47 @@ test('publish policy is independent of official release mode', () => {
     electronBuilderArgs('windows', null, null, { releaseMode: true, publish: 'always' }),
     ['electron-builder', '--win', '--publish', 'always'],
   );
+});
+
+test('one electron-builder run packs every requested architecture', () => {
+  // Windows and Linux release x64 and arm64 together, which keeps both Windows
+  // installers in one latest.yml feed.
+  assert.deepEqual(
+    electronBuilderArgs('windows', 'x64,arm64', 'nsis', { previewMode: true, publish: 'always' }),
+    ['electron-builder', '--win', 'nsis', '--x64', '--arm64', '--publish', 'always'],
+  );
+  assert.deepEqual(
+    electronBuilderArgs('linux', 'x64, arm64', 'deb'),
+    ['electron-builder', '--linux', 'deb', '--x64', '--arm64', '--publish', 'never'],
+  );
+  assert.deepEqual(
+    electronBuilderArgs('macos', 'universal', 'dmg,zip'),
+    ['electron-builder', '--mac', 'dmg', 'zip', '--universal', '--publish', 'never'],
+  );
+  assert.deepEqual(
+    electronBuilderArgs('linux', 'arm64', null),
+    ['electron-builder', '--linux', 'AppImage', 'deb', 'tar.gz', '--arm64', '--publish', 'never'],
+  );
+});
+
+test('architecture lists are validated per platform', () => {
+  assert.equal(normalizeArches('windows', null), null);
+  assert.equal(normalizeArches('windows', ''), null);
+  assert.deepEqual(normalizeArches('windows', 'arm64,x64,arm64'), ['arm64', 'x64']);
+  assert.throws(() => normalizeArches('windows', 'x64,universal'), /Unsupported arch 'universal' for windows/u);
+  assert.throws(() => normalizeArches('linux', 'x64,ia32'), /Unsupported arch 'ia32' for linux/u);
+  // A universal macOS build already holds both slices.
+  assert.throws(() => normalizeArches('macos', 'universal,arm64'), /do not combine/u);
+  assert.throws(() => electronBuilderArgs('windows', 'x64,armv7l', 'nsis'), /Unsupported arch/u);
+});
+
+test('the Windows voice helper is built for every packaged architecture', () => {
+  const configured = [{ target: 'nsis', arch: ['x64', 'arm64'] }];
+  // Without --arch, electron-builder packs the package.json target list.
+  assert.deepEqual(resolveWindowsHelperArches(null, configured), ['x64', 'arm64']);
+  assert.deepEqual(resolveWindowsHelperArches('arm64', configured), ['arm64']);
+  assert.deepEqual(resolveWindowsHelperArches('x64,arm64', configured), ['x64', 'arm64']);
+  assert.throws(() => resolveWindowsHelperArches(null, [{ target: 'nsis' }]), /names no architecture/u);
 });
 
 test('publish policy rejects anything outside never and always', () => {

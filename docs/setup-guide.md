@@ -906,10 +906,15 @@ npm run desktop:package:windows
 .\scripts\windows\Build-WindowsInstaller.ps1
 ```
 
-This currently uses `electron-builder` with the `NSIS` target and writes:
+This currently uses `electron-builder` with the `NSIS` target for x64 and arm64
+and writes:
 
-- `release/Cats-0.1.0-setup-x64.exe` style installer output
-- `release/win-unpacked/` for unpacked verification
+- `release/Cats-0.1.0-setup-x64.exe` and `release/Cats-0.1.0-setup-arm64.exe`
+  style installer output
+- `release/win-unpacked/` and `release/win-arm64-unpacked/` for unpacked
+  verification
+
+Pass `-- --arch x64` (or `arm64`) to the npm script to build one architecture.
 
 ### macOS / Linux Installer Builds
 

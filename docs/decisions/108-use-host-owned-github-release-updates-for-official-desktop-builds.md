@@ -193,6 +193,11 @@ If accepted, this amends ADR-044 for the GitHub desktop release target:
 Windows remains the first validation platform, but a complete cross-platform
 public desktop release contains the three primary artifacts above.
 
+Amended 2026-10-13 by
+[ADR-130](130-ship-per-architecture-windows-and-linux-desktop-installers.md):
+Windows ships x64 and arm64 NSIS installers in one `latest.yml` feed, and Linux
+ships amd64 and arm64 `.deb` packages with one feed each. macOS stays universal.
+
 ### 7. Download and installation remain user-controlled
 
 Manual checks are required. Automatic download and automatic installation are

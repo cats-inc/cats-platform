@@ -52,6 +52,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
+| [ADR-130](130-ship-per-architecture-windows-and-linux-desktop-installers.md) | Ship Per-Architecture Windows and Linux Desktop Installers | Accepted; amends ADR-108 section 6 | 2026-10-13 |
 | [ADR-129](129-keep-direct-messages-in-chat-and-share-one-conversation-draft.md) | Keep Direct Messages in Chat and Share One Conversation Draft | Accepted; supersedes ADR-067 | 2026-10-03 |
 | [ADR-127](127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md) | Keep Companion Cats Alive with a Platform-Owned Life Loop | Accepted; implemented via PLAN-117 | 2026-09-29 |
 | [ADR-124](124-model-companion-as-a-cat-role-not-a-skill-profile.md) | Model Companion as a Cat Role, Not a Skill Profile | Accepted; implemented via PLAN-114; release boundary 0.6.0 | 2026-09-29 |
@@ -181,7 +182,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-10-03 (ADR-129 keeps direct messages in Chat and leaves one shared conversation draft.)*
+*Last updated: 2026-10-13 (ADR-130 ships per-architecture Windows and Linux Desktop installers.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*
 

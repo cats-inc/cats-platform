@@ -713,8 +713,17 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   // up rejected by validate-release-assets, so producing it only wastes a build.
   assert.deepEqual(
     packageJson.build.win.target,
-    [{ target: 'nsis', arch: ['x64'] }],
+    [{ target: 'nsis', arch: ['x64', 'arm64'] }],
   );
+  // One installer per architecture rather than electron-builder's default
+  // combined installer, which would rename the x64 asset and double every
+  // download. Both installers still share the single latest.yml feed.
+  assert.equal(packageJson.build.nsis.buildUniversalInstaller, false);
+  assert.equal(packageJson.build.win.artifactName, 'Cats-${version}-setup-${arch}.${ext}');
+  // Each Windows architecture carries only its own self-contained voice helper.
+  assert.deepEqual(packageJson.build.win.extraResources, [
+    { from: 'build/native-windows/${arch}', to: 'native', filter: ['**/*'] },
+  ]);
   assert.deepEqual(
     packageJson.build.mac.target,
     [{ target: 'dmg', arch: ['universal'] }, { target: 'zip', arch: ['universal'] }],
@@ -728,7 +737,7 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   ]);
   assert.deepEqual(
     packageJson.build.linux.target,
-    [{ target: 'deb', arch: ['arm64'] }],
+    [{ target: 'deb', arch: ['x64', 'arm64'] }],
   );
   assert.equal(packageJson.build.nsis.oneClick, false);
   assert.equal(packageJson.build.win.icon, 'icon.ico');
@@ -1117,7 +1126,12 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /'--arch',\s*'x86_64',\s*'--arch',\s*'arm64',/);
   // Without --arch, electron-builder packages the universal mac target matrix
   // from package.json, so the default helper has to be universal as well.
-  assert.match(script, /if \(archOverride === null \|\| archOverride === 'universal'\)/);
+  assert.match(script, /if \(arches === null \|\| arches\.includes\('universal'\) \|\| arches\.length > 1\)/);
+  // Windows publishes one self-contained helper per architecture into the
+  // directory package.json maps through electron-builder's ${arch} macro.
+  assert.match(script, /resolve\(PROJECT_ROOT, 'build', 'native-windows'\)/);
+  assert.match(script, /resolve\(WINDOWS_NATIVE_BUILD_ROOT, arch, 'windows-stt'\)/);
+  assert.match(script, /`win-\$\{arch\}`/);
   // The output directory is asked of SwiftPM rather than reconstructed: a plain
   // build, a single --arch cross-build, and a multi-arch build each land
   // somewhere different, and guessing wrong fails after the compile succeeds,

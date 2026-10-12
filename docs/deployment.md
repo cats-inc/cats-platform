@@ -253,7 +253,8 @@ Three independent properties describe a Desktop build:
     every platform. It is exceptional; see the confirmation rule below.
 - **Platform trust:** what each platform actually received. Report exactly one
   of `signed + notarized`, `unsigned: no certificate`, `unsigned: withheld`, or
-  `n/a` (the Linux `.deb` is never signed).
+  `n/a` (the Linux `.deb` packages are never signed). Each platform's trust
+  covers all of its architectures.
 
 Current platform trust by profile:
 
@@ -270,7 +271,7 @@ Build provenance, independent of the signing profile: the publish job downloads
 every asset from the draft release, writes `SHA256SUMS` beside them, and records
 a Sigstore build-provenance attestation for each file through
 `actions/attest-build-provenance`. This applies to every platform, so an unsigned
-Windows installer or the Linux `.deb` can still be traced to the exact workflow
+Windows installer or a Linux `.deb` can still be traced to the exact workflow
 run and commit that produced it. To verify a download:
 
 ```bash
@@ -321,6 +322,11 @@ Self-update across trust states (electron-updater 6.x, verified 2026-09-25):
   failure appears during download.
 - **Linux:** `DebUpdater` installs the `.deb` with `dpkg -i` and verifies no
   signature, so every transition works.
+- **Architecture:** an install updates within its own architecture. Windows x64
+  and arm64 installs read the same `latest.yml` and pick the installer named for
+  their `process.arch`; Linux x64 reads `latest-linux.yml` and arm64 reads
+  `latest-linux-arm64.yml`. macOS has one universal feed
+  ([ADR-130](decisions/130-ship-per-architecture-windows-and-linux-desktop-installers.md)).
 
 Consequences of an unsigned-override preview while it is the newest prerelease:
 
@@ -896,10 +902,11 @@ npm run desktop:icons -- --shape square
 ./scripts/linux/test-linux-package-smoke.sh
 ```
 
-- current Windows installer output:
-  - `release/Cats-<version>-setup-x64.exe`
-  - `release/Cats-<version>-setup-x64.exe.blockmap`
-  - `release/win-unpacked/*`
+- current Windows installer output, one installer per architecture in
+  `package.json` (pass `--arch x64` or `--arch arm64` to build only one):
+  - `release/Cats-<version>-setup-x64.exe` and `release/Cats-<version>-setup-arm64.exe`
+  - a `.blockmap` beside each installer, and one `release/latest.yml` listing both
+  - `release/win-unpacked/*` and `release/win-arm64-unpacked/*`
 - post-install smoke-check command:
 
 ```powershell

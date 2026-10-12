@@ -15,6 +15,9 @@ const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
 const RUNTIME_ROOT = resolve(PROJECT_ROOT, '..', 'cats-runtime');
 const NATIVE_BUILD_ROOT = resolve(PROJECT_ROOT, 'build', 'native');
+// Per-architecture Windows helpers. package.json maps build/native-windows/${arch}
+// onto resources/native, so each installer carries only its own architecture.
+const WINDOWS_NATIVE_BUILD_ROOT = resolve(PROJECT_ROOT, 'build', 'native-windows');
 const MOBILE_BUILD_ROOT = resolve(PROJECT_ROOT, 'build', 'mobile');
 
 if (typeof process.loadEnvFile === 'function') {
@@ -30,7 +33,8 @@ function printHelp() {
 
 Options:
   --target <current|windows|macos|linux>  Installer target. Defaults to current.
-  --arch <x64|arm64|universal>            Override the configured target architectures.
+  --arch <x64|arm64|universal>            Override the configured target architectures. Accepts a
+                                          comma-separated list, such as x64,arm64.
   --format <nsis|dmg|pkg|zip|AppImage|deb|tar.gz>
                                          Override the configured installer formats.
   --sidecar-layout <split|bundle>         Choose loose-file or bundled sidecars for both app/runtime.
@@ -504,6 +508,7 @@ async function runCommand(command, args, cwd, envOverrides = {}, envOptions = {}
 
 async function prepareNativeBuildRoot() {
   await rm(NATIVE_BUILD_ROOT, { recursive: true, force: true });
+  await rm(WINDOWS_NATIVE_BUILD_ROOT, { recursive: true, force: true });
   await mkdir(NATIVE_BUILD_ROOT, { recursive: true });
   await writeFile(
     resolve(NATIVE_BUILD_ROOT, 'README.txt'),
@@ -580,8 +585,10 @@ async function buildMacosVoiceHelper(archOverride) {
   await mkdir(outputDir, { recursive: true });
 
   // Without --arch, electron-builder packages the package.json mac target
-  // matrix, which is universal, so the helper follows it.
-  if (archOverride === null || archOverride === 'universal') {
+  // matrix, which is universal, so the helper follows it. A multi-arch request
+  // packs one app per arch from the same staged helper, so it is universal too.
+  const arches = normalizeArches('macos', archOverride);
+  if (arches === null || arches.includes('universal') || arches.length > 1) {
     // A universal DMG merges an x64 and an arm64 app bundle. electron-builder
     // refuses when a binary is byte-identical in both, because it cannot tell
     // whether that is a resource to share or a single-arch executable that
@@ -610,7 +617,7 @@ async function buildMacosVoiceHelper(archOverride) {
   // `swift build` follows the host. That would quietly bundle a host-arch
   // helper inside an app for the other architecture, which only fails when a
   // user tries to dictate.
-  const swiftArch = archOverride === 'arm64' ? 'arm64' : 'x86_64';
+  const swiftArch = arches[0] === 'arm64' ? 'arm64' : 'x86_64';
   const swiftArgs = [
     'build',
     '-c',
@@ -627,37 +634,54 @@ async function buildMacosVoiceHelper(archOverride) {
   );
 }
 
+/**
+ * Without --arch, electron-builder packages every architecture in the
+ * package.json win target, so the helper follows that list.
+ */
+export function resolveWindowsHelperArches(archOverride, configuredTargets = []) {
+  const arches = normalizeArches('windows', archOverride)
+    ?? [...new Set(configuredTargets.flatMap((entry) => entry.arch ?? []))];
+  if (arches.length === 0) {
+    throw new Error('package.json build.win.target names no architecture.');
+  }
+  return arches;
+}
+
 async function buildWindowsVoiceHelper(archOverride) {
   if (process.platform !== 'win32') {
     throw new Error('The Windows voice helper must be built on Windows.');
   }
 
-  const runtime = archOverride === 'arm64' ? 'win-arm64' : 'win-x64';
-  const outputDir = resolve(NATIVE_BUILD_ROOT, 'windows-stt');
-  await mkdir(outputDir, { recursive: true });
-  await runCommand(
-    'dotnet',
-    [
-      'publish',
-      resolve(PROJECT_ROOT, 'desktop', 'native', 'windows-stt', 'CatsSttWindows.csproj'),
-      '-c',
-      'Release',
-      '-r',
-      runtime,
-      '--self-contained',
-      'true',
-      '-o',
+  const { build } = JSON.parse(await readFile(resolve(PROJECT_ROOT, 'package.json'), 'utf8'));
+  for (const arch of resolveWindowsHelperArches(archOverride, build.win.target)) {
+    // An arm64 install must not carry the win-x64 helper, which would run only
+    // under emulation. Each architecture publishes into its own directory.
+    const outputDir = resolve(WINDOWS_NATIVE_BUILD_ROOT, arch, 'windows-stt');
+    await mkdir(outputDir, { recursive: true });
+    await runCommand(
+      'dotnet',
+      [
+        'publish',
+        resolve(PROJECT_ROOT, 'desktop', 'native', 'windows-stt', 'CatsSttWindows.csproj'),
+        '-c',
+        'Release',
+        '-r',
+        `win-${arch}`,
+        '--self-contained',
+        'true',
+        '-o',
+        outputDir,
+      ],
+      PROJECT_ROOT,
+    );
+    // dotnet publish copies the self-contained runtime but not its license texts.
+    const notices = await stageDotnetRuntimeNotices({
       outputDir,
-    ],
-    PROJECT_ROOT,
-  );
-  // dotnet publish copies the self-contained runtime but not its license texts.
-  const notices = await stageDotnetRuntimeNotices({
-    outputDir,
-    depsJsonPath: resolve(outputDir, 'cats-stt-windows.deps.json'),
-    helperName: 'cats-stt-windows.exe',
-  });
-  console.log(`Staged .NET runtime notices for ${notices.runtime.id} ${notices.runtime.version}`);
+      depsJsonPath: resolve(outputDir, 'cats-stt-windows.deps.json'),
+      helperName: 'cats-stt-windows.exe',
+    });
+    console.log(`Staged .NET runtime notices for ${notices.runtime.id} ${notices.runtime.version}`);
+  }
 }
 
 async function buildNativeVoiceHelpers(target, archOverride) {
@@ -709,6 +733,37 @@ const VALID_ARCHES = {
 };
 
 /**
+ * Accepts a single architecture or a comma-separated list. Windows and Linux
+ * release both x64 and arm64 from one electron-builder run, which keeps both
+ * Windows installers in a single latest.yml feed. A universal macOS build
+ * already contains both slices, so it cannot be combined with another arch.
+ */
+export function normalizeArches(target, archOverride) {
+  if (archOverride === null || archOverride === undefined || archOverride === '') {
+    return null;
+  }
+
+  const requested = [...new Set(
+    String(archOverride).split(',').map((value) => value.trim()).filter(Boolean),
+  )];
+  if (requested.length === 0) {
+    return null;
+  }
+
+  for (const arch of requested) {
+    if (!VALID_ARCHES[target].includes(arch)) {
+      throw new Error(
+        `Unsupported arch '${arch}' for ${target}. Valid: ${VALID_ARCHES[target].join(', ')}`,
+      );
+    }
+  }
+  if (requested.includes('universal') && requested.length > 1) {
+    throw new Error('The universal arch already contains x64 and arm64; do not combine it.');
+  }
+  return requested;
+}
+
+/**
  * Accepts a single format or a comma-separated list. macOS needs both the DMG
  * users install and the ZIP electron-updater reads, so the release matrix
  * cannot be expressed with one format per platform.
@@ -739,12 +794,7 @@ export function normalizeFormats(target, formatOverride) {
 }
 
 export function electronBuilderArgs(target, archOverride, formatOverride, options = {}) {
-  if (archOverride !== null && !VALID_ARCHES[target].includes(archOverride)) {
-    throw new Error(
-      `Unsupported arch '${archOverride}' for ${target}. Valid: ${VALID_ARCHES[target].join(', ')}`,
-    );
-  }
-
+  const arches = normalizeArches(target, archOverride);
   const releaseMode = options.releaseMode === true;
   const previewMode = options.previewMode === true;
   // Signing overrides key off artifact trust, not release identity, so both
@@ -760,12 +810,12 @@ export function electronBuilderArgs(target, archOverride, formatOverride, option
 
   if (formats !== null) {
     args.push(...formats);
-  } else if (archOverride !== null) {
-    args.push(...PLATFORM_FORMATS[target], `--${archOverride}`);
+  } else if (arches !== null) {
+    args.push(...PLATFORM_FORMATS[target]);
   }
 
-  if (formats !== null && archOverride !== null) {
-    args.push(`--${archOverride}`);
+  if (arches !== null) {
+    args.push(...arches.map((arch) => `--${arch}`));
   }
 
   // package.json pins signAndEditExecutable to false so unsigned local builds
@@ -794,6 +844,8 @@ async function main() {
   }
 
   const resolvedTarget = resolveBuilderTarget(parsed.target);
+  // Fail before the long Runtime/Platform builds rather than at packaging time.
+  normalizeArches(resolvedTarget, parsed.arch);
   // Resolve once before builds can clear build/. Stage an offline immutable copy
   // in an OS temporary directory so retries never redownload a moving asset.
   const selectedApps = parsed.appsLock ? await resolveAppLock(resolve(parsed.appsLock)) : null;
