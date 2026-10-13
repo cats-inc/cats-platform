@@ -1,5 +1,6 @@
 import type { RuntimeProviderSelection } from '../../shared/runtimeSetup.js';
 import type { ServerResponse } from 'node:http';
+import { compareProductProviderOrder } from '../../shared/providerCatalogData.js';
 
 import {
   isKnownProvider,
@@ -1210,16 +1211,18 @@ export async function handleProviderRegistry(
   response: ServerResponse,
   options: { force?: boolean } = {},
 ): Promise<void> {
-  if (options.force) {
-    const cacheState = getTruthfulProviderRegistryCacheState(dependencies.runtimeClient);
-    sendJson(response, 200, await refreshTruthfulProviderRegistry(
+  const registry = options.force
+    ? await refreshTruthfulProviderRegistry(
       dependencies,
-      cacheState,
+      getTruthfulProviderRegistryCacheState(dependencies.runtimeClient),
       { force: true },
-    ));
-    return;
-  }
-  sendJson(response, 200, await readTruthfulProviderRegistry(dependencies));
+    )
+    : await readTruthfulProviderRegistry(dependencies);
+  sendJson(response, 200, {
+    ...registry,
+    providers: registry.providers.slice().sort((left, right) =>
+      compareProductProviderOrder(left.id, right.id)),
+  });
 }
 
 export async function handleProviderModels(

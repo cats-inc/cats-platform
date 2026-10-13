@@ -59,6 +59,18 @@ or future settings surfaces, but they are not valid execution pickers.
 
 ### Functional Requirements
 
+Provider display order (2026-10-13): Codex, Claude, Antigravity, Grok, Muse,
+Cursor, Copilot, OpenCode, Kilo, Cline, Auggie, Pi, Kiro, Junie, Devin, Goose,
+followed by Ollama and OpenClaw. Setup and in-product provider/model pickers
+keep this order within the Runtime-observed selectable subset, including
+retained registry snapshots during recovery. Model ordering remains owned by
+the Runtime catalog for each provider.
+
+Validated on 2026-10-13: 73 focused catalog, route, registry-client, picker, and
+parallel-draft tests passed. Server compilation, renderer TypeScript checks,
+and the provider catalog code/data boundary check passed. Independent review
+confirmed ordering across fresh, forced, retained, and disk-seeded responses.
+
 1. `cats-platform` shall expose a product-owned selector API used by setup and
    in-product provider/model execution pickers.
 2. That selector API shall return Runtime-observed targets bounded by current
@@ -683,5 +695,5 @@ form, which picks the new participant's model.
 ---
 
 *Created: 2026-03-19*
-*Revised: 2026-09-29*
+*Revised: 2026-10-13*
 *Author: Codex*
