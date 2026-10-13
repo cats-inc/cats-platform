@@ -64,12 +64,15 @@ Cursor, Copilot, OpenCode, Kilo, Cline, Auggie, Pi, Kiro, Junie, Devin, Goose,
 followed by Ollama and OpenClaw. Setup and in-product provider/model pickers
 keep this order within the Runtime-observed selectable subset, including
 retained registry snapshots during recovery. Model ordering remains owned by
-the Runtime catalog for each provider.
+the Runtime catalog for each provider. Group drafts keep the selected lead
+first and use this provider order to seed additional participants.
 
 Validated on 2026-10-13: 73 focused catalog, route, registry-client, picker, and
 parallel-draft tests passed. Server compilation, renderer TypeScript checks,
 and the provider catalog code/data boundary check passed. Independent review
 confirmed ordering across fresh, forced, retained, and disk-seeded responses.
+On 2026-10-14, all 33 new-chat-routing tests passed after updating the existing
+Antigravity-lead cases to expect Codex as the next participant in the new order.
 
 1. `cats-platform` shall expose a product-owned selector API used by setup and
    in-product provider/model execution pickers.
@@ -695,5 +698,5 @@ form, which picks the new participant's model.
 ---
 
 *Created: 2026-03-19*
-*Revised: 2026-10-13*
+*Revised: 2026-10-14*
 *Author: Codex*
