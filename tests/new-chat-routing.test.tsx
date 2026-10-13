@@ -532,7 +532,7 @@ test('initial group participants keep the shared lead provider first even when i
 
   assert.equal(seed[0]?.provider, 'antigravity');
   assert.equal(seed[0]?.name, 'Antigravity-CLI');
-  assert.equal(seed[1]?.provider, 'claude');
+  assert.equal(seed[1]?.provider, 'codex');
 });
 
 test('initial group participants canonicalize target-level CLI provider aliases', () => {
@@ -546,7 +546,7 @@ test('initial group participants canonicalize target-level CLI provider aliases'
   assert.equal(seed[0]?.name, 'Antigravity-CLI');
   assert.equal(seed[0]?.model, 'antigravity-default');
   assert.equal(seed[0]?.instance, 'native');
-  assert.equal(seed[1]?.provider, 'claude');
+  assert.equal(seed[1]?.provider, 'codex');
 });
 
 test('syncLeadDraftTemporaryParticipantWithTarget keeps the group lead aligned with shared draft defaults', () => {

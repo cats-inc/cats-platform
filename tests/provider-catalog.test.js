@@ -10,8 +10,18 @@ import {
 } from '../build/server/shared/providerCatalog.js';
 import {
   PRODUCT_PROVIDER_ORDER,
+  compareProductProviderOrder,
 } from '../build/server/shared/providerCatalogData.js';
 import { PRODUCT_PROVIDER_INSTANCES } from '../build/server/shared/providerCatalogInstances.js';
+
+test('provider choices follow the product display order with additional providers last', () => {
+  assert.deepEqual(PRODUCT_PROVIDER_ORDER, [
+    'codex', 'claude', 'antigravity', 'grok', 'muse', 'cursor', 'copilot', 'opencode',
+    'kilo', 'cline', 'auggie', 'pi', 'kiro', 'junie', 'devin', 'goose', 'ollama', 'openclaw',
+  ]);
+  assert.deepEqual(['custom', 'pi', 'claude', 'codex', 'custom-2', 'ollama']
+    .sort(compareProductProviderOrder), ['codex', 'claude', 'pi', 'ollama', 'custom', 'custom-2']);
+});
 
 test('model defaults stay empty until an exact Runtime target has been observed', () => {
     assert.equal(PRODUCT_PROVIDER_ORDER.length,18);

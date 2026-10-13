@@ -24,6 +24,32 @@ const baseConfig = {
   chatStatePath: 'unused-for-tests',
 };
 
+test('provider pickers receive the display order regardless of Runtime enumeration order', async () => {
+  const runtime = createRuntimeStub();
+  const providers = ['pi', 'grok', 'claude', 'muse', 'codex', 'cursor'];
+  runtime.getSetupState = async () => ({ selection: {
+    state: 'selected', revision: 'ordered-selection', diskChanged: false, error: null,
+    targets: providers.map((provider) => ({ provider, backend: 'cli', instance: 'native' })),
+  } });
+  runtime.getProviderConfig = async () => Object.fromEntries(providers.map((provider) => [provider, {
+    defaultInstance: 'native', defaultBackend: 'cli',
+    instances: [{ id: 'native', target: 'cli/native', backend: 'cli' }],
+  }]));
+  runtime.getProviderDiagnostics = async () => ({ probe: 'light', providers: providers.map((provider) => ({
+    provider, backend: 'cli', instance: 'native', defaultTarget: true,
+    availability: { status: 'ok', summary: 'Ready', attentionCodes: [] },
+  })) });
+  await withServer(runtime, async (baseUrl) => {
+    for (const suffix of ['', '?force=1']) {
+      const response = await fetch(`${baseUrl}/api/providers${suffix}`);
+      assert.equal(response.status, 200);
+      const registry = await response.json();
+      assert.deepEqual(registry.providers.map(({ id }) => id),
+        ['codex', 'claude', 'grok', 'muse', 'cursor', 'pi']);
+    }
+  });
+});
+
 function listCacheRefreshWarnings(warnings, prefix) {
   return warnings.filter((warning) => warning.startsWith(prefix));
 }
