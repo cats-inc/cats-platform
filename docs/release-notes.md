@@ -2,6 +2,63 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-14 — Platform 0.8.0 npm and Desktop standard preview
+
+Platform **0.8.0** is the owner-selected Platform npm `latest` release and Desktop
+standard-profile preview, together with Runtime npm 0.5.0 and cats-one 0.5.0. It
+is a **minor** because Desktop bundles Runtime **0.5.0**, itself a minor: Kiro
+now runs on its V3 headless engine, Runtime's `sessions_dir` and
+`KIRO_SESSIONS_DIR` replace `db_path` and `KIRO_DB_PATH`, Kiro CLI 2.30.0 is the
+first verified release, and Kiro sessions kept only in the older SQLite store
+are no longer listed (Runtime ADR-045). Platform's own public APIs,
+configuration contracts and persisted formats are unchanged, and no data
+migration is required.
+
+- **Model menus.** Every provider now offers its complete model catalog. Cursor,
+  OpenCode, Kilo, Cline and Devin moved from six-model shortlists to full lists
+  with their own Variant, thinking-level, effort, speed or parameter controls,
+  and the other eleven catalogs were refreshed (Runtime #163, #165).
+- **Kiro in Desktop.** The candidate profile no longer sets `KIRO_DB_PATH`,
+  which pointed at a file Runtime no longer reads; the profile's home override
+  already isolates Kiro's V3 store. The Windows Kiro helper's metadata now
+  describes its per-user install (#260).
+- **Minimum window.** The sidebar stays beside the canvas at the 960×600
+  Desktop minimum window, and canvas content responds to the canvas width
+  rather than the viewport (#259). Provider pickers follow one display order
+  (#261).
+- **Platform npm.** npm `latest` was 0.7.0. This version also carries every
+  change shipped in the Desktop 0.7.1 to 0.7.14 previews; their entries below
+  describe them.
+- **Runtime source.** Every OS build and the complete source archive bundle
+  Runtime `48ef89528a4c211a7fd96bc076de3797d21197e0` (package version 0.5.0), the merge commit of
+  its release preparation. The Platform source is the immutable merge commit
+  selected for dispatch and recorded by the release descriptor and source
+  manifest.
+- **Knowledge and Apps.** The Orchestrator and code-entry knowledge bundles move
+  to `platformRange: "0.8.x"` as revision `2026-10-14.1`; their entries are
+  unchanged. The App SDK is unchanged, so Usage 0.5.1 stays selected from
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.1/usage-0.5.1.catsapp`,
+  SHA-256 `8189edbf1cce81ce4d712a0cf59f9d8ab4e23225add1cbb7e3b06030483ad467`
+  (ADR-128 makes the SDK version the only App gate). The minimal SDK example
+  declares `catsPlatform ^0.8.0`. No App release is selected. cats-one 0.5.0
+  moves its ranges to Runtime `^0.5.0` and Platform `^0.8.0`.
+- **Signing and updates.** Dispatch `desktop-release.yml` with `tag=v0.8.0`,
+  the full Runtime SHA above and `unsigned=false`; the workflow creates the
+  preview tag. Expected trust is macOS signed + notarized, Windows unsigned (no
+  certificate) for both installers, Linux n/a for both packages.
+  Standard-profile 0.7.14 installs keep their update path on every architecture:
+  macOS uses the universal ZIP and the same Developer ID team, Windows stays
+  unsigned to unsigned, and Linux installs the matching `.deb`. No installed
+  upgrade is exercised before dispatch.
+- **Validation.** Version consistency is checked locally; required PR CI gates
+  the merge. The npm workflow runs the full test gate before trusted
+  publication, and the Desktop workflow validates all three packaged source
+  receipts, offline App activation, isolated sidecar startup, the complete
+  source archive and update metadata before publication. Publication results
+  belong to the npm registry entry, the
+  [`v0.8.0` GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.8.0)
+  and their workflow runs.
+
 ## 2026-10-13 — Desktop 0.7.14 standard preview
 
 Desktop **0.7.14** is the owner-requested standard-profile preview that adds a
