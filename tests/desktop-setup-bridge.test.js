@@ -711,11 +711,12 @@ test('runDesktopSetupHelper preserves elevation-required recovery from an admin-
     generatedAt: new Date('2026-03-30T11:09:00.000Z'),
   });
 
+  // The Node.js host installer is the admin-only helper (winget/MSI); Kiro installs per user.
   const record = await runDesktopSetupHelper({
     config,
     packaging,
     action: {
-      helperId: 'windows-kiro-native-installer',
+      helperId: 'windows-node-host-installer',
       mode: 'apply',
     },
   }, {
@@ -723,15 +724,15 @@ test('runDesktopSetupHelper preserves elevation-required recovery from an admin-
     pathExists: async () => true,
     execFile: async () => ({
       stdout: JSON.stringify({
-        helper: 'windows-kiro-native-installer',
+        helper: 'windows-node-host-installer',
         status: 'elevation_required',
-        plannedActions: ['install_kiro_cli'],
+        plannedActions: ['install_node_host'],
         warnings: [],
         appliedChanges: [],
-        manualSteps: ['Resume packaged setup and accept the Windows UAC prompt to install Kiro CLI.'],
+        manualSteps: ['Resume packaged setup and accept the Windows UAC prompt to install Node.js LTS.'],
         interruptions: [{
           kind: 'elevation_required',
-          summary: 'Kiro CLI MSI install requires elevation. Resume packaged setup and accept the Windows UAC prompt.',
+          summary: 'Node.js LTS install requires elevation. Resume packaged setup and accept the Windows UAC prompt.',
           resumable: true,
           requiresRestart: false,
           requiresElevation: true,
@@ -741,11 +742,11 @@ test('runDesktopSetupHelper preserves elevation-required recovery from an admin-
     }),
   });
 
-  assert.equal(record.helperId, 'windows-kiro-native-installer');
+  assert.equal(record.helperId, 'windows-node-host-installer');
   assert.equal(record.mode, 'apply');
   assert.equal(record.status, 'elevation_required');
   assert.equal(record.requiresElevation, true);
-  assert.deepEqual(record.plannedActions, ['install_kiro_cli']);
+  assert.deepEqual(record.plannedActions, ['install_node_host']);
   assert.deepEqual(record.interruptions.map((entry) => entry.kind), ['elevation_required']);
 });
 
