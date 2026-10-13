@@ -124,6 +124,11 @@ The current slices are:
 
 ## Current Status
 
+**Reading this checklist:** Checked items record completion of the stated
+implementation tasks. They do not by themselves mean that the complete workflow
+or product has passed end-to-end acceptance or been validated in everyday use.
+See individual notes and linked plans for validation scope and remaining limits.
+
 - [x] Settings → Plugins can install, enable, disable and remove the reviewed Agency
       content package in an isolated internal experiment. Cats can select its two
       skills; Runtime tracks exposure and actual CLI shutdown before cleanup.
@@ -223,8 +228,8 @@ The current slices are:
 
 ## Still Open
 
-The current implementation has closed the main phase-2 product gaps, but
-several Phase 3 items remain:
+Several features have initial implementations, but complete workflows and
+everyday use are still being validated. Open items include:
 
 - richer orchestrator automation beyond explicit `@mention` routing
 - split-view chat surfaces for preview/debug context
