@@ -110,7 +110,10 @@
 .channelTopBarCenter {
   justify-content: center;
   justify-self: center;
-  width: min(55vw, var(--chat-transcript-max-width, 720px));
+  /* Sized from the canvas column, leaving each side slot 120px plus the
+   * 12px grid gap, so start and end content keeps its room at narrow
+   * canvases. */
+  width: min(var(--chat-transcript-max-width, 720px), 100cqw - 2 * 132px);
   max-width: 100%;
   overflow: hidden;
 }
@@ -708,7 +711,7 @@ button.draftHeaderAvatar.draftHeaderAvatarEditable:hover .draftHeaderAvatarCamer
   gap: 8px;
 }
 
-@media (max-width: 720px) {
+@container canvas (max-width: 600px) {
   .draftHeaderProfile {
     grid-template-columns: 1fr;
     gap: 16px;
