@@ -1429,7 +1429,10 @@
   letter-spacing: -0.03em;
 }
 
-@media (max-width: 980px) {
+/* The shell stacks only at phone widths: the Desktop minimum window
+ * (960px, desktop/host/windowPlacement.ts) keeps the sidebar beside the
+ * canvas. */
+@media (max-width: 768px) {
   .claudeShell,
   .claudeShellSidebarCollapsed {
     grid-template-columns: 1fr;
@@ -1458,9 +1461,27 @@
     height: auto;
   }
 
-  .overviewHeader,
+  .channelShell {
+    height: auto;
+  }
+}
+
+/* Top bars stack their start, center and end slots below 720px of canvas
+ * content: list bars with filters and actions do not fit one row there,
+ * including at the Desktop minimum window with the sidebar open. */
+@container canvas (max-width: 720px) {
   .channelTopBar {
     grid-template-columns: 1fr;
+    row-gap: 8px;
+    padding-block: 10px;
+  }
+
+  .channelTopBarCenter {
+    width: 100%;
+  }
+
+  .channelTopBarCenter:empty {
+    display: none;
   }
 
   .channelParticipantsBar,
@@ -1468,27 +1489,17 @@
     justify-content: flex-start;
     max-width: none;
   }
+}
 
-  .channelShell {
-    height: auto;
-  }
-
+/* 600px stays below the canvas content width at the Desktop minimum window
+ * with the sidebar open, so that window keeps the wide transcript and
+ * composer styling. */
+@container canvas (max-width: 600px) {
   .transcriptMessage {
     max-width: 100%;
   }
 
   .composerCard {
     border-radius: 20px;
-  }
-
-  .settingsShell {
-    grid-template-columns: 1fr;
-    gap: 16px;
-    padding: 20px 0;
-  }
-
-  .settingsSidebar {
-    flex-direction: row;
-    gap: 4px;
   }
 }

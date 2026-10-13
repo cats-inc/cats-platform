@@ -153,10 +153,12 @@ On an Artifact Canvas route (`…/canvas/:artifactId`), the direct child of `mai
 - `bar.right === column.left + column.clientWidth`
 - only the column scrolls
 
+`.claudeShell > .canvas` is also the named size container `canvas`. Size canvas content with `@container canvas (…)` and `cqw`, not viewport `@media` or `vw`: the sidebar takes 260px of the viewport (48px collapsed), and the shell stacks only at `max-width: 768px`. Below 720px of canvas content, `.channelTopBar` stacks its start, center and end slots. That includes the Desktop minimum window (960px) with the sidebar open, so verify new bars there as well.
+
 ---
 
 ## Maintenance
 
 This file is maintained by Claude only. Other agents should not modify this file.
 
-Last updated: 2026-09-29
+Last updated: 2026-10-13

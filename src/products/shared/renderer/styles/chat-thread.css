@@ -1,9 +1,5 @@
 @import '../../../shared/renderer/styles/chat-thread-base.css';
 
-.channelTopBarCenter {
-  width: min(55vw, var(--chat-transcript-max-width, 720px));
-}
-
 .catAvatar.channelParticipantAvatar {
   box-sizing: border-box;
   border: 1px solid rgba(0, 0, 0, 0.15);
@@ -317,7 +313,7 @@
   font-size: 0.78rem;
 }
 
-@media (max-width: 720px) {
+@container canvas (max-width: 600px) {
   .composerAreaStack.composerAreaStackDocked.composerAreaStackDockedParallel {
     bottom: 78px;
   }
@@ -514,7 +510,7 @@
   background: var(--text);
 }
 
-@media (max-width: 720px) {
+@container canvas (max-width: 600px) {
   .compareCardsCarousel.compareCardsCarouselNavVisible {
     padding-inline: 40px;
   }
