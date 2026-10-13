@@ -423,7 +423,9 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
       (helper) => helper.id === 'windows-kiro-native-installer'
         && helper.assetId === 'windows-kiro-native-installer-script'
         && helper.platform === 'windows'
-        && helper.supportsForce === true,
+        && helper.supportsForce === true
+        // install.ps1 installs per user under %LOCALAPPDATA%; no UAC prompt.
+        && helper.requiresElevation === false,
     ),
     true,
   );

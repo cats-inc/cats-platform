@@ -8,8 +8,8 @@
     supports check-only mode for packaged-host orchestration and emits a
     structured JSON result.
 
-    Kiro CLI installs to C:\Program Files\Kiro-Cli\ via the official MSI
-    installer from cli.kiro.dev. MSI installation requires admin privileges.
+    Kiro CLI installs per user into %LOCALAPPDATA%\Kiro-Cli\ through the
+    official install.ps1 from cli.kiro.dev; no elevation is needed.
 
 .PARAMETER CheckOnly
     Report native Kiro CLI readiness without mutating the local machine.
