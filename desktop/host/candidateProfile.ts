@@ -206,9 +206,8 @@ export function createDesktopCandidateEnv(profile: DesktopCandidateProfile, env:
   };
   // Let the candidate Platform provision its own cookie signing secret.
   delete result.CATS_AUTH_SESSION_SECRET;
-  // This is a file override, unlike the history directories above.
-  result.KIRO_DB_PATH = path.join(profile.homeDir, process.platform === 'win32' ? 'AppData/Local' :
-    process.platform === 'darwin' ? 'Library/Application Support' : '.local/share', 'kiro-cli', 'data.sqlite3');
+  // Kiro's V3 session store lives under the candidate home (~/.kiro/sessions),
+  // which the HOME/USERPROFILE override above already isolates.
   return result;
 }
 

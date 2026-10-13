@@ -639,10 +639,10 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     supportsUpgrade: true,
     supportsForce: true,
     supportsUninstall: false,
-    requiresElevation: true,
+    requiresElevation: false,
     resumable: true,
     notes: [
-      'Installs Kiro CLI natively on Windows via the official MSI installer from cli.kiro.dev.',
+      'Installs Kiro CLI per user on Windows through the official install.ps1 from cli.kiro.dev.',
     ],
   },
   {
