@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { createEmptyMemoryCheckpoint } from '../actors.js';
+import { DEFAULT_PRODUCT_PROVIDER } from '../../shared/providerCatalogData.js';
 import type { CoreActorWriteInput } from './inputs.js';
 import {
   normalizeNullableString,
@@ -27,7 +28,7 @@ function normalizeExecutionTarget(
   }
 
   return {
-    provider: normalizeNullableString(input.provider) ?? existing?.provider ?? 'claude',
+    provider: normalizeNullableString(input.provider) ?? existing?.provider ?? DEFAULT_PRODUCT_PROVIDER,
     instance:
       input.instance === undefined
         ? existing?.instance ?? null

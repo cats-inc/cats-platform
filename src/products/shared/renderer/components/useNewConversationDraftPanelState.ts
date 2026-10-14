@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DEFAULT_PRODUCT_PROVIDER } from '../../../../shared/providerCatalogData.js';
 
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import {
@@ -30,7 +31,7 @@ export function useNewConversationDraftPanelState(input: {
   function createTemporaryParticipantFormValue(): NewConversationTemporaryParticipantFormState {
     return {
       roleHint: '',
-      provider: input.payload.chat.newChatDefaults?.provider ?? 'claude',
+      provider: input.payload.chat.newChatDefaults?.provider ?? DEFAULT_PRODUCT_PROVIDER,
       instance: input.payload.chat.newChatDefaults?.instance ?? '',
       model: input.payload.chat.newChatDefaults?.model ?? '',
       modelSelection: input.payload.chat.newChatDefaults?.modelSelection ?? null,

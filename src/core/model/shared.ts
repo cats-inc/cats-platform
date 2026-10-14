@@ -13,10 +13,11 @@ import type {
 } from '../types.js';
 import { CATS_CORE_STATE_VERSION } from '../types.js';
 import { CHAT_MCP_PROFILE_ID } from '../../shared/catMcpProfiles.js';
+import { DEFAULT_PRODUCT_PROVIDER } from '../../shared/providerCatalogData.js';
 
 export function createDefaultExecutionTarget(): ExecutionTargetSummary {
   return {
-    provider: 'claude',
+    provider: DEFAULT_PRODUCT_PROVIDER,
     instance: null,
     model: null,
   };

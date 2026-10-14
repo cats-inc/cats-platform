@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import { DEFAULT_PRODUCT_PROVIDER } from '../../../shared/providerCatalogData.js';
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog.js';
 import { GUIDE_CAT_AVATAR_URL } from '../../../design/components/GuideCatSidecar.js';
 import { ProviderModelBrainCard } from '../../../design/components/ProviderModelBrainCard.js';
@@ -60,7 +61,7 @@ export function SettingsAssistants({
   const emptyAssistantDraft = useCallback((): AssistantDraft => ({
     name: defaultAssistantName,
     roleHint: '',
-    provider: 'claude',
+    provider: DEFAULT_PRODUCT_PROVIDER,
     instance: '',
     model: '',
     modelSelection: null,
@@ -112,7 +113,7 @@ export function SettingsAssistants({
       setGuideBusy(true);
       try {
         const body = {
-          provider: patch.provider ?? guideCat?.executionTarget.provider ?? 'claude',
+          provider: patch.provider ?? guideCat?.executionTarget.provider ?? DEFAULT_PRODUCT_PROVIDER,
           instance: patch.instance !== undefined
             ? patch.instance
             : guideCat?.executionTarget.instance ?? null,
@@ -443,7 +444,7 @@ export function SettingsAssistants({
             </div>
             <div className="catsDetailColumn" id={MODEL_SETTINGS_FIELD_ID}>
               <ProviderModelBrainCard
-                provider={guideCat?.executionTarget.provider ?? 'claude'}
+                provider={guideCat?.executionTarget.provider ?? DEFAULT_PRODUCT_PROVIDER}
                 instance={guideCat?.executionTarget.instance ?? ''}
                 model={guideCat?.executionTarget.model ?? ''}
                 modelSelection={guideCat?.modelSelection ?? null}

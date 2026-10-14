@@ -5,6 +5,13 @@
 
 ## Terminal controls
 
+Fresh installations use Codex as the initial provider in Setup's Catlas picker,
+new Cat/Assistant forms, new conversation defaults and Code Builder, following
+the shared provider order. Runtime-backed fields still require a configured
+provider target and an explicit model when the CLI reports no model default.
+Existing saved targets and user overrides keep their provider/instance/model;
+loading an older profile does not migrate its selections to Codex.
+
 `npx @cats-inc/cats-platform` opens the application root (`/`) in the default
 browser after its listener is ready. The application routes first-time users
 through setup. The printed URL uses the actual listening port and replaces a

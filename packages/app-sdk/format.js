@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
 
 // Keep in step with ./package.json and browser.d.ts `sdkVersion`; a test enforces all three.
-export const APP_SDK_VERSION = '1.4.0';
+export const APP_SDK_VERSION = '1.5.0';
 export const MAX_PACKAGE_BYTES = 8 * 1024 * 1024;
 export const MAX_EXPANDED_BYTES = 24 * 1024 * 1024;
 export const MAX_APP_FILES = 128;

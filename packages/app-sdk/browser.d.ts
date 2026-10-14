@@ -1,6 +1,6 @@
 /** Host-injected browser API. No imports, secrets, filesystem or general network proxy. */
 export interface CatsAppBrowserSdkV1 {
-  readonly sdkVersion: '1.4.0';
+  readonly sdkVersion: '1.5.0';
   readonly appId: string;
   readonly version: string;
   readonly locale: string;

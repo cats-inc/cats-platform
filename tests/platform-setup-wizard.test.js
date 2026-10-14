@@ -241,7 +241,7 @@ test('POST /api/platform/setup/complete with createGuideCat=true persists a plat
     assert.deepEqual(payload.assistantPresets, []);
     assert.equal(payload.guideCat?.executionTarget.provider, 'claude');
     assert.equal(payload.guideCat?.executionTarget.model, 'claude-sonnet');
-    assert.equal(payload.chat.globalOrchestrator.executionTarget.provider, 'claude');
+    assert.equal(payload.chat.globalOrchestrator.executionTarget.provider, 'codex');
     assert.equal(payload.chat.globalOrchestrator.executionTarget.model, null);
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);

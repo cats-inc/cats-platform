@@ -819,22 +819,25 @@ test('PATCH /api/orchestrator rejects unsupported MCP profile ids', async () => 
   });
 });
 
-test('PATCH /api/orchestrator updates MCP profile without requiring provider', async () => {
-  await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/orchestrator`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        mcpProfile: WORK_MCP_PROFILE_ID,
-      }),
-    });
+for (const provider of ['codex', 'claude']) {
+  test(`PATCH /api/orchestrator updates MCP profile while preserving ${provider}`, async () => {
+    const initial = createDefaultChatState(provider);
+    await withServer(createRuntimeStub(), async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/orchestrator`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        }),
+      });
 
-    const payload = await response.json();
-    assert.equal(response.status, 200);
-    assert.equal(payload.orchestrator.mcpProfile, WORK_MCP_PROFILE_ID);
-    assert.equal(payload.orchestrator.executionTarget.provider, 'claude');
+      const payload = await response.json();
+      assert.equal(response.status, 200);
+      assert.equal(payload.orchestrator.mcpProfile, WORK_MCP_PROFILE_ID);
+      assert.equal(payload.orchestrator.executionTarget.provider, provider);
+    }, new MemoryChatStore(initial));
   });
-});
+}
 
 test('POST /api/orchestrator/plan uses the injected planner surface seam', async () => {
   let buildCalls = 0;

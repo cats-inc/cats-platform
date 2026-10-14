@@ -44,6 +44,15 @@ are planned. SDK 1.3 image operations below remain the implemented boundary.
 
 ## Host and SDK compatibility
 
+Desktop 0.8.2 exposes App SDK **1.5.0** for the compatible Grok/Muse quota
+refresh capabilities and optional native `resetLabel` text. Selected Usage
+**0.5.3** retains its Platform `^0.6.0` floor and SDK `^1.2.0` range; it still
+uses the published Platform 0.6.0 builder. New query buttons depend on the host
+capabilities, so older hosts retain their existing provider queries. Desktop
+0.8.0 needs the coordinated host/Runtime update for Grok/Muse; replacing only
+the App does not supply those collectors. The Desktop App lock pins the
+published 0.5.3 archive by immutable URL and SHA-256.
+
 Studio 0.1.0 (`cats.studio`) is a separate image App beside Usage. Its first local
 Desktop delivery requires Platform `^0.5.11` and SDK `^1.3.0`. The additive
 `media.images` permission enables typed jobs and bounded JPEG preview/export;

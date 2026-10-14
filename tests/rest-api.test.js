@@ -244,7 +244,7 @@ test('GET /api/preferences returns preferences', async () => {
 
     const payload = await response.json();
     assert.equal(typeof payload.preferences.selectedChannelId, 'string');
-    assert.equal(payload.preferences.newChatDefaults.provider, 'claude');
+    assert.equal(payload.preferences.newChatDefaults.provider, 'codex');
     assert.deepEqual(payload.preferences.folderBrowsePreferences, {
       bySurface: {},
       chatDirectLaneByCatId: {},

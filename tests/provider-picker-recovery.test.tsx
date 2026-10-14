@@ -71,7 +71,7 @@ function catalog(provider: string, instance: string | null, model = 'model-a') {
     support: { tier: 'full', notes: [] }, warnings: [] };
 }
 
-function api() {
+function api(provider = 'claude') {
   const state = { registryFailures: 0, modelFailures: 0, advancedFailures: 0,
     registryCalls: 0, modelCalls: 0, advancedCalls: 0, revision: 'one', selected: true,
     revalidating: false, emptyCatalog: false, catalogConfigurationRequired: false };
@@ -81,9 +81,9 @@ function api() {
       state.registryCalls++;
       if (state.registryFailures-- > 0) throw new Error('The operation was aborted due to timeout');
       return Response.json({ revision: state.revision, state: state.selected ? 'ready' : 'no_usable_targets',
-        providers: state.selected ? [{ id: 'claude', label: 'Claude', defaultInstance: 'native', defaultBackend: 'cli',
+        providers: state.selected ? [{ id: provider, label: provider, defaultInstance: 'native', defaultBackend: 'cli',
           instances: [{ id: 'native', backend: 'cli', target: 'cli/native', label: 'Native', default: true }],
-          modelsPath: '/api/providers/claude/models' }] : [],
+          modelsPath: `/api/providers/${provider}/models` }] : [],
         warnings: state.revalidating
           ? ['Using cached provider targets because runtime refresh failed: timeout'] : [],
         recovery: { openRuntimeSetupPath: '/runtime/setup', retryable: true } });
@@ -96,13 +96,13 @@ function api() {
     if ((advanced ? state.advancedFailures-- : state.modelFailures--) > 0) {
       throw new Error('The operation was aborted due to timeout');
     }
-    return Response.json({ catalog: { ...catalog('claude', url.searchParams.get('instance')),
+    return Response.json({ catalog: { ...catalog(provider, url.searchParams.get('instance')),
       ...(state.emptyCatalog ? { models: [], entries: [], defaultModel: null, defaultSelection: null } : {}),
       warnings: state.revalidating
         ? ['Using cached model catalog because runtime refresh failed: timeout'] : [] } });
   };
   const props = {
-    provider: 'claude', instance: 'cli/native', model: 'model-a',
+    provider, instance: 'cli/native', model: 'model-a',
     onTargetChange: (_target: ProviderTargetSelection) => {},
     fetchProviderRegistry: () => fetchProviderRegistryFromClientCache({ fetchImpl }),
     fetchProviderModels: (provider: string, instance?: string | null) =>
@@ -207,7 +207,7 @@ test('a mounted picker keeps a coherent snapshot while base and advanced revisio
 for (const authStatus of [401, 403]) {
   test(`first setup step 2 automatically recovers from ${authStatus}, registry and model timeouts`, async (t) => {
     const clock = installClock(t);
-    const { state, fetchImpl } = api();
+    const { state, fetchImpl } = api('codex');
     state.registryFailures = state.modelFailures = state.advancedFailures = 1;
     let authFailures = 1;
     let providerReads = 0;
@@ -246,7 +246,7 @@ for (const authStatus of [401, 403]) {
     await clock.advance(4_000);
     assertAutomaticRecovery();
     await clock.advance(2_000);
-    assert.equal((view.getByRole('combobox', { name: 'Provider' }) as HTMLSelectElement).value, 'claude');
+    assert.equal((view.getByRole('combobox', { name: 'Provider' }) as HTMLSelectElement).value, 'codex');
     assert.equal((view.getByRole('combobox', { name: /Model/ }) as HTMLSelectElement).value, 'model-a');
     assert.equal(view.container.querySelectorAll('[role="status"]').length, 0);
     assert.equal((view.getByRole('button', { name: 'Open Cats' }) as HTMLButtonElement).disabled, false);
