@@ -89,6 +89,21 @@ Lobby re-entry, stale/offline/revoked state and injected loading recovery, using
 only a temporary profile and fixture Runtime. Independent release review found
 no blockers. Three-OS installer-resource gates remain required before publication.
 
+Grok/Muse follow-up (2026-10-15, source implementation only):
+
+- [x] Extend SDK type, renderer/server target gates, client and source projection to Grok/Muse.
+- [x] Preserve Muse resetLabel as bounded optional text without an inferred instant/duration.
+- [x] Pass authenticated live CLI → Runtime HTTP → compiled host client, zero execution records/sessions, passive reads and cooldown.
+- [x] Pass host permission/version/revocation, renderer routing and client projection tests.
+- [x] Build production renderer and verify the private Usage archive with isolated Edge/profile fixtures, including both providers and narrow layout.
+- [x] Complete independent source review; Windows Muse cleanup race corrected and tested in Runtime.
+- [ ] Eventual authorized release: next compatible SDK minor, new immutable Usage patch and coordinated host/source/App pins.
+
+See [Runtime evidence](../../../cats-runtime/docs/research/2026-10-15-grok-muse-account-quota.md).
+Grok's query seam is verified but the current account response has no numeric
+included allowance; Muse requires native Windows and existing Git winpty. This
+slice does not bump versions, publish, change Desktop pins or alter installed Apps.
+
 Kiro V3 follow-up (2026-10-14, implementation only):
 
 - [x] Extend SDK type, renderer/server target gates, Runtime client and source projection to Kiro.

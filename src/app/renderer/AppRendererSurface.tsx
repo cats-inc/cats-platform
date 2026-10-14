@@ -88,7 +88,7 @@ export function AppRendererSurface({ appId, version, title, locale, onLobby }: {
         }
         const refreshQuota = data.method === 'usage.refreshQuota';
         if (data.method !== 'usage.snapshot' && !refreshQuota) { reply(false, undefined, 'Unsupported app capability.'); return; }
-        if (refreshQuota && (!['codex', 'copilot', 'claude', 'antigravity', 'kiro'].includes(data.params?.provider) || typeof data.params?.instance !== 'string'
+        if (refreshQuota && (!['codex', 'copilot', 'claude', 'antigravity', 'kiro', 'grok', 'muse'].includes(data.params?.provider) || typeof data.params?.instance !== 'string'
           || !data.params.instance || data.params.instance.length > 100)) { reply(false, undefined, 'Invalid quota target.'); return; }
         if (busy || Date.now() - (lastRequestAt.get(data.method) ?? 0) < 1000) { reply(false, undefined, 'Usage refresh is rate limited.'); return; }
         busy = true; lastRequestAt.set(data.method, Date.now());

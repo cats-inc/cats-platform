@@ -113,6 +113,37 @@ test('Claude get_usage percentages remain account facts, not session or fraction
   assert.equal(target!.quota.windows[0]!.remainingPercent, 94);
 });
 
+test('Grok and Muse queries preserve capability, unknown values and native reset labels', async (t) => {
+  let expected = 'grok';
+  t.mock.method(globalThis, 'fetch', async (_url: string, options: RequestInit) => {
+    assert.deepEqual(JSON.parse(String(options.body)), { provider: expected, instance: 'default' });
+    const data = fixture();
+    data.targets[0]!.provider = expected;
+    Object.assign(data.targets[0]!.quota, { source: expected === 'grok' ? 'grok.billing' : 'muse.tui.usage', refreshSupported: true,
+      status: expected === 'grok' ? 'unavailable' : 'available', windows: expected === 'grok' ? [] : [
+        { id: 'current', usedPercent: 0, resetsAt: null, resetLabel: 'at 7:27 AM', token: 'SECRET' },
+        { id: 'weekly', usedPercent: 0, resetsAt: null, resetLabel: 'Oct 19 at 8:00 AM' },
+        { id: 'bad_label', usedPercent: 20, resetLabel: 'bad\nPRIVATE' },
+      ] });
+    return new Response(JSON.stringify({ status: expected === 'grok' ? 'unavailable' : 'updated', nextRefreshAt: null, snapshot: data }));
+  });
+  for (const provider of ['grok', 'muse'] as const) {
+    expected = provider;
+    const result = await new CatsRuntimeClient('http://runtime.test').refreshUsageQuota({ provider, instance: 'default' });
+    const [target] = (result.snapshot as Record<string, unknown>).targets as Array<{ quota: Record<string, unknown> & { windows: Array<Record<string, unknown>> } }>;
+    assert.equal(target!.quota.scope, 'provider_account_query');
+    assert.equal(target!.quota.refreshSupported, true);
+    if (provider === 'grok') assert.deepEqual(target!.quota.windows, []);
+    else {
+      assert.equal(target!.quota.windows[0]!.remainingPercent, 100);
+      assert.equal(target!.quota.windows[0]!.resetLabel, 'at 7:27 AM');
+      assert.equal(target!.quota.windows[0]!.resetsAt, null);
+      assert.equal(target!.quota.windows[2]!.resetLabel, undefined);
+    }
+    assert.doesNotMatch(JSON.stringify(result), /SECRET|PRIVATE/);
+  }
+});
+
 test('Kiro query preserves fractional credits and a calendar reset date through the public bridge', async (t) => {
   const data = fixture();
   data.targets[0]!.provider = 'kiro';

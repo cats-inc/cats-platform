@@ -243,12 +243,14 @@ registrations do not grant a verified executable renderer. Local archives become
 ## Frozen v1 boundary
 
 SDK 1.2 supports `usage.refreshQuota({provider,instance})` for `codex`, `copilot`,
-`claude`, `antigravity` and, after the 2026-10-14 V3 verification, `kiro`. Unlike cached reads,
+`claude`, `antigravity` and, after the 2026-10-14 V3 verification, `kiro`. The
+2026-10-15 source follow-up also allows `grok` and `muse`; its eventual release
+requires the next compatible SDK minor. Unlike cached reads,
 this requires both telemetry permissions (`runtime.telemetry.read` and
 `runtime.telemetry.refresh`). Its version-bound host route is POST
 `/api/apps/:id/usage/refresh?version=...`; normal authentication and CSRF apply.
 It forwards only an allowlisted provider/instance selector, with a 12-second/2-MiB response bound.
-Runtime uses CLI stdio only (8-second attempt plus cleanup, 60-second cooldown),
+Runtime uses CLI-owned queries (8-second attempt plus cleanup, 60-second cooldown),
 never reads CLI credentials, never invokes model work and never calls a provider
 API directly. Native Windows was verified; WSL/Docker currently return unsupported.
 The result includes sanitized status, `nextRefreshAt`, and a cached v1 snapshot.
@@ -259,6 +261,16 @@ reset dates; `resetsAt` stays null when no instant is reported. Bonus/add-on and
 overage billing fields remain unmapped. See
 [Kiro V3 evidence](../../cats-runtime/docs/research/2026-10-14-kiro-v3-account-quota.md) and
 [Runtime evidence](../../cats-runtime/docs/research/2026-09-11-additional-cli-quota-queries.md).
+Grok's current authenticated billing response has no numeric included allowance;
+unavailable stays unknown. Muse uses native Windows TUI through an existing Git
+winpty helper, fixed `/usage` input and a complete Turns 0 subscription card.
+Missing helper, custom argv and unverified OS/transports return unsupported.
+Its optional `windows[].resetLabel` is projected only from `muse.tui.usage`, bounded
+to 80 characters without control characters, and escaped by Usage. It does not
+establish a date/timezone, duration or reset instant. See
+[Grok/Muse evidence](../../cats-runtime/docs/research/2026-10-15-grok-muse-account-quota.md).
+These additive source changes do not modify SDK/version fields, published App
+bytes, Desktop pins or installed state; eventual App delivery needs a new patch.
 Usage 0.2.0 is published, requires SDK ^1.2.0 and is selected for Desktop 0.2.5.
 Usage 0.1.1 requires SDK ^1.1.0 and remains in the existing Desktop 0.2.4 release.
 Neither publication changes an existing installation automatically. The actual

@@ -57,6 +57,19 @@ authenticated success evidence. See PLAN-106 for the release gates.
 
 ## Goals
 
+Grok/Muse source follow-up (2026-10-15): SDK target typing and renderer/server/client
+gates accept both provider selectors. Grok billing is currently unavailable due
+to missing included-allowance fields; Muse native Windows TUI supplies two
+percentage windows with Turns 0. Sanitized optional resetLabel preserves CLI
+text without inferring an instant or duration. Permissions, package binding,
+revocation, response bounds and passive polling remain the same. The private
+built Usage archive passed production-host browser checks; authenticated live
+CLI → Runtime HTTP → compiled host client verified the acquisition separately.
+See [evidence](../../../cats-runtime/docs/research/2026-10-15-grok-muse-account-quota.md).
+This is an additive v1 contract; no persisted format/migration changes. Eventual
+publication needs the next compatible SDK minor and a new immutable Usage patch.
+No versions, source/artifact pins or installed state are changed in this slice.
+
 - Actual source-independent app execution from a versioned installed package.
 - A usable public renderer SDK with scoped, revocable access.
 - A pinned official app set in Desktop releases.
