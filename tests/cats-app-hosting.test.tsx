@@ -137,7 +137,7 @@ test('local install endpoint requires Desktop authority and explicit pins, and r
 test('explicit quota refresh needs separate permission, bounded provider targets and live version context', async () => {
   const state = await setup(); let reads = 0;
   const client = { async refreshUsageQuota(target: { provider: string; instance: string }) {
-    reads++; assert.ok(['codex', 'copilot', 'claude', 'antigravity', 'kiro'].includes(target.provider));
+    reads++; assert.ok(['codex', 'copilot', 'claude', 'antigravity', 'kiro', 'grok', 'muse'].includes(target.provider));
     assert.equal(target.instance, 'default');
     return { status: 'updated', snapshot: { marker: 'safe' } };
   } };
@@ -158,10 +158,10 @@ test('explicit quota refresh needs separate permission, bounded provider targets
   const success = await request(state.chatStatePath, active, client, target);
   assert.equal(success.statusCode, 200); assert.equal(success.payload.status, 'updated');
   assert.equal(success.headers['cache-control'], 'no-store'); assert.equal(reads, 1);
-  for (const provider of ['copilot', 'claude', 'antigravity', 'kiro']) {
+  for (const provider of ['copilot', 'claude', 'antigravity', 'kiro', 'grok', 'muse']) {
     assert.equal((await request(state.chatStatePath, active, client, { provider, instance: 'default' })).statusCode, 200);
   }
-  assert.equal(reads, 5);
+  assert.equal(reads, 7);
   const revoked = await request(state.chatStatePath, active, { async refreshUsageQuota() {
     await state.registry.updateAppState(app.pin.id, { installState: 'disabled' });
     return { secret: 'PRIVATE' };

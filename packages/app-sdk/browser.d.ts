@@ -7,7 +7,7 @@ export interface CatsAppBrowserSdkV1 {
   readonly theme: 'light' | 'dark';
   readonly usage: {
     getSnapshot(): Promise<UsageSnapshotV1>;
-    refreshQuota(target: { provider: 'codex' | 'copilot' | 'claude' | 'antigravity' | 'kiro'; instance: string }): Promise<UsageQuotaRefreshV1>;
+    refreshQuota(target: { provider: 'codex' | 'copilot' | 'claude' | 'antigravity' | 'kiro' | 'grok' | 'muse'; instance: string }): Promise<UsageQuotaRefreshV1>;
   };
   openLobby(): Promise<void>;
   openRemoteAccess(): Promise<void>;
@@ -57,7 +57,7 @@ export interface UsageSnapshotV1 {
     scope: 'provider_reported_during_runtime_execution' | 'provider_account_query'; automaticRefresh: false;
     limitId: string | null;
     refreshSupported: boolean;
-    windows: Array<{ id: string; unit: 'percent' | 'requests' | 'credits'; used: number | null; limit: number | null; remaining: number | null; unlimited: boolean; usedPercent: number | null; remainingPercent: number | null; resetsAt: string | null; resetsOn?: string | null; windowMinutes: number | null }>;
+    windows: Array<{ id: string; unit: 'percent' | 'requests' | 'credits'; used: number | null; limit: number | null; remaining: number | null; unlimited: boolean; usedPercent: number | null; remainingPercent: number | null; resetsAt: string | null; resetsOn?: string | null; resetLabel?: string | null; windowMinutes: number | null }>;
   } }>;
   sessions: Array<UsageTargetV1 & { sessionId: string; usage: UsageTotalsV1 }>;
   incidents: Array<UsageTargetV1 & { id: string; classification: string; scope: string; observedAt: string; retryAt: string | null }>;

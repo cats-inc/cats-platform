@@ -36,10 +36,10 @@ export function projectUsageSnapshot(value: unknown): Record<string, unknown> {
       return { ...target(t), usage: usage(t.usage), guardrails: list(t.guardrails, 100).map(guardrail), quota: {
         status: ['available', 'unsupported'].includes(String(q.status)) ? q.status : 'unavailable',
         freshness: ['fresh', 'stale'].includes(String(q.freshness)) ? q.freshness : 'unknown',
-        source: ['claude.rate_limit_event', 'claude.get_usage', 'codex.account/rateLimits/updated', 'codex.account/rateLimits/read', 'copilot.account.getQuota', 'antigravity.usage', 'kiro.account.getUsage'].includes(String(q.source)) ? q.source : null,
+        source: ['claude.rate_limit_event', 'claude.get_usage', 'codex.account/rateLimits/updated', 'codex.account/rateLimits/read', 'copilot.account.getQuota', 'antigravity.usage', 'kiro.account.getUsage', 'grok.billing', 'muse.tui.usage'].includes(String(q.source)) ? q.source : null,
         observedAt: time(q.observedAt), accountId: null, accountLinkage: 'unverified',
-        scope: ['codex.account/rateLimits/read', 'copilot.account.getQuota', 'claude.get_usage', 'antigravity.usage', 'kiro.account.getUsage'].includes(String(q.source)) ? 'provider_account_query' : 'provider_reported_during_runtime_execution', automaticRefresh: false,
-        refreshSupported: q.refreshSupported === true && t.backend === 'cli' && ['codex', 'copilot', 'claude', 'antigravity', 'kiro'].includes(String(t.provider)),
+        scope: ['codex.account/rateLimits/read', 'copilot.account.getQuota', 'claude.get_usage', 'antigravity.usage', 'kiro.account.getUsage', 'grok.billing', 'muse.tui.usage'].includes(String(q.source)) ? 'provider_account_query' : 'provider_reported_during_runtime_execution', automaticRefresh: false,
+        refreshSupported: q.refreshSupported === true && t.backend === 'cli' && ['codex', 'copilot', 'claude', 'antigravity', 'kiro', 'grok', 'muse'].includes(String(t.provider)),
         limitId: typeof q.limitId === 'string' && /^[a-zA-Z0-9_-]{1,64}$/u.test(q.limitId) ? q.limitId : null,
         windows: list(q.windows, 20).map((item) => {
           const window = record(item); const used = number(window.usedPercent); const unlimited = window.unlimited === true;
@@ -47,7 +47,10 @@ export function projectUsageSnapshot(value: unknown): Record<string, unknown> {
           return { id: text(window.id, 64), unit: window.unit === 'requests' || window.unit === 'credits' ? window.unit : 'percent',
             used: number(window.used), limit: unlimited ? null : number(window.limit), remaining: unlimited ? null : number(window.remaining), unlimited,
             usedPercent, remainingPercent: usedPercent === null ? null : 100 - usedPercent, resetsAt: time(window.resetsAt),
-            ...(calendarDate(window.resetsOn) ? { resetsOn: calendarDate(window.resetsOn) } : {}), windowMinutes: number(window.windowMinutes) };
+            ...(calendarDate(window.resetsOn) ? { resetsOn: calendarDate(window.resetsOn) } : {}),
+            ...(q.source === 'muse.tui.usage' && typeof window.resetLabel === 'string' && window.resetLabel.length <= 80
+              && !/[\u0000-\u001f\u007f]/u.test(window.resetLabel) ? { resetLabel: window.resetLabel } : {}),
+            windowMinutes: number(window.windowMinutes) };
         }),
       } };
     }),
