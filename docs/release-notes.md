@@ -55,7 +55,8 @@ selected.
 - **Validation.** Grok/Muse CLI → Runtime → host validation passed without a
   model turn in the implementation PRs. Fresh/saved provider behavior and setup
   submission passed 59 focused cases; related Chat/store/routing selection
-  passed 126 cases, and SDK public-entry/conformance passed 36 cases. Server and
+  passed 126 cases, and SDK public-entry/conformance passed 36 cases. Additional
+  setup recovery/default and partial-update coverage passed 22 cases. Server and
   renderer builds plus test/renderer typechecks passed. The final Usage archive
   passed isolated acceptance in the production browser host for query actions,
   unknown Grok quota, Muse zero-used/reset text, filters, offline/stale
