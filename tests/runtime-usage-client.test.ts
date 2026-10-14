@@ -65,7 +65,7 @@ test('quota refresh is a separate authenticated fixed-route POST and projects on
   const result = await client.refreshUsageQuota({ provider: 'codex', instance: 'default' });
   assert.equal(result.status, 'updated'); assert.doesNotMatch(JSON.stringify(result), /SECRET/);
   assert.match(JSON.stringify(result), /provider_account_query/);
-  await assert.rejects(client.refreshUsageQuota({ provider: 'kiro', instance: 'default' } as never), /Invalid quota target/);
+  await assert.rejects(client.refreshUsageQuota({ provider: 'cursor', instance: 'default' } as never), /Invalid quota target/);
   assert.throws(() => projectUsageQuotaRefresh({ status: 'invented', snapshot }), /Unsupported/);
 });
 
@@ -111,4 +111,29 @@ test('Claude get_usage percentages remain account facts, not session or fraction
   assert.equal(target!.quota.scope, 'provider_account_query');
   assert.equal(target!.quota.refreshSupported, true);
   assert.equal(target!.quota.windows[0]!.remainingPercent, 94);
+});
+
+test('Kiro query preserves fractional credits and a calendar reset date through the public bridge', async (t) => {
+  const data = fixture();
+  data.targets[0]!.provider = 'kiro';
+  Object.assign(data.targets[0]!.quota, { source: 'kiro.account.getUsage', refreshSupported: true, windows: [
+    { id: 'credits', unit: 'credits', used: 0.37, limit: 1000, remaining: 999.63, usedPercent: 0.037,
+      resetsOn: '2099-11-01', resetsAt: null, token: 'SECRET' },
+    { id: 'invalid_date', resetsOn: '2099-02-30' },
+  ] });
+  t.mock.method(globalThis, 'fetch', async (_url: string, options: RequestInit) => {
+    assert.deepEqual(JSON.parse(String(options.body)), { provider: 'kiro', instance: 'default' });
+    return new Response(JSON.stringify({ status: 'updated', nextRefreshAt: null, snapshot: data }));
+  });
+  const result = await new CatsRuntimeClient('http://runtime.test').refreshUsageQuota({ provider: 'kiro', instance: 'default' });
+  const [target] = (result.snapshot as Record<string, unknown>).targets as Array<{ quota: Record<string, unknown> & { windows: Array<Record<string, unknown>> } }>;
+  assert.equal(target!.quota.source, 'kiro.account.getUsage');
+  assert.equal(target!.quota.scope, 'provider_account_query');
+  assert.equal(target!.quota.refreshSupported, true);
+  assert.equal(target!.quota.windows[0]!.remaining, 999.63);
+  assert.equal(target!.quota.windows[0]!.unit, 'credits');
+  assert.equal(target!.quota.windows[0]!.resetsOn, '2099-11-01');
+  assert.equal(target!.quota.windows[0]!.resetsAt, null);
+  assert.equal(target!.quota.windows[1]!.resetsOn, undefined);
+  assert.doesNotMatch(JSON.stringify(result), /SECRET/);
 });

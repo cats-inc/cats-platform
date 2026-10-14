@@ -243,7 +243,7 @@ registrations do not grant a verified executable renderer. Local archives become
 ## Frozen v1 boundary
 
 SDK 1.2 supports `usage.refreshQuota({provider,instance})` for `codex`, `copilot`,
-`claude` and `antigravity`. Unlike cached reads,
+`claude`, `antigravity` and, after the 2026-10-14 V3 verification, `kiro`. Unlike cached reads,
 this requires both telemetry permissions (`runtime.telemetry.read` and
 `runtime.telemetry.refresh`). Its version-bound host route is POST
 `/api/apps/:id/usage/refresh?version=...`; normal authentication and CSRF apply.
@@ -254,7 +254,10 @@ API directly. Native Windows was verified; WSL/Docker currently return unsupport
 The result includes sanitized status, `nextRefreshAt`, and a cached v1 snapshot.
 The quota projection carries `refreshSupported`, nullable native used/limit/remaining,
 unit and explicit unlimited state. New collectors reject custom CLI startup args;
-Kiro remains unverified after an auth-related CLI response. See
+Kiro V3 now preserves fractional CREDIT quantities and optional `resetsOn` calendar
+reset dates; `resetsAt` stays null when no instant is reported. Bonus/add-on and
+overage billing fields remain unmapped. See
+[Kiro V3 evidence](../../cats-runtime/docs/research/2026-10-14-kiro-v3-account-quota.md) and
 [Runtime evidence](../../cats-runtime/docs/research/2026-09-11-additional-cli-quota-queries.md).
 Usage 0.2.0 is published, requires SDK ^1.2.0 and is selected for Desktop 0.2.5.
 Usage 0.1.1 requires SDK ^1.1.0 and remains in the existing Desktop 0.2.4 release.

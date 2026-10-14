@@ -59,14 +59,14 @@ test('iframe quota bridge forwards each supported provider unchanged and rejects
     origin: 'null', source: iframe.contentWindow, data: { type: 'cats.app.ready', nonce: boot.nonce },
   }));
   assert.ok(port.onmessage);
-  for (const [index, provider] of ['codex', 'copilot', 'claude', 'antigravity'].entries()) {
+  for (const [index, provider] of ['codex', 'copilot', 'claude', 'antigravity', 'kiro'].entries()) {
     time += 1100;
     await port.onmessage({ data: { id: index + 1, method: 'usage.refreshQuota', params: { provider, instance: 'default' } } });
     assert.deepEqual(requests.at(-1), { provider, instance: 'default' });
     assert.equal(replies.at(-1)?.ok, true);
   }
-  await port.onmessage({ data: { id: 5, method: 'usage.refreshQuota', params: { provider: 'kiro', instance: 'default' } } });
-  assert.equal(replies.at(-1)?.ok, false); assert.equal(requests.length, 4);
+  await port.onmessage({ data: { id: 6, method: 'usage.refreshQuota', params: { provider: 'cursor', instance: 'default' } } });
+  assert.equal(replies.at(-1)?.ok, false); assert.equal(requests.length, 5);
 });
 
 test('stalled renderer request times out, aborts and can be retried without reinstallation', async (t) => {

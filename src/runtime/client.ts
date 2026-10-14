@@ -337,7 +337,7 @@ export interface RuntimeClient {
   getSkillCatalog?(id: string): Promise<unknown>;
   getHealth(): Promise<RuntimeStatusSummary>;
   getUsageSnapshot?(): Promise<Record<string, unknown>>;
-  refreshUsageQuota?(target: { provider: 'codex' | 'copilot' | 'claude' | 'antigravity'; instance: string }): Promise<Record<string, unknown>>;
+  refreshUsageQuota?(target: { provider: 'codex' | 'copilot' | 'claude' | 'antigravity' | 'kiro'; instance: string }): Promise<Record<string, unknown>>;
   getSetupState(): Promise<RuntimeSetupReadModel>;
   triggerSetupScan?(options?: { manual?: boolean }): Promise<RuntimeSetupReadModel>;
   getProviderConfig(options?: { selector?: boolean }): Promise<RuntimeProviderConfigRegistry>;
@@ -547,8 +547,8 @@ export class CatsRuntimeClient implements RuntimeClient {
     return projectUsageSnapshot(await this.readUsageResponse(response));
   }
 
-  async refreshUsageQuota(target: { provider: 'codex' | 'copilot' | 'claude' | 'antigravity'; instance: string }): Promise<Record<string, unknown>> {
-    if (!['codex', 'copilot', 'claude', 'antigravity'].includes(target.provider) || typeof target.instance !== 'string' || !target.instance || target.instance.length > 100) {
+  async refreshUsageQuota(target: { provider: 'codex' | 'copilot' | 'claude' | 'antigravity' | 'kiro'; instance: string }): Promise<Record<string, unknown>> {
+    if (!['codex', 'copilot', 'claude', 'antigravity', 'kiro'].includes(target.provider) || typeof target.instance !== 'string' || !target.instance || target.instance.length > 100) {
       throw new Error('Invalid quota target.');
     }
     const response = await fetch(`${this.baseUrl}/usage/refresh`, {

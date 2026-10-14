@@ -89,6 +89,16 @@ Lobby re-entry, stale/offline/revoked state and injected loading recovery, using
 only a temporary profile and fixture Runtime. Independent release review found
 no blockers. Three-OS installer-resource gates remain required before publication.
 
+Kiro V3 follow-up (2026-10-14, implementation only):
+
+- [x] Extend SDK type, renderer/server target gates, Runtime client and source projection to Kiro.
+- [x] Preserve fractional credits and optional calendar-only `resetsOn` without an invented instant.
+- [x] Verify the production collector through authenticated isolated Runtime HTTP and compiled host client.
+- [x] Complete independent cross-layer review with no P1/P2 findings.
+- [x] 22 focused host/renderer/client tests passed; server build and renderer typecheck passed.
+- [x] Whole test-fixture typecheck passed after linking the checkout's existing mobile dependencies.
+- No version bump, publication, Desktop pins or installed App state change.
+
 Multi-CLI follow-up (2026-09-11, PR-only delivery):
 
 - [x] Extend SDK 1.2 provider allowlist to Codex/Copilot/Claude/Antigravity.
