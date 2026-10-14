@@ -2,6 +2,61 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-14 — Desktop 0.8.1 standard preview with Kiro quota
+
+Desktop **0.8.1** is the owner-selected standard-profile preview with Usage
+**0.5.2** and Runtime **0.5.1**. This is a compatible patch within the 0.8
+host line: public APIs, configuration contracts and persisted formats remain
+compatible, and no data migration is required. No Platform npm, Runtime npm or
+cats-one publication is selected.
+
+- **Kiro quota.** Usage can query the logged-in native Kiro CLI through its V3
+  account-usage endpoint, alongside Claude, Codex, Copilot and Antigravity. The
+  query creates no chat session or model turn; passive polling reads cached
+  telemetry. Kiro credit quantities retain decimals, and a calendar-only reset
+  date is shown without inventing an exact time. Unsupported or ambiguous
+  allowance buckets stay unavailable. Native shared transport is supported;
+  WSL/Docker quota queries remain unsupported.
+- **SDK and App compatibility.** App SDK **1.4.0** records the compatible Kiro
+  refresh capability and optional calendar reset date. Usage keeps its host
+  floor ^0.6.0, SDK ^1.2.0 and published Platform 0.6.0 builder. Older hosts
+  retain the four existing quota providers and do not expose a Kiro query
+  button. Desktop 0.8.0 needs this host/Runtime update to query Kiro; replacing
+  only Usage is insufficient.
+- **Exact Runtime source.** Every OS build and complete source archive bundle
+  Runtime `44dcc37ff1636f0f5598f0874c4a64657da8b8d0` (package 0.5.1), the merge
+  commit of its version preparation. Platform source is the immutable merge
+  commit selected for dispatch and recorded in the release descriptor and
+  source manifest.
+- **Exact App selection.** Bundle published Usage 0.5.2 from
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.2/usage-0.5.2.catsapp`,
+  SHA-256 `6338ece00357f8eaff44b18fc42ef28647cce8242e5ede88bce48f6e1744c597`.
+  Its producer source is `7392186971df919162cdebc6ea40dcedc411ceba`. The public
+  download, asset digest, lock and provenance agree and match the locally
+  accepted archive. The selected package validates at host 0.8.1 / SDK 1.4.0.
+  Studio remains outside the default bundle. Knowledge bundles keep their
+  compatible 0.8.x ranges.
+- **Signing and updates.** Dispatch desktop-release.yml with tag=v0.8.1, the
+  full Runtime SHA above and unsigned=false; the workflow creates the preview
+  tag. Expected trust is macOS signed + notarized, Windows unsigned (no
+  certificate) for both installers, Linux n/a for both packages. Standard
+  0.8.0 installs retain their update path on every architecture: macOS uses the
+  universal ZIP and the same Developer ID team, Windows stays unsigned to
+  unsigned, and Linux uses its matching .deb. No installed upgrade is exercised
+  during release preparation.
+- **Validation.** Native Kiro collection and the authenticated Runtime/Platform
+  bridge were verified without a model turn in the implementation PRs. This
+  preparation passed 11 focused App tests, 36 SDK public-entry/conformance
+  tests, renderer/test typechecks and the web build. The final App archive
+  passed isolated browser acceptance on the production renderer for credit
+  precision, date-only resets, unsupported-provider gating and existing App
+  lifecycle behavior. Runtime's required release preflight passed. Required
+  Platform PR CI gates the merge; the Desktop workflow verifies three-OS
+  packaged source receipts, offline App activation, isolated sidecar startup,
+  complete source downloads and update metadata before publication. Results
+  belong to the [v0.8.1 GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.8.1)
+  and its workflow run.
+
 ## 2026-10-14 — Platform 0.8.0 npm and Desktop standard preview
 
 Platform **0.8.0** is the owner-selected Platform npm `latest` release and Desktop
