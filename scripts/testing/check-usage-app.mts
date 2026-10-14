@@ -71,28 +71,30 @@ const runtimeClient = { async getUsageSnapshot() {
   reads++; if (offline) throw new Error('Fixture offline');
   const observedAt = new Date(Date.now() - (stale ? 600_000 : 30_000)).toISOString();
   const resetsAt = new Date(Date.now() + (stale ? -60_000 : 3_600_000)).toISOString();
-  const targets = ['claude', 'codex', 'copilot', 'antigravity', 'kiro'].map((provider, index) => {
+  const targets = ['claude', 'codex', 'copilot', 'antigravity', 'kiro', 'cursor'].map((provider, index) => {
     const queried = queries.includes(provider);
     const source = queried ? { claude: 'claude.get_usage', codex: 'codex.account/rateLimits/read',
-      copilot: 'copilot.account.getQuota', antigravity: 'antigravity.usage' }[provider]
+      copilot: 'copilot.account.getQuota', antigravity: 'antigravity.usage', kiro: 'kiro.account.getUsage' }[provider]
       : index === 0 ? 'claude.rate_limit_event' : index === 1 ? 'codex.account/rateLimits/updated' : null;
     const windows = queried && provider === 'copilot' ? [
       { id: 'premium_interactions', unit: 'requests', used: 0, limit: 1500, remaining: 1500, usedPercent: 0, resetsAt },
       { id: 'chat', unit: 'requests', used: 0, unlimited: true, resetsAt },
-    ] : queried ? [{ id: provider === 'antigravity' ? 'gemini_models_weekly' : 'seven_day', unit: 'percent',
+    ] : queried && provider === 'kiro' ? [{ id: 'credits', unit: 'credits', used: 0.37, limit: 1000,
+      remaining: 999.63, usedPercent: 0.037, resetsOn: '2099-11-01', resetsAt: null }]
+      : queried ? [{ id: provider === 'antigravity' ? 'gemini_models_weekly' : 'seven_day', unit: 'percent',
       usedPercent: provider === 'claude' ? 6 : 22, windowMinutes: 10080, resetsAt }]
       : index < 2 ? [{ id: index ? 'primary' : 'five_hour', unit: 'percent', usedPercent: index ? 60 : 25, resetsAt, windowMinutes: 300 }] : [];
     return { provider, instance: 'default', backend: 'cli', usage: totals(index >= 2 ? null : 12500 + index * 1000, index ? 'EUR' : 'USD'), guardrails: [],
-      quota: { status: index === 4 ? 'unsupported' : windows.length ? 'available' : 'unavailable', freshness: stale ? 'stale' : 'fresh',
+      quota: { status: index === 5 ? 'unsupported' : windows.length ? 'available' : 'unavailable', freshness: stale ? 'stale' : 'fresh',
         source, observedAt: windows.length ? observedAt : null, accountId: null, accountLinkage: 'unverified',
-        automaticRefresh: false, refreshSupported: index < 4, windows } };
+        automaticRefresh: false, refreshSupported: index < 5, windows } };
   });
   return { schemaVersion: 1, generatedAt: timestamp(), runtime: { status: 'available', epoch },
     coverage: { mode: 'memory', scope: 'runtime_observed_results', startedAt: observedAt, retainedRecords: 2, droppedRecords: 0, droppedQuotaTargets: 0, truncated: false, historyAvailable: false },
     totals: { ...totals(26000), costs: [{ currency: 'USD', amount: 0.12 }, { currency: 'EUR', amount: 0.12 }] }, targets,
     sessions: targets.slice(0, 2).map((target, index) => ({ ...target, sessionId: `fixture-session-${index + 1}` })), incidents: [], guardrails: [] };
 }, async refreshUsageQuota(target: { provider: string; instance: string }) {
-  assert.equal(target.instance, 'default'); assert.ok(['codex', 'copilot', 'claude', 'antigravity'].includes(target.provider));
+  assert.equal(target.instance, 'default'); assert.ok(['codex', 'copilot', 'claude', 'antigravity', 'kiro'].includes(target.provider));
   queries.push(target.provider);
   return { status: 'updated', nextRefreshAt: null, snapshot: await this.getUsageSnapshot() };
 } };
@@ -159,8 +161,9 @@ try {
   process.stdout.write('Usage iframe rendered and received the fixture snapshot.\n');
   assert.equal(await frame.getByText('尚未支援', { exact: true }).count(), 1);
   assert.equal(queries.length, 0, 'Opening the App never queries a CLI');
-  assert.equal(await frame.locator('[data-query-provider="kiro"]').count(), 0);
-  for (const provider of ['copilot', 'claude', 'antigravity']) {
+  assert.equal(await frame.locator('[data-query-provider="kiro"]').count(), 1);
+  assert.equal(await frame.locator('[data-query-provider="cursor"]').count(), 0);
+  for (const provider of ['copilot', 'claude', 'antigravity', 'kiro']) {
     await new Promise((resolve) => setTimeout(resolve, 1100));
     await frame.locator(`[data-query-provider="${provider}"]`).click();
     try { await frame.getByText(/已透過 .* CLI 取得額度回報/).first().waitFor({ timeout: 5000 }); }
@@ -169,11 +172,14 @@ try {
         frame: await frame.locator('body').innerText({ timeout: 1000 }).catch(() => 'Frame unavailable'), errors })}\n`);
       throw error;
     }
-    const expected = provider === 'copilot' ? /1,500 requests/ : provider === 'claude' ? /^94% 剩餘$/ : /^78% 剩餘$/;
+    const expected = provider === 'copilot' ? /1,500 requests/ : provider === 'claude' ? /^94% 剩餘$/
+      : provider === 'kiro' ? /已用 0\.37 \/ 1,000 credits · 剩餘 999\.63/ : /^78% 剩餘$/;
     await frame.getByText(expected).first().waitFor();
   }
-  assert.deepEqual(queries, ['copilot', 'claude', 'antigravity']);
+  assert.deepEqual(queries, ['copilot', 'claude', 'antigravity', 'kiro']);
   await frame.getByText('不限額', { exact: true }).waitFor();
+  await frame.getByText(/回報重設日期.*2099.*未提供確切時間/).waitFor();
+  await frame.getByText('99.963% 剩餘', { exact: true }).waitFor();
   assert.equal(await frame.locator('.stat .cost').innerText(), 'USD 0.12\nEUR 0.12');
   const innerFrame = page.frames().find((candidate: { parentFrame(): unknown }) => candidate.parentFrame() !== null);
   assert.ok(innerFrame);
