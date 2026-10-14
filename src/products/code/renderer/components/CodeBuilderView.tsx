@@ -29,6 +29,7 @@ import {
 import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths.js';
 import { buildCodeArtifactPath } from '../codePaths.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+import { DEFAULT_PRODUCT_PROVIDER } from '../../../../shared/providerCatalogData.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { labelCodeWorkspaceKindForLocale } from './codeWorkspaceLabels.js';
 
@@ -54,7 +55,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
   const [resumeTaskId, setResumeTaskId] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
-  const [provider, setProvider] = useState('claude');
+  const [provider, setProvider] = useState<string>(DEFAULT_PRODUCT_PROVIDER);
   const [model, setModel] = useState('');
   const [feedback, setFeedback] = useState('');
   const [workspaceSummary, setWorkspaceSummary] = useState<CodeWorkspaceSummary | null>(null);

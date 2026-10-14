@@ -13,6 +13,7 @@ import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import { GUIDE_CAT_SYSTEM_NAME } from '../../shared/guideCatIdentity.js';
 import { normalizePlatformSurface } from '../../shared/platformSurfaces.js';
+import { DEFAULT_PRODUCT_PROVIDER } from '../../shared/providerCatalogData.js';
 
 export interface SetupDebugContextInput {
   ownerDisplayName: string;
@@ -89,7 +90,7 @@ export function buildSetupDebugContext(input: SetupDebugContextInput): Record<st
     createGuideCat,
     guideCatId: input.guideCatId ?? null,
     guideCatName: createGuideCat ? input.guideCatName?.trim() || GUIDE_CAT_SYSTEM_NAME : null,
-    guideCatProvider: createGuideCat ? input.guideCatProvider?.trim() || 'claude' : null,
+    guideCatProvider: createGuideCat ? input.guideCatProvider?.trim() || DEFAULT_PRODUCT_PROVIDER : null,
     guideCatInstance: createGuideCat ? input.guideCatInstance?.trim() || null : null,
     guideCatModel: createGuideCat ? input.guideCatModel ?? null : null,
     hasGuideCatModelSelection: createGuideCat ? Boolean(input.guideCatModelSelection) : false,
@@ -217,7 +218,7 @@ export function parseGuideCatUpdateBody(
     ok: true,
     value: {
       name: GUIDE_CAT_SYSTEM_NAME,
-      provider: body.provider?.trim() || 'claude',
+      provider: body.provider?.trim() || DEFAULT_PRODUCT_PROVIDER,
       instance: body.instance?.trim() || null,
       model: body.model ?? null,
       modelSelection: cloneProviderModelSelection(body.modelSelection ?? null),

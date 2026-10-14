@@ -428,7 +428,7 @@ export function normalizeCapabilities(rawCapabilities: unknown): ChatCapabilitie
 }
 
 export function normalizeGlobalOrchestrator(rawOrchestrator: unknown): GlobalOrchestratorSummary {
-  const fallback = createDefaultChatState().globalOrchestrator;
+  const fallback = createDefaultChatState('claude').globalOrchestrator;
   const orchestratorRecord = asRecord(rawOrchestrator);
   const visibleParticipantRecord = asRecord(orchestratorRecord?.visibleParticipant);
   const executionTarget = normalizeExecutionTarget(
@@ -478,7 +478,8 @@ export function normalizeGlobalOrchestrator(rawOrchestrator: unknown): GlobalOrc
 }
 
 export function normalizeNewChatDefaults(rawDefaults: unknown): NewChatDefaults {
-  const fallback = createDefaultChatState().newChatDefaults;
+  // Stored snapshots keep their historical missing-field defaults; only fresh state changes.
+  const fallback = createDefaultChatState('claude').newChatDefaults;
   const defaultsRecord = asRecord(rawDefaults);
   const executionTarget = normalizeExecutionTarget(defaultsRecord, fallback);
 

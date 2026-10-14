@@ -12,6 +12,7 @@ import {
   getDefaultProviderInstance,
 } from '../../../shared/providerCatalog.js';
 import { CHAT_MCP_PROFILE_ID } from '../../../shared/catMcpProfiles.js';
+import { DEFAULT_PRODUCT_PROVIDER } from '../../../shared/providerCatalogData.js';
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
 import { createDefaultAdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
 import { createDefaultConversationBehaviorPreferences } from '../../shared/conversationBehavior.js';
@@ -41,9 +42,9 @@ export function createEmptyExecutionLease(): ParticipantExecutionLease {
   };
 }
 
-function createDefaultOrchestrator(updatedAt: string): GlobalOrchestratorSummary {
+function createDefaultOrchestrator(updatedAt: string, provider: string): GlobalOrchestratorSummary {
   const executionTarget = {
-    provider: 'claude',
+    provider,
     instance: null,
     model: null,
   };
@@ -105,16 +106,16 @@ function createCapabilities(limits?: {
   };
 }
 
-export function createDefaultNewChatDefaults(): NewChatDefaults {
+export function createDefaultNewChatDefaults(provider: string = DEFAULT_PRODUCT_PROVIDER): NewChatDefaults {
   return {
-    provider: 'claude',
-    instance: getDefaultProviderInstance('claude'),
-    model: getDefaultModel('claude') || null,
+    provider,
+    instance: getDefaultProviderInstance(provider),
+    model: getDefaultModel(provider) || null,
     modelSelection: null,
   };
 }
 
-export function createDefaultChatState(): ChatState {
+export function createDefaultChatState(provider: string = DEFAULT_PRODUCT_PROVIDER): ChatState {
   const createdAt = isoNow();
   const conversationBehavior = createDefaultConversationBehaviorPreferences();
 
@@ -126,8 +127,8 @@ export function createDefaultChatState(): ChatState {
     cats: [],
     channels: [],
     parallelChatGroups: [],
-    globalOrchestrator: createDefaultOrchestrator(createdAt),
-    newChatDefaults: createDefaultNewChatDefaults(),
+    globalOrchestrator: createDefaultOrchestrator(createdAt, provider),
+    newChatDefaults: createDefaultNewChatDefaults(provider),
     capabilities: createCapabilities(),
     conversationBehavior,
     advancedDraftControls: createDefaultAdvancedDraftControlsPreferences(),

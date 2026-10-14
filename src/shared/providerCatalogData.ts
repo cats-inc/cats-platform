@@ -19,6 +19,8 @@ export const PRODUCT_PROVIDER_ORDER = [
   'openclaw',
 ] as const;
 
+export const DEFAULT_PRODUCT_PROVIDER = PRODUCT_PROVIDER_ORDER[0];
+
 export function compareProductProviderOrder(left: string, right: string): number {
   const order: readonly string[] = PRODUCT_PROVIDER_ORDER;
   const leftIndex = order.indexOf(left);

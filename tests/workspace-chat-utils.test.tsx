@@ -46,7 +46,7 @@ function createCat(overrides: Record<string, unknown> = {}) {
 test('emptyCatForm starts from the shared default cat products and chat defaults', () => {
   assert.deepEqual(emptyCatForm(), {
     name: '',
-    provider: 'claude',
+    provider: 'codex',
     instance: '',
     model: '',
     modelSelection: null,

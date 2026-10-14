@@ -1,6 +1,7 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 import type { PlatformSetupCompleteInput } from '../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
+import { DEFAULT_PRODUCT_PROVIDER } from '../../shared/providerCatalogData.js';
 import { toBootstrapEventError } from '../../shared/bootstrapDiagnostics.js';
 import {
   createPlatformAppDescriptor,
@@ -228,7 +229,7 @@ async function completePlatformSetupExclusively(
           name: resolvedGuideCatName,
           status: core.guideCat?.status ?? 'active',
           executionTarget: {
-            provider: guideCatProvider || 'claude',
+            provider: guideCatProvider || DEFAULT_PRODUCT_PROVIDER,
             instance: guideCatInstance?.trim() || null,
             model: guideCatModel ?? null,
           },

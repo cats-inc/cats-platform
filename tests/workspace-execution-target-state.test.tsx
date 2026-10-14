@@ -92,9 +92,9 @@ test('execution target save feedback localizes known workspace mutation fallback
   );
 });
 
-test('execution target helper defaults stay Claude-backed and normalize trimmed persisted providers', () => {
+test('execution target helpers start with Codex and preserve explicit persisted providers', () => {
   assert.deepEqual(createDefaultExecutionTargetValue(), {
-    provider: 'claude',
+    provider: 'codex',
     instance: 'native',
     model: null,
     modelSelection: null,

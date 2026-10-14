@@ -2,6 +2,70 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-15 — Desktop 0.8.2 standard preview with fresh Codex defaults and Usage
+
+Desktop **0.8.2** is the owner-selected standard-profile preview with Usage
+**0.5.3** and Runtime **0.5.2**. This compatible patch preserves public APIs,
+configuration contracts and persisted formats within the 0.8 host line; no data
+migration is required. No Platform npm, Runtime npm or cats-one publication is
+selected.
+
+- **Fresh provider defaults.** Runtime Dashboard/Playground, fresh Chat/Core
+  state, Cat/Assistant and Code creation, and `/setup` Catlas use Codex as their
+  initial provider in product display order. Playground still selects the first
+  usable provider. Explicit provider/instance/model selections, saved defaults,
+  existing actors and historical missing-field snapshot normalization remain
+  intact. Existing sessions and omitted-provider execution API defaults retain
+  their established behavior.
+- **Grok and Muse quota.** The host can refresh both providers through their
+  CLI-owned account paths without reading local credentials or calling provider
+  HTTP endpoints. Grok billing connects, but the current authenticated response
+  lacks subscription allowance numbers, so its quota stays unavailable. Muse
+  native Windows with existing Git winpty reads Current/Weekly percentages from
+  an unlogged Turns 0 TUI. Native reset text is displayed without inventing an
+  exact reset instant, timezone or window duration. Muse macOS/Linux, WSL/Docker,
+  custom launcher arguments and missing-helper paths remain unsupported.
+- **SDK and App compatibility.** App SDK **1.5.0** records the compatible
+  Grok/Muse refresh capabilities and optional bounded `resetLabel`. Usage retains
+  its Platform ^0.6.0 floor, SDK ^1.2.0 range and published Platform 0.6.0 builder.
+  Older hosts retain their existing quota queries. Desktop 0.8.0 requires this
+  coordinated host/Runtime update to query Grok/Muse; replacing Usage alone does
+  not provide the collectors.
+- **Exact Runtime source.** Every OS build and complete source archive bundle
+  Runtime `a7323e2a0fd98d327558be1d05cada7669fdd1c7` (package 0.5.2), the merge
+  commit of its fresh-default fix and version preparation. Platform source is
+  the immutable merge commit selected for dispatch and recorded by the release
+  descriptor and source manifest.
+- **Exact App selection.** Bundle published Usage 0.5.3 from
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.3/usage-0.5.3.catsapp`,
+  SHA-256 `80255075c08a73a67e08c9772fa9edf381c8bc165364b81d9ad39d54ca6a3794`.
+  Its producer source is `715ae28e0d8265d850567dfc4cd370e32b313e4a`.
+  The public archive, asset digest, lock and provenance agree and match the
+  browser-accepted archive. The package validates at host 0.8.2 / SDK 1.5.0.
+  Studio remains outside the default bundle; knowledge bundles retain their
+  compatible 0.8.x ranges.
+- **Signing and updates.** Dispatch desktop-release.yml with tag=v0.8.2, the
+  immutable Runtime source above and unsigned=false; the workflow creates the
+  preview tag. Expected trust is macOS signed + notarized, Windows unsigned (no
+  certificate) for both installers, and Linux n/a for both packages. Standard
+  0.8.0 installs retain their update path across architectures: macOS uses the
+  universal ZIP and the same Developer ID team, Windows stays unsigned to
+  unsigned, and Linux uses its matching .deb. No installed upgrade is exercised
+  during release preparation.
+- **Validation.** Grok/Muse CLI → Runtime → host validation passed without a
+  model turn in the implementation PRs. Fresh/saved provider behavior and setup
+  submission passed 59 focused cases; related Chat/store/routing selection
+  passed 126 cases, and SDK public-entry/conformance passed 36 cases. Server and
+  renderer builds plus test/renderer typechecks passed. The final Usage archive
+  passed isolated acceptance in the production browser host for query actions,
+  unknown Grok quota, Muse zero-used/reset text, filters, offline/stale
+  state, host restart, narrow layout and disable behavior. Required full Runtime
+  and Platform PR CI gate merge. The Desktop workflow verifies three-OS source
+  receipts, offline App activation, isolated sidecar startup, complete source
+  downloads and update metadata before publication. Results belong to the
+  expected [v0.8.2 GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.8.2)
+  and its workflow run.
+
 ## 2026-10-14 — Desktop 0.8.1 standard preview with Kiro quota
 
 Desktop **0.8.1** is the owner-selected standard-profile preview with Usage

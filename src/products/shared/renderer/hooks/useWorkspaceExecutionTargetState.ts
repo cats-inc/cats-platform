@@ -1,5 +1,6 @@
 import { getProviderClientGeneration } from '../../../../app/renderer/providerClientInvalidation.js';
 import { getProviderCatalogRefreshVersion } from '../../../../app/renderer/providerCatalogClient.js';
+import { DEFAULT_PRODUCT_PROVIDER } from '../../../../shared/providerCatalogData.js';
 import {
   startTransition,
   useCallback,
@@ -227,7 +228,7 @@ export function createExecutionTargetValueForProvider(
 }
 
 export function createDefaultExecutionTargetValue(): ExecutionTargetValue {
-  return createExecutionTargetValueForProvider('claude');
+  return createExecutionTargetValueForProvider(DEFAULT_PRODUCT_PROVIDER);
 }
 
 export function toExecutionTargetValue(
@@ -237,7 +238,7 @@ export function toExecutionTargetValue(
     return createDefaultExecutionTargetValue();
   }
 
-  const provider = defaults.provider?.trim() || 'claude';
+  const provider = defaults.provider?.trim() || DEFAULT_PRODUCT_PROVIDER;
   const model = defaults.model === undefined
     ? ((defaults.modelSelection?.entryId ?? getDefaultModel(provider)) || null)
     : (defaults.model ?? defaults.modelSelection?.entryId ?? null);

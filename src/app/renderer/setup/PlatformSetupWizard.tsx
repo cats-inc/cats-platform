@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { PlatformHostEnvelope } from '../../../shared/platform-contract';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import { DEFAULT_PRODUCT_PROVIDER } from '../../../shared/providerCatalogData.js';
 import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../i18n/index.js';
 import {
@@ -46,7 +47,7 @@ export function PlatformSetupWizard({
   const [adminIdentifier, setAdminIdentifier] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [createGuideCat, setCreateGuideCat] = useState(false);
-  const [provider, setProvider] = useState('claude');
+  const [provider, setProvider] = useState<string>(DEFAULT_PRODUCT_PROVIDER);
   const [instance, setInstance] = useState('');
   const [model, setModel] = useState('');
   const [modelSelection, setModelSelection] = useState<ProviderModelSelection | null>(null);

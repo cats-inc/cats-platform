@@ -9,6 +9,7 @@ import type {
   NewChatEntryKind,
 } from '../api/workspaceContracts.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import { DEFAULT_PRODUCT_PROVIDER } from '../../../shared/providerCatalogData.js';
 import type {
   AssistantResponseLanguage,
   PlatformSurfaceId,
@@ -67,7 +68,7 @@ export interface CatFormState {
 export function emptyCatForm(): CatFormState {
   return {
     name: '',
-    provider: 'claude',
+    provider: DEFAULT_PRODUCT_PROVIDER,
     instance: '',
     model: '',
     modelSelection: null,
