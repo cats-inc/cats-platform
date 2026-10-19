@@ -350,7 +350,6 @@ export interface NewConversationDraftProps {
   selectedExecutionTarget?: ExecutionTargetValue;
   onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
   draftHighlightedCatId: string | null;
-  onHighlightDraftCat: (catId: string | null) => void;
   draftCatExecutionTargetOverrides: Map<string, ExecutionTargetValue>;
   onDraftCatExecutionTargetOverride: (catId: string, value: ExecutionTargetValue) => void;
   parallelTargets?: DraftParallelTarget[];
@@ -420,7 +419,6 @@ export function NewConversationDraft({
   selectedExecutionTarget,
   onExecutionTargetChange,
   draftHighlightedCatId,
-  onHighlightDraftCat,
   draftCatExecutionTargetOverrides,
   onDraftCatExecutionTargetOverride,
   parallelTargets,
@@ -537,10 +535,8 @@ export function NewConversationDraft({
     draftParticipantCount,
     hasReachedGroupParticipantLimit,
     draftSuggestionContext,
-    visibleDraftCatIds,
     visibleStarterSuggestions,
     resolvedGreeting,
-    groupDraftSelectionLabel,
     activePanelExecutionTarget,
     isAckPending,
     isSubmittingFirstTurn,
@@ -685,16 +681,6 @@ export function NewConversationDraft({
     ? resolveParallelBranchMembers(0)
     : [];
 
-  // Determine click action for single-participant chip
-  const audienceSingleClick = (() => {
-    if (isGroupDraft) return undefined;
-    if (isParallelMode) return () => openSidePanelTo('cats');
-    if (isDirectLaneContext) return () => openSidePanelTo('cats');
-    if (effectiveDefaultRecipientCat || effectiveDefaultRecipientTemporaryParticipant) {
-      return () => openSidePanelTo('cats');
-    }
-    return undefined;
-  })();
   const resolveChipTargetEditor = (
     participant: DraftComposerStackParticipant,
   ): AudienceTargetEditor | null => resolveDraftTargetEditor(participant, {
@@ -710,34 +696,15 @@ export function NewConversationDraft({
     openCatPage: (catId) => navigate(`/entities/cats/${encodeURIComponent(catId)}`),
   });
   const {
-    createTemporaryParticipantFormValue,
     sidePanelOpen,
     setSidePanelOpen,
     sidePanelSection,
     switchSection,
     openSidePanelTo,
-    temporaryParticipantFormOpen,
-    setTemporaryParticipantFormOpen,
-    editingTemporaryParticipantId,
-    editingTemporaryParticipantName,
-    setEditingTemporaryParticipantName,
-    temporaryParticipantForm,
-    setTemporaryParticipantForm,
-    submitTemporaryParticipant,
-    beginTemporaryParticipantRename,
-    cancelTemporaryParticipantRename,
-    submitTemporaryParticipantRename,
   } = useNewConversationDraftPanelState({
-    payload,
     folderBrowseCurrentPath,
     folderBrowseLoading,
     onPickFolder,
-    hasReachedGroupParticipantLimit,
-    visibleDraftCatIds,
-    chatCats,
-    draftTemporaryParticipants,
-    onAddDraftTemporaryParticipant,
-    onUpdateDraftTemporaryParticipant,
   });
   const showCancelPendingSend = isAckPending && onCancelPendingSend != null;
   const shouldRenderGroupAddRow =
@@ -834,13 +801,7 @@ export function NewConversationDraft({
           ariaLabel={t(messageKeys.chatNewChatDraftCollaborateAria)}
           disabled={isSubmittingFirstTurn}
           icon={<CollaborateIcon />}
-          onAddTemporaryParticipant={() => {
-            if (onQuickAddDraftTemporaryParticipant) {
-              onQuickAddDraftTemporaryParticipant();
-              return;
-            }
-            openSidePanelTo('cats');
-          }}
+          onAddTemporaryParticipant={() => onQuickAddDraftTemporaryParticipant?.()}
           cats={addMenuCats}
           onAddCat={(catId) => {
             if (!draftCatIds.includes(catId)) {
@@ -1123,7 +1084,6 @@ export function NewConversationDraft({
                 canRemoveParticipant={canRemoveLeadGroupParticipant}
                 useDangerRemoveHover={useDangerGroupRemoveHover}
                 resolveTargetEditor={resolveChipTargetEditor}
-                onAvatarClick={() => openSidePanelTo('cats')}
                 onRemoveParticipant={(participant) => {
                   // Parallel mode: the lead row is one branch among
                   // many. Removing here must stay branch-scoped so
@@ -1168,7 +1128,6 @@ export function NewConversationDraft({
                     : undefined)
                   : (isGroupDraft ? onSetAudienceKeys : undefined)
               }
-              onSingleClick={audienceSingleClick}
               resolveTargetEditor={resolveChipTargetEditor}
               disabled={isSubmittingFirstTurn}
               maxSelectedParticipants={
@@ -1398,34 +1357,7 @@ export function NewConversationDraft({
       className="chatPaneSidePanel"
       sections={buildDraftSidePanelSections({
         t,
-        payload,
-        chatCats,
-        draftCatIds,
-        draftHighlightedCatId,
-        effectiveDefaultRecipientCat,
-        isGroupDraft,
-        groupDraftSelectionLabel,
-        assistantPresets,
-        draftTemporaryParticipants,
-        editingTemporaryParticipantId,
-        editingTemporaryParticipantName,
-        temporaryParticipantFormOpen,
-        temporaryParticipantForm,
-        hasReachedGroupParticipantLimit,
         isSubmittingFirstTurn,
-        onToggleDraftCat,
-        onHighlightDraftCat,
-        onAddDraftTemporaryParticipant,
-        onRemoveDraftTemporaryParticipant,
-        onBeginTemporaryParticipantRename: beginTemporaryParticipantRename,
-        onCancelTemporaryParticipantRename: cancelTemporaryParticipantRename,
-        onSubmitTemporaryParticipantRename: submitTemporaryParticipantRename,
-        onEditingTemporaryParticipantNameChange: setEditingTemporaryParticipantName,
-        onTemporaryParticipantFormChange: (updater) =>
-          setTemporaryParticipantForm((current) => updater(current)),
-        createTemporaryParticipantFormValue,
-        onTemporaryParticipantFormOpenChange: setTemporaryParticipantFormOpen,
-        onSubmitTemporaryParticipant: submitTemporaryParticipant,
         folderBrowsePath,
         folderBrowseCurrentPath,
         folderBrowseParentPath,
@@ -1590,7 +1522,6 @@ export function NewConversationDraft({
                       canRemoveParticipant={canRemoveBranchRosterParticipant(branchMembers.length)}
                       useDangerRemoveHover={useDangerGroupRemoveHover}
                       resolveTargetEditor={resolveChipTargetEditor}
-                      onAvatarClick={() => openSidePanelTo('cats')}
                       onRemoveParticipant={(p) => {
                         if (!onSetParallelBranchAudienceKeys) return;
                         const nextKeys = branchMembers
@@ -1623,7 +1554,6 @@ export function NewConversationDraft({
                     ? (keys) => onSetParallelBranchAudienceKeys(branchIndex, keys)
                     : undefined
                 }
-                onSingleClick={() => openSidePanelTo('cats')}
                 resolveTargetEditor={resolveChipTargetEditor}
                 disabled={isSubmittingFirstTurn}
                 maxSelectedParticipants={maxAudienceParticipants}

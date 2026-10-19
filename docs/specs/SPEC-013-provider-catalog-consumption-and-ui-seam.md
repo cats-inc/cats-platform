@@ -662,8 +662,8 @@ dependencies.
 
 Desktop 0.7.12 and 0.7.13 (#253, #255) moved the picker for conversation and
 draft targets from the side panels into the composer chip's popover. The side
-panels no longer host a picker, except the draft's add-temporary-participant
-form, which picks the new participant's model.
+panels no longer host a picker; the draft's add-temporary-participant form went
+with the side panel's participants section under ADR-131.
 
 - The popover mounts the picker only while it is open. Opening a participant's
   picker re-stamps a stale selection; the re-stamp changes `catalogRevision`,

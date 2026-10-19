@@ -350,7 +350,6 @@ export function ConversationComposerArea({
               onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
               activeAudienceKeys={activeAudienceKeys}
               onSetActiveAudienceKeys={onSetActiveAudienceKeys}
-              onOpenSection={onOpenSection}
             />
           )}
           {voiceInputSupported ? (

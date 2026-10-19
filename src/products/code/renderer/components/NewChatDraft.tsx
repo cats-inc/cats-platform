@@ -53,10 +53,6 @@ export interface NewCodeDraftCopy {
   sidePanel?: {
     title?: string;
   };
-  participants?: {
-    sectionTitle?: string;
-    emptyState?: string;
-  };
   folder?: {
     sectionTitle?: string;
     actionLabel?: string;
@@ -75,10 +71,6 @@ export function buildNewCodeDraftCopy(
     sidePanel: {
       title: t(messageKeys.codeNewDraftSetupTitle),
     },
-    participants: {
-      sectionTitle: t(messageKeys.codeNewDraftParticipantsTitle),
-      emptyState: t(messageKeys.codeNewDraftParticipantsEmpty),
-    },
     folder: {
       sectionTitle: t(messageKeys.codeNewDraftFolderTitle),
       actionLabel: t(messageKeys.codeNewDraftFolderAction),
@@ -92,11 +84,6 @@ export function buildNewCodeChatDraftSidePanelCopy(
 ): NewConversationDraftSidePanelCopy {
   return {
     title: draftCopy.sidePanel?.title,
-    participants: {
-      catsSectionTitle: draftCopy.participants?.sectionTitle,
-      groupSectionTitle: draftCopy.participants?.sectionTitle,
-      emptyState: draftCopy.participants?.emptyState,
-    },
     folder: {
       sectionTitle: draftCopy.folder?.sectionTitle,
       emptyState: draftCopy.folder?.emptyState,

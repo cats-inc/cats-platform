@@ -125,7 +125,6 @@ export function AppRoutes({
                   onToggleActiveWorkflowShape={context.onToggleActiveWorkflowShape}
                   activeAudienceKeys={context.activeAudienceKeys}
                   onSetActiveAudienceKeys={context.onSetActiveAudienceKeys}
-                  onOpenSection={context.onOpenSection}
                   resolveTargetEditor={context.resolveTargetEditor}
                 />
               )}
@@ -202,7 +201,6 @@ export function AppRoutes({
                     onToggleActiveWorkflowShape={context.onToggleActiveWorkflowShape}
                     activeAudienceKeys={context.activeAudienceKeys}
                     onSetActiveAudienceKeys={context.onSetActiveAudienceKeys}
-                    onOpenSection={context.onOpenSection}
                     resolveTargetEditor={context.resolveTargetEditor}
                   />
                 )}

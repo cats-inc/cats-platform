@@ -17,10 +17,8 @@ export interface BranchAudienceRosterProps {
   isSubmittingFirstTurn: boolean;
   canRemoveParticipant: boolean;
   useDangerRemoveHover?: boolean;
-  /** An avatar with an editor opens that participant's model popover. */
+  /** An avatar with an editor opens that participant's popover; one without is a plain mark. */
   resolveTargetEditor?: (participant: DraftComposerStackParticipant) => AudienceTargetEditor | null;
-  /** For an avatar without an editor. */
-  onAvatarClick?: () => void;
   onRemoveParticipant: (participant: DraftComposerStackParticipant) => void;
 }
 
@@ -42,7 +40,6 @@ export function BranchAudienceRoster({
   canRemoveParticipant,
   useDangerRemoveHover = false,
   resolveTargetEditor,
-  onAvatarClick,
   onRemoveParticipant,
 }: BranchAudienceRosterProps) {
   const { t } = useI18n();
@@ -61,11 +58,9 @@ export function BranchAudienceRoster({
       {audienceParticipants.map((participant) => {
         const editor = resolveTargetEditor?.(participant) ?? null;
         const isOpen = openParticipant?.key === participant.key;
-        const activate = isSubmittingFirstTurn
+        const activate = isSubmittingFirstTurn || !editor
           ? undefined
-          : editor
-            ? () => setOpenKey(isOpen ? null : participant.key)
-            : onAvatarClick;
+          : () => setOpenKey(isOpen ? null : participant.key);
         return (
           <div key={participant.key} className="composerGroupAvatarSlot">
             <div
@@ -76,7 +71,7 @@ export function BranchAudienceRoster({
                 ? t(messageKeys.sharedAudienceChangeModelLabel, { name: participant.name })
                 : undefined}
               aria-haspopup={editor ? 'dialog' : undefined}
-              aria-expanded={editor && activate ? isOpen : undefined}
+              aria-expanded={activate ? isOpen : undefined}
               onClick={activate}
               onKeyDown={activate
                 ? (event: KeyboardEvent<HTMLDivElement>) => {

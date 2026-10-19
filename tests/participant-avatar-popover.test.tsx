@@ -104,7 +104,6 @@ test('a roster avatar opens its own participant\'s model popover above the compo
       onChange: noop,
       onOpenSettings: () => opened.push(participant.name),
     }),
-    onAvatarClick: () => assert.fail('the side panel must not open'),
     onRemoveParticipant: (participant) => removed.push(participant.name),
   });
 
@@ -147,18 +146,14 @@ test('a roster avatar opens its own participant\'s model popover above the compo
   assert.equal(view.queryByRole('dialog'), null);
 });
 
-test('a roster avatar without an editor keeps its fallback action', (t) => {
+test('a roster avatar without an editor is a plain mark', (t) => {
   reset(); t.after(reset);
-  let fallbacks = 0;
-  const view = renderRoster({
-    resolveTargetEditor: () => null,
-    onAvatarClick: () => { fallbacks += 1; },
-  });
+  const view = renderRoster({ resolveTargetEditor: () => null });
 
   const avatars = view.container.querySelectorAll('.catAvatar');
+  assert.equal(avatars[1]!.getAttribute('role'), null);
   assert.equal(view.queryByRole('button', { name: "Change Tora's model" }), null);
   fireEvent.click(avatars[1]!);
-  assert.equal(fallbacks, 1);
   assert.equal(view.queryByRole('dialog'), null);
 });
 
@@ -167,7 +162,6 @@ test('roster avatars stay inert while the first turn is being sent', (t) => {
   const view = renderRoster({
     isSubmittingFirstTurn: true,
     resolveTargetEditor: () => ({ target, onChange: noop }),
-    onAvatarClick: () => assert.fail('nothing opens while sending'),
   });
 
   fireEvent.click(view.container.querySelectorAll('.catAvatar')[1]!);
@@ -235,7 +229,6 @@ function createGroupDraftProps(overrides: Partial<NewChatDraftProps> = {}): NewC
     draftDefaultRecipientCatId: null,
     entryPreset: 'group',
     draftHighlightedCatId: null,
-    onHighlightDraftCat: noop,
     draftCatExecutionTargetOverrides: new Map(),
     onDraftCatExecutionTargetOverride: noop,
     onSetAudienceKeys: noop,

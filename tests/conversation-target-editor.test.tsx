@@ -167,28 +167,15 @@ test('group participants resolve by participant id, and only cats link to a cat 
   ), null);
 });
 
-test('the conversation side panel no longer carries an execution section', () => {
+test('the conversation side panel carries neither participants nor an execution section', () => {
   function SectionIds() {
     const sections = buildConversationSidePanelSections({
-      payload: { chat: { bossCatId: null, cats: [] } } as unknown as AppShellPayload,
       selectedChannel: { id: 'channel-1', title: 'Default Thread', topic: 'Test' } as never,
       busy: clearBusyState(),
       operatorView: null,
       operatorLoading: false,
       operatorError: '',
-      assignedCatRecords: [],
-      assignedAdhocParticipants: [],
-      defaultRecipientCatId: null,
       inspectedRun: null,
-      showAddCatButton: true,
-      editingParticipantId: null,
-      editingParticipantName: '',
-      canRenameParticipants: false,
-      onEditingParticipantNameChange: () => {},
-      onBeginParticipantRename: () => {},
-      onCancelParticipantRename: () => {},
-      onSubmitParticipantRename: () => {},
-      onCloseSidePanel: () => {},
       onInspectRun: () => {},
       onApprovalDecision: () => {},
       onOperatorAction: () => {},
@@ -196,7 +183,8 @@ test('the conversation side panel no longer carries an execution section', () =>
     return <>{sections.map((section) => section.id).join(',')}</>;
   }
   const ids = renderToStaticMarkup(<I18nProvider locale="en"><SectionIds /></I18nProvider>).split(',');
-  assert.deepEqual(ids, ['cats', 'cwd', 'operator']);
+  // Participants live on the header roster and its add button.
+  assert.deepEqual(ids, ['cwd', 'operator']);
 });
 
 test('a temporary participant in a conversation edits its name and role hint; a cat does not', () => {

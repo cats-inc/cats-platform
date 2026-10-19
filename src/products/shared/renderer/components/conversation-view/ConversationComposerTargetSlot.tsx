@@ -26,7 +26,6 @@ export interface ConversationComposerTargetSlotProps {
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys: string[] | null;
   onSetActiveAudienceKeys?: (keys: string[]) => void;
-  onOpenSection: (section: string) => void;
   resolveTargetEditor?: (participant: DraftComposerStackParticipant) => AudienceTargetEditor | null;
 }
 
@@ -38,7 +37,6 @@ function ChatComposerAudienceChip({
   activeAudienceKeys,
   onSetActiveAudienceKeys,
   maxAudienceParticipants,
-  onOpenSection,
   resolveTargetEditor,
 }: {
   composerStackParticipants: ComposerStackParticipant[];
@@ -48,7 +46,6 @@ function ChatComposerAudienceChip({
   activeAudienceKeys: string[] | null;
   onSetActiveAudienceKeys?: (keys: string[]) => void;
   maxAudienceParticipants?: number;
-  onOpenSection: (section: string) => void;
   resolveTargetEditor?: (participant: DraftComposerStackParticipant) => AudienceTargetEditor | null;
 }) {
   const allParticipants = useMemo(
@@ -71,7 +68,6 @@ function ChatComposerAudienceChip({
       audienceParticipants={audienceParticipants}
       allParticipants={allParticipants}
       onSetAudienceKeys={onSetActiveAudienceKeys}
-      onSingleClick={() => onOpenSection('cats')}
       resolveTargetEditor={resolveTargetEditor}
       disabled={composerBusy}
       maxSelectedParticipants={maxAudienceParticipants}
@@ -93,7 +89,6 @@ export function ConversationComposerTargetSlot({
   onToggleActiveWorkflowShape,
   activeAudienceKeys,
   onSetActiveAudienceKeys,
-  onOpenSection,
   resolveTargetEditor,
 }: ConversationComposerTargetSlotProps) {
   // Implicit recipient (model-only)
@@ -116,7 +111,6 @@ export function ConversationComposerTargetSlot({
     return (
       <AudienceChip
         audienceParticipants={[buildAudienceParticipantFromCat(directLaneCat)]}
-        onSingleClick={() => onOpenSection('cats')}
         resolveTargetEditor={resolveTargetEditor}
         disabled={composerBusy}
       />
@@ -134,7 +128,6 @@ export function ConversationComposerTargetSlot({
         activeAudienceKeys={activeAudienceKeys}
         onSetActiveAudienceKeys={onSetActiveAudienceKeys}
         maxAudienceParticipants={payload.chat.capabilities.maxAudienceParticipants}
-        onOpenSection={onOpenSection}
         resolveTargetEditor={resolveTargetEditor}
       />
     );
@@ -163,7 +156,6 @@ export function ConversationComposerTargetSlot({
     return (
       <AudienceChip
         audienceParticipants={participants}
-        onSingleClick={() => onOpenSection('cats')}
         resolveTargetEditor={resolveTargetEditor}
         disabled={composerBusy}
       />

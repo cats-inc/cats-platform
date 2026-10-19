@@ -1,51 +1,14 @@
 import { useState } from 'react';
-import { DEFAULT_PRODUCT_PROVIDER } from '../../../../shared/providerCatalogData.js';
 
-import type { AppShellPayload } from '../../api/workspaceContracts.js';
-import {
-  createDraftTemporaryParticipant,
-  type DraftTemporaryParticipant,
-} from '../draftChatUtils.js';
-import type { NewConversationTemporaryParticipantFormState } from './newConversationDraftSidePanel.js';
 import { shouldBrowseFolderOnDraftSidePanelSectionOpen } from './newConversationDraftSidePanelState.js';
 
 export function useNewConversationDraftPanelState(input: {
-  payload: AppShellPayload;
   folderBrowseCurrentPath: string;
   folderBrowseLoading: boolean;
   onPickFolder: () => void;
-  hasReachedGroupParticipantLimit: boolean;
-  visibleDraftCatIds: string[];
-  chatCats: AppShellPayload['chat']['cats'];
-  draftTemporaryParticipants: DraftTemporaryParticipant[];
-  onAddDraftTemporaryParticipant: (
-    participant: Omit<DraftTemporaryParticipant, 'participantId'> & {
-      participantId?: string | null;
-    },
-  ) => void;
-  onUpdateDraftTemporaryParticipant: (
-    participantId: string,
-    update: { name?: string | null; roleHint?: string | null },
-  ) => void;
 }) {
-  function createTemporaryParticipantFormValue(): NewConversationTemporaryParticipantFormState {
-    return {
-      roleHint: '',
-      provider: input.payload.chat.newChatDefaults?.provider ?? DEFAULT_PRODUCT_PROVIDER,
-      instance: input.payload.chat.newChatDefaults?.instance ?? '',
-      model: input.payload.chat.newChatDefaults?.model ?? '',
-      modelSelection: input.payload.chat.newChatDefaults?.modelSelection ?? null,
-    };
-  }
-
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
-  const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
-  const [temporaryParticipantFormOpen, setTemporaryParticipantFormOpen] = useState(false);
-  const [editingTemporaryParticipantId, setEditingTemporaryParticipantId] = useState<string | null>(null);
-  const [editingTemporaryParticipantName, setEditingTemporaryParticipantName] = useState('');
-  const [temporaryParticipantForm, setTemporaryParticipantForm] = useState<NewConversationTemporaryParticipantFormState>(
-    createTemporaryParticipantFormValue,
-  );
+  const [sidePanelSection, setSidePanelSection] = useState<string | null>('cwd');
 
   function switchSection(section: string): void {
     setSidePanelSection(section);
@@ -67,67 +30,11 @@ export function useNewConversationDraftPanelState(input: {
     switchSection(section);
   }
 
-  function submitTemporaryParticipant(): void {
-    if (input.hasReachedGroupParticipantLimit) {
-      return;
-    }
-    if (!temporaryParticipantForm.provider.trim()) {
-      return;
-    }
-
-    const takenNames = [
-      ...input.visibleDraftCatIds.map((catId) => input.chatCats.find((cat) => cat.id === catId)?.name ?? ''),
-      ...input.draftTemporaryParticipants.map((participant) => participant.name),
-    ].filter((name) => name.trim().length > 0);
-
-    input.onAddDraftTemporaryParticipant(createDraftTemporaryParticipant({
-      provider: temporaryParticipantForm.provider.trim(),
-      instance: temporaryParticipantForm.instance.trim() || undefined,
-      model: temporaryParticipantForm.model.trim() || undefined,
-      modelSelection: temporaryParticipantForm.modelSelection,
-      roleHint: temporaryParticipantForm.roleHint.trim() || undefined,
-      takenNames,
-    }));
-    setTemporaryParticipantForm(createTemporaryParticipantFormValue());
-    setTemporaryParticipantFormOpen(false);
-  }
-
-  function beginTemporaryParticipantRename(participant: DraftTemporaryParticipant): void {
-    setEditingTemporaryParticipantId(participant.participantId);
-    setEditingTemporaryParticipantName(participant.name);
-  }
-
-  function cancelTemporaryParticipantRename(): void {
-    setEditingTemporaryParticipantId(null);
-    setEditingTemporaryParticipantName('');
-  }
-
-  function submitTemporaryParticipantRename(participantId: string): void {
-    const nextName = editingTemporaryParticipantName.trim();
-    if (!nextName) {
-      return;
-    }
-    input.onUpdateDraftTemporaryParticipant(participantId, { name: nextName });
-    cancelTemporaryParticipantRename();
-  }
-
   return {
-    createTemporaryParticipantFormValue,
     sidePanelOpen,
     setSidePanelOpen,
     sidePanelSection,
     switchSection,
     openSidePanelTo,
-    temporaryParticipantFormOpen,
-    setTemporaryParticipantFormOpen,
-    editingTemporaryParticipantId,
-    editingTemporaryParticipantName,
-    setEditingTemporaryParticipantName,
-    temporaryParticipantForm,
-    setTemporaryParticipantForm,
-    submitTemporaryParticipant,
-    beginTemporaryParticipantRename,
-    cancelTemporaryParticipantRename,
-    submitTemporaryParticipantRename,
   };
 }
