@@ -315,37 +315,6 @@
   background: var(--border);
 }
 
-.catAvatarRow {
-  display: flex;
-  gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  overflow-x: auto;
-  flex-shrink: 0;
-}
-
-.catAvatarRowItem {
-  cursor: pointer;
-  opacity: 0.4;
-  transition: opacity 0.15s;
-  flex-shrink: 0;
-}
-
-.catAvatarRowItem.catAvatarBoss {
-  box-shadow: 0 0 0 2px #e8c84a;
-  outline: none;
-}
-
-.catAvatarRowItem.catAvatarRowItemSelected {
-  opacity: 1;
-}
-
-.catAvatarRowItem.catAvatarRowItemHighlighted {
-  opacity: 1;
-  outline: 2px solid #B5AFA8;
-  outline-offset: 3px;
-}
-
 .composerCatStack {
   display: flex;
   align-items: center;

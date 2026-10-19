@@ -171,15 +171,6 @@ export function resolveNewConversationDraftViewState(input: {
     }
     return pickDraftGreeting({ pool: input.greetingPool, t: input.t });
   })();
-  const groupDraftSelectionLabel = draftParticipantCount === 1
-    ? input.t(messageKeys.chatNewChatDraftGroupDraftSelectionLabelSingle)
-    : draftParticipantCount > 1
-      ? input.t(messageKeys.chatNewChatDraftGroupDraftSelectionLabelCount, {
-        count: draftParticipantCount,
-      })
-      : activeChatCats.length > 0 || assistantPresets.length > 0
-        ? input.t(messageKeys.chatNewChatDraftGroupDraftSelectionLabelWithCatsOrAssistants)
-        : input.t(messageKeys.chatNewChatDraftGroupDraftSelectionLabelWithSettings);
   const highlightedCat = input.draftHighlightedCatId && input.draftCatIds.includes(input.draftHighlightedCatId)
     ? chatCats.find((cat) => cat.id === input.draftHighlightedCatId) ?? null
     : null;
@@ -245,7 +236,6 @@ export function resolveNewConversationDraftViewState(input: {
     visibleDraftCatIds,
     visibleStarterSuggestions,
     resolvedGreeting,
-    groupDraftSelectionLabel,
     activePanelExecutionTarget,
     isAckPending,
     isSubmittingFirstTurn,

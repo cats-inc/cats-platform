@@ -148,7 +148,6 @@ function buildProps(scenario: Scenario): NewChatDraftProps {
     selectedExecutionTarget: godCatTarget,
     onExecutionTargetChange: noop,
     draftHighlightedCatId: null,
-    onHighlightDraftCat: noop,
     draftCatExecutionTargetOverrides: new Map(),
     onDraftCatExecutionTargetOverride: noop,
     parallelTargets: hasVisibleLanes ? targets : undefined,

@@ -1896,7 +1896,6 @@ export function createWorkspaceProductApp({
                     selectedExecutionTarget: draftExecutionTarget,
                     onExecutionTargetChange: onDraftExecutionTargetChange,
                     draftHighlightedCatId,
-                    onHighlightDraftCat: setDraftHighlightedCatId,
                     draftCatExecutionTargetOverrides,
                     onDraftCatExecutionTargetOverride,
                     parallelTargets:

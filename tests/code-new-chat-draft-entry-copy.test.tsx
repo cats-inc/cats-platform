@@ -93,7 +93,6 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     onDraftSurfaceChange: () => {},
     draftDefaultRecipientCatId: null,
     draftHighlightedCatId: null,
-    onHighlightDraftCat: () => {},
     draftCatExecutionTargetOverrides: new Map(),
     onDraftCatExecutionTargetOverride: () => {},
     ...overrides,
@@ -180,12 +179,7 @@ test('new code draft publishes code-specific copy overrides for the shared works
   );
   assert.equal(NEW_CODE_DRAFT_COPY.sidePanel?.title, 'New Code Setup');
   assert.equal(NEW_CODE_DRAFT_COPY.folder?.sectionTitle, 'Codespace');
-  assert.equal(NEW_CODE_DRAFT_COPY.participants?.emptyState, 'No participants available yet.');
   assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.title, 'New Code Setup');
-  assert.equal(
-    NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.participants?.groupSectionTitle,
-    'Participants',
-  );
   assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.folder?.sectionTitle, 'Codespace');
 });
 
@@ -198,45 +192,7 @@ test('new code draft resolves product-owned surfaces before shared primitive ren
 
 test('new code draft owns shared side panel sections through its product builder', () => {
   const sections = buildCodeNewChatDraftSidePanelSections({
-    payload: createPayload({ cats: [] }),
-    chatCats: [],
-    draftCatIds: [],
-    draftHighlightedCatId: null,
-    effectiveDefaultRecipientCat: null,
-    isGroupDraft: true,
-    groupDraftSelectionLabel: 'No participants selected.',
-    assistantPresets: [],
-    draftTemporaryParticipants: [],
-    editingTemporaryParticipantId: null,
-    editingTemporaryParticipantName: '',
-    temporaryParticipantFormOpen: false,
-    temporaryParticipantForm: {
-      roleHint: '',
-      provider: 'claude',
-      instance: 'native',
-      model: 'claude-sonnet',
-      modelSelection: null,
-    },
-    hasReachedGroupParticipantLimit: false,
     isSubmittingFirstTurn: false,
-    onToggleDraftCat: () => {},
-    onHighlightDraftCat: () => {},
-    onAddDraftTemporaryParticipant: () => {},
-    onRemoveDraftTemporaryParticipant: () => {},
-    onBeginTemporaryParticipantRename: () => {},
-    onCancelTemporaryParticipantRename: () => {},
-    onSubmitTemporaryParticipantRename: () => {},
-    onEditingTemporaryParticipantNameChange: () => {},
-    onTemporaryParticipantFormChange: () => {},
-    createTemporaryParticipantFormValue: () => ({
-      roleHint: '',
-      provider: 'claude',
-      instance: 'native',
-      model: 'claude-sonnet',
-      modelSelection: null,
-    }),
-    onTemporaryParticipantFormOpenChange: () => {},
-    onSubmitTemporaryParticipant: () => {},
     draftCwd: null,
     draftRuntimeSessionPolicy: {
       workspaceKind: 'worktree',
@@ -246,9 +202,6 @@ test('new code draft owns shared side panel sections through its product builder
     onDraftRuntimeSessionPolicyChange: () => {},
     onCloseSidePanel: () => {},
     sidePanelCopy: {
-      participants: {
-        emptyState: 'Chat participant fallback should not render.',
-      },
       folder: {
         emptyState: 'Chat workspace fallback should not render.',
       },
@@ -263,18 +216,16 @@ test('new code draft owns shared side panel sections through its product builder
     </>,
   );
 
-  assert.equal(sections.find((section) => section.id === 'cats')?.title, 'Participants');
-  assert.equal(sections.find((section) => section.id === 'execution'), undefined);
+  // Participants are managed on the composer, not in the side panel.
+  assert.deepEqual(sections.map((section) => section.id), ['code:session-profile', 'cwd']);
   assert.equal(
     sections.find((section) => section.id === 'code:session-profile')?.title,
     'Session Profile',
   );
   assert.equal(sections.find((section) => section.id === 'cwd')?.title, 'Codespace');
-  assert.match(markup, /No participants available yet\./u);
   assert.match(markup, /Independent worktree/u);
   assert.match(markup, /Read only/u);
   assert.match(markup, /No codespace selected yet\./u);
-  assert.doesNotMatch(markup, /Chat participant fallback should not render\./u);
   assert.doesNotMatch(markup, /Chat execution fallback should not render\./u);
   assert.doesNotMatch(markup, /Chat workspace fallback should not render\./u);
 });

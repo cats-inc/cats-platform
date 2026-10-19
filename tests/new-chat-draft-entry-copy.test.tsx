@@ -81,7 +81,6 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     autoResize: () => {},
     draftDefaultRecipientCatId: null,
     draftHighlightedCatId: null,
-    onHighlightDraftCat: () => {},
     draftCatExecutionTargetOverrides: new Map(),
     onDraftCatExecutionTargetOverride: () => {},
     draftSurface: 'chat',

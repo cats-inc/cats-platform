@@ -1869,10 +1869,6 @@ export const messageKeys = {
   chatCompareCardsPaginationItemAriaLabel: 'chat.compareCards.paginationItemAriaLabel',
   chatTopBarToggleSidePanelAriaLabel: 'chat.topBar.toggleSidePanelAriaLabel',
   chatBootLoadingAria: 'chat.boot.loadingAria',
-  chatNewChatDraftSidePanelParticipantsCatsTitle: 'chat.newChatDraft.participants.catsTitle',
-  chatNewChatDraftSidePanelParticipantsGroupTitle: 'chat.newChatDraft.participants.groupTitle',
-  chatNewChatDraftSidePanelParticipantsEmptyState:
-    'chat.newChatDraft.participants.emptyState',
   chatNewChatDraftPlanMyDayChipLabel: 'chat.newChatDraft.planMyDayChipLabel',
   chatNewChatDraftPlanMyDayPrompt: 'chat.newChatDraft.planMyDayPrompt',
   chatNewChatDraftBrainstormNameChipLabel: 'chat.newChatDraft.brainstormNameChipLabel',
@@ -1896,32 +1892,13 @@ export const messageKeys = {
   chatNewChatDraftFolderActionLabel: 'chat.newChatDraft.folderActionLabel',
   chatNewChatDraftChooseCodespaceActionLabel:
     'chat.newChatDraft.chooseCodespaceActionLabel',
-  chatNewChatDraftGroupDraftSelectionLabelSingle:
-    'chat.newChatDraft.groupDraftSelectionLabelSingle',
-  chatNewChatDraftGroupDraftSelectionLabelCount:
-    'chat.newChatDraft.groupDraftSelectionLabelCount',
-  chatNewChatDraftGroupDraftSelectionLabelWithCatsOrAssistants:
-    'chat.newChatDraft.groupDraftSelectionLabelWithCatsOrAssistants',
-  chatNewChatDraftGroupDraftSelectionLabelWithSettings:
-    'chat.newChatDraft.groupDraftSelectionLabelWithSettings',
-  chatNewChatDraftAssistantPresetAdd: 'chat.newChatDraft.assistantPresetAdd',
   chatNewChatDraftAssistantPresetReview: 'chat.newChatDraft.assistantPresetReview',
   chatNewChatDraftAssistantPresetAdded: 'chat.newChatDraft.assistantPresetAdded',
-  chatNewChatDraftTemporaryParticipantCancel:
-    'chat.newChatDraft.temporaryParticipantCancel',
   chatNewChatDraftTemporaryParticipantNameLabel: 'chat.newChatDraft.temporaryParticipantNameLabel',
-  chatNewChatDraftTemporaryParticipantNamePlaceholder:
-    'chat.newChatDraft.temporaryParticipantNamePlaceholder',
-  chatNewChatDraftTemporaryParticipantNameHint:
-    'chat.newChatDraft.temporaryParticipantNameHint',
-  chatNewChatDraftTemporaryParticipantSaveName: 'chat.newChatDraft.temporaryParticipantSaveName',
-  chatNewChatDraftTemporaryParticipantRename: 'chat.newChatDraft.temporaryParticipantRename',
-  chatNewChatDraftTemporaryParticipantRemove: 'chat.newChatDraft.temporaryParticipantRemove',
   chatNewChatDraftTemporaryParticipantRoleHintLabel:
     'chat.newChatDraft.temporaryParticipantRoleHintLabel',
   chatNewChatDraftTemporaryParticipantRoleHintPlaceholder:
     'chat.newChatDraft.temporaryParticipantRoleHintPlaceholder',
-  chatNewChatDraftTemporaryParticipantSubmit: 'chat.newChatDraft.temporaryParticipantSubmit',
   chatNewChatDraftTemporaryParticipantOpenForm:
     'chat.newChatDraft.temporaryParticipantOpenForm',
   chatApprovalQueueEyebrow: 'chat.approvalQueue.eyebrow',
@@ -2275,12 +2252,6 @@ export const messageKeys = {
   chatActivityLatestUpdatesHeading: 'chat.activityLatestUpdatesHeading',
   chatActivityEmptyState: 'chat.activityEmptyState',
   chatActivityByActor: 'chat.activityByActor',
-  chatParticipantsSectionNameLabel: 'chat.participantsSectionNameLabel',
-  chatParticipantsSectionSaveNameButton: 'chat.participantsSectionSaveNameButton',
-  chatParticipantsSectionCancelButton: 'chat.participantsSectionCancelButton',
-  chatParticipantsSectionRenameButton: 'chat.participantsSectionRenameButton',
-  chatParticipantsSectionNoParticipants:
-    'chat.participantsSectionNoParticipants',
   chatParticipantsSectionChooseCatsButton:
     'chat.participantsSectionChooseCatsButton',
   chatTranscriptMessageCheckWithOthersLabel:
@@ -3225,8 +3196,6 @@ export const messageKeys = {
   codeNewDraftGreetingSmallestChange: 'code.newDraft.greeting.smallestChange',
   codeNewDraftComposerPlaceholder: 'code.newDraft.composer.placeholder',
   codeNewDraftSetupTitle: 'code.newDraft.setupTitle',
-  codeNewDraftParticipantsTitle: 'code.newDraft.participants.title',
-  codeNewDraftParticipantsEmpty: 'code.newDraft.participants.empty',
   codeNewDraftFolderTitle: 'code.newDraft.folder.title',
   codeNewDraftFolderAction: 'code.newDraft.folder.action',
   codeNewDraftFolderEmpty: 'code.newDraft.folder.empty',

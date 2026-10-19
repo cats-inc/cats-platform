@@ -22,9 +22,9 @@ in SPEC-013.
     at least one avatar. With exactly one participant the audience cannot change
     and the order cannot move, so the UI hides that lone avatar and lets the chip
     stand in for it, opening what the avatar would open.
-- The side panel's participants section still hosts adding cats and assistant
+- The side panel's participants section hosted adding cats and assistant
   presets, the temporary-participant form with its role hint, and renaming. The
-  owner wants that section gone, with the composer carrying every participant
+  owner wanted that section gone, with the composer carrying every participant
   action.
 
 ## Decision
@@ -75,9 +75,12 @@ in SPEC-013.
    conversation exists it is an ordinary temporary participant. Keeping it
    read-only there would change the frozen Chat API contract and waits for the
    owner's decision on assistant presets.
-7. **Next: the side panel's participants section goes**, in drafts and in
-   started conversations. The side panel keeps its folder and run status
-   sections.
+7. **The side panel's participants section is gone**, in drafts and in
+   started conversations, with the temporary-participant form, its rename
+   state and the side panel's cat row. The side panel keeps its folder and run
+   status sections (and Code's session profile); nothing opens it on a
+   participant any more. The quick add names a new temporary participant
+   automatically, and its role hint is set in its avatar popover.
 
 ## Consequences
 

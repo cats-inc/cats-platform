@@ -191,7 +191,6 @@ export interface ConversationViewComposerTargetSlotContext {
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys: string[] | null;
   onSetActiveAudienceKeys?: (keys: string[]) => void;
-  onOpenSection: (section: string) => void;
   resolveTargetEditor: (participant: DraftComposerStackParticipant) => AudienceTargetEditor | null;
 }
 
@@ -424,9 +423,7 @@ export function ConversationView({
       ? 'participant_chat'
       : 'default_chat';
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
-  const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
-  const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
-  const [editingParticipantName, setEditingParticipantName] = useState('');
+  const [sidePanelSection, setSidePanelSection] = useState<string | null>('cwd');
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1280 : window.innerWidth,
   );
@@ -896,25 +893,6 @@ export function ConversationView({
     scrollToBottom();
   }, [isNearBottom, scrollToBottom, transcriptScrollKey, visibleLiveIndicator?.active]);
 
-  function beginParticipantRename(participant: ResolvedChannelParticipant): void {
-    setEditingParticipantId(participant.participantId);
-    setEditingParticipantName(participant.name);
-  }
-
-  function cancelParticipantRename(): void {
-    setEditingParticipantId(null);
-    setEditingParticipantName('');
-  }
-
-  async function submitParticipantRename(participantId: string): Promise<void> {
-    const nextName = editingParticipantName.trim();
-    if (!nextName || !onUpdateChannelParticipant) {
-      return;
-    }
-    await onUpdateChannelParticipant(participantId, { name: nextName });
-    cancelParticipantRename();
-  }
-
   // The composer chip edits the same target the send path uses: the
   // conversation's own participant target, or the default chat's target.
   // A cat's default model stays on the cat's own page.
@@ -1010,7 +988,6 @@ export function ConversationView({
     onToggleActiveWorkflowShape,
     activeAudienceKeys,
     onSetActiveAudienceKeys,
-    onOpenSection: openSidePanelTo,
     resolveTargetEditor,
   };
   const composerTargetSlot = renderComposerTargetSlot?.(composerTargetSlotContext) ?? (
@@ -1027,33 +1004,16 @@ export function ConversationView({
       onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
       activeAudienceKeys={activeAudienceKeys}
       onSetActiveAudienceKeys={onSetActiveAudienceKeys}
-      onOpenSection={openSidePanelTo}
       resolveTargetEditor={resolveTargetEditor}
     />
   );
   const sidePanelSections = (buildSidePanelSections ?? buildConversationSidePanelSections)({
-    payload,
     selectedChannel,
     busy,
     operatorView,
     operatorLoading,
     operatorError,
-    assignedCatRecords,
-    assignedAdhocParticipants,
-    defaultRecipientCatId: defaultRecipientCat?.catId ?? null,
     inspectedRun,
-    showAddCatButton,
-    editingParticipantId,
-    editingParticipantName,
-    canRenameParticipants: onUpdateChannelParticipant != null,
-    onEditingParticipantNameChange: setEditingParticipantName,
-    onBeginParticipantRename: beginParticipantRename,
-    onCancelParticipantRename: cancelParticipantRename,
-    onSubmitParticipantRename: (participantId) => {
-      void submitParticipantRename(participantId);
-    },
-    onOpenAddCat,
-    onCloseSidePanel: () => setSidePanelOpen(false),
     onInspectRun: setInspectedRunId,
     onApprovalDecision,
     onOperatorAction,
