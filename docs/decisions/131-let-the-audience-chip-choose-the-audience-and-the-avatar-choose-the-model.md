@@ -52,18 +52,30 @@ in SPEC-013.
    parallel draft the lead roster lists the lead lane's members while its chip
    picks from the shared pool, so a one-member lead lane hides its roster and
    still chooses an audience.
-4. **Next in this direction.**
-   - `+` only adds: a temporary participant, an existing cat or an existing
-     assistant preset in a draft; an existing cat in a started conversation.
-   - `×` only removes.
-   - A temporary participant's popover also edits its name and role hint.
-   - A participant added from an assistant preset is read-only in a draft. The
-     create contract (`CreateTemporaryParticipantInput`) carries no `presetId`,
-     so once the conversation exists it is an ordinary temporary participant.
-     Keeping it read-only there would change the frozen Chat API contract and
-     waits for the owner's decision on assistant presets.
-   - The side panel's participants section goes, in drafts and in started
-     conversations. The side panel keeps its folder and run status sections.
+4. **`+` only adds, `×` only removes.**
+   - In a draft, the add button opens a menu of a temporary participant,
+     existing cats and existing assistant presets, where the side panel used to
+     add them: a group draft (cats and assistants) or a parallel draft's shared
+     pool (cats). Added cats and assistants are disabled; an assistant awaiting
+     an activation review stays disabled. A full conversation disables both.
+   - The add button keeps its one-click action when no cat or assistant could
+     join, and on a new chat that it seeds into a group. When the button, its
+     hint and their tones appear is unchanged.
+   - In a started conversation, a header add button opens the existing add-cat
+     panel where the side panel's "Choose cats" did.
+   - Removing stays on each avatar's `×`.
+5. **A temporary participant's popover also edits its name and role hint.** A
+   field saves when it is left, on Enter, or when the popover closes; a name is
+   never saved empty. A cat is renamed on its own page.
+6. **A participant added from an assistant preset is read-only in a draft**: its
+   popover shows the model and role hint without fields. The create contract
+   (`CreateTemporaryParticipantInput`) carries no `presetId`, so once the
+   conversation exists it is an ordinary temporary participant. Keeping it
+   read-only there would change the frozen Chat API contract and waits for the
+   owner's decision on assistant presets.
+7. **Next: the side panel's participants section goes**, in drafts and in
+   started conversations. The side panel keeps its folder and run status
+   sections.
 
 ## Consequences
 

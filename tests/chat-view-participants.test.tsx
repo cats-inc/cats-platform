@@ -2929,3 +2929,13 @@ test('ConversationView lets each top bar participant avatar change that particip
   const readOnly = renderToStaticMarkup(<ConversationView {...createProps()} />);
   assert.doesNotMatch(readOnly, /catAvatarEditable/u);
 });
+
+test('ConversationView offers adding a cat from the header only where the conversation takes cats', () => {
+  const withAdd = renderToStaticMarkup(<ConversationView {...createProps({ onOpenAddCat: () => {} })} />);
+  assert.match(withAdd, /class="parallelAddButton channelTopBarAddButton"/u);
+
+  const withoutAdd = renderToStaticMarkup(
+    <ConversationView {...createProps({ onOpenAddCat: () => {}, showAddCatButton: false })} />,
+  );
+  assert.doesNotMatch(withoutAdd, /channelTopBarAddButton/u);
+});

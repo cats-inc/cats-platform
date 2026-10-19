@@ -73,7 +73,7 @@ test('the default chat chip edits the default target and carries start fresh', (
   }));
   assert.ok(editor);
   assert.deepEqual(editor.target, claudeOpus);
-  editor.onChange(codexSol);
+  editor.onChange?.(codexSol);
   assert.deepEqual(changes, [codexSol]);
   editor.action?.onSelect();
   assert.equal(startedFresh, 1);
@@ -106,9 +106,9 @@ test('a direct-lane cat edits the conversation\'s own participant target, never 
   assert.equal(editor.action, undefined, 'start fresh belongs to the default chat only');
 
   // The picker republishes the same target with a label; that is not a change.
-  editor.onChange({ ...claudeOpus, executionLabel: 'Claude-CLI · Opus' });
+  editor.onChange?.({ ...claudeOpus, executionLabel: 'Claude-CLI · Opus' });
   assert.deepEqual(updates, []);
-  editor.onChange(codexSol);
+  editor.onChange?.(codexSol);
   assert.deepEqual(updates, [['participant-1', codexSol]]);
 
   editor.onOpenSettings?.();
@@ -130,7 +130,7 @@ test('a direct lane without a participant yet seeds from the cat and saves throu
   );
   assert.ok(editor);
   assert.deepEqual(editor.target, codexSol);
-  editor.onChange(claudeOpus);
+  editor.onChange?.(claudeOpus);
   assert.deepEqual(saved, [['cat-1', claudeOpus]]);
 });
 
@@ -151,14 +151,14 @@ test('group participants resolve by participant id, and only cats link to a cat 
   assert.ok(temporary);
   assert.deepEqual(temporary.target, codexSol);
   assert.equal(temporary.onOpenSettings, undefined);
-  temporary.onChange(claudeOpus);
+  temporary.onChange?.(claudeOpus);
 
   const cat = resolveConversationTargetEditor(
     chip({ key: 'participant:participant-cat', name: 'Mochi', isCat: true, participantId: 'participant-cat' }),
     shared,
   );
   assert.ok(cat?.onOpenSettings);
-  cat.onChange(codexSol);
+  cat.onChange?.(codexSol);
   assert.deepEqual(updates, ['participant-temp', 'participant-cat']);
 
   assert.equal(resolveConversationTargetEditor(
@@ -197,4 +197,39 @@ test('the conversation side panel no longer carries an execution section', () =>
   }
   const ids = renderToStaticMarkup(<I18nProvider locale="en"><SectionIds /></I18nProvider>).split(',');
   assert.deepEqual(ids, ['cats', 'cwd', 'operator']);
+});
+
+test('a temporary participant in a conversation edits its name and role hint; a cat does not', () => {
+  const profiles: Array<[string, { name?: string; roleHint?: string | null }]> = [];
+  const shared = context({
+    activeRoomParticipants: [
+      { ...roomParticipant('participant-temp', null, codexSol), roleHint: 'Skeptic' },
+      roomParticipant('participant-cat', 'cat-7', claudeOpus),
+    ],
+    onUpdateParticipantTarget: () => {},
+    onUpdateParticipantProfile: (participantId, update) => profiles.push([participantId, update]),
+    openCatPage: () => {},
+  });
+  const temporary = resolveConversationTargetEditor(
+    chip({ key: 'participant:participant-temp', name: 'Reviewer', participantId: 'participant-temp' }),
+    shared,
+  );
+  assert.ok(temporary?.profile?.onSave);
+  assert.equal(temporary.profile.name, 'participant-temp');
+  assert.equal(temporary.profile.roleHint, 'Skeptic');
+  temporary.profile.onSave({ name: 'Critic' });
+  assert.deepEqual(profiles, [['participant-temp', { name: 'Critic' }]]);
+
+  const cat = resolveConversationTargetEditor(
+    chip({ key: 'participant:participant-cat', name: 'Mochi', isCat: true, participantId: 'participant-cat' }),
+    shared,
+  );
+  assert.equal(cat?.profile, undefined, 'a cat is renamed on its own page');
+
+  const readOnly = resolveConversationTargetEditor(
+    chip({ key: 'participant:participant-temp', name: 'Reviewer', participantId: 'participant-temp' }),
+    { ...shared, onUpdateParticipantProfile: undefined },
+  );
+  assert.ok(readOnly?.profile);
+  assert.equal(readOnly.profile.onSave, undefined);
 });

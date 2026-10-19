@@ -26,7 +26,10 @@ export interface DraftTargetEditorContext {
  * The draft chip edits what the new conversation will use. A parallel lane
  * edits that lane's own target. A cat's pick stays a draft override, shared
  * by every lane the cat joins and applied to the conversations once they
- * exist; the cat's own default model only changes in its settings.
+ * exist; the cat's own default model only changes in its settings. A
+ * temporary participant also edits its name and role hint, except one added
+ * from an assistant preset, which keeps the preset's until the conversation
+ * exists.
  */
 export function resolveDraftTargetEditor(
   participant: DraftComposerStackParticipant,
@@ -69,18 +72,30 @@ export function resolveDraftTargetEditor(
   if (!temporary) {
     return null;
   }
+  const target: ExecutionTargetValue = {
+    provider: temporary.provider,
+    instance: temporary.instance ?? null,
+    model: temporary.model ?? null,
+    modelSelection: temporary.modelSelection ?? null,
+  };
+  const profile = { name: temporary.name, roleHint: temporary.roleHint ?? null };
+  if (temporary.presetId) {
+    return { target, profile };
+  }
   return {
-    target: {
-      provider: temporary.provider,
-      instance: temporary.instance ?? null,
-      model: temporary.model ?? null,
-      modelSelection: temporary.modelSelection ?? null,
-    },
+    target,
     onChange: (value) => context.onUpdateDraftTemporaryParticipant(temporary.participantId, {
       provider: value.provider,
       instance: value.instance,
       model: value.model,
       modelSelection: value.modelSelection,
     }),
+    profile: {
+      ...profile,
+      onSave: (update) => context.onUpdateDraftTemporaryParticipant(
+        temporary.participantId,
+        update,
+      ),
+    },
   };
 }

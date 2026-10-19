@@ -45,7 +45,7 @@ test('a parallel lane chip edits that lane\'s own target', () => {
   }));
   assert.ok(editor);
   assert.deepEqual(editor.target, codex);
-  editor.onChange(claude);
+  editor.onChange?.(claude);
   assert.deepEqual(changes, [[1, claude]]);
   assert.equal(editor.onOpenSettings, undefined);
 
@@ -65,7 +65,7 @@ test('a draft cat edits a draft override that starts from the cat default', () =
   }));
   assert.ok(fresh);
   assert.deepEqual(fresh.target, claude);
-  fresh.onChange(codex);
+  fresh.onChange?.(codex);
   assert.deepEqual(overrides, [['mochi', codex]]);
   fresh.onOpenSettings?.();
   assert.deepEqual(opened, ['mochi']);
@@ -84,6 +84,35 @@ test('a draft temporary participant edits its own target', () => {
   }));
   assert.ok(editor);
   assert.equal(editor.target.provider, 'codex');
-  editor.onChange(claude);
+  editor.onChange?.(claude);
   assert.deepEqual(updates, [['helper', { provider: 'claude', instance: 'native', model: 'opus', modelSelection: null }]]);
+});
+
+test('a draft temporary participant edits its own name and role hint', () => {
+  const updates: Array<[string, DraftTemporaryParticipantUpdate]> = [];
+  const editor = resolveDraftTargetEditor(chip('temp:helper', { participantId: 'helper' }), context({
+    draftTemporaryParticipants: [{
+      participantId: 'helper', name: 'Helper', provider: 'codex', model: 'gpt-5.6-sol', roleHint: 'Skeptic',
+    }],
+    onUpdateDraftTemporaryParticipant: (participantId, input) => updates.push([participantId, input]),
+  }));
+  assert.ok(editor?.profile?.onSave);
+  assert.equal(editor.profile.name, 'Helper');
+  assert.equal(editor.profile.roleHint, 'Skeptic');
+  editor.profile.onSave({ name: 'Critic' });
+  editor.profile.onSave({ roleHint: null });
+  assert.deepEqual(updates, [['helper', { name: 'Critic' }], ['helper', { roleHint: null }]]);
+});
+
+test('a participant added from an assistant preset is read-only in the draft', () => {
+  const editor = resolveDraftTargetEditor(chip('temp:reviewer', { participantId: 'reviewer' }), context({
+    draftTemporaryParticipants: [{
+      participantId: 'reviewer', presetId: 'preset-reviewer', name: 'Reviewer', provider: 'claude',
+      model: 'opus', roleHint: 'Reviews diffs',
+    }],
+  }));
+  assert.ok(editor);
+  assert.equal(editor.target.provider, 'claude');
+  assert.equal(editor.onChange, undefined, 'its model changes on the assistant, not here');
+  assert.deepEqual(editor.profile, { name: 'Reviewer', roleHint: 'Reviews diffs' });
 });

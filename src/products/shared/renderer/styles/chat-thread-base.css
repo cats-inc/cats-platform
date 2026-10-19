@@ -220,6 +220,11 @@
   position: relative;
 }
 
+.channelTopBarAddButton {
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
 /* Lifts the open popover above the docked composer, which shares z-index 5. */
 .channelTopBar.channelTopBarPopoverOpen {
   z-index: 12;

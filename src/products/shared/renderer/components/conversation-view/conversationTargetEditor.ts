@@ -18,6 +18,11 @@ export interface ConversationTargetEditorContext {
   onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
   onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
   onUpdateParticipantTarget?: (participantId: string, value: ExecutionTargetValue) => void;
+  /** Saves a temporary participant's name or role hint. */
+  onUpdateParticipantProfile?: (
+    participantId: string,
+    update: { name?: string; roleHint?: string | null },
+  ) => void;
   /** The default chat's start-fresh action, shown under its picker. */
   startFresh?: AudienceTargetEditor['action'];
   openCatPage: (catId: string) => void;
@@ -26,7 +31,8 @@ export interface ConversationTargetEditorContext {
 /**
  * The composer chip edits the same target the send path uses: the
  * conversation's own participant target, or the default chat's target. A
- * cat's default model stays on the cat's own page.
+ * cat's default model stays on the cat's own page; a temporary participant
+ * also edits its name and role hint here.
  */
 export function resolveConversationTargetEditor(
   participant: DraftComposerStackParticipant,
@@ -59,6 +65,7 @@ export function resolveConversationTargetEditor(
       modelSelection: roomParticipant.execution.modelSelection ?? null,
     };
     const catId = resolveParticipantCatId(roomParticipant);
+    const onUpdateParticipantProfile = context.onUpdateParticipantProfile;
     return {
       target,
       onChange: (value) => {
@@ -68,6 +75,15 @@ export function resolveConversationTargetEditor(
         }
       },
       onOpenSettings: catId ? () => context.openCatPage(catId) : undefined,
+      profile: catId
+        ? undefined
+        : {
+            name: roomParticipant.name,
+            roleHint: roomParticipant.roleHint ?? null,
+            onSave: onUpdateParticipantProfile
+              ? (update) => onUpdateParticipantProfile(roomParticipant.participantId, update)
+              : undefined,
+          },
     };
   }
   const { directLaneCat, directLaneExecutionTarget, onDirectLaneExecutionTargetChange } = context;

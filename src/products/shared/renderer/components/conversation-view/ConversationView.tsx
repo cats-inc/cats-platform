@@ -940,6 +940,11 @@ export function ConversationView({
               });
             }
           : undefined,
+        onUpdateParticipantProfile: onUpdateChannelParticipant
+          ? (participantId, update) => {
+              void onUpdateChannelParticipant(participantId, update);
+            }
+          : undefined,
         startFresh: onStartFresh
           ? {
               label: startFreshBusy
@@ -1117,6 +1122,9 @@ export function ConversationView({
           approvalCount={operatorView?.approvals.length ?? 0}
           extraActions={topBarExtraActions}
           onToggleSidePanel={() => setSidePanelOpen(!sidePanelOpen)}
+          onAddParticipant={showAddCatButton && onOpenAddCat && !isDirectLane
+            ? onOpenAddCat
+            : undefined}
           onOpenCatProfile={
             isDirectLane && defaultRecipientCat?.catId
               ? () =>

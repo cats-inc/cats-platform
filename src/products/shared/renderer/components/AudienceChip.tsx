@@ -14,10 +14,20 @@ import {
   useDismissablePopover,
 } from './ParticipantTargetPopover.js';
 
+/** A temporary participant's own name and role hint. */
+export interface ParticipantProfileEditor {
+  name: string;
+  roleHint: string | null;
+  /** Saves a changed name or role hint; absent when both are read-only. */
+  onSave?: (update: { name?: string; roleHint?: string | null }) => void;
+}
+
 /** The model a participant answers with in this conversation, and how to change it. */
 export interface AudienceTargetEditor {
   target: ExecutionTargetValue;
-  onChange: (value: ExecutionTargetValue) => void;
+  /** Absent when the model only changes at its source, such as an assistant preset. */
+  onChange?: (value: ExecutionTargetValue) => void;
+  profile?: ParticipantProfileEditor;
   /** Opens the cat's own page, where its default model lives. */
   onOpenSettings?: () => void;
   /** One conversation-level action shown under the picker, e.g. start fresh. */
