@@ -2,6 +2,57 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-20 — Desktop 0.8.3 standard preview with refreshed model catalogs
+
+Desktop **0.8.3** is the owner-selected standard-profile preview with Runtime
+**0.5.3** and Usage **0.5.3**. Platform source is unchanged since Desktop 0.8.2;
+this compatible patch delivers Runtime's refreshed model catalogs. Public APIs,
+configuration contracts and persisted formats remain compatible within the 0.8
+host line, and no data migration is required. No Platform npm, Runtime npm or
+cats-one publication is selected.
+
+- **Model menus.** Antigravity (agy 1.4.2) adds Gemini 4 Argon with a
+  low/medium/high effort control as its first entry, so a fresh agy selection
+  starts at Gemini 4 Argon low; Argon execution was not exercised. Codex
+  gpt-6.1-sol's context limit rises to 500000 (Codex 0.163.0). Grok's four
+  models show 256000, the window a Grok 1.0.62 session starts with; its 500K
+  window can be chosen only in the Grok TUI, and Desktop has no window control.
+  Claude (2.1.303) and Muse (1.4.10) keep their models, efforts and defaults.
+  Saved selections and existing sessions keep their resolved models. A profile
+  without a catalog override adopts the new factory; an operator override keeps
+  its own scopes (Runtime #172, #173).
+- **Exact Runtime source.** Every OS build and complete source archive bundle
+  Runtime `367f99d4d9488054954cecc08e8ed199a3441df0` (package 0.5.3), the merge commit of its
+  version preparation. Platform source is the immutable merge commit selected
+  for dispatch and recorded by the release descriptor and source manifest.
+- **Exact App selection.** Usage 0.5.3 stays selected from
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.3/usage-0.5.3.catsapp`,
+  SHA-256 `80255075c08a73a67e08c9772fa9edf381c8bc165364b81d9ad39d54ca6a3794`,
+  producer source `715ae28e0d8265d850567dfc4cd370e32b313e4a`. The public
+  download matches the lock, and its Platform ^0.6.0 and SDK ^1.2.0 ranges
+  accept host 0.8.3 / SDK 1.5.0. The App SDK is unchanged at 1.5.0. Studio
+  remains outside the default bundle; knowledge bundles retain their compatible
+  0.8.x ranges.
+- **Signing and updates.** Dispatch desktop-release.yml with tag=v0.8.3, the
+  Runtime SHA above and unsigned=false; the workflow creates the preview tag.
+  Expected trust is macOS signed + notarized, Windows unsigned (no certificate)
+  for both installers, and Linux n/a for both packages. Standard-profile 0.8.2
+  installs retain their update path across architectures: macOS uses the
+  universal ZIP and the same Developer ID team, Windows stays unsigned to
+  unsigned, and Linux uses its matching .deb. No installed upgrade is exercised
+  during release preparation.
+- **Validation.** The catalog refresh passed catalog generation/check, probe
+  validation of all five scopes, its focused catalog, model, Playground and
+  runtime-server suites, typecheck and release-preflight in Runtime #172; the
+  Runtime 0.5.3 version change passed release-preflight. This preparation
+  changes only version fields and notes, and the public Usage archive was
+  checked against the lock and host 0.8.3 / SDK 1.5.0. Required Platform PR CI
+  gates the merge. The Desktop workflow verifies three-OS source receipts,
+  offline App activation, isolated sidecar startup, complete source downloads
+  and update metadata before publication. Results belong to the
+  [v0.8.3 GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.8.3)
+  and its workflow run.
+
 ## 2026-10-15 — Desktop 0.8.2 standard preview with fresh Codex defaults and Usage
 
 Desktop **0.8.2** is the owner-selected standard-profile preview with Usage
