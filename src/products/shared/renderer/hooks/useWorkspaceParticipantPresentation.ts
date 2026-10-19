@@ -149,7 +149,6 @@ export function useWorkspaceParticipantPresentation(options: {
     participant: ResolvedChannelParticipant,
     options: {
       transcript?: boolean;
-      composer?: boolean;
       catRecord?: ChatCat | null;
     } = {},
   ): string {
@@ -157,7 +156,6 @@ export function useWorkspaceParticipantPresentation(options: {
     return [
       'catAvatar',
       options.transcript ? 'transcriptAvatar' : '',
-      options.composer ? 'composerStackAvatar' : '',
       catRecord?.id === payload.chat.bossCatId ? 'catAvatarBoss' : '',
       participantUsesNeutralAvatar(participant, catRecord) ? 'channelParticipantAvatar' : '',
     ].filter(Boolean).join(' ');

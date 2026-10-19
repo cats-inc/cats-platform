@@ -65,12 +65,6 @@
   color: #fff;
 }
 
-.composerCatStack .composerStackAvatar {
-  width: 28px;
-  height: 28px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-}
-
 /* Composer Recipient Chip */
 
 .composerRecipientChip {
