@@ -249,10 +249,23 @@
   justify-content: flex-end;
 }
 
+/* Anchors a participant's model popover to the roster's start edge. */
+.composerGroupRoster {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .composerGroupAvatarSlot {
   position: relative;
   flex-shrink: 0;
   cursor: pointer;
+}
+
+.composerGroupAvatarSlot .catAvatar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .composerGroupAvatarSlot .catAvatar {
@@ -421,6 +434,17 @@
   padding: 4px;
 }
 
+/* A participant avatar's popover opens from the avatar's own edge. */
+.audiencePopoverStart {
+  right: auto;
+  left: 0;
+}
+
+.audiencePopoverBelow {
+  top: calc(100% + 8px);
+  bottom: auto;
+}
+
 .audiencePopoverHeader {
   padding: 6px 10px 4px;
   color: var(--muted);
@@ -499,41 +523,6 @@
   accent-color: var(--accent);
 }
 
-/* Rows whose model can be changed drill into the picker in place. */
-.audiencePopover:has(.audiencePopoverRowButton) {
-  min-width: 300px;
-}
-
-.audiencePopoverRowButton {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.audiencePopoverModel {
-  min-width: 0;
-  max-width: 55%;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 0.75rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.audiencePopoverRowChevron {
-  flex-shrink: 0;
-  color: var(--muted);
-}
-
 .audiencePopoverEditor {
   width: min(340px, calc(100vw - 32px));
   max-height: min(70vh, 520px);
@@ -546,24 +535,6 @@
   align-items: center;
   gap: 8px;
   padding-bottom: 10px;
-}
-
-.audiencePopoverBack {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  margin-left: -4px;
-  place-items: center;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.audiencePopoverBack:hover {
-  background: var(--panel-hover);
-  color: var(--text);
 }
 
 .audiencePopoverEditorFields {

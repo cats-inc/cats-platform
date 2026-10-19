@@ -642,8 +642,9 @@ Attention marks (second change, confirmed by the owner):
 
 Known limits:
 
-- **Not marked.** Group-chat composer chips and the participant rows in their
-  popover do not mark cat participants (the header roster does). Draft composer
+- **Not marked.** Group-chat composer chips, the audience rows in their popover
+  and the draft roster's avatars do not mark cat participants (the header
+  roster does). Draft composer
   chips are not marked either, and assistant presets are deferred.
 - **No write-back.** Code relay rosters need none because their mounted pickers
   re-stamp when shown. Catlas does not write back, because changing `guideCat`
@@ -677,6 +678,15 @@ form, which picks the new participant's model.
   are reused across a re-stamp (see above).
 - The same launch path saves a default chat's re-stamped target, which the
   app-level reconcile also re-stamps.
+
+### Participant avatar hosts (2026-10-20)
+
+[ADR-131](../decisions/131-let-the-audience-chip-choose-the-audience-and-the-avatar-choose-the-model.md)
+moves a participant's picker from the chip's audience rows to the participant's
+avatar: the draft composer roster, and the header roster of a started
+conversation. The audience rows no longer list models or open a picker. A lone
+participant's chip still opens its popover. The avatar popover mounts the
+picker only while it is open, so the re-stamp notes above apply unchanged.
 
 ## Open Questions
 

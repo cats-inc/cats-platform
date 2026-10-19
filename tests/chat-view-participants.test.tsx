@@ -2916,3 +2916,16 @@ test('ConversationView keeps transcript stack layout and hover-only user copy ac
   assert.match(markup, /messageActions messageActionsHoverOnly/u);
   assert.match(markup, /messageActions messageActionsPersistent/u);
 });
+
+test('ConversationView lets each top bar participant avatar change that participant\'s model', () => {
+  const editable = renderToStaticMarkup(
+    <ConversationView {...createProps({ onUpdateChannelParticipant: async () => {} })} />,
+  );
+  assert.equal((editable.match(/catAvatarEditable/gu) ?? []).length, 2);
+  assert.match(editable, /aria-label="Change Inline Reviewer&#x27;s model"/u);
+  assert.match(editable, /aria-label="Change Runtime Verifier&#x27;s model"/u);
+
+  // Without a way to save the participant's target there is nothing to open.
+  const readOnly = renderToStaticMarkup(<ConversationView {...createProps()} />);
+  assert.doesNotMatch(readOnly, /catAvatarEditable/u);
+});

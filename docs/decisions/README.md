@@ -52,6 +52,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
+| [ADR-131](131-let-the-audience-chip-choose-the-audience-and-the-avatar-choose-the-model.md) | Let the Audience Chip Choose the Audience and the Avatar Choose the Model | Accepted; amends SPEC-013 composer popover hosts | 2026-10-20 |
 | [ADR-130](130-ship-per-architecture-windows-and-linux-desktop-installers.md) | Ship Per-Architecture Windows and Linux Desktop Installers | Accepted; amends ADR-108 section 6 | 2026-10-13 |
 | [ADR-129](129-keep-direct-messages-in-chat-and-share-one-conversation-draft.md) | Keep Direct Messages in Chat and Share One Conversation Draft | Accepted; supersedes ADR-067 | 2026-10-03 |
 | [ADR-127](127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md) | Keep Companion Cats Alive with a Platform-Owned Life Loop | Accepted; implemented via PLAN-117 | 2026-09-29 |
@@ -182,7 +183,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-10-13 (ADR-130 ships per-architecture Windows and Linux Desktop installers.)*
+*Last updated: 2026-10-20 (ADR-131 lets the audience chip choose the audience and the avatar choose the model.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*
 

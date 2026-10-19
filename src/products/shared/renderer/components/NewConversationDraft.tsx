@@ -1062,6 +1062,7 @@ export function NewConversationDraft({
                 isSubmittingFirstTurn={isSubmittingFirstTurn}
                 canRemoveParticipant={canRemoveLeadGroupParticipant}
                 useDangerRemoveHover={useDangerGroupRemoveHover}
+                resolveTargetEditor={resolveChipTargetEditor}
                 onAvatarClick={() => openSidePanelTo('cats')}
                 onRemoveParticipant={(participant) => {
                   // Parallel mode: the lead row is one branch among
@@ -1528,6 +1529,7 @@ export function NewConversationDraft({
                       isSubmittingFirstTurn={isSubmittingFirstTurn}
                       canRemoveParticipant={canRemoveBranchRosterParticipant(branchMembers.length)}
                       useDangerRemoveHover={useDangerGroupRemoveHover}
+                      resolveTargetEditor={resolveChipTargetEditor}
                       onAvatarClick={() => openSidePanelTo('cats')}
                       onRemoveParticipant={(p) => {
                         if (!onSetParallelBranchAudienceKeys) return;

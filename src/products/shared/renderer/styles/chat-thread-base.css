@@ -215,6 +215,31 @@
   margin-left: 0;
 }
 
+/* The conversation's avatars open their participant's model popover. */
+.channelTopBarStart .rosterAvatars {
+  position: relative;
+}
+
+/* Lifts the open popover above the docked composer, which shares z-index 5. */
+.channelTopBar.channelTopBarPopoverOpen {
+  z-index: 12;
+}
+
+.channelTopBarStart .catAvatarEditable {
+  cursor: pointer;
+  transition: margin-left 0.2s ease, filter 150ms ease, transform 150ms ease;
+}
+
+.channelTopBarStart .catAvatarEditable:hover {
+  filter: brightness(0.88);
+  transform: scale(1.08);
+}
+
+.channelTopBarStart .catAvatarEditable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .catAvatar {
   display: grid;
   width: 28px;

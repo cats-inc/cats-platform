@@ -1,6 +1,9 @@
-import type { ReactNode } from 'react';
+import { type KeyboardEvent, type ReactNode, useCallback, useState } from 'react';
 
 import { catInitials } from '../../workspaceChatUtils.js';
+import type { AudienceTargetEditor } from '../AudienceChip.js';
+import type { DraftComposerStackParticipant } from '../newConversationDraftSupport.js';
+import { ParticipantTargetPopover, useDismissablePopover } from '../ParticipantTargetPopover.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import { CatAvatarSelectionAttention } from '../../../../../app/renderer/SavedSelectionAvatarAttention.js';
@@ -19,6 +22,21 @@ export interface ConversationViewTopBarAvatar {
   /** A cat participant and the model copy this chat runs for it. */
   catId?: string | null;
   selectionTarget?: SavedSelectionTarget | null;
+  /** The model this conversation runs for the participant; its avatar opens the picker. */
+  editor?: AudienceTargetEditor | null;
+}
+
+function toPopoverParticipant(avatar: ConversationViewTopBarAvatar): DraftComposerStackParticipant {
+  return {
+    key: avatar.key,
+    name: avatar.label,
+    executionLabel: avatar.executionLabel ?? null,
+    avatarColor: avatar.avatarColor,
+    avatarUrl: avatar.avatarUrl,
+    isCat: !avatar.useNeutralAvatar,
+    catId: avatar.catId ?? null,
+    participantId: null,
+  };
 }
 
 export interface ConversationViewTopBarProps {
@@ -49,12 +67,22 @@ export function ConversationViewTopBar({
   onOpenCatProfile,
 }: ConversationViewTopBarProps) {
   const { t } = useI18n();
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const closePopover = useCallback(() => setOpenKey(null), []);
+  const rosterRef = useDismissablePopover(openKey != null, closePopover);
+  const openAvatar = showRosterAvatars
+    ? avatars.find((avatar) => avatar.key === openKey && avatar.editor) ?? null
+    : null;
   return (
-    <header className="channelTopBar">
+    <header className={openAvatar ? 'channelTopBar channelTopBarPopoverOpen' : 'channelTopBar'}>
       <div className="channelTopBarStart">
         {showRosterAvatars ? (
-          <div className="rosterAvatars rosterAvatarsExpanded">
+          <div className="rosterAvatars rosterAvatarsExpanded" ref={rosterRef}>
             {avatars.map((avatar) => {
+              const isOpen = openAvatar?.key === avatar.key;
+              const toggle = avatar.editor
+                ? () => setOpenKey(isOpen ? null : avatar.key)
+                : undefined;
               return (
                 <div
                   key={avatar.key}
@@ -62,10 +90,29 @@ export function ConversationViewTopBar({
                     avatar.isBoss ? 'catAvatar catAvatarBoss' : 'catAvatar',
                     avatar.useNeutralAvatar ? 'channelParticipantAvatar' : '',
                     avatar.pulsing ? 'catAvatarPulsing' : '',
+                    toggle ? 'catAvatarEditable' : '',
                   ].filter(Boolean).join(' ')}
-                  data-tooltip={avatar.useNeutralAvatar
-                    ? (avatar.executionLabel || avatar.label)
-                    : (avatar.executionLabel ? `${avatar.label} · ${avatar.executionLabel}` : avatar.label)}
+                  role={toggle ? 'button' : undefined}
+                  tabIndex={toggle ? 0 : undefined}
+                  aria-label={toggle
+                    ? t(messageKeys.sharedAudienceChangeModelLabel, { name: avatar.label })
+                    : undefined}
+                  aria-haspopup={toggle ? 'dialog' : undefined}
+                  aria-expanded={toggle ? isOpen : undefined}
+                  onClick={toggle}
+                  onKeyDown={toggle
+                    ? (event: KeyboardEvent<HTMLDivElement>) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          toggle();
+                        }
+                      }
+                    : undefined}
+                  data-tooltip={isOpen
+                    ? undefined
+                    : avatar.useNeutralAvatar
+                      ? (avatar.executionLabel || avatar.label)
+                      : (avatar.executionLabel ? `${avatar.label} · ${avatar.executionLabel}` : avatar.label)}
                   style={avatar.avatarUrl
                     ? { backgroundImage: `url(${avatar.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                     : !avatar.useNeutralAvatar && avatar.avatarColor
@@ -80,6 +127,15 @@ export function ConversationViewTopBar({
                 </div>
               );
             })}
+            {openAvatar?.editor ? (
+              <ParticipantTargetPopover
+                participant={toPopoverParticipant(openAvatar)}
+                editor={openAvatar.editor}
+                showIdentity
+                placement="below-start"
+                onClose={closePopover}
+              />
+            ) : null}
           </div>
         ) : null}
       </div>

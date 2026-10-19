@@ -1091,6 +1091,19 @@ export function ConversationView({
             useNeutralAvatar: participant.useNeutralAvatar,
             catId: participant.pulseCatId,
             selectionTarget: participant.selectionTarget,
+            // An avatar edits this conversation's target for its participant.
+            // The default chat's implicit target has no avatar; it stays on
+            // the composer chip.
+            editor: resolveTargetEditor({
+              key: participant.key,
+              name: participant.label,
+              executionLabel: participant.executionLabel,
+              avatarColor: participant.avatarColor,
+              avatarUrl: participant.avatarUrl,
+              isCat: participant.pulseCatId != null,
+              catId: participant.pulseCatId,
+              participantId: participant.pulseParticipantId,
+            }),
             pulsing: Boolean(
               (participant.pulseParticipantId
                 && activeTopBarParticipantIdSet.has(participant.pulseParticipantId))
