@@ -671,7 +671,8 @@ but at least one must be present (`400 participant_update_required`):
 - `name`, `roleHint` — the ad-hoc participant profile.
 - `provider`, `instance`, `model`, `modelSelection` — **this conversation's
   own execution target** for the participant, i.e. the assignment target the
-  send path uses and the composer chip shows. This is distinct from the cat
+  send path uses and the participant's avatar (or a lone participant's
+  composer chip) shows. This is distinct from the cat
   profile default (`PATCH /api/cats/{catId}`), which every conversation with
   that cat shares and which only seeds a conversation that has not chosen
   yet. `provider` must be a non-empty string

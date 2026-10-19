@@ -1,5 +1,14 @@
+import { type KeyboardEvent, useCallback, useState } from 'react';
+
 import { catInitials } from '../workspaceChatUtils.js';
+import type { AudienceTargetEditor } from './AudienceChip.js';
 import type { DraftComposerStackParticipant } from './newConversationDraftSupport.js';
+import {
+  buildAudienceAvatarStyle,
+  buildParticipantTooltip,
+  ParticipantTargetPopover,
+  useDismissablePopover,
+} from './ParticipantTargetPopover.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
@@ -8,6 +17,9 @@ export interface BranchAudienceRosterProps {
   isSubmittingFirstTurn: boolean;
   canRemoveParticipant: boolean;
   useDangerRemoveHover?: boolean;
+  /** An avatar with an editor opens that participant's model popover. */
+  resolveTargetEditor?: (participant: DraftComposerStackParticipant) => AudienceTargetEditor | null;
+  /** For an avatar without an editor. */
   onAvatarClick?: () => void;
   onRemoveParticipant: (participant: DraftComposerStackParticipant) => void;
 }
@@ -29,56 +41,81 @@ export function BranchAudienceRoster({
   isSubmittingFirstTurn,
   canRemoveParticipant,
   useDangerRemoveHover = false,
+  resolveTargetEditor,
   onAvatarClick,
   onRemoveParticipant,
 }: BranchAudienceRosterProps) {
   const { t } = useI18n();
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const closePopover = useCallback(() => setOpenKey(null), []);
+  const rosterRef = useDismissablePopover(openKey != null, closePopover);
   if (audienceParticipants.length <= 1) return null;
+
+  const openParticipant = isSubmittingFirstTurn
+    ? null
+    : audienceParticipants.find((participant) => participant.key === openKey) ?? null;
+  const openEditor = openParticipant ? resolveTargetEditor?.(openParticipant) ?? null : null;
+
   return (
-    <>
-      {audienceParticipants.map((participant) => (
-        <div key={participant.key} className="composerGroupAvatarSlot">
-          <div
-            className="catAvatar"
-            role={isSubmittingFirstTurn ? undefined : 'button'}
-            tabIndex={isSubmittingFirstTurn ? undefined : 0}
-            onClick={isSubmittingFirstTurn ? undefined : onAvatarClick}
-            data-tooltip={participant.isCat && participant.executionLabel
-              ? `${participant.name} \u00b7 ${participant.executionLabel}`
-              : (participant.executionLabel || participant.name)}
-            style={
-              participant.avatarUrl
-                ? {
-                    backgroundImage: `url(${participant.avatarUrl})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                  }
-                : participant.isCat
-                  ? { background: participant.avatarColor ?? '#8B7E74' }
-                  : {
-                      background: '#fff',
-                      color: '#222',
-                      border: '1px solid rgba(0, 0, 0, 0.15)',
+    <div className="composerGroupRoster" ref={rosterRef}>
+      {audienceParticipants.map((participant) => {
+        const editor = resolveTargetEditor?.(participant) ?? null;
+        const isOpen = openParticipant?.key === participant.key;
+        const activate = isSubmittingFirstTurn
+          ? undefined
+          : editor
+            ? () => setOpenKey(isOpen ? null : participant.key)
+            : onAvatarClick;
+        return (
+          <div key={participant.key} className="composerGroupAvatarSlot">
+            <div
+              className="catAvatar"
+              role={activate ? 'button' : undefined}
+              tabIndex={activate ? 0 : undefined}
+              aria-label={editor
+                ? t(messageKeys.sharedAudienceChangeModelLabel, { name: participant.name })
+                : undefined}
+              aria-haspopup={editor ? 'dialog' : undefined}
+              aria-expanded={editor && activate ? isOpen : undefined}
+              onClick={activate}
+              onKeyDown={activate
+                ? (event: KeyboardEvent<HTMLDivElement>) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      activate();
                     }
-            }
-          >
-            {participant.avatarUrl ? null : catInitials(participant.name)}
-          </div>
-          {canRemoveParticipant ? (
-            <button
-              type="button"
-              className={`composerGroupAvatarRemove${useDangerRemoveHover ? ' composerGroupAvatarRemoveDanger' : ''}`}
-              aria-label={t(messageKeys.chatAudienceRemoveParticipantAria, {
-                name: participant.name,
-              })}
-              disabled={isSubmittingFirstTurn}
-              onClick={() => onRemoveParticipant(participant)}
+                  }
+                : undefined}
+              data-tooltip={isOpen ? undefined : buildParticipantTooltip(participant, editor)}
+              style={buildAudienceAvatarStyle(participant)}
             >
-              &times;
-            </button>
-          ) : null}
-        </div>
-      ))}
-    </>
+              {participant.avatarUrl ? null : catInitials(participant.name)}
+            </div>
+            {canRemoveParticipant ? (
+              <button
+                type="button"
+                className={`composerGroupAvatarRemove${useDangerRemoveHover ? ' composerGroupAvatarRemoveDanger' : ''}`}
+                aria-label={t(messageKeys.chatAudienceRemoveParticipantAria, {
+                  name: participant.name,
+                })}
+                disabled={isSubmittingFirstTurn}
+                onClick={() => onRemoveParticipant(participant)}
+              >
+                &times;
+              </button>
+            ) : null}
+          </div>
+        );
+      })}
+      {openParticipant && openEditor ? (
+        <ParticipantTargetPopover
+          participant={openParticipant}
+          editor={openEditor}
+          showIdentity
+          placement="above-start"
+          onClose={closePopover}
+        />
+      ) : null}
+    </div>
   );
 }

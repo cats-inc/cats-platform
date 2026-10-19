@@ -2307,7 +2307,6 @@ export const enCatalog: MessageCatalog = {
   'shared.audience.workflowConcurrent': 'Concurrent',
   'shared.audience.switchToSequentialModeLabel': 'Switch to sequential mode',
   'shared.audience.switchToConcurrentModeLabel': 'Switch to concurrent mode',
-  'shared.audience.backToListLabel': 'Back to participants',
   'shared.audience.changeModelLabel': "Change {name}'s model",
   'shared.audience.openCatSettingsLabel': "Edit {name}'s settings",
   'shared.workspaceMode.currentLabel': 'Current folder',

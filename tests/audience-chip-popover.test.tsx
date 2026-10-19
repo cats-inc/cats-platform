@@ -74,8 +74,7 @@ test('a single participant chip opens its picker in a popover instead of the sid
   assert.doesNotMatch(chipButton.getAttribute('data-tooltip') ?? '', /Stale label/u);
 
   fireEvent.click(chipButton);
-  const dialog = view.getByRole('dialog', { name: 'Mochi' });
-  assert.equal(dialog.querySelector('.audiencePopoverBack'), null, 'a single target has no list to go back to');
+  view.getByRole('dialog', { name: 'Mochi' });
   await waitFor(() => assert.equal(
     (view.getByRole('combobox', { name: /^Provider/u }) as HTMLSelectElement).value,
     'claude',
@@ -90,7 +89,7 @@ test('a single participant chip opens its picker in a popover instead of the sid
   assert.equal(view.queryByRole('dialog'), null);
 });
 
-test('a group popover drills into one participant\'s picker in place and returns to the list', async (t) => {
+test('a group popover only chooses the audience and its order, never a model', (t) => {
   reset(); t.after(reset); installProviderFetch();
   const mochi = cat('mochi', 'Mochi');
   const tora = cat('tora', 'Tora');
@@ -103,22 +102,21 @@ test('a group popover drills into one participant\'s picker in place and returns
   /></I18nProvider>);
 
   fireEvent.click(view.container.querySelector('.audienceChip')!);
-  const toraRow = view.getByRole('button', { name: "Change Tora's model" });
-  assert.ok(toraRow.querySelector('.audiencePopoverModel'));
+  const rows = Array.from(view.container.querySelectorAll('.audiencePopoverItem'));
+  assert.deepEqual(
+    rows.map((row) => row.querySelector('.audiencePopoverName')?.textContent),
+    ['Mochi', 'Tora'],
+  );
+  // A row names the participant only; its model is a hint read from the
+  // target the participant's avatar edits.
+  assert.equal(view.queryByRole('button', { name: "Change Tora's model" }), null);
+  assert.match(rows[1]!.getAttribute('data-tooltip') ?? '', /^Tora · /u);
+  assert.doesNotMatch(rows[1]!.getAttribute('data-tooltip') ?? '', /Stale label/u);
 
-  // Choosing the audience never opens a picker.
   fireEvent.click(view.getAllByRole('checkbox')[1]!);
   assert.deepEqual(audienceKeys, [['cat:mochi', 'cat:tora']]);
-  assert.equal(view.queryByRole('dialog'), null);
-
-  fireEvent.click(toraRow);
-  view.getByRole('dialog', { name: 'Tora' });
-  assert.equal(view.queryByRole('button', { name: "Change Mochi's model" }), null, 'one floating layer only');
-  await waitFor(() => view.getByRole('combobox', { name: /^Provider/u }));
-
-  fireEvent.click(view.getByRole('button', { name: 'Back to participants' }));
-  assert.equal(view.queryByRole('dialog'), null);
-  view.getByRole('button', { name: "Change Mochi's model" });
+  fireEvent.click(rows[1]!);
+  assert.equal(view.queryByRole('dialog'), null, 'no row opens a picker');
 });
 
 test('the default chat popover shows start fresh with its explanation and closes after it', async (t) => {

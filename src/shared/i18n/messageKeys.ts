@@ -2762,7 +2762,6 @@ export const messageKeys = {
   sharedAudienceWorkflowConcurrent: 'shared.audience.workflowConcurrent',
   sharedAudienceSwitchToSequentialModeLabel: 'shared.audience.switchToSequentialModeLabel',
   sharedAudienceSwitchToConcurrentModeLabel: 'shared.audience.switchToConcurrentModeLabel',
-  sharedAudienceBackToListLabel: 'shared.audience.backToListLabel',
   sharedAudienceChangeModelLabel: 'shared.audience.changeModelLabel',
   sharedAudienceOpenCatSettingsLabel: 'shared.audience.openCatSettingsLabel',
   sharedWorkspaceModeCurrentLabel: 'shared.workspaceMode.currentLabel',
