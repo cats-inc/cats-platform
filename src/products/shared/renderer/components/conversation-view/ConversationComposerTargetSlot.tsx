@@ -117,8 +117,11 @@ export function ConversationComposerTargetSlot({
     );
   }
 
-  // Group chat: multiple participants with audience selection
-  if (!isDefaultChatComposer && composerStackParticipants.length > 0) {
+  // A room with participants chooses its audience among them, temporary ones
+  // included. The send path treats it as a participant chat whether or not
+  // any participant is a cat; only a chat without participants answers with
+  // the default chat's own target below.
+  if (composerStackParticipants.length > 0) {
     return (
       <ChatComposerAudienceChip
         composerStackParticipants={composerStackParticipants}
