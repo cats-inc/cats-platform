@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
-import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
 import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
 import { useSavedSelectionAttention } from '../../../../../app/renderer/savedSelectionAttention.js';
 import { AudienceChip, type AudienceTargetEditor } from '../AudienceChip.js';
 import type { DraftComposerStackParticipant } from '../newConversationDraftSupport.js';
+import type { ChatComposerStackParticipantView } from './conversationViewSupport.js';
 import {
   buildAudienceParticipantFromCat,
   buildAudienceParticipantFromExecutionTarget,
@@ -18,7 +18,7 @@ export interface ConversationComposerTargetSlotProps {
   composerBusy: boolean;
   composerRecipients: RecipientChipTarget[];
   defaultRecipientParticipantId: string | null;
-  composerStackParticipants: ComposerStackParticipant[];
+  composerStackParticipants: ChatComposerStackParticipantView[];
   directLaneCat: AppShellPayload['chat']['cats'][number] | null;
   isDirectLane: boolean;
   isDefaultChatComposer: boolean;
@@ -39,7 +39,7 @@ function ChatComposerAudienceChip({
   maxAudienceParticipants,
   resolveTargetEditor,
 }: {
-  composerStackParticipants: ComposerStackParticipant[];
+  composerStackParticipants: ChatComposerStackParticipantView[];
   composerBusy: boolean;
   activeWorkflowShape: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;

@@ -315,21 +315,6 @@
   background: var(--border);
 }
 
-.composerCatStack {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.composerCatStack .composerStackAvatar + .composerStackAvatar {
-  margin-left: -10px;
-  transition: margin-left 0.2s ease;
-}
-
-.composerCatStack:hover .composerStackAvatar + .composerStackAvatar {
-  margin-left: 4px;
-}
-
 .catAvatarLeadBadge {
   position: absolute;
   top: -4px;

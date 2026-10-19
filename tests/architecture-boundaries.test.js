@@ -634,10 +634,7 @@ test('shared audience-participant builder stays independent from chat renderer c
   );
 
   assert.match(builderSource, /export interface AudienceParticipantStackInput/u);
-  assert.doesNotMatch(
-    builderSource,
-    /products\/chat\/renderer\/components\/ComposerParticipantStack\.js/u,
-  );
+  assert.doesNotMatch(builderSource, /products\/chat\/renderer\/components\//u);
 });
 
 test('chat and workspace apps consume a dedicated generic-draft route entry hook', async () => {
