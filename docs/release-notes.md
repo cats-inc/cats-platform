@@ -2,6 +2,76 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-20 — Desktop 0.8.4 standard preview with participant avatars
+
+Desktop **0.8.4** is the owner-selected standard-profile preview with Runtime
+**0.5.3** and Usage **0.5.3**. It moves participant editing from the audience
+chip and the side panel onto the composer and the conversation header
+([ADR-131](decisions/131-let-the-audience-chip-choose-the-audience-and-the-avatar-choose-the-model.md)).
+Public APIs, configuration contracts and persisted formats remain compatible
+within the 0.8 host line; every moved workflow stays available, and no data
+migration is required. No Platform npm, Runtime npm or cats-one publication is
+selected.
+
+- **Audience chip.** The chip chooses who hears the next message and in what
+  order. Its rows no longer list each participant's model or open a picker; a
+  row's model is a tooltip. A lone participant's chip still opens that
+  participant's picker (#277).
+- **Participant avatars.** In a draft, a composer roster avatar opens its
+  participant's picker; in a started conversation, a header avatar does, so a
+  conversation of temporary participants can now change each one's model. A
+  temporary participant's popover also edits its name and role hint, saving when
+  a field is left, on Enter or when the popover closes, while Escape discards the
+  field. A participant added from an assistant preset is read-only in the draft
+  and an ordinary temporary participant once the conversation exists. A header
+  avatar marked for a choice no longer offered still opens Settings (#277, #278).
+- **Adding and removing.** A group draft's add button offers a temporary
+  participant, existing cats and existing assistant presets; a parallel draft
+  whose lead lane has members offers cats for its shared pool. The button keeps
+  its one-click add where nothing else could join, on a new chat it seeds into a
+  group and on a fresh parallel draft. In a group draft with an addable cat,
+  adding a temporary participant takes two clicks. A started conversation's
+  header add button opens the add-cat panel. Removing stays on each avatar's ×.
+  When the add buttons, hints and their accent tones appear is unchanged,
+  including under the advanced draft controls setting, which a new visibility
+  test locks (#276, #278).
+- **Side panel.** Draft and conversation side panels no longer have a
+  participants section, including the temporary-participant form and rename. The
+  quick add names a new participant automatically; its model and role hint are
+  set in its popover. The side panels open on the folder and keep run status and
+  Code's session profile. An unused composer participant stack and its styles
+  are removed (#279, #280).
+- **Exact Runtime source.** Every OS build and complete source archive bundle
+  Runtime `367f99d4d9488054954cecc08e8ed199a3441df0` (package 0.5.3), unchanged
+  since Desktop 0.8.3. Platform source is the immutable merge commit selected
+  for dispatch and recorded by the release descriptor and source manifest.
+- **Exact App selection.** Usage 0.5.3 stays selected from
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.3/usage-0.5.3.catsapp`,
+  SHA-256 `80255075c08a73a67e08c9772fa9edf381c8bc165364b81d9ad39d54ca6a3794`,
+  producer source `715ae28e0d8265d850567dfc4cd370e32b313e4a`. The public
+  download matches the lock, and its Platform ^0.6.0 floor and SDK ^1.2.0 range
+  accept host 0.8.4 / SDK 1.5.0. The App SDK is unchanged at 1.5.0. Studio
+  remains outside the default bundle; both knowledge bundles' `0.8.x` ranges
+  include 0.8.4.
+- **Signing and updates.** Dispatch desktop-release.yml with tag=v0.8.4, the
+  Runtime SHA above and unsigned=false; the workflow creates the preview tag.
+  Expected trust is macOS signed + notarized, Windows unsigned (no certificate)
+  for both installers, and Linux n/a for both packages. Standard-profile 0.8.3
+  installs retain their update path across architectures: macOS uses the
+  universal ZIP and the same Developer ID team, Windows stays unsigned to
+  unsigned, and Linux uses its matching .deb. No installed upgrade is exercised
+  during release preparation.
+- **Validation.** #276–#280 each passed required PR CI (validate and nodejs 24)
+  with focused renderer, style and boundary suites run locally; the installed
+  app was not exercised by eye during development. This preparation changes only
+  version fields and notes, and the public Usage archive was checked against the
+  lock and host 0.8.4 / SDK 1.5.0. Required Platform PR CI gates the merge. The
+  Desktop workflow verifies three-OS source receipts, offline App activation,
+  isolated sidecar startup, complete source downloads and update metadata before
+  publication. Results belong to the
+  [v0.8.4 GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.8.4)
+  and its workflow run.
+
 ## 2026-10-20 — Desktop 0.8.3 standard preview with refreshed model catalogs
 
 Desktop **0.8.3** is the owner-selected standard-profile preview with Runtime
