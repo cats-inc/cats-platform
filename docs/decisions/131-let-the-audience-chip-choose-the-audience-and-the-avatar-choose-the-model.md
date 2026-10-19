@@ -55,8 +55,10 @@ in SPEC-013.
 4. **`+` only adds, `×` only removes.**
    - In a draft, the add button opens a menu of a temporary participant,
      existing cats and existing assistant presets, where the side panel used to
-     add them: a group draft (cats and assistants) or a parallel draft's shared
-     pool (cats). Added cats and assistants are disabled; an assistant awaiting
+     add them: a group draft (cats and assistants) or the shared pool of a
+     parallel draft whose lead lane already has members (cats). A lead lane
+     without its own members reads the draft audience, so a cat added there
+     would join every such lane; that draft keeps the one-click action. Added cats and assistants are disabled; an assistant awaiting
      an activation review stays disabled. A full conversation disables both.
    - The add button keeps its one-click action when no cat or assistant could
      join, and on a new chat that it seeds into a group. When the button, its
@@ -65,8 +67,8 @@ in SPEC-013.
      panel where the side panel's "Choose cats" did.
    - Removing stays on each avatar's `×`.
 5. **A temporary participant's popover also edits its name and role hint.** A
-   field saves when it is left, on Enter, or when the popover closes; a name is
-   never saved empty. A cat is renamed on its own page.
+   field saves when it is left, on Enter, or when the popover closes; Escape
+   discards the field being typed. A name is never saved empty. A cat is renamed on its own page.
 6. **A participant added from an assistant preset is read-only in a draft**: its
    popover shows the model and role hint without fields. The create contract
    (`CreateTemporaryParticipantInput`) carries no `presetId`, so once the

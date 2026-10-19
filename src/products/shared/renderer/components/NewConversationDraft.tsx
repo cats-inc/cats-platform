@@ -782,9 +782,12 @@ export function NewConversationDraft({
   const maxParallelChats = payload.chat.capabilities.maxParallelChats ?? 3;
 
   // Existing cats and assistants join where the side panel used to add
-  // them: a group draft, or a parallel draft's shared pool. Seeding a fresh
-  // new chat into a group stays the add button's one-click action.
-  const addMenuJoinsExisting = !isDirectLaneContext && (isGroupDraft || isParallelMode);
+  // them: a group draft, or the shared pool of a parallel draft whose lead
+  // lane already has members. A lead lane without its own keys reads the
+  // draft audience, so a cat added there would join every such lane. Seeding
+  // a fresh new chat into a group stays the add button's one-click action.
+  const addMenuJoinsExisting = !isDirectLaneContext
+    && (isGroupDraft || (isParallelMode && hasPrimaryParallelBranchAudience));
   const addMenuCats: ParticipantAddMenuCat[] = addMenuJoinsExisting
     ? sortChatCatsForDisplay(
         chatCats.filter((cat) => cat.status === 'active'),

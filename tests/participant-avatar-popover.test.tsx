@@ -362,11 +362,18 @@ test('a temporary participant\'s popover saves its name and role hint as each fi
   fireEvent.keyDown(roleHint, { key: 'Enter' });
   assert.deepEqual(saves.at(-1), { roleHint: 'Skeptic' });
 
-  // Closing the popover keeps a change still being typed.
-  fireEvent.change(roleHint, { target: { value: '' } });
-  fireEvent.keyDown(document, { key: 'Escape' });
+  // Escape in a field discards what is being typed there.
+  fireEvent.change(roleHint, { target: { value: 'Contrarian' } });
+  fireEvent.keyDown(roleHint, { key: 'Escape' });
   assert.equal(view.queryByRole('dialog'), null);
-  assert.deepEqual(saves.at(-1), { roleHint: null });
+  assert.equal(saves.length, 2);
+
+  // Closing the popover any other way keeps a change still being typed.
+  fireEvent.click(view.getByRole('button', { name: "Change Aria's model" }));
+  fireEvent.change(view.getByRole('textbox', { name: 'Role Hint' }), { target: { value: 'Mediator' } });
+  fireEvent.mouseDown(document.body);
+  assert.equal(view.queryByRole('dialog'), null);
+  assert.deepEqual(saves.at(-1), { roleHint: 'Mediator' });
 });
 
 test('a participant from an assistant preset shows its model and role hint read-only', (t) => {
@@ -548,4 +555,56 @@ test('a conversation header adds a cat through the add-cat panel', (t) => {
   );
   fireEvent.click(view.getByRole('button', { name: 'Choose cats' }));
   assert.equal(opened, 1);
+});
+
+test('a parallel draft offers existing cats only once its lead lane has members', (t) => {
+  reset(); t.after(reset);
+  let quickAdds = 0;
+  const lane = (audienceKeys: string[] | null) => ({
+    provider: 'codex-cli', instance: null, model: 'gpt-sol', modelSelection: null,
+    audienceKeys, workflowShape: 'sequential' as const,
+  });
+  const parallelProps = (overrides: Partial<NewChatDraftProps>) => createGroupDraftProps({
+    entryPreset: 'parallel',
+    draftCatIds: [],
+    builderControls: { showGroupAddButton: true, hideGroupHint: true },
+    onQuickAddDraftTemporaryParticipant: () => { quickAdds += 1; },
+    parallelBranchActions: { onSetAudienceKeys: noop },
+    ...overrides,
+  });
+
+  // Without its own keys the lead lane reads the draft audience, so a cat
+  // added here would join every such lane.
+  const fresh = render(
+    <I18nProvider locale="en">
+      <MemoryRouter>
+        <NewChatDraft {...parallelProps({
+          draftTemporaryParticipants: [],
+          parallelTargets: [lane(null), lane(null)],
+        })}
+        />
+      </MemoryRouter>
+    </I18nProvider>,
+  );
+  fireEvent.click(fresh.getAllByRole('button', { name: 'Add another model to collaborate' })[0]!);
+  assert.equal(quickAdds, 1);
+  assert.equal(fresh.queryByRole('menu'), null);
+  fresh.unmount();
+
+  const staffed = render(
+    <I18nProvider locale="en">
+      <MemoryRouter>
+        <NewChatDraft {...parallelProps({
+          draftTemporaryParticipants: [
+            { participantId: 'a', name: 'Aria', provider: 'claude-cli', model: 'opus', modelSelection: null },
+            { participantId: 'b', name: 'Bram', provider: 'claude-cli', model: 'opus', modelSelection: null },
+          ],
+          parallelTargets: [lane(['temp:a', 'temp:b']), lane(null)],
+        })}
+        />
+      </MemoryRouter>
+    </I18nProvider>,
+  );
+  fireEvent.click(staffed.getAllByRole('button', { name: 'Add another model to collaborate' })[0]!);
+  staffed.getByRole('menuitem', { name: /Milo/u });
 });

@@ -93,7 +93,8 @@ const placementClassNames: Record<ParticipantTargetPopoverPlacement, string> = {
 
 /**
  * A name or role hint that saves when the field is left, on Enter, or when the
- * popover closes around it. A required field never saves an empty value.
+ * popover closes around it; Escape discards it and closes the popover. A
+ * required field never saves an empty value.
  */
 function ParticipantProfileField({
   label,
@@ -145,6 +146,10 @@ function ParticipantProfileField({
           if (event.key === 'Enter') {
             event.preventDefault();
             commit();
+          } else if (event.key === 'Escape') {
+            // The document listener still closes the popover; nothing is left to save.
+            draftRef.current = savedRef.current;
+            setDraft(savedRef.current);
           }
         }}
       />

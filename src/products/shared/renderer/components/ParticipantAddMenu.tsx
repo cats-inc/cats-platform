@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 
 import { nameInitials } from '../../../../shared/nameInitials.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
@@ -57,6 +57,10 @@ export function ParticipantAddMenu({
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   const anchorRef = useDismissablePopover(open, close);
+  // A menu left open while sending does not reappear once the button returns.
+  useEffect(() => {
+    if (disabled) setOpen(false);
+  }, [disabled]);
   const hasMenu = cats.some((cat) => !cat.added)
     || presets.some((preset) => !preset.added && !preset.reviewReasons);
 
@@ -142,8 +146,9 @@ export function ParticipantAddMenu({
               type="button"
               role="menuitem"
               className="composerAddMenuItem"
-              title={preset.reviewReasons?.join(', ') || undefined}
-              data-tooltip={preset.executionLabel}
+              data-tooltip={preset.reviewReasons?.length
+                ? preset.reviewReasons.join(', ')
+                : preset.executionLabel}
               disabled={preset.added || Boolean(preset.reviewReasons) || atLimit}
               onClick={() => choose(() => onAddPreset(preset.id))}
             >
