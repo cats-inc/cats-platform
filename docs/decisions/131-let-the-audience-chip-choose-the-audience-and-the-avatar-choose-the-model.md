@@ -89,8 +89,10 @@ in SPEC-013.
 - Choosing an audience can no longer change a model by accident, and each
   participant has one place to change.
 - A started conversation can change any participant's model from the header,
-  including a conversation of temporary participants only, whose chip edits the
-  default chat target.
+  including a conversation of temporary participants only. Its chip chooses
+  the audience among them like any other room's: the renderer counts only cats
+  when it classifies a default chat, while the send path counts every
+  participant, so the chip follows the participants rather than that mode.
 - A draft cat's avatar tooltip now shows the draft's pick for that cat rather
   than the cat's default.
 
