@@ -41,6 +41,10 @@ in SPEC-013.
    - in a started conversation, the avatars in the header roster, opening below
      it. The owner chose the header over a second roster in the composer, which
      would show the same avatars twice.
+
+   A header avatar whose saved choice is no longer offered keeps SPEC-013's
+   behavior: its attention mark covers the avatar and opens the cat's model
+   field in Settings instead.
 3. **Visibility is unchanged.** When the roster, buttons, hints and their accent
    or danger tones appear stays as it was, under the advanced draft controls
    setting too. `tests/draft-composer-visibility-matrix.test.tsx` locks it.

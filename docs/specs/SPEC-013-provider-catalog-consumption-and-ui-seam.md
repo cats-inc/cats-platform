@@ -686,7 +686,9 @@ moves a participant's picker from the chip's audience rows to the participant's
 avatar: the draft composer roster, and the header roster of a started
 conversation. The audience rows no longer list models or open a picker. A lone
 participant's chip still opens its popover. The avatar popover mounts the
-picker only while it is open, so the re-stamp notes above apply unchanged.
+picker only while it is open, so the re-stamp notes above apply unchanged. A
+marked header avatar still opens Settings: the attention mark covers the avatar
+and takes the click.
 
 ## Open Questions
 
