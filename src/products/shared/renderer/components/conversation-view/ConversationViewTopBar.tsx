@@ -2,6 +2,7 @@ import { type KeyboardEvent, type ReactNode, useCallback, useState } from 'react
 
 import { catInitials } from '../../workspaceChatUtils.js';
 import type { AudienceTargetEditor } from '../AudienceChip.js';
+import { CollaborateIcon } from '../DraftBuilderIcons.js';
 import type { DraftComposerStackParticipant } from '../newConversationDraftSupport.js';
 import { ParticipantTargetPopover, useDismissablePopover } from '../ParticipantTargetPopover.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
@@ -48,6 +49,8 @@ export interface ConversationViewTopBarProps {
   approvalCount: number;
   extraActions?: ReactNode;
   onToggleSidePanel: () => void;
+  /** Adds an existing cat to the conversation; the add-cat panel opens. */
+  onAddParticipant?: () => void;
   /** When set, renders an icon button to the left of the side-panel
    * toggle that takes the user to the cat's profile page. The chat
    * product wires this on direct-lane channels so the user can jump
@@ -64,6 +67,7 @@ export function ConversationViewTopBar({
   approvalCount,
   extraActions,
   onToggleSidePanel,
+  onAddParticipant,
   onOpenCatProfile,
 }: ConversationViewTopBarProps) {
   const { t } = useI18n();
@@ -137,6 +141,17 @@ export function ConversationViewTopBar({
               />
             ) : null}
           </div>
+        ) : null}
+        {onAddParticipant ? (
+          <button
+            type="button"
+            className="parallelAddButton channelTopBarAddButton"
+            aria-label={t(messageKeys.chatParticipantsSectionChooseCatsButton)}
+            data-tooltip={t(messageKeys.chatParticipantsSectionChooseCatsButton)}
+            onClick={onAddParticipant}
+          >
+            <CollaborateIcon />
+          </button>
         ) : null}
       </div>
       <div className="channelTopBarCenter">

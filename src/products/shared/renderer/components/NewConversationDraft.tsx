@@ -16,6 +16,10 @@ import { ToastContainer } from '../../../../design/components/Toast.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
 import { type NewChatPreset } from '../draftStarterSuggestionContext.js';
 import {
+  buildDraftParticipantCapabilityReview,
+  buildDraftParticipantExecutionLabel,
+  createDraftTemporaryParticipantFromAssistantPreset,
+  draftHasAssistantPresetParticipant,
   type DraftParallelTarget,
   type DraftTemporaryParticipant,
   type DraftTemporaryParticipantUpdate,
@@ -31,7 +35,7 @@ import {
   resolveDraftHelperRegionVisibility,
   useDraftHelperChipVisibility,
 } from '../draftHelperChips.js';
-import { isChatCat, truncatePath } from '../workspaceChatUtils.js';
+import { isChatCat, sortChatCatsForDisplay, truncatePath } from '../workspaceChatUtils.js';
 import { type ExecutionTargetValue } from './ExecutionTarget.js';
 import {
   buildNewConversationDraftSidePanelSections,
@@ -43,6 +47,11 @@ import { DraftHeader } from './DraftHeader.js';
 import { DraftComposerFooter } from './DraftComposerFooter.js';
 import { DiagnosticAttachmentAction } from './DiagnosticAttachmentAction.js';
 import { BranchAudienceRoster } from './BranchAudienceRoster.js';
+import {
+  ParticipantAddMenu,
+  type ParticipantAddMenuCat,
+  type ParticipantAddMenuPreset,
+} from './ParticipantAddMenu.js';
 import { CollaborateIcon, CompareIcon } from './DraftBuilderIcons.js';
 import {
   DraftCompareCarousel,
@@ -772,6 +781,43 @@ export function NewConversationDraft({
   const accentParallelAddButton = entryPreset === 'parallel';
   const maxParallelChats = payload.chat.capabilities.maxParallelChats ?? 3;
 
+  // Existing cats and assistants join where the side panel used to add
+  // them: a group draft, or the shared pool of a parallel draft whose lead
+  // lane already has members. A lead lane without its own keys reads the
+  // draft audience, so a cat added there would join every such lane. Seeding
+  // a fresh new chat into a group stays the add button's one-click action.
+  const addMenuJoinsExisting = !isDirectLaneContext
+    && (isGroupDraft || (isParallelMode && hasPrimaryParallelBranchAudience));
+  const addMenuCats: ParticipantAddMenuCat[] = addMenuJoinsExisting
+    ? sortChatCatsForDisplay(
+        chatCats.filter((cat) => cat.status === 'active'),
+        { bossCatIds: payload.chat.bossCatId },
+      ).map((cat) => ({
+        id: cat.id,
+        name: cat.name,
+        avatarColor: cat.avatarColor ?? null,
+        avatarUrl: cat.avatarUrl ?? null,
+        added: draftCatIds.includes(cat.id),
+      }))
+    : [];
+  const addMenuPresets: ParticipantAddMenuPreset[] = addMenuJoinsExisting && isGroupDraft
+    ? assistantPresets.map((assistantPreset) => {
+        const target = {
+          provider: assistantPreset.executionTarget.provider,
+          instance: assistantPreset.executionTarget.instance,
+          model: assistantPreset.executionTarget.model,
+        };
+        const review = buildDraftParticipantCapabilityReview(target, undefined, t);
+        return {
+          id: assistantPreset.id,
+          name: assistantPreset.name,
+          executionLabel: buildDraftParticipantExecutionLabel(target),
+          added: draftHasAssistantPresetParticipant(draftTemporaryParticipants, assistantPreset.id),
+          reviewReasons: review.requiresActivationReview ? review.reviewReasons : null,
+        };
+      })
+    : [];
+
   function renderCollaborateAddControl(options: {
     showHint: boolean;
     accent: boolean;
@@ -783,21 +829,35 @@ export function NewConversationDraft({
 
     return (
       <div className={options.className ?? 'composerGroupAddRow'}>
-        <button
-          type="button"
-          className={`parallelAddButton${options.accent ? ' parallelAddButtonAccent' : ''}`}
+        <ParticipantAddMenu
+          buttonClassName={`parallelAddButton${options.accent ? ' parallelAddButtonAccent' : ''}`}
+          ariaLabel={t(messageKeys.chatNewChatDraftCollaborateAria)}
           disabled={isSubmittingFirstTurn}
-          onClick={() => {
+          icon={<CollaborateIcon />}
+          onAddTemporaryParticipant={() => {
             if (onQuickAddDraftTemporaryParticipant) {
               onQuickAddDraftTemporaryParticipant();
               return;
             }
             openSidePanelTo('cats');
           }}
-          aria-label={t(messageKeys.chatNewChatDraftCollaborateAria)}
-        >
-          <CollaborateIcon />
-        </button>
+          cats={addMenuCats}
+          onAddCat={(catId) => {
+            if (!draftCatIds.includes(catId)) {
+              onToggleDraftCat(catId);
+            }
+          }}
+          presets={addMenuPresets}
+          onAddPreset={(presetId) => {
+            const assistantPreset = assistantPresets.find((candidate) => candidate.id === presetId);
+            if (assistantPreset) {
+              onAddDraftTemporaryParticipant(
+                createDraftTemporaryParticipantFromAssistantPreset(assistantPreset),
+              );
+            }
+          }}
+          atLimit={hasReachedGroupParticipantLimit}
+        />
         {options.showHint ? (
           <span className={`parallelAddHint${options.accent ? ' parallelAddHintAccent' : ''}`}>
             {t(messageKeys.chatNewChatDraftCollaborateHint)}

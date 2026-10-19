@@ -2254,6 +2254,8 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.audience.switchToConcurrentModeLabel': '切換到同時模式',
   'shared.audience.changeModelLabel': '變更 {name} 的模型',
   'shared.audience.openCatSettingsLabel': '編輯 {name} 的設定',
+  'shared.audience.addMenuCatsHeader': '貓',
+  'shared.audience.addMenuAssistantsHeader': '助理',
   'shared.workspaceMode.currentLabel': '目前資料夾',
   'shared.workspaceMode.worktreeLabel': '獨立工作區',
   'shared.workspaceMode.currentTooltip': '直接修改所選資料夾中的檔案。',

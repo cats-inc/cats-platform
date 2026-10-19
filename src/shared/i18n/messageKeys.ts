@@ -2764,6 +2764,8 @@ export const messageKeys = {
   sharedAudienceSwitchToConcurrentModeLabel: 'shared.audience.switchToConcurrentModeLabel',
   sharedAudienceChangeModelLabel: 'shared.audience.changeModelLabel',
   sharedAudienceOpenCatSettingsLabel: 'shared.audience.openCatSettingsLabel',
+  sharedAudienceAddMenuCatsHeader: 'shared.audience.addMenuCatsHeader',
+  sharedAudienceAddMenuAssistantsHeader: 'shared.audience.addMenuAssistantsHeader',
   sharedWorkspaceModeCurrentLabel: 'shared.workspaceMode.currentLabel',
   sharedWorkspaceModeWorktreeLabel: 'shared.workspaceMode.worktreeLabel',
   sharedWorkspaceModeCurrentTooltip: 'shared.workspaceMode.currentTooltip',

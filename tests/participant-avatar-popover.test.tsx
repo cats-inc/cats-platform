@@ -18,6 +18,10 @@ import {
 import type { AudienceTargetEditor } from '../src/products/shared/renderer/components/AudienceChip.tsx';
 import { BranchAudienceRoster } from '../src/products/shared/renderer/components/BranchAudienceRoster.tsx';
 import {
+  ParticipantAddMenu,
+  type ParticipantAddMenuProps,
+} from '../src/products/shared/renderer/components/ParticipantAddMenu.tsx';
+import {
   ConversationViewTopBar,
   type ConversationViewTopBarAvatar,
 } from '../src/products/shared/renderer/components/conversation-view/ConversationViewTopBar.tsx';
@@ -320,4 +324,287 @@ test('a conversation top bar avatar opens its participant\'s model popover below
   fireEvent.click(mochi);
   assert.equal(view.queryByRole('dialog'), null);
   assert.ok(!bar.classList.contains('channelTopBarPopoverOpen'));
+});
+
+test('a temporary participant\'s popover saves its name and role hint as each field is left', (t) => {
+  reset(); t.after(reset); installProviderFetch();
+  const saves: Array<{ name?: string; roleHint?: string | null }> = [];
+  const temp: DraftComposerStackParticipant = {
+    key: 'temp:aria', name: 'Aria', executionLabel: null, avatarColor: null, avatarUrl: null,
+    isCat: false, catId: null, participantId: 'aria',
+  };
+  const view = renderRoster({
+    audienceParticipants: [temp, cat('tora', 'Tora')],
+    resolveTargetEditor: (participant) => (participant.key === 'temp:aria'
+      ? {
+          target,
+          onChange: noop,
+          profile: { name: 'Aria', roleHint: null, onSave: (update) => saves.push(update) },
+        }
+      : null),
+  });
+
+  fireEvent.click(view.getByRole('button', { name: "Change Aria's model" }));
+  const name = view.getByRole('textbox', { name: 'Name' }) as HTMLInputElement;
+  const roleHint = view.getByRole('textbox', { name: 'Role Hint' }) as HTMLInputElement;
+
+  fireEvent.change(name, { target: { value: '  Critic ' } });
+  fireEvent.blur(name);
+  fireEvent.blur(name);
+  assert.deepEqual(saves, [{ name: 'Critic' }], 'an unchanged field saves once');
+
+  fireEvent.change(name, { target: { value: '   ' } });
+  fireEvent.blur(name);
+  assert.equal(saves.length, 1, 'a participant keeps a name');
+  assert.equal(name.value, 'Critic');
+
+  fireEvent.change(roleHint, { target: { value: 'Skeptic' } });
+  fireEvent.keyDown(roleHint, { key: 'Enter' });
+  assert.deepEqual(saves.at(-1), { roleHint: 'Skeptic' });
+
+  // Escape in a field discards what is being typed there.
+  fireEvent.change(roleHint, { target: { value: 'Contrarian' } });
+  fireEvent.keyDown(roleHint, { key: 'Escape' });
+  assert.equal(view.queryByRole('dialog'), null);
+  assert.equal(saves.length, 2);
+
+  // Closing the popover any other way keeps a change still being typed.
+  fireEvent.click(view.getByRole('button', { name: "Change Aria's model" }));
+  fireEvent.change(view.getByRole('textbox', { name: 'Role Hint' }), { target: { value: 'Mediator' } });
+  fireEvent.mouseDown(document.body);
+  assert.equal(view.queryByRole('dialog'), null);
+  assert.deepEqual(saves.at(-1), { roleHint: 'Mediator' });
+});
+
+test('a participant from an assistant preset shows its model and role hint read-only', (t) => {
+  reset(); t.after(reset); installProviderFetch();
+  const view = renderRoster({
+    resolveTargetEditor: (participant) => (participant.key === 'cat:tora'
+      ? { target, profile: { name: 'Tora', roleHint: 'Reviews diffs' } }
+      : null),
+  });
+
+  fireEvent.click(view.getByRole('button', { name: "Change Tora's model" }));
+  const dialog = view.getByRole('dialog', { name: 'Tora' });
+  assert.equal(view.queryByRole('combobox'), null, 'no picker');
+  assert.equal(view.queryByRole('textbox'), null, 'no profile fields');
+  assert.ok(dialog.querySelector('.audiencePopoverModelReadOnly')?.textContent);
+  assert.equal(dialog.querySelector('.audiencePopoverRoleHint')?.textContent, 'Reviews diffs');
+});
+
+function renderAddMenu(props: Partial<ParticipantAddMenuProps> = {}) {
+  return render(
+    <I18nProvider locale="en">
+      <ParticipantAddMenu
+        buttonClassName="parallelAddButton"
+        ariaLabel="Add another model to collaborate"
+        disabled={false}
+        icon={<span>+</span>}
+        onAddTemporaryParticipant={noop}
+        cats={[]}
+        onAddCat={noop}
+        presets={[]}
+        onAddPreset={noop}
+        atLimit={false}
+        {...props}
+      />
+    </I18nProvider>,
+  );
+}
+
+test('the add button adds a temporary participant at once when no cat or assistant could join', (t) => {
+  reset(); t.after(reset);
+  let added = 0;
+  const view = renderAddMenu({
+    onAddTemporaryParticipant: () => { added += 1; },
+    cats: [{ id: 'milo', name: 'Milo', avatarColor: null, avatarUrl: null, added: true }],
+    presets: [{
+      id: 'reviewer', name: 'Reviewer', executionLabel: 'Claude', added: false, reviewReasons: ['shell'],
+    }],
+  });
+
+  const button = view.getByRole('button', { name: 'Add another model to collaborate' });
+  assert.equal(button.getAttribute('aria-haspopup'), null);
+  fireEvent.click(button);
+  assert.equal(added, 1);
+  assert.equal(view.queryByRole('menu'), null);
+});
+
+test('the add button offers a temporary participant, existing cats and assistants', (t) => {
+  reset(); t.after(reset);
+  const calls: string[] = [];
+  const view = renderAddMenu({
+    onAddTemporaryParticipant: () => calls.push('temporary'),
+    cats: [
+      { id: 'milo', name: 'Milo', avatarColor: null, avatarUrl: null, added: true },
+      { id: 'pico', name: 'Pico', avatarColor: null, avatarUrl: null, added: false },
+    ],
+    onAddCat: (catId) => calls.push(`cat:${catId}`),
+    presets: [
+      { id: 'reviewer', name: 'Reviewer', executionLabel: 'Claude', added: false, reviewReasons: null },
+      { id: 'shell', name: 'Shell', executionLabel: 'Codex', added: false, reviewReasons: ['shell access'] },
+    ],
+    onAddPreset: (presetId) => calls.push(`preset:${presetId}`),
+  });
+
+  const button = view.getByRole('button', { name: 'Add another model to collaborate' });
+  fireEvent.click(button);
+  assert.equal(button.getAttribute('aria-expanded'), 'true');
+  const items = view.getAllByRole('menuitem') as HTMLButtonElement[];
+  assert.deepEqual(
+    items.map((item) => [
+      item.querySelector('.audiencePopoverName')?.textContent,
+      item.querySelector('.composerAddMenuStatus')?.textContent ?? null,
+    ]),
+    [
+      ['Add temporary participant', null],
+      ['Milo', 'Added'],
+      ['Pico', null],
+      ['Reviewer', null],
+      ['Shell', 'Review'],
+    ],
+  );
+  assert.ok(items[1]!.disabled, 'an added cat is removed with its ×');
+  assert.ok(items[4]!.disabled, 'an assistant awaiting review cannot join');
+
+  fireEvent.click(items[2]!);
+  assert.deepEqual(calls, ['cat:pico']);
+  assert.equal(view.queryByRole('menu'), null);
+
+  fireEvent.click(button);
+  fireEvent.click(view.getAllByRole('menuitem')[3]!);
+  fireEvent.click(button);
+  fireEvent.click(view.getAllByRole('menuitem')[0]!);
+  assert.deepEqual(calls, ['cat:pico', 'preset:reviewer', 'temporary']);
+});
+
+test('a full conversation keeps only the temporary participant choice open in the add menu', (t) => {
+  reset(); t.after(reset);
+  const view = renderAddMenu({
+    cats: [{ id: 'pico', name: 'Pico', avatarColor: null, avatarUrl: null, added: false }],
+    atLimit: true,
+  });
+
+  fireEvent.click(view.getByRole('button', { name: 'Add another model to collaborate' }));
+  const items = view.getAllByRole('menuitem') as HTMLButtonElement[];
+  assert.ok(!items[0]!.disabled);
+  assert.ok(items[1]!.disabled);
+});
+
+test('a group draft adds an existing cat from the add menu; a new chat still seeds in one click', (t) => {
+  reset(); t.after(reset);
+  const toggled: string[] = [];
+  let quickAdds = 0;
+  const group = render(
+    <I18nProvider locale="en">
+      <MemoryRouter>
+        <NewChatDraft {...createGroupDraftProps({
+          draftCatIds: [],
+          draftTemporaryParticipants: [
+            { participantId: 'a', name: 'Aria', provider: 'claude-cli', model: 'opus', modelSelection: null },
+            { participantId: 'b', name: 'Bram', provider: 'claude-cli', model: 'opus', modelSelection: null },
+          ],
+          onToggleDraftCat: (catId) => toggled.push(catId),
+          onQuickAddDraftTemporaryParticipant: () => { quickAdds += 1; },
+        })}
+        />
+      </MemoryRouter>
+    </I18nProvider>,
+  );
+  fireEvent.click(group.getByRole('button', { name: 'Add another model to collaborate' }));
+  fireEvent.click(group.getByRole('menuitem', { name: /Milo/u }));
+  assert.deepEqual(toggled, ['cat-milo']);
+  assert.equal(group.container.querySelector('.sidePanelBody'), null);
+  group.unmount();
+
+  const fresh = render(
+    <I18nProvider locale="en">
+      <MemoryRouter>
+        <NewChatDraft {...createGroupDraftProps({
+          entryPreset: 'default',
+          draftCatIds: [],
+          draftTemporaryParticipants: [],
+          builderControls: { showGroupAddButton: true, hideGroupHint: true },
+          onQuickAddDraftTemporaryParticipant: () => { quickAdds += 1; },
+        })}
+        />
+      </MemoryRouter>
+    </I18nProvider>,
+  );
+  fireEvent.click(fresh.getByRole('button', { name: 'Add another model to collaborate' }));
+  assert.equal(quickAdds, 1);
+  assert.equal(fresh.queryByRole('menu'), null);
+});
+
+test('a conversation header adds a cat through the add-cat panel', (t) => {
+  reset(); t.after(reset);
+  let opened = 0;
+  const view = render(
+    <I18nProvider locale="en">
+      <ConversationViewTopBar
+        avatars={[topBarAvatar({ editor: null })]}
+        showRosterAvatars
+        isDirectLane={false}
+        topBarTitle="Review"
+        sidePanelOpen={false}
+        approvalCount={0}
+        onToggleSidePanel={noop}
+        onAddParticipant={() => { opened += 1; }}
+      />
+    </I18nProvider>,
+  );
+  fireEvent.click(view.getByRole('button', { name: 'Choose cats' }));
+  assert.equal(opened, 1);
+});
+
+test('a parallel draft offers existing cats only once its lead lane has members', (t) => {
+  reset(); t.after(reset);
+  let quickAdds = 0;
+  const lane = (audienceKeys: string[] | null) => ({
+    provider: 'codex-cli', instance: null, model: 'gpt-sol', modelSelection: null,
+    audienceKeys, workflowShape: 'sequential' as const,
+  });
+  const parallelProps = (overrides: Partial<NewChatDraftProps>) => createGroupDraftProps({
+    entryPreset: 'parallel',
+    draftCatIds: [],
+    builderControls: { showGroupAddButton: true, hideGroupHint: true },
+    onQuickAddDraftTemporaryParticipant: () => { quickAdds += 1; },
+    parallelBranchActions: { onSetAudienceKeys: noop },
+    ...overrides,
+  });
+
+  // Without its own keys the lead lane reads the draft audience, so a cat
+  // added here would join every such lane.
+  const fresh = render(
+    <I18nProvider locale="en">
+      <MemoryRouter>
+        <NewChatDraft {...parallelProps({
+          draftTemporaryParticipants: [],
+          parallelTargets: [lane(null), lane(null)],
+        })}
+        />
+      </MemoryRouter>
+    </I18nProvider>,
+  );
+  fireEvent.click(fresh.getAllByRole('button', { name: 'Add another model to collaborate' })[0]!);
+  assert.equal(quickAdds, 1);
+  assert.equal(fresh.queryByRole('menu'), null);
+  fresh.unmount();
+
+  const staffed = render(
+    <I18nProvider locale="en">
+      <MemoryRouter>
+        <NewChatDraft {...parallelProps({
+          draftTemporaryParticipants: [
+            { participantId: 'a', name: 'Aria', provider: 'claude-cli', model: 'opus', modelSelection: null },
+            { participantId: 'b', name: 'Bram', provider: 'claude-cli', model: 'opus', modelSelection: null },
+          ],
+          parallelTargets: [lane(['temp:a', 'temp:b']), lane(null)],
+        })}
+        />
+      </MemoryRouter>
+    </I18nProvider>,
+  );
+  fireEvent.click(staffed.getAllByRole('button', { name: 'Add another model to collaborate' })[0]!);
+  staffed.getByRole('menuitem', { name: /Milo/u });
 });

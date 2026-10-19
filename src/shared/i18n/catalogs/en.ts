@@ -2309,6 +2309,8 @@ export const enCatalog: MessageCatalog = {
   'shared.audience.switchToConcurrentModeLabel': 'Switch to concurrent mode',
   'shared.audience.changeModelLabel': "Change {name}'s model",
   'shared.audience.openCatSettingsLabel': "Edit {name}'s settings",
+  'shared.audience.addMenuCatsHeader': 'Cats',
+  'shared.audience.addMenuAssistantsHeader': 'Assistants',
   'shared.workspaceMode.currentLabel': 'Current folder',
   'shared.workspaceMode.worktreeLabel': 'Independent worktree',
   'shared.workspaceMode.currentTooltip':

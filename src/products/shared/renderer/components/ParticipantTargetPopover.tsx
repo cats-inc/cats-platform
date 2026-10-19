@@ -1,10 +1,17 @@
-import { type CSSProperties, type RefObject, useEffect, useRef } from 'react';
+import {
+  type CSSProperties,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { nameInitials } from '../../../../shared/nameInitials.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { ProviderModelFields } from '../../../../design/components/ProviderModelFields.js';
-import type { AudienceTargetEditor } from './AudienceChip.js';
+import type { AudienceTargetEditor, ParticipantProfileEditor } from './AudienceChip.js';
 import {
   buildExecutionTargetLabel,
   createExecutionTargetValueFromProviderSelection,
@@ -84,6 +91,98 @@ const placementClassNames: Record<ParticipantTargetPopoverPlacement, string> = {
   'below-start': ' audiencePopoverStart audiencePopoverBelow',
 };
 
+/**
+ * A name or role hint that saves when the field is left, on Enter, or when the
+ * popover closes around it; Escape discards it and closes the popover. A
+ * required field never saves an empty value.
+ */
+function ParticipantProfileField({
+  label,
+  value,
+  placeholder,
+  required = false,
+  onSave,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  required?: boolean;
+  onSave: (value: string | null) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  const savedRef = useRef(value);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+
+  useEffect(() => {
+    savedRef.current = value;
+    setDraft(value);
+  }, [value]);
+
+  const commit = useCallback(() => {
+    const next = draftRef.current.trim();
+    if (next === savedRef.current.trim()) return;
+    if (required && !next) {
+      setDraft(savedRef.current);
+      return;
+    }
+    savedRef.current = next;
+    onSaveRef.current(next || null);
+  }, [required]);
+  useEffect(() => commit, [commit]);
+
+  return (
+    <label className="fieldLabel">
+      <span>{label}</span>
+      <input
+        className="textInput"
+        value={draft}
+        placeholder={placeholder}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            commit();
+          } else if (event.key === 'Escape') {
+            // The document listener still closes the popover; nothing is left to save.
+            draftRef.current = savedRef.current;
+            setDraft(savedRef.current);
+          }
+        }}
+      />
+    </label>
+  );
+}
+
+function ParticipantProfileFields({ profile }: { profile: ParticipantProfileEditor }) {
+  const { t } = useI18n();
+  const onSave = profile.onSave;
+  if (!onSave) {
+    return profile.roleHint ? <p className="audiencePopoverRoleHint">{profile.roleHint}</p> : null;
+  }
+  return (
+    <>
+      <ParticipantProfileField
+        label={t(messageKeys.chatNewChatDraftTemporaryParticipantNameLabel)}
+        value={profile.name}
+        required
+        onSave={(name) => {
+          if (name) onSave({ name });
+        }}
+      />
+      <ParticipantProfileField
+        label={t(messageKeys.chatNewChatDraftTemporaryParticipantRoleHintLabel)}
+        value={profile.roleHint ?? ''}
+        placeholder={t(messageKeys.chatNewChatDraftTemporaryParticipantRoleHintPlaceholder)}
+        onSave={(roleHint) => onSave({ roleHint })}
+      />
+    </>
+  );
+}
+
 export interface ParticipantTargetPopoverProps {
   participant: DraftComposerStackParticipant;
   editor: AudienceTargetEditor;
@@ -93,7 +192,10 @@ export interface ParticipantTargetPopoverProps {
   onClose: () => void;
 }
 
-/** One participant's model picker, with its conversation action and settings link. */
+/**
+ * One participant's model picker, with its conversation action and settings
+ * link, and a temporary participant's name and role hint.
+ */
 export function ParticipantTargetPopover({
   participant,
   editor,
@@ -102,6 +204,7 @@ export function ParticipantTargetPopover({
   onClose,
 }: ParticipantTargetPopoverProps) {
   const { t } = useI18n();
+  const onChange = editor.onChange;
   return (
     <div
       className={`audiencePopover audiencePopoverEditor${placementClassNames[placement]}`}
@@ -117,15 +220,20 @@ export function ParticipantTargetPopover({
         </div>
       ) : null}
       <div className="audiencePopoverEditorFields">
-        <ProviderModelFields
-          provider={editor.target.provider}
-          instance={editor.target.instance ?? ''}
-          model={editor.target.model ?? ''}
-          modelSelection={editor.target.modelSelection}
-          onTargetChange={(selection) => {
-            editor.onChange(createExecutionTargetValueFromProviderSelection(selection));
-          }}
-        />
+        {editor.profile ? <ParticipantProfileFields profile={editor.profile} /> : null}
+        {onChange ? (
+          <ProviderModelFields
+            provider={editor.target.provider}
+            instance={editor.target.instance ?? ''}
+            model={editor.target.model ?? ''}
+            modelSelection={editor.target.modelSelection}
+            onTargetChange={(selection) => {
+              onChange(createExecutionTargetValueFromProviderSelection(selection));
+            }}
+          />
+        ) : (
+          <p className="audiencePopoverModelReadOnly">{buildExecutionTargetLabel(editor.target)}</p>
+        )}
       </div>
       {editor.action ? (
         <button

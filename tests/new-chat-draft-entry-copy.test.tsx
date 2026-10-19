@@ -32,6 +32,7 @@ function createPayload(): AppShellPayload {
       cats: [
         {
           id: 'cat-lead',
+          createdAt: '2026-04-07T00:00:00.000Z',
           name: 'Milo',
           avatarColor: '#7A5B3A',
           avatarUrl: null,
@@ -160,6 +161,7 @@ test('generic new chat draft with multiple selected cats keeps a lightweight gre
               ...createPayload().chat.cats,
               {
                 id: 'cat-reviewer',
+                createdAt: '2026-04-08T00:00:00.000Z',
                 name: 'Pico',
                 status: 'active',
                 products: ['chat'],
@@ -565,6 +567,7 @@ test('group route restores remove controls once the draft has three participants
               ...createPayload().chat.cats,
               {
                 id: 'cat-reviewer',
+                createdAt: '2026-04-08T00:00:00.000Z',
                 name: 'Pico',
                 status: 'active',
                 products: ['chat'],
