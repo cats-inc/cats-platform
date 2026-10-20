@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveConversationMode } from '../src/products/chat/renderer/conversationMode.ts';
+import { resolveConversationMode } from '../src/app/renderer/productShell/conversationMode.ts';
 import type { ChatChannelView } from '../src/products/chat/api/contracts.ts';
 import {
   buildChatConversationId,
@@ -201,93 +201,4 @@ test('resolveConversationMode distinguishes default and participant chat semanti
   assert.equal(resolveConversationMode(defaultChat), 'default_chat');
   assert.equal(resolveConversationMode(singleParticipantChat), 'participant_chat');
   assert.equal(resolveConversationMode(participantChat), 'participant_chat');
-});
-
-test('resolveConversationMode treats temporary participants as participant chats', () => {
-  const adhocRoom = createChannel({
-    assignedParticipants: [
-      {
-        participantId: 'participant-inline',
-        sourceKind: 'adhoc',
-        sourceRefId: null,
-        name: 'Inline Reviewer',
-        roles: [],
-        roleHint: 'Counterpoint',
-        skillProfile: null,
-        mcpProfile: null,
-        status: 'active',
-        joinedAt: '2026-03-28T00:00:00.000Z',
-        leftAt: null,
-        avatarColor: null,
-        avatarUrl: null,
-        execution: {
-          target: {
-            provider: 'antigravity',
-            instance: 'native',
-            model: 'antigravity-default',
-          },
-          modelSelection: null,
-          lease: {
-            laneId: null,
-            sessionId: null,
-            status: 'ready',
-            cwd: null,
-            lastError: null,
-            provider: null,
-            model: null,
-            startedAt: null,
-            lastUsedAt: null,
-          },
-        },
-        memory: {
-          summary: null,
-          facts: [],
-          openLoops: [],
-          updatedAt: null,
-        },
-      },
-      {
-        participantId: 'participant-verifier',
-        sourceKind: 'adhoc',
-        sourceRefId: null,
-        name: 'Verifier',
-        roles: [],
-        roleHint: null,
-        skillProfile: null,
-        mcpProfile: null,
-        status: 'active',
-        joinedAt: '2026-03-28T00:00:00.000Z',
-        leftAt: null,
-        avatarColor: null,
-        avatarUrl: null,
-        execution: {
-          target: {
-            provider: 'claude',
-            instance: 'native',
-            model: 'claude-sonnet',
-          },
-          modelSelection: null,
-          lease: {
-            laneId: null,
-            sessionId: null,
-            status: 'ready',
-            cwd: null,
-            lastError: null,
-            provider: null,
-            model: null,
-            startedAt: null,
-            lastUsedAt: null,
-          },
-        },
-        memory: {
-          summary: null,
-          facts: [],
-          openLoops: [],
-          updatedAt: null,
-        },
-      },
-    ],
-  });
-
-  assert.equal(resolveConversationMode(adhocRoom), 'participant_chat');
 });

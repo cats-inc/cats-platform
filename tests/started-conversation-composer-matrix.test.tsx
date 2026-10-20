@@ -431,8 +431,7 @@ function snapshotConversation(scenario: Scenario): StartedConversationSnapshot {
 }
 
 /**
- * What a started conversation shows and sends today, before SPEC-125. These
- * describe current behavior, defects included: a changed line is an intended
+ * What a started conversation shows and sends. A changed line is an intended
  * change to review, not a test to update in passing.
  */
 const cases: Array<{ name: string; scenario: Scenario; expected: StartedConversationSnapshot }> = [
@@ -465,7 +464,7 @@ const cases: Array<{ name: string; scenario: Scenario; expected: StartedConversa
       header: 'Boss · Claude-CLI · claude-sonnet [boss] | Milo · Claude-CLI · claude-sonnet [edit]',
       composer: 'avatars:0 chip:"Milo"',
       chip: 'model',
-      send: 'none',
+      send: 'recipients:[cat-milo] sequential',
       sendFirstOnly: '-',
     },
   },
@@ -478,21 +477,19 @@ const cases: Array<{ name: string; scenario: Scenario; expected: StartedConversa
       header: 'Claude-CLI · opus [edit]',
       composer: 'avatars:0 chip:"Claude-CLI · opus"',
       chip: 'model',
-      send: 'none',
+      send: 'recipients:[participant-aria] sequential',
       sendFirstOnly: '-',
     },
   },
   {
     name: 'conversation with two temporary participants',
-    // Temporary participants are not counted, so a send names nobody and the
-    // server answers with the orchestrator.
     scenario: { participants: [aria, bram] },
     expected: {
       header: 'Claude-CLI · opus [edit] | Claude-CLI · sonnet [edit]',
       composer: 'avatars:0 chip:"Aria +1" workflow',
       chip: 'audience',
-      send: 'none',
-      sendFirstOnly: 'none',
+      send: 'recipients:[participant-aria,participant-bram] sequential',
+      sendFirstOnly: 'recipients:[participant-aria] sequential',
     },
   },
   {
@@ -503,8 +500,8 @@ const cases: Array<{ name: string; scenario: Scenario; expected: StartedConversa
         + ' | Milo · Claude-CLI · claude-sonnet [edit]',
       composer: 'avatars:0 chip:"Aria +1" workflow',
       chip: 'audience',
-      send: 'none',
-      sendFirstOnly: 'none',
+      send: 'recipients:[participant-aria,cat-milo] sequential',
+      sendFirstOnly: 'recipients:[participant-aria] sequential',
     },
   },
   {
@@ -513,12 +510,10 @@ const cases: Array<{ name: string; scenario: Scenario; expected: StartedConversa
     expected: {
       header: 'Boss · Claude-CLI · claude-sonnet [boss] | Milo · Claude-CLI · claude-sonnet [edit]'
         + ' | Nova · Claude-CLI · claude-sonnet [edit]',
-      // The chip's keys miss the send path's, so it shows one cat while the
-      // message still goes to both.
-      composer: 'avatars:0 chip:"Milo"',
+      composer: 'avatars:0 chip:"Milo +1" workflow',
       chip: 'audience',
       send: 'recipients:[cat-milo,cat-nova] sequential',
-      sendFirstOnly: 'recipients:[cat-milo,cat-nova] sequential',
+      sendFirstOnly: 'recipients:[cat-milo] sequential',
     },
   },
 ];

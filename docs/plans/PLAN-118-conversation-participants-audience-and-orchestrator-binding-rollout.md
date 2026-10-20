@@ -45,10 +45,10 @@ audience-key defect as it is.
 
 ### Phase 2: Audience reaches the send path
 
-- [ ] Task 2.1: Key audiences by participant id in
+- [x] Task 2.1: Key audiences by participant id in
       `shared/renderer/composerMessageMetadata.ts`, count provider/model
       participants as active, and send the chip's audience.
-- [ ] Task 2.2: Delete the unused duplicates
+- [x] Task 2.2: Delete the unused duplicates
       (`chat/renderer/composerMessageMetadata.ts`,
       `chat/renderer/hooks/useComposerSubmit.ts`,
       `chat/renderer/conversationMode.ts`) and their tests' dependence on them.

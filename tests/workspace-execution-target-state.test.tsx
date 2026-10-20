@@ -11,7 +11,6 @@ import {
   toDefaultChatExecutionTargetValue,
 } from '../src/products/shared/renderer/hooks/useWorkspaceExecutionTargetState.ts';
 import { formatWorkspaceExecutionTargetMutationError } from '../src/products/shared/renderer/hooks/workspaceExecutionTargetErrorLabels.ts';
-import { resolveDispatchExecutionTargetValue } from '../src/products/chat/renderer/hooks/useComposerSubmit.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 import { invalidateProviderClientSession } from '../src/app/renderer/providerClientInvalidation.ts';
 
@@ -758,56 +757,3 @@ for (const providerDefaultTarget of [
   });
 }
 
-test('dispatch execution target resolution keeps advanced default effort explicit before send', async () => {
-  const resolved = await resolveDispatchExecutionTargetValue(
-    {
-      provider: 'claude',
-      instance: 'native',
-      model: 'opus',
-      modelSelection: null,
-      executionLabel: null,
-    },
-    async ({ target }) => ({
-      ...target,
-      modelSelection: {
-        entryId: 'opus',
-        entryMode: 'explicit',
-        controls: {
-          'claude.reasoning_effort': 'xhigh',
-        },
-      },
-      executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
-    }),
-  );
-
-  assert.deepEqual(resolved.modelSelection, {
-    entryId: 'opus',
-    entryMode: 'explicit',
-    controls: {
-      'claude.reasoning_effort': 'xhigh',
-    },
-  });
-});
-
-test('dispatch execution target resolution falls back to the original target when reconciliation fails', async () => {
-  const resolved = await resolveDispatchExecutionTargetValue(
-    {
-      provider: 'claude',
-      instance: 'native',
-      model: 'opus',
-      modelSelection: null,
-      executionLabel: null,
-    },
-    async () => {
-      throw new Error('catalog unavailable');
-    },
-  );
-
-  assert.deepEqual(resolved, {
-    provider: 'claude',
-    instance: 'native',
-    model: 'opus',
-    modelSelection: null,
-    executionLabel: null,
-  });
-});

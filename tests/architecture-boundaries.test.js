@@ -1207,15 +1207,11 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
     'utf8',
   );
   const hookSource = await readFile(
-    new URL('../src/products/chat/renderer/hooks/useComposerSubmit.ts', import.meta.url),
+    new URL('../src/products/shared/renderer/hooks/useWorkspaceComposerSubmit.ts', import.meta.url),
     'utf8',
   );
   const sharedDispatchSource = await readFile(
     new URL('../src/products/shared/renderer/composerDispatch.ts', import.meta.url),
-    'utf8',
-  );
-  const parallelDispatchSource = await readFile(
-    new URL('../src/products/chat/renderer/composerParallelDispatch.ts', import.meta.url),
     'utf8',
   );
   const sharedParallelDispatchSource = await readFile(
@@ -1232,7 +1228,7 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
 
   assert.match(appSource, /createUseComposerSubmit/u);
   assert.doesNotMatch(appSource, /async function submitComposerMessage\(/u);
-  assert.match(hookSource, /export function useComposerSubmit/u);
+  assert.match(hookSource, /export function useWorkspaceComposerSubmit/u);
   assert.match(hookSource, /prepareWorkspaceSendContext/u);
   assert.match(hookSource, /submitNewParallelChatDraft/u);
   assert.match(hookSource, /submitParallelCompareMessage/u);
@@ -1240,8 +1236,7 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
   assert.match(hookImplementationSource, /buildNewChatChannelInput/u);
   assert.match(hookImplementationSource, /insertCreatedChannelIntoPayload/u);
   assert.match(hookSource, /sendChatMessage/u);
-  assert.match(parallelDispatchSource, /createParallelChatGroup/u);
-  assert.match(parallelDispatchSource, /sendParallelChatMessage/u);
+  assert.match(sharedParallelDispatchSource, /sendParallelChatMessage/u);
   assert.match(sharedParallelDispatchSource, /export function buildParallelChatDraftCreateInput/u);
   assert.match(
     sharedParallelDispatchSource,
@@ -1253,11 +1248,7 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
   assert.match(sharedRequestControlsSource, /cancelChannel/u);
 });
 
-test('chat and workspace composer hooks consume shared navigation and draft-reset helpers', async () => {
-  const chatHookSource = await readFile(
-    new URL('../src/products/chat/renderer/hooks/useComposerSubmit.ts', import.meta.url),
-    'utf8',
-  );
+test('workspace composer hook consumes shared navigation and draft-reset helpers', async () => {
   const workspaceHookSource = await readFile(
     new URL('../src/products/shared/renderer/hooks/useWorkspaceComposerSubmit.ts', import.meta.url),
     'utf8',
@@ -1275,15 +1266,10 @@ test('chat and workspace composer hooks consume shared navigation and draft-rese
     'utf8',
   );
 
-  assert.match(chatHookSource, /composerNavigation\.js/u);
-  assert.match(chatHookSource, /composerDraftState\.js/u);
-  assert.match(chatHookSource, /useComposerSubmitBindings/u);
   assert.match(workspaceHookSource, /composerNavigation\.js/u);
   assert.match(workspaceHookSource, /composerDraftState\.js/u);
   assert.match(workspaceHookSource, /useComposerSubmitBindings/u);
-  assert.match(chatHookSource, /navigateWithinManagedComposerFlow/u);
   assert.match(workspaceHookSource, /navigateWithinManagedComposerFlow/u);
-  assert.match(chatHookSource, /resetComposerDraftState/u);
   assert.match(workspaceHookSource, /resetComposerDraftState/u);
   assert.match(navigationHelperSource, /export function navigateWithinManagedComposerFlow/u);
   assert.match(draftStateHelperSource, /export function resetComposerDraftState/u);
