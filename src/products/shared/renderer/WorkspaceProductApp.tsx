@@ -372,6 +372,11 @@ export function createWorkspaceProductApp({
       navigationChannelId ? `channel:${navigationChannelId}` : `draft:${currentNavigationPath}`,
     );
     const draftFolderBrowseTargetRef = useRef<DraftFolderBrowseTarget>({ kind: "lead" });
+    useEffect(() => {
+      if (shellSurface !== 'code' || !showingNewChatDraft) return;
+      const codespacePath = new URLSearchParams(location.search).get('codespace');
+      if (codespacePath?.trim()) setDraftCwd(codespacePath);
+    }, [location.pathname, location.search, showingNewChatDraft, setDraftCwd]);
     const parallelBranchCwdSetterRef = useRef<(
       (index: number, cwd: string | null) => void
     ) | null>(null);

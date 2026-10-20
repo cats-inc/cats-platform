@@ -1,4 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
+import { LinkRepairActions, OrphanLinkActions, RelationshipActions } from './RelationshipActions.js';
+import { TaskOperationalActions } from '../../../../shared/renderer/TaskOperationalActions.js';
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -50,6 +52,7 @@ export function BrokenLinksPage(): JSX.Element {
     [graph.links],
   );
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [selectedLinks, setSelectedLinks] = useState<string[]>([]);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   const handleRemoveLink = useCallback(
@@ -95,6 +98,9 @@ export function BrokenLinksPage(): JSX.Element {
       });
   }, [graph, severityFilter]);
 
+  const orphanIds = filtered.filter((item): item is WorkGraphLinkOrphanDiagnostic => item.kind === 'orphan_link').map(item => item.linkId);
+  const visibleOrphans = orphanIds.join('\n');
+  useEffect(() => { setSelectedLinks(current => { const next = current.filter(id => orphanIds.includes(id)); return next.length === current.length ? current : next; }); }, [visibleOrphans]);
   function setSeverity(next: SeverityFilter): void {
     const params = new URLSearchParams(searchParams);
     if (next === "all") params.delete("severity");
@@ -180,7 +186,7 @@ export function BrokenLinksPage(): JSX.Element {
           onClick={() => setSeverity("info")}
         />
       </nav>
-      <div className="brokenLinks__list">
+      <div className="brokenLinks__list"><OrphanLinkActions ids={selectedLinks} onChanged={() => setSelectedLinks([])} />
         {removeError ? (
           <p className="brokenLinks__removeError" role="alert">
             {removeError}
@@ -192,6 +198,8 @@ export function BrokenLinksPage(): JSX.Element {
           </p>
         ) : (
           filtered.map((d) => (
+            <div key={d.id}>
+            {d.kind === 'orphan_link' ? <label><input type="checkbox" checked={selectedLinks.includes(d.linkId)} onChange={event => setSelectedLinks(current => event.target.checked ? [...current, d.linkId] : current.filter(id => id !== d.linkId))} />{t('ownerSelectItem', { title: d.message })}</label> : null}
             <DiagnosticRow
               key={d.id}
               diagnostic={d}
@@ -201,6 +209,8 @@ export function BrokenLinksPage(): JSX.Element {
               onRemoveLink={handleRemoveLink}
               removingId={removingId}
             />
+            {d.kind === 'orphan_link' ? <LinkRepairActions id={d.linkId} /> : d.kind === 'link_cycle' ? <div>{d.cycleLinkIds.map(id => <LinkRepairActions key={id} id={id} />)}</div> : d.repairSubject ? <div>{d.kind === 'missing_gate_subject' && d.repairSubject.family === 'task' ? <TaskOperationalActions taskId={d.repairSubject.id} /> : <RelationshipActions family={d.repairSubject.family} id={d.repairSubject.id} />}</div> : null}
+            </div>
           ))
         )}
       </div>

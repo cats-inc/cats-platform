@@ -805,6 +805,52 @@ other provider routes.
 
 ### Cats Work
 
+#### Execution history management (ADR-133)
+
+- `GET /api/work/history?family=run|mission` is the paginated owner list.
+  Filters: `source=managed|all|work|room|schedule|delegation|unknown`,
+  `view=visible|archived|all`, `status`, `q`, `from`, `to`, `taskId`,
+  `projectId`, `binding`, `originSurface`, `id`, `page`, `pageSize` (1–100).
+  The managed default includes deliberate execution producers and actionable
+  attempts, while `source=all` retains ordinary room history. Producer source,
+  current task binding and explicit origin are separate fields. Complete Core
+  graph/list endpoints retain their cross-product coverage. The response
+  includes lifecycle revision, total/page counts and task/project filter labels.
+- `POST /api/work/history/preview` accepts `{ subjects: [{ family: 'run' |
+  'mission', id }], scope: 'logs' | 'history' }` (1–100 subjects). It expands
+  descendants explicitly, returns the exact selection, protected/active reasons,
+  proposed outcomes and a source/reference fingerprint `token`. Unknown byte
+  estimates remain `null`. A mission sharing its parent attempt's detail directs
+  the owner to preview the complete parent Run instead.
+- `POST /api/work/history/apply` accepts the preview's `subjects`, `scope`,
+  and `token`. Stale source or references return `409 owner_preview_stale`.
+  Repeat application is idempotent; per-item receipts report `compacted`,
+  `removed`, `retained` or `blocked`. Active trees/open checkpoints are protected.
+  Artifact/approval/schedule references retain necessary summaries. Actual disk
+  reclamation is unmeasured (`reclaimedBytes: null`), not claimed as a success.
+- `POST /api/work/history/listing` accepts `subjects`, lifecycle `revision`
+  and `action: archive|restore`. Only terminal attempts can be archived.
+- `POST /api/work/history/export` accepts the selection and scope and returns
+  an export of attempt summaries and trace messages, excluding execution
+  metadata/credentials. Export never mutates state.
+
+Cleanup compacts product trace/activity/checkpoint detail and workflow duplicate
+responses at the source, preserving conversation messages and deliverables.
+Minimal provenance is retained. The rotating product backup receives the same
+history-cleanup intent so later recovery cannot resurrect cleared detail. Normal
+backup semantics remain unchanged for profiles without a history cleanup.
+Provider-native transcripts and external evidence files are retained; none of
+these routes requests arbitrary filesystem or Runtime session deletion.
+
+Planning-record DELETE commands for Projects, Work Items and Tasks now run
+inside the Core mutation lock. `409 owner_delete_blocked` identifies existing
+references, active work or a conversation-owned record. Resolve/move/detach the
+references, finish/cancel work, or archive/open the source conversation instead.
+Deletion never creates dangling links or pretends to delete a derived row that
+the next snapshot would rebuild. Unreferenced Core-owned records retain normal
+DELETE behavior; a missing record returns `404`. This stricter behavior is
+recorded for the next Platform minor under ADR-133, without a version bump here.
+
 ```text
 GET /api/work
 GET /api/work/projects
@@ -1162,6 +1208,8 @@ GET /api/code/tasks/:taskId
 GET /api/code/codespaces
 GET /api/code/codespaces/:codespaceId
 POST /api/code/codespaces/resolve
+POST /api/code/codespaces/register
+POST /api/code/codespaces/:codespaceId/actions
 POST /api/code/catlas/help
 GET /api/code/knowledge
 POST /api/code/knowledge
@@ -1199,6 +1247,21 @@ GET /api/code/previews
   not return renderer-only seed fixtures.
 - `GET /api/code/codespaces/:codespaceId` returns the focused Codespace detail
   view, including linked conversations, Code tasks, and artifacts.
+- Codespace list/detail includes owner `management` state: `listing`
+  (`visible`, `archived`, `removed`), `pinned`, and the current lifecycle
+  `revision`. The default list returns visible entries; `?view=all`,
+  `?view=archived` and `?view=removed` expose other listing states. Inferred
+  entries start unpinned. Removed registrations remain explicitly restorable
+  even when their original source disappears.
+- `POST /api/code/codespaces/:codespaceId/actions` accepts `{ action,
+  revision, label? }`, where action is `pin`, `unpin`, `rename`, `archive`,
+  `restore` or `remove`. Stale revisions return `409 owner_revision_stale`.
+  Removal preserves directories, conversations and outputs; active Run,
+  Session or Preview references return `409 codespace_in_use`. Only explicit
+  restore reactivates a removed listing.
+- `POST /api/code/codespaces/register` accepts `{ path, revision }`. The path
+  must be an existing absolute directory; this registers it without creating
+  directories or starting execution. The response is its Codespace detail.
 - `POST /api/code/codespaces/resolve` resolves a candidate path and fallback
   conversation context into a Code codespace summary.
 - `GET /api/code/artifacts` returns the code-output list read model above all
@@ -3835,3 +3898,25 @@ Errors use a minimal payload:
 ---
 
 *Last updated: 2026-09-27*
+
+### Owner planning actions
+
+`GET /api/core/owner/{project|work_item|task|artifact}` lists durable visibility. `GET /api/core/owner/{family}/{id}` returns the editable fields, choices, dependencies, source navigation and action eligibility with an opaque snapshot token. `POST` to that detail path submits `{action, token, ...fields}` under the Core mutation lock. Stale objects/dependencies return 409. Supported actions are edit, Project pause/resume, acceptance-aware complete/reopen/cancel, presentation archive/restore, and protected record deletion. Commands preserve external issue status and files. Derived planning execution stays with its conversation; active execution, pending approvals and supervised delivery cannot be bypassed. Parent edits reject cycles and inconsistent Project hierarchies. Deletion intent is also applied to recovery backups.
+
+`POST /api/core/owner/{family}/batch` previews `{action:"preview",ids}` and applies `{action:"archive"|"restore",ids,token}` for 1–100 records. The token binds the exact canonical selection and dependency snapshot. Apply revalidates every selected record under one mutation; a blocker leaves the entire batch unchanged.
+
+### Schedule owner management
+
+`PATCH /api/work/schedules/:id` accepts optional `expectedRule` for checked atomic editing; current owner forms send it. `POST /api/work/schedules/:id/owner` uses `{action:"preview",scope:"rule"|"receipts"}` then `{action:"apply",scope,token}`. Rule removal requires a disabled rule without claimed triggers or active Runs. Both operations compact receipt message/metadata while preserving receipt IDs, idempotency keys, Run/Mission links and outputs. Removed identities cannot be restored by stale scheduler writes. The prior unpreviewed DELETE refuses enabled rules or rules with receipts; this public tightening is scheduled for the next Platform minor per ADR-133. Schedule state v1 gains optional `deletedRuleIds`; existing profiles load without opt-in changes, future/malformed input is preserved, and writes use backup/atomic replacement with validated recovery. History lists also accept exact `ruleId` filters.
+
+### Preview history ownership
+
+`POST /api/code/live-previews/:id/owner` previews `{action:"preview"}` and applies `{action:"apply",token}`. The token binds lease state and the current log buffer. Only successfully ended host-session history is removable; active/stopping and failed-stop leases are blocked. Actual scope is the host lease and in-memory logs, retaining artifacts, files and provider evidence. No persistent filesystem log reclamation is claimed. Restart continues to use the existing artifact preview restart endpoint and its opt-in/capability checks.
+
+### Contextual Code execution controls
+
+Code and Relay stop the selected attempt through the canonical Work Run stop endpoint. Relay retry/forwarding prepares a new reviewed fan-out round; optional `sourceMessageId` must exist in the same Project context. Relay Core admission/bridge/finalization are atomic; cancelled Runs remain cancelled when provider responses arrive later. Code Task create/resume use atomic Core writes and execution reserves one queued attempt before creating a Runtime session. Duplicate, pending/rejected approval, derived-source and archived admission are blocked; failed startup remains retryable and late sessions are cancelled after an owner stop. `POST /api/code/tasks/:id/reconcile` observes only that Task own Runtime bridge; a closed session terminates the attempt and leaves Task acceptance pending. It does not infer delivery success. Relay auxiliary stdout/stderr excerpts participate in source-aware detailed-log cleanup; owner prompts and discussion responses remain conversation data.
+
+### Work relationship repair
+
+`GET /api/work/relationships/:family/:id` returns permitted nullable anchor fields, current target, valid choices, source/active/approval blockers and a snapshot token. `POST` applies `{token,field,targetId}`; `null` explicitly detaches a nullable anchor. Parent cycles and inconsistent Work Item Project hierarchies are rejected. Derived sources, active work, open checkpoints and published delivery evidence retain their authoritative controls. For `family=link`, GET returns planning endpoint choices and POST `{token,source:"family:id",target:"family:id"}` relinks canonically; duplicate links merge with a truthful `merged` result. `POST /api/work/relationships/orphan-links` previews `{action:"preview",ids}` and applies `{action:"apply",ids,token}` to 1–100 exact orphan identities. Resolved/changed endpoints invalidate apply. Optional lifecycle `removedLinkIds` prevent deleted links returning through source rebuilds or recovery backups.

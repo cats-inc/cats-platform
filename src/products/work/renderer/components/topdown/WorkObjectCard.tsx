@@ -190,6 +190,10 @@ export function getWorkObjectStatusLabel(
   status: string,
   t: ReturnType<typeof useI18n>["t"],
 ): string {
+  if (status === "pending_approval") return t("workNewTaskStatusPendingApproval");
+  if (status === "approved") return t("workNewTaskStatusApproved");
+  if (status === "failed") return t("workExecutionReplayStateFailed");
+  if (status === "succeeded") return t("workObjectStatusCompleted");
   return status === "draft"
     ? t("workObjectStatusDraft")
     : status === "planned"

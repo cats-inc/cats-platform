@@ -61,7 +61,10 @@ test('LivePreviewPanel exposes status, stop, retry, and log controls', async (t)
   assert.equal(await view.findByText('preview-a'), view.getByText('preview-a'));
   assert.equal(view.getByText('Ready').textContent, 'Ready');
   assert.equal(view.getByRole('button', { name: 'Stop' }).textContent, 'Stop');
-  assert.equal(view.getByRole('button', { name: 'Retry' }).textContent, 'Retry');
+  assert.equal(view.queryByRole('button', { name: 'Retry' }), null);
+  assert.match(view.getByText(/Restart requires a registered preview artifact/).textContent!, /source Task/);
+  assert.ok(view.getByRole('button', { name: 'Export' }));
+  assert.ok(view.getByRole('button', { name: 'Preview cleanup' }));
   assert.equal(view.getByRole('button', { name: 'Logs' }).textContent, 'Logs');
 });
 

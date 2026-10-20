@@ -74,6 +74,9 @@ function DraftCard({ draft, labels, busy, act }: { draft: Draft; labels: Labels;
 }
 
 export function KnowledgeContributionsPage() {
+  const { t } = useI18n();
+  const [search, setSearch] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const labels = useKnowledgeLabels();
   const [data, setData] = useState<LocalKnowledgeWorkspace | null>(null);
   const [target, setTarget] = useState<LocalKnowledgeTarget>('catlas');
@@ -125,8 +128,11 @@ export function KnowledgeContributionsPage() {
       </form>
     </section>
     <section className="operatorPanel"><h2>{labels.pending}</h2>
+      <p>{t('ownerKnowledgeActiveNotice')}</p>
+      <label>{t('ownerSearch')} <input type="search" value={search} onChange={event => setSearch(event.target.value)} /></label>
+      <label>{t('ownerSource')} <select value={sourceFilter} onChange={event => setSourceFilter(event.target.value)}><option value="all">{t('ownerAll')}</option><option value="catlas">{labels.catlas}</option><option value="orchestrator">{labels.orchestrator}</option></select></label>
       {!data?.drafts.length && <p>{labels.empty}</p>}
-      {data?.drafts.map(draft => <DraftCard key={`${draft.id}:${data.revision}`} draft={draft} labels={labels} busy={busy}
+      {data?.drafts.filter(draft => (sourceFilter === 'all' || draft.target === sourceFilter) && (!search || `${draft.entryId} ${draft.note} ${draft.content.en} ${draft.content['zh-TW']}`.toLowerCase().includes(search.toLowerCase()))).map(draft => <DraftCard key={`${draft.id}:${data.revision}`} draft={draft} labels={labels} busy={busy}
         act={(action, id) => void change({ action, id, ...(action === 'adopt' ? { confirm: 'manual-local-unverified' }
           : action === 'delete' ? { confirm: 'delete-local-contribution' } : {}) })} />)}
     </section>

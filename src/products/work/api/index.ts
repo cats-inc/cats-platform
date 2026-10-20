@@ -1,3 +1,4 @@
+import { routeOwnerRelationships } from './ownerRelationshipRoutes.js';
 import { applyWorkGoldenPathLifecycleAction } from '../state/workGoldenPathLifecycle.js';
 import {
   buildWorkGoldenPathDetailProjectionForTask,
@@ -101,6 +102,9 @@ import {
   WORK_API_WORK_ITEM_DETAIL_PATTERN,
   WORK_API_WORK_ITEMS_PATH,
 } from '../shared/apiPaths.js';
+
+import { routeWorkHistoryApi } from './historyRoutes.js';
+import { routeHistoryRetention } from './historyRetentionRoutes.js';
 
 export const WORK_API_SLICE = 'work';
 
@@ -545,6 +549,9 @@ export function createWorkWorkItemDetailPayload(
 export async function routeWorkApi(
   context: WorkApiRouteContext,
 ): Promise<boolean> {
+  if (await routeOwnerRelationships(context)) return true;
+  if (await routeHistoryRetention(context)) return true;
+  if (await routeWorkHistoryApi(context)) return true;
   if (await routeWorkCandidateEvidenceApi(context)) return true;
   if (await routeWorkPracticeProposalApi(context)) return true;
   // SPEC-090 link routes (createLink / removeLink / listLinks)

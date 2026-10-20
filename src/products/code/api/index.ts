@@ -93,8 +93,9 @@ export function createCodeTaskListPayload(
 
 export function createCodeWorkspaceListPayload(
   core: Awaited<ReturnType<CoreStore['readCore']>>,
+  view = 'visible',
 ): CodeWorkspaceListProjection {
-  return buildCodeWorkspaceListProjection(core);
+  return buildCodeWorkspaceListProjection(core, view);
 }
 
 export function createCodeWorkspaceDetailPayload(
@@ -276,7 +277,7 @@ export async function routeCodeApi(
     sendJson(
       context.response,
       200,
-      createCodeWorkspaceListPayload(await context.dependencies.coreStore.readCore()),
+      createCodeWorkspaceListPayload(await context.dependencies.coreStore.readCore(), context.url.searchParams.get('view') ?? 'visible'),
     );
     return true;
   }

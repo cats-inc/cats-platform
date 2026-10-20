@@ -1,3 +1,6 @@
+import { Link, useSearchParams } from 'react-router-dom';
+import { RunExecutionActions } from '../../../shared/renderer/RunExecutionActions.js';
+import { OwnerRecordActions, useOwnerListing } from '../../../shared/renderer/OwnerRecordActions.js';
 import { useEffect, useState } from 'react';
 import { sameProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
@@ -81,6 +84,7 @@ function labelRelayStatus(status: string, t: ReturnType<typeof useI18n>['t']): s
       return t(messageKeys.codeRelayStatusCompleted);
     case 'failed':
       return t(messageKeys.codeRelayStatusFailed);
+    case 'cancelled': return t('workObjectStatusCancelled');
     case 'requested':
       return t(messageKeys.codeRelayStatusRequested);
     case 'running':
@@ -131,14 +135,18 @@ function selectedRosterIds(entries: CodeRelayRosterEntryPayload[]): string[] {
 
 export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewProps) {
   const { locale, t } = useI18n();
+  const [searchParams] = useSearchParams();
+  const ownerListing = useOwnerListing('project');
+  const [fanOutMode, setFanOutMode] = useState('discover');
+  const [sourceMessageId, setSourceMessageId] = useState<string | null>(null);
   const [payload, setPayload] = useState<CodeRelayThreadsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(searchParams.get('projectId'));
   const [createTitle, setCreateTitle] = useState(() => t(messageKeys.codeRelayDefaultThreadTitle));
   const [createObjective, setCreateObjective] = useState('');
-  const [createRepoPath, setCreateRepoPath] = useState('');
+  const [createRepoPath, setCreateRepoPath] = useState(searchParams.get('workspace') ?? '');
   const [fanOutObjective, setFanOutObjective] = useState('');
   const [fanOutPrompt, setFanOutPrompt] = useState('');
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
@@ -149,12 +157,8 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
     nextSelectedThreadId: string | null = null,
   ): void {
     setPayload(nextPayload);
-    setSelectedThreadId(
-      nextSelectedThreadId
-      ?? nextPayload.selection.selectedThreadId
-      ?? nextPayload.threads[0]?.thread.id
-      ?? null,
-    );
+    const candidate = nextSelectedThreadId ?? searchParams.get('projectId') ?? nextPayload.selection.selectedThreadId;
+    setSelectedThreadId(nextPayload.threads.some(thread => thread.thread.id === candidate) ? candidate : nextPayload.threads[0]?.thread.id ?? null);
   }
 
   async function loadThreads(nextSelectedThreadId: string | null = null): Promise<void> {
@@ -345,7 +349,8 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
         await runCodeRelayFanOut(
           selectedThreadId,
           {
-            mode: 'discover',
+            mode: fanOutMode,
+            sourceMessageId,
             objective: fanOutObjective.trim() || t(messageKeys.codeRelayOpenDiscoveryRound),
             prompt: fanOutPrompt.trim(),
             agentIds: selectedAgentIds,
@@ -475,7 +480,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
             <div className="operatorPanelHeader">
               <div>
                 <p className="operatorEyebrow">{t(messageKeys.codeBuilderResumePrompt)}</p>
-                <h2>{t(messageKeys.codeRelayLabelThreadShell)}</h2>
+                <h2>{t(messageKeys.codeRelayLabelThreadShell)}</h2>{ownerListing.control}
               </div>
             </div>
             <div className="codeBuilderForm">
@@ -486,7 +491,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                   value={selectedThreadId ?? ''}
                   onChange={(event) => setSelectedThreadId(event.target.value || null)}
                 >
-                  {payload.threads.map((thread) => (
+                  {payload.threads.filter(thread => ownerListing.accepts(thread.thread.id)).map((thread) => (
                     <option key={thread.thread.id} value={thread.thread.id}>
                       {thread.thread.title}
                     </option>
@@ -498,6 +503,8 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                 <article className="operatorCard">
                   <div className="operatorCardHeader">
                     <strong>{selectedThread.thread.title}</strong>
+                    <Link to={"/work/projects/" + encodeURIComponent(selectedThread.thread.id)}>{t('ownerOpenProject')}</Link>
+                    <OwnerRecordActions family="project" id={selectedThread.thread.id} onChanged={removed => { void refreshThreads(removed ? null : selectedThread.thread.id); }} />
                     <span className={relayThreadStatusClass(selectedThread.thread.status)}>
                       {labelRelayStatus(selectedThread.thread.status, t)}
                     </span>
@@ -620,6 +627,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                   </div>
                 </div>
                 <div className="codeBuilderForm">
+                  <p>{t('ownerDispatchReviewNotice')}</p><label>{t('ownerDispatchMode')} <select value={fanOutMode} onChange={event => setFanOutMode(event.target.value)}>{['discover', 'shape', 'fit', 'document', 'build', 'review', 'human_verify', 'repair'].map(mode => <option key={mode} value={mode}>{labelCodeRelayModeForLocale(mode, t)}</option>)}</select></label>
                   <label className="codeBuilderLabel">
                     {t(messageKeys.codeRelayLabelRoundObjective)}
                     <input
@@ -634,7 +642,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                     <textarea
                       className="codeBuilderTextarea"
                       rows={5}
-                      value={fanOutPrompt}
+                      id="code-dispatch-form" value={fanOutPrompt}
                       onChange={(event) => setFanOutPrompt(event.target.value)}
                       placeholder={t(messageKeys.codeRelayPlaceholderFanOutPrompt)}
                     />
@@ -663,7 +671,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                       type="button"
                       className="operatorActionButton operatorActionButtonPrimary"
                       onClick={() => { void handleFanOut(); }}
-                      disabled={busy === 'fan-out'}
+                      disabled={busy === 'fan-out' || selectedThread.thread.status === 'waiting_for_agents'}
                     >
                       {busy === 'fan-out'
                         ? t(messageKeys.codeRelayActionDispatching)
@@ -741,13 +749,9 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                                   <pre className="codeRelayMessageBody">{responseMessage.content}</pre>
                                 </div>
                               ) : null}
-                              <button
-                                type="button"
-                                className="operatorActionButton"
-                                disabled
-                              >
-                                {t(messageKeys.codeRelayLabelRelayToOthers)}
-                              </button>
+                              {dispatch.runId ? <RunExecutionActions runId={dispatch.runId} status={dispatch.status} onChanged={() => { void refreshThreads(selectedThread.thread.id); }} /> : null}
+                              {dispatch.status === 'failed' || dispatch.status === 'cancelled' ? <button disabled={!!busy} onClick={() => { setFanOutPrompt(dispatch.prompt); setFanOutObjective(round.objective); setFanOutMode(round.mode); setSelectedAgentIds([dispatch.agentId]); setSourceMessageId(null); document.getElementById('code-dispatch-form')?.focus(); }}>{t('ownerPrepareRetry')}</button> : null}
+                              {responseMessage ? <button disabled={!!busy} onClick={() => { setFanOutPrompt(responseMessage.content); setFanOutObjective(round.objective); setFanOutMode(round.mode); setSelectedAgentIds(selectedThread.roster.filter(entry => entry.enabled && entry.id !== dispatch.agentId).map(entry => entry.id)); setSourceMessageId(responseMessage.id); document.getElementById('code-dispatch-form')?.focus(); }}>{t(messageKeys.codeRelayLabelRelayToOthers)}</button> : null}
                             </div>
                           );
                         })}

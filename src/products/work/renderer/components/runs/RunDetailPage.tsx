@@ -1,3 +1,4 @@
+import { HistoryActions } from './HistoryActions.js';
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -320,6 +321,8 @@ export function RunDetailPage(): JSX.Element {
       </header>
 
       <main className="runDetail__main">
+        <HistoryActions subjects={[{ family: 'run', id: run.id }]} revision={runsQuery.data?.revision ?? 0} archiveEligible={isTerminalRunStatus(run.status)} />
+        {run.logsClearedAt ? <p role="status">{t("ownerLogsCleared")}</p> : null}
         {stopErrorMessage ? (
           <p className="runDetail__error" role="alert">
             {stopErrorMessage}

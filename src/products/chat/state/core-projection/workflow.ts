@@ -204,6 +204,7 @@ export function createWorkflowRun(
     updatedAt: turn.updatedAt,
     metadata: {
       source: 'chat-room-workflow',
+      originSurface: channel.originSurface,
       channelId: channel.id,
       containerId,
       turnId: turn.id,
@@ -260,6 +261,7 @@ export function createWorkflowMission(
     updatedAt: target.completedAt ?? target.startedAt ?? turn.updatedAt,
     metadata: {
       source: 'chat-room-workflow',
+      originSurface: channel.originSurface,
       channelId: channel.id,
       containerId,
       turnId: turn.id,
@@ -324,6 +326,7 @@ export function createWorkflowTrace(
     createdAt: event.createdAt,
     metadata: {
       source: 'chat-room-workflow',
+      originSurface: channel.originSurface,
       channelId: channel.id,
       containerId,
       turnId: turn.id,
@@ -361,6 +364,7 @@ export function createWorkflowCheckpoint(
     updatedAt: event.createdAt,
     metadata: {
       source: 'chat-room-workflow',
+      originSurface: channel.originSurface,
       channelId: channel.id,
       containerId,
       turnId: turn.id,
@@ -403,6 +407,7 @@ export function createWorkflowOutcome(
     updatedAt: event.createdAt,
     metadata: {
       source: 'chat-room-workflow',
+      originSurface: channel.originSurface,
       channelId: channel.id,
       containerId,
       turnId: turn.id,
@@ -471,6 +476,7 @@ export function createWorkflowActivity(
     createdAt: event.createdAt,
     metadata: {
       source: 'chat-room-workflow',
+      originSurface: channel.originSurface,
       channelId: channel.id,
       containerId,
       turnId: turn.id,

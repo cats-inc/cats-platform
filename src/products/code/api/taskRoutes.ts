@@ -8,6 +8,7 @@ import {
   createCodeTask,
   resumeCodeTask,
   bridgeCodeTaskToRuntime,
+  reconcileCodeTaskExecution,
   type CreateCodeTaskInput,
   type BridgeCodeTaskInput,
 } from '../state/taskExecution.js';
@@ -130,6 +131,16 @@ export async function routeCodeTaskMutationApi(
     return true;
   }
 
+  const reconcileMatch = /^\/api\/code\/tasks\/([^/]+)\/reconcile$/u.exec(context.url.pathname);
+  if (reconcileMatch) {
+    if (context.method !== 'POST') { sendMethodNotAllowed(context.response, ['POST']); return true; }
+    try {
+      const core = await reconcileCodeTaskExecution(context.dependencies.coreStore, context.dependencies.runtimeClient, decodeURIComponent(reconcileMatch[1]));
+      sendJson(context.response, 200, { task: core.tasks.find(task => task.id === decodeURIComponent(reconcileMatch[1])) ?? null });
+    } catch (error) { sendJson(context.response, 502, { error: { message: error instanceof Error ? error.message : 'Runtime observation failed.' } }); }
+    return true;
+  }
+
   // POST /api/code/tasks/{taskId}/resume
   const resumeMatch = matchRoute(
     context.url.pathname,
@@ -150,9 +161,8 @@ export async function routeCodeTaskMutationApi(
     }
 
     try {
-      const core = await context.dependencies.coreStore.readCore();
-      const result = resumeCodeTask(core, { taskId });
-      await context.dependencies.coreStore.writeCore(result.core);
+      let result!: ReturnType<typeof resumeCodeTask>;
+      await context.dependencies.coreStore.updateCore(core => { result = resumeCodeTask(core, { taskId }); return result.core; });
 
       const taskDetail = buildCodeTaskDetailProjection(
         result.core,
@@ -205,9 +215,8 @@ export async function routeCodeTaskMutationApi(
     };
 
     try {
-      const core = await context.dependencies.coreStore.readCore();
-      const result = createCodeTask(core, input);
-      await context.dependencies.coreStore.writeCore(result.core);
+      let result!: ReturnType<typeof createCodeTask>;
+      await context.dependencies.coreStore.updateCore(core => { result = createCodeTask(core, input); return result.core; });
 
       const taskDetail = buildCodeTaskDetailProjection(result.core, result.task);
       sendJson(context.response, 201, { task: taskDetail });

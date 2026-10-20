@@ -125,7 +125,7 @@ export type WorkScheduleCreateInput = Omit<
 export type WorkScheduleUpdateInput = Partial<Pick<
   WorkScheduleCreateInput,
   'title' | 'enabled' | 'timezone' | 'schedule' | 'missionTemplate' | 'executionPolicy'
->>;
+>> & { expectedRule?: WorkScheduleRule };
 
 export interface WorkScheduleAdmissionResult {
   status: 'admitted' | 'duplicate' | 'skipped' | 'failed';

@@ -1,4 +1,5 @@
 import { createServer } from 'node:net';
+import { canRemovePreviewLease } from './leaseStore.js';
 
 import {
   DEFAULT_LIVE_PREVIEW_CONFIG,
@@ -92,6 +93,13 @@ export class LivePreviewSupervisor {
 
   readLogs(previewId: string): string | null {
     return this.previews.get(previewId)?.logs ?? null;
+  }
+
+  removeEndedLease(previewId: string, expected: LivePreviewLease): boolean {
+    const managed = this.previews.get(previewId);
+    if (!managed || !canRemovePreviewLease(managed.lease) || JSON.stringify(managed.lease) !== JSON.stringify(expected)) return false;
+    this.previews.delete(previewId);
+    return true;
   }
 
   listLeases(): LivePreviewLease[] {

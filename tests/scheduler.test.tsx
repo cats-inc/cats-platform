@@ -221,7 +221,7 @@ test('FileBackedScheduleStore persists rules and trigger receipts outside chat s
     assert.equal((await reloaded.listTriggerReceipts()).length, 1);
 
     const stateDirEntries = await readdir(path.join(tempDir, 'state'));
-    assert.deepEqual(stateDirEntries, ['scheduler-state.local.json']);
+    assert.deepEqual(stateDirEntries, ['scheduler-state.local.json', 'scheduler-state.local.json.bak']);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { assertOwnerRecordDeletable } from '../ownerManagement.js';
 
 import {
   CoreConflictError,
@@ -297,9 +298,8 @@ export function upsertCoreArtifact(
 }
 
 /**
- * Hard-delete a project. Work items / tasks pointing at the deleted
- * project keep their FK; the projection layer surfaces the dangling
- * reference as a missing_project_anchor diagnostic.
+ * Delete only an unreferenced project. Existing dangling links stay diagnosable;
+ * successful owner deletion must never manufacture a new one.
  */
 export function removeCoreProject(
   core: CatsCoreState,
@@ -311,6 +311,7 @@ export function removeCoreProject(
   if (next.length === core.projects.length) {
     return { core, removed: false };
   }
+  assertOwnerRecordDeletable(core, 'project', projectId);
   return {
     core: touchCoreState({ ...core, projects: next }, nowIso),
     removed: true,
@@ -318,8 +319,8 @@ export function removeCoreProject(
 }
 
 /**
- * Hard-delete a work item. Tasks anchored on the work item via
- * `WorkItem.taskId` remain in Core; only the work item row is removed.
+ * Delete an unreferenced Core-owned work item after its Task bridge and other
+ * references have been explicitly detached or moved.
  */
 export function removeCoreWorkItem(
   core: CatsCoreState,
@@ -331,6 +332,7 @@ export function removeCoreWorkItem(
   if (next.length === core.workItems.length) {
     return { core, removed: false };
   }
+  assertOwnerRecordDeletable(core, 'work_item', workItemId);
   return {
     core: touchCoreState({ ...core, workItems: next }, nowIso),
     removed: true,

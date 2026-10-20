@@ -196,6 +196,9 @@ export interface WorkGraphExternalBindingSummary {
 }
 
 export interface WorkGraphObjectSummary {
+  canonicalPath?: string | null;
+  ownerManaged?: boolean;
+  ownerListing?: string;
   id: string;
   kind: WorkGraphObjectKind;
   /** null for cross-cutting evidence and gate objects. */
@@ -315,6 +318,7 @@ export interface WorkGraphGateDecorator {
 }
 
 export interface WorkGraphDiagnostic {
+  repairSubject?: { family: string; id: string };
   id: string;
   severity: WorkGraphDiagnosticSeverity;
   category: WorkGraphDiagnosticCategory;
@@ -357,6 +361,7 @@ export type WorkGraphLinkDiagnostic =
   | WorkGraphLinkCycleDiagnostic;
 
 export interface WorkGraphProjection {
+  ownerRevision?: number;
   objects: WorkGraphObjectSummary[];
   evidenceAttachments: WorkGraphEvidenceAttachment[];
   gateDecorators: WorkGraphGateDecorator[];

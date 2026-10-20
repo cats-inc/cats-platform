@@ -290,6 +290,7 @@ export interface CodeArtifactDetailResponse {
 
 export type CodeWorkspaceStatus = 'active' | 'ready' | 'draft' | 'archived';
 export type CodeWorkspaceSource =
+  | 'owner_selected'
   | 'task_workspace'
   | 'conversation_repo'
   | 'runtime_cwd'
@@ -306,6 +307,7 @@ export interface CodeWorkspaceListItemSummary {
   taskCount: number;
   artifactCount: number;
   lastActiveAt: string;
+  management?: { listing: 'visible' | 'archived' | 'removed'; pinned: boolean; revision: number };
 }
 
 export interface CodeWorkspaceConversationSummary {
@@ -316,9 +318,11 @@ export interface CodeWorkspaceConversationSummary {
   repoPath: string | null;
   updatedAt: string;
   lastMessageAt: string | null;
+  sourceChannelId?: string | null;
 }
 
 export interface CodeWorkspaceListResponse {
+  revision?: number;
   workspaces: CodeWorkspaceListItemSummary[];
   summary: {
     totalAvailable: number;
@@ -542,7 +546,23 @@ export async function fetchCodeArtifacts(
 export async function fetchCodeWorkspaces(
   errorMessage = translate(messageKeys.codeWorkspacesLoadError),
 ): Promise<CodeWorkspaceListResponse> {
-  return fetchJson<CodeWorkspaceListResponse>(CODE_API_CODESPACES_PATH, errorMessage);
+  return fetchJson<CodeWorkspaceListResponse>(`${CODE_API_CODESPACES_PATH}?view=all`, errorMessage);
+}
+
+export async function manageCodespace(id: string, action: string, revision: number, label?: string): Promise<CodeWorkspaceDetailResponse> {
+  const response = await fetch(`${buildCodeApiCodespacePath(id)}/actions`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, revision, label }),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error?.message ?? `Action failed (${response.status})`);
+  return payload;
+}
+
+export async function registerCodespace(path: string, revision: number): Promise<void> {
+  const response = await fetch(`${CODE_API_CODESPACES_PATH}/register`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, revision }),
+  });
+  if (!response.ok) { const payload = await response.json(); throw new Error(payload.error?.message ?? `Action failed (${response.status})`); }
 }
 
 export async function fetchCodeWorkspaceDetail(

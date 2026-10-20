@@ -1,3 +1,4 @@
+import { PreviewOwnerActions } from './PreviewOwnerActions.js';
 import { useEffect, useRef, useState } from 'react';
 
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
@@ -21,6 +22,7 @@ export function LivePreviewPanel({
   surfaceId,
 }: LivePreviewPanelProps): JSX.Element | null {
   const { locale, t } = useI18n();
+  const [refresh, setRefresh] = useState(0);
   const [previews, setPreviews] = useState<CodeLivePreviewSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +91,7 @@ export function LivePreviewPanel({
     return () => {
       expireLivePreviewRequest(requestVersionRef, requestVersion);
     };
-  }, [surfaceId, surfaceKind, t]);
+  }, [surfaceId, surfaceKind, t, refresh]);
 
   if (!loading && !error && previews.length === 0 && !actionFeedback) {
     return null;
@@ -280,14 +282,6 @@ export function LivePreviewPanel({
                   <button
                     type="button"
                     className="operatorActionButton"
-                    disabled
-                    title={t(messageKeys.codeLivePreviewRetryUnavailable)}
-                  >
-                    {t(messageKeys.codeLivePreviewRetry)}
-                  </button>
-                  <button
-                    type="button"
-                    className="operatorActionButton"
                     onClick={() => { void handleToggleLogs(preview.previewId); }}
                     disabled={logsLoadingId === preview.previewId}
                   >
@@ -296,6 +290,7 @@ export function LivePreviewPanel({
                       : t(messageKeys.codeLivePreviewLogs)}
                   </button>
                 </div>
+                <PreviewOwnerActions previewId={preview.previewId} artifactId={preview.artifactId} onChanged={() => { setLogsByPreviewId({}); setRefresh(value => value + 1); }} />
                 {logsLoadingId === preview.previewId ? (
                   <p className="operatorEmptyState">
                     {t(messageKeys.codeLivePreviewLogsLoading)}

@@ -428,6 +428,8 @@ export function createEmptySchedulerState(now: Date = new Date()): SchedulerStat
 }
 
 export function normalizeSchedulerState(value: unknown, now: Date = new Date()): SchedulerState {
+  if (!isRecord(value) || value.version !== SCHEDULER_STATE_VERSION || !Array.isArray(value.rules) || !value.rules.every(isScheduleRule) || !Array.isArray(value.triggerReceipts) || !value.triggerReceipts.every(isScheduleTriggerReceipt)
+    || value.deletedRuleIds !== undefined && (!Array.isArray(value.deletedRuleIds) || value.deletedRuleIds.some(id => typeof id !== 'string'))) throw new CoreValidationError('Unsupported or damaged schedule state. Original data is preserved.');
   if (!isRecord(value)) {
     return createEmptySchedulerState(now);
   }
@@ -444,6 +446,7 @@ export function normalizeSchedulerState(value: unknown, now: Date = new Date()):
     updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : now.toISOString(),
     rules: structuredClone(rules),
     triggerReceipts: structuredClone(triggerReceipts),
+    ...(Array.isArray(value.deletedRuleIds) ? { deletedRuleIds: [...value.deletedRuleIds] as string[] } : {}),
   };
 }
 

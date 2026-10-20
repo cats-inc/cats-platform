@@ -314,7 +314,7 @@ test('Work sidebar keeps the Work product selected on platform settings routes',
   });
 });
 
-test('Work sidebar marks War Room active for war-room routes', () => {
+test('Work sidebar marks the single Overview active for retained war-room routes', () => {
   withLocationPathname('/work/war-room', () => {
     const tree = createWorkSidebarElement({
       payload: createPayload(),
@@ -346,7 +346,7 @@ test('Work sidebar marks War Room active for war-room routes', () => {
       onDirectChatCat: () => {},
     });
 
-    assert.match(findButtonClassByLabel(tree, 'War Room'), /navItemActive/u);
+    assert.match(findButtonClassByLabel(tree, 'Overview'), /navItemActive/u);
   });
 });
 

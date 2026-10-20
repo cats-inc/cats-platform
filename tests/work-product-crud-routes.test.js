@@ -17,6 +17,7 @@ function createMemoryStore(seed = createDefaultCoreState()) {
       state = next;
       return Promise.resolve();
     },
+    async updateCore(mutate) { state = await mutate(state); return state; },
     get current() {
       return state;
     },

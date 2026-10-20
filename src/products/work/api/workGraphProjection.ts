@@ -1,3 +1,5 @@
+import { effectiveOwnerListing, type OwnerSubjectFamily, OWNER_SUBJECT_FAMILIES } from '../../../core/ownerLifecycle.js';
+import { ownerCanonicalPath, ownerAnchorDiagnostics, ownerManagedObject } from './ownerGraphProjection.js';
 import type {
   CatsCoreState,
   CoreActivityRecord,
@@ -194,12 +196,13 @@ export function buildWorkGraphProjection(core: CatsCoreState): WorkGraphProjecti
     }));
 
   return {
-    objects,
+    objects: objects.map(object => ({ ...object, canonicalPath: ownerCanonicalPath(core, object), ownerManaged: ownerManagedObject(core, object), ownerListing: OWNER_SUBJECT_FAMILIES.includes(object.sourceRecordFamily as OwnerSubjectFamily) ? effectiveOwnerListing(core, object.sourceRecordFamily as OwnerSubjectFamily, object.sourceRecordId, object.status) : 'visible' })),
+    ownerRevision: core.ownerLifecycle?.revision ?? 0,
     evidenceAttachments,
     gateDecorators,
     links,
     linksByEndpoint: linkProjection.linksByEndpoint,
-    diagnostics: [...linkProjection.diagnostics, ...incompleteWorkClaimDiagnostics],
+    diagnostics: [...linkProjection.diagnostics, ...incompleteWorkClaimDiagnostics, ...ownerAnchorDiagnostics(core)],
   };
 }
 

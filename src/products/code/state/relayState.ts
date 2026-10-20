@@ -483,6 +483,7 @@ export function startCodeRelayFanOut(
     mode: CodeRelayMode;
     objective: string;
     prompt: string;
+    sourceMessageId?: string | null;
     agentIds: string[];
   },
   now: Date = new Date(),
@@ -519,7 +520,7 @@ export function startCodeRelayFanOut(
       id: `dispatch-${randomUUID()}`,
       agentId: entry.id,
       runId: createCodeRelayDispatchRunId(threadId, roundId, entry.id),
-      source: 'fan_out',
+      source: input.sourceMessageId ? 'relay' : 'fan_out',
       status: 'requested',
       prompt: input.prompt,
       responseMessageId: null,
@@ -540,7 +541,7 @@ export function startCodeRelayFanOut(
         kind: 'prompt',
         content: input.prompt,
         createdAt: startedAt,
-        sourceMessageId: null,
+        sourceMessageId: input.sourceMessageId ?? null,
       },
     ],
   };

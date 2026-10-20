@@ -9,6 +9,7 @@ import {
   executeCodeTask,
   resumeCodeTask,
   fetchCodePlan,
+  fetchCodeTaskDetail,
   inspectRepoStatus,
   type CreateCodeTaskInput,
   type ExecuteCodeTaskInput,
@@ -115,7 +116,8 @@ export function useCodeTaskExecution() {
   const resume = useCallback(async (taskId: string) => {
     setState((prev) => ({ ...prev, phase: 'executing', error: null }));
     try {
-      await resumeCodeTask(taskId, t(messageKeys.codeBuilderErrorTaskResume));
+      const detail = await fetchCodeTaskDetail(taskId, t(messageKeys.codeBuilderErrorTaskDetailLoad));
+      if (detail.taskStatus !== 'approved') await resumeCodeTask(taskId, t(messageKeys.codeBuilderErrorTaskResume));
       try {
         const plan = await fetchCodePlan(taskId, t(messageKeys.codePlanLoadError));
         setState((prev) => ({ ...prev, phase: 'idle', taskId, plan }));

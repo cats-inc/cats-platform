@@ -4,6 +4,8 @@ import {
   sendJson,
   sendMethodNotAllowed,
 } from '../../../shared/http.js';
+import { createHash } from 'node:crypto';
+import { canRemovePreviewLease } from '../livePreview/leaseStore.js';
 import { readPlatformPreferences, writePlatformPreferences } from '../../../shared/platformPreferences.js';
 import { readLogTail } from '../agentTools/devPreview.js';
 import {
@@ -30,6 +32,25 @@ import {
 export async function routeCodeLivePreviewApi(
   context: CodeApiRouteContext,
 ): Promise<boolean> {
+  const ownerMatch = /^\/api\/code\/live-previews\/([^/]+)\/owner$/u.exec(context.url.pathname);
+  if (ownerMatch) {
+    if (context.method !== 'POST') { sendMethodNotAllowed(context.response, ['POST']); return true; }
+    const store = context.dependencies.livePreviewStore;
+    if (!store) { sendUnavailable(context); return true; }
+    try {
+      const id = decodeURIComponent(ownerMatch[1]);
+      const lease = store.getLease(id);
+      if (!lease) { sendJson(context.response, 404, { error: { message: 'Preview no longer exists in this host session.' } }); return true; }
+      const body = await readJsonBody<{ action?: string; token?: string }>(context.request);
+      const logs = store.readLogs(id) ?? '';
+      const token = createHash('sha256').update(JSON.stringify({ lease, logs })).digest('hex');
+      const blockers = !store.removeEndedLease ? ['This preview store does not support cleanup.'] : !canRemovePreviewLease(lease) ? ['Stop this preview successfully before removing its host-session history.'] : [];
+      if (body?.action === 'preview') sendJson(context.response, 200, { previewId: id, title: lease.surface.surfaceId, token, blockers, logBytes: Buffer.byteLength(logs), scope: 'host_session_history', retainedResources: ['artifacts', 'workspace files', 'provider evidence'] });
+      else if (body?.action === 'apply' && body.token === token && !blockers.length && store.removeEndedLease!(id, lease)) sendJson(context.response, 200, { previewId: id, removed: true, scope: 'host_session_history', retainedResources: ['artifacts', 'workspace files', 'provider evidence'] });
+      else sendJson(context.response, 409, { error: { message: blockers.join(' ') || 'Preview changed. Review another cleanup preview.' } });
+    } catch { sendJson(context.response, 400, { error: { message: 'Invalid preview owner request.' } }); }
+    return true;
+  }
   if (context.url.pathname === CODE_API_PREVIEW_SETTINGS_PATH) {
     await routePreviewSettings(context);
     return true;

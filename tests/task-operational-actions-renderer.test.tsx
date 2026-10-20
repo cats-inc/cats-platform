@@ -1,0 +1,31 @@
+import './helpers/installDomBeforeReact.ts';
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import React from 'react';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
+import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
+import { TaskOperationalActions } from '../src/products/shared/renderer/TaskOperationalActions.tsx';
+
+test('shared operational actions recheck eligibility and report a saved decision with blocked execution truthfully', async t => {
+  const oldReact = Object.getOwnPropertyDescriptor(globalThis, 'React'), oldFetch = globalThis.fetch;
+  Object.defineProperty(globalThis, 'React', { configurable: true, value: React });
+  t.after(() => { cleanup(); globalThis.fetch = oldFetch; if (oldReact) Object.defineProperty(globalThis, 'React', oldReact); else Reflect.deleteProperty(globalThis, 'React'); });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); t.after(() => client.clear());
+  const envelope = { method: 'POST', path: '/api/core/approvals', body: { taskId: 'selected', status: 'approved', action: 'approve' } };
+  const view = { planning: { effectiveProduct: 'code' }, nextActions: [{ kind: 'approve', action: envelope }] };
+  let reads = 0, allow = false; const commands: unknown[] = [];
+  globalThis.fetch = async (_url, options) => { if (options?.body) { commands.push(JSON.parse(String(options.body))); return new Response(JSON.stringify({ autoResume: { status: 'blocked', blockedReason: 'Provider quota' } }), { status: 200 }); } reads++; return new Response(JSON.stringify({ controlPlane: reads === 1 || allow ? view : { ...view, nextActions: [] } }), { status: 200 }); };
+  const ui = render(<QueryClientProvider client={client}><MemoryRouter><I18nProvider locale="en"><TaskOperationalActions taskId="selected" /></I18nProvider></MemoryRouter></QueryClientProvider>);
+  await waitFor(() => assert.equal(ui.getByText('Open details').getAttribute('href'), '/code/tasks/selected'));
+  fireEvent.click(ui.getByText('Approve'));
+  await waitFor(() => assert.ok(ui.getByRole('alert').textContent?.includes('changed')));
+  assert.equal(commands.length, 0); assert.ok(ui.getByRole('alert').textContent?.includes('changed'));
+  allow = true; await client.invalidateQueries();
+  await waitFor(() => assert.ok(ui.getByText('Approve')));
+  fireEvent.click(ui.getByText('Approve'));
+  await waitFor(() => assert.match(ui.getByRole('status').textContent!, /saved.*Provider quota/));
+  assert.deepEqual(commands, [envelope.body]);
+  assert.match(ui.getByRole('status').textContent!, /saved.*Provider quota/);
+});

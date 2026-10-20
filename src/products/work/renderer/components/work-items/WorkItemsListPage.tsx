@@ -1,3 +1,4 @@
+import { OwnerRecordActions, useOwnerListing } from '../../../../shared/renderer/OwnerRecordActions.js';
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -14,7 +15,8 @@ import "./work-items.css";
 
 export function WorkItemsListPage(): JSX.Element {
   const workItemsQuery = useWorkItemsQuery();
-  const workItems = workItemsQuery.data?.workItems ?? [];
+  const ownerListing = useOwnerListing('work_item');
+  const workItems = (workItemsQuery.data?.workItems ?? []).filter(item => ownerListing.accepts(item.id));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const { t } = useI18n();
@@ -83,7 +85,7 @@ export function WorkItemsListPage(): JSX.Element {
           </button>
         </div>
       </header>
-      <main className="workItemsList__main">
+      <main className="workItemsList__main">{ownerListing.control}
         {workItemsQuery.isPending ? (
           <p className="workItemsList__empty">{t("workItemsListLoading")}</p>
         ) : workItemsQuery.isError ? (
@@ -187,6 +189,7 @@ export function WorkItemsListPage(): JSX.Element {
                     </span>
                   </div>
                 </Link>
+                <OwnerRecordActions family="work_item" id={wi.id} />
               </li>
             ))}
           </ul>

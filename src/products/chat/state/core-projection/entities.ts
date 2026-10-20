@@ -569,6 +569,7 @@ function buildChannelTaskMetadata(
     {
     ...structuredClone(existingTask?.metadata ?? {}),
     source: 'chat-channel',
+    originSurface: channel.originSurface,
     channelId: channel.id,
     containerId,
     parallelGroupId,
@@ -620,6 +621,7 @@ function buildChannelWorkItemMetadata(
   return {
     ...structuredClone(existingWorkItem?.metadata ?? {}),
     source: 'chat-channel',
+    originSurface: channel.originSurface,
     channelId: channel.id,
     containerId,
     parallelGroupId,

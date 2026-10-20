@@ -20,6 +20,7 @@ import type {
   CoreTaskRecord,
   CoreTraceRecord,
   CoreWorkItemRecord,
+  CoreWorkGraphLinkRecord,
   DurableMemoryRecord,
   LaneRecord,
   MissionRecord,
@@ -80,6 +81,9 @@ import {
   readString,
 } from './shared.js';
 import { createDefaultCoreState } from '../../../../core/model/index.js';
+import { normalizeOwnerLifecycle, OwnerLifecycleFormatError } from '../../../../core/ownerLifecycle.js';
+import { CATS_CORE_STATE_VERSION } from '../../../../core/types.js';
+import { compactOwnerWorkflowHistory } from '../ownerHistory.js';
 import { syncCoreStateWithChatState } from '../core-projection/index.js';
 
 export function normalizeChatState(rawState: unknown): ChatState {
@@ -153,6 +157,8 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
   }
 
   const chatRecord = asRecord(stateRecord.chat);
+  if (stateRecord.version !== undefined && (!Number.isInteger(stateRecord.version) || Number(stateRecord.version) < 1 || Number(stateRecord.version) > CATS_CORE_STATE_VERSION)) throw new OwnerLifecycleFormatError();
+  const ownerLifecycle = normalizeOwnerLifecycle(stateRecord.ownerLifecycle);
   if (!chatRecord) {
     if (looksLikeChatState(stateRecord)) {
       const chat = normalizeChatState(stateRecord);
@@ -163,7 +169,7 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
     return buildPersistedChatSnapshot(chat, syncCoreStateWithChatState(chat, fallback));
   }
 
-  const chat = normalizeChatState(chatRecord);
+  const chat = compactOwnerWorkflowHistory(normalizeChatState(chatRecord), { ownerLifecycle });
   const actors = Array.isArray(stateRecord.actors)
     ? stateRecord.actors
         .map((actor) => normalizeCoreActor(actor))
@@ -291,6 +297,15 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
         .filter((record): record is AssistantPresetRecord => record !== null)
     : [];
   const normalized = syncCoreStateWithChatState(chat, {
+    workGraphLinks: (Array.isArray(stateRecord.workGraphLinks) ? stateRecord.workGraphLinks : [])
+      .map(value => asRecord(value))
+      .filter((link): link is Record<string, unknown> => !!link && typeof link.id === 'string'
+        && ['project', 'work_item', 'task'].includes(String(link.sourceRecordFamily))
+        && ['project', 'work_item', 'task'].includes(String(link.targetRecordFamily))
+        && typeof link.sourceRecordId === 'string' && typeof link.targetRecordId === 'string'
+        && ['blocks', 'related_to', 'duplicate_of', 'follows'].includes(String(link.kind)))
+      .map(link => structuredClone(link) as unknown as CoreWorkGraphLinkRecord),
+    ownerLifecycle,
     setupCompleteAt: readNullableString(stateRecord.setupCompleteAt),
     ownerProfile: normalizeOwnerProfile(stateRecord.ownerProfile),
     guideCat: normalizeGuideCatRecord(stateRecord.guideCat),

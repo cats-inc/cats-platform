@@ -111,6 +111,28 @@ function createStore(): InMemoryLivePreviewLeaseStore {
   return store;
 }
 
+test('preview cleanup binds logs/status and removes only successfully ended host history', async t => {
+  const store = createStore();
+  const server = createTestServer({ livePreviewStore: store });
+  await new Promise<void>(resolve => server.listen(0, resolve)); t.after(() => server.close());
+  const owner = '/api/code/live-previews/preview-1/owner';
+  const active = await request(server, owner, 'POST', { action: 'preview' });
+  assert.equal((active.payload?.blockers as string[]).length, 1);
+  assert.equal((await request(server, owner, 'POST', { action: 'apply', token: active.payload?.token })).status, 409);
+  store.updateLease('preview-1', lease => ({ ...lease, status: 'failed', stopReason: 'stop_failed' }));
+  assert.equal(((await request(server, owner, 'POST', { action: 'preview' })).payload?.blockers as string[]).length, 1);
+  store.updateLease('preview-1', lease => ({ ...lease, status: 'stopped', stopReason: 'api_stop' }));
+  const stopped = await request(server, owner, 'POST', { action: 'preview' });
+  store.setLogs('preview-1', 'final output');
+  assert.equal((await request(server, owner, 'POST', { action: 'apply', token: stopped.payload?.token })).status, 409);
+  const fresh = await request(server, owner, 'POST', { action: 'preview' });
+  const removed = await request(server, owner, 'POST', { action: 'apply', token: fresh.payload?.token });
+  assert.equal(removed.payload?.removed, true);
+  assert.equal(store.getLease('preview-1'), null); assert.equal(store.readLogs('preview-1'), null);
+  assert.ok(store.getLease('preview-2'));
+  assert.deepEqual(removed.payload?.retainedResources, ['artifacts', 'workspace files', 'provider evidence']);
+});
+
 function createLease(
   previewId: string,
   surfaceKind: LivePreviewLease['surface']['kind'],
@@ -162,12 +184,13 @@ async function request(
   server: ReturnType<typeof createServer>,
   path: string,
   method = 'GET',
+  body?: unknown,
 ) {
   const address = server.address();
   if (!address || typeof address === 'string') {
     throw new Error('Server is not listening.');
   }
-  const response = await fetch(`http://127.0.0.1:${address.port}${path}`, { method });
+  const response = await fetch(`http://127.0.0.1:${address.port}${path}`, { method, ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}) });
   const text = await response.text();
   return {
     status: response.status,

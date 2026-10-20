@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { WorkObjectActions } from './WorkObjectActions.js';
+import { useEffect, useState } from "react";
 
 import { SidePanel, type SidePanelSection } from "../../../../../design/components/SidePanel";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
@@ -48,6 +49,7 @@ export function WorkObjectDrawer({
 }: WorkObjectDrawerProps): JSX.Element | null {
   const { t } = useI18n();
   const [activeSection, setActiveSection] = useState<SectionId>("identity");
+  useEffect(() => { setActiveSection('identity'); }, [selectedId]);
   if (!selectedId) return null;
   const object = indexes.objectsById.get(selectedId);
   if (!object) {
@@ -85,6 +87,8 @@ export function WorkObjectDrawer({
       id: "identity",
       title: t("workTopdownIdentityTitle"),
       children: (
+        <>
+        <WorkObjectActions key={object.id} object={object} revision={graph.ownerRevision ?? 0} />
         <dl className="topDownDrawer__list">
           <Field
             label={t("workTopdownIdentityKind")}
@@ -122,6 +126,7 @@ export function WorkObjectDrawer({
             <Field label={t("workTopdownIdentitySummary")} value={object.summary} />
           ) : null}
         </dl>
+        </>
       ),
     },
     {

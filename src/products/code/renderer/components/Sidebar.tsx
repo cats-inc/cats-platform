@@ -10,9 +10,11 @@ import {
 import type { ConversationSidebarPinnedItem } from '../../../../app/renderer/productShell/ConversationSidebarPinned.js';
 import {
   createEmptyCodeWorkspacesSnapshot,
+  refreshCodeWorkspaces,
   useCodeWorkspaces,
   type CodeWorkspacesSnapshot,
 } from '../state/codeWorkspacesStore.js';
+import { manageCodespace } from '../api/codeTask.js';
 import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { AppShellPayload } from '../../api/contracts.js';
 import type { ChatCat, ChatChannelSummary } from '../../../shared/api/workspaceContracts.js';
@@ -44,9 +46,7 @@ import {
   CODE_ROUTE_PREFIX,
   buildCodeCodespacePath,
   isCodeArtifactsPath,
-  isCodeBuildPath,
   isCodeCodespacesPath,
-  isCodeRelayPath,
 } from '../codePaths.js';
 import { labelCodeWorkspaceStatusForLocale } from './codeStatusLabels.js';
 
@@ -239,72 +239,6 @@ function createExtraActionGroups(
     });
   }
 
-  if (props.onOpenRelay) {
-    groups.push({
-      key: 'relay',
-      ariaLabel: t(messageKeys.codeSidebarLabelRelay),
-      items: [
-        {
-          key: 'relay',
-          label: t(messageKeys.codeSidebarLabelRelay),
-          onClick: props.onOpenRelay,
-          active: isCodeRelayPath(currentPath),
-          icon: (
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 4h4" />
-              <path d="M9 4h4" />
-              <path d="M5 4v8" />
-              <path d="M11 4v8" />
-              <path d="M5 8h6" />
-              <path d="M3 12h4" />
-              <path d="M9 12h4" />
-            </svg>
-          ),
-        },
-      ],
-    });
-  }
-
-  if (props.onOpenBuild) {
-    groups.push({
-      key: 'build',
-      ariaLabel: t(messageKeys.codeSidebarLabelBuild),
-      items: [
-        {
-          key: 'build',
-          label: t(messageKeys.codeSidebarLabelBuild),
-          onClick: props.onOpenBuild,
-          active: isCodeBuildPath(currentPath),
-          icon: (
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M2 4l6-2 6 2v6l-6 2-6-2z" />
-              <path d="M2 4l6 2 6-2" />
-              <path d="M8 6v8" />
-            </svg>
-          ),
-        },
-      ],
-    });
-  }
-
   return groups;
 }
 
@@ -326,6 +260,12 @@ function buildPinnedWorkspaceItems(
         className: `codeWorkspacesList__dot codeWorkspacesList__dot--small codeWorkspacesList__dot--${ws.status}`,
         title: labelCodeWorkspaceStatusForLocale(ws.status, t),
       },
+      overflowActions: [{ key: 'unpin', label: t('ownerUnpin'), onClick: () => {
+        props.onOverflowMenuToggle(null);
+        void manageCodespace(ws.id, 'unpin', ws.management?.revision ?? 0)
+          .then(() => refreshCodeWorkspaces({ t }))
+          .catch(error => { window.alert(error instanceof Error ? error.message : t('ownerActionFailed')); void refreshCodeWorkspaces({ t }); });
+      } }],
     }));
 }
 

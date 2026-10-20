@@ -1,3 +1,4 @@
+import { OwnerRecordActions } from '../../../../shared/renderer/OwnerRecordActions.js';
 import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -325,6 +326,7 @@ export function TaskDetailPage(): JSX.Element {
         </div>
       </header>
       <main className="taskDetail__main">
+        <OwnerRecordActions family="task" id={task.id} expanded onChanged={removed => { if (removed) navigate('/work/tasks'); }} />
         {deleteError || approvalDecisionError || startRunError ? (
           <p className="taskDetail__error" role="alert">
             {deleteError ?? approvalDecisionError ?? startRunError}

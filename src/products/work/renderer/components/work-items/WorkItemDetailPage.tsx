@@ -1,3 +1,5 @@
+import { NewTaskDialog } from '../tasks/NewTaskDialog.js';
+import { OwnerRecordActions } from '../../../../shared/renderer/OwnerRecordActions.js';
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -47,6 +49,7 @@ export function WorkItemDetailPage(): JSX.Element {
   const { workItemId } = useParams<{ workItemId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [externalLinkDialogOpen, setExternalLinkDialogOpen] = useState(false);
   const workItemsQuery = useWorkItemsQuery();
   const projectsQuery = useProjectsQuery();
@@ -230,6 +233,7 @@ export function WorkItemDetailPage(): JSX.Element {
         </div>
       </header>
       <main className="workItemDetail__main">
+        <OwnerRecordActions family="work_item" id={workItem.id} expanded onChanged={removed => { if (removed) navigate('/work/work-items'); }} />
         {deleteError ? (
           <p className="workItemDetail__error" role="alert">
             {deleteError}
@@ -293,6 +297,8 @@ export function WorkItemDetailPage(): JSX.Element {
           </dl>
         </section>
 
+        {tasks.length === 0 ? <button onClick={() => setNewTaskOpen(true)}>{t('ownerPrepareTask')}</button> : <Link to={"/work/tasks/" + encodeURIComponent(tasks[0].id)}>{t('ownerContinueTask')}</Link>}
+        {newTaskOpen ? <NewTaskDialog defaultWorkItemId={workItem.id} onClose={() => setNewTaskOpen(false)} /> : null}
         <SubWorkItemsSection items={subWorkItems} />
 
         <WorkItemExternalBindingsSection

@@ -1,5 +1,9 @@
 # Implementation Plans
 
+- [PLAN-119: Code and Work owner actions and lifecycle](PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md)
+  — implementation/scoped acceptance complete, 2026-10-20; Codespaces, protected
+  record/history management, contextual execution, repair and opt-in retention.
+  Latest-main integration and auto-merge PR authorized; everyday owner testing pending.
 - [PLAN-118: Conversation participants, audience and orchestrator binding](PLAN-118-conversation-participants-audience-and-orchestrator-binding-rollout.md)
   — ready, 2026-10-20; characterization, audience fix, server model, renderer
   and release phases; not started.
@@ -59,6 +63,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-119](PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md) | Code and Work Owner Actions and Lifecycle Rollout | Implementation/scoped acceptance complete; owner review pending | [SPEC-126](../specs/SPEC-126-code-work-owner-actions-and-lifecycle.md), [ADR-133](../decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) |
 | [PLAN-118](PLAN-118-conversation-participants-audience-and-orchestrator-binding-rollout.md) | Conversation Participants, Audience and Orchestrator Binding | Ready; not started | [SPEC-125](../specs/SPEC-125-conversation-participants-audience-and-orchestrator-binding.md), [ADR-132](../decisions/132-separate-participants-audience-and-the-orchestrator-binding.md) |
 | [PLAN-117](PLAN-117-alive-companion-life-loop.md) | Alive Companion Life Loop | Implemented; acceptance pending | [SPEC-124](../specs/SPEC-124-alive-companion-life-loop.md), [ADR-127](../decisions/127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md) |
 | [PLAN-114](PLAN-114-companion-as-cat-role.md) | Companion as a Cat Role | Implemented; Settings visual acceptance pending | [SPEC-019](../specs/SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md), [ADR-040](../decisions/040-make-companion-a-first-class-chat-mode-with-workspace-and-presence.md) |
@@ -182,7 +187,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-09-28 (PLAN-109 records bounded native checks and Desktop/npm publication; broader live, quality and OS acceptance remain open.)*
+*Last updated: 2026-10-20 (PLAN-119 implementation/scoped acceptance complete; owner review pending.)*
 
 *See also: [specs/](../specs/) for feature specifications*
 

@@ -1,3 +1,4 @@
+import { WorkOverviewOperations } from '../WorkOverviewOperations.js';
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -101,13 +102,18 @@ type BucketId =
   | "blocked"
   | "shipped";
 
-export function CockpitPage(): JSX.Element {
+export function WorkOverviewPage(): JSX.Element {
   const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = (searchParams.get("tab") as CockpitTab | null) ?? "command";
+  const requestedTab = searchParams.get("tab");
+  const tab: CockpitTab = TABS.some(tab => tab.id === requestedTab) ? requestedTab as CockpitTab : "command";
   const selectedId = searchParams.get("selectedId");
-  const graph = useWorkGraphQuery(t("workGraphLoadErrorFallback")).data ?? EMPTY_WORK_GRAPH;
+  const scope = searchParams.get("scope") ?? "managed";
+  const listing = searchParams.get("view") ?? "visible";
+  const graphQuery = useWorkGraphQuery(t("workGraphLoadErrorFallback"));
+  const graph = graphQuery.data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
+  const visibleObjects = useMemo(() => graph.objects.filter(object => (scope === 'all' || object.ownerManaged !== false) && (listing === 'all' || (object.ownerListing ?? 'visible') === listing)), [graph, scope, listing]);
 
   const buckets = useMemo(() => {
     const out: Record<BucketId, WorkGraphObjectSummary[]> = {
@@ -117,13 +123,13 @@ export function CockpitPage(): JSX.Element {
       blocked: [],
       shipped: [],
     };
-    for (const o of graph.objects) {
+    for (const o of visibleObjects) {
       if (!OPERATIONAL_KINDS.includes(o.kind)) continue;
       // Active Runs: dedicated bucket so executing runs are visible
       // alongside (not buried inside) task-level Active. Runs that
       // are blocked / failed / completed still flow to attention-derived
       // buckets via ATTENTION_TO_BUCKET below.
-      if (o.kind === "run" && o.status === "running") {
+      if (o.kind === "run" && ["queued", "running"].includes(o.status)) {
         out["active-runs"].push(o);
         continue;
       }
@@ -132,13 +138,13 @@ export function CockpitPage(): JSX.Element {
         out[target].push(o);
       } else if (
         o.attention === "none" &&
-        ["in_progress", "active"].includes(o.status)
+        ["in_progress", "active", "queued", "planned"].includes(o.status)
       ) {
         out.active.push(o);
       }
     }
     return out;
-  }, [graph]);
+  }, [visibleObjects]);
 
   const teamLanes = useMemo(() => {
     const map = new Map<string, WorkGraphObjectSummary[]>();
@@ -188,7 +194,7 @@ export function CockpitPage(): JSX.Element {
             {t("workTopdownCockpitEyebrow")}
           </span>
           <h1 className="channelTopBarTitle topDownTopBar__title">
-            {t("workTopdownCockpitTitle")}
+            {t("ownerWorkOverview")}
           </h1>
         </div>
         <div className="channelTopBarCenter topDownTopBar__center">
@@ -253,7 +259,9 @@ export function CockpitPage(): JSX.Element {
           );
         })}
       </nav>
-      <div className="cockpit__main">
+      {graphQuery.isPending ? <p role="status">{t('ownerWorking')}</p> : null}
+      {graphQuery.isError ? <p role="alert">{graphQuery.error.message} <button onClick={() => void graphQuery.refetch()}>{t('workExecutionActionRetry')}</button></p> : null}
+      <div className="cockpit__main"><div className="ownerOverviewFilters"><label>{t('ownerSource')} <select value={scope} onChange={event => { const next = new URLSearchParams(searchParams); next.set('scope', event.target.value); next.delete('selectedId'); setSearchParams(next, { replace: true }); }}><option value="managed">{t('ownerSourceManaged')}</option><option value="all">{t('ownerAllSources')}</option></select></label><label>{t('ownerView')} <select value={listing} onChange={event => { const next = new URLSearchParams(searchParams); next.set('view', event.target.value); next.delete('selectedId'); setSearchParams(next, { replace: true }); }}><option value="visible">{t('ownerCurrent')}</option><option value="archived">{t('ownerArchived')}</option><option value="all">{t('ownerAll')}</option></select></label></div>{listing === 'visible' && (tab === 'command' || tab === 'needs-decision' || tab === 'blocked') ? <WorkOverviewOperations /> : null}
         {tab === "command" ? (
           <CommandCenter
             graph={graph}

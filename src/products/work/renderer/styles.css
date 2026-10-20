@@ -1,2 +1,4 @@
 @import '../../shared/renderer/styles.css';
 @import './components/projects/projects.css';
+@import './components/runs/runs.css';
+@import './components/runs/historyManagement.css';

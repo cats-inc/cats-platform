@@ -6,7 +6,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { loadConfig } from '../src/config.ts';
-import { createDefaultCoreState } from '../src/core/model/index.ts';
+import { createDefaultCoreState, upsertCoreProject, upsertCoreTask } from '../src/core/model/index.ts';
+import { stopRun } from '../src/platform/supervision/runCancellation.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import type {
   RuntimeClient,
@@ -15,9 +16,55 @@ import type {
 import {
   bridgeCodeTaskToRuntime,
   createCodeTask,
+  resumeCodeTask,
+  reconcileCodeTaskExecution,
 } from '../src/products/code/state/taskExecution.ts';
 import { routeCodeApi } from '../src/products/code/api/index.ts';
 import { readEvidenceEvents } from '../src/platform/persistence/evidence.ts';
+
+test('Code admission prevents duplicates, preserves concurrent work and stops a session arriving after cancellation', async t => {
+  const created = createCodeTask(createDefaultCoreState(), { title: 'Owner task', acceptanceCriteria: 'Tests pass' });
+  const store = new MemoryCoreStore(created.core), runtime = createRuntimeStub();
+  let release!: () => void, started!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; }), starting = new Promise<void>(resolve => { started = resolve; });
+  t.after(release);
+  const original = runtime.createSession.bind(runtime);
+  runtime.createSession = async input => { const session = await original(input); started(); await held; return session; };
+  const cancelled: string[] = []; runtime.cancelSession = async id => { cancelled.push(id); };
+  const input = { taskId: created.task.id, workspacePath: 'C:/isolated-code-work', provider: 'codex' };
+  const first = bridgeCodeTaskToRuntime(store, runtime, input);
+  const rejected = assert.rejects(first, /cancelled|changed/);
+  await starting;
+  await assert.rejects(bridgeCodeTaskToRuntime(store, runtime, input), /active|Approve/);
+  await store.updateCore(core => upsertCoreProject(core, { id: 'concurrent', title: 'Keep this work' }).core);
+  const run = (await store.readCore()).runs[0];
+  assert.equal((await stopRun({ coreStore: store, runtimeClient: runtime }, run.id))?.status, 'stopped');
+  release(); await rejected;
+  const core = await store.readCore();
+  assert.equal(core.runs[0].status, 'cancelled'); assert.equal(core.projects[0].id, 'concurrent');
+  assert.equal(runtime.createdSessions.length, 1); assert.deepEqual(cancelled, ['runtime-session-code-1']);
+  assert.equal(resumeCodeTask(core, { taskId: created.task.id }).task.status, 'approved');
+});
+
+test('failed Code startup is recoverable; closed session observation does not complete Task acceptance', async () => {
+  const created = createCodeTask(createDefaultCoreState(), { title: 'Owner task', acceptanceCriteria: 'Tests pass' });
+  const store = new MemoryCoreStore(created.core), runtime = createRuntimeStub();
+  const input = { taskId: created.task.id, workspacePath: 'C:/isolated-code-work', provider: 'codex' };
+  const original = runtime.createSession.bind(runtime);
+  runtime.createSession = async () => { throw new Error('Provider unavailable'); };
+  await assert.rejects(bridgeCodeTaskToRuntime(store, runtime, input), /Provider unavailable/);
+  assert.equal((await store.readCore()).tasks[0].status, 'blocked'); assert.equal((await store.readCore()).runs[0].status, 'failed');
+  await store.updateCore(core => resumeCodeTask(core, { taskId: created.task.id }).core);
+  runtime.createSession = original;
+  await bridgeCodeTaskToRuntime(store, runtime, input);
+  runtime.observeSession = async () => ({ session: { status: 'closed' } }) as never;
+  const reconciled = await reconcileCodeTaskExecution(store, runtime, created.task.id);
+  assert.equal(reconciled.tasks[0].status, 'blocked');
+  assert.ok(reconciled.runs.every(run => ['failed', 'completed'].includes(run.status)));
+  await store.updateCore(core => upsertCoreTask(core, { id: created.task.id, title: 'Approval required', status: 'pending_approval', approval: { status: 'pending' } }).core);
+  await assert.rejects(bridgeCodeTaskToRuntime(store, runtime, input), /approval/);
+  assert.equal(resumeCodeTask(reconciled, { taskId: created.task.id }).task.status, 'approved');
+});
 
 function createRuntimeStub(): RuntimeClient & {
   createdSessions: RuntimeSessionCreateInput[];

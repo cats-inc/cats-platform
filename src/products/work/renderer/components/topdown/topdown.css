@@ -1403,3 +1403,8 @@
 .topDownDrawer__diagnostic p {
   margin: 0;
 }
+
+/* The unified overview has one scrolling canvas above its operational grid. */
+.cockpit__main { overflow: auto; }
+.ownerOverviewOperations { flex: 0 0 auto; }
+.cockpit__main > .commandCenter { flex: 1 0 auto; min-height: 420px; }

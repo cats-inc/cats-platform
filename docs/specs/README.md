@@ -1,5 +1,10 @@
 # Feature Specifications
 
+- [SPEC-126: Code and Work owner actions and lifecycle](SPEC-126-code-work-owner-actions-and-lifecycle.md)
+  — approved, 2026-10-20; page action inventory, durable Codespace preferences,
+  source-aware deletion, terminal-history cleanup and upgrade/recovery
+  acceptance. Implementation/scoped acceptance complete; latest-main integration
+  and auto-merge PR authorized; everyday owner testing pending.
 - [SPEC-125: Conversation participants, audience and orchestrator binding](SPEC-125-conversation-participants-audience-and-orchestrator-binding.md)
   — approved, 2026-10-20; participants always present, per-message audience,
   optional coordinator binding and admin-gated authority; implementation not started.
@@ -61,6 +66,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-126](SPEC-126-code-work-owner-actions-and-lifecycle.md) | Code and Work Owner Actions and Lifecycle | Implementation/scoped acceptance complete; owner review pending | [PLAN-119](../plans/PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md), [ADR-133](../decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) |
 | [SPEC-125](SPEC-125-conversation-participants-audience-and-orchestrator-binding.md) | Conversation Participants, Audience and Orchestrator Binding | Approved; implementation not started | [PLAN-118](../plans/PLAN-118-conversation-participants-audience-and-orchestrator-binding-rollout.md) |
 | [SPEC-124](SPEC-124-alive-companion-life-loop.md) | Alive Companion Life Loop | Implemented; real-bot and visual acceptance pending | [PLAN-117](../plans/PLAN-117-alive-companion-life-loop.md) |
 | [SPEC-121](SPEC-121-managed-plugin-capabilities.md) | Managed Plugin Capabilities | Internal Agency host pilot implemented; general SDK planned | [PLAN-113](../plans/PLAN-113-managed-plugin-capabilities.md) |
@@ -190,7 +196,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-09-28 (SPEC-117 required mechanisms implemented; acceptance evidence remains tracked separately in PLAN-109.)*
+*Last updated: 2026-10-20 (SPEC-126 implementation/scoped acceptance complete; owner review pending.)*
 
 *See also: [plans/](../plans/) for implementation plans*
 

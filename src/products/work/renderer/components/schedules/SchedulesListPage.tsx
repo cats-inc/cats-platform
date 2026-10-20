@@ -1,4 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { ScheduleEditor } from './ScheduleEditor.js';
+import { ScheduleManagement } from './ScheduleOwnerActions.js';
+import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import type {
@@ -20,6 +22,7 @@ import './schedules.css';
 
 export function SchedulesListPage(): JSX.Element {
   const { t } = useI18n();
+  const [creating, setCreating] = useState(false);
   const schedulesQuery = useSchedulesQuery();
   const rules = schedulesQuery.data?.rules ?? [];
   const triggerReceipts = schedulesQuery.data?.triggerReceipts ?? [];
@@ -89,7 +92,7 @@ export function SchedulesListPage(): JSX.Element {
         </div>
       </header>
 
-      <main className="schedulesList__main">
+      <main className="schedulesList__main"><button onClick={() => setCreating(true)}>{t('ownerScheduleCreate')}</button>{creating ? <ScheduleEditor onClose={() => setCreating(false)} /> : null}
         {errorMessage ? (
           <p className="schedulesList__error" role="alert">
             {errorMessage}
@@ -183,6 +186,7 @@ function ScheduleRow({
           </span>
         </div>
       </Link>
+      <ScheduleManagement rule={rule} />
     </li>
   );
 }

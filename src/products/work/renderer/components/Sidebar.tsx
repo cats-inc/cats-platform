@@ -1,3 +1,4 @@
+import { useOwnerListing } from '../../../shared/renderer/OwnerRecordActions.js';
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
 
 import {
@@ -185,6 +186,8 @@ function createExtraActionGroups(
   const currentPath = globalThis.location?.pathname ?? WORK_ROUTE_PREFIX;
   const groups: ConversationSidebarActionGroup[] = [];
 
+  const openOverview = props.onOpenCockpit ?? props.onOpenWarRoom;
+  if (openOverview) groups.push({ key: 'overview', ariaLabel: t('ownerWorkOverview'), items: [{ key: 'overview', label: t('ownerWorkOverview'), onClick: openOverview, active: currentPath === '/work/overview' || isWorkCockpitPath(currentPath) || isWorkWarRoomPath(currentPath), icon: <span aria-hidden="true">◫</span> }] });
   if (props.onOpenProjects) {
     groups.push({
       key: 'projects',
@@ -307,7 +310,7 @@ function createExtraActionGroups(
     if (props.onOpenMissions) {
       executionItems.push({
         key: 'missions',
-        label: t('workSidebarMissionsLabel'),
+        label: t('ownerMissionsNav'),
         onClick: props.onOpenMissions,
         active: isWorkMissionsPath(currentPath),
         icon: (
@@ -359,6 +362,7 @@ function createExtraActionGroups(
     groups.push({
       key: 'execution',
       ariaLabel: t('workSidebarExecutionLabel'),
+      heading: t('workSidebarExecutionLabel'),
       items: executionItems,
     });
   }
@@ -393,31 +397,6 @@ function createExtraActionGroups(
       ),
     });
   }
-  if (props.onOpenCockpit) {
-    topDownItems.push({
-      key: 'cockpit',
-      label: t('workSidebarCockpitLabel'),
-      onClick: props.onOpenCockpit,
-      active: isWorkCockpitPath(currentPath),
-      icon: (
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M2 12.5a6 6 0 0 1 12 0" />
-          <path d="M8 12.5V8" />
-          <path d="M8 8l3-2.5" />
-          <circle cx="8" cy="12.5" r="0.6" fill="currentColor" stroke="none" />
-        </svg>
-      ),
-    });
-  }
   if (props.onOpenBrokenLinks) {
     topDownItems.push({
       key: 'broken-links',
@@ -442,35 +421,11 @@ function createExtraActionGroups(
       ),
     });
   }
-  if (props.onOpenWarRoom) {
-    topDownItems.push({
-      key: 'war-room',
-      label: t('workSidebarWarRoomLabel'),
-      onClick: props.onOpenWarRoom,
-      active: isWorkWarRoomPath(currentPath),
-      icon: (
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
-          <path d="M4 5h8" />
-          <path d="M4 8h8" />
-          <path d="M6 11h4" />
-        </svg>
-      ),
-    });
-  }
   if (topDownItems.length > 0) {
     groups.push({
-      key: 'top-down',
-      ariaLabel: t('workSidebarWorkTopDownSurfacesLabel'),
+      key: 'diagnostics',
+      ariaLabel: t('ownerDiagnostics'),
+      heading: t('ownerDiagnostics'),
       items: topDownItems,
     });
   }
@@ -596,9 +551,10 @@ export function createWorkSidebarConversationProps(
 export function Sidebar(props: SidebarProps) {
   const { t } = useI18n();
   const projectsQuery = useProjectsQuery();
+  const listing = useOwnerListing('project');
   const unpinnedIds = useUnpinnedProjectIds();
   const pinnedProjects = (projectsQuery.data?.projects ?? []).filter(
-    (project) => !unpinnedIds.has(project.id),
+    (project) => !unpinnedIds.has(project.id) && listing.accepts(project.id),
   );
   return (
     <ConversationSidebar

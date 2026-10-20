@@ -3,6 +3,7 @@ import type {
   CoreTaskRecord,
   CoreWorkItemRecord,
 } from '../../../../core/types.js';
+import { applyOwnerLifecycleProjection } from '../../../../core/ownerLifecycleProjection.js';
 import { CATS_CORE_STATE_VERSION } from '../../../../core/types.js';
 import { createDefaultCoreState } from '../../../../core/model/index.js';
 import {
@@ -212,6 +213,7 @@ export function syncCoreStateWithChatState(
   ];
 
   const nextCore = projectChatInteractionRecordsToCore({
+    ...(existingCore.ownerLifecycle ? { ownerLifecycle: structuredClone(existingCore.ownerLifecycle) } : {}),
     version: CATS_CORE_STATE_VERSION,
     updatedAt,
     setupCompleteAt: existingCore.setupCompleteAt ?? null,
@@ -253,5 +255,5 @@ export function syncCoreStateWithChatState(
     workGraphLinks: structuredClone(existingCore.workGraphLinks ?? []),
   }, chat, new Date(updatedAt));
 
-  return nextCore;
+  return applyOwnerLifecycleProjection(nextCore);
 }
