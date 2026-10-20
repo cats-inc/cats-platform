@@ -62,7 +62,7 @@ in every room with participants. Shippable on its own as a patch.
       in insertion order, from every creator (renderer, Code sessions,
       collaboration, Telegram, parallel members); removal and archive guards
       keep at least one.
-- [ ] Task 3.2: `coordinatorParticipantId`; coordination in the coordinator's
+- [x] Task 3.2: `coordinatorParticipantId`; coordination in the coordinator's
       own session; remove the separate orchestrator session, lease, `pending*`,
       the default-chat branches and the God Cat display name.
 - [x] Task 3.3: Routing: audience first; coordinator routing on; nothing more

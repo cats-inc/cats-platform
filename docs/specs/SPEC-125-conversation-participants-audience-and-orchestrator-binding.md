@@ -242,6 +242,26 @@ Settled during implementation, 2026-10-20:
 - Only the coordinator routes turns on (@mentions and workflow
   recommendations in its replies); other participants answer and stop, and
   their prompt says a mention does not route.
+- With only the coordinator routing on, a worker cannot hand a turn back, so
+  the anti-ping-pong guard is removed; the dispatch and target-visit limits
+  stay.
+- `POST /api/orchestrator/dispatch` speaks for the owner: a body that names
+  nobody goes to the conversation's coordinator.
+- Removing the orchestrator session removes `orchestratorLease` from
+  `OrchestratorChannelView` (`src/platform/orchestration/contracts.ts`). The
+  `'orchestrator'` literals in frozen unions (`ChatMessageSenderKind`, routing
+  participant kinds, dispatch target kinds) stay for now; nothing produces
+  them.
+- The global orchestrator record keeps its system prompt, tool and skill
+  profiles and Telegram bot name. Its `executionTarget`, `visibleParticipant`
+  and `routerConfig` no longer drive any session; removing them is a later
+  cleanup of the `/api/orchestrator` contract.
+- A session start that sanitizes a participant's model (a dropped preset, a
+  runtime-chosen entry) is kept on the participant, as it was for the
+  default chat.
+- Telegram's default bot talks through the first Boss Cat's DM. If a bot's cat
+  cannot be found it says so and opens no room; without an active cat binding
+  the webhook is ignored.
 
 ## References
 

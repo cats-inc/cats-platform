@@ -478,36 +478,6 @@ export function appendOptimisticUserMessage(
   };
 }
 
-export function applyOptimisticPendingExecutionTarget<TPayload extends AppShellPayload>(
-  payload: TPayload,
-  channelId: string,
-  target: {
-    pendingProvider: string | null;
-    pendingModel: string | null;
-    pendingInstance: string | null;
-    pendingModelSelection: ProviderModelSelection | null;
-  },
-) : TPayload {
-  const next = structuredClone(payload) as TPayload;
-  const selectedChannel = next.chat.selectedChannel;
-  const channelSummary = next.chat.channels.find((channel) => channel.id === channelId);
-
-  if (!selectedChannel || selectedChannel.id !== channelId || !channelSummary) {
-    throw new Error('No chat is available for optimistic execution target updates.');
-  }
-
-  selectedChannel.pendingProvider = target.pendingProvider;
-  selectedChannel.pendingModel = target.pendingModel;
-  selectedChannel.pendingInstance = target.pendingInstance;
-  selectedChannel.pendingModelSelection = target.pendingModelSelection;
-
-  channelSummary.pendingProvider = target.pendingProvider;
-  channelSummary.pendingModel = target.pendingModel;
-  channelSummary.pendingModelSelection = target.pendingModelSelection;
-
-  return next;
-}
-
 export function insertCreatedChannelIntoPayload<TPayload extends AppShellPayload>(
   payload: TPayload,
   createdChannel: ChatChannelView,
@@ -566,9 +536,6 @@ export function insertCreatedChannelIntoPayload<TPayload extends AppShellPayload
     runtimePermissionMode: normalizedChannel.runtimePermissionMode ?? null,
     lastMessageAt: normalizedChannel.lastMessageAt,
     lastActivatedAt: normalizedChannel.lastActivatedAt,
-    pendingProvider: normalizedChannel.pendingProvider,
-    pendingModel: normalizedChannel.pendingModel,
-    pendingModelSelection: normalizedChannel.pendingModelSelection ?? null,
     defaultRecipientCatId,
     roomMode: normalizedChannel.roomRouting.mode,
     routingStatus: routingStatus ?? undefined,

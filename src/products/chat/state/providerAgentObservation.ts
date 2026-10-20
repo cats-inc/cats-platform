@@ -19,8 +19,6 @@ import type {
 import { requireChannel } from './model/index.js';
 import {
   isDirectLaneChannel,
-  isProviderDefaultChatChannel,
-  isDefaultChatChannel,
   supportsParticipantAudienceSelection,
 } from '../shared/channelTopology.js';
 
@@ -36,16 +34,7 @@ function resolveChannelIntentRef(channel: ReturnType<typeof requireChannel>): st
   if (isDirectLaneChannel(channel)) {
     return 'direct_message';
   }
-  if (supportsParticipantAudienceSelection(channel)) {
-    return 'participant_chat';
-  }
-  if (isProviderDefaultChatChannel(channel)) {
-    return 'provider_default_chat';
-  }
-  if (isDefaultChatChannel(channel)) {
-    return 'default_chat';
-  }
-  return 'unknown';
+  return supportsParticipantAudienceSelection(channel) ? 'participant_chat' : 'unknown';
 }
 
 export interface BuildChatProviderAgentObservationInput {

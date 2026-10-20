@@ -112,10 +112,12 @@ test('applyDispatchExecutions advances sequential queued frames by canonical sou
     participantId: 'participant-source',
     participantName: 'Source Cat',
   };
+  // The room's default participant answers the frontier.
+  const defaultParticipant = channel.participantAssignments[0];
   const executionTarget = {
-    participantKind: 'orchestrator',
-    participantId: 'orchestrator',
-    participantName: 'Chat',
+    participantKind: 'cat',
+    participantId: defaultParticipant.participantId,
+    participantName: defaultParticipant.name,
     laneId: 'lane-current-frontier',
     sessionId: 'session-current-frontier',
   };

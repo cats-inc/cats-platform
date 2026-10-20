@@ -49,7 +49,14 @@ export function resolveSelectedChannelEntryLifecycle(
     return resolveChatLifecycleState(leadCat?.execution.lease.status);
   }
 
-  return resolveChatLifecycleState(selectedChannel.orchestratorLease.status);
+  // A room's lifecycle follows its coordinator, or its first participant without one.
+  const activeParticipants = (selectedChannel.assignedParticipants ?? [])
+    .filter((participant) => participant.status === 'active');
+  const coordinator = activeParticipants.find((participant) =>
+    participant.participantId === selectedChannel.coordinatorParticipantId)
+    ?? activeParticipants[0]
+    ?? null;
+  return resolveChatLifecycleState(coordinator?.execution.lease.status ?? 'not_started');
 }
 
 export function shouldWakeRouteChannelOnEntry(input: {

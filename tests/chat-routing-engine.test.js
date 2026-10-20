@@ -15,7 +15,7 @@ import {
   requireChannel,
   setChannelCatExecutionTarget,
   setChannelCatLease,
-  setChannelOrchestratorLease,
+  setChannelParticipantExecutionTarget,
 } from '../build/server/products/chat/state/model/index.js';
 import {
   beginChannelMessageDispatch,
@@ -42,6 +42,22 @@ function createChannel(state, input, now) {
     },
     now,
   );
+}
+
+/** A room whose one participant answers with the given model; a message names it as the audience. */
+const MODEL_PARTICIPANT_ID = 'participant-model';
+const MODEL_AUDIENCE = { recipientParticipantIds: [MODEL_PARTICIPANT_ID] };
+
+function createModelParticipantChannel(state, input, target, now) {
+  return createChannel(state, {
+    ...input,
+    temporaryParticipants: [{ participantId: MODEL_PARTICIPANT_ID, name: 'Model', ...target }],
+  }, now);
+}
+
+function modelParticipantLease(state, channelId) {
+  return requireChannel(state, channelId).participantAssignments
+    .find((assignment) => assignment.participantId === MODEL_PARTICIPANT_ID).execution.lease;
 }
 
 function createParallelChatGroup(state, input, now) {
@@ -1381,581 +1397,6 @@ test('routeChannelMessage forwards planning metadata into chat session creation 
   });
 });
 
-test('provider default chat restarts orchestrator sessions when the pending model changes and records provenance', async () => {
-  let state = await new MemoryChatStore().read();
-  const now = new Date('2026-03-23T00:00:00.000Z');
-
-  state = createChannel(
-    state,
-    {
-      title: 'Default Thread',
-      topic: 'Switch between providers per turn.',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    now,
-  );
-
-  const channelId = state.selectedChannelId;
-  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
-    usage(`response from ${sessionId}: ${sessionId === 'session-1' ? 'claude' : 'antigravity'}`));
-
-  const stableTurns = [
-    'First turn',
-    'Second turn',
-    'Third turn',
-    'Fourth turn',
-    'Fifth turn',
-  ];
-  let dispatchedState = state;
-  for (let index = 0; index < stableTurns.length; index += 1) {
-    const dispatched = await routeChannelMessage(
-      dispatchedState,
-      channelId,
-      {
-        body: stableTurns[index],
-        pendingProvider: 'claude',
-        pendingModel: 'claude-default',
-      },
-      runtimeClient,
-      new Date(`2026-03-23T00:0${index}:00.000Z`),
-    );
-    dispatchedState = dispatched.state;
-  }
-  const switchedDispatch = await routeChannelMessage(
-    dispatchedState,
-    channelId,
-    {
-      body: 'Switch turn',
-      pendingProvider: 'antigravity',
-      pendingModel: 'antigravity-default',
-    },
-    runtimeClient,
-    new Date('2026-03-23T00:09:00.000Z'),
-  );
-  const channel = buildChannelView(switchedDispatch.state, channelId);
-  const defaultChatReplies = channel.messages.filter(
-    (message) => message.metadata?.targetKind === 'orchestrator' && message.senderName === 'Orchestrator',
-  );
-
-  assert.equal(runtimeClient.createdSessions.length, 2);
-  assert.equal(runtimeClient.createdSessions[0].provider, 'claude');
-  assert.equal(
-    runtimeClient.createdSessions[0]?.context?.metadata?.continuityMode,
-    'fresh_start',
-  );
-  assert.equal(
-    runtimeClient.createdSessions[0]?.context?.metadata?.continuityDeliveryMode,
-    'none',
-  );
-  assert.equal(runtimeClient.createdSessions[1].provider, 'antigravity');
-  assert.equal(runtimeClient.createdSessions[1]?.instructions, undefined);
-  assert.equal(
-    runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
-    'full_transplant',
-  );
-  assert.equal(
-    runtimeClient.createdSessions[1]?.context?.metadata?.continuityDeliveryMode,
-    'turn_instructions',
-  );
-  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
-  assert.equal(channel.pendingProvider, 'antigravity');
-  assert.equal(channel.pendingModel, 'antigravity-default');
-  assert.equal(defaultChatReplies[0]?.senderKind, 'agent');
-  assert.equal(defaultChatReplies[0]?.executionProvider, 'claude');
-  assert.equal(defaultChatReplies[0]?.executionModel, 'claude-default');
-  assert.equal(defaultChatReplies.at(-1)?.senderKind, 'agent');
-  assert.equal(defaultChatReplies.at(-1)?.executionProvider, 'antigravity');
-  assert.equal(defaultChatReplies.at(-1)?.executionModel, 'antigravity-default');
-  assert.equal(runtimeClient.sentMessages[0]?.content, 'First turn');
-  assert.equal(runtimeClient.sentMessages[0]?.input?.instructions, undefined);
-  assert.equal(
-    runtimeClient.sentMessages[0]?.input?.context?.metadata?.continuityMode,
-    'fresh_start',
-  );
-  assert.equal(runtimeClient.sentMessages.at(-1)?.content, 'Switch turn');
-  assert.match(
-    runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
-    /Same conversation continuity transcript:/u,
-  );
-  assert.equal(
-    runtimeClient.sentMessages.at(-1)?.input?.context?.metadata?.continuityMode,
-    'full_transplant',
-  );
-  assert.equal(
-    runtimeClient.sentMessages.at(-1)?.input?.context?.metadata?.continuityDeliveryMode,
-    'turn_instructions',
-  );
-  assert.match(
-    runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
-    /\[user:User\] First turn/u,
-  );
-  assert.match(
-    runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
-    /\[agent:Orchestrator\] response from session-1: claude/u,
-  );
-  assert.match(
-    runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
-    /\[user:User\] Fifth turn/u,
-  );
-});
-
-test('provider default chat full-transplants earlier user-only context on replacement sessions', async () => {
-  let state = await new MemoryChatStore().read();
-  const now = new Date('2026-03-23T00:00:00.000Z');
-
-  state = createChannel(
-    state,
-    {
-      title: 'Default Thread',
-      topic: 'Replacement sessions should not fall back to excerpt-only user context.',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    now,
-  );
-
-  const channelId = state.selectedChannelId;
-  state = setChannelOrchestratorLease(
-    state,
-    channelId,
-    {
-      sessionId: 'session-existing',
-      status: 'ready',
-      provider: 'claude',
-      model: 'claude-default',
-      startedAt: now.toISOString(),
-      lastUsedAt: now.toISOString(),
-    },
-    now,
-  );
-
-  for (let index = 0; index < 10; index += 1) {
-    state = appendMessage(
-      state,
-      channelId,
-      {
-        senderKind: 'user',
-        senderName: 'User',
-        body: `Earlier user turn ${index + 1}`,
-      },
-      new Date(`2026-03-23T00:${String(index).padStart(2, '0')}:30.000Z`),
-    ).state;
-  }
-
-  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
-    usage(`response from ${sessionId}`));
-
-  await routeChannelMessage(
-    state,
-    channelId,
-    {
-      body: 'Switch turn',
-      pendingProvider: 'antigravity',
-      pendingModel: 'antigravity-default',
-    },
-    runtimeClient,
-    new Date('2026-03-23T00:11:00.000Z'),
-  );
-
-  assert.deepEqual(runtimeClient.closedSessions, ['session-existing']);
-  assert.equal(runtimeClient.createdSessions.length, 1);
-  assert.equal(runtimeClient.createdSessions[0]?.instructions, undefined);
-  assert.equal(
-    runtimeClient.sentMessages[0]?.input?.context?.metadata?.continuityMode,
-    'full_transplant',
-  );
-  assert.equal(
-    runtimeClient.sentMessages[0]?.input?.context?.metadata?.continuityDeliveryMode,
-    'turn_instructions',
-  );
-  assert.match(
-    runtimeClient.sentMessages[0]?.input?.instructions ?? '',
-    /Same conversation continuity transcript:/u,
-  );
-  assert.match(
-    runtimeClient.sentMessages[0]?.input?.instructions ?? '',
-    /\[user:User\] Earlier user turn 1/u,
-  );
-  assert.match(
-    runtimeClient.sentMessages[0]?.input?.instructions ?? '',
-    /\[user:User\] Earlier user turn 10/u,
-  );
-});
-
-test('default-chat replacement-session transplants preserve prior assistant tool labels', async () => {
-  let state = await new MemoryChatStore().read();
-  const now = new Date('2026-03-23T00:00:00.000Z');
-
-  state = createChannel(
-    state,
-    {
-      title: 'Default Thread',
-      topic: 'Carry tool context across a retargeted default restart.',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    now,
-  );
-
-  const channelId = state.selectedChannelId;
-  const runtimeClient = createRuntimeStub(async ({ sessionId }) => {
-    if (sessionId === 'session-1') {
-      return {
-        segments: [
-          {
-            kind: 'tool_use',
-            text: '',
-            toolName: 'search_repo',
-            toolId: 'tool-search',
-          },
-          {
-            kind: 'text',
-            text: 'I found the relevant files.',
-            toolName: null,
-            toolId: null,
-          },
-        ],
-        inputTokens: 9,
-        outputTokens: 6,
-        tokensUsed: 15,
-      };
-    }
-
-    return usage(`response from ${sessionId}`);
-  });
-
-  const firstDispatch = await routeChannelMessage(
-    state,
-    channelId,
-    {
-      body: 'Inspect the repo first.',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    runtimeClient,
-    now,
-  );
-  await routeChannelMessage(
-    firstDispatch.state,
-    channelId,
-    {
-      body: 'Now switch providers and continue.',
-      pendingProvider: 'antigravity',
-      pendingModel: 'antigravity-default',
-    },
-    runtimeClient,
-    new Date('2026-03-23T00:01:00.000Z'),
-  );
-
-  assert.match(
-    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
-    /\[agent:Orchestrator\] \[tools: search_repo\] I found the relevant files\./u,
-  );
-});
-
-test('default-chat replacement-session transplants fold segmented assistant turns into one continuity line', async () => {
-  let state = await new MemoryChatStore().read();
-  const now = new Date('2026-03-23T00:00:00.000Z');
-
-  state = createChannel(
-    state,
-    {
-      title: 'Default Thread',
-      topic: 'Carry segmented assistant turns cleanly across a retarget.',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    now,
-  );
-
-  const channelId = state.selectedChannelId;
-  const runtimeClient = createRuntimeStub(async ({ sessionId }) => {
-    if (sessionId === 'session-1') {
-      return {
-        segments: [
-          {
-            kind: 'text',
-            text: 'First segment. ',
-            toolName: null,
-            toolId: null,
-          },
-          {
-            kind: 'tool_use',
-            text: '',
-            toolName: 'search_repo',
-            toolId: 'tool-search',
-          },
-          {
-            kind: 'text',
-            text: 'Second segment.',
-            toolName: null,
-            toolId: null,
-          },
-        ],
-        inputTokens: 10,
-        outputTokens: 8,
-        tokensUsed: 18,
-      };
-    }
-
-    return usage(`response from ${sessionId}`);
-  });
-
-  const firstDispatch = await routeChannelMessage(
-    state,
-    channelId,
-    {
-      body: 'Inspect first, then continue.',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    runtimeClient,
-    now,
-  );
-  await routeChannelMessage(
-    firstDispatch.state,
-    channelId,
-    {
-      body: 'Switch providers and continue.',
-      pendingProvider: 'antigravity',
-      pendingModel: 'antigravity-default',
-    },
-    runtimeClient,
-    new Date('2026-03-23T00:01:00.000Z'),
-  );
-
-  const instructions = runtimeClient.sentMessages[1]?.input?.instructions ?? '';
-  assert.match(
-    instructions,
-    /\[agent:Orchestrator\] \[tools: search_repo\] First segment\. Second segment\./u,
-  );
-  assert.equal(instructions.match(/\[agent:Orchestrator\]/gu)?.length ?? 0, 1);
-});
-
-test('provider default chat restarts orchestrator sessions when the pending instance changes', async () => {
-  let state = await new MemoryChatStore().read();
-  const now = new Date('2026-03-23T00:00:00.000Z');
-
-  state = createChannel(
-    state,
-    {
-      title: 'Default Thread',
-      topic: 'Switch runtime instances per turn.',
-      pendingProvider: 'claude',
-      pendingInstance: 'native',
-      pendingModel: 'claude-default',
-    },
-    now,
-  );
-
-  const channelId = state.selectedChannelId;
-  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
-    usage(`response from ${sessionId}`));
-
-  const firstDispatch = await routeChannelMessage(
-    state,
-    channelId,
-    {
-      body: 'First turn',
-      pendingProvider: 'claude',
-      pendingInstance: 'native',
-      pendingModel: 'claude-default',
-    },
-    runtimeClient,
-    now,
-  );
-  const secondDispatch = await routeChannelMessage(
-    firstDispatch.state,
-    channelId,
-    {
-      body: 'Second turn',
-      pendingProvider: 'claude',
-      pendingInstance: 'agent/bridge',
-      pendingModel: 'claude-default',
-    },
-    runtimeClient,
-    new Date('2026-03-23T00:01:00.000Z'),
-  );
-  const channel = buildChannelView(secondDispatch.state, channelId);
-
-  assert.equal(runtimeClient.createdSessions.length, 2);
-  assert.equal(runtimeClient.createdSessions[0]?.instance, 'native');
-  assert.equal(runtimeClient.createdSessions[1]?.instance, 'agent/bridge');
-  assert.equal(runtimeClient.createdSessions[1]?.instructions, undefined);
-  assert.equal(
-    runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
-    'full_transplant',
-  );
-  assert.equal(
-    runtimeClient.createdSessions[1]?.context?.metadata?.continuityDeliveryMode,
-    'turn_instructions',
-  );
-  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
-  assert.equal(channel.pendingInstance, 'agent/bridge');
-  assert.equal(channel.orchestratorLease.instance, 'agent/bridge');
-  assert.match(
-    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
-    /Same conversation continuity transcript:/u,
-  );
-  assert.match(
-    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
-    /\[user:User\] First turn/u,
-  );
-  assert.match(
-    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
-    /\[agent:Orchestrator\] response from session-1/u,
-  );
-});
-
-test('provider default chat restarts orchestrator sessions when the pending model selection changes', async () => {
-  let state = await new MemoryChatStore().read();
-  const now = new Date('2026-03-23T00:00:00.000Z');
-
-  state = createChannel(
-    state,
-    {
-      title: 'Default Thread',
-      topic: 'Switch reasoning effort without reusing the stale runtime session.',
-      pendingProvider: 'codex',
-      pendingModel: 'gpt-5.4',
-      pendingModelSelection: {
-        entryId: 'gpt-5.4',
-        entryMode: 'explicit',
-        controls: {
-          'codex.reasoning_effort': 'medium',
-        },
-      },
-    },
-    now,
-  );
-
-  const channelId = state.selectedChannelId;
-  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
-    usage(`response from ${sessionId}`));
-
-  const firstDispatch = await routeChannelMessage(
-    state,
-    channelId,
-    {
-      body: 'First turn',
-      pendingProvider: 'codex',
-      pendingModel: 'gpt-5.4',
-      pendingModelSelection: {
-        entryId: 'gpt-5.4',
-        entryMode: 'explicit',
-        controls: {
-          'codex.reasoning_effort': 'medium',
-        },
-      },
-    },
-    runtimeClient,
-    now,
-  );
-  const secondDispatch = await routeChannelMessage(
-    firstDispatch.state,
-    channelId,
-    {
-      body: 'Second turn with deeper reasoning',
-      pendingProvider: 'codex',
-      pendingModel: 'gpt-5.4',
-      pendingModelSelection: {
-        entryId: 'gpt-5.4',
-        entryMode: 'explicit',
-        controls: {
-          'codex.reasoning_effort': 'high',
-        },
-      },
-    },
-    runtimeClient,
-    new Date('2026-03-23T00:01:00.000Z'),
-  );
-  const channel = buildChannelView(secondDispatch.state, channelId);
-
-  assert.equal(runtimeClient.createdSessions.length, 2);
-  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
-  assert.deepEqual(runtimeClient.createdSessions[0]?.modelSelection, {
-    entryId: 'gpt-5.4',
-    entryMode: 'explicit',
-    controls: {
-      'codex.reasoning_effort': 'medium',
-    },
-  });
-  assert.deepEqual(runtimeClient.createdSessions[1]?.modelSelection, {
-    entryId: 'gpt-5.4',
-    entryMode: 'explicit',
-    controls: {
-      'codex.reasoning_effort': 'high',
-    },
-  });
-  assert.equal(
-    runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
-    'full_transplant',
-  );
-  assert.equal(channel.pendingProvider, 'codex');
-  assert.equal(channel.pendingModel, 'gpt-5.4');
-  assert.deepEqual(channel.pendingModelSelection, {
-    entryId: 'gpt-5.4',
-    entryMode: 'explicit',
-    controls: {
-      'codex.reasoning_effort': 'high',
-    },
-  });
-  assert.match(
-    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
-    /Same conversation continuity transcript:/u,
-  );
-  assert.match(
-    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
-    /\[user:User\] First turn/u,
-  );
-});
-
-test('provider default chat keeps its session when only the catalog revision of the selection changes', async () => {
-  let state = await new MemoryChatStore().read();
-  const now = new Date('2026-03-23T00:00:00.000Z');
-  const selection = (catalogRevision) => ({
-    catalogRevision,
-    entryId: 'opus',
-    entryMode: 'explicit',
-    controls: { 'claude.reasoning_effort': 'medium' },
-  });
-
-  state = createChannel(
-    state,
-    {
-      title: 'Default Thread',
-      topic: 'A Desktop update re-stamps the saved selection.',
-      pendingProvider: 'claude',
-      pendingModel: 'opus',
-      pendingModelSelection: selection('R1'),
-    },
-    now,
-  );
-
-  const channelId = state.selectedChannelId;
-  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
-    usage(`response from ${sessionId}`));
-  const firstDispatch = await routeChannelMessage(
-    state,
-    channelId,
-    { body: 'First turn', pendingProvider: 'claude', pendingModel: 'opus', pendingModelSelection: selection('R1') },
-    runtimeClient,
-    now,
-  );
-  const secondDispatch = await routeChannelMessage(
-    firstDispatch.state,
-    channelId,
-    { body: 'Second turn', pendingProvider: 'claude', pendingModel: 'opus', pendingModelSelection: selection('R2') },
-    runtimeClient,
-    new Date('2026-03-23T00:01:00.000Z'),
-  );
-
-  assert.equal(runtimeClient.createdSessions.length, 1);
-  assert.deepEqual(runtimeClient.closedSessions, []);
-  assert.deepEqual(buildChannelView(secondDispatch.state, channelId).pendingModelSelection, selection('R2'));
-});
-
 test('Code continuation after disk round trips retains the session, cwd and artifact; real controls changes still restart', async (t) => {
   const fixture = await mkdtemp(path.join(tmpdir(), 'cats-code-continuity-'));
   t.after(() => rm(fixture, { recursive: true, force: true }));
@@ -1964,10 +1405,9 @@ test('Code continuation after disk round trips retains the session, cwd and arti
     entryMode: 'explicit', entryId: 'opus', catalogRevision: revision,
     controls: { 'claude.reasoning_effort': effort },
   });
-  const state = createModelChannel(await store.read(), {
+  const state = createModelParticipantChannel(await store.read(), {
     originSurface: 'code', title: 'Timer', topic: 'Continue a timer',
-    pendingProvider: 'claude', pendingModel: 'opus', pendingModelSelection: selection('R1'),
-  }, new Date());
+  }, { provider: 'claude', model: 'opus', modelSelection: selection('R1') }, new Date());
   const id = state.selectedChannelId;
   const runtime = createRuntimeStub(async ({ sessionId }) => usage(sessionId));
   const originalCreate = runtime.createSession;
@@ -1977,20 +1417,25 @@ test('Code continuation after disk round trips retains the session, cwd and arti
     await mkdir(session.cwd);
     return session;
   };
-  const dispatch = (current, revision, effort = 'medium') => routeChannelMessage(current, id, {
-    body: 'Open the timer', pendingProvider: 'claude', pendingModel: 'opus',
-    pendingModelSelection: selection(revision, effort),
-  }, runtime, new Date());
+  const dispatch = (current, revision, effort = 'medium') => routeChannelMessage(
+    setChannelParticipantExecutionTarget(current, id, MODEL_PARTICIPANT_ID, {
+      provider: 'claude', model: 'opus', modelSelection: selection(revision, effort),
+    }, new Date()),
+    id,
+    { body: 'Open the timer', messageMetadata: MODEL_AUDIENCE },
+    runtime,
+    new Date(),
+  );
   const first = await dispatch(state, 'R1');
   await store.write(first.state);
   const saved = await store.read();
-  const lease = requireChannel(saved, id).orchestratorLease;
+  const lease = modelParticipantLease(saved, id);
   assert.deepEqual(lease.modelSelection, selection('R1'));
   const artifactPath = path.join(lease.cwd, 'index.html');
   await writeFile(artifactPath, '<title>Original timer</title>');
   const second = await dispatch(saved, 'R2');
   await store.write(second.state);
-  const continued = requireChannel(await store.read(), id).orchestratorLease;
+  const continued = modelParticipantLease(await store.read(), id);
   assert.equal(continued.sessionId, lease.sessionId);
   assert.equal(continued.cwd, lease.cwd);
   assert.equal(await readFile(path.join(continued.cwd, 'index.html'), 'utf8'), '<title>Original timer</title>');
@@ -2004,61 +1449,65 @@ test('Code continuation after disk round trips retains the session, cwd and arti
 test('missing saved selection is recovered from the actual Runtime session and still detects changed controls', async () => {
   for (const [effort, status] of [['medium', 'ready'], ['high', 'ready'], ['medium', 'closed']]) {
     const choice = (value) => ({ entryMode: 'explicit', entryId: 'opus', controls: { 'claude.reasoning_effort': value } });
-    const state = createChannel(await new MemoryChatStore().read(), {
+    const state = createModelParticipantChannel(await new MemoryChatStore().read(), {
       title: 'Recovered thread', topic: 'Recover missing selection',
-      pendingProvider: 'claude', pendingModel: 'opus', pendingModelSelection: choice('medium'),
-    }, new Date());
+    }, { provider: 'claude', model: 'opus', modelSelection: choice('medium') }, new Date());
     const id = state.selectedChannelId;
     const runtime = createRuntimeStub(async ({ sessionId }) => usage(sessionId));
     runtime.observeSession = async (sessionId) => ({ session: {
       id: sessionId, status: 'ready', modelSelection: choice('medium'),
     } });
-    const first = await routeChannelMessage(state, id, { body: 'Build it' }, runtime, new Date());
-    const lease = requireChannel(first.state, id).orchestratorLease;
+    const first = await routeChannelMessage(state, id, { body: 'Build it', messageMetadata: MODEL_AUDIENCE }, runtime, new Date());
+    const lease = modelParticipantLease(first.state, id);
     delete lease.modelSelection; // Reproduce the previously discarded snapshot field.
     lease.status = status;
     runtime.resumeSession = async (sessionId) => ({ id: sessionId, provider: 'claude', model: 'opus',
       status: 'ready', cwd: lease.cwd, modelSelection: choice('medium') });
-    const second = await routeChannelMessage(first.state, id, {
-      body: 'Open it', pendingModelSelection: choice(effort),
-    }, runtime, new Date());
+    const second = await routeChannelMessage(
+      setChannelParticipantExecutionTarget(first.state, id, MODEL_PARTICIPANT_ID, {
+        modelSelection: choice(effort),
+      }, new Date()),
+      id,
+      { body: 'Open it', messageMetadata: MODEL_AUDIENCE },
+      runtime,
+      new Date(),
+    );
     assert.equal(runtime.createdSessions.length, effort === 'medium' ? 1 : 2);
     assert.equal(runtime.closedSessions.length, effort === 'medium' ? 0 : 1);
-    if (effort === 'medium') assert.deepEqual(requireChannel(second.state, id).orchestratorLease.modelSelection, choice('medium'));
+    if (effort === 'medium') assert.deepEqual(modelParticipantLease(second.state, id).modelSelection, choice('medium'));
   }
 });
 
 test('unavailable Runtime selection preserves the existing session and retries recovery on the next turn', async () => {
   const choice = { entryMode: 'explicit', entryId: 'opus', controls: { 'claude.reasoning_effort': 'medium' } };
-  const state = createChannel(await new MemoryChatStore().read(), {
+  const state = createModelParticipantChannel(await new MemoryChatStore().read(), {
     title: 'Unavailable observation', topic: 'Preserve workspace',
-    pendingProvider: 'claude', pendingModel: 'opus', pendingModelSelection: choice,
-  }, new Date());
+  }, { provider: 'claude', model: 'opus', modelSelection: choice }, new Date());
   const id = state.selectedChannelId;
   const runtime = createRuntimeStub(async ({ sessionId }) => usage(sessionId));
-  const first = await routeChannelMessage(state, id, { body: 'Build it' }, runtime, new Date());
-  const lease = requireChannel(first.state, id).orchestratorLease;
+  const first = await routeChannelMessage(state, id, { body: 'Build it', messageMetadata: MODEL_AUDIENCE }, runtime, new Date());
+  const lease = modelParticipantLease(first.state, id);
   delete lease.modelSelection;
   runtime.observeSession = async () => { throw new Error('Runtime unavailable'); };
-  const failed = await routeChannelMessage(first.state, id, { body: 'Open it' }, runtime, new Date());
+  const failed = await routeChannelMessage(first.state, id, { body: 'Open it', messageMetadata: MODEL_AUDIENCE }, runtime, new Date());
   assert.equal(runtime.createdSessions.length, 1);
   assert.deepEqual(runtime.closedSessions, []);
-  assert.equal(requireChannel(failed.state, id).orchestratorLease.sessionId, lease.sessionId);
+  assert.equal(modelParticipantLease(failed.state, id).sessionId, lease.sessionId);
   assert.equal(runtime.sentMessages.length, 1, 'unknown options must not silently run the requested choice');
   for (const observed of [
     { id: 'other-session', modelSelection: choice },
     { id: lease.sessionId, modelSelection: { entryMode: 'invalid' } },
   ]) {
     runtime.observeSession = async () => ({ session: observed });
-    await routeChannelMessage(failed.state, id, { body: 'Retry with incomplete observation' }, runtime, new Date());
+    await routeChannelMessage(failed.state, id, { body: 'Retry with incomplete observation', messageMetadata: MODEL_AUDIENCE }, runtime, new Date());
     assert.equal(runtime.createdSessions.length, 1);
     assert.deepEqual(runtime.closedSessions, []);
     assert.equal(runtime.sentMessages.length, 1);
   }
   runtime.observeSession = async (sessionId) => ({ session: { id: sessionId, status: 'ready', modelSelection: choice } });
-  const recovered = await routeChannelMessage(failed.state, id, { body: 'Retry opening it' }, runtime, new Date());
+  const recovered = await routeChannelMessage(failed.state, id, { body: 'Retry opening it', messageMetadata: MODEL_AUDIENCE }, runtime, new Date());
   assert.equal(runtime.createdSessions.length, 1);
-  assert.equal(requireChannel(recovered.state, id).orchestratorLease.sessionId, lease.sessionId);
+  assert.equal(modelParticipantLease(recovered.state, id).sessionId, lease.sessionId);
   assert.equal(runtime.sentMessages.length, 2);
 });
 
@@ -2639,319 +2088,6 @@ test('direct message restarts the direct-recipient session when the instance tar
   );
 });
 
-test('provider default chat sends raw user text without default instructions on a stable session', async () => {
-  let state = await new MemoryChatStore().read();
-  const now = new Date('2026-03-23T00:00:00.000Z');
-
-  state = createChannel(
-    state,
-    {
-      title: 'Default Thread',
-      topic: 'Keep the runtime message raw.',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    now,
-  );
-
-  const channelId = state.selectedChannelId;
-  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
-    usage(`response from ${sessionId}`));
-
-  const firstDispatch = await routeChannelMessage(
-    state,
-    channelId,
-    {
-      body: 'Hi',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    runtimeClient,
-    now,
-  );
-  await routeChannelMessage(
-    firstDispatch.state,
-    channelId,
-    {
-      body: 'Follow-up',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    runtimeClient,
-    new Date('2026-03-23T00:01:00.000Z'),
-  );
-
-  assert.equal(runtimeClient.sentMessages.length, 2);
-  assert.equal(runtimeClient.createdSessions.length, 1);
-  assert.equal(runtimeClient.sentMessages[0]?.content, 'Hi');
-  assert.equal(runtimeClient.sentMessages[0]?.input?.instructions, undefined);
-  assert.equal(
-    runtimeClient.createdSessions[0]?.context?.metadata?.continuityMode,
-    'fresh_start',
-  );
-  assert.equal(
-    runtimeClient.createdSessions[0]?.context?.metadata?.continuityDeliveryMode,
-    'none',
-  );
-  assert.equal(
-    runtimeClient.sentMessages[0]?.input?.context?.metadata?.continuityMode,
-    'fresh_start',
-  );
-  assert.equal(
-    runtimeClient.sentMessages[0]?.input?.context?.metadata?.continuityDeliveryMode,
-    'none',
-  );
-  assert.equal(runtimeClient.sentMessages[1]?.content, 'Follow-up');
-  assert.equal(runtimeClient.sentMessages[1]?.input?.instructions, undefined);
-  assert.equal(
-    runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityMode,
-    'native_resume',
-  );
-  assert.equal(
-    runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityDeliveryMode,
-    'none',
-  );
-  const channel = buildChannelView(firstDispatch.state, channelId);
-  assertProviderAgentDispatchMetadata(channel, 'Hi');
-});
-
-test('provider default chat honors pending runtime memory flush hooks before restarting the session', async () => {
-  const store = new MemoryChatStore();
-  let state = await store.read();
-  const now = new Date('2026-03-23T00:00:00.000Z');
-
-  state = createChannel(
-    state,
-    {
-      title: 'Default thread',
-      topic: 'Restart the default session after switching models.',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    now,
-  );
-
-  const channelId = state.selectedChannelId;
-  const runtimeClient = createRuntimeStub(async ({ sessionId }) => usage(`response from ${sessionId}`));
-  runtimeClient.observeSession = async () => ({
-    session: {
-      context: {
-        metadata: {
-          channelId,
-        },
-      },
-      inspection: {
-        maintenance: {
-          hooks: {
-            preReset: {
-              pending: [
-                {
-                  id: 'memory_flush',
-                  status: 'pending',
-                },
-              ],
-            },
-            preCompaction: {
-              pending: [],
-            },
-          },
-        },
-      },
-    },
-  });
-  const flushedChannels = [];
-  const memoryService = {
-    async flushChannel(input) {
-      flushedChannels.push({ ...input });
-      return {
-        scope: 'channel',
-        subjectId: input.channelId,
-        reason: input.reason ?? 'manual',
-        generatedAt: (input.now ?? now).toISOString(),
-        persistedCount: 1,
-        persistedRecordIds: ['cats-memory-1'],
-        removedRecordIds: [],
-        payload: {
-          version: 1,
-          reason: input.reason ?? 'manual',
-          generatedAt: (input.now ?? now).toISOString(),
-          subject: {
-            kind: 'channel',
-            id: input.channelId,
-          },
-          replacementMode: 'subject_projection_replace',
-          sourceScopeKeys: ['channel:working-memory'],
-          persistedRecords: [
-            {
-              recordId: 'cats-memory-1',
-              category: 'fact',
-              originKind: 'channel_working_memory',
-              promotionRule: 'channel_fact',
-              visibility: 'channel_private',
-              sourceRefs: [],
-              sourceScopeKeys: ['channel:working-memory'],
-              replacementGroup: `channel:${input.channelId}:fact:0`,
-            },
-          ],
-          removedRecordIds: [],
-        },
-      };
-    },
-  };
-  await store.write(state);
-
-  const firstDispatch = await routeChannelMessage(
-    state,
-    channelId,
-    {
-      body: 'First turn',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    runtimeClient,
-    now,
-    { memoryService, chatStore: store },
-  );
-  await store.write(firstDispatch.state);
-  await routeChannelMessage(
-    firstDispatch.state,
-    channelId,
-    {
-      body: 'Second turn',
-      pendingProvider: 'antigravity',
-      pendingModel: 'antigravity-default',
-    },
-    runtimeClient,
-    new Date('2026-03-23T00:01:00.000Z'),
-    { memoryService, chatStore: store },
-  );
-
-  assert.deepEqual(flushedChannels, [
-    {
-      channelId,
-      reason: 'pre_reset',
-      now: new Date('2026-03-23T00:01:00.000Z'),
-    },
-  ]);
-  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
-  const core = await store.readCore();
-  assert.ok(
-    core.activities.some((activity) =>
-      activity.metadata?.category === 'memory_maintenance'
-      && activity.metadata?.trigger === 'runtime_hook'
-      && activity.metadata?.status === 'executed'
-      && activity.metadata?.phase === 'pre_reset'
-      && activity.metadata?.channelId === channelId),
-  );
-});
-
-test('provider default chat retransplants continuity after stale-session recovery creates a new runtime session', async () => {
-  let state = await new MemoryChatStore().read();
-  const now = new Date('2026-03-23T00:00:00.000Z');
-
-  state = createChannel(
-    state,
-    {
-      title: 'Default Thread',
-      topic: 'Recover stale sessions without losing continuity.',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    now,
-  );
-
-  const channelId = state.selectedChannelId;
-  const runtimeClient = createRuntimeStub(async ({ sessionId }) => {
-    if (sessionId === 'session-stale') {
-      throw new Error('Session not found: session-stale');
-    }
-
-    return usage(`response from ${sessionId}`);
-  });
-
-  const firstDispatch = await routeChannelMessage(
-    state,
-    channelId,
-    {
-      body: 'First turn',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    runtimeClient,
-    now,
-  );
-
-  const staleState = setChannelOrchestratorLease(
-    firstDispatch.state,
-    channelId,
-    {
-      sessionId: 'session-stale',
-      status: 'ready',
-      lastError: null,
-    },
-    new Date('2026-03-23T00:00:30.000Z'),
-  );
-
-  const recoveredDispatch = await routeChannelMessage(
-    staleState,
-    channelId,
-    {
-      body: 'Recover the conversation',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    runtimeClient,
-    new Date('2026-03-23T00:01:00.000Z'),
-    {
-      runtimeRecovery: {
-        staleSessionRetryLimit: 1,
-      },
-    },
-  );
-  const channel = buildChannelView(recoveredDispatch.state, channelId);
-  const defaultChatReplies = channel.messages.filter(
-    (message) => message.metadata?.targetKind === 'orchestrator' && message.senderName === 'Orchestrator',
-  );
-
-  assert.deepEqual(
-    runtimeClient.sentMessages.map((message) => message.sessionId),
-    ['session-1', 'session-stale', 'session-2'],
-  );
-  assert.deepEqual(runtimeClient.closedSessions, ['session-stale']);
-  assert.equal(runtimeClient.createdSessions.length, 2);
-  assert.equal(runtimeClient.createdSessions[1]?.instructions, undefined);
-  assert.equal(
-    runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
-    'full_transplant',
-  );
-  assert.equal(
-    runtimeClient.createdSessions[1]?.context?.metadata?.continuityDeliveryMode,
-    'turn_instructions',
-  );
-  assert.equal(
-    runtimeClient.sentMessages[2]?.input?.context?.metadata?.continuityMode,
-    'full_transplant',
-  );
-  assert.equal(
-    runtimeClient.sentMessages[2]?.input?.context?.metadata?.continuityDeliveryMode,
-    'turn_instructions',
-  );
-  assert.match(
-    runtimeClient.sentMessages[2]?.input?.instructions ?? '',
-    /Same conversation continuity transcript:/u,
-  );
-  assert.match(
-    runtimeClient.sentMessages[2]?.input?.instructions ?? '',
-    /\[user:User\] First turn/u,
-  );
-  assert.match(
-    runtimeClient.sentMessages[2]?.input?.instructions ?? '',
-    /\[agent:Orchestrator\] response from session-1/u,
-  );
-  assert.equal(defaultChatReplies.at(-1)?.executionProvider, 'claude');
-  assert.equal(defaultChatReplies.at(-1)?.executionModel, 'claude-default');
-});
-
 test(
   'participant chat turns that name no audience reach nobody, not the orchestrator',
   async () => {
@@ -3061,7 +2197,7 @@ test(
       ),
       false,
     );
-    assert.equal(channel.orchestratorLease.sessionId, null);
+    assert.equal('orchestratorLease' in channel, false);
     assert.equal(channel.messages.at(-1)?.senderName, 'Companion');
   },
 );
@@ -3467,7 +2603,7 @@ test('direct message routes unmentioned turns to the direct recipient without wa
     buildDirectLaneTransportBindingId(channelId),
   );
   assert.equal(runtimeClient.sentMessages.some((message) => message.content.includes('You are Smelly')), false);
-  assert.equal(channel.orchestratorLease.sessionId, null);
+  assert.equal('orchestratorLease' in channel, false);
   assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-1');
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'default_target');
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason, 'direct_message_recipient');
@@ -3838,14 +2974,16 @@ test('direct message records targetStateId on session_start_failed messages', as
 test('a saved model choice the catalog no longer offers fails to start with what is gone', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-21T00:00:00.000Z');
-  state = createChannel(
+  state = createModelParticipantChannel(
     state,
     {
       title: 'Default Thread',
       topic: 'Explain a removed effort instead of the supervision prefix.',
-      pendingProvider: 'claude',
-      pendingModel: 'opus',
-      pendingModelSelection: {
+    },
+    {
+      provider: 'claude',
+      model: 'opus',
+      modelSelection: {
         catalogRevision: 'R1', entryId: 'opus', entryMode: 'explicit',
         controls: { 'claude.reasoning_effort': 'ultracode' },
       },
@@ -3859,7 +2997,7 @@ test('a saved model choice the catalog no longer offers fails to start with what
     throw Object.assign(new Error(detail), { status: 409, code: 'catalog_selection_unmappable' });
   };
 
-  const dispatched = await routeChannelMessage(state, channelId, { body: 'Start.' }, runtimeClient, now);
+  const dispatched = await routeChannelMessage(state, channelId, { body: 'Start.', messageMetadata: MODEL_AUDIENCE }, runtimeClient, now);
   const failed = requireChannel(dispatched.state, channelId).messages.find((message) =>
     message.metadata?.event === 'session_start_failed');
 
@@ -4074,7 +3212,7 @@ test('direct message blocks explicit Boss Cat mentions instead of routing out of
 
   assert.equal(runtimeClient.createdSessions.length, 0);
   assert.equal(runtimeClient.sentMessages.length, 0);
-  assert.equal(channel.orchestratorLease.sessionId, null);
+  assert.equal('orchestratorLease' in channel, false);
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'blocked');
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.blockedReason, 'no_valid_targets');
   assert.deepEqual(channel.roomRouting?.lastOutcome?.unresolvedMentions, ['Smelly']);
@@ -4155,7 +3293,7 @@ test('direct message ignores workflow recommendations that target Boss Cat', asy
   assert.equal(runtimeClient.createdSessions.length, 1);
   assert.equal(runtimeClient.sentMessages.length, 1);
   assert.equal(runtimeClient.sentMessages.some((message) => message.content.includes('You are Smelly')), false);
-  assert.equal(channel.orchestratorLease.sessionId, null);
+  assert.equal('orchestratorLease' in channel, false);
   assert.equal(channel.roomRouting?.lastOutcome?.continuationCount, 0);
   assert.equal(noTargetCheckpoint?.metadata.continuationSource, 'workflow_recommendation');
   assert.deepEqual(noTargetCheckpoint?.metadata.unresolvedTargets, ['Smelly']);
@@ -4475,7 +3613,7 @@ test('direct message blocks unmentioned turns when the direct recipient is no lo
 
   assert.equal(runtimeClient.createdSessions.length, 0);
   assert.equal(runtimeClient.sentMessages.length, 0);
-  assert.equal(channel.orchestratorLease.sessionId, null);
+  assert.equal('orchestratorLease' in channel, false);
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'blocked');
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.blockedReason, 'missing_direct_message_recipient');
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.defaultTarget?.participantId, companionId);

@@ -6,7 +6,6 @@ import type {
   ChatChannelView,
 } from '../src/products/chat/api/contracts.ts';
 import {
-  applyPendingExecutionTargetPreview,
   buildAttachedFilesMessageBody,
   buildDraftParticipantCapabilityReview,
   buildNewChatChannelInput,
@@ -164,24 +163,10 @@ function createChannelView(overrides: Partial<ChatChannelView> = {}): ChatChanne
     skillProfile: null,
     mcpProfile: null,
     orchestratorRoles: [],
-    pendingProvider: 'claude',
-    pendingModel: 'claude-opus-4-6',
-    pendingInstance: 'native',
-    pendingModelSelection: null,
     createdAt,
     updatedAt: createdAt,
     lastMessageAt: null,
     lastActivatedAt: null,
-    orchestratorLease: {
-      sessionId: null,
-      status: 'not_started',
-      cwd: null,
-      lastError: null,
-      provider: null,
-      model: null,
-      startedAt: null,
-      lastUsedAt: null,
-    },
     catAssignments: [],
     messages: [],
     assignedCats: [],
@@ -233,7 +218,7 @@ test('buildNewChatChannelInput starts a default new chat with its model as the d
   assert.equal(input.runtimeWorkspaceKind, 'worktree');
   assert.equal(input.runtimeWorkspaceAccess, 'read_only');
   assert.equal(input.runtimePermissionMode, 'default');
-  assert.equal(input.pendingProvider, undefined);
+  assert.equal('pendingProvider' in input, false);
   assert.deepEqual(input.temporaryParticipants, [{
     participantId: undefined,
     name: '',
@@ -918,28 +903,6 @@ test('isOptimisticDraftChannelId only matches optimistic draft routes', () => {
   assert.equal(isOptimisticDraftChannelId('draft-123'), true);
   assert.equal(isOptimisticDraftChannelId('7a6a9554-dc18-4a3d-8a5d-a54bdb2e31f4'), false);
   assert.equal(isOptimisticDraftChannelId(null), false);
-});
-
-test('applyPendingExecutionTargetPreview updates the local default target before dispatch returns', () => {
-  const channel = createChannelView();
-  const payload = insertCreatedChannelIntoPayload(createPayload(), channel);
-
-  const next = applyPendingExecutionTargetPreview(
-    payload,
-    channel.id,
-    {
-      pendingProvider: 'antigravity',
-      pendingModel: 'antigravity-default',
-      pendingInstance: 'cli/native',
-      pendingModelSelection: null,
-    },
-  );
-
-  assert.equal(next.chat.selectedChannel?.pendingProvider, 'antigravity');
-  assert.equal(next.chat.selectedChannel?.pendingModel, 'antigravity-default');
-  assert.equal(next.chat.selectedChannel?.pendingInstance, 'cli/native');
-  assert.equal(next.chat.channels[0]?.pendingProvider, 'antigravity');
-  assert.equal(next.chat.channels[0]?.pendingModel, 'antigravity-default');
 });
 
 test('insertCreatedChannelIntoPayload promotes a real created channel without a draft route', () => {

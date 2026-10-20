@@ -124,33 +124,6 @@ export async function updateChatConversationBehaviorPreference(
   return updateWorkspaceConversationBehaviorPreference('chat', patch, signal) as Promise<AppShellPayload>;
 }
 
-export async function updateChannelPendingExecutionTarget(
-  channelId: string,
-  input: {
-    pendingProvider?: string | null;
-    pendingModel?: string | null;
-    pendingInstance?: string | null;
-    pendingModelSelection?: ProviderModelSelection | null;
-  },
-  signal?: AbortSignal,
-): Promise<AppShellPayload> {
-  const response = await fetch(`/api/channels/${encodeURIComponent(channelId)}`, {
-    method: 'PATCH',
-    headers: {
-      'content-type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(input),
-    signal,
-  });
-
-  return mutateAndRefetch(
-    response,
-    `cats channel update returned ${response.status}`,
-    signal,
-  );
-}
-
 export async function updateChatOrchestrator(
   input: UpdateGlobalOrchestratorInput,
   signal?: AbortSignal,

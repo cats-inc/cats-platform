@@ -7,9 +7,9 @@ import { createDefaultChatState } from '../src/products/chat/state/defaults.js';
 import {
   appendMessage,
   buildChannelView,
+  requireChannel,
   createChannel,
   setChannelCatLease,
-  setChannelOrchestratorLease,
 } from '../src/products/chat/state/model/index.js';
 import type { DispatchRequest } from '../src/products/chat/state/room-routing/runtime.js';
 import type { RuntimeClient } from '../src/platform/runtime/client.js';
@@ -130,28 +130,39 @@ function createDispatchHarness(body: string) {
   return { state, channelId, request };
 }
 
-function createOrchestratorDispatchHarness(body: string) {
+/** A room coordinated by a standard cat: coordinating confers no Boss Cat authority. */
+function createStandardCoordinatorDispatchHarness(body: string) {
   let state = createDefaultChatState();
-  state.globalOrchestrator.mcpProfile = WORK_MCP_PROFILE_ID;
   state = createChannel(
     state,
     {
-      title: 'Global Runtime Work Intent',
+      title: 'Standard Coordinator Work Intent',
       topic: 'Forward Work tool intent to runtime metadata.',
       originSurface: 'chat',
       roomMode: 'chat_channel',
-      pendingProvider: 'claude',
+      cats: [
+        {
+          name: 'Planner Cat',
+          provider: 'antigravity',
+          roles: ['planner'],
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
     },
     new Date('2026-05-13T00:00:00.000Z'),
   );
   const channelId = state.selectedChannelId;
   assert.ok(channelId);
-  state = setChannelOrchestratorLease(
+  const cat = buildChannelView(state, channelId).assignedCats[0];
+  assert.ok(cat);
+  assert.equal(requireChannel(state, channelId).coordinatorParticipantId, cat.participantId);
+  state = setChannelCatLease(
     state,
     channelId,
+    cat.catId,
     {
-      laneId: 'lane-orchestrator-work',
-      sessionId: 'session-orchestrator-work',
+      laneId: 'lane-coordinator-work',
+      sessionId: 'session-coordinator-work',
       status: 'ready',
       startedAt: '2026-05-13T00:00:01.000Z',
       lastUsedAt: '2026-05-13T00:00:01.000Z',
@@ -171,11 +182,11 @@ function createOrchestratorDispatchHarness(body: string) {
   state = appended.state;
 
   const target = {
-    participantKind: 'orchestrator' as const,
-    participantId: 'orchestrator',
-    participantName: 'Boss Cat',
-    laneId: 'lane-orchestrator-work',
-    sessionId: 'session-orchestrator-work',
+    participantKind: 'cat' as const,
+    participantId: cat.participantId,
+    participantName: cat.name,
+    laneId: 'lane-coordinator-work',
+    sessionId: 'session-coordinator-work',
   };
   const request: DispatchRequest = {
     sourceMessage: appended.message,
@@ -183,12 +194,12 @@ function createOrchestratorDispatchHarness(body: string) {
     targets: [target],
     unresolved: [],
     mentionNames: [],
-    trigger: 'room_default',
+    trigger: 'explicit_mention',
     depth: 0,
-    turnId: 'turn-orchestrator-work',
+    turnId: 'turn-coordinator-work',
     target,
-    dispatchId: 'dispatch-orchestrator-work',
-    targetStateId: 'target-orchestrator-work',
+    dispatchId: 'dispatch-coordinator-work',
+    targetStateId: 'target-coordinator-work',
     parentCheckpointId: null,
     branchStrategy: null,
     handoffReason: null,
@@ -328,7 +339,7 @@ test('runtime dispatch forwards Work external issue import intent metadata', asy
 });
 
 test('runtime dispatch never treats the orchestrator as a Boss Cat by role alone', async () => {
-  const harness = createOrchestratorDispatchHarness('Start work-item-alpha.');
+  const harness = createStandardCoordinatorDispatchHarness('Start work-item-alpha.');
   const runtimeClient = createRuntimeStub();
 
   await executeDispatch(
@@ -343,7 +354,10 @@ test('runtime dispatch never treats the orchestrator as a Boss Cat by role alone
     createDefaultCoreState(),
   );
 
-  assert.equal(runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent, undefined);
+  const toolIntent = runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent as
+    | { requiredCapabilities?: string[] }
+    | undefined;
+  assert.equal(toolIntent?.requiredCapabilities?.includes('work.capability.boss_cat') ?? false, false);
 });
 
 test('runtime dispatch omits Work tool intent metadata for unmatched work-memory turns', async () => {

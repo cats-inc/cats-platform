@@ -208,25 +208,10 @@ function createChannel(overrides: Partial<SelectedChannelView> = {}): SelectedCh
     skillProfile: null,
     mcpProfile: null,
     orchestratorRoles: [],
-    pendingProvider: null,
-    pendingModel: null,
-    pendingInstance: null,
-    pendingModelSelection: null,
     createdAt: '2026-04-07T00:00:00.000Z',
     updatedAt: '2026-04-07T00:00:00.000Z',
     lastMessageAt: null,
     lastActivatedAt: null,
-    orchestratorLease: {
-      laneId: null,
-      sessionId: null,
-      status: 'not_started',
-      cwd: null,
-      lastError: null,
-      provider: null,
-      model: null,
-      startedAt: null,
-      lastUsedAt: null,
-    },
     participantAssignments: [],
     catAssignments: [],
     assignedParticipants: [
@@ -734,92 +719,6 @@ test('ConversationView gives temporary participants a live progress avatar and t
   assert.match(markup, /class="catAvatar transcriptAvatar channelParticipantAvatar"/u);
   assert.match(markup, /Inline Reviewer/u);
   assert.match(markup, /catAvatarPulsing/u);
-});
-
-test('ConversationView promotes default orchestrator progress once the session_started system message is visible', () => {
-  const baseChannel = createChannel();
-  const markup = renderToStaticMarkup(
-    <ConversationView
-      {...createProps({
-        selectedChannel: createChannel({
-          title: 'Default runtime chat',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          messages: [
-            {
-              id: 'message-user',
-              channelId: 'channel-1',
-              senderKind: 'user',
-              senderName: 'Kenny',
-              body: 'Please reply with exactly OK.',
-              mentions: [],
-              metadata: {},
-              usage: null,
-              createdAt: '2026-04-07T00:01:00.000Z',
-            },
-            {
-              id: 'message-session-started',
-              channelId: 'channel-1',
-              senderKind: 'system',
-              senderName: 'Runtime',
-              body: 'Claude-CLI connected to cats-runtime session session-orchestrator.',
-              mentions: [],
-              metadata: {
-                event: 'session_started',
-                targetKind: 'orchestrator',
-                verbosity: 'verbose',
-              },
-              usage: null,
-              createdAt: '2026-04-07T00:01:01.500Z',
-            },
-          ],
-          roomRouting: {
-            ...baseChannel.roomRouting!,
-            defaultRecipientId: null,
-            workflow: {
-              activeTurn: {
-                id: 'turn-orchestrator',
-                status: 'running',
-                sourceMessageId: 'message-user',
-                sourceSenderKind: 'user',
-                sourceSenderName: 'Kenny',
-                guard: null,
-                stageId: 'dispatching',
-                workflowShape: 'sequential',
-                reviewRequired: false,
-                lastCheckpointId: null,
-                convergeTargetId: null,
-                continuationCount: 0,
-                dispatchCount: 1,
-                targetStatuses: [],
-                events: [],
-                startedAt: '2026-04-07T00:01:01.000Z',
-                updatedAt: '2026-04-07T00:01:02.000Z',
-                completedAt: null,
-              },
-              turnHistory: [],
-              eventHistory: [],
-              lastCheckpointEvent: null,
-              lastOutcomeEvent: null,
-            },
-          },
-        }),
-        liveIndicator: {
-          ...EMPTY_LIVE_INDICATOR,
-          active: true,
-          phase: 'streaming',
-          participantId: 'orchestrator',
-          speakerLabel: 'Claude-CLI',
-          sessionStartedAt: '2026-04-07T00:01:01.500Z',
-          requiresSessionStartConfirmation: true,
-          progressKind: 'session',
-        },
-      })}
-    />,
-  );
-
-  assert.match(markup, /typingIndicator/u);
-  assert.doesNotMatch(markup, /userTurnStatusProcessing/u);
 });
 
 test('ConversationView shows an anonymous assistant typing bubble until session startup is persisted', () => {

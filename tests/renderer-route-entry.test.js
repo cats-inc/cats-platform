@@ -104,16 +104,6 @@ test('direct message entry lifecycle stays null when the direct recipient is mis
     updatedAt: '2026-03-23T00:00:00.000Z',
     lastMessageAt: null,
     lastActivatedAt: null,
-    orchestratorLease: {
-      sessionId: null,
-      status: 'ready',
-      cwd: null,
-      lastError: null,
-      provider: 'claude',
-      model: null,
-      startedAt: null,
-      lastUsedAt: null,
-    },
     catAssignments: [],
     messages: [],
     assignedCats: [],
@@ -166,16 +156,6 @@ test('direct message entry lifecycle follows the lead participant execution leas
     updatedAt: '2026-03-23T00:00:00.000Z',
     lastMessageAt: null,
     lastActivatedAt: null,
-    orchestratorLease: {
-      sessionId: null,
-      status: 'not_started',
-      cwd: null,
-      lastError: null,
-      provider: 'claude',
-      model: null,
-      startedAt: null,
-      lastUsedAt: null,
-    },
     catAssignments: [],
     messages: [],
     assignedCats: [
@@ -250,7 +230,7 @@ test('direct message entry lifecycle follows the lead participant execution leas
   assert.equal(lifecycle, 'waking_up');
 });
 
-test('boss chat entry lifecycle follows the orchestrator execution lease status', () => {
+test('a room entry lifecycle follows its coordinator lease status', () => {
   const lifecycle = resolveSelectedChannelEntryLifecycle({
     id: 'channel-boss',
     title: 'Boss Room',
@@ -270,19 +250,30 @@ test('boss chat entry lifecycle follows the orchestrator execution lease status'
     updatedAt: '2026-03-23T00:00:00.000Z',
     lastMessageAt: null,
     lastActivatedAt: null,
-    orchestratorLease: {
-      sessionId: 'session-boss',
-      status: 'error',
-      cwd: null,
-      lastError: 'stale session',
-      provider: 'claude',
-      model: 'claude-sonnet',
-      startedAt: null,
-      lastUsedAt: null,
-    },
+    coordinatorParticipantId: 'participant-default',
     catAssignments: [],
     messages: [],
     assignedCats: [],
+    assignedParticipants: [{
+      participantId: 'participant-default',
+      sourceKind: 'adhoc',
+      sourceRefId: null,
+      name: 'Claude-CLI',
+      status: 'active',
+      execution: {
+        target: { provider: 'claude', instance: null, model: 'claude-sonnet' },
+        lease: {
+          sessionId: 'session-room',
+          status: 'error',
+          cwd: null,
+          lastError: 'stale session',
+          provider: 'claude',
+          model: 'claude-sonnet',
+          startedAt: null,
+          lastUsedAt: null,
+        },
+      },
+    }],
     roomRouting: {
       mode: 'chat_channel',
       defaultRecipientId: null,

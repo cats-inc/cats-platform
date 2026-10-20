@@ -123,7 +123,7 @@ test('normalizeMessage returns owned metadata objects', () => {
   assert.equal(rawMessage.metadata.status, 'active');
 });
 
-test('removing the first participant moves the room on to the next one and keeps the last', async () => {
+test('removing the coordinator clears the binding and the last participant stays', async () => {
   const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
   const now = new Date('2026-03-23T00:00:00.000Z');
@@ -146,12 +146,13 @@ test('removing the first participant moves the room on to the next one and keeps
   );
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, { catId: novaId, provider: 'claude' }, now);
-  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, miloId);
+  // Only a DM has a default recipient; a room names its audience.
+  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, null);
   assert.equal(state.channels[0].coordinatorParticipantId, miloId);
   assert.deepEqual(state.channels[0].participantAssignments?.map((assignment) => assignment.participantId), [miloId, novaId]);
 
   state = removeCatFromChannel(state, channelId, miloId, new Date('2026-03-23T00:05:00.000Z'));
-  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, novaId);
+  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, null);
   assert.equal(state.channels[0].coordinatorParticipantId, null);
   assert.throws(
     () => removeCatFromChannel(state, channelId, novaId, new Date('2026-03-23T00:06:00.000Z')),
@@ -614,10 +615,8 @@ test('FileChatStore normalizes contaminated direct lanes back to the direct-reci
   assert.equal(recoveredChannel.catAssignments[0].catId, defaultRecipientCatId);
   assert.equal(recoveredChannel.roomRouting?.mode, 'direct_message');
   assert.equal(recoveredChannel.roomRouting?.defaultRecipientId, defaultRecipientCatId);
-  assert.equal(recoveredChannel.orchestratorLease.sessionId, null);
-  assert.equal(recoveredChannel.orchestratorLease.status, 'not_started');
-  assert.equal(recoveredChannel.orchestratorLease.provider, null);
-  assert.equal(recoveredChannel.orchestratorLease.model, null);
+  // A stored orchestrator lease is dropped on read; no orchestrator session exists.
+  assert.equal('orchestratorLease' in recoveredChannel, false);
 });
 
 test('FileChatStore round-trips per-message execution provenance', async () => {

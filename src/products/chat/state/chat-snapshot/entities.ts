@@ -358,20 +358,10 @@ export function normalizeChannel(
     skillProfile: readNullableString(channelRecord.skillProfile) ?? 'chat-default',
     mcpProfile: readNullableString(channelRecord.mcpProfile) ?? CHAT_MCP_PROFILE_ID,
     orchestratorRoles: readStringArray(channelRecord.orchestratorRoles),
-    pendingProvider: readNullableString(channelRecord.pendingProvider),
-    pendingModel: readNullableString(channelRecord.pendingModel),
-    pendingInstance: readNullableString(channelRecord.pendingInstance),
-    pendingModelSelection: parseProviderModelSelection(channelRecord.pendingModelSelection),
     createdAt: readString(channelRecord.createdAt, new Date().toISOString()),
     updatedAt: readString(channelRecord.updatedAt, new Date().toISOString()),
     lastMessageAt: readNullableString(channelRecord.lastMessageAt),
     lastActivatedAt: readNullableString(channelRecord.lastActivatedAt),
-    orchestratorLease: channelKind === 'direct_message'
-      ? createEmptyExecutionLease()
-      : normalizeExecutionLease(
-        channelRecord.orchestratorLease,
-        { provider: 'claude', instance: null, model: null },
-      ),
     coordinatorParticipantId: readNullableString(channelRecord.coordinatorParticipantId),
     catAssignments: normalizedCatAssignments,
     participantAssignments: normalizedParticipantAssignments,

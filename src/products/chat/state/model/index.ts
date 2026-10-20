@@ -28,7 +28,6 @@ import { defaultCatProducts, hasPlatformSurface } from '../../../../shared/platf
 import {
   inferChannelKind,
   isDirectLaneChannel,
-  isProviderDefaultChatChannel,
   normalizeChannelAssignmentsForRoomMode,
   resolveChannelKind,
   resolveDirectLaneRecipientId,
@@ -89,7 +88,6 @@ export {
 } from './channelState.js';
 export {
   setChannelCatLease,
-  setChannelOrchestratorLease,
   setChannelParticipantLease,
 } from './channelLeases.js';
 import {
@@ -110,6 +108,7 @@ export {
   resolveChannelEntryParticipant,
   resolveLeadParticipantLease,
   resolveOrchestratorDisplayName,
+  resolveParallelChatMemberTarget,
   resolveParticipantLifecycleState,
   summarizeState,
   toChannelSummary,
@@ -134,8 +133,6 @@ export {
   setChannelCatExecutionTarget,
   setChannelParticipantExecutionTarget,
   updateChannelParticipant,
-  setChannelPendingExecutionTarget,
-  setGlobalOrchestratorExecutionTarget,
   updateChannelParticipantProfile,
   updateGlobalOrchestrator,
   updateNewChatDefaults,
@@ -303,24 +300,11 @@ function describeCreatedRoom(
     return `direct chat with ${activeParticipantNames[0] ?? 'the selected participant'}`;
   }
 
-  if (isProviderDefaultChatChannel(channel) && channel.pendingProvider) {
-    return `default chat with ${buildParallelChatMemberLabel({
-      provider: channel.pendingProvider,
-      instance: channel.pendingInstance,
-      model: channel.pendingModel,
-      modelSelection: channel.pendingModelSelection ?? null,
-    })}`;
-  }
-
   if (activeParticipantNames.length === 1) {
     return `participant-led chat with ${activeParticipantNames[0]}`;
   }
 
-  if (activeParticipantNames.length > 1) {
-    return `shared room with ${activeParticipantNames.join(', ')}`;
-  }
-
-  return 'Boss Chat';
+  return `shared room with ${activeParticipantNames.join(', ')}`;
 }
 
 function resolveRequestedRoomMode(
@@ -342,8 +326,7 @@ function resolveRequestedParticipantCount(input: CreateChatChannelInput): number
 
 /**
  * A non-DM conversation always has a participant: without any named one, it
- * starts with the remembered default. The legacy default chat (a pending
- * provider/model and no participants) still opts out until it is removed.
+ * starts with the remembered default.
  */
 function seedDefaultParticipantInput(
   state: ChatState,
@@ -354,7 +337,6 @@ function seedDefaultParticipantInput(
     || (input.cats?.length ?? 0) > 0
     || (input.participantCatIds?.length ?? 0) > 0
     || (input.temporaryParticipants?.length ?? 0) > 0
-    || normalizeOptionalText(input.pendingProvider)
   ) {
     return input;
   }
@@ -534,15 +516,10 @@ export function createChannel(
     skillProfile: normalizeOptionalText(input.skillProfile) ?? 'chat-default',
     mcpProfile: normalizeCatMcpProfile(input.mcpProfile) ?? CHAT_MCP_PROFILE_ID,
     orchestratorRoles: normalizeList(input.orchestratorRoles),
-    pendingProvider: normalizeOptionalText(input.pendingProvider),
-    pendingModel: normalizeOptionalText(input.pendingModel),
-    pendingInstance: normalizeOptionalText(input.pendingInstance),
-    pendingModelSelection: cloneProviderModelSelection(input.pendingModelSelection),
     createdAt: nowIso,
     updatedAt: nowIso,
     lastMessageAt: nowIso,
     lastActivatedAt: null,
-    orchestratorLease: createEmptyExecutionLease(),
     coordinatorParticipantId: requestedRoomMode === 'direct_message'
       ? defaultLeadParticipantId
       : normalizedParticipantAssignments[0]?.participantId ?? null,
@@ -551,7 +528,7 @@ export function createChannel(
     messages: [],
     roomRouting: createDefaultRoomRoutingState({
       mode: requestedRoomMode,
-      defaultRecipientId: defaultLeadParticipantId,
+      defaultRecipientId: requestedRoomMode === 'direct_message' ? defaultLeadParticipantId : null,
     }),
     workingMemory: createEmptyMemoryCheckpoint(),
   };

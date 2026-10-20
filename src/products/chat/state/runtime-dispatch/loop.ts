@@ -43,7 +43,6 @@ import {
 import type { RuntimeTransportContext } from '../runtimeTargeting.js';
 import {
   settleInCompletionOrder,
-  shouldBlockAntiPingPong,
 } from './execution.js';
 import {
   cancelInFlightWorkflowTargets,
@@ -409,111 +408,6 @@ export async function processDispatchQueue(
         );
         if (targetsForThisPass.length === 1 && queue.length === 0) {
           guardReason = 'max_target_visits';
-        }
-        results.push({
-          targetKind: target.participantKind,
-          targetId: target.participantId,
-          targetName: target.participantName,
-          laneId: target.laneId,
-          sessionId: target.sessionId,
-          status: 'skipped',
-          dispatchId: request.dispatchId,
-          turnId: activeTurn.id,
-          targetStatus: 'blocked',
-          error: blockedError,
-          sourceMessageId: effectiveSourceMessage.id,
-          trigger: frame.trigger,
-          dispatchDepth: frame.depth,
-        });
-        continue;
-      }
-
-      if (
-        frame.sourceParticipant
-        && shouldBlockAntiPingPong(frame.sourceParticipant, target, outcome.dispatches)
-      ) {
-        const blockedError = `Blocked a routing ping-pong between ${frame.sourceParticipant.participantName} and ${target.participantName}.`;
-        updateDispatch(outcome, request.dispatchId, {
-          laneId: request.target.laneId,
-          sessionId: request.target.sessionId,
-          status: 'blocked',
-          completedAt: nowIso,
-          error: blockedError,
-        });
-        updateWorkflowTarget(activeTurn, request.targetStateId, nowIso, {
-          status: 'blocked',
-          completedAt: nowIso,
-          error: blockedError,
-        });
-        appendWorkflowEvent(
-          workflow,
-          activeTurn,
-          createWorkflowEvent(
-            activeTurn.id,
-            'target_blocked',
-            'blocked',
-            blockedError,
-            nowIso,
-            frame.sourceParticipant,
-            effectiveSourceMessage.id,
-            [toParticipantRef(target)],
-            {
-              dispatchId: request.dispatchId,
-              targetIdentities: [{
-                participantKind: request.target.participantKind,
-                participantId: request.target.participantId,
-                laneId: request.target.laneId ?? null,
-                sessionId: request.target.sessionId ?? null,
-              }],
-              metadata: {
-                reason: 'anti_ping_pong',
-                parentCheckpointId: request.parentCheckpointId,
-                branchStrategy: request.branchStrategy,
-                handoffReason: request.handoffReason,
-                continuationSource: frame.continuationSource ?? null,
-                workflowRecommendation: frame.workflowRecommendation
-                  ? structuredClone(frame.workflowRecommendation)
-                  : null,
-              },
-            },
-          ),
-        );
-        latestCheckpoint = addWorkflowCheckpoint(
-          outcome,
-          workflow,
-          activeTurn,
-          'anti_ping_pong',
-          blockedError,
-          nowIso,
-          frame.sourceParticipant,
-          [toParticipantRef(target)],
-          {
-            targetIdentities: [{
-              participantKind: request.target.participantKind,
-              participantId: request.target.participantId,
-              laneId: request.target.laneId ?? null,
-              sessionId: request.target.sessionId ?? null,
-            }],
-            reason: 'anti_ping_pong',
-            branchStrategy: request.branchStrategy,
-            ...buildContinuationReplayMetadata({
-              sourceMessageId: effectiveSourceMessage.id,
-              sourceTurnId: frame.sourceTurnId ?? null,
-              sourceLaneId: frame.sourceLaneId ?? null,
-              sourceAssistantTurnId: frame.sourceAssistantTurnId ?? null,
-              mentionNames: frame.mentionNames,
-              trigger: frame.trigger,
-              workflowStageId: activeTurn.stageId,
-              workflowShape: activeTurn.workflowShape,
-              reviewRequired: activeTurn.reviewRequired,
-              continuationSource: frame.continuationSource ?? null,
-              workflowRecommendation: frame.workflowRecommendation ?? null,
-              unresolvedTargets: frame.unresolved,
-            }),
-          },
-        );
-        if (targetsForThisPass.length === 1 && queue.length === 0) {
-          guardReason = 'anti_ping_pong';
         }
         results.push({
           targetKind: target.participantKind,

@@ -109,9 +109,8 @@ import {
   collectLinkedChannelSessionIds,
 } from './routeStateSupport.js';
 import {
-  collectChannelLeaseAttachments,
+  collectParticipantLeaseAttachments,
   resolveChannelParticipantAssignments,
-  resolveOrchestratorLeaseAttachment,
   resolveParticipantLeaseAttachment,
 } from '../shared/channelParticipants.js';
 import {
@@ -147,7 +146,6 @@ import {
 } from './routeSessions.js';
 export {
   maybeAutoResumeRecoveredCatContinuation,
-  maybeAutoResumeRecoveredOrchestratorContinuation,
 } from './routeContinuationRecovery.js';
 import { maybeAutoResumeRecoveredCatContinuation } from './routeContinuationRecovery.js';
 import type {
@@ -765,18 +763,16 @@ export async function persistCatAssignmentUpdate(
   );
   const assignmentTargetId = updatedCat?.participantId ?? input.catId;
   const resolvedChannel = requireChannel(nextState, channelId);
-  const orchestratorAttachment = resolveOrchestratorLeaseAttachment(resolvedChannel);
-  const spawnCwd = (
-    resolveChannelSpawnCwd(resolvedChannel.repoPath, resolvedChannel.chatCwd)
-    ?? (
-      isRuntimeSessionWorkspacePath(orchestratorAttachment?.cwd)
-        ? orchestratorAttachment?.cwd ?? null
-        : null
-    )
-    ?? null
-  );
+  // A joining cat shares a teammate's runtime workspace when the room has no folder.
+  const teammateWorkspaceCwd = collectParticipantLeaseAttachments(resolvedChannel)
+    .find((attachment) =>
+      attachment.participantId !== updatedCat?.participantId
+      && isRuntimeSessionWorkspacePath(attachment.cwd))
+    ?.cwd ?? null;
+  const spawnCwd = resolveChannelSpawnCwd(resolvedChannel.repoPath, resolvedChannel.chatCwd)
+    ?? teammateWorkspaceCwd;
   const channelIsLive = refreshedChannel.status === 'active'
-    || collectChannelLeaseAttachments(refreshedChannel, {
+    || collectParticipantLeaseAttachments(refreshedChannel, {
       statuses: ['ready', 'initializing'],
     }).some((attachment) => attachment.participantId !== updatedCat?.participantId);
   const updatedCatSessionId = updatedCat

@@ -51,10 +51,7 @@ import {
   createWorkflowTurn,
 } from '../room-routing/workflow.js';
 import type { RuntimeTransportContext } from '../runtimeTargeting.js';
-import {
-  buildCatTarget,
-  buildOrchestratorTarget,
-} from '../runtimeTargeting.js';
+import { buildCatTarget } from '../runtimeTargeting.js';
 import { applyRoomRoutingSnapshot } from '../runtime-session/state.js';
 import { finalizeDispatchTurn } from './finalize.js';
 import { processDispatchQueue } from './loop.js';
@@ -95,12 +92,9 @@ function resolveReplayTarget(
   participant: WorkflowContinuationReplayTarget,
 ) {
   const channel = buildChannelView(state, channelId);
+  // A stored orchestrator target has no session to resume; coordination runs in participants.
   if (participant.participantKind === 'orchestrator') {
-    const target = buildOrchestratorTarget(state, channel);
-    return {
-      ...target,
-      laneId: participant.laneId ?? target.laneId,
-    };
+    return null;
   }
 
   const channelParticipant = findAssignedParticipant(channel, participant.participantId);

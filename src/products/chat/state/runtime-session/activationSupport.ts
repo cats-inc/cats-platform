@@ -9,7 +9,6 @@ import {
 } from '../../shared/channelParticipants.js';
 import type { RoutingTarget } from '../mentionRouter.js';
 import {
-  ORCHESTRATOR_NAME,
   buildChannelView,
   requireChannel,
   setChannelStatus,
@@ -18,7 +17,7 @@ import {
 import { resolveRoomDefaultRoutingTarget } from '../mentionRouter.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { createRecordedWakeRequest } from '../room-routing/wake.js';
-import { buildCatTarget, buildOrchestratorTarget } from '../runtimeTargeting.js';
+import { buildCatTarget } from '../runtimeTargeting.js';
 
 export function resolveChannelActivationTargets(
   state: ChatState,
@@ -31,11 +30,8 @@ export function resolveChannelActivationTargets(
       .filter((participant) => participant.participantId === roomRouting.defaultRecipientId)
       .map((participant) => buildCatTarget(participant));
   }
-  const participants = activeAssignedParticipants(channel);
-  // A room's participants are its sessions; only the legacy default chat starts the orchestrator.
-  return participants.length > 0
-    ? participants.map((participant) => buildCatTarget(participant))
-    : [buildOrchestratorTarget(state, channel)];
+  // A room's participants are its sessions.
+  return activeAssignedParticipants(channel).map((participant) => buildCatTarget(participant));
 }
 
 export function applyChannelActivationStatus(input: {
@@ -83,7 +79,7 @@ export function resolveRoomEntryWakeTarget(input: {
         null,
         input.now.toISOString(),
         'failed',
-        defaultTarget.note ?? `No ${ORCHESTRATOR_NAME} room entry participant could be woken.`,
+        defaultTarget.note ?? 'No room entry participant could be woken.',
       );
       nextState = setChannelRoomRouting(nextState, input.channelId, roomRouting, input.now);
     }

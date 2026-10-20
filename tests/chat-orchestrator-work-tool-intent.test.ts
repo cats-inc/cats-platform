@@ -65,36 +65,6 @@ function createWorkMemoryPlan(body: string, options: { bossCat?: boolean } = {})
   );
 }
 
-function createGlobalOrchestratorWorkMemoryPlan(body: string) {
-  let state = createDefaultChatState();
-  state.globalOrchestrator.mcpProfile = WORK_MCP_PROFILE_ID;
-  // The legacy default chat is the only room the orchestrator still answers.
-  state = createChannel(
-    state,
-    {
-      title: 'Global Work Memory Chat',
-      topic: 'Plan Work tool intent.',
-      originSurface: 'chat',
-      roomMode: 'chat_channel',
-      pendingProvider: 'claude',
-    },
-    new Date('2026-05-13T00:00:00.000Z'),
-  );
-  const channelId = state.selectedChannelId;
-  assert.ok(channelId);
-
-  return buildOrchestratorTurnPlan(
-    state,
-    createDefaultCoreState(),
-    {
-      channelId,
-      body,
-      transport: 'web',
-    },
-    chatDeterministicPlannerSurface,
-  );
-}
-
 test('Chat orchestrator projects Work triage tool intent for work-memory Cats', () => {
   const plan = createWorkMemoryPlan('Create project Cat Ops and update work-item-alpha.');
   const target = plan.routing.initialTargets[0];
@@ -157,15 +127,17 @@ test('Chat orchestrator projects read-only Work intake intent for work-memory Ca
 });
 
 test('Chat orchestrator is never a Boss Cat by role alone for Work execution intent', () => {
-  const plan = createGlobalOrchestratorWorkMemoryPlan('Start work-item-alpha.');
+  // Planner Cat coordinates the room but is a standard cat, so coordinating grants no Boss Cat work.
+  const plan = createRoomWorkMemoryPlan('@Planner Cat start work-item-alpha.', null);
   const target = plan.routing.initialTargets[0];
 
   assert.ok(target);
-  assert.equal(target.targetKind, 'orchestrator');
-  assert.equal(target.toolIntent, null);
+  assert.equal(target.targetKind, 'cat');
+  assert.equal(target.toolIntent?.requiredCapabilities
+    ?.includes('work.capability.boss_cat') ?? false, false);
 });
 
-function createRoomWorkMemoryPlan(body: string, bossCatName: string) {
+function createRoomWorkMemoryPlan(body: string, bossCatName: string | null) {
   let state = createDefaultChatState();
   state = createChannel(
     state,
@@ -184,9 +156,11 @@ function createRoomWorkMemoryPlan(body: string, bossCatName: string) {
     new Date('2026-05-13T00:00:00.000Z'),
   );
   const channelId = state.selectedChannelId;
-  const boss = buildChannelView(state, channelId).assignedCats.find((cat) => cat.name === bossCatName);
-  assert.ok(boss);
-  state = setCatGroup(state, boss.catId, 'admin');
+  if (bossCatName) {
+    const boss = buildChannelView(state, channelId).assignedCats.find((cat) => cat.name === bossCatName);
+    assert.ok(boss);
+    state = setCatGroup(state, boss.catId, 'admin');
+  }
 
   return buildOrchestratorTurnPlan(
     state,

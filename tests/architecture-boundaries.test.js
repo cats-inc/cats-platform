@@ -879,10 +879,8 @@ test('runtime dispatch loop consumes dedicated runtime dispatch execution helper
   assert.match(dispatchLoopModule, /execution\.js/u);
   assert.doesNotMatch(dispatchLoopModule, /async function executeDispatch\(/u);
   assert.doesNotMatch(dispatchLoopModule, /async function settleInCompletionOrder/u);
-  assert.doesNotMatch(dispatchLoopModule, /function shouldBlockAntiPingPong\(/u);
   assert.match(dispatchExecutionModule, /export async function executeDispatch/u);
   assert.match(dispatchExecutionModule, /export async function settleInCompletionOrder/u);
-  assert.match(dispatchExecutionModule, /export function shouldBlockAntiPingPong/u);
 });
 
 test('runtime dispatch execution consumes dedicated runtime targeting helpers instead of defining them inline', async () => {
@@ -1036,13 +1034,11 @@ test('runtime dispatch wake consumes dedicated runtime session-routing helpers i
   assert.match(sessionWakeModule, /\.\/sessionWakePreparation\.js/u);
   assert.doesNotMatch(sessionWakeModule, /async function startAttachedTargetSession\(/u);
   assert.match(sessionWakeModule, /\.\/sessionLaunch\.js/u);
-  assert.doesNotMatch(sessionWakeModule, /export async function createOrchestratorTargetRuntimeSession/u);
   assert.match(sessionTaskExecutionModule, /export async function maybeAutoCheckoutChannelTask/u);
   assert.match(sessionWakePreparationModule, /export async function prepareTargetSessionWake/u);
   assert.match(sessionLaunchModule, /export async function startAttachedTargetSession/u);
   assert.match(sessionLaunchModule, /\.\/sessionPersistence\.js/u);
   assert.match(sessionReuseModule, /export async function resolveExistingTargetSessionOutcome/u);
-  assert.match(sessionStartModule, /export async function createOrchestratorTargetRuntimeSession/u);
   assert.doesNotMatch(sessionStartModule, /export function persistStartedTargetSession/u);
   assert.match(sessionPersistenceModule, /export function persistStartedTargetSession/u);
 });

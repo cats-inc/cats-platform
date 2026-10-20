@@ -8,14 +8,12 @@ import {
   requireChannel,
   resolveChannelEntryParticipant,
   setChannelCatLease,
-  setChannelOrchestratorLease,
+  setChannelParticipantLease,
 } from '../build/server/products/chat/state/model/index.js';
 import {
-  collectChannelLeaseAttachments,
-  collectChannelSessionIds,
+  collectParticipantLeaseAttachments,
+  collectParticipantSessionIds,
   resolveExecutionLeaseSnapshot,
-  resolveOrchestratorExecutionLease,
-  resolveOrchestratorLeaseAttachment,
   resolveParticipantExecutionLease,
 } from '../build/server/products/chat/shared/channelParticipants.js';
 import { collectLinkedChannelSessionIds, collectCatSessionIds } from '../build/server/products/chat/api/routeStateSupport.js';
@@ -113,7 +111,7 @@ function buildCatAssignment({
   };
 }
 
-test('channel lease attachment helpers merge participant and orchestrator attachments with lane and status filtering', () => {
+test('channel lease attachment helpers merge participant attachments with lane and status filtering', () => {
   const channel = {
     participantAssignments: [
       buildAssignment({
@@ -143,17 +141,10 @@ test('channel lease attachment helpers merge participant and orchestrator attach
         startedAt: '2026-04-15T10:01:00.000Z',
       }),
     ],
-    orchestratorLease: buildLease({
-      sessionId: 'session-orchestrator',
-      laneId: 'lane-orchestrator',
-      status: 'ready',
-      cwd: '/tmp/orchestrator',
-      startedAt: '2026-04-15T09:59:00.000Z',
-    }),
   };
 
   assert.deepEqual(
-    collectChannelLeaseAttachments(channel, {
+    collectParticipantLeaseAttachments(channel, {
       statuses: ['ready', 'initializing'],
     }),
     [
@@ -185,46 +176,14 @@ test('channel lease attachment helpers merge participant and orchestrator attach
         lastUsedAt: '2026-04-15T10:01:00.000Z',
         lastError: null,
       },
-      {
-        participantId: 'orchestrator',
-        sessionId: 'session-orchestrator',
-        laneId: 'lane-orchestrator',
-        status: 'ready',
-        cwd: '/tmp/orchestrator',
-        provider: 'claude',
-        instance: 'cli',
-        model: 'claude-sonnet',
-        modelSelection: null,
-        startedAt: '2026-04-15T09:59:00.000Z',
-        lastUsedAt: '2026-04-15T09:59:00.000Z',
-        lastError: null,
-      },
     ],
   );
 
   assert.deepEqual(
-    collectChannelSessionIds(channel, {
+    collectParticipantSessionIds(channel, {
       statuses: ['ready', 'initializing'],
     }),
-    ['session-inline', 'session-cat', 'session-orchestrator'],
-  );
-
-  assert.deepEqual(
-    resolveOrchestratorLeaseAttachment(channel, { laneId: 'lane-orchestrator' }),
-    {
-      participantId: 'orchestrator',
-      sessionId: 'session-orchestrator',
-      laneId: 'lane-orchestrator',
-      status: 'ready',
-      cwd: '/tmp/orchestrator',
-      provider: 'claude',
-      instance: 'cli',
-      model: 'claude-sonnet',
-      modelSelection: null,
-      startedAt: '2026-04-15T09:59:00.000Z',
-      lastUsedAt: '2026-04-15T09:59:00.000Z',
-      lastError: null,
-    },
+    ['session-inline', 'session-cat'],
   );
 
   assert.deepEqual(resolveParticipantExecutionLease(channel, 'participant-inline'), {
@@ -249,8 +208,6 @@ test('channel lease attachment helpers merge participant and orchestrator attach
   participantSnapshot.lastError = 'mutated-error';
   assert.equal(resolveParticipantExecutionLease(channel, 'participant-inline')?.sessionId, 'session-inline');
   assert.equal(resolveParticipantExecutionLease(channel, 'participant-inline')?.lastError, null);
-
-  assert.deepEqual(resolveOrchestratorExecutionLease(channel), channel.orchestratorLease);
 });
 
 test('route session collectors follow attachment-based channel session identities', () => {
@@ -265,11 +222,6 @@ test('route session collectors follow attachment-based channel session identitie
         status: 'ready',
       }),
     ],
-    orchestratorLease: buildLease({
-      sessionId: 'session-orchestrator-ready',
-      laneId: 'lane-orchestrator-ready',
-      status: 'ready',
-    }),
   };
   const channelB = {
     participantAssignments: [],
@@ -282,21 +234,16 @@ test('route session collectors follow attachment-based channel session identitie
         status: 'closed',
       }),
     ],
-    orchestratorLease: buildLease({
-      sessionId: 'session-orchestrator-closed',
-      laneId: 'lane-orchestrator-closed',
-      status: 'closed',
-    }),
   };
   const state = { channels: [channelA, channelB] };
 
   assert.deepEqual(
     collectLinkedChannelSessionIds(channelA),
-    ['session-cat-active', 'session-orchestrator-ready'],
+    ['session-cat-active'],
   );
   assert.deepEqual(
     collectActiveChannelSessionIds(channelA),
-    ['session-cat-active', 'session-orchestrator-ready'],
+    ['session-cat-active'],
   );
   assert.deepEqual(
     collectCatSessionIds(state, 'cat-1'),
@@ -325,7 +272,7 @@ test('resolveParticipantExecutionLease tolerates sparse assignment fixtures with
   );
 });
 
-test('resolveChannelEntryParticipant uses participant lease state for direct lanes and orchestrator lease state for boss rooms', () => {
+test('resolveChannelEntryParticipant follows a DM\'s cat and a room\'s coordinator', () => {
   const now = new Date('2026-04-15T12:00:00.000Z');
   let state = createDefaultChatState();
 
@@ -382,31 +329,34 @@ test('resolveChannelEntryParticipant uses participant lease state for direct lan
   state = createChannel(
     state,
     {
-      title: 'Boss room',
-      topic: 'Orchestrator lifecycle',
+      title: 'Coordinated room',
+      topic: 'Coordinator lifecycle',
       originSurface: 'chat',
     },
     now,
   );
-  const bossChannelId = state.selectedChannelId;
-  state = setChannelOrchestratorLease(
+  const roomChannelId = state.selectedChannelId;
+  const coordinatorId = requireChannel(state, roomChannelId).coordinatorParticipantId;
+  assert.ok(coordinatorId);
+  state = setChannelParticipantLease(
     state,
-    bossChannelId,
+    roomChannelId,
+    coordinatorId,
     {
       status: 'error',
-      sessionId: 'session-boss',
-      laneId: 'lane-boss',
+      sessionId: 'session-room',
+      laneId: 'lane-room',
       lastError: 'session went stale',
     },
     now,
   );
 
   assert.deepEqual(
-    resolveChannelEntryParticipant(state, bossChannelId),
+    resolveChannelEntryParticipant(state, roomChannelId),
     {
-      participantKind: 'orchestrator',
-      participantId: 'orchestrator',
-      participantName: 'Orchestrator',
+      participantKind: 'cat',
+      participantId: coordinatorId,
+      participantName: 'Codex-CLI',
       lifecycleState: 'error',
     },
   );

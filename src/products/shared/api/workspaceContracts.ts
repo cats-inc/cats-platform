@@ -327,15 +327,10 @@ export interface ChatChannelState {
   skillProfile: string | null;
   mcpProfile: string | null;
   orchestratorRoles: string[];
-  pendingProvider: string | null;
-  pendingModel: string | null;
-  pendingInstance: string | null;
-  pendingModelSelection?: ProviderModelSelection | null;
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
-  orchestratorLease: ParticipantExecutionLease;
   /**
    * The participant bound to the conversation's orchestrator, which may route
    * turns on and, as a Boss Cat, act beyond the conversation. A DM binds its
@@ -380,9 +375,6 @@ export interface ChatChannelSummary {
   runtimePermissionMode?: RuntimePermissionMode | null;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
-  pendingProvider?: string | null;
-  pendingModel?: string | null;
-  pendingModelSelection?: ProviderModelSelection | null;
   defaultRecipientCatId?: string | null;
   defaultRecipientLeaseStatus?: ParticipantSessionStatus | null;
   roomMode?: RoomRoutingMode;
@@ -596,10 +588,6 @@ interface CreateChatChannelInputBase {
   formationMode?: ChannelFormationMode;
   roomMode?: RoomRoutingMode;
   defaultRecipientId?: string;
-  pendingProvider?: string;
-  pendingModel?: string;
-  pendingInstance?: string;
-  pendingModelSelection?: ProviderModelSelection | null;
   skillProfile?: string;
   mcpProfile?: string;
   orchestratorRoles?: string[];
@@ -611,8 +599,7 @@ interface CreateChatChannelInputBase {
   /**
    * Participant order as `cat:<catId>` and `temp:<participantId>` keys; the
    * first is the default participant. Unlisted participants follow in input
-   * order. A non-DM conversation created without participants (and without the
-   * legacy `pending*` target, which goes with the default chat) starts with the
+   * order. A non-DM conversation created without participants starts with the
    * remembered default (`newChatDefaults`).
    */
   participantOrder?: string[];
@@ -675,10 +662,6 @@ export interface SendChannelMessageInput {
   body: string;
   clientMessageId?: string;
   senderName?: string;
-  pendingProvider?: string;
-  pendingModel?: string | null;
-  pendingInstance?: string | null;
-  pendingModelSelection?: ProviderModelSelection | null;
   messageMetadata?: ChannelMessageMetadata;
   choiceResponse?: ChatMessageChoiceResponse | null;
 }
@@ -703,10 +686,6 @@ export interface UpdateChannelInput {
   title?: string;
   /** Moves the coordinator binding to an active participant, or clears it with null. */
   coordinatorParticipantId?: string | null;
-  pendingProvider?: string | null;
-  pendingModel?: string | null;
-  pendingInstance?: string | null;
-  pendingModelSelection?: ProviderModelSelection | null;
 }
 
 export interface UpdateChannelParticipantInput {

@@ -12,10 +12,15 @@ import {
   createCat,
   createChannel,
   setChannelCatLease,
-  setChannelOrchestratorLease,
+  setChannelParticipantLease,
 } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { createChatTaskExecutionLocator } from '../build/server/products/chat/state/taskExecutionLocator.js';
+
+/** The participant a conversation starts with; it coordinates the room. */
+function firstParticipantId(state, channelId) {
+  return state.channels.find((channel) => channel.id === channelId).participantAssignments[0].participantId;
+}
 
 async function createStateWithRuntimeAttachments(baseDir) {
   const now = new Date('2026-04-15T13:00:00.000Z');
@@ -33,7 +38,7 @@ async function createStateWithRuntimeAttachments(baseDir) {
   const orchestratorWorkspace = path.join(baseDir, 'orchestrator');
   const participantWorkspace = path.join(baseDir, 'participant');
 
-  state = setChannelOrchestratorLease(state, channelId, {
+  state = setChannelParticipantLease(state, channelId, firstParticipantId(state, channelId), {
     status: 'ready',
     sessionId: 'session-orchestrator',
     laneId: 'lane-orchestrator',
@@ -61,7 +66,7 @@ async function createStateWithRuntimeAttachments(baseDir) {
   };
 }
 
-test('persistAttachmentsForChannels syncs files to orchestrator and participant attachment workspaces', async () => {
+test('persistAttachmentsForChannels syncs files to every participant attachment workspace', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-attachment-sync-'));
   try {
     const {
@@ -159,7 +164,7 @@ test('persistAttachmentsForChannels keeps the ignore marker when an upload is na
   }
 });
 
-test('createChatTaskExecutionLocator resolves lane and session attachments for orchestrator and cat participants', async () => {
+test('createChatTaskExecutionLocator resolves the coordinator lane and session alongside cat participants', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-task-exec-'));
   try {
     const {

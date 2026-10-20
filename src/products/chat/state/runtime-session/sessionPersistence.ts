@@ -7,10 +7,7 @@ import {
   requireChannel,
   setChannelChatCwd,
   setChannelParticipantExecutionTarget,
-  setChannelPendingExecutionTarget,
-  setGlobalOrchestratorExecutionTarget,
 } from '../model/index.js';
-import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
 import {
   ensureChannelAttachmentWorkspace,
   syncChannelAttachmentsToWorkspace,
@@ -57,22 +54,6 @@ export function persistCreatedTargetExecutionTarget(input: {
   executionTarget: RuntimeSessionExecutionTarget;
   now: Date;
 }): ChatState {
-  if (input.target.participantKind === 'orchestrator') {
-    const runtimeChannel = requireChannel(input.state, input.channelId);
-    return isProviderDefaultChatChannel(runtimeChannel) && runtimeChannel.pendingProvider
-      ? setChannelPendingExecutionTarget(
-        input.state,
-        input.channelId,
-        input.executionTarget,
-        input.now,
-      )
-      : setGlobalOrchestratorExecutionTarget(
-        input.state,
-        input.executionTarget,
-        input.now,
-      );
-  }
-
   return setChannelParticipantExecutionTarget(
     input.state,
     input.channelId,
@@ -95,9 +76,7 @@ export function persistStartedTargetSession(input: {
   let nextState = setStartedSession(
     input.state,
     input.channelId,
-    input.target.participantKind === 'cat'
-      ? { participantId: input.target.participantId }
-      : 'orchestrator',
+    { participantId: input.target.participantId },
     input.session,
     input.metadata.now,
     input.metadata.laneId,
@@ -141,21 +120,13 @@ export function persistFailedTargetSessionStart(input: {
   targetLabelInstance: string | null;
   metadata: TargetSessionLifecycleMetadata;
 }): ChatState {
-  const erroredState = input.target.participantKind === 'cat'
-    ? setErroredSession(
-      input.state,
-      input.channelId,
-      { participantId: input.target.participantId },
-      input.error,
-      input.metadata.now,
-    )
-    : setErroredSession(
-      input.state,
-      input.channelId,
-      'orchestrator',
-      input.error,
-      input.metadata.now,
-    );
+  const erroredState = setErroredSession(
+    input.state,
+    input.channelId,
+    { participantId: input.target.participantId },
+    input.error,
+    input.metadata.now,
+  );
 
   return appendFailedRuntimeSessionMessage(
     erroredState,

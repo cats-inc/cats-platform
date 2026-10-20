@@ -61,7 +61,7 @@ test('cold entry subscribes before any preference/shell response; warm A/B/C/D s
     }, hub);
     const channel = state.status === 'ready' ? state.payload.chat.selectedChannel : null;
     return <section data-channel={channel?.id ?? ''}>{channel
-      ? <><p>{channel.messages.at(-1)?.body}</p><output>{JSON.stringify([channel.pendingProvider, channel.pendingModel, channel.pendingModelSelection])}</output></>
+      ? <><p>{channel.messages.at(-1)?.body}</p><output>{JSON.stringify(channel.assignedParticipants?.[0]?.execution ?? null)}</output></>
       : <span role="progressbar">Loading</span>}</section>;
   }
   const view = render(<Screen id={f.ids[0]} />);
@@ -239,7 +239,7 @@ test('actual first-send failure restores text and files to the created conversat
       showingNewChatDraft: !id, showingMyCatDirectLane: false, draftDefaultRecipientCatId: null,
       draftCatIds: [], draftCwd: null, draftFiles, channelFiles: composer.channelFiles,
       setDraftCwd: noop, setDraftCatIds: noop, setDraftHighlightedCatId: noop, setDraftCatExecutionTargetOverrides: noop,
-      setDraftFiles, setChannelFiles: composer.setChannelFiles, draftExecutionTarget: target, defaultChannelExecutionTarget: target,
+      setDraftFiles, setChannelFiles: composer.setChannelFiles, draftExecutionTarget: target,
       selectedChannel: navigation.state.status === 'ready' ? normalizeSelectedChannelView(navigation.state.payload.chat.selectedChannel) : null,
       busy, setBusy, setFeedback: noop,
     });

@@ -44,7 +44,6 @@ import {
   createDraftChannelTopic as createWorkspaceDraftChannelTopic,
   buildAttachedFilesMessageBody as buildWorkspaceAttachedFilesMessageBody,
   buildNewChatChannelInput as buildWorkspaceNewChatChannelInput,
-  applyOptimisticPendingExecutionTarget as applyWorkspaceOptimisticPendingExecutionTarget,
   insertCreatedChannelIntoPayload as insertWorkspaceCreatedChannelIntoPayload,
   messageTone as resolveWorkspaceMessageTone,
   presentChannelTitle as presentWorkspaceChannelTitle,
@@ -632,19 +631,6 @@ export function pickDraftGreeting(
 }
 
 export type { SelectedChannelView } from '../shared/channelEntry';
-
-export function applyPendingExecutionTargetPreview(
-  payload: AppShellPayload,
-  channelId: string,
-  target: {
-    pendingProvider: string | null;
-    pendingModel: string | null;
-    pendingInstance: string | null;
-    pendingModelSelection: ProviderModelSelection | null;
-  },
-): AppShellPayload {
-  return applyWorkspaceOptimisticPendingExecutionTarget(payload, channelId, target);
-}
 
 export function insertCreatedChannelIntoPayload(
   payload: AppShellPayload,

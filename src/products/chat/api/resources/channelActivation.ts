@@ -5,12 +5,10 @@ import { activateChannelSessions } from '../../state/runtimeActions.js';
 import {
   requireChannel,
   resolveLeadParticipantLease,
-  setChannelOrchestratorLease,
   setChannelParticipantLease,
 } from '../../state/model/index.js';
 import {
   resolveChannelParticipantAssignments,
-  resolveOrchestratorLeaseAttachment,
   resolveParticipantLeaseAttachment,
 } from '../../shared/channelParticipants.js';
 import { closeSessionIds, collectActiveChannelSessionIds } from '../routeSessions.js';
@@ -103,16 +101,6 @@ export async function deactivateChannelLocked(
         now,
       );
     }
-  }
-  if (resolveOrchestratorLeaseAttachment(channel, {
-    statuses: ['ready', 'initializing'],
-  })) {
-    nextState = setChannelOrchestratorLease(
-      nextState,
-      channelId,
-      { status: 'closed', sessionId: null },
-      now,
-    );
   }
 
   await updateChatState(dependencies.chatStore, (latest) =>

@@ -77,7 +77,6 @@ import {
 import {
   resolveChoiceResponseTarget,
   resolveExecutionMetadataForTarget,
-  resolveOrchestratorExecutionTarget,
   type RuntimeTransportContext,
 } from '../runtimeTargeting.js';
 import {
@@ -205,13 +204,13 @@ function resolveDeterministicPlanInitialResolution(
   }
 
   return {
-    targets: plan.routing.initialTargets.map((target) => ({
+    targets: plan.routing.initialTargets.flatMap((target) => target.participantKind === 'cat' ? [{
       participantKind: target.participantKind,
       participantId: target.participantId,
       participantName: target.participantName,
       laneId: target.laneId,
       sessionId: target.sessionId,
-    })),
+    }] : []),
     unresolved: [...plan.routing.unresolvedMentions],
     mentionNames: [...plan.routing.mentionNames],
     trigger: plan.routing.trigger,
@@ -570,13 +569,17 @@ function buildProviderAgentObservationForTurn(input: {
   transportBindingId?: string | null;
 }): ProviderAgentBoundedObservation | null {
   const channel = requireChannel(input.state, input.channelId);
-  const singleTarget = input.initialResolution.targets.length === 1
-    ? input.initialResolution.targets[0]!
+  // One target decides with its own model; a group turn with its coordinator's, else its first target's.
+  const coordinatorTarget = input.initialResolution.targets.length > 1
+    ? input.initialResolution.targets.find((target) =>
+      target.participantId === channel.coordinatorParticipantId) ?? null
     : null;
-  const singleCatTarget = singleTarget?.participantKind === 'cat' ? singleTarget : null;
-  const executionTarget = singleCatTarget
-    ? resolveExecutionMetadataForTarget(input.state, input.channelId, singleCatTarget)
-    : resolveOrchestratorExecutionTarget(input.state, channel);
+  const deciderTarget = coordinatorTarget ?? input.initialResolution.targets[0] ?? null;
+  if (!deciderTarget) {
+    return null;
+  }
+  const singleCatTarget = input.initialResolution.targets.length === 1 ? deciderTarget : null;
+  const executionTarget = resolveExecutionMetadataForTarget(input.state, input.channelId, deciderTarget);
   const capabilityProfile = resolveProviderCapabilityProfile(
     {
       provider: executionTarget.provider ?? 'unknown',
@@ -605,9 +608,7 @@ function buildProviderAgentObservationForTurn(input: {
   if (policyDecision.status !== 'applied') {
     return null;
   }
-  const providerAgentActorRef = singleCatTarget
-    ? `cat:${singleCatTarget.participantId}`
-    : 'orchestrator';
+  const providerAgentActorRef = `cat:${deciderTarget.participantId}`;
   const exposeCatProductIntentProposalTool = shouldExposeCatProductIntentProposalTool({
     channel,
     core: input.core,

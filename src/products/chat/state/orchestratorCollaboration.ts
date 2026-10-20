@@ -12,7 +12,6 @@ import { isDirectLaneChannel } from '../shared/channelTopology.js';
 import { resolveChannelParticipantAssignments } from '../shared/channelParticipants.js';
 import { resolveChannelCanonicalIdentity } from '../shared/channelCanonicalIdentity.js';
 import { isOrchestratorKnowledgeChannel } from './orchestratorKnowledge.js';
-import { resolveOrchestratorExecutionTarget } from './runtimeTargeting.js';
 import { collaborationExecutionRevision } from './collaborationExecutionSurface.js';
 import type { CollaborationExecutionSummary } from '../../work/state/collaborationRecords.js';
 import { isAdminCoordinatorActorRef, resolveCoordinatorParticipant } from './coordinator.js';
@@ -188,7 +187,7 @@ export function collaborationSnapshot(
     cats: cats.map(({ id, defaultExecutionTarget, defaultModelSelection, roles }) =>
       ({ id, defaultExecutionTarget, defaultModelSelection, roles })),
     assignments, repoPath: channel.repoPath, chatCwd: channel.chatCwd,
-    target: resolveOrchestratorExecutionTarget(state, channel),
+    coordinatorParticipantId: channel.coordinatorParticipantId,
     policy: observation.policy, capabilities: state.capabilities,
     goal: observation.goal, tools: observation.availableTools.map(({ manifest }) => manifest),
   }));

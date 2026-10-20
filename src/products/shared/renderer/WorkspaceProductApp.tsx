@@ -47,7 +47,6 @@ import {
   relayParallelChatMessage,
   updateCatProfile,
   updateChannelParticipantApi,
-  updateChannelPendingExecutionTarget,
   updateNewChatDefaultsPreference,
 } from "./api/index.js";
 import {
@@ -91,10 +90,7 @@ import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiAct
 import { useWorkspaceAppNavigationActions } from "./hooks/useWorkspaceAppNavigationActions.js";
 import { useWorkspaceAppShellRouting } from "./hooks/useWorkspaceAppShellRouting.js";
 import { stageCrossSurfaceConversationNavigationHandoff } from "./crossSurfaceConversationNavigation.js";
-import {
-  isDefaultChatChannel,
-  supportsParticipantAudienceSelection,
-} from "../../chat/shared/channelTopology.js";
+import { supportsParticipantAudienceSelection } from "../../chat/shared/channelTopology.js";
 import { useWorkspaceChatEvents } from "./hooks/useWorkspaceChatEvents.js";
 import { useWorkspaceCatAssignmentActions } from "./hooks/useWorkspaceCatAssignmentActions.js";
 import { createUseComposerSubmit } from "./hooks/useWorkspaceComposerSubmit.js";
@@ -697,16 +693,12 @@ export function createWorkspaceProductApp({
     const {
       draftExecutionTarget,
       setDraftExecutionTarget,
-      defaultChannelExecutionTarget,
-      setDefaultChannelExecutionTarget,
     } = useWorkspaceExecutionTargetState({
       state,
       readyChat,
-      readySelectedChannel,
       setState,
       setFeedback,
       updateNewChatDefaultsPreference,
-      updateChannelPendingExecutionTarget,
     });
     const draftEntryKind: "default" | "group" | "direct" = showingMyCatDirectLane
       ? "direct"
@@ -1407,7 +1399,6 @@ export function createWorkspaceProductApp({
       setDraftWorkflowShape,
       setDraftAudienceKeys,
       draftExecutionTarget,
-      defaultChannelExecutionTarget,
       showingParallelChatDraft: supportsStructuredDraftModes && showingParallelChatDraft,
       draftParallelChatTargets,
       draftWorkflowShape,
@@ -1811,14 +1802,6 @@ export function createWorkspaceProductApp({
                       : undefined,
                     onOperatorAction,
                     autoResize,
-                    selectedExecutionTarget:
-                      visibleChannel && isDefaultChatChannel(visibleChannel)
-                        ? defaultChannelExecutionTarget
-                        : undefined,
-                    onExecutionTargetChange:
-                      visibleChannel && isDefaultChatChannel(visibleChannel)
-                        ? setDefaultChannelExecutionTarget
-                        : undefined,
                     onDirectLaneExecutionTargetChange: onDirectLaneModelSave,
                     activeWorkflowShape,
                     onToggleActiveWorkflowShape:

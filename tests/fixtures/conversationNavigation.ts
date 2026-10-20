@@ -17,13 +17,18 @@ export async function createConversationNavigationFixture(root: string, includeC
       originSurface: 'chat',
       topic: `Conversation ${index + 1}`,
       entryKind: 'default',
-      pendingProvider: providers[index],
-      pendingModel: `model-${index + 1}`,
-      pendingInstance: 'cli/native',
-      pendingModelSelection: {
-        entryId: `model-${index + 1}`, entryMode: 'explicit',
-        controls: { [`${providers[index]}.reasoning_effort`]: efforts[index] },
-      },
+      // Each conversation answers through its own participant's model.
+      temporaryParticipants: [{
+        participantId: `participant-${index + 1}`,
+        name: `Assistant ${index + 1}`,
+        provider: providers[index],
+        model: `model-${index + 1}`,
+        instance: 'cli/native',
+        modelSelection: {
+          entryId: `model-${index + 1}`, entryMode: 'explicit',
+          controls: { [`${providers[index]}.reasoning_effort`]: efforts[index] },
+        },
+      }],
     }, new Date(`2026-09-18T01:00:0${index}.000Z`));
     const id = state.selectedChannelId;
     ids.push(id);

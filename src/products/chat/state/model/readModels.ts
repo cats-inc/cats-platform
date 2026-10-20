@@ -15,7 +15,7 @@ import type {
 } from '../../api/contracts.js';
 import { isCompanionCat, withCompanionRole } from '../../../../shared/companionRole.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
-import { listActiveAdminCats } from '../../../shared/catGroups.js';
+import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { resolveChannelCanonicalIdentity } from '../../shared/channelCanonicalIdentity.js';
 import { createChannelExportFilename } from '../../shared/channelPaths.js';
 import { buildParallelChatMemberLabel } from '../../shared/parallelChats.js';
@@ -27,7 +27,6 @@ import {
 } from '../../shared/channelTopology.js';
 import {
   resolveChannelParticipantAssignments,
-  resolveOrchestratorLeaseAttachment,
   resolveParticipantLeaseAttachment,
 } from '../../shared/channelParticipants.js';
 import {
@@ -35,7 +34,6 @@ import {
   type ChatLifecycleState,
 } from '../../shared/lifecycle.js';
 import { createDefaultRoomRoutingState, resolveRoomRoutingState } from '../room-routing/index.js';
-import { createEmptyExecutionLease } from '../defaults.js';
 import { requireCat, requireChannel } from './shared.js';
 
 export const ORCHESTRATOR_NAME = 'Orchestrator';
@@ -143,12 +141,13 @@ export function resolveLeadParticipantLease(
     roomRouting.mode,
     roomRouting.defaultRecipientId,
   );
+  // A DM leads with its cat; any other room with its coordinator.
   const leadId = isDirectLaneChannel(channel)
     ? resolveDirectLaneRecipientId(
       participantAssignments,
       roomRouting.defaultRecipientId,
     )
-    : roomRouting.defaultRecipientId;
+    : channel.coordinatorParticipantId;
   if (!leadId) return null;
   const assignment = participantAssignments.find(
     (candidate) => candidate.participantId === leadId && candidate.status === 'active',
@@ -158,8 +157,9 @@ export function resolveLeadParticipantLease(
     : null;
 }
 
-export function resolveOrchestratorDisplayName(state: ChatState): string {
-  return listActiveAdminCats(state.cats)[0]?.name ?? ORCHESTRATOR_NAME;
+/** The orchestrator is a mechanism, not a cat; it no longer borrows a Boss Cat's name. */
+export function resolveOrchestratorDisplayName(_state: ChatState): string {
+  return ORCHESTRATOR_NAME;
 }
 
 export function resolveParticipantLifecycleState(
@@ -198,7 +198,6 @@ export function buildChannelView(
       normalizedParticipantAssignments,
       roomRouting.defaultRecipientId,
     );
-    clonedChannel.orchestratorLease = createEmptyExecutionLease();
   }
 
   const assignedParticipants = normalizedParticipantAssignments.map((assignment) =>
@@ -223,37 +222,29 @@ export function resolveChannelEntryParticipant(
   state: ChatState,
   channelOrId: ChatChannelState | string,
 ): {
-  participantKind: 'orchestrator' | 'cat';
+  participantKind: 'cat';
   participantId: string;
   participantName: string;
   lifecycleState: ChatLifecycleState;
-} {
+} | null {
   const channel = buildChannelView(state, channelOrId);
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
-
-  if (isDirectLaneChannel(channel) && roomRouting.defaultRecipientId) {
-    const leadParticipant = (
-      channel.assignedParticipants
-      ?? channel.assignedCats
-    )?.find((participant) => participant.participantId === roomRouting.defaultRecipientId) ?? null;
-    if (leadParticipant) {
-      return {
+  const activeParticipants = (channel.assignedParticipants ?? [])
+    .filter((participant) => participant.status === 'active');
+  // A DM is entered through its cat; any other room through its coordinator, or its first participant.
+  const entryParticipantId = isDirectLaneChannel(channel)
+    ? roomRouting.defaultRecipientId
+    : channel.coordinatorParticipantId ?? activeParticipants[0]?.participantId ?? null;
+  const entryParticipant = activeParticipants
+    .find((participant) => participant.participantId === entryParticipantId) ?? null;
+  return entryParticipant
+    ? {
         participantKind: 'cat',
-        participantId: leadParticipant.participantId,
-        participantName: leadParticipant.name,
-        lifecycleState: resolveParticipantLifecycleState(leadParticipant.execution.lease),
-      };
-    }
-  }
-
-  return {
-    participantKind: 'orchestrator',
-    participantId: 'orchestrator',
-    participantName: resolveOrchestratorDisplayName(state),
-    lifecycleState: resolveChatLifecycleState(
-      resolveOrchestratorLeaseAttachment(channel)?.status ?? 'not_started',
-    ),
-  };
+        participantId: entryParticipant.participantId,
+        participantName: entryParticipant.name,
+        lifecycleState: resolveParticipantLifecycleState(entryParticipant.execution.lease),
+      }
+    : null;
 }
 
 export function toChannelSummary(
@@ -309,9 +300,6 @@ export function toChannelSummary(
     runtimePermissionMode: channel.runtimePermissionMode ?? null,
     lastMessageAt: channel.lastMessageAt,
     lastActivatedAt: channel.lastActivatedAt,
-    pendingProvider: channel.pendingProvider ?? null,
-    pendingModel: channel.pendingModel ?? null,
-    pendingModelSelection: structuredClone(channel.pendingModelSelection ?? null),
     defaultRecipientCatId: defaultRecipientCatId ?? null,
     defaultRecipientLeaseStatus: resolveLeadParticipantLeaseStatus(channel),
     roomMode: roomRouting.mode,
@@ -343,6 +331,29 @@ export function buildChannelExportFilename(state: ChatState, channelId: string):
   return createChannelExportFilename(channel.title, channel.id);
 }
 
+/** A parallel member answers with its own first participant, seeded from its lane target. */
+export function resolveParallelChatMemberTarget(
+  state: Pick<ChatState, 'newChatDefaults'>,
+  channel: ChatChannelState,
+): {
+  provider: string;
+  instance: string | null;
+  model: string | null;
+  modelSelection: ProviderModelSelection | null;
+} {
+  const lead = resolveChannelParticipantAssignments(channel)
+    .find((assignment) => assignment.status === 'active') ?? null;
+  const target = lead?.execution.target ?? state.newChatDefaults;
+  return {
+    provider: target.provider,
+    instance: target.instance ?? null,
+    model: target.model ?? null,
+    modelSelection: structuredClone(
+      (lead ? lead.execution.modelSelection : state.newChatDefaults.modelSelection) ?? null,
+    ),
+  };
+}
+
 export function summarizeParallelChatGroups(
   state: ChatState,
   channelId?: string,
@@ -356,19 +367,7 @@ export function summarizeParallelChatGroups(
           channelId: channel.id,
           title: channel.title,
           index,
-          provider: channel.pendingProvider ?? state.globalOrchestrator.executionTarget.provider,
-          instance:
-            channel.pendingInstance
-            ?? state.globalOrchestrator.executionTarget.instance
-            ?? null,
-          model:
-            channel.pendingModel
-            ?? state.globalOrchestrator.executionTarget.model
-            ?? null,
-          modelSelection:
-            structuredClone(channel.pendingModelSelection)
-            ?? structuredClone(state.globalOrchestrator.executionModelSelection)
-            ?? null,
+          ...resolveParallelChatMemberTarget(state, channel),
           lastMessageAt: channel.lastMessageAt,
         }));
 

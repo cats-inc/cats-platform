@@ -3,10 +3,6 @@ import type {
   ChatMessage,
   ChatState,
 } from '../../api/contracts.js';
-import type {
-  RoomRoutingOutcome,
-  RoomRoutingParticipantRef,
-} from '../../../../shared/roomRouting.js';
 import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
 import type { CatsCoreState } from '../../../../core/types.js';
@@ -34,10 +30,7 @@ import {
   productKnowledgeReceipt,
 } from '../../../../platform/knowledge/productKnowledge.js';
 import { resolveChatWorkToolIntentManifest } from '../workToolIntentResolver.js';
-import {
-  participantKey,
-  resolveActorIdForTarget,
-} from '../runtime-session/state.js';
+import { resolveActorIdForTarget } from '../runtime-session/state.js';
 import type { DispatchLeasePatch } from './recovery.js';
 import { applyCompanionPhotoDirective } from './companionPhoto.js';
 import { waitForSessionTurnGate } from './sessionTurnGate.js';
@@ -124,20 +117,6 @@ function resolveDispatchToolIntent(input: {
   const target = input.request.target;
   const sourceBody = input.request.promptSourceMessage?.body ?? input.request.sourceMessage.body;
 
-  if (target.participantKind === 'orchestrator') {
-    return resolveChatWorkToolIntentManifest({
-      state: input.state,
-      core: input.core,
-      channel: input.channel,
-      body: sourceBody,
-      profileId: input.state.globalOrchestrator.mcpProfile,
-      participantKind: 'orchestrator',
-      participantId: 'orchestrator',
-      roomMode,
-      transport: resolvedTransport,
-    }) ?? null;
-  }
-
   const assignedCat = input.channel.assignedCats.find((cat) =>
     cat.participantId === target.participantId || cat.catId === target.participantId);
   return resolveChatWorkToolIntentManifest({
@@ -219,9 +198,8 @@ export async function executeDispatch(
       request,
       transport,
     });
-    // The coordinator (or the legacy default chat's orchestrator) answers with product knowledge.
-    const knowledge = (request.target.participantKind === 'orchestrator'
-      || channel.coordinatorParticipantId === request.target.participantId)
+    // The coordinator answers with product knowledge.
+    const knowledge = channel.coordinatorParticipantId === request.target.participantId
       && isOrchestratorKnowledgeChannel(channel)
       ? await loadOrchestratorKnowledge({
           channel,
@@ -358,24 +336,3 @@ export async function settleInCompletionOrder<T>(promises: Array<Promise<T>>): P
   return results;
 }
 
-export function shouldBlockAntiPingPong(
-  sourceParticipant: RoomRoutingParticipantRef,
-  target: RoutingTarget,
-  dispatches: RoomRoutingOutcome['dispatches'],
-): boolean {
-  const completedDispatches = dispatches.filter((dispatch) => dispatch.status === 'completed');
-  if (completedDispatches.length < 2) {
-    return false;
-  }
-
-  const lastDispatch = completedDispatches[completedDispatches.length - 1];
-  const previousDispatch = completedDispatches[completedDispatches.length - 2];
-  if (!lastDispatch.source || !previousDispatch.source) {
-    return false;
-  }
-
-  return participantKey(previousDispatch.source) === participantKey(sourceParticipant)
-    && participantKey(previousDispatch.target) === participantKey(target)
-    && participantKey(lastDispatch.source) === participantKey(target)
-    && participantKey(lastDispatch.target) === participantKey(sourceParticipant);
-}

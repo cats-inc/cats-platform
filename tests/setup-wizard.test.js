@@ -276,7 +276,7 @@ test('POST /api/setup/reset clears setup state and returns clean chat', async ()
   });
 });
 
-test('resolveOrchestratorDisplayName uses the first active Boss Cat, Orchestrator otherwise', () => {
+test('resolveOrchestratorDisplayName names the mechanism, never a Boss Cat', () => {
   const cat = (id, name, group) => ({ id, name, group, roles: [], skillProfile: null, mcpProfile: null, status: 'active', createdAt: '', updatedAt: '', archivedAt: null, defaultExecutionTarget: { provider: 'claude', instance: null, model: null }, memory: { updatedAt: null, content: null } });
   const state = {
     id: 'default',
@@ -288,7 +288,8 @@ test('resolveOrchestratorDisplayName uses the first active Boss Cat, Orchestrato
     capabilities: { maxChannels: 50, maxCatsPerChannel: 10, supportedProviders: [] },
   };
 
-  assert.equal(resolveOrchestratorDisplayName(state), '將將');
+  // The orchestrator is not a cat; it does not borrow the Boss Cat's name.
+  assert.equal(resolveOrchestratorDisplayName(state), 'Orchestrator');
 
   const stateNoBoss = { ...state, cats: [cat('cat-0', 'Helper', 'standard')] };
   assert.equal(resolveOrchestratorDisplayName(stateNoBoss), 'Orchestrator');

@@ -15,7 +15,7 @@ import { createChatProviderAgentDecisionManifest, buildChatProviderAgentObservat
 import { resolveProviderCapabilityProfile } from '../build/server/platform/supervision/providerCapabilityProfiles.js';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import {
-  createChannel, appendMessage, buildChannelView, setChannelOrchestratorLease,
+  createChannel, appendMessage, buildChannelView,
 } from '../build/server/products/chat/state/model/index.js';
 
 const source = await readFile(resolve('config/orchestrator-knowledge.json'), 'utf8');

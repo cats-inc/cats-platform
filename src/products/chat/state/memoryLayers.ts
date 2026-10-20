@@ -91,19 +91,21 @@ function deriveOrchestratorMemory(
   nowIso: string,
 ): MemoryCheckpointSummary {
   const latestUserMessage = latestMessageBy(channel, (message) => message.senderKind === 'user');
-  const participantNames = channel.assignedCats
-    .filter((cat) => cat.status === 'active')
-    .map((cat) => cat.name);
+  const participantNames = (channel.assignedParticipants ?? channel.assignedCats)
+    .filter((participant) => participant.status === 'active')
+    .map((participant) => participant.name);
+  const coordinatorName = (channel.assignedParticipants ?? channel.assignedCats)
+    .find((participant) => participant.participantId === channel.coordinatorParticipantId)?.name ?? null;
 
   return {
     summary: normalizeText(
-      `${state.globalOrchestrator.executionTarget.provider} orchestrator is coordinating ${channel.title}${latestUserMessage ? ` around "${latestUserMessage.body}"` : ''}.`,
+      `${coordinatorName ?? 'Nobody'} is coordinating ${channel.title}${latestUserMessage ? ` around "${latestUserMessage.body}"` : ''}.`,
       220,
     ) || null,
     facts: uniqueStrings([
       `Current room: ${channel.title}`,
-      participantNames.length > 0 ? `Specialist Cats: ${participantNames.join(', ')}` : null,
-      channel.roomRouting?.defaultRecipientId ? `Lead participant: ${channel.roomRouting.defaultRecipientId}` : null,
+      participantNames.length > 0 ? `Participants: ${participantNames.join(', ')}` : null,
+      coordinatorName ? `Coordinator: ${coordinatorName}` : null,
     ]).slice(0, 6),
     openLoops: deriveOpenLoops(channel),
     updatedAt: nowIso,

@@ -215,7 +215,15 @@ test('scope, binding, roster and latest user changes invalidate an in-flight rea
   for (const change of [
     h => { h.state.cats[1].status = 'archived'; },
     h => { h.state.cats[1].defaultExecutionTarget.model = 'changed'; },
-    h => { h.state.globalOrchestrator.visibleParticipant.executionTarget.instance = 'changed'; },
+    // The coordinator's own model is part of the binding.
+    h => {
+      const channel = h.state.channels.find(entry => entry.id === h.channelId);
+      for (const assignment of [...channel.catAssignments, ...(channel.participantAssignments ?? [])]) {
+        if (assignment.participantId === h.bossId || assignment.catId === h.bossId) {
+          assignment.execution.target.instance = 'changed';
+        }
+      }
+    },
     h => { h.state.channels.find(entry => entry.id === h.channelId).originSurface = 'code'; },
     h => { h.state = appendMessage(h.state, h.channelId, { senderKind: 'user', senderName: 'Owner', body: 'Changed goal' }, now).state; },
   ]) {
@@ -275,7 +283,7 @@ test('production turn exposes discovery only for verified local coordinator rout
     const channel = h.state.channels.find((entry) => entry.id === h.channelId);
     const payload = { body: goal, messageMetadata: { recipientParticipantIds: [h.bossId] } };
     if (mode === 'provider_default') {
-      channel.catAssignments = []; channel.participantAssignments = []; channel.pendingProvider = 'claude';
+      channel.catAssignments = []; channel.participantAssignments = [];
     }
     if (mode === 'direct') { channel.channelKind = 'direct_message'; channel.roomRouting.mode = 'direct_message'; }
     if (mode === 'multi') payload.messageMetadata = { recipientParticipantIds: [h.bossId, channel.catAssignments[0].participantId], workflowShape: 'concurrent' };

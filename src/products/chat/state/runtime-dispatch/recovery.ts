@@ -12,7 +12,6 @@ import {
   requireChannel,
   setChannelParticipantLease,
   setChannelChatCwd,
-  setChannelOrchestratorLease,
 } from '../model/index.js';
 
 export interface DispatchLeasePatch extends Partial<ParticipantExecutionLease> {
@@ -118,19 +117,10 @@ export function applyDispatchLeasePatch(
   leasePatch: DispatchLeasePatch,
   now: Date,
 ): ChatState {
-  if (target.participantKind === 'cat') {
-    return setChannelParticipantLease(
-      state,
-      channelId,
-      target.participantId,
-      leasePatch,
-      now,
-    );
-  }
-
-  return setChannelOrchestratorLease(
+  return setChannelParticipantLease(
     state,
     channelId,
+    target.participantId,
     leasePatch,
     now,
   );

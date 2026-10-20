@@ -6,11 +6,9 @@ import {
   appendMessage,
   buildChannelView,
   createChannel as createChatChannel,
-  setChannelOrchestratorLease,
 } from '../build/server/products/chat/state/model/index.js';
 import {
   buildCatPrompt,
-  buildOrchestratorPrompt,
   buildBoundedRecentContextInstructions,
   buildDefaultChatContinuityTransplantPackage,
 } from '../build/server/products/chat/state/prompts.js';
@@ -87,34 +85,18 @@ function createSourceMessage() {
   };
 }
 
-test('orchestrator prompt omits blank transport sections for non-telegram turns', () => {
-  const prompt = buildOrchestratorPrompt(
-    createChannel(),
-    createOrchestrator(),
-    createSourceMessage(),
-    'Boss Cat',
-    {
-      reason: 'System routing selected you as the current turn owner.',
-      recentMessages: [],
-      transport: 'web',
-    },
-  );
-
-  assert.ok(!prompt.includes('\n\n\n'));
-});
-
-test('orchestrator prompt includes Cat tool profiles in the participant roster', () => {
+test('cat prompt includes Cat tool profiles in the participant roster', () => {
   const channel = createChannel();
   channel.assignedCats[0].name = 'Work Planner';
   channel.assignedCats[0].roles = ['planner'];
   channel.assignedCats[0].mcpProfile = 'work-memory';
-  const prompt = buildOrchestratorPrompt(
+  const prompt = buildCatPrompt(
     channel,
     createOrchestrator(),
+    channel.assignedCats[0],
     createSourceMessage(),
-    'Boss Cat',
     {
-      reason: 'System routing selected you as the current turn owner.',
+      reason: 'System routing selected you for the current turn.',
       recentMessages: [],
       transport: 'web',
     },
@@ -127,16 +109,17 @@ test('orchestrator prompt includes Cat tool profiles in the participant roster',
   assert.match(prompt, /update\/assign Work Items when phase policy allows/u);
 });
 
-test('orchestrator prompt includes the global orchestrator tool profile', () => {
+test('cat prompt includes the global orchestrator tool profile in shared context', () => {
   const orchestrator = createOrchestrator();
   orchestrator.mcpProfile = 'work-memory';
-  const prompt = buildOrchestratorPrompt(
-    createChannel(),
+  const channel = createChannel();
+  const prompt = buildCatPrompt(
+    channel,
     orchestrator,
+    channel.assignedCats[0],
     createSourceMessage(),
-    'Boss Cat',
     {
-      reason: 'System routing selected you as the current turn owner.',
+      reason: 'System routing selected you for the current turn.',
       recentMessages: [],
       transport: 'web',
     },
@@ -442,105 +425,6 @@ test('default chat continuity transplant instructions preserve structured choice
     instructions,
     /\[user:User\] Q: Which delivery mode should we use\?\nA: minimal, Keep it shippable\./u,
   );
-});
-
-test('default chat does not re-bootstrap when the same runtime session is reused across lanes', () => {
-  const now = new Date('2026-04-15T00:00:00.000Z');
-  let state = createDefaultChatState();
-  state = createChatChannel(state, {
-    title: 'Default bootstrap lane test',
-    topic: 'Keep bootstrap gated by lane identity.',
-    originSurface: 'chat',
-    entryKind: 'default',
-    roomMode: 'chat_channel',
-    // Legacy orchestrator-led room until the provider-default chat is removed.
-    pendingProvider: 'codex',
-  }, now);
-  const channelId = state.channels[0].id;
-  const reusedSessionId = 'session-orchestrator-reused';
-  const staleLaneId = buildChatLaneId('turn-stale', 'target-stale', 'orchestrator');
-  const activeLaneId = buildChatLaneId('turn-active', 'target-active', 'orchestrator');
-
-  state = setChannelOrchestratorLease(state, channelId, {
-    status: 'ready',
-    sessionId: reusedSessionId,
-    laneId: activeLaneId,
-  }, now);
-  state = appendMessage(
-    state,
-    channelId,
-    {
-      senderKind: 'user',
-      senderName: 'Kenny',
-      body: 'Earlier context',
-    },
-    new Date('2026-04-15T00:00:01.000Z'),
-  ).state;
-  state = appendMessage(
-    state,
-    channelId,
-    {
-      senderKind: 'orchestrator',
-      senderName: 'Orchestrator',
-      body: 'Older reply from a stale lane',
-    },
-    new Date('2026-04-15T00:00:02.000Z'),
-    {
-      metadata: {
-        event: 'assistant_turn_segment',
-        sessionId: reusedSessionId,
-        laneId: staleLaneId,
-        targetKind: 'orchestrator',
-        assistantTurnId: 'assistant-turn-stale',
-        turnId: 'turn-stale',
-        terminal: true,
-      },
-    },
-  ).state;
-  const currentTurn = appendMessage(
-    state,
-    channelId,
-    {
-      senderKind: 'user',
-      senderName: 'Kenny',
-      body: 'Current turn',
-    },
-    new Date('2026-04-15T00:00:03.000Z'),
-  );
-  state = currentTurn.state;
-
-  const prompt = buildPromptForTarget(state, channelId, {
-    turnId: 'turn-active',
-    dispatchId: 'dispatch-active',
-    targetStateId: 'target-active',
-    parentCheckpointId: null,
-    branchStrategy: null,
-    handoffReason: null,
-    sourceMessage: currentTurn.message,
-    sourceParticipant: null,
-    targets: [
-      {
-        participantKind: 'orchestrator',
-        participantId: 'orchestrator',
-        participantName: 'Orchestrator',
-        laneId: activeLaneId,
-        sessionId: reusedSessionId,
-      },
-    ],
-    unresolved: [],
-    mentionNames: [],
-    trigger: 'room_default',
-    depth: 0,
-    target: {
-      participantKind: 'orchestrator',
-      participantId: 'orchestrator',
-      participantName: 'Orchestrator',
-      laneId: activeLaneId,
-      sessionId: reusedSessionId,
-    },
-  });
-
-  assert.equal(prompt.instructions, null);
 });
 
 test('multi-participant cat routing emits a targeted handoff package for first-turn context', () => {

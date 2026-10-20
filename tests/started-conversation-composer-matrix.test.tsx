@@ -16,10 +16,7 @@ import type {
   ChatChannelCat,
   ChatChannelParticipant,
 } from '../src/products/chat/api/contracts.ts';
-import {
-  isDefaultChatChannel,
-  supportsParticipantAudienceSelection,
-} from '../src/products/chat/shared/channelTopology.ts';
+import { supportsParticipantAudienceSelection } from '../src/products/chat/shared/channelTopology.ts';
 import type { SelectedChannelView } from '../src/products/shared/channelEntry.ts';
 import {
   resolveActiveChannelAudienceState,
@@ -145,6 +142,15 @@ function tempParticipant(participantId: string, name: string, model: string): Ch
 }
 
 const aria = tempParticipant('participant-aria', 'Aria', 'opus');
+/** The default participant a conversation is seeded with: its remembered provider/model. */
+const codexDefault: ChatChannelParticipant = {
+  ...tempParticipant('participant-default', 'Codex-CLI', 'gpt-sol'),
+  execution: {
+    target: { provider: 'codex-cli', instance: null, model: 'gpt-sol' },
+    modelSelection: null,
+    lease: idleLease(),
+  },
+};
 const bram = tempParticipant('participant-bram', 'Bram', 'sonnet');
 
 function createPayload(): AppShellPayload {
@@ -174,7 +180,6 @@ function createPayload(): AppShellPayload {
 interface Scenario {
   direct?: boolean;
   participants: Array<ChatChannelCat | ChatChannelParticipant>;
-  pending?: { provider: string; model: string };
 }
 
 function createChannel(scenario: Scenario): SelectedChannelView {
@@ -199,10 +204,6 @@ function createChannel(scenario: Scenario): SelectedChannelView {
     skillProfile: null,
     mcpProfile: null,
     orchestratorRoles: [],
-    pendingProvider: scenario.pending?.provider ?? null,
-    pendingModel: scenario.pending?.model ?? null,
-    pendingInstance: null,
-    pendingModelSelection: null,
     createdAt: '2026-10-01T00:00:00.000Z',
     updatedAt: '2026-10-01T00:00:00.000Z',
     lastMessageAt: null,
@@ -268,7 +269,6 @@ function Harness({
     showingNewChatDraft: false,
     draftCatIds: [],
   });
-  const defaultChat = isDefaultChatChannel(channel);
   const audienceSelection = supportsParticipantAudienceSelection(channel);
   const props: ConversationViewProps = {
     payload,
@@ -296,15 +296,6 @@ function Harness({
     onUpdateChannelParticipant: async () => {},
     onOperatorAction: noop,
     autoResize: noop,
-    selectedExecutionTarget: defaultChat
-      ? {
-          provider: channel.pendingProvider ?? '',
-          instance: channel.pendingInstance ?? null,
-          model: channel.pendingModel ?? null,
-          modelSelection: null,
-        }
-      : undefined,
-    onExecutionTargetChange: defaultChat ? noop : undefined,
     onDirectLaneExecutionTargetChange: noop,
     activeWorkflowShape: 'sequential',
     onToggleActiveWorkflowShape: audienceSelection ? noop : undefined,
@@ -445,12 +436,13 @@ const cases: Array<{ name: string; scenario: Scenario; expected: StartedConversa
   },
   {
     name: 'conversation with only its provider/model',
-    scenario: { participants: [], pending: { provider: 'codex-cli', model: 'gpt-sol' } },
+    // Its provider/model is its default participant: shown in the header and named on send.
+    scenario: { participants: [codexDefault] },
     expected: {
-      header: '',
+      header: 'Codex-CLI · gpt-sol [edit]',
       composer: 'avatars:0 chip:"Codex-CLI · gpt-sol"',
       chip: 'model',
-      send: 'none',
+      send: 'recipients:[participant-default] sequential',
       sendFirstOnly: '-',
     },
   },

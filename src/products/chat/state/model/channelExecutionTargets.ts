@@ -11,7 +11,7 @@ import {
   type ProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
 import { normalizeCatMcpProfile } from '../../../../shared/catMcpProfiles.js';
-import { isDefaultChatChannel, isDirectLaneChannel } from '../../shared/channelTopology.js';
+import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import {
   resolveChannelParticipantAssignments,
   resolveParticipantExecutionAssignments,
@@ -86,48 +86,6 @@ export function updateGlobalOrchestrator(
   return nextState;
 }
 
-export function setGlobalOrchestratorExecutionTarget(
-  state: ChatState,
-  input: {
-    provider?: string | null;
-    instance?: string | null;
-    model?: string | null;
-    modelSelection?: ProviderModelSelection | null;
-  },
-  now: Date = new Date(),
-): ChatState {
-  const nextState = cloneState(state);
-  const currentParticipant = resolveGlobalOrchestratorVisibleParticipant(
-    nextState.globalOrchestrator,
-  );
-  const executionTarget = {
-    provider: input.provider?.trim() || currentParticipant.executionTarget.provider,
-    instance:
-      input.instance === undefined
-        ? currentParticipant.executionTarget.instance
-        : normalizeOptionalText(input.instance),
-    model:
-      input.model === undefined
-        ? currentParticipant.executionTarget.model
-        : normalizeOptionalText(input.model),
-  };
-  const executionModelSelection = input.modelSelection === undefined
-    ? cloneProviderModelSelection(currentParticipant.executionModelSelection ?? null)
-    : cloneProviderModelSelection(input.modelSelection);
-  nextState.globalOrchestrator = {
-    ...nextState.globalOrchestrator,
-    visibleParticipant: createGlobalOrchestratorVisibleParticipant({
-      displayName: currentParticipant.displayName,
-      executionTarget,
-      executionModelSelection,
-    }),
-    executionTarget,
-    executionModelSelection,
-    updatedAt: isoAt(now),
-  };
-  return nextState;
-}
-
 export function updateNewChatDefaults(
   state: ChatState,
   input: Partial<NewChatDefaults>,
@@ -180,37 +138,6 @@ export function rememberNewChatDefaultParticipant(
     model: first.execution.target.model ?? null,
     modelSelection: first.execution.modelSelection ?? null,
   });
-}
-
-export function setChannelPendingExecutionTarget(
-  state: ChatState,
-  channelId: string,
-  input: {
-    provider?: string | null;
-    model?: string | null;
-    instance?: string | null;
-    modelSelection?: AssignChannelCatInput['modelSelection'];
-  },
-  now: Date = new Date(),
-): ChatState {
-  const nextState = cloneState(state);
-  const channel = requireChannel(nextState, channelId);
-
-  if (input.provider !== undefined) {
-    channel.pendingProvider = normalizeOptionalText(input.provider);
-  }
-  if (input.model !== undefined) {
-    channel.pendingModel = normalizeOptionalText(input.model);
-  }
-  if (input.instance !== undefined) {
-    channel.pendingInstance = normalizeOptionalText(input.instance);
-  }
-  if (input.modelSelection !== undefined) {
-    channel.pendingModelSelection = cloneProviderModelSelection(input.modelSelection);
-  }
-
-  channel.updatedAt = isoAt(now);
-  return nextState;
 }
 
 export function setChannelCatExecutionTarget(

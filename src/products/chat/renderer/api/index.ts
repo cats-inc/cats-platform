@@ -11,7 +11,6 @@ export {
   fetchAppShell,
   refetchAfterMutation,
   updateChatOrchestrator,
-  updateChannelPendingExecutionTarget,
   updateNewChatDefaultsPreference,
   updateSelectedChannel,
 } from './appShell.js';

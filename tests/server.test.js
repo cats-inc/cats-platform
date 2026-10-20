@@ -16,7 +16,6 @@ import {
   createChannel as createModelChannel,
   requireChannel,
   setChannelCatLease,
-  setChannelOrchestratorLease,
 } from '../build/server/products/chat/state/model/index.js';
 import { beginChannelMessageDispatch } from '../build/server/products/chat/state/runtimeActions.js';
 import {
@@ -3680,38 +3679,7 @@ test('GET /api/channels/:id/stream keeps direct lanes pinned to the direct recip
   const channelId = state.channels[0].id;
   state.channels[0].channelKind = 'direct_message';
   state.channels[0].roomRouting.mode = 'chat_channel';
-  state = setChannelOrchestratorLease(
-    state,
-    channelId,
-    {
-      sessionId: 'session-orchestrator-fallback',
-      status: 'ready',
-      startedAt: seededAt.toISOString(),
-      lastUsedAt: seededAt.toISOString(),
-    },
-    seededAt,
-  );
   await chatStore.write(state);
-
-  runtime.setObservedSession('session-orchestrator-fallback', {
-    session: {
-      id: 'session-orchestrator-fallback',
-    },
-    observePath: '/sessions/session-orchestrator-fallback/observe',
-    stream: {
-      path: '/sessions/session-orchestrator-fallback/stream',
-      available: true,
-      events: [
-        {
-          event: 'progress',
-          data: {
-            type: 'progress',
-            text: 'This should never be streamed for a direct lane.',
-          },
-        },
-      ],
-    },
-  });
 
   await withServer(runtime, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/channels/${channelId}/stream`);
@@ -9451,7 +9419,7 @@ test('PATCH /api/preferences only selects the requested Boss Chat without waking
     const channelPayload = await channelResponse.json();
 
     assert.equal(runtimeClient.createdSessions.length, 0);
-    assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
+    assert.equal('orchestratorLease' in channelPayload.channel, false);
     assert.equal(channelPayload.channel.roomRouting.lastWakeRequest, null);
     assert.equal(channelPayload.channel.messages[0]?.metadata?.event, 'room_created');
   }, new MemoryChatStore(), { unprovisionedAuth: true });
@@ -9484,17 +9452,21 @@ test('first send persists a runtime-sanitized default model selection after drop
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         title: 'Sanitize Default Preset',
-        topic: 'Wake should clean stale presets from default chats.',
+        topic: 'Wake should clean stale presets from the default participant.',
         originSurface: 'chat',
-        pendingProvider: 'codex',
-        pendingModel: 'gpt-5.4',
-        pendingModelSelection: {
-          entryMode: 'auto',
-          presetId: 'deep_reasoning',
-          controls: {
-            'openai.reasoning_effort': 'high',
+        temporaryParticipants: [{
+          participantId: 'participant-default',
+          name: '',
+          provider: 'codex',
+          model: 'gpt-5.4',
+          modelSelection: {
+            entryMode: 'auto',
+            presetId: 'deep_reasoning',
+            controls: {
+              'openai.reasoning_effort': 'high',
+            },
           },
-        },
+        }],
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -9504,7 +9476,10 @@ test('first send persists a runtime-sanitized default model selection after drop
     const sendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Sanitize this preset.' }),
+      body: JSON.stringify({
+        body: 'Sanitize this preset.',
+        messageMetadata: { recipientParticipantIds: ['participant-default'] },
+      }),
     });
     assert.equal(sendResponse.status, 200);
     const sendPayload = await sendResponse.json();
@@ -9517,12 +9492,12 @@ test('first send persists a runtime-sanitized default model selection after drop
       const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
       assert.equal(channelResponse.status, 200);
       const payload = await channelResponse.json();
-      return payload.channel.pendingModelSelection?.entryId === 'gpt-5.4'
+      return payload.channel.assignedParticipants[0]?.execution.modelSelection?.entryId === 'gpt-5.4'
         ? payload
         : null;
     });
 
-    assert.deepEqual(channelPayload.channel.pendingModelSelection, {
+    assert.deepEqual(channelPayload.channel.assignedParticipants[0].execution.modelSelection, {
       entryMode: 'auto',
       entryId: 'gpt-5.4',
       controls: {
@@ -10528,7 +10503,7 @@ test('ungrouping a parallel chat materializes member chats as standalone recents
   }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
-test('default chats without a cwd create isolated runtime sessions', async () => {
+test('a default participant without a cwd gets an isolated runtime session', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -10550,9 +10525,13 @@ test('default chats without a cwd create isolated runtime sessions', async () =>
         title: 'Default Draft',
         topic: 'Start without a repo path.',
         originSurface: 'chat',
-        pendingProvider: 'claude',
-        pendingInstance: 'native',
-        pendingModel: 'claude-opus-4-6',
+        temporaryParticipants: [{
+          participantId: 'participant-default',
+          name: '',
+          provider: 'claude',
+          instance: 'native',
+          model: 'claude-opus-4-6',
+        }],
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -10563,9 +10542,7 @@ test('default chats without a cwd create isolated runtime sessions', async () =>
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         body: 'Hello from default mode',
-        pendingProvider: 'claude',
-        pendingInstance: 'native',
-        pendingModel: 'claude-opus-4-6',
+        messageMetadata: { recipientParticipantIds: ['participant-default'] },
       }),
     });
     assert.equal(messageResponse.status, 200);
@@ -10582,22 +10559,23 @@ test('default chats without a cwd create isolated runtime sessions', async () =>
       const channelResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`);
       assert.equal(channelResponse.status, 200);
       const payload = await channelResponse.json();
-      return payload.channel.orchestratorLease.sessionId === 'session-1'
+      return payload.channel.assignedParticipants[0]?.execution.lease.sessionId === 'session-1'
         ? payload
         : null;
     });
 
-    assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
-    assert.equal(channelPayload.channel.orchestratorLease.status, 'ready');
+    const lease = channelPayload.channel.assignedParticipants[0].execution.lease;
+    assert.equal(lease.sessionId, 'session-1');
+    assert.equal(lease.status, 'ready');
     assert.match(
       channelPayload.channel.chatCwd ?? '',
       /\.cats[\\/]runtime[\\/]sessions[\\/]session-1$/u,
     );
     const soloReply = channelPayload.channel.messages.findLast(
-      (message) => message.metadata?.targetKind === 'orchestrator',
+      (message) => message.metadata?.targetKind === 'cat',
     );
     assert.equal(soloReply?.senderKind, 'agent');
-    assert.equal(soloReply?.senderName, 'Orchestrator');
+    assert.equal(soloReply?.metadata?.targetId, 'participant-default');
   }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
@@ -10939,7 +10917,7 @@ test('PATCH /api/preferences only selects the requested direct message recipient
 
     assert.equal(runtimeClient.createdSessions.length, 0);
     assert.equal(channelPayload.channel.roomRouting.mode, 'direct_message');
-    assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
+    assert.equal('orchestratorLease' in channelPayload.channel, false);
     assert.equal(
       channelPayload.channel.assignedCats[0].execution.lease.sessionId,
       null,
@@ -11391,7 +11369,7 @@ test('first send does not fall back to Boss Cat when a direct message recipient 
     const channelPayload = await channelResponse.json();
 
     assert.equal(runtimeClient.createdSessions.length, 0);
-    assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
+    assert.equal('orchestratorLease' in channelPayload.channel, false);
     assert.equal(channelPayload.channel.roomRouting.mode, 'direct_message');
     assert.equal(channelPayload.channel.roomRouting.lastWakeRequest, null);
     assert.equal(
@@ -11457,7 +11435,7 @@ test('GET /api/app-shell stays read-only when booting a persisted room route', a
 
     assert.equal(runtimeClient.createdSessions.length, 0);
     assert.equal(appShellPayload.chat.selectedChannel.roomRouting.mode, 'direct_message');
-    assert.equal(appShellPayload.chat.selectedChannel.orchestratorLease.sessionId, null);
+    assert.equal('orchestratorLease' in appShellPayload.chat.selectedChannel, false);
     assert.equal(
       appShellPayload.chat.selectedChannel.assignedCats[0].execution.lease.sessionId,
       null,
@@ -11690,9 +11668,13 @@ test('attachment serving keeps no-repo chat files out of the state tree', async 
         title: 'Attachment Persistence',
         topic: 'Keep attachments stable across session restarts.',
         originSurface: 'chat',
-        pendingProvider: 'claude',
-        pendingInstance: 'native',
-        pendingModel: 'claude-opus-4-6',
+        temporaryParticipants: [{
+          participantId: 'participant-default',
+          name: '',
+          provider: 'claude',
+          instance: 'native',
+          model: 'claude-opus-4-6',
+        }],
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11728,9 +11710,7 @@ test('attachment serving keeps no-repo chat files out of the state tree', async 
       },
       body: JSON.stringify({
         body: 'Use the uploaded screenshot',
-        pendingProvider: 'claude',
-        pendingInstance: 'native',
-        pendingModel: 'claude-opus-4-6',
+        messageMetadata: { recipientParticipantIds: ['participant-default'] },
       }),
     });
     assert.equal(messageResponse.status, 200);

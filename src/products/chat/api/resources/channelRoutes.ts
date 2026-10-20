@@ -13,7 +13,6 @@ import {
   buildChannelView,
   requireChannel,
   resolveChannelCanonicalIdentity,
-  setChannelPendingExecutionTarget,
   toChannelSummary,
 } from '../../state/model/index.js';
 import { repairChannelReadState } from '../channelRepair.js';
@@ -21,7 +20,6 @@ import { createMergedDispatchChatStore, createLockedDispatchChatStore, mergeComp
 import { updateChatState } from '../../state/store.js';
 import { revalidateCollaborationPublication } from '../../state/orchestratorCollaborationReport.js';
 import { notifyStreamTargetChanged } from './streamTargetSignal.js';
-import { isDefaultChatChannel } from '../../shared/channelTopology.js';
 import { resolveRoomRoutingState } from '../../state/room-routing/index.js';
 import type {
   CreateChatChannelInput,
@@ -440,20 +438,6 @@ async function handleRestPatchChannel(
         }
         persisted = await updateChatState(context.dependencies.chatStore, (state) =>
           bindChannelCoordinator(state, channelId, body.coordinatorParticipantId ?? null));
-      }
-
-      if (
-        body.pendingProvider !== undefined
-        || body.pendingModel !== undefined
-        || body.pendingInstance !== undefined
-        || body.pendingModelSelection !== undefined
-      ) {
-        persisted = await updateChatState(context.dependencies.chatStore, (state) => setChannelPendingExecutionTarget(state, channelId, {
-          provider: body.pendingProvider,
-          model: body.pendingModel,
-          instance: body.pendingInstance,
-          modelSelection: body.pendingModelSelection,
-        }, nowFrom(context.dependencies)));
       }
 
       sendJson(context.response, 200, {

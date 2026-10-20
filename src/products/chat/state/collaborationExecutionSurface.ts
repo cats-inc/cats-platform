@@ -4,7 +4,6 @@ import type { ProviderAgentToolDescriptor } from '../../../platform/orchestratio
 import { DEFAULT_SUPERVISION_SCHEMA_VERSION } from '../../../platform/supervision/contracts.js';
 import { knowledgeDigest } from '../../../platform/knowledge/productKnowledge.js';
 import { resolveChannelParticipantAssignments } from '../shared/channelParticipants.js';
-import { resolveOrchestratorExecutionTarget } from './runtimeTargeting.js';
 import type { CollaborationProposal, CollaborationReport } from './orchestratorCollaboration.js';
 
 export const ACCEPT_COLLABORATION = 'execute_collaboration';
@@ -31,7 +30,7 @@ export function collaborationExecutionRevision(state: ChatState, channelId: stri
     repoPath: channel.repoPath, cwd: channel.chatCwd,
     workspaceKind: channel.runtimeWorkspaceKind, workspaceAccess: channel.runtimeWorkspaceAccess,
     permissionMode: channel.runtimePermissionMode,
-    target: resolveOrchestratorExecutionTarget(state, channel),
+    coordinatorParticipantId: channel.coordinatorParticipantId,
     participants: resolveChannelParticipantAssignments(channel).map((entry) => ({
       id: entry.participantId, status: entry.status, sourceRefId: entry.sourceRefId,
       target: entry.execution.target, modelSelection: entry.execution.modelSelection,

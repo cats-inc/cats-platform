@@ -1,7 +1,7 @@
 import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
 import { requireChannel } from '../state/model/index.js';
 import {
-  collectChannelSessionIds,
+  collectParticipantSessionIds,
   resolveParticipantLeaseAttachment,
 } from '../shared/channelParticipants.js';
 import type {
@@ -12,7 +12,7 @@ import type {
 export function collectLinkedChannelSessionIds(
   channel: ReturnType<typeof requireChannel>,
 ): string[] {
-  return collectChannelSessionIds(channel);
+  return collectParticipantSessionIds(channel);
 }
 
 export function collectCatSessionIds(

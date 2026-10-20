@@ -4,7 +4,6 @@ import test from 'node:test';
 import type { AppShellPayload } from '../src/products/shared/api/workspaceContracts.ts';
 import {
   appendOptimisticUserMessage,
-  applyOptimisticPendingExecutionTarget,
   preserveOptimisticUserMessageAfterRefresh,
 } from '../src/products/shared/renderer/workspaceChatUtils.tsx';
 import {
@@ -34,10 +33,6 @@ function createPayload(overrides: Record<string, unknown> = {}): AppShellPayload
         unreadCount: 2,
         updatedAt: '2026-04-20T12:00:00.000Z',
         lastMessageAt: null,
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [],
       },
       channels: [
@@ -47,9 +42,6 @@ function createPayload(overrides: Record<string, unknown> = {}): AppShellPayload
           topic: 'Test room',
           unreadCount: 2,
           lastMessageAt: null,
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -101,36 +93,6 @@ test('appendOptimisticUserMessage rejects payloads without the active selected r
   );
 });
 
-test('applyOptimisticPendingExecutionTarget updates the selected room and summary in place on the cloned payload', () => {
-  const payload = createPayload();
-
-  const next = applyOptimisticPendingExecutionTarget(payload, 'channel-1', {
-    pendingProvider: 'codex',
-    pendingModel: 'gpt-5.4',
-    pendingInstance: 'main',
-    pendingModelSelection: {
-      entryId: 'gpt-5.4',
-      entryMode: 'explicit',
-    },
-  });
-
-  assert.notEqual(next, payload);
-  assert.equal(next.chat.selectedChannel?.pendingProvider, 'codex');
-  assert.equal(next.chat.selectedChannel?.pendingModel, 'gpt-5.4');
-  assert.equal(next.chat.selectedChannel?.pendingInstance, 'main');
-  assert.deepEqual(next.chat.selectedChannel?.pendingModelSelection, {
-    entryId: 'gpt-5.4',
-    entryMode: 'explicit',
-  });
-  assert.equal(next.chat.channels[0]?.pendingProvider, 'codex');
-  assert.equal(next.chat.channels[0]?.pendingModel, 'gpt-5.4');
-  assert.deepEqual(next.chat.channels[0]?.pendingModelSelection, {
-    entryId: 'gpt-5.4',
-    entryMode: 'explicit',
-  });
-  assert.equal(payload.chat.selectedChannel?.pendingProvider, 'claude');
-});
-
 test('preserveOptimisticUserMessageAfterRefresh replays the latest optimistic turn when refresh drops it', () => {
   const optimisticMessage = {
     id: '17c0bd79-e36d-4532-af2b-36b70a629198',
@@ -155,10 +117,6 @@ test('preserveOptimisticUserMessageAfterRefresh replays the latest optimistic tu
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:00.000Z',
         lastMessageAt: '2026-04-20T12:01:00.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [
           {
             id: 'message-earlier',
@@ -181,9 +139,6 @@ test('preserveOptimisticUserMessageAfterRefresh replays the latest optimistic tu
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:00.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -203,10 +158,6 @@ test('preserveOptimisticUserMessageAfterRefresh replays the latest optimistic tu
         unreadCount: 3,
         updatedAt: '2026-04-20T12:01:05.000Z',
         lastMessageAt: '2026-04-20T12:00:30.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [
           {
             id: 'message-earlier',
@@ -228,9 +179,6 @@ test('preserveOptimisticUserMessageAfterRefresh replays the latest optimistic tu
           topic: 'Test room',
           unreadCount: 3,
           lastMessageAt: '2026-04-20T12:00:30.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -278,10 +226,6 @@ test('preserveOptimisticUserMessageAfterRefresh leaves refresh payload unchanged
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:00.000Z',
         lastMessageAt: '2026-04-20T12:01:00.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [optimisticMessage],
       },
       channels: [
@@ -291,9 +235,6 @@ test('preserveOptimisticUserMessageAfterRefresh leaves refresh payload unchanged
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:00.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -308,10 +249,6 @@ test('preserveOptimisticUserMessageAfterRefresh leaves refresh payload unchanged
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:00.000Z',
         lastMessageAt: '2026-04-20T12:01:00.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [optimisticMessage],
       },
       channels: [
@@ -321,9 +258,6 @@ test('preserveOptimisticUserMessageAfterRefresh leaves refresh payload unchanged
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:00.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -364,10 +298,6 @@ test('preserveOptimisticUserMessageAfterRefresh rejects refreshed id collisions'
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:00.000Z',
         lastMessageAt: '2026-04-20T12:01:00.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [optimisticMessage],
       },
       channels: [
@@ -377,9 +307,6 @@ test('preserveOptimisticUserMessageAfterRefresh rejects refreshed id collisions'
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:00.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -400,10 +327,6 @@ test('preserveOptimisticUserMessageAfterRefresh rejects refreshed id collisions'
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:01.000Z',
         lastMessageAt: '2026-04-20T12:01:01.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [refreshedMessage],
       },
       channels: [
@@ -413,9 +336,6 @@ test('preserveOptimisticUserMessageAfterRefresh rejects refreshed id collisions'
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:01.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -469,10 +389,6 @@ test('preserveOptimisticUserMessageAfterRefresh accepts canonical owner rows wit
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:00.000Z',
         lastMessageAt: '2026-04-20T12:01:00.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [optimisticMessage],
       },
       channels: [
@@ -482,9 +398,6 @@ test('preserveOptimisticUserMessageAfterRefresh accepts canonical owner rows wit
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:00.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -499,10 +412,6 @@ test('preserveOptimisticUserMessageAfterRefresh accepts canonical owner rows wit
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:01.000Z',
         lastMessageAt: '2026-04-20T12:01:01.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [
           {
             ...optimisticMessage,
@@ -520,9 +429,6 @@ test('preserveOptimisticUserMessageAfterRefresh accepts canonical owner rows wit
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:01.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -572,10 +478,6 @@ test('preserveOptimisticUserMessageAfterRefresh rejects same-id rows from anothe
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:00.000Z',
         lastMessageAt: '2026-04-20T12:01:00.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [optimisticMessage],
       },
       channels: [
@@ -585,9 +487,6 @@ test('preserveOptimisticUserMessageAfterRefresh rejects same-id rows from anothe
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:00.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -602,10 +501,6 @@ test('preserveOptimisticUserMessageAfterRefresh rejects same-id rows from anothe
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:01.000Z',
         lastMessageAt: '2026-04-20T12:01:01.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [
           {
             ...optimisticMessage,
@@ -624,9 +519,6 @@ test('preserveOptimisticUserMessageAfterRefresh rejects same-id rows from anothe
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:01.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -714,10 +606,6 @@ test('workspace chat refresh preserves registered pending optimistic sends', () 
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:00.000Z',
         lastMessageAt: '2026-04-20T12:01:00.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [optimisticMessage],
       },
       channels: [
@@ -727,9 +615,6 @@ test('workspace chat refresh preserves registered pending optimistic sends', () 
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:00.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -749,10 +634,6 @@ test('workspace chat refresh preserves registered pending optimistic sends', () 
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:01.000Z',
         lastMessageAt: '2026-04-20T12:00:59.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [],
       },
       channels: [
@@ -762,9 +643,6 @@ test('workspace chat refresh preserves registered pending optimistic sends', () 
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:00:59.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -815,10 +693,6 @@ test('workspace chat refresh preserves the registered optimistic id, not the lat
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:05.000Z',
         lastMessageAt: '2026-04-20T12:01:05.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [registeredOptimisticMessage, laterOptimisticMessage],
       },
       channels: [
@@ -828,9 +702,6 @@ test('workspace chat refresh preserves the registered optimistic id, not the lat
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:05.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -850,10 +721,6 @@ test('workspace chat refresh preserves the registered optimistic id, not the lat
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:06.000Z',
         lastMessageAt: '2026-04-20T12:00:59.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [],
       },
       channels: [
@@ -863,9 +730,6 @@ test('workspace chat refresh preserves the registered optimistic id, not the lat
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:00:59.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -911,10 +775,6 @@ test('workspace chat refresh does not resurrect optimistic sends after rollback 
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:00.000Z',
         lastMessageAt: '2026-04-20T12:01:00.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [optimisticMessage],
       },
       channels: [
@@ -924,9 +784,6 @@ test('workspace chat refresh does not resurrect optimistic sends after rollback 
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:00.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -946,10 +803,6 @@ test('workspace chat refresh does not resurrect optimistic sends after rollback 
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:01.000Z',
         lastMessageAt: '2026-04-20T12:00:59.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [],
       },
       channels: [
@@ -959,9 +812,6 @@ test('workspace chat refresh does not resurrect optimistic sends after rollback 
           topic: 'Test room',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:00:59.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -993,10 +843,6 @@ test('workspace chat refresh does not re-inject channel-switch-back sends withou
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:01.000Z',
         lastMessageAt: null,
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [],
       },
       channels: [
@@ -1006,9 +852,6 @@ test('workspace chat refresh does not re-inject channel-switch-back sends withou
           topic: 'Test room A',
           unreadCount: 0,
           lastMessageAt: null,
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
         {
           id: 'channel-2',
@@ -1016,9 +859,6 @@ test('workspace chat refresh does not re-inject channel-switch-back sends withou
           topic: 'Test room B',
           unreadCount: 0,
           lastMessageAt: null,
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -1081,10 +921,6 @@ test('workspace chat refresh does not preserve channel A optimistic row into cha
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:00.000Z',
         lastMessageAt: '2026-04-20T12:01:00.000Z',
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [optimisticMessage],
       },
       channels: [
@@ -1094,9 +930,6 @@ test('workspace chat refresh does not preserve channel A optimistic row into cha
           topic: 'Test room A',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:00.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
         {
           id: 'channel-2',
@@ -1104,9 +937,6 @@ test('workspace chat refresh does not preserve channel A optimistic row into cha
           topic: 'Test room B',
           unreadCount: 0,
           lastMessageAt: null,
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },
@@ -1121,10 +951,6 @@ test('workspace chat refresh does not preserve channel A optimistic row into cha
         unreadCount: 0,
         updatedAt: '2026-04-20T12:01:01.000Z',
         lastMessageAt: null,
-        pendingProvider: 'claude',
-        pendingModel: 'opus',
-        pendingInstance: 'native',
-        pendingModelSelection: null,
         messages: [],
       },
       channels: [
@@ -1134,9 +960,6 @@ test('workspace chat refresh does not preserve channel A optimistic row into cha
           topic: 'Test room A',
           unreadCount: 0,
           lastMessageAt: '2026-04-20T12:01:00.000Z',
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
         {
           id: 'channel-2',
@@ -1144,9 +967,6 @@ test('workspace chat refresh does not preserve channel A optimistic row into cha
           topic: 'Test room B',
           unreadCount: 0,
           lastMessageAt: null,
-          pendingProvider: 'claude',
-          pendingModel: 'opus',
-          pendingModelSelection: null,
         },
       ],
     },

@@ -15,7 +15,6 @@ import {
 } from '../../shared/channelTopology.js';
 import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
-import { createEmptyExecutionLease } from '../defaults.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
 
 export function cloneState(state: ChatState): ChatState {
@@ -68,18 +67,15 @@ export function syncChannelDefaultRecipientAndTopology(channel: ChatChannelState
     .filter((assignment) => assignment.status === 'active')
     .map((assignment) => assignment.participantId);
   const currentLeadId = roomRouting.defaultRecipientId;
-  const hasValidLead = Boolean(currentLeadId && activeParticipantIds.includes(currentLeadId));
 
   if (channel.channelKind === 'direct_message') {
     roomRouting.defaultRecipientId = resolveDirectLaneRecipientId(
       channel.participantAssignments,
       currentLeadId,
     );
-    channel.orchestratorLease = createEmptyExecutionLease();
-  } else if (activeParticipantIds.length === 0) {
+  } else {
+    // Only a DM has a default recipient; elsewhere a message names its audience.
     roomRouting.defaultRecipientId = null;
-  } else if (!hasValidLead) {
-    roomRouting.defaultRecipientId = activeParticipantIds[0] ?? null;
   }
 
   // A DM stays bound to its cat; elsewhere a binding to someone who left clears.

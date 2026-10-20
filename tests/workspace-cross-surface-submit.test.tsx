@@ -76,7 +76,7 @@ for (const [sourceSurface, targetSurface, leaveBeforeAck] of [
         draftDefaultRecipientCatId: null, draftCatIds: [], draftCwd: null, draftFiles: [], channelFiles: [],
         setDraftCwd: noop, setDraftCatIds: noop, setDraftHighlightedCatId: noop,
         setDraftCatExecutionTargetOverrides: noop, setDraftFiles: noop, setChannelFiles: noop,
-        draftExecutionTarget: target, defaultChannelExecutionTarget: target, selectedChannel: null,
+        draftExecutionTarget: target, selectedChannel: null,
         busy, setBusy, setFeedback: noop,
       });
       return { ...actions, busy };
@@ -226,7 +226,7 @@ for (const [parallel, outcome] of [
         draftCatExecutionTargetOverrides: new Map(overrideCat ? [[overrideCat.id, target]] : []),
         setDraftCwd: noop, setDraftCatIds: noop, setDraftHighlightedCatId: noop,
         setDraftCatExecutionTargetOverrides: noop, setDraftFiles: noop, setChannelFiles: noop,
-        draftExecutionTarget: target, defaultChannelExecutionTarget: target, selectedChannel: null,
+        draftExecutionTarget: target, selectedChannel: null,
         showingParallelChatDraft: parallel, draftParallelChatTargets: [target, target], busy, setBusy, setFeedback,
       });
       return { ...actions, feedback, composerDraft, busy };

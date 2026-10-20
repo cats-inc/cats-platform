@@ -96,9 +96,13 @@ test(
           topic: 'Live provider smoke for Chat provider-agent supervision.',
           originSurface: 'chat',
           entryKind: 'default',
-          pendingProvider: provider,
-          pendingInstance: target.instance ?? undefined,
-          pendingModel: target.model ?? undefined,
+          temporaryParticipants: [{
+            participantId: 'participant-live',
+            name: provider,
+            provider,
+            instance: target.instance ?? undefined,
+            model: target.model ?? undefined,
+          }],
         },
         new Date('2026-04-28T09:00:00.000Z'),
       );
@@ -109,6 +113,7 @@ test(
         {
           body:
             `Reply with one short sentence confirming this supervised Chat smoke for ${provider}.`,
+          messageMetadata: { recipientParticipantIds: ['participant-live'] },
         },
         runtimeClient,
         new Date('2026-04-28T09:01:00.000Z'),
