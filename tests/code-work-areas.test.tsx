@@ -3,6 +3,7 @@ import test from 'node:test';
 import { createCodeWorkAreasService } from '../src/products/code/state/workAreas.ts';
 import type { CodeConversationWorkAreas } from '../src/products/code/shared/workAreas.ts';
 import { workAreaContext, runtimeSnapshot, runtimeInspection } from './fixtures/workAreas.ts';
+import { readCodeWorkAreas } from '../src/products/code/shared/readWorkAreas.ts';
 
 const operations = (value: CodeConversationWorkAreas) => value.participants.flatMap(p => p.repositories
   .flatMap(repo => repo.checkouts.flatMap(checkout => checkout.operations)));
@@ -10,6 +11,25 @@ const waitFor = async (check: () => boolean) => {
   const deadline = Date.now() + 3000;
   while (!check()) { if (Date.now() > deadline) throw new Error('Condition not reached'); await new Promise(resolve => setTimeout(resolve, 5)); }
 };
+
+test('merging a bound checkout with historical observed activity preserves its association', async () => {
+  const context = workAreaContext();
+  const historical = structuredClone(context.participants[0].attempts[0]);
+  historical.sessionId = 'session-old'; historical.current = false; historical.activeBindings = [];
+  historical.bindings = [{ ...historical.bindings[0], sessionId: historical.sessionId, turnId: 'turn-old' }];
+  context.participants[0].attempts.push(historical);
+  const current = runtimeInspection(context);
+  for (const checkout of current.session.inspection.workspaceActivity.workspaces) {
+    checkout.association = 'session_binding'; checkout.runningOperations = []; checkout.recentOperations = [];
+  }
+  const old = runtimeInspection(context, runtimeSnapshot('session-old'), historical.bindings[0]);
+  const service = createCodeWorkAreasService({ inspector: { read: async () => context }, runtime: {
+    observeSession: async id => id === 'session-a' ? current : old, streamSession: async () => {},
+  } });
+  const value = (await service.read(context.conversationId))!;
+  assert.equal(value.participants[0].repositories[0].checkouts[0].association, 'observed_operation');
+  assert.ok(readCodeWorkAreas(value, context.conversationId));
+});
 
 test('a stalled output cannot hold a revoked owner or lease subscription open', async () => {
   for (const revoke of ['owner', 'lease']) {

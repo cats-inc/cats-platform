@@ -32,7 +32,7 @@ PLAN-119 belong to another workstream and remain governing integration constrain
 | S3 | Runtime local-tool observation, session lifecycle, transport and memory-only restart checks | Complete; Runtime `de219b6f`, scoped suites/typecheck and independent review passed |
 | S4 | Native provider structured evidence, coverage and fixture/native checks | Complete; Runtime `57b449e3`, isolated Windows Claude 2.1.304 native evidence, scoped tests/typecheck and independent review |
 | S5 | Platform participant attribution, work-area API and live projection | Complete; 28 focused tests, server/renderer/test typechecks and independent review passed |
-| S6 | Code right panel, avatar entry, localization and renderer regressions | Pending |
+| S6 | Code right panel, avatar entry, localization and renderer regressions | Complete; seven renderer regressions, 49 existing consumer tests, affected typecheck and candidate builds passed; visual acceptance in S7 |
 | S7 | Cross-repository native acceptance, recovery/privacy and documentation reconciliation | Pending |
 
 Each slice receives scoped validation and a separate commit. The one-Codespace,
@@ -54,7 +54,7 @@ common-cwd, no-bubble and no-extra-grant requirements apply throughout delivery.
 - [x] Define bounded memory-only observation retention. Runtime/Code introduce no
   persisted observation schema; restart reports no activity until reattachment.
   Any future persisted format requires tested migration/recovery.
-- [ ] Review the narrow ADR-131 amendment: Code execution inspection only, with
+- [x] Review the narrow ADR-131 amendment: Code execution inspection only, with
   participant administration remaining in the existing avatar/composer flow.
 - [x] Preserve ADR-133's owner-controlled Codespace registration, suppression
   and source-aware history cleanup; observations cannot recreate removed records.
@@ -80,18 +80,18 @@ changing cwd, selected root, permissions or worktree ownership.
 
 ### Phase 3: Compose the Code panel and avatar entry
 
-- [ ] Add Code-owned work-area contracts, view model and renderer components.
-- [ ] Use the existing `ConversationView` section composition seam; expose only
+- [x] Add Code-owned work-area contracts, view model and renderer components.
+- [x] Use the existing `ConversationView` section composition seam; expose only
   the minimal generic extension hooks needed for Code, without Code imports in
   Core/platform/shared layers.
-- [ ] Preserve the folder/context summary, run status, approvals and preview/canvas.
-- [ ] Render participant -> repository -> checkout rows, current/recent operations,
+- [x] Preserve the folder/context summary, run status, approvals and preview/canvas.
+- [x] Render participant -> repository -> checkout rows, current/recent operations,
   coverage/freshness, branch/detached state and managed/unmanaged details.
-- [ ] Add a Code-only summary and entry action to the existing participant
+- [x] Add a Code-only summary and entry action to the existing participant
   popover. Preserve model editing, attention marks and one-participant fallback.
-- [ ] Reuse user-controlled panel state, keyboard/focus behavior and responsive
+- [x] Reuse user-controlled panel state, keyboard/focus behavior and responsive
   composition. Do not reopen or refocus on incoming activity.
-- [ ] Add English/Traditional Chinese copy and focused renderer tests.
+- [x] Add English/Traditional Chinese copy and focused renderer tests.
 
 **Deliverable:** Inspectable team work areas with no bubble or multi-Codespace UI.
 
@@ -152,6 +152,31 @@ per refresh and a 256 KiB aggregate response. Runtime's stricter per-session
 limits also apply. Unknown execution mappings are omitted and coverage becomes
 partial; retained running operations display unknown unless the exact active
 engine binding and reconciled current Runtime run agree.
+
+## S6 Renderer Contract
+
+Code composes the existing conversation view with a Work areas section and a
+generic optional participant inspection action. Both existing top-bar avatars
+and the single-participant audience chip use the same editor/action path. The
+baseline currently renders a single participant's top-bar avatar; this feature
+preserves that behavior rather than adding or hiding a roster.
+
+The browser validates the complete nested Code projection and UTF-8 byte limit.
+Native EventSource owns reconnect; errors deactivate retained running operations,
+and revocation clears facts. Explicit avatar navigation holds one pending focus
+request, consumes it when the participant appears, and never replays it on live
+updates or manual panel reopening. Existing preview, operator/approval and bubble
+composition stays intact.
+
+The existing panel had local component state, without a durable preference key.
+Code now opts into a generic controlled-state seam and stores only open/section
+UI preferences, scoped by profile and conversation (64 entries / 16 KiB UTF-8).
+Disabled storage, including a throwing getter, does not block inspection. Paths,
+operations and provider payloads are never put in this preference cache.
+
+All observed checkout paths remain full paths with an explicitly unverified
+Codespace relationship. The original Codespace folder action is retained; no
+observed path is opened on the host without verified execution-location mapping.
 
 ## Files to Create/Modify
 
@@ -221,6 +246,7 @@ than mirror implementation structure.
 
 | Date | Update |
 | --- | --- |
+| 2026-10-20 | S6 adds Code panel/popover composition, strict nested projection validation, native EventSource recovery, consumed explicit focus requests and scoped bounded UI preferences. Seven isolated renderer tests passed, including disconnect/reconnect, foreign events, pending focus, no focus theft, preference restoration/isolation, disabled storage, malformed/oversized UTF-8 data, localization and transcript preservation. Affected test/source typecheck and 49 existing Chat/avatar/preview regressions passed. The isolated candidate compiled Runtime, Platform server/Desktop and Vite renderer and started both services. Independent source review found no remaining blocker. Initial test diagnostics exhausted memory while diffing DOM objects; bounded boolean assertions exposed incorrect fixture expectations, now corrected. Native visual acceptance remains S7. |
 | 2026-10-20 | S5 implemented the read-only engine inspector, immutable Runtime-run attribution, bounded memory projection and owner-checked JSON/SSE route. 28 focused tests passed; the final active-turn/path guard rerun passed 17 affected tests. Server, renderer and test TypeScript checks passed. Independent review reproduced and verified fixes for same-session lane replacement, epoch rollback, stalled NDJSON consumers and stalled SSE revocation. Real MemoryChatStore tests cover run/mission logs/deletion and retained Core fallback. No user profile writes or persistence migration. S6/S7 remain pending. |
 | 2026-10-20 | Created ADR-134 / SPEC-127 / PLAN-120 and the Runtime companion proposal. Scope is one Codespace, participant work areas, panel and avatar entry; bubbles and multiple selected Codespaces are deferred. Implementation and native acceptance have not started. |
 | 2026-10-20 | Initial documentation validation passed: 34 references across the six new Platform/Runtime documents resolved against the local worktrees; numbering, index entries, LF/final newlines and code fences checked. Both repositories passed `git diff --check`. No application tests, builds or live acceptance were run for this docs-only task. |

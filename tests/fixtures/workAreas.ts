@@ -16,7 +16,7 @@ export function workAreaContext(): ConversationExecutionInspection {
 
 /** Copied from Runtime 57b449e3's redacted live Windows Claude snapshot. */
 export function runtimeSnapshot(sessionId = 'session-a', executionId = 'runtime-run-a', running = false): RuntimeWorkspaceActivitySnapshot {
-  const snapshot = JSON.parse(readFileSync(new URL('./runtime-workspace-activity.json', import.meta.url), 'utf8')) as RuntimeWorkspaceActivitySnapshot;
+  const snapshot = JSON.parse(readFileSync('tests/fixtures/runtime-workspace-activity.json', 'utf8')) as RuntimeWorkspaceActivitySnapshot;
   snapshot.sessionId = sessionId;
   for (const row of snapshot.workspaces) for (const operation of row.recentOperations) operation.executionId = executionId;
   if (running) {

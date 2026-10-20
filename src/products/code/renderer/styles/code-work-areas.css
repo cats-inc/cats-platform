@@ -1,0 +1,19 @@
+.codeWorkAreas { display: grid; gap: 12px; min-width: 0; font-size: .85rem; }
+.codeWorkAreas p { margin: 0; }
+.codeWorkAreasNotice { color: var(--text-muted, #777); }
+.codeWorkAreaParticipant { min-width: 0; padding: 10px; border: 1px solid var(--border-color, #ddd); border-radius: 8px; }
+.codeWorkAreaParticipant.isSelected { border-color: var(--accent-color, #86704e); }
+.codeWorkAreaParticipant h3, .codeWorkAreaRepository h4 { margin: 0 0 8px; overflow-wrap: anywhere; }
+.codeWorkAreaParticipant h3 { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; font-size: .95rem; }
+.codeWorkAreaParticipant small { font-size: .7rem; font-weight: normal; }
+.codeWorkAreaParticipant h3:focus { outline: 2px solid var(--accent-color, #86704e); outline-offset: 3px; }
+.codeWorkAreaExecution, .codeWorkAreaRepository { margin-top: 10px; }
+.codeWorkAreaCheckout { padding: 8px 0; border-top: 1px solid var(--border-color, #ddd); }
+.codeWorkAreaCheckout > summary { cursor: pointer; overflow-wrap: anywhere; }
+.codeWorkAreaCheckout > summary > span, .codeWorkAreaCheckout > summary > strong { display: block; margin-top: 4px; }
+.codeWorkAreaPath { font-family: monospace; overflow-wrap: anywhere; }
+.codeWorkAreas dl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; margin: 8px 0; }
+.codeWorkAreas dt { color: var(--text-muted, #777); }
+.codeWorkAreas dd { margin: 0 0 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.codeWorkAreaOperations { display: grid; gap: 8px; padding-left: 18px; }
+.codeWorkAreaOperations li > span { display: block; overflow-wrap: anywhere; }

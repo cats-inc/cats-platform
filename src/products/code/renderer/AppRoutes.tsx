@@ -11,10 +11,10 @@ import {
 } from './components/AddCatPanel.js';
 import type { FolderBrowserContentProps } from './components/FolderBrowser.js';
 import {
-  ConversationView,
   type ConversationViewProps,
 } from '../../shared/renderer/components/conversation-view/ConversationView.js';
 import { ActiveCodeComposerChips } from './components/ActiveCodeComposerChips.js';
+import { CodeConversationView } from './components/CodeConversationView.js';
 import { CodeCanvasPreviewButton } from './components/CodeCanvasPreviewButton.js';
 import { CodePreviewCanvasControls } from './components/CodePreviewCanvasControls.js';
 import { CodeTaskPillsBar } from './components/CodeTaskPillsBar.js';
@@ -139,7 +139,8 @@ export function AppRoutes({
     ],
     renderBootShell: () => <BootShell />,
     renderConversationView: (channel, options) => (
-      <ConversationView
+      <CodeConversationView
+        key={`${payload.scopeId}:${channel.id}`}
         {...chatSurfaceProps}
         payload={payload}
         selectedChannel={channel}

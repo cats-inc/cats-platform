@@ -189,6 +189,7 @@ export function createCodeWorkAreasService(options: {
               association: row.association, identityObservedAt: row.identityObservedAt, operations: [] };
             checkouts.set(row.checkoutId, checkout);
           }
+          if (operations.length) checkout.association = 'observed_operation';
           checkout.operations.push(...operations);
         }
       }

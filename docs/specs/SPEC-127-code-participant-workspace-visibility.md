@@ -94,7 +94,10 @@ unknown. A `.git` file is valid worktree evidence when resolved by Runtime.
 Explicit session binding may show an associated checkout with no observed
 operations; label it as bound context rather than actual read/write activity.
 Full paths are details; use a Codespace-relative path only when containment is
-verified. Authorized paths outside it carry an explicit outside-Codespace label.
+verified. Verified authorized paths outside it carry an explicit outside-Codespace
+label. The initial transport has no verified Codespace-to-execution-location
+mapping, so it shows full paths and an unverified Codespace relationship; it
+does not infer containment from host path strings.
 
 ### FR-04: Distinguish intent, observation and freshness
 
@@ -133,8 +136,11 @@ renaming, model or role editing is introduced into this panel.
 
 Use bounded lists with an explicit truncation indicator. Opening a row does not
 run a model, recursively scan disk, change permissions or take worktree ownership.
-The initial feature exposes inspection and the existing authorized open-folder
-action; destructive worktree actions are outside scope.
+The initial feature exposes inspection and preserves the existing authorized
+Codespace open-folder action in the context section. Opening an observed checkout
+on the host requires a later verified host/location mapping; this first slice
+does not turn observed paths into host-open targets. Destructive worktree actions
+are outside scope.
 
 ### FR-06: Avatar summary and entry
 
@@ -144,8 +150,8 @@ The action opens the right side panel on that participant. A fresh conversation
 with no observations shows a truthful empty/not-reported summary.
 
 Keep ADR-131/ADR-132's current participant popover, model/settings actions,
-provider/model-participant behavior, hidden single-participant roster and
-audience-chip fallback. Start fresh and the implicit God Cat were removed by
+provider/model-participant behavior, existing participant roster and single-
+participant audience-chip fallback. Start fresh and the implicit God Cat were removed by
 ADR-132 and must not return through this feature. Saved selection attention
 retains its existing precedence. Do not add a second roster.
 

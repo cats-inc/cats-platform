@@ -14,6 +14,7 @@ import {
   type RefObject,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { browserLocalStorage } from '../../../../../shared/browserStorage.js';
 
 import type {
   AppShellPayload,
@@ -269,6 +270,18 @@ export interface ConversationViewProps {
     options: BuildConversationSidePanelSectionsOptions,
   ) => SidePanelSection[];
   sidePanelTitle?: string;
+  /** Product-owned inspection actions reuse every existing participant popover. */
+  buildParticipantInspectionAction?: (
+    participantId: string,
+    openSection: (section: string) => void,
+  ) => AudienceTargetEditorAction | null;
+  /** Optional product UI preference; absent products keep the existing local state. */
+  sidePanelState?: {
+    open: boolean;
+    section: string | null;
+    onOpenChange: (open: boolean) => void;
+    onSectionChange: (section: string | null) => void;
+  };
 }
 
 export function ConversationView({
@@ -329,6 +342,8 @@ export function ConversationView({
   renderComposerSurfaceTag,
   buildSidePanelSections,
   sidePanelTitle = '',
+  buildParticipantInspectionAction,
+  sidePanelState,
 }: ConversationViewProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -403,14 +418,18 @@ export function ConversationView({
     isDirectLane,
   });
   const layoutMode: ChatLayoutMode = isDirectLane ? 'direct_message' : 'participant_chat';
-  const [sidePanelOpen, setSidePanelOpen] = useState(false);
-  const [sidePanelSection, setSidePanelSection] = useState<string | null>('cwd');
+  const [localSidePanelOpen, setLocalSidePanelOpen] = useState(false);
+  const [localSidePanelSection, setLocalSidePanelSection] = useState<string | null>('cwd');
+  const sidePanelOpen = sidePanelState?.open ?? localSidePanelOpen;
+  const sidePanelSection = sidePanelState ? sidePanelState.section : localSidePanelSection;
+  const setSidePanelOpen = sidePanelState?.onOpenChange ?? setLocalSidePanelOpen;
+  const setSidePanelSection = sidePanelState?.onSectionChange ?? setLocalSidePanelSection;
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1280 : window.innerWidth,
   );
   const [initialConcurrentClusterUiStateLoad] = useState(() =>
     loadConcurrentClusterUiStateMap(
-      typeof window === 'undefined' ? null : window.localStorage,
+      browserLocalStorage(),
     ),
   );
   const [concurrentClusterUiStateByKey, setConcurrentClusterUiStateByKey] =
@@ -794,7 +813,7 @@ export function ConversationView({
       return;
     }
     const persisted = writeConcurrentClusterUiStateMap(
-      window.localStorage,
+      browserLocalStorage(),
       concurrentClusterUiStateByKey,
     );
     // Under quota pressure the writer may shrink or drop the payload. Sync the
@@ -870,10 +889,13 @@ export function ConversationView({
   const coordinatorParticipantId = selectedChannel.coordinatorParticipantId ?? null;
   const resolveParticipantActions = useCallback(
     (participantId: string): AudienceTargetEditorAction[] => {
-      if (isDirectLane) {
-        return [];
-      }
       const actions: AudienceTargetEditorAction[] = [];
+      const inspection = hasConversationStarted
+        ? buildParticipantInspectionAction?.(participantId, openSidePanelTo) : null;
+      if (inspection) actions.push(inspection);
+      if (isDirectLane) {
+        return actions;
+      }
       if (onSetChannelCoordinator) {
         const coordinates = participantId === coordinatorParticipantId;
         actions.push({
@@ -901,6 +923,9 @@ export function ConversationView({
     },
     [
       activeRoomParticipants.length,
+      buildParticipantInspectionAction,
+      hasConversationStarted,
+      sidePanelState,
       coordinatorParticipantId,
       isDirectLane,
       onRemoveChannelParticipant,
