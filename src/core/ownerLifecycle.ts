@@ -29,6 +29,7 @@ export interface OwnerLifecycleState {
   entries: Record<string, OwnerLifecycleEntry>;
   receipts: OwnerCleanupReceipt[];
   retention: { enabled: boolean; days: number; lastCleanupAt: string | null; lastError: string | null };
+  removedLinkIds?: string[];
 }
 
 export class OwnerLifecycleFormatError extends Error {
@@ -77,6 +78,7 @@ export function normalizeOwnerLifecycle(value: unknown): OwnerLifecycleState | u
       || (entry.overrides !== undefined && !record(entry.overrides))) return fail();
   }
   const policy = value.retention;
+  if (value.removedLinkIds !== undefined && (!Array.isArray(value.removedLinkIds) || value.removedLinkIds.some(id => typeof id !== 'string' || !id.trim()))) return fail();
   if (typeof policy.enabled !== 'boolean' || !Number.isInteger(policy.days) || Number(policy.days) < 1 || Number(policy.days) > 3650
     || !(policy.lastCleanupAt === null || timestamp(policy.lastCleanupAt))
     || !(policy.lastError === null || typeof policy.lastError === 'string')) return fail();
@@ -88,6 +90,13 @@ export function normalizeOwnerLifecycle(value: unknown): OwnerLifecycleState | u
         && (result.reason === undefined || typeof result.reason === 'string'))) return fail();
   }
   return structuredClone(value) as unknown as OwnerLifecycleState;
+}
+
+export function suppressOwnerLinks<T extends { ownerLifecycle?: OwnerLifecycleState }>(state: T, ids: string[]): T {
+  const lifecycle = structuredClone(state.ownerLifecycle ?? emptyOwnerLifecycle());
+  lifecycle.removedLinkIds = [...new Set([...(lifecycle.removedLinkIds ?? []), ...ids])]; lifecycle.revision++;
+  normalizeOwnerLifecycle(lifecycle);
+  return { ...state, ownerLifecycle: lifecycle };
 }
 
 export function setOwnerEntry<T extends { ownerLifecycle?: OwnerLifecycleState }>(

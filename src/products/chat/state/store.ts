@@ -80,15 +80,17 @@ async function writePersistedChatSnapshot(
     try {
       const historyEntries = Object.entries(snapshot.ownerLifecycle?.entries ?? {}).filter(([key, entry]) =>
         entry.deleted || (key.startsWith('run:') || key.startsWith('mission:')) && entry.logsClearedAt);
+      const removedLinkIds = snapshot.ownerLifecycle?.removedLinkIds ?? [];
       if (options.preserveBackup) {
         // Recovery must never rotate a damaged primary over the valid backup.
-      } else if (historyEntries.length) {
+      } else if (historyEntries.length || removedLinkIds.length) {
         // A normal backup must not resurrect history the owner explicitly cleared.
         // Preserve the previous profile's other data, applying only committed cleanup intent.
         const previousRaw = JSON.parse(await readFile(filePath, 'utf8')) as Record<string, unknown>;
         const previous = normalizePersistedChatSnapshot(previousRaw);
         const lifecycle = structuredClone(previous.ownerLifecycle ?? snapshot.ownerLifecycle!);
         for (const [key, entry] of historyEntries) lifecycle.entries[key] = { ...entry };
+        lifecycle.removedLinkIds = [...new Set([...(lifecycle.removedLinkIds ?? []), ...removedLinkIds])];
         lifecycle.revision = Math.max(lifecycle.revision, snapshot.ownerLifecycle?.revision ?? 0);
         lifecycle.receipts = structuredClone(snapshot.ownerLifecycle?.receipts ?? lifecycle.receipts);
         const previousCore = { ...extractCoreState(previous), ownerLifecycle: lifecycle };

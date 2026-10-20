@@ -52,6 +52,7 @@ function createMemoryStore(seed = seedCoreWithPwt()) {
     readCore() {
       return Promise.resolve(state);
     },
+    async updateCore(updater) { state = await updater(state); return state; },
     writeCore(next) {
       state = next;
       return Promise.resolve();

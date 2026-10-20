@@ -1,3 +1,4 @@
+import { suppressOwnerLinks } from '../../../core/ownerLifecycle.js';
 import {
   matchRoute,
   readJsonBody,
@@ -72,8 +73,9 @@ export async function routeWorkLinksApi(
       }
       try {
         const now = context.dependencies.now?.() ?? new Date();
-        const core = await context.dependencies.coreStore.readCore();
-        const result = upsertCoreWorkGraphLink(
+        let result!: ReturnType<typeof upsertCoreWorkGraphLink>;
+        await context.dependencies.coreStore.updateCore(core => {
+        result = upsertCoreWorkGraphLink(
           core,
           {
             kind: validation.payload.kind,
@@ -86,9 +88,8 @@ export async function routeWorkLinksApi(
           },
           now,
         );
-        if (result.created) {
-          await context.dependencies.coreStore.writeCore(result.core);
-        }
+        return result.core;
+        });
         sendJson(context.response, result.created ? 201 : 200, {
           link: result.link,
           created: result.created,
@@ -116,15 +117,14 @@ export async function routeWorkLinksApi(
       return true;
     }
     const now = context.dependencies.now?.() ?? new Date();
-    const core = await context.dependencies.coreStore.readCore();
-    const result = removeCoreWorkGraphLink(core, linkId, now);
+    let result!: ReturnType<typeof removeCoreWorkGraphLink>;
+    await context.dependencies.coreStore.updateCore(core => { result = removeCoreWorkGraphLink(core, linkId, now); return result.removed ? suppressOwnerLinks(result.core, [linkId]) : result.core; });
     if (!result.removed) {
       sendJson(context.response, 404, {
         error: { code: 'link_not_found', message: `No link with id ${linkId}.` },
       });
       return true;
     }
-    await context.dependencies.coreStore.writeCore(result.core);
     sendJson(context.response, 200, { removed: true, linkId });
     return true;
   }

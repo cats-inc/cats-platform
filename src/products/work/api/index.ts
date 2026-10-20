@@ -1,3 +1,4 @@
+import { routeOwnerRelationships } from './ownerRelationshipRoutes.js';
 import { applyWorkGoldenPathLifecycleAction } from '../state/workGoldenPathLifecycle.js';
 import {
   buildWorkGoldenPathDetailProjectionForTask,
@@ -547,6 +548,7 @@ export function createWorkWorkItemDetailPayload(
 export async function routeWorkApi(
   context: WorkApiRouteContext,
 ): Promise<boolean> {
+  if (await routeOwnerRelationships(context)) return true;
   if (await routeWorkHistoryApi(context)) return true;
   if (await routeWorkCandidateEvidenceApi(context)) return true;
   if (await routeWorkPracticeProposalApi(context)) return true;

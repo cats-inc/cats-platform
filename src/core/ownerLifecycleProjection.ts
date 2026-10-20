@@ -5,6 +5,7 @@ import { ownerEntry, type OwnerSubjectFamily } from './ownerLifecycle.js';
 export function applyOwnerLifecycleProjection(core: CatsCoreState): CatsCoreState {
   if (!core.ownerLifecycle) return core;
   const next = { ...core };
+  next.workGraphLinks = core.workGraphLinks.filter(link => !core.ownerLifecycle?.removedLinkIds?.includes(link.id));
   const collections = { project: 'projects', work_item: 'workItems', task: 'tasks', run: 'runs', mission: 'missions', artifact: 'artifacts' } as const;
   for (const [family, collection] of Object.entries(collections)) {
     (next[collection as typeof collections[keyof typeof collections]] as unknown[]) = core[collection as typeof collections[keyof typeof collections]]

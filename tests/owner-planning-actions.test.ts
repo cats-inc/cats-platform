@@ -41,7 +41,7 @@ test('active execution, source ownership and published/referenced evidence remai
   const derived = ownerActionView(core, 'work_item', 'derived');
   assert.throws(() => applyOwnerAction(core, 'work_item', 'derived', { action: 'complete', token: derived.token }), /source/);
   core = applyOwnerAction(core, 'work_item', 'derived', { action: 'archive', token: derived.token });
-  core = upsertCoreArtifact(core, { id: 'a', title: 'Deliverable', kind: 'file', status: 'published' }).core;
+  core = upsertCoreArtifact(core, { id: 'a', title: 'Deliverable', kind: 'document', status: 'published' }).core;
   const artifact = ownerActionView(core, 'artifact', 'a');
   assert.throws(() => applyOwnerAction(core, 'artifact', 'a', { action: 'delete', token: artifact.token }), /Published/);
   core = applyOwnerAction(core, 'artifact', 'a', { action: 'edit', token: artifact.token, title: 'Reviewed deliverable', summary: '' });
@@ -95,8 +95,8 @@ test('persisted action tokens ignore projection clocks; deletion cannot return t
 });
 
 test('artifact batches recheck the exact selection atomically and reject stale previews', async t => {
-  let core = upsertCoreArtifact(createDefaultCoreState(), { id: 'a', title: 'One', kind: 'file' }).core;
-  core = upsertCoreArtifact(core, { id: 'b', title: 'Two', kind: 'file' }).core;
+  let core = upsertCoreArtifact(createDefaultCoreState(), { id: 'a', title: 'One', kind: 'document' }).core;
+  core = upsertCoreArtifact(core, { id: 'b', title: 'Two', kind: 'document' }).core;
   const store = new MemoryCoreStore(core);
   const server = createServer(async (request, response) => { if (!await routeCoreApi({ request, response, method: request.method!, url: new URL(request.url!, 'http://localhost'), dependencies: { coreStore: store } })) { response.writeHead(404); response.end(); } });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve)); t.after(() => server.close());
