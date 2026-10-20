@@ -16,6 +16,8 @@ const installQueues = new Map<string, Promise<unknown>>();
 export async function installRendererPackage(options: {
   chatStatePath: string; bytes: Uint8Array; pin: Pick<AppPin, 'id' | 'version' | 'sha256'>;
   source: 'desktop-bundle' | 'local-package'; enable?: boolean;
+  /** Keep an installed App's enabled state, read inside the install queue; `enable` applies otherwise. */
+  preserveEnabled?: boolean;
   componentHost?: AppComponentHost;
 }) {
   const paths = resolveCatsAppStoragePathsFromChatState(options.chatStatePath);
@@ -60,8 +62,9 @@ export async function installRendererPackage(options: {
       }
       await rename(stage, target);
     }
-    const enabled = options.source === 'desktop-bundle' && previous
-      ? previous.enabled && previous.installState === 'enabled' : options.enable === true;
+    const keepPrevious = previous && (options.source === 'desktop-bundle'
+      || (options.preserveEnabled === true && previous.installState !== 'uninstalled'));
+    const enabled = keepPrevious ? previous.enabled && previous.installState === 'enabled' : options.enable === true;
     const input = { manifest, packagePath: target, packageSha256: decoded.sha256,
       packageSource: options.source, enabled, installState: enabled ? 'enabled' as const : 'disabled' as const };
     return manifest.components ? options.componentHost!.install(input) : registry.installApp(input);

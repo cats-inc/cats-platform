@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Planned; documentation only; implementation not started |
+| Status | In progress; unreleased preview Market slice (2026-10-20); M0–M4 milestones open |
 | Owner | cats-platform integration；cats-apps package/catalog；Runtime scoped operations |
 | Spec | [SPEC-120](../specs/SPEC-120-app-market-and-lifecycle.md) |
 | Decision | [ADR-121](../decisions/121-distribute-apps-independently-with-host-owned-lifecycle.md) |
@@ -204,5 +204,32 @@ GitHub Releases，catalog 放 cats-apps GitHub Pages，正式簽章 key 先存 A
 留到發布準備」的部分；key 輪替責任人與精確 release 版本仍待發布準備。本次僅更新文件，
 未啟用 Pages、未生成 key，也未修改 workflow 或上傳產物。查證：`cats-inc/cats-apps` 為
 public，Pages API 回 404（未啟用）。僅檢查 diff 與 `git diff --check`，未執行產品測試或 build。
+
+2026-10-20：使用者要求先做可驗證的最小 Market，並授權產生正式簽章 key。SPEC-120 FR-09
+固定 catalog schema v1 並記錄 preview slice 與未完成項目；M2 的勾選項目都只部分完成，
+因此不勾選。cats-apps 已把 `CATALOG_SIGNING_KEY` 設為 repo secret，keyId
+`cats-apps-catalog-2026-10` 的公鑰同時寫入 `src/platform/apps/catalogTrust.ts`。
+新增 `catalog.ts`（驗章、schema、快取、防 rollback、期限）、`catalogFetch.ts`（HTTPS、
+手動 redirect 與 host allowlist、位元組上限）、`market.ts`（相容性、bundle 保護、manifest 比對、
+安裝來源紀錄）、`/api/apps/_market` 兩個路由、`/lobby/market` 頁面與 Home 卡片。
+以 Node 24 實測 release asset 的 `redirect: 'manual'` 回 302 至
+`release-assets.githubusercontent.com`；Desktop IPC 以完整 path 組 URL，`?refresh=1` 會保留。
+本機驗證：`tsx --test` 跑 `app-catalog`、`app-market-routes`、`app-component-authority`、
+`app-market-page`；`npm run build:server`、`npm run build:test-ui` 後以 `node --test --test-isolation=none`
+跑 `platform-lobby-apps`、`app-market-page`、`app-catalog`、`app-market-routes`、
+`app-component-authority`、`mobile-i18n-web-parity`、`app-package-routes`、`cats-app-hosting`、
+`platform-settings-apps`、`settings-apps-error-i18n` 與 `tests/app-sdk-bundled-sidecar.test.js`、
+`app-components.test.js`、`app-images.test.js`，共 79 項通過。`tsc --noEmit` 的 server、desktop、
+renderer 設定通過；test 設定只剩 worktree 未安裝 mobile 依賴的 2 個既有錯誤。`npm run catalog:check`
+通過。未跑完整 `npm test`、mobile 檢查、macOS／Linux 或安裝後的 Desktop；Pages 尚未啟用，
+真實 catalog 端到端驗證待推送與首次發布後以 source candidate Desktop 進行。
+
+2026-10-20 獨立審查：唯讀 reviewer 指出安裝請求未綁定使用者看到的版本（阻擋），以及 key 輪替、
+producer 欄位上限、revision／期限界限、workflow 簽章範圍、purge 後的 bundle 判斷、非 Market
+副本取代、狀態檔讀取失敗與啟用狀態時機等非阻擋問題，全部已修正並補測試：安裝請求帶版本與權限、
+`catalog_changed` 409、bundle lock 判斷、`installedSource`、時間界限、損毀備份與未知 schema 不覆寫、
+安裝佇列內保留啟用狀態、來源紀錄寫入失敗不影響安裝、下載逾時 45 秒。重跑 build 與上列 13 個
+測試檔共 81 項通過；四個 `tsc` 設定與 `catalog:check` 結果同上。第二次獨立審查確認這些修正，
+未發現新缺陷。使用者要求後，cats-apps 的 GitHub Pages 已以 Actions 為 source 啟用。
 
 *Last updated: 2026-10-20*

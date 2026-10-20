@@ -10,7 +10,7 @@ their explicit implementation status.
 
 | Field | Value |
 | --- | --- |
-| Status | Draft implementation contract; product direction accepted; not implemented |
+| Status | Draft implementation contract; catalog schema v1 fixed; unreleased preview Market slice implemented (FR-09) |
 | Owner | cats-platform；App 產物與官方目錄內容由 cats-apps 負責 |
 | Decision | [ADR-121](../decisions/121-distribute-apps-independently-with-host-owned-lifecycle.md) |
 | Plan | [PLAN-112](../plans/PLAN-112-app-market-and-lifecycle.md) |
@@ -225,8 +225,8 @@ Catalog 是官方來源，不授予 `system` 特權；local-user 套件不因 ID
 - Artifact 沿用 cats-apps 各 App 的 immutable GitHub Release（`<slug>-vX.Y.Z` tag），
   catalog 中每版本的 artifact URL 指向該 release asset。
 - Catalog envelope 由 cats-apps 的 GitHub Pages 提供，例如
-  `https://cats-inc.github.io/cats-apps/catalog/v1/catalog.json`；確切路徑隨 M0 envelope 固定，
-  Pages 目前尚未啟用。Promotion 以 PR 修改 catalog 來源，合併後由 CI 簽章並部署，
+  `https://cats-inc.github.io/cats-apps/catalog/v1/catalog.json`；確切路徑隨 M0 envelope 固定。
+  Pages 已於 2026-10-20 以 GitHub Actions 為 source 啟用，只允許從 `main` 部署。Promotion 以 PR 修改 catalog 來源，合併後由 CI 簽章並部署，
   git 歷史即推廣紀錄。
 - 不用固定 tag 的 rolling release 放 catalog：每次推廣都要修改已發布 Release，違反 release
   完成規範，換 asset 時也會暫時缺檔。用戶端不呼叫 `api.github.com` 列 releases，以免受未驗證
@@ -234,6 +234,50 @@ Catalog 是官方來源，不授予 `system` 特權；local-user 套件不因 ID
 - 正式簽章 key 先存於 cats-apps 的 GitHub Actions secret。這只防 Pages 或傳輸遭竄改，不防
   repo／workflow 被入侵；改為需人工核准的 environment 或離線簽章屬後續強化。
 - 官方 endpoint 內建於 Desktop；日後改用自有網域或其他主機，需先發布帶新 endpoint 的 Desktop。
+
+### Catalog schema v1（2026-10-20 固定）
+
+Producer 為 cats-apps `scripts/build-catalog.mjs`（[Apps SPEC-005](../../../cats-apps/docs/specs/SPEC-005-official-app-catalog.md)），
+consumer 為 `src/platform/apps/catalog.ts`。兩邊共用 `tests/fixtures/app-catalog/` 的 contract vector：
+cats-apps 以 test-only key 重現同一份 envelope，Platform 驗章後須得到同一份 payload。
+
+- Envelope：`{ algorithm: "ed25519", keyId, payload, signature }`。`payload` 是 UTF-8 JSON bytes 的
+  base64，`signature` 是對這些 bytes 的 Ed25519 簽章；consumer 不重新序列化。
+- Payload：`schemaVersion: 1`、`revision`、`issuedAt`、`expiresAt`、`publisher { name, homepage? }`、`apps[]`。
+- App：`id`、`displayName`、`description`、`icon`（字串或 null）、`channels { stable, preview? }`、`versions[]`。
+- Version：`version`、`artifact { url, size, sha256 }`、`compatibility { catsPlatform, appSdk }`、`permissions[]`、
+  `publisher`、`notes`（可為空字串）、`withdrawn { reason, at }?`。artifact URL 必須是 cats-apps 的
+  `<slug>-vX.Y.Z` release asset；channel 不能指向未列出或已撤回的版本。
+- 驗證順序：大小上限 → algorithm → 已信任 keyId → base64 解碼（payload 上限 256 KiB）→ 簽章 →
+  JSON → schema → `revision` 不得低於已驗證最高值（相等可接受）→ 有效期限。
+- `revision` 為 `issuedAt` 的 epoch 秒；`expiresAt = issuedAt + 30 天`。Publish workflow 每週重簽，
+  並以 concurrency group 保持 revision 遞增；只在 `main` 且簽章輸入仍與 `main` 相同時簽章。
+- Consumer 要求 `revision` 等於 `issuedAt` 秒數、有效期不超過 31 天，並拒絕 `issuedAt` 晚於宿主時間
+  一天以上的目錄；否則單一錯誤目錄就能永久抬高 rollback 下限或讓期限失效。
+- Producer 對來源檔嚴格（未知欄位即失敗）；consumer 接受並丟棄未知欄位，讓 v1 可加選用資料。
+  不相容的格式改用新 `schemaVersion` 與新路徑（`catalog/v2/`）。
+- 宿主狀態存於 `<platformDir>/apps/catalog-state.json`：最高已驗證 revision、最後驗證的 envelope、
+  取得時間與 Market 安裝來源紀錄。這是新增的自述檔案，不改既有 registry 格式；每次讀取都重新驗章。
+  檔案損毀時先備份為 `catalog-state.json.corrupt-<time>` 再重建（最高 revision 與安裝來源因此重設）；
+  其他讀取失敗或較新 Desktop 寫入的未知 schema 一律不覆寫，Market 顯示無法使用。
+
+### Preview slice（2026-10-20，未發布）
+
+為了先驗證 Market，Platform 交付下列最小範圍；本 SPEC 其餘要求與驗收仍未完成：
+
+- `GET /api/apps/_market[?refresh=1]` 與 `POST /api/apps/_market/install { id }`，與既有安裝同樣需要
+  Desktop management authority。`_` 開頭不會與任何 App ID 衝突，因此不必新增 reserved ID 或變更 SDK。
+- `/lobby/market` 頁面與 Home 的「探索 Apps」卡片，只在 Desktop 顯示；瀏覽器只看到 Desktop-only 說明。
+- 只讀 `channels.stable`；server 目前不知道 Desktop 的 preview／stable 發行通道。
+- 安裝請求帶著使用者看到的版本與權限；目錄在此期間改變時回 409 `catalog_changed`，不安裝任何東西。
+- 安裝與更新沿用既有 `local-package` installer（trust tier `local-user`），並在下載前檢查相容性、
+  下載後比對 SHA-256、manifest identity、權限、相容範圍與發行者。更新保留安裝當下的啟用狀態。
+- 已安裝的副本若不是本機從目錄安裝的（以記錄的 digest 判斷），更新確認會明示將取代非 Market 安裝。
+- Desktop bundle lock（`CATS_APP_BUNDLE_PATH`）列出的 App，以及 registry 中曾由 bundle 安裝的 App，
+  都顯示「隨 Cats Desktop 提供」且不可從 Market 安裝或更新，因為 FR-08 的 bundled reconciliation
+  尚未改寫，下次啟動會覆蓋 Market 版本。
+- 尚未提供：registry schema 2／operation journal、活動工作的延後或停止選擇、舊版本目錄回收、
+  bundled App 的 Market 更新、preview channel。
 
 ## FR-10 — SDK 與相容性
 

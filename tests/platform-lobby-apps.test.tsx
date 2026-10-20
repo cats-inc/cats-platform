@@ -78,7 +78,7 @@ function createEnvelope(
   };
 }
 
-function renderLobby(envelope: PlatformHostEnvelope): string {
+function renderLobby(envelope: PlatformHostEnvelope, showAppMarket = false): string {
   return renderToStaticMarkup(
     <StaticRouter location="/lobby">
       <GuideCatPlacementProvider
@@ -89,7 +89,7 @@ function renderLobby(envelope: PlatformHostEnvelope): string {
         onPersistSeen={() => {}}
         onCommit={() => {}}
       >
-        <PlatformLobby envelope={envelope} />
+        <PlatformLobby envelope={envelope} showAppMarket={showAppMarket} />
       </GuideCatPlacementProvider>
     </StaticRouter>,
   );
@@ -282,6 +282,15 @@ test('PlatformLobby omits the Apps section when no app has a Lobby entry', () =>
   assert.doesNotMatch(markup, />Apps</u);
   assert.doesNotMatch(markup, />No apps yet</u);
   assert.doesNotMatch(markup, />Pomodoro</u);
+});
+
+test('PlatformLobby offers the App Market in Desktop even before any App is installed', () => {
+  const markup = renderLobby(createEnvelope(), true);
+  assert.match(markup, />Apps</u);
+  assert.match(markup, /platformLobbyCard--market/u);
+  assert.match(markup, />Explore Apps</u);
+  assert.match(markup, />Install official Apps</u);
+  assert.doesNotMatch(renderLobby(createEnvelope()), />Explore Apps</u);
 });
 
 test('PlatformLobby keeps product cards separate from installed app cards', () => {

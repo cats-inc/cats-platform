@@ -26,11 +26,16 @@ import {
 } from './lobbyModel.js';
 import { resolveGuideCatAssistGreeting } from '../../shared/guideCatAssistPresentation.js';
 import { EntityIndexCards } from './entities/EntityIndexCards.js';
+import { isDesktopEnvironment } from '../../shared/desktopRecoveryBridge.js';
+import { APP_MARKET_PATH } from './AppMarketPage.js';
 
 export function PlatformLobby({
   envelope,
+  showAppMarket = isDesktopEnvironment(),
 }: {
   envelope: PlatformHostEnvelope;
+  /** The App Market installs through the Desktop host, so browsers get no entry. */
+  showAppMarket?: boolean;
 }) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -169,7 +174,7 @@ export function PlatformLobby({
           </div>
         </div>
 
-        {appEntries.length > 0 ? (
+        {appEntries.length > 0 || showAppMarket ? (
           <div className="lobbyProducts">
             <p className="lobbyProductsEyebrow">{t('lobbyAppsSectionTitle')}</p>
             <div className="platformLobbyGrid">
@@ -188,6 +193,17 @@ export function PlatformLobby({
                   ) : null}
                 </button>
               ))}
+              {showAppMarket ? (
+                <button
+                  type="button"
+                  className="contentCard platformLobbyCard platformLobbyCard--market"
+                  onClick={() => navigate(APP_MARKET_PATH)}
+                >
+                  <div className="platformLobbyCardAccent" />
+                  <span className="platformLobbyCardName">{t('lobbyExploreAppsTitle')}</span>
+                  <span className="platformLobbyCardSub">{t('lobbyExploreAppsSubtitle')}</span>
+                </button>
+              ) : null}
             </div>
           </div>
         ) : null}

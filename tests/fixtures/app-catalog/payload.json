@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "revision": 1792454400,
+  "issuedAt": "2026-10-20T00:00:00.000Z",
+  "expiresAt": "2026-11-19T00:00:00.000Z",
+  "publisher": {
+    "name": "sammykenny2",
+    "homepage": "https://github.com/cats-inc/cats-apps"
+  },
+  "apps": [
+    {
+      "id": "cats.usage",
+      "displayName": "Usage",
+      "description": "用量總覽 · Runtime usage and provider-reported quota",
+      "icon": "gauge",
+      "channels": {
+        "stable": "0.5.3"
+      },
+      "versions": [
+        {
+          "version": "0.5.3",
+          "artifact": {
+            "url": "https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.3/usage-0.5.3.catsapp",
+            "size": 15062,
+            "sha256": "80255075c08a73a67e08c9772fa9edf381c8bc165364b81d9ad39d54ca6a3794"
+          },
+          "compatibility": {
+            "catsPlatform": "^0.6.0",
+            "appSdk": "^1.2.0"
+          },
+          "permissions": [
+            "ui.route",
+            "ui.lobby",
+            "runtime.telemetry.read",
+            "runtime.telemetry.refresh"
+          ],
+          "publisher": {
+            "name": "sammykenny2",
+            "homepage": "https://github.com/cats-inc/cats-apps"
+          },
+          "notes": "新增 Grok 與 Muse CLI 額度查詢。"
+        }
+      ]
+    },
+    {
+      "id": "cats.studio",
+      "displayName": "Studio",
+      "description": "圖片工作室 · 描述想像，預覽圖片",
+      "icon": "image",
+      "channels": {
+        "stable": "0.2.1",
+        "preview": "0.2.1"
+      },
+      "versions": [
+        {
+          "version": "0.2.0",
+          "artifact": {
+            "url": "https://github.com/cats-inc/cats-apps/releases/download/studio-v0.2.0/studio-0.2.0.catsapp",
+            "size": 122600,
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "compatibility": {
+            "catsPlatform": "^0.6.0",
+            "appSdk": "^1.3.0"
+          },
+          "permissions": [
+            "ui.route",
+            "ui.lobby",
+            "media.images"
+          ],
+          "publisher": {
+            "name": "sammykenny2",
+            "homepage": "https://github.com/cats-inc/cats-apps"
+          },
+          "notes": "",
+          "withdrawn": {
+            "reason": "Superseded by 0.2.1 with the corrected publisher.",
+            "at": "2026-09-30T00:00:00.000Z"
+          }
+        },
+        {
+          "version": "0.2.1",
+          "artifact": {
+            "url": "https://github.com/cats-inc/cats-apps/releases/download/studio-v0.2.1/studio-0.2.1.catsapp",
+            "size": 122651,
+            "sha256": "be0ae730c0948bf5dde7a5a519321bc86506a0bcea595783c7f8df66dc0dcb21"
+          },
+          "compatibility": {
+            "catsPlatform": "^0.6.0",
+            "appSdk": "^1.3.0"
+          },
+          "permissions": [
+            "ui.route",
+            "ui.lobby",
+            "media.images"
+          ],
+          "publisher": {
+            "name": "sammykenny2",
+            "homepage": "https://github.com/cats-inc/cats-apps"
+          },
+          "notes": "用 Grok 產生單張圖片；本版修正發行者與著作權資訊。"
+        }
+      ]
+    }
+  ]
+}

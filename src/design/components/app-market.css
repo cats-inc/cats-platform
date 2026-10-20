@@ -1,0 +1,59 @@
+/* ── App Market (/lobby/market) ──
+ * Reuses the Lobby screen width and top bar; one card per catalog App. */
+
+.appMarketTitle {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+}
+
+.appMarketNotice {
+  margin: 0;
+  color: var(--muted);
+}
+
+.appMarketList {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.appMarketCard {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: 16px;
+}
+
+.appMarketCardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.appMarketCardTitle {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.appMarketCardTitle h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.appMarketCardMeta,
+.appMarketCardState,
+.appMarketCardPermissions {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.appMarketCardDescription,
+.appMarketCardNotes,
+.appMarketCardPermissions {
+  margin: 0;
+}
+
+.platformLobbyCard--market .platformLobbyCardAccent { background: var(--accent); }

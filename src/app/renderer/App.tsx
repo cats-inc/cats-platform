@@ -52,6 +52,7 @@ import { EntitiesShell } from './entities-shell/EntitiesShell.js';
 import { SettingsShell } from './settings/SettingsShell.js';
 import { SettingsCanvasContent } from './settings/SettingsCanvasContent.js';
 import { PlatformLobby } from './PlatformLobby';
+import { APP_MARKET_PATH, AppMarketPage } from './AppMarketPage';
 import {
   GuideCatPlacementProvider,
 } from './GuideCatPlacementProvider';
@@ -725,6 +726,7 @@ export default function PlatformApp() {
         ) : null}
         <Routes>
           <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
+          <Route path={APP_MARKET_PATH} element={<AppMarketPage />} />
           <Route element={<EntitiesShell envelope={readyEnvelope} />}>
             <Route path="/entities" element={<EntitiesIndexPage envelope={readyEnvelope} />} />
             <Route path="/entities/cats" element={<CatsCanvasPage />} />

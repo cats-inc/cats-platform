@@ -36,7 +36,10 @@ Usage remains preinstalled and keeps a host-owned Home placeholder after removal
 Studio is optional and has no uninstalled Home entry. Both use independent App
 releases, a verified official catalog and the same install/update/repair lifecycle.
 
-This is not delivered by Desktop 0.5.13. Current uninstall marks registry state
+An unreleased preview slice (2026-10-20) adds a Desktop-only Market at `/lobby/market`
+that installs non-bundled Apps from the signed catalog; see the FR-09 preview slice in
+[SPEC-120](specs/SPEC-120-app-market-and-lifecycle.md). The rest of this lifecycle is
+not delivered by Desktop 0.5.13. Current uninstall marks registry state
 and requests image-job cancellation; it does not delete package files. Current
 `purge` removes the registry record, not App data. Complete resource reclamation,
 same-version repair, active-context revocation, catalog UX and schema upgrades
