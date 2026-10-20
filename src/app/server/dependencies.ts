@@ -89,6 +89,8 @@ import type { AppConfig } from '../../config.js';
 import { createCodeCatlasHelpService } from '../../products/code/state/catlasHelp.js';
 import { createCodeSessionOperationService } from '../../products/code/state/codeSessionOperation.js';
 import { createConversationSessionDelegate } from '../../products/chat/state/conversationSessionDelegate.js';
+import { createConversationExecutionInspector } from '../../products/chat/state/conversationExecutionInspection.js';
+import { createCodeWorkAreasService } from '../../products/code/state/workAreas.js';
 
 type InjectedAppConfig = AppConfig & {
   auth?: Partial<PlatformAuthConfig>;
@@ -507,6 +509,10 @@ export function resolveServerDependencies(
       now: dependencies.shared.now,
     },
     code: {
+      workAreas: dependencies.code?.workAreas ?? createCodeWorkAreasService({
+        inspector: createConversationExecutionInspector(dependencies.chat.chatStore),
+        runtime: dependencies.code?.runtimeClient ?? dependencies.shared.runtimeClient,
+      }),
       coreStore: dependencies.code?.coreStore ?? sharedCoreStore,
       runtimeClient: dependencies.code?.runtimeClient ?? dependencies.shared.runtimeClient,
       config: dependencies.code?.config ?? dependencies.shared.config,

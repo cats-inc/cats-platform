@@ -31,6 +31,8 @@ import { routeCodeTaskMutationApi } from './taskRoutes.js';
 import { routeCodePlanApi } from './planRoutes.js';
 import { routeCodeDeliveryApi } from './deliveryRoutes.js';
 import { routeCodeRuntimeBridgeApi } from './runtimeBridgeRoutes.js';
+import { routeCodeWorkAreasApi } from './workAreaRoutes.js';
+import type { CodeWorkAreasService } from '../state/workAreas.js';
 import { routeCodeRelayApi } from './relayRoutes.js';
 import { routeCodeArtifactDeclarationApi } from './artifactDeclarationRoutes.js';
 import { routeCodeLivePreviewApi } from './livePreviewRoutes.js';
@@ -61,6 +63,7 @@ import {
 export const CODE_API_SLICE = 'code';
 
 export interface CodeApiDependencies {
+  workAreas?: CodeWorkAreasService;
   coreStore: CoreStore;
   runtimeClient: RuntimeClient;
   config: AppConfig;
@@ -206,6 +209,7 @@ export function readArtifactListFiltersFromQuery(
 export async function routeCodeApi(
   context: CodeApiRouteContext,
 ): Promise<boolean> {
+  if (await routeCodeWorkAreasApi(context)) return true;
   if (await routeCodeKnowledgeApi(context)) return true;
   if (await routeCodeCatlasHelpApi(context)) {
     return true;

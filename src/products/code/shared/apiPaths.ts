@@ -18,6 +18,10 @@ function buildCodeApiDetailPath(
 }
 
 export const CODE_API_PREFIX = PLATFORM_CODE_API_BASE;
+export const CODE_API_CONVERSATION_WORK_AREAS_PATTERN = /^\/api\/code\/conversations\/([^/]+)\/work-areas$/u;
+export function buildCodeApiConversationWorkAreasPath(conversationId: string): string {
+  return `${CODE_API_PREFIX}/conversations/${encodeURIComponent(conversationId)}/work-areas`;
+}
 export const CODE_API_TASKS_PATH = `${CODE_API_PREFIX}/tasks`;
 export const CODE_API_CODESPACES_PATH = `${CODE_API_PREFIX}/codespaces`;
 export const CODE_API_ARTIFACTS_PATH = `${CODE_API_PREFIX}/artifacts`;

@@ -13,9 +13,12 @@ import {
   readRuntimeMcpServersProgressEvent,
   type RuntimeSessionMcpDeliveryReport,
 } from './sessionMcpServers.js';
+import { readRuntimeWorkspaceActivity, type RuntimeWorkspaceActivitySnapshot } from './workspaceActivity.js';
 
 export interface RuntimeNdjsonReadOptions {
   onChunk?: () => void;
+  sessionId?: string;
+  onWorkspaceActivity?: (snapshot: RuntimeWorkspaceActivitySnapshot) => void | Promise<void>;
 }
 
 export async function readRuntimeNdjsonResponse(
@@ -34,6 +37,24 @@ export async function readRuntimeNdjsonResponse(
   let mcpServers: RuntimeSessionMcpDeliveryReport | undefined;
   let inputTokens = 0;
   let outputTokens = 0;
+  let pendingWorkspace: RuntimeWorkspaceActivitySnapshot | null = null;
+  let deliveringWorkspace = false;
+
+  // A slow or failed optional consumer cannot stall message delivery. Retain one latest slot.
+  const deliverWorkspace = (snapshot: RuntimeWorkspaceActivitySnapshot) => {
+    if (!options.onWorkspaceActivity) return;
+    pendingWorkspace = snapshot;
+    if (deliveringWorkspace) return;
+    const pump = () => {
+      const latest = pendingWorkspace;
+      if (!latest) { deliveringWorkspace = false; return; }
+      pendingWorkspace = null;
+      deliveringWorkspace = true;
+      void Promise.resolve().then(() => options.onWorkspaceActivity!(latest))
+        .catch(() => {}).finally(pump);
+    };
+    pump();
+  };
 
   function appendTextToSegments(text: string): void {
     if (!text) {
@@ -47,8 +68,13 @@ export async function readRuntimeNdjsonResponse(
     }
   }
 
-function processEvent(event: Record<string, unknown>): void {
+  function processEvent(event: Record<string, unknown>): void {
     const type = String(event.type ?? '');
+    if (type === 'workspace_activity') {
+      const snapshot = readRuntimeWorkspaceActivity(event.workspaceActivity, options.sessionId);
+      if (snapshot) deliverWorkspace(snapshot);
+      return;
+    }
     const normalizedSegment = normalizeRuntimeMessageSegmentEntry(event);
 
     if (type === 'text') {
@@ -168,6 +194,7 @@ function processEvent(event: Record<string, unknown>): void {
 export async function readRuntimeSseResponse(
   response: Response,
   onEvent: (event: RuntimeSessionStreamEvent) => void | Promise<void>,
+  options: { sessionId?: string } = {},
 ): Promise<void> {
   if (!response.body) {
     throw new Error('cats-runtime did not provide a response stream');
@@ -219,6 +246,12 @@ export async function readRuntimeSseResponse(
         continue;
       }
 
+      if (eventName === 'workspace_activity' || parsed.type === 'workspace_activity') {
+        const snapshot = readRuntimeWorkspaceActivity(parsed.workspaceActivity, options.sessionId);
+        if (!snapshot) continue;
+        await onEvent({ event: 'workspace_activity', data: { type: 'workspace_activity', workspaceActivity: snapshot } });
+        continue;
+      }
       await onEvent({
         event: eventName,
         data: parsed,

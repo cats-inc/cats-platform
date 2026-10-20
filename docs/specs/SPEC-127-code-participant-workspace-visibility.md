@@ -168,11 +168,12 @@ inspection data. Maintain a bounded Code read model over existing session/run
 provenance. Normalize transport once; the renderer must not parse raw provider
 events, assistant prose or transcript tool JSON.
 
-Proposed Code-owned API: `GET /api/code/conversations/:conversationId/work-areas`.
+Code-owned API: `GET /api/code/conversations/:conversationId/work-areas`.
 It checks Code conversation ownership and returns the one selected Codespace,
 participant executions, coverage/freshness and workspace rows. Transport/live
-updates must use the same model and authorization. Proposed routes and fields
-are not current API claims; exact integration sign-off is Phase 1 of PLAN-120.
+updates use the same model and authorization. JSON is the default; the same
+route accepts `text/event-stream` and emits `work_areas` snapshots. Revocation or
+unavailability closes the stream, with `work_areas_unavailable` when writable.
 
 Event ordering uses Runtime session ID, observation epoch and monotonic activity
 revision within that epoch. Keep independent sessions independent. Reconnect
@@ -189,8 +190,11 @@ memory only: after process restart an attachment has no reported activity until
 new observation. The initial Code projection follows that retention boundary;
 it does not introduce a persistent observation format or rewrite old profiles.
 
-The product may retain bounded last-known facts in existing namespaced
-session/run metadata; Runtime remains authoritative for current observations.
+The implemented product cache retains bounded last-known facts in memory only;
+Runtime remains authoritative for current observations. Platform correlates
+Runtime run IDs through immutable per-run wake metadata and exact server-owned
+engine bindings, including owner run/mission cleanup entries. Mutable session
+context is never attribution evidence.
 No per-message fields, new Core record family or global workspace registry is
 required. Freeze-sensitive changes receive explicit integration review first.
 

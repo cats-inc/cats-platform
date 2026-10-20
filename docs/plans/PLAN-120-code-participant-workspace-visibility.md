@@ -31,7 +31,7 @@ PLAN-119 belong to another workstream and remain governing integration constrain
 | S2 | Runtime bounded reducer, ordering, snapshot validation and inactive reattachment | Complete; Runtime `cfa4c044`, 11 focused tests and typecheck passed |
 | S3 | Runtime local-tool observation, session lifecycle, transport and memory-only restart checks | Complete; Runtime `de219b6f`, scoped suites/typecheck and independent review passed |
 | S4 | Native provider structured evidence, coverage and fixture/native checks | Complete; Runtime `57b449e3`, isolated Windows Claude 2.1.304 native evidence, scoped tests/typecheck and independent review |
-| S5 | Platform participant attribution, work-area API and live projection | Pending |
+| S5 | Platform participant attribution, work-area API and live projection | Complete; 28 focused tests, server/renderer/test typechecks and independent review passed |
 | S6 | Code right panel, avatar entry, localization and renderer regressions | Pending |
 | S7 | Cross-repository native acceptance, recovery/privacy and documentation reconciliation | Pending |
 
@@ -42,12 +42,12 @@ common-cwd, no-bubble and no-extra-grant requirements apply throughout delivery.
 
 ### Phase 1: Agree on observation and integration contracts
 
-- [ ] Review ADR-134 / SPEC-127 with the Runtime SPEC-037 snapshot, coverage,
+- [x] Review ADR-134 / SPEC-127 with the Runtime SPEC-037 snapshot, coverage,
   identity, ordering, retention and lifecycle rules.
-- [ ] Map conversation/participant/lane/run/session attribution using existing
+- [x] Map conversation/participant/lane/run/session attribution using existing
   server-owned bindings, including provider/model participants and ADR-132's
   coordinator binding to a participant's own session.
-- [ ] Agree the proposed Code-owned work-areas read route and live-update seam;
+- [x] Agree the Code-owned work-areas read route and live-update seam;
   review any changes to frozen/shared contracts before implementation.
 - [x] Inventory real provider operation payloads and coverage. Select one
   fixture-backed native provider slice alongside Runtime-owned local tools.
@@ -56,7 +56,7 @@ common-cwd, no-bubble and no-extra-grant requirements apply throughout delivery.
   Any future persisted format requires tested migration/recovery.
 - [ ] Review the narrow ADR-131 amendment: Code execution inspection only, with
   participant administration remaining in the existing avatar/composer flow.
-- [ ] Preserve ADR-133's owner-controlled Codespace registration, suppression
+- [x] Preserve ADR-133's owner-controlled Codespace registration, suppression
   and source-aware history cleanup; observations cannot recreate removed records.
 
 **Deliverable:** Reviewed cross-repository contract and acceptance fixture matrix.
@@ -64,16 +64,16 @@ No dependency on multi-root settings or message schema changes is permitted.
 
 ### Phase 2: Ingest Runtime facts and build the Code read model
 
-- [ ] Consume Runtime `workspace_activity` and inspection snapshots through one
+- [x] Consume Runtime `workspace_activity` and inspection snapshots through one
   normalized transport; do not parse raw provider data in Code or the renderer.
-- [ ] Add bounded namespaced last-known observations to the selected session/run
-  metadata seam, with stale-on-restart behavior and existing deletion retention.
-- [ ] Implement conversation-participant grouping and stable repository/checkout
+- [x] Keep bounded last-known observations in memory, keyed by conversation,
+  canonical participant, session and attachment start. Restart does not restore facts.
+- [x] Implement conversation-participant grouping and stable repository/checkout
   identity; keep independent sessions/revisions and intent vs observation separate.
-- [ ] Implement the Code API delegate route with ownership checks and limits.
-- [ ] Handle duplicate/out-of-order delivery, reconnect/read races, cancellation,
+- [x] Implement the Code API delegate route with ownership checks and limits.
+- [x] Handle duplicate/out-of-order delivery, reconnect/read races, cancellation,
   session replacement and foreign-session attempts.
-- [ ] Add focused model, API and cross-layer consumer tests against isolated stores.
+- [x] Add focused model, API and cross-layer consumer tests against isolated stores.
 
 **Deliverable:** Authenticated Code work-area projections recover without
 changing cwd, selected root, permissions or worktree ownership.
@@ -123,6 +123,35 @@ explicitly reported. Fixture passes do not count as native provider acceptance.
 - [ ] Reconcile this plan, spec, ADR and Runtime companion statuses.
 - [ ] Record migration and required version boundary, if any, before a separately
   authorized release; do not bump versions or publish as part of this plan.
+
+## S5 Integration Contract
+
+The generic read-only execution inspector is implemented by the existing
+conversation engine. The host injects it and the selected Runtime client into
+Code's read model. Frozen Core, orchestration, routing and Chat API contracts
+remain unchanged. Inspection reads existing stores without repair or writes.
+
+Runtime run IDs are separate from Platform turn/lane IDs. Only immutable
+`inspection.currentRun/lastRun.wake.metadata` captured when a Runtime run began
+can correlate them, and only after an exact match against server-owned
+conversation/channel/participant/turn/lane/target bindings. Mutable session
+context and timestamps confer no attribution. Owner run/mission deletion or
+log-clear entries invalidate both workflow and retained Core fallback bindings.
+
+The Code route serves JSON and `Accept: text/event-stream` from the same
+projection. It subscribes before inspection, reconciles unknown epochs, rejects
+late inspections across an epoch change, and revalidates authority after awaits.
+Two-second reconciliation also catches idle Chat-only lease/owner changes.
+Backpressured delivery has one in-flight and one latest pending projection, so
+revocation and Runtime stream cleanup continue while an output is stalled.
+
+Limits: 32 participants, four retained attempts per participant, 32 bindings per
+attempt, 128 observation cache entries, four unresolved Runtime inspections,
+32 live Runtime subscriptions, eight watchers/deliveries, 32 inspected attempts
+per refresh and a 256 KiB aggregate response. Runtime's stricter per-session
+limits also apply. Unknown execution mappings are omitted and coverage becomes
+partial; retained running operations display unknown unless the exact active
+engine binding and reconciled current Runtime run agree.
 
 ## Files to Create/Modify
 
@@ -192,6 +221,7 @@ than mirror implementation structure.
 
 | Date | Update |
 | --- | --- |
+| 2026-10-20 | S5 implemented the read-only engine inspector, immutable Runtime-run attribution, bounded memory projection and owner-checked JSON/SSE route. 28 focused tests passed; the final active-turn/path guard rerun passed 17 affected tests. Server, renderer and test TypeScript checks passed. Independent review reproduced and verified fixes for same-session lane replacement, epoch rollback, stalled NDJSON consumers and stalled SSE revocation. Real MemoryChatStore tests cover run/mission logs/deletion and retained Core fallback. No user profile writes or persistence migration. S6/S7 remain pending. |
 | 2026-10-20 | Created ADR-134 / SPEC-127 / PLAN-120 and the Runtime companion proposal. Scope is one Codespace, participant work areas, panel and avatar entry; bubbles and multiple selected Codespaces are deferred. Implementation and native acceptance have not started. |
 | 2026-10-20 | Initial documentation validation passed: 34 references across the six new Platform/Runtime documents resolved against the local worktrees; numbering, index entries, LF/final newlines and code fences checked. Both repositories passed `git diff --check`. No application tests, builds or live acceptance were run for this docs-only task. |
 | 2026-10-20 | Preparing owner-authorized direct-main commit/push against updated Platform main `f3bef166`. Reconciled the proposal with ADR-132 participant/coordinator semantics and ADR-133 owner lifecycle; reserved workstream documents remain unchanged. Implementation remains out of scope. |

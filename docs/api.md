@@ -40,6 +40,24 @@ Current route ownership:
 
 ## Migration Status
 
+### Code conversation work areas (SPEC-127)
+
+`GET /api/code/conversations/:conversationId/work-areas` is a read-only,
+owner-authorized Code route. It returns schema version 1, the selected single
+Codespace path, engine-attributed participants/executions and Runtime-verified
+repository/checkout observations. Runtime run IDs are correlated through
+immutable run wake metadata, independently of Platform turn/lane identities.
+Unknown mappings are omitted with partial coverage. History/log cleanup is
+revalidated against owner run/mission entries on every projection.
+
+The same route with `Accept: text/event-stream` emits `work_areas` snapshots;
+revocation/unavailability closes it (`work_areas_unavailable` when writable).
+Missing/non-Code/foreign conversations return 404, a missing service returns
+503 and unsupported methods return 405. The normal host authentication boundary
+also applies. Responses are bounded to 256 KiB; `truncated` signals omitted
+records. Retention is memory-only and lost continuity never presents old running
+operations as current. This API grants no filesystem or worktree authority.
+
 The public naming refresh (SPEC-009 / PLAN-009) is now implemented. The
 canonical public API uses `/api/cats`, `/api/channels`, `/api/preferences`,
 and `/api/orchestrator` routes.
