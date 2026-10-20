@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | Draft; planning delivered, implementation not started |
+| **Status** | In Progress; owner-authorized sliced implementation, acceptance pending |
 | **Owner** | Cats Code workstream |
 | **Reviewer** | Owner and Platform/Runtime integration owners; pending |
 | **Spec** | [SPEC-127](../specs/SPEC-127-code-participant-workspace-visibility.md) |
@@ -18,9 +18,25 @@ participants. Preserve one Codespace and the common parent cwd. Use the right
 side panel for complete inspection and existing avatar popovers for summaries
 and navigation. Bubble information and multiple selected Codespaces are excluded.
 
-This is a planning-only work package. Implementation checkboxes below are open;
-the owner has not requested implementation or release in this task.
-ADR-133 / SPEC-126 / PLAN-119 are reserved by another workstream.
+The owner authorized implementation and incremental commits after PR #289 passed
+CI and merged. Both main checkouts were pulled before worktrees were created.
+Version changes and publication remain separately authorized. ADR-133 / SPEC-126 /
+PLAN-119 belong to another workstream and remain governing integration constraints.
+
+## Delivery Slices
+
+| Slice | Repository and deliverable | State |
+| --- | --- | --- |
+| S1 | Runtime activity types and admitted repo/worktree identity | In progress |
+| S2 | Runtime bounded reducer, ordering, snapshot validation and inactive restore | Pending |
+| S3 | Runtime local-tool observation, session lifecycle, transport and checkpoint integration | Pending |
+| S4 | Native provider structured evidence, coverage and fixture/native checks | Pending |
+| S5 | Platform participant attribution, work-area API and live projection | Pending |
+| S6 | Code right panel, avatar entry, localization and renderer regressions | Pending |
+| S7 | Cross-repository native acceptance, recovery/privacy and documentation reconciliation | Pending |
+
+Each slice receives scoped validation and a separate commit. The one-Codespace,
+common-cwd, no-bubble and no-extra-grant requirements apply throughout delivery.
 
 ## Implementation Phases
 
@@ -179,6 +195,7 @@ than mirror implementation structure.
 | 2026-10-20 | Initial documentation validation passed: 34 references across the six new Platform/Runtime documents resolved against the local worktrees; numbering, index entries, LF/final newlines and code fences checked. Both repositories passed `git diff --check`. No application tests, builds or live acceptance were run for this docs-only task. |
 | 2026-10-20 | Preparing owner-authorized direct-main commit/push against updated Platform main `f3bef166`. Reconciled the proposal with ADR-132 participant/coordinator semantics and ADR-133 owner lifecycle; reserved workstream documents remain unchanged. Implementation remains out of scope. |
 | 2026-10-20 | Latest-main integration validation passed: preserved both upstream feature commits and their ADR/SPEC/PLAN documents, merged index additions from both workstreams, resolved 38 references across the six new documents and passed whitespace checks. This remains a documentation-only delivery; no application tests or builds were run. |
+| 2026-10-20 | Owner authorized sliced implementation and incremental commits. PR #289 was verified merged at `8bb3fd2f` with changes/validate/nodejs CI successful; both main checkouts pulled cleanly. Platform worktree `plan120-work-areas` starts at that merge commit. Runtime S1 and independent contract review are in progress. |
 
 ---
 

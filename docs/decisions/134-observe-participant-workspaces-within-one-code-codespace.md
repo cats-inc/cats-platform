@@ -2,8 +2,10 @@
 
 ## Status
 
-Proposed, 2026-10-20. Planning requested by the owner; implementation has not
-started. Companion documents: [SPEC-127](../specs/SPEC-127-code-participant-workspace-visibility.md)
+Accepted for implementation, 2026-10-20. The owner authorized sliced implementation
+and incremental commits after PR #289 passed CI and merged. Implementation is in
+progress; acceptance remains pending. Companion documents:
+[SPEC-127](../specs/SPEC-127-code-participant-workspace-visibility.md)
 and [PLAN-120](../plans/PLAN-120-code-participant-workspace-visibility.md).
 
 The owner reserved ADR-133, SPEC-126 and PLAN-119 for another workstream.

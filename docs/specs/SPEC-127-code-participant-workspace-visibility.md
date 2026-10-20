@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | Draft; planning only, implementation not started |
+| **Status** | Approved; sliced implementation in progress, acceptance pending |
 | **Owner** | Cats Code workstream |
 | **Reviewer** | Owner and Platform/Runtime integration owners; pending |
 | **Decision** | [ADR-134](../decisions/134-observe-participant-workspaces-within-one-code-codespace.md) |
