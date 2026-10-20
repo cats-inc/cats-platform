@@ -2,6 +2,89 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-20 — Desktop 0.9.0 standard preview with Code work areas
+
+Desktop **0.9.0** is the owner-selected standard-profile preview with Runtime
+**0.5.3** and Usage **0.5.3**. The minor boundary covers the participant-model
+cutover and Code/Work lifecycle API changes. No Platform npm, Runtime npm,
+cats-one or App publication is selected.
+
+- **Required Platform reset.** Before updating from 0.8.x, stop active work
+  and use **Settings > Data > Reset Platform data**. This is the owner-approved
+  one-time exception in [ADR-132 §9](decisions/132-separate-participants-audience-and-the-orchestrator-binding.md):
+  old zero-participant conversations and old new-chat defaults are unsupported;
+  there is no automatic conversion. Reset erases Platform conversations,
+  account/setup state, memory, attachments, evidence, schedules and history
+  caches. Export anything needed first. Host preferences, installed Apps/plugins
+  and their data, Desktop/Runtime profiles, CLI logins/native transcripts and
+  external workspace files remain; Desktop window placement returns to its
+  default. See [Reset Platform data](deployment.md#reset-platform-data) for the
+  complete boundaries and retry/recovery behavior. No reset is performed by
+  release automation.
+- **Participants, audience and coordinator.** A conversation is a DM or a room
+  of explicit participants. Drafts start with the remembered participant; the
+  first add action adds exactly one more. Audience selection belongs to the
+  current participants, and participant popovers move or clear the coordinator.
+  The default-chat mode, implicit conversation target, God/Lead Cat concepts and
+  Start fresh action are removed. Conversations and artifacts record their
+  owner (#282, #285, #288).
+- **Code work areas.** A single Codespace can be an ordinary parent directory,
+  with multiple repositories at arbitrary depth. Participants keep that shared
+  session cwd. The Work areas panel and participant popovers inspect each
+  execution's observed repositories, original checkouts and physical worktrees,
+  including shared checkouts used by multiple participants. Observations do not
+  grant access or create/manage worktrees. They do not prove a checkout belongs
+  to the selected Codespace across hosts. No bubble annotations or multiple
+  selected Codespaces are included. Native provider evidence is currently
+  partial: structured Claude Read/Write/Edit events are supported; shell/prose
+  inference and other native providers' observations remain unsupported
+  (Platform #290, Runtime #175).
+- **Code and Work owner actions.** Codespaces, planning records, artifacts,
+  Runs/Missions, schedules, Preview and Relay gain contextual management,
+  recovery and checked cleanup. Cleanup protects active work, approvals,
+  referenced evidence, transcripts and output files. Detailed-log retention is
+  opt-in and defaults off. Work consolidates under Overview while retaining
+  supported deep links. Schedule DELETE now rejects enabled rules or rules with
+  receipts; use the checked owner cleanup path. Optional lifecycle/schedule
+  extensions validate input, preserve malformed/future data and use tested
+  backup/atomic recovery; this is separate from the participant reset above
+  ([ADR-133](decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md), #286).
+- **App Market.** Desktop can browse official Apps from the signed catalog,
+  review the exact version/permissions and install through the existing package
+  boundary. Catalog verification, rollback protection, bounded HTTPS downloads
+  and changed-catalog rejection gate installation. The Market remains a preview;
+  installed-App automatic updates are not implied (#287, #289).
+- **Exact sources and App selection.** Every OS build and complete source ZIP
+  use Runtime `c6de062a608f837daecf5cfe3d0e46f0b3003888` (package 0.5.3).
+  Platform is the immutable completed bump/merge commit selected for dispatch,
+  recorded in the release descriptor and source manifest. Usage 0.5.3 stays
+  pinned to `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.3/usage-0.5.3.catsapp`,
+  SHA-256 `80255075c08a73a67e08c9772fa9edf381c8bc165364b81d9ad39d54ca6a3794`,
+  producer source `715ae28e0d8265d850567dfc4cd370e32b313e4a`. The host honors
+  its Platform ^0.6.0 minimum and SDK ^1.2.0 range at host 0.9.0 / SDK 1.5.0;
+  the SDK remains 1.5.0. Studio remains outside the default bundle. Both
+  knowledge bundles advance to revision 2026-10-20.1 and compatible 0.9.x scope.
+- **Signing and updates.** Dispatch desktop-release.yml with tag=v0.9.0,
+  the exact Runtime SHA above and unsigned=false; the workflow creates the
+  preview tag. Expected trust is macOS signed + notarized, Windows unsigned
+  (no certificate) for both installers, and Linux n/a for both packages.
+  Standard-profile 0.8.4 retains the binary update path: macOS universal ZIP
+  with the same Developer ID team, Windows unsigned to unsigned and Linux's
+  matching architecture .deb. The Platform reset remains required. Installed
+  upgrades are not exercised by release preparation.
+- **Validation and hosted results.** Platform #290 and Runtime #175 passed
+  their full required CI after regression fixes. Focused lifecycle, attribution,
+  transport and renderer checks passed; isolated native Claude evidence and a
+  two-participant/cross-repository HTTP fixture passed. Final Code work-area
+  Electron visual acceptance was not completed, and startup/build evidence is
+  not a visual pass. Earlier owner-action native acceptance is recorded in
+  PLAN-119 with its integration limits. Required PR CI gates the version
+  change. Desktop publication enforces three-OS source receipts, exact offline
+  App activation, isolated packaged-sidecar startup, complete sources, signing
+  checks, update metadata, checksums and provenance. Publication results:
+  [v0.9.0 GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.9.0)
+  and its workflow run.
+
 ## 2026-10-20 — Desktop 0.8.4 standard preview with participant avatars
 
 Desktop **0.8.4** is the owner-selected standard-profile preview with Runtime
