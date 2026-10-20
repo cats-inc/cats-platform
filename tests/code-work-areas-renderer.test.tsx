@@ -120,13 +120,13 @@ test('single-participant avatar fallback opens matching work areas; activity pre
   act(() => FakeSource.sources[0].send({ ...data, truncated: true }));
   assert.ok(document.activeElement === heading); assert.equal(checkout.open, true);
   assert.equal(view.container.querySelector('.transcriptMessage')!.innerHTML, transcript, 'transcript has no work-area metadata');
-  fireEvent.click(view.getByRole('button', { name: 'Close', exact: true }));
+  fireEvent.click(view.getByRole('button', { name: 'Close' }));
   act(() => FakeSource.sources[0].send(data));
   assert.ok(!view.container.querySelector('.sidePanel'));
   fireEvent.click(view.container.querySelector('.sidePanelToggle')!);
   assert.ok(document.activeElement !== view.container.querySelector('[data-work-area-participant]'),
     'a consumed avatar focus request does not replay on manual reopen');
-  fireEvent.click(view.getByRole('button', { name: 'Close', exact: true }));
+  fireEvent.click(view.getByRole('button', { name: 'Close' }));
   view.unmount();
   const remounted = mount(); assert.ok(!remounted.container.querySelector('.sidePanel'));
   fireEvent.click(remounted.container.querySelector('.audienceChip')!);
