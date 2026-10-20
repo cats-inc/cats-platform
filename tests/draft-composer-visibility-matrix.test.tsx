@@ -466,3 +466,15 @@ test('parallel lanes on other models than the default keep and edit their own', 
     chips: ['model', 'model'],
   });
 });
+
+test('a new chat that starts with the remembered cat shows a chip like a DM\'s', (t) => {
+  // WorkspaceProductApp seeds the remembered cat as the draft's cat (FR-23).
+  reset();
+  t.after(reset);
+  assert.deepEqual(snapshotDraft({ advanced: false, preset: 'default', draftCatIds: ['cat-milo'] }), {
+    rows: ['avatars:0 chip:"Milo"'],
+    branchRemove: '',
+    lastLane: '',
+    chips: ['model'],
+  });
+});

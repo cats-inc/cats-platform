@@ -262,6 +262,13 @@ Settled during implementation, 2026-10-20:
 - Telegram's default bot talks through the first Boss Cat's DM. If a bot's cat
   cannot be found it says so and opens no room; without an active cat binding
   the webhook is ignored.
+- A draft's default participant is `participant-default` while it is a model;
+  it is counted and keyed like any temporary participant, its model is the
+  remembered default itself, and parallel lanes keep their own models. A
+  remembered cat joins a new chat as the draft's cat, and a new group as its
+  cat plus one more participant. Saving the remembered model from a draft
+  never clears a remembered cat; creating the conversation saves whichever
+  participant is first.
 
 ## References
 

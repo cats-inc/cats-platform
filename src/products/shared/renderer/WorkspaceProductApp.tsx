@@ -145,6 +145,7 @@ import {
   type DraftTemporaryParticipant,
 } from "./draftChatUtils.js";
 import { resolveActiveChannelAudienceState } from "./composerMessageMetadata.js";
+import { resolveRememberedDraftDefaultCatId } from "./draftParticipants.js";
 import { isAdvancedDraftControlsEnabled } from "../advancedDraftControls.js";
 import { resolveNewConversationDraftBuilderControls } from "./draftBuilderControls.js";
 import {
@@ -1448,33 +1449,89 @@ export function createWorkspaceProductApp({
       setBrowserLiveTraceEnabled(readyPayload?.chat.capabilities.debugLiveTrace === true);
     }, [readyPayload?.chat.capabilities.debugLiveTrace]);
 
+    // A new draft starts with the remembered default (SPEC-125 FR-23): a cat
+    // joins as its first participant, otherwise its default model does.
+    const rememberedDraftDefaultCatId = supportsStructuredDraftModes && readyPayload
+      ? resolveRememberedDraftDefaultCatId(readyPayload.chat)
+      : null;
+    const rememberedDraftDefaultCatName = rememberedDraftDefaultCatId
+      ? readyPayload?.chat.cats.find((cat) => cat.id === rememberedDraftDefaultCatId)?.name ?? ""
+      : "";
+
     useOnGenericDraftRouteEntry(
       showingNewChatDraft && !draftDefaultRecipientCatId,
       useCallback(() => {
         resetDraftCats();
+        // A new group grows from the remembered cat like it grows from the
+        // default model: one more participant joins it.
+        const groupWithRememberedCat = supportsStructuredDraftModes
+          && effectiveNewChatPreset === "group"
+          && rememberedDraftDefaultCatId != null;
+        if (groupWithRememberedCat) {
+          setDraftCatIds([rememberedDraftDefaultCatId]);
+        }
         setDraftTemporaryParticipants((current) =>
-          supportsStructuredDraftModes
-            ? resolveGenericDraftTemporaryParticipants(
-                effectiveNewChatPreset,
-                current,
-                seedDraftGroupParticipants,
-              )
-            : []);
+          !supportsStructuredDraftModes
+            ? []
+            : groupWithRememberedCat
+              ? (current.length > 0
+                  ? current
+                  : [createNextGroupTemporaryParticipant({
+                      baseProvider: draftExecutionTarget.provider,
+                      existingParticipants: [],
+                      takenNames: [rememberedDraftDefaultCatName],
+                    })])
+              : resolveGenericDraftTemporaryParticipants(
+                  effectiveNewChatPreset,
+                  current,
+                  seedDraftGroupParticipants,
+                ));
         setDraftWorkflowShape("sequential");
         setDraftAudienceKeys(null);
         resetDraftParallelChatTargets();
       }, [
+        draftExecutionTarget.provider,
         effectiveNewChatPreset,
+        rememberedDraftDefaultCatId,
+        rememberedDraftDefaultCatName,
         resetDraftCats,
         resetDraftParallelChatTargets,
         seedDraftGroupParticipants,
         setDraftAudienceKeys,
+        setDraftCatIds,
         setDraftTemporaryParticipants,
         setDraftWorkflowShape,
         supportsStructuredDraftModes,
       ]),
       effectiveNewChatPreset,
     );
+
+    // A new chat nobody has joined yet starts with the remembered cat, also
+    // when the payload arrives after the draft opened. Only a fresh draft has
+    // neither cats nor temporary participants: removal keeps at least one.
+    useEffect(() => {
+      if (
+        !showingNewChatDraft
+        || draftDefaultRecipientCatId
+        || effectiveNewChatPreset !== "default"
+        || hasVisibleParallelDraftTargets
+        || !rememberedDraftDefaultCatId
+        || draftCatIds.length > 0
+        || draftTemporaryParticipants.length > 0
+      ) {
+        return;
+      }
+      setDraftCatIds([rememberedDraftDefaultCatId]);
+    }, [
+      draftCatIds.length,
+      draftDefaultRecipientCatId,
+      draftTemporaryParticipants.length,
+      effectiveNewChatPreset,
+      hasVisibleParallelDraftTargets,
+      rememberedDraftDefaultCatId,
+      setDraftCatIds,
+      showingNewChatDraft,
+    ]);
 
     useEffect(() => {
       if (!supportsStructuredDraftModes || !showingNewChatDraft) {

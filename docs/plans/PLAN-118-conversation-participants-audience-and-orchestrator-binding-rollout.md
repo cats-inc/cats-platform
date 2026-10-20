@@ -95,7 +95,7 @@ in every room with participants. Shippable on its own as a patch.
       non-participants; the admin switch in Settings › Cats. The popover also
       removes a participant while another remains; the header, the frame and
       the Settings switch landed with tasks 2.1 and 3.4.
-- [ ] Task 4.4: Remembered default as model or cat in new drafts.
+- [x] Task 4.4: Remembered default as model or cat in new drafts.
 
 **Deliverables**: Drafts and conversations follow one rule.
 

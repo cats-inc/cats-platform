@@ -26,6 +26,7 @@ import {
   resolveDraftRoutePath,
   resolveMissingDraftDefaultRecipientPath,
 } from '../src/products/chat/renderer/draftParticipants.ts';
+import { resolveRememberedDraftDefaultCatId } from '../src/products/shared/renderer/draftParticipants.ts';
 import { createDefaultRoomRoutingState } from '../src/core/roomRoutingState.ts';
 import type { RuntimeSessionPolicy } from '../src/shared/runtimeSessionPolicy.ts';
 import {
@@ -916,4 +917,17 @@ test('insertCreatedChannelIntoPayload promotes a real created channel without a 
   assert.equal(next.chat.channels[0]?.id, channel.id);
   assert.equal(next.chat.channels[0]?.roomMode, 'chat_channel');
   assert.equal(next.chat.selectedChannel?.roomRouting?.mode, 'chat_channel');
+});
+
+test('a new draft starts with the remembered cat only while it can still chat', () => {
+  const cats = [
+    { id: 'cat-milo', status: 'active', products: ['chat'] },
+    { id: 'cat-away', status: 'archived', products: ['chat'] },
+    { id: 'cat-work', status: 'active', products: ['work'] },
+  ];
+  assert.equal(resolveRememberedDraftDefaultCatId({ cats, newChatDefaults: { catId: 'cat-milo' } }), 'cat-milo');
+  assert.equal(resolveRememberedDraftDefaultCatId({ cats, newChatDefaults: { catId: 'cat-away' } }), null);
+  assert.equal(resolveRememberedDraftDefaultCatId({ cats, newChatDefaults: { catId: 'cat-work' } }), null);
+  assert.equal(resolveRememberedDraftDefaultCatId({ cats, newChatDefaults: { catId: 'cat-gone' } }), null);
+  assert.equal(resolveRememberedDraftDefaultCatId({ cats, newChatDefaults: { catId: null } }), null);
 });
