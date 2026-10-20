@@ -244,7 +244,7 @@ export function AudienceChip({
         <ParticipantTargetPopover
           participant={first}
           editor={firstEditor}
-          showIdentity={first.isCat || first.participantId != null}
+          showIdentity={first.isCat || firstEditor.profile != null}
           placement="above-end"
           onClose={closePopover}
         />

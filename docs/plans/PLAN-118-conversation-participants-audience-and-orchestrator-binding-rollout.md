@@ -87,7 +87,7 @@ in every room with participants. Shippable on its own as a patch.
       Started conversations, layout modes and continuity topologies no longer
       have a default-chat mode; a draft's implicit chip becomes its real
       default participant in Task 4.2.
-- [ ] Task 4.2: The default participant as a real draft participant from the
+- [x] Task 4.2: The default participant as a real draft participant from the
       start; the group minimum of two behind an internal flag that defaults
       on; the draft visibility matrix unchanged.
 - [ ] Task 4.3: Coordinator control in the participant popover; admin frame;

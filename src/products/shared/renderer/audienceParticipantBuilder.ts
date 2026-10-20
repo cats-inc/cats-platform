@@ -56,13 +56,14 @@ export function buildAudienceParticipantFromTemporaryParticipant(
   };
 }
 
+/** A parallel lane's own model, keyed by its lane (`parallel:<index>`). */
 export function buildAudienceParticipantFromExecutionTarget(
   executionTarget: ExecutionTargetValue,
-  keyOverride?: string,
+  key: string,
 ): DraftComposerStackParticipant {
   const label = buildExecutionTargetLabel(executionTarget);
   return {
-    key: keyOverride ?? 'implicit:execution_target',
+    key,
     name: label,
     executionLabel: label,
     avatarColor: null,

@@ -49,8 +49,6 @@ test('resolveNewConversationDraftViewState keeps unrelated active-channel busy s
     parallelTargets: undefined,
     greeting: null,
     greetingPool: null,
-    draftHighlightedCatId: null,
-    draftCatExecutionTargetOverrides: new Map(),
     busy: createComposerBusyState('send', createChannelComposerBusyScope('channel-1')),
     t,
   });
@@ -70,8 +68,6 @@ test('resolveNewConversationDraftViewState keeps draft send busy local to the ac
     parallelTargets: undefined,
     greeting: null,
     greetingPool: null,
-    draftHighlightedCatId: null,
-    draftCatExecutionTargetOverrides: new Map(),
     busy: createComposerBusyState('ack', createDraftComposerBusyScope()),
     t,
   });

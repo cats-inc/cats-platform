@@ -1,7 +1,8 @@
 import type { ChatCat } from '../../api/workspaceContracts.js';
-import type {
-  DraftTemporaryParticipant,
-  DraftTemporaryParticipantUpdate,
+import {
+  DRAFT_DEFAULT_PARTICIPANT_ID,
+  type DraftTemporaryParticipant,
+  type DraftTemporaryParticipantUpdate,
 } from '../draftChatUtils.js';
 import type { AudienceTargetEditor } from './AudienceChip.js';
 import type { ExecutionTargetValue } from './ExecutionTarget.js';
@@ -18,12 +19,16 @@ export interface DraftTargetEditorContext {
   draftCatExecutionTargetOverrides: ReadonlyMap<string, ExecutionTargetValue>;
   onDraftCatExecutionTargetOverride: (catId: string, value: ExecutionTargetValue) => void;
   draftTemporaryParticipants: DraftTemporaryParticipant[];
+  /** Cats and temporary participants in the draft, its default participant included. */
+  draftParticipantCount?: number;
   onUpdateDraftTemporaryParticipant: (participantId: string, input: DraftTemporaryParticipantUpdate) => void;
   openCatPage: (catId: string) => void;
 }
 
 /**
- * The draft chip edits what the new conversation will use. A parallel lane
+ * The draft chip edits what the new conversation will use. The default
+ * participant edits the remembered default, which a draft saves at once; it
+ * shows a name and role hint only once others have joined. A parallel lane
  * edits that lane's own target. A cat's pick stays a draft override, shared
  * by every lane the cat joins and applied to the conversations once they
  * exist; the cat's own default model only changes in its settings. A
@@ -35,11 +40,6 @@ export function resolveDraftTargetEditor(
   participant: DraftComposerStackParticipant,
   context: DraftTargetEditorContext,
 ): AudienceTargetEditor | null {
-  if (participant.key === 'implicit:execution_target') {
-    return context.selectedExecutionTarget && context.onExecutionTargetChange
-      ? { target: context.selectedExecutionTarget, onChange: context.onExecutionTargetChange }
-      : null;
-  }
   const lane = PARALLEL_LANE_KEY.exec(participant.key);
   if (lane) {
     const index = Number(lane[1]);
@@ -82,6 +82,21 @@ export function resolveDraftTargetEditor(
   if (temporary.presetId) {
     return { target, profile };
   }
+  const onUpdateProfile = (update: DraftTemporaryParticipantUpdate) =>
+    context.onUpdateDraftTemporaryParticipant(temporary.participantId, update);
+  if (
+    temporary.participantId === DRAFT_DEFAULT_PARTICIPANT_ID
+    && context.selectedExecutionTarget
+    && context.onExecutionTargetChange
+  ) {
+    return {
+      target: context.selectedExecutionTarget,
+      onChange: context.onExecutionTargetChange,
+      profile: (context.draftParticipantCount ?? 1) > 1
+        ? { ...profile, onSave: onUpdateProfile }
+        : undefined,
+    };
+  }
   return {
     target,
     onChange: (value) => context.onUpdateDraftTemporaryParticipant(temporary.participantId, {
@@ -90,12 +105,6 @@ export function resolveDraftTargetEditor(
       model: value.model,
       modelSelection: value.modelSelection,
     }),
-    profile: {
-      ...profile,
-      onSave: (update) => context.onUpdateDraftTemporaryParticipant(
-        temporary.participantId,
-        update,
-      ),
-    },
+    profile: { ...profile, onSave: onUpdateProfile },
   };
 }

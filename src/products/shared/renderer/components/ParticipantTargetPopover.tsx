@@ -186,7 +186,7 @@ function ParticipantProfileFields({ profile }: { profile: ParticipantProfileEdit
 export interface ParticipantTargetPopoverProps {
   participant: DraftComposerStackParticipant;
   editor: AudienceTargetEditor;
-  /** The implicit target has no identity of its own and so no header. */
+  /** A lone draft default participant shows only its model, as its chip does. */
   showIdentity: boolean;
   placement: ParticipantTargetPopoverPlacement;
   onClose: () => void;

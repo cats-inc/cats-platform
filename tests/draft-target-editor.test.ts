@@ -8,7 +8,15 @@ import {
   resolveDraftTargetEditor,
   type DraftTargetEditorContext,
 } from '../src/products/shared/renderer/components/newConversationDraftTargetEditor.ts';
-import type { DraftTemporaryParticipantUpdate } from '../src/products/shared/renderer/draftChatUtils.tsx';
+import {
+  createDraftDefaultParticipant,
+  createInitialGroupParticipants,
+  DRAFT_DEFAULT_PARTICIPANT_ID,
+  resolveDraftRosterTemporaryParticipants,
+  syncDraftParticipantsWithDefaultTarget,
+  type DraftTemporaryParticipant,
+  type DraftTemporaryParticipantUpdate,
+} from '../src/products/shared/renderer/draftChatUtils.tsx';
 
 const claude: ExecutionTargetValue = { provider: 'claude', instance: 'native', model: 'opus', modelSelection: null };
 const codex: ExecutionTargetValue = { provider: 'codex', instance: 'native', model: 'gpt-5.6-sol', modelSelection: null };
@@ -115,4 +123,88 @@ test('a participant added from an assistant preset is read-only in the draft', (
   assert.equal(editor.target.provider, 'claude');
   assert.equal(editor.onChange, undefined, 'its model changes on the assistant, not here');
   assert.deepEqual(editor.profile, { name: 'Reviewer', roleHint: 'Reviews diffs' });
+});
+
+test('a draft nobody has joined starts with its default participant, and lanes keep their own', () => {
+  const [seeded, ...rest] = resolveDraftRosterTemporaryParticipants({
+    temporaryParticipants: [],
+    defaultTarget: codex,
+    seedsDefault: true,
+  });
+  assert.deepEqual(rest, []);
+  assert.equal(seeded?.participantId, DRAFT_DEFAULT_PARTICIPANT_ID);
+  assert.equal(seeded?.provider, 'codex');
+  assert.equal(seeded?.model, 'gpt-5.6-sol');
+
+  // A cat, a direct lane or parallel lanes do not seed it (the caller decides).
+  assert.deepEqual(resolveDraftRosterTemporaryParticipants({
+    temporaryParticipants: [],
+    defaultTarget: codex,
+    seedsDefault: false,
+  }), []);
+
+  // Once participants are added, the roster is theirs, default included or not.
+  const added: DraftTemporaryParticipant[] = [
+    { participantId: 'temp-1', name: 'Bram', provider: 'claude', model: 'opus', modelSelection: null },
+  ];
+  assert.equal(resolveDraftRosterTemporaryParticipants({
+    temporaryParticipants: added,
+    defaultTarget: codex,
+    seedsDefault: true,
+  }), added);
+});
+
+test('a group draft grows from its default participant, which stays first', () => {
+  const [lead, second] = createInitialGroupParticipants(codex, 5);
+  assert.equal(lead?.participantId, DRAFT_DEFAULT_PARTICIPANT_ID);
+  assert.equal(lead?.provider, 'codex');
+  assert.notEqual(second?.participantId, DRAFT_DEFAULT_PARTICIPANT_ID);
+});
+
+test('the default participant edits the remembered default, with a name only once others joined', () => {
+  const remembered: ExecutionTargetValue[] = [];
+  const defaultParticipant = createDraftDefaultParticipant(codex);
+  const defaultChip = chip(`temp:${DRAFT_DEFAULT_PARTICIPANT_ID}`, {
+    participantId: DRAFT_DEFAULT_PARTICIPANT_ID,
+  });
+  const alone = resolveDraftTargetEditor(defaultChip, context({
+    selectedExecutionTarget: codex,
+    onExecutionTargetChange: (value) => remembered.push(value),
+    draftTemporaryParticipants: [defaultParticipant],
+    draftParticipantCount: 1,
+  }));
+  assert.ok(alone);
+  assert.deepEqual(alone.target, codex);
+  alone.onChange?.(claude);
+  assert.deepEqual(remembered, [claude]);
+  assert.equal(alone.profile, undefined, 'one participant shows only its model');
+
+  const updates: Array<[string, DraftTemporaryParticipantUpdate]> = [];
+  const grouped = resolveDraftTargetEditor(defaultChip, context({
+    selectedExecutionTarget: codex,
+    onExecutionTargetChange: () => {},
+    draftTemporaryParticipants: [defaultParticipant],
+    draftParticipantCount: 2,
+    onUpdateDraftTemporaryParticipant: (participantId, update) => updates.push([participantId, update]),
+  }));
+  assert.equal(grouped?.profile?.name, defaultParticipant.name);
+  grouped?.profile?.onSave?.({ name: 'Lead' });
+  assert.deepEqual(updates, [[DRAFT_DEFAULT_PARTICIPANT_ID, { name: 'Lead' }]]);
+});
+
+test('the default participant follows the remembered default wherever it sits', () => {
+  const other: DraftTemporaryParticipant = {
+    participantId: 'temp-1', name: 'Bram', provider: 'claude', model: 'opus', modelSelection: null,
+  };
+  const participants = [other, createDraftDefaultParticipant(codex)];
+  const synced = syncDraftParticipantsWithDefaultTarget(participants, claude, 'default');
+  assert.equal(synced[0], other, 'another participant is left alone outside a group');
+  assert.equal(synced[1]?.participantId, DRAFT_DEFAULT_PARTICIPANT_ID);
+  assert.equal(synced[1]?.provider, 'claude');
+  assert.equal(synced[1]?.model, 'opus');
+  assert.equal(
+    syncDraftParticipantsWithDefaultTarget(synced, claude, 'default'),
+    synced,
+    'an unchanged target keeps the same array',
+  );
 });

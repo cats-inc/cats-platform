@@ -134,10 +134,11 @@ import {
   createInitialGroupParticipants,
   createNextGroupTemporaryParticipant,
   createNextParallelTarget,
+  createDraftDefaultParticipant,
   createDraftTemporaryParticipant,
   reconcileDraftAudienceKeysAfterParticipantRemoval,
   resolveGenericDraftTemporaryParticipants,
-  syncLeadDraftTemporaryParticipantWithTarget,
+  syncDraftParticipantsWithDefaultTarget,
   type DraftTemporaryParticipant,
 } from "./draftChatUtils.js";
 import { resolveActiveChannelAudienceState } from "./composerMessageMetadata.js";
@@ -819,16 +820,11 @@ export function createWorkspaceProductApp({
         .filter((name) => name.trim().length > 0);
       const randomUUID = () =>
         globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`;
+      // A draft nobody has joined yet already shows its default participant;
+      // adding it for real keeps it first.
       const nextParticipant =
         draftTemporaryParticipants.length === 0 && participantCatIds.length === 0
-          ? createDraftTemporaryParticipant({
-              provider: draftExecutionTarget.provider,
-              instance: draftExecutionTarget.instance,
-              model: draftExecutionTarget.model,
-              modelSelection: draftExecutionTarget.modelSelection,
-              takenNames: [...visibleCatNames, ...draftTemporaryParticipants.map((p) => p.name)],
-              randomUUID,
-            })
+          ? createDraftDefaultParticipant(draftExecutionTarget, visibleCatNames)
           : createNextGroupTemporaryParticipant({
               baseProvider: draftExecutionTarget.provider,
               existingParticipants: draftTemporaryParticipants,
@@ -1083,15 +1079,7 @@ export function createWorkspaceProductApp({
       const nextParticipant =
         draftTemporaryParticipants.length === 0
         && draftParticipants.participantCatIds.length === 0
-          ? createDraftTemporaryParticipant({
-              provider: draftExecutionTarget.provider,
-              instance: draftExecutionTarget.instance,
-              model: draftExecutionTarget.model,
-              modelSelection: draftExecutionTarget.modelSelection,
-              takenNames,
-              randomUUID: () =>
-                globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
-            })
+          ? createDraftDefaultParticipant(draftExecutionTarget, takenNames)
           : createNextGroupTemporaryParticipant({
               baseProvider: draftExecutionTarget.provider,
               existingParticipants: draftTemporaryParticipants,
@@ -1486,19 +1474,12 @@ export function createWorkspaceProductApp({
     );
 
     useEffect(() => {
-      if (
-        !supportsStructuredDraftModes
-        || !showingNewChatDraft
-        || effectiveNewChatPreset !== "group"
-      ) {
+      if (!supportsStructuredDraftModes || !showingNewChatDraft) {
         return;
       }
 
       setDraftTemporaryParticipants((current) =>
-        syncLeadDraftTemporaryParticipantWithTarget({
-          participants: current,
-          target: draftExecutionTarget,
-        }));
+        syncDraftParticipantsWithDefaultTarget(current, draftExecutionTarget, effectiveNewChatPreset));
     }, [
       draftExecutionTarget.instance,
       draftExecutionTarget.model,
@@ -1552,16 +1533,9 @@ export function createWorkspaceProductApp({
     const onDraftExecutionTargetChange = useCallback(
       (nextDraftExecutionTarget: ExecutionTargetValue): void => {
         setDraftExecutionTarget(nextDraftExecutionTarget);
-        if (
-          supportsStructuredDraftModes
-          && showingNewChatDraft
-          && effectiveNewChatPreset === "group"
-        ) {
+        if (supportsStructuredDraftModes && showingNewChatDraft) {
           setDraftTemporaryParticipants((current) =>
-            syncLeadDraftTemporaryParticipantWithTarget({
-              participants: current,
-              target: nextDraftExecutionTarget,
-            }));
+            syncDraftParticipantsWithDefaultTarget(current, nextDraftExecutionTarget, effectiveNewChatPreset));
         }
       },
       [

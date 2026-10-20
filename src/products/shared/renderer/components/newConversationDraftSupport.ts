@@ -8,7 +8,11 @@ import {
   resolveVisibleDraftStarterSuggestions,
   type DraftStarterSuggestion,
 } from '../draftStarterSuggestions.js';
-import { pickDraftGreeting, type DraftTemporaryParticipant } from '../draftChatUtils.js';
+import {
+  pickDraftGreeting,
+  resolveDraftRosterTemporaryParticipants,
+  type DraftTemporaryParticipant,
+} from '../draftChatUtils.js';
 import { isChatCat } from '../workspaceChatUtils.js';
 import {
   buildNamedRecipient,
@@ -99,8 +103,6 @@ export function resolveNewConversationDraftViewState(input: {
   parallelTargets?: ExecutionTargetValue[] | undefined;
   greeting?: string | null;
   greetingPool?: ReadonlyArray<string> | null;
-  draftHighlightedCatId: string | null;
-  draftCatExecutionTargetOverrides: Map<string, ExecutionTargetValue>;
   selectedExecutionTarget?: ExecutionTargetValue | undefined;
   busy: WorkspaceBusyState;
   t: NewConversationDraftTranslator;
@@ -108,6 +110,15 @@ export function resolveNewConversationDraftViewState(input: {
   const chatCats = input.payload.chat.cats.filter(isChatCat);
   const assistantPresets = input.payload.assistantPresets ?? [];
   const activeChatCats = chatCats.filter((cat) => cat.status === 'active');
+  // A draft without a cat starts with its default participant (SPEC-125
+  // FR-23); parallel lanes keep their own models instead.
+  const draftTemporaryParticipants = resolveDraftRosterTemporaryParticipants({
+    temporaryParticipants: input.draftTemporaryParticipants,
+    defaultTarget: input.selectedExecutionTarget,
+    seedsDefault: !input.draftDefaultRecipientCatId
+      && input.draftCatIds.length === 0
+      && (input.parallelTargets?.length ?? 0) < 2,
+  });
   const draftParticipants = resolveDraftParticipantSelection({
     draftDefaultRecipientCatId: input.draftDefaultRecipientCatId,
     draftCatIds: input.draftCatIds,
@@ -131,9 +142,9 @@ export function resolveNewConversationDraftViewState(input: {
   const effectiveDefaultRecipientCat = defaultRecipientCat ?? draftDefaultRecipientCat;
   const effectiveDefaultRecipientTemporaryParticipant = effectiveDefaultRecipientCat
     ? null
-    : input.draftTemporaryParticipants[0] ?? null;
+    : draftTemporaryParticipants[0] ?? null;
   const draftParticipantCount =
-    draftParticipants.participantCatIds.length + input.draftTemporaryParticipants.length;
+    draftParticipants.participantCatIds.length + draftTemporaryParticipants.length;
   const maxGroupParticipants =
     input.payload.chat.capabilities.maxChatParticipants ?? Number.POSITIVE_INFINITY;
   const hasReachedGroupParticipantLimit = draftParticipantCount >= maxGroupParticipants;
@@ -171,28 +182,6 @@ export function resolveNewConversationDraftViewState(input: {
     }
     return pickDraftGreeting({ pool: input.greetingPool, t: input.t });
   })();
-  const highlightedCat = input.draftHighlightedCatId && input.draftCatIds.includes(input.draftHighlightedCatId)
-    ? chatCats.find((cat) => cat.id === input.draftHighlightedCatId) ?? null
-    : null;
-  // Prefer the draft's own override for the direct-lane cat, as the
-  // highlighted-cat branch already does: the pick is visible immediately
-  // instead of only once the profile save has round-tripped.
-  const activePanelExecutionTarget: ExecutionTargetValue | null =
-    draftSuggestionContext.isDirectLaneContext && defaultRecipientCat
-      ? (input.draftCatExecutionTargetOverrides.get(defaultRecipientCat.id) ?? {
-          provider: defaultRecipientCat.defaultExecutionTarget.provider,
-          model: defaultRecipientCat.defaultExecutionTarget.model,
-          instance: defaultRecipientCat.defaultExecutionTarget.instance,
-          modelSelection: defaultRecipientCat.defaultModelSelection ?? null,
-        })
-      : highlightedCat
-        ? (input.draftCatExecutionTargetOverrides.get(highlightedCat.id) ?? {
-            provider: highlightedCat.defaultExecutionTarget.provider,
-            model: highlightedCat.defaultExecutionTarget.model,
-            instance: highlightedCat.defaultExecutionTarget.instance,
-            modelSelection: highlightedCat.defaultModelSelection ?? null,
-          })
-        : input.selectedExecutionTarget ?? null;
   const isAckPending = isComposerAckBusyForDraft(input.busy);
   const isSubmittingFirstTurn = isComposerBusyForDraft(input.busy) || isAckPending;
   const draftComposerRecipients: RecipientChipTarget[] = (() => {
@@ -217,13 +206,14 @@ export function resolveNewConversationDraftViewState(input: {
       .map((catId) => chatCats.find((candidate) => candidate.id === catId))
       .filter((cat): cat is NonNullable<typeof cat> => cat != null && cat.name.length > 0)
       .map((cat) => buildAudienceParticipantFromCat(cat)),
-    ...input.draftTemporaryParticipants.map((tp) => buildAudienceParticipantFromTemporaryParticipant(tp)),
+    ...draftTemporaryParticipants.map((tp) => buildAudienceParticipantFromTemporaryParticipant(tp)),
   ];
 
   return {
     chatCats,
     assistantPresets,
     activeChatCats,
+    draftTemporaryParticipants,
     draftParticipants,
     defaultRecipientCat,
     hasTelegramBinding,
@@ -236,7 +226,6 @@ export function resolveNewConversationDraftViewState(input: {
     visibleDraftCatIds,
     visibleStarterSuggestions,
     resolvedGreeting,
-    activePanelExecutionTarget,
     isAckPending,
     isSubmittingFirstTurn,
     draftComposerRecipients,
