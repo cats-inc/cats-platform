@@ -1162,6 +1162,8 @@ GET /api/code/tasks/:taskId
 GET /api/code/codespaces
 GET /api/code/codespaces/:codespaceId
 POST /api/code/codespaces/resolve
+POST /api/code/codespaces/register
+POST /api/code/codespaces/:codespaceId/actions
 POST /api/code/catlas/help
 GET /api/code/knowledge
 POST /api/code/knowledge
@@ -1199,6 +1201,21 @@ GET /api/code/previews
   not return renderer-only seed fixtures.
 - `GET /api/code/codespaces/:codespaceId` returns the focused Codespace detail
   view, including linked conversations, Code tasks, and artifacts.
+- Codespace list/detail includes owner `management` state: `listing`
+  (`visible`, `archived`, `removed`), `pinned`, and the current lifecycle
+  `revision`. The default list returns visible entries; `?view=all`,
+  `?view=archived` and `?view=removed` expose other listing states. Inferred
+  entries start unpinned. Removed registrations remain explicitly restorable
+  even when their original source disappears.
+- `POST /api/code/codespaces/:codespaceId/actions` accepts `{ action,
+  revision, label? }`, where action is `pin`, `unpin`, `rename`, `archive`,
+  `restore` or `remove`. Stale revisions return `409 owner_revision_stale`.
+  Removal preserves directories, conversations and outputs; active Run,
+  Session or Preview references return `409 codespace_in_use`. Only explicit
+  restore reactivates a removed listing.
+- `POST /api/code/codespaces/register` accepts `{ path, revision }`. The path
+  must be an existing absolute directory; this registers it without creating
+  directories or starting execution. The response is its Codespace detail.
 - `POST /api/code/codespaces/resolve` resolves a candidate path and fallback
   conversation context into a Code codespace summary.
 - `GET /api/code/artifacts` returns the code-output list read model above all

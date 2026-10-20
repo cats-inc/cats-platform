@@ -1,3 +1,16 @@
+.ownerCodespaceFilters { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+.ownerCodespaceFilters label { display: flex; align-items: center; gap: .5rem; }
+.ownerCodespaceFilters input, .ownerCodespaceFilters select, .ownerCodespaceActions input { background: var(--canvas-bg); color: var(--text); border: 1px solid var(--border); padding: .4rem; border-radius: 6px; }
+.ownerCodespaceActions { position: relative; flex-shrink: 0; }
+.ownerCodespaceActions summary { cursor: pointer; padding: .5rem; }
+.ownerCodespaceActions__menu { position: absolute; right: 0; z-index: 50; min-width: 220px; padding: .5rem; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas-bg); box-shadow: 0 8px 24px #0003; }
+.ownerCodespaceActions__menu button, .ownerCodespaceActions__menu a { display: block; width: 100%; padding: .5rem; background: transparent; color: var(--text); border: 0; text-align: left; cursor: pointer; }
+.ownerCodespaceActions__menu button:hover, .ownerCodespaceActions__menu a:hover { background: var(--hover-bg, #8882); }
+.ownerCodespaceActions__menu form { padding: .5rem; }
+.ownerCodespaceActions [role=alert] { max-width: 260px; color: var(--danger, #b33); }
+.codeWorkspacesList__row { display: flex; align-items: center; }
+.codeWorkspacesList__rowLink { flex: 1; min-width: 0; }
+
 /* =========================================================
  * Code — Codespaces
  *

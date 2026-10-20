@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { ownerEntry, type OwnerListingState } from '../../../core/ownerLifecycle.js';
 
 import {
   buildCoreTaskControlPlaneView,
@@ -69,7 +70,6 @@ const CODE_DASHBOARD_WORK_ITEM_LIMIT = 16;
 const CODE_DASHBOARD_ARTIFACT_LIMIT = 18;
 const CODE_TIMELINE_PREVIEW_LIMIT = 12;
 const CODE_DETAIL_ARTIFACT_LIMIT = 12;
-const CODE_WORKSPACE_LIST_LIMIT = 48;
 
 export interface CodeDashboardSummary {
   ownerActorId: string;
@@ -278,6 +278,7 @@ export interface CodeArtifactListProjection {
 
 export type CodeWorkspaceListItemStatus = 'active' | 'ready' | 'draft' | 'archived';
 export type CodeWorkspaceListItemSource =
+  | 'owner_selected'
   | 'task_workspace'
   | 'conversation_repo'
   | 'runtime_cwd'
@@ -294,6 +295,7 @@ export interface CodeWorkspaceListItem {
   taskCount: number;
   artifactCount: number;
   lastActiveAt: string;
+  management?: { listing: OwnerListingState; pinned: boolean; revision: number };
 }
 
 export interface CodeWorkspaceListSummary {
@@ -312,9 +314,11 @@ export interface CodeWorkspaceConversationItem {
   repoPath: string | null;
   updatedAt: string;
   lastMessageAt: string | null;
+  sourceChannelId?: string | null;
 }
 
 export interface CodeWorkspaceListProjection {
+  revision?: number;
   workspaces: CodeWorkspaceListItem[];
   summary: CodeWorkspaceListSummary;
 }
@@ -394,7 +398,7 @@ function normalizeWorkspacePathForComparison(value: string): string {
   return value.trim().replace(/\\/g, '/');
 }
 
-function createCodeWorkspaceId(workspacePath: string): string {
+export function createCodeWorkspaceId(workspacePath: string): string {
   const digest = createHash('sha256')
     .update(normalizeWorkspacePathForComparison(workspacePath))
     .digest('hex')
@@ -754,6 +758,7 @@ interface CodeWorkspaceAccumulator {
 }
 
 const WORKSPACE_SOURCE_PRIORITY: Record<CodeWorkspaceListItemSource, number> = {
+  owner_selected: 50,
   task_workspace: 40,
   conversation_repo: 30,
   runtime_cwd: 20,
@@ -894,6 +899,7 @@ function buildCodeWorkspaceConversationItem(
     repoPath: conversation.repoPath,
     updatedAt: conversation.updatedAt,
     lastMessageAt: conversation.lastMessageAt,
+    sourceChannelId: conversation.sourceChannelId,
   };
 }
 
@@ -969,8 +975,20 @@ function buildCodeWorkspaceItems(core: CatsCoreState): CodeWorkspaceListItem[] {
     accumulator.artifactIds.add(artifact.id);
   }
 
-  return [...accumulators.values()]
-    .map((accumulator) => buildCodeWorkspaceListItem(accumulator))
+  const discovered = [...accumulators.values()].map(accumulator => buildCodeWorkspaceListItem(accumulator));
+  for (const [key, entry] of Object.entries(core.ownerLifecycle?.entries ?? {})) {
+    if (!key.startsWith('codespace:') || !entry.path || discovered.some(item => item.id === key.slice(10))) continue;
+    discovered.push({ id: key.slice(10), title: deriveWorkspaceTitle(entry.path), summary: null, path: entry.path,
+      status: 'ready', source: 'owner_selected', conversationCount: 0, taskCount: 0, artifactCount: 0, lastActiveAt: entry.updatedAt });
+  }
+  return discovered
+    .map(item => {
+      const intent = ownerEntry(core, 'codespace', item.id);
+      const listing = intent?.listing ?? (item.status === 'archived' ? 'archived' : 'visible');
+      return { ...item, title: intent?.label ?? item.title,
+        status: listing === 'archived' ? 'archived' as const : intent?.listing === 'visible' && item.status === 'archived' ? 'ready' as const : item.status,
+        management: { listing, pinned: intent?.pinned ?? false, revision: core.ownerLifecycle?.revision ?? 0 } };
+    })
     .sort((left, right) => right.lastActiveAt.localeCompare(left.lastActiveAt));
 }
 
@@ -998,12 +1016,13 @@ export function buildCodeWorkItemListProjection(core: CatsCoreState): CodeWorkIt
   };
 }
 
-export function buildCodeWorkspaceListProjection(core: CatsCoreState): CodeWorkspaceListProjection {
+export function buildCodeWorkspaceListProjection(core: CatsCoreState, view = 'visible'): CodeWorkspaceListProjection {
   const allWorkspaces = buildCodeWorkspaceItems(core);
-  const workspaces = allWorkspaces.slice(0, CODE_WORKSPACE_LIST_LIMIT);
+  const workspaces = allWorkspaces.filter(item => view === 'all' || item.management?.listing === view);
 
   return {
     workspaces,
+    revision: core.ownerLifecycle?.revision ?? 0,
     summary: buildCodeWorkspaceListSummary(allWorkspaces, workspaces),
   };
 }

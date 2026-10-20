@@ -21,6 +21,7 @@ type CodeWorkspacesTranslator = (
 ) => string;
 
 export interface CodeWorkspacesSnapshot {
+  revision?: number;
   workspaces: readonly CodeWorkspaceListItemSummary[];
   pinnedIds: ReadonlySet<string>;
   loading: boolean;
@@ -39,6 +40,7 @@ export function createEmptyCodeWorkspacesSnapshot(): CodeWorkspacesSnapshot {
 }
 
 let currentWorkspaces: readonly CodeWorkspaceListItemSummary[] = [];
+let currentRevision = 0;
 let loading = false;
 let error: string | null = null;
 let cachedSnapshot: CodeWorkspacesSnapshot | null = null;
@@ -53,7 +55,8 @@ function notify(): void {
 function rebuildSnapshot(): CodeWorkspacesSnapshot {
   return {
     workspaces: currentWorkspaces,
-    pinnedIds: new Set(currentWorkspaces.map((workspace) => workspace.id)),
+    revision: currentRevision,
+    pinnedIds: new Set(currentWorkspaces.filter(workspace => workspace.management?.pinned && workspace.management.listing === 'visible').map(workspace => workspace.id)),
     loading,
     error,
   };
@@ -86,6 +89,7 @@ export function refreshCodeWorkspaces(options: {
   refreshPromise = fetchCodeWorkspaces(t(messageKeys.codeWorkspacesLoadError))
     .then((payload) => {
       currentWorkspaces = payload.workspaces;
+      currentRevision = payload.revision ?? 0;
       error = null;
     })
     .catch((fetchError: unknown) => {

@@ -1,4 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { CodespaceActions } from './CodespaceActions.js';
+import { registerCodespace } from '../../api/codeTask.js';
+import { refreshCodeWorkspaces } from '../../state/codeWorkspacesStore.js';
 import { Link } from 'react-router-dom';
 
 import {
@@ -19,6 +22,7 @@ function labelWorkspaceSource(
   t: ReturnType<typeof useI18n>['t'],
 ): string {
   switch (source) {
+    case 'owner_selected': return t('ownerSelectedFolder');
     case 'task_workspace':
       return t(messageKeys.codeWorkspacesListSourceCodes);
     case 'conversation_repo':
@@ -59,16 +63,25 @@ function formatRelative(iso: string, locale: string): string {
 }
 
 export function WorkspacesListPage(): JSX.Element {
-  const { workspaces, loading, error } = useCodeWorkspaces();
+  const { workspaces, loading, error, revision } = useCodeWorkspaces();
   const { locale, t } = useI18n();
+  const [view, setView] = useState('visible');
+  const [search, setSearch] = useState('');
+  const [source, setSource] = useState('all');
+  const [adding, setAdding] = useState(false);
+  const [folderPath, setFolderPath] = useState('');
+  const [addError, setAddError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const sorted = useMemo(
     () =>
-      [...workspaces].sort(
+      [...workspaces].filter(item => (view === 'all' || (item.management?.listing ?? 'visible') === view)
+        && (source === 'all' || item.source === source)
+        && `${item.title} ${item.path}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())).sort(
         (a, b) =>
           new Date(b.lastActiveAt).getTime() - new Date(a.lastActiveAt).getTime(),
       ),
-    [workspaces],
+    [workspaces, view, search, source],
   );
 
   return (
@@ -81,9 +94,28 @@ export function WorkspacesListPage(): JSX.Element {
           <span className="codeWsListTopBar__count">{sorted.length}</span>
         </div>
         <div className="channelTopBarCenter codeWsListTopBar__center" />
-        <div className="channelTopBarEnd codeWsListTopBar__end" />
+        <div className="channelTopBarEnd codeWsListTopBar__end"><button onClick={() => setAdding(!adding)}>{t('ownerRegisterFolder')}</button></div>
       </header>
       <main className="codeWorkspacesList__main">
+        {adding ? <form onSubmit={event => { event.preventDefault(); setSaving(true); setAddError(null);
+          void registerCodespace(folderPath, revision ?? 0).then(async () => { await refreshCodeWorkspaces({ t }); setAdding(false); setFolderPath(''); setView('visible'); })
+            .catch(err => setAddError(err instanceof Error ? err.message : t('ownerActionFailed'))).finally(() => setSaving(false));
+        }}>
+          <label>{t('ownerFolderPath')}<input autoFocus value={folderPath} onChange={event => setFolderPath(event.target.value)} required /></label>
+          <button disabled={saving}>{t('ownerSave')}</button><button type="button" onClick={() => setAdding(false)}>{t('ownerCancel')}</button>
+          {addError ? <p role="alert">{addError}</p> : null}
+        </form> : null}
+        <div className="ownerCodespaceFilters">
+          <label>{t('ownerSearch')}<input type="search" value={search} onChange={event => setSearch(event.target.value)} /></label>
+          <label>{t('ownerView')}<select value={view} onChange={event => setView(event.target.value)}>
+            <option value="visible">{t('ownerCurrent')}</option><option value="archived">{t('ownerArchived')}</option>
+            <option value="removed">{t('ownerRemoved')}</option><option value="all">{t('ownerAll')}</option>
+          </select></label>
+          <label>{t('ownerSource')}<select value={source} onChange={event => setSource(event.target.value)}>
+            <option value="all">{t('ownerAll')}</option>
+            {[...new Set(workspaces.map(item => item.source))].map(value => <option key={value} value={value}>{labelWorkspaceSource(value, t)}</option>)}
+          </select></label>
+        </div>
         {loading && sorted.length === 0 ? (
           <p className="codeWorkspacesList__empty">
             {t(messageKeys.codeWorkspacesListLoading)}
@@ -153,6 +185,7 @@ export function WorkspacesListPage(): JSX.Element {
                       </span>
                     </div>
                   </Link>
+                  <CodespaceActions workspace={ws} />
                 </li>
               ))}
             </ul>

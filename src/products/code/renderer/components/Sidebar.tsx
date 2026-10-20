@@ -10,9 +10,11 @@ import {
 import type { ConversationSidebarPinnedItem } from '../../../../app/renderer/productShell/ConversationSidebarPinned.js';
 import {
   createEmptyCodeWorkspacesSnapshot,
+  refreshCodeWorkspaces,
   useCodeWorkspaces,
   type CodeWorkspacesSnapshot,
 } from '../state/codeWorkspacesStore.js';
+import { manageCodespace } from '../api/codeTask.js';
 import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { AppShellPayload } from '../../api/contracts.js';
 import type { ChatCat, ChatChannelSummary } from '../../../shared/api/workspaceContracts.js';
@@ -326,6 +328,12 @@ function buildPinnedWorkspaceItems(
         className: `codeWorkspacesList__dot codeWorkspacesList__dot--small codeWorkspacesList__dot--${ws.status}`,
         title: labelCodeWorkspaceStatusForLocale(ws.status, t),
       },
+      overflowActions: [{ key: 'unpin', label: t('ownerUnpin'), onClick: () => {
+        props.onOverflowMenuToggle(null);
+        void manageCodespace(ws.id, 'unpin', ws.management?.revision ?? 0)
+          .then(() => refreshCodeWorkspaces({ t }))
+          .catch(error => { window.alert(error instanceof Error ? error.message : t('ownerActionFailed')); void refreshCodeWorkspaces({ t }); });
+      } }],
     }));
 }
 

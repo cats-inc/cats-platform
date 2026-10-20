@@ -56,9 +56,10 @@ export async function inspectPath(
 }
 
 export async function openFolderInExplorer(folderPath: string): Promise<void> {
-  await fetch('/api/shell/open-folder', {
+  const response = await fetch('/api/shell/open-folder', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ path: folderPath }),
   });
+  if (!response.ok) throw new Error(`Open folder failed (${response.status})`);
 }

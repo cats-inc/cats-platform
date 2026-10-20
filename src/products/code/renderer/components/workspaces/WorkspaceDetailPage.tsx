@@ -22,6 +22,7 @@ import {
   labelCodeWorkspaceStatusForLocale,
 } from '../codeStatusLabels.js';
 import { LivePreviewPanel } from '../LivePreviewPanel.js';
+import { CodespaceActions } from './CodespaceActions.js';
 import './workspaces.css';
 
 function labelWorkspaceSource(
@@ -29,6 +30,7 @@ function labelWorkspaceSource(
   t: ReturnType<typeof useI18n>['t'],
 ): string {
   switch (source) {
+    case 'owner_selected': return t('ownerSelectedFolder');
     case 'task_workspace':
       return t(messageKeys.codeWorkspacesListSourceCodes);
     case 'conversation_repo':
@@ -207,6 +209,7 @@ export function WorkspaceDetailPage(): JSX.Element {
           </span>
         </div>
         <div className="channelTopBarEnd codeWsDetailTopBar__end">
+          <CodespaceActions workspace={workspace} onChanged={setPayload} />
           <span className="codeWsDetailTopBar__updated">
             {formatRelative(workspace.lastActiveAt, locale)}
           </span>
@@ -317,9 +320,8 @@ export function WorkspaceDetailPage(): JSX.Element {
                   <span className="codeWorkspaceDetail__itemKind">
                     {labelCodeConversationKindForLocale(conversation.kind, t)}
                   </span>
-                  <span className="codeWorkspaceDetail__itemTitle">
-                    {conversation.title}
-                  </span>
+                  {conversation.sourceChannelId ? <Link className="codeWorkspaceDetail__itemTitle" to={`/code/chats/${encodeURIComponent(conversation.sourceChannelId)}`}>{conversation.title}</Link>
+                    : <span className="codeWorkspaceDetail__itemTitle">{conversation.title}</span>}
                   <span className="codeWorkspaceDetail__itemMeta">
                     {labelCodeRecordStatusForLocale(conversation.status, t)}
                   </span>
