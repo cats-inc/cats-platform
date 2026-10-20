@@ -216,27 +216,17 @@ async function handleCreateProject(
   return true;
 }
 
-async function handleRemoveProject(
-  context: RouteContext<WorkApiDependencies>,
-  projectId: string,
-): Promise<boolean> {
-  if (!projectId) {
-    sendJson(context.response, 400, {
-      error: { code: 'invalid_project_id', message: 'Project id is required.' },
+async function handleRemoveProject(context: RouteContext<WorkApiDependencies>, projectId: string): Promise<boolean> {
+  try {
+    let removed = false;
+    await context.dependencies.coreStore.updateCore(core => {
+      const result = removeCoreProject(core, projectId, context.dependencies.now?.() ?? new Date());
+      removed = result.removed;
+      return result.core;
     });
-    return true;
-  }
-  const now = context.dependencies.now?.() ?? new Date();
-  const core = await context.dependencies.coreStore.readCore();
-  const result = removeCoreProject(core, projectId, now);
-  if (!result.removed) {
-    sendJson(context.response, 404, {
-      error: { code: 'project_not_found', message: `No project with id ${projectId}.` },
-    });
-    return true;
-  }
-  await context.dependencies.coreStore.writeCore(result.core);
-  sendJson(context.response, 200, { removed: true, projectId });
+    sendJson(context.response, removed ? 200 : 404, removed ? { removed: true, projectId }
+      : { error: { code: 'project_not_found', message: 'Object no longer exists.' } });
+  } catch (error) { handleCoreError(context, error); }
   return true;
 }
 
@@ -286,27 +276,17 @@ async function handleCreateWorkItem(
   return true;
 }
 
-async function handleRemoveWorkItem(
-  context: RouteContext<WorkApiDependencies>,
-  workItemId: string,
-): Promise<boolean> {
-  if (!workItemId) {
-    sendJson(context.response, 400, {
-      error: { code: 'invalid_work_item_id', message: 'Work item id is required.' },
+async function handleRemoveWorkItem(context: RouteContext<WorkApiDependencies>, workItemId: string): Promise<boolean> {
+  try {
+    let removed = false;
+    await context.dependencies.coreStore.updateCore(core => {
+      const result = removeCoreWorkItem(core, workItemId, context.dependencies.now?.() ?? new Date());
+      removed = result.removed;
+      return result.core;
     });
-    return true;
-  }
-  const now = context.dependencies.now?.() ?? new Date();
-  const core = await context.dependencies.coreStore.readCore();
-  const result = removeCoreWorkItem(core, workItemId, now);
-  if (!result.removed) {
-    sendJson(context.response, 404, {
-      error: { code: 'work_item_not_found', message: `No work item with id ${workItemId}.` },
-    });
-    return true;
-  }
-  await context.dependencies.coreStore.writeCore(result.core);
-  sendJson(context.response, 200, { removed: true, workItemId });
+    sendJson(context.response, removed ? 200 : 404, removed ? { removed: true, workItemId }
+      : { error: { code: 'work_item_not_found', message: 'Object no longer exists.' } });
+  } catch (error) { handleCoreError(context, error); }
   return true;
 }
 
@@ -369,27 +349,17 @@ async function handleCreateTask(
   return true;
 }
 
-async function handleRemoveTask(
-  context: RouteContext<WorkApiDependencies>,
-  taskId: string,
-): Promise<boolean> {
-  if (!taskId) {
-    sendJson(context.response, 400, {
-      error: { code: 'invalid_task_id', message: 'Task id is required.' },
+async function handleRemoveTask(context: RouteContext<WorkApiDependencies>, taskId: string): Promise<boolean> {
+  try {
+    let removed = false;
+    await context.dependencies.coreStore.updateCore(core => {
+      const result = removeCoreTask(core, taskId, context.dependencies.now?.() ?? new Date());
+      removed = result.removed;
+      return result.core;
     });
-    return true;
-  }
-  const now = context.dependencies.now?.() ?? new Date();
-  const core = await context.dependencies.coreStore.readCore();
-  const result = removeCoreTask(core, taskId, now);
-  if (!result.removed) {
-    sendJson(context.response, 404, {
-      error: { code: 'task_not_found', message: `No task with id ${taskId}.` },
-    });
-    return true;
-  }
-  await context.dependencies.coreStore.writeCore(result.core);
-  sendJson(context.response, 200, { removed: true, taskId });
+    sendJson(context.response, removed ? 200 : 404, removed ? { removed: true, taskId }
+      : { error: { code: 'task_not_found', message: 'Object no longer exists.' } });
+  } catch (error) { handleCoreError(context, error); }
   return true;
 }
 

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { assertOwnerRecordDeletable } from '../ownerManagement.js';
 
 import {
   CoreConflictError,
@@ -115,9 +116,7 @@ export function upsertCoreTask(
 }
 
 /**
- * Hard-delete a task. Runs / approvals / work items anchored on this
- * task retain their FKs; the projection layer surfaces dangling
- * references through existing diagnostic kinds.
+ * Delete only a source-owned, inactive and unreferenced task.
  */
 export function removeCoreTask(
   core: CatsCoreState,
@@ -129,6 +128,7 @@ export function removeCoreTask(
   if (next.length === core.tasks.length) {
     return { core, removed: false };
   }
+  assertOwnerRecordDeletable(core, 'task', taskId);
   return {
     core: touchCoreState({ ...core, tasks: next }, nowIso),
     removed: true,

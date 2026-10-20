@@ -805,6 +805,15 @@ other provider routes.
 
 ### Cats Work
 
+Planning-record DELETE commands for Projects, Work Items and Tasks now run
+inside the Core mutation lock. `409 owner_delete_blocked` identifies existing
+references, active work or a conversation-owned record. Resolve/move/detach the
+references, finish/cancel work, or archive/open the source conversation instead.
+Deletion never creates dangling links or pretends to delete a derived row that
+the next snapshot would rebuild. Unreferenced Core-owned records retain normal
+DELETE behavior; a missing record returns `404`. This stricter behavior is
+recorded for the next Platform minor under ADR-133, without a version bump here.
+
 ```text
 GET /api/work
 GET /api/work/projects

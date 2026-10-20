@@ -63,7 +63,7 @@ tested. Complete graph coverage and producer provenance remain explicit.
 - [x] Block registration removal during active execution/preview use and offer
   the canonical stop/context action. Keep active work reachable after unpinning
   or archiving its context.
-- [ ] Route existing Project/Work Item/Task Delete through source-aware and
+- [x] Route existing Project/Work Item/Task Delete through source-aware and
   dependency checks. Derived deletions must change the authority or reject;
   referenced records must not be silently orphaned. Return truthful results.
 - [ ] Validate A1-A3, A6 and the applicable A12 migration/failure cases before
@@ -236,6 +236,7 @@ these contracts have already been approved.
 
 | Date | Update |
 | --- | --- |
+| 2026-10-20 | P1a deletion slice: Core rejects derived/active/referenced planning deletion; product DELETE validates and applies under `updateCore`, with 409 blockers and no new dangling links. Fixed snapshot normalization dropping valid WorkGraphLinks, so dependency checks also survive reload/owner mutations. Server build, 38 existing CRUD/Core/link checks and 11 focused lifecycle/Codespace/deletion checks passed. Isolated Desktop acceptance remains pending. |
 | 2026-10-20 | P1a Codespaces slice: real owner pin/unpin (including sidebar), rename, archive/restore/remove, removed-items recovery, folder registration and contextual open/new/related links implemented. Active Run/Session/Preview removal is blocked, folders/outputs retained. 41 focused lifecycle/Codespace/sidebar/artifact checks passed; server/client typechecks and web build passed (Vite `--configLoader runner` avoids the sandbox's native esbuild ancestor-directory restriction). Isolated Desktop visual/write acceptance remains scheduled after the UI slices. |
 | 2026-10-20 | P1a storage slice: optional versioned owner intent survives file/Chat round-trips; unsupported data preserves primary/backup; memory Core mutations serialize. Server build and 4 lifecycle persistence/recovery/concurrency tests passed; Core store tests passed. Chat store checks: 32 passed, 5 workflow/replay failures reproduced with the unchanged HEAD implementations; baseline evidence is private under the worktree's ignored `.claude/checks/`. No live profile writes. |
 | 2026-10-20 | P0 approved: optional versioned lifecycle extension, atomic mutation/source authority, compatibility boundary and fixture validation scope recorded in ADR-133. Entire rollout authorized as local commits without pushing. |
