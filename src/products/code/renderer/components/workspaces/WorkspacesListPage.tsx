@@ -94,10 +94,10 @@ export function WorkspacesListPage(): JSX.Element {
           <span className="codeWsListTopBar__count">{sorted.length}</span>
         </div>
         <div className="channelTopBarCenter codeWsListTopBar__center" />
-        <div className="channelTopBarEnd codeWsListTopBar__end"><button onClick={() => setAdding(!adding)}>{t('ownerRegisterFolder')}</button></div>
+        <div className="channelTopBarEnd codeWsListTopBar__end"><button className="ownerRegisterFolderButton" onClick={() => setAdding(!adding)}>{t('ownerRegisterFolder')}</button></div>
       </header>
       <main className="codeWorkspacesList__main">
-        {adding ? <form onSubmit={event => { event.preventDefault(); setSaving(true); setAddError(null);
+        {adding ? <form className="ownerRegisterFolder" onSubmit={event => { event.preventDefault(); setSaving(true); setAddError(null);
           void registerCodespace(folderPath, revision ?? 0).then(async () => { await refreshCodeWorkspaces({ t }); setAdding(false); setFolderPath(''); setView('visible'); })
             .catch(err => setAddError(err instanceof Error ? err.message : t('ownerActionFailed'))).finally(() => setSaving(false));
         }}>

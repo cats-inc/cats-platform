@@ -4,19 +4,24 @@ import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { manageCodespace, type CodeWorkspaceListItemSummary, type CodeWorkspaceDetailResponse } from '../../api/codeTask.js';
 import { refreshCodeWorkspaces } from '../../state/codeWorkspacesStore.js';
 import { openFolderInExplorer } from '../../../../shared/renderer/api/shell.js';
+import { ConfirmDialog, useConfirmDialog } from '../../../../../design/components/ConfirmDialog.js';
 
 export function CodespaceActions({ workspace, onChanged }: {
   workspace: CodeWorkspaceListItemSummary;
   onChanged?: (payload: CodeWorkspaceDetailResponse) => void;
 }) {
   const { t } = useI18n();
+  const confirmation = useConfirmDialog();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [label, setLabel] = useState(workspace.title);
   const listing = workspace.management?.listing ?? 'visible';
   async function act(action: string) {
-    if (action === 'remove' && !window.confirm(t('ownerRemoveCodespaceConfirm'))) return;
+    if (action === 'remove') {
+      setBusy(true);
+      if (!await confirmation.confirm({ title: workspace.title, message: t('ownerRemoveCodespaceConfirm'), confirmLabel: t('ownerRemoveCodespace'), defaultAction: 'cancel' })) { setBusy(false); return; }
+    }
     setBusy(true); setError(null);
     try {
       const next = await manageCodespace(workspace.id, action, workspace.management?.revision ?? 0, label);
@@ -26,6 +31,7 @@ export function CodespaceActions({ workspace, onChanged }: {
     finally { setBusy(false); }
   }
   return <div className="ownerCodespaceActions">
+    <ConfirmDialog dialog={confirmation.dialog} onClose={confirmation.handleClose} />
     <details>
       <summary aria-label={`${t('ownerActions')} · ${workspace.title}`}>{t('ownerActions')}</summary>
       <div className="ownerCodespaceActions__menu">

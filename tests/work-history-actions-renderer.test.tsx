@@ -28,6 +28,7 @@ test('history actions preview exact expanded scope, reject stale apply, and disc
   assert.equal(view.queryByText('Apply this cleanup'), null);
   await act(async () => { fireEvent.click(view.getByText('Preview cleanup')); });
   assert.ok(view.getByText('Required output remains.'));
+  assert.ok(view.getByText('Will clear detail', { exact: false }));
   assert.equal(document.activeElement?.getAttribute('aria-label'), 'Preview cleanup');
   await act(async () => { fireEvent.click(view.getByText('Apply this cleanup')); });
   assert.deepEqual(calls[1].body, preview);
@@ -37,5 +38,19 @@ test('history actions preview exact expanded scope, reject stale apply, and disc
   view.rerender(tree('other'));
   await act(async () => { delayed!(new Response(JSON.stringify(preview), { status: 200 })); });
   assert.equal(view.queryByText('Apply this cleanup'), null);
+});
+
+test('history cleanup results name the exact applied attempts and retain truthful per-item outcomes', async t => {
+  const oldReact = Object.getOwnPropertyDescriptor(globalThis, 'React'), oldFetch = globalThis.fetch;
+  Object.defineProperty(globalThis, 'React', { configurable: true, value: React });
+  const client = new QueryClient();
+  t.after(() => { cleanup(); client.clear(); globalThis.fetch = oldFetch; if (oldReact) Object.defineProperty(globalThis, 'React', oldReact); else Reflect.deleteProperty(globalThis, 'React'); });
+  const preview = { subjects: [{ family: 'run', id: 'attempt' }], scope: 'logs', token: 'snapshot', detailRecords: 1, items: [{ family: 'run', id: 'attempt', title: 'Exact attempt', outcome: 'compacted', reasons: [] }] };
+  globalThis.fetch = async url => new Response(JSON.stringify(String(url).endsWith('/apply') ? { receipt: { results: [{ key: 'run:attempt', status: 'compacted' }] } } : preview));
+  const view = render(<QueryClientProvider client={client}><I18nProvider locale="en"><HistoryActions subjects={[{ family: 'run', id: 'attempt' }]} revision={0} /></I18nProvider></QueryClientProvider>);
+  await act(async () => { fireEvent.click(view.getByText('Preview cleanup')); });
+  assert.equal(view.queryByText('Detail cleared'), null);
+  await act(async () => { fireEvent.click(view.getByText('Apply this cleanup')); });
+  assert.match(view.getByRole('list', { name: 'Cleanup results' }).textContent!, /Exact attempt.*Detail cleared/);
 });
 

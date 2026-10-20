@@ -1,13 +1,20 @@
 import type { MessageCatalog } from '../index.js';
 
 export const zhTWCatalog: MessageCatalog = {
+  ownerHistoryWillCompact: '將清除細節',
+  ownerHistoryWillRemove: '將移除紀錄',
+  ownerCleanupResult: '清理結果',
+  ownerMissionsNav: '任務編排',
+  ownerSourceOwned: '自行管理',
+  ownerSourceConversation: '對話來源',
+  ownerSourceExternal: '由來源管理',
   ownerRetentionTitle: '詳細紀錄保留政策',
   ownerRetentionScope: '啟用後每小時清理超過保留天數的 Platform 執行詳細紀錄。每次最多檢查及壓縮 100 個執行項目，不提供儲存配額或回收容量估算。',
   ownerRetentionProtection: '進行中的工作、未結束的檢查點及被引用的證據受到保護。摘要、對話、交付檔案與供應商原生紀錄會保留；受保護項目須手動檢視，大型執行樹須改選較小範圍。',
   ownerRetentionEnable: '啟用自動清理詳細紀錄',
   ownerRetentionDays: '詳細紀錄保留天數',
   ownerRetentionNext: '下次可執行時間：{time}（Cats 執行期間）。',
-  ownerRetentionDisabled: '自動清理已關閉，可使用上方的手動清理。',
+  ownerRetentionDisabled: '自動清理已關閉，可使用清單中的手動清理。',
   ownerRetentionLast: '上次執行：{time}',
   ownerRetentionResult: '上次檢查 {inspected} 個，壓縮 {compacted} 個，保護 {protected} 個。',
   ownerDecisionSavedBlocked: "決策已儲存，執行仍需處理：{reason}",

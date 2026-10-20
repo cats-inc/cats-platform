@@ -6,6 +6,11 @@ Accepted, 2026-10-20. The owner approved the entire rollout as locally committed
 slices, without pushing or publishing. Final owner review and testing follow
 implementation. P4 navigation grouping is included in this authorization.
 
+P0-P5 implementation and scoped acceptance are complete. The
+[plan's acceptance record](../plans/PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md#acceptance-evidence-and-review-handoff)
+contains source/instance receipts, checks and limits. Final owner review/testing
+remains pending; all commits stay local, with no version bump or publication.
+
 ## Context
 
 Code and Work expose many inspectable objects without a complete way to manage
@@ -94,8 +99,8 @@ Existing inferred entries are discoverable but are not all auto-pinned.
 Explicit removal survives rediscovery until the owner restores the entry.
 Restoring a listing does not replay execution or resurrect purged logs.
 
-Metadata placement and API shapes require the frozen-contract integration
-review described in PLAN-119 before implementation. There is no new canonical
+Metadata placement and API shapes passed the P0 frozen-contract integration
+review recorded in PLAN-119 before implementation. There is no new canonical
 Core execution record family implied by a presentation preference.
 
 ### 4. Route destructive changes to the authoritative producer

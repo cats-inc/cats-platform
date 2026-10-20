@@ -1,13 +1,15 @@
 # Documentation Index
 
 [Code and Work owner actions](decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md)
-proposes durable Codespace management, source-aware record deletion, terminal
+provides durable Codespace management, source-aware record deletion, terminal
 Run/Mission history cleanup and consistent contextual actions across Code/Work.
 [SPEC-126](specs/SPEC-126-code-work-owner-actions-and-lifecycle.md) contains the
 page inventory and acceptance scenarios;
 [PLAN-119](plans/PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md)
 sequences lifecycle correctness before everyday management and navigation
-consolidation. Approved for implementation as local slices; owner review/testing pending; no push or release.
+consolidation. Implementation and scoped acceptance are complete in local slices;
+owner review/testing remains pending, with no push or release. The plan records
+isolated native evidence and remaining validation limits.
 
 [Code agent artifact preview](decisions/126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md)
 proposes how Cats in Cats Code open what they built beside the conversation. A

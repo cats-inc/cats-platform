@@ -43,7 +43,7 @@ export function ExecutionHistoryPage({ family }: { family: 'run' | 'mission' }) 
         <label>{t('ownerTaskFilter')}<select value={filters.taskId} onChange={event => filter('taskId', event.target.value)}><option value="">{t('ownerAll')}</option>{query.data?.contexts.tasks.map(task => <option key={task.id} value={task.id}>{task.title}</option>)}</select></label>
         <label>{t('ownerProjectFilter')}<select value={filters.projectId} onChange={event => filter('projectId', event.target.value)}><option value="">{t('ownerAll')}</option>{query.data?.contexts.projects.map(project => <option key={project.id} value={project.id}>{project.title}</option>)}</select></label>
       </div>
-      <p>{t('ownerHistoryDefaultNotice')} <button onClick={() => filter('source', 'all')}>{t('ownerAllSources')}</button></p>
+      <p>{t('ownerHistoryDefaultNotice')} <button className="ownerHistorySourceButton" onClick={() => filter('source', 'all')}>{t('ownerAllSources')}</button></p>
       <HistoryActions subjects={selection} revision={query.data?.revision ?? 0} onChanged={() => setSelected([])} archiveEligible={items.filter(item => selected.includes(item.id)).every(item => ['completed', 'failed', 'cancelled'].includes(item.status))} />
       {query.isPending ? <p role="status">{t('ownerWorking')}</p> : query.isError ? <p role="alert">{String(query.error.message)}</p> : null}
       {!query.isPending && !items.length ? <p>{t('ownerHistoryEmpty')}</p> : null}

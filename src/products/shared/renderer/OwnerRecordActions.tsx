@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '../../../app/renderer/i18n/index.js';
 import type { OwnerActionView, PlanningOwnerAction, PlanningOwnerFamily } from '../../../core/ownerActionContracts.js';
 import type { MessageKey } from '../../../shared/i18n/index.js';
+import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog.js';
 
 const statusLabels: Record<string, MessageKey> = {"draft":"workObjectStatusDraft","planned":"workObjectStatusPlanned","active":"workObjectStatusActive","paused":"workObjectStatusPaused","archived":"workObjectStatusArchived","ready":"workObjectStatusReady","in_progress":"workObjectStatusInProgress","blocked":"workObjectStatusBlocked","completed":"workObjectStatusCompleted","cancelled":"workObjectStatusCancelled","running":"workObjectStatusRunning","queued":"workObjectStatusQueued","pending_approval":"workNewTaskStatusPendingApproval","approved":"workNewTaskStatusApproved"};
 const actionLabels: Record<PlanningOwnerAction, MessageKey> = { edit: 'ownerEdit', pause: 'ownerPause', resume: 'ownerResume', complete: 'ownerComplete', reopen: 'ownerReopen', cancel: 'ownerCancelWork', archive: 'ownerArchive', restore: 'ownerRestore', delete: 'ownerDeleteRecord' };
@@ -21,12 +22,13 @@ export function useOwnerListing(family: PlanningOwnerFamily) {
   const query = useQuery<{ items: Array<{ id: string; title: string; summary: string | null; status: string; listing: string }> }>({ queryKey: ['owner-listing', family], queryFn: () => request(`/api/core/owner/${family}`) });
   return {
     accepts: (id: string) => { const item = query.data?.items.find(item => item.id === id); return (view === 'all' || (item?.listing ?? 'visible') === view) && (status === 'all' || item?.status === status) && (!search || `${item?.title ?? ''} ${item?.summary ?? ''}`.toLowerCase().includes(search.toLowerCase())); },
-    control: <div><label>{t('ownerView')} <select value={view} onChange={event => setView(event.target.value)}><option value="visible">{t('ownerCurrent')}</option><option value="archived">{t('ownerArchived')}</option><option value="all">{t('ownerAll')}</option></select>{query.isError ? <span role="alert">{t('ownerActionFailed')}</span> : null}</label>{family !== 'artifact' ? <><label>{t('ownerSearch')} <input type="search" value={search} onChange={event => setSearch(event.target.value)} /></label><label>{t('ownerStatus')} <select value={status} onChange={event => setStatus(event.target.value)}><option value="all">{t('ownerAll')}</option>{Array.from(new Set(query.data?.items.map(item => item.status))).sort().map(status => <option key={status} value={status}>{statusLabels[status] ? t(statusLabels[status]) : t('workObjectStatusUnknown', { status })}</option>)}</select></label></> : null}</div>,
+    control: <div className="ownerListingFilters"><label>{t('ownerView')} <select value={view} onChange={event => setView(event.target.value)}><option value="visible">{t('ownerCurrent')}</option><option value="archived">{t('ownerArchived')}</option><option value="all">{t('ownerAll')}</option></select>{query.isError ? <span role="alert">{t('ownerActionFailed')}</span> : null}</label>{family !== 'artifact' ? <><label>{t('ownerSearch')} <input type="search" value={search} onChange={event => setSearch(event.target.value)} /></label><label>{t('ownerStatus')} <select value={status} onChange={event => setStatus(event.target.value)}><option value="all">{t('ownerAll')}</option>{Array.from(new Set(query.data?.items.map(item => item.status))).sort().map(status => <option key={status} value={status}>{statusLabels[status] ? t(statusLabels[status]) : t('workObjectStatusUnknown', { status })}</option>)}</select></label></> : null}</div>,
   };
 }
 
 export function OwnerRecordActions({ family, id, expanded = false, onChanged }: { family: PlanningOwnerFamily; id: string; expanded?: boolean; onChanged?: (removed: boolean) => void }) {
   const { t } = useI18n();
+  const confirmation = useConfirmDialog();
   const client = useQueryClient();
   const [open, setOpen] = useState(expanded);
   const [action, setAction] = useState<PlanningOwnerAction>('edit');
@@ -40,7 +42,10 @@ export function OwnerRecordActions({ family, id, expanded = false, onChanged }: 
   const capability = view?.actions.find(item => item.action === action);
   async function apply() {
     if (!view || !capability || capability.blockers.length || busy) return;
-    if (action === 'delete' && !window.confirm(t('ownerDeleteRecordNotice'))) return;
+    if (action === 'delete') {
+      setBusy(true);
+      if (!await confirmation.confirm({ title: view.title, message: t('ownerDeleteRecordNotice'), confirmLabel: t('ownerDeleteRecord'), defaultAction: 'cancel' })) { setBusy(false); return; }
+    }
     setBusy(true); setError(''); setMessage('');
     try {
       const result = await request<{ removed: boolean; view: OwnerActionView | null }>(url, { ...form, action, token: view.token });
@@ -53,11 +58,12 @@ export function OwnerRecordActions({ family, id, expanded = false, onChanged }: 
     finally { setBusy(false); }
   }
   return <details className="ownerRecordActions" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
+    <ConfirmDialog dialog={confirmation.dialog} onClose={confirmation.handleClose} />
     <summary>{t('ownerActions')}</summary>
     {query.isPending && open ? <p role="status">{t('ownerWorking')}</p> : null}
     {query.isError ? <p role="alert">{query.error.message} <button onClick={() => void query.refetch()}>{t('ownerRefresh')}</button></p> : null}
     {view ? <form onSubmit={event => { event.preventDefault(); void apply(); }}>
-      <p>{t('ownerSource')}: {view.source} · {statusLabels[view.status] ? t(statusLabels[view.status]) : view.status}{view.sourcePath ? <> · <Link to={view.sourcePath}>{t('ownerOpenSource')}</Link></> : null}</p>
+      <p>{t('ownerSource')}: {t(view.source === 'core' ? 'ownerSourceOwned' : ['chat-channel', 'chat-room-workflow'].includes(view.source) ? 'ownerSourceConversation' : 'ownerSourceExternal')} · {statusLabels[view.status] ? t(statusLabels[view.status]) : view.status}{view.sourcePath ? <> · <Link to={view.sourcePath}>{t('ownerOpenSource')}</Link></> : null}</p>
       <label>{t('ownerActions')} <select value={action} disabled={busy} onChange={event => setAction(event.target.value as PlanningOwnerAction)}>{view.actions.map(item => <option key={item.action} value={item.action}>{t(actionLabels[item.action])}</option>)}</select></label>
       {action === 'edit' ? <fieldset disabled={busy || !!capability?.blockers.length}>
         <label>{t('ownerTitle')} <input required maxLength={200} value={form.title} onChange={event => setForm({ ...form, title: event.target.value })} /></label>

@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | Approved, 2026-10-20; implementation in progress; final owner review/testing pending |
+| **Status** | Approved, 2026-10-20; implementation and scoped acceptance complete; final owner review/testing pending |
 | **Owner** | Platform product/Core integration |
 | **Reviewer** | Owner |
 | **Related ADR** | [ADR-133](../decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) |
@@ -31,7 +31,6 @@ or leaving broken references. Navigation consolidation follows these actions.
 
 ## Non-Goals
 
-- Implementing features as part of this documentation task.
 - Replacing the shared interaction engine or creating a Code task registry.
 - Removing cross-product objects from the Work Graph.
 - Arbitrary filesystem cleanup, provider-native history deletion, or undoing
@@ -300,6 +299,16 @@ The following matrix defines delivery slices, not implementation claims:
   Cockpit grid with decision/recovery actions. Retained Cockpit/War Room routes
   redirect with query context. Code Build/Relay are Codespace/Task/Project
   context actions; final owner visual review/testing precedes any push.
+
+## Delivery and Validation Status
+
+P0-P5 implementation and scoped acceptance are complete as local slices.
+[PLAN-119 acceptance evidence](../plans/PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md#acceptance-evidence-and-review-handoff)
+separates source/persistence/driver fixtures from native Desktop flows, records
+the exact candidate source digests and shutdown receipts, and identifies the
+remaining owner review/testing and live-provider validation limits. No push,
+version bump or publication was performed. The five reproduced baseline Chat
+store failures are recorded there; focused changed-surface checks passed.
 
 ## References
 

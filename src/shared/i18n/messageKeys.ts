@@ -1,4 +1,11 @@
 export const messageKeys = {
+  ownerHistoryWillCompact: 'ownerHistoryWillCompact',
+  ownerHistoryWillRemove: 'ownerHistoryWillRemove',
+  ownerCleanupResult: 'ownerCleanupResult',
+  ownerMissionsNav: 'ownerMissionsNav',
+  ownerSourceOwned: 'ownerSourceOwned',
+  ownerSourceConversation: 'ownerSourceConversation',
+  ownerSourceExternal: 'ownerSourceExternal',
   ownerRetentionTitle: 'ownerRetentionTitle',
   ownerRetentionScope: 'ownerRetentionScope',
   ownerRetentionProtection: 'ownerRetentionProtection',

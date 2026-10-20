@@ -1,13 +1,20 @@
 import type { MessageCatalog } from '../index.js';
 
 export const enCatalog: MessageCatalog = {
+  ownerHistoryWillCompact: 'Will clear detail',
+  ownerHistoryWillRemove: 'Will remove history',
+  ownerCleanupResult: 'Cleanup results',
+  ownerMissionsNav: 'Missions',
+  ownerSourceOwned: 'Owner managed',
+  ownerSourceConversation: 'Conversation',
+  ownerSourceExternal: 'Source managed',
   ownerRetentionTitle: 'Detailed-log retention',
   ownerRetentionScope: 'Opt in to hourly cleanup of Platform execution detail older than the selected age. Each pass inspects and compacts at most 100 attempts. No storage quota or reclaimed-byte estimate is offered.',
   ownerRetentionProtection: 'Active work, open checkpoints and referenced evidence are protected. Summaries, conversations, deliverable files and provider-native logs are kept. Protected items require manual review; large trees need a smaller manual selection.',
   ownerRetentionEnable: 'Enable automatic detailed-log cleanup',
   ownerRetentionDays: 'Keep detail for days',
   ownerRetentionNext: 'Next eligible pass: {time} (while Cats is running).',
-  ownerRetentionDisabled: 'Automatic cleanup is off. Manual cleanup is available above.',
+  ownerRetentionDisabled: 'Automatic cleanup is off. Manual cleanup is available in the list.',
   ownerRetentionLast: 'Last pass: {time}',
   ownerRetentionResult: 'Last pass: {inspected} inspected, {compacted} compacted, {protected} protected.',
   ownerDecisionSavedBlocked: "Decision saved; execution still needs attention: {reason}",

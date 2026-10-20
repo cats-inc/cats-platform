@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | In Progress; local commits only; final owner review/testing pending |
+| **Status** | Implementation and scoped acceptance complete; local commits only; final owner review/testing pending |
 | **Owner** | Platform product/Core integration |
 | **Reviewer** | Owner |
 | **Related Spec** | [SPEC-126](../specs/SPEC-126-code-work-owner-actions-and-lifecycle.md) |
@@ -66,7 +66,7 @@ tested. Complete graph coverage and producer provenance remain explicit.
 - [x] Route existing Project/Work Item/Task Delete through source-aware and
   dependency checks. Derived deletions must change the authority or reject;
   referenced records must not be silently orphaned. Return truthful results.
-- [ ] Validate A1-A3, A6 and the applicable A12 migration/failure cases before
+- [x] Validate A1-A3, A6 and the applicable A12 migration/failure cases before
   exposing these writes in an isolated Desktop candidate.
 
 **Exit:** the reported Codespace clutter can be managed durably; existing Delete
@@ -91,7 +91,7 @@ does not falsely claim success or manufacture broken references.
 - [x] Persist minimal cleanup recovery receipts. Exercise interruption,
   idempotent retry and Runtime retained/failure where Runtime is involved;
   do not claim Runtime filesystem reclamation if its contract is unavailable.
-- [ ] Validate A4-A9/A12 with memory/temporary-profile fixtures and isolated
+- [x] Validate A4-A9/A12 with memory/temporary-profile fixtures and isolated
   candidate flows; prove reload, restart and subsequent Chat writes cannot
   restore cleared detail.
 
@@ -131,7 +131,7 @@ its own context without abandoning execution or evidence.
 - [x] Complete supported dispatch cancel/retry/forwarding and terminal history
   management through canonical conversation/task owners. Converge transitional
   Build/Relay capabilities into contextual Code flows.
-- [ ] Validate A10-A11 plus resource ownership and retained/partial outcomes;
+- [x] Validate A10-A11 plus resource ownership and retained/partial outcomes;
   permanently disabled placeholders are not completion evidence.
 
 **Exit:** supported schedule, preview and dispatch workflows have useful actions
@@ -152,7 +152,7 @@ and truthful failure/recovery paths in their canonical context.
 - [x] Resolve retained public deep links to current canonical views without
   maintaining parallel legacy renderers. Route removals use the recorded
   compatibility boundary rather than hidden aliases.
-- [ ] Verify selection/back navigation, filters, keyboard/focus, localization,
+- [x] Verify selection/back navigation, filters, keyboard/focus, localization,
   empty/error states and all-source graph coverage in the isolated candidate.
 
 **Exit:** fewer competing destinations, useful next actions and actual repairs;
@@ -168,7 +168,7 @@ navigation changes do not hide unresolved work or change object identity.
   work, protected references and outputs remain outside automatic reclamation.
 - [x] Exercise bounded background cleanup, interruption/restart and retention
   races against new work; reuse the manual cleanup boundary.
-- [ ] Record scoped checks and remaining native acceptance. If release is later
+- [x] Record scoped checks and remaining native acceptance. If release is later
   authorized, prepare the actual compatibility/migration notes and exact source/
   artifact pins in the original release change; no publication in this plan task.
 
@@ -177,8 +177,8 @@ the checks actually performed and the separately authorized release scope.
 
 ## Expected Files and Ownership
 
-Exact new filenames are selected at P0; this is a change map, not a claim that
-these contracts have already been approved.
+The approved ownership map guided P0-P5. Implementation and acceptance scope are
+recorded below; final owner review/testing remains pending.
 
 | Area | Intended responsibility |
 | --- | --- |
@@ -207,8 +207,8 @@ these contracts have already been approved.
 - Use an isolated source-built Desktop candidate for write acceptance. Never
   create smoke records or test destructive cleanup against the controlling
   profile. Startup alone does not prove lifecycle behavior.
-- The current documentation-only slice needs whitespace/reference/status
-  checks; application tests/builds are not required or claimed.
+- Documentation-only slices use whitespace/reference/status checks. Application
+  build and behavioral evidence is recorded for the implementation slices below.
 
 ## Risks and Mitigations
 
@@ -239,6 +239,7 @@ these contracts have already been approved.
 
 | Date | Update |
 | --- | --- |
+| 2026-10-20 | Final acceptance/polish slice complete: source-built isolated Desktop flows verified Codespace registration/pin/rename/archive/restore/removal, exact history preview/apply, active blocking, opt-in automatic compaction, planning edits, actual missing-anchor repair and Chat/sidebar/composer regressions. Final candidate rechecked future-tense preview labels, named per-item results, scoped form layout and shared cancel-default confirmation dialogs. 23 final renderer/sidebar checks passed; client typecheck and full candidate server/Desktop/Runtime/web builds passed. Both candidates drained with exit 0; stopped-profile reload, subsequent Chat write and fresh-store reload preserved cleanup, relationships, transcript and files. Final build inputs matched all 1,812 files byte-for-byte. See acceptance evidence and limits below. P0-P5 implementation is complete; no push/version bump/release; final owner review/testing pending. |
 | 2026-10-20 | P5 retention slice: age-only detailed-log policy defaults off, validates checked edits, shows hourly schedule/protection/result and reuses manual source compaction under the Core mutation lock. Each pass inspects/compacts at most 100 attempts; a durable cursor progresses past protected records. Active/new descendants, open gates, referenced evidence and files stay protected. Failed persistence preserves data; backup recovery disables automatic cleanup to avoid restoring a stale opt-in. No Runtime/FS reclamation or quota is claimed. Server/client checks, web build and 18 retention/lifecycle/history fixtures passed, including HTTP races, failed backup, restart, source reconstruction and opt-out. Isolated candidate acceptance and final readiness remain open. |
 | 2026-10-20 | P4 renderer slice: one canonical Work Overview combines managed-object views with shared approval/recovery actions; retained War Room/Cockpit URLs redirect with queries intact. Execution/diagnostic navigation groups replace competing destinations; Code Build/Relay remain contextual. Graph drawers provide canonical links, owner controls, execution actions and relationship repair. Broken Links exposes explicit valid targets and selected orphan-link previews; all-source/archived graph coverage remains available. Active producer-owned identities stay reachable after prior archive. Server/client/web checks passed, 13 graph/relationship/projection/path fixtures and 21 sidebar/operational/relationship/Code renderer checks passed; 2 typed overview contract checks passed. Isolated native navigation/Chat acceptance remains open. |
 | 2026-10-20 | P4 relationship command slice: source/active/approval-aware optional anchor repair, parent-cycle/Project consistency checks, canonical link relinking and previewed exact orphan-link batches added. Link writes now use the Core lock; duplicate relinking reports merge rather than false failure. Optional removed-link identities suppress stale rebuild and sanitize backups. Server build, 12 relationship/lifecycle/deletion fixtures and existing Core/link routes/projection checks passed; UI integration and isolated acceptance remain open. Corrected new fixture Artifact kinds to the public document enum. |
@@ -255,6 +256,58 @@ these contracts have already been approved.
 | 2026-10-20 | P0 approved: optional versioned lifecycle extension, atomic mutation/source authority, compatibility boundary and fixture validation scope recorded in ADR-133. Entire rollout authorized as local commits without pushing. |
 | 2026-10-20 | Read-only Code/Work audit completed at `977acf1f`; owner requested a worktree and ADR/Spec/Plan. Dedicated documentation branch/worktree created. All implementation phases remain unchecked. |
 | 2026-10-20 | Documentation checks passed: 7 changed/new files, 36 added local references (including the canonical sibling Runtime checkout), UTF-8/LF/final-newline checks, 25 sequential functional requirements, 12 acceptance scenarios and no completed implementation checkboxes. Index diff whitespace check passed. No application tests/builds or destructive live acceptance were run for this documentation-only slice. |
+
+## Acceptance Evidence and Review Handoff
+
+All writes used memory/temporary profiles or two private source-built Desktop
+candidates, never the controlling Desktop profile. Native checks used the
+candidate's instance-bound screenshots and bounded input bridge. An unconfirmed
+navigation response was reconciled from a fresh screenshot before continuing.
+
+| Scope | Evidence actually obtained |
+| --- | --- |
+| A1-A3 Codespaces | Fixtures cover inferred identity, durable owner state, active Run/Session/Preview blockers and folder preservation. Native registration, pin/sidebar, rename, archive/restore and removal were exercised; removed-item API restoration kept identity. Final native removal required confirmation, Escape cancelled, and confirmed removal left the file readable. |
+| A4 source and navigation | Mixed managed/ordinary-room fixtures, list/graph tests and native default/all-source switching. Ordinary terminal room attempts stay out of the managed default and remain in System Map. Work opens one Overview with execution/diagnostic groups; old route redirects and selection contracts have focused coverage. |
+| A5, A7-A9 history | Source compaction, descendants, protected summaries, stale/concurrent apply, failed persistence, retry and recovery fixtures passed. Native exact-scope cleanup retained the outcome; active cleanup was blocked. After shutdown, fresh stores plus a subsequent Chat write kept cleared logs cleared and retained transcript/artifact/file. Provider/Runtime files were outside cleanup scope. |
+| A6, P2 everyday management | Source/dependency/acceptance, actor, hierarchy, batch and external-status fixtures passed. Native Work Item edit persisted. System Map exposed canonical owner/relationship controls; native Broken Links repair linked an unanchored Run to the chosen Task and removed that diagnostic. |
+| A10 Schedule | 27 focused schedule/history cases cover policy/timezone/DST, duplicate/edit, admission, stale completion, receipt cleanup and backup recovery. Native create/edit forms showed the target and timezone; disabled-rule detail and exact cleanup scope were inspected. Test fire showed the real-execution warning and Escape cancelled; the isolated rule stayed disabled with no receipt. |
+| A11 Preview/Code/Relay | 20 Preview cases and focused/existing execution/Relay checks exercise actual supervisor/driver delegates, stale/active cleanup protection, admission, cancellation and late completion using controlled drivers. Selected Run stop and editable retry/forward contracts have renderer coverage. No live provider dispatch or native Preview process was started. |
+| A12 and P5 retention | Valid/old/future/malformed profile, backup/atomic failure, restart, cursor/batch bounds, opt-out and new-work races passed focused fixtures. Native explicit opt-in compacted one eligible ordinary-room attempt, left active evidence/output intact, and was turned off. Final candidate default-off controls and results were inspected. Recovery requires re-opt-in. |
+| Shared renderer regression | Final 23 renderer/sidebar checks passed. Native Chat new/group/parallel/direct/ongoing-room composers, audience picker, avatars, transcript/agent bubble and sidebar overflow were inspected in the isolated candidate. No real message was dispatched to a provider. |
+
+Private evidence is retained under the parent workspace `.task-artifacts/`:
+
+| Candidate | Identity and source receipt |
+| --- | --- |
+| `code-work-owner-candidate-03` | Launch `64ab147993488f85750573fabb9703e0dc47d681aa0347d719b1f40a58f14805`; instance `5850a62893001dd65ff90c4ffee10b94`; Platform source digest `7f2041db47a8777e98a3b63ed601e017e20c5b3fbce8b4e16a1e3df422e55419`. Main behavioral acceptance before final presentation polish. |
+| `code-work-owner-candidate-04` | Launch `40c2ff6304cadc554a3bbf5b7679ceef3cccd4854a5bda48dae517986c731910`; instance `50b49d96c98edb54a035337e61cac6ae`; Platform source digest `be757ee10f7777053f4f9bfbfc114a96155d62360534dab5c9f5f47f3ed74d7b`. All 1,812 final application/build input files matched this built snapshot byte-for-byte. |
+
+Both launches record Platform HEAD `fb216287` plus dirty source bytes for this
+final polish slice, and clean Runtime HEAD
+`367f99d4d9488054954cecc08e8ed199a3441df0` (digest
+`31f431242f4018fc9564a0219cb07e8161ec3afe016df6a47384aa49748e1a71`).
+Each root retains `launch.json`, screenshots, `candidate-evidence.json` and
+`acceptance-stop.json`; both authenticated instance-bound stops returned
+`drained`, exit 0. Candidate 04 also retains `final-source-match.json`.
+Private fixture credentials, profile contents and binaries are not committed.
+Initial candidate attempts failed before application startup (Git ownership,
+then missing Electron distribution); a checksum-verified existing Electron
+41.2.0 cache was extracted privately. Shared dependencies/settings were not
+changed.
+
+Validation limits for owner review:
+
+- Focused tests and candidate builds passed; the full CI suite was not run.
+  `chat-store.test.js` retains five workflow/replay failures reproduced with
+  unchanged baseline implementations (32 passed, 5 failed); private baseline
+  logs remain under the worktree's ignored `.claude/checks/`.
+- Live provider execution, Test fire execution and native Preview startup were
+  not exercised. Their driver/admission/cancellation contracts use controlled
+  fixtures; no claim of live provider end-to-end acceptance is made.
+- Final owner review and everyday testing remain pending. Keep this worktree
+  and local commits for review; do not push. The recorded breaking public/default
+  changes require the next Platform minor (`0.9.0` or later) if release is later
+  authorized, with the tested migration and exact pins in that release change.
 
 ---
 

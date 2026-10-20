@@ -310,7 +310,7 @@ function createExtraActionGroups(
     if (props.onOpenMissions) {
       executionItems.push({
         key: 'missions',
-        label: t('workSidebarMissionsLabel'),
+        label: t('ownerMissionsNav'),
         onClick: props.onOpenMissions,
         active: isWorkMissionsPath(currentPath),
         icon: (

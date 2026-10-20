@@ -60,7 +60,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
-| [PLAN-119](PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md) | Code and Work Owner Actions and Lifecycle Rollout | Approved; implementation in progress | [SPEC-126](../specs/SPEC-126-code-work-owner-actions-and-lifecycle.md), [ADR-133](../decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) |
+| [PLAN-119](PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md) | Code and Work Owner Actions and Lifecycle Rollout | Implementation/scoped acceptance complete; owner review pending | [SPEC-126](../specs/SPEC-126-code-work-owner-actions-and-lifecycle.md), [ADR-133](../decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) |
 | [PLAN-117](PLAN-117-alive-companion-life-loop.md) | Alive Companion Life Loop | Implemented; acceptance pending | [SPEC-124](../specs/SPEC-124-alive-companion-life-loop.md), [ADR-127](../decisions/127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md) |
 | [PLAN-114](PLAN-114-companion-as-cat-role.md) | Companion as a Cat Role | Implemented; Settings visual acceptance pending | [SPEC-019](../specs/SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md), [ADR-040](../decisions/040-make-companion-a-first-class-chat-mode-with-workspace-and-presence.md) |
 | [PLAN-113](PLAN-113-managed-plugin-capabilities.md) | Managed Plugin Capabilities | Internal Agency host pilot; delivery validation recorded in plan | [SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md) |
@@ -183,7 +183,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-10-20 (Added draft PLAN-119 for Code/Work owner actions and lifecycle rollout.)*
+*Last updated: 2026-10-20 (PLAN-119 implementation/scoped acceptance complete; owner review pending.)*
 
 *See also: [specs/](../specs/) for feature specifications*
 

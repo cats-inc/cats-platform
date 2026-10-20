@@ -11,9 +11,10 @@ export function WorkOverviewOperations() {
   for (const item of payload?.sections.operatorInbox.items ?? []) items.set(item.taskId, item);
   for (const item of payload?.sections.recovery.items ?? []) items.set(item.taskId, { taskId: item.taskId, taskTitle: item.taskContext.taskTitle ?? item.taskId });
   for (const item of payload?.sections.controlPlane.items ?? []) if (item.nextActions.some(action => action.action)) items.set(item.taskId, { taskId: item.taskId, taskTitle: item.taskContext.taskTitle ?? item.taskId });
+  const visible = Array.from(items.values()).filter(item => listing.accepts(item.taskId));
   return <section className="operatorPanel ownerOverviewOperations" aria-label={t('ownerOverviewOperations')}><h2>{t('ownerOverviewOperations')}</h2>
     {query.isPending ? <p role="status">{t('ownerWorking')}</p> : null}{query.isError ? <p role="alert">{query.error.message}</p> : null}
-    {payload && !items.size ? <p>{t('workWarRoomOperatorInboxEmptyTitle')}</p> : null}
-    <div className="ownerOverviewOperations__items">{Array.from(items.values()).filter(item => listing.accepts(item.taskId)).map(item => <article key={item.taskId}><strong>{item.taskTitle}</strong><TaskOperationalActions taskId={item.taskId} /></article>)}</div>
+    {payload && !visible.length ? <p>{t('workWarRoomOperatorInboxEmptyTitle')}</p> : null}
+    <div className="ownerOverviewOperations__items">{visible.map(item => <article key={item.taskId}><strong>{item.taskTitle}</strong><TaskOperationalActions taskId={item.taskId} /></article>)}</div>
   </section>;
 }

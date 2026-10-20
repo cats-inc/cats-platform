@@ -62,7 +62,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
-| [SPEC-126](SPEC-126-code-work-owner-actions-and-lifecycle.md) | Code and Work Owner Actions and Lifecycle | Approved; implementation in progress | [PLAN-119](../plans/PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md), [ADR-133](../decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) |
+| [SPEC-126](SPEC-126-code-work-owner-actions-and-lifecycle.md) | Code and Work Owner Actions and Lifecycle | Implementation/scoped acceptance complete; owner review pending | [PLAN-119](../plans/PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md), [ADR-133](../decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) |
 | [SPEC-124](SPEC-124-alive-companion-life-loop.md) | Alive Companion Life Loop | Implemented; real-bot and visual acceptance pending | [PLAN-117](../plans/PLAN-117-alive-companion-life-loop.md) |
 | [SPEC-121](SPEC-121-managed-plugin-capabilities.md) | Managed Plugin Capabilities | Internal Agency host pilot implemented; general SDK planned | [PLAN-113](../plans/PLAN-113-managed-plugin-capabilities.md) |
 | [SPEC-120](SPEC-120-app-market-and-lifecycle.md) | App Market and Lifecycle | Draft contract; direction accepted; not implemented | [PLAN-112](../plans/PLAN-112-app-market-and-lifecycle.md) |
@@ -191,7 +191,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-10-20 (Added draft SPEC-126 for Code/Work owner actions and lifecycle.)*
+*Last updated: 2026-10-20 (SPEC-126 implementation/scoped acceptance complete; owner review pending.)*
 
 *See also: [plans/](../plans/) for implementation plans*
 

@@ -27,9 +27,11 @@ import {
   getScheduleTriggerReasonLabel,
 } from './scheduleUiSupport.js';
 import './schedules.css';
+import { ConfirmDialog, useConfirmDialog } from '../../../../../design/components/ConfirmDialog.js';
 
 export function SchedulesDetailPage(): JSX.Element {
   const { t } = useI18n();
+  const confirmation = useConfirmDialog();
   const { scheduleId } = useParams<{ scheduleId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -121,6 +123,7 @@ export function SchedulesDetailPage(): JSX.Element {
 
   return (
     <div className="scheduleDetail">
+      <ConfirmDialog dialog={confirmation.dialog} onClose={confirmation.handleClose} />
       <ScheduleDetailTopBar
         title={rule.title}
         rule={rule}
@@ -128,7 +131,7 @@ export function SchedulesDetailPage(): JSX.Element {
         testFirePending={testFireMutation.isPending}
         deletePending={false}
         onToggle={() => toggleMutation.mutate(!rule.enabled)}
-        onTestFire={() => { if (window.confirm(t('ownerScheduleTestFireNotice'))) testFireMutation.mutate(); }}
+        onTestFire={() => { void confirmation.confirm({ title: rule.title, message: t('ownerScheduleTestFireNotice'), confirmLabel: t('workScheduleTestFireLabel'), defaultAction: 'cancel' }).then(accepted => { if (accepted) testFireMutation.mutate(); }); }}
         onDelete={handleDelete}
       />
       <main className="scheduleDetail__main"><p>{t('ownerScheduleTestFireNotice')}</p><ScheduleManagement rule={rule} expanded={ownerOpen} onRemoved={() => navigate(WORK_SCHEDULES_PATH)} />
