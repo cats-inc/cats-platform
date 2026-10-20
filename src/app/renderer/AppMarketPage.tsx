@@ -29,7 +29,7 @@ const NETWORK_ERRORS = new Set(['catalog_unavailable', 'download_failed']);
 const UNVERIFIED_ERRORS = new Set(['catalog_untrusted', 'catalog_invalid', 'catalog_unsupported', 'catalog_rollback', 'catalog_mismatch', 'download_rejected']);
 
 export function describeAppPermissions(permissions: readonly string[], t: Translate): string {
-  return permissions.map((permission) => (PERMISSION_LABELS[permission] ? t(PERMISSION_LABELS[permission]) : permission)).join(', ');
+  return permissions.map((permission) => (PERMISSION_LABELS[permission] ? t(PERMISSION_LABELS[permission]) : permission)).join(t('appMarketListSeparator'));
 }
 
 export function describeAppMarketError(error: { code?: string; message?: string } | undefined, t: Translate): string {
@@ -146,6 +146,7 @@ export function AppMarketPage({ desktop = isDesktopEnvironment() }: { desktop?: 
         : message,
       confirmLabel: entry.action === 'update' ? t('appMarketUpdate', { version: entry.version }) : t('appMarketInstall'),
       defaultAction: 'cancel',
+      tone: 'primary',
     });
     if (!confirmed) return;
     setBusyAppId(entry.id);

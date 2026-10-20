@@ -32,6 +32,16 @@ test('ConfirmDialog renders an auxiliary action when provided', () => {
   );
 });
 
+test('ConfirmDialog keeps destructive styling by default and offers a primary tone', () => {
+  const render = (tone?: 'destructive' | 'primary') => renderToStaticMarkup(
+    <ConfirmDialog dialog={{ options: { title: 'Install Studio?', message: 'Studio can open its own page.', confirmLabel: 'Install', ...(tone ? { tone } : {}) } }}
+      onClose={() => {}} />,
+  );
+  assert.match(render(), /class="confirmDestructiveButton"[^>]*>Install</u);
+  assert.match(render('primary'), /class="confirmPrimaryButton"[^>]*>Install</u);
+  assert.doesNotMatch(render('primary'), /confirmDestructiveButton/u);
+});
+
 test('ConfirmDialog localizes default fallback actions', () => {
   const markup = renderToStaticMarkup(
     <I18nProvider locale="zh-TW">
