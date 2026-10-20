@@ -30,7 +30,7 @@ PLAN-119 belong to another workstream and remain governing integration constrain
 | S1 | Runtime activity types and admitted repo/worktree identity | Complete; Runtime `5300ed77`, 15 focused tests |
 | S2 | Runtime bounded reducer, ordering, snapshot validation and inactive reattachment | Complete; Runtime `cfa4c044`, 11 focused tests and typecheck passed |
 | S3 | Runtime local-tool observation, session lifecycle, transport and memory-only restart checks | Complete; Runtime `de219b6f`, scoped suites/typecheck and independent review passed |
-| S4 | Native provider structured evidence, coverage and fixture/native checks | Pending |
+| S4 | Native provider structured evidence, coverage and fixture/native checks | Complete; Runtime `57b449e3`, isolated Windows Claude 2.1.304 native evidence, scoped tests/typecheck and independent review |
 | S5 | Platform participant attribution, work-area API and live projection | Pending |
 | S6 | Code right panel, avatar entry, localization and renderer regressions | Pending |
 | S7 | Cross-repository native acceptance, recovery/privacy and documentation reconciliation | Pending |
@@ -49,10 +49,11 @@ common-cwd, no-bubble and no-extra-grant requirements apply throughout delivery.
   coordinator binding to a participant's own session.
 - [ ] Agree the proposed Code-owned work-areas read route and live-update seam;
   review any changes to frozen/shared contracts before implementation.
-- [ ] Inventory real provider operation payloads and coverage. Select one
+- [x] Inventory real provider operation payloads and coverage. Select one
   fixture-backed native provider slice alongside Runtime-owned local tools.
-- [ ] Define bounded session metadata storage and audit existing snapshot upgrade
-  handling. Specify tested migration/recovery if a persisted schema must change.
+- [x] Define bounded memory-only observation retention. Runtime/Code introduce no
+  persisted observation schema; restart reports no activity until reattachment.
+  Any future persisted format requires tested migration/recovery.
 - [ ] Review the narrow ADR-131 amendment: Code execution inspection only, with
   participant administration remaining in the existing avatar/composer flow.
 - [ ] Preserve ADR-133's owner-controlled Codespace registration, suppression
@@ -196,6 +197,7 @@ than mirror implementation structure.
 | 2026-10-20 | Preparing owner-authorized direct-main commit/push against updated Platform main `f3bef166`. Reconciled the proposal with ADR-132 participant/coordinator semantics and ADR-133 owner lifecycle; reserved workstream documents remain unchanged. Implementation remains out of scope. |
 | 2026-10-20 | Latest-main integration validation passed: preserved both upstream feature commits and their ADR/SPEC/PLAN documents, merged index additions from both workstreams, resolved 38 references across the six new documents and passed whitespace checks. This remains a documentation-only delivery; no application tests or builds were run. |
 | 2026-10-20 | Owner authorized sliced implementation and incremental commits. PR #289 was verified merged at `8bb3fd2f` with changes/validate/nodejs CI successful; both main checkouts pulled cleanly. Platform worktree `plan120-work-areas` starts at that merge commit. Runtime S1 and independent contract review are in progress. |
+| 2026-10-20 | Runtime S1–S4 are committed as `5300ed77`, `cfa4c044`, `de219b6f` and `57b449e3`. Admitted local tools and native Claude direct Read/Write/Edit now expose bounded memory-only snapshots through inspection/NDJSON/SSE. Two isolated Windows Claude Code 2.1.304 conversations shared a non-Git parent cwd; live/captured evidence covered a deep repo, an existing unmanaged worktree, successful Read/Write/Edit and a failed Read. Runtime retains redacted native frames and a live snapshot for consumer fixtures. Scoped tests, TypeScript and independent review passed; no all-provider/OS, Platform attribution or renderer acceptance is claimed. S5–S7 remain pending. |
 
 ---
 
