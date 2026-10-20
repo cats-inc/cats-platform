@@ -18,6 +18,9 @@ test('App management requires the loopback Desktop credential, with no browser O
 
 test('Desktop App IPC accepts bounded management paths and rejects arbitrary destinations', () => {
   assert.equal(validateDesktopAppRequest({ path: '/api/apps/test.ask/renderer', method: 'GET' }).path, '/api/apps/test.ask/renderer');
+  // The App Market reaches the server only through this bridge.
+  assert.equal(validateDesktopAppRequest({ path: '/api/apps/_market?refresh=1', method: 'GET' }).path, '/api/apps/_market?refresh=1');
+  assert.equal(validateDesktopAppRequest({ path: '/api/apps/_market/install', method: 'POST', body: { id: 'cats.studio' } }).path, '/api/apps/_market/install');
   for (const path of ['https://example.com/api/apps', '//example.com/api/apps', '/api/auth', '/api/apps/../../auth', '/api/apps/../auth',
     '/api/apps/%2e%2e/auth', '/api/apps/test.ask#fragment']) {
     assert.throws(() => validateDesktopAppRequest({ path, method: 'POST' }));

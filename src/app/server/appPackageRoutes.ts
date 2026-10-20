@@ -37,9 +37,14 @@ import { hasDesktopAppAuthority } from '../../platform/apps/desktopAuthority.js'
 import type { AppComponentHost } from '../../platform/apps/componentHost.js';
 import type { PlatformAuthStore } from '../../platform/auth/store.js';
 import { isSessionChainActive } from '../../platform/auth/session.js';
+import { createAppCatalogClient, type AppCatalogClient } from '../../platform/apps/catalog.js';
+import { AppCatalogError } from '../../platform/apps/catalogFetch.js';
+import { installFromAppMarket, readAppMarket } from '../../platform/apps/market.js';
 
 export interface AppPackageApiDependencies {
   appComponents?: AppComponentHost;
+  /** Official catalog access; tests inject a client with their own keys and fetch. */
+  appCatalog?: AppCatalogClient;
   desktopAppsKey?: string;
   authStore?: PlatformAuthStore;
   config: Pick<AppConfig, 'chatStatePath'>;
@@ -99,6 +104,67 @@ const BASE_RESERVED_SETTINGS_PATHS = [
   '/settings/runtime',
   '/settings/data',
 ];
+
+// Market paths start with `_`, which no App ID can, so they never shadow an installed App.
+const APP_MARKET_PATH = '/api/apps/_market';
+const APP_MARKET_INSTALL_PATH = '/api/apps/_market/install';
+const APP_MARKET_ERROR_STATUS: Record<string, number> = {
+  app_not_in_catalog: 404,
+  app_already_installed: 409,
+  app_managed_by_desktop: 409,
+  app_incompatible: 409,
+  catalog_expired: 409,
+  catalog_untrusted: 502,
+  catalog_invalid: 502,
+  catalog_unsupported: 502,
+  catalog_rollback: 502,
+  catalog_mismatch: 502,
+  download_rejected: 502,
+  catalog_unavailable: 503,
+  download_failed: 503,
+};
+let defaultAppCatalog: AppCatalogClient | undefined;
+
+function appCatalogFor(context: AppPackageRouteContext): AppCatalogClient {
+  return context.dependencies.appCatalog ?? (defaultAppCatalog ??= createAppCatalogClient());
+}
+
+async function handleMarket(context: AppPackageRouteContext): Promise<void> {
+  const snapshot = await readAppMarket({
+    chatStatePath: context.dependencies.config.chatStatePath,
+    client: appCatalogFor(context),
+    refresh: context.url.searchParams.get('refresh') === '1',
+  });
+  sendJson(context.response, 200, snapshot, { 'cache-control': 'no-store' });
+}
+
+async function handleMarketInstall(context: AppPackageRouteContext): Promise<void> {
+  let body: { id?: unknown };
+  try {
+    body = await readJsonBody<{ id?: unknown }>(context.request);
+  } catch {
+    body = {};
+  }
+  if (typeof body.id !== 'string' || !body.id) {
+    sendJson(context.response, 400, { error: { code: 'app_id_required', message: 'Choose an App from the catalog.' } });
+    return;
+  }
+  try {
+    const record = await installFromAppMarket({
+      chatStatePath: context.dependencies.config.chatStatePath,
+      client: appCatalogFor(context),
+      appId: body.id,
+      componentHost: context.dependencies.appComponents,
+      now: context.dependencies.now,
+    });
+    sendJson(context.response, 201, { ok: true, app: toPlatformInstalledAppDescriptor(record) });
+  } catch (error) {
+    const code = error instanceof AppCatalogError ? error.code : 'app_install_failed';
+    sendJson(context.response, APP_MARKET_ERROR_STATUS[code] ?? 400, {
+      error: { code, message: error instanceof Error ? error.message : 'The App could not be installed.' },
+    });
+  }
+}
 
 function appRegistryFor(context: AppPackageRouteContext): FileCatsAppRegistry {
   const paths = resolveCatsAppStoragePathsFromChatState(context.dependencies.config.chatStatePath);
@@ -474,10 +540,19 @@ export async function routeAppPackageApi(
 ): Promise<boolean> {
   const desktop = hasDesktopAppAuthority(context.request, context.dependencies.desktopAppsKey);
   const management = context.url.pathname === '/api/apps/validate' || context.url.pathname === '/api/apps/install'
+    || context.url.pathname === APP_MARKET_PATH || context.url.pathname === APP_MARKET_INSTALL_PATH
     || /^\/api\/apps\/[^/]+\/(enable|disable|inspect)$/.test(context.url.pathname)
     || (context.method === 'DELETE' && /^\/api\/apps\/[^/]+$/.test(context.url.pathname));
   if (management && !desktop) {
     sendJson(context.response, 403, { error: { code: 'desktop_app_management_required', message: 'Manage Apps from Cats Desktop.' } }); return true;
+  }
+  if (context.url.pathname === APP_MARKET_PATH) {
+    if (context.method !== 'GET') { sendMethodNotAllowed(context.response, ['GET']); return true; }
+    await handleMarket(context); return true;
+  }
+  if (context.url.pathname === APP_MARKET_INSTALL_PATH) {
+    if (context.method !== 'POST') { sendMethodNotAllowed(context.response, ['POST']); return true; }
+    await handleMarketInstall(context); return true;
   }
   const capabilityMatch = /^\/api\/apps\/([a-z][a-z0-9.-]{0,99})\/authorize$/.exec(context.url.pathname);
   if (capabilityMatch) {
