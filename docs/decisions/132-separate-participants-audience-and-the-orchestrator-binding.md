@@ -83,9 +83,9 @@ and SPEC-013.
    cat. `newChatDefaults` holds either kind and stays shared by Chat, Work and
    Code.
 8. **Concepts that go.** God Cat, Lead Cat, the default-chat mode in the
-   renderer and the server, the conversation-level `pending*` target, the rule
-   that the orchestrator is a Boss Cat, the single `bossCatId`, and the Boss Cat
-   avatar that the header shows for a room it is not in.
+   renderer and the server, the conversation-level `pending*` target, Start
+   fresh, the rule that the orchestrator is a Boss Cat, the single `bossCatId`,
+   and the Boss Cat avatar that the header shows for a room it is not in.
 9. **No data migration.** The owner resets every machine's data and has no
    other users or testers, so zero-participant conversations and the old
    `newChatDefaults` shape are unsupported rather than migrated. This

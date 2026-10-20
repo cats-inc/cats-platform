@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Approved |
 | **Owner** | Owner |
 | **Reviewer** | Owner |
 
@@ -63,13 +63,20 @@ implied Boss Cat authority
 4. FR-4: A participant can be removed while another remains; the last one
    cannot. Archiving, deleting or removing Chat from a cat must not leave a
    non-DM conversation without participants.
+4a. FR-4a: The data model and the server allow a group with one participant.
+   Only the UI keeps group entries (+Group, +Team Code, +Team Work) at two or
+   more, behind an internal flag that defaults on and has no Settings control
+   yet: on, the composer cannot remove a group's second-to-last participant;
+   off, a group can drop to one and still send.
 5. FR-5: The participant limit counts every participant, the default one
    included.
 
 ### Audience
 
 6. FR-6: Every message to a non-DM conversation carries an audience of one or
-   more participant ids. The renderer never sends an empty audience.
+   more participant ids, from every client and from server-internal senders
+   such as collaboration hand-offs. The server rejects a non-DM message
+   without an audience. A DM message needs none: it goes to the DM's cat.
 7. FR-7: Audience keys identify participants by participant id in drafts and
    started conversations alike, and provider/model participants count as
    active participants.
@@ -89,6 +96,11 @@ implied Boss Cat authority
     orchestrator session or lease exists.
 14. FR-14: Without a coordinator, a message reaches exactly its audience and
     nothing is routed on.
+14a. FR-14a: The coordinator keeps continuation recommendations and product
+    knowledge. Collaboration tools act beyond the conversation and follow
+    FR-17. The default-chat reply rewrite (a second pass that strips
+    `@mentions` when nobody else is in the room) goes; an `@mention` of a
+    non-participant is handled as any unresolved mention.
 
 ### Permissions
 
@@ -103,8 +115,8 @@ implied Boss Cat authority
 ### Identity groups
 
 19. FR-19: Each cat has a group, `admin` or `standard`, replacing
-    `bossCatId`. Several cats may be admins. Existing settings that choose the
-    Boss Cat choose admins.
+    `bossCatId`. Several cats may be admins. Settings › Cats replaces choosing
+    the Boss Cat with an admin switch on each cat.
 20. FR-20: An admin cat's avatar keeps the gold frame wherever cats are shown.
 
 ### Owner
@@ -115,7 +127,8 @@ implied Boss Cat authority
 ### Remembered default
 
 22. FR-22: Creating a non-DM conversation saves its first participant as
-    `newChatDefaults`: a provider/model target or a cat id.
+    `newChatDefaults`: a provider/model target or a cat id. Editing the first
+    participant's model in a draft saves it immediately, as today.
 23. FR-23: A new draft starts with that participant: a provider/model chip, or
     a cat chip that looks like a DM's.
 
@@ -124,16 +137,24 @@ implied Boss Cat authority
 24. FR-24: A DM, or a non-DM conversation with one participant, hides that
     participant's avatar in the composer, and the audience chip stands in for
     it: a provider/model chip, or a cat chip.
-25. FR-25: With two or more participants, the participant avatars show and
-    the audience chip chooses among them.
-26. FR-26: The header shows no avatar for a cat that is not a participant.
+25. FR-25: With two or more participants, the composer shows the participant
+    avatars and the audience chip chooses among them. The first `+` therefore
+    turns the one-participant view into a two-participant view; the default
+    participant was there all along.
+26. FR-26: The header shows every participant's avatar, one included, as a
+    one-to-one chat shows who it is with. A conversation with only its
+    provider/model default participant now shows that participant there. The
+    header shows no avatar for a cat that is not a participant.
 
 ### Data and release
 
 27. FR-27: Removed: the default-chat mode, `pending*` on conversations,
     `implicit:execution_target`, `defaultRecipientId` outside DMs, the Lead
-    badge, and the God Cat seeding paths. Zero-participant conversations and
-    the old `newChatDefaults` shape are unsupported.
+    badge, the God Cat seeding paths, Start fresh (the chip popover's button
+    and hint, the `resetContinuity` request, `continuityResetAt` and its
+    system message), the default-chat reply rewrite, and the Telegram
+    bridge's non-DM room fallback (bindings are always DMs). Zero-participant
+    conversations and the old `newChatDefaults` shape are unsupported.
 28. FR-28: The release that ships this is the next minor (0.9.0), and its
     notes tell operators to reset Platform data
     ([Reset Platform data](../deployment.md#reset-platform-data)).
@@ -174,25 +195,26 @@ Routing for a message:
   for the orchestrator target.
 - Runtime session handling: the coordinator reuses its participant session.
 
-## Open Questions
+## Decisions
 
-- [ ] Start fresh: reset a participant's session from its popover, or drop it.
-- [ ] A message without an audience from Telegram, the API or mobile: send it
-      to the coordinator, to every participant, or reject it.
-- [ ] Draft minimums and seeding: one participant everywhere, with +New
-      seeding the default participant only, `+` adding one at a time, +Group
-      seeding the default participant plus one and +Parallel one per lane.
-      This changes behavior the draft visibility matrix locks (the group
-      minimum of two, the zero-to-two seeding and the two-participant send
-      gate); each change needs explicit approval.
-- [ ] Header roster with one participant: hide it like the composer, or keep it
-      as a status row.
-- [ ] Whether editing the default participant's model in a draft also updates
-      `newChatDefaults` immediately, as it does today.
-- [ ] Which coordination behaviors the coordinator keeps from today's
-      orchestrator: continuation recommendations, handoff rewriting, product
-      knowledge and collaboration tools.
-- [ ] Where the admin group is managed in Settings.
+Closed with the owner on 2026-10-20:
+
+- Start fresh is removed, not moved to participants (FR-27).
+- A non-DM message must carry an audience; there is no fallback recipient
+  (FR-6). Telegram is DM-only. The mobile app sends no audience today and
+  gains an audience control before the server starts rejecting messages
+  without one.
+- The group minimum of two is a UI rule behind an internal flag (FR-4a). The
+  draft visibility matrix's locked behavior is unchanged: the group minimum,
+  the two-participant send gate and the first `+` producing two participants
+  all hold (FR-25).
+- The header keeps one participant's avatar (FR-26).
+- Draft edits to the first participant's model save the remembered default
+  immediately (FR-22).
+- The coordinator keeps continuation recommendations and product knowledge;
+  collaboration tools need an admin coordinator; the reply rewrite goes
+  (FR-14a).
+- Settings › Cats manages the admin group (FR-19).
 
 ## References
 
