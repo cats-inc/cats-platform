@@ -3,6 +3,9 @@ export type AppMarketCatalogStatus = 'fresh' | 'cached' | 'expired' | 'unavailab
 
 export type AppMarketAction = 'install' | 'update' | 'installed' | 'managed-by-desktop' | 'incompatible';
 
+/** Whether the installed copy is the one this host installed from the catalog. */
+export type AppMarketInstalledSource = 'market' | 'other';
+
 export interface AppMarketEntry {
   id: string;
   displayName: string;
@@ -15,6 +18,7 @@ export interface AppMarketEntry {
   publisher: { name: string; homepage?: string };
   compatibility: { catsPlatform: string; appSdk: string };
   installedVersion: string | null;
+  installedSource: AppMarketInstalledSource | null;
   /** Set when the installed version was withdrawn from the catalog. */
   installedWithdrawnReason: string | null;
   action: AppMarketAction;

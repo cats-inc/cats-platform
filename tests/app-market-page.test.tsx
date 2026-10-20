@@ -15,7 +15,7 @@ function entry(overrides: Partial<AppMarketEntry>): AppMarketEntry {
   return {
     id: 'cats.studio', displayName: 'Studio', description: 'Image studio', icon: 'image', version: '0.2.1', notes: 'Grok images',
     permissions: ['ui.route', 'ui.lobby', 'media.images'], publisher: { name: 'sammykenny2' },
-    compatibility: { catsPlatform: '^0.6.0', appSdk: '^1.3.0' }, installedVersion: null, installedWithdrawnReason: null, action: 'install',
+    compatibility: { catsPlatform: '^0.6.0', appSdk: '^1.3.0' }, installedVersion: null, installedSource: null, installedWithdrawnReason: null, action: 'install',
     ...overrides,
   };
 }
@@ -65,6 +65,7 @@ test('errors and permissions are localized', () => {
   assert.equal(describeAppPermissions(['media.images', 'future.permission'], zh), '用你的 AI 工具產生圖片, future.permission');
   assert.equal(describeAppMarketError({ code: 'catalog_mismatch', message: 'x' }, zh), '下載內容沒有通過驗證，所以沒有安裝任何東西。');
   assert.equal(describeAppMarketError({ code: 'app_managed_by_desktop', message: 'x' }, en), 'Included with Cats Desktop');
+  assert.equal(describeAppMarketError({ code: 'catalog_changed', message: 'x' }, en), 'The catalog changed since you opened it. Review the App again before installing.');
   assert.equal(describeAppMarketError({ code: 'something_else', message: 'Server said no.' }, en), 'Server said no.');
   assert.match(list(snapshot(), zh), />安裝<\/button>/u);
 });

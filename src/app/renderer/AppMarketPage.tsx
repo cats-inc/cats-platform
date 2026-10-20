@@ -38,6 +38,7 @@ export function describeAppMarketError(error: { code?: string; message?: string 
   if (error?.code === 'app_managed_by_desktop') return t('appMarketManagedByDesktop');
   if (error?.code === 'app_incompatible') return t('appMarketIncompatible');
   if (error?.code === 'catalog_expired') return t('appMarketExpiredNotice');
+  if (error?.code === 'catalog_changed') return t('appMarketCatalogChanged');
   return error?.message ?? t('appMarketUnavailable');
 }
 
@@ -136,9 +137,13 @@ export function AppMarketPage({ desktop = isDesktopEnvironment() }: { desktop?: 
 
   async function install(entry: AppMarketEntry) {
     const permissions = describeAppPermissions(entry.permissions, t);
+    const message = t('appMarketConfirmMessage', { appDisplayName: entry.displayName, version: entry.version, publisher: entry.publisher.name, permissions });
     const confirmed = await confirm({
       title: t(entry.action === 'update' ? 'appMarketConfirmUpdateTitle' : 'appMarketConfirmInstallTitle', { appDisplayName: entry.displayName }),
-      message: t('appMarketConfirmMessage', { appDisplayName: entry.displayName, version: entry.version, publisher: entry.publisher.name, permissions }),
+      // Replacing a sideloaded or development copy is a source change the user must see.
+      message: entry.installedSource === 'other'
+        ? `${message} ${t('appMarketReplaceLocal', { appDisplayName: entry.displayName, version: entry.installedVersion ?? '' })}`
+        : message,
       confirmLabel: entry.action === 'update' ? t('appMarketUpdate', { version: entry.version }) : t('appMarketInstall'),
       defaultAction: 'cancel',
     });
@@ -148,7 +153,8 @@ export function AppMarketPage({ desktop = isDesktopEnvironment() }: { desktop?: 
       const response = await appHostRequest('/api/apps/_market/install', {
         method: 'POST',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: entry.id }),
+        // The server installs only if the catalog still offers exactly what was reviewed.
+        body: JSON.stringify({ id: entry.id, version: entry.version, permissions: entry.permissions }),
       });
       const result = await response.json().catch(() => null) as { error?: { code?: string; message?: string } } | null;
       if (!response.ok) {

@@ -22,7 +22,7 @@ function catalogClient() {
     contributions: { lobbyApps: [{ id: 'studio', title: 'Studio', routePath: '/apps/cats.studio' }] }, permissions: ['ui.route', 'ui.lobby', 'media.images'] };
   const bytes = encodeAppPackage({ manifest, files: [{ path: 'renderer/index.html', data: Buffer.from('<html><body>Studio</body></html>') }] });
   const payload = Buffer.from(JSON.stringify({
-    schemaVersion: 1, revision: 10, issuedAt: '2026-10-20T00:00:00.000Z', expiresAt: '2026-11-19T00:00:00.000Z', publisher: { name: 'sammykenny2' },
+    schemaVersion: 1, revision: Date.parse('2026-10-20T00:00:00.000Z') / 1000, issuedAt: '2026-10-20T00:00:00.000Z', expiresAt: '2026-11-19T00:00:00.000Z', publisher: { name: 'sammykenny2' },
     apps: [{ id: 'cats.studio', displayName: 'Studio', description: 'Image studio', icon: 'image', channels: { stable: '0.2.1' },
       versions: [{ version: '0.2.1', artifact: { url: artifactUrl, size: bytes.length, sha256: sha256(bytes) },
         compatibility: manifest.compatibility, permissions: manifest.permissions, publisher: manifest.publisher, notes: 'Grok images' }] }],
@@ -52,30 +52,37 @@ async function request(dependencies: AppPackageApiDependencies, pathname: string
 
 test('the App Market is Desktop-only and installs from the signed catalog', async () => {
   const chatStatePath = path.join(await mkdtemp(path.join(tmpdir(), 'cats-app-market-')), 'state', 'chat-state.local.json');
-  const dependencies: AppPackageApiDependencies = { config: { chatStatePath }, desktopAppsKey, appCatalog: catalogClient() };
+  const dependencies: AppPackageApiDependencies = { config: { chatStatePath }, desktopAppsKey, appCatalog: catalogClient(), bundledAppIds: new Set() };
+  const review = { id: 'cats.studio', version: '0.2.1', permissions: ['ui.route', 'ui.lobby', 'media.images'] };
 
   for (const [pathname, method] of [['/api/apps/_market', 'GET'], ['/api/apps/_market/install', 'POST']] as const) {
-    const denied = await request(dependencies, pathname, method, method === 'POST' ? { id: 'cats.studio' } : undefined, false);
+    const denied = await request(dependencies, pathname, method, method === 'POST' ? review : undefined, false);
     assert.deepEqual([denied.status, denied.payload.error.code], [403, 'desktop_app_management_required']);
   }
 
   const listed = await request(dependencies, '/api/apps/_market?refresh=1', 'GET');
   assert.equal(listed.status, 200);
-  assert.deepEqual([listed.payload.status, listed.payload.revision], ['fresh', 10]);
+  assert.deepEqual([listed.payload.status, listed.payload.revision], ['fresh', Date.parse('2026-10-20T00:00:00.000Z') / 1000]);
   assert.deepEqual(listed.payload.apps.map((app: { id: string; action: string; permissions: string[] }) => [app.id, app.action, app.permissions]),
     [['cats.studio', 'install', ['ui.route', 'ui.lobby', 'media.images']]]);
 
-  assert.equal((await request(dependencies, '/api/apps/_market', 'POST', { id: 'cats.studio' })).status, 405);
-  assert.deepEqual((await request(dependencies, '/api/apps/_market/install', 'POST', { id: 'cats.unknown' })).payload.error.code, 'app_not_in_catalog');
-  assert.equal((await request(dependencies, '/api/apps/_market/install', 'POST', {})).status, 400);
+  assert.equal((await request(dependencies, '/api/apps/_market', 'POST', review)).status, 405);
+  assert.deepEqual((await request(dependencies, '/api/apps/_market/install', 'POST', { ...review, id: 'cats.unknown' })).payload.error.code, 'app_not_in_catalog');
+  for (const body of [{}, { id: 'cats.studio' }, { ...review, id: '../cats.studio' }, { ...review, permissions: 'ui.route' }]) {
+    assert.deepEqual((await request(dependencies, '/api/apps/_market/install', 'POST', body)).payload.error.code, 'app_review_required');
+  }
+  const changed = await request(dependencies, '/api/apps/_market/install', 'POST', { ...review, version: '0.2.0' });
+  assert.deepEqual([changed.status, changed.payload.error.code], [409, 'catalog_changed']);
 
-  const installed = await request(dependencies, '/api/apps/_market/install', 'POST', { id: 'cats.studio' });
+  const installed = await request(dependencies, '/api/apps/_market/install', 'POST', review);
   assert.equal(installed.status, 201);
   assert.deepEqual([installed.payload.app.id, installed.payload.app.version, installed.payload.app.enabled], ['cats.studio', '0.2.1', true]);
   const registry = new FileCatsAppRegistry({ registryPath: resolveCatsAppStoragePathsFromChatState(chatStatePath).registryPath });
   assert.equal((await registry.getInstalledApp('cats.studio'))?.packageSource, 'local-package');
 
-  const again = await request(dependencies, '/api/apps/_market/install', 'POST', { id: 'cats.studio' });
+  const again = await request(dependencies, '/api/apps/_market/install', 'POST', review);
   assert.deepEqual([again.status, again.payload.error.code], [409, 'app_already_installed']);
   assert.equal((await request(dependencies, '/api/apps/_market', 'GET')).payload.apps[0].action, 'installed');
+  const bundled = await request({ ...dependencies, bundledAppIds: new Set(['cats.studio']) }, '/api/apps/_market', 'GET');
+  assert.equal(bundled.payload.apps[0].action, 'managed-by-desktop');
 });

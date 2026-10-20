@@ -13,9 +13,11 @@ export const APP_CATALOG_SCHEMA_VERSION = 1;
 export const MAX_APP_CATALOG_PAYLOAD_BYTES = 256 * 1024;
 const MAX_ENVELOPE_BYTES = 512 * 1024;
 const CATALOG_TIMEOUT_MS = 15_000;
-// Below the Desktop App request timeout, so the renderer never reports a failure while the
-// server is still finishing an install.
-const ARTIFACT_TIMEOUT_MS = 60_000;
+// An install may wait for a queued refresh (15 s) and fetch the catalog (15 s) before this
+// download; together they stay below the 90 s Desktop App request timeout.
+const ARTIFACT_TIMEOUT_MS = 45_000;
+const MAX_CATALOG_TTL_MS = 31 * 24 * 60 * 60 * 1000;
+const MAX_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
 /** A cached catalog younger than this is reused without a network request. */
 const CATALOG_REUSE_MS = 15 * 60 * 1000;
 const MAX_APPS = 64;
@@ -64,6 +66,8 @@ export interface AppCatalogSnapshot {
   catalog: AppCatalogPayload | null;
   keyId: string | null;
   fetchedAt: string | null;
+  /** Apps this host installed from the catalog, keyed by App ID. */
+  installs: Record<string, AppCatalogProvenance>;
   /** Why the latest refresh failed, when a cached or no catalog is shown. */
   error?: { code: string; message: string };
 }
@@ -155,6 +159,10 @@ export function parseAppCatalogPayload(value: unknown): AppCatalogPayload {
   const issuedAt = timestamp(input.issuedAt, 'catalog.issuedAt');
   const expiresAt = timestamp(input.expiresAt, 'catalog.expiresAt');
   if (Date.parse(expiresAt) <= Date.parse(issuedAt)) invalid('catalog.expiresAt', 'must follow issuedAt.');
+  // A far-future revision would raise every Desktop's rollback floor for good, and a long
+  // lifetime would defeat expiry, so both are tied to the issue time.
+  if (Date.parse(expiresAt) - Date.parse(issuedAt) > MAX_CATALOG_TTL_MS) invalid('catalog.expiresAt', 'must be within 31 days of issuedAt.');
+  if (input.revision !== Date.parse(issuedAt) / 1000) invalid('catalog.revision', 'must equal issuedAt in epoch seconds.');
   if (!Array.isArray(input.apps) || input.apps.length > MAX_APPS) invalid('catalog.apps', `must list at most ${MAX_APPS} Apps.`);
   const apps = input.apps.map((app, index) => parseApp(app, `catalog.apps[${index}]`));
   if (new Set(apps.map((app) => app.id)).size !== apps.length) invalid('catalog.apps', 'repeats an App ID.');
@@ -204,21 +212,41 @@ interface AppCatalogState {
 }
 
 const EMPTY_STATE: AppCatalogState = { schemaVersion: 1, highestRevision: 0, envelope: null, fetchedAt: null, installs: {} };
+
+/** The state file is unreadable as JSON or as a v1 state; it is backed up, then replaced. */
+class CorruptCatalogStateError extends Error {}
 const stateQueues = new Map<string, Promise<unknown>>();
 
 export function resolveAppCatalogStatePath(chatStatePath: string): string {
   return path.join(resolveCatsAppStoragePathsFromChatState(chatStatePath).appsDir, 'catalog-state.json');
 }
 
+// Missing state starts empty and a corrupt file is backed up first. Any other read failure,
+// including a state written by a newer Desktop, fails closed without touching the file.
 async function readCatalogState(statePath: string): Promise<AppCatalogState> {
   let raw: string;
   try { raw = await readFile(statePath, 'utf8'); } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return structuredClone(EMPTY_STATE);
-    throw error;
+    throw new AppCatalogError('catalog_state_unavailable', `The App catalog state cannot be read: ${(error as Error).message}`);
   }
-  const parsed = JSON.parse(raw) as Partial<AppCatalogState>;
-  if (parsed.schemaVersion !== 1 || !Number.isSafeInteger(parsed.highestRevision)) throw new Error('Unsupported App catalog state.');
+  let parsed: Partial<AppCatalogState>;
+  try { parsed = JSON.parse(raw) as Partial<AppCatalogState>; } catch { throw new CorruptCatalogStateError('The App catalog state is not JSON.'); }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new CorruptCatalogStateError('The App catalog state is not an object.');
+  if (parsed.schemaVersion !== 1) {
+    throw new AppCatalogError('catalog_state_unavailable', `Unsupported App catalog state schema ${String(parsed.schemaVersion)}.`);
+  }
+  if (!Number.isSafeInteger(parsed.highestRevision)) throw new CorruptCatalogStateError('The App catalog state has no valid revision.');
   return { ...structuredClone(EMPTY_STATE), ...parsed } as AppCatalogState;
+}
+
+async function readOrRecoverCatalogState(statePath: string, now: Date): Promise<AppCatalogState> {
+  try {
+    return await readCatalogState(statePath);
+  } catch (error) {
+    if (!(error instanceof CorruptCatalogStateError)) throw error;
+    await rename(statePath, `${statePath}.corrupt-${now.getTime()}`);
+    return structuredClone(EMPTY_STATE);
+  }
 }
 
 async function writeCatalogState(statePath: string, state: AppCatalogState): Promise<void> {
@@ -259,6 +287,7 @@ export function createAppCatalogClient(options: {
       catalog,
       keyId: catalog ? state.envelope?.keyId ?? null : null,
       fetchedAt: catalog ? state.fetchedAt : null,
+      installs: state.installs,
       ...(error ? { error: error instanceof AppCatalogError
         ? { code: error.code, message: error.message }
         : { code: 'catalog_unavailable', message: error instanceof Error ? error.message : String(error) } } : {}),
@@ -269,13 +298,15 @@ export function createAppCatalogClient(options: {
     load({ chatStatePath, refresh = false }) {
       const statePath = resolveAppCatalogStatePath(chatStatePath);
       return withCatalogState(statePath, async () => {
-        let state = structuredClone(EMPTY_STATE);
-        let cached: AppCatalogPayload | null = null;
+        let state: AppCatalogState;
         try {
-          state = await readCatalogState(statePath);
-          // The cache is re-verified on every load; its parsed form is never trusted.
-          cached = state.envelope ? verifyAppCatalogEnvelope(state.envelope, trustedKeys) : null;
-        } catch { cached = null; }
+          state = await readOrRecoverCatalogState(statePath, now());
+        } catch (error) {
+          return snapshot('unavailable', structuredClone(EMPTY_STATE), null, error);
+        }
+        let cached: AppCatalogPayload | null = null;
+        // The cache is re-verified on every load; its parsed form is never trusted.
+        try { cached = state.envelope ? verifyAppCatalogEnvelope(state.envelope, trustedKeys) : null; } catch { cached = null; }
         const fetchedAt = state.fetchedAt ? Date.parse(state.fetchedAt) : Number.NaN;
         if (cached && !refresh && now().getTime() - fetchedAt < CATALOG_REUSE_MS) return snapshot('fresh', state, cached);
         try {
@@ -284,6 +315,9 @@ export function createAppCatalogClient(options: {
           try { envelope = JSON.parse(Buffer.from(bytes).toString('utf8')) as AppCatalogEnvelope; }
           catch { throw new AppCatalogError('catalog_untrusted', 'The catalog envelope is not JSON.'); }
           const catalog = verifyAppCatalogEnvelope(envelope, trustedKeys);
+          if (Date.parse(catalog.issuedAt) > now().getTime() + MAX_CLOCK_SKEW_MS) {
+            throw new AppCatalogError('catalog_invalid', 'The catalog is issued in the future.');
+          }
           if (catalog.revision < state.highestRevision) {
             throw new AppCatalogError('catalog_rollback', `Catalog revision ${catalog.revision} is older than verified revision ${state.highestRevision}.`);
           }
@@ -307,6 +341,7 @@ export function createAppCatalogClient(options: {
     recordInstall(chatStatePath, appId, provenance) {
       const statePath = resolveAppCatalogStatePath(chatStatePath);
       return withCatalogState(statePath, async () => {
+        // Provenance never replaces a state file this host cannot read.
         const state = await readCatalogState(statePath);
         await writeCatalogState(statePath, { ...state, installs: { ...state.installs, [appId]: provenance } });
       });

@@ -767,6 +767,8 @@ export const messageKeys = {
   appMarketConfirmMessage: 'apps.market.confirmMessage',
   appMarketInstallSucceeded: 'apps.market.installSucceeded',
   appMarketInstallFailed: 'apps.market.installFailed',
+  appMarketCatalogChanged: 'apps.market.catalogChanged',
+  appMarketReplaceLocal: 'apps.market.replaceLocal',
   appMarketErrorNetwork: 'apps.market.error.network',
   appMarketErrorUnverified: 'apps.market.error.unverified',
   appPermissionUiRoute: 'apps.permission.uiRoute',

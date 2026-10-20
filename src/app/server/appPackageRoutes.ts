@@ -39,12 +39,14 @@ import type { PlatformAuthStore } from '../../platform/auth/store.js';
 import { isSessionChainActive } from '../../platform/auth/session.js';
 import { createAppCatalogClient, type AppCatalogClient } from '../../platform/apps/catalog.js';
 import { AppCatalogError } from '../../platform/apps/catalogFetch.js';
-import { installFromAppMarket, readAppMarket } from '../../platform/apps/market.js';
+import { installFromAppMarket, readAppMarket, readBundledAppIds } from '../../platform/apps/market.js';
 
 export interface AppPackageApiDependencies {
   appComponents?: AppComponentHost;
   /** Official catalog access; tests inject a client with their own keys and fetch. */
   appCatalog?: AppCatalogClient;
+  /** IDs in this Desktop's bundle lock; defaults to reading CATS_APP_BUNDLE_PATH. */
+  bundledAppIds?: ReadonlySet<string>;
   desktopAppsKey?: string;
   authStore?: PlatformAuthStore;
   config: Pick<AppConfig, 'chatStatePath'>;
@@ -114,6 +116,7 @@ const APP_MARKET_ERROR_STATUS: Record<string, number> = {
   app_managed_by_desktop: 409,
   app_incompatible: 409,
   catalog_expired: 409,
+  catalog_changed: 409,
   catalog_untrusted: 502,
   catalog_invalid: 502,
   catalog_unsupported: 502,
@@ -121,12 +124,21 @@ const APP_MARKET_ERROR_STATUS: Record<string, number> = {
   catalog_mismatch: 502,
   download_rejected: 502,
   catalog_unavailable: 503,
+  catalog_state_unavailable: 503,
   download_failed: 503,
 };
+const APP_ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
 let defaultAppCatalog: AppCatalogClient | undefined;
 
 function appCatalogFor(context: AppPackageRouteContext): AppCatalogClient {
   return context.dependencies.appCatalog ?? (defaultAppCatalog ??= createAppCatalogClient());
+}
+
+// The packaged Desktop passes its bundle lock to the sidecar (src/index.ts) the same way.
+function bundledAppIdsFor(context: AppPackageRouteContext): Promise<ReadonlySet<string>> {
+  return context.dependencies.bundledAppIds
+    ? Promise.resolve(context.dependencies.bundledAppIds)
+    : readBundledAppIds(process.env.CATS_APP_BUNDLE_PATH?.trim() || undefined);
 }
 
 async function handleMarket(context: AppPackageRouteContext): Promise<void> {
@@ -134,19 +146,22 @@ async function handleMarket(context: AppPackageRouteContext): Promise<void> {
     chatStatePath: context.dependencies.config.chatStatePath,
     client: appCatalogFor(context),
     refresh: context.url.searchParams.get('refresh') === '1',
+    bundledAppIds: await bundledAppIdsFor(context),
   });
   sendJson(context.response, 200, snapshot, { 'cache-control': 'no-store' });
 }
 
 async function handleMarketInstall(context: AppPackageRouteContext): Promise<void> {
-  let body: { id?: unknown };
+  let body: { id?: unknown; version?: unknown; permissions?: unknown };
   try {
-    body = await readJsonBody<{ id?: unknown }>(context.request);
+    body = await readJsonBody<typeof body>(context.request);
   } catch {
     body = {};
   }
-  if (typeof body.id !== 'string' || !body.id) {
-    sendJson(context.response, 400, { error: { code: 'app_id_required', message: 'Choose an App from the catalog.' } });
+  const permissions = Array.isArray(body.permissions) && body.permissions.every((value) => typeof value === 'string')
+    ? body.permissions as string[] : null;
+  if (typeof body.id !== 'string' || body.id.length > 100 || !APP_ID.test(body.id) || typeof body.version !== 'string' || !permissions) {
+    sendJson(context.response, 400, { error: { code: 'app_review_required', message: 'Choose an App and the version shown in the Market.' } });
     return;
   }
   try {
@@ -154,6 +169,8 @@ async function handleMarketInstall(context: AppPackageRouteContext): Promise<voi
       chatStatePath: context.dependencies.config.chatStatePath,
       client: appCatalogFor(context),
       appId: body.id,
+      reviewed: { version: body.version, permissions },
+      bundledAppIds: await bundledAppIdsFor(context),
       componentHost: context.dependencies.appComponents,
       now: context.dependencies.now,
     });

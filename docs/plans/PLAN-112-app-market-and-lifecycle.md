@@ -224,4 +224,11 @@ renderer 設定通過；test 設定只剩 worktree 未安裝 mobile 依賴的 2 
 通過。未跑完整 `npm test`、mobile 檢查、macOS／Linux 或安裝後的 Desktop；Pages 尚未啟用，
 真實 catalog 端到端驗證待推送與首次發布後以 source candidate Desktop 進行。
 
+2026-10-20 獨立審查：唯讀 reviewer 指出安裝請求未綁定使用者看到的版本（阻擋），以及 key 輪替、
+producer 欄位上限、revision／期限界限、workflow 簽章範圍、purge 後的 bundle 判斷、非 Market
+副本取代、狀態檔讀取失敗與啟用狀態時機等非阻擋問題，全部已修正並補測試：安裝請求帶版本與權限、
+`catalog_changed` 409、bundle lock 判斷、`installedSource`、時間界限、損毀備份與未知 schema 不覆寫、
+安裝佇列內保留啟用狀態、來源紀錄寫入失敗不影響安裝、下載逾時 45 秒。重跑 build 與上列 13 個
+測試檔共 81 項通過；四個 `tsc` 設定與 `catalog:check` 結果同上。
+
 *Last updated: 2026-10-20*
