@@ -105,8 +105,9 @@ in every room with participants. Shippable on its own as a patch.
       sections of the deployment and setup guides. Also SPEC-069 (Start fresh
       removed) and the terminology; the deployment guide has no participant
       section, and its reset section is what the 0.9.0 notes point to.
-- [ ] Task 5.2: When the owner selects a release: 0.9.0 with reset
-      instructions in its notes.
+- [x] Task 5.2: Owner selected Desktop 0.9.0 standard preview; version fields,
+      exact Runtime/App pins, signing/update expectations and Platform reset
+      instructions are included in the original release change and notes.
 
 **Deliverables**: Documentation matches the code; release prepared on request.
 
