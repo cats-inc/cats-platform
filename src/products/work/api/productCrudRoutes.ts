@@ -303,10 +303,11 @@ async function handleCreateTask(
   }
   try {
     const now = context.dependencies.now?.() ?? new Date();
-    const core = await context.dependencies.coreStore.readCore();
+    let result: ReturnType<typeof upsertCoreTask> | undefined;
+    await context.dependencies.coreStore.updateCore(core => {
     const ownerActorId =
       validation.payload.ownerActorId ?? core.ownerProfile.actorId;
-    const result = upsertCoreTask(
+    result = upsertCoreTask(
       core,
       {
         id: validation.payload.id,
@@ -335,9 +336,9 @@ async function handleCreateTask(
       nextCore = link.core;
       linked = link.linked;
     }
-    if (result.created || linked) {
-      await context.dependencies.coreStore.writeCore(nextCore);
-    }
+    return nextCore;
+    });
+    if (!result) throw new Error('Task creation did not complete.');
     const status = result.created ? 201 : 200;
     sendJson(context.response, status, {
       task: result.task,

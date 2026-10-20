@@ -1,3 +1,4 @@
+import { OwnerRecordActions } from '../../../../shared/renderer/OwnerRecordActions.js';
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -207,6 +208,7 @@ export function ProjectDetailPage(): JSX.Element {
         </div>
       </header>
       <main className="projectDetail__main">
+        <OwnerRecordActions family="project" id={project.id} expanded onChanged={removed => { if (removed) navigate('/work/projects'); }} />
         {deleteError ? (
           <p className="projectDetail__error" role="alert">
             {deleteError}

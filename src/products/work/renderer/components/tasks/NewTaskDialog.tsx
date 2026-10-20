@@ -13,13 +13,13 @@ import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { createWorkTask, type CoreTaskStatus } from "../../api/workRecords.js";
 import { WORK_TASKS_PATH } from "../../workPaths.js";
 import {
-  TASKS_QUERY_KEY,
   useTasksQuery,
 } from "../../state/queries/tasksQuery.js";
 import type { TaskPriority } from "../../../shared/workGraphTypes.js";
 import { formatWorkCrudMutationError } from "../workCrudErrorLabels.js";
 
 interface CreateTaskInput {
+  workItemId?: string | null;
   title: string;
   summary: string | null;
   status: CoreTaskStatus;
@@ -47,6 +47,7 @@ async function createTaskFromDialog(
       : undefined;
 
   const result = await createWorkTask({
+    workItemId: input.workItemId,
     title: input.title,
     summary: input.summary,
     status: input.status,
@@ -59,11 +60,13 @@ async function createTaskFromDialog(
 interface NewTaskDialogProps {
   onClose: () => void;
   defaultParentTaskId?: string | null;
+  defaultWorkItemId?: string | null;
 }
 
 export function NewTaskDialog({
   onClose,
   defaultParentTaskId,
+  defaultWorkItemId,
 }: NewTaskDialogProps): JSX.Element {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -90,7 +93,7 @@ export function NewTaskDialog({
     mutationFn: (input: CreateTaskInput) =>
       createTaskFromDialog(input, t("workNewTaskCreateError")),
     onSuccess: async (task) => {
-      await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+      await queryClient.invalidateQueries();
       onClose();
       navigate(`${WORK_TASKS_PATH}/${task.id}`);
     },
@@ -130,6 +133,7 @@ export function NewTaskDialog({
     const trimmed = title.trim();
     if (!trimmed || submitting) return;
     createMutation.mutate({
+      workItemId: defaultWorkItemId,
       title: trimmed,
       summary: summary.trim() || null,
       status,

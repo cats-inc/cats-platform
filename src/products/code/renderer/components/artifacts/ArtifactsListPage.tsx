@@ -1,3 +1,4 @@
+import { OwnerBatchActions, OwnerRecordActions, useOwnerListing } from '../../../../shared/renderer/OwnerRecordActions.js';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -67,6 +68,12 @@ export function ArtifactsListPage(): JSX.Element {
   const [artifacts, setArtifacts] = useState<CodeArtifactListItemSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const ownerListing = useOwnerListing('artifact');
+  const [q, setQ] = useState('');
+  const [context, setContext] = useState('');
+  const [selected, setSelected] = useState<string[]>([]);
+  const [refresh, setRefresh] = useState(0);
+  useEffect(() => { const listener = () => setRefresh(n => n + 1); window.addEventListener('cats:owner-records-changed', listener); return () => window.removeEventListener('cats:owner-records-changed', listener); }, []);
   const [filter, setFilter] = useState<KindFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
@@ -106,16 +113,18 @@ export function ArtifactsListPage(): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [filter, statusFilter, t]);
+  }, [filter, statusFilter, t, refresh]);
 
   // Server already applies kind / status / declared-only filters through the
   // query string above. Just sort the returned page by recency for display.
   const visible = useMemo(() => {
-    return [...artifacts].sort(
+    return [...artifacts].filter(item => ownerListing.accepts(item.id) && (!q || `${item.title} ${item.summary ?? ''} ${item.path ?? ''}`.toLowerCase().includes(q.toLowerCase())) && (!context || item.taskId === context)).sort(
       (a, b) =>
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
-  }, [artifacts]);
+  }, [artifacts, ownerListing, q, context]);
+  const visibleIds = visible.map(item => item.id).join('\n');
+  useEffect(() => { setSelected(current => { const next = current.filter(id => visible.some(item => item.id === id)); return next.length === current.length ? current : next; }); }, [visibleIds]);
 
   return (
     <div className="codeArtifactsList">
@@ -171,7 +180,7 @@ export function ArtifactsListPage(): JSX.Element {
           </button>
         ))}
       </div>
-      <main className="codeArtifactsList__main">
+      <main className="codeArtifactsList__main">{ownerListing.control}<label>{t('ownerSearch')} <input type="search" value={q} onChange={event => setQ(event.target.value)} /></label><label>{t('ownerTaskFilter')} <select value={context} onChange={event => setContext(event.target.value)}><option value="">{t('ownerAll')}</option>{Array.from(new Map(artifacts.filter(item => item.taskId).map(item => [item.taskId!, item.taskTitle ?? item.taskId!])).entries()).map(([id, title]) => <option key={id} value={id}>{title}</option>)}</select></label>
         {loading && visible.length === 0 ? (
           <p className="codeArtifactsList__empty">{t(messageKeys.codeArtifactListLoading)}</p>
         ) : error ? (
@@ -184,9 +193,11 @@ export function ArtifactsListPage(): JSX.Element {
           </p>
         ) : (
           <>
+            <OwnerBatchActions family="artifact" ids={selected} onChanged={() => setSelected([])} />
             <ul className="codeArtifactsList__list">
               {visible.map((art) => (
                 <li key={art.id} className="codeArtifactsList__row">
+                  <input type="checkbox" aria-label={t('ownerSelectItem', { title: art.title })} checked={selected.includes(art.id)} onChange={event => setSelected(current => event.target.checked ? [...current, art.id] : current.filter(id => id !== art.id))} />
                   <Link
                     to={buildCodeArtifactPath(art.id)}
                     className="codeArtifactsList__rowLink"
@@ -247,6 +258,7 @@ export function ArtifactsListPage(): JSX.Element {
                       </span>
                     </div>
                   </Link>
+                  <OwnerRecordActions family="artifact" id={art.id} />
                 </li>
               ))}
             </ul>

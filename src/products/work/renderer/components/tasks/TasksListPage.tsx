@@ -1,3 +1,4 @@
+import { OwnerRecordActions, useOwnerListing } from '../../../../shared/renderer/OwnerRecordActions.js';
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -16,7 +17,8 @@ import "./tasks.css";
 
 export function TasksListPage(): JSX.Element {
   const tasksQuery = useTasksQuery();
-  const tasks = tasksQuery.data?.tasks ?? [];
+  const ownerListing = useOwnerListing('task');
+  const tasks = (tasksQuery.data?.tasks ?? []).filter(item => ownerListing.accepts(item.id));
   const [dialogOpen, setDialogOpen] = useState(false);
   const { t } = useI18n();
 
@@ -55,7 +57,7 @@ export function TasksListPage(): JSX.Element {
           </button>
         </div>
       </header>
-      <main className="tasksList__main">
+      <main className="tasksList__main">{ownerListing.control}
         <PracticeProposalSection />
         {tasksQuery.isPending ? (
           <p className="tasksList__empty">{t("workTasksListLoading")}</p>
@@ -160,6 +162,7 @@ export function TasksListPage(): JSX.Element {
                       </span>
                     </div>
                   </Link>
+                  <OwnerRecordActions family="task" id={task.id} />
                 </li>
               );
             })}

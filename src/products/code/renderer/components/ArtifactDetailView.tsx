@@ -1,3 +1,4 @@
+import { OwnerRecordActions } from '../../../shared/renderer/OwnerRecordActions.js';
 import { useEffect, useMemo, useState } from 'react';
 import { readKnowledgeCandidatePreview } from '../../shared/knowledgeCandidatePreview.js';
 import { KnowledgeCandidatePreview } from './KnowledgeCandidatePreview.js';
@@ -63,6 +64,8 @@ export function ArtifactDetailView() {
   const [payload, setPayload] = useState<CodeArtifactDetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refresh, setRefresh] = useState(0);
+  useEffect(() => { const listener = () => setRefresh(n => n + 1); window.addEventListener('cats:owner-records-changed', listener); return () => window.removeEventListener('cats:owner-records-changed', listener); }, []);
 
   useEffect(() => {
     if (!artifactId) {
@@ -100,7 +103,7 @@ export function ArtifactDetailView() {
     return () => {
       cancelled = true;
     };
-  }, [artifactId, t]);
+  }, [artifactId, t, refresh]);
 
   const previewTarget = useMemo(() => {
     if (!payload) {
@@ -166,6 +169,7 @@ export function ArtifactDetailView() {
           <div>
             <p className="operatorEyebrow">{t(messageKeys.codeArtifactListArtifact)}</p>
             <h2>{payload.artifact.title}</h2>
+            <OwnerRecordActions family="artifact" id={payload.artifact.id} onChanged={removed => { if (removed) navigate('/code/artifacts'); }} />
           </div>
           <div className="operatorActionRow">
             <button type="button" className="operatorActionButton" onClick={() => navigate('/code/knowledge')}>{t(messageKeys.codeKnowledgeManage)}</button>
@@ -189,6 +193,8 @@ export function ArtifactDetailView() {
           </div>
         </div>
 
+        <a className="operatorActionButton" href={"data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload.artifact, null, 2))} download="cats-artifact.json">{t('ownerExport')}</a>
+        {previewTarget?.actionUrl ? <a className="operatorActionButton" href={previewTarget.actionUrl} download rel="noreferrer" target="_blank">{t('ownerDownload')}</a> : null}
         <article className="operatorCard">
           <div className="operatorCardHeader">
             <strong>

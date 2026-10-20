@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
   resolveObservedPreviewSurfaceTarget,
@@ -52,7 +52,19 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
 
   const [step, setStep] = useState<BuilderStep>('workspace');
   const [workspacePath, setWorkspacePath] = useState('');
-  const [resumeTaskId, setResumeTaskId] = useState('');
+  const [searchParams] = useSearchParams();
+  const [resumeTaskId, setResumeTaskId] = useState(searchParams.get('taskId') ?? '');
+  const [existingTasks, setExistingTasks] = useState<Array<{ id: string; title: string }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/code/tasks').then(async response => {
+      if (!response.ok) throw new Error(t('ownerActionFailed'));
+      return response.json();
+    }).then(payload => { if (!cancelled) setExistingTasks(payload.tasks ?? []); })
+      .catch(error => { if (!cancelled) setFeedback(error.message); });
+    return () => { cancelled = true; };
+  }, [t]);
+  useEffect(() => { const taskId = searchParams.get('taskId'); if (taskId) setResumeTaskId(taskId); }, [searchParams]);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
   const [provider, setProvider] = useState<string>(DEFAULT_PRODUCT_PROVIDER);
@@ -463,15 +475,14 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
             </label>
             <label className="codeBuilderLabel">
               {t(messageKeys.codeBuilderResumeLabel)}
-              <input
-                type="text"
-                className="codeBuilderInput"
-                placeholder={t(messageKeys.codeBuilderWorkspaceSampleTaskId)}
-                value={resumeTaskId}
-                onChange={(e) => setResumeTaskId(e.target.value)}
-              />
+              <select className="codeBuilderInput" value={resumeTaskId} onChange={event => setResumeTaskId(event.target.value)}>
+                <option value="">{t('ownerNone')}</option>
+                {resumeTaskId && !existingTasks.some(task => task.id === resumeTaskId) ? <option value={resumeTaskId}>{resumeTaskId}</option> : null}
+                {existingTasks.map(task => <option key={task.id} value={task.id}>{task.title}</option>)}
+              </select>
             </label>
             <p className="codeBuilderHelperText">
+              {t('ownerFreshFormNotice')}{' '}
               {t(messageKeys.codeBuilderWorkspaceResumeHelp)}{' '}
               {workspaceFallbackLabel ?? t(messageKeys.codeBuilderWorkspaceFallbackBoundFallback)}
             </p>

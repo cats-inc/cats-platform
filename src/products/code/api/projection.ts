@@ -1186,7 +1186,6 @@ export function buildCodeArtifactListProjection(
   });
   const allArtifacts = applyExtendedArtifactFilters(core, baseArtifacts, filters);
   const artifacts = allArtifacts
-    .slice(0, CODE_DASHBOARD_ARTIFACT_LIMIT)
     .map((artifact) => buildCodeArtifactListItem(core, artifact, taskItemById));
 
   return {

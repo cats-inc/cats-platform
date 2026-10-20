@@ -100,20 +100,20 @@ history, with honest retention/recovery and no lost deliverables.
 
 ### P2 — Everyday work and artifact management
 
-- [ ] Add Project edit, pause/resume, archive/restore and relationship-aware
+- [x] Add Project edit, pause/resume, archive/restore and relationship-aware
   removal/move choices in list/detail surfaces.
-- [ ] Add Work Item edit/priority, Project move/relink, complete/reopen,
+- [x] Add Work Item edit/priority, Project move/relink, complete/reopen,
   archive/restore and contextual Task preparation/start.
-- [ ] Add Task edit/reassign, acceptance-aware completion/cancellation,
+- [x] Add Task edit/reassign, acceptance-aware completion/cancellation,
   archive/restore and state/source-appropriate execution/recovery controls.
-- [ ] Add contextual Code task continuation instead of manual task-ID entry.
+- [x] Add contextual Code task continuation instead of manual task-ID entry.
   Distinguish fresh builder form state from actual stop/cancel.
-- [ ] Add Artifact rename/archive/restore, protected record removal, context
+- [x] Add Artifact rename/archive/restore, protected record removal, context
   filters and direct export/download; preserve files unless a separate managed
   resource cleanup is selected and supported.
-- [ ] Keep knowledge adoption/revocation/deletion authoritative; add search/
+- [x] Keep knowledge adoption/revocation/deletion authoritative; add search/
   source filters and clear effects on active use.
-- [ ] Reuse eligibility and command contracts across list/detail and validate
+- [x] Reuse eligibility and command contracts across list/detail and validate
   approvals, acceptance gates, external issue independence and link integrity.
 
 **Exit:** core owner work can be edited, completed, reorganized and retired from
@@ -236,6 +236,7 @@ these contracts have already been approved.
 
 | Date | Update |
 | --- | --- |
+| 2026-10-20 | P2 renderer slice: shared owner forms and archive/status/search filters wired into Project/Work Item/Task lists/details and Code task/artifact context. Added linked Task preparation, title-based builder continuation, Artifact selected archive/restore preview/export/context filters and knowledge search/source/active-use explanation. Task creation/linking now commits atomically. Snapshot tokens exclude projection clocks; real-file deletion/recovery and exact batch-scope checks added. Server/client checks and web build passed; 20 existing CRUD/builder/Artifact checks and 7 focused owner checks passed. Code execution/recovery controls continue in P3; isolated visual acceptance remains open. |
 | 2026-10-20 | P2 command slice: shared Core eligibility/read/apply boundary added for Project/Work Item/Task/Artifact. Commands enforce source authority, active execution/approval protection, acceptance attestation, stale snapshots, valid actors, hierarchy cycles and Project consistency; external issue status/files stay independent. Deleted owner intent also sanitizes recovery backups. Server build and 18 focused planning/deletion/history/persistence cases passed (including concurrent HTTP apply). UI integration remains open. |
 | 2026-10-20 | P1b renderer slice: Runs/Missions now use server filters, paging and source context; list/detail expose terminal archive/restore, export and exact-scope cleanup previews/results. Selection changes discard in-flight previews; stale apply requires another preview. Isolated renderer preview/stale/selection test passed; 11 history/persistence tests passed. Web build passed. Isolated candidate acceptance remains pending. |
 | 2026-10-20 | P1b backend slice: producer/binding/origin-aware history list, filters/pagination, terminal archive/restore/export, revisioned preview/apply, descendant/protected-summary handling and bounded idempotent receipts implemented. Workflow detail is compacted at source and in projections; backup sanitization/recovery prevents resurrection while preserving transcripts/outputs. Future profile versions fail closed. Focused history/persistence HTTP, concurrency, failed-backup and restart/recovery tests passed (11). Renderer integration and isolated Desktop acceptance remain open. |

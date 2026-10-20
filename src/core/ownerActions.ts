@@ -9,7 +9,12 @@ import { upsertCoreProject, upsertCoreWorkItem, upsertCoreTask, upsertCoreArtifa
 
 const collections = { project: 'projects', work_item: 'workItems', task: 'tasks', artifact: 'artifacts' } as const;
 const terminal = (status: string) => ['completed', 'failed', 'cancelled'].includes(status);
-const token = (core: CatsCoreState) => createHash('sha256').update(JSON.stringify(core)).digest('hex');
+const token = (core: CatsCoreState) => createHash('sha256').update(JSON.stringify({
+  projects: core.projects, workItems: core.workItems, tasks: core.tasks, runs: core.runs, missions: core.missions,
+  artifacts: core.artifacts, checkpoints: core.checkpoints, outcomes: core.outcomes, traces: core.traces,
+  activities: core.activities, approvalBindings: core.approvalBindings, links: core.workGraphLinks, sessions: core.sessions,
+  actors: core.actors.map(actor => ({ id: actor.id, name: actor.name, status: actor.status })), lifecycle: core.ownerLifecycle,
+})).digest('hex');
 
 export function ownerActionView(core: CatsCoreState, family: PlanningOwnerFamily, id: string): OwnerActionView {
   const record = getOwnerRecord(core, family, id);
@@ -20,9 +25,10 @@ export function ownerActionView(core: CatsCoreState, family: PlanningOwnerFamily
   const taskIds = new Set(family === 'task' ? [id] : core.workItems.filter(item => family === 'project' ? item.projectId === id : item.id === id).flatMap(item => item.taskId ? [item.taskId] : []));
   const active = core.runs.some(run => !terminal(run.status) && (run.taskId && taskIds.has(run.taskId) || dependencies.some(dep => dep.family === 'run' && dep.id === run.id)))
     ;
-  const pendingApproval = core.approvalBindings.some(binding => (binding.subjectId === id || taskIds.has(binding.approvalTaskId)) && core.tasks.some(task => task.id === binding.approvalTaskId && task.approval.status === 'pending'))
+  const pendingApproval = core.tasks.some(task => taskIds.has(task.id) && task.status === 'pending_approval') || core.approvalBindings.some(binding => (binding.subjectId === id || taskIds.has(binding.approvalTaskId)) && core.tasks.some(task => task.id === binding.approvalTaskId && task.approval.status === 'pending'))
     || family === 'task' && (record as CoreTaskRecord).approval.status === 'pending';
-  const gated = !!record.metadata.workGoldenPath || !!record.metadata.supervision || source === 'transport-work';
+  const gated = !!record.metadata.workGoldenPath || !!record.metadata.supervision || source === 'transport-work'
+    || core.runs.some(run => !!run.taskId && taskIds.has(run.taskId) && (!!run.metadata.supervision || !!run.metadata.effectiveDeliveryPolicy));
   const common = [...(derived ? ['Controlled by its source conversation. Use the source controls.'] : []), ...(active ? ['Active execution must be stopped through its execution owner first.'] : []), ...(pendingApproval ? ['Resolve the pending approval first.'] : [])];
   const actions: OwnerActionView['actions'] = [{ action: 'edit', blockers: family === 'artifact' ? [] : [...common] }, { action: 'archive', blockers: active || pendingApproval || ['in_progress', 'pending_approval'].includes(record.status) ? ['Active work must remain reachable. Stop it first.'] : [] }, { action: 'restore', blockers: [] }, { action: 'delete', blockers: ownerDeleteBlockers(core, family, id) }];
   if (family === 'project') actions.push({ action: record.status === 'paused' ? 'resume' : 'pause', blockers: common });
@@ -51,7 +57,14 @@ export function applyOwnerAction(core: CatsCoreState, family: PlanningOwnerFamil
   const capability = view.actions.find(item => item.action === action);
   if (!capability) throw new CoreValidationError('Unsupported owner action.');
   if (capability.blockers.length) throw new CoreConflictError(capability.blockers.join(' '), 'owner_action_blocked');
-  if (action === 'archive' || action === 'restore') return setOwnerEntry(core, family, id, { listing: action === 'archive' ? 'archived' : 'visible' });
+  if (action === 'archive' || action === 'restore') {
+    const next = setOwnerEntry(core, family, id, { listing: action === 'archive' ? 'archived' : 'visible' });
+    if (action === 'restore' && view.status === 'archived') {
+      const collection = collections[family];
+      return { ...next, [collection]: next[collection].map(record => record.id === id ? { ...record, status: family === 'project' ? 'planned' : family === 'artifact' ? 'ready' : 'draft', updatedAt: new Date().toISOString() } : record) };
+    }
+    return next;
+  }
   if (action === 'delete') return applyOwnerLifecycleProjection(setOwnerEntry(core, family, id, { deleted: true, listing: 'removed', pinned: false }));
   const record = getOwnerRecord(core, family, id)!;
   if (action === 'complete' && view.acceptanceCriteria && (body.acceptanceConfirmed !== true || typeof body.acceptanceNote !== 'string' || !body.acceptanceNote.trim())) throw new CoreValidationError('Review the acceptance criteria and record the evidence before completing.');
@@ -90,5 +103,5 @@ export function applyOwnerAction(core: CatsCoreState, family: PlanningOwnerFamil
 }
 
 export function listOwnerRecords(core: CatsCoreState, family: PlanningOwnerFamily) {
-  return core[collections[family]].map(record => ({ id: record.id, title: record.title, listing: ownerEntry(core, family, record.id)?.listing ?? (record.status === 'archived' ? 'archived' : 'visible') }));
+  return core[collections[family]].map(record => ({ id: record.id, title: record.title, summary: record.summary, status: record.status, listing: ownerEntry(core, family, record.id)?.listing ?? (record.status === 'archived' ? 'archived' : 'visible') }));
 }

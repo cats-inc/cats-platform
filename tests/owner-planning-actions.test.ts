@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createServer } from 'node:http';
+import { mkdtemp, writeFile, rm, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { routeCoreApi } from '../src/core/api/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import { createDefaultCoreState, upsertCoreProject, upsertCoreTask, upsertCoreWorkItem, upsertCoreRun, upsertCoreArtifact } from '../src/core/model/index.ts';
 import { applyOwnerAction, ownerActionView } from '../src/core/ownerActions.ts';
-import { MemoryChatStore } from '../src/products/chat/state/store.ts';
+import { FileChatStore, MemoryChatStore } from '../src/products/chat/state/store.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import { buildPersistedChatSnapshot } from '../src/products/chat/state/core-snapshot/index.ts';
 
@@ -74,4 +77,37 @@ test('Core owner API shares preview eligibility with serialized apply and preser
   assert.deepEqual(results.map(result => result.status).sort(), [200, 409]);
   assert.equal((await store.readCore()).projects[0].status, 'paused');
   assert.equal((await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: 'null' })).status, 400);
+});
+
+test('persisted action tokens ignore projection clocks; deletion cannot return through backup recovery', async t => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'cats-owner-planning-')); t.after(() => rm(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'state.json');
+  const core = upsertCoreProject(createDefaultCoreState(), { id: 'p', title: 'Project' }).core;
+  await writeFile(file, JSON.stringify(buildPersistedChatSnapshot(createDefaultChatState(), core)));
+  const store = new FileChatStore(file);
+  const view = ownerActionView(await store.readCore(), 'project', 'p');
+  await store.updateCore(current => applyOwnerAction(current, 'project', 'p', { action: 'pause', token: view.token }));
+  const next = ownerActionView(await store.readCore(), 'project', 'p');
+  await store.updateCore(current => applyOwnerAction(current, 'project', 'p', { action: 'delete', token: next.token }));
+  assert.equal(JSON.parse(await readFile(file + '.bak', 'utf8')).projects.length, 0);
+  await writeFile(file, '{damaged');
+  assert.equal((await new FileChatStore(file).readCore()).projects.length, 0);
+});
+
+test('artifact batches recheck the exact selection atomically and reject stale previews', async t => {
+  let core = upsertCoreArtifact(createDefaultCoreState(), { id: 'a', title: 'One', kind: 'file' }).core;
+  core = upsertCoreArtifact(core, { id: 'b', title: 'Two', kind: 'file' }).core;
+  const store = new MemoryCoreStore(core);
+  const server = createServer(async (request, response) => { if (!await routeCoreApi({ request, response, method: request.method!, url: new URL(request.url!, 'http://localhost'), dependencies: { coreStore: store } })) { response.writeHead(404); response.end(); } });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve)); t.after(() => server.close());
+  const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/core/owner/artifact/batch`;
+  const post = (body: unknown) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const preview = await (await post({ action: 'preview', ids: ['a', 'b'] })).json();
+  assert.deepEqual(preview.items.map((item: any) => item.title), ['One', 'Two']);
+  assert.equal((await post({ action: 'archive', ids: ['a', 'missing'], token: preview.token })).status, 404);
+  assert.equal((await store.readCore()).ownerLifecycle, undefined);
+  assert.equal((await post({ action: 'archive', ids: ['a'], token: preview.token })).status, 409);
+  assert.equal((await post({ action: 'archive', ids: ['a', 'b'], token: preview.token })).status, 200);
+  assert.equal((await post({ action: 'restore', ids: ['a', 'b'], token: preview.token })).status, 409);
+  assert.equal((await store.readCore()).ownerLifecycle?.entries['artifact:b'].listing, 'archived');
 });

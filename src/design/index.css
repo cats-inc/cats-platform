@@ -24,3 +24,10 @@
 @import './components/guide-cat-sidecar.css';
 @import './components/settings/settings-tokens.css';
 @import './components/settings/settings.css';
+
+.ownerRecordActions { margin: .65rem 0; padding: .65rem; border: 1px solid var(--border-subtle, #8884); border-radius: .5rem; }
+.ownerRecordActions summary { cursor: pointer; }
+.ownerRecordActions form, .ownerRecordActions fieldset { display: grid; gap: .65rem; }
+.ownerRecordActions label { display: grid; gap: .25rem; }
+.ownerRecordActions input, .ownerRecordActions textarea, .ownerRecordActions select { max-width: 100%; color: inherit; background: var(--bg-secondary, transparent); }
+.ownerRecordActions button { justify-self: start; }

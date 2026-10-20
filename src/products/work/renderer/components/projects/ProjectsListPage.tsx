@@ -1,3 +1,4 @@
+import { OwnerRecordActions, useOwnerListing } from '../../../../shared/renderer/OwnerRecordActions.js';
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -14,7 +15,8 @@ import "./projects.css";
 export function ProjectsListPage(): JSX.Element {
   const { t } = useI18n();
   const projectsQuery = useProjectsQuery();
-  const projects = projectsQuery.data?.projects ?? [];
+  const ownerListing = useOwnerListing('project');
+  const projects = (projectsQuery.data?.projects ?? []).filter(item => ownerListing.accepts(item.id));
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
@@ -54,7 +56,7 @@ export function ProjectsListPage(): JSX.Element {
           </button>
         </div>
       </header>
-      <main className="projectsList__main">
+      <main className="projectsList__main">{ownerListing.control}
         {projectsQuery.isPending ? (
           <p className="projectsList__empty">{t("workProjectsListLoading")}</p>
         ) : projectsQuery.isError ? (
@@ -147,6 +149,7 @@ export function ProjectsListPage(): JSX.Element {
                     </span>
                   </div>
                 </Link>
+                <OwnerRecordActions family="project" id={project.id} />
               </li>
             ))}
           </ul>
