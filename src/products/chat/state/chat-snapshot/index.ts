@@ -81,7 +81,9 @@ import {
   readString,
 } from './shared.js';
 import { createDefaultCoreState } from '../../../../core/model/index.js';
-import { normalizeOwnerLifecycle } from '../../../../core/ownerLifecycle.js';
+import { normalizeOwnerLifecycle, OwnerLifecycleFormatError } from '../../../../core/ownerLifecycle.js';
+import { CATS_CORE_STATE_VERSION } from '../../../../core/types.js';
+import { compactOwnerWorkflowHistory } from '../ownerHistory.js';
 import { syncCoreStateWithChatState } from '../core-projection/index.js';
 
 export function normalizeChatState(rawState: unknown): ChatState {
@@ -156,6 +158,7 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
   }
 
   const chatRecord = asRecord(stateRecord.chat);
+  if (stateRecord.version !== undefined && (!Number.isInteger(stateRecord.version) || Number(stateRecord.version) < 1 || Number(stateRecord.version) > CATS_CORE_STATE_VERSION)) throw new OwnerLifecycleFormatError();
   const ownerLifecycle = normalizeOwnerLifecycle(stateRecord.ownerLifecycle);
   if (!chatRecord) {
     if (looksLikeChatState(stateRecord)) {
@@ -167,7 +170,7 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
     return buildPersistedChatSnapshot(chat, syncCoreStateWithChatState(chat, fallback));
   }
 
-  const chat = normalizeChatState(chatRecord);
+  const chat = compactOwnerWorkflowHistory(normalizeChatState(chatRecord), { ownerLifecycle });
   const actors = Array.isArray(stateRecord.actors)
     ? stateRecord.actors
         .map((actor) => normalizeCoreActor(actor))

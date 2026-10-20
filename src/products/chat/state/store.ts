@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { normalizeOwnerLifecycle, OwnerLifecycleFormatError } from '../../../core/ownerLifecycle.js';
+import { compactOwnerWorkflowHistory } from './ownerHistory.js';
 import { copyFile, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -64,6 +65,7 @@ type CoreStateMutator = (
 async function writePersistedChatSnapshot(
   filePath: string,
   snapshot: PersistedChatSnapshot,
+  options: { preserveBackup?: boolean } = {},
 ): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
   const serialized = `${JSON.stringify(snapshot, null, 2)}\n`;
@@ -76,7 +78,28 @@ async function writePersistedChatSnapshot(
   try {
     await writeFile(tempPath, serialized, 'utf-8');
     try {
-      await copyFile(filePath, backupPath);
+      const historyEntries = Object.entries(snapshot.ownerLifecycle?.entries ?? {}).filter(([key, entry]) =>
+        (key.startsWith('run:') || key.startsWith('mission:')) && (entry.logsClearedAt || entry.deleted));
+      if (options.preserveBackup) {
+        // Recovery must never rotate a damaged primary over the valid backup.
+      } else if (historyEntries.length) {
+        // A normal backup must not resurrect history the owner explicitly cleared.
+        // Preserve the previous profile's other data, applying only committed cleanup intent.
+        const previousRaw = JSON.parse(await readFile(filePath, 'utf8')) as Record<string, unknown>;
+        const previous = normalizePersistedChatSnapshot(previousRaw);
+        const lifecycle = structuredClone(previous.ownerLifecycle ?? snapshot.ownerLifecycle!);
+        for (const [key, entry] of historyEntries) lifecycle.entries[key] = { ...entry };
+        lifecycle.revision = Math.max(lifecycle.revision, snapshot.ownerLifecycle?.revision ?? 0);
+        lifecycle.receipts = structuredClone(snapshot.ownerLifecycle?.receipts ?? lifecycle.receipts);
+        const previousCore = { ...extractCoreState(previous), ownerLifecycle: lifecycle };
+        const previousChat = compactOwnerWorkflowHistory(previous.chat, previousCore);
+        const sanitized = buildPersistedChatSnapshot(previousChat, syncCoreStateWithChatState(previousChat, previousCore));
+        const backupTemporary = `${tempPath}.bak`;
+        try {
+          await writeFile(backupTemporary, `${JSON.stringify({ ...previousRaw, ...sanitized }, null, 2)}\n`, 'utf8');
+          await rename(backupTemporary, backupPath);
+        } finally { await rm(backupTemporary, { force: true }).catch(() => {}); }
+      } else await copyFile(filePath, backupPath);
     } catch (error) {
       if (!(isErrnoException(error) && error.code === 'ENOENT')) {
         throw error;
@@ -179,7 +202,7 @@ export class FileChatStore implements ChatStore {
     chat: ChatState,
     core: CatsCoreState,
   ): Promise<PersistedChatSnapshot> {
-    const nextChatState = structuredClone(chat);
+    const nextChatState = compactOwnerWorkflowHistory(structuredClone(chat), core);
     const nextCore = syncCoreStateWithChatState(nextChatState, structuredClone(core));
     normalizeOwnerLifecycle(nextCore.ownerLifecycle);
     const snapshot = buildPersistedChatSnapshot(nextChatState, nextCore);
@@ -285,7 +308,7 @@ export class FileChatStore implements ChatStore {
     const backupPath = `${this.filePath}.bak`;
     try {
       const recovered = await this.tryReadSnapshotFile(backupPath);
-      await writePersistedChatSnapshot(this.filePath, recovered);
+      await writePersistedChatSnapshot(this.filePath, recovered, { preserveBackup: true });
       reportStoreDiagnostic('recover_from_backup', {
         filePath: this.filePath,
         backupPath,
@@ -582,7 +605,7 @@ export class MemoryChatStore implements ChatStore {
     core: CatsCoreState,
   ): PersistedChatSnapshot {
     normalizeOwnerLifecycle(core.ownerLifecycle);
-    this.chatState = structuredClone(chat);
+    this.chatState = compactOwnerWorkflowHistory(structuredClone(chat), core);
     this.coreState = syncCoreStateWithChatState(this.chatState, structuredClone(core));
     return buildPersistedChatSnapshot(this.chatState, this.coreState);
   }

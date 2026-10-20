@@ -102,6 +102,8 @@ import {
   WORK_API_WORK_ITEMS_PATH,
 } from '../shared/apiPaths.js';
 
+import { routeWorkHistoryApi } from './historyRoutes.js';
+
 export const WORK_API_SLICE = 'work';
 
 const WORK_SUPERVISED_RUN_PARENT_BUDGET: BudgetEnvelope = {
@@ -545,6 +547,7 @@ export function createWorkWorkItemDetailPayload(
 export async function routeWorkApi(
   context: WorkApiRouteContext,
 ): Promise<boolean> {
+  if (await routeWorkHistoryApi(context)) return true;
   if (await routeWorkCandidateEvidenceApi(context)) return true;
   if (await routeWorkPracticeProposalApi(context)) return true;
   // SPEC-090 link routes (createLink / removeLink / listLinks)

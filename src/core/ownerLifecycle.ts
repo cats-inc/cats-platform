@@ -33,7 +33,7 @@ export interface OwnerLifecycleState {
 
 export class OwnerLifecycleFormatError extends Error {
   constructor() {
-    super('Owner management data is unsupported or damaged. The original profile is preserved; restore a compatible backup or use a compatible Cats version.');
+    super('Profile or owner management data is unsupported or damaged. The original profile is preserved; restore a compatible backup or use a compatible Cats version.');
     this.name = 'OwnerLifecycleFormatError';
   }
 }

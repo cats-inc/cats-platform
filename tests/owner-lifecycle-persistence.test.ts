@@ -58,6 +58,15 @@ test('failed backup leaves original state intact and no temporary file, retry re
   assert.equal((await new FileChatStore(file).readCore()).ownerLifecycle?.revision, 1);
 });
 
+test('future profile versions preserve original bytes instead of restoring an older backup', async t => {
+  const { file, raw, snapshot } = await profile(t);
+  const future = JSON.stringify({ ...snapshot, version: 999, futureData: { keep: true } });
+  await writeFile(file, future); await writeFile(`${file}.bak`, raw);
+  await assert.rejects(new FileChatStore(file).readCore(), OwnerLifecycleFormatError);
+  assert.equal(await readFile(file, 'utf8'), future);
+  assert.equal(await readFile(`${file}.bak`, 'utf8'), raw);
+});
+
 test('concurrent owner mutations serialize without lost entries and failed mutations release the lock', async () => {
   const store = new MemoryCoreStore();
   await Promise.all(Array.from({ length: 20 }, (_, i) => store.updateCore(async core => {

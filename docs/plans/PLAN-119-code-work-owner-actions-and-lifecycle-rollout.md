@@ -74,21 +74,21 @@ does not falsely claim success or manufacture broken references.
 
 ### P1b — Runs/Missions listing and manual history cleanup
 
-- [ ] Project authoritative producer/source independently of task binding and
+- [x] Project authoritative producer/source independently of task binding and
   conversation origin; classify unknown input explicitly. Distinguish ordinary
   room materialization from deliberate managed-work admission.
-- [ ] Add server status/source/time/context filters, pagination, stable sorting
+- [x] Add server status/source/time/context filters, pagination, stable sorting
   and parent/sub-run grouping. Preserve the complete Work Graph and explicit
   access to all sources.
 - [ ] Add terminal archive/restore, selected-item actions and log export.
-- [ ] Implement read-only cleanup previews with exact item scope, dependencies,
+- [x] Implement read-only cleanup previews with exact item scope, dependencies,
   protected summaries, measurable/unknown size and bound revisions.
-- [ ] Implement explicit detailed-log compaction and eligible full-history
+- [x] Implement explicit detailed-log compaction and eligible full-history
   removal at their authoritative sources. Preserve transcript/deliverables,
   required summaries and producer links; prevent reconstruction of purged detail.
-- [ ] Recheck eligibility on apply, protect active/changed/required references,
+- [x] Recheck eligibility on apply, protect active/changed/required references,
   bound batches and return per-item actual results.
-- [ ] Persist minimal cleanup recovery receipts. Exercise interruption,
+- [x] Persist minimal cleanup recovery receipts. Exercise interruption,
   idempotent retry and Runtime retained/failure where Runtime is involved;
   do not claim Runtime filesystem reclamation if its contract is unavailable.
 - [ ] Validate A4-A9/A12 with memory/temporary-profile fixtures and isolated
@@ -236,6 +236,7 @@ these contracts have already been approved.
 
 | Date | Update |
 | --- | --- |
+| 2026-10-20 | P1b backend slice: producer/binding/origin-aware history list, filters/pagination, terminal archive/restore/export, revisioned preview/apply, descendant/protected-summary handling and bounded idempotent receipts implemented. Workflow detail is compacted at source and in projections; backup sanitization/recovery prevents resurrection while preserving transcripts/outputs. Future profile versions fail closed. Focused history/persistence HTTP, concurrency, failed-backup and restart/recovery tests passed (11). Renderer integration and isolated Desktop acceptance remain open. |
 | 2026-10-20 | P1a deletion slice: Core rejects derived/active/referenced planning deletion; product DELETE validates and applies under `updateCore`, with 409 blockers and no new dangling links. Fixed snapshot normalization dropping valid WorkGraphLinks, so dependency checks also survive reload/owner mutations. Server build, 38 existing CRUD/Core/link checks and 11 focused lifecycle/Codespace/deletion checks passed. Isolated Desktop acceptance remains pending. |
 | 2026-10-20 | P1a Codespaces slice: real owner pin/unpin (including sidebar), rename, archive/restore/remove, removed-items recovery, folder registration and contextual open/new/related links implemented. Active Run/Session/Preview removal is blocked, folders/outputs retained. 41 focused lifecycle/Codespace/sidebar/artifact checks passed; server/client typechecks and web build passed (Vite `--configLoader runner` avoids the sandbox's native esbuild ancestor-directory restriction). Isolated Desktop visual/write acceptance remains scheduled after the UI slices. |
 | 2026-10-20 | P1a storage slice: optional versioned owner intent survives file/Chat round-trips; unsupported data preserves primary/backup; memory Core mutations serialize. Server build and 4 lifecycle persistence/recovery/concurrency tests passed; Core store tests passed. Chat store checks: 32 passed, 5 workflow/replay failures reproduced with the unchanged HEAD implementations; baseline evidence is private under the worktree's ignored `.claude/checks/`. No live profile writes. |

@@ -805,6 +805,43 @@ other provider routes.
 
 ### Cats Work
 
+#### Execution history management (ADR-133)
+
+- `GET /api/work/history?family=run|mission` is the paginated owner list.
+  Filters: `source=managed|all|work|room|schedule|delegation|unknown`,
+  `view=visible|archived|all`, `status`, `q`, `from`, `to`, `taskId`,
+  `projectId`, `binding`, `originSurface`, `id`, `page`, `pageSize` (1–100).
+  The managed default includes deliberate execution producers and actionable
+  attempts, while `source=all` retains ordinary room history. Producer source,
+  current task binding and explicit origin are separate fields. Complete Core
+  graph/list endpoints retain their cross-product coverage. The response
+  includes lifecycle revision, total/page counts and task/project filter labels.
+- `POST /api/work/history/preview` accepts `{ subjects: [{ family: 'run' |
+  'mission', id }], scope: 'logs' | 'history' }` (1–100 subjects). It expands
+  descendants explicitly, returns the exact selection, protected/active reasons,
+  proposed outcomes and a source/reference fingerprint `token`. Unknown byte
+  estimates remain `null`. A mission sharing its parent attempt's detail directs
+  the owner to preview the complete parent Run instead.
+- `POST /api/work/history/apply` accepts the preview's `subjects`, `scope`,
+  and `token`. Stale source or references return `409 owner_preview_stale`.
+  Repeat application is idempotent; per-item receipts report `compacted`,
+  `removed`, `retained` or `blocked`. Active trees/open checkpoints are protected.
+  Artifact/approval/schedule references retain necessary summaries. Actual disk
+  reclamation is unmeasured (`reclaimedBytes: null`), not claimed as a success.
+- `POST /api/work/history/listing` accepts `subjects`, lifecycle `revision`
+  and `action: archive|restore`. Only terminal attempts can be archived.
+- `POST /api/work/history/export` accepts the selection and scope and returns
+  an export of attempt summaries and trace messages, excluding execution
+  metadata/credentials. Export never mutates state.
+
+Cleanup compacts product trace/activity/checkpoint detail and workflow duplicate
+responses at the source, preserving conversation messages and deliverables.
+Minimal provenance is retained. The rotating product backup receives the same
+history-cleanup intent so later recovery cannot resurrect cleared detail. Normal
+backup semantics remain unchanged for profiles without a history cleanup.
+Provider-native transcripts and external evidence files are retained; none of
+these routes requests arbitrary filesystem or Runtime session deletion.
+
 Planning-record DELETE commands for Projects, Work Items and Tasks now run
 inside the Core mutation lock. `409 owner_delete_blocked` identifies existing
 references, active work or a conversation-owned record. Resolve/move/detach the
