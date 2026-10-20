@@ -1,5 +1,14 @@
 # Documentation Index
 
+[Code and Work owner actions](decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md)
+proposes durable Codespace management, source-aware record deletion, terminal
+Run/Mission history cleanup and consistent contextual actions across Code/Work.
+[SPEC-126](specs/SPEC-126-code-work-owner-actions-and-lifecycle.md) contains the
+page inventory and acceptance scenarios;
+[PLAN-119](plans/PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md)
+sequences lifecycle correctness before everyday management and navigation
+consolidation. Proposed/draft only; implementation and release have not started.
+
 [Code agent artifact preview](decisions/126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md)
 proposes how Cats in Cats Code open what they built beside the conversation. A
 Platform-hosted `cats` MCP server is delivered to provider CLIs through runtime
@@ -525,6 +534,6 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-09-28*
+*Last updated: 2026-10-20*
 
 - Studio: [SDK specification](specs/SPEC-119-app-image-generation.md) and [delivery plan](plans/PLAN-111-app-image-generation.md).
