@@ -120,6 +120,8 @@ export interface SchedulerState {
   updatedAt: string;
   rules: ScheduleRule[];
   triggerReceipts: ScheduleTriggerReceipt[];
+  /** Owner-deleted identities cannot be reinserted by a stale in-flight tick. */
+  deletedRuleIds?: string[];
 }
 
 export interface ScheduleRuleCreateInput {
@@ -134,6 +136,7 @@ export interface ScheduleRuleCreateInput {
 }
 
 export interface ScheduleRuleUpdateInput {
+  expectedRule?: ScheduleRule;
   title?: string;
   enabled?: boolean;
   timezone?: string;

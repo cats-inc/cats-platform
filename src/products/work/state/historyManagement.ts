@@ -21,7 +21,8 @@ export function isTerminalHistory(record: { status: string }): boolean {
 
 export function executionSource(record: ManagedRecord): 'room' | 'work' | 'schedule' | 'delegation' | 'unknown' {
   const metadata = record.metadata;
-  if (metadata.trigger && typeof metadata.trigger === 'object' && typeof (metadata.trigger as Record<string, unknown>).ruleId === 'string'
+  if (metadata.source === 'schedule_rule' || metadata.scheduleTrigger && typeof metadata.scheduleTrigger === 'object' && typeof (metadata.scheduleTrigger as Record<string, unknown>).ruleId === 'string'
+    || metadata.trigger && typeof metadata.trigger === 'object' && typeof (metadata.trigger as Record<string, unknown>).ruleId === 'string'
     || metadata.scheduleRuleId || metadata.originSurface === 'schedule' || metadata.source === 'schedule') return 'schedule';
   if (metadata.source === 'chat-room-workflow') return 'room';
   if (metadata.collaborationIntentId || metadata.source === 'delegation') return 'delegation';

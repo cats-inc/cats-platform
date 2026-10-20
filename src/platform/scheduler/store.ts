@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, copyFile, rename, rm } from 'node:fs/promises';
+import { CoreConflictError } from '../../core/errors.js';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -16,6 +17,7 @@ import {
 import { resolveScheduleStatePathFromChatState } from '../../shared/platformPaths.js';
 
 export interface ScheduleStore {
+  ownerUpdate?(updater: (state: SchedulerState) => SchedulerState): Promise<SchedulerState>;
   readState(): Promise<SchedulerState>;
   writeState(state: SchedulerState): Promise<SchedulerState>;
   listRules(): Promise<ScheduleRule[]>;
@@ -78,6 +80,14 @@ abstract class BaseScheduleStore implements ScheduleStore {
     });
   }
 
+  async ownerUpdate(updater: (state: SchedulerState) => SchedulerState): Promise<SchedulerState> {
+    return this.runExclusive(async () => {
+      const next = updater(structuredClone(await this.readSnapshot()));
+      await this.writeSnapshot(next);
+      return structuredClone(next);
+    });
+  }
+
   async listRules(): Promise<ScheduleRule[]> {
     const state = await this.readState();
     return state.rules
@@ -92,6 +102,7 @@ abstract class BaseScheduleStore implements ScheduleStore {
   async upsertRule(rule: ScheduleRule): Promise<ScheduleRule> {
     return this.runExclusive(async () => {
       const state = await this.readSnapshot();
+      if (state.deletedRuleIds?.includes(rule.id)) throw new CoreConflictError('This schedule was removed. A stale tick cannot restore it.');
       const existingIndex = state.rules.findIndex((candidate) => candidate.id === rule.id);
       const nextRule = structuredClone(rule);
       if (existingIndex === -1) {
@@ -111,14 +122,12 @@ abstract class BaseScheduleStore implements ScheduleStore {
     return this.runExclusive(async () => {
       const state = await this.readSnapshot();
       const beforeCount = state.rules.length;
+      const rule = state.rules.find(candidate => candidate.id === ruleId);
+      if (rule?.enabled || state.triggerReceipts.some(receipt => receipt.ruleId === ruleId)) throw new CoreConflictError('Disable the rule and use owner cleanup preview to preserve its execution provenance.');
       state.rules = state.rules.filter((candidate) => candidate.id !== ruleId);
       const removed = state.rules.length < beforeCount;
       if (removed) {
-        // Drop receipt history for the removed rule too — they no longer
-        // describe an admittable rule and would orphan the audit view.
-        state.triggerReceipts = state.triggerReceipts.filter(
-          (receipt) => receipt.ruleId !== ruleId,
-        );
+        state.deletedRuleIds = [...new Set([...(state.deletedRuleIds ?? []), ruleId])];
         state.updatedAt = this.now().toISOString();
         await this.writeSnapshot(state);
       }
@@ -132,6 +141,7 @@ abstract class BaseScheduleStore implements ScheduleStore {
   }> {
     return this.runExclusive(async () => {
       const state = await this.readSnapshot();
+      if (state.deletedRuleIds?.includes(input.ruleId)) throw new CoreConflictError('This schedule was removed before its trigger was claimed.');
       const existing = state.triggerReceipts.find(
         (receipt) => receipt.idempotencyKey === input.idempotencyKey,
       );
@@ -249,6 +259,15 @@ export class FileBackedScheduleStore extends BaseScheduleStore {
       const raw = await readFile(this.statePath, 'utf-8');
       return normalizeSchedulerState(JSON.parse(raw) as unknown, this.currentDate());
     } catch (error) {
+      if (error instanceof SyntaxError || isErrnoException(error) && error.code === 'ENOENT') {
+        try {
+          const recovered = normalizeSchedulerState(JSON.parse(await readFile(`${this.statePath}.bak`, 'utf8')), this.currentDate());
+          const temporary = `${this.statePath}.${randomUUID()}.recovery.tmp`;
+          try { await writeFile(temporary, `${JSON.stringify(recovered, null, 2)}\n`, 'utf8'); await rename(temporary, this.statePath); }
+          finally { await rm(temporary, { force: true }); }
+          return recovered;
+        } catch (recoveryError) { if (!(isErrnoException(recoveryError) && recoveryError.code === 'ENOENT')) throw recoveryError; }
+      }
       if (isErrnoException(error) && error.code === 'ENOENT') {
         const state = createEmptySchedulerState(this.currentDate());
         await this.writeSnapshot(state);
@@ -260,7 +279,22 @@ export class FileBackedScheduleStore extends BaseScheduleStore {
 
   protected async writeSnapshot(state: SchedulerState): Promise<void> {
     await mkdir(path.dirname(this.statePath), { recursive: true });
-    await writeFile(this.statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf-8');
+    const temporary = `${this.statePath}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(temporary, `${JSON.stringify(state, null, 2)}\n`, 'utf-8');
+      try {
+        if (state.deletedRuleIds?.length || state.triggerReceipts.some(receipt => receipt.metadata.ownerDetailCleared)) {
+          const previous = normalizeSchedulerState(JSON.parse(await readFile(this.statePath, 'utf8')), this.currentDate());
+          previous.deletedRuleIds = [...new Set([...(previous.deletedRuleIds ?? []), ...(state.deletedRuleIds ?? [])])];
+          previous.rules = previous.rules.filter(rule => !previous.deletedRuleIds!.includes(rule.id));
+          const compacted = new Set(state.triggerReceipts.filter(receipt => receipt.metadata.ownerDetailCleared).map(receipt => receipt.id));
+          previous.triggerReceipts = previous.triggerReceipts.map(receipt => compacted.has(receipt.id) ? { ...receipt, message: null, metadata: { ownerDetailCleared: true } } : receipt);
+          await writeFile(`${temporary}.bak`, `${JSON.stringify(previous, null, 2)}\n`, 'utf8');
+          await rename(`${temporary}.bak`, `${this.statePath}.bak`);
+        } else await copyFile(this.statePath, `${this.statePath}.bak`);
+      } catch (error) { if (!isErrnoException(error) || error.code !== 'ENOENT') throw error; }
+      await rename(temporary, this.statePath);
+    } finally { await rm(temporary, { force: true }); await rm(`${temporary}.bak`, { force: true }); }
   }
 }
 

@@ -1,4 +1,4 @@
-import { CoreNotFoundError, CoreValidationError } from '../../core/errors.js';
+import { CoreConflictError, CoreNotFoundError, CoreValidationError } from '../../core/errors.js';
 import { createCatActorId } from '../../core/actors.js';
 import {
   upsertCoreMission,
@@ -108,6 +108,19 @@ class DefaultSchedulerService implements SchedulerService {
   }
 
   async updateRule(ruleId: string, input: ScheduleRuleUpdateInput): Promise<ScheduleRule> {
+    if (this.dependencies.scheduleStore.ownerUpdate) {
+      let saved: ScheduleRule | undefined;
+      await this.dependencies.scheduleStore.ownerUpdate(state => {
+        const existing = state.rules.find(rule => rule.id === ruleId);
+        if (!existing) throw new CoreNotFoundError('Schedule no longer exists.');
+        if (input.expectedRule && JSON.stringify(input.expectedRule) !== JSON.stringify(existing)) throw new CoreConflictError('Schedule changed. Refresh before saving.');
+        const updated = updateScheduleRule(existing, input, this.now());
+        saved = { ...updated, nextFireAt: computeNextFireAt(updated, this.now()) };
+        return { ...state, rules: state.rules.map(rule => rule.id === ruleId ? saved! : rule), updatedAt: saved.updatedAt };
+      });
+      return saved!;
+    }
+    if (input.expectedRule) throw new CoreConflictError('This schedule store does not support checked editing.');
     const existing = await this.dependencies.scheduleStore.getRule(ruleId);
     if (!existing) {
       throw new CoreNotFoundError(`Schedule rule not found: ${ruleId}`, 'schedule_rule_not_found');
@@ -509,6 +522,17 @@ class DefaultSchedulerService implements SchedulerService {
       updatedAt: this.now().toISOString(),
     };
 
+    if (this.dependencies.scheduleStore.ownerUpdate) {
+      let saved = nextRule;
+      await this.dependencies.scheduleStore.ownerUpdate(state => {
+        const current = state.rules.find(candidate => candidate.id === rule.id);
+        if (!current) throw new CoreConflictError('The schedule was removed while this trigger completed.');
+        // An owner edit takes precedence over an older trigger's configuration/retry policy.
+        saved = JSON.stringify(current) === JSON.stringify(rule) ? nextRule : { ...current, lastFireAt: nextRule.lastFireAt, lastRunId: nextRule.lastRunId, updatedAt: nextRule.updatedAt };
+        return { ...state, rules: state.rules.map(candidate => candidate.id === rule.id ? saved : candidate), updatedAt: saved.updatedAt };
+      });
+      return saved;
+    }
     return this.dependencies.scheduleStore.upsertRule(nextRule);
   }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import type { ExecutionHistoryList } from '../../../state/historyListing.js';
@@ -11,7 +11,8 @@ const sourceLabels: Record<string, MessageKey> = { managed: 'ownerSourceManaged'
 
 export function ExecutionHistoryPage({ family }: { family: 'run' | 'mission' }) {
   const { locale, t } = useI18n();
-  const [filters, setFilters] = useState({ source: 'managed', status: 'all', view: 'visible', q: '', from: '', to: '', taskId: '', projectId: '' });
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState({ source: searchParams.get('source') ?? 'managed', status: 'all', view: 'visible', q: searchParams.get('q') ?? '', from: '', to: '', taskId: '', projectId: '', ruleId: searchParams.get('ruleId') ?? '' });
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
   function filter(key: keyof typeof filters, value: string) { setFilters(current => ({ ...current, [key]: value })); setPage(1); setSelected([]); }
@@ -30,7 +31,7 @@ export function ExecutionHistoryPage({ family }: { family: 'run' | 'mission' }) 
     <header className="channelTopBar runsListTopBar"><div className="channelTopBarStart"><h1 className="channelTopBarTitle">{t(family === 'run' ? 'workRunsListTitle' : 'workMissionsListTitle')}</h1>
       <span className="runsListTopBar__count">{query.data?.total ?? 0}</span></div></header>
     <main className="runsList__main">
-      <div className="ownerHistoryFilters">
+      <div className="ownerHistoryFilters">{filters.ruleId ? <button onClick={() => filter('ruleId', '')}>{t('ownerSourceSchedule')} · {t('ownerAll')}</button> : null}
         <label>{t('ownerSearch')}<input type="search" value={filters.q} onChange={event => filter('q', event.target.value)} /></label>
         <label>{t('ownerSource')}<select value={filters.source} onChange={event => filter('source', event.target.value)}>{Object.entries(sourceLabels).map(([key, label]) => <option key={key} value={key}>{t(label)}</option>)}</select></label>
         <label>{t('ownerStatus')}<select value={filters.status} onChange={event => filter('status', event.target.value)}>{['all', 'queued', 'running', 'blocked', 'completed', 'failed', 'cancelled', ...(family === 'mission' ? ['draft', 'planned'] : [])].map(status => <option key={status} value={status}>{status === 'all' ? t('ownerAll') : getWorkObjectStatusLabel(status, t)}</option>)}</select></label>

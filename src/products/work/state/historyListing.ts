@@ -55,6 +55,7 @@ export function listExecutionHistory(core: CatsCoreState, params: URLSearchParam
     && (!params.get('taskId') || item.taskId === params.get('taskId'))
     && (!params.get('projectId') || item.projectId === params.get('projectId'))
     && (!params.get('id') || item.id === params.get('id'))
+    && (!params.get('ruleId') || records.some(record => record.id === item.id && (record.metadata.scheduleRuleId === params.get('ruleId') || (record.metadata.scheduleTrigger as { ruleId?: string } | undefined)?.ruleId === params.get('ruleId'))))
     && (!params.get('binding') || params.get('binding') === 'all' || item.productBinding === params.get('binding'))
     && (!params.get('originSurface') || params.get('originSurface') === 'all' || item.originSurface === params.get('originSurface'))
     && (!params.get('from') && !params.get('to') || Date.parse(item.updatedAt) >= from && Date.parse(item.updatedAt) <= to)

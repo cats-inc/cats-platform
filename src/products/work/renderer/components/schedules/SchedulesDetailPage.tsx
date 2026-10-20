@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
+import { ScheduleManagement } from './ScheduleOwnerActions.js';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
-  removeWorkSchedule,
   testFireWorkSchedule,
   updateWorkSchedule,
   type WorkScheduleRule,
@@ -33,6 +33,7 @@ export function SchedulesDetailPage(): JSX.Element {
   const { scheduleId } = useParams<{ scheduleId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [ownerOpen, setOwnerOpen] = useState(false);
   const detailQuery = useScheduleDetailQuery(scheduleId);
   const rule = detailQuery.data?.rule ?? null;
   const triggerReceipts = detailQuery.data?.triggerReceipts ?? [];
@@ -65,31 +66,7 @@ export function SchedulesDetailPage(): JSX.Element {
     onSuccess: invalidate,
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async () => {
-      if (!rule) throw new Error(t('workScheduleRuleNotLoadedError'));
-      await removeWorkSchedule(rule.id, t('workScheduleDeleteFailed'));
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: SCHEDULES_QUERY_KEY });
-      if (scheduleId) {
-        queryClient.removeQueries({ queryKey: scheduleDetailQueryKey(scheduleId) });
-      }
-      navigate(WORK_SCHEDULES_PATH);
-    },
-  });
-
-  const handleDelete = () => {
-    if (!rule) return;
-    if (
-      !window.confirm(
-        t('workScheduleDeleteConfirmation', { scheduleTitle: rule.title }),
-      )
-    ) {
-      return;
-    }
-    deleteMutation.mutate();
-  };
+  const handleDelete = () => setOwnerOpen(true);
 
   const sortedReceipts = useMemo(
     () => triggerReceipts
@@ -100,7 +77,7 @@ export function SchedulesDetailPage(): JSX.Element {
   );
 
   const actionError =
-    toggleMutation.error ?? testFireMutation.error ?? deleteMutation.error;
+    toggleMutation.error ?? testFireMutation.error;
   const actionErrorMessage = actionError
     ? actionError instanceof Error
       ? actionError.message
@@ -149,12 +126,12 @@ export function SchedulesDetailPage(): JSX.Element {
         rule={rule}
         togglePending={toggleMutation.isPending}
         testFirePending={testFireMutation.isPending}
-        deletePending={deleteMutation.isPending}
+        deletePending={false}
         onToggle={() => toggleMutation.mutate(!rule.enabled)}
-        onTestFire={() => testFireMutation.mutate()}
+        onTestFire={() => { if (window.confirm(t('ownerScheduleTestFireNotice'))) testFireMutation.mutate(); }}
         onDelete={handleDelete}
       />
-      <main className="scheduleDetail__main">
+      <main className="scheduleDetail__main"><p>{t('ownerScheduleTestFireNotice')}</p><ScheduleManagement rule={rule} expanded={ownerOpen} onRemoved={() => navigate(WORK_SCHEDULES_PATH)} />
         {actionErrorMessage ? (
           <p className="scheduleDetail__error" role="alert">
             {actionErrorMessage}
@@ -310,7 +287,7 @@ export function SchedulesDetailPage(): JSX.Element {
                     {formatRelative(receipt.actualFireAt, t)}
                   </span>
                   {receipt.runId ? (
-                    <code className="scheduleDetail__triggerRun">{receipt.runId}</code>
+                    <Link className="scheduleDetail__triggerRun" to={"/work/tasks/orphan/runs/" + encodeURIComponent(receipt.runId)}>{t('ownerScheduleHistory')}</Link>
                   ) : null}
                 </li>
               ))}

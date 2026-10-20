@@ -1,4 +1,5 @@
 import { OWNER_ACTOR_ID } from '../../../core/actors.js';
+import { previewScheduleOwner, applyScheduleOwner } from '../../../platform/scheduler/ownerManagement.js';
 import { CoreConflictError, CoreNotFoundError } from '../../../core/errors.js';
 import { handleCoreError } from '../../../core/api/shared.js';
 import {
@@ -27,6 +28,22 @@ import type { WorkApiRouteContext } from './index.js';
 export async function routeWorkScheduleApi(
   context: WorkApiRouteContext,
 ): Promise<boolean> {
+  const ownerMatch = /^\/api\/work\/schedules\/([^/]+)\/owner$/u.exec(context.url.pathname);
+  if (ownerMatch) {
+    if (context.method !== 'POST') { sendMethodNotAllowed(context.response, ['POST']); return true; }
+    try {
+      const store = context.dependencies.scheduleStore;
+      if (!store?.ownerUpdate) throw new CoreConflictError('This schedule store does not support safe owner cleanup.');
+      const body = await readJsonBody<Record<string, unknown>>(context.request);
+      const id = decodeURIComponent(ownerMatch[1]);
+      if (body?.action === 'preview') sendJson(context.response, 200, previewScheduleOwner(await store.readState(), await context.dependencies.coreStore.readCore(), id, body.scope));
+      else if (body?.action === 'apply') {
+        await context.dependencies.coreStore.updateCore(async core => { await store.ownerUpdate!(state => applyScheduleOwner(state, core, id, body)); return core; });
+        sendJson(context.response, 200, { removed: body.scope === 'rule', detailCleared: body.scope === 'receipts', retained: ['Run/Mission summaries', 'receipt identities and idempotency keys', 'outputs', 'provider evidence'] });
+      } else throw new CoreConflictError('Preview this owner operation before applying.');
+    } catch (error) { handleCoreError(context, error); }
+    return true;
+  }
   const testFireMatch = matchRoute(context.url.pathname, WORK_API_SCHEDULE_TEST_FIRE_PATTERN);
   if (testFireMatch) {
     if (context.method !== 'POST') {
