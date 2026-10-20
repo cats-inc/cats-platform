@@ -27,9 +27,9 @@ PLAN-119 belong to another workstream and remain governing integration constrain
 
 | Slice | Repository and deliverable | State |
 | --- | --- | --- |
-| S1 | Runtime activity types and admitted repo/worktree identity | In progress |
-| S2 | Runtime bounded reducer, ordering, snapshot validation and inactive restore | Pending |
-| S3 | Runtime local-tool observation, session lifecycle, transport and checkpoint integration | Pending |
+| S1 | Runtime activity types and admitted repo/worktree identity | Complete; Runtime `5300ed77`, 15 focused tests |
+| S2 | Runtime bounded reducer, ordering, snapshot validation and inactive reattachment | Complete; Runtime `cfa4c044`, 11 focused tests and typecheck passed |
+| S3 | Runtime local-tool observation, session lifecycle, transport and memory-only restart checks | Complete; Runtime `de219b6f`, scoped suites/typecheck and independent review passed |
 | S4 | Native provider structured evidence, coverage and fixture/native checks | Pending |
 | S5 | Platform participant attribution, work-area API and live projection | Pending |
 | S6 | Code right panel, avatar entry, localization and renderer regressions | Pending |

@@ -181,6 +181,14 @@ revisions to suppress duplicates and older arrivals. Reconcile an unknown epoch
 against the current attachment before replacing state. Delete/unlink and session
 replacement invalidate current status.
 
+Runtime's `identityObservedAt` timestamps repository/branch verification;
+operation completion and reconnect do not refresh it. `startupCwd` and
+`runtimeCwd` are actual execution facts, independent of the product-selected
+Codespace/source binding. The initial Runtime implementation retains facts in
+memory only: after process restart an attachment has no reported activity until
+new observation. The initial Code projection follows that retention boundary;
+it does not introduce a persistent observation format or rewrite old profiles.
+
 The product may retain bounded last-known facts in existing namespaced
 session/run metadata; Runtime remains authoritative for current observations.
 No per-message fields, new Core record family or global workspace registry is
