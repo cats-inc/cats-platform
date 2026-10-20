@@ -1,5 +1,8 @@
 # Feature Specifications
 
+- [SPEC-127: Code participant workspace visibility](SPEC-127-code-participant-workspace-visibility.md)
+  — draft, 2026-10-20; observe each participant's repos/worktrees under one
+  Codespace, with Runtime coverage and freshness. Implementation not started.
 - [SPEC-126: Code and Work owner actions and lifecycle](SPEC-126-code-work-owner-actions-and-lifecycle.md)
   — approved, 2026-10-20; page action inventory, durable Codespace preferences,
   source-aware deletion, terminal-history cleanup and upgrade/recovery
@@ -66,6 +69,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-127](SPEC-127-code-participant-workspace-visibility.md) | Code Participant Workspace Visibility | Draft; planning only | [PLAN-120](../plans/PLAN-120-code-participant-workspace-visibility.md) |
 | [SPEC-126](SPEC-126-code-work-owner-actions-and-lifecycle.md) | Code and Work Owner Actions and Lifecycle | Implementation/scoped acceptance complete; owner review pending | [PLAN-119](../plans/PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md), [ADR-133](../decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) |
 | [SPEC-125](SPEC-125-conversation-participants-audience-and-orchestrator-binding.md) | Conversation Participants, Audience and Orchestrator Binding | Approved; implementation not started | [PLAN-118](../plans/PLAN-118-conversation-participants-audience-and-orchestrator-binding-rollout.md) |
 | [SPEC-124](SPEC-124-alive-companion-life-loop.md) | Alive Companion Life Loop | Implemented; real-bot and visual acceptance pending | [PLAN-117](../plans/PLAN-117-alive-companion-life-loop.md) |
@@ -196,7 +200,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-10-20 (SPEC-126 implementation/scoped acceptance complete; owner review pending.)*
+*Last updated: 2026-10-20 (SPEC-126 implementation/scoped acceptance remains complete with owner review pending; SPEC-127 is planning only.)*
 
 *See also: [plans/](../plans/) for implementation plans*
 

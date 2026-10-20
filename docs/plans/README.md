@@ -1,5 +1,8 @@
 # Implementation Plans
 
+- [PLAN-120: Code participant workspace visibility](PLAN-120-code-participant-workspace-visibility.md)
+  — draft, 2026-10-20; Runtime contract, attributed Code projection, panel/avatar
+  composition and isolated acceptance. Implementation not started.
 - [PLAN-119: Code and Work owner actions and lifecycle](PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md)
   — implementation/scoped acceptance complete, 2026-10-20; Codespaces, protected
   record/history management, contextual execution, repair and opt-in retention.
@@ -63,6 +66,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-120](PLAN-120-code-participant-workspace-visibility.md) | Code Participant Workspace Visibility | Draft; planning only | [SPEC-127](../specs/SPEC-127-code-participant-workspace-visibility.md), [ADR-134](../decisions/134-observe-participant-workspaces-within-one-code-codespace.md) |
 | [PLAN-119](PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md) | Code and Work Owner Actions and Lifecycle Rollout | Implementation/scoped acceptance complete; owner review pending | [SPEC-126](../specs/SPEC-126-code-work-owner-actions-and-lifecycle.md), [ADR-133](../decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) |
 | [PLAN-118](PLAN-118-conversation-participants-audience-and-orchestrator-binding-rollout.md) | Conversation Participants, Audience and Orchestrator Binding | Ready; not started | [SPEC-125](../specs/SPEC-125-conversation-participants-audience-and-orchestrator-binding.md), [ADR-132](../decisions/132-separate-participants-audience-and-the-orchestrator-binding.md) |
 | [PLAN-117](PLAN-117-alive-companion-life-loop.md) | Alive Companion Life Loop | Implemented; acceptance pending | [SPEC-124](../specs/SPEC-124-alive-companion-life-loop.md), [ADR-127](../decisions/127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md) |
@@ -187,7 +191,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-10-20 (PLAN-119 implementation/scoped acceptance complete; owner review pending.)*
+*Last updated: 2026-10-20 (PLAN-119 implementation/scoped acceptance remains complete with owner review pending; PLAN-120 is planning only.)*
 
 *See also: [specs/](../specs/) for feature specifications*
 

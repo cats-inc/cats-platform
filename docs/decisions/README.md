@@ -1,5 +1,8 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-134: Code participant workspaces](134-observe-participant-workspaces-within-one-code-codespace.md)
+  — proposed, 2026-10-20; one Codespace, evidence-backed repo/worktree inspection
+  in the Code panel and avatar entry. Bubbles and multiple selected Codespaces are deferred.
 - [ADR-133: Code and Work owner actions and source-aware lifecycle](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md)
   — accepted, 2026-10-20; separate navigation, execution, record deletion and
   resource cleanup; durable owner intent and source authority prevent deleted
@@ -57,6 +60,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
+| [ADR-134](134-observe-participant-workspaces-within-one-code-codespace.md) | Observe Participant Workspaces Within One Code Codespace | Proposed; planning only | 2026-10-20 |
 | [ADR-133](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) | Give Code and Work Owner Actions and Source-Aware Lifecycle | Accepted; implementation/scoped acceptance complete; owner review pending | 2026-10-20 |
 | [ADR-132](132-separate-participants-audience-and-the-orchestrator-binding.md) | Separate Participants, Audience and the Orchestrator Binding | Accepted; specified by SPEC-125, staged by PLAN-118 | 2026-10-20 |
 | [ADR-131](131-let-the-audience-chip-choose-the-audience-and-the-avatar-choose-the-model.md) | Let the Audience Chip Choose the Audience and the Avatar Choose the Model | Accepted; amends SPEC-013 composer popover hosts | 2026-10-20 |
@@ -190,7 +194,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-10-20 (ADR-132 participant/coordinator contract and ADR-133 owner lifecycle integration.)*
+*Last updated: 2026-10-20 (ADR-132/ADR-133 remain in force; ADR-134 proposes Code participant workspace inspection.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*
 

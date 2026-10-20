@@ -1,5 +1,13 @@
 # Documentation Index
 
+[Code participant workspace visibility](specs/SPEC-127-code-participant-workspace-visibility.md)
+plans one Codespace with a common parent cwd and per-participant repo/worktree
+inspection in the right side panel, plus an existing-avatar entry.
+[ADR-134](decisions/134-observe-participant-workspaces-within-one-code-codespace.md)
+and [PLAN-120](plans/PLAN-120-code-participant-workspace-visibility.md) are planning
+only, with a Runtime SPEC-037 dependency. Bubble changes, multiple selected
+Codespaces and Cats Work UI are excluded; implementation has not started.
+
 [Code and Work owner actions](decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md)
 provides durable Codespace management, source-aware record deletion, terminal
 Run/Mission history cleanup and consistent contextual actions across Code/Work.
