@@ -101,8 +101,10 @@ in every room with participants. Shippable on its own as a patch.
 
 ### Phase 5: Documentation and release
 
-- [ ] Task 5.1: Update SPEC-052, SPEC-013, `docs/api.md` and the participant
-      sections of the deployment and setup guides.
+- [x] Task 5.1: Update SPEC-052, SPEC-013, `docs/api.md` and the participant
+      sections of the deployment and setup guides. Also SPEC-069 (Start fresh
+      removed) and the terminology; the deployment guide has no participant
+      section, and its reset section is what the 0.9.0 notes point to.
 - [ ] Task 5.2: When the owner selects a release: 0.9.0 with reset
       instructions in its notes.
 
