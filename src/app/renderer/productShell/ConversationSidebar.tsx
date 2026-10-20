@@ -93,6 +93,7 @@ export interface ConversationSidebarAction {
 export interface ConversationSidebarActionGroup {
   key: string;
   ariaLabel: string;
+  heading?: string;
   items: readonly ConversationSidebarAction[];
   pinnedItems?: readonly ConversationSidebarPinnedItem[];
 }
@@ -312,6 +313,7 @@ export function ConversationSidebarContent<
 
           {extraActionGroups.map((group) => (
             <nav key={group.key} className="navGroup" aria-label={group.ariaLabel}>
+              {group.heading ? <h2 className="navGroupHeading">{group.heading}</h2> : null}
               {group.items.map((item) => (
                 <button
                   key={item.key}

@@ -210,6 +210,8 @@ export function WorkspaceDetailPage(): JSX.Element {
         </div>
         <div className="channelTopBarEnd codeWsDetailTopBar__end">
           <CodespaceActions workspace={workspace} onChanged={setPayload} />
+          <Link className="operatorActionButton" to={'/code/build?workspace=' + encodeURIComponent(workspace.path)}>{t('ownerOpenTaskBuilder')}</Link>
+          <Link className="operatorActionButton" to={'/code/relay?workspace=' + encodeURIComponent(workspace.path)}>{t('ownerOpenDispatch')}</Link>
           <span className="codeWsDetailTopBar__updated">
             {formatRelative(workspace.lastActiveAt, locale)}
           </span>

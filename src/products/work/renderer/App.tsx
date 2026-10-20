@@ -4,14 +4,13 @@ import { Sidebar } from "./components/Sidebar";
 import { BootShell } from "./chatUtils";
 import {
   WORK_BROKEN_LINKS_PATH,
-  WORK_COCKPIT_PATH,
   WORK_MISSIONS_PATH,
   WORK_PROJECTS_PATH,
   WORK_RUNS_PATH,
   WORK_SCHEDULES_PATH,
   WORK_SYSTEM_MAP_PATH,
   WORK_TASKS_PATH,
-  WORK_WAR_ROOM_PATH,
+  WORK_OVERVIEW_PATH,
   WORK_WORK_ITEMS_PATH,
 } from "./workPaths.js";
 import "./styles.css";
@@ -27,7 +26,7 @@ export default createWorkspaceProductApp({
       {...props}
       onStartNewGroupChat={props.onStartNewGroupChat}
       onStartNewParallelChat={props.onStartNewParallelChat}
-      onOpenWarRoom={() => props.navigate(WORK_WAR_ROOM_PATH)}
+      onOpenWarRoom={() => props.navigate(WORK_OVERVIEW_PATH)}
       onOpenProjects={() => props.navigate(WORK_PROJECTS_PATH)}
       onOpenProject={(projectId) => props.navigate(`${WORK_PROJECTS_PATH}/${projectId}`)}
       onOpenTasks={() => props.navigate(WORK_TASKS_PATH)}
@@ -36,7 +35,7 @@ export default createWorkspaceProductApp({
       onOpenSchedules={() => props.navigate(WORK_SCHEDULES_PATH)}
       onOpenWorkItems={() => props.navigate(WORK_WORK_ITEMS_PATH)}
       onOpenSystemMap={() => props.navigate(WORK_SYSTEM_MAP_PATH)}
-      onOpenCockpit={() => props.navigate(WORK_COCKPIT_PATH)}
+      onOpenCockpit={() => props.navigate(WORK_OVERVIEW_PATH)}
       onOpenBrokenLinks={() => props.navigate(WORK_BROKEN_LINKS_PATH)}
     />
   ),

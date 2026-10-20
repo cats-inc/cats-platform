@@ -6,7 +6,7 @@ import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
-import { CodeRunActions } from '../src/products/code/renderer/components/CodeRunActions.tsx';
+import { RunExecutionActions } from '../src/products/shared/renderer/RunExecutionActions.tsx';
 
 test('Code context stops the canonical selected Run and surfaces a provider refusal without hiding it', async t => {
   const oldReact = Object.getOwnPropertyDescriptor(globalThis, 'React'), oldFetch = globalThis.fetch;
@@ -16,7 +16,7 @@ test('Code context stops the canonical selected Run and surfaces a provider refu
   const calls: Array<{ url: string; body: any }> = [];
   let changed = false;
   globalThis.fetch = async (url, options) => { calls.push({ url: String(url), body: JSON.parse(String(options?.body)) }); return new Response(JSON.stringify({ error: { message: 'Runtime cancellation was refused.' } }), { status: 409 }); };
-  const view = render(<QueryClientProvider client={client}><MemoryRouter><I18nProvider locale="en"><CodeRunActions runId="selected-run" status="running" onChanged={() => { changed = true; }} /></I18nProvider></MemoryRouter></QueryClientProvider>);
+  const view = render(<QueryClientProvider client={client}><MemoryRouter><I18nProvider locale="en"><RunExecutionActions runId="selected-run" status="running" onChanged={() => { changed = true; }} /></I18nProvider></MemoryRouter></QueryClientProvider>);
   await act(async () => { fireEvent.click(view.getByText('Stop')); });
   assert.equal(calls[0].url, '/api/work/runs/selected-run/stop');
   assert.ok(calls[0].body.idempotencyKey);

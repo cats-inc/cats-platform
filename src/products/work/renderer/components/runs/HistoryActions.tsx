@@ -12,7 +12,7 @@ export async function historyRequest<T>(operation: string, body: unknown): Promi
   return payload;
 }
 
-export function HistoryActions({ subjects, revision, onChanged }: { subjects: HistorySubject[]; revision: number; onChanged?: () => void }) {
+export function HistoryActions({ subjects, revision, onChanged, archiveEligible = true }: { subjects: HistorySubject[]; revision: number; onChanged?: () => void; archiveEligible?: boolean }) {
   const { t } = useI18n();
   const client = useQueryClient();
   const [scope, setScope] = useState<'logs' | 'history'>('logs');
@@ -58,7 +58,7 @@ export function HistoryActions({ subjects, revision, onChanged }: { subjects: Hi
   return <div className="ownerHistoryActions">
     <div className="ownerHistoryActions__bar">
       <span>{t('ownerSelectionCount', { count: subjects.length })}</span>
-      <button disabled={busy || !subjects.length} onClick={() => void act('archive')}>{t('ownerArchive')}</button>
+      <button disabled={busy || !subjects.length || !archiveEligible} title={!archiveEligible ? t('ownerHistoryArchiveTerminal') : undefined} onClick={() => void act('archive')}>{t('ownerArchive')}</button>
       <button disabled={busy || !subjects.length} onClick={() => void act('restore')}>{t('ownerRestore')}</button>
       <button disabled={busy || !subjects.length} onClick={() => void act('export')}>{t('ownerExport')}</button>
       <label>{t('ownerCleanupScope')}<select disabled={busy} value={scope} onChange={event => setScope(event.target.value as typeof scope)}>

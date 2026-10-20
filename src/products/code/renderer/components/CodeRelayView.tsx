@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom';
-import { CodeRunActions } from './CodeRunActions.js';
+import { RunExecutionActions } from '../../../shared/renderer/RunExecutionActions.js';
 import { OwnerRecordActions, useOwnerListing } from '../../../shared/renderer/OwnerRecordActions.js';
 import { useEffect, useState } from 'react';
 import { sameProviderModelSelection } from '../../../../shared/providerSelection.js';
@@ -749,7 +749,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                                   <pre className="codeRelayMessageBody">{responseMessage.content}</pre>
                                 </div>
                               ) : null}
-                              {dispatch.runId ? <CodeRunActions runId={dispatch.runId} status={dispatch.status} onChanged={() => { void refreshThreads(selectedThread.thread.id); }} /> : null}
+                              {dispatch.runId ? <RunExecutionActions runId={dispatch.runId} status={dispatch.status} onChanged={() => { void refreshThreads(selectedThread.thread.id); }} /> : null}
                               {dispatch.status === 'failed' || dispatch.status === 'cancelled' ? <button disabled={!!busy} onClick={() => { setFanOutPrompt(dispatch.prompt); setFanOutObjective(round.objective); setFanOutMode(round.mode); setSelectedAgentIds([dispatch.agentId]); setSourceMessageId(null); document.getElementById('code-dispatch-form')?.focus(); }}>{t('ownerPrepareRetry')}</button> : null}
                               {responseMessage ? <button disabled={!!busy} onClick={() => { setFanOutPrompt(responseMessage.content); setFanOutObjective(round.objective); setFanOutMode(round.mode); setSelectedAgentIds(selectedThread.roster.filter(entry => entry.enabled && entry.id !== dispatch.agentId).map(entry => entry.id)); setSourceMessageId(responseMessage.id); document.getElementById('code-dispatch-form')?.focus(); }}>{t(messageKeys.codeRelayLabelRelayToOthers)}</button> : null}
                             </div>

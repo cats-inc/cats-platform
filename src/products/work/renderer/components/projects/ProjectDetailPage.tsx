@@ -208,6 +208,7 @@ export function ProjectDetailPage(): JSX.Element {
         </div>
       </header>
       <main className="projectDetail__main">
+        {graph.objects.some(object => object.id === project.id && object.metadata?.codeRelay) ? <Link to={'/code/relay?projectId=' + encodeURIComponent(project.id)}>{t('ownerOpenDispatch')}</Link> : null}
         <OwnerRecordActions family="project" id={project.id} expanded onChanged={removed => { if (removed) navigate('/work/projects'); }} />
         {deleteError ? (
           <p className="projectDetail__error" role="alert">

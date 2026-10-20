@@ -60,6 +60,12 @@ export function ownerEntry(state: { ownerLifecycle?: OwnerLifecycleState }, fami
   return state.ownerLifecycle?.entries[ownerSubjectKey(family, id)];
 }
 
+/** New execution on a previously archived producer-owned identity must remain reachable. */
+export function effectiveOwnerListing(state: { ownerLifecycle?: OwnerLifecycleState }, family: OwnerSubjectFamily, id: string, status: string): OwnerListingState {
+  const listing = ownerEntry(state, family, id)?.listing ?? (status === 'archived' ? 'archived' : 'visible');
+  return listing === 'archived' && ['task', 'work_item', 'run', 'mission'].includes(family) && ['in_progress', 'pending_approval', 'running', 'queued'].includes(status) ? 'visible' : listing;
+}
+
 /** Absent is the lossless old-profile upgrade; unknown data is never normalized away. */
 export function normalizeOwnerLifecycle(value: unknown): OwnerLifecycleState | undefined {
   if (value === undefined) return undefined;

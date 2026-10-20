@@ -139,16 +139,17 @@ and truthful failure/recovery paths in their canonical context.
 
 ### P4 — Operational actions, repair and navigation
 
-- [ ] Bring shared eligible next actions into Cockpit/War Room and detail drawers.
+- [x] Bring shared eligible next actions into Cockpit/War Room and detail drawers.
   Preserve specialized approval/recovery semantics rather than reimplementing them.
-- [ ] Add canonical-detail navigation and relationship management to System Map;
+- [x] Add canonical-detail navigation and relationship management to System Map;
   add missing-anchor relink/reparent/detach and previewed orphan-link batch
   repair to Broken Links.
-- [ ] Present and confirm one Work overview layout and navigation grouping
-  before changing the default landing or retiring duplicate surfaces.
-- [ ] Group Runs/Missions under execution and System Map/Broken Links under
+- [x] Apply the owner-approved full-plan navigation consolidation: one Work
+  Overview combines the Cockpit grid with decision/recovery operations. Final
+  visual review remains with the owner before any push.
+- [x] Group Runs/Missions under execution and System Map/Broken Links under
   diagnostics. Keep Code conversation/Codespace/Artifact-led.
-- [ ] Resolve retained public deep links to current canonical views without
+- [x] Resolve retained public deep links to current canonical views without
   maintaining parallel legacy renderers. Route removals use the recorded
   compatibility boundary rather than hidden aliases.
 - [ ] Verify selection/back navigation, filters, keyboard/focus, localization,
@@ -236,6 +237,7 @@ these contracts have already been approved.
 
 | Date | Update |
 | --- | --- |
+| 2026-10-20 | P4 renderer slice: one canonical Work Overview combines managed-object views with shared approval/recovery actions; retained War Room/Cockpit URLs redirect with queries intact. Execution/diagnostic navigation groups replace competing destinations; Code Build/Relay remain contextual. Graph drawers provide canonical links, owner controls, execution actions and relationship repair. Broken Links exposes explicit valid targets and selected orphan-link previews; all-source/archived graph coverage remains available. Active producer-owned identities stay reachable after prior archive. Server/client/web checks passed, 13 graph/relationship/projection/path fixtures and 21 sidebar/operational/relationship/Code renderer checks passed; 2 typed overview contract checks passed. Isolated native navigation/Chat acceptance remains open. |
 | 2026-10-20 | P4 relationship command slice: source/active/approval-aware optional anchor repair, parent-cycle/Project consistency checks, canonical link relinking and previewed exact orphan-link batches added. Link writes now use the Core lock; duplicate relinking reports merge rather than false failure. Optional removed-link identities suppress stale rebuild and sanitize backups. Server build, 12 relationship/lifecycle/deletion fixtures and existing Core/link routes/projection checks passed; UI integration and isolated acceptance remain open. Corrected new fixture Artifact kinds to the public document enum. |
 | 2026-10-20 | P3 execution/dispatch slice: selected Code attempts expose canonical Run stop/history; failed dispatch retry and response forwarding prepare an editable recipient/mode/prompt form with source-message provenance. Relay contexts reuse Project owner lifecycle. Admission, runtime-bridge publication and late completion now mutate Core atomically and preserve cancellation/concurrent edits. Code startup reserves one attempt, rejects duplicate/approval/source/archived admission, cleans late sessions after cancellation and records recoverable startup failures. Explicit runtime refresh closes an ended attempt without claiming Task acceptance; approved Tasks load directly for continuation. Relay auxiliary excerpts compact at source while conversation responses remain. Server/client/web checks, 21 focused owner/execution/history/renderer checks and 28 existing Code/Relay/builder checks passed. Contextual navigation convergence remains in P4; native acceptance remains open. |
 | 2026-10-20 | P3 Preview slice: Live Preview and canvas controls expose artifact-backed supervisor restart, log export and revision-bound ended-history cleanup. Unsupported restart explains its required source/artifact context. Cleanup explicitly removes host-session lease/log memory only; files, artifacts and provider evidence remain. Active/stopping/failed-stop entries are protected and changed log buffers invalidate preview. Server/client checks and 20 API/supervisor/renderer tests passed; native candidate acceptance remains scheduled. |

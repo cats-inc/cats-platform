@@ -1,4 +1,4 @@
-import { Route } from 'react-router-dom';
+import { Navigate, Route, useLocation } from 'react-router-dom';
 
 import {
   resolveAppEntryPath,
@@ -20,7 +20,6 @@ import {
   NewChatDraft,
   type NewChatDraftProps,
 } from './components/NewChatDraft.js';
-import { WarRoomView } from './components/WarRoomView.js';
 import { ProjectDetailPage } from './components/projects/ProjectDetailPage.js';
 import { ProjectsListPage } from './components/projects/ProjectsListPage.js';
 import { TaskDetailPage } from './components/tasks/TaskDetailPage.js';
@@ -34,7 +33,7 @@ import { SchedulesDetailPage } from './components/schedules/SchedulesDetailPage.
 import { WorkItemDetailPage } from './components/work-items/WorkItemDetailPage.js';
 import { WorkItemsListPage } from './components/work-items/WorkItemsListPage.js';
 import { BrokenLinksPage } from './components/topdown/BrokenLinksPage.js';
-import { CockpitPage } from './components/topdown/CockpitPage.js';
+import { WorkOverviewPage } from './components/topdown/WorkOverviewPage.js';
 import { SystemMapPage } from './components/topdown/SystemMapPage.js';
 import {
   WorkspaceAppRoutes,
@@ -92,7 +91,8 @@ export function AppRoutes({
     entryPath: resolveAppEntryPath(payload.setupCompleteAt),
     chatsPath: resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId),
     extraRoutes: [
-      <Route key="war-room" path="war-room" element={<WarRoomView />} />,
+      <Route key="overview" path="overview" element={<WorkOverviewPage />} />,
+      <Route key="war-room" path="war-room" element={<RetainedOverviewEntry />} />,
       <Route key="project-list" path="projects" element={<ProjectsListPage />} />,
       withSharedViewerRoutes({
         key: 'project-detail',
@@ -124,7 +124,7 @@ export function AppRoutes({
         element: <WorkItemDetailPage />,
       }),
       <Route key="system-map" path="system-map" element={<SystemMapPage />} />,
-      <Route key="cockpit" path="cockpit" element={<CockpitPage />} />,
+      <Route key="cockpit" path="cockpit" element={<RetainedOverviewEntry />} />,
       <Route key="broken-links" path="broken-links" element={<BrokenLinksPage />} />,
     ],
     renderBootShell: () => <BootShell />,
@@ -170,3 +170,5 @@ export function AppRoutes({
     onOpenDraftAddCat,
   });
 }
+
+function RetainedOverviewEntry() { const location = useLocation(); return <Navigate replace to={{ pathname: "/work/overview", search: location.search }} />; }

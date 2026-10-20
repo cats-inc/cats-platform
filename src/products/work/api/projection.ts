@@ -458,6 +458,7 @@ export interface WorkMissionDetailProjection {
 }
 
 export interface WorkTaskActionContext {
+  taskTitle?: string | null;
   conversationTitle: string | null;
   conversationSourceChannelId: string | null;
   projectId: string | null;
@@ -846,6 +847,7 @@ function buildWorkTaskActionContext(
     : null;
 
   return {
+    taskTitle: task?.title ?? null,
     conversationTitle: conversation?.title ?? null,
     conversationSourceChannelId: conversation?.sourceChannelId ?? null,
     projectId: project?.id ?? null,

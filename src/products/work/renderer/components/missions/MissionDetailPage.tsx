@@ -232,7 +232,7 @@ export function MissionDetailPage(): JSX.Element {
       </header>
 
       <main className="missionDetail__main">
-        <HistoryActions subjects={[{ family: 'mission', id: mission.id }]} revision={missionsQuery.data?.revision ?? 0} />
+        <HistoryActions subjects={[{ family: 'mission', id: mission.id }]} revision={missionsQuery.data?.revision ?? 0} archiveEligible={isTerminal} />
         {cancelErrorMessage ? (
           <p className="missionDetail__error" role="alert">
             {cancelErrorMessage}

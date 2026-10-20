@@ -3,7 +3,7 @@ import type { CatsCoreState, CoreTaskRecord } from './types.js';
 import type { OwnerActionView, PlanningOwnerAction, PlanningOwnerFamily } from './ownerActionContracts.js';
 import { getOwnerRecord, ownerDeleteBlockers, ownerRecordDependencies, ownerRecordSource } from './ownerManagement.js';
 import { CoreConflictError, CoreNotFoundError, CoreValidationError } from './errors.js';
-import { ownerEntry, setOwnerEntry } from './ownerLifecycle.js';
+import { effectiveOwnerListing, ownerEntry, setOwnerEntry } from './ownerLifecycle.js';
 import { applyOwnerLifecycleProjection } from './ownerLifecycleProjection.js';
 import { upsertCoreProject, upsertCoreWorkItem, upsertCoreTask, upsertCoreArtifact } from './model/index.js';
 import { readTaskPlanningMetadata } from '../shared/taskPlanning.js';
@@ -44,8 +44,8 @@ export function ownerActionView(core: CatsCoreState, family: PlanningOwnerFamily
   const metadata = record.metadata;
   const renderer = metadata.workRenderer && typeof metadata.workRenderer === 'object' ? metadata.workRenderer as Record<string, unknown> : metadata;
   const channelId = typeof metadata.channelId === 'string' ? metadata.channelId : 'conversationId' in record && record.conversationId ? core.conversations.find(conversation => conversation.id === record.conversationId)?.sourceChannelId : null;
-  return { family, id, token: token(core), title: record.title, summary: record.summary, status: record.status, listing: ownerEntry(core, family, id)?.listing ?? 'visible', source,
-    sourcePath: channelId ? `/chat/chats/${encodeURIComponent(channelId)}` : null,
+  return { family, id, token: token(core), title: record.title, summary: record.summary, status: record.status, listing: effectiveOwnerListing(core, family, id, record.status), source,
+    sourcePath: channelId ? `/${metadata.originSurface === 'code' ? 'code' : metadata.originSurface === 'work' ? 'work' : 'chat'}/chats/${encodeURIComponent(channelId)}` : null,
     assignedActorIds: 'assignedActorIds' in record ? record.assignedActorIds : [], projectId: 'projectId' in record ? record.projectId : null,
     parentId: 'parentTaskId' in record ? record.parentTaskId ?? null : 'parentWorkItemId' in record ? record.parentWorkItemId : null,
     priority: typeof renderer.priority === 'string' ? renderer.priority : '', acceptanceCriteria: typeof renderer.acceptanceCriteria === 'string' ? renderer.acceptanceCriteria : readTaskPlanningMetadata(metadata).acceptanceCriteria,
@@ -106,5 +106,5 @@ export function applyOwnerAction(core: CatsCoreState, family: PlanningOwnerFamil
 }
 
 export function listOwnerRecords(core: CatsCoreState, family: PlanningOwnerFamily) {
-  return core[collections[family]].map(record => ({ id: record.id, title: record.title, summary: record.summary, status: record.status, listing: ownerEntry(core, family, record.id)?.listing ?? (record.status === 'archived' ? 'archived' : 'visible') }));
+  return core[collections[family]].map(record => ({ id: record.id, title: record.title, summary: record.summary, status: record.status, listing: effectiveOwnerListing(core, family, record.id, record.status) }));
 }

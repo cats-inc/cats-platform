@@ -48,12 +48,12 @@ interface CodeBuilderViewProps {
 
 export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderViewProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { state, create, execute, resume, refreshRepoStatus, reset, stopPolling } = useCodeTaskExecution();
   const { t } = useI18n();
 
   const [step, setStep] = useState<BuilderStep>('workspace');
-  const [workspacePath, setWorkspacePath] = useState('');
-  const [searchParams] = useSearchParams();
+  const [workspacePath, setWorkspacePath] = useState(searchParams.get('workspace') ?? '');
   const [resumeTaskId, setResumeTaskId] = useState(searchParams.get('taskId') ?? '');
   const [existingTasks, setExistingTasks] = useState<Array<{ id: string; title: string }>>([]);
   useEffect(() => {

@@ -1,6 +1,7 @@
 import { resolvePlatformSurfaceRoutePrefix } from '../../../shared/platformProducts.js';
 
 export const WORK_ROUTE_PREFIX = resolvePlatformSurfaceRoutePrefix('work');
+export const WORK_OVERVIEW_PATH = `${WORK_ROUTE_PREFIX}/overview`;
 export const WORK_WAR_ROOM_PATH = `${WORK_ROUTE_PREFIX}/war-room`;
 export const WORK_PROJECTS_PATH = `${WORK_ROUTE_PREFIX}/projects`;
 export const WORK_TASKS_PATH = `${WORK_ROUTE_PREFIX}/tasks`;

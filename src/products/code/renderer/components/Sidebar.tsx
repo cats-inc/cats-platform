@@ -46,9 +46,7 @@ import {
   CODE_ROUTE_PREFIX,
   buildCodeCodespacePath,
   isCodeArtifactsPath,
-  isCodeBuildPath,
   isCodeCodespacesPath,
-  isCodeRelayPath,
 } from '../codePaths.js';
 import { labelCodeWorkspaceStatusForLocale } from './codeStatusLabels.js';
 
@@ -234,72 +232,6 @@ function createExtraActionGroups(
               <path d="M3 4.5l5-2.5 5 2.5v6.5l-5 2.5-5-2.5z" />
               <path d="M3 4.5l5 2.5 5-2.5" />
               <path d="M8 7v6.5" />
-            </svg>
-          ),
-        },
-      ],
-    });
-  }
-
-  if (props.onOpenRelay) {
-    groups.push({
-      key: 'relay',
-      ariaLabel: t(messageKeys.codeSidebarLabelRelay),
-      items: [
-        {
-          key: 'relay',
-          label: t(messageKeys.codeSidebarLabelRelay),
-          onClick: props.onOpenRelay,
-          active: isCodeRelayPath(currentPath),
-          icon: (
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 4h4" />
-              <path d="M9 4h4" />
-              <path d="M5 4v8" />
-              <path d="M11 4v8" />
-              <path d="M5 8h6" />
-              <path d="M3 12h4" />
-              <path d="M9 12h4" />
-            </svg>
-          ),
-        },
-      ],
-    });
-  }
-
-  if (props.onOpenBuild) {
-    groups.push({
-      key: 'build',
-      ariaLabel: t(messageKeys.codeSidebarLabelBuild),
-      items: [
-        {
-          key: 'build',
-          label: t(messageKeys.codeSidebarLabelBuild),
-          onClick: props.onOpenBuild,
-          active: isCodeBuildPath(currentPath),
-          icon: (
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M2 4l6-2 6 2v6l-6 2-6-2z" />
-              <path d="M2 4l6 2 6-2" />
-              <path d="M8 6v8" />
             </svg>
           ),
         },

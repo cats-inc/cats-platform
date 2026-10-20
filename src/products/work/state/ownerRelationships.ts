@@ -12,7 +12,7 @@ const fields: Partial<Record<Family, Record<string, Family>>> = {
   task: { parentTaskId: 'task', conversationId: 'conversation' }, run: { taskId: 'task', parentRunId: 'run', conversationId: 'conversation' }, mission: { managedWorkId: 'work_item', conversationId: 'conversation' },
   artifact: { projectId: 'project', workItemId: 'work_item', taskId: 'task', runId: 'run', conversationId: 'conversation' },
   activity: { projectId: 'project', workItemId: 'work_item', taskId: 'task', runId: 'run', artifactId: 'artifact', conversationId: 'conversation' },
-  trace: { taskId: 'task', runId: 'run', conversationId: 'conversation' }, checkpoint: { taskId: 'task', runId: 'run', conversationId: 'conversation' }, outcome: { taskId: 'task', runId: 'run', conversationId: 'conversation' },
+  trace: { taskId: 'task', runId: 'run', conversationId: 'conversation' }, checkpoint: { taskId: 'task', runId: 'run', sourceTraceId: 'trace', conversationId: 'conversation' }, outcome: { taskId: 'task', runId: 'run', conversationId: 'conversation' },
 };
 function records(core: CatsCoreState, family: string): Array<Record<string, unknown>> {
   if (!Object.hasOwn(collections, family)) return [];
@@ -84,5 +84,5 @@ export function repairOwnerLink(core: CatsCoreState, id: string, body: Record<st
 export function ownerLinkView(core: CatsCoreState, id: string) {
   const link = core.workGraphLinks.find(link => link.id === id);
   if (!link) throw new CoreNotFoundError('Link no longer exists.');
-  return { token: fingerprint(core), link, choices: (['project', 'work_item', 'task'] as const).flatMap(family => records(core, family).map(record => ({ id: `${family}:${record.id}`, title: `${family}: ${record.title}` }))) };
+  return { token: fingerprint(core), link, choices: (['project', 'work_item', 'task'] as const).flatMap(family => records(core, family).map(record => ({ id: `${family}:${record.id}`, title: String(record.title) }))) };
 }

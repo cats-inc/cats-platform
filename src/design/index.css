@@ -31,3 +31,9 @@
 .ownerRecordActions label { display: grid; gap: .25rem; }
 .ownerRecordActions input, .ownerRecordActions textarea, .ownerRecordActions select { max-width: 100%; color: inherit; background: var(--bg-secondary, transparent); }
 .ownerRecordActions button { justify-self: start; }
+
+.ownerOverviewOperations__items { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1rem; }
+.ownerObjectActions { display: grid; gap: .5rem; }
+
+.navGroupHeading { margin: .65rem .75rem .25rem; font-size: .65rem; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+.sidebarCollapsed .navGroupHeading { display: none; }
