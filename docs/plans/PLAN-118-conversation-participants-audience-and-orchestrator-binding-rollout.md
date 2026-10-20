@@ -72,7 +72,7 @@ in every room with participants. Shippable on its own as a patch.
       coordinator × admin for actions beyond the conversation.
 - [x] Task 3.5: `newChatDefaults` as model or cat, saved from a created
       non-DM conversation's first participant.
-- [ ] Task 3.6: Owner and artifact provenance fields.
+- [x] Task 3.6: Owner and artifact provenance fields.
 - [x] Task 3.7: Remove Start fresh, the default-chat reply rewrite and the
       Telegram non-DM room fallback.
 - [x] Task 3.8: Mobile audience control, released together with Task 3.3 so

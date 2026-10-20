@@ -269,6 +269,15 @@ Settled during implementation, 2026-10-20:
   cat plus one more participant. Saving the remembered model from a draft
   never clears a remembered cat; creating the conversation saves whichever
   participant is first.
+- Every conversation records `ownerActorId`, the platform owner's actor
+  (`actor-owner`), set by the one creation path all creators share and
+  defaulted when an older snapshot lacks it. Each Core artifact keeps its
+  provenance in `metadata.provenance` — `{ ownerActorId, producerActorId }` —
+  because `CoreArtifactRecord` is frozen: `upsertCoreArtifact` stamps the
+  owner (from the owner profile) on creation and keeps both fields across
+  updates; a writer names the producer with `withCoreArtifactProducer`. Code
+  artifact declarations name their agent or owner producer; producers that do
+  not know one leave it null.
 
 ## References
 

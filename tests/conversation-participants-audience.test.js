@@ -182,3 +182,13 @@ test('only the coordinator routes turns on, and only an admin coordinator acts a
   assert.equal(isAdminCoordinator(milosRoom, channelId, idOf('Milo')), false);
   assert.equal(isAdminCoordinator(milosRoom, channelId, idOf('Boss')), false);
 });
+
+test('every conversation belongs to the platform owner, also when an old snapshot lacks it', async () => {
+  const room = createRoom(createDefaultChatState());
+  assert.equal(buildChannelView(room, room.selectedChannelId).ownerActorId, 'actor-owner');
+
+  const { normalizeChatState } = await import('../build/server/products/chat/state/chat-snapshot/index.js');
+  const snapshot = structuredClone(room);
+  delete snapshot.channels[0].ownerActorId;
+  assert.equal(normalizeChatState(snapshot).channels[0].ownerActorId, 'actor-owner');
+});

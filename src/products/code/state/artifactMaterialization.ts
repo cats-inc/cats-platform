@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { appendCoreActivity } from '../../../core/model/executionRecords.js';
+import { withCoreArtifactProducer } from '../../../core/artifactProvenance.js';
 import { upsertCoreArtifact } from '../../../core/model/planningRecords.js';
 import type {
   CoreActivityRecord,
@@ -136,7 +137,8 @@ export function materializeCodeArtifactDeclaration(
     mimeType: declaration.artifact.mimeType ?? null,
     sizeBytes: declaration.artifact.sizeBytes ?? null,
     summary: declaration.artifact.summary ?? null,
-    metadata,
+    // An agent or the owner that declared the artifact is its producer.
+    metadata: withCoreArtifactProducer(metadata, resolveActivityActorId(declaration.producer)),
   }, now);
   const activityResult = shouldRecordActivity
     ? appendCoreActivity(result.core, {

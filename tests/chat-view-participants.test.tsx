@@ -199,6 +199,7 @@ function createChannel(overrides: Partial<SelectedChannelView> = {}): SelectedCh
     channelKind: 'chat_channel',
     status: 'active',
     coordinatorParticipantId: null,
+    ownerActorId: 'actor-owner',
     unreadCount: 0,
     repoPath: null,
     chatCwd: null,
