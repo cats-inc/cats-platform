@@ -21,7 +21,6 @@ import {
 } from '../../../../platform/supervision/runtimeBoundary.js';
 import { buildChannelView } from '../model/index.js';
 import { type RoutingTarget } from '../mentionRouter.js';
-import { buildOrchestratorRewritePrompt } from '../prompts.js';
 import { type DispatchRequest } from '../room-routing/runtime.js';
 import {
   type RuntimeTransportContext,
@@ -39,7 +38,6 @@ import {
   participantKey,
   resolveActorIdForTarget,
 } from '../runtime-session/state.js';
-import { shouldRewriteOrchestratorReply } from '../runtime-session/index.js';
 import type { DispatchLeasePatch } from './recovery.js';
 import { applyCompanionPhotoDirective } from './companionPhoto.js';
 import { waitForSessionTurnGate } from './sessionTurnGate.js';
@@ -213,7 +211,6 @@ export async function executeDispatch(
     const dispatchContextMetadata = buildDispatchRuntimeContextMetadata(request, {
       continuityMode: dispatchPrompt.continuityMode ?? null,
       continuityDeliveryMode: dispatchPrompt.continuityDeliveryMode ?? null,
-      continuityResetAt: dispatchPrompt.continuityResetAt ?? null,
     });
     const toolIntent = resolveDispatchToolIntent({
       state,
@@ -298,57 +295,12 @@ export async function executeDispatch(
       });
       mergeRuntimeAssistantMetadata(runtimeAssistantMetadata, effectsMetadata);
     }
-    let usage: MessageUsageSummary | null = {
+    const usage: MessageUsageSummary | null = {
       inputTokens: runtimeResult.inputTokens,
       outputTokens: runtimeResult.outputTokens,
       tokensUsed: runtimeResult.tokensUsed,
     };
 
-    const fullResponseText = resolveFullResponseText(responseSegments);
-    if (
-      request.target.participantKind === 'orchestrator'
-      && shouldRewriteOrchestratorReply(
-        fullResponseText,
-        request.target.participantName,
-        channel,
-      )
-    ) {
-      try {
-        const rewrite = await sendSupervisedRuntimeMessage({
-          runtimeClient,
-          sessionId,
-          content: buildOrchestratorRewritePrompt(
-            channel,
-            request.sourceMessage,
-            request.target.participantName,
-            fullResponseText,
-          ),
-          input: knowledge ? {
-            instructions: productKnowledgeInstructions(knowledge),
-            context: runtimeInvocationInput.context,
-          } : undefined,
-          supervision: {
-            product: 'cats-chat',
-            surface: 'orchestrator-rewrite',
-            runId: channelId,
-            actionId: `${request.dispatchId}:rewrite`,
-            actorRef: request.target.participantId,
-            reason: 'orchestrator_rewrite',
-          },
-        });
-        const rewriteText = resolveFullResponseText(rewrite.segments);
-        if (rewriteText) {
-          responseSegments = [{ kind: 'text', text: rewriteText, toolName: null, toolId: null }];
-        }
-        usage = {
-          inputTokens: (usage?.inputTokens ?? 0) + rewrite.inputTokens,
-          outputTokens: (usage?.outputTokens ?? 0) + rewrite.outputTokens,
-          tokensUsed: (usage?.tokensUsed ?? 0) + rewrite.tokensUsed,
-        };
-      } catch {
-        // Keep the original draft if the repair pass fails.
-      }
-    }
     const companionPhoto = await applyCompanionPhotoDirective({
       state,
       channelId,

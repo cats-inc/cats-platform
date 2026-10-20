@@ -966,26 +966,6 @@ test('runtime dispatch results namespace runtime assistant metadata', async () =
   );
 });
 
-test('runtime dispatch execution consumes dedicated runtime session-routing helpers instead of defining rewrite logic inline', async () => {
-  const dispatchExecutionModule = await readFile(
-    new URL('../src/products/chat/state/runtime-dispatch/execution.ts', import.meta.url),
-    'utf8',
-  );
-  const sessionRoutingModule = await readFile(
-    new URL('../src/products/chat/state/runtime-session/index.ts', import.meta.url),
-    'utf8',
-  );
-  const sessionSharedModule = await readFile(
-    new URL('../src/products/chat/state/runtime-session/shared.ts', import.meta.url),
-    'utf8',
-  );
-
-  assert.match(dispatchExecutionModule, /runtime-session\/index\.js/u);
-  assert.doesNotMatch(dispatchExecutionModule, /function shouldRewriteOrchestratorReply\(/u);
-  assert.match(sessionRoutingModule, /\.\/shared\.js/u);
-  assert.match(sessionSharedModule, /export function shouldRewriteOrchestratorReply/u);
-});
-
 test('runtime dispatch loop consumes dedicated dispatch-result helpers instead of defining response handling inline', async () => {
   const dispatchLoopModule = await readFile(
     new URL('../src/products/chat/state/runtime-dispatch/loop.ts', import.meta.url),
@@ -2685,7 +2665,8 @@ test('platform consumes room-routing types from the shared roomRouting module', 
   );
 
   assert.match(orchestratorContracts, /shared\/roomRouting\.js/u);
-  assert.match(telegramBridge, /shared\/roomRouting\.js/u);
+  // The bridge only opens DMs now and names no room-routing types; it must not borrow product ones.
+  assert.doesNotMatch(telegramBridge, /products\/chat\/state\/room-routing/u);
 });
 
 test('platform memory service stays behind a chat memory surface seam', async () => {

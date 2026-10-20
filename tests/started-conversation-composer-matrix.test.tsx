@@ -293,7 +293,6 @@ function Harness({
     onChannelFilesChange: noop,
     onApprovalDecision: noop,
     onChoiceSubmit: noop,
-    onStartFresh: defaultChat ? noop : undefined,
     onUpdateChannelParticipant: async () => {},
     onOperatorAction: noop,
     autoResize: noop,

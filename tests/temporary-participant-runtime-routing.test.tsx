@@ -20,7 +20,6 @@ import {
   resolveChoiceResponseTarget,
   resolveExecutionMetadataForTarget,
 } from '../src/products/chat/state/runtimeTargeting.ts';
-import { shouldRewriteOrchestratorReply } from '../src/products/chat/state/runtime-session/shared.ts';
 import type { WorkflowContinuationReplaySnapshot } from '../src/platform/orchestration/workflowContinuationReplay.ts';
 
 function createTemporaryParticipantState() {
@@ -172,15 +171,6 @@ test('temporary participants build prompts, choice routing, and suppress default
   );
   assert.equal(choiceTarget?.participantId, 'participant-reviewer');
   assert.equal(choiceTarget?.participantName, 'RuntimeReviewer');
-
-  assert.equal(
-    shouldRewriteOrchestratorReply(
-      '@RuntimeVerifier please take it from here.',
-      'Orchestrator',
-      buildChannelView(state, channelId),
-    ),
-    false,
-  );
 });
 
 test('temporary participants remain resumable through workflow continuation replay', () => {

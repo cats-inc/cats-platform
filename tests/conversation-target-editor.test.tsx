@@ -63,20 +63,17 @@ function context(overrides: Partial<ConversationTargetEditorContext> = {}): Conv
   };
 }
 
-test('the default chat chip edits the default target and carries start fresh', () => {
+test('the default chat chip edits the default target', () => {
   const changes: ExecutionTargetValue[] = [];
-  let startedFresh = 0;
   const editor = resolveConversationTargetEditor(chip({}), context({
     selectedExecutionTarget: claudeOpus,
     onExecutionTargetChange: (value) => changes.push(value),
-    startFresh: { label: 'Start fresh', hint: 'Why', onSelect: () => { startedFresh++; } },
   }));
   assert.ok(editor);
   assert.deepEqual(editor.target, claudeOpus);
   editor.onChange?.(codexSol);
   assert.deepEqual(changes, [codexSol]);
-  editor.action?.onSelect();
-  assert.equal(startedFresh, 1);
+  assert.equal(editor.action, undefined);
   assert.equal(editor.onOpenSettings, undefined);
 
   assert.equal(resolveConversationTargetEditor(chip({}), context({ selectedExecutionTarget: claudeOpus })), null);
@@ -97,13 +94,11 @@ test('a direct-lane cat edits the conversation\'s own participant target, never 
       defaultRecipientParticipant: participant,
       onUpdateParticipantTarget: (participantId, value) => updates.push([participantId, value]),
       onDirectLaneExecutionTargetChange: () => assert.fail('the cat profile must not change'),
-      startFresh: { label: 'Start fresh', onSelect: () => {} },
       openCatPage: (catId) => opened.push(catId),
     }),
   );
   assert.ok(editor);
   assert.deepEqual(editor.target, claudeOpus);
-  assert.equal(editor.action, undefined, 'start fresh belongs to the default chat only');
 
   // The picker republishes the same target with a label; that is not a change.
   editor.onChange?.({ ...claudeOpus, executionLabel: 'Claude-CLI · Opus' });

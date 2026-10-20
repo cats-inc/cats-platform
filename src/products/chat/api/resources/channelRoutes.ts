@@ -12,7 +12,6 @@ import {
   bindChannelCoordinator,
   buildChannelView,
   requireChannel,
-  resetDefaultChatContinuity,
   resolveChannelCanonicalIdentity,
   setChannelPendingExecutionTarget,
   toChannelSummary,
@@ -125,18 +124,6 @@ function logBackgroundDispatchPersistenceError(
     : String(error);
   process.stderr.write(
     `[cats-chat-dispatch] failed to persist finalized dispatch for ${channelId}: ${detail}\n`,
-  );
-}
-
-function logContinuityResetCleanupError(
-  channelId: string,
-  error: unknown,
-): void {
-  const detail = error instanceof Error
-    ? (error.stack ?? error.message)
-    : String(error);
-  process.stderr.write(
-    `[cats-chat-reset] failed to close runtime session for ${channelId}: ${detail}\n`,
   );
 }
 
@@ -467,40 +454,6 @@ async function handleRestPatchChannel(
           instance: body.pendingInstance,
           modelSelection: body.pendingModelSelection,
         }, nowFrom(context.dependencies)));
-      }
-
-      if (body.resetContinuity === true) {
-        const currentChannel = requireChannel(persisted, channelId);
-        if (!isDefaultChatChannel(currentChannel)) {
-          sendJson(context.response, 400, {
-            error: 'continuity_reset_unsupported',
-            message: 'Start fresh is currently only supported for default chats.',
-          });
-          return;
-        }
-        const existingSessionId =
-          currentChannel.orchestratorLease.sessionId?.trim() || null;
-        if (existingSessionId) {
-          await bestEffortFlushRuntimeSessionMemory({
-            runtimeClient: context.dependencies.runtimeClient,
-            sessionId: existingSessionId,
-            requestedPhase: 'pre_reset',
-            memoryService: context.dependencies.memoryService,
-            companionStore: context.dependencies.companionStore,
-            coreStore: context.dependencies.chatStore,
-            now: nowFrom(context.dependencies),
-          });
-          try {
-            await context.dependencies.runtimeClient.closeSession(existingSessionId);
-          } catch (error) {
-            logContinuityResetCleanupError(channelId, error);
-          }
-        }
-        persisted = await updateChatState(context.dependencies.chatStore, (state) => resetDefaultChatContinuity(
-          state,
-          channelId,
-          nowFrom(context.dependencies),
-        ));
       }
 
       sendJson(context.response, 200, {

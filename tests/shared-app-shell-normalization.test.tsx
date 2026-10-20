@@ -182,11 +182,6 @@ test('WorkspaceProductApp gates default and participant-chat chatSurfaceProps of
 
   assert.match(
     chatSurfaceRegion,
-    /onStartFresh:\s*\n?\s*visibleChatChannelId\s*&&\s*visibleChannel\s*&&\s*isDefaultChatChannel\(visibleChannel\)/u,
-    'onStartFresh should gate on visibleChannel so direct-lane routes inherit the default control',
-  );
-  assert.match(
-    chatSurfaceRegion,
     /selectedExecutionTarget:\s*\n?\s*visibleChannel\s*&&\s*isDefaultChatChannel\(visibleChannel\)/u,
     'selectedExecutionTarget should gate on visibleChannel',
   );

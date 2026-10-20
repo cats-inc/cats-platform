@@ -131,7 +131,6 @@ export {
   updateCatSkillProfile,
 } from './cats.js';
 export {
-  resetDefaultChatContinuity,
   setChannelCatExecutionTarget,
   setChannelParticipantExecutionTarget,
   updateChannelParticipant,
@@ -539,7 +538,6 @@ export function createChannel(
     pendingModel: normalizeOptionalText(input.pendingModel),
     pendingInstance: normalizeOptionalText(input.pendingInstance),
     pendingModelSelection: cloneProviderModelSelection(input.pendingModelSelection),
-    continuityResetAt: null,
     createdAt: nowIso,
     updatedAt: nowIso,
     lastMessageAt: nowIso,

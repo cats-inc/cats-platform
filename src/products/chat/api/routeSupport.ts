@@ -358,7 +358,7 @@ export async function buildAppShellPayload(
       catId: matchedCat?.id ?? null,
       catName: matchedCat?.name ?? null,
       inboundMode: binding.inboundMode ?? 'polling',
-      roomMode: resolveEffectiveBotBindingRoomMode(binding),
+      roomMode: resolveEffectiveBotBindingRoomMode(),
       isBossBinding: isAdminCat(matchedCat),
       status: binding.status,
       outboundFanoutEnabled: binding.outboundFanoutEnabled !== false,

@@ -45,7 +45,6 @@ import {
   activateChatChannel,
   fetchAppShell,
   relayParallelChatMessage,
-  resetChannelContinuity,
   updateCatProfile,
   updateChannelParticipantApi,
   updateChannelPendingExecutionTarget,
@@ -83,7 +82,6 @@ import { useProductChannelDocumentTitle } from "./hooks/useProductChannelDocumen
 import { useOperatorLoop } from "./hooks/useOperatorLoop.js";
 import {
   useWorkspaceDirectLaneModelSave,
-  useWorkspaceResetChannelContinuity,
 } from "./hooks/useWorkspaceAppShellChannelActions.js";
 import { useWorkspaceChannelParticipantUpdate } from "./hooks/useWorkspaceChannelParticipantUpdate.js";
 import { useWorkspaceCompareRelay } from "./hooks/useWorkspaceCompareRelay.js";
@@ -1665,12 +1663,6 @@ export function createWorkspaceProductApp({
       supportsStructuredDraftModes,
     ]);
 
-    const onStartFreshChannel = useWorkspaceResetChannelContinuity<AppShellPayload>({
-      resetChannelContinuity,
-      publishReadyPayload,
-      setBusy,
-      setFeedback,
-    });
     const onUpdateChannelParticipant = useWorkspaceChannelParticipantUpdate<AppShellPayload>({
       updateChannelParticipantApi,
       setBusy,
@@ -1812,10 +1804,6 @@ export function createWorkspaceProductApp({
                     onChannelFilesChange: setChannelFiles,
                     onApprovalDecision,
                     onChoiceSubmit,
-                    onStartFresh:
-                      visibleChatChannelId && visibleChannel && isDefaultChatChannel(visibleChannel)
-                        ? () => onStartFreshChannel(visibleChatChannelId)
-                        : undefined,
                     onRelayMessage: onRelayCompareMessage,
                     onUpdateChannelParticipant: visibleChatChannelId
                       ? (participantId, input) =>

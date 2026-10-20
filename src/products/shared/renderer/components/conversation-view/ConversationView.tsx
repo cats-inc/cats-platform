@@ -23,7 +23,7 @@ import type {
   ParallelChatRelayCommandKind,
 } from '../../../api/workspaceContracts.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
-import { isChannelBusy, isParallelChatBusy } from '../../../../../shared/workspaceBusy.js';
+import { isParallelChatBusy } from '../../../../../shared/workspaceBusy.js';
 import type {
   LiveIndicatorSegmentState,
   LiveIndicatorState,
@@ -223,7 +223,6 @@ export interface ConversationViewProps {
   onApprovalDecision: (taskId: string, action: 'approve' | 'reroute' | 'reject') => void;
   onChoiceSubmit: (input: MessageChoicesSubmitInput) => void;
   onRetryMessage?: (messageId: string) => Promise<void>;
-  onStartFresh?: () => void;
   onOperatorAction: (input: {
     action: 'retry' | 'acknowledge';
     taskId?: string | null;
@@ -304,7 +303,6 @@ export function ConversationView({
   onApprovalDecision,
   onChoiceSubmit,
   onRetryMessage,
-  onStartFresh,
   onOperatorAction,
   autoResize,
   selectedExecutionTarget,
@@ -883,7 +881,6 @@ export function ConversationView({
   // A cat's default model stays on the cat's own page.
   const resolveTargetEditor = useCallback(
     (participant: DraftComposerStackParticipant): AudienceTargetEditor | null => {
-      const startFreshBusy = isChannelBusy(busy, 'reset');
       return resolveConversationTargetEditor(participant, {
         activeRoomParticipants,
         defaultRecipientParticipant,
@@ -908,22 +905,11 @@ export function ConversationView({
               void onUpdateChannelParticipant(participantId, update);
             }
           : undefined,
-        startFresh: onStartFresh
-          ? {
-              label: startFreshBusy
-                ? t(messageKeys.chatSidePanelStartingFreshBusy)
-                : t(messageKeys.chatSidePanelStartFresh),
-              hint: t(messageKeys.chatSidePanelStartFreshHint),
-              disabled: startFreshBusy,
-              onSelect: onStartFresh,
-            }
-          : undefined,
         openCatPage: (catId) => navigate(`/entities/cats/${encodeURIComponent(catId)}`),
       });
     },
     [
       activeRoomParticipants,
-      busy,
       defaultRecipientParticipant,
       directLaneCat,
       directLaneExecutionTarget,
@@ -931,10 +917,8 @@ export function ConversationView({
       navigate,
       onDirectLaneExecutionTargetChange,
       onExecutionTargetChange,
-      onStartFresh,
       onUpdateChannelParticipant,
       selectedExecutionTarget,
-      t,
     ],
   );
 

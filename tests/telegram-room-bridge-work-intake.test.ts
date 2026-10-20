@@ -160,9 +160,14 @@ test('Telegram dispatch and final bridge write preserve concurrently created Cha
 });
 
 test('Telegram room creation and recovery merge only their own room and do not resurrect a deleted room', async () => {
-  const state = createDefaultChatState(); const chatStore = new MemoryChatStore(state);
+  // A Telegram room is its cat's DM.
+  const state = createChannel(createDefaultChatState(), {
+    title: '', topic: '', originSurface: 'chat', cats: [{ name: 'Inbound Cat', provider: 'claude' }],
+  });
+  const catId = state.cats[0]!.id;
+  const chatStore = new MemoryChatStore(state);
   const bridge = createChatTelegramRoomBridge({ chatStore, companionStore: new MemoryCompanionBoxStore() });
-  const created = bridge.createRoom(state, { title: 'Inbound', topic: '', roomMode: 'chat_channel', participantCatIds: [] }, new Date());
+  const created = bridge.createRoom(state, { topic: '', roomMode: 'direct_message', defaultRecipientId: catId, participantCatIds: [catId] }, new Date());
   const concurrent = await chatStore.updateSnapshot(({ chat, core }) => ({ core,
     chat: createChannel(chat, { title: 'Collaboration', topic: '', originSurface: 'chat' }) }));
   const persisted = await bridge.writeState({ ...created.state, selectedChannelId: state.selectedChannelId });

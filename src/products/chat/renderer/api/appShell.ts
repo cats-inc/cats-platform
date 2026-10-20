@@ -7,7 +7,6 @@ import type { SurfaceConversationBehaviorPatch } from '../../../shared/conversat
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { createKeyedRequestCoalescer } from '../../shared/asyncControl.js';
 import {
-  resetChannelContinuity as resetWorkspaceChannelContinuity,
   updateConversationBehaviorPreference as updateWorkspaceConversationBehaviorPreference,
 } from '../../../shared/renderer/api/appShell.js';
 
@@ -150,13 +149,6 @@ export async function updateChannelPendingExecutionTarget(
     `cats channel update returned ${response.status}`,
     signal,
   );
-}
-
-export async function resetChannelContinuity(
-  channelId: string,
-  signal?: AbortSignal,
-): Promise<AppShellPayload> {
-  return resetWorkspaceChannelContinuity(channelId, signal) as Promise<AppShellPayload>;
 }
 
 export async function updateChatOrchestrator(

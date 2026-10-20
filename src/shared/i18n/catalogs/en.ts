@@ -1772,8 +1772,6 @@ export const enCatalog: MessageCatalog = {
     'Failed to save this chat AI reply settings.',
   'shared.executionTarget.saveDirectLaneError':
     'Failed to save the provider and model for this cat. The previous selection is still in effect.',
-  'shared.channelContinuity.startFreshError':
-    'Failed to start a fresh chat continuity branch.',
   'shared.settingsCatsMemory.saveError': 'Failed to save memory.',
   'shared.settingsCatsMemory.deleteError': 'Failed to delete memory.',
   'shared.settingsCatsMemory.contentRequired': 'Memory content is required.',
@@ -1867,10 +1865,6 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.greeting.standby': 'Purring in standby.',
   'chat.newChatDraft.greeting.taskReady': 'Claws sharpened. What\'s the task?',
   'chat.newChatDraft.greeting.onDuty': 'This cat doesn\'t sleep on the job.',
-  'chat.sidePanel.startFresh': 'Start fresh',
-  'chat.sidePanel.startingFreshBusy': 'Starting fresh...',
-  'chat.sidePanel.startFreshHint':
-    'Keep this chat open, but reset default continuity so the next turn starts a new branch.',
   'chat.sidePanel.runStatusTitle': 'Run Status',
   'chat.sidePanel.runStatusUnavailableTitle': 'Status unavailable',
   'chat.sidePanel.loadingTitle': 'Loading',
@@ -2386,6 +2380,8 @@ export const enCatalog: MessageCatalog = {
   'telegram.command.status.delegationBlockedLine': 'Work delegation: unavailable',
   'telegram.command.status.delegationDisabledLine': 'Work delegation: not enabled on this host',
   'telegram.command.status.delegationUnknownLine': 'Work delegation: could not be checked',
+  'telegram.bridge.noBoundCat':
+    'This bot is not bound to a cat yet. In Cats, make a cat a Boss Cat or bind a cat to this bot, then send your message again.',
   'telegram.command.open.reply':
     'Open the private lane with {name} in Cats, or just send a normal message here to continue chatting.',
   'telegram.command.mode.notConfigurable':

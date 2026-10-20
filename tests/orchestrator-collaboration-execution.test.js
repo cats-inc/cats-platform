@@ -832,32 +832,6 @@ test('HTTP duplicate confirmation during a pending worker cannot start or cancel
   });
 });
 
-test('paused continuity cleanup preserves a collaboration created in another channel', async t => {
-  const h = fixture({ confirm: false });
-  h.state = createChannel(h.state, { title: 'Other default chat', topic: '', originSurface: 'chat', entryKind: 'default', pendingProvider: 'claude' });
-  const otherId = h.state.selectedChannelId;
-  h.state.channels.find(ch => ch.id === otherId).orchestratorLease.sessionId = 'old-default';
-  let releaseCleanup, releaseWorker;
-  const c = clients(h, { close: id => id === 'old-default'
-    ? new Promise(resolve => { releaseCleanup = resolve; }) : Promise.resolve(),
-  send: id => id === 'session-implementation' ? new Promise(resolve => { releaseWorker = resolve; }) : Promise.resolve() });
-  await withApi(t, h, c, async ({ base, store }) => {
-    const resetting = fetch(`${base}/api/channels/${otherId}`, { method: 'PATCH',
-      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ resetContinuity: true }) });
-    await waitUntil(() => Boolean(releaseCleanup));
-    assert.equal((await sendOwner(base, h)).status, 200);
-    await waitUntil(() => Boolean(releaseWorker));
-    const targetId = (await intents(store))[0].metadata.collaborationIntent.channelId;
-    releaseCleanup();
-    assert.equal((await resetting).status, 200);
-    const chat = await store.read();
-    assert.ok(chat.channels.some(ch => ch.id === targetId));
-    assert.ok(chat.channels.find(ch => ch.id === otherId).continuityResetAt);
-    releaseWorker();
-    await waitUntil(async () => (await intents(store))[0].metadata.collaborationIntent.status === 'completed');
-  });
-});
-
 test('Run cancellation during Runtime create persists the late bridge but never sends the goal', async () => {
   const h = fixture(); let release;
   const c = clients(h, { create: async (role, result) => {

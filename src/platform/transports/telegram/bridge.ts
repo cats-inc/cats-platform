@@ -1,6 +1,5 @@
 import { createCatActorId } from '../../../core/actors.js';
 import type { BotBindingRecord } from '../../../core/types.js';
-import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
 import type { RuntimeClient } from '../../runtime/client.js';
 import type { CatsMemoryService } from '../../memory/index.js';
 import type {
@@ -30,7 +29,11 @@ import {
 } from '../work-delivery/inboundClassification.js';
 import type { TransportWorkGoldenPathPort } from '../work-delivery/port.js';
 import type { TelegramCommandPort } from './commandPort.js';
-import { normalizeMessageLocale } from '../../../shared/i18n/index.js';
+import {
+  createTranslator,
+  messageKeys,
+  normalizeMessageLocale,
+} from '../../../shared/i18n/index.js';
 import { COMPANION_HEARTBEAT_EVENT } from '../../../shared/companionRole.js';
 import type { TelegramRelay } from './relay/index.js';
 import {
@@ -76,17 +79,17 @@ export interface TelegramRoomBridgeView {
   messages: TelegramRoomBridgeMessage[];
 }
 
+/** A Telegram chat is always the bound cat's DM. */
 export interface TelegramRoomBridgeCreateRoomInput {
-  title: string;
   topic: string;
-  roomMode: RoomRoutingMode;
-  defaultRecipientId?: string;
+  roomMode: 'direct_message';
+  defaultRecipientId: string;
   participantCatIds: string[];
 }
 
 export interface TelegramRoomBridgeReusableRoomLookupInput {
-  roomMode: RoomRoutingMode;
-  defaultRecipientId?: string;
+  roomMode: 'direct_message';
+  defaultRecipientId: string;
   participantCatIds: string[];
 }
 
@@ -177,38 +180,18 @@ function extractMessageText(message: TelegramMessagePayload | null): string | nu
   return collapseWhitespace(message?.text ?? message?.caption);
 }
 
-function stripNewRoomPrefix(body: string): string {
-  return body.replace(/^\/new(?:\s+|$)/u, '').replace(/^(?:new room|new topic):\s*/iu, '').trim();
-}
-
-function shouldCreateNewRoom(
-  message: TelegramMessagePayload | null,
-  linkedRoomId: string | null,
-): boolean {
-  if (!linkedRoomId) {
-    return true;
-  }
-
-  const body = extractMessageText(message)?.toLowerCase() ?? '';
-  return body === '/new'
-    || body.startsWith('/new ')
-    || body.startsWith('new room:')
-    || body.startsWith('new topic:');
-}
-
 function buildInboundBody(
   message: TelegramMessagePayload | null,
   storedImagePaths: readonly string[] = [],
 ): string {
   const rawText = extractMessageText(message);
-  const strippedText = rawText ? stripNewRoomPrefix(rawText) : null;
   // Stored pictures are shown by the attachment block, so only the rest keep a label.
   const attachments = (message ? normalizeTelegramAttachments(message) : [])
     .filter((attachment) => storedImagePaths.length === 0 || !isInboundTelegramImage(attachment));
   const attachmentLabel = attachments.length > 0
     ? `Attachments: ${attachments.map((attachment) => attachment.kind).join(', ')}`
     : null;
-  const text = [strippedText, attachmentLabel].filter(Boolean).join('\n\n');
+  const text = [rawText, attachmentLabel].filter(Boolean).join('\n\n');
 
   if (storedImagePaths.length > 0) {
     const refs = storedImagePaths.map((relativePath) => `- ${relativePath}`).join('\n');
@@ -1079,10 +1062,6 @@ function resolveTelegramProductIntentChoicePayload(input: {
     : null;
 }
 
-function resolveInternalRoomMode(binding: BotBindingRecord | null): RoomRoutingMode {
-  return binding?.roomMode === 'direct_message' ? 'direct_message' : 'chat_channel';
-}
-
 function resolveBoundCat(
   state: TelegramRoomBridgeState,
   binding: BotBindingRecord | null,
@@ -1098,20 +1077,6 @@ function resolveBoundCat(
     catId: cat?.id ?? null,
     catName: cat?.name ?? context.bossCatName,
   };
-}
-
-function buildRoomTitle(
-  message: TelegramMessagePayload | null,
-  fallbackCatName: string | null,
-): string {
-  const preview = extractMessageText(message);
-  if (preview) {
-    return truncateLabel(`Telegram · ${preview}`, 72);
-  }
-
-  return fallbackCatName
-    ? `Telegram · ${fallbackCatName}`
-    : 'Telegram inbox';
 }
 
 function buildRoomTopic(
@@ -1155,8 +1120,6 @@ function buildTelegramReply<TState extends TelegramRoomBridgeState>(input: {
   roomBridge: TelegramRoomBridge<TState>;
   state: TState;
   roomId: string;
-  /** Only a newly opened group room is announced; a direct lane just answers. */
-  announceNewRoom: boolean;
   messageCountBeforeDispatch: number;
 }): { text: string; photo: TransportPhoto | null } {
   const channel = input.roomBridge.readRoom(input.state, input.roomId);
@@ -1169,12 +1132,10 @@ function buildTelegramReply<TState extends TelegramRoomBridgeState>(input: {
     message.senderKind === 'orchestrator' || message.senderKind === 'agent',
   ) ?? [...newMessages].reverse().find((message) => message.senderKind === 'system') ?? null;
   const photo = replyMessage ? readTransportPhoto(replyMessage) : null;
-  const roomNote = input.announceNewRoom ? `Opened room "${channel.title}" in Cats Chat.` : null;
   const replyBody = photo && replyMessage
     ? stripTransportAttachmentBlock(replyMessage.body).trim()
     : replyMessage?.body?.trim();
-  const detail = replyBody || (photo ? null : 'The inbox has been routed into Cats Chat.');
-  const combined = [roomNote, detail].filter(Boolean).join('\n\n');
+  const combined = replyBody || (photo ? '' : 'The inbox has been routed into Cats Chat.');
   const text = combined.length <= TELEGRAM_REPLY_LIMIT
     ? combined
     : `${combined.slice(0, TELEGRAM_REPLY_LIMIT - 1)}…`;
@@ -1482,33 +1443,46 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
 
     const currentState = await input.roomBridge.readState();
     const boundCat = resolveBoundCat(currentState, activeBinding, input.context);
-    let roomId = existingBinding?.linkedRoomId ?? null;
+    if (!boundCat.catId) {
+      // Telegram chats are DMs; without a cat there is nobody to talk to.
+      const deliveryReceipt = await input.telegramRelay.deliver({
+        request: {
+          operation: input.receipt.messageId ? 'reply' : 'send',
+          conversationId: input.receipt.mappedConversationId,
+          chatId: input.receipt.chatId,
+          replyToMessageId: input.receipt.messageId ?? undefined,
+          text: createTranslator(normalizeMessageLocale(pickedMessage.sender?.language_code))(
+            messageKeys.telegramBridgeNoBoundCat,
+          ),
+          disableLinkPreview: true,
+        },
+        context: input.context,
+      });
+      return {
+        receipt: input.receipt,
+        roomId: null,
+        roomCreated: false,
+        deliveryReceipt,
+        messages: [],
+      };
+    }
+    let roomId: string | null = null;
     let nextState = currentState;
     let roomCreated = false;
     let dispatchedState: TState | null = null;
     let messageCountBeforeDispatch: number | null = null;
     let inboundBody = buildInboundBody(message);
-    const roomMode = resolveInternalRoomMode(activeBinding);
     const createRoomInput: TelegramRoomBridgeCreateRoomInput = {
-      title: roomMode === 'direct_message' ? '' : buildRoomTitle(message, boundCat.catName),
       topic: buildRoomTopic(activeBinding, senderName, input.receipt.chatId),
-      roomMode,
-      defaultRecipientId: roomMode === 'direct_message' ? boundCat.catId ?? undefined : undefined,
-      participantCatIds: roomMode === 'direct_message' && boundCat.catId ? [boundCat.catId] : [],
+      roomMode: 'direct_message',
+      defaultRecipientId: boundCat.catId,
+      participantCatIds: [boundCat.catId],
     };
 
     try {
-      if (roomMode === 'direct_message') {
-        roomId = input.roomBridge.findReusableRoomId(nextState, createRoomInput);
-      }
+      roomId = input.roomBridge.findReusableRoomId(nextState, createRoomInput);
 
-      if (
-        !roomExists(nextState, roomId)
-        || (
-          roomMode !== 'direct_message'
-          && shouldCreateNewRoom(message, roomId)
-        )
-      ) {
+      if (!roomExists(nextState, roomId)) {
         const previousSelection = nextState.selectedChannelId;
         const nextRoomState = input.roomBridge.createRoom(
           nextState,
@@ -1606,7 +1580,6 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
           roomBridge: input.roomBridge,
           state: persistedState,
           roomId,
-          announceNewRoom: roomCreated && roomMode !== 'direct_message',
           messageCountBeforeDispatch,
         });
         if (reply.photo) {
@@ -1690,7 +1663,6 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
         roomBridge: input.roomBridge,
         state: persistedState,
         roomId,
-        announceNewRoom: roomCreated && roomMode !== 'direct_message',
         messageCountBeforeDispatch,
       });
       let deliveryReceipt: TelegramDeliveryReceipt | null = null;

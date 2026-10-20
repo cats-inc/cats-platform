@@ -554,18 +554,6 @@ export function messagesBeforeSource(
   return messages.slice(0, sourceIndex);
 }
 
-export function applyDefaultChatContinuityBoundary(
-  channel: Pick<ChatChannelView, 'continuityResetAt'>,
-  messages: ReadonlyArray<ChatMessage>,
-): ChatMessage[] {
-  const resetAt = channel.continuityResetAt?.trim() || null;
-  if (!resetAt) {
-    return [...messages];
-  }
-
-  return messages.filter((message) => message.createdAt.localeCompare(resetAt) > 0);
-}
-
 function resolveSourceBoundaryIndex(
   messages: ReadonlyArray<ChatMessage>,
   sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
@@ -694,7 +682,6 @@ export interface DispatchPrompt {
     | 'targeted_handoff'
     | null;
   continuityDeliveryMode?: 'none' | 'turn_instructions' | null;
-  continuityResetAt?: string | null;
 }
 
 interface ProductIntentFollowUpIntakeRef {
@@ -888,10 +875,7 @@ export function buildPromptForTarget(
     channelId,
     transcriptMessages: channel.messages,
   });
-  const continuityMessages =
-    request.target.participantKind === 'orchestrator' && isDefaultChatRuntimeChannel(channel)
-      ? applyDefaultChatContinuityBoundary(channel, promptMessages)
-      : promptMessages;
+  const continuityMessages = promptMessages;
   const recentMessages = sliceRecentContextForTarget(
     continuityMessages,
     request.target,
@@ -923,7 +907,6 @@ export function buildPromptForTarget(
           continuityPackage,
         ),
         continuityDeliveryMode: continuityPackage?.instructions ? 'turn_instructions' : 'none',
-        continuityResetAt: channel.continuityResetAt?.trim() || null,
       };
     }
     return {

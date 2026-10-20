@@ -11,10 +11,8 @@ import {
   resolveChannelCanonicalIdentity,
 } from '../model/index.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
-import { parseMentions } from '../mentionParsing.js';
 export { activeAssignedParticipants } from '../../shared/channelParticipants.js';
 import {
-  activeAssignedParticipants,
   resolveOrchestratorLeaseAttachment,
   resolveParticipantLeaseAttachment,
 } from '../../shared/channelParticipants.js';
@@ -316,22 +314,4 @@ export function buildChannelActivationResult(input: {
     status: ensured.wakeRequest?.status === 'skipped' ? 'already_started' : 'started',
     sessionId: ensured.target.sessionId,
   };
-}
-
-export function shouldRewriteOrchestratorReply(
-  content: string,
-  orchestratorName: string,
-  channel: ChatChannelView,
-): boolean {
-  if (activeAssignedParticipants(channel).length > 0) {
-    return false;
-  }
-
-  const normalized = content.toLowerCase();
-  if (parseMentions(content).length > 0) {
-    return true;
-  }
-
-  return normalized.includes(`@${orchestratorName.toLowerCase()}`)
-    || normalized.includes(`@${ORCHESTRATOR_NAME.toLowerCase()}`);
 }

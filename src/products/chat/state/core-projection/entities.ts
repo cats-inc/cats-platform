@@ -1192,7 +1192,7 @@ export function syncBotBindings(
             bossCatActorId,
             botToken: binding.botToken ?? null,
             webhookSecret: binding.webhookSecret ?? null,
-            roomMode: binding.roomMode ?? 'chat_channel',
+            roomMode: 'direct_message',
             updatedAt,
           }
         : binding,
@@ -1211,7 +1211,7 @@ export function syncBotBindings(
       botToken: null,
       webhookSecret: null,
       inboundMode: 'polling' as const,
-      roomMode: 'chat_channel' as const,
+      roomMode: 'direct_message' as const,
       status: 'active' as const,
       createdAt: updatedAt,
       updatedAt,

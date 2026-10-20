@@ -14,7 +14,6 @@ import {
   buildTargetedChatHandoffPackage,
 } from '../prompts.js';
 import {
-  applyDefaultChatContinuityBoundary,
   hasVisibleResponseFromLogicalTarget,
   messagesBeforeSource,
   resolveRuntimeEnvelopeForTarget,
@@ -62,7 +61,6 @@ function resolveNewSessionContinuityMetadata(input: {
 }): {
   continuityMode: 'fresh_start' | 'full_transplant' | 'semantic_transplant' | 'targeted_handoff';
   continuityDeliveryMode: 'none' | 'turn_instructions';
-  continuityResetAt: string | null;
 } | null {
   const channel = buildChannelView(input.state, input.channelId);
   const isDefaultChatOrchestrator = input.target.participantKind === 'orchestrator'
@@ -77,18 +75,10 @@ function resolveNewSessionContinuityMetadata(input: {
     return {
       continuityMode: 'fresh_start',
       continuityDeliveryMode: 'none',
-      continuityResetAt: isDefaultChatOrchestrator
-        ? channel.continuityResetAt?.trim() || null
-        : null,
     };
   }
 
-  const continuityResetAt = isDefaultChatOrchestrator
-    ? channel.continuityResetAt?.trim() || null
-    : null;
-  const continuityMessages = isDefaultChatOrchestrator
-    ? applyDefaultChatContinuityBoundary(channel, channel.messages)
-    : channel.messages;
+  const continuityMessages = channel.messages;
   const sourceMessage = continuityMessages.find((message) => message.id === sourceMessageId) ?? null;
   const hasLogicalPriorResponse = sourceMessage
     ? hasVisibleResponseFromLogicalTarget(continuityMessages, input.target, sourceMessage)
@@ -104,7 +94,6 @@ function resolveNewSessionContinuityMetadata(input: {
     return {
       continuityMode: targetedHandoffPackage.instructions ? 'targeted_handoff' : 'fresh_start',
       continuityDeliveryMode: targetedHandoffPackage.instructions ? 'turn_instructions' : 'none',
-      continuityResetAt: null,
     };
   }
   const priorMessages = sourceMessage
@@ -115,7 +104,6 @@ function resolveNewSessionContinuityMetadata(input: {
   return {
     continuityMode: continuityPackage.instructions ? continuityPackage.mode : 'fresh_start',
     continuityDeliveryMode: continuityPackage.instructions ? 'turn_instructions' : 'none',
-    continuityResetAt,
   };
 }
 

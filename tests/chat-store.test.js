@@ -17,7 +17,6 @@ import {
   deleteChannel,
   exportChannel,
   removeCatFromChannel,
-  resetDefaultChatContinuity,
   toChannelSummary,
   unarchiveCat,
   updateGlobalOrchestrator,
@@ -105,41 +104,6 @@ test('FileChatStore persists configured channels, cats, assignments, and message
   assert.equal(createdChannel.messages.at(-1).mentions[0], 'Agent-1');
 });
 
-test('FileChatStore round-trips explicit default continuity reset boundaries', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
-  const statePath = path.join(tempDir, 'chat-state.json');
-  const store = new FileChatStore(statePath);
-  const now = new Date('2026-04-17T00:00:00.000Z');
-
-  let state = await store.read();
-  state = createChannel(
-    state,
-    {
-      title: 'Default Thread',
-      topic: 'Persist explicit continuity resets.',
-      originSurface: 'chat',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    now,
-  );
-  const channelId = state.selectedChannelId;
-  state = resetDefaultChatContinuity(
-    state,
-    channelId,
-    new Date('2026-04-17T00:00:30.000Z'),
-  );
-
-  await store.write(state);
-
-  const reloadedState = await store.read();
-  const reloadedChannel = reloadedState.channels.find((channel) => channel.id === channelId);
-
-  assert.equal(reloadedChannel?.continuityResetAt, '2026-04-17T00:00:30.000Z');
-  assert.equal(reloadedChannel?.orchestratorLease.sessionId, null);
-  assert.equal(reloadedChannel?.messages.at(-1)?.metadata?.event, 'continuity_reset');
-});
-
 test('normalizeMessage returns owned metadata objects', () => {
   const rawMessage = {
     id: 'message-1',
@@ -157,39 +121,6 @@ test('normalizeMessage returns owned metadata objects', () => {
   assert.notEqual(normalized.metadata, rawMessage.metadata);
   normalized.metadata.status = 'mutated';
   assert.equal(rawMessage.metadata.status, 'active');
-});
-
-test('resetDefaultChatContinuity is idempotent before the new branch starts', async () => {
-  const now = new Date('2026-04-17T00:00:00.000Z');
-  let state = createDefaultChatState();
-
-  state = createChannel(
-    state,
-    {
-      title: 'Default Thread',
-      topic: 'Do not append duplicate reset markers before any new branch activity.',
-      originSurface: 'chat',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    now,
-  );
-  const channelId = state.selectedChannelId;
-  const firstResetState = resetDefaultChatContinuity(
-    state,
-    channelId,
-    new Date('2026-04-17T00:00:30.000Z'),
-  );
-  const secondResetState = resetDefaultChatContinuity(
-    firstResetState,
-    channelId,
-    new Date('2026-04-17T00:01:00.000Z'),
-  );
-  const channel = secondResetState.channels.find((candidate) => candidate.id === channelId);
-  const resetMessages = channel?.messages.filter((message) => message.metadata?.event === 'continuity_reset') ?? [];
-
-  assert.equal(channel?.continuityResetAt, '2026-04-17T00:00:30.000Z');
-  assert.equal(resetMessages.length, 1);
 });
 
 test('removing the first participant moves the room on to the next one and keeps the last', async () => {

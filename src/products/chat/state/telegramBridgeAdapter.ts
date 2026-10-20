@@ -19,8 +19,6 @@ import {
   resolveChannelCanonicalIdentity,
 } from './model/index.js';
 import { routeChannelMessage } from './runtimeActions.js';
-import { isDirectLaneChannel } from '../shared/channelTopology.js';
-import { resolveChannelParticipantAssignments } from '../shared/channelParticipants.js';
 import type { CompanionBoxStore } from './companion-box/index.js';
 import { persistAttachmentsForChannels } from './channelAttachments.js';
 import type { ChatStore } from './store.js';
@@ -71,26 +69,16 @@ export function createChatTelegramRoomBridge(input: {
       return input.mutationGate ? input.mutationGate.run(key, operation) : operation();
     },
     findReusableRoomId(state, room) {
-      if (room.roomMode !== 'direct_message') {
-        return null;
-      }
-
-      const defaultRecipientCatId = room.defaultRecipientId
-        ?? (room.participantCatIds.length === 1 ? room.participantCatIds[0] : null);
-      if (!defaultRecipientCatId) {
-        return null;
-      }
-
       return state.channels.find((channel) =>
         channel.roomRouting?.mode === 'direct_message'
-        && channel.roomRouting.defaultRecipientId === defaultRecipientCatId,
+        && channel.roomRouting.defaultRecipientId === room.defaultRecipientId,
       )?.id ?? null;
     },
     createRoom(state, room, timestamp) {
       const nextState = createChannel(
         state,
         {
-          title: room.title,
+          title: '',
           topic: room.topic,
           // Telegram inbound room creation always terminates inside Cats Chat.
           originSurface: 'chat',
@@ -135,13 +123,6 @@ export function createChatTelegramRoomBridge(input: {
     }) {
       const writer = createLockedDispatchChatStore(input.chatStore, roomId, state, () => timestamp);
       let lastPersisted = structuredClone(state);
-      // A room Telegram writes into hears the message as a whole: every participant.
-      const roomChannel = requireChannel(state, roomId);
-      const recipientParticipantIds = isDirectLaneChannel(roomChannel)
-        ? []
-        : resolveChannelParticipantAssignments(roomChannel)
-          .filter((assignment) => assignment.status === 'active')
-          .map((assignment) => assignment.participantId);
       const routed = await routeChannelMessage(
         state,
         roomId,
@@ -149,7 +130,6 @@ export function createChatTelegramRoomBridge(input: {
           body,
           senderName,
           choiceResponse,
-          ...(recipientParticipantIds.length > 0 ? { messageMetadata: { recipientParticipantIds } } : {}),
         },
         runtimeClient,
         timestamp,

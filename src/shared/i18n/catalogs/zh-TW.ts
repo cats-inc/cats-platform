@@ -1728,8 +1728,6 @@ export const zhTWCatalog: MessageCatalog = {
     '儲存這個聊天室的 AI 回覆設定失敗。',
   'shared.executionTarget.saveDirectLaneError':
     '儲存這隻貓的 provider 與模型失敗，目前仍沿用先前的選擇。',
-  'shared.channelContinuity.startFreshError':
-    '開始新的聊天連續性分支失敗。',
   'shared.settingsCatsMemory.saveError': '儲存記憶失敗。',
   'shared.settingsCatsMemory.deleteError': '刪除記憶失敗。',
   'shared.settingsCatsMemory.contentRequired': '請輸入記憶內容。',
@@ -1822,10 +1820,6 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.newChatDraft.greeting.standby': '待命中。',
   'chat.newChatDraft.greeting.taskReady': '任務是什麼？',
   'chat.newChatDraft.greeting.onDuty': '保持在線，準備接手。',
-  'chat.sidePanel.startFresh': '重新開始',
-  'chat.sidePanel.startingFreshBusy': '重新開始中…',
-  'chat.sidePanel.startFreshHint':
-    '保留此聊天室開啟，但重置單人連續對話，讓下一回合從新分支開始。',
   'chat.sidePanel.runStatusTitle': '執行狀態',
   'chat.sidePanel.runStatusUnavailableTitle': '狀態無法取得',
   'chat.sidePanel.loadingTitle': '載入中',
@@ -2331,6 +2325,8 @@ export const zhTWCatalog: MessageCatalog = {
   'telegram.command.status.delegationBlockedLine': '工作委派：無法使用',
   'telegram.command.status.delegationDisabledLine': '工作委派：此主機未啟用',
   'telegram.command.status.delegationUnknownLine': '工作委派：無法檢查',
+  'telegram.bridge.noBoundCat':
+    '這個 bot 還沒有綁定貓咪。請在 Cats 中把一隻貓設為主控貓，或把貓綁定到這個 bot，然後再傳一次訊息。',
   'telegram.command.open.reply':
     '請在 Cats 中開啟與 {name} 的私人對話，或直接在這裡傳一般訊息繼續聊天。',
   'telegram.command.mode.notConfigurable':

@@ -44,7 +44,7 @@ function summarizeBinding(
     catId: cat?.id ?? null,
     catName: cat?.name ?? null,
     inboundMode: binding.inboundMode,
-    roomMode: resolveEffectiveBotBindingRoomMode(binding),
+    roomMode: resolveEffectiveBotBindingRoomMode(),
     outboundFanoutEnabled: binding.outboundFanoutEnabled !== false,
     isBossBinding: isAdminCat(cat),
     status: binding.status,
@@ -204,7 +204,7 @@ async function handleUpdateBotBinding(
     let bossCatActorId = existing.bossCatActorId;
     let roomMode = body.roomMode === 'chat_channel'
       ? 'direct_message'
-      : body.roomMode ?? resolveEffectiveBotBindingRoomMode(existing);
+      : body.roomMode ?? resolveEffectiveBotBindingRoomMode();
 
     if (body.catId !== undefined) {
       requireBindableCat(chat, body.catId);

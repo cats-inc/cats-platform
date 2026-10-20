@@ -740,24 +740,6 @@ export function buildTargetedChatHandoffPackage(input: {
   };
 }
 
-export function buildOrchestratorRewritePrompt(
-  channel: ChatChannelView,
-  userMessage: ChatMessage,
-  orchestratorName: string,
-  draft: string,
-): string {
-  return joinPromptSections([
-    `You are ${orchestratorName}, rewriting your previous draft into the final reply for the user.`,
-    'Rewrite the draft as a direct user-facing assistant response.',
-    `Do not address yourself with @${orchestratorName} or @${ORCHESTRATOR_NAME}.`,
-    'Do not mention routing, delegation, coordination, or what the user is asking in third person.',
-    'Do not add commentary about internal process. Just give the user the answer.',
-    languageInstruction(channel.responseLanguage),
-    `Latest user message:\n${userMessage.body}`,
-    `Draft to rewrite:\n${draft}`,
-  ]);
-}
-
 export function buildCatPrompt(
   channel: ChatChannelView,
   orchestrator: GlobalOrchestratorSummary,

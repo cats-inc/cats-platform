@@ -29,7 +29,6 @@ export function collaborationExecutionRevision(state: ChatState, channelId: stri
     id: channel.id, origin: channel.originSurface, kind: channel.channelKind,
     status: channel.status === 'archived' ? 'archived' : 'active',
     repoPath: channel.repoPath, cwd: channel.chatCwd,
-    continuityResetAt: channel.continuityResetAt,
     workspaceKind: channel.runtimeWorkspaceKind, workspaceAccess: channel.runtimeWorkspaceAccess,
     permissionMode: channel.runtimePermissionMode,
     target: resolveOrchestratorExecutionTarget(state, channel),

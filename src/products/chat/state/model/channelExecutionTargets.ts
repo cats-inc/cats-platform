@@ -213,54 +213,6 @@ export function setChannelPendingExecutionTarget(
   return nextState;
 }
 
-export function resetDefaultChatContinuity(
-  state: ChatState,
-  channelId: string,
-  now: Date = new Date(),
-): ChatState {
-  const nextState = cloneState(state);
-  const channel = requireChannel(nextState, channelId);
-  if (!isDefaultChatChannel(channel)) {
-    throw new Error('Start fresh is currently only supported for default chats.');
-  }
-
-  const existingResetAt = channel.continuityResetAt?.trim() || null;
-  if (existingResetAt) {
-    const hasPostResetBranchActivity = channel.messages.some((message) =>
-      message.createdAt.localeCompare(existingResetAt) > 0
-      && message.metadata?.event !== 'continuity_reset');
-    if (!hasPostResetBranchActivity) {
-      return nextState;
-    }
-  }
-
-  const nowIso = isoAt(now);
-  channel.continuityResetAt = nowIso;
-  channel.orchestratorLease = createEmptyExecutionLease();
-  channel.updatedAt = nowIso;
-
-  applyMessageToChannel(
-    channel,
-    createMessageRecord(
-      channelId,
-      'system',
-      'Chat',
-      'Started fresh. The next default chat turn will not inherit earlier chat continuity.',
-      nowIso,
-      {
-        event: 'continuity_reset',
-        resetMode: 'fresh_start',
-        targetKind: 'orchestrator',
-        continuityResetAt: nowIso,
-      },
-      null,
-    ),
-    nowIso,
-  );
-
-  return nextState;
-}
-
 export function setChannelCatExecutionTarget(
   state: ChatState,
   channelId: string,
