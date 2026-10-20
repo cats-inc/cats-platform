@@ -82,8 +82,11 @@ in every room with participants. Shippable on its own as a patch.
 
 ### Phase 4: Renderer
 
-- [ ] Task 4.1: Replace the default-chat mode with "DM or participant count"
+- [x] Task 4.1: Replace the default-chat mode with "DM or participant count"
       in drafts and conversations; remove `implicit:execution_target`.
+      Started conversations, layout modes and continuity topologies no longer
+      have a default-chat mode; a draft's implicit chip becomes its real
+      default participant in Task 4.2.
 - [ ] Task 4.2: The default participant as a real draft participant from the
       start; the group minimum of two behind an internal flag that defaults
       on; the draft visibility matrix unchanged.

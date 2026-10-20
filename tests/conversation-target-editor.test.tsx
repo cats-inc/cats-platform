@@ -63,20 +63,12 @@ function context(overrides: Partial<ConversationTargetEditorContext> = {}): Conv
   };
 }
 
-test('the default chat chip edits the default target', () => {
-  const changes: ExecutionTargetValue[] = [];
-  const editor = resolveConversationTargetEditor(chip({}), context({
-    selectedExecutionTarget: claudeOpus,
-    onExecutionTargetChange: (value) => changes.push(value),
-  }));
-  assert.ok(editor);
-  assert.deepEqual(editor.target, claudeOpus);
-  editor.onChange?.(codexSol);
-  assert.deepEqual(changes, [codexSol]);
-  assert.equal(editor.action, undefined);
-  assert.equal(editor.onOpenSettings, undefined);
-
-  assert.equal(resolveConversationTargetEditor(chip({}), context({ selectedExecutionTarget: claudeOpus })), null);
+test('a chip that is not one of the conversation\'s participants edits nothing', () => {
+  // A started conversation has no target of its own besides its participants'.
+  assert.equal(resolveConversationTargetEditor(chip({}), context({
+    activeRoomParticipants: [roomParticipant('participant-1', null, claudeOpus)],
+    onUpdateParticipantTarget: () => assert.fail('no participant matches'),
+  })), null);
 });
 
 test('a direct-lane cat edits the conversation\'s own participant target, never the cat profile', () => {

@@ -23,7 +23,6 @@ function buildChannel(kind = 'direct_message', topic = '', leaseStatuses = ['rea
     updatedAt: '',
     lastMessageAt: null,
     lastActivatedAt: '2026-01-01T00:00:00Z',
-    orchestratorLease: { sessionId: null, status: 'not_started', cwd: null, lastError: null, provider: null, model: null, startedAt: null, lastUsedAt: null },
   };
 }
 
@@ -61,6 +60,7 @@ test('buildSessionHealthSummary reports memoryFlushOnReset correctly', () => {
   const directLane = buildSessionHealthSummary(buildChannel('direct_message'));
   assert.equal(directLane.memoryFlushOnReset, true);
 
-  const defaultChat = buildSessionHealthSummary(buildChannel('chat_channel'));
-  assert.equal(defaultChat.memoryFlushOnReset, false);
+  // Every room has participants now, and their memory is flushed before a reset.
+  const room = buildSessionHealthSummary(buildChannel('chat_channel'));
+  assert.equal(room.memoryFlushOnReset, true);
 });

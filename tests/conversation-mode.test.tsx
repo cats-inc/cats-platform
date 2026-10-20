@@ -119,8 +119,9 @@ test('resolveConversationMode keeps direct lanes topology-first even when room m
   assert.equal(resolveConversationMode(channel), 'direct_message');
   });
 
-test('resolveConversationMode distinguishes default and participant chat semantics', () => {
-  const defaultChat = createChannel();
+test('resolveConversationMode treats every conversation that is not a DM as a participant chat', () => {
+  // The participant count, cats or not, decides what the composer shows.
+  const temporaryParticipantChat = createChannel({ assignedParticipants: [] });
   const singleParticipantChat = createChannel({
     assignedCats: [{
       catId: 'cat-1',
@@ -184,7 +185,7 @@ test('resolveConversationMode distinguishes default and participant chat semanti
     ],
   });
 
-  assert.equal(resolveConversationMode(defaultChat), 'default_chat');
+  assert.equal(resolveConversationMode(temporaryParticipantChat), 'participant_chat');
   assert.equal(resolveConversationMode(singleParticipantChat), 'participant_chat');
   assert.equal(resolveConversationMode(participantChat), 'participant_chat');
 });

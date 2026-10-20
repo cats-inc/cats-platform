@@ -14,8 +14,6 @@ export interface ConversationTargetEditorContext {
   directLaneCat: ChatCat | null;
   directLaneExecutionTarget: ExecutionTargetValue | null;
   isDirectLane: boolean;
-  selectedExecutionTarget?: ExecutionTargetValue;
-  onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
   onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
   onUpdateParticipantTarget?: (participantId: string, value: ExecutionTargetValue) => void;
   /** Saves a temporary participant's name or role hint. */
@@ -23,28 +21,19 @@ export interface ConversationTargetEditorContext {
     participantId: string,
     update: { name?: string; roleHint?: string | null },
   ) => void;
-  /** The default chat's start-fresh action, shown under its picker. */
+  /** Opens a cat's own page, where its default model lives. */
   openCatPage: (catId: string) => void;
 }
 
 /**
  * The composer chip edits the same target the send path uses: the
- * conversation's own participant target, or the default chat's target. A
- * cat's default model stays on the cat's own page; a temporary participant
- * also edits its name and role hint here.
+ * participant's own target. A cat's default model stays on the cat's own
+ * page; a temporary participant also edits its name and role hint here.
  */
 export function resolveConversationTargetEditor(
   participant: DraftComposerStackParticipant,
   context: ConversationTargetEditorContext,
 ): AudienceTargetEditor | null {
-  if (participant.key === 'implicit:execution_target') {
-    return context.selectedExecutionTarget && context.onExecutionTargetChange
-      ? {
-          target: context.selectedExecutionTarget,
-          onChange: context.onExecutionTargetChange,
-        }
-      : null;
-  }
   const matches = (candidate: ResolvedChannelParticipant) => (
     participant.participantId
       ? candidate.participantId === participant.participantId

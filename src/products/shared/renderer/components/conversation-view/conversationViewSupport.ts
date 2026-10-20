@@ -18,8 +18,9 @@ import {
 } from '../../../../../shared/liveIndicator.js';
 import { buildChatLaneId } from '../../../../../shared/chatCoreIds.js';
 import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths.js';
-import { buildImplicitRecipient, buildNamedRecipient, type RecipientChipTarget } from '../ComposerRecipientChip.js';
+import { buildNamedRecipient, type RecipientChipTarget } from '../ComposerRecipientChip.js';
 import type { ExecutionTargetValue } from '../../../../shared/renderer/components/ExecutionTarget.js';
+import type { SavedSelectionTarget } from '../../../../../app/renderer/savedSelectionAttention.js';
 import { presentChannelTitle, type SelectedChannelView } from '../../workspaceChatUtils.js';
 import {
   resolveCompareNeighborChannelId,
@@ -53,6 +54,8 @@ export interface ChatComposerStackParticipantView {
   avatarUrl: string | null;
   isBoss: boolean;
   useNeutralAvatar: boolean;
+  /** A temporary participant's saved model; a cat's is judged on its avatar. */
+  selectionTarget: SavedSelectionTarget | null;
 }
 
 export interface ConversationViewCompareState {
@@ -184,6 +187,13 @@ export function buildChatComposerStackParticipants(input: {
       avatarUrl: catRecord?.avatarUrl ?? participant.avatarUrl ?? null,
       isBoss: isAdminCat(catRecord),
       useNeutralAvatar: catRecord == null,
+      selectionTarget: catRecord == null
+        ? {
+            provider: participant.execution.target.provider,
+            instance: participant.execution.target.instance ?? null,
+            modelSelection: participant.execution.modelSelection ?? null,
+          }
+        : null,
     };
   });
 }
@@ -431,8 +441,6 @@ export function resolveConversationViewTopBarPresenceState(input: {
 export function buildChatComposerRecipients(input: {
   isDirectLane: boolean;
   directLaneCat: AppShellPayload['chat']['cats'][number] | null;
-  isDefaultChatComposer: boolean;
-  selectedExecutionTarget: ExecutionTargetValue | undefined;
   defaultRecipientParticipant: ResolvedChannelParticipant | null;
   resolveParticipantCatRecord: (
     participant: ResolvedChannelParticipant | null | undefined,
@@ -467,9 +475,6 @@ export function buildChatComposerRecipients(input: {
         isBoss: isAdminCat(input.directLaneCat),
       }),
     ];
-  }
-  if (input.isDefaultChatComposer && input.selectedExecutionTarget) {
-    return [buildImplicitRecipient(input.selectedExecutionTarget)];
   }
   if (!input.defaultRecipientParticipant) {
     return [];

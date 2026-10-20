@@ -50,7 +50,6 @@ import { resolveConversationTargetEditor } from './conversationTargetEditor.js';
 import type { MessageChoicesSubmitInput } from '../MessageChoices.js';
 import {
   isDirectConversationMode,
-  isDefaultChatConversationMode,
   resolveConversationMode,
 } from '../../../../../app/renderer/productShell/conversationMode.js';
 import { useTranscriptAutoScroll } from '../../hooks/useTranscriptAutoScroll.js';
@@ -169,7 +168,6 @@ export interface ConversationViewRenderContext {
   operatorView: ChatOperatorView | null;
   inspectedRun: ChatRunInspectorView | null;
   isDirectLane: boolean;
-  isDefaultChatComposer: boolean;
   sidePanelOpen: boolean;
   openSidePanelTo: (section: string) => void;
 }
@@ -177,7 +175,6 @@ export interface ConversationViewRenderContext {
 export interface ConversationViewComposerTargetSlotContext {
   payload: AppShellPayload;
   composerBusy: boolean;
-  selectedExecutionTarget?: ExecutionTargetValue;
   composerRecipients: ReturnType<typeof buildChatComposerRecipients>;
   defaultRecipientParticipantId: string | null;
   composerStackParticipants: ChatComposerStackParticipantView[];
@@ -186,7 +183,6 @@ export interface ConversationViewComposerTargetSlotContext {
   assignedCatRecords: ChatCat[];
   leadCatRecord: ChatCat | null;
   isDirectLane: boolean;
-  isDefaultChatComposer: boolean;
   activeWorkflowShape: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys: string[] | null;
@@ -231,8 +227,6 @@ export interface ConversationViewProps {
     outcomeId?: string | null;
   }) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
-  selectedExecutionTarget?: ExecutionTargetValue;
-  onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
   onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
   activeWorkflowShape?: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
@@ -305,8 +299,6 @@ export function ConversationView({
   onRetryMessage,
   onOperatorAction,
   autoResize,
-  selectedExecutionTarget,
-  onExecutionTargetChange,
   onDirectLaneExecutionTargetChange,
   activeWorkflowShape = 'sequential',
   onToggleActiveWorkflowShape,
@@ -383,7 +375,6 @@ export function ConversationView({
     comparePrevChannelId,
     compareNextChannelId,
   } = compareState;
-  const isDefaultChatComposer = isDefaultChatConversationMode(conversationMode);
   const isDirectLane = isDirectConversationMode(conversationMode);
   const {
     activeRoomParticipants,
@@ -406,11 +397,7 @@ export function ConversationView({
     activeAssignedCats,
     isDirectLane,
   });
-  const layoutMode: ChatLayoutMode = isDirectLane
-    ? 'direct_message'
-    : activeRoomParticipants.length > 0
-      ? 'participant_chat'
-      : 'default_chat';
+  const layoutMode: ChatLayoutMode = isDirectLane ? 'direct_message' : 'participant_chat';
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cwd');
   const [viewportWidth, setViewportWidth] = useState(() =>
@@ -747,8 +734,6 @@ export function ConversationView({
     return buildChatComposerRecipients({
       isDirectLane,
       directLaneCat,
-      isDefaultChatComposer,
-      selectedExecutionTarget,
       defaultRecipientParticipant,
       resolveParticipantCatRecord,
       resolveParticipantDisplayName,
@@ -757,10 +742,8 @@ export function ConversationView({
     defaultRecipientParticipant,
     directLaneCat,
     isDirectLane,
-    isDefaultChatComposer,
     resolveParticipantCatRecord,
     resolveParticipantDisplayName,
-    selectedExecutionTarget,
   ]);
   const layoutMetrics = useMemo(
     () => resolveLayoutMetrics(layoutMode, viewportWidth),
@@ -877,8 +860,8 @@ export function ConversationView({
   }, [isNearBottom, scrollToBottom, transcriptScrollKey, visibleLiveIndicator?.active]);
 
   // The composer chip edits the same target the send path uses: the
-  // conversation's own participant target, or the default chat's target.
-  // A cat's default model stays on the cat's own page.
+  // participant's own target. A cat's default model stays on the cat's own
+  // page.
   const resolveTargetEditor = useCallback(
     (participant: DraftComposerStackParticipant): AudienceTargetEditor | null => {
       return resolveConversationTargetEditor(participant, {
@@ -887,8 +870,6 @@ export function ConversationView({
         directLaneCat,
         directLaneExecutionTarget,
         isDirectLane,
-        selectedExecutionTarget,
-        onExecutionTargetChange,
         onDirectLaneExecutionTargetChange,
         onUpdateParticipantTarget: onUpdateChannelParticipant
           ? (participantId, value) => {
@@ -916,9 +897,7 @@ export function ConversationView({
       isDirectLane,
       navigate,
       onDirectLaneExecutionTargetChange,
-      onExecutionTargetChange,
       onUpdateChannelParticipant,
-      selectedExecutionTarget,
     ],
   );
 
@@ -936,14 +915,12 @@ export function ConversationView({
     operatorView,
     inspectedRun,
     isDirectLane,
-    isDefaultChatComposer,
     sidePanelOpen,
     openSidePanelTo,
   };
   const composerTargetSlotContext: ConversationViewComposerTargetSlotContext = {
     payload,
     composerBusy,
-    selectedExecutionTarget,
     composerRecipients,
     defaultRecipientParticipantId: defaultRecipientParticipant?.participantId ?? null,
     composerStackParticipants,
@@ -952,7 +929,6 @@ export function ConversationView({
     assignedCatRecords,
     leadCatRecord: defaultRecipientCatRecord,
     isDirectLane,
-    isDefaultChatComposer,
     activeWorkflowShape,
     onToggleActiveWorkflowShape,
     activeAudienceKeys,
@@ -968,7 +944,6 @@ export function ConversationView({
       composerStackParticipants={composerStackParticipants}
       directLaneCat={directLaneCat}
       isDirectLane={isDirectLane}
-      isDefaultChatComposer={isDefaultChatComposer}
       activeWorkflowShape={activeWorkflowShape}
       onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
       activeAudienceKeys={activeAudienceKeys}
@@ -1026,8 +1001,6 @@ export function ConversationView({
             catId: participant.pulseCatId,
             selectionTarget: participant.selectionTarget,
             // An avatar edits this conversation's target for its participant.
-            // The default chat's implicit target has no avatar; it stays on
-            // the composer chip.
             editor: resolveTargetEditor({
               key: participant.key,
               name: participant.label,
@@ -1177,7 +1150,6 @@ export function ConversationView({
         defaultRecipientParticipantId={defaultRecipientParticipant?.participantId ?? null}
         composerStackParticipants={composerStackParticipants}
         isDirectLane={isDirectLane}
-        isDefaultChatComposer={isDefaultChatComposer}
         activeWorkflowShape={activeWorkflowShape}
         onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
         activeAudienceKeys={activeAudienceKeys}
