@@ -218,6 +218,23 @@ Catalog 是官方來源，不授予 `system` 特權；local-user 套件不因 ID
 已知撤回同樣適用本機 cache／bundled 恢復候選，離線不能抹掉已知撤回紀錄。
 第一期不提供強制遠端 kill switch；未連線時也不能保證即時得知撤回。
 
+### 第一期發布端點與簽章 key（2026-10-20 owner 決定）
+
+先以 GitHub 網址盡快驗證 Market；自有網域等確定後再處理。
+
+- Artifact 沿用 cats-apps 各 App 的 immutable GitHub Release（`<slug>-vX.Y.Z` tag），
+  catalog 中每版本的 artifact URL 指向該 release asset。
+- Catalog envelope 由 cats-apps 的 GitHub Pages 提供，例如
+  `https://cats-inc.github.io/cats-apps/catalog/v1/catalog.json`；確切路徑隨 M0 envelope 固定，
+  Pages 目前尚未啟用。Promotion 以 PR 修改 catalog 來源，合併後由 CI 簽章並部署，
+  git 歷史即推廣紀錄。
+- 不用固定 tag 的 rolling release 放 catalog：每次推廣都要修改已發布 Release，違反 release
+  完成規範，換 asset 時也會暫時缺檔。用戶端不呼叫 `api.github.com` 列 releases，以免受未驗證
+  請求的速率限制影響。
+- 正式簽章 key 先存於 cats-apps 的 GitHub Actions secret。這只防 Pages 或傳輸遭竄改，不防
+  repo／workflow 被入侵；改為需人工核准的 environment 或離線簽章屬後續強化。
+- 官方 endpoint 內建於 Desktop；日後改用自有網域或其他主機，需先發布帶新 endpoint 的 Desktop。
+
 ## FR-10 — SDK 與相容性
 
 SDK 型別／能力定義／文件／隔離測試工具可獨立版本化取得，開發者不依賴 sibling source。
@@ -280,4 +297,4 @@ Usage／Studio 的 ^0.5 範圍不接受 0.6，需另發布正確相容範圍的 
 以上均未執行。合成資料只能放暫存 profile／registry；不污染使用者狀態，不消耗 Grok 額度。
 量測以活動資源與檔案證據為主，RAM/RSS 僅輔助，不以固定 MB 或立刻下降當驗收門檻。
 
-*Last updated: 2026-09-29*
+*Last updated: 2026-10-20*
