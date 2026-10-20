@@ -34,7 +34,7 @@ reset instruction.
 
 ### Phase 1: Started-conversation characterization
 
-- [ ] Task 1.1: A matrix test like the draft visibility matrix for started
+- [x] Task 1.1: A matrix test like the draft visibility matrix for started
       conversations: DM, one provider/model participant, one cat, one
       temporary participant, two temporary participants, a cat with a
       temporary participant, and several cats. Record the composer chip mode
