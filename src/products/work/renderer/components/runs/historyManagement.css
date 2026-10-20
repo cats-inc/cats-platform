@@ -1,0 +1,14 @@
+.ownerHistoryActions { margin: 1rem 0; }
+.ownerHistoryActions__bar, .ownerHistoryFilters { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-bottom: 1rem; }
+.ownerHistoryFilters label, .ownerHistoryActions label { display: flex; flex-direction: column; gap: .25rem; font-size: .8rem; }
+.ownerHistoryFilters input, .ownerHistoryFilters select, .ownerHistoryActions select { padding: .4rem; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 5px; }
+.ownerHistoryActions button, .ownerHistoryFilters button { padding: .4rem .65rem; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; }
+.ownerHistoryActions button:disabled { opacity: .5; cursor: default; }
+.ownerHistoryPreview { padding: 1rem; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); max-height: 50vh; overflow-y: auto; }
+.ownerHistoryActions [role=alert] { color: var(--danger, #b33); }
+.ownerHistoryRow { display: flex; gap: .5rem; align-items: flex-start; padding: .5rem; }
+.ownerHistoryRow--child { margin-left: 1rem; border-left: 3px solid var(--border); }
+.ownerHistoryRow__body { flex: 1; min-width: 0; }
+.ownerHistoryRow__body p { margin: .35rem .5rem; overflow-wrap: anywhere; }
+.ownerHistoryRow__body small { color: var(--muted); margin-left: .5rem; }
+.ownerHistorySelectAll { display: block; margin-bottom: .75rem; }

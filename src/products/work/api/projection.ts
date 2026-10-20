@@ -1,3 +1,4 @@
+import { ownerEntry } from '../../../core/ownerLifecycle.js';
 import {
   buildWorkGoldenPathDetailProjectionForTask,
   type TransportWorkDeliveryReader,
@@ -316,6 +317,7 @@ export interface WorkTaskListProjection {
 }
 
 export interface WorkRunListItem {
+  logsClearedAt?: string | null;
   id: string;
   title: string;
   status: CoreRunStatus;
@@ -343,6 +345,7 @@ export interface WorkRunListSummary {
 }
 
 export interface WorkRunListProjection {
+  revision?: number;
   product: {
     id: 'work';
     name: typeof WORK_PRODUCT_NAME;
@@ -397,6 +400,7 @@ export interface WorkMissionListSummary {
 }
 
 export interface WorkMissionListProjection {
+  revision?: number;
   product: {
     id: 'work';
     name: typeof WORK_PRODUCT_NAME;
@@ -1063,6 +1067,7 @@ export function buildWorkRunListProjection(
     })
     .map((run) => ({
       id: run.id,
+      logsClearedAt: ownerEntry(core, 'run', run.id)?.logsClearedAt ?? null,
       title: run.title,
       status: run.status,
       summary: run.summary,
@@ -1085,6 +1090,7 @@ export function buildWorkRunListProjection(
     product: createWorkProductRef(),
     runs,
     summary: buildRunListSummary(runs),
+    revision: core.ownerLifecycle?.revision ?? 0,
   };
 }
 
@@ -1221,6 +1227,7 @@ export function buildWorkMissionListProjection(
     // explicit `returned` reflects the filtered array length so
     // callers can distinguish "totalAvailable = N, returned = M".
     summary: buildMissionListSummary(allMissions, { returned: missions.length }),
+    revision: core.ownerLifecycle?.revision ?? 0,
   };
 }
 

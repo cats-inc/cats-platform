@@ -80,7 +80,7 @@ does not falsely claim success or manufacture broken references.
 - [x] Add server status/source/time/context filters, pagination, stable sorting
   and parent/sub-run grouping. Preserve the complete Work Graph and explicit
   access to all sources.
-- [ ] Add terminal archive/restore, selected-item actions and log export.
+- [x] Add terminal archive/restore, selected-item actions and log export.
 - [x] Implement read-only cleanup previews with exact item scope, dependencies,
   protected summaries, measurable/unknown size and bound revisions.
 - [x] Implement explicit detailed-log compaction and eligible full-history
@@ -236,6 +236,7 @@ these contracts have already been approved.
 
 | Date | Update |
 | --- | --- |
+| 2026-10-20 | P1b renderer slice: Runs/Missions now use server filters, paging and source context; list/detail expose terminal archive/restore, export and exact-scope cleanup previews/results. Selection changes discard in-flight previews; stale apply requires another preview. Isolated renderer preview/stale/selection test passed; 11 history/persistence tests passed. Web build passed. Isolated candidate acceptance remains pending. |
 | 2026-10-20 | P1b backend slice: producer/binding/origin-aware history list, filters/pagination, terminal archive/restore/export, revisioned preview/apply, descendant/protected-summary handling and bounded idempotent receipts implemented. Workflow detail is compacted at source and in projections; backup sanitization/recovery prevents resurrection while preserving transcripts/outputs. Future profile versions fail closed. Focused history/persistence HTTP, concurrency, failed-backup and restart/recovery tests passed (11). Renderer integration and isolated Desktop acceptance remain open. |
 | 2026-10-20 | P1a deletion slice: Core rejects derived/active/referenced planning deletion; product DELETE validates and applies under `updateCore`, with 409 blockers and no new dangling links. Fixed snapshot normalization dropping valid WorkGraphLinks, so dependency checks also survive reload/owner mutations. Server build, 38 existing CRUD/Core/link checks and 11 focused lifecycle/Codespace/deletion checks passed. Isolated Desktop acceptance remains pending. |
 | 2026-10-20 | P1a Codespaces slice: real owner pin/unpin (including sidebar), rename, archive/restore/remove, removed-items recovery, folder registration and contextual open/new/related links implemented. Active Run/Session/Preview removal is blocked, folders/outputs retained. 41 focused lifecycle/Codespace/sidebar/artifact checks passed; server/client typechecks and web build passed (Vite `--configLoader runner` avoids the sandbox's native esbuild ancestor-directory restriction). Isolated Desktop visual/write acceptance remains scheduled after the UI slices. |
