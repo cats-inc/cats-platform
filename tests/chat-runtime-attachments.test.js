@@ -26,7 +26,6 @@ async function createStateWithRuntimeAttachments(baseDir) {
     title: 'Attachment Room',
     topic: 'sync attachments and project task execution attachments',
     originSurface: 'chat',
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, { catId, provider: 'claude' }, now);

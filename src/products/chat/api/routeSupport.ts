@@ -25,6 +25,7 @@ import type {
 } from '../../../platform/orchestration/contracts.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
 import { escapeContentDispositionFilename } from '../shared/channelPaths.js';
+import { isAdminCat } from '../shared/catGroups.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
 import { readDesktopHostBootstrapAttemptId } from '../../../shared/desktopHostState.js';
 import { readPlatformPreferences } from '../../../shared/platformPreferences.js';
@@ -104,7 +105,6 @@ import {
   catParticipatesInChat,
   collectCatSessionIds,
   collectLinkedChannelSessionIds,
-  seedBossCatGreeting,
 } from './routeStateSupport.js';
 import {
   collectChannelLeaseAttachments,
@@ -356,7 +356,7 @@ export async function buildAppShellPayload(
       catName: matchedCat?.name ?? null,
       inboundMode: binding.inboundMode ?? 'polling',
       roomMode: resolveEffectiveBotBindingRoomMode(binding),
-      isBossBinding: Boolean(resolvedState.bossCatId && matchedCat?.id === resolvedState.bossCatId),
+      isBossBinding: isAdminCat(matchedCat),
       status: binding.status,
       outboundFanoutEnabled: binding.outboundFanoutEnabled !== false,
       updatedAt: binding.updatedAt,
@@ -461,11 +461,6 @@ export async function persistCreatedChannel(
   }
 
   const now = nowFrom(context.dependencies);
-  const requestedRoomMode = input.roomMode ?? (input.entryKind === 'direct' ? 'direct_message' : 'chat_channel');
-  const requestedParticipantCount =
-    (input.cats?.length ?? 0)
-    + (input.participantCatIds?.length ?? 0)
-    + (input.temporaryParticipants?.length ?? 0);
   let reusedDirectLane = false;
   const persistedState = await updateChatState(context.dependencies.chatStore, (state) => {
     // One direct lane per Cat: a client whose payload has not seen a lane
@@ -477,23 +472,12 @@ export async function persistCreatedChannel(
     }
     reusedDirectLane = false;
 
-    let nextState = createChannel(
+    return createChannel(
       state,
       input,
       now,
       { prevalidatedRuntimePolicy: parsed.policy },
     );
-
-    if (
-      !input.skipBossCatGreeting
-      && input.entryKind !== 'default'
-      && requestedRoomMode !== 'direct_message'
-      && requestedParticipantCount > 0
-    ) {
-      nextState = seedBossCatGreeting(nextState, nextState.selectedChannelId, now);
-    }
-
-    return nextState;
   });
   return { state: persistedState, reusedDirectLane };
 }

@@ -70,10 +70,11 @@ function idleLease() {
   };
 }
 
-function cat(id: string, name: string, avatarColor: string): ChatCat {
+function cat(id: string, name: string, avatarColor: string, group: ChatCat['group'] = 'standard'): ChatCat {
   return {
     id,
     name,
+    group,
     roles: [],
     skillProfile: null,
     mcpProfile: null,
@@ -92,7 +93,7 @@ function cat(id: string, name: string, avatarColor: string): ChatCat {
 
 const milo = cat('cat-milo', 'Milo', '#7A5B3A');
 const nova = cat('cat-nova', 'Nova', '#3A5B7A');
-const boss = cat('cat-boss', 'Boss', '#C9A227');
+const boss = cat('cat-boss', 'Boss', '#C9A227', 'admin');
 
 function catParticipant(source: ChatCat): ChatChannelCat {
   return {
@@ -149,7 +150,6 @@ const bram = tempParticipant('participant-bram', 'Bram', 'sonnet');
 function createPayload(): AppShellPayload {
   return {
     chat: {
-      bossCatId: boss.id,
       botBindings: [],
       capabilities: {
         maxCats: 5,
@@ -284,9 +284,6 @@ function Harness({
     channelPlusMenuRef: { current: null },
     channelFileInputRef: { current: null },
     activeAssignedCats: view.activeAssignedCats,
-    bossCatName: view.bossCatName,
-    bossCatAvatarColor: view.bossCatAvatarColor,
-    showBossCatAvatar: view.showBossCatAvatar,
     onComposerChange: noop,
     onComposerKeyDown: noop,
     onSendMessage: noop,
@@ -461,7 +458,7 @@ const cases: Array<{ name: string; scenario: Scenario; expected: StartedConversa
     name: 'conversation with one cat',
     scenario: { participants: [catParticipant(milo)] },
     expected: {
-      header: 'Boss · Claude-CLI · claude-sonnet [boss] | Milo · Claude-CLI · claude-sonnet [edit]',
+      header: 'Milo · Claude-CLI · claude-sonnet [edit]',
       composer: 'avatars:0 chip:"Milo"',
       chip: 'model',
       send: 'recipients:[cat-milo] sequential',
@@ -470,8 +467,6 @@ const cases: Array<{ name: string; scenario: Scenario; expected: StartedConversa
   },
   {
     name: 'conversation with one temporary participant',
-    // A room without cats counts as a default chat here, so the Boss Cat
-    // avatar that a one-cat room shows is missing.
     scenario: { participants: [aria] },
     expected: {
       header: 'Claude-CLI · opus [edit]',
@@ -496,8 +491,7 @@ const cases: Array<{ name: string; scenario: Scenario; expected: StartedConversa
     name: 'conversation with a temporary participant and a cat',
     scenario: { participants: [aria, catParticipant(milo)] },
     expected: {
-      header: 'Boss · Claude-CLI · claude-sonnet [boss] | Claude-CLI · opus [edit]'
-        + ' | Milo · Claude-CLI · claude-sonnet [edit]',
+      header: 'Claude-CLI · opus [edit] | Milo · Claude-CLI · claude-sonnet [edit]',
       composer: 'avatars:0 chip:"Aria +1" workflow',
       chip: 'audience',
       send: 'recipients:[participant-aria,cat-milo] sequential',
@@ -508,12 +502,22 @@ const cases: Array<{ name: string; scenario: Scenario; expected: StartedConversa
     name: 'conversation with two cats',
     scenario: { participants: [catParticipant(milo), catParticipant(nova)] },
     expected: {
-      header: 'Boss · Claude-CLI · claude-sonnet [boss] | Milo · Claude-CLI · claude-sonnet [edit]'
-        + ' | Nova · Claude-CLI · claude-sonnet [edit]',
+      header: 'Milo · Claude-CLI · claude-sonnet [edit] | Nova · Claude-CLI · claude-sonnet [edit]',
       composer: 'avatars:0 chip:"Milo +1" workflow',
       chip: 'audience',
       send: 'recipients:[cat-milo,cat-nova] sequential',
       sendFirstOnly: 'recipients:[cat-milo] sequential',
+    },
+  },
+  {
+    name: 'conversation with a Boss Cat and a cat',
+    scenario: { participants: [catParticipant(boss), catParticipant(milo)] },
+    expected: {
+      header: 'Boss · Claude-CLI · claude-sonnet [boss,edit] | Milo · Claude-CLI · claude-sonnet [edit]',
+      composer: 'avatars:0 chip:"Boss +1" workflow',
+      chip: 'audience',
+      send: 'recipients:[cat-boss,cat-milo] sequential',
+      sendFirstOnly: 'recipients:[cat-boss] sequential',
     },
   },
 ];

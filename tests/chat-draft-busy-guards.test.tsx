@@ -14,7 +14,6 @@ const t = createTranslator('en');
 function createPayload() {
   return {
     chat: {
-      bossCatId: null,
       botBindings: [],
       assistantPresets: [],
       capabilities: {

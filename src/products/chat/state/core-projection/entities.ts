@@ -57,6 +57,7 @@ import {
   readLatestWorkflowContinuationContext,
 } from '../room-routing/continuationContext.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../../shared/platformSurfaces.js';
+import { isAdminCat } from '../../shared/catGroups.js';
 import {
   readMetadataBoolean,
   readMetadataRecord,
@@ -696,8 +697,8 @@ export function createOrchestratorActor(chat: ChatState): CoreActorRecord {
   };
 }
 
-export function createCatActor(cat: ChatCat, bossCatId: string | null): CoreActorRecord {
-  const bossCatRoles = cat.id === bossCatId
+export function createCatActor(cat: ChatCat): CoreActorRecord {
+  const bossCatRoles = isAdminCat(cat)
     ? ['boss_cat', 'primary_orchestrator']
     : [];
 
@@ -1142,9 +1143,6 @@ export function syncBotBindings(
 ): BotBindingRecord[] {
   const preservedBindings = existingBindings.map((binding) => structuredClone(binding));
   const telegramBotName = chat.globalOrchestrator.telegramBotName?.trim();
-  const bossCatActorId = chat.bossCatId
-    ? createCatActorId(chat.bossCatId)
-    : null;
   const chatCatsByActorId = new Map(
     chat.cats.map((cat) => [createCatActorId(cat.id), cat]),
   );
@@ -1157,16 +1155,24 @@ export function syncBotBindings(
   );
   const normalizedBindings = preservedBindings.map((binding) => {
     const linkedCatActorId = binding.catActorId ?? binding.bossCatActorId;
-    if (!linkedCatActorId || activeChatCatActorIds.has(linkedCatActorId)) {
-      return binding;
-    }
-    const linkedCat = chatCatsByActorId.get(linkedCatActorId) ?? null;
-    return {
+    const linkedCat = linkedCatActorId ? chatCatsByActorId.get(linkedCatActorId) ?? null : null;
+    // A binding's Boss Cat marker follows its cat's group.
+    const groupedBinding = {
       ...binding,
+      bossCatActorId: linkedCatActorId && isAdminCat(linkedCat) ? linkedCatActorId : null,
+    };
+    if (!linkedCatActorId || activeChatCatActorIds.has(linkedCatActorId)) {
+      return groupedBinding;
+    }
+    return {
+      ...groupedBinding,
       status: 'disabled' as const,
       updatedAt: linkedCat?.updatedAt ?? binding.updatedAt,
     };
   });
+  const firstAdminCat = chat.cats.find((cat) =>
+    isAdminCat(cat) && activeChatCatActorIds.has(createCatActorId(cat.id))) ?? null;
+  const bossCatActorId = firstAdminCat ? createCatActorId(firstAdminCat.id) : null;
 
   if (!telegramBotName || !bossCatActorId) {
     return normalizedBindings;

@@ -177,6 +177,7 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
     if (!Array.isArray(cat.roles)) {
       cat.roles = readStringArray(cat.roles);
     }
+    cat.group = cat.group === 'admin' ? 'admin' : 'standard';
     return cat;
   });
   const catsById = new Map(cats.map((cat) => [readString(cat.id), cat]));
@@ -293,9 +294,6 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
   }
   if (nextPayload.ownerAvatarColor === undefined) {
     (nextPayload as Record<string, unknown>).ownerAvatarColor = null;
-  }
-  if (chatState.bossCatId === undefined) {
-    chatState.bossCatId = null;
   }
   chatState.conversationBehavior = normalizeConversationBehaviorPreferences(
     chatState.conversationBehavior,

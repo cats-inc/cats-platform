@@ -140,7 +140,6 @@ test('POST /api/channels/:id/messages/:messageId/retry replays the same acknowle
     topic: 'Verify last-message retry replays the acknowledged user message.',
     originSurface: 'chat',
     entryKind: 'default',
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
   await chatStore.write(state);
@@ -243,7 +242,6 @@ test('POST /api/channels/:id/messages/:messageId/retry rebuilds a missing user s
     topic: 'Verify retry survives transcript drift.',
     originSurface: 'chat',
     entryKind: 'default',
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
   await chatStore.write(state);
@@ -325,7 +323,6 @@ test('POST /api/channels/:id/messages/:messageId/retry accepts the latest failed
     topic: 'Verify retry survives workflow snapshot drift.',
     originSurface: 'chat',
     entryKind: 'default',
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
   await chatStore.write(state);
@@ -419,7 +416,6 @@ test('POST /api/channels/:id/messages/:messageId/retry rejects retry when the la
     topic: 'Reject retry when the latest turn already completed.',
     originSurface: 'chat',
     entryKind: 'default',
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
   await chatStore.write(state);
@@ -480,7 +476,6 @@ test('POST /api/channels/:id/messages/:messageId/retry restores a drifted direct
     roomMode: 'direct_message',
     defaultRecipientId: catId,
     repoPath: 'C:/repo/cats-platform',
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, { catId, provider: 'claude' }, now);

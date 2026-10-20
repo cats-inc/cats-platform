@@ -110,7 +110,7 @@ test('Chat provider-agent external binding tool request writes local Work metada
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
@@ -214,7 +214,7 @@ test('Chat provider-agent external unlink tool request removes local Work metada
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);

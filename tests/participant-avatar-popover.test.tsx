@@ -171,7 +171,6 @@ test('roster avatars stay inert while the first turn is being sent', (t) => {
 function createDraftPayload(): AppShellPayload {
   return {
     chat: {
-      bossCatId: null,
       botBindings: [],
       capabilities: {
         maxCats: 5,
@@ -210,8 +209,6 @@ function createGroupDraftProps(overrides: Partial<NewChatDraftProps> = {}): NewC
     plusMenuOpen: false,
     plusMenuRef: { current: null },
     fileInputRef: { current: null },
-    bossCatName: 'Boss Cat',
-    bossCatAvatarColor: null,
     onComposerChange: noop,
     onComposerKeyDown: noop,
     onSendMessage: noop,

@@ -526,7 +526,7 @@ test('Chat provider-agent observation exposes read-only Boss Cat execution prepa
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
@@ -611,7 +611,7 @@ test('Chat provider-agent observation exposes local external tracker binding for
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
@@ -702,7 +702,7 @@ test('Chat provider-agent observation exposes external issue import for explicit
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const core = createDefaultCoreState();
@@ -774,7 +774,7 @@ test('Chat provider-agent observation exposes read-only Work triage lookup for e
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
@@ -1272,7 +1272,6 @@ test('Chat dispatch clears stale explicit model selections with the pending mode
       pendingProvider: 'openai',
       pendingModel: 'gpt-5.4',
       pendingModelSelection: { entryId: 'gpt-5.4', entryMode: 'explicit' },
-      skipBossCatGreeting: true,
     },
     now,
   );

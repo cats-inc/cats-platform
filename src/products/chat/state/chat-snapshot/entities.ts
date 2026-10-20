@@ -17,6 +17,7 @@ import type {
   ExecutionTargetSummary,
 } from '../../../../core/types.js';
 import { CHAT_MCP_PROFILE_ID } from '../../../../shared/catMcpProfiles.js';
+import { normalizeChatCatGroup } from '../../shared/catGroups.js';
 import { createDefaultChatState, createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import {
   resolveChannelKind,
@@ -123,6 +124,7 @@ export function normalizeChatCat(rawCat: unknown): ChatCat | null {
   return {
     id: readString(catRecord.id, randomUUID()),
     name: readString(catRecord.name, 'Cat'),
+    group: normalizeChatCatGroup(catRecord.group),
     roles: readStringArray(catRecord.roles),
     skillProfile: readNullableString(catRecord.skillProfile),
     mcpProfile: readNullableString(catRecord.mcpProfile),
@@ -395,9 +397,6 @@ export function normalizeCapabilities(rawCapabilities: unknown): ChatCapabilitie
         ? 'basic'
         : fallback.participantManagement,
     runtimeSessions: true,
-    maxBossCats: typeof capabilitiesRecord?.maxBossCats === 'number' && capabilitiesRecord.maxBossCats > 0
-      ? capabilitiesRecord.maxBossCats
-      : fallback.maxBossCats,
     maxCats: typeof capabilitiesRecord?.maxCats === 'number' && capabilitiesRecord.maxCats > 0
       ? capabilitiesRecord.maxCats
       : fallback.maxCats,

@@ -205,7 +205,6 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
       body: JSON.stringify({
         ...createInput,
         originSurface: 'code',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);

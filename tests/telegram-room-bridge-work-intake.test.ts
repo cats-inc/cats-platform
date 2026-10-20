@@ -23,7 +23,7 @@ import { MemoryChatStore } from '../src/products/chat/state/store.js';
 import {
   buildChannelView,
   createChannel,
-  setBossCat,
+  setCatGroup,
   setChannelCatLease,
 } from '../src/products/chat/state/model/index.js';
 import {
@@ -491,7 +491,7 @@ test('Telegram room bridge confirms Boss Work execution preparation into pending
   assert.ok(roomId);
   const catId = buildChannelView(state, roomId).assignedCats[0]?.catId;
   assert.ok(catId);
-  state = setBossCat(state, catId);
+  state = setCatGroup(state, catId, 'admin');
   state = setChannelCatLease(
     state,
     roomId,

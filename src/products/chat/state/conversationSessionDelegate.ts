@@ -16,8 +16,8 @@ export function createConversationSessionDelegate(store: ChatStore, runtimeDataD
         if (existing(core)) return { chat, core };
         const next = createChannel(chat, { title: 'Code', topic: '', originSurface: 'code', entryKind: 'default',
           repoPath: input.cwd, pendingProvider: input.target.provider,
-          pendingInstance: input.target.instance, pendingModel: input.target.model ?? undefined,
-          skipBossCatGreeting: true }, new Date(), { prevalidatedRuntimePolicy: input.policy });
+          pendingInstance: input.target.instance, pendingModel: input.target.model ?? undefined },
+          new Date(), { prevalidatedRuntimePolicy: input.policy });
         return { chat: next, core: persist(syncCoreStateWithChatState(next, core), next.selectedChannelId) };
       });
     },

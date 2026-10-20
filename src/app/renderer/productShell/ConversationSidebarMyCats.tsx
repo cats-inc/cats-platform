@@ -281,7 +281,6 @@ export function ConversationSidebarMyCatsSection<
 >({
   label,
   cats,
-  bossCatId,
   payloadChannels,
   activeMyCatId,
   telegramBoundCatIds,
@@ -298,7 +297,6 @@ export function ConversationSidebarMyCatsSection<
 }: {
   label?: string;
   cats: readonly TCat[];
-  bossCatId: string | null;
   payloadChannels: readonly TChannel[];
   activeMyCatId: string | null;
   telegramBoundCatIds: ReadonlySet<string>;
@@ -329,7 +327,6 @@ export function ConversationSidebarMyCatsSection<
   const { t } = useI18n();
   const activeCats = helpers.sortCatsForDisplay(
     cats.filter((cat) => cat.status === 'active'),
-    { bossCatIds: bossCatId },
   );
   const showPlaceholder = activeCats.length === 0 && emptyStatePlaceholder != null;
   return (
@@ -352,7 +349,7 @@ export function ConversationSidebarMyCatsSection<
           />
         ) : null}
         {activeCats.map((cat) => {
-          const isBoss = cat.id === bossCatId;
+          const isBoss = cat.group === 'admin';
           const isActive = activeMyCatId === cat.id;
           const hasTelegramBinding = telegramBoundCatIds.has(cat.id);
           const directLane = helpers.findDirectLaneForCat(payloadChannels as TChannel[], cat.id);

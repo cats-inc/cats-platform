@@ -202,9 +202,13 @@ export interface ParticipantExecutionState {
 
 export type ChannelParticipantSourceKind = 'cat' | 'adhoc';
 
+/** Admin cats are the Boss Cats: they may act beyond a conversation they coordinate. */
+export type ChatCatGroup = 'admin' | 'standard';
+
 export interface ChatCat {
   id: string;
   name: string;
+  group: ChatCatGroup;
   roles: string[];
   skillProfile: string | null;
   mcpProfile: string | null;
@@ -488,7 +492,6 @@ export interface ChatCapabilities {
   transcriptExport: true;
   participantManagement: 'basic';
   runtimeSessions: true;
-  maxBossCats: number;
   maxCats: number;
   maxChatParticipants: number;
   maxAudienceParticipants: number;
@@ -501,7 +504,6 @@ export interface ChatState {
   id: string;
   name: string;
   selectedChannelId: string;
-  bossCatId: string | null;
   cats: ChatCat[];
   channels: ChatChannelState[];
   parallelChatGroups: ParallelChatGroupState[];
@@ -548,7 +550,6 @@ export interface ChatShellState {
   id: string;
   name: string;
   selectedChannelId: string;
-  bossCatId: string | null;
   cats: ChatCat[];
   channels: ChatChannelSummary[];
   parallelChatGroups: ParallelChatGroupSummary[];
@@ -589,7 +590,7 @@ export interface CreateTemporaryParticipantInput {
 }
 
 export interface CreateCatInput extends CatDraftInput {
-  makeBoss?: boolean;
+  group?: ChatCatGroup;
   products?: string[];
 }
 
@@ -629,8 +630,6 @@ interface CreateChatChannelInputBase {
   participantCatIds?: string[];
   /** Channel-only non-Cat members created inline for this room. */
   temporaryParticipants?: CreateTemporaryParticipantInput[];
-  /** Internal UI affordance for the first user-sent turn in a newly created chat. */
-  skipBossCatGreeting?: boolean;
 }
 
 export type CreateChatChannelInput =

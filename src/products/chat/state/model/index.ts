@@ -117,7 +117,7 @@ export {
   isDefaultCatName,
   pickAvatarColor,
   renameCat,
-  setBossCat,
+  setCatGroup,
   setCatCompanion,
   unarchiveCat,
   updateCatExecutionTarget,
@@ -253,7 +253,6 @@ export function createParallelChatGroup(
         pendingModelSelection: target.modelSelection ?? undefined,
         participantCatIds: targetParticipantCatIds,
         temporaryParticipants: targetTemporaryParticipants,
-        skipBossCatGreeting: true,
       },
       now,
       { prevalidatedRuntimePolicy: targetRuntimeSessionPolicy },
@@ -547,10 +546,6 @@ export function assignCatToChannel(
   input: AssignChannelCatInput,
   now: Date = new Date(),
 ): ChatState {
-  if (state.bossCatId && input.catId === state.bossCatId) {
-    throw new Error('Boss Cat is already the default chat entrypoint');
-  }
-
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
   const channel = requireChannel(nextState, channelId);

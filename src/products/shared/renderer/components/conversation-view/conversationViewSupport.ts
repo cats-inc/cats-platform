@@ -36,6 +36,7 @@ import {
   type MessageInterpolationValues,
   type MessageKey,
 } from '../../../../../shared/i18n/index.js';
+import { isAdminCat } from '../../../../chat/shared/catGroups.js';
 
 type ConversationViewSupportTranslator = (
   key: MessageKey,
@@ -152,21 +153,15 @@ export function resolveConversationViewTopBarTitle(input: {
 export function resolveShowRosterAvatars(input: {
   isDirectLane: boolean;
   defaultRecipientCat: ResolvedChannelParticipant | null;
-  showBossCatAvatar: boolean;
-  isDefaultChatComposer: boolean;
   activeRoomParticipants: ResolvedChannelParticipant[];
 }): boolean {
   return input.isDirectLane
     ? Boolean(input.defaultRecipientCat)
-    : Boolean(
-      (input.showBossCatAvatar && !input.isDefaultChatComposer)
-      || input.activeRoomParticipants.length > 0
-    );
+    : input.activeRoomParticipants.length > 0;
 }
 
 export function buildChatComposerStackParticipants(input: {
   activeRoomParticipants: ResolvedChannelParticipant[];
-  bossCatId: string | null;
   resolveParticipantCatRecord: (
     participant: ResolvedChannelParticipant | null | undefined,
   ) => AppShellPayload['chat']['cats'][number] | null;
@@ -187,7 +182,7 @@ export function buildChatComposerStackParticipants(input: {
       executionLabel,
       avatarColor: catRecord?.avatarColor ?? participant.avatarColor ?? null,
       avatarUrl: catRecord?.avatarUrl ?? participant.avatarUrl ?? null,
-      isBoss: catRecord?.id === input.bossCatId,
+      isBoss: isAdminCat(catRecord),
       useNeutralAvatar: catRecord == null,
     };
   });
@@ -439,7 +434,6 @@ export function buildChatComposerRecipients(input: {
   isDefaultChatComposer: boolean;
   selectedExecutionTarget: ExecutionTargetValue | undefined;
   defaultRecipientParticipant: ResolvedChannelParticipant | null;
-  bossCatId: string | null;
   resolveParticipantCatRecord: (
     participant: ResolvedChannelParticipant | null | undefined,
   ) => AppShellPayload['chat']['cats'][number] | null;
@@ -470,7 +464,7 @@ export function buildChatComposerRecipients(input: {
         modelSelection: input.defaultRecipientParticipant?.execution.modelSelection
           ?? input.directLaneCat.defaultModelSelection
           ?? null,
-        isBoss: input.directLaneCat.id === input.bossCatId,
+        isBoss: isAdminCat(input.directLaneCat),
       }),
     ];
   }
@@ -496,7 +490,7 @@ export function buildChatComposerRecipients(input: {
         instance: input.defaultRecipientParticipant.execution.target.instance ?? null,
         model: input.defaultRecipientParticipant.execution.target.model ?? null,
         modelSelection: input.defaultRecipientParticipant.execution.modelSelection ?? null,
-        isBoss: participantCat.id === input.bossCatId,
+        isBoss: isAdminCat(participantCat),
       }),
     ];
   }

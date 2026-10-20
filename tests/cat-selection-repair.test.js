@@ -58,7 +58,6 @@ async function twoChatsWithOneCat() {
   for (const title of ['Stale copy', 'Chosen copy']) {
     state = createChannel(state, {
       title, topic: title, originSurface: 'chat', participantCatIds: [catId], defaultRecipientId: catId,
-      skipBossCatGreeting: true,
     }, now);
     channelIds.push(state.selectedChannelId);
   }

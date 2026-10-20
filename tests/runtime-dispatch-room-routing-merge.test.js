@@ -86,7 +86,6 @@ test('applyDispatchExecutions advances sequential queued frames by canonical sou
       originSurface: 'chat',
       title: 'Sequential frontier identity',
       topic: 'Advance the correct queued frame when the same participant owns multiple frontiers.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -303,7 +302,6 @@ test('applyDispatchExecutions keeps replayed depth-0 continuation targets isolat
       originSurface: 'chat',
       title: 'Sequential replay frontier isolation',
       topic: 'Do not dedupe a later replayed frontier against another frontier that only shares the source message.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -496,7 +494,6 @@ test('mergeCompletedDispatchState preserves newer room-routing config while appl
       originSurface: 'chat',
       title: 'Room routing merge',
       topic: 'Preserve config while keeping workflow progress.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -561,7 +558,6 @@ test('settleBegunChannelMessageDispatchFailure preserves a newer room-routing wo
       originSurface: 'chat',
       title: 'Room routing failure merge',
       topic: 'Do not overwrite newer workflow state on failure.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -643,7 +639,6 @@ test('settleBegunChannelMessageDispatchFailure keeps direct-lane transport bindi
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -687,7 +682,6 @@ test('mergeCompletedDispatchState treats overlapping workflow mutations as lates
       originSurface: 'chat',
       title: 'Workflow latest wins',
       topic: 'Keep the newer workflow snapshot when both sides changed.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -731,7 +725,6 @@ test('mergeCompletedDispatchState preserves temporary participant execution leas
       title: 'Temporary participant merge',
       topic: 'Keep adhoc participant session leases while dispatch state merges.',
       entryKind: 'group',
-      skipBossCatGreeting: true,
       defaultRecipientId: 'participant-inline',
       temporaryParticipants: [
         {
@@ -792,7 +785,6 @@ test('createMergedDispatchChatStore serializes cross-channel writes so parallel 
       originSurface: 'chat',
       title: 'Parallel member A',
       topic: 'First parallel member.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -803,7 +795,6 @@ test('createMergedDispatchChatStore serializes cross-channel writes so parallel 
       originSurface: 'chat',
       title: 'Parallel member B',
       topic: 'Second parallel member.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -893,7 +884,6 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
       title: 'Recovered stale participant session',
       topic: 'Retry a room dispatch after a stale participant session.',
       entryKind: 'group',
-      skipBossCatGreeting: true,
       defaultRecipientId: 'participant-inline',
       temporaryParticipants: [
         {
@@ -1014,7 +1004,6 @@ test('repairOrphanedCompletedDispatchTurn restores a startup-blocked turn when t
       originSurface: 'chat',
       title: 'Blocked after reply',
       topic: 'Restore a completed turn after startup recovery.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1173,7 +1162,6 @@ test('repairOrphanedCompletedDispatchTurn ignores non-terminal segmented replies
       originSurface: 'chat',
       title: 'Segment fragment only',
       topic: 'Do not repair a turn from a partial segment.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1238,7 +1226,6 @@ test('repairOrphanedCompletedDispatchTurn keeps an active sequential turn alive 
       originSurface: 'chat',
       title: 'Sequential handoff still active',
       topic: 'Do not finalize the room turn while a follow-up speaker remains active.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1360,7 +1347,6 @@ test('repairOrphanedCompletedDispatchTurn keeps a sequential turn alive while la
       originSurface: 'chat',
       title: 'Sequential target gap still active',
       topic: 'Do not finalize the room turn before the next sequential target is written.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1473,7 +1459,6 @@ test('repairOrphanedCompletedDispatchTurn keeps later same-speaker re-entry targ
       originSurface: 'chat',
       title: 'Same speaker re-entry still active',
       topic: 'Do not treat a later mention of the same speaker as the same target state.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1627,7 +1612,6 @@ test('repairOrphanedCompletedDispatchTurn restores a drifted same-speaker re-ent
       originSurface: 'chat',
       title: 'Same speaker re-entry drifted target',
       topic: 'Recover the later same-speaker target when transcript targetStateId drifts.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1859,7 +1843,6 @@ test('repairMissingSessionStartedMessages restores missing runtime metadata befo
         originSurface: 'chat',
         title: 'Missing session metadata',
         topic: 'Restore missing session_started from runtime responses.',
-        skipBossCatGreeting: true,
       },
       seededAt,
     );
@@ -1943,7 +1926,6 @@ test('repairMissingSessionStartedMessages falls back to canonical session metada
       originSurface: 'chat',
       title: 'Canonical session metadata fallback',
       topic: 'Restore missing session metadata from canonical records.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2050,7 +2032,6 @@ test('repairMissingSessionStartedMessages restores a missing cat targetId from c
       originSurface: 'chat',
       title: 'Canonical session target fallback',
       topic: 'Restore missing session target ids from canonical records.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2161,7 +2142,6 @@ test('repairMissingSessionStartedMessages restores missing cat session identity 
       originSurface: 'chat',
       title: 'Canonical lane target fallback',
       topic: 'Restore missing session target ids directly from canonical lane records.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2249,7 +2229,6 @@ test('repairMissingStartupRecoveryNotice inserts an interrupted-turn note before
       originSurface: 'chat',
       title: 'Interrupted startup recovery',
       topic: 'Show a visible note when startup recovery blocked the prior turn.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2398,7 +2377,6 @@ test('repairMissingStartupRecoveryNotice falls back to canonical turn timing whe
       originSurface: 'chat',
       title: 'Interrupted startup recovery with drift',
       topic: 'Restore startup notice even when the source user message is missing.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2556,7 +2534,6 @@ test('repairMissingStartupRecoveryNotice uses canonical assistant source timing 
       originSurface: 'chat',
       title: 'Interrupted later sequential startup recovery',
       topic: 'Place startup recovery notice after the missing assistant handoff frontier.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2726,7 +2703,6 @@ test('repairMissingStartupRecoveryNotice prefers source identity when startup re
       originSurface: 'chat',
       title: 'Interrupted later sequential startup recovery with drifted source ids',
       topic: 'Use canonical source identity instead of drifted source message ids when inserting recovery notices.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );

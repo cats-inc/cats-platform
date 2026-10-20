@@ -31,6 +31,8 @@ import { useI18n } from '../i18n/index.js';
 export interface ConversationSidebarCat {
   id: string;
   name: string;
+  /** Admin cats are the Boss Cats, framed and listed first. */
+  group?: 'admin' | 'standard';
   status: string;
   avatarColor: string | null;
   avatarUrl: string | null;
@@ -70,7 +72,6 @@ export interface ConversationSidebarPayload<
     status?: RuntimeSetupStatus | null;
   } | null;
   chat: {
-    bossCatId: string | null;
     cats: TCat[];
     channels: TChannel[];
     botBindings?: ConversationSidebarBotBinding[];
@@ -141,10 +142,7 @@ export interface ConversationSidebarHelpers<
   catInitials: (name: string) => string;
   presentChannelTitle: (title: string) => string;
   isVisibleCat: (cat: TCat) => boolean;
-  sortCatsForDisplay: (
-    cats: TCat[],
-    options: { bossCatIds?: string | string[] | null },
-  ) => TCat[];
+  sortCatsForDisplay: (cats: TCat[]) => TCat[];
   isDirectLaneSummary: (channel: TChannel) => boolean;
   findDirectLaneForCat: (channels: TChannel[], catId: string) => TChannel | null;
   resolveMyCatStatusDot: (leaseStatus: TChannel['defaultRecipientLeaseStatus']) => TDot;
@@ -351,7 +349,6 @@ export function ConversationSidebarContent<
             <ConversationSidebarMyCatsSection
               label={resolvedMyCatsSectionLabel}
               cats={resolvedMyCatsSectionCats}
-              bossCatId={payload.chat.bossCatId}
               payloadChannels={payload.chat.channels}
               activeMyCatId={activeMyCatId}
               telegramBoundCatIds={telegramBoundCatIds}

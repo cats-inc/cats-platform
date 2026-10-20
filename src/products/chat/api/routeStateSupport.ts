@@ -1,9 +1,5 @@
 import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
-import {
-  appendMessage,
-  requireChannel,
-  resolveOrchestratorDisplayName,
-} from '../state/model/index.js';
+import { requireChannel } from '../state/model/index.js';
 import {
   collectChannelSessionIds,
   resolveParticipantLeaseAttachment,
@@ -12,36 +8,6 @@ import type {
   ChatChannelCat,
   ChatState,
 } from './contracts.js';
-
-export function seedBossCatGreeting(
-  state: ChatState,
-  channelId: string,
-  now: Date,
-): ChatState {
-  if (!state.bossCatId) {
-    return state;
-  }
-
-  const channel = requireChannel(state, channelId);
-  if (
-    (channel.participantAssignments?.length ?? channel.catAssignments.length) > 0
-    || channel.messages.length > 0
-  ) {
-    return state;
-  }
-
-  const bossCatName = resolveOrchestratorDisplayName(state);
-  return appendMessage(
-    state,
-    channelId,
-    {
-      senderKind: 'orchestrator',
-      senderName: bossCatName,
-      body: `Meow! I'm ${bossCatName}, your Boss Cat. What should we chat about?`,
-    },
-    now,
-  ).state;
-}
 
 export function collectLinkedChannelSessionIds(
   channel: ReturnType<typeof requireChannel>,

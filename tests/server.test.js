@@ -800,7 +800,6 @@ test('GET /api/channels/:id/stream closes direct-lane streams that have no attac
       title: 'Activation wake lane',
       topic: 'Wake the stream waiter from the activation route.',
       roomMode: 'direct_message',
-      skipBossCatGreeting: true,
       defaultRecipientId: catId,
     },
     seededAt,
@@ -1124,7 +1123,6 @@ test('POST /api/channels/:id/messages publishes room updates while background se
         topic: 'Broadcast intermediate sequential dispatch persistence.',
         originSurface: 'chat',
         entryKind: 'group',
-        skipBossCatGreeting: true,
         temporaryParticipants: [
           {
             participantId: 'participant-claude',
@@ -1232,7 +1230,6 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
     {
       title: 'Sequential live handoff',
       topic: 'Move the live stream to the next room speaker.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1579,7 +1576,6 @@ test('GET /api/channels/:id/stream reattaches a reused warm session for a new se
     {
       title: 'Sequential warm-session reuse',
       topic: 'Reuse one ready session across sequential lane targets.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1899,7 +1895,6 @@ test('GET /api/channels/:id/stream can reattach the same lane session after a se
     {
       title: 'Same lane same session boundary',
       topic: 'Allow the same lane session to reattach after a streamed segment completes.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2096,7 +2091,6 @@ test('GET /api/channels/:id/stream reattaches a replacement session for the same
     {
       title: 'Same lane session recovery',
       topic: 'Reattach a new runtime session without changing the active lane.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2315,7 +2309,6 @@ test('GET /api/channels/:id/stream multiplexes concurrent ready targets in one S
     {
       title: 'Concurrent live room',
       topic: 'Stream all concurrent targets through one SSE connection.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2645,7 +2638,6 @@ test('GET /api/channels/:id/stream gates concurrent text until all live targets 
     {
       title: 'Concurrent barrier room',
       topic: 'Hold text until every concurrent lane is session-ready.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2982,7 +2974,6 @@ test('GET /api/channels/:id/stream keeps concurrent text buffered until every re
     {
       title: 'Concurrent text barrier room',
       topic: 'Hold text until every ready concurrent lane has emitted at least one renderable event.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -3335,7 +3326,6 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
     {
       title: 'Sequential live handoff gap',
       topic: 'Keep the stream attached while the next target is still being written.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -3683,7 +3673,6 @@ test('GET /api/channels/:id/stream keeps direct lanes pinned to the direct recip
       roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -3762,7 +3751,6 @@ test('GET /api/channels/:id/stream exposes the direct-lane lease laneId when no 
       roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -4153,7 +4141,6 @@ test('GET /api/app-shell repairs an orphaned completed room turn before renderin
     {
       title: 'Corrupted room route',
       topic: 'Repair orphaned active turn',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -4244,7 +4231,6 @@ test('GET /api/app-shell does not finalize an active sequential room turn while 
     {
       title: 'Sequential turn still active',
       topic: 'Do not clear the active turn before later speakers run.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -5384,7 +5370,6 @@ test('GET /api/app-shell does not finalize a sequential turn before the next tar
     {
       title: 'Sequential target gap still active',
       topic: 'Keep the turn alive while the next speaker target is still being written.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -9224,7 +9209,6 @@ test('assigning a cat to a channel immediately creates a runtime session in the 
         topic: 'Verify assignment spawns a session.',
         originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -9296,7 +9280,6 @@ test('assigning a cat forwards structured modelSelection to cats-runtime session
         topic: 'Verify model selection reaches cats-runtime.',
         originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -9368,7 +9351,6 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
         title: 'Deferred Session Spawn',
         topic: 'Wait for Boss Cat to anchor the chat first.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -9446,7 +9428,6 @@ test('PATCH /api/preferences only selects the requested Boss Chat without waking
         title: 'Wake Boss Chat',
         topic: 'Wake the entry participant on room entry.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -9511,7 +9492,6 @@ test('first send persists a runtime-sanitized default model selection after drop
             'openai.reasoning_effort': 'high',
           },
         },
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -9580,7 +9560,6 @@ test('first send on a selected default chat accepts the user turn before startin
         title: 'Race room',
         topic: 'Do not create two sessions during first send.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -9754,7 +9733,6 @@ test('GET /api/app-shell repairs missing session_started metadata from runtime r
       {
         title: 'Repaired session metadata',
         topic: 'Restore missing runtime session metadata in app-shell payloads.',
-        skipBossCatGreeting: true,
       },
       new Date('2026-04-09T12:35:29.017Z'),
     );
@@ -9828,7 +9806,6 @@ test('GET /api/app-shell inserts a startup recovery interruption note before the
       {
         title: 'Interrupted room workflow',
         topic: 'Show an interruption note for startup recovery turns.',
-        skipBossCatGreeting: true,
       },
       new Date('2026-04-09T12:35:29.017Z'),
     );
@@ -10204,7 +10181,6 @@ test('single chat background finalize preserves a newer acknowledged user turn',
         title: 'Stale Merge Guard',
         topic: 'Keep newer user turns while earlier dispatches finish.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -10313,7 +10289,6 @@ test('single chat failure settlement preserves a newer acknowledged user turn', 
         title: 'Failure Merge Guard',
         topic: 'Do not overwrite later ACKed turns on failure.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -10573,7 +10548,6 @@ test('default chats without a cwd create isolated runtime sessions', async () =>
         pendingProvider: 'claude',
         pendingInstance: 'native',
         pendingModel: 'claude-opus-4-6',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -10638,7 +10612,6 @@ test('PATCH /api/channels/:channelId can start a fresh default continuity branch
         pendingProvider: 'claude',
         pendingInstance: 'native',
         pendingModel: 'claude-opus-4-6',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -10738,7 +10711,6 @@ test('PATCH /api/channels/:channelId keeps repeated default continuity resets id
         pendingProvider: 'claude',
         pendingInstance: 'native',
         pendingModel: 'claude-opus-4-6',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -10801,7 +10773,6 @@ test('PATCH /api/channels/:channelId rejects continuity reset for non-default ch
             model: 'claude-opus-4-6',
           },
         ],
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -10848,7 +10819,6 @@ test('POST /api/channels/:channelId/activations reports closed direct-lane sessi
       roomMode: 'direct_message',
       defaultRecipientId: catId,
       participantCatIds: [catId],
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -10926,7 +10896,7 @@ test('POST /api/channels keeps direct lanes scoped to the direct recipient only'
         name: 'Lead Companion',
         provider: 'claude',
         model: 'claude-opus-4-6',
-        makeBoss: true,
+        group: 'admin',
       }),
     });
     assert.equal(firstCatResponse.status, 201);
@@ -10955,7 +10925,6 @@ test('POST /api/channels keeps direct lanes scoped to the direct recipient only'
         roomMode: 'direct_message',
         defaultRecipientId: defaultRecipientCatId,
         participantCatIds: [defaultRecipientCatId, extraCatId],
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -10977,7 +10946,7 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-recipient ca
         name: 'Lead Companion',
         provider: 'claude',
         model: 'claude-opus-4-6',
-        makeBoss: true,
+        group: 'admin',
       }),
     });
     assert.equal(leadCatResponse.status, 201);
@@ -11006,7 +10975,6 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-recipient ca
         roomMode: 'direct_message',
         participantCatIds: [defaultRecipientCatId],
         defaultRecipientId: defaultRecipientCatId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11056,7 +11024,6 @@ test('PATCH /api/preferences does not overwrite the last wake request because se
         title: 'Wake Boss Chat',
         topic: 'Do not rewrite wake history on re-entry.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11145,7 +11112,6 @@ test('PATCH /api/preferences only selects the requested direct message recipient
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11229,7 +11195,6 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions without promo
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11375,7 +11340,6 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11534,7 +11498,6 @@ test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', a
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11599,7 +11562,6 @@ test('first send does not fall back to Boss Cat when a direct message recipient 
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11675,7 +11637,6 @@ test('GET /api/app-shell stays read-only when booting a persisted room route', a
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11714,7 +11675,6 @@ test('re-adding a removed cat to an active chat wakes it again instead of leavin
         topic: 'Wake cats when they rejoin a live room.',
         originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11796,7 +11756,6 @@ test('attachment uploads sanitize names and avoid overwriting earlier files', as
           topic: 'Verify unique attachment names.',
           originSurface: 'chat',
           repoPath: tempWorkingDir,
-          skipBossCatGreeting: true,
         }),
       });
       assert.equal(createChannelResponse.status, 201);
@@ -11857,7 +11816,6 @@ test('attachment serving only inlines raster images and forces download for acti
           topic: 'Verify attachment response headers.',
           originSurface: 'chat',
           repoPath: tempWorkingDir,
-          skipBossCatGreeting: true,
         }),
       });
       assert.equal(createChannelResponse.status, 201);
@@ -11929,7 +11887,6 @@ test('attachment serving keeps no-repo chat files out of the state tree', async 
         pendingProvider: 'claude',
         pendingInstance: 'native',
         pendingModel: 'claude-opus-4-6',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);

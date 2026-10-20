@@ -1,4 +1,5 @@
 import type {
+  ChatCatGroup,
   CreateCatInput,
   ChatState,
 } from '../../api/contracts.js';
@@ -19,6 +20,7 @@ import {
   syncChannelDefaultRecipientAndTopology,
 } from './shared.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
+import { isAdminCat, normalizeChatCatGroup } from '../../shared/catGroups.js';
 
 export const AVATAR_PALETTE = [
   '#7986CB', '#4DB6AC', '#FFB74D', '#BA68C8',
@@ -229,9 +231,11 @@ export function createCat(
     }),
     fallback: defaultCatProducts(),
   });
+  const group = normalizeChatCatGroup(input.group);
   const cat = createCatRecord({
     ...input,
-    products: input.makeBoss
+    group,
+    products: group === 'admin'
       ? ensurePlatformSurfaceIncluded(normalizedProducts, 'chat')
       : normalizedProducts,
   }, isoAt(now));
@@ -241,9 +245,6 @@ export function createCat(
       : pickAvatarColor(nextState.cats.length);
   }
   nextState.cats.unshift(cat);
-  if (input.makeBoss) {
-    nextState.bossCatId = cat.id;
-  }
   return nextState;
 }
 
@@ -259,9 +260,6 @@ export function archiveCat(
   }
   if (cat.status === 'archived') {
     throw new Error('Cat is already archived');
-  }
-  if (nextState.bossCatId === catId) {
-    nextState.bossCatId = null;
   }
   cat.status = 'archived';
   cat.archivedAt = isoAt(now);
@@ -311,9 +309,6 @@ export function deleteCat(
   const catIndex = nextState.cats.findIndex((p) => p.id === catId);
   if (catIndex === -1) {
     throw new Error(`Cat not found: ${catId}`);
-  }
-  if (nextState.bossCatId === catId) {
-    nextState.bossCatId = null;
   }
   nextState.cats.splice(catIndex, 1);
   removeDirectLanesForDeletedCat(nextState, catId);
@@ -369,21 +364,31 @@ export function updateCatMcpProfile(
   return nextState;
 }
 
-export function setBossCat(
+/** Admin cats coordinate across conversations, so they keep the Chat product. */
+export function setCatGroup(
   state: ChatState,
   catId: string,
+  group: ChatCatGroup,
 ): ChatState {
+  if (group !== 'admin' && group !== 'standard') {
+    throw new Error('Cat group must be admin or standard');
+  }
   const nextState = cloneState(state);
   const cat = nextState.cats.find((p) => p.id === catId);
   if (!cat) {
     throw new Error(`Cat not found: ${catId}`);
   }
-  if (cat.status !== 'active') {
+  if (group === 'admin' && cat.status !== 'active') {
     throw new Error(`Cat is not active: ${catId}`);
   }
-  cat.products = ensurePlatformSurfaceIncluded(cat.products, 'chat');
+  if (cat.group === group) {
+    return state;
+  }
+  cat.group = group;
+  if (group === 'admin') {
+    cat.products = ensurePlatformSurfaceIncluded(cat.products, 'chat');
+  }
   cat.updatedAt = new Date().toISOString();
-  nextState.bossCatId = catId;
   return nextState;
 }
 
@@ -406,7 +411,7 @@ export function updateCatProducts(
     throw new Error('Cat must be available in at least one product');
   }
   const hadChatSurface = catHasChatSurface(cat.products);
-  cat.products = nextState.bossCatId === catId
+  cat.products = isAdminCat(cat)
     ? ensurePlatformSurfaceIncluded(normalizedProducts, 'chat')
     : normalizedProducts;
   cat.updatedAt = new Date().toISOString();

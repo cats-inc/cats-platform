@@ -149,8 +149,7 @@ export async function createChatCollaborationExecution(options: ChatCollaboratio
       || proposal.budget.maxTokens <= 0 || proposal.budget.maxTokens > 100000) throw new Error('invalid_budget');
     const worker = (catId: string): CollaborationWorker => {
       const cat = chat.cats.find((entry) => entry.id === catId);
-      if (!cat || cat.status !== 'active' || !isCatPartOfChatProduct(cat)
-        || cat.id === chat.bossCatId) throw new Error('cat_unavailable');
+      if (!cat || cat.status !== 'active' || !isCatPartOfChatProduct(cat)) throw new Error('cat_unavailable');
       const assigned = resolveChannelParticipantAssignments(source).find((entry) => entry.status === 'active'
         && entry.sourceKind === 'cat' && entry.sourceRefId === catId);
       const target = assigned?.execution.target ?? cat.defaultExecutionTarget;

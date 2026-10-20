@@ -134,7 +134,6 @@ function createPayload(): AppShellPayload {
         transcriptExport: true,
         participantManagement: 'basic',
         runtimeSessions: true,
-        maxBossCats: 1,
         maxCats: 16,
         maxChatParticipants: 5,
         maxAudienceParticipants: 3,
@@ -143,7 +142,6 @@ function createPayload(): AppShellPayload {
       },
       cats: [],
       botBindings: [],
-      bossCatId: null,
       showVerboseMessages: false,
     },
   } as unknown as AppShellPayload;
@@ -208,7 +206,6 @@ test('buildNewChatChannelInput keeps default-recipient new chats as visible thre
   assert.equal(input.roomMode, undefined);
   assert.equal(input.defaultRecipientId, 'cat-lead');
   assert.deepEqual(input.participantCatIds, ['cat-lead', 'cat-helper']);
-  assert.equal(input.skipBossCatGreeting, true);
 });
 
 test('buildNewChatChannelInput keeps default new chats in default mode with pending target', () => {

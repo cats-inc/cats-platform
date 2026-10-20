@@ -28,7 +28,9 @@ export function useSettingsCatsTelegram(payload: AppShellPayload): {
   const { t } = useI18n();
   const botBindings = payload.chat.botBindings ?? [];
   const telegramScopeKey = createSettingsCatsTelegramScopeKey({
-    bossCatId: payload.chat.bossCatId,
+    bossCatIds: payload.chat.cats
+      .filter((cat) => cat.status === 'active' && cat.group === 'admin')
+      .map((cat) => cat.id),
     botBindings,
   });
   const telegramDiagnosticsLoadError = t(

@@ -961,7 +961,7 @@ test('bot binding routes support multiple Telegram bots across Cats', async () =
       body: JSON.stringify({
         name: 'Boss Cat',
         provider: 'claude',
-        makeBoss: true,
+        group: 'admin',
       }),
     });
     assert.equal(createBossResponse.status, 201);

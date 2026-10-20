@@ -99,7 +99,6 @@ test(
           pendingProvider: provider,
           pendingInstance: target.instance ?? undefined,
           pendingModel: target.model ?? undefined,
-          skipBossCatGreeting: true,
         },
         new Date('2026-04-28T09:00:00.000Z'),
       );

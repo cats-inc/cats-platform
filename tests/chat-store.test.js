@@ -118,7 +118,6 @@ test('FileChatStore round-trips explicit default continuity reset boundaries', a
       title: 'Default Thread',
       topic: 'Persist explicit continuity resets.',
       originSurface: 'chat',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -170,7 +169,6 @@ test('resetDefaultChatContinuity is idempotent before the new branch starts', as
       title: 'Default Thread',
       topic: 'Do not append duplicate reset markers before any new branch activity.',
       originSurface: 'chat',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -216,7 +214,6 @@ test('assigning and removing the first participant keeps default recipient topol
       title: 'Default Thread',
       topic: 'Starts without visible cats.',
       originSurface: 'chat',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -274,7 +271,6 @@ test('channel topology infers direct lanes and participant chat rooms independen
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -298,7 +294,6 @@ test('channel topology infers direct lanes and participant chat rooms independen
       originSurface: 'chat',
       title: 'Team room',
       topic: 'Multi-cat rooms are distinguished from boss threads.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -322,7 +317,7 @@ test('FileChatStore repairs legacy active snapshots that are missing setupComple
     {
       name: 'Boss Cat',
       provider: 'claude',
-      makeBoss: true,
+      group: 'admin',
     },
     now,
   );
@@ -352,7 +347,7 @@ test('FileChatStore keeps the last known snapshot when the on-disk file is tempo
     {
       name: 'Boss Cat',
       provider: 'claude',
-      makeBoss: true,
+      group: 'admin',
     },
     new Date(now),
   );
@@ -389,7 +384,7 @@ test('FileChatStore cold-start recovers from backup when the primary snapshot is
     {
       name: 'Boss Cat',
       provider: 'claude',
-      makeBoss: true,
+      group: 'admin',
     },
     new Date(now),
   );
@@ -456,7 +451,6 @@ test('archiving a direct-lane cat preserves private lane history without promoti
       roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -503,7 +497,6 @@ test('unarchiving a cat restores its direct lane while keeping avatar metadata a
       roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -553,7 +546,6 @@ test('deleting a direct-lane cat removes the private lane instead of promoting i
       roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -600,7 +592,6 @@ test('direct lanes reject assigning a second cat beyond the lead', () => {
       roomMode: 'direct_message',
       participantCatIds: [defaultRecipientCatId],
       defaultRecipientId: defaultRecipientCatId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -657,7 +648,6 @@ test('FileChatStore normalizes contaminated direct lanes back to the direct-reci
       roomMode: 'direct_message',
       participantCatIds: [defaultRecipientCatId],
       defaultRecipientId: defaultRecipientCatId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -728,7 +718,6 @@ test('FileChatStore round-trips per-message execution provenance', async () => {
       originSurface: 'chat',
       title: 'Execution Provenance',
       topic: 'Remember which provider answered.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -772,7 +761,6 @@ test('FileChatStore preserves first-class choices, embedded-json extraction, and
       title: 'Choice Contract',
       topic: 'Persist structured choices in transcript history.',
       originSurface: 'chat',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -902,8 +890,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
     },
     now,
   );
-  state.bossCatId = state.cats[0].id;
-
+  state.cats.find((cat) => cat.id === state.cats[0].id).group = 'admin';
   state = createCat(
     state,
     {
@@ -921,7 +908,6 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
       originSurface: 'chat',
       title: 'Workflow Projection',
       topic: 'Project system workflow into core.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -1125,7 +1111,6 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
       originSurface: 'chat',
       title: 'Continuation Replay Projection',
       topic: 'Persist blocked continuation replay metadata into core.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -1282,7 +1267,6 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
       originSurface: 'chat',
       title: 'Dispatch Guard Replay Projection',
       topic: 'Persist blocked continuation replay metadata when dispatch limits stop a handoff.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -1439,7 +1423,6 @@ test('ChatStore projects retryable workflow-continuation replay metadata for ant
       originSurface: 'chat',
       title: 'Anti Ping Pong Replay Projection',
       topic: 'Persist blocked continuation replay metadata when anti-ping-pong stops a loop.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -1609,7 +1592,6 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
       originSurface: 'chat',
       title: 'Target Visit Replay Projection',
       topic: 'Persist blocked continuation replay metadata when revisit limits stop a handoff.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -1769,7 +1751,6 @@ test('routeChannelMessage sends choice responses back to the originating cat ses
       originSurface: 'chat',
       title: 'Choice Routing',
       topic: 'Route structured answers back to the originating cat.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -1912,7 +1893,6 @@ test('FileChatStore preserves null room route targets when reloading persisted r
       originSurface: 'chat',
       title: 'Blocked room',
       topic: 'Keep blocked route targets nullable on reload.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -1973,7 +1953,6 @@ test('FileChatStore drops malformed assistant turn deliveries when reloading per
       originSurface: 'chat',
       title: 'Malformed segment delivery',
       topic: 'Reject incomplete persisted assistant turn delivery records.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -2065,7 +2044,7 @@ test('ChatStore syncs Telegram bot bindings to the current Boss Cat actor', asyn
     },
     new Date('2026-03-19T00:00:00.000Z'),
   );
-  state.bossCatId = state.cats[0].id;
+  state.cats.find((cat) => cat.id === state.cats[0].id).group = 'admin';
   state = updateGlobalOrchestrator(
     state,
     {
@@ -2078,11 +2057,11 @@ test('ChatStore syncs Telegram bot bindings to the current Boss Cat actor', asyn
   await store.write(state);
   const core = await store.readCore();
   const telegramBinding = core.botBindings.find((binding) => binding.platform === 'telegram');
-  const bossCatActor = core.actors.find((actor) => actor.sourceId === state.bossCatId);
+  const bossCatActor = core.actors.find((actor) => actor.sourceId === state.cats[0].id);
 
   assert.ok(telegramBinding);
   assert.equal(telegramBinding.botName, 'smelly_bot');
-  assert.equal(telegramBinding.bossCatActorId, `actor-cat-${state.bossCatId}`);
+  assert.equal(telegramBinding.bossCatActorId, `actor-cat-${state.cats[0].id}`);
   assert.ok(bossCatActor);
   assert.ok(bossCatActor.roles.includes('boss_cat'));
 });
@@ -2356,7 +2335,7 @@ test('updateGlobalOrchestrator preserves the existing model when model is omitte
   assert.equal(state.globalOrchestrator.telegramBotName, 'smelly_bot');
 });
 
-test('ChatStore rebinds Telegram bot bindings when the Boss Cat changes', async () => {
+test('ChatStore rebinds Telegram bot bindings when the Boss Cats change', async () => {
   const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
 
@@ -2370,7 +2349,7 @@ test('ChatStore rebinds Telegram bot bindings when the Boss Cat changes', async 
     new Date('2026-03-19T00:00:00.000Z'),
   );
   const firstBossCatId = state.cats[0].id;
-  state.bossCatId = firstBossCatId;
+  state.cats.find((cat) => cat.id === firstBossCatId).group = 'admin';
   state = updateGlobalOrchestrator(
     state,
     {
@@ -2391,7 +2370,8 @@ test('ChatStore rebinds Telegram bot bindings when the Boss Cat changes', async 
   const secondBossCatId = state.cats.find((cat) => cat.id !== firstBossCatId)?.id;
   assert.ok(secondBossCatId);
 
-  state.bossCatId = secondBossCatId;
+  state.cats.find((cat) => cat.id === firstBossCatId).group = 'standard';
+  state.cats.find((cat) => cat.id === secondBossCatId).group = 'admin';
   await store.write(state);
 
   const core = await store.readCore();

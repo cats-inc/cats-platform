@@ -90,17 +90,7 @@ export function executionLabel(cat: ChatCat): string {
   return buildCatExecutionLabel(cat as Parameters<typeof buildCatExecutionLabel>[0]);
 }
 
-function normalizePinnedCatIds(
-  bossCatIds: string | string[] | null | undefined,
-): Set<string> {
-  if (Array.isArray(bossCatIds)) {
-    return new Set(bossCatIds.filter((value): value is string => Boolean(value)));
-  }
-  return bossCatIds ? new Set([bossCatIds]) : new Set<string>();
-}
-
 export interface SortChatCatsOptions {
-  bossCatIds?: string | string[] | null;
   archivedLast?: boolean;
 }
 
@@ -109,7 +99,6 @@ export function compareChatCatsForDisplay(
   right: ChatCat,
   options: SortChatCatsOptions = {},
 ): number {
-  const pinnedCatIds = normalizePinnedCatIds(options.bossCatIds);
   if (options.archivedLast) {
     const leftArchived = left.status === 'archived' ? 1 : 0;
     const rightArchived = right.status === 'archived' ? 1 : 0;
@@ -118,8 +107,9 @@ export function compareChatCatsForDisplay(
     }
   }
 
-  const leftPinned = pinnedCatIds.has(left.id) ? 0 : 1;
-  const rightPinned = pinnedCatIds.has(right.id) ? 0 : 1;
+  // Boss Cats (admin cats) come first.
+  const leftPinned = left.group === 'admin' ? 0 : 1;
+  const rightPinned = right.group === 'admin' ? 0 : 1;
   if (leftPinned !== rightPinned) {
     return leftPinned - rightPinned;
   }
@@ -318,7 +308,6 @@ export function buildNewChatChannelInput(options: {
     topic: createDraftChannelTopic(body),
     originSurface,
     entryKind: resolvedEntryKind,
-    skipBossCatGreeting: true,
     repoPath: repoPath ?? undefined,
     responseLanguage: assistantResponseLanguage,
     ...createRuntimeSessionContractInput(runtimeSessionPolicy),
@@ -415,14 +404,6 @@ export function pickGreeting(
 ): string {
   const greetingLines = GREETING_LINE_KEYS.map((key) => t(key));
   return greetingLines[Math.floor(Math.random() * greetingLines.length)]!;
-}
-
-export function resolveBossCatName(payload: AppShellPayload): string | null {
-  if (!payload.chat.bossCatId) {
-    return null;
-  }
-
-  return payload.chat.cats.find((cat) => cat.id === payload.chat.bossCatId)?.name ?? null;
 }
 
 export type { SelectedChannelView } from '../channelEntry.js';

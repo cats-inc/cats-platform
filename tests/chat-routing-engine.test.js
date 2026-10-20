@@ -188,7 +188,7 @@ async function createChannelState() {
     now,
   );
   const bossCatId = state.cats[0].id;
-  state = { ...state, bossCatId };
+  state = { ...state, cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' } : cat)) };
 
   state = createCat(
     state,
@@ -217,7 +217,6 @@ async function createChannelState() {
     {
       title: 'Routing Engine',
       topic: 'Exercise continuation routing.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -1385,7 +1384,6 @@ test('provider default chat restarts orchestrator sessions when the pending mode
     {
       title: 'Default Thread',
       topic: 'Switch between providers per turn.',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -1505,7 +1503,6 @@ test('provider default chat full-transplants earlier user-only context on replac
     {
       title: 'Default Thread',
       topic: 'Replacement sessions should not fall back to excerpt-only user context.',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -1589,7 +1586,6 @@ test('default-chat replacement-session transplants preserve prior assistant tool
     {
       title: 'Default Thread',
       topic: 'Carry tool context across a retargeted default restart.',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -1661,7 +1657,6 @@ test('default-chat replacement-session transplants fold segmented assistant turn
     {
       title: 'Default Thread',
       topic: 'Carry segmented assistant turns cleanly across a retarget.',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -1741,7 +1736,6 @@ test('explicit default-chat start-fresh resets continuity before the next replac
     {
       title: 'Default Thread',
       topic: 'Explicit start-fresh must cut continuity instead of silently retransplanting.',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -1813,7 +1807,6 @@ test('default-chat retarget after start-fresh only transplants the new continuit
     {
       title: 'Default Thread',
       topic: 'Retarget after a fresh start must ignore the older branch.',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -1879,7 +1872,6 @@ test('provider default chat restarts orchestrator sessions when the pending inst
     {
       title: 'Default Thread',
       topic: 'Switch runtime instances per turn.',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingInstance: 'native',
       pendingModel: 'claude-default',
@@ -1955,7 +1947,6 @@ test('provider default chat restarts orchestrator sessions when the pending mode
     {
       title: 'Default Thread',
       topic: 'Switch reasoning effort without reusing the stale runtime session.',
-      skipBossCatGreeting: true,
       pendingProvider: 'codex',
       pendingModel: 'gpt-5.4',
       pendingModelSelection: {
@@ -2065,7 +2056,6 @@ test('provider default chat keeps its session when only the catalog revision of 
     {
       title: 'Default Thread',
       topic: 'A Desktop update re-stamps the saved selection.',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'opus',
       pendingModelSelection: selection('R1'),
@@ -2105,7 +2095,7 @@ test('Code continuation after disk round trips retains the session, cwd and arti
     controls: { 'claude.reasoning_effort': effort },
   });
   const state = createModelChannel(await store.read(), {
-    originSurface: 'code', title: 'Timer', topic: 'Continue a timer', skipBossCatGreeting: true,
+    originSurface: 'code', title: 'Timer', topic: 'Continue a timer',
     pendingProvider: 'claude', pendingModel: 'opus', pendingModelSelection: selection('R1'),
   }, new Date());
   const id = state.selectedChannelId;
@@ -2145,7 +2135,7 @@ test('missing saved selection is recovered from the actual Runtime session and s
   for (const [effort, status] of [['medium', 'ready'], ['high', 'ready'], ['medium', 'closed']]) {
     const choice = (value) => ({ entryMode: 'explicit', entryId: 'opus', controls: { 'claude.reasoning_effort': value } });
     const state = createChannel(await new MemoryChatStore().read(), {
-      title: 'Recovered thread', topic: 'Recover missing selection', skipBossCatGreeting: true,
+      title: 'Recovered thread', topic: 'Recover missing selection',
       pendingProvider: 'claude', pendingModel: 'opus', pendingModelSelection: choice('medium'),
     }, new Date());
     const id = state.selectedChannelId;
@@ -2171,7 +2161,7 @@ test('missing saved selection is recovered from the actual Runtime session and s
 test('unavailable Runtime selection preserves the existing session and retries recovery on the next turn', async () => {
   const choice = { entryMode: 'explicit', entryId: 'opus', controls: { 'claude.reasoning_effort': 'medium' } };
   const state = createChannel(await new MemoryChatStore().read(), {
-    title: 'Unavailable observation', topic: 'Preserve workspace', skipBossCatGreeting: true,
+    title: 'Unavailable observation', topic: 'Preserve workspace',
     pendingProvider: 'claude', pendingModel: 'opus', pendingModelSelection: choice,
   }, new Date());
   const id = state.selectedChannelId;
@@ -2230,7 +2220,6 @@ test('participant sessions restart when a participant model selection changes', 
       topic: 'Cat session should restart when its model selection changes.',
       participantCatIds: [catId],
       defaultRecipientId: catId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -2358,7 +2347,6 @@ test('participant chat rooms full-transplant continuity when an existing partici
       topic: 'Existing participant-chat members should keep continuity when their session restarts.',
       participantCatIds: [reviewerId, observerId],
       defaultRecipientId: reviewerId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -2456,7 +2444,6 @@ test('participant chat rooms full-transplant continuity after stale-session reco
       topic: 'Stale participant sessions should recover without losing continuity.',
       participantCatIds: [reviewerId, observerId],
       defaultRecipientId: reviewerId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -2549,7 +2536,6 @@ test('direct message full-transplants continuity when a restarted direct-recipie
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -2651,7 +2637,6 @@ test('direct message restarts the direct-recipient session when the provider tar
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -2734,7 +2719,6 @@ test('direct message restarts the direct-recipient session when the instance tar
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -2794,7 +2778,6 @@ test('provider default chat sends raw user text without default instructions on 
     {
       title: 'Default Thread',
       topic: 'Keep the runtime message raw.',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -2872,7 +2855,6 @@ test('provider default chat honors pending runtime memory flush hooks before res
     {
       title: 'Default thread',
       topic: 'Restart the default session after switching models.',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -3002,7 +2984,6 @@ test('provider default chat retransplants continuity after stale-session recover
     {
       title: 'Default Thread',
       topic: 'Recover stale sessions without losing continuity.',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -3242,8 +3223,7 @@ test(
       },
       now,
     );
-    state.bossCatId = state.cats[0].id;
-
+    state.cats.find((cat) => cat.id === state.cats[0].id).group = 'admin';
     state = createCat(
       state,
       {
@@ -3263,7 +3243,6 @@ test(
         roomMode: 'direct_message',
         participantCatIds: [companionId],
         defaultRecipientId: companionId,
-        skipBossCatGreeting: true,
       },
       now,
     );
@@ -3621,8 +3600,7 @@ test('direct message routes unmentioned turns to the direct recipient without wa
     },
     now,
   );
-  state.bossCatId = state.cats[0].id;
-
+  state.cats.find((cat) => cat.id === state.cats[0].id).group = 'admin';
   state = createCat(
     state,
     {
@@ -3642,7 +3620,6 @@ test('direct message routes unmentioned turns to the direct recipient without wa
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -3756,7 +3733,6 @@ test('direct message records targetStateId on real session_started messages', as
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -3818,7 +3794,6 @@ test('direct message updates the reused lease laneId when the same runtime sessi
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     startedAt,
   );
@@ -3896,7 +3871,6 @@ test('ensureTargetSession reuses a lane-attached lease even when the routing tar
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -3969,7 +3943,6 @@ test('ensureTargetSession only resolves channel task execution context once acro
       topic: 'Retry stale sessions without rereading core task execution context.',
       roomMode: 'chat_channel',
       participantCatIds: [companionId],
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -4051,7 +4024,6 @@ test('direct message records targetStateId on session_start_failed messages', as
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -4102,7 +4074,6 @@ test('a saved model choice the catalog no longer offers fails to start with what
     {
       title: 'Default Thread',
       topic: 'Explain a removed effort instead of the supervision prefix.',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'opus',
       pendingModelSelection: {
@@ -4153,7 +4124,6 @@ test('ensureTargetSession preserves sanitized participant execution targets when
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -4229,8 +4199,7 @@ test('direct message treats direct-recipient mentions as plain text and stays on
     },
     now,
   );
-  state.bossCatId = state.cats[0].id;
-
+  state.cats.find((cat) => cat.id === state.cats[0].id).group = 'admin';
   state = createCat(
     state,
     {
@@ -4250,7 +4219,6 @@ test('direct message treats direct-recipient mentions as plain text and stays on
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -4297,8 +4265,7 @@ test('direct message blocks explicit Boss Cat mentions instead of routing out of
     },
     now,
   );
-  state.bossCatId = state.cats[0].id;
-
+  state.cats.find((cat) => cat.id === state.cats[0].id).group = 'admin';
   state = createCat(
     state,
     {
@@ -4318,7 +4285,6 @@ test('direct message blocks explicit Boss Cat mentions instead of routing out of
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -4361,8 +4327,7 @@ test('direct message ignores workflow recommendations that target Boss Cat', asy
     },
     now,
   );
-  state.bossCatId = state.cats[0].id;
-
+  state.cats.find((cat) => cat.id === state.cats[0].id).group = 'admin';
   state = createCat(
     state,
     {
@@ -4382,7 +4347,6 @@ test('direct message ignores workflow recommendations that target Boss Cat', asy
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -4453,7 +4417,6 @@ test('direct message does not replace a stale direct-recipient session when runt
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -4541,7 +4504,6 @@ test('direct message does not replace a closed direct-recipient session when run
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -4629,7 +4591,6 @@ test('session-full errors stop immediately and clear the direct lane lease inste
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -4703,8 +4664,7 @@ test('direct message blocks unmentioned turns when the direct recipient is no lo
     },
     now,
   );
-  state.bossCatId = state.cats[0].id;
-
+  state.cats.find((cat) => cat.id === state.cats[0].id).group = 'admin';
   state = createCat(
     state,
     {
@@ -4724,7 +4684,6 @@ test('direct message blocks unmentioned turns when the direct recipient is no lo
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -4779,7 +4738,6 @@ test('already-awake route targets record skipped wake requests without a complet
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );

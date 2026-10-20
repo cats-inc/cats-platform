@@ -1986,7 +1986,7 @@ test('routeChannelMessage records Boss execution preparation proposals without T
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const store = new MemoryChatStore(state);
@@ -2120,7 +2120,7 @@ test('Boss execution preparation owner confirmation creates pending approval Tas
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const store = new MemoryChatStore(state);

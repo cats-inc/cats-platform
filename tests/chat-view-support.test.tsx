@@ -120,7 +120,6 @@ test('buildChatComposerRecipients preserves default execution-target controls fo
       },
     },
     defaultRecipientParticipant: null,
-    bossCatId: null,
     resolveParticipantCatRecord: () => null,
     resolveParticipantDisplayName: () => 'Claude',
   });

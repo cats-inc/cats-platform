@@ -7,7 +7,7 @@ import { createDefaultChatState } from '../src/products/chat/state/defaults.js';
 import {
   buildChannelView,
   createChannel,
-  setBossCat,
+  setCatGroup,
 } from '../src/products/chat/state/model/index.js';
 import { chatDeterministicPlannerSurface } from '../src/products/chat/state/deterministicRouterAdapter.js';
 import {
@@ -50,7 +50,7 @@ function createWorkMemoryPlan(body: string, options: { bossCat?: boolean } = {})
   assert.ok(catId);
   assert.equal(buildChannelView(state, channelId).assignedCats[0]?.mcpProfile, WORK_MCP_PROFILE_ID);
   if (options.bossCat) {
-    state = setBossCat(state, catId);
+    state = setCatGroup(state, catId, 'admin');
   }
 
   return buildOrchestratorTurnPlan(

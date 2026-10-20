@@ -38,29 +38,38 @@ function createHandlers(events) {
 
 test('settings cats telegram scope key stays stable across equivalent binding arrays', () => {
   const firstKey = createSettingsCatsTelegramScopeKey({
-    bossCatId: 'cat-boss',
+    bossCatIds: ['cat-boss'],
     botBindings: [
       { id: 'binding-a', status: 'active', updatedAt: '2026-03-23T00:00:00.000Z' },
       { id: 'binding-b', status: 'disabled', updatedAt: '2026-03-23T00:00:00.000Z' },
     ],
   });
   const secondKey = createSettingsCatsTelegramScopeKey({
-    bossCatId: 'cat-boss',
+    bossCatIds: ['cat-boss'],
     botBindings: [
       { id: 'binding-b', status: 'disabled', updatedAt: '2026-03-23T00:00:00.000Z' },
       { id: 'binding-a', status: 'active', updatedAt: '2026-03-23T00:00:00.000Z' },
     ],
   });
   const changedKey = createSettingsCatsTelegramScopeKey({
-    bossCatId: 'cat-boss',
+    bossCatIds: ['cat-boss'],
     botBindings: [
       { id: 'binding-a', status: 'active', updatedAt: '2026-03-24T00:00:00.000Z' },
       { id: 'binding-b', status: 'disabled', updatedAt: '2026-03-23T00:00:00.000Z' },
     ],
   });
 
+  const anotherBossKey = createSettingsCatsTelegramScopeKey({
+    bossCatIds: ['cat-boss', 'cat-second-boss'],
+    botBindings: [
+      { id: 'binding-a', status: 'active', updatedAt: '2026-03-23T00:00:00.000Z' },
+      { id: 'binding-b', status: 'disabled', updatedAt: '2026-03-23T00:00:00.000Z' },
+    ],
+  });
+
   assert.equal(firstKey, secondKey);
   assert.notEqual(firstKey, changedKey);
+  assert.notEqual(firstKey, anotherBossKey);
 });
 
 test('settings cats telegram auto loader does not re-fetch when the scope key is unchanged', async () => {

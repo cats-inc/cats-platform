@@ -27,9 +27,10 @@ import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js
 import { cloneAdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
 import { cloneConversationBehaviorPreferences } from '../../shared/conversationBehavior.js';
 import { createDefaultFolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
-import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/contracts.js';
+import type { AppShellPayload, ChatBotBindingSummary, ChatCatGroup, ChatState } from '../api/contracts.js';
 import { createUnavailableRuntimeSetupSummary } from '../../../runtime/setup.js';
 import { summarizeState } from './model/index.js';
+import { isAdminCat } from '../shared/catGroups.js';
 import { resolveSetupCompletionTimestamp } from './setupCompletion.js';
 
 type PlatformDesktopPreferencesInput =
@@ -113,7 +114,7 @@ export function createAppShell(
     },
     lobby: {
       animationMode: setup?.lobby?.animationMode ?? 'reduced',
-      cats: buildLobbyCats(summary.cats, chat.bossCatId),
+      cats: buildLobbyCats(summary.cats),
       guideCatAssist: setup?.lobbyGuideCatAssist ?? null,
     },
     language: {
@@ -127,7 +128,6 @@ export function createAppShell(
       id: chat.id,
       name: chat.name,
       selectedChannelId: chat.selectedChannelId,
-      bossCatId: chat.bossCatId,
       cats: summary.cats,
       channels: summary.channels,
       parallelChatGroups: summary.parallelChatGroups,
@@ -139,7 +139,6 @@ export function createAppShell(
       newChatDefaults: structuredClone(chat.newChatDefaults),
       capabilities: {
         ...chat.capabilities,
-        maxBossCats: config.maxBossCats,
         maxCats: config.maxCats,
         maxChatParticipants: config.maxChatParticipants,
         maxAudienceParticipants: config.maxAudienceParticipants,
@@ -184,6 +183,7 @@ function buildLobbyCats(
   cats: readonly {
     id: string;
     name: string;
+    group: ChatCatGroup;
     avatarColor: string | null;
     avatarUrl: string | null;
     status: string;
@@ -191,7 +191,6 @@ function buildLobbyCats(
     defaultExecutionTarget?: { provider: string; instance?: string | null; model?: string | null } | null;
     defaultModelSelection?: ProviderModelSelection | null;
   }[],
-  bossCatId: string | null,
 ): PlatformLobbyCatSummary[] {
   return cats
     .filter((cat) => cat.status === 'active')
@@ -200,7 +199,7 @@ function buildLobbyCats(
       name: cat.name,
       avatarColor: cat.avatarColor,
       avatarUrl: cat.avatarUrl,
-      isBoss: cat.id === bossCatId,
+      isBoss: isAdminCat(cat),
       createdAt: cat.createdAt,
       defaultExecutionTarget: cat.defaultExecutionTarget
         ? {

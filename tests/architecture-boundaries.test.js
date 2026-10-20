@@ -369,7 +369,7 @@ test('chat model re-exports dedicated cat mutation helpers instead of defining t
   assert.doesNotMatch(modelModule, /export function createCat\(/u);
   assert.match(catsModule, /export function createCat/u);
   assert.match(catsModule, /export function renameCat/u);
-  assert.match(catsModule, /export function setBossCat/u);
+  assert.match(catsModule, /export function setCatGroup/u);
 });
 
 test('chat model re-exports dedicated channel-group mutation helpers instead of defining them inline', async () => {
@@ -1468,10 +1468,8 @@ test('renderer app consumes dedicated derived-state helpers instead of defining 
   assert.match(appSource, /deriveAppRouteState/u);
   assert.match(appSource, /deriveAppViewState/u);
   assert.doesNotMatch(appSource, /const routeChannelTitle =/u);
-  assert.doesNotMatch(appSource, /const showBossCatAvatar =/u);
   assert.match(viewStateSource, /export function deriveAppRouteState/u);
   assert.match(viewStateSource, /export function deriveAppViewState/u);
-  assert.match(viewStateSource, /resolveBossCatName/u);
   assert.match(viewStateSource, /findDirectLaneForCat/u);
 });
 

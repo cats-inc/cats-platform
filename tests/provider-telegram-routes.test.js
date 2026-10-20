@@ -502,7 +502,7 @@ async function configureTelegramBossCat(baseUrl) {
     body: JSON.stringify({
       name: 'Smelly',
       provider: 'claude',
-      makeBoss: true,
+      group: 'admin',
     }),
   });
   assert.equal(
@@ -1064,7 +1064,6 @@ test('telegram status ignores orphaned Telegram bindings when Boss Cat is missin
   const chatStore = {
     async read() {
       return {
-        bossCatId: null,
         cats: [],
       };
     },
@@ -1468,7 +1467,7 @@ test('telegram bot binding mutations trigger command surface sync and carry stal
         body: JSON.stringify({
           platform: 'telegram',
           botName: 'boss_control_bot',
-          catId: appShellPayload.chat.bossCatId,
+          catId: appShellPayload.chat.cats.find((cat) => cat.group === 'admin')?.id,
           roomMode: 'direct_message',
           botToken: 'token-create-sync',
         }),
@@ -1939,7 +1938,6 @@ test('telegram webhook for a cat binding reuses that cat direct lane', async () 
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(directLaneResponse.status, 201);
@@ -2028,7 +2026,7 @@ test('telegram webhook normalizes legacy boss room mode for cat-bound bots into 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
     assert.equal(shellResponse.status, 200);
     const shellPayload = await shellResponse.json();
-    const bossCatId = shellPayload.chat.bossCatId;
+    const bossCatId = shellPayload.chat.cats.find((cat) => cat.group === 'admin')?.id;
     assert.ok(bossCatId);
 
     const bindingResponse = await fetch(`${baseUrl}/api/bot-bindings`, {

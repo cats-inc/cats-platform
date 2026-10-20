@@ -43,7 +43,6 @@ function directLaneInput(catId, overrides = {}) {
     roomMode: 'direct_message',
     defaultRecipientId: catId,
     participantCatIds: [catId],
-    skipBossCatGreeting: true,
     ...overrides,
   };
 }

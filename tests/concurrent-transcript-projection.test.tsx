@@ -257,7 +257,6 @@ test('ConversationTranscriptPanel keeps compare_cards layout for completed concu
       visibleMessages={[...visibleMessages]}
       workflow={workflow}
       cats={[]}
-      bossCatId={null}
       selectedChannel={SELECTED_CHANNEL}
       selectedChannelId="channel-1"
       disabledMentionNames={[]}
@@ -309,7 +308,6 @@ test('ConversationTranscriptPanel falls back to raw transcript bubbles when a du
       visibleMessages={[...visibleMessages]}
       workflow={workflow}
       cats={[]}
-      bossCatId={null}
       selectedChannel={SELECTED_CHANNEL}
       selectedChannelId="channel-1"
       disabledMentionNames={[]}
@@ -361,7 +359,6 @@ test('ConversationTranscriptPanel keeps compare_cards layout when driven with st
       visibleMessages={[...visibleMessages]}
       workflow={workflow}
       cats={[]}
-      bossCatId={null}
       selectedChannel={SELECTED_CHANNEL}
       selectedChannelId="channel-1"
       disabledMentionNames={[]}
@@ -435,7 +432,6 @@ test('ConversationTranscriptPanel renders copy actions for completed assistant b
         lastOutcomeEvent: null,
       } as never}
       cats={[]}
-      bossCatId={null}
       selectedChannel={SELECTED_CHANNEL}
       selectedChannelId="channel-1"
       disabledMentionNames={[]}
@@ -525,7 +521,6 @@ test('ConversationTranscriptPanel shows typing dots for a streaming segment that
         lastOutcomeEvent: null,
       } as never}
       cats={[]}
-      bossCatId={null}
       selectedChannel={SELECTED_CHANNEL}
       selectedChannelId="channel-1"
       disabledMentionNames={[]}

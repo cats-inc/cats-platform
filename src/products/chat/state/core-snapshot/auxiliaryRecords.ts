@@ -51,11 +51,8 @@ export function normalizeBotBinding(
     orchestratorActorId: readString(bindingRecord.orchestratorActorId),
     catActorId:
       readNullableString(bindingRecord.catActorId)
-      ?? readNullableString(bindingRecord.boundCatActorId)
-      ?? (chat.bossCatId ? createCatActorId(chat.bossCatId) : null),
-    bossCatActorId:
-      readNullableString(bindingRecord.bossCatActorId)
-      ?? (chat.bossCatId ? createCatActorId(chat.bossCatId) : null),
+      ?? readNullableString(bindingRecord.boundCatActorId),
+    bossCatActorId: readNullableString(bindingRecord.bossCatActorId),
     botToken: readNullableString(bindingRecord.botToken),
     webhookSecret: readNullableString(bindingRecord.webhookSecret),
     inboundMode,

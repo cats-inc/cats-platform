@@ -632,7 +632,6 @@ test('mentioning a companion in a Recents thread hydrates the participant runtim
         title: 'Default thread',
         topic: 'Start default, then bring a companion into the Recents chat.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
         pendingProvider: 'antigravity',
         pendingModel: 'antigravity-default',
       }),

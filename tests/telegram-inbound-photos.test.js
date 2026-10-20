@@ -113,7 +113,6 @@ test('the chat room bridge stores inbound pictures in the room\'s attachment fol
     roomMode: 'direct_message',
     defaultRecipientId: catId,
     participantCatIds: [catId],
-    skipBossCatGreeting: true,
   }, NOW);
   const roomId = chat.selectedChannelId;
   // Without this the copy would land in the real ~/.cats/runtime/data.

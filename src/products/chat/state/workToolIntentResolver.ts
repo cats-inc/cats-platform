@@ -17,6 +17,7 @@ import { resolveWorkExecutionPreparationPhase } from '../../work/shared/workExec
 import { resolveWorkExternalBindingPhase } from '../../work/shared/workExternalBindingPhase.js';
 import { resolveWorkExternalIssueImportPhase } from '../../work/shared/workExternalIssueImportPhase.js';
 import type { ChatState } from '../api/contracts.js';
+import { isAdminCatId } from '../shared/catGroups.js';
 
 interface WorkToolIntentPhaseResolution {
   phase: WorkToolPhase;
@@ -159,8 +160,7 @@ function isBossCatTarget(input: OrchestratorToolIntentResolveInput<ChatState>): 
   }
 
   return input.participantKind === 'cat'
-    && typeof input.state.bossCatId === 'string'
-    && input.state.bossCatId === input.participantId;
+    && isAdminCatId(input.state.cats, input.participantId);
 }
 
 function matchesTriageIntent(rawText: string): boolean {

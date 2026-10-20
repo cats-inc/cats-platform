@@ -28,7 +28,6 @@ test('createChannel treats entryKind=direct as a direct lane when roomMode is om
     originSurface: 'chat',
     entryKind: 'direct',
     participantCatIds: [catId],
-    skipBossCatGreeting: true,
   });
 
   const channel = next.channels[0];
@@ -43,7 +42,6 @@ test('createChannel treats entryKind=default as a provider default chat when par
     topic: 'Draft next step',
     originSurface: 'chat',
     entryKind: 'default',
-    skipBossCatGreeting: true,
   });
 
   const channel = next.channels[0];

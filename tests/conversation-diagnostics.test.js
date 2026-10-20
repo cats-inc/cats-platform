@@ -106,7 +106,7 @@ for (const originSurface of ['chat', 'code']) test(`${originSurface}: selected i
   assert.ok(!partial.text.includes('private-observe-token'));
   unavailable = false;
   const created = await fetch(`${base}/api/channels`, { method: 'POST', headers, body: JSON.stringify({ title: 'Debugger', topic: 'Read selected incident',
-    originSurface, entryKind: 'group', repoPath: platformDir, skipBossCatGreeting: true,
+    originSurface, entryKind: 'group', repoPath: platformDir,
     temporaryParticipants: [{ participantId: 'debugger', name: 'Debugger', provider: 'codex', instance: 'native', model: 'fixture' }] }) });
   assert.equal(created.status, 201, await created.clone().text());
   const { channel } = await created.json();

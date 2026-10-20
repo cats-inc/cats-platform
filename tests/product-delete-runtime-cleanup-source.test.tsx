@@ -167,7 +167,6 @@ async function withServer(
         platformDir: path.join(tempStateDir, 'platform'),
         platformStateDir: path.join(tempStateDir, 'platform', 'state'),
         platformConfigDir: path.join(tempStateDir, 'platform', 'config'),
-        maxBossCats: 1,
         maxCats: 5,
         maxChatParticipants: 5,
         maxAudienceParticipants: 3,

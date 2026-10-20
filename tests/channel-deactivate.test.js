@@ -228,7 +228,6 @@ test('POST /api/channels/:id/deactivate closes the orchestrator runtime session 
     topic: 'deactivate orchestrator session',
     originSurface: 'chat',
     pendingProvider: 'claude',
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
   state = setChannelOrchestratorLease(state, channelId, {

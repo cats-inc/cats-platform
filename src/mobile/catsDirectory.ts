@@ -39,15 +39,15 @@ export function selectMobileCatsDirectory(
   options: SelectMobileCatsDirectoryOptions = {},
 ): MobileCatsDirectoryData {
   // The mobile chat contract (`MobileChatShellState`) is intentionally
-  // a strict subset of the desktop one — it does not carry bossCatId or
-  // avatarUrl today. Surface the fields we have; extend the boundary
-  // contract when Phase 6 lands richer entity payloads.
+  // a strict subset of the desktop one — it does not carry avatarUrl
+  // today. Surface the fields we have; extend the boundary contract when
+  // Phase 6 lands richer entity payloads.
   const cats: MobileCatsDirectoryCatSummary[] = payload.chat.cats.map((cat) => ({
     id: cat.id,
     name: cat.name,
     avatarUrl: null,
     avatarColor: cat.avatarColor ?? null,
-    isBoss: false,
+    isBoss: cat.group === 'admin',
   }));
 
   const limited =

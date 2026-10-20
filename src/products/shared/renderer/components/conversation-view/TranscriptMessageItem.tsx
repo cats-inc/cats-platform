@@ -29,6 +29,7 @@ import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import type {
   ResolvedChannelParticipant,
 } from '../../../channelParticipants.js';
+import { isAdminCat } from '../../../../chat/shared/catGroups.js';
 
 const relayActions: Array<{
   command: ParallelChatRelayCommandKind;
@@ -46,7 +47,6 @@ export interface TranscriptMessageItemProps {
   message: SelectedChannelView['messages'][number];
   stackClassName: string;
   cats: ChatCat[];
-  bossCatId: string | null;
   selectedChannelId: string;
   disabledMentionNames: string[];
   compareBusy: boolean;
@@ -92,7 +92,6 @@ export function TranscriptMessageItem({
   message,
   stackClassName,
   cats,
-  bossCatId,
   selectedChannelId,
   disabledMentionNames,
   compareBusy,
@@ -193,7 +192,7 @@ export function TranscriptMessageItem({
           ) : speaker.kind === 'cat' && speaker.cat ? (
             <div className="transcriptMessageTop">
               <div
-                className={speaker.cat.id === bossCatId
+                className={isAdminCat(speaker.cat)
                   ? 'catAvatar catAvatarBoss transcriptAvatar'
                   : 'catAvatar transcriptAvatar'}
                 style={speaker.cat.avatarUrl

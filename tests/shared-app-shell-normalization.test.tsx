@@ -27,7 +27,6 @@ function createLegacyPayload(): MutablePayload {
         instance: null,
         model: 'claude-sonnet-4-6',
       },
-      bossCatId: 'cat-boss',
       cats: [
         {
           id: 'cat-nova',

@@ -210,9 +210,6 @@ export interface ConversationViewProps {
   channelPlusMenuRef: RefObject<HTMLDivElement>;
   channelFileInputRef: RefObject<HTMLInputElement>;
   activeAssignedCats: SelectedChannelView['assignedCats'];
-  bossCatName: string;
-  bossCatAvatarColor: string | null;
-  showBossCatAvatar: boolean;
   onComposerChange: (value: string) => void;
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
@@ -294,9 +291,6 @@ export function ConversationView({
   channelPlusMenuRef,
   channelFileInputRef,
   activeAssignedCats,
-  bossCatName,
-  bossCatAvatarColor,
-  showBossCatAvatar,
   onComposerChange,
   onComposerKeyDown,
   onSendMessage,
@@ -398,7 +392,6 @@ export function ConversationView({
     defaultRecipientParticipant,
     defaultRecipientCat,
     directLaneCat,
-    bossCatRecord,
     defaultRecipientCatRecord,
     assignedCatRecords,
     assignedAdhocParticipants,
@@ -413,9 +406,7 @@ export function ConversationView({
     payload,
     selectedChannel,
     activeAssignedCats,
-    showBossCatAvatar,
     isDirectLane,
-    isDefaultChatComposer,
   });
   const layoutMode: ChatLayoutMode = isDirectLane
     ? 'direct_message'
@@ -498,20 +489,16 @@ export function ConversationView({
   const showRosterAvatars = resolveShowRosterAvatars({
     isDirectLane,
     defaultRecipientCat,
-    showBossCatAvatar,
-    isDefaultChatComposer,
     activeRoomParticipants,
   });
   const composerStackParticipants = useMemo(
     () => buildChatComposerStackParticipants({
       activeRoomParticipants,
-      bossCatId: payload.chat.bossCatId,
       resolveParticipantCatRecord,
       resolveParticipantDisplayName,
     }),
     [
       activeRoomParticipants,
-      payload.chat.bossCatId,
       resolveParticipantCatRecord,
       resolveParticipantDisplayName,
     ],
@@ -765,7 +752,6 @@ export function ConversationView({
       isDefaultChatComposer,
       selectedExecutionTarget,
       defaultRecipientParticipant,
-      bossCatId: payload.chat.bossCatId,
       resolveParticipantCatRecord,
       resolveParticipantDisplayName,
     });
@@ -774,7 +760,6 @@ export function ConversationView({
     directLaneCat,
     isDirectLane,
     isDefaultChatComposer,
-    payload.chat.bossCatId,
     resolveParticipantCatRecord,
     resolveParticipantDisplayName,
     selectedExecutionTarget,
@@ -1117,7 +1102,6 @@ export function ConversationView({
         visibleMessages={visibleMessages}
         workflow={selectedChannel.roomRouting.workflow}
         cats={payload.chat.cats}
-        bossCatId={payload.chat.bossCatId}
         selectedChannelId={selectedChannel.id}
         disabledMentionNames={directLaneExcludedMentionNames}
         busy={busy}

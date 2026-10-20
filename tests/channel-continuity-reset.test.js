@@ -213,7 +213,6 @@ test('PATCH /api/channels/:channelId flushes pending runtime memory hooks before
         pendingProvider: 'claude',
         pendingInstance: 'native',
         pendingModel: 'claude-opus-4-6',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);

@@ -44,6 +44,7 @@ import {
   readModelSettingsFocusState,
   scrollModelSettingsFieldIntoView,
 } from '../../../../../app/renderer/savedSelectionAttention.js';
+import { isAdminCat } from '../../../../chat/shared/catGroups.js';
 
 export interface SettingsCatsRegistryController<TBotForm> {
   botForm: TBotForm;
@@ -55,7 +56,7 @@ export interface SettingsCatsRegistryController<TBotForm> {
   onArchiveCat: (catId: string, catName: string) => Promise<void>;
   onUnarchiveCat: (catId: string, catName: string) => Promise<void>;
   onDeleteCat: (catId: string, catName: string) => Promise<void>;
-  onMakeBossCat: (catId: string) => Promise<void>;
+  onSetBossCat: (catId: string, bossCat: boolean) => Promise<void>;
   onMcpProfileChange: (catId: string, mcpProfile: string) => Promise<void>;
   onRenameCat: (catId: string) => Promise<void>;
   onSkillChange: (catId: string, skillProfile: string) => Promise<void>;
@@ -151,7 +152,7 @@ export function SettingsCatsCanvas({
     performCreateCat,
     onDeleteBinding,
     onDeleteCat,
-    onMakeBossCat,
+    onSetBossCat,
     onMcpProfileChange,
     onArchiveCat,
     onUnarchiveCat,
@@ -188,11 +189,11 @@ export function SettingsCatsCanvas({
   );
   const activeCatCount = activeCats.length;
   const sortedActiveCats = useMemo(
-    () => sortChatCatsForDisplay(activeCats, { bossCatIds: payload.chat.bossCatId }),
-    [activeCats, payload.chat.bossCatId],
+    () => sortChatCatsForDisplay(activeCats),
+    [activeCats],
   );
   const sortedArchivedCats = useMemo(
-    () => sortChatCatsForDisplay(archivedCats, { bossCatIds: null }),
+    () => sortChatCatsForDisplay(archivedCats),
     [archivedCats],
   );
   const atCatLimit = activeCatCount >= payload.chat.capabilities.maxCats;
@@ -436,7 +437,7 @@ export function SettingsCatsCanvas({
         <nav className="catsSelectorStrip" role="tablist" aria-label={t(messageKeys.sharedSettingsCatsSelectCatAria)}>
           {sortedActiveCats.map((cat) => {
             const isSelected = effectiveMode === 'view' && cat.id === selectedCatId;
-            const isBoss = cat.id === payload.chat.bossCatId;
+            const isBoss = isAdminCat(cat);
             const className = [
               'catAvatar',
               'catsSelectorAvatar',
@@ -542,7 +543,7 @@ export function SettingsCatsCanvas({
                 effectiveMode === 'create' ? t(messageKeys.sharedCatsCreateNewCat) : selectedCat ? (
                   <>
                     {selectedCat.name}
-                    {selectedCat.id === payload.chat.bossCatId ? (
+                    {isAdminCat(selectedCat) ? (
                       <span className="catsDetailBossTag">{t(messageKeys.sharedCatInspectBossLabel)}</span>
                     ) : null}
                     {selectedCat.status === 'archived' ? (
@@ -670,26 +671,17 @@ export function SettingsCatsCanvas({
                           </button>
                         ) : null}
                       </div>
-                  <label className="fieldLabelInline catsIdentityBossToggle">
+                  <label
+                    className="fieldLabelInline catsIdentityBossToggle"
+                    data-tooltip={t(messageKeys.sharedSettingsCatsBossCatHint)}
+                  >
                     <input
                       type="checkbox"
                       checked={catForm.makeBoss}
-                      onChange={async (event) => {
-                        const next = event.target.checked;
-                        if (next && payload.chat.bossCatId) {
-                          const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
-                          const confirmed = await confirm({
-                            title: t(messageKeys.sharedSettingsCatsChangeBossCatTitle),
-                            message: t(messageKeys.sharedSettingsCatsChangeBossCatMessage, {
-                              name: currentBoss?.name ?? (catForm.name.trim() || t(messageKeys.sharedCatsCreateNewCat)),
-                            }),
-                            confirmLabel: t(messageKeys.sharedSettingsCatsConfirm),
-                          });
-                          if (!confirmed) return;
-                        }
+                      onChange={(event) => {
                         setCatForm({
                           ...catForm,
-                          makeBoss: next,
+                          makeBoss: event.target.checked,
                         });
                       }}
                     />
@@ -890,27 +882,18 @@ export function SettingsCatsCanvas({
                           </button>
                         ) : null}
                       </div>
-                      {!isArchived && selectedCat.id !== payload.chat.bossCatId ? (
-                        <label className="fieldLabelInline catsIdentityBossToggle">
+                      {!isArchived ? (
+                        <label
+                          className="fieldLabelInline catsIdentityBossToggle"
+                          data-tooltip={t(messageKeys.sharedSettingsCatsBossCatHint)}
+                        >
                           <input
                             type="checkbox"
-                            checked={false}
+                            checked={isAdminCat(selectedCat)}
                             onChange={async (event) => {
-                              if (!event.target.checked) return;
-                              if (payload.chat.bossCatId && payload.chat.bossCatId !== selectedCat.id) {
-                                const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
-                                const confirmed = await confirm({
-                                  title: t(messageKeys.sharedSettingsCatsChangeBossCatTitle),
-                                  message: t(messageKeys.sharedSettingsCatsChangeBossCatMessage, {
-                                    name: selectedCat.name,
-                                  }),
-                                  confirmLabel: t(messageKeys.sharedSettingsCatsConfirm),
-                                });
-                                if (!confirmed) return;
-                              }
                               await commitCatProfile(
                                 selectedCat.id,
-                                { makeBoss: true },
+                                { group: event.target.checked ? 'admin' : 'standard' },
                                 t(messageKeys.sharedSettingsCatsSetBossCatError),
                               );
                             }}
@@ -1081,7 +1064,7 @@ export function SettingsCatsCanvas({
                     busy={busy}
                     botBindings={botBindings}
                     cat={selectedCat}
-                    isBossCat={selectedCat.id === payload.chat.bossCatId}
+                    isBossCat={isAdminCat(selectedCat)}
                     memoryController={memoryController}
                     registryController={{
                       botForm,
@@ -1090,7 +1073,7 @@ export function SettingsCatsCanvas({
                       setRenameValue,
                       onCreateBinding,
                       onDeleteBinding,
-                      onMakeBossCat,
+                      onSetBossCat,
                       onMcpProfileChange,
                       onRenameCat,
                       onSkillChange,
@@ -1110,7 +1093,7 @@ export function SettingsCatsCanvas({
                     busy={busy}
                     botBindings={botBindings}
                     cat={selectedCat}
-                    isBossCat={selectedCat.id === payload.chat.bossCatId}
+                    isBossCat={isAdminCat(selectedCat)}
                     memoryController={memoryController}
                     registryController={{
                       botForm,
@@ -1119,7 +1102,7 @@ export function SettingsCatsCanvas({
                       setRenameValue,
                       onCreateBinding,
                       onDeleteBinding,
-                      onMakeBossCat,
+                      onSetBossCat,
                       onMcpProfileChange,
                       onRenameCat,
                       onSkillChange,

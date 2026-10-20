@@ -234,7 +234,7 @@ test('POST /api/platform/setup/complete with createGuideCat=true persists a plat
     assert.ok(payload.setupCompleteAt, 'setupCompleteAt should be set');
     assert.equal(payload.ownerDisplayName, 'Kenny');
     assert.equal(payload.lastProductSurface, null);
-    assert.equal(payload.chat.bossCatId, null, 'bossCatId should remain null');
+    assert.equal(payload.chat.cats.some((cat) => cat.group === 'admin'), false, 'no cat should become a Boss Cat');
     assert.deepEqual(payload.chat.capabilities.availableSurfaces, ['chat', 'work', 'code']);
     assert.equal(payload.chat.cats.length, 0, 'platform setup should not inject Guide Cat into chat cats');
     assert.equal(payload.guideCat?.name, GUIDE_CAT_SYSTEM_NAME);
@@ -457,7 +457,7 @@ test('POST /api/platform/setup/complete with createGuideCat=false does not creat
     assert.ok(payload.setupCompleteAt, 'setupCompleteAt should be set');
     assert.equal(payload.ownerDisplayName, 'Kenny');
     assert.equal(payload.lastProductSurface, null);
-    assert.equal(payload.chat.bossCatId, null, 'bossCatId should remain null');
+    assert.equal(payload.chat.cats.some((cat) => cat.group === 'admin'), false, 'no cat should become a Boss Cat');
     assert.equal(payload.chat.cats.length, 0, 'no cats should be created');
     assert.equal(payload.guideCat, null);
   });
@@ -573,7 +573,7 @@ test('chat functions normally after platform setup without Guide Cat', async () 
     assert.equal(shellResponse.status, 200);
     const shell = await shellResponse.json();
     assert.ok(shell.setupCompleteAt);
-    assert.equal(shell.chat.bossCatId, null);
+    assert.equal(shell.chat.cats.some((cat) => cat.group === 'admin'), false);
     assert.equal(shell.chat.channels.length, 0, 'no channels created during setup');
   });
 });
@@ -596,7 +596,7 @@ test('POST /api/platform/setup/complete still honors legacy selectedProduct for 
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.equal(payload.lastProductSurface, 'work');
-    assert.equal(payload.chat.bossCatId, null);
+    assert.equal(payload.chat.cats.some((cat) => cat.group === 'admin'), false);
     assert.equal(payload.chat.cats.length, 0);
     assert.equal(payload.guideCat?.name, GUIDE_CAT_SYSTEM_NAME);
     assert.equal(payload.guideCat?.executionTarget.provider, 'claude');
@@ -620,7 +620,7 @@ test('POST /api/platform/setup/complete still accepts legacy Boss Cat provider a
 
     assert.equal(response.status, 200);
     const payload = await response.json();
-    assert.equal(payload.chat.bossCatId, null, 'platform setup should not assign Boss Cat');
+    assert.equal(payload.chat.cats.some((cat) => cat.group === 'admin'), false, 'platform setup should not assign Boss Cat');
     assert.equal(payload.chat.cats.length, 0);
     assert.equal(payload.guideCat?.name, GUIDE_CAT_SYSTEM_NAME);
     assert.equal(payload.guideCat?.executionTarget.provider, 'claude');
@@ -673,7 +673,7 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
 
     assert.equal(payload.setupCompleteAt, null, 'setupCompleteAt should be cleared');
     assert.equal(payload.lastProductSurface, null, 'lastProductSurface should be cleared');
-    assert.equal(payload.chat.bossCatId, null, 'bossCatId should be cleared');
+    assert.equal(payload.chat.cats.some((cat) => cat.group === 'admin'), false, 'Boss Cats should be cleared');
     assert.deepEqual({
       startAtLogin: payload.desktop.startAtLogin,
       openWindowOnStartup: payload.desktop.openWindowOnStartup,
@@ -1221,7 +1221,7 @@ test('GET /api/app-shell treats legacy active chat state as setup-complete even 
     {
       name: 'Boss Cat',
       provider: 'claude',
-      makeBoss: true,
+      group: 'admin',
     },
     new Date('2026-03-25T00:00:00.000Z'),
   );
@@ -1233,6 +1233,6 @@ test('GET /api/app-shell treats legacy active chat state as setup-complete even 
 
     const payload = await response.json();
     assert.ok(payload.setupCompleteAt, 'legacy active state should not be forced back into setup');
-    assert.ok(payload.chat.bossCatId, 'boss cat should remain visible');
+    assert.ok(payload.chat.cats.some((cat) => cat.group === 'admin'), 'boss cat should remain visible');
   }, chatStore);
 });

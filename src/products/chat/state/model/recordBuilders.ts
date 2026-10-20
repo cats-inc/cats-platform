@@ -24,6 +24,7 @@ import { normalizeCatSkillProfile } from '../../../../shared/skillProfiles.js';
 import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { defaultCatProducts, normalizePlatformSurfaceList } from '../../../../shared/platformSurfaces.js';
 import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
+import { normalizeChatCatGroup } from '../../shared/catGroups.js';
 import { resolveTemporaryParticipantName } from '../../shared/participantNaming.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import { parseMentions } from '../mentionParsing.js';
@@ -113,6 +114,7 @@ export function createCatRecord(input: CreateCatInput, nowIso: string): ChatCat 
   return {
     id: randomUUID(),
     name,
+    group: normalizeChatCatGroup(input.group),
     roles: normalizeList(input.roles),
     skillProfile: normalizeCatSkillProfile(input.skillProfile),
     mcpProfile: normalizeCatMcpProfile(input.mcpProfile),

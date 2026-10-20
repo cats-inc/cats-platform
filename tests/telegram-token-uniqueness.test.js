@@ -76,10 +76,10 @@ async function seedBossCat(chatStore) {
   const nextState = createCat(state, {
     name: 'BossBot',
     provider: 'claude',
-    makeBoss: true,
+    group: 'admin',
   }, new Date('2026-05-24T12:00:00.000Z'));
   await chatStore.write(nextState);
-  const bossCatId = nextState.bossCatId;
+  const bossCatId = nextState.cats.find((cat) => cat.group === 'admin')?.id;
   assert.ok(bossCatId, 'seeded Boss Cat should be available');
   return bossCatId;
 }

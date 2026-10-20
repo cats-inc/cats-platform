@@ -85,6 +85,7 @@ import {
   resolveNextPendingExecutionTarget,
 } from '../pendingExecutionTarget.js';
 import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
+import { isAdminCatId, listActiveAdminCats } from '../../shared/catGroups.js';
 import {
   type RuntimeTransportContext,
 } from '../runtimeTargeting.js';
@@ -3399,22 +3400,17 @@ function resolveVisibleWorkItemIdsForExecutionPreparation(input: {
 }
 
 function isBossCatAddressedByChannel(state: ChatState, channelId: string): boolean {
-  const bossCatId = state.bossCatId?.trim();
-  if (!bossCatId) {
-    return false;
-  }
-
   const channel = requireChannel(state, channelId);
   const defaultRecipientId = channel.roomRouting?.defaultRecipientId?.trim()
     || channel.recoverableDirectLaneCatId?.trim()
     || null;
-  if (defaultRecipientId === bossCatId) {
+  if (isAdminCatId(state.cats, defaultRecipientId)) {
     return true;
   }
 
   return channel.catAssignments.some((assignment) =>
     assignment.status === 'active'
-    && assignment.catId === bossCatId
+    && isAdminCatId(state.cats, assignment.catId)
     && assignment.participantId === defaultRecipientId);
 }
 
@@ -4601,8 +4597,8 @@ function resolveWorkExecutionPreparationActorRef(
   state: ChatState,
   core: CatsCoreState,
 ): string {
-  const bossCatId = state.bossCatId?.trim();
-  return bossCatId ? createCatActorId(bossCatId) : core.ownerProfile.actorId;
+  const adminCat = listActiveAdminCats(state.cats)[0] ?? null;
+  return adminCat ? createCatActorId(adminCat.id) : core.ownerProfile.actorId;
 }
 
 function buildWorkTaskDetailPath(taskId: string): string {

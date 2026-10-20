@@ -24,7 +24,7 @@ export type WorkspaceBusyState =
         | 'remove'
         | 'rename'
         | 'products'
-        | 'makeBoss'
+        | 'bossCat'
         | 'skill'
         | 'unarchive';
       catId: string;
@@ -115,7 +115,7 @@ export function createCatBusyState(
     | 'remove'
     | 'rename'
     | 'products'
-    | 'makeBoss'
+    | 'bossCat'
     | 'skill'
     | 'unarchive',
   catId: string,
@@ -128,7 +128,7 @@ export function createCatBusyState(
     | 'remove'
     | 'rename'
     | 'products'
-    | 'makeBoss'
+    | 'bossCat'
     | 'skill'
     | 'unarchive'
     | 'create'
@@ -255,7 +255,7 @@ export function isCatBusy(
     | 'remove'
     | 'rename'
     | 'products'
-    | 'makeBoss'
+    | 'bossCat'
     | 'skill'
     | 'unarchive'
     | 'create'

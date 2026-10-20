@@ -40,6 +40,7 @@ function createPayload(): MobileAppShellPayload {
         {
           id: 'cat-1',
           name: 'Catlas',
+          group: 'standard',
           avatarColor: null,
           avatarUrl: null,
           createdAt: '2026-05-01T00:00:00.000Z',
@@ -143,9 +144,9 @@ test('selectMobileCatsDirectory honors catsLimit when slicing the projection', (
       ...createPayload(),
       chat: {
         cats: [
-          { id: 'a', name: 'A', avatarColor: null, avatarUrl: null, createdAt: '2026-05-01T00:00:00.000Z', status: 'active', products: ['chat'] },
-          { id: 'b', name: 'B', avatarColor: null, avatarUrl: null, createdAt: '2026-05-02T00:00:00.000Z', status: 'active', products: ['chat'] },
-          { id: 'c', name: 'C', avatarColor: null, avatarUrl: null, createdAt: '2026-05-03T00:00:00.000Z', status: 'active', products: ['chat'] },
+          { id: 'a', name: 'A', group: 'standard', avatarColor: null, avatarUrl: null, createdAt: '2026-05-01T00:00:00.000Z', status: 'active', products: ['chat'] },
+          { id: 'b', name: 'B', group: 'standard', avatarColor: null, avatarUrl: null, createdAt: '2026-05-02T00:00:00.000Z', status: 'active', products: ['chat'] },
+          { id: 'c', name: 'C', group: 'standard', avatarColor: null, avatarUrl: null, createdAt: '2026-05-03T00:00:00.000Z', status: 'active', products: ['chat'] },
         ],
         channels: [],
       },
@@ -581,6 +582,7 @@ function buildCat(
   overrides: Partial<MobileChatCat> & Pick<MobileChatCat, 'id' | 'name' | 'createdAt'>,
 ): MobileChatCat {
   return {
+    group: 'standard',
     avatarColor: null,
     avatarUrl: null,
     status: 'active',

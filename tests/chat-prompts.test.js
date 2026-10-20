@@ -560,7 +560,6 @@ test('multi-participant cat routing emits a targeted handoff package for first-t
         model: 'antigravity-default',
       },
     ],
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.channels[0].id;
   const activeParticipants = buildChannelView(state, channelId).assignedParticipants
@@ -677,7 +676,6 @@ test('multi-participant cat routing keeps continuity metadata null when no hando
         model: 'antigravity-default',
       },
     ],
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.channels[0].id;
   const activeParticipants = buildChannelView(state, channelId).assignedParticipants

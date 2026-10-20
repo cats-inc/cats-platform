@@ -24,7 +24,6 @@ export async function createConversationNavigationFixture(root: string, includeC
         entryId: `model-${index + 1}`, entryMode: 'explicit',
         controls: { [`${providers[index]}.reasoning_effort`]: efforts[index] },
       },
-      skipBossCatGreeting: true,
     }, new Date(`2026-09-18T01:00:0${index}.000Z`));
     const id = state.selectedChannelId;
     ids.push(id);
@@ -44,7 +43,6 @@ export async function createConversationNavigationFixture(root: string, includeC
         title: `${entryKind} fixture`, topic: '', originSurface: 'chat', entryKind,
         roomMode: entryKind === 'direct' ? 'direct_message' : 'chat_channel',
         participantCatIds: entryKind === 'direct' ? [catIds[0]] : catIds,
-        skipBossCatGreeting: true,
       });
       const id = state.selectedChannelId;
       state.channels.find((channel) => channel.id === id)!.messages.push({

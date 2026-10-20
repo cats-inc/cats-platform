@@ -15,6 +15,7 @@ import type {
 } from '../../api/contracts.js';
 import { isCompanionCat, withCompanionRole } from '../../../../shared/companionRole.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
+import { listActiveAdminCats } from '../../shared/catGroups.js';
 import { resolveChannelCanonicalIdentity } from '../../shared/channelCanonicalIdentity.js';
 import { createChannelExportFilename } from '../../shared/channelPaths.js';
 import { buildParallelChatMemberLabel } from '../../shared/parallelChats.js';
@@ -158,11 +159,7 @@ export function resolveLeadParticipantLease(
 }
 
 export function resolveOrchestratorDisplayName(state: ChatState): string {
-  if (state.bossCatId) {
-    const cat = state.cats.find((candidate) => candidate.id === state.bossCatId);
-    if (cat) return cat.name;
-  }
-  return ORCHESTRATOR_NAME;
+  return listActiveAdminCats(state.cats)[0]?.name ?? ORCHESTRATOR_NAME;
 }
 
 export function resolveParticipantLifecycleState(

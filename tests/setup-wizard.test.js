@@ -171,7 +171,7 @@ async function createBossCat(baseUrl, name = 'Smelly') {
       provider: 'claude',
       instance: 'native',
       model: 'claude-opus-4-6',
-      makeBoss: true,
+      group: 'admin',
     }),
   });
   if (response.status !== 201 && response.status !== 200) {
@@ -188,7 +188,7 @@ test('GET /api/app-shell returns setupCompleteAt: null for uninitialized chat', 
     const payload = await response.json();
     assert.equal(payload.setupCompleteAt, null);
     assert.equal(payload.ownerDisplayName, 'Owner');
-    assert.equal(payload.chat.bossCatId, null);
+    assert.equal(payload.chat.cats.some((cat) => cat.group === 'admin'), false);
   });
 });
 
@@ -241,7 +241,7 @@ test('after setup complete, GET /api/app-shell reflects initialized state', asyn
     const payload = await response.json();
     assert.ok(payload.setupCompleteAt);
     assert.equal(payload.ownerDisplayName, 'Kenny');
-    assert.ok(payload.chat.bossCatId);
+    assert.ok(payload.chat.cats.some((cat) => cat.group === 'admin'));
     assert.equal(payload.chat.channels.length, 0);
   });
 });
@@ -271,21 +271,19 @@ test('POST /api/setup/reset clears setup state and returns clean chat', async ()
     const payload = await resetResponse.json();
     assert.equal(payload.setupCompleteAt, null);
     assert.equal(payload.ownerDisplayName, 'Owner');
-    assert.equal(payload.chat.bossCatId, null);
+    assert.equal(payload.chat.cats.some((cat) => cat.group === 'admin'), false);
     assert.deepEqual(payload.chat.cats, []);
     assert.deepEqual(payload.chat.channels, []);
   });
 });
 
-test('resolveOrchestratorDisplayName returns boss cat name when set, Orchestrator when null', () => {
+test('resolveOrchestratorDisplayName uses the first active Boss Cat, Orchestrator otherwise', () => {
+  const cat = (id, name, group) => ({ id, name, group, roles: [], skillProfile: null, mcpProfile: null, status: 'active', createdAt: '', updatedAt: '', archivedAt: null, defaultExecutionTarget: { provider: 'claude', instance: null, model: null }, memory: { updatedAt: null, content: null } });
   const state = {
     id: 'default',
     name: 'Chat',
     selectedChannelId: '',
-    bossCatId: 'cat-1',
-    cats: [
-      { id: 'cat-1', name: '將將', roles: [], skillProfile: null, mcpProfile: null, status: 'active', createdAt: '', updatedAt: '', archivedAt: null, defaultExecutionTarget: { provider: 'claude', instance: null, model: null }, memory: { updatedAt: null, content: null } },
-    ],
+    cats: [cat('cat-0', 'Helper', 'standard'), cat('cat-1', '將將', 'admin')],
     channels: [],
     globalOrchestrator: { mode: 'global', status: 'ready', executionTarget: { provider: 'claude', instance: null, model: null }, systemPrompt: '', skillProfile: null, mcpProfile: null, telegramBotName: null, updatedAt: '' },
     capabilities: { maxChannels: 50, maxCatsPerChannel: 10, supportedProviders: [] },
@@ -293,13 +291,8 @@ test('resolveOrchestratorDisplayName returns boss cat name when set, Orchestrato
 
   assert.equal(resolveOrchestratorDisplayName(state), '將將');
 
-  // When bossCatId is null, falls back to 'Orchestrator'
-  const stateNoBoss = { ...state, bossCatId: null };
+  const stateNoBoss = { ...state, cats: [cat('cat-0', 'Helper', 'standard')] };
   assert.equal(resolveOrchestratorDisplayName(stateNoBoss), 'Orchestrator');
-
-  // When bossCatId points to a missing cat, falls back to 'Orchestrator'
-  const stateMissing = { ...state, bossCatId: 'nonexistent' };
-  assert.equal(resolveOrchestratorDisplayName(stateMissing), 'Orchestrator');
 });
 
 test('after setup + activate, system messages stay generic and keep verbosity metadata', async () => {
@@ -520,7 +513,7 @@ test('POST /api/channels creates a default Boss Chat without assigning Boss Cat 
   });
 });
 
-test('POST /api/channels keeps the room_created system message when skipBossCatGreeting is set for default Boss Chat', async () => {
+test('POST /api/channels seeds only the room_created system message, with no Boss Cat greeting', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
@@ -541,7 +534,6 @@ test('POST /api/channels keeps the room_created system message when skipBossCatG
         title: 'First turn',
         topic: 'Send before any greeting',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createResponse.status, 201);
@@ -567,7 +559,7 @@ test('POST /api/channels treats explicit default entry as default even with part
       body: JSON.stringify({
         name: 'Smelly',
         provider: 'claude',
-        makeBoss: true,
+        group: 'admin',
       }),
     });
     assert.equal(createBossResponse.status, 201);
@@ -607,7 +599,7 @@ test('POST /api/channels does NOT auto-assign when cats are explicitly provided'
       body: JSON.stringify({
         name: 'Smelly',
         provider: 'claude',
-        makeBoss: true,
+        group: 'admin',
       }),
     });
     assert.equal(createBossResponse.status, 201);
@@ -647,7 +639,7 @@ test('POST /api/channels does NOT auto-assign when cats are explicitly provided'
   });
 });
 
-test('Boss Cat cannot be assigned as a regular chat participant', async () => {
+test('A Boss Cat joins a conversation as an ordinary participant', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
@@ -665,7 +657,7 @@ test('Boss Cat cannot be assigned as a regular chat participant', async () => {
     const createResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: 'Manual Assign', topic: 'Should reject Boss Cat assignment', originSurface: 'chat' }),
+      body: JSON.stringify({ title: 'Manual Assign', topic: 'Boss Cat joins as a participant', originSurface: 'chat' }),
     });
     assert.equal(createResponse.status, 201);
     const createPayload = await createResponse.json();
@@ -676,10 +668,10 @@ test('Boss Cat cannot be assigned as a regular chat participant', async () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ provider: 'claude' }),
     });
-    assert.equal(assignResponse.status, 400);
+    assert.equal(assignResponse.status, 201);
 
     const assignPayload = await assignResponse.json();
-    assert.equal(assignPayload.error.code, 'bad_request');
-    assert.equal(assignPayload.error.message, 'Boss Cat is already the default chat entrypoint');
+    assert.equal(assignPayload.cat.catId, bossCatId);
+    assert.equal(assignPayload.cat.status, 'active');
   });
 });

@@ -317,8 +317,6 @@ export interface NewConversationDraftProps {
   plusMenuOpen: boolean;
   plusMenuRef: RefObject<HTMLDivElement>;
   fileInputRef: RefObject<HTMLInputElement>;
-  bossCatName: string;
-  bossCatAvatarColor: string | null;
   onComposerChange: (value: string) => void;
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
@@ -393,8 +391,6 @@ export function NewConversationDraft({
   plusMenuOpen,
   plusMenuRef,
   fileInputRef,
-  bossCatName,
-  bossCatAvatarColor,
   onComposerChange,
   onComposerKeyDown,
   onSendMessage,
@@ -758,7 +754,6 @@ export function NewConversationDraft({
   const addMenuCats: ParticipantAddMenuCat[] = addMenuJoinsExisting
     ? sortChatCatsForDisplay(
         chatCats.filter((cat) => cat.status === 'active'),
-        { bossCatIds: payload.chat.bossCatId },
       ).map((cat) => ({
         id: cat.id,
         name: cat.name,

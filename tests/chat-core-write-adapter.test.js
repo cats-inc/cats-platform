@@ -166,7 +166,6 @@ async function createGroupChannelState() {
       originSurface: 'chat',
       title: 'Core write adapter',
       topic: 'Exercise canonical turn and lane writes.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -612,7 +611,6 @@ test('chatStore.write projects a single-target reply even when transcript target
       originSurface: 'chat',
       title: 'Single-target reply drift',
       topic: 'Project canonical reply records when transcript target ids drift.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1705,7 +1703,6 @@ test('buildCanonicalChatMessage preserves direct-lane transport bindings on cano
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -2066,7 +2063,6 @@ test('beginChannelMessageRetryDispatch preserves direct-lane transport bindings 
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -2195,7 +2191,6 @@ test('repairOrphanedCompletedDispatchTurn syncs repaired turns back into canonic
       originSurface: 'chat',
       title: 'Repair canonical interaction',
       topic: 'Persist repaired dispatch turns into the canonical core records.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2365,7 +2360,6 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
       originSurface: 'chat',
       title: 'Repair canonical fallback',
       topic: 'Recover a completed turn from canonical interaction segments.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2549,7 +2543,6 @@ test('applyChannelReadRepairs restores canonical reply and session metadata afte
       originSurface: 'chat',
       title: 'Repair chain canonical fallback',
       topic: 'Restore canonical reply and session metadata during read repair.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2910,7 +2903,6 @@ test('applyChannelReadRepairs restores canonical assistant metadata when rebuild
       originSurface: 'chat',
       title: 'Repair canonical metadata fallback',
       topic: 'Recover assistant metadata from canonical interaction segments.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );

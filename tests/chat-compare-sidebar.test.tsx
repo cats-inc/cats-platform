@@ -62,10 +62,10 @@ function createPayload(): AppShellPayload {
     chat: {
       id: 'chat',
       name: 'Cats Chat',
-      bossCatId: 'boss-cat',
       cats: [
         {
           id: 'boss-cat',
+          group: 'admin',
           name: 'Boss Cat',
           roles: [],
           status: 'active',
@@ -148,7 +148,6 @@ function createPayload(): AppShellPayload {
         transcriptExport: true,
         participantManagement: 'basic',
         runtimeSessions: true,
-        maxBossCats: 1,
         maxCats: 8,
         maxChatParticipants: 5,
         maxAudienceParticipants: 3,

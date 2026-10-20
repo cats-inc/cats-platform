@@ -206,7 +206,7 @@ for (const originSurface of ['code', 'chat']) test(`actual ordinary ${originSurf
   const base = `http://127.0.0.1:${server.address().port}`;
   const headers = { cookie: auth.cookie, 'x-cats-csrf-token': auth.csrfToken, 'content-type': 'application/json', origin: 'http://127.0.0.1:8181' };
   const created = await fetch(`${base}/api/channels`, { method: 'POST', headers, body: JSON.stringify({ title: 'Knowledge contribution', topic: 'Isolated contribution test',
-    originSurface, entryKind: 'group', skipBossCatGreeting: true,
+    originSurface, entryKind: 'group',
     temporaryParticipants: [{ participantId: 'contributor', name: 'Contributor', provider: 'codex', instance: 'native', model: 'fixture' }] }) });
   assert.equal(created.status, 201, await created.clone().text());
   const { channel } = await created.json();

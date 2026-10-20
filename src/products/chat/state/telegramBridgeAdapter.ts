@@ -95,7 +95,6 @@ export function createChatTelegramRoomBridge(input: {
           roomMode: room.roomMode,
           defaultRecipientId: room.defaultRecipientId,
           participantCatIds: room.participantCatIds,
-          skipBossCatGreeting: true,
         },
         timestamp,
       );

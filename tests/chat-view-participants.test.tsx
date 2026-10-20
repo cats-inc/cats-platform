@@ -33,7 +33,6 @@ function renderToStaticMarkup(element: React.ReactElement): string {
 function createPayload(): AppShellPayload {
   return {
     chat: {
-      bossCatId: null,
       botBindings: [],
       capabilities: {
         maxChatParticipants: 5,
@@ -69,6 +68,7 @@ function createChatCat(overrides: Partial<ChatCat> = {}): ChatCat {
   return {
     id: 'cat-lead',
     name: 'Milo',
+    group: 'standard',
     roles: [],
     skillProfile: null,
     mcpProfile: null,
@@ -303,9 +303,6 @@ function createProps(overrides: Partial<ConversationViewProps> = {}): Conversati
     channelPlusMenuRef: { current: null },
     channelFileInputRef: { current: null },
     activeAssignedCats: [],
-    bossCatName: 'Boss Cat',
-    bossCatAvatarColor: null,
-    showBossCatAvatar: false,
     onComposerChange: () => {},
     onComposerKeyDown: () => {},
     onSendMessage: () => {},
@@ -411,8 +408,7 @@ test('ConversationView keeps Cat visuals in room stacks while the composer stack
           ...createPayload(),
           chat: {
             ...createPayload().chat,
-            bossCatId: leadCat.id,
-            cats: [leadCat],
+            cats: [{ ...leadCat, group: 'admin' }],
           },
         } as unknown as AppShellPayload,
         selectedChannel: createChannel({
@@ -504,8 +500,7 @@ test('ConversationView reuses target-scoped Runtime-observed labels for Cat avat
           ...createPayload(),
           chat: {
             ...createPayload().chat,
-            bossCatId: leadCat.id,
-            cats: [leadCat],
+            cats: [{ ...leadCat, group: 'admin' }],
           },
         } as unknown as AppShellPayload,
         selectedChannel: createChannel({

@@ -49,7 +49,6 @@ import {
   messageTone as resolveWorkspaceMessageTone,
   presentChannelTitle as presentWorkspaceChannelTitle,
   truncatePath as truncateWorkspacePath,
-  resolveBossCatName as resolveWorkspaceBossCatName,
 } from '../../shared/renderer/workspaceChatUtils.js';
 import {
   activeAssignedParticipants,
@@ -307,7 +306,6 @@ export function executionLabel(cat: ChatCat): string {
 }
 
 export interface SortChatCatsOptions {
-  bossCatIds?: string | string[] | null;
   archivedLast?: boolean;
 }
 
@@ -631,10 +629,6 @@ export function pickDraftGreeting(
     options.random,
     options.t,
   );
-}
-
-export function resolveBossCatName(payload: AppShellPayload): string | null {
-  return resolveWorkspaceBossCatName(payload);
 }
 
 export type { SelectedChannelView } from '../shared/channelEntry';

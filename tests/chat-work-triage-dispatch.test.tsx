@@ -93,7 +93,7 @@ test('Chat provider-agent Work triage lookup request returns bounded Project can
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);

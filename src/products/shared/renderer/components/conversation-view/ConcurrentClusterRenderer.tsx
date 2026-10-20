@@ -30,12 +30,12 @@ import type { ConcurrentClusterAction } from './concurrentClusterUiState.js';
 import { TranscriptMessageActions as SharedTranscriptMessageActions } from './TranscriptMessageActions.js';
 import { CompareCardsLayout } from './CompareCardsLayout.js';
 import { FocusRailLayout } from './FocusRailLayout.js';
+import { isAdminCat } from '../../../../chat/shared/catGroups.js';
 
 export interface ConcurrentClusterRendererProps<Participant> {
   mode: ConcurrentChatPresentationMode;
   segments: LiveIndicatorSegmentState[];
   cats: ChatCat[];
-  bossCatId: string | null;
   selectedChannelId: string;
   disabledMentionNames: string[];
   liveSpeakerParticipant: Participant | null;
@@ -283,7 +283,6 @@ export function SegmentSpeakerHeader<Participant>({
   segmentParticipantCat,
   speakerCat,
   speakerLabel,
-  bossCatId,
   buildParticipantAvatarClassName,
   buildParticipantAvatarStyle,
   resolveParticipantAvatarUrl,
@@ -293,7 +292,6 @@ export function SegmentSpeakerHeader<Participant>({
   segmentParticipantCat: ChatCat | null;
   speakerCat: ChatCat | null;
   speakerLabel: string | null;
-  bossCatId: string | null;
   buildParticipantAvatarClassName: ConcurrentClusterRendererProps<Participant>['buildParticipantAvatarClassName'];
   buildParticipantAvatarStyle: ConcurrentClusterRendererProps<Participant>['buildParticipantAvatarStyle'];
   resolveParticipantAvatarUrl: ConcurrentClusterRendererProps<Participant>['resolveParticipantAvatarUrl'];
@@ -321,7 +319,7 @@ export function SegmentSpeakerHeader<Participant>({
     return (
       <div className="transcriptMessageTop">
         <div
-          className={speakerCat.id === bossCatId
+          className={isAdminCat(speakerCat)
             ? 'catAvatar catAvatarBoss transcriptAvatar'
             : 'catAvatar transcriptAvatar'}
           style={speakerCat.avatarUrl
@@ -353,7 +351,6 @@ export function SegmentSpeakerInlineSummary<Participant>({
   segmentParticipantCat,
   speakerCat,
   speakerLabel,
-  bossCatId,
   buildParticipantAvatarClassName,
   buildParticipantAvatarStyle,
   resolveParticipantAvatarUrl,
@@ -363,7 +360,6 @@ export function SegmentSpeakerInlineSummary<Participant>({
   segmentParticipantCat: ChatCat | null;
   speakerCat: ChatCat | null;
   speakerLabel: string | null;
-  bossCatId: string | null;
   buildParticipantAvatarClassName: ConcurrentClusterRendererProps<Participant>['buildParticipantAvatarClassName'];
   buildParticipantAvatarStyle: ConcurrentClusterRendererProps<Participant>['buildParticipantAvatarStyle'];
   resolveParticipantAvatarUrl: ConcurrentClusterRendererProps<Participant>['resolveParticipantAvatarUrl'];
@@ -393,7 +389,7 @@ export function SegmentSpeakerInlineSummary<Participant>({
     return (
       <span className="focusRailSecondaryIdentity">
         <span
-          className={speakerCat.id === bossCatId
+          className={isAdminCat(speakerCat)
             ? 'catAvatar catAvatarBoss transcriptAvatar'
             : 'catAvatar transcriptAvatar'}
           style={speakerCat.avatarUrl
@@ -484,7 +480,6 @@ function localizeCatsOwnedLiveText(
 function InlineStackLayout<Participant>(props: ClusterLayoutProps<Participant>): JSX.Element {
   const {
     segments,
-    bossCatId,
     buildParticipantAvatarClassName,
     buildParticipantAvatarStyle,
     resolveParticipantAvatarUrl,
@@ -516,7 +511,6 @@ function InlineStackLayout<Participant>(props: ClusterLayoutProps<Participant>):
                 segmentParticipantCat={presentation.segmentParticipantCat}
                 speakerCat={presentation.speakerCat}
                 speakerLabel={presentation.speakerLabel}
-                bossCatId={bossCatId}
                 buildParticipantAvatarClassName={buildParticipantAvatarClassName}
                 buildParticipantAvatarStyle={buildParticipantAvatarStyle}
                 resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}

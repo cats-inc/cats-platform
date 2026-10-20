@@ -9,7 +9,7 @@ import {
   appendMessage,
   buildChannelView,
   createChannel as seedChannel,
-  setBossCat,
+  setCatGroup,
   setChannelCatLease,
   setChannelRoomRouting,
 } from '../build/server/products/chat/state/model/index.js';
@@ -1128,7 +1128,7 @@ test('POST /api/orchestrator/dispatch forwards Boss execution tool intent to run
     const catId = created.channel.assignedCats[0]?.catId;
     assert.ok(catId);
     let chat = await chatStore.read();
-    chat = setBossCat(chat, catId);
+    chat = setCatGroup(chat, catId, 'admin');
     chat = setChannelCatLease(
       chat,
       channelId,
@@ -2425,7 +2425,7 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation a
     const catId = created.channel.assignedCats[0]?.catId;
     assert.ok(catId);
     let chat = await chatStore.read();
-    chat = setBossCat(chat, catId);
+    chat = setCatGroup(chat, catId, 'admin');
     chat = setChannelCatLease(
       chat,
       channelId,
@@ -2686,7 +2686,7 @@ test('POST /api/orchestrator/dispatch declines Boss Work execution preparation w
     const catId = created.channel.assignedCats[0]?.catId;
     assert.ok(catId);
     let chat = await chatStore.read();
-    chat = setBossCat(chat, catId);
+    chat = setCatGroup(chat, catId, 'admin');
     chat = setChannelCatLease(
       chat,
       channelId,

@@ -349,7 +349,6 @@ test('resolveChannelEntryParticipant uses participant lease state for direct lan
       roomMode: 'direct_message',
       originSurface: 'chat',
       participantCatIds: [companionId],
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -386,7 +385,6 @@ test('resolveChannelEntryParticipant uses participant lease state for direct lan
       title: 'Boss room',
       topic: 'Orchestrator lifecycle',
       originSurface: 'chat',
-      skipBossCatGreeting: true,
     },
     now,
   );

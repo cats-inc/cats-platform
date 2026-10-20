@@ -5,7 +5,7 @@ import { createDefaultChatState } from '../build/server/products/chat/state/defa
 import {
   createCat,
   createChannel,
-  setBossCat,
+  setCatGroup,
   updateCatProducts,
 } from '../build/server/products/chat/state/model/index.js';
 import {
@@ -51,7 +51,7 @@ test('updateCatProducts requires at least one product and boss promotion restore
 
   const legacyState = structuredClone(state);
   legacyState.cats[0].products = ['work'];
-  const nextState = setBossCat(legacyState, catId);
+  const nextState = setCatGroup(legacyState, catId, 'admin');
 
   assert.deepEqual(nextState.cats[0].products, ['work', 'chat']);
 });
@@ -74,7 +74,6 @@ test('removing chat from cat products detaches active chat participation and cle
     roomMode: 'direct_message',
     participantCatIds: [catId],
     defaultRecipientId: catId,
-    skipBossCatGreeting: true,
   }, now);
 
   state = updateCatProducts(state, catId, ['work']);

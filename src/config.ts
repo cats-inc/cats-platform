@@ -71,7 +71,6 @@ export interface AppConfig {
   providerCapabilityBootstrapConfigPath: string;
   providerCapabilityBootstrapBundledExamplePath: string;
   chatStatePath: string;
-  maxBossCats: number;
   maxCats: number;
   maxChatParticipants: number;
   maxAudienceParticipants: number;
@@ -106,7 +105,6 @@ const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8181;
 const DEFAULT_RUNTIME_BASE_URL = 'http://127.0.0.1:3110';
 const DEFAULT_RUNTIME_SETUP_PROXY_TIMEOUT_MS = 30_000;
-const DEFAULT_MAX_BOSS_CATS = 1;
 const DEFAULT_MAX_CATS = 5;
 const DEFAULT_MAX_CHAT_PARTICIPANTS = 5;
 const DEFAULT_MAX_AUDIENCE_PARTICIPANTS = 3;
@@ -333,7 +331,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     providerCapabilityBootstrapBundledExamplePath:
       resolveBundledPlatformConfigExamplePath('provider-capability-bootstrap.yaml', env),
     chatStatePath,
-    maxBossCats: parsePositiveInt(env.CATS_MAX_BOSS_CATS, DEFAULT_MAX_BOSS_CATS),
     maxCats: parsePositiveInt(env.CATS_MAX_CATS, DEFAULT_MAX_CATS),
     maxChatParticipants: parsePositiveInt(
       env.CATS_MAX_CHAT_PARTICIPANTS,

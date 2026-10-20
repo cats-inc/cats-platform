@@ -10,7 +10,6 @@ function createAppShellPayload(surface: ConversationBehaviorSurface) {
       id: 'chat',
       name: 'Cats Chat',
       selectedChannelId: '',
-      bossCatId: null,
       cats: [],
       channels: [],
       parallelChatGroups: [],

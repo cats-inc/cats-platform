@@ -6,6 +6,7 @@ import { collaborationExecutionDescriptors, collaborationExecutionManifests,
   resolveCollaborationOwnerChoice, REQUEST_COLLABORATION_ROLE } from '../collaborationExecutionSurface.js';
 import { isOrchestratorKnowledgeChannel } from '../orchestratorKnowledge.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
+import { isAdminCatId } from '../../shared/catGroups.js';
 import { isCompanionCat } from '../../../../shared/companionRole.js';
 import {
   COMPANION_CONTENT_POST_CREATE_TOOL,
@@ -1219,10 +1220,9 @@ function isSingleBossCatTarget(
   singleCatTarget: TargetResolution['targets'][number] | null,
 ): boolean {
   return Boolean(
-    state.bossCatId
-    && singleCatTarget
+    singleCatTarget
     && singleCatTarget.participantKind === 'cat'
-    && singleCatTarget.participantId === state.bossCatId,
+    && isAdminCatId(state.cats, singleCatTarget.participantId),
   );
 }
 

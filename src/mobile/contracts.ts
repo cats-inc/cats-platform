@@ -22,6 +22,8 @@
 export interface MobileChatCat {
   id: string;
   name: string;
+  /** Admin cats are the Boss Cats. */
+  group: 'admin' | 'standard';
   avatarColor: string | null;
   /**
    * Cats with no direct-lane channel yet sort by `createdAt` so a
