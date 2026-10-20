@@ -146,7 +146,6 @@ test('posting a direct-lane message keeps canonical transport binding on runtime
         roomMode: 'direct_message',
         defaultRecipientId: catId,
         repoPath: 'C:/repo/cats-platform',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -254,7 +253,6 @@ test('posting a direct-lane message keeps canonical transport binding on assista
         roomMode: 'direct_message',
         defaultRecipientId: catId,
         repoPath: 'C:/repo/cats-platform',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);

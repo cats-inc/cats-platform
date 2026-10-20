@@ -10,18 +10,14 @@ import { parseProviderModelSelection, providerModelSelectionsEquivalent } from '
 import {
   requireChannel,
   setChannelParticipantLease,
-  setChannelOrchestratorLease,
 } from '../model/index.js';
 import type { RoutingTarget } from '../mentionRouter.js';
-import { resolveOrchestratorExecutionTarget } from '../runtimeTargeting.js';
 import { classifyRuntimeDispatchRecoveryError } from '../runtime-dispatch/recovery.js';
 import {
-  resolveOrchestratorLeaseAttachment,
   resolvePrimaryParticipantExecutionAssignment,
   resolveParticipantLeaseAttachment,
   resolveExecutionLeaseSnapshot,
 } from '../../shared/channelParticipants.js';
-import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
 import {
   clearTargetSessionLease,
 } from './state.js';
@@ -169,9 +165,7 @@ async function shouldReviveExistingTargetSession(input: {
   }
 
   const channel = requireChannel(input.state, input.channelId);
-  const lease = input.target.participantKind === 'cat'
-    ? resolveParticipantLeaseAttachment(channel, input.target.participantId)
-    : resolveOrchestratorLeaseAttachment(channel);
+  const lease = resolveParticipantLeaseAttachment(channel, input.target.participantId);
 
   if (!lease) {
     return false;
@@ -215,20 +209,13 @@ function applyLeaseLaneAttachmentToTarget(
     return state;
   }
 
-  return target.participantKind === 'cat'
-    ? setChannelParticipantLease(
-      state,
-      channelId,
-      target.participantId,
-      { laneId },
-      now,
-    )
-    : setChannelOrchestratorLease(
-      state,
-      channelId,
-      { laneId },
-      now,
-    );
+  return setChannelParticipantLease(
+    state,
+    channelId,
+    target.participantId,
+    { laneId },
+    now,
+  );
 }
 
 async function resumeExistingTargetSession(input: {
@@ -260,20 +247,13 @@ async function resumeExistingTargetSession(input: {
   }
 
   const leasePatch = buildResumedRuntimeSessionLeasePatch(resumed, input.now);
-  const nextState = input.target.participantKind === 'cat'
-    ? setChannelParticipantLease(
-      input.state,
-      input.channelId,
-      input.target.participantId,
-      leasePatch,
-      input.now,
-    )
-    : setChannelOrchestratorLease(
-      input.state,
-      input.channelId,
-      leasePatch,
-      input.now,
-    );
+  const nextState = setChannelParticipantLease(
+    input.state,
+    input.channelId,
+    input.target.participantId,
+    leasePatch,
+    input.now,
+  );
 
   return {
     kind: 'resumed',
@@ -332,9 +312,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
         if (observed.id === attachedTarget.sessionId
           && (observed.modelSelection === null || observedSelection)) {
           const patch = { modelSelection: observedSelection };
-          state = attachedTarget.participantKind === 'cat'
-            ? setChannelParticipantLease(state, channelId, attachedTarget.participantId, patch, now)
-            : setChannelOrchestratorLease(state, channelId, patch, now);
+          state = setChannelParticipantLease(state, channelId, attachedTarget.participantId, patch, now);
         }
       }
     } catch {
@@ -343,31 +321,26 @@ export async function resolveExistingTargetSessionOutcome(input: {
   }
 
   const channelState = requireChannel(state, channelId);
-  const assignment = attachedTarget.participantKind === 'cat'
-    ? resolvePrimaryParticipantExecutionAssignment(channelState, attachedTarget.participantId) : null;
-  const configuredTarget = attachedTarget.participantKind === 'cat'
-    ? assignment && { ...assignment.execution.target, modelSelection: assignment.execution.modelSelection }
-    : isProviderDefaultChatChannel(channelState) ? resolveOrchestratorExecutionTarget(state, channelState) : null;
+  const assignment = resolvePrimaryParticipantExecutionAssignment(channelState, attachedTarget.participantId);
+  const configuredTarget = assignment
+    && { ...assignment.execution.target, modelSelection: assignment.execution.modelSelection };
   const currentLease = resolveExecutionLeaseSnapshot(channelState, attachedTarget);
   if (currentLease && currentLease.modelSelection === undefined && configuredTarget?.modelSelection
     && (currentLease.status === 'ready' || currentLease.status === 'error' || currentLease.status === 'initializing')
     && currentLease.provider === configuredTarget.provider
-    && (attachedTarget.participantKind === 'cat' && !configuredTarget.instance
+    && (!configuredTarget.instance
       || normalizeOptionalExecutionValue(currentLease.instance) === normalizeOptionalExecutionValue(configuredTarget.instance))
-    && (attachedTarget.participantKind === 'cat' && !configuredTarget.model
+    && (!configuredTarget.model
       || normalizeOptionalExecutionValue(currentLease.model) === normalizeOptionalExecutionValue(configuredTarget.model))) {
     const error = 'Cannot verify the existing session model options. Retry when Runtime can report them; the session and workspace have been preserved.';
     const patch = { status: 'error' as const, lastError: error, lastUsedAt: now.toISOString() };
-    const errorState = attachedTarget.participantKind === 'cat'
-      ? setChannelParticipantLease(state, channelId, attachedTarget.participantId, patch, now)
-      : setChannelOrchestratorLease(state, channelId, patch, now);
+    const errorState = setChannelParticipantLease(state, channelId, attachedTarget.participantId, patch, now);
     return { kind: 'resolved', result: {
       state: applyLeaseLaneAttachmentToTarget(errorState, channelId, attachedTarget, laneId, now),
       target: attachedTarget, error, wakeRequest: recordTargetWake('failed', error), taskExecutionContext,
     } };
   }
-  const hasDirectCatExecutionTargetDrift = attachedTarget.participantKind === 'cat'
-    && hasParticipantExecutionTargetDrift({
+  const hasDirectCatExecutionTargetDrift = hasParticipantExecutionTargetDrift({
       participantLease: resolveParticipantLeaseAttachment(
         channelState,
         attachedTarget.participantId,
@@ -455,9 +428,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
     const resetState = clearTargetSessionLease(
       state,
       channelId,
-      attachedTarget.participantKind === 'cat'
-        ? { participantId: attachedTarget.participantId }
-        : 'orchestrator',
+      { participantId: attachedTarget.participantId },
       now,
     );
     return {
@@ -465,55 +436,6 @@ export async function resolveExistingTargetSessionOutcome(input: {
       state: resetState,
       target: { ...attachedTarget, sessionId: null },
     };
-  }
-
-  if (attachedTarget.participantKind === 'orchestrator') {
-    const executionTarget = resolveOrchestratorExecutionTarget(state, channelState);
-    const orchestratorLease = resolveOrchestratorLeaseAttachment(channelState);
-    const shouldRestartDefaultChatSession = isProviderDefaultChatChannel(channelState)
-      && (
-        orchestratorLease?.provider !== executionTarget.provider
-        || orchestratorLease?.instance !== executionTarget.instance
-        || orchestratorLease?.model !== executionTarget.model
-        || !providerModelSelectionsEquivalent(
-          orchestratorLease?.modelSelection ?? null,
-          executionTarget.modelSelection ?? null,
-        )
-      );
-
-    if (shouldRestartDefaultChatSession) {
-      await bestEffortFlushRuntimeSessionMemory({
-        runtimeClient,
-        sessionId: attachedTarget.sessionId,
-        requestedPhase: 'pre_reset',
-        memoryService: routingOptions.memoryService,
-        companionStore: routingOptions.companionStore,
-        coreStore: routingOptions.chatStore,
-        now,
-      });
-      await runtimeClient.closeSession(attachedTarget.sessionId);
-      const resetState = setChannelOrchestratorLease(
-        state,
-        channelId,
-        {
-          sessionId: null,
-          status: 'not_started',
-          lastError: null,
-          provider: executionTarget.provider,
-          instance: executionTarget.instance,
-          model: executionTarget.model,
-          modelSelection: executionTarget.modelSelection ?? null,
-          startedAt: null,
-          lastUsedAt: orchestratorLease?.lastUsedAt ?? null,
-        },
-        now,
-      );
-      return {
-        kind: 'retry',
-        state: resetState,
-        target: { ...attachedTarget, sessionId: null },
-      };
-    }
   }
 
   if (attachedTarget.participantKind === 'cat') {

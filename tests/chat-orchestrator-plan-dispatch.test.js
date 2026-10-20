@@ -76,7 +76,6 @@ test('Chat dispatch consumes Chat-owned deterministic plan targets instead of re
     topic: 'Default routing would choose the orchestrator without the injected plan.',
     originSurface: 'chat',
     roomMode: 'chat_channel',
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, {

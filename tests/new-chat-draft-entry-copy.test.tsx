@@ -21,7 +21,6 @@ function renderToStaticMarkup(element: React.ReactElement): string {
 function createPayload(): AppShellPayload {
   return {
     chat: {
-      bossCatId: null,
       botBindings: [],
       capabilities: {
         maxCats: 5,
@@ -63,8 +62,6 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     plusMenuOpen: false,
     plusMenuRef: { current: null },
     fileInputRef: { current: null },
-    bossCatName: 'Boss Cat',
-    bossCatAvatarColor: null,
     onComposerChange: () => {},
     onComposerKeyDown: () => {},
     onSendMessage: () => {},
@@ -423,7 +420,7 @@ test('group route hides add-participant hint and button when max participants is
 
 test('group route keeps the current audience chip and inline avatar row for participants', () => {
   const payload = createPayload();
-  payload.chat.bossCatId = 'cat-lead';
+  payload.chat.cats = payload.chat.cats.map((cat) => (cat.id === 'cat-lead' ? { ...cat, group: 'admin' } : cat));
 
   const markup = renderToStaticMarkup(
     <NewChatDraft
@@ -490,7 +487,7 @@ test('advanced draft controls keep +Parallel drafts on one lead target, expose t
 test('group route caps the audience chip selection to the configured max audience count', () => {
   const payload = createPayload();
   payload.chat.capabilities.maxAudienceParticipants = 2;
-  payload.chat.bossCatId = 'cat-lead';
+  payload.chat.cats = payload.chat.cats.map((cat) => (cat.id === 'cat-lead' ? { ...cat, group: 'admin' } : cat));
 
   const markup = renderToStaticMarkup(
     <NewChatDraft

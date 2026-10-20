@@ -53,7 +53,9 @@ test('createChannel keeps channel-only temporary participants outside cat assign
     [],
   );
   assert.equal(persistedChannel.participantAssignments?.length, 2);
-  assert.equal(persistedChannel.roomRouting?.defaultRecipientId, 'participant-lead');
+  // Only a DM has a default recipient; the first participant coordinates the room.
+  assert.equal(persistedChannel.roomRouting?.defaultRecipientId, null);
+  assert.equal(persistedChannel.coordinatorParticipantId, 'participant-lead');
 
   const channelView = buildChannelView(state, channelId);
   assert.equal(channelView.containerId, CHAT_ROOT_CONTAINER_ID);
@@ -109,7 +111,8 @@ test('FileChatStore round-trips temporary participants through persisted snapsho
   assert.equal(channelView.assignedParticipants?.[0]?.name, 'Inline Specialist');
   assert.equal(channelView.assignedParticipants?.[0]?.execution.target.provider, 'codex');
   assert.equal(channelView.assignedParticipants?.[0]?.execution.target.model, 'gpt-5.3-codex');
-  assert.equal(channelView.roomRouting.defaultRecipientId, 'participant-inline');
+  assert.equal(channelView.roomRouting.defaultRecipientId, null);
+  assert.equal(channelView.coordinatorParticipantId, 'participant-inline');
   assert.deepEqual(channelView.assignedCats, []);
 });
 

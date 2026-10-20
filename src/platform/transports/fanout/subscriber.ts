@@ -93,36 +93,30 @@ function isActiveChatBinding(chatState: ChatState, binding: BotBindingRecord): b
   );
 }
 
-function resolveBossCatName(chatState: ChatState): string | null {
-  return chatState.cats.find((cat) => cat.id === chatState.bossCatId)?.name ?? null;
-}
-
 function buildTelegramRelayContext(
   chatState: ChatState,
   coreState: CatsCoreState,
   selectedBindingId?: string | null,
 ): TelegramRelayContext {
-  const bossCatId = chatState.bossCatId;
-  const bossCatActorId = bossCatId ? createCatActorId(bossCatId) : null;
   const activeTelegramBindings = coreState.botBindings
     .filter((binding) =>
       binding.platform === 'telegram'
       && isActiveChatBinding(chatState, binding),
     )
     .map((binding) => normalizeEffectiveBotBinding(binding));
-  const defaultBotBinding = bossCatActorId
-    ? activeTelegramBindings.find((binding) =>
-      binding.catActorId === bossCatActorId || binding.bossCatActorId === bossCatActorId,
-    ) ?? activeTelegramBindings[0] ?? null
-    : activeTelegramBindings[0] ?? null;
+  // The first binding of a Boss Cat (an admin cat) is the default; any binding otherwise.
+  const bossBinding = activeTelegramBindings.find((binding) =>
+    findBindingChatCat(chatState, binding)?.group === 'admin') ?? null;
+  const bossCat = bossBinding ? findBindingChatCat(chatState, bossBinding) : null;
+  const defaultBotBinding = bossBinding ?? activeTelegramBindings[0] ?? null;
   const selectedBotBinding = selectedBindingId
     ? activeTelegramBindings.find((binding) => binding.id === selectedBindingId) ?? null
     : null;
 
   return {
-    bossCatId,
-    bossCatName: resolveBossCatName(chatState),
-    bossCatActorId,
+    bossCatId: bossCat?.id ?? null,
+    bossCatName: bossCat?.name ?? null,
+    bossCatActorId: bossCat ? createCatActorId(bossCat.id) : null,
     botBindings: activeTelegramBindings,
     defaultBotBinding,
     selectedBotBinding,

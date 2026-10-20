@@ -48,15 +48,19 @@ function respond() { return { contractVersion: 1, kind: 'semantic_plan', decisio
 function fixture({ intent = 'create', confirm = true, budget = {}, old = false, instance = null, development = false } = {}) {
   const now = new Date();
   let state = createDefaultChatState();
+  // A Boss Cat coordinates the room; only an admin coordinator may collaborate beyond it.
+  state = createCat(state, { name: 'Boss', provider: 'claude', instance, group: 'admin' }, now);
+  const bossId = state.cats[0].id;
   state = createChannel(state, { title: 'Collaboration', topic: goal, originSurface: 'chat', repoPath: join(tmpdir(), 'cats-k3-source'),
-    roomMode: 'chat_channel', responseLanguage: 'zh-TW', cats: [{ name: 'Implementer', provider: 'claude', instance, roles: ['implementation'] }] }, now);
+    roomMode: 'chat_channel', responseLanguage: 'zh-TW', cats: [{ name: 'Implementer', provider: 'claude', instance, roles: ['implementation'] }],
+    participantCatIds: [bossId], participantOrder: [`cat:${bossId}`] }, now);
   const channelId = state.selectedChannelId;
   state = createCat(state, { name: 'Reviewer', provider: 'claude', instance, roles: ['review'] }, now);
   const original = appendMessage(state, channelId, { body: goal, senderKind: 'user', senderName: 'Owner' }, now);
   state = original.state;
   function observe(availableTools) {
-    const capabilityProfile = resolveProviderCapabilityProfile(state.globalOrchestrator.visibleParticipant.executionTarget, { assessedAt: now.toISOString() });
-    return buildChatProviderAgentObservation({ state, channelId, actorRef: 'orchestrator', capabilityProfile,
+    const capabilityProfile = resolveProviderCapabilityProfile(state.cats.find((cat) => cat.id === bossId).defaultExecutionTarget, { assessedAt: now.toISOString() });
+    return buildChatProviderAgentObservation({ state, channelId, actorRef: `cat:${bossId}`, capabilityProfile,
       policy: policy.dials, availableTools, goal, messageCharacterCount: goal.length,
       routing: { trigger: 'room_default', resolution: { selectionKind: 'default_target' }, targetCount: 1, unresolvedCount: 0, mentionCount: 0 }, now });
   }
@@ -662,7 +666,9 @@ test('authenticated Chat choice ACK runs K3 through the production continuation 
       assert.equal(report.execution.status, 'completed', JSON.stringify(report));
       assert.equal(report.preparationUsage, undefined, 'K3 does not enter the preparation budget/meter');
       assert.equal(report.feedbackDelivered, true);
-      assert.equal(latest.channels.find(ch => ch.id === report.execution.channelId).catAssignments.filter(a => a.status === 'active').length, 2);
+      // Reusing the current room keeps its Boss Cat coordinator beside the two workers.
+      assert.equal(latest.channels.find(ch => ch.id === report.execution.channelId).catAssignments.filter(a => a.status === 'active').length,
+        intent === 'reuse_current' ? 3 : 2);
       assert.equal(latest.channels.find(ch => ch.id === h.channelId).roomRouting.workflow.activeTurn, null);
       const repeated = await sendOwner(base, h);
       assert.equal(repeated.status, 200);
@@ -823,32 +829,6 @@ test('HTTP duplicate confirmation during a pending worker cannot start or cancel
     assert.equal((await intents(store)).length, 1);
     assert.equal(c.calls.create.length, 2);
     assert.equal(c.calls.commit.length, 0);
-  });
-});
-
-test('paused continuity cleanup preserves a collaboration created in another channel', async t => {
-  const h = fixture({ confirm: false });
-  h.state = createChannel(h.state, { title: 'Other default chat', topic: '', originSurface: 'chat', entryKind: 'default' });
-  const otherId = h.state.selectedChannelId;
-  h.state.channels.find(ch => ch.id === otherId).orchestratorLease.sessionId = 'old-default';
-  let releaseCleanup, releaseWorker;
-  const c = clients(h, { close: id => id === 'old-default'
-    ? new Promise(resolve => { releaseCleanup = resolve; }) : Promise.resolve(),
-  send: id => id === 'session-implementation' ? new Promise(resolve => { releaseWorker = resolve; }) : Promise.resolve() });
-  await withApi(t, h, c, async ({ base, store }) => {
-    const resetting = fetch(`${base}/api/channels/${otherId}`, { method: 'PATCH',
-      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ resetContinuity: true }) });
-    await waitUntil(() => Boolean(releaseCleanup));
-    assert.equal((await sendOwner(base, h)).status, 200);
-    await waitUntil(() => Boolean(releaseWorker));
-    const targetId = (await intents(store))[0].metadata.collaborationIntent.channelId;
-    releaseCleanup();
-    assert.equal((await resetting).status, 200);
-    const chat = await store.read();
-    assert.ok(chat.channels.some(ch => ch.id === targetId));
-    assert.ok(chat.channels.find(ch => ch.id === otherId).continuityResetAt);
-    releaseWorker();
-    await waitUntil(async () => (await intents(store))[0].metadata.collaborationIntent.status === 'completed');
   });
 });
 

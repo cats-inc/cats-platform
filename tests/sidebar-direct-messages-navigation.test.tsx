@@ -81,10 +81,10 @@ function createPayload(channels: ChatChannelSummary[], runtime?: { baseUrl: stri
     chat: {
       id: 'chat',
       name: 'Cats Chat',
-      bossCatId: 'boss-cat',
       cats: [
         {
           id: 'boss-cat',
+          group: 'admin',
           name: 'Boss Cat',
           provider: 'openai',
           instance: null,
@@ -143,7 +143,6 @@ function createPayload(channels: ChatChannelSummary[], runtime?: { baseUrl: stri
         transcriptExport: true,
         participantManagement: 'basic',
         runtimeSessions: true,
-        maxBossCats: 1,
         maxCats: 8,
         maxChatParticipants: 5,
         maxAudienceParticipants: 3,

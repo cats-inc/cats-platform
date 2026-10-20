@@ -9,7 +9,7 @@ import {
   appendMessage,
   buildChannelView,
   createChannel as seedChannel,
-  setBossCat,
+  setCatGroup,
   setChannelCatLease,
   setChannelRoomRouting,
 } from '../build/server/products/chat/state/model/index.js';
@@ -1128,7 +1128,7 @@ test('POST /api/orchestrator/dispatch forwards Boss execution tool intent to run
     const catId = created.channel.assignedCats[0]?.catId;
     assert.ok(catId);
     let chat = await chatStore.read();
-    chat = setBossCat(chat, catId);
+    chat = setCatGroup(chat, catId, 'admin');
     chat = setChannelCatLease(
       chat,
       channelId,
@@ -2425,7 +2425,7 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation a
     const catId = created.channel.assignedCats[0]?.catId;
     assert.ok(catId);
     let chat = await chatStore.read();
-    chat = setBossCat(chat, catId);
+    chat = setCatGroup(chat, catId, 'admin');
     chat = setChannelCatLease(
       chat,
       channelId,
@@ -2686,7 +2686,7 @@ test('POST /api/orchestrator/dispatch declines Boss Work execution preparation w
     const catId = created.channel.assignedCats[0]?.catId;
     assert.ok(catId);
     let chat = await chatStore.read();
-    chat = setBossCat(chat, catId);
+    chat = setCatGroup(chat, catId, 'admin');
     chat = setChannelCatLease(
       chat,
       channelId,
@@ -2815,7 +2815,7 @@ test('POST /api/orchestrator/dispatch declines Boss Work execution preparation w
   });
 });
 
-test('POST /api/orchestrator/dispatch reuses the room-entry session during a concurrent wake', async () => {
+test('POST /api/orchestrator/dispatch reuses the room-entry participant session during a concurrent wake', async () => {
   const runtimeClient = createRuntimeStub();
   const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
   let createCalls = 0;
@@ -2838,6 +2838,9 @@ test('POST /api/orchestrator/dispatch reuses the room-entry session during a con
       cats: [],
     });
     const channelId = created.channel.id;
+    // The room starts with its default participant, which the wake starts.
+    const [participant] = created.channel.assignedParticipants;
+    assert.ok(participant);
 
     const wakeResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/activations`, {
       method: 'POST',
@@ -2851,7 +2854,7 @@ test('POST /api/orchestrator/dispatch reuses the room-entry session during a con
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         channelId,
-        body: 'Handle this directly.',
+        body: `@${participant.name} handle this directly.`,
       }),
     });
 
@@ -2870,7 +2873,7 @@ test('POST /api/orchestrator/dispatch reuses the room-entry session during a con
 
     assert.equal(runtimeClient.createdSessions.length, 1);
     assert.equal(runtimeClient.sentMessages.length, 1);
-    assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
+    assert.equal(channelPayload.channel.assignedParticipants[0].execution.lease.sessionId, 'session-1');
   });
 });
 
@@ -3376,11 +3379,12 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
         return usage('@Followup-Agent please take first pass.');
       }
       if (content.includes('You are Followup-Agent')) {
-        return usage('@Inline-Agent please review.');
+        return usage('Followup-Agent took the first pass.');
       }
       return usage('Boss Cat acknowledged the turn.');
     },
   });
+  const chatStore = new MemoryChatStore();
   await withServer(runtimeClient, async (baseUrl) => {
     const created = await createChannel(baseUrl, {
       cats: [
@@ -3399,6 +3403,10 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
       ],
     });
     const channelId = created.channel.id;
+    // The coordinator's handoff to its teammate exceeds a one-dispatch turn.
+    const currentState = await chatStore.read();
+    currentState.channels.find((candidate) => candidate.id === channelId).roomRouting.maxDispatchesPerTurn = 1;
+    await chatStore.write(currentState);
 
     const dispatchResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
       method: 'POST',
@@ -3431,7 +3439,7 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
     assert.ok(payload.executionLoop.operator.workflowContinuation);
     assert.equal(
       payload.executionLoop.operator.workflowContinuation.blockedReason,
-      'anti_ping_pong',
+      'max_dispatches',
     );
     assert.equal(
       payload.executionLoop.operator.workflowContinuation.stageId,
@@ -3500,7 +3508,7 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
       task.metadata.workflowContinuationReplay.targets.map((target) => target.participantName),
     );
     assert.equal(payload.operator.executionLoopPath, `/api/orchestrator/channels/${channelId}/execution-loop`);
-  });
+  }, chatStore);
 });
 
 test('GET /api/orchestrator/channels/:id/execution-loop exposes task-scoped delivery intent and approval actions', async () => {
@@ -3726,7 +3734,7 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
         return usage('@Followup-Agent please take first pass.');
       }
       if (content.includes('You are Followup-Agent')) {
-        return usage('@Inline-Agent please review.');
+        return usage('Followup-Agent reviewed it.');
       }
       return usage('Boss Cat acknowledged the turn.');
     },
@@ -3760,10 +3768,10 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
     });
     assert.equal(dispatchResponse.status, 200);
     const dispatchPayload = await dispatchResponse.json();
-    const blockedRunId = dispatchPayload.operator.latestRunId;
-    assert.ok(blockedRunId);
-    const sentBeforeRetry = runtimeClient.sentMessages.length;
-    assert.ok(sentBeforeRetry >= 2);
+    const runId = dispatchPayload.operator.latestRunId;
+    assert.ok(runId);
+    // The coordinator hands off once; the teammate's reply does not route on.
+    assert.equal(runtimeClient.sentMessages.length, 2);
 
     const operatorActionResponse = await fetch(`${baseUrl}/api/core/operator-actions`, {
       method: 'POST',
@@ -3772,7 +3780,7 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
         action: 'retry',
         actorId: 'actor-owner',
         taskId: `task-channel-${channelId}`,
-        runId: blockedRunId,
+        runId,
       }),
     });
     assert.equal(operatorActionResponse.status, 200);
@@ -3780,16 +3788,15 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
     assert.equal(operatorActionPayload.action, 'retry');
     assert.deepEqual(operatorActionPayload.autoResume, {
       trigger: 'retry',
-      status: 'blocked',
-      blockedReason: 'anti_ping_pong',
+      status: 'dispatched',
+      blockedReason: null,
       sourceMessageId: operatorActionPayload.autoResume.sourceMessageId,
-      resultCount: operatorActionPayload.autoResume.resultCount,
-      executionState: 'blocked',
+      resultCount: 2,
+      executionState: 'completed',
     });
     assert.ok(operatorActionPayload.autoResume.sourceMessageId);
-    assert.ok(operatorActionPayload.autoResume.resultCount >= 2);
     assert.equal(operatorActionPayload.governanceSummary.latestOperatorAction.kind, 'retry');
-    assert.ok(runtimeClient.sentMessages.length > sentBeforeRetry);
+    assert.equal(runtimeClient.sentMessages.length, 4);
 
     const coreResponse = await fetch(`${baseUrl}/api/core`);
     assert.equal(coreResponse.status, 200);
@@ -3814,7 +3821,7 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
       findReplayActivity(
         corePayload,
         `task-channel-${channelId}`,
-        'replay_blocked',
+        'replay_dispatched',
         'retry',
       ),
     );
@@ -5568,225 +5575,6 @@ test('startup-recovered initial sequential latest handoff keeps source identity 
         && activity.metadata?.resumeReason === 'target_recovered'
         && activity.metadata?.resultCount === 2),
     );
-  }, chatStore, createPreSetupCoreOverrides(chatStore));
-});
-
-test('startup-recovered continuation replay auto-resumes through orchestrator on server startup', async () => {
-  const runtimeClient = createRuntimeStub({
-    sendMessage: ({ sessionId }) => usage(`Orchestrator recovered the stored continuation on ${sessionId}.`),
-  });
-  const now = new Date('2026-03-26T16:42:00.000Z');
-  let chat = createDefaultChatState();
-  chat = seedChannel(
-    chat,
-    {
-      title: 'Recovered orchestrator continuation',
-      topic: 'Resume a startup-recovered continuation through Boss Cat on server startup.',
-      originSurface: 'chat',
-      cats: [
-        {
-          name: 'Inline-Agent',
-          provider: 'claude',
-          roles: ['reviewer'],
-        },
-      ],
-    },
-    now,
-  );
-
-  const channelId = chat.channels[0]?.id;
-  assert.ok(channelId);
-  const seededChannel = chat.channels.find((candidate) => candidate.id === channelId);
-  assert.ok(seededChannel);
-  const inlineAssignment = seededChannel.catAssignments[0];
-  assert.ok(inlineAssignment);
-  chat = setChannelCatLease(
-    chat,
-    channelId,
-    inlineAssignment.catId,
-    {
-      sessionId: 'session-inline',
-      status: 'ready',
-      cwd: 'C:/repo/cats-platform',
-      lastError: null,
-      provider: 'claude',
-      model: 'claude-sonnet-4',
-      startedAt: now.toISOString(),
-      lastUsedAt: now.toISOString(),
-    },
-    now,
-  );
-  chat = appendMessage(
-    chat,
-    channelId,
-    {
-      senderKind: 'agent',
-      senderName: 'Inline-Agent',
-      body: 'Please bounce this back to Boss Cat when startup recovery resumes.',
-    },
-    now,
-  ).state;
-
-  const channel = buildChannelView(chat, channelId);
-  const sourceMessage = channel.messages.at(-1);
-  assert.ok(sourceMessage);
-  const inlineParticipant = {
-    participantKind: 'cat',
-    participantId: inlineAssignment.catId,
-    participantName: channel.assignedCats.find((candidate) => candidate.catId === inlineAssignment.catId)?.name
-      ?? 'Inline-Agent',
-  };
-  const orchestratorParticipant = {
-    participantKind: 'orchestrator',
-    participantId: 'orchestrator',
-    participantName: 'Orchestrator',
-  };
-
-  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
-  const workflow = resolveRoomWorkflowState(roomRouting.workflow);
-  const activeTurn = createWorkflowTurn(
-    sourceMessage,
-    now.toISOString(),
-    'converge_review',
-    'converge',
-  );
-  activeTurn.id = 'turn-startup-recovered-orchestrator-session';
-  activeTurn.reviewRequired = true;
-  activeTurn.convergeTargetId = orchestratorParticipant.participantId;
-  activeTurn.dispatchCount = 1;
-  activeTurn.targetStatuses.push({
-    id: 'target-state-startup-recovered-orchestrator-session',
-    dispatchId: 'dispatch-startup-recovered-orchestrator-session',
-    participant: orchestratorParticipant,
-    source: inlineParticipant,
-    sourceMessageId: sourceMessage.id,
-    trigger: 'continuation_mention',
-    mentionNames: ['Orchestrator'],
-    depth: 1,
-    parentCheckpointId: 'checkpoint-startup-recovered-orchestrator-session',
-    branchStrategy: 'transplant_context',
-    handoffReason: 'workflow_continuation',
-    wakeRequestId: null,
-    status: 'running',
-    queuedAt: now.toISOString(),
-    startedAt: now.toISOString(),
-    completedAt: null,
-    response: null,
-    error: null,
-  });
-  appendWorkflowEvent(
-    workflow,
-    activeTurn,
-    createWorkflowEvent(
-      activeTurn.id,
-      'target_pending',
-      'running',
-      'Boss Cat is pending the recovered converge review.',
-      now.toISOString(),
-      inlineParticipant,
-      sourceMessage.id,
-      [orchestratorParticipant],
-      {
-        dispatchId: 'dispatch-startup-recovered-orchestrator-session',
-        metadata: {
-          workflowStageId: activeTurn.stageId,
-          workflowShape: activeTurn.workflowShape,
-          reviewRequired: true,
-          continuationSource: 'workflow_recommendation',
-          branchStrategy: 'transplant_context',
-          mentionNames: ['Orchestrator'],
-          unresolvedTargets: [],
-          workflowRecommendation: {
-            source: 'boss_replan',
-            workflowShape: 'converge',
-            reviewRequired: true,
-            candidateTargets: [
-              {
-                participantKind: 'orchestrator',
-                participantId: 'orchestrator',
-                participantName: 'Orchestrator',
-              },
-            ],
-            branchStrategy: 'transplant_context',
-            rationale: 'Replay this converge review through Boss Cat during startup recovery.',
-          },
-        },
-      },
-    ),
-  );
-  workflow.activeTurn = activeTurn;
-  roomRouting.workflow = workflow;
-  roomRouting.lastOutcome = {
-    turnId: activeTurn.id,
-    mode: roomRouting.mode ?? createDefaultRoomRoutingState().mode,
-    sourceMessageId: sourceMessage.id,
-    sourceSenderKind: sourceMessage.senderKind,
-    sourceSenderName: sourceMessage.senderName,
-    status: 'running',
-    resolution: {
-      routingMode: 'explicit_single',
-      selectionKind: 'explicit_mentions',
-      defaultTarget: null,
-      defaultTargetReason: null,
-      fallbackTarget: null,
-      blockedReason: null,
-      note: 'Converge review is waiting for Boss Cat startup recovery.',
-    },
-    resolvedTargets: [orchestratorParticipant],
-    unresolvedMentions: [],
-    dispatches: [
-      {
-        id: 'dispatch-startup-recovered-orchestrator-session',
-        sourceMessageId: sourceMessage.id,
-        source: inlineParticipant,
-        target: orchestratorParticipant,
-        trigger: 'continuation_mention',
-        status: 'running',
-        mentionNames: ['Orchestrator'],
-        response: null,
-        startedAt: now.toISOString(),
-        completedAt: null,
-        error: null,
-      },
-    ],
-    checkpoints: [],
-    continuationCount: 1,
-    totalDispatchCount: 1,
-    guard: null,
-    startedAt: now.toISOString(),
-    completedAt: null,
-  };
-  chat = setChannelRoomRouting(chat, channelId, roomRouting, now);
-
-  const chatStore = new MemoryChatStore(chat);
-  const taskId = `task-channel-${channelId}`;
-
-  await withServer(runtimeClient, async (baseUrl) => {
-    await waitFor(async () => {
-      const initialCoreResponse = await fetch(`${baseUrl}/api/core`);
-      assert.equal(initialCoreResponse.status, 200);
-      const initialCorePayload = await initialCoreResponse.json();
-      const initialTask = initialCorePayload.tasks.find((candidate) => candidate.id === taskId);
-      assert.ok(initialTask);
-      assert.equal(initialTask.metadata.workflowContinuationReplay, undefined);
-      assert.equal(runtimeClient.createdSessions.length, 1);
-      assert.equal(runtimeClient.sentMessages.length, 1);
-      assert.equal(runtimeClient.sentMessages[0]?.sessionId, runtimeClient.createdSessions[0]?.id);
-      assert.ok(
-        initialCorePayload.activities.some((activity) =>
-          activity.taskId === taskId
-          && activity.metadata?.source === 'workflow-continuation-replay'
-          && activity.metadata?.replayPhase === 'startup_recovered'),
-      );
-      assert.ok(
-        initialCorePayload.activities.some((activity) =>
-          activity.taskId === taskId
-          && activity.metadata?.source === 'workflow-continuation-replay'
-          && activity.metadata?.replayPhase === 'replay_dispatched'
-          && activity.metadata?.resumeReason === null
-          && activity.metadata?.resultCount === 1),
-      );
-    });
   }, chatStore, createPreSetupCoreOverrides(chatStore));
 });
 

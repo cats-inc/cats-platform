@@ -13,7 +13,6 @@ import { normalizeSelectedChannelView } from '../src/products/chat/shared/channe
 function createPayload(): AppShellPayload {
   return {
     chat: {
-      bossCatId: 'boss-cat',
       selectedChannelId: 'direct-lane-1',
       selectedChannel: {
         id: 'direct-lane-1',
@@ -133,6 +132,7 @@ function createPayload(): AppShellPayload {
       cats: [
         {
           id: 'boss-cat',
+          group: 'admin',
           name: 'Boss Cat',
           roles: ['boss'],
           skillProfile: null,
@@ -223,7 +223,6 @@ function createPayload(): AppShellPayload {
         transcriptExport: true,
         participantManagement: 'basic',
         runtimeSessions: true,
-        maxBossCats: 1,
         maxCats: 5,
         maxChatParticipants: 5,
         maxAudienceParticipants: 3,
@@ -287,7 +286,6 @@ test('Work app view state keeps shared settings and direct-lane derivation seman
 
   assert.equal(viewState.surface, 'settings');
   assert.equal(viewState.activeMyCatId, 'companion-cat');
-  assert.equal(viewState.showBossCatAvatar, true);
   assert.deepEqual(Array.from(viewState.assignedCatIds), ['companion-cat']);
 });
 

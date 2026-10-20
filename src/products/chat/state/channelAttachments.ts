@@ -4,7 +4,6 @@ import path from 'node:path';
 import { requireChannel } from './model/index.js';
 import {
   collectParticipantLeaseCwds,
-  resolveOrchestratorLeaseAttachment,
 } from '../shared/channelParticipants.js';
 import {
   ensureAttachmentsDirectory,
@@ -77,7 +76,6 @@ function collectChannelAttachmentSyncTargets(
     }
   };
 
-  pushIfPresent(resolveOrchestratorLeaseAttachment(channel)?.cwd);
   for (const cwd of collectParticipantLeaseCwds(channel)) {
     pushIfPresent(cwd);
   }

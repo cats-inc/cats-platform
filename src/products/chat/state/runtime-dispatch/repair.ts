@@ -67,7 +67,6 @@ import {
   readLatestWorkflowContinuationContext,
 } from '../room-routing/continuationContext.js';
 import {
-  resolveOrchestratorLeaseAttachment,
   resolveParticipantLeaseAttachment,
   resolvePrimaryParticipantExecutionAssignment,
 } from '../../shared/channelParticipants.js';
@@ -1597,15 +1596,6 @@ function resolveMissingSessionCwd(
     if (existsSync(sessionPath)) {
       return sessionPath;
     }
-  }
-
-  const orchestratorAttachment = resolveOrchestratorLeaseAttachment(channel);
-  if (laneId && orchestratorAttachment?.laneId === laneId && orchestratorAttachment.cwd) {
-    return orchestratorAttachment.cwd;
-  }
-
-  if (orchestratorAttachment?.sessionId === sessionId && orchestratorAttachment.cwd) {
-    return orchestratorAttachment.cwd;
   }
 
   if (targetId) {

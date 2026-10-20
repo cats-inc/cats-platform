@@ -94,7 +94,6 @@ export function FocusRailLayout<Participant>(
 ): JSX.Element {
   const {
     segments,
-    bossCatId,
     buildParticipantAvatarClassName,
     buildParticipantAvatarStyle,
     resolveParticipantAvatarUrl,
@@ -129,7 +128,6 @@ export function FocusRailLayout<Participant>(
                 segmentParticipantCat={primaryPresentation.segmentParticipantCat}
                 speakerCat={primaryPresentation.speakerCat}
                 speakerLabel={primaryPresentation.speakerLabel}
-                bossCatId={bossCatId}
                 buildParticipantAvatarClassName={buildParticipantAvatarClassName}
                 buildParticipantAvatarStyle={buildParticipantAvatarStyle}
                 resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
@@ -204,7 +202,6 @@ export function FocusRailLayout<Participant>(
                       segmentParticipantCat={presentation.segmentParticipantCat}
                       speakerCat={presentation.speakerCat}
                       speakerLabel={presentation.speakerLabel}
-                      bossCatId={bossCatId}
                       buildParticipantAvatarClassName={buildParticipantAvatarClassName}
                       buildParticipantAvatarStyle={buildParticipantAvatarStyle}
                       resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}

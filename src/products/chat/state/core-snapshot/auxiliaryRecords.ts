@@ -35,9 +35,8 @@ export function normalizeBotBinding(
   }
 
   const rawStatus = readString(bindingRecord.status, 'active');
-  const rawRoomMode = readString(bindingRecord.roomMode ?? bindingRecord.defaultRoomMode, 'chat_channel');
-  const roomMode: BotBindingRecord['roomMode'] =
-    rawRoomMode === 'direct_message' ? 'direct_message' : 'chat_channel';
+  // Bot bindings always talk through their cat's DM.
+  const roomMode: BotBindingRecord['roomMode'] = 'direct_message';
   const rawInboundMode = readString(bindingRecord.inboundMode);
   const inboundMode: BotBindingRecord['inboundMode'] =
     rawInboundMode === 'polling' || rawInboundMode === 'webhook'
@@ -51,11 +50,8 @@ export function normalizeBotBinding(
     orchestratorActorId: readString(bindingRecord.orchestratorActorId),
     catActorId:
       readNullableString(bindingRecord.catActorId)
-      ?? readNullableString(bindingRecord.boundCatActorId)
-      ?? (chat.bossCatId ? createCatActorId(chat.bossCatId) : null),
-    bossCatActorId:
-      readNullableString(bindingRecord.bossCatActorId)
-      ?? (chat.bossCatId ? createCatActorId(chat.bossCatId) : null),
+      ?? readNullableString(bindingRecord.boundCatActorId),
+    bossCatActorId: readNullableString(bindingRecord.bossCatActorId),
     botToken: readNullableString(bindingRecord.botToken),
     webhookSecret: readNullableString(bindingRecord.webhookSecret),
     inboundMode,

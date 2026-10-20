@@ -205,7 +205,6 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
       body: JSON.stringify({
         ...createInput,
         originSurface: 'code',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -262,7 +261,10 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
     const sendMessageResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Now implement it.' }),
+      body: JSON.stringify({
+        body: 'Now implement it.',
+        messageMetadata: { recipientParticipantIds: [catId] },
+      }),
     });
     const sendMessagePayload = await sendMessageResponse.text();
     assert.equal(sendMessageResponse.status, 200, sendMessagePayload);

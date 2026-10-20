@@ -20,24 +20,19 @@ import type {
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
 } from '../../../shared/roomRouting.js';
-import {
-  isDirectLaneChannel,
-  isDefaultChatChannel,
-} from '../shared/channelTopology.js';
+import { isDirectLaneChannel } from '../shared/channelTopology.js';
 import {
   activeAssignedParticipants,
   findAssignedParticipant,
 } from '../shared/channelParticipants.js';
-import {
-  ORCHESTRATOR_NAME,
-  buildChannelView,
-  resolveOrchestratorDisplayName,
-} from './model/index.js';
+import { buildChannelView } from './model/index.js';
 import { parseMentions } from './mentionParsing.js';
 
 export type MentionRoutingMode = RoomRouteResolutionMode;
 
+/** A turn goes to participants only; coordination runs in a participant's own session. */
 export interface RoutingTarget extends RoomRoutingParticipantRef {
+  participantKind: 'cat';
   laneId: string | null;
   sessionId: string | null;
 }
@@ -66,16 +61,6 @@ export interface MentionRouteResult {
 }
 
 type AssignedParticipant = ChatChannelCat | ChatChannelParticipant;
-
-function buildOrchestratorTarget(state: ChatState, channel: ChatChannelView): RoutingTarget {
-  return {
-    participantKind: 'orchestrator',
-    participantId: 'orchestrator',
-    participantName: isDefaultChatChannel(channel) ? ORCHESTRATOR_NAME : resolveOrchestratorDisplayName(state),
-    laneId: null,
-    sessionId: null,
-  };
-}
 
 function buildCatTarget(cat: AssignedParticipant): RoutingTarget {
   return {
@@ -173,14 +158,58 @@ export function resolveRoomDefaultRoutingTarget(
     };
   }
 
-  const target = buildOrchestratorTarget(state, channel);
+  // Outside a DM, a message reaches only the audience it names.
   return {
-    participant: toParticipantRef(target),
-    target,
-    defaultTargetReason: 'chat_channel_default',
-    blockedReason: null,
-    note: null,
+    participant: null,
+    target: null,
+    defaultTargetReason: null,
+    blockedReason: 'missing_audience',
+    note: 'Name the audience for this message: choose participants or mention them with @Name.',
   };
+}
+
+/**
+ * Whether a message to this conversation fails to name an audience: outside a
+ * DM, a conversation answers only the participants a message names.
+ */
+export function messageLacksAudience(
+  state: ChatState,
+  channelId: string,
+  input: {
+    body: string;
+    recipientParticipantIds?: readonly unknown[] | null;
+    choiceResponse?: unknown;
+  },
+): boolean {
+  const channel = buildChannelView(state, channelId);
+  if (isDirectLaneChannel(channel) || input.choiceResponse) {
+    return false;
+  }
+  const recipientParticipantIds = (input.recipientParticipantIds ?? [])
+    .filter((value): value is string => typeof value === 'string');
+  return resolveMessageAudienceTargets(state, channelId, input.body, recipientParticipantIds).length === 0;
+}
+
+/**
+ * A message's audience: the participants it names, in order, then any it
+ * @mentions that are not already named.
+ */
+export function resolveMessageAudienceTargets(
+  state: ChatState,
+  channelId: string,
+  body: string,
+  recipientParticipantIds: readonly string[],
+): RoutingTarget[] {
+  const recipientTargets = resolveCurrentTurnRecipientTargets(state, channelId, recipientParticipantIds);
+  const mentionTargets = resolveMentionRoute(state, channelId, body, {
+    allowDefaultTarget: false,
+    explicitTrigger: 'explicit_mention',
+  }).targets;
+  return [
+    ...recipientTargets,
+    ...mentionTargets.filter((target) =>
+      !recipientTargets.some((recipient) => recipient.participantId === target.participantId)),
+  ];
 }
 
 function createRouteResolution(input: {
@@ -209,9 +238,8 @@ function createRouteResolution(input: {
  * construction and produces a structured result that the dispatch loop consumes.
  *
  * Routing rules:
- * - No mentions + chat_channel → Boss Cat (orchestrator) via room_default
  * - No mentions + direct_message → direct recipient Cat via room_default
- * - No mentions + participant chat → Boss Cat (orchestrator) via room_default
+ * - No mentions + any other room → blocked: the message names no audience
  * - @Cat_A → Cat_A via explicit_single
  * - @Cat_A @Cat_B → both via explicit_multi
  * - @UnknownName → appears in unresolvedMentions
@@ -233,16 +261,10 @@ export function resolveMentionRoute(
     : [];
   const activeCats = activeAssignedParticipants(channel);
   const catsByName = new Map(activeCats.map((cat) => [cat.name.toLowerCase(), cat]));
-  const orchestratorTarget = buildOrchestratorTarget(state, channel);
-  const isDirectLane = isDirectLaneChannel(channel);
-  const orchestratorMentionAliases = new Set([
-    ORCHESTRATOR_NAME.toLowerCase(),
-    orchestratorTarget.participantName.toLowerCase(),
-  ]);
   // Room names can contain spaces ("Builder Cat"), which a bare @token cannot.
   const mentionNames = parseMentions(body, {
     excludedNames: ignoredMentionNames,
-    knownNames: [...catsByName.keys(), ...orchestratorMentionAliases],
+    knownNames: [...catsByName.keys()],
   });
   const targets: RoutingTarget[] = [];
   const unresolved: string[] = [];
@@ -276,18 +298,6 @@ export function resolveMentionRoute(
 
   for (const mentionName of mentionNames) {
     const normalizedMention = mentionName.toLowerCase();
-    if (orchestratorMentionAliases.has(normalizedMention)) {
-      if (isDirectLane) {
-        unresolved.push(mentionName);
-        continue;
-      }
-      const key = `${orchestratorTarget.participantKind}:${orchestratorTarget.participantId}`;
-      if (!targets.some((t) => `${t.participantKind}:${t.participantId}` === key)) {
-        targets.push(orchestratorTarget);
-      }
-      continue;
-    }
-
     const cat = catsByName.get(normalizedMention);
     if (!cat) {
       unresolved.push(mentionName);

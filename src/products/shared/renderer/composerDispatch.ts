@@ -5,7 +5,6 @@ import type {
 } from '../../../shared/platform-contract.js';
 import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
 import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
-import { isDefaultChatChannel } from '../../chat/shared/channelTopology.js';
 import {
   buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
@@ -15,13 +14,8 @@ import {
   createTranslator,
   messageKeys,
 } from '../../../shared/i18n/index.js';
-import { resolveProductProviderId } from '../../../shared/providerCatalog.js';
 
 const defaultComposerDispatchTranslator = createTranslator('en');
-
-function normalizeComposerProvider(provider: string): string {
-  return resolveProductProviderId(provider) ?? provider.trim();
-}
 
 export interface ComposerModelValue {
   provider: string;
@@ -33,7 +27,6 @@ export interface ComposerModelValue {
 export interface ComposerSelectedChannelLike {
   id: string;
   channelKind?: 'chat_channel' | 'direct_message' | null;
-  pendingProvider?: string | null;
   roomRouting?: {
     mode?: RoomRoutingMode | null;
     defaultRecipientId?: string | null;
@@ -52,13 +45,6 @@ export interface ComposerPayloadLike<
   chat: {
     selectedChannel: TSelectedChannel | null;
   };
-}
-
-export interface PendingExecutionTargetInput {
-  pendingProvider: string;
-  pendingModel: string | null;
-  pendingInstance: string | null;
-  pendingModelSelection: ProviderModelSelection | null;
 }
 
 export interface ComposerTemporaryParticipantLike {
@@ -86,7 +72,6 @@ export interface PrepareComposerChannelDispatchResult<TPayload> {
 export interface PrepareWorkspaceSendContextResult<TPayload>
   extends PrepareComposerChannelDispatchResult<TPayload> {
   messageBody: string;
-  defaultDispatchTarget: PendingExecutionTargetInput | null;
 }
 
 export function isDirectLaneSelectedForCat<
@@ -101,41 +86,6 @@ export function isDirectLaneSelectedForCat<
 
   return channel.channelKind === 'direct_message'
     && channel.roomRouting?.defaultRecipientId === catId;
-}
-
-export function buildDefaultChatDispatchTarget<
-  ModelValue extends ComposerModelValue,
-  TSelectedChannel extends ComposerSelectedChannelLike,
->(options: {
-  wasDraftingNewChat: boolean;
-  isCatScopedLaneRoute: boolean;
-  channelId: string;
-  selectedChannel: TSelectedChannel | null;
-  defaultChannelExecutionTarget: ModelValue;
-}): PendingExecutionTargetInput | null {
-  const {
-    wasDraftingNewChat,
-    isCatScopedLaneRoute,
-    channelId,
-    selectedChannel,
-    defaultChannelExecutionTarget,
-  } = options;
-
-  if (
-    wasDraftingNewChat
-    || isCatScopedLaneRoute
-    || selectedChannel?.id !== channelId
-    || !isDefaultChatChannel(selectedChannel)
-  ) {
-    return null;
-  }
-
-  return {
-    pendingProvider: normalizeComposerProvider(defaultChannelExecutionTarget.provider),
-    pendingModel: defaultChannelExecutionTarget.model,
-    pendingInstance: defaultChannelExecutionTarget.instance,
-    pendingModelSelection: defaultChannelExecutionTarget.modelSelection,
-  };
 }
 
 export function resolveComposerFilesToUpload(options: {
@@ -426,8 +376,6 @@ export async function prepareWorkspaceSendContext<
   draftExecutionTarget?: ModelValue;
   assistantResponseLanguage?: AssistantResponseLanguage;
   t?: WorkspaceChatTranslator;
-  selectedChannel: ComposerSelectedChannelLike | null;
-  defaultChannelExecutionTarget: ModelValue;
   draftFiles: File[];
   channelFiles: File[];
   createChatChannel: (
@@ -479,8 +427,6 @@ export async function prepareWorkspaceSendContext<
     draftExecutionTarget,
     assistantResponseLanguage,
     t,
-    selectedChannel,
-    defaultChannelExecutionTarget,
     draftFiles,
     channelFiles,
     createChatChannel,
@@ -532,13 +478,6 @@ export async function prepareWorkspaceSendContext<
   payload = preparedChannel.payload;
   options.onChannelPrepared?.(preparedChannel);
 
-  const defaultDispatchTarget = buildDefaultChatDispatchTarget({
-    wasDraftingNewChat,
-    isCatScopedLaneRoute,
-    channelId: preparedChannel.channelId,
-    selectedChannel,
-    defaultChannelExecutionTarget,
-  });
   const filesToUpload = resolveComposerFilesToUpload({
     isCatScopedLaneRoute,
     hydratedDirectLane,
@@ -568,6 +507,5 @@ export async function prepareWorkspaceSendContext<
         ? payload
         : preparedChannel.rollbackPayload,
     messageBody: preparedMessage.messageBody,
-    defaultDispatchTarget,
   };
 }

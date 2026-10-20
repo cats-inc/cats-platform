@@ -17,7 +17,6 @@ type ChannelParticipantTopologyRef = Pick<
 };
 type ChannelTopologyCarrier = {
   channelKind?: ChatChannelKind | null;
-  pendingProvider?: string | null;
   roomRouting?: { mode?: RoomRoutingMode | null } | null;
   participantAssignments?: readonly ChannelParticipantTopologyRef[] | null;
   catAssignments?: readonly ChannelParticipantTopologyRef[] | null;
@@ -121,17 +120,6 @@ export function resolveChannelKindForChannel(
 
 export function isDirectLaneChannel(channel: ChannelTopologyCarrier): boolean {
   return resolveChannelKindForChannel(channel) === 'direct_message';
-}
-
-export function isProviderDefaultChatChannel(channel: ChannelTopologyCarrier): boolean {
-  return !isDirectLaneChannel(channel)
-    && !hasActiveChannelParticipants(channel)
-    && Boolean(channel.pendingProvider?.trim());
-}
-
-export function isDefaultChatChannel(channel: ChannelTopologyCarrier): boolean {
-  return !isDirectLaneChannel(channel)
-    && !hasActiveChannelParticipants(channel);
 }
 
 export function isParticipantChatChannel(channel: ChannelTopologyCarrier): boolean {

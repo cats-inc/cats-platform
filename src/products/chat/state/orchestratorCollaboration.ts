@@ -12,9 +12,9 @@ import { isDirectLaneChannel } from '../shared/channelTopology.js';
 import { resolveChannelParticipantAssignments } from '../shared/channelParticipants.js';
 import { resolveChannelCanonicalIdentity } from '../shared/channelCanonicalIdentity.js';
 import { isOrchestratorKnowledgeChannel } from './orchestratorKnowledge.js';
-import { resolveOrchestratorExecutionTarget } from './runtimeTargeting.js';
 import { collaborationExecutionRevision } from './collaborationExecutionSurface.js';
 import type { CollaborationExecutionSummary } from '../../work/state/collaborationRecords.js';
+import { isAdminCoordinatorActorRef, resolveCoordinatorParticipant } from './coordinator.js';
 
 export const DISCOVER_COLLABORATION_CATS = 'chat.collaboration.discover_cats';
 export const INSPECT_COLLABORATION_CONTEXT = 'chat.collaboration.inspect_context';
@@ -151,10 +151,14 @@ export function collaborationSnapshot(
 ): CollaborationSnapshot | null {
   const channel = state.channels.find((entry) => entry.id === channelId);
   if (!channel || !isOrchestratorKnowledgeChannel(channel) || isDirectLaneChannel(channel)
-    || channel.status === 'archived' || observation.actor.actorRef !== 'orchestrator') return null;
+    || channel.status === 'archived'
+    || !isAdminCoordinatorActorRef(state, channelId, observation.actor.actorRef)) return null;
   const assignments = resolveChannelParticipantAssignments(channel)
     .filter((entry) => entry.status === 'active');
-  const cats = state.cats.filter((cat) => cat.status === 'active' && isCatPartOfChatProduct(cat));
+  // The coordinator delegates; the cats it can choose are everyone else.
+  const coordinatorCatId = resolveCoordinatorParticipant(state, channelId)?.sourceRefId ?? null;
+  const cats = state.cats.filter((cat) => cat.status === 'active' && isCatPartOfChatProduct(cat)
+    && cat.id !== coordinatorCatId);
   const candidates = cats.map((cat): CollaborationCandidate => {
     const assignment = assignments.find((entry) => entry.sourceKind === 'cat' && entry.sourceRefId === cat.id);
     const target = assignment?.execution.target ?? cat.defaultExecutionTarget;
@@ -183,7 +187,7 @@ export function collaborationSnapshot(
     cats: cats.map(({ id, defaultExecutionTarget, defaultModelSelection, roles }) =>
       ({ id, defaultExecutionTarget, defaultModelSelection, roles })),
     assignments, repoPath: channel.repoPath, chatCwd: channel.chatCwd,
-    target: resolveOrchestratorExecutionTarget(state, channel),
+    coordinatorParticipantId: channel.coordinatorParticipantId,
     policy: observation.policy, capabilities: state.capabilities,
     goal: observation.goal, tools: observation.availableTools.map(({ manifest }) => manifest),
   }));

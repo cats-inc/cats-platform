@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  buildDefaultChatDispatchTarget,
   isDirectLaneSelectedForCat,
   prepareComposerMessageBody,
   resolveComposerFilesToUpload,
@@ -57,89 +56,6 @@ test('isDirectLaneSelectedForCat only accepts matching direct-lane recipients', 
     false,
   );
   assert.equal(isDirectLaneSelectedForCat(null, 'cat-1'), false);
-});
-
-test('buildDefaultChatDispatchTarget only derives pending target for the active default room', () => {
-  const executionTarget = {
-    provider: 'codex',
-    model: 'gpt-5.4',
-    instance: 'native',
-    modelSelection: {
-      entryId: 'gpt-5.4',
-      entryMode: 'explicit' as const,
-    },
-  };
-
-  assert.deepEqual(
-    buildDefaultChatDispatchTarget({
-      wasDraftingNewChat: false,
-      isCatScopedLaneRoute: false,
-      channelId: 'channel-default',
-      selectedChannel: {
-        id: 'channel-default',
-      },
-      defaultChannelExecutionTarget: executionTarget,
-    }),
-    {
-      pendingProvider: 'codex',
-      pendingModel: 'gpt-5.4',
-      pendingInstance: 'native',
-      pendingModelSelection: {
-        entryId: 'gpt-5.4',
-        entryMode: 'explicit',
-      },
-    },
-  );
-
-  assert.equal(
-    buildDefaultChatDispatchTarget({
-      wasDraftingNewChat: true,
-      isCatScopedLaneRoute: false,
-      channelId: 'channel-default',
-      selectedChannel: {
-        id: 'channel-default',
-      },
-      defaultChannelExecutionTarget: executionTarget,
-    }),
-    null,
-  );
-  assert.equal(
-    buildDefaultChatDispatchTarget({
-      wasDraftingNewChat: false,
-      isCatScopedLaneRoute: true,
-      channelId: 'channel-default',
-      selectedChannel: {
-        id: 'channel-default',
-      },
-      defaultChannelExecutionTarget: executionTarget,
-    }),
-    null,
-  );
-  assert.equal(
-    buildDefaultChatDispatchTarget({
-      wasDraftingNewChat: false,
-      isCatScopedLaneRoute: false,
-      channelId: 'channel-default',
-      selectedChannel: {
-        id: 'channel-other',
-      },
-      defaultChannelExecutionTarget: executionTarget,
-    }),
-    null,
-  );
-  assert.equal(
-    buildDefaultChatDispatchTarget({
-      wasDraftingNewChat: false,
-      isCatScopedLaneRoute: false,
-      channelId: 'channel-participant',
-      selectedChannel: {
-        id: 'channel-participant',
-        assignedCats: [{ catId: 'cat-1', status: 'active' }],
-      },
-      defaultChannelExecutionTarget: executionTarget,
-    }),
-    null,
-  );
 });
 
 test('resolveComposerFilesToUpload keeps draft and channel file ownership separate by route state', () => {

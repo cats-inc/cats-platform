@@ -7,6 +7,7 @@ import {
 import { cloneProviderModelSelection, type ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { catInitials } from '../workspaceChatUtils.js';
+import { isAdminCat } from '../../catGroups.js';
 
 export interface RecipientChipTarget {
   kind: 'named' | 'implicit';
@@ -60,7 +61,6 @@ export function buildNamedRecipient(input: {
 
 export function buildRecipientFromCat(
   cat: AppShellPayload['chat']['cats'][number],
-  bossCatId: string | null,
 ): RecipientChipTarget {
   return buildNamedRecipient({
     catId: cat.id,
@@ -72,7 +72,7 @@ export function buildRecipientFromCat(
     instance: cat.defaultExecutionTarget?.instance ?? null,
     model: cat.defaultExecutionTarget?.model ?? null,
     modelSelection: cat.defaultModelSelection ?? null,
-    isBoss: cat.id === bossCatId,
+    isBoss: isAdminCat(cat),
   });
 }
 

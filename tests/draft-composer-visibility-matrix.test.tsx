@@ -51,7 +51,6 @@ function installProviderFetch(): void {
 function createPayload(): AppShellPayload {
   return {
     chat: {
-      bossCatId: null,
       botBindings: [],
       capabilities: {
         maxCats: 5,
@@ -125,8 +124,6 @@ function buildProps(scenario: Scenario): NewChatDraftProps {
     plusMenuOpen: false,
     plusMenuRef: { current: null },
     fileInputRef: { current: null },
-    bossCatName: 'Boss Cat',
-    bossCatAvatarColor: null,
     onComposerChange: noop,
     onComposerKeyDown: noop,
     onSendMessage: noop,

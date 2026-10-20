@@ -17,7 +17,6 @@ import {
   deleteChannel,
   exportChannel,
   removeCatFromChannel,
-  resetDefaultChatContinuity,
   toChannelSummary,
   unarchiveCat,
   updateGlobalOrchestrator,
@@ -105,42 +104,6 @@ test('FileChatStore persists configured channels, cats, assignments, and message
   assert.equal(createdChannel.messages.at(-1).mentions[0], 'Agent-1');
 });
 
-test('FileChatStore round-trips explicit default continuity reset boundaries', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
-  const statePath = path.join(tempDir, 'chat-state.json');
-  const store = new FileChatStore(statePath);
-  const now = new Date('2026-04-17T00:00:00.000Z');
-
-  let state = await store.read();
-  state = createChannel(
-    state,
-    {
-      title: 'Default Thread',
-      topic: 'Persist explicit continuity resets.',
-      originSurface: 'chat',
-      skipBossCatGreeting: true,
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    now,
-  );
-  const channelId = state.selectedChannelId;
-  state = resetDefaultChatContinuity(
-    state,
-    channelId,
-    new Date('2026-04-17T00:00:30.000Z'),
-  );
-
-  await store.write(state);
-
-  const reloadedState = await store.read();
-  const reloadedChannel = reloadedState.channels.find((channel) => channel.id === channelId);
-
-  assert.equal(reloadedChannel?.continuityResetAt, '2026-04-17T00:00:30.000Z');
-  assert.equal(reloadedChannel?.orchestratorLease.sessionId, null);
-  assert.equal(reloadedChannel?.messages.at(-1)?.metadata?.event, 'continuity_reset');
-});
-
 test('normalizeMessage returns owned metadata objects', () => {
   const rawMessage = {
     id: 'message-1',
@@ -160,93 +123,40 @@ test('normalizeMessage returns owned metadata objects', () => {
   assert.equal(rawMessage.metadata.status, 'active');
 });
 
-test('resetDefaultChatContinuity is idempotent before the new branch starts', async () => {
-  const now = new Date('2026-04-17T00:00:00.000Z');
-  let state = createDefaultChatState();
-
-  state = createChannel(
-    state,
-    {
-      title: 'Default Thread',
-      topic: 'Do not append duplicate reset markers before any new branch activity.',
-      originSurface: 'chat',
-      skipBossCatGreeting: true,
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    now,
-  );
-  const channelId = state.selectedChannelId;
-  const firstResetState = resetDefaultChatContinuity(
-    state,
-    channelId,
-    new Date('2026-04-17T00:00:30.000Z'),
-  );
-  const secondResetState = resetDefaultChatContinuity(
-    firstResetState,
-    channelId,
-    new Date('2026-04-17T00:01:00.000Z'),
-  );
-  const channel = secondResetState.channels.find((candidate) => candidate.id === channelId);
-  const resetMessages = channel?.messages.filter((message) => message.metadata?.event === 'continuity_reset') ?? [];
-
-  assert.equal(channel?.continuityResetAt, '2026-04-17T00:00:30.000Z');
-  assert.equal(resetMessages.length, 1);
-});
-
-test('assigning and removing the first participant keeps default recipient topology consistent', async () => {
+test('removing the coordinator clears the binding and the last participant stays', async () => {
   const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
-  state = createCat(
-    state,
-    {
-      name: 'Milo',
-      provider: 'claude',
-      roles: ['companion'],
-    },
-    now,
-  );
-  const catId = state.cats[0].id;
+  for (const name of ['Milo', 'Nova']) {
+    state = createCat(state, { name, provider: 'claude', roles: ['companion'] }, now);
+  }
+  const miloId = state.cats.find((cat) => cat.name === 'Milo').id;
+  const novaId = state.cats.find((cat) => cat.name === 'Nova').id;
 
   state = createChannel(
     state,
     {
-      title: 'Default Thread',
-      topic: 'Starts without visible cats.',
+      title: 'Shared Thread',
+      topic: 'Starts with Milo.',
       originSurface: 'chat',
-      skipBossCatGreeting: true,
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
+      participantCatIds: [miloId],
     },
     now,
   );
   const channelId = state.selectedChannelId;
-
-  state = assignCatToChannel(
-    state,
-    channelId,
-    {
-      catId,
-      provider: 'claude',
-      model: 'claude-default',
-    },
-    now,
-  );
-  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, catId);
-  assert.equal(state.channels[0].participantAssignments?.[0]?.participantId, catId);
-
-  state = removeCatFromChannel(
-    state,
-    channelId,
-    catId,
-    new Date('2026-03-23T00:05:00.000Z'),
-  );
+  state = assignCatToChannel(state, channelId, { catId: novaId, provider: 'claude' }, now);
+  // Only a DM has a default recipient; a room names its audience.
   assert.equal(state.channels[0].roomRouting?.defaultRecipientId, null);
-  assert.equal(
-    state.channels[0].participantAssignments?.some((assignment) => assignment.status === 'active'),
-    false,
+  assert.equal(state.channels[0].coordinatorParticipantId, miloId);
+  assert.deepEqual(state.channels[0].participantAssignments?.map((assignment) => assignment.participantId), [miloId, novaId]);
+
+  state = removeCatFromChannel(state, channelId, miloId, new Date('2026-03-23T00:05:00.000Z'));
+  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, null);
+  assert.equal(state.channels[0].coordinatorParticipantId, null);
+  assert.throws(
+    () => removeCatFromChannel(state, channelId, novaId, new Date('2026-03-23T00:06:00.000Z')),
+    /at least one participant/u,
   );
 });
 
@@ -274,7 +184,6 @@ test('channel topology infers direct lanes and participant chat rooms independen
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -298,7 +207,7 @@ test('channel topology infers direct lanes and participant chat rooms independen
       originSurface: 'chat',
       title: 'Team room',
       topic: 'Multi-cat rooms are distinguished from boss threads.',
-      skipBossCatGreeting: true,
+      participantCatIds: [companionId, reviewerId],
     },
     now,
   );
@@ -322,7 +231,7 @@ test('FileChatStore repairs legacy active snapshots that are missing setupComple
     {
       name: 'Boss Cat',
       provider: 'claude',
-      makeBoss: true,
+      group: 'admin',
     },
     now,
   );
@@ -352,7 +261,7 @@ test('FileChatStore keeps the last known snapshot when the on-disk file is tempo
     {
       name: 'Boss Cat',
       provider: 'claude',
-      makeBoss: true,
+      group: 'admin',
     },
     new Date(now),
   );
@@ -389,7 +298,7 @@ test('FileChatStore cold-start recovers from backup when the primary snapshot is
     {
       name: 'Boss Cat',
       provider: 'claude',
-      makeBoss: true,
+      group: 'admin',
     },
     new Date(now),
   );
@@ -456,7 +365,6 @@ test('archiving a direct-lane cat preserves private lane history without promoti
       roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -503,7 +411,6 @@ test('unarchiving a cat restores its direct lane while keeping avatar metadata a
       roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -553,7 +460,6 @@ test('deleting a direct-lane cat removes the private lane instead of promoting i
       roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -600,7 +506,6 @@ test('direct lanes reject assigning a second cat beyond the lead', () => {
       roomMode: 'direct_message',
       participantCatIds: [defaultRecipientCatId],
       defaultRecipientId: defaultRecipientCatId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -657,7 +562,6 @@ test('FileChatStore normalizes contaminated direct lanes back to the direct-reci
       roomMode: 'direct_message',
       participantCatIds: [defaultRecipientCatId],
       defaultRecipientId: defaultRecipientCatId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -711,10 +615,8 @@ test('FileChatStore normalizes contaminated direct lanes back to the direct-reci
   assert.equal(recoveredChannel.catAssignments[0].catId, defaultRecipientCatId);
   assert.equal(recoveredChannel.roomRouting?.mode, 'direct_message');
   assert.equal(recoveredChannel.roomRouting?.defaultRecipientId, defaultRecipientCatId);
-  assert.equal(recoveredChannel.orchestratorLease.sessionId, null);
-  assert.equal(recoveredChannel.orchestratorLease.status, 'not_started');
-  assert.equal(recoveredChannel.orchestratorLease.provider, null);
-  assert.equal(recoveredChannel.orchestratorLease.model, null);
+  // A stored orchestrator lease is dropped on read; no orchestrator session exists.
+  assert.equal('orchestratorLease' in recoveredChannel, false);
 });
 
 test('FileChatStore round-trips per-message execution provenance', async () => {
@@ -728,7 +630,6 @@ test('FileChatStore round-trips per-message execution provenance', async () => {
       originSurface: 'chat',
       title: 'Execution Provenance',
       topic: 'Remember which provider answered.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -772,7 +673,6 @@ test('FileChatStore preserves first-class choices, embedded-json extraction, and
       title: 'Choice Contract',
       topic: 'Persist structured choices in transcript history.',
       originSurface: 'chat',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -902,8 +802,8 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
     },
     now,
   );
-  state.bossCatId = state.cats[0].id;
-
+  const smellyId = state.cats[0].id;
+  state.cats.find((cat) => cat.id === smellyId).group = 'admin';
   state = createCat(
     state,
     {
@@ -921,7 +821,8 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
       originSurface: 'chat',
       title: 'Workflow Projection',
       topic: 'Project system workflow into core.',
-      skipBossCatGreeting: true,
+      // Smelly, a Boss Cat, coordinates the room and hands off to Agent-1.
+      participantCatIds: [smellyId, agentId],
     },
     now,
   );
@@ -1009,10 +910,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   const core = await store.readCore();
 
   assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.resolution.selectionKind, 'explicit_mentions');
-  assert.equal(
-    reloadedChannel?.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
-    'chat_channel_default',
-  );
+  assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.resolution.defaultTargetReason, null);
   assert.deepEqual(
     reloadedChannel?.roomRouting?.wakeHistory.map((wake) => wake.reason),
     ['workflow_continuation', 'explicit_mention'],
@@ -1125,7 +1023,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
       originSurface: 'chat',
       title: 'Continuation Replay Projection',
       topic: 'Persist blocked continuation replay metadata into core.',
-      skipBossCatGreeting: true,
+      participantCatIds: [inlineAgentId, followupAgentId],
     },
     now,
   );
@@ -1282,7 +1180,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
       originSurface: 'chat',
       title: 'Dispatch Guard Replay Projection',
       topic: 'Persist blocked continuation replay metadata when dispatch limits stop a handoff.',
-      skipBossCatGreeting: true,
+      participantCatIds: [inlineAgentId, followupAgentId],
     },
     now,
   );
@@ -1407,346 +1305,6 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
   assert.equal(replay?.workflowShape, 'sequential');
 });
 
-test('ChatStore projects retryable workflow-continuation replay metadata for anti-ping-pong blocks', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
-  let state = await store.read();
-  const now = new Date('2026-03-26T11:00:00.000Z');
-
-  state = createCat(
-    state,
-    {
-      name: 'Inline-Agent',
-      provider: 'claude',
-      roles: ['reviewer'],
-    },
-    now,
-  );
-  const inlineAgentId = state.cats[0].id;
-  state = createCat(
-    state,
-    {
-      name: 'Followup-Agent',
-      provider: 'antigravity',
-      roles: ['auditor'],
-    },
-    now,
-  );
-  const followupAgentId = state.cats[0].id;
-
-  state = createChannel(
-    state,
-    {
-      originSurface: 'chat',
-      title: 'Anti Ping Pong Replay Projection',
-      topic: 'Persist blocked continuation replay metadata when anti-ping-pong stops a loop.',
-      skipBossCatGreeting: true,
-    },
-    now,
-  );
-  const channelId = state.selectedChannelId;
-  state = assignCatToChannel(
-    state,
-    channelId,
-    {
-      catId: inlineAgentId,
-      provider: 'claude',
-      roles: ['reviewer'],
-    },
-    now,
-  );
-  state = assignCatToChannel(
-    state,
-    channelId,
-    {
-      catId: followupAgentId,
-      provider: 'antigravity',
-      roles: ['auditor'],
-    },
-    now,
-  );
-
-  let inlinePromptCount = 0;
-  const runtimeClient = {
-    async getHealth() {
-      return {
-        baseUrl: 'http://127.0.0.1:3110',
-        reachable: true,
-        status: 'ok',
-        service: 'cats-runtime',
-      };
-    },
-    async getProviderConfig() {
-      return {};
-    },
-    async getProviderModels(provider) {
-      return {
-        provider,
-        backend: 'cli',
-        instance: 'default',
-        defaultModel: `${provider}-default`,
-        source: 'config',
-        cache: null,
-        models: [
-          { id: `${provider}-default`, label: `${provider} default`, default: true },
-        ],
-        warnings: [],
-      };
-    },
-    sessionCount: 0,
-    async createSession(input) {
-      this.sessionCount += 1;
-      return {
-        id: `session-${this.sessionCount}`,
-        provider: input.provider,
-        model: input.model ?? null,
-        status: 'ready',
-        cwd: input.cwd ?? '/tmp/cats-chat-store',
-      };
-    },
-    async sendMessage(_sessionId, content) {
-      if (content.includes('You are Inline-Agent')) {
-        inlinePromptCount += 1;
-        return {
-          segments: [{
-            kind: 'text',
-            text: inlinePromptCount === 1
-              ? '@Followup-Agent take first pass.'
-              : '@Followup-Agent one more tweak.',
-            toolName: null,
-            toolId: null,
-          }],
-          inputTokens: 11,
-          outputTokens: 7,
-          tokensUsed: 18,
-        };
-      }
-      if (content.includes('You are Followup-Agent')) {
-        return {
-          segments: [{
-            kind: 'text',
-            text: '@Inline-Agent please review.',
-            toolName: null,
-            toolId: null,
-          }],
-          inputTokens: 9,
-          outputTokens: 6,
-          tokensUsed: 15,
-        };
-      }
-      throw new Error(`Unexpected prompt:\n${content}`);
-    },
-    async closeSession() {},
-  };
-
-  const dispatched = await routeChannelMessage(
-    state,
-    channelId,
-    { body: '@Inline-Agent start the routing loop.' },
-    runtimeClient,
-    now,
-  );
-  const channelView = buildChannelView(dispatched.state, channelId);
-  assert.equal(channelView.roomRouting?.lastOutcome?.guard, 'anti_ping_pong');
-
-  await store.write(dispatched.state);
-  const core = await store.readCore();
-  const projectedTask = core.tasks.find((task) => task.id === `task-channel-${channelId}`);
-  const dispatchedChannel = dispatched.state.channels.find((candidate) => candidate.id === channelId);
-  const replay = projectedTask?.metadata.workflowContinuationReplay;
-  const sourceMessageId = replay?.sourceMessageId;
-  const sourceMessage = typeof sourceMessageId === 'string'
-    ? dispatchedChannel?.messages.find((message) => message.id === sourceMessageId)
-    : null;
-  const sourceLane = typeof replay?.sourceLaneId === 'string'
-    ? core.lanes.find((lane) => lane.id === replay.sourceLaneId) ?? null
-    : null;
-
-  assert.ok(projectedTask);
-  assert.ok(sourceMessage);
-  assert.ok(sourceLane);
-  assert.equal(replay?.replayState, 'ready');
-  assert.equal(replay?.blockedReason, 'anti_ping_pong');
-  assert.equal(replay?.sourceMessageId, sourceMessage?.id);
-  assert.equal(replay?.sourceTurnId, sourceMessage?.metadata?.turnId ?? null);
-  assert.equal(replay?.sourceTurnId, sourceLane?.turnId ?? null);
-  assert.equal(replay?.sourceLaneId, sourceLane?.id ?? null);
-  assert.equal(replay?.sourceAssistantTurnId, sourceLane?.metadata?.responseAssistantTurnId ?? null);
-  assert.equal(replay?.sourceParticipant?.participantName, sourceMessage?.senderName ?? null);
-  assert.equal(replay?.workflowStageId, 'continuation_handoff');
-  assert.equal(replay?.workflowShape, 'sequential');
-  assert.equal(replay?.targets?.length, 1);
-});
-
-test('ChatStore projects retryable workflow-continuation replay metadata for max-target-visit blocks', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
-  let state = await store.read();
-  const now = new Date('2026-03-26T11:30:00.000Z');
-
-  state = createCat(
-    state,
-    {
-      name: 'Inline-Agent',
-      provider: 'claude',
-      roles: ['reviewer'],
-    },
-    now,
-  );
-  const inlineAgentId = state.cats[0].id;
-  state = createCat(
-    state,
-    {
-      name: 'Followup-Agent',
-      provider: 'antigravity',
-      roles: ['auditor'],
-    },
-    now,
-  );
-  const followupAgentId = state.cats[0].id;
-
-  state = createChannel(
-    state,
-    {
-      originSurface: 'chat',
-      title: 'Target Visit Replay Projection',
-      topic: 'Persist blocked continuation replay metadata when revisit limits stop a handoff.',
-      skipBossCatGreeting: true,
-    },
-    now,
-  );
-  const channelId = state.selectedChannelId;
-  state = assignCatToChannel(
-    state,
-    channelId,
-    {
-      catId: inlineAgentId,
-      provider: 'claude',
-      roles: ['reviewer'],
-    },
-    now,
-  );
-  state = assignCatToChannel(
-    state,
-    channelId,
-    {
-      catId: followupAgentId,
-      provider: 'antigravity',
-      roles: ['auditor'],
-    },
-    now,
-  );
-
-  const channel = state.channels.find((candidate) => candidate.id === channelId);
-  assert.ok(channel);
-  channel.roomRouting.maxTargetVisitsPerTurn = 1;
-
-  const runtimeClient = {
-    async getHealth() {
-      return {
-        baseUrl: 'http://127.0.0.1:3110',
-        reachable: true,
-        status: 'ok',
-        service: 'cats-runtime',
-      };
-    },
-    async getProviderConfig() {
-      return {};
-    },
-    async getProviderModels(provider) {
-      return {
-        provider,
-        backend: 'cli',
-        instance: 'default',
-        defaultModel: `${provider}-default`,
-        source: 'config',
-        cache: null,
-        models: [
-          { id: `${provider}-default`, label: `${provider} default`, default: true },
-        ],
-        warnings: [],
-      };
-    },
-    sessionCount: 0,
-    async createSession(input) {
-      this.sessionCount += 1;
-      return {
-        id: `session-${this.sessionCount}`,
-        provider: input.provider,
-        model: input.model ?? null,
-        status: 'ready',
-        cwd: input.cwd ?? '/tmp/cats-chat-store',
-      };
-    },
-    async sendMessage(_sessionId, content) {
-      if (content.includes('You are Inline-Agent')) {
-        return {
-          segments: [{
-            kind: 'text',
-            text: '@Followup-Agent take first pass.',
-            toolName: null,
-            toolId: null,
-          }],
-          inputTokens: 11,
-          outputTokens: 7,
-          tokensUsed: 18,
-        };
-      }
-      if (content.includes('You are Followup-Agent')) {
-        return {
-          segments: [{
-            kind: 'text',
-            text: '@Inline-Agent please review.',
-            toolName: null,
-            toolId: null,
-          }],
-          inputTokens: 9,
-          outputTokens: 6,
-          tokensUsed: 15,
-        };
-      }
-      throw new Error(`Unexpected prompt:\n${content}`);
-    },
-    async closeSession() {},
-  };
-
-  const dispatched = await routeChannelMessage(
-    state,
-    channelId,
-    { body: '@Inline-Agent start the routing loop.' },
-    runtimeClient,
-    now,
-  );
-  const channelView = buildChannelView(dispatched.state, channelId);
-  assert.equal(channelView.roomRouting?.lastOutcome?.guard, 'max_target_visits');
-
-  await store.write(dispatched.state);
-  const core = await store.readCore();
-  const projectedTask = core.tasks.find((task) => task.id === `task-channel-${channelId}`);
-  const dispatchedChannel = dispatched.state.channels.find((candidate) => candidate.id === channelId);
-  const replay = projectedTask?.metadata.workflowContinuationReplay;
-  const sourceMessageId = replay?.sourceMessageId;
-  const sourceMessage = typeof sourceMessageId === 'string'
-    ? dispatchedChannel?.messages.find((message) => message.id === sourceMessageId)
-    : null;
-  const sourceLane = typeof replay?.sourceLaneId === 'string'
-    ? core.lanes.find((lane) => lane.id === replay.sourceLaneId) ?? null
-    : null;
-
-  assert.ok(projectedTask);
-  assert.ok(sourceMessage);
-  assert.ok(sourceLane);
-  assert.equal(replay?.replayState, 'ready');
-  assert.equal(replay?.blockedReason, 'max_target_visits');
-  assert.equal(replay?.sourceMessageId, sourceMessage?.id);
-  assert.equal(replay?.sourceTurnId, sourceMessage?.metadata?.turnId ?? null);
-  assert.equal(replay?.sourceTurnId, sourceLane?.turnId ?? null);
-  assert.equal(replay?.sourceLaneId, sourceLane?.id ?? null);
-  assert.equal(replay?.sourceAssistantTurnId, sourceLane?.metadata?.responseAssistantTurnId ?? null);
-  assert.equal(replay?.sourceParticipant?.participantName, sourceMessage?.senderName ?? null);
-  assert.equal(replay?.workflowStageId, 'continuation_handoff');
-  assert.equal(replay?.workflowShape, 'sequential');
-  assert.equal(replay?.targets?.length, 1);
-});
-
 test('routeChannelMessage sends choice responses back to the originating cat session without mentions', async () => {
   const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
@@ -1769,7 +1327,6 @@ test('routeChannelMessage sends choice responses back to the originating cat ses
       originSurface: 'chat',
       title: 'Choice Routing',
       topic: 'Route structured answers back to the originating cat.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -1912,7 +1469,6 @@ test('FileChatStore preserves null room route targets when reloading persisted r
       originSurface: 'chat',
       title: 'Blocked room',
       topic: 'Keep blocked route targets nullable on reload.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -1973,7 +1529,6 @@ test('FileChatStore drops malformed assistant turn deliveries when reloading per
       originSurface: 'chat',
       title: 'Malformed segment delivery',
       topic: 'Reject incomplete persisted assistant turn delivery records.',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -2065,7 +1620,7 @@ test('ChatStore syncs Telegram bot bindings to the current Boss Cat actor', asyn
     },
     new Date('2026-03-19T00:00:00.000Z'),
   );
-  state.bossCatId = state.cats[0].id;
+  state.cats.find((cat) => cat.id === state.cats[0].id).group = 'admin';
   state = updateGlobalOrchestrator(
     state,
     {
@@ -2078,11 +1633,11 @@ test('ChatStore syncs Telegram bot bindings to the current Boss Cat actor', asyn
   await store.write(state);
   const core = await store.readCore();
   const telegramBinding = core.botBindings.find((binding) => binding.platform === 'telegram');
-  const bossCatActor = core.actors.find((actor) => actor.sourceId === state.bossCatId);
+  const bossCatActor = core.actors.find((actor) => actor.sourceId === state.cats[0].id);
 
   assert.ok(telegramBinding);
   assert.equal(telegramBinding.botName, 'smelly_bot');
-  assert.equal(telegramBinding.bossCatActorId, `actor-cat-${state.bossCatId}`);
+  assert.equal(telegramBinding.bossCatActorId, `actor-cat-${state.cats[0].id}`);
   assert.ok(bossCatActor);
   assert.ok(bossCatActor.roles.includes('boss_cat'));
 });
@@ -2356,7 +1911,7 @@ test('updateGlobalOrchestrator preserves the existing model when model is omitte
   assert.equal(state.globalOrchestrator.telegramBotName, 'smelly_bot');
 });
 
-test('ChatStore rebinds Telegram bot bindings when the Boss Cat changes', async () => {
+test('ChatStore rebinds Telegram bot bindings when the Boss Cats change', async () => {
   const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
 
@@ -2370,7 +1925,7 @@ test('ChatStore rebinds Telegram bot bindings when the Boss Cat changes', async 
     new Date('2026-03-19T00:00:00.000Z'),
   );
   const firstBossCatId = state.cats[0].id;
-  state.bossCatId = firstBossCatId;
+  state.cats.find((cat) => cat.id === firstBossCatId).group = 'admin';
   state = updateGlobalOrchestrator(
     state,
     {
@@ -2391,7 +1946,8 @@ test('ChatStore rebinds Telegram bot bindings when the Boss Cat changes', async 
   const secondBossCatId = state.cats.find((cat) => cat.id !== firstBossCatId)?.id;
   assert.ok(secondBossCatId);
 
-  state.bossCatId = secondBossCatId;
+  state.cats.find((cat) => cat.id === firstBossCatId).group = 'standard';
+  state.cats.find((cat) => cat.id === secondBossCatId).group = 'admin';
   await store.write(state);
 
   const core = await store.readCore();

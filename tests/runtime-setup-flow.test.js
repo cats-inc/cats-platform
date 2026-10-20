@@ -255,6 +255,6 @@ test('legacy POST /api/platform/setup/complete also succeeds without runtime boo
     assert.equal(payload.runtimeSetup.status, 'selection_required');
     assert.equal(payload.runtimeSetup.bootstrapRequired, true);
     // Setup no longer creates a Boss Cat; that is a Chat concern now.
-    assert.equal(payload.chat.bossCatId, null);
+    assert.equal(payload.chat.cats.some((cat) => cat.group === 'admin'), false);
   });
 });

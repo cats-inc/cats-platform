@@ -1,5 +1,8 @@
 # Feature Specifications
 
+- [SPEC-125: Conversation participants, audience and orchestrator binding](SPEC-125-conversation-participants-audience-and-orchestrator-binding.md)
+  — approved, 2026-10-20; participants always present, per-message audience,
+  optional coordinator binding and admin-gated authority; implementation not started.
 - [SPEC-124: Alive companion life loop](SPEC-124-alive-companion-life-loop.md)
   — approved, 2026-09-29; keep-alive, sleep rhythm, heartbeat, Telegram on-duty
   and photos for companion Cats; implemented; real-bot and visual acceptance pending.
@@ -58,6 +61,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-125](SPEC-125-conversation-participants-audience-and-orchestrator-binding.md) | Conversation Participants, Audience and Orchestrator Binding | Approved; implementation not started | [PLAN-118](../plans/PLAN-118-conversation-participants-audience-and-orchestrator-binding-rollout.md) |
 | [SPEC-124](SPEC-124-alive-companion-life-loop.md) | Alive Companion Life Loop | Implemented; real-bot and visual acceptance pending | [PLAN-117](../plans/PLAN-117-alive-companion-life-loop.md) |
 | [SPEC-121](SPEC-121-managed-plugin-capabilities.md) | Managed Plugin Capabilities | Internal Agency host pilot implemented; general SDK planned | [PLAN-113](../plans/PLAN-113-managed-plugin-capabilities.md) |
 | [SPEC-120](SPEC-120-app-market-and-lifecycle.md) | App Market and Lifecycle | Draft contract; direction accepted; not implemented | [PLAN-112](../plans/PLAN-112-app-market-and-lifecycle.md) |

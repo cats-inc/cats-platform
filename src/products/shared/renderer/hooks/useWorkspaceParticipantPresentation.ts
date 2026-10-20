@@ -11,10 +11,7 @@ import type {
 import {
   type SelectedChannelView,
 } from '../workspaceChatUtils.js';
-import {
-  buildCatExecutionLabel,
-  buildParticipantExecutionLabel,
-} from '../../../../shared/executionLabel.js';
+import { buildParticipantExecutionLabel } from '../../../../shared/executionLabel.js';
 import { isInternalOrchestratorLabel } from '../../../../shared/orchestratorLabel.js';
 import {
   activeAssignedParticipants,
@@ -22,6 +19,7 @@ import {
   resolveParticipantCatId,
   type ResolvedChannelParticipant,
 } from '../../channelParticipants.js';
+import { isAdminCat } from '../../catGroups.js';
 
 /** The model choice a chat participant runs: the chat's own copy, not the cat's default. */
 function participantSelectionTarget(
@@ -54,17 +52,13 @@ export function useWorkspaceParticipantPresentation(options: {
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView;
   activeAssignedCats: SelectedChannelView['assignedCats'];
-  showBossCatAvatar: boolean;
   isDirectLane: boolean;
-  isDefaultChatComposer: boolean;
 }) {
   const {
     payload,
     selectedChannel,
     activeAssignedCats,
-    showBossCatAvatar,
     isDirectLane,
-    isDefaultChatComposer,
   } = options;
   const defaultRecipientId = selectedChannel.roomRouting.defaultRecipientId;
   const activeRoomParticipants = useMemo<ResolvedChannelParticipant[]>(
@@ -156,7 +150,7 @@ export function useWorkspaceParticipantPresentation(options: {
     return [
       'catAvatar',
       options.transcript ? 'transcriptAvatar' : '',
-      catRecord?.id === payload.chat.bossCatId ? 'catAvatarBoss' : '',
+      isAdminCat(catRecord) ? 'catAvatarBoss' : '',
       participantUsesNeutralAvatar(participant, catRecord) ? 'channelParticipantAvatar' : '',
     ].filter(Boolean).join(' ');
   }
@@ -201,9 +195,6 @@ export function useWorkspaceParticipantPresentation(options: {
   const directLaneCat = isDirectLane && defaultRecipientCat
     ? payload.chat.cats.find((cat) => cat.id === defaultRecipientCat.catId) ?? null
     : null;
-  const bossCatRecord = payload.chat.bossCatId
-    ? payload.chat.cats.find((cat) => cat.id === payload.chat.bossCatId) ?? null
-    : null;
   const defaultRecipientCatRecord = defaultRecipientCat
     ? payload.chat.cats.find((cat) => cat.id === defaultRecipientCat.catId) ?? null
     : null;
@@ -237,7 +228,7 @@ export function useWorkspaceParticipantPresentation(options: {
           executionLabel,
           avatarColor: defaultRecipientCatRecord.avatarColor ?? null,
           avatarUrl: defaultRecipientCatRecord.avatarUrl ?? null,
-          isBoss: defaultRecipientCatRecord.id === payload.chat.bossCatId,
+          isBoss: isAdminCat(defaultRecipientCatRecord),
           useNeutralAvatar: false,
           pulseParticipantId: defaultRecipientParticipant?.participantId ?? null,
           pulseCatId: defaultRecipientCatRecord.id,
@@ -245,20 +236,6 @@ export function useWorkspaceParticipantPresentation(options: {
         });
       }
     } else {
-      if (showBossCatAvatar && !isDefaultChatComposer && bossCatRecord) {
-        ordered.push({
-          key: `participant:${bossCatRecord.id}`,
-          label: bossCatRecord.name,
-          executionLabel: buildCatExecutionLabel(bossCatRecord),
-          avatarColor: bossCatRecord.avatarColor ?? null,
-          avatarUrl: bossCatRecord.avatarUrl ?? null,
-          isBoss: true,
-          useNeutralAvatar: false,
-          pulseParticipantId: null,
-          pulseCatId: bossCatRecord.id,
-          selectionTarget: null,
-        });
-      }
       for (const participant of activeRoomParticipants) {
         const catRecord = resolveParticipantCatRecord(participant);
         ordered.push({
@@ -267,7 +244,7 @@ export function useWorkspaceParticipantPresentation(options: {
           executionLabel: buildParticipantExecutionLabel(participant),
           avatarColor: catRecord?.avatarColor ?? participant.avatarColor ?? null,
           avatarUrl: catRecord?.avatarUrl ?? participant.avatarUrl ?? null,
-          isBoss: catRecord?.id === payload.chat.bossCatId,
+          isBoss: isAdminCat(catRecord),
           useNeutralAvatar: participantUsesNeutralAvatar(participant, catRecord),
           pulseParticipantId: participant.participantId,
           pulseCatId: catRecord?.id ?? null,
@@ -278,16 +255,12 @@ export function useWorkspaceParticipantPresentation(options: {
     return ordered;
   }, [
     activeRoomParticipants,
-    bossCatRecord,
     defaultRecipientCatRecord,
     defaultRecipientParticipant?.participantId,
     isDirectLane,
-    isDefaultChatComposer,
-    payload.chat.bossCatId,
     participantUsesNeutralAvatar,
     resolveParticipantDisplayName,
     resolveParticipantCatRecord,
-    showBossCatAvatar,
   ]);
 
   return {
@@ -295,7 +268,6 @@ export function useWorkspaceParticipantPresentation(options: {
     defaultRecipientParticipant,
     defaultRecipientCat,
     directLaneCat,
-    bossCatRecord,
     defaultRecipientCatRecord,
     assignedCatRecords,
     assignedAdhocParticipants,

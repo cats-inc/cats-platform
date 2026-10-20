@@ -15,7 +15,6 @@ import {
   DEFAULT_CHAT_SCOPE_ID,
   handleRestError,
   hasActiveChannelTurn,
-  maybeAutoResumeRecoveredOrchestratorContinuation,
   nowFrom,
   requireValidChatScopeId,
   sendChannelExport,
@@ -433,11 +432,6 @@ async function handleRestActivateChannel(
         activityStore: context.dependencies.companionActivityStore,
         now,
       });
-      if (activation.results.some((result) =>
-        result.targetKind === 'orchestrator'
-        && (result.status === 'started' || result.status === 'already_started'))) {
-        await maybeAutoResumeRecoveredOrchestratorContinuation(context, channelId, now);
-      }
       sendJson(context.response, 200, {
         activation: {
           channelId,

@@ -31,14 +31,20 @@ export async function runPreparationAcceptance({ load, root, workspace, target, 
     + 'Find an implementer and a distinct reviewer, inspect the current conversation, and propose a new bug-fix conversation. '
     + 'The fixture tests assert add(2,3)=5 and add(-2,3)=1. Review must follow a verified implementation revision. '
     + 'Do not execute the proposal, create a conversation, start workers, edit files or run tests yet.';
-  let state = createChannel(createDefaultChatState(), { title: 'K2 preparation fixture', topic: goal,
+  // A Boss Cat on the coordinator target coordinates the room; only it may prepare collaboration.
+  let state = createCat(createDefaultChatState(), { name: 'Coordinator', provider: coordinatorTarget.provider,
+    instance: coordinatorTarget.instance, model: coordinatorTarget.model, group: 'admin' }, now);
+  const coordinatorId = state.cats[0].id;
+  state = createChannel(state, { title: 'K2 preparation fixture', topic: goal,
     originSurface: 'chat', repoPath: workspace, roomMode: 'chat_channel', responseLanguage: 'en',
-    cats: [{ name: 'Implementer', provider: target.provider, roles: ['implementation'] }] }, now);
+    cats: [{ name: 'Implementer', provider: target.provider, roles: ['implementation'] }],
+    participantCatIds: [coordinatorId], participantOrder: [`cat:${coordinatorId}`] }, now);
   const channelId = state.selectedChannelId;
   state = createCat(state, { name: 'Reviewer', provider: target.provider, roles: ['review'] }, now);
-  state.globalOrchestrator.visibleParticipant.executionTarget = coordinatorTarget;
-  for (const cat of state.cats) cat.defaultExecutionTarget = target;
-  for (const channel of state.channels) for (const assignment of channel.catAssignments) assignment.execution.target = target;
+  for (const cat of state.cats) if (cat.id !== coordinatorId) cat.defaultExecutionTarget = target;
+  for (const channel of state.channels) for (const assignment of channel.catAssignments) {
+    if (assignment.catId !== coordinatorId) assignment.execution.target = target;
+  }
   const store = new FileChatStore(config.chatStatePath);
   await store.write(state);
   const created = await auth.createFirstAdminLocalAuthState({ state: auth.createEmptyPlatformAuthState(now),
@@ -125,7 +131,8 @@ export async function runPreparationAcceptance({ load, root, workspace, target, 
       return;
     }
     if (isCancelled()) throw new Error('Preparation acceptance interrupted before submission');
-    const response = await request(`channels/${channelId}/messages`, 'POST', { body: goal });
+    const response = await request(`channels/${channelId}/messages`, 'POST',
+      { body: goal, messageMetadata: { recipientParticipantIds: [coordinatorId] } });
     assert.equal(response.status, 200);
     const acknowledged = await response.json();
     assert.equal(acknowledged.phase, 'acknowledged');

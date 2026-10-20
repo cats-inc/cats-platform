@@ -43,6 +43,9 @@ const BINDING_ID = 'binding-telegram-bridge-test';
 const CHAT_ID = '4242';
 const CONVERSATION_ID = 'conversation-bridge-test';
 const OWNER_USER_ID = 987654;
+/** The cat the test bot is bound to; a Telegram chat is always its DM. */
+const BRIDGE_CAT = { id: 'cat-1', name: 'Bridge Cat' };
+const BRIDGE_CAT_ACTOR_ID = 'actor-cat-cat-1';
 
 /** The bridge only reaches these when an update is *not* golden-path traffic. */
 const memoryService = {} as unknown as CatsMemoryService;
@@ -54,8 +57,8 @@ function botBinding(): BotBindingRecord {
     platform: 'telegram',
     botName: 'bridge_test_bot',
     orchestratorActorId: 'actor-orchestrator',
-    catActorId: 'actor-cat',
-    bossCatActorId: 'actor-cat',
+    catActorId: BRIDGE_CAT_ACTOR_ID,
+    bossCatActorId: BRIDGE_CAT_ACTOR_ID,
     botToken: null,
     webhookSecret: null,
     inboundMode: 'polling',
@@ -71,7 +74,7 @@ function relayContext(): TelegramRelayContext {
   return {
     bossCatId: 'cat-1',
     bossCatName: 'Bridge Cat',
-    bossCatActorId: 'actor-cat',
+    bossCatActorId: BRIDGE_CAT_ACTOR_ID,
     botBindings: [binding],
     defaultBotBinding: binding,
     selectedBotBinding: binding,
@@ -200,7 +203,7 @@ function createChatRoomBridgeSpy(log: RecordedCall[]) {
   return {
     readState: async () => {
       log.push({ kind: 'roomBridge:readState' });
-      return { selectedChannelId: 'channel-1', channels: [{ id: 'channel-1' }], cats: [] };
+      return { selectedChannelId: 'channel-1', channels: [{ id: 'channel-1' }], cats: [BRIDGE_CAT] };
     },
     writeState: async (state: unknown) => state,
     createRoom: (state: unknown) => {
@@ -323,7 +326,7 @@ test('a companion heartbeat that lands mid-turn is never re-sent as the Telegram
   const roomState = (messages: Message[]) => ({
     selectedChannelId: 'channel-1',
     channels: [{ id: 'channel-1', title: 'Bridge Cat', messages }],
-    cats: [],
+    cats: [BRIDGE_CAT],
   });
   // The owner's turn failed, so the only Cat message since dispatch is the heartbeat
   // that the transport fanout already mirrored.
@@ -372,7 +375,7 @@ test('a reply carrying an album photo reaches Telegram as that photo, captioned 
   const roomState = (messages: Message[]) => ({
     selectedChannelId: 'channel-1',
     channels: [{ id: 'channel-1', title: 'Bridge Cat', messages }],
-    cats: [],
+    cats: [BRIDGE_CAT],
   });
   const roomBridge = {
     readState: async () => roomState([]),
@@ -419,7 +422,7 @@ test('a reply carrying an album photo reaches Telegram as that photo, captioned 
 
 function directLaneRoomBridge(options: { roomExists: boolean }) {
   type Channel = { id: string; title: string; messages: Array<{ senderKind: string; senderName: string; body: string }> };
-  const roomState = (channels: Channel[]) => ({ selectedChannelId: 'channel-1', channels, cats: [] });
+  const roomState = (channels: Channel[]) => ({ selectedChannelId: 'channel-1', channels, cats: [BRIDGE_CAT] });
   return {
     readState: async () => roomState(options.roomExists ? [{ id: 'channel-1', title: '', messages: [] }] : []),
     writeState: async (state: unknown) => state,
@@ -461,6 +464,32 @@ for (const roomExists of [true, false]) {
     assert.deepEqual(replies.map((entry) => entry.detail), ['Purr. Right here.']);
   });
 }
+
+test('a bot whose cat is gone answers that no cat is bound and opens no room', async () => {
+  const log: RecordedCall[] = [];
+  const roomBridge = {
+    ...(directLaneRoomBridge({ roomExists: false }) as Record<string, unknown>),
+    readState: async () => ({ selectedChannelId: 'channel-1', channels: [], cats: [] }),
+    createRoom: () => assert.fail('a Telegram chat is a DM; without a cat there is no room'),
+  } as never;
+
+  const result = await bridgeTelegramWebhookToRoom({
+    update: workUpdate('are you up?'),
+    receipt: acceptedReceipt(),
+    context: relayContext(),
+    roomBridge,
+    memoryService,
+    runtimeClient,
+    telegramRelay: createRecordingRelay(log),
+    goldenPath: null,
+  });
+
+  assert.equal(result.roomId, null);
+  assert.equal(result.roomCreated, false);
+  const replies = log.filter((entry) => entry.kind.startsWith('deliver:'));
+  assert.equal(replies.length, 1);
+  assert.match(replies[0]!.detail ?? '', /not bound to a cat/u);
+});
 
 test('an ordinary message shows the Cat typing before the turn runs, without a delivery receipt', async () => {
   const log: RecordedCall[] = [];
@@ -580,7 +609,7 @@ function photoRoomBridge(stored: string[] | null) {
   const roomState = () => ({
     selectedChannelId: 'channel-1',
     channels: [{ id: 'channel-1', title: 'Bridge Cat', messages: [] }],
-    cats: [],
+    cats: [BRIDGE_CAT],
   });
   const roomBridge = {
     readState: async () => roomState(),

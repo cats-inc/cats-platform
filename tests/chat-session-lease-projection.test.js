@@ -73,7 +73,6 @@ test('each room session keeps the model and error it ran with after later turns'
     originSurface: 'chat',
     title: 'Lease projection',
     topic: 'Keep per-session lease history.',
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, { catId, provider: 'opencode', roles: ['helper'] }, now);

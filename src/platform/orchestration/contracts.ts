@@ -435,7 +435,6 @@ export interface OrchestratorChannelView {
   skillProfile: string | null;
   mcpProfile: string | null;
   orchestratorRoles: string[];
-  orchestratorLease: OrchestratorParticipantExecutionLease;
   assignedCats: OrchestratorChannelCat[];
   messages: OrchestratorMessageView[];
   roomRouting?: RoomRoutingState;

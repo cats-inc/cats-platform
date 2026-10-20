@@ -6,7 +6,6 @@ import {
 } from '../../../platform/orchestration/workflowContinuationReplay.js';
 import {
   buildChannelView,
-  resolveOrchestratorDisplayName,
 } from '../state/model/index.js';
 import { resumeStoredWorkflowContinuationDispatch } from '../state/deterministicRouterAdapter.js';
 import { readWorkflowRecommendation } from '../state/room-routing/recommendations.js';
@@ -205,20 +204,3 @@ export async function maybeAutoResumeRecoveredCatContinuation(
   );
 }
 
-export async function maybeAutoResumeRecoveredOrchestratorContinuation(
-  context: ChatApiRouteContext,
-  channelId: string,
-  now: Date,
-): Promise<void> {
-  const state = await context.dependencies.chatStore.read();
-  await maybeAutoResumeRecoveredContinuationForParticipant(
-    context,
-    channelId,
-    {
-      participantKind: 'orchestrator',
-      participantId: 'orchestrator',
-      participantName: resolveOrchestratorDisplayName(state),
-    },
-    now,
-  );
-}

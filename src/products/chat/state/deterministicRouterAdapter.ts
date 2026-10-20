@@ -17,7 +17,8 @@ import type { ExternalIssueImportFetchOptions } from '../../work/integrations/ex
 import type { ChatStore } from './store.js';
 import type { ChatNaturalProductIntentMode } from '../shared/naturalProductIntentMode.js';
 import { buildChannelView, resolveOrchestratorDisplayName } from './model/index.js';
-import { resolveMentionRoute } from './mentionRouter.js';
+import { messageLacksAudience, resolveMentionRoute } from './mentionRouter.js';
+import { resolveCoordinatorParticipant } from './coordinator.js';
 import { resolveRoomRoutingState } from './room-routing/index.js';
 import {
   resumeWorkflowContinuationReplay,
@@ -30,6 +31,24 @@ import {
   resolveChatConversationId,
 } from '../shared/operator-loop/index.js';
 import { resolveChatWorkToolIntentManifest } from './workToolIntentResolver.js';
+
+/**
+ * The orchestrator API speaks for the owner: a turn that names nobody goes to
+ * the conversation's coordinator, the way server-internal senders name their
+ * audience (SPEC-125 FR-6).
+ */
+function resolveCoordinatorDefaultAudience(
+  state: ChatState,
+  channelId: string,
+  body: string,
+  choiceResponse: unknown,
+): string[] {
+  if (!messageLacksAudience(state, channelId, { body, choiceResponse })) {
+    return [];
+  }
+  const coordinator = resolveCoordinatorParticipant(state, channelId);
+  return coordinator ? [coordinator.participantId] : [];
+}
 
 export function createChatDeterministicChannelRouter(
   options: {
@@ -47,6 +66,12 @@ export function createChatDeterministicChannelRouter(
   return {
     buildChannelView,
     async routeChannelMessage(input) {
+      const recipientParticipantIds = resolveCoordinatorDefaultAudience(
+        input.state,
+        input.channelId,
+        input.body,
+        input.choiceResponse,
+      );
       return routeChannelMessage(
         input.state,
         input.channelId,
@@ -54,6 +79,7 @@ export function createChatDeterministicChannelRouter(
           body: input.body,
           senderName: input.senderName,
           choiceResponse: input.choiceResponse,
+          ...(recipientParticipantIds.length > 0 ? { messageMetadata: { recipientParticipantIds } } : {}),
         },
         input.runtimeClient,
         input.now,
@@ -81,7 +107,39 @@ export const chatDeterministicChannelRouter = createChatDeterministicChannelRout
 
 export const chatDeterministicPlannerSurface: OrchestratorPlannerSurface<ChatState> = {
   buildChannelView,
-  resolveMentionRoute,
+  resolveMentionRoute(state, channelId, body, options) {
+    const route = resolveMentionRoute(state, channelId, body, options);
+    const coordinator = options.allowDefaultTarget && route.targets.length === 0
+      && resolveCoordinatorDefaultAudience(state, channelId, body, null).length > 0
+      ? resolveCoordinatorParticipant(state, channelId)
+      : null;
+    if (!coordinator) {
+      return route;
+    }
+    const target = {
+      participantKind: 'cat' as const,
+      participantId: coordinator.participantId,
+      participantName: coordinator.name,
+      laneId: null,
+      sessionId: null,
+    };
+    return {
+      ...route,
+      targets: [target],
+      resolution: {
+        ...route.resolution,
+        selectionKind: 'default_target',
+        defaultTarget: {
+          participantKind: 'cat',
+          participantId: target.participantId,
+          participantName: target.participantName,
+        },
+        defaultTargetReason: 'default_recipient',
+        blockedReason: null,
+        note: null,
+      },
+    };
+  },
   resolveRoomRoutingState,
   resolveOrchestratorDisplayName,
   buildOperatorView(core, channelId) {

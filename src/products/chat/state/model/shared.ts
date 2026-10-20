@@ -15,7 +15,6 @@ import {
 } from '../../shared/channelTopology.js';
 import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
-import { createEmptyExecutionLease } from '../defaults.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
 
 export function cloneState(state: ChatState): ChatState {
@@ -68,21 +67,54 @@ export function syncChannelDefaultRecipientAndTopology(channel: ChatChannelState
     .filter((assignment) => assignment.status === 'active')
     .map((assignment) => assignment.participantId);
   const currentLeadId = roomRouting.defaultRecipientId;
-  const hasValidLead = Boolean(currentLeadId && activeParticipantIds.includes(currentLeadId));
 
   if (channel.channelKind === 'direct_message') {
     roomRouting.defaultRecipientId = resolveDirectLaneRecipientId(
       channel.participantAssignments,
       currentLeadId,
     );
-    channel.orchestratorLease = createEmptyExecutionLease();
-  } else if (activeParticipantIds.length === 0) {
+  } else {
+    // Only a DM has a default recipient; elsewhere a message names its audience.
     roomRouting.defaultRecipientId = null;
-  } else if (!hasValidLead) {
-    roomRouting.defaultRecipientId = activeParticipantIds[0] ?? null;
+  }
+
+  // A DM stays bound to its cat; elsewhere a binding to someone who left clears.
+  const directRecipientId = channel.channelKind === 'direct_message'
+    ? roomRouting.defaultRecipientId
+    : null;
+  if (directRecipientId && activeParticipantIds.includes(directRecipientId)) {
+    channel.coordinatorParticipantId = directRecipientId;
+  } else if (
+    !channel.coordinatorParticipantId
+    || !activeParticipantIds.includes(channel.coordinatorParticipantId)
+  ) {
+    channel.coordinatorParticipantId = null;
   }
 
   channel.roomRouting = roomRouting;
+}
+
+/** Moves the coordinator binding, or clears it with null; a DM stays bound to its cat. */
+export function bindChannelCoordinator(
+  state: ChatState,
+  channelId: string,
+  participantId: string | null,
+): ChatState {
+  const nextState = cloneState(state);
+  const channel = requireChannel(nextState, channelId);
+  if (channel.channelKind === 'direct_message') {
+    throw new Error('A direct message stays coordinated by its cat');
+  }
+  const normalized = participantId?.trim() || null;
+  if (
+    normalized
+    && !resolveChannelParticipantAssignments(channel).some((assignment) =>
+      assignment.status === 'active' && assignment.participantId === normalized)
+  ) {
+    throw new Error(`Channel participant not found: ${normalized}`);
+  }
+  channel.coordinatorParticipantId = normalized;
+  return nextState;
 }
 
 export function findChannelIndex(state: ChatState, channelId: string): number {

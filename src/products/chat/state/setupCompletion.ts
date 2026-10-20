@@ -13,8 +13,7 @@ export function hasInitializedChatState(
   } = {},
 ): boolean {
   return Boolean(
-    chat.bossCatId
-      || chat.cats.length > 0
+    chat.cats.length > 0
       || chat.channels.length > 0
       || (options.botBindingCount ?? 0) > 0
       || hasNonDefaultOwnerName(options.ownerDisplayName),

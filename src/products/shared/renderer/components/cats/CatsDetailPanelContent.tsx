@@ -36,7 +36,7 @@ export interface CatsDetailPanelRegistryController {
   setRenameValue: Dispatch<SetStateAction<string>>;
   onCreateBinding: (catId: string) => Promise<void>;
   onDeleteBinding: (bindingId: string) => Promise<void>;
-  onMakeBossCat: (catId: string) => Promise<void>;
+  onSetBossCat: (catId: string, bossCat: boolean) => Promise<void>;
   onMcpProfileChange: (catId: string, mcpProfile: string) => Promise<void>;
   onRenameCat: (catId: string) => Promise<void>;
   onSkillChange: (catId: string, skillProfile: string) => Promise<void>;
@@ -45,7 +45,7 @@ export interface CatsDetailPanelRegistryController {
 
 export type CatsDetailSectionKey =
   | 'rename'
-  | 'makeBoss'
+  | 'bossCat'
   | 'skill'
   | 'mcp'
   | 'telegram'
@@ -85,7 +85,7 @@ export function CatsDetailPanelContent({
     setRenameValue,
     onCreateBinding,
     onDeleteBinding,
-    onMakeBossCat,
+    onSetBossCat,
     onMcpProfileChange,
     onRenameCat,
     onSkillChange,
@@ -166,29 +166,26 @@ export function CatsDetailPanelContent({
         </div>
       ) : null}
 
-      {shouldRender('makeBoss') && !isBossCat ? (
+      {shouldRender('bossCat') && cat.status === 'active' ? (
         <div className="catDetailSection">
           <p className="sectionLabel">{t(messageKeys.sharedSettingsCatsBossCatLabel)}</p>
           <button
-            className="primaryButton"
+            className={isBossCat ? 'secondaryButton' : 'primaryButton'}
             type="button"
-            disabled={isCatBusy(busy, 'makeBoss', cat.id)}
-            onClick={async () => {
-              const confirmed = confirmDialog
-                ? await confirmDialog({
-                    title: t(messageKeys.sharedSettingsCatsChangeBossCatTitle),
-                    message: t(messageKeys.sharedSettingsCatsChangeBossCatMessage, { name: cat.name }),
-                    confirmLabel: t(messageKeys.sharedSettingsCatsConfirm),
-                  })
-                : true;
-              if (confirmed) {
-                void onMakeBossCat(cat.id);
-              }
+            data-tooltip={t(messageKeys.sharedSettingsCatsBossCatHint)}
+            disabled={isCatBusy(busy, 'bossCat', cat.id)}
+            onClick={() => {
+              void onSetBossCat(cat.id, !isBossCat);
             }}
           >
-            {isCatBusy(busy, 'makeBoss', cat.id)
+            {isCatBusy(busy, 'bossCat', cat.id)
               ? t(messageKeys.sharedSettingsCatsSetting)
-              : t(messageKeys.sharedSettingsCatsMakeBossCatLabel, { name: cat.name })}
+              : t(
+                  isBossCat
+                    ? messageKeys.sharedSettingsCatsUnsetBossCatLabel
+                    : messageKeys.sharedSettingsCatsMakeBossCatLabel,
+                  { name: cat.name },
+                )}
           </button>
         </div>
       ) : null}

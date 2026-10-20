@@ -44,12 +44,10 @@ import {
   createDraftChannelTopic as createWorkspaceDraftChannelTopic,
   buildAttachedFilesMessageBody as buildWorkspaceAttachedFilesMessageBody,
   buildNewChatChannelInput as buildWorkspaceNewChatChannelInput,
-  applyOptimisticPendingExecutionTarget as applyWorkspaceOptimisticPendingExecutionTarget,
   insertCreatedChannelIntoPayload as insertWorkspaceCreatedChannelIntoPayload,
   messageTone as resolveWorkspaceMessageTone,
   presentChannelTitle as presentWorkspaceChannelTitle,
   truncatePath as truncateWorkspacePath,
-  resolveBossCatName as resolveWorkspaceBossCatName,
 } from '../../shared/renderer/workspaceChatUtils.js';
 import {
   activeAssignedParticipants,
@@ -307,7 +305,6 @@ export function executionLabel(cat: ChatCat): string {
 }
 
 export interface SortChatCatsOptions {
-  bossCatIds?: string | string[] | null;
   archivedLast?: boolean;
 }
 
@@ -633,24 +630,7 @@ export function pickDraftGreeting(
   );
 }
 
-export function resolveBossCatName(payload: AppShellPayload): string | null {
-  return resolveWorkspaceBossCatName(payload);
-}
-
 export type { SelectedChannelView } from '../shared/channelEntry';
-
-export function applyPendingExecutionTargetPreview(
-  payload: AppShellPayload,
-  channelId: string,
-  target: {
-    pendingProvider: string | null;
-    pendingModel: string | null;
-    pendingInstance: string | null;
-    pendingModelSelection: ProviderModelSelection | null;
-  },
-): AppShellPayload {
-  return applyWorkspaceOptimisticPendingExecutionTarget(payload, channelId, target);
-}
 
 export function insertCreatedChannelIntoPayload(
   payload: AppShellPayload,

@@ -14,7 +14,6 @@ test('state-model channel create preserves explicit originSurface and rejects mi
     title: 'Work owned room',
     topic: 'Typed product-owned create should keep work ownership.',
     originSurface: 'work',
-    skipBossCatGreeting: true,
   });
   assert.equal(workState.channels[0]?.originSurface, 'work');
 
@@ -22,7 +21,6 @@ test('state-model channel create preserves explicit originSurface and rejects mi
     () => createChannel(baseState, {
       title: 'Missing owner room',
       topic: 'Model helper should reject missing originSurface.',
-      skipBossCatGreeting: true,
     }),
     /originSurface is required\./u,
   );
@@ -65,7 +63,6 @@ test('state-model create helpers reject invalid originSurface values', () => {
       title: 'Invalid room',
       topic: 'Should reject invalid origin surfaces.',
       originSurface: 'bogus',
-      skipBossCatGreeting: true,
     }),
     /originSurface must be one of: chat, work, code\./u,
   );

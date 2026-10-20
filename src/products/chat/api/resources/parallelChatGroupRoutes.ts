@@ -16,6 +16,7 @@ import {
 import {
   appendMessage,
   requireChannel,
+  resolveParallelChatMemberTarget,
 } from '../../state/model/index.js';
 import { resolveTranscriptOrCanonicalChatMessage } from '../../state/chatCoreInterop.js';
 import type {
@@ -283,42 +284,16 @@ async function handleRelayParallelChatGroupMessage(
           throw new RelayResponseSentError();
         }
 
-        const sourceMemberLabel = buildParallelChatMemberLabel({
-          provider: sourceChannel.pendingProvider ?? state.globalOrchestrator.executionTarget.provider,
-          instance:
-            sourceChannel.pendingInstance
-            ?? state.globalOrchestrator.executionTarget.instance
-            ?? null,
-          model:
-            sourceChannel.pendingModel
-            ?? state.globalOrchestrator.executionTarget.model
-            ?? null,
-          modelSelection:
-            sourceChannel.pendingModelSelection
-            ?? state.globalOrchestrator.executionModelSelection
-            ?? null,
-        });
+        const sourceMemberLabel = buildParallelChatMemberLabel(
+          resolveParallelChatMemberTarget(state, sourceChannel),
+        );
         const commandDefinition = findParallelChatRelayCommand(
           normalizedCommand,
           relayLocale,
         );
         const targetMemberLabels = normalizedTargetChannelIds.map((channelId) => {
           const targetChannel = requireChannel(state, channelId);
-          return buildParallelChatMemberLabel({
-            provider: targetChannel.pendingProvider ?? state.globalOrchestrator.executionTarget.provider,
-            instance:
-              targetChannel.pendingInstance
-              ?? state.globalOrchestrator.executionTarget.instance
-              ?? null,
-            model:
-              targetChannel.pendingModel
-              ?? state.globalOrchestrator.executionTarget.model
-              ?? null,
-            modelSelection:
-              targetChannel.pendingModelSelection
-              ?? state.globalOrchestrator.executionModelSelection
-              ?? null,
-          });
+          return buildParallelChatMemberLabel(resolveParallelChatMemberTarget(state, targetChannel));
         });
         const relayBody = buildParallelChatRelayPrompt({
           command: normalizedCommand,

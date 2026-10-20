@@ -502,7 +502,7 @@ async function configureTelegramBossCat(baseUrl) {
     body: JSON.stringify({
       name: 'Smelly',
       provider: 'claude',
-      makeBoss: true,
+      group: 'admin',
     }),
   });
   assert.equal(
@@ -1064,7 +1064,6 @@ test('telegram status ignores orphaned Telegram bindings when Boss Cat is missin
   const chatStore = {
     async read() {
       return {
-        bossCatId: null,
         cats: [],
       };
     },
@@ -1151,7 +1150,7 @@ test('telegram status reports Boss Cat binding after Telegram ingress is configu
   });
 });
 
-test('telegram webhook routes inbox traffic into a room and relays a reply back to Telegram', async () => {
+test('telegram webhook routes inbox traffic into the Boss Cat DM and relays a reply back to Telegram', async () => {
   const deliveryCalls = [];
 
   await withServer(
@@ -1190,7 +1189,11 @@ test('telegram webhook routes inbox traffic into a room and relays a reply back 
       assert.equal(roomResponse.status, 200);
       const roomPayload = await roomResponse.json();
       assert.equal(roomPayload.channel.id, roomId);
-      assert.equal(roomPayload.channel.roomRouting.mode, 'chat_channel');
+      // Telegram is DM-only: the default bot talks through the Boss Cat's DM.
+      assert.equal(roomPayload.channel.roomRouting.mode, 'direct_message');
+      const [bossCat] = roomPayload.channel.assignedCats;
+      assert.equal(bossCat?.name, 'Smelly');
+      assert.equal(roomPayload.channel.roomRouting.defaultRecipientId, bossCat.catId);
 
       // Linking the room precedes the detached assistant turn and delivery.
       // Observe completion instead of assuming the reply exists at ingress.
@@ -1207,8 +1210,10 @@ test('telegram webhook routes inbox traffic into a room and relays a reply back 
         message.senderKind === 'user' && message.body === 'hello from telegram'));
       assert.ok(messagesPayload.messages.some((message) =>
         message.body === 'Boss Cat relay reply'
-        && message.metadata?.targetKind === 'orchestrator'
-        && (message.senderKind === 'agent' || message.senderKind === 'orchestrator')));
+        && message.metadata?.targetKind === 'cat'
+        && message.metadata?.targetId === bossCat.catId
+        && message.senderKind === 'agent'
+        && message.senderName === 'Smelly'));
 
       const duplicateResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
         method: 'POST',
@@ -1244,8 +1249,8 @@ test('telegram webhook routes inbox traffic into a room and relays a reply back 
       assert.equal(deliveryCalls[0].operation, 'reply');
       assert.equal(deliveryCalls[0].replyToMessageId, '88');
       assert.equal(deliveryCalls[0].chatId, '12345');
-      assert.match(deliveryCalls[0].text, /Opened room/);
-      assert.match(deliveryCalls[0].text, /Boss Cat relay reply/);
+      // A DM just answers; there is no room to announce.
+      assert.equal(deliveryCalls[0].text, 'Boss Cat relay reply');
     },
     undefined,
     {
@@ -1259,6 +1264,58 @@ test('telegram webhook routes inbox traffic into a room and relays a reply back 
               chatId: request.chatId,
               messageId: '5001',
             };
+          },
+        },
+      }),
+    },
+  );
+});
+
+test('telegram webhook without a cat to talk to opens no fallback room', async () => {
+  const deliveryCalls = [];
+  const chatStore = new MemoryChatStore();
+
+  await withServer(
+    createRuntimeStub(),
+    async (baseUrl) => {
+      const orchestratorResponse = await fetch(`${baseUrl}/api/orchestrator`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ telegramBotName: 'smelly_bot' }),
+      });
+      assert.equal(orchestratorResponse.status, 200);
+      const channelCountBefore = (await chatStore.read()).channels.length;
+
+      const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          update_id: 102,
+          message: {
+            message_id: 89,
+            text: 'hello without a cat',
+            chat: { id: 12345, type: 'private' },
+            from: { id: 1, first_name: 'Kenny' },
+          },
+        }),
+      });
+      assert.equal(webhookResponse.status, 202);
+      // Telegram chats are DMs; with no cat bound there is no room to fall back to.
+      const payload = await webhookResponse.json();
+      assert.equal(payload.receipt.status, 'ignored');
+      assert.equal(payload.receipt.bindingId, null);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      assert.equal((await chatStore.read()).channels.length, channelCountBefore);
+      assert.deepEqual(deliveryCalls, []);
+    },
+    chatStore,
+    {
+      telegramRelay: createTelegramRelay({
+        now: () => new Date('2026-03-19T00:00:00.000Z'),
+        deliveryClient: {
+          async deliver(request) {
+            deliveryCalls.push(request);
+            return { ok: true, chatId: request.chatId, messageId: '5002' };
           },
         },
       }),
@@ -1468,7 +1525,7 @@ test('telegram bot binding mutations trigger command surface sync and carry stal
         body: JSON.stringify({
           platform: 'telegram',
           botName: 'boss_control_bot',
-          catId: appShellPayload.chat.bossCatId,
+          catId: appShellPayload.chat.cats.find((cat) => cat.group === 'admin')?.id,
           roomMode: 'direct_message',
           botToken: 'token-create-sync',
         }),
@@ -1939,7 +1996,6 @@ test('telegram webhook for a cat binding reuses that cat direct lane', async () 
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(directLaneResponse.status, 201);
@@ -1990,9 +2046,15 @@ test('telegram webhook for a cat binding reuses that cat direct lane', async () 
     assert.ok(telegramBinding);
     assert.equal(telegramBinding.linkedRoomId, directLaneId);
 
-    const roomResponse = await fetch(`${baseUrl}/api/channels/${directLaneId}`);
-    assert.equal(roomResponse.status, 200);
-    const roomPayload = await roomResponse.json();
+    // The cat's turn runs after the webhook is accepted.
+    let roomPayload = null;
+    await waitForAsync(async () => {
+      const roomResponse = await fetch(`${baseUrl}/api/channels/${directLaneId}`);
+      assert.equal(roomResponse.status, 200);
+      roomPayload = await roomResponse.json();
+      return roomPayload.channel.messages.some((message) =>
+        message.senderKind === 'agent' && message.senderName === 'Companion');
+    });
     assert.equal(roomPayload.channel.roomRouting.mode, 'direct_message');
     assert.equal(roomPayload.channel.roomRouting.defaultRecipientId, catId);
     const sessionStartedMessage = roomPayload.channel.messages.find((message) =>
@@ -2028,7 +2090,7 @@ test('telegram webhook normalizes legacy boss room mode for cat-bound bots into 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
     assert.equal(shellResponse.status, 200);
     const shellPayload = await shellResponse.json();
-    const bossCatId = shellPayload.chat.bossCatId;
+    const bossCatId = shellPayload.chat.cats.find((cat) => cat.group === 'admin')?.id;
     assert.ok(bossCatId);
 
     const bindingResponse = await fetch(`${baseUrl}/api/bot-bindings`, {

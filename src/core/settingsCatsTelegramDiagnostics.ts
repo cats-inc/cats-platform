@@ -45,14 +45,15 @@ function createNoopLoadRun(): SettingsCatsTelegramLoadRun {
 }
 
 export function createSettingsCatsTelegramScopeKey(input: {
-  bossCatId: string | null | undefined;
+  bossCatIds: readonly string[];
   botBindings?: SettingsCatsTelegramBindingScope[] | null;
 }): string {
   const bindingSignature = [...(input.botBindings ?? [])]
     .map((binding) => `${binding.id}:${binding.status}:${binding.updatedAt}`)
     .sort()
     .join('|');
-  return `${input.bossCatId ?? 'no-boss-cat'}::${bindingSignature}`;
+  const bossSignature = [...input.bossCatIds].sort().join('|') || 'no-boss-cat';
+  return `${bossSignature}::${bindingSignature}`;
 }
 
 export async function fetchSettingsCatsTelegramSnapshot<TStatus, TDiagnostics>(

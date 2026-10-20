@@ -127,7 +127,6 @@ test('GET /api/app-shell repairs direct-lane session_started metadata with canon
         roomMode: 'direct_message',
         defaultRecipientId: catId,
         repoPath: 'C:/repo/cats-platform',
-        skipBossCatGreeting: true,
       },
       seededAt,
     );
@@ -230,7 +229,6 @@ test('GET /api/app-shell rebuilds a drifted direct-lane reply from canonical sta
         roomMode: 'direct_message',
         defaultRecipientId: catId,
         repoPath: 'C:/repo/cats-platform',
-        skipBossCatGreeting: true,
       },
       seededAt,
     );

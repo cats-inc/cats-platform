@@ -25,6 +25,7 @@ import type {
 } from '../../../platform/orchestration/contracts.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
 import { escapeContentDispositionFilename } from '../shared/channelPaths.js';
+import { isAdminCat } from '../../shared/catGroups.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
 import { readDesktopHostBootstrapAttemptId } from '../../../shared/desktopHostState.js';
 import { readPlatformPreferences } from '../../../shared/platformPreferences.js';
@@ -63,6 +64,8 @@ import {
   requireCat,
   resolveChannelCanonicalIdentity,
   removeCatFromChannel,
+  removeChannelParticipant,
+  rememberNewChatDefaultParticipant,
   resolveOrchestratorDisplayName,
   unarchiveCat,
   setChannelCatLease,
@@ -104,11 +107,10 @@ import {
   catParticipatesInChat,
   collectCatSessionIds,
   collectLinkedChannelSessionIds,
-  seedBossCatGreeting,
 } from './routeStateSupport.js';
 import {
-  collectChannelLeaseAttachments,
-  resolveOrchestratorLeaseAttachment,
+  collectParticipantLeaseAttachments,
+  resolveChannelParticipantAssignments,
   resolveParticipantLeaseAttachment,
 } from '../shared/channelParticipants.js';
 import {
@@ -144,7 +146,6 @@ import {
 } from './routeSessions.js';
 export {
   maybeAutoResumeRecoveredCatContinuation,
-  maybeAutoResumeRecoveredOrchestratorContinuation,
 } from './routeContinuationRecovery.js';
 import { maybeAutoResumeRecoveredCatContinuation } from './routeContinuationRecovery.js';
 import type {
@@ -355,8 +356,8 @@ export async function buildAppShellPayload(
       catId: matchedCat?.id ?? null,
       catName: matchedCat?.name ?? null,
       inboundMode: binding.inboundMode ?? 'polling',
-      roomMode: resolveEffectiveBotBindingRoomMode(binding),
-      isBossBinding: Boolean(resolvedState.bossCatId && matchedCat?.id === resolvedState.bossCatId),
+      roomMode: resolveEffectiveBotBindingRoomMode(),
+      isBossBinding: isAdminCat(matchedCat),
       status: binding.status,
       outboundFanoutEnabled: binding.outboundFanoutEnabled !== false,
       updatedAt: binding.updatedAt,
@@ -461,11 +462,6 @@ export async function persistCreatedChannel(
   }
 
   const now = nowFrom(context.dependencies);
-  const requestedRoomMode = input.roomMode ?? (input.entryKind === 'direct' ? 'direct_message' : 'chat_channel');
-  const requestedParticipantCount =
-    (input.cats?.length ?? 0)
-    + (input.participantCatIds?.length ?? 0)
-    + (input.temporaryParticipants?.length ?? 0);
   let reusedDirectLane = false;
   const persistedState = await updateChatState(context.dependencies.chatStore, (state) => {
     // One direct lane per Cat: a client whose payload has not seen a lane
@@ -477,23 +473,13 @@ export async function persistCreatedChannel(
     }
     reusedDirectLane = false;
 
-    let nextState = createChannel(
+    const created = createChannel(
       state,
       input,
       now,
       { prevalidatedRuntimePolicy: parsed.policy },
     );
-
-    if (
-      !input.skipBossCatGreeting
-      && input.entryKind !== 'default'
-      && requestedRoomMode !== 'direct_message'
-      && requestedParticipantCount > 0
-    ) {
-      nextState = seedBossCatGreeting(nextState, nextState.selectedChannelId, now);
-    }
-
-    return nextState;
+    return rememberNewChatDefaultParticipant(created, created.selectedChannelId);
   });
   return { state: persistedState, reusedDirectLane };
 }
@@ -777,18 +763,16 @@ export async function persistCatAssignmentUpdate(
   );
   const assignmentTargetId = updatedCat?.participantId ?? input.catId;
   const resolvedChannel = requireChannel(nextState, channelId);
-  const orchestratorAttachment = resolveOrchestratorLeaseAttachment(resolvedChannel);
-  const spawnCwd = (
-    resolveChannelSpawnCwd(resolvedChannel.repoPath, resolvedChannel.chatCwd)
-    ?? (
-      isRuntimeSessionWorkspacePath(orchestratorAttachment?.cwd)
-        ? orchestratorAttachment?.cwd ?? null
-        : null
-    )
-    ?? null
-  );
+  // A joining cat shares a teammate's runtime workspace when the room has no folder.
+  const teammateWorkspaceCwd = collectParticipantLeaseAttachments(resolvedChannel)
+    .find((attachment) =>
+      attachment.participantId !== updatedCat?.participantId
+      && isRuntimeSessionWorkspacePath(attachment.cwd))
+    ?.cwd ?? null;
+  const spawnCwd = resolveChannelSpawnCwd(resolvedChannel.repoPath, resolvedChannel.chatCwd)
+    ?? teammateWorkspaceCwd;
   const channelIsLive = refreshedChannel.status === 'active'
-    || collectChannelLeaseAttachments(refreshedChannel, {
+    || collectParticipantLeaseAttachments(refreshedChannel, {
       statuses: ['ready', 'initializing'],
     }).some((attachment) => attachment.participantId !== updatedCat?.participantId);
   const updatedCatSessionId = updatedCat
@@ -988,8 +972,43 @@ export async function persistCatAssignmentRemoval(
 
   const cat = requireCat(currentState, catId);
   const now = nowFrom(context.dependencies);
-  let nextState = removeCatFromChannel(currentState, channelId, catId, now);
-  const activeSessionId = resolveParticipantLeaseAttachment(channel, assignment.participantId)?.sessionId ?? null;
+  await persistParticipantRemoval(context, currentState, channelId, {
+    participantId: assignment.participantId,
+    name: cat.name,
+  }, removeCatFromChannel(currentState, channelId, catId, now), now);
+}
+
+/** Removes a cat or temporary participant and closes the session it ran in. */
+export async function persistChannelParticipantRemoval(
+  context: ChatApiRouteContext,
+  channelId: string,
+  participantId: string,
+): Promise<void> {
+  const currentState = await context.dependencies.chatStore.read();
+  const channel = requireChannel(currentState, channelId);
+  const participant = resolveChannelParticipantAssignments(channel)
+    .find((candidate) => candidate.participantId === participantId && candidate.status === 'active');
+  if (!participant) {
+    throw new Error(`Channel participant not found: ${participantId}`);
+  }
+  const now = nowFrom(context.dependencies);
+  await persistParticipantRemoval(context, currentState, channelId, {
+    participantId,
+    name: participant.name,
+  }, removeChannelParticipant(currentState, channelId, participantId, now), now);
+}
+
+async function persistParticipantRemoval(
+  context: ChatApiRouteContext,
+  currentState: ChatState,
+  channelId: string,
+  participant: { participantId: string; name: string },
+  removedState: ChatState,
+  now: Date,
+): Promise<void> {
+  const channel = requireChannel(currentState, channelId);
+  let nextState = removedState;
+  const activeSessionId = resolveParticipantLeaseAttachment(channel, participant.participantId)?.sessionId ?? null;
 
   if (activeSessionId) {
     try {
@@ -1013,11 +1032,11 @@ export async function persistCatAssignmentRemoval(
           ...resolveChannelLifecycleCanonicalMetadata(nextState, channelId),
           target: {
             participantKind: 'cat',
-            participantId: assignment.participantId,
-            participantName: cat.name,
+            participantId: participant.participantId,
+            participantName: participant.name,
           },
           sessionId: activeSessionId,
-          body: `Failed to close ${cat.name}'s session cleanly: ${
+          body: `Failed to close ${participant.name}'s session cleanly: ${
             closeError instanceof Error ? closeError.message : 'Unknown runtime error'
           }`,
           now,

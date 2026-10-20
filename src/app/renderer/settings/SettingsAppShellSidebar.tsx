@@ -53,7 +53,6 @@ function buildSidebarPayload(envelope: PlatformHostEnvelope): {
       ? { status: envelope.runtimeSetup.status }
       : null,
     chat: {
-      bossCatId: null,
       cats: [],
       channels: [],
     },

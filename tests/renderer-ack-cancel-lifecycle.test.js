@@ -5,9 +5,9 @@ import test from 'node:test';
 
 import { readProductConversationViewSource } from './helpers/readProductConversationViewSource.js';
 
-test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async () => {
+test('useWorkspaceComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async () => {
   const source = await readFile(
-    path.join(process.cwd(), 'src/products/chat/renderer/hooks/useComposerSubmit.ts'),
+    path.join(process.cwd(), 'src/products/shared/renderer/hooks/useWorkspaceComposerSubmit.ts'),
     'utf8',
   );
   const sharedDispatchSource = await readFile(
@@ -30,12 +30,8 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
     path.join(process.cwd(), 'src/products/shared/renderer/composerDraftState.ts'),
     'utf8',
   );
-  const workspaceSource = await readFile(
-    path.join(process.cwd(), 'src/products/shared/renderer/hooks/useWorkspaceComposerSubmit.ts'),
-    'utf8',
-  );
   const parallelDispatchSource = await readFile(
-    path.join(process.cwd(), 'src/products/chat/renderer/composerParallelDispatch.ts'),
+    path.join(process.cwd(), 'src/products/shared/renderer/composerParallelDispatch.ts'),
     'utf8',
   );
 
@@ -52,16 +48,14 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
   assert.match(source, /sendChatMessage\([\s\S]+ackController\.signal\)/u);
   assert.match(source, /submitNewParallelChatDraft\(/u);
   assert.match(source, /submitNewParallelChatDraft\(\{[\s\S]+originSurface: targetSurface/u);
-  assert.match(source, /stageCrossSurfaceDraftNavigationHandoff\(\{[\s\S]+sourceSurface: 'chat'/u);
+  assert.match(source, /stageCrossSurfaceDraftNavigationHandoff\(\{[\s\S]+sourceSurface: surface/u);
   assert.match(source, /submitParallelCompareMessage\(/u);
   assert.match(source, /useComposerRequestControls\(/u);
   assert.match(source, /navigateWithinManagedComposerFlow/u);
-  assert.match(workspaceSource, /navigateWithinManagedComposerFlow/u);
   assert.match(source, /resetComposerDraftState/u);
-  assert.match(workspaceSource, /resetComposerDraftState/u);
   assert.match(parallelDispatchSource, /export async function submitNewParallelChatDraft/u);
   assert.match(parallelDispatchSource, /originSurface: PlatformSurfaceId/u);
-  assert.match(parallelDispatchSource, /createParallelChatGroup\(\{[\s\S]+originSurface,/u);
+  assert.match(parallelDispatchSource, /createParallelChatGroup\([\s\S]+originSurface,/u);
   assert.match(parallelDispatchSource, /sendParallelChatMessage\(/u);
   assert.match(sharedRequestControlsSource, /export function useComposerRequestControls/u);
   assert.match(sharedRequestControlsSource, /cancelPendingAckRequest\(\)/u);

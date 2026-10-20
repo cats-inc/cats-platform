@@ -40,7 +40,7 @@ function resolveCatForChannel<
     name: cat.name,
     avatarColor: cat.avatarColor,
     avatarUrl: cat.avatarUrl ?? null,
-    isBoss: cat.id === payload.chat.bossCatId,
+    isBoss: cat.group === 'admin',
   };
 }
 

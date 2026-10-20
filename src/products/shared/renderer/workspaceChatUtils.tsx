@@ -90,17 +90,7 @@ export function executionLabel(cat: ChatCat): string {
   return buildCatExecutionLabel(cat as Parameters<typeof buildCatExecutionLabel>[0]);
 }
 
-function normalizePinnedCatIds(
-  bossCatIds: string | string[] | null | undefined,
-): Set<string> {
-  if (Array.isArray(bossCatIds)) {
-    return new Set(bossCatIds.filter((value): value is string => Boolean(value)));
-  }
-  return bossCatIds ? new Set([bossCatIds]) : new Set<string>();
-}
-
 export interface SortChatCatsOptions {
-  bossCatIds?: string | string[] | null;
   archivedLast?: boolean;
 }
 
@@ -109,7 +99,6 @@ export function compareChatCatsForDisplay(
   right: ChatCat,
   options: SortChatCatsOptions = {},
 ): number {
-  const pinnedCatIds = normalizePinnedCatIds(options.bossCatIds);
   if (options.archivedLast) {
     const leftArchived = left.status === 'archived' ? 1 : 0;
     const rightArchived = right.status === 'archived' ? 1 : 0;
@@ -118,8 +107,9 @@ export function compareChatCatsForDisplay(
     }
   }
 
-  const leftPinned = pinnedCatIds.has(left.id) ? 0 : 1;
-  const rightPinned = pinnedCatIds.has(right.id) ? 0 : 1;
+  // Boss Cats (admin cats) come first.
+  const leftPinned = left.group === 'admin' ? 0 : 1;
+  const rightPinned = right.group === 'admin' ? 0 : 1;
   if (leftPinned !== rightPinned) {
     return leftPinned - rightPinned;
   }
@@ -281,6 +271,8 @@ export function buildNewChatChannelInput(options: {
   defaultRecipientCatId?: string | null;
   participantCatIds?: string[];
   temporaryParticipants?: CreateTemporaryParticipantInput[];
+  /** Draft participant order as `cat:` / `temp:` keys, default participant first. */
+  participantOrder?: string[];
   draftExecutionTarget?: {
     provider: string;
     model: string | null;
@@ -300,6 +292,7 @@ export function buildNewChatChannelInput(options: {
     defaultRecipientCatId,
     participantCatIds = [],
     temporaryParticipants = [],
+    participantOrder,
     draftExecutionTarget,
     assistantResponseLanguage,
     t,
@@ -313,17 +306,30 @@ export function buildNewChatChannelInput(options: {
     repoPath,
     policy: draftSessionPolicy,
   });
+  // Without a named participant, the draft's own model is the default participant.
+  const createdTemporaryParticipants = temporaryParticipants.length > 0
+    || normalizedLeadCatId
+    || normalizedParticipantCatIds.length > 0
+    || !draftExecutionTarget
+    ? temporaryParticipants
+    : [{
+        name: '',
+        provider: draftExecutionTarget.provider,
+        instance: draftExecutionTarget.instance ?? undefined,
+        model: draftExecutionTarget.model ?? undefined,
+        modelSelection: draftExecutionTarget.modelSelection ?? null,
+      }];
   const baseInput: CreateChatChannelInput = {
     title: createDraftChannelTitle(body, existingCount, t),
     topic: createDraftChannelTopic(body),
     originSurface,
     entryKind: resolvedEntryKind,
-    skipBossCatGreeting: true,
     repoPath: repoPath ?? undefined,
     responseLanguage: assistantResponseLanguage,
     ...createRuntimeSessionContractInput(runtimeSessionPolicy),
-    temporaryParticipants: temporaryParticipants.length > 0
-      ? temporaryParticipants.map((participant) => ({
+    ...(participantOrder && participantOrder.length > 0 ? { participantOrder } : {}),
+    temporaryParticipants: createdTemporaryParticipants.length > 0
+      ? createdTemporaryParticipants.map((participant) => ({
           participantId: participant.participantId,
           name: participant.name,
           provider: normalizeWorkspaceDraftProvider(participant.provider),
@@ -359,15 +365,7 @@ export function buildNewChatChannelInput(options: {
     };
   }
 
-  return {
-    ...baseInput,
-    pendingProvider: draftExecutionTarget
-      ? normalizeWorkspaceDraftProvider(draftExecutionTarget.provider)
-      : undefined,
-    pendingModel: draftExecutionTarget?.model ?? undefined,
-    pendingInstance: draftExecutionTarget?.instance ?? undefined,
-    pendingModelSelection: draftExecutionTarget?.modelSelection ?? undefined,
-  };
+  return baseInput;
 }
 
 export function messageTone(senderKind: string): string {
@@ -415,14 +413,6 @@ export function pickGreeting(
 ): string {
   const greetingLines = GREETING_LINE_KEYS.map((key) => t(key));
   return greetingLines[Math.floor(Math.random() * greetingLines.length)]!;
-}
-
-export function resolveBossCatName(payload: AppShellPayload): string | null {
-  if (!payload.chat.bossCatId) {
-    return null;
-  }
-
-  return payload.chat.cats.find((cat) => cat.id === payload.chat.bossCatId)?.name ?? null;
 }
 
 export type { SelectedChannelView } from '../channelEntry.js';
@@ -488,36 +478,6 @@ export function appendOptimisticUserMessage(
   };
 }
 
-export function applyOptimisticPendingExecutionTarget<TPayload extends AppShellPayload>(
-  payload: TPayload,
-  channelId: string,
-  target: {
-    pendingProvider: string | null;
-    pendingModel: string | null;
-    pendingInstance: string | null;
-    pendingModelSelection: ProviderModelSelection | null;
-  },
-) : TPayload {
-  const next = structuredClone(payload) as TPayload;
-  const selectedChannel = next.chat.selectedChannel;
-  const channelSummary = next.chat.channels.find((channel) => channel.id === channelId);
-
-  if (!selectedChannel || selectedChannel.id !== channelId || !channelSummary) {
-    throw new Error('No chat is available for optimistic execution target updates.');
-  }
-
-  selectedChannel.pendingProvider = target.pendingProvider;
-  selectedChannel.pendingModel = target.pendingModel;
-  selectedChannel.pendingInstance = target.pendingInstance;
-  selectedChannel.pendingModelSelection = target.pendingModelSelection;
-
-  channelSummary.pendingProvider = target.pendingProvider;
-  channelSummary.pendingModel = target.pendingModel;
-  channelSummary.pendingModelSelection = target.pendingModelSelection;
-
-  return next;
-}
-
 export function insertCreatedChannelIntoPayload<TPayload extends AppShellPayload>(
   payload: TPayload,
   createdChannel: ChatChannelView,
@@ -576,9 +536,6 @@ export function insertCreatedChannelIntoPayload<TPayload extends AppShellPayload
     runtimePermissionMode: normalizedChannel.runtimePermissionMode ?? null,
     lastMessageAt: normalizedChannel.lastMessageAt,
     lastActivatedAt: normalizedChannel.lastActivatedAt,
-    pendingProvider: normalizedChannel.pendingProvider,
-    pendingModel: normalizedChannel.pendingModel,
-    pendingModelSelection: normalizedChannel.pendingModelSelection ?? null,
     defaultRecipientCatId,
     roomMode: normalizedChannel.roomRouting.mode,
     routingStatus: routingStatus ?? undefined,

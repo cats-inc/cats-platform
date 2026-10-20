@@ -6,20 +6,13 @@ import type { RuntimeSessionInfo } from '../../../../platform/runtime/client.js'
 import type { RoutingTarget } from '../mentionRouter.js';
 import {
   appendMessage,
-  ORCHESTRATOR_NAME,
   requireChannel,
   resolveChannelCanonicalIdentity,
 } from '../model/index.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
-import { parseMentions } from '../mentionParsing.js';
 export { activeAssignedParticipants } from '../../shared/channelParticipants.js';
-import {
-  activeAssignedParticipants,
-  resolveOrchestratorLeaseAttachment,
-  resolveParticipantLeaseAttachment,
-} from '../../shared/channelParticipants.js';
+import { resolveParticipantLeaseAttachment } from '../../shared/channelParticipants.js';
 import { formatSessionStartedMessage } from '../runtimeMessages.js';
-import { resolveVisibleOrchestratorLabel } from '../../../../shared/orchestratorLabel.js';
 import { buildDirectLaneTransportBindingId } from '../../../../shared/chatCoreIds.js';
 
 export interface RuntimeSessionRoutingOptions {
@@ -75,9 +68,7 @@ export function resolveTargetLeaseAttachment(
   sessionId: string | null;
 } {
   const channel = requireChannel(state, channelId);
-  const attachment = target.participantKind === 'cat'
-    ? resolveParticipantLeaseAttachment(channel, target.participantId)
-    : resolveOrchestratorLeaseAttachment(channel);
+  const attachment = resolveParticipantLeaseAttachment(channel, target.participantId);
   const leaseLaneId = attachment?.laneId ?? null;
   const leaseSessionId = attachment?.sessionId ?? null;
   const targetLaneId = target.laneId?.trim() || null;
@@ -149,15 +140,7 @@ function resolveVisibleRuntimeSessionTargetLabel(input: {
   provider?: string | null;
   instance?: string | null;
 }): string {
-  if (input.target.participantKind !== 'orchestrator') {
-    return input.target.participantName;
-  }
-
-  return resolveVisibleOrchestratorLabel({
-    displayName: input.target.participantName,
-    provider: input.provider,
-    instance: input.instance,
-  }) ?? ORCHESTRATOR_NAME;
+  return input.target.participantName;
 }
 
 export function appendStartedRuntimeSessionMessage(
@@ -316,22 +299,4 @@ export function buildChannelActivationResult(input: {
     status: ensured.wakeRequest?.status === 'skipped' ? 'already_started' : 'started',
     sessionId: ensured.target.sessionId,
   };
-}
-
-export function shouldRewriteOrchestratorReply(
-  content: string,
-  orchestratorName: string,
-  channel: ChatChannelView,
-): boolean {
-  if (activeAssignedParticipants(channel).length > 0) {
-    return false;
-  }
-
-  const normalized = content.toLowerCase();
-  if (parseMentions(content).length > 0) {
-    return true;
-  }
-
-  return normalized.includes(`@${orchestratorName.toLowerCase()}`)
-    || normalized.includes(`@${ORCHESTRATOR_NAME.toLowerCase()}`);
 }

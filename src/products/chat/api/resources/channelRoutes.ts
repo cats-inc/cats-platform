@@ -1,5 +1,7 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import { parseProviderModelSelection } from '../../../../shared/providerSelection.js';
+import { messageLacksAudience } from '../../state/mentionRouter.js';
+import { ChatApiError } from '../routeErrors.js';
 import {
   beginChannelMessageRetryDispatch,
   beginChannelMessageDispatch,
@@ -7,11 +9,10 @@ import {
   settleBegunChannelMessageDispatchFailure,
 } from '../../state/runtimeActions.js';
 import {
+  bindChannelCoordinator,
   buildChannelView,
   requireChannel,
-  resetDefaultChatContinuity,
   resolveChannelCanonicalIdentity,
-  setChannelPendingExecutionTarget,
   toChannelSummary,
 } from '../../state/model/index.js';
 import { repairChannelReadState } from '../channelRepair.js';
@@ -19,7 +20,6 @@ import { createMergedDispatchChatStore, createLockedDispatchChatStore, mergeComp
 import { updateChatState } from '../../state/store.js';
 import { revalidateCollaborationPublication } from '../../state/orchestratorCollaborationReport.js';
 import { notifyStreamTargetChanged } from './streamTargetSignal.js';
-import { isDefaultChatChannel } from '../../shared/channelTopology.js';
 import { resolveRoomRoutingState } from '../../state/room-routing/index.js';
 import type {
   CreateChatChannelInput,
@@ -35,6 +35,7 @@ import {
   persistCreatedChannel,
   persistDeletedChannel,
   persistRenamedChannel,
+  persistChannelParticipantRemoval,
   persistUpdatedChannelParticipant,
   resolveCreateOriginSurface,
   requireValidChatScopeId,
@@ -121,18 +122,6 @@ function logBackgroundDispatchPersistenceError(
     : String(error);
   process.stderr.write(
     `[cats-chat-dispatch] failed to persist finalized dispatch for ${channelId}: ${detail}\n`,
-  );
-}
-
-function logContinuityResetCleanupError(
-  channelId: string,
-  error: unknown,
-): void {
-  const detail = error instanceof Error
-    ? (error.stack ?? error.message)
-    : String(error);
-  process.stderr.write(
-    `[cats-chat-reset] failed to close runtime session for ${channelId}: ${detail}\n`,
   );
 }
 
@@ -439,52 +428,16 @@ async function handleRestPatchChannel(
         persisted = await persistRenamedChannel(context, channelId, title);
       }
 
-      if (
-        body.pendingProvider !== undefined
-        || body.pendingModel !== undefined
-        || body.pendingInstance !== undefined
-        || body.pendingModelSelection !== undefined
-      ) {
-        persisted = await updateChatState(context.dependencies.chatStore, (state) => setChannelPendingExecutionTarget(state, channelId, {
-          provider: body.pendingProvider,
-          model: body.pendingModel,
-          instance: body.pendingInstance,
-          modelSelection: body.pendingModelSelection,
-        }, nowFrom(context.dependencies)));
-      }
-
-      if (body.resetContinuity === true) {
-        const currentChannel = requireChannel(persisted, channelId);
-        if (!isDefaultChatChannel(currentChannel)) {
+      if (body.coordinatorParticipantId !== undefined) {
+        if (body.coordinatorParticipantId !== null && typeof body.coordinatorParticipantId !== 'string') {
           sendJson(context.response, 400, {
-            error: 'continuity_reset_unsupported',
-            message: 'Start fresh is currently only supported for default chats.',
+            error: 'coordinator_invalid',
+            message: 'coordinatorParticipantId must be a participant id or null.',
           });
           return;
         }
-        const existingSessionId =
-          currentChannel.orchestratorLease.sessionId?.trim() || null;
-        if (existingSessionId) {
-          await bestEffortFlushRuntimeSessionMemory({
-            runtimeClient: context.dependencies.runtimeClient,
-            sessionId: existingSessionId,
-            requestedPhase: 'pre_reset',
-            memoryService: context.dependencies.memoryService,
-            companionStore: context.dependencies.companionStore,
-            coreStore: context.dependencies.chatStore,
-            now: nowFrom(context.dependencies),
-          });
-          try {
-            await context.dependencies.runtimeClient.closeSession(existingSessionId);
-          } catch (error) {
-            logContinuityResetCleanupError(channelId, error);
-          }
-        }
-        persisted = await updateChatState(context.dependencies.chatStore, (state) => resetDefaultChatContinuity(
-          state,
-          channelId,
-          nowFrom(context.dependencies),
-        ));
+        persisted = await updateChatState(context.dependencies.chatStore, (state) =>
+          bindChannelCoordinator(state, channelId, body.coordinatorParticipantId ?? null));
       }
 
       sendJson(context.response, 200, {
@@ -552,6 +505,22 @@ async function handleRestPatchChannelParticipant(
   }
 }
 
+async function handleRestDeleteChannelParticipant(
+  context: ChatApiRouteContext,
+  channelId: string,
+  participantId: string,
+): Promise<void> {
+  try {
+    await context.dependencies.mutationGate.run(channelId, async () => {
+      await persistChannelParticipantRemoval(context, channelId, participantId);
+      sendJson(context.response, 200, { removed: true, channelId, participantId });
+      publishChannelMutationEvents(context, channelId);
+    });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
 async function handleRestDeleteChannel(
   context: ChatApiRouteContext,
   chatScopeId: string,
@@ -602,6 +571,17 @@ async function handleRestSendMessage(
 
     await context.dependencies.mutationGate.run(channelId, async () => {
       const stateBefore = await context.dependencies.chatStore.read();
+      if (messageLacksAudience(stateBefore, channelId, {
+        body: body.body,
+        recipientParticipantIds: body.messageMetadata?.recipientParticipantIds,
+        choiceResponse: body.choiceResponse,
+      })) {
+        throw new ChatApiError(
+          400,
+          'audience_required',
+          'Name the audience for this message: send messageMetadata.recipientParticipantIds or mention participants with @Name.',
+        );
+      }
       const now = nowFrom(context.dependencies);
       begunDispatch = await beginChannelMessageDispatch(
         stateBefore,
@@ -884,8 +864,16 @@ export async function routeChatChannelResourceApi(
     /^\/api\/channels\/([^/]+)\/participants\/([^/]+)$/u,
   );
   if (canonicalChannelParticipantMatch) {
+    if (context.method === 'DELETE') {
+      await handleRestDeleteChannelParticipant(
+        context,
+        canonicalChannelParticipantMatch[0]!,
+        canonicalChannelParticipantMatch[1]!,
+      );
+      return true;
+    }
     if (context.method !== 'PATCH') {
-      sendMethodNotAllowed(context.response, ['PATCH']);
+      sendMethodNotAllowed(context.response, ['PATCH', 'DELETE']);
       return true;
     }
     await handleRestPatchChannelParticipant(

@@ -45,10 +45,8 @@ import {
   activateChatChannel,
   fetchAppShell,
   relayParallelChatMessage,
-  resetChannelContinuity,
   updateCatProfile,
   updateChannelParticipantApi,
-  updateChannelPendingExecutionTarget,
   updateNewChatDefaultsPreference,
 } from "./api/index.js";
 import {
@@ -83,7 +81,6 @@ import { useProductChannelDocumentTitle } from "./hooks/useProductChannelDocumen
 import { useOperatorLoop } from "./hooks/useOperatorLoop.js";
 import {
   useWorkspaceDirectLaneModelSave,
-  useWorkspaceResetChannelContinuity,
 } from "./hooks/useWorkspaceAppShellChannelActions.js";
 import { useWorkspaceChannelParticipantUpdate } from "./hooks/useWorkspaceChannelParticipantUpdate.js";
 import { useWorkspaceCompareRelay } from "./hooks/useWorkspaceCompareRelay.js";
@@ -93,10 +90,7 @@ import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiAct
 import { useWorkspaceAppNavigationActions } from "./hooks/useWorkspaceAppNavigationActions.js";
 import { useWorkspaceAppShellRouting } from "./hooks/useWorkspaceAppShellRouting.js";
 import { stageCrossSurfaceConversationNavigationHandoff } from "./crossSurfaceConversationNavigation.js";
-import {
-  isDefaultChatChannel,
-  supportsParticipantAudienceSelection,
-} from "../../chat/shared/channelTopology.js";
+import { supportsParticipantAudienceSelection } from "../../chat/shared/channelTopology.js";
 import { useWorkspaceChatEvents } from "./hooks/useWorkspaceChatEvents.js";
 import { useWorkspaceCatAssignmentActions } from "./hooks/useWorkspaceCatAssignmentActions.js";
 import { createUseComposerSubmit } from "./hooks/useWorkspaceComposerSubmit.js";
@@ -699,16 +693,12 @@ export function createWorkspaceProductApp({
     const {
       draftExecutionTarget,
       setDraftExecutionTarget,
-      defaultChannelExecutionTarget,
-      setDefaultChannelExecutionTarget,
     } = useWorkspaceExecutionTargetState({
       state,
       readyChat,
-      readySelectedChannel,
       setState,
       setFeedback,
       updateNewChatDefaultsPreference,
-      updateChannelPendingExecutionTarget,
     });
     const draftEntryKind: "default" | "group" | "direct" = showingMyCatDirectLane
       ? "direct"
@@ -1409,7 +1399,6 @@ export function createWorkspaceProductApp({
       setDraftWorkflowShape,
       setDraftAudienceKeys,
       draftExecutionTarget,
-      defaultChannelExecutionTarget,
       showingParallelChatDraft: supportsStructuredDraftModes && showingParallelChatDraft,
       draftParallelChatTargets,
       draftWorkflowShape,
@@ -1665,12 +1654,6 @@ export function createWorkspaceProductApp({
       supportsStructuredDraftModes,
     ]);
 
-    const onStartFreshChannel = useWorkspaceResetChannelContinuity<AppShellPayload>({
-      resetChannelContinuity,
-      publishReadyPayload,
-      setBusy,
-      setFeedback,
-    });
     const onUpdateChannelParticipant = useWorkspaceChannelParticipantUpdate<AppShellPayload>({
       updateChannelParticipantApi,
       setBusy,
@@ -1699,9 +1682,6 @@ export function createWorkspaceProductApp({
             activeMyCatId,
             activeAssignedCats,
             assignedCatIds,
-            bossCatName,
-            bossCatAvatarColor,
-            showBossCatAvatar,
             selectableCats,
             assignableCatCount,
             draftCatIdSet,
@@ -1718,7 +1698,6 @@ export function createWorkspaceProductApp({
             addCatOpen,
             showingNewChatDraft,
             draftCatIds,
-            t,
           });
           const visibleChatChannelId = resolveVisibleChatChannelId(
             selectedChannel,
@@ -1803,10 +1782,7 @@ export function createWorkspaceProductApp({
                     channelPlusMenuRef,
                     channelFileInputRef,
                     activeAssignedCats,
-                    bossCatName,
-                    bossCatAvatarColor,
-                    showBossCatAvatar,
-                    onComposerChange: setComposerDraft,
+                                            onComposerChange: setComposerDraft,
                     onComposerKeyDown,
                     onSendMessage,
                     onCancelPendingSend,
@@ -1819,10 +1795,6 @@ export function createWorkspaceProductApp({
                     onChannelFilesChange: setChannelFiles,
                     onApprovalDecision,
                     onChoiceSubmit,
-                    onStartFresh:
-                      visibleChatChannelId && visibleChannel && isDefaultChatChannel(visibleChannel)
-                        ? () => onStartFreshChannel(visibleChatChannelId)
-                        : undefined,
                     onRelayMessage: onRelayCompareMessage,
                     onUpdateChannelParticipant: visibleChatChannelId
                       ? (participantId, input) =>
@@ -1830,14 +1802,6 @@ export function createWorkspaceProductApp({
                       : undefined,
                     onOperatorAction,
                     autoResize,
-                    selectedExecutionTarget:
-                      visibleChannel && isDefaultChatChannel(visibleChannel)
-                        ? defaultChannelExecutionTarget
-                        : undefined,
-                    onExecutionTargetChange:
-                      visibleChannel && isDefaultChatChannel(visibleChannel)
-                        ? setDefaultChannelExecutionTarget
-                        : undefined,
                     onDirectLaneExecutionTargetChange: onDirectLaneModelSave,
                     activeWorkflowShape,
                     onToggleActiveWorkflowShape:
@@ -1870,9 +1834,7 @@ export function createWorkspaceProductApp({
                     plusMenuOpen,
                     plusMenuRef,
                     fileInputRef,
-                    bossCatName,
-                    bossCatAvatarColor,
-                    onComposerChange: setComposerDraft,
+                                    onComposerChange: setComposerDraft,
                     onComposerKeyDown,
                     onSendMessage,
                     onCancelPendingSend,

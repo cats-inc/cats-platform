@@ -3,10 +3,6 @@ import type {
   ChatMessage,
   ChatState,
 } from '../../api/contracts.js';
-import type {
-  RoomRoutingOutcome,
-  RoomRoutingParticipantRef,
-} from '../../../../shared/roomRouting.js';
 import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
 import type { CatsCoreState } from '../../../../core/types.js';
@@ -21,7 +17,6 @@ import {
 } from '../../../../platform/supervision/runtimeBoundary.js';
 import { buildChannelView } from '../model/index.js';
 import { type RoutingTarget } from '../mentionRouter.js';
-import { buildOrchestratorRewritePrompt } from '../prompts.js';
 import { type DispatchRequest } from '../room-routing/runtime.js';
 import {
   type RuntimeTransportContext,
@@ -35,11 +30,7 @@ import {
   productKnowledgeReceipt,
 } from '../../../../platform/knowledge/productKnowledge.js';
 import { resolveChatWorkToolIntentManifest } from '../workToolIntentResolver.js';
-import {
-  participantKey,
-  resolveActorIdForTarget,
-} from '../runtime-session/state.js';
-import { shouldRewriteOrchestratorReply } from '../runtime-session/index.js';
+import { resolveActorIdForTarget } from '../runtime-session/state.js';
 import type { DispatchLeasePatch } from './recovery.js';
 import { applyCompanionPhotoDirective } from './companionPhoto.js';
 import { waitForSessionTurnGate } from './sessionTurnGate.js';
@@ -126,20 +117,6 @@ function resolveDispatchToolIntent(input: {
   const target = input.request.target;
   const sourceBody = input.request.promptSourceMessage?.body ?? input.request.sourceMessage.body;
 
-  if (target.participantKind === 'orchestrator') {
-    return resolveChatWorkToolIntentManifest({
-      state: input.state,
-      core: input.core,
-      channel: input.channel,
-      body: sourceBody,
-      profileId: input.state.globalOrchestrator.mcpProfile,
-      participantKind: 'orchestrator',
-      participantId: 'orchestrator',
-      roomMode,
-      transport: resolvedTransport,
-    }) ?? null;
-  }
-
   const assignedCat = input.channel.assignedCats.find((cat) =>
     cat.participantId === target.participantId || cat.catId === target.participantId);
   return resolveChatWorkToolIntentManifest({
@@ -213,7 +190,6 @@ export async function executeDispatch(
     const dispatchContextMetadata = buildDispatchRuntimeContextMetadata(request, {
       continuityMode: dispatchPrompt.continuityMode ?? null,
       continuityDeliveryMode: dispatchPrompt.continuityDeliveryMode ?? null,
-      continuityResetAt: dispatchPrompt.continuityResetAt ?? null,
     });
     const toolIntent = resolveDispatchToolIntent({
       state,
@@ -222,7 +198,9 @@ export async function executeDispatch(
       request,
       transport,
     });
-    const knowledge = request.target.participantKind === 'orchestrator' && isOrchestratorKnowledgeChannel(channel)
+    // The coordinator answers with product knowledge.
+    const knowledge = channel.coordinatorParticipantId === request.target.participantId
+      && isOrchestratorKnowledgeChannel(channel)
       ? await loadOrchestratorKnowledge({
           channel,
           body: request.promptSourceMessage?.body ?? request.sourceMessage.body,
@@ -295,57 +273,12 @@ export async function executeDispatch(
       });
       mergeRuntimeAssistantMetadata(runtimeAssistantMetadata, effectsMetadata);
     }
-    let usage: MessageUsageSummary | null = {
+    const usage: MessageUsageSummary | null = {
       inputTokens: runtimeResult.inputTokens,
       outputTokens: runtimeResult.outputTokens,
       tokensUsed: runtimeResult.tokensUsed,
     };
 
-    const fullResponseText = resolveFullResponseText(responseSegments);
-    if (
-      request.target.participantKind === 'orchestrator'
-      && shouldRewriteOrchestratorReply(
-        fullResponseText,
-        request.target.participantName,
-        channel,
-      )
-    ) {
-      try {
-        const rewrite = await sendSupervisedRuntimeMessage({
-          runtimeClient,
-          sessionId,
-          content: buildOrchestratorRewritePrompt(
-            channel,
-            request.sourceMessage,
-            request.target.participantName,
-            fullResponseText,
-          ),
-          input: knowledge ? {
-            instructions: productKnowledgeInstructions(knowledge),
-            context: runtimeInvocationInput.context,
-          } : undefined,
-          supervision: {
-            product: 'cats-chat',
-            surface: 'orchestrator-rewrite',
-            runId: channelId,
-            actionId: `${request.dispatchId}:rewrite`,
-            actorRef: request.target.participantId,
-            reason: 'orchestrator_rewrite',
-          },
-        });
-        const rewriteText = resolveFullResponseText(rewrite.segments);
-        if (rewriteText) {
-          responseSegments = [{ kind: 'text', text: rewriteText, toolName: null, toolId: null }];
-        }
-        usage = {
-          inputTokens: (usage?.inputTokens ?? 0) + rewrite.inputTokens,
-          outputTokens: (usage?.outputTokens ?? 0) + rewrite.outputTokens,
-          tokensUsed: (usage?.tokensUsed ?? 0) + rewrite.tokensUsed,
-        };
-      } catch {
-        // Keep the original draft if the repair pass fails.
-      }
-    }
     const companionPhoto = await applyCompanionPhotoDirective({
       state,
       channelId,
@@ -403,24 +336,3 @@ export async function settleInCompletionOrder<T>(promises: Array<Promise<T>>): P
   return results;
 }
 
-export function shouldBlockAntiPingPong(
-  sourceParticipant: RoomRoutingParticipantRef,
-  target: RoutingTarget,
-  dispatches: RoomRoutingOutcome['dispatches'],
-): boolean {
-  const completedDispatches = dispatches.filter((dispatch) => dispatch.status === 'completed');
-  if (completedDispatches.length < 2) {
-    return false;
-  }
-
-  const lastDispatch = completedDispatches[completedDispatches.length - 1];
-  const previousDispatch = completedDispatches[completedDispatches.length - 2];
-  if (!lastDispatch.source || !previousDispatch.source) {
-    return false;
-  }
-
-  return participantKey(previousDispatch.source) === participantKey(sourceParticipant)
-    && participantKey(previousDispatch.target) === participantKey(target)
-    && participantKey(lastDispatch.source) === participantKey(target)
-    && participantKey(lastDispatch.target) === participantKey(sourceParticipant);
-}

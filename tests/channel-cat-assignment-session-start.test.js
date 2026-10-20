@@ -143,7 +143,6 @@ test('assigning a cat emits session_started metadata keyed by participantId', as
         topic: 'Use participant identity for session_started messages.',
         originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -223,7 +222,6 @@ test('channel creation rejects runtime policy combinations that would otherwise 
         repoPath: 'C:/repo/cats-platform',
         runtimeWorkspaceAccess: 'read_write',
         runtimePermissionMode: 'default',
-        skipBossCatGreeting: true,
       }),
     });
 
@@ -275,7 +273,6 @@ test('assigning a cat keeps direct-lane transport binding on session_start_faile
         roomMode: 'direct_message',
         defaultRecipientId: catId,
         repoPath: 'C:/repo/cats-platform',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -333,7 +330,6 @@ test('assigning a cat reuses the channel runtime session policy when starting a 
         runtimeWorkspaceKind: 'worktree',
         runtimeWorkspaceAccess: 'read_only',
         runtimePermissionMode: 'default',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);

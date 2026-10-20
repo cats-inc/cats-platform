@@ -462,7 +462,13 @@ test('canonical routes full lifecycle: create cat, channel, activate, message, a
       {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ body: 'Hello from canonical route' }),
+        body: JSON.stringify({
+          body: 'Hello from canonical route',
+          messageMetadata: {
+            recipientParticipantIds: createChannelPayload.channel.assignedParticipants
+              .map((participant) => participant.participantId),
+          },
+        }),
       },
     );
     assert.equal(sendMessageResponse.status, 200);
@@ -622,6 +628,7 @@ test('PATCH /api/preferences persists new chat model defaults across subsequent 
 
     const updatePayload = await updateResponse.json();
     assert.deepEqual(updatePayload.preferences.newChatDefaults, {
+      catId: null,
       provider: 'codex',
       instance: 'default',
       model: 'gpt-5.4',
@@ -638,6 +645,7 @@ test('PATCH /api/preferences persists new chat model defaults across subsequent 
     assert.equal(readResponse.status, 200);
     const readPayload = await readResponse.json();
     assert.deepEqual(readPayload.preferences.newChatDefaults, {
+      catId: null,
       provider: 'codex',
       instance: 'default',
       model: 'gpt-5.4',
@@ -654,6 +662,7 @@ test('PATCH /api/preferences persists new chat model defaults across subsequent 
     assert.equal(appShellResponse.status, 200);
     const appShellPayload = await appShellResponse.json();
     assert.deepEqual(appShellPayload.chat.newChatDefaults, {
+      catId: null,
       provider: 'codex',
       instance: 'default',
       model: 'gpt-5.4',
@@ -771,55 +780,6 @@ test('PATCH /api/preferences keeps work conversation behavior isolated from chat
       showVerboseMessages: false,
       showLiveProgressDetails: false,
       concurrentPresentationMode: 'inline_stack',
-    });
-  });
-});
-
-test('PATCH /api/channels/:channelId persists default chat AI reply settings', async () => {
-  await withServer(createRuntimeStub(), async (baseUrl) => {
-    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        title: 'Default',
-        topic: 'Default chat',
-        originSurface: 'chat',
-      }),
-    });
-    assert.equal(createChannelResponse.status, 201);
-    const createChannelPayload = await createChannelResponse.json();
-    const channelId = createChannelPayload.channel.id;
-
-    const patchResponse = await fetch(`${baseUrl}/api/channels/${channelId}`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        pendingProvider: 'claude',
-        pendingInstance: 'default',
-        pendingModel: 'claude-default',
-        pendingModelSelection: {
-          entryMode: 'auto',
-          presetId: 'balanced',
-          controls: {
-            'openai.reasoning_effort': 'high',
-          },
-        },
-      }),
-    });
-    assert.equal(patchResponse.status, 200);
-
-    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
-    assert.equal(channelResponse.status, 200);
-    const channelPayload = await channelResponse.json();
-    assert.equal(channelPayload.channel.pendingProvider, 'claude');
-    assert.equal(channelPayload.channel.pendingInstance, 'default');
-    assert.equal(channelPayload.channel.pendingModel, 'claude-default');
-    assert.deepEqual(channelPayload.channel.pendingModelSelection, {
-      entryMode: 'auto',
-      presetId: 'balanced',
-      controls: {
-        'openai.reasoning_effort': 'high',
-      },
     });
   });
 });
@@ -961,7 +921,7 @@ test('bot binding routes support multiple Telegram bots across Cats', async () =
       body: JSON.stringify({
         name: 'Boss Cat',
         provider: 'claude',
-        makeBoss: true,
+        group: 'admin',
       }),
     });
     assert.equal(createBossResponse.status, 201);

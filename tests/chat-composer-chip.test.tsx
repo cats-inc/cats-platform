@@ -10,7 +10,6 @@ import { clearLiveProviderModelLabels, recordLiveProviderModelLabels } from '../
 function createPayload(): AppShellPayload {
   return {
     chat: {
-      bossCatId: null,
       cats: [],
       capabilities: {
         maxAudienceParticipants: 3,
@@ -152,11 +151,11 @@ test('chat composer renders a cat-backed audience chip for direct lanes', () => 
   clearLiveProviderModelLabels();
   recordLiveProviderModelLabels('claude', [{ id: 'opus', label: 'Opus 4.7 with 1M context' }], { target: 'cli/native', catalogRevision: 'fixture' });
   const payload = createPayload();
-  payload.chat.bossCatId = 'cat-jiang';
   payload.chat.cats = [
     {
       id: 'cat-jiang',
       name: '將將',
+      group: 'admin',
       avatarColor: '#7A5B3A',
       avatarUrl: null,
       status: 'active',

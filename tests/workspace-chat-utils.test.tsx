@@ -10,7 +10,6 @@ import {
   executionLabel,
   isChatCat,
   presentChannelTitle,
-  resolveBossCatName,
   sortChatCatsForDisplay,
   truncatePath,
 } from '../src/products/shared/renderer/workspaceChatUtils.tsx';
@@ -83,7 +82,7 @@ test('executionLabel mirrors the shared execution label builder for cats', () =>
   );
 });
 
-test('chat cat sorting keeps pinned cats first, then active before archived when requested', () => {
+test('chat cat sorting keeps Boss Cats first, then active before archived when requested', () => {
   const cats = [
     createCat({
       id: 'cat-zeta',
@@ -94,6 +93,7 @@ test('chat cat sorting keeps pinned cats first, then active before archived when
     createCat({
       id: 'cat-beta',
       name: 'Beta',
+      group: 'admin',
       createdAt: '2026-04-20T10:02:00.000Z',
       status: 'active',
     }),
@@ -111,10 +111,7 @@ test('chat cat sorting keeps pinned cats first, then active before archived when
     }) > 0,
   );
   assert.deepEqual(
-    sortChatCatsForDisplay(cats, {
-      bossCatIds: ['cat-beta'],
-      archivedLast: true,
-    }).map((cat) => cat.id),
+    sortChatCatsForDisplay(cats, { archivedLast: true }).map((cat) => cat.id),
     ['cat-beta', 'cat-alpha', 'cat-zeta'],
   );
 });
@@ -148,33 +145,3 @@ test('channel title and path helpers keep user-facing labels compact', () => {
   assert.equal(truncatePath('plain-name', 20), 'plain-name');
 });
 
-test('resolveBossCatName only returns a live name when the boss cat exists in payload', () => {
-  assert.equal(resolveBossCatName({
-    chat: {
-      bossCatId: 'cat-boss',
-      cats: [
-        createCat({
-          id: 'cat-boss',
-          name: 'Boss Cat',
-        }),
-      ],
-    },
-  } as never), 'Boss Cat');
-  assert.equal(resolveBossCatName({
-    chat: {
-      bossCatId: 'cat-missing',
-      cats: [],
-    },
-  } as never), null);
-  assert.equal(resolveBossCatName({
-    chat: {
-      bossCatId: null,
-      cats: [
-        createCat({
-          id: 'cat-boss',
-          name: 'Boss Cat',
-        }),
-      ],
-    },
-  } as never), null);
-});

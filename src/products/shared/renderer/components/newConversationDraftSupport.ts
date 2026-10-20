@@ -197,7 +197,7 @@ export function resolveNewConversationDraftViewState(input: {
   const isSubmittingFirstTurn = isComposerBusyForDraft(input.busy) || isAckPending;
   const draftComposerRecipients: RecipientChipTarget[] = (() => {
     if (effectiveDefaultRecipientCat) {
-      return [buildRecipientFromCat(effectiveDefaultRecipientCat, input.payload.chat.bossCatId)];
+      return [buildRecipientFromCat(effectiveDefaultRecipientCat)];
     }
     if (effectiveDefaultRecipientTemporaryParticipant) {
       return [

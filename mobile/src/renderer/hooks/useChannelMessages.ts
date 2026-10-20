@@ -14,10 +14,16 @@ import {
 import { loadConnectionConfig } from '../../api/persistence';
 import type { ResolveAttachmentUrl } from '../MessageBody';
 import {
+  buildMobileSendInput,
   getMobileApiCopy,
   resolveDefaultMobileLocale,
+  resolveMobileRecipientIds,
+  selectMobileAudience,
+  toggleMobileAudienceSelection,
   type MobileApiCopy,
   type MobileAppShellPayload,
+  type MobileAudience,
+  type MobileChannelDetailPayload,
   type MobileChannelMessagesPayload,
   type MobileRenderedMessage,
   type MobileRoomUpdatedDetail,
@@ -49,6 +55,8 @@ export type ChannelMessagesState =
       channelTitle: string;
       messages: MobileRenderedMessage[];
       resolveAttachmentUrl: ResolveAttachmentUrl;
+      /** Who a send can go to; absent on drafts before the first send. */
+      audience?: MobileAudience;
     };
 
 /** Composer-side state for the send mutation (PLAN-084 Phase 4c). */
@@ -69,6 +77,10 @@ export interface ChannelMessagesHook {
    *  streaming so the reply lands without a refetch. */
   send: (body: string) => Promise<void>;
   sendState: ChannelSendState;
+  /** The participants the next send names (empty in a DM). */
+  recipientIds: string[];
+  /** Toggles a participant in or out of the next send's audience. */
+  toggleRecipient: (participantId: string) => void;
 }
 
 const APP_SHELL_PATH = '/api/app-shell';
@@ -77,26 +89,33 @@ function messagesPath(channelId: string): string {
   return `/api/channels/${encodeURIComponent(channelId)}/messages`;
 }
 
+function channelPath(channelId: string): string {
+  return `/api/channels/${encodeURIComponent(channelId)}`;
+}
+
 interface ShellAndMessages {
   shell: MobileAppShellPayload;
   messagesPayload: MobileChannelMessagesPayload;
+  detail: MobileChannelDetailPayload;
 }
 
 async function loadShellAndMessages(
   client: MobileApiClient,
   channelId: string,
 ): Promise<ShellAndMessages> {
-  const [shell, messagesPayload] = await Promise.all([
+  const [shell, messagesPayload, detail] = await Promise.all([
     client.get<MobileAppShellPayload>(APP_SHELL_PATH),
     client.get<MobileChannelMessagesPayload>(messagesPath(channelId)),
+    client.get<MobileChannelDetailPayload>(channelPath(channelId)),
   ]);
-  return { shell, messagesPayload };
+  return { shell, messagesPayload, detail };
 }
 
 function buildDataState(
   client: MobileApiClient,
   shell: MobileAppShellPayload,
   messagesPayload: MobileChannelMessagesPayload,
+  detail: MobileChannelDetailPayload,
   channelId: string,
 ): ChannelMessagesState {
   const channel = shell.chat.channels.find(
@@ -110,6 +129,7 @@ function buildDataState(
     channelTitle: channel.title,
     messages: selectMobileMessages(messagesPayload.messages, shell.chat.cats),
     resolveAttachmentUrl: buildAttachmentResolver(client),
+    audience: selectMobileAudience(detail.channel),
   };
 }
 
@@ -163,14 +183,14 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
           setState({ kind: 'unauthenticated' });
           return;
         }
-        const { shell, messagesPayload } = await loadShellAndMessages(
+        const { shell, messagesPayload, detail } = await loadShellAndMessages(
           session.client,
           channelId,
         );
         if (!activeRef.current) {
           return;
         }
-        setState(buildDataState(session.client, shell, messagesPayload, channelId));
+        setState(buildDataState(session.client, shell, messagesPayload, detail, channelId));
       } catch (error) {
         if (!activeRef.current) {
           return;
@@ -260,6 +280,16 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
     setVersion((current) => current + 1);
   }, []);
 
+  const [selectedRecipientIds, setSelectedRecipientIds] = useState<string[] | null>(null);
+  const audience = state.kind === 'data' ? state.audience ?? null : null;
+  const recipientIds = audience ? resolveMobileRecipientIds(audience, selectedRecipientIds) : [];
+  const toggleRecipient = useCallback((participantId: string) => {
+    if (!audience) {
+      return;
+    }
+    setSelectedRecipientIds((current) => toggleMobileAudienceSelection(audience, current, participantId));
+  }, [audience]);
+
   const send = useCallback(
     async (body: string): Promise<void> => {
       const trimmed = body.trim();
@@ -288,7 +318,7 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
           });
           return;
         }
-        await session.client.post(messagesPath(channelId), { body: trimmed });
+        await session.client.post(messagesPath(channelId), buildMobileSendInput(trimmed, recipientIds));
         setSendState({ kind: 'idle' });
         // Refetch to pick up both the persisted user message and the
         // first assistant reply (when fast). The user can pull-to-
@@ -309,8 +339,8 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
         }
       }
     },
-    [channelId, copy],
+    [channelId, copy, recipientIds],
   );
 
-  return { state, refetch, send, sendState };
+  return { state, refetch, send, sendState, recipientIds, toggleRecipient };
 }

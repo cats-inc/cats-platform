@@ -5,29 +5,14 @@ import {
 } from '../channelEntry.js';
 import {
   isChatCat,
-  resolveBossCatName,
   type SelectedChannelView,
   type Surface,
 } from './workspaceChatUtils.js';
 import {
   isDirectConversationMode,
-  isDefaultChatConversationMode,
   resolveConversationMode,
 } from '../../../app/renderer/productShell/conversationMode.js';
 import { findDirectLaneForCat } from '../../../app/renderer/productShell/myCatNavigation.js';
-import {
-  createTranslator,
-  messageKeys,
-  type MessageInterpolationValues,
-  type MessageKey,
-} from '../../../shared/i18n/index.js';
-
-type WorkspaceAppViewTranslator = (
-  key: MessageKey,
-  values?: MessageInterpolationValues,
-) => string;
-
-const defaultWorkspaceAppViewTranslator = createTranslator('en');
 
 export type AppLoadState =
   | { status: 'loading' }
@@ -118,7 +103,6 @@ export function deriveAppViewState(input: {
   addCatOpen: boolean;
   showingNewChatDraft: boolean;
   draftCatIds: string[];
-  t?: WorkspaceAppViewTranslator;
 }) {
   const {
     addCatOpen,
@@ -131,7 +115,6 @@ export function deriveAppViewState(input: {
     selectedDirectLane,
     showingMyCatDirectLane,
     showingNewChatDraft,
-    t = defaultWorkspaceAppViewTranslator,
   } = input;
   const surface: Surface =
     pathname.startsWith('/settings')
@@ -141,9 +124,6 @@ export function deriveAppViewState(input: {
   const activeChannelView = selectedChannel ?? directLaneChannel;
   const activeConversationMode = activeChannelView
     ? resolveConversationMode(activeChannelView)
-    : null;
-  const selectedConversationMode = selectedChannel
-    ? resolveConversationMode(selectedChannel)
     : null;
   // Highlight a MY CATS row only when the user is actually inside
   // that cat's direct lane (`/chat/dm/:catId` resolved to a real
@@ -159,16 +139,8 @@ export function deriveAppViewState(input: {
   const assignedCatIds = new Set(
     activeChannelView?.assignedCats.map((cat) => cat.catId) ?? [],
   );
-  const bossCatName = resolveBossCatName(payload) ?? t(messageKeys.sharedOrchestratorFallbackName);
-  const bossCatAvatarColor = payload.chat.cats.find(
-    (cat) => cat.id === payload.chat.bossCatId,
-  )?.avatarColor ?? null;
-  const showBossCatAvatar = Boolean(payload.chat.bossCatId)
-    && !isDefaultChatConversationMode(selectedConversationMode)
-    && !isDirectConversationMode(selectedConversationMode)
-    && !activeAssignedCats.some((cat) => cat.catId === payload.chat.bossCatId);
   const selectableCats = payload.chat.cats.filter(
-    (cat) => cat.status === 'active' && cat.id !== payload.chat.bossCatId && isChatCat(cat),
+    (cat) => cat.status === 'active' && isChatCat(cat),
   );
   const assignableCatCount = selectableCats.length;
   const draftCatIdSet = new Set(draftCatIds);
@@ -183,9 +155,6 @@ export function deriveAppViewState(input: {
     activeMyCatId,
     activeAssignedCats,
     assignedCatIds,
-    bossCatName,
-    bossCatAvatarColor,
-    showBossCatAvatar,
     selectableCats,
     assignableCatCount,
     draftCatIdSet,

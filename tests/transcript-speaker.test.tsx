@@ -113,6 +113,7 @@ test('cat-authored transcript messages resolve through the live cat id even afte
       {
         id: 'cat-1',
         name: 'Renamed Cat',
+        group: 'standard',
         roles: [],
         skillProfile: null,
         mcpProfile: null,

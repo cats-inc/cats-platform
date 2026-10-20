@@ -50,6 +50,7 @@ function applyPreferencePatch(
     conversationBehavior?: ConversationBehaviorPatch;
     advancedDraftControls?: AdvancedDraftControlsPatch;
     newChatDefaults?: {
+      catId?: string | null;
       provider?: string;
       instance?: string | null;
       model?: string | null;
@@ -86,6 +87,9 @@ function applyPreferencePatch(
 
   if (body.newChatDefaults && typeof body.newChatDefaults === 'object') {
     nextState = updateNewChatDefaults(nextState, {
+      catId: body.newChatDefaults.catId === undefined
+        ? undefined
+        : typeof body.newChatDefaults.catId === 'string' ? body.newChatDefaults.catId : null,
       provider: body.newChatDefaults.provider,
       instance: body.newChatDefaults.instance,
       model: body.newChatDefaults.model,
@@ -139,6 +143,7 @@ async function handleRestUpdatePreferences(
       conversationBehavior?: ConversationBehaviorPatch;
       advancedDraftControls?: AdvancedDraftControlsPatch;
       newChatDefaults?: {
+        catId?: string | null;
         provider?: string;
         instance?: string | null;
         model?: string | null;

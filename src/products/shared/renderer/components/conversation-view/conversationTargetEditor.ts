@@ -24,7 +24,6 @@ export interface ConversationTargetEditorContext {
     update: { name?: string; roleHint?: string | null },
   ) => void;
   /** The default chat's start-fresh action, shown under its picker. */
-  startFresh?: AudienceTargetEditor['action'];
   openCatPage: (catId: string) => void;
 }
 
@@ -43,7 +42,6 @@ export function resolveConversationTargetEditor(
       ? {
           target: context.selectedExecutionTarget,
           onChange: context.onExecutionTargetChange,
-          action: context.startFresh,
         }
       : null;
   }

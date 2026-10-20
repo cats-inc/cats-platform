@@ -10,6 +10,7 @@ import type {
   OrchestratorActionEnvelope,
   OrchestratorApprovalGate,
   OrchestratorChannelView,
+  OrchestratorParticipantExecutionLease,
   OrchestratorDispatchTargetPlan,
   OrchestratorExecutionState,
   OrchestratorExecutionStep,
@@ -155,13 +156,9 @@ export function buildRuntimeToolPlane(): OrchestratorRuntimeToolPlane {
 export function resolveParticipantExecutionLease(
   channel: OrchestratorChannelView,
   participant: RoomRoutingParticipantRef | null,
-): OrchestratorChannelView['orchestratorLease'] | null {
+): OrchestratorParticipantExecutionLease | null {
   if (!participant) {
     return null;
-  }
-
-  if (participant.participantKind === 'orchestrator') {
-    return channel.orchestratorLease;
   }
 
   return channel.assignedCats.find((cat) => cat.catId === participant.participantId)

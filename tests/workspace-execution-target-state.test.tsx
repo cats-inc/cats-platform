@@ -8,10 +8,8 @@ import {
   reconcileRuntimeBackedExecutionTargetValue,
   sameExecutionTargetValue,
   toExecutionTargetValue,
-  toDefaultChatExecutionTargetValue,
 } from '../src/products/shared/renderer/hooks/useWorkspaceExecutionTargetState.ts';
 import { formatWorkspaceExecutionTargetMutationError } from '../src/products/shared/renderer/hooks/workspaceExecutionTargetErrorLabels.ts';
-import { resolveDispatchExecutionTargetValue } from '../src/products/chat/renderer/hooks/useComposerSubmit.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 import { invalidateProviderClientSession } from '../src/app/renderer/providerClientInvalidation.ts';
 
@@ -194,130 +192,6 @@ test('execution target equality compares normalized nullable fields and model se
     ),
     false,
   );
-});
-
-test('default channel execution target falls back to the global orchestrator when pending values are absent', () => {
-  assert.equal(
-    toDefaultChatExecutionTargetValue(null, null),
-    null,
-  );
-  assert.equal(
-    toDefaultChatExecutionTargetValue(
-      {
-        newChatDefaults: null,
-        globalOrchestrator: {
-          executionTarget: {
-            provider: 'claude',
-            model: 'opus',
-            instance: 'native',
-          },
-          executionModelSelection: null,
-        },
-      },
-      {
-        id: 'channel-participant',
-        assignedCats: [{ catId: 'cat-1', status: 'active' }],
-        pendingProvider: 'codex',
-        pendingModel: null,
-        pendingInstance: null,
-        pendingModelSelection: null,
-      },
-    ),
-    null,
-  );
-
-  assert.deepEqual(
-    toDefaultChatExecutionTargetValue(
-      {
-        newChatDefaults: null,
-        globalOrchestrator: {
-          executionTarget: {
-            provider: 'claude',
-            model: 'opus',
-            instance: 'native',
-          },
-          executionModelSelection: {
-            entryId: 'opus',
-            entryMode: 'explicit',
-          },
-        },
-      },
-      {
-        id: 'channel-default',
-        pendingProvider: null,
-        pendingModel: null,
-        pendingInstance: null,
-        pendingModelSelection: null,
-      },
-    ),
-    {
-      provider: 'claude',
-      model: 'opus',
-      instance: 'native',
-      modelSelection: {
-        entryId: 'opus',
-        entryMode: 'explicit',
-      },
-      executionLabel: null,
-    },
-  );
-
-  assert.deepEqual(
-    toDefaultChatExecutionTargetValue(
-      {
-        newChatDefaults: null,
-        globalOrchestrator: {
-          executionTarget: {
-            provider: 'claude',
-            model: 'opus',
-            instance: 'native',
-          },
-          executionModelSelection: null,
-        },
-      },
-      {
-        id: 'channel-default',
-        pendingProvider: 'codex',
-        pendingModel: 'gpt-5.4',
-        pendingInstance: 'default',
-        pendingModelSelection: {
-          entryId: 'gpt-5.4',
-          entryMode: 'explicit',
-        },
-      },
-    ),
-    {
-      provider: 'codex',
-      model: 'gpt-5.4',
-      instance: 'default',
-      modelSelection: {
-        entryId: 'gpt-5.4',
-        entryMode: 'explicit',
-      },
-      executionLabel: null,
-    },
-  );
-});
-
-test('a conversation selection never inherits another provider model, instance or effort from God Cat defaults', () => {
-  const target = toDefaultChatExecutionTargetValue({
-    newChatDefaults: null,
-    globalOrchestrator: {
-      executionTarget: { provider: 'claude', model: 'opus', instance: 'cli/native' },
-      executionModelSelection: {
-        entryId: 'opus', entryMode: 'explicit', controls: { 'claude.reasoning_effort': 'max' },
-      },
-    },
-  }, {
-    id: 'conversation-with-provider-defaults',
-    pendingProvider: 'codex',
-    pendingModel: null,
-    pendingInstance: null,
-    pendingModelSelection: null,
-  });
-  assert.deepEqual(target, {
-    provider: 'codex', model: null, instance: null, modelSelection: null, executionLabel: null,
-  });
 });
 
 test('runtime-backed execution target reconciliation adopts the advanced default effort for bare Claude opus targets', async () => {
@@ -758,56 +632,3 @@ for (const providerDefaultTarget of [
   });
 }
 
-test('dispatch execution target resolution keeps advanced default effort explicit before send', async () => {
-  const resolved = await resolveDispatchExecutionTargetValue(
-    {
-      provider: 'claude',
-      instance: 'native',
-      model: 'opus',
-      modelSelection: null,
-      executionLabel: null,
-    },
-    async ({ target }) => ({
-      ...target,
-      modelSelection: {
-        entryId: 'opus',
-        entryMode: 'explicit',
-        controls: {
-          'claude.reasoning_effort': 'xhigh',
-        },
-      },
-      executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
-    }),
-  );
-
-  assert.deepEqual(resolved.modelSelection, {
-    entryId: 'opus',
-    entryMode: 'explicit',
-    controls: {
-      'claude.reasoning_effort': 'xhigh',
-    },
-  });
-});
-
-test('dispatch execution target resolution falls back to the original target when reconciliation fails', async () => {
-  const resolved = await resolveDispatchExecutionTargetValue(
-    {
-      provider: 'claude',
-      instance: 'native',
-      model: 'opus',
-      modelSelection: null,
-      executionLabel: null,
-    },
-    async () => {
-      throw new Error('catalog unavailable');
-    },
-  );
-
-  assert.deepEqual(resolved, {
-    provider: 'claude',
-    instance: 'native',
-    model: 'opus',
-    modelSelection: null,
-    executionLabel: null,
-  });
-});

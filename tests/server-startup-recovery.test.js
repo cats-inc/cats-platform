@@ -65,7 +65,6 @@ test('runServerStartupRecoveryPasses reconciles commands and pending golden-path
   const chatStore = {
     async read() {
       return {
-        bossCatId: null,
         cats: [],
         channels: [],
       };

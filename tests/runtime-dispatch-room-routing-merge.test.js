@@ -4,6 +4,8 @@ import path from 'node:path';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import test from 'node:test';
 
+import { withRoomAudience } from './testUtils.js';
+
 import {
   appendMessage,
   assignCatToChannel,
@@ -86,7 +88,6 @@ test('applyDispatchExecutions advances sequential queued frames by canonical sou
       originSurface: 'chat',
       title: 'Sequential frontier identity',
       topic: 'Advance the correct queued frame when the same participant owns multiple frontiers.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -94,7 +95,7 @@ test('applyDispatchExecutions advances sequential queued frames by canonical sou
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Start a workflow turn.' },
+    withRoomAudience(state, channelId, { body: 'Start a workflow turn.' }),
     runtimeClient,
     seededAt,
   );
@@ -111,10 +112,12 @@ test('applyDispatchExecutions advances sequential queued frames by canonical sou
     participantId: 'participant-source',
     participantName: 'Source Cat',
   };
+  // The room's default participant answers the frontier.
+  const defaultParticipant = channel.participantAssignments[0];
   const executionTarget = {
-    participantKind: 'orchestrator',
-    participantId: 'orchestrator',
-    participantName: 'Chat',
+    participantKind: 'cat',
+    participantId: defaultParticipant.participantId,
+    participantName: defaultParticipant.name,
     laneId: 'lane-current-frontier',
     sessionId: 'session-current-frontier',
   };
@@ -303,7 +306,7 @@ test('applyDispatchExecutions keeps replayed depth-0 continuation targets isolat
       originSurface: 'chat',
       title: 'Sequential replay frontier isolation',
       topic: 'Do not dedupe a later replayed frontier against another frontier that only shares the source message.',
-      skipBossCatGreeting: true,
+      participantCatIds: [claudeCatId, codexCatId],
     },
     seededAt,
   );
@@ -314,7 +317,7 @@ test('applyDispatchExecutions keeps replayed depth-0 continuation targets isolat
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Start a replayed sequential workflow turn.' },
+    withRoomAudience(state, channelId, { body: 'Start a replayed sequential workflow turn.' }),
     runtimeClient,
     seededAt,
   );
@@ -496,7 +499,6 @@ test('mergeCompletedDispatchState preserves newer room-routing config while appl
       originSurface: 'chat',
       title: 'Room routing merge',
       topic: 'Preserve config while keeping workflow progress.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -505,7 +507,7 @@ test('mergeCompletedDispatchState preserves newer room-routing config while appl
   const begun = await beginChannelMessageDispatch(
     baselineState,
     channelId,
-    { body: 'First routing turn' },
+    withRoomAudience(baselineState, channelId, { body: 'First routing turn' }),
     runtimeClient,
     dispatchAt,
   );
@@ -561,7 +563,6 @@ test('settleBegunChannelMessageDispatchFailure preserves a newer room-routing wo
       originSurface: 'chat',
       title: 'Room routing failure merge',
       topic: 'Do not overwrite newer workflow state on failure.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -570,14 +571,14 @@ test('settleBegunChannelMessageDispatchFailure preserves a newer room-routing wo
   const firstBegun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'First turn should fail later' },
+    withRoomAudience(state, channelId, { body: 'First turn should fail later' }),
     runtimeClient,
     firstDispatchAt,
   );
   const secondBegun = await beginChannelMessageDispatch(
     firstBegun.state,
     channelId,
-    { body: 'Second turn is newer' },
+    withRoomAudience(firstBegun.state, channelId, { body: 'Second turn is newer' }),
     runtimeClient,
     secondDispatchAt,
   );
@@ -643,7 +644,6 @@ test('settleBegunChannelMessageDispatchFailure keeps direct-lane transport bindi
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -652,7 +652,7 @@ test('settleBegunChannelMessageDispatchFailure keeps direct-lane transport bindi
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Trigger an outer dispatch failure.' },
+    withRoomAudience(state, channelId, { body: 'Trigger an outer dispatch failure.' }),
     runtimeClient,
     seededAt,
   );
@@ -687,7 +687,6 @@ test('mergeCompletedDispatchState treats overlapping workflow mutations as lates
       originSurface: 'chat',
       title: 'Workflow latest wins',
       topic: 'Keep the newer workflow snapshot when both sides changed.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -696,7 +695,7 @@ test('mergeCompletedDispatchState treats overlapping workflow mutations as lates
   const dispatchState = await beginChannelMessageDispatch(
     baselineState,
     channelId,
-    { body: 'First overlapping workflow turn' },
+    withRoomAudience(baselineState, channelId, { body: 'First overlapping workflow turn' }),
     runtimeClient,
     dispatchAt,
   );
@@ -731,7 +730,6 @@ test('mergeCompletedDispatchState preserves temporary participant execution leas
       title: 'Temporary participant merge',
       topic: 'Keep adhoc participant session leases while dispatch state merges.',
       entryKind: 'group',
-      skipBossCatGreeting: true,
       defaultRecipientId: 'participant-inline',
       temporaryParticipants: [
         {
@@ -792,7 +790,6 @@ test('createMergedDispatchChatStore serializes cross-channel writes so parallel 
       originSurface: 'chat',
       title: 'Parallel member A',
       topic: 'First parallel member.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -803,7 +800,6 @@ test('createMergedDispatchChatStore serializes cross-channel writes so parallel 
       originSurface: 'chat',
       title: 'Parallel member B',
       topic: 'Second parallel member.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -813,14 +809,14 @@ test('createMergedDispatchChatStore serializes cross-channel writes so parallel 
   const begunA = await beginChannelMessageDispatch(
     baselineState,
     channelAId,
-    { body: 'Dispatch A' },
+    withRoomAudience(baselineState, channelAId, { body: 'Dispatch A' }),
     runtimeClient,
     dispatchAt,
   );
   const begunB = await beginChannelMessageDispatch(
     baselineState,
     channelBId,
-    { body: 'Dispatch B' },
+    withRoomAudience(baselineState, channelBId, { body: 'Dispatch B' }),
     runtimeClient,
     dispatchAt,
   );
@@ -893,7 +889,6 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
       title: 'Recovered stale participant session',
       topic: 'Retry a room dispatch after a stale participant session.',
       entryKind: 'group',
-      skipBossCatGreeting: true,
       defaultRecipientId: 'participant-inline',
       temporaryParticipants: [
         {
@@ -960,7 +955,7 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please recover this routed turn.' },
+    withRoomAudience(state, channelId, { body: 'Please recover this routed turn.' }),
     runtimeClient,
     dispatchAt,
   );
@@ -999,7 +994,8 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
     buildChatLaneId(recoveredTurn.id, recoveredTargetStateId, 'participant-inline'),
   );
   assert.deepEqual(sentSessionIds, ['session-recovered']);
-  assert.deepEqual(closedSessionIds, []);
+  // The participant's stale session is retired when its replacement starts.
+  assert.deepEqual(closedSessionIds, ['session-stale']);
 });
 
 test('repairOrphanedCompletedDispatchTurn restores a startup-blocked turn when the reply already exists', async () => {
@@ -1014,7 +1010,6 @@ test('repairOrphanedCompletedDispatchTurn restores a startup-blocked turn when t
       originSurface: 'chat',
       title: 'Blocked after reply',
       topic: 'Restore a completed turn after startup recovery.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1022,7 +1017,7 @@ test('repairOrphanedCompletedDispatchTurn restores a startup-blocked turn when t
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please recover this completed reply' },
+    withRoomAudience(state, channelId, { body: 'Please recover this completed reply' }),
     runtimeClient,
     seededAt,
   );
@@ -1173,7 +1168,6 @@ test('repairOrphanedCompletedDispatchTurn ignores non-terminal segmented replies
       originSurface: 'chat',
       title: 'Segment fragment only',
       topic: 'Do not repair a turn from a partial segment.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1181,7 +1175,7 @@ test('repairOrphanedCompletedDispatchTurn ignores non-terminal segmented replies
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Only a partial reply exists' },
+    withRoomAudience(state, channelId, { body: 'Only a partial reply exists' }),
     runtimeClient,
     seededAt,
   );
@@ -1238,7 +1232,6 @@ test('repairOrphanedCompletedDispatchTurn keeps an active sequential turn alive 
       originSurface: 'chat',
       title: 'Sequential handoff still active',
       topic: 'Do not finalize the room turn while a follow-up speaker remains active.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1246,7 +1239,7 @@ test('repairOrphanedCompletedDispatchTurn keeps an active sequential turn alive 
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'First speaker should hand off to a second one.' },
+    withRoomAudience(state, channelId, { body: 'First speaker should hand off to a second one.' }),
     runtimeClient,
     seededAt,
   );
@@ -1360,7 +1353,6 @@ test('repairOrphanedCompletedDispatchTurn keeps a sequential turn alive while la
       originSurface: 'chat',
       title: 'Sequential target gap still active',
       topic: 'Do not finalize the room turn before the next sequential target is written.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1368,7 +1360,7 @@ test('repairOrphanedCompletedDispatchTurn keeps a sequential turn alive while la
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'First speaker should hand off, but the second target is not written yet.' },
+    withRoomAudience(state, channelId, { body: 'First speaker should hand off, but the second target is not written yet.' }),
     runtimeClient,
     seededAt,
   );
@@ -1473,7 +1465,6 @@ test('repairOrphanedCompletedDispatchTurn keeps later same-speaker re-entry targ
       originSurface: 'chat',
       title: 'Same speaker re-entry still active',
       topic: 'Do not treat a later mention of the same speaker as the same target state.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1481,7 +1472,7 @@ test('repairOrphanedCompletedDispatchTurn keeps later same-speaker re-entry targ
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Claude should speak, then Codex, then Claude again.' },
+    withRoomAudience(state, channelId, { body: 'Claude should speak, then Codex, then Claude again.' }),
     runtimeClient,
     seededAt,
   );
@@ -1627,7 +1618,6 @@ test('repairOrphanedCompletedDispatchTurn restores a drifted same-speaker re-ent
       originSurface: 'chat',
       title: 'Same speaker re-entry drifted target',
       topic: 'Recover the later same-speaker target when transcript targetStateId drifts.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1635,7 +1625,7 @@ test('repairOrphanedCompletedDispatchTurn restores a drifted same-speaker re-ent
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Claude should speak, then Codex, then Claude again.' },
+    withRoomAudience(state, channelId, { body: 'Claude should speak, then Codex, then Claude again.' }),
     runtimeClient,
     seededAt,
   );
@@ -1859,7 +1849,6 @@ test('repairMissingSessionStartedMessages restores missing runtime metadata befo
         originSurface: 'chat',
         title: 'Missing session metadata',
         topic: 'Restore missing session_started from runtime responses.',
-        skipBossCatGreeting: true,
       },
       seededAt,
     );
@@ -1943,7 +1932,6 @@ test('repairMissingSessionStartedMessages falls back to canonical session metada
       originSurface: 'chat',
       title: 'Canonical session metadata fallback',
       topic: 'Restore missing session metadata from canonical records.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2050,7 +2038,6 @@ test('repairMissingSessionStartedMessages restores a missing cat targetId from c
       originSurface: 'chat',
       title: 'Canonical session target fallback',
       topic: 'Restore missing session target ids from canonical records.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2161,7 +2148,6 @@ test('repairMissingSessionStartedMessages restores missing cat session identity 
       originSurface: 'chat',
       title: 'Canonical lane target fallback',
       topic: 'Restore missing session target ids directly from canonical lane records.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2249,7 +2235,6 @@ test('repairMissingStartupRecoveryNotice inserts an interrupted-turn note before
       originSurface: 'chat',
       title: 'Interrupted startup recovery',
       topic: 'Show a visible note when startup recovery blocked the prior turn.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2398,7 +2383,6 @@ test('repairMissingStartupRecoveryNotice falls back to canonical turn timing whe
       originSurface: 'chat',
       title: 'Interrupted startup recovery with drift',
       topic: 'Restore startup notice even when the source user message is missing.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2556,7 +2540,6 @@ test('repairMissingStartupRecoveryNotice uses canonical assistant source timing 
       originSurface: 'chat',
       title: 'Interrupted later sequential startup recovery',
       topic: 'Place startup recovery notice after the missing assistant handoff frontier.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2726,7 +2709,6 @@ test('repairMissingStartupRecoveryNotice prefers source identity when startup re
       originSurface: 'chat',
       title: 'Interrupted later sequential startup recovery with drifted source ids',
       topic: 'Use canonical source identity instead of drifted source message ids when inserting recovery notices.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );

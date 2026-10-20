@@ -141,7 +141,6 @@ function payload(input: {
       parallelChatGroups: input.groups ?? [],
       cats: input.cats ?? [],
       channels: input.channels ?? [],
-      bossCatId: null,
     },
   } as unknown as AppShellPayload;
 }

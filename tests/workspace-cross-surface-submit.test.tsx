@@ -76,7 +76,7 @@ for (const [sourceSurface, targetSurface, leaveBeforeAck] of [
         draftDefaultRecipientCatId: null, draftCatIds: [], draftCwd: null, draftFiles: [], channelFiles: [],
         setDraftCwd: noop, setDraftCatIds: noop, setDraftHighlightedCatId: noop,
         setDraftCatExecutionTargetOverrides: noop, setDraftFiles: noop, setChannelFiles: noop,
-        draftExecutionTarget: target, defaultChannelExecutionTarget: target, selectedChannel: null,
+        draftExecutionTarget: target, selectedChannel: null,
         busy, setBusy, setFeedback: noop,
       });
       return { ...actions, busy };
@@ -162,7 +162,7 @@ for (const [parallel, outcome] of [
       f.state.channels.find((channel) => channel.id === id)!.originSurface = 'code';
       initial.chat.channels = initial.chat.channels.filter((channel) => channel.id !== id);
     }
-    const overrideCat = outcome.startsWith('override-') ? f.state.cats.find((cat) => cat.id !== f.state.bossCatId) : null;
+    const overrideCat = outcome.startsWith('override-') ? f.state.cats.find((cat) => cat.group !== 'admin') : null;
     if (overrideCat) Object.assign(f.state, assignCatToChannel(f.state, id, { catId: overrideCat.id }));
     const createdPayload = f.payload(id);
     const group = createdPayload.chat.parallelChatGroups[0];
@@ -226,7 +226,7 @@ for (const [parallel, outcome] of [
         draftCatExecutionTargetOverrides: new Map(overrideCat ? [[overrideCat.id, target]] : []),
         setDraftCwd: noop, setDraftCatIds: noop, setDraftHighlightedCatId: noop,
         setDraftCatExecutionTargetOverrides: noop, setDraftFiles: noop, setChannelFiles: noop,
-        draftExecutionTarget: target, defaultChannelExecutionTarget: target, selectedChannel: null,
+        draftExecutionTarget: target, selectedChannel: null,
         showingParallelChatDraft: parallel, draftParallelChatTargets: [target, target], busy, setBusy, setFeedback,
       });
       return { ...actions, feedback, composerDraft, busy };

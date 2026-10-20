@@ -25,10 +25,7 @@ import { isCompanionCat } from '../../../shared/companionRole.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import {
   isDirectLaneChannel,
-  isProviderDefaultChatChannel,
-  isDefaultChatChannel,
 } from '../shared/channelTopology.js';
-import { resolveGlobalOrchestratorVisibleParticipant } from './orchestratorHats.js';
 import {
   buildDirectLaneTransportBindingId,
 } from '../../../shared/chatCoreIds.js';
@@ -46,11 +43,9 @@ import {
   requireChannel,
   requireCat,
   resolveChannelCanonicalIdentity,
-  resolveOrchestratorDisplayName,
 } from './model/index.js';
 import type { RoutingTarget } from './mentionRouter.js';
 import {
-  buildOrchestratorPrompt,
   buildDefaultChatContinuityTransplantPackage,
   buildTargetedChatHandoffPackage,
   buildCatPrompt,
@@ -65,58 +60,6 @@ export type RuntimeTransportContext = 'telegram' | 'web' | 'mobile';
 
 const MAX_RECENT_CONTEXT_MESSAGES = MAX_BOUNDED_RECENT_CONTEXT_MESSAGES;
 
-export function isDefaultChatRuntimeChannel(
-  channel: Pick<
-    ChatChannelState | ChatChannelView,
-    'channelKind' | 'roomRouting' | 'participantAssignments' | 'catAssignments'
-  > | Pick<
-    ChatChannelView,
-    'channelKind' | 'roomRouting' | 'assignedParticipants' | 'assignedCats'
-  >,
-): boolean {
-  return isDefaultChatChannel(channel);
-}
-
-export function buildOrchestratorTarget(
-  state: ChatState,
-  channel: ChatChannelView,
-): RoutingTarget {
-  return {
-    participantKind: 'orchestrator',
-    participantId: 'orchestrator',
-    participantName: isDefaultChatRuntimeChannel(channel) ? 'Orchestrator' : resolveOrchestratorDisplayName(state),
-    laneId: null,
-    sessionId: null,
-  };
-}
-
-export function resolveOrchestratorExecutionTarget(
-  state: ChatState,
-  channel: ChatChannelState,
-): {
-  provider: string;
-  model: string | null;
-  instance: string | null;
-  modelSelection?: ProviderModelSelection | null;
-} {
-  if (isProviderDefaultChatChannel(channel) && channel.pendingProvider) {
-    return {
-      provider: channel.pendingProvider,
-      instance: channel.pendingInstance ?? null,
-      model: channel.pendingModel ?? null,
-      modelSelection: channel.pendingModelSelection ?? null,
-    };
-  }
-
-  const participant = resolveGlobalOrchestratorVisibleParticipant(state.globalOrchestrator);
-  return {
-    provider: participant.executionTarget.provider,
-    instance: participant.executionTarget.instance,
-    model: participant.executionTarget.model,
-    modelSelection: participant.executionModelSelection ?? null,
-  };
-}
-
 export function resolveExecutionMetadataForTarget(
   state: ChatState,
   channelId: string,
@@ -128,16 +71,6 @@ export function resolveExecutionMetadataForTarget(
   modelSelection?: ProviderModelSelection | null;
 } {
   const channel = requireChannel(state, channelId);
-  if (target.participantKind === 'orchestrator') {
-    const executionTarget = resolveOrchestratorExecutionTarget(state, channel);
-    return {
-      provider: executionTarget.provider,
-      model: executionTarget.model,
-      instance: executionTarget.instance,
-      modelSelection: executionTarget.modelSelection ?? null,
-    };
-  }
-
   const assignment = resolvePrimaryParticipantExecutionAssignment(
     channel,
     target.participantId,
@@ -174,18 +107,10 @@ export function resolveChoiceResponseTarget(
     return canonicalTarget;
   }
 
-  const targetKind = sourceMessage.metadata.targetKind === 'orchestrator'
-    || sourceMessage.metadata.targetKind === 'cat'
-    ? sourceMessage.metadata.targetKind
-    : sourceMessage.senderKind === 'orchestrator'
-      ? 'orchestrator'
-      : sourceMessage.senderKind === 'agent'
-        ? 'cat'
-        : null;
-
-  if (targetKind === 'orchestrator') {
-    return buildOrchestratorTarget(state, channel);
-  }
+  const targetKind = sourceMessage.metadata.targetKind === 'cat'
+    || sourceMessage.senderKind === 'agent'
+    ? 'cat'
+    : null;
 
   if (targetKind !== 'cat') {
     return null;
@@ -224,10 +149,6 @@ function resolveCanonicalChoiceResponseTarget(
     && candidate.conversationId === conversationId) ?? null;
   const targetKind = readChatCoreMetadataString(segment.metadata, 'targetKind')
     ?? readChatCoreMetadataString(lane?.metadata ?? null, 'participantKind');
-
-  if (targetKind === 'orchestrator') {
-    return buildOrchestratorTarget(state, channel);
-  }
 
   if (targetKind !== 'cat') {
     return null;
@@ -313,18 +234,6 @@ function resolveSessionSkillManifestForTarget(
   transport?: RuntimeTransportContext,
 ): RuntimeSkillManifest | undefined {
   const resolvedTransport = resolveTransportContext(channel, transport);
-  if (target.participantKind === 'orchestrator') {
-    return resolveSkillProfileManifest({
-      profileId: state.globalOrchestrator.skillProfile,
-      roomMode: channel.roomRouting?.mode ?? 'chat_channel',
-      transport: resolvedTransport,
-      labels: ['participant:orchestrator'],
-      metadata: {
-        channelId: channel.id,
-      },
-    });
-  }
-
   const participant = findAssignedParticipant(channel, target.participantId);
   const catId = participant ? resolveParticipantCatId(participant) : null;
   return resolveSkillProfileManifest({
@@ -504,14 +413,6 @@ function messageMatchesTarget(message: ChatMessage, target: RoutingTarget): bool
     return false;
   }
 
-  if (target.participantKind === 'orchestrator') {
-    return message.senderKind === 'orchestrator'
-      && (
-        message.senderName === target.participantName
-        || message.metadata.targetKind === 'orchestrator'
-      );
-  }
-
   return message.senderKind === 'agent'
     && (
       message.senderName === target.participantName
@@ -554,18 +455,6 @@ export function messagesBeforeSource(
   return messages.slice(0, sourceIndex);
 }
 
-export function applyDefaultChatContinuityBoundary(
-  channel: Pick<ChatChannelView, 'continuityResetAt'>,
-  messages: ReadonlyArray<ChatMessage>,
-): ChatMessage[] {
-  const resetAt = channel.continuityResetAt?.trim() || null;
-  if (!resetAt) {
-    return [...messages];
-  }
-
-  return messages.filter((message) => message.createdAt.localeCompare(resetAt) > 0);
-}
-
 function resolveSourceBoundaryIndex(
   messages: ReadonlyArray<ChatMessage>,
   sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
@@ -603,10 +492,6 @@ function hasVisibleResponseFromCurrentTargetIdentity(
       return false;
     }
 
-    if (target.participantKind === 'orchestrator') {
-      return message.metadata.targetKind === 'orchestrator';
-    }
-
     return message.metadata.targetKind === 'cat'
       && message.metadata.targetId === target.participantId;
   });
@@ -624,10 +509,6 @@ export function hasVisibleResponseFromLogicalTarget(
 
     if (!isAssistantTurnSegmentMessage(message)) {
       return false;
-    }
-
-    if (target.participantKind === 'orchestrator') {
-      return message.metadata.targetKind === 'orchestrator';
     }
 
     return message.metadata.targetKind === 'cat'
@@ -694,7 +575,6 @@ export interface DispatchPrompt {
     | 'targeted_handoff'
     | null;
   continuityDeliveryMode?: 'none' | 'turn_instructions' | null;
-  continuityResetAt?: string | null;
 }
 
 interface ProductIntentFollowUpIntakeRef {
@@ -888,12 +768,8 @@ export function buildPromptForTarget(
     channelId,
     transcriptMessages: channel.messages,
   });
-  const continuityMessages =
-    request.target.participantKind === 'orchestrator' && isDefaultChatRuntimeChannel(channel)
-      ? applyDefaultChatContinuityBoundary(channel, promptMessages)
-      : promptMessages;
   const recentMessages = sliceRecentContextForTarget(
-    continuityMessages,
+    promptMessages,
     request.target,
     promptSourceMessage,
   );
@@ -908,34 +784,7 @@ export function buildPromptForTarget(
     request.target,
     request.sourceMessage,
   );
-  const participantContinuity = request.target.participantKind === 'cat'
-    && (supportsSameChatParticipantContinuity(channel) || hasLogicalPriorResponse);
-
-  if (request.target.participantKind === 'orchestrator') {
-    if (isDefaultChatRuntimeChannel(channel)) {
-      const continuityPackage = resolveSameChatContinuityPackage(continuityMessages, request);
-      return {
-        message: request.sourceMessage.body,
-        instructions: continuityPackage?.instructions ?? null,
-        continuityMode: resolveSameChatContinuityMode(
-          continuityMessages,
-          request,
-          continuityPackage,
-        ),
-        continuityDeliveryMode: continuityPackage?.instructions ? 'turn_instructions' : 'none',
-        continuityResetAt: channel.continuityResetAt?.trim() || null,
-      };
-    }
-    return {
-      message: buildOrchestratorPrompt(
-        channel,
-        state.globalOrchestrator,
-        promptSourceMessage,
-        request.target.participantName,
-        routingContext,
-      ),
-    };
-  }
+  const participantContinuity = supportsSameChatParticipantContinuity(channel) || hasLogicalPriorResponse;
 
   const participant = findAssignedParticipant(channel, request.target.participantId);
   if (!participant) {
@@ -976,6 +825,7 @@ export function buildPromptForTarget(
       promptSourceMessage,
       routingContext,
       companionContext,
+      { coordinator: channel.coordinatorParticipantId === participant.participantId },
     ),
     instructions: joinRuntimeInstructions(instructions, slashModeInstructions),
     continuityMode,

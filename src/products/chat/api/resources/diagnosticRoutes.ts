@@ -2,7 +2,7 @@ import { PLATFORM_VERSION } from '#cats-app-package';
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import { readServerLiveTrace } from '../../../../shared/liveTrace.js';
 import { diagnosticText, diagnosticTrace, readDiagnosticWithin } from '../../../shared/diagnosticReport.js';
-import { collectChannelLeaseAttachments } from '../../shared/channelParticipants.js';
+import { collectParticipantLeaseAttachments } from '../../shared/channelParticipants.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
 
 export async function routeConversationDiagnostics(context: ChatApiRouteContext): Promise<boolean> {
@@ -24,7 +24,7 @@ export async function routeConversationDiagnostics(context: ChatApiRouteContext)
     return true;
   }
   const capturedAt = (context.dependencies.now?.() ?? new Date()).toISOString();
-  const allLeases = collectChannelLeaseAttachments(channel, { includeRemoved: true });
+  const allLeases = collectParticipantLeaseAttachments(channel, { includeRemoved: true });
   const leases = allLeases.slice(0, 8);
   const sessionIds = [...new Set(leases.flatMap(lease => lease.sessionId ? [lease.sessionId] : []))];
   const [health, sessions] = await Promise.all([
@@ -65,9 +65,6 @@ export async function routeConversationDiagnostics(context: ChatApiRouteContext)
       id: diagnosticText(channel.id, 160), title: diagnosticText(channel.title, 300),
       surface: channel.originSurface ?? null, status: channel.status,
       repoPath: diagnosticText(channel.repoPath), cwd: diagnosticText(channel.chatCwd),
-      requestedProvider: diagnosticText(channel.pendingProvider, 120),
-      requestedModel: diagnosticText(channel.pendingModel, 160),
-      requestedInstance: diagnosticText(channel.pendingInstance, 120),
       workspaceKind: channel.runtimeWorkspaceKind ?? null,
       workspaceAccess: channel.runtimeWorkspaceAccess ?? null,
       permissionMode: channel.runtimePermissionMode ?? null,

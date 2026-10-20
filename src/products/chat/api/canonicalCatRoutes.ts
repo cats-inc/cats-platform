@@ -3,14 +3,14 @@ import {
   buildChannelView,
   renameCat,
   requireCat,
-  setBossCat,
+  setCatGroup,
   setCatCompanion,
   updateCatExecutionTarget,
   updateCatMcpProfile,
   updateCatProducts,
   updateCatSkillProfile,
 } from '../state/model/index.js';
-import type { AssignChannelCatInput, CreateCatInput } from './contracts.js';
+import type { AssignChannelCatInput, ChatCatGroup, CreateCatInput } from './contracts.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import {
   buildAppShellPayload,
@@ -78,7 +78,7 @@ async function handleCanonicalUpdateCat(
       companion?: boolean;
       mcpProfile?: string | null;
       name?: string;
-      makeBoss?: boolean;
+      group?: ChatCatGroup;
       products?: string[];
       archive?: boolean;
       unarchive?: boolean;
@@ -122,8 +122,8 @@ async function handleCanonicalUpdateCat(
       if (body.mcpProfile !== undefined) {
         state = updateCatMcpProfile(state, catId, body.mcpProfile);
       }
-      if (body.makeBoss) {
-        state = setBossCat(state, catId);
+      if (body.group !== undefined) {
+        state = setCatGroup(state, catId, body.group);
       }
       if (body.products !== undefined) {
         state = updateCatProducts(state, catId, body.products);

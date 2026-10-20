@@ -15,7 +15,7 @@ import { createChatProviderAgentDecisionManifest, buildChatProviderAgentObservat
 import { resolveProviderCapabilityProfile } from '../build/server/platform/supervision/providerCapabilityProfiles.js';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import {
-  createChannel, appendMessage, buildChannelView, setChannelOrchestratorLease,
+  createChannel, appendMessage, buildChannelView,
 } from '../build/server/products/chat/state/model/index.js';
 
 const source = await readFile(resolve('config/orchestrator-knowledge.json'), 'utf8');
@@ -38,24 +38,34 @@ const load = (filePath, extra = {}) => loadProductKnowledge({
   filePath, locale: 'en', capabilities: ['orchestrator-context-v1'], ...extra,
 });
 
+// The room's first participant coordinates it, so it answers with product knowledge.
+const COORDINATOR_ID = 'participant-coordinator';
+
+function coordinatorAssignment(state, channelId) {
+  return state.channels.find((channel) => channel.id === channelId).participantAssignments
+    .find((assignment) => assignment.participantId === COORDINATOR_ID);
+}
+
 function harness({ group = false, locale = 'en', originSurface = 'chat', body = 'Ask a teammate to implement and review this change.' } = {}) {
   let state = createDefaultChatState();
-  state.globalOrchestrator.executionTarget = { ...binding };
-  state.globalOrchestrator.visibleParticipant.executionTarget = { ...binding };
   state = createChannel(state, {
     title: 'Knowledge fixture', topic: 'Isolated model delivery', originSurface,
     roomMode: 'chat_channel', responseLanguage: locale,
+    temporaryParticipants: [{ participantId: COORDINATOR_ID, name: 'Coordinator', provider: binding.provider,
+      instance: binding.instance, model: binding.model }],
+    participantOrder: [`temp:${COORDINATOR_ID}`],
     ...(group ? { cats: [{ name: 'Reviewer', provider: 'claude', roles: ['reviewer'] }] } : {}),
   }, now);
   const channelId = state.selectedChannelId;
-  state = setChannelOrchestratorLease(state, channelId, {
+  coordinatorAssignment(state, channelId).execution.lease = {
+    ...coordinatorAssignment(state, channelId).execution.lease,
     sessionId: 'coordinator-session', laneId: 'coordinator-lane', status: 'ready',
     startedAt: now.toISOString(), lastUsedAt: now.toISOString(),
-  }, now);
+  };
   const appended = appendMessage(state, channelId, { senderKind: 'user', senderName: 'Owner', body }, now);
   state = appended.state;
-  const target = { participantKind: 'orchestrator', participantId: 'orchestrator',
-    participantName: 'Boss Cat', laneId: 'coordinator-lane', sessionId: 'coordinator-session' };
+  const target = { participantKind: 'cat', participantId: COORDINATOR_ID,
+    participantName: 'Coordinator', laneId: 'coordinator-lane', sessionId: 'coordinator-session' };
   const request = {
     target, targets: [target], sourceMessage: appended.message, sourceParticipant: null,
     unresolved: [], mentionNames: [], trigger: 'room_default', depth: 0,
@@ -76,7 +86,7 @@ function observation(channelId, availableTools = []) {
     contractVersion: 1, observationId: 'observation-knowledge', runId: `chat:${channelId}`,
     goal: 'Handle the next Chat turn using bounded routing metadata.',
     task: { kind: 'chat_turn', risk: 'low' },
-    actor: { actorRef: 'orchestrator', target: { kind: 'execution_target', provider: binding.provider, model: binding.model },
+    actor: { actorRef: `cat:${COORDINATOR_ID}`, target: { kind: 'execution_target', provider: binding.provider, model: binding.model },
       capabilityProfileRef: profile.profileId, providerRef: profile.profileId },
     policy: { dials: { autonomy: 'single_step', taskGranularity: 'tiny', toolScope: 'read_only',
       scaffolding: 'few_shot', validation: 'best_effort', checkpointCadence: 'every_step',
@@ -217,7 +227,7 @@ test('visible dispatch and decision requester both read the explicit owning prof
 });
 
 for (const group of [false, true]) {
-  test(`actual ${group ? 'group coordinator' : 'default Chat'} dispatch receives bilingual content and request receipts`, async () => {
+  test(`actual ${group ? 'group' : 'single-participant'} coordinator dispatch receives bilingual content and request receipts`, async () => {
     const h = harness({ group, locale: 'zh-TW', body: '請同伴實作並由另一位審查。' });
     const client = runtime();
     const result = await executeDispatch(h.state, h.channelId, h.request, client, now);
@@ -237,7 +247,6 @@ for (const group of [false, true]) {
     assert.equal(receipt.contextDigest, knowledge.contextDigest);
     assert.equal(receipt.entries[0].digest, knowledgeDigest(knowledge.entries[0].content));
     assert.deepEqual(result.runtimeAssistantMetadata.productKnowledge, receipt);
-    if (!group) assert.equal(call.content, h.body);
   });
 }
 
@@ -257,22 +266,6 @@ test('missing packaged knowledge preserves visible dispatch with an honest unava
     if (previousRoot === undefined) delete process.env.CATS_PLATFORM_PACKAGE_ROOT;
     else process.env.CATS_PLATFORM_PACKAGE_ROOT = previousRoot;
   }
-});
-
-test('provider-default Chat keeps its selected assistant identity in visible and decision paths', async () => {
-  const h = harness({ body: 'Review this idea.' });
-  const channel = h.state.channels.find(c => c.id === h.channelId);
-  channel.pendingProvider = 'claude';
-  channel.pendingModel = binding.model;
-  const client = runtime();
-  assert.equal((await executeDispatch(h.state, h.channelId, h.request, client, now)).error, null);
-  assert.equal(client.calls.send[0].content, h.body);
-  assert.equal(client.calls.send[0].input.context.metadata.productKnowledge, undefined);
-  assert.doesNotMatch(client.calls.send[0].input.instructions ?? '', /Cats Orchestrator|visible Boss Cat/u);
-  const decisionClient = runtime(JSON.stringify(decision()));
-  await createChatProviderAgentDecisionRequester()({ state: h.state, channelId: h.channelId,
-    payload: { body: h.body }, observation: observation(h.channelId), runtimeClient: decisionClient, now });
-  assert.equal(JSON.parse(decisionClient.calls.send[0].content).productKnowledge, undefined);
 });
 
 test('decision session receives actual goal and procedures using its own binding, with exact tool dependencies', async (t) => {
@@ -352,11 +345,12 @@ test('decision fallback preserves decisions and rejects invented tools or a stal
 test('default-model observations retain actual model controls and invalidate changed instance/control bindings', async () => {
   const h = harness();
   const target = { ...binding, model: null, modelSelection: { entryMode: 'auto', controls: { reasoning: 'high' } } };
-  h.state.globalOrchestrator.visibleParticipant.executionTarget = { ...target };
-  h.state.globalOrchestrator.visibleParticipant.executionModelSelection = target.modelSelection;
+  const coordinator = coordinatorAssignment(h.state, h.channelId);
+  coordinator.execution.target = { provider: target.provider, instance: target.instance, model: null };
+  coordinator.execution.modelSelection = target.modelSelection;
   const profile = resolveProviderCapabilityProfile(target, { assessedAt: now.toISOString() });
   const observed = buildChatProviderAgentObservation({
-    state: h.state, channelId: h.channelId, actorRef: 'orchestrator', capabilityProfile: profile,
+    state: h.state, channelId: h.channelId, actorRef: `cat:${COORDINATOR_ID}`, capabilityProfile: profile,
     policy: observation(h.channelId).policy.dials, messageCharacterCount: h.body.length,
     routing: { trigger: 'room_default', resolution: { selectionKind: 'default' },
       targetCount: 1, unresolvedCount: 0, mentionCount: 0 },
@@ -370,8 +364,8 @@ test('default-model observations retain actual model controls and invalidate cha
   assert.deepEqual(client.calls.create[0].modelSelection, target.modelSelection);
   assert.equal(JSON.parse(client.calls.send[0].content).productKnowledge.scope.target.model, null);
   for (const change of [
-    state => { state.globalOrchestrator.visibleParticipant.executionTarget.instance = 'other-instance'; },
-    state => { state.globalOrchestrator.visibleParticipant.executionModelSelection.controls.reasoning = 'low'; },
+    state => { coordinatorAssignment(state, h.channelId).execution.target.instance = 'other-instance'; },
+    state => { coordinatorAssignment(state, h.channelId).execution.modelSelection.controls.reasoning = 'low'; },
   ]) {
     const changed = structuredClone(h.state); change(changed);
     const staleClient = runtime(JSON.stringify(decision()));

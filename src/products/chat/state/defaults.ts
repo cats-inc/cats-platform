@@ -80,7 +80,6 @@ function createDefaultOrchestrator(updatedAt: string, provider: string): GlobalO
 }
 
 function createCapabilities(limits?: {
-  maxBossCats?: number;
   maxCats?: number;
   maxChatParticipants?: number;
   maxAudienceParticipants?: number;
@@ -96,7 +95,6 @@ function createCapabilities(limits?: {
     transcriptExport: true,
     participantManagement: 'basic',
     runtimeSessions: true,
-    maxBossCats: limits?.maxBossCats ?? 1,
     maxCats: limits?.maxCats ?? 5,
     maxChatParticipants: limits?.maxChatParticipants ?? 5,
     maxAudienceParticipants: limits?.maxAudienceParticipants ?? 3,
@@ -108,6 +106,7 @@ function createCapabilities(limits?: {
 
 export function createDefaultNewChatDefaults(provider: string = DEFAULT_PRODUCT_PROVIDER): NewChatDefaults {
   return {
+    catId: null,
     provider,
     instance: getDefaultProviderInstance(provider),
     model: getDefaultModel(provider) || null,
@@ -123,7 +122,6 @@ export function createDefaultChatState(provider: string = DEFAULT_PRODUCT_PROVID
     id: 'default',
     name: 'Chat',
     selectedChannelId: '',
-    bossCatId: null,
     cats: [],
     channels: [],
     parallelChatGroups: [],
