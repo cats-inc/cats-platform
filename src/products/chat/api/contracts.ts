@@ -351,6 +351,11 @@ export interface ChatChannelState {
    * cat; a new conversation its first participant; null leaves it unbound.
    */
   coordinatorParticipantId: string | null;
+  /**
+   * The person the conversation belongs to: the platform owner (SPEC-125
+   * FR-21). Agents take part as participants; they never own it.
+   */
+  ownerActorId: string;
   catAssignments: ChannelCatAssignment[];
   /** Optional for legacy persisted snapshots; runtime normalization populates this. */
   participantAssignments?: ChannelParticipantAssignment[];

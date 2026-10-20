@@ -7,17 +7,8 @@ import {
   shouldFlushMemory,
 } from '../build/server/products/chat/state/session-continuity/rules.js';
 
-test('classifyContinuityTopology returns default_chat for chat_channel kind', () => {
-  const topology = classifyContinuityTopology({ channelKind: 'chat_channel', topic: '' });
-  assert.equal(topology, 'default_chat');
-});
-
 test('classifyContinuityTopology returns participant_chat for chat_channel kind', () => {
-  const topology = classifyContinuityTopology({
-    channelKind: 'chat_channel',
-    topic: '',
-    assignedParticipants: [{ participantId: 'cat-1', status: 'active' }],
-  });
+  const topology = classifyContinuityTopology({ channelKind: 'chat_channel', topic: '' });
   assert.equal(topology, 'participant_chat');
 });
 
@@ -31,17 +22,9 @@ test('classifyContinuityTopology returns telegram_direct_message when topic ment
   assert.equal(topology, 'telegram_direct_message');
 });
 
-test('classifyContinuityTopology defaults to default_chat for unknown kind', () => {
+test('classifyContinuityTopology defaults to participant_chat for unknown kind', () => {
   const topology = classifyContinuityTopology({ channelKind: undefined, topic: '' });
-  assert.equal(topology, 'default_chat');
-});
-
-test('resolveContinuityRule for default_chat has manual reset and no idle timeout', () => {
-  const rule = resolveContinuityRule('default_chat');
-  assert.equal(rule.resetBehavior, 'manual');
-  assert.equal(rule.idleTimeoutMs, null);
-  assert.equal(rule.allowSleep, false);
-  assert.equal(rule.allowResume, false);
+  assert.equal(topology, 'participant_chat');
 });
 
 test('resolveContinuityRule for direct_message has 30min idle timeout and allows sleep', () => {
@@ -68,9 +51,4 @@ test('resolveContinuityRule for participant_chat has before_reset compaction', (
 test('shouldFlushMemory returns true for pre_reset phase on reset', () => {
   const rule = resolveContinuityRule('direct_message');
   assert.equal(shouldFlushMemory(rule, 'reset'), true);
-});
-
-test('shouldFlushMemory returns false for default_chat on reset', () => {
-  const rule = resolveContinuityRule('default_chat');
-  assert.equal(shouldFlushMemory(rule, 'reset'), false);
 });

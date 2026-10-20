@@ -315,27 +315,6 @@
   background: var(--border);
 }
 
-.catAvatarLeadBadge {
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  background: #f2c14a;
-  color: #5a4510;
-  border: 1px solid rgba(255, 255, 255, 0.92);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
-  font-size: 0.5rem;
-  font-weight: 700;
-  line-height: 1;
-  pointer-events: none;
-  z-index: 2;
-}
-
 /* ─── Cat Inspect Panel ─── */
 
 .catInspectPanel {

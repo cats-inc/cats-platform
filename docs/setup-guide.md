@@ -518,7 +518,9 @@ Recommended webhook-mode flow:
 
 1. Run the helper for your platform and provider
 2. Let the helper register login auto-start for built `cats` + ingress
-3. Use `Settings > Cats` to manage Telegram bot bindings
+3. Use `Settings > Cats` to manage Telegram bot bindings. Telegram is
+   DM-only: each bot talks through its Cat's direct message, and the default
+   bot through the first Boss Cat's
 4. Let the product own webhook registration and diagnostics
 
 ### Built Run

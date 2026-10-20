@@ -70,6 +70,20 @@ type ResolvedDraftParticipantPolicyDials = Required<
 
 export const DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT = 2;
 
+/**
+ * The group minimum (SPEC-125 decisions): a group draft keeps two
+ * participants and sends only with two. It is a renderer rule behind this
+ * internal flag; the server only requires one participant.
+ */
+export const DRAFT_GROUP_MINIMUM_ENABLED = true;
+
+/**
+ * A draft's default participant: the remembered default model, first in the
+ * roster from the start (SPEC-125 FR-23). Its model is the remembered default
+ * itself, so editing it saves that default at once (FR-22).
+ */
+export const DRAFT_DEFAULT_PARTICIPANT_ID = 'participant-default';
+
 function normalizeDraftProvider(provider: string): string {
   return resolveProductProviderId(provider) ?? provider.trim();
 }
@@ -310,6 +324,38 @@ export function createDraftTemporaryParticipant(options: {
   };
 }
 
+/** The default participant for a draft whose remembered default is a model. */
+export function createDraftDefaultParticipant(
+  target: DraftParticipantTarget,
+  takenNames: ReadonlyArray<string> = [],
+): DraftTemporaryParticipant {
+  const normalizedTarget = toDraftTemporaryParticipantTarget(target);
+  return createDraftTemporaryParticipant({
+    participantId: DRAFT_DEFAULT_PARTICIPANT_ID,
+    provider: normalizedTarget.provider,
+    instance: normalizedTarget.instance,
+    model: normalizedTarget.model,
+    modelSelection: normalizedTarget.modelSelection,
+    takenNames,
+  });
+}
+
+/**
+ * The temporary participants a draft shows and counts. A draft nobody else
+ * has joined yet starts with its default participant; once participants are
+ * added, the default is one of them for as long as it is not removed.
+ */
+export function resolveDraftRosterTemporaryParticipants(input: {
+  temporaryParticipants: DraftTemporaryParticipant[];
+  defaultTarget: DraftParticipantTarget | null | undefined;
+  seedsDefault: boolean;
+}): DraftTemporaryParticipant[] {
+  if (input.temporaryParticipants.length > 0 || !input.seedsDefault || !input.defaultTarget?.provider) {
+    return input.temporaryParticipants;
+  }
+  return [createDraftDefaultParticipant(input.defaultTarget)];
+}
+
 export function createInitialGroupParticipants(
   baseTarget: DraftParticipantTarget,
   maxParticipants: number = DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT,
@@ -326,15 +372,9 @@ export function createInitialGroupParticipants(
 
   const takenNames: string[] = [];
   return providerSequence.map((provider, index) => {
+    // The first is the draft's default participant, as it was before the group grew.
     const participant = index === 0
-      ? createDraftTemporaryParticipant({
-          provider: normalizedBaseTarget.provider,
-          instance: normalizedBaseTarget.instance,
-          model: normalizedBaseTarget.model,
-          modelSelection: normalizedBaseTarget.modelSelection,
-          takenNames,
-          randomUUID: () => globalThis.crypto?.randomUUID?.() ?? `temp-${provider}-${Date.now()}`,
-        })
+      ? createDraftDefaultParticipant(normalizedBaseTarget, takenNames)
       : createDraftTemporaryParticipant({
           provider,
           instance: getDefaultProviderInstance(provider),
@@ -365,16 +405,48 @@ export function syncLeadDraftTemporaryParticipantWithTarget(input: {
   participants: DraftTemporaryParticipant[];
   target: DraftParticipantTarget;
 }): DraftTemporaryParticipant[] {
-  if (input.participants.length === 0) {
-    return input.participants;
+  return syncDraftTemporaryParticipantAtWithTarget(input.participants, 0, input.target);
+}
+
+/** Keeps the default participant on the remembered default's model, wherever it sits. */
+export function syncDraftDefaultParticipantWithTarget(input: {
+  participants: DraftTemporaryParticipant[];
+  target: DraftParticipantTarget;
+}): DraftTemporaryParticipant[] {
+  return syncDraftTemporaryParticipantAtWithTarget(
+    input.participants,
+    input.participants.findIndex((participant) => participant.participantId === DRAFT_DEFAULT_PARTICIPANT_ID),
+    input.target,
+  );
+}
+
+/**
+ * Keeps a draft's participants in step with the remembered default: the
+ * default participant always, and in a group draft its lead as well.
+ */
+export function syncDraftParticipantsWithDefaultTarget(
+  participants: DraftTemporaryParticipant[],
+  target: DraftParticipantTarget,
+  preset: 'default' | 'group' | 'parallel',
+): DraftTemporaryParticipant[] {
+  const synced = syncDraftDefaultParticipantWithTarget({ participants, target });
+  return preset === 'group'
+    ? syncLeadDraftTemporaryParticipantWithTarget({ participants: synced, target })
+    : synced;
+}
+
+function syncDraftTemporaryParticipantAtWithTarget(
+  participants: DraftTemporaryParticipant[],
+  index: number,
+  target: DraftParticipantTarget,
+): DraftTemporaryParticipant[] {
+  const leadParticipant = participants[index];
+  if (!leadParticipant || leadParticipant.presetId) {
+    return participants;
   }
 
-  const [leadParticipant, ...restParticipants] = input.participants;
-  if (leadParticipant.presetId) {
-    return input.participants;
-  }
-
-  const normalizedTarget = toDraftTemporaryParticipantTarget(input.target);
+  const restParticipants = participants.filter((_, candidate) => candidate !== index);
+  const normalizedTarget = toDraftTemporaryParticipantTarget(target);
   const siblingNames = restParticipants.map((participant) => participant.name);
   const nextName = isAutoNamedDraftTemporaryParticipant({
     participant: leadParticipant,
@@ -405,10 +477,11 @@ export function syncLeadDraftTemporaryParticipantWithTarget(input: {
     && JSON.stringify(nextLeadParticipant.modelSelection ?? null)
       === JSON.stringify(leadParticipant.modelSelection ?? null)
   ) {
-    return input.participants;
+    return participants;
   }
 
-  return [nextLeadParticipant, ...restParticipants];
+  return participants.map((participant, candidate) =>
+    candidate === index ? nextLeadParticipant : participant);
 }
 
 export function createNextGroupTemporaryParticipant(options: {

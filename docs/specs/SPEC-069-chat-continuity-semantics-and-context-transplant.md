@@ -11,6 +11,12 @@
 | **Owner** | Codex |
 | **Reviewer** | User |
 
+> **Amendment (2026-10-20):** [SPEC-125](./SPEC-125-conversation-participants-audience-and-orchestrator-binding.md) removes Start fresh: the chip
+> popover's action and hint, the `resetContinuity` channel update,
+> `continuityResetAt` and its system message. Changing a participant's model
+> in the same conversation keeps continuity; a fresh start is a new
+> conversation. The `start fresh` rows below describe the removed action.
+
 ## Summary
 
 `Cats Chat` currently has a clear conversation model, but continuity semantics

@@ -105,6 +105,11 @@ test('Code artifact materialization writes accepted declarations as Core artifac
   assert.equal(declarationMetadata?.disposition, 'record');
   assert.equal(declarationMetadata?.candidate, false);
   assert.deepEqual(result.artifact.metadata.producerDetails, { port: 5173 });
+  // The owner holds the artifact; the declaring agent produced it (SPEC-125 FR-21).
+  assert.deepEqual(result.artifact.metadata.provenance, {
+    ownerActorId: 'actor-owner',
+    producerActorId: 'actor-code-agent',
+  });
 
   const idempotency = declarationMetadata?.idempotency as Record<string, unknown>;
   assert.equal(idempotency.scopeKind, 'run');

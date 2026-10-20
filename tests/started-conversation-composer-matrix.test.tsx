@@ -194,6 +194,7 @@ function createChannel(scenario: Scenario): SelectedChannelView {
     topic: '',
     channelKind: scenario.direct ? 'direct_message' : 'chat_channel',
     coordinatorParticipantId: scenario.participants[0]?.participantId ?? null,
+    ownerActorId: 'actor-owner',
     status: 'active',
     unreadCount: 0,
     repoPath: null,
@@ -241,6 +242,8 @@ function createChannel(scenario: Scenario): SelectedChannelView {
  * the same way by the conversation's topology, with the composer audience
  * held in state as the app holds it.
  */
+const participantActions: string[] = [];
+
 function Harness({
   payload,
   channel,
@@ -294,6 +297,12 @@ function Harness({
     onApprovalDecision: noop,
     onChoiceSubmit: noop,
     onUpdateChannelParticipant: async () => {},
+    onSetChannelCoordinator: async (participantId, coordinate) => {
+      participantActions.push(`${coordinate ? 'coordinate' : 'clear'}:${participantId}`);
+    },
+    onRemoveChannelParticipant: async (participantId) => {
+      participantActions.push(`remove:${participantId}`);
+    },
     onOperatorAction: noop,
     autoResize: noop,
     onDirectLaneExecutionTargetChange: noop,
@@ -521,3 +530,56 @@ for (const { name, scenario, expected } of cases) {
     assert.deepEqual(snapshotConversation(scenario), expected);
   });
 }
+
+/** The conversation actions each header avatar's popover offers, in avatar order. */
+function describeHeaderActions(scenario: Scenario): string[] {
+  installProviderFetch();
+  const { container } = renderConversation(scenario);
+  const lines: string[] = [];
+  const count = container.querySelectorAll('.channelTopBarStart .rosterAvatars .catAvatar').length;
+  for (let index = 0; index < count; index += 1) {
+    const avatar = container.querySelectorAll('.channelTopBarStart .rosterAvatars .catAvatar')[index]!;
+    fireEvent.click(avatar);
+    const labels = Array.from(
+      container.querySelectorAll('.audiencePopoverEditor .audiencePopoverAction'),
+      (button) => button.textContent ?? '',
+    );
+    lines.push(labels.join(', ') || '-');
+    fireEvent.click(avatar);
+  }
+  reset();
+  return lines;
+}
+
+test('a participant popover moves or clears the coordinator and removes while another remains', (t) => {
+  reset();
+  t.after(reset);
+  const twoTemps: Scenario = {
+    participants: [
+      tempParticipant('participant-opus', 'Opus Helper', 'opus'),
+      tempParticipant('participant-sonnet', 'Sonnet Helper', 'sonnet'),
+    ],
+  };
+  // The first participant is bound as the coordinator at creation (FR-11).
+  assert.deepEqual(describeHeaderActions(twoTemps), [
+    'Stop coordinating, Remove from conversation',
+    'Make coordinator, Remove from conversation',
+  ]);
+  assert.deepEqual(describeHeaderActions({
+    participants: [tempParticipant('participant-opus', 'Opus Helper', 'opus')],
+  }), ['Stop coordinating'], 'the last participant cannot be removed (FR-4)');
+  assert.deepEqual(describeHeaderActions({
+    direct: true,
+    participants: [catParticipant(milo)],
+  }), ['-'], 'a DM stays coordinated by its cat');
+
+  participantActions.length = 0;
+  installProviderFetch();
+  const view = renderConversation(twoTemps);
+  const avatars = view.container.querySelectorAll('.channelTopBarStart .rosterAvatars .catAvatar');
+  fireEvent.click(avatars[1]!);
+  fireEvent.click(view.getByRole('button', { name: 'Make coordinator' }));
+  fireEvent.click(avatars[0]!);
+  fireEvent.click(view.getByRole('button', { name: 'Remove from conversation' }));
+  assert.deepEqual(participantActions, ['coordinate:participant-sonnet', 'remove:participant-opus']);
+});

@@ -199,6 +199,7 @@ function createChannel(overrides: Partial<SelectedChannelView> = {}): SelectedCh
     channelKind: 'chat_channel',
     status: 'active',
     coordinatorParticipantId: null,
+    ownerActorId: 'actor-owner',
     unreadCount: 0,
     repoPath: null,
     chatCwd: null,
@@ -2835,20 +2836,10 @@ test('ConversationView offers adding a cat from the header only where the conver
   assert.doesNotMatch(withoutAdd, /channelTopBarAddButton/u);
 });
 
-test('ConversationView lets a room of temporary participants choose its audience, not a default chat model', () => {
-  // No participant is a cat, yet the send path treats this as a participant
-  // chat, so the composer chip must choose among its participants.
-  const room = renderToStaticMarkup(<ConversationView {...createProps({
-    selectedExecutionTarget: { provider: 'codex', instance: 'native', model: 'gpt-sol', modelSelection: null },
-  })} />);
+test('ConversationView lets a room of temporary participants choose its audience', () => {
+  // No participant is a cat; the composer chip still chooses among them.
+  const room = renderToStaticMarkup(<ConversationView {...createProps()} />);
   assert.match(room, /class="audienceChipLabel">Inline Reviewer \+1</u);
   assert.match(room, /class="audienceChip"[^>]*data-tooltip="Select audience"/u);
   assert.doesNotMatch(room, /class="audienceChipLabel">Codex-CLI/u);
-
-  // A chat without participants still answers with its own model.
-  const defaultChat = renderToStaticMarkup(<ConversationView {...createProps({
-    selectedChannel: createChannel({ assignedParticipants: [] }),
-    selectedExecutionTarget: { provider: 'codex', instance: 'native', model: 'gpt-sol', modelSelection: null },
-  })} />);
-  assert.match(defaultChat, /class="audienceChipLabel">Codex-CLI · gpt-sol</u);
 });

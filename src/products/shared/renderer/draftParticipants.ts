@@ -1,3 +1,5 @@
+import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
+
 export interface DraftParticipantSelection {
   participantCatIds: string[];
   effectiveDefaultRecipientCatId: string | null;
@@ -83,4 +85,21 @@ export function resolveMissingDraftDefaultRecipientPath(input: {
   return input.route.isDirectLaneRoute
     ? input.resolveVisibleChatPath()
     : input.newChatPath;
+}
+
+/**
+ * The remembered default cat a new draft starts with, while it can still
+ * chat (SPEC-125 FR-23); otherwise the draft starts with its default model.
+ */
+export function resolveRememberedDraftDefaultCatId(chat: {
+  cats: ReadonlyArray<{ id: string; status: string; products?: readonly string[] | null }>;
+  newChatDefaults?: { catId?: string | null } | null;
+}): string | null {
+  const catId = normalizeCatId(chat.newChatDefaults?.catId);
+  const cat = catId ? chat.cats.find((candidate) => candidate.id === catId) ?? null : null;
+  return cat
+    && cat.status === 'active'
+    && hasPlatformSurface(cat.products, 'chat', { fallback: defaultCatProducts() })
+    ? cat.id
+    : null;
 }

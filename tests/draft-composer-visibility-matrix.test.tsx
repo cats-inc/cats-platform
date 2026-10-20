@@ -445,3 +445,36 @@ for (const { name, scenario, expected } of cases) {
     assert.deepEqual(snapshotDraft(scenario), expected);
   });
 }
+
+test('parallel lanes on other models than the default keep and edit their own', (t) => {
+  // Every lane above uses the draft default's model, which would hide a lane
+  // chip that showed or edited the default participant instead of its lane.
+  reset();
+  t.after(reset);
+  const claudeLane: DraftParallelTarget = {
+    provider: 'claude-cli', instance: null, model: 'opus', modelSelection: null,
+    audienceKeys: null, workflowShape: 'sequential',
+  };
+  assert.deepEqual(snapshotDraft({
+    advanced: false,
+    preset: 'parallel',
+    parallelTargets: [claudeLane, lane(null)],
+  }), {
+    rows: ['avatars:0 chip:"Claude-CLI · opus"', 'avatars:0 chip:"Codex-CLI · gpt-sol"'],
+    branchRemove: 'accent,accent',
+    lastLane: 'compare:accent hint:accent',
+    chips: ['model', 'model'],
+  });
+});
+
+test('a new chat that starts with the remembered cat shows a chip like a DM\'s', (t) => {
+  // WorkspaceProductApp seeds the remembered cat as the draft's cat (FR-23).
+  reset();
+  t.after(reset);
+  assert.deepEqual(snapshotDraft({ advanced: false, preset: 'default', draftCatIds: ['cat-milo'] }), {
+    rows: ['avatars:0 chip:"Milo"'],
+    branchRemove: '',
+    lastLane: '',
+    chips: ['model'],
+  });
+});

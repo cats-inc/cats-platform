@@ -679,6 +679,21 @@ with the side panel's participants section under ADR-131.
 - The same launch path saves a default chat's re-stamped target, which the
   app-level reconcile also re-stamps.
 
+### The default chat becomes a participant (2026-10-20)
+
+[SPEC-125](./SPEC-125-conversation-participants-audience-and-orchestrator-binding.md) removes the default chat. The passages above that name a default
+chat's selection now apply as follows:
+
+- A new draft's default participant uses the remembered default
+  (`newChatDefaults`); the app-level reconcile still re-stamps that draft
+  target and never rewrites an unmappable one.
+- A started conversation's provider/model is a participant, so its re-stamp,
+  session reuse and saved launch target follow the participant path above.
+  A session start that sanitizes the participant's model keeps the sanitized
+  selection on the participant.
+- With one provider/model participant, the composer chip stands in for its
+  avatar and carries its attention mark.
+
 ### Participant avatar hosts (2026-10-20)
 
 [ADR-131](../decisions/131-let-the-audience-chip-choose-the-audience-and-the-avatar-choose-the-model.md)

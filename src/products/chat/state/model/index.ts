@@ -44,6 +44,7 @@ import {
 } from '../../shared/channelParticipants.js';
 import { resolveTemporaryParticipantName } from '../../shared/participantNaming.js';
 import { buildParallelChatMemberLabel } from '../../shared/parallelChats.js';
+import { OWNER_ACTOR_ID } from '../../../../core/actors.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import {
   applyMessageToChannel,
@@ -523,6 +524,9 @@ export function createChannel(
     coordinatorParticipantId: requestedRoomMode === 'direct_message'
       ? defaultLeadParticipantId
       : normalizedParticipantAssignments[0]?.participantId ?? null,
+    // Every creator, the app's own and server-internal ones alike, makes a
+    // conversation for the platform owner; Chat state has one owner.
+    ownerActorId: OWNER_ACTOR_ID,
     catAssignments: normalizedCatAssignments,
     participantAssignments: normalizedParticipantAssignments,
     messages: [],
