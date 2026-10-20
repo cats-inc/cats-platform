@@ -212,6 +212,7 @@ export function syncCoreStateWithChatState(
   ];
 
   const nextCore = projectChatInteractionRecordsToCore({
+    ...(existingCore.ownerLifecycle ? { ownerLifecycle: structuredClone(existingCore.ownerLifecycle) } : {}),
     version: CATS_CORE_STATE_VERSION,
     updatedAt,
     setupCompleteAt: existingCore.setupCompleteAt ?? null,

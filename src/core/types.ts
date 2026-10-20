@@ -797,6 +797,8 @@ export interface AssistantPresetRecord {
 }
 
 export interface CatsCoreState {
+  /** Optional versioned owner intent; old profiles remain valid without it. */
+  ownerLifecycle?: import('./ownerLifecycle.js').OwnerLifecycleState;
   version: typeof CATS_CORE_STATE_VERSION;
   updatedAt: string;
   setupCompleteAt: string | null;

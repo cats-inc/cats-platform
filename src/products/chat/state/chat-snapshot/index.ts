@@ -80,6 +80,7 @@ import {
   readString,
 } from './shared.js';
 import { createDefaultCoreState } from '../../../../core/model/index.js';
+import { normalizeOwnerLifecycle } from '../../../../core/ownerLifecycle.js';
 import { syncCoreStateWithChatState } from '../core-projection/index.js';
 
 export function normalizeChatState(rawState: unknown): ChatState {
@@ -154,6 +155,7 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
   }
 
   const chatRecord = asRecord(stateRecord.chat);
+  const ownerLifecycle = normalizeOwnerLifecycle(stateRecord.ownerLifecycle);
   if (!chatRecord) {
     if (looksLikeChatState(stateRecord)) {
       const chat = normalizeChatState(stateRecord);
@@ -292,6 +294,7 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
         .filter((record): record is AssistantPresetRecord => record !== null)
     : [];
   const normalized = syncCoreStateWithChatState(chat, {
+    ownerLifecycle,
     setupCompleteAt: readNullableString(stateRecord.setupCompleteAt),
     ownerProfile: normalizeOwnerProfile(stateRecord.ownerProfile),
     guideCat: normalizeGuideCatRecord(stateRecord.guideCat),

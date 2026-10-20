@@ -47,6 +47,7 @@ export class MemoryCoreStore implements CoreStore {
   #state: CatsCoreState;
   #listeners = new Set<CoreStoreListener>();
   #diagnosticReporter: CoreStoreDiagnosticReporter;
+  #mutationQueue: Promise<void> = Promise.resolve();
 
   constructor(
     initialState: CatsCoreState = createDefaultCoreState(),
@@ -57,10 +58,15 @@ export class MemoryCoreStore implements CoreStore {
   }
 
   async readCore(): Promise<CatsCoreState> {
+    await this.#mutationQueue;
     return structuredClone(this.#state);
   }
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
+    return this.#exclusive(() => this.#write(state));
+  }
+
+  #write(state: CatsCoreState): CatsCoreState {
     const previous = this.#state;
     this.#state = structuredClone(state);
     if (hasSubstantiveCoreChange(previous, this.#state)) {
@@ -72,13 +78,15 @@ export class MemoryCoreStore implements CoreStore {
   async updateCore(
     mutator: (state: CatsCoreState) => CatsCoreState | Promise<CatsCoreState>,
   ): Promise<CatsCoreState> {
-    const previous = this.#state;
-    const next = await mutator(structuredClone(this.#state));
-    this.#state = structuredClone(next);
-    if (hasSubstantiveCoreChange(previous, this.#state)) {
-      return this.#emitCoreChange();
-    }
-    return structuredClone(this.#state);
+    return this.#exclusive(async () => this.#write(await mutator(structuredClone(this.#state))));
+  }
+
+  async #exclusive<T>(mutate: () => T | Promise<T>): Promise<T> {
+    const previous = this.#mutationQueue;
+    let release = () => {};
+    this.#mutationQueue = new Promise<void>(resolve => { release = resolve; });
+    await previous;
+    try { return await mutate(); } finally { release(); }
   }
 
   subscribeCore(listener: CoreStoreListener): () => void {

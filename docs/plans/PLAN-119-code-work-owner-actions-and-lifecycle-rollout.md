@@ -236,6 +236,7 @@ these contracts have already been approved.
 
 | Date | Update |
 | --- | --- |
+| 2026-10-20 | P1a storage slice: optional versioned owner intent survives file/Chat round-trips; unsupported data preserves primary/backup; memory Core mutations serialize. Server build and 4 lifecycle persistence/recovery/concurrency tests passed; Core store tests passed. Chat store checks: 32 passed, 5 workflow/replay failures reproduced with the unchanged HEAD implementations; baseline evidence is private under the worktree's ignored `.claude/checks/`. No live profile writes. |
 | 2026-10-20 | P0 approved: optional versioned lifecycle extension, atomic mutation/source authority, compatibility boundary and fixture validation scope recorded in ADR-133. Entire rollout authorized as local commits without pushing. |
 | 2026-10-20 | Read-only Code/Work audit completed at `977acf1f`; owner requested a worktree and ADR/Spec/Plan. Dedicated documentation branch/worktree created. All implementation phases remain unchecked. |
 | 2026-10-20 | Documentation checks passed: 7 changed/new files, 36 added local references (including the canonical sibling Runtime checkout), UTF-8/LF/final-newline checks, 25 sequential functional requirements, 12 acceptance scenarios and no completed implementation checkboxes. Index diff whitespace check passed. No application tests/builds or destructive live acceptance were run for this documentation-only slice. |

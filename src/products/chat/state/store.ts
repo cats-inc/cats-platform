@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { normalizeOwnerLifecycle, OwnerLifecycleFormatError } from '../../../core/ownerLifecycle.js';
 import { copyFile, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -180,6 +181,7 @@ export class FileChatStore implements ChatStore {
   ): Promise<PersistedChatSnapshot> {
     const nextChatState = structuredClone(chat);
     const nextCore = syncCoreStateWithChatState(nextChatState, structuredClone(core));
+    normalizeOwnerLifecycle(nextCore.ownerLifecycle);
     const snapshot = buildPersistedChatSnapshot(nextChatState, nextCore);
     await writePersistedChatSnapshot(this.filePath, snapshot);
     return structuredClone(this.cacheSnapshot(snapshot));
@@ -309,6 +311,7 @@ export class FileChatStore implements ChatStore {
     try {
       return this.cacheSnapshot(await this.tryReadSnapshotFile(this.filePath));
     } catch (error) {
+      if (error instanceof OwnerLifecycleFormatError) throw error;
       if (isErrnoException(error) && error.code === 'ENOENT') {
         if (this.lastKnownSnapshot) {
           reportStoreDiagnostic('snapshot_missing_primary_using_memory_cache', {
@@ -395,7 +398,8 @@ export class FileChatStore implements ChatStore {
         && migrateCompanionSkillProfiles(snapshot) === null
         ? snapshot
         : null;
-    } catch {
+    } catch (error) {
+      if (error instanceof OwnerLifecycleFormatError) throw error;
       return null;
     }
   }
@@ -577,6 +581,7 @@ export class MemoryChatStore implements ChatStore {
     chat: ChatState,
     core: CatsCoreState,
   ): PersistedChatSnapshot {
+    normalizeOwnerLifecycle(core.ownerLifecycle);
     this.chatState = structuredClone(chat);
     this.coreState = syncCoreStateWithChatState(this.chatState, structuredClone(core));
     return buildPersistedChatSnapshot(this.chatState, this.coreState);
