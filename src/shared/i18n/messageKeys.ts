@@ -1,4 +1,13 @@
 export const messageKeys = {
+  ownerRetentionTitle: 'ownerRetentionTitle',
+  ownerRetentionScope: 'ownerRetentionScope',
+  ownerRetentionProtection: 'ownerRetentionProtection',
+  ownerRetentionEnable: 'ownerRetentionEnable',
+  ownerRetentionDays: 'ownerRetentionDays',
+  ownerRetentionNext: 'ownerRetentionNext',
+  ownerRetentionDisabled: 'ownerRetentionDisabled',
+  ownerRetentionLast: 'ownerRetentionLast',
+  ownerRetentionResult: 'ownerRetentionResult',
   ownerDecisionSavedBlocked: 'ownerDecisionSavedBlocked',
   ownerOperationalChanged: 'ownerOperationalChanged',
   ownerOpenDetail: 'ownerOpenDetail',

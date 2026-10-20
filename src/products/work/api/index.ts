@@ -104,6 +104,7 @@ import {
 } from '../shared/apiPaths.js';
 
 import { routeWorkHistoryApi } from './historyRoutes.js';
+import { routeHistoryRetention } from './historyRetentionRoutes.js';
 
 export const WORK_API_SLICE = 'work';
 
@@ -549,6 +550,7 @@ export async function routeWorkApi(
   context: WorkApiRouteContext,
 ): Promise<boolean> {
   if (await routeOwnerRelationships(context)) return true;
+  if (await routeHistoryRetention(context)) return true;
   if (await routeWorkHistoryApi(context)) return true;
   if (await routeWorkCandidateEvidenceApi(context)) return true;
   if (await routeWorkPracticeProposalApi(context)) return true;

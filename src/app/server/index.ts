@@ -34,6 +34,7 @@ import { readCodePreviewServersEnabled } from '../../shared/platformPreferences.
 import { getDefaultArtifactCanvasRenderIntentHub } from '../../products/shared/artifactCanvas/renderIntent.js';
 import { startTransportFanout } from '../../platform/transports/fanout/subscriber.js';
 import { startChatCompanionLifeLoop } from '../../products/chat/api/index.js';
+import { startHistoryRetentionLoop } from '../../products/work/state/historyRetention.js';
 import {
   createSchedulerService,
   startSchedulerLoop,
@@ -100,6 +101,7 @@ export function createServer(dependencies: ServerDependencies) {
   let pluginTimer: ReturnType<typeof setInterval> | undefined;
   resolvedDependencies.shared.providerSelectorClient = providerSelectorClient;
   function startBackgroundLoops() {
+    const stopHistoryRetentionLoop = startHistoryRetentionLoop({ coreStore: resolvedDependencies.work.coreStore, now: resolvedDependencies.work.now });
     const stopTransportFanout = startTransportFanout({
       eventHub: resolvedDependencies.chat.eventHub,
       chatStore: resolvedDependencies.chat.chatStore,
@@ -156,7 +158,7 @@ export function createServer(dependencies: ServerDependencies) {
           now: resolvedDependencies.shared.now,
         })
       : Object.assign(() => {}, { isIdle: () => true });
-    return { stopTransportFanout, stopSchedulerLoop, stopCompanionLifeLoop };
+    return { stopTransportFanout, stopSchedulerLoop, stopCompanionLifeLoop, stopHistoryRetentionLoop };
   }
   let loops = startBackgroundLoops();
   let resetting = false;
@@ -229,11 +231,12 @@ export function createServer(dependencies: ServerDependencies) {
     const chat = resolvedDependencies.chat;
     const golden = chat.transportWorkGoldenPath;
     if (!startupSettled || livePreviewSweepPending || activeRequests.size || chat.mutationGate.isIdle?.() === false
-      || !loops.stopSchedulerLoop.isIdle() || !loops.stopCompanionLifeLoop.isIdle()
+      || !loops.stopSchedulerLoop.isIdle() || !loops.stopCompanionLifeLoop.isIdle() || !loops.stopHistoryRetentionLoop.isIdle()
       || !loops.stopTransportFanout.isIdle() || golden?.runner?.isIdle?.() === false
       || golden?.outbox.isIdle?.() === false) throw new PlatformResetBusyError();
     resetting = true;
     loops.stopSchedulerLoop();
+    loops.stopHistoryRetentionLoop();
     loops.stopCompanionLifeLoop();
     loops.stopTransportFanout();
     chat.pollingSupervisor.stopAll();
@@ -339,6 +342,7 @@ export function createServer(dependencies: ServerDependencies) {
     clearInterval(pluginTimer);
     knowledge.close();
     loops.stopSchedulerLoop();
+    loops.stopHistoryRetentionLoop();
     loops.stopCompanionLifeLoop();
     loops.stopTransportFanout();
     resolvedDependencies.chat.pollingSupervisor.stopAll();

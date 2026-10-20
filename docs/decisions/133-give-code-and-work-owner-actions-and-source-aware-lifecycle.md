@@ -208,7 +208,10 @@ changes require its own compatible contract or separately recorded boundary.
 
 - Core/Platform owns product lifecycle; Runtime owns execution resources.
 - Navigation consolidation follows the capability work and needs design review.
-- History-retention duration and storage quotas are not selected by this ADR.
+- Initial detailed-log retention is opt-in and age-only (30 days shown for
+  editing, disabled by default). Hourly bounded passes reuse manual cleanup;
+  referenced evidence remains protected automatically. Provider/FS quotas stay
+  outside the supported ownership boundary. Backup recovery requires re-opt-in.
 
 ## Alternatives Considered
 

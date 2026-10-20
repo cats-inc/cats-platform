@@ -28,7 +28,8 @@ export interface OwnerLifecycleState {
   revision: number;
   entries: Record<string, OwnerLifecycleEntry>;
   receipts: OwnerCleanupReceipt[];
-  retention: { enabled: boolean; days: number; lastCleanupAt: string | null; lastError: string | null };
+  retention: { enabled: boolean; days: number; lastCleanupAt: string | null; lastError: string | null;
+    cursor?: string | null; lastResult?: { inspected: number; compacted: number; protected: number } };
   removedLinkIds?: string[];
 }
 
@@ -84,10 +85,13 @@ export function normalizeOwnerLifecycle(value: unknown): OwnerLifecycleState | u
       || (entry.overrides !== undefined && !record(entry.overrides))) return fail();
   }
   const policy = value.retention;
+  const lastResult = policy.lastResult;
   if (value.removedLinkIds !== undefined && (!Array.isArray(value.removedLinkIds) || value.removedLinkIds.some(id => typeof id !== 'string' || !id.trim()))) return fail();
   if (typeof policy.enabled !== 'boolean' || !Number.isInteger(policy.days) || Number(policy.days) < 1 || Number(policy.days) > 3650
     || !(policy.lastCleanupAt === null || timestamp(policy.lastCleanupAt))
-    || !(policy.lastError === null || typeof policy.lastError === 'string')) return fail();
+    || !(policy.lastError === null || typeof policy.lastError === 'string')
+    || !(policy.cursor === undefined || policy.cursor === null || typeof policy.cursor === 'string')
+    || lastResult !== undefined && (!record(lastResult) || !['inspected', 'compacted', 'protected'].every(key => Number.isSafeInteger(lastResult[key]) && Number(lastResult[key]) >= 0 && Number(lastResult[key]) <= 100))) return fail();
   for (const receipt of value.receipts) {
     if (!record(receipt) || typeof receipt.id !== 'string' || !['logs', 'history'].includes(String(receipt.scope))
       || !timestamp(receipt.completedAt) || !Array.isArray(receipt.subjectKeys) || !receipt.subjectKeys.every(key => typeof key === 'string')

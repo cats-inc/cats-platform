@@ -310,6 +310,12 @@ export class FileChatStore implements ChatStore {
     const backupPath = `${this.filePath}.bak`;
     try {
       const recovered = await this.tryReadSnapshotFile(backupPath);
+      // A backup can predate a later opt-out. Recovery must never silently re-enable automatic cleanup.
+      if (recovered.ownerLifecycle?.retention.enabled) {
+        recovered.ownerLifecycle.retention.enabled = false;
+        recovered.ownerLifecycle.retention.lastError = 'Automatic cleanup was disabled after profile recovery. Review the policy before enabling it again.';
+        recovered.ownerLifecycle.revision++;
+      }
       await writePersistedChatSnapshot(this.filePath, recovered, { preserveBackup: true });
       reportStoreDiagnostic('recover_from_backup', {
         filePath: this.filePath,

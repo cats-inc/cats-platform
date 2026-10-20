@@ -285,14 +285,21 @@ The following matrix defines delivery slices, not implementation claims:
 
 ## Dependencies and Open Questions
 
-- Frozen shared-contract integration review must settle lifecycle metadata
-  placement, producer classification, action payloads and cleanup receipts.
+- ADR-133 P0 records the approved optional lifecycle extension, producer
+  classification, checked action payloads and cleanup receipts.
 - Runtime resource deletion is conditional on its ownership/retained/recovery
   contract; broad workspace reclamation stays gated by the joint retention work.
-- Confirm log-retention choices and whether quotas should be offered initially;
-  no default duration is selected here.
-- Confirm the single Work overview layout and final placement of transitional
-  Build/Relay capabilities before P4 navigation work.
+- Initial retention is age-only, defaults disabled with a 30-day editing value,
+  and runs hourly in batches of at most 100 inspected/compacted attempts. A
+  durable cursor avoids starvation behind protected evidence. Automatic policy
+  protects all referenced history; manual preview can compact its auxiliary
+  logs while retaining summaries. Storage quotas are deferred because external
+  storage size/ownership cannot be measured reliably. Backup recovery disables
+  automatic cleanup until the owner reviews and explicitly re-enables it.
+- The owner approved full-plan implementation: `/work/overview` combines the
+  Cockpit grid with decision/recovery actions. Retained Cockpit/War Room routes
+  redirect with query context. Code Build/Relay are Codespace/Task/Project
+  context actions; final owner visual review/testing precedes any push.
 
 ## References
 

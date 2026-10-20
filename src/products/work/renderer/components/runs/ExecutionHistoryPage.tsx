@@ -6,6 +6,7 @@ import type { ExecutionHistoryList } from '../../../state/historyListing.js';
 import type { MessageKey } from '../../../../../shared/i18n/index.js';
 import { getWorkObjectStatusLabel } from '../topdown/WorkObjectCard.js';
 import { HistoryActions } from './HistoryActions.js';
+import { HistoryRetentionControls } from './HistoryRetentionControls.js';
 
 const sourceLabels: Record<string, MessageKey> = { managed: 'ownerSourceManaged', all: 'ownerAllSources', work: 'ownerSourceWork', room: 'ownerSourceRoom', schedule: 'ownerSourceSchedule', delegation: 'ownerSourceDelegation', unknown: 'ownerSourceUnknown' };
 
@@ -31,6 +32,7 @@ export function ExecutionHistoryPage({ family }: { family: 'run' | 'mission' }) 
     <header className="channelTopBar runsListTopBar"><div className="channelTopBarStart"><h1 className="channelTopBarTitle">{t(family === 'run' ? 'workRunsListTitle' : 'workMissionsListTitle')}</h1>
       <span className="runsListTopBar__count">{query.data?.total ?? 0}</span></div></header>
     <main className="runsList__main">
+      <HistoryRetentionControls />
       <div className="ownerHistoryFilters">{filters.ruleId ? <button onClick={() => filter('ruleId', '')}>{t('ownerSourceSchedule')} · {t('ownerAll')}</button> : null}
         <label>{t('ownerSearch')}<input type="search" value={filters.q} onChange={event => filter('q', event.target.value)} /></label>
         <label>{t('ownerSource')}<select value={filters.source} onChange={event => filter('source', event.target.value)}>{Object.entries(sourceLabels).map(([key, label]) => <option key={key} value={key}>{t(label)}</option>)}</select></label>

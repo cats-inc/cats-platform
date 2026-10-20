@@ -17,4 +17,3 @@ export function RunExecutionActions({ runId, status, onChanged }: { runId: strin
   }
   return <div className="ownerRecordActions"><Link to={`/work/tasks/orphan/runs/${encodeURIComponent(runId)}`}>{t('ownerScheduleHistory')}</Link> {['queued', 'running', 'blocked', 'requested'].includes(status) ? <button disabled={busy} onClick={() => void stop()}>{t('codeLivePreviewStop')}</button> : null}{error ? <p role="alert">{error}</p> : null}</div>;
 }
-
