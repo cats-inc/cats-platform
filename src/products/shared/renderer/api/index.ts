@@ -49,6 +49,8 @@ export {
   ungroupParallelChatGroup,
   updateCatProfile,
   updateChannelParticipantApi,
+  setChannelCoordinatorApi,
+  removeChannelParticipantApi,
   uploadChannelAttachments,
 } from './chat.js';
 

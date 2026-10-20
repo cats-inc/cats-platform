@@ -296,6 +296,51 @@ export async function updateChannelParticipantApi(
   );
 }
 
+export async function setChannelCoordinatorApi(
+  channelId: string,
+  coordinatorParticipantId: string | null,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/channels/${encodeURIComponent(channelId)}`, {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ coordinatorParticipantId }),
+    signal,
+  });
+
+  return refetchAfterMutation(
+    response,
+    `cats channel coordinator update returned ${response.status}`,
+    signal,
+  );
+}
+
+export async function removeChannelParticipantApi(
+  channelId: string,
+  participantId: string,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(
+    `/api/channels/${encodeURIComponent(channelId)}/participants/${encodeURIComponent(participantId)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Accept: 'application/json',
+      },
+      signal,
+    },
+  );
+
+  return refetchAfterMutation(
+    response,
+    `cats channel participant removal returned ${response.status}`,
+    signal,
+  );
+}
+
 export async function activateChatChannel(
   channelId: string,
   signal?: AbortSignal,

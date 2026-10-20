@@ -1951,6 +1951,14 @@ export const messageKeys = {
   chatParticipantsErrorTemporaryOnly:
     'chat.participants.error.temporaryOnly',
   chatParticipantsErrorNameRequired: 'chat.participants.error.nameRequired',
+  chatParticipantsErrorSetCoordinator: 'chat.participants.error.setCoordinator',
+  chatParticipantsErrorRemoveParticipant:
+    'chat.participants.error.removeParticipant',
+  chatParticipantsMakeCoordinator: 'chat.participants.makeCoordinator',
+  chatParticipantsMakeCoordinatorHint: 'chat.participants.makeCoordinatorHint',
+  chatParticipantsStopCoordinating: 'chat.participants.stopCoordinating',
+  chatParticipantsStopCoordinatingHint: 'chat.participants.stopCoordinatingHint',
+  chatParticipantsRemove: 'chat.participants.remove',
   chatCatAssignmentCreatedAssignHint: 'chat.catAssignment.createdAssignHint',
   chatCatAssignmentErrorCreateCat: 'chat.catAssignment.error.createCat',
   chatCatAssignmentErrorAssignCat: 'chat.catAssignment.error.assignCat',

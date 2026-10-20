@@ -90,9 +90,11 @@ in every room with participants. Shippable on its own as a patch.
 - [x] Task 4.2: The default participant as a real draft participant from the
       start; the group minimum of two behind an internal flag that defaults
       on; the draft visibility matrix unchanged.
-- [ ] Task 4.3: Coordinator control in the participant popover; admin frame;
+- [x] Task 4.3: Coordinator control in the participant popover; admin frame;
       header avatars for every participant, one included, and none for
-      non-participants; the admin switch in Settings › Cats.
+      non-participants; the admin switch in Settings › Cats. The popover also
+      removes a participant while another remains; the header, the frame and
+      the Settings switch landed with tasks 2.1 and 3.4.
 - [ ] Task 4.4: Remembered default as model or cat in new drafts.
 
 **Deliverables**: Drafts and conversations follow one rule.

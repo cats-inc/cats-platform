@@ -208,3 +208,32 @@ test('a temporary participant in a conversation edits its name and role hint; a 
   assert.ok(readOnly?.profile);
   assert.equal(readOnly.profile.onSave, undefined);
 });
+
+test('a room participant\'s editor carries its conversation actions', () => {
+  const asked: string[] = [];
+  const participant = roomParticipant('participant-1', null, claudeOpus);
+  const action = { label: 'Make coordinator', onSelect: () => {} };
+  const editor = resolveConversationTargetEditor(
+    chip({ key: 'participant:participant-1', participantId: 'participant-1' }),
+    context({
+      activeRoomParticipants: [participant],
+      onUpdateParticipantTarget: () => {},
+      resolveParticipantActions: (participantId) => {
+        asked.push(participantId);
+        return [action];
+      },
+    }),
+  );
+  assert.deepEqual(asked, ['participant-1']);
+  assert.deepEqual(editor?.actions, [action]);
+
+  const withoutActions = resolveConversationTargetEditor(
+    chip({ key: 'participant:participant-1', participantId: 'participant-1' }),
+    context({
+      activeRoomParticipants: [participant],
+      onUpdateParticipantTarget: () => {},
+      resolveParticipantActions: () => [],
+    }),
+  );
+  assert.equal(withoutActions?.actions, undefined);
+});

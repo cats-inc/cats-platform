@@ -131,7 +131,7 @@ test('a lone default participant shows its model, its action and an explanation,
     resolveTargetEditor={() => ({
       target,
       onChange: () => {},
-      action: { label: 'Start fresh', hint: 'Keeps the chat but starts a new branch.', onSelect: () => { startedFresh++; } },
+      actions: [{ label: 'Start fresh', hint: 'Keeps the chat but starts a new branch.', onSelect: () => { startedFresh++; } }],
     })}
   /></I18nProvider>);
 

@@ -47,6 +47,8 @@ import {
   relayParallelChatMessage,
   updateCatProfile,
   updateChannelParticipantApi,
+  setChannelCoordinatorApi,
+  removeChannelParticipantApi,
   updateNewChatDefaultsPreference,
 } from "./api/index.js";
 import {
@@ -83,6 +85,7 @@ import {
   useWorkspaceDirectLaneModelSave,
 } from "./hooks/useWorkspaceAppShellChannelActions.js";
 import { useWorkspaceChannelParticipantUpdate } from "./hooks/useWorkspaceChannelParticipantUpdate.js";
+import { useWorkspaceChannelParticipantActions } from "./hooks/useWorkspaceChannelParticipantActions.js";
 import { useWorkspaceCompareRelay } from "./hooks/useWorkspaceCompareRelay.js";
 import { usePublishReadyPayload } from "./hooks/usePublishReadyPayload.js";
 import { formatWorkspaceChatActionError } from "./hooks/workspaceChatActionErrorLabels.js";
@@ -1639,6 +1642,13 @@ export function createWorkspaceProductApp({
       setFeedback,
       setState,
     });
+    const channelParticipantActions = useWorkspaceChannelParticipantActions<AppShellPayload>({
+      setChannelCoordinatorApi,
+      removeChannelParticipantApi,
+      setBusy,
+      setFeedback,
+      setState,
+    });
     const onRelayCompareMessage = useWorkspaceCompareRelay<AppShellPayload>({
       selectedChannel,
       selectedParallelChatGroup,
@@ -1778,6 +1788,14 @@ export function createWorkspaceProductApp({
                     onUpdateChannelParticipant: visibleChatChannelId
                       ? (participantId, input) =>
                           onUpdateChannelParticipant(visibleChatChannelId, participantId, input)
+                      : undefined,
+                    onSetChannelCoordinator: visibleChatChannelId
+                      ? (participantId, coordinate) =>
+                          channelParticipantActions.setCoordinator(visibleChatChannelId, participantId, coordinate)
+                      : undefined,
+                    onRemoveChannelParticipant: visibleChatChannelId
+                      ? (participantId) =>
+                          channelParticipantActions.removeParticipant(visibleChatChannelId, participantId)
                       : undefined,
                     onOperatorAction,
                     autoResize,

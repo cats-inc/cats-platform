@@ -43,7 +43,7 @@ import {
   buildRunInspectorView,
 } from '../../../operator-loop/index.js';
 import type { ResolvedChannelParticipant } from '../../../channelParticipants.js';
-import type { AudienceTargetEditor } from '../AudienceChip.js';
+import type { AudienceTargetEditor, AudienceTargetEditorAction } from '../AudienceChip.js';
 import { type ExecutionTargetValue } from '../ExecutionTarget.js';
 import type { DraftComposerStackParticipant } from '../newConversationDraftSupport.js';
 import { resolveConversationTargetEditor } from './conversationTargetEditor.js';
@@ -252,6 +252,9 @@ export interface ConversationViewProps {
       modelSelection?: ExecutionTargetValue['modelSelection'];
     },
   ) => Promise<void>;
+  /** Binds the conversation's coordinator to a participant, or clears it. */
+  onSetChannelCoordinator?: (participantId: string, coordinate: boolean) => Promise<void>;
+  onRemoveChannelParticipant?: (participantId: string) => Promise<void>;
   buildTranscriptMessageActions?: (
     input: TranscriptMessageActionContext,
   ) => ReadonlyArray<TranscriptMessageActionDescriptor>;
@@ -314,6 +317,8 @@ export function ConversationView({
   onCompareSendScopeChange,
   onRelayMessage,
   onUpdateChannelParticipant,
+  onSetChannelCoordinator,
+  onRemoveChannelParticipant,
   buildTranscriptMessageActions,
   renderStatusRow,
   renderTopBarExtraActions,
@@ -859,6 +864,50 @@ export function ConversationView({
     scrollToBottom();
   }, [isNearBottom, scrollToBottom, transcriptScrollKey, visibleLiveIndicator?.active]);
 
+  // A room participant's popover moves or clears the coordinator (SPEC-125
+  // FR-12) and removes the participant while another remains (FR-4). A DM
+  // stays coordinated by its cat.
+  const coordinatorParticipantId = selectedChannel.coordinatorParticipantId ?? null;
+  const resolveParticipantActions = useCallback(
+    (participantId: string): AudienceTargetEditorAction[] => {
+      if (isDirectLane) {
+        return [];
+      }
+      const actions: AudienceTargetEditorAction[] = [];
+      if (onSetChannelCoordinator) {
+        const coordinates = participantId === coordinatorParticipantId;
+        actions.push({
+          label: t(coordinates
+            ? messageKeys.chatParticipantsStopCoordinating
+            : messageKeys.chatParticipantsMakeCoordinator),
+          hint: t(coordinates
+            ? messageKeys.chatParticipantsStopCoordinatingHint
+            : messageKeys.chatParticipantsMakeCoordinatorHint),
+          onSelect: () => {
+            void onSetChannelCoordinator(participantId, !coordinates);
+          },
+        });
+      }
+      if (onRemoveChannelParticipant && activeRoomParticipants.length > 1) {
+        actions.push({
+          label: t(messageKeys.chatParticipantsRemove),
+          danger: true,
+          onSelect: () => {
+            void onRemoveChannelParticipant(participantId);
+          },
+        });
+      }
+      return actions;
+    },
+    [
+      activeRoomParticipants.length,
+      coordinatorParticipantId,
+      isDirectLane,
+      onRemoveChannelParticipant,
+      onSetChannelCoordinator,
+      t,
+    ],
+  );
   // The composer chip edits the same target the send path uses: the
   // participant's own target. A cat's default model stays on the cat's own
   // page.
@@ -887,6 +936,7 @@ export function ConversationView({
             }
           : undefined,
         openCatPage: (catId) => navigate(`/entities/cats/${encodeURIComponent(catId)}`),
+        resolveParticipantActions,
       });
     },
     [
@@ -898,6 +948,7 @@ export function ConversationView({
       navigate,
       onDirectLaneExecutionTargetChange,
       onUpdateChannelParticipant,
+      resolveParticipantActions,
     ],
   );
 

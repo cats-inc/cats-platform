@@ -3,7 +3,7 @@ import {
   resolveParticipantCatId,
   type ResolvedChannelParticipant,
 } from '../../../channelParticipants.js';
-import type { AudienceTargetEditor } from '../AudienceChip.js';
+import type { AudienceTargetEditor, AudienceTargetEditorAction } from '../AudienceChip.js';
 import type { ExecutionTargetValue } from '../ExecutionTarget.js';
 import type { DraftComposerStackParticipant } from '../newConversationDraftSupport.js';
 import { sameExecutionTargetValue } from '../../hooks/useWorkspaceExecutionTargetState.js';
@@ -23,6 +23,8 @@ export interface ConversationTargetEditorContext {
   ) => void;
   /** Opens a cat's own page, where its default model lives. */
   openCatPage: (catId: string) => void;
+  /** A room participant's conversation actions: coordinating, removing. */
+  resolveParticipantActions?: (participantId: string) => AudienceTargetEditorAction[];
 }
 
 /**
@@ -53,6 +55,7 @@ export function resolveConversationTargetEditor(
     };
     const catId = resolveParticipantCatId(roomParticipant);
     const onUpdateParticipantProfile = context.onUpdateParticipantProfile;
+    const actions = context.resolveParticipantActions?.(roomParticipant.participantId) ?? [];
     return {
       target,
       onChange: (value) => {
@@ -62,6 +65,7 @@ export function resolveConversationTargetEditor(
         }
       },
       onOpenSettings: catId ? () => context.openCatPage(catId) : undefined,
+      actions: actions.length > 0 ? actions : undefined,
       profile: catId
         ? undefined
         : {

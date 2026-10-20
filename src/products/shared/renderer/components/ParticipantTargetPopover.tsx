@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  Fragment,
   type RefObject,
   useCallback,
   useEffect,
@@ -193,7 +194,7 @@ export interface ParticipantTargetPopoverProps {
 }
 
 /**
- * One participant's model picker, with its conversation action and settings
+ * One participant's model picker, with its conversation actions and settings
  * link, and a temporary participant's name and role hint.
  */
 export function ParticipantTargetPopover({
@@ -235,22 +236,24 @@ export function ParticipantTargetPopover({
           <p className="audiencePopoverModelReadOnly">{buildExecutionTargetLabel(editor.target)}</p>
         )}
       </div>
-      {editor.action ? (
-        <button
-          type="button"
-          className="operatorActionButton audiencePopoverAction"
-          disabled={editor.action.disabled}
-          onClick={() => {
-            onClose();
-            editor.action?.onSelect();
-          }}
-        >
-          {editor.action.label}
-        </button>
-      ) : null}
-      {editor.action?.hint ? (
-        <p className="operatorEmptyState audiencePopoverActionHint">{editor.action.hint}</p>
-      ) : null}
+      {editor.actions?.map((action) => (
+        <Fragment key={action.label}>
+          <button
+            type="button"
+            className={`operatorActionButton audiencePopoverAction${action.danger ? ' audiencePopoverActionDanger' : ''}`}
+            disabled={action.disabled}
+            onClick={() => {
+              onClose();
+              action.onSelect();
+            }}
+          >
+            {action.label}
+          </button>
+          {action.hint ? (
+            <p className="operatorEmptyState audiencePopoverActionHint">{action.hint}</p>
+          ) : null}
+        </Fragment>
+      ))}
       {editor.onOpenSettings ? (
         <button
           type="button"

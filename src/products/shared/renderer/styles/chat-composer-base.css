@@ -605,6 +605,10 @@
   margin-top: 12px;
 }
 
+.audiencePopoverActionDanger {
+  color: var(--danger, #b91c1c);
+}
+
 .audiencePopoverActionHint {
   margin: 6px 0 0;
 }
