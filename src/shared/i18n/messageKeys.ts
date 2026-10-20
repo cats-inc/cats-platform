@@ -1,4 +1,8 @@
 export const messageKeys = {
+  ownerPreviewHistoryRemoved: 'ownerPreviewHistoryRemoved',
+  ownerPreviewRestartNeedsArtifact: 'ownerPreviewRestartNeedsArtifact',
+  ownerPreviewHistoryScope: 'ownerPreviewHistoryScope',
+  ownerPreviewLogBytes: 'ownerPreviewLogBytes',
   ownerScheduleChooseTarget: 'ownerScheduleChooseTarget',
   ownerScheduleEditor: 'ownerScheduleEditor',
   ownerScheduleDaily: 'ownerScheduleDaily',

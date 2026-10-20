@@ -1,6 +1,10 @@
 import type { MessageCatalog } from '../index.js';
 
 export const zhTWCatalog: MessageCatalog = {
+  ownerPreviewHistoryRemoved: "已移除本次主機階段的預覽歷史，保留產出與檔案。",
+  ownerPreviewRestartNeedsArtifact: "重啟需要已登記的預覽產出。請從來源 Task／對話建立新預覽。",
+  ownerPreviewHistoryScope: "從本次主機階段移除此已結束預覽，並清除記憶體 log。保留產出、工作區檔案與外部／provider log。",
+  ownerPreviewLogBytes: "目前 log 緩衝區：{count} bytes",
   ownerScheduleChooseTarget: "選擇可用的工作成員",
   ownerScheduleEditor: "排程設定",
   ownerScheduleDaily: "每天",

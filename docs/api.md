@@ -3908,3 +3908,7 @@ Errors use a minimal payload:
 ### Schedule owner management
 
 `PATCH /api/work/schedules/:id` accepts optional `expectedRule` for checked atomic editing; current owner forms send it. `POST /api/work/schedules/:id/owner` uses `{action:"preview",scope:"rule"|"receipts"}` then `{action:"apply",scope,token}`. Rule removal requires a disabled rule without claimed triggers or active Runs. Both operations compact receipt message/metadata while preserving receipt IDs, idempotency keys, Run/Mission links and outputs. Removed identities cannot be restored by stale scheduler writes. The prior unpreviewed DELETE refuses enabled rules or rules with receipts; this public tightening is scheduled for the next Platform minor per ADR-133. Schedule state v1 gains optional `deletedRuleIds`; existing profiles load without opt-in changes, future/malformed input is preserved, and writes use backup/atomic replacement with validated recovery. History lists also accept exact `ruleId` filters.
+
+### Preview history ownership
+
+`POST /api/code/live-previews/:id/owner` previews `{action:"preview"}` and applies `{action:"apply",token}`. The token binds lease state and the current log buffer. Only successfully ended host-session history is removable; active/stopping and failed-stop leases are blocked. Actual scope is the host lease and in-memory logs, retaining artifacts, files and provider evidence. No persistent filesystem log reclamation is claimed. Restart continues to use the existing artifact preview restart endpoint and its opt-in/capability checks.

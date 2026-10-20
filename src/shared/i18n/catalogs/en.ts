@@ -1,6 +1,10 @@
 import type { MessageCatalog } from '../index.js';
 
 export const enCatalog: MessageCatalog = {
+  ownerPreviewHistoryRemoved: "Host-session preview history removed. Artifacts and files retained.",
+  ownerPreviewRestartNeedsArtifact: "Restart requires a registered preview artifact. Open the source Task/conversation to start another preview.",
+  ownerPreviewHistoryScope: "Remove this ended preview from the current host session and clear its in-memory log buffer. Artifacts, workspace files and external/provider logs remain.",
+  ownerPreviewLogBytes: "Current log buffer: {count} bytes",
   ownerScheduleChooseTarget: "Choose an active companion",
   ownerScheduleEditor: "Schedule settings",
   ownerScheduleDaily: "Daily",

@@ -1,6 +1,7 @@
 import type { LivePreviewLease } from './contracts.js';
 
 export interface LivePreviewLeaseStore {
+  removeEndedLease?(previewId: string, expected: LivePreviewLease): boolean;
   clearForReset?(): void | Promise<void>;
   listLeases(): LivePreviewLease[];
   getLease(previewId: string): LivePreviewLease | null;
@@ -46,6 +47,16 @@ export class InMemoryLivePreviewLeaseStore implements LivePreviewLeaseStore {
   setLogs(previewId: string, logs: string): void {
     this.logs.set(previewId, logs);
   }
+
+  removeEndedLease(previewId: string, expected: LivePreviewLease): boolean {
+    const lease = this.leases.get(previewId);
+    if (!lease || !canRemovePreviewLease(lease) || JSON.stringify(lease) !== JSON.stringify(expected)) return false;
+    this.leases.delete(previewId); this.logs.delete(previewId); return true;
+  }
+}
+
+export function canRemovePreviewLease(lease: LivePreviewLease): boolean {
+  return ['stopped', 'expired', 'failed'].includes(lease.status) && lease.stopReason !== 'stop_failed';
 }
 
 function cloneLease(lease: LivePreviewLease): LivePreviewLease {

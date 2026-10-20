@@ -1,3 +1,4 @@
+import { PreviewOwnerActions } from './PreviewOwnerActions.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
@@ -160,6 +161,7 @@ export function CodePreviewCanvasControls({ artifactId, onRefresh }: ArtifactCan
           </a>
         ) : null}
       </div>
+      <PreviewOwnerActions previewId={state.previewId} artifactId={artifactId} onChanged={() => { setLogs(null); void load(); onRefresh(); }} />
       {problem ? (
         <p className="artifactCanvasControlsProblem" role="alert">
           {t(messageKeys.codeCanvasPreviewRestartFailed, { message: problem.message })}
