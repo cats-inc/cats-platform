@@ -79,7 +79,7 @@ async function writePersistedChatSnapshot(
     await writeFile(tempPath, serialized, 'utf-8');
     try {
       const historyEntries = Object.entries(snapshot.ownerLifecycle?.entries ?? {}).filter(([key, entry]) =>
-        (key.startsWith('run:') || key.startsWith('mission:')) && (entry.logsClearedAt || entry.deleted));
+        entry.deleted || (key.startsWith('run:') || key.startsWith('mission:')) && entry.logsClearedAt);
       if (options.preserveBackup) {
         // Recovery must never rotate a damaged primary over the valid backup.
       } else if (historyEntries.length) {

@@ -1,4 +1,5 @@
 import { upsertCoreActor } from '../model/index.js';
+import { routeCoreOwnerApi } from './ownerRoutes.js';
 import { listActors } from '../actorList.js';
 import {
   CORE_ACTOR_KINDS,
@@ -150,6 +151,8 @@ export async function routeCoreApi(
     sendMethodNotAllowed(context.response, ['GET', 'POST']);
     return true;
   }
+
+  if (await routeCoreOwnerApi(context)) return true;
 
   if (await routeCoreRecordApi(context)) {
     return true;

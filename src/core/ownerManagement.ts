@@ -20,12 +20,14 @@ export function ownerRecordDependencies(core: CatsCoreState, family: OwnerSubjec
   const dependencies: OwnerDependency[] = [];
   const field = ({ project: 'projectId', work_item: 'workItemId', task: 'taskId', run: 'runId', mission: 'missionId', artifact: 'artifactId', codespace: '' } as const)[family];
   const sources = { ...collections, trace: 'traces', checkpoint: 'checkpoints', outcome: 'outcomes', activity: 'activities', approval: 'approvalBindings', session: 'sessions' } as const;
+  const metadataRefers = (value: unknown): boolean => value === id || Array.isArray(value) && value.some(metadataRefers)
+    || !!value && typeof value === 'object' && Object.values(value).some(metadataRefers);
   for (const [sourceFamily, collection] of Object.entries(sources)) {
     for (const item of core[collection as typeof sources[keyof typeof sources]]) {
       if (sourceFamily === family && item.id === id) continue;
       const record = item as unknown as Record<string, unknown>;
       const metadata = item.metadata;
-      const refers = !!field && (record[field] === id || metadata?.[field] === id)
+      const refers = !!field && (record[field] === id || metadataRefers(metadata))
         || family === 'task' && (record.parentTaskId === id || record.approvalTaskId === id)
         || family === 'work_item' && record.parentWorkItemId === id
         || family === 'run' && record.parentRunId === id
