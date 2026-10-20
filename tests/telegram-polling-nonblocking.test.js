@@ -2,12 +2,14 @@
  * Non-blocking polling continuation (SPEC-114 FR-14, PLAN-105 Phase 2).
  *
  * Ingress used to await the whole assistant turn before advancing the Telegram
- * offset, so one long provider call froze every other room on that binding and
- * stalled the next poll. These tests pin the two properties that made it safe to
- * stop awaiting:
+ * offset, so one long provider call stalled the next poll. Telegram is DM-only
+ * (SPEC-125 FR-14a): every chat with a bot talks through that bot's cat's DM, so
+ * the DM is the bridge's room lock. These tests pin the properties that made it
+ * safe to stop awaiting:
  *
- *  - unrelated rooms make progress while one room is stuck; and
- *  - a single room still processes its updates in arrival order, because the
+ *  - the poll loop keeps receiving while a DM turn is still running;
+ *  - another cat's DM makes progress while one DM is stuck; and
+ *  - a single DM still processes its updates in arrival order, because the
  *    room lock inside the bridge is entered synchronously at call time.
  *
  * The second is the one worth guarding. "Don't await" is easy; "don't await and
@@ -41,11 +43,18 @@ function createDeferred() {
 }
 
 /**
- * A polling harness whose updates are chat-addressed, so each chat maps to its
- * own room and therefore its own bridge lock.
+ * A polling harness for one or more bot bindings. Each binding is bound to its
+ * own cat, so its chats land in that cat's DM (`dm-<n>`), which is also the
+ * bridge's per-room lock key.
  */
 function createHarness(options = {}) {
-  const updateQueue = [...(options.updates ?? [])];
+  const bots = (options.bots ?? [{ updates: options.updates ?? [] }]).map((bot, index) => ({
+    bindingId: `poll-${index + 1}`,
+    botToken: `token-poll-${index + 1}`,
+    catId: `cat-${index + 1}`,
+    roomId: `dm-${index + 1}`,
+    updateQueue: [...(bot.updates ?? [])],
+  }));
   const pollCalls = [];
   const started = [];
   const finished = [];
@@ -57,9 +66,10 @@ function createHarness(options = {}) {
     if (parsed.pathname.endsWith('/deleteWebhook')) {
       return { ok: true, status: 200, json: async () => ({ ok: true, result: true }), text: async () => '' };
     }
+    const bot = bots.find((candidate) => parsed.pathname.startsWith(`/bot${candidate.botToken}/`));
     // getUpdates posts its parameters as a JSON body, so the offset is there.
     pollCalls.push(JSON.parse(init?.body ?? '{}').offset ?? null);
-    const batch = updateQueue.shift() ?? [];
+    const batch = bot?.updateQueue.shift() ?? [];
     return {
       ok: true,
       status: 200,
@@ -68,12 +78,11 @@ function createHarness(options = {}) {
     };
   };
 
-  // Every chat used here is already linked to an existing room, so the bridge
-  // takes the ordinary "route into a known room" path rather than creating one.
+  // Every cat already has its DM, so the bridge reuses it rather than creating one.
   let roomState = {
-    selectedChannelId: 'room-11',
-    channels: [{ id: 'room-11' }, { id: 'room-22' }, { id: 'room-33' }],
-    cats: [{ id: 'cat-1', name: 'Poll Cat' }],
+    selectedChannelId: bots[0].roomId,
+    channels: bots.map((bot) => ({ id: bot.roomId })),
+    cats: bots.map((bot, index) => ({ id: bot.catId, name: `Poll Cat ${index + 1}` })),
   };
 
   const roomBridge = {
@@ -83,9 +92,11 @@ function createHarness(options = {}) {
       roomState = state;
       return roomState;
     },
-    findReusableRoomId: () => null,
+    findReusableRoomId: (_state, input) => (
+      bots.find((bot) => bot.catId === input.defaultRecipientId)?.roomId ?? null
+    ),
     createRoom: () => {
-      throw new Error('these fixtures route into existing rooms; creating one means the harness drifted');
+      throw new Error('every cat already has its DM; creating one means the harness drifted');
     },
     readRoom: (state, roomId) => ({ id: roomId, title: roomId, messages: [] }),
     buildRecoveryState: ({ state }) => state,
@@ -101,40 +112,44 @@ function createHarness(options = {}) {
     },
   };
 
-  const botBinding = {
-    id: 'poll-1',
+  const botBindings = bots.map((bot) => ({
+    id: bot.bindingId,
     platform: 'telegram',
-    botName: 'poll_bot',
+    botName: `${bot.bindingId}_bot`,
     orchestratorActorId: 'actor-orchestrator-global',
-    catActorId: 'actor-cat-cat-1',
+    catActorId: `actor-cat-${bot.catId}`,
     bossCatActorId: null,
-    botToken: 'token-poll',
+    botToken: bot.botToken,
     webhookSecret: null,
     inboundMode: 'polling',
-    roomMode: 'chat_channel',
+    roomMode: 'direct_message',
     status: 'active',
     createdAt: '2026-09-02T00:00:00.000Z',
     updatedAt: '2026-09-02T00:00:00.000Z',
-  };
+  }));
 
   const telegramRelay = {
-    receiveUpdate: ({ update }) => {
+    receiveUpdate: ({ update, context }) => {
       const chatId = String(update.message.chat.id);
+      const bindingId = context.selectedBotBinding.id;
       return {
         status: 'accepted',
         platform: 'telegram',
         updateId: update.update_id,
         chatId,
-        bindingId: 'poll-1',
-        mappedConversationId: `telegram:poll-1:${chatId}`,
+        bindingId,
+        mappedConversationId: `telegram:${bindingId}:${chatId}`,
         messageId: String(update.message.message_id),
         messageSummary: { textPreview: update.message.text },
         roomRouting: {},
       };
     },
-    // Each chat is already linked to its own room, which is also the bridge's
+    // Each chat is already linked to its bot's DM, which is also the bridge's
     // per-room lock key — the shape this test is actually about.
-    resolveBinding: ({ chatId }) => (chatId ? { linkedRoomId: `room-${chatId}` } : null),
+    resolveBinding: ({ bindingId }) => {
+      const bot = bots.find((candidate) => candidate.bindingId === bindingId);
+      return bot ? { linkedRoomId: bot.roomId } : null;
+    },
     linkRoom: ({ roomId }) => ({ roomRoutingStatus: 'linked_room', linkedRoomId: roomId }),
     deliver: async ({ request }) => {
       delivered.push(request.text);
@@ -143,25 +158,33 @@ function createHarness(options = {}) {
     recordBridgeDispatchFailure: () => {},
   };
 
-  const startInput = {
-    bindingId: 'poll-1',
-    botToken: 'token-poll',
+  const startInputs = bots.map((bot, index) => ({
+    bindingId: bot.bindingId,
+    botToken: bot.botToken,
     context: {
       bossCatId: 'cat-1',
-      bossCatName: 'Poll Cat',
+      bossCatName: 'Poll Cat 1',
       bossCatActorId: 'actor-cat-cat-1',
-      botBindings: [botBinding],
-      defaultBotBinding: botBinding,
-      selectedBotBinding: botBinding,
+      botBindings,
+      defaultBotBinding: botBindings[0],
+      selectedBotBinding: botBindings[index],
     },
     roomBridge,
     memoryService: {},
     runtimeClient: {},
     telegramRelay,
     commands: options.commands ?? null,
-  };
+  }));
 
-  return { fetchImpl, pollCalls, started, finished, delivered, startInput };
+  return {
+    fetchImpl,
+    pollCalls,
+    started,
+    finished,
+    delivered,
+    startInput: startInputs[0],
+    startInputs,
+  };
 }
 
 function update(id, chatId, text) {
@@ -179,28 +202,33 @@ function update(id, chatId, text) {
 
 // --- The point of the change ---------------------------------------------------
 
-test('a stuck room does not block updates for a different room', async () => {
+test('a stuck DM does not block updates for another cat\'s DM', async () => {
   const blocked = createDeferred();
   const harness = createHarness({
-    updates: [[update(1, 11, 'slow')], [update(2, 22, 'fast')]],
-    holdFor: (marker) => (marker === 'room-11:slow' ? blocked.promise : null),
+    bots: [
+      { updates: [[update(1, 11, 'slow')]] },
+      { updates: [[update(2, 22, 'fast')]] },
+    ],
+    holdFor: (marker) => (marker === 'dm-1:slow' ? blocked.promise : null),
   });
   const supervisor = createTelegramPollingSupervisor({
     fetchImpl: harness.fetchImpl,
     pollingTimeout: 0,
   });
 
-  await supervisor.startPolling(harness.startInput);
+  for (const startInput of harness.startInputs) {
+    await supervisor.startPolling(startInput);
+  }
 
-  // Room 22 finishes while room 11 is still inside its provider turn.
-  await until(() => harness.finished.includes('room-22:fast'), 'the unrelated room to finish');
+  // The second cat's DM finishes while the first is still inside its provider turn.
+  await until(() => harness.finished.includes('dm-2:fast'), 'the other DM to finish');
   assert.ok(
-    !harness.finished.includes('room-11:slow'),
-    'the slow room is genuinely still in flight',
+    !harness.finished.includes('dm-1:slow'),
+    'the slow DM is genuinely still in flight',
   );
 
   blocked.resolve();
-  await until(() => harness.finished.includes('room-11:slow'), 'the slow room to finish');
+  await until(() => harness.finished.includes('dm-1:slow'), 'the slow DM to finish');
 
   supervisor.stopAll();
   await supervisor.drain();
@@ -219,9 +247,9 @@ test('the next poll is issued while a bridge is still running', async () => {
 
   await supervisor.startPolling(harness.startInput);
 
-  await until(() => harness.started.includes('room-11:slow'), 'the bridge to start');
+  await until(() => harness.started.includes('dm-1:slow'), 'the bridge to start');
   await until(() => harness.pollCalls.includes('2'), 'the offset to advance past the in-flight update');
-  assert.ok(!harness.finished.includes('room-11:slow'), 'and it advanced without waiting');
+  assert.ok(!harness.finished.includes('dm-1:slow'), 'and it advanced without waiting');
 
   blocked.resolve();
   supervisor.stopAll();
@@ -230,11 +258,11 @@ test('the next poll is issued while a bridge is still running', async () => {
 
 // --- What must not regress -----------------------------------------------------
 
-test('same-room updates keep arrival order even though dispatch does not await', async () => {
+test('same-DM updates keep arrival order even though dispatch does not await', async () => {
   const first = createDeferred();
   const harness = createHarness({
     updates: [[update(1, 11, 'a'), update(2, 11, 'b'), update(3, 11, 'c')]],
-    holdFor: (marker) => (marker === 'room-11:a' ? first.promise : null),
+    holdFor: (marker) => (marker === 'dm-1:a' ? first.promise : null),
   });
   const supervisor = createTelegramPollingSupervisor({
     fetchImpl: harness.fetchImpl,
@@ -243,16 +271,16 @@ test('same-room updates keep arrival order even though dispatch does not await',
 
   await supervisor.startPolling(harness.startInput);
 
-  await until(() => harness.started.includes('room-11:a'), 'the first update to start');
+  await until(() => harness.started.includes('dm-1:a'), 'the first update to start');
   assert.deepEqual(
     harness.started,
-    ['room-11:a'],
+    ['dm-1:a'],
     'the later updates wait on the room lock rather than interleaving',
   );
 
   first.resolve();
   await until(() => harness.finished.length === 3, 'all three to finish');
-  assert.deepEqual(harness.finished, ['room-11:a', 'room-11:b', 'room-11:c']);
+  assert.deepEqual(harness.finished, ['dm-1:a', 'dm-1:b', 'dm-1:c']);
 
   supervisor.stopAll();
   await supervisor.drain();
@@ -277,19 +305,21 @@ test('the in-flight ceiling applies backpressure instead of dropping updates', a
   await supervisor.startPolling(harness.startInput);
 
   await until(() => harness.started.length === 1, 'the first update to start');
-  await new Promise((resolve) => setTimeout(resolve, 30));
-  assert.equal(harness.started.length, 1, 'the ceiling holds the loop at one in flight');
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  // The DM lock alone would also hold the turns back; the ceiling is what keeps
+  // the loop from taking the next update off the batch and polling again.
+  assert.deepEqual(harness.pollCalls, [null], 'the ceiling holds the loop at one in flight');
 
-  gates.get('room-11:a').resolve();
+  gates.get('dm-1:a').resolve();
   await until(() => harness.started.length === 2, 'the second to be admitted');
-  gates.get('room-22:b').resolve();
+  gates.get('dm-1:b').resolve();
   await until(() => harness.started.length === 3, 'the third to be admitted');
-  gates.get('room-33:c').resolve();
+  gates.get('dm-1:c').resolve();
 
   await until(() => harness.finished.length === 3, 'nothing was dropped');
   assert.deepEqual(
-    harness.finished.sort(),
-    ['room-11:a', 'room-22:b', 'room-33:c'],
+    harness.finished,
+    ['dm-1:a', 'dm-1:b', 'dm-1:c'],
     'every update was processed, just later',
   );
 
@@ -309,7 +339,7 @@ test('drain waits for dispatched work that has not settled', async () => {
   });
 
   await supervisor.startPolling(harness.startInput);
-  await until(() => harness.started.includes('room-11:slow'), 'the bridge to start');
+  await until(() => harness.started.includes('dm-1:slow'), 'the bridge to start');
   supervisor.stopAll();
 
   let drained = false;
@@ -323,13 +353,13 @@ test('drain waits for dispatched work that has not settled', async () => {
   blocked.resolve();
   await draining;
   assert.equal(drained, true);
-  assert.ok(harness.finished.includes('room-11:slow'));
+  assert.ok(harness.finished.includes('dm-1:slow'));
 });
 
 test('a failing bridge does not stop the loop or reject into the process', async () => {
   const harness = createHarness({
     updates: [[update(1, 11, 'boom')], [update(2, 22, 'ok')]],
-    holdFor: (marker) => (marker === 'room-11:boom' ? Promise.reject(new Error('bridge exploded')) : null),
+    holdFor: (marker) => (marker === 'dm-1:boom' ? Promise.reject(new Error('bridge exploded')) : null),
   });
   const supervisor = createTelegramPollingSupervisor({
     fetchImpl: harness.fetchImpl,
@@ -342,7 +372,7 @@ test('a failing bridge does not stop the loop or reject into the process', async
 
   try {
     await supervisor.startPolling(harness.startInput);
-    await until(() => harness.finished.includes('room-22:ok'), 'the later update to still be processed');
+    await until(() => harness.finished.includes('dm-1:ok'), 'the later update to still be processed');
     await new Promise((resolve) => setTimeout(resolve, 30));
     assert.deepEqual(rejections, [], 'the detached failure was absorbed');
   } finally {
@@ -400,7 +430,7 @@ test('a command the port does not own still reaches the room', async () => {
   });
 
   await supervisor.startPolling(harness.startInput);
-  await until(() => harness.finished.includes('room-11:/chat'), 'the room turn to run');
+  await until(() => harness.finished.includes('dm-1:/chat'), 'the room turn to run');
 
   supervisor.stopAll();
   await supervisor.drain();

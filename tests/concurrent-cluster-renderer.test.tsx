@@ -76,7 +76,6 @@ function renderConcurrentCluster(
         mode={mode}
         segments={segments}
         cats={[]}
-        bossCatId={null}
         selectedChannelId="channel-1"
         disabledMentionNames={[]}
         liveSpeakerParticipant={liveSpeakerParticipant}

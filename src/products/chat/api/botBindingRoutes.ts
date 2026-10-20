@@ -8,6 +8,7 @@ import type { BotBindingRecord, CatsCoreState } from '../../../core/types.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
 import { resolveEffectiveBotBindingRoomMode } from '../state/botBindings.js';
+import { isAdminCat } from '../../shared/catGroups.js';
 import { requireCat } from '../state/model/index.js';
 import type {
   CreateBotBindingInput,
@@ -43,9 +44,9 @@ function summarizeBinding(
     catId: cat?.id ?? null,
     catName: cat?.name ?? null,
     inboundMode: binding.inboundMode,
-    roomMode: resolveEffectiveBotBindingRoomMode(binding),
+    roomMode: resolveEffectiveBotBindingRoomMode(),
     outboundFanoutEnabled: binding.outboundFanoutEnabled !== false,
-    isBossBinding: Boolean(context.bossCatId && cat?.id === context.bossCatId),
+    isBossBinding: isAdminCat(cat),
     status: binding.status,
     updatedAt: binding.updatedAt,
     webhookPath: `/api/transports/telegram/webhook/${binding.id}`,
@@ -89,7 +90,7 @@ function createBindingRecord(
 ): BotBindingRecord {
   const cat = requireBindableCat(chat, input.catId);
   const catActorId = createCatActorId(cat.id);
-  const isBossBinding = chat.bossCatId === cat.id;
+  const isBossBinding = isAdminCat(cat);
 
   const inboundMode = input.inboundMode === 'webhook' ? 'webhook' : 'polling';
 
@@ -203,7 +204,7 @@ async function handleUpdateBotBinding(
     let bossCatActorId = existing.bossCatActorId;
     let roomMode = body.roomMode === 'chat_channel'
       ? 'direct_message'
-      : body.roomMode ?? resolveEffectiveBotBindingRoomMode(existing);
+      : body.roomMode ?? resolveEffectiveBotBindingRoomMode();
 
     if (body.catId !== undefined) {
       requireBindableCat(chat, body.catId);

@@ -19,6 +19,7 @@ import {
   getCatProductSurfaceLabel,
   getCatRecordStatusLabel,
 } from './viewSupport.js';
+import { isAdminCat } from '../../../catGroups.js';
 
 export interface SharedSettingsCatsRegistryDetailPanelProps {
   busy: WorkspaceBusyState;
@@ -74,10 +75,7 @@ export function WorkspaceSettingsCatsRegistry({
   const visibleCats = showArchived
     ? payload.chat.cats
     : payload.chat.cats.filter((cat) => cat.status !== 'archived');
-  const sortedCats = sortChatCatsForDisplay(visibleCats, {
-    bossCatIds: payload.chat.bossCatId,
-    archivedLast: true,
-  });
+  const sortedCats = sortChatCatsForDisplay(visibleCats, { archivedLast: true });
 
   return (
     <>
@@ -109,7 +107,7 @@ export function WorkspaceSettingsCatsRegistry({
       <div className="catList">
         {sortedCats.length > 0 ? (
           sortedCats.map((cat) => {
-            const isBossCat = cat.id === payload.chat.bossCatId;
+            const isBossCat = isAdminCat(cat);
             const isExpanded = expandedCatId === cat.id;
             const catBindings = botBindings.filter((binding) => binding.catId === cat.id);
             const catStatusLabelKey = getCatRecordStatusLabel(cat.status);

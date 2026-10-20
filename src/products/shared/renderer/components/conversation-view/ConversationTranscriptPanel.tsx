@@ -54,7 +54,6 @@ export interface ConversationTranscriptPanelProps {
   visibleMessages: SelectedChannelView['messages'];
   workflow: SelectedChannelView['roomRouting']['workflow'];
   cats: ChatCat[];
-  bossCatId: string | null;
   selectedChannelId: string;
   disabledMentionNames: string[];
   busy: WorkspaceBusyState;
@@ -116,7 +115,6 @@ export function ConversationTranscriptPanel({
   visibleMessages,
   workflow,
   cats,
-  bossCatId,
   selectedChannelId,
   disabledMentionNames,
   busy,
@@ -200,7 +198,6 @@ export function ConversationTranscriptPanel({
         message={message}
         stackClassName={messageStackTone(message.senderKind)}
         cats={cats}
-        bossCatId={bossCatId}
         selectedChannelId={selectedChannelId}
         disabledMentionNames={disabledMentionNames}
         compareBusy={compareBusy}
@@ -263,7 +260,6 @@ export function ConversationTranscriptPanel({
                 mode={resolvedClusterMode}
                 segments={item.segments}
                 cats={cats}
-                bossCatId={bossCatId}
                 selectedChannelId={selectedChannelId}
                 disabledMentionNames={disabledMentionNames}
                 liveSpeakerParticipant={null}
@@ -284,7 +280,6 @@ export function ConversationTranscriptPanel({
         {shouldRenderLiveTranscriptIndicator && liveIndicator ? (
           <LiveTranscriptIndicator
             cats={cats}
-            bossCatId={bossCatId}
             selectedChannelId={selectedChannelId}
             disabledMentionNames={disabledMentionNames}
             liveIndicator={liveIndicator}

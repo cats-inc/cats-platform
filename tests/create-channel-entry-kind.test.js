@@ -28,7 +28,6 @@ test('createChannel treats entryKind=direct as a direct lane when roomMode is om
     originSurface: 'chat',
     entryKind: 'direct',
     participantCatIds: [catId],
-    skipBossCatGreeting: true,
   });
 
   const channel = next.channels[0];
@@ -37,17 +36,20 @@ test('createChannel treats entryKind=direct as a direct lane when roomMode is om
   assert.equal(channel?.channelKind, 'direct_message');
 });
 
-test('createChannel treats entryKind=default as a provider default chat when participants are omitted', () => {
-  const next = createChannel(createDefaultChatState(), {
+test('createChannel starts entryKind=default with the remembered default participant when participants are omitted', () => {
+  const state = createDefaultChatState();
+  const next = createChannel(state, {
     title: 'New chat',
     topic: 'Draft next step',
     originSurface: 'chat',
     entryKind: 'default',
-    skipBossCatGreeting: true,
   });
 
   const channel = next.channels[0];
   assert.equal(channel?.roomRouting?.mode, 'chat_channel');
   assert.equal(channel?.channelKind, 'chat_channel');
-  assert.equal(channel?.participantAssignments?.length ?? 0, 0);
+  assert.equal(channel?.participantAssignments?.length, 1);
+  assert.equal(channel?.participantAssignments?.[0]?.sourceKind, 'adhoc');
+  assert.equal(channel?.participantAssignments?.[0]?.execution.target.provider, state.newChatDefaults.provider);
+  assert.equal(channel?.coordinatorParticipantId, channel?.participantAssignments?.[0]?.participantId);
 });

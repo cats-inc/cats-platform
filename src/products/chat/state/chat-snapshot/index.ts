@@ -132,7 +132,6 @@ export function normalizeChatState(rawState: unknown): ChatState {
     selectedChannelId: normalizedChannels.some((channel) => channel.id === rawSelectedChannelId)
       ? rawSelectedChannelId
       : normalizedChannels[0]?.id ?? fallback.selectedChannelId,
-    bossCatId: readNullableString(stateRecord.bossCatId),
     cats: Array.from(catsById.values()),
     channels: normalizedChannels.length > 0 ? normalizedChannels : fallback.channels,
     parallelChatGroups: normalizedParallelChatGroups,

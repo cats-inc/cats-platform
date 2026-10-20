@@ -167,12 +167,12 @@ test('runtime supervision adapter wraps createSession and sendMessage calls', as
   await sendSupervisedRuntimeMessage({
     runtimeClient,
     sessionId: 'runtime-session-1',
-    content: 'rewrite without prior input',
+    content: 'follow-up without prior input',
     supervision: {
       ...supervision,
-      surface: 'orchestrator-rewrite',
-      actionId: 'dispatch-1:rewrite',
-      reason: 'orchestrator_rewrite',
+      surface: 'chat-follow-up',
+      actionId: 'dispatch-1:follow-up',
+      reason: 'follow_up',
     },
   });
 
@@ -182,7 +182,7 @@ test('runtime supervision adapter wraps createSession and sendMessage calls', as
   const sentMessage = runtimeClient.sentMessages[0] as {
     input?: { context?: { metadata?: Record<string, unknown> } };
   };
-  const sentRewrite = runtimeClient.sentMessages[1] as {
+  const sentFollowUp = runtimeClient.sentMessages[1] as {
     input?: { context?: { metadata?: Record<string, unknown> } };
   };
 
@@ -199,10 +199,10 @@ test('runtime supervision adapter wraps createSession and sendMessage calls', as
   assert.equal(sentMessage.input?.context?.metadata?.supervisionToolName, RUNTIME_MESSAGE_SEND_TOOL);
   assert.equal(sentMessage.input?.context?.metadata?.sourceMessageId, 'message-1');
   assert.equal(
-    sentRewrite.input?.context?.metadata?.supervisionBoundary,
+    sentFollowUp.input?.context?.metadata?.supervisionBoundary,
     RUNTIME_SUPERVISION_BOUNDARY,
   );
-  assert.equal(sentRewrite.input?.context?.metadata?.supervisionSurface, 'orchestrator-rewrite');
+  assert.equal(sentFollowUp.input?.context?.metadata?.supervisionSurface, 'chat-follow-up');
   assert.deepEqual(evidenceSink.read().map((event) => event.toolName), [
     RUNTIME_SESSION_CREATE_TOOL,
     RUNTIME_MESSAGE_SEND_TOOL,

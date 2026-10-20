@@ -10,14 +10,10 @@ import type {
   RoomRoutingParticipantRef,
   RoomWorkflowState,
 } from '../../../../shared/roomRouting.js';
-import {
-  createCatActorId,
-  GLOBAL_ORCHESTRATOR_ACTOR_ID,
-} from '../../../../core/actors.js';
+import { createCatActorId } from '../../../../core/actors.js';
 import {
   requireChannel,
   setChannelParticipantLease,
-  setChannelOrchestratorLease,
   setChannelRoomRouting,
   setChannelStatus,
 } from '../model/index.js';
@@ -58,46 +54,23 @@ export function toParticipantRef(target: RoutingTarget): RoomRoutingParticipantR
 }
 
 export function resolveActorIdForTarget(target: RoutingTarget): string {
-  return target.participantKind === 'orchestrator'
-    ? GLOBAL_ORCHESTRATOR_ACTOR_ID
-    : createCatActorId(target.participantId);
+  return createCatActorId(target.participantId);
 }
 
 export function setStartedSession(
   state: ChatState,
   channelId: string,
-  target: 'orchestrator' | { participantId: string },
+  target: { participantId: string },
   session: RuntimeSessionInfo,
   now: Date,
   laneId: string | null = null,
   instance: string | null = null,
 ): ChatState {
   const timestamp = now.toISOString();
-  if (typeof target !== 'string') {
-    return setChannelParticipantLease(
-      state,
-      channelId,
-      target.participantId,
-      {
-        sessionId: session.id,
-        status: normalizeRuntimeStatus(session.status),
-        cwd: session.cwd,
-        lastError: null,
-        laneId,
-        provider: session.provider,
-        instance,
-        model: session.model,
-        modelSelection: cloneProviderModelSelection(session.modelSelection ?? null),
-        startedAt: timestamp,
-        lastUsedAt: timestamp,
-      },
-      now,
-    );
-  }
-
-  return setChannelOrchestratorLease(
+  return setChannelParticipantLease(
     state,
     channelId,
+    target.participantId,
     {
       sessionId: session.id,
       status: normalizeRuntimeStatus(session.status),
@@ -118,26 +91,14 @@ export function setStartedSession(
 export function setErroredSession(
   state: ChatState,
   channelId: string,
-  target: 'orchestrator' | { participantId: string },
+  target: { participantId: string },
   message: string,
   now: Date,
 ): ChatState {
-  if (typeof target !== 'string') {
-    return setChannelParticipantLease(
-      state,
-      channelId,
-      target.participantId,
-      {
-        status: 'error',
-        lastError: message,
-      },
-      now,
-    );
-  }
-
-  return setChannelOrchestratorLease(
+  return setChannelParticipantLease(
     state,
     channelId,
+    target.participantId,
     {
       status: 'error',
       lastError: message,
@@ -153,23 +114,10 @@ export function markTargetWaking(
   now: Date,
   laneId: string | null = null,
 ): ChatState {
-  if (target.participantKind === 'cat') {
-    return setChannelParticipantLease(
-      state,
-      channelId,
-      target.participantId,
-      {
-        status: 'initializing',
-        lastError: null,
-        ...(laneId ? { laneId } : {}),
-      },
-      now,
-    );
-  }
-
-  return setChannelOrchestratorLease(
+  return setChannelParticipantLease(
     state,
     channelId,
+    target.participantId,
     {
       status: 'initializing',
       lastError: null,
@@ -193,22 +141,13 @@ export function ensureChannelMarkedActive(
 export function setReadyAfterMessage(
   state: ChatState,
   channelId: string,
-  target: 'orchestrator' | { participantId: string },
+  target: { participantId: string },
   now: Date,
 ): ChatState {
-  if (typeof target !== 'string') {
-    return setChannelParticipantLease(
-      state,
-      channelId,
-      target.participantId,
-      { status: 'ready', lastUsedAt: now.toISOString() },
-      now,
-    );
-  }
-
-  return setChannelOrchestratorLease(
+  return setChannelParticipantLease(
     state,
     channelId,
+    target.participantId,
     { status: 'ready', lastUsedAt: now.toISOString() },
     now,
   );
@@ -217,33 +156,22 @@ export function setReadyAfterMessage(
 export function clearTargetSessionLease(
   state: ChatState,
   channelId: string,
-  target: 'orchestrator' | { participantId: string },
+  target: { participantId: string },
   now: Date,
 ): ChatState {
-  const clearedLease = {
-    sessionId: null,
-    cwd: null,
-    status: 'not_started' as const,
-    lastError: null,
-    laneId: null,
-    instance: null,
-    startedAt: null,
-  };
-
-  if (typeof target !== 'string') {
-    return setChannelParticipantLease(
-      state,
-      channelId,
-      target.participantId,
-      clearedLease,
-      now,
-    );
-  }
-
-  return setChannelOrchestratorLease(
+  return setChannelParticipantLease(
     state,
     channelId,
-    clearedLease,
+    target.participantId,
+    {
+      sessionId: null,
+      cwd: null,
+      status: 'not_started',
+      lastError: null,
+      laneId: null,
+      instance: null,
+      startedAt: null,
+    },
     now,
   );
 }

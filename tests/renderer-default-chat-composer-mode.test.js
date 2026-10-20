@@ -10,10 +10,6 @@ test('persisted chat view wires the default audience chip and suppresses visible
     path.join(process.cwd(), 'src/products/chat/renderer/App.tsx'),
     'utf8',
   );
-  const workspaceAppSource = await readFile(
-    path.join(process.cwd(), 'src/products/shared/renderer/WorkspaceProductApp.tsx'),
-    'utf8',
-  );
   const viewStateSource = await readFile(
     path.join(process.cwd(), 'src/products/shared/renderer/workspaceAppViewState.ts'),
     'utf8',
@@ -36,11 +32,6 @@ test('persisted chat view wires the default audience chip and suppresses visible
     appSource,
     /createWorkspaceProductApp\(\{/u,
     'Chat App should stay a thin product wrapper over the shared workspace app',
-  );
-  assert.match(
-    workspaceAppSource,
-    /isDefaultChatChannel\(visibleChannel\)/,
-    'WorkspaceProductApp should derive default execution-target state from default chat channels',
   );
   assert.match(
     chatViewSource,

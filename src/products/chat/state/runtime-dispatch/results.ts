@@ -46,7 +46,7 @@ import {
 import { resolveFullResponseText, type RuntimeMessageSegment } from '../../../../runtime/client.js';
 import type { DispatchExecution } from './execution.js';
 import { resolveExecutionMetadataForTarget } from '../runtimeTargeting.js';
-import { isDefaultChatRuntimeChannel } from '../runtimeTargeting.js';
+import { targetRoutesOn } from '../coordinator.js';
 import {
   ASSISTANT_TURN_SEGMENT_EVENT,
   buildAssistantTurnDelivery,
@@ -665,9 +665,7 @@ export function applyDispatchExecutions(
     nextState = setReadyAfterMessage(
       nextState,
       channelId,
-      execution.target.participantKind === 'cat'
-        ? { participantId: execution.target.participantId }
-        : 'orchestrator',
+      { participantId: execution.target.participantId },
       now,
     );
     const segments = execution.responseSegments ?? [];
@@ -678,15 +676,11 @@ export function applyDispatchExecutions(
       fullResponseText,
     );
     const channel = requireChannel(nextState, channelId);
-    const hiddenDefaultChatReply = execution.target.participantKind === 'orchestrator'
-      && isDefaultChatRuntimeChannel(channel);
     const serializedWorkflowRecommendation = extractedWorkflowRecommendation.recommendation
       ? serializeWorkflowRecommendation(extractedWorkflowRecommendation.recommendation)
       : null;
-    const senderKind = execution.target.participantKind === 'orchestrator'
-      ? (hiddenDefaultChatReply ? 'agent' : 'orchestrator')
-      : 'agent';
-    const senderName = hiddenDefaultChatReply ? 'Orchestrator' : execution.target.participantName;
+    const senderKind = 'agent';
+    const senderName = execution.target.participantName;
     const executionMeta = resolveExecutionMetadataForTarget(nextState, channelId, execution.target);
     const assistantTurnId = randomUUID();
     const sourceLaneId = execution.target.laneId?.trim() || buildChatLaneId(
@@ -1002,6 +996,11 @@ export function applyDispatchExecutions(
       trigger: execution.trigger,
       dispatchDepth: execution.depth,
     });
+
+    if (!targetRoutesOn(nextState, channelId, execution.target)) {
+      // Only the coordinator routes turns on; everyone else answers and stops.
+      continue;
+    }
 
     let continuationResolution = resolveTargets(nextState, channelId, fullResponseText, {
       allowDefaultTarget: false,

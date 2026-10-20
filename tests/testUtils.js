@@ -4,6 +4,7 @@ import {
   createEmptyPlatformAuthState,
   createFirstAdminLocalAuthState,
 } from '../build/server/platform/auth/index.js';
+import { resolveChannelParticipantAssignments } from '../build/server/products/chat/shared/channelParticipants.js';
 
 export const TEST_AUTH_SESSION_SECRET = 'cats-platform-test-session-secret';
 
@@ -179,4 +180,26 @@ export async function waitForCondition(
     throw lastError;
   }
   throw new Error(`Timed out after ${timeoutMs}ms waiting for test condition.`);
+}
+
+/**
+ * The participants a room message names as its audience (SPEC-125 FR-6): every
+ * active participant. A DM names none; it goes to its cat.
+ */
+export function roomAudience(state, channelId) {
+  const channel = state.channels.find((candidate) => candidate.id === channelId);
+  if (!channel || channel.channelKind === 'direct_message') {
+    return [];
+  }
+  return resolveChannelParticipantAssignments(channel)
+    .filter((assignment) => assignment.status === 'active')
+    .map((assignment) => assignment.participantId);
+}
+
+/** A message payload that names every active participant of the room. */
+export function withRoomAudience(state, channelId, payload) {
+  const recipientParticipantIds = roomAudience(state, channelId);
+  return recipientParticipantIds.length > 0
+    ? { ...payload, messageMetadata: { ...payload.messageMetadata, recipientParticipantIds } }
+    : payload;
 }

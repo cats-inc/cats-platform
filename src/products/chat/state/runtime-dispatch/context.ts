@@ -26,7 +26,6 @@ export function buildDispatchRuntimeContextMetadata(
       | 'targeted_handoff'
       | null;
     continuityDeliveryMode?: 'none' | 'turn_instructions' | null;
-    continuityResetAt?: string | null;
   } = {},
 ): Record<string, unknown> {
   const directSlashMode = request.sourceMessage.metadata.directSlashMode;
@@ -53,7 +52,6 @@ export function buildDispatchRuntimeContextMetadata(
     sourceParticipantName: request.sourceParticipant?.participantName ?? null,
     continuityMode: options.continuityMode ?? null,
     continuityDeliveryMode: options.continuityDeliveryMode ?? null,
-    continuityResetAt: options.continuityResetAt ?? null,
     ...(productIntent ? { productIntent: structuredClone(productIntent) } : {}),
     ...(productIntentIntakeRef
       ? { productIntentIntakeRef: structuredClone(productIntentIntakeRef) }

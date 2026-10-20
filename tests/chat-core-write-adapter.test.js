@@ -3,6 +3,8 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 
+import { roomAudience, withRoomAudience } from './testUtils.js';
+
 import {
   appendMessage,
   assignCatToChannel,
@@ -166,7 +168,7 @@ async function createGroupChannelState() {
       originSurface: 'chat',
       title: 'Core write adapter',
       topic: 'Exercise canonical turn and lane writes.',
-      skipBossCatGreeting: true,
+      participantCatIds: [agent1Id, agent2Id],
     },
     now,
   );
@@ -612,7 +614,6 @@ test('chatStore.write projects a single-target reply even when transcript target
       originSurface: 'chat',
       title: 'Single-target reply drift',
       topic: 'Project canonical reply records when transcript target ids drift.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -620,7 +621,7 @@ test('chatStore.write projects a single-target reply even when transcript target
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Recover this reply from a drifted target state id.' },
+    withRoomAudience(state, channelId, { body: 'Recover this reply from a drifted target state id.' }),
     runtimeClient,
     seededAt,
   );
@@ -631,7 +632,7 @@ test('chatStore.write projects a single-target reply even when transcript target
     begun.state,
     channelId,
     {
-      senderKind: 'orchestrator',
+      senderKind: 'agent',
       senderName: 'Chat',
       body: 'Recovered from a drifted target id.',
     },
@@ -643,8 +644,8 @@ test('chatStore.write projects a single-target reply even when transcript target
         targetStateId: 'target-orchestrator-drifted',
         terminal: true,
         turnId: activeTurn.id,
-        targetKind: 'orchestrator',
-        targetId: 'orchestrator',
+        targetKind: 'cat',
+        targetId: roomAudience(state, channelId)[0],
         sessionId: 'session-single-target-drift',
         routingTrigger: 'room_default',
         dispatchDepth: 0,
@@ -1160,7 +1161,7 @@ test('resumeWorkflowContinuationReplay can rebuild a missing user continuation s
   const dispatched = await routeChannelMessage(
     state,
     channelId,
-    { body: originalBody },
+    withRoomAudience(state, channelId, { body: originalBody }),
     runtimeClient,
     new Date('2026-04-15T00:17:15.000Z'),
     { chatStore: store },
@@ -1705,7 +1706,6 @@ test('buildCanonicalChatMessage preserves direct-lane transport bindings on cano
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -1721,7 +1721,7 @@ test('buildCanonicalChatMessage preserves direct-lane transport bindings on cano
   const dispatched = await routeChannelMessage(
     state,
     channelId,
-    { body: 'Handle the direct-lane canonical rebuild.' },
+    withRoomAudience(state, channelId, { body: 'Handle the direct-lane canonical rebuild.' }),
     runtimeClient,
     now,
     { chatStore: store },
@@ -2066,7 +2066,6 @@ test('beginChannelMessageRetryDispatch preserves direct-lane transport bindings 
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -2082,7 +2081,7 @@ test('beginChannelMessageRetryDispatch preserves direct-lane transport bindings 
   const dispatched = await routeChannelMessage(
     state,
     channelId,
-    { body: 'Retry the direct-lane request after transcript drift.' },
+    withRoomAudience(state, channelId, { body: 'Retry the direct-lane request after transcript drift.' }),
     runtimeClient,
     now,
     { chatStore: store },
@@ -2195,7 +2194,6 @@ test('repairOrphanedCompletedDispatchTurn syncs repaired turns back into canonic
       originSurface: 'chat',
       title: 'Repair canonical interaction',
       topic: 'Persist repaired dispatch turns into the canonical core records.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2203,7 +2201,7 @@ test('repairOrphanedCompletedDispatchTurn syncs repaired turns back into canonic
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please recover this completed reply' },
+    withRoomAudience(state, channelId, { body: 'Please recover this completed reply' }),
     runtimeClient,
     seededAt,
   );
@@ -2365,7 +2363,6 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
       originSurface: 'chat',
       title: 'Repair canonical fallback',
       topic: 'Recover a completed turn from canonical interaction segments.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2373,7 +2370,7 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please recover this completed reply from canonical state' },
+    withRoomAudience(state, channelId, { body: 'Please recover this completed reply from canonical state' }),
     runtimeClient,
     seededAt,
   );
@@ -2383,7 +2380,7 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
     begun.state,
     channelId,
     {
-      senderKind: 'orchestrator',
+      senderKind: 'agent',
       senderName: 'Chat',
       body: 'Recovered from canonical core.',
     },
@@ -2395,8 +2392,8 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
         targetStateId: 'target-orchestrator-canonical-fallback',
         terminal: true,
         turnId: activeTurnId,
-        targetKind: 'orchestrator',
-        targetId: 'orchestrator',
+        targetKind: 'cat',
+        targetId: roomAudience(state, channelId)[0],
         sessionId: 'session-canonical-fallback',
         transportBindingId: 'transport-binding-canonical-fallback',
         routingTrigger: 'room_default',
@@ -2485,8 +2482,8 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
       routingMode: 'room_default',
       selectionKind: 'default_target',
       defaultTarget: {
-        participantKind: 'orchestrator',
-        participantId: 'orchestrator',
+        participantKind: 'cat',
+        participantId: roomAudience(state, channelId)[0],
         participantName: 'Chat',
       },
       defaultTargetReason: 'chat_channel_default',
@@ -2496,8 +2493,8 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
     },
     resolvedTargets: [
       {
-        participantKind: 'orchestrator',
-        participantId: 'orchestrator',
+        participantKind: 'cat',
+        participantId: roomAudience(state, channelId)[0],
         participantName: 'Chat',
       },
     ],
@@ -2549,7 +2546,6 @@ test('applyChannelReadRepairs restores canonical reply and session metadata afte
       originSurface: 'chat',
       title: 'Repair chain canonical fallback',
       topic: 'Restore canonical reply and session metadata during read repair.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2557,7 +2553,7 @@ test('applyChannelReadRepairs restores canonical reply and session metadata afte
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please rebuild the missing transcript from canonical state.' },
+    withRoomAudience(state, channelId, { body: 'Please rebuild the missing transcript from canonical state.' }),
     runtimeClient,
     seededAt,
   );
@@ -2567,7 +2563,7 @@ test('applyChannelReadRepairs restores canonical reply and session metadata afte
     begun.state,
     channelId,
     {
-      senderKind: 'orchestrator',
+      senderKind: 'agent',
       senderName: 'Chat',
       body: 'Recovered by the canonical read-repair chain.',
     },
@@ -2579,8 +2575,8 @@ test('applyChannelReadRepairs restores canonical reply and session metadata afte
         targetStateId: 'target-orchestrator-read-repair-chain',
         terminal: true,
         turnId: activeTurnId,
-        targetKind: 'orchestrator',
-        targetId: 'orchestrator',
+        targetKind: 'cat',
+        targetId: roomAudience(state, channelId)[0],
         sessionId: 'session-read-repair-chain',
         routingTrigger: 'room_default',
         dispatchDepth: 0,
@@ -2670,8 +2666,8 @@ test('applyChannelReadRepairs restores canonical reply and session metadata afte
       routingMode: 'room_default',
       selectionKind: 'default_target',
       defaultTarget: {
-        participantKind: 'orchestrator',
-        participantId: 'orchestrator',
+        participantKind: 'cat',
+        participantId: roomAudience(state, channelId)[0],
         participantName: 'Chat',
       },
       defaultTargetReason: 'chat_channel_default',
@@ -2681,8 +2677,8 @@ test('applyChannelReadRepairs restores canonical reply and session metadata afte
     },
     resolvedTargets: [
       {
-        participantKind: 'orchestrator',
-        participantId: 'orchestrator',
+        participantKind: 'cat',
+        participantId: roomAudience(state, channelId)[0],
         participantName: 'Chat',
       },
     ],
@@ -2910,7 +2906,6 @@ test('applyChannelReadRepairs restores canonical assistant metadata when rebuild
       originSurface: 'chat',
       title: 'Repair canonical metadata fallback',
       topic: 'Recover assistant metadata from canonical interaction segments.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2918,7 +2913,7 @@ test('applyChannelReadRepairs restores canonical assistant metadata when rebuild
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please recover this rich canonical reply from partial transcript history.' },
+    withRoomAudience(state, channelId, { body: 'Please recover this rich canonical reply from partial transcript history.' }),
     runtimeClient,
     seededAt,
   );
@@ -2929,7 +2924,7 @@ test('applyChannelReadRepairs restores canonical assistant metadata when rebuild
       begun.state,
       channelId,
       {
-        senderKind: 'orchestrator',
+        senderKind: 'agent',
         senderName: 'Chat',
         body: 'Agent explored the repo. ',
       },
@@ -2940,8 +2935,8 @@ test('applyChannelReadRepairs restores canonical assistant metadata when rebuild
           assistantTurnId: 'assistant-turn-read-repair-metadata',
           targetStateId: 'target-orchestrator-read-repair-metadata',
           turnId: activeTurnId,
-          targetKind: 'orchestrator',
-          targetId: 'orchestrator',
+          targetKind: 'cat',
+          targetId: roomAudience(state, channelId)[0],
           sessionId: 'session-read-repair-metadata',
           routingTrigger: 'room_default',
           dispatchDepth: 0,
@@ -2956,7 +2951,7 @@ test('applyChannelReadRepairs restores canonical assistant metadata when rebuild
     ).state,
     channelId,
     {
-      senderKind: 'orchestrator',
+      senderKind: 'agent',
       senderName: 'Chat',
       body: 'Continue with the next specialist.',
     },
@@ -2968,8 +2963,8 @@ test('applyChannelReadRepairs restores canonical assistant metadata when rebuild
         targetStateId: 'target-orchestrator-read-repair-metadata',
         terminal: true,
         turnId: activeTurnId,
-        targetKind: 'orchestrator',
-        targetId: 'orchestrator',
+        targetKind: 'cat',
+        targetId: roomAudience(state, channelId)[0],
         sessionId: 'session-read-repair-metadata',
         routingTrigger: 'room_default',
         dispatchDepth: 0,
@@ -3090,8 +3085,8 @@ test('applyChannelReadRepairs restores canonical assistant metadata when rebuild
       routingMode: 'room_default',
       selectionKind: 'default_target',
       defaultTarget: {
-        participantKind: 'orchestrator',
-        participantId: 'orchestrator',
+        participantKind: 'cat',
+        participantId: roomAudience(state, channelId)[0],
         participantName: 'Chat',
       },
       defaultTargetReason: 'chat_channel_default',
@@ -3101,8 +3096,8 @@ test('applyChannelReadRepairs restores canonical assistant metadata when rebuild
     },
     resolvedTargets: [
       {
-        participantKind: 'orchestrator',
-        participantId: 'orchestrator',
+        participantKind: 'cat',
+        participantId: roomAudience(state, channelId)[0],
         participantName: 'Chat',
       },
     ],

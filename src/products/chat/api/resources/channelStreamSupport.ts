@@ -1,12 +1,10 @@
 import {
   collectParticipantLeaseAttachments,
   resolveParticipantCatId,
-  resolveOrchestratorLeaseAttachment,
   resolveParticipantLeaseAttachment,
   resolvePrimaryParticipantExecutionAssignment,
 } from '../../shared/channelParticipants.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
-import { resolveVisibleOrchestratorLabel } from '../../../../shared/orchestratorLabel.js';
 import { pushServerLiveTrace } from '../../../../shared/liveTrace.js';
 import {
   requireChannel,
@@ -120,39 +118,6 @@ function buildParticipantStreamTarget(
   };
 }
 
-function buildOrchestratorStreamTarget(
-  channel: ReturnType<typeof requireChannel>,
-  fallbackSpeakerLabel: string | null = null,
-  sessionConfirmationFloorAt: string | null = null,
-  expectedLaneId: string | null = null,
-): ChannelStreamTarget {
-  const attachment = resolveOrchestratorLeaseAttachment(channel, {
-    laneId: expectedLaneId,
-    statuses: ['ready', 'initializing'],
-  });
-  const labelAttachment = attachment ?? resolveOrchestratorLeaseAttachment(channel);
-  const speakerLabel = resolveVisibleOrchestratorLabel({
-    displayName: fallbackSpeakerLabel,
-    provider: channel.pendingProvider ?? labelAttachment?.provider ?? null,
-    instance: channel.pendingProvider ? (channel.pendingInstance ?? null) : null,
-  });
-  const sessionStartedAt = attachment?.sessionId ? attachment.startedAt : null;
-  return {
-    sessionId: attachment?.sessionId ?? null,
-    laneId: expectedLaneId ?? attachment?.laneId ?? null,
-    participantId: 'orchestrator',
-    catId: null,
-    speakerLabel,
-    sessionStartedAt,
-    requiresSessionStartConfirmation: shouldRequireSessionStartConfirmation(
-      channel,
-      sessionStartedAt,
-      sessionConfirmationFloorAt,
-    ),
-    targetStateId: null,
-  };
-}
-
 function shouldRequireSessionStartConfirmation(
   channel: ReturnType<typeof requireChannel>,
   sessionStartedAt: string | null,
@@ -199,20 +164,13 @@ function buildWorkflowTargetStreamTarget(
     targetStatus.id,
     participant.participantId,
   );
-  const target = participant.participantKind === 'orchestrator'
-    ? buildOrchestratorStreamTarget(
-        channel,
-        participant.participantName,
-        sessionConfirmationFloorAt,
-        laneId,
-      )
-    : buildParticipantStreamTarget(
-        channel,
-        participant.participantId,
-        participant.participantName,
-        sessionConfirmationFloorAt,
-        laneId,
-      );
+  const target = buildParticipantStreamTarget(
+    channel,
+    participant.participantId,
+    participant.participantName,
+    sessionConfirmationFloorAt,
+    laneId,
+  );
   return {
     ...target,
     laneId,
@@ -364,8 +322,8 @@ function resolveChannelStreamTargetWithReason(
     return workflowTarget;
   }
 
-  const defaultRecipientId = channel.roomRouting?.defaultRecipientId ?? null;
   if (isDirectLaneChannel(channel)) {
+    const defaultRecipientId = channel.roomRouting?.defaultRecipientId ?? null;
     if (!defaultRecipientId) {
       return { target: null, reason: 'direct_message_without_default_recipient' };
     }
@@ -379,20 +337,24 @@ function resolveChannelStreamTargetWithReason(
     };
   }
 
-  if (defaultRecipientId) {
-    const leadTarget = buildParticipantStreamTarget(channel, defaultRecipientId);
-    if (leadTarget.sessionId) {
-      return { target: leadTarget, reason: 'room_default_recipient' };
-    }
-    return {
-      target: leadTarget,
-      reason: 'room_default_recipient_waiting_for_session',
-    };
-  }
-
   const participantAttachment = collectParticipantLeaseAttachments(channel, {
     statuses: ['ready', 'initializing'],
   })[0] ?? null;
+  const coordinatorId = channel.coordinatorParticipantId;
+  if (coordinatorId) {
+    const coordinatorTarget = buildParticipantStreamTarget(channel, coordinatorId);
+    if (coordinatorTarget.sessionId) {
+      return { target: coordinatorTarget, reason: 'room_coordinator' };
+    }
+    // Without a live session for the coordinator, follow any participant that has one.
+    if (!participantAttachment) {
+      return {
+        target: coordinatorTarget,
+        reason: 'room_coordinator_waiting_for_session',
+      };
+    }
+  }
+
   if (participantAttachment) {
     const target = buildParticipantStreamTarget(
       channel,
@@ -423,10 +385,7 @@ function resolveChannelStreamTargetWithReason(
     };
   }
 
-  const orchestratorTarget = buildOrchestratorStreamTarget(channel);
-  return orchestratorTarget.sessionId
-    ? { target: orchestratorTarget, reason: 'orchestrator_fallback' }
-    : { target: null, reason: 'no_stream_target' };
+  return { target: null, reason: 'no_stream_target' };
 }
 
 function shouldCloseDirectLaneStreamImmediately(

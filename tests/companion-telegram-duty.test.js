@@ -27,7 +27,6 @@ async function createCompanionLaneStore() {
     roomMode: 'direct_message',
     defaultRecipientId: catId,
     participantCatIds: [catId],
-    skipBossCatGreeting: true,
   }, NOW);
   const binding = {
     id: 'bot-binding-mochi',

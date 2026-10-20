@@ -10,9 +10,7 @@ export {
 export {
   fetchAppShell,
   refetchAfterMutation,
-  resetChannelContinuity,
   updateChatOrchestrator,
-  updateChannelPendingExecutionTarget,
   updateAdvancedDraftControlsPreference,
   updateConversationBehaviorPreference,
   updateFolderBrowsePreference,

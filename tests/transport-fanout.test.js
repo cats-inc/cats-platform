@@ -85,7 +85,6 @@ async function createFanoutFixture(bindingOverrides = {}, options = {}) {
       roomMode: 'direct_message',
       defaultRecipientId: catId,
       participantCatIds: [catId],
-      skipBossCatGreeting: true,
     },
     now,
   );

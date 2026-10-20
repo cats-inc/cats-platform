@@ -47,7 +47,6 @@ function buildParticipantAssignment(
 test('resolveChannelStreamSessionId follows the currently running workflow target before older ready sessions', () => {
   const channel = {
     roomMode: 'group',
-    orchestratorLease: { status: 'idle', sessionId: null },
     roomRouting: {
       defaultRecipientId: null,
       workflow: {
@@ -82,7 +81,6 @@ test('resolveChannelStreamSessionId follows the currently running workflow targe
 test('resolveChannelStreamTargets lists all concurrent workflow targets in stable target order', () => {
   const channel = {
     roomMode: 'group',
-    orchestratorLease: { status: 'idle', sessionId: null },
     roomRouting: {
       defaultRecipientId: null,
       workflow: {
@@ -138,7 +136,6 @@ test('resolveChannelStreamTargets lists all concurrent workflow targets in stabl
 test('resolveChannelReadyStreamTargets keeps only attachable concurrent workflow targets', () => {
   const channel = {
     roomMode: 'group',
-    orchestratorLease: { status: 'idle', sessionId: null },
     roomRouting: {
       defaultRecipientId: null,
       workflow: {
@@ -222,7 +219,6 @@ test('buildChannelStreamTargetAttachKey prefers lane identity before drifted tar
 test('resolveChannelReadyStreamTargets only attaches the first ready pending target during sequential handoff', () => {
   const channel = {
     roomMode: 'group',
-    orchestratorLease: { status: 'idle', sessionId: null },
     roomRouting: {
       defaultRecipientId: null,
       workflow: {
@@ -269,7 +265,6 @@ test('resolveChannelReadyStreamTargets only attaches the first ready pending tar
 test('resolveChannelStreamSessionId waits for the next sequential target instead of falling back to a completed target session', () => {
   const channel = {
     roomMode: 'group',
-    orchestratorLease: { status: 'idle', sessionId: null },
     roomRouting: {
       defaultRecipientId: null,
       workflow: {
@@ -304,7 +299,6 @@ test('resolveChannelStreamSessionId waits for the next sequential target instead
 test('resolveChannelStreamTarget keeps the next sequential speaker label available before the lease is ready', () => {
   const channel = {
     roomMode: 'group',
-    orchestratorLease: { status: 'idle', sessionId: null },
     roomRouting: {
       defaultRecipientId: null,
       workflow: {
@@ -397,7 +391,6 @@ test('resolveChannelStreamTarget ignores ready leases that belong to a different
 test('resolveChannelStreamTarget uses target-local queue time for workflow session-start confirmation', () => {
   const channel = {
     roomMode: 'group',
-    orchestratorLease: { status: 'idle', sessionId: null },
     roomRouting: {
       defaultRecipientId: null,
       workflow: {
@@ -448,7 +441,6 @@ test('resolveChannelStreamTarget uses target-local queue time for workflow sessi
 test('resolveChannelStreamTarget does not fall back to an arbitrary ready participant before a multi-target workflow target materializes', () => {
   const channel = {
     roomMode: 'group',
-    orchestratorLease: { status: 'idle', sessionId: null },
     roomRouting: {
       defaultRecipientId: null,
       lastOutcome: {
@@ -481,7 +473,6 @@ test('resolveChannelStreamTarget does not fall back to an arbitrary ready partic
 test('resolveChannelStreamTarget does not fall back to the room default recipient while a multi-participant workflow target is still materializing', () => {
   const channel = {
     roomMode: 'group',
-    orchestratorLease: { status: 'idle', sessionId: null },
     roomRouting: {
       defaultRecipientId: 'participant-1',
       workflow: {
@@ -507,7 +498,6 @@ test('resolveChannelStreamTarget does not fall back to the room default recipien
 test('resolveChannelStreamTarget falls back to the default recipient while a single-target workflow turn is still materializing', () => {
   const channel = {
     roomMode: 'direct_message',
-    orchestratorLease: { status: 'idle', sessionId: null },
     roomRouting: {
       defaultRecipientId: 'participant-1',
       lastOutcome: {
@@ -554,7 +544,6 @@ test('resolveChannelStreamTarget falls back to the default recipient while a sin
 test('resolveChannelStreamTarget carries lane identity through participant lease fallback outside an active workflow turn', () => {
   const channel = {
     roomMode: 'group',
-    orchestratorLease: { status: 'idle', sessionId: null },
     roomRouting: {
       defaultRecipientId: null,
       workflow: {
@@ -586,229 +575,3 @@ test('resolveChannelStreamTarget carries lane identity through participant lease
   });
 });
 
-test('resolveChannelStreamTarget carries the orchestrator lease lane id outside an active workflow turn', () => {
-  const channel = {
-    pendingProvider: 'claude',
-    pendingInstance: 'cli/native',
-    orchestratorLease: {
-      status: 'ready',
-      sessionId: 'session-orchestrator-idle',
-      laneId: 'lane-orchestrator-idle',
-      provider: 'claude',
-      model: 'claude-sonnet',
-    },
-    roomRouting: {
-      defaultRecipientId: null,
-      workflow: {
-        activeTurn: null,
-      },
-    },
-    catAssignments: [],
-    participantAssignments: [],
-  };
-
-  assert.deepEqual(resolveChannelStreamTarget(channel), {
-    sessionId: 'session-orchestrator-idle',
-    laneId: 'lane-orchestrator-idle',
-    participantId: 'orchestrator',
-    catId: null,
-    speakerLabel: 'Claude-CLI',
-    sessionStartedAt: null,
-    requiresSessionStartConfirmation: false,
-    targetStateId: null,
-  });
-});
-
-test('resolveChannelStreamTarget does not leak the internal Chat placeholder for default orchestrator turns', () => {
-  const channel = {
-    pendingProvider: 'claude',
-    pendingInstance: 'cli/native',
-    orchestratorLease: {
-      status: 'ready',
-      sessionId: 'session-orchestrator',
-      laneId: 'lane-turn-default-orchestrator-target-orchestrator',
-      provider: 'claude',
-      model: 'claude-sonnet',
-    },
-    roomRouting: {
-      defaultRecipientId: null,
-      workflow: {
-        activeTurn: {
-          id: 'turn-default-orchestrator',
-          status: 'running',
-          targetStatuses: [
-            {
-              id: 'target-orchestrator',
-              status: 'running',
-              participant: {
-                participantKind: 'orchestrator',
-                participantId: 'orchestrator',
-                participantName: 'Chat',
-              },
-            },
-          ],
-        },
-      },
-    },
-    catAssignments: [],
-    participantAssignments: [],
-  };
-
-  assert.deepEqual(resolveChannelStreamTarget(channel), {
-    sessionId: 'session-orchestrator',
-    laneId: 'lane-turn-default-orchestrator-target-orchestrator',
-    participantId: 'orchestrator',
-    catId: null,
-    speakerLabel: 'Claude-CLI',
-    sessionStartedAt: null,
-    requiresSessionStartConfirmation: false,
-    targetStateId: 'target-orchestrator',
-  });
-});
-
-test('resolveChannelStreamTarget does not leak the internal Orchestrator placeholder for default orchestrator turns', () => {
-  const channel = {
-    pendingProvider: 'antigravity',
-    pendingInstance: 'cli/native',
-    orchestratorLease: {
-      status: 'ready',
-      sessionId: 'session-orchestrator',
-      laneId: 'lane-turn-default-orchestrator-target-orchestrator',
-      provider: 'antigravity',
-      model: 'antigravity-default',
-    },
-    roomRouting: {
-      defaultRecipientId: null,
-      workflow: {
-        activeTurn: {
-          id: 'turn-default-orchestrator',
-          status: 'running',
-          targetStatuses: [
-            {
-              id: 'target-orchestrator',
-              status: 'running',
-              participant: {
-                participantKind: 'orchestrator',
-                participantId: 'orchestrator',
-                participantName: 'Orchestrator',
-              },
-            },
-          ],
-        },
-      },
-    },
-    catAssignments: [],
-    participantAssignments: [],
-  };
-
-  assert.deepEqual(resolveChannelStreamTarget(channel), {
-    sessionId: 'session-orchestrator',
-    laneId: 'lane-turn-default-orchestrator-target-orchestrator',
-    participantId: 'orchestrator',
-    catId: null,
-    speakerLabel: 'Antigravity-CLI',
-    sessionStartedAt: null,
-    requiresSessionStartConfirmation: false,
-    targetStateId: 'target-orchestrator',
-  });
-});
-
-test('resolveChannelStreamTarget ignores stale orchestrator lease sessions from a different active workflow lane', () => {
-  const channel = {
-    pendingProvider: 'claude',
-    pendingInstance: 'cli/native',
-    orchestratorLease: {
-      status: 'ready',
-      sessionId: 'session-orchestrator-stale',
-      laneId: 'lane-turn-old-target-orchestrator',
-      provider: 'claude',
-      model: 'claude-sonnet',
-      startedAt: '2026-04-15T12:00:00.000Z',
-    },
-    roomRouting: {
-      defaultRecipientId: null,
-      workflow: {
-        activeTurn: {
-          id: 'turn-current',
-          status: 'running',
-          targetStatuses: [
-            {
-              id: 'target-orchestrator',
-              status: 'running',
-              participant: {
-                participantKind: 'orchestrator',
-                participantId: 'orchestrator',
-                participantName: 'Orchestrator',
-              },
-            },
-          ],
-        },
-      },
-    },
-    catAssignments: [],
-    participantAssignments: [],
-  };
-
-  assert.deepEqual(resolveChannelReadyStreamTargets(channel), []);
-  assert.deepEqual(resolveChannelStreamTarget(channel), {
-    sessionId: null,
-    laneId: 'lane-turn-current-target-orchestrator',
-    participantId: 'orchestrator',
-    catId: null,
-    speakerLabel: 'Claude-CLI',
-    sessionStartedAt: null,
-    requiresSessionStartConfirmation: false,
-    targetStateId: 'target-orchestrator',
-  });
-});
-
-test('resolveChannelStreamTarget keeps the orchestrator label from lease attachment metadata when no pending provider is set', () => {
-  const channel = {
-    pendingProvider: null,
-    pendingInstance: null,
-    orchestratorLease: {
-      status: 'closed',
-      sessionId: 'session-orchestrator-closed',
-      laneId: 'lane-turn-old-target-orchestrator',
-      provider: 'antigravity',
-      model: 'antigravity-default',
-      startedAt: '2026-04-15T12:00:00.000Z',
-      lastUsedAt: '2026-04-15T12:00:00.000Z',
-      cwd: null,
-      lastError: null,
-    },
-    roomRouting: {
-      defaultRecipientId: null,
-      workflow: {
-        activeTurn: {
-          id: 'turn-current',
-          status: 'running',
-          targetStatuses: [
-            {
-              id: 'target-orchestrator',
-              status: 'running',
-              participant: {
-                participantKind: 'orchestrator',
-                participantId: 'orchestrator',
-                participantName: 'Orchestrator',
-              },
-            },
-          ],
-        },
-      },
-    },
-    catAssignments: [],
-    participantAssignments: [],
-  };
-
-  assert.deepEqual(resolveChannelStreamTarget(channel), {
-    sessionId: null,
-    laneId: 'lane-turn-current-target-orchestrator',
-    participantId: 'orchestrator',
-    catId: null,
-    speakerLabel: 'Antigravity-CLI',
-    sessionStartedAt: null,
-    requiresSessionStartConfirmation: false,
-    targetStateId: 'target-orchestrator',
-  });
-});

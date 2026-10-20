@@ -1,4 +1,5 @@
 import type {
+  ChannelParticipantAssignment,
   ChatChannelState,
   ParticipantExecutionLease,
   ChatState,
@@ -206,6 +207,24 @@ function mergeDispatchMessages(
   );
 }
 
+/**
+ * A session start can sanitize the model a participant asked for (a dropped
+ * preset, a runtime-chosen entry). Keep that correction unless someone changed
+ * the participant's model in the meantime.
+ */
+function mergeDispatchExecutionTarget(
+  latest: ChannelParticipantAssignment['execution'],
+  baseline: ChannelParticipantAssignment['execution'],
+  dispatch: ChannelParticipantAssignment['execution'],
+): void {
+  latest.target = mergeChangedValue(latest.target, baseline.target, dispatch.target);
+  latest.modelSelection = mergeChangedValue(
+    latest.modelSelection ?? null,
+    baseline.modelSelection ?? null,
+    dispatch.modelSelection ?? null,
+  );
+}
+
 function mergeDispatchAssignmentLeases(
   latestChannel: ChatChannelState,
   baselineChannel: ChatChannelState,
@@ -228,6 +247,11 @@ function mergeDispatchAssignmentLeases(
       latestAssignment.execution.lease,
       baselineAssignment.execution.lease,
       dispatchAssignment.execution.lease,
+    );
+    mergeDispatchExecutionTarget(
+      latestAssignment.execution,
+      baselineAssignment.execution,
+      dispatchAssignment.execution,
     );
   }
 
@@ -334,31 +358,6 @@ export function mergeCompletedDispatchState(
 
   mergeDispatchMessages(latestChannel, baselineChannel, dispatchChannel);
   mergeDispatchAssignmentLeases(latestChannel, baselineChannel, dispatchChannel);
-  latestChannel.orchestratorLease = mergeDispatchExecutionLease(
-    latestChannel.orchestratorLease,
-    baselineChannel.orchestratorLease,
-    dispatchChannel.orchestratorLease,
-  );
-  latestChannel.pendingProvider = mergeChangedValue(
-    latestChannel.pendingProvider,
-    baselineChannel.pendingProvider,
-    dispatchChannel.pendingProvider,
-  );
-  latestChannel.pendingModel = mergeChangedValue(
-    latestChannel.pendingModel,
-    baselineChannel.pendingModel,
-    dispatchChannel.pendingModel,
-  );
-  latestChannel.pendingInstance = mergeChangedValue(
-    latestChannel.pendingInstance,
-    baselineChannel.pendingInstance,
-    dispatchChannel.pendingInstance,
-  );
-  latestChannel.pendingModelSelection = mergeChangedValue(
-    latestChannel.pendingModelSelection,
-    baselineChannel.pendingModelSelection,
-    dispatchChannel.pendingModelSelection,
-  );
   latestChannel.status = mergeChangedValue(
     latestChannel.status,
     baselineChannel.status,

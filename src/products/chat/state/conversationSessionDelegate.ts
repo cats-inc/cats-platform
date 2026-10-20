@@ -4,7 +4,18 @@ import { createChannel } from './model/index.js';
 import { syncCoreStateWithChatState } from './core-projection/index.js';
 import { activateChannelSessions } from './runtime-session/activation.js';
 import { mergeCompletedDispatchState } from './runtime-dispatch/merge.js';
-import { resolveOrchestratorLeaseAttachment } from '../shared/channelParticipants.js';
+import {
+  resolveChannelParticipantAssignments,
+  resolveParticipantLeaseAttachment,
+} from '../shared/channelParticipants.js';
+import type { ChatChannelState } from '../api/contracts.js';
+
+/** A Code session runs in its conversation's one participant, the target it opened with. */
+function resolveCodeSessionId(channel: ChatChannelState): string | null {
+  const participant = resolveChannelParticipantAssignments(channel)
+    .find((assignment) => assignment.status === 'active');
+  return participant ? resolveParticipantLeaseAttachment(channel, participant.participantId)?.sessionId ?? null : null;
+}
 
 /** Code's fixed opening operation reuses the ordinary conversation/session engine. */
 export function createConversationSessionDelegate(store: ChatStore, runtimeDataDir?: string): ConversationSessionDelegate {
@@ -15,9 +26,10 @@ export function createConversationSessionDelegate(store: ChatStore, runtimeDataD
       await store.updateSnapshot(({ chat, core }) => {
         if (existing(core)) return { chat, core };
         const next = createChannel(chat, { title: 'Code', topic: '', originSurface: 'code', entryKind: 'default',
-          repoPath: input.cwd, pendingProvider: input.target.provider,
-          pendingInstance: input.target.instance, pendingModel: input.target.model ?? undefined,
-          skipBossCatGreeting: true }, new Date(), { prevalidatedRuntimePolicy: input.policy });
+          repoPath: input.cwd,
+          temporaryParticipants: [{ name: '', provider: input.target.provider,
+            instance: input.target.instance ?? undefined, model: input.target.model ?? undefined }] },
+          new Date(), { prevalidatedRuntimePolicy: input.policy });
         return { chat: next, core: persist(syncCoreStateWithChatState(next, core), next.selectedChannelId) };
       });
     },
@@ -30,7 +42,7 @@ export function createConversationSessionDelegate(store: ChatStore, runtimeDataD
           archived: channel.status === 'archived', cwd: channel.repoPath,
           workspaceKind: channel.runtimeWorkspaceKind ?? null, workspaceAccess: channel.runtimeWorkspaceAccess ?? null,
           permissionMode: channel.runtimePermissionMode ?? null,
-          sessionId: resolveOrchestratorLeaseAttachment(channel)?.sessionId ?? null } : null);
+          sessionId: resolveCodeSessionId(channel) } : null);
         return { chat, core };
       });
       return valid;

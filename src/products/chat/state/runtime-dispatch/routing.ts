@@ -45,7 +45,6 @@ import type {
 } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
 import type { CatsMemoryService } from '../../../../platform/memory/index.js';
-import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
 import type {
   RuntimeClient,
 } from '../../../../platform/runtime/client.js';
@@ -53,12 +52,7 @@ import {
   appendMessage,
   requireChannel,
   resolveChannelCanonicalIdentity,
-  setChannelPendingExecutionTarget,
-  setChannelOrchestratorLease,
 } from '../model/index.js';
-import {
-  providerModelSelectionsEquivalent,
-} from '../../../../shared/providerSelection.js';
 import {
   createTranslator,
   messageKeys,
@@ -81,10 +75,7 @@ import {
 } from '../chatCoreInterop.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import { appendCompanionPostResultSidecar } from './companionPostSidecar.js';
-import {
-  resolveNextPendingExecutionTarget,
-} from '../pendingExecutionTarget.js';
-import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
+import { isAdminCoordinator } from '../coordinator.js';
 import {
   type RuntimeTransportContext,
 } from '../runtimeTargeting.js';
@@ -191,7 +182,6 @@ import {
   resolveTargets,
 } from '../room-routing/runtime.js';
 import {
-  resolveOrchestratorLeaseAttachment,
   resolvePrimaryParticipantExecutionAssignment,
 } from '../../shared/channelParticipants.js';
 import { parseProductIntentCommand } from '../../shared/productIntentCommands.js';
@@ -779,6 +769,7 @@ function resolvePrimaryProductIntentAudienceAssignment(
   activeCatAssignments: ProductIntentAudienceAssignment[],
 ): ProductIntentAudienceAssignment | null {
   const defaultRecipientId = channel.roomRouting?.defaultRecipientId?.trim()
+    || channel.coordinatorParticipantId?.trim()
     || channel.recoverableDirectLaneCatId?.trim()
     || null;
   if (defaultRecipientId) {
@@ -3398,24 +3389,10 @@ function resolveVisibleWorkItemIdsForExecutionPreparation(input: {
     .map((workItem) => workItem.id);
 }
 
+/** The conversation's coordinator is a Boss Cat (an admin cat). */
 function isBossCatAddressedByChannel(state: ChatState, channelId: string): boolean {
-  const bossCatId = state.bossCatId?.trim();
-  if (!bossCatId) {
-    return false;
-  }
-
   const channel = requireChannel(state, channelId);
-  const defaultRecipientId = channel.roomRouting?.defaultRecipientId?.trim()
-    || channel.recoverableDirectLaneCatId?.trim()
-    || null;
-  if (defaultRecipientId === bossCatId) {
-    return true;
-  }
-
-  return channel.catAssignments.some((assignment) =>
-    assignment.status === 'active'
-    && assignment.catId === bossCatId
-    && assignment.participantId === defaultRecipientId);
+  return isAdminCoordinator(state, channelId, channel.coordinatorParticipantId);
 }
 
 function readActiveWorkItemIdsFromMessage(message: ChatMessage): string[] {
@@ -4430,7 +4407,7 @@ async function appendWorkExecutionPreparationTaskCreation(input: {
     coreStore: input.chatStore,
     now: () => input.now,
   });
-  const actorRef = resolveWorkExecutionPreparationActorRef(input.state, core);
+  const actorRef = resolveWorkExecutionPreparationActorRef(input.state, input.channelId, core);
   const createdTasks: WorkExecutionPreparationCreatedTaskMetadata[] = [];
   const skippedWorkItemIds: string[] = [];
 
@@ -4597,12 +4574,22 @@ function describeWorkExecutionPreparationTransition(
   ].join('\n');
 }
 
+/** Tasks prepared in a conversation are attributed to its Boss Cat coordinator, else to the owner. */
 function resolveWorkExecutionPreparationActorRef(
   state: ChatState,
+  channelId: string,
   core: CatsCoreState,
 ): string {
-  const bossCatId = state.bossCatId?.trim();
-  return bossCatId ? createCatActorId(bossCatId) : core.ownerProfile.actorId;
+  const channel = requireChannel(state, channelId);
+  const coordinatorParticipantId = channel.coordinatorParticipantId;
+  if (coordinatorParticipantId && isAdminCoordinator(state, channelId, coordinatorParticipantId)) {
+    const coordinator = channel.catAssignments.find((assignment) =>
+      assignment.participantId === coordinatorParticipantId);
+    if (coordinator) {
+      return createCatActorId(coordinator.catId);
+    }
+  }
+  return core.ownerProfile.actorId;
 }
 
 function buildWorkTaskDetailPath(taskId: string): string {
@@ -6830,61 +6817,6 @@ export async function beginChannelMessageDispatch(
       ...(messageIdentity ? { messageIdentity } : {}),
     };
   }
-  const nextTarget = resolveNextPendingExecutionTarget(channelBeforeMessage, payload);
-  const pendingTargetChanged = isProviderDefaultChatChannel(channelBeforeMessage)
-    && (
-      nextTarget.provider !== channelBeforeMessage.pendingProvider
-      || nextTarget.model !== channelBeforeMessage.pendingModel
-      || nextTarget.instance !== channelBeforeMessage.pendingInstance
-      || !providerModelSelectionsEquivalent(
-        channelBeforeMessage.pendingModelSelection,
-        nextTarget.modelSelection,
-      )
-    );
-  const orchestratorSessionAttachment = resolveOrchestratorLeaseAttachment(channelBeforeMessage);
-  const orchestratorSessionId = orchestratorSessionAttachment?.sessionId ?? null;
-  if (
-    pendingTargetChanged
-    && orchestratorSessionId
-  ) {
-    await bestEffortFlushRuntimeSessionMemory({
-      runtimeClient,
-      sessionId: orchestratorSessionId,
-      requestedPhase: 'pre_reset',
-      memoryService: options.memoryService,
-      companionStore: options.companionStore,
-      coreStore: options.chatStore,
-      now,
-    });
-    await runtimeClient.closeSession(orchestratorSessionId);
-    nextState = setChannelOrchestratorLease(
-      nextState,
-      channelId,
-      {
-        sessionId: null,
-        status: 'not_started',
-        lastError: null,
-        provider: nextTarget.provider,
-        instance: nextTarget.instance,
-        model: nextTarget.model,
-        modelSelection: nextTarget.modelSelection,
-        startedAt: null,
-      },
-      now,
-    );
-  }
-
-  nextState = setChannelPendingExecutionTarget(
-    nextState,
-    channelId,
-    {
-      provider: nextTarget.provider,
-      model: nextTarget.model,
-      instance: nextTarget.instance,
-      modelSelection: nextTarget.modelSelection,
-    },
-    now,
-  );
   const coreBeforeUserMessage = options.chatStore
     ? await options.chatStore.readCore()
     : null;

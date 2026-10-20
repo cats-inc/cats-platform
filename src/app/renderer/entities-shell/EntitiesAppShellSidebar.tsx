@@ -70,19 +70,14 @@ const ENTITIES_HELPERS: ConversationSidebarHelpers<
   catInitials: (name: string) => nameInitials(name),
   presentChannelTitle: (title: string) => title,
   isVisibleCat: () => true,
-  /* Boss-first ordering, then `createdAt` ascending so older cats
+  /* Boss Cats first, then `createdAt` ascending so older cats
    * appear higher. Matches the entity index card ordering. */
-  sortCatsForDisplay: (cats, options) => {
-    const bossId = Array.isArray(options.bossCatIds)
-      ? options.bossCatIds[0] ?? null
-      : options.bossCatIds ?? null;
-    return [...cats].sort((left, right) => {
-      const leftRank = left.id === bossId ? 0 : 1;
-      const rightRank = right.id === bossId ? 0 : 1;
-      if (leftRank !== rightRank) return leftRank - rightRank;
-      return left.createdAt.localeCompare(right.createdAt);
-    });
-  },
+  sortCatsForDisplay: (cats) => [...cats].sort((left, right) => {
+    const leftRank = left.group === 'admin' ? 0 : 1;
+    const rightRank = right.group === 'admin' ? 0 : 1;
+    if (leftRank !== rightRank) return leftRank - rightRank;
+    return left.createdAt.localeCompare(right.createdAt);
+  }),
   isDirectLaneSummary: () => false,
   findDirectLaneForCat: () => null,
   resolveMyCatStatusDot: () => ENTITIES_PASSIVE_DOT,
@@ -93,18 +88,16 @@ const ENTITIES_HELPERS: ConversationSidebarHelpers<
 function buildSidebarPayload(envelope: PlatformHostEnvelope): {
   payload: ConversationSidebarPayload<EntitiesCat, ConversationSidebarChannel>;
   cats: EntitiesCat[];
-  bossCatId: string | null;
 } {
   const cats: EntitiesCat[] = envelope.lobby.cats.map((summary) => ({
     id: summary.id,
     name: summary.name,
+    group: summary.isBoss ? 'admin' : 'standard',
     status: 'active',
     avatarColor: summary.avatarColor,
     avatarUrl: summary.avatarUrl,
     createdAt: summary.createdAt,
   }));
-  const bossCat = envelope.lobby.cats.find((summary) => summary.isBoss);
-  const bossCatId = bossCat ? bossCat.id : null;
   const payload: ConversationSidebarPayload<EntitiesCat, ConversationSidebarChannel> = {
     ownerDisplayName: envelope.ownerDisplayName,
     ownerAvatarUrl: envelope.ownerAvatarUrl,
@@ -113,12 +106,11 @@ function buildSidebarPayload(envelope: PlatformHostEnvelope): {
       ? { status: envelope.runtimeSetup.status }
       : null,
     chat: {
-      bossCatId,
       cats,
       channels: [],
     },
   };
-  return { payload, cats, bossCatId };
+  return { payload, cats };
 }
 
 export function EntitiesAppShellSidebar({
@@ -163,7 +155,7 @@ export function EntitiesAppShellSidebar({
     currentPath === '/entities/catteries'
     || currentPath.startsWith('/entities/catteries/');
 
-  const { payload, cats, bossCatId } = buildSidebarPayload(envelope);
+  const { payload, cats } = buildSidebarPayload(envelope);
 
   /* Archive flow for the row's three-dots → Archive popover. Mirrors
    * the chat sidebar's `onClearDirectLane` shape: gate on the app-level
@@ -380,7 +372,6 @@ export function EntitiesAppShellSidebar({
             <ConversationSidebarMyCatsSection
               hideLabel
               cats={cats}
-              bossCatId={bossCatId}
               payloadChannels={[]}
               activeMyCatId={activeCatId}
               telegramBoundCatIds={new Set()}
@@ -419,7 +410,6 @@ export function EntitiesAppShellSidebar({
             <ConversationSidebarMyCatsSection
               hideLabel
               cats={[]}
-              bossCatId={null}
               payloadChannels={[]}
               activeMyCatId={null}
               telegramBoundCatIds={new Set()}
@@ -446,7 +436,6 @@ export function EntitiesAppShellSidebar({
             <ConversationSidebarMyCatsSection
               hideLabel
               cats={[]}
-              bossCatId={null}
               payloadChannels={[]}
               activeMyCatId={null}
               telegramBoundCatIds={new Set()}

@@ -3,10 +3,7 @@ import {
   createCatActorId,
 } from '../../../core/actors.js';
 import type { TaskExecutionLocator } from '../../../core/taskExecutionLocator.js';
-import {
-  resolveOrchestratorLeaseAttachment,
-  resolveParticipantLeaseAttachment,
-} from '../shared/channelParticipants.js';
+import { resolveParticipantLeaseAttachment } from '../shared/channelParticipants.js';
 import type { ChatStore } from './store.js';
 
 export function createChatTaskExecutionLocator(
@@ -29,7 +26,10 @@ export function createChatTaskExecutionLocator(
         return null;
       }
 
-      const orchestratorAttachment = resolveOrchestratorLeaseAttachment(channel);
+      // Coordination runs in the coordinator's own session.
+      const orchestratorAttachment = channel.coordinatorParticipantId
+        ? resolveParticipantLeaseAttachment(channel, channel.coordinatorParticipantId)
+        : null;
       return {
         orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
         orchestratorLaneId: orchestratorAttachment?.laneId ?? null,

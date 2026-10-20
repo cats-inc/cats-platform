@@ -18,9 +18,14 @@ import {
   createCat,
   createChannel,
   setChannelCatLease,
-  setChannelOrchestratorLease,
+  setChannelParticipantLease,
 } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+
+/** The participant a conversation starts with; it coordinates the room. */
+function firstParticipantId(state, channelId) {
+  return state.channels.find((channel) => channel.id === channelId).participantAssignments[0].participantId;
+}
 
 function createRuntimeStub() {
   const createdSessions = [];
@@ -99,7 +104,7 @@ test('resolveCreateOriginSurface preserves explicit values, requires ownership, 
   );
 });
 
-test('persistCatAssignmentUpdate starts new cat sessions from the orchestrator attachment cwd', async () => {
+test('persistCatAssignmentUpdate starts new cat sessions in a teammate runtime workspace', async () => {
   const chatStore = new MemoryChatStore();
   const runtimeClient = createRuntimeStub();
   const now = new Date('2026-04-15T14:00:00.000Z');
@@ -118,10 +123,9 @@ test('persistCatAssignmentUpdate starts new cat sessions from the orchestrator a
     title: 'Route support lane',
     topic: 'spawn new cat sessions from the orchestrator attachment cwd',
     originSurface: 'chat',
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
-  state = setChannelOrchestratorLease(state, channelId, {
+  state = setChannelParticipantLease(state, channelId, firstParticipantId(state, channelId), {
     status: 'ready',
     sessionId: 'session-orchestrator',
     laneId: 'lane-orchestrator',
@@ -215,7 +219,6 @@ test('persistCatAssignmentUpdate keeps direct-lane transport binding on session_
     roomMode: 'direct_message',
     repoPath: 'C:/repo/cats-platform',
     defaultRecipientId: catId,
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
   await chatStore.write(state);
@@ -304,7 +307,6 @@ test('persistCatAssignmentUpdate keeps direct-lane transport binding on session_
     originSurface: 'chat',
     roomMode: 'direct_message',
     defaultRecipientId: catId,
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, {
@@ -407,7 +409,6 @@ test('persistCatAssignmentRemoval keeps direct-lane transport binding on session
     originSurface: 'chat',
     roomMode: 'direct_message',
     defaultRecipientId: catId,
-    skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, {

@@ -4,7 +4,6 @@ import type { ProviderAgentToolDescriptor } from '../../../platform/orchestratio
 import { DEFAULT_SUPERVISION_SCHEMA_VERSION } from '../../../platform/supervision/contracts.js';
 import { knowledgeDigest } from '../../../platform/knowledge/productKnowledge.js';
 import { resolveChannelParticipantAssignments } from '../shared/channelParticipants.js';
-import { resolveOrchestratorExecutionTarget } from './runtimeTargeting.js';
 import type { CollaborationProposal, CollaborationReport } from './orchestratorCollaboration.js';
 
 export const ACCEPT_COLLABORATION = 'execute_collaboration';
@@ -29,10 +28,9 @@ export function collaborationExecutionRevision(state: ChatState, channelId: stri
     id: channel.id, origin: channel.originSurface, kind: channel.channelKind,
     status: channel.status === 'archived' ? 'archived' : 'active',
     repoPath: channel.repoPath, cwd: channel.chatCwd,
-    continuityResetAt: channel.continuityResetAt,
     workspaceKind: channel.runtimeWorkspaceKind, workspaceAccess: channel.runtimeWorkspaceAccess,
     permissionMode: channel.runtimePermissionMode,
-    target: resolveOrchestratorExecutionTarget(state, channel),
+    coordinatorParticipantId: channel.coordinatorParticipantId,
     participants: resolveChannelParticipantAssignments(channel).map((entry) => ({
       id: entry.participantId, status: entry.status, sourceRefId: entry.sourceRefId,
       target: entry.execution.target, modelSelection: entry.execution.modelSelection,
@@ -56,7 +54,7 @@ export function resolveCollaborationOwnerChoice(
     || ![ACCEPT_COLLABORATION, ACCEPT_CATS_DEVELOPMENT].includes(answer.selectedOptionIds[0]!)) return null;
   const channel = state.channels.find((entry) => entry.id === channelId);
   const message = channel?.messages.find((entry) => entry.id === response.sourceMessageId);
-  if (message?.senderKind !== 'orchestrator'
+  if (message?.senderKind !== 'agent'
     || message.metadata.event !== 'orchestrator_collaboration_preparation'
     || !message.choices?.some((choice) => choice.question === answer.question
       && choice.options.some((option) => option.id === answer.selectedOptionIds[0]))) return null;

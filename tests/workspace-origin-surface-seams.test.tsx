@@ -129,9 +129,8 @@ test('prepareComposerChannelDispatch keeps code-owned default drafts stamped as 
   assert.equal(createdInputs[0]?.runtimeWorkspaceKind, 'worktree');
   assert.equal(createdInputs[0]?.runtimeWorkspaceAccess, 'read_only');
   assert.equal(createdInputs[0]?.runtimePermissionMode, 'default');
-  assert.equal(createdInputs[0]?.pendingProvider, 'claude');
-  assert.equal(createdInputs[0]?.pendingModel, 'claude-opus-4-6');
-  assert.equal(createdInputs[0]?.pendingInstance, 'native');
+  // The named participant starts the conversation; the draft model is not a separate target.
+  assert.equal(createdInputs[0]?.pendingProvider, undefined);
   assert.deepEqual(createdInputs[0]?.temporaryParticipants, [
     {
       participantId: 'participant-code',

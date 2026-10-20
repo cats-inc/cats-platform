@@ -37,7 +37,7 @@ test('ChatStore projects direct-lane participants, temporary participant actors,
     now,
   );
   const companionId = state.cats[0].id;
-  state.bossCatId = companionId;
+  state.cats.find((cat) => cat.id === companionId).group = 'admin';
   state.globalOrchestrator.telegramBotName = 'boss_cat_bot';
 
   state = createChannel(
@@ -49,7 +49,6 @@ test('ChatStore projects direct-lane participants, temporary participant actors,
       roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -69,7 +68,6 @@ test('ChatStore projects direct-lane participants, temporary participant actors,
         },
       ],
       originSurface: 'chat',
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -125,7 +123,8 @@ test('ChatStore projects direct-lane participants, temporary participant actors,
   );
 
   const temporaryConversationId = buildChatConversationId(temporaryChannelId);
-  const temporaryActor = core.actors.find((actor) => actor.source === 'chat_participant');
+  const temporaryActor = core.actors.find((actor) =>
+    actor.source === 'chat_participant' && actor.name === 'Inline Reviewer');
   assert.ok(temporaryActor);
   assert.equal(temporaryActor.name, 'Inline Reviewer');
   assert.ok(

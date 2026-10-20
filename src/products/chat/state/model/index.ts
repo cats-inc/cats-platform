@@ -27,7 +27,7 @@ import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js'
 import { defaultCatProducts, hasPlatformSurface } from '../../../../shared/platformSurfaces.js';
 import {
   inferChannelKind,
-  isProviderDefaultChatChannel,
+  isDirectLaneChannel,
   normalizeChannelAssignmentsForRoomMode,
   resolveChannelKind,
   resolveDirectLaneRecipientId,
@@ -52,6 +52,10 @@ import {
   createMessageRecord,
   createTemporaryParticipantAssignment,
 } from './recordBuilders.js';
+import {
+  orderParticipantAssignments,
+  resolveDefaultParticipantSeed,
+} from './defaultParticipant.js';
 import {
   cloneState,
   createChannelId,
@@ -84,7 +88,6 @@ export {
 } from './channelState.js';
 export {
   setChannelCatLease,
-  setChannelOrchestratorLease,
   setChannelParticipantLease,
 } from './channelLeases.js';
 import {
@@ -105,11 +108,12 @@ export {
   resolveChannelEntryParticipant,
   resolveLeadParticipantLease,
   resolveOrchestratorDisplayName,
+  resolveParallelChatMemberTarget,
   resolveParticipantLifecycleState,
   summarizeState,
   toChannelSummary,
 } from './readModels.js';
-export { requireCat, requireChannel } from './shared.js';
+export { bindChannelCoordinator, requireCat, requireChannel } from './shared.js';
 export {
   archiveCat,
   createCat,
@@ -117,7 +121,7 @@ export {
   isDefaultCatName,
   pickAvatarColor,
   renameCat,
-  setBossCat,
+  setCatGroup,
   setCatCompanion,
   unarchiveCat,
   updateCatExecutionTarget,
@@ -126,15 +130,13 @@ export {
   updateCatSkillProfile,
 } from './cats.js';
 export {
-  resetDefaultChatContinuity,
   setChannelCatExecutionTarget,
   setChannelParticipantExecutionTarget,
   updateChannelParticipant,
-  setChannelPendingExecutionTarget,
-  setGlobalOrchestratorExecutionTarget,
   updateChannelParticipantProfile,
   updateGlobalOrchestrator,
   updateNewChatDefaults,
+  rememberNewChatDefaultParticipant,
 } from './channelExecutionTargets.js';
 
 function resolveCreateInputOriginSurface(
@@ -239,6 +241,9 @@ export function createParallelChatGroup(
         policy: target.runtimeSessionPolicy,
         targetIndex,
       });
+    // A lane without its own audience runs its model target as its one participant.
+    const laneHasParticipants = (targetParticipantCatIds?.length ?? 0) > 0
+      || (targetTemporaryParticipants?.length ?? 0) > 0;
     nextState = createChannel(
       nextState,
       {
@@ -247,13 +252,17 @@ export function createParallelChatGroup(
         originSurface,
         repoPath: targetRepoPath,
         responseLanguage: input.responseLanguage,
-        pendingProvider: target.provider,
-        pendingModel: target.model ?? undefined,
-        pendingInstance: target.instance ?? undefined,
-        pendingModelSelection: target.modelSelection ?? undefined,
-        participantCatIds: targetParticipantCatIds,
-        temporaryParticipants: targetTemporaryParticipants,
-        skipBossCatGreeting: true,
+        participantCatIds: laneHasParticipants ? targetParticipantCatIds : undefined,
+        temporaryParticipants: laneHasParticipants
+          ? targetTemporaryParticipants
+          : [{
+              name: '',
+              provider: target.provider,
+              instance: target.instance ?? undefined,
+              model: target.model ?? undefined,
+              modelSelection: target.modelSelection ?? null,
+            }],
+        participantOrder: targetAudienceKeys ?? undefined,
       },
       now,
       { prevalidatedRuntimePolicy: targetRuntimeSessionPolicy },
@@ -291,24 +300,11 @@ function describeCreatedRoom(
     return `direct chat with ${activeParticipantNames[0] ?? 'the selected participant'}`;
   }
 
-  if (isProviderDefaultChatChannel(channel) && channel.pendingProvider) {
-    return `default chat with ${buildParallelChatMemberLabel({
-      provider: channel.pendingProvider,
-      instance: channel.pendingInstance,
-      model: channel.pendingModel,
-      modelSelection: channel.pendingModelSelection ?? null,
-    })}`;
-  }
-
   if (activeParticipantNames.length === 1) {
     return `participant-led chat with ${activeParticipantNames[0]}`;
   }
 
-  if (activeParticipantNames.length > 1) {
-    return `shared room with ${activeParticipantNames.join(', ')}`;
-  }
-
-  return 'Boss Chat';
+  return `shared room with ${activeParticipantNames.join(', ')}`;
 }
 
 function resolveRequestedRoomMode(
@@ -328,6 +324,28 @@ function resolveRequestedParticipantCount(input: CreateChatChannelInput): number
   return Math.max(1, explicitParticipantCount);
 }
 
+/**
+ * A non-DM conversation always has a participant: without any named one, it
+ * starts with the remembered default.
+ */
+function seedDefaultParticipantInput(
+  state: ChatState,
+  input: CreateChatChannelInput,
+): CreateChatChannelInput {
+  if (
+    resolveRequestedRoomMode(input) === 'direct_message'
+    || (input.cats?.length ?? 0) > 0
+    || (input.participantCatIds?.length ?? 0) > 0
+    || (input.temporaryParticipants?.length ?? 0) > 0
+  ) {
+    return input;
+  }
+  const seed = resolveDefaultParticipantSeed(state);
+  return seed.kind === 'cat'
+    ? { ...input, participantCatIds: [seed.catId] }
+    : { ...input, temporaryParticipants: [seed.participant] };
+}
+
 export interface CreateChannelOptions {
   // Boundary callers (HTTP route, createParallelChatGroup) pre-parse the raw
   // runtime policy payload via parseRuntimeSessionPolicyCreateInput and pass
@@ -339,10 +357,11 @@ export interface CreateChannelOptions {
 
 export function createChannel(
   state: ChatState,
-  input: CreateChatChannelInput,
+  requestedInput: CreateChatChannelInput,
   now: Date = new Date(),
   options: CreateChannelOptions = {},
 ): ChatState {
+  const input = seedDefaultParticipantInput(state, requestedInput);
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
   const topic = input.topic.trim();
@@ -412,17 +431,17 @@ export function createChannel(
   }
   title = title || 'New chat';
   const requestedLeadParticipantId = normalizeDefaultRecipientId(input.defaultRecipientId);
+  const orderedLeadParticipantId = orderParticipantAssignments([
+    ...participantCatIds.map((catId) => ({ participantId: catId, sourceKind: 'cat', sourceRefId: catId })),
+    ...createdTemporaryParticipants,
+  ], input.participantOrder)[0]?.participantId ?? null;
   const defaultLeadParticipantId = requestedLeadParticipantId
     ?? (
       requestedRoomMode === 'direct_message' && createdCats.length === 1
         ? createdCats[0]?.id ?? null
       : requestedRoomMode === 'direct_message' && createdCats.length === 0 && participantCatIds.length === 1
           ? participantCatIds[0] ?? null
-          : participantCatIds.length > 0
-          ? participantCatIds[0] ?? null
-          : createdTemporaryParticipants.length > 0
-            ? createdTemporaryParticipants[0]?.participantId ?? null
-          : null
+          : orderedLeadParticipantId
     );
 
   nextState.cats.unshift(...createdCats);
@@ -447,7 +466,7 @@ export function createChannel(
     );
   }
 
-  const participantAssignments = [
+  const participantAssignments = orderParticipantAssignments([
     ...catAssignments.map((assignment) => ({
       participantId: assignment.participantId,
       sourceKind: assignment.sourceKind,
@@ -461,7 +480,7 @@ export function createChannel(
       execution: structuredClone(assignment.execution),
     })),
     ...createdTemporaryParticipants.map((participant) => structuredClone(participant)),
-  ];
+  ], input.participantOrder);
 
   const normalizedCatAssignments = normalizeChannelAssignmentsForRoomMode(
     catAssignments,
@@ -497,22 +516,19 @@ export function createChannel(
     skillProfile: normalizeOptionalText(input.skillProfile) ?? 'chat-default',
     mcpProfile: normalizeCatMcpProfile(input.mcpProfile) ?? CHAT_MCP_PROFILE_ID,
     orchestratorRoles: normalizeList(input.orchestratorRoles),
-    pendingProvider: normalizeOptionalText(input.pendingProvider),
-    pendingModel: normalizeOptionalText(input.pendingModel),
-    pendingInstance: normalizeOptionalText(input.pendingInstance),
-    pendingModelSelection: cloneProviderModelSelection(input.pendingModelSelection),
-    continuityResetAt: null,
     createdAt: nowIso,
     updatedAt: nowIso,
     lastMessageAt: nowIso,
     lastActivatedAt: null,
-    orchestratorLease: createEmptyExecutionLease(),
+    coordinatorParticipantId: requestedRoomMode === 'direct_message'
+      ? defaultLeadParticipantId
+      : normalizedParticipantAssignments[0]?.participantId ?? null,
     catAssignments: normalizedCatAssignments,
     participantAssignments: normalizedParticipantAssignments,
     messages: [],
     roomRouting: createDefaultRoomRoutingState({
       mode: requestedRoomMode,
-      defaultRecipientId: defaultLeadParticipantId,
+      defaultRecipientId: requestedRoomMode === 'direct_message' ? defaultLeadParticipantId : null,
     }),
     workingMemory: createEmptyMemoryCheckpoint(),
   };
@@ -547,10 +563,6 @@ export function assignCatToChannel(
   input: AssignChannelCatInput,
   now: Date = new Date(),
 ): ChatState {
-  if (state.bossCatId && input.catId === state.bossCatId) {
-    throw new Error('Boss Cat is already the default chat entrypoint');
-  }
-
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
   const channel = requireChannel(nextState, channelId);
@@ -582,6 +594,15 @@ export function assignCatToChannel(
     throw new Error(`Cat is not available in Cats Chat: ${input.catId}`);
   }
   const existing = channel.catAssignments.find((candidate) => candidate.catId === input.catId);
+  const joining = !existing || existing.status !== 'active';
+  if (joining) {
+    const maxChatParticipants = state.capabilities.maxChatParticipants ?? Infinity;
+    const activeParticipantCount = resolveChannelParticipantAssignments(channel)
+      .filter((assignment) => assignment.status === 'active').length;
+    if (activeParticipantCount >= maxChatParticipants) {
+      throw new Error(`Chat participant limit reached (max ${maxChatParticipants})`);
+    }
+  }
 
   if (!existing) {
     channel.catAssignments.push(
@@ -639,6 +660,11 @@ export function assignCatToChannel(
     || existing.execution.target.model !== nextModel
     || JSON.stringify(existing.execution.modelSelection ?? null) !== JSON.stringify(nextModelSelection);
 
+  if (joining) {
+    // A returning cat joins at the end, like any new participant.
+    channel.participantAssignments = (channel.participantAssignments ?? [])
+      .filter((assignment) => assignment.participantId !== existing.participantId);
+  }
   existing.status = 'active';
   existing.leftAt = null;
   existing.roles = nextRoles.length > 0 ? nextRoles : (existing.roles.length > 0 ? existing.roles : cat.roles);
@@ -679,6 +705,19 @@ export function assignCatToChannel(
   return nextState;
 }
 
+export const LAST_PARTICIPANT_ERROR = 'A conversation keeps at least one participant';
+
+function assertParticipantCanLeave(channel: ChatChannelState, participantId: string): void {
+  if (isDirectLaneChannel(channel)) {
+    return;
+  }
+  const othersRemain = resolveChannelParticipantAssignments(channel).some((assignment) =>
+    assignment.status === 'active' && assignment.participantId !== participantId);
+  if (!othersRemain) {
+    throw new Error(LAST_PARTICIPANT_ERROR);
+  }
+}
+
 export function removeCatFromChannel(
   state: ChatState,
   channelId: string,
@@ -692,6 +731,9 @@ export function removeCatFromChannel(
 
   if (!assignment) {
     throw new Error(`Channel cat assignment not found: ${catId}`);
+  }
+  if (assignment.status === 'active') {
+    assertParticipantCanLeave(channel, assignment.participantId);
   }
 
   assignment.status = 'removed';
@@ -721,6 +763,56 @@ export function removeCatFromChannel(
       `${cat.name} left the chat.`,
       nowIso,
       { event: 'pal_removed', catId },
+      null,
+    ),
+    nowIso,
+  );
+
+  return nextState;
+}
+
+/** Removes any participant, cat or temporary, while another one remains. */
+export function removeChannelParticipant(
+  state: ChatState,
+  channelId: string,
+  participantId: string,
+  now: Date = new Date(),
+): ChatState {
+  const channel = requireChannel(state, channelId);
+  const participant = resolveChannelParticipantAssignments(channel)
+    .find((candidate) => candidate.participantId === participantId && candidate.status === 'active');
+  if (!participant) {
+    throw new Error(`Channel participant not found: ${participantId}`);
+  }
+  if (participant.sourceKind === 'cat') {
+    return removeCatFromChannel(state, channelId, participant.sourceRefId ?? participantId, now);
+  }
+
+  const nextState = cloneState(state);
+  const nowIso = isoAt(now);
+  const nextChannel = requireChannel(nextState, channelId);
+  assertParticipantCanLeave(nextChannel, participantId);
+  const assignment = (nextChannel.participantAssignments ?? [])
+    .find((candidate) => candidate.participantId === participantId);
+  if (!assignment) {
+    throw new Error(`Channel participant not found: ${participantId}`);
+  }
+  assignment.status = 'removed';
+  assignment.leftAt = nowIso;
+  assignment.execution.lease = {
+    ...createEmptyExecutionLease(),
+    status: 'removed',
+  };
+  syncChannelDefaultRecipientAndTopology(nextChannel);
+  applyMessageToChannel(
+    nextChannel,
+    createMessageRecord(
+      channelId,
+      'system',
+      'Chat',
+      `${assignment.name} left the chat.`,
+      nowIso,
+      { event: 'participant_removed', participantId },
       null,
     ),
     nowIso,

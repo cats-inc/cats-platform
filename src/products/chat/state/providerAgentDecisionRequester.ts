@@ -6,7 +6,7 @@ import type {
 } from './runtime-dispatch/routing.js';
 import { knowledgeDigest } from '../../../platform/knowledge/productKnowledge.js';
 import { buildChannelView, requireChannel } from './model/index.js';
-import { resolveOrchestratorExecutionTarget } from './runtimeTargeting.js';
+import { isCoordinatorActorRef, resolveCoordinatorParticipant } from './coordinator.js';
 import { isOrchestratorKnowledgeChannel, loadOrchestratorKnowledge } from './orchestratorKnowledge.js';
 import { resolveProviderCapabilityProfile } from '../../../platform/supervision/providerCapabilityProfiles.js';
 import type { ChatState } from '../api/contracts.js';
@@ -45,10 +45,19 @@ export function createChatProviderAgentDecisionRequester(
     }
 
     try {
-      const isOrchestrator = input.observation.actor.actorRef === 'orchestrator'
-        && isOrchestratorKnowledgeChannel(requireChannel(input.state, input.channelId));
-      const binding = isOrchestrator
-        ? resolveOrchestratorExecutionTarget(input.state, requireChannel(input.state, input.channelId))
+      // The coordinator decides with product knowledge, bound to its own model.
+      const coordinator = isCoordinatorActorRef(input.state, input.channelId, input.observation.actor.actorRef)
+        && isOrchestratorKnowledgeChannel(requireChannel(input.state, input.channelId))
+        ? resolveCoordinatorParticipant(input.state, input.channelId)
+        : null;
+      const isOrchestrator = coordinator !== null;
+      const binding = coordinator
+        ? {
+            provider: coordinator.execution.target.provider,
+            instance: coordinator.execution.target.instance ?? null,
+            model: coordinator.execution.target.model ?? null,
+            modelSelection: coordinator.execution.modelSelection ?? null,
+          }
         : null;
       // Profile identity includes normalized default models, instance and model controls.
       // No bootstrap policy is re-decided here: only its target identity is compared.

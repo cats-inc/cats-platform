@@ -632,9 +632,7 @@ test('mentioning a companion in a Recents thread hydrates the participant runtim
         title: 'Default thread',
         topic: 'Start default, then bring a companion into the Recents chat.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
-        pendingProvider: 'antigravity',
-        pendingModel: 'antigravity-default',
+        temporaryParticipants: [{ name: '', provider: 'antigravity', model: 'antigravity-default' }],
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -661,7 +659,7 @@ test('mentioning a companion in a Recents thread hydrates the participant runtim
     assert.equal(shellResponse.status, 200);
     const shellPayload = await shellResponse.json();
     const selectedChannel = shellPayload.chat.selectedChannel;
-    assert.equal(selectedChannel.roomRouting.defaultRecipientId, cat.id);
+    assert.ok(selectedChannel.assignedCats.some((assigned) => assigned.catId === cat.id));
 
     const createdSession = runtimeClient.createdSessions.at(-1);
     assert.ok(createdSession);

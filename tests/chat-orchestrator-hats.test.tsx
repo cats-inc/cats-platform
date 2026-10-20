@@ -3,11 +3,7 @@ import test from 'node:test';
 
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import { normalizeGlobalOrchestrator } from '../src/products/chat/state/chat-snapshot/entities.ts';
-import {
-  setGlobalOrchestratorExecutionTarget,
-  updateGlobalOrchestrator,
-} from '../src/products/chat/state/model/index.ts';
-import { resolveOrchestratorExecutionTarget } from '../src/products/chat/state/runtimeTargeting.ts';
+import { updateGlobalOrchestrator } from '../src/products/chat/state/model/index.ts';
 
 test('default Chat orchestrator exposes separate router config and visible participant hats', () => {
   const orchestrator = createDefaultChatState().globalOrchestrator;
@@ -72,35 +68,3 @@ test('orchestrator execution updates affect the visible participant without chan
   });
 });
 
-test('runtime targeting reads the visible participant execution target', () => {
-  const state = setGlobalOrchestratorExecutionTarget(
-    createDefaultChatState(),
-    {
-      provider: 'codex',
-      instance: 'default',
-      model: 'gpt-5.4',
-      modelSelection: {
-        entryId: 'gpt-5.4',
-        entryMode: 'explicit',
-      },
-    },
-    new Date('2026-04-28T00:00:00.000Z'),
-  );
-  const channel = {
-    id: 'channel-1',
-    pendingProvider: null,
-    pendingInstance: null,
-    pendingModel: null,
-    pendingModelSelection: null,
-  } as Parameters<typeof resolveOrchestratorExecutionTarget>[1];
-
-  assert.deepEqual(resolveOrchestratorExecutionTarget(state, channel), {
-    provider: 'codex',
-    instance: 'default',
-    model: 'gpt-5.4',
-    modelSelection: {
-      entryId: 'gpt-5.4',
-      entryMode: 'explicit',
-    },
-  });
-});

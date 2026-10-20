@@ -76,7 +76,7 @@ export function createSettingsCatsRegistryActions(
         instance: context.catForm.instance || undefined,
         model: context.catForm.model || undefined,
         modelSelection: context.catForm.modelSelection,
-        makeBoss: context.catForm.makeBoss || undefined,
+        group: context.catForm.makeBoss ? 'admin' : undefined,
         products: context.catForm.products.length > 0 ? context.catForm.products : undefined,
         skillProfile: context.catForm.skillProfile || undefined,
         roles: context.catForm.companion ? [COMPANION_ROLE] : undefined,
@@ -150,10 +150,10 @@ export function createSettingsCatsRegistryActions(
     }
   }
 
-  async function onMakeBossCat(catId: string): Promise<void> {
-    context.onBusy(createCatBusyState('makeBoss', catId));
+  async function onSetBossCat(catId: string, bossCat: boolean): Promise<void> {
+    context.onBusy(createCatBusyState('bossCat', catId));
     try {
-      const result = await updateCatProfile(catId, { makeBoss: true });
+      const result = await updateCatProfile(catId, { group: bossCat ? 'admin' : 'standard' });
       context.onPayloadUpdate(result);
       context.onFeedback(t(messageKeys.sharedSettingsCatsBossUpdated));
     } catch (error) {
@@ -271,7 +271,7 @@ export function createSettingsCatsRegistryActions(
     performCreateCat,
     onDeleteBinding,
     onDeleteCat,
-    onMakeBossCat,
+    onSetBossCat,
     onMcpProfileChange,
     onRenameCat,
     onSkillChange,

@@ -14,7 +14,6 @@ import { WORK_MCP_PROFILE_ID } from '../../../shared/catMcpProfiles.js';
 import { isCompanionCat } from '../../../shared/companionRole.js';
 import { COMPANION_PROFILE_METADATA_KEYS } from '../companion/profileReadModel.js';
 import { buildChoiceResponseBody } from '../shared/messageChoices.js';
-import { ORCHESTRATOR_NAME } from './model/index.js';
 
 /**
  * Owner-curated companion box content for one Cat. Shape-compatible with the
@@ -582,13 +581,6 @@ function formatSharedContext(
     lines.push(`Chat MCP profile: ${channel.mcpProfile}`);
   }
 
-  lines.push(`Global orchestrator provider: ${orchestrator.executionTarget.provider}`);
-  if (orchestrator.executionTarget.instance) {
-    lines.push(`Global orchestrator instance: ${orchestrator.executionTarget.instance}`);
-  }
-  if (orchestrator.executionTarget.model) {
-    lines.push(`Global orchestrator model: ${orchestrator.executionTarget.model}`);
-  }
   const orchestratorSkillProfile = orchestrator.skillProfile?.trim() || null;
   if (orchestratorSkillProfile) {
     lines.push(`Global orchestrator skill profile: ${orchestratorSkillProfile}`);
@@ -622,47 +614,6 @@ function joinPromptSections(sections: Array<string | null | undefined>): string 
   return sections
     .filter((section): section is string => typeof section === 'string' && section.length > 0)
     .join('\n\n');
-}
-
-export function buildOrchestratorPrompt(
-  channel: ChatChannelView,
-  orchestrator: GlobalOrchestratorSummary,
-  sourceMessage: ChatMessage,
-  orchestratorName = ORCHESTRATOR_NAME,
-  routingContext?: PromptRoutingContext,
-): string {
-  const activeParticipantCount = activeParticipants(channel).length;
-  const recentMessages = routingContext?.recentMessages ?? channel.messages;
-  const sourceLabel = sourceMessage.senderKind === 'user'
-    ? 'Latest user message'
-    : 'Latest routed handoff';
-  const transportGuidance = transportInstruction(routingContext?.transport);
-
-  return joinPromptSections([
-    `You are ${orchestratorName}, the visible Boss Cat and chat coordinator for Cats Inc.`,
-    'The system layer has already routed this turn to you. Do not reinterpret target selection.',
-    routingContext?.reason ?? 'System routing selected you as the current turn owner.',
-    routingContext?.sourceParticipantName
-      ? `This handoff came from ${routingContext.sourceParticipantName}.`
-      : 'This turn currently originates from the operator.',
-    'When referring to teammates, mention them with @Name so Chat can route follow-up turns.',
-    activeParticipantCount === 0
-      ? 'There are no other active participants in this chat right now, so answer the user directly instead of delegating.'
-      : 'If another active participant is better positioned, you may mention them to involve them.',
-    `Never address yourself with @${orchestratorName} or @${ORCHESTRATOR_NAME}.`,
-    'Never output internal routing notes, self-instructions, or coordinator scratchpad text.',
-    transportGuidance,
-    'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.',
-    languageInstruction(channel.responseLanguage),
-    `Global system prompt:\n${orchestrator.systemPrompt}`,
-    `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
-    `Coordinator memory checkpoint:\n${formatMemoryCheckpoint(orchestrator.memory)}`,
-    `Room roster:\n${formatParticipantRoster(channel)}`,
-    `Recent messages:\n${formatRecentMessages(recentMessages)}`,
-    `${sourceLabel}:\n${sourceMessage.body}`,
-    'Respond with the next useful contribution for the room.',
-    'If another teammate should continue after you, mention them explicitly with @Name. Otherwise, answer without a handoff mention.',
-  ]);
 }
 
 export function buildBoundedRecentContextInstructions(
@@ -740,24 +691,6 @@ export function buildTargetedChatHandoffPackage(input: {
   };
 }
 
-export function buildOrchestratorRewritePrompt(
-  channel: ChatChannelView,
-  userMessage: ChatMessage,
-  orchestratorName: string,
-  draft: string,
-): string {
-  return joinPromptSections([
-    `You are ${orchestratorName}, rewriting your previous draft into the final reply for the user.`,
-    'Rewrite the draft as a direct user-facing assistant response.',
-    `Do not address yourself with @${orchestratorName} or @${ORCHESTRATOR_NAME}.`,
-    'Do not mention routing, delegation, coordination, or what the user is asking in third person.',
-    'Do not add commentary about internal process. Just give the user the answer.',
-    languageInstruction(channel.responseLanguage),
-    `Latest user message:\n${userMessage.body}`,
-    `Draft to rewrite:\n${draft}`,
-  ]);
-}
-
 export function buildCatPrompt(
   channel: ChatChannelView,
   orchestrator: GlobalOrchestratorSummary,
@@ -765,6 +698,7 @@ export function buildCatPrompt(
   sourceMessage: ChatMessage,
   routingContext?: PromptRoutingContext,
   companionContext?: PromptCompanionContext | null,
+  options: { coordinator?: boolean } = {},
 ): string {
   const roleLabel = cat.roles.length > 0
     ? cat.roles.join(', ')
@@ -788,7 +722,9 @@ export function buildCatPrompt(
     routingContext?.sourceParticipantName
       ? `This handoff came from ${routingContext.sourceParticipantName}.`
       : 'This turn currently originates from the operator.',
-    'Work inside the current chat context and answer as a teammate, not as the orchestrator.',
+    options.coordinator
+      ? 'You coordinate this conversation: when a teammate is better placed to continue, mention them with @Name and Chat routes the next turn to them.'
+      : 'Work inside the current chat context and answer as a teammate. Mentioning a teammate does not route a turn to them.',
     transportGuidance,
     'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.',
     languageInstruction(channel.responseLanguage),
@@ -802,6 +738,8 @@ export function buildCatPrompt(
     `Recent messages:\n${formatRecentMessages(recentMessages)}`,
     `${sourceLabel}:\n${sourceMessage.body}`,
     'Reply with the work product or the next useful observation.',
-    'If another teammate should continue after you, mention them explicitly with @Name. Otherwise, answer without a handoff mention.',
+    options.coordinator
+      ? 'If another teammate should continue after you, mention them explicitly with @Name. Otherwise, answer without a handoff mention.'
+      : null,
   ]);
 }

@@ -145,14 +145,8 @@ export function recordDispatchExecutionInteraction(
           ...(input.execution.transportBindingId
             ? { transportBindingId: input.execution.transportBindingId }
             : {}),
-          targetKind:
-            input.execution.target.participantKind === 'orchestrator'
-              ? 'orchestrator'
-              : 'cat',
-          targetId:
-            input.execution.target.participantKind === 'orchestrator'
-              ? null
-              : input.execution.target.participantId,
+          targetKind: 'cat',
+          targetId: input.execution.target.participantId,
           turnId: input.workflowTurn.id,
           targetStateId: input.execution.targetStateId,
           laneId,

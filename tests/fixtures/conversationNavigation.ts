@@ -17,14 +17,18 @@ export async function createConversationNavigationFixture(root: string, includeC
       originSurface: 'chat',
       topic: `Conversation ${index + 1}`,
       entryKind: 'default',
-      pendingProvider: providers[index],
-      pendingModel: `model-${index + 1}`,
-      pendingInstance: 'cli/native',
-      pendingModelSelection: {
-        entryId: `model-${index + 1}`, entryMode: 'explicit',
-        controls: { [`${providers[index]}.reasoning_effort`]: efforts[index] },
-      },
-      skipBossCatGreeting: true,
+      // Each conversation answers through its own participant's model.
+      temporaryParticipants: [{
+        participantId: `participant-${index + 1}`,
+        name: `Assistant ${index + 1}`,
+        provider: providers[index],
+        model: `model-${index + 1}`,
+        instance: 'cli/native',
+        modelSelection: {
+          entryId: `model-${index + 1}`, entryMode: 'explicit',
+          controls: { [`${providers[index]}.reasoning_effort`]: efforts[index] },
+        },
+      }],
     }, new Date(`2026-09-18T01:00:0${index}.000Z`));
     const id = state.selectedChannelId;
     ids.push(id);
@@ -44,7 +48,6 @@ export async function createConversationNavigationFixture(root: string, includeC
         title: `${entryKind} fixture`, topic: '', originSurface: 'chat', entryKind,
         roomMode: entryKind === 'direct' ? 'direct_message' : 'chat_channel',
         participantCatIds: entryKind === 'direct' ? [catIds[0]] : catIds,
-        skipBossCatGreeting: true,
       });
       const id = state.selectedChannelId;
       state.channels.find((channel) => channel.id === id)!.messages.push({

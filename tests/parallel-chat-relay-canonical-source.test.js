@@ -13,6 +13,7 @@ import {
   TEST_ADMIN_CREDENTIALS,
   createTestAuthConfig,
   installAuthenticatedFetch,
+  roomAudience,
   waitForCondition,
 } from './testUtils.js';
 
@@ -186,6 +187,7 @@ test('parallel chat relay rebuilds a missing source reply from canonical history
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         body: 'Seed the source reply before relay.',
+        messageMetadata: { recipientParticipantIds: roomAudience(await chatStore.read(), sourceChannelId) },
       }),
     });
     assert.equal(sendResponse.status, 200);
@@ -269,7 +271,7 @@ test('parallel chat relay prefers full canonical assistant turns over surviving 
     };
   };
 
-  await withServer(runtimeClient, async (baseUrl) => {
+  await withServer(runtimeClient, async (baseUrl, chatStore) => {
     const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -303,6 +305,7 @@ test('parallel chat relay prefers full canonical assistant turns over surviving 
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         body: 'Seed the source reply before relay.',
+        messageMetadata: { recipientParticipantIds: roomAudience(await chatStore.read(), sourceChannelId) },
       }),
     });
     assert.equal(sendResponse.status, 200);

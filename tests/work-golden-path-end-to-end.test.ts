@@ -79,10 +79,11 @@ const READINESS = evaluateTransportWorkReadiness({
   backgroundServiceAvailable: true,
 });
 
+// A Telegram chat is its bound cat's DM, so the bot's cat is in the room state.
 const ROOM_STATE = {
   selectedChannelId: 'room-1',
   channels: [{ id: 'room-1' }],
-  cats: [],
+  cats: [{ id: 'cat-1', name: 'E2E Cat' }],
 };
 
 const BINDING: BotBindingRecord = {
@@ -90,8 +91,8 @@ const BINDING: BotBindingRecord = {
   platform: 'telegram',
   botName: 'e2e_bot',
   orchestratorActorId: 'actor-orchestrator',
-  catActorId: 'actor-cat',
-  bossCatActorId: 'actor-cat',
+  catActorId: 'actor-cat-cat-1',
+  bossCatActorId: 'actor-cat-cat-1',
   botToken: 'token-e2e',
   webhookSecret: null,
   inboundMode: 'polling',
@@ -211,7 +212,7 @@ function createHarness(options: {
   const context: TelegramRelayContext = {
     bossCatId: 'cat-1',
     bossCatName: 'E2E Cat',
-    bossCatActorId: 'actor-cat',
+    bossCatActorId: 'actor-cat-cat-1',
     botBindings: [BINDING],
     defaultBotBinding: BINDING,
     selectedBotBinding: BINDING,

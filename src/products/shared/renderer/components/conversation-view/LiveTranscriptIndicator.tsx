@@ -36,7 +36,6 @@ export function LiveTranscriptIndicator<Participant>(
       mode={segments.length > 1 ? concurrentPresentationMode : 'inline_stack'}
       segments={segments as LiveIndicatorSegmentState[]}
       cats={props.cats}
-      bossCatId={props.bossCatId}
       selectedChannelId={props.selectedChannelId}
       disabledMentionNames={props.disabledMentionNames}
       liveSpeakerParticipant={props.liveSpeakerParticipant}

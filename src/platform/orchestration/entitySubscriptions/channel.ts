@@ -108,23 +108,6 @@ function collectChannelSessions(
 ): Map<string, ChannelSubscriptionSession> {
   const sessions = new Map<string, ChannelSubscriptionSession>();
   const channel = state.selectedChannel;
-  const orchestratorSessionId = channel.orchestratorLease.sessionId?.trim() || null;
-  if (orchestratorSessionId) {
-    sessions.set('orchestrator', {
-      participantId: 'orchestrator',
-      participantKind: 'orchestrator',
-      catId: null,
-      participantName: 'Orchestrator',
-      sessionId: orchestratorSessionId,
-      laneId: channel.orchestratorLease.laneId ?? null,
-      status: channel.orchestratorLease.status,
-      provider: channel.orchestratorLease.provider ?? null,
-      model: channel.orchestratorLease.model ?? null,
-      startedAt: channel.orchestratorLease.startedAt ?? null,
-      lastUsedAt: channel.orchestratorLease.lastUsedAt ?? null,
-    });
-  }
-
   for (const participant of channel.assignedParticipants ?? channel.assignedCats) {
     const sessionId = participant.execution.lease.sessionId?.trim() || null;
     if (!sessionId) {

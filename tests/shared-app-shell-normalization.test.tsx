@@ -27,7 +27,6 @@ function createLegacyPayload(): MutablePayload {
         instance: null,
         model: 'claude-sonnet-4-6',
       },
-      bossCatId: 'cat-boss',
       cats: [
         {
           id: 'cat-nova',
@@ -168,7 +167,7 @@ test('resolveVisibleChatChannel picks the direct-lane channel when the chats rou
   assert.equal(resolveVisibleChatChannelId(null, directLaneChannel), 'channel-direct');
 });
 
-test('WorkspaceProductApp gates default and participant-chat chatSurfaceProps off visibleChannel so the direct-lane route (/chat/dm/:catId) keeps direct-lane controls', () => {
+test('WorkspaceProductApp gates participant-chat chatSurfaceProps off visibleChannel so the direct-lane route (/chat/dm/:catId) keeps direct-lane controls', () => {
   const source = readFileSync(
     resolveProjectPath(import.meta.url, 'src/products/shared/renderer/WorkspaceProductApp.tsx'),
     'utf8',
@@ -181,21 +180,6 @@ test('WorkspaceProductApp gates default and participant-chat chatSurfaceProps of
   );
   const chatSurfaceRegion = source.slice(chatSurfaceIndex, chatSurfaceIndex + 4000);
 
-  assert.match(
-    chatSurfaceRegion,
-    /onStartFresh:\s*\n?\s*visibleChatChannelId\s*&&\s*visibleChannel\s*&&\s*isDefaultChatChannel\(visibleChannel\)/u,
-    'onStartFresh should gate on visibleChannel so direct-lane routes inherit the default control',
-  );
-  assert.match(
-    chatSurfaceRegion,
-    /selectedExecutionTarget:\s*\n?\s*visibleChannel\s*&&\s*isDefaultChatChannel\(visibleChannel\)/u,
-    'selectedExecutionTarget should gate on visibleChannel',
-  );
-  assert.match(
-    chatSurfaceRegion,
-    /onExecutionTargetChange:\s*\n?\s*visibleChannel\s*&&\s*isDefaultChatChannel\(visibleChannel\)/u,
-    'onExecutionTargetChange should gate on visibleChannel',
-  );
   assert.match(
     chatSurfaceRegion,
     /onToggleActiveWorkflowShape:\s*\n?\s*visibleChannel\s*&&\s*supportsParticipantAudienceSelection\(visibleChannel\)/u,

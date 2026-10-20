@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { shouldBridgeTelegramProductIntentCommand } from '../src/server/telegramProductIntentCommands.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
+import { resolveChannelParticipantAssignments } from '../src/products/chat/shared/channelParticipants.ts';
 import {
   appendMessage,
   createChannel,
@@ -58,6 +59,13 @@ import {
 } from '../src/core/model/index.ts';
 import { buildWorkWorkItemListProjection } from '../src/products/work/api/projection.ts';
 import { buildTelegramImplicitProductIntentReplyMarkup } from '../src/platform/transports/telegram/bridge.ts';
+
+/** The participants a room message names as its audience: everyone active. */
+function activeParticipantIds(state: ChatState, channelId: string): string[] {
+  return resolveChannelParticipantAssignments(requireChannel(state, channelId))
+    .filter((assignment) => assignment.status === 'active')
+    .map((assignment) => assignment.participantId);
+}
 
 function runtimeStub(onClose?: () => void): RuntimeClient {
   return {
@@ -1102,6 +1110,7 @@ test('beginChannelMessageDispatch records product intent from single-Cat Code ch
     {
       body: '/code add parser coverage',
       senderName: 'Kenneth',
+      messageMetadata: { recipientParticipantIds: activeParticipantIds(state, channelId) },
     },
     runtimeStub(),
     new Date('2026-05-06T08:01:00.000Z'),
@@ -1182,6 +1191,7 @@ test('beginChannelMessageDispatch records product intent from team Work channels
     {
       body: '/work plan the release checklist',
       senderName: 'Kenneth',
+      messageMetadata: { recipientParticipantIds: activeParticipantIds(state, channelId) },
     },
     runtimeStub(),
     new Date('2026-05-06T08:01:00.000Z'),
@@ -1358,6 +1368,7 @@ test('beginChannelMessageDispatch records product intent from parallel Code bran
     {
       body: '/code compare parser branches',
       senderName: 'Kenneth',
+      messageMetadata: { recipientParticipantIds: activeParticipantIds(state, channelId) },
     },
     runtimeStub(),
     new Date('2026-05-06T08:01:00.000Z'),
@@ -1455,6 +1466,7 @@ test('beginChannelMessageDispatch does not carry canonical product intent refs a
     {
       body: '/code compare parser branches',
       senderName: 'Kenneth',
+      messageMetadata: { recipientParticipantIds: activeParticipantIds(state, channelId) },
     },
     runtimeStub(),
     new Date('2026-05-06T08:01:00.000Z'),
@@ -1515,6 +1527,7 @@ test('beginChannelMessageDispatch does not carry canonical product intent refs a
     {
       body: 'Continue on this branch only.',
       senderName: 'Kenneth',
+      messageMetadata: { recipientParticipantIds: activeParticipantIds(state, channelId) },
     },
     runtimeStub(),
     new Date('2026-05-06T08:02:00.000Z'),
@@ -1986,7 +1999,7 @@ test('routeChannelMessage records Boss execution preparation proposals without T
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const store = new MemoryChatStore(state);
@@ -2120,7 +2133,7 @@ test('Boss execution preparation owner confirmation creates pending approval Tas
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const store = new MemoryChatStore(state);

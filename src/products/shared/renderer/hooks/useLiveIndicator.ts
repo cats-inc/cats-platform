@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildChatLaneId,
 } from '../../../../shared/chatCoreIds.js';
-import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
 import {
   applyLiveIndicatorEvent,
   createLiveIndicatorSegmentState,
@@ -28,7 +27,6 @@ import {
 } from '../../../../shared/workspaceBusy.js';
 import type { RoomRoutingMode } from '../../../../shared/roomRouting.js';
 import { resolveChannelCanonicalIdentity } from '../../../chat/shared/channelCanonicalIdentity.js';
-import { isProviderDefaultChatChannel } from '../../../chat/shared/channelTopology.js';
 import { isOptimisticDraftChannelId } from '../../channelPaths.js';
 
 export type {
@@ -108,8 +106,6 @@ export interface LiveIndicatorSelectedChannelLike {
       } | null;
     };
   };
-  pendingProvider: string | null;
-  pendingInstance: string | null;
 }
 
 export interface LiveIndicatorStreamDecisionInput {
@@ -151,25 +147,6 @@ export function shouldConnectLiveIndicatorStream(
   }
 
   return !isOptimisticDraftChannelId(channelId);
-}
-
-export function resolveLiveIndicatorSpeakerLabel(
-  selectedChannel: LiveIndicatorSelectedChannelLike | null,
-): string | null {
-  const pendingProvider = selectedChannel?.pendingProvider?.trim() || null;
-  if (!selectedChannel || selectedChannel.roomRouting.defaultRecipientId || !pendingProvider) {
-    return null;
-  }
-
-  if (!isProviderDefaultChatChannel(selectedChannel)) {
-    return null;
-  }
-
-  return buildExecutionLabel(
-    pendingProvider,
-    selectedChannel.pendingInstance,
-    null,
-  );
 }
 
 export function resolveLiveIndicatorConversationId(
@@ -500,10 +477,7 @@ export function resolveWaitingIndicatorStateTransition(input: {
   }
 
   if (input.previous.phase === 'sealed') {
-    if (
-      doesWaitingIndicatorLogicalIdentityMatch(input.previous, input.waitingState)
-      && !shouldAllowSameSpeakerWaitingFollowup(input.selectedChannel)
-    ) {
+    if (doesWaitingIndicatorLogicalIdentityMatch(input.previous, input.waitingState)) {
       return input.previous;
     }
     return mergeWaitingIndicatorTimelineState(input.previous, input.waitingState);
@@ -719,12 +693,6 @@ function resolveLogicalSegmentParticipantId(
   segment: Pick<LiveIndicatorState | LiveIndicatorSegmentState, 'identityParticipantId' | 'participantId'>,
 ): string | null {
   return segment.identityParticipantId ?? segment.participantId ?? null;
-}
-
-function shouldAllowSameSpeakerWaitingFollowup(
-  selectedChannel: LiveIndicatorSelectedChannelLike | null,
-): boolean {
-  return selectedChannel ? isProviderDefaultChatChannel(selectedChannel) : false;
 }
 
 function shouldAdvanceWaitingSegmentIndex(
@@ -958,10 +926,7 @@ export function shouldPromoteStreamingBubbleToWaitingSpeaker(
     return false;
   }
 
-  if (
-    doesWaitingIndicatorLogicalIdentityMatch(previous, waitingState)
-    && !shouldAllowSameSpeakerWaitingFollowup(selectedChannel)
-  ) {
+  if (doesWaitingIndicatorLogicalIdentityMatch(previous, waitingState)) {
     return false;
   }
 
@@ -993,10 +958,7 @@ export function shouldPromoteSealedBubbleToWaitingSpeaker(
     return false;
   }
 
-  if (
-    doesWaitingIndicatorLogicalIdentityMatch(previous, waitingState)
-    && !shouldAllowSameSpeakerWaitingFollowup(selectedChannel)
-  ) {
+  if (doesWaitingIndicatorLogicalIdentityMatch(previous, waitingState)) {
     return false;
   }
 
@@ -1379,9 +1341,6 @@ export function useLiveIndicator<
   const defaultRecipientCatId = selectedChannel?.roomRouting.defaultRecipientId ?? null;
   const routingStatus = resolveRoutingStatus?.(selectedChannel) ?? null;
   const activeTurn = selectedChannel?.roomRouting.workflow.activeTurn ?? null;
-  const speakerLabel = defaultRecipientCatId
-    ? null
-    : resolveLiveIndicatorSpeakerLabel(selectedChannel);
   const waitingSpeakerState = useMemo(
     () => resolveWaitingSpeakerState(selectedChannel),
     [activeTurn, selectedChannel?.messages],
@@ -1410,7 +1369,8 @@ export function useLiveIndicator<
       speakerLabel: waitingSpeakerState.speakerLabel,
       revealIdentity: waitingSpeakerState.revealIdentity,
       defaultRecipientCatId,
-      fallbackSpeakerLabel: speakerLabel,
+      // Every speaker is a participant, so a waiting turn names it once it is known.
+      fallbackSpeakerLabel: null,
       sessionStartedAt: waitingSessionState.sessionStartedAt,
       requiresSessionStartConfirmation: waitingSessionState.requiresSessionStartConfirmation,
     }),
@@ -1418,7 +1378,6 @@ export function useLiveIndicator<
       waitingSpeakerState.sourceMessageId,
       waitingSpeakerState.laneId,
       defaultRecipientCatId,
-      speakerLabel,
       waitingSpeakerState.catId,
       waitingSpeakerState.targetStateId,
       waitingSpeakerState.participantId,

@@ -5,7 +5,7 @@ import { createDefaultChatState } from '../build/server/products/chat/state/defa
 import {
   createCat,
   createChannel,
-  setBossCat,
+  setCatGroup,
   updateCatProducts,
 } from '../build/server/products/chat/state/model/index.js';
 import {
@@ -51,12 +51,12 @@ test('updateCatProducts requires at least one product and boss promotion restore
 
   const legacyState = structuredClone(state);
   legacyState.cats[0].products = ['work'];
-  const nextState = setBossCat(legacyState, catId);
+  const nextState = setCatGroup(legacyState, catId, 'admin');
 
   assert.deepEqual(nextState.cats[0].products, ['work', 'chat']);
 });
 
-test('removing chat from cat products detaches active chat participation and clears direct-lane routing', () => {
+test('removing chat from cat products detaches the cat and turns its lane into a conversation with the remembered default', () => {
   const now = new Date('2026-03-26T00:00:00.000Z');
   let state = createDefaultChatState();
   state.capabilities.availableSurfaces = ['chat', 'work'];
@@ -74,7 +74,6 @@ test('removing chat from cat products detaches active chat participation and cle
     roomMode: 'direct_message',
     participantCatIds: [catId],
     defaultRecipientId: catId,
-    skipBossCatGreeting: true,
   }, now);
 
   state = updateCatProducts(state, catId, ['work']);
@@ -84,5 +83,8 @@ test('removing chat from cat products detaches active chat participation and cle
   assert.equal(assignment?.status, 'removed');
   assert.equal(assignment?.execution.lease.status, 'removed');
   assert.equal(state.channels[0].roomRouting?.mode, 'chat_channel');
-  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, null);
+  const seeded = state.channels[0].participantAssignments.filter((candidate) => candidate.status === 'active');
+  assert.equal(seeded.length, 1);
+  assert.equal(seeded[0].sourceKind, 'adhoc');
+  assert.equal(state.channels[0].coordinatorParticipantId, seeded[0].participantId);
 });

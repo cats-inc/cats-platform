@@ -9,7 +9,7 @@ import { applyLocalKnowledge } from '../../../platform/knowledge/localKnowledge.
 import { parseMessageLocale } from '../../../shared/i18n/index.js';
 import type { ChatChannelState, ChatChannelView } from '../api/contracts.js';
 import { activeAssignedParticipants } from '../shared/channelParticipants.js';
-import { isDirectLaneChannel, isProviderDefaultChatChannel } from '../shared/channelTopology.js';
+import { isDirectLaneChannel } from '../shared/channelTopology.js';
 
 export const ORCHESTRATOR_KNOWLEDGE_FILE = 'orchestrator-knowledge.json';
 export const ORCHESTRATOR_KNOWLEDGE_CAPABILITIES = ['orchestrator-context-v1'] as const;
@@ -19,7 +19,7 @@ const CURRENT_ROOM_HANDOFF = { id: 'chat.current-room.handoff', version: '1.0' }
 export function isOrchestratorKnowledgeChannel(channel: ChatChannelState | ChatChannelView): boolean {
   // Work/Code and provider-default Chat also reuse this internal actor slot.
   // Their product/assistant instructions remain owned by those consumers.
-  return channel.originSurface === 'chat' && !isProviderDefaultChatChannel(channel);
+  return channel.originSurface === 'chat';
 }
 
 export async function loadOrchestratorKnowledge(input: {
@@ -41,7 +41,9 @@ export async function loadOrchestratorKnowledge(input: {
   }
   if (topics.includes('collaboration') || /@|ask .*cat|請.*貓|交棒/iu.test(goal)) topics.push('handoff');
   if (/fail|error|blocked|unavailable|stuck|retry|失敗|錯誤|卡住|無法|重試/iu.test(goal)) topics.push('recovery');
-  const participants = activeAssignedParticipants(input.channel);
+  // The teammates the coordinator can hand off to: everyone but itself.
+  const participants = activeAssignedParticipants(input.channel)
+    .filter((participant) => participant.participantId !== input.channel.coordinatorParticipantId);
   const operations = [...(input.operations ?? [])];
   if (input.surface === 'chat-visible' && !isDirectLaneChannel(input.channel) && participants.length > 0) {
     operations.push(CURRENT_ROOM_HANDOFF);

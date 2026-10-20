@@ -104,7 +104,6 @@ export function CompareCardsLayout<Participant>(
 ): JSX.Element {
   const {
     segments,
-    bossCatId,
     buildParticipantAvatarClassName,
     buildParticipantAvatarStyle,
     resolveParticipantAvatarUrl,
@@ -188,7 +187,6 @@ export function CompareCardsLayout<Participant>(
                     segmentParticipantCat={presentation.segmentParticipantCat}
                     speakerCat={presentation.speakerCat}
                     speakerLabel={presentation.speakerLabel}
-                    bossCatId={bossCatId}
                     buildParticipantAvatarClassName={buildParticipantAvatarClassName}
                     buildParticipantAvatarStyle={buildParticipantAvatarStyle}
                     resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}

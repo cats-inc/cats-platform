@@ -12,19 +12,6 @@ import {
 } from './shared.js';
 import { resolveParticipantExecutionAssignments } from '../../shared/channelParticipants.js';
 
-export function setChannelOrchestratorLease(
-  state: ChatState,
-  channelId: string,
-  leaseUpdate: Partial<ParticipantExecutionLease> & { status?: ParticipantSessionStatus },
-  now: Date = new Date(),
-): ChatState {
-  const nextState = cloneState(state);
-  const channel = requireChannel(nextState, channelId);
-  channel.orchestratorLease = updateExecutionLease(channel.orchestratorLease, leaseUpdate);
-  channel.updatedAt = isoAt(now);
-  return nextState;
-}
-
 export function setChannelCatLease(
   state: ChatState,
   channelId: string,

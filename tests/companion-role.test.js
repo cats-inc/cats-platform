@@ -77,7 +77,6 @@ test('channel cat views project the Cat companion role over assignment snapshots
       title: 'Review room',
       topic: 'Assignment roles are channel-local.',
       originSurface: 'chat',
-      skipBossCatGreeting: true,
       pendingProvider: 'claude',
     },
     now,

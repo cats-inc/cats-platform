@@ -6,6 +6,7 @@ import { collaborationExecutionDescriptors, collaborationExecutionManifests,
   resolveCollaborationOwnerChoice, REQUEST_COLLABORATION_ROLE } from '../collaborationExecutionSurface.js';
 import { isOrchestratorKnowledgeChannel } from '../orchestratorKnowledge.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
+import { isAdminCoordinator } from '../coordinator.js';
 import { isCompanionCat } from '../../../../shared/companionRole.js';
 import {
   COMPANION_CONTENT_POST_CREATE_TOOL,
@@ -76,7 +77,6 @@ import {
 import {
   resolveChoiceResponseTarget,
   resolveExecutionMetadataForTarget,
-  resolveOrchestratorExecutionTarget,
   type RuntimeTransportContext,
 } from '../runtimeTargeting.js';
 import {
@@ -204,13 +204,13 @@ function resolveDeterministicPlanInitialResolution(
   }
 
   return {
-    targets: plan.routing.initialTargets.map((target) => ({
+    targets: plan.routing.initialTargets.flatMap((target) => target.participantKind === 'cat' ? [{
       participantKind: target.participantKind,
       participantId: target.participantId,
       participantName: target.participantName,
       laneId: target.laneId,
       sessionId: target.sessionId,
-    })),
+    }] : []),
     unresolved: [...plan.routing.unresolvedMentions],
     mentionNames: [...plan.routing.mentionNames],
     trigger: plan.routing.trigger,
@@ -261,20 +261,36 @@ export function prepareDispatchTurnForUserMessage(
         explicitTrigger: 'explicit_mention',
       });
   const currentTurnRecipientIds = choiceResponseTarget ? [] : readRecipientParticipantIds(nextState, payload);
-  if (
-    !choiceResponseTarget
-    && initialResolution.trigger === 'room_default'
-    && currentTurnRecipientIds.length > 0
-  ) {
-    const currentTurnTargets = resolveCurrentTurnRecipientTargets(
+  if (!choiceResponseTarget && !deterministicPlanResolution && currentTurnRecipientIds.length > 0) {
+    // The audience is the participants the message names, then any it @mentions.
+    const recipientTargets = resolveCurrentTurnRecipientTargets(
       nextState,
       channelId,
       currentTurnRecipientIds,
     );
-    if (currentTurnTargets.length > 0) {
+    if (recipientTargets.length > 0) {
+      const mentionedTargets = initialResolution.trigger === 'explicit_mention'
+        ? initialResolution.targets.filter((target) =>
+          !recipientTargets.some((recipient) => recipient.participantId === target.participantId))
+        : [];
+      const audienceTargets = detachRoutingTargetsRuntimeAttachments([
+        ...recipientTargets,
+        ...mentionedTargets,
+      ]);
       initialResolution = {
         ...initialResolution,
-        targets: detachRoutingTargetsRuntimeAttachments(currentTurnTargets),
+        targets: audienceTargets,
+        resolution: mentionedTargets.length > 0
+          ? initialResolution.resolution
+          : {
+              routingMode: 'room_default',
+              selectionKind: 'default_target',
+              defaultTarget: toParticipantRef(audienceTargets[0]!),
+              defaultTargetReason: 'default_recipient',
+              fallbackTarget: null,
+              blockedReason: null,
+              note: 'The message named its audience.',
+            },
       };
     }
   }
@@ -553,13 +569,17 @@ function buildProviderAgentObservationForTurn(input: {
   transportBindingId?: string | null;
 }): ProviderAgentBoundedObservation | null {
   const channel = requireChannel(input.state, input.channelId);
-  const singleTarget = input.initialResolution.targets.length === 1
-    ? input.initialResolution.targets[0]!
+  // One target decides with its own model; a group turn with its coordinator's, else its first target's.
+  const coordinatorTarget = input.initialResolution.targets.length > 1
+    ? input.initialResolution.targets.find((target) =>
+      target.participantId === channel.coordinatorParticipantId) ?? null
     : null;
-  const singleCatTarget = singleTarget?.participantKind === 'cat' ? singleTarget : null;
-  const executionTarget = singleCatTarget
-    ? resolveExecutionMetadataForTarget(input.state, input.channelId, singleCatTarget)
-    : resolveOrchestratorExecutionTarget(input.state, channel);
+  const deciderTarget = coordinatorTarget ?? input.initialResolution.targets[0] ?? null;
+  if (!deciderTarget) {
+    return null;
+  }
+  const singleCatTarget = input.initialResolution.targets.length === 1 ? deciderTarget : null;
+  const executionTarget = resolveExecutionMetadataForTarget(input.state, input.channelId, deciderTarget);
   const capabilityProfile = resolveProviderCapabilityProfile(
     {
       provider: executionTarget.provider ?? 'unknown',
@@ -588,9 +608,7 @@ function buildProviderAgentObservationForTurn(input: {
   if (policyDecision.status !== 'applied') {
     return null;
   }
-  const providerAgentActorRef = singleCatTarget
-    ? `cat:${singleCatTarget.participantId}`
-    : 'orchestrator';
+  const providerAgentActorRef = `cat:${deciderTarget.participantId}`;
   const exposeCatProductIntentProposalTool = shouldExposeCatProductIntentProposalTool({
     channel,
     core: input.core,
@@ -617,13 +635,13 @@ function buildProviderAgentObservationForTurn(input: {
   });
   const workExecutionPreparationPhase = resolveWorkExecutionPreparationPhase({
     rawText: input.payload.body,
-    addressedBossCat: isSingleBossCatTarget(input.state, singleCatTarget),
+    addressedBossCat: isSingleBossCatTarget(input.state, input.channelId, singleCatTarget),
     activeWorkItemIds: readActiveWorkItemIdsFromMessage(input.userMessage),
     visibleWorkItemIds: visibleExecutionPreparationWorkItemIds,
   });
   const workExecutionPreparationToolObservation = createWorkExecutionPreparationToolObservation({
     enabled: workExecutionPreparationPhase.kind === 'matched'
-      && isSingleBossCatTarget(input.state, singleCatTarget)
+      && isSingleBossCatTarget(input.state, input.channelId, singleCatTarget)
       && Boolean(input.core),
     policy: policyDecision.result.policy,
   });
@@ -900,10 +918,10 @@ function buildProviderAgentObservationForTurn(input: {
     observationPolicy = companionPostPolicyDecision.result.policy;
   }
 
+  // Collaboration acts beyond the conversation: its Boss Cat coordinator alone may use it.
   const collaborationTools = input.enableCollaborationReads === true
-    && providerAgentActorRef === 'orchestrator'
-    && input.initialResolution.targets.length === 1
-    && input.initialResolution.targets[0]?.participantKind === 'orchestrator'
+    && singleCatTarget !== null
+    && isAdminCoordinator(input.state, input.channelId, singleCatTarget.participantId)
     && isOrchestratorKnowledgeChannel(channel) && !isDirectLaneChannel(channel)
     && (!input.transport || input.transport === 'web' || input.transport === 'mobile')
     && !input.payload.body.trimStart().startsWith('/')
@@ -1214,15 +1232,16 @@ function resolveWorkToolCapabilityProfile(
   return capabilityProfileKind;
 }
 
+/** Boss Cat work: the turn's only target coordinates the conversation and is an admin cat. */
 function isSingleBossCatTarget(
   state: ChatState,
+  channelId: string,
   singleCatTarget: TargetResolution['targets'][number] | null,
 ): boolean {
   return Boolean(
-    state.bossCatId
-    && singleCatTarget
+    singleCatTarget
     && singleCatTarget.participantKind === 'cat'
-    && singleCatTarget.participantId === state.bossCatId,
+    && isAdminCoordinator(state, channelId, singleCatTarget.participantId),
   );
 }
 

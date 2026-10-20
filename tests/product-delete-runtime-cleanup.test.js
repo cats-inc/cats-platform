@@ -13,10 +13,14 @@ import {
   createChannel,
   createParallelChatGroup,
   setChannelCatLease,
-  setChannelOrchestratorLease,
   setChannelParticipantLease,
 } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+
+/** The participant a conversation starts with; it coordinates the room. */
+function firstParticipantId(state, channelId) {
+  return state.channels.find((channel) => channel.id === channelId).participantAssignments[0].participantId;
+}
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -382,13 +386,13 @@ test('DELETE /api/concurrent-groups/:id deletes member chat runtime sessions by 
   }, now);
   const groupId = state.parallelChatGroups[0].id;
   const [firstChannelId, secondChannelId] = state.parallelChatGroups[0].memberChannelIds;
-  state = setChannelOrchestratorLease(state, firstChannelId, {
+  state = setChannelParticipantLease(state, firstChannelId, firstParticipantId(state, firstChannelId), {
     status: 'ready',
     sessionId: 'session-parallel-1',
     provider: 'claude',
     model: 'claude-default',
   }, now);
-  state = setChannelOrchestratorLease(state, secondChannelId, {
+  state = setChannelParticipantLease(state, secondChannelId, firstParticipantId(state, secondChannelId), {
     status: 'ready',
     sessionId: 'session-parallel-2',
     provider: 'codex',

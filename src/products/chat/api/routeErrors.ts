@@ -1,5 +1,6 @@
 import { sendJson } from '../../../shared/http.js';
 import { RuntimeSessionPolicyError } from '../../../shared/runtimeSessionPolicy.js';
+import { LAST_PARTICIPANT_ERROR } from '../state/model/index.js';
 import {
   CLIENT_MESSAGE_ID_MAX_LENGTH,
   isClientMessageIdTooLongError,
@@ -106,6 +107,14 @@ export function handleRestError(
   }
   if (message.startsWith('Bot binding not found:')) {
     sendRestError(context, 404, 'bot_binding_not_found', message);
+    return;
+  }
+  if (message.startsWith('Channel participant not found:')) {
+    sendRestError(context, 404, 'participant_not_found', message);
+    return;
+  }
+  if (message === LAST_PARTICIPANT_ERROR) {
+    sendRestError(context, 409, 'last_participant', message);
     return;
   }
 

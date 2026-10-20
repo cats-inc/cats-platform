@@ -104,10 +104,10 @@ function createPayload(
       id: 'chat',
       name: 'Cats Chat',
       selectedChannelId: '',
-      bossCatId: 'boss-cat',
       cats: [
         {
           id: 'boss-cat',
+          group: 'admin',
           name: 'Boss Cat',
           roles: [],
           skillProfile: null,
@@ -144,6 +144,7 @@ function createPayload(
         updatedAt: '2026-04-07T00:00:00.000Z',
       },
       newChatDefaults: {
+        catId: null,
         provider: 'claude',
         instance: null,
         model: 'claude-sonnet-4',
@@ -157,7 +158,6 @@ function createPayload(
         transcriptExport: true,
         participantManagement: 'basic',
         runtimeSessions: true,
-        maxBossCats: 1,
         maxCats: 8,
         maxChatParticipants: 5,
         maxAudienceParticipants: 3,

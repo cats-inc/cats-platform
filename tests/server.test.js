@@ -16,7 +16,6 @@ import {
   createChannel as createModelChannel,
   requireChannel,
   setChannelCatLease,
-  setChannelOrchestratorLease,
 } from '../build/server/products/chat/state/model/index.js';
 import { beginChannelMessageDispatch } from '../build/server/products/chat/state/runtimeActions.js';
 import {
@@ -51,6 +50,7 @@ import {
   createTestAuthConfig,
   installAuthenticatedFetch,
   waitForCondition,
+  withRoomAudience,
 } from './testUtils.js';
 
 const baseConfig = {
@@ -800,7 +800,6 @@ test('GET /api/channels/:id/stream closes direct-lane streams that have no attac
       title: 'Activation wake lane',
       topic: 'Wake the stream waiter from the activation route.',
       roomMode: 'direct_message',
-      skipBossCatGreeting: true,
       defaultRecipientId: catId,
     },
     seededAt,
@@ -1124,7 +1123,6 @@ test('POST /api/channels/:id/messages publishes room updates while background se
         topic: 'Broadcast intermediate sequential dispatch persistence.',
         originSurface: 'chat',
         entryKind: 'group',
-        skipBossCatGreeting: true,
         temporaryParticipants: [
           {
             participantId: 'participant-claude',
@@ -1232,7 +1230,6 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
     {
       title: 'Sequential live handoff',
       topic: 'Move the live stream to the next room speaker.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1579,7 +1576,6 @@ test('GET /api/channels/:id/stream reattaches a reused warm session for a new se
     {
       title: 'Sequential warm-session reuse',
       topic: 'Reuse one ready session across sequential lane targets.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -1899,7 +1895,6 @@ test('GET /api/channels/:id/stream can reattach the same lane session after a se
     {
       title: 'Same lane same session boundary',
       topic: 'Allow the same lane session to reattach after a streamed segment completes.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2096,7 +2091,6 @@ test('GET /api/channels/:id/stream reattaches a replacement session for the same
     {
       title: 'Same lane session recovery',
       topic: 'Reattach a new runtime session without changing the active lane.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2315,7 +2309,6 @@ test('GET /api/channels/:id/stream multiplexes concurrent ready targets in one S
     {
       title: 'Concurrent live room',
       topic: 'Stream all concurrent targets through one SSE connection.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2645,7 +2638,6 @@ test('GET /api/channels/:id/stream gates concurrent text until all live targets 
     {
       title: 'Concurrent barrier room',
       topic: 'Hold text until every concurrent lane is session-ready.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -2982,7 +2974,6 @@ test('GET /api/channels/:id/stream keeps concurrent text buffered until every re
     {
       title: 'Concurrent text barrier room',
       topic: 'Hold text until every ready concurrent lane has emitted at least one renderable event.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -3335,7 +3326,6 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
     {
       title: 'Sequential live handoff gap',
       topic: 'Keep the stream attached while the next target is still being written.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -3683,45 +3673,13 @@ test('GET /api/channels/:id/stream keeps direct lanes pinned to the direct recip
       roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
   const channelId = state.channels[0].id;
   state.channels[0].channelKind = 'direct_message';
   state.channels[0].roomRouting.mode = 'chat_channel';
-  state = setChannelOrchestratorLease(
-    state,
-    channelId,
-    {
-      sessionId: 'session-orchestrator-fallback',
-      status: 'ready',
-      startedAt: seededAt.toISOString(),
-      lastUsedAt: seededAt.toISOString(),
-    },
-    seededAt,
-  );
   await chatStore.write(state);
-
-  runtime.setObservedSession('session-orchestrator-fallback', {
-    session: {
-      id: 'session-orchestrator-fallback',
-    },
-    observePath: '/sessions/session-orchestrator-fallback/observe',
-    stream: {
-      path: '/sessions/session-orchestrator-fallback/stream',
-      available: true,
-      events: [
-        {
-          event: 'progress',
-          data: {
-            type: 'progress',
-            text: 'This should never be streamed for a direct lane.',
-          },
-        },
-      ],
-    },
-  });
 
   await withServer(runtime, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/channels/${channelId}/stream`);
@@ -3762,7 +3720,6 @@ test('GET /api/channels/:id/stream exposes the direct-lane lease laneId when no 
       roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -4153,7 +4110,6 @@ test('GET /api/app-shell repairs an orphaned completed room turn before renderin
     {
       title: 'Corrupted room route',
       topic: 'Repair orphaned active turn',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -4161,7 +4117,7 @@ test('GET /api/app-shell repairs an orphaned completed room turn before renderin
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please repair me' },
+    withRoomAudience(state, channelId, { body: 'Please repair me' }),
     runtime,
     seededAt,
   );
@@ -4244,7 +4200,6 @@ test('GET /api/app-shell does not finalize an active sequential room turn while 
     {
       title: 'Sequential turn still active',
       topic: 'Do not clear the active turn before later speakers run.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -4252,7 +4207,7 @@ test('GET /api/app-shell does not finalize an active sequential room turn while 
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please hand this off in order.' },
+    withRoomAudience(state, channelId, { body: 'Please hand this off in order.' }),
     runtime,
     seededAt,
   );
@@ -5384,7 +5339,6 @@ test('GET /api/app-shell does not finalize a sequential turn before the next tar
     {
       title: 'Sequential target gap still active',
       topic: 'Keep the turn alive while the next speaker target is still being written.',
-      skipBossCatGreeting: true,
     },
     seededAt,
   );
@@ -5392,7 +5346,7 @@ test('GET /api/app-shell does not finalize a sequential turn before the next tar
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please answer in order, but leave a short target gap.' },
+    withRoomAudience(state, channelId, { body: 'Please answer in order, but leave a short target gap.' }),
     runtime,
     seededAt,
   );
@@ -9224,7 +9178,6 @@ test('assigning a cat to a channel immediately creates a runtime session in the 
         topic: 'Verify assignment spawns a session.',
         originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -9296,7 +9249,6 @@ test('assigning a cat forwards structured modelSelection to cats-runtime session
         topic: 'Verify model selection reaches cats-runtime.',
         originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -9355,7 +9307,7 @@ test('assigning a cat forwards structured modelSelection to cats-runtime session
   });
 });
 
-test('assigning a cat without a channel cwd defers session creation until Boss Cat activation establishes one', async () => {
+test('assigning a cat without a channel cwd defers session creation until activation establishes one', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -9366,9 +9318,8 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
       },
       body: JSON.stringify({
         title: 'Deferred Session Spawn',
-        topic: 'Wait for Boss Cat to anchor the chat first.',
+        topic: 'Wait for the first participant to anchor the chat first.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -9419,8 +9370,10 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
       runtimeClient.createdSessions[1].cwd ?? '',
       /\.cats[\\/]runtime[\\/]sessions[\\/]session-1$/u,
     );
-    assert.equal(activatePayload.activation.results[0].targetKind, 'orchestrator');
+    // The remembered default participant anchors the chat before the assigned cat starts.
+    assert.equal(activatePayload.activation.results[0].targetKind, 'cat');
     assert.equal(activatePayload.activation.results[1].targetKind, 'cat');
+    assert.equal(activatePayload.activation.results[1].targetId, catId);
   });
 });
 
@@ -9446,7 +9399,6 @@ test('PATCH /api/preferences only selects the requested Boss Chat without waking
         title: 'Wake Boss Chat',
         topic: 'Wake the entry participant on room entry.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -9467,7 +9419,7 @@ test('PATCH /api/preferences only selects the requested Boss Chat without waking
     const channelPayload = await channelResponse.json();
 
     assert.equal(runtimeClient.createdSessions.length, 0);
-    assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
+    assert.equal('orchestratorLease' in channelPayload.channel, false);
     assert.equal(channelPayload.channel.roomRouting.lastWakeRequest, null);
     assert.equal(channelPayload.channel.messages[0]?.metadata?.event, 'room_created');
   }, new MemoryChatStore(), { unprovisionedAuth: true });
@@ -9500,18 +9452,21 @@ test('first send persists a runtime-sanitized default model selection after drop
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         title: 'Sanitize Default Preset',
-        topic: 'Wake should clean stale presets from default chats.',
+        topic: 'Wake should clean stale presets from the default participant.',
         originSurface: 'chat',
-        pendingProvider: 'codex',
-        pendingModel: 'gpt-5.4',
-        pendingModelSelection: {
-          entryMode: 'auto',
-          presetId: 'deep_reasoning',
-          controls: {
-            'openai.reasoning_effort': 'high',
+        temporaryParticipants: [{
+          participantId: 'participant-default',
+          name: '',
+          provider: 'codex',
+          model: 'gpt-5.4',
+          modelSelection: {
+            entryMode: 'auto',
+            presetId: 'deep_reasoning',
+            controls: {
+              'openai.reasoning_effort': 'high',
+            },
           },
-        },
-        skipBossCatGreeting: true,
+        }],
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -9521,7 +9476,10 @@ test('first send persists a runtime-sanitized default model selection after drop
     const sendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Sanitize this preset.' }),
+      body: JSON.stringify({
+        body: 'Sanitize this preset.',
+        messageMetadata: { recipientParticipantIds: ['participant-default'] },
+      }),
     });
     assert.equal(sendResponse.status, 200);
     const sendPayload = await sendResponse.json();
@@ -9534,12 +9492,12 @@ test('first send persists a runtime-sanitized default model selection after drop
       const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
       assert.equal(channelResponse.status, 200);
       const payload = await channelResponse.json();
-      return payload.channel.pendingModelSelection?.entryId === 'gpt-5.4'
+      return payload.channel.assignedParticipants[0]?.execution.modelSelection?.entryId === 'gpt-5.4'
         ? payload
         : null;
     });
 
-    assert.deepEqual(channelPayload.channel.pendingModelSelection, {
+    assert.deepEqual(channelPayload.channel.assignedParticipants[0].execution.modelSelection, {
       entryMode: 'auto',
       entryId: 'gpt-5.4',
       controls: {
@@ -9549,7 +9507,7 @@ test('first send persists a runtime-sanitized default model selection after drop
   });
 });
 
-test('first send on a selected default chat accepts the user turn before starting the orchestrator session', async () => {
+test('first send on a new conversation accepts the user turn before starting its participant session', async () => {
   const runtimeClient = createRuntimeStub();
   const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
   let releaseCreateSession = () => {};
@@ -9580,12 +9538,12 @@ test('first send on a selected default chat accepts the user turn before startin
         title: 'Race room',
         topic: 'Do not create two sessions during first send.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
     const createChannelPayload = await createChannelResponse.json();
     const channelId = createChannelPayload.channel.id;
+    const participantId = createChannelPayload.channel.assignedParticipants[0].participantId;
 
     const selectResponse = await fetch(`${baseUrl}/api/preferences`, {
       method: 'PATCH',
@@ -9598,7 +9556,7 @@ test('first send on a selected default chat accepts the user turn before startin
     const sendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Hi' }),
+      body: JSON.stringify({ body: 'Hi', messageMetadata: { recipientParticipantIds: [participantId] } }),
     });
     assert.equal(sendResponse.status, 200);
     const sendPayload = await sendResponse.json();
@@ -9611,7 +9569,7 @@ test('first send on a selected default chat accepts the user turn before startin
     const acknowledgedChannelPayload = await acknowledgedChannelResponse.json();
     assert.equal(acknowledgedChannelPayload.channel.messages[0]?.metadata?.event, 'room_created');
     assert.equal(acknowledgedChannelPayload.channel.messages[1]?.senderKind, 'user');
-    assert.equal(acknowledgedChannelPayload.channel.orchestratorLease.sessionId, null);
+    assert.equal(acknowledgedChannelPayload.channel.assignedParticipants[0].execution.lease.sessionId, null);
 
     releaseCreateSession();
 
@@ -9622,7 +9580,7 @@ test('first send on a selected default chat accepts the user turn before startin
       const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
       assert.equal(channelResponse.status, 200);
       const payload = await channelResponse.json();
-      return payload.channel.orchestratorLease.sessionId === 'session-1'
+      return payload.channel.assignedParticipants[0].execution.lease.sessionId === 'session-1'
         ? payload
         : null;
     });
@@ -9725,7 +9683,7 @@ test('parallel chat first send accepts the user turn before starting member sess
         activeChannelResponse.json(),
         passiveChannelResponse.json(),
       ]);
-      return payloads.every((payload) => Boolean(payload.channel.orchestratorLease.sessionId))
+      return payloads.every((payload) => Boolean(payload.channel.assignedParticipants[0]?.execution.lease.sessionId))
         ? payloads
         : null;
     });
@@ -9754,7 +9712,6 @@ test('GET /api/app-shell repairs missing session_started metadata from runtime r
       {
         title: 'Repaired session metadata',
         topic: 'Restore missing runtime session metadata in app-shell payloads.',
-        skipBossCatGreeting: true,
       },
       new Date('2026-04-09T12:35:29.017Z'),
     );
@@ -9828,7 +9785,6 @@ test('GET /api/app-shell inserts a startup recovery interruption note before the
       {
         title: 'Interrupted room workflow',
         topic: 'Show an interruption note for startup recovery turns.',
-        skipBossCatGreeting: true,
       },
       new Date('2026-04-09T12:35:29.017Z'),
     );
@@ -10043,7 +9999,8 @@ test('parallel chat first send fans out the selected folder and attachments to e
         runtimeClient.createdSessions.length === 2 && runtimeClient.sentMessages.length === 2,
       );
       for (const sent of runtimeClient.sentMessages) {
-        assert.match(sent.content, /^\[Attached files in working directory:\]/);
+        // Each member's participant prompt carries the attached-files message.
+        assert.match(sent.content, /\[Attached files in working directory:\]/);
         assert.match(sent.content, /- \.cats-attachments\/notes\.txt/);
       }
 
@@ -10204,7 +10161,6 @@ test('single chat background finalize preserves a newer acknowledged user turn',
         title: 'Stale Merge Guard',
         topic: 'Keep newer user turns while earlier dispatches finish.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -10214,7 +10170,7 @@ test('single chat background finalize preserves a newer acknowledged user turn',
     const firstSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'First question' }),
+      body: JSON.stringify({ body: 'First question', messageMetadata: { recipientParticipantIds: createChannelPayload.channel.assignedParticipants.map((participant) => participant.participantId) } }),
     });
     assert.equal(firstSendResponse.status, 200);
     const firstSendPayload = await firstSendResponse.json();
@@ -10225,7 +10181,7 @@ test('single chat background finalize preserves a newer acknowledged user turn',
     const secondSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Second question' }),
+      body: JSON.stringify({ body: 'Second question', messageMetadata: { recipientParticipantIds: createChannelPayload.channel.assignedParticipants.map((participant) => participant.participantId) } }),
     });
     assert.equal(secondSendResponse.status, 200);
     const secondSendPayload = await secondSendResponse.json();
@@ -10313,7 +10269,6 @@ test('single chat failure settlement preserves a newer acknowledged user turn', 
         title: 'Failure Merge Guard',
         topic: 'Do not overwrite later ACKed turns on failure.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -10323,7 +10278,7 @@ test('single chat failure settlement preserves a newer acknowledged user turn', 
     const firstSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'First failing question' }),
+      body: JSON.stringify({ body: 'First failing question', messageMetadata: { recipientParticipantIds: createChannelPayload.channel.assignedParticipants.map((participant) => participant.participantId) } }),
     });
     assert.equal(firstSendResponse.status, 200);
     const firstSendPayload = await firstSendResponse.json();
@@ -10334,7 +10289,7 @@ test('single chat failure settlement preserves a newer acknowledged user turn', 
     const secondSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Second surviving question' }),
+      body: JSON.stringify({ body: 'Second surviving question', messageMetadata: { recipientParticipantIds: createChannelPayload.channel.assignedParticipants.map((participant) => participant.participantId) } }),
     });
     assert.equal(secondSendResponse.status, 200);
     const secondSendPayload = await secondSendResponse.json();
@@ -10548,7 +10503,7 @@ test('ungrouping a parallel chat materializes member chats as standalone recents
   }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
-test('default chats without a cwd create isolated runtime sessions', async () => {
+test('a default participant without a cwd gets an isolated runtime session', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -10570,10 +10525,13 @@ test('default chats without a cwd create isolated runtime sessions', async () =>
         title: 'Default Draft',
         topic: 'Start without a repo path.',
         originSurface: 'chat',
-        pendingProvider: 'claude',
-        pendingInstance: 'native',
-        pendingModel: 'claude-opus-4-6',
-        skipBossCatGreeting: true,
+        temporaryParticipants: [{
+          participantId: 'participant-default',
+          name: '',
+          provider: 'claude',
+          instance: 'native',
+          model: 'claude-opus-4-6',
+        }],
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -10584,9 +10542,7 @@ test('default chats without a cwd create isolated runtime sessions', async () =>
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         body: 'Hello from default mode',
-        pendingProvider: 'claude',
-        pendingInstance: 'native',
-        pendingModel: 'claude-opus-4-6',
+        messageMetadata: { recipientParticipantIds: ['participant-default'] },
       }),
     });
     assert.equal(messageResponse.status, 200);
@@ -10603,225 +10559,24 @@ test('default chats without a cwd create isolated runtime sessions', async () =>
       const channelResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`);
       assert.equal(channelResponse.status, 200);
       const payload = await channelResponse.json();
-      return payload.channel.orchestratorLease.sessionId === 'session-1'
+      return payload.channel.assignedParticipants[0]?.execution.lease.sessionId === 'session-1'
         ? payload
         : null;
     });
 
-    assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
-    assert.equal(channelPayload.channel.orchestratorLease.status, 'ready');
+    const lease = channelPayload.channel.assignedParticipants[0].execution.lease;
+    assert.equal(lease.sessionId, 'session-1');
+    assert.equal(lease.status, 'ready');
     assert.match(
       channelPayload.channel.chatCwd ?? '',
       /\.cats[\\/]runtime[\\/]sessions[\\/]session-1$/u,
     );
     const soloReply = channelPayload.channel.messages.findLast(
-      (message) => message.metadata?.targetKind === 'orchestrator',
+      (message) => message.metadata?.targetKind === 'cat',
     );
     assert.equal(soloReply?.senderKind, 'agent');
-    assert.equal(soloReply?.senderName, 'Orchestrator');
+    assert.equal(soloReply?.metadata?.targetId, 'participant-default');
   }, new MemoryChatStore(), { unprovisionedAuth: true });
-});
-
-test('PATCH /api/channels/:channelId can start a fresh default continuity branch', async () => {
-  const runtimeClient = createRuntimeStub();
-
-  await withServer(runtimeClient, async (baseUrl) => {
-    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        title: 'Default Draft',
-        topic: 'Reset continuity without leaving the chat.',
-        originSurface: 'chat',
-        pendingProvider: 'claude',
-        pendingInstance: 'native',
-        pendingModel: 'claude-opus-4-6',
-        skipBossCatGreeting: true,
-      }),
-    });
-    assert.equal(createChannelResponse.status, 201);
-    const { channel } = await createChannelResponse.json();
-
-    const messageResponse = await fetch(`${baseUrl}/api/channels/${channel.id}/messages`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        body: 'Carry this context forward first.',
-        pendingProvider: 'claude',
-        pendingInstance: 'native',
-        pendingModel: 'claude-opus-4-6',
-      }),
-    });
-    assert.equal(messageResponse.status, 200);
-    await waitForCondition(async () => {
-      if (runtimeClient.createdSessions.length !== 1) {
-        return null;
-      }
-
-      const channelResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`);
-      if (channelResponse.status !== 200) {
-        return null;
-      }
-      const channelPayload = await channelResponse.json();
-      return channelPayload.channel.orchestratorLease.sessionId === 'session-1'
-        ? channelPayload
-        : null;
-    });
-
-    const resetResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`, {
-      method: 'PATCH',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        resetContinuity: true,
-      }),
-    });
-    assert.equal(resetResponse.status, 200);
-    assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
-
-    const channelResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`);
-    assert.equal(channelResponse.status, 200);
-    const channelPayload = await channelResponse.json();
-
-    assert.ok(channelPayload.channel.continuityResetAt);
-    assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
-    assert.equal(channelPayload.channel.orchestratorLease.status, 'not_started');
-    assert.equal(channelPayload.channel.messages.at(-1)?.metadata?.event, 'continuity_reset');
-    assert.match(
-      channelPayload.channel.messages.at(-1)?.body ?? '',
-      /Started fresh\./u,
-    );
-
-    const followUpResponse = await fetch(`${baseUrl}/api/channels/${channel.id}/messages`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        body: 'Continue from the fresh branch only.',
-        pendingProvider: 'antigravity',
-        pendingInstance: 'native',
-        pendingModel: 'antigravity-default',
-      }),
-    });
-    assert.equal(followUpResponse.status, 200);
-    await waitForCondition(() => runtimeClient.sentMessages.length >= 2);
-    assert.equal(
-      runtimeClient.sentMessages.at(-1)?.input?.context?.metadata?.continuityMode,
-      'fresh_start',
-    );
-    assert.equal(
-      runtimeClient.sentMessages.at(-1)?.input?.context?.metadata?.continuityResetAt,
-      channelPayload.channel.continuityResetAt,
-    );
-  });
-});
-
-test('PATCH /api/channels/:channelId keeps repeated default continuity resets idempotent until new branch activity exists', async () => {
-  const runtimeClient = createRuntimeStub();
-
-  await withServer(runtimeClient, async (baseUrl) => {
-    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        title: 'Default Draft',
-        topic: 'Start fresh should not duplicate reset markers when pressed twice in a row.',
-        originSurface: 'chat',
-        pendingProvider: 'claude',
-        pendingInstance: 'native',
-        pendingModel: 'claude-opus-4-6',
-        skipBossCatGreeting: true,
-      }),
-    });
-    assert.equal(createChannelResponse.status, 201);
-    const { channel } = await createChannelResponse.json();
-
-    const firstResetResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`, {
-      method: 'PATCH',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        resetContinuity: true,
-      }),
-    });
-    assert.equal(firstResetResponse.status, 200);
-
-    const secondResetResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`, {
-      method: 'PATCH',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        resetContinuity: true,
-      }),
-    });
-    assert.equal(secondResetResponse.status, 200);
-
-    const channelResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`);
-    assert.equal(channelResponse.status, 200);
-    const channelPayload = await channelResponse.json();
-    const resetMessages = channelPayload.channel.messages.filter(
-      (message) => message.metadata?.event === 'continuity_reset',
-    );
-
-    assert.equal(resetMessages.length, 1);
-    assert.equal(
-      channelPayload.channel.continuityResetAt,
-      resetMessages[0]?.metadata?.continuityResetAt ?? null,
-    );
-  });
-});
-
-test('PATCH /api/channels/:channelId rejects continuity reset for non-default chats', async () => {
-  const runtimeClient = createRuntimeStub();
-
-  await withServer(runtimeClient, async (baseUrl) => {
-    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        title: 'Group Room',
-        topic: 'Start fresh should stay scoped to default for now.',
-        originSurface: 'chat',
-        temporaryParticipants: [
-          {
-            name: 'Room Cat',
-            provider: 'claude',
-            model: 'claude-opus-4-6',
-          },
-        ],
-        skipBossCatGreeting: true,
-      }),
-    });
-    assert.equal(createChannelResponse.status, 201);
-    const { channel } = await createChannelResponse.json();
-
-    const resetResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`, {
-      method: 'PATCH',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        resetContinuity: true,
-      }),
-    });
-    assert.equal(resetResponse.status, 400);
-    const resetPayload = await resetResponse.json();
-    assert.equal(resetPayload.error, 'continuity_reset_unsupported');
-    assert.match(resetPayload.message ?? '', /default chats/u);
-    assert.deepEqual(runtimeClient.closedSessions, []);
-  });
 });
 
 test('POST /api/channels/:channelId/activations reports closed direct-lane sessions without recreating them', async () => {
@@ -10848,7 +10603,6 @@ test('POST /api/channels/:channelId/activations reports closed direct-lane sessi
       roomMode: 'direct_message',
       defaultRecipientId: catId,
       participantCatIds: [catId],
-      skipBossCatGreeting: true,
     },
     now,
   );
@@ -10926,7 +10680,7 @@ test('POST /api/channels keeps direct lanes scoped to the direct recipient only'
         name: 'Lead Companion',
         provider: 'claude',
         model: 'claude-opus-4-6',
-        makeBoss: true,
+        group: 'admin',
       }),
     });
     assert.equal(firstCatResponse.status, 201);
@@ -10955,7 +10709,6 @@ test('POST /api/channels keeps direct lanes scoped to the direct recipient only'
         roomMode: 'direct_message',
         defaultRecipientId: defaultRecipientCatId,
         participantCatIds: [defaultRecipientCatId, extraCatId],
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -10977,7 +10730,7 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-recipient ca
         name: 'Lead Companion',
         provider: 'claude',
         model: 'claude-opus-4-6',
-        makeBoss: true,
+        group: 'admin',
       }),
     });
     assert.equal(leadCatResponse.status, 201);
@@ -11006,7 +10759,6 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-recipient ca
         roomMode: 'direct_message',
         participantCatIds: [defaultRecipientCatId],
         defaultRecipientId: defaultRecipientCatId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11056,7 +10808,6 @@ test('PATCH /api/preferences does not overwrite the last wake request because se
         title: 'Wake Boss Chat',
         topic: 'Do not rewrite wake history on re-entry.',
         originSurface: 'chat',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11066,7 +10817,7 @@ test('PATCH /api/preferences does not overwrite the last wake request because se
     const sendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Start the room.' }),
+      body: JSON.stringify({ body: 'Start the room.', messageMetadata: { recipientParticipantIds: createChannelPayload.channel.assignedParticipants.map((participant) => participant.participantId) } }),
     });
     assert.equal(sendResponse.status, 200);
     const firstChannelPayload = await waitForCondition(async () => {
@@ -11145,7 +10896,6 @@ test('PATCH /api/preferences only selects the requested direct message recipient
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11167,7 +10917,7 @@ test('PATCH /api/preferences only selects the requested direct message recipient
 
     assert.equal(runtimeClient.createdSessions.length, 0);
     assert.equal(channelPayload.channel.roomRouting.mode, 'direct_message');
-    assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
+    assert.equal('orchestratorLease' in channelPayload.channel, false);
     assert.equal(
       channelPayload.channel.assignedCats[0].execution.lease.sessionId,
       null,
@@ -11229,7 +10979,6 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions without promo
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11375,7 +11124,6 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11534,7 +11282,6 @@ test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', a
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11599,7 +11346,6 @@ test('first send does not fall back to Boss Cat when a direct message recipient 
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11623,7 +11369,7 @@ test('first send does not fall back to Boss Cat when a direct message recipient 
     const channelPayload = await channelResponse.json();
 
     assert.equal(runtimeClient.createdSessions.length, 0);
-    assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
+    assert.equal('orchestratorLease' in channelPayload.channel, false);
     assert.equal(channelPayload.channel.roomRouting.mode, 'direct_message');
     assert.equal(channelPayload.channel.roomRouting.lastWakeRequest, null);
     assert.equal(
@@ -11675,7 +11421,6 @@ test('GET /api/app-shell stays read-only when booting a persisted room route', a
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11690,7 +11435,7 @@ test('GET /api/app-shell stays read-only when booting a persisted room route', a
 
     assert.equal(runtimeClient.createdSessions.length, 0);
     assert.equal(appShellPayload.chat.selectedChannel.roomRouting.mode, 'direct_message');
-    assert.equal(appShellPayload.chat.selectedChannel.orchestratorLease.sessionId, null);
+    assert.equal('orchestratorLease' in appShellPayload.chat.selectedChannel, false);
     assert.equal(
       appShellPayload.chat.selectedChannel.assignedCats[0].execution.lease.sessionId,
       null,
@@ -11714,7 +11459,6 @@ test('re-adding a removed cat to an active chat wakes it again instead of leavin
         topic: 'Wake cats when they rejoin a live room.',
         originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
-        skipBossCatGreeting: true,
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11796,7 +11540,6 @@ test('attachment uploads sanitize names and avoid overwriting earlier files', as
           topic: 'Verify unique attachment names.',
           originSurface: 'chat',
           repoPath: tempWorkingDir,
-          skipBossCatGreeting: true,
         }),
       });
       assert.equal(createChannelResponse.status, 201);
@@ -11857,7 +11600,6 @@ test('attachment serving only inlines raster images and forces download for acti
           topic: 'Verify attachment response headers.',
           originSurface: 'chat',
           repoPath: tempWorkingDir,
-          skipBossCatGreeting: true,
         }),
       });
       assert.equal(createChannelResponse.status, 201);
@@ -11926,10 +11668,13 @@ test('attachment serving keeps no-repo chat files out of the state tree', async 
         title: 'Attachment Persistence',
         topic: 'Keep attachments stable across session restarts.',
         originSurface: 'chat',
-        pendingProvider: 'claude',
-        pendingInstance: 'native',
-        pendingModel: 'claude-opus-4-6',
-        skipBossCatGreeting: true,
+        temporaryParticipants: [{
+          participantId: 'participant-default',
+          name: '',
+          provider: 'claude',
+          instance: 'native',
+          model: 'claude-opus-4-6',
+        }],
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -11965,9 +11710,7 @@ test('attachment serving keeps no-repo chat files out of the state tree', async 
       },
       body: JSON.stringify({
         body: 'Use the uploaded screenshot',
-        pendingProvider: 'claude',
-        pendingInstance: 'native',
-        pendingModel: 'claude-opus-4-6',
+        messageMetadata: { recipientParticipantIds: ['participant-default'] },
       }),
     });
     assert.equal(messageResponse.status, 200);

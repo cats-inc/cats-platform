@@ -46,14 +46,16 @@ for (const originSurface of ['chat', 'code']) test(`${originSurface}: selected i
   const chatStore = new MemoryChatStore();
   let state = createChannel(await chatStore.read(), { title: 'Broken provider', topic: 'Incident', originSurface: 'chat', repoPath: platformDir }, now);
   const incident = state.channels.find(row => row.id === state.selectedChannelId);
-  incident.orchestratorLease = { ...incident.orchestratorLease, sessionId: 'incident-session', provider: 'claude', model: 'fixture', status: 'error', cwd: platformDir,
-    lastError: 'Provider exited: TOKEN=private-token' };
+  // The default participant's session is the one that broke.
+  const incidentLease = incident.participantAssignments[0].execution.lease;
+  Object.assign(incidentLease, { sessionId: 'incident-session', provider: 'claude', model: 'fixture', status: 'error', cwd: platformDir,
+    lastError: 'Provider exited: TOKEN=private-token' });
   incident.messages.push({ id: 'fixture-error', channelId: incident.id, senderKind: 'system', senderName: 'Runtime', body: 'Provider failed: api_key=private-key',
     mentions: [], metadata: { event: 'runtime_error', privateField: 'private-metadata' }, usage: null, createdAt: now.toISOString() });
   incident.messages.push({ id: 'fixture-user', channelId: incident.id, senderKind: 'user', senderName: 'Owner', body: 'private-transcript',
     mentions: [], metadata: {}, usage: null, createdAt: now.toISOString() });
   state = createChannel(state, { title: 'Unrelated', topic: 'Unrelated', originSurface: 'chat' }, now);
-  state.channels.find(row => row.id === state.selectedChannelId).orchestratorLease.sessionId = 'unrelated-session';
+  state.channels.find(row => row.id === state.selectedChannelId).participantAssignments[0].execution.lease.sessionId = 'unrelated-session';
   await chatStore.write(state);
   const observedIds = [];
   let unavailable = false;
@@ -106,7 +108,7 @@ for (const originSurface of ['chat', 'code']) test(`${originSurface}: selected i
   assert.ok(!partial.text.includes('private-observe-token'));
   unavailable = false;
   const created = await fetch(`${base}/api/channels`, { method: 'POST', headers, body: JSON.stringify({ title: 'Debugger', topic: 'Read selected incident',
-    originSurface, entryKind: 'group', repoPath: platformDir, skipBossCatGreeting: true,
+    originSurface, entryKind: 'group', repoPath: platformDir,
     temporaryParticipants: [{ participantId: 'debugger', name: 'Debugger', provider: 'codex', instance: 'native', model: 'fixture' }] }) });
   assert.equal(created.status, 201, await created.clone().text());
   const { channel } = await created.json();

@@ -17,6 +17,9 @@ import {
   type MobileCreateChannelInput,
   type MobileCreateChannelResponse,
   type MobileProductMode,
+  buildMobileSendInput,
+  resolveMobileRecipientIds,
+  selectMobileAudience,
 } from '../../../../src/mobile/index.js';
 import type { ResolveAttachmentUrl } from '../MessageBody';
 import {
@@ -203,7 +206,11 @@ export function useDraftChannel(
           createInput,
         );
         const newChannelId = created.channel.id;
-        await session.client.post(messagesPath(newChannelId), { body: trimmed });
+        // The first send goes to everyone the new conversation starts with.
+        await session.client.post(
+          messagesPath(newChannelId),
+          buildMobileSendInput(trimmed, resolveMobileRecipientIds(selectMobileAudience(created.channel), null)),
+        );
         setSendState({ kind: 'idle' });
         router.replace(mobileRoutes.productChannel(productMode, newChannelId));
       } catch (error) {
@@ -228,5 +235,5 @@ export function useDraftChannel(
     // No fetch on draft surface; pull-to-refresh is a no-op.
   }, []);
 
-  return { state, refetch, send, sendState };
+  return { state, refetch, send, sendState, recipientIds: [], toggleRecipient: () => {} };
 }

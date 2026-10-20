@@ -187,9 +187,13 @@ export interface ParticipantExecutionState {
   lease: ParticipantExecutionLease;
 }
 
+/** Admin cats are the Boss Cats: they may act beyond a conversation they coordinate. */
+export type ChatCatGroup = 'admin' | 'standard';
+
 export interface ChatCat {
   id: string;
   name: string;
+  group: ChatCatGroup;
   roles: string[];
   skillProfile: string | null;
   mcpProfile: string | null;
@@ -323,16 +327,16 @@ export interface ChatChannelState {
   skillProfile: string | null;
   mcpProfile: string | null;
   orchestratorRoles: string[];
-  pendingProvider: string | null;
-  pendingModel: string | null;
-  pendingInstance: string | null;
-  pendingModelSelection?: ProviderModelSelection | null;
-  continuityResetAt?: string | null;
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
-  orchestratorLease: ParticipantExecutionLease;
+  /**
+   * The participant bound to the conversation's orchestrator, which may route
+   * turns on and, as a Boss Cat, act beyond the conversation. A DM binds its
+   * cat; a new conversation its first participant; null leaves it unbound.
+   */
+  coordinatorParticipantId: string | null;
   catAssignments: ChannelCatAssignment[];
   /** Optional for legacy persisted snapshots; runtime normalization populates this. */
   participantAssignments?: ChannelParticipantAssignment[];
@@ -371,9 +375,6 @@ export interface ChatChannelSummary {
   runtimePermissionMode?: RuntimePermissionMode | null;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
-  pendingProvider?: string | null;
-  pendingModel?: string | null;
-  pendingModelSelection?: ProviderModelSelection | null;
   defaultRecipientCatId?: string | null;
   defaultRecipientLeaseStatus?: ParticipantSessionStatus | null;
   roomMode?: RoomRoutingMode;
@@ -438,7 +439,13 @@ export interface GlobalOrchestratorSummary {
   updatedAt: string;
 }
 
+/**
+ * The default participant of the next new conversation: the first participant of
+ * the last one created. A cat when `catId` is set, otherwise the provider/model
+ * below, which also stays the model a draft falls back to.
+ */
 export interface NewChatDefaults {
+  catId: string | null;
   provider: string;
   instance: string | null;
   model: string | null;
@@ -453,7 +460,6 @@ export interface ChatCapabilities {
   transcriptExport: true;
   participantManagement: 'basic';
   runtimeSessions: true;
-  maxBossCats: number;
   maxCats: number;
   maxChatParticipants: number;
   maxAudienceParticipants: number;
@@ -466,7 +472,6 @@ export interface ChatState {
   id: string;
   name: string;
   selectedChannelId: string;
-  bossCatId: string | null;
   cats: ChatCat[];
   channels: ChatChannelState[];
   parallelChatGroups: ParallelChatGroupState[];
@@ -513,7 +518,6 @@ export interface ChatShellState {
   id: string;
   name: string;
   selectedChannelId: string;
-  bossCatId: string | null;
   cats: ChatCat[];
   channels: ChatChannelSummary[];
   parallelChatGroups: ParallelChatGroupSummary[];
@@ -544,7 +548,7 @@ export interface CatDraftInput {
 }
 
 export interface CreateCatInput extends CatDraftInput {
-  makeBoss?: boolean;
+  group?: ChatCatGroup;
   products?: string[];
 }
 
@@ -584,10 +588,6 @@ interface CreateChatChannelInputBase {
   formationMode?: ChannelFormationMode;
   roomMode?: RoomRoutingMode;
   defaultRecipientId?: string;
-  pendingProvider?: string;
-  pendingModel?: string;
-  pendingInstance?: string;
-  pendingModelSelection?: ProviderModelSelection | null;
   skillProfile?: string;
   mcpProfile?: string;
   orchestratorRoles?: string[];
@@ -596,8 +596,13 @@ interface CreateChatChannelInputBase {
   participantCatIds?: string[];
   /** Channel-only non-Cat members created inline for this room. */
   temporaryParticipants?: CreateTemporaryParticipantInput[];
-  /** Internal UI affordance for the first user-sent turn in a newly created chat. */
-  skipBossCatGreeting?: boolean;
+  /**
+   * Participant order as `cat:<catId>` and `temp:<participantId>` keys; the
+   * first is the default participant. Unlisted participants follow in input
+   * order. A non-DM conversation created without participants starts with the
+   * remembered default (`newChatDefaults`).
+   */
+  participantOrder?: string[];
 }
 
 export type CreateChatChannelInput =
@@ -657,10 +662,6 @@ export interface SendChannelMessageInput {
   body: string;
   clientMessageId?: string;
   senderName?: string;
-  pendingProvider?: string;
-  pendingModel?: string | null;
-  pendingInstance?: string | null;
-  pendingModelSelection?: ProviderModelSelection | null;
   messageMetadata?: ChannelMessageMetadata;
   choiceResponse?: ChatMessageChoiceResponse | null;
 }
@@ -683,11 +684,8 @@ export interface SendParallelChatMessageInput {
 
 export interface UpdateChannelInput {
   title?: string;
-  pendingProvider?: string | null;
-  pendingModel?: string | null;
-  pendingInstance?: string | null;
-  pendingModelSelection?: ProviderModelSelection | null;
-  resetContinuity?: boolean;
+  /** Moves the coordinator binding to an active participant, or clears it with null. */
+  coordinatorParticipantId?: string | null;
 }
 
 export interface UpdateChannelParticipantInput {

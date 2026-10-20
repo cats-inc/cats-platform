@@ -31,7 +31,6 @@ import {
   createParallelChatGroup,
   requireChannel,
   resolveChannelCanonicalIdentity,
-  setChannelOrchestratorLease,
 } from '../src/products/chat/state/model/index.ts';
 import { buildChatProviderAgentObservation } from '../src/products/chat/state/providerAgentObservation.ts';
 import type { ChatNaturalProductIntentMode } from '../src/products/chat/shared/naturalProductIntentMode.ts';
@@ -177,6 +176,10 @@ function summaryValue(prepared: PreparedDispatchTurn, key: string): unknown {
   return prepared.providerAgentObservation?.summaries.find((summary) => summary.key === key)?.value;
 }
 
+/** The participant a single-participant room starts with; a message names it as its audience. */
+const DEFAULT_PARTICIPANT_ID = 'participant-default';
+const DEFAULT_AUDIENCE = { recipientParticipantIds: [DEFAULT_PARTICIPANT_ID] };
+
 function actorProvider(prepared: PreparedDispatchTurn): string | null {
   const target = prepared.providerAgentObservation?.actor.target;
   return target?.kind === 'execution_target' ? target.provider : null;
@@ -321,7 +324,11 @@ test('Chat dispatch preparation builds a provider-agent observation for the user
   const prepared = prepareDispatchTurn(
     state,
     channel.id,
-    { body: rawMessage },
+    {
+      body: rawMessage,
+      // The room's default participant hears the turn.
+      messageMetadata: { recipientParticipantIds: [channel.participantAssignments![0]!.participantId] },
+    },
     new Date('2026-04-28T00:01:00.000Z'),
   );
 
@@ -377,7 +384,11 @@ test('Chat dispatch preparation annotates Telegram-origin turns for Work intake'
   const prepared = prepareDispatchTurn(
     state,
     channel.id,
-    { body: rawMessage },
+    {
+      body: rawMessage,
+      // The room's default participant hears the turn.
+      messageMetadata: { recipientParticipantIds: [channel.participantAssignments![0]!.participantId] },
+    },
     new Date('2026-05-13T00:01:00.000Z'),
     undefined,
     {
@@ -526,7 +537,7 @@ test('Chat provider-agent observation exposes read-only Boss Cat execution prepa
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
@@ -611,7 +622,7 @@ test('Chat provider-agent observation exposes local external tracker binding for
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
@@ -702,7 +713,7 @@ test('Chat provider-agent observation exposes external issue import for explicit
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const core = createDefaultCoreState();
@@ -774,7 +785,7 @@ test('Chat provider-agent observation exposes read-only Work triage lookup for e
   }
   state = {
     ...state,
-    bossCatId,
+    cats: state.cats.map((cat) => (cat.id === bossCatId ? { ...cat, group: 'admin' as const } : cat)),
   };
   const channelId = state.selectedChannelId;
   const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
@@ -1025,7 +1036,7 @@ test('Chat provider-agent observation exposes narrow-write Work Item Project ass
   assert.deepEqual(validateProviderAgentBoundedObservation(observation!), []);
 });
 
-test('Chat default turns bind provider-agent observation to the selected execution target', () => {
+test('Chat single-participant turns bind provider-agent observation to that participant\'s model', () => {
   const state = createChannel(
     createDefaultChatState(),
     {
@@ -1033,9 +1044,13 @@ test('Chat default turns bind provider-agent observation to the selected executi
       topic: 'Default',
       originSurface: 'chat',
       entryKind: 'default',
-      pendingProvider: 'claude',
-      pendingInstance: 'native',
-      pendingModel: 'sonnet',
+      temporaryParticipants: [{
+        participantId: DEFAULT_PARTICIPANT_ID,
+        name: 'Default',
+        provider: 'claude',
+        instance: 'native',
+        model: 'sonnet',
+      }],
     },
     new Date('2026-04-28T00:00:00.000Z'),
   );
@@ -1044,12 +1059,13 @@ test('Chat default turns bind provider-agent observation to the selected executi
     state,
     channelId: state.selectedChannelId,
     body: 'Use the selected default model.',
+    messageMetadata: DEFAULT_AUDIENCE,
   });
 
-  assert.equal(prepared.initialResolution.targets[0]?.participantKind, 'orchestrator');
+  assert.equal(prepared.initialResolution.targets[0]?.participantId, DEFAULT_PARTICIPANT_ID);
   assert.equal(actorProvider(prepared), 'claude');
   assert.equal(
-    prepared.providerAgentObservation?.contextRefs.includes('chat-channel-intent:provider_default_chat'),
+    prepared.providerAgentObservation?.contextRefs.includes('chat-channel-intent:participant_chat'),
     true,
   );
 });
@@ -1062,9 +1078,13 @@ test('Chat provider-agent observation applies explicit capability bootstrap conf
       topic: 'Default',
       originSurface: 'chat',
       entryKind: 'default',
-      pendingProvider: 'claude',
-      pendingInstance: 'native',
-      pendingModel: 'sonnet',
+      temporaryParticipants: [{
+        participantId: DEFAULT_PARTICIPANT_ID,
+        name: 'Default',
+        provider: 'claude',
+        instance: 'native',
+        model: 'sonnet',
+      }],
     },
     new Date('2026-04-28T00:00:00.000Z'),
   );
@@ -1073,6 +1093,7 @@ test('Chat provider-agent observation applies explicit capability bootstrap conf
     state,
     channelId: state.selectedChannelId,
     body: 'Use the configured default model.',
+    messageMetadata: DEFAULT_AUDIENCE,
     providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
   });
 
@@ -1092,9 +1113,13 @@ test('Chat provider-agent observation emits bootstrap matched-rule diagnostics',
       topic: 'Default',
       originSurface: 'chat',
       entryKind: 'default',
-      pendingProvider: 'claude',
-      pendingInstance: 'native',
-      pendingModel: 'sonnet',
+      temporaryParticipants: [{
+        participantId: DEFAULT_PARTICIPANT_ID,
+        name: 'Default',
+        provider: 'claude',
+        instance: 'native',
+        model: 'sonnet',
+      }],
     },
     new Date('2026-04-28T00:00:00.000Z'),
   );
@@ -1104,6 +1129,7 @@ test('Chat provider-agent observation emits bootstrap matched-rule diagnostics',
     state,
     channelId: state.selectedChannelId,
     body: 'Record the bootstrap rule used for this turn.',
+    messageMetadata: DEFAULT_AUDIENCE,
     providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
     providerCapabilityBootstrapDiagnosticSink: sink,
   });
@@ -1159,7 +1185,7 @@ test('Chat group explicit mentions become bounded provider-agent routing summari
   assert.equal(summaryValue(prepared, 'routing_selection_kind'), 'explicit_mentions');
 });
 
-test('Chat parallel member turns keep default execution targets inside the provider-agent seam', () => {
+test('Chat parallel member turns run the member model as its participant inside the provider-agent seam', () => {
   const state = createParallelChatGroup(
     createDefaultChatState(),
     {
@@ -1180,8 +1206,10 @@ test('Chat parallel member turns keep default execution targets inside the provi
     },
     new Date('2026-04-28T00:00:00.000Z'),
   );
-  const codexMember = state.channels.find((channel) => channel.pendingProvider === 'codex');
-  if (!codexMember) {
+  const codexMember = state.channels.find((channel) =>
+    channel.participantAssignments?.some((assignment) => assignment.execution.target.provider === 'codex'));
+  const codexParticipant = codexMember?.participantAssignments?.[0];
+  if (!codexMember || !codexParticipant) {
     throw new Error('Expected Codex parallel member channel.');
   }
 
@@ -1189,15 +1217,13 @@ test('Chat parallel member turns keep default execution targets inside the provi
     state,
     channelId: codexMember.id,
     body: 'Handle your branch of the parallel run.',
+    messageMetadata: { recipientParticipantIds: [codexParticipant.participantId] },
   });
 
   assert.equal(actorProvider(prepared), 'codex');
-  assert.equal(prepared.initialResolution.targets[0]?.participantKind, 'orchestrator');
+  assert.equal(prepared.initialResolution.targets[0]?.participantKind, 'cat');
+  assert.equal(prepared.initialResolution.targets[0]?.participantId, codexParticipant.participantId);
   assert.equal(summaryValue(prepared, 'routing_target_count'), 1);
-  assert.equal(
-    prepared.providerAgentObservation?.contextRefs.includes('chat-channel-intent:provider_default_chat'),
-    true,
-  );
 });
 
 test('Chat dispatch can hand bounded observations to a provider-agent decision requester', async () => {
@@ -1210,9 +1236,13 @@ test('Chat dispatch can hand bounded observations to a provider-agent decision r
       topic: 'Decision seam',
       originSurface: 'chat',
       entryKind: 'default',
-      pendingProvider: 'claude',
-      pendingInstance: 'native',
-      pendingModel: 'claude-sonnet',
+      temporaryParticipants: [{
+        participantId: DEFAULT_PARTICIPANT_ID,
+        name: 'Default',
+        provider: 'claude',
+        instance: 'native',
+        model: 'claude-sonnet',
+      }],
     },
     new Date('2026-04-28T00:00:00.000Z'),
   );
@@ -1222,6 +1252,7 @@ test('Chat dispatch can hand bounded observations to a provider-agent decision r
     state.selectedChannelId,
     {
       body: rawMessage,
+      messageMetadata: DEFAULT_AUDIENCE,
     },
     {} as unknown as RuntimeClient,
     new Date('2026-04-28T00:01:00.000Z'),
@@ -1257,51 +1288,6 @@ test('Chat dispatch can hand bounded observations to a provider-agent decision r
   assert.equal(captured<ProviderAgentBoundedObservation>(capturedObservation)?.task.kind, 'chat_turn');
   assert.equal(JSON.stringify(capturedObservation).includes(rawMessage), false);
   assert.equal(begun.userMessage.metadata.orchestratorPlanner, 'provider_agent_observation');
-  assert.equal(begun.preparedTurn?.initialResolution.targets[0]?.participantKind, 'orchestrator');
+  assert.equal(begun.preparedTurn?.initialResolution.targets[0]?.participantId, DEFAULT_PARTICIPANT_ID);
 });
 
-test('Chat dispatch clears stale explicit model selections with the pending model', async () => {
-  const now = new Date('2026-04-25T01:45:00.000Z');
-  let state = createChannel(
-    createDefaultChatState(),
-    {
-      title: 'Default dispatch target clear',
-      topic: 'Dispatch should clear the old explicit model selection.',
-      originSurface: 'code',
-      entryKind: 'default',
-      pendingProvider: 'openai',
-      pendingModel: 'gpt-5.4',
-      pendingModelSelection: { entryId: 'gpt-5.4', entryMode: 'explicit' },
-      skipBossCatGreeting: true,
-    },
-    now,
-  );
-  const channelId = state.selectedChannelId;
-  state = setChannelOrchestratorLease(state, channelId, {
-    sessionId: 'session-dispatch-old-selection',
-    status: 'ready',
-    provider: 'openai',
-    model: 'gpt-5.4',
-    modelSelection: { entryId: 'gpt-5.4', entryMode: 'explicit' },
-    startedAt: now.toISOString(),
-    lastError: null,
-  }, now);
-
-  const begun = await beginChannelMessageDispatch(
-    state,
-    channelId,
-    {
-      body: 'Use the provider default for this turn.',
-      pendingModel: null,
-      pendingModelSelection: null,
-    },
-    runtimeStub(),
-    now,
-  );
-
-  const dispatchedChannel = requireChannel(begun.state, channelId);
-  assert.equal(dispatchedChannel.pendingModel, null);
-  assert.equal(dispatchedChannel.pendingModelSelection, null);
-  assert.equal(dispatchedChannel.orchestratorLease.model, null);
-  assert.equal(dispatchedChannel.orchestratorLease.modelSelection ?? null, null);
-});

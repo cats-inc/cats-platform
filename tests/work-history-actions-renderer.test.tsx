@@ -53,4 +53,3 @@ test('history cleanup results name the exact applied attempts and retain truthfu
   await act(async () => { fireEvent.click(view.getByText('Apply this cleanup')); });
   assert.match(view.getByRole('list', { name: 'Cleanup results' }).textContent!, /Exact attempt.*Detail cleared/);
 });
-

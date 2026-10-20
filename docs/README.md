@@ -7,9 +7,10 @@ Run/Mission history cleanup and consistent contextual actions across Code/Work.
 page inventory and acceptance scenarios;
 [PLAN-119](plans/PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md)
 sequences lifecycle correctness before everyday management and navigation
-consolidation. Implementation and scoped acceptance are complete in local slices;
-owner review/testing remains pending, with no push or release. The plan records
-isolated native evidence and remaining validation limits.
+consolidation. Implementation and scoped acceptance are complete. The owner
+authorized latest-main integration and an auto-merge PR; everyday testing remains
+pending. The plan distinguishes prior isolated native evidence, post-integration
+checks and remaining validation limits. No release is authorized.
 
 [Code agent artifact preview](decisions/126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md)
 proposes how Cats in Cats Code open what they built beside the conversation. A

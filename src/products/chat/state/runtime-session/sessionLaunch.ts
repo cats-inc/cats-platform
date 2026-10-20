@@ -7,14 +7,12 @@ import {
   buildChannelView,
   requireChannel,
 } from '../model/index.js';
-import { isDefaultChatChannel } from '../../shared/channelTopology.js';
 import type { RoutingTarget } from '../mentionRouter.js';
 import {
   buildDefaultChatContinuityTransplantPackage,
   buildTargetedChatHandoffPackage,
 } from '../prompts.js';
 import {
-  applyDefaultChatContinuityBoundary,
   hasVisibleResponseFromLogicalTarget,
   messagesBeforeSource,
   resolveRuntimeEnvelopeForTarget,
@@ -30,7 +28,6 @@ import {
 } from './shared.js';
 import { resolveChannelRuntimeSessionPolicy } from './policy.js';
 import {
-  createOrchestratorTargetRuntimeSession,
   createParticipantTargetRuntimeSession,
   type RuntimeSessionExecutionTarget,
   type TargetSessionLifecycleMetadata,
@@ -62,40 +59,24 @@ function resolveNewSessionContinuityMetadata(input: {
 }): {
   continuityMode: 'fresh_start' | 'full_transplant' | 'semantic_transplant' | 'targeted_handoff';
   continuityDeliveryMode: 'none' | 'turn_instructions';
-  continuityResetAt: string | null;
-} | null {
+} {
   const channel = buildChannelView(input.state, input.channelId);
-  const isDefaultChatOrchestrator = input.target.participantKind === 'orchestrator'
-    && isDefaultChatChannel(channel);
-  const isParticipantTarget = input.target.participantKind === 'cat';
-  if (!isDefaultChatOrchestrator && !isParticipantTarget) {
-    return null;
-  }
-
   const sourceMessageId = input.sourceMessageId?.trim() || null;
   if (!sourceMessageId) {
     return {
       continuityMode: 'fresh_start',
       continuityDeliveryMode: 'none',
-      continuityResetAt: isDefaultChatOrchestrator
-        ? channel.continuityResetAt?.trim() || null
-        : null,
     };
   }
 
-  const continuityResetAt = isDefaultChatOrchestrator
-    ? channel.continuityResetAt?.trim() || null
-    : null;
-  const continuityMessages = isDefaultChatOrchestrator
-    ? applyDefaultChatContinuityBoundary(channel, channel.messages)
-    : channel.messages;
+  const continuityMessages = channel.messages;
   const sourceMessage = continuityMessages.find((message) => message.id === sourceMessageId) ?? null;
   const hasLogicalPriorResponse = sourceMessage
     ? hasVisibleResponseFromLogicalTarget(continuityMessages, input.target, sourceMessage)
     : false;
-  const supportsParticipantContinuity = input.target.participantKind === 'cat'
-    && (supportsSameChatParticipantContinuity(channel) || hasLogicalPriorResponse);
-  if (!isDefaultChatOrchestrator && !supportsParticipantContinuity) {
+  const supportsParticipantContinuity = supportsSameChatParticipantContinuity(channel)
+    || hasLogicalPriorResponse;
+  if (!supportsParticipantContinuity) {
     const targetedHandoffPackage = buildTargetedChatHandoffPackage({
       priorMessages: sourceMessage
         ? messagesBeforeSource(continuityMessages, sourceMessage)
@@ -104,7 +85,6 @@ function resolveNewSessionContinuityMetadata(input: {
     return {
       continuityMode: targetedHandoffPackage.instructions ? 'targeted_handoff' : 'fresh_start',
       continuityDeliveryMode: targetedHandoffPackage.instructions ? 'turn_instructions' : 'none',
-      continuityResetAt: null,
     };
   }
   const priorMessages = sourceMessage
@@ -115,7 +95,6 @@ function resolveNewSessionContinuityMetadata(input: {
   return {
     continuityMode: continuityPackage.instructions ? continuityPackage.mode : 'fresh_start',
     continuityDeliveryMode: continuityPackage.instructions ? 'turn_instructions' : 'none',
-    continuityResetAt,
   };
 }
 
@@ -216,32 +195,19 @@ export async function startAttachedTargetSession(input: {
     sessionLifecycleMetadata.containerId = canonicalMetadata.containerId;
     sessionLifecycleMetadata.transportBindingId = canonicalMetadata.transportBindingId;
 
-    const createdTargetSession = attachedTarget.participantKind === 'orchestrator'
-      ? await createOrchestratorTargetRuntimeSession({
-        state: nextState,
-        channelId,
-        sessionPolicy,
-        runtimeClient,
-        dispatchContextMetadata: {
-          ...(routingOptions.dispatchContextMetadata ?? {}),
-          ...(sameChatContinuityMetadata ?? {}),
-        },
-        taskExecutionContext,
-        runtimeEnvelope,
-      })
-      : await createParticipantTargetRuntimeSession({
-        state: nextState,
-        channelId,
-        target: attachedTarget,
-        sessionPolicy,
-        runtimeClient,
-        dispatchContextMetadata: {
-          ...(routingOptions.dispatchContextMetadata ?? {}),
-          ...(sameChatContinuityMetadata ?? {}),
-        },
-        taskExecutionContext,
-        runtimeEnvelope,
-      });
+    const createdTargetSession = await createParticipantTargetRuntimeSession({
+      state: nextState,
+      channelId,
+      target: attachedTarget,
+      sessionPolicy,
+      runtimeClient,
+      dispatchContextMetadata: {
+        ...(routingOptions.dispatchContextMetadata ?? {}),
+        ...(sameChatContinuityMetadata ?? {}),
+      },
+      taskExecutionContext,
+      runtimeEnvelope,
+    });
     createdExecutionTarget = createdTargetSession.executionTarget;
     nextState = persistCreatedTargetExecutionTarget({
       state: nextState,

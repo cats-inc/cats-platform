@@ -3,10 +3,8 @@ import type {
   ChatMessage,
 } from '../api/workspaceContracts.js';
 import type { SelectedChannelView } from '../channelEntry.js';
-import {
-  isDefaultChatChannel,
-  supportsParticipantAudienceSelection,
-} from '../../chat/shared/channelTopology.js';
+import { activeAssignedParticipants } from '../channelParticipants.js';
+import { supportsParticipantAudienceSelection } from '../../chat/shared/channelTopology.js';
 
 export interface ActiveChannelAudienceState {
   audienceKeys: string[];
@@ -46,8 +44,9 @@ function findLatestUserMessage(messages: readonly ChatMessage[]): ChatMessage | 
   return null;
 }
 
+// Matches the audience chip's key for a conversation participant.
 export function buildActiveAudienceParticipantKey(participantId: string): string {
-  return `cat:${participantId}`;
+  return `participant:${participantId}`;
 }
 
 function clampAudienceParticipantIds(
@@ -76,17 +75,9 @@ function uniqueNonEmptyStrings(values: readonly string[]): string[] {
   return normalized;
 }
 
-function resolveActiveParticipantIds(
-  selectedChannel: SelectedChannelView,
-  maxAudienceParticipants?: number | null,
-): string[] {
-  return clampAudienceParticipantIds(
-    uniqueNonEmptyStrings(
-      selectedChannel.assignedCats
-        .filter((participant) => participant.status === 'active')
-        .map((participant) => participant.catId),
-    ),
-    maxAudienceParticipants,
+function resolveActiveParticipantIds(selectedChannel: SelectedChannelView): string[] {
+  return uniqueNonEmptyStrings(
+    activeAssignedParticipants(selectedChannel).map((participant) => participant.participantId),
   );
 }
 
@@ -143,17 +134,11 @@ export function resolveActiveChannelMessageMetadata(options: {
     return null;
   }
 
-  if (
-    isDefaultChatChannel(selectedChannel)
-    || !supportsParticipantAudienceSelection(selectedChannel)
-  ) {
+  if (!supportsParticipantAudienceSelection(selectedChannel)) {
     return null;
   }
 
-  const activeParticipantIds = resolveActiveParticipantIds(
-    selectedChannel,
-    options.maxAudienceParticipants,
-  );
+  const activeParticipantIds = resolveActiveParticipantIds(selectedChannel);
   if (activeParticipantIds.length === 0) {
     return null;
   }
@@ -175,16 +160,12 @@ export function resolveActiveChannelMessageMetadata(options: {
     ).filter((participantId) => activeParticipantIds.includes(participantId)),
     options.maxAudienceParticipants,
   );
-  if (activeParticipantIds.length <= 1 && preferredRecipientIds.length === 0) {
-    return null;
-  }
-
   const recipientParticipantIds =
     selectedRecipientIds.length > 0
       ? selectedRecipientIds
       : preferredRecipientIds.length > 0
         ? preferredRecipientIds
-        : activeParticipantIds;
+        : clampAudienceParticipantIds(activeParticipantIds, options.maxAudienceParticipants);
   const latestCompletedTurn = selectedChannel.roomRouting.workflow.turnHistory[0] ?? null;
   const workflowShape = normalizeWorkflowShape(
     options.workflowShape

@@ -22,7 +22,6 @@ type ConversationComposerAreaRenderProps = ComponentProps<typeof ConversationCom
 function createPayload(): AppShellPayload {
   return {
     chat: {
-      bossCatId: null,
       cats: [],
       capabilities: {
         maxAudienceParticipants: 3,

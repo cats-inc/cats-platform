@@ -8,7 +8,6 @@ import { deriveAppViewState } from '../src/products/shared/renderer/workspaceApp
 function createPayload(): AppShellPayload {
   return {
     chat: {
-      bossCatId: 'boss-cat',
       botBindings: [],
       capabilities: {
         maxCats: 5,
@@ -20,6 +19,7 @@ function createPayload(): AppShellPayload {
         {
           id: 'boss-cat',
           name: 'Boss Cat',
+          group: 'admin',
           roles: ['boss'],
           skillProfile: null,
           mcpProfile: null,
@@ -135,7 +135,7 @@ function createChannel(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test('deriveAppViewState shows Boss Cat avatar without auto-inserting Boss Cat into participant assignments', () => {
+test('deriveAppViewState neither inserts a Boss Cat into a room nor keeps one out of Add Cat', () => {
   const payload = createPayload();
   const selectedChannel = createChannel({
     assignedParticipants: [
@@ -276,116 +276,10 @@ test('deriveAppViewState shows Boss Cat avatar without auto-inserting Boss Cat i
     draftCatIds: [],
   });
 
-  assert.equal(viewState.showBossCatAvatar, true);
   assert.equal(viewState.assignedCatIds.has('boss-cat'), false);
+  assert.equal(viewState.selectableCats.some((cat) => cat.id === 'boss-cat'), true);
   assert.equal(
     viewState.activeAssignedCats.some((cat) => cat.catId === 'boss-cat'),
     false,
   );
-});
-
-test('deriveAppViewState still shows Boss Cat avatar for participant chats without Boss assigned', () => {
-  const payload = createPayload();
-  const selectedChannel = createChannel({
-    channelKind: 'chat_channel',
-    assignedParticipants: [
-      {
-        participantId: 'participant-reviewer',
-        sourceKind: 'cat',
-        sourceRefId: 'cat-reviewer',
-        catId: 'cat-reviewer',
-        name: 'Reviewer',
-        roles: [],
-        roleHint: null,
-        skillProfile: null,
-        mcpProfile: null,
-        status: 'active',
-        joinedAt: '2026-04-08T00:00:00.000Z',
-        leftAt: null,
-        avatarColor: '#5B8DEF',
-        avatarUrl: null,
-        execution: {
-          target: {
-            provider: 'claude',
-            instance: 'native',
-            model: 'claude-sonnet',
-          },
-          modelSelection: null,
-          lease: {
-            sessionId: null,
-            status: 'ready',
-            cwd: null,
-            lastError: null,
-            provider: null,
-            model: null,
-            startedAt: null,
-            lastUsedAt: null,
-          },
-        },
-        memory: {
-          summary: null,
-          facts: [],
-          openLoops: [],
-          updatedAt: null,
-        },
-      },
-    ],
-    assignedCats: [
-      {
-        participantId: 'participant-reviewer',
-        sourceKind: 'cat',
-        sourceRefId: 'cat-reviewer',
-        catId: 'cat-reviewer',
-        name: 'Reviewer',
-        roles: [],
-        roleHint: null,
-        skillProfile: null,
-        mcpProfile: null,
-        status: 'active',
-        joinedAt: '2026-04-08T00:00:00.000Z',
-        leftAt: null,
-        avatarColor: '#5B8DEF',
-        avatarUrl: null,
-        execution: {
-          target: {
-            provider: 'claude',
-            instance: 'native',
-            model: 'claude-sonnet',
-          },
-          modelSelection: null,
-          lease: {
-            sessionId: null,
-            status: 'ready',
-            cwd: null,
-            lastError: null,
-            provider: null,
-            model: null,
-            startedAt: null,
-            lastUsedAt: null,
-          },
-        },
-        memory: {
-          summary: null,
-          facts: [],
-          openLoops: [],
-          updatedAt: null,
-        },
-      },
-    ],
-  });
-
-  const viewState = deriveAppViewState({
-    pathname: '/chat/chats/channel-1',
-    payload,
-    draftDefaultRecipientCatId: null,
-    showingNewChatDraft: false,
-    selectedChannel: selectedChannel as never,
-    selectedDirectLane: null,
-    routeDirectLaneSummary: null,
-    showingMyCatDirectLane: false,
-    addCatOpen: false,
-    draftCatIds: [],
-  });
-
-  assert.equal(viewState.showBossCatAvatar, true);
 });

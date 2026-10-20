@@ -11,10 +11,7 @@ import {
   requireChannel,
 } from '../model/index.js';
 import { findAssignedParticipant } from '../../shared/channelParticipants.js';
-import {
-  resolveOrchestratorExecutionTarget,
-  resolveRuntimeEnvelopeForTarget,
-} from '../runtimeTargeting.js';
+import { resolveRuntimeEnvelopeForTarget } from '../runtimeTargeting.js';
 import type { RuntimeEnvelopeCanonicalMetadata } from './shared.js';
 import type { ChannelTaskExecutionContext } from './taskExecution.js';
 import type { ResolvedChannelRuntimeSessionPolicy } from './policy.js';
@@ -36,63 +33,6 @@ export interface TargetSessionLifecycleMetadata extends RuntimeEnvelopeCanonical
   targetStateId: string | null;
   laneId: string | null;
   now: Date;
-}
-
-export async function createOrchestratorTargetRuntimeSession(input: {
-  state: ChatState;
-  channelId: string;
-  sessionPolicy: ResolvedChannelRuntimeSessionPolicy;
-  runtimeClient: RuntimeClient;
-  dispatchContextMetadata?: Record<string, unknown>;
-  taskExecutionContext: ChannelTaskExecutionContext | undefined;
-  runtimeEnvelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>;
-}): Promise<CreatedTargetRuntimeSession> {
-  const channel = requireChannel(input.state, input.channelId);
-  const sessionTarget = resolveOrchestratorExecutionTarget(
-    input.state,
-    channel,
-  );
-  const { spawnCwd, ...runtimePolicy } = input.sessionPolicy;
-  const session = await createSupervisedRuntimeSession({
-    runtimeClient: input.runtimeClient,
-    input: enrichRuntimeInvocation(channel, {
-      provider: sessionTarget.provider,
-      instance: sessionTarget.instance,
-      model: sessionTarget.model,
-      modelSelection:
-        sessionTarget.modelSelection
-        ?? createExplicitProviderModelSelection(sessionTarget.model),
-      cwd: spawnCwd,
-      ...runtimePolicy,
-      context: mergeRuntimeInvocationContextMetadata(
-        input.runtimeEnvelope.context,
-        input.dispatchContextMetadata ?? {},
-      ),
-      skills: input.runtimeEnvelope.skills,
-      ...(input.taskExecutionContext?.executionRequest ?? {}),
-    }, { phase: 'session_create' }),
-    supervision: {
-      product: 'cats-chat',
-      surface: 'orchestrator-session-start',
-      runId: input.channelId,
-      actionId: `${input.channelId}:orchestrator-session-start`,
-      actorRef: 'orchestrator',
-      reason: 'chat_session_start',
-    },
-  });
-
-  return {
-    session,
-    executionTarget: {
-      provider: session.provider,
-      instance: sessionTarget.instance ?? null,
-      model: session.model ?? sessionTarget.model,
-      modelSelection:
-        session.modelSelection
-        ?? sessionTarget.modelSelection
-        ?? null,
-    },
-  };
 }
 
 export async function createParticipantTargetRuntimeSession(input: {

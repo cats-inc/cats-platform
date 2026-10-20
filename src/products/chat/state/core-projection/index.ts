@@ -69,7 +69,7 @@ export function syncCoreStateWithChatState(
   const ownerProfile = existingCore.ownerProfile ?? createDefaultOwnerProfile(updatedAt);
   const ownerActor = createOwnerActor(ownerProfile);
   const orchestratorActor = createOrchestratorActor(chat);
-  const catActors = chat.cats.map((cat) => createCatActor(cat, chat.bossCatId));
+  const catActors = chat.cats.map((cat) => createCatActor(cat));
   const temporaryParticipantActors = createTemporaryParticipantActors(chat);
   const preservedActors = preserveCoreOwnedActors(existingCore.actors ?? []);
   const existingTasks = new Map((existingCore.tasks ?? []).map((task) => [task.id, task]));

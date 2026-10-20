@@ -369,7 +369,7 @@ test('chat model re-exports dedicated cat mutation helpers instead of defining t
   assert.doesNotMatch(modelModule, /export function createCat\(/u);
   assert.match(catsModule, /export function createCat/u);
   assert.match(catsModule, /export function renameCat/u);
-  assert.match(catsModule, /export function setBossCat/u);
+  assert.match(catsModule, /export function setCatGroup/u);
 });
 
 test('chat model re-exports dedicated channel-group mutation helpers instead of defining them inline', async () => {
@@ -879,10 +879,8 @@ test('runtime dispatch loop consumes dedicated runtime dispatch execution helper
   assert.match(dispatchLoopModule, /execution\.js/u);
   assert.doesNotMatch(dispatchLoopModule, /async function executeDispatch\(/u);
   assert.doesNotMatch(dispatchLoopModule, /async function settleInCompletionOrder/u);
-  assert.doesNotMatch(dispatchLoopModule, /function shouldBlockAntiPingPong\(/u);
   assert.match(dispatchExecutionModule, /export async function executeDispatch/u);
   assert.match(dispatchExecutionModule, /export async function settleInCompletionOrder/u);
-  assert.match(dispatchExecutionModule, /export function shouldBlockAntiPingPong/u);
 });
 
 test('runtime dispatch execution consumes dedicated runtime targeting helpers instead of defining them inline', async () => {
@@ -966,26 +964,6 @@ test('runtime dispatch results namespace runtime assistant metadata', async () =
   );
 });
 
-test('runtime dispatch execution consumes dedicated runtime session-routing helpers instead of defining rewrite logic inline', async () => {
-  const dispatchExecutionModule = await readFile(
-    new URL('../src/products/chat/state/runtime-dispatch/execution.ts', import.meta.url),
-    'utf8',
-  );
-  const sessionRoutingModule = await readFile(
-    new URL('../src/products/chat/state/runtime-session/index.ts', import.meta.url),
-    'utf8',
-  );
-  const sessionSharedModule = await readFile(
-    new URL('../src/products/chat/state/runtime-session/shared.ts', import.meta.url),
-    'utf8',
-  );
-
-  assert.match(dispatchExecutionModule, /runtime-session\/index\.js/u);
-  assert.doesNotMatch(dispatchExecutionModule, /function shouldRewriteOrchestratorReply\(/u);
-  assert.match(sessionRoutingModule, /\.\/shared\.js/u);
-  assert.match(sessionSharedModule, /export function shouldRewriteOrchestratorReply/u);
-});
-
 test('runtime dispatch loop consumes dedicated dispatch-result helpers instead of defining response handling inline', async () => {
   const dispatchLoopModule = await readFile(
     new URL('../src/products/chat/state/runtime-dispatch/loop.ts', import.meta.url),
@@ -1056,13 +1034,11 @@ test('runtime dispatch wake consumes dedicated runtime session-routing helpers i
   assert.match(sessionWakeModule, /\.\/sessionWakePreparation\.js/u);
   assert.doesNotMatch(sessionWakeModule, /async function startAttachedTargetSession\(/u);
   assert.match(sessionWakeModule, /\.\/sessionLaunch\.js/u);
-  assert.doesNotMatch(sessionWakeModule, /export async function createOrchestratorTargetRuntimeSession/u);
   assert.match(sessionTaskExecutionModule, /export async function maybeAutoCheckoutChannelTask/u);
   assert.match(sessionWakePreparationModule, /export async function prepareTargetSessionWake/u);
   assert.match(sessionLaunchModule, /export async function startAttachedTargetSession/u);
   assert.match(sessionLaunchModule, /\.\/sessionPersistence\.js/u);
   assert.match(sessionReuseModule, /export async function resolveExistingTargetSessionOutcome/u);
-  assert.match(sessionStartModule, /export async function createOrchestratorTargetRuntimeSession/u);
   assert.doesNotMatch(sessionStartModule, /export function persistStartedTargetSession/u);
   assert.match(sessionPersistenceModule, /export function persistStartedTargetSession/u);
 });
@@ -1207,15 +1183,11 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
     'utf8',
   );
   const hookSource = await readFile(
-    new URL('../src/products/chat/renderer/hooks/useComposerSubmit.ts', import.meta.url),
+    new URL('../src/products/shared/renderer/hooks/useWorkspaceComposerSubmit.ts', import.meta.url),
     'utf8',
   );
   const sharedDispatchSource = await readFile(
     new URL('../src/products/shared/renderer/composerDispatch.ts', import.meta.url),
-    'utf8',
-  );
-  const parallelDispatchSource = await readFile(
-    new URL('../src/products/chat/renderer/composerParallelDispatch.ts', import.meta.url),
     'utf8',
   );
   const sharedParallelDispatchSource = await readFile(
@@ -1232,7 +1204,7 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
 
   assert.match(appSource, /createUseComposerSubmit/u);
   assert.doesNotMatch(appSource, /async function submitComposerMessage\(/u);
-  assert.match(hookSource, /export function useComposerSubmit/u);
+  assert.match(hookSource, /export function useWorkspaceComposerSubmit/u);
   assert.match(hookSource, /prepareWorkspaceSendContext/u);
   assert.match(hookSource, /submitNewParallelChatDraft/u);
   assert.match(hookSource, /submitParallelCompareMessage/u);
@@ -1240,8 +1212,7 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
   assert.match(hookImplementationSource, /buildNewChatChannelInput/u);
   assert.match(hookImplementationSource, /insertCreatedChannelIntoPayload/u);
   assert.match(hookSource, /sendChatMessage/u);
-  assert.match(parallelDispatchSource, /createParallelChatGroup/u);
-  assert.match(parallelDispatchSource, /sendParallelChatMessage/u);
+  assert.match(sharedParallelDispatchSource, /sendParallelChatMessage/u);
   assert.match(sharedParallelDispatchSource, /export function buildParallelChatDraftCreateInput/u);
   assert.match(
     sharedParallelDispatchSource,
@@ -1253,11 +1224,7 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
   assert.match(sharedRequestControlsSource, /cancelChannel/u);
 });
 
-test('chat and workspace composer hooks consume shared navigation and draft-reset helpers', async () => {
-  const chatHookSource = await readFile(
-    new URL('../src/products/chat/renderer/hooks/useComposerSubmit.ts', import.meta.url),
-    'utf8',
-  );
+test('workspace composer hook consumes shared navigation and draft-reset helpers', async () => {
   const workspaceHookSource = await readFile(
     new URL('../src/products/shared/renderer/hooks/useWorkspaceComposerSubmit.ts', import.meta.url),
     'utf8',
@@ -1275,15 +1242,10 @@ test('chat and workspace composer hooks consume shared navigation and draft-rese
     'utf8',
   );
 
-  assert.match(chatHookSource, /composerNavigation\.js/u);
-  assert.match(chatHookSource, /composerDraftState\.js/u);
-  assert.match(chatHookSource, /useComposerSubmitBindings/u);
   assert.match(workspaceHookSource, /composerNavigation\.js/u);
   assert.match(workspaceHookSource, /composerDraftState\.js/u);
   assert.match(workspaceHookSource, /useComposerSubmitBindings/u);
-  assert.match(chatHookSource, /navigateWithinManagedComposerFlow/u);
   assert.match(workspaceHookSource, /navigateWithinManagedComposerFlow/u);
-  assert.match(chatHookSource, /resetComposerDraftState/u);
   assert.match(workspaceHookSource, /resetComposerDraftState/u);
   assert.match(navigationHelperSource, /export function navigateWithinManagedComposerFlow/u);
   assert.match(draftStateHelperSource, /export function resetComposerDraftState/u);
@@ -1482,10 +1444,8 @@ test('renderer app consumes dedicated derived-state helpers instead of defining 
   assert.match(appSource, /deriveAppRouteState/u);
   assert.match(appSource, /deriveAppViewState/u);
   assert.doesNotMatch(appSource, /const routeChannelTitle =/u);
-  assert.doesNotMatch(appSource, /const showBossCatAvatar =/u);
   assert.match(viewStateSource, /export function deriveAppRouteState/u);
   assert.match(viewStateSource, /export function deriveAppViewState/u);
-  assert.match(viewStateSource, /resolveBossCatName/u);
   assert.match(viewStateSource, /findDirectLaneForCat/u);
 });
 
@@ -2701,7 +2661,8 @@ test('platform consumes room-routing types from the shared roomRouting module', 
   );
 
   assert.match(orchestratorContracts, /shared\/roomRouting\.js/u);
-  assert.match(telegramBridge, /shared\/roomRouting\.js/u);
+  // The bridge only opens DMs now and names no room-routing types; it must not borrow product ones.
+  assert.doesNotMatch(telegramBridge, /products\/chat\/state\/room-routing/u);
 });
 
 test('platform memory service stays behind a chat memory surface seam', async () => {

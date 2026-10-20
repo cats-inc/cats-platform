@@ -4,12 +4,13 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | Implementation and scoped acceptance complete; local commits only; final owner review/testing pending |
+| **Status** | Implementation/scoped acceptance complete; latest-main integration and auto-merge PR authorized; PR CI pending |
 | **Owner** | Platform product/Core integration |
 | **Reviewer** | Owner |
 | **Related Spec** | [SPEC-126](../specs/SPEC-126-code-work-owner-actions-and-lifecycle.md) |
 | **Related ADR** | [ADR-133](../decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) |
 | **Base** | Platform `977acf1f` |
+| **Integration Base** | Remote main `de0128032514b81d934b6c44bdab3d0249190c0e` |
 | **Worktree** | `.claude/worktrees/code-work-actions` |
 | **Branch** | `docs/code-work-actions-lifecycle` |
 
@@ -19,8 +20,10 @@ Ship owner actions before collapsing navigation. First define source authority,
 safe writes and upgrade requirements; then deliver Codespace management and
 terminal-history cleanup; follow with everyday record management, remaining
 execution surfaces, diagnostic repairs and reviewed navigation. Automatic
-retention is last and opt-in. The owner approved the entire rollout as local
-commits without pushing; final owner review and testing follow implementation.
+retention is last and opt-in. The owner initially approved local commits without
+pushing, then authorized latest-main integration, push and an auto-merge PR on
+2026-10-20. This supersedes the push hold; everyday owner testing and any future
+release remain separate.
 
 The approved integration contract is recorded in ADR-133 P0. Runtime work, if needed, uses its own checkout/instructions and release
 boundary. Keep the existing shared interaction engine and cancellation paths.
@@ -239,6 +242,7 @@ recorded below; final owner review/testing remains pending.
 
 | Date | Update |
 | --- | --- |
+| 2026-10-20 | Integration authorized: merged remote main `de012803` (including the participant/audience/coordinator redesign), preserving all original slice commits. Resolved three document-index conflicts by retaining both tracks; reviewed automatically merged projection, sidebar, workspace and i18n seams. Removed the obsolete `skipBossCatGreeting` field from the cleanup fixture. Server, renderer and test typechecks plus web build passed; 108 focused lifecycle/renderer/driver/Work tests passed, with the changed history fixture rechecked (7). Selected JS integration checks had 59 passes and the same three Chat store failures reproduced in an unmodified remote-main archive; a bounded standalone Core write-adapter case timed out identically in both trees. Remote main's hosted CI was green. Local full CI was not duplicated; PR `validate` and `nodejs (24)` remain the merge gates. Earlier native candidate receipts predate this integration and are not claimed as post-merge native acceptance. No version bump or release authorized. |
 | 2026-10-20 | Final acceptance/polish slice complete: source-built isolated Desktop flows verified Codespace registration/pin/rename/archive/restore/removal, exact history preview/apply, active blocking, opt-in automatic compaction, planning edits, actual missing-anchor repair and Chat/sidebar/composer regressions. Final candidate rechecked future-tense preview labels, named per-item results, scoped form layout and shared cancel-default confirmation dialogs. 23 final renderer/sidebar checks passed; client typecheck and full candidate server/Desktop/Runtime/web builds passed. Both candidates drained with exit 0; stopped-profile reload, subsequent Chat write and fresh-store reload preserved cleanup, relationships, transcript and files. Final build inputs matched all 1,812 files byte-for-byte. See acceptance evidence and limits below. P0-P5 implementation is complete; no push/version bump/release; final owner review/testing pending. |
 | 2026-10-20 | P5 retention slice: age-only detailed-log policy defaults off, validates checked edits, shows hourly schedule/protection/result and reuses manual source compaction under the Core mutation lock. Each pass inspects/compacts at most 100 attempts; a durable cursor progresses past protected records. Active/new descendants, open gates, referenced evidence and files stay protected. Failed persistence preserves data; backup recovery disables automatic cleanup to avoid restoring a stale opt-in. No Runtime/FS reclamation or quota is claimed. Server/client checks, web build and 18 retention/lifecycle/history fixtures passed, including HTTP races, failed backup, restart, source reconstruction and opt-out. Isolated candidate acceptance and final readiness remain open. |
 | 2026-10-20 | P4 renderer slice: one canonical Work Overview combines managed-object views with shared approval/recovery actions; retained War Room/Cockpit URLs redirect with queries intact. Execution/diagnostic navigation groups replace competing destinations; Code Build/Relay remain contextual. Graph drawers provide canonical links, owner controls, execution actions and relationship repair. Broken Links exposes explicit valid targets and selected orphan-link previews; all-source/archived graph coverage remains available. Active producer-owned identities stay reachable after prior archive. Server/client/web checks passed, 13 graph/relationship/projection/path fixtures and 21 sidebar/operational/relationship/Code renderer checks passed; 2 typed overview contract checks passed. Isolated native navigation/Chat acceptance remains open. |
@@ -297,17 +301,25 @@ changed.
 
 Validation limits for owner review:
 
-- Focused tests and candidate builds passed; the full CI suite was not run.
-  `chat-store.test.js` retains five workflow/replay failures reproduced with
-  unchanged baseline implementations (32 passed, 5 failed); private baseline
-  logs remain under the worktree's ignored `.claude/checks/`.
+- Focused tests and candidate builds passed; the full local CI suite was not run.
+  Before latest-main integration, five workflow/replay failures were reproduced
+  with the original baseline (32 passed, 5 failed). With remote `de012803`, the
+  standalone Chat store check is 30 passed/3 failed in both the integration tree
+  and an unmodified remote-main archive. A standalone in-flight Core write-adapter
+  case also times out after 10 seconds in both. The archive/logs are private at
+  the parent `.task-artifacts/code-work-remote-baseline-de012803/`; the original
+  baseline logs remain under ignored `.claude/checks/`. Remote main's hosted
+  `validate` and `nodejs (24)` passed; the PR must pass its own required CI.
 - Live provider execution, Test fire execution and native Preview startup were
   not exercised. Their driver/admission/cancellation contracts use controlled
   fixtures; no claim of live provider end-to-end acceptance is made.
-- Final owner review and everyday testing remain pending. Keep this worktree
-  and local commits for review; do not push. The recorded breaking public/default
-  changes require the next Platform minor (`0.9.0` or later) if release is later
-  authorized, with the tested migration and exact pins in that release change.
+- The owner's later request authorizes push and an auto-merge PR, superseding
+  the original local-only hold. Everyday owner testing remains pending. Earlier
+  native evidence predates integration with the participant/coordinator redesign;
+  post-integration seams have focused renderer/driver/storage checks. The recorded
+  breaking public/default changes require the next Platform minor (`0.9.0` or
+  later) if release is later authorized, with tested migration and exact pins in
+  that release change. No release is part of this integration task.
 
 ---
 

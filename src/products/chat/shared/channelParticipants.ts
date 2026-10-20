@@ -25,23 +25,6 @@ export interface ParticipantLeaseAttachment {
   lastError: string | null;
 }
 
-export interface OrchestratorLeaseAttachment {
-  participantId: 'orchestrator';
-  sessionId: string | null;
-  laneId: string | null;
-  status: ParticipantExecutionLease['status'];
-  cwd: string | null;
-  provider: string | null;
-  instance: string | null;
-  model: string | null;
-  modelSelection: ParticipantExecutionLease['modelSelection'];
-  startedAt: string | null;
-  lastUsedAt: string | null;
-  lastError: string | null;
-}
-
-export type ChannelLeaseAttachment = ParticipantLeaseAttachment | OrchestratorLeaseAttachment;
-
 function pushUniqueNonEmpty(target: Set<string>, value: string | null | undefined): void {
   const normalized = value?.trim();
   if (normalized) {
@@ -66,18 +49,40 @@ function mapCatAssignmentToParticipantAssignment(
   };
 }
 
+/**
+ * Participants in the order they joined: `participantAssignments` holds that
+ * order, cat entries refreshed from `catAssignments`; cats it does not list yet
+ * (just assigned) follow at the end.
+ */
 function mergeParticipantAssignments(
   channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
 ): ChannelParticipantAssignment[] {
-  const catParticipants = channel.catAssignments.map(mapCatAssignmentToParticipantAssignment);
-  const adhocParticipants = Array.isArray(channel.participantAssignments)
-    ? channel.participantAssignments.filter((assignment) => assignment.sourceKind !== 'cat')
-    : [];
-
-  return [
-    ...catParticipants,
-    ...adhocParticipants,
-  ];
+  const catParticipants = new Map(channel.catAssignments.map((assignment) => [
+    assignment.participantId,
+    mapCatAssignmentToParticipantAssignment(assignment),
+  ]));
+  const merged: ChannelParticipantAssignment[] = [];
+  const seenParticipantIds = new Set<string>();
+  for (const assignment of channel.participantAssignments ?? []) {
+    if (seenParticipantIds.has(assignment.participantId)) {
+      continue;
+    }
+    const participant = assignment.sourceKind === 'cat'
+      ? catParticipants.get(assignment.participantId)
+      : assignment;
+    if (!participant) {
+      continue;
+    }
+    seenParticipantIds.add(assignment.participantId);
+    merged.push(participant);
+  }
+  for (const [participantId, participant] of catParticipants) {
+    if (!seenParticipantIds.has(participantId)) {
+      seenParticipantIds.add(participantId);
+      merged.push(participant);
+    }
+  }
+  return merged;
 }
 
 export function resolveChannelParticipantAssignments(
@@ -180,27 +185,11 @@ export function resolveParticipantExecutionLease(
   return assignment?.execution?.lease ?? null;
 }
 
-/**
- * @deprecated Prefer `resolveOrchestratorLeaseAttachment()` for lane/session-aware
- * runtime consumers, or `resolveExecutionLeaseSnapshot()` when a full cloned
- * execution lease is required.
- */
-export function resolveOrchestratorExecutionLease(
-  channel: Pick<ChatChannelState, 'orchestratorLease'>,
-): ParticipantExecutionLease {
-  return channel.orchestratorLease;
-}
-
 export function resolveExecutionLeaseSnapshot(
-  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments' | 'orchestratorLease'>,
-  target: {
-    participantKind: 'orchestrator' | 'cat';
-    participantId: string;
-  },
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
+  target: { participantId: string },
 ): ParticipantExecutionLease | null {
-  const lease = target.participantKind === 'orchestrator'
-    ? resolveOrchestratorExecutionLease(channel)
-    : resolveParticipantExecutionLease(channel, target.participantId);
+  const lease = resolveParticipantExecutionLease(channel, target.participantId);
   return lease ? structuredClone(lease) : null;
 }
 
@@ -251,38 +240,6 @@ export function resolveParticipantSessionId(
   return resolveParticipantLeaseAttachment(channel, participantId, options)?.sessionId ?? null;
 }
 
-export function resolveOrchestratorLeaseAttachment(
-  channel: Pick<ChatChannelState, 'orchestratorLease'>,
-  options: {
-    laneId?: string | null;
-    statuses?: ReadonlyArray<ParticipantExecutionLease['status']>;
-  } = {},
-): OrchestratorLeaseAttachment | null {
-  const lease = channel.orchestratorLease;
-  const expectedLaneId = options.laneId?.trim() || null;
-  if (options.statuses && !options.statuses.includes(lease.status)) {
-    return null;
-  }
-  const laneId = lease.laneId?.trim() || null;
-  if (expectedLaneId && laneId !== expectedLaneId) {
-    return null;
-  }
-  return {
-    participantId: 'orchestrator',
-    sessionId: lease.sessionId?.trim() || null,
-    laneId,
-    status: lease.status,
-    cwd: lease.cwd?.trim() || null,
-    provider: lease.provider?.trim() || null,
-    instance: lease.instance?.trim() || null,
-    model: lease.model?.trim() || null,
-    modelSelection: structuredClone(lease.modelSelection ?? null),
-    startedAt: lease.startedAt ?? null,
-    lastUsedAt: lease.lastUsedAt ?? null,
-    lastError: lease.lastError ?? null,
-  };
-}
-
 export function collectParticipantLeaseAttachments(
   channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
   options: {
@@ -318,45 +275,6 @@ export function collectParticipantSessionIds(
 ): string[] {
   const sessionIds = new Set<string>();
   for (const attachment of collectParticipantLeaseAttachments(channel, options)) {
-    pushUniqueNonEmpty(sessionIds, attachment.sessionId);
-  }
-  return [...sessionIds];
-}
-
-export function collectChannelLeaseAttachments(
-  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments' | 'orchestratorLease'>,
-  options: {
-    includeOrchestrator?: boolean;
-    includeRemoved?: boolean;
-    laneId?: string | null;
-    statuses?: ReadonlyArray<ParticipantExecutionLease['status']>;
-  } = {},
-): ChannelLeaseAttachment[] {
-  const attachments: ChannelLeaseAttachment[] = collectParticipantLeaseAttachments(channel, options);
-  if (options.includeOrchestrator === false) {
-    return attachments;
-  }
-  const orchestratorAttachment = resolveOrchestratorLeaseAttachment(channel, {
-    laneId: options.laneId,
-    statuses: options.statuses,
-  });
-  if (orchestratorAttachment) {
-    attachments.push(orchestratorAttachment);
-  }
-  return attachments;
-}
-
-export function collectChannelSessionIds(
-  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments' | 'orchestratorLease'>,
-  options: {
-    includeOrchestrator?: boolean;
-    includeRemoved?: boolean;
-    laneId?: string | null;
-    statuses?: ReadonlyArray<ParticipantExecutionLease['status']>;
-  } = {},
-): string[] {
-  const sessionIds = new Set<string>();
-  for (const attachment of collectChannelLeaseAttachments(channel, options)) {
     pushUniqueNonEmpty(sessionIds, attachment.sessionId);
   }
   return [...sessionIds];

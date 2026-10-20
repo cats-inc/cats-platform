@@ -2,8 +2,8 @@ import type { AppShellPayload } from '../api/contracts.js';
 import type { RoomRoutingState } from '../../../shared/roomRouting.js';
 import { isDirectLaneChannel } from './channelTopology.js';
 import {
+  activeAssignedParticipants,
   findAssignedParticipant,
-  resolveOrchestratorLeaseAttachment,
   resolveResolvedParticipantExecutionStatus,
 } from './channelParticipants.js';
 import { resolveRoomRoutingState } from '../../../core/roomRoutingState.js';
@@ -53,8 +53,12 @@ export function resolveSelectedChannelEntryLifecycle(
     return resolveChatLifecycleState(resolveResolvedParticipantExecutionStatus(leadCat));
   }
 
+  // A room's lifecycle follows its coordinator, or its first participant without one.
+  const coordinator = (selectedChannel.coordinatorParticipantId
+    ? findAssignedParticipant(selectedChannel, selectedChannel.coordinatorParticipantId)
+    : null) ?? activeAssignedParticipants(selectedChannel)[0] ?? null;
   return resolveChatLifecycleState(
-    resolveOrchestratorLeaseAttachment(selectedChannel)?.status ?? 'not_started',
+    coordinator ? resolveResolvedParticipantExecutionStatus(coordinator) : 'not_started',
   );
 }
 

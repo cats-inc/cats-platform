@@ -9,7 +9,9 @@ implementation. P4 navigation grouping is included in this authorization.
 P0-P5 implementation and scoped acceptance are complete. The
 [plan's acceptance record](../plans/PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md#acceptance-evidence-and-review-handoff)
 contains source/instance receipts, checks and limits. Final owner review/testing
-remains pending; all commits stay local, with no version bump or publication.
+remains pending. The owner subsequently authorized latest-main integration,
+push and an auto-merge PR on 2026-10-20, superseding the original local-only hold.
+This authorization includes no version bump or publication.
 
 ## Context
 

@@ -3,7 +3,8 @@
 - [ADR-133: Code and Work owner actions and source-aware lifecycle](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md)
   — accepted, 2026-10-20; separate navigation, execution, record deletion and
   resource cleanup; durable owner intent and source authority prevent deleted
-  projections from returning. Implementation in progress.
+  projections from returning. Implementation/scoped acceptance complete;
+  integration review and CI now authorized.
 - [ADR-127: Alive companion life loop](127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md)
   — accepted, 2026-09-29; platform-owned keep-alive, rhythm and heartbeat for
   companion Cats in their own direct-message session; keep-alive, rhythm and
@@ -57,6 +58,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [ADR-133](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) | Give Code and Work Owner Actions and Source-Aware Lifecycle | Accepted; implementation/scoped acceptance complete; owner review pending | 2026-10-20 |
+| [ADR-132](132-separate-participants-audience-and-the-orchestrator-binding.md) | Separate Participants, Audience and the Orchestrator Binding | Accepted; specified by SPEC-125, staged by PLAN-118 | 2026-10-20 |
 | [ADR-131](131-let-the-audience-chip-choose-the-audience-and-the-avatar-choose-the-model.md) | Let the Audience Chip Choose the Audience and the Avatar Choose the Model | Accepted; amends SPEC-013 composer popover hosts | 2026-10-20 |
 | [ADR-130](130-ship-per-architecture-windows-and-linux-desktop-installers.md) | Ship Per-Architecture Windows and Linux Desktop Installers | Accepted; amends ADR-108 section 6 | 2026-10-13 |
 | [ADR-129](129-keep-direct-messages-in-chat-and-share-one-conversation-draft.md) | Keep Direct Messages in Chat and Share One Conversation Draft | Accepted; supersedes ADR-067 | 2026-10-03 |
@@ -188,7 +190,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-10-20 (ADR-133 implementation/scoped acceptance complete; owner review pending.)*
+*Last updated: 2026-10-20 (ADR-132 participant/coordinator contract and ADR-133 owner lifecycle integration.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*
 

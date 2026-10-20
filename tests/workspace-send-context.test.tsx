@@ -44,18 +44,6 @@ test('prepareWorkspaceSendContext composes default dispatch target with attachme
     originSurface: 'chat',
     draftDefaultRecipientCatId: null,
     participantCatIds: [],
-    selectedChannel: {
-      id: 'channel-1',
-    },
-    defaultChannelExecutionTarget: {
-      provider: 'codex-cli',
-      model: 'gpt-5.4',
-      instance: 'native',
-      modelSelection: {
-        entryId: 'gpt-5.4',
-        entryMode: 'explicit',
-      },
-    },
     draftFiles: [],
     channelFiles,
     createChatChannel: async () => {
@@ -98,15 +86,6 @@ test('prepareWorkspaceSendContext composes default dispatch target with attachme
 
   assert.equal(result.channelId, 'channel-1');
   assert.equal(result.rollbackPath, '/chat/chats/channel-1');
-  assert.deepEqual(result.defaultDispatchTarget, {
-    pendingProvider: 'codex',
-    pendingModel: 'gpt-5.4',
-    pendingInstance: 'native',
-    pendingModelSelection: {
-      entryId: 'gpt-5.4',
-      entryMode: 'explicit',
-    },
-  });
   assert.equal(
     result.messageBody,
     '[Attached files in working directory:]\n- .cats-attachments/notes.txt\n\nInspect the attached notes.',
@@ -142,13 +121,6 @@ test('prepareWorkspaceSendContext creates missing direct lanes, uses draft files
     originSurface: 'chat',
     draftDefaultRecipientCatId: 'cat-lead',
     participantCatIds: ['cat-lead'],
-    selectedChannel: null,
-    defaultChannelExecutionTarget: {
-      provider: 'claude',
-      model: 'opus',
-      instance: 'native',
-      modelSelection: null,
-    },
     draftFiles,
     channelFiles: [],
     createChatChannel: async (input) => {
@@ -197,7 +169,6 @@ test('prepareWorkspaceSendContext creates missing direct lanes, uses draft files
   assert.equal(createdInputs[0]?.defaultRecipientId, 'cat-lead');
   assert.equal(result.channelId, 'channel-direct-1');
   assert.equal(result.rollbackPath, '/chat/dm/cat-lead');
-  assert.equal(result.defaultDispatchTarget, null);
   assert.equal(
     result.messageBody,
     '[Attached files in working directory:]\n- .cats-attachments/direct.txt\n\nWake up and inspect the direct lane attachment.',

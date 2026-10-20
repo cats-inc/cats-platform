@@ -114,48 +114,6 @@ function buildExecutionLoopContract<TState extends OrchestratorStateView>(
   };
 }
 
-function buildOrchestratorParticipantPlan<TState extends OrchestratorStateView>(
-  state: TState,
-  core: CatsCoreState,
-  channelContext: OrchestratorPlannerChannelContext,
-  body: string,
-  plannerSurface: OrchestratorPlannerSurface<TState>,
-): OrchestratorParticipantPlan {
-  return {
-    participantKind: 'orchestrator',
-    participantId: 'orchestrator',
-    participantName: plannerSurface.resolveOrchestratorDisplayName(state),
-    roles: [...channelContext.channel.orchestratorRoles],
-    assignmentStatus: 'active',
-    executionTarget: structuredClone(state.globalOrchestrator.executionTarget),
-    lease: structuredClone(channelContext.channel.orchestratorLease),
-    skillProfile: state.globalOrchestrator.skillProfile,
-    mcpProfile: state.globalOrchestrator.mcpProfile,
-    runtimeSkills: resolveSkillProfileManifest({
-      profileId: state.globalOrchestrator.skillProfile,
-      roomMode: channelContext.channel.roomRouting?.mode ?? 'chat_channel',
-      transport: channelContext.transport,
-      labels: ['participant:orchestrator'],
-      metadata: {
-        channelId: channelContext.channel.id,
-      },
-    }) ?? null,
-    toolIntent: resolvePlannerToolIntent({
-      state,
-      core,
-      channelContext,
-      body,
-      plannerSurface,
-      profileId: state.globalOrchestrator.mcpProfile,
-      participantKind: 'orchestrator',
-      participantId: 'orchestrator',
-      channelId: channelContext.channel.id,
-      roomMode: channelContext.channel.roomRouting?.mode ?? 'chat_channel',
-      transport: channelContext.transport,
-    }) ?? null,
-  };
-}
-
 function buildCatParticipantPlan(
   state: OrchestratorStateView,
   core: CatsCoreState,
@@ -297,11 +255,9 @@ export function buildOrchestratorTurnPlan<TState extends OrchestratorStateView>(
     channel,
     transport,
   };
-  const participants: OrchestratorParticipantPlan[] = [
-    buildOrchestratorParticipantPlan(state, core, channelContext, input.body, plannerSurface),
-    ...channel.assignedCats.map((cat) =>
-      buildCatParticipantPlan(state, core, channelContext, cat, input.body, plannerSurface)),
-  ];
+  // Coordination runs in a participant's own session; there is no separate orchestrator participant.
+  const participants: OrchestratorParticipantPlan[] = channel.assignedCats.map((cat) =>
+    buildCatParticipantPlan(state, core, channelContext, cat, input.body, plannerSurface));
   const planId = `orch-plan-${randomUUID()}`;
   const operatorSeams = resolveOrchestratorOperatorSeams(core, channel.id, plannerSurface);
   const executionLoop = buildExecutionLoopContract(

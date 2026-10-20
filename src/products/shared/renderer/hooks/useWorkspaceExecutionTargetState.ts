@@ -39,13 +39,9 @@ import {
   fetchProviderRegistry,
 } from '../api/providers.js';
 import {
-  isDefaultChatChannel,
-} from '../../../chat/shared/channelTopology.js';
-import {
   createExecutionTargetValueFromProviderSelection,
   type ExecutionTargetValue,
 } from '../components/ExecutionTarget.js';
-import type { RoomRoutingMode } from '../../../../shared/roomRouting.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
 import { formatWorkspaceExecutionTargetMutationError } from './workspaceExecutionTargetErrorLabels.js';
@@ -65,37 +61,6 @@ export interface WorkspaceExecutionTargetPayloadLike {
 
 export interface WorkspaceExecutionTargetChatLike {
   newChatDefaults: ExecutionTargetDefaultsLike | null | undefined;
-  globalOrchestrator: {
-    executionTarget: {
-      provider: string;
-      model?: string | null;
-      instance?: string | null;
-    };
-    executionModelSelection?: ProviderModelSelection | null;
-  };
-}
-
-export interface WorkspaceExecutionTargetChannelLike {
-  id: string;
-  channelKind?: 'chat_channel' | 'direct_message' | null;
-  roomRouting?: {
-    mode?: RoomRoutingMode | null;
-  } | null;
-  assignedParticipants?: ReadonlyArray<{ participantId: string; status?: string | null }> | null;
-  assignedCats?: ReadonlyArray<{ catId: string; status?: string | null }> | null;
-  participantAssignments?: ReadonlyArray<{ participantId: string; status?: string | null }> | null;
-  catAssignments?: ReadonlyArray<{ catId: string; status?: string | null }> | null;
-  pendingProvider?: string | null;
-  pendingModel?: string | null;
-  pendingInstance?: string | null;
-  pendingModelSelection?: ProviderModelSelection | null;
-}
-
-export interface PendingExecutionTargetUpdateInput {
-  pendingProvider: string;
-  pendingModel: string | null;
-  pendingInstance: string | null;
-  pendingModelSelection: ProviderModelSelection | null;
 }
 
 export interface PersistedNewChatDefaultsInput {
@@ -112,23 +77,20 @@ export type WorkspaceExecutionTargetLoadState<
   | { status: 'ready'; payload: TPayload }
   | { status: 'error'; message: string };
 
+/**
+ * The model a new draft starts with. A started conversation has no target of
+ * its own: each participant carries its model.
+ */
 export interface UseWorkspaceExecutionTargetStateOptions<
   TPayload extends WorkspaceExecutionTargetPayloadLike,
   TChat extends WorkspaceExecutionTargetChatLike,
-  TSelectedChannel extends WorkspaceExecutionTargetChannelLike,
 > {
   state: WorkspaceExecutionTargetLoadState<TPayload>;
   readyChat: TChat | null;
-  readySelectedChannel: TSelectedChannel | null;
   setState: Dispatch<SetStateAction<WorkspaceExecutionTargetLoadState<TPayload>>>;
   setFeedback: Dispatch<SetStateAction<string>>;
   updateNewChatDefaultsPreference: (
     defaults: PersistedNewChatDefaultsInput,
-    signal: AbortSignal,
-  ) => Promise<TPayload>;
-  updateChannelPendingExecutionTarget: (
-    channelId: string,
-    update: PendingExecutionTargetUpdateInput,
     signal: AbortSignal,
   ) => Promise<TPayload>;
   debounceMs?: number;
@@ -439,106 +401,28 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
   return createExecutionTargetValueFromProviderSelection(labeledTarget);
 }
 
-export function toDefaultChatExecutionTargetValue<
-  TChat extends WorkspaceExecutionTargetChatLike,
-  TSelectedChannel extends WorkspaceExecutionTargetChannelLike,
->(
-  readyChat: TChat | null,
-  readySelectedChannel: TSelectedChannel | null,
-): ExecutionTargetValue | null {
-  if (!readyChat || !readySelectedChannel || !isDefaultChatChannel(readySelectedChannel)) {
-    return null;
-  }
-
-  // A conversation owns the entire selection, including explicit nulls. Do
-  // not combine its provider with the global orchestrator's model or effort.
-  if (readySelectedChannel.pendingProvider) {
-    return {
-      provider: readySelectedChannel.pendingProvider,
-      model: readySelectedChannel.pendingModel ?? null,
-      instance: readySelectedChannel.pendingInstance ?? null,
-      modelSelection: readySelectedChannel.pendingModelSelection ?? null,
-      executionLabel: null,
-    };
-  }
-
-  return {
-    provider: readyChat.globalOrchestrator.executionTarget.provider,
-    model: readyChat.globalOrchestrator.executionTarget.model ?? null,
-    instance: readyChat.globalOrchestrator.executionTarget.instance ?? null,
-    modelSelection: readyChat.globalOrchestrator.executionModelSelection ?? null,
-    executionLabel: null,
-  };
-}
-
 export function useWorkspaceExecutionTargetState<
   TPayload extends WorkspaceExecutionTargetPayloadLike,
   TChat extends WorkspaceExecutionTargetChatLike,
-  TSelectedChannel extends WorkspaceExecutionTargetChannelLike,
 >({
   state,
   readyChat,
-  readySelectedChannel,
   setState,
   setFeedback,
   updateNewChatDefaultsPreference,
-  updateChannelPendingExecutionTarget,
   debounceMs = 150,
-}: UseWorkspaceExecutionTargetStateOptions<TPayload, TChat, TSelectedChannel>) {
+}: UseWorkspaceExecutionTargetStateOptions<TPayload, TChat>) {
   const { t } = useI18n();
   const [draftExecutionTarget, setDraftExecutionTarget] = useState<ExecutionTargetValue>(
     createDefaultExecutionTargetValue,
   );
-  const persistedChannelTarget = toDefaultChatExecutionTargetValue(readyChat, readySelectedChannel);
-  const targetChannelId = persistedChannelTarget ? readySelectedChannel?.id ?? null : null;
-  const persistedChannelTargetSignature = persistedChannelTarget
-    ? buildExecutionTargetReconcileSignature(persistedChannelTarget)
-    : null;
-  const [channelTargetState, setChannelTargetState] = useState(() => ({
-    channelId: targetChannelId,
-    persistedSignature: persistedChannelTargetSignature,
-    target: persistedChannelTarget ?? createDefaultExecutionTargetValue(),
-  }));
-  // Synchronize before children/effects can see a new channel paired with the
-  // previous channel's target. An effect is too late: a warm catalog can
-  // reconcile that stale pair and the autosave can then write it to the new room.
-  if (
-    channelTargetState.channelId !== targetChannelId
-    || channelTargetState.persistedSignature !== persistedChannelTargetSignature
-  ) {
-    setChannelTargetState({
-      channelId: targetChannelId,
-      persistedSignature: persistedChannelTargetSignature,
-      target: persistedChannelTarget ?? createDefaultExecutionTargetValue(),
-    });
-  }
-  const defaultChannelExecutionTarget = channelTargetState.target;
-  const setDefaultChannelExecutionTarget = useCallback<Dispatch<SetStateAction<ExecutionTargetValue>>>((update) => {
-    setChannelTargetState((current) => {
-      if (!targetChannelId || current.channelId !== targetChannelId) {
-        return current;
-      }
-      const target = typeof update === 'function' ? update(current.target) : update;
-      return sameExecutionTargetValueAndLabel(current.target, target)
-        ? current
-        : { ...current, target };
-    });
-  }, [targetChannelId]);
   const latestNewChatDefaultsSaveId = useRef(0);
   const pendingNewChatDefaultsSaveTimeout = useRef<ReturnType<
     typeof setTimeout
   > | null>(null);
   const pendingNewChatDefaultsSaveAbort = useRef<AbortController | null>(null);
-  const latestDefaultChatExecutionTargetSaveId = useRef(0);
-  const pendingDefaultChatExecutionTargetSaveTimeout = useRef<ReturnType<
-    typeof setTimeout
-  > | null>(null);
-  const pendingDefaultChatExecutionTargetSaveAbort = useRef<AbortController | null>(null);
   const draftExecutionTargetReconcileSignature = buildExecutionTargetReconcileSignature(
     draftExecutionTarget,
-  );
-  const defaultChannelExecutionTargetReconcileSignature = buildExecutionTargetReconcileSignature(
-    defaultChannelExecutionTarget,
   );
 
   useEffect(() => {
@@ -564,12 +448,6 @@ export function useWorkspaceExecutionTargetState<
       }
       pendingNewChatDefaultsSaveAbort.current?.abort();
       pendingNewChatDefaultsSaveAbort.current = null;
-      if (pendingDefaultChatExecutionTargetSaveTimeout.current) {
-        clearTimeout(pendingDefaultChatExecutionTargetSaveTimeout.current);
-        pendingDefaultChatExecutionTargetSaveTimeout.current = null;
-      }
-      pendingDefaultChatExecutionTargetSaveAbort.current?.abort();
-      pendingDefaultChatExecutionTargetSaveAbort.current = null;
     };
   }, []);
 
@@ -602,43 +480,6 @@ export function useWorkspaceExecutionTargetState<
     };
   }, [
     draftExecutionTargetReconcileSignature,
-    state.status,
-  ]);
-
-  useEffect(() => {
-    if (state.status !== 'ready' || !readySelectedChannel || !isDefaultChatChannel(readySelectedChannel)) {
-      return;
-    }
-
-    let cancelled = false;
-
-    void reconcileRuntimeBackedExecutionTargetValue({
-      target: defaultChannelExecutionTarget,
-    }).then((nextDefaultChatExecutionTarget) => {
-      if (cancelled) {
-        return;
-      }
-
-      setDefaultChannelExecutionTarget((currentDefaultChatExecutionTarget) =>
-        sameExecutionTargetValue(currentDefaultChatExecutionTarget, defaultChannelExecutionTarget)
-          ? mergeExecutionTargetValue(currentDefaultChatExecutionTarget, nextDefaultChatExecutionTarget)
-          : currentDefaultChatExecutionTarget);
-    }).catch((error) => {
-      logExecutionTargetReconcileWarning(
-        `failed to reconcile default chat execution target for ${defaultChannelExecutionTarget.provider}:${defaultChannelExecutionTarget.model ?? 'default'}`,
-        error,
-      );
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    readySelectedChannel?.id,
-    readySelectedChannel?.channelKind,
-    readySelectedChannel?.roomRouting?.mode,
-    defaultChannelExecutionTargetReconcileSignature,
-    setDefaultChannelExecutionTarget,
     state.status,
   ]);
 
@@ -727,113 +568,8 @@ export function useWorkspaceExecutionTargetState<
     updateNewChatDefaultsPreference,
   ]);
 
-  useEffect(() => {
-    if (state.status !== 'ready') {
-      return;
-    }
-
-    const persistedDefaultChatExecutionTarget = toDefaultChatExecutionTargetValue(
-      readyChat,
-      readySelectedChannel,
-    );
-    if (
-      !readySelectedChannel
-      || !persistedDefaultChatExecutionTarget
-      || sameExecutionTargetValue(
-        defaultChannelExecutionTarget,
-        persistedDefaultChatExecutionTarget,
-      )
-    ) {
-      return;
-    }
-
-    if (pendingDefaultChatExecutionTargetSaveTimeout.current) {
-      clearTimeout(pendingDefaultChatExecutionTargetSaveTimeout.current);
-      pendingDefaultChatExecutionTargetSaveTimeout.current = null;
-    }
-    pendingDefaultChatExecutionTargetSaveAbort.current?.abort();
-
-    const channelId = readySelectedChannel.id;
-    const saveId = latestDefaultChatExecutionTargetSaveId.current + 1;
-    latestDefaultChatExecutionTargetSaveId.current = saveId;
-    const controller = new AbortController();
-    pendingDefaultChatExecutionTargetSaveAbort.current = controller;
-    const nextDefaultChatExecutionTarget = {
-      pendingProvider: defaultChannelExecutionTarget.provider,
-      pendingModel: defaultChannelExecutionTarget.model,
-      pendingInstance: defaultChannelExecutionTarget.instance,
-      pendingModelSelection: defaultChannelExecutionTarget.modelSelection,
-    };
-
-    pendingDefaultChatExecutionTargetSaveTimeout.current = setTimeout(() => {
-      pendingDefaultChatExecutionTargetSaveTimeout.current = null;
-
-      void updateChannelPendingExecutionTarget(
-        channelId,
-        nextDefaultChatExecutionTarget,
-        controller.signal,
-      )
-        .then((payload) => {
-          if (
-            controller.signal.aborted
-            || latestDefaultChatExecutionTargetSaveId.current !== saveId
-          ) {
-            return;
-          }
-          pendingDefaultChatExecutionTargetSaveAbort.current = null;
-          startTransition(() => setState({ status: 'ready', payload }));
-        })
-        .catch((error) => {
-          if (
-            controller.signal.aborted
-            || latestDefaultChatExecutionTargetSaveId.current !== saveId
-          ) {
-            return;
-          }
-          pendingDefaultChatExecutionTargetSaveAbort.current = null;
-          setFeedback(formatWorkspaceExecutionTargetMutationError(
-            error,
-            t(messageKeys.sharedExecutionTargetSaveChatReplySettingsError),
-            t,
-          ));
-        });
-    }, debounceMs);
-
-    return () => {
-      if (pendingDefaultChatExecutionTargetSaveTimeout.current) {
-        clearTimeout(pendingDefaultChatExecutionTargetSaveTimeout.current);
-        pendingDefaultChatExecutionTargetSaveTimeout.current = null;
-      }
-      controller.abort();
-    };
-  }, [
-    debounceMs,
-    readyChat?.globalOrchestrator.executionTarget.provider,
-    readyChat?.globalOrchestrator.executionTarget.model,
-    readyChat?.globalOrchestrator.executionTarget.instance,
-    readyChat?.globalOrchestrator.executionModelSelection,
-    readySelectedChannel?.id,
-    readySelectedChannel?.channelKind,
-    readySelectedChannel?.roomRouting?.mode,
-    readySelectedChannel?.pendingProvider,
-    readySelectedChannel?.pendingModel,
-    readySelectedChannel?.pendingInstance,
-    readySelectedChannel?.pendingModelSelection,
-    setFeedback,
-    setState,
-    t,
-    defaultChannelExecutionTarget.instance,
-    defaultChannelExecutionTarget.model,
-    defaultChannelExecutionTarget.modelSelection,
-    defaultChannelExecutionTarget.provider,
-    state.status,
-    updateChannelPendingExecutionTarget,
-  ]);
-
   return {
     draftExecutionTarget,
     setDraftExecutionTarget,
-    defaultChannelExecutionTarget,
-    setDefaultChannelExecutionTarget,
   };
 }

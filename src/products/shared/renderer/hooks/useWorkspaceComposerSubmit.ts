@@ -53,7 +53,6 @@ import {
 } from '../api/index.js';
 import { applyDraftCatExecutionTargets } from '../draftCatExecutionTargets.js';
 import {
-  applyOptimisticPendingExecutionTarget,
   appendOptimisticUserMessage,
   insertCreatedChannelIntoPayload,
 } from '../workspaceChatUtils.js';
@@ -135,7 +134,6 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   setDraftWorkflowShape?: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys?: Dispatch<SetStateAction<string[] | null>>;
   draftExecutionTarget: ModelValue;
-  defaultChannelExecutionTarget: ModelValue;
   showingParallelChatDraft?: boolean;
   draftParallelChatTargets?: Array<ModelValue & DraftParallelTargetBranchFields>;
   draftWorkflowShape?: 'sequential' | 'concurrent';
@@ -202,7 +200,6 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setDraftWorkflowShape,
     setDraftAudienceKeys,
     draftExecutionTarget,
-    defaultChannelExecutionTarget,
     showingParallelChatDraft = false,
     draftParallelChatTargets = [],
     draftWorkflowShape = 'sequential',
@@ -447,8 +444,6 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         draftEntryKind,
         draftExecutionTarget,
         assistantResponseLanguage: initialPayload.language?.assistantResponseLanguage,
-        selectedChannel,
-        defaultChannelExecutionTarget,
         draftFiles,
         channelFiles,
         createChatChannel,
@@ -481,7 +476,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
       channelId = preparedSendContext.channelId;
       rollbackPath = preparedSendContext.rollbackPath;
       restoreFiles = preparedSendContext.restoreFiles;
-      const { messageBody, defaultDispatchTarget } = preparedSendContext;
+      const { messageBody } = preparedSendContext;
       const maxAudienceParticipants =
         state.status === 'ready'
           ? state.payload.chat.capabilities.maxAudienceParticipants
@@ -512,11 +507,19 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
             workflowShape: activeWorkflowShape,
           })
         : null;
-      const messageMetadata = draftMessageMetadata ?? activeChannelMessageMetadata;
+      // A conversation just created from a draft hears its first message as a whole.
+      const createdChannelMessageMetadata = wasDraftingNewChat && !draftMessageMetadata
+        ? resolveActiveChannelMessageMetadata({
+            selectedChannel: payload.chat.selectedChannel?.id === channelId
+              ? normalizeSelectedChannelView(payload.chat.selectedChannel)
+              : null,
+            maxAudienceParticipants,
+          })
+        : null;
+      const messageMetadata = draftMessageMetadata
+        ?? activeChannelMessageMetadata
+        ?? createdChannelMessageMetadata;
 
-      if (defaultDispatchTarget) {
-        payload = applyOptimisticPendingExecutionTarget(payload, channelId, defaultDispatchTarget);
-      }
       const optimisticAppend = appendOptimisticUserMessage(payload, channelId, messageBody);
       payload = optimisticAppend.payload;
       pendingOptimisticMessageId = optimisticAppend.optimisticMessageId;
@@ -533,7 +536,6 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         body: messageBody,
         clientMessageId: optimisticAppend.optimisticMessageId,
         senderName: payload.ownerDisplayName,
-        ...(defaultDispatchTarget ?? {}),
         ...(messageMetadata ? { messageMetadata } : {}),
       }, ackController.signal);
       clearPendingOptimisticSend(channelId, optimisticAppend.optimisticMessageId);
@@ -688,10 +690,6 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     showingParallelChatDraft,
     showingMyCatDirectLane,
     showingNewChatDraft,
-    defaultChannelExecutionTarget.instance,
-    defaultChannelExecutionTarget.modelSelection,
-    defaultChannelExecutionTarget.model,
-    defaultChannelExecutionTarget.provider,
     resetDraftParallelChatTargets,
     state,
     t,

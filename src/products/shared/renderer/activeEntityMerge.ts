@@ -192,12 +192,6 @@ export function mergeChannelSummaryWithChannelView(
     runtimePermissionMode: selectedChannel.runtimePermissionMode ?? null,
     lastMessageAt: selectedChannel.lastMessageAt,
     lastActivatedAt: selectedChannel.lastActivatedAt,
-    pendingProvider: selectedChannel.pendingProvider ?? currentSummary?.pendingProvider,
-    pendingModel: selectedChannel.pendingModel ?? currentSummary?.pendingModel,
-    pendingModelSelection:
-      selectedChannel.pendingModelSelection
-      ?? currentSummary?.pendingModelSelection
-      ?? null,
     roomMode: roomRouting.mode,
     routingStatus: resolveSubscribedChannelRoutingStatus(selectedChannel),
     lastRoutingAt: resolveSubscribedChannelLastRoutingAt(selectedChannel),

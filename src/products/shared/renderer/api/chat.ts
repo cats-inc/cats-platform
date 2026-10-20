@@ -615,7 +615,7 @@ export async function updateCatProfile(
     companion?: boolean;
     mcpProfile?: string | null;
     name?: string;
-    makeBoss?: boolean;
+    group?: 'admin' | 'standard';
     products?: string[];
     archive?: boolean;
     unarchive?: boolean;

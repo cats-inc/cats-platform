@@ -11,6 +11,7 @@ import {
   touchParallelChatGroup,
 } from '../../state/model/index.js';
 import { createMergedDispatchChatStore, mergeCompletedDispatchState } from '../../state/runtime-dispatch/merge.js';
+import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
 import { updateChatState } from '../../state/store.js';
 import type {
   ParallelChatDispatchResponse,
@@ -74,6 +75,24 @@ interface BegunParallelChatDispatch {
   sourceMessageId?: string;
   error?: string;
   orchestrator?: ChannelDispatchOrchestratorSummary;
+}
+
+
+/** A member turn without its own audience goes to every participant of that member. */
+function withMemberAudience(
+  state: ChatState,
+  channelId: string,
+  input: SendChannelMessageInput,
+): SendChannelMessageInput {
+  if (input.messageMetadata?.recipientParticipantIds?.length) {
+    return input;
+  }
+  const recipientParticipantIds = resolveChannelParticipantAssignments(requireChannel(state, channelId))
+    .filter((assignment) => assignment.status === 'active')
+    .map((assignment) => assignment.participantId);
+  return recipientParticipantIds.length > 0
+    ? { ...input, messageMetadata: { ...input.messageMetadata, recipientParticipantIds } }
+    : input;
 }
 
 export interface StagedParallelChatDispatch {
@@ -247,7 +266,7 @@ async function stageParallelChatBodies(
       const begun = await beginChannelMessageDispatch(
         acknowledgedState,
         channelId,
-        { ...input, body: trimmedBody },
+        withMemberAudience(acknowledgedState, channelId, { ...input, body: trimmedBody }),
         context.dependencies.runtimeClient,
         now,
         {

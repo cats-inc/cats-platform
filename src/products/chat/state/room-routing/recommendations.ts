@@ -5,15 +5,8 @@ import type {
   RoomWorkflowBranchStrategy,
   RoomWorkflowShape,
 } from '../../../../shared/roomRouting.js';
-import {
-  isDirectLaneChannel,
-  isDefaultChatChannel,
-} from '../../shared/channelTopology.js';
-import {
-  buildChannelView,
-  ORCHESTRATOR_NAME,
-  resolveOrchestratorDisplayName,
-} from '../model/index.js';
+import { activeAssignedParticipants } from '../../shared/channelParticipants.js';
+import { buildChannelView } from '../model/index.js';
 import type { RoutingTarget } from '../mentionRouter.js';
 import { detachRoutingTargetRuntimeAttachment } from './runtime.js';
 
@@ -257,44 +250,16 @@ export function extractWorkflowRecommendationFromBody(
   };
 }
 
-function isDefaultChatRuntimeChannel(channel: ReturnType<typeof buildChannelView>): boolean {
-  return isDefaultChatChannel(channel);
-}
-
-function buildOrchestratorTarget(state: ChatState, channelId: string): RoutingTarget {
-  const channel = buildChannelView(state, channelId);
-  return {
-    participantKind: 'orchestrator',
-    participantId: 'orchestrator',
-    participantName: isDefaultChatRuntimeChannel(channel) ? ORCHESTRATOR_NAME : resolveOrchestratorDisplayName(state),
-    laneId: null,
-    sessionId: null,
-  };
-}
-
 export function resolveWorkflowRecommendationTargets(
   state: ChatState,
   channelId: string,
   recommendation: WorkflowRecommendation,
 ): WorkflowRecommendationResolution {
   const channel = buildChannelView(state, channelId);
-  const isDirectLane = isDirectLaneChannel(channel);
-  const catsById = new Map(
-    channel.assignedCats
-      .filter((cat) => cat.status === 'active')
-      .map((cat) => [cat.catId, cat]),
-  );
-  const catsByName = new Map(
-    channel.assignedCats
-      .filter((cat) => cat.status === 'active')
-      .map((cat) => [cat.name.toLowerCase(), cat]),
-  );
-  const orchestrator = buildOrchestratorTarget(state, channelId);
-  const orchestratorAliases = new Set([
-    ORCHESTRATOR_NAME.toLowerCase(),
-    orchestrator.participantName.toLowerCase(),
-    orchestrator.participantId,
-  ]);
+  // Recommendations name participants; there is no separate orchestrator to hand back to.
+  const participants = activeAssignedParticipants(channel);
+  const participantsById = new Map(participants.map((participant) => [participant.participantId, participant]));
+  const participantsByName = new Map(participants.map((participant) => [participant.name.toLowerCase(), participant]));
   const targets: RoutingTarget[] = [];
   const unresolved: string[] = [];
   const mentionNames: string[] = [];
@@ -305,31 +270,16 @@ export function resolveWorkflowRecommendationTargets(
     const normalizedId = selector.participantId?.trim() ?? null;
     const normalizedName = selector.participantName?.trim() ?? null;
 
-    if (
-      selector.participantKind === 'orchestrator'
-      || (normalizedId && orchestratorAliases.has(normalizedId.toLowerCase()))
-      || (normalizedName && orchestratorAliases.has(normalizedName.toLowerCase()))
-    ) {
-      if (isDirectLane) {
-        unresolved.push(normalizedName ?? normalizedId ?? 'orchestrator');
-        continue;
-      }
-      target = orchestrator;
-    } else if (normalizedId && catsById.has(normalizedId)) {
-      const cat = catsById.get(normalizedId)!;
+    const participant = selector.participantKind === 'orchestrator'
+      ? null
+      : (normalizedId ? participantsById.get(normalizedId) : null)
+        ?? (normalizedName ? participantsByName.get(normalizedName.toLowerCase()) : null)
+        ?? null;
+    if (participant) {
       target = {
         participantKind: 'cat',
-        participantId: cat.catId,
-        participantName: cat.name,
-        laneId: null,
-        sessionId: null,
-      };
-    } else if (normalizedName && catsByName.has(normalizedName.toLowerCase())) {
-      const cat = catsByName.get(normalizedName.toLowerCase())!;
-      target = {
-        participantKind: 'cat',
-        participantId: cat.catId,
-        participantName: cat.name,
+        participantId: participant.participantId,
+        participantName: participant.name,
         laneId: null,
         sessionId: null,
       };

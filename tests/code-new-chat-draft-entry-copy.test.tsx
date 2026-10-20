@@ -31,7 +31,6 @@ function createPayload(overrides: Partial<AppShellPayload['chat']> = {}): AppShe
       codeNewDraft: null,
     },
     chat: {
-      bossCatId: null,
       botBindings: [],
       capabilities: {
         maxCats: 5,
@@ -73,8 +72,6 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     plusMenuOpen: false,
     plusMenuRef: { current: null },
     fileInputRef: { current: null },
-    bossCatName: 'Boss Cat',
-    bossCatAvatarColor: null,
     onComposerChange: () => {},
     onComposerKeyDown: () => {},
     onSendMessage: () => {},

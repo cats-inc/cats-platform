@@ -73,6 +73,8 @@ export interface MobileChatCopy {
   emptyMessages: string;
   retryAction: string;
   sendAction: string;
+  /** Label of the composer's audience row; mirrors the web audience popover header. */
+  audienceLabel: string;
   composerPlaceholder: Record<MobileProductMode, string>;
   productLabel: Record<MobileProductMode, string>;
 }
@@ -271,6 +273,7 @@ const MOBILE_CHAT_COPY: Record<MobileLocale, MobileChatCopy> = {
     emptyMessages: 'No messages yet. Send the first one below.',
     retryAction: 'Retry',
     sendAction: 'Send',
+    audienceLabel: enCatalog['shared.audience.popoverHeader'],
     composerPlaceholder: {
       chat: 'Message your cats…',
       code: 'Describe the code task…',
@@ -291,6 +294,7 @@ const MOBILE_CHAT_COPY: Record<MobileLocale, MobileChatCopy> = {
     emptyMessages: '還沒有訊息。可在下方送出第一則訊息。',
     retryAction: '重試',
     sendAction: '送出',
+    audienceLabel: zhTWCatalog['shared.audience.popoverHeader'],
     composerPlaceholder: {
       chat: '傳訊息給你的貓咪…',
       code: '描述程式碼任務…',

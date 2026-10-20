@@ -8,7 +8,6 @@ import {
   EMPTY_LIVE_INDICATOR,
   resolveLiveIndicatorConversationId,
   resolveWaitingIndicatorStateTransition,
-  resolveLiveIndicatorSpeakerLabel,
   shouldPromoteStreamingBubbleToWaitingSpeaker,
   shouldPromoteSealedBubbleToWaitingSpeaker,
   shouldIgnoreSealedSessionClose,
@@ -134,8 +133,6 @@ test('resolveWaitingSessionState requires session-start confirmation while a dir
           },
         },
       },
-      pendingProvider: 'claude',
-      pendingInstance: null,
     },
     'orchestrator',
   );
@@ -169,8 +166,6 @@ test('resolveWaitingSessionState skips session-start confirmation when the targe
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     'participant-antigravity',
   );
@@ -215,8 +210,6 @@ test('resolveWaitingSessionState uses the active target queue time as the confir
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     'participant-antigravity',
     'target-antigravity',
@@ -264,8 +257,6 @@ test('resolveWaitingSessionState matches the active target by laneId when the ta
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     'participant-antigravity',
     'target-antigravity-drifted',
@@ -315,8 +306,6 @@ test('resolveWaitingSessionState prefers the persisted target laneId over a reco
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     'participant-antigravity',
     'target-antigravity-drifted',
@@ -363,8 +352,6 @@ test('resolveWaitingSessionState does not require a new session start for a warm
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     'participant-antigravity',
     'target-antigravity',
@@ -385,8 +372,6 @@ test('resolveLiveIndicatorConversationId prefers the selected channel canonical 
           defaultRecipientId: null,
           workflow: {},
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
       'room-1',
     ),
@@ -429,8 +414,6 @@ test('resolveWaitingSessionState ignores a closed participant lease while a new 
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     'participant-antigravity',
     'target-antigravity',
@@ -480,8 +463,6 @@ test('resolveWaitingSessionState ignores a live participant lease from a differe
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     'participant-antigravity',
     'target-antigravity-drifted',
@@ -541,8 +522,6 @@ test('resolveConcurrentWaitingSegments materializes every active concurrent targ
         },
       },
     ],
-    pendingProvider: null,
-    pendingInstance: null,
   });
 
   assert.equal(segments.length, 2);
@@ -702,8 +681,6 @@ test('shouldReconnectLiveIndicatorAfterSourceError stays off while waiting for t
             },
           },
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
     ),
     false,
@@ -906,8 +883,6 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for a sealed spe
             },
           },
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
     ),
     true,
@@ -987,8 +962,6 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for an earlier s
             },
           },
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
     ),
     true,
@@ -1061,8 +1034,6 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on when a later seq
             },
           },
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
     ),
     true,
@@ -1143,8 +1114,6 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for an anonymous
             },
           },
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
     ),
     true,
@@ -1221,8 +1190,6 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off when the sealed
             },
           },
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
     ),
     false,
@@ -1300,8 +1267,6 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off when the active
             },
           },
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
     ),
     false,
@@ -1381,8 +1346,6 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off for the last se
             },
           },
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
     ),
     false,
@@ -1477,8 +1440,6 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off for the final s
             },
           },
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
     ),
     false,
@@ -1573,8 +1534,6 @@ test('shouldPinLiveIndicatorUntilPersistedReply keeps a completed streaming bubb
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     }),
     true,
   );
@@ -1622,8 +1581,6 @@ test('shouldPinLiveIndicatorUntilPersistedReply keeps a sealed bubble visible un
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     }),
     true,
   );
@@ -1706,8 +1663,6 @@ test('shouldPinLiveIndicatorUntilPersistedReply stays pinned when another lane r
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     }),
     true,
   );
@@ -1784,8 +1739,6 @@ test('shouldPinLiveIndicatorUntilPersistedReply releases a sealed bubble when th
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     }),
     false,
   );
@@ -1847,8 +1800,6 @@ test('shouldPinLiveIndicatorUntilPersistedReply keeps a lane-scoped bubble pinne
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     }),
     true,
   );
@@ -1912,8 +1863,6 @@ test('resolveWaitingIndicatorStateTransition keeps the current speaker bubble pi
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     previousChannelId: 'channel-1',
     channelId: 'channel-1',
@@ -1995,8 +1944,6 @@ test('resolveWaitingIndicatorStateTransition hands off once the persisted assist
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     previousChannelId: 'channel-1',
     channelId: 'channel-1',
@@ -2011,99 +1958,6 @@ test('resolveWaitingIndicatorStateTransition hands off once the persisted assist
   assert.equal(next.segments[0]?.contentBlocks[0]?.text, 'First answer');
   assert.equal(next.segments[1]?.phase, 'waiting');
   assert.equal(next.segments[1]?.participantId, 'participant-agent-2');
-});
-
-test('resolveWaitingIndicatorStateTransition increments the segment index for same-speaker follow-up bubbles', () => {
-  const previous: LiveIndicatorState = {
-    ...EMPTY_LIVE_INDICATOR,
-    active: true,
-    phase: 'sealed' as const,
-    sourceMessageId: 'message-user-current',
-    participantId: 'participant-claude',
-    speakerLabel: 'Claude-CLI',
-    segments: [
-      {
-        laneId: null,
-        sessionId: null,
-        identityParticipantId: null,
-        id: 'message-user-current:participant-claude:segment:0',
-        phase: 'sealed' as const,
-        sourceMessageId: 'message-user-current',
-        targetStateId: null,
-        segmentIndex: 0,
-        participantId: 'participant-claude',
-        catId: null,
-        activeCatIds: [],
-        catName: null,
-        speakerLabel: 'Claude-CLI',
-        sessionStartedAt: null,
-        requiresSessionStartConfirmation: false,
-        progressText: '',
-        progressKind: null,
-        tools: [],
-        contentBlocks: [
-          {
-            id: 'text:0',
-            index: 0,
-            kind: 'text' as const,
-            status: 'complete' as const,
-            title: null,
-            text: 'First segment',
-            toolName: null,
-            toolId: null,
-            metadata: null,
-          },
-        ],
-        events: [],
-      },
-    ],
-  };
-  const waitingState = createWaitingLiveIndicatorState({
-    sourceMessageId: 'message-user-current',
-    participantId: 'participant-claude',
-    catId: null,
-    speakerLabel: 'Claude-CLI',
-    revealIdentity: true,
-  });
-
-  const next = resolveWaitingIndicatorStateTransition({
-    previous,
-    waitingState,
-    selectedChannel: {
-      messages: [
-        {
-          createdAt: '2026-04-09T12:00:00.000Z',
-          id: 'message-user-current',
-          senderKind: 'user',
-        },
-        {
-          createdAt: '2026-04-09T12:00:00.000Z',
-          id: 'message-agent-current-0',
-          senderKind: 'agent',
-        },
-      ],
-      roomRouting: {
-        defaultRecipientId: null,
-        workflow: {
-          activeTurn: {
-            status: 'running',
-            sourceMessageId: 'message-user-current',
-            workflowShape: 'default',
-            targetStatuses: [],
-          },
-        },
-      },
-      pendingProvider: 'claude',
-      pendingInstance: 'native',
-    },
-    previousChannelId: 'channel-1',
-    channelId: 'channel-1',
-  });
-
-  assert.equal(next.segments.length, 2);
-  assert.equal(next.segments[0]?.segmentIndex, 0);
-  assert.equal(next.segments[1]?.segmentIndex, 1);
-  assert.notEqual(next.segments[0]?.id, next.segments[1]?.id);
 });
 
 test('resolveWaitingIndicatorStateTransition does not reopen a sealed sequential speaker as a waiting bubble', () => {
@@ -2197,8 +2051,6 @@ test('resolveWaitingIndicatorStateTransition does not reopen a sealed sequential
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     previousChannelId: 'channel-1',
     channelId: 'channel-1',
@@ -2321,8 +2173,6 @@ test('resolveWaitingIndicatorStateTransition preserves an existing waiting segme
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     previousChannelId: 'channel-1',
     channelId: 'channel-1',
@@ -2332,100 +2182,6 @@ test('resolveWaitingIndicatorStateTransition preserves an existing waiting segme
   assert.equal(next.segments.length, 2);
   assert.equal(next.segments[1]?.segmentIndex, 3);
   assert.equal(next.segments[1]?.id, 'message-user-current:participant-codex:segment:3');
-});
-
-test('resolveWaitingIndicatorStateTransition increments an anonymous follow-up segment for the same hidden participant', () => {
-  const previous: LiveIndicatorState = {
-    ...EMPTY_LIVE_INDICATOR,
-    active: true,
-    phase: 'sealed' as const,
-    sourceMessageId: 'message-user-current',
-    identityParticipantId: 'participant-claude',
-    participantId: null,
-    speakerLabel: null,
-    segments: [
-      {
-        laneId: null,
-        id: 'message-user-current:participant-claude:segment:0',
-        phase: 'sealed' as const,
-        sourceMessageId: 'message-user-current',
-        targetStateId: null,
-        segmentIndex: 0,
-        sessionId: null,
-        identityParticipantId: 'participant-claude',
-        participantId: null,
-        catId: null,
-        activeCatIds: [],
-        catName: null,
-        speakerLabel: null,
-        sessionStartedAt: null,
-        requiresSessionStartConfirmation: false,
-        progressText: '',
-        progressKind: null,
-        tools: [],
-        contentBlocks: [
-          {
-            id: 'text:0',
-            index: 0,
-            kind: 'text' as const,
-            status: 'complete' as const,
-            title: null,
-            text: 'First segment',
-            toolName: null,
-            toolId: null,
-            metadata: null,
-          },
-        ],
-        events: [],
-      },
-    ],
-  };
-  const waitingState = createWaitingLiveIndicatorState({
-    sourceMessageId: 'message-user-current',
-    participantId: 'participant-claude',
-    catId: null,
-    speakerLabel: null,
-    revealIdentity: false,
-  });
-
-  const next = resolveWaitingIndicatorStateTransition({
-    previous,
-    waitingState,
-    selectedChannel: {
-      messages: [
-        {
-          createdAt: '2026-04-09T12:00:00.000Z',
-          id: 'message-user-current',
-          senderKind: 'user',
-        },
-        {
-          createdAt: '2026-04-09T12:00:00.000Z',
-          id: 'message-agent-current-0',
-          senderKind: 'agent',
-        },
-      ],
-      roomRouting: {
-        defaultRecipientId: null,
-        workflow: {
-          activeTurn: {
-            status: 'running',
-            sourceMessageId: 'message-user-current',
-            workflowShape: 'default',
-            targetStatuses: [],
-          },
-        },
-      },
-      pendingProvider: 'claude',
-      pendingInstance: 'native',
-    },
-    previousChannelId: 'channel-1',
-    channelId: 'channel-1',
-  });
-
-  assert.equal(next.segments.length, 2);
-  assert.equal(next.segments[0]?.segmentIndex, 0);
-  assert.equal(next.segments[1]?.segmentIndex, 1);
-  assert.equal(next.segments[1]?.identityParticipantId, 'participant-claude');
 });
 
 test('resolveWaitingIndicatorStateTransition does not preserve a waiting segment index for a different participant with the same label', () => {
@@ -2500,8 +2256,6 @@ test('resolveWaitingIndicatorStateTransition does not preserve a waiting segment
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     previousChannelId: 'channel-1',
     channelId: 'channel-1',
@@ -2588,8 +2342,6 @@ test('resolveWaitingIndicatorStateTransition does not preserve an anonymous wait
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     previousChannelId: 'channel-1',
     channelId: 'channel-1',
@@ -2866,8 +2618,6 @@ test('resolveWaitingIndicatorStateTransition keeps the same waiting segment when
           },
         },
       },
-      pendingProvider: null,
-      pendingInstance: null,
     },
     previousChannelId: 'channel-1',
     channelId: 'channel-1',
@@ -2967,8 +2717,6 @@ test('shouldPromoteStreamingBubbleToWaitingSpeaker hands off to a named follow-u
             },
           },
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
     ),
     true,
@@ -3054,8 +2802,6 @@ test('shouldPromoteSealedBubbleToWaitingSpeaker hands off once the first speaker
             },
           },
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
     ),
     true,
@@ -3141,8 +2887,6 @@ test('shouldPromoteSealedBubbleToWaitingSpeaker waits for the current lane reply
             },
           },
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
     ),
     false,
@@ -3228,46 +2972,10 @@ test('shouldPromoteSealedBubbleToWaitingSpeaker stays off for the same logical s
             },
           },
         },
-        pendingProvider: null,
-        pendingInstance: null,
       },
     ),
     false,
   );
-});
-
-test('resolveLiveIndicatorSpeakerLabel uses the default execution target label', () => {
-  const label = resolveLiveIndicatorSpeakerLabel({
-    pendingProvider: 'antigravity',
-    pendingInstance: 'cli/native',
-    pendingModel: 'antigravity-default',
-    roomRouting: {
-      defaultRecipientId: null,
-    },
-  } as never);
-
-  assert.equal(label, 'Antigravity-CLI');
-});
-
-test('resolveLiveIndicatorSpeakerLabel stays silent for participant chats', () => {
-  assert.equal(resolveLiveIndicatorSpeakerLabel({
-    pendingProvider: 'antigravity',
-    pendingInstance: 'cli/native',
-    pendingModel: 'antigravity-default',
-    assignedCats: [{ catId: 'cat-1', status: 'active' }],
-    roomRouting: {
-      defaultRecipientId: null,
-    },
-  } as never), null);
-
-  assert.equal(resolveLiveIndicatorSpeakerLabel({
-    pendingProvider: 'antigravity',
-    pendingInstance: 'cli/native',
-    pendingModel: 'antigravity-default',
-    roomRouting: {
-      defaultRecipientId: 'cat-1',
-    },
-  } as never), null);
 });
 
 test('resolveVisibleLiveIndicator hides stale progress once a reply newer than the active turn is visible', () => {

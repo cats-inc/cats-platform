@@ -110,7 +110,8 @@ Exit：可 review 的 App／Catalog／SDK 候選產物與驗證紀錄齊備；�
 - [ ] 真宿主多視窗停用、取消中重啟、壞包恢復、套件前後 inventory／bytes 證據。
 - [ ] 由另一位 reviewer 檢查 data ownership、刪除 containment、migration 與信任邊界。
 - [ ] 完成 SPEC 全部 AC 對應表；未驗證 OS／行為明列，不用 fixture 冒充 installed acceptance。
-- [ ] 準備版本／release notes／信任根與端點／exact pins；保留其他團隊的新變更。
+- [ ] 準備版本／release notes／信任根／exact pins，啟用 SPEC-120 FR-09 選定的 Pages endpoint
+      與 Actions 簽章；保留其他團隊的新變更。
 - [ ] 依新的發布授權安排 SDK（如需）、App、Catalog、Desktop 的發布，不沿用 0.5.13 授權。
 
 ## Change map
@@ -124,7 +125,7 @@ Exit：可 review 的 App／Catalog／SDK 候選產物與驗證紀錄齊備；�
 | Home／Settings Apps／新 Market surface | 共用管理 client 與操作 DTO |
 | `packages/app-sdk`, Desktop bundle config／packaging | 可取得開發契約、信任根、Usage pins 與出貨政策 |
 | root `package.json` `exports` | 只允許 `.`、`./package.json` 與 `./app-sdk`；相容用的 `./*` 隨 0.6.0 移除（ADR-123） |
-| Apps shared builder／release workflow／新 catalog tooling | immutable package 與獨立 promotion，見 Apps PLAN-004 |
+| Apps shared builder／release workflow／新 catalog tooling | immutable package 與獨立 promotion，見 Apps PLAN-004；catalog 經 PR 合併後由 Actions 簽章並部署到 cats-apps Pages |
 
 變更地圖是規劃，尚未建立新 endpoint 或宣稱現有 API 支援新參數。
 
@@ -197,4 +198,11 @@ base64 regex 對約 3 MiB 以上的檔案 stack overflow，已改為線性檢查
 desktop、renderer 的 `tsc --noEmit` 通過，test 設定只剩 2 個 `mobile/` 依賴錯誤；mobile
 boundary 通過；重建後 15 個相關測試檔共 121 項通過。未跑完整 `npm test`、mobile 或 macOS。
 
-*Last updated: 2026-09-29*
+2026-10-20：Owner 決定第一期部署選擇，記於 SPEC-120 FR-09：artifact 沿用 cats-apps
+GitHub Releases，catalog 放 cats-apps GitHub Pages，正式簽章 key 先存 Actions secret；
+自有網域與更嚴格的 key 保管留待日後。取代 2026-09-28 checkpoint 中「endpoint 與 key 保管
+留到發布準備」的部分；key 輪替責任人與精確 release 版本仍待發布準備。本次僅更新文件，
+未啟用 Pages、未生成 key，也未修改 workflow 或上傳產物。查證：`cats-inc/cats-apps` 為
+public，Pages API 回 404（未啟用）。僅檢查 diff 與 `git diff --check`，未執行產品測試或 build。
+
+*Last updated: 2026-10-20*

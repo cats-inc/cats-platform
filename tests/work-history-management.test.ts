@@ -125,7 +125,7 @@ test('workflow cleanup compacts source duplicates and backups without changing t
   t.after(() => rm(dir, { recursive: true, force: true }));
   const file = path.join(dir, 'state.json');
   const now = '2026-10-20T00:00:00.000Z';
-  let chat = createChannel(createDefaultChatState(), { title: 'Room', topic: '', originSurface: 'chat', skipBossCatGreeting: true }, new Date(now));
+  let chat = createChannel(createDefaultChatState(), { title: 'Room', topic: '', originSurface: 'chat' }, new Date(now));
   const channelId = chat.selectedChannelId;
   chat = appendMessage(chat, channelId, { body: 'Keep my transcript', senderKind: 'user', senderName: 'Owner' }, new Date(now)).state;
   const channel = chat.channels.find(channel => channel.id === channelId)!;

@@ -69,33 +69,22 @@ export function createChatTelegramRoomBridge(input: {
       return input.mutationGate ? input.mutationGate.run(key, operation) : operation();
     },
     findReusableRoomId(state, room) {
-      if (room.roomMode !== 'direct_message') {
-        return null;
-      }
-
-      const defaultRecipientCatId = room.defaultRecipientId
-        ?? (room.participantCatIds.length === 1 ? room.participantCatIds[0] : null);
-      if (!defaultRecipientCatId) {
-        return null;
-      }
-
       return state.channels.find((channel) =>
         channel.roomRouting?.mode === 'direct_message'
-        && channel.roomRouting.defaultRecipientId === defaultRecipientCatId,
+        && channel.roomRouting.defaultRecipientId === room.defaultRecipientId,
       )?.id ?? null;
     },
     createRoom(state, room, timestamp) {
       const nextState = createChannel(
         state,
         {
-          title: room.title,
+          title: '',
           topic: room.topic,
           // Telegram inbound room creation always terminates inside Cats Chat.
           originSurface: 'chat',
           roomMode: room.roomMode,
           defaultRecipientId: room.defaultRecipientId,
           participantCatIds: room.participantCatIds,
-          skipBossCatGreeting: true,
         },
         timestamp,
       );
