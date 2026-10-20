@@ -4,7 +4,7 @@ import { mkdtemp, readFile, writeFile, rm, mkdir, readdir } from 'node:fs/promis
 import { createServer } from 'node:http';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { createDefaultCoreState, upsertCoreRun, upsertCoreTask, upsertCoreArtifact, upsertCoreCheckpoint, appendCoreTrace } from '../src/core/model/index.ts';
+import { createDefaultCoreState, upsertCoreRun, upsertCoreTask, upsertCoreProject, upsertCoreArtifact, upsertCoreCheckpoint, appendCoreTrace } from '../src/core/model/index.ts';
 import { applyHistory, executionSource, previewHistory } from '../src/products/work/state/historyManagement.ts';
 import { FileChatStore } from '../src/products/chat/state/store.ts';
 import { createChannel, appendMessage } from '../src/products/chat/state/model/index.ts';
@@ -15,6 +15,21 @@ import type { RoomWorkflowTurn } from '../src/shared/roomRouting.ts';
 import { listExecutionHistory } from '../src/products/work/state/historyListing.ts';
 import { routeWorkHistoryApi } from '../src/products/work/api/historyRoutes.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
+
+test('Relay log cleanup compacts its authoritative excerpts and retains the conversation response', () => {
+  let core = upsertCoreRun(createDefaultCoreState(), { id: 'relay-run', title: 'Dispatch', status: 'completed', metadata: { source: 'delegation' } }).core;
+  core = upsertCoreProject(core, { id: 'context', title: 'Context', metadata: { codeRelay: { rounds: [{ dispatches: [{ runId: 'relay-run', stdoutExcerpt: 'auxiliary log', stderrExcerpt: 'error log' }], messages: [{ kind: 'prompt', content: 'Owner prompt' }, { kind: 'response', content: 'Delivered discussion answer' }] }] } } }).core;
+  const preview = previewHistory(core, { subjects: [{ family: 'run', id: 'relay-run' }], scope: 'logs' });
+  assert.equal(preview.detailRecords, 2);
+  const changed = upsertCoreProject(core, { id: 'context', title: 'Changed context' }).core;
+  assert.throws(() => applyHistory(changed, preview), /changed/);
+  const result = applyHistory(core, preview).core;
+  const relay = result.projects[0].metadata.codeRelay as any;
+  assert.equal(relay.rounds[0].dispatches[0].stdoutExcerpt, null);
+  assert.equal(relay.rounds[0].dispatches[0].stderrExcerpt, null);
+  assert.equal(relay.rounds[0].messages[1].content, 'Delivered discussion answer');
+  assert.equal(previewHistory(core, { subjects: [{ family: 'run', id: 'relay-run' }], scope: 'history' }).items[0].outcome, 'retained');
+});
 
 function coreFixture() {
   let core = upsertCoreTask(createDefaultCoreState(), { id: 't', title: 'Work' }).core;

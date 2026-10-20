@@ -1,3 +1,4 @@
+import { ownerEntry } from '../../../core/ownerLifecycle.js';
 import type { CoreStore } from '../../../core/store.js';
 import type { CatsCoreState, CoreRunRecord, CoreTaskRecord } from '../../../core/types.js';
 import type { RuntimeClient, RuntimeSessionInfo } from '../../../runtime/client.js';
@@ -123,7 +124,10 @@ export function resumeCodeTask(
     throw new Error(`Task not found: ${input.taskId}`);
   }
 
-  const resumableStatuses = ['draft', 'blocked', 'failed'];
+  assertCodeTaskOwner(core, task);
+  if (core.runs.some(run => run.taskId === task.id && ['queued', 'running', 'blocked'].includes(run.status))) throw new Error('Stop the active attempt before retrying this Task.');
+  const latestRun = [...core.runs].filter(run => run.taskId === task.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const resumableStatuses = ['draft', 'blocked', 'failed', ...(latestRun && ['failed', 'cancelled'].includes(latestRun.status) ? ['in_progress', 'cancelled'] : [])];
   if (!resumableStatuses.includes(task.status)) {
     throw new Error(
       `Task ${input.taskId} is not resumable (status: ${task.status}). `
@@ -147,21 +151,28 @@ export async function bridgeCodeTaskToRuntime(
   now: Date = new Date(),
   options: BridgeCodeTaskOptions = {},
 ): Promise<BridgeCodeTaskResult> {
-  let core = await coreStore.readCore();
-  const task = core.tasks.find((t) => t.id === input.taskId);
-  if (!task) {
+  let task!: CoreTaskRecord;
+  let runDraft!: ReturnType<typeof upsertCoreRun>;
+  let executionRequest!: ReturnType<typeof buildCodeTaskRuntimeExecutionRequest>;
+  const evaluatedAt = now.toISOString();
+  const activeRunState = deriveRunState({ lifecycle: 'active' });
+  await coreStore.updateCore(core => {
+  const currentTask = core.tasks.find((t) => t.id === input.taskId);
+  if (!currentTask) {
     throw new Error(`Task not found: ${input.taskId}`);
   }
 
-  const executionRequest = buildCodeTaskRuntimeExecutionRequest({
+  task = currentTask;
+  assertCodeTaskOwner(core, task);
+  if (task.status !== 'approved') throw new Error('Approve or resume this Task before starting execution.');
+  if (core.runs.some(run => run.taskId === task.id && ['queued', 'running', 'blocked'].includes(run.status))) throw new Error('This Task already has an active attempt. Stop it before retrying.');
+  executionRequest = buildCodeTaskRuntimeExecutionRequest({
     core,
     task,
   });
-  const evaluatedAt = now.toISOString();
-  const activeRunState = deriveRunState({ lifecycle: 'active' });
-  const runDraft = upsertCoreRun(core, {
+  runDraft = upsertCoreRun(core, {
     title: `Code execution for ${task.title}`,
-    status: 'running',
+    status: 'queued',
     conversationId: task.conversationId,
     taskId: task.id,
     orchestratorActorId: task.orchestratorActorId,
@@ -185,9 +196,12 @@ export async function bridgeCodeTaskToRuntime(
       evaluatedAt,
     }),
   }, now);
-  core = runDraft.core;
+  return upsertCoreTask(runDraft.core, { id: task.id, title: task.title, status: 'in_progress' }, now).core;
+  });
 
-  const session = await createSupervisedRuntimeSession({
+  let session: RuntimeSessionInfo | null = null;
+  try {
+  session = await createSupervisedRuntimeSession({
     runtimeClient,
     input: {
       provider: input.provider,
@@ -227,15 +241,23 @@ export async function bridgeCodeTaskToRuntime(
         : undefined,
     },
   });
-  const persistedRun = upsertCoreRun(core, {
+  let persistedRun!: ReturnType<typeof upsertCoreRun>;
+  let runResult!: ReturnType<typeof upsertCoreTask>;
+  const committed = await coreStore.updateCore(core => {
+    const latestTask = core.tasks.find(current => current.id === task.id);
+    const latestRun = core.runs.find(run => run.id === runDraft.run.id);
+    if (!latestTask || !latestRun || latestRun.status === 'cancelled' || latestTask.approval.status === 'pending') throw new Error('Execution was cancelled or changed while its session was starting.');
+    assertCodeTaskOwner(core, latestTask);
+    task = latestTask;
+  persistedRun = upsertCoreRun(core, {
     id: runDraft.run.id,
     title: runDraft.run.title,
     status: 'running',
     startedAt: runDraft.run.startedAt,
-    summary: `Started supervised Code runtime session ${session.id}.`,
+    summary: `Started supervised Code runtime session ${session!.id}.`,
     metadata: writeRunStateMetadata({
       metadata: writeCodeExecutionRunMetadata(runDraft.run.metadata, {
-        session,
+        session: session!,
         provider: input.provider,
         model: input.model ?? null,
         instance: input.instance ?? null,
@@ -257,14 +279,14 @@ export async function bridgeCodeTaskToRuntime(
   );
   const nextMetadata = writeCodeExecutionTaskMetadata(workspaceMetadata, {
     runId: persistedRun.run.id,
-    sessionId: session.id,
-    provider: session.provider,
-    model: session.model,
+    sessionId: session!.id,
+    provider: session!.provider,
+    model: session!.model,
     workspacePath: input.workspacePath,
     startedAt: evaluatedAt,
   });
 
-  const runResult = upsertCoreTask(core, {
+  runResult = upsertCoreTask(core, {
     id: task.id,
     title: task.title,
     status: 'in_progress',
@@ -272,17 +294,30 @@ export async function bridgeCodeTaskToRuntime(
   }, now);
   core = runResult.core;
 
-  await coreStore.writeCore(core);
+  return core;
+  });
 
   return {
-    core,
+    core: committed,
     task: runResult.task,
     run: persistedRun.run,
     runId: persistedRun.run.id,
     sessionId: session.id,
     session,
   };
+  } catch (error) {
+    if (session) { await runtimeClient.cancelSession(session.id).catch(() => {}); await runtimeClient.closeSession(session.id).catch(() => {}); }
+    await coreStore.updateCore(core => {
+      const run = core.runs.find(run => run.id === runDraft.run.id);
+      if (!run || ['completed', 'failed', 'cancelled'].includes(run.status)) return core;
+      const failed = upsertCoreRun(core, { id: run.id, title: run.title, status: 'failed', completedAt: new Date().toISOString(), summary: error instanceof Error ? error.message : 'Execution startup failed.' }).core;
+      const task = failed.tasks.find(task => task.id === input.taskId);
+      return task?.status === 'in_progress' ? upsertCoreTask(failed, { id: task.id, title: task.title, status: 'blocked' }).core : failed;
+    });
+    throw error;
+  }
 }
+
 
 function writeCodeExecutionRunMetadata(
   metadata: Record<string, unknown>,
@@ -349,4 +384,28 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null;
+}
+
+function assertCodeTaskOwner(core: CatsCoreState, task: CoreTaskRecord): void {
+  if (['pending', 'rejected'].includes(task.approval.status) || task.status === 'pending_approval') throw new Error('Resolve this Task approval through its canonical owner first.');
+  if (['chat-channel', 'chat-room-workflow'].includes(String(task.metadata.source))) throw new Error('Continue this derived Task from its source conversation.');
+  if (ownerEntry(core, 'task', task.id)?.listing === 'archived' || ownerEntry(core, 'task', task.id)?.deleted) throw new Error('Restore this Task before executing it.');
+}
+
+/** Observe the task's own bridge; closing a session never satisfies Task acceptance. */
+export async function reconcileCodeTaskExecution(coreStore: CoreStore, runtime: RuntimeClient, taskId: string): Promise<CatsCoreState> {
+  const initial = await coreStore.readCore();
+  const run = [...initial.runs].filter(run => run.taskId === taskId && asRecord(run.metadata.supervision)?.source === 'code_task_execute').sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const sessionId = asRecord(asRecord(run?.metadata.supervision)?.runtimeBridge)?.sessionId;
+  if (!run || typeof sessionId !== 'string' || !['queued', 'running', 'blocked'].includes(run.status)) return initial;
+  const observation = await runtime.observeSession(sessionId);
+  if (observation.session?.status !== 'closed') return initial;
+  return coreStore.updateCore(core => {
+    const current = core.runs.find(candidate => candidate.id === run.id);
+    if (!current || !['queued', 'running', 'blocked'].includes(current.status)) return core;
+    if (asRecord(asRecord(current.metadata.supervision)?.runtimeBridge)?.sessionId !== sessionId) throw new Error('Execution bridge changed while observing it. Refresh again.');
+    const next = upsertCoreRun(core, { id: current.id, title: current.title, status: 'completed', completedAt: new Date().toISOString(), summary: 'Runtime session closed. Task acceptance has not been established.', metadata: { ...current.metadata, sessionClosedObservedAt: new Date().toISOString() } }).core;
+    const task = next.tasks.find(candidate => candidate.id === taskId);
+    return task?.status === 'in_progress' ? upsertCoreTask(next, { id: task.id, title: task.title, status: 'blocked' }).core : next;
+  });
 }

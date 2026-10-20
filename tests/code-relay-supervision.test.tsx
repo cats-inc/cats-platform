@@ -6,7 +6,9 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { loadConfig } from '../src/config.ts';
-import { createDefaultCoreState } from '../src/core/model/index.ts';
+import { createDefaultCoreState, upsertCoreProject } from '../src/core/model/index.ts';
+import { createCodeRelayThread } from '../src/products/code/state/relayState.ts';
+import { stopRun } from '../src/platform/supervision/runCancellation.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import { readEvidenceEvents } from '../src/platform/persistence/evidence.ts';
 import type {
@@ -14,6 +16,32 @@ import type {
   RuntimeSessionCreateInput,
 } from '../src/platform/runtime/client.ts';
 import { routeCodeApi } from '../src/products/code/api/index.ts';
+
+test('late Relay completion preserves canonical cancellation and concurrent owner changes', async t => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'cats-relay-cancel-')); t.after(() => rm(dir, { recursive: true, force: true }));
+  const created = createCodeRelayThread(createDefaultCoreState(), { title: 'Dispatch context', objective: null, repoPath: null, providerIds: ['codex'] });
+  const store = new MemoryCoreStore(created.core), runtime = createRuntimeStub();
+  let release!: () => void, started!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; }), sending = new Promise<void>(resolve => { started = resolve; }); t.after(release);
+  const original = runtime.sendMessage.bind(runtime);
+  runtime.sendMessage = async (...args) => { started(); await held; return original(...args); };
+  const server = createServer(async (request, response) => { if (!await routeCodeApi({ request, response, url: new URL(request.url!, 'http://localhost'), method: request.method!, dependencies: { coreStore: store, runtimeClient: runtime, config: loadConfig({ CATS_PLATFORM_DIR: dir }) } })) { response.writeHead(404); response.end(); } });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve)); t.after(() => server.close());
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  const response = await fetch(`${base}/api/code/relay/threads/${created.project.id}/fan-out`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt: 'Review this change', agentIds: [created.thread.roster[0].id] }) });
+  assert.equal(response.status, 202); await sending;
+  const run = (await store.readCore()).runs[0];
+  assert.equal((await stopRun({ coreStore: store, runtimeClient: runtime }, run.id))?.status, 'stopped');
+  await store.updateCore(core => upsertCoreProject(core, { id: created.project.id, title: 'Owner renamed context' }).core);
+  await store.updateCore(core => upsertCoreProject(core, { id: 'parallel', title: 'Keep parallel work' }).core);
+  release();
+  let payload: any;
+  for (let i = 0; i < 30; i++) { payload = await (await fetch(`${base}/api/code/relay/threads`)).json(); if (payload.threads[0].thread.status === 'waiting_for_user') break; await new Promise(resolve => setTimeout(resolve, 10)); }
+  assert.equal((await store.readCore()).runs[0].status, 'cancelled');
+  assert.equal((await store.readCore()).projects.find(project => project.id === created.project.id)?.title, 'Owner renamed context');
+  assert.ok((await store.readCore()).projects.some(project => project.id === 'parallel'));
+  assert.equal(payload.threads[0].rounds[0].dispatches[0].status, 'cancelled');
+});
 
 function createRuntimeStub(): RuntimeClient & {
   sentMessages: Array<{ sessionId: string; content: string }>;

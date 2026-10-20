@@ -102,11 +102,21 @@ export function previewHistory(core: CatsCoreState, input: unknown): HistoryPrev
     return { ...subject, title: record.title, outcome, reasons };
   });
   const fingerprint = { subjects, scope: request.scope, revision: core.ownerLifecycle?.revision ?? 0,
-    runs: core.runs, missions: core.missions, tasks: core.tasks, workItems: core.workItems, artifacts: core.artifacts,
+    runs: core.runs, missions: core.missions, tasks: core.tasks, projects: core.projects, workItems: core.workItems, artifacts: core.artifacts,
     approvals: core.approvalBindings, links: core.workGraphLinks, checkpoints: core.checkpoints, traces: core.traces, activities: core.activities, sessions: core.sessions, outcomes: core.outcomes };
   return { subjects, scope: request.scope, token: createHash('sha256').update(JSON.stringify(fingerprint)).digest('hex'), items,
-    detailRecords: core.traces.filter(trace => trace.runId && runs.has(trace.runId)).length + core.activities.filter(activity => activity.runId && runs.has(activity.runId)).length,
+    detailRecords: core.traces.filter(trace => trace.runId && runs.has(trace.runId)).length + core.activities.filter(activity => activity.runId && runs.has(activity.runId)).length + countRelayLogBuffers(core, runs),
     estimatedBytes: null, retainedResources: ['Conversation messages, deliverable files, provider-native transcripts and external evidence files are kept.'] };
+}
+
+function countRelayLogBuffers(core: CatsCoreState, runs: Set<string>): number {
+  let count = 0;
+  for (const project of core.projects) {
+    const relay = project.metadata.codeRelay as { rounds?: Array<{ dispatches?: Array<{ runId?: string; stdoutExcerpt?: string; stderrExcerpt?: string }> }> } | undefined;
+    if (!Array.isArray(relay?.rounds)) continue;
+    for (const round of relay.rounds) if (Array.isArray(round?.dispatches)) for (const dispatch of round.dispatches) if (dispatch?.runId && runs.has(dispatch.runId)) count += Number(!!dispatch.stdoutExcerpt) + Number(!!dispatch.stderrExcerpt);
+  }
+  return count;
 }
 
 export function applyHistory(core: CatsCoreState, input: unknown): { core: CatsCoreState; receipt: OwnerCleanupReceipt } {

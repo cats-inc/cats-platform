@@ -1,6 +1,12 @@
 import type { MessageCatalog } from '../index.js';
 
 export const zhTWCatalog: MessageCatalog = {
+  ownerRefreshExecution: "更新執行狀態",
+  ownerSessionAcceptanceNotice: "Runtime 工作階段關閉只代表本次嘗試結束。請檢查驗收與交付證據後再完成 Task。",
+  ownerOpenProject: "開啟工作脈絡",
+  ownerPrepareRetry: "準備另一次嘗試",
+  ownerDispatchReviewNotice: "重試或轉送會帶入此表單。請檢查提示、對象與模式，再送出以啟動真實工作。",
+  ownerDispatchMode: "派送模式",
   ownerPreviewHistoryRemoved: "已移除本次主機階段的預覽歷史，保留產出與檔案。",
   ownerPreviewRestartNeedsArtifact: "重啟需要已登記的預覽產出。請從來源 Task／對話建立新預覽。",
   ownerPreviewHistoryScope: "從本次主機階段移除此已結束預覽，並清除記憶體 log。保留產出、工作區檔案與外部／provider log。",

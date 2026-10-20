@@ -1,3 +1,4 @@
+import { CodeTaskExecutionActions } from './CodeRunActions.js';
 import { useEffect, useState } from 'react';
 import { OwnerRecordActions } from '../../../shared/renderer/OwnerRecordActions.js';
 import { Link, useParams } from 'react-router-dom';
@@ -21,6 +22,8 @@ export function CodeTaskDetailPage(): JSX.Element {
   const { t } = useI18n();
   const [detail, setDetail] = useState<CodeTaskBuilderDetailSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refresh, setRefresh] = useState(0);
+  useEffect(() => { const listener = () => setRefresh(value => value + 1); window.addEventListener('cats:owner-records-changed', listener); return () => window.removeEventListener('cats:owner-records-changed', listener); }, []);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,7 +59,7 @@ export function CodeTaskDetailPage(): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [taskId, t]);
+  }, [taskId, t, refresh]);
 
   if (loading && !detail) {
     return (
@@ -88,6 +91,7 @@ export function CodeTaskDetailPage(): JSX.Element {
       <TaskTopBar title={detail.title ?? t(messageKeys.codeArtifactDetailTaskLabel)} />
       {livePreviewTaskId ? <OwnerRecordActions family="task" id={livePreviewTaskId} /> : null}
       {livePreviewTaskId ? <Link className="operatorActionButton" to={CODE_BUILD_PATH + '?taskId=' + encodeURIComponent(livePreviewTaskId)}>{t('ownerContinueTask')}</Link> : null}
+      {livePreviewTaskId ? <CodeTaskExecutionActions taskId={livePreviewTaskId} /> : null}
       {detail.workspace ? (
         <CodeWorkspaceSummaryPanel summary={detail.workspace} />
       ) : null}

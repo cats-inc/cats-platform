@@ -15,6 +15,13 @@ export function applyOwnerLifecycleProjection(core: CatsCoreState): CatsCoreStat
       });
   }
   const cleared = new Set(core.runs.filter(run => ownerEntry(core, 'run', run.id)?.logsClearedAt).map(run => run.id));
+  const clearedRelayRuns = new Set(Object.entries(core.ownerLifecycle.entries).filter(([key, entry]) => key.startsWith('run:') && (entry.logsClearedAt || entry.deleted)).map(([key]) => key.slice(4)));
+  next.projects = next.projects.map(project => {
+    const relay = project.metadata.codeRelay as { rounds?: Array<{ dispatches?: Array<{ runId?: string; stdoutExcerpt?: string | null; stderrExcerpt?: string | null }> }> } | undefined;
+    if (!Array.isArray(relay?.rounds) || !relay.rounds.some(round => Array.isArray(round?.dispatches) && round.dispatches.some(dispatch => dispatch?.runId && clearedRelayRuns.has(dispatch.runId)))) return project;
+    return { ...project, metadata: { ...project.metadata, codeRelay: { ...relay, rounds: relay.rounds.map(round => ({ ...round,
+      ...(Array.isArray(round?.dispatches) ? { dispatches: round.dispatches.map(dispatch => dispatch?.runId && clearedRelayRuns.has(dispatch.runId) ? { ...dispatch, stdoutExcerpt: null, stderrExcerpt: null } : dispatch) } : {}) })) } } };
+  });
   function compactDuplicateText(value: unknown): unknown {
     if (Array.isArray(value)) return value.map(compactDuplicateText);
     if (!value || typeof value !== 'object') return value;

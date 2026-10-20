@@ -1,6 +1,12 @@
 import type { MessageCatalog } from '../index.js';
 
 export const enCatalog: MessageCatalog = {
+  ownerRefreshExecution: "Refresh execution status",
+  ownerSessionAcceptanceNotice: "A closed runtime session ends the attempt. Complete the Task only after reviewing its acceptance and delivery evidence.",
+  ownerOpenProject: "Open work context",
+  ownerPrepareRetry: "Prepare another attempt",
+  ownerDispatchReviewNotice: "Retry or forwarding fills this form. Review the prompt, recipients and mode, then dispatch to start real work.",
+  ownerDispatchMode: "Dispatch mode",
   ownerPreviewHistoryRemoved: "Host-session preview history removed. Artifacts and files retained.",
   ownerPreviewRestartNeedsArtifact: "Restart requires a registered preview artifact. Open the source Task/conversation to start another preview.",
   ownerPreviewHistoryScope: "Remove this ended preview from the current host session and clear its in-memory log buffer. Artifacts, workspace files and external/provider logs remain.",

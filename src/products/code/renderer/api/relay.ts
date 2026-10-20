@@ -40,7 +40,7 @@ export interface CodeRelayDispatchPayload {
   agentId: string;
   runId: string | null;
   source: 'fan_out' | 'relay';
-  status: 'requested' | 'running' | 'completed' | 'failed';
+  status: 'requested' | 'running' | 'completed' | 'failed' | 'cancelled';
   prompt: string;
   responseMessageId: string | null;
   requestedAt: string;
@@ -153,6 +153,7 @@ export async function runCodeRelayFanOut(
   threadId: string,
   input: {
     mode?: string;
+    sourceMessageId?: string | null;
     objective?: string | null;
     prompt: string;
     agentIds: string[];

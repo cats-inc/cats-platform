@@ -6,6 +6,8 @@ import { CoreConflictError, CoreNotFoundError, CoreValidationError } from './err
 import { ownerEntry, setOwnerEntry } from './ownerLifecycle.js';
 import { applyOwnerLifecycleProjection } from './ownerLifecycleProjection.js';
 import { upsertCoreProject, upsertCoreWorkItem, upsertCoreTask, upsertCoreArtifact } from './model/index.js';
+import { readTaskPlanningMetadata } from '../shared/taskPlanning.js';
+import { readCoreEffectiveDeliveryPolicy } from './governance.js';
 
 const collections = { project: 'projects', work_item: 'workItems', task: 'tasks', artifact: 'artifacts' } as const;
 const terminal = (status: string) => ['completed', 'failed', 'cancelled'].includes(status);
@@ -27,8 +29,9 @@ export function ownerActionView(core: CatsCoreState, family: PlanningOwnerFamily
     ;
   const pendingApproval = core.tasks.some(task => taskIds.has(task.id) && task.status === 'pending_approval') || core.approvalBindings.some(binding => (binding.subjectId === id || taskIds.has(binding.approvalTaskId)) && core.tasks.some(task => task.id === binding.approvalTaskId && task.approval.status === 'pending'))
     || family === 'task' && (record as CoreTaskRecord).approval.status === 'pending';
-  const gated = !!record.metadata.workGoldenPath || !!record.metadata.supervision || source === 'transport-work'
-    || core.runs.some(run => !!run.taskId && taskIds.has(run.taskId) && (!!run.metadata.supervision || !!run.metadata.effectiveDeliveryPolicy));
+  const gated = !!record.metadata.workGoldenPath || source === 'transport-work'
+    || !!readCoreEffectiveDeliveryPolicy(record.metadata)?.gates.length
+    || core.runs.some(run => !!run.taskId && taskIds.has(run.taskId) && !!readCoreEffectiveDeliveryPolicy(run.metadata)?.gates.length);
   const common = [...(derived ? ['Controlled by its source conversation. Use the source controls.'] : []), ...(active ? ['Active execution must be stopped through its execution owner first.'] : []), ...(pendingApproval ? ['Resolve the pending approval first.'] : [])];
   const actions: OwnerActionView['actions'] = [{ action: 'edit', blockers: family === 'artifact' ? [] : [...common] }, { action: 'archive', blockers: active || pendingApproval || ['in_progress', 'pending_approval'].includes(record.status) ? ['Active work must remain reachable. Stop it first.'] : [] }, { action: 'restore', blockers: [] }, { action: 'delete', blockers: ownerDeleteBlockers(core, family, id) }];
   if (family === 'project') actions.push({ action: record.status === 'paused' ? 'resume' : 'pause', blockers: common });
@@ -45,7 +48,7 @@ export function ownerActionView(core: CatsCoreState, family: PlanningOwnerFamily
     sourcePath: channelId ? `/chat/chats/${encodeURIComponent(channelId)}` : null,
     assignedActorIds: 'assignedActorIds' in record ? record.assignedActorIds : [], projectId: 'projectId' in record ? record.projectId : null,
     parentId: 'parentTaskId' in record ? record.parentTaskId ?? null : 'parentWorkItemId' in record ? record.parentWorkItemId : null,
-    priority: typeof renderer.priority === 'string' ? renderer.priority : '', acceptanceCriteria: typeof renderer.acceptanceCriteria === 'string' ? renderer.acceptanceCriteria : null,
+    priority: typeof renderer.priority === 'string' ? renderer.priority : '', acceptanceCriteria: typeof renderer.acceptanceCriteria === 'string' ? renderer.acceptanceCriteria : readTaskPlanningMetadata(metadata).acceptanceCriteria,
     actions, dependencies, choices: { projects: core.projects.map(item => ({ id: item.id, title: item.title })), parents: (family === 'task' ? core.tasks : family === 'work_item' ? core.workItems : []).filter(item => item.id !== id).map(item => ({ id: item.id, title: item.title })), actors: core.actors.filter(actor => actor.status === 'active').map(actor => ({ id: actor.id, title: actor.name })) } };
 }
 

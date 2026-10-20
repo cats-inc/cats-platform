@@ -1,4 +1,10 @@
 export const messageKeys = {
+  ownerRefreshExecution: 'ownerRefreshExecution',
+  ownerSessionAcceptanceNotice: 'ownerSessionAcceptanceNotice',
+  ownerOpenProject: 'ownerOpenProject',
+  ownerPrepareRetry: 'ownerPrepareRetry',
+  ownerDispatchReviewNotice: 'ownerDispatchReviewNotice',
+  ownerDispatchMode: 'ownerDispatchMode',
   ownerPreviewHistoryRemoved: 'ownerPreviewHistoryRemoved',
   ownerPreviewRestartNeedsArtifact: 'ownerPreviewRestartNeedsArtifact',
   ownerPreviewHistoryScope: 'ownerPreviewHistoryScope',

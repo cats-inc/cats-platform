@@ -1,3 +1,4 @@
+import { CodeTaskExecutionActions } from './CodeRunActions.js';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -431,7 +432,9 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       ) : null}
 
       {step !== 'workspace' ? (
-        <CodeExecutionSummaryPanel
+        <>
+        {activeTaskId ? <CodeTaskExecutionActions taskId={activeTaskId} /> : null}
+      <CodeExecutionSummaryPanel
           taskId={activeTaskId}
           taskStatus={taskStatus}
           effectiveStrategy={effectiveStrategy}
@@ -445,6 +448,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
           provider={provider}
           model={model}
         />
+        </>
       ) : null}
 
       {step === 'workspace' ? (

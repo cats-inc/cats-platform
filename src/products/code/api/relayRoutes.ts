@@ -5,6 +5,9 @@ import type {
   CatsCoreState,
   CoreRunStatus,
 } from '../../../core/types.js';
+import { CoreConflictError } from '../../../core/errors.js';
+import { handleCoreError } from '../../../core/api/shared.js';
+import { ownerEntry } from '../../../core/ownerLifecycle.js';
 import {
   matchRoute,
   readJsonBody,
@@ -186,6 +189,7 @@ function probeRelayRosterEntries(
 function buildThreadProjection(
   project: Awaited<ReturnType<typeof listCodeRelayProjects>>[number],
   thread: CodeRelayThreadRecord,
+  core: CatsCoreState,
 ) {
   return {
     thread: {
@@ -200,7 +204,8 @@ function buildThreadProjection(
     contract: thread.contract,
     provenProviderIds: thread.provenProviderIds,
     roster: thread.roster,
-    rounds: thread.rounds,
+    rounds: thread.rounds.map(round => ({ ...round, dispatches: round.dispatches.map(dispatch => ({ ...dispatch,
+      status: core.runs.find(run => run.id === dispatch.runId)?.status === 'cancelled' ? 'cancelled' : dispatch.status })) })),
   };
 }
 
@@ -244,6 +249,7 @@ function upsertRelayDispatchRun(
   },
 ): CatsCoreState {
   const runId = createCodeRelayDispatchRunId(input.threadId, input.roundId, input.entry.id);
+  if (core.runs.some(run => run.id === runId && run.status === 'cancelled')) return core;
   const terminal = input.status === 'completed'
     || input.status === 'failed'
     || input.status === 'cancelled';
@@ -269,6 +275,8 @@ function upsertRelayDispatchRun(
       ...(input.status === 'running' ? { startedAt: input.now.toISOString() } : {}),
       ...(terminal ? { completedAt: input.now.toISOString() } : {}),
       metadata: {
+        source: 'delegation',
+        projectId: input.threadId,
         supervision: {
           source: 'code_relay_fan_out',
           runtimeBridge: {
@@ -330,7 +338,7 @@ function upsertRelayDispatchRuns(
       prompt: input.prompt,
       repoPath: input.repoPath,
       siblingRunIds,
-      status: 'running',
+      status: 'queued',
       now: input.now,
     });
   }, core);
@@ -357,7 +365,7 @@ async function buildRelayThreadsPayload(
     return buildThreadProjection(project, {
       ...relay,
       roster: probedRoster,
-    });
+    }, core);
   });
   const selectedThreadId = options.selectedThreadId
     ?? threads.find((thread) => thread !== null)?.thread.id
@@ -425,6 +433,17 @@ async function completeFanOutInBackground(
         supervision,
       });
       sessionId = session.id;
+      let cancelled = false;
+      await context.dependencies.coreStore.updateCore(current => {
+        const run = current.runs.find(run => run.id === runId);
+        if (!run || run.status === 'cancelled') { cancelled = true; return current; }
+        return upsertRelayDispatchRun(current, { threadId: input.threadId, roundId: input.roundId,
+          dispatchId: input.round.dispatches.find(dispatch => dispatch.agentId === entry.id)?.id ?? null,
+          entry, prompt: input.prompt, repoPath: input.repoPath,
+          siblingRunIds: input.targetEntries.map(target => createCodeRelayDispatchRunId(input.threadId, input.roundId, target.id)),
+          status: 'running', sessionId, now: context.dependencies.now?.() ?? new Date() });
+      });
+      if (cancelled) { await context.dependencies.runtimeClient.cancelSession(session.id); throw new Error('Dispatch was cancelled before sending.'); }
       const result = await sendSupervisedRuntimeMessage({
         runtimeClient: context.dependencies.runtimeClient,
         sessionId: session.id,
@@ -469,7 +488,7 @@ async function completeFanOutInBackground(
     }
   }));
 
-  const latestCore = await context.dependencies.coreStore.readCore();
+  await context.dependencies.coreStore.updateCore(latestCore => {
   const finished = finishCodeRelayFanOut(
     latestCore,
     input.threadId,
@@ -478,7 +497,7 @@ async function completeFanOutInBackground(
     context.dependencies.now?.() ?? new Date(),
   );
   if (!finished) {
-    return;
+    return latestCore;
   }
 
   const completedAt = context.dependencies.now?.() ?? new Date();
@@ -507,7 +526,8 @@ async function completeFanOutInBackground(
     });
   }
 
-  await context.dependencies.coreStore.writeCore(completedCore);
+  return completedCore;
+  });
 }
 
 export async function routeCodeRelayApi(
@@ -534,7 +554,6 @@ export async function routeCodeRelayApi(
     }
 
     const now = context.dependencies.now?.() ?? new Date();
-    let core = await context.dependencies.coreStore.readCore();
     const runtimeConfig = await readRelayRuntimeProviderConfig(context);
     if (!runtimeConfig || Object.keys(runtimeConfig).length === 0) {
       sendJson(context.response, runtimeConfig ? 409 : 503, {
@@ -542,6 +561,8 @@ export async function routeCodeRelayApi(
       });
       return true;
     }
+    let selectedThreadId: string | null = null;
+    await context.dependencies.coreStore.updateCore(core => {
     const created = createCodeRelayThread(core, {
       title,
       objective: readNullableString(body.objective),
@@ -549,14 +570,16 @@ export async function routeCodeRelayApi(
       providerIds: Object.keys(runtimeConfig ?? {}),
     }, now);
     core = created.core;
+    selectedThreadId = created.project.id;
     const probedRoster = probeRelayRosterEntries(created.thread.roster, runtimeConfig);
     const probed = applyCodeRelayRosterProbe(core, created.project.id, probedRoster, now);
     if (probed) {
       core = probed.core;
     }
-    await context.dependencies.coreStore.writeCore(core);
+    return core;
+    });
     sendJson(context.response, 201, await buildRelayThreadsPayload(context, {
-      selectedThreadId: created.project.id,
+      selectedThreadId,
     }));
     return true;
   }
@@ -607,8 +630,11 @@ export async function routeCodeRelayApi(
     }
 
     const now = context.dependencies.now?.() ?? new Date();
+    const runtimeConfig = await readRelayRuntimeProviderConfig(context);
+    let exists = false;
+    await context.dependencies.coreStore.updateCore(current => {
     const updated = updateCodeRelayRosterEntry(
-      await context.dependencies.coreStore.readCore(),
+      current,
       threadId,
       agentId,
       {
@@ -623,17 +649,13 @@ export async function routeCodeRelayApi(
       now,
     );
 
-    if (!updated) {
-      sendJson(context.response, 404, {
-        error: { code: 'relay_thread_not_found', message: `No relay thread found for id ${threadId}.` },
-      });
-      return true;
-    }
-
-    const runtimeConfig = await readRelayRuntimeProviderConfig(context);
+    if (!updated) return current;
+    exists = true;
     const probedRoster = probeRelayRosterEntries(updated.thread.roster, runtimeConfig);
     const probed = applyCodeRelayRosterProbe(updated.core, threadId, probedRoster, now);
-    await context.dependencies.coreStore.writeCore(probed?.core ?? updated.core);
+    return probed?.core ?? updated.core;
+    });
+    if (!exists) { sendJson(context.response, 404, { error: { code: 'relay_thread_not_found', message: 'Relay context no longer exists.' } }); return true; }
     sendJson(context.response, 200, await buildRelayThreadsPayload(context, {
       selectedThreadId: threadId,
     }));
@@ -676,74 +698,28 @@ export async function routeCodeRelayApi(
     }
 
     const now = context.dependencies.now?.() ?? new Date();
-    let core = await context.dependencies.coreStore.readCore();
     const runtimeConfig = await readRelayRuntimeProviderConfig(context);
-    if (!runtimeConfig) {
-      sendJson(context.response, 503, {
-        error: { code: 'relay_selection_unavailable', message: 'Reconnect to Runtime before starting a relay round.' },
+    if (!runtimeConfig) { sendJson(context.response, 503, { error: { code: 'relay_selection_unavailable', message: 'Reconnect to Runtime before starting a relay round.' } }); return true; }
+    let started: NonNullable<ReturnType<typeof startCodeRelayFanOut>> | undefined;
+    try {
+      await context.dependencies.coreStore.updateCore(current => {
+        const project = current.projects.find(project => project.id === threadId);
+        const thread = project ? readCodeRelayThread(project) : null;
+        if (!project || !thread) throw new CoreConflictError('Relay context no longer exists.');
+        const sourceMessageId = readNonEmptyString(body.sourceMessageId);
+        if (sourceMessageId && !thread.rounds.some(round => round.messages.some(message => message.id === sourceMessageId))) throw new CoreConflictError('The forwarding source is no longer present in this context.');
+        if (ownerEntry(current, 'project', threadId)?.listing === 'archived' || project.status === 'archived' || thread.status === 'waiting_for_agents') throw new CoreConflictError('Restore the context or finish its active round before dispatching.');
+        const roster = probeRelayRosterEntries(thread.roster, runtimeConfig);
+        if (agentIds.some(id => !roster.some(entry => entry.id === id && entry.enabled && entry.availability === 'available'))) throw new CoreConflictError('Selected agents are outside current Runtime provider availability.');
+        const probed = applyCodeRelayRosterProbe(current, threadId, roster, now)?.core ?? current;
+        started = startCodeRelayFanOut(probed, threadId, { mode: readMode(body.mode), objective: readNonEmptyString(body.objective) ?? 'Open discussion round', prompt, agentIds, sourceMessageId }, now) ?? undefined;
+        if (!started?.targetEntries.length) throw new CoreConflictError('No enabled relay agents were available.');
+        const running = markCodeRelayDispatchesRunning(started.core, threadId, started.round.id, started.targetEntries.map(entry => entry.id), now);
+        if (!running) throw new CoreConflictError('Unable to admit this round.');
+        return upsertRelayDispatchRuns(running.core, { threadId, roundId: started.round.id, round: started.round, prompt, repoPath: started.project.repoPath, targetEntries: started.targetEntries, now });
       });
-      return true;
-    }
-    const project = core.projects.find((candidate) => candidate.id === threadId);
-    const thread = project ? readCodeRelayThread(project) : null;
-    if (thread) {
-      const roster = probeRelayRosterEntries(thread.roster, runtimeConfig);
-      if (agentIds.some((id) => !roster.some((entry) => entry.id === id
-        && entry.enabled && entry.availability === 'available'))) {
-        sendJson(context.response, 409, {
-          error: { code: 'relay_agents_unavailable', message: 'Selected relay agents are outside the current Runtime provider selection.' },
-        });
-        return true;
-      }
-      core = applyCodeRelayRosterProbe(core, threadId, roster, now)?.core ?? core;
-    }
-    const started = startCodeRelayFanOut(core, threadId, {
-      mode: readMode(body.mode),
-      objective: readNonEmptyString(body.objective) ?? 'Open discussion round',
-      prompt,
-      agentIds,
-    }, now);
-    if (!started) {
-      sendJson(context.response, 404, {
-        error: { code: 'relay_thread_not_found', message: `No relay thread found for id ${threadId}.` },
-      });
-      return true;
-    }
-
-    if (started.targetEntries.length === 0) {
-      sendJson(context.response, 400, {
-        error: { code: 'relay_agents_unavailable', message: 'No enabled relay agents were available.' },
-      });
-      return true;
-    }
-
-    core = started.core;
-    await context.dependencies.coreStore.writeCore(core);
-
-    const running = markCodeRelayDispatchesRunning(
-      core,
-      threadId,
-      started.round.id,
-      started.targetEntries.map((entry) => entry.id),
-      now,
-    );
-    if (!running) {
-      sendJson(context.response, 500, {
-        error: { code: 'relay_round_start_failed', message: 'Failed to mark relay dispatches as running.' },
-      });
-      return true;
-    }
-
-    core = upsertRelayDispatchRuns(running.core, {
-      threadId,
-      roundId: started.round.id,
-      round: started.round,
-      prompt,
-      repoPath: started.project.repoPath,
-      targetEntries: started.targetEntries,
-      now,
-    });
-    await context.dependencies.coreStore.writeCore(core);
+    } catch (error) { handleCoreError(context, error); return true; }
+    if (!started) return true;
     sendJson(context.response, 202, await buildRelayThreadsPayload(context, {
       selectedThreadId: threadId,
     }));
