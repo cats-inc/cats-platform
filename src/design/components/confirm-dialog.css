@@ -85,6 +85,21 @@
   background: var(--danger-hover);
 }
 
+.confirmPrimaryButton {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirmPrimaryButton:hover {
+  background: color-mix(in srgb, var(--accent) 88%, #000 12%);
+}
+
 @keyframes confirmFadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

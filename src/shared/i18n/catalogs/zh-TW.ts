@@ -774,6 +774,7 @@ export const zhTWCatalog: MessageCatalog = {
   'apps.market.installSucceeded': '已安裝 {appDisplayName} {version}。',
   'apps.market.installFailed': '無法安裝 {appDisplayName}：{reason}',
   'apps.market.catalogChanged': '目錄在你開啟後有更新，請重新確認這個 App 再安裝。',
+  'apps.market.listSeparator': '、',
   'apps.market.replaceLocal': '這會取代目前不是從 Market 安裝的 {appDisplayName} {version}。',
   'apps.market.error.network': '無法連線到 GitHub，請確認網路後再試。',
   'apps.market.error.unverified': '下載內容沒有通過驗證，所以沒有安裝任何東西。',

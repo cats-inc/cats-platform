@@ -1,6 +1,11 @@
 /* ── App Market (/lobby/market) ──
  * Reuses the Lobby screen width and top bar; one card per catalog App. */
 
+/* The bordered top-bar buttons need room from the window edge. */
+.platformLobby.appMarket {
+  padding-block: var(--space-6);
+}
+
 .appMarketTitle {
   margin: 0;
   font-size: clamp(1.5rem, 3vw, 2rem);

@@ -789,6 +789,7 @@ export const enCatalog: MessageCatalog = {
   'apps.market.installSucceeded': '{appDisplayName} {version} is installed.',
   'apps.market.installFailed': 'Could not install {appDisplayName}: {reason}',
   'apps.market.catalogChanged': 'The catalog changed since you opened it. Review the App again before installing.',
+  'apps.market.listSeparator': ', ',
   'apps.market.replaceLocal': 'This replaces the {appDisplayName} {version} that was not installed from the Market.',
   'apps.market.error.network': 'Could not reach GitHub. Check your connection and try again.',
   'apps.market.error.unverified': 'The download did not pass verification, so nothing was installed.',

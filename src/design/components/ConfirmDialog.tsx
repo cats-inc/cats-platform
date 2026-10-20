@@ -12,6 +12,8 @@ export interface ConfirmDialogOptions {
   cancelLabel?: string;
   auxiliaryLabel?: string;
   defaultAction?: ConfirmDialogAction;
+  /** Confirm button styling; destructive (the default) for removals, primary for constructive actions. */
+  tone?: 'destructive' | 'primary';
 }
 
 interface ConfirmDialogState {
@@ -100,7 +102,7 @@ export function ConfirmDialog({
           ) : null}
           <button
             ref={defaultAction === 'confirm' ? initialFocusRef : null}
-            className="confirmDestructiveButton"
+            className={dialog.options.tone === 'primary' ? 'confirmPrimaryButton' : 'confirmDestructiveButton'}
             type="button"
             onClick={() => onClose('confirm')}
           >

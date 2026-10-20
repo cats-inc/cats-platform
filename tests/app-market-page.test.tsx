@@ -62,7 +62,8 @@ test('catalog status notices tell the user what still works', () => {
 });
 
 test('errors and permissions are localized', () => {
-  assert.equal(describeAppPermissions(['media.images', 'future.permission'], zh), '用你的 AI 工具產生圖片, future.permission');
+  assert.equal(describeAppPermissions(['ui.route', 'media.images', 'future.permission'], zh), '開啟自己的頁面、用你的 AI 工具產生圖片、future.permission');
+  assert.equal(describeAppPermissions(['ui.route', 'media.images'], en), 'open its own page, generate images with your AI tools');
   assert.equal(describeAppMarketError({ code: 'catalog_mismatch', message: 'x' }, zh), '下載內容沒有通過驗證，所以沒有安裝任何東西。');
   assert.equal(describeAppMarketError({ code: 'app_managed_by_desktop', message: 'x' }, en), 'Included with Cats Desktop');
   assert.equal(describeAppMarketError({ code: 'catalog_changed', message: 'x' }, en), 'The catalog changed since you opened it. Review the App again before installing.');
