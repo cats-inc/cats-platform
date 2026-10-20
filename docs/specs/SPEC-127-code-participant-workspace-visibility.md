@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | Draft; planning only, implementation not started |
+| **Status** | Approved; sliced implementation in progress, acceptance pending |
 | **Owner** | Cats Code workstream |
 | **Reviewer** | Owner and Platform/Runtime integration owners; pending |
 | **Decision** | [ADR-134](../decisions/134-observe-participant-workspaces-within-one-code-codespace.md) |
@@ -94,7 +94,10 @@ unknown. A `.git` file is valid worktree evidence when resolved by Runtime.
 Explicit session binding may show an associated checkout with no observed
 operations; label it as bound context rather than actual read/write activity.
 Full paths are details; use a Codespace-relative path only when containment is
-verified. Authorized paths outside it carry an explicit outside-Codespace label.
+verified. Verified authorized paths outside it carry an explicit outside-Codespace
+label. The initial transport has no verified Codespace-to-execution-location
+mapping, so it shows full paths and an unverified Codespace relationship; it
+does not infer containment from host path strings.
 
 ### FR-04: Distinguish intent, observation and freshness
 
@@ -133,8 +136,11 @@ renaming, model or role editing is introduced into this panel.
 
 Use bounded lists with an explicit truncation indicator. Opening a row does not
 run a model, recursively scan disk, change permissions or take worktree ownership.
-The initial feature exposes inspection and the existing authorized open-folder
-action; destructive worktree actions are outside scope.
+The initial feature exposes inspection and preserves the existing authorized
+Codespace open-folder action in the context section. Opening an observed checkout
+on the host requires a later verified host/location mapping; this first slice
+does not turn observed paths into host-open targets. Destructive worktree actions
+are outside scope.
 
 ### FR-06: Avatar summary and entry
 
@@ -144,8 +150,8 @@ The action opens the right side panel on that participant. A fresh conversation
 with no observations shows a truthful empty/not-reported summary.
 
 Keep ADR-131/ADR-132's current participant popover, model/settings actions,
-provider/model-participant behavior, hidden single-participant roster and
-audience-chip fallback. Start fresh and the implicit God Cat were removed by
+provider/model-participant behavior, existing participant roster and single-
+participant audience-chip fallback. Start fresh and the implicit God Cat were removed by
 ADR-132 and must not return through this feature. Saved selection attention
 retains its existing precedence. Do not add a second roster.
 
@@ -168,11 +174,12 @@ inspection data. Maintain a bounded Code read model over existing session/run
 provenance. Normalize transport once; the renderer must not parse raw provider
 events, assistant prose or transcript tool JSON.
 
-Proposed Code-owned API: `GET /api/code/conversations/:conversationId/work-areas`.
+Code-owned API: `GET /api/code/conversations/:conversationId/work-areas`.
 It checks Code conversation ownership and returns the one selected Codespace,
 participant executions, coverage/freshness and workspace rows. Transport/live
-updates must use the same model and authorization. Proposed routes and fields
-are not current API claims; exact integration sign-off is Phase 1 of PLAN-120.
+updates use the same model and authorization. JSON is the default; the same
+route accepts `text/event-stream` and emits `work_areas` snapshots. Revocation or
+unavailability closes the stream, with `work_areas_unavailable` when writable.
 
 Event ordering uses Runtime session ID, observation epoch and monotonic activity
 revision within that epoch. Keep independent sessions independent. Reconnect
@@ -181,8 +188,19 @@ revisions to suppress duplicates and older arrivals. Reconcile an unknown epoch
 against the current attachment before replacing state. Delete/unlink and session
 replacement invalidate current status.
 
-The product may retain bounded last-known facts in existing namespaced
-session/run metadata; Runtime remains authoritative for current observations.
+Runtime's `identityObservedAt` timestamps repository/branch verification;
+operation completion and reconnect do not refresh it. `startupCwd` and
+`runtimeCwd` are actual execution facts, independent of the product-selected
+Codespace/source binding. The initial Runtime implementation retains facts in
+memory only: after process restart an attachment has no reported activity until
+new observation. The initial Code projection follows that retention boundary;
+it does not introduce a persistent observation format or rewrite old profiles.
+
+The implemented product cache retains bounded last-known facts in memory only;
+Runtime remains authoritative for current observations. Platform correlates
+Runtime run IDs through immutable per-run wake metadata and exact server-owned
+engine bindings, including owner run/mission cleanup entries. Mutable session
+context is never attribution evidence.
 No per-message fields, new Core record family or global workspace registry is
 required. Freeze-sensitive changes receive explicit integration review first.
 

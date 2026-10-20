@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   buildCodeApiArtifactPath,
+  buildCodeApiConversationWorkAreasPath,
   buildCodeApiCodespacePath,
   buildCodeApiLivePreviewLogsPath,
   buildCodeApiLivePreviewPath,
@@ -44,6 +45,8 @@ import {
 } from '../src/products/code/shared/apiPaths.ts';
 
 test('code api path helpers build stable collection and detail paths', () => {
+  assert.equal(buildCodeApiConversationWorkAreasPath('conversation/1'),
+    '/api/code/conversations/conversation%2F1/work-areas');
   assert.equal(CODE_API_PREFIX, '/api/code');
   assert.equal(CODE_API_TASKS_PATH, '/api/code/tasks');
   assert.equal(CODE_API_CODESPACES_PATH, '/api/code/codespaces');

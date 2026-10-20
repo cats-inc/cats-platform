@@ -50,6 +50,7 @@ import {
 } from './clientStreams.js';
 import type { RuntimeSetupReadModel } from './setup.js';
 import { projectUsageSnapshot, projectUsageQuotaRefresh } from './usageSnapshot.js';
+import type { RuntimeWorkspaceActivitySnapshot } from './workspaceActivity.js';
 
 export interface RuntimeProviderInstanceConfig {
   id: string;
@@ -264,6 +265,8 @@ export type RuntimeSessionCreateInput =
   RuntimeSessionCreateInputBase & RuntimeSessionTransportInput;
 
 export interface RuntimeSendMessageInput extends RuntimeExecutionRequestInput {
+  /** Server-owned side-channel observer; never serialized into the Runtime request. */
+  onWorkspaceActivity?: (snapshot: RuntimeWorkspaceActivitySnapshot) => void | Promise<void>;
   instructions?: string | null;
   context?: RuntimeSessionInvocationContext;
   outputDir?: string | null;
@@ -1057,6 +1060,8 @@ export class CatsRuntimeClient implements RuntimeClient {
 
       return await readRuntimeNdjsonResponse(response, {
         onChunk: idleTimeout.reset,
+        sessionId,
+        onWorkspaceActivity: input?.onWorkspaceActivity,
       });
     } finally {
       idleTimeout.clear();
@@ -1098,7 +1103,7 @@ export class CatsRuntimeClient implements RuntimeClient {
       throw new Error(readRuntimeErrorText(rawBody, `Failed to stream session (${response.status})`));
     }
 
-    await readRuntimeSseResponse(response, onEvent);
+    await readRuntimeSseResponse(response, onEvent, { sessionId });
   }
 
   async resumeSession(sessionId: string, input?: RuntimeSessionResumeInput): Promise<RuntimeSessionInfo> {
