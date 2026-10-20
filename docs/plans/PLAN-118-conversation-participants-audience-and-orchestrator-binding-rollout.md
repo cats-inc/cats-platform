@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Ready |
 | **Owner** | Owner |
 | **Reviewer** | Owner |
 
@@ -25,8 +25,8 @@ reset instruction.
 
 ### Phase 0: Decisions
 
-- [ ] Task 0.1: Close SPEC-125's open questions with the owner and record the
-      answers in the spec.
+- [x] Task 0.1: Close SPEC-125's open questions with the owner and record the
+      answers in the spec (2026-10-20).
 - [ ] Task 0.2: Integration review of the frozen contract changes listed in
       SPEC-125 Dependencies.
 
@@ -66,12 +66,17 @@ in every room with participants. Shippable on its own as a patch.
       own session; remove the separate orchestrator session, lease, `pending*`,
       the default-chat branches and the God Cat display name.
 - [ ] Task 3.3: Routing: audience first; coordinator routing on; nothing more
-      without a coordinator; the agreed rule for messages without an audience.
+      without a coordinator; reject a non-DM message without an audience;
+      server-internal senders name their audience.
 - [ ] Task 3.4: Cat groups replace `bossCatId`; permission checks become
       coordinator × admin for actions beyond the conversation.
 - [ ] Task 3.5: `newChatDefaults` as model or cat, saved from a created
       non-DM conversation's first participant.
 - [ ] Task 3.6: Owner and artifact provenance fields.
+- [ ] Task 3.7: Remove Start fresh, the default-chat reply rewrite and the
+      Telegram non-DM room fallback.
+- [ ] Task 3.8: Mobile audience control, released together with Task 3.3 so
+      mobile can still send in non-DM conversations.
 
 **Deliverables**: The server enforces SPEC-125; old data is unsupported.
 
@@ -79,11 +84,12 @@ in every room with participants. Shippable on its own as a patch.
 
 - [ ] Task 4.1: Replace the default-chat mode with "DM or participant count"
       in drafts and conversations; remove `implicit:execution_target`.
-- [ ] Task 4.2: The default participant as a real draft participant; the
-      agreed seeding and minimums per entry preset, with the approved draft
-      matrix changes.
+- [ ] Task 4.2: The default participant as a real draft participant from the
+      start; the group minimum of two behind an internal flag that defaults
+      on; the draft visibility matrix unchanged.
 - [ ] Task 4.3: Coordinator control in the participant popover; admin frame;
-      no header avatar for non-participants.
+      header avatars for every participant, one included, and none for
+      non-participants; the admin switch in Settings › Cats.
 - [ ] Task 4.4: Remembered default as model or cat in new drafts.
 
 **Deliverables**: Drafts and conversations follow one rule.
@@ -137,3 +143,4 @@ in every room with participants. Shippable on its own as a patch.
 ## Progress Log
 
 - 2026-10-20: Plan drafted with ADR-132 and SPEC-125.
+- 2026-10-20: SPEC-125 decisions closed; phase 0 task 0.1 done.
