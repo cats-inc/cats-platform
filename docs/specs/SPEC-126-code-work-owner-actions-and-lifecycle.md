@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | Draft; documentation only, implementation not started |
+| **Status** | Approved, 2026-10-20; implementation in progress; final owner review/testing pending |
 | **Owner** | Platform product/Core integration |
 | **Reviewer** | Owner |
 | **Related ADR** | [ADR-133](../decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) |

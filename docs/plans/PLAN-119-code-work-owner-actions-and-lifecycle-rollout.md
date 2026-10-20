@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | Draft; planning only, implementation not started |
+| **Status** | In Progress; local commits only; final owner review/testing pending |
 | **Owner** | Platform product/Core integration |
 | **Reviewer** | Owner |
 | **Related Spec** | [SPEC-126](../specs/SPEC-126-code-work-owner-actions-and-lifecycle.md) |
@@ -19,32 +19,31 @@ Ship owner actions before collapsing navigation. First define source authority,
 safe writes and upgrade requirements; then deliver Codespace management and
 terminal-history cleanup; follow with everyday record management, remaining
 execution surfaces, diagnostic repairs and reviewed navigation. Automatic
-retention is last and opt-in. Current authorization covers these design files
-and their indexes only. Review the ADR/Spec before implementation.
+retention is last and opt-in. The owner approved the entire rollout as local
+commits without pushing; final owner review and testing follow implementation.
 
-The current schema and frozen integration contracts are not changed by this
-plan. Runtime work, if needed, uses its own checkout/instructions and release
+The approved integration contract is recorded in ADR-133 P0. Runtime work, if needed, uses its own checkout/instructions and release
 boundary. Keep the existing shared interaction engine and cancellation paths.
 
 ## Implementation Phases
 
 ### P0 — Contract and producer inventory
 
-- [ ] Review ADR-133/SPEC-126, settle source classification and approve the
+- [x] Review ADR-133/SPEC-126, settle source classification and approve the
   first implementation slice. Check numbering against other active worktrees
   again before integration.
-- [ ] Enumerate Core-owned, conversation-derived, schedule-owned and Runtime
+- [x] Enumerate Core-owned, conversation-derived, schedule-owned and Runtime
   resources for every action. Include synthetic Tasks/Work Items and room
   Run/Mission/evidence reconstruction, not just list endpoints.
-- [ ] Trace incoming hierarchy/WorkGraphLink/approval/evidence/schedule/preview
+- [x] Trace incoming hierarchy/WorkGraphLink/approval/evidence/schedule/preview
   references; specify block, reparent, detach and protected-summary behavior.
-- [ ] Through frozen-contract integration review, define bounded lifecycle
+- [x] Through frozen-contract integration review, define bounded lifecycle
   metadata, action eligibility, server filters/pagination, revisioned cleanup
   preview/apply and minimal recovery receipts. Do not create a parallel registry.
-- [ ] Design the old-profile upgrade with validation, backup, atomic replacement,
+- [x] Design the old-profile upgrade with validation, backup, atomic replacement,
   failure preservation and restart/recovery. Include scheduler receipt changes
   if its deletion/retention contract changes.
-- [ ] Record whether public DELETE behavior, routes, config or persisted-data
+- [x] Record whether public DELETE behavior, routes, config or persisted-data
   requirements cross the `0.8.x` boundary. Breaking Platform contracts require
   `0.9.0` or later; assess Runtime separately. Do not bump/publish in this phase.
 
@@ -237,6 +236,7 @@ these contracts have already been approved.
 
 | Date | Update |
 | --- | --- |
+| 2026-10-20 | P0 approved: optional versioned lifecycle extension, atomic mutation/source authority, compatibility boundary and fixture validation scope recorded in ADR-133. Entire rollout authorized as local commits without pushing. |
 | 2026-10-20 | Read-only Code/Work audit completed at `977acf1f`; owner requested a worktree and ADR/Spec/Plan. Dedicated documentation branch/worktree created. All implementation phases remain unchecked. |
 | 2026-10-20 | Documentation checks passed: 7 changed/new files, 36 added local references (including the canonical sibling Runtime checkout), UTF-8/LF/final-newline checks, 25 sequential functional requirements, 12 acceptance scenarios and no completed implementation checkboxes. Index diff whitespace check passed. No application tests/builds or destructive live acceptance were run for this documentation-only slice. |
 

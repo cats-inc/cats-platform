@@ -1,9 +1,9 @@
 # Architecture Decision Records (ADR)
 
 - [ADR-133: Code and Work owner actions and source-aware lifecycle](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md)
-  — proposed, 2026-10-20; separate navigation, execution, record deletion and
+  — accepted, 2026-10-20; separate navigation, execution, record deletion and
   resource cleanup; durable owner intent and source authority prevent deleted
-  projections from returning. Implementation not started.
+  projections from returning. Implementation in progress.
 - [ADR-127: Alive companion life loop](127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md)
   — accepted, 2026-09-29; platform-owned keep-alive, rhythm and heartbeat for
   companion Cats in their own direct-message session; keep-alive, rhythm and
@@ -56,7 +56,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| [ADR-133](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) | Give Code and Work Owner Actions and Source-Aware Lifecycle | Proposed; implementation not started | 2026-10-20 |
+| [ADR-133](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) | Give Code and Work Owner Actions and Source-Aware Lifecycle | Accepted; implementation in progress | 2026-10-20 |
 | [ADR-131](131-let-the-audience-chip-choose-the-audience-and-the-avatar-choose-the-model.md) | Let the Audience Chip Choose the Audience and the Avatar Choose the Model | Accepted; amends SPEC-013 composer popover hosts | 2026-10-20 |
 | [ADR-130](130-ship-per-architecture-windows-and-linux-desktop-installers.md) | Ship Per-Architecture Windows and Linux Desktop Installers | Accepted; amends ADR-108 section 6 | 2026-10-13 |
 | [ADR-129](129-keep-direct-messages-in-chat-and-share-one-conversation-draft.md) | Keep Direct Messages in Chat and Share One Conversation Draft | Accepted; supersedes ADR-067 | 2026-10-03 |

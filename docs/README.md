@@ -7,7 +7,7 @@ Run/Mission history cleanup and consistent contextual actions across Code/Work.
 page inventory and acceptance scenarios;
 [PLAN-119](plans/PLAN-119-code-work-owner-actions-and-lifecycle-rollout.md)
 sequences lifecycle correctness before everyday management and navigation
-consolidation. Proposed/draft only; implementation and release have not started.
+consolidation. Approved for implementation as local slices; owner review/testing pending; no push or release.
 
 [Code agent artifact preview](decisions/126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md)
 proposes how Cats in Cats Code open what they built beside the conversation. A

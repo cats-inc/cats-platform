@@ -2,9 +2,9 @@
 
 ## Status
 
-Proposed, 2026-10-20. The owner requested an audit followed by a worktree with
-ADR, Spec and Plan. This authorizes design preparation; implementation and the
-proposed navigation changes have not been approved or delivered.
+Accepted, 2026-10-20. The owner approved the entire rollout as locally committed
+slices, without pushing or publishing. Final owner review and testing follow
+implementation. P4 navigation grouping is included in this authorization.
 
 ## Context
 
@@ -156,6 +156,38 @@ or imposes incompatible persisted-data requirements, the required boundary is
 the next Platform minor, `0.9.0` or later. Determine the actual boundary in the
 contract review; this proposal does not bump or authorize a release. Runtime
 changes require its own compatible contract or separately recorded boundary.
+
+## Integration Contract (P0)
+
+- Persist an optional `ownerLifecycle` Core extension with version `1`, a
+  monotonic revision, subject entries, minimal cleanup receipts and disabled
+  retention defaults. Existing profiles load without a write; first persistence
+  uses the existing backup/temp-file/atomic-rename boundary. Malformed/future
+  extensions fail closed and preserve original bytes and recovery evidence.
+- Keys combine record family and existing ID. Codespaces keep current path
+  identity and save registration details for restore. Entries express owner
+  presentation/deletion/compaction intent, never a parallel execution registry.
+  Chat projection reapplies intent after materialization; workflow source
+  compaction uses the atomic snapshot mutation boundary.
+- Product action and history preview/apply/export/policy delegates use revision
+  checks and `updateCore`/`updateSnapshot`. Preview fingerprints cover relevant
+  source records and references, including concurrent execution changes.
+- Existing Delete must block incoming hierarchy, graph, approval, evidence,
+  run-tree, schedule and active-preview references. Derived planning records
+  reject deletion with a source-context link; archive remains available. No
+  implicit conversation deletion or filesystem reclamation is introduced.
+- Source classification uses producer metadata/admission independently of
+  current task binding and conversation origin. Unknown and ordinary room
+  attempts remain accessible through explicit filters and the full Work Graph.
+- Core owns rows/lifecycle intent; Chat owns derived workflow sources;
+  scheduler owns rules/receipts; Code supervisor owns preview leases; Runtime
+  owns sessions/processes/filesystems. Cleanup retains protected summaries and
+  reports unsupported/retained resources honestly. Arbitrary workspace and
+  provider-native history deletion remain outside this rollout.
+- The optional extension/additive endpoints are compatible. Tightening unsafe
+  DELETE behavior and changing default list/navigation behavior are recorded for
+  the next Platform minor, `0.9.0` or later. No version bump/release or Runtime
+  public-contract change is authorized by this implementation task.
 
 ## Consequences
 
