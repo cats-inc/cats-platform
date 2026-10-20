@@ -225,8 +225,8 @@ Catalog 是官方來源，不授予 `system` 特權；local-user 套件不因 ID
 - Artifact 沿用 cats-apps 各 App 的 immutable GitHub Release（`<slug>-vX.Y.Z` tag），
   catalog 中每版本的 artifact URL 指向該 release asset。
 - Catalog envelope 由 cats-apps 的 GitHub Pages 提供，例如
-  `https://cats-inc.github.io/cats-apps/catalog/v1/catalog.json`；確切路徑隨 M0 envelope 固定，
-  Pages 目前尚未啟用。Promotion 以 PR 修改 catalog 來源，合併後由 CI 簽章並部署，
+  `https://cats-inc.github.io/cats-apps/catalog/v1/catalog.json`；確切路徑隨 M0 envelope 固定。
+  Pages 已於 2026-10-20 以 GitHub Actions 為 source 啟用，只允許從 `main` 部署。Promotion 以 PR 修改 catalog 來源，合併後由 CI 簽章並部署，
   git 歷史即推廣紀錄。
 - 不用固定 tag 的 rolling release 放 catalog：每次推廣都要修改已發布 Release，違反 release
   完成規範，換 asset 時也會暫時缺檔。用戶端不呼叫 `api.github.com` 列 releases，以免受未驗證
@@ -251,7 +251,7 @@ cats-apps 以 test-only key 重現同一份 envelope，Platform 驗章後須得�
 - 驗證順序：大小上限 → algorithm → 已信任 keyId → base64 解碼（payload 上限 256 KiB）→ 簽章 →
   JSON → schema → `revision` 不得低於已驗證最高值（相等可接受）→ 有效期限。
 - `revision` 為 `issuedAt` 的 epoch 秒；`expiresAt = issuedAt + 30 天`。Publish workflow 每週重簽，
-  並以 concurrency group 保持 revision 遞增，且只對 `main` 最新 commit 簽章。
+  並以 concurrency group 保持 revision 遞增；只在 `main` 且簽章輸入仍與 `main` 相同時簽章。
 - Consumer 要求 `revision` 等於 `issuedAt` 秒數、有效期不超過 31 天，並拒絕 `issuedAt` 晚於宿主時間
   一天以上的目錄；否則單一錯誤目錄就能永久抬高 rollback 下限或讓期限失效。
 - Producer 對來源檔嚴格（未知欄位即失敗）；consumer 接受並丟棄未知欄位，讓 v1 可加選用資料。
