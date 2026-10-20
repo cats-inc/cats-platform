@@ -150,16 +150,15 @@ async function completePlatformSetup(baseUrl) {
   return response.json();
 }
 
-async function configureOrchestrator(baseUrl, executionTarget) {
-  const response = await fetch(`${baseUrl}/api/orchestrator`, {
+async function rememberNewChatDefault(baseUrl, newChatDefaults) {
+  const response = await fetch(`${baseUrl}/api/preferences`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(executionTarget),
+    body: JSON.stringify({ newChatDefaults }),
   });
   if (response.status !== 200) {
-    throw new Error(`configureOrchestrator failed with ${response.status}`);
+    throw new Error(`rememberNewChatDefault failed with ${response.status}`);
   }
-  return (await response.json()).orchestrator;
 }
 
 async function createBossCat(baseUrl, name = 'Smelly') {
@@ -310,7 +309,7 @@ test('after setup + activate, system messages stay generic and keep verbosity me
       }),
     });
     await createBossCat(baseUrl);
-    await configureOrchestrator(baseUrl, { provider: 'claude', instance: 'native' });
+    await rememberNewChatDefault(baseUrl, { provider: 'claude', instance: 'native' });
     assert.equal(setupResponse.status, 200);
 
     // Create a channel explicitly (setup no longer creates one)
@@ -343,19 +342,19 @@ test('after setup + activate, system messages stay generic and keep verbosity me
     assert.equal(
       sessionStartedMessages.length,
       1,
-      'Fresh Boss Cat chat should start one implicit orchestrator session',
+      'A fresh chat should start its default participant session',
     );
 
-    // Default-room orchestrator startup stays generic and hidden from the visible cat identity.
-    const orchMessage = sessionStartedMessages.find(
-      (m) => m.metadata.targetKind === 'orchestrator',
+    // The default participant starts under its execution label, not a Boss Cat identity.
+    const participantMessage = sessionStartedMessages.find(
+      (m) => m.metadata.targetKind === 'cat',
     );
-    assert.ok(orchMessage, 'Orchestrator session_started message should exist');
-    assert.ok(orchMessage.body.includes('Claude-CLI'), 'Should use the execution label in default rooms');
-    assert.ok(!orchMessage.body.includes('Orchestrator'), 'Should not expose the internal orchestrator placeholder in default rooms');
-    assert.ok(!orchMessage.body.includes('將將'), 'Should not expose boss cat name in default session messages');
+    assert.ok(participantMessage, 'Default participant session_started message should exist');
+    assert.ok(participantMessage.body.includes('Claude-CLI'), 'Should use the execution label of the default participant');
+    assert.ok(!participantMessage.body.includes('Orchestrator'), 'Should not expose the internal orchestrator placeholder');
+    assert.ok(!participantMessage.body.includes('Smelly'), 'Should not expose the Boss Cat name in the session message');
     assert.ok(
-      /\n\(cwd: .*[\\/]\.cats[\\/]runtime[\\/]sessions[\\/].+\)/u.test(orchMessage.body),
+      /\n\(cwd: .*[\\/]\.cats[\\/]runtime[\\/]sessions[\\/].+\)/u.test(participantMessage.body),
       'Should include runtime cwd in the session message',
     );
 
@@ -413,11 +412,11 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
     await createBossCat(baseUrl);
     assert.equal(setupResponse.status, 200);
 
-    // Create a channel explicitly (setup no longer creates one)
+    // Legacy orchestrator-led room until the provider-default chat is removed.
     const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: 'Test chat', topic: 'Test', originSurface: 'chat' }),
+      body: JSON.stringify({ title: 'Test chat', topic: 'Test', originSurface: 'chat', pendingProvider: 'claude' }),
     });
     assert.ok(createChannelResponse.status === 200 || createChannelResponse.status === 201);
     const createChannelPayload = await createChannelResponse.json();
@@ -457,14 +456,10 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
       'Rewritten direct answer should be persisted instead',
     );
     assert.equal(runtimeClient.sentMessages.length, 2);
-    assert.equal(runtimeClient.sentMessages[1].input.context.metadata.productKnowledge.delivery, 'inline');
-    assert.deepEqual(runtimeClient.sentMessages[1].input.context.metadata.productKnowledge,
-      runtimeClient.sentMessages[0].input.context.metadata.productKnowledge);
-    assert.match(runtimeClient.sentMessages[1].input.instructions, /orchestrator.results/u);
   });
 });
 
-test('POST /api/channels creates a default Boss Chat without assigning Boss Cat as a worker', async () => {
+test('POST /api/channels starts a chat with its default participant instead of the Boss Cat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     // Complete setup first
     const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
@@ -489,19 +484,27 @@ test('POST /api/channels creates a default Boss Chat without assigning Boss Cat 
     assert.equal(createResponse.status, 201);
     const createPayload = await createResponse.json();
 
-    // Boss Cat should stay implicit instead of becoming an assigned worker.
+    // The Boss Cat joins only when named; the remembered default participant starts the chat.
     assert.equal(
       createPayload.channel.assignedCats.some((p) => p.catId === bossCatId),
       false,
-      'Boss Cat should stay implicit in the new channel',
+      'Boss Cat should not join the new channel unasked',
+    );
+    assert.deepEqual(
+      createPayload.channel.assignedParticipants.map((participant) => participant.name),
+      ['Codex-CLI'],
+    );
+    assert.equal(
+      createPayload.channel.coordinatorParticipantId,
+      createPayload.channel.assignedParticipants[0].participantId,
     );
 
-    // Default boss threads seed only the room_created system message.
+    // A new chat seeds only the room_created system message.
     const roomCreated = createPayload.channel.messages.find(
       (m) => m.metadata?.event === 'room_created',
     );
-    assert.ok(roomCreated, 'Default Boss Chat should seed a room_created system message');
-    assert.equal(roomCreated.body, 'Room created: Boss Chat.');
+    assert.ok(roomCreated, 'A new chat should seed a room_created system message');
+    assert.equal(roomCreated.body, 'Room created: participant-led chat with Codex-CLI.');
     assert.equal(roomCreated.metadata.roomMode, 'chat_channel');
     assert.equal(
       createPayload.channel.messages.some(

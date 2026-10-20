@@ -80,13 +80,12 @@ function createTemporaryParticipantState() {
   };
 }
 
-test('temporary participants remain explicit targets while room default goes to orchestrator', () => {
+test('temporary participants are explicit targets and a room names its audience instead of a default', () => {
   const { state, channelId } = createTemporaryParticipantState();
 
   const defaultTarget = resolveRoomDefaultRoutingTarget(state, channelId);
-  assert.equal(defaultTarget.target?.participantKind, 'orchestrator');
-  assert.equal(defaultTarget.target?.participantId, 'orchestrator');
-  assert.equal(defaultTarget.defaultTargetReason, 'chat_channel_default');
+  assert.equal(defaultTarget.target, null);
+  assert.equal(defaultTarget.blockedReason, 'missing_audience');
 
   const mentionRoute = resolveMentionRoute(
     state,

@@ -20,9 +20,10 @@ test('fresh core, Chat and optional Catlas setup defaults use Codex consistently
 
 test('saved provider/instance/model and historical missing-field defaults are preserved', () => {
   const saved = { provider: 'claude', instance: 'cli/subscription', model: 'legacy-custom', modelSelection: null };
-  assert.deepEqual(normalizeNewChatDefaults(saved), saved);
+  assert.deepEqual(normalizeNewChatDefaults(saved), { catId: null, ...saved });
+  assert.equal(normalizeNewChatDefaults({ ...saved, catId: 'cat-milo' }).catId, 'cat-milo');
   for (const raw of [undefined, { provider: 'claude', instance: null, model: null }]) {
-    assert.deepEqual(normalizeNewChatDefaults(raw), { provider: 'claude',
+    assert.deepEqual(normalizeNewChatDefaults(raw), { catId: null, provider: 'claude',
       instance: getDefaultProviderInstance('claude'), model: getDefaultModel('claude') || null, modelSelection: null });
   }
   assert.equal(normalizeGlobalOrchestrator(undefined).executionTarget.provider, 'claude');

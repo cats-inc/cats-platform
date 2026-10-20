@@ -462,7 +462,13 @@ test('canonical routes full lifecycle: create cat, channel, activate, message, a
       {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ body: 'Hello from canonical route' }),
+        body: JSON.stringify({
+          body: 'Hello from canonical route',
+          messageMetadata: {
+            recipientParticipantIds: createChannelPayload.channel.assignedParticipants
+              .map((participant) => participant.participantId),
+          },
+        }),
       },
     );
     assert.equal(sendMessageResponse.status, 200);
@@ -622,6 +628,7 @@ test('PATCH /api/preferences persists new chat model defaults across subsequent 
 
     const updatePayload = await updateResponse.json();
     assert.deepEqual(updatePayload.preferences.newChatDefaults, {
+      catId: null,
       provider: 'codex',
       instance: 'default',
       model: 'gpt-5.4',
@@ -638,6 +645,7 @@ test('PATCH /api/preferences persists new chat model defaults across subsequent 
     assert.equal(readResponse.status, 200);
     const readPayload = await readResponse.json();
     assert.deepEqual(readPayload.preferences.newChatDefaults, {
+      catId: null,
       provider: 'codex',
       instance: 'default',
       model: 'gpt-5.4',
@@ -654,6 +662,7 @@ test('PATCH /api/preferences persists new chat model defaults across subsequent 
     assert.equal(appShellResponse.status, 200);
     const appShellPayload = await appShellResponse.json();
     assert.deepEqual(appShellPayload.chat.newChatDefaults, {
+      catId: null,
       provider: 'codex',
       instance: 'default',
       model: 'gpt-5.4',

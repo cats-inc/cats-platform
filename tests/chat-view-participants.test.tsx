@@ -198,6 +198,7 @@ function createChannel(overrides: Partial<SelectedChannelView> = {}): SelectedCh
     topic: 'Temporary participants',
     channelKind: 'chat_channel',
     status: 'active',
+    coordinatorParticipantId: null,
     unreadCount: 0,
     repoPath: null,
     chatCwd: null,

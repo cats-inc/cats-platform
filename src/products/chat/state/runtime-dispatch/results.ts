@@ -47,6 +47,7 @@ import { resolveFullResponseText, type RuntimeMessageSegment } from '../../../..
 import type { DispatchExecution } from './execution.js';
 import { resolveExecutionMetadataForTarget } from '../runtimeTargeting.js';
 import { isDefaultChatRuntimeChannel } from '../runtimeTargeting.js';
+import { targetRoutesOn } from '../coordinator.js';
 import {
   ASSISTANT_TURN_SEGMENT_EVENT,
   buildAssistantTurnDelivery,
@@ -1002,6 +1003,11 @@ export function applyDispatchExecutions(
       trigger: execution.trigger,
       dispatchDepth: execution.depth,
     });
+
+    if (!targetRoutesOn(nextState, channelId, execution.target)) {
+      // Only the coordinator routes turns on; everyone else answers and stops.
+      continue;
+    }
 
     let continuationResolution = resolveTargets(nextState, channelId, fullResponseText, {
       allowDefaultTarget: false,

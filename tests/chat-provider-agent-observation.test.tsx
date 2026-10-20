@@ -1159,7 +1159,7 @@ test('Chat group explicit mentions become bounded provider-agent routing summari
   assert.equal(summaryValue(prepared, 'routing_selection_kind'), 'explicit_mentions');
 });
 
-test('Chat parallel member turns keep default execution targets inside the provider-agent seam', () => {
+test('Chat parallel member turns run the member model as its participant inside the provider-agent seam', () => {
   const state = createParallelChatGroup(
     createDefaultChatState(),
     {
@@ -1180,8 +1180,10 @@ test('Chat parallel member turns keep default execution targets inside the provi
     },
     new Date('2026-04-28T00:00:00.000Z'),
   );
-  const codexMember = state.channels.find((channel) => channel.pendingProvider === 'codex');
-  if (!codexMember) {
+  const codexMember = state.channels.find((channel) =>
+    channel.participantAssignments?.some((assignment) => assignment.execution.target.provider === 'codex'));
+  const codexParticipant = codexMember?.participantAssignments?.[0];
+  if (!codexMember || !codexParticipant) {
     throw new Error('Expected Codex parallel member channel.');
   }
 
@@ -1189,15 +1191,13 @@ test('Chat parallel member turns keep default execution targets inside the provi
     state,
     channelId: codexMember.id,
     body: 'Handle your branch of the parallel run.',
+    messageMetadata: { recipientParticipantIds: [codexParticipant.participantId] },
   });
 
   assert.equal(actorProvider(prepared), 'codex');
-  assert.equal(prepared.initialResolution.targets[0]?.participantKind, 'orchestrator');
+  assert.equal(prepared.initialResolution.targets[0]?.participantKind, 'cat');
+  assert.equal(prepared.initialResolution.targets[0]?.participantId, codexParticipant.participantId);
   assert.equal(summaryValue(prepared, 'routing_target_count'), 1);
-  assert.equal(
-    prepared.providerAgentObservation?.contextRefs.includes('chat-channel-intent:provider_default_chat'),
-    true,
-  );
 });
 
 test('Chat dispatch can hand bounded observations to a provider-agent decision requester', async () => {

@@ -19,6 +19,8 @@ import {
   resolveChannelCanonicalIdentity,
 } from './model/index.js';
 import { routeChannelMessage } from './runtimeActions.js';
+import { isDirectLaneChannel } from '../shared/channelTopology.js';
+import { resolveChannelParticipantAssignments } from '../shared/channelParticipants.js';
 import type { CompanionBoxStore } from './companion-box/index.js';
 import { persistAttachmentsForChannels } from './channelAttachments.js';
 import type { ChatStore } from './store.js';
@@ -133,6 +135,13 @@ export function createChatTelegramRoomBridge(input: {
     }) {
       const writer = createLockedDispatchChatStore(input.chatStore, roomId, state, () => timestamp);
       let lastPersisted = structuredClone(state);
+      // A room Telegram writes into hears the message as a whole: every participant.
+      const roomChannel = requireChannel(state, roomId);
+      const recipientParticipantIds = isDirectLaneChannel(roomChannel)
+        ? []
+        : resolveChannelParticipantAssignments(roomChannel)
+          .filter((assignment) => assignment.status === 'active')
+          .map((assignment) => assignment.participantId);
       const routed = await routeChannelMessage(
         state,
         roomId,
@@ -140,6 +149,7 @@ export function createChatTelegramRoomBridge(input: {
           body,
           senderName,
           choiceResponse,
+          ...(recipientParticipantIds.length > 0 ? { messageMetadata: { recipientParticipantIds } } : {}),
         },
         runtimeClient,
         timestamp,

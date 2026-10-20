@@ -222,7 +222,10 @@ export async function executeDispatch(
       request,
       transport,
     });
-    const knowledge = request.target.participantKind === 'orchestrator' && isOrchestratorKnowledgeChannel(channel)
+    // The coordinator (or the legacy default chat's orchestrator) answers with product knowledge.
+    const knowledge = (request.target.participantKind === 'orchestrator'
+      || channel.coordinatorParticipantId === request.target.participantId)
+      && isOrchestratorKnowledgeChannel(channel)
       ? await loadOrchestratorKnowledge({
           channel,
           body: request.promptSourceMessage?.body ?? request.sourceMessage.body,

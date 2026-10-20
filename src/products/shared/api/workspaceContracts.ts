@@ -337,6 +337,12 @@ export interface ChatChannelState {
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
   orchestratorLease: ParticipantExecutionLease;
+  /**
+   * The participant bound to the conversation's orchestrator, which may route
+   * turns on and, as a Boss Cat, act beyond the conversation. A DM binds its
+   * cat; a new conversation its first participant; null leaves it unbound.
+   */
+  coordinatorParticipantId: string | null;
   catAssignments: ChannelCatAssignment[];
   /** Optional for legacy persisted snapshots; runtime normalization populates this. */
   participantAssignments?: ChannelParticipantAssignment[];
@@ -442,7 +448,13 @@ export interface GlobalOrchestratorSummary {
   updatedAt: string;
 }
 
+/**
+ * The default participant of the next new conversation: the first participant of
+ * the last one created. A cat when `catId` is set, otherwise the provider/model
+ * below, which also stays the model a draft falls back to.
+ */
 export interface NewChatDefaults {
+  catId: string | null;
   provider: string;
   instance: string | null;
   model: string | null;
@@ -597,6 +609,14 @@ interface CreateChatChannelInputBase {
   participantCatIds?: string[];
   /** Channel-only non-Cat members created inline for this room. */
   temporaryParticipants?: CreateTemporaryParticipantInput[];
+  /**
+   * Participant order as `cat:<catId>` and `temp:<participantId>` keys; the
+   * first is the default participant. Unlisted participants follow in input
+   * order. A non-DM conversation created without participants (and without the
+   * legacy `pending*` target, which goes with the default chat) starts with the
+   * remembered default (`newChatDefaults`).
+   */
+  participantOrder?: string[];
 }
 
 export type CreateChatChannelInput =
@@ -682,6 +702,8 @@ export interface SendParallelChatMessageInput {
 
 export interface UpdateChannelInput {
   title?: string;
+  /** Moves the coordinator binding to an active participant, or clears it with null. */
+  coordinatorParticipantId?: string | null;
   pendingProvider?: string | null;
   pendingModel?: string | null;
   pendingInstance?: string | null;

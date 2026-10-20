@@ -57,7 +57,7 @@ import {
   readLatestWorkflowContinuationContext,
 } from '../room-routing/continuationContext.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../../shared/platformSurfaces.js';
-import { isAdminCat } from '../../shared/catGroups.js';
+import { isAdminCat } from '../../../shared/catGroups.js';
 import {
   readMetadataBoolean,
   readMetadataRecord,

@@ -41,7 +41,9 @@ export async function loadOrchestratorKnowledge(input: {
   }
   if (topics.includes('collaboration') || /@|ask .*cat|請.*貓|交棒/iu.test(goal)) topics.push('handoff');
   if (/fail|error|blocked|unavailable|stuck|retry|失敗|錯誤|卡住|無法|重試/iu.test(goal)) topics.push('recovery');
-  const participants = activeAssignedParticipants(input.channel);
+  // The teammates the coordinator can hand off to: everyone but itself.
+  const participants = activeAssignedParticipants(input.channel)
+    .filter((participant) => participant.participantId !== input.channel.coordinatorParticipantId);
   const operations = [...(input.operations ?? [])];
   if (input.surface === 'chat-visible' && !isDirectLaneChannel(input.channel) && participants.length > 0) {
     operations.push(CURRENT_ROOM_HANDOFF);

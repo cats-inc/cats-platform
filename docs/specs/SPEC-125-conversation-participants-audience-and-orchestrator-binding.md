@@ -175,9 +175,10 @@ conversation
 ├── coordinatorParticipantId: p? | null    DM: its cat
 └── messages[i].audience: [p…]             ≥1, from participants
 
-cat.group: admin | standard
-newChatDefaults: { kind: 'model', provider, instance, model, modelSelection }
-               | { kind: 'cat', catId }
+cat.group: admin | standard            Boss Cats are the admin group
+newChatDefaults: { catId | null, provider, instance, model, modelSelection }
+                 a cat when catId is set, else the provider/model, which also
+                 stays the model a draft falls back to
 ```
 
 Routing for a message:
@@ -215,6 +216,32 @@ Closed with the owner on 2026-10-20:
   collaboration tools need an admin coordinator; the reply rewrite goes
   (FR-14a).
 - Settings › Cats manages the admin group (FR-19).
+
+Settled during implementation, 2026-10-20:
+
+- The admin group keeps the visible name Boss Cat (主控貓); the field is
+  `cat.group`.
+- `newChatDefaults` is `{ catId, provider, instance, model, modelSelection }`
+  rather than a tagged union, so the model a draft falls back to survives a
+  remembered cat. Creating a non-DM conversation through the API saves its
+  first participant; server-internal creators (Code sessions, collaboration
+  rooms, parallel members, Telegram) do not.
+- A creator orders participants with `participantOrder` (`cat:<catId>` and
+  `temp:<participantId>` keys); unlisted ones follow in input order.
+- FR-4 is met by seeding: when archiving, deleting or removing Chat from a cat
+  leaves a non-DM conversation empty, the remembered default joins it. Removing
+  the last participant directly is refused with 409 `last_participant`.
+- `DELETE /api/channels/:id/participants/:participantId` removes a cat or a
+  temporary participant; `PATCH /api/channels/:id` with
+  `coordinatorParticipantId` moves or clears the binding.
+- A message's audience is its `recipientParticipantIds` plus the participants it
+  @mentions (FR-10). A non-DM message whose audience is empty is refused with
+  400 `audience_required`; a choice response returns to the participant that
+  asked. Server-internal senders name their audience: a parallel member turn
+  without its own goes to that member's participants.
+- Only the coordinator routes turns on (@mentions and workflow
+  recommendations in its replies); other participants answer and stop, and
+  their prompt says a mention does not route.
 
 ## References
 

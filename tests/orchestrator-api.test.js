@@ -2815,7 +2815,7 @@ test('POST /api/orchestrator/dispatch declines Boss Work execution preparation w
   });
 });
 
-test('POST /api/orchestrator/dispatch reuses the room-entry session during a concurrent wake', async () => {
+test('POST /api/orchestrator/dispatch reuses the room-entry participant session during a concurrent wake', async () => {
   const runtimeClient = createRuntimeStub();
   const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
   let createCalls = 0;
@@ -2838,6 +2838,9 @@ test('POST /api/orchestrator/dispatch reuses the room-entry session during a con
       cats: [],
     });
     const channelId = created.channel.id;
+    // The room starts with its default participant, which the wake starts.
+    const [participant] = created.channel.assignedParticipants;
+    assert.ok(participant);
 
     const wakeResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/activations`, {
       method: 'POST',
@@ -2851,7 +2854,7 @@ test('POST /api/orchestrator/dispatch reuses the room-entry session during a con
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         channelId,
-        body: 'Handle this directly.',
+        body: `@${participant.name} handle this directly.`,
       }),
     });
 
@@ -2870,7 +2873,7 @@ test('POST /api/orchestrator/dispatch reuses the room-entry session during a con
 
     assert.equal(runtimeClient.createdSessions.length, 1);
     assert.equal(runtimeClient.sentMessages.length, 1);
-    assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
+    assert.equal(channelPayload.channel.assignedParticipants[0].execution.lease.sessionId, 'session-1');
   });
 });
 
@@ -3376,11 +3379,12 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
         return usage('@Followup-Agent please take first pass.');
       }
       if (content.includes('You are Followup-Agent')) {
-        return usage('@Inline-Agent please review.');
+        return usage('Followup-Agent took the first pass.');
       }
       return usage('Boss Cat acknowledged the turn.');
     },
   });
+  const chatStore = new MemoryChatStore();
   await withServer(runtimeClient, async (baseUrl) => {
     const created = await createChannel(baseUrl, {
       cats: [
@@ -3399,6 +3403,10 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
       ],
     });
     const channelId = created.channel.id;
+    // The coordinator's handoff to its teammate exceeds a one-dispatch turn.
+    const currentState = await chatStore.read();
+    currentState.channels.find((candidate) => candidate.id === channelId).roomRouting.maxDispatchesPerTurn = 1;
+    await chatStore.write(currentState);
 
     const dispatchResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
       method: 'POST',
@@ -3431,7 +3439,7 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
     assert.ok(payload.executionLoop.operator.workflowContinuation);
     assert.equal(
       payload.executionLoop.operator.workflowContinuation.blockedReason,
-      'anti_ping_pong',
+      'max_dispatches',
     );
     assert.equal(
       payload.executionLoop.operator.workflowContinuation.stageId,
@@ -3500,7 +3508,7 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
       task.metadata.workflowContinuationReplay.targets.map((target) => target.participantName),
     );
     assert.equal(payload.operator.executionLoopPath, `/api/orchestrator/channels/${channelId}/execution-loop`);
-  });
+  }, chatStore);
 });
 
 test('GET /api/orchestrator/channels/:id/execution-loop exposes task-scoped delivery intent and approval actions', async () => {
@@ -3726,7 +3734,7 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
         return usage('@Followup-Agent please take first pass.');
       }
       if (content.includes('You are Followup-Agent')) {
-        return usage('@Inline-Agent please review.');
+        return usage('Followup-Agent reviewed it.');
       }
       return usage('Boss Cat acknowledged the turn.');
     },
@@ -3760,10 +3768,10 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
     });
     assert.equal(dispatchResponse.status, 200);
     const dispatchPayload = await dispatchResponse.json();
-    const blockedRunId = dispatchPayload.operator.latestRunId;
-    assert.ok(blockedRunId);
-    const sentBeforeRetry = runtimeClient.sentMessages.length;
-    assert.ok(sentBeforeRetry >= 2);
+    const runId = dispatchPayload.operator.latestRunId;
+    assert.ok(runId);
+    // The coordinator hands off once; the teammate's reply does not route on.
+    assert.equal(runtimeClient.sentMessages.length, 2);
 
     const operatorActionResponse = await fetch(`${baseUrl}/api/core/operator-actions`, {
       method: 'POST',
@@ -3772,7 +3780,7 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
         action: 'retry',
         actorId: 'actor-owner',
         taskId: `task-channel-${channelId}`,
-        runId: blockedRunId,
+        runId,
       }),
     });
     assert.equal(operatorActionResponse.status, 200);
@@ -3780,16 +3788,15 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
     assert.equal(operatorActionPayload.action, 'retry');
     assert.deepEqual(operatorActionPayload.autoResume, {
       trigger: 'retry',
-      status: 'blocked',
-      blockedReason: 'anti_ping_pong',
+      status: 'dispatched',
+      blockedReason: null,
       sourceMessageId: operatorActionPayload.autoResume.sourceMessageId,
-      resultCount: operatorActionPayload.autoResume.resultCount,
-      executionState: 'blocked',
+      resultCount: 2,
+      executionState: 'completed',
     });
     assert.ok(operatorActionPayload.autoResume.sourceMessageId);
-    assert.ok(operatorActionPayload.autoResume.resultCount >= 2);
     assert.equal(operatorActionPayload.governanceSummary.latestOperatorAction.kind, 'retry');
-    assert.ok(runtimeClient.sentMessages.length > sentBeforeRetry);
+    assert.equal(runtimeClient.sentMessages.length, 4);
 
     const coreResponse = await fetch(`${baseUrl}/api/core`);
     assert.equal(coreResponse.status, 200);
@@ -3814,7 +3821,7 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
       findReplayActivity(
         corePayload,
         `task-channel-${channelId}`,
-        'replay_blocked',
+        'replay_dispatched',
         'retry',
       ),
     );

@@ -26,14 +26,16 @@ export function resolveChannelActivationTargets(
 ): RoutingTarget[] {
   const channel = buildChannelView(state, channelId);
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
-  return isDirectLaneChannel(channel)
-    ? activeAssignedParticipants(channel)
-        .filter((participant) => participant.participantId === roomRouting.defaultRecipientId)
-        .map((participant) => buildCatTarget(participant))
-    : [
-        buildOrchestratorTarget(state, channel),
-        ...activeAssignedParticipants(channel).map((participant) => buildCatTarget(participant)),
-      ];
+  if (isDirectLaneChannel(channel)) {
+    return activeAssignedParticipants(channel)
+      .filter((participant) => participant.participantId === roomRouting.defaultRecipientId)
+      .map((participant) => buildCatTarget(participant));
+  }
+  const participants = activeAssignedParticipants(channel);
+  // A room's participants are its sessions; only the legacy default chat starts the orchestrator.
+  return participants.length > 0
+    ? participants.map((participant) => buildCatTarget(participant))
+    : [buildOrchestratorTarget(state, channel)];
 }
 
 export function applyChannelActivationStatus(input: {

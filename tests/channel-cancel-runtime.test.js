@@ -195,6 +195,7 @@ test('POST /api/channels/:id/cancel stops an in-flight group room dispatch', asy
       },
       body: JSON.stringify({
         body: 'Review this draft together.',
+        messageMetadata: { recipientParticipantIds: ['participant-inline'] },
       }),
     });
     assert.equal(sendResponse.status, 200);

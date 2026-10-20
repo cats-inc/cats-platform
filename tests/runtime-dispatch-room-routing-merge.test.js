@@ -4,6 +4,8 @@ import path from 'node:path';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import test from 'node:test';
 
+import { withRoomAudience } from './testUtils.js';
+
 import {
   appendMessage,
   assignCatToChannel,
@@ -93,7 +95,7 @@ test('applyDispatchExecutions advances sequential queued frames by canonical sou
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Start a workflow turn.' },
+    withRoomAudience(state, channelId, { body: 'Start a workflow turn.' }),
     runtimeClient,
     seededAt,
   );
@@ -302,6 +304,7 @@ test('applyDispatchExecutions keeps replayed depth-0 continuation targets isolat
       originSurface: 'chat',
       title: 'Sequential replay frontier isolation',
       topic: 'Do not dedupe a later replayed frontier against another frontier that only shares the source message.',
+      participantCatIds: [claudeCatId, codexCatId],
     },
     seededAt,
   );
@@ -312,7 +315,7 @@ test('applyDispatchExecutions keeps replayed depth-0 continuation targets isolat
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Start a replayed sequential workflow turn.' },
+    withRoomAudience(state, channelId, { body: 'Start a replayed sequential workflow turn.' }),
     runtimeClient,
     seededAt,
   );
@@ -502,7 +505,7 @@ test('mergeCompletedDispatchState preserves newer room-routing config while appl
   const begun = await beginChannelMessageDispatch(
     baselineState,
     channelId,
-    { body: 'First routing turn' },
+    withRoomAudience(baselineState, channelId, { body: 'First routing turn' }),
     runtimeClient,
     dispatchAt,
   );
@@ -566,14 +569,14 @@ test('settleBegunChannelMessageDispatchFailure preserves a newer room-routing wo
   const firstBegun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'First turn should fail later' },
+    withRoomAudience(state, channelId, { body: 'First turn should fail later' }),
     runtimeClient,
     firstDispatchAt,
   );
   const secondBegun = await beginChannelMessageDispatch(
     firstBegun.state,
     channelId,
-    { body: 'Second turn is newer' },
+    withRoomAudience(firstBegun.state, channelId, { body: 'Second turn is newer' }),
     runtimeClient,
     secondDispatchAt,
   );
@@ -647,7 +650,7 @@ test('settleBegunChannelMessageDispatchFailure keeps direct-lane transport bindi
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Trigger an outer dispatch failure.' },
+    withRoomAudience(state, channelId, { body: 'Trigger an outer dispatch failure.' }),
     runtimeClient,
     seededAt,
   );
@@ -690,7 +693,7 @@ test('mergeCompletedDispatchState treats overlapping workflow mutations as lates
   const dispatchState = await beginChannelMessageDispatch(
     baselineState,
     channelId,
-    { body: 'First overlapping workflow turn' },
+    withRoomAudience(baselineState, channelId, { body: 'First overlapping workflow turn' }),
     runtimeClient,
     dispatchAt,
   );
@@ -804,14 +807,14 @@ test('createMergedDispatchChatStore serializes cross-channel writes so parallel 
   const begunA = await beginChannelMessageDispatch(
     baselineState,
     channelAId,
-    { body: 'Dispatch A' },
+    withRoomAudience(baselineState, channelAId, { body: 'Dispatch A' }),
     runtimeClient,
     dispatchAt,
   );
   const begunB = await beginChannelMessageDispatch(
     baselineState,
     channelBId,
-    { body: 'Dispatch B' },
+    withRoomAudience(baselineState, channelBId, { body: 'Dispatch B' }),
     runtimeClient,
     dispatchAt,
   );
@@ -950,7 +953,7 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please recover this routed turn.' },
+    withRoomAudience(state, channelId, { body: 'Please recover this routed turn.' }),
     runtimeClient,
     dispatchAt,
   );
@@ -989,7 +992,8 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
     buildChatLaneId(recoveredTurn.id, recoveredTargetStateId, 'participant-inline'),
   );
   assert.deepEqual(sentSessionIds, ['session-recovered']);
-  assert.deepEqual(closedSessionIds, []);
+  // The participant's stale session is retired when its replacement starts.
+  assert.deepEqual(closedSessionIds, ['session-stale']);
 });
 
 test('repairOrphanedCompletedDispatchTurn restores a startup-blocked turn when the reply already exists', async () => {
@@ -1011,7 +1015,7 @@ test('repairOrphanedCompletedDispatchTurn restores a startup-blocked turn when t
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please recover this completed reply' },
+    withRoomAudience(state, channelId, { body: 'Please recover this completed reply' }),
     runtimeClient,
     seededAt,
   );
@@ -1169,7 +1173,7 @@ test('repairOrphanedCompletedDispatchTurn ignores non-terminal segmented replies
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Only a partial reply exists' },
+    withRoomAudience(state, channelId, { body: 'Only a partial reply exists' }),
     runtimeClient,
     seededAt,
   );
@@ -1233,7 +1237,7 @@ test('repairOrphanedCompletedDispatchTurn keeps an active sequential turn alive 
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'First speaker should hand off to a second one.' },
+    withRoomAudience(state, channelId, { body: 'First speaker should hand off to a second one.' }),
     runtimeClient,
     seededAt,
   );
@@ -1354,7 +1358,7 @@ test('repairOrphanedCompletedDispatchTurn keeps a sequential turn alive while la
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'First speaker should hand off, but the second target is not written yet.' },
+    withRoomAudience(state, channelId, { body: 'First speaker should hand off, but the second target is not written yet.' }),
     runtimeClient,
     seededAt,
   );
@@ -1466,7 +1470,7 @@ test('repairOrphanedCompletedDispatchTurn keeps later same-speaker re-entry targ
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Claude should speak, then Codex, then Claude again.' },
+    withRoomAudience(state, channelId, { body: 'Claude should speak, then Codex, then Claude again.' }),
     runtimeClient,
     seededAt,
   );
@@ -1619,7 +1623,7 @@ test('repairOrphanedCompletedDispatchTurn restores a drifted same-speaker re-ent
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Claude should speak, then Codex, then Claude again.' },
+    withRoomAudience(state, channelId, { body: 'Claude should speak, then Codex, then Claude again.' }),
     runtimeClient,
     seededAt,
   );

@@ -1,5 +1,7 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import { parseProviderModelSelection } from '../../../../shared/providerSelection.js';
+import { messageLacksAudience } from '../../state/mentionRouter.js';
+import { ChatApiError } from '../routeErrors.js';
 import {
   beginChannelMessageRetryDispatch,
   beginChannelMessageDispatch,
@@ -7,6 +9,7 @@ import {
   settleBegunChannelMessageDispatchFailure,
 } from '../../state/runtimeActions.js';
 import {
+  bindChannelCoordinator,
   buildChannelView,
   requireChannel,
   resetDefaultChatContinuity,
@@ -35,6 +38,7 @@ import {
   persistCreatedChannel,
   persistDeletedChannel,
   persistRenamedChannel,
+  persistChannelParticipantRemoval,
   persistUpdatedChannelParticipant,
   resolveCreateOriginSurface,
   requireValidChatScopeId,
@@ -439,6 +443,18 @@ async function handleRestPatchChannel(
         persisted = await persistRenamedChannel(context, channelId, title);
       }
 
+      if (body.coordinatorParticipantId !== undefined) {
+        if (body.coordinatorParticipantId !== null && typeof body.coordinatorParticipantId !== 'string') {
+          sendJson(context.response, 400, {
+            error: 'coordinator_invalid',
+            message: 'coordinatorParticipantId must be a participant id or null.',
+          });
+          return;
+        }
+        persisted = await updateChatState(context.dependencies.chatStore, (state) =>
+          bindChannelCoordinator(state, channelId, body.coordinatorParticipantId ?? null));
+      }
+
       if (
         body.pendingProvider !== undefined
         || body.pendingModel !== undefined
@@ -552,6 +568,22 @@ async function handleRestPatchChannelParticipant(
   }
 }
 
+async function handleRestDeleteChannelParticipant(
+  context: ChatApiRouteContext,
+  channelId: string,
+  participantId: string,
+): Promise<void> {
+  try {
+    await context.dependencies.mutationGate.run(channelId, async () => {
+      await persistChannelParticipantRemoval(context, channelId, participantId);
+      sendJson(context.response, 200, { removed: true, channelId, participantId });
+      publishChannelMutationEvents(context, channelId);
+    });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
 async function handleRestDeleteChannel(
   context: ChatApiRouteContext,
   chatScopeId: string,
@@ -602,6 +634,17 @@ async function handleRestSendMessage(
 
     await context.dependencies.mutationGate.run(channelId, async () => {
       const stateBefore = await context.dependencies.chatStore.read();
+      if (messageLacksAudience(stateBefore, channelId, {
+        body: body.body,
+        recipientParticipantIds: body.messageMetadata?.recipientParticipantIds,
+        choiceResponse: body.choiceResponse,
+      })) {
+        throw new ChatApiError(
+          400,
+          'audience_required',
+          'Name the audience for this message: send messageMetadata.recipientParticipantIds or mention participants with @Name.',
+        );
+      }
       const now = nowFrom(context.dependencies);
       begunDispatch = await beginChannelMessageDispatch(
         stateBefore,
@@ -884,8 +927,16 @@ export async function routeChatChannelResourceApi(
     /^\/api\/channels\/([^/]+)\/participants\/([^/]+)$/u,
   );
   if (canonicalChannelParticipantMatch) {
+    if (context.method === 'DELETE') {
+      await handleRestDeleteChannelParticipant(
+        context,
+        canonicalChannelParticipantMatch[0]!,
+        canonicalChannelParticipantMatch[1]!,
+      );
+      return true;
+    }
     if (context.method !== 'PATCH') {
-      sendMethodNotAllowed(context.response, ['PATCH']);
+      sendMethodNotAllowed(context.response, ['PATCH', 'DELETE']);
       return true;
     }
     await handleRestPatchChannelParticipant(

@@ -123,7 +123,8 @@ test('ChatStore projects direct-lane participants, temporary participant actors,
   );
 
   const temporaryConversationId = buildChatConversationId(temporaryChannelId);
-  const temporaryActor = core.actors.find((actor) => actor.source === 'chat_participant');
+  const temporaryActor = core.actors.find((actor) =>
+    actor.source === 'chat_participant' && actor.name === 'Inline Reviewer');
   assert.ok(temporaryActor);
   assert.equal(temporaryActor.name, 'Inline Reviewer');
   assert.ok(

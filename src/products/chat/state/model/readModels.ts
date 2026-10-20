@@ -15,7 +15,7 @@ import type {
 } from '../../api/contracts.js';
 import { isCompanionCat, withCompanionRole } from '../../../../shared/companionRole.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
-import { listActiveAdminCats } from '../../shared/catGroups.js';
+import { listActiveAdminCats } from '../../../shared/catGroups.js';
 import { resolveChannelCanonicalIdentity } from '../../shared/channelCanonicalIdentity.js';
 import { createChannelExportFilename } from '../../shared/channelPaths.js';
 import { buildParallelChatMemberLabel } from '../../shared/parallelChats.js';

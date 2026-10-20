@@ -7,7 +7,7 @@ import {
 import { cloneProviderModelSelection, type ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { catInitials } from '../workspaceChatUtils.js';
-import { isAdminCat } from '../../../chat/shared/catGroups.js';
+import { isAdminCat } from '../../catGroups.js';
 
 export interface RecipientChipTarget {
   kind: 'named' | 'implicit';

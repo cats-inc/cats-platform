@@ -58,24 +58,24 @@ in every room with participants. Shippable on its own as a patch.
 
 ### Phase 3: Server model
 
-- [ ] Task 3.1: Participant records for every non-DM conversation at creation,
+- [x] Task 3.1: Participant records for every non-DM conversation at creation,
       in insertion order, from every creator (renderer, Code sessions,
       collaboration, Telegram, parallel members); removal and archive guards
       keep at least one.
 - [ ] Task 3.2: `coordinatorParticipantId`; coordination in the coordinator's
       own session; remove the separate orchestrator session, lease, `pending*`,
       the default-chat branches and the God Cat display name.
-- [ ] Task 3.3: Routing: audience first; coordinator routing on; nothing more
+- [x] Task 3.3: Routing: audience first; coordinator routing on; nothing more
       without a coordinator; reject a non-DM message without an audience;
       server-internal senders name their audience.
-- [ ] Task 3.4: Cat groups replace `bossCatId`; permission checks become
+- [x] Task 3.4: Cat groups replace `bossCatId`; permission checks become
       coordinator × admin for actions beyond the conversation.
-- [ ] Task 3.5: `newChatDefaults` as model or cat, saved from a created
+- [x] Task 3.5: `newChatDefaults` as model or cat, saved from a created
       non-DM conversation's first participant.
 - [ ] Task 3.6: Owner and artifact provenance fields.
 - [ ] Task 3.7: Remove Start fresh, the default-chat reply rewrite and the
       Telegram non-DM room fallback.
-- [ ] Task 3.8: Mobile audience control, released together with Task 3.3 so
+- [x] Task 3.8: Mobile audience control, released together with Task 3.3 so
       mobile can still send in non-DM conversations.
 
 **Deliverables**: The server enforces SPEC-125; old data is unsupported.

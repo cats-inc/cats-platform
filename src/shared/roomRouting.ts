@@ -28,6 +28,7 @@ export type RoomRouteSelectionKind =
 export type RoomRouteBlockedReason =
   | 'missing_direct_message_recipient'
   | 'missing_default_recipient'
+  | 'missing_audience'
   | 'no_valid_targets'
   | 'user_cancelled';
 

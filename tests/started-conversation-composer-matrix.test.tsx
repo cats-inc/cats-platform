@@ -188,6 +188,7 @@ function createChannel(scenario: Scenario): SelectedChannelView {
     title: 'Matrix',
     topic: '',
     channelKind: scenario.direct ? 'direct_message' : 'chat_channel',
+    coordinatorParticipantId: scenario.participants[0]?.participantId ?? null,
     status: 'active',
     unreadCount: 0,
     repoPath: null,

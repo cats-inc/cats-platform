@@ -6,7 +6,7 @@ import { collaborationExecutionDescriptors, collaborationExecutionManifests,
   resolveCollaborationOwnerChoice, REQUEST_COLLABORATION_ROLE } from '../collaborationExecutionSurface.js';
 import { isOrchestratorKnowledgeChannel } from '../orchestratorKnowledge.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
-import { isAdminCatId } from '../../shared/catGroups.js';
+import { isAdminCoordinator } from '../coordinator.js';
 import { isCompanionCat } from '../../../../shared/companionRole.js';
 import {
   COMPANION_CONTENT_POST_CREATE_TOOL,
@@ -262,20 +262,36 @@ export function prepareDispatchTurnForUserMessage(
         explicitTrigger: 'explicit_mention',
       });
   const currentTurnRecipientIds = choiceResponseTarget ? [] : readRecipientParticipantIds(nextState, payload);
-  if (
-    !choiceResponseTarget
-    && initialResolution.trigger === 'room_default'
-    && currentTurnRecipientIds.length > 0
-  ) {
-    const currentTurnTargets = resolveCurrentTurnRecipientTargets(
+  if (!choiceResponseTarget && !deterministicPlanResolution && currentTurnRecipientIds.length > 0) {
+    // The audience is the participants the message names, then any it @mentions.
+    const recipientTargets = resolveCurrentTurnRecipientTargets(
       nextState,
       channelId,
       currentTurnRecipientIds,
     );
-    if (currentTurnTargets.length > 0) {
+    if (recipientTargets.length > 0) {
+      const mentionedTargets = initialResolution.trigger === 'explicit_mention'
+        ? initialResolution.targets.filter((target) =>
+          !recipientTargets.some((recipient) => recipient.participantId === target.participantId))
+        : [];
+      const audienceTargets = detachRoutingTargetsRuntimeAttachments([
+        ...recipientTargets,
+        ...mentionedTargets,
+      ]);
       initialResolution = {
         ...initialResolution,
-        targets: detachRoutingTargetsRuntimeAttachments(currentTurnTargets),
+        targets: audienceTargets,
+        resolution: mentionedTargets.length > 0
+          ? initialResolution.resolution
+          : {
+              routingMode: 'room_default',
+              selectionKind: 'default_target',
+              defaultTarget: toParticipantRef(audienceTargets[0]!),
+              defaultTargetReason: 'default_recipient',
+              fallbackTarget: null,
+              blockedReason: null,
+              note: 'The message named its audience.',
+            },
       };
     }
   }
@@ -618,13 +634,13 @@ function buildProviderAgentObservationForTurn(input: {
   });
   const workExecutionPreparationPhase = resolveWorkExecutionPreparationPhase({
     rawText: input.payload.body,
-    addressedBossCat: isSingleBossCatTarget(input.state, singleCatTarget),
+    addressedBossCat: isSingleBossCatTarget(input.state, input.channelId, singleCatTarget),
     activeWorkItemIds: readActiveWorkItemIdsFromMessage(input.userMessage),
     visibleWorkItemIds: visibleExecutionPreparationWorkItemIds,
   });
   const workExecutionPreparationToolObservation = createWorkExecutionPreparationToolObservation({
     enabled: workExecutionPreparationPhase.kind === 'matched'
-      && isSingleBossCatTarget(input.state, singleCatTarget)
+      && isSingleBossCatTarget(input.state, input.channelId, singleCatTarget)
       && Boolean(input.core),
     policy: policyDecision.result.policy,
   });
@@ -901,10 +917,10 @@ function buildProviderAgentObservationForTurn(input: {
     observationPolicy = companionPostPolicyDecision.result.policy;
   }
 
+  // Collaboration acts beyond the conversation: its Boss Cat coordinator alone may use it.
   const collaborationTools = input.enableCollaborationReads === true
-    && providerAgentActorRef === 'orchestrator'
-    && input.initialResolution.targets.length === 1
-    && input.initialResolution.targets[0]?.participantKind === 'orchestrator'
+    && singleCatTarget !== null
+    && isAdminCoordinator(input.state, input.channelId, singleCatTarget.participantId)
     && isOrchestratorKnowledgeChannel(channel) && !isDirectLaneChannel(channel)
     && (!input.transport || input.transport === 'web' || input.transport === 'mobile')
     && !input.payload.body.trimStart().startsWith('/')
@@ -1215,14 +1231,16 @@ function resolveWorkToolCapabilityProfile(
   return capabilityProfileKind;
 }
 
+/** Boss Cat work: the turn's only target coordinates the conversation and is an admin cat. */
 function isSingleBossCatTarget(
   state: ChatState,
+  channelId: string,
   singleCatTarget: TargetResolution['targets'][number] | null,
 ): boolean {
   return Boolean(
     singleCatTarget
     && singleCatTarget.participantKind === 'cat'
-    && isAdminCatId(state.cats, singleCatTarget.participantId),
+    && isAdminCoordinator(state, channelId, singleCatTarget.participantId),
   );
 }
 

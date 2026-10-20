@@ -976,6 +976,7 @@ export function buildPromptForTarget(
       promptSourceMessage,
       routingContext,
       companionContext,
+      { coordinator: channel.coordinatorParticipantId === participant.participantId },
     ),
     instructions: joinRuntimeInstructions(instructions, slashModeInstructions),
     continuityMode,

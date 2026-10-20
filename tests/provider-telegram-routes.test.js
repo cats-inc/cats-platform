@@ -1204,10 +1204,12 @@ test('telegram webhook routes inbox traffic into a room and relays a reply back 
       const messagesPayload = await messagesResponse.json();
       assert.ok(messagesPayload.messages.some((message) =>
         message.senderKind === 'user' && message.body === 'hello from telegram'));
+      // The inbox room answers through its default participant.
       assert.ok(messagesPayload.messages.some((message) =>
         message.body === 'Boss Cat relay reply'
-        && message.metadata?.targetKind === 'orchestrator'
-        && (message.senderKind === 'agent' || message.senderKind === 'orchestrator')));
+        && message.metadata?.targetKind === 'cat'
+        && message.metadata?.targetId === roomPayload.channel.coordinatorParticipantId
+        && message.senderKind === 'agent'));
 
       const duplicateResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
         method: 'POST',
@@ -1988,9 +1990,15 @@ test('telegram webhook for a cat binding reuses that cat direct lane', async () 
     assert.ok(telegramBinding);
     assert.equal(telegramBinding.linkedRoomId, directLaneId);
 
-    const roomResponse = await fetch(`${baseUrl}/api/channels/${directLaneId}`);
-    assert.equal(roomResponse.status, 200);
-    const roomPayload = await roomResponse.json();
+    // The cat's turn runs after the webhook is accepted.
+    let roomPayload = null;
+    await waitForAsync(async () => {
+      const roomResponse = await fetch(`${baseUrl}/api/channels/${directLaneId}`);
+      assert.equal(roomResponse.status, 200);
+      roomPayload = await roomResponse.json();
+      return roomPayload.channel.messages.some((message) =>
+        message.senderKind === 'agent' && message.senderName === 'Companion');
+    });
     assert.equal(roomPayload.channel.roomRouting.mode, 'direct_message');
     assert.equal(roomPayload.channel.roomRouting.defaultRecipientId, catId);
     const sessionStartedMessage = roomPayload.channel.messages.find((message) =>

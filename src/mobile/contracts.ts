@@ -156,6 +156,15 @@ export interface MobileCreateChannelInput {
 export interface MobileCreatedChannel {
   id: string;
   title: string;
+  channelKind?: 'direct_message' | 'chat_channel' | null;
+  roomRouting?: { mode?: string | null } | null;
+  /** The participants it starts with; the first send names them all. */
+  assignedParticipants?: Array<{
+    participantId: string;
+    name: string;
+    status: 'active' | 'removed';
+    avatarColor: string | null;
+  }>;
 }
 
 export interface MobileCreateChannelResponse {

@@ -512,7 +512,18 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
             workflowShape: activeWorkflowShape,
           })
         : null;
-      const messageMetadata = draftMessageMetadata ?? activeChannelMessageMetadata;
+      // A conversation just created from a draft hears its first message as a whole.
+      const createdChannelMessageMetadata = wasDraftingNewChat && !draftMessageMetadata
+        ? resolveActiveChannelMessageMetadata({
+            selectedChannel: payload.chat.selectedChannel?.id === channelId
+              ? normalizeSelectedChannelView(payload.chat.selectedChannel)
+              : null,
+            maxAudienceParticipants,
+          })
+        : null;
+      const messageMetadata = draftMessageMetadata
+        ?? activeChannelMessageMetadata
+        ?? createdChannelMessageMetadata;
 
       if (defaultDispatchTarget) {
         payload = applyOptimisticPendingExecutionTarget(payload, channelId, defaultDispatchTarget);

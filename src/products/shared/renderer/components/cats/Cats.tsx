@@ -44,7 +44,7 @@ import {
   readModelSettingsFocusState,
   scrollModelSettingsFieldIntoView,
 } from '../../../../../app/renderer/savedSelectionAttention.js';
-import { isAdminCat } from '../../../../chat/shared/catGroups.js';
+import { isAdminCat } from '../../../catGroups.js';
 
 export interface CatsRegistryController<TBotForm> {
   botForm: TBotForm;

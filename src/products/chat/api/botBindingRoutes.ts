@@ -8,7 +8,7 @@ import type { BotBindingRecord, CatsCoreState } from '../../../core/types.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
 import { resolveEffectiveBotBindingRoomMode } from '../state/botBindings.js';
-import { isAdminCat } from '../shared/catGroups.js';
+import { isAdminCat } from '../../shared/catGroups.js';
 import { requireCat } from '../state/model/index.js';
 import type {
   CreateBotBindingInput,

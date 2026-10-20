@@ -192,58 +192,39 @@ test('resetDefaultChatContinuity is idempotent before the new branch starts', as
   assert.equal(resetMessages.length, 1);
 });
 
-test('assigning and removing the first participant keeps default recipient topology consistent', async () => {
+test('removing the first participant moves the room on to the next one and keeps the last', async () => {
   const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
-  state = createCat(
-    state,
-    {
-      name: 'Milo',
-      provider: 'claude',
-      roles: ['companion'],
-    },
-    now,
-  );
-  const catId = state.cats[0].id;
+  for (const name of ['Milo', 'Nova']) {
+    state = createCat(state, { name, provider: 'claude', roles: ['companion'] }, now);
+  }
+  const miloId = state.cats.find((cat) => cat.name === 'Milo').id;
+  const novaId = state.cats.find((cat) => cat.name === 'Nova').id;
 
   state = createChannel(
     state,
     {
-      title: 'Default Thread',
-      topic: 'Starts without visible cats.',
+      title: 'Shared Thread',
+      topic: 'Starts with Milo.',
       originSurface: 'chat',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
+      participantCatIds: [miloId],
     },
     now,
   );
   const channelId = state.selectedChannelId;
+  state = assignCatToChannel(state, channelId, { catId: novaId, provider: 'claude' }, now);
+  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, miloId);
+  assert.equal(state.channels[0].coordinatorParticipantId, miloId);
+  assert.deepEqual(state.channels[0].participantAssignments?.map((assignment) => assignment.participantId), [miloId, novaId]);
 
-  state = assignCatToChannel(
-    state,
-    channelId,
-    {
-      catId,
-      provider: 'claude',
-      model: 'claude-default',
-    },
-    now,
-  );
-  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, catId);
-  assert.equal(state.channels[0].participantAssignments?.[0]?.participantId, catId);
-
-  state = removeCatFromChannel(
-    state,
-    channelId,
-    catId,
-    new Date('2026-03-23T00:05:00.000Z'),
-  );
-  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, null);
-  assert.equal(
-    state.channels[0].participantAssignments?.some((assignment) => assignment.status === 'active'),
-    false,
+  state = removeCatFromChannel(state, channelId, miloId, new Date('2026-03-23T00:05:00.000Z'));
+  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, novaId);
+  assert.equal(state.channels[0].coordinatorParticipantId, null);
+  assert.throws(
+    () => removeCatFromChannel(state, channelId, novaId, new Date('2026-03-23T00:06:00.000Z')),
+    /at least one participant/u,
   );
 });
 
@@ -294,6 +275,7 @@ test('channel topology infers direct lanes and participant chat rooms independen
       originSurface: 'chat',
       title: 'Team room',
       topic: 'Multi-cat rooms are distinguished from boss threads.',
+      participantCatIds: [companionId, reviewerId],
     },
     now,
   );
@@ -890,7 +872,8 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
     },
     now,
   );
-  state.cats.find((cat) => cat.id === state.cats[0].id).group = 'admin';
+  const smellyId = state.cats[0].id;
+  state.cats.find((cat) => cat.id === smellyId).group = 'admin';
   state = createCat(
     state,
     {
@@ -908,6 +891,8 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
       originSurface: 'chat',
       title: 'Workflow Projection',
       topic: 'Project system workflow into core.',
+      // Smelly, a Boss Cat, coordinates the room and hands off to Agent-1.
+      participantCatIds: [smellyId, agentId],
     },
     now,
   );
@@ -995,10 +980,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   const core = await store.readCore();
 
   assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.resolution.selectionKind, 'explicit_mentions');
-  assert.equal(
-    reloadedChannel?.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
-    'chat_channel_default',
-  );
+  assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.resolution.defaultTargetReason, null);
   assert.deepEqual(
     reloadedChannel?.roomRouting?.wakeHistory.map((wake) => wake.reason),
     ['workflow_continuation', 'explicit_mention'],
@@ -1111,6 +1093,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
       originSurface: 'chat',
       title: 'Continuation Replay Projection',
       topic: 'Persist blocked continuation replay metadata into core.',
+      participantCatIds: [inlineAgentId, followupAgentId],
     },
     now,
   );
@@ -1267,6 +1250,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
       originSurface: 'chat',
       title: 'Dispatch Guard Replay Projection',
       topic: 'Persist blocked continuation replay metadata when dispatch limits stop a handoff.',
+      participantCatIds: [inlineAgentId, followupAgentId],
     },
     now,
   );
@@ -1389,344 +1373,6 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
   );
   assert.equal(replay?.workflowStageId, 'continuation_handoff');
   assert.equal(replay?.workflowShape, 'sequential');
-});
-
-test('ChatStore projects retryable workflow-continuation replay metadata for anti-ping-pong blocks', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
-  let state = await store.read();
-  const now = new Date('2026-03-26T11:00:00.000Z');
-
-  state = createCat(
-    state,
-    {
-      name: 'Inline-Agent',
-      provider: 'claude',
-      roles: ['reviewer'],
-    },
-    now,
-  );
-  const inlineAgentId = state.cats[0].id;
-  state = createCat(
-    state,
-    {
-      name: 'Followup-Agent',
-      provider: 'antigravity',
-      roles: ['auditor'],
-    },
-    now,
-  );
-  const followupAgentId = state.cats[0].id;
-
-  state = createChannel(
-    state,
-    {
-      originSurface: 'chat',
-      title: 'Anti Ping Pong Replay Projection',
-      topic: 'Persist blocked continuation replay metadata when anti-ping-pong stops a loop.',
-    },
-    now,
-  );
-  const channelId = state.selectedChannelId;
-  state = assignCatToChannel(
-    state,
-    channelId,
-    {
-      catId: inlineAgentId,
-      provider: 'claude',
-      roles: ['reviewer'],
-    },
-    now,
-  );
-  state = assignCatToChannel(
-    state,
-    channelId,
-    {
-      catId: followupAgentId,
-      provider: 'antigravity',
-      roles: ['auditor'],
-    },
-    now,
-  );
-
-  let inlinePromptCount = 0;
-  const runtimeClient = {
-    async getHealth() {
-      return {
-        baseUrl: 'http://127.0.0.1:3110',
-        reachable: true,
-        status: 'ok',
-        service: 'cats-runtime',
-      };
-    },
-    async getProviderConfig() {
-      return {};
-    },
-    async getProviderModels(provider) {
-      return {
-        provider,
-        backend: 'cli',
-        instance: 'default',
-        defaultModel: `${provider}-default`,
-        source: 'config',
-        cache: null,
-        models: [
-          { id: `${provider}-default`, label: `${provider} default`, default: true },
-        ],
-        warnings: [],
-      };
-    },
-    sessionCount: 0,
-    async createSession(input) {
-      this.sessionCount += 1;
-      return {
-        id: `session-${this.sessionCount}`,
-        provider: input.provider,
-        model: input.model ?? null,
-        status: 'ready',
-        cwd: input.cwd ?? '/tmp/cats-chat-store',
-      };
-    },
-    async sendMessage(_sessionId, content) {
-      if (content.includes('You are Inline-Agent')) {
-        inlinePromptCount += 1;
-        return {
-          segments: [{
-            kind: 'text',
-            text: inlinePromptCount === 1
-              ? '@Followup-Agent take first pass.'
-              : '@Followup-Agent one more tweak.',
-            toolName: null,
-            toolId: null,
-          }],
-          inputTokens: 11,
-          outputTokens: 7,
-          tokensUsed: 18,
-        };
-      }
-      if (content.includes('You are Followup-Agent')) {
-        return {
-          segments: [{
-            kind: 'text',
-            text: '@Inline-Agent please review.',
-            toolName: null,
-            toolId: null,
-          }],
-          inputTokens: 9,
-          outputTokens: 6,
-          tokensUsed: 15,
-        };
-      }
-      throw new Error(`Unexpected prompt:\n${content}`);
-    },
-    async closeSession() {},
-  };
-
-  const dispatched = await routeChannelMessage(
-    state,
-    channelId,
-    { body: '@Inline-Agent start the routing loop.' },
-    runtimeClient,
-    now,
-  );
-  const channelView = buildChannelView(dispatched.state, channelId);
-  assert.equal(channelView.roomRouting?.lastOutcome?.guard, 'anti_ping_pong');
-
-  await store.write(dispatched.state);
-  const core = await store.readCore();
-  const projectedTask = core.tasks.find((task) => task.id === `task-channel-${channelId}`);
-  const dispatchedChannel = dispatched.state.channels.find((candidate) => candidate.id === channelId);
-  const replay = projectedTask?.metadata.workflowContinuationReplay;
-  const sourceMessageId = replay?.sourceMessageId;
-  const sourceMessage = typeof sourceMessageId === 'string'
-    ? dispatchedChannel?.messages.find((message) => message.id === sourceMessageId)
-    : null;
-  const sourceLane = typeof replay?.sourceLaneId === 'string'
-    ? core.lanes.find((lane) => lane.id === replay.sourceLaneId) ?? null
-    : null;
-
-  assert.ok(projectedTask);
-  assert.ok(sourceMessage);
-  assert.ok(sourceLane);
-  assert.equal(replay?.replayState, 'ready');
-  assert.equal(replay?.blockedReason, 'anti_ping_pong');
-  assert.equal(replay?.sourceMessageId, sourceMessage?.id);
-  assert.equal(replay?.sourceTurnId, sourceMessage?.metadata?.turnId ?? null);
-  assert.equal(replay?.sourceTurnId, sourceLane?.turnId ?? null);
-  assert.equal(replay?.sourceLaneId, sourceLane?.id ?? null);
-  assert.equal(replay?.sourceAssistantTurnId, sourceLane?.metadata?.responseAssistantTurnId ?? null);
-  assert.equal(replay?.sourceParticipant?.participantName, sourceMessage?.senderName ?? null);
-  assert.equal(replay?.workflowStageId, 'continuation_handoff');
-  assert.equal(replay?.workflowShape, 'sequential');
-  assert.equal(replay?.targets?.length, 1);
-});
-
-test('ChatStore projects retryable workflow-continuation replay metadata for max-target-visit blocks', async () => {
-  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
-  let state = await store.read();
-  const now = new Date('2026-03-26T11:30:00.000Z');
-
-  state = createCat(
-    state,
-    {
-      name: 'Inline-Agent',
-      provider: 'claude',
-      roles: ['reviewer'],
-    },
-    now,
-  );
-  const inlineAgentId = state.cats[0].id;
-  state = createCat(
-    state,
-    {
-      name: 'Followup-Agent',
-      provider: 'antigravity',
-      roles: ['auditor'],
-    },
-    now,
-  );
-  const followupAgentId = state.cats[0].id;
-
-  state = createChannel(
-    state,
-    {
-      originSurface: 'chat',
-      title: 'Target Visit Replay Projection',
-      topic: 'Persist blocked continuation replay metadata when revisit limits stop a handoff.',
-    },
-    now,
-  );
-  const channelId = state.selectedChannelId;
-  state = assignCatToChannel(
-    state,
-    channelId,
-    {
-      catId: inlineAgentId,
-      provider: 'claude',
-      roles: ['reviewer'],
-    },
-    now,
-  );
-  state = assignCatToChannel(
-    state,
-    channelId,
-    {
-      catId: followupAgentId,
-      provider: 'antigravity',
-      roles: ['auditor'],
-    },
-    now,
-  );
-
-  const channel = state.channels.find((candidate) => candidate.id === channelId);
-  assert.ok(channel);
-  channel.roomRouting.maxTargetVisitsPerTurn = 1;
-
-  const runtimeClient = {
-    async getHealth() {
-      return {
-        baseUrl: 'http://127.0.0.1:3110',
-        reachable: true,
-        status: 'ok',
-        service: 'cats-runtime',
-      };
-    },
-    async getProviderConfig() {
-      return {};
-    },
-    async getProviderModels(provider) {
-      return {
-        provider,
-        backend: 'cli',
-        instance: 'default',
-        defaultModel: `${provider}-default`,
-        source: 'config',
-        cache: null,
-        models: [
-          { id: `${provider}-default`, label: `${provider} default`, default: true },
-        ],
-        warnings: [],
-      };
-    },
-    sessionCount: 0,
-    async createSession(input) {
-      this.sessionCount += 1;
-      return {
-        id: `session-${this.sessionCount}`,
-        provider: input.provider,
-        model: input.model ?? null,
-        status: 'ready',
-        cwd: input.cwd ?? '/tmp/cats-chat-store',
-      };
-    },
-    async sendMessage(_sessionId, content) {
-      if (content.includes('You are Inline-Agent')) {
-        return {
-          segments: [{
-            kind: 'text',
-            text: '@Followup-Agent take first pass.',
-            toolName: null,
-            toolId: null,
-          }],
-          inputTokens: 11,
-          outputTokens: 7,
-          tokensUsed: 18,
-        };
-      }
-      if (content.includes('You are Followup-Agent')) {
-        return {
-          segments: [{
-            kind: 'text',
-            text: '@Inline-Agent please review.',
-            toolName: null,
-            toolId: null,
-          }],
-          inputTokens: 9,
-          outputTokens: 6,
-          tokensUsed: 15,
-        };
-      }
-      throw new Error(`Unexpected prompt:\n${content}`);
-    },
-    async closeSession() {},
-  };
-
-  const dispatched = await routeChannelMessage(
-    state,
-    channelId,
-    { body: '@Inline-Agent start the routing loop.' },
-    runtimeClient,
-    now,
-  );
-  const channelView = buildChannelView(dispatched.state, channelId);
-  assert.equal(channelView.roomRouting?.lastOutcome?.guard, 'max_target_visits');
-
-  await store.write(dispatched.state);
-  const core = await store.readCore();
-  const projectedTask = core.tasks.find((task) => task.id === `task-channel-${channelId}`);
-  const dispatchedChannel = dispatched.state.channels.find((candidate) => candidate.id === channelId);
-  const replay = projectedTask?.metadata.workflowContinuationReplay;
-  const sourceMessageId = replay?.sourceMessageId;
-  const sourceMessage = typeof sourceMessageId === 'string'
-    ? dispatchedChannel?.messages.find((message) => message.id === sourceMessageId)
-    : null;
-  const sourceLane = typeof replay?.sourceLaneId === 'string'
-    ? core.lanes.find((lane) => lane.id === replay.sourceLaneId) ?? null
-    : null;
-
-  assert.ok(projectedTask);
-  assert.ok(sourceMessage);
-  assert.ok(sourceLane);
-  assert.equal(replay?.replayState, 'ready');
-  assert.equal(replay?.blockedReason, 'max_target_visits');
-  assert.equal(replay?.sourceMessageId, sourceMessage?.id);
-  assert.equal(replay?.sourceTurnId, sourceMessage?.metadata?.turnId ?? null);
-  assert.equal(replay?.sourceTurnId, sourceLane?.turnId ?? null);
-  assert.equal(replay?.sourceLaneId, sourceLane?.id ?? null);
-  assert.equal(replay?.sourceAssistantTurnId, sourceLane?.metadata?.responseAssistantTurnId ?? null);
-  assert.equal(replay?.sourceParticipant?.participantName, sourceMessage?.senderName ?? null);
-  assert.equal(replay?.workflowStageId, 'continuation_handoff');
-  assert.equal(replay?.workflowShape, 'sequential');
-  assert.equal(replay?.targets?.length, 1);
 });
 
 test('routeChannelMessage sends choice responses back to the originating cat session without mentions', async () => {

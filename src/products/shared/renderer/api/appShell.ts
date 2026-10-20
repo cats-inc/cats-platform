@@ -139,7 +139,7 @@ export async function updateAdvancedDraftControlsPreference(
 }
 
 export async function updateNewChatDefaultsPreference(
-  input: NewChatDefaults,
+  input: Omit<NewChatDefaults, 'catId'> & { catId?: string | null },
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
   const response = await fetch('/api/preferences', {

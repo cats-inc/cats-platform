@@ -29,7 +29,7 @@ import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import type {
   ResolvedChannelParticipant,
 } from '../../../channelParticipants.js';
-import { isAdminCat } from '../../../../chat/shared/catGroups.js';
+import { isAdminCat } from '../../../catGroups.js';
 
 const relayActions: Array<{
   command: ParallelChatRelayCommandKind;

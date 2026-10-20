@@ -24,7 +24,7 @@ import { normalizeCatSkillProfile } from '../../../../shared/skillProfiles.js';
 import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { defaultCatProducts, normalizePlatformSurfaceList } from '../../../../shared/platformSurfaces.js';
 import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
-import { normalizeChatCatGroup } from '../../shared/catGroups.js';
+import { normalizeChatCatGroup } from '../../../shared/catGroups.js';
 import { resolveTemporaryParticipantName } from '../../shared/participantNaming.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import { parseMentions } from '../mentionParsing.js';

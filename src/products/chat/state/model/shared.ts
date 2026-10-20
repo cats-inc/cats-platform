@@ -82,7 +82,43 @@ export function syncChannelDefaultRecipientAndTopology(channel: ChatChannelState
     roomRouting.defaultRecipientId = activeParticipantIds[0] ?? null;
   }
 
+  // A DM stays bound to its cat; elsewhere a binding to someone who left clears.
+  const directRecipientId = channel.channelKind === 'direct_message'
+    ? roomRouting.defaultRecipientId
+    : null;
+  if (directRecipientId && activeParticipantIds.includes(directRecipientId)) {
+    channel.coordinatorParticipantId = directRecipientId;
+  } else if (
+    !channel.coordinatorParticipantId
+    || !activeParticipantIds.includes(channel.coordinatorParticipantId)
+  ) {
+    channel.coordinatorParticipantId = null;
+  }
+
   channel.roomRouting = roomRouting;
+}
+
+/** Moves the coordinator binding, or clears it with null; a DM stays bound to its cat. */
+export function bindChannelCoordinator(
+  state: ChatState,
+  channelId: string,
+  participantId: string | null,
+): ChatState {
+  const nextState = cloneState(state);
+  const channel = requireChannel(nextState, channelId);
+  if (channel.channelKind === 'direct_message') {
+    throw new Error('A direct message stays coordinated by its cat');
+  }
+  const normalized = participantId?.trim() || null;
+  if (
+    normalized
+    && !resolveChannelParticipantAssignments(channel).some((assignment) =>
+      assignment.status === 'active' && assignment.participantId === normalized)
+  ) {
+    throw new Error(`Channel participant not found: ${normalized}`);
+  }
+  channel.coordinatorParticipantId = normalized;
+  return nextState;
 }
 
 export function findChannelIndex(state: ChatState, channelId: string): number {

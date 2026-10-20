@@ -5,6 +5,7 @@ import type { MessageLocale } from '../../../shared/i18n/index.js';
 import { parseMessageLocale } from '../../../shared/i18n/index.js';
 import type { ProviderAgentBoundedObservation } from '../../../platform/orchestration/providerAgentDecision.js';
 import { appendMessage } from './model/index.js';
+import { resolveCoordinatorParticipant } from './coordinator.js';
 import { ACCEPT_COLLABORATION, ACCEPT_CATS_DEVELOPMENT } from './collaborationExecutionSurface.js';
 import { collaborationSnapshot, DISCOVER_COLLABORATION_CATS, INSPECT_COLLABORATION_CONTEXT, type CollaborationReport,
   type CollaborationCandidate } from './orchestratorCollaboration.js';
@@ -15,8 +16,10 @@ export function appendCollaborationReport(input: {
   canExecute?: boolean;
 }): { state: ChatState; resultMessage: ChatMessage | null } {
   if (!input.report) return { state: input.state, resultMessage: null };
+  // The Boss Cat coordinator that prepared the collaboration reports it.
+  const coordinator = resolveCoordinatorParticipant(input.state, input.channelId);
   const appended = appendMessage(input.state, input.channelId, {
-    senderKind: 'orchestrator', senderName: 'Orchestrator',
+    senderKind: 'agent', senderName: coordinator?.name ?? 'Chat',
     body: describeCollaborationReport(input.report, input.locale),
   }, input.now, {
     ...(input.canExecute && input.report.status === 'prepared'
@@ -32,6 +35,7 @@ export function appendCollaborationReport(input: {
     metadata: {
     event: 'orchestrator_collaboration_preparation', sourceMessageId: input.sourceMessageId,
     collaborationPreparation: input.report,
+    ...(coordinator ? { targetId: coordinator.participantId } : {}),
   }, incrementUnread: false });
   return { state: appended.state, resultMessage: appended.message };
 }

@@ -13,14 +13,20 @@ import { normalizeCatMcpProfile } from '../../../../shared/catMcpProfiles.js';
 import { withCompanionRole } from '../../../../shared/companionRole.js';
 import { normalizeCatSkillProfile } from '../../../../shared/skillProfiles.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
-import { createCatRecord } from './recordBuilders.js';
+import {
+  createAssignmentRecord,
+  createCatRecord,
+  createTemporaryParticipantAssignment,
+} from './recordBuilders.js';
+import { resolveDefaultParticipantSeed } from './defaultParticipant.js';
+import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
 import {
   cloneState,
   isoAt,
   syncChannelDefaultRecipientAndTopology,
 } from './shared.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
-import { isAdminCat, normalizeChatCatGroup } from '../../shared/catGroups.js';
+import { isAdminCat, normalizeChatCatGroup } from '../../../shared/catGroups.js';
 
 export const AVATAR_PALETTE = [
   '#7986CB', '#4DB6AC', '#FFB74D', '#BA68C8',
@@ -149,6 +155,39 @@ function restoreRecoverableDirectLane(
   syncChannelDefaultRecipientAndTopology(channel);
 }
 
+/** A non-DM conversation the cat leaves empty starts over with the remembered default. */
+function seedDefaultParticipantAfterDetach(
+  state: ChatState,
+  channel: ChatState['channels'][number],
+  catId: string,
+  detachedAt: string,
+): void {
+  if (
+    isDirectLaneChannel(channel)
+    || resolveChannelParticipantAssignments(channel).some((assignment) => assignment.status === 'active')
+  ) {
+    return;
+  }
+  const seed = resolveDefaultParticipantSeed(state, { excludeCatId: catId });
+  let seededParticipantId: string | null = null;
+  if (seed.kind === 'cat') {
+    const cat = state.cats.find((candidate) => candidate.id === seed.catId);
+    if (cat) {
+      const assignment = createAssignmentRecord(cat, {}, detachedAt);
+      channel.catAssignments = channel.catAssignments.filter((candidate) => candidate.catId !== cat.id);
+      channel.catAssignments.push(assignment);
+      seededParticipantId = assignment.participantId;
+    }
+  } else {
+    const participant = createTemporaryParticipantAssignment(seed.participant, detachedAt);
+    channel.participantAssignments = [...(channel.participantAssignments ?? []), participant];
+    seededParticipantId = participant.participantId;
+  }
+  // Starting over, the room binds its new first participant as a new conversation would.
+  channel.coordinatorParticipantId = seededParticipantId;
+  syncChannelDefaultRecipientAndTopology(channel);
+}
+
 function detachCatFromChannels(
   state: ChatState,
   catId: string,
@@ -156,6 +195,8 @@ function detachCatFromChannels(
   options: { preserveAssignmentHistory: boolean; preserveRecoverableDirectLane: boolean },
 ): void {
   for (const channel of state.channels) {
+    const wasActiveParticipant = channel.catAssignments.some((assignment) =>
+      assignment.catId === catId && assignment.status === 'active');
     if (options.preserveAssignmentHistory) {
       for (const assignment of channel.catAssignments) {
         if (assignment.catId !== catId) {
@@ -186,6 +227,9 @@ function detachCatFromChannels(
       preserveRecoverableDirectLane: options.preserveRecoverableDirectLane,
     });
     syncChannelDefaultRecipientAndTopology(channel);
+    if (wasActiveParticipant) {
+      seedDefaultParticipantAfterDetach(state, channel, catId, detachedAt);
+    }
   }
 }
 

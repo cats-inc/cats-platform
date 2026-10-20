@@ -30,7 +30,7 @@ import { createDefaultFolderBrowsePreferences } from '../../shared/folderBrowseP
 import type { AppShellPayload, ChatBotBindingSummary, ChatCatGroup, ChatState } from '../api/contracts.js';
 import { createUnavailableRuntimeSetupSummary } from '../../../runtime/setup.js';
 import { summarizeState } from './model/index.js';
-import { isAdminCat } from '../shared/catGroups.js';
+import { isAdminCat } from '../../shared/catGroups.js';
 import { resolveSetupCompletionTimestamp } from './setupCompletion.js';
 
 type PlatformDesktopPreferencesInput =

@@ -68,13 +68,15 @@ function createWorkMemoryPlan(body: string, options: { bossCat?: boolean } = {})
 function createGlobalOrchestratorWorkMemoryPlan(body: string) {
   let state = createDefaultChatState();
   state.globalOrchestrator.mcpProfile = WORK_MCP_PROFILE_ID;
+  // The legacy default chat is the only room the orchestrator still answers.
   state = createChannel(
     state,
     {
-      title: 'Global Boss Work Memory Chat',
-      topic: 'Plan Boss Work tool intent.',
+      title: 'Global Work Memory Chat',
+      topic: 'Plan Work tool intent.',
       originSurface: 'chat',
       roomMode: 'chat_channel',
+      pendingProvider: 'claude',
     },
     new Date('2026-05-13T00:00:00.000Z'),
   );
@@ -154,23 +156,58 @@ test('Chat orchestrator projects read-only Work intake intent for work-memory Ca
   assert.equal(target.toolIntent?.strict, true);
 });
 
-test('Chat orchestrator treats the global orchestrator as Boss Cat for Work execution intent', () => {
+test('Chat orchestrator is never a Boss Cat by role alone for Work execution intent', () => {
   const plan = createGlobalOrchestratorWorkMemoryPlan('Start work-item-alpha.');
   const target = plan.routing.initialTargets[0];
 
   assert.ok(target);
   assert.equal(target.targetKind, 'orchestrator');
-  assert.deepEqual(target.toolIntent?.allowedTools, [
-    WORK_ITEM_PREPARE_EXECUTION_TOOL,
-    WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
-  ]);
-  assert.deepEqual(target.toolIntent?.requiredCapabilities, [
+  assert.equal(target.toolIntent, null);
+});
+
+function createRoomWorkMemoryPlan(body: string, bossCatName: string) {
+  let state = createDefaultChatState();
+  state = createChannel(
+    state,
+    {
+      title: 'Work Memory Room',
+      topic: 'Plan Work tool intent.',
+      originSurface: 'chat',
+      roomMode: 'chat_channel',
+      cats: ['Planner Cat', 'Helper Cat'].map((name) => ({
+        name,
+        provider: 'antigravity',
+        roles: ['planner'],
+        mcpProfile: WORK_MCP_PROFILE_ID,
+      })),
+    },
+    new Date('2026-05-13T00:00:00.000Z'),
+  );
+  const channelId = state.selectedChannelId;
+  const boss = buildChannelView(state, channelId).assignedCats.find((cat) => cat.name === bossCatName);
+  assert.ok(boss);
+  state = setCatGroup(state, boss.catId, 'admin');
+
+  return buildOrchestratorTurnPlan(
+    state,
+    createDefaultCoreState(),
+    { channelId, body, transport: 'web' },
+    chatDeterministicPlannerSurface,
+  );
+}
+
+test('Chat Boss Cat work belongs to a room coordinator that is an admin cat', () => {
+  // The first participant, Planner Cat, coordinates the room.
+  const coordinatorPlan = createRoomWorkMemoryPlan('@Planner Cat start work-item-alpha.', 'Planner Cat');
+  assert.deepEqual(coordinatorPlan.routing.initialTargets[0]?.toolIntent?.requiredCapabilities, [
     'work.phase.execution_preparation',
     'work.capability.boss_cat',
     'work.tool_scope.narrow_write',
   ]);
-  assert.equal(target.toolIntent?.context?.participantKind, 'orchestrator');
-  assert.equal(target.toolIntent?.strict, true);
+
+  const workerPlan = createRoomWorkMemoryPlan('@Helper Cat start work-item-alpha.', 'Helper Cat');
+  assert.equal(workerPlan.routing.initialTargets[0]?.toolIntent?.requiredCapabilities
+    ?.includes('work.capability.boss_cat') ?? false, false);
 });
 
 test('Chat orchestrator projects Work external tracker tool intent for explicit binding turns', () => {

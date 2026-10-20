@@ -66,18 +66,40 @@ function mapCatAssignmentToParticipantAssignment(
   };
 }
 
+/**
+ * Participants in the order they joined: `participantAssignments` holds that
+ * order, cat entries refreshed from `catAssignments`; cats it does not list yet
+ * (just assigned) follow at the end.
+ */
 function mergeParticipantAssignments(
   channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
 ): ChannelParticipantAssignment[] {
-  const catParticipants = channel.catAssignments.map(mapCatAssignmentToParticipantAssignment);
-  const adhocParticipants = Array.isArray(channel.participantAssignments)
-    ? channel.participantAssignments.filter((assignment) => assignment.sourceKind !== 'cat')
-    : [];
-
-  return [
-    ...catParticipants,
-    ...adhocParticipants,
-  ];
+  const catParticipants = new Map(channel.catAssignments.map((assignment) => [
+    assignment.participantId,
+    mapCatAssignmentToParticipantAssignment(assignment),
+  ]));
+  const merged: ChannelParticipantAssignment[] = [];
+  const seenParticipantIds = new Set<string>();
+  for (const assignment of channel.participantAssignments ?? []) {
+    if (seenParticipantIds.has(assignment.participantId)) {
+      continue;
+    }
+    const participant = assignment.sourceKind === 'cat'
+      ? catParticipants.get(assignment.participantId)
+      : assignment;
+    if (!participant) {
+      continue;
+    }
+    seenParticipantIds.add(assignment.participantId);
+    merged.push(participant);
+  }
+  for (const [participantId, participant] of catParticipants) {
+    if (!seenParticipantIds.has(participantId)) {
+      seenParticipantIds.add(participantId);
+      merged.push(participant);
+    }
+  }
+  return merged;
 }
 
 export function resolveChannelParticipantAssignments(

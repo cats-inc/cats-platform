@@ -208,7 +208,7 @@ test('buildNewChatChannelInput keeps default-recipient new chats as visible thre
   assert.deepEqual(input.participantCatIds, ['cat-lead', 'cat-helper']);
 });
 
-test('buildNewChatChannelInput keeps default new chats in default mode with pending target', () => {
+test('buildNewChatChannelInput starts a default new chat with its model as the default participant', () => {
   const input = buildNewChatChannelInput({
     body: 'Ship the landing page',
     existingCount: 2,
@@ -233,9 +233,17 @@ test('buildNewChatChannelInput keeps default new chats in default mode with pend
   assert.equal(input.runtimeWorkspaceKind, 'worktree');
   assert.equal(input.runtimeWorkspaceAccess, 'read_only');
   assert.equal(input.runtimePermissionMode, 'default');
-  assert.equal(input.pendingProvider, 'claude');
-  assert.equal(input.pendingModel, 'claude-opus-4-6');
-  assert.equal(input.pendingInstance, 'native');
+  assert.equal(input.pendingProvider, undefined);
+  assert.deepEqual(input.temporaryParticipants, [{
+    participantId: undefined,
+    name: '',
+    provider: 'claude',
+    instance: 'native',
+    model: 'claude-opus-4-6',
+    modelSelection: null,
+    roleHint: undefined,
+  }]);
+  assert.equal(input.participantCatIds, undefined);
 });
 
 test('buildNewChatChannelInput defaults repo-backed drafts to source workspace access', () => {

@@ -19,6 +19,7 @@ function createChannel(
     topic: 'Testing conversation modes.',
     channelKind: 'chat_channel',
     status: 'active',
+    coordinatorParticipantId: null,
     unreadCount: 0,
     repoPath: null,
     chatCwd: null,

@@ -20,6 +20,7 @@ import { admitCollaboration, collaborationIntentId, collaborationDigest, readCol
   type CollaborationWorker, type WorkCollaborationIntent } from '../../work/state/collaborationRecords.js';
 import { requestCollaborationRole, requestCollaborationExecution, stopCollaboration, assertCollaborationBudget,
   type CollaborationExecutionPort } from '../../work/state/collaborationExecution.js';
+import { resolveCoordinatorParticipant } from './coordinator.js';
 
 export interface ChatCollaborationExecutionOptions {
   chatStore: ChatStore;
@@ -147,9 +148,12 @@ export async function createChatCollaborationExecution(options: ChatCollaboratio
     if (!Number.isInteger(proposal.budget.maxDurationMs) || proposal.budget.maxDurationMs <= 0
       || proposal.budget.maxDurationMs > 3600000 || !Number.isInteger(proposal.budget.maxTokens)
       || proposal.budget.maxTokens <= 0 || proposal.budget.maxTokens > 100000) throw new Error('invalid_budget');
+    // The source room's coordinator delegates the work; it is not one of the workers.
+    const coordinatorCatId = resolveCoordinatorParticipant(chat, source.id)?.sourceRefId ?? null;
     const worker = (catId: string): CollaborationWorker => {
       const cat = chat.cats.find((entry) => entry.id === catId);
-      if (!cat || cat.status !== 'active' || !isCatPartOfChatProduct(cat)) throw new Error('cat_unavailable');
+      if (!cat || cat.status !== 'active' || !isCatPartOfChatProduct(cat)
+        || cat.id === coordinatorCatId) throw new Error('cat_unavailable');
       const assigned = resolveChannelParticipantAssignments(source).find((entry) => entry.status === 'active'
         && entry.sourceKind === 'cat' && entry.sourceRefId === catId);
       const target = assigned?.execution.target ?? cat.defaultExecutionTarget;
@@ -206,8 +210,10 @@ export async function createChatCollaborationExecution(options: ChatCollaboratio
         if (intent.conversationIntent === 'reuse_current') intent.channelId = intent.sourceChannelId;
         else {
           const source = requireChannel(chat, intent.sourceChannelId);
+          // The workers are the room's participants from the start; membership below sets their targets.
           next = createChannel(chat, { title: intent.goal.slice(0, 100), topic: intent.goal, originSurface: 'chat',
             repoPath: intent.workspacePath, roomMode: 'chat_channel',
+            participantCatIds: Object.values(intent.workers).map((worker) => worker.catId),
             responseLanguage: source.responseLanguage, runtimeWorkspaceKind: 'worktree',
             runtimeWorkspaceAccess: 'read_write', runtimePermissionMode: 'whitelist' });
           intent.channelId = next.selectedChannelId!;

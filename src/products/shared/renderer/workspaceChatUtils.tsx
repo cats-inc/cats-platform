@@ -271,6 +271,8 @@ export function buildNewChatChannelInput(options: {
   defaultRecipientCatId?: string | null;
   participantCatIds?: string[];
   temporaryParticipants?: CreateTemporaryParticipantInput[];
+  /** Draft participant order as `cat:` / `temp:` keys, default participant first. */
+  participantOrder?: string[];
   draftExecutionTarget?: {
     provider: string;
     model: string | null;
@@ -290,6 +292,7 @@ export function buildNewChatChannelInput(options: {
     defaultRecipientCatId,
     participantCatIds = [],
     temporaryParticipants = [],
+    participantOrder,
     draftExecutionTarget,
     assistantResponseLanguage,
     t,
@@ -303,6 +306,19 @@ export function buildNewChatChannelInput(options: {
     repoPath,
     policy: draftSessionPolicy,
   });
+  // Without a named participant, the draft's own model is the default participant.
+  const createdTemporaryParticipants = temporaryParticipants.length > 0
+    || normalizedLeadCatId
+    || normalizedParticipantCatIds.length > 0
+    || !draftExecutionTarget
+    ? temporaryParticipants
+    : [{
+        name: '',
+        provider: draftExecutionTarget.provider,
+        instance: draftExecutionTarget.instance ?? undefined,
+        model: draftExecutionTarget.model ?? undefined,
+        modelSelection: draftExecutionTarget.modelSelection ?? null,
+      }];
   const baseInput: CreateChatChannelInput = {
     title: createDraftChannelTitle(body, existingCount, t),
     topic: createDraftChannelTopic(body),
@@ -311,8 +327,9 @@ export function buildNewChatChannelInput(options: {
     repoPath: repoPath ?? undefined,
     responseLanguage: assistantResponseLanguage,
     ...createRuntimeSessionContractInput(runtimeSessionPolicy),
-    temporaryParticipants: temporaryParticipants.length > 0
-      ? temporaryParticipants.map((participant) => ({
+    ...(participantOrder && participantOrder.length > 0 ? { participantOrder } : {}),
+    temporaryParticipants: createdTemporaryParticipants.length > 0
+      ? createdTemporaryParticipants.map((participant) => ({
           participantId: participant.participantId,
           name: participant.name,
           provider: normalizeWorkspaceDraftProvider(participant.provider),
@@ -348,15 +365,7 @@ export function buildNewChatChannelInput(options: {
     };
   }
 
-  return {
-    ...baseInput,
-    pendingProvider: draftExecutionTarget
-      ? normalizeWorkspaceDraftProvider(draftExecutionTarget.provider)
-      : undefined,
-    pendingModel: draftExecutionTarget?.model ?? undefined,
-    pendingInstance: draftExecutionTarget?.instance ?? undefined,
-    pendingModelSelection: draftExecutionTarget?.modelSelection ?? undefined,
-  };
+  return baseInput;
 }
 
 export function messageTone(senderKind: string): string {

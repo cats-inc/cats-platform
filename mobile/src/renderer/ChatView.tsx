@@ -114,7 +114,7 @@ interface ChannelChatViewHostProps {
 }
 
 function ChannelChatViewHost({ productMode, channelId }: ChannelChatViewHostProps) {
-  const { state, refetch, send, sendState } = useChannelMessages(channelId);
+  const { state, refetch, send, sendState, recipientIds, toggleRecipient } = useChannelMessages(channelId);
   // Drive the Stack header from the live channel title once the
   // app-shell payload resolves. Before resolution we use the tab
   // name as a placeholder so the header isn't blank during the
@@ -132,6 +132,8 @@ function ChannelChatViewHost({ productMode, channelId }: ChannelChatViewHostProp
         refetch={refetch}
         send={send}
         sendState={sendState}
+        recipientIds={recipientIds}
+        toggleRecipient={toggleRecipient}
       />
     </>
   );
@@ -188,6 +190,8 @@ interface ChatViewBodyProps {
   refetch: () => void;
   send: (body: string) => Promise<void>;
   sendState: ChannelSendState;
+  recipientIds?: string[];
+  toggleRecipient?: (participantId: string) => void;
 }
 
 function ChatViewBody({
@@ -197,6 +201,8 @@ function ChatViewBody({
   refetch,
   send,
   sendState,
+  recipientIds = [],
+  toggleRecipient,
 }: ChatViewBodyProps) {
   const copy = getMobileChatCopy(resolveDefaultMobileLocale());
   return (
@@ -215,6 +221,8 @@ function ChatViewBody({
         send,
         sendState,
         copy,
+        recipientIds,
+        toggleRecipient,
       })}
     </KeyboardAvoidingView>
   );
@@ -228,6 +236,8 @@ interface RenderBodyArgs {
   send: (body: string) => Promise<void>;
   sendState: ChannelSendState;
   copy: MobileChatCopy;
+  recipientIds: string[];
+  toggleRecipient?: (participantId: string) => void;
 }
 
 function renderBody({
@@ -238,6 +248,8 @@ function renderBody({
   send,
   sendState,
   copy,
+  recipientIds,
+  toggleRecipient,
 }: RenderBodyArgs) {
   switch (state.kind) {
     case 'loading':
@@ -274,6 +286,8 @@ function renderBody({
           send={send}
           sendState={sendState}
           copy={copy}
+          recipientIds={recipientIds}
+          toggleRecipient={toggleRecipient}
         />
       );
   }
@@ -287,6 +301,8 @@ interface LiveConversationProps {
   send: (body: string) => Promise<void>;
   sendState: ChannelSendState;
   copy: MobileChatCopy;
+  recipientIds: string[];
+  toggleRecipient?: (participantId: string) => void;
 }
 
 function LiveConversation({
@@ -297,6 +313,8 @@ function LiveConversation({
   send,
   sendState,
   copy,
+  recipientIds,
+  toggleRecipient,
 }: LiveConversationProps) {
   const listRef = useRef<FlatList<MobileRenderedMessage>>(null);
   const isNearBottomRef = useRef<boolean>(true);
@@ -374,6 +392,28 @@ function LiveConversation({
           <Text style={styles.sendErrorText} numberOfLines={2}>
             {sendState.error.message}
           </Text>
+        </View>
+      ) : null}
+      {state.audience && !state.audience.direct && state.audience.participants.length > 1 ? (
+        <View style={styles.audienceRow}>
+          <Text style={styles.audienceLabel}>{copy.audienceLabel}</Text>
+          {state.audience.participants.map((participant) => {
+            const selected = recipientIds.includes(participant.participantId);
+            return (
+              <Pressable
+                key={participant.participantId}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: selected, disabled: sending }}
+                disabled={sending || !toggleRecipient}
+                onPress={() => toggleRecipient?.(participant.participantId)}
+                style={[styles.audienceChip, selected ? styles.audienceChipSelected : null]}
+              >
+                <Text style={[styles.audienceChipLabel, selected ? styles.audienceChipLabelSelected : null]}>
+                  {participant.name}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       ) : null}
       <View style={styles.composer}>
@@ -549,6 +589,41 @@ const styles = StyleSheet.create({
   messageAuthor: {
     color: colors.fg.muted,
     ...typography.label,
+  },
+  audienceRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border.subtle,
+    backgroundColor: colors.bg.panel,
+  },
+  audienceLabel: {
+    color: colors.fg.muted,
+    ...typography.label,
+    marginRight: spacing.xs,
+  },
+  audienceChip: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    backgroundColor: colors.bg.panelSubtle,
+  },
+  audienceChipSelected: {
+    borderColor: colors.accent.primary,
+    backgroundColor: colors.accent.soft,
+  },
+  audienceChipLabel: {
+    color: colors.fg.secondary,
+    ...typography.caption,
+  },
+  audienceChipLabelSelected: {
+    color: colors.accent.primary,
   },
   composer: {
     flexDirection: 'row',

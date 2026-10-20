@@ -19,7 +19,7 @@ import {
   getCatProductSurfaceLabel,
   getCatRecordStatusLabel,
 } from './viewSupport.js';
-import { isAdminCat } from '../../../../chat/shared/catGroups.js';
+import { isAdminCat } from '../../../catGroups.js';
 
 export interface SharedCatsRegistryDetailPanelProps {
   busy: WorkspaceBusyState;

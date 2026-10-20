@@ -379,20 +379,23 @@ function resolveChannelStreamTargetWithReason(
     };
   }
 
+  const participantAttachment = collectParticipantLeaseAttachments(channel, {
+    statuses: ['ready', 'initializing'],
+  })[0] ?? null;
   if (defaultRecipientId) {
     const leadTarget = buildParticipantStreamTarget(channel, defaultRecipientId);
     if (leadTarget.sessionId) {
       return { target: leadTarget, reason: 'room_default_recipient' };
     }
-    return {
-      target: leadTarget,
-      reason: 'room_default_recipient_waiting_for_session',
-    };
+    // Without a live session for the first participant, follow any participant that has one.
+    if (!participantAttachment) {
+      return {
+        target: leadTarget,
+        reason: 'room_default_recipient_waiting_for_session',
+      };
+    }
   }
 
-  const participantAttachment = collectParticipantLeaseAttachments(channel, {
-    statuses: ['ready', 'initializing'],
-  })[0] ?? null;
   if (participantAttachment) {
     const target = buildParticipantStreamTarget(
       channel,

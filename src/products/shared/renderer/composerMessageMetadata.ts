@@ -3,7 +3,7 @@ import type {
   ChatMessage,
 } from '../api/workspaceContracts.js';
 import type { SelectedChannelView } from '../channelEntry.js';
-import { activeAssignedParticipants } from '../../chat/shared/channelParticipants.js';
+import { activeAssignedParticipants } from '../channelParticipants.js';
 import { supportsParticipantAudienceSelection } from '../../chat/shared/channelTopology.js';
 
 export interface ActiveChannelAudienceState {

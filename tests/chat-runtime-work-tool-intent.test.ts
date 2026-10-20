@@ -137,9 +137,10 @@ function createOrchestratorDispatchHarness(body: string) {
     state,
     {
       title: 'Global Runtime Work Intent',
-      topic: 'Forward Boss Work tool intent to runtime metadata.',
+      topic: 'Forward Work tool intent to runtime metadata.',
       originSurface: 'chat',
       roomMode: 'chat_channel',
+      pendingProvider: 'claude',
     },
     new Date('2026-05-13T00:00:00.000Z'),
   );
@@ -326,7 +327,7 @@ test('runtime dispatch forwards Work external issue import intent metadata', asy
   assert.equal(toolIntent.strict, true);
 });
 
-test('runtime dispatch treats the global orchestrator as Boss Cat for execution-preparation intent', async () => {
+test('runtime dispatch never treats the orchestrator as a Boss Cat by role alone', async () => {
   const harness = createOrchestratorDispatchHarness('Start work-item-alpha.');
   const runtimeClient = createRuntimeStub();
 
@@ -342,26 +343,7 @@ test('runtime dispatch treats the global orchestrator as Boss Cat for execution-
     createDefaultCoreState(),
   );
 
-  const toolIntent = runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent as
-    | {
-        allowedTools?: string[];
-        requiredCapabilities?: string[];
-        strict?: boolean;
-        context?: { participantKind?: string };
-      }
-    | undefined;
-  assert.ok(toolIntent);
-  assert.deepEqual(toolIntent.allowedTools, [
-    WORK_ITEM_PREPARE_EXECUTION_TOOL,
-    WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
-  ]);
-  assert.deepEqual(toolIntent.requiredCapabilities, [
-    'work.phase.execution_preparation',
-    'work.capability.boss_cat',
-    'work.tool_scope.narrow_write',
-  ]);
-  assert.equal(toolIntent.context?.participantKind, 'orchestrator');
-  assert.equal(toolIntent.strict, true);
+  assert.equal(runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent, undefined);
 });
 
 test('runtime dispatch omits Work tool intent metadata for unmatched work-memory turns', async () => {

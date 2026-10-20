@@ -17,7 +17,7 @@ import type {
   ExecutionTargetSummary,
 } from '../../../../core/types.js';
 import { CHAT_MCP_PROFILE_ID } from '../../../../shared/catMcpProfiles.js';
-import { normalizeChatCatGroup } from '../../shared/catGroups.js';
+import { normalizeChatCatGroup } from '../../../shared/catGroups.js';
 import { createDefaultChatState, createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import {
   resolveChannelKind,
@@ -373,6 +373,7 @@ export function normalizeChannel(
         channelRecord.orchestratorLease,
         { provider: 'claude', instance: null, model: null },
       ),
+    coordinatorParticipantId: readNullableString(channelRecord.coordinatorParticipantId),
     catAssignments: normalizedCatAssignments,
     participantAssignments: normalizedParticipantAssignments,
     messages,
@@ -483,6 +484,7 @@ export function normalizeNewChatDefaults(rawDefaults: unknown): NewChatDefaults 
   const executionTarget = normalizeExecutionTarget(defaultsRecord, fallback);
 
   return {
+    catId: readNullableString(defaultsRecord?.catId),
     provider: executionTarget.provider,
     instance: executionTarget.instance,
     model: executionTarget.model,

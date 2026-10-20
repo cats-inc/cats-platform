@@ -19,7 +19,7 @@ import {
   resolveParticipantCatId,
   type ResolvedChannelParticipant,
 } from '../../channelParticipants.js';
-import { isAdminCat } from '../../../chat/shared/catGroups.js';
+import { isAdminCat } from '../../catGroups.js';
 
 /** The model choice a chat participant runs: the chat's own copy, not the cat's default. */
 function participantSelectionTarget(

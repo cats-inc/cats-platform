@@ -31,9 +31,13 @@ const policy = { dials: { autonomy: 'single_step', taskGranularity: 'tiny', tool
 
 function fixture(originSurface = 'chat') {
   let state = createDefaultChatState();
+  // A Boss Cat coordinates the room; only an admin coordinator may collaborate beyond it.
+  state = createCat(state, { name: 'Boss', provider: 'claude', instance: 'native', group: 'admin' }, now);
+  const bossId = state.cats[0].id;
   state = createChannel(state, { title: 'Current scope', topic: 'Bug fix', originSurface,
     responseLanguage: 'zh-TW', roomMode: 'chat_channel',
     cats: [{ name: 'Implementer', provider: 'claude', instance: 'native', roles: ['implementation'] }],
+    participantCatIds: [bossId], participantOrder: [`cat:${bossId}`],
   }, now);
   const channelId = state.selectedChannelId;
   state = createCat(state, { name: 'Reviewer', provider: 'claude', instance: 'native', roles: ['review'] }, now);
@@ -41,16 +45,16 @@ function fixture(originSurface = 'chat') {
     roomMode: 'direct_message', cats: [{ name: 'Private Cat', provider: 'claude' }] }, now);
   const privateChannel = state.channels.find((channel) => channel.id !== channelId);
   state = appendMessage(state, privateChannel.id, { body: 'PRIVATE-SECRET', senderKind: 'user', senderName: 'Owner' }, now).state;
-  state.cats.at(-1).products = ['work'];
+  state.cats.find((cat) => cat.name === 'Implementer').products = ['work'];
   state.selectedChannelId = channelId;
-  const profile = resolveProviderCapabilityProfile(state.globalOrchestrator.visibleParticipant.executionTarget,
+  const profile = resolveProviderCapabilityProfile(state.cats.find((cat) => cat.id === bossId).defaultExecutionTarget,
     { assessedAt: now.toISOString() });
-  const observation = buildChatProviderAgentObservation({ state, channelId, actorRef: 'orchestrator',
+  const observation = buildChatProviderAgentObservation({ state, channelId, actorRef: `cat:${bossId}`,
     capabilityProfile: profile, policy: policy.dials, availableTools: collaborationToolDescriptors(policy),
     goal, messageCharacterCount: goal.length,
     routing: { trigger: 'room_default', resolution: { selectionKind: 'default_target' },
       targetCount: 1, unresolvedCount: 0, mentionCount: 0 }, now });
-  return { state, channelId, observation };
+  return { state, channelId, observation, bossId };
 }
 function tool(name, input, id = name) {
   return { contractVersion: 1, kind: 'tool_request', decisionId: id, confidence: 'high',
@@ -269,12 +273,12 @@ test('production turn exposes discovery only for verified local coordinator rout
   for (const mode of ['coordinator', 'code', 'work', 'provider_default', 'direct', 'multi', 'telegram', 'unverified_entry']) {
     const h = fixture(mode === 'code' || mode === 'work' ? mode : 'chat');
     const channel = h.state.channels.find((entry) => entry.id === h.channelId);
-    const payload = { body: goal };
+    const payload = { body: goal, messageMetadata: { recipientParticipantIds: [h.bossId] } };
     if (mode === 'provider_default') {
       channel.catAssignments = []; channel.participantAssignments = []; channel.pendingProvider = 'claude';
     }
     if (mode === 'direct') { channel.channelKind = 'direct_message'; channel.roomRouting.mode = 'direct_message'; }
-    if (mode === 'multi') payload.messageMetadata = { recipientParticipantIds: ['orchestrator', channel.catAssignments[0].participantId], workflowShape: 'concurrent' };
+    if (mode === 'multi') payload.messageMetadata = { recipientParticipantIds: [h.bossId, channel.catAssignments[0].participantId], workflowShape: 'concurrent' };
     const appended = appendMessage(h.state, h.channelId, { senderKind: 'user', senderName: 'Owner', body: goal }, now);
     const prepared = prepareDispatchTurnForUserMessage(appended.state, h.channelId, payload, appended.message,
       now, undefined, { enableCollaborationReads: mode !== 'unverified_entry',
@@ -296,7 +300,8 @@ test('production begin/retry returns a localized proposal with receipts and crea
   const runtime = client();
   const requester = createChatProviderAgentDecisionRequester({ readState: () => store.read(),
     preparationBudget: { maxDurationMs: 60000, maxTokens: 12000 } });
-  const begun = await beginChannelMessageDispatch(h.state, h.channelId, { body: goal }, runtime, now,
+  const begun = await beginChannelMessageDispatch(h.state, h.channelId,
+    { body: goal, messageMetadata: { recipientParticipantIds: [h.bossId] } }, runtime, now,
     { chatStore: store, providerAgentDecisionRequester: requester, enableCollaborationReads: true });
   assert.equal(runtime.calls.send.length, 0, 'ACK must precede inference');
   assert.equal(begun.preparedTurn.providerAgentObservation.budget.maxTokens, 12000);
@@ -516,9 +521,14 @@ async function waitUntil(check) {
     await new Promise(resolve => setTimeout(resolve, 10));
   }
 }
-const sendOwner = (base, channelId) => fetch(`${base}/api/channels/${channelId}/messages`, {
-  method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ body: goal }),
-});
+// The owner addresses the room's Boss Cat coordinator.
+const sendOwner = async (base, channelId) => {
+  const { channel } = await (await fetch(`${base}/api/channels/${channelId}`)).json();
+  return fetch(`${base}/api/channels/${channelId}/messages`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ body: goal, messageMetadata: { recipientParticipantIds: [channel.coordinatorParticipantId] } }),
+  });
+};
 
 test('explicit host preparation budget reaches authenticated Chat without becoming the proposed work budget', async (t) => {
   const runtime = client();

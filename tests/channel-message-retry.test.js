@@ -16,6 +16,9 @@ import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { buildDirectLaneTransportBindingId } from '../build/server/shared/chatCoreIds.js';
 import { waitForCondition } from './testUtils.js';
 
+/** The temporary participant these rooms answer with. */
+const RETRY_ASSISTANT = { participantId: 'participant-retry', name: 'Retry Assistant', provider: 'claude' };
+
 const baseConfig = {
   host: '127.0.0.1',
   port: 8181,
@@ -140,6 +143,7 @@ test('POST /api/channels/:id/messages/:messageId/retry replays the same acknowle
     topic: 'Verify last-message retry replays the acknowledged user message.',
     originSurface: 'chat',
     entryKind: 'default',
+    temporaryParticipants: [RETRY_ASSISTANT],
   }, now);
   const channelId = state.selectedChannelId;
   await chatStore.write(state);
@@ -152,6 +156,7 @@ test('POST /api/channels/:id/messages/:messageId/retry replays the same acknowle
       },
       body: JSON.stringify({
         body: 'Please recover this failed response.',
+        messageMetadata: { recipientParticipantIds: [RETRY_ASSISTANT.participantId] },
       }),
     });
     assert.equal(firstSendResponse.status, 200);
@@ -177,7 +182,7 @@ test('POST /api/channels/:id/messages/:messageId/retry replays the same acknowle
     );
     assert.equal(
       firstSendPayload.dispatch.orchestrator.initialTargets[0]?.targetKind,
-      'orchestrator',
+      'cat',
     );
 
     const failedChannel = await waitForCondition(async () => {
@@ -242,6 +247,7 @@ test('POST /api/channels/:id/messages/:messageId/retry rebuilds a missing user s
     topic: 'Verify retry survives transcript drift.',
     originSurface: 'chat',
     entryKind: 'default',
+    temporaryParticipants: [RETRY_ASSISTANT],
   }, now);
   const channelId = state.selectedChannelId;
   await chatStore.write(state);
@@ -254,6 +260,7 @@ test('POST /api/channels/:id/messages/:messageId/retry rebuilds a missing user s
       },
       body: JSON.stringify({
         body: 'Please recover this failed response after drift.',
+        messageMetadata: { recipientParticipantIds: [RETRY_ASSISTANT.participantId] },
       }),
     });
     assert.equal(firstSendResponse.status, 200);
@@ -323,6 +330,7 @@ test('POST /api/channels/:id/messages/:messageId/retry accepts the latest failed
     topic: 'Verify retry survives workflow snapshot drift.',
     originSurface: 'chat',
     entryKind: 'default',
+    temporaryParticipants: [RETRY_ASSISTANT],
   }, now);
   const channelId = state.selectedChannelId;
   await chatStore.write(state);
@@ -335,6 +343,7 @@ test('POST /api/channels/:id/messages/:messageId/retry accepts the latest failed
       },
       body: JSON.stringify({
         body: 'Please recover this failed response after workflow drift.',
+        messageMetadata: { recipientParticipantIds: [RETRY_ASSISTANT.participantId] },
       }),
     });
     assert.equal(firstSendResponse.status, 200);
@@ -416,6 +425,7 @@ test('POST /api/channels/:id/messages/:messageId/retry rejects retry when the la
     topic: 'Reject retry when the latest turn already completed.',
     originSurface: 'chat',
     entryKind: 'default',
+    temporaryParticipants: [RETRY_ASSISTANT],
   }, now);
   const channelId = state.selectedChannelId;
   await chatStore.write(state);
@@ -428,6 +438,7 @@ test('POST /api/channels/:id/messages/:messageId/retry rejects retry when the la
       },
       body: JSON.stringify({
         body: 'Complete this without retry.',
+        messageMetadata: { recipientParticipantIds: [RETRY_ASSISTANT.participantId] },
       }),
     });
     assert.equal(sendResponse.status, 200);

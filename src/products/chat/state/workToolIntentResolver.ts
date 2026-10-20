@@ -17,7 +17,7 @@ import { resolveWorkExecutionPreparationPhase } from '../../work/shared/workExec
 import { resolveWorkExternalBindingPhase } from '../../work/shared/workExternalBindingPhase.js';
 import { resolveWorkExternalIssueImportPhase } from '../../work/shared/workExternalIssueImportPhase.js';
 import type { ChatState } from '../api/contracts.js';
-import { isAdminCatId } from '../shared/catGroups.js';
+import { isAdminCoordinator } from './coordinator.js';
 
 interface WorkToolIntentPhaseResolution {
   phase: WorkToolPhase;
@@ -154,13 +154,10 @@ function resolveWorkCapabilityProfile(
   return isBossCatTarget(input) ? 'boss_cat' : 'strong_agent';
 }
 
+/** Boss Cat work belongs to a conversation's coordinator when it is an admin cat. */
 function isBossCatTarget(input: OrchestratorToolIntentResolveInput<ChatState>): boolean {
-  if (input.participantKind === 'orchestrator') {
-    return true;
-  }
-
   return input.participantKind === 'cat'
-    && isAdminCatId(input.state.cats, input.participantId);
+    && isAdminCoordinator(input.state, input.channel.id, input.participantId);
 }
 
 function matchesTriageIntent(rawText: string): boolean {

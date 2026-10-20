@@ -30,7 +30,7 @@ import type { ConcurrentClusterAction } from './concurrentClusterUiState.js';
 import { TranscriptMessageActions as SharedTranscriptMessageActions } from './TranscriptMessageActions.js';
 import { CompareCardsLayout } from './CompareCardsLayout.js';
 import { FocusRailLayout } from './FocusRailLayout.js';
-import { isAdminCat } from '../../../../chat/shared/catGroups.js';
+import { isAdminCat } from '../../../catGroups.js';
 
 export interface ConcurrentClusterRendererProps<Participant> {
   mode: ConcurrentChatPresentationMode;

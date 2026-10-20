@@ -212,11 +212,13 @@ async function createChannelState() {
   );
   const agent2Id = state.cats[0].id;
 
+  // Agent-1 joins first, so it coordinates the room.
   state = createChannel(
     state,
     {
       title: 'Routing Engine',
       topic: 'Exercise continuation routing.',
+      participantCatIds: [agent1Id, agent2Id],
     },
     now,
   );
@@ -920,13 +922,17 @@ test('current-turn draft audience metadata respects the configured audience cap'
   assert.deepEqual(replies.map((message) => message.senderName), ['Agent-2']);
 });
 
-test('explicit mentions stay authoritative over current-turn draft audience metadata', async () => {
+test('an @mention adds to the audience the message names, after the named participants', async () => {
   const { state, channelId, agent2Id } = await createChannelState();
   const runtimeClient = createRuntimeStub(async ({ content }) => {
-    if (content.includes('You are Agent-1')) {
-      return usage('Agent-1 handled the explicit mention.');
+    if (content.includes('You are Agent-2')) {
+      return usage('Agent-2 answered as named.');
     }
-    throw new Error(`Unexpected prompt:\n${content}`);
+    if (content.includes('You are Agent-1')) {
+      return usage('Agent-1 answered as mentioned.');
+    }
+    throw new Error(`Unexpected prompt:
+${content}`);
   });
 
   const dispatched = await routeChannelMessage(
@@ -944,9 +950,10 @@ test('explicit mentions stay authoritative over current-turn draft audience meta
   );
   const channel = buildChannelView(dispatched.state, channelId);
 
-  assert.equal(runtimeClient.createdSessions.length, 1);
-  assert.equal(runtimeClient.sentMessages[0]?.content.includes('You are Agent-1'), true);
-  assert.equal(runtimeClient.sentMessages.some((message) => message.content.includes('You are Agent-2')), false);
+  assert.deepEqual(
+    runtimeClient.sentMessages.map((message) => (message.content.includes('You are Agent-2') ? 'Agent-2' : 'Agent-1')),
+    ['Agent-2', 'Agent-1'],
+  );
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'explicit_mentions');
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'sequential');
 });
@@ -3082,80 +3089,12 @@ test('provider default chat retransplants continuity after stale-session recover
   assert.equal(defaultChatReplies.at(-1)?.executionModel, 'claude-default');
 });
 
-test('parallel member channels inherit default continuity transplant rules on retarget', async () => {
-  let state = await new MemoryChatStore().read();
-  const now = new Date('2026-03-23T00:00:00.000Z');
-
-  state = createParallelChatGroup(
-    state,
-    {
-      title: 'Peer Review',
-      targets: [
-        { provider: 'claude', instance: 'native', model: 'claude-default', modelSelection: null },
-        { provider: 'codex', instance: 'native', model: 'gpt-5.4', modelSelection: null },
-      ],
-    },
-    now,
-  );
-
-  const [activeChannelId, passiveChannelId] = state.parallelChatGroups[0]?.memberChannelIds ?? [];
-  assert.ok(activeChannelId);
-  assert.ok(passiveChannelId);
-
-  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
-    usage(`response from ${sessionId}`));
-
-  const firstDispatch = await routeChannelMessage(
-    state,
-    activeChannelId,
-    {
-      body: 'First turn',
-      pendingProvider: 'claude',
-      pendingInstance: 'native',
-      pendingModel: 'claude-default',
-    },
-    runtimeClient,
-    now,
-  );
-  const secondDispatch = await routeChannelMessage(
-    firstDispatch.state,
-    activeChannelId,
-    {
-      body: 'Switch turn',
-      pendingProvider: 'antigravity',
-      pendingInstance: 'native',
-      pendingModel: 'antigravity-default',
-    },
-    runtimeClient,
-    new Date('2026-03-23T00:01:00.000Z'),
-  );
-  const activeChannel = buildChannelView(secondDispatch.state, activeChannelId);
-  const passiveChannel = buildChannelView(secondDispatch.state, passiveChannelId);
-
-  assert.equal(runtimeClient.createdSessions.length, 2);
-  assert.equal(runtimeClient.createdSessions[0]?.provider, 'claude');
-  assert.equal(runtimeClient.createdSessions[1]?.provider, 'antigravity');
-  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
-  assert.match(
-    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
-    /Same conversation continuity transcript:/u,
-  );
-  assert.match(
-    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
-    /\[user:User\] First turn/u,
-  );
-  assert.equal(activeChannel.pendingProvider, 'antigravity');
-  assert.equal(passiveChannel.pendingProvider, 'codex');
-  assert.equal(passiveChannel.orchestratorLease.sessionId, null);
-  assertProviderAgentDispatchMetadata(activeChannel, 'Switch turn');
-});
-
 test(
-  'participant chat no-mention turns route to orchestrator despite default recipient',
+  'participant chat turns that name no audience reach nobody, not the orchestrator',
   async () => {
-    const { state, channelId, agent1Id } = await createChannelState();
+    const { state, channelId } = await createChannelState();
     const runtimeClient = createRuntimeStub(async () =>
-      usage('Boss handled the default room turn.'),
+      usage('Nobody should answer this turn.'),
     );
 
     const dispatched = await routeChannelMessage(
@@ -3166,45 +3105,15 @@ test(
       new Date('2026-03-21T00:00:00.000Z'),
     );
     const channel = buildChannelView(dispatched.state, channelId);
-    const routedReply = channel.messages.find(
-      (message) => message.metadata?.targetKind === 'orchestrator',
-    );
 
-    assert.equal(channel.roomRouting?.defaultRecipientId, agent1Id);
+    assert.equal(channel.roomRouting?.lastOutcome?.resolution.blockedReason, 'missing_audience');
+    assert.equal(channel.roomRouting?.lastOutcome?.dispatches.length, 0);
+    assert.equal(runtimeClient.createdSessions.length, 0);
+    assert.equal(runtimeClient.sentMessages.length, 0);
     assert.equal(
-      channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
-      'chat_channel_default',
-    );
-    assert.equal(
-      channel.roomRouting?.lastOutcome?.resolution.defaultTarget?.participantKind,
-      'orchestrator',
-    );
-    assert.equal(channel.roomRouting?.lastOutcome?.dispatches.length, 1);
-    assert.equal(runtimeClient.createdSessions.length, 1);
-    assert.equal(
-      runtimeClient.createdSessions[0]?.context?.metadata?.targetKind,
-      'orchestrator',
-    );
-    assert.equal(
-      runtimeClient.createdSessions[0]?.context?.metadata?.targetId,
-      'orchestrator',
-    );
-    assert.equal(runtimeClient.sentMessages.length, 1);
-    assert.equal(
-      runtimeClient.sentMessages[0]?.input?.context?.metadata?.targetKind,
-      'orchestrator',
-    );
-    assert.equal(
-      runtimeClient.sentMessages[0]?.input?.context?.metadata?.targetId,
-      'orchestrator',
-    );
-    assert.equal(
-      runtimeClient.sentMessages.some(
-        (message) => message.input?.context?.metadata?.targetId === agent1Id,
-      ),
+      channel.messages.some((message) => message.metadata?.targetKind === 'orchestrator'),
       false,
     );
-    assert.ok(routedReply);
   },
 );
 
@@ -3294,7 +3203,7 @@ test(
   },
 );
 
-test('participant chat routing continues across agent mentions and auto-wakes targeted participants', async () => {
+test('the coordinator routes on through its mentions and auto-wakes the participants it names', async () => {
   const { state, channelId } = await createChannelState();
   const runtimeClient = createRuntimeStub(async ({ content }) => {
     if (content.includes('You are Agent-1')) {
@@ -3334,10 +3243,7 @@ test('participant chat routing continues across agent mentions and auto-wakes ta
     channel.roomRouting?.wakeHistory.map((wake) => wake.status),
     ['completed', 'completed'],
   );
-  assert.equal(
-    channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
-    'chat_channel_default',
-  );
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason, null);
   assert.ok(
     channel.roomRouting?.lastOutcome?.checkpoints.some(
       (checkpoint) => checkpoint.kind === 'continuation',
@@ -4775,25 +4681,23 @@ test('already-awake route targets record skipped wake requests without a complet
   assert.equal(channel.roomRouting?.lastWakeRequest?.completedAt, null);
 });
 
-test('anti-ping-pong blocks repeated back-and-forth and prompts only include per-target recent context', async () => {
+test('a worker mentioning the coordinator back does not route, so they cannot ping-pong', async () => {
   const { state, channelId } = await createChannelState();
   const promptsByTarget = {
-    Smelly: [],
     'Agent-1': [],
+    'Agent-2': [],
   };
   const runtimeClient = createRuntimeStub(async ({ content }) => {
-    if (content.includes('You are Smelly')) {
-      promptsByTarget.Smelly.push(content);
-      if (promptsByTarget.Smelly.length === 1) {
-        return usage('@Agent-1 take first pass.');
-      }
-      return usage('@Agent-1 one more tweak.');
-    }
     if (content.includes('You are Agent-1')) {
       promptsByTarget['Agent-1'].push(content);
-      return usage('@Smelly please review.');
+      return usage('@Agent-2 take first pass.');
     }
-    throw new Error(`Unexpected prompt:\n${content}`);
+    if (content.includes('You are Agent-2')) {
+      promptsByTarget['Agent-2'].push(content);
+      return usage('@Agent-1 please review.');
+    }
+    throw new Error(`Unexpected prompt:
+${content}`);
   });
 
   const dispatched = await routeChannelMessage(
@@ -4805,27 +4709,11 @@ test('anti-ping-pong blocks repeated back-and-forth and prompts only include per
   );
   const channel = buildChannelView(dispatched.state, channelId);
 
-  assert.equal(promptsByTarget.Smelly.length, 1);
-  assert.equal(promptsByTarget['Agent-1'].length, 2);
-  assert.ok(promptsByTarget['Agent-1'][1].includes('@Smelly please review.'));
-  assert.ok(promptsByTarget['Agent-1'][1].includes('@Agent-1 take first pass.'));
-  assert.equal(promptsByTarget['Agent-1'][1].includes('[user:User] @Agent-1 Start the routing loop.'), false);
-  assert.equal(channel.roomRouting?.lastOutcome?.guard, 'anti_ping_pong');
-  assert.ok(
-    channel.roomRouting?.lastOutcome?.checkpoints.some(
-      (checkpoint) => checkpoint.kind === 'anti_ping_pong',
-    ),
-  );
-  assert.equal(
-    channel.roomRouting?.lastOutcome?.dispatches.filter(
-      (dispatch) => dispatch.target.participantName === 'Agent-1',
-    ).length,
-    2,
-  );
-  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.guard, 'anti_ping_pong');
-  assert.ok(
-    channel.roomRouting?.workflow.eventHistory.some(
-      (event) => event.kind === 'guard_blocked',
-    ),
-  );
+  assert.equal(promptsByTarget['Agent-1'].length, 1);
+  assert.equal(promptsByTarget['Agent-2'].length, 1);
+  assert.ok(promptsByTarget['Agent-2'][0].includes('@Agent-2 take first pass.'));
+  assert.match(promptsByTarget['Agent-2'][0], /Mentioning a teammate does not route a turn to them/u);
+  assert.equal(channel.roomRouting?.lastOutcome?.guard, null);
+  assert.equal(channel.roomRouting?.lastOutcome?.dispatches.length, 2);
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.continuationCount, 1);
 });

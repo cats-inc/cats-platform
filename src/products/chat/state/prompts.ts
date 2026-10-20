@@ -765,6 +765,7 @@ export function buildCatPrompt(
   sourceMessage: ChatMessage,
   routingContext?: PromptRoutingContext,
   companionContext?: PromptCompanionContext | null,
+  options: { coordinator?: boolean } = {},
 ): string {
   const roleLabel = cat.roles.length > 0
     ? cat.roles.join(', ')
@@ -788,7 +789,9 @@ export function buildCatPrompt(
     routingContext?.sourceParticipantName
       ? `This handoff came from ${routingContext.sourceParticipantName}.`
       : 'This turn currently originates from the operator.',
-    'Work inside the current chat context and answer as a teammate, not as the orchestrator.',
+    options.coordinator
+      ? 'You coordinate this conversation: when a teammate is better placed to continue, mention them with @Name and Chat routes the next turn to them.'
+      : 'Work inside the current chat context and answer as a teammate. Mentioning a teammate does not route a turn to them.',
     transportGuidance,
     'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.',
     languageInstruction(channel.responseLanguage),
@@ -802,6 +805,8 @@ export function buildCatPrompt(
     `Recent messages:\n${formatRecentMessages(recentMessages)}`,
     `${sourceLabel}:\n${sourceMessage.body}`,
     'Reply with the work product or the next useful observation.',
-    'If another teammate should continue after you, mention them explicitly with @Name. Otherwise, answer without a handoff mention.',
+    options.coordinator
+      ? 'If another teammate should continue after you, mention them explicitly with @Name. Otherwise, answer without a handoff mention.'
+      : null,
   ]);
 }

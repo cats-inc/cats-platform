@@ -193,6 +193,9 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
     if (!Array.isArray(selectedChannel.catAssignments)) {
       selectedChannel.catAssignments = [];
     }
+    if (typeof selectedChannel.coordinatorParticipantId !== 'string') {
+      selectedChannel.coordinatorParticipantId = null;
+    }
 
     const catAssignments = Array.isArray(selectedChannel.catAssignments)
       ? selectedChannel.catAssignments
@@ -306,6 +309,7 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
   }
   if (!asRecord(chatState.newChatDefaults)) {
     chatState.newChatDefaults = {
+      catId: null,
       provider: readString(orchestratorExecutionTarget?.provider, 'claude'),
       instance: readNullableString(orchestratorExecutionTarget?.instance),
       model: readNullableString(orchestratorExecutionTarget?.model),

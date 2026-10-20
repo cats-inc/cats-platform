@@ -158,20 +158,6 @@ test('channel lease attachment helpers merge participant and orchestrator attach
     }),
     [
       {
-        participantId: 'participant-cat',
-        sessionId: 'session-cat',
-        laneId: 'lane-cat',
-        status: 'initializing',
-        cwd: '/tmp/cat',
-        provider: 'claude',
-        instance: 'cli',
-        model: 'claude-sonnet',
-        modelSelection: null,
-        startedAt: '2026-04-15T10:01:00.000Z',
-        lastUsedAt: '2026-04-15T10:01:00.000Z',
-        lastError: null,
-      },
-      {
         participantId: 'participant-inline',
         sessionId: 'session-inline',
         laneId: 'lane-inline',
@@ -183,6 +169,20 @@ test('channel lease attachment helpers merge participant and orchestrator attach
         modelSelection: null,
         startedAt: '2026-04-15T10:00:00.000Z',
         lastUsedAt: '2026-04-15T10:00:00.000Z',
+        lastError: null,
+      },
+      {
+        participantId: 'participant-cat',
+        sessionId: 'session-cat',
+        laneId: 'lane-cat',
+        status: 'initializing',
+        cwd: '/tmp/cat',
+        provider: 'claude',
+        instance: 'cli',
+        model: 'claude-sonnet',
+        modelSelection: null,
+        startedAt: '2026-04-15T10:01:00.000Z',
+        lastUsedAt: '2026-04-15T10:01:00.000Z',
         lastError: null,
       },
       {
@@ -206,7 +206,7 @@ test('channel lease attachment helpers merge participant and orchestrator attach
     collectChannelSessionIds(channel, {
       statuses: ['ready', 'initializing'],
     }),
-    ['session-cat', 'session-inline', 'session-orchestrator'],
+    ['session-inline', 'session-cat', 'session-orchestrator'],
   );
 
   assert.deepEqual(

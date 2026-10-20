@@ -13,6 +13,7 @@ import { collaborationSummary, collaborationFeedbackSummary, readCollaborationIn
   type CollaborationExecutionSummary } from '../../work/state/collaborationRecords.js';
 import { boundedCollaboration, recordCollaborationUsage, stopCollaboration, settleCleanup,
   markSessionClosed, executeCollaborationRole, type CollaborationExecutionPort } from '../../work/state/collaborationExecution.js';
+import { isAdminCoordinatorActorRef } from './coordinator.js';
 
 function feedbackProjection(receipts: CollaborationReadReceipt[]): CollaborationReadReceipt[] {
   return receipts.map((receipt) => receipt.result.status !== 'applied' ? structuredClone(receipt)
@@ -66,7 +67,7 @@ export async function runCollaborationExecutionLoop(input: ChatCollaborationExec
     return typeof value === 'function' ? value.bind(target) : value;
   } });
   try {
-    if (input.observation.actor.actorRef !== 'orchestrator'
+    if (!isAdminCoordinatorActorRef(await input.chatStore.read(), input.channelId, input.observation.actor.actorRef)
       || !['narrow_write', 'broad_write'].includes(input.observation.policy.dials.toolScope)
       || input.observation.policy.dials.autonomy === 'none') throw new Error('scope_denied');
     if (input.observation.budget.maxCostUsd !== undefined) throw new Error('unsupported_cost_budget');
@@ -148,7 +149,8 @@ export async function runCollaborationExecutionLoop(input: ChatCollaborationExec
         reason = 'coordinator_stopped'; break;
       }
       // Acceptance is durable before the host considers any expensive operation.
-      const receipt = await invoke(decision.toolName, decision.input, decision.decisionId, 'orchestrator');
+      const receipt = await invoke(decision.toolName, decision.input, decision.decisionId,
+        input.observation.actor.actorRef);
       if (receipt.result.status === 'applied' && decision.toolName === REQUEST_COLLABORATION_EXECUTION) {
         await drainExecution(decision.decisionId);
       }

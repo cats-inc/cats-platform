@@ -56,7 +56,7 @@ export function resolveCollaborationOwnerChoice(
     || ![ACCEPT_COLLABORATION, ACCEPT_CATS_DEVELOPMENT].includes(answer.selectedOptionIds[0]!)) return null;
   const channel = state.channels.find((entry) => entry.id === channelId);
   const message = channel?.messages.find((entry) => entry.id === response.sourceMessageId);
-  if (message?.senderKind !== 'orchestrator'
+  if (message?.senderKind !== 'agent'
     || message.metadata.event !== 'orchestrator_collaboration_preparation'
     || !message.choices?.some((choice) => choice.question === answer.question
       && choice.options.some((option) => option.id === answer.selectedOptionIds[0]))) return null;

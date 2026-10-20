@@ -51,6 +51,7 @@ import {
   createTestAuthConfig,
   installAuthenticatedFetch,
   waitForCondition,
+  withRoomAudience,
 } from './testUtils.js';
 
 const baseConfig = {
@@ -4148,7 +4149,7 @@ test('GET /api/app-shell repairs an orphaned completed room turn before renderin
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please repair me' },
+    withRoomAudience(state, channelId, { body: 'Please repair me' }),
     runtime,
     seededAt,
   );
@@ -4238,7 +4239,7 @@ test('GET /api/app-shell does not finalize an active sequential room turn while 
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please hand this off in order.' },
+    withRoomAudience(state, channelId, { body: 'Please hand this off in order.' }),
     runtime,
     seededAt,
   );
@@ -5377,7 +5378,7 @@ test('GET /api/app-shell does not finalize a sequential turn before the next tar
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
-    { body: 'Please answer in order, but leave a short target gap.' },
+    withRoomAudience(state, channelId, { body: 'Please answer in order, but leave a short target gap.' }),
     runtime,
     seededAt,
   );
@@ -9338,7 +9339,7 @@ test('assigning a cat forwards structured modelSelection to cats-runtime session
   });
 });
 
-test('assigning a cat without a channel cwd defers session creation until Boss Cat activation establishes one', async () => {
+test('assigning a cat without a channel cwd defers session creation until activation establishes one', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -9349,7 +9350,7 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
       },
       body: JSON.stringify({
         title: 'Deferred Session Spawn',
-        topic: 'Wait for Boss Cat to anchor the chat first.',
+        topic: 'Wait for the first participant to anchor the chat first.',
         originSurface: 'chat',
       }),
     });
@@ -9401,8 +9402,10 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
       runtimeClient.createdSessions[1].cwd ?? '',
       /\.cats[\\/]runtime[\\/]sessions[\\/]session-1$/u,
     );
-    assert.equal(activatePayload.activation.results[0].targetKind, 'orchestrator');
+    // The remembered default participant anchors the chat before the assigned cat starts.
+    assert.equal(activatePayload.activation.results[0].targetKind, 'cat');
     assert.equal(activatePayload.activation.results[1].targetKind, 'cat');
+    assert.equal(activatePayload.activation.results[1].targetId, catId);
   });
 });
 
@@ -9529,7 +9532,7 @@ test('first send persists a runtime-sanitized default model selection after drop
   });
 });
 
-test('first send on a selected default chat accepts the user turn before starting the orchestrator session', async () => {
+test('first send on a new conversation accepts the user turn before starting its participant session', async () => {
   const runtimeClient = createRuntimeStub();
   const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
   let releaseCreateSession = () => {};
@@ -9565,6 +9568,7 @@ test('first send on a selected default chat accepts the user turn before startin
     assert.equal(createChannelResponse.status, 201);
     const createChannelPayload = await createChannelResponse.json();
     const channelId = createChannelPayload.channel.id;
+    const participantId = createChannelPayload.channel.assignedParticipants[0].participantId;
 
     const selectResponse = await fetch(`${baseUrl}/api/preferences`, {
       method: 'PATCH',
@@ -9577,7 +9581,7 @@ test('first send on a selected default chat accepts the user turn before startin
     const sendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Hi' }),
+      body: JSON.stringify({ body: 'Hi', messageMetadata: { recipientParticipantIds: [participantId] } }),
     });
     assert.equal(sendResponse.status, 200);
     const sendPayload = await sendResponse.json();
@@ -9590,7 +9594,7 @@ test('first send on a selected default chat accepts the user turn before startin
     const acknowledgedChannelPayload = await acknowledgedChannelResponse.json();
     assert.equal(acknowledgedChannelPayload.channel.messages[0]?.metadata?.event, 'room_created');
     assert.equal(acknowledgedChannelPayload.channel.messages[1]?.senderKind, 'user');
-    assert.equal(acknowledgedChannelPayload.channel.orchestratorLease.sessionId, null);
+    assert.equal(acknowledgedChannelPayload.channel.assignedParticipants[0].execution.lease.sessionId, null);
 
     releaseCreateSession();
 
@@ -9601,7 +9605,7 @@ test('first send on a selected default chat accepts the user turn before startin
       const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
       assert.equal(channelResponse.status, 200);
       const payload = await channelResponse.json();
-      return payload.channel.orchestratorLease.sessionId === 'session-1'
+      return payload.channel.assignedParticipants[0].execution.lease.sessionId === 'session-1'
         ? payload
         : null;
     });
@@ -9704,7 +9708,7 @@ test('parallel chat first send accepts the user turn before starting member sess
         activeChannelResponse.json(),
         passiveChannelResponse.json(),
       ]);
-      return payloads.every((payload) => Boolean(payload.channel.orchestratorLease.sessionId))
+      return payloads.every((payload) => Boolean(payload.channel.assignedParticipants[0]?.execution.lease.sessionId))
         ? payloads
         : null;
     });
@@ -10020,7 +10024,8 @@ test('parallel chat first send fans out the selected folder and attachments to e
         runtimeClient.createdSessions.length === 2 && runtimeClient.sentMessages.length === 2,
       );
       for (const sent of runtimeClient.sentMessages) {
-        assert.match(sent.content, /^\[Attached files in working directory:\]/);
+        // Each member's participant prompt carries the attached-files message.
+        assert.match(sent.content, /\[Attached files in working directory:\]/);
         assert.match(sent.content, /- \.cats-attachments\/notes\.txt/);
       }
 
@@ -10190,7 +10195,7 @@ test('single chat background finalize preserves a newer acknowledged user turn',
     const firstSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'First question' }),
+      body: JSON.stringify({ body: 'First question', messageMetadata: { recipientParticipantIds: createChannelPayload.channel.assignedParticipants.map((participant) => participant.participantId) } }),
     });
     assert.equal(firstSendResponse.status, 200);
     const firstSendPayload = await firstSendResponse.json();
@@ -10201,7 +10206,7 @@ test('single chat background finalize preserves a newer acknowledged user turn',
     const secondSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Second question' }),
+      body: JSON.stringify({ body: 'Second question', messageMetadata: { recipientParticipantIds: createChannelPayload.channel.assignedParticipants.map((participant) => participant.participantId) } }),
     });
     assert.equal(secondSendResponse.status, 200);
     const secondSendPayload = await secondSendResponse.json();
@@ -10298,7 +10303,7 @@ test('single chat failure settlement preserves a newer acknowledged user turn', 
     const firstSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'First failing question' }),
+      body: JSON.stringify({ body: 'First failing question', messageMetadata: { recipientParticipantIds: createChannelPayload.channel.assignedParticipants.map((participant) => participant.participantId) } }),
     });
     assert.equal(firstSendResponse.status, 200);
     const firstSendPayload = await firstSendResponse.json();
@@ -10309,7 +10314,7 @@ test('single chat failure settlement preserves a newer acknowledged user turn', 
     const secondSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Second surviving question' }),
+      body: JSON.stringify({ body: 'Second surviving question', messageMetadata: { recipientParticipantIds: createChannelPayload.channel.assignedParticipants.map((participant) => participant.participantId) } }),
     });
     assert.equal(secondSendResponse.status, 200);
     const secondSendPayload = await secondSendResponse.json();
@@ -11033,7 +11038,7 @@ test('PATCH /api/preferences does not overwrite the last wake request because se
     const sendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Start the room.' }),
+      body: JSON.stringify({ body: 'Start the room.', messageMetadata: { recipientParticipantIds: createChannelPayload.channel.assignedParticipants.map((participant) => participant.participantId) } }),
     });
     assert.equal(sendResponse.status, 200);
     const firstChannelPayload = await waitForCondition(async () => {

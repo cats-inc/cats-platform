@@ -453,6 +453,8 @@ test('default chat does not re-bootstrap when the same runtime session is reused
     originSurface: 'chat',
     entryKind: 'default',
     roomMode: 'chat_channel',
+    // Legacy orchestrator-led room until the provider-default chat is removed.
+    pendingProvider: 'codex',
   }, now);
   const channelId = state.channels[0].id;
   const reusedSessionId = 'session-orchestrator-reused';

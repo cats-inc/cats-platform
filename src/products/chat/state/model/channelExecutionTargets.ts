@@ -11,7 +11,7 @@ import {
   type ProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
 import { normalizeCatMcpProfile } from '../../../../shared/catMcpProfiles.js';
-import { isDefaultChatChannel } from '../../shared/channelTopology.js';
+import { isDefaultChatChannel, isDirectLaneChannel } from '../../shared/channelTopology.js';
 import {
   resolveChannelParticipantAssignments,
   resolveParticipantExecutionAssignments,
@@ -134,6 +134,9 @@ export function updateNewChatDefaults(
 ): ChatState {
   const nextState = cloneState(state);
   nextState.newChatDefaults = {
+    catId: input.catId === undefined
+      ? nextState.newChatDefaults.catId ?? null
+      : normalizeOptionalText(input.catId),
     provider: input.provider?.trim() || nextState.newChatDefaults.provider,
     instance:
       input.instance === undefined
@@ -148,6 +151,35 @@ export function updateNewChatDefaults(
       : cloneProviderModelSelection(input.modelSelection),
   };
   return nextState;
+}
+
+/**
+ * Remembers a created non-DM conversation's first participant as the default
+ * participant of the next one: its cat, or its provider/model.
+ */
+export function rememberNewChatDefaultParticipant(
+  state: ChatState,
+  channelId: string,
+): ChatState {
+  const channel = requireChannel(state, channelId);
+  if (isDirectLaneChannel(channel)) {
+    return state;
+  }
+  const first = resolveChannelParticipantAssignments(channel)
+    .find((assignment) => assignment.status === 'active');
+  if (!first) {
+    return state;
+  }
+  if (first.sourceKind === 'cat' && first.sourceRefId) {
+    return updateNewChatDefaults(state, { catId: first.sourceRefId });
+  }
+  return updateNewChatDefaults(state, {
+    catId: null,
+    provider: first.execution.target.provider,
+    instance: first.execution.target.instance ?? null,
+    model: first.execution.target.model ?? null,
+    modelSelection: first.execution.modelSelection ?? null,
+  });
 }
 
 export function setChannelPendingExecutionTarget(

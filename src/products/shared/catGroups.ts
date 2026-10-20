@@ -1,8 +1,8 @@
-import type { ChatCat, ChatCatGroup } from '../api/contracts.js';
+export type CatGroup = 'admin' | 'standard';
 
-type GroupedCat = Pick<ChatCat, 'group'>;
+type GroupedCat = { group?: CatGroup | null };
 
-export function normalizeChatCatGroup(value: unknown): ChatCatGroup {
+export function normalizeChatCatGroup(value: unknown): CatGroup {
   return value === 'admin' ? 'admin' : 'standard';
 }
 
@@ -12,13 +12,13 @@ export function isAdminCat(cat: GroupedCat | null | undefined): boolean {
 }
 
 export function isAdminCatId(
-  cats: ReadonlyArray<Pick<ChatCat, 'id' | 'group'>>,
+  cats: ReadonlyArray<{ id: string } & GroupedCat>,
   catId: string | null | undefined,
 ): boolean {
   return Boolean(catId) && cats.some((cat) => cat.id === catId && isAdminCat(cat));
 }
 
-export function listActiveAdminCats<T extends Pick<ChatCat, 'group' | 'status'>>(
+export function listActiveAdminCats<T extends GroupedCat & { status: string }>(
   cats: readonly T[],
 ): T[] {
   return cats.filter((cat) => cat.status === 'active' && isAdminCat(cat));

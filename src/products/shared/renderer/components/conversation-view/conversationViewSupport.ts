@@ -36,7 +36,7 @@ import {
   type MessageInterpolationValues,
   type MessageKey,
 } from '../../../../../shared/i18n/index.js';
-import { isAdminCat } from '../../../../chat/shared/catGroups.js';
+import { isAdminCat } from '../../../catGroups.js';
 
 type ConversationViewSupportTranslator = (
   key: MessageKey,

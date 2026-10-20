@@ -85,7 +85,7 @@ import {
   resolveNextPendingExecutionTarget,
 } from '../pendingExecutionTarget.js';
 import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
-import { isAdminCatId, listActiveAdminCats } from '../../shared/catGroups.js';
+import { isAdminCoordinator } from '../coordinator.js';
 import {
   type RuntimeTransportContext,
 } from '../runtimeTargeting.js';
@@ -3399,19 +3399,10 @@ function resolveVisibleWorkItemIdsForExecutionPreparation(input: {
     .map((workItem) => workItem.id);
 }
 
+/** The conversation's coordinator is a Boss Cat (an admin cat). */
 function isBossCatAddressedByChannel(state: ChatState, channelId: string): boolean {
   const channel = requireChannel(state, channelId);
-  const defaultRecipientId = channel.roomRouting?.defaultRecipientId?.trim()
-    || channel.recoverableDirectLaneCatId?.trim()
-    || null;
-  if (isAdminCatId(state.cats, defaultRecipientId)) {
-    return true;
-  }
-
-  return channel.catAssignments.some((assignment) =>
-    assignment.status === 'active'
-    && isAdminCatId(state.cats, assignment.catId)
-    && assignment.participantId === defaultRecipientId);
+  return isAdminCoordinator(state, channelId, channel.coordinatorParticipantId);
 }
 
 function readActiveWorkItemIdsFromMessage(message: ChatMessage): string[] {
@@ -4426,7 +4417,7 @@ async function appendWorkExecutionPreparationTaskCreation(input: {
     coreStore: input.chatStore,
     now: () => input.now,
   });
-  const actorRef = resolveWorkExecutionPreparationActorRef(input.state, core);
+  const actorRef = resolveWorkExecutionPreparationActorRef(input.state, input.channelId, core);
   const createdTasks: WorkExecutionPreparationCreatedTaskMetadata[] = [];
   const skippedWorkItemIds: string[] = [];
 
@@ -4593,12 +4584,22 @@ function describeWorkExecutionPreparationTransition(
   ].join('\n');
 }
 
+/** Tasks prepared in a conversation are attributed to its Boss Cat coordinator, else to the owner. */
 function resolveWorkExecutionPreparationActorRef(
   state: ChatState,
+  channelId: string,
   core: CatsCoreState,
 ): string {
-  const adminCat = listActiveAdminCats(state.cats)[0] ?? null;
-  return adminCat ? createCatActorId(adminCat.id) : core.ownerProfile.actorId;
+  const channel = requireChannel(state, channelId);
+  const coordinatorParticipantId = channel.coordinatorParticipantId;
+  if (coordinatorParticipantId && isAdminCoordinator(state, channelId, coordinatorParticipantId)) {
+    const coordinator = channel.catAssignments.find((assignment) =>
+      assignment.participantId === coordinatorParticipantId);
+    if (coordinator) {
+      return createCatActorId(coordinator.catId);
+    }
+  }
+  return core.ownerProfile.actorId;
 }
 
 function buildWorkTaskDetailPath(taskId: string): string {
