@@ -19,13 +19,14 @@ const loaded = layout === 'bundle'
 
 const now = new Date('2026-09-25T00:00:00Z');
 const binding = { provider: 'claude', instance: 'distribution-coordinator', model: 'distribution-model' };
+// The coordinator participant carries the binding; orchestration runs on its model.
+const coordinatorId = 'participant-coordinator';
 const body = locale === 'zh-TW' ? '請同伴實作並由另一位審查。' : 'Ask a teammate to implement and review this change.';
 let state = loaded.createDefaultChatState();
-state.globalOrchestrator.executionTarget = { ...binding };
-state.globalOrchestrator.visibleParticipant.executionTarget = { ...binding };
 state = loaded.createChannel(state, {
   title: 'Distribution fixture', topic: 'Isolated knowledge delivery',
   originSurface: 'chat', roomMode: 'chat_channel', responseLanguage: locale,
+  temporaryParticipants: [{ participantId: coordinatorId, name: 'Coordinator', ...binding }],
 }, now);
 const channelId = state.selectedChannelId;
 const profile = loaded.resolveProviderCapabilityProfile(binding, { assessedAt: now.toISOString() });
@@ -33,7 +34,7 @@ const observation = {
   contractVersion: 1, observationId: 'distribution-observation', runId: `chat:${channelId}`,
   goal: 'Handle the next Chat turn using bounded routing metadata.',
   task: { kind: 'chat_turn', risk: 'low' },
-  actor: { actorRef: 'orchestrator',
+  actor: { actorRef: `cat:${coordinatorId}`,
     target: { kind: 'execution_target', provider: profile.provider, model: profile.model },
     capabilityProfileRef: profile.profileId, providerRef: profile.profileId },
   policy: { dials: { autonomy: 'single_step', taskGranularity: 'tiny', toolScope: 'read_only',
