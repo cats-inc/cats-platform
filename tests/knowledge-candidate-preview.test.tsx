@@ -4,6 +4,7 @@ import test, { afterEach } from 'node:test';
 import React from 'react';
 import { cleanup, render, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { I18nProvider } from '../src/app/renderer/i18n/I18nProvider.tsx';
 import { ArtifactDetailView } from '../src/products/code/renderer/components/ArtifactDetailView.tsx';
 import { readKnowledgeCandidatePreview } from '../src/products/code/shared/knowledgeCandidatePreview.ts';
@@ -21,6 +22,8 @@ function metadata() {
 
 for (const locale of ['en', 'zh-TW'] as const) {
   test(`actual artifact page localizes ${locale} chrome and shows both languages without a provider`, async t => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    t.after(() => client.clear());
     const requests: string[] = [];
     t.mock.method(globalThis, 'fetch', async (url: RequestInfo | URL) => {
       requests.push(String(url));
@@ -29,14 +32,14 @@ for (const locale of ['en', 'zh-TW'] as const) {
         task: null, workItem: null, project: null, conversation: null, relatedArtifacts: [],
         focus: { kind: 'artifact', isReady: false, isPublished: false } });
     });
-    const view = render(<I18nProvider locale={locale}><MemoryRouter initialEntries={['/code/artifacts/candidate']}>
+    const view = render(<QueryClientProvider client={client}><I18nProvider locale={locale}><MemoryRouter initialEntries={['/code/artifacts/candidate']}>
       <Routes><Route path="/code/artifacts/:artifactId" element={<ArtifactDetailView />} /></Routes>
-    </MemoryRouter></I18nProvider>);
+    </MemoryRouter></I18nProvider></QueryClientProvider>);
     await waitFor(() => assert.ok(view.getByText('取消後仍須確認清理。')));
     assert.ok(view.getByText('<script>unsafe()</script> Verify cleanup.'));
     assert.ok(view.getByText(locale === 'en'
       ? /Catlas and Orchestrator have not adopted/u : /Catlas 與 Orchestrator 尚未採用/u));
-    assert.equal(view.container.querySelector('summary')?.textContent, locale === 'en' ? 'English' : '英文');
+    assert.ok(view.getByText(locale === 'en' ? 'English' : '英文', { selector: 'summary' }));
     assert.equal(view.container.querySelector('script'), null);
     assert.equal(view.container.querySelector('iframe'), null);
     assert.equal(requests.length, 1);

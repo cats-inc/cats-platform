@@ -2,13 +2,14 @@ import './helpers/installDomBeforeReact.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { act, cleanup, fireEvent, render } from '@testing-library/react';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import { RunExecutionActions } from '../src/products/shared/renderer/RunExecutionActions.tsx';
 import { CodespaceActions } from '../src/products/code/renderer/components/workspaces/CodespaceActions.tsx';
 
+// Synchronous events plus result waits avoid React's leaking MessageChannel fallback in CI ESM bundles.
 test('Code context stops the canonical selected Run and surfaces a provider refusal without hiding it', async t => {
   const oldReact = Object.getOwnPropertyDescriptor(globalThis, 'React'), oldFetch = globalThis.fetch;
   Object.defineProperty(globalThis, 'React', { configurable: true, value: React });
@@ -18,7 +19,8 @@ test('Code context stops the canonical selected Run and surfaces a provider refu
   let changed = false;
   globalThis.fetch = async (url, options) => { calls.push({ url: String(url), body: JSON.parse(String(options?.body)) }); return new Response(JSON.stringify({ error: { message: 'Runtime cancellation was refused.' } }), { status: 409 }); };
   const view = render(<QueryClientProvider client={client}><MemoryRouter><I18nProvider locale="en"><RunExecutionActions runId="selected-run" status="running" onChanged={() => { changed = true; }} /></I18nProvider></MemoryRouter></QueryClientProvider>);
-  await act(async () => { fireEvent.click(view.getByText('Stop')); });
+  fireEvent.click(view.getByText('Stop'));
+  await waitFor(() => assert.ok(view.getByRole('alert').textContent?.includes('refused')));
   assert.equal(calls[0].url, '/api/work/runs/selected-run/stop');
   assert.ok(calls[0].body.idempotencyKey);
   assert.ok(view.getByRole('alert').textContent?.includes('refused'));
@@ -38,11 +40,13 @@ test('Codespace removal requires the shared confirmation; Escape cancels and con
   const workspace = { id: 'folder', title: 'Selected folder', path: 'C:/keep', summary: null, status: 'ready' as const, source: 'owner_selected' as const, conversationCount: 0, taskCount: 0, artifactCount: 0, lastActiveAt: '2026-10-20T00:00:00Z', management: { listing: 'visible' as const, pinned: false, revision: 2 } };
   const view = render(<MemoryRouter><I18nProvider locale="en"><CodespaceActions workspace={workspace} /></I18nProvider></MemoryRouter>);
   const remove = 'Remove from Cats · keep folder';
-  await act(async () => { fireEvent.click(view.getByText(remove)); });
+  fireEvent.click(view.getByText(remove));
   assert.equal(commands.length, 0); assert.equal(document.activeElement?.textContent, 'Cancel');
-  await act(async () => { fireEvent.keyDown(document, { key: 'Escape' }); });
+  fireEvent.keyDown(document, { key: 'Escape' });
+  await waitFor(() => assert.equal((view.getByText(remove) as HTMLButtonElement).disabled, false));
   assert.equal(commands.length, 0);
-  await act(async () => { fireEvent.click(view.getByText(remove)); });
-  await act(async () => { fireEvent.click(view.getAllByText(remove).find(element => element.className === 'confirmDestructiveButton')!); });
+  fireEvent.click(view.getByText(remove));
+  fireEvent.click(view.getAllByText(remove).find(element => element.className === 'confirmDestructiveButton')!);
+  await waitFor(() => assert.equal(commands.length, 1));
   assert.equal(commands.length, 1); assert.equal((commands[0] as { action: string }).action, 'remove');
 });

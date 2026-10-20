@@ -8950,6 +8950,7 @@ test('GET /api/code/tasks/:id mirrors shared control-plane and recovery projecti
 
 test('POST /api/code/tasks mutations mirror shared detail, control-plane, and recovery projections', async () => {
   const runtimeClient = createRuntimeStub();
+  runtimeClient.cancelSession = async (sessionId) => { await runtimeClient.closeSession(sessionId); };
 
   await withServer(runtimeClient, async (baseUrl) => {
     const createResponse = await fetch(`${baseUrl}/api/code/tasks`, {
@@ -9016,6 +9017,15 @@ test('POST /api/code/tasks mutations mirror shared detail, control-plane, and re
     await assertTaskProjection(executePayload.task, 'in_progress');
     assert.equal(runtimeClient.createdSessions.length, 1);
     assert.equal(runtimeClient.createdSessions[0].cwd, 'C:/repo/cats-platform');
+
+    const activeResume = await fetch(`${baseUrl}/api/code/tasks/${taskId}/resume`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+    });
+    assert.equal(activeResume.status, 422);
+    const stopped = await fetch(`${baseUrl}/api/work/runs/${executePayload.runId}/stop`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+    });
+    assert.equal(stopped.status, 200);
 
     const blockedMetadata = writeTaskPlanningMetadata(
       writeWorkflowContinuationReplayMetadata(
