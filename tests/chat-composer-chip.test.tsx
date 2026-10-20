@@ -18,7 +18,7 @@ function createPayload(): AppShellPayload {
   } as unknown as AppShellPayload;
 }
 
-test('chat composer keeps default implicit recipient controls on the active audience chip tooltip', () => {
+test('a room with one provider/model participant shows its model on the chip, without an avatar', () => {
   const markup = renderToStaticMarkup(
     <ConversationComposerArea
       hasConversationStarted
@@ -35,25 +35,30 @@ test('chat composer keeps default implicit recipient controls on the active audi
       stopBusy={false}
       composerWorkspacePath={null}
       directLaneExcludedMentionNames={[]}
-      composerRecipients={[
+      composerRecipients={[]}
+      defaultRecipientParticipantId={null}
+      composerStackParticipants={[
         {
-          kind: 'implicit',
-          name: 'Claude-CLI · Opus · Max',
-          provider: 'claude',
-          instance: 'cli',
-          model: 'opus',
-          modelSelection: {
-            entryMode: 'explicit',
-            controls: {
-              'claude.reasoning_effort': 'max',
+          participantId: 'participant-default',
+          label: 'Claude-CLI',
+          executionLabel: 'Claude-CLI · Opus · Max',
+          avatarColor: null,
+          avatarUrl: null,
+          isBoss: false,
+          useNeutralAvatar: true,
+          selectionTarget: {
+            provider: 'claude',
+            instance: 'cli',
+            modelSelection: {
+              entryMode: 'explicit',
+              controls: {
+                'claude.reasoning_effort': 'max',
+              },
             },
           },
         },
       ]}
-      defaultRecipientParticipantId={null}
-      composerStackParticipants={[]}
       isDirectLane={false}
-      isDefaultChatComposer
       activeWorkflowShape="sequential"
       onToggleActiveWorkflowShape={() => {}}
       activeAudienceKeys={null}
@@ -82,7 +87,7 @@ test('chat composer keeps default implicit recipient controls on the active audi
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
 });
 
-test('chat composer preserves runtime-backed implicit audience labels instead of rebuilding static fallback text', () => {
+test('a lone provider/model participant keeps its runtime-backed label instead of rebuilding static fallback text', () => {
   clearLiveProviderModelLabels();
   const markup = renderToStaticMarkup(
     <ConversationComposerArea
@@ -100,26 +105,30 @@ test('chat composer preserves runtime-backed implicit audience labels instead of
       stopBusy={false}
       composerWorkspacePath={null}
       directLaneExcludedMentionNames={[]}
-      composerRecipients={[
+      composerRecipients={[]}
+      defaultRecipientParticipantId={null}
+      composerStackParticipants={[
         {
-          kind: 'implicit',
-          name: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
+          participantId: 'participant-default',
+          label: 'Claude-CLI',
           executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
-          provider: 'claude',
-          instance: 'cli/native',
-          model: 'opus',
-          modelSelection: {
-            entryMode: 'explicit',
-            controls: {
-              'claude.reasoning_effort': 'xhigh',
+          avatarColor: null,
+          avatarUrl: null,
+          isBoss: false,
+          useNeutralAvatar: true,
+          selectionTarget: {
+            provider: 'claude',
+            instance: 'cli/native',
+            modelSelection: {
+              entryMode: 'explicit',
+              controls: {
+                'claude.reasoning_effort': 'xhigh',
+              },
             },
           },
         },
       ]}
-      defaultRecipientParticipantId={null}
-      composerStackParticipants={[]}
       isDirectLane={false}
-      isDefaultChatComposer
       activeWorkflowShape="sequential"
       onToggleActiveWorkflowShape={() => {}}
       activeAudienceKeys={null}
@@ -212,10 +221,10 @@ test('chat composer renders a cat-backed audience chip for direct lanes', () => 
           avatarUrl: null,
           isBoss: true,
           useNeutralAvatar: false,
+          selectionTarget: null,
         },
       ]}
       isDirectLane
-      isDefaultChatComposer={false}
       activeWorkflowShape="sequential"
       onToggleActiveWorkflowShape={() => {}}
       activeAudienceKeys={null}
@@ -265,16 +274,8 @@ test('chat composer renders a multi-audience chip for group chats', () => {
       stopBusy={false}
       composerWorkspacePath={null}
       directLaneExcludedMentionNames={[]}
-      composerRecipients={[
-        {
-          kind: 'implicit',
-          name: 'Claude-CLI · Opus',
-          provider: 'claude',
-          instance: 'cli',
-          model: 'opus',
-        },
-      ]}
-      defaultRecipientParticipantId="claude"
+      composerRecipients={[]}
+      defaultRecipientParticipantId={null}
       composerStackParticipants={[
         {
           participantId: 'claude',
@@ -284,6 +285,7 @@ test('chat composer renders a multi-audience chip for group chats', () => {
           avatarUrl: null,
           isBoss: false,
           useNeutralAvatar: true,
+          selectionTarget: null,
         },
         {
           participantId: 'codex',
@@ -293,6 +295,7 @@ test('chat composer renders a multi-audience chip for group chats', () => {
           avatarUrl: null,
           isBoss: false,
           useNeutralAvatar: true,
+          selectionTarget: null,
         },
         {
           participantId: 'antigravity',
@@ -302,10 +305,10 @@ test('chat composer renders a multi-audience chip for group chats', () => {
           avatarUrl: null,
           isBoss: false,
           useNeutralAvatar: true,
+          selectionTarget: null,
         },
       ]}
       isDirectLane={false}
-      isDefaultChatComposer={false}
       activeWorkflowShape="sequential"
       onToggleActiveWorkflowShape={() => {}}
       activeAudienceKeys={null}

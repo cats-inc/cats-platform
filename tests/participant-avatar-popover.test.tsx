@@ -598,3 +598,40 @@ test('a parallel draft offers existing cats only once its lead lane has members'
   fireEvent.click(staffed.getAllByRole('button', { name: 'Add another model to collaborate' })[0]!);
   staffed.getByRole('menuitem', { name: /Milo/u });
 });
+
+test('a top bar popover lists its conversation actions, the removal styled as destructive', (t) => {
+  reset(); t.after(reset); installProviderFetch();
+  const selected: string[] = [];
+  const editor: AudienceTargetEditor = {
+    target,
+    onChange: noop,
+    actions: [
+      { label: 'Make coordinator', hint: 'Routes turns on.', onSelect: () => selected.push('coordinate') },
+      { label: 'Remove from conversation', danger: true, onSelect: () => selected.push('remove') },
+    ],
+  };
+  const view = render(
+    <I18nProvider locale="en">
+      <ConversationViewTopBar
+        avatars={[topBarAvatar({ editor })]}
+        showRosterAvatars
+        isDirectLane={false}
+        topBarTitle="Review"
+        sidePanelOpen={false}
+        approvalCount={0}
+        onToggleSidePanel={noop}
+      />
+    </I18nProvider>,
+  );
+
+  fireEvent.click(view.getByRole('button', { name: "Change Mochi's model" }));
+  const coordinate = view.getByRole('button', { name: 'Make coordinator' });
+  const remove = view.getByRole('button', { name: 'Remove from conversation' });
+  assert.ok(!coordinate.classList.contains('audiencePopoverActionDanger'));
+  assert.ok(remove.classList.contains('audiencePopoverActionDanger'));
+  assert.match(view.getByRole('dialog').textContent ?? '', /Routes turns on\./u);
+
+  fireEvent.click(remove);
+  assert.deepEqual(selected, ['remove']);
+  assert.equal(view.queryByRole('dialog'), null, 'an action closes the popover');
+});

@@ -8,7 +8,6 @@ import type { DraftComposerStackParticipant } from '../newConversationDraftSuppo
 import type { ChatComposerStackParticipantView } from './conversationViewSupport.js';
 import {
   buildAudienceParticipantFromCat,
-  buildAudienceParticipantFromExecutionTarget,
   buildAudienceParticipantFromRecipient,
   buildAudienceParticipantFromStackParticipant,
 } from '../../audienceParticipantBuilder.js';
@@ -21,7 +20,6 @@ export interface ConversationComposerTargetSlotProps {
   composerStackParticipants: ChatComposerStackParticipantView[];
   directLaneCat: AppShellPayload['chat']['cats'][number] | null;
   isDirectLane: boolean;
-  isDefaultChatComposer: boolean;
   activeWorkflowShape: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys: string[] | null;
@@ -62,6 +60,13 @@ function ChatComposerAudienceChip({
       .filter(Boolean) as typeof allParticipants;
     return resolved.length > 0 ? resolved : allParticipants.length > 0 ? [allParticipants[0]] : [];
   }, [activeAudienceKeys, allParticipants]);
+  // With one participant the chip stands in for its avatar (SPEC-125 FR-24),
+  // so it also says when that participant's saved model is no longer offered.
+  const attention = useSavedSelectionAttention(
+    composerStackParticipants.length === 1
+      ? composerStackParticipants[0]?.selectionTarget ?? null
+      : null,
+  );
 
   return (
     <AudienceChip
@@ -73,6 +78,7 @@ function ChatComposerAudienceChip({
       maxSelectedParticipants={maxAudienceParticipants}
       workflowShape={activeWorkflowShape}
       onToggleWorkflowShape={onToggleActiveWorkflowShape}
+      attention={attention}
     />
   );
 }
@@ -83,29 +89,12 @@ export function ConversationComposerTargetSlot({
   composerRecipients,
   composerStackParticipants,
   directLaneCat,
-  isDirectLane,
-  isDefaultChatComposer,
   activeWorkflowShape,
   onToggleActiveWorkflowShape,
   activeAudienceKeys,
   onSetActiveAudienceKeys,
   resolveTargetEditor,
 }: ConversationComposerTargetSlotProps) {
-  // Implicit recipient (model-only)
-  const implicitRecipient =
-    composerRecipients.length === 1 && composerRecipients[0]?.kind === 'implicit'
-      ? composerRecipients[0]
-      : null;
-  const implicitAttention = useSavedSelectionAttention(
-    !directLaneCat && isDefaultChatComposer && implicitRecipient?.provider
-      ? {
-          provider: implicitRecipient.provider,
-          instance: implicitRecipient.instance ?? null,
-          modelSelection: implicitRecipient.modelSelection ?? null,
-        }
-      : null,
-  );
-
   // Direct lane: single cat
   if (directLaneCat) {
     return (
@@ -117,10 +106,8 @@ export function ConversationComposerTargetSlot({
     );
   }
 
-  // A room with participants chooses its audience among them, temporary ones
-  // included. The send path treats it as a participant chat whether or not
-  // any participant is a cat; only a chat without participants answers with
-  // the default chat's own target below.
+  // A room chooses its audience among its participants, temporary ones
+  // included, whether or not any participant is a cat.
   if (composerStackParticipants.length > 0) {
     return (
       <ChatComposerAudienceChip
@@ -132,23 +119,6 @@ export function ConversationComposerTargetSlot({
         onSetActiveAudienceKeys={onSetActiveAudienceKeys}
         maxAudienceParticipants={payload.chat.capabilities.maxAudienceParticipants}
         resolveTargetEditor={resolveTargetEditor}
-      />
-    );
-  }
-
-  if (implicitRecipient) {
-    return (
-      <AudienceChip
-        audienceParticipants={[buildAudienceParticipantFromExecutionTarget({
-          provider: implicitRecipient.provider ?? '',
-          instance: implicitRecipient.instance ?? null,
-          model: implicitRecipient.model ?? null,
-          modelSelection: implicitRecipient.modelSelection ?? null,
-          executionLabel: implicitRecipient.executionLabel ?? implicitRecipient.name,
-        })]}
-        resolveTargetEditor={resolveTargetEditor}
-        disabled={composerBusy}
-        attention={implicitAttention}
       />
     );
   }

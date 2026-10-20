@@ -72,7 +72,7 @@ in every room with participants. Shippable on its own as a patch.
       coordinator × admin for actions beyond the conversation.
 - [x] Task 3.5: `newChatDefaults` as model or cat, saved from a created
       non-DM conversation's first participant.
-- [ ] Task 3.6: Owner and artifact provenance fields.
+- [x] Task 3.6: Owner and artifact provenance fields.
 - [x] Task 3.7: Remove Start fresh, the default-chat reply rewrite and the
       Telegram non-DM room fallback.
 - [x] Task 3.8: Mobile audience control, released together with Task 3.3 so
@@ -82,22 +82,29 @@ in every room with participants. Shippable on its own as a patch.
 
 ### Phase 4: Renderer
 
-- [ ] Task 4.1: Replace the default-chat mode with "DM or participant count"
+- [x] Task 4.1: Replace the default-chat mode with "DM or participant count"
       in drafts and conversations; remove `implicit:execution_target`.
-- [ ] Task 4.2: The default participant as a real draft participant from the
+      Started conversations, layout modes and continuity topologies no longer
+      have a default-chat mode; a draft's implicit chip becomes its real
+      default participant in Task 4.2.
+- [x] Task 4.2: The default participant as a real draft participant from the
       start; the group minimum of two behind an internal flag that defaults
       on; the draft visibility matrix unchanged.
-- [ ] Task 4.3: Coordinator control in the participant popover; admin frame;
+- [x] Task 4.3: Coordinator control in the participant popover; admin frame;
       header avatars for every participant, one included, and none for
-      non-participants; the admin switch in Settings › Cats.
-- [ ] Task 4.4: Remembered default as model or cat in new drafts.
+      non-participants; the admin switch in Settings › Cats. The popover also
+      removes a participant while another remains; the header, the frame and
+      the Settings switch landed with tasks 2.1 and 3.4.
+- [x] Task 4.4: Remembered default as model or cat in new drafts.
 
 **Deliverables**: Drafts and conversations follow one rule.
 
 ### Phase 5: Documentation and release
 
-- [ ] Task 5.1: Update SPEC-052, SPEC-013, `docs/api.md` and the participant
-      sections of the deployment and setup guides.
+- [x] Task 5.1: Update SPEC-052, SPEC-013, `docs/api.md` and the participant
+      sections of the deployment and setup guides. Also SPEC-069 (Start fresh
+      removed) and the terminology; the deployment guide has no participant
+      section, and its reset section is what the 0.9.0 notes point to.
 - [ ] Task 5.2: When the owner selects a release: 0.9.0 with reset
       instructions in its notes.
 

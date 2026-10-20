@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { resolveCoreArtifactProvenanceMetadata } from '../artifactProvenance.js';
 import { assertOwnerRecordDeletable } from '../ownerManagement.js';
 
 import {
@@ -276,10 +277,13 @@ export function upsertCoreArtifact(
         : normalizeNullableString(input.summary),
     createdAt: existing?.createdAt ?? input.createdAt ?? nowIso,
     updatedAt: nowIso,
-    metadata:
-      input.metadata === undefined
+    metadata: resolveCoreArtifactProvenanceMetadata({
+      metadata: input.metadata === undefined
         ? normalizeMetadata(existing?.metadata)
         : normalizeMetadata(input.metadata),
+      existingMetadata: existing?.metadata ?? null,
+      ownerActorId: core.ownerProfile.actorId,
+    }),
   };
 
   const { records, created } = replaceById(core.artifacts, artifact);

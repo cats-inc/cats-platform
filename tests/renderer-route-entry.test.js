@@ -251,6 +251,7 @@ test('a room entry lifecycle follows its coordinator lease status', () => {
     lastMessageAt: null,
     lastActivatedAt: null,
     coordinatorParticipantId: 'participant-default',
+    ownerActorId: 'actor-owner',
     catAssignments: [],
     messages: [],
     assignedCats: [],

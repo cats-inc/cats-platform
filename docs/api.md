@@ -518,11 +518,31 @@ GET  /api/platform/ingress
 GET    /api/channels
 POST   /api/channels
 GET    /api/channels/{channelId}
+PATCH  /api/channels/{channelId}
 DELETE /api/channels/{channelId}
 ```
 
+A conversation is a direct message with exactly its Cat, or a room with at
+least one participant ([SPEC-125](specs/SPEC-125-conversation-participants-audience-and-orchestrator-binding.md)).
+Participants keep insertion order. The first is the default participant and,
+at creation, the coordinator: the participant the conversation's orchestrator
+is bound to. Every conversation records `ownerActorId`, the platform owner it
+belongs to. Data from before this model is unsupported; reset Platform data
+([Reset Platform data](deployment.md#reset-platform-data)).
+
 - `GET` collection returns `{ channels: [...summaries] }`.
 - `POST` returns `201` with `{ channel: { ...view } }`.
+  - Participants come from `participantCatIds` (existing Cats), `cats` (Cats
+    created inline) and `temporaryParticipants` (channel-only members with a
+    provider/model target). `participantOrder` orders them with `cat:<catId>`
+    and `temp:<participantId>` keys; unlisted participants follow in input
+    order.
+  - A room created without participants starts with the remembered default
+    (`newChatDefaults`): its Cat while it can still chat, otherwise its
+    provider/model as a temporary participant.
+  - Creating a room through this route saves its first participant as
+    `newChatDefaults` (a Cat id, or a provider/model). Server-internal creators
+    (Code sessions, collaboration rooms, parallel members, Telegram) do not.
   - A one-to-one direct message (`roomMode: "direct_message"`, or
     `entryKind: "direct"`, for exactly one existing Cat with no other Cats,
     inline Cats or temporary participants) reuses that Cat's direct lane when
@@ -532,11 +552,19 @@ DELETE /api/channels/{channelId}
     lane per Cat.
 - `GET` detail returns
   `{ channel: { ...view with messages, assignedCats, and roomRouting } }`.
+- `PATCH` accepts `{ title?, coordinatorParticipantId? }`. A participant id
+  moves the coordinator binding to that active participant; `null` clears it.
+  A direct message stays bound to its Cat (`400 bad_request`); an id that is
+  not an active participant is `404 participant_not_found`. It returns
+  `{ channel: { ...summary } }`.
 - `DELETE` returns `{ deleted: true, channelId }`.
+
+Each channel view also carries `coordinatorParticipantId` (a participant id or
+`null`) and `ownerActorId`.
 
 Each channel now exposes a `roomRouting` read model with:
 
-- `mode` and `leadParticipantId` for default-target resolution
+- `mode`, and `defaultRecipientId`, which only a direct message sets (its Cat)
 - guard limits such as `maxContinuations` and `maxDispatchesPerTurn`
 - `lastOutcome` for the most recent routed turn, including:
   - `resolution` with stable machine-readable routing semantics
@@ -577,14 +605,22 @@ POST /api/channels/{channelId}/messages
 ```
 
 - `GET` returns `{ messages: [...] }`.
-- `POST` accepts `{ body, senderName?, choiceResponse? }` and acknowledges with
+- `POST` accepts `{ body, senderName?, choiceResponse?, messageMetadata? }` and
+  acknowledges with
   `{ phase: "acknowledged", appShell, message, results, dispatch }`; Runtime
   continuation results arrive through the existing state/event projections.
+- A message's audience is `messageMetadata.recipientParticipantIds` (in order;
+  `messageMetadata.workflowShape` is `sequential` or `concurrent`) plus the
+  participants its body `@mentions`. A message to a room whose audience is
+  empty is refused with `400 audience_required`; a direct message always
+  reaches its Cat, and a `choiceResponse` returns to the participant that
+  asked.
 - `dispatch.results` now covers the whole live routing loop for that user turn,
   not just the first target. A single `POST` may therefore include:
-  - the default orchestrator dispatch
-  - explicit multi-target fan-out dispatches
-  - continuation dispatches triggered by later agent `@mentions`
+  - one dispatch per audience participant, in order when sequential
+  - continuation dispatches the coordinator routes on with `@mentions` or
+    workflow recommendations; other participants answer and stop, and without
+    a coordinator nothing is routed on
 
 Assistant transcript messages created by the routing engine carry structured
 metadata such as `turnId`, `sourceMessageId`, `routingTrigger`, and
@@ -662,10 +698,16 @@ DELETE /api/channels/{channelId}/cats/{catId}
 ### Channel Participants
 
 ```text
-PATCH /api/channels/{channelId}/participants/{participantId}
+PATCH  /api/channels/{channelId}/participants/{participantId}
+DELETE /api/channels/{channelId}/participants/{participantId}
 ```
 
-Updates one participant of one conversation. Body fields are all optional,
+`DELETE` removes a Cat or a temporary participant while another participant
+remains, closing the session it ran in. Removing the last one is refused with
+`409 last_participant`; removing the coordinator clears the binding. It returns
+`{ removed: true, channelId, participantId }`.
+
+`PATCH` updates one participant of one conversation. Body fields are all optional,
 but at least one must be present (`400 participant_update_required`):
 
 - `name`, `roleHint` — the ad-hoc participant profile.
@@ -714,9 +756,13 @@ PATCH /api/preferences
   `showLiveProgressDetails`, `newChatDefaults`, and
   `folderBrowsePreference { surface, directLaneCatId?, path }`, then returns
   the updated preferences payload.
+- `newChatDefaults` is the remembered default participant:
+  `{ catId, provider, instance, model, modelSelection }`. A set `catId` that
+  can still chat makes the Cat the default; the provider/model stays the model
+  a draft falls back to. A `PATCH` without `catId` keeps the current one.
 - Updating `selectedChannelId` also wakes the selected room's visible entry
   participant when that room is currently sleeping:
-  - `chat_channel` wakes the default orchestrator entry participant
+  - `chat_channel` wakes its coordinator participant
   - `direct_message` wakes the room's direct recipient Cat
 - If a `direct_message` no longer has an active direct recipient Cat, the selection write
   stays explicit and records a failed `roomRouting.lastWakeRequest` instead of
@@ -1551,8 +1597,9 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
     - lane-aware `participant` / `targets` execution refs so downstream
       operator consumers do not have to infer canonical lane identity from
       `sessionId` alone
-- `POST /api/orchestrator/dispatch` accepts the same base request body plus an
-  optional `choiceResponse` matching Chat message choices
+- `POST /api/orchestrator/dispatch` speaks for the owner: a body that names
+  nobody goes to the conversation's coordinator. It accepts the same base
+  request body plus an optional `choiceResponse` matching Chat message choices
   (`sourceMessageId`, `status`, `submittedAt`, and `answers[]`). This lets
   direct API callers confirm owner-visible proposal sidecars, including Work
   intake capture and Boss execution-preparation proposals, through the same

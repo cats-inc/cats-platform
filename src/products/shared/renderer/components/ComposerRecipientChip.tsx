@@ -1,16 +1,13 @@
 import type { CSSProperties } from 'react';
 
-import {
-  buildCatExecutionLabel,
-  resolveExecutionTargetLabel,
-} from '../../../../shared/executionLabel.js';
+import { buildCatExecutionLabel } from '../../../../shared/executionLabel.js';
 import { cloneProviderModelSelection, type ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { catInitials } from '../workspaceChatUtils.js';
 import { isAdminCat } from '../../catGroups.js';
 
 export interface RecipientChipTarget {
-  kind: 'named' | 'implicit';
+  kind: 'named';
   participantId?: string;
   catId?: string;
   name: string;
@@ -76,43 +73,7 @@ export function buildRecipientFromCat(
   });
 }
 
-export function buildImplicitRecipient(input: {
-  provider: string;
-  instance?: string | null;
-  model?: string | null;
-  modelSelection?: ProviderModelSelection | null;
-  executionLabel?: string | null;
-}): RecipientChipTarget {
-  const executionLabel = resolveExecutionTargetLabel({
-    provider: input.provider,
-    instance: input.instance ?? null,
-    model: input.model ?? null,
-    modelSelection: input.modelSelection ?? null,
-    executionLabel: input.executionLabel ?? null,
-  });
-  return {
-    kind: 'implicit',
-    name: executionLabel,
-    executionLabel,
-    provider: input.provider,
-    instance: input.instance ?? null,
-    model: input.model ?? null,
-    modelSelection: cloneProviderModelSelection(input.modelSelection),
-  };
-}
-
 function RecipientAvatar({ target }: { target: RecipientChipTarget }) {
-  if (target.kind === 'implicit') {
-    return (
-      <span className="recipientChipIcon" aria-hidden="true">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="8" cy="8" r="6" />
-          <path d="M5.5 8h5M8 5.5v5" />
-        </svg>
-      </span>
-    );
-  }
-
   const style: CSSProperties = target.avatarUrl
     ? { backgroundImage: `url(${target.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : target.avatarColor

@@ -1947,6 +1947,15 @@ export const enCatalog: MessageCatalog = {
   'chat.participants.error.temporaryOnly':
     'Only temporary participants can be renamed here.',
   'chat.participants.error.nameRequired': 'Participant name is required.',
+  'chat.participants.error.setCoordinator': 'Failed to change the coordinator.',
+  'chat.participants.error.removeParticipant': 'Failed to remove participant.',
+  'chat.participants.makeCoordinator': 'Make coordinator',
+  'chat.participants.makeCoordinatorHint':
+    'The coordinator can pass turns on to other participants. A Boss Cat coordinator can also act beyond this conversation.',
+  'chat.participants.stopCoordinating': 'Stop coordinating',
+  'chat.participants.stopCoordinatingHint':
+    'Without a coordinator, a message reaches only the participants it is sent to.',
+  'chat.participants.remove': 'Remove from conversation',
   'chat.catAssignment.createdAssignHint': 'Cat created. Open "Choose existing" to assign it.',
   'chat.catAssignment.error.createCat': 'Failed to create cat.',
   'chat.catAssignment.error.assignCat': 'Failed to assign cat.',

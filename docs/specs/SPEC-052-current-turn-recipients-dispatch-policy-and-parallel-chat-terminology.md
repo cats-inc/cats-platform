@@ -7,7 +7,7 @@
 | **Status** | Approved |
 | **Owner** | Codex |
 | **Reviewer** | User |
-| **Last updated** | 2026-09-18 (conversation-owned execution selection) |
+| **Last updated** | 2026-10-20 (recipients are always participants; SPEC-125) |
 | **Supersedes** | [SPEC-030](./SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md) |
 
 ## Summary
@@ -102,15 +102,13 @@ This is not the same thing as current-turn recipient selection.
 
 ### Current-Turn Recipient
 
-A `current-turn recipient` is the participant or implicit target that the next
-outgoing message is addressed to.
+A `current-turn recipient` is a participant the next outgoing message is
+addressed to; together they are the message's audience. Every recipient is an
+existing Cat-backed or temporary room participant.
 
-Recipient types:
-
-1. `named participant`
-   - an existing Cat-backed or temporary room participant
-2. `implicit recipient`
-   - a provider/model-backed target represented through pending model selection
+The `implicit recipient` (a provider/model target represented through pending
+model selection) is removed by [SPEC-125](./SPEC-125-conversation-participants-audience-and-orchestrator-binding.md): a conversation that would have
+answered with a provider/model now has it as its default participant.
 
 ### Default Recipients
 
@@ -119,9 +117,8 @@ not override it for the next send.
 
 That default may contain:
 
-- one implicit recipient
-- one named participant
-- multiple named participants
+- one participant
+- multiple participants
 
 Stored default recipients are channel-level defaults.
 
@@ -193,19 +190,20 @@ the full room roster.
 Unresolved mentions should remain warnings or validation feedback, not hidden
 members of the recipient stack.
 
-### Pending Provider/Model
+### Default Participant (2026-10-20)
 
-If the outgoing turn is currently aimed at a provider/model selection rather
-than a named participant, the composer must render that selection as an
-implicit recipient.
+The pending provider/model and its implicit recipient are removed
+([SPEC-125](./SPEC-125-conversation-participants-audience-and-orchestrator-binding.md) FR-27). A conversation without named participants starts with its
+default participant, the remembered default as a provider/model temporary
+participant or a Cat. With one participant, the composer chip stands in for
+its avatar and shows its model or Cat; with two or more, the chip chooses the
+audience among the participant avatars.
 
-The product should not describe this state as "no recipient."
+#### Conversation-Owned Selection (2026-09-18, amended 2026-10-20)
 
-#### Conversation-Owned Selection (2026-09-18)
-
-Each persisted default conversation owns its God Cat / implicit recipient's
-provider, instance, model, and model-selection controls (including reasoning
-effort). The composer chip, execution picker, and next outgoing turn must use
+Each conversation's participant owns its provider, instance, model, and
+model-selection controls (including reasoning effort) for that conversation.
+The participant's avatar or lone chip, its picker, and its next turn must use
 that same conversation-owned selection.
 
 - New-chat defaults seed a new draft; choosing a different combination in a
@@ -218,10 +216,9 @@ that same conversation-owned selection.
   responses must not carry A's selection into B or overwrite a newer pick.
 - A refreshed copy of the same persisted selection must not discard a pending
   local edit merely because its objects have new references.
-- When a conversation has its own provider, its nullable model, instance, and
-  controls belong to that selection too. Never fill those fields independently
-  from global God Cat defaults. The global fallback applies only when no
-  conversation provider selection exists.
+- A participant's nullable model, instance, and controls belong to its
+  provider selection. Never fill those fields independently from the
+  remembered default; it only seeds a new draft's default participant.
 
 Regression coverage must exercise multiple combinations, same-provider effort
 differences, warm and delayed catalogs, asynchronous navigation, persisted

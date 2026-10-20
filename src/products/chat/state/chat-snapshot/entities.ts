@@ -16,6 +16,7 @@ import type {
   CoreRecordMetadata,
   ExecutionTargetSummary,
 } from '../../../../core/types.js';
+import { OWNER_ACTOR_ID } from '../../../../core/actors.js';
 import { CHAT_MCP_PROFILE_ID } from '../../../../shared/catMcpProfiles.js';
 import { normalizeChatCatGroup } from '../../../shared/catGroups.js';
 import { createDefaultChatState, createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
@@ -363,6 +364,7 @@ export function normalizeChannel(
     lastMessageAt: readNullableString(channelRecord.lastMessageAt),
     lastActivatedAt: readNullableString(channelRecord.lastActivatedAt),
     coordinatorParticipantId: readNullableString(channelRecord.coordinatorParticipantId),
+    ownerActorId: readNullableString(channelRecord.ownerActorId) ?? OWNER_ACTOR_ID,
     catAssignments: normalizedCatAssignments,
     participantAssignments: normalizedParticipantAssignments,
     messages,

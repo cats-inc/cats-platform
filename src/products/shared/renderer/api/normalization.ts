@@ -1,3 +1,4 @@
+import { OWNER_ACTOR_ID } from '../../../../core/actors.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { resolveChannelKind } from '../../channelTopology.js';
 import { createDefaultAdvancedDraftControlsPreferences } from '../../advancedDraftControls.js';
@@ -195,6 +196,9 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
     }
     if (typeof selectedChannel.coordinatorParticipantId !== 'string') {
       selectedChannel.coordinatorParticipantId = null;
+    }
+    if (typeof selectedChannel.ownerActorId !== 'string') {
+      selectedChannel.ownerActorId = OWNER_ACTOR_ID;
     }
 
     const catAssignments = Array.isArray(selectedChannel.catAssignments)

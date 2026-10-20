@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import type { ResolvedChannelParticipant } from '../src/products/shared/channelParticipants.ts';
 import {
   buildChatComposerRecipients,
+  buildChatComposerStackParticipants,
   resolveChatComposerViewState,
   resolveLatestUserTurnPresentationState,
 } from '../src/products/shared/renderer/components/conversation-view/conversationViewSupport.ts';
@@ -103,31 +105,58 @@ test('resolveChatComposerViewState does not leak dispatch busy into other channe
   assert.equal(result.showStopComposerAction, false);
 });
 
-test('buildChatComposerRecipients preserves default execution-target controls for active chats', () => {
+test('buildChatComposerRecipients names nobody in a room: its audience chip chooses among participants', () => {
   const recipients = buildChatComposerRecipients({
     isDirectLane: false,
     directLaneCat: null,
-    isDefaultChatComposer: true,
-    selectedExecutionTarget: {
-      provider: 'claude',
-      instance: 'cli',
-      model: 'opus',
-      modelSelection: {
-        entryMode: 'explicit',
-        controls: {
-          'claude.reasoning_effort': 'max',
-        },
-      },
-    },
     defaultRecipientParticipant: null,
     resolveParticipantCatRecord: () => null,
     resolveParticipantDisplayName: () => 'Claude',
   });
 
-  assert.equal(recipients.length, 1);
-  assert.equal(recipients[0]?.kind, 'implicit');
-  assert.equal(recipients[0]?.modelSelection?.controls?.['claude.reasoning_effort'], 'max');
-  assert.match(recipients[0]?.name ?? '', /max/u);
+  assert.deepEqual(recipients, []);
+});
+
+test('buildChatComposerStackParticipants keeps a temporary participant\'s saved model for the chip to judge', () => {
+  const maxEffort = {
+    entryMode: 'explicit' as const,
+    controls: { 'claude.reasoning_effort': 'max' },
+  };
+  // A deliberate partial: the builder reads identity and execution target only.
+  const temporary = {
+    participantId: 'participant-default',
+    sourceKind: 'adhoc',
+    sourceRefId: null,
+    name: '',
+    status: 'active',
+    avatarColor: null,
+    avatarUrl: null,
+    execution: {
+      target: { provider: 'claude', instance: 'cli', model: 'opus' },
+      modelSelection: maxEffort,
+    },
+  } as unknown as ResolvedChannelParticipant;
+  const cat = {
+    ...temporary,
+    participantId: 'cat-1',
+    sourceKind: 'cat',
+    sourceRefId: 'cat-1',
+    name: 'Mochi',
+  } as unknown as ResolvedChannelParticipant;
+
+  const views = buildChatComposerStackParticipants({
+    activeRoomParticipants: [temporary, cat],
+    resolveParticipantCatRecord: (participant) => (participant?.participantId === 'cat-1'
+      ? { id: 'cat-1', name: 'Mochi', avatarColor: '#7A5B3A', avatarUrl: null, group: 'standard' } as never
+      : null),
+    resolveParticipantDisplayName: (participant, catRecord) => catRecord?.name ?? 'Claude-CLI',
+  });
+
+  // A cat's saved model is judged on its avatar, not on the composer chip.
+  assert.deepEqual(views.map((view) => view.selectionTarget), [
+    { provider: 'claude', instance: 'cli', modelSelection: maxEffort },
+    null,
+  ]);
 });
 
 test('resolveLatestUserTurnPresentationState shows processing only before the first assistant identity bubble', () => {

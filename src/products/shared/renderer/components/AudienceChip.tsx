@@ -23,6 +23,15 @@ export interface ParticipantProfileEditor {
 }
 
 /** The model a participant answers with in this conversation, and how to change it. */
+export interface AudienceTargetEditorAction {
+  label: string;
+  hint?: string;
+  disabled?: boolean;
+  /** Styled as destructive, such as removing the participant. */
+  danger?: boolean;
+  onSelect: () => void;
+}
+
 export interface AudienceTargetEditor {
   target: ExecutionTargetValue;
   /** Absent when the model only changes at its source, such as an assistant preset. */
@@ -30,13 +39,8 @@ export interface AudienceTargetEditor {
   profile?: ParticipantProfileEditor;
   /** Opens the cat's own page, where its default model lives. */
   onOpenSettings?: () => void;
-  /** One conversation-level action shown under the picker, e.g. start fresh. */
-  action?: {
-    label: string;
-    hint?: string;
-    disabled?: boolean;
-    onSelect: () => void;
-  };
+  /** Conversation-level actions shown under the picker, e.g. moving the coordinator. */
+  actions?: AudienceTargetEditorAction[];
 }
 
 export interface AudienceChipProps {
@@ -244,7 +248,7 @@ export function AudienceChip({
         <ParticipantTargetPopover
           participant={first}
           editor={firstEditor}
-          showIdentity={first.isCat || first.participantId != null}
+          showIdentity={first.isCat || firstEditor.profile != null}
           placement="above-end"
           onClose={closePopover}
         />

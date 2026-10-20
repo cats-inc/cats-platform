@@ -47,6 +47,8 @@ import {
   relayParallelChatMessage,
   updateCatProfile,
   updateChannelParticipantApi,
+  setChannelCoordinatorApi,
+  removeChannelParticipantApi,
   updateNewChatDefaultsPreference,
 } from "./api/index.js";
 import {
@@ -83,6 +85,7 @@ import {
   useWorkspaceDirectLaneModelSave,
 } from "./hooks/useWorkspaceAppShellChannelActions.js";
 import { useWorkspaceChannelParticipantUpdate } from "./hooks/useWorkspaceChannelParticipantUpdate.js";
+import { useWorkspaceChannelParticipantActions } from "./hooks/useWorkspaceChannelParticipantActions.js";
 import { useWorkspaceCompareRelay } from "./hooks/useWorkspaceCompareRelay.js";
 import { usePublishReadyPayload } from "./hooks/usePublishReadyPayload.js";
 import { formatWorkspaceChatActionError } from "./hooks/workspaceChatActionErrorLabels.js";
@@ -134,13 +137,15 @@ import {
   createInitialGroupParticipants,
   createNextGroupTemporaryParticipant,
   createNextParallelTarget,
+  createDraftDefaultParticipant,
   createDraftTemporaryParticipant,
   reconcileDraftAudienceKeysAfterParticipantRemoval,
   resolveGenericDraftTemporaryParticipants,
-  syncLeadDraftTemporaryParticipantWithTarget,
+  syncDraftParticipantsWithDefaultTarget,
   type DraftTemporaryParticipant,
 } from "./draftChatUtils.js";
 import { resolveActiveChannelAudienceState } from "./composerMessageMetadata.js";
+import { resolveRememberedDraftDefaultCatId } from "./draftParticipants.js";
 import { isAdvancedDraftControlsEnabled } from "../advancedDraftControls.js";
 import { resolveNewConversationDraftBuilderControls } from "./draftBuilderControls.js";
 import {
@@ -819,16 +824,11 @@ export function createWorkspaceProductApp({
         .filter((name) => name.trim().length > 0);
       const randomUUID = () =>
         globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`;
+      // A draft nobody has joined yet already shows its default participant;
+      // adding it for real keeps it first.
       const nextParticipant =
         draftTemporaryParticipants.length === 0 && participantCatIds.length === 0
-          ? createDraftTemporaryParticipant({
-              provider: draftExecutionTarget.provider,
-              instance: draftExecutionTarget.instance,
-              model: draftExecutionTarget.model,
-              modelSelection: draftExecutionTarget.modelSelection,
-              takenNames: [...visibleCatNames, ...draftTemporaryParticipants.map((p) => p.name)],
-              randomUUID,
-            })
+          ? createDraftDefaultParticipant(draftExecutionTarget, visibleCatNames)
           : createNextGroupTemporaryParticipant({
               baseProvider: draftExecutionTarget.provider,
               existingParticipants: draftTemporaryParticipants,
@@ -1083,15 +1083,7 @@ export function createWorkspaceProductApp({
       const nextParticipant =
         draftTemporaryParticipants.length === 0
         && draftParticipants.participantCatIds.length === 0
-          ? createDraftTemporaryParticipant({
-              provider: draftExecutionTarget.provider,
-              instance: draftExecutionTarget.instance,
-              model: draftExecutionTarget.model,
-              modelSelection: draftExecutionTarget.modelSelection,
-              takenNames,
-              randomUUID: () =>
-                globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
-            })
+          ? createDraftDefaultParticipant(draftExecutionTarget, takenNames)
           : createNextGroupTemporaryParticipant({
               baseProvider: draftExecutionTarget.provider,
               existingParticipants: draftTemporaryParticipants,
@@ -1457,27 +1449,56 @@ export function createWorkspaceProductApp({
       setBrowserLiveTraceEnabled(readyPayload?.chat.capabilities.debugLiveTrace === true);
     }, [readyPayload?.chat.capabilities.debugLiveTrace]);
 
+    // A new draft starts with the remembered default (SPEC-125 FR-23): a cat
+    // joins as its first participant, otherwise its default model does.
+    const rememberedDraftDefaultCatId = supportsStructuredDraftModes && readyPayload
+      ? resolveRememberedDraftDefaultCatId(readyPayload.chat)
+      : null;
+    const rememberedDraftDefaultCatName = rememberedDraftDefaultCatId
+      ? readyPayload?.chat.cats.find((cat) => cat.id === rememberedDraftDefaultCatId)?.name ?? ""
+      : "";
+
     useOnGenericDraftRouteEntry(
       showingNewChatDraft && !draftDefaultRecipientCatId,
       useCallback(() => {
         resetDraftCats();
+        // A new group grows from the remembered cat like it grows from the
+        // default model: one more participant joins it.
+        const groupWithRememberedCat = supportsStructuredDraftModes
+          && effectiveNewChatPreset === "group"
+          && rememberedDraftDefaultCatId != null;
+        if (groupWithRememberedCat) {
+          setDraftCatIds([rememberedDraftDefaultCatId]);
+        }
         setDraftTemporaryParticipants((current) =>
-          supportsStructuredDraftModes
-            ? resolveGenericDraftTemporaryParticipants(
-                effectiveNewChatPreset,
-                current,
-                seedDraftGroupParticipants,
-              )
-            : []);
+          !supportsStructuredDraftModes
+            ? []
+            : groupWithRememberedCat
+              ? (current.length > 0
+                  ? current
+                  : [createNextGroupTemporaryParticipant({
+                      baseProvider: draftExecutionTarget.provider,
+                      existingParticipants: [],
+                      takenNames: [rememberedDraftDefaultCatName],
+                    })])
+              : resolveGenericDraftTemporaryParticipants(
+                  effectiveNewChatPreset,
+                  current,
+                  seedDraftGroupParticipants,
+                ));
         setDraftWorkflowShape("sequential");
         setDraftAudienceKeys(null);
         resetDraftParallelChatTargets();
       }, [
+        draftExecutionTarget.provider,
         effectiveNewChatPreset,
+        rememberedDraftDefaultCatId,
+        rememberedDraftDefaultCatName,
         resetDraftCats,
         resetDraftParallelChatTargets,
         seedDraftGroupParticipants,
         setDraftAudienceKeys,
+        setDraftCatIds,
         setDraftTemporaryParticipants,
         setDraftWorkflowShape,
         supportsStructuredDraftModes,
@@ -1485,20 +1506,40 @@ export function createWorkspaceProductApp({
       effectiveNewChatPreset,
     );
 
+    // A new chat nobody has joined yet starts with the remembered cat, also
+    // when the payload arrives after the draft opened. Only a fresh draft has
+    // neither cats nor temporary participants: removal keeps at least one.
     useEffect(() => {
       if (
-        !supportsStructuredDraftModes
-        || !showingNewChatDraft
-        || effectiveNewChatPreset !== "group"
+        !showingNewChatDraft
+        || draftDefaultRecipientCatId
+        || effectiveNewChatPreset !== "default"
+        || hasVisibleParallelDraftTargets
+        || !rememberedDraftDefaultCatId
+        || draftCatIds.length > 0
+        || draftTemporaryParticipants.length > 0
       ) {
+        return;
+      }
+      setDraftCatIds([rememberedDraftDefaultCatId]);
+    }, [
+      draftCatIds.length,
+      draftDefaultRecipientCatId,
+      draftTemporaryParticipants.length,
+      effectiveNewChatPreset,
+      hasVisibleParallelDraftTargets,
+      rememberedDraftDefaultCatId,
+      setDraftCatIds,
+      showingNewChatDraft,
+    ]);
+
+    useEffect(() => {
+      if (!supportsStructuredDraftModes || !showingNewChatDraft) {
         return;
       }
 
       setDraftTemporaryParticipants((current) =>
-        syncLeadDraftTemporaryParticipantWithTarget({
-          participants: current,
-          target: draftExecutionTarget,
-        }));
+        syncDraftParticipantsWithDefaultTarget(current, draftExecutionTarget, effectiveNewChatPreset));
     }, [
       draftExecutionTarget.instance,
       draftExecutionTarget.model,
@@ -1552,16 +1593,9 @@ export function createWorkspaceProductApp({
     const onDraftExecutionTargetChange = useCallback(
       (nextDraftExecutionTarget: ExecutionTargetValue): void => {
         setDraftExecutionTarget(nextDraftExecutionTarget);
-        if (
-          supportsStructuredDraftModes
-          && showingNewChatDraft
-          && effectiveNewChatPreset === "group"
-        ) {
+        if (supportsStructuredDraftModes && showingNewChatDraft) {
           setDraftTemporaryParticipants((current) =>
-            syncLeadDraftTemporaryParticipantWithTarget({
-              participants: current,
-              target: nextDraftExecutionTarget,
-            }));
+            syncDraftParticipantsWithDefaultTarget(current, nextDraftExecutionTarget, effectiveNewChatPreset));
         }
       },
       [
@@ -1661,6 +1695,13 @@ export function createWorkspaceProductApp({
 
     const onUpdateChannelParticipant = useWorkspaceChannelParticipantUpdate<AppShellPayload>({
       updateChannelParticipantApi,
+      setBusy,
+      setFeedback,
+      setState,
+    });
+    const channelParticipantActions = useWorkspaceChannelParticipantActions<AppShellPayload>({
+      setChannelCoordinatorApi,
+      removeChannelParticipantApi,
       setBusy,
       setFeedback,
       setState,
@@ -1804,6 +1845,14 @@ export function createWorkspaceProductApp({
                     onUpdateChannelParticipant: visibleChatChannelId
                       ? (participantId, input) =>
                           onUpdateChannelParticipant(visibleChatChannelId, participantId, input)
+                      : undefined,
+                    onSetChannelCoordinator: visibleChatChannelId
+                      ? (participantId, coordinate) =>
+                          channelParticipantActions.setCoordinator(visibleChatChannelId, participantId, coordinate)
+                      : undefined,
+                    onRemoveChannelParticipant: visibleChatChannelId
+                      ? (participantId) =>
+                          channelParticipantActions.removeParticipant(visibleChatChannelId, participantId)
                       : undefined,
                     onOperatorAction,
                     autoResize,

@@ -18,7 +18,6 @@ export interface ConversationViewTopBarAvatar {
   avatarUrl: string | null;
   isBoss?: boolean;
   useNeutralAvatar?: boolean;
-  showLeadBadge?: boolean;
   pulsing?: boolean;
   /** A cat participant and the model copy this chat runs for it. */
   catId?: string | null;
@@ -124,7 +123,6 @@ export function ConversationViewTopBar({
                       : undefined}
                 >
                   {avatar.avatarUrl ? null : catInitials(avatar.label)}
-                  {avatar.showLeadBadge ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
                   {avatar.catId ? (
                     <CatAvatarSelectionAttention catId={avatar.catId} target={avatar.selectionTarget ?? null} />
                   ) : null}

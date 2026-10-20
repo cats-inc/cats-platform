@@ -119,25 +119,25 @@ test('a group popover only chooses the audience and its order, never a model', (
   assert.equal(view.queryByRole('dialog'), null, 'no row opens a picker');
 });
 
-test('the default chat popover shows start fresh with its explanation and closes after it', async (t) => {
+test('a lone default participant shows its model, its action and an explanation, and closes after it', async (t) => {
   reset(); t.after(reset); installProviderFetch();
   let startedFresh = 0;
   const implicit: DraftComposerStackParticipant = {
-    key: 'implicit:execution_target', name: 'Claude-CLI · opus', executionLabel: 'Claude-CLI · opus',
-    avatarColor: null, avatarUrl: null, isCat: false, catId: null, participantId: null,
+    key: 'temp:participant-default', name: 'Claude-CLI · opus', executionLabel: 'Claude-CLI · opus',
+    avatarColor: null, avatarUrl: null, isCat: false, catId: null, participantId: 'participant-default',
   };
   const view = render(<I18nProvider locale="en"><AudienceChip
     audienceParticipants={[implicit]}
     resolveTargetEditor={() => ({
       target,
       onChange: () => {},
-      action: { label: 'Start fresh', hint: 'Keeps the chat but starts a new branch.', onSelect: () => { startedFresh++; } },
+      actions: [{ label: 'Start fresh', hint: 'Keeps the chat but starts a new branch.', onSelect: () => { startedFresh++; } }],
     })}
   /></I18nProvider>);
 
   fireEvent.click(view.container.querySelector('.audienceChip')!);
   const dialog = view.getByRole('dialog');
-  assert.equal(dialog.querySelector('.audiencePopoverEditorHeader'), null, 'the implicit target has no identity header');
+  assert.equal(dialog.querySelector('.audiencePopoverEditorHeader'), null, 'a nameless default has no identity header');
   assert.match(dialog.textContent ?? '', /Keeps the chat but starts a new branch\./u);
   await waitFor(() => view.getByRole('combobox', { name: /^Provider/u }));
 

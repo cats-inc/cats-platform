@@ -63,15 +63,15 @@ test('audience participant builder maps temporary participants and implicit exec
     participantId: 'temp-1',
   });
 
-  const implicitExecutionTarget = buildAudienceParticipantFromExecutionTarget({
+  const parallelLane = buildAudienceParticipantFromExecutionTarget({
     provider: 'codex',
     instance: 'native',
     model: 'gpt-5.4',
     modelSelection: null,
     executionLabel: null,
-  });
-  assert.deepEqual(implicitExecutionTarget, {
-    key: 'implicit:execution_target',
+  }, 'parallel:1');
+  assert.deepEqual(parallelLane, {
+    key: 'parallel:1',
     name: 'Codex-CLI · gpt-5.4',
     executionLabel: 'Codex-CLI · gpt-5.4',
     avatarColor: null,

@@ -1,7 +1,6 @@
 import type { ChatChannelView, ChatChannelKind } from '../../api/contracts.js';
 
 export type ContinuityTopology =
-  | 'default_chat'
   | 'participant_chat'
   | 'direct_message'
   | 'telegram_direct_message';
@@ -20,12 +19,9 @@ export interface ContinuityRule {
   allowResume: boolean;
 }
 
+/** Any conversation that is not a DM is a room of participants (SPEC-125 FR-2). */
 export function classifyContinuityTopology(
-  channel: Pick<ChatChannelView, 'channelKind' | 'topic'>
-    & Partial<Pick<
-      ChatChannelView,
-      'assignedParticipants' | 'assignedCats' | 'participantAssignments' | 'catAssignments'
-    >>,
+  channel: Pick<ChatChannelView, 'channelKind' | 'topic'>,
 ): ContinuityTopology {
   const kind: ChatChannelKind | undefined = channel.channelKind;
 
@@ -34,17 +30,7 @@ export function classifyContinuityTopology(
     return isTelegram ? 'telegram_direct_message' : 'direct_message';
   }
 
-  const participants =
-    channel.assignedParticipants
-    ?? channel.assignedCats
-    ?? channel.participantAssignments
-    ?? channel.catAssignments
-    ?? [];
-  if (participants.some((participant) => participant.status === 'active')) {
-    return 'participant_chat';
-  }
-
-  return 'default_chat';
+  return 'participant_chat';
 }
 
 const THIRTY_MINUTES = 30 * 60 * 1000;
@@ -52,17 +38,6 @@ const FIFTEEN_MINUTES = 15 * 60 * 1000;
 
 export function resolveContinuityRule(topology: ContinuityTopology): ContinuityRule {
   switch (topology) {
-    case 'default_chat':
-      return {
-        topology,
-        resetBehavior: 'manual',
-        idleTimeoutMs: null,
-        compactionPolicy: 'none',
-        memoryFlushPhase: null,
-        allowSleep: false,
-        allowResume: false,
-      };
-
     case 'participant_chat':
       return {
         topology,

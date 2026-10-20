@@ -43,14 +43,13 @@ import {
   buildRunInspectorView,
 } from '../../../operator-loop/index.js';
 import type { ResolvedChannelParticipant } from '../../../channelParticipants.js';
-import type { AudienceTargetEditor } from '../AudienceChip.js';
+import type { AudienceTargetEditor, AudienceTargetEditorAction } from '../AudienceChip.js';
 import { type ExecutionTargetValue } from '../ExecutionTarget.js';
 import type { DraftComposerStackParticipant } from '../newConversationDraftSupport.js';
 import { resolveConversationTargetEditor } from './conversationTargetEditor.js';
 import type { MessageChoicesSubmitInput } from '../MessageChoices.js';
 import {
   isDirectConversationMode,
-  isDefaultChatConversationMode,
   resolveConversationMode,
 } from '../../../../../app/renderer/productShell/conversationMode.js';
 import { useTranscriptAutoScroll } from '../../hooks/useTranscriptAutoScroll.js';
@@ -169,7 +168,6 @@ export interface ConversationViewRenderContext {
   operatorView: ChatOperatorView | null;
   inspectedRun: ChatRunInspectorView | null;
   isDirectLane: boolean;
-  isDefaultChatComposer: boolean;
   sidePanelOpen: boolean;
   openSidePanelTo: (section: string) => void;
 }
@@ -177,7 +175,6 @@ export interface ConversationViewRenderContext {
 export interface ConversationViewComposerTargetSlotContext {
   payload: AppShellPayload;
   composerBusy: boolean;
-  selectedExecutionTarget?: ExecutionTargetValue;
   composerRecipients: ReturnType<typeof buildChatComposerRecipients>;
   defaultRecipientParticipantId: string | null;
   composerStackParticipants: ChatComposerStackParticipantView[];
@@ -186,7 +183,6 @@ export interface ConversationViewComposerTargetSlotContext {
   assignedCatRecords: ChatCat[];
   leadCatRecord: ChatCat | null;
   isDirectLane: boolean;
-  isDefaultChatComposer: boolean;
   activeWorkflowShape: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys: string[] | null;
@@ -231,8 +227,6 @@ export interface ConversationViewProps {
     outcomeId?: string | null;
   }) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
-  selectedExecutionTarget?: ExecutionTargetValue;
-  onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
   onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
   activeWorkflowShape?: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
@@ -258,6 +252,9 @@ export interface ConversationViewProps {
       modelSelection?: ExecutionTargetValue['modelSelection'];
     },
   ) => Promise<void>;
+  /** Binds the conversation's coordinator to a participant, or clears it. */
+  onSetChannelCoordinator?: (participantId: string, coordinate: boolean) => Promise<void>;
+  onRemoveChannelParticipant?: (participantId: string) => Promise<void>;
   buildTranscriptMessageActions?: (
     input: TranscriptMessageActionContext,
   ) => ReadonlyArray<TranscriptMessageActionDescriptor>;
@@ -305,8 +302,6 @@ export function ConversationView({
   onRetryMessage,
   onOperatorAction,
   autoResize,
-  selectedExecutionTarget,
-  onExecutionTargetChange,
   onDirectLaneExecutionTargetChange,
   activeWorkflowShape = 'sequential',
   onToggleActiveWorkflowShape,
@@ -322,6 +317,8 @@ export function ConversationView({
   onCompareSendScopeChange,
   onRelayMessage,
   onUpdateChannelParticipant,
+  onSetChannelCoordinator,
+  onRemoveChannelParticipant,
   buildTranscriptMessageActions,
   renderStatusRow,
   renderTopBarExtraActions,
@@ -383,7 +380,6 @@ export function ConversationView({
     comparePrevChannelId,
     compareNextChannelId,
   } = compareState;
-  const isDefaultChatComposer = isDefaultChatConversationMode(conversationMode);
   const isDirectLane = isDirectConversationMode(conversationMode);
   const {
     activeRoomParticipants,
@@ -406,11 +402,7 @@ export function ConversationView({
     activeAssignedCats,
     isDirectLane,
   });
-  const layoutMode: ChatLayoutMode = isDirectLane
-    ? 'direct_message'
-    : activeRoomParticipants.length > 0
-      ? 'participant_chat'
-      : 'default_chat';
+  const layoutMode: ChatLayoutMode = isDirectLane ? 'direct_message' : 'participant_chat';
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cwd');
   const [viewportWidth, setViewportWidth] = useState(() =>
@@ -747,8 +739,6 @@ export function ConversationView({
     return buildChatComposerRecipients({
       isDirectLane,
       directLaneCat,
-      isDefaultChatComposer,
-      selectedExecutionTarget,
       defaultRecipientParticipant,
       resolveParticipantCatRecord,
       resolveParticipantDisplayName,
@@ -757,10 +747,8 @@ export function ConversationView({
     defaultRecipientParticipant,
     directLaneCat,
     isDirectLane,
-    isDefaultChatComposer,
     resolveParticipantCatRecord,
     resolveParticipantDisplayName,
-    selectedExecutionTarget,
   ]);
   const layoutMetrics = useMemo(
     () => resolveLayoutMetrics(layoutMode, viewportWidth),
@@ -876,9 +864,53 @@ export function ConversationView({
     scrollToBottom();
   }, [isNearBottom, scrollToBottom, transcriptScrollKey, visibleLiveIndicator?.active]);
 
+  // A room participant's popover moves or clears the coordinator (SPEC-125
+  // FR-12) and removes the participant while another remains (FR-4). A DM
+  // stays coordinated by its cat.
+  const coordinatorParticipantId = selectedChannel.coordinatorParticipantId ?? null;
+  const resolveParticipantActions = useCallback(
+    (participantId: string): AudienceTargetEditorAction[] => {
+      if (isDirectLane) {
+        return [];
+      }
+      const actions: AudienceTargetEditorAction[] = [];
+      if (onSetChannelCoordinator) {
+        const coordinates = participantId === coordinatorParticipantId;
+        actions.push({
+          label: t(coordinates
+            ? messageKeys.chatParticipantsStopCoordinating
+            : messageKeys.chatParticipantsMakeCoordinator),
+          hint: t(coordinates
+            ? messageKeys.chatParticipantsStopCoordinatingHint
+            : messageKeys.chatParticipantsMakeCoordinatorHint),
+          onSelect: () => {
+            void onSetChannelCoordinator(participantId, !coordinates);
+          },
+        });
+      }
+      if (onRemoveChannelParticipant && activeRoomParticipants.length > 1) {
+        actions.push({
+          label: t(messageKeys.chatParticipantsRemove),
+          danger: true,
+          onSelect: () => {
+            void onRemoveChannelParticipant(participantId);
+          },
+        });
+      }
+      return actions;
+    },
+    [
+      activeRoomParticipants.length,
+      coordinatorParticipantId,
+      isDirectLane,
+      onRemoveChannelParticipant,
+      onSetChannelCoordinator,
+      t,
+    ],
+  );
   // The composer chip edits the same target the send path uses: the
-  // conversation's own participant target, or the default chat's target.
-  // A cat's default model stays on the cat's own page.
+  // participant's own target. A cat's default model stays on the cat's own
+  // page.
   const resolveTargetEditor = useCallback(
     (participant: DraftComposerStackParticipant): AudienceTargetEditor | null => {
       return resolveConversationTargetEditor(participant, {
@@ -887,8 +919,6 @@ export function ConversationView({
         directLaneCat,
         directLaneExecutionTarget,
         isDirectLane,
-        selectedExecutionTarget,
-        onExecutionTargetChange,
         onDirectLaneExecutionTargetChange,
         onUpdateParticipantTarget: onUpdateChannelParticipant
           ? (participantId, value) => {
@@ -906,6 +936,7 @@ export function ConversationView({
             }
           : undefined,
         openCatPage: (catId) => navigate(`/entities/cats/${encodeURIComponent(catId)}`),
+        resolveParticipantActions,
       });
     },
     [
@@ -916,9 +947,8 @@ export function ConversationView({
       isDirectLane,
       navigate,
       onDirectLaneExecutionTargetChange,
-      onExecutionTargetChange,
       onUpdateChannelParticipant,
-      selectedExecutionTarget,
+      resolveParticipantActions,
     ],
   );
 
@@ -936,14 +966,12 @@ export function ConversationView({
     operatorView,
     inspectedRun,
     isDirectLane,
-    isDefaultChatComposer,
     sidePanelOpen,
     openSidePanelTo,
   };
   const composerTargetSlotContext: ConversationViewComposerTargetSlotContext = {
     payload,
     composerBusy,
-    selectedExecutionTarget,
     composerRecipients,
     defaultRecipientParticipantId: defaultRecipientParticipant?.participantId ?? null,
     composerStackParticipants,
@@ -952,7 +980,6 @@ export function ConversationView({
     assignedCatRecords,
     leadCatRecord: defaultRecipientCatRecord,
     isDirectLane,
-    isDefaultChatComposer,
     activeWorkflowShape,
     onToggleActiveWorkflowShape,
     activeAudienceKeys,
@@ -968,7 +995,6 @@ export function ConversationView({
       composerStackParticipants={composerStackParticipants}
       directLaneCat={directLaneCat}
       isDirectLane={isDirectLane}
-      isDefaultChatComposer={isDefaultChatComposer}
       activeWorkflowShape={activeWorkflowShape}
       onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
       activeAudienceKeys={activeAudienceKeys}
@@ -1026,8 +1052,6 @@ export function ConversationView({
             catId: participant.pulseCatId,
             selectionTarget: participant.selectionTarget,
             // An avatar edits this conversation's target for its participant.
-            // The default chat's implicit target has no avatar; it stays on
-            // the composer chip.
             editor: resolveTargetEditor({
               key: participant.key,
               name: participant.label,
@@ -1177,7 +1201,6 @@ export function ConversationView({
         defaultRecipientParticipantId={defaultRecipientParticipant?.participantId ?? null}
         composerStackParticipants={composerStackParticipants}
         isDirectLane={isDirectLane}
-        isDefaultChatComposer={isDefaultChatComposer}
         activeWorkflowShape={activeWorkflowShape}
         onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
         activeAudienceKeys={activeAudienceKeys}

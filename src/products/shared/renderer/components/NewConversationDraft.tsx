@@ -20,6 +20,7 @@ import {
   buildDraftParticipantExecutionLabel,
   createDraftTemporaryParticipantFromAssistantPreset,
   draftHasAssistantPresetParticipant,
+  DRAFT_GROUP_MINIMUM_ENABLED,
   type DraftParallelTarget,
   type DraftTemporaryParticipant,
   type DraftTemporaryParticipantUpdate,
@@ -524,6 +525,7 @@ export function NewConversationDraft({
   const {
     chatCats,
     assistantPresets,
+    draftTemporaryParticipants: draftRosterTemporaryParticipants,
     draftParticipants,
     defaultRecipientCat,
     effectiveDefaultRecipientCat,
@@ -533,7 +535,6 @@ export function NewConversationDraft({
     draftSuggestionContext,
     visibleStarterSuggestions,
     resolvedGreeting,
-    activePanelExecutionTarget,
     isAckPending,
     isSubmittingFirstTurn,
     draftComposerRecipients,
@@ -548,8 +549,6 @@ export function NewConversationDraft({
     parallelTargets,
     greeting,
     greetingPool,
-    draftHighlightedCatId,
-    draftCatExecutionTargetOverrides,
     selectedExecutionTarget,
     busy,
     t,
@@ -652,17 +651,12 @@ export function NewConversationDraft({
       return groupComposerParticipants.length > 0 ? [groupComposerParticipants[0]] : [];
     }
 
-    // Single participant modes: cat or temporary participant
+    // One participant: the cat, or the default or other temporary participant.
     if (effectiveDefaultRecipientCat) {
       return [buildAudienceParticipantFromCat(effectiveDefaultRecipientCat)];
     }
     if (effectiveDefaultRecipientTemporaryParticipant) {
       return [buildAudienceParticipantFromTemporaryParticipant(effectiveDefaultRecipientTemporaryParticipant)];
-    }
-
-    // Default implicit: use the current execution target value
-    if (activePanelExecutionTarget) {
-      return [buildAudienceParticipantFromExecutionTarget(activePanelExecutionTarget)];
     }
 
     return [];
@@ -687,7 +681,8 @@ export function NewConversationDraft({
     onParallelTargetChange,
     draftCatExecutionTargetOverrides,
     onDraftCatExecutionTargetOverride,
-    draftTemporaryParticipants,
+    draftTemporaryParticipants: draftRosterTemporaryParticipants,
+    draftParticipantCount,
     onUpdateDraftTemporaryParticipant,
     openCatPage: (catId) => navigate(`/entities/cats/${encodeURIComponent(catId)}`),
   });
@@ -730,7 +725,7 @@ export function NewConversationDraft({
   const canRemoveLeadGroupParticipant =
     !isSubmittingFirstTurn
     && (
-      entryPreset === 'group'
+      entryPreset === 'group' && DRAFT_GROUP_MINIMUM_ENABLED
         ? leadRosterLength > 2
         : leadRosterLength >= 2
     );
@@ -774,7 +769,7 @@ export function NewConversationDraft({
           id: assistantPreset.id,
           name: assistantPreset.name,
           executionLabel: buildDraftParticipantExecutionLabel(target),
-          added: draftHasAssistantPresetParticipant(draftTemporaryParticipants, assistantPreset.id),
+          added: draftHasAssistantPresetParticipant(draftRosterTemporaryParticipants, assistantPreset.id),
           reviewReasons: review.requiresActivationReview ? review.reviewReasons : null,
         };
       })
@@ -1191,7 +1186,7 @@ export function NewConversationDraft({
               disabled={
                 (!composerDraft.trim() && draftFiles.length === 0)
                 || isSubmittingFirstTurn
-                || (isGroupDraft && draftParticipantCount < 2)
+                || (DRAFT_GROUP_MINIMUM_ENABLED && isGroupDraft && draftParticipantCount < 2)
               }
               type="submit"
               aria-label={isParallelMode
