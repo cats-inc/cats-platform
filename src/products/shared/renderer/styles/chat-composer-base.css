@@ -922,6 +922,10 @@
 }
 
 .composerHeaderRow {
+  /* Context menus sit above the parallel card's layer (3), including in
+   * the draft carousel. An open attachment menu retains its higher layer. */
+  position: relative;
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -956,6 +960,11 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.composerHeaderRight .composerSelectChipMenu {
+  left: auto;
+  right: 0;
 }
 
 .composerHeaderChooseButton {

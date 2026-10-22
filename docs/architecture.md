@@ -772,6 +772,17 @@ treated as separate renderer responsibilities:
 
 Group chat and sequential-room rendering must not depend on the companion hook.
 
+Chat, Code and Work share composer sizing and docking across their default,
+group/team and parallel/peer presets. Controlled draft values (including clears,
+restores and read-only parallel mirrors) resize before paint; width changes
+remeasure on an animation frame without a ResizeObserver feedback loop. Docking
+measures and offsets the complete composer stack so cwd/policy/surface chips and
+footer accessories remain attached to the card. Header menus sit above the
+parallel card, while its open attachment menu keeps its existing higher layer.
+Right-side context menus align to their trigger's right edge. Mode-specific
+recipient controls and the draft carousel's positioning/3D presentation remain
+owned by their existing components.
+
 ## Memory Layering Direction
 
 `Cats` should treat memory as four product-facing layers above provider

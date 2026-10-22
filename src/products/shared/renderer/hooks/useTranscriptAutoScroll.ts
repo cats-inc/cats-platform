@@ -19,6 +19,11 @@ function findScrollContainer(element: HTMLDivElement | null): HTMLElement | null
   return element?.closest('.artifactCanvasSurfaceMain, .canvas') as HTMLElement | null;
 }
 
+function composerDockElement(card: HTMLElement): HTMLElement {
+  // Header chips and footer accessories travel with the card as it grows upward.
+  return card.closest<HTMLElement>('.composerAreaStack') ?? card;
+}
+
 function readComposerOverlapInset(composerCardElement: HTMLElement): number {
   const bottomValue = Number.parseFloat(
     globalThis.getComputedStyle(composerCardElement).bottom || '0',
@@ -30,7 +35,7 @@ function resolveNearBottomThreshold(composerCardElement: HTMLElement | null): nu
   if (!composerCardElement) {
     return NEAR_BOTTOM_PX;
   }
-  return Math.ceil(NEAR_BOTTOM_PX + composerCardElement.getBoundingClientRect().height);
+  return Math.ceil(NEAR_BOTTOM_PX + composerDockElement(composerCardElement).getBoundingClientRect().height);
 }
 
 export function useTranscriptAutoScroll(options: {
@@ -83,7 +88,7 @@ export function useTranscriptAutoScroll(options: {
     }
 
     const nextBottomInset = composerCardElement
-      ? Math.ceil(readComposerOverlapInset(composerCardElement) + COMPOSER_CLEARANCE_PX)
+      ? Math.ceil(readComposerOverlapInset(composerDockElement(composerCardElement)) + COMPOSER_CLEARANCE_PX)
       : 0;
 
     if (transcriptBottomInsetRef.current === nextBottomInset) {
@@ -103,7 +108,8 @@ export function useTranscriptAutoScroll(options: {
       return;
     }
 
-    const composerHeight = Math.ceil(composerCardElement.getBoundingClientRect().height);
+    const dockElement = composerDockElement(composerCardElement);
+    const composerHeight = Math.ceil(dockElement.getBoundingClientRect().height);
     if (composerHeight <= 0) {
       return;
     }
@@ -117,7 +123,7 @@ export function useTranscriptAutoScroll(options: {
     const nextComposerFlowOffset = Math.max(0, composerHeight - nextBaseline);
     if (composerFlowOffsetRef.current !== nextComposerFlowOffset) {
       composerFlowOffsetRef.current = nextComposerFlowOffset;
-      composerCardElement.style.marginTop = nextComposerFlowOffset > 0
+      dockElement.style.marginTop = nextComposerFlowOffset > 0
         ? `${-nextComposerFlowOffset}px`
         : '';
     }
@@ -216,7 +222,7 @@ export function useTranscriptAutoScroll(options: {
         transcriptListElement.style.paddingBottom = '';
       }
       if (composerCardElement) {
-        composerCardElement.style.marginTop = '';
+        composerDockElement(composerCardElement).style.marginTop = '';
       }
       if (bottomSentinelElement) {
         bottomSentinelElement.style.height = '';
@@ -267,7 +273,7 @@ export function useTranscriptAutoScroll(options: {
     const observer = new ResizeObserver(() => {
       syncComposerDocking();
     });
-    observer.observe(composerCardElement);
+    observer.observe(composerDockElement(composerCardElement));
     return () => {
       observer.disconnect();
     };

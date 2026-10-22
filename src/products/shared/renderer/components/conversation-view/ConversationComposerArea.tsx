@@ -11,6 +11,7 @@ import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import { useVoiceInputComposer } from '../../hooks/useVoiceInputComposer.js';
 import { truncatePath } from '../../workspaceChatUtils.js';
 import { ComposerHighlight } from '../ComposerHighlight.js';
+import { ComposerTextarea } from '../ComposerTextarea.js';
 import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
 import { ConversationComposerTargetSlot } from './ConversationComposerTargetSlot.js';
 import type { ChatComposerStackParticipantView } from './conversationViewSupport.js';
@@ -265,17 +266,15 @@ export function ConversationComposerArea({
           cats={payload.chat.cats}
           excludedMentionNames={directLaneExcludedMentionNames}
         />
-        <textarea
+        <ComposerTextarea
           ref={textareaRef}
+          autoResize={autoResize}
           className="composerInput composerInputOverlay"
           rows={1}
           placeholder={composerPlaceholder}
           value={composerDraft}
           disabled={composerBusy}
-          onChange={(event) => {
-            onComposerChange(event.target.value);
-            autoResize(event.target);
-          }}
+          onChange={(event) => onComposerChange(event.target.value)}
           onKeyDown={(event) => void onComposerKeyDown(event)}
         />
       </div>

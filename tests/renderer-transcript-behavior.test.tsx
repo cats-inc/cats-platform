@@ -82,11 +82,11 @@ for (const product of PRODUCT_SURFACES) {
     assert.match(source, /composerCardRef: RefCallback<HTMLElement>/u);
     assert.match(source, /bottomSentinelRef: RefCallback<HTMLDivElement>/u);
     assert.match(source, /getComputedStyle\(composerCardElement\)\.bottom/u);
-    assert.match(source, /NEAR_BOTTOM_PX \+ composerCardElement\.getBoundingClientRect\(\)\.height/u);
+    assert.match(source, /NEAR_BOTTOM_PX \+ composerDockElement\(composerCardElement\)\.getBoundingClientRect\(\)\.height/u);
     assert.match(source, /style\.paddingBottom = nextBottomInset > 0/u);
     assert.match(source, /style\.marginTop = nextComposerFlowOffset > 0/u);
     assert.match(source, /bottomSentinelElement\.style\.height = `\$\{nextBottomSentinelHeight\}px`/u);
-    assert.match(source, /observer\.observe\(composerCardElement\)/u);
+    assert.match(source, /observer\.observe\(composerDockElement\(composerCardElement\)\)/u);
     assert.match(source, /shouldAutoScrollRef/u);
     assert.match(source, /isScrollNearBottom/u);
     assert.match(source, /setIsNearBottom\(true\)/u);

@@ -124,6 +124,41 @@ shared contracts. Reuse passing checks for unchanged inputs; full local
 `npm test` remains available for explicit requests, full-suite diagnosis, or
 changes whose impact cannot be bounded confidently.
 
+### Composer sizing, attached chrome and menu layers
+
+For Platform #296/#297, exercise controlled clears/restores, remounts, read-only
+mirrors, width reflow and whole-stack docking in the focused renderer tests:
+
+```sh
+node --import tsx --test tests/composer-layout.test.tsx tests/conversation-scroll-memory.test.tsx tests/renderer-transcript-behavior.test.tsx tests/draft-composer-visibility-matrix.test.tsx tests/started-conversation-composer-matrix.test.tsx tests/screenshot-composer-action.test.tsx
+node scripts/testing/composer-layout-smoke.mjs
+```
+
+The browser check uses existing Electron development dependencies, or an explicit
+`CATS_TEST_BROWSER_EXECUTABLE` pointing to an existing Electron binary. It builds
+production Chat/Code/Work draft wrappers, their shared conversation composer and
+styles in an isolated profile. Its 18 cases cover three products × three presets
+× draft/started, including real transcript/docked-state assertions. It checks
+expansion, submit/clear, restored drafts, the header/card gap, chip hit targets,
+permission menus where editable and attachment menus. Additional checks cover
+Chat direct lanes and 1078×632, 768×800 and 1440×1000 viewports. The shared
+navigation smoke separately protects group/direct controls and sidebar overflow.
+All sends are local fixture callbacks: no provider CLI or real-profile records.
+Detailed geometry and PNG evidence are written to ignored
+`build/composer-layout-smoke/`; screenshots require visual inspection. This is
+isolated renderer acceptance, not an installed Desktop release or live-provider
+acceptance. Keep the native carousel transforms and each mode's recipient
+semantics intact; broad z-index changes are not a substitute for hit testing.
+
+2026-10-23 validation: 58 focused bundled tests passed in CI's shared-process
+mode, alongside renderer/test typechecks, server and Vite builds, the 18-case
+Windows Electron 41.2.0 matrix and existing navigation smoke. Geometry/screenshot
+inspection confirmed attached chrome and restored heights; renderer errors and
+provider calls were zero in the browser fixture. A separate source Candidate
+built and reached first-run provider selection, then drained and exited with its
+two sidecars; that startup check does not extend the fixture verdict to an
+installed profile. No independent review or macOS/Linux native run was performed.
+
 ### Docs-only changes in CI
 
 The CI workflow first checks whether every changed file is under `docs/`. If so,

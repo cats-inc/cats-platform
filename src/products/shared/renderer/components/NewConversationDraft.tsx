@@ -85,6 +85,7 @@ import { PermissionModeChip } from './PermissionModeChip.js';
 import { WorkspaceModeChip } from './WorkspaceModeChip.js';
 import { useRepoProbe } from '../hooks/useRepoProbe.js';
 import { useVoiceInputComposer } from '../hooks/useVoiceInputComposer.js';
+import { ComposerTextarea } from './ComposerTextarea.js';
 import {
   messageKeys,
   type MessageInterpolationValues,
@@ -992,14 +993,15 @@ export function NewConversationDraft({
           })}
         </div>
       ) : null}
-      <textarea
+      <ComposerTextarea
         ref={textareaRef}
+        autoResize={autoResize}
         className="composerInput"
         rows={1}
         placeholder={composerPlaceholder}
         value={composerDraft}
         disabled={isSubmittingFirstTurn}
-        onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
+        onChange={(event) => onComposerChange(event.target.value)}
         onKeyDown={(event) => void onComposerKeyDown(event)}
       />
       <div className="composerBottomRow">
@@ -1473,7 +1475,8 @@ export function NewConversationDraft({
               per-branch overrides are explicitly not in the spec. Clicking
               the textarea jumps the carousel back to the lead so the user
               edits the source instead of (formerly) detaching a copy. */}
-          <textarea
+          <ComposerTextarea
+            autoResize={autoResize}
             className="composerInput composerInputJumpToLead"
             rows={1}
             placeholder={composerPlaceholder}
