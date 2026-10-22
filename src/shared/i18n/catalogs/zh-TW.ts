@@ -837,7 +837,7 @@ export const zhTWCatalog: MessageCatalog = {
   'apps.permission.clipboardWrite': '複製到剪貼簿',
   'settings.data.resetAllDataTitle': '重設 Platform 資料',
   'settings.data.resetAllDataDescription':
-    '永久清除 Platform 的聊天、貓咪、帳號、登入工作階段、初始設定狀態、備份（含遷移備份）、記憶與陪伴資料、本機知識、證據紀錄、Telegram／LINE 綁定與交付狀態、排程、診斷快取，以及 Platform 目錄中的附件與 runtime-history 快取。保留主機偏好、組態與安裝識別、已安裝的 Apps／plugins 及其資料、Desktop 與 Runtime 資料、供應器 CLI 登入與原生對話紀錄，以及外部工作區檔案。Desktop 視窗會回到預設的大小與位置。請先停止進行中的對話與任務。完成後返回初始設定精靈；已清除的資料無法復原。',
+    '永久清除 Platform 的聊天、貓咪、帳號、登入工作階段、初始設定狀態、備份（含遷移備份）、記憶與陪伴資料、本機知識、證據紀錄、Telegram／LINE 綁定與交付狀態、排程、診斷快取，以及 Platform 目錄中的附件與 runtime-history 快取，並將介面與回覆語言、大廳動畫、Code 預覽伺服器與已存版面偏好恢復預設。保留 Desktop 開機啟動與系統匣偏好、組態與安裝識別、已安裝的 Apps／plugins 及其資料、Desktop 與 Runtime 資料、供應器 CLI 登入與原生對話紀錄，以及外部工作區檔案。Desktop 視窗會回到預設的大小與位置。請先停止進行中的對話與任務。完成後返回初始設定精靈；已清除的資料無法復原。',
   'settings.data.resetButtonResetting': '重設中…',
   'settings.data.resetButtonLabel': '清除 Platform 資料',
   'settings.data.resetFailure': '重設安裝失敗。',

@@ -77,7 +77,7 @@ export const PLATFORM_RESET_DIRECTORIES = [
   'runtime-history', 'runtime-history-cache', 'cache/runtime-history', 'knowledge',
 ] as const;
 export const PLATFORM_RESET_RETAINED = [
-  'host preferences, configuration and installation identity', 'installed Apps/plugins and their data',
+  'Desktop startup and system tray preferences, configuration and installation identity', 'installed Apps/plugins and their data',
   'Desktop and Runtime data', 'provider CLI logins and native transcripts',
   'files in external workspaces',
 ] as const;

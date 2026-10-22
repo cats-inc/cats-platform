@@ -125,6 +125,19 @@ export async function writePlatformPreferences(
   await writeFile(filePath, JSON.stringify(prefs, null, 2) + '\n', 'utf-8');
 }
 
+/**
+ * Reset Platform data returns every preference to its default except the
+ * Desktop startup and system tray choices, which the host applies to the OS.
+ */
+export function platformPreferencesAfterDataReset(current: PlatformPreferences): PlatformPreferences {
+  return {
+    ...DEFAULTS,
+    startAtLogin: current.startAtLogin,
+    openWindowOnStartup: current.openWindowOnStartup,
+    systemTrayEnabled: current.systemTrayEnabled,
+  };
+}
+
 /** Settings > Code "Cats may run preview servers", read fresh for each check. */
 export async function readCodePreviewServersEnabled(chatStatePath: string): Promise<boolean> {
   return (await readPlatformPreferences(chatStatePath)).codePreviewServersEnabled;

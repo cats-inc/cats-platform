@@ -30,9 +30,17 @@ and history caches. Referenced attachment/evidence directories are erased only
 when contained within the Platform root; redirected ancestors are rejected.
 Deletion outcomes are logged by relative path without record contents.
 
-Host preferences/configuration and installation identity, installed Apps/plugins
-and their data, Desktop/Runtime profiles, provider CLI logins/native transcripts,
-and external workspace files remain. The bilingual UI lists these boundaries.
+Platform preferences in `config/platform-preferences.json` return to their
+defaults (interface and reply language, lobby animation, Code preview servers,
+last product), except the Desktop startup and system tray choices, which the
+host applies to the OS. After the server confirms, the renderer clears its
+origin's `localStorage`: cat covers, sidebar and panel layout, Guide Cat state
+and other per-record UI state.
+
+Desktop startup/system tray preferences, configuration and installation
+identity, installed Apps/plugins and their data, Desktop/Runtime profiles,
+provider CLI logins/native transcripts, and external workspace files remain.
+The bilingual UI lists these boundaries.
 The one Desktop exception is the main window placement: on Desktop, reset forgets
 `window-state.json` and returns the window to its default size and position.
 This operation is not an uninstall or provider-account logout.

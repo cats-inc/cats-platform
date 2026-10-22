@@ -20,6 +20,7 @@ import { createTransportWorkOutbox } from '../build/server/platform/transports/w
 import { createTransportWorkActionTokenStore, encodeTransportWorkCallbackData } from '../build/server/platform/transports/work-delivery/actionTokens.js';
 import { createRuntimeClientDiagnosticSink, createRuntimeClientDiagnosticRecord } from '../build/server/runtime/clientDiagnostics.js';
 import { preparePlatformOwnedDataReset, removePlatformOwnedData, PLATFORM_RESET_FILES, PLATFORM_RESET_DIRECTORIES, PLATFORM_RESET_RETAINED } from '../build/server/shared/platformDataReset.js';
+import { readPlatformPreferences, writePlatformPreferences } from '../build/server/shared/platformPreferences.js';
 
 async function seed(file, text = 'pre-reset-private-data') {
   await mkdir(path.dirname(file), { recursive: true });
@@ -139,8 +140,15 @@ test('real reset route purges backups and cached transport/activity data, reject
     request.on('error', reject); request.end();
   });
   t.after(() => remoteStream.response.destroy());
+  await writePlatformPreferences(config.chatStatePath, { lastProductSurface: 'work', startAtLogin: false,
+    openWindowOnStartup: true, systemTrayEnabled: false, lobbyAnimationMode: 'full',
+    assistantResponseLanguage: 'zh-TW', uiLanguagePreference: 'zh-TW', codePreviewServersEnabled: true });
   const response = await reset();
   assert.equal(response.status, 200, await response.text());
+  // Only the Desktop startup and tray choices, which the host applies to the OS, survive.
+  assert.deepEqual(await readPlatformPreferences(config.chatStatePath), { lastProductSurface: null,
+    startAtLogin: false, openWindowOnStartup: true, systemTrayEnabled: false, lobbyAnimationMode: 'reduced',
+    assistantResponseLanguage: 'unspecified', uiLanguagePreference: 'auto', codePreviewServersEnabled: false });
   assert.equal(relayStore.getProcessedUpdateCount(), 0);
   assert.deepEqual(await activity.list('cat-old'), []);
   assert.equal((await readdir(config.platformStateDir)).some(file => file.endsWith('.bak')), false);
@@ -234,7 +242,7 @@ test('every locale discloses every erased category and the retained ownership bo
       assert.ok(match, `reset target requires a disclosed category: ${target}`);
       assert.ok(copy.includes(match[locale === 'en' ? 1 : 2]), `${locale}: ${target}`);
     }
-    for (const category of locale === 'en' ? PLATFORM_RESET_RETAINED : ['主機偏好、組態與安裝識別', 'Apps／plugins 及其資料', 'Desktop 與 Runtime', 'CLI 登入與原生對話紀錄', '外部工作區']) assert.ok(copy.includes(category), `${locale}: ${category}`);
+    for (const category of locale === 'en' ? PLATFORM_RESET_RETAINED : ['Desktop 開機啟動與系統匣偏好、組態與安裝識別', 'Apps／plugins 及其資料', 'Desktop 與 Runtime', 'CLI 登入與原生對話紀錄', '外部工作區']) assert.ok(copy.includes(category), `${locale}: ${category}`);
   }
 });
 
