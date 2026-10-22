@@ -96,7 +96,7 @@ try {
   assert.equal(submissions, 1);
   // The preview swaps in the saved bytes asynchronously after the job is listed.
   await frame.locator('#sample-image[src^="blob:"]').waitFor({ state: 'attached' });
-  const preview = await frame.locator('#sample-image').evaluate((element: HTMLImageElement) => ({ width: element.naturalWidth, src: element.src }));
+  const preview = await frame.locator('#sample-image').evaluate(async (element: HTMLImageElement) => { await element.decode(); return { width: element.naturalWidth, src: element.src }; });
   assert.equal(preview.width, 1024); assert.ok(preview.src.startsWith('blob:'));
   await frame.locator('#expand').click(); await frame.locator('#image-dialog[open]').waitFor();
   await frame.getByRole('button', { name: '關閉預覽' }).click();
