@@ -2,6 +2,76 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-22 — Desktop 0.9.1 standard preview with the Work landing restored
+
+Desktop **0.9.1** is the owner-selected standard-profile preview with Runtime
+**0.5.3** and Usage **0.5.3**. It returns Cats Work to its +New Work landing and
+widens what Reset Platform data returns to defaults. Public APIs, configuration
+contracts and persisted formats remain compatible within the 0.9 host line, and
+no data migration is required. No Platform npm, Runtime npm, cats-one or App
+publication is selected.
+
+- **Work lands on +New Work.** Switching to Cats Work, the `/work` index and
+  unknown Work routes open the new-work draft again. Overview stays in the
+  sidebar, and the retained War Room/Cockpit links still redirect to it. This
+  corrects 0.9.0, where Overview had also become the default landing without
+  that landing being confirmed (#292).
+- **Reset Platform data returns preferences and browser state to defaults.**
+  Besides the erased Platform data, reset now returns the interface and reply
+  language, lobby animation and Code preview server preferences to their
+  defaults. After the server confirms, the app clears its browser storage: cat
+  covers, sidebar and panel layout, Guide Cat state and other per-record UI
+  state. The Desktop start-at-login, open-window-on-startup and system tray
+  choices remain, as do the other boundaries in
+  [Reset Platform data](deployment.md#reset-platform-data). The Settings
+  disclosure lists the new scope in both languages. No reset is performed by
+  release automation (#294).
+- **Upgrading.** From 0.9.0, nothing is required. From 0.8.x, the Platform
+  reset described for 0.9.0 is still required before updating; under 0.9.1 that
+  reset also returns the preferences above to their defaults.
+- **Configuration templates.** Platform's `.env.example` now lists the Code
+  live preview, Artifact Canvas policy, companion life loop, Telegram `/work`
+  golden path, `CATS_RUNTIME_ENV_FILE` and Desktop port/readiness/shutdown/update
+  check variables the configuration already read, and a test keeps it in step
+  with the server and Desktop host configuration. Runtime's template adds its
+  ACP stdio proxy pair. `CATS_MAX_BOSS_CATS` has been ignored since 0.9.0 and
+  can be removed from existing `.env` files. No variable changes meaning
+  (#293, Runtime #176).
+- **Exact Runtime source.** Every OS build and complete source archive bundle
+  Runtime `635b450f9acea209a1d6408de0116ecf911a5184` (package 0.5.3). It differs
+  from Desktop 0.9.0's Runtime only by its `.env.example` and setup guide
+  (#176). Platform source is the immutable merge commit selected for dispatch
+  and recorded by the release descriptor and source manifest.
+- **Exact App selection.** Usage 0.5.3 stays selected from
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.3/usage-0.5.3.catsapp`,
+  SHA-256 `80255075c08a73a67e08c9772fa9edf381c8bc165364b81d9ad39d54ca6a3794`,
+  producer source `715ae28e0d8265d850567dfc4cd370e32b313e4a`. The public
+  download matches the lock, and its Platform ^0.6.0 floor and SDK ^1.2.0 range
+  accept host 0.9.1 / SDK 1.5.0. The App SDK is unchanged at 1.5.0. Studio
+  remains outside the default bundle; both knowledge bundles' `0.9.x` ranges
+  include 0.9.1.
+- **Signing and updates.** Dispatch desktop-release.yml with tag=v0.9.1, the
+  Runtime SHA above and unsigned=false; the workflow creates the preview tag.
+  Expected trust is macOS signed + notarized, Windows unsigned (no certificate)
+  for both installers, and Linux n/a for both packages. Standard-profile 0.9.0
+  installs retain their update path across architectures: macOS uses the
+  universal ZIP and the same Developer ID team, Windows stays unsigned to
+  unsigned, and Linux uses its matching .deb. No installed upgrade is exercised
+  during release preparation.
+- **Validation.** #292, #293 and #294 each passed required PR CI (validate and
+  nodejs 24); #294's nodejs 24 job passed on rerun after an unrelated Code task
+  supervision test failed once, having passed on the same code twice before.
+  Focused path, configuration-template, reset-route and renderer tests ran
+  locally; the installed app was not exercised by eye, and no reset was run on a
+  real profile. This preparation changes only version fields and notes, and the
+  public Usage archive was checked against the lock and host 0.9.1 / SDK 1.5.0.
+  Required Platform PR CI gates the merge. The Desktop workflow verifies three-OS
+  source receipts, offline App activation, isolated sidecar startup, complete
+  source downloads, signing checks, update metadata, checksums and provenance
+  before publication. Publication results:
+  [v0.9.1 GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.9.1)
+  and its workflow run.
+
 ## 2026-10-20 — Desktop 0.9.0 standard preview with Code work areas
 
 Desktop **0.9.0** is the owner-selected standard-profile preview with Runtime
