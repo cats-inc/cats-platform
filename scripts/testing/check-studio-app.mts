@@ -83,7 +83,9 @@ try {
   const url = `http://127.0.0.1:${address.port}/?appVersion=${studio.version}`;
   await page.goto(url);
   const frame = page.frameLocator('iframe[title="Studio"]');
-  await frame.locator('#target option[value="native"]').waitFor({ state: 'attached' });
+  // Studio 0.2.x lists targets in a select; the provider-first workspace uses service buttons.
+  const serviceReady = () => frame.locator('#target option[value="native"]').or(frame.locator('#services [data-service="native"][aria-pressed="true"]')).first().waitFor({ state: 'attached' });
+  await serviceReady();
   assert.equal(submissions, 0, 'Opening Studio cannot generate an image');
   assert.equal(await frame.locator('#generate').isDisabled(), true);
   await frame.locator('#prompt').fill('Isolated fixture image — never sent to a CLI');
@@ -110,7 +112,7 @@ try {
   assert.equal(await frame.getByRole('button', { name: '下載', exact: true }).count(), 1);
   assert.equal(submissions, 1, 'Reload/offline reads cannot repeat generation');
   offline = false; pending = true; await page.reload();
-  await frame.locator('#target option[value="native"]').waitFor({ state: 'attached' });
+  await serviceReady();
   await frame.locator('#prompt').fill('Isolated pending fixture'); await frame.locator('#generate').click();
   await frame.getByRole('button', { name: '取消', exact: true }).click();
   await frame.locator('#jobs').getByText(/已取消/).waitFor();
