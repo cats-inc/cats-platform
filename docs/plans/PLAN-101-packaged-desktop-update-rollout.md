@@ -7,7 +7,7 @@
 | **Status** | Draft |
 | **Owner** | User |
 | **Reviewer** | User |
-| **Last updated** | 2026-09-29 |
+| **Last updated** | 2026-10-23 |
 
 ## Related Spec
 
@@ -485,6 +485,25 @@ ownership boundaries in ADR-108 and SPEC-111.
 - Do not add a renderer fallback that fetches GitHub directly.
 
 ## Progress Log
+
+### macOS tray dialog foreground — 2026-10-23 (unreleased)
+
+The installed 0.9.1 tray dialog could remain behind another app despite calling
+`app.focus()` before opening it. macOS parentless message boxes enter a
+synchronous native modal loop. The presenter now gives the alert a temporary
+transparent `BaseWindow` owner, creates its asynchronous sheet, and then
+activates/focuses the owner. Dismissal and errors destroy that owner. The main
+window stays hidden; Windows and Linux retain their parentless presentation.
+
+Validation: `npm run build:host` and 99 focused update/dialog/tray/collection
+tests passed. The source candidate compiled Runtime, Platform, renderer and host,
+but could not bind loopback (`listen EPERM`), so it never launched. Its private
+launch receipt is `e9b64e82dd4392a7586ccaf9089df2ad751fb2d4ab3d7aedb71ca5114a1d52b4`
+(Platform source digest `9457c73e7ffbcbcc4218e7dad6e5a6e319c207499f029eb8cebab409673511ed`).
+A minimal isolated Electron check also aborted in macOS `_RegisterApplication`
+before app readiness. Computer Use lacked Accessibility/Screen Recording grants.
+Native foreground acceptance, including other Spaces/full-screen apps, remains
+pending; no installer or self-update acceptance is claimed.
 
 ### macOS universal target — 2026-10-03
 
