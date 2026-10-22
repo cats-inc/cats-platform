@@ -30,7 +30,7 @@ export const CHAT_PREFIX = resolvePlatformSurfaceRoutePrefix('work');
 export const NEW_CHAT_PATH = resolveWorkspaceNewChatPath(CHAT_PREFIX);
 
 export function resolveAppEntryPath(setupCompleteAt: string | null | undefined): string {
-  return setupCompleteAt ? `${CHAT_PREFIX}/overview` : resolveWorkspaceAppEntryPath(CHAT_PREFIX, setupCompleteAt);
+  return resolveWorkspaceAppEntryPath(CHAT_PREFIX, setupCompleteAt);
 }
 
 export function buildNewChatPath(defaultRecipientCatId?: string | null): string {

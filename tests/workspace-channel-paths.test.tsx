@@ -7,17 +7,28 @@ import {
   buildNewChatPath as buildCodeNewChatPath,
   buildNewParallelChatPath as buildCodeNewParallelChatPath,
   readNewChatPreset as readCodeNewChatPreset,
+  resolveAppEntryPath as resolveCodeAppEntryPath,
   resolveVisibleChatPath as resolveCodeVisibleChatPath,
 } from '../src/products/code/shared/channelPaths.ts';
-import { resolveWorkspaceVisibleChatPath } from '../src/products/shared/channelPaths.ts';
+import { SETUP_PATH, resolveWorkspaceVisibleChatPath } from '../src/products/shared/channelPaths.ts';
 import {
   buildChannelPath as buildWorkChannelPath,
   buildNewGroupChatPath as buildWorkNewGroupChatPath,
   buildNewChatPath as buildWorkNewChatPath,
   buildNewParallelChatPath as buildWorkNewParallelChatPath,
   readNewChatPreset as readWorkNewChatPreset,
+  resolveAppEntryPath as resolveWorkAppEntryPath,
   resolveVisibleChatPath as resolveWorkVisibleChatPath,
 } from '../src/products/work/shared/channelPaths.ts';
+
+// The owner keeps +New Work as the Work landing; Overview stays a sidebar
+// destination (2026-10-22, after #286 had made it the default).
+test('workspace products land on their new-conversation draft once setup is complete', () => {
+  assert.equal(resolveWorkAppEntryPath('2026-10-22T00:00:00.000Z'), '/work/new');
+  assert.equal(resolveCodeAppEntryPath('2026-10-22T00:00:00.000Z'), '/code/new');
+  assert.equal(resolveWorkAppEntryPath(null), SETUP_PATH);
+  assert.equal(resolveCodeAppEntryPath(undefined), SETUP_PATH);
+});
 
 test('workspace channel paths keep product prefixes while sharing visible-chat semantics', () => {
   const workChannels = [
