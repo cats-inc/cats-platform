@@ -94,6 +94,8 @@ try {
   catch (error) { process.stderr.write(JSON.stringify({ submissions, errors, body: await frame.locator('body').innerText(), tasks: (await dependencies.shared.coreStore.readCore()).tasks }) + '\n'); throw error; }
   await frame.locator('.sample-badge').filter({ hasText: '已保存' }).waitFor();
   assert.equal(submissions, 1);
+  // The preview swaps in the saved bytes asynchronously after the job is listed.
+  await frame.locator('#sample-image[src^="blob:"]').waitFor({ state: 'attached' });
   const preview = await frame.locator('#sample-image').evaluate((element: HTMLImageElement) => ({ width: element.naturalWidth, src: element.src }));
   assert.equal(preview.width, 1024); assert.ok(preview.src.startsWith('blob:'));
   await frame.locator('#expand').click(); await frame.locator('#image-dialog[open]').waitFor();
