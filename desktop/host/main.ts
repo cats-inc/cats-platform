@@ -4,6 +4,7 @@ import { validateDesktopAppRequest } from './appRequests.js';
 
 import {
   app,
+  BaseWindow,
   BrowserWindow,
   dialog,
   ipcMain,
@@ -100,6 +101,7 @@ import {
   shouldAttemptDesktopLateReadyRecovery,
 } from './startupRecovery.js';
 import { runDesktopUpdateDialog } from './updateDialog.js';
+import { showDesktopUpdateMessageBox } from './updateDialogPresenter.js';
 import { isDesktopPrerequisiteHelper, resolveSelectedSetupAuditActions } from './setupAudit.js';
 import { DesktopPrerequisiteChecks } from './setupPrerequisites.js';
 import { pauseSelectedSetupHelpers, retryPendingSetupOperationReleases, targetsForSetupHelper, withSelectedSetupTargets } from './providerSelection.js';
@@ -1134,26 +1136,15 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
         platform: process.platform,
         locale: app.getLocale(),
         isShuttingDown: () => shuttingDown,
-        showDialog: async (dialogSpec) => {
-          // The tray closes on click and the main window is usually hidden, so
-          // this box has no parent. On macOS a parentless message box does not
-          // activate the app: it opens behind whatever is frontmost, which is
-          // how the "ready to install" prompt after a download went unseen
-          // until the next tray click. Windows raises a parentless box itself.
-          // `steal` is a macOS-only option and is ignored elsewhere.
-          app.focus({ steal: true });
-          const choice = await dialog.showMessageBox({
-            type: dialogSpec.action === 'none' ? 'info' : 'question',
-            title: dialogSpec.title,
-            message: dialogSpec.message,
-            detail: dialogSpec.detail,
-            buttons: dialogSpec.buttons,
-            defaultId: 0,
-            cancelId: dialogSpec.buttons.length - 1,
-            noLink: true,
-          });
-          return choice.response;
-        },
+        showDialog: (dialogSpec) => showDesktopUpdateMessageBox({
+          platform: process.platform,
+          dialogSpec,
+          createOwner: (options) => new BaseWindow(options),
+          focusApp: () => app.focus({ steal: true }),
+          showMessageBox: (options, owner) => owner
+            ? dialog.showMessageBox(owner, options)
+            : dialog.showMessageBox(options),
+        }),
       });
     },
   };

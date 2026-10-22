@@ -465,6 +465,12 @@ Requirements:
    without starting another check or attempting installation. Error messages
    shall use stable codes and localized copy matching Settings, never raw
    provider messages.
+7. An explicitly requested dialog shall come to the foreground even when Cats
+   is hidden to the tray and another app is active. On macOS, use a temporary
+   transparent native owner and focus it after creating the native sheet;
+   a [parentless message box runs synchronously](https://www.electronjs.org/docs/latest/api/dialog#dialogshowmessageboxwindow-options)
+   and cannot be focused after opening. Destroy the owner on dismissal or failure without revealing the
+   main window. Windows and Linux retain their parentless message boxes.
 
 Settings keeps its existing state display and shared in-app toasts. A startup
 check only updates the shared state; it shall never open a dialog or bring a
