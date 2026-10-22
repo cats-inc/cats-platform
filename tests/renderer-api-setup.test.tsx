@@ -33,3 +33,31 @@ test('createSetupApi.resetSetup posts to the reset endpoint and preserves expect
     globalThis.fetch = originalFetch;
   }
 });
+
+test('createSetupApi.resetSetup clears browser storage only after the server confirms the reset', async () => {
+  const originalFetch = globalThis.fetch;
+  const globals = globalThis as { window?: unknown };
+  const originalWindow = globals.window;
+  let cleared = 0;
+  globals.window = { localStorage: { clear: () => { cleared += 1; } } };
+  let status = 500;
+  globalThis.fetch = async () => new Response(JSON.stringify(status === 200
+    ? { ok: true }
+    : { error: { message: 'reset incomplete' } }), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  });
+
+  try {
+    const setupApi = createSetupApi((payload: { ok: boolean }) => payload);
+    await assert.rejects(() => setupApi.resetSetup(), /reset incomplete/u);
+    assert.equal(cleared, 0);
+
+    status = 200;
+    assert.deepEqual(await setupApi.resetSetup(), { ok: true });
+    assert.equal(cleared, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    globals.window = originalWindow;
+  }
+});

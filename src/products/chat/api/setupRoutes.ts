@@ -4,6 +4,7 @@ import { createDefaultCoreState } from '../../../core/model/index.js';
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { runExclusiveSetupOperation } from '../../../shared/platformSetupOperation.js';
 import {
+  platformPreferencesAfterDataReset,
   readPlatformPreferences,
   writePlatformPreferences,
 } from '../../../shared/platformPreferences.js';
@@ -65,7 +66,7 @@ async function handleSetupReset(
         throw error;
       }
       const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
-      await writePlatformPreferences(context.dependencies.config.chatStatePath, { ...currentPrefs, lastProductSurface: null });
+      await writePlatformPreferences(context.dependencies.config.chatStatePath, platformPreferencesAfterDataReset(currentPrefs));
       await clearCaches();
       // Build the fresh shell before removing snapshots, so read-time helpers
       // cannot regenerate reset backups or memory files after the purge.
