@@ -1050,6 +1050,9 @@ Desktop-host specific overrides:
 | `CATS_DESKTOP_RUNTIME_ROOT` | No | Override sibling `cats-runtime/` root discovery |
 | `CATS_DESKTOP_APP_PORT` | No | Override host-managed `cats` port |
 | `CATS_DESKTOP_RUNTIME_PORT` | No | Override host-managed `cats-runtime` port |
+| `CATS_DESKTOP_READINESS_TIMEOUT_MS` | No | Readiness budget for managed services; services with longer built-in startup budgets keep them. Defaults to `30000` |
+| `CATS_DESKTOP_READINESS_POLL_INTERVAL_MS` | No | Readiness poll interval. Defaults to `500` |
+| `CATS_DESKTOP_GRACEFUL_SHUTDOWN_MS` | No | Wait at each shutdown step (stop request, then `SIGTERM`) before escalating to the next. Defaults to `3000` |
 | `CATS_DESKTOP_PACKAGING_OUTPUT_ROOT` | No | Override staged packaging output root |
 | `CATS_DESKTOP_FORCE_QUIT_ON_CLOSE` | No | Escape hatch that forces quit-on-close and disables tray/background hiding |
 | `CATS_DESKTOP_UPDATE_CHECK_ON_STARTUP` | No | Run one silent update check per launch. Defaults off, and has no effect unless the build already has update capability |

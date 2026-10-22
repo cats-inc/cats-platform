@@ -75,6 +75,7 @@ Port numbers should be configurable via environment variables so developers can 
 | `CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS` | `60000` | Runtime client | Timeout budget for runtime session creation and provider/workspace startup |
 | `CATS_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS` | `max(2000, budget / 6)` | Runtime client | Threshold above which a successful session create still emits a `slow_session_create` diagnostic record (see ADR-089) |
 | `CATS_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS` | `120000` | Runtime client | Idle timeout for NDJSON message streams; reset whenever the runtime emits another chunk. Depends on the runtime keepalive contract documented in ADR-089 |
+| `CATS_RUNTIME_ENV_FILE` | unset | Runtime client | When `CATS_RUNTIME_API_KEY` is blank, read `CATS_RUNTIME_API_KEY` from this cats-runtime `.env` file |
 | `CATS_WORK_GOLDEN_PATH_ENABLED` | `false` | Telegram work delivery | Enables the SPEC-114 `/work` golden path; disabled by default. Turning it off is the rollback: Core and transport records survive and `/work` reverts to ordinary chat routing |
 | `CATS_WORK_GOLDEN_PATH_OWNERS` | empty | Telegram work delivery | Comma-separated Telegram user ids allowed to delegate work (SPEC-114 FR-1). Empty means nobody is authorized and the bot says so; there is no trust-on-first-use path |
 | `CATS_WORK_GOLDEN_PATH_WORKSPACE` | empty | Telegram work delivery | Absolute workspace the first slice executes against. Unset reports `workspace_missing` readiness rather than guessing |
@@ -87,6 +88,10 @@ Port numbers should be configurable via environment variables so developers can 
 | `CATS_CODE_LIVE_PREVIEW_LOG_MAX_BYTES` | `1048576` | Cats Code live preview | Bounded stdout/stderr capture size per preview |
 | `CATS_CODE_LIVE_PREVIEW_ALLOW_IPV6_LOOPBACK` | `false` | Cats Code live preview | Allows `[::1]` leases when explicitly enabled |
 | `CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES` | `[]` | Cats Code live preview | JSON array of declarative command profiles; assistants cannot provide raw shell commands. The built-in in-process `static` profile is always added |
+| `CATS_COMPANION_LIFE_LOOP` | `true` | Companion life loop | `false` turns off the SPEC-124 wake/sleep and heartbeat loop; see below |
+| `CATS_ARTIFACT_CANVAS_RUNTIME_PREVIEW_ORIGIN_ALLOWLIST` | loopback `http`, any port | Artifact Canvas | JSON array of `{hostname, schemes?, ports?}` preview origins; replaces the default when set |
+| `CATS_ARTIFACT_CANVAS_SCRIPTED_PREVIEW_PRODUCER_ALLOWLIST` | supervisor-owned Code live previews | Artifact Canvas | JSON array of `{producerKind, producerIdentity}` whose previews may run scripts; replaces the default when set |
+| `CATS_ARTIFACT_CANVAS_SHELL_ORIGIN` | `http://127.0.0.1:5173` | Artifact Canvas | Origin of the Cats shell, which is never accepted as a preview origin |
 
 ## Telegram work delegation: rollout, rollback, and the offline limit
 
