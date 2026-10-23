@@ -13,6 +13,7 @@ Plan: [PLAN-111](../plans/PLAN-111-app-image-generation.md).
 | `images.submit({requestId, instance, prompt})` | Durable idempotent attempt; explicit user generation |
 | `images.cancel(id)` | Persist cancellation and stop the same Runtime attempt |
 | `images.refresh(id)` | Recheck an interrupted result; never resubmit generation |
+| `images.delete(id)` | Owner deletion of a succeeded, failed or cancelled job: Core task/run/artifact, saved original and (best effort) the Runtime receipt; active or interrupted jobs return 409 `image_not_deletable`; never generates (added 2026-10-23, ships with the next SDK minor) |
 | `images.read(id)` | Bounded JPEG ArrayBuffer plus MIME type |
 | `images.export(id)` | Host-managed download of the same saved bytes |
 

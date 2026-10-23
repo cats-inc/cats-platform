@@ -47,13 +47,15 @@ async function setup(t) {
     async cancelImageJob(id) { cancellations++; if (!records.has(id)) throw new RuntimeImageError('image_not_found');
       const record = { ...records.get(id), status: 'cancelled', output: null }; records.set(id, record); return record; },
     async getImageBytes() { return image; },
+    async deleteImageJob(id) { deletions.push(id); records.delete(id); },
   };
+  const deletions = [];
   const coreStore = new MemoryCoreStore();
   const deps = { coreStore, runtimeClient: client, chatStatePath };
   const service = new AppImageService(deps);
   const scope = { appId: 'cats.studio', version: '0.1.0', accountId: 'user-one' };
   const registry = new FileCatsAppRegistry({ registryPath: resolveCatsAppStoragePathsFromChatState(chatStatePath).registryPath });
-  return { root, deps, client, service, scope, registry, image, records, output,
+  return { root, deps, client, service, scope, registry, image, records, output, deletions,
     submissions: () => submissions, cancellations: () => cancellations,
     run: () => { running = true; }, failReads: (count) => { failReads = count; },
     hold: () => { holdSubmit = new Promise((resolve) => { releaseSubmit = resolve; }); }, release: () => releaseSubmit(),
@@ -85,6 +87,30 @@ test('idempotent submit uses existing Core task/run/artifact, retains images acr
   await f.registry.updateAppState('cats.studio', { installState: 'disabled' });
   await assert.rejects(restarted.image(f.scope, a.id), /app_context_revoked/);
   assert.equal(f.submissions(), 1);
+});
+
+test('owner deletion removes a finished job, its Core records, the saved file and the Runtime receipt, never an active one', async (t) => {
+  const f = await setup(t);
+  const saved = await f.service.submit(f.scope, input()); await waitFor(f, saved.id);
+  const file = path.join(resolveCatsAppStoragePathsFromChatState(f.deps.chatStatePath).dataDir, 'cats.studio', 'images',
+    createHash('sha256').update('user-one').digest('hex'), `${saved.id}.jpg`);
+  assert.ok((await readFile(file)).equals(f.image));
+  await assert.rejects(f.service.remove({ ...f.scope, accountId: 'user-two' }, saved.id), /image_not_found/);
+  assert.deepEqual(await f.service.remove(f.scope, saved.id), { deleted: true });
+  assert.deepEqual(f.deletions, [saved.id]);
+  const core = await f.deps.coreStore.readCore();
+  assert.equal(core.tasks.length + core.runs.length + core.artifacts.length, 0);
+  await assert.rejects(readFile(file), /ENOENT/);
+  assert.equal((await f.service.list(f.scope)).length, 0);
+  await assert.rejects(f.service.remove(f.scope, saved.id), /image_not_found/);
+  f.run(); const active = await f.service.submit(f.scope, input()); await waitFor(f, active.id, 'running');
+  await assert.rejects(f.service.remove(f.scope, active.id), /image_not_deletable/);
+  await f.service.cancel(f.scope, active.id); await waitFor(f, active.id, 'cancelled');
+  assert.deepEqual(await f.service.remove(f.scope, active.id), { deleted: true });
+  f.client.deleteImageJob = async () => { throw new Error('Runtime offline'); };
+  const offline = await f.service.submit(f.scope, input()); await f.service.cancel(f.scope, offline.id); await waitFor(f, offline.id, 'cancelled');
+  assert.deepEqual(await f.service.remove(f.scope, offline.id), { deleted: true }, 'an unreachable Runtime does not block deletion');
+  assert.equal(f.submissions(), 3);
 });
 
 test('transient Runtime read failure recovers the same attempt; no generating POST on restart', async (t) => {
@@ -162,6 +188,11 @@ test('image routes bind package version and identity, restrict verbs/body, and p
   await waitFor(f, publicJob.id);
   assert.equal((await call(`jobs/${publicJob.id}/image`, 'GET', undefined, 'user-two')).status, 404);
   const image = await call(`jobs/${publicJob.id}/image`); assert.equal(image.status, 200); assert.ok(image.body.equals(f.image));
+  assert.equal((await call(`jobs/${publicJob.id}/delete`)).status, 405);
+  assert.equal((await call(`jobs/${publicJob.id}/delete`, 'POST', {}, 'user-two')).status, 404);
+  const deleted = await call(`jobs/${publicJob.id}/delete`, 'POST', {});
+  assert.equal(deleted.status, 200); assert.deepEqual(JSON.parse(deleted.body), { deleted: true });
+  assert.equal((await call(`jobs/${publicJob.id}/image`)).status, 404);
 });
 
 test('Runtime projection rejects unbounded or malformed images and redacts arbitrary errors', async () => {
@@ -175,9 +206,10 @@ test('Runtime image client authenticates fixed routes and decodes UTF-8 JSON and
   const now = new Date().toISOString();
   const job = { ...request, schemaVersion: 1, provider: 'grok', agentModel: 'fixture', status: 'succeeded',
     createdAt: now, updatedAt: now, output: f.output, error: null };
-  const calls = [];
+  const calls = []; const methods = [];
   t.mock.method(globalThis, 'fetch', async (url, options) => {
-    calls.push(url); assert.equal(options.headers.Authorization, 'Bearer fixture-key'); assert.ok(options.signal);
+    calls.push(url); methods.push(options.method ?? 'GET'); assert.equal(options.headers.Authorization, 'Bearer fixture-key'); assert.ok(options.signal);
+    if (options.method === 'DELETE') return new Response(JSON.stringify({ deleted: true }));
     if (url.endsWith('/image')) return new Response(f.image, { headers: { 'Content-Type': 'image/jpeg' } });
     if (url.endsWith('/capabilities')) return new Response(JSON.stringify(await f.client.getImageCapabilities()));
     return new Response(JSON.stringify(job));
@@ -188,5 +220,7 @@ test('Runtime image client authenticates fixed routes and decodes UTF-8 JSON and
   assert.equal((await client.getImageJob(request.id)).id, request.id);
   await client.cancelImageJob(request.id);
   assert.deepEqual(Buffer.from(await client.getImageBytes(request.id)), f.image);
-  assert.equal(calls.length, 5); assert.ok(calls.every((url) => url.startsWith('http://runtime.test/media/images/')));
+  await client.deleteImageJob(request.id);
+  assert.equal(calls.length, 6); assert.ok(calls.every((url) => url.startsWith('http://runtime.test/media/images/')));
+  assert.equal(calls.at(-1), `http://runtime.test/media/images/jobs/${request.id}`); assert.equal(methods.at(-1), 'DELETE');
 });

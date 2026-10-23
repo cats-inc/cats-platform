@@ -336,6 +336,7 @@ export interface RuntimeClient {
   submitImageJob?(input: RuntimeImageRequest): Promise<RuntimeImageJob>;
   getImageJob?(id: string): Promise<RuntimeImageJob>;
   cancelImageJob?(id: string): Promise<RuntimeImageJob>;
+  deleteImageJob?(id: string): Promise<void>;
   getImageBytes?(id: string): Promise<Uint8Array>;
   getSkillCatalog?(id: string): Promise<unknown>;
   getHealth(): Promise<RuntimeStatusSummary>;
@@ -531,10 +532,11 @@ function readRuntimeSessionInfo(
 }
 
 export class CatsRuntimeClient implements RuntimeClient {
-  private async imageRequest(route: string, body?: unknown, binary = false): Promise<Uint8Array> {
+  private async imageRequest(route: string, body?: unknown, binary = false, method?: 'DELETE'): Promise<Uint8Array> {
     const response = await fetch(`${this.baseUrl}/media/images/${route}`, {
       headers: { ...this.authHeaders(), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
       signal: AbortSignal.timeout(10000), ...(body !== undefined ? { method: 'POST', body: JSON.stringify(body) } : {}),
+      ...(method ? { method } : {}),
     });
     return readImageResponse(response, binary);
   }
@@ -542,6 +544,7 @@ export class CatsRuntimeClient implements RuntimeClient {
   async submitImageJob(input: RuntimeImageRequest) { return projectImageJob(JSON.parse(new TextDecoder().decode(await this.imageRequest('jobs', input)))); }
   async getImageJob(id: string) { return projectImageJob(JSON.parse(new TextDecoder().decode(await this.imageRequest(`jobs/${encodeURIComponent(id)}`)))); }
   async cancelImageJob(id: string) { return projectImageJob(JSON.parse(new TextDecoder().decode(await this.imageRequest(`jobs/${encodeURIComponent(id)}/cancel`, {})))); }
+  async deleteImageJob(id: string) { await this.imageRequest(`jobs/${encodeURIComponent(id)}`, undefined, false, 'DELETE'); }
   async getImageBytes(id: string) { return this.imageRequest(`jobs/${encodeURIComponent(id)}/image`, undefined, true); }
   async getUsageSnapshot(): Promise<Record<string, unknown>> {
     const response = await fetch(`${this.baseUrl}/usage/snapshot`, {

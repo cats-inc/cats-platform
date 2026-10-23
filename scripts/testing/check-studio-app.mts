@@ -42,7 +42,7 @@ const auth = await createFirstAdminLocalAuthState({ state: createEmptyPlatformAu
   identifier: 'test@example.test', password: 'isolated-fixture-password', sessionSecret, sessionTtlMs: 600_000 });
 const core = createDefaultCoreState(); core.setupCompleteAt = new Date().toISOString();
 const receipts = new Map<string, RuntimeImageJob>();
-let submissions = 0; let cancelled = 0; let offline = false; let pending = false;
+let submissions = 0; let cancelled = 0; let deleted = 0; let offline = false; let pending = false;
 const runtimeClient = {
   async getImageCapabilities() {
     if (offline) throw new Error('Fixture offline');
@@ -58,6 +58,7 @@ const runtimeClient = {
   async getImageJob(id: string) { return receipts.get(id)!; },
   async cancelImageJob(id: string) { cancelled++; const job = receipts.get(id)!; job.status = 'cancelled'; job.error = 'cancelled'; return job; },
   async getImageBytes() { return image; },
+  async deleteImageJob(id: string) { deleted++; receipts.delete(id); },
 };
 const dependencies = { shared: {
   startup: createAppStartupState(),
@@ -121,6 +122,19 @@ try {
   await frame.getByRole('button', { name: '取消', exact: true }).click();
   await frame.locator('#jobs').getByText(/已取消/).waitFor();
   assert.equal(submissions, 2); assert.ok(cancelled > 0);
+  // Studio versions that offer deletion: a cancelled job goes at once, a saved image only after confirmation.
+  const cancelledCard = frame.locator('#jobs article').filter({ hasText: '已取消' });
+  if (await cancelledCard.getByRole('button', { name: '刪除', exact: true }).count()) {
+    await cancelledCard.getByRole('button', { name: '刪除', exact: true }).click();
+    await cancelledCard.waitFor({ state: 'detached' });
+    const savedCard = frame.locator('#jobs article').filter({ hasText: 'Isolated fixture image' });
+    await savedCard.getByRole('button', { name: '刪除', exact: true }).click();
+    await frame.locator('#confirm-dialog[open]').waitFor();
+    await frame.locator('#confirm-dialog').getByRole('button', { name: '刪除作品', exact: true }).click();
+    try { await savedCard.waitFor({ state: 'detached', timeout: 15_000 }); }
+    catch (error) { process.stderr.write(JSON.stringify({ deleted, errors, feedback: await frame.locator('#feedback').innerText(), jobs: await frame.locator('#jobs').innerText() }) + '\n'); throw error; }
+    assert.equal(deleted, 2); assert.equal(submissions, 2, 'Deleting never generates');
+  }
   await page.setViewportSize({ width: 390, height: 844 });
   await frame.locator('h1').scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(screenshotDir, 'studio-narrow.png'), fullPage: true });

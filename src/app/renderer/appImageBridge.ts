@@ -15,9 +15,9 @@ export async function callAppImageBridge(method: string, params: unknown, contex
       || Array.from(input.prompt).length > 2000 || typeof input.instance !== 'string' || input.instance.length > 100
       || Object.keys(input).some((key) => !['requestId', 'prompt', 'instance'].includes(key))) throw new ImageBridgeError('invalid_image_request');
     route = 'jobs'; body = input;
-  } else if (['images.cancel', 'images.refresh', 'images.read', 'images.export'].includes(method)) {
+  } else if (['images.cancel', 'images.refresh', 'images.delete', 'images.read', 'images.export'].includes(method)) {
     if (typeof input.id !== 'string' || !ID.test(input.id) || Object.keys(input).some((key) => key !== 'id')) throw new ImageBridgeError('invalid_image_request');
-    const operation = method === 'images.cancel' ? 'cancel' : method === 'images.refresh' ? 'refresh' : 'image';
+    const operation = method === 'images.cancel' ? 'cancel' : method === 'images.refresh' ? 'refresh' : method === 'images.delete' ? 'delete' : 'image';
     route = `jobs/${input.id}/${operation}`;
     if (operation !== 'image') body = {};
   } else throw new ImageBridgeError('Unsupported app capability.');

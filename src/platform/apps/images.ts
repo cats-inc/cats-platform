@@ -1,8 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, open, rename, writeFile } from 'node:fs/promises';
+import { mkdir, open, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { CoreStore } from '../../core/store.js';
 import { upsertCoreTask, upsertCoreRun, upsertCoreArtifact } from '../../core/model/index.js';
+import { touchCoreState } from '../../core/model/shared.js';
 import type { CatsCoreState } from '../../core/types.js';
 import type { RuntimeClient } from '../../runtime/client.js';
 import { IMAGE_ID, IMAGE_MAX_BYTES, RuntimeImageError, type RuntimeImageJob, type RuntimeImageMetadata } from '../../runtime/images.js';
@@ -20,7 +21,9 @@ export class AppImageError extends Error {
 }
 export interface AppImageScope { appId: string; version: string; accountId: string; }
 export interface AppImageInput { requestId: string; instance: string; prompt: string; }
-export type ImageRuntimeClient = Pick<RuntimeClient, 'getImageCapabilities' | 'submitImageJob' | 'getImageJob' | 'cancelImageJob' | 'getImageBytes'>;
+export type ImageRuntimeClient = Pick<RuntimeClient, 'getImageCapabilities' | 'submitImageJob' | 'getImageJob' | 'cancelImageJob' | 'deleteImageJob' | 'getImageBytes'>;
+// Only finished work can be deleted; anything in flight or unconfirmed could still produce an image.
+const deletableStatuses = new Set(['succeeded', 'failed', 'cancelled']);
 export interface AppImageDependencies { coreStore: CoreStore; runtimeClient: ImageRuntimeClient; chatStatePath: string; }
 const activeStatuses = new Set(['submitting', 'running', 'collecting', 'cancelling']);
 const sourceFailure = (job: AppImageJob) => job.status === 'failed' && job.error === 'invalid_image_source';
@@ -232,7 +235,9 @@ export class AppImageService {
     const temporary = `${target}.${randomUUID()}.tmp`;
     await writeFile(temporary, bytes, { flag: 'wx' }); await rename(temporary, target);
     await this.authorize(this.scope(job));
-    await this.update(job.id, { status: 'succeeded', error: null, output: remote.output, agentModel: remote.agentModel });
+    const saved = await this.update(job.id, { status: 'succeeded', error: null, output: remote.output, agentModel: remote.agentModel });
+    // A job deleted while its bytes were being collected must not leave the file behind.
+    if (!saved) await rm(target, { force: true });
   }
   async cancel(scope: AppImageScope, id: string) {
     const job = await this.own(scope, id);
@@ -251,6 +256,23 @@ export class AppImageService {
       this.watch(job);
     }
     return this.own(scope, id);
+  }
+  /** Owner deletion of a finished job: its Core task/run/artifact, the retained original and the Runtime receipt. */
+  async remove(scope: AppImageScope, id: string): Promise<{ deleted: true }> {
+    const job = await this.own(scope, id);
+    if (!deletableStatuses.has(job.status)) throw new AppImageError('image_not_deletable', 409);
+    await this.mutate((core) => {
+      const current = jobs(core).find((entry) => entry.id === id);
+      if (current && !deletableStatuses.has(current.status)) throw new AppImageError('image_not_deletable', 409);
+      return touchCoreState({ ...core,
+        tasks: core.tasks.filter((task) => task.id !== taskId(id)),
+        runs: core.runs.filter((run) => run.id !== runId(id)),
+        artifacts: core.artifacts.filter((artifact) => artifact.id !== `artifact-app-image-${id}`) }, new Date().toISOString());
+    });
+    await rm(this.imagePath(job), { force: true });
+    // The App-visible work is gone either way; an unreachable Runtime only keeps its own receipt.
+    try { await this.deps.runtimeClient.deleteImageJob?.(id); } catch { /* best effort */ }
+    return { deleted: true };
   }
   private async own(scope: AppImageScope, id: string) {
     if (!IMAGE_ID.test(id)) throw new AppImageError('invalid_image_request');
