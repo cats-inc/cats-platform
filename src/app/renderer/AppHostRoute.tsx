@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { PlatformHostEnvelope } from '../../shared/platform-contract.js';
 import { useI18n } from './i18n/index.js';
 import { AppRendererSurface } from './AppRendererSurface.js';
+import { APP_INSTALL_STATE_LABEL_BY_STATE } from './appInstallStateLabels.js';
 
 function routeBelongsToEntry(pathname: string, routePath: string): boolean {
   return pathname === routePath || pathname.startsWith(`${routePath}/`);
@@ -48,10 +49,12 @@ export function AppHostRoute({
   return (
     <div className="screen screenCentered appHostScreen">
       <section className="appHostPanel" style={active ? { width: '100%', maxWidth: 1440 } : undefined}>
+        {/* The shell owns App identity, navigation and package facts; Apps render content only. */}
         <div className="appHostHeader">
           <div>
             <p className="eyebrow">{t('appHostLabel')}</p>
             <h1>{title}</h1>
+            {active && activeEntry?.subtitle ? <p className="appHostSubtext">{activeEntry.subtitle}</p> : null}
           </div>
           <button
             type="button"
@@ -69,8 +72,12 @@ export function AppHostRoute({
             <dd>{app.id}</dd>
           </div>
           <div>
+            <dt>{t('appHostSectionVersion')}</dt>
+            <dd>{app.version}</dd>
+          </div>
+          <div>
             <dt>{t('appHostSectionStatus')}</dt>
-            <dd>{app.installState}</dd>
+            <dd>{t(APP_INSTALL_STATE_LABEL_BY_STATE[app.installState], {})}</dd>
           </div>
           <div>
             <dt>{t('appHostSectionPublisher')}</dt>

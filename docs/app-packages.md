@@ -252,6 +252,17 @@ the initial production installation path is the Desktop bundle. Manifest-only
 registrations do not grant a verified executable renderer. Local archives become
 `local-user`; only host-selected Desktop bundles receive `system` provenance.
 
+### Host shell and App content
+
+The App route shell (`AppHostRoute`) owns App identity and navigation: the label,
+the lobby entry's title and subtitle, the back-to-lobby button and the package
+facts below the frame (package ID, version, localized status, publisher). An App
+renders content only. It should not repeat its name, its own back/Home button or
+a version footer. Under SDK 1.x every App renderer runs inside this shell in an
+opaque sandboxed iframe, so an App cannot and need not detect "embedded" mode. If a
+future host shows an App without this shell, the SDK must say so explicitly with a
+compatible minor addition before Apps add a fallback header.
+
 ## Frozen v1 boundary
 
 SDK 1.2 supports `usage.refreshQuota({provider,instance})` for `codex`, `copilot`,

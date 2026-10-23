@@ -18,6 +18,7 @@ import type {
 } from '../../../shared/catsAppManifest.js';
 import type { CatsAppManifestValidationIssue } from '../../../shared/catsAppValidation.js';
 import { type MessageKey } from '../../../shared/i18n/index.js';
+import { APP_INSTALL_STATE_LABEL_BY_STATE } from '../appInstallStateLabels.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import { useI18n } from '../i18n/index.js';
 import {
@@ -55,15 +56,6 @@ const APP_CATEGORY_LABEL_BY_CATEGORY: Record<
   'capability-connector': 'settingsAppsCategoryConnector',
   'product-module': 'settingsAppsCategoryProductModule',
   'user-app': 'settingsAppsCategoryUserApp',
-};
-
-const APP_INSTALL_STATE_LABEL_BY_STATE: Record<CatsAppInstallState, MessageKey> = {
-  enabled: 'settingsAppsInstallStateEnabled',
-  installed: 'settingsAppsInstallStateInstalled',
-  disabled: 'settingsAppsInstallStateDisabled',
-  error: 'settingsAppsInstallStateError',
-  'upgrade-pending': 'settingsAppsInstallStateUpgradePending',
-  uninstalled: 'settingsAppsInstallStateUninstalled',
 };
 
 const APP_TRUST_TIER_LABEL_BY_TIER: Record<
