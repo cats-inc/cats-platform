@@ -280,6 +280,10 @@ test('Runtime projection rejects unbounded or malformed images and redacts arbit
     { ...MUSE, id: 'muse-edit', operation: 'image.edit', inputs: { min: 1, max: 1 } },
     { ...MUSE, id: 'muse-choose', aspectRatio: { mode: 'choose', options: ['3:2'] } }, { ...MUSE, id: 'orphan', targetIds: ['codex/native'] }] });
   assert.deepEqual(later.profiles.map((profile) => profile.id), ['grok-generate', 'muse-generate']);
+  const newer = projectImageCapabilities({ ...CAPABILITIES, targets: [...CAPABILITIES.targets, { id: 'future/native', provider: 'future', instance: 'native' }],
+    profiles: [...CAPABILITIES.profiles, { ...MUSE, id: 'future-generate', targetIds: ['future/native'] }] });
+  assert.deepEqual(newer.targets.map((target) => target.id), ['grok/native', 'muse/native']);
+  assert.deepEqual(newer.profiles.map((profile) => profile.id), ['grok-generate', 'muse-generate']);
   await assert.rejects(readImageResponse(new Response(JSON.stringify({ error: 'SECRET /private/path' }), { status: 500 })), /image_service_unavailable/);
 });
 

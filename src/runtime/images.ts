@@ -61,11 +61,13 @@ export function projectImageCapabilities(value: unknown): RuntimeImageCapabiliti
   const input = record(value);
   if (input.schemaVersion !== 2 || !Array.isArray(input.targets) || input.targets.length > 100
     || !Array.isArray(input.profiles) || input.profiles.length > 100) throw new RuntimeImageError('image_service_unavailable');
-  const targets = input.targets.map((entry) => {
+  // A target this host cannot name (for example a newer provider) is left out with its profiles, never fatal.
+  const targets = input.targets.flatMap((entry) => {
     const target = record(entry);
+    if (!IMAGE_PROVIDERS.includes(target.provider as RuntimeImageProvider)) return [];
     const id = key(target.id, 140); const name = provider(target.provider); const instance = key(target.instance, 100);
     if (id !== `${name}/${instance}`) throw new RuntimeImageError('image_service_unavailable');
-    return { id, provider: name, instance };
+    return [{ id, provider: name, instance }];
   });
   const known = new Set(targets.map((target) => target.id));
   // A profile this host cannot offer yet (another operation, inputs or ratio mode) is left out, never fatal:
