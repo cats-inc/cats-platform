@@ -83,7 +83,9 @@ try {
   const url = `http://127.0.0.1:${address.port}/?appVersion=${studio.version}`;
   await page.goto(url);
   const frame = page.frameLocator('iframe[title="Studio"]');
-  await frame.locator('#target option[value="native"]').waitFor({ state: 'attached' });
+  // Studio 0.2.x lists targets in a select; the provider-first workspace uses service buttons.
+  const serviceReady = () => frame.locator('#target option[value="native"]').or(frame.locator('#services [data-service="native"][aria-pressed="true"]')).first().waitFor({ state: 'attached' });
+  await serviceReady();
   assert.equal(submissions, 0, 'Opening Studio cannot generate an image');
   assert.equal(await frame.locator('#generate').isDisabled(), true);
   await frame.locator('#prompt').fill('Isolated fixture image — never sent to a CLI');
@@ -92,7 +94,9 @@ try {
   catch (error) { process.stderr.write(JSON.stringify({ submissions, errors, body: await frame.locator('body').innerText(), tasks: (await dependencies.shared.coreStore.readCore()).tasks }) + '\n'); throw error; }
   await frame.locator('.sample-badge').filter({ hasText: '已保存' }).waitFor();
   assert.equal(submissions, 1);
-  const preview = await frame.locator('#sample-image').evaluate((element: HTMLImageElement) => ({ width: element.naturalWidth, src: element.src }));
+  // The preview swaps in the saved bytes asynchronously after the job is listed.
+  await frame.locator('#sample-image[src^="blob:"]').waitFor({ state: 'attached' });
+  const preview = await frame.locator('#sample-image').evaluate(async (element: HTMLImageElement) => { await element.decode(); return { width: element.naturalWidth, src: element.src }; });
   assert.equal(preview.width, 1024); assert.ok(preview.src.startsWith('blob:'));
   await frame.locator('#expand').click(); await frame.locator('#image-dialog[open]').waitFor();
   await frame.getByRole('button', { name: '關閉預覽' }).click();
@@ -110,7 +114,7 @@ try {
   assert.equal(await frame.getByRole('button', { name: '下載', exact: true }).count(), 1);
   assert.equal(submissions, 1, 'Reload/offline reads cannot repeat generation');
   offline = false; pending = true; await page.reload();
-  await frame.locator('#target option[value="native"]').waitFor({ state: 'attached' });
+  await serviceReady();
   await frame.locator('#prompt').fill('Isolated pending fixture'); await frame.locator('#generate').click();
   await frame.getByRole('button', { name: '取消', exact: true }).click();
   await frame.locator('#jobs').getByText(/已取消/).waitFor();
