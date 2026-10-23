@@ -117,7 +117,10 @@ async function main() {
     result.licenses = await verifyDesktopLicenses(resources);
     result.windowsVoiceHelper = await verifyWindowsVoiceHelperArch(resources);
     result.startup = await verifyPackagedPlatformStartup(resources);
-    if (result.receipt) result.receipt.platformStartup = result.startup.platformStartup;
+    if (result.receipt) {
+      result.receipt.platformStartup = result.startup.platformStartup;
+      result.receipt.runtimeStartup = result.startup.runtimeStartup;
+    }
     if (receipt) assert.deepEqual(result.receipt, receipt, 'Unpacked release identities differ');
     receipt = result.receipt;
     console.log(JSON.stringify(result, null, 2));
