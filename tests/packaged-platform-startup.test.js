@@ -24,6 +24,19 @@ process.stdin.resume();
 process.stdin.on('end', () => server.close(() => process.exit(0)));
 `;
 
+const runtimeEntry = `
+import { createServer } from 'node:http';
+const port = Number(process.argv.find(a => a.startsWith('--port=')).slice(7));
+const server = createServer((_req, res) => {
+  res.writeHead(200, {'content-type':'application/json'});
+  res.end(JSON.stringify({service:'cats-runtime',version:'0.0.2',startup:{pid:process.pid}}));
+});
+server.listen(port, '127.0.0.1', () => console.log(JSON.stringify({event:'runtime.ready',
+  service:'cats-runtime',ready:true,pid:process.pid,version:'0.0.2'})));
+process.stdin.resume();
+process.stdin.on('end', () => server.close(() => process.exit(0)));
+`;
+
 test('packaged startup rejects missing dependencies even when the enclosing checkout supplies them', async () => {
   const buildRoot = path.resolve('build');
   await mkdir(buildRoot, { recursive: true });
@@ -43,8 +56,15 @@ test('packaged startup rejects missing dependencies even when the enclosing chec
       { env: { ...process.env, TEMP: unsafeTemp, TMP: unsafeTemp, TMPDIR: unsafeTemp }, timeout: 10_000 }),
     /Startup isolation requires a TEMP\/TMPDIR with no ancestor node_modules/);
     await cp(path.resolve('node_modules/fflate'), path.join(app, 'node_modules/fflate'), { recursive: true });
+    const runtime = path.join(root, 'cats-runtime');
+    const runtimeScript = path.join(runtime, 'build/runtime/index.js');
+    await mkdir(path.dirname(runtimeScript), { recursive: true });
+    await writeFile(path.join(runtime, 'package.json'), JSON.stringify({ type: 'module', version: '0.0.2' }));
+    await writeFile(runtimeScript, 'throw Error(\'Dynamic require of "util" is not supported\');');
+    await assert.rejects(verifyPackagedPlatformStartup(root), /Packaged Runtime exited before readiness.*[\s\S]*Dynamic require of "util"/);
+    await writeFile(runtimeScript, runtimeEntry);
     assert.deepEqual(await verifyPackagedPlatformStartup(root), {
-      platformStartup: true, version: '0.0.1', isolatedState: true, runtime: 'unavailable-fixture',
+      platformStartup: true, runtimeStartup: true, version: '0.0.1', isolatedState: true, runtime: 'unavailable-fixture',
     });
     await writeFile(script, entry.replace(
       "process.stdin.on('end', () => server.close(() => process.exit(0)));",

@@ -56,9 +56,14 @@ Desktop-host regression coverage now also checks:
   sidecars, packaged setup assets, and platform-scoped installer contracts
 - host build smoke through `npm run build:host`
 - packaged App/config/SDK startup paths against Electron resource destinations
+- isolated startup of both shipped sidecars, including the actual bundled
+  Runtime entry and its health endpoint; the Platform unavailable-Runtime
+  fixture alone cannot detect Runtime bundle import failures
 - shipped App version/hash equality with the release selection, source-free
   offline installation, enabled Lobby contributions and repeat-start idempotence
   through `verify-desktop-app-bundle.mjs`; see [App package checks](app-packages.md)
+  Release receipts require both `platformStartup` and `runtimeStartup` before
+  publication.
 
 ## Test Types
 

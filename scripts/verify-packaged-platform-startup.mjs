@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Start the shipped Platform in an isolated copy, outside checkout dependencies.
 // Usage: node scripts/verify-packaged-platform-startup.mjs --resources <directory>
-// Uses temporary state and loopback ports, an unavailable Runtime fixture, and
-// the current Node executable. Does not start provider CLIs or install Desktop.
+// Uses temporary state and loopback ports. Checks the real shipped Runtime,
+// then Platform with an unavailable Runtime fixture. Does not run inference.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { access, cp, mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
@@ -17,6 +17,66 @@ async function listen(server) {
     server.listen(0, '127.0.0.1', resolve);
   });
   return server.address().port;
+}
+
+async function verifyPackagedRuntimeStartup(resourcesRoot, root, env, {
+  command, timeoutMs, shutdownTimeoutMs,
+}) {
+  const runtimeRoot = path.join(root, 'cats-runtime');
+  await cp(path.join(resourcesRoot, 'cats-runtime'), runtimeRoot, { recursive: true });
+  const version = JSON.parse(await readFile(path.join(runtimeRoot, 'package.json'), 'utf8')).version;
+  const reservation = createServer();
+  const port = await listen(reservation);
+  await new Promise((resolve) => reservation.close(resolve));
+  const child = spawn(command, [path.join(runtimeRoot, 'build/runtime/index.js'),
+    '--startup-mode=app-managed', '--managed-by=cats-packaging-check', '--ready-output=json',
+    '--host=127.0.0.1', `--port=${port}`], {
+    cwd: root, env: { ...env, CATS_RUNTIME_PACKAGE_ROOT: runtimeRoot },
+    windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  const closed = new Promise((resolve) => child.once('close', resolve));
+  let output = '';
+  let timer;
+  try {
+    const ready = await new Promise((resolve, reject) => {
+      let pending = '';
+      child.once('error', reject);
+      child.stderr.on('data', (chunk) => { output = (output + chunk).slice(-32_768); });
+      child.stdout.on('data', (chunk) => {
+        output = (output + chunk).slice(-32_768);
+        pending += chunk;
+        const lines = pending.split(/\r?\n/);
+        pending = lines.pop().slice(-32_768);
+        for (const line of lines) {
+          try {
+            const event = JSON.parse(line);
+            if (event.event === 'runtime.ready' && event.service === 'cats-runtime' && event.ready === true) resolve(event);
+          } catch { /* Other startup diagnostics are not readiness. */ }
+        }
+      });
+      child.once('close', (code) => reject(new Error(`Packaged Runtime exited before readiness (${code}):\n${output}`)));
+      timer = setTimeout(() => reject(new Error(`Packaged Runtime readiness timed out:\n${output}`)), timeoutMs);
+    });
+    clearTimeout(timer);
+    assert.equal(ready.pid, child.pid);
+    assert.equal(ready.version, version);
+    const response = await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(5_000) });
+    assert.equal(response.status, 200, `Packaged Runtime health failed:\n${output}`);
+    const health = await response.json();
+    assert.equal(health.service, 'cats-runtime');
+    assert.equal(health.startup.pid, child.pid);
+    assert.equal(health.version, version);
+    return true;
+  } finally {
+    clearTimeout(timer);
+    if (child.exitCode === null && child.signalCode === null) {
+      child.stdin.end();
+      const stop = setTimeout(() => child.kill('SIGKILL'), shutdownTimeoutMs);
+      await closed;
+      clearTimeout(stop);
+    }
+    await closed;
+  }
 }
 
 export async function verifyPackagedPlatformStartup(resourcesRoot, {
@@ -100,7 +160,10 @@ export async function verifyPackagedPlatformStartup(resourcesRoot, {
     assert.equal(health.startup.pid, child.pid);
     assert.equal(health.readiness.ready, true);
     assert.equal(health.version, version);
-    return { platformStartup: true, version, isolatedState: true, runtime: 'unavailable-fixture' };
+    const runtimeStartup = await verifyPackagedRuntimeStartup(resourcesRoot, root, env, {
+      command, timeoutMs, shutdownTimeoutMs,
+    });
+    return { platformStartup: true, runtimeStartup, version, isolatedState: true, runtime: 'unavailable-fixture' };
   } finally {
     clearTimeout(timer);
     if (child && child.exitCode === null && child.signalCode === null) {

@@ -277,6 +277,7 @@ export function verifyBuildReceipts(manifest, receipts) {
     assert.equal(receipt.schemaVersion, 1);
     assert.equal(receipt.offlineActivation, true);
     assert.equal(receipt.platformStartup, true, 'Packaged Platform startup must pass before publication');
+    assert.equal(receipt.runtimeStartup, true, 'Packaged Runtime startup must pass before publication');
     assert.equal(receipt.descriptor.tag, manifest.tag);
     assert.equal(receipt.descriptor.version, manifest.version);
     assert.equal(receipt.descriptor.commit, manifest.repositories.find((r) => r.repository === 'cats-inc/cats-platform').commit);
