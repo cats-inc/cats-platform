@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import { routeRequest } from '../src/app/server/requestRouter.ts';
 import type { ResolvedServerDependencies } from '../src/app/server/contracts.ts';
+import { createAppStartupState } from '../src/app/server/startup.ts';
 import { loadConfig } from '../src/config.ts';
 import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
@@ -521,6 +522,7 @@ function createDependencies(
   return {
     shared: {
       config,
+      startup: createAppStartupState(),
       coreStore: new MemoryCoreStore(core),
       authStore: input.authStore
         ?? new MemoryPlatformAuthStore(createEmptyPlatformAuthState(NOW), () => NOW),

@@ -18,6 +18,13 @@ partial cleanup and native Windows junction retention. Another 46 affected Deskt
 bootstrap, provider management, selection and preload cases passed. Server, host
 and renderer builds and renderer/test TypeScript checks passed.
 
+The first full CI exposed an incomplete auth-router fixture: its asserted
+`ResolvedServerDependencies` omitted the required startup state, now read when
+projecting Desktop reset availability. The fixture now uses the production
+standalone startup constructor. The same eight failures reproduced locally before
+the correction; all 16 auth-router cases passed afterward. Production behavior
+and the native acceptance candidate are unchanged by this test-only correction.
+
 Native acceptance used private `runtime-reset-candidate-20261023-c` with Electron
 41.2.0: Platform HEAD `14709469` plus the dirty reset implementation (source digest
 `8cebeb061c252466ce687f722beaf35b5e6c427c8814ddc2a2f40ebacf6244f5`)
