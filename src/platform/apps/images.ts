@@ -285,22 +285,22 @@ export class AppImageService {
     return this.own(scope, id);
   }
   /**
-   * Owner deletion of a finished job. Order keeps every failure retryable: record the tombstone, remove the
-   * saved original, then the Core task/run/artifact; the Runtime receipt is dropped last, best effort.
+   * Owner deletion of a finished job. Everything happens inside one Core mutation after the authoritative checks,
+   * so a refusal changes nothing: reserve the request ID, remove the saved original, then drop the Core
+   * task/run/artifact. A failed Core write leaves a listed job that can be deleted again. The Runtime receipt is
+   * dropped afterwards, best effort.
    */
   async remove(scope: AppImageScope, id: string): Promise<{ deleted: true }> {
     const job = await this.own(scope, id);
     if (!deletableStatuses.has(job.status)) throw new AppImageError('image_not_deletable', 409);
-    const core = await this.deps.coreStore.readCore();
-    if (externalDependencies(core, id).length) throw new AppImageError('image_in_use', 409);
-    await this.tombstone(id);
-    await rm(this.imagePath(job), { force: true });
-    await this.mutate((latest) => {
-      // Delete only what the owner saw: a status change in between (for example a recollected image) refuses.
+    await this.mutate(async (latest) => {
       const current = jobs(latest).find((entry) => entry.id === id);
       if (!current) return latest;
+      // Delete only what the owner saw: a status change in between (for example a recollected image) refuses.
       if (current.status !== job.status) throw new AppImageError('image_not_deletable', 409);
       if (externalDependencies(latest, id).length) throw new AppImageError('image_in_use', 409);
+      await this.tombstone(id);
+      await rm(this.imagePath(current), { force: true });
       return removeJob(latest, id);
     });
     // The App-visible work is gone either way; an unreachable or slow Runtime only keeps its own receipt.
@@ -308,26 +308,33 @@ export class AppImageService {
     return { deleted: true };
   }
   // Deleted job IDs stay reserved so a late or repeated submit of the same requestId never generates again.
-  private deleted: Set<string> | null = null;
+  // The set is written only inside Core mutations, so writes are serialized; unknown or damaged data is never
+  // overwritten and keeps image requests unavailable instead of silently dropping reservations.
+  private deleted: Promise<Set<string>> | null = null;
   private get tombstonePath() { return path.join(this.paths.dataDir, 'image-deletions.json'); }
-  private async deletedIds(): Promise<Set<string>> {
-    if (this.deleted) return this.deleted;
-    try {
-      const value = JSON.parse(await readFile(this.tombstonePath, 'utf8')) as { schemaVersion?: number; ids?: unknown };
-      this.deleted = new Set(value.schemaVersion === 1 && Array.isArray(value.ids) ? value.ids.filter((entry): entry is string => typeof entry === 'string' && IMAGE_ID.test(entry)) : []);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw new AppImageError('image_service_unavailable', 503);
-      this.deleted = new Set();
-    }
+  private deletedIds(): Promise<Set<string>> {
+    this.deleted ??= readFile(this.tombstonePath, 'utf8').then((content) => {
+      const value = JSON.parse(content) as { schemaVersion?: unknown; ids?: unknown };
+      if (value.schemaVersion !== 1 || !Array.isArray(value.ids)) throw new Error('Unsupported image deletion data');
+      return new Set(value.ids.filter((entry): entry is string => typeof entry === 'string' && IMAGE_ID.test(entry)));
+    }, (error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return new Set<string>();
+      throw error;
+    }).catch(() => { this.deleted = null; throw new AppImageError('image_service_unavailable', 503); });
     return this.deleted;
   }
   private async tombstone(id: string) {
-    const ids = [...await this.deletedIds()].filter((entry) => entry !== id).concat(id).slice(-2000);
+    const deleted = await this.deletedIds();
+    const ids = [...deleted].filter((entry) => entry !== id).concat(id).slice(-2000);
     await mkdir(path.dirname(this.tombstonePath), { recursive: true });
     const temporary = `${this.tombstonePath}.${randomUUID()}.tmp`;
-    await writeFile(temporary, JSON.stringify({ schemaVersion: 1, ids }), { flag: 'wx' });
-    await rename(temporary, this.tombstonePath);
-    this.deleted = new Set(ids);
+    try {
+      const file = await open(temporary, 'wx');
+      try { await file.writeFile(JSON.stringify({ schemaVersion: 1, ids })); await file.sync(); } finally { await file.close(); }
+      await rename(temporary, this.tombstonePath);
+    } catch (error) { await rm(temporary, { force: true }); throw error; }
+    // In place, so a submit already holding the set sees the reservation.
+    deleted.clear(); for (const entry of ids) deleted.add(entry);
   }
   private async own(scope: AppImageScope, id: string) {
     if (!IMAGE_ID.test(id)) throw new AppImageError('invalid_image_request');

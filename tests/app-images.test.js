@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtemp, rm, readFile } from 'node:fs/promises';
+import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
@@ -126,6 +126,27 @@ test('owner deletion removes a finished job, its Core records, the saved file an
   const offline = await f.service.submit(f.scope, input()); await f.service.cancel(f.scope, offline.id); await waitFor(f, offline.id, 'cancelled');
   assert.deepEqual(await f.service.remove(f.scope, offline.id), { deleted: true }, 'an unreachable Runtime does not block deletion');
   assert.equal(f.submissions(), 3);
+});
+
+test('concurrent deletions keep every request ID reserved; unknown reservation data is never overwritten', async (t) => {
+  const f = await setup(t); f.run();
+  const requests = [input(), input()]; const created = [];
+  for (const request of requests) {
+    const job = await f.service.submit(f.scope, request); await f.service.cancel(f.scope, job.id); await waitFor(f, job.id, 'cancelled'); created.push(job);
+  }
+  await Promise.all(created.map((job) => f.service.remove(f.scope, job.id)));
+  const restarted = new AppImageService(f.deps);
+  for (const request of requests) await assert.rejects(restarted.submit(f.scope, request), /image_request_conflict/);
+  assert.equal(f.submissions(), 2);
+  const reservations = path.join(resolveCatsAppStoragePathsFromChatState(f.deps.chatStatePath).dataDir, 'image-deletions.json');
+  const newer = JSON.stringify({ schemaVersion: 2, entries: [] });
+  await writeFile(reservations, newer);
+  const downgraded = new AppImageService(f.deps);
+  await assert.rejects(downgraded.submit(f.scope, input()), /image_service_unavailable/);
+  const left = await f.service.submit(f.scope, input()); await f.service.cancel(f.scope, left.id); await waitFor(f, left.id, 'cancelled');
+  await assert.rejects(downgraded.remove(f.scope, left.id), /image_service_unavailable/);
+  assert.equal(await readFile(reservations, 'utf8'), newer, 'unknown reservation data is preserved');
+  assert.equal((await downgraded.list(f.scope)).length, 1, 'a refused deletion keeps the job');
 });
 
 test('transient Runtime read failure recovers the same attempt; no generating POST on restart', async (t) => {
