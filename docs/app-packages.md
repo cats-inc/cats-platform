@@ -47,6 +47,14 @@ are planned. SDK 1.3 image operations below remain the implemented boundary.
 
 ## Host and SDK compatibility
 
+Desktop 0.9.2 exposes App SDK **1.6.0**. That minor adds the compatible owner
+deletion `images.delete(id)` (see [SPEC-119](specs/SPEC-119-app-image-generation.md)).
+Studio 0.3.2 feature-detects it and keeps its Platform `^0.6.0` floor and SDK
+`^1.3.0` range, so hosts with SDK 1.5 run it without a delete action. Selected
+Usage **0.5.4** keeps its Platform `^0.6.0` floor and SDK `^1.2.0` range and the
+published Platform 0.6.0 builder. The Desktop App lock pins the published 0.5.4
+archive by immutable URL and SHA-256.
+
 Desktop 0.8.2 exposes App SDK **1.5.0** for the compatible Grok/Muse quota
 refresh capabilities and optional native `resetLabel` text. Selected Usage
 **0.5.3** retains its Platform `^0.6.0` floor and SDK `^1.2.0` range; it still

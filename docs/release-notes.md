@@ -2,6 +2,86 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-23 — Desktop 0.9.2 standard preview with App work deletion
+
+Desktop **0.9.2** is the owner-selected standard-profile preview with Runtime
+**0.5.4**, App SDK **1.6.0** and Usage **0.5.4**. Public APIs, configuration
+contracts and persisted formats remain compatible within the 0.9 host line, and
+no data migration is required. No Platform npm, Runtime npm or cats-one
+publication is selected. Studio 0.3.2 and Usage 0.5.4 are published separately in
+cats-apps and offered through the Market catalog.
+
+- **Apps can delete finished image work** (#304).
+  - App SDK 1.6.0 adds `images.delete(id)` for succeeded, failed and cancelled jobs.
+    It removes the job's Core task/run/artifact, its saved original and its owner
+    lifecycle entries. The Runtime receipt is dropped best effort.
+  - Active or unconfirmed jobs answer `image_not_deletable`. Jobs that a Work link or
+    another Core record references answer `image_in_use` and keep their file.
+  - A deleted request ID stays reserved in `image-deletions.json`. Resending it
+    answers `image_request_conflict`, so deletion never leads to a second generation.
+  - Unknown or damaged reservation data is preserved and refuses image requests
+    instead of being overwritten.
+  - Studio 0.3.2 shows the delete action only on hosts with this SDK.
+- **The App shell carries App identity** (#301). The App route shows the lobby
+  subtitle, and its package facts show the version and a localized status. Apps no
+  longer repeat their name, Home button or version. `runtime_capacity_full` joins
+  the image errors an App can receive.
+- **Optional Runtime data reset** (ADR-135). The Platform reset dialog gains an
+  unchecked **Also reset Runtime data** option. Every reset requires typing `RESET`.
+  - The option erases only the Desktop-managed Runtime's `config`, `data` and
+    `sessions` directories. The next start then needs provider selection again.
+  - Installed CLIs, their sign-ins, external workspaces, Apps and Desktop startup/tray
+    preferences remain.
+  - With the option unchecked, Runtime files are untouched.
+- **Composer and transcript layout.** Drafts and parallel mirrors resize after clears,
+  restores, remounts and width changes. Context menus stay above parallel cards and
+  inside the viewport (#296, #297). Wide tables and unbroken code scroll inside their
+  message instead of widening the transcript past the composer (#302).
+- **macOS update dialogs come to the front** when Cats is hidden to the tray (#298).
+  Windows and Linux are unchanged.
+- **Runtime 0.5.4.** Studio images report `runtime_capacity_full` when the worker
+  pool is full. The `CATS_RUNTIME_MAX_SESSIONS` default rises from 10 to 50; Desktop
+  does not override it, and an explicitly configured value is kept. Studio generation
+  uses `grok-4.7` at `xhigh` effort, and new provider selections get the documented
+  per-instance timeouts. See the Runtime release guide.
+- **Upgrading.** From 0.9.0 or 0.9.1, nothing is required. From 0.8.x, the Platform
+  reset described for 0.9.0 is still required before updating.
+- **Exact Runtime source.** Every OS build and the complete source archive bundle
+  Runtime `55878d6dcc72b3fae156b8b998b7ea79370bd35f` (package 0.5.4). Platform
+  source is the immutable merge commit selected for dispatch and recorded by the
+  release descriptor and source manifest.
+- **Exact App selection.** Usage 0.5.4 is selected from
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer source `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
+  - The public download matches the lock.
+  - Its Platform ^0.6.0 floor and SDK ^1.2.0 range accept host 0.9.2 / SDK 1.6.0.
+  - Studio remains outside the default bundle.
+  - Both knowledge bundles' `0.9.x` ranges include 0.9.2.
+- **Signing and updates.** Dispatch desktop-release.yml with tag=v0.9.2, the Runtime
+  SHA above and unsigned=false; the workflow creates the preview tag.
+  - Expected trust: macOS signed + notarized; Windows unsigned (no certificate) for
+    both installers; Linux n/a for both packages.
+  - Standard-profile 0.9.x installs keep their update path: macOS uses the universal
+    ZIP and the same Developer ID team, Windows stays unsigned to unsigned, and Linux
+    uses its matching .deb.
+  - No installed upgrade is exercised during release preparation.
+- **Validation.**
+  - #301, #302 and #304 passed required PR CI (validate and nodejs 24).
+  - #304 also passed the Studio browser harness on the Studio 0.3.2 candidate
+    (2 submissions, 1 cancel, 2 deletions, 0 CLI calls) and on Studio 0.3.1/0.3.0.
+    The Usage harness passed on the Usage 0.5.4 candidate.
+  - This preparation changes version fields, the SDK version, the Usage pin and
+    notes. The SDK conformance, public entry, image and source bundle tests passed
+    locally.
+  - Required Platform PR CI gates the merge.
+  - The Desktop workflow verifies three-OS source receipts, offline App activation,
+    isolated sidecar startup, complete source downloads, signing checks, update
+    metadata, checksums and provenance before publication.
+  - Publication results:
+    [v0.9.2 GitHub Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.9.2)
+    and its workflow run.
+
 ## 2026-10-22 — Desktop 0.9.1 standard preview with the Work landing restored
 
 Desktop **0.9.1** is the owner-selected standard-profile preview with Runtime
