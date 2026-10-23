@@ -10,7 +10,7 @@ import { createDefaultChatState } from '../build/server/products/chat/state/defa
 import { createCat, createChannel, setChannelCatLease, setChannelStatus } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { createChatCatImages, routeCatImages } from '../build/server/products/chat/api/catImages.js';
-import { readCatImageAttachment, catImageAttachmentUrl } from '../build/server/products/chat/shared/catImageAttachments.js';
+import { readCatImageAttachment, catImageAttachmentUrl } from '../build/server/shared/catImageAttachments.js';
 import { createTelegramRelay } from '../build/server/platform/transports/telegram/relay/index.js';
 import { checkTelegramDispatchGuard } from '../build/server/platform/transports/telegram/delivery.js';
 import { InMemoryTelegramRelayStore } from '../build/server/platform/transports/telegram/store/index.js';

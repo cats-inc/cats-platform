@@ -56,6 +56,13 @@
   普通（非主控）Cat，未碰安裝版或預設 profile。最後 renderer types 與 UI suite 4/4 通過。
 - 下一步：完成普通 Cat 設定與對話 UI、真 provider／Telegram golden path，以及完整 hosted
   CI 與必要版本發布。預設 profile 無 Telegram 綁定；已請 owner 指定驗收 bot/profile，尚待回覆。
+- 完整 hosted CI 首輪 5856 項中 5794 通過、60 skipped、2 失敗：共用 transcript helper
+  的 Chat import 改到 browser-safe `src/shared`，依賴圖回歸通過；file-backed Telegram
+  fixture 補自己的 platformDir，restart 回歸通過。未把這一輪稱為全綠，後續 CI 仍是 gate。
+- 真 native 首輪建立 Codex source session 後，在 MCP descriptor recycle 階段碰到舊
+  worker 尚未完全停止即 spawn 的 Runtime 缺陷；沒有 image admission／生成。Runtime
+  0.6.1 patch 加入有界完整停止等待與新 run／取消／刪除 fence，MCP/handoff 22/22 通過；
+  第二候選版及 native rerun 進行中，Desktop 發布須改 pin 通過驗收的 patch source。
 
 下方階段清單仍用於逐項驗收；實作授權與當前基線以上述 checkpoint 為準。
 

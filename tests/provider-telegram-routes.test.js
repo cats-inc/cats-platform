@@ -2168,6 +2168,7 @@ test('telegram relay state survives restart with file-backed chat storage', asyn
   const config = {
     ...baseConfig,
     chatStatePath,
+    platformDir: path.join(stateDir, 'platform'),
   };
 
   try {

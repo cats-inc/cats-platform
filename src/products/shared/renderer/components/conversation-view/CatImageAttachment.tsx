@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { catImageAttachmentUrl, readCatImageAttachment } from '../../../../chat/shared/catImageAttachments.js';
+import { catImageAttachmentUrl, readCatImageAttachment } from '../../../../../shared/catImageAttachments.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 

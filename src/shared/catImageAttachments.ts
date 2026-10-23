@@ -1,4 +1,4 @@
-/** Browser-safe managed image reference. Credentials and local paths are never message attachments. */
+/** Browser-safe Cat image reference for the shared transcript and Cat settings surfaces. */
 export interface CatImageAttachment {
   schemaVersion: 1;
   catId: string;

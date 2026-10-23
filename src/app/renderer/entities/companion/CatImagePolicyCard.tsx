@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CatsImageCapabilitiesV2, CatsImageJobV2 } from '#cats-app-format';
 import { ToastContainer, useToast } from '../../../../design/components/Toast.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
-import { catImageAttachmentUrl } from '../../../../products/chat/shared/catImageAttachments.js';
+import { catImageAttachmentUrl } from '../../../../shared/catImageAttachments.js';
 import { useI18n } from '../../i18n/useI18n.js';
 
 interface Policy {
