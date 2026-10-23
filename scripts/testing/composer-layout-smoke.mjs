@@ -1,7 +1,8 @@
 /**
  * Usage: node scripts/testing/composer-layout-smoke.mjs [--help]
  * Check all three products/presets and drafts in isolated Electron using real
- * composer components/styles. No provider calls or user-profile writes.
+ * composer/transcript components and styles, including wide tables and code.
+ * No provider calls or user-profile writes.
  * Results and screenshots: build/composer-layout-smoke/.
  * CATS_TEST_BROWSER_EXECUTABLE optionally selects an existing Electron binary.
  */
@@ -57,6 +58,7 @@ try {
   if (code !== 0) throw new Error(`Composer browser verification exited ${code}`);
   const result = JSON.parse(await readFile(path.join(output, 'result.json'), 'utf8'));
   console.log(JSON.stringify({ scenarios: result.checks.length, directLane: result.directLane,
+    transcriptScenarios: result.transcriptChecks.length,
     viewports: result.viewports, errors: result.errors, cliCalls: result.cliCalls, output }, null, 2));
 } finally {
   server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
