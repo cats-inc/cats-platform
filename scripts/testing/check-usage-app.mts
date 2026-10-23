@@ -16,6 +16,7 @@ import { resolveCatsAppStoragePathsFromChatState } from '../../src/platform/apps
 import { projectUsageSnapshot, projectUsageQuotaRefresh } from '../../src/runtime/usageSnapshot.js';
 import { toPlatformInstalledAppDescriptor } from '../../src/platform/apps/envelope.js';
 import { routeRequest } from '../../src/app/server/requestRouter.js';
+import { createAppStartupState } from '../../src/app/server/startup.js';
 import type { ResolvedServerDependencies } from '../../src/app/server/contracts.js';
 import { loadConfig } from '../../src/config.js';
 import { createDefaultCoreState } from '../../src/core/model/index.js';
@@ -108,6 +109,7 @@ const auth = await createFirstAdminLocalAuthState({ state: createEmptyPlatformAu
   identifier: 'test@example.test', password: 'isolated-fixture-password', sessionSecret, sessionTtlMs: 600_000 });
 const core = createDefaultCoreState(); core.setupCompleteAt = new Date().toISOString();
 const dependencies = { shared: {
+  startup: createAppStartupState(),
   config: loadConfig({ CATS_HOME_DIR: root, CATS_PLATFORM_DIR: root, CATS_CHAT_STATE_PATH: chatStatePath,
     CATS_AUTH_SESSION_SECRET: sessionSecret }),
   coreStore: new MemoryCoreStore(core), authStore: new MemoryPlatformAuthStore(auth.state),

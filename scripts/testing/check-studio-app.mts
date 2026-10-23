@@ -13,6 +13,7 @@ import { build } from 'esbuild';
 import { resolveAppLock } from '#cats-app-package';
 import { installRendererPackage } from '../../src/platform/apps/packageInstaller.js';
 import { routeRequest } from '../../src/app/server/requestRouter.js';
+import { createAppStartupState } from '../../src/app/server/startup.js';
 import type { ResolvedServerDependencies } from '../../src/app/server/contracts.js';
 import type { RuntimeImageJob, RuntimeImageRequest } from '../../src/runtime/images.js';
 import { loadConfig } from '../../src/config.js';
@@ -59,6 +60,7 @@ const runtimeClient = {
   async getImageBytes() { return image; },
 };
 const dependencies = { shared: {
+  startup: createAppStartupState(),
   config: loadConfig({ CATS_HOME_DIR: root, CATS_PLATFORM_DIR: root, CATS_CHAT_STATE_PATH: chatStatePath, CATS_AUTH_SESSION_SECRET: sessionSecret }),
   coreStore: new MemoryCoreStore(core), authStore: new MemoryPlatformAuthStore(auth.state), runtimeClient,
 }, chat: {}, work: {}, code: {} } as unknown as ResolvedServerDependencies;
