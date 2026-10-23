@@ -1,5 +1,10 @@
 # Implementation Plans
 
+- [PLAN-121: Shared image service and controlled Cat generation](PLAN-121-shared-image-service-and-controlled-cat-generation.md)
+  — draft, 2026-10-23; Runtime compatibility, Studio-preserving extraction,
+  Cat tool delivery, companion integration and durable Telegram recovery.
+  Documentation only; all implementation phases pending.
+
 - [PLAN-120: Code participant workspace visibility](PLAN-120-code-participant-workspace-visibility.md)
   — in progress, 2026-10-20; Runtime contract, attributed Code projection, panel/avatar
   composition and isolated acceptance organized into seven slices.

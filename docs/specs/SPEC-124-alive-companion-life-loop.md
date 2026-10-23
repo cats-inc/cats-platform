@@ -14,6 +14,14 @@
 回話像在職守），偶爾自己在同一段對話裡對主人說一句話或傳一張照片，晚上去睡、
 早上自己醒來。決策見 [ADR-127](../decisions/127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md)。
 
+## Proposed controlled image generation
+
+[SPEC-128](SPEC-128-shared-image-service-and-controlled-cat-generation.md) 與
+[PLAN-121](../plans/PLAN-121-shared-image-service-and-controlled-cat-generation.md)
+補充 owner 定義的完整 golden path：心跳可在有限預授權下請求生圖，保存後附到
+同一私訊並由 durable intent 傳 Telegram。這部分尚未實作；本 SPEC 現有相簿傳圖
+與文字心跳不暗含生圖授權。Studio 安裝與 Boss Cat 身分不是新能力的必要條件。
+
 ## Goals
 
 - 清醒時段內，陪伴貓的私訊 session 真的活著；runtime 重啟或 session 被關掉後自動醒回來。

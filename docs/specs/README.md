@@ -1,5 +1,9 @@
 # Feature Specifications
 
+- [SPEC-128: Shared image service and controlled Cat generation](SPEC-128-shared-image-service-and-controlled-cat-generation.md)
+  — draft, 2026-10-23; common Studio/Cat service, durable budgets, isolated assets,
+  migration and generated-image-to-Telegram acceptance. Implementation not started.
+
 - [SPEC-127: Code participant workspace visibility](SPEC-127-code-participant-workspace-visibility.md)
   — approved, 2026-10-20; observe each participant's repos/worktrees under one
   Codespace, with Runtime coverage and freshness. Sliced implementation in progress.

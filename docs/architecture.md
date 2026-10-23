@@ -29,6 +29,22 @@ modes." It is a unified interaction core plus a structured materialization
 layer so `Cats Chat`, `Cats Work`, and `Cats Code` can all project from the
 same engine and provenance model.
 
+## Proposed shared image service (2026-10-23)
+
+[ADR-136](decisions/136-share-controlled-image-capabilities-between-cats-and-studio.md),
+[SPEC-128](specs/SPEC-128-shared-image-service-and-controlled-cat-generation.md)
+and [PLAN-121](plans/PLAN-121-shared-image-service-and-controlled-cat-generation.md)
+propose a caller-aware Platform image service used by Studio through its App SDK
+and by Cats through scoped agent tools. Runtime retains bounded provider execution.
+Cat capability does not depend on Studio installation or Boss role; finite owner
+grants and output-binding authority remain separate. Shared assets retain caller
+isolation. Existing App SDK behavior remains the delivered baseline; extraction,
+Cat grants, upgrades and generated-image delivery are not implemented.
+
+The first slice evaluates the existing Grok HTTP contract and same-instance
+pool/singleton interaction before deciding whether Runtime needs a successor.
+Studio edit/compose/multi-provider expansion remains the Apps PLAN-006 track.
+
 ## Official Utility App Boundary (Renderer Slice Implemented)
 
 The accepted complete-App model in [ADR-125](decisions/125-own-multiple-frontends-and-backends-in-one-app.md)

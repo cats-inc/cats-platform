@@ -4,6 +4,17 @@ Status: Implemented; isolated and installed Windows Desktop acceptance passed (2
 Decision: [ADR-120](../decisions/120-scope-app-image-jobs-and-assets.md).
 Plan: [PLAN-111](../plans/PLAN-111-app-image-generation.md).
 
+## Proposed shared-service successor
+
+[ADR-136](../decisions/136-share-controlled-image-capabilities-between-cats-and-studio.md),
+[SPEC-128](SPEC-128-shared-image-service-and-controlled-cat-generation.md) and
+[PLAN-121](../plans/PLAN-121-shared-image-service-and-controlled-cat-generation.md)
+propose extracting this App-scoped implementation into a shared image service.
+The existing SDK adapter keeps all App/account/version/digest checks and saved
+job identities. Cat callers receive separate authority and assets; they never
+impersonate an installed Studio App. The proposal is documentation only, does not
+enable editing or cross-caller sharing, and does not change the delivered contract below.
+
 ## SDK 1.3
 
 | Method | Contract |

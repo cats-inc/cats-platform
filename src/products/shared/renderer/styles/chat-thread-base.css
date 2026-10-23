@@ -306,6 +306,8 @@
 
 .transcriptList {
   display: grid;
+  /* Intrinsic table/code widths must not resize the shared message lane. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   width: 100%;
   margin: 0 auto;
@@ -319,6 +321,7 @@
 }
 
 .transcriptMessage {
+  min-width: 0;
   max-width: 85%;
   padding: 10px 14px;
   border-radius: 16px;
@@ -1286,6 +1289,8 @@ button.draftHeaderAvatar.draftHeaderAvatarEditable:hover .draftHeaderAvatarCamer
 .messageBodyMarkdown table {
   border-collapse: collapse;
   font-size: 0.95em;
+  /* Keep words readable; wide tables scroll instead of breaking every letter. */
+  word-break: normal;
 }
 
 .messageBodyMarkdown :where(th, td) {

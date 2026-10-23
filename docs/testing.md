@@ -169,6 +169,39 @@ built and reached first-run provider selection, then drained and exited with its
 two sidecars; that startup check does not extend the fixture verdict to an
 installed profile. No independent review or macOS/Linux native run was performed.
 
+### Transcript width and wide Markdown content
+
+The message lane shares the composer's width; intrinsic table/code widths must
+not enlarge the Grid column or move right-aligned user messages. Keep the existing
+85% bubble cap and content-sized short replies. Tables retain ordinary word
+boundaries; tables and fenced code scroll inside their own regions, while prose,
+inline paths and user text retain their existing wrapping.
+
+`composer-layout-smoke.mjs` also covers 27 started-transcript scenarios: three
+products × three presets × three viewport sizes. Each replaces a normal reply
+with a wide table, unbroken fenced-code line, inline path and URL, then restores
+the normal reply without remounting. It measures both bubble edges against the
+composer, bounds row/canvas overflow, scrolls the table/code regions and verifies
+untruncated code/user text, readable table headings and content-sized short replies.
+Inspect both `transcript-wide-*.png` and `transcript-table-*.png`; the latter scrolls
+the table into view and waits for the offscreen renderer to paint before capture.
+
+2026-10-23 validation: the new browser assertions first reproduced a 6,034px
+intrinsic column inside a 720px lane. After the width constraints, all 27 cases
+retain their normal bounds, alongside the existing 18 composer cases and direct
+lane checks, with no renderer errors or provider calls. Windows Electron 41.2.0
+screenshots were inspected at the three sizes. All 39 selected message/Markdown,
+transcript, composer and style tests passed in shared-process mode; renderer
+TypeScript and Vite builds passed. This is isolated renderer acceptance, not an
+installed-profile or macOS/Linux native result.
+
+The production-style source candidate `transcript-overflow-candidate-20261023-b`
+built from Platform `c57ac7c9` plus the dirty fix (source digest
+`ac14b687f9ae18823b0bf008ada7b4932ae72b5640baa4fc185de037bfc33dc9`), with
+Runtime `84fd051b`. Its first-run provider-selection screenshot was inspected;
+the host and both sidecars drained and exited. This only verifies source build
+and startup integration; the renderer fixture above proves the width behavior.
+
 ### Docs-only changes in CI
 
 The CI workflow first checks whether every changed file is under `docs/`. If so,
