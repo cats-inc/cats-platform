@@ -52,7 +52,7 @@ const provider = (value: unknown) => {
 function aspectRatio(value: unknown): RuntimeImageAspectRatio {
   const input = record(value);
   if (input.mode === 'service') return { mode: 'service' };
-  if (input.mode === 'native' && Array.isArray(input.options) && input.options.length === 1 && /^\d{1,2}:\d{1,2}$/.test(String(input.options[0]))) {
+  if (input.mode === 'native' && Array.isArray(input.options) && input.options.length === 1 && /^\d{1,4}:\d{1,4}$/.test(String(input.options[0]))) {
     return { mode: 'native', options: [String(input.options[0])] };
   }
   throw new RuntimeImageError('image_service_unavailable');
@@ -68,16 +68,20 @@ export function projectImageCapabilities(value: unknown): RuntimeImageCapabiliti
     return { id, provider: name, instance };
   });
   const known = new Set(targets.map((target) => target.id));
-  const profiles = input.profiles.map((entry): RuntimeImageProfile => {
-    const profile = record(entry);
-    const inputs = record(profile.inputs);
-    if (profile.operation !== 'image.generate' || !Number.isSafeInteger(profile.revision) || Number(profile.revision) < 1
-      || inputs.min !== 0 || inputs.max !== 0 || !Array.isArray(profile.targetIds) || !Array.isArray(profile.agentConfigs)
-      || profile.agentConfigs.length !== 1 || profile.targetIds.some((id) => !known.has(String(id)))) throw new RuntimeImageError('image_service_unavailable');
-    const config = record(profile.agentConfigs[0]);
-    return { id: key(profile.id), revision: Number(profile.revision), operation: 'image.generate', targetIds: profile.targetIds.map(String),
-      agentConfigs: [{ id: key(config.id), model: key(config.model, 100), effort: key(config.effort, 40) }],
-      inputs: { min: 0, max: 0 }, aspectRatio: aspectRatio(profile.aspectRatio) };
+  // A profile this host cannot offer yet (another operation, inputs or ratio mode) is left out, never fatal:
+  // a later additive Runtime profile must not turn images off for every App.
+  const profiles = input.profiles.flatMap((entry): RuntimeImageProfile[] => {
+    try {
+      const profile = record(entry);
+      const inputs = record(profile.inputs);
+      if (profile.operation !== 'image.generate' || !Number.isSafeInteger(profile.revision) || Number(profile.revision) < 1
+        || inputs.min !== 0 || inputs.max !== 0 || !Array.isArray(profile.targetIds) || !Array.isArray(profile.agentConfigs)
+        || profile.agentConfigs.length !== 1 || profile.targetIds.some((id) => !known.has(String(id)))) return [];
+      const config = record(profile.agentConfigs[0]);
+      return [{ id: key(profile.id), revision: Number(profile.revision), operation: 'image.generate', targetIds: profile.targetIds.map(String),
+        agentConfigs: [{ id: key(config.id), model: key(config.model, 100), effort: key(config.effort, 40) }],
+        inputs: { min: 0, max: 0 }, aspectRatio: aspectRatio(profile.aspectRatio) }];
+    } catch { return []; }
   });
   return { schemaVersion: 2, revision: key(input.revision, 64), maxPromptLength: 2000, maxImageBytes: IMAGE_MAX_BYTES, targets, profiles };
 }

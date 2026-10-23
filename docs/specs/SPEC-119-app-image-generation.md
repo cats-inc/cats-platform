@@ -54,7 +54,7 @@ counts as below 1.7.0.
 Under schema 1 an App sees only Grok work with JPEG or no output:
 
 - Its `{requestId, instance, prompt}` runs that Grok instance's native 1:1 generation profile.
-- Other work is kept but answers `image_not_found` to it.
+- Other work is kept but answers `image_not_found` to it. Hidden work still counts toward that App/account's active-job and 100-job limits; it cannot be cancelled or deleted from schema 1.
 
 Core `appImage` metadata is schema 2. A schema 1 entry reads as Grok, `grok-generate`, opaque
 JPEG, and is rewritten only when the job next changes. Unknown schemas are ignored and left

@@ -384,8 +384,8 @@ export class AppImageService {
     await writeFile(temporary, bytes, { flag: 'wx' }); await rename(temporary, target);
     await this.authorize(this.scope(job));
     const saved = await this.update(job.id, { status: 'succeeded', error: null, output: remote.output, ...execution });
-    // A job deleted while its bytes were being collected must not leave the file behind.
-    if (!saved) await rm(target, { force: true });
+    // Work deleted or cancelled while its bytes were being collected must not leave the file behind.
+    if (saved?.status !== 'succeeded' || saved.output?.sha256 !== remote.output.sha256) await rm(target, { force: true });
   }
   async cancel(scope: AppImageScope, id: string) {
     const job = await this.own(scope, id);
@@ -421,7 +421,8 @@ export class AppImageService {
       if (current.status !== job.status) throw new AppImageError('image_not_deletable', 409);
       if (externalDependencies(latest, id).length) throw new AppImageError('image_in_use', 409);
       await this.tombstone(id);
-      await rm(this.imagePath(current), { force: true });
+      // Either type: a collection that lost a race may have left the other one.
+      for (const type of ['image/jpeg', 'image/png'] as const) await rm(this.imagePath(current, { mimeType: type }), { force: true });
       return removeJob(latest, id);
     });
     // The App-visible work is gone either way; an unreachable or slow Runtime only keeps its own receipt.

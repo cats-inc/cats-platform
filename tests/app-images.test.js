@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdir, mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rm, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
@@ -272,10 +272,14 @@ test('Runtime projection rejects unbounded or malformed images and redacts arbit
   }
   assert.throws(() => projectImageJob({ ...job, output: null }), /invalid_image/);
   assert.equal(projectImageCapabilities(CAPABILITIES).profiles[1].aspectRatio.mode, 'service');
-  for (const invalid of [{ schemaVersion: 1 }, { targets: [{ id: 'grok/other', provider: 'grok', instance: 'native' }] },
-    { profiles: [{ ...MUSE, targetIds: ['codex/native'] }] }, { profiles: [{ ...MUSE, aspectRatio: { mode: 'choose' } }] }]) {
+  for (const invalid of [{ schemaVersion: 1 }, { targets: [{ id: 'grok/other', provider: 'grok', instance: 'native' }] }]) {
     assert.throws(() => projectImageCapabilities({ ...CAPABILITIES, ...invalid }), /image_service_unavailable/);
   }
+  // Profiles this host cannot offer are skipped, so the rest stay usable.
+  const later = projectImageCapabilities({ ...CAPABILITIES, profiles: [...CAPABILITIES.profiles,
+    { ...MUSE, id: 'muse-edit', operation: 'image.edit', inputs: { min: 1, max: 1 } },
+    { ...MUSE, id: 'muse-choose', aspectRatio: { mode: 'choose', options: ['3:2'] } }, { ...MUSE, id: 'orphan', targetIds: ['codex/native'] }] });
+  assert.deepEqual(later.profiles.map((profile) => profile.id), ['grok-generate', 'muse-generate']);
   await assert.rejects(readImageResponse(new Response(JSON.stringify({ error: 'SECRET /private/path' }), { status: 500 })), /image_service_unavailable/);
 });
 
@@ -348,6 +352,24 @@ test('the App SDK floor selects the image contract; contract 2 runs Muse PNG wor
   assert.equal((await f.service.capabilities(older)).schemaVersion, 1);
   await install(f.deps.chatStatePath, '0.3.0', '^1.7.0');
   assert.ok((await f.service.image({ ...f.scope, version: '0.3.0' }, job.id)).bytes.equals(f.png));
+  assert.deepEqual(await f.service.remove({ ...f.scope, version: '0.3.0' }, job.id), { deleted: true });
+  await assert.rejects(readFile(file), /ENOENT/, 'deleting PNG work removes its .png original');
+});
+
+test('a cancellation that wins while a PNG is collected leaves no file behind', async (t) => {
+  const f = await setup(t, { appSdk: '^1.7.0' });
+  let release; let requested;
+  const asked = new Promise((resolve) => { requested = resolve; });
+  const bytes = f.client.getImageBytes;
+  f.client.getImageBytes = async (id) => { requested(); await new Promise((resolve) => { release = resolve; }); return bytes(id); };
+  const job = await f.service.submit(f.scope, inputTwo());
+  await asked;
+  await f.service.cancel(f.scope, job.id); release();
+  await waitFor(f, job.id, 'cancelled');
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const folder = path.join(resolveCatsAppStoragePathsFromChatState(f.deps.chatStatePath).dataDir, 'cats.studio', 'images',
+    createHash('sha256').update('user-one').digest('hex'));
+  assert.deepEqual((await readdir(folder).catch(() => [])).filter((name) => name.startsWith(job.id)), []);
 });
 
 test('schema 1 Core records read as their schema 2 equivalent, keep their JPEG and are rewritten only on change', async (t) => {
