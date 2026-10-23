@@ -2,6 +2,51 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-23 — Prepared Desktop 0.9.4 standard preview startup repair
+
+Desktop **0.9.4 standard-profile preview** fixes the startup failure in the
+0.9.3 installer. This selects Desktop publication only; App SDK remains
+**1.8.0**, bundled Usage remains **0.5.4**, and Studio **0.4.0** remains an
+optional Market App. No npm, Runtime, cats-one or App publication is selected.
+
+- **Runtime starts with the bundled image codecs.** PNG imports previously
+  threw `Dynamic require of "util" is not supported` from the ESM bundle,
+  leaving Desktop on its bootstrap error screen. Runtime initializes its
+  CommonJS builtin loader with `createRequire(import.meta.url)` (#188).
+- **The shipped Runtime must actually start.** Platform's release verifier now
+  starts an isolated copy of the packaged Runtime and requires its ready event
+  and health response to match the child's PID and version (#308). Every OS
+  receipt must include `runtimeStartup` as well as `platformStartup` before
+  publication. A healthy Platform with an unavailable-Runtime fixture alone
+  cannot satisfy this gate.
+- **Exact source and App pins.** All OS builds and the complete source set
+  select Runtime `3f9fc67be9394072727ef5f17583b4bf4c5d0140` (package **0.6.1**),
+  including the bundle startup repair. Platform includes
+  `f10169f81040ee8f63886337b305923edb014865`; the release descriptor and source
+  manifest record the immutable version-preparation commit selected for dispatch.
+  The sole bundled App stays at
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer source `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
+- **Compatibility and upgrade.** This is a compatible 0.9 patch. Public APIs,
+  CLI/config contracts and persisted formats do not change; no migration or
+  data reset is required from 0.9.3. Usage's Platform ^0.6.0 / SDK ^1.2.0 and
+  Studio's Platform ^0.6.0 / SDK ^1.8.0 declarations accept this host and SDK.
+- **Signing and updates.** Dispatch `desktop-release.yml` with `tag=v0.9.4`,
+  the Runtime SHA above and `unsigned=false`. Expected platform trust is macOS
+  **signed + notarized**, Windows **unsigned: no certificate**, Linux **n/a**.
+  Standard-profile 0.9.x installations retain their existing update paths:
+  the same macOS Developer ID team/universal ZIP, architecture-matched Windows
+  installers and Linux packages. No installed upgrade is performed by preparation.
+- **Validation.** The underlying Runtime and Platform repairs passed their
+  full required CI and independent review. Focused regressions passed (4 Runtime,
+  9 Platform), and the repaired installed resources passed isolated startup of
+  both sidecars using the real Cats.exe. CDP confirmed the installed 0.9.3
+  local repair reached `ready_for_chat`; the new 0.9.4 installers must pass the
+  three-OS startup, App activation, identity, source, signing and release-asset
+  gates before publication. Real image generation and Telegram transmission
+  remain outside this release acceptance.
+
 ## 2026-10-23 — Prepared 0.9.3 shared images and controlled Cat generation
 
 Selected distributions are Platform npm **0.9.3** (public App SDK **1.8.0**) and
