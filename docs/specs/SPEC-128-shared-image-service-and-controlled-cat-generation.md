@@ -25,6 +25,19 @@
 共用對象為 Studio，Usage 不改。開始時 SDK 已是 1.7.0；Runtime SPEC-038 與
 Studio 已提供 image contract 2，Runtime 的 Grok／Muse／Codex／Antigravity profiles
 均已啟用，輸出包含 JPEG／PNG。保留新舊 App contract 與已交付能力，不降回 Grok-only。
+
+2026-10-24 source extension adds Cursor to Runtime image projection and SDK contract 2 provider
+types. The shared Cat ledger uses the same provider set so a valid new profile cannot be offered
+then rejected during reservation or receipt reload. Existing grants, App/account scoping and
+schema 1 projection remain unchanged. Cursor's pinned generation profile is GLM 5.3 / max,
+native 1:1 requested; its image backend is not identified by the agent model.
+The isolated Studio package/host check now accepts `--expect-cursor` to verify five services in
+Codex / Antigravity / Grok / Muse / Cursor order, centered/default Grok, Cursor JPEG retention
+and reopening without generation. This is fixture coverage, not paid runner acceptance or an
+installed Desktop update. Runtime owns that runner and its enablement evidence: one separately
+authorized extra image passed the corrected native Windows runner, retaining an original
+1024-square JPEG (90,500 bytes). The Cursor profile is enabled. This host exposes it through
+SDK 1.9 without changing existing App scopes or the image request schema.
 實際發布仍須通過對應 release SOP 與所有完成條件。
 
 | 項目 | 已存在 | 本計畫 |

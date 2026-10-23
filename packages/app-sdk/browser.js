@@ -37,7 +37,7 @@
     });
   };
   Object.defineProperty(globalThis, 'catsApp', { value: Object.freeze({
-    sdkVersion: '1.8.0', appId: boot.appId, version: boot.version,
+    sdkVersion: '1.9.0', appId: boot.appId, version: boot.version,
     locale: boot.locale, theme: boot.theme,
     usage: Object.freeze({
       getSnapshot: () => request('usage.snapshot'),

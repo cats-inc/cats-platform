@@ -2,6 +2,49 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-24 — Desktop 0.9.5 standard preview: Cursor images
+
+Selected distribution: Desktop **0.9.5 standard-profile preview**, App SDK **1.9.0**.
+Optional Market Studio **0.4.1** adds Cursor and orders services Codex, Antigravity,
+Grok, Muse, Cursor; entry defaults to available Grok. **Usage 0.5.4 is unchanged**.
+No Platform/Runtime npm or cats-one publication is selected.
+
+- **Cursor profile support.** Runtime projection, SDK types and the shared image
+  ledger accept Cursor consistently, preserving its pinned GLM 5.3 / max configuration
+  and original JPEG/PNG bytes. The native runner accepts one image call plus one
+  GenerateImage schema lookup, checks source ownership and stops its process tree.
+  Windows uses CLI project permissions and runner checks because Cursor's native
+  sandbox is macOS/Linux-only. The enabled profile passed native Windows acceptance:
+  one image call, 1024-square JPEG, 90,500 original bytes, stopped after collection.
+  Runtime's Cursor evidence records the separately authorized extra image after a
+  failed save; prior Chat generation is not substituted for this acceptance.
+- **Existing Muse output recovery.** The selected Runtime also recognizes its native
+  JPEG filenames and can recollect a matching completed result for an existing
+  source failure, without another generation. Original bytes and request identity
+  are retained.
+- **Source and artifact selection.** Runtime source
+  `2837edbb284b2a0eeca0b8111803822978ae8c32` (package version **0.6.1**) carries
+  the validated and enabled Cursor runner; its full required preflight passed.
+  Studio tag `studio-v0.4.1` identifies source
+  `e3f0a64bd133ccfe6031685888574891e6cd15ad`, archive 140830 bytes, SHA-256
+  `398cb051f4130bd049e6485e89a1cd2e01189abf5723564496349fddcaa453ff`.
+  Studio stays outside the default Desktop bundle. The existing Usage URL/hash
+  remains pinned in the Desktop lock. The workflow records Platform's own source
+  SHA and the identical Runtime SHA in every OS/source receipt.
+- **Compatibility and data.** SDK 1.9 adds the provider enum compatibly. SDK 1.x
+  consumers and Studio's ^1.8.0 floor remain supported; services appear from current
+  capabilities. Existing Core/App works, schema 1 Cat ledger and Runtime receipts
+  retain their formats and IDs. No data reset or additional migration is required;
+  existing validated receipt upgrades and unknown-data preservation stay in force.
+- **Signing and checks.** Dispatch `desktop-release.yml` with `tag=v0.9.5`, the final
+  immutable Runtime SHA and `unsigned=false`. Standard trust is macOS **signed +
+  notarized**, Windows **unsigned: no certificate**, Linux **n/a**. Existing same-line
+  self-update paths are unchanged. Author-run regression, SDK conformance and actual
+  Studio archive/host fixture acceptance passed; no independent review is claimed.
+  CI and the release workflow enforce full tests, three-OS startup, App activation,
+  source identity/receipts, signing and asset validation. Publication results are the
+  `v0.9.5` GitHub prerelease and its Actions run.
+
 ## 2026-10-23 — Prepared Desktop 0.9.4 standard preview startup repair
 
 Desktop **0.9.4 standard-profile preview** fixes the startup failure in the
