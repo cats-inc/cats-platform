@@ -1,5 +1,9 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-137: Image contract 2 by App SDK floor](137-negotiate-image-contract-2-by-app-sdk-floor.md)
+  — accepted, 2026-10-23; App SDK 1.7.0 adds image contract 2 (provider profiles, measured
+  JPEG/PNG) for Apps declaring it, while older Apps keep the schema 1 projection.
+
 - [ADR-136: Shared controlled image capabilities](136-share-controlled-image-capabilities-between-cats-and-studio.md)
   — proposed, 2026-10-23; Studio and Cats share a Platform image service with
   separate caller authority, finite proactive grants and durable delivery.
