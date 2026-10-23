@@ -20,7 +20,7 @@ export interface CatsAppBrowserSdkV1 {
     list(): Promise<{ jobs: CatsImageJob[] }>;
     cancel(id: string): Promise<CatsImageJob>;
     refresh(id: string): Promise<CatsImageJob>;
-    /** Deletes a succeeded, failed or cancelled job and its saved image; other states reject with `image_not_deletable`. */
+    /** Deletes a succeeded, failed or cancelled job and its saved image; other states reject with `image_not_deletable`, linked work with `image_in_use`. */
     delete(id: string): Promise<{ deleted: true }>;
     read(id: string): Promise<{ bytes: ArrayBuffer; mimeType: 'image/jpeg' }>;
     export(id: string): Promise<{ downloaded: true }>;

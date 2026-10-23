@@ -1,9 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, open, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { CoreStore } from '../../core/store.js';
 import { upsertCoreTask, upsertCoreRun, upsertCoreArtifact } from '../../core/model/index.js';
 import { touchCoreState } from '../../core/model/shared.js';
+import { ownerRecordDependencies } from '../../core/ownerManagement.js';
+import { ownerSubjectKey } from '../../core/ownerLifecycle.js';
 import type { CatsCoreState } from '../../core/types.js';
 import type { RuntimeClient } from '../../runtime/client.js';
 import { IMAGE_ID, IMAGE_MAX_BYTES, RuntimeImageError, type RuntimeImageJob, type RuntimeImageMetadata } from '../../runtime/images.js';
@@ -34,6 +36,29 @@ const jobs = (core: CatsCoreState) => core.tasks.flatMap((task) => {
   const job = task.metadata.appImage;
   return job && typeof job === 'object' && (job as AppImageJob).schemaVersion === 1 ? [job as AppImageJob] : [];
 });
+const artifactId = (id: string) => `artifact-app-image-${id}`;
+const ownRecords = (id: string) => [['task', taskId(id)], ['run', runId(id)], ['artifact', artifactId(id)]] as const;
+// References to a job's records from outside the job itself, such as Work links or activities.
+function externalDependencies(core: CatsCoreState, id: string) {
+  const own = new Set<string>(ownRecords(id).map(([, record]) => record));
+  return ownRecords(id).flatMap(([family, record]) => ownerRecordDependencies(core, family, record)).filter((dependency) => !own.has(dependency.id));
+}
+function removeJob(core: CatsCoreState, id: string): CatsCoreState {
+  const now = new Date().toISOString();
+  let next: CatsCoreState = { ...core,
+    tasks: core.tasks.filter((task) => task.id !== taskId(id)),
+    runs: core.runs.filter((run) => run.id !== runId(id)),
+    artifacts: core.artifacts.filter((artifact) => artifact.id !== artifactId(id)) };
+  const lifecycle = core.ownerLifecycle;
+  const keys = ownRecords(id).map(([family, record]) => ownerSubjectKey(family, record)).filter((key) => lifecycle?.entries[key]);
+  if (lifecycle && keys.length) {
+    // Archive/pin state of records that no longer exist would otherwise linger.
+    const entries = { ...lifecycle.entries };
+    for (const key of keys) delete entries[key];
+    next = { ...next, ownerLifecycle: { ...lifecycle, entries, revision: lifecycle.revision + 1 } };
+  }
+  return touchCoreState(next, now);
+}
 function replaceJob(core: CatsCoreState, job: AppImageJob): CatsCoreState {
   const terminal = !activeStatuses.has(job.status);
   const title = `Studio · ${job.prompt.slice(0, 70)}`;
@@ -45,7 +70,7 @@ function replaceJob(core: CatsCoreState, job: AppImageJob): CatsCoreState {
     createdAt: job.createdAt, startedAt: job.createdAt, completedAt: terminal ? job.updatedAt : null,
     metadata: { appId: job.appId, accountId: job.accountId, runtimeImageJobId: job.id, error: job.error } }).core;
   if (job.status === 'succeeded' && job.output) {
-    next = upsertCoreArtifact(next, { id: `artifact-app-image-${job.id}`, title, kind: 'attachment', status: 'ready',
+    next = upsertCoreArtifact(next, { id: artifactId(job.id), title, kind: 'attachment', status: 'ready',
       taskId: taskId(job.id), runId: runId(job.id), mimeType: job.output.mimeType, sizeBytes: job.output.bytes,
       metadata: { appId: job.appId, accountId: job.accountId, runtimeImageJobId: job.id, ...job.output } }).core;
   }
@@ -98,6 +123,7 @@ export class AppImageService {
     const digest = hash(JSON.stringify([scope.appId, scope.accountId, input.requestId]));
     const id = `${digest.slice(0, 8)}-${digest.slice(8, 12)}-${digest.slice(12, 16)}-${digest.slice(16, 20)}-${digest.slice(20, 32)}`;
     let created = false; let result!: AppImageJob;
+    const deleted = await this.deletedIds();
     await this.mutate((core) => {
       const own = jobs(core).filter((job) => job.appId === scope.appId && job.accountId === scope.accountId);
       const existing = own.find((job) => job.id === id);
@@ -105,6 +131,7 @@ export class AppImageService {
         if (existing.prompt !== input.prompt || existing.instance !== input.instance) throw new AppImageError('image_request_conflict', 409);
         result = existing; return core;
       }
+      if (deleted.has(id)) throw new AppImageError('image_request_conflict', 409);
       if (own.some((job) => activeStatuses.has(job.status))) throw new AppImageError('image_service_busy', 429);
       if (own.length >= 100) throw new AppImageError('image_storage_limit', 409);
       const now = new Date().toISOString();
@@ -257,22 +284,50 @@ export class AppImageService {
     }
     return this.own(scope, id);
   }
-  /** Owner deletion of a finished job: its Core task/run/artifact, the retained original and the Runtime receipt. */
+  /**
+   * Owner deletion of a finished job. Order keeps every failure retryable: record the tombstone, remove the
+   * saved original, then the Core task/run/artifact; the Runtime receipt is dropped last, best effort.
+   */
   async remove(scope: AppImageScope, id: string): Promise<{ deleted: true }> {
     const job = await this.own(scope, id);
     if (!deletableStatuses.has(job.status)) throw new AppImageError('image_not_deletable', 409);
-    await this.mutate((core) => {
-      const current = jobs(core).find((entry) => entry.id === id);
-      if (current && !deletableStatuses.has(current.status)) throw new AppImageError('image_not_deletable', 409);
-      return touchCoreState({ ...core,
-        tasks: core.tasks.filter((task) => task.id !== taskId(id)),
-        runs: core.runs.filter((run) => run.id !== runId(id)),
-        artifacts: core.artifacts.filter((artifact) => artifact.id !== `artifact-app-image-${id}`) }, new Date().toISOString());
-    });
+    const core = await this.deps.coreStore.readCore();
+    if (externalDependencies(core, id).length) throw new AppImageError('image_in_use', 409);
+    await this.tombstone(id);
     await rm(this.imagePath(job), { force: true });
-    // The App-visible work is gone either way; an unreachable Runtime only keeps its own receipt.
-    try { await this.deps.runtimeClient.deleteImageJob?.(id); } catch { /* best effort */ }
+    await this.mutate((latest) => {
+      // Delete only what the owner saw: a status change in between (for example a recollected image) refuses.
+      const current = jobs(latest).find((entry) => entry.id === id);
+      if (!current) return latest;
+      if (current.status !== job.status) throw new AppImageError('image_not_deletable', 409);
+      if (externalDependencies(latest, id).length) throw new AppImageError('image_in_use', 409);
+      return removeJob(latest, id);
+    });
+    // The App-visible work is gone either way; an unreachable or slow Runtime only keeps its own receipt.
+    void Promise.resolve().then(() => this.deps.runtimeClient.deleteImageJob?.(id)).catch(() => {});
     return { deleted: true };
+  }
+  // Deleted job IDs stay reserved so a late or repeated submit of the same requestId never generates again.
+  private deleted: Set<string> | null = null;
+  private get tombstonePath() { return path.join(this.paths.dataDir, 'image-deletions.json'); }
+  private async deletedIds(): Promise<Set<string>> {
+    if (this.deleted) return this.deleted;
+    try {
+      const value = JSON.parse(await readFile(this.tombstonePath, 'utf8')) as { schemaVersion?: number; ids?: unknown };
+      this.deleted = new Set(value.schemaVersion === 1 && Array.isArray(value.ids) ? value.ids.filter((entry): entry is string => typeof entry === 'string' && IMAGE_ID.test(entry)) : []);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw new AppImageError('image_service_unavailable', 503);
+      this.deleted = new Set();
+    }
+    return this.deleted;
+  }
+  private async tombstone(id: string) {
+    const ids = [...await this.deletedIds()].filter((entry) => entry !== id).concat(id).slice(-2000);
+    await mkdir(path.dirname(this.tombstonePath), { recursive: true });
+    const temporary = `${this.tombstonePath}.${randomUUID()}.tmp`;
+    await writeFile(temporary, JSON.stringify({ schemaVersion: 1, ids }), { flag: 'wx' });
+    await rename(temporary, this.tombstonePath);
+    this.deleted = new Set(ids);
   }
   private async own(scope: AppImageScope, id: string) {
     if (!IMAGE_ID.test(id)) throw new AppImageError('invalid_image_request');

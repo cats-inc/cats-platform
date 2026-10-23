@@ -91,18 +91,33 @@ test('idempotent submit uses existing Core task/run/artifact, retains images acr
 
 test('owner deletion removes a finished job, its Core records, the saved file and the Runtime receipt, never an active one', async (t) => {
   const f = await setup(t);
-  const saved = await f.service.submit(f.scope, input()); await waitFor(f, saved.id);
+  const request = input();
+  const saved = await f.service.submit(f.scope, request); await waitFor(f, saved.id);
   const file = path.join(resolveCatsAppStoragePathsFromChatState(f.deps.chatStatePath).dataDir, 'cats.studio', 'images',
     createHash('sha256').update('user-one').digest('hex'), `${saved.id}.jpg`);
   assert.ok((await readFile(file)).equals(f.image));
   await assert.rejects(f.service.remove({ ...f.scope, accountId: 'user-two' }, saved.id), /image_not_found/);
+  // A Work link to the job's task blocks deletion; owner archive/pin state of the job's records is cleaned up.
+  const link = { id: 'link-studio', kind: 'related', sourceRecordFamily: 'task', sourceRecordId: `task-app-image-${saved.id}`, targetRecordFamily: 'project', targetRecordId: 'project-x' };
+  await f.deps.coreStore.updateCore((core) => ({ ...core, workGraphLinks: [...core.workGraphLinks, link],
+    ownerLifecycle: { version: 1, revision: 3, receipts: [], retention: { enabled: false, days: 30, lastCleanupAt: null, lastError: null },
+      entries: { [`artifact:artifact-app-image-${saved.id}`]: { listing: 'archived', pinned: true, label: null, updatedAt: new Date().toISOString() } } } }));
+  await assert.rejects(f.service.remove(f.scope, saved.id), /image_in_use/);
+  assert.ok((await readFile(file)).equals(f.image), 'a refused deletion keeps the original');
+  await f.deps.coreStore.updateCore((core) => ({ ...core, workGraphLinks: core.workGraphLinks.filter((entry) => entry.id !== link.id) }));
   assert.deepEqual(await f.service.remove(f.scope, saved.id), { deleted: true });
+  await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(f.deletions, [saved.id]);
   const core = await f.deps.coreStore.readCore();
   assert.equal(core.tasks.length + core.runs.length + core.artifacts.length, 0);
+  assert.deepEqual(core.ownerLifecycle.entries, {}); assert.equal(core.ownerLifecycle.revision, 4);
   await assert.rejects(readFile(file), /ENOENT/);
   assert.equal((await f.service.list(f.scope)).length, 0);
   await assert.rejects(f.service.remove(f.scope, saved.id), /image_not_found/);
+  // The deleted requestId stays reserved, also for a fresh service after restart: no second generation.
+  await assert.rejects(f.service.submit(f.scope, request), /image_request_conflict/);
+  await assert.rejects(new AppImageService(f.deps).submit(f.scope, request), /image_request_conflict/);
+  assert.equal(f.submissions(), 1);
   f.run(); const active = await f.service.submit(f.scope, input()); await waitFor(f, active.id, 'running');
   await assert.rejects(f.service.remove(f.scope, active.id), /image_not_deletable/);
   await f.service.cancel(f.scope, active.id); await waitFor(f, active.id, 'cancelled');
