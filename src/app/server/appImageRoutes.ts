@@ -1,6 +1,6 @@
 import { sendBinary, sendJson, sendMethodNotAllowed, type RouteContext } from '../../shared/http.js';
 import type { AppPackageApiDependencies } from './appPackageRoutes.js';
-import { appImages, AppImageError } from '../../platform/apps/images.js';
+import { appImages, AppImageError, presentImageJob, type AppImageJob } from '../../platform/apps/images.js';
 import { RuntimeImageError } from '../../runtime/images.js';
 
 export async function routeAppImages(context: RouteContext<AppPackageApiDependencies>): Promise<boolean> {
@@ -18,12 +18,13 @@ export async function routeAppImages(context: RouteContext<AppPackageApiDependen
     const service = appImages({ coreStore, runtimeClient, chatStatePath: config.chatStatePath });
     const digest = await service.authorize(scope);
     if (match[4] === 'image') {
-      const bytes = await service.image(scope, id!);
+      const { bytes, mimeType } = await service.image(scope, id!);
       if (digest !== await service.authorize(scope)) throw new AppImageError('app_context_revoked', 409);
-      sendBinary(context.response, 200, bytes, 'image/jpeg', { ...headers, 'x-content-type-options': 'nosniff',
-        'content-disposition': `attachment; filename="Studio-${id}.jpg"` });
+      sendBinary(context.response, 200, bytes, mimeType, { ...headers, 'x-content-type-options': 'nosniff',
+        'content-disposition': `attachment; filename="Studio-${id}.${mimeType === 'image/png' ? 'png' : 'jpg'}"` });
       return true;
     }
+    const contract = await service.contract(scope);
     let result: unknown;
     if (action === 'capabilities') result = await service.capabilities(scope);
     else if (match[4] === 'cancel') result = await service.cancel(scope, id!);
@@ -42,14 +43,9 @@ export async function routeAppImages(context: RouteContext<AppPackageApiDependen
       result = await service.submit(scope, input);
     }
     if (digest !== await service.authorize(scope)) throw new AppImageError('app_context_revoked', 409);
-    // Remove host account and package bookkeeping from the renderer projection.
-    const publicJob = (value: unknown): unknown => {
-      if (!value || typeof value !== 'object') return value;
-      const { accountId: _account, appId: _app, appVersion: _version, ...rest } = value as Record<string, unknown>;
-      return rest;
-    };
-    if (action === 'jobs' && context.method === 'GET') result = { jobs: (result as { jobs: unknown[] }).jobs.map(publicJob) };
-    else result = publicJob(result);
+    // The renderer sees its own contract, without host account and package bookkeeping.
+    if (action === 'jobs' && context.method === 'GET') result = { jobs: (result as { jobs: AppImageJob[] }).jobs.map((job) => presentImageJob(job, contract)) };
+    else if (action !== 'capabilities' && match[4] !== 'delete') result = presentImageJob(result as AppImageJob, contract);
     sendJson(context.response, context.method === 'POST' && action === 'jobs' ? 202 : 200, result, headers);
   } catch (error) {
     const code = error instanceof AppImageError || error instanceof RuntimeImageError ? error.code : 'image_service_unavailable';

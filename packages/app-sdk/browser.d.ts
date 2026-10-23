@@ -1,6 +1,6 @@
 /** Host-injected browser API. No imports, secrets, filesystem or general network proxy. */
 export interface CatsAppBrowserSdkV1 {
-  readonly sdkVersion: '1.6.0';
+  readonly sdkVersion: '1.7.0';
   readonly appId: string;
   readonly version: string;
   readonly locale: string;
@@ -12,26 +12,53 @@ export interface CatsAppBrowserSdkV1 {
   openLobby(): Promise<void>;
   openRemoteAccess(): Promise<void>;
   readonly clipboard: { writeText(text: string): Promise<void> };
+  /**
+   * An App sees one image contract, chosen by its manifest's `compatibility.appSdk` floor: below 1.7.0 schema 1
+   * (Grok generation, JPEG), from 1.7.0 contract 2 (services and profiles, JPEG or PNG at measured sizes).
+   */
   readonly images: {
-    getCapabilities(): Promise<{ schemaVersion: 1; operation: 'image.generate'; aspectRatio: '1:1';
-      maxPromptLength: number; maxImageBytes: number;
-      targets: Array<{ provider: 'grok'; instance: string; agentModel: string }> }>;
-    submit(input: { requestId: string; instance: string; prompt: string }): Promise<CatsImageJob>;
-    list(): Promise<{ jobs: CatsImageJob[] }>;
-    cancel(id: string): Promise<CatsImageJob>;
-    refresh(id: string): Promise<CatsImageJob>;
+    getCapabilities(): Promise<CatsImageCapabilitiesV1 | CatsImageCapabilitiesV2>;
+    submit(input: { requestId: string; instance: string; prompt: string } | CatsImageSubmissionV2): Promise<CatsImageJob | CatsImageJobV2>;
+    list(): Promise<{ jobs: Array<CatsImageJob | CatsImageJobV2> }>;
+    cancel(id: string): Promise<CatsImageJob | CatsImageJobV2>;
+    refresh(id: string): Promise<CatsImageJob | CatsImageJobV2>;
     /** Deletes a succeeded, failed or cancelled job and its saved image; other states reject with `image_not_deletable`, linked work with `image_in_use`. */
     delete(id: string): Promise<{ deleted: true }>;
-    read(id: string): Promise<{ bytes: ArrayBuffer; mimeType: 'image/jpeg' }>;
+    read(id: string): Promise<{ bytes: ArrayBuffer; mimeType: 'image/jpeg' | 'image/png' }>;
     export(id: string): Promise<{ downloaded: true }>;
   };
 }
+type CatsImageStatus = 'submitting' | 'running' | 'collecting' | 'succeeded' | 'failed' | 'cancelling' | 'cancelled' | 'interrupted';
+export interface CatsImageCapabilitiesV1 {
+  schemaVersion: 1; operation: 'image.generate'; aspectRatio: '1:1'; maxPromptLength: number; maxImageBytes: number;
+  targets: Array<{ provider: 'grok'; instance: string; agentModel: string }>;
+}
 export interface CatsImageJob {
   schemaVersion: 1; id: string; requestId: string; prompt: string; instance: string;
-  provider: 'grok'; agentModel: string | null;
-  status: 'submitting' | 'running' | 'collecting' | 'succeeded' | 'failed' | 'cancelling' | 'cancelled' | 'interrupted';
+  provider: 'grok'; agentModel: string | null; status: CatsImageStatus;
   createdAt: string; updatedAt: string; error: string | null;
   output: null | { mimeType: 'image/jpeg'; bytes: number; width: number; height: number; sha256: string };
+}
+/** Contract 2: an enabled profile per provider x operation; only generation is offered yet. */
+export interface CatsImageCapabilitiesV2 {
+  schemaVersion: 2; revision: string; maxPromptLength: number; maxImageBytes: number;
+  targets: Array<{ id: string; provider: 'grok' | 'muse' | 'antigravity' | 'codex'; instanceLabel: string; availability: 'available' }>;
+  profiles: Array<{ id: string; revision: number; operation: 'image.generate'; targetIds: string[];
+    agentConfigs: Array<{ id: string; model: string; effort: string }>; inputs: { min: 0; max: 0 };
+    aspectRatio: { mode: 'native'; options: [string] } | { mode: 'service' } }>;
+}
+export interface CatsImageSubmissionV2 {
+  requestId: string; targetId: string; profileId: string; profileRevision: string; agentConfigId: string;
+  operation: 'image.generate'; prompt: string; sourceIds: []; options: Record<string, never>;
+}
+export interface CatsImageJobV2 {
+  schemaVersion: 2; id: string; requestId: string; provider: 'grok' | 'muse' | 'antigravity' | 'codex'; targetId: string; instanceLabel: string;
+  operation: 'image.generate'; profileId: string; profileRevision: string; agentConfigId: string | null;
+  agentModel: string | null; agentEffort: string | null; prompt: string; sources: []; options: Record<string, never>;
+  status: CatsImageStatus; error: string | null; warnings: string[]; executionOutcome: 'completed' | 'stopped_after_image' | null;
+  output: null | { mimeType: 'image/jpeg' | 'image/png'; bytes: number; width: number; height: number; sha256: string;
+    transparency: 'opaque' | 'has-transparency' };
+  createdAt: string; updatedAt: string;
 }
 export interface UsageTotalsV1 {
   observations: number;

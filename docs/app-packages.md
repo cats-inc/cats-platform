@@ -47,6 +47,13 @@ are planned. SDK 1.3 image operations below remain the implemented boundary.
 
 ## Host and SDK compatibility
 
+App SDK **1.7.0** adds image contract 2 for Apps that declare it (`appSdk` floor 1.7.0, for
+example `^1.7.0`). It brings provider profiles, Muse generation and measured JPEG/PNG output,
+per [SPEC-119](specs/SPEC-119-app-image-generation.md#contract-2-sdk-170) and
+[ADR-137](decisions/137-negotiate-image-contract-2-by-app-sdk-floor.md). Apps that declare an
+older floor keep the schema 1 image API unchanged. A Studio that declares `^1.7.0` installs
+only on a host with SDK 1.7.0 or later.
+
 Desktop 0.9.2 exposes App SDK **1.6.0**. That minor adds the compatible owner
 deletion `images.delete(id)` (see [SPEC-119](specs/SPEC-119-app-image-generation.md)).
 Studio 0.3.2 feature-detects it and keeps its Platform `^0.6.0` floor and SDK
