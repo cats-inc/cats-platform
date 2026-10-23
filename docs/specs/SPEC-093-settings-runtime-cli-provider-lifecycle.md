@@ -10,6 +10,31 @@
 
 ## Summary
 
+### Optional Runtime data reset — 2026-10-23
+
+[ADR-135](../decisions/135-make-runtime-data-reset-explicit-and-preserve-installed-tools.md)
+accepts an additional data-reset operation, independent of the proposed CLI
+uninstall controls below. In the existing Platform reset confirmation, show
+**Also reset Runtime data**, unchecked each time, and require exact `RESET` text
+for both scopes. Do not retain a cancelled choice. The API validates the phrase,
+boolean scope, Admin authorization and Desktop management before any erasure.
+
+Unchecked means the current Platform-only reset, including unchanged Runtime
+provider configuration. Checked adds offline erasure of the managed Runtime's
+settings, selection, sessions, cached/history data and its own workspace files;
+reopen provider selection and initialize again. Keep installed software,
+external provider credentials/history and external workspaces. A web or standalone
+Platform cannot reset a separate Runtime. Validate paths before Platform erasure
+and again before offline deletion. Persist progress for retries and consume the
+Runtime authorization before any later managed service startup. A failed purge
+must remain visible and resumable, rather than starting on partially erased data.
+
+Acceptance includes exact/mismatched text, default and checked states, cancel
+and reopen, keyboard operation, authenticated and unauthenticated API requests,
+unchanged custom agy timeout when unchecked, stop-before-delete ordering,
+retention of installations/external files, symlinks/junctions, interrupted purge
+recovery and native isolated Desktop returning to provider selection.
+
 ### Selection scope amendment — 2026-09-16
 
 [ADR-115](../decisions/115-bound-bootstrap-and-provider-choices-by-runtime-selection.md)

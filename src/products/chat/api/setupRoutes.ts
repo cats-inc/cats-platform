@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { preparePlatformOwnedDataReset, removePlatformOwnedData, PlatformResetBusyError } from '../../../shared/platformDataReset.js';
+import { hasPendingRuntimeResetConsent, preparePlatformOwnedDataReset, removePlatformOwnedData, PlatformResetBusyError } from '../../../shared/platformDataReset.js';
+import { isPlatformDataResetRequest } from '../../../shared/platformDataResetRequest.js';
 import { createDefaultCoreState } from '../../../core/model/index.js';
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { runExclusiveSetupOperation } from '../../../shared/platformSetupOperation.js';
@@ -43,6 +44,23 @@ async function handleSetupReset(
     if (!(await authorizeSetupReset(context, core.setupCompleteAt))) {
       return;
     }
+    const reset = await readJsonBody<unknown>(context.request).catch(() => null);
+    if (!isPlatformDataResetRequest(reset)) {
+      sendJson(context.response, 400, { error: { code: 'reset_confirmation_required',
+        message: 'Enter RESET and choose whether to reset Runtime data.' } });
+      return;
+    }
+    if (reset.resetRuntime && !context.dependencies.runtimeDataResetAvailable) {
+      sendJson(context.response, 409, { error: { code: 'runtime_reset_unavailable',
+        message: 'Runtime data can only be reset by the Desktop that manages it.' } });
+      return;
+    }
+    if (reset.resetRuntime
+      && !(context.dependencies.authStore && hasExistingPlatformAdmin(await context.dependencies.authStore.readState()))
+      && !await hasPendingRuntimeResetConsent(context.dependencies.config.chatStatePath)) {
+      sendSetupAuthError(context, 401, 'E_UNAUTHENTICATED', 'An authenticated Admin must authorize Runtime data reset.');
+      return;
+    }
     const withReset = context.dependencies.withPlatformDataReset
       ?? (async (operation: (clear: () => Promise<void>) => Promise<void>) => operation(async () => {}));
     await withReset(async clearCaches => {
@@ -51,6 +69,7 @@ async function handleSetupReset(
       const chatState = await context.dependencies.chatStore.read();
       const previousCore = await context.dependencies.chatStore.readCore();
       const removal = {
+        resetRuntime: reset.resetRuntime,
         attachmentDirectories: chatState.channels.flatMap(channel => [channel.repoPath, channel.chatCwd])
           .filter((directory): directory is string => typeof directory === 'string' && Boolean(directory.trim()))
           .map(directory => path.join(directory, '.cats-attachments')),

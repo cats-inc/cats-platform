@@ -667,6 +667,8 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
 
     const resetResponse = await fetch(`${baseUrl}/api/setup/reset`, {
       method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirmation: 'RESET', resetRuntime: false }),
     });
     assert.equal(resetResponse.status, 200);
     const payload = await resetResponse.json();

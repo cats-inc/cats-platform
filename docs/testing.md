@@ -1,5 +1,15 @@
 # Testing Strategy
 
+Optional Runtime reset coverage lives in `platform-data-reset`,
+`desktop-runtime-data-reset` and `platform-data-reset-confirmation`, with
+auth/setup and shared confirmation consumers. Use isolated temporary roots;
+never run acceptance against the installed profile. Native source acceptance
+checks the unchecked default, exact `RESET` gating, stopped/restarted services,
+retained external/install fixtures and a fresh provider page with Continue
+disabled after the checked reset. A successful purge alone does not prove the
+previous provider view was discarded. ADR-135 and PLAN-107 record the validation
+and remaining OS/release boundaries.
+
 For the planned shared App ingress, follow
 [SPEC-122 acceptance](specs/SPEC-122-app-components-and-private-services.md#acceptance)
 and [PLAN-115 P4](plans/PLAN-115-app-components-and-private-services.md#p4--shared-platform-ingress-next-implementation-sequence).

@@ -263,7 +263,8 @@ test('POST /api/setup/reset clears setup state and returns clean chat', async ()
     // Reset
     const resetResponse = await fetch(`${baseUrl}/api/setup/reset`, {
       method: 'POST',
-      headers: { Accept: 'application/json' },
+      headers: { Accept: 'application/json', 'content-type': 'application/json' },
+      body: JSON.stringify({ confirmation: 'RESET', resetRuntime: false }),
     });
     assert.equal(resetResponse.status, 200);
 

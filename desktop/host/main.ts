@@ -164,6 +164,7 @@ import {
   trackDesktopWindowPlacement,
   type DesktopWindowPlacementTracker,
 } from './windowPlacement.js';
+import { completePendingRuntimeDataReset, hasPendingRuntimeDataReset, validateRuntimeDataReset } from './runtimeDataReset.js';
 import {
   readDesktopStartupPreferences,
   resolveDesktopStartupLaunchContext,
@@ -589,11 +590,11 @@ function configureDesktopWindowContextMenu(window: BrowserWindow): void {
   });
 }
 
-async function ensureBootstrapPageVisible(): Promise<void> {
+async function ensureBootstrapPageVisible(forceReload = false): Promise<void> {
   if (!mainWindow) {
     return;
   }
-  if (!bootstrapPageVisible) {
+  if (!bootstrapPageVisible || forceReload) {
     await mainWindow.loadURL(encodeDataUrl(buildDesktopBootstrapPage()));
     bootstrapPageVisible = true;
   }
@@ -1900,6 +1901,16 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
       await supervisor.stopAll();
     }
 
+    const runtimeResetCompleted = await completePendingRuntimeDataReset(hostConfig!, { stopServices: () => supervisor!.stopAll() });
+    if (runtimeResetCompleted) {
+      latestRuntimeHealthPayload = null;
+      latestCliInventoryProbe = null;
+      latestProviderDiagnosticsPayload = null;
+      setupState = createEmptyDesktopSetupState();
+      providerManager = null;
+      holdProviderOnboarding = false;
+    }
+
     const attemptTimestamp = new Date();
     diagnosticsState = {
       ...(diagnosticsState ?? createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats-platform'])),
@@ -1909,6 +1920,10 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
 
     publishSnapshot(buildSnapshot(null));
     await supervisor.startAll();
+    // The progress page mounted while the old Runtime was still reachable.
+    // Replace that document after restart so its provider view cannot retain
+    // the old selection, Continue admission, drafts or operation outcomes.
+    if (runtimeResetCompleted) await ensureBootstrapPageVisible(true);
     publishSnapshot(buildDesktopBootstrapSnapshot({
       config: hostConfig,
       services: supervisor.getSnapshots(),
@@ -2678,6 +2693,18 @@ async function main(): Promise<void> {
       workArea: screen.getPrimaryDisplay().workArea,
       allowMaximize: !hostConfig.candidateProfile,
     });
+  });
+  ipcMain.handle('cats-host:prepare-data-reset', async (event) => {
+    assertMainWindowIpcSender(event, mainWindow, 'Data reset is only prepared from the main Cats window.');
+    if (!hostConfig) throw new Error('Desktop host is not initialized.');
+    await validateRuntimeDataReset(hostConfig);
+  });
+  ipcMain.handle('cats-host:complete-data-reset', async (event) => {
+    assertMainWindowIpcSender(event, mainWindow, 'Data reset is only completed from the main Cats window.');
+    if (!hostConfig || !await hasPendingRuntimeDataReset(hostConfig)) {
+      throw new Error('No completed Platform reset has authorized a Runtime reset.');
+    }
+    await bootstrapDesktopHost(true);
   });
   ipcMain.handle('cats-host:update-platform-shell', async (_event, payload: unknown) => {
     const nextState = applyDesktopHostPlatformShellUpdate({

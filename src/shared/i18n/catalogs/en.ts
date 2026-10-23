@@ -851,6 +851,12 @@ export const enCatalog: MessageCatalog = {
   'apps.permission.storageAppData': 'keep its own data',
   'apps.permission.clipboardWrite': 'copy to the clipboard',
   'settings.data.resetAllDataTitle': 'Reset Platform data',
+  'settings.data.resetRuntimeLabel': 'Also reset Runtime data',
+  'settings.data.resetRuntimeDescription': 'Also erases Runtime settings, provider selections, sessions, caches and files in Runtime-managed workspaces. You will choose and initialize providers again. Installed CLIs, prerequisites, provider logins and native transcripts outside Runtime storage, and external workspace files are kept.',
+  'settings.data.resetRuntimeUnavailable': 'Open this dialog in the Cats Desktop that manages Runtime to reset its data.',
+  'settings.data.resetConfirmationLabel': 'Type {confirmation} to confirm (case-sensitive)',
+  'settings.data.resetConfirmationDescription': 'Permanently erase Platform chats, cats, accounts, preferences and related data, then return to setup. Runtime data and installed tools are kept by default. Erased data cannot be recovered.',
+  'settings.data.resetConfirmLabel': 'Erase selected data',
   'settings.data.resetAllDataDescription':
     'Permanently erases Platform chats, cats, accounts, login sessions, setup state, backups (including migration backups), memory and companion data, local knowledge, evidence logs, Telegram / LINE bindings and delivery state, schedules, diagnostic caches, and attachments and runtime-history caches stored in the Platform directory, and returns interface and reply language, lobby animation, Code preview server and saved layout preferences to their defaults. Keeps Desktop startup and system tray preferences, configuration and installation identity, installed Apps/plugins and their data, Desktop and Runtime data, provider CLI logins and native transcripts, and files in external workspaces. The Desktop window returns to its default size and position. Stop active conversations and tasks first. Returns to the setup wizard; erased data cannot be recovered.',
   'settings.data.resetButtonResetting': 'Resetting...',

@@ -54,10 +54,15 @@ import {
 import { formatSettingsCatsRegistryMutationError } from './settingsCatsRegistryErrorLabels.js';
 import { formatWorkspaceNavigationMutationError } from './workspaceNavigationErrorLabels.js';
 import {
+  canResetDesktopRuntimeData,
+  completeDesktopDataReset,
+  prepareDesktopDataReset,
   resetDesktopHostWindowPlacement,
   syncDesktopHostPlatformShellState,
 } from '../../../../app/renderer/setup/desktopHostBridge.js';
 import { invalidateProviderClientSession } from '../../../../app/renderer/providerClientInvalidation.js';
+import { buildPlatformDataResetConfirmation } from '../../../../app/renderer/settings/platformDataResetConfirmation.js';
+import { PLATFORM_DATA_RESET_CONFIRMATION, type PlatformDataResetRequest } from '../../../../shared/platformDataResetRequest.js';
 import {
   clearBusyState,
   createCatBusyState,
@@ -120,7 +125,7 @@ export interface WorkspaceAppNavigationApi<TPayload extends WorkspaceNavigationP
   deleteParallelChatGroup: (groupId: string) => Promise<TPayload>;
   renameChatChannel: (channelId: string, title: string) => Promise<TPayload>;
   renameParallelChatGroup: (groupId: string, input: { title?: string }) => Promise<TPayload>;
-  resetSetup: () => Promise<TPayload>;
+  resetSetup: (options: PlatformDataResetRequest) => Promise<TPayload>;
   ungroupParallelChatGroup: (groupId: string) => Promise<TPayload>;
 }
 
@@ -612,18 +617,16 @@ export function useWorkspaceAppNavigationActions<
   }, [chatPrefix, clearDraftRouteState, navigate, setFeedback, state]);
 
   const onResetSetup = useCallback(async (): Promise<void> => {
-    const confirmed = confirmDialog
-      ? await confirmDialog({
-          title: t(messageKeys.settingsDataResetAllDataTitle),
-          message: t(messageKeys.settingsDataResetAllDataDescription),
-          confirmLabel: t(messageKeys.settingsDataResetButtonLabel),
-        })
-      : true;
+    if (!confirmDialog) return;
+    let resetRuntime = false;
+    const confirmed = await confirmDialog(buildPlatformDataResetConfirmation(t, canResetDesktopRuntimeData(),
+      checked => { resetRuntime = checked; }));
     if (!confirmed) return;
 
     setBusy(createSetupBusyState());
     try {
-      const payload = await navigationApi.resetSetup();
+      if (resetRuntime) await prepareDesktopDataReset();
+      const payload = await navigationApi.resetSetup({ confirmation: PLATFORM_DATA_RESET_CONFIRMATION, resetRuntime });
       invalidateProviderClientSession();
       await syncDesktopHostPlatformShellState({
         bootstrapAttemptId: payload.bootstrapAttemptId ?? null,
@@ -631,6 +634,7 @@ export function useWorkspaceAppNavigationActions<
         products: Array.isArray(payload.products) ? [...payload.products] : [],
       });
       await resetDesktopHostWindowPlacement();
+      if (resetRuntime) { await completeDesktopDataReset(); return; }
       window.location.href = '/';
     } catch (error) {
       setBusy(clearBusyState());

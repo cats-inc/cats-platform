@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resetDesktopHostWindowPlacement } from '../src/app/renderer/setup/desktopHostBridge.ts';
+import { canResetDesktopRuntimeData, prepareDesktopDataReset, completeDesktopDataReset,
+  resetDesktopHostWindowPlacement } from '../src/app/renderer/setup/desktopHostBridge.ts';
 
 async function withWindow(value: object | undefined, run: () => Promise<void>): Promise<void> {
   const original = Object.getOwnPropertyDescriptor(globalThis, 'window');
@@ -34,4 +35,21 @@ test('window placement reset is a no-op outside Desktop and never fails the data
   }, async () => {
     await assert.doesNotReject(resetDesktopHostWindowPlacement());
   });
+});
+
+test('Runtime reset requires both Desktop stages and forwards no arbitrary paths or commands', async () => {
+  await withWindow(undefined, async () => {
+    assert.equal(canResetDesktopRuntimeData(), false);
+    await assert.rejects(prepareDesktopDataReset(), /requires Cats Desktop/);
+    await assert.rejects(completeDesktopDataReset(), /requires Cats Desktop/);
+  });
+  const calls: string[] = [];
+  await withWindow({ catsDesktopHost: {
+    prepareDataReset: async (...args: unknown[]) => { assert.deepEqual(args, []); calls.push('prepare'); },
+    completeDataReset: async (...args: unknown[]) => { assert.deepEqual(args, []); calls.push('complete'); },
+  } }, async () => {
+    assert.equal(canResetDesktopRuntimeData(), true);
+    await prepareDesktopDataReset(); await completeDesktopDataReset();
+  });
+  assert.deepEqual(calls, ['prepare', 'complete']);
 });

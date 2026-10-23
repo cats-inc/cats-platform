@@ -1,5 +1,9 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-135: Optional Runtime data reset](135-make-runtime-data-reset-explicit-and-preserve-installed-tools.md)
+  — accepted, 2026-10-23; unchecked opt-in, exact typed confirmation, offline
+  managed-profile erasure and resumable cleanup; installed tools remain installed.
+
 - [ADR-134: Code participant workspaces](134-observe-participant-workspaces-within-one-code-codespace.md)
   — accepted for implementation, 2026-10-20; one Codespace, evidence-backed repo/worktree inspection
   in the Code panel and avatar entry. Bubbles and multiple selected Codespaces are deferred.

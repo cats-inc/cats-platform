@@ -778,6 +778,9 @@ async function request(
     throw new Error('Server is not listening.');
   }
   const headers: Record<string, string> = {};
+  if (pathname === '/api/setup/reset' && options.method === 'POST' && options.body === undefined) {
+    options = { ...options, body: { confirmation: 'RESET', resetRuntime: false } };
+  }
   if (options.body !== undefined) {
     headers['content-type'] = 'application/json';
   }

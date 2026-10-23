@@ -1,5 +1,39 @@
 # PLAN-107: Desktop Provider Management
 
+## Optional Runtime reset follow-through — 2026-10-23
+
+The owner approved ADR-135's explicit opt-in and typed confirmation. This extends
+data reset, not software removal. Implementation adds the shared confirmation
+options, validated reset request, journal handoff and Desktop's offline Runtime
+cleanup/rebootstrap. Unchecked resets leave existing Runtime configurations untouched.
+Focused checks cover the dialog, reset/auth routes, API clients, old/new journals,
+installation/workspace retention and retry after partial failure. Native acceptance
+uses only a private source candidate; no installed-profile reset, CLI invocation,
+uninstall, version bump or publication is part of this work. Actual checks and
+the source-candidate receipt are recorded below.
+
+Validation: 108 focused shared-process cases passed for the dialog, exact text,
+keyboard/cancel behavior, auth/setup routes, API clients, both journal forms,
+partial cleanup and native Windows junction retention. Another 46 affected Desktop
+bootstrap, provider management, selection and preload cases passed. Server, host
+and renderer builds and renderer/test TypeScript checks passed.
+
+Native acceptance used private `runtime-reset-candidate-20261023-c` with Electron
+41.2.0: Platform HEAD `14709469` plus the dirty reset implementation (source digest
+`8cebeb061c252466ce687f722beaf35b5e6c427c8814ddc2a2f40ebacf6244f5`)
+and Runtime HEAD `11cfb2c2`. The native dialog showed unchecked Runtime and disabled
+confirmation until exact `RESET`; lowercase remained disabled. The checked flow
+stopped/restarted both sidecars, erased Runtime settings/data/session fixtures,
+retained external/installation fixtures and consumed its journal. Runtime reported
+missing selection; the fresh provider page showed Apply with Continue disabled.
+The first native pass exposed a stale mounted provider view; the final pass includes
+its post-restart document replacement and cleared manager outcomes. The candidate
+was stopped through its owned lifecycle and all three owned PIDs were gone.
+This is isolated Windows source acceptance, not installed-release, live-model or
+macOS/Linux native acceptance. Private launch, screenshots, filesystem checks and
+drain receipts remain in workspace task artifacts. Runtime PR #180 separately
+passed its full required CI; no merge or publication is implied here.
+
 ## Metadata
 
 | Field | Value |

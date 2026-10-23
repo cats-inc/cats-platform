@@ -162,6 +162,7 @@ import type { TransportWorkGoldenPathPort } from '../../../platform/transports/w
 import type { TelegramCommandPort } from '../../../platform/transports/telegram/commandPort.js';
 
 export interface ChatApiDependencies {
+  runtimeDataResetAvailable?: boolean;
   withPlatformDataReset?: import('../../../shared/platformDataReset.js').PlatformResetCoordinator;
   resetEvidenceDirectories?: string[];
   config: AppConfig;

@@ -498,6 +498,18 @@ GET  /api/platform/ingress
   serialized operation; an auth-reset write failure restores the previous
   chat/core snapshot. Unexpected reset failures return a fixed
   `500 internal_error` response with details retained only in server logs.
+  The body must be `{ "confirmation": "RESET", "resetRuntime": false }`, with
+  exact case-sensitive confirmation and boolean scope. Invalid bodies return
+  `400 reset_confirmation_required` before erasure. `resetRuntime: true` opts in
+  to resetting the Desktop-managed Runtime; other hosts return
+  `409 runtime_reset_unavailable`. A new Runtime reset needs an authenticated
+  Admin, including before setup; a previously authorized interrupted reset can
+  finish after auth erasure. Platform leaves a bounded ready journal for Desktop
+  to stop services, erase its Runtime profile and rebootstrap. The response
+  completes Platform's purge; Desktop must finish the optional offline Runtime
+  handoff. Unchecked requests never change Runtime configuration or data. See
+  [ADR-135](decisions/135-make-runtime-data-reset-explicit-and-preserve-installed-tools.md)
+  for retention, retry and the next-minor release boundary.
 - `POST /api/platform/setup/complete` is the only setup-completion route. The
   legacy `POST /api/setup/complete` Boss Cat path is removed: it could set
   `setupCompleteAt` without creating an Admin, which defeated the SPEC-113

@@ -1,5 +1,6 @@
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { browserLocalStorage } from '../../../../shared/browserStorage.js';
+import type { PlatformDataResetRequest } from '../../../../shared/platformDataResetRequest.js';
 
 import { normalizeAppShellPayload as normalizeWorkspaceAppShellPayload } from './normalization.js';
 import { expectJson } from './http.js';
@@ -7,12 +8,14 @@ import { expectJson } from './http.js';
 export function createSetupApi<TPayload>(
   normalizePayload: (payload: TPayload) => TPayload,
 ) {
-  async function resetSetup(signal?: AbortSignal): Promise<TPayload> {
+  async function resetSetup(options: PlatformDataResetRequest, signal?: AbortSignal): Promise<TPayload> {
     const response = await fetch('/api/setup/reset', {
       method: 'POST',
       headers: {
         Accept: 'application/json',
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify(options),
       signal,
     });
 

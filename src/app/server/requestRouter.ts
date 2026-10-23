@@ -482,6 +482,8 @@ export async function routeRequest(
     ...context,
     dependencies: {
       withPlatformDataReset: dependencies.shared.withPlatformDataReset,
+      runtimeDataResetAvailable: dependencies.shared.startup.mode === 'app-managed'
+        && dependencies.shared.startup.managedBy === 'cats-electron',
       resetEvidenceDirectories: [dependencies.work.evidenceDataDir, dependencies.code.evidenceDataDir]
         .filter((directory): directory is string => typeof directory === 'string')
         .map(directory => `${directory}/evidence`),

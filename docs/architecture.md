@@ -1,5 +1,11 @@
 # System Architecture
 
+Platform data reset requires typed confirmation and keeps its current scope by
+default. An explicit optional Runtime reset is authorized by Platform and handed
+to Desktop through its bounded reset journal; Desktop stops managed services and
+erases only the owned Runtime profile before rebootstrap. Installed tools and
+external files remain outside that boundary. See [ADR-135](decisions/135-make-runtime-data-reset-explicit-and-preserve-installed-tools.md).
+
 > Technical architecture and design decisions for `Cats`.
 
 ## Provider catalog ownership

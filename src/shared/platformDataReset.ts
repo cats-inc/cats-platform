@@ -9,8 +9,9 @@ export class PlatformResetBusyError extends Error {
 }
 const RESET_JOURNAL = 'platform-data-reset.pending.json';
 interface ResetDirectories { attachmentDirectories?: string[]; evidenceDirectories?: string[] }
+interface PendingReset extends Required<ResetDirectories> { runtimeReset?: 'pending' | 'ready' }
 
-async function readPendingDirectories(root: string, stateDir: string): Promise<Required<ResetDirectories>> {
+async function readPendingDirectories(root: string, stateDir: string): Promise<PendingReset> {
   let value: unknown;
   const journal = path.join(stateDir, RESET_JOURNAL);
   const stat = await statOrMissing(journal);
@@ -20,9 +21,13 @@ async function readPendingDirectories(root: string, stateDir: string): Promise<R
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { attachmentDirectories: [], evidenceDirectories: [] };
     throw error;
   }
-  const record = value as { schemaVersion?: unknown; directories?: unknown } | null;
+  const record = value as { schemaVersion?: unknown; directories?: unknown; runtimeReset?: unknown } | null;
   if (record?.schemaVersion !== 1 || !Array.isArray(record.directories)) throw new Error('Invalid pending Platform reset journal');
-  const result: Required<ResetDirectories> = { attachmentDirectories: [], evidenceDirectories: [] };
+  if (record.runtimeReset !== undefined && !['pending', 'ready'].includes(String(record.runtimeReset))) {
+    throw new Error('Invalid pending Runtime reset');
+  }
+  const result: PendingReset = { attachmentDirectories: [], evidenceDirectories: [],
+    ...(record.runtimeReset ? { runtimeReset: record.runtimeReset as 'pending' | 'ready' } : {}) };
   for (const relative of record.directories) {
     if (typeof relative !== 'string' || path.isAbsolute(relative)) throw new Error('Invalid pending Platform reset target');
     const target = path.resolve(root, relative);
@@ -35,11 +40,21 @@ async function readPendingDirectories(root: string, stateDir: string): Promise<R
   return result;
 }
 
+/** A retry may finish a previously authenticated reset after auth was erased. */
+export async function hasPendingRuntimeResetConsent(chatStatePath: string): Promise<boolean> {
+  const { platformDir, stateDir } = resolvePlatformStorageLayout(chatStatePath);
+  await assertParents(platformDir, path.join(stateDir, RESET_JOURNAL));
+  return Boolean((await readPendingDirectories(platformDir, stateDir)).runtimeReset);
+}
+
 /** Retain discovered targets across a crash or failed purge after chats are blanked. */
-export async function preparePlatformOwnedDataReset(chatStatePath: string, options: ResetDirectories): Promise<void> {
+export async function preparePlatformOwnedDataReset(chatStatePath: string, options: ResetDirectories & { resetRuntime?: boolean }): Promise<void> {
   await removePlatformOwnedData(chatStatePath, { ...options, validateOnly: true });
   const { platformDir: root, stateDir } = resolvePlatformStorageLayout(chatStatePath);
   const pending = await readPendingDirectories(root, stateDir);
+  if (pending.runtimeReset === 'ready' && options.resetRuntime === false) {
+    throw new Error('Finish the previously requested Runtime reset before starting a Platform-only reset');
+  }
   const directories = new Set<string>();
   for (const [kind, basename] of [['attachmentDirectories', '.cats-attachments'], ['evidenceDirectories', 'evidence']] as const) {
     for (const directory of [...pending[kind], ...(options[kind] ?? [])]) {
@@ -53,7 +68,9 @@ export async function preparePlatformOwnedDataReset(chatStatePath: string, optio
   // for retry. No erasure begins until the current target list is durable.
   const temporary = `${journal}.${randomUUID()}.tmp`;
   try {
-    await writeFile(temporary, `${JSON.stringify({ schemaVersion: 1, directories: [...directories].sort() })}\n`, { mode: 0o600, flag: 'wx', flush: true });
+    await writeFile(temporary, `${JSON.stringify({ schemaVersion: 1, directories: [...directories].sort(),
+      ...((options.resetRuntime || (options.resetRuntime === undefined && pending.runtimeReset))
+        ? { runtimeReset: 'pending' } : {}) })}\n`, { mode: 0o600, flag: 'wx', flush: true });
     await rename(temporary, journal);
   } finally { await rm(temporary, { force: true }); }
 }
@@ -171,6 +188,19 @@ export async function removePlatformOwnedData(chatStatePath: string, options: {
       deleted.push(relative);
     }
     report(`[cats-platform-reset] ${stat ? 'removed' : 'absent'} ${JSON.stringify(relative)}`);
+  }
+  if (pending.runtimeReset) {
+    // Desktop consumes this authorization only after the Platform purge is
+    // complete, and only while its managed services are stopped. Retain it
+    // across crashes until the optional Runtime purge has also succeeded.
+    const journal = path.join(stateDir, RESET_JOURNAL);
+    const temporary = `${journal}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(temporary, `${JSON.stringify({ schemaVersion: 1, directories: [], runtimeReset: 'ready' })}\n`,
+        { mode: 0o600, flag: 'wx', flush: true });
+      await rename(temporary, journal);
+    } finally { await rm(temporary, { force: true }); }
+    return deleted;
   }
   // The journal is the final deletion. A retry never relies on erased channels
   // to rediscover attachment paths or externally configured evidence roots.

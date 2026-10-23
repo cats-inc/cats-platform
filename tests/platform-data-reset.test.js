@@ -6,6 +6,7 @@ import test from 'node:test';
 import { createServer as createHttpServer, request as httpRequest } from 'node:http';
 import { loadConfig } from '../build/server/config.js';
 import { createServer } from '../build/server/app/server/index.js';
+import { createAppStartupState } from '../build/server/app/server/startup.js';
 import { FileChatStore } from '../build/server/products/chat/state/store.js';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import { createDefaultCoreState } from '../build/server/core/model/index.js';
@@ -71,7 +72,7 @@ test('reset rejects redirected ancestor directories before deleting any owned da
   assert.equal(await readFile(path.join(external, 'runtime-history/private.txt'), 'utf8'), 'external');
 });
 
-test('real reset route purges backups and cached transport/activity data, rejects busy work, and can set up again', async t => {
+for (const resetRuntime of [false, true]) test(`real reset route purges Platform data, rejects busy work, and records Runtime opt-in=${resetRuntime}`, async t => {
   const home = await mkdtemp(path.join(tmpdir(), 'cats-reset-route-'));
   const config = loadConfig({ HOME: home, CATS_PLATFORM_DIR: path.join(home, 'platform'),
     CATS_AUTH_SESSION_SECRET: 'isolated-reset-test-session-secret' });
@@ -83,7 +84,8 @@ test('real reset route purges backups and cached transport/activity data, reject
   const gate = createAsyncKeyedGate();
   const eventHub = createChatEventHub();
   const desktopKey = 'a'.repeat(64);
-  const server = createServer({ shared: { config, desktopAppsKey: desktopKey, runtimeClient: {
+  const server = createServer({ shared: { config, desktopAppsKey: desktopKey,
+    ...(resetRuntime ? { startup: createAppStartupState({ mode: 'app-managed', managedBy: 'cats-electron' }) } : {}), runtimeClient: {
     async getHealth() { return { reachable: false, status: 'unavailable' }; },
   } }, chat: { chatStore: store, mutationGate: gate, companionActivityStore: activity, eventHub,
     telegramRelay: createTelegramRelay({ store: relayStore }) } });
@@ -99,6 +101,15 @@ test('real reset route purges backups and cached transport/activity data, reject
   const complete = identifier => fetch(`${url}/api/platform/setup/complete`, { method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173', 'Sec-Fetch-Site': 'same-origin' }, body: JSON.stringify({ ownerDisplayName: 'Owner',
       createGuideCat: false, adminIdentifier: identifier, adminPassword: 'isolated-password' }) });
+  const runtimeConfig = path.join(config.runtimeDir, 'config/providers.yaml');
+  const customRuntime = 'version: 1\nbackends: { cli: { providers: { antigravity: { instances: { native: { command: agy, timeout_ms: 45000 } } } } } }\n';
+  await seed(runtimeConfig, customRuntime);
+  if (resetRuntime) {
+    const unauthorized = await fetch(`${url}/api/setup/reset`, { method: 'POST',
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirmation: 'RESET', resetRuntime: true }) });
+    assert.equal(unauthorized.status, 401, 'an empty Platform profile cannot authorize Runtime erasure');
+    assert.equal(await readFile(runtimeConfig, 'utf8'), customRuntime);
+  }
   const setup = await complete('before@example.test');
   assert.equal(setup.status, 200, await setup.text());
   const cookie = setup.headers.get('set-cookie').split(';')[0];
@@ -112,7 +123,18 @@ test('real reset route purges backups and cached transport/activity data, reject
   assert.equal(ingressResponse.status, 200, await ingressResponse.clone().text());
   const ingressTarget = (await ingressResponse.json()).remoteAccess.target;
   const status = await (await fetch(`${url}/api/auth/status`, { headers: { cookie } })).json();
-  const reset = () => fetch(`${url}/api/setup/reset`, { method: 'POST', headers: { cookie, 'x-cats-csrf-token': status.csrfToken } });
+  const reset = (body = { confirmation: 'RESET', resetRuntime }) => fetch(`${url}/api/setup/reset`, {
+    method: 'POST', headers: { cookie, 'x-cats-csrf-token': status.csrfToken, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  for (const body of [{}, { confirmation: 'reset', resetRuntime: false },
+    { confirmation: 'RESET ', resetRuntime: false }, { confirmation: 'RESET', resetRuntime: 'false' }]) {
+    assert.equal((await reset(body)).status, 400);
+    assert.ok((await store.readCore()).setupCompleteAt);
+  }
+  if (!resetRuntime) assert.equal((await reset({ confirmation: 'RESET', resetRuntime: true })).status, 409,
+    'a standalone Platform cannot authorize erasing a separately managed Runtime');
+  assert.ok((await store.readCore()).setupCompleteAt);
   await seed(`${config.chatStatePath}.pre-companion-role.bak`);
   await seed(path.join(config.platformStateDir, 'chat-state.local.memory.json'), '{"version":1,"records":[]}');
   await seed(path.join(config.platformDir, 'evidence/old.jsonl'));
@@ -145,6 +167,12 @@ test('real reset route purges backups and cached transport/activity data, reject
     assistantResponseLanguage: 'zh-TW', uiLanguagePreference: 'zh-TW', codePreviewServersEnabled: true });
   const response = await reset();
   assert.equal(response.status, 200, await response.text());
+  assert.equal(await readFile(runtimeConfig, 'utf8'), customRuntime,
+    'Platform never deletes Runtime files; only an opted-in offline Desktop completion may erase them');
+  const journal = path.join(config.platformStateDir, 'platform-data-reset.pending.json');
+  if (resetRuntime) assert.deepEqual(JSON.parse(await readFile(journal, 'utf8')),
+    { schemaVersion: 1, directories: [], runtimeReset: 'ready' });
+  else await missing(journal);
   // Only the Desktop startup and tray choices, which the host applies to the OS, survive.
   assert.deepEqual(await readPlatformPreferences(config.chatStatePath), { lastProductSurface: null,
     startAtLogin: false, openWindowOnStartup: true, systemTrayEnabled: false, lobbyAnimationMode: 'reduced',

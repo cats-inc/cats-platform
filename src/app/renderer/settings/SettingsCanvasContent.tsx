@@ -15,6 +15,9 @@ import {
   type WorkspaceBusyState,
 } from '../../../shared/workspaceBusy.js';
 import {
+  canResetDesktopRuntimeData,
+  completeDesktopDataReset,
+  prepareDesktopDataReset,
   resetDesktopHostWindowPlacement,
   syncDesktopHostPlatformShellState,
 } from '../setup/desktopHostBridge.js';
@@ -23,6 +26,8 @@ import { messageKeys } from '../../../shared/i18n/index.js';
 import { useI18n } from '../i18n/index.js';
 import { PlatformSettingsRoutes } from './PlatformSettingsRoutes.js';
 import type { SettingsCanvasOutletContext } from './SettingsShell.js';
+import { buildPlatformDataResetConfirmation } from './platformDataResetConfirmation.js';
+import { PLATFORM_DATA_RESET_CONFIRMATION } from '../../../shared/platformDataResetRequest.js';
 
 /**
  * Canvas content for `/settings/*` after Settings was promoted to its
@@ -61,16 +66,15 @@ export function SettingsCanvasContent() {
   } = useConfirmDialog();
 
   const onResetSetup = useCallback(async (): Promise<void> => {
-    const confirmed = await confirm({
-      title: t(messageKeys.settingsDataResetAllDataTitle),
-      message: t(messageKeys.settingsDataResetAllDataDescription),
-      confirmLabel: t(messageKeys.settingsDataResetButtonLabel),
-    });
+    let resetRuntime = false;
+    const confirmed = await confirm(buildPlatformDataResetConfirmation(t, canResetDesktopRuntimeData(),
+      checked => { resetRuntime = checked; }));
     if (!confirmed) return;
 
     setBusy(createSetupBusyState());
     try {
-      const next = await resetSetup();
+      if (resetRuntime) await prepareDesktopDataReset();
+      const next = await resetSetup({ confirmation: PLATFORM_DATA_RESET_CONFIRMATION, resetRuntime });
       invalidateProviderClientSession();
       await syncDesktopHostPlatformShellState({
         bootstrapAttemptId: next.bootstrapAttemptId ?? null,
@@ -78,6 +82,7 @@ export function SettingsCanvasContent() {
         products: Array.isArray(next.products) ? [...next.products] : [],
       });
       await resetDesktopHostWindowPlacement();
+      if (resetRuntime) { await completeDesktopDataReset(); return; }
       window.location.href = '/';
     } catch (error) {
       setBusy(clearBusyState());

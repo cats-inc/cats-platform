@@ -266,6 +266,12 @@ const bridge = {
   resetWindowPlacement(): Promise<void> {
     return ipcRenderer.invoke('cats-host:reset-window-placement');
   },
+  prepareDataReset(): Promise<void> {
+    return ipcRenderer.invoke('cats-host:prepare-data-reset') as Promise<void>;
+  },
+  completeDataReset(): Promise<void> {
+    return ipcRenderer.invoke('cats-host:complete-data-reset') as Promise<void>;
+  },
   updatePlatformShell(
     payload: DesktopHostPlatformShellUpdate,
   ): Promise<void> {

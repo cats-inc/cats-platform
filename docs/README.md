@@ -1,5 +1,9 @@
 # Documentation Index
 
+[Optional Runtime data reset](decisions/135-make-runtime-data-reset-explicit-and-preserve-installed-tools.md)
+defines the unchecked Runtime option, exact typed confirmation, offline cleanup
+and retry boundaries. Installed CLIs and external files remain outside data reset.
+
 [Code participant workspace visibility](specs/SPEC-127-code-participant-workspace-visibility.md)
 defines one Codespace with a common parent cwd and per-participant repo/worktree
 inspection in the right side panel, plus an existing-avatar entry.
