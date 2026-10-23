@@ -28,7 +28,11 @@ interface Scenario {
 }
 declare global {
   interface Window {
-    __composerFixture: { select: (next: Scenario) => void; setDraft: (value: string) => void; scenario: Scenario };
+    __composerFixture: {
+      select: (next: Scenario) => void; setDraft: (value: string) => void;
+      setWide: (value: boolean) => void; wide: boolean; scenario: Scenario;
+      expectedCode: string; expectedPath: string;
+    };
   }
 }
 const fixture: {
@@ -37,6 +41,18 @@ const fixture: {
   snapshots: Record<string, { selectedChannel: SelectedChannelView }>;
 } = await (await fetch('/fixture.json')).json();
 const noop = () => {};
+const longPath = `C:/fixture/${'unbroken_path_segment_'.repeat(35)}output.png`;
+const longCode = `const generatedFile = "${longPath}";`;
+const tableFields = Array.from({ length: 32 }, (_, index) => `field_${index}`);
+const wideReply = [
+  'Wide content must stay inside this message.', '',
+  `| ${tableFields.join(' | ')} |`,
+  `| ${tableFields.map(() => '---').join(' | ')} |`,
+  `| ${tableFields.map(() => 'value').join(' | ')} |`, '',
+  '```ts', longCode, '```', '',
+  `Long inline path: \`${longPath}\``, '',
+  `https://example.test/${'unbroken_url_segment_'.repeat(35)}`,
+].join('\n');
 // All renderer reads stay in memory. A send only clears local React state.
 globalThis.fetch = async (input, init) => {
   const url = String(input);
@@ -49,6 +65,7 @@ function App() {
   const [scenario, setScenario] = useState<Scenario>({ product: 'chat', preset: 'default', started: false, direct: false });
   const [draft, setDraft] = useState('');
   const [plusOpen, setPlusOpen] = useState(false);
+  const [wide, setWide] = useState(true);
   const [files, setFiles] = useState<File[]>([]);
   const plusRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -60,9 +77,14 @@ function App() {
   channel.repoPath = 'C:/fixture/project';
   channel.chatCwd = 'C:/fixture/project';
   channel.originSurface = product;
-  channel.messages = Array.from({ length: 50 }, (_, index) => ({
-    ...channel.messages.at(-1), metadata: {},
-    id: `layout-message-${index}`, body: `Transcript ${index}: existing fixture reply.`,
+  const sourceMessage = channel.messages.at(-1);
+  if (!sourceMessage) throw new Error('Conversation fixture must contain a message');
+  channel.messages = Array.from({ length: 50 }, (_, index): SelectedChannelView['messages'][number] => ({
+    ...sourceMessage, metadata: {},
+    id: `layout-message-${index}`, senderKind: index % 2 ? 'user' : 'agent',
+    senderName: index % 2 ? 'Test Owner' : 'Assistant',
+    body: wide && index === 46 ? wideReply : wide && index === 47 ? longPath
+      : index >= 48 ? 'Short reply.' : `Transcript ${index}: existing fixture reply.`,
   }));
   payload.chat.selectedChannel = channel;
   payload.chat.selectedChannelId = selectedId;
@@ -73,7 +95,7 @@ function App() {
   const parallelTargets = preset === 'parallel' ? [0, 1].map(index => ({ ...target, model: `model-${index + 1}`, cwd: null, audienceKeys: null, workflowShape: 'sequential' as const })) : undefined;
   window.__composerFixture = {
     select: (next: typeof scenario) => { setScenario(next); setDraft(''); setFiles([]); setPlusOpen(false); },
-    setDraft, scenario,
+    setDraft, setWide, wide, scenario, expectedCode: longCode, expectedPath: longPath,
   };
   const send = (event: React.FormEvent) => { event.preventDefault(); setDraft(''); setFiles([]); setPlusOpen(false); };
   const Draft = product === 'code' ? CodeDraft : product === 'work' ? WorkDraft : ChatDraft;
