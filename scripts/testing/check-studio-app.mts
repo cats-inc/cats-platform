@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Isolated package/SDK/host browser acceptance. Never starts a provider CLI.
-// Usage: node --import tsx scripts/testing/check-studio-app.mts --apps-lock <path> --image <jpeg>
+// Usage: node --import tsx scripts/testing/check-studio-app.mts --apps-lock <path> --image <jpeg> [--expect-delete]
 // Requires CATS_TEST_PLAYWRIGHT_MODULE and CATS_TEST_BROWSER_EXECUTABLE.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -23,13 +23,16 @@ import { createEmptyPlatformAuthState, createFirstAdminLocalAuthState, MemoryPla
 
 const args = process.argv.slice(2);
 if (args.includes('--help')) {
-  process.stdout.write('Usage: node --import tsx scripts/testing/check-studio-app.mts --apps-lock <path> --image <jpeg>\nRequires CATS_TEST_PLAYWRIGHT_MODULE and CATS_TEST_BROWSER_EXECUTABLE. Uses isolated fixture state; no provider CLI calls.\n');
+  process.stdout.write('Usage: node --import tsx scripts/testing/check-studio-app.mts --apps-lock <path> --image <jpeg> [--expect-delete]\nRequires CATS_TEST_PLAYWRIGHT_MODULE and CATS_TEST_BROWSER_EXECUTABLE. Uses isolated fixture state; no provider CLI calls.\n');
   process.exit(0);
 }
 const option = (name: string) => { const index = args.indexOf(name); if (index < 0 || !args[index + 1]) throw new Error(`Missing ${name}`); return path.resolve(args[index + 1]!); };
 const apps = await resolveAppLock(option('--apps-lock'));
 const studio = apps.find((app) => app.id === 'cats.studio');
 if (!studio || !process.env.CATS_TEST_PLAYWRIGHT_MODULE || !process.env.CATS_TEST_BROWSER_EXECUTABLE) throw new Error('Studio package and browser inputs required');
+// Studio 0.3.2 adds work deletion; older packages are still checked without it. --expect-delete covers an
+// unreleased candidate that still carries the previous version.
+const offersDelete = args.includes('--expect-delete') || studio.version.split('.').map(Number).reduce((order, part, index) => order || part - [0, 3, 2][index]!, 0) >= 0;
 const image = await readFile(option('--image'));
 const output = { mimeType: 'image/jpeg' as const, bytes: image.length, width: 1024, height: 1024, sha256: createHash('sha256').update(image).digest('hex') };
 const root = await mkdtemp(path.join(tmpdir(), 'cats-studio-browser-'));
@@ -42,7 +45,7 @@ const auth = await createFirstAdminLocalAuthState({ state: createEmptyPlatformAu
   identifier: 'test@example.test', password: 'isolated-fixture-password', sessionSecret, sessionTtlMs: 600_000 });
 const core = createDefaultCoreState(); core.setupCompleteAt = new Date().toISOString();
 const receipts = new Map<string, RuntimeImageJob>();
-let submissions = 0; let cancelled = 0; let offline = false; let pending = false;
+let submissions = 0; let cancelled = 0; let deleted = 0; let offline = false; let pending = false;
 const runtimeClient = {
   async getImageCapabilities() {
     if (offline) throw new Error('Fixture offline');
@@ -58,6 +61,7 @@ const runtimeClient = {
   async getImageJob(id: string) { return receipts.get(id)!; },
   async cancelImageJob(id: string) { cancelled++; const job = receipts.get(id)!; job.status = 'cancelled'; job.error = 'cancelled'; return job; },
   async getImageBytes() { return image; },
+  async deleteImageJob(id: string) { deleted++; receipts.delete(id); },
 };
 const dependencies = { shared: {
   startup: createAppStartupState(),
@@ -121,6 +125,20 @@ try {
   await frame.getByRole('button', { name: '取消', exact: true }).click();
   await frame.locator('#jobs').getByText(/已取消/).waitFor();
   assert.equal(submissions, 2); assert.ok(cancelled > 0);
+  // Deletion: a cancelled job goes at once, a saved image only after confirmation.
+  const cancelledCard = frame.locator('#jobs article').filter({ hasText: '已取消' });
+  assert.equal(await cancelledCard.getByRole('button', { name: '刪除', exact: true }).count(), offersDelete ? 1 : 0, 'Delete is offered from Studio 0.3.2');
+  if (offersDelete) {
+    await cancelledCard.getByRole('button', { name: '刪除', exact: true }).click();
+    await cancelledCard.waitFor({ state: 'detached' });
+    const savedCard = frame.locator('#jobs article').filter({ hasText: 'Isolated fixture image' });
+    await savedCard.getByRole('button', { name: '刪除', exact: true }).click();
+    await frame.locator('#confirm-dialog[open]').waitFor();
+    await frame.locator('#confirm-dialog').getByRole('button', { name: '刪除作品', exact: true }).click();
+    try { await savedCard.waitFor({ state: 'detached', timeout: 15_000 }); }
+    catch (error) { process.stderr.write(JSON.stringify({ deleted, errors, feedback: await frame.locator('#feedback').innerText(), jobs: await frame.locator('#jobs').innerText() }) + '\n'); throw error; }
+    assert.equal(deleted, 2); assert.equal(submissions, 2, 'Deleting never generates');
+  }
   await page.setViewportSize({ width: 390, height: 844 });
   await frame.locator('h1').scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(screenshotDir, 'studio-narrow.png'), fullPage: true });
@@ -132,5 +150,5 @@ try {
   const appHome = frame.getByRole('button', { name: '返回 Cats Home' });
   if (await appHome.count()) { await appHome.click(); await page.getByText('Returned to lobby').waitFor(); }
   assert.deepEqual(errors, []);
-  process.stdout.write(`${JSON.stringify({ ok: true, submissions, cancelled, cliCalls: 0, app: { id: studio.id, version: studio.version, sha256: studio.sha256 }, screenshotDir, isolatedRegistry: root }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ ok: true, submissions, cancelled, deleted, cliCalls: 0, app: { id: studio.id, version: studio.version, sha256: studio.sha256 }, screenshotDir, isolatedRegistry: root }, null, 2)}\n`);
 } finally { await browser.close(); await new Promise<void>((resolve) => server.close(() => resolve())); }

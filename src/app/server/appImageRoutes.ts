@@ -4,10 +4,10 @@ import { appImages, AppImageError } from '../../platform/apps/images.js';
 import { RuntimeImageError } from '../../runtime/images.js';
 
 export async function routeAppImages(context: RouteContext<AppPackageApiDependencies>): Promise<boolean> {
-  const match = /^\/api\/apps\/([a-z][a-z0-9.-]*)\/images\/(capabilities|jobs|jobs\/([a-f0-9-]+)\/(cancel|refresh|image))$/.exec(context.url.pathname);
+  const match = /^\/api\/apps\/([a-z][a-z0-9.-]*)\/images\/(capabilities|jobs|jobs\/([a-f0-9-]+)\/(cancel|refresh|delete|image))$/.exec(context.url.pathname);
   if (!match) return false;
   const action = match[2]; const id = match[3];
-  const methods = action === 'jobs' ? ['GET', 'POST'] : ['cancel', 'refresh'].includes(match[4] ?? '') ? ['POST'] : ['GET'];
+  const methods = action === 'jobs' ? ['GET', 'POST'] : ['cancel', 'refresh', 'delete'].includes(match[4] ?? '') ? ['POST'] : ['GET'];
   if (!methods.includes(context.method)) { sendMethodNotAllowed(context.response, methods); return true; }
   const headers = { 'cache-control': 'no-store' };
   try {
@@ -28,6 +28,7 @@ export async function routeAppImages(context: RouteContext<AppPackageApiDependen
     if (action === 'capabilities') result = await service.capabilities(scope);
     else if (match[4] === 'cancel') result = await service.cancel(scope, id!);
     else if (match[4] === 'refresh') result = await service.recover(scope, id!);
+    else if (match[4] === 'delete') result = await service.remove(scope, id!);
     else if (context.method === 'GET') result = { jobs: await service.list(scope) };
     else {
       const chunks: Buffer[] = []; let size = 0;

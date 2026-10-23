@@ -52,6 +52,7 @@
       submit: (input) => request('images.submit', input),
       cancel: (id) => request('images.cancel', { id }),
       refresh: (id) => request('images.refresh', { id }),
+      delete: (id) => request('images.delete', { id }),
       read: (id) => request('images.read', { id }),
       export: (id) => request('images.export', { id }),
     }),
