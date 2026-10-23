@@ -368,6 +368,7 @@ export const enCatalog: MessageCatalog = {
   'appHost.sectionPackage': 'Package',
   'appHost.sectionStatus': 'Status',
   'appHost.sectionPublisher': 'Publisher',
+  'appHost.sectionVersion': 'Version',
   'shared.productRenderer.errorEyebrow': 'Renderer Error',
   'shared.productRenderer.chatUnavailableTitle': 'Chat unavailable',
   'shared.productRenderer.unknownError': 'Unknown renderer error.',

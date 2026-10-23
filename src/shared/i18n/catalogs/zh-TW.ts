@@ -368,6 +368,7 @@ export const zhTWCatalog: MessageCatalog = {
   'appHost.sectionPackage': '套件',
   'appHost.sectionStatus': '狀態',
   'appHost.sectionPublisher': '提供者',
+  'appHost.sectionVersion': '版本',
   'shared.productRenderer.errorEyebrow': '渲染器錯誤',
   'shared.productRenderer.chatUnavailableTitle': '聊天無法使用',
   'shared.productRenderer.unknownError': '未知的渲染器錯誤。',

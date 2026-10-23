@@ -110,7 +110,10 @@ test('AppHostRoute renders installed app route metadata', () => {
   assert.match(markup, />Focus Timer</u);
   assert.match(markup, /Loading Focus Timer/u);
   assert.match(markup, />user.focus</u);
-  assert.match(markup, />enabled</u);
+  // The shell carries the App's identity so the App does not need its own title row or version footer.
+  assert.match(markup, />Focus timer with break reminders</u);
+  assert.match(markup, /<dt>Version<\/dt><dd>0\.1\.0<\/dd>/u);
+  assert.match(markup, /<dt>Status<\/dt><dd>Enabled<\/dd>/u);
 });
 
 test('AppHostRoute renders a not-installed state for unknown app routes', () => {

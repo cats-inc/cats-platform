@@ -360,6 +360,7 @@ export const messageKeys = {
   appHostSectionPackage: 'appHost.sectionPackage',
   appHostSectionStatus: 'appHost.sectionStatus',
   appHostSectionPublisher: 'appHost.sectionPublisher',
+  appHostSectionVersion: 'appHost.sectionVersion',
   sharedProductRendererErrorEyebrow: 'shared.productRenderer.errorEyebrow',
   sharedProductRendererChatUnavailableTitle:
     'shared.productRenderer.chatUnavailableTitle',

@@ -126,7 +126,9 @@ try {
   assert.equal(await innerFrame.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   assert.equal(await innerFrame.evaluate(() => { try { return !!parent.document.body; } catch { return false; } }), false);
   assert.equal(await innerFrame.evaluate(async () => { try { await fetch('/api/apps'); return true; } catch { return false; } }), false);
-  await frame.getByRole('button', { name: '返回 Cats Home' }).click(); await page.getByText('Returned to lobby').waitFor();
+  // Studio 0.3.0 and older carry their own Home button; newer Studio leaves navigation to the host shell.
+  const appHome = frame.getByRole('button', { name: '返回 Cats Home' });
+  if (await appHome.count()) { await appHome.click(); await page.getByText('Returned to lobby').waitFor(); }
   assert.deepEqual(errors, []);
   process.stdout.write(`${JSON.stringify({ ok: true, submissions, cancelled, cliCalls: 0, app: { id: studio.id, version: studio.version, sha256: studio.sha256 }, screenshotDir, isolatedRegistry: root }, null, 2)}\n`);
 } finally { await browser.close(); await new Promise<void>((resolve) => server.close(() => resolve())); }

@@ -39,7 +39,8 @@ export const IMAGE_ERRORS = new Set(['invalid_image_request', 'image_request_con
   'image_storage_limit', 'image_transport_unsupported', 'image_service_unavailable', 'image_not_found',
   'execution_interrupted', 'cancelled', 'auth_required', 'quota_exhausted', 'privacy_required',
   'generation_refused', 'generation_failed', 'generation_timeout', 'cli_unavailable', 'invalid_image',
-  'invalid_image_source', 'image_source_unavailable', 'image_tool_limit', 'image_output_limit', 'storage_full']);
+  'invalid_image_source', 'image_source_unavailable', 'image_tool_limit', 'image_output_limit', 'storage_full',
+  'runtime_capacity_full']);
 export function projectImageJob(value: unknown): RuntimeImageJob {
   const input = record(value);
   if (input.schemaVersion !== 1 || input.provider !== 'grok' || !IMAGE_ID.test(String(input.id))
