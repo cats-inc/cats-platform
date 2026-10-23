@@ -80,6 +80,11 @@
 
 ## Follow-ups (not in this plan)
 
+- 主動生圖到 Telegram 的完整 golden path 見
+  [PLAN-121](PLAN-121-shared-image-service-and-controlled-cat-generation.md)：
+  Platform 共用服務、有限 Cat grant、Studio 共用與 durable delivery；規劃文件，
+  尚未實作，不改本計畫既有相簿／文字心跳的驗收狀態。
+
 - 陪伴貓私訊回合前的 companion 發文決策 sidecar 讓延遲約加倍，影響在職守的感覺；
   可改為只在需要時才做決策。
 - runtime 對同一 session 的併發訊息回 409，一般 owner 連發兩則訊息時也會碰到。

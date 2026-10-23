@@ -1,5 +1,10 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-136: Shared controlled image capabilities](136-share-controlled-image-capabilities-between-cats-and-studio.md)
+  — proposed, 2026-10-23; Studio and Cats share a Platform image service with
+  separate caller authority, finite proactive grants and durable delivery.
+  Runtime contract/resource compatibility gate required; not implemented.
+
 - [ADR-135: Optional Runtime data reset](135-make-runtime-data-reset-explicit-and-preserve-installed-tools.md)
   — accepted, 2026-10-23; unchecked opt-in, exact typed confirmation, offline
   managed-profile erasure and resumable cleanup; installed tools remain installed.
