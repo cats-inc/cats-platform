@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Draft — documentation requested 2026-10-23; implementation not started |
+| Status | Approved for implementation — 2026-10-23; implementation in progress, acceptance pending |
 | Owner | Platform integration; Apps owns Studio consumer acceptance; Runtime owns execution |
 | Reviewer | Owner and subsequent independent implementation review |
 | Decision | [ADR-136](../decisions/136-share-controlled-image-capabilities-between-cats-and-studio.md) |
@@ -17,16 +17,22 @@
 也不要求 Boss Cat。主動產圖以 owner 預先授予的有限政策執行；圖片保存後附到
 原私訊並送往已授權的 Telegram binding。
 
-本文件定義目標契約，不代表現有工具、政策、路由或 migration 已存在。
+本文件定義實作契約；已完成的範圍與實際驗證記錄於 PLAN-121，未完成驗收不得視為已交付。
 
 ## Delivery baseline and scope
 
+2026-10-23 implementation rebaseline：owner 已核准實作與必要 releases，並澄清
+共用對象為 Studio，Usage 不改。開始時 SDK 已是 1.7.0；Runtime SPEC-038 與
+Studio 已提供 image contract 2，Runtime 的 Grok／Muse／Codex／Antigravity profiles
+均已啟用，輸出包含 JPEG／PNG。保留新舊 App contract 與已交付能力，不降回 Grok-only。
+實際發布仍須通過對應 release SOP 與所有完成條件。
+
 | 項目 | 已存在 | 本計畫 |
 | --- | --- | --- |
-| Studio／SDK | App/account/version/digest-scoped Grok 生圖、作品讀取／匯出 | 把既有 adapter 接到共用服務，保持原公開契約 |
+| Studio／SDK | App/account/version/digest-scoped contract 1／2 生圖、作品讀取／匯出 | 共用執行層；SDK 1.8 新增 `media.images`，保留既有 namespace／scope |
 | Cat 陪伴 | 作息、文字心跳、相簿圖片附到 Telegram | 加受控生圖與圖片資產附件 |
-| Runtime | SPEC-033 bounded Grok、單張 1:1 JPEG、無自動 regeneration | 優先沿用；驗證 pool/singleton、取消與重啟相容性 |
-| 修圖／多 provider | Apps SPEC-006 的 successor 規劃及研究證據 | 保留 extension seam；不列為第一階段已啟用操作 |
+| Runtime | SPEC-038 contract 2 四個已啟用 profiles、JPEG／PNG、無自動 regeneration | 加原 source turn 的完成證據與必要 idle handoff；保留執行界線 |
+| 修圖／合成 | Apps SPEC-006 的 successor 規劃及研究證據 | 保留 extension seam；本階段只使用已交付 generation |
 | 送達 | Chat event fanout 與 Telegram 回執 | 為產圖結果增加 durable intent、回執判斷及恢復 |
 
 ### Goals
@@ -38,12 +44,13 @@
 
 ### Non-goals
 
-- 本階段不啟用修圖、合成、PNG、新 provider 或任意 CLI／圖片 URL／檔案路徑。
+- 本階段不新增修圖、合成、新 provider 或任意 CLI／圖片 URL／檔案路徑；保留現有 PNG 與 profiles。
 - 不建立通用 App 執行框架，不讓 Cat 操作 Studio iframe，也不把所有 App 邏輯搬到 Platform。
 - 不預設共用 Studio 與 Cat 的作品清單；跨 caller 分享另有明確授權。
 - 不新增 OS 喚醒或雲端常駐；Cats／主機不運作時不承諾即時生成或傳送。
 - 不改 companion heartbeat 預設間隔，也不把每次文字心跳變成生圖。
-- 不 bump、發布、安裝、消耗 provider 額度或修改使用者實際設定。
+- 不變更 Usage。版本／發布依本次 owner 授權與 release SOP；驗證使用隔離 profile，
+  不將 demo 資料寫入使用者 dev state。
 
 ## Owner-visible golden path
 
@@ -113,8 +120,38 @@ Mission／Work Item，也不新增第二份工作真相。
 
 ## Policy and record semantics
 
-以下為 proposed internal shape；工具名、route、持久格式及欄位由 PLAN-121 P0 凍結，
-不是可對目前 SDK／Runtime 傳送的 payload。
+以下為 internal shape；Cat 身分／政策／binding 與 SDK／Runtime payload 分開。
+公開 SDK 不接受 Cat 身分、source session hint、路徑或傳送目的地。
+
+### Implemented boundaries
+
+- SDK 1.8 的 `media.images` 與既有 `images` adapter 使用同一個 executor；新 namespace
+  只對 manifest floor 至少 1.8 的 App 提供。Studio 使用 host 注入的 SDK，archive encoder
+  的公開 exact Platform 0.6.0 pin 與此獨立；SDK 1.8 也隨本次 Platform npm 發布公開 types。
+- 新 Cat store 為獨立 SQLite schema 1，使用 FULL synchronous／WAL／immediate
+  transactions，原子保留 request identity、政策 revision、次數與單筆 active 工作。
+  不搬動既有 App Core metadata／原檔，不清空未知或損壞 DB。SQLite lazy load：未具備
+  `node:sqlite` 的舊 Node host 仍保留 App 功能，Cat 入口明確回報 storage unavailable。
+- Cat 工具為 loopback-only `/api/internal/cat-image-tools/mcp` 的 host `cats` server；
+  使用正式 session MCP descriptor。`image_generate(prompt,caption)` 的 request ID 由
+  host supervised action 派生；`image_status(jobId)` 只讀原工作。bearer 不授權 owner API，
+  每回合結束即失去 call 權限。公開 ingress 即使轉送自 loopback 仍拒絕此 route。
+- owner/admin 路由為 `/api/cats/:catId/image-policy` 與同 Cat 下的 image／cancel／retry。
+  actor、account、conversation、原 binding 及 revision 均由 host 解析；未知欄位拒絕。
+  部分政策更新保留原 binding，disabled／失效帳號或移除管理角色即失去後續執行／外送權。
+- 工作先 durable held，成功 turn receipt 才釋放；lost ack 只經 host active-turn gate
+  與 Runtime 明確 `turnInFlight=false` 或 definite session 404 恢復。Runtime只交接自己的
+  idle source，等待所有 owned helpers 停止；不搶別隻 Cat 的 worker，不調高 pool cap。
+- Cat 圖片附件只含受管 ref、hash、MIME 與尺寸；owner image route 每次驗證 account／
+  owner／Cat scope。圖片顯示於原對話，普通 transport fanout 不再代送此 durable intent。
+- delivery 在 side effect 前取得持久 attempt claim。append 前後、外送前及 Telegram
+  完成讀檔後都重查 claim；最後 network 邊界重查完整 owner／Cat／睡眠／conversation／
+  binding revision。過期 sending 為 uncertain，需明確重送；只有 explicit API 429
+  自動有限重試。正常關機只 drain 已開始工作，不抑制仍待送的圖片。
+- reset 透過持久 maintenance fence，拒絕 active／未確認 generation 及 sending／uncertain
+  delivery；owner 可明確停止 uncertain 的後續外送，留下 `abandonedAt` 並清除舊 claim，
+  先前結果仍為 uncertain，之後才可 reset。跨程序新 admission／dispatch／delivery
+  在清理期間被拒絕。
 
 | Record | 必要內容 |
 | --- | --- |
@@ -134,8 +171,8 @@ Mission／Work Item，也不新增第二份工作真相。
 且 release 本身冪等。未知結果仍占次數，不能靠重啟、取消或改 policy 反覆生圖。
 次數限制不保證金額；實際成本只呈現 Runtime 回報的資料。
 
-既有 App 方法沿用：getCapabilities/list/submit/cancel/refresh/read/export。Cat 入口只
-暴露 caller 自己需要的 capability、submit、status、cancel；下載及送圖由 host 處理。
+既有 App 方法沿用：getCapabilities/list/submit/cancel/refresh/read/export。Cat 模型工具只
+暴露 generate 與 status；owner 可取消。下載及送圖由 host 處理。
 兩個 adapter 不共用可由呼叫端偽造的 scope。任何額外 agent transport 使用現有受控
 session MCP／工具邊界，不從 public ingress 直接暴露內部工具。
 
@@ -159,18 +196,18 @@ succeeded，delivery 為 failed 或 uncertain；後續 retry 不再呼叫 provid
 
 ## Runtime evaluation
 
-Runtime 需參與相容性驗證；本階段不預設新增 route／schema。基線見
-[Runtime SPEC-033](../../../cats-runtime/docs/specs/SPEC-033-bounded-image-generation.md)
-與 [PLAN-043](../../../cats-runtime/docs/plans/PLAN-043-bounded-image-generation.md)。
+Runtime 已確認需最小資源交接擴充，仍使用既有 image routes 與 schema 2。
+見 [Runtime SPEC-038](../../../cats-runtime/docs/specs/SPEC-038-image-generation-contract-2.md)
+與 [PLAN-048](../../../cats-runtime/docs/plans/PLAN-048-image-generation-contract-2.md)。
 
 | 檢查 | Gate |
 | --- | --- |
-| 現有 Grok request／receipt／JPEG／取消／restart | 可透過兩種 Platform adapter 共用，HTTP payload 不增加 Cat／App 欄位 |
+| 現有 contract 2 request／receipt／MIME／取消／restart | 可透過兩種 adapter 共用；只新增 host-only `sourceSessionId`，不增加 Cat／App policy 欄位 |
 | Cat chat 與圖片 target 不同／相同 provider instance | 不同步等待自己持有的 worker／singleton；unsupported 組合清楚不可用，不宣稱所有 Cat/provider 配對都可執行 |
 | 工具及 heartbeat/session gate | submit／completion 無重入 deadlock；owner 訊息可繼續，shutdown 可 bounded 停止 |
 | Pool 滿／singleton busy | 原 Runtime 錯誤可正確映射；不搶占任意聊天、不自動調高上限、不放寬執行規則 |
-| 需要 runtime resource handoff 才能完成的組合 | 先列精確阻礙，Runtime 另立最小 successor 與測試；未通過組合不開放 |
-| 修圖／多 provider／PNG／新 options | 依 Apps PLAN-006 A0/A1/A2 協調，不列入本階段成功條件 |
+| 需要 runtime resource handoff 的組合 | 等 source 的實際 turn／完整 process lifetime 證據；回歸涵蓋 persistent source、helper、abort 與舊 handle |
+| 修圖／新 provider／新 options | 依 Apps PLAN-006 協調，不列入本階段成功條件 |
 
 Runtime 不處理 owner 發訊意圖、App registry、Cat 預算、資產分享或 Telegram。
 不為了避免 Studio 安裝依賴，就讓 Cat 持有 Runtime 通用憑證。
@@ -182,12 +219,16 @@ Runtime 不處理 owner 發訊意圖、App registry、Cat 預算、資產分享�
 - 新 caller／policy／asset／delivery 紀錄必須有版本化格式。既有 Studio jobs 映射為
   App initiator，保留 App/account/version、request ID、Runtime ID、Core IDs 與圖片 hash；
   不補出 Cat owner、共享權或自動生圖額度。
+- 既有 App schema 1／2 圖片不做大量改寫。新增可選 private `cancelRequestedAt`，
+  老 cancelling receipt 以原 updatedAt 推得取消意圖，僅在既有 Core mutation 路徑持久化；
+  該路徑沿用 snapshot backup／atomic replace。舊 interrupted receipt 不假造取消證據。
+  新 Cat store 與舊 App records 無資料搬移，SQLite 回滾／WAL 保留未完成的原子更新。
 - 先驗證全部來源、建立可驗證備份、stage 新 metadata／原檔引用並驗證，再 atomic
   activate；失敗保留原始資料並提供 recovery。跨 store 中斷須可重入，未知格式拒絕
   開啟，不能清空重建或把舊 job 重新執行。
 - App 移除／停用仍對 App scope 生效；不為共用服務取消現有撤銷語意。
 - 若 persisted-data／外部契約確有 breaking boundary，依 0.x minor／SDK major 政策
-  記錄所需邊界與最低相容組合；本文件不決定具體版本，也不授權 bump 或發布。
+  記錄所需邊界與最低相容組合；發布仍須符合本次明確授權與 release SOP。
 
 ## Acceptance criteria
 

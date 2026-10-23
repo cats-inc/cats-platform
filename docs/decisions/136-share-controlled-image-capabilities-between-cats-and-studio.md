@@ -2,11 +2,18 @@
 
 ## Status
 
-Proposed — 2026-10-23。使用者要求先撰寫文件；尚未核准實作、版本變更、安裝或發布。
+Accepted for implementation — 2026-10-23。owner 已要求依本規劃實作完整 golden path，
+完成必要版本與 releases，包含 Desktop standard preview。後續澄清共用對象是
+Studio，這次不改 Usage。功能、升級及發布驗收完成前不標成已交付。
 規格：[SPEC-128](../specs/SPEC-128-shared-image-service-and-controlled-cat-generation.md)。
 計畫：[PLAN-121](../plans/PLAN-121-shared-image-service-and-controlled-cat-generation.md)。
 
 ## Context
+
+Implementation rebaseline：開始實作時 Platform 已為 SDK 1.7.0，Runtime 與 Studio
+已接 image contract 2（Grok／Muse／Codex／Antigravity profiles、JPEG／PNG）。以下原始 schema 1
+敘述保留規劃背景；實作保護目前兩種 App SDK contract，使用 Runtime 已宣告的
+profile，不能將已交付的 contract 2 降回 schema 1。修圖仍為另外的操作擴充。
 
 使用者定義的陪伴 golden path 包含：Cat 偶爾決定生圖，經受控執行取得圖片，再傳到
 自己的 Telegram 私訊。只會從相簿挑既有圖片不足以完成這條路徑。
@@ -90,8 +97,20 @@ guardrail、直接借聊天原生 image tool 或以增加容量冒充修復。
 ### 7. Studio 先保持公開契約
 
 現有 Studio SDK 的方法、payload、資料隔離與可讀歷史保持。Platform 在內部改成
-共用服務 adapter。Studio 不必為這次抽取改 UI 或增加 agent tool 宣告。
+共用服務 adapter。SDK 1.8 新增 `media.images`，由 manifest SDK floor 協商；本次
+Studio consumer 切換此 namespace，但不增加自己的生圖 server 或 agent tool 宣告。
 新圖片操作及「讓 Studio 看見 Cat 作品」各自需要明確的新契約。
+
+### 8. 實作落點與恢復證據
+
+Cat 政策／預留／傳送 intent 使用獨立 SQLite ledger；既有 App Core metadata 與原圖
+不搬移。兩種 caller 委派同一個 image executor。Cat host 以受控 session MCP 交付
+generate/status，模型不能選擇 scope、source session、provider configuration 或收件人。
+
+Runtime 的最小擴充是原 Cat turn 的明確完成觀察與 idle source resource handoff：
+不搶其他 session，等全部 owned process/helper 真正停止才執行圖片工作。未知回合回執
+不釋放 held admission。Telegram 另用 durable claim 與完整 dispatch-time 授權；
+unknown delivery 只可明確重送原圖或停止後續傳送，不能冒充送達／未送達證據。
 
 ## Consequences
 
@@ -103,15 +122,15 @@ guardrail、直接借聊天原生 image tool 或以增加容量冒充修復。
 
 ### Negative
 
-- 現有 App 圖片資料需要演進成可表達多種 initiator 的資料；升級必須保留 scope。
+- 需要共同 execution 型別與兩種 admission adapter；既有 App 資料保留原 scope 與位置。
 - 新增 Cat agent tool delivery、持久預算與圖片 delivery intent 的整合工作。
-- 原生 provider 的資源競爭仍需驗證，不能以本文件保證無 Runtime 修改。
+- 原生 provider 的資源競爭需要 Runtime handoff 與每個實際 tuple 的驗證。
 
 ### Neutral
 
 - Studio 仍是完整可選 App；本決策不將所有 App 降為 Platform 的 renderer。
 - 既有相簿傳圖與文字心跳繼續使用各自的授權，不隱性增加生圖。
-- 新服務、工具與政策皆為提案；既有 ADR-120／SPEC-119 仍描述已交付基線。
+- 本方案已授權實作；驗證／發布狀態以 PLAN-121 為準，不以有程式碼代替 live acceptance。
 
 ## Alternatives Considered
 

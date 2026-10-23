@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { BotBindingRecord } from '../../../../core/types.js';
 import type {
   TelegramConversationBinding,
@@ -214,6 +215,7 @@ export function linkTelegramRoom(input: {
   const nextBinding: TelegramConversationBinding = {
     ...input.binding,
     linkedRoomId: input.roomId,
+    linkRevision: randomUUID(),
     roomRoutingStatus: 'linked_room',
     updatedAt: input.linkedAt,
   };

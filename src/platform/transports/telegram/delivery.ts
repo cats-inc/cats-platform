@@ -15,6 +15,8 @@ interface TelegramBotApiEnvelope<T> {
   ok?: boolean;
   result?: T;
   description?: string;
+  error_code?: number;
+  parameters?: { retry_after?: number };
 }
 
 interface TelegramBotApiMessageResult {
@@ -56,6 +58,16 @@ export interface TelegramDeliveryClientResult {
   chatId: string | null;
   messageId: string | null;
   description?: string | null;
+  failureKind?: 'rejected' | 'retryable' | 'uncertain';
+  retryAfterSeconds?: number;
+}
+
+export class TelegramDispatchGuardError extends Error {
+  constructor() { super('Telegram dispatch authorization changed.'); }
+}
+
+export async function checkTelegramDispatchGuard(assertAllowed?: () => void | Promise<void>): Promise<void> {
+  try { await assertAllowed?.(); } catch { throw new TelegramDispatchGuardError(); }
 }
 
 export interface TelegramBotApiMutationResult {
@@ -64,7 +76,7 @@ export interface TelegramBotApiMutationResult {
 }
 
 export interface TelegramDeliveryClient {
-  deliver(request: TelegramDeliveryRequest & { chatId: string }): Promise<TelegramDeliveryClientResult>;
+  deliver(request: TelegramDeliveryRequest & { chatId: string }, guard?: { assertAllowed?: () => void | Promise<void> }): Promise<TelegramDeliveryClientResult>;
   setMyCommands(request: {
     commands: TelegramBotApiCommand[];
     scope?: TelegramBotApiCommandScope | null;
@@ -231,6 +243,7 @@ async function postBotApiMultipart<T>(
   method: string,
   fields: Record<string, string | undefined>,
   file: { field: string; fileName: string; bytes: Buffer },
+  assertAllowed?: () => void | Promise<void>,
 ): Promise<{
   response: TelegramFetchResponse;
   payload: TelegramBotApiEnvelope<T>;
@@ -255,6 +268,7 @@ async function postBotApiMultipart<T>(
   ));
   parts.push(file.bytes);
   parts.push(Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8'));
+  await checkTelegramDispatchGuard(assertAllowed);
   const response = await fetchImpl(
     `${apiBaseUrl}/bot${botToken}/${method}`,
     {
@@ -278,10 +292,12 @@ async function postBotApi<T>(
   botToken: string,
   method: string,
   body: Record<string, unknown>,
+  assertAllowed?: () => void | Promise<void>,
 ): Promise<{
   response: TelegramFetchResponse;
   payload: TelegramBotApiEnvelope<T>;
 }> {
+  await checkTelegramDispatchGuard(assertAllowed);
   const response = await fetchImpl(
     `${apiBaseUrl}/bot${botToken}/${method}`,
     {
@@ -309,6 +325,7 @@ export function createTelegramBotApiDeliveryClient(
   return {
     async deliver(
       request: TelegramDeliveryRequest & { chatId: string },
+      guard?: { assertAllowed?: () => void | Promise<void> },
     ): Promise<TelegramDeliveryClientResult> {
       const method = resolveApiMethod(request);
       const mediaFile = request.operation === 'send_media' && !request.fileId && !request.mediaUrl
@@ -333,6 +350,7 @@ export function createTelegramBotApiDeliveryClient(
             fileName: mediaFile.fileName,
             bytes: await readFile(mediaFile.path),
           },
+          guard?.assertAllowed,
         )
         : await postBotApi<TelegramBotApiDeleteResult | TelegramBotApiMessageResult>(
           fetchImpl,
@@ -340,6 +358,7 @@ export function createTelegramBotApiDeliveryClient(
           botToken,
           method,
           buildApiPayload(request),
+          guard?.assertAllowed,
         );
 
       if (request.operation === 'delete') {
@@ -360,6 +379,12 @@ export function createTelegramBotApiDeliveryClient(
 
       return {
         ok,
+        ...(!ok ? { failureKind: messagePayload.ok === false && messagePayload.error_code === 429
+          ? 'retryable' as const : messagePayload.ok === false && Number(messagePayload.error_code) >= 400
+            && Number(messagePayload.error_code) < 500 ? 'rejected' as const : 'uncertain' as const,
+          ...(Number.isSafeInteger(messagePayload.parameters?.retry_after)
+            && Number(messagePayload.parameters?.retry_after) > 0
+            ? { retryAfterSeconds: Math.min(3600, Number(messagePayload.parameters?.retry_after)) } : {}) } : {}),
         chatId: toChatId(messagePayload.result?.chat?.id) ?? request.chatId,
         messageId,
         description: ok ? null : messagePayload.description ?? `Telegram API ${response.status}`,

@@ -7,6 +7,8 @@ export type RuntimeImageProvider = typeof IMAGE_PROVIDERS[number];
 export type RuntimeImageAspectRatio = { mode: 'native'; options: [string] } | { mode: 'service' };
 /** Runtime contract 2 (Runtime SPEC-038). Generation takes no sources or options yet. */
 export interface RuntimeImageRequest {
+  /** Trusted Platform host only: the idle originating session may yield its execution slot. */
+  sourceSessionId?: string;
   id: string; targetId: string; profileId: string; profileRevision: string; agentConfigId: string;
   operation: 'image.generate'; prompt: string; sourceIds: []; options: Record<string, never>;
 }
@@ -16,6 +18,7 @@ export interface RuntimeImageMetadata {
 }
 export type RuntimeImageStatus = 'running' | 'succeeded' | 'failed' | 'cancelling' | 'cancelled' | 'interrupted';
 export interface RuntimeImageJob {
+  sourceSessionId?: string;
   schemaVersion: 2; id: string; targetId: string; provider: RuntimeImageProvider; instance: string;
   profileId: string; profileRevision: string; agentConfigId: string | null; agentModel: string; agentEffort: string | null;
   operation: 'image.generate'; prompt: string; status: RuntimeImageStatus; createdAt: string; updatedAt: string;
@@ -26,6 +29,7 @@ export interface RuntimeImageProfile {
   agentConfigs: Array<{ id: string; model: string; effort: string }>; inputs: { min: 0; max: 0 }; aspectRatio: RuntimeImageAspectRatio;
 }
 export interface RuntimeImageCapabilities {
+  sourceSessionYield?: true;
   schemaVersion: 2; revision: string; maxPromptLength: number; maxImageBytes: number;
   targets: Array<{ id: string; provider: RuntimeImageProvider; instance: string }>;
   profiles: RuntimeImageProfile[];
@@ -85,14 +89,15 @@ export function projectImageCapabilities(value: unknown): RuntimeImageCapabiliti
         inputs: { min: 0, max: 0 }, aspectRatio: aspectRatio(profile.aspectRatio) }];
     } catch { return []; }
   });
-  return { schemaVersion: 2, revision: key(input.revision, 64), maxPromptLength: 2000, maxImageBytes: IMAGE_MAX_BYTES, targets, profiles };
+  return { schemaVersion: 2, revision: key(input.revision, 64), maxPromptLength: 2000, maxImageBytes: IMAGE_MAX_BYTES, targets, profiles,
+    ...(input.sourceSessionYield === true ? { sourceSessionYield: true } : {}) };
 }
 export const IMAGE_ERRORS = new Set(['invalid_image_request', 'image_request_conflict', 'image_service_busy',
   'image_storage_limit', 'image_transport_unsupported', 'image_service_unavailable', 'image_not_found',
   'execution_interrupted', 'cancelled', 'auth_required', 'quota_exhausted', 'privacy_required',
   'generation_refused', 'generation_failed', 'generation_timeout', 'cli_unavailable', 'invalid_image',
   'invalid_image_source', 'image_source_unavailable', 'image_tool_limit', 'image_output_limit', 'storage_full',
-  'runtime_capacity_full', 'image_profile_unavailable', 'image_profile_changed']);
+  'runtime_capacity_full', 'image_source_busy', 'image_profile_unavailable', 'image_profile_changed']);
 export function projectImageOutput(value: unknown): RuntimeImageMetadata {
   const item = record(value);
   const dimension = (size: unknown) => Number.isSafeInteger(size) && Number(size) >= 1 && Number(size) <= MAX_EDGE;
@@ -114,6 +119,7 @@ export function projectImageJob(value: unknown): RuntimeImageJob {
   const output = input.output == null ? null : projectImageOutput(input.output);
   if (input.status === 'succeeded' && !output) throw new RuntimeImageError('invalid_image');
   return { schemaVersion: 2, id: String(input.id), targetId: `${name}/${instance}`, provider: name, instance,
+    ...(input.sourceSessionId === undefined ? {} : { sourceSessionId: key(input.sourceSessionId, 200) }),
     profileId: key(input.profileId), profileRevision: key(input.profileRevision, 40),
     agentConfigId: input.agentConfigId === null ? null : key(input.agentConfigId), agentModel: text(input.agentModel, 100),
     agentEffort: input.agentEffort === null ? null : key(input.agentEffort, 40), operation: 'image.generate',

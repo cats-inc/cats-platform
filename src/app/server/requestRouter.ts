@@ -490,6 +490,7 @@ export async function routeRequest(
       config: dependencies.shared.config,
       runtimeClient: dependencies.shared.runtimeClient,
       chatStore: dependencies.chat.chatStore,
+      catImages: dependencies.chat.catImages,
       mutationGate: dependencies.chat.mutationGate,
       orchestratorChannelRouter: dependencies.chat.orchestratorChannelRouter,
       orchestratorPlannerSurface: dependencies.chat.orchestratorPlannerSurface,

@@ -27,6 +27,9 @@ import {
 } from '../../products/code/agentTools/contracts.js';
 import { createCodeAgentToolsClientWrapper } from '../../products/code/agentTools/runtimeClientWrapper.js';
 import { createCodeAgentToolsService } from '../../products/code/agentTools/service.js';
+import { createCatImageTools, CAT_IMAGE_TOOLS_PATH } from '../../platform/multimedia/catImageTools.js';
+import { createChatCatImages, type ChatCatImages } from '../../products/chat/api/catImages.js';
+import { MemoryChatStore } from '../../products/chat/state/store.js';
 import type { CodeConversationPreviews } from '../../products/code/livePreview/conversationPreviews.js';
 import { sweepOrphanLivePreviewProcesses } from '../../products/code/livePreview/processRegistry.js';
 import { resolveCodeLivePreviewProcessRegistryPath } from '../../products/code/livePreview/processRegistryPath.js';
@@ -62,6 +65,25 @@ export function createServer(dependencies: ServerDependencies) {
     createPluginRuntimePort(pluginConfig.runtimeBaseUrl, pluginConfig.managedPluginKey ?? pluginConfig.runtimeApiKey));
   const providerSelectorClient = dependencies.shared.runtimeClient;
   const codeAgentToolGrants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
+  let catImages: ChatCatImages | undefined = dependencies.chat.catImages;
+  let catImageToolsEndpoint: string | null = null;
+  const catImageTools = createCatImageTools({
+    endpoint: () => catImageToolsEndpoint,
+    service: {
+      submit: (...args) => {
+        if (!catImages) throw new Error('Cat image service unavailable');
+        return catImages.service().submit(...args);
+      },
+      releaseTurn: id => catImages?.service().releaseTurn(id),
+      cancelTurn: async id => { await catImages?.service().cancelTurn(id); },
+      status: (...args) => {
+        if (!catImages) throw new Error('Cat image service unavailable');
+        return catImages.service().status(...args);
+      },
+    },
+    resolveTurn: async (id, input) => await catImages?.resolveTurn(id, input) ?? null,
+    now: () => dependencies.shared.now?.().getTime() ?? Date.now(),
+  });
   let codeAgentToolsEndpoint: string | null = null;
   let codeConversationPreviews: CodeConversationPreviews | undefined;
   const codeAgentToolsClients = createCodeAgentToolsClientWrapper({
@@ -92,15 +114,27 @@ export function createServer(dependencies: ServerDependencies) {
   });
   dependencies = {
     ...dependencies,
-    shared: { ...dependencies.shared, managedPlugins: plugins, runtimeClient: plugins.wrapClient(knowledge.wrapClient(codeAgentToolsClients.wrapClient(dependencies.shared.runtimeClient))) },
+    shared: { ...dependencies.shared, managedPlugins: plugins, runtimeClient: plugins.wrapClient(knowledge.wrapClient(catImageTools.wrapClient(codeAgentToolsClients.wrapClient(dependencies.shared.runtimeClient)))) },
     ...(dependencies.code?.runtimeClient ? { code: { ...dependencies.code, runtimeClient: plugins.wrapClient(knowledge.wrapClient(codeAgentToolsClients.wrapClient(dependencies.code.runtimeClient))) } } : {}),
     ...(dependencies.work?.runtimeClient ? { work: { ...dependencies.work, runtimeClient: plugins.wrapClient(knowledge.wrapClient(dependencies.work.runtimeClient)) } } : {}),
   };
   const resolvedDependencies = resolveServerDependencies(dependencies);
+  // Memory-backed test servers never discover or mutate an on-disk user multimedia ledger.
+  if (!catImages && !(resolvedDependencies.chat.chatStore instanceof MemoryChatStore)) {
+    catImages = createChatCatImages({ ...resolvedDependencies.chat, config: resolvedDependencies.shared.config,
+      runtimeClient: providerSelectorClient, now: resolvedDependencies.shared.now,
+      authStore: resolvedDependencies.shared.authStore,
+      isTurnActive: id => catImageTools.isTurnActive(id) });
+  }
+  resolvedDependencies.chat.catImages = catImages;
   codeConversationPreviews = resolvedDependencies.code.conversationPreviews;
   let pluginTimer: ReturnType<typeof setInterval> | undefined;
   resolvedDependencies.shared.providerSelectorClient = providerSelectorClient;
   function startBackgroundLoops() {
+    const mediaTimer = setInterval(() => {
+      if (!resetting) void catImages?.tick().catch(reportUnhandledServerError);
+    }, 2000);
+    mediaTimer.unref();
     const stopHistoryRetentionLoop = startHistoryRetentionLoop({ coreStore: resolvedDependencies.work.coreStore, now: resolvedDependencies.work.now });
     const stopTransportFanout = startTransportFanout({
       eventHub: resolvedDependencies.chat.eventHub,
@@ -152,13 +186,15 @@ export function createServer(dependencies: ServerDependencies) {
           runtimeClient: resolvedDependencies.shared.runtimeClient,
           companionStore: resolvedDependencies.chat.companionStore,
           companionActivityStore: resolvedDependencies.chat.companionActivityStore,
+          catImages,
           memoryService: resolvedDependencies.chat.memoryService,
           config: resolvedDependencies.shared.config,
           eventHub: resolvedDependencies.chat.eventHub,
           now: resolvedDependencies.shared.now,
         })
       : Object.assign(() => {}, { isIdle: () => true });
-    return { stopTransportFanout, stopSchedulerLoop, stopCompanionLifeLoop, stopHistoryRetentionLoop };
+    return { stopTransportFanout, stopSchedulerLoop, stopCompanionLifeLoop, stopHistoryRetentionLoop,
+      stopMediaLoop: () => clearInterval(mediaTimer) };
   }
   let loops = startBackgroundLoops();
   let resetting = false;
@@ -186,6 +222,7 @@ export function createServer(dependencies: ServerDependencies) {
       sendJson(response, 403, { error: 'opaque_origin_denied' }); return;
     }
     if (await codeAgentTools.route(request, response)) return;
+    if (await catImageTools.route(request, response)) return;
     if (await knowledge.route(request, response)) return;
     await routeRequest(request, response, resolvedDependencies);
   };
@@ -233,12 +270,13 @@ export function createServer(dependencies: ServerDependencies) {
     if (!startupSettled || livePreviewSweepPending || activeRequests.size || chat.mutationGate.isIdle?.() === false
       || !loops.stopSchedulerLoop.isIdle() || !loops.stopCompanionLifeLoop.isIdle() || !loops.stopHistoryRetentionLoop.isIdle()
       || !loops.stopTransportFanout.isIdle() || golden?.runner?.isIdle?.() === false
-      || golden?.outbox.isIdle?.() === false) throw new PlatformResetBusyError();
+      || golden?.outbox.isIdle?.() === false || catImages?.isIdle() === false) throw new PlatformResetBusyError();
     resetting = true;
     loops.stopSchedulerLoop();
     loops.stopHistoryRetentionLoop();
     loops.stopCompanionLifeLoop();
     loops.stopTransportFanout();
+    loops.stopMediaLoop();
     chat.pollingSupervisor.stopAll();
     try {
       await chat.pollingSupervisor.drain();
@@ -250,6 +288,8 @@ export function createServer(dependencies: ServerDependencies) {
         // well as revoking auth, so close handlers remove listeners/heartbeats.
         for (const response of openStreams) response.end();
         knowledge.revoke();
+        catImageTools.revoke();
+        await catImages?.clearForReset();
         codeAgentTools.clearForReset();
         getDefaultArtifactCanvasRenderIntentHub().clearForReset();
         await resolvedDependencies.code.livePreviewSupervisor?.clearForReset();
@@ -298,7 +338,7 @@ export function createServer(dependencies: ServerDependencies) {
   const closeAppHosting = () => {
     clearInterval(livePreviewSweep);
     return hostingClose ??= Promise.allSettled([
-      ingress?.close(), appComponents?.close(), livePreviewSupervisor?.stopAll('platform_shutdown'),
+      ingress?.close(), appComponents?.close(), livePreviewSupervisor?.stopAll('platform_shutdown'), catImages?.close(),
     ]).then(results => {
       const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected');
       if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Hosted service cleanup failed.');
@@ -334,6 +374,7 @@ export function createServer(dependencies: ServerDependencies) {
       const host = address.family === 'IPv6' ? '[::1]' : '127.0.0.1';
       knowledgeEndpoint = `http://${host}:${address.port}${AGENT_KNOWLEDGE_PATH}`;
       codeAgentToolsEndpoint = `http://${host}:${address.port}${CODE_AGENT_TOOLS_MCP_PATH}`;
+      catImageToolsEndpoint = `http://${host}:${address.port}${CAT_IMAGE_TOOLS_PATH}`;
     }
   });
 
@@ -341,6 +382,8 @@ export function createServer(dependencies: ServerDependencies) {
     void closeAppHosting().catch(reportUnhandledServerError);
     clearInterval(pluginTimer);
     knowledge.close();
+    catImageTools.close();
+    loops.stopMediaLoop();
     loops.stopSchedulerLoop();
     loops.stopHistoryRetentionLoop();
     loops.stopCompanionLifeLoop();

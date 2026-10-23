@@ -278,6 +278,7 @@ function toBinding(rawBinding: unknown): TelegramConversationBinding | null {
   return {
     telegramChatId,
     conversationId,
+    ...(readString(binding.linkRevision) ? { linkRevision: readString(binding.linkRevision)! } : {}),
     bindingId: readString(binding.bindingId),
     botName: readString(binding.botName),
     transportConversationMode,

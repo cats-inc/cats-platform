@@ -211,7 +211,7 @@ export class TransportFanout {
     ]);
     const channel = requireChannel(chatState, channelId);
     const message = resolveCandidateMessage(event, channel);
-    if (!message) {
+    if (!message || message.metadata.transportDeliveryManaged === true) {
       return;
     }
 

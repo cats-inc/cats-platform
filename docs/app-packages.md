@@ -43,9 +43,17 @@ not delivered by Desktop 0.5.13. Current uninstall marks registry state
 and requests image-job cancellation; it does not delete package files. Current
 `purge` removes the registry record, not App data. Complete resource reclamation,
 same-version repair, active-context revocation, catalog UX and schema upgrades
-are planned. SDK 1.3 image operations below remain the implemented boundary.
+are planned. Image SDK versions and their compatibility boundaries are listed below.
 
 ## Host and SDK compatibility
+
+App SDK **1.8.0** adds `catsApp.media.images` with typed contract 2 capabilities,
+jobs, cancel/refresh/delete, saved-byte reads and exports. Studio **0.4.0** declares
+`^1.8.0` and uses this namespace. Apps declaring earlier floors keep `catsApp.images`
+and their negotiated schema unchanged. Both namespaces use the same permission-checked
+App adapter; Cat image tools use a separate scoped adapter to the shared service and
+do not depend on Studio installation. The public archive encoder remains independently
+pinned to Platform 0.6.0 in cats-apps. Usage 0.5.4 and its Desktop pin are unchanged.
 
 App SDK **1.7.0** adds image contract 2 for Apps that declare it (`appSdk` floor 1.7.0, for
 example `^1.7.0`). It brings provider profiles, Muse generation and measured JPEG/PNG output,

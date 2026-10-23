@@ -63,6 +63,8 @@ export interface TelegramRelay {
   deliver(input: {
     request: TelegramDeliveryRequest;
     context: TelegramRelayContext;
+    /** Trusted host hook, checked at the network dispatch boundary after local file reads. */
+    assertAllowed?: () => void | Promise<void>;
   }): Promise<TelegramDeliveryReceipt>;
   recordBridgeDispatchFailure(input: {
     receipt: TelegramWebhookReceipt;
@@ -236,9 +238,11 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
     async deliver({
       request,
       context,
+      assertAllowed,
     }: {
       request: TelegramDeliveryRequest;
       context: TelegramRelayContext;
+      assertAllowed?: () => void | Promise<void>;
     }): Promise<TelegramDeliveryReceipt> {
       return deliverTelegramRequest({
         now,
@@ -248,6 +252,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         resolveDeliveryClient,
         request,
         context,
+        assertAllowed,
       });
     },
 

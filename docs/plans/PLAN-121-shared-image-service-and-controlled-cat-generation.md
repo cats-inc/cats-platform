@@ -4,29 +4,89 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Draft — documentation only; implementation not started |
+| Status | In progress — owner authorized implementation and necessary releases; acceptance pending |
 | Owner | Platform integration; Apps Studio and Runtime execution owners consulted at contract gates |
-| Reviewer | Owner; independent implementation review pending |
+| Reviewer | Owner; independent execution, authorization, delivery and Studio namespace review completed; live acceptance pending |
 | Spec | [SPEC-128](../specs/SPEC-128-shared-image-service-and-controlled-cat-generation.md) |
 | Decision | [ADR-136](../decisions/136-share-controlled-image-capabilities-between-cats-and-studio.md) |
 
 ## Overview
 
-先讓 Platform 圖片服務同時服務既有 Studio 與受限 Cat，再完成陪伴心跳產圖到
-Telegram 的持久閉環。第一階段保留 Grok／單張 1:1 JPEG 與現有 App SDK 契約。
-Runtime 參與相容性驗證，依證據決定最小修改；修圖／多 provider 另循 Apps PLAN-006。
+### Implementation checkpoint — 2026-10-23
 
-本計畫是可審閱的提案，不授權現在實作、建立真實政策、生成圖片、發 Telegram、
-升版、發布或安裝。所有 implementation checklist 保持未完成。
+- owner 已授權完整實作、必要版本與 releases，Desktop 使用 standard preview；
+  後續明確澄清這次共用對象是 Studio，Usage 不改。
+- 起始 source：Platform `7e94d6b1`（SDK 1.7.0），Runtime `3aabcb5b`，
+  Apps `1d352fe`。image contract 2／已啟用 profiles／PNG 已交付，下面原始
+  schema 1 first-slice 描述需依這個新基線執行，不倒退或移除現有 Studio 功能。
+- 本次 worktree：`cats-platform/.claude/worktrees/shared-media-golden-path`，
+  branch `feat/shared-media-golden-path`。main 留在原 checkout。
+- 已接共用 `ImageExecutionService`、保留原 App ID／Core records／asset location 的
+  App adapter、SDK 1.8 的 `media.images` namespace，以及獨立 SQLite Cat 政策、
+  預留、請求身分與傳送 intent。SDK 1.7／舊 image namespace 仍按已安裝 App 的 floor
+  協商；不借用 Studio scope。Usage 未改。
+- Cat 工具以 Runtime 原生 session MCP descriptor 的 host `cats` server 交付：
+  session bearer 固定、每回合 scope 短暫生效；`image_generate` 每個 supervised action
+  只產生一個 request ID，`image_status` 只讀原 job／真實傳送狀態。工具回應先保存 held
+  工作；成功回合回執才釋放，未知回合結果需 host gate＋Runtime `turnInFlight=false`
+  或 definite 404 證據。原 session／pool／singleton 交接需 Runtime 最小擴充。
+- Telegram 使用獨立持久 claim；產圖／message append／delivery 可重入。生成圖片透過
+  受管附件 ref 顯示在原對話，普通 fanout 跳過該 intent。明確 API 429 才自動有限退避；
+  未知回應或過期 sending claim 為 uncertain，owner 明確重送仍使用原圖。傳送邊界在
+  檔案讀取後再檢查完整 owner／Cat／睡眠／原 conversation／原 binding revision，
+  claim 遺失的舊 dispatcher 不得外送。跨程序 reset fence 保護進行中／未知外送。
+- owner/admin 管理入口、預設關閉的設定卡、取消及 uncertain 重送確認已寫入；
+  Settings 回饋用 Toast。尚待完整 renderer fixture、手動 UI 與 isolated Desktop 驗證。
+- 已有 server／renderer TypeScript、Web production bundle 與隔離單元、MCP、Chat／
+  Telegram regression 證據。較廣的 239 項 affected run 曾有 2 項舊作息 fixture 因漏設
+  runtimeDataDir 而嘗試預設目錄、被 sandbox 拒絕；改到 fixture 暫存目錄後作息 20/20
+  通過。後續 44 項 source-turn／claim／owner／async read 授權 regression 全過；
+  新 UI 與附件原 5 項通過，加入停止傳送後該 UI suite 4/4 通過（其他 2 項沿用原證據）。
+  舊 App 可選取消意圖欄位的 schema 1 read-shape 回歸已修正，最後 App suite 15/15 通過。
+  不把 mock provider／bot 測試當作 live acceptance。尚無新版本發布。
+- independent review 列出的五個 P1 已在 source 與對應 regression 關閉；另補 owner
+  明確停止 unknown delivery，保留未知事實並解除失效 binding 導致的 reset dead end。
+  candidate command suite 5/5 通過；Runtime profiles 原在 `src/catalogs/`，沿用既有 src
+  snapshot，不擴大 source allowlist。
+- Studio 0.4.0 已切到 SDK 1.8 `media.images`；Apps 41 項及後續 preview/package 2 項通過，
+  required build/docs 通過。真 built archive＋production host SDK/routes＋隔離 Runtime fixtures
+  驗證 contract 2 JPEG/PNG、取消／刪除、重開／離線、原始 bytes、窄版與隔離通過，CLI calls 0。
+  Independent review 的 preview fixture namespace 問題已修正並確認關閉。Usage bytes 不變。
+- 獨立 Desktop source candidate 已啟動，Platform/Runtime readiness 通過；完成首次設定並建立
+  普通（非主控）Cat，未碰安裝版或預設 profile。最後 renderer types 與 UI suite 4/4 通過。
+- 下一步：完成普通 Cat 設定與對話 UI、真 provider／Telegram golden path，以及完整 hosted
+  CI 與必要版本發布。Owner 已明確決定本次不做真實 Telegram 傳送，使用隔離回執驗收。
+- 完整 hosted CI 首輪 5856 項中 5794 通過、60 skipped、2 失敗：共用 transcript helper
+  的 Chat import 改到 browser-safe `src/shared`，依賴圖回歸通過；file-backed Telegram
+  fixture 補自己的 platformDir，restart 回歸通過。未把這一輪稱為全綠，後續 CI 仍是 gate。
+- 真 native 首輪建立 Codex source session 後，在 MCP descriptor recycle 階段碰到舊
+  worker 尚未完全停止即 spawn 的 Runtime 缺陷；沒有 image admission／生成。Runtime
+  0.6.1 patch 加入有界完整停止等待與新 run／取消／刪除 fence，MCP/handoff 22/22 通過；
+  第二候選版及 native rerun 進行中，Desktop 發布須改 pin 通過驗收的 patch source。
+- 後續 Runtime MCP／生命週期 22/22、獨立 race review、完整 preflight 通過，修補
+  source `ba7b05d56d909cee5bcc019b0b561f76fbebae66`（0.6.1）。真 Native Runtime 的
+  zero-input create/replace probe 確認完整停止後才替換；第二候選版修正 bytes 一致。
+  最後一次 source turn 使用足夠的 read-only 權限越過 MCP setup，Codex endpoint 回401，
+  沒有 image admission／生成；停止 native 重試，保留實際生圖未驗證的限制。
+- Platform corrected full CI 已通過，boundary／file-backed restart 的兩個失敗都關閉。
+  helper 搬移後圖片 UI／Chat 21/21 通過。Studio0.4.0 hosted archive/source/hash 與
+  Ed25519 catalog 已驗證，Usage維持0.5.4。Desktop0.9.3採standard preview，Runtime pin
+  更新為上列0.6.1；依 hosted evidence 驗證發布，不以 fixture 宣稱 real Telegram／生圖成功。
+
+下方階段清單仍用於逐項驗收；實作授權與當前基線以上述 checkpoint 為準。
+
+先讓 Platform 圖片服務同時服務 Studio 與受限 Cat，再完成陪伴心跳產圖到 Telegram
+的持久閉環。保留已交付的四個 provider、profile／PNG／JPEG 與新舊 App SDK 契約；
+不重新限制為 Grok-only。修圖／合成與跨 caller 私有作品分享仍是後續獨立範圍。
 
 ## Work ownership and scope
 
 | Member | 本階段工作 | 邊界 |
 | --- | --- | --- |
 | Platform | 共用服務、App/Cat adapters、政策／預算、資產、工具 delivery、對話及 Telegram intent | 不執行 native CLI、不把 Chat 實作 import 到 platform/core |
-| Apps | 既有 Studio built package 的 consumer 契約與驗收；文件回鏈 | 第一階段無必需 UI／manifest／SDK 呼叫變更；無新的 Studio 生圖 server |
-| Runtime | 確認現有 HTTP／receipt、resource admission、cancel、restart 可供 Cat 呼叫 | 不新增 App/Cat policy；只有具體相容性缺口才開 Runtime successor |
-| Later Studio track | 修圖／合成、PNG、多 provider、跨 caller 作品分享 | 不併入第一階段成功條件 |
+| Apps | Studio 使用 `media.images` SDK 與必要 floor／artifact 更新 | 沒有 Studio 生圖 server；Usage 不改；browser SDK 1.8 由 host 注入，archive encoder 的公開 exact 0.6.0 pin 不變 |
+| Runtime | 原 source session 的 turn proof／idle handoff、HTTP receipt 與 pool／singleton admission | 不新增 App/Cat policy；保留現有 profile 及輸出能力 |
+| Later Studio track | 修圖／合成、跨 caller 作品分享 | 不併入本次成功條件 |
 
 ## P0 — Freeze admission, caller and recovery contracts
 
@@ -189,4 +249,4 @@ Markdown、1208 個相對連結及 LF／結尾換行，跨 repository target 以
 - [Apps PLAN-006](../../../cats-apps/docs/plans/PLAN-006-studio-image-workspace.md)
 - [Product integration guide](../product-integration-guide.md)
 
-*Created: 2026-10-23. Proposed implementation sequence; not an implementation approval.*
+*Created: 2026-10-23. Implementation and necessary releases authorized; see the checkpoint for verified scope and pending acceptance.*

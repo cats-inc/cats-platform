@@ -399,3 +399,59 @@ test('schema 1 Core records read as their schema 2 equivalent, keep their JPEG a
   assert.equal(presentImageJob(job, 1).output.mimeType, 'image/jpeg');
   assert.equal(presentImageJob(job, 1).output.transparency, undefined);
 });
+
+
+test('multimedia routes require the declared SDK and preserve App/account isolation', async (t) => {
+  const f = await setup(t, { appSdk: '^1.8.0' });
+  let version = '0.1.0';
+  async function call(route, method = 'GET', body, accountId = 'user-one') {
+    const request = Readable.from(body === undefined ? [] : [Buffer.from(JSON.stringify(body))]);
+    let result;
+    const response = { writeHead(status, headers) { result = { status, headers }; }, end(bytes) { result.body = Buffer.from(bytes ?? ''); } };
+    const handled = await routeAppPackageApi({ request, response,
+      url: new URL('http://localhost/api/apps/cats.studio/media/images/' + route + '?version=' + version), method,
+      auth: { principal: { account: { id: accountId } } },
+      dependencies: { config: { chatStatePath: f.deps.chatStatePath }, coreStore: f.deps.coreStore, runtimeClient: f.client } });
+    assert.equal(handled, true);
+    return result;
+  }
+  const capabilities = await call('capabilities');
+  assert.equal(capabilities.status, 200);
+  assert.equal(JSON.parse(capabilities.body).schemaVersion, 2);
+  assert.equal((await call('jobs', 'POST', input())).status, 400, 'typed multimedia requires a profile');
+  const submitted = await call('jobs', 'POST', inputTwo());
+  assert.equal(submitted.status, 202);
+  const job = JSON.parse(submitted.body);
+  assert.equal(job.accountId, undefined); assert.equal(job.appId, undefined);
+  await waitFor(f, job.id);
+  const read = await call('jobs/' + job.id + '/image');
+  assert.equal(read.status, 200); assert.ok(read.body.equals(f.png));
+  assert.equal((await call('jobs/' + job.id + '/image', 'GET', undefined, 'other-account')).status, 404);
+  assert.equal((await call('jobs/' + job.id + '/cancel')).status, 405);
+  await install(f.deps.chatStatePath, '0.2.0', '^1.7.0');
+  version = '0.2.0';
+  const refused = await call('capabilities');
+  assert.equal(refused.status, 403);
+  assert.equal(JSON.parse(refused.body).error.code, 'app_media_sdk_required');
+  assert.equal(f.submissions(), 1);
+});
+
+
+test('deleting work while its missing original is recollected cannot recreate or return the deleted image', async (t) => {
+  const f = await setup(t);
+  const job = await f.service.submit(f.scope, input()); await waitFor(f, job.id);
+  const filename = path.join(resolveCatsAppStoragePathsFromChatState(f.deps.chatStatePath).dataDir, 'cats.studio', 'images',
+    createHash('sha256').update('user-one').digest('hex'), job.id + '.jpg');
+  await rm(filename);
+  let entered, release;
+  const began = new Promise((resolve) => { entered = resolve; });
+  const held = new Promise((resolve) => { release = resolve; });
+  f.client.getImageBytes = async () => { entered(); await held; return f.image; };
+  const reading = f.service.image(f.scope, job.id);
+  const rejected = assert.rejects(reading, /image_not_found/);
+  await began;
+  await f.service.remove(f.scope, job.id);
+  release(); await rejected;
+  await assert.rejects(readFile(filename), /ENOENT/);
+  assert.equal(f.submissions(), 1);
+});

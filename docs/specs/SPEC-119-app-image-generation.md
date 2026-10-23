@@ -6,16 +6,17 @@ Decision: [ADR-120](../decisions/120-scope-app-image-jobs-and-assets.md),
 [ADR-137](../decisions/137-negotiate-image-contract-2-by-app-sdk-floor.md).
 Plan: [PLAN-111](../plans/PLAN-111-app-image-generation.md).
 
-## Proposed shared-service successor
+## Shared-service successor
 
 [ADR-136](../decisions/136-share-controlled-image-capabilities-between-cats-and-studio.md),
 [SPEC-128](SPEC-128-shared-image-service-and-controlled-cat-generation.md) and
 [PLAN-121](../plans/PLAN-121-shared-image-service-and-controlled-cat-generation.md)
-propose extracting this App-scoped implementation into a shared image service.
+define the implemented shared image execution service and its separate adapters.
 The existing SDK adapter keeps all App/account/version/digest checks and saved
 job identities. Cat callers receive separate authority and assets; they never
-impersonate an installed Studio App. The proposal is documentation only, does not
-enable editing or cross-caller sharing, and does not change the delivered contract below.
+impersonate an installed Studio App. SDK 1.8 adds `media.images` for new consumers;
+the delivered image contract below is retained for existing Apps. Editing and
+cross-caller sharing remain outside this implementation.
 
 ## Contract 2 (SDK 1.7.0)
 
@@ -99,6 +100,15 @@ artifact. A foreign receipt or unchanged failure leaves the work failed. No new 
 or provider call is authorized by this repair.
 
 ## Acceptance
+
+SDK 1.8.0 adds `catsApp.media.images` (contract 2 only) behind the existing
+`media.images` permission. Its getCapabilities/list/submit/cancel/refresh/delete/read/export
+methods use the `media.images.*` bridge protocol and require an App SDK floor of 1.8.0.
+The existing `images.*` contract remains available to installed Apps declaring earlier
+floors. [SPEC-128](SPEC-128-shared-image-service-and-controlled-cat-generation.md)
+defines the shared execution service and distinct App/Cat authorization adapters.
+Studio 0.4.0 consumes the new namespace; App identity, original IDs and stored bytes
+remain stable across the update. Usage does not change.
 
 Use actual Studio archive + real host renderer/SDK/routes, fixture Runtime and temporary
 registry/Core. Cover submit, blob preview/enlargement, byte-identical download, reopen,

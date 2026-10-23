@@ -10,6 +10,7 @@ import type {
   TelegramWebhookReceipt,
 } from '../contracts.js';
 import type { TelegramDeliveryClient, TelegramDownloadedFile } from '../delivery.js';
+import { TelegramDispatchGuardError, checkTelegramDispatchGuard } from '../delivery.js';
 import type { TelegramConversationMapper } from '../mapping.js';
 import { normalizeTelegramDeliveryTextPreview } from '../normalization.js';
 import type { TelegramRelayStore } from '../store/index.js';
@@ -106,6 +107,7 @@ function recordFailedTelegramDelivery(
     conversationId?: string | null;
     messageId?: string | null;
     errorMessage?: string | null;
+    failureKind?: TelegramDeliveryReceipt['failureKind'];
   },
 ): TelegramDeliveryReceipt {
   const receipt: TelegramDeliveryReceipt = {
@@ -113,6 +115,7 @@ function recordFailedTelegramDelivery(
     bindingId: input.bindingId ?? null,
     botName: input.botName ?? null,
     status: 'failed',
+    failureKind: input.failureKind ?? 'rejected',
     chatId: input.chatId ?? readTelegramString(input.request.chatId),
     conversationId: input.conversationId ?? readTelegramString(input.request.conversationId),
     messageId: input.messageId ?? readTelegramString(input.request.messageId),
@@ -153,6 +156,7 @@ function buildPlaceholderBinding(input: {
 }
 
 export interface DeliverTelegramRequestOptions {
+  assertAllowed?: () => void | Promise<void>;
   now: () => Date;
   store: TelegramRelayStore;
   conversationMapper: TelegramConversationMapper;
@@ -294,10 +298,11 @@ export async function deliverTelegramRequest(
   const conversationId = binding?.conversationId ?? `telegram:${chatId}`;
 
   try {
+    await checkTelegramDispatchGuard(options.assertAllowed);
     const result = await activeDeliveryClient.deliver({
       ...options.request,
       chatId,
-    });
+    }, { assertAllowed: options.assertAllowed });
     const status = options.request.operation === 'edit'
       ? 'edited'
       : options.request.operation === 'delete'
@@ -308,6 +313,7 @@ export async function deliverTelegramRequest(
       bindingId: deliveryBinding?.id ?? null,
       botName: deliveryBinding?.botName ?? null,
       status: result.ok ? status : 'failed',
+      ...(!result.ok ? { failureKind: result.failureKind ?? 'uncertain', retryAfterSeconds: result.retryAfterSeconds } : {}),
       chatId,
       conversationId,
       messageId: result.messageId ?? readTelegramString(options.request.messageId),
@@ -343,8 +349,9 @@ export async function deliverTelegramRequest(
       botName: deliveryBinding?.botName ?? null,
       chatId,
       conversationId,
-      reason: 'telegram_api_error',
+      reason: error instanceof TelegramDispatchGuardError ? 'delivery_not_authorized' : 'telegram_api_error',
       errorMessage: error instanceof Error ? error.message : 'Telegram delivery failed',
+      failureKind: error instanceof TelegramDispatchGuardError ? 'rejected' : 'uncertain',
     });
   }
 }

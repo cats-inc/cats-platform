@@ -4,7 +4,9 @@ import { appImages, AppImageError, presentImageJob, type AppImageJob } from '../
 import { RuntimeImageError } from '../../runtime/images.js';
 
 export async function routeAppImages(context: RouteContext<AppPackageApiDependencies>): Promise<boolean> {
-  const match = /^\/api\/apps\/([a-z][a-z0-9.-]*)\/images\/(capabilities|jobs|jobs\/([a-f0-9-]+)\/(cancel|refresh|delete|image))$/.exec(context.url.pathname);
+  const multimedia = /^\/api\/apps\/[a-z][a-z0-9.-]*\/media\/images\//.test(context.url.pathname);
+  const pathname = multimedia ? context.url.pathname.replace('/media/images/', '/images/') : context.url.pathname;
+  const match = /^\/api\/apps\/([a-z][a-z0-9.-]*)\/images\/(capabilities|jobs|jobs\/([a-f0-9-]+)\/(cancel|refresh|delete|image))$/.exec(pathname);
   if (!match) return false;
   const action = match[2]; const id = match[3];
   const methods = action === 'jobs' ? ['GET', 'POST'] : ['cancel', 'refresh', 'delete'].includes(match[4] ?? '') ? ['POST'] : ['GET'];
@@ -17,6 +19,7 @@ export async function routeAppImages(context: RouteContext<AppPackageApiDependen
     const scope = { appId: match[1]!, version: context.url.searchParams.get('version') ?? '', accountId };
     const service = appImages({ coreStore, runtimeClient, chatStatePath: config.chatStatePath });
     const digest = await service.authorize(scope);
+    if (multimedia) await service.authorizeMedia(scope);
     if (match[4] === 'image') {
       const { bytes, mimeType } = await service.image(scope, id!);
       if (digest !== await service.authorize(scope)) throw new AppImageError('app_context_revoked', 409);

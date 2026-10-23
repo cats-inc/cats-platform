@@ -1,6 +1,12 @@
 export type {
   CatsAppBrowserSdkV1,
   CatsImageJob,
+  CatsImageCapabilitiesV1,
+  CatsImageCapabilitiesV2,
+  CatsImageJobV2,
+  CatsImageSubmissionV2,
+  CatsMediaSdkV1,
+  CatsMediaImagesSdkV1,
   UsageGuardrailV1,
   UsageQuotaRefreshV1,
   UsageSnapshotV1,
