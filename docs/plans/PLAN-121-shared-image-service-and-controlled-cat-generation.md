@@ -55,7 +55,7 @@
 - 獨立 Desktop source candidate 已啟動，Platform/Runtime readiness 通過；完成首次設定並建立
   普通（非主控）Cat，未碰安裝版或預設 profile。最後 renderer types 與 UI suite 4/4 通過。
 - 下一步：完成普通 Cat 設定與對話 UI、真 provider／Telegram golden path，以及完整 hosted
-  CI 與必要版本發布。預設 profile 無 Telegram 綁定；已請 owner 指定驗收 bot/profile，尚待回覆。
+  CI 與必要版本發布。Owner 已明確決定本次不做真實 Telegram 傳送，使用隔離回執驗收。
 - 完整 hosted CI 首輪 5856 項中 5794 通過、60 skipped、2 失敗：共用 transcript helper
   的 Chat import 改到 browser-safe `src/shared`，依賴圖回歸通過；file-backed Telegram
   fixture 補自己的 platformDir，restart 回歸通過。未把這一輪稱為全綠，後續 CI 仍是 gate。
@@ -63,6 +63,15 @@
   worker 尚未完全停止即 spawn 的 Runtime 缺陷；沒有 image admission／生成。Runtime
   0.6.1 patch 加入有界完整停止等待與新 run／取消／刪除 fence，MCP/handoff 22/22 通過；
   第二候選版及 native rerun 進行中，Desktop 發布須改 pin 通過驗收的 patch source。
+- 後續 Runtime MCP／生命週期 22/22、獨立 race review、完整 preflight 通過，修補
+  source `ba7b05d56d909cee5bcc019b0b561f76fbebae66`（0.6.1）。真 Native Runtime 的
+  zero-input create/replace probe 確認完整停止後才替換；第二候選版修正 bytes 一致。
+  最後一次 source turn 使用足夠的 read-only 權限越過 MCP setup，Codex endpoint 回401，
+  沒有 image admission／生成；停止 native 重試，保留實際生圖未驗證的限制。
+- Platform corrected full CI 已通過，boundary／file-backed restart 的兩個失敗都關閉。
+  helper 搬移後圖片 UI／Chat 21/21 通過。Studio0.4.0 hosted archive/source/hash 與
+  Ed25519 catalog 已驗證，Usage維持0.5.4。Desktop0.9.3採standard preview，Runtime pin
+  更新為上列0.6.1；依 hosted evidence 驗證發布，不以 fixture 宣稱 real Telegram／生圖成功。
 
 下方階段清單仍用於逐項驗收；實作授權與當前基線以上述 checkpoint 為準。
 

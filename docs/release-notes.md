@@ -29,7 +29,7 @@ independent App; **Usage 0.5.4 is unchanged**. No cats-one release is selected.
   delivery without changing the unknown past result. Restart, cancellation,
   deletion and cross-process reset are fenced against stale work.
 - **Exact selections.** Runtime source is
-  `1c69da0caa339ac9c77545d913a950030e80d745` (**0.6.0**). Desktop keeps the
+  `ba7b05d56d909cee5bcc019b0b561f76fbebae66` (**0.6.1**). Desktop keeps the
   existing Usage archive URL and SHA-256
   `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`.
   Optional Studio `studio-v0.4.0` selects source
@@ -51,8 +51,11 @@ independent App; **Usage 0.5.4 is unchanged**. No cats-one release is selected.
   MCP, ledger, owner/binding and Telegram tests passed, including actual archive
   acceptance through production SDK/routes with fixture Runtime, plus independent
   review. The isolated Windows source candidate passed readiness and setup.
-  Hosted full CI/publication gates and real provider/Telegram acceptance remain
-  separately tracked; these fixture results do not claim live delivery. Verify
+  Full Platform CI and Runtime release preflight passed. The native MCP replacement
+  regression is fixed in Runtime 0.6.1, including a real zero-input create/replace
+  probe. The final source turn reached the Codex service but received 401 Unauthorized;
+  no image was admitted or generated, so real generation acceptance remains unverified.
+  The owner explicitly deferred real Telegram transmission for this task. Verify
   publication via Actions, registry and Release/source assets; no later status-only
   commit or published Release edit is part of this preparation.
 
