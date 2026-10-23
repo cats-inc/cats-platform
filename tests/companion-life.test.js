@@ -323,7 +323,7 @@ test('life loop: disabled rhythms and non-companion Cats are ignored', async () 
   assert.deepEqual(await plain.loop.tick(), []);
 });
 
-function createLaneRuntimeStub() {
+function createLaneRuntimeStub(workingDir) {
   let nextSession = 1;
   const stub = {
     closedSessionIds: [],
@@ -353,7 +353,7 @@ function createLaneRuntimeStub() {
         provider: input.provider,
         model: input.model ?? null,
         status: 'ready',
-        cwd: path.join(tmpdir(), '.cats', 'runtime', 'sessions', id),
+        cwd: path.join(workingDir, '.cats', 'runtime', 'sessions', id),
       };
     },
     async resumeSession(sessionId) {
@@ -387,7 +387,7 @@ async function withLifeServer(callback) {
     sessionSecret: authConfig.sessionSecret,
     sessionTtlMs: authConfig.sessionTtlMs,
   });
-  const runtimeClient = createLaneRuntimeStub();
+  const runtimeClient = createLaneRuntimeStub(workingDir);
   const chatStore = new MemoryChatStore();
   const companionStore = new MemoryCompanionBoxStore();
   const companionActivityStore = createMemoryCompanionActivityStore();
@@ -396,6 +396,7 @@ async function withLifeServer(callback) {
     port: 8181,
     runtimeBaseUrl: 'http://127.0.0.1:3110',
     runtimeApiKey: '',
+    runtimeDataDir: path.join(workingDir, '.cats', 'runtime', 'data'),
     auth: authConfig,
     chatStatePath: path.join(workingDir, 'platform', 'state', 'chat-state.local.json'),
   };
@@ -523,7 +524,7 @@ test('life loop revives a companion session the runtime closed, through the REST
       (await chatStore.read()).channels.find((channel) => channel.id === lane.id),
     );
     const before = await readLease();
-    assert.equal(before.status, 'ready');
+    assert.equal(before.status, 'ready', JSON.stringify(before));
 
     const dependencies = { chatStore, runtimeClient, companionStore, config, now: () => now };
     const loop = createCompanionLifeLoop({

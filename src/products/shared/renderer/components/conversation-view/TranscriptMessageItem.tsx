@@ -15,6 +15,7 @@ import { MessageBody } from '../MessageBody.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { resolveLocalizedChatMessageBody } from '../../../../../shared/chatMessageLocalization.js';
 import { CompanionMessageReferencePreviews } from './CompanionMessageReferencePreviews.js';
+import { CatImageAttachment } from './CatImageAttachment.js';
 import {
   MessageChoices,
   type MessageChoicesSubmitInput,
@@ -213,6 +214,7 @@ export function TranscriptMessageItem({
             </div>
           ) : null
         ) : null}
+        <CatImageAttachment key={message.id} metadata={message.metadata} />
         {displayBody ? (
           <MessageBody
             body={displayBody}

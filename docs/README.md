@@ -1,13 +1,14 @@
 # Documentation Index
 
 [Shared image service and controlled Cat generation](specs/SPEC-128-shared-image-service-and-controlled-cat-generation.md)
-proposes one Platform service for Studio's App SDK and Cat-scoped agent tools.
+defines the Platform service shared by Studio's App SDK and Cat-scoped agent tools.
 [ADR-136](decisions/136-share-controlled-image-capabilities-between-cats-and-studio.md)
 and [PLAN-121](plans/PLAN-121-shared-image-service-and-controlled-cat-generation.md)
 cover finite proactive grants, caller-isolated assets and durable Telegram delivery.
-Studio remains optional. Runtime compatibility is a required gate; the first slice
-reuses its existing Grok contract where supported. Documentation only; implementation
-and all new acceptance are pending.
+Studio remains optional, and Usage is outside this change. The owner authorized
+implementation and necessary releases; work now preserves Runtime contract 2 and
+adds source-turn handoff, scoped tools and durable delivery. See the plan for
+actual validation and remaining live/Desktop/release acceptance.
 
 [Optional Runtime data reset](decisions/135-make-runtime-data-reset-explicit-and-preserve-installed-tools.md)
 defines the unchecked Runtime option, exact typed confirmation, offline cleanup

@@ -50,6 +50,8 @@ export interface CompanionLifeLoopDependencies {
   readCompanionSnapshot(): Promise<Pick<CompanionSnapshot, 'boxes'>>;
   runtimeClient: Pick<RuntimeClient, 'observeSession' | 'getHealth'>;
   activityStore?: CompanionActivityStore;
+  /** An admitted image may temporarily own this Cat's idle Runtime slot. */
+  isImagePending?(catId: string): boolean;
   /** Runs the REST activation body under the lane's mutation gate. */
   activateLane(channelId: string): Promise<ChannelActivationResult[]>;
   /** Runs the REST deactivate body under the lane's mutation gate. */
@@ -182,6 +184,7 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
       const remembered = rememberFor(cat.id);
 
       if (desired.presence === 'awake') {
+        if (dependencies.isImagePending?.(cat.id)) { record('awake'); continue; }
         if (lease?.status === 'initializing') {
           record('waking');
           continue;

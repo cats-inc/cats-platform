@@ -290,6 +290,8 @@ export interface RuntimeObservedSessionPayload {
   };
 }
 
+export class RuntimeSessionNotFoundError extends Error {}
+
 export interface RuntimeSessionStreamEvent {
   event: string;
   data: Record<string, unknown>;
@@ -1082,7 +1084,8 @@ export class CatsRuntimeClient implements RuntimeClient {
 
     if (!response.ok) {
       const rawBody = await response.text();
-      throw new Error(readRuntimeErrorText(rawBody, `Failed to observe session (${response.status})`));
+      const message = readRuntimeErrorText(rawBody, `Failed to observe session (${response.status})`);
+      throw response.status === 404 ? new RuntimeSessionNotFoundError(message) : new Error(message);
     }
 
     return (await response.json()) as RuntimeObservedSessionPayload;

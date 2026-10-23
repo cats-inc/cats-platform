@@ -73,7 +73,7 @@ export function AppRendererSurface({ appId, version, title, locale, onLobby }: {
           finally { busy = false; }
           return;
         }
-        if (typeof data.method === 'string' && data.method.startsWith('images.')) {
+        if (typeof data.method === 'string' && (data.method.startsWith('images.') || data.method.startsWith('media.images.'))) {
           if (busy || Date.now() - (lastRequestAt.get(data.method) ?? 0) < 500) { reply(false, undefined, 'image_service_busy'); return; }
           busy = true; lastRequestAt.set(data.method, Date.now());
           try {

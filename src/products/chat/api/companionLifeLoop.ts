@@ -32,7 +32,7 @@ import type { ChatApiDependencies } from './routeSupport.js';
 import { buildRoomMessageMutationDetail, publishRoomMutation } from './transportEventPublisher.js';
 
 export type ChatCompanionLifeLoopDependencies = ChannelLifecycleDependencies
-  & Pick<ChatApiDependencies, 'mutationGate' | 'companionActivityStore'>;
+  & Pick<ChatApiDependencies, 'mutationGate' | 'companionActivityStore' | 'catImages'>;
 
 const RUNTIME_BUSY_PATTERN = /\bbusy\b/iu;
 
@@ -166,6 +166,7 @@ export function startChatCompanionLifeLoop(
     readChatState: () => dependencies.chatStore.read(),
     readCompanionSnapshot: () => dependencies.companionStore.readSnapshot(),
     runtimeClient: dependencies.runtimeClient,
+    isImagePending: catId => dependencies.catImages?.hasPending(catId) ?? false,
     activityStore: dependencies.companionActivityStore,
     activateLane: (channelId) => dependencies.mutationGate.run(channelId, async () => {
       const activation = await activateChannelLocked(dependencies, channelId);

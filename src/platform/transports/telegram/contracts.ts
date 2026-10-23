@@ -184,6 +184,8 @@ export interface TelegramRoomRoutingSeam {
 }
 
 export interface TelegramConversationBinding {
+  /** Changes on explicit room relinking; older records use their stable creation identity. */
+  linkRevision?: string;
   telegramChatId: string;
   conversationId: string;
   bindingId: string | null;
@@ -323,6 +325,9 @@ export interface TelegramInlineKeyboardMarkup {
 }
 
 export interface TelegramDeliveryReceipt {
+  /** Explicit API rejection is distinct from a lost/ambiguous network acknowledgement. */
+  failureKind?: 'rejected' | 'retryable' | 'uncertain';
+  retryAfterSeconds?: number;
   platform: 'telegram';
   operation: TelegramDeliveryOperation;
   status: TelegramDeliveryResult;
@@ -341,6 +346,7 @@ export interface TelegramDeliveryReceipt {
   reason?:
     | 'telegram_not_bound_to_boss_cat'
     | 'delivery_client_not_configured'
+    | 'delivery_not_authorized'
     | 'runtime_dispatch_failed'
     | 'conversation_not_mapped'
     | 'chat_id_required'

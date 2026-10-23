@@ -1,6 +1,7 @@
 import { routeBotBindingApi } from './botBindingRoutes.js';
 import { routeCanonicalCatApi } from './canonicalCatRoutes.js';
 import { routeCompanionBoxApi } from './companionBoxRoutes.js';
+import { routeCatImages } from './catImages.js';
 import { routeMemoryApi } from './memory/index.js';
 import { routeOrchestratorApi } from './orchestratorRoutes.js';
 import { routeChatResourceApi } from './resources/index.js';
@@ -20,6 +21,7 @@ export type { ChatApiDependencies };
 export async function routeChatApi(
   context: ChatApiRouteContext,
 ): Promise<boolean> {
+  if (await routeCatImages(context)) return true;
   if (await routeChatShellApi(context)) {
     return true;
   }

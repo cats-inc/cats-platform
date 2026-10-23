@@ -19,6 +19,8 @@ export class ImageBridgeError extends Error {
 export async function callAppImageBridge(method: string, params: unknown, context: {
   appId: string; version: string; signal: AbortSignal;
 }): Promise<unknown> {
+  const multimedia = method.startsWith('media.images.');
+  if (multimedia) method = method.slice('media.'.length);
   let route: string; let body: unknown;
   const input = params && typeof params === 'object' && !Array.isArray(params) ? params as Record<string, unknown> : {};
   if (method === 'images.capabilities') route = 'capabilities';
@@ -32,7 +34,7 @@ export async function callAppImageBridge(method: string, params: unknown, contex
     route = `jobs/${input.id}/${operation}`;
     if (operation !== 'image') body = {};
   } else throw new ImageBridgeError('Unsupported app capability.');
-  const response = await fetch(`/api/apps/${encodeURIComponent(context.appId)}/images/${route}?version=${encodeURIComponent(context.version)}`, {
+  const response = await fetch(`/api/apps/${encodeURIComponent(context.appId)}/${multimedia ? 'media/images' : 'images'}/${route}?version=${encodeURIComponent(context.version)}`, {
     signal: context.signal, cache: 'no-store', ...(body !== undefined ? { method: 'POST',
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
   });

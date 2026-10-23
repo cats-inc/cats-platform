@@ -2,6 +2,60 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-23 — Prepared 0.9.3 shared images and controlled Cat generation
+
+Selected distributions are Platform npm **0.9.3** (public App SDK **1.8.0**) and
+Desktop **0.9.3 standard-profile preview**. Studio **0.4.0** is an optional,
+independent App; **Usage 0.5.4 is unchanged**. No cats-one release is selected.
+
+- Cat and Studio adapters use one Platform image execution service. New Apps may
+  use `catsApp.media.images` with SDK floor 1.8. Existing Apps retain `images.*`
+  and their negotiated schema, App/account scope, original IDs and saved bytes.
+  Contract 2 profiles support the enabled Grok/Muse/Codex/Antigravity generation
+  configurations and measured JPEG/PNG output. Editing and cross-caller sharing
+  remain outside this release.
+- Ordinary Cats can receive an owner/admin-controlled, default-off image grant:
+  exact Cat/conversation/Telegram binding, manual/proactive choices, provider
+  profile, daily/total attempt allowance, minimum interval, timezone/window and
+  expiry. Neither Boss status nor Studio installation grants this authority.
+  The native Cat turn receives scoped image tools; held image work starts only
+  after the source turn is known to have finished. Runtime safely yields only
+  that source if its singleton or pool slot is needed.
+- A generated image is retained once, appended to the original direct lane and
+  delivered through the selected Telegram bot as media with a caption. Policy,
+  Cat/account state and exact binding are checked again at the network boundary.
+  Definite retries reuse the original asset; ambiguous delivery stays unknown
+  and needs explicit owner confirmation to resend. Owners can stop future
+  delivery without changing the unknown past result. Restart, cancellation,
+  deletion and cross-process reset are fenced against stale work.
+- **Exact selections.** Runtime source is
+  `1c69da0caa339ac9c77545d913a950030e80d745` (**0.6.0**). Desktop keeps the
+  existing Usage archive URL and SHA-256
+  `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`.
+  Optional Studio `studio-v0.4.0` selects source
+  `3a156bd4ccb9b35d57111ef00aa82e2c9791ab44` and archive SHA-256
+  `87188be8f8226c39e34f83ecba694553e019d8095351fa8ccda562527e4f1eb1`;
+  it stays outside the default Desktop bundle. The Desktop workflow records its
+  own immutable source SHA and the same Runtime SHA in the complete source set.
+- **Compatibility and data.** Additive SDK/host APIs preserve the 0.9 host line
+  and SDK 1.x contracts. Cat policies/jobs use a new, lazy, isolated SQLite
+  schema 1 ledger and managed assets; existing Core/App records are not moved.
+  App cancellation metadata is optional; old records read unchanged except an
+  old `cancelling` phase retains its already-declared cancellation intent. No
+  existing user data conversion or profile reset is required. Unknown ledger
+  schema or corruption is preserved and refuses new generation. Runtime owns
+  the tested schema 1 image receipt backup/atomic upgrade carried by 0.6.0.
+- **Signing and validation.** npm uses the existing trusted publisher. Desktop
+  uses the **standard** profile: macOS signed/notarized, Windows unsigned while
+  no certificate is configured, Linux n/a; no unsigned override. Scoped service,
+  MCP, ledger, owner/binding and Telegram tests passed, including actual archive
+  acceptance through production SDK/routes with fixture Runtime, plus independent
+  review. The isolated Windows source candidate passed readiness and setup.
+  Hosted full CI/publication gates and real provider/Telegram acceptance remain
+  separately tracked; these fixture results do not claim live delivery. Verify
+  publication via Actions, registry and Release/source assets; no later status-only
+  commit or published Release edit is part of this preparation.
+
 ## 2026-10-23 — Desktop 0.9.2 standard preview with App work deletion
 
 Desktop **0.9.2** is the owner-selected standard-profile preview with Runtime

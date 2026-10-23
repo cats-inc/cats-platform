@@ -1,6 +1,6 @@
 /** Host-injected browser API. No imports, secrets, filesystem or general network proxy. */
 export interface CatsAppBrowserSdkV1 {
-  readonly sdkVersion: '1.7.0';
+  readonly sdkVersion: '1.8.0';
   readonly appId: string;
   readonly version: string;
   readonly locale: string;
@@ -12,6 +12,8 @@ export interface CatsAppBrowserSdkV1 {
   openLobby(): Promise<void>;
   openRemoteAccess(): Promise<void>;
   readonly clipboard: { writeText(text: string): Promise<void> };
+  /** SDK 1.8+: typed shared multimedia capabilities; requires a manifest SDK floor of 1.8.0. */
+  readonly media: CatsMediaSdkV1;
   /**
    * An App sees one image contract, chosen by its manifest's `compatibility.appSdk` floor: below 1.7.0 schema 1
    * (Grok generation, JPEG), from 1.7.0 contract 2 (services and profiles, JPEG or PNG at measured sizes).
@@ -27,6 +29,18 @@ export interface CatsAppBrowserSdkV1 {
     read(id: string): Promise<{ bytes: ArrayBuffer; mimeType: 'image/jpeg' | 'image/png' }>;
     export(id: string): Promise<{ downloaded: true }>;
   };
+}
+/** Public caller-neutral image contract, also used by Cat tools. Identity is established by the host. */
+export interface CatsMediaSdkV1 { readonly images: CatsMediaImagesSdkV1; }
+export interface CatsMediaImagesSdkV1 {
+  getCapabilities(): Promise<CatsImageCapabilitiesV2>;
+  submit(input: CatsImageSubmissionV2): Promise<CatsImageJobV2>;
+  list(): Promise<{ jobs: CatsImageJobV2[] }>;
+  cancel(id: string): Promise<CatsImageJobV2>;
+  refresh(id: string): Promise<CatsImageJobV2>;
+  delete(id: string): Promise<{ deleted: true }>;
+  read(id: string): Promise<{ bytes: ArrayBuffer; mimeType: 'image/jpeg' | 'image/png' }>;
+  export(id: string): Promise<{ downloaded: true }>;
 }
 type CatsImageStatus = 'submitting' | 'running' | 'collecting' | 'succeeded' | 'failed' | 'cancelling' | 'cancelled' | 'interrupted';
 export interface CatsImageCapabilitiesV1 {

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import type { CoreStore } from '../../core/store.js';
 import { upsertCoreTask, upsertCoreRun, upsertCoreArtifact } from '../../core/model/index.js';
@@ -7,24 +7,29 @@ import { touchCoreState } from '../../core/model/shared.js';
 import { ownerRecordDependencies } from '../../core/ownerManagement.js';
 import { ownerSubjectKey } from '../../core/ownerLifecycle.js';
 import type { CatsCoreState } from '../../core/types.js';
-import type { RuntimeClient } from '../../runtime/client.js';
 import { minimumVersion } from '#cats-app-package';
 import {
-  IMAGE_ID, IMAGE_MAX_BYTES, IMAGE_PROVIDERS, RuntimeImageError,
-  type RuntimeImageCapabilities, type RuntimeImageJob, type RuntimeImageMetadata, type RuntimeImageProvider,
+  IMAGE_ID, IMAGE_PROVIDERS,
+  type RuntimeImageCapabilities, type RuntimeImageMetadata, type RuntimeImageProvider,
 } from '../../runtime/images.js';
+import { ImageExecutionService, MediaImageError as AppImageError, presentMediaImage, presentMediaCapabilities,
+  type ImageRuntimeClient, type MediaImageExecution } from '../multimedia/imageExecution.js';
+export { MediaImageError as AppImageError } from '../multimedia/imageExecution.js';
+export type { ImageRuntimeClient } from '../multimedia/imageExecution.js';
 import { FileCatsAppRegistry } from './registry.js';
 import { resolveCatsAppStoragePathsFromChatState } from './paths.js';
 
 type AppImageStatus = 'submitting' | 'running' | 'collecting' | 'succeeded' | 'failed' | 'cancelling' | 'cancelled' | 'interrupted';
 /** Persisted in Core task metadata. Schema 1 entries are read as their schema 2 equivalent and rewritten on update. */
-export interface AppImageJob {
+export interface AppImageJob extends MediaImageExecution {
   schemaVersion: 2; id: string; requestId: string; appId: string; appVersion: string; accountId: string;
   prompt: string; targetId: string; provider: RuntimeImageProvider; instance: string;
   profileId: string; profileRevision: string; agentConfigId: string | null; operation: 'image.generate';
   agentModel: string | null; agentEffort: string | null; status: AppImageStatus;
   createdAt: string; updatedAt: string; error: string | null; warnings: string[];
   executionOutcome: 'completed' | 'stopped_after_image' | null; output: RuntimeImageMetadata | null;
+  /** Additive private metadata; absent in older receipts until an owner requests cancellation. */
+  cancelRequestedAt?: string | null;
 }
 interface SchemaOneAppImageJob {
   schemaVersion: 1; id: string; requestId: string; appId: string; appVersion: string; accountId: string;
@@ -37,10 +42,8 @@ function upgradeJob(job: SchemaOneAppImageJob): AppImageJob {
     prompt: job.prompt, targetId: `grok/${job.instance}`, provider: 'grok', instance: job.instance, profileId: 'grok-generate',
     profileRevision: '1', agentConfigId: null, operation: 'image.generate', agentModel: job.agentModel, agentEffort: null,
     status: job.status, createdAt: job.createdAt, updatedAt: job.updatedAt, error: job.error, warnings: [],
+    ...(job.status === 'cancelling' ? { cancelRequestedAt: job.updatedAt } : {}),
     executionOutcome: job.status === 'succeeded' ? 'completed' : null, output: job.output ? { ...job.output, transparency: 'opaque' } : null };
-}
-export class AppImageError extends Error {
-  constructor(readonly code: string, readonly status = 400) { super(code); }
 }
 export interface AppImageScope { appId: string; version: string; accountId: string; }
 /**
@@ -54,12 +57,12 @@ export function imageContractFor(appSdk: string): AppImageContract {
   if (!floor) return 1;
   return (floor[0]! - IMAGE_CONTRACT_2_SDK[0] || floor[1]! - IMAGE_CONTRACT_2_SDK[1] || floor[2]! - IMAGE_CONTRACT_2_SDK[2]) >= 0 ? 2 : 1;
 }
+export const MEDIA_SDK_MINIMUM = [1, 8, 0] as const;
 /** What a request asks Runtime to run, independent of the contract it arrived in. */
 interface AppImageInput {
   requestId: string; prompt: string; targetId: string; provider: RuntimeImageProvider; instance: string;
   profile: { id: string; revision: string; agentConfigId: string } | null;
 }
-export type ImageRuntimeClient = Pick<RuntimeClient, 'getImageCapabilities' | 'submitImageJob' | 'getImageJob' | 'cancelImageJob' | 'deleteImageJob' | 'getImageBytes'>;
 // Only finished work can be deleted; anything in flight or unconfirmed could still produce an image.
 const deletableStatuses = new Set(['succeeded', 'failed', 'cancelled']);
 export interface AppImageDependencies { coreStore: CoreStore; runtimeClient: ImageRuntimeClient; chatStatePath: string; }
@@ -71,7 +74,11 @@ const runId = (id: string) => `run-app-image-${id}`;
 const jobs = (core: CatsCoreState) => core.tasks.flatMap((task) => {
   const job = task.metadata.appImage as { schemaVersion?: unknown } | undefined;
   if (!job || typeof job !== 'object') return [];
-  if (job.schemaVersion === 2) return [job as AppImageJob];
+    if (job.schemaVersion === 2) {
+      const image = job as AppImageJob;
+      return image.cancelRequestedAt == null && image.status !== 'cancelling' ? [image]
+        : [{ ...image, cancelRequestedAt: image.cancelRequestedAt ?? image.updatedAt }];
+    }
   return job.schemaVersion === 1 ? [upgradeJob(job as SchemaOneAppImageJob)] : [];
 });
 const extension = (output: Pick<RuntimeImageMetadata, 'mimeType'> | null) => output?.mimeType === 'image/png' ? 'png' : 'jpg';
@@ -86,11 +93,7 @@ export function presentImageJob(job: AppImageJob, contract: AppImageContract) {
       agentModel: job.agentModel, status: job.status, createdAt: job.createdAt, updatedAt: job.updatedAt, error: job.error,
       output: job.output ? { mimeType, bytes, width, height, sha256 } : null };
   }
-  return { schemaVersion: 2, id: job.id, requestId: job.requestId, provider: job.provider, targetId: job.targetId, instanceLabel: job.instance,
-    operation: job.operation, profileId: job.profileId, profileRevision: job.profileRevision, agentConfigId: job.agentConfigId,
-    agentModel: job.agentModel, agentEffort: job.agentEffort, prompt: job.prompt, sources: [], options: {}, status: job.status,
-    error: job.error, warnings: job.warnings, executionOutcome: job.executionOutcome,
-    output: job.output ? { mimeType, bytes, width, height, sha256, transparency } : null, createdAt: job.createdAt, updatedAt: job.updatedAt };
+  return presentMediaImage(job);
 }
 /** Schema 1 sees each Grok instance with a native 1:1 generation profile, as SDK 1.x always did. */
 function schemaOneCapabilities(capabilities: RuntimeImageCapabilities) {
@@ -176,10 +179,28 @@ const sameRequest = (job: AppImageJob, input: AppImageInput) => job.prompt === i
     && job.profileRevision === input.profile.revision && job.agentConfigId === input.profile.agentConfigId));
 
 export class AppImageService {
-  private watchers = new Map<string, Promise<void>>();
+  private readonly execution: ImageExecutionService<AppImageJob>;
   private mutations: Promise<unknown> = Promise.resolve();
   private paths;
-  constructor(private readonly deps: AppImageDependencies) { this.paths = resolveCatsAppStoragePathsFromChatState(deps.chatStatePath); }
+  constructor(private readonly deps: AppImageDependencies) {
+    this.paths = resolveCatsAppStoragePathsFromChatState(deps.chatStatePath);
+    this.execution = new ImageExecutionService({
+      runtimeClient: deps.runtimeClient,
+      read: async (id) => jobs(await deps.coreStore.readCore()).find((job) => job.id === id),
+      update: (id, patch) => this.update(id, patch),
+      resumeReceipt: job => this.resumeReceipt(job),
+      authorize: (job) => this.authorize(this.scope(job)),
+      imagePath: (job, output) => this.imagePath(job, output),
+      revokedCode: 'app_context_revoked',
+      reviveSource: async (job) => {
+        await this.mutate((core) => {
+          const latest = jobs(core).find((entry) => entry.id === job.id);
+          return latest && sourceFailure(latest)
+            ? replaceJob(core, { ...latest, status: 'collecting', error: null, updatedAt: new Date().toISOString() }) : core;
+        });
+      },
+    });
+  }
   private mutate(action: Parameters<CoreStore['updateCore']>[0]) {
     const next = this.mutations.catch(() => {}).then(() => this.deps.coreStore.updateCore(action));
     this.mutations = next; return next;
@@ -191,6 +212,11 @@ export class AppImageService {
     return app;
   }
   async authorize(scope: AppImageScope) { return (await this.installed(scope)).packageSha256!; }
+  async authorizeMedia(scope: AppImageScope): Promise<void> {
+    const floor = minimumVersion((await this.installed(scope)).manifest.compatibility.appSdk);
+    if (!floor || (floor[0]! - MEDIA_SDK_MINIMUM[0] || floor[1]! - MEDIA_SDK_MINIMUM[1]
+      || floor[2]! - MEDIA_SDK_MINIMUM[2]) < 0) throw new AppImageError('app_media_sdk_required', 403);
+  }
   /** Decided by the installed package's declared App SDK floor, so one App always sees one contract. */
   async contract(scope: AppImageScope): Promise<AppImageContract> {
     return imageContractFor((await this.installed(scope)).manifest.compatibility.appSdk);
@@ -205,15 +231,13 @@ export class AppImageService {
     const capabilities = await this.runtimeCapabilities();
     if (digest !== await this.authorize(scope)) throw new AppImageError('app_context_revoked', 409);
     if (contract === 1) return schemaOneCapabilities(capabilities);
-    return { schemaVersion: 2, revision: capabilities.revision, maxPromptLength: capabilities.maxPromptLength, maxImageBytes: capabilities.maxImageBytes,
-      targets: capabilities.targets.map((target) => ({ id: target.id, provider: target.provider, instanceLabel: target.instance, availability: 'available' })),
-      profiles: capabilities.profiles };
+    return presentMediaCapabilities(capabilities);
   }
   async list(scope: AppImageScope) {
     await this.authorize(scope);
     const contract = await this.contract(scope);
     const own = jobs(await this.deps.coreStore.readCore()).filter((job) => job.appId === scope.appId && job.accountId === scope.accountId);
-    for (const job of own) if (activeStatuses.has(job.status) || sourceFailure(job)) this.watch(job);
+    for (const job of own) if (activeStatuses.has(job.status) || sourceFailure(job)) this.execution.watch(job);
     return own.filter((job) => visibleToContract(job, contract)).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100);
   }
   async submit(scope: AppImageScope, value: unknown): Promise<AppImageJob> {
@@ -257,10 +281,7 @@ export class AppImageService {
         agentEffort: null, status: 'submitting', createdAt: now, updatedAt: now, error: null, warnings: [], executionOutcome: null, output: null };
       created = true; return replaceJob(core, result);
     });
-    if (created) {
-      const pending = this.dispatch(result).catch(() => {}).finally(() => this.watchers.delete(id));
-      this.watchers.set(id, pending);
-    }
+    if (created) this.execution.start(result);
     return result;
   }
   private async update(id: string, patch: Partial<AppImageJob>) {
@@ -270,139 +291,38 @@ export class AppImageService {
       if (!job || !activeStatuses.has(job.status)) { result = job; return core; }
       // A cancellation wins over a late successful/failed generation result.
       if (job.status === 'cancelling' && patch.status !== 'cancelled' && patch.status !== 'interrupted') { result = job; return core; }
-      result = { ...job, ...patch, updatedAt: new Date().toISOString() };
+      result = { ...job, ...patch, updatedAt: new Date().toISOString(),
+        cancelRequestedAt: patch.status === 'cancelling' ? job.cancelRequestedAt ?? new Date().toISOString() : job.cancelRequestedAt };
       return replaceJob(core, result);
     });
     return result;
   }
   private scope(job: AppImageJob): AppImageScope { return { appId: job.appId, version: job.appVersion, accountId: job.accountId }; }
-  private async dispatch(job: AppImageJob) {
-    try {
-      await this.authorize(this.scope(job));
-      const before = jobs(await this.deps.coreStore.readCore()).find((entry) => entry.id === job.id);
-      if (before?.status !== 'submitting') return;
-      const remote = await this.deps.runtimeClient.submitImageJob!({ id: job.id, targetId: job.targetId, profileId: job.profileId,
-        profileRevision: job.profileRevision, agentConfigId: job.agentConfigId!, operation: job.operation, prompt: job.prompt, sourceIds: [], options: {} });
-      const after = jobs(await this.deps.coreStore.readCore()).find((entry) => entry.id === job.id);
-      if (!after || !activeStatuses.has(after.status) || after.status === 'cancelling') {
-        await this.deps.runtimeClient.cancelImageJob!(job.id); return;
-      }
-      await this.accept(job, remote);
-      await this.poll(job);
-    } catch (error) {
-      // Do not resubmit after an ambiguous POST. A read can recover its existing receipt.
-      if (error instanceof RuntimeImageError && ['image_service_busy', 'image_transport_unsupported', 'invalid_image_request',
-        'image_profile_unavailable', 'image_profile_changed'].includes(error.code)) {
-        await this.update(job.id, { status: 'failed', error: error.code });
-      } else await this.poll(job);
-    }
-  }
-  private watch(job: AppImageJob) {
-    if (this.watchers.has(job.id)) return;
-    const pending = this.poll(job).catch(() => {}).finally(() => this.watchers.delete(job.id));
-    this.watchers.set(job.id, pending);
-  }
-  private async poll(job: AppImageJob) {
-    let readFailures = 0;
-    try {
-      for (let attempt = 0; attempt < 160; attempt++) {
-        const current = jobs(await this.deps.coreStore.readCore()).find((entry) => entry.id === job.id);
-        if (!current || (!activeStatuses.has(current.status) && !sourceFailure(current))) return;
-        try { await this.authorize(this.scope(job)); } catch {
-          await this.deps.runtimeClient.cancelImageJob?.(job.id);
-          await this.update(job.id, { status: 'cancelled', error: 'app_context_revoked' }); return;
-        }
-        let remote: RuntimeImageJob;
-        try {
-          remote = current.status === 'cancelling'
-            ? await this.deps.runtimeClient.cancelImageJob!(job.id) : await this.deps.runtimeClient.getImageJob!(job.id);
-          readFailures = 0;
-        } catch (error) {
-          readFailures++;
-          if (readFailures >= 3) {
-            await this.update(job.id, error instanceof RuntimeImageError && error.code === 'image_not_found'
-              ? { status: 'interrupted', error: 'execution_interrupted' }
-              : { error: 'image_service_unavailable' });
-            return; // list/reopen restarts reads, never the generating POST.
-          }
-          await new Promise<void>((resolve) => { const timer = setTimeout(resolve, 2000); timer.unref?.(); });
-          continue;
-        }
-        // Runtime can recollect an existing image after a source-path fix. Never resubmit a failed job.
-        if (sourceFailure(current)) {
-          if (remote.status !== 'succeeded') return;
-          if (remote.id !== job.id || remote.targetId !== job.targetId || remote.prompt !== job.prompt) return;
-          await this.mutate((core) => {
-            const latest = jobs(core).find((entry) => entry.id === job.id);
-            return latest && sourceFailure(latest)
-              ? replaceJob(core, { ...latest, status: 'collecting', error: null, updatedAt: new Date().toISOString() }) : core;
-          });
-        }
-        try { await this.accept(job, remote); }
-        catch (error) {
-          if (error instanceof AppImageError && error.code === 'invalid_image') await this.update(job.id, { status: 'failed', error: 'invalid_image' });
-          else await this.update(job.id, { error: (error as NodeJS.ErrnoException).code === 'ENOSPC' ? 'storage_full' : 'image_service_unavailable' });
-          return; // Retry collection of these same bytes on the next read.
-        }
-        if (remote.status !== 'running') return;
-        await new Promise<void>((resolve) => { const timer = setTimeout(resolve, 2000); timer.unref?.(); });
-      }
-      await this.deps.runtimeClient.cancelImageJob?.(job.id);
-      await this.update(job.id, { status: 'interrupted', error: 'execution_interrupted' });
-    } catch {
-      await this.update(job.id, { error: 'image_service_unavailable' });
-    }
+  private async resumeReceipt(job: AppImageJob): Promise<AppImageJob | undefined> {
+    let result: AppImageJob | undefined;
+    await this.mutate(core => {
+      const current = jobs(core).find(entry => entry.id === job.id);
+      result = current;
+      if (!current || current.status !== 'interrupted') return core;
+      result = { ...current, status: current.cancelRequestedAt ? 'cancelling' : 'running', error: null };
+      return replaceJob(core, result);
+    });
+    return result;
   }
   async recover(scope: AppImageScope, id: string) {
     const job = await this.own(scope, id);
     if (job.status === 'interrupted') {
-      await this.mutate((core) => {
-        const latest = jobs(core).find((entry) => entry.id === id);
-        return latest?.status === 'interrupted' ? replaceJob(core, { ...latest, status: 'running', error: null }) : core;
-      });
+      await this.resumeReceipt(job);
     }
-    this.watch(job);
+    this.execution.watch(job);
     return this.own(scope, id);
   }
   private imagePath(job: AppImageJob, output: Pick<RuntimeImageMetadata, 'mimeType'> | null = job.output) {
     return path.join(this.paths.dataDir, job.appId, 'images', hash(job.accountId), `${job.id}.${extension(output)}`);
   }
-  private async accept(job: AppImageJob, remote: RuntimeImageJob) {
-    if (remote.id !== job.id || remote.targetId !== job.targetId || remote.prompt !== job.prompt) throw new AppImageError('invalid_image');
-    const execution = { agentModel: remote.agentModel, agentEffort: remote.agentEffort, warnings: remote.warnings, executionOutcome: remote.executionOutcome };
-    if (remote.status !== 'succeeded') {
-      await this.update(job.id, { status: remote.status, error: remote.error, ...execution }); return;
-    }
-    if (!remote.output || !this.deps.runtimeClient.getImageBytes) throw new AppImageError('invalid_image');
-    await this.update(job.id, { status: 'collecting' });
-    const bytes = await this.deps.runtimeClient.getImageBytes(job.id);
-    if (bytes.length > IMAGE_MAX_BYTES || bytes.length !== remote.output.bytes || hash(bytes) !== remote.output.sha256) throw new AppImageError('invalid_image');
-    await this.authorize(this.scope(job));
-    const target = this.imagePath(job, remote.output);
-    await mkdir(path.dirname(target), { recursive: true });
-    const temporary = `${target}.${randomUUID()}.tmp`;
-    await writeFile(temporary, bytes, { flag: 'wx' }); await rename(temporary, target);
-    await this.authorize(this.scope(job));
-    const saved = await this.update(job.id, { status: 'succeeded', error: null, output: remote.output, ...execution });
-    // Work deleted or cancelled while its bytes were being collected must not leave the file behind.
-    if (saved?.status !== 'succeeded' || saved.output?.sha256 !== remote.output.sha256) await rm(target, { force: true });
-  }
   async cancel(scope: AppImageScope, id: string) {
     const job = await this.own(scope, id);
-    if (!activeStatuses.has(job.status)) return job;
-    await this.update(id, { status: 'cancelling' });
-    try {
-      const stopped = await this.deps.runtimeClient.cancelImageJob!(id);
-      await this.update(id, stopped.status === 'interrupted'
-        ? { status: 'interrupted', error: 'execution_interrupted' }
-        : stopped.status === 'running' || stopped.status === 'cancelling'
-          ? { status: 'cancelling' } : { status: 'cancelled', error: 'cancelled' });
-    } catch (error) {
-      await this.update(id, error instanceof RuntimeImageError && error.code === 'image_not_found'
-        ? { status: 'interrupted', error: 'execution_interrupted' }
-        : { status: 'cancelling', error: 'image_service_unavailable' });
-      this.watch(job);
-    }
+    await this.execution.cancel(job);
     return this.own(scope, id);
   }
   /**
@@ -467,29 +387,11 @@ export class AppImageService {
     return job;
   }
   async image(scope: AppImageScope, id: string) {
-    const job = await this.own(scope, id);
-    if (job.status !== 'succeeded' || !job.output) throw new AppImageError('image_not_ready', 409);
-    const file = await open(this.imagePath(job), 'r');
-    let bytes: Buffer;
-    try {
-      const info = await file.stat();
-      if (!info.isFile() || info.size !== job.output.bytes || info.size > IMAGE_MAX_BYTES) throw new AppImageError('invalid_image', 503);
-      bytes = Buffer.alloc(info.size);
-      let offset = 0;
-      while (offset < bytes.length) {
-        const next = await file.read(bytes, offset, bytes.length - offset, offset);
-        if (!next.bytesRead) throw new AppImageError('invalid_image', 503);
-        offset += next.bytesRead;
-      }
-    } finally { await file.close(); }
-    if (bytes.length !== job.output.bytes || hash(bytes) !== job.output.sha256) throw new AppImageError('invalid_image', 503);
-    await this.authorize(scope); return { bytes, mimeType: job.output.mimeType };
+    return this.execution.image(await this.own(scope, id), () => this.own(scope, id));
   }
   async revoke(appId: string) {
     for (const job of jobs(await this.deps.coreStore.readCore()).filter((entry) => entry.appId === appId && activeStatuses.has(entry.status))) {
-      await this.update(job.id, { status: 'cancelling' });
-      try { await this.deps.runtimeClient.cancelImageJob?.(job.id); await this.update(job.id, { status: 'cancelled', error: 'app_context_revoked' }); }
-      catch { await this.update(job.id, { status: 'interrupted', error: 'execution_interrupted' }); }
+      await this.execution.cancelRevoked(job);
     }
   }
 }

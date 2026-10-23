@@ -1,9 +1,42 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
 
 import {
   createTelegramBotApiDeliveryClient,
+  TelegramDispatchGuardError,
 } from '../build/server/platform/transports/telegram/delivery.js';
+
+test('photo upload awaits the final asynchronous authorization guard after reading the original file', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'cats-telegram-image-guard-'));
+  t.after(() => rm(root, { recursive: true, force: true, maxRetries: 5 }));
+  const file = path.join(root, 'original.jpg'); await writeFile(file, Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+  let release; let entered = false; let network = 0; let allowed = true;
+  const client = createTelegramBotApiDeliveryClient({ botToken: 'fixture-token', fetchImpl: async () => {
+    network++; throw new Error('Unexpected network call');
+  } });
+  const pending = client.deliver({ operation: 'send_media', mediaKind: 'photo', chatId: '12345',
+    mediaFile: { path: file, fileName: 'original.jpg' } }, { async assertAllowed() {
+    entered = true; await new Promise(resolve => { release = resolve; });
+    if (!allowed) throw new Error('scope revoked while reading');
+  } });
+  while (!entered) await new Promise(resolve => setTimeout(resolve, 1));
+  assert.equal(network, 0); allowed = false; release();
+  await assert.rejects(pending, TelegramDispatchGuardError); assert.equal(network, 0);
+});
+
+test('only an explicit Telegram rate-limit rejection is automatically retryable', async () => {
+  for (const [payload, expected] of [[{ ok: false, error_code: 429, parameters: { retry_after: 30 } }, 'retryable'],
+    [{ ok: false, error_code: 403 }, 'rejected'], [{ ok: false, error_code: 500 }, 'uncertain'], [{}, 'uncertain']]) {
+    const client = createTelegramBotApiDeliveryClient({ botToken: 'fixture-token', fetchImpl: async () => ({
+      ok: false, status: payload.error_code ?? 502, async json() { return payload; }, async text() { return JSON.stringify(payload); } }) });
+    const result = await client.deliver({ operation: 'send', chatId: '12345', text: 'Fixture message' });
+    assert.equal(result.failureKind, expected);
+    if (expected === 'retryable') assert.equal(result.retryAfterSeconds, 30);
+  }
+});
 
 test('telegram bot api delivery client configures commands and menu button', async () => {
   const calls = [];

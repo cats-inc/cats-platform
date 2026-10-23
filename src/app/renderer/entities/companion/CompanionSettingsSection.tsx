@@ -13,6 +13,7 @@ import type { AppShellPayload } from '../../../../products/chat/api/contracts.js
 import { messageKeys } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../i18n/useI18n.js';
 import { CompanionLifeCard } from './CompanionLifeCard.js';
+import { CatImagePolicyCard } from './CatImagePolicyCard.js';
 
 export interface CompanionSettingsSectionProps {
   catId: string;
@@ -175,6 +176,7 @@ export function CompanionSettingsSection({
       </div>
 
       {life ? <CompanionLifeCard catName={catName} life={life} onSave={onUpdateLife} /> : null}
+      <CatImagePolicyCard key={catId} catId={catId} />
 
       <div className="companionCard">
         <div className="companionCardHeader">
