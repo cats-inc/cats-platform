@@ -1,5 +1,8 @@
 # Documentation Index
 
+[Provider catalog consumer validation](research/2026-10-24-provider-catalog-consumer-validation.md)
+records the sixteen-channel refresh, Auggie effort regression and isolated source Candidate check.
+
 [Shared image service and controlled Cat generation](specs/SPEC-128-shared-image-service-and-controlled-cat-generation.md)
 defines the Platform service shared by Studio's App SDK and Cat-scoped agent tools.
 [ADR-136](decisions/136-share-controlled-image-capabilities-between-cats-and-studio.md)
