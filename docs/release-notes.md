@@ -28,8 +28,16 @@ artifacts. This selects Desktop publication only.
   No new data migration or reset is required; existing upgrade validation, backups
   and failure recovery remain in force. Older Runtime binaries cannot execute the
   new Auggie binding, so this preview bundles the selected Runtime 0.6.2 source.
+- **Exact sources and artifacts.** Runtime source is
+  `5212fa59ee44fbee7eea0d85e7482933824ff775` (package **0.6.2**, #191). The release
+  workflow records Platform's selected source SHA and this same Runtime SHA in
+  every OS/source receipt. Usage remains
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`, producer
+  source `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. Studio remains outside the default
+  bundle. No npm, App or cats-one publication is selected.
 - **Signing and validation.** Dispatch `desktop-release.yml` from the merged source
-  with `tag=v0.9.7`, the immutable Runtime SHA below and `unsigned=false`. Standard
+  with `tag=v0.9.7`, the immutable Runtime SHA above and `unsigned=false`. Standard
   trust is macOS **signed + notarized**, Windows **unsigned: no certificate**, Linux
   **n/a**. Previous standard-profile Windows/Linux installs can self-update within
   their architecture; macOS retains signed-to-signed updates with the same Developer
