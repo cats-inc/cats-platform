@@ -2,6 +2,71 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-25 — Desktop 0.10.0 standard preview: identity and managed remote access
+
+Selected distribution: Desktop **0.10.0 standard-profile preview**, App SDK
+**1.9.0**. Usage **0.5.4** retains its bundled artifact. Ask **0.1.0** is a
+separate optional Marketplace App, like Studio **0.4.1**; neither is added to the
+default Desktop bundle. This selects Desktop and Ask/catalog publication, with
+no Platform/Runtime npm, launcher or unrelated App release.
+
+- **One account, two sign-in methods.** Onboarding supports email/password or
+  configured native Google sign-in. Existing password accounts can explicitly
+  link the same Google account after password verification; Google-only owners
+  can add their first password after fresh Google verification. The native flow
+  opens the system browser with PKCE, state/nonce and an ephemeral loopback
+  callback. Desktop-only credentials and proofs stay outside renderer/public
+  ingress. Publisher Google client registration is still absent, so the default
+  distribution truthfully shows Google as unavailable; real Google consent and
+  per-OS callback acceptance are not claimed. Remote Web/cloud login stays deferred.
+- **Managed ngrok.** Settings > Remote access accepts the user's own authtoken,
+  keeps it OS-encrypted through the private Desktop broker, and offers explicit
+  startup auto-connect. A blank advanced address requests automatic allocation;
+  its observed public URL may change after reconnect. Explicit domains retain
+  their intent and provider rejection stays visible. Assigned URLs are no longer
+  replayed as requested custom domains, fixing `ERR_NGROK_313` after restart.
+  Platform and Apps share one public ingress; Funnel and the remaining Mobile/
+  Telegram follow-through are outside this slice.
+- **Reset closes remote access first.** Data Reset ends authenticated streams,
+  cancels ingress retries and durably disables connection/auto-connect before
+  erasing account/conversation data. Unconfirmed cleanup, migration or persistence
+  failures block erasure. Provider settings and encrypted credentials remain for
+  explicit re-enablement after setup.
+- **Compatibility and upgrades.** The new ingress schema-3 credential/config and
+  private broker protocol set a new 0.x minor boundary. Recognized schema-2 and
+  prototype settings undergo validated, protected-backup, atomic migration with
+  interrupted-write/restart recovery. Unknown or unresolved inputs remain intact
+  and need action; plaintext fallback is forbidden. Older hosts cannot consume
+  the new credential settings, so rollback needs the protected source/recovery
+  procedure rather than a binary-only downgrade. Auth remains schema 1; existing
+  password hashes, account/owner IDs and conversation/Runtime data are preserved
+  without reset or forced relink. Core/App formats and SDK 1.9 remain unchanged.
+  Headless protected migration requires the native broker.
+- **Exact inputs.** Runtime is
+  `5212fa59ee44fbee7eea0d85e7482933824ff775` (package **0.6.2**).
+  Usage remains
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`, producer
+  `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. The release workflow records this
+  Runtime SHA and the selected Platform bump commit in all OS/source receipts.
+  Ask uses `ask-v0.1.0`, the exact producer commit in its provenance and archive
+  SHA-256 `0f3853ca845b5435faf2f091b79049d5f960c4f3921565501d06eb1bed91e217`;
+  its catalog promotion verifies hosted bytes before listing it.
+- **Signing and validation.** Dispatch `desktop-release.yml` from the selected
+  bump commit with `tag=v0.10.0`, the Runtime SHA above and `unsigned=false`.
+  Expected standard trust: macOS **signed + notarized**, Windows **unsigned: no
+  certificate**, Linux **n/a**. Existing standard-profile self-update paths retain
+  their platform trust requirements. Integrated identity/ingress CI passed 5,912
+  tests with zero failures and 60 skipped. The isolated Windows source candidate
+  passed actual managed ngrok connection, complete host restart with encrypted
+  credential reuse and Reset; public admission probes originated on the host.
+  Independent source review found no remaining blocker. Independent-device,
+  installed-upgrade, live Google, native wake and packaged provider acceptance
+  remain separate. The release workflow enforces full tests, three-OS packaged
+  startup/App activation, complete-source identity, signing and asset checks.
+  Publication results: the `v0.10.0` GitHub prerelease and its Actions run;
+  Ask's immutable release and signed Marketplace catalog are separate hosted records.
+
 ## 2026-10-24 — Desktop 0.9.7 standard preview: CLI catalogs and Auggie effort
 
 Selected distribution: Desktop **0.9.7 standard-profile preview**, App SDK **1.9.0**.
