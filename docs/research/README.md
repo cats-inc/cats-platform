@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-10-24-provider-catalog-consumer-validation](2026-10-24-provider-catalog-consumer-validation.md) | 2026-10-24 | Shared Runtime catalogs and Auggie effort | Sixteen current channel scopes, generic selector regression, focused checks and isolated source Candidate evidence |
 | [2026-09-30-canvas-office-documents-and-tabs](2026-09-30-canvas-office-documents-and-tabs.md) | 2026-09-30 | Canvas Office documents, tabs and reopening (PLAN-116 F2) | mammoth `.docx`→HTML is fast and escapes scripts; `.pptx` needs LibreOffice for rendering, else a text outline; recommends one Recent switcher from show Activity instead of tabs |
 | [2026-09-30-canvas-preview-and-app-service-reuse](2026-09-30-canvas-preview-and-app-service-reuse.md) | 2026-09-30 | Canvas previews vs App services reuse (PLAN-116 F4) | Share tree-kill and the orphan registry (App stop kills only the direct child on Windows), share a contained-realpath primitive, keep leases and browser trust separate; remote Canvas viewing needs its own acceptance |
 | [2026-09-28-agency-agents-plugin-fit](2026-09-28-agency-agents-plugin-fit.md) | 2026-09-28 | Agency Agents skills Plugin candidate | Pinned upstream content and converter assessment; recommends a small optional role pack, with provenance and explicit migration before replacing built-in skills |

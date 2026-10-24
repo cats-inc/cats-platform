@@ -2,6 +2,55 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-24 — Desktop 0.9.7 standard preview: CLI catalogs and Auggie effort
+
+Selected distribution: Desktop **0.9.7 standard-profile preview**, App SDK **1.9.0**.
+Bundled **Usage 0.5.4** and optional Market **Studio 0.4.1** retain their existing
+artifacts. This selects Desktop publication only.
+
+- **Current configured CLI catalogs.** All sixteen provider/channel scopes expose
+  615 model/family choices in Runtime's Playground and Platform selectors. The
+  refresh includes 30 additions, 29 owner-approved withdrawals and seven Junie
+  picker-spelling corrections. Custom model strings and other channels retain
+  their behavior. Runtime owns the single factory; Platform consumes its labels,
+  defaults and per-entry controls without another model table.
+- **Auggie effort.** Models with observed JSON effort levels expose their exact
+  choices and send `--reasoning-effort`. Models without those levels and custom
+  strings have no inferred effort control. Existing sessions retain their resolved
+  bindings. Junie Eco remains evidence-only by owner choice.
+- **Startup recovery.** The main-line fix in #312 bounds prerequisite reads,
+  retries failed/still-pending checks three times without restarting ready
+  services, and exposes Retry plus diagnostic details after 80 seconds. Late
+  readiness clears the failure. This addresses a Desktop that could remain on
+  checking prerequisites after both sidecars were ready.
+- **Compatibility and data.** This compatible 0.9 patch retains SDK 1.9, public
+  contracts, Core/App data and Runtime's catalog schema 2/binding version 1.
+  No new data migration or reset is required; existing upgrade validation, backups
+  and failure recovery remain in force. Older Runtime binaries cannot execute the
+  new Auggie binding, so this preview bundles the selected Runtime 0.6.2 source.
+- **Exact sources and artifacts.** Runtime source is
+  `5212fa59ee44fbee7eea0d85e7482933824ff775` (package **0.6.2**, #191). The release
+  workflow records Platform's selected source SHA and this same Runtime SHA in
+  every OS/source receipt. Usage remains
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`, producer
+  source `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. Studio remains outside the default
+  bundle. No npm, App or cats-one publication is selected.
+- **Signing and validation.** Dispatch `desktop-release.yml` from the merged source
+  with `tag=v0.9.7`, the immutable Runtime SHA above and `unsigned=false`. Standard
+  trust is macOS **signed + notarized**, Windows **unsigned: no certificate**, Linux
+  **n/a**. Previous standard-profile Windows/Linux installs can self-update within
+  their architecture; macOS retains signed-to-signed updates with the same Developer
+  ID team. Focused catalog/selector/UI and TypeScript checks passed; all sixteen
+  actual API projections and all 615 Playground choices matched. An isolated source
+  Desktop candidate built, displayed provider selection and drained cleanly. Native
+  CLI evidence is Windows-only; Junie's prelaunch-to-exit settings hash differed,
+  as documented in the catalog evidence. CI and the release workflow enforce full
+  tests, three-OS packaged startup, App activation, source identity/receipts,
+  signing and asset checks. Installed upgrade acceptance is separate from source
+  candidate checks. Publication results: the `v0.9.7` GitHub prerelease and its
+  Actions run.
+
 ## 2026-10-24 — Desktop 0.9.6 standard preview: Telegram Cat image grants
 
 Selected distribution: Desktop **0.9.6 standard-profile preview**, App SDK
