@@ -102,8 +102,18 @@ function readAuthBootstrapRouteTarget(payload: unknown): 'setup' | 'login' | 're
 export async function completePlatformSetup(
   input: PlatformSetupCompleteInput,
   options: SetupApiRequestOptions,
+  nativeGoogleTransactionId?: string,
 ): Promise<PlatformHostEnvelope> {
-  const response = await fetch('/api/platform/setup/complete', {
+  const googleBridge = nativeGoogleTransactionId
+    ? (await import('../../../shared/desktopRecoveryBridge.js')).resolveDesktopHostBridge()?.googleAuth
+    : null;
+  if (nativeGoogleTransactionId && !googleBridge) throw new Error('Desktop Google is unavailable.');
+  const nativeReply = nativeGoogleTransactionId && googleBridge
+    ? await googleBridge.submit({ transactionId: nativeGoogleTransactionId, setup: input }) : null;
+  const response = nativeReply
+    ? new Response(JSON.stringify(nativeReply.body), { status: nativeReply.status,
+      headers: { 'content-type': 'application/json' } })
+    : await fetch('/api/platform/setup/complete', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',

@@ -3,6 +3,7 @@ export const DESKTOP_GOOGLE_AUTH_CHANNELS = {
   start: 'cats-host:google-auth-start',
   status: 'cats-host:google-auth-status',
   cancel: 'cats-host:google-auth-cancel',
+  submit: 'cats-host:google-auth-submit',
 } as const;
 
 export const PLATFORM_NATIVE_GOOGLE_AUTH_PATHS = {
@@ -28,12 +29,34 @@ export type NativeGoogleAuthBinding = { contextId: string } & (
 /** Renderer requests never choose an Account, Session, window, nonce or audience. */
 export type DesktopGoogleAuthStartInput =
   | { purpose: 'bootstrap'; attemptId: string }
-  | { purpose: 'login' | 'link_google' | 'set_password' };
+  | { purpose: 'login' }
+  | { purpose: 'link_google'; actionToken: string; csrfToken: string }
+  | { purpose: 'set_password'; csrfToken: string };
 
 export interface DesktopGoogleAuthStatus {
   transactionId: string;
   phase: 'waiting' | 'verified' | 'cancelled' | 'failed';
   expiresAt: string;
+  error?: string;
+  committing?: boolean;
+}
+
+export interface DesktopGoogleAuthAvailability {
+  available: boolean;
+  reason: 'ready' | 'not_configured';
+}
+
+export interface DesktopGoogleAuthBridge {
+  availability(): Promise<DesktopGoogleAuthAvailability>;
+  start(input: DesktopGoogleAuthStartInput): Promise<DesktopGoogleAuthStatus>;
+  status(transactionId: string): Promise<DesktopGoogleAuthStatus>;
+  cancel(transactionId?: string): Promise<DesktopGoogleAuthStatus | null>;
+  submit(input: {
+    transactionId: string;
+    setup?: import('./platform-contract.js').PlatformSetupCompleteInput;
+    password?: string;
+    csrfToken?: string;
+  }): Promise<{ status: number; body: unknown }>;
 }
 
 /** Private Platform -> host response; never exposed through renderer IPC. */

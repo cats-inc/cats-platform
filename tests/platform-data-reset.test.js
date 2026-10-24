@@ -119,7 +119,7 @@ for (const resetRuntime of [false, true]) test(`real reset route purges Platform
   await new Promise(resolve => probe.close(resolve));
   const ingressResponse = await fetch(`${url}/api/platform/ingress`, { method: 'POST',
     headers: { 'content-type': 'application/json', 'x-cats-desktop-apps': desktopKey },
-    body: JSON.stringify({ enabled: true, provider: 'external', listenPort: port, publicOrigin: 'https://reset.example' }) });
+    body: JSON.stringify({ enabled: true, autoConnect: true, provider: 'external', listenPort: port, publicOrigin: 'https://reset.example' }) });
   assert.equal(ingressResponse.status, 200, await ingressResponse.clone().text());
   const ingressTarget = (await ingressResponse.json()).remoteAccess.target;
   const status = await (await fetch(`${url}/api/auth/status`, { headers: { cookie } })).json();
@@ -196,6 +196,16 @@ for (const resetRuntime of [false, true]) test(`real reset route purges Platform
   assert.equal((await complete('after@example.test')).status, 200);
   assert.equal((await (await fetch(`${url}/api/auth/status`, { headers: { cookie } })).json()).authenticated, false);
   assert.notEqual((await store.readCore()).setupCompleteAt, null);
+  await server.reconcileRemoteAccess('resume'); await server.reconcileRemoteAccess('online');
+  const ingressAfter = await (await fetch(`${url}/api/platform/ingress`, {
+    headers: { 'x-cats-desktop-apps': desktopKey },
+  })).json();
+  assert.equal(ingressAfter.remoteAccess.state, 'off');
+  assert.equal(ingressAfter.remoteAccess.enabled, false); assert.equal(ingressAfter.remoteAccess.autoConnect, false);
+  assert.equal(ingressAfter.remoteAccess.url, null); assert.equal(ingressAfter.remoteAccess.target, null);
+  const retainedIngress = JSON.parse(await readFile(path.join(config.platformDir, 'config', 'ingress.local.json'), 'utf8'));
+  assert.equal(retainedIngress.enabled, false); assert.equal(retainedIngress.autoConnect, false);
+  assert.equal(retainedIngress.publicOrigin, 'https://reset.example');
 });
 
 test('partial purge survives restart and rediscovers owned attachment targets from its bounded journal', async t => {

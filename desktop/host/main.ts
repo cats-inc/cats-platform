@@ -1,6 +1,10 @@
 import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { validateDesktopAppRequest } from './appRequests.js';
+import { DesktopGoogleAuthController } from './googleAuth.js';
+import { DESKTOP_GOOGLE_AUTH_CHANNELS } from './googleAuthContracts.js';
+import { createDesktopGoogleTransport, desktopGoogleSessionCookie,
+  readDesktopGoogleClientId } from './googleAuthTransport.js';
 import { createIngressSecretProtector } from './ingressSecrets.js';
 
 import {
@@ -265,6 +269,7 @@ let mainWindow: BrowserWindow | null = null;
 let mainWindowPlacementTracker: DesktopWindowPlacementTracker | null = null;
 let hostConfig: DesktopHostConfig | null = null;
 let supervisor: ManagedServiceSupervisor | null = null;
+let googleAuthController: DesktopGoogleAuthController | null = null;
 let latestSnapshot: DesktopBootstrapSnapshot | null = null;
 let latestAppHealthPayload: AppHealthPayload | null = null;
 let platformShellReader: DesktopPlatformShellReader | null = null;
@@ -2265,6 +2270,7 @@ function waitForShutdownDeadline(ms: number): Promise<'timed_out'> {
  * surviving sidecar may still hold.
  */
 async function drainManagedServices(): Promise<{ timedOut: boolean }> {
+  await googleAuthController?.clear();
   setupHelperDrain ??= pauseSelectedSetupHelpers();
   // Installer completion is outside the sidecar shutdown watchdog budget.
   await setupHelperDrain.drained;
@@ -2470,8 +2476,26 @@ async function main(): Promise<void> {
     ]);
   }
   const appManagementKey = randomBytes(32).toString('hex');
+  const desktopAuthKey = randomBytes(32).toString('hex');
+  const googleClientId = await readDesktopGoogleClientId(hostConfig.paths.platformBundledConfigDir, process.env)
+    .catch(() => { process.stderr.write('Google Desktop distribution configuration is unavailable.\n'); return null; });
+  googleAuthController = new DesktopGoogleAuthController({
+    clientId: googleClientId,
+    openBrowser: openExternalDesktopUrl,
+    platformRequest: createDesktopGoogleTransport({
+      baseUrl: hostConfig.appBaseUrl, key: desktopAuthKey,
+      sessionCookie: async () => (await session.defaultSession.cookies.get({
+        url: hostConfig!.appBaseUrl, name: 'cats_session',
+      }))[0]?.value ?? null,
+    }),
+    acceptSessionCookie: async (cookie) => {
+      await session.defaultSession.cookies.set(desktopGoogleSessionCookie(cookie, hostConfig!.appBaseUrl));
+    },
+  });
   supervisor = new ManagedServiceSupervisor(hostConfig, {
-    env: { ...process.env, CATS_DESKTOP_APPS_KEY: appManagementKey },
+    env: { ...process.env, CATS_DESKTOP_APPS_KEY: appManagementKey,
+      CATS_DESKTOP_AUTH_KEY: desktopAuthKey, CATS_AUTH_GOOGLE_DESKTOP_CLIENT_ID: googleClientId ?? '',
+    },
     ingressSecrets: createIngressSecretProtector(safeStorage, hostConfig.paths.platformDir),
     onStateChange: () => {
       if (hostConfig && supervisor) {
@@ -2502,6 +2526,33 @@ async function main(): Promise<void> {
 
   ipcMain.handle('cats-host:get-snapshot', async () => {
     return latestSnapshot ?? buildSnapshot(null);
+  });
+  const assertGoogleSender = (event: import('electron').IpcMainInvokeEvent) => {
+    assertMainWindowIpcSender(event, mainWindow, 'Google sign-in requires the main Cats window.');
+    if (event.senderFrame !== mainWindow!.webContents.mainFrame || !hostConfig
+      || new URL(event.senderFrame.url).origin !== new URL(hostConfig.appBaseUrl).origin) {
+      throw new Error('Google sign-in requires the trusted Desktop main frame.');
+    }
+  };
+  ipcMain.handle(DESKTOP_GOOGLE_AUTH_CHANNELS.start, async (event, input: unknown) => {
+    assertGoogleSender(event);
+    return await googleAuthController!.start(input);
+  });
+  ipcMain.handle(DESKTOP_GOOGLE_AUTH_CHANNELS.status, async (event, id: unknown) => {
+    assertGoogleSender(event);
+    if (id === undefined) return await googleAuthController!.availability();
+    if (typeof id !== 'string' || id.length > 128) throw new Error('Invalid Google transaction.');
+    return await googleAuthController!.status(id);
+  });
+  ipcMain.handle(DESKTOP_GOOGLE_AUTH_CHANNELS.cancel, async (event, id: unknown) => {
+    assertGoogleSender(event);
+    if (id === undefined) return await googleAuthController!.cancel();
+    if (typeof id !== 'string' || id.length > 128) throw new Error('Invalid Google transaction.');
+    return await googleAuthController!.cancel(id);
+  });
+  ipcMain.handle(DESKTOP_GOOGLE_AUTH_CHANNELS.submit, async (event, input: unknown) => {
+    assertGoogleSender(event);
+    return await googleAuthController!.submit(input);
   });
   ipcMain.handle('cats-host:app-request', async (event, payload: unknown) => {
     assertMainWindowIpcSender(event, mainWindow, 'Apps are managed from the main Cats window.');
@@ -2762,8 +2813,13 @@ async function main(): Promise<void> {
     showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
   });
   mainWindow = window;
+  window.webContents.on('did-start-navigation', (_event, _url, isInPlace, isMainFrame) => {
+    if (isMainFrame && !isInPlace) void googleAuthController?.clear();
+  });
+  window.webContents.on('render-process-gone', () => { void googleAuthController?.clear(); });
   window.once('closed', () => {
     if (mainWindow === window) mainWindow = null;
+    void googleAuthController?.clear();
   });
   if (window.isDestroyed()) {
     mainWindow = null;

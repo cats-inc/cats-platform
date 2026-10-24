@@ -535,6 +535,7 @@ export function buildManagedServiceSpecs(
   const runtimeManagedEnv = { ...managedEnv };
   delete runtimeManagedEnv.CATS_AUTH_SESSION_SECRET;
   delete runtimeManagedEnv.CATS_DESKTOP_APPS_KEY;
+  delete runtimeManagedEnv.CATS_DESKTOP_AUTH_KEY;
   const pathModule = platform === 'win32' ? win32 : posix;
 
   return [

@@ -5,6 +5,7 @@ import { decodeAppPackage, meetsMinimumVersion, parseAppLock, supportsVersion, A
 
 import type { DesktopHostConfig } from './config.js';
 import { collectDesktopLicenses } from './licenses.js';
+import { readDesktopGoogleClientId } from './googleAuthTransport.js';
 import {
   collectRuntimeSkillContent, resolveDesktopSkillContentProfile, writeRuntimeSkillContent,
   type DesktopSkillContentProfile,
@@ -26,6 +27,7 @@ import {
 } from './setupAssets.js';
 
 interface DesktopPackagingPlanOptions {
+  desktopGoogleClientId?: string | null;
   contentProfile?: DesktopSkillContentProfile;
   apps?: ResolvedAppPin[];
   generatedAt?: Date;
@@ -1072,6 +1074,8 @@ function buildPackagingTarget(
     { id: 'app-server', relativePath: 'shared/build/server/index.js', role: 'app_server' as const },
     { id: 'app-renderer', relativePath: 'shared/build/renderer/index.html', role: 'app_renderer' as const },
     { id: 'app-package-manifest', relativePath: 'shared/app-sidecar/package.json', role: 'app_server' as const },
+    { id: 'desktop-google-oauth-config', relativePath: 'shared/cats-platform/config/google-desktop-oauth.json',
+      role: 'app_server' as const },
     {
       id: 'platform-config-bootstrap-example',
       relativePath: 'shared/cats-platform/config/provider-capability-bootstrap.yaml.example',
@@ -1250,6 +1254,8 @@ export async function stageDesktopPackagingOutputs(
   const appDependencies = await appSidecarDependencies(config.packageRoot, [...allowedPlatforms]);
   await ensureBundledPlatformAssets(config.packageRoot, appDependencies);
   const knowledgeAssets = await collectPlatformKnowledgeAssets(config.packageRoot);
+  const desktopGoogleClientId = options.desktopGoogleClientId
+    ?? await readDesktopGoogleClientId(config.paths.platformBundledConfigDir, process.env);
   for (const target of plan.targets) {
     for (const artifact of target.artifacts) {
       const captured = knowledgeAssets.find((asset) => asset.id === artifact.id);
@@ -1292,6 +1298,9 @@ export async function stageDesktopPackagingOutputs(
     await mkdir(dirname(targetPath), { recursive: true });
     await writeFile(targetPath, asset.bytes);
   }
+  const googleConfigPath = join(outputRoot, 'shared', 'cats-platform', 'config', 'google-desktop-oauth.json');
+  await mkdir(dirname(googleConfigPath), { recursive: true });
+  await writeFile(googleConfigPath, `${JSON.stringify({ clientId: desktopGoogleClientId }, null, 2)}\n`);
   for (const asset of PLATFORM_OPTIONAL_ASSETS) {
     const sourcePath = join(config.packageRoot, asset.sourceRelativePath);
     const targetPath = join(outputRoot, asset.targetRelativePath);

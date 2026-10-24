@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ChildProcess } from 'node:child_process';
-import fs, { mkdtemp, rm, readFile } from 'node:fs/promises';
+import fs, { mkdtemp, rm, readFile, writeFile, unlink } from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -43,7 +43,9 @@ test('auto-connect is explicit and restart reuses the protected credential and a
   const automatic = new PlatformIngress(options); t.after(() => automatic.close());
   await automatic.restore(); assert.equal(automatic.snapshot().state, 'connected');
   assert.equal(starts.length, 3); assert.equal(starts[2].context.ingress?.authtoken, token);
-  assert.equal(starts[2].context.ingress?.url, 'https://assigned.example');
+  assert.equal(starts[2].context.ingress?.url, '', 'automatic assignment must not pin an observed URL');
+  assert.equal(automatic.snapshot().configuredOrigin, '');
+  assert.equal(automatic.snapshot().url, 'https://assigned.example');
 });
 
 test('disable cancels a pending worker and a late result cannot publish or resurrect admission', async t => {
@@ -147,4 +149,156 @@ test('disable during an atomic settings commit cannot start the superseded provi
     assert.equal(starts, 0); assert.equal(ingress.snapshot().state, 'off');
     assert.equal(JSON.parse(await readFile(filename, 'utf8')).enabled, false);
   } finally { release(); gate.mock.restore(); syncBuiltinESMExports(); }
+});
+
+test('data reset stops forwarding and durably disarms startup/wake while retaining the protected credential', async t => {
+  let starts = 0, stops = 0;
+  const { root, ingress, options } = await fixture(t, (async () => {
+    starts++; return { key: 'fixture', child: new ChildProcess(), publicUrl: 'https://assigned.example',
+      stop: async () => { stops++; } };
+  }) as typeof startAppProcess);
+  await ingress.configure({ enabled: true, autoConnect: true, authtoken: token });
+  const before = JSON.parse(await readFile(path.join(root, 'config', 'ingress.local.json'), 'utf8'));
+  await ingress.resetForDataReset();
+  assert.equal(stops, 1); assert.equal(ingress.snapshot().state, 'off');
+  assert.equal(ingress.publicOrigin(), undefined);
+  const after = JSON.parse(await readFile(path.join(root, 'config', 'ingress.local.json'), 'utf8'));
+  assert.equal(after.enabled, false); assert.equal(after.autoConnect, false);
+  assert.equal(after.credentialRef, before.credentialRef); assert.equal(after.publicOrigin, before.publicOrigin);
+  await ingress.reconcile('resume'); await ingress.reconcile('online');
+  assert.equal(starts, 1);
+  const restarted = new PlatformIngress(options); t.after(() => restarted.close());
+  await restarted.restore(); assert.equal(starts, 1); assert.equal(restarted.snapshot().state, 'off');
+  await restarted.configure({ enabled: true }); assert.equal(starts, 2);
+});
+
+test('unconfirmed worker cleanup rejects data reset with durable disabled state and permits a safe retry', async t => {
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const { root, ingress } = await fixture(t, (async () => ({ key: 'fixture', child: new ChildProcess(),
+    publicUrl: 'https://assigned.example', stop: () => held })) as typeof startAppProcess);
+  t.after(async () => { release(); await ingress.close(); });
+  await ingress.configure({ enabled: true, autoConnect: true, authtoken: token });
+  await assert.rejects(ingress.resetForDataReset(), /prepared for data reset/);
+  assert.equal(ingress.snapshot().state, 'cleanup_pending'); assert.equal(ingress.publicOrigin(), undefined);
+  const saved = JSON.parse(await readFile(path.join(root, 'config', 'ingress.local.json'), 'utf8'));
+  assert.equal(saved.enabled, false); assert.equal(saved.autoConnect, false);
+  release(); await ingress.resetForDataReset(); assert.equal(ingress.snapshot().state, 'off');
+});
+
+test('failed durable disarm still closes forwarding and requires a successful reset retry', async t => {
+  let stops = 0;
+  const { root, ingress } = await fixture(t, (async () => ({ key: 'fixture', child: new ChildProcess(),
+    publicUrl: 'https://assigned.example', stop: async () => { stops++; } })) as typeof startAppProcess);
+  await ingress.configure({ enabled: true, autoConnect: true, authtoken: token });
+  const filename = path.join(root, 'config', 'ingress.local.json');
+  const rename = fs.rename;
+  const failure = t.mock.method(fs, 'rename', async (...args: Parameters<typeof rename>) => {
+    if (args[1] === filename) throw new Error('fixture disk failure');
+    return rename(...args);
+  });
+  syncBuiltinESMExports();
+  try {
+    await assert.rejects(ingress.resetForDataReset(), /prepared for data reset/);
+    assert.equal(stops, 1); assert.equal(ingress.publicOrigin(), undefined);
+    assert.equal(ingress.snapshot().state, 'unavailable');
+    assert.equal(JSON.parse(await readFile(filename, 'utf8')).enabled, true, 'failed replacement preserves original config');
+    await ingress.reconcile('resume'); assert.equal(ingress.publicOrigin(), undefined);
+  } finally { failure.mock.restore(); syncBuiltinESMExports(); }
+  await ingress.resetForDataReset();
+  assert.equal(JSON.parse(await readFile(filename, 'utf8')).enabled, false);
+});
+
+test('reset fences a late worker acquisition and cancels its pending generation before resume', async t => {
+  let entered!: () => void, release!: () => void;
+  const acquiring = new Promise<void>(resolve => { entered = resolve; });
+  const held = new Promise<void>(resolve => { release = resolve; });
+  let starts = 0, stops = 0;
+  const { ingress } = await fixture(t, (async () => {
+    starts++; entered(); await held;
+    return { key: 'fixture', child: new ChildProcess(), publicUrl: 'https://late.example',
+      stop: async () => { stops++; } };
+  }) as typeof startAppProcess);
+  const enabling = ingress.configure({ enabled: true, autoConnect: true, authtoken: token });
+  await acquiring;
+  const resetting = ingress.resetForDataReset();
+  release(); await enabling; await resetting;
+  assert.equal(stops, 1); assert.equal(ingress.snapshot().state, 'off');
+  await ingress.reconcile('resume'); await ingress.reconcile('online'); assert.equal(starts, 1);
+});
+
+test('reset cancels a scheduled transient retry and leaves wake unable to reconnect', async t => {
+  let starts = 0;
+  const { ingress } = await fixture(t, (async () => { starts++; throw new Error('transient fixture'); }) as typeof startAppProcess, [100]);
+  await ingress.configure({ enabled: true, autoConnect: true, authtoken: token });
+  assert.equal(ingress.snapshot().state, 'retrying');
+  await ingress.resetForDataReset();
+  await ingress.reconcile('resume'); await ingress.reconcile('online');
+  await new Promise(resolve => setTimeout(resolve, 120));
+  assert.equal(starts, 1); assert.equal(ingress.snapshot().state, 'off');
+});
+
+test('reset preserves durable credentials when a failed restore left only constructor defaults in memory', async t => {
+  const { root, ingress, options } = await fixture(t, (async () => ({ key: 'fixture', child: new ChildProcess(),
+    publicUrl: 'https://assigned.example', stop: async () => {} })) as typeof startAppProcess);
+  await ingress.configure({ enabled: true, autoConnect: true, authtoken: token }); await ingress.close();
+  const filename = path.join(root, 'config', 'ingress.local.json');
+  const before = await readFile(filename, 'utf8');
+  await writeFile(filename + '.migration.json', '{"schemaVersion":99}');
+  const restarted = new PlatformIngress(options); t.after(() => restarted.close());
+  await restarted.restore(); assert.equal(restarted.snapshot().state, 'unavailable');
+  await assert.rejects(restarted.resetForDataReset(), /prepared for data reset/);
+  assert.equal(await readFile(filename, 'utf8'), before);
+  await unlink(filename + '.migration.json'); await restarted.resetForDataReset();
+  const after = JSON.parse(await readFile(filename, 'utf8'));
+  assert.equal(after.credentialRef, JSON.parse(before).credentialRef);
+  assert.equal(after.publicOrigin, 'https://assigned.example'); assert.equal(after.enabled, false);
+});
+
+test('automatic reconnect can receive a new URL without requesting the previous ephemeral domain', async t => {
+  let starts = 0;
+  const { ingress } = await fixture(t, (async input => {
+    starts++;
+    if (input.context.ingress?.url) throw new Error('ERR_NGROK_313');
+    return { key: 'fixture', child: new ChildProcess(), publicUrl: `https://assigned-${starts}.example`, stop: async () => {} };
+  }) as typeof startAppProcess);
+  await ingress.configure({ enabled: true, autoConnect: true, authtoken: token, publicOrigin: '' });
+  assert.equal(ingress.snapshot().url, 'https://assigned-1.example');
+  await ingress.reconcile('offline'); await ingress.reconcile('online');
+  assert.equal(ingress.snapshot().url, 'https://assigned-2.example');
+  assert.equal(ingress.snapshot().configuredOrigin, ''); assert.equal(starts, 2);
+});
+
+test('an explicit domain remains pinned across restart and provider rejection never falls back silently', async t => {
+  const requested: Array<string | undefined> = [];
+  const { ingress, options } = await fixture(t, (async input => {
+    requested.push(input.context.ingress?.url);
+    return { key: 'fixture', child: new ChildProcess(), publicUrl: 'https://fixed.example', stop: async () => {} };
+  }) as typeof startAppProcess);
+  await ingress.configure({ enabled: true, autoConnect: true, authtoken: token, publicOrigin: 'https://fixed.example' });
+  await ingress.close();
+  options.start = (async input => { requested.push(input.context.ingress?.url); throw new Error('ERR_NGROK_313'); }) as typeof startAppProcess;
+  const restarted = new PlatformIngress(options); t.after(() => restarted.close()); await restarted.restore();
+  assert.deepEqual(requested, ['https://fixed.example', 'https://fixed.example']);
+  assert.equal(restarted.snapshot().state, 'needs_action'); assert.equal(restarted.snapshot().configuredOrigin, 'https://fixed.example');
+  assert.equal(restarted.snapshot().url, null);
+});
+
+test('pre-field schema-3 settings retain their existing domain until automatic assignment is explicitly chosen', async t => {
+  const requested: Array<string | undefined> = [];
+  const { root, ingress, options } = await fixture(t, (async input => {
+    requested.push(input.context.ingress?.url);
+    return { key: 'fixture', child: new ChildProcess(), publicUrl: 'https://fixed.example', stop: async () => {} };
+  }) as typeof startAppProcess);
+  await ingress.configure({ enabled: true, autoConnect: true, authtoken: token, publicOrigin: 'https://fixed.example' });
+  await ingress.close();
+  const filename = path.join(root, 'config', 'ingress.local.json');
+  const legacy = JSON.parse(await readFile(filename, 'utf8')); delete legacy.requestedOrigin;
+  await writeFile(filename, JSON.stringify(legacy));
+  const restarted = new PlatformIngress(options); t.after(() => restarted.close());
+  await restarted.restore(); assert.equal(requested.at(-1), 'https://fixed.example');
+  assert.equal(restarted.snapshot().configuredOrigin, 'https://fixed.example');
+  await restarted.configure({ enabled: true, publicOrigin: '' });
+  assert.equal(requested.at(-1), ''); assert.equal(restarted.snapshot().configuredOrigin, '');
+  assert.equal(JSON.parse(await readFile(filename, 'utf8')).credentialRef, legacy.credentialRef);
 });

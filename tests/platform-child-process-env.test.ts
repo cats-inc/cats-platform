@@ -29,11 +29,13 @@ test('platform child process env strips every host-owned credential after applyi
     CATS_TELEGRAM_BOT_TOKEN: 'telegram-override-must-be-removed',
     CATS_NGROK_AUTHTOKEN: 'ngrok-override-must-be-removed',
     CATS_DESKTOP_APPS_KEY: 'desktop-override-must-be-removed',
+    CATS_DESKTOP_AUTH_KEY: 'desktop-auth-override-must-be-removed',
     CHILD_ONLY_VALUE: 'child',
   }, {
     CATS_AUTH_SESSION_SECRET: 'base-must-be-removed',
     CATS_RUNTIME_API_KEY: 'runtime-base-must-be-removed',
     CATS_DESKTOP_APPS_KEY: 'desktop-base-must-be-removed',
+    CATS_DESKTOP_AUTH_KEY: 'desktop-auth-base-must-be-removed',
     CATS_TELEGRAM_BOT_TOKEN: 'telegram-base-must-be-removed',
     CATS_TELEGRAM_WEBHOOK_SECRET: 'webhook-base-must-be-removed',
     CATS_NGROK_AUTHTOKEN: 'ngrok-base-must-be-removed',
@@ -44,6 +46,7 @@ test('platform child process env strips every host-owned credential after applyi
   assert.equal(childEnv.CATS_AUTH_SESSION_SECRET, undefined);
   assert.equal(childEnv.CATS_RUNTIME_API_KEY, undefined);
   assert.equal(childEnv.CATS_DESKTOP_APPS_KEY, undefined);
+  assert.equal(childEnv.CATS_DESKTOP_AUTH_KEY, undefined);
   assert.equal(childEnv.CATS_TELEGRAM_BOT_TOKEN, undefined);
   assert.equal(childEnv.CATS_TELEGRAM_WEBHOOK_SECRET, undefined);
   assert.equal(childEnv.CATS_NGROK_AUTHTOKEN, undefined);

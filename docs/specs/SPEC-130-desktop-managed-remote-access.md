@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | ngrok/external implementation slice with Windows fixtures; full provider/consumer/OS acceptance open |
+| Status | ngrok/external slice with Windows managed-provider restart/reset acceptance; full consumer/OS acceptance open |
 | Date | 2026-10-24 |
 | Decision | [ADR-139](../decisions/139-manage-one-desktop-remote-ingress.md) |
 | Delivery | [PLAN-122](../plans/PLAN-122-desktop-identity-and-remote-access-rollout.md) |
@@ -52,7 +52,7 @@ Diagnostics such as local port/process details are collapsed.
 
 | Provider | Required setup | Domain behavior | Local target |
 | --- | --- | --- | --- |
-| ngrok | User's own authtoken; no ngrok API key | Prefer the account-assigned stable name; optional account-authorized name in advanced settings | OS-assigned dedicated ingress port |
+| ngrok | User's own authtoken; no ngrok API key | Blank requests automatic allocation, which may change after reconnect; optional account-authorized name in advanced settings | OS-assigned dedicated ingress port |
 | Tailscale Funnel | Compatible installed client, logged-in user, HTTPS/MagicDNS and Funnel permission | Discover the actual device/tailnet HTTPS origin; no arbitrary custom-domain text field | Stable reserved Cats-owned loopback target for persisted mapping |
 | Existing tunnel | User-supplied HTTPS origin and unused fixed ingress port | Validate the exact configured origin | Cats listener only; operator runs the proxy |
 
@@ -140,7 +140,15 @@ Saving an invalid replacement must preserve the prior recoverable configuration.
 
 The owner authorized ngrok plus the existing external adapter, not Funnel or
 publication. Schema 3 stores `enabled`, `autoConnect`, provider, port, origin
-and an opaque `credentialRef`. Ngrok plaintext is an input-only field; neither
+and an opaque `credentialRef`. The optional `requestedOrigin` is separate from
+the observed `publicOrigin`: empty string selects automatic allocation, a URL
+requests that exact permitted domain. Older schema-3 records without the field
+retain their existing fixed-origin intent until the user clears the setting;
+schema-2 upgrades preserve their origin likewise. Saving continues to validate,
+back up and atomically replace settings. Automatic allocation may return a new
+URL after reconnect; it never pins an observed ephemeral URL as a custom domain.
+Explicit domain rejection stays needs-action without silently choosing another.
+Ngrok plaintext is an input-only field; neither
 settings/status nor worker environment contains it. Desktop's owned Platform
 child alone receives a private IPC safeStorage broker, with profile/purpose
 binding, four pending operations and a ten-second deadline. Linux `basic_text`
@@ -182,6 +190,14 @@ the same Platform HTTP ingress boundary, with a 64-socket bound and backpressure
 Generation revocation stops admission immediately; the target remains reserved
 until cleanup or worker exit. Credentials reach only the owned worker over IPC,
 never its environment. This adds no second public gateway, tunnel or App endpoint.
+
+Data reset ends authenticated streams, revokes the ingress generation and saves
+`enabled: false` plus `autoConnect: false` before rewriting auth/Core/chat data.
+It retains validated durable provider/origin/port/credential metadata. Failed
+restore or unresolved migration cannot substitute constructor defaults for that
+metadata. Save/cleanup failure blocks data erasure; unconfirmed cleanup retains
+its ownership handle for retry. Setup completion, wake and restart do not reconnect
+until the owner explicitly enables remote access again.
 
 ## Acceptance scenarios
 

@@ -11,7 +11,10 @@ const initial = { provider: 'ngrok', state: 'off', configured: false, enabled: f
   publicVerification: { state: 'unknown', observedAt: null } };
 const connected = { ...initial, state: 'connected', configured: true, enabled: true,
   url: 'https://fixture.example', configuredOrigin: 'https://fixture.example' };
-function install(t: test.TestContext, post: (body: Record<string, unknown>) => Promise<unknown>, status = initial) {
+function install(t: test.TestContext, post: (body: Record<string, unknown>) => Promise<unknown>,
+  status: Omit<typeof initial, 'url' | 'errorCode'> & {
+    url: string | null; errorCode: string | null; legacySources?: string[];
+  } = initial) {
   resetTestDom();
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'catsDesktopHost');
   // Deliberately partial native bridge: this page only uses requestApp.
@@ -67,4 +70,45 @@ test('an incomplete cleanup can be retried even after remote access was disabled
   const disconnect = view.getByRole('button', { name: 'Disconnect remote access' }) as HTMLButtonElement;
   assert.equal(disconnect.disabled, false); fireEvent.click(disconnect);
   await waitFor(() => assert.deepEqual(calls, [{ enabled: false }]));
+});
+
+test('saving automatic assignment does not pin the observed URL and announces a changed public URL', async t => {
+  const calls: Record<string, unknown>[] = [];
+  const view = install(t, async body => { calls.push(body); return {
+    ...connected, configuredOrigin: '', url: 'https://new-assigned.example',
+  }; }, { ...connected, configuredOrigin: '' });
+  await waitFor(() => view.getByRole('button', { name: 'Save and reconnect' }));
+  assert.equal((view.getByLabelText('Requested ngrok HTTPS address (blank for automatic assignment)') as HTMLInputElement).value, '');
+  fireEvent.click(view.getByRole('button', { name: 'Save and reconnect' }));
+  await waitFor(() => assert.equal(calls.length, 1));
+  assert.equal(calls[0].publicOrigin, '');
+  await waitFor(() => assert.ok(view.getByText('https://new-assigned.example')));
+  assert.equal((view.getByLabelText('Requested ngrok HTTPS address (blank for automatic assignment)') as HTMLInputElement).value, '');
+  await waitFor(() => assert.ok(view.getByText('The public address changed. Update your Mobile pairing and Bot connection.')));
+});
+
+test('a completed legacy migration does not prevent switching to automatic assignment before remount', async t => {
+  const calls: Record<string, unknown>[] = [];
+  const view = install(t, async body => { calls.push(body); return connected; },
+    { ...initial, state: 'migration_required', legacySources: ['test.old'] });
+  await waitFor(() => view.getByRole('option', { name: 'test.old' }));
+  fireEvent.change(view.getByRole('option', { name: 'test.old' }).closest('select')!, { target: { value: 'test.old' } });
+  fireEvent.click(view.getByRole('button', { name: 'Save and connect' }));
+  await waitFor(() => view.getByRole('button', { name: 'Save and reconnect' }));
+  assert.equal(calls[0].migrationSource, 'test.old');
+  fireEvent.change(view.getByLabelText('Requested ngrok HTTPS address (blank for automatic assignment)'), { target: { value: '' } });
+  fireEvent.click(view.getByRole('button', { name: 'Save and reconnect' }));
+  await waitFor(() => assert.equal(calls.length, 2));
+  assert.equal(calls[1].publicOrigin, ''); assert.equal(calls[1].migrationSource, undefined);
+});
+
+test('a rejected requested domain does not announce a changed public URL', async t => {
+  const view = install(t, async () => ({ ...connected, state: 'needs_action', url: null,
+    configuredOrigin: 'https://denied.example', errorCode: 'ERR_NGROK_313' }), connected);
+  await waitFor(() => view.getByRole('button', { name: 'Save and reconnect' }));
+  fireEvent.change(view.getByLabelText('Requested ngrok HTTPS address (blank for automatic assignment)'),
+    { target: { value: 'https://denied.example' } });
+  fireEvent.click(view.getByRole('button', { name: 'Save and reconnect' }));
+  await waitFor(() => view.getByText('Check your sign-in and connection settings, then reconnect.'));
+  assert.equal(view.queryByText('The public address changed. Update your Mobile pairing and Bot connection.'), null);
 });

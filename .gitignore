@@ -30,6 +30,7 @@ config/*
 !config/desktop-apps.lock.json
 !config/catlas-knowledge.json
 !config/orchestrator-knowledge.json
+!config/google-desktop-oauth.json
 platform-preferences.json
 suite-preferences.json
 

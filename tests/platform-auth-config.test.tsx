@@ -39,6 +39,7 @@ test('loadConfig exposes default platform auth config and state paths', () => {
   assert.equal(config.auth.subnetDailyFailureCap, DEFAULT_AUTH_SUBNET_DAILY_FAILURE_CAP);
   assert.deepEqual(config.auth.google, {
     clientId: null,
+    desktopClientId: null,
     hostedDomains: [],
     mobileAudiences: [],
   });
@@ -68,6 +69,7 @@ test('loadConfig parses platform auth env overrides', () => {
     CATS_AUTH_ALLOWED_BROWSER_ORIGINS:
       'http://localhost:5173, https://cats.example.test/path',
     CATS_AUTH_GOOGLE_CLIENT_ID: 'google-client-id',
+    CATS_AUTH_GOOGLE_DESKTOP_CLIENT_ID: 'desktop-client-id',
     CATS_AUTH_GOOGLE_HD: 'example.test, cats.example',
     CATS_AUTH_GOOGLE_MOBILE_AUDIENCES: 'mobile-ios, mobile-android',
   }));
@@ -88,6 +90,7 @@ test('loadConfig parses platform auth env overrides', () => {
   ]);
   assert.deepEqual(config.auth.google, {
     clientId: 'google-client-id',
+    desktopClientId: 'desktop-client-id',
     hostedDomains: ['example.test', 'cats.example'],
     mobileAudiences: ['mobile-ios', 'mobile-android'],
   });

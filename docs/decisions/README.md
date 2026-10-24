@@ -6,8 +6,8 @@
 - [ADR-138: Convergent Google/password Admin bootstrap](138-converge-google-and-password-admin-bootstrap.md)
   — accepted direction, 2026-10-24; two bootstrap paths, one Account, native
   Desktop OAuth and optional method completion. Partially supersedes ADR-111.
-  First account-core batch implemented; native Desktop transport/UI/live
-  acceptance pending. Remote Web/cloud auth deferred.
+  Account core and configurable native Desktop transport/UI implemented;
+  publisher/live/packaged acceptance pending. Remote Web/cloud auth deferred.
 
 - [ADR-137: Image contract 2 by App SDK floor](137-negotiate-image-contract-2-by-app-sdk-floor.md)
   — accepted, 2026-10-23; App SDK 1.7.0 adds image contract 2 (provider profiles, measured

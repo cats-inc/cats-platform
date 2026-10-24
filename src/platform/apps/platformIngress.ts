@@ -59,7 +59,9 @@ export class PlatformIngress {
       autoConnect: this.settings.autoConnect,
       configured: this.settings.provider === 'external' ? !!this.settings.publicOrigin : !!this.settings.credentialRef,
       url: available ? this.settings.publicOrigin ?? null : null,
-      configuredOrigin: this.settings.publicOrigin ?? '', listenPort: this.settings.listenPort,
+      configuredOrigin: this.settings.provider === 'ngrok'
+        ? this.settings.requestedOrigin ?? this.settings.publicOrigin ?? '' : this.settings.publicOrigin ?? '',
+      listenPort: this.settings.listenPort,
       target: this.worker?.url ?? this.listener?.target ?? null, legacySources: [...this.legacySources],
       errorCode: this.errorCode, retryCount: this.retryCount,
       publicVerification: { state: 'unknown' as const, observedAt: this.observedAt } };
@@ -114,6 +116,11 @@ export class PlatformIngress {
         autoConnect: input.autoConnect ?? previous.autoConnect,
         provider: input.provider ?? previous.provider, listenPort: input.listenPort ?? previous.listenPort,
         publicOrigin: input.publicOrigin === '' ? undefined : input.publicOrigin ?? previous.publicOrigin } as PlatformIngressSettings;
+      if (next.provider === 'ngrok') {
+        next.requestedOrigin = input.publicOrigin !== undefined ? input.publicOrigin as string
+          : previous.requestedOrigin ?? previous.publicOrigin ?? '';
+        next.publicOrigin = previous.publicOrigin;
+      }
       try {
         next = await this.store.withCredential(next, input.authtoken as string | undefined);
         next = validateIngressSettings(next);
@@ -143,6 +150,34 @@ export class PlatformIngress {
       else if (this.wanted && this.settings.enabled) { this.retryCount = 0; await this.connect(); }
       else this.state = this.settings.enabled ? 'disconnected' : 'off';
     }).catch(() => {});
+  }
+  /** Disarm before data erasure; retain configuration for deliberate re-enablement. */
+  resetForDataReset(): Promise<void> {
+    const revision = ++this.revision;
+    this.wanted = false;
+    this.revoke();
+    return this.serialize(async () => {
+      try {
+        if (revision !== this.revision) throw new Error('Ingress reset superseded.');
+        // A failed restore may leave constructor defaults in memory despite a
+        // valid primary file. Never overwrite retained metadata from that cache.
+        const stored = await this.store.read();
+        if (!stored && (await this.store.legacy()).length) throw new Error('Ingress migration is unresolved.');
+        const next = { ...(stored ?? this.settings), enabled: false, autoConnect: false };
+        await this.store.save(next);
+        if (revision !== this.revision || this.closed) throw new Error('Ingress reset superseded.');
+        this.settings = next;
+        if (!await this.cleanup()) throw new Error('cleanup_pending');
+        this.state = 'off'; this.errorCode = null; this.retryCount = 0;
+      } catch (error) {
+        // Failed persistence still stops the old generation. Data erasure must
+        // not proceed until both durable disarm and worker cleanup succeed.
+        if (this.state !== 'cleanup_pending') {
+          if (await this.cleanup()) this.fail(error);
+        }
+        throw new Error('Remote access could not be prepared for data reset.');
+      }
+    });
   }
   close(): Promise<void> {
     if (this.shutdown) return this.shutdown;
@@ -246,7 +281,8 @@ export class PlatformIngress {
           else listener.accept(socket);
         },
         context: { appId: 'cats.platform', componentId: 'ingress', dataDir: path.dirname(this.store.filename), services: {},
-          ingress: { target: listener.target, authtoken, url: this.settings.publicOrigin } },
+          ingress: { target: listener.target, authtoken,
+            url: this.settings.requestedOrigin ?? this.settings.publicOrigin } },
         onExit: () => {
           if (!this.closed && this.epoch === epoch) {
             this.revoke();

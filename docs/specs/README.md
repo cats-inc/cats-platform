@@ -2,13 +2,13 @@
 
 - [SPEC-130: Desktop-managed remote access](SPEC-130-desktop-managed-remote-access.md)
   — scoped ngrok/external lifecycle and protected migration implemented,
-  2026-10-25; Windows fixtures/native storage checked. Funnel, packaged OS and
-  full shared-consumer/live managed-provider acceptance remain open.
+  2026-10-25; Windows managed connection/restart/reset and native storage checked.
+  Funnel, packaged OS, independent-device and full shared-consumer acceptance remain open.
   Separate one-time external-proxy Ask/Grok Bot acceptance passed on Windows.
 - [SPEC-129: Desktop Admin bootstrap and Google sign-in](SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md)
-  — first batch implemented, 2026-10-25; common Admin bootstrap, bound Google
-  proofs, same-account first password and compatibility checks. Native Desktop
-  transport/UI/live acceptance pending; remote Web and cloud auth deferred.
+  — account core and configurable Desktop transport/UI implemented, 2026-10-25;
+  same-account method completion preserves existing profiles/conversations.
+  Publisher registration/live Google/packaged OS pending; remote Web deferred.
 
 - [SPEC-128: Shared image service and controlled Cat generation](SPEC-128-shared-image-service-and-controlled-cat-generation.md)
   — draft, 2026-10-23; common Studio/Cat service, durable budgets, isolated assets,

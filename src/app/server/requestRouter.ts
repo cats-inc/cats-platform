@@ -19,6 +19,7 @@ import {
   sendPlatformAuthGateRejection,
 } from './authGate.js';
 import { routePlatformSetupApi } from './platformSetupRoutes.js';
+import { routeNativeGoogleAuth } from './nativeGoogleRoutes.js';
 import {
   handleRuntimeApiProxyRoute,
   handleRuntimeSurfaceRoute,
@@ -430,6 +431,7 @@ export async function routeRequest(
     return;
   }
 
+  if (await routeNativeGoogleAuth(request, response, url, dependencies)) return;
   const authGateResult = await handlePlatformAuthGate(request, response, url, method, dependencies);
   if (authGateResult.handled) {
     return;

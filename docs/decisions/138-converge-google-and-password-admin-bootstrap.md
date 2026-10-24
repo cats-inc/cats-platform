@@ -3,9 +3,11 @@
 ## Status
 
 Accepted product direction, 2026-10-24. The owner authorized the first
-identity-contract/account-core batch on 2026-10-25; that core is implemented
-with isolated verification. Native Desktop OAuth transport/UI, publisher setup
-and live acceptance remain pending. No version change or publication is authorized.
+identity-contract/account-core batch and then the Desktop-native P2 slice on
+2026-10-25. Both are implemented with isolated verification. Publisher registration,
+live Google and packaged per-OS acceptance remain pending. The publisher has no
+Desktop client ID yet; this slice completes configurable source and fixtures.
+No version change or publication is authorized.
 Detailed requirements are in
 [SPEC-129](../specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md);
 delivery is sequenced by

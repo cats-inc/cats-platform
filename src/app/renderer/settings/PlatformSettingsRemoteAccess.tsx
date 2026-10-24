@@ -66,10 +66,13 @@ export function PlatformSettingsRemoteAccess() {
       const result = await response.json();
       if (attempt !== mutation.current) return;
       setStatus(result.remoteAccess);
+      if (!result.remoteAccess.legacySources?.length) setSource('');
       setOrigin(result.remoteAccess.configuredOrigin);
       if (result.remoteAccess.errorCode) showToast(t(result.remoteAccess.errorCode === 'secure_storage_unavailable'
         ? 'remoteAccessSecureStorage' : 'remoteAccessError'));
-      if (status?.configuredOrigin && result.remoteAccess.configuredOrigin !== status.configuredOrigin) showToast(t('remoteAccessOriginChanged'));
+      const previousUrl = status?.url ?? status?.configuredOrigin;
+      const nextUrl = result.remoteAccess.url;
+      if (previousUrl && nextUrl && nextUrl !== previousUrl) showToast(t('remoteAccessOriginChanged'));
     } catch { if (attempt === mutation.current) showToast(t('remoteAccessError')); }
     finally { if (attempt === mutation.current) { setToken(''); setBusy(false); } }
   };

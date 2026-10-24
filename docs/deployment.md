@@ -40,7 +40,12 @@ and other per-record UI state.
 Desktop startup/system tray preferences, configuration and installation
 identity, installed Apps/plugins and their data, Desktop/Runtime profiles,
 provider CLI logins/native transcripts, and external workspace files remain.
-The bilingual UI lists these boundaries.
+The bilingual UI lists these boundaries. Remote-access configuration and encrypted
+credentials remain, but reset durably clears enabled/auto-connect intent and
+closes the owned ingress before account/conversation erasure. Failed settings
+validation/persistence or unconfirmed worker cleanup blocks erasure. Completing
+setup again, restarting or waking does not reopen the old tunnel; enable it
+explicitly in Remote access.
 The one Desktop exception is the main window placement: on Desktop, reset forgets
 `window-state.json` and returns the window to its default size and position.
 This operation is not an uninstall or provider-account logout.
@@ -696,22 +701,49 @@ Auth and repair constraints for LAN/tunnel access:
 - Aggregate login-throttle state can be cleared through the admin+CSRF
   browser route or the one-time recovery token route;
   do not delete the auth-state file just to clear a bounded cooldown.
-- Every workspace has a local Admin password. Setup refuses to complete
-  without one, so a deployment always retains a credential that works offline,
-  on a raw LAN IP, and on origins Google will not authorize.
+- Desktop setup supports Google or email/password on the same account model.
+  Google-only Admins may add an optional first password through fresh native
+  Google verification in General Account settings. A local password supports
+  offline/Mobile/remote-browser authentication. Existing password accounts,
+  conversations and Runtime data require no schema migration or reset.
 - Google account linking is an authenticated `Settings > General > Account`
   action, not a deployment step. It requires the operator to re-enter the local
   password; the resulting action grant is single-use, expires in five minutes,
   is bound to one browser session and purpose, and dies with the process.
-- Google Sign-In requires an origin Google authorizes, which generally rules
-  out raw LAN IP hosts and plain HTTP other than localhost. On those hosts the
-  Account section stays truthful: local password remains the login method and
-  the UI explains that linking needs an authorized origin.
+- Desktop native Google uses a temporary loopback callback, independent of
+  public ingress. Existing operator-configured Web GIS still requires its own
+  authorized origins; raw LAN IPs and arbitrary tunnel domains do not qualify.
+  Remote Web and a shared cloud login service remain deferred.
 - Unlinking Google revokes every other browser and mobile session for that
   account and rotates the current session's CSRF token. Expect other devices
   and phones to be signed out; the device performing the unlink stays signed
   in. Unlink is refused when it would leave the account with no local
   password.
+
+### Distributor Desktop Google configuration
+
+Use a publisher-owned Google OAuth **Desktop app** client. For source development,
+set `CATS_AUTH_GOOGLE_DESKTOP_CLIENT_ID`; for Desktop release builds, provide the
+public repository variable `GOOGLE_DESKTOP_CLIENT_ID`. Staging writes
+`shared/cats-platform/config/google-desktop-oauth.json`, which the existing
+installer mapping places at `resources/app-sidecar/config/google-desktop-oauth.json`.
+The tracked default has `clientId: null`. A missing ID reports `not_configured`;
+invalid local configuration disables native Google without breaking local login.
+Do not reuse Web GIS/Mobile audiences or supply a Web client secret. Ordinary
+users do not enter their own OAuth keys or tunnel domains.
+
+The host injects an ephemeral `CATS_DESKTOP_AUTH_KEY` only into Platform. Do not
+set or persist it in dotenv/settings. Private issuer routes require the key,
+loopback and absence of browser Origin; they are denied by public ingress. Codes,
+PKCE verifier, Google tokens and deferred proof stay in host/server memory. Cats
+session cookies are installed through Electron's HttpOnly cookie API; renderer
+status contains no cookie/provider token. Reset/restart invalidates proofs.
+
+As of 2026-10-25 the publisher client has **not been registered**. This slice
+provides configurable source and isolated fixtures only. Consent/publishing,
+real account acceptance and installed packages on Windows/macOS/Linux remain
+open; no cloud project, provider account or release was modified.
+See [SPEC-129](specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md).
 
 ### Desktop Host First Slice
 
@@ -1032,6 +1064,7 @@ for the planned desktop host model.
 | `CATS_PORT` | Yes | Service port (`CATS_INC_PORT` remains a compatibility alias) |
 | `CATS_PLATFORM_DIR` | No | Override the platform root used for `state/chat-state.local.json`, `state/platform-onboarding-history.json`, and `config/platform-preferences.json` |
 | `CATS_DESKTOP_DIR` | No | Override the desktop root used for `state.json`, `window-state.json` and `logs/` |
+| `CATS_AUTH_GOOGLE_DESKTOP_CLIENT_ID` | No | Public distributor Desktop OAuth client; environment override of bundled config, separate from Web/Mobile; see [configuration](#distributor-desktop-google-configuration) |
 | `CATS_DESKTOP_CANDIDATE_ROOT` | No | Opt into [isolated candidate acceptance](#isolated-candidate-acceptance); explicit loopback hosts and distinct non-default ports are required |
 | `CATS_RUNTIME_DIR` | No | Override the runtime root used for `config/`, `data/`, and `sessions/` |
 | `CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG` | No | Override the provider capability bootstrap YAML path. Defaults to `<platform config dir>/provider-capability-bootstrap.yaml` |

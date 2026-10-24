@@ -7,6 +7,8 @@ import type { IngressSecretProtector, IngressSecretPurpose } from '#cats-ingress
 export interface PlatformIngressSettings {
   schemaVersion: 3; enabled: boolean; autoConnect: boolean;
   provider: 'ngrok' | 'external'; listenPort: number; credentialRef?: string; publicOrigin?: string;
+  /** Empty selects automatic assignment; absent preserves pre-field fixed-origin intent. */
+  requestedOrigin?: string;
 }
 interface LegacySettings { schemaVersion: 2; enabled: boolean; provider: 'ngrok' | 'external';
   listenPort: number; authtoken: string; publicOrigin?: string }
@@ -17,6 +19,7 @@ const TOKEN = /^[A-Za-z0-9_-]{20,512}$/;
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 export const emptyIngressSettings: PlatformIngressSettings = {
   schemaVersion: 3, enabled: false, autoConnect: false, provider: 'ngrok', listenPort: 0,
+  requestedOrigin: '',
 };
 export function validatePublicOrigin(value: unknown): string {
   if (typeof value !== 'string' || value.length > 2048) throw new Error('Invalid public origin.');
@@ -32,6 +35,7 @@ export function validateIngressSettings(value: unknown): PlatformIngressSettings
     || typeof input.autoConnect !== 'boolean' || !['ngrok', 'external'].includes(input.provider ?? '')
     || !Number.isInteger(input.listenPort) || input.listenPort! < 0 || input.listenPort! > 65535
     || ('authtoken' in input) || (input.credentialRef !== undefined && !UUID.test(input.credentialRef))
+    || (input.requestedOrigin !== undefined && typeof input.requestedOrigin !== 'string')
     || (input.enabled && input.provider === 'ngrok' && !input.credentialRef)
     || (input.enabled && input.provider === 'external' && (!input.publicOrigin || input.listenPort === 0))) {
     throw new Error('Invalid ingress settings.');
@@ -39,6 +43,9 @@ export function validateIngressSettings(value: unknown): PlatformIngressSettings
   return { schemaVersion: 3, enabled: input.enabled, autoConnect: input.autoConnect,
     provider: input.provider!, listenPort: input.listenPort!,
     ...(input.credentialRef ? { credentialRef: input.credentialRef } : {}),
+    ...(input.requestedOrigin !== undefined ? {
+      requestedOrigin: input.requestedOrigin ? validatePublicOrigin(input.requestedOrigin) : '',
+    } : {}),
     ...(input.publicOrigin ? { publicOrigin: validatePublicOrigin(input.publicOrigin) } : {}) };
 }
 function validateLegacy(value: unknown): LegacySettings {
@@ -183,6 +190,7 @@ export class PlatformIngressSettingsStore {
     for (const row of await this.legacy()) await add(row.filename);
     let settings: PlatformIngressSettings = { ...emptyIngressSettings, enabled: old.enabled,
       autoConnect: old.enabled, provider: old.provider, listenPort: old.listenPort,
+      requestedOrigin: old.publicOrigin ?? '',
       ...(old.publicOrigin ? { publicOrigin: old.publicOrigin } : {}) };
     settings = validateIngressSettings(await this.withCredential(settings, old.authtoken || undefined));
     if (!sources.length) { await this.save(settings); return settings; }

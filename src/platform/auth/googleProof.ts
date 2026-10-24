@@ -42,6 +42,7 @@ interface PendingTransaction {
   phase: 'pending' | 'verifying' | 'ready';
   proofHash?: string;
   identity?: PlatformVerifiedGoogleIdentity;
+  actionToken?: string;
 }
 
 /**
@@ -71,6 +72,7 @@ export class MemoryPlatformGoogleProofStore implements PlatformGoogleProofStore 
   begin(input: {
     binding: NativeGoogleAuthBinding;
     callbackUrl: string;
+    actionToken?: string;
   }): NativeGoogleAuthStartResult {
     if (!this.clientId) throw new PlatformGoogleProofError('not_configured');
     assertBinding(input.binding);
@@ -91,8 +93,17 @@ export class MemoryPlatformGoogleProofStore implements PlatformGoogleProofStore 
     };
     this.transactions.set(start.transactionId, {
       binding: structuredClone(input.binding), start, phase: 'pending',
+      actionToken: input.actionToken,
     });
     return { ...start };
+  }
+
+  /** Trusted issuer metadata only; never part of the consumer/renderer interface. */
+  readTransaction(id: string): { binding: NativeGoogleAuthBinding; actionToken?: string } {
+    this.prune();
+    const transaction = this.transactions.get(id);
+    if (!transaction) throw new PlatformGoogleProofError('unknown_or_expired');
+    return { binding: structuredClone(transaction.binding), actionToken: transaction.actionToken };
   }
 
   async complete(input: NativeGoogleAuthCompleteInput): Promise<NativeGoogleAuthProof> {
@@ -162,6 +173,10 @@ export class MemoryPlatformGoogleProofStore implements PlatformGoogleProofStore 
     for (const [id, pending] of this.transactions) {
       if (pending.binding.contextId === contextId) this.transactions.delete(id);
     }
+  }
+
+  cancelTransaction(id: string, contextId: string): void {
+    if (this.transactions.get(id)?.binding.contextId === contextId) this.transactions.delete(id);
   }
 
   revokeForSession(sessionId: string): void {

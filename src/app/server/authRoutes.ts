@@ -1612,7 +1612,7 @@ async function resolveBrowserPrincipal(
   });
 }
 
-function buildAuthStatusPayload(
+export function buildAuthStatusPayload(
   auth: PlatformAuthConfig,
   resolved: PlatformPrincipal | null,
   csrfToken: string | null,

@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress; account core and scoped ngrok/external lifecycle implemented; native OAuth, Funnel and full external/OS acceptance pending |
+| Status | In progress; account core, Desktop P2 and scoped ngrok/external lifecycle implemented; Windows managed restart/reset passed; publisher/Funnel/full external/OS acceptance pending |
 | Owner | User |
 | Date | 2026-10-24 |
 | Identity | [ADR-138](../decisions/138-converge-google-and-password-admin-bootstrap.md), [SPEC-129](../specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md) |
@@ -18,11 +18,17 @@ accounts, Desktop-managed ngrok/Funnel and one entry for Mobile/Telegram/Apps.
 Remote Web, including Google Web login and a central cloud authentication
 service, is deferred. The owner additionally authorized direct commit/push of
 documentation to main on 2026-10-25, then authorized the recommended first batch:
-P0 identity contracts plus P1 account core, now merged through
-[PR #314](https://github.com/cats-inc/cats-platform/pull/314).
-P2 host/native OAuth/UI, remote-access implementation,
-external account/provider configuration, live tunnels, installation, version
-bumps and releases remain outside this batch.
+P0 identity contracts plus P1 account core. That batch merged through
+[PR #314](https://github.com/cats-inc/cats-platform/pull/314), commit
+`2d42f9721ba19de3ecd1c07cf81b886b4713945b`, after the owner explicitly approved
+CI-gated merge and cleanup. The owner then authorized the Desktop-native P2
+implementation, keeping tunnel/Funnel untouched and preserving existing
+password profiles/conversations without reset. They confirmed no publisher
+Desktop client ID exists yet and requested configurable source first.
+P2 uses a feature worktree/PR; the prior merge grant applied to #314 only.
+External provider/account configuration, live Google, installed-app replacement,
+version bumps and releases are outside this slice. Native Mobile Google and
+remote Web stay deferred.
 
 On 2026-10-25 the owner separately authorized a narrow first remote-acceptance
 step: use a free ngrok dev domain with the existing shared ingress and Ask App,
@@ -84,7 +90,8 @@ boundaries pass focused integration checks.
   handoff, proof binding, expiry, concurrent attempts and browser-session issuance.
 - [ ] Establish publisher-owned Google Desktop client/consent configuration,
   packaging injection and live-test account availability without collecting
-  user secrets in tracked files.
+  user secrets in tracked files. Source/packaging injection is implemented in P2;
+  publisher registration and live accounts are still deferred.
 - [ ] Inventory public routes/auth consumers, including the actual Telegram
   cookie-gate conflict, internal Runtime/Code/Cat tools and existing Web routes.
 - [x] Freeze ngrok/external settings/status schema, secure-store references,
@@ -123,20 +130,20 @@ crash recovery is not claimed. See the first-batch checkpoint below.
 
 ### P2 — Native Google and account/onboarding UX
 
-- [ ] Implement a bounded Desktop system-browser OAuth transaction with PKCE,
+- [x] Implement a bounded Desktop system-browser OAuth transaction with PKCE,
   state, nonce, transient loopback callback and authenticated private handoff.
-- [ ] Handle completion, cancellation, denied consent, expiry, replay, offline
+- [x] Handle completion, cancellation, denied consent, expiry, replay, offline
   state, restart and full-exit cleanup without partial account mutation.
-- [ ] Show the two first-run choices; preserve the existing provider/Catlas
+- [x] Show the two first-run choices; preserve the existing provider/Catlas
   onboarding sequence and explicit setup completion.
-- [ ] Add account-method completion to the existing General Account section;
+- [x] Add account-method completion to the existing General Account section;
   derive states from Identities and keep password creation optional.
-- [ ] Preserve configured GIS/self-hosted behavior without using its client ID
+- [x] Preserve configured GIS/self-hosted behavior without using its client ID
   as the Desktop client or promising arbitrary-origin Web support.
 - [ ] Verify the existing Mobile Google path, or implement the required native
   sign-in for Google-only accounts within approved mobile packaging contracts.
   Track its delivery separately from the Desktop slice; no embedded tunnel GIS.
-- [ ] Test both fresh-account sequences and an existing local/handle/linked
+- [x] Test both fresh-account sequences and an existing local/handle/linked
   profile; preserve account IDs, roles and owner data.
 
 Exit: native Desktop acceptance is recorded independently per OS; Google-only
@@ -149,8 +156,10 @@ to complete either Desktop bootstrap path.
   adapters under one serialized lifecycle and shared listener.
 - [x] Implement profile-scoped OS-protected credentials and protected migration
   of plaintext settings, with failure/restart fixtures and Windows native check.
-- [x] Implement ngrok assigned-name discovery/reuse, explicit provider rejection
-  states and worker/late-result protection; live new-worker acceptance remains open.
+- [x] Implement ngrok automatic assignment/requested-domain separation, explicit
+  provider rejection states and worker/late-result protection. Windows live
+  managed connection/restart/reset passed; independent-client/wake/OS acceptance
+  remains open.
 - [ ] Add Funnel client/login/policy/OS-support detection, first-time user
   approval guidance, exact mapping ownership and conflict-aware cleanup.
 - [ ] Prove no stale mapping forwards into an unrelated reused port. Failed
@@ -296,6 +305,80 @@ packaged OS callbacks and all remote-provider phases remain pending. Existing
 cross-file hard-interruption recovery remains fail-closed; only caught write
 failure rollback and guarded restart behavior are claimed.
 
+## Desktop P2 checkpoint — 2026-10-25
+
+Implemented the system-browser PKCE/nonce/state loopback flow, private keyed
+issuer, fixed host submission of provisional setup/first-password proofs,
+HttpOnly Cats-cookie handoff, dual onboarding and native login/account methods.
+Distributor configuration comes from a public environment value or bundled
+JSON; the release workflow reads public repository variable
+`GOOGLE_DESKTOP_CLIENT_ID`. Its tracked default is null. The owner explicitly
+requested configurable source before registering a Google client.
+
+Auth remains version 1. No Core/Runtime schema change, migration, reset or
+forced relink is needed. Isolated integration preserves the existing Account,
+password hash, Membership and exact conversation/Runtime file bytes. Google-first
+password completion and subsequent logins resolve the same Account. Mobile and
+remote-browser password endpoints remain usable once that method exists;
+native Mobile Google UI, remote Web, tunnel/Funnel and consumer-provider phases
+remain deferred.
+
+Independent source review found and verified corrections for pending-start
+cancellation, late-result replacement, cookie publication races, exact old
+transaction cancellation, audit-sink failure and account refresh after a lost
+link reply. The final reviewer reported no remaining blocker, without running
+the tests. Cookie publication is explicitly a non-cancellable commit; other
+local cleanup precedes bounded remote cancellation. Public ingress rejects the
+entire private Google prefix even with a valid host key.
+
+Executed validation:
+
+- **259/259** affected auth/bootstrap, renderer, private route and shared-ingress
+  tests across 42 bundled files; the final native-only delta then passed
+  **32/32** (14 host, 11 private-server, 7 renderer). These overlap; they are not
+  separate counts of unique coverage.
+- **130** architecture/browser/docs/preload/supervisor cases passed. Packaging
+  initially started before its required server output existed; after compilation,
+  the packaging/supervisor run passed **50/50**, including generated publisher
+  configuration and Runtime key exclusion. No installer/release was built.
+- Server and Desktop compilation, renderer checking and test-fixture checking
+  passed; the final test fixture check is recorded after its last added cases.
+- **1,102** local Markdown target references across 12 amended documents passed,
+  resolving sibling-repo links against the workspace rather than the nested
+  worktree. Diff whitespace check passed.
+- Test-collection static coverage passed; the output-existence case requires the
+  full test bundle and is left to CI because only affected files were bundled.
+
+Windows source-candidate acceptance passed for the actual method switch,
+Traditional Chinese layout, explicit unconfigured Google hint/disabled action
+and return to usable password fields. Provider selection used an empty selection;
+no account was created and no Google/provider login was attempted. Both sidecars
+stopped with `drained` and exit 0. Evidence is retained outside the checkouts at
+`C:\Users\sammy\Source\cats-inc\candidate-native-google-20261025-b`
+(`launch.json`, screenshots and `candidate-evidence.json`), launch ID
+`adebb42c6827faac203e7e1c606930bcbd5d435cc81f9425e35bbd7ce0401c00`.
+The source receipt is a dirty snapshot of this worktree, not an installed release.
+Initial candidate compilation exposed missing Runtime `pngjs` in the existing
+development dependency tree; a separate package/lock-matched dependency directory
+was prepared, leaving the normal Runtime installation unchanged.
+
+Final test-fixture checking passed after the last added cases. Desktop bootstrap,
+state and attempt-ID contracts passed **14/14**, plus the static test-collection
+case. Complete test-bundle output existence and full CI remain hosted gates;
+this local work deliberately bundled only affected tests.
+The first [P2 hosted CI run](https://github.com/cats-inc/cats-platform/actions/runs/40121996329)
+passed typechecks and reported 5,865 passed, 60 skipped and one failed window-close
+contract. Native cleanup had been inserted before clearing the closed-window
+reference. The handler now clears that reference first, preserving the existing
+late-event safety contract before starting OAuth cleanup. The unchanged window
+and bootstrap contract tests passed **5/5**; the subsequent
+[CI run](https://github.com/cats-inc/cats-platform/actions/runs/40123022495) passed.
+That result predates the ngrok integration/reset follow-up below.
+
+Publisher registration/consent, live Google and packaged Windows/macOS/Linux
+callbacks remain unverified. No normal Desktop/profile was changed, and no
+version bump, installation or publication was performed.
+
 ## One-time Ask/ngrok acceptance — 2026-10-25
 
 - Built the public Platform SDK package from `2d42f972` with server and Desktop
@@ -388,5 +471,81 @@ This does not reuse the earlier live Bot acceptance as proof of the new managed
 worker. New-provider account/domain/wake acceptance, packaged macOS/Linux,
 Mobile/Telegram/two-App external acceptance and Funnel remain open. No installed
 Desktop binaries, release versions or App pins are changed by this slice.
+
+## Identity/ngrok integration and reset follow-up — 2026-10-25
+
+The owner authorized conflict resolution against merged #316/#317, Reset
+integration and isolated managed-ngrok live acceptance. They agreed to enter
+their test authtoken directly in the isolated candidate window; no credential
+is requested through chat or copied from their working profile. Funnel,
+Mobile QR/webhook work, installation, version bumps and publication remain out
+of this follow-up. Existing #315 retains both Desktop Google env/IPC and the
+ngrok private safeStorage broker, lifecycle signals and public-route defenses.
+
+Reset now ends authenticated streams, stops admission/cancels retries and saves
+remote access disabled with auto-connect off before touching auth/Core/chat data.
+Its serialized operation re-reads durable validated settings, preserving provider,
+origin, port and encrypted credential references even after a failed restore.
+Unresolved migration, persistence failure and unknown cleanup block data erasure;
+late acquisition/wake/network results cannot reconnect after successful reset.
+Configuration remains available for manual re-enablement after setup.
+
+The first native managed-worker live pass succeeded for initial HTTPS health and
+public 401/403 admission, then full candidate restart reproduced
+`ERR_NGROK_313`: an observed automatically assigned URL was replayed as a
+requested custom domain. Settings now distinguish optional `requestedOrigin`
+from observed `publicOrigin`; new automatic connections keep the request blank
+across reconnect. Explicit and pre-field legacy fixed-domain intent is retained.
+The UI keeps the automatic field blank, clears a completed migration selection
+and announces changed URLs only for an actually usable connection. Independent
+review found no remaining blocker after these changes. Provider domain concepts
+are described in [ngrok's primary documentation](https://ngrok.com/docs/gateway/domains);
+the actual 313/restart outcome here is observed test evidence, not a claim that
+all automatically allocated names are stable with the pinned SDK.
+
+Focused validation passed: 32 final domain/lifecycle/storage/Settings regressions,
+17 existing reset/helper regressions, the earlier 38 Google/private-route/UI/
+shared-ingress integration cases and 64 compiled reset/Desktop/packaging cases
+(overlapping coverage). Server and Desktop compilation, renderer typecheck and
+the final complete test-fixture typecheck passed. Independent read-only review
+reported no remaining blocker; the reviewer did not run tests. Full CI remains
+the gate for the integrated head.
+
+The repaired Windows source candidate `candidate-auth-ngrok-reset-20261025-b`
+built Platform HEAD `e01a92ab32cecd551eb079bac7ef29699226072d` plus the dirty
+integration/reset/domain snapshot, digest
+`36e255f46459da4a4da2fd118cb63f3ab1f9cbd9230ad2c2b13fe88aff81ffa5`.
+Runtime was clean `5212fa59ee44fbee7eea0d85e7482933824ff775`, digest
+`57e44609b1817d1f2ee84f871b9adb4ad55f70c5b565edf41d2ca70f8abb2d81`.
+Launch ID: `751b278d16384ddd5b4d502a196e5f02daaf42edcabdb1953e4cd6b4b6bc1372`.
+All server/host source matches the final implementation; the later renderer-only
+migration-source/error-Toast corrections are covered by the final UI fixtures.
+
+The owner entered the test token directly into this isolated window. Actual
+managed ngrok connected with automatic assignment; host-origin requests through
+public HTTPS returned JSON 200 for health, 401 for unauthenticated channels and
+403 for native Google start/App installation. These probes required no ngrok
+warning-bypass header. Full host/sidecar shutdown drained and the old public
+health URL returned 404. Restart of the same built bytes/profile reused the
+encrypted credential, automatically connected at a different assigned URL and
+passed the same admission probes. The advanced requested-URL field stayed blank.
+
+The candidate's real Reset UI then completed with Runtime reset unchecked,
+returned to onboarding and left the public URL at 404. Saved ingress settings
+retained the encrypted credential reference and automatic-allocation mode while
+both enabled/auto-connect flags were false. A post-reset restart reached the
+native provider chooser with both services ready; the local restart helper
+incorrectly expected a product page and timed out, then safely drained the
+candidate. A subsequent optional helper launch hit Windows EPERM replacing its
+private control receipt before reaching UI. No Defender detection was reported;
+the final receipt confirms exit 0 and both owned sidecars stopped. This tooling
+limit does not establish post-setup live wake acceptance; isolated lifecycle/
+reset fixtures cover the disabled intent across setup, restore and wake.
+
+No independent external device, managed-worker Ask/Grok Bot round trip, live
+Google consent, actual suspend/wake or packaged macOS/Linux was tested here.
+The earlier temporary-helper Bot evidence remains separate. Private account
+identifiers, public URLs and credentials are omitted from tracked evidence.
+Normal Desktop binaries/profile, versions and release state were unchanged.
 
 *Last updated: 2026-10-25*

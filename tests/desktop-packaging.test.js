@@ -1392,7 +1392,13 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     generatedAt: new Date('2026-03-24T12:05:00.000Z'),
     platforms: ['windows', 'linux'],
     apps: [createPinnedApp()],
+    desktopGoogleClientId: 'publisher-desktop-client',
   });
+
+  assert.deepEqual(JSON.parse(await readFile(join(plan.outputRoot, 'shared', 'cats-platform',
+    'config', 'google-desktop-oauth.json'), 'utf8')), { clientId: 'publisher-desktop-client' });
+  assert.ok(plan.targets.every((target) => target.artifacts.some((artifact) =>
+    artifact.id === 'desktop-google-oauth-config')));
 
   const bundle = JSON.parse(await readFile(join(plan.outputRoot, 'shared', 'official-apps', 'bundle.lock.json'), 'utf8'));
   assert.deepEqual(bundle.apps, plan.apps);

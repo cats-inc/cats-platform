@@ -255,6 +255,8 @@ jobs:
           CATS_DESKTOP_RELEASE_TAG: ${{ needs.guard.outputs.tag }}
           CATS_DESKTOP_RELEASE_PLATFORM: ${{ matrix.platform }}
           CATS_DESKTOP_RUNTIME_COMMIT: ${{ steps.runtime.outputs.sha }}
+          # Public Desktop OAuth client ID; absence keeps native Google unavailable.
+          CATS_AUTH_GOOGLE_DESKTOP_CLIENT_ID: ${{ vars.GOOGLE_DESKTOP_CLIENT_ID }}
           # Credentials are platform-scoped and withheld for an explicitly
           # unsigned preview. Tag-triggered official releases cannot opt out.
           WIN_CSC_LINK: ${{ needs.guard.outputs.unsigned != 'true' && matrix.platform == 'windows' && secrets.WIN_CSC_LINK || '' }}

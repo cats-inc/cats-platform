@@ -58,7 +58,9 @@ export function createServer(dependencies: ServerDependencies) {
   const desktopAppsKey = dependencies.shared.desktopAppsKey ?? process.env.CATS_DESKTOP_APPS_KEY;
   const appComponents = dependencies.shared.appComponents ?? (/^[a-f0-9]{64}$/.test(desktopAppsKey ?? '')
     ? new AppComponentHost({ chatStatePath: dependencies.shared.config.chatStatePath, ownerId: 'desktop-owner' }) : undefined);
-  dependencies = { ...dependencies, shared: { ...dependencies.shared, appComponents, desktopAppsKey } };
+  dependencies = { ...dependencies, shared: { ...dependencies.shared, appComponents, desktopAppsKey,
+    desktopAuthKey: dependencies.shared.desktopAuthKey ?? process.env.CATS_DESKTOP_AUTH_KEY,
+  } };
   const pluginConfig = dependencies.shared.config;
   const plugins = dependencies.shared.managedPlugins ?? new ManagedPluginManager(pluginConfig.platformDir,
     pluginConfig.managedPluginPolicy === true && Boolean(pluginConfig.platformDir) && resolve(pluginConfig.platformDir) !== resolve(join(homedir(), '.cats', 'platform')),
@@ -283,6 +285,13 @@ export function createServer(dependencies: ServerDependencies) {
       const [state, core] = await Promise.all([chat.chatStore.read(), chat.chatStore.readCore()]);
       if (state.channels.some(channel => channel.roomRouting?.workflow.activeTurn)
         || core.runs.some(run => run.status === 'running')) throw new PlatformResetBusyError();
+      // End authenticated streams cleanly before revoking their tunnel sockets.
+      await Promise.all([...openStreams].map(response => new Promise<void>(resolve => {
+        if (response.writableFinished || response.destroyed) { resolve(); return; }
+        const timer = setTimeout(resolve, 1000);
+        response.end(() => { clearTimeout(timer); resolve(); });
+      })));
+      await ingress?.resetForDataReset();
       await operation(async () => {
         // Streaming handlers return after subscribing. Close their responses as
         // well as revoking auth, so close handlers remove listeners/heartbeats.
@@ -310,6 +319,9 @@ export function createServer(dependencies: ServerDependencies) {
         resolvedDependencies.shared.browserHandoffStore.clearForReset?.();
         resolvedDependencies.shared.actionGrantStore.clearForReset?.();
         resolvedDependencies.shared.googleProofStore?.clearForReset();
+        if (resolvedDependencies.shared.nativeGoogleStore !== resolvedDependencies.shared.googleProofStore) {
+          resolvedDependencies.shared.nativeGoogleStore?.clearForReset();
+        }
         await resolvedDependencies.shared.setAuthRecoveryTokenState?.(null);
       });
     } finally {
@@ -325,7 +337,7 @@ export function createServer(dependencies: ServerDependencies) {
     secrets: resolvedDependencies.shared.ingressSecrets,
     platformDir: resolvePlatformStorageLayout(dependencies.shared.config.chatStatePath).platformDir,
     dispatch,
-    ready: async () => auth.mode !== 'unsafe_disabled' && !!auth.sessionSecret
+    ready: async () => !resetting && auth.mode !== 'unsafe_disabled' && !!auth.sessionSecret
       && !!(await resolvedDependencies.shared.coreStore.readCore()).setupCompleteAt
       && (await resolvedDependencies.shared.authStore.readStateStatus()).status === 'ready',
     onOrigin: origin => { auth.allowedBrowserOrigins = [...new Set([...configuredOrigins, ...(origin ? [origin] : [])])]; },
