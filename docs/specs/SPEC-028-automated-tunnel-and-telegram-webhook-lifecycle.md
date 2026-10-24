@@ -7,6 +7,13 @@
 
 In Progress (Polling-first slice landed)
 
+Managed Desktop ingress follow-up (2026-10-24):
+[SPEC-130](SPEC-130-desktop-managed-remote-access.md) reuses this polling/webhook
+split and adds shared ngrok/Funnel lifecycle, binding-secret admission and URL
+registration recovery. See [ADR-139](../decisions/139-manage-one-desktop-remote-ingress.md)
+and [PLAN-122](../plans/PLAN-122-desktop-identity-and-remote-access-rollout.md).
+This amendment does not claim live webhook acceptance.
+
 ## Related
 
 - [ADR-029](../decisions/029-automate-tunnel-and-telegram-webhook-registration.md)

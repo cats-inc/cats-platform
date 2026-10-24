@@ -1,5 +1,13 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-139: One Desktop-managed remote ingress](139-manage-one-desktop-remote-ingress.md)
+  — accepted direction, 2026-10-24; shared ngrok/Funnel/existing-proxy setup for
+  Mobile, Telegram webhook and external Apps. Provider completion and acceptance pending.
+- [ADR-138: Convergent Google/password Admin bootstrap](138-converge-google-and-password-admin-bootstrap.md)
+  — accepted direction, 2026-10-24; two bootstrap paths, one Account, native
+  Desktop OAuth and optional method completion. Partially supersedes ADR-111.
+  Remote Web/cloud auth deferred; implementation not started.
+
 - [ADR-137: Image contract 2 by App SDK floor](137-negotiate-image-contract-2-by-app-sdk-floor.md)
   — accepted, 2026-10-23; App SDK 1.7.0 adds image contract 2 (provider profiles, measured
   JPEG/PNG) for Apps declaring it, while older Apps keep the schema 1 projection.
@@ -30,7 +38,8 @@
   runtime session descriptors; retires the undelivered tool catalog; not implemented.
 - [ADR-125: Multiple frontends and backends in one App](125-own-multiple-frontends-and-backends-in-one-app.md)
   — accepted and amended, 2026-09-29; complete Apps, direct internal HTTP and
-  shared Platform/Mobile/App ingress. Shared ingress remains unimplemented.
+  shared Platform/Mobile/App ingress. Code/local fixtures exist on main; live
+  external acceptance remains open. ADR-139 extends managed-provider lifecycle.
 
 > This directory contains Architecture Decision Records for documenting significant technical decisions.
 
@@ -207,7 +216,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-10-20 (ADR-132/ADR-133 remain in force; ADR-134 implementation is authorized.)*
+*Last updated: 2026-10-24 (ADR-138/ADR-139 direction recorded; implementation not started.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*
 

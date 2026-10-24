@@ -1,5 +1,13 @@
 # Feature Specifications
 
+- [SPEC-130: Desktop-managed remote access](SPEC-130-desktop-managed-remote-access.md)
+  — draft, 2026-10-24; provider setup/ownership, protected secret migration,
+  shared Mobile/Telegram/App authentication and external acceptance.
+- [SPEC-129: Desktop Admin bootstrap and Google sign-in](SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md)
+  — draft, 2026-10-24; owner-confirmed dual bootstrap and same-account method
+  completion; native Desktop callback, compatibility and acceptance. Remote Web
+  and cloud auth deferred; implementation not started.
+
 - [SPEC-128: Shared image service and controlled Cat generation](SPEC-128-shared-image-service-and-controlled-cat-generation.md)
   — draft, 2026-10-23; common Studio/Cat service, durable budgets, isolated assets,
   migration and generated-image-to-Telegram acceptance. Implementation not started.
@@ -22,8 +30,9 @@
   — draft, 2026-09-29; agent-opened static/dev-server/document previews beside
   the Code conversation; open sign-offs; implementation not started.
 - [SPEC-122: App components and private services](SPEC-122-app-components-and-private-services.md)
-  — amended for one Platform/Mobile/App ingress; local component prototype exists,
-  shared routing, sandbox and remote acceptance pending.
+  — one Platform/Mobile/App ingress; code and local routing/sandbox fixtures
+  exist on main. Live external acceptance remains open; SPEC-130 extends the
+  managed-provider lifecycle.
 
 > This directory contains feature specifications that define *what* to build and *why*.
 

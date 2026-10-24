@@ -1,5 +1,10 @@
 # Implementation Plans
 
+- [PLAN-122: Desktop identity and remote access](PLAN-122-desktop-identity-and-remote-access-rollout.md)
+  — draft, 2026-10-24; one delivery plan for dual Admin/bootstrap, native Google,
+  managed ngrok/Funnel and Mobile/Telegram/App acceptance. Documentation only;
+  implementation, provider mutation and releases not authorized; remote Web deferred.
+
 - [PLAN-121: Shared image service and controlled Cat generation](PLAN-121-shared-image-service-and-controlled-cat-generation.md)
   — draft, 2026-10-23; Runtime compatibility, Studio-preserving extraction,
   Cat tool delivery, companion integration and durable Telegram recovery.
@@ -22,8 +27,8 @@
   — planning only; M1 calculator (static), M2 pomodoro (Vite), M3 Claude/Codex
   behavioral acceptance, M4 viewer/provider breadth.
 - [PLAN-115: App components and private services](PLAN-115-app-components-and-private-services.md)
-  — local prototype fixtures passed; P4 shared Platform/Mobile/App ingress,
-  sandbox and remote acceptance are the next implementation phase.
+  — shared Platform/Mobile/App ingress code and local fixtures exist on main;
+  live external acceptance remains open. PLAN-122 extends provider setup/recovery.
 
 > This directory contains implementation plans that define *how* to build features.
 
@@ -196,7 +201,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-10-20 (PLAN-119 implementation/scoped acceptance remains complete with owner review pending; PLAN-120 implementation is in progress.)*
+*Last updated: 2026-10-24 (PLAN-122 planning recorded; its implementation is not started.)*
 
 *See also: [specs/](../specs/) for feature specifications*
 

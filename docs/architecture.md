@@ -18,6 +18,21 @@ ships the matching catalog resources and module; it no longer seeds complete per
 catalog copies. See [SPEC-013](specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md)
 and the [Runtime workflow](../../cats-runtime/docs/provider-catalog-soft-patches.md).
 
+## Desktop identity and remote-access direction (2026-10-24)
+
+[ADR-138](decisions/138-converge-google-and-password-admin-bootstrap.md) /
+[SPEC-129](specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md) define
+Google or email/password first-admin creation, same-account method completion,
+and native Desktop Google sign-in through a temporary loopback callback.
+The callback does not use the user's tunnel domain.
+[ADR-139](decisions/139-manage-one-desktop-remote-ingress.md) /
+[SPEC-130](specs/SPEC-130-desktop-managed-remote-access.md) extend the existing
+shared ingress with managed ngrok/Funnel lifecycle for Mobile, Telegram webhook
+and external App endpoints. Remote Web and a shared cloud login service are deferred.
+The existing local-password/GIS implementation remains the baseline; the new
+identity/provider completion is not implemented. See
+[PLAN-122](plans/PLAN-122-desktop-identity-and-remote-access-rollout.md).
+
 ## Overview
 
 `Cats` remains the product-facing brand, while this repo targets the technical
@@ -56,9 +71,9 @@ mounts and distinct scoped authentication. Path prefixes are not browser isolati
 Cats host capabilities rather than mandatory App-domain request wrappers.
 [SPEC-122](specs/SPEC-122-app-components-and-private-services.md) records requirements
 and [PLAN-115](plans/PLAN-115-app-components-and-private-services.md) the implementation
-sequence. Shared ingress is pending; a local per-App origin/tunnel prototype has
-Windows fixture evidence only. Renderer-only execution below remains the delivered
-baseline on main; no component release is implied.
+sequence. Shared routing/sandbox code and local integration fixtures now exist
+on main; external provider/Bot acceptance remains open. PLAN-122 extends managed
+provider setup and recovery on this boundary. No new release is implied.
 
 `cats-apps` owns official utility source and versioned build artifacts. This
 repository keeps the App manifest/SDK, install registry, permission enforcement,

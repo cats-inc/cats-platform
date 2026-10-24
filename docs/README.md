@@ -1,5 +1,16 @@
 # Documentation Index
 
+[Desktop identity and remote access](plans/PLAN-122-desktop-identity-and-remote-access-rollout.md)
+records the 2026-10-24 owner-confirmed direction: Google or email/password first
+Admin, same-account method completion, native Desktop OAuth and one managed
+ngrok/Funnel ingress for Mobile, Telegram webhook and external App routes.
+[ADR-138](decisions/138-converge-google-and-password-admin-bootstrap.md) /
+[SPEC-129](specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md) define
+identity; [ADR-139](decisions/139-manage-one-desktop-remote-ingress.md) /
+[SPEC-130](specs/SPEC-130-desktop-managed-remote-access.md) define remote access.
+Remote Web and a shared cloud auth service are deferred. These are planning
+documents; implementation, provider/live acceptance and releases are not authorized.
+
 [Provider catalog consumer validation](research/2026-10-24-provider-catalog-consumer-validation.md)
 records the sixteen-channel refresh, Auggie effort regression and isolated source Candidate check.
 
@@ -50,8 +61,9 @@ planning only, with sign-offs pending.
 records the accepted one-App/multiple-frontends-and-backends boundary, native
 App-owned API traffic and unified lifecycle. [SPEC-122](specs/SPEC-122-app-components-and-private-services.md)
 and [PLAN-115](plans/PLAN-115-app-components-and-private-services.md) require one
-shared Platform/Mobile/App ingress. Local Windows prototype fixtures passed in
-unpublished worktrees; shared routing/sandbox/remote acceptance remain pending.
+shared Platform/Mobile/App ingress. Shared routing/sandbox code and local
+integration fixtures exist on main; live external acceptance remains pending.
+PLAN-122 extends managed-provider setup and recovery on the same ingress.
 
 [Knowledge contributions and preview practice](knowledge-practice.md) documents
 ordinary local Chat/Code agent draft submission, Desktop manual review/adoption,

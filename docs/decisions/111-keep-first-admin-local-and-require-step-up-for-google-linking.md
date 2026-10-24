@@ -2,7 +2,16 @@
 
 ## Status
 
-Accepted
+Accepted historical baseline; partially superseded, 2026-10-24, by
+[ADR-138](138-converge-google-and-password-admin-bootstrap.md).
+The owner now accepts Google or email/password first-admin creation, followed
+by optional completion of the other method on the same Account. The mandatory
+local-password bootstrap and local-password-only step-up assumptions below
+describe the delivered baseline, not the new target. Explicit linking, stable
+subject uniqueness, account-bound grants and revocation remain applicable.
+[SPEC-129](../specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md) and
+[PLAN-122](../plans/PLAN-122-desktop-identity-and-remote-access-rollout.md) define
+the follow-up; no implementation changes are made by this amendment.
 
 ## Date
 

@@ -14,6 +14,13 @@ registry/lifecycle machinery, not a second installer.
 
 ## P0 — Freeze the component contract
 
+2026-10-24 follow-up:
+[PLAN-122](PLAN-122-desktop-identity-and-remote-access-rollout.md) extends the
+shared-ingress baseline with protected secret migration, managed ngrok/Funnel
+and Mobile/Telegram/App external acceptance. It reuses this plan's host/App
+boundary and fixtures. Remote Web is deferred in that new milestone; neither
+this cross-reference nor older local checks establishes live provider readiness.
+
 - [x] Record one App with multiple frontends/backends and unified management.
 - [x] Separate ordinary App-owned service requests from Cats host SDK capabilities.
 - [x] Freeze versioned manifest collections, dependency graph, route declarations,

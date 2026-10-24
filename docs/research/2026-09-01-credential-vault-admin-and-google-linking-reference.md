@@ -2,6 +2,11 @@
 
 Date: 2026-09-01
 
+Updated 2026-10-24 with the
+[dual-bootstrap follow-up](#2026-10-24-follow-up-dual-bootstrap-and-managed-remote-access).
+The September observations/recommendations below are historical, including the
+previous mandatory-local-password policy; do not treat them as the current target.
+
 ## Topic
 
 Local reference review of the first-admin, local break-glass login, Google
@@ -140,4 +145,75 @@ reference selectively:
 
 ---
 
-*Last updated: 2026-09-01*
+## 2026-10-24 follow-up: dual bootstrap and managed remote access
+
+### Source review and changed direction
+
+Read-only source/test inspection used Credential Vault revision
+`f23cd95df945dbe3e56d1d683ada35007ca11166` in
+`../sammykenny2/credential-vault` relative to the Cats workspace root.
+Unrelated working edits were left intact. No credentials, databases, provider
+configuration or private vault payloads were read, and no tests or live OAuth
+flows were run in that repository.
+
+The inspected source now supports:
+
+- With no Admin, the first successful Google login is promoted; configured
+  `ADMIN_EMAIL` optionally restricts which account may be promoted.
+- Manual email/password setup creates the first Admin.
+- Explicit Google linking verifies the same email and provider-subject
+  uniqueness. Ordinary Vault Google login also has automatic email linking;
+  that behavior is not selected for Cats.
+- An Admin without a login password can add one and then use email/password
+  login. The current setter requires proof that the vault is unlocked, as well
+  as the current session. Existing passwords cannot be replaced by that operation.
+- The earlier callback's undefined-`settings` defect is not present in the
+  inspected version: the callback loads settings. This is static evidence,
+  not a fresh full security or execution review.
+
+The two completed paths have equivalent login capabilities/authority. Cats
+will implement this product behavior using its Account/Identity separation,
+not Vault placeholder IDs or automatic account claiming by email. Vault proof
+is specific to its encryption model; Cats needs fresh verification of the
+existing method and a purpose-bound server action proof instead.
+
+The owner explicitly requested these alternatives for Cats and deferred remote
+Web in the first stage. This supersedes the September recommendation that every
+first Admin must start with a local password. See
+[ADR-138](../decisions/138-converge-google-and-password-admin-bootstrap.md) and
+[SPEC-129](../specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md).
+
+### Cats baseline observed
+
+At Platform `b562a96f`, source inspection finds local-only first-admin setup,
+optional Web GIS, linked-subject login, password step-up and same-email linking.
+Identity records can represent a Google-only account, but the bootstrap and
+first-password operations described in SPEC-129 are not delivered.
+
+Shared ingress, an ngrok SDK worker, external-proxy mode, settings and startup
+restore already exist. A managed Funnel adapter, protected migration of inline
+authtokens and the full provider recovery contract remain future work.
+The general browser auth gate currently precedes Telegram webhook dispatch;
+the webhook route is not in its public-route policy. The managed public
+webhook path therefore needs explicit binding-secret admission, not an assumption
+that opening a tunnel makes Telegram functional.
+
+### Primary documentation checked on 2026-10-24
+
+| Source | Finding | Design consequence |
+| --- | --- | --- |
+| [Google Desktop OAuth](https://developers.google.com/identity/protocols/oauth2/native-app) | System-browser code flow, PKCE and a loopback callback are supported for Desktop public clients | Desktop sign-in need not depend on any tunnel domain; verify the actual registered client/library/OS |
+| [GIS setup](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid) and [client rules](https://support.google.com/cloud/answer/15549257) | Web JavaScript origins must be registered; redirect URLs are additionally configured when used; wildcard origins/redirects are not accepted | Existing GIS cannot automatically cover every user's tunnel origin; remote Web/broker is deferred |
+| [ngrok Node SDK](https://ngrok.github.io/ngrok-javascript/interfaces/Config.html) and [domains](https://ngrok.com/docs/gateway/domains) | Authtoken-backed forwarding and assigned stable dev domains are available; specified domains need account authorization/configuration | Default UI can discover the assigned name; custom name is advanced; test the pinned SDK/account behavior |
+| [Tailscale identity](https://tailscale.com/docs/concepts/tailscale-identity) and [Funnel requirements](https://tailscale.com/docs/features/tailscale-funnel) | Ordinary login differs from unattended enrollment keys; Funnel uses tailnet DNS and requires client/platform, HTTPS and policy support | Guide login/approval and detect the device origin; do not ask ordinary users for an enrollment key |
+| [Funnel command lifecycle](https://tailscale.com/docs/reference/tailscale-cli/funnel) | Background mode can survive daemon/device restarts | Own exact forwarding and avoid stale targets; never reset unrelated mappings |
+
+These facts establish architectural options, not successful Google/provider
+operation in Cats. Limits, client support and provider-account configuration
+must be rechecked during implementation. No shared cloud service was selected
+or provisioned. [ADR-139](../decisions/139-manage-one-desktop-remote-ingress.md),
+[SPEC-130](../specs/SPEC-130-desktop-managed-remote-access.md) and
+[PLAN-122](../plans/PLAN-122-desktop-identity-and-remote-access-rollout.md)
+capture the combined follow-through.
+
+*Last updated: 2026-10-25*

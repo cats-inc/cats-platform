@@ -1,5 +1,13 @@
 # SPEC-113: Admin Bootstrap and Google Account Linking
 
+2026-10-24 follow-up: [SPEC-129](SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md)
+replaces the mandatory local first-admin rule below with Google/email-password
+alternatives and adds native Desktop OAuth plus first-password setup.
+This document remains the historical delivered link/unlink baseline.
+[ADR-138](../decisions/138-converge-google-and-password-admin-bootstrap.md)
+states which decisions change; follow-up implementation is pending in
+[PLAN-122](../plans/PLAN-122-desktop-identity-and-remote-access-rollout.md).
+
 ## Metadata
 
 | Field | Value |

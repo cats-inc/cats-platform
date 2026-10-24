@@ -4,6 +4,14 @@
 
 Proposed (2026-04-30)
 
+2026-10-24 follow-up: [ADR-138](138-converge-google-and-password-admin-bootstrap.md)
+retains this platform-owned Account/Identity/session foundation and replaces
+ADR-111's local-password-only bootstrap with two convergent first-admin paths.
+It adds a native Desktop Google flow; remote Web and a shared cloud auth
+service are deferred. Historical Web GIS requirements below are not proof
+of native OAuth delivery. See
+[PLAN-122](../plans/PLAN-122-desktop-identity-and-remote-access-rollout.md).
+
 ## Context
 
 Cats Platform recently gained LAN-facing browser access for trusted local

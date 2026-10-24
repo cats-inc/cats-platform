@@ -3,9 +3,17 @@
 ## Status and scope
 
 User-confirmed product requirements, amended 2026-09-29.
-An unpublished local prototype exists on `feat/app-components`; the shared
-Platform/Mobile/App ingress contract below is planned and not implemented. Governing decision: [ADR-125](../decisions/125-own-multiple-frontends-and-backends-in-one-app.md).
+Shared Platform/Mobile/App ingress code and local integration fixtures exist
+on main; live external acceptance remains open. Governing decision:
+[ADR-125](../decisions/125-own-multiple-frontends-and-backends-in-one-app.md).
 Delivery: [PLAN-115](../plans/PLAN-115-app-components-and-private-services.md).
+
+Managed-provider follow-up, 2026-10-24:
+[SPEC-130](SPEC-130-desktop-managed-remote-access.md) extends the same host-owned
+ingress for ngrok/Funnel setup and recovery. The owner's first-stage scope is
+Mobile, Telegram webhook and external App endpoints; remote Web is deferred.
+The broader Web topology below remains a compatibility/design reference, not
+a claim that the new consumer Web experience is being delivered.
 
 Extend the package foundation so one installed App can own multiple frontends,
 services and workers. A renderer-only App is a valid special case. Ask is the
@@ -28,7 +36,7 @@ first consumer; the contract must not encode Ask-specific request/answer APIs.
 | ACMP-11 | Desktop management authorization under ADR-121 governs the complete App. Ordinary frontend interaction is not an install/update permission. Existing trust restrictions also apply to executable services/workers. |
 | ACMP-12 | One public origin/HTTPS port/tunnel serves Platform, remote Mobile clients and all enabled Apps. Route by App ID; internal ports stay private. App lifecycle changes never stop unrelated routes or the shared tunnel. |
 
-## Communication model and shared ingress (required, not implemented)
+## Communication model and shared ingress (local implementation; external acceptance pending)
 
 ```text
 Remote browser / Cats Mobile / external assistant

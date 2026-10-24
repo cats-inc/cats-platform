@@ -11,6 +11,13 @@
 
 ## Related Spec
 
+Follow-up, 2026-10-24:
+[PLAN-122](PLAN-122-desktop-identity-and-remote-access-rollout.md) and
+[SPEC-129](../specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md)
+replace this delivered plan's local-only first-admin target with dual bootstrap
+and native Desktop Google. Preserve its implementation/validation history;
+it is not evidence that the new first-password/OAuth flow is complete.
+
 [SPEC-113: Admin Bootstrap and Google Account Linking](../specs/SPEC-113-admin-bootstrap-and-google-account-linking.md)
 
 Related decision:

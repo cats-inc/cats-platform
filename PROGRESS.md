@@ -4,12 +4,22 @@
 
 ## Current Status
 
+Desktop identity and remote-access planning (2026-10-24): the owner accepts
+Google or email/password first-admin creation, same-account method completion,
+and Desktop-managed ngrok/Funnel for a shared Mobile/Telegram/App ingress.
+Remote Web and a shared cloud auth service are deferred. Five primary documents
+are prepared: ADR-138/ADR-139, SPEC-129/SPEC-130 and
+[PLAN-122](docs/plans/PLAN-122-desktop-identity-and-remote-access-rollout.md).
+This changes the intended bootstrap policy, not the delivered auth code.
+Implementation, live/provider acceptance and releases are not authorized.
+
 Shared App ingress (2026-09-29): Platform, remote Cats Mobile and every App
 must share one public origin/HTTPS port/tunnel, with `/apps/<appId>/` routing.
-The local component/Ask prototype passed isolated Windows fixtures but uses
-per-App origins/tunnels. Shared routing, opaque sandbox and remote acceptance
-are pending; see [PLAN-115](docs/plans/PLAN-115-app-components-and-private-services.md).
-This is a documentation correction; no component code or release is delivered.
+Shared routing/opaque sandbox code and local fixtures exist on main; live
+external acceptance remains open. See
+[PLAN-115](docs/plans/PLAN-115-app-components-and-private-services.md) for the
+baseline and PLAN-122 for managed-provider follow-through. This status correction
+does not claim a new runtime check or release.
 
 Studio (2026-09-28): implemented SDK 1.3 and the scoped single-image host boundary.
 App/Core jobs, retained images, account/package grants, duplicate suppression,

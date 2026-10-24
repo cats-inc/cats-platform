@@ -1,5 +1,11 @@
 # SPEC-100: Platform Authentication, Admin Bootstrap, and Google Identity
 
+2026-10-24 follow-up: the session/identity foundation below is retained.
+[SPEC-129](SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md) defines the
+new dual first-admin and native Desktop Google target; Web GIS configuration
+does not satisfy that native flow. Remote Web is deferred in the integrated
+[PLAN-122](../plans/PLAN-122-desktop-identity-and-remote-access-rollout.md).
+
 ## Metadata
 
 | Field | Value |

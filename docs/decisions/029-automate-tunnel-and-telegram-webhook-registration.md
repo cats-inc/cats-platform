@@ -8,6 +8,14 @@
 
 Accepted
 
+2026-10-24 managed Desktop extension:
+[ADR-139](139-manage-one-desktop-remote-ingress.md) and
+[SPEC-130](../specs/SPEC-130-desktop-managed-remote-access.md) define Desktop-owned
+ngrok/Funnel lifecycle on the shared ingress. They replace the operator-prepared
+expectation for that mode; existing-proxy mode and polling-first Telegram remain.
+Webhook-specific authentication and live acceptance are pending in
+[PLAN-122](../plans/PLAN-122-desktop-identity-and-remote-access-rollout.md).
+
 ## Date
 
 2026-03-23

@@ -3,9 +3,18 @@
 ## Status
 
 Accepted product boundary, amended 2026-09-29 for one shared Platform ingress.
-A local component prototype exists in an unpublished worktree; shared ingress
-and remote App access are not implemented. [SPEC-122](../specs/SPEC-122-app-components-and-private-services.md)
-and [PLAN-115](../plans/PLAN-115-app-components-and-private-services.md) track delivery.
+Shared-ingress code and local integration fixtures now exist on main;
+live external/remote App acceptance remains open.
+[SPEC-122](../specs/SPEC-122-app-components-and-private-services.md) and
+[PLAN-115](../plans/PLAN-115-app-components-and-private-services.md) track that baseline.
+
+2026-10-24 extension: [ADR-139](139-manage-one-desktop-remote-ingress.md),
+[SPEC-130](../specs/SPEC-130-desktop-managed-remote-access.md) and
+[PLAN-122](../plans/PLAN-122-desktop-identity-and-remote-access-rollout.md)
+define managed ngrok/Funnel setup, protected credentials and recovery on this
+same ingress. First-stage consumers are Mobile, Telegram webhook and external
+App endpoints. Remote Web is deferred; the topology below is not a promise of
+new remote-browser or Google Web support. App ownership/lifecycle remains unchanged.
 
 ## Context
 
