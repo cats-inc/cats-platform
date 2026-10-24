@@ -51,12 +51,15 @@ test('failed Code startup is recoverable; closed session observation does not co
   const store = new MemoryCoreStore(created.core), runtime = createRuntimeStub();
   const input = { taskId: created.task.id, workspacePath: 'C:/isolated-code-work', provider: 'codex' };
   const original = runtime.createSession.bind(runtime);
+  // These are successive attempts. Distinct injected timestamps keep the
+  // retry/closed-session scenario independent of the runner's wall-clock speed.
+  const firstAttemptAt = new Date('2026-10-25T00:00:00.000Z');
   runtime.createSession = async () => { throw new Error('Provider unavailable'); };
-  await assert.rejects(bridgeCodeTaskToRuntime(store, runtime, input), /Provider unavailable/);
+  await assert.rejects(bridgeCodeTaskToRuntime(store, runtime, input, firstAttemptAt), /Provider unavailable/);
   assert.equal((await store.readCore()).tasks[0].status, 'blocked'); assert.equal((await store.readCore()).runs[0].status, 'failed');
   await store.updateCore(core => resumeCodeTask(core, { taskId: created.task.id }).core);
   runtime.createSession = original;
-  await bridgeCodeTaskToRuntime(store, runtime, input);
+  await bridgeCodeTaskToRuntime(store, runtime, input, new Date(firstAttemptAt.getTime() + 1000));
   runtime.observeSession = async () => ({ session: { status: 'closed' } }) as never;
   const reconciled = await reconcileCodeTaskExecution(store, runtime, created.task.id);
   assert.equal(reconciled.tasks[0].status, 'blocked');

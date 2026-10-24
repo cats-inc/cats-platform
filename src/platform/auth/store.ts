@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -54,17 +55,20 @@ abstract class BasePlatformAuthStore implements PlatformAuthStore {
   }
 
   async readState(): Promise<PlatformAuthState> {
-    await this.mutationQueue;
-    const result = await this.readSnapshotStatus();
-    if (result.status === 'ready') {
-      return clonePlatformAuthState(result.state);
-    }
-    if (result.status === 'corrupt') {
-      throw result.error;
-    }
-    const empty = createEmptyPlatformAuthState(this.currentDate());
-    await this.writeSnapshot(empty);
-    return clonePlatformAuthState(empty);
+    // A missing read also publishes an empty file. Serialize that publication
+    // with mutations so it cannot overwrite a concurrent first Admin.
+    return this.runExclusive(async () => {
+      const result = await this.readSnapshotStatus();
+      if (result.status === 'ready') {
+        return clonePlatformAuthState(result.state);
+      }
+      if (result.status === 'corrupt') {
+        throw result.error;
+      }
+      const empty = createEmptyPlatformAuthState(this.currentDate());
+      await this.writeSnapshot(empty);
+      return clonePlatformAuthState(empty);
+    });
   }
 
   async writeState(state: PlatformAuthState): Promise<PlatformAuthState> {
@@ -149,7 +153,17 @@ export class FileBackedPlatformAuthStore extends BasePlatformAuthStore {
 
   protected async writeSnapshot(state: PlatformAuthState): Promise<void> {
     await mkdir(path.dirname(this.statePath), { recursive: true });
-    await writeFile(this.statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf-8');
+    // Never truncate a usable credential file if replacement fails. The temp
+    // file lives on the same filesystem and contains only the current schema.
+    const temporary = `${this.statePath}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(temporary, `${JSON.stringify(state, null, 2)}\n`, {
+        encoding: 'utf-8', mode: 0o600, flag: 'wx',
+      });
+      await rename(temporary, this.statePath);
+    } finally {
+      await rm(temporary, { force: true });
+    }
   }
 }
 

@@ -4,9 +4,9 @@
   — draft, 2026-10-24; provider setup/ownership, protected secret migration,
   shared Mobile/Telegram/App authentication and external acceptance.
 - [SPEC-129: Desktop Admin bootstrap and Google sign-in](SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md)
-  — draft, 2026-10-24; owner-confirmed dual bootstrap and same-account method
-  completion; native Desktop callback, compatibility and acceptance. Remote Web
-  and cloud auth deferred; implementation not started.
+  — first batch implemented, 2026-10-25; common Admin bootstrap, bound Google
+  proofs, same-account first password and compatibility checks. Native Desktop
+  transport/UI/live acceptance pending; remote Web and cloud auth deferred.
 
 - [SPEC-128: Shared image service and controlled Cat generation](SPEC-128-shared-image-service-and-controlled-cat-generation.md)
   — draft, 2026-10-23; common Studio/Cat service, durable budgets, isolated assets,

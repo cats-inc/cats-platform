@@ -2,9 +2,11 @@
 
 ## Status
 
-Accepted product direction, 2026-10-24; implementation not started.
-The owner requested these planning documents, not implementation, version
-changes or publication. Detailed requirements are in
+Accepted product direction, 2026-10-24. The owner authorized the first
+identity-contract/account-core batch on 2026-10-25; that core is implemented
+with isolated verification. Native Desktop OAuth transport/UI, publisher setup
+and live acceptance remain pending. No version change or publication is authorized.
+Detailed requirements are in
 [SPEC-129](../specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md);
 delivery is sequenced by
 [PLAN-122](../plans/PLAN-122-desktop-identity-and-remote-access-rollout.md).

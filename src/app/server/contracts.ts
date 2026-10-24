@@ -35,6 +35,7 @@ import type {
   PlatformAuthRecoveryTokenState,
   PlatformAuthStore,
   PlatformGoogleIdTokenVerifier,
+  PlatformGoogleProofStore,
 } from '../../platform/auth/index.js';
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { CompanionActivityStore } from '../../products/chat/companion/activityStore.js';
@@ -78,6 +79,7 @@ export interface SharedServerDependencies {
   browserHandoffStore?: PlatformBrowserHandoffStore;
   actionGrantStore?: PlatformAuthActionGrantStore;
   googleVerifier?: PlatformGoogleIdTokenVerifier;
+  googleProofStore?: PlatformGoogleProofStore;
   reportAuthSecurityEvent?: PlatformAuthSecurityEventReporter;
   authRecoveryTokenState?: PlatformAuthRecoveryTokenState | null;
   getAuthRecoveryTokenState?: () => PlatformAuthRecoveryTokenState | null;

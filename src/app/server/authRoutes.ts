@@ -7,6 +7,9 @@ import {
   collectLoginThrottleAlerts,
   createEmptyPlatformAuthState,
   createFirstAdminLocalAuthState,
+  addFirstLocalPasswordToAccount,
+  PlatformFirstPasswordError,
+  PlatformGoogleProofError,
   issueBrowserSession,
   isSessionChainActive,
   PlatformBrowserHandoffCapacityError,
@@ -54,6 +57,7 @@ import {
   type PlatformAuthErrorCode,
   type PlatformAuthSecurityEventReporter,
   type PlatformAuthStore,
+  type PlatformGoogleProofStore,
   type PlatformLoginMethodsSummary,
   type PlatformLoginThrottleAlert,
   type PlatformAuthRecoveryTokenState,
@@ -74,11 +78,16 @@ import {
 } from '../../shared/http.js';
 import { readGoogleCredentialRequestPayload } from './googleAuthRequest.js';
 import { sendPlatformAuthError } from './authErrorResponses.js';
+import {
+  PLATFORM_DESKTOP_AUTH_CONTEXT_HEADER,
+  PLATFORM_GOOGLE_PROOF_HEADER,
+} from '../../shared/nativeGoogleAuth.js';
 
 export interface AuthRouteDependencies {
   authStore: PlatformAuthStore;
   browserHandoffStore?: PlatformBrowserHandoffStore;
   actionGrantStore?: PlatformAuthActionGrantStore;
+  googleProofStore?: PlatformGoogleProofStore;
   auth: PlatformAuthConfig;
   googleVerifier?: PlatformGoogleIdTokenVerifier;
   reportAuthSecurityEvent?: PlatformAuthSecurityEventReporter;
@@ -178,6 +187,16 @@ export async function routePlatformAuthApi(
       return true;
     }
     await handleGoogleLogin(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/auth/password/first') {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    if (!enforcePreAuthOriginGate(context)) return true;
+    await handleFirstPassword(context);
     return true;
   }
 
@@ -876,25 +895,25 @@ async function handleGoogleLogin(context: RouteContext<AuthRouteDependencies>): 
     await sleep(throttle.delayMs, context.dependencies.sleep);
   }
 
-  const issued = createGoogleBrowserSessionForLinkedIdentity({
-    state,
-    identity,
-    sessionSecret,
-    sessionTtlMs: context.dependencies.auth.sessionTtlMs,
-    now,
+  const result: { issued: ReturnType<typeof createGoogleBrowserSessionForLinkedIdentity> } = {
+    issued: null,
+  };
+  const nextState = await context.dependencies.authStore.updateState((current) => {
+    result.issued = createGoogleBrowserSessionForLinkedIdentity({
+      state: current, identity, sessionSecret,
+      sessionTtlMs: context.dependencies.auth.sessionTtlMs, now,
+    });
+    return result.issued ? recordSuccessfulLogin(result.issued.state, {
+      subject: throttleSubject, now,
+    }) : current;
   });
+  const issued = result.issued;
   if (!issued) {
     await recordFailedProviderLogin(context, identity.providerSubject, now);
     sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Google account is not linked.');
     return;
   }
 
-  const nextState = await context.dependencies.authStore.writeState(
-    recordSuccessfulLogin(issued.state, {
-      subject: throttleSubject,
-      now,
-    }),
-  );
   sendJson(
     context.response,
     200,
@@ -1040,6 +1059,95 @@ async function handleLocalReauthentication(
     expiresAt: grant.expiresAt,
   };
   sendJson(context.response, 200, payload);
+}
+
+async function handleFirstPassword(context: RouteContext<AuthRouteDependencies>): Promise<void> {
+  const sessionSecret = context.dependencies.auth.sessionSecret;
+  const proofs = context.dependencies.googleProofStore;
+  if (!sessionSecret || !proofs) {
+    sendAuthError(context.response, 503, 'E_FORBIDDEN', 'Native Google is not configured.');
+    return;
+  }
+  const resolved = await resolveBrowserPrincipal(context);
+  if (!resolved) {
+    sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Authentication is required.');
+    return;
+  }
+  if (!enforceCatsCsrfToken(context, resolved.session)) return;
+  const proof = context.request.headers[PLATFORM_GOOGLE_PROOF_HEADER];
+  const contextId = context.request.headers[PLATFORM_DESKTOP_AUTH_CONTEXT_HEADER];
+  if (typeof proof !== 'string' || typeof contextId !== 'string' || context.url.search) {
+    await reportAuthSecurityEvent(context, {
+      kind: 'first_password_failed', outcome: 'failure', reason: 'confirmation_required',
+      accountId: resolved.account.id, sessionId: resolved.session.id,
+    });
+    sendAuthError(context.response, 403, 'E_REAUTH_REQUIRED', 'Fresh Google confirmation is required.');
+    return;
+  }
+  let body: { password?: unknown };
+  try {
+    body = await readJsonBody(context.request);
+    if (!body || Object.keys(body).some((key) => key !== 'password')) throw new Error();
+  } catch {
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Only the new password is accepted.');
+    return;
+  }
+  const csrf = generateSessionTokenMaterial(sessionSecret);
+  try {
+    const state = await context.dependencies.authStore.updateState(async (current) => {
+      const now = context.dependencies.now?.() ?? new Date();
+      const principal = resolveBrowserPrincipalFromToken(current, {
+        token: readCookie(context.request, AUTH_SESSION_COOKIE_NAME) ?? '', sessionSecret, now,
+      });
+      if (!principal || principal.session.id !== resolved.session.id) {
+        throw new PlatformFirstPasswordError('session_inactive');
+      }
+      const csrfHeader = context.request.headers['x-cats-csrf-token'];
+      if (!validateCatsSessionCsrfToken({
+        session: principal.session, sessionSecret,
+        token: typeof csrfHeader === 'string' ? csrfHeader : undefined,
+      }).ok) throw new PlatformFirstPasswordError('session_inactive');
+      const identity = proofs.consume({
+        token: proof,
+        binding: {
+          purpose: 'set_password', contextId,
+          accountId: principal.account.id, sessionId: principal.session.id,
+        },
+      });
+      const next = await addFirstLocalPasswordToAccount({
+        state: current, accountId: principal.account.id, sessionId: principal.session.id,
+        identity, password: body.password, now,
+      });
+      return {
+        ...next,
+        sessions: next.sessions.map((session) => session.id === principal.session.id
+          ? { ...touchSession(session, { now }), csrfTokenHash: csrf.tokenHash } : session),
+      };
+    });
+    await reportAuthSecurityEvent(context, {
+      kind: 'first_password_set', outcome: 'success',
+      accountId: resolved.account.id, sessionId: resolved.session.id,
+    });
+    sendJson(context.response, 200, buildAuthStatusPayload(context.dependencies.auth, {
+      ...resolved, session: state.sessions.find((entry) => entry.id === resolved.session.id)!,
+    }, csrf.token, summarizePlatformLoginMethods(state, resolved.account.id)), {
+      'Cache-Control': 'no-store',
+    });
+  } catch (error) {
+    const known = error instanceof PlatformFirstPasswordError
+      || error instanceof PlatformGoogleProofError || error instanceof PlatformAdminCredentialError;
+    await reportAuthSecurityEvent(context, {
+      kind: 'first_password_failed', outcome: 'failure',
+      accountId: resolved.account.id, sessionId: resolved.session.id,
+      reason: error instanceof PlatformGoogleProofError ? error.code
+        : error instanceof PlatformFirstPasswordError || error instanceof PlatformAdminCredentialError
+          ? error.reason : 'persistence_failed',
+    });
+    sendAuthError(context.response, known ? 403 : 503,
+      known ? 'E_REAUTH_REQUIRED' : 'E_FORBIDDEN',
+      known ? 'Password setup requires a valid Google confirmation and an available login email.'
+        : 'The password could not be saved.');
+  }
 }
 
 async function handleGoogleLink(context: RouteContext<AuthRouteDependencies>): Promise<void> {
@@ -1202,6 +1310,7 @@ async function handleGoogleUnlink(context: RouteContext<AuthRouteDependencies>):
   // capability either.
   for (const sessionId of revokedSessionIds) {
     context.dependencies.actionGrantStore?.revokeForSession(sessionId);
+    context.dependencies.googleProofStore?.revokeForSession(sessionId);
   }
   await reportAuthSecurityEvent(context, {
     kind: 'google_unlink_succeeded',
@@ -1477,6 +1586,7 @@ async function handleLogout(context: RouteContext<AuthRouteDependencies>): Promi
         context.dependencies.now?.() ?? new Date(),
       ),
     }));
+    context.dependencies.googleProofStore?.revokeForSession(resolved.session.id);
   }
   sendJson(
     context.response,

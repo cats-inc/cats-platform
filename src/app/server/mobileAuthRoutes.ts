@@ -17,6 +17,7 @@ import {
   type PlatformAuthStore,
   type PlatformDevicePlatform,
   type PlatformGoogleIdTokenVerifier,
+  type PlatformPrincipal,
   type PlatformVerifiedGoogleIdentity,
 } from '../../platform/auth/index.js';
 import type { PlatformAuthConfig } from '../../platform/auth/config.js';
@@ -306,71 +307,77 @@ async function handleMobileGoogleLogin(
     await sleep(throttle.delayMs, context.dependencies.sleep);
   }
 
-  const providerIdentity = state.identities.find((candidate) =>
-    candidate.provider === 'google'
-    && candidate.providerSubject === identity.providerSubject,
-  ) ?? null;
-  const account = providerIdentity
-    ? state.accounts.find((candidate) => candidate.id === providerIdentity.accountId) ?? null
-    : null;
-  const membership = account
-    ? state.memberships.find((candidate) => candidate.accountId === account.id) ?? null
-    : null;
-  if (!providerIdentity || !account || !membership || account.status !== 'active') {
-    await context.dependencies.authStore.updateState((current) =>
-      recordFailedLogin(current, {
+  const result: { principal: PlatformPrincipal | null; token: string | null } = {
+    principal: null, token: null,
+  };
+  await context.dependencies.authStore.updateState((current) => {
+    const providerIdentity = current.identities.find((candidate) =>
+      candidate.provider === 'google'
+      && candidate.providerSubject === identity.providerSubject,
+    ) ?? null;
+    const account = providerIdentity
+      ? current.accounts.find((candidate) => candidate.id === providerIdentity.accountId) ?? null
+      : null;
+    const membership = account
+      ? current.memberships.find((candidate) => candidate.accountId === account.id) ?? null
+      : null;
+    if (!providerIdentity || !account || !membership || account.status !== 'active') {
+      return recordFailedLogin(current, {
         subject: throttleSubject,
         policy: context.dependencies.auth,
         now,
-      }),
-    );
+      });
+    }
+
+    const issued = issueMobileDeviceSession({
+      accountId: account.id,
+      sessionSecret,
+      ttlMs: context.dependencies.auth.mobileSessionTtlMs,
+      now,
+      deviceLabel: readOptionalString(body.deviceLabel),
+      devicePlatform: readDevicePlatform(body.devicePlatform),
+      appVersion: readOptionalString(body.appVersion),
+      remoteAddress: readRemoteAddress(context.request),
+    });
+    const nowIso = now.toISOString();
+    const updatedIdentity = {
+      ...providerIdentity,
+      email: identity.email,
+      updatedAt: nowIso,
+    };
+    const updatedAccount = {
+      ...account,
+      email: identity.email,
+      avatarUrl: identity.avatarUrl ?? account.avatarUrl,
+      updatedAt: nowIso,
+    };
+
+    result.principal = { account: updatedAccount, membership, session: issued.session };
+    result.token = issued.token;
+    return recordSuccessfulLogin({
+      ...current,
+      updatedAt: nowIso,
+      accounts: current.accounts.map((candidate) =>
+        candidate.id === account.id ? updatedAccount : candidate,
+      ),
+      identities: current.identities.map((candidate) =>
+        candidate.id === providerIdentity.id ? updatedIdentity : candidate,
+      ),
+      sessions: [...current.sessions, issued.session],
+    }, {
+      subject: throttleSubject,
+      now,
+    });
+  });
+
+  if (!result.principal) {
     sendMobileAuthError(context, 401, 'E_UNAUTHENTICATED', 'Google account is not linked.');
     return;
   }
 
-  const issued = issueMobileDeviceSession({
-    accountId: account.id,
-    sessionSecret,
-    ttlMs: context.dependencies.auth.mobileSessionTtlMs,
-    now,
-    deviceLabel: readOptionalString(body.deviceLabel),
-    devicePlatform: readDevicePlatform(body.devicePlatform),
-    appVersion: readOptionalString(body.appVersion),
-    remoteAddress: readRemoteAddress(context.request),
-  });
-  const nowIso = now.toISOString();
-  const updatedIdentity = {
-    ...providerIdentity,
-    email: identity.email,
-    updatedAt: nowIso,
-  };
-  const updatedAccount = {
-    ...account,
-    email: identity.email,
-    avatarUrl: identity.avatarUrl ?? account.avatarUrl,
-    updatedAt: nowIso,
-  };
-
-  await context.dependencies.authStore.writeState(recordSuccessfulLogin({
-    ...state,
-    updatedAt: nowIso,
-    accounts: state.accounts.map((candidate) =>
-      candidate.id === account.id ? updatedAccount : candidate,
-    ),
-    identities: state.identities.map((candidate) =>
-      candidate.id === providerIdentity.id ? updatedIdentity : candidate,
-    ),
-    sessions: [...state.sessions, issued.session],
-  }, {
-    subject: throttleSubject,
-    now,
-  }));
-
-  sendJson(context.response, 200, buildMobileAuthStatusPayload(context.dependencies.auth, {
-    account: updatedAccount,
-    membership,
-    session: issued.session,
-  }, issued.token));
+  sendJson(context.response, 200, buildMobileAuthStatusPayload(
+    context.dependencies.auth, result.principal, result.token,
+  ));
 }
 
 async function handleMobileLogout(
