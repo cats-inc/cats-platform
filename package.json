@@ -6,6 +6,7 @@
   "homepage": "https://github.com/cats-inc/cats-platform",
   "type": "module",
   "imports": {
+    "#cats-ingress-secrets": "./packages/app-sdk/ingress-secret-protocol.js",
     "#cats-app-package": "./packages/app-sdk/package.js",
     "#cats-app-format": "./packages/app-sdk/format.js",
     "#cats-app-encode": "./packages/app-sdk/encode.js"

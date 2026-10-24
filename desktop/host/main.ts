@@ -1,6 +1,7 @@
 import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { validateDesktopAppRequest } from './appRequests.js';
+import { createIngressSecretProtector } from './ingressSecrets.js';
 
 import {
   app,
@@ -11,6 +12,9 @@ import {
   Menu,
   screen,
   session,
+  safeStorage,
+  powerMonitor,
+  net,
   shell,
   systemPreferences,
 } from 'electron';
@@ -2468,6 +2472,7 @@ async function main(): Promise<void> {
   const appManagementKey = randomBytes(32).toString('hex');
   supervisor = new ManagedServiceSupervisor(hostConfig, {
     env: { ...process.env, CATS_DESKTOP_APPS_KEY: appManagementKey },
+    ingressSecrets: createIngressSecretProtector(safeStorage, hostConfig.paths.platformDir),
     onStateChange: () => {
       if (hostConfig && supervisor) {
         publishSnapshot(buildSnapshot());
@@ -2475,6 +2480,17 @@ async function main(): Promise<void> {
       }
     },
   });
+  powerMonitor.on('suspend', () => supervisor?.signalPlatformIngress('suspend'));
+  powerMonitor.on('resume', () => supervisor?.signalPlatformIngress('resume'));
+  let ingressOnline = net.isOnline();
+  const ingressNetworkTimer = setInterval(() => {
+    const online = net.isOnline();
+    if (online !== ingressOnline) {
+      ingressOnline = online; supervisor?.signalPlatformIngress(online ? 'online' : 'offline');
+    }
+  }, 10_000);
+  ingressNetworkTimer.unref();
+  app.once('before-quit', () => clearInterval(ingressNetworkTimer));
   latestSnapshot = buildSnapshot(null);
   voiceCaptureController = new DesktopVoiceCaptureController({
     config: hostConfig,

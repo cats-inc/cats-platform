@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress; first identity-contract/account-core batch implemented; P2 and remote-access phases pending |
+| Status | In progress; account core and scoped ngrok/external lifecycle implemented; native OAuth, Funnel and full external/OS acceptance pending |
 | Owner | User |
 | Date | 2026-10-24 |
 | Identity | [ADR-138](../decisions/138-converge-google-and-password-admin-bootstrap.md), [SPEC-129](../specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md) |
@@ -18,11 +18,9 @@ accounts, Desktop-managed ngrok/Funnel and one entry for Mobile/Telegram/Apps.
 Remote Web, including Google Web login and a central cloud authentication
 service, is deferred. The owner additionally authorized direct commit/push of
 documentation to main on 2026-10-25, then authorized the recommended first batch:
-P0 identity contracts plus P1 account core. Implementation is delivered through
-[PR #314](https://github.com/cats-inc/cats-platform/pull/314): automatic approval
-review rejected direct-main source delivery and automatic merge/branch deletion
-because the visible direct-main grant covered documentation. Merge and cleanup
-therefore await explicit owner approval. P2 host/native OAuth/UI, remote-access implementation,
+P0 identity contracts plus P1 account core, now merged through
+[PR #314](https://github.com/cats-inc/cats-platform/pull/314).
+P2 host/native OAuth/UI, remote-access implementation,
 external account/provider configuration, live tunnels, installation, version
 bumps and releases remain outside this batch.
 
@@ -38,6 +36,12 @@ Future implementation can be delivered in independently validated slices under
 this plan. There is no requirement to finish tunnel support before local Google
 sign-in, or to enable a tunnel during onboarding. Existing delivered behavior
 remains the baseline until the relevant source changes land.
+
+The owner subsequently authorized the one-time installed Ask/ngrok acceptance and
+its merge, then the scoped ngrok secure-storage/lifecycle slice and reproducible
+Apps SDK pin. This does not authorize Funnel, native Google work, version bumps or
+publication. The implementation checkpoint below records evidence at its actual
+level; the full P3/P4/P5 acceptance remains open.
 
 ## Baseline and evidence
 
@@ -83,16 +87,16 @@ boundaries pass focused integration checks.
   user secrets in tracked files.
 - [ ] Inventory public routes/auth consumers, including the actual Telegram
   cookie-gate conflict, internal Runtime/Code/Cat tools and existing Web routes.
-- [ ] Freeze remote settings/status schema, secure-store references, retry/timeout
-  values, generation fences and provider ownership journal.
+- [x] Freeze ngrok/external settings/status schema, secure-store references,
+  retry/timeouts and generation fences in SPEC-130; Funnel ownership remains below.
 - [ ] Choose/prove a Funnel lifecycle: prefer process-bound managed forwarding;
   any persisted `--bg` mapping must pass stale-target/crash ownership checks
   before being enabled. Define behavior when an existing mapping cannot be adopted.
 - [ ] Inspect Mobile Google UI/SDK and Expo/runtime constraints. If Google-only
   owners cannot obtain a device session, include the minimum native-client work
   in P2/P4 rather than silently requiring an otherwise optional local password.
-- [ ] Classify additive versus breaking API/config/data changes. Reserve the
-  next 0.x minor only if necessary; perform no bump without release authorization.
+- [x] Classify ngrok schema-3/config/private-host-protocol changes as requiring
+  the next 0.x minor boundary; perform no bump without release authorization.
 
 Exit: reviewable wire contracts, provider prerequisites and compatibility decision.
 No unresolved security or persistence choice is disguised as an implementation detail.
@@ -143,19 +147,19 @@ to complete either Desktop bootstrap path.
 
 - [ ] Extend the existing Platform ingress; keep ngrok, Funnel and external
   adapters under one serialized lifecycle and shared listener.
-- [ ] Implement profile-scoped OS credential storage and protected migration of
-  existing plaintext authtokens/configuration, including failure/restart fixtures.
-- [ ] Implement ngrok assigned-name discovery/reuse and distinct account/domain
-  errors; protect worker lifetime and late-result races.
+- [x] Implement profile-scoped OS-protected credentials and protected migration
+  of plaintext settings, with failure/restart fixtures and Windows native check.
+- [x] Implement ngrok assigned-name discovery/reuse, explicit provider rejection
+  states and worker/late-result protection; live new-worker acceptance remains open.
 - [ ] Add Funnel client/login/policy/OS-support detection, first-time user
   approval guidance, exact mapping ownership and conflict-aware cleanup.
 - [ ] Prove no stale mapping forwards into an unrelated reused port. Failed
   ownership/cleanup leaves Cats admission closed and reports needs-action.
-- [ ] Support external fixed-origin/port mode without taking ownership of
+- [x] Support external fixed-origin/port mode without taking ownership of
   the user's external tunnel.
-- [ ] Add desired enablement/auto-connect, background startup/wake/network
+- [x] Add desired enablement/auto-connect, background startup/wake/network
   reconciliation, bounded retries and distinct provider/public-reachability state.
-- [ ] Compose the Remote access Settings form and pairing/App navigation into
+- [x] Compose the Remote access Settings form and existing pairing/App navigation into
   existing shells; ordinary users do not need local-port or enrollment-key forms.
 
 Exit: SPEC-130 R1-R5/R10-R12 lifecycle and isolation cases pass to the evidence
@@ -339,5 +343,50 @@ failure rollback and guarded restart behavior are claimed.
   Bookmark save order is still inferred from returned array order; video/image
   understanding and the Bot's native connector calls are not independently
   instrumented by Cats. This does not complete full P3/P4/P5 or other providers/OSes.
+
+## Scoped ngrok implementation checkpoint — 2026-10-25
+
+Schema 3 replaces inline tokens with immutable OS-encrypted credential references.
+Desktop safeStorage is available only to its owned Platform child over private
+IPC, bound to the profile/purpose; no renderer encryption method or plaintext
+fallback is added. Protected source bundles and a non-secret hash journal allow
+validated schema-2/per-App migration and interrupted retirement to resume. Unknown
+backups, changed active settings and missing credentials preserve recoverable data.
+File flush/POSIX directory sync are implemented; Windows directory durability under
+hard power loss is not claimed. Headless migration requires the native broker.
+
+The lifecycle separates saved auto-connect intent, observed provider state and
+unknown public reachability. Disable/exit/suspend/offline revoke first. Cancellation
+and generation fences cover delayed credential/settings/provider work; bounded
+retry stops on explicit provider/account errors. Cleanup retains ownership and
+prevents replacement until confirmed. The worker holds the SDK target port and
+passes paused sockets to the existing boundary over private IPC, so parent loss
+cannot leave a live forwarder pointing at another service's reused port.
+
+Validation: 31 focused ingress/storage/lifecycle/Settings tests passed through
+the CI test bundler, including actual-worker RST; 152 affected Desktop supervisor/packaging/
+architecture checks passed. Server, Desktop host, renderer and test typechecks
+passed. Windows Electron 41.2.0 exercised actual safeStorage encryption through
+the private broker and schema-2 migration in a disposable profile; token round trip
+and absence of plaintext files passed. Independent read-only review corrected
+generation, migration, cleanup, socket/backpressure/reset and suspend/network
+issues; final re-review found no remaining blocker.
+
+Source candidate `ngrok-managed-candidate-20261025-c` built Platform
+`1841cd545f9a13edbeb23f12126e60a64904f0d3` with Runtime
+`5212fa59ee44fbee7eea0d85e7482933824ff775`; Platform source digest
+`e9ebba10d5347b072719886bf95583cbbc739accd0656bca160e3e09b4237be6`,
+launch `e68f02561c3d2cb7da617e1a5ef23c2eec6e803622550588b1630030dc0746d1`.
+Its real Electron UI passed provider-free synthetic onboarding and Remote access
+inspection: default off, auto-connect unchecked, masked credential field, collapsed
+advanced settings and missing-credential rejection. No provider/model call was
+made. Stop receipt confirmed both owned sidecars drained. Later changes only
+correct test fixture resolution, generic error wording and documentation; this
+is source-candidate/UI evidence, not installed-release or live-provider acceptance.
+
+This does not reuse the earlier live Bot acceptance as proof of the new managed
+worker. New-provider account/domain/wake acceptance, packaged macOS/Linux,
+Mobile/Telegram/two-App external acceptance and Funnel remain open. No installed
+Desktop binaries, release versions or App pins are changed by this slice.
 
 *Last updated: 2026-10-25*

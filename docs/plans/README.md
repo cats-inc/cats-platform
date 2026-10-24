@@ -1,11 +1,10 @@
 # Implementation Plans
 
 - [PLAN-122: Desktop identity and remote access](PLAN-122-desktop-identity-and-remote-access-rollout.md)
-  — first identity-contract/account-core batch implemented, 2026-10-25;
-  native Desktop transport/UI, publisher registration and managed remote access
-  remain pending. A separate one-time ngrok helper and installed Ask/Grok Bot
-  round trip passed on Windows; this is not managed-provider completion or a
-  release. Remote Web remains deferred.
+  — account core plus scoped ngrok/external lifecycle implemented, 2026-10-25;
+  Windows storage/lifecycle fixtures passed. Native Google, Funnel and full
+  external/packaged OS acceptance remain open; no release, remote Web deferred.
+  Separate installed Ask/Grok Bot acceptance passed through the one-time helper.
 
 - [PLAN-121: Shared image service and controlled Cat generation](PLAN-121-shared-image-service-and-controlled-cat-generation.md)
   — draft, 2026-10-23; Runtime compatibility, Studio-preserving extraction,

@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { Socket } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { componentRunnerUrl } from '#cats-app-package';
@@ -73,6 +74,8 @@ export async function settleAppProcessCleanups(timeoutMs = 10_000): Promise<void
 export async function startAppProcess(options: {
   entrypoint: string; kind: 'service' | 'worker' | 'migration' | 'ingress'; context: AppProcessContext;
   timeoutMs?: number; onExit?: () => void; registry?: ProcessRecordRegistry;
+  signal?: AbortSignal;
+  onIngressSocket?(socket: Socket): void;
 }): Promise<AppProcess> {
   const key = randomBytes(32).toString('hex');
   // Explicit environment: Apps do not inherit provider credentials, host auth or NODE_OPTIONS.
@@ -80,8 +83,9 @@ export async function startAppProcess(options: {
   for (const name of ['SystemRoot', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR', 'LANG', 'LC_ALL']) {
     if (process.env[name]) env[name] = process.env[name];
   }
-  env.CATS_APP_COMPONENT = JSON.stringify({ entrypoint: options.entrypoint, kind: options.kind,
-    key, context: options.context });
+  const context = options.kind === 'ingress' && options.context.ingress
+    ? { ...options.context, ingress: { ...options.context.ingress, authtoken: '' } } : options.context;
+  env.CATS_APP_COMPONENT = JSON.stringify({ entrypoint: options.entrypoint, kind: options.kind, key, context });
   if (process.versions.electron) env.ELECTRON_RUN_AS_NODE = '1';
   const startedAt = Date.now();
   const child = spawn(process.execPath, ['--max-old-space-size=192', fileURLToPath(componentRunnerUrl)], {
@@ -94,6 +98,15 @@ export async function startAppProcess(options: {
     stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   });
   child.stdout?.resume(); child.stderr?.resume();
+  child.on('message', (value: unknown, handle: unknown) => {
+    if (handle instanceof Socket) {
+      if (options.kind === 'ingress' && (value as { type?: string })?.type === 'ingress-socket' && !stopping
+        && !options.signal?.aborted && options.onIngressSocket) options.onIngressSocket(handle);
+      else handle.destroy();
+    } else if (handle && typeof (handle as { close?: unknown }).close === 'function') {
+      try { (handle as { close(): void }).close(); } catch { /* Invalid child handles never enter the host dispatcher. */ }
+    }
+  });
   const recordId = `${options.context.appId}/${options.context.componentId}/${key.slice(0, 12)}`;
   if (child.pid) options.registry?.record({ id: recordId, processId: child.pid, startedAt });
   let stopping = false;
@@ -143,22 +156,35 @@ export async function startAppProcess(options: {
     await Promise.race([closed, new Promise(resolve => setTimeout(resolve, 2000).unref())]);
   };
   try {
+    let secretSent = false;
     const ready = await new Promise<{ port?: number; publicUrl?: string }>((resolve, reject) => {
       const timer = setTimeout(() => done(new Error('App component readiness timed out.')), options.timeoutMs ?? 15_000);
       const error = () => done(new Error('App component failed to start.'));
+      const aborted = () => done(new Error('App component start cancelled.'));
       const message = (value: unknown) => {
-        const data = value as { type?: string; port?: number; publicUrl?: string };
-        if (data?.type === 'failed') return error();
+        const data = value as { type?: string; port?: number; publicUrl?: string; code?: string };
+        if (options.kind === 'ingress' && data?.type === 'ingress-secret-required' && !secretSent) {
+          secretSent = true;
+          child.send({ type: 'ingress-secret', authtoken: options.context.ingress?.authtoken }, () => {});
+          return;
+        }
+        if (data?.type === 'failed') {
+          if (options.kind === 'ingress' && /^ERR_NGROK_\d+$/.test(data.code ?? '')) return done(new Error(data.code));
+          return error();
+        }
         if (data?.type === (options.kind === 'migration' ? 'migrated' : 'ready')) {
-          if (options.kind === 'service' && (!Number.isInteger(data.port) || data.port! < 1 || data.port! > 65535)) return error();
+          if (['service', 'ingress'].includes(options.kind) && (!Number.isInteger(data.port) || data.port! < 1 || data.port! > 65535)) return error();
           done(undefined, data);
         }
       };
       const done = (failure?: Error, data: { port?: number; publicUrl?: string } = {}) => {
         clearTimeout(timer); child.off('error', error); child.off('exit', error); child.off('message', message);
+        options.signal?.removeEventListener('abort', aborted);
         failure ? reject(failure) : resolve(data);
       };
       child.once('error', error); child.once('exit', error); child.on('message', message);
+      options.signal?.addEventListener('abort', aborted, { once: true });
+      if (options.signal?.aborted) aborted();
     });
     return { child, key, ...(ready.port ? { url: `http://127.0.0.1:${ready.port}` } : {}), publicUrl: ready.publicUrl, stop };
   } catch (error) { await stop(); throw error; }

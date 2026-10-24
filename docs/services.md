@@ -42,6 +42,13 @@ no occupied port is silently reused. The normal Platform listener is internal
 and must not be selected as the public tunnel target. Live external acceptance
 remains separate from local fixtures.
 
+Managed ngrok additionally binds one OS-assigned loopback TCP target in its owned
+worker and hands paused sockets to the same HTTP ingress boundary over private
+child IPC. The target stays reserved until SDK cleanup or worker exit, including
+parent loss; it exposes no second public origin or App-specific listener. Both
+worker handovers and boundary sockets are bounded to 64. OS-protected ingress
+credentials use private Desktop/Platform IPC and add no network listener.
+
 | Service Name | Port Range | Protocol | Status | Description |
 |--------------|------------|----------|--------|-------------|
 | `Cats Code` live previews | 47100-47199 | TCP | Static previews active; process previews opt-in | Supervised loopback-only preview origins (SPEC-108, SPEC-123). The in-process static file server leases ports here by default. Child-process previews such as Vite stay off until `CATS_CODE_LIVE_PREVIEW_USE_REAL_PROCESS_ADAPTER` and an enabled profile are set. |

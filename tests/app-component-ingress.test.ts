@@ -10,19 +10,21 @@ import { PlatformIngress } from '../src/platform/apps/platformIngress.ts';
 import { PlatformIngressSettingsStore, emptyIngressSettings } from '../src/platform/apps/ingressSettings.ts';
 import { createPlatformIngressListener, platformRequestEntry } from '../src/platform/apps/ingressBoundary.ts';
 import type { startAppProcess } from '../src/platform/apps/componentProcess.ts';
+import { fixtureIngressSecrets } from './fixtures/ingressSecrets.ts';
 
 const secret = 'fixture-token-'.repeat(3);
 async function fixture(t: { after(fn: () => Promise<unknown>): void }) {
   const root = await mkdtemp(path.join(tmpdir(), 'cats-ingress-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  const store = new PlatformIngressSettingsStore(path.join(root, 'config', 'ingress.local.json'), path.join(root, 'apps', 'ingress'));
-  const options = { platformDir: root, ready: async () => true, dispatch: async () => {} };
+  const secrets = fixtureIngressSecrets();
+  const store = new PlatformIngressSettingsStore(path.join(root, 'config', 'ingress.local.json'), path.join(root, 'apps', 'ingress'), secrets);
+  const options = { platformDir: root, ready: async () => true, dispatch: async () => {}, secrets, retryDelaysMs: [] };
   return { root, store, options };
 }
 
 test('host ingress keeps credentials private, persists assigned origin and closes a late connection', async t => {
   const { store, options } = await fixture(t);
-  await store.save({ ...emptyIngressSettings, enabled: true, authtoken: secret });
+  await store.save(await store.withCredential({ ...emptyIngressSettings, enabled: true, autoConnect: true }, secret));
   let stops = 0; let complete: (() => void) | undefined; const urls: (string | undefined)[] = [];
   const start = (async () => {
     await new Promise<void>(resolve => { complete = resolve; });
@@ -49,10 +51,11 @@ test('legacy configuration migrates once with backups; conflicting App settings 
   await writeFile(path.join(store.legacyDirectory, 'test.one.json'), JSON.stringify(legacy));
   let ingress = new PlatformIngress(options); await ingress.restore(); await ingress.close();
   assert.equal((await store.read())?.publicOrigin, legacy.url);
-  assert.equal((await readdir(path.dirname(store.filename))).filter(name => name.includes('.legacy-')).length, 1);
+  assert.equal((await readdir(store.vaultDirectory)).length, 2, 'credential and protected migration backup');
   ingress = new PlatformIngress(options); await ingress.restore(); await ingress.close();
-  assert.equal((await readdir(path.dirname(store.filename))).filter(name => name.includes('.legacy-')).length, 1);
+  assert.equal((await readdir(store.vaultDirectory)).length, 2, 'restart reuses the migrated credential');
   await rm(store.filename);
+  await writeFile(path.join(store.legacyDirectory, 'test.one.json'), JSON.stringify(legacy));
   await writeFile(path.join(store.legacyDirectory, 'test.two.json'), JSON.stringify({ ...legacy, url: 'https://two.example' }));
   ingress = new PlatformIngress(options); await ingress.restore();
   assert.equal(ingress.snapshot().state, 'migration_required'); assert.equal(await store.read(), null);
@@ -63,7 +66,7 @@ test('legacy configuration migrates once with backups; conflicting App settings 
 
 test('a worker exiting immediately after readiness cannot publish a connected origin', async t => {
   const { store, options } = await fixture(t); const origins: (string | undefined)[] = [];
-  await store.save({ ...emptyIngressSettings, enabled: true, authtoken: secret });
+  await store.save(await store.withCredential({ ...emptyIngressSettings, enabled: true, autoConnect: true }, secret));
   const ingress = new PlatformIngress({ ...options, onOrigin: origin => origins.push(origin),
     start: (async input => {
       queueMicrotask(() => input.onExit?.());
@@ -76,7 +79,7 @@ test('a worker exiting immediately after readiness cannot publish a connected or
 
 test('host close waits for cleanup already started by worker exit', async t => {
   const { store, options } = await fixture(t);
-  await store.save({ ...emptyIngressSettings, enabled: true, authtoken: secret });
+  await store.save(await store.withCredential({ ...emptyIngressSettings, enabled: true, autoConnect: true }, secret));
   let exited: (() => void) | undefined; let stopped: (() => void) | undefined;
   const ingress = new PlatformIngress({ ...options, start: (async input => {
     exited = input.onExit;
@@ -120,7 +123,7 @@ test('failed atomic replacement retains the prior config and backup; restart ign
   assert.ok(!files.some(name => name.endsWith('.tmp')));
   await writeFile(store.filename + '.interrupted.tmp', '{"incomplete":');
   const restarted = new PlatformIngress(options); await restarted.restore();
-  assert.equal(restarted.snapshot().state, 'disconnected'); await restarted.close();
+  assert.equal(restarted.snapshot().state, 'off'); await restarted.close();
   await store.save({ ...emptyIngressSettings, publicOrigin: 'https://next.example' });
   assert.equal((await store.read())?.publicOrigin, 'https://next.example');
 });

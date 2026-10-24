@@ -322,6 +322,7 @@ export function createServer(dependencies: ServerDependencies) {
   const auth = resolvedDependencies.shared.config.auth;
   const configuredOrigins = [...auth.allowedBrowserOrigins];
   const ingress = resolvedDependencies.shared.platformIngress ?? (appComponents ? new PlatformIngress({
+    secrets: resolvedDependencies.shared.ingressSecrets,
     platformDir: resolvePlatformStorageLayout(dependencies.shared.config.chatStatePath).platformDir,
     dispatch,
     ready: async () => auth.mode !== 'unsafe_disabled' && !!auth.sessionSecret
@@ -395,5 +396,6 @@ export function createServer(dependencies: ServerDependencies) {
   // Resolution means all best-effort passes settled, not that every pass succeeded.
   // Callers with private state can await this before submitting work or cleaning up.
   const startupRecovery = runServerStartupRecoveryPasses(resolvedDependencies).finally(() => { startupSettled = true; });
-  return Object.assign(server, { startupRecovery, appHostingReady: () => appHostingReady, closeAppHosting });
+  return Object.assign(server, { startupRecovery, appHostingReady: () => appHostingReady, closeAppHosting,
+    reconcileRemoteAccess: (event: 'suspend' | 'resume' | 'offline' | 'online') => ingress?.reconcile(event) ?? Promise.resolve() });
 }
