@@ -58,7 +58,13 @@
   delivery, native recovery-card interaction, or an installed-app update. The
   user's original profile, grant, conversation and installed Desktop were not modified.
 - Worktree: `.claude/worktrees/fix-cat-image-tool-delivery`, branch
-  `fix/cat-image-tool-delivery`. This repair does not authorize a version bump or publication.
+  `fix/cat-image-tool-delivery`. Owner subsequently selected Desktop **0.9.6
+  standard-profile preview**, with an auto-merge PR and Runtime pinned to the same
+  `2837edbb284b2a0eeca0b8111803822978ae8c32` source. Version fields, unchanged App
+  pins, compatibility/recovery notes, signing profile and publication gates are
+  recorded together in the [release notes](../release-notes.md). Hosted workflow
+  results and release assets are the publication record; this does not claim live
+  generation, Telegram delivery or an installed upgrade.
 
 ### Implementation checkpoint — 2026-10-23
 
