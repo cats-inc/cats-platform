@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { ProviderManagerBridge } from '../../packages/provider-setup/manager.js';
+import type { DesktopGoogleAuthStartInput, DesktopGoogleAuthStatus,
+  DesktopGoogleAuthAvailability } from './googleAuthContracts.js';
 
 import type {
   DesktopScreenshotCaptureResult,
@@ -24,6 +26,10 @@ const DESKTOP_UPDATE_CHECK_CHANNEL = 'cats-host:update-check';
 const DESKTOP_UPDATE_DOWNLOAD_CHANNEL = 'cats-host:update-download';
 const DESKTOP_UPDATE_INSTALL_CHANNEL = 'cats-host:update-install';
 const DESKTOP_UPDATE_EVENT_CHANNEL = 'cats-host:update-event';
+const DESKTOP_GOOGLE_AUTH_START_CHANNEL = 'cats-host:google-auth-start';
+const DESKTOP_GOOGLE_AUTH_STATUS_CHANNEL = 'cats-host:google-auth-status';
+const DESKTOP_GOOGLE_AUTH_CANCEL_CHANNEL = 'cats-host:google-auth-cancel';
+const DESKTOP_GOOGLE_AUTH_SUBMIT_CHANNEL = 'cats-host:google-auth-submit';
 
 type DesktopHostActionId =
   | 'retry'
@@ -176,6 +182,23 @@ function assertBrowserHandoffLaunchPath(value: unknown): string {
 }
 
 const bridge = {
+  googleAuth: {
+    availability(): Promise<DesktopGoogleAuthAvailability> {
+      return ipcRenderer.invoke(DESKTOP_GOOGLE_AUTH_STATUS_CHANNEL);
+    },
+    start(input: DesktopGoogleAuthStartInput): Promise<DesktopGoogleAuthStatus> {
+      return ipcRenderer.invoke(DESKTOP_GOOGLE_AUTH_START_CHANNEL, input);
+    },
+    status(id: string): Promise<DesktopGoogleAuthStatus> {
+      return ipcRenderer.invoke(DESKTOP_GOOGLE_AUTH_STATUS_CHANNEL, id);
+    },
+    cancel(id?: string): Promise<DesktopGoogleAuthStatus | null> {
+      return ipcRenderer.invoke(DESKTOP_GOOGLE_AUTH_CANCEL_CHANNEL, id);
+    },
+    submit(input: unknown): Promise<{ status: number; body: unknown }> {
+      return ipcRenderer.invoke(DESKTOP_GOOGLE_AUTH_SUBMIT_CHANNEL, input);
+    },
+  },
   requestApp(input: { path: string; method: string; body?: unknown }): Promise<{ status: number; body: unknown }> {
     return ipcRenderer.invoke('cats-host:app-request', input);
   },

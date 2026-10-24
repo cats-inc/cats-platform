@@ -10,6 +10,7 @@
 | `cats` HTTP app | 8181 | TCP | Product-facing app shell and health endpoints | `npm start` |
 | `cats` Vite dev server | 5173 | TCP | Renderer development server with `/api` proxy | `npm run dev:web` |
 | Platform shared ingress (candidate) | OS-assigned for managed ngrok; operator-selected fixed port for an external tunnel | HTTP, `127.0.0.1` only | One tunnel target for Platform/Mobile/App routes; excludes Code internal MCP and native management | Desktop Settings → Remote access |
+| Desktop Google callback | OS-assigned available port (`listen(0)`) | HTTP, `127.0.0.1` only | Ephemeral `/oauth/google/callback`, exact Host/path/state, closes after completion/cancel/expiry/exit; no public tunnel | Configured Desktop Google action |
 | App component services (candidate) | OS-assigned available ports | HTTP, `127.0.0.1` only | Private child services behind `/apps/<appId>/`; no per-App tunnel/listener | Host enables the complete App |
 | Isolated candidate Desktop sidecars | Explicit distinct non-default ports | TCP, `127.0.0.1` only | Candidate-owned Platform and Runtime; occupied listeners fail launch | Desktop with `CATS_DESKTOP_CANDIDATE_ROOT` and explicit host/port pairs |
 | Source candidate control | OS-assigned available port | HTTP, `127.0.0.1` only | Explicit candidate-only bearer-authenticated status, main-window screenshot and graceful stop; no normal Desktop listener | `npm run desktop:candidate -- start --workspace .. --root ../candidate-01` |

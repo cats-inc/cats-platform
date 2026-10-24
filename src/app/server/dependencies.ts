@@ -36,6 +36,7 @@ import {
   MemoryPlatformAuthActionGrantStore,
   MemoryPlatformBrowserHandoffStore,
   MemoryPlatformAuthStore,
+  MemoryPlatformGoogleProofStore,
   type PlatformAuthConfig,
   type PlatformAuthRecoveryTokenState,
   type PlatformAuthStore,
@@ -237,10 +238,19 @@ export function resolveServerDependencies(
   const googleVerifier = dependencies.shared.googleVerifier
     ?? (
       dependencies.shared.config.auth.google.clientId
+      || dependencies.shared.config.auth.google.desktopClientId
       || dependencies.shared.config.auth.google.mobileAudiences.length > 0
         ? createGoogleJwksIdTokenVerifier()
         : undefined
     );
+  const nativeGoogleStore = dependencies.shared.nativeGoogleStore
+    ?? (dependencies.shared.desktopAuthKey && googleVerifier
+      && dependencies.shared.config.auth.google.desktopClientId
+      ? new MemoryPlatformGoogleProofStore({
+        clientId: dependencies.shared.config.auth.google.desktopClientId,
+        hostedDomains: dependencies.shared.config.auth.google.hostedDomains,
+        verifier: googleVerifier, now: dependencies.shared.now,
+      }) : undefined);
   let authRecoveryTokenState: PlatformAuthRecoveryTokenState | null =
     dependencies.shared.authRecoveryTokenState ?? null;
   const getAuthRecoveryTokenState = dependencies.shared.getAuthRecoveryTokenState
@@ -460,6 +470,8 @@ export function resolveServerDependencies(
       authStore,
       browserHandoffStore,
       actionGrantStore,
+      nativeGoogleStore,
+      googleProofStore: dependencies.shared.googleProofStore ?? nativeGoogleStore,
       googleVerifier,
       authRecoveryTokenState: getAuthRecoveryTokenState(),
       getAuthRecoveryTokenState,

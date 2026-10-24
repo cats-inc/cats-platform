@@ -7,6 +7,7 @@ export type PlatformAuthMode = 'default' | 'enabled' | 'unsafe_disabled';
 
 export interface PlatformGoogleAuthConfig {
   clientId: string | null;
+  desktopClientId?: string | null;
   hostedDomains: string[];
   mobileAudiences: string[];
 }
@@ -92,6 +93,7 @@ export function loadPlatformAuthConfig(input: LoadPlatformAuthConfigInput): Plat
     recoveryTokenPath: resolvePlatformAuthRecoveryTokenPathFromChatState(input.chatStatePath),
     google: {
       clientId: input.env.CATS_AUTH_GOOGLE_CLIENT_ID?.trim() || null,
+      desktopClientId: input.env.CATS_AUTH_GOOGLE_DESKTOP_CLIENT_ID?.trim() || null,
       hostedDomains: parseCsv(input.env.CATS_AUTH_GOOGLE_HD),
       mobileAudiences: parseCsv(input.env.CATS_AUTH_GOOGLE_MOBILE_AUDIENCES),
     },

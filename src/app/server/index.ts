@@ -58,7 +58,9 @@ export function createServer(dependencies: ServerDependencies) {
   const desktopAppsKey = dependencies.shared.desktopAppsKey ?? process.env.CATS_DESKTOP_APPS_KEY;
   const appComponents = dependencies.shared.appComponents ?? (/^[a-f0-9]{64}$/.test(desktopAppsKey ?? '')
     ? new AppComponentHost({ chatStatePath: dependencies.shared.config.chatStatePath, ownerId: 'desktop-owner' }) : undefined);
-  dependencies = { ...dependencies, shared: { ...dependencies.shared, appComponents, desktopAppsKey } };
+  dependencies = { ...dependencies, shared: { ...dependencies.shared, appComponents, desktopAppsKey,
+    desktopAuthKey: dependencies.shared.desktopAuthKey ?? process.env.CATS_DESKTOP_AUTH_KEY,
+  } };
   const pluginConfig = dependencies.shared.config;
   const plugins = dependencies.shared.managedPlugins ?? new ManagedPluginManager(pluginConfig.platformDir,
     pluginConfig.managedPluginPolicy === true && Boolean(pluginConfig.platformDir) && resolve(pluginConfig.platformDir) !== resolve(join(homedir(), '.cats', 'platform')),
@@ -310,6 +312,9 @@ export function createServer(dependencies: ServerDependencies) {
         resolvedDependencies.shared.browserHandoffStore.clearForReset?.();
         resolvedDependencies.shared.actionGrantStore.clearForReset?.();
         resolvedDependencies.shared.googleProofStore?.clearForReset();
+        if (resolvedDependencies.shared.nativeGoogleStore !== resolvedDependencies.shared.googleProofStore) {
+          resolvedDependencies.shared.nativeGoogleStore?.clearForReset();
+        }
         await resolvedDependencies.shared.setAuthRecoveryTokenState?.(null);
       });
     } finally {

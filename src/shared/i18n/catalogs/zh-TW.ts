@@ -1,6 +1,21 @@
 import type { MessageCatalog } from '../index.js';
 
 export const zhTWCatalog: MessageCatalog = {
+  authNativeContinue: '繼續使用 Google',
+  authNativeUnavailable: '此 Cats 發行版本尚未設定 Google 登入。',
+  authNativeWaiting: '請在瀏覽器完成 Google 登入…',
+  authNativeVerified: 'Google 已驗證，請繼續完成設定；密碼可稍後選擇新增。',
+  authNativeCancel: '取消 Google 登入',
+  authNativeFailed: 'Google 登入已取消或未完成。請重試，或使用 email 與密碼。',
+  setupWizardGoogleMethod: 'Google',
+  setupWizardPasswordMethod: 'Email 與密碼',
+  settingsAccountSetPassword: '設定密碼',
+  settingsAccountSetPasswordTitle: '為此帳號新增密碼',
+  settingsAccountSetPasswordHint: '先在瀏覽器確認你的 Google 帳號，再為此 email 設定 Cats 密碼。',
+  settingsAccountPasswordConfirm: '再次輸入新密碼',
+  settingsAccountPasswordMismatch: '請輸入一致且長度為 8–256 個字元的密碼。',
+  settingsAccountPasswordSaved: '密碼已新增，現在可使用 Google 或 Cats 密碼登入。',
+  settingsAccountPasswordOptional: '密碼可自由選擇新增，供離線登入或 Mobile、Web 的密碼登入使用。',
   catImagesStopDelivery: '停止傳送',
   catImagesStopConfirm: '要停止這張圖的後續傳送嗎？Telegram 可能已收到圖片，先前是否送達仍會保留為未知。',
   catImagesStoppedUnknown: '已停止傳送 · 先前是否送達仍未知',

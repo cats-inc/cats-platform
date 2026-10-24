@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress; first identity-contract/account-core batch implemented; P2 and remote-access phases pending |
+| Status | In progress; account core and configurable Desktop P2 implemented; publisher/live/OS and remote-access phases pending |
 | Owner | User |
 | Date | 2026-10-24 |
 | Identity | [ADR-138](../decisions/138-converge-google-and-password-admin-bootstrap.md), [SPEC-129](../specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md) |
@@ -18,13 +18,17 @@ accounts, Desktop-managed ngrok/Funnel and one entry for Mobile/Telegram/Apps.
 Remote Web, including Google Web login and a central cloud authentication
 service, is deferred. The owner additionally authorized direct commit/push of
 documentation to main on 2026-10-25, then authorized the recommended first batch:
-P0 identity contracts plus P1 account core. Implementation is delivered through
-[PR #314](https://github.com/cats-inc/cats-platform/pull/314): automatic approval
-review rejected direct-main source delivery and automatic merge/branch deletion
-because the visible direct-main grant covered documentation. Merge and cleanup
-therefore await explicit owner approval. P2 host/native OAuth/UI, remote-access implementation,
-external account/provider configuration, live tunnels, installation, version
-bumps and releases remain outside this batch.
+P0 identity contracts plus P1 account core. That batch merged through
+[PR #314](https://github.com/cats-inc/cats-platform/pull/314), commit
+`2d42f9721ba19de3ecd1c07cf81b886b4713945b`, after the owner explicitly approved
+CI-gated merge and cleanup. The owner then authorized the Desktop-native P2
+implementation, keeping tunnel/Funnel untouched and preserving existing
+password profiles/conversations without reset. They confirmed no publisher
+Desktop client ID exists yet and requested configurable source first.
+P2 uses a feature worktree/PR; the prior merge grant applied to #314 only.
+External provider/account configuration, live Google, installed-app replacement,
+version bumps and releases are outside this slice. Native Mobile Google and
+remote Web stay deferred.
 
 Future implementation can be delivered in independently validated slices under
 this plan. There is no requirement to finish tunnel support before local Google
@@ -72,7 +76,8 @@ boundaries pass focused integration checks.
   handoff, proof binding, expiry, concurrent attempts and browser-session issuance.
 - [ ] Establish publisher-owned Google Desktop client/consent configuration,
   packaging injection and live-test account availability without collecting
-  user secrets in tracked files.
+  user secrets in tracked files. Source/packaging injection is implemented in P2;
+  publisher registration and live accounts are still deferred.
 - [ ] Inventory public routes/auth consumers, including the actual Telegram
   cookie-gate conflict, internal Runtime/Code/Cat tools and existing Web routes.
 - [ ] Freeze remote settings/status schema, secure-store references, retry/timeout
@@ -111,20 +116,20 @@ crash recovery is not claimed. See the first-batch checkpoint below.
 
 ### P2 — Native Google and account/onboarding UX
 
-- [ ] Implement a bounded Desktop system-browser OAuth transaction with PKCE,
+- [x] Implement a bounded Desktop system-browser OAuth transaction with PKCE,
   state, nonce, transient loopback callback and authenticated private handoff.
-- [ ] Handle completion, cancellation, denied consent, expiry, replay, offline
+- [x] Handle completion, cancellation, denied consent, expiry, replay, offline
   state, restart and full-exit cleanup without partial account mutation.
-- [ ] Show the two first-run choices; preserve the existing provider/Catlas
+- [x] Show the two first-run choices; preserve the existing provider/Catlas
   onboarding sequence and explicit setup completion.
-- [ ] Add account-method completion to the existing General Account section;
+- [x] Add account-method completion to the existing General Account section;
   derive states from Identities and keep password creation optional.
-- [ ] Preserve configured GIS/self-hosted behavior without using its client ID
+- [x] Preserve configured GIS/self-hosted behavior without using its client ID
   as the Desktop client or promising arbitrary-origin Web support.
 - [ ] Verify the existing Mobile Google path, or implement the required native
   sign-in for Google-only accounts within approved mobile packaging contracts.
   Track its delivery separately from the Desktop slice; no embedded tunnel GIS.
-- [ ] Test both fresh-account sequences and an existing local/handle/linked
+- [x] Test both fresh-account sequences and an existing local/handle/linked
   profile; preserve account IDs, roles and owner data.
 
 Exit: native Desktop acceptance is recorded independently per OS; Google-only
@@ -283,5 +288,70 @@ written to the user's profile. Live Google, publisher registration/consent, Mobi
 packaged OS callbacks and all remote-provider phases remain pending. Existing
 cross-file hard-interruption recovery remains fail-closed; only caught write
 failure rollback and guarded restart behavior are claimed.
+
+## Desktop P2 checkpoint — 2026-10-25
+
+Implemented the system-browser PKCE/nonce/state loopback flow, private keyed
+issuer, fixed host submission of provisional setup/first-password proofs,
+HttpOnly Cats-cookie handoff, dual onboarding and native login/account methods.
+Distributor configuration comes from a public environment value or bundled
+JSON; the release workflow reads public repository variable
+`GOOGLE_DESKTOP_CLIENT_ID`. Its tracked default is null. The owner explicitly
+requested configurable source before registering a Google client.
+
+Auth remains version 1. No Core/Runtime schema change, migration, reset or
+forced relink is needed. Isolated integration preserves the existing Account,
+password hash, Membership and exact conversation/Runtime file bytes. Google-first
+password completion and subsequent logins resolve the same Account. Mobile and
+remote-browser password endpoints remain usable once that method exists;
+native Mobile Google UI, remote Web, tunnel/Funnel and consumer-provider phases
+remain deferred.
+
+Independent source review found and verified corrections for pending-start
+cancellation, late-result replacement, cookie publication races, exact old
+transaction cancellation, audit-sink failure and account refresh after a lost
+link reply. The final reviewer reported no remaining blocker, without running
+the tests. Cookie publication is explicitly a non-cancellable commit; other
+local cleanup precedes bounded remote cancellation. Public ingress rejects the
+entire private Google prefix even with a valid host key.
+
+Executed validation:
+
+- **259/259** affected auth/bootstrap, renderer, private route and shared-ingress
+  tests across 42 bundled files; the final native-only delta then passed
+  **32/32** (14 host, 11 private-server, 7 renderer). These overlap; they are not
+  separate counts of unique coverage.
+- **130** architecture/browser/docs/preload/supervisor cases passed. Packaging
+  initially started before its required server output existed; after compilation,
+  the packaging/supervisor run passed **50/50**, including generated publisher
+  configuration and Runtime key exclusion. No installer/release was built.
+- Server and Desktop compilation, renderer checking and test-fixture checking
+  passed; the final test fixture check is recorded after its last added cases.
+- **1,102** local Markdown target references across 12 amended documents passed,
+  resolving sibling-repo links against the workspace rather than the nested
+  worktree. Diff whitespace check passed.
+- Test-collection static coverage passed; the output-existence case requires the
+  full test bundle and is left to CI because only affected files were bundled.
+
+Windows source-candidate acceptance passed for the actual method switch,
+Traditional Chinese layout, explicit unconfigured Google hint/disabled action
+and return to usable password fields. Provider selection used an empty selection;
+no account was created and no Google/provider login was attempted. Both sidecars
+stopped with `drained` and exit 0. Evidence is retained outside the checkouts at
+`C:\Users\sammy\Source\cats-inc\candidate-native-google-20261025-b`
+(`launch.json`, screenshots and `candidate-evidence.json`), launch ID
+`adebb42c6827faac203e7e1c606930bcbd5d435cc81f9425e35bbd7ce0401c00`.
+The source receipt is a dirty snapshot of this worktree, not an installed release.
+Initial candidate compilation exposed missing Runtime `pngjs` in the existing
+development dependency tree; a separate package/lock-matched dependency directory
+was prepared, leaving the normal Runtime installation unchanged.
+
+Final test-fixture checking passed after the last added cases. Desktop bootstrap,
+state and attempt-ID contracts passed **14/14**, plus the static test-collection
+case. Complete test-bundle output existence and full CI remain hosted gates;
+this local work deliberately bundled only affected tests.
+Publisher registration/consent, live Google and packaged Windows/macOS/Linux
+callbacks remain unverified. No normal Desktop/profile was changed, and no
+version bump, installation or publication was performed.
 
 *Last updated: 2026-10-25*

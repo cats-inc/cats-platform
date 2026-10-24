@@ -20,10 +20,17 @@ PLAN-122 first-batch auth additions (2026-10-25):
   creates a second account. Proof rejection is 403 `E_REAUTH_REQUIRED`; unavailable
   native configuration or persistence is 503 with a redacted response.
 
-Both are **consumers** of one-use Google proofs. The issuer is injectable only
-in this batch; native host transport, publisher configuration and Desktop UI
-arrive in P2. Reserved `/api/desktop/auth/google/*` issuer paths are not registered
-and must not be treated as available public APIs. See
+Both are **consumers** of one-use Google proofs. P2 registers private POST
+`/api/desktop/auth/google/start`, `/complete` and `/cancel` issuer routes for the
+trusted Desktop host only. They require a random per-process host key, loopback
+and no browser Origin; public ingress denies the entire prefix even with a key.
+Start derives sensitive Account/Session bindings from the host-forwarded Cats
+cookie and CSRF. Complete returns provisional proof only for bootstrap/first
+password; ordinary login/link consumes the verified result in its auth mutation.
+Cancel requires the exact transaction ID and host context. Native renderer IPC
+exposes status/transaction IDs and fixed final submissions, never provider or
+proof tokens. These are not public Web/Mobile APIs. Missing publisher Desktop
+client ID keeps native Google unavailable. See
 [SPEC-129's frozen identity contract](specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md#frozen-identity-contract--first-batch-2026-10-25).
 
 Planned component extension: `/apps/<appId>/` mounts launch/UI, private API and

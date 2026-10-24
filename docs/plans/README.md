@@ -1,9 +1,9 @@
 # Implementation Plans
 
 - [PLAN-122: Desktop identity and remote access](PLAN-122-desktop-identity-and-remote-access-rollout.md)
-  — first identity-contract/account-core batch implemented, 2026-10-25;
-  native Desktop transport/UI, publisher registration and managed remote access
-  remain pending. No live provider changes or release; remote Web deferred.
+  — account core and configurable Desktop P2 implemented, 2026-10-25;
+  publisher registration, live/packaged acceptance and managed remote access
+  remain pending. No schema migration or release; remote Web deferred.
 
 - [PLAN-121: Shared image service and controlled Cat generation](PLAN-121-shared-image-service-and-controlled-cat-generation.md)
   — draft, 2026-10-23; Runtime compatibility, Studio-preserving extraction,

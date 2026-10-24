@@ -13,9 +13,11 @@ are prepared: ADR-138/ADR-139, SPEC-129/SPEC-130 and
 The authorized first batch now implements the common Admin bootstrap, bound
 Google proof consumer and Google-only first password on the existing account.
 Independent review prompted fixes for concurrent Google-login and missing-file
-initialization overwrites. Native Desktop OAuth transport/UI, publisher setup,
-live/provider acceptance and remote-access phases remain pending. Ordinary
-onboarding is unchanged until P2; no version bump or release is authorized.
+initialization overwrites. The second authorized batch implements native Desktop
+PKCE/private handoff, dual onboarding, login, optional first password and explicit
+Google linking with configurable publisher-client injection. Publisher registration,
+live Google, packaged OS/Mobile and remote-access acceptance remain pending.
+No schema migration, reset, version bump or release is introduced.
 
 Shared App ingress (2026-09-29): Platform, remote Cats Mobile and every App
 must share one public origin/HTTPS port/tunnel, with `/apps/<appId>/` routing.

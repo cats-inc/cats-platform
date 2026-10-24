@@ -1,6 +1,21 @@
 import type { MessageCatalog } from '../index.js';
 
 export const enCatalog: MessageCatalog = {
+  authNativeContinue: 'Continue with Google',
+  authNativeUnavailable: 'Google sign-in is not configured for this Cats distribution.',
+  authNativeWaiting: 'Complete Google sign-in in your browser…',
+  authNativeVerified: 'Google verified. Continue to finish setup; a password is optional.',
+  authNativeCancel: 'Cancel Google sign-in',
+  authNativeFailed: 'Google sign-in was cancelled or could not finish. Try again or use email and password.',
+  setupWizardGoogleMethod: 'Google',
+  setupWizardPasswordMethod: 'Email and password',
+  settingsAccountSetPassword: 'Set password',
+  settingsAccountSetPasswordTitle: 'Add a password to this account',
+  settingsAccountSetPasswordHint: 'Confirm your Google account in the browser, then set a Cats password for this email.',
+  settingsAccountPasswordConfirm: 'Confirm new password',
+  settingsAccountPasswordMismatch: 'Enter matching passwords with 8–256 characters.',
+  settingsAccountPasswordSaved: 'Password added. You can now sign in with Google or your Cats password.',
+  settingsAccountPasswordOptional: 'A password is optional. Add one to sign in offline or use password login on Mobile and Web.',
   catImagesStopDelivery: 'Stop delivery',
   catImagesStopConfirm: 'Stop future delivery of this image? Telegram may already have received it; that past outcome will remain unknown.',
   catImagesStoppedUnknown: 'Sending stopped · past delivery outcome unknown',

@@ -14,6 +14,7 @@ import {
   type GoogleIdentityCredential,
 } from './GoogleIdentityServicesButton.js';
 import { PLATFORM_AUTH_ERROR_CODES } from '../../../platform/auth/errorCodes.js';
+import { useDesktopGoogleAuth } from './useDesktopGoogleAuth.js';
 
 export function PlatformLoginScreen({
   onAuthenticated,
@@ -26,6 +27,7 @@ export function PlatformLoginScreen({
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [googleClientId, setGoogleClientId] = useState<string | null>(null);
+  const nativeGoogle = useDesktopGoogleAuth();
   const canSubmit = Boolean(identifier.trim() && password && !busy);
   const authApiOptions = useCallback(() => ({
     fallbackMessageForStatus: (status: number) =>
@@ -112,6 +114,20 @@ export function PlatformLoginScreen({
     setFeedback(t(messageKeys.authLoginGoogleUnavailable));
   }, [t]);
 
+  async function loginNativeGoogle(): Promise<void> {
+    setBusy(true);
+    setFeedback('');
+    try {
+      await nativeGoogle.begin({ purpose: 'login' });
+      await fetchPlatformAuthStatus(authApiOptions());
+      onAuthenticated(await fetchPlatformEnvelope({
+        fallbackMessageForStatus: (status) => t(messageKeys.appLoadStateFailedWithStatus, { status }),
+      }));
+    } catch {
+      setFeedback(t(messageKeys.authNativeFailed));
+    } finally { setBusy(false); }
+  }
+
   return (
     <div className="screen screenCentered">
       <form className="contentCard setupCard" onSubmit={(event) => void handleSubmit(event)}>
@@ -144,7 +160,19 @@ export function PlatformLoginScreen({
         <button className="primaryButton setupPrimaryButton" disabled={!canSubmit} type="submit">
           {busy ? t(messageKeys.authLoginSubmitting) : t(messageKeys.authLoginSubmit)}
         </button>
-        {googleClientId ? (
+        {nativeGoogle.available ? (
+          <div className="googleSignInSection">
+            <button type="button" className="secondaryButton" disabled={busy}
+              onClick={() => void loginNativeGoogle()}>
+              {nativeGoogle.busy ? t(messageKeys.authNativeWaiting) : t(messageKeys.authNativeContinue)}
+            </button>
+            {nativeGoogle.busy ? <button type="button" className="secondaryButton"
+              disabled={nativeGoogle.snapshot?.committing}
+              onClick={() => { void nativeGoogle.cancel(); }}>
+              {t(messageKeys.authNativeCancel)}
+            </button> : null}
+          </div>
+        ) : googleClientId ? (
           <div className="googleSignInSection">
             <div className="setupRuntimeNote">{t(messageKeys.authLoginGoogleOriginHint)}</div>
             <GoogleIdentityServicesButton
@@ -154,7 +182,9 @@ export function PlatformLoginScreen({
               onError={handleGoogleError}
             />
           </div>
-        ) : null}
+        ) : nativeGoogle.supported ? <p className="setupRuntimeNote">
+          {t(messageKeys.authNativeUnavailable)}
+        </p> : null}
       </form>
     </div>
   );

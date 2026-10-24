@@ -98,7 +98,9 @@ test('desktop host config and managed service specs preserve the app/runtime pro
     catsHomeDir: 'C:/Users/test/.cats',
   });
 
-  const [runtimeSpec, appSpec] = buildManagedServiceSpecs(config, {}, 'win32');
+  const [runtimeSpec, appSpec] = buildManagedServiceSpecs(config, { CATS_DESKTOP_AUTH_KEY: 'private-host-key' }, 'win32');
+  assert.equal(runtimeSpec.env.CATS_DESKTOP_AUTH_KEY, undefined);
+  assert.equal(appSpec.env.CATS_DESKTOP_AUTH_KEY, 'private-host-key');
 
   assert.equal(runtimeSpec.name, 'cats-runtime');
   assert.deepEqual(runtimeSpec.args.slice(1), [

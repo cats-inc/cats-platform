@@ -136,6 +136,14 @@ export async function fetchPlatformAuthStatus(
   return readPlatformAuthJsonResponse(response, options);
 }
 
+export async function readDesktopPlatformAuthReply(
+  reply: { status: number; body: unknown }, options: PlatformAuthApiRequestOptions,
+): Promise<PlatformAuthStatusPayload> {
+  return readPlatformAuthJsonResponse(new Response(JSON.stringify(reply.body), {
+    status: reply.status, headers: { 'content-type': 'application/json' },
+  }), options);
+}
+
 export async function loginPlatformLocal(
   input: PlatformAuthLocalLoginInput,
   options: PlatformAuthApiRequestOptions,

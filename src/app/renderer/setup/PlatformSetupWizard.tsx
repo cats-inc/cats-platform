@@ -25,6 +25,7 @@ import {
   resolveClientGuideCatName,
 } from '../../../shared/guideCatIdentity.js';
 import { formatSetupWizardCompletionError } from './setupWizardErrorLabels.js';
+import { useDesktopGoogleAuth } from '../auth/useDesktopGoogleAuth.js';
 
 type PendingAction = 'complete' | null;
 
@@ -46,6 +47,10 @@ export function PlatformSetupWizard({
   const [ownerName, setOwnerName] = useState('');
   const [adminIdentifier, setAdminIdentifier] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [adminMethod, setAdminMethod] = useState<'local_password' | 'google'>('local_password');
+  const [googleTransactionId, setGoogleTransactionId] = useState<string | null>(null);
+  const [fallbackAttemptId] = useState(() => globalThis.crypto.randomUUID());
+  const nativeGoogle = useDesktopGoogleAuth();
   const [createGuideCat, setCreateGuideCat] = useState(false);
   const [provider, setProvider] = useState<string>(DEFAULT_PRODUCT_PROVIDER);
   const [instance, setInstance] = useState('');
@@ -59,13 +64,14 @@ export function PlatformSetupWizard({
   const busy = busyAction !== null;
   const guideCatName = resolveClientGuideCatName();
   const canContinueOwnerStep = Boolean(
-    ownerName.trim() && adminIdentifier.trim() && adminPassword,
+    ownerName.trim() && !nativeGoogle.busy && (adminMethod === 'google'
+      ? googleTransactionId : /^[^@\s]+@[^@\s]+\.[^@\s]+$/u.test(adminIdentifier.trim()) && adminPassword),
   );
   const canContinueGuideCatStep = canContinueGuideCatSetupStep({
     createGuideCat,
     model,
   });
-  const attemptId = envelope.bootstrapAttemptId ?? null;
+  const attemptId = envelope.bootstrapAttemptId ?? fallbackAttemptId;
 
   const finishSetup = useCallback(async (): Promise<void> => {
     setBusyAction('complete');
@@ -74,8 +80,9 @@ export function PlatformSetupWizard({
       const result = await completePlatformSetup({
         attemptId,
         ownerDisplayName: ownerName.trim(),
-        adminIdentifier: adminIdentifier.trim(),
-        adminPassword,
+        ...(adminMethod === 'google' ? { adminMethod: 'google' as const } : {
+          adminIdentifier: adminIdentifier.trim(), adminPassword,
+        }),
         createGuideCat,
         guideCatProvider: createGuideCat ? provider : undefined,
         guideCatInstance: createGuideCat ? (instance || undefined) : undefined,
@@ -89,10 +96,11 @@ export function PlatformSetupWizard({
           configuration_error: t(messageKeys.setupWizardServerError),
           internal_error: t(messageKeys.setupWizardServerError),
         },
-      });
+      }, adminMethod === 'google' ? googleTransactionId ?? undefined : undefined);
       await syncDesktopHostPlatformShell(result);
       onComplete(result);
     } catch (error) {
+      if (adminMethod === 'google') { setGoogleTransactionId(null); setStep(1); }
       setFeedback(formatSetupWizardCompletionError(
         error,
         t(messageKeys.setupWizardFailedMessage),
@@ -105,6 +113,8 @@ export function PlatformSetupWizard({
     createGuideCat,
     adminIdentifier,
     adminPassword,
+    adminMethod,
+    googleTransactionId,
     instance,
     model,
     modelSelection,
@@ -114,6 +124,13 @@ export function PlatformSetupWizard({
     attemptId,
     t,
   ]);
+
+  async function verifyGoogle(): Promise<void> {
+    setFeedback('');
+    setGoogleTransactionId(null);
+    try { setGoogleTransactionId(await nativeGoogle.begin({ purpose: 'bootstrap', attemptId })); }
+    catch { setFeedback(t(messageKeys.authNativeFailed)); }
+  }
 
   useEffect(() => {
     if (setupOpenedRecorded.current) {
@@ -193,6 +210,31 @@ export function PlatformSetupWizard({
                 autoFocus
               />
             </label>
+            {nativeGoogle.supported ? <div className="setupActionGroup">
+              <button type="button" className="secondaryButton" aria-pressed={adminMethod === 'local_password'}
+                disabled={nativeGoogle.busy} onClick={() => {
+                  setAdminMethod('local_password'); setGoogleTransactionId(null); void nativeGoogle.cancel();
+                }}>{t(messageKeys.setupWizardPasswordMethod)}</button>
+              <button type="button" className="secondaryButton" aria-pressed={adminMethod === 'google'}
+                disabled={nativeGoogle.busy} onClick={() => setAdminMethod('google')}>
+                {t(messageKeys.setupWizardGoogleMethod)}
+              </button>
+            </div> : null}
+            {adminMethod === 'google' ? <div className="googleSignInSection">
+              <p className="setupRuntimeNote">{googleTransactionId
+                ? t(messageKeys.authNativeVerified) : nativeGoogle.available
+                  ? t(messageKeys.settingsAccountPasswordOptional) : t(messageKeys.authNativeUnavailable)}</p>
+              <button type="button" className="secondaryButton"
+                disabled={!nativeGoogle.available || nativeGoogle.busy || Boolean(googleTransactionId)}
+                onClick={() => void verifyGoogle()}>
+                {nativeGoogle.busy ? t(messageKeys.authNativeWaiting) : t(messageKeys.authNativeContinue)}
+              </button>
+              {nativeGoogle.busy || googleTransactionId ? <button type="button" className="secondaryButton"
+                disabled={nativeGoogle.snapshot?.committing}
+                onClick={() => { setGoogleTransactionId(null); void nativeGoogle.cancel(); }}>
+                {t(messageKeys.authNativeCancel)}
+              </button> : null}
+            </div> : <>
             <p className="setupRuntimeNote">
               {t(messageKeys.setupWizardAdminCredentialsHint)}
             </p>
@@ -201,6 +243,7 @@ export function PlatformSetupWizard({
               <input
                 className="textInput"
                 value={adminIdentifier}
+                type="email"
                 onChange={(e) => setAdminIdentifier(e.target.value)}
                 placeholder={t(messageKeys.setupWizardAdminIdentifierPlaceholder)}
                 autoComplete="username"
@@ -217,6 +260,7 @@ export function PlatformSetupWizard({
                 autoComplete="new-password"
               />
             </label>
+            </>}
             {feedback ? <p className="feedbackText">{feedback}</p> : null}
             <button
               className="primaryButton setupPrimaryButton"

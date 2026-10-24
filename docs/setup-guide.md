@@ -156,11 +156,17 @@ Forgotten-credential and repair behavior:
 
 First Admin and password policy:
 
-- Setup always creates a local Admin. `/api/platform/setup/complete` requires
-  an Admin identifier and password, and rejects a missing or partial pair with
-  a structured `400` before any owner, Guide Cat, setup, or auth state is
-  written. There is no Google-only bootstrap: a local credential is the
-  offline and raw-LAN-IP recovery anchor.
+- Desktop setup offers Google or email/password. Google needs the distributor's
+  Desktop client configuration, opens the system browser and stays provisional
+  until final setup completion. It requires no tunnel or public domain. A
+  distribution without that configuration explains its unavailable state and
+  keeps email/password setup usable. New password setup uses an email; existing
+  handle-based logins remain usable. No schema migration or reset is needed.
+- A Google-only Admin is valid. In `Settings > General > Account`, Set password
+  first verifies the same Google account again, then adds an optional 8–256
+  code-point password to its existing email/account. This enables offline Cats
+  login and the existing Mobile/remote-browser password endpoints. Native Mobile
+  Google UI and remote Web product delivery remain separate milestones.
 - Admin passwords must contain 8 to 256 Unicode code points, inclusive. Cats
   does not require uppercase, lowercase, digits, or symbols, and accepts spaces
   and password-manager output. A longer passphrase is still the recommendation;
@@ -170,17 +176,19 @@ First Admin and password policy:
 - First-admin creation is serialized and rechecks "no Admin exists" inside the
   same auth-state write, so two concurrent submissions produce exactly one
   Admin. Auth state is persisted before the chat/core snapshot and rolled back
-  if that snapshot fails, so `setupCompleteAt` can never exist without a valid
-  first Admin.
+  if that snapshot fails. Hard process interruption between these separate files
+  retains the existing fail-closed repair boundary; no automatic cross-file
+  recovery journal is claimed.
 - `Settings > Data > Reset all data` also clears local accounts, linked login
   identities, memberships, and browser/mobile sessions. The next setup creates
-  a fresh local Admin; retaining an old Admin would block the wizard with
+  a fresh Admin through either configured method; retaining an old Admin would block the wizard with
   `already_complete` after the setup timestamp was cleared.
 
 Linking a Google account:
 
-- Google linking lives in `Settings > General > Account`. It is never part of
-  first-run setup.
+- Linking an additional Google identity lives in
+  `Settings > General > Account`. Google-first setup is a separate bootstrap
+  action, with the same account/owner authority after completion.
 - Linking requires re-entering the local password. The server issues a
   single-use, five-minute action grant bound to the account, browser session,
   and purpose; the renderer holds it in memory only and sends it in the
@@ -189,9 +197,11 @@ Linking a Google account:
 - The verified Google email must match the Cats account email after trim and
   lowercase. An account created with a non-email handle has no email to
   compare, so its first successful link adopts the verified Google address.
-- Google Sign-In needs an origin Google authorizes. On a raw LAN IP the
-  Account section keeps local-password status visible and explains that linking
-  must be done from an authorized origin.
+- Configured Desktop Google uses native browser PKCE and a temporary loopback
+  callback, independently of LAN/tunnel origins. Existing self-hosted Web GIS
+  still requires a separately configured Web client and authorized origin; a
+  raw LAN IP does not gain GIS support. Configuring a tunnel does not configure
+  Google sign-in.
 - Unlinking also requires a fresh password step-up, refuses to run when no
   local password would remain, and signs out every other browser and mobile
   session for that account. The device performing the unlink stays signed in.

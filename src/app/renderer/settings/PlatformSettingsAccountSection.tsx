@@ -11,6 +11,7 @@ import {
   fetchPlatformAuthStatus,
   linkPlatformGoogle,
   reauthenticatePlatformLocal,
+  readDesktopPlatformAuthReply,
   runPlatformAuthCsrfMutation,
   unlinkPlatformGoogle,
   type PlatformAuthActionPurpose,
@@ -23,6 +24,8 @@ import {
   type GoogleIdentityCredential,
 } from '../auth/GoogleIdentityServicesButton.js';
 import { PlatformReauthenticationDialog } from '../auth/PlatformReauthenticationDialog.js';
+import { useDesktopGoogleAuth } from '../auth/useDesktopGoogleAuth.js';
+import { countUnicodeCodePoints } from '../../../platform/auth/adminCredentials.js';
 
 export interface PlatformSettingsAccountSectionProps {
   showToast: (message: string) => void;
@@ -51,6 +54,10 @@ export function PlatformSettingsAccountSection({
   const { t } = useI18n();
   const [status, setStatus] = useState<PlatformAuthStatusPayload | null>(null);
   const [stage, setStage] = useState<AccountFlowStage>({ kind: 'idle' });
+  const nativeGoogle = useDesktopGoogleAuth();
+  const [passwordTransaction, setPasswordTransaction] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   /**
    * Requirement 47: the one-time action grant lives in component memory only.
    * A ref keeps it out of the rendered tree, and it is discarded on cancel, on
@@ -107,7 +114,11 @@ export function PlatformSettingsAccountSection({
   const finishFlow = useCallback((): void => {
     actionToken.current = null;
     setStage({ kind: 'idle' });
-  }, []);
+    setPasswordTransaction(null);
+    setNewPassword('');
+    setConfirmPassword('');
+    void nativeGoogle.cancel().catch(() => {});
+  }, [nativeGoogle.cancel]);
 
   const beginStepUp = useCallback((purpose: PlatformAuthActionPurpose): void => {
     actionToken.current = null;
@@ -226,11 +237,52 @@ export function PlatformSettingsAccountSection({
     // Only after the server issued the grant may GIS be initialized
     // (SPEC-113 requirement 44).
     if (purpose === 'link_google') {
+      if (nativeGoogle.available) {
+        setStage({ kind: 'submitting' });
+        try {
+          const currentStatus = await fetchPlatformAuthStatus(statusOptions());
+          if (!currentStatus.csrfToken) throw new Error();
+          await nativeGoogle.begin({ purpose: 'link_google', actionToken: grantToken,
+            csrfToken: currentStatus.csrfToken });
+          await refreshStatus();
+        } catch { showToast(t(messageKeys.authNativeFailed)); await refreshStatus(); }
+        finally { finishFlow(); }
+        return;
+      }
       setStage({ kind: 'awaitingGoogle' });
       return;
     }
     await completeUnlink(grantToken);
-  }, [buildAuthOptions, completeUnlink, finishFlow, showToast, t]);
+  }, [buildAuthOptions, completeUnlink, finishFlow, showToast, t,
+    nativeGoogle.available, nativeGoogle.begin, refreshStatus, statusOptions]);
+
+  async function beginFirstPassword(): Promise<void> {
+    setStage({ kind: 'submitting' });
+    try {
+      const currentStatus = await fetchPlatformAuthStatus(statusOptions());
+      if (!currentStatus.csrfToken) throw new Error();
+      const id = await nativeGoogle.begin({ purpose: 'set_password', csrfToken: currentStatus.csrfToken });
+      setPasswordTransaction(id);
+      setStage({ kind: 'idle' });
+    } catch { showToast(t(messageKeys.authNativeFailed)); finishFlow(); }
+  }
+
+  async function saveFirstPassword(): Promise<void> {
+    const length = countUnicodeCodePoints(newPassword);
+    if (!passwordTransaction || newPassword !== confirmPassword || length < 8 || length > 256) {
+      showToast(t(messageKeys.settingsAccountPasswordMismatch)); return;
+    }
+    setStage({ kind: 'submitting' });
+    try {
+      const currentStatus = await fetchPlatformAuthStatus(statusOptions());
+      if (!currentStatus.csrfToken) throw new Error();
+      const reply = await nativeGoogle.submit({ transactionId: passwordTransaction,
+        password: newPassword, csrfToken: currentStatus.csrfToken });
+      setStatus(await readDesktopPlatformAuthReply(reply, statusOptions()));
+      showToast(t(messageKeys.settingsAccountPasswordSaved));
+    } catch { showToast(t(messageKeys.authNativeFailed)); await refreshStatus(); }
+    finally { finishFlow(); }
+  }
 
   const handleGoogleError = useCallback((): void => {
     finishFlow();
@@ -244,6 +296,7 @@ export function PlatformSettingsAccountSection({
   const googleLinked = loginMethods?.google.linked ?? false;
   const localPasswordLinked = loginMethods?.localPassword.linked ?? false;
   const submitting = stage.kind === 'submitting';
+  const googleAvailable = Boolean(googleClientId || nativeGoogle.available);
 
   return (
     <>
@@ -270,26 +323,35 @@ export function PlatformSettingsAccountSection({
       <SettingsOptionRow
         label={t(messageKeys.settingsAccountGoogleLabel)}
         description={
-          googleClientId
+          googleAvailable
             ? t(messageKeys.settingsAccountGoogleDescription)
             : t(messageKeys.settingsAccountGoogleUnavailableHint)
         }
         control={
           <SettingsStatusChip
-            tone={googleLinked ? 'ready' : googleClientId ? 'warm' : 'muted'}
+            tone={googleLinked ? 'ready' : googleAvailable ? 'warm' : 'muted'}
           >
             {googleLinked
               ? t(messageKeys.settingsAccountGoogleLinkedStatus, {
                   email: loginMethods?.google.email ?? '',
                 })
-              : googleClientId
+              : googleAvailable
                 ? t(messageKeys.settingsAccountGoogleNotLinkedStatus)
                 : t(messageKeys.settingsAccountGoogleUnavailableStatus)}
           </SettingsStatusChip>
         }
       />
 
-      {googleClientId && loginMethods ? (
+      {!localPasswordLinked && googleLinked ? <div className="setupActionGroup">
+        <p className="heroNote">{t(messageKeys.settingsAccountSetPasswordHint)}</p>
+        <p className="heroNote">{t(messageKeys.settingsAccountPasswordOptional)}</p>
+        <button type="button" className="secondaryButton"
+          disabled={!nativeGoogle.available || stage.kind !== 'idle' || Boolean(passwordTransaction)}
+          onClick={() => void beginFirstPassword()}>{t(messageKeys.settingsAccountSetPassword)}</button>
+        {!nativeGoogle.available ? <p className="heroNote">{t(messageKeys.authNativeUnavailable)}</p> : null}
+      </div> : null}
+
+      {(googleAvailable || googleLinked) && loginMethods ? (
         <div className="setupActionGroup">
           {googleLinked ? (
             <button
@@ -306,7 +368,7 @@ export function PlatformSettingsAccountSection({
             <button
               type="button"
               className="secondaryButton"
-              disabled={stage.kind !== 'idle'}
+              disabled={stage.kind !== 'idle' || Boolean(passwordTransaction)}
               onClick={() => beginStepUp('link_google')}
             >
               {submitting
@@ -316,6 +378,31 @@ export function PlatformSettingsAccountSection({
           )}
         </div>
       ) : null}
+
+      {nativeGoogle.busy ? <div className="setupActionGroup">
+        <p className="heroNote">{t(messageKeys.authNativeWaiting)}</p>
+        <button type="button" className="secondaryButton" disabled={nativeGoogle.snapshot?.committing} onClick={finishFlow}>
+          {t(messageKeys.authNativeCancel)}</button>
+      </div> : null}
+
+      {passwordTransaction ? <div className="settingsAccountGoogleStep">
+        <p className="settings-option-row__label">{t(messageKeys.settingsAccountSetPasswordTitle)}</p>
+        <p className="heroNote">{status?.principal?.email}</p>
+        <label className="fieldLabel"><span>{t(messageKeys.authLoginPasswordLabel)}</span>
+          <input className="textInput" type="password" autoComplete="new-password"
+            value={newPassword} onChange={(event) => setNewPassword(event.target.value)} disabled={submitting} />
+        </label>
+        <label className="fieldLabel"><span>{t(messageKeys.settingsAccountPasswordConfirm)}</span>
+          <input className="textInput" type="password" autoComplete="new-password"
+            value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} disabled={submitting} />
+        </label>
+        <div className="setupActionGroup">
+          <button type="button" className="primaryButton" disabled={submitting}
+            onClick={() => void saveFirstPassword()}>{t(messageKeys.settingsAccountSetPassword)}</button>
+          <button type="button" className="secondaryButton" disabled={submitting} onClick={finishFlow}>
+            {t(messageKeys.settingsAccountReauthCancel)}</button>
+        </div>
+      </div> : null}
 
       {stage.kind === 'awaitingGoogle' && googleClientId ? (
         <div className="settingsAccountGoogleStep">
