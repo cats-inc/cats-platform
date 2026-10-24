@@ -7,6 +7,7 @@ export const messageKeys = {
   catImagesDescription: "catImagesDescription",
   catImagesLoading: "catImagesLoading",
   catImagesReadinessHint: "catImagesReadinessHint",
+  catImagesBindingChanged: 'catImagesBindingChanged',
   catImagesEnabled: "catImagesEnabled",
   catImagesManual: "catImagesManual",
   catImagesProactive: "catImagesProactive",

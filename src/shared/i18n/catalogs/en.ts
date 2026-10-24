@@ -9,6 +9,7 @@ export const enCatalog: MessageCatalog = {
   catImagesDescription: "Let this Cat make images for your conversation and its selected Telegram chat. Studio shares the same image service; installing it is optional.",
   catImagesLoading: "Loading image settings…",
   catImagesReadinessHint: "Connect this Cat’s direct conversation to Telegram and select an available image provider. The Runtime must support Cat image tools.",
+  catImagesBindingChanged: 'The Telegram link changed and the previous image permission is no longer valid. Confirm the recipient, then save permission again.',
   catImagesEnabled: "Allow image generation",
   catImagesManual: "Allow images when I ask",
   catImagesProactive: "Allow occasional images from this Cat",

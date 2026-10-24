@@ -12,6 +12,60 @@
 
 ## Overview
 
+### Telegram tool-delivery repair — 2026-10-24
+
+- Installed Desktop observation: an owner Telegram image request reached the Cat,
+  but its Runtime turn had no Platform image-tool instructions, no Cat image job
+  was admitted and the configured allowance stayed unused. Provider-native image
+  claims do not establish a managed asset or a Telegram delivery receipt.
+- Root cause: the ordinary Telegram bridge calls `linkRoom` for every inbound
+  message. Even when the target room was unchanged, this rotated `linkRevision`,
+  invalidating the owner-confirmed image binding fingerprint before tool admission.
+  The same defect could suppress an image waiting for delivery after further traffic.
+- Same-room linking is now idempotent. Actual room changes, including moving away
+  and back, still rotate the revision; token, policy and owner authorization checks
+  remain in force. Legacy same-room mappings without `linkRevision` retain their
+  original identity; no persisted schema or public contract change is required.
+- Previously invalidated permissions are not silently rebound. The owner status
+  reports `requiresBindingConfirmation`; the Behavior image card explains the
+  changed Telegram link and enables **Save permission** without requiring an
+  unrelated field edit. Explicit confirmation preserves the generation budget.
+  Existing interrupted/failed/uncertain jobs retain their original policy snapshot.
+- Cat tool instructions explicitly route owner image requests through
+  `cats.image_generate`, rather than treating a provider-native image result as
+  a managed Cat image or proof of Telegram delivery.
+- Regression evidence: the new same-room revision and real Telegram
+  bridge/MCP-to-image/receipt tests both failed before the fix and passed after it.
+  The image ledger, Cat tools, Chat image delivery, Telegram relay and delivery
+  suites pass **66/66**, including explicit stale-grant confirmation and budget
+  preservation. A further real heartbeat speaker/MCP-to-image/receipt case passed.
+  Renderer recovery, Telegram bridge/routes, companion heartbeat/fanout and
+  architecture/dependency checks pass **181/181**; Studio/App image compatibility
+  and companion settings localization pass **17/17**. Server, renderer and test
+  TypeScript checks pass; test-UI bundling and the candidate production Web/Desktop
+  builds pass. These are focused checks, not the full CI suite.
+- Isolated Windows Desktop candidate built from Platform source digest
+  `a9321a6b6ea147c212f3d558ebacb17cf904b805aa5a4a07235f7171910ec762`
+  (base `b96940de`) and Runtime `2837edbb284b2a0eeca0b8111803822978ae8c32`.
+  Both services became ready and the native setup screenshot was inspected.
+  The exact compiled candidate passed **43/43** MCP/Chat-image/relay regressions,
+  including manual and heartbeat requests. It exited with both services stopped
+  and `exitCode: 0`. Private source/launch/screenshot/exit evidence is under
+  `C:/Users/kenne/Source/cats-inc/.candidate-cat-image-delivery-20261024-03/`.
+  Local prerequisites needed the existing mobile dependency junction, process-local
+  Git ownership exception and cached Electron 41.2.0; no dependency install was made.
+  This establishes built-candidate fixture behavior, not live provider/Telegram
+  delivery, native recovery-card interaction, or an installed-app update. The
+  user's original profile, grant, conversation and installed Desktop were not modified.
+- Worktree: `.claude/worktrees/fix-cat-image-tool-delivery`, branch
+  `fix/cat-image-tool-delivery`. Owner subsequently selected Desktop **0.9.6
+  standard-profile preview**, with an auto-merge PR and Runtime pinned to the same
+  `2837edbb284b2a0eeca0b8111803822978ae8c32` source. Version fields, unchanged App
+  pins, compatibility/recovery notes, signing profile and publication gates are
+  recorded together in the [release notes](../release-notes.md). Hosted workflow
+  results and release assets are the publication record; this does not claim live
+  generation, Telegram delivery or an installed upgrade.
+
 ### Implementation checkpoint — 2026-10-23
 
 - owner 已授權完整實作、必要版本與 releases，Desktop 使用 standard preview；

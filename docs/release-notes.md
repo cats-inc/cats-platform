@@ -2,6 +2,49 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-24 — Desktop 0.9.6 standard preview: Telegram Cat image grants
+
+Selected distribution: Desktop **0.9.6 standard-profile preview**, App SDK
+**1.9.0**. Bundled **Usage 0.5.4** and optional Market **Studio 0.4.1** retain
+their existing artifacts. This selects Desktop publication only.
+
+- **Telegram image requests retain permission.** Ordinary inbound messages
+  re-confirm the Cat's existing direct conversation. Previously, that confirmation
+  minted a new routing revision, immediately invalidating the owner-approved image
+  grant and hiding the Cat image tools; further messages could also suppress an
+  image awaiting delivery. Re-confirming the same room now preserves the revision.
+  Moving to another room, including moving away and back, still revokes the old
+  grant. Token, account, policy and delivery-boundary checks remain enforced.
+- **Recover an already invalidated grant.** The Cat's **Behavior > Controlled
+  images** card identifies a changed Telegram link. Confirm its recipient and
+  select **Save permission** once, even without editing another field. This is an
+  explicit owner confirmation, preserves used allowance, and never silently
+  reauthorizes an old destination or replays an old job. Cat image-tool instructions
+  also distinguish managed Platform generation/delivery from provider-native images.
+- **Exact source and artifacts.** Runtime remains
+  `2837edbb284b2a0eeca0b8111803822978ae8c32` (package **0.6.1**), the source selected
+  by Desktop 0.9.5. The release workflow records Platform's selected source SHA and
+  the same Runtime SHA in every packaged/source receipt. The bundled Usage archive
+  is `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`, producer
+  source `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. Studio remains outside the default
+  bundle; no App, Runtime/Platform npm or cats-one publication is selected.
+- **Compatibility and data.** This compatible 0.9 patch retains SDK 1.9, public
+  generation contracts, Core data, schema 1 Cat policies/jobs, Runtime receipts and
+  existing IDs/assets/budgets. No data reset or schema migration is required.
+  Existing same-room bindings without a routing revision retain their identity.
+  Previously invalidated enabled grants need the explicit confirmation above.
+- **Signing and validation.** Dispatch `desktop-release.yml` from the merged source
+  with `tag=v0.9.6`, the immutable Runtime SHA above and `unsigned=false`. Standard
+  trust is macOS **signed + notarized**, Windows **unsigned: no certificate**, Linux
+  **n/a**; existing standard-profile self-update behavior remains supported.
+  Focused regression and TypeScript checks passed, including manual and heartbeat
+  MCP-to-image/Telegram-receipt fixtures and the compiled isolated Desktop candidate.
+  Real provider generation, live Telegram delivery and installed upgrade acceptance
+  are separate from that fixture evidence. CI and the release workflow enforce full
+  tests, three-OS packaged startup, App activation, source identity, signing and asset
+  checks. Publication results: the `v0.9.6` GitHub prerelease and its Actions run.
+
 ## 2026-10-24 — Desktop 0.9.5 standard preview: Cursor images
 
 Selected distribution: Desktop **0.9.5 standard-profile preview**, App SDK **1.9.0**.
