@@ -42,6 +42,7 @@ import {
 import { resolveProviderSnapshotPathFromChatState } from './shared/platformPaths.js';
 import { installBundledApps } from './platform/apps/packageInstaller.js';
 import { AppComponentHost } from './platform/apps/componentHost.js';
+import { createIngressSecretClient } from './platform/apps/ingressSecretClient.js';
 
 let startup = createAppStartupState();
 
@@ -104,6 +105,10 @@ export async function startApp(extension: {
   startupTrace.trace('runtime.client.created');
   const chatStore = new FileChatStore(config.chatStatePath);
   const desktopAppsKey = process.env.CATS_DESKTOP_APPS_KEY;
+  const desktopSecretChannel = process.env.CATS_DESKTOP_INGRESS_SECRETS === '1' && process.connected
+    && /^[a-f0-9]{64}$/.test(desktopAppsKey ?? '');
+  delete process.env.CATS_DESKTOP_INGRESS_SECRETS;
+  const ingressSecrets = desktopSecretChannel ? createIngressSecretClient() : undefined;
   const appComponents = /^[a-f0-9]{64}$/.test(desktopAppsKey ?? '')
     ? new AppComponentHost({ chatStatePath: config.chatStatePath, ownerId: 'desktop-owner' }) : undefined;
   if (process.env.CATS_APP_BUNDLE_PATH?.trim()) {
@@ -115,10 +120,17 @@ export async function startApp(extension: {
     chatStatePath: config.chatStatePath,
   });
   const server = createServer({
-    shared: { config, runtimeClient, startup, appComponents, desktopAppsKey, runtimeClientDiagnosticSink },
+    shared: { config, runtimeClient, startup, appComponents, desktopAppsKey, ingressSecrets, runtimeClientDiagnosticSink },
     chat: { chatStore, startCompanionLifeLoop: config.companionLifeLoopEnabled !== false },
   });
   startupTrace.trace('server.created');
+  if (desktopSecretChannel) process.on('message', (message: unknown) => {
+    const input = message as { type?: string; event?: string } | null;
+    if (input?.type === 'cats.ingress.lifecycle'
+      && ['suspend', 'resume', 'offline', 'online'].includes(input.event ?? '')) {
+      void server.reconcileRemoteAccess(input.event as 'suspend' | 'resume' | 'offline' | 'online');
+    }
+  });
 
   // Seed provider/catalog caches from disk before we start accepting requests
   // so the first /api/providers (or /api/providers/:id/models*) call lands on

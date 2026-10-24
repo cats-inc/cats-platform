@@ -24,6 +24,19 @@ process.on('SIGINT', stop);
 process.on('message', message => { if (message?.type === 'stop') void stop(); });
 
 try {
+  if (config.kind === 'ingress') {
+    config.context.ingress.authtoken = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Missing ingress credential.')), 10_000);
+      const receive = message => {
+        if (message?.type !== 'ingress-secret') return;
+        clearTimeout(timer); process.off('message', receive);
+        if (typeof message.authtoken !== 'string' || !/^[A-Za-z0-9_-]{20,512}$/.test(message.authtoken)) reject(new Error('Invalid ingress credential.'));
+        else resolve(message.authtoken);
+      };
+      process.on('message', receive);
+      process.send({ type: 'ingress-secret-required' });
+    });
+  }
   const module = await import(pathToFileURL(config.entrypoint).href);
   if (config.kind === 'migration') {
     if (typeof module.migrate !== 'function') throw new Error('Missing App migration export.');
@@ -60,11 +73,12 @@ try {
       });
       process.send({ type: 'ready', port: server.address().port });
     } else {
-      process.send({ type: 'ready', ...(config.kind === 'ingress' ? { publicUrl: component.publicUrl } : {}) });
+      process.send({ type: 'ready', ...(config.kind === 'ingress' ? { publicUrl: component.publicUrl, port: component.port } : {}) });
     }
   }
-} catch {
+} catch (error) {
   // App exceptions can contain question text or credentials. Do not forward them to host logs.
-  process.send?.({ type: 'failed' });
+  const code = /ERR_NGROK_\d+/.exec(String(error?.error_code ?? error?.message ?? ''))?.[0];
+  process.send?.({ type: 'failed', ...(config.kind === 'ingress' && code ? { code } : {}) });
   await stop();
 }

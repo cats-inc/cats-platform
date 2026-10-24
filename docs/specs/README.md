@@ -1,10 +1,10 @@
 # Feature Specifications
 
 - [SPEC-130: Desktop-managed remote access](SPEC-130-desktop-managed-remote-access.md)
-  — draft, 2026-10-24; provider setup/ownership, protected secret migration,
-  shared Mobile/Telegram/App authentication and external acceptance.
-  One-time external-proxy Ask/Grok Bot acceptance passed on Windows; managed
-  provider implementation remains pending.
+  — scoped ngrok/external lifecycle and protected migration implemented,
+  2026-10-25; Windows fixtures/native storage checked. Funnel, packaged OS and
+  full shared-consumer/live managed-provider acceptance remain open.
+  Separate one-time external-proxy Ask/Grok Bot acceptance passed on Windows.
 - [SPEC-129: Desktop Admin bootstrap and Google sign-in](SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md)
   — first batch implemented, 2026-10-25; common Admin bootstrap, bound Google
   proofs, same-account first password and compatibility checks. Native Desktop

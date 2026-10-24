@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Draft requirements; owner-confirmed product direction; completion not implemented |
+| Status | ngrok/external implementation slice with Windows fixtures; full provider/consumer/OS acceptance open |
 | Date | 2026-10-24 |
 | Decision | [ADR-139](../decisions/139-manage-one-desktop-remote-ingress.md) |
 | Delivery | [PLAN-122](../plans/PLAN-122-desktop-identity-and-remote-access-rollout.md) |
@@ -17,18 +17,21 @@ ngrok, managed Tailscale Funnel, or an existing operator-owned proxy. The first
 stage supports Cats Mobile, Telegram webhook bindings and declared external App
 endpoints, including Ask MCP.
 
-Current code already provides shared routing, Desktop Remote access settings,
+The baseline already provided shared routing, Desktop Remote access settings,
 an ngrok SDK worker, saved URL/enablement and startup restore. Existing-proxy
 mode requires a fixed port/origin. It does not start Tailscale. Provider recovery,
 protected secret migration, bounded ownership and external acceptance are not
-proved by those local fixtures. Extend this host; do not create another gateway.
+proved by those baseline fixtures. The scoped 2026-10-25 implementation below
+extends this host; Funnel and full external acceptance remain open.
 
 The separately authorized 2026-10-25 one-time Ask/ngrok acceptance helper uses
 the existing external-proxy mode, with the user's authtoken supplied through a
 loopback form and retained only in the helper process. It is not the managed
 provider/secure-store implementation described below. It rejects an already
 configured ingress and restores its own temporary non-secret settings on stop.
-Helper/installed-App checks do not establish live Grok Bot acceptance.
+Local helper/package fixtures alone do not establish live Grok Bot acceptance.
+The separately completed installed Bot round trip is recorded in PLAN-122;
+it does not verify the new managed worker.
 
 ## Scope
 
@@ -132,6 +135,53 @@ Saving an invalid replacement must preserve the prior recoverable configuration.
 | REM-30 | Account-only Google bootstrap is sufficient authenticated setup readiness; do not require a local password merely to connect the tunnel. Preserve all caller authentication boundaries. |
 | REM-31 | Host stop/sleep means no local execution or immediate answer reception. Preserve App/Telegram durable retry semantics and report known limits without promising cloud queuing. |
 | REM-32 | Freeze settings/API/data compatibility before implementation. Breaking 0.x contracts require a minor boundary at an authorized release; no version bump or provider-account mutation is authorized by this document. |
+
+## ngrok implementation slice — contracts frozen 2026-10-25
+
+The owner authorized ngrok plus the existing external adapter, not Funnel or
+publication. Schema 3 stores `enabled`, `autoConnect`, provider, port, origin
+and an opaque `credentialRef`. Ngrok plaintext is an input-only field; neither
+settings/status nor worker environment contains it. Desktop's owned Platform
+child alone receives a private IPC safeStorage broker, with profile/purpose
+binding, four pending operations and a ten-second deadline. Linux `basic_text`
+is rejected. This slice targets the existing Electron 41 synchronous API.
+
+Schema 2 and per-App migration first validate sources and create verified,
+OS-protected immutable credential/backup blobs. A non-secret journal records
+source hashes and the new settings. Atomic settings replacement is the commit
+point; retirement checks source hashes and resumes after interruption. Unknown
+or changed data is preserved. Backup material never overrides unrelated active
+settings. Reserve the next 0.x minor boundary for this configuration/host-protocol
+change; perform no bump or publication in this implementation request.
+Flush new file contents before rename; sync containing directories on POSIX.
+Windows Node cannot flush directory handles: process-interruption/restart recovery
+is tested, while hard power-loss durability of directory/rename operations is not
+claimed. Unknown data or unavailable OS protection preserves migration inputs.
+Headless hosts have no Desktop broker and cannot migrate protected credentials;
+they fail closed instead of saving plaintext. Native macOS/Linux storage remains
+an independent acceptance gate.
+
+Retain `connected`/`configured` for existing App consumers. Additional states
+include off, disconnected, connecting, retrying, needs-action, unavailable and
+cleanup-pending. Provider connection is separate from public verification,
+which remains unknown without independent external evidence. Each origin,
+credential or connection generation invalidates prior public verification.
+Retry transient failures at 1, 2, 5, 10 and 30 seconds with bounded jitter;
+one worker owns a generation, with no replacement until its cleanup completes.
+Disable, full exit and suspend revoke admission before cleanup; resume/network
+restoration reconcile the saved intent without blocking local startup.
+Worker readiness is bounded to 30 seconds and cleanup to eight seconds. A cleanup
+failure retains its handle and blocks a replacement; the user can retry disconnect.
+Suspension and offline status are independent blockers. Within an automatic retry
+sequence, brief connects do not reset its budget; a stable 60-second connection,
+explicit reconfiguration or resume/network recovery resets it.
+
+The ngrok worker owns its loopback TCP target for the entire SDK-forwarder lifetime,
+including parent IPC loss. Paused accepted sockets pass through owned child IPC to
+the same Platform HTTP ingress boundary, with a 64-socket bound and backpressure.
+Generation revocation stops admission immediately; the target remains reserved
+until cleanup or worker exit. Credentials reach only the owned worker over IPC,
+never its environment. This adds no second public gateway, tunnel or App endpoint.
 
 ## Acceptance scenarios
 

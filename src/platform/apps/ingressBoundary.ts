@@ -36,12 +36,14 @@ export async function createPlatformIngressListener(options: {
   dispatch(request: IncomingMessage, response: ServerResponse): Promise<void>;
 }) {
   const sockets = new Set<Socket>();
+  let admitting = true;
   const server = createServer((request, response) => {
     const reject = (status: number, error: string) => {
       response.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
       response.end(JSON.stringify({ error }));
     };
     void (async () => {
+      if (!admitting) { reject(503, 'public_ingress_unavailable'); return; }
       const pathname = canonicalIngressPath(request.url ?? '/');
       if (!pathname) { reject(400, 'invalid_ingress_path'); return; }
       if (isInternalPlatformRoute(pathname, request.method ?? 'GET')) { reject(403, 'internal_route'); return; }
@@ -56,11 +58,21 @@ export async function createPlatformIngressListener(options: {
     })().catch(() => { if (!response.headersSent) reject(503, 'public_ingress_unavailable'); else response.destroy(); });
   });
   server.on('connection', socket => { sockets.add(socket); socket.once('close', () => sockets.delete(socket)); });
+  server.maxConnections = 64;
   server.headersTimeout = 10_000; server.requestTimeout = 30_000; server.maxHeadersCount = 64;
   await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(options.port, '127.0.0.1', resolve); });
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Public ingress listener unavailable.');
-  return { target: `http://127.0.0.1:${address.port}`, async close() {
+  const revoke = () => {
+    admitting = false;
+    for (const socket of sockets) socket.destroy();
+  };
+  return { target: `http://127.0.0.1:${address.port}`, revoke,
+    accept(socket: Socket) {
+      if (sockets.size >= 64) { socket.destroy(); return; }
+      server.emit('connection', socket); socket.resume();
+    }, async close() {
+    revoke();
     for (const socket of sockets) socket.destroy();
     await new Promise<void>(resolve => server.close(() => resolve()));
   } };
