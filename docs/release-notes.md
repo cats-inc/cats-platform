@@ -42,6 +42,13 @@ no Platform/Runtime npm, launcher or unrelated App release.
   password hashes, account/owner IDs and conversation/Runtime data are preserved
   without reset or forced relink. Core/App formats and SDK 1.9 remain unchanged.
   Headless protected migration requires the native broker.
+- **Bundled product knowledge.** Catlas and Orchestrator advance to revision
+  `2026-10-25.1` with `platformRange: "0.10.x"`; entry content remains unchanged.
+  The former 0.9-only declarations would otherwise disable these bundles on the
+  new host. Existing local contributions remain stored; the existing digest gate
+  marks drafts against an older bundle stale; adoption requires a fresh draft
+  against the current bundle and explicit owner review. No contribution file is
+  rewritten. The 50 affected knowledge/agent/guide regressions passed on 0.10.0.
 - **Exact inputs.** Runtime is
   `5212fa59ee44fbee7eea0d85e7482933824ff775` (package **0.6.2**).
   Usage remains
