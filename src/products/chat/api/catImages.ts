@@ -208,9 +208,15 @@ export function createChatCatImages(dependencies: Dependencies) {
         const mapped = source.lane ? dependencies.telegramRelay?.resolveBinding({ roomId: source.lane.id, bindingId: row.id }) : null;
         return { id: row.id, name: row.botName, linked: Boolean(mapped && mapped.bindingId === row.id && mapped.linkedRoomId === source.lane?.id) };
       });
+      const granted = policy?.enabled ? await context(catId, policy.bindingId) : null;
+      const requiresBindingConfirmation = Boolean(granted && policy && (!granted.lane
+        || buildChatConversationId(granted.lane.id) !== policy.conversationId
+        || !granted.binding || !granted.mapped || granted.mapped.bindingId !== policy.bindingId
+        || granted.mapped.linkedRoomId !== granted.lane.id
+        || fingerprint(granted.binding, granted.mapped) !== policy.bindingRevision));
       return { policy: policy ?? null, capabilities: capabilities ? presentMediaCapabilities(capabilities) : null,
         ready: Boolean(capabilities?.sourceSessionYield && capabilities.profiles.length && source.lane && bindings.some(binding => binding.linked)),
-        bindings,
+        bindings, requiresBindingConfirmation,
         budget: policy ? ledger!.budget(identity, policy, now()) : null,
         jobs: ledger!.list(identity).slice(0, 50).map(job => ({ ...presentCatImage(job), delivery: ledger!.delivery(job.id) ?? null })) };
     },

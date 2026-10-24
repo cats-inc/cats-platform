@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
+import { createServer as createHttpServer } from 'node:http';
 import { createDefaultCoreState } from '../build/server/core/model/index.js';
 import { createCatActorId } from '../build/server/core/actors.js';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
@@ -16,6 +17,11 @@ import { checkTelegramDispatchGuard } from '../build/server/platform/transports/
 import { InMemoryTelegramRelayStore } from '../build/server/platform/transports/telegram/store/index.js';
 import { createTelegramConversationMapper } from '../build/server/platform/transports/telegram/mapping.js';
 import { RUNTIME_SUPERVISION_BOUNDARY } from '../build/server/platform/supervision/runtimeBoundary.js';
+import { createCatImageTools } from '../build/server/platform/multimedia/catImageTools.js';
+import { bridgeTelegramWebhookToRoom } from '../build/server/platform/transports/telegram/bridge.js';
+import { createChatTelegramRoomBridge } from '../build/server/products/chat/state/telegramBridgeAdapter.js';
+import { MemoryCompanionBoxStore } from '../build/server/products/chat/state/companion-box/index.js';
+import { createCompanionHeartbeatSpeaker } from '../build/server/products/chat/api/companionLifeLoop.js';
 
 const NOW = new Date('2026-10-23T08:00:00Z');
 const bytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
@@ -78,7 +84,7 @@ async function fixture(t, outcomes = ['sent']) {
   const turn = { context: { metadata: { supervisionBoundary: RUNTIME_SUPERVISION_BOUNDARY, supervisionProduct: 'cats-chat',
     supervisionSurface: 'companion-heartbeat', supervisionToolName: 'cats.runtime.message.send',
     supervisionRunId: laneId, supervisionActionId: 'heartbeat-one' } } };
-  return { catId, laneId, binding, store, owner, input, turn, relay, relayStore, sends, posted: () => posted,
+  return { root, runtimeClient, catId, laneId, binding, store, owner, input, turn, relay, relayStore, sends, posted: () => posted,
     holdAppend() { let release; appendGate = new Promise(resolve => { release = resolve; }); return release; },
     holdMediaRead() { let release; mediaReadGate = new Promise(resolve => { release = resolve; }); return release; },
     mediaReadEntered: () => mediaReadEntered,
@@ -96,6 +102,84 @@ async function fixture(t, outcomes = ['sent']) {
       return job;
     } };
 }
+
+for (const trigger of ['manual', 'heartbeat']) test(`${trigger} image request retains its Telegram grant, calls MCP and delivers the saved image`, async t => {
+  const f = await fixture(t);
+  const companionStore = new MemoryCompanionBoxStore();
+  if (trigger === 'heartbeat') {
+    const state = await f.store.read();
+    state.cats.find(cat => cat.id === f.catId).roles = ['companion'];
+    await f.store.write(state);
+  }
+  await f.service.save('account-owner', f.catId, f.input);
+  f.setSourceBusy(false);
+  let endpoint;
+  let sourceCalls = 0;
+  let suppliedTools = [];
+  const tools = createCatImageTools({
+    endpoint: () => endpoint,
+    service: f.service.service(),
+    resolveTurn: (id, input) => f.service.resolveTurn(id, input),
+  });
+  const server = createHttpServer((req, res) => {
+    void tools.route(req, res).then(handled => { if (!handled) res.writeHead(404).end(); });
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  endpoint = `http://127.0.0.1:${server.address().port}/api/internal/cat-image-tools/mcp`;
+  t.after(async () => { tools.close(); await new Promise(resolve => server.close(resolve)); });
+  const runtimeClient = tools.wrapClient({ ...f.runtimeClient, async sendMessage(id, _content, input) {
+    sourceCalls++;
+    suppliedTools = (input.mcpServers ?? []).map(server => server.name);
+    const descriptor = input.mcpServers?.find(server => server.name === 'cats');
+    if (descriptor) {
+      assert.match(input.instructions, /cats image_generate/);
+      const response = await fetch(descriptor.url, { method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${descriptor.auth.token}` },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call',
+          params: { name: 'image_generate', arguments: { prompt: 'A cat watching the sea', caption: '陪你看海。' } } }) });
+      const result = await response.json();
+      assert.equal(result.result.isError, undefined);
+      assert.equal(result.result.structuredContent.queued, true);
+      assert.equal(f.posted(), 0, 'image execution waits for the source turn to release');
+    }
+    return { segments: [{ kind: 'text', text: trigger === 'heartbeat' ? '[quiet]' : '已排入生圖工作。', toolName: null, toolId: null }] };
+  } });
+  const update = { update_id: 2, message: { message_id: 2, text: '給我一張你在海邊望海的照片',
+    chat: { id: 12345, type: 'private' }, from: { id: 42, first_name: 'Owner', is_bot: false } } };
+  const context = { bossCatId: null, bossCatName: null, bossCatActorId: null,
+    botBindings: [f.binding], selectedBotBinding: f.binding, defaultBotBinding: f.binding };
+  const receipt = f.relay.receiveUpdate({ update, context });
+  if (trigger === 'manual') {
+    await bridgeTelegramWebhookToRoom({ update, receipt, context, telegramRelay: f.relay, runtimeClient,
+      roomBridge: createChatTelegramRoomBridge({ chatStore: f.store, companionStore,
+        platformDir: f.root, chatStatePath: path.join(f.root, 'chat.json'), runtimeDataDir: path.join(f.root, 'runtime') }),
+      now: () => NOW });
+  } else {
+    f.relay.linkRoom({ roomId: f.laneId, bindingId: f.binding.id, chatId: '12345' });
+    const speak = createCompanionHeartbeatSpeaker({ chatStore: f.store, runtimeClient, companionStore,
+      config: { runtimeDataDir: path.join(f.root, 'runtime') }, now: () => NOW,
+      mutationGate: { run: (_key, operation) => operation() } });
+    assert.equal(await speak({ catId: f.catId, laneId: f.laneId, sessionId: 'source-chat', kind: 'regular',
+      now: NOW, awakeSince: null, lastOwnerMessageAt: null }), 'quiet');
+  }
+  assert.equal(sourceCalls, 1);
+  assert.ok(suppliedTools.includes('cats'), 'the actual Telegram reply must receive the platform image tools');
+  for (let n = 0; n < 200 && !(await f.service.status('account-owner', f.catId)).jobs.some(job => job.status === 'succeeded'); n++) {
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  // Ordinary further traffic may arrive while the original image is awaiting delivery.
+  f.relay.linkRoom({ roomId: f.laneId, bindingId: f.binding.id, chatId: '12345' });
+  await f.service.tick(); await f.service.tick();
+  const status = await f.service.status('account-owner', f.catId);
+  assert.equal(status.jobs.length, 1);
+  assert.equal(status.jobs[0].delivery.status, 'sent');
+  assert.equal(f.posted(), 1);
+  const photos = f.sends.filter(request => request.operation === 'send_media');
+  assert.equal(photos.length, 1);
+  assert.equal(photos[0].caption, '陪你看海。');
+  const messages = (await f.store.read()).channels.find(channel => channel.id === f.laneId).messages;
+  assert.equal(messages.filter(message => message.metadata.catImageJobId === status.jobs[0].id).length, 1);
+});
 
 test('ordinary Cat without an installed Studio queues once, appends one image message and gets a Telegram relay receipt', async t => {
   const f = await fixture(t);
@@ -224,6 +308,22 @@ test('a second account cannot lend a new policy to an active Cat, nor can a diff
   assert.equal(await f.service.resolveTurn('unrelated-session', f.turn), null);
   assert.equal(await f.service.resolveTurn('source-chat', { context: { metadata: { ...f.turn.context.metadata, supervisionBoundary: 'invented' } } }), null);
   await assert.rejects(f.service.save('account-owner', f.catId, { revision: 1, enabled: true, accountId: 'other-owner' }), /invalid_image_policy/);
+});
+
+test('a stale routing grant requires explicit owner confirmation without resetting the image budget', async t => {
+  const f = await fixture(t); await f.service.save('account-owner', f.catId, f.input);
+  await f.generate();
+  assert.equal((await f.service.status('account-owner', f.catId)).requiresBindingConfirmation, false);
+  f.relay.linkRoom({ roomId: 'another-lane', bindingId: f.binding.id, chatId: '12345' });
+  f.relay.linkRoom({ roomId: f.laneId, bindingId: f.binding.id, chatId: '12345' });
+  const stale = await f.service.status('account-owner', f.catId);
+  assert.equal(stale.ready, true, 'transport prerequisites alone do not make the saved grant valid');
+  assert.equal(stale.requiresBindingConfirmation, true);
+  assert.equal(await f.service.resolveTurn('source-chat', f.turn), null);
+  const confirmed = await f.service.save('account-owner', f.catId, { ...f.input, revision: 1 });
+  assert.equal(confirmed.requiresBindingConfirmation, false);
+  assert.deepEqual(confirmed.budget, stale.budget);
+  assert.ok(await f.service.resolveTurn('source-chat', f.turn));
 });
 
 test('owner can stop an uncertain delivery after relinking, preserve its unknown outcome and unblock reset', async t => {

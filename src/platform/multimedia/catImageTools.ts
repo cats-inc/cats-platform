@@ -12,6 +12,8 @@ interface Turn { caller: CatImageCaller; actionId: string; expiresAt: number; ac
 interface Session { token: string; turn?: Turn; }
 const instructions = 'You can use the cats image_generate tool when an image would be useful to your owner. '
   + 'It queues one image with a caption for this conversation and its authorized Telegram binding. '
+  + 'For an owner image request, use cats image_generate. Provider-native image tools and imagegen skills '
+  + 'do not create the Cats image job or its Telegram delivery. '
   + 'End this turn after queuing: generation starts after your turn releases its resources. '
   + 'A queued job is not proof of generation or Telegram delivery. Never claim it was sent until the job reports delivery.';
 

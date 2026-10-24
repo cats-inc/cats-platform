@@ -9,6 +9,7 @@ export const zhTWCatalog: MessageCatalog = {
   catImagesDescription: "允許這隻 Cat 為你製作圖片，放進對話並傳到選定的 Telegram 聊天。Studio 共用同一個圖片服務，可獨立選擇是否安裝。",
   catImagesLoading: "載入生圖設定中…",
   catImagesReadinessHint: "請先將這隻 Cat 的私訊連結到 Telegram，並選擇可用的生圖 provider。Runtime 也需要支援 Cat 生圖工具。",
+  catImagesBindingChanged: 'Telegram 連結已變更，原生圖授權已失效。請確認收件對象，再按「儲存授權」。',
   catImagesEnabled: "允許生圖",
   catImagesManual: "允許依我的要求生圖",
   catImagesProactive: "允許 Cat 偶爾主動製作圖片",

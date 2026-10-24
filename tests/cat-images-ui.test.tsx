@@ -8,7 +8,7 @@ import { CatImageAttachment } from '../src/products/shared/renderer/components/c
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 
 const id = '12345678-1234-1234-1234-123456789abc';
-const initial = { policy: null, ready: true, budget: null, jobs: [], bindings: [{ id: 'cat-bot', name: 'owner_cat_bot', linked: true }],
+const initial = { policy: null, ready: true, requiresBindingConfirmation: false, budget: null, jobs: [], bindings: [{ id: 'cat-bot', name: 'owner_cat_bot', linked: true }],
   capabilities: { schemaVersion: 2, revision: 'r1', maxPromptLength: 2000, maxImageBytes: 8388608,
     targets: [{ id: 'grok/native', provider: 'grok', instanceLabel: 'native', availability: 'available' }],
     profiles: [{ id: 'grok-generate', revision: 1, operation: 'image.generate', targetIds: ['grok/native'],
@@ -36,6 +36,32 @@ test('owner explicitly enables finite image permission and gets save feedback on
   assert.equal('ownerActorId' in writes[0]!, false); assert.equal('accountId' in writes[0]!, false);
   await waitFor(() => assert.match(view.container.querySelector('.toast')?.textContent ?? '', /Image permission saved/));
   assert.equal(view.container.querySelectorAll('.companionFormRow .toast').length, 0);
+});
+
+test('a stale Telegram grant can be explicitly saved again without changing its fields', async t => {
+  const originalFetch = globalThis.fetch;
+  const policy = { revision: 3, enabled: true, manual: true, proactive: true, targetId: 'grok/native',
+    profileId: 'grok-generate', profileRevision: '1', agentConfigId: 'grok-agent', bindingId: 'cat-bot',
+    dailyLimit: 2, totalLimit: 10, minIntervalMinutes: 60, timeZone: 'UTC', windowStart: '07:00',
+    windowEnd: '22:00', expiresAt: '2030-01-01T00:00:00.000Z' };
+  let confirmed = false;
+  globalThis.fetch = (async (_url, input) => {
+    if (input?.method === 'PUT') {
+      assert.deepEqual(JSON.parse(String(input.body)), policy);
+      confirmed = true;
+    }
+    return json({ ...initial, policy, requiresBindingConfirmation: !confirmed });
+  }) as typeof fetch;
+  t.after(() => { cleanup(); globalThis.fetch = originalFetch; resetTestDom(); });
+  const view = render(<I18nProvider locale="en"><CatImagePolicyCard catId="cat-one" /></I18nProvider>);
+  await waitFor(() => view.getByText(/The Telegram link changed/));
+  const save = view.getByRole('button', { name: 'Save permission' }) as HTMLButtonElement;
+  assert.equal(save.disabled, false);
+  assert.equal(confirmed, false, 'loading the stale policy must never reauthorize it');
+  fireEvent.click(save);
+  await waitFor(() => assert.equal(confirmed, true));
+  await waitFor(() => assert.equal(view.queryByText(/The Telegram link changed/), null));
+  await waitFor(() => assert.match(view.container.querySelector('.toast')?.textContent ?? '', /Image permission saved/));
 });
 
 test('an uncertain delivery needs owner confirmation and retries only the original image ID', async t => {

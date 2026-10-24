@@ -212,6 +212,13 @@ export function linkTelegramRoom(input: {
   roomId: string;
   linkedAt: string;
 }): TelegramConversationBinding {
+  // Ingress confirms the room on every message. Only an actual routing change
+  // rotates authority: changing this revision for the same room revokes Cat
+  // image grants before their tools can be delivered, and suppresses pending images.
+  if (input.binding.linkedRoomId === input.roomId
+    && input.binding.roomRoutingStatus === 'linked_room') {
+    return input.binding;
+  }
   const nextBinding: TelegramConversationBinding = {
     ...input.binding,
     linkedRoomId: input.roomId,

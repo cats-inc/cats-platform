@@ -13,6 +13,7 @@ interface Policy {
 }
 interface Status {
   policy: Policy | null; ready: boolean; capabilities: CatsImageCapabilitiesV2 | null;
+  requiresBindingConfirmation: boolean;
   bindings: Array<{ id: string; name: string; linked: boolean }>;
   budget: { dailyUsed: number; totalUsed: number } | null;
   jobs: Array<CatsImageJobV2 & { delivery: { status: 'pending' | 'sending' | 'sent' | 'failed' | 'uncertain' | 'suppressed'; abandonedAt?: string | null } | null }>;
@@ -108,6 +109,7 @@ export function CatImagePolicyCard({ catId }: { catId: string }) {
     <p>{t(messageKeys.catImagesDescription)}</p>
     {!status || !draft ? <p role="status">{t(messageKeys.catImagesLoading)}</p> : <>
       {!status.ready ? <p>{t(messageKeys.catImagesReadinessHint)}</p> : null}
+      {status.requiresBindingConfirmation ? <p>{t(messageKeys.catImagesBindingChanged)}</p> : null}
       <label className="companionFormRow"><span>{t(messageKeys.catImagesEnabled)}</span>
         <input type="checkbox" checked={draft.enabled} disabled={saving || (!status.ready && !draft.enabled)} onChange={event => update('enabled', event.target.checked)} /></label>
       <label className="companionFormRow"><span>{t(messageKeys.catImagesManual)}</span>
@@ -141,7 +143,7 @@ export function CatImagePolicyCard({ catId }: { catId: string }) {
         value={localDateTime(draft.expiresAt)} disabled={saving} onChange={event => update('expiresAt', event.target.value ? new Date(event.target.value).toISOString() : '')} /></label>
       {status.budget && status.policy ? <p>{t(messageKeys.catImagesBudget, { daily: status.budget.dailyUsed, dailyLimit: status.policy.dailyLimit,
         total: status.budget.totalUsed, totalLimit: status.policy.totalLimit })}</p> : null}
-      <button type="button" className="companionActionButton" disabled={saving || !dirty.current || (!status.ready && !status.policy)} onClick={() => { void save(); }}>
+      <button type="button" className="companionActionButton" disabled={saving || (!dirty.current && !status.requiresBindingConfirmation) || (!status.ready && !status.policy)} onClick={() => { void save(); }}>
         {t(saving ? messageKeys.catImagesSaving : messageKeys.catImagesSave)}</button>
       {status.jobs.length ? <ul>{status.jobs.slice(0, 5).map(job => <li key={job.id}>
         <span>{t(job.delivery?.abandonedAt ? job.delivery.status === 'uncertain' ? messageKeys.catImagesStoppedUnknown : messageKeys.catImagesSuppressed

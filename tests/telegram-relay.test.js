@@ -203,6 +203,25 @@ test('telegram relay can persist a linked room for the active transport inbox', 
   assert.equal(diagnostics.bindings[0].linkedRoomId, 'room-123');
 });
 
+test('repeated linking preserves the routing revision; moving away and back revokes the original revision', () => {
+  const store = new InMemoryTelegramRelayStore();
+  const relay = createTelegramRelay({ store });
+  const context = createContext();
+  const receive = id => relay.receiveUpdate({ context, update: { update_id: id,
+    message: { message_id: id, text: 'hello', chat: { id: 12345, type: 'private' } } } });
+  receive(1);
+  const first = relay.linkRoom({ conversationId: 'telegram:12345', roomId: 'room-original' });
+  receive(2);
+  const same = relay.linkRoom({ conversationId: 'telegram:12345', roomId: 'room-original' });
+  assert.equal(same.linkRevision, first.linkRevision);
+  assert.equal(same.lastInboundMessageId, '2');
+  const moved = relay.linkRoom({ conversationId: 'telegram:12345', roomId: 'room-other' });
+  assert.notEqual(moved.linkRevision, first.linkRevision);
+  const returned = relay.linkRoom({ conversationId: 'telegram:12345', roomId: 'room-original' });
+  assert.notEqual(returned.linkRevision, first.linkRevision);
+  assert.notEqual(returned.linkRevision, moved.linkRevision);
+});
+
 test('telegram relay scopes conversation ids by the selected non-default binding', () => {
   const store = new InMemoryTelegramRelayStore();
   const relay = createTelegramRelay({
