@@ -343,6 +343,36 @@ documented, and operable after the first slice lands.
 
 ## Progress Log
 
+### Startup recovery follow-up — 2026-10-24
+
+- Installed Desktop 0.9.6 remained in `checking_prerequisites` after both
+  sidecars were ready, with saved setup and provider selection intact. CDP
+  `open_chat` refreshed the checks and restored the existing authenticated UI.
+  The original shell-read error was discarded, so its precise cause is unknown;
+  later shell reads exceeding the 10-second deadline establish timeout as a
+  plausible cause, not a confirmed diagnosis.
+- The three 20/40/60-second splash messages only changed copy; they had no final
+  recovery transition. Rejected shell reads were ignored by `allSettled`, leaving
+  no `lastError` to drive recovery.
+- Startup now retries failed or still-pending checks up to three times without
+  restarting ready services, then retains the failure in the host snapshot and
+  phase event. Health/diagnostic JSON reads have deadlines covering body reads.
+- A separate 80-second pending-page deadline exposes Retry and diagnostic details
+  after the third hint. Repeated snapshots do not extend it, Retry resets it, and
+  late readiness clears it. Optional helper reads cannot block page rendering.
+- Validation: host TypeScript build and 68 focused host/recovery tests passed.
+  The four DOM behavior tests were also run against the installed 0.9.6 bootstrap
+  module: three reproduced failures; all four passed against the candidate build.
+  The candidate's ten recovery/DOM tests passed, and the native first-run provider
+  page was inspected before its services drained with exit 0. This is not a
+  production-profile fault-injection test or another release.
+- Private candidate receipt: `.candidate-startup-recovery-20261024` under the
+  workspace parent; Platform source digest
+  `d8b72f944469fd61c2f9dc8d2ec918eab54b9acf0b49d79bc2c862ff858ba445`
+  from `632c1302` plus this fix; Runtime `2837edbb` clean. No persisted-data
+  format, public API, version field or published release was changed. This
+  bounded fix does not mark the broader diagnostics plan complete.
+
 | Date | Update |
 |------|--------|
 | 2026-03-30 | Plan created to add product-owned onboarding history and a host-owned cross-layer aggregation bundle above existing runtime reports and host snapshots |

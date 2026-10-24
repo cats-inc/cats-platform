@@ -72,7 +72,6 @@ import { settleDesktopCandidateStartup, startDesktopCandidateControl } from './c
 import { createDesktopCandidateInteraction } from './candidateInteraction.js';
 import {
   buildDesktopBootstrapSnapshot,
-  fetchJson,
   type AppHealthPayload,
   type ReadinessPayload,
   type RuntimeDiagnosticsHealthPayload,
@@ -98,6 +97,7 @@ import {
 import {
   isDesktopBootstrapLoadingPhase,
   resolveDesktopBootstrapError,
+  retryDesktopBootstrapChecks,
   shouldAttemptDesktopLateReadyRecovery,
 } from './startupRecovery.js';
 import { runDesktopUpdateDialog } from './updateDialog.js';
@@ -764,6 +764,7 @@ function recordSnapshotTransitions(snapshot: DesktopBootstrapSnapshot): void {
         phase: snapshot.phase,
         hostStatus: snapshot.status,
       },
+      error: toDesktopBootstrapError(snapshot.lastError),
       reference: {
         artifactPath: hostConfig?.paths.hostStatePath,
       },
@@ -1301,17 +1302,20 @@ async function fetchJsonWithTimeout<T>(
   init: RequestInit,
   timeoutMs: number,
 ): Promise<T> {
-  const response = await fetchWithTimeout(url, {
-    ...init,
-    headers: {
-      accept: 'application/json',
-      ...(init.headers ?? {}),
-    },
-  }, timeoutMs);
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} while fetching ${url}.`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...init,
+      headers: { accept: 'application/json', ...(init.headers ?? {}) },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status} while fetching ${url}.`);
+    // Keep the deadline active while consuming the response body too.
+    return await response.json() as T;
+  } finally {
+    clearTimeout(timeout);
   }
-  return await response.json() as T;
 }
 
 async function fetchRuntimeCliInventoryProbe(
@@ -1417,15 +1421,17 @@ async function refreshBootstrapSnapshot(
   // the window from opening.
   const [
     appHealth,
-    , // The reader commits only the latest response; read its current state below.
+    appShell,
     runtimeHealth,
     productDiagnostics,
     cliInventoryProbe,
   ] = await Promise.allSettled([
-    fetchJson<AppHealthPayload>(`${hostConfig.appBaseUrl}/health`),
+    fetchJsonWithTimeout<AppHealthPayload>(`${hostConfig.appBaseUrl}/health`, {}, 10_000),
     platformShellReader!.refresh(),
-    fetchJson<RuntimeDiagnosticsHealthPayload | ReadinessPayload>(`${hostConfig.runtimeBaseUrl}/health`),
-    fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/platform/bootstrap-diagnostics`),
+    fetchJsonWithTimeout<RuntimeDiagnosticsHealthPayload | ReadinessPayload>(
+      `${hostConfig.runtimeBaseUrl}/health`, {}, 10_000),
+    fetchJsonWithTimeout<ProductBootstrapDiagnosticsPayload>(
+      `${hostConfig.appBaseUrl}/api/platform/bootstrap-diagnostics`, {}, 10_000),
     shouldReadCliInventory
       ? fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
         triggerScanIfMissing: false,
@@ -1452,6 +1458,18 @@ async function refreshBootstrapSnapshot(
       product: normalizeProductDiagnosticsPayload(productDiagnostics.value),
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  // A settled rejection is a failed check, not an indefinitely pending phase.
+  // Retain the last confirmed shell during later transient refresh failures.
+  if (appHealth.status === 'rejected') {
+    throw new Error(`Failed to read Cats service health: ${String(appHealth.reason)}`);
+  }
+  if (!platformShellReader?.read()) {
+    const reason = appShell.status === 'rejected'
+      ? String(appShell.reason)
+      : 'No platform shell response was available.';
+    throw new Error(`Failed to read Cats startup state: ${reason}`);
   }
 
   return buildDesktopBootstrapSnapshot({
@@ -1930,7 +1948,9 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
       persistedSetupCompleteAt: persistedSetup?.setupCompleteAt ?? null,
       persistedProductSetupCompleted: persistedSetup?.productSetupCompleted ?? false,
     }));
-    const snapshot = publishSnapshot(await refreshBootstrapSnapshot(persistedSetup));
+    const snapshot = publishSnapshot(await retryDesktopBootstrapChecks(
+      () => refreshBootstrapSnapshot(persistedSetup),
+    ));
     await maybeOpenApp(snapshot);
     scheduleBackgroundBootstrapWork(snapshot, persistedSetup);
     return snapshot;
