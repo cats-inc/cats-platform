@@ -11,6 +11,8 @@ identity; [ADR-139](decisions/139-manage-one-desktop-remote-ingress.md) /
 The first identity-contract/account-core batch is implemented with isolated
 checks and independent source review. Native Desktop OAuth transport/UI,
 publisher setup and remote-access implementation/live acceptance remain pending.
+The separate one-time ngrok helper passed an installed Ask/Grok Bot round trip
+on Windows; managed-provider implementation and broader acceptance remain pending.
 Remote Web and a shared cloud auth service are deferred; no release is authorized.
 
 [Provider catalog consumer validation](research/2026-10-24-provider-catalog-consumer-validation.md)

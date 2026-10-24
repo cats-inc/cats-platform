@@ -23,6 +23,13 @@ mode requires a fixed port/origin. It does not start Tailscale. Provider recover
 protected secret migration, bounded ownership and external acceptance are not
 proved by those local fixtures. Extend this host; do not create another gateway.
 
+The separately authorized 2026-10-25 one-time Ask/ngrok acceptance helper uses
+the existing external-proxy mode, with the user's authtoken supplied through a
+loopback form and retained only in the helper process. It is not the managed
+provider/secure-store implementation described below. It rejects an already
+configured ingress and restores its own temporary non-secret settings on stop.
+Helper/installed-App checks do not establish live Grok Bot acceptance.
+
 ## Scope
 
 Remote Web product access/login and a cloud auth broker are deferred by the owner.
