@@ -47,7 +47,10 @@ are planned. Image SDK versions and their compatibility boundaries are listed be
 
 ## Host and SDK compatibility
 
-App SDK **1.8.0** adds `catsApp.media.images` with typed contract 2 capabilities,
+App SDK **1.9.0** adds Cursor to contract 2 provider types and host projection, with the
+same shared-image operations, App/account isolation and legacy image negotiation.
+Cursor is offered only when Runtime enables its verified generation profile. Existing
+SDK 1.x ranges remain accepted. App SDK **1.8.0** adds `catsApp.media.images` with typed contract 2 capabilities,
 jobs, cancel/refresh/delete, saved-byte reads and exports. Studio **0.4.0** declares
 `^1.8.0` and uses this namespace. Apps declaring earlier floors keep `catsApp.images`
 and their negotiated schema unchanged. Both namespaces use the same permission-checked

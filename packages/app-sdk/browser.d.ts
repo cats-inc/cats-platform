@@ -1,6 +1,6 @@
 /** Host-injected browser API. No imports, secrets, filesystem or general network proxy. */
 export interface CatsAppBrowserSdkV1 {
-  readonly sdkVersion: '1.8.0';
+  readonly sdkVersion: '1.9.0';
   readonly appId: string;
   readonly version: string;
   readonly locale: string;
@@ -56,7 +56,7 @@ export interface CatsImageJob {
 /** Contract 2: an enabled profile per provider x operation; only generation is offered yet. */
 export interface CatsImageCapabilitiesV2 {
   schemaVersion: 2; revision: string; maxPromptLength: number; maxImageBytes: number;
-  targets: Array<{ id: string; provider: 'grok' | 'muse' | 'antigravity' | 'codex'; instanceLabel: string; availability: 'available' }>;
+  targets: Array<{ id: string; provider: 'grok' | 'muse' | 'antigravity' | 'codex' | 'cursor'; instanceLabel: string; availability: 'available' }>;
   profiles: Array<{ id: string; revision: number; operation: 'image.generate'; targetIds: string[];
     agentConfigs: Array<{ id: string; model: string; effort: string }>; inputs: { min: 0; max: 0 };
     aspectRatio: { mode: 'native'; options: [string] } | { mode: 'service' } }>;
@@ -66,7 +66,7 @@ export interface CatsImageSubmissionV2 {
   operation: 'image.generate'; prompt: string; sourceIds: []; options: Record<string, never>;
 }
 export interface CatsImageJobV2 {
-  schemaVersion: 2; id: string; requestId: string; provider: 'grok' | 'muse' | 'antigravity' | 'codex'; targetId: string; instanceLabel: string;
+  schemaVersion: 2; id: string; requestId: string; provider: 'grok' | 'muse' | 'antigravity' | 'codex' | 'cursor'; targetId: string; instanceLabel: string;
   operation: 'image.generate'; profileId: string; profileRevision: string; agentConfigId: string | null;
   agentModel: string | null; agentEffort: string | null; prompt: string; sources: []; options: Record<string, never>;
   status: CatsImageStatus; error: string | null; warnings: string[]; executionOutcome: 'completed' | 'stopped_after_image' | null;

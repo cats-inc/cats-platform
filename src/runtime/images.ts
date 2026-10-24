@@ -2,7 +2,7 @@ export const IMAGE_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-
 export const IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 const MAX_EDGE = 4096;
 /** Providers Runtime may name; capabilities list only those with an enabled, configured profile. */
-export const IMAGE_PROVIDERS = ['grok', 'muse', 'antigravity', 'codex'] as const;
+export const IMAGE_PROVIDERS = ['grok', 'muse', 'antigravity', 'codex', 'cursor'] as const;
 export type RuntimeImageProvider = typeof IMAGE_PROVIDERS[number];
 export type RuntimeImageAspectRatio = { mode: 'native'; options: [string] } | { mode: 'service' };
 /** Runtime contract 2 (Runtime SPEC-038). Generation takes no sources or options yet. */

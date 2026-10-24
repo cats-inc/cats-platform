@@ -21,6 +21,8 @@ const GROK = { id: 'grok-generate', revision: 1, operation: 'image.generate', ta
   agentConfigs: [{ id: 'grok-4.7-xhigh', model: 'grok-4.7', effort: 'xhigh' }], aspectRatio: { mode: 'native', options: ['1:1'] } };
 const MUSE = { id: 'muse-generate', revision: 1, operation: 'image.generate', targetIds: ['muse/native'], inputs: { min: 0, max: 0 },
   agentConfigs: [{ id: 'muse-spark-1.3-xhigh', model: 'muse-spark-1.3', effort: 'xhigh' }], aspectRatio: { mode: 'service' } };
+const CURSOR = { id: 'cursor-generate', revision: 1, operation: 'image.generate', targetIds: ['cursor/native'], inputs: { min: 0, max: 0 },
+  agentConfigs: [{ id: 'cursor-glm-5.3-max', model: 'glm-5p3[reasoning=max]', effort: 'max' }], aspectRatio: { mode: 'native', options: ['1:1'] } };
 const CAPABILITIES = { schemaVersion: 2, revision: 'fixture-revision', maxPromptLength: 2000, maxImageBytes: 8388608,
   targets: [{ id: 'grok/native', provider: 'grok', instance: 'native' }, { id: 'muse/native', provider: 'muse', instance: 'native' }], profiles: [GROK, MUSE] };
 async function install(chatStatePath, version, appSdk) {
@@ -88,6 +90,27 @@ const input = () => ({ requestId: randomUUID(), instance: 'native', prompt: 'A c
 const inputTwo = (profile = MUSE, fields = {}) => ({ requestId: randomUUID(), targetId: profile.targetIds[0], profileId: profile.id,
   profileRevision: String(profile.revision), agentConfigId: profile.agentConfigs[0].id, operation: 'image.generate', prompt: 'A cat',
   sourceIds: [], options: {}, ...fields });
+
+test('Cursor contract 2 preserves the pinned configuration and accepts a JPEG job through the shared host', async (t) => {
+  const f = await setup(t, { appSdk: '^1.7.0' });
+  const cursorCapabilities = { ...CAPABILITIES,
+    targets: [...CAPABILITIES.targets, { id: 'cursor/native', provider: 'cursor', instance: 'native' }], profiles: [...CAPABILITIES.profiles, CURSOR] };
+  assert.equal(projectImageCapabilities(cursorCapabilities).targets.at(-1).provider, 'cursor');
+  f.client.getImageCapabilities = async () => structuredClone(cursorCapabilities);
+  f.client.submitImageJob = async (input) => {
+    f.requests.push(input);
+    const now = new Date().toISOString();
+    const job = { ...input, schemaVersion: 2, provider: 'cursor', instance: 'native', agentModel: 'glm-5p3[reasoning=max]', agentEffort: 'max',
+      status: 'succeeded', createdAt: now, updatedAt: now, error: null, warnings: [], executionOutcome: 'stopped_after_image', output: f.output };
+    f.records.set(input.id, job); return projectImageJob(job);
+  };
+  assert.equal((await f.service.capabilities(f.scope)).targets.at(-1).provider, 'cursor');
+  const job = await f.service.submit(f.scope, inputTwo(CURSOR));
+  const saved = await waitFor(f, job.id);
+  assert.equal(saved.provider, 'cursor'); assert.equal(saved.agentEffort, 'max');
+  assert.equal(f.requests[0].agentConfigId, 'cursor-glm-5.3-max');
+  assert.ok((await f.service.image(f.scope, job.id)).bytes.equals(f.image));
+});
 
 test('idempotent submit uses existing Core task/run/artifact, retains images across service restart and rejects cross-app/account access', async (t) => {
   const f = await setup(t); const request = input();

@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
-import { IMAGE_ID } from '../../runtime/images.js';
+import { IMAGE_ID, IMAGE_PROVIDERS, type RuntimeImageProvider } from '../../runtime/images.js';
 import type { RuntimeImageJob } from '../../runtime/images.js';
 import { IMAGE_PREEXECUTION_REFUSALS, isActiveImage, MediaImageError, type MediaImagePatch } from './imageExecution.js';
 import {
@@ -44,7 +44,7 @@ function jobFrom(row: Record<string, unknown> | undefined): CatImageJob | undefi
     || !Number.isSafeInteger(job.policyRevision) || Number(job.policyRevision) < 1
     || typeof job.status !== 'string' || !statuses.has(job.status)
     || !['manual', 'heartbeat'].includes(String(job.trigger))
-    || !['grok', 'muse', 'antigravity', 'codex'].includes(String(job.provider))
+    || !IMAGE_PROVIDERS.includes(job.provider as RuntimeImageProvider)
     || typeof job.instance !== 'string' || job.operation !== 'image.generate'
     || typeof job.prompt !== 'string' || typeof job.caption !== 'string' || typeof job.runtimeTerminalObserved !== 'boolean'
     || !['held', 'released', 'submitted'].includes(String(job.dispatchState))
@@ -364,7 +364,7 @@ export class CatImageLedger {
       // for native providers rather than imposing hash bits on their session ID format.
       const id = randomUUID();
       const provider = /^([a-z]+)\/(.+)$/.exec(policy.targetId);
-      if (!provider || !['grok', 'muse', 'antigravity', 'codex'].includes(provider[1]!)) throw new MediaImageError('image_profile_unavailable', 503);
+      if (!provider || !IMAGE_PROVIDERS.includes(provider[1] as RuntimeImageProvider)) throw new MediaImageError('image_profile_unavailable', 503);
       const at = now.toISOString();
       const job: CatImageJob = { schemaVersion: 1, id, requestId: request.requestId,
         accountId: caller.accountId, ownerActorId: caller.ownerActorId, catId: caller.catId,

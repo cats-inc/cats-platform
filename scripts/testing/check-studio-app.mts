@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Isolated package/SDK/host browser acceptance. Never starts a provider CLI.
-// Usage: node --import tsx scripts/testing/check-studio-app.mts --apps-lock <path> --image <jpeg> [--png <png>] [--expect-delete]
+// Usage: node --import tsx scripts/testing/check-studio-app.mts --apps-lock <path> --image <jpeg> [--png <png>] [--expect-delete] [--expect-cursor]
 // The fixture Runtime speaks contract 2. A Studio declaring App SDK 1.7.0+ also generates a Muse PNG (--png).
 // Requires CATS_TEST_PLAYWRIGHT_MODULE and CATS_TEST_BROWSER_EXECUTABLE.
 import assert from 'node:assert/strict';
@@ -16,7 +16,7 @@ import { installRendererPackage } from '../../src/platform/apps/packageInstaller
 import { routeRequest } from '../../src/app/server/requestRouter.js';
 import { createAppStartupState } from '../../src/app/server/startup.js';
 import type { ResolvedServerDependencies } from '../../src/app/server/contracts.js';
-import type { RuntimeImageJob, RuntimeImageRequest } from '../../src/runtime/images.js';
+import type { RuntimeImageJob, RuntimeImageRequest, RuntimeImageProvider } from '../../src/runtime/images.js';
 import { imageContractFor } from '../../src/platform/apps/images.js';
 import { FileCatsAppRegistry } from '../../src/platform/apps/registry.js';
 import { resolveCatsAppStoragePathsFromChatState } from '../../src/platform/apps/paths.js';
@@ -27,7 +27,7 @@ import { createEmptyPlatformAuthState, createFirstAdminLocalAuthState, MemoryPla
 
 const args = process.argv.slice(2);
 if (args.includes('--help')) {
-  process.stdout.write('Usage: node --import tsx scripts/testing/check-studio-app.mts --apps-lock <path> --image <jpeg> [--png <png>] [--expect-delete]\nRequires CATS_TEST_PLAYWRIGHT_MODULE and CATS_TEST_BROWSER_EXECUTABLE. Uses isolated fixture state; no provider CLI calls.\n');
+  process.stdout.write('Usage: node --import tsx scripts/testing/check-studio-app.mts --apps-lock <path> --image <jpeg> [--png <png>] [--expect-delete] [--expect-cursor]\nRequires CATS_TEST_PLAYWRIGHT_MODULE and CATS_TEST_BROWSER_EXECUTABLE. Uses isolated fixture state; no provider CLI calls.\n');
   process.exit(0);
 }
 const option = (name: string) => { const index = args.indexOf(name); if (index < 0 || !args[index + 1]) throw new Error(`Missing ${name}`); return path.resolve(args[index + 1]!); };
@@ -37,6 +37,7 @@ if (!studio || !process.env.CATS_TEST_PLAYWRIGHT_MODULE || !process.env.CATS_TES
 // Studio 0.3.2 adds work deletion; older packages are still checked without it. --expect-delete covers an
 // unreleased candidate that still carries the previous version.
 const offersDelete = args.includes('--expect-delete') || studio.version.split('.').map(Number).reduce((order, part, index) => order || part - [0, 3, 2][index]!, 0) >= 0;
+const expectCursor = args.includes('--expect-cursor');
 const image = await readFile(option('--image'));
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 const output = { mimeType: 'image/jpeg' as const, bytes: image.length, width: 1024, height: 1024, sha256: digest(image), transparency: 'opaque' as const };
@@ -62,19 +63,25 @@ const profiles = [
     agentConfigs: [{ id: 'fixture-grok', model: 'fixture-no-cli', effort: 'xhigh' }], aspectRatio: { mode: 'native' as const, options: ['1:1'] as [string] } },
   ...(pngOutput ? [{ id: 'muse-generate', revision: 1, operation: 'image.generate' as const, targetIds: ['muse/native'], inputs: { min: 0 as const, max: 0 as const },
     agentConfigs: [{ id: 'fixture-muse', model: 'fixture-no-cli', effort: 'xhigh' }], aspectRatio: { mode: 'service' as const } }] : []),
+  ...(expectCursor ? ['cursor', 'antigravity', 'codex'].map((provider) => ({ id: `${provider}-generate`, revision: 1,
+    operation: 'image.generate' as const, targetIds: [`${provider}/native`], inputs: { min: 0 as const, max: 0 as const },
+    agentConfigs: [{ id: provider === 'cursor' ? 'cursor-glm-5.3-max' : `fixture-${provider}`,
+      model: provider === 'cursor' ? 'glm-5p3[reasoning=max]' : 'fixture-no-cli', effort: provider === 'cursor' ? 'max' : 'high' }],
+    aspectRatio: { mode: 'native' as const, options: ['1:1'] as [string] } })) : []),
 ];
 const runtimeClient = {
   async getImageCapabilities() {
     if (offline) throw new Error('Fixture offline');
     return { schemaVersion: 2 as const, revision: 'fixture', maxPromptLength: 2000, maxImageBytes: 8 * 1024 * 1024,
-      targets: profiles.map((profile) => ({ id: profile.targetIds[0]!, provider: profile.targetIds[0]!.split('/')[0] as 'grok', instance: 'native' })), profiles };
+      targets: profiles.map((profile) => ({ id: profile.targetIds[0]!, provider: profile.targetIds[0]!.split('/')[0] as RuntimeImageProvider, instance: 'native' })), profiles };
   },
   async submitImageJob(input: RuntimeImageRequest) {
     submissions++; const now = new Date().toISOString();
     const muse = input.targetId === 'muse/native';
-    const job: RuntimeImageJob = { schemaVersion: 2, id: input.id, targetId: input.targetId, provider: muse ? 'muse' : 'grok', instance: 'native',
-      profileId: input.profileId, profileRevision: input.profileRevision, agentConfigId: input.agentConfigId, agentModel: 'fixture-no-cli',
-      agentEffort: 'xhigh', operation: 'image.generate', prompt: input.prompt, status: pending ? 'running' : 'succeeded', createdAt: now, updatedAt: now,
+    const config = profiles.find((profile) => profile.id === input.profileId)!.agentConfigs[0]!;
+    const job: RuntimeImageJob = { schemaVersion: 2, id: input.id, targetId: input.targetId, provider: input.targetId.split('/')[0] as RuntimeImageProvider, instance: 'native',
+      profileId: input.profileId, profileRevision: input.profileRevision, agentConfigId: input.agentConfigId, agentModel: config.model,
+      agentEffort: config.effort, operation: 'image.generate', prompt: input.prompt, status: pending ? 'running' : 'succeeded', createdAt: now, updatedAt: now,
       error: null, warnings: [], executionOutcome: pending ? null : 'completed', output: pending ? null : muse ? pngOutput : output };
     receipts.set(job.id, job); return job;
   },
@@ -115,6 +122,15 @@ try {
   const serviceReady = () => frame.locator('#target option[value="native"]').or(frame.locator(`#services [data-service="${grokKey}"][aria-pressed="true"]`)).first().waitFor({ state: 'attached' });
   await serviceReady();
   assert.equal(submissions, 0, 'Opening Studio cannot generate an image');
+  if (expectCursor) {
+    assert.deepEqual(await frame.locator('#services button').evaluateAll((buttons) => buttons.map((button) => button.getAttribute('data-service'))),
+      ['codex/native', 'antigravity/native', 'grok/native', 'muse/native', 'cursor/native']);
+    const boxes = await frame.locator('#services button').evaluateAll((buttons) => buttons.map((button) => {
+      const rect = button.getBoundingClientRect(); return { top: rect.top, center: rect.x + rect.width / 2 };
+    }));
+    assert.ok(boxes.every((box) => box.top === boxes[0]!.top), 'five services share one desktop row');
+    assert.ok(Math.abs(boxes[2]!.center - (boxes[0]!.center + boxes[4]!.center) / 2) < 1, 'Grok is centered');
+  }
   assert.equal(await frame.locator('#generate').isDisabled(), true);
   await frame.locator('#prompt').fill('Isolated fixture image — never sent to a CLI');
   await frame.locator('#generate').click();
@@ -179,6 +195,20 @@ try {
     assert.deepEqual(await readFile(await museFile.path()), png); assert.match(museFile.suggestedFilename(), /\.png$/);
     await page.screenshot({ path: path.join(screenshotDir, 'studio-muse.png') });
     assert.equal(submissions, 3);
+  }
+  if (expectCursor) {
+    await frame.locator('#services [data-service="cursor/native"]').click();
+    assert.equal(submissions, 3, 'Switching to Cursor cannot generate');
+    await frame.locator('#prompt').fill('Isolated Cursor fixture'); await frame.locator('#generate').click();
+    const cursorCard = frame.locator('#jobs article').filter({ hasText: 'Isolated Cursor fixture' });
+    await cursorCard.getByRole('button', { name: '下載', exact: true }).waitFor({ timeout: 20_000 });
+    const cursorDownload = page.waitForEvent('download'); await cursorCard.getByRole('button', { name: '下載', exact: true }).click();
+    const cursorFile = await cursorDownload;
+    assert.deepEqual(await readFile(await cursorFile.path()), image); assert.match(cursorFile.suggestedFilename(), /\.jpg$/);
+    assert.equal(submissions, 4);
+    await page.screenshot({ path: path.join(screenshotDir, 'studio-cursor.png') });
+    await page.reload(); await serviceReady();
+    assert.equal(submissions, 4, 'Reopening defaults to Grok without regenerating');
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await frame.locator('h1').scrollIntoViewIfNeeded();

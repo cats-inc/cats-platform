@@ -64,6 +64,19 @@ test('budget and request identity survive a second connection, policy changes an
   assert.equal(reopened.list({ ...caller, accountId: 'other-account' }).length, 0);
 });
 
+test('Cursor reservations and receipts survive ledger reopen with their pinned configuration', async (t) => {
+  const f = await fixture(t);
+  f.ledger.savePolicy(policy({ targetId: 'cursor/native', profileId: 'cursor-generate', agentConfigId: 'cursor-glm-5.3-max' }), 0);
+  const input = request();
+  const first = f.ledger.admit(caller, input, 1, at);
+  const reopened = f.open();
+  const repeated = reopened.admit(caller, input, 1, at);
+  assert.equal(repeated.created, false);
+  assert.equal(repeated.job.id, first.job.id);
+  assert.equal(repeated.job.provider, 'cursor');
+  assert.equal(reopened.list(caller)[0].agentConfigId, 'cursor-glm-5.3-max');
+});
+
 test('no implicit Boss, App or caller permission; scope, time and revision are checked before reservation', async (t) => {
   const f = await fixture(t);
   assert.throws(() => f.ledger.admit(caller, request(), 1, at), /image_not_authorized/);
