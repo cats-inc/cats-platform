@@ -2802,8 +2802,8 @@ async function main(): Promise<void> {
   });
   window.webContents.on('render-process-gone', () => { void googleAuthController?.clear(); });
   window.once('closed', () => {
-    void googleAuthController?.clear();
     if (mainWindow === window) mainWindow = null;
+    void googleAuthController?.clear();
   });
   if (window.isDestroyed()) {
     mainWindow = null;

@@ -350,6 +350,13 @@ Final test-fixture checking passed after the last added cases. Desktop bootstrap
 state and attempt-ID contracts passed **14/14**, plus the static test-collection
 case. Complete test-bundle output existence and full CI remain hosted gates;
 this local work deliberately bundled only affected tests.
+The first [P2 hosted CI run](https://github.com/cats-inc/cats-platform/actions/runs/40121996329)
+passed typechecks and reported 5,865 passed, 60 skipped and one failed window-close
+contract. Native cleanup had been inserted before clearing the closed-window
+reference. The handler now clears that reference first, preserving the existing
+late-event safety contract before starting OAuth cleanup. The unchanged window
+and bootstrap contract tests passed **5/5**; full CI must rerun on this fix.
+
 Publisher registration/consent, live Google and packaged Windows/macOS/Linux
 callbacks remain unverified. No normal Desktop/profile was changed, and no
 version bump, installation or publication was performed.
