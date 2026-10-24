@@ -3,7 +3,9 @@
 Scope: consume the refreshed sixteen configured CLI/channel catalogs from cats-runtime and
 support its additive `auggie.reasoning_effort` binding in provider/model selectors. The owner
 authorized the catalog removals and Junie spelling/default changes in one grouped confirmation.
-No publication, version bump, personal override, or installed Desktop replacement was requested.
+The owner subsequently authorized version bumps, auto-merged PRs and Desktop 0.9.7
+standard-profile preview publication. Personal overrides and the installed Desktop remain
+outside this source validation; the 0.9.7 release notes describe the distribution and exact pins.
 
 Runtime owns the single authored schema-2 factory and generated JSON. Platform's basic/advanced
 normalizers, per-entry controls and model fields already consume that contract without a provider
