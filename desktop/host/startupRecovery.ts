@@ -3,6 +3,25 @@ import type {
   ManagedServiceSnapshot,
 } from './contracts.js';
 
+/** Retry prerequisite reads without restarting already-ready sidecars. */
+export async function retryDesktopBootstrapChecks<T extends { phase: DesktopBootstrapPhase }>(
+  check: () => Promise<T>,
+  wait: () => Promise<void> = () => new Promise((resolve) => setTimeout(resolve, 1_000)),
+): Promise<T> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      const snapshot = await check();
+      if (isDesktopBootstrapLoadingPhase(snapshot.phase)) {
+        throw new Error(`Desktop startup checks did not finish (${snapshot.phase}).`);
+      }
+      return snapshot;
+    } catch (error) {
+      if (attempt === 3) throw error;
+      await wait();
+    }
+  }
+}
+
 export function resolveDesktopBootstrapError(
   currentError: string | null,
   nextError?: string | null,

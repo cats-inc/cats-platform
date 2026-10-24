@@ -644,6 +644,7 @@ export function buildDesktopBootstrapPage(): string {
         'loading.almostReady': 'Almost ready\u2026',
         'loading.ready': 'Ready.',
         'loading.retrying': 'Trying again\u2026',
+        'loading.timedOut': 'Startup is taking too long. Try again or open details for diagnostics.',
         'loading.startingUp': 'Starting up\u2026',
         'onboarding.headline': 'Choose which providers Cats may use, then continue into setup.',
         'onboarding.installCli': 'Install a CLI',
@@ -655,6 +656,7 @@ export function buildDesktopBootstrapPage(): string {
         'onboarding.scanningClis': 'Detecting…',
         'recovery.summary.details': 'See details below.',
         'recovery.summary.failedHelper': 'A local helper did not start. Try again first; use advanced details only if it keeps failing.',
+        'recovery.summary.failedChecks': 'Startup checks did not finish. Try again or open details for diagnostics.',
         'recovery.summary.failedService': '{service} did not start. Try again first; use advanced details only if it keeps failing.',
         'recovery.summary.fixBelow': 'Finish the setup fix below, then Cats will continue.',
         'recovery.summary.helperAttention': 'You can keep using Cats now. Repair the local helper when convenient, or open advanced details if you need them.',
@@ -905,6 +907,7 @@ export function buildDesktopBootstrapPage(): string {
         'loading.almostReady': '幾乎準備好了…',
         'loading.ready': '已就緒。',
         'loading.retrying': '正在重試…',
+        'loading.timedOut': '啟動等候逾時。請重試，或開啟詳細資料查看診斷。',
         'loading.startingUp': '正在啟動…',
         'onboarding.headline': '選擇 Cats 可以使用的 providers，再繼續設定。',
         'onboarding.installCli': '安裝 CLI',
@@ -916,6 +919,7 @@ export function buildDesktopBootstrapPage(): string {
         'onboarding.scanningClis': '偵測中…',
         'recovery.summary.details': '請查看下方詳細資料。',
         'recovery.summary.failedHelper': '本機輔助程式未啟動。請先重試；只有持續失敗時才需要使用進階詳細資料。',
+        'recovery.summary.failedChecks': '啟動檢查未完成。請重試，或開啟詳細資料查看診斷。',
         'recovery.summary.failedService': '{service} 未啟動。請先重試；只有持續失敗時才需要使用進階詳細資料。',
         'recovery.summary.fixBelow': '完成下方設定修復後，Cats 會繼續。',
         'recovery.summary.helperAttention': '你現在可以繼續使用 Cats。方便時再修復本機輔助程式；需要時也可以開啟進階詳細資料。',
@@ -2252,6 +2256,10 @@ export function buildDesktopBootstrapPage(): string {
             service: getServiceDisplayName(failedSvc.name)
           });
         }
+        if (snap.lastError) {
+          return snap.lastError === tx('loading.timedOut')
+            ? tx('loading.timedOut') : tx('recovery.summary.failedChecks');
+        }
         return tx('recovery.summary.failedHelper');
       }
       if (snap.phase === 'needs_prerequisites') {
@@ -2550,6 +2558,8 @@ export function buildDesktopBootstrapPage(): string {
     var currentSetupSnapshot = null;
     var snapshotListenerBound = false;
     var retryHandle = null;
+    var startupWaitHandle = null;
+    var startupWaitExpired = false;
     var showRecoveryDetails = false;
     /* Recovery sections collapse on every doRender() because showRecovery
      * rebuilds recoveryEl.innerHTML from scratch whenever a new snapshot
@@ -2629,7 +2639,9 @@ export function buildDesktopBootstrapPage(): string {
     }
 
     function runRetryAction(button, restoreDisabled) {
+      resetStartupWait();
       showRetryLoadingState();
+      if (currentSnapshot) syncStartupWait(currentSnapshot);
       bridge.runAction(resolveRetryActionId())
         .catch(function () {
           retryHintActive = false;
@@ -2732,9 +2744,47 @@ export function buildDesktopBootstrapPage(): string {
       recoveryEl.append(backBtn, summary, details);
     }
 
+    function resetStartupWait() {
+      if (startupWaitHandle !== null) window.clearTimeout(startupWaitHandle);
+      startupWaitHandle = null;
+      startupWaitExpired = false;
+    }
+
+    function syncStartupWait(snap) {
+      var pending = snap.phase === 'starting_services' || snap.phase === 'checking_prerequisites';
+      if (!pending) {
+        resetStartupWait();
+      } else if (!startupWaitExpired && startupWaitHandle === null) {
+        // The hints appear at 20/40/60 s. After another 20 s, expose recovery
+        // even if the host is still publishing the same pending phase.
+        startupWaitHandle = window.setTimeout(function () {
+          startupWaitHandle = null;
+          startupWaitExpired = true;
+          doRender();
+        }, 80000);
+      }
+    }
+
     function doRender() {
       var snap = currentSnapshot;
       if (!snap) return;
+      syncStartupWait(snap);
+      if (startupWaitExpired) {
+        // This is a renderer wait deadline, not a claim that the services died.
+        // Preserve service/diagnostic evidence for the existing details view.
+        snap = Object.assign({}, snap, {
+          phase: 'failed', status: 'unavailable',
+          summary: tx('loading.timedOut'), lastError: tx('loading.timedOut'),
+          issues: (snap.issues || []).concat([{
+            id: 'host-startup-error', severity: 'error', category: 'service',
+            title: 'Desktop host failed to finish startup', detail: tx('loading.timedOut')
+          }]),
+          actions: [
+            { id: 'retry', label: tx('action.retry') },
+            { id: 'quit', label: tx('actionLabel.quitCats') }
+          ]
+        });
+      }
 
       var mode = resolvePageMode(snap);
 
@@ -2773,6 +2823,7 @@ export function buildDesktopBootstrapPage(): string {
 
     function applySnapshot(snapshot) {
       currentSnapshot = snapshot;
+      doRender();
       getSetupSnapshotOrNull()
         .then(function (setupSnap) {
           currentSetupSnapshot = setupSnap;
@@ -2798,10 +2849,11 @@ export function buildDesktopBootstrapPage(): string {
     function loadInitialSnapshot() {
       bridge.getSnapshot()
         .then(function (snapshot) {
+          ensureSnapshotListener();
+          currentSnapshot = snapshot;
+          doRender();
           return getSetupSnapshotOrNull()
             .then(function (setupSnap) {
-              ensureSnapshotListener();
-              currentSnapshot = snapshot;
               currentSetupSnapshot = setupSnap;
               doRender();
             });
