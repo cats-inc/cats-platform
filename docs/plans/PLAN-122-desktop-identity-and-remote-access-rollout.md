@@ -26,6 +26,14 @@ therefore await explicit owner approval. P2 host/native OAuth/UI, remote-access 
 external account/provider configuration, live tunnels, installation, version
 bumps and releases remain outside this batch.
 
+On 2026-10-25 the owner separately authorized a narrow first remote-acceptance
+step: use a free ngrok dev domain with the existing shared ingress and Ask App,
+keeping the authtoken in memory for this run, and install the unpublished Ask
+candidate into the current Desktop when compatible. This does not authorize
+the full P3 managed-provider/secret-migration work, Funnel, version bumps or
+publication. A developer helper implements this bounded session through the
+existing external-proxy adapter, rather than changing Desktop binaries.
+
 Future implementation can be delivered in independently validated slices under
 this plan. There is no requirement to finish tunnel support before local Google
 sign-in, or to enable a tunnel during onboarding. Existing delivered behavior
@@ -283,5 +291,53 @@ written to the user's profile. Live Google, publisher registration/consent, Mobi
 packaged OS callbacks and all remote-provider phases remain pending. Existing
 cross-file hard-interruption recovery remains fail-closed; only caught write
 failure rollback and guarded restart behavior are claimed.
+
+## One-time Ask/ngrok acceptance — 2026-10-25
+
+- Built the public Platform SDK package from `2d42f972` with server and Desktop
+  TypeScript checks; Platform 0.9.7 / App SDK 1.9.0. Ask's existing Platform
+  declaration is a minimum under ADR-128, so no manifest compatibility change
+  or version bump was needed.
+- Built unpublished Ask 0.1.0 through that packed SDK in an isolated Apps
+  worktree. Archive SHA-256:
+  `3ad82d21b23e3261b84b7d91bdc893a5213645b4702beeae4be39bc87a9b82b9`.
+- Ask's four focused store/real-MCP tests passed. The actual archive passed the
+  isolated Windows Electron check: MCP read/submit, close/reopen, Chinese answer
+  Copy/paste, clipboard rejection, opaque isolation and host Settings navigation.
+  Fixture questions remained in disposable state; no external AI was called.
+- The running installed Desktop 0.9.7 validated the archive and installed/enabled
+  `cats.ask` through its existing desktop-authorized installer. Its actual
+  renderer loaded Ask's empty home. Desktop binaries, other Apps and existing
+  user questions were not changed; no synthetic question was created there.
+- Added `scripts/testing/ask-ngrok-session.mjs`: a loopback-only, bounded
+  developer session. Its form sends the token directly to the local helper;
+  Desktop receives only external mode, HTTPS origin and a dedicated loopback
+  port. Token values are never written to settings, output, logs or files by
+  this helper. Public reachability stays unverified until the external client
+  succeeds. Stop restores only the helper-owned configuration.
+- Eight isolated helper regressions passed, including Origin/body rejection,
+  preservation of existing settings, bind failure, native errors/timeouts,
+  retryable cleanup and reservation of a late listener's target until cleanup.
+  Independent read-only review found and corrected failure/late-cleanup issues;
+  final re-review found no remaining blocker in that scope.
+- The user entered their authtoken in the local helper and its ngrok SDK session
+  connected. The installed Desktop reports the matching external shared ingress
+  as configured. Requests through the public HTTPS URL returned JSON 401 for
+  absent/incorrect App credentials and JSON 403 for internal App installation.
+  These requests originated on the host machine, not an independent client.
+- Ask's real renderer refreshed shared ingress status and enabled its Bot
+  connection-instruction button. The user reported that their Grok Bot connected
+  and discovered `cats_get_question` / `cats_submit_answer`, then created their
+  own question and ran the Bot's answer/submission flow.
+- CDP inspection of the actual installed Desktop confirmed the answer displayed
+  as received, with the bookmark summaries, limitations and reported connector
+  tool evidence; the answer Copy action was enabled. Returning to the question
+  library and reopening the existing question retrieved the received answer again.
+  This is the first live installed-package/remote-Bot round trip, distinct from
+  the September probe.
+  Private account identifiers, content, URLs and credentials are not recorded here.
+  Bookmark save order is still inferred from returned array order; video/image
+  understanding and the Bot's native connector calls are not independently
+  instrumented by Cats. This does not complete full P3/P4/P5 or other providers/OSes.
 
 *Last updated: 2026-10-25*
