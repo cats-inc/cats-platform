@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress; account core and configurable Desktop P2 implemented; publisher/live/OS and remote-access phases pending |
+| Status | In progress; account core, Desktop P2 and scoped ngrok/external lifecycle implemented; Windows managed restart/reset passed; publisher/Funnel/full external/OS acceptance pending |
 | Owner | User |
 | Date | 2026-10-24 |
 | Identity | [ADR-138](../decisions/138-converge-google-and-password-admin-bootstrap.md), [SPEC-129](../specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md) |
@@ -30,10 +30,24 @@ External provider/account configuration, live Google, installed-app replacement,
 version bumps and releases are outside this slice. Native Mobile Google and
 remote Web stay deferred.
 
+On 2026-10-25 the owner separately authorized a narrow first remote-acceptance
+step: use a free ngrok dev domain with the existing shared ingress and Ask App,
+keeping the authtoken in memory for this run, and install the unpublished Ask
+candidate into the current Desktop when compatible. This does not authorize
+the full P3 managed-provider/secret-migration work, Funnel, version bumps or
+publication. A developer helper implements this bounded session through the
+existing external-proxy adapter, rather than changing Desktop binaries.
+
 Future implementation can be delivered in independently validated slices under
 this plan. There is no requirement to finish tunnel support before local Google
 sign-in, or to enable a tunnel during onboarding. Existing delivered behavior
 remains the baseline until the relevant source changes land.
+
+The owner subsequently authorized the one-time installed Ask/ngrok acceptance and
+its merge, then the scoped ngrok secure-storage/lifecycle slice and reproducible
+Apps SDK pin. This does not authorize Funnel, native Google work, version bumps or
+publication. The implementation checkpoint below records evidence at its actual
+level; the full P3/P4/P5 acceptance remains open.
 
 ## Baseline and evidence
 
@@ -80,16 +94,16 @@ boundaries pass focused integration checks.
   publisher registration and live accounts are still deferred.
 - [ ] Inventory public routes/auth consumers, including the actual Telegram
   cookie-gate conflict, internal Runtime/Code/Cat tools and existing Web routes.
-- [ ] Freeze remote settings/status schema, secure-store references, retry/timeout
-  values, generation fences and provider ownership journal.
+- [x] Freeze ngrok/external settings/status schema, secure-store references,
+  retry/timeouts and generation fences in SPEC-130; Funnel ownership remains below.
 - [ ] Choose/prove a Funnel lifecycle: prefer process-bound managed forwarding;
   any persisted `--bg` mapping must pass stale-target/crash ownership checks
   before being enabled. Define behavior when an existing mapping cannot be adopted.
 - [ ] Inspect Mobile Google UI/SDK and Expo/runtime constraints. If Google-only
   owners cannot obtain a device session, include the minimum native-client work
   in P2/P4 rather than silently requiring an otherwise optional local password.
-- [ ] Classify additive versus breaking API/config/data changes. Reserve the
-  next 0.x minor only if necessary; perform no bump without release authorization.
+- [x] Classify ngrok schema-3/config/private-host-protocol changes as requiring
+  the next 0.x minor boundary; perform no bump without release authorization.
 
 Exit: reviewable wire contracts, provider prerequisites and compatibility decision.
 No unresolved security or persistence choice is disguised as an implementation detail.
@@ -140,19 +154,21 @@ to complete either Desktop bootstrap path.
 
 - [ ] Extend the existing Platform ingress; keep ngrok, Funnel and external
   adapters under one serialized lifecycle and shared listener.
-- [ ] Implement profile-scoped OS credential storage and protected migration of
-  existing plaintext authtokens/configuration, including failure/restart fixtures.
-- [ ] Implement ngrok assigned-name discovery/reuse and distinct account/domain
-  errors; protect worker lifetime and late-result races.
+- [x] Implement profile-scoped OS-protected credentials and protected migration
+  of plaintext settings, with failure/restart fixtures and Windows native check.
+- [x] Implement ngrok automatic assignment/requested-domain separation, explicit
+  provider rejection states and worker/late-result protection. Windows live
+  managed connection/restart/reset passed; independent-client/wake/OS acceptance
+  remains open.
 - [ ] Add Funnel client/login/policy/OS-support detection, first-time user
   approval guidance, exact mapping ownership and conflict-aware cleanup.
 - [ ] Prove no stale mapping forwards into an unrelated reused port. Failed
   ownership/cleanup leaves Cats admission closed and reports needs-action.
-- [ ] Support external fixed-origin/port mode without taking ownership of
+- [x] Support external fixed-origin/port mode without taking ownership of
   the user's external tunnel.
-- [ ] Add desired enablement/auto-connect, background startup/wake/network
+- [x] Add desired enablement/auto-connect, background startup/wake/network
   reconciliation, bounded retries and distinct provider/public-reachability state.
-- [ ] Compose the Remote access Settings form and pairing/App navigation into
+- [x] Compose the Remote access Settings form and existing pairing/App navigation into
   existing shells; ordinary users do not need local-port or enrollment-key forms.
 
 Exit: SPEC-130 R1-R5/R10-R12 lifecycle and isolation cases pass to the evidence
@@ -355,10 +371,181 @@ passed typechecks and reported 5,865 passed, 60 skipped and one failed window-cl
 contract. Native cleanup had been inserted before clearing the closed-window
 reference. The handler now clears that reference first, preserving the existing
 late-event safety contract before starting OAuth cleanup. The unchanged window
-and bootstrap contract tests passed **5/5**; full CI must rerun on this fix.
+and bootstrap contract tests passed **5/5**; the subsequent
+[CI run](https://github.com/cats-inc/cats-platform/actions/runs/40123022495) passed.
+That result predates the ngrok integration/reset follow-up below.
 
 Publisher registration/consent, live Google and packaged Windows/macOS/Linux
 callbacks remain unverified. No normal Desktop/profile was changed, and no
 version bump, installation or publication was performed.
+
+## One-time Ask/ngrok acceptance — 2026-10-25
+
+- Built the public Platform SDK package from `2d42f972` with server and Desktop
+  TypeScript checks; Platform 0.9.7 / App SDK 1.9.0. Ask's existing Platform
+  declaration is a minimum under ADR-128, so no manifest compatibility change
+  or version bump was needed.
+- Built unpublished Ask 0.1.0 through that packed SDK in an isolated Apps
+  worktree. Archive SHA-256:
+  `3ad82d21b23e3261b84b7d91bdc893a5213645b4702beeae4be39bc87a9b82b9`.
+- Ask's four focused store/real-MCP tests passed. The actual archive passed the
+  isolated Windows Electron check: MCP read/submit, close/reopen, Chinese answer
+  Copy/paste, clipboard rejection, opaque isolation and host Settings navigation.
+  Fixture questions remained in disposable state; no external AI was called.
+- The running installed Desktop 0.9.7 validated the archive and installed/enabled
+  `cats.ask` through its existing desktop-authorized installer. Its actual
+  renderer loaded Ask's empty home. Desktop binaries, other Apps and existing
+  user questions were not changed; no synthetic question was created there.
+- Added `scripts/testing/ask-ngrok-session.mjs`: a loopback-only, bounded
+  developer session. Its form sends the token directly to the local helper;
+  Desktop receives only external mode, HTTPS origin and a dedicated loopback
+  port. Token values are never written to settings, output, logs or files by
+  this helper. Public reachability stays unverified until the external client
+  succeeds. Stop restores only the helper-owned configuration.
+- Eight isolated helper regressions passed, including Origin/body rejection,
+  preservation of existing settings, bind failure, native errors/timeouts,
+  retryable cleanup and reservation of a late listener's target until cleanup.
+  Independent read-only review found and corrected failure/late-cleanup issues;
+  final re-review found no remaining blocker in that scope.
+- The user entered their authtoken in the local helper and its ngrok SDK session
+  connected. The installed Desktop reports the matching external shared ingress
+  as configured. Requests through the public HTTPS URL returned JSON 401 for
+  absent/incorrect App credentials and JSON 403 for internal App installation.
+  These requests originated on the host machine, not an independent client.
+- Ask's real renderer refreshed shared ingress status and enabled its Bot
+  connection-instruction button. The user reported that their Grok Bot connected
+  and discovered `cats_get_question` / `cats_submit_answer`, then created their
+  own question and ran the Bot's answer/submission flow.
+- CDP inspection of the actual installed Desktop confirmed the answer displayed
+  as received, with the bookmark summaries, limitations and reported connector
+  tool evidence; the answer Copy action was enabled. Returning to the question
+  library and reopening the existing question retrieved the received answer again.
+  This is the first live installed-package/remote-Bot round trip, distinct from
+  the September probe.
+  Private account identifiers, content, URLs and credentials are not recorded here.
+  Bookmark save order is still inferred from returned array order; video/image
+  understanding and the Bot's native connector calls are not independently
+  instrumented by Cats. This does not complete full P3/P4/P5 or other providers/OSes.
+
+## Scoped ngrok implementation checkpoint — 2026-10-25
+
+Schema 3 replaces inline tokens with immutable OS-encrypted credential references.
+Desktop safeStorage is available only to its owned Platform child over private
+IPC, bound to the profile/purpose; no renderer encryption method or plaintext
+fallback is added. Protected source bundles and a non-secret hash journal allow
+validated schema-2/per-App migration and interrupted retirement to resume. Unknown
+backups, changed active settings and missing credentials preserve recoverable data.
+File flush/POSIX directory sync are implemented; Windows directory durability under
+hard power loss is not claimed. Headless migration requires the native broker.
+
+The lifecycle separates saved auto-connect intent, observed provider state and
+unknown public reachability. Disable/exit/suspend/offline revoke first. Cancellation
+and generation fences cover delayed credential/settings/provider work; bounded
+retry stops on explicit provider/account errors. Cleanup retains ownership and
+prevents replacement until confirmed. The worker holds the SDK target port and
+passes paused sockets to the existing boundary over private IPC, so parent loss
+cannot leave a live forwarder pointing at another service's reused port.
+
+Validation: 31 focused ingress/storage/lifecycle/Settings tests passed through
+the CI test bundler, including actual-worker RST; 152 affected Desktop supervisor/packaging/
+architecture checks passed. Server, Desktop host, renderer and test typechecks
+passed. Windows Electron 41.2.0 exercised actual safeStorage encryption through
+the private broker and schema-2 migration in a disposable profile; token round trip
+and absence of plaintext files passed. Independent read-only review corrected
+generation, migration, cleanup, socket/backpressure/reset and suspend/network
+issues; final re-review found no remaining blocker.
+
+Source candidate `ngrok-managed-candidate-20261025-c` built Platform
+`1841cd545f9a13edbeb23f12126e60a64904f0d3` with Runtime
+`5212fa59ee44fbee7eea0d85e7482933824ff775`; Platform source digest
+`e9ebba10d5347b072719886bf95583cbbc739accd0656bca160e3e09b4237be6`,
+launch `e68f02561c3d2cb7da617e1a5ef23c2eec6e803622550588b1630030dc0746d1`.
+Its real Electron UI passed provider-free synthetic onboarding and Remote access
+inspection: default off, auto-connect unchecked, masked credential field, collapsed
+advanced settings and missing-credential rejection. No provider/model call was
+made. Stop receipt confirmed both owned sidecars drained. Later changes only
+correct test fixture resolution, generic error wording and documentation; this
+is source-candidate/UI evidence, not installed-release or live-provider acceptance.
+
+This does not reuse the earlier live Bot acceptance as proof of the new managed
+worker. New-provider account/domain/wake acceptance, packaged macOS/Linux,
+Mobile/Telegram/two-App external acceptance and Funnel remain open. No installed
+Desktop binaries, release versions or App pins are changed by this slice.
+
+## Identity/ngrok integration and reset follow-up — 2026-10-25
+
+The owner authorized conflict resolution against merged #316/#317, Reset
+integration and isolated managed-ngrok live acceptance. They agreed to enter
+their test authtoken directly in the isolated candidate window; no credential
+is requested through chat or copied from their working profile. Funnel,
+Mobile QR/webhook work, installation, version bumps and publication remain out
+of this follow-up. Existing #315 retains both Desktop Google env/IPC and the
+ngrok private safeStorage broker, lifecycle signals and public-route defenses.
+
+Reset now ends authenticated streams, stops admission/cancels retries and saves
+remote access disabled with auto-connect off before touching auth/Core/chat data.
+Its serialized operation re-reads durable validated settings, preserving provider,
+origin, port and encrypted credential references even after a failed restore.
+Unresolved migration, persistence failure and unknown cleanup block data erasure;
+late acquisition/wake/network results cannot reconnect after successful reset.
+Configuration remains available for manual re-enablement after setup.
+
+The first native managed-worker live pass succeeded for initial HTTPS health and
+public 401/403 admission, then full candidate restart reproduced
+`ERR_NGROK_313`: an observed automatically assigned URL was replayed as a
+requested custom domain. Settings now distinguish optional `requestedOrigin`
+from observed `publicOrigin`; new automatic connections keep the request blank
+across reconnect. Explicit and pre-field legacy fixed-domain intent is retained.
+The UI keeps the automatic field blank, clears a completed migration selection
+and announces changed URLs only for an actually usable connection. Independent
+review found no remaining blocker after these changes. Provider domain concepts
+are described in [ngrok's primary documentation](https://ngrok.com/docs/gateway/domains);
+the actual 313/restart outcome here is observed test evidence, not a claim that
+all automatically allocated names are stable with the pinned SDK.
+
+Focused validation passed: 32 final domain/lifecycle/storage/Settings regressions,
+17 existing reset/helper regressions, the earlier 38 Google/private-route/UI/
+shared-ingress integration cases and 64 compiled reset/Desktop/packaging cases
+(overlapping coverage). Server and Desktop compilation, renderer typecheck and
+the final complete test-fixture typecheck passed. Independent read-only review
+reported no remaining blocker; the reviewer did not run tests. Full CI remains
+the gate for the integrated head.
+
+The repaired Windows source candidate `candidate-auth-ngrok-reset-20261025-b`
+built Platform HEAD `e01a92ab32cecd551eb079bac7ef29699226072d` plus the dirty
+integration/reset/domain snapshot, digest
+`36e255f46459da4a4da2fd118cb63f3ab1f9cbd9230ad2c2b13fe88aff81ffa5`.
+Runtime was clean `5212fa59ee44fbee7eea0d85e7482933824ff775`, digest
+`57e44609b1817d1f2ee84f871b9adb4ad55f70c5b565edf41d2ca70f8abb2d81`.
+Launch ID: `751b278d16384ddd5b4d502a196e5f02daaf42edcabdb1953e4cd6b4b6bc1372`.
+All server/host source matches the final implementation; the later renderer-only
+migration-source/error-Toast corrections are covered by the final UI fixtures.
+
+The owner entered the test token directly into this isolated window. Actual
+managed ngrok connected with automatic assignment; host-origin requests through
+public HTTPS returned JSON 200 for health, 401 for unauthenticated channels and
+403 for native Google start/App installation. These probes required no ngrok
+warning-bypass header. Full host/sidecar shutdown drained and the old public
+health URL returned 404. Restart of the same built bytes/profile reused the
+encrypted credential, automatically connected at a different assigned URL and
+passed the same admission probes. The advanced requested-URL field stayed blank.
+
+The candidate's real Reset UI then completed with Runtime reset unchecked,
+returned to onboarding and left the public URL at 404. Saved ingress settings
+retained the encrypted credential reference and automatic-allocation mode while
+both enabled/auto-connect flags were false. A post-reset restart reached the
+native provider chooser with both services ready; the local restart helper
+incorrectly expected a product page and timed out, then safely drained the
+candidate. A subsequent optional helper launch hit Windows EPERM replacing its
+private control receipt before reaching UI. No Defender detection was reported;
+the final receipt confirms exit 0 and both owned sidecars stopped. This tooling
+limit does not establish post-setup live wake acceptance; isolated lifecycle/
+reset fixtures cover the disabled intent across setup, restore and wake.
+
+No independent external device, managed-worker Ask/Grok Bot round trip, live
+Google consent, actual suspend/wake or packaged macOS/Linux was tested here.
+The earlier temporary-helper Bot evidence remains separate. Private account
+identifiers, public URLs and credentials are omitted from tracked evidence.
+Normal Desktop binaries/profile, versions and release state were unchanged.
 
 *Last updated: 2026-10-25*

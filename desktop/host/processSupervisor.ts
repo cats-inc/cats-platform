@@ -7,6 +7,8 @@ import { delimiter, dirname, join, posix, win32 } from 'node:path';
 import type { DesktopHostConfig } from './config.js';
 import { assertDesktopCandidatePaths, assertDesktopCandidatePortAvailable, createDesktopCandidateEnv } from './candidateProfile.js';
 import type { ManagedServiceName, ManagedServiceSnapshot } from './contracts.js';
+import { attachIngressSecretBroker } from './ingressSecrets.js';
+import type { IngressSecretProtector } from '#cats-ingress-secrets';
 import {
   waitForServiceReadiness,
   type AppHealthPayload,
@@ -36,6 +38,7 @@ interface ProcessSupervisorDependencies {
   env?: NodeJS.ProcessEnv;
   waitForServiceReadiness?: typeof waitForServiceReadiness;
   onStateChange?: (snapshot: ManagedServiceSnapshot) => void;
+  ingressSecrets?: IngressSecretProtector;
 }
 
 interface ManagedServiceLifecyclePayload {
@@ -639,6 +642,11 @@ export class ManagedServiceSupervisor {
     return Array.from(this.handles.values()).map((handle) => ({ ...handle.snapshot }));
   }
 
+  signalPlatformIngress(event: 'suspend' | 'resume' | 'offline' | 'online') {
+    const child = this.handles.get('cats-platform')?.child;
+    if (child?.connected) child.send?.({ type: 'cats.ingress.lifecycle', event }, () => {});
+  }
+
   getManagedServiceCount(): number {
     return this.handles.size;
   }
@@ -795,12 +803,14 @@ export class ManagedServiceSupervisor {
         + `args=[${spec.args.join(', ')}] cwd=${spec.cwd} envFingerprint=${JSON.stringify(envFingerprint)}\n`,
     );
 
+    const secretBroker = spec.name === 'cats-platform' ? this.dependencies.ingressSecrets : undefined;
     const child = this.spawnImpl(spec.command, spec.args, {
       cwd: spec.cwd,
-      env: spec.env,
-      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...spec.env, ...(secretBroker ? { CATS_DESKTOP_INGRESS_SECRETS: '1' } : { CATS_DESKTOP_INGRESS_SECRETS: '' }) },
+      stdio: secretBroker ? ['pipe', 'pipe', 'pipe', 'ipc'] : ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
     }) as ChildProcessWithoutNullStreams;
+    if (secretBroker) attachIngressSecretBroker(child, secretBroker);
 
     let resolveLifecycleReady: (() => void) | null = null;
     const lifecycleReady = new Promise<void>((resolve) => {

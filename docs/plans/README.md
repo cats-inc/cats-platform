@@ -1,9 +1,13 @@
 # Implementation Plans
 
 - [PLAN-122: Desktop identity and remote access](PLAN-122-desktop-identity-and-remote-access-rollout.md)
-  — account core and configurable Desktop P2 implemented, 2026-10-25;
-  publisher registration, live/packaged acceptance and managed remote access
-  remain pending. No schema migration or release; remote Web deferred.
+  — account core, configurable Desktop P2 and scoped ngrok/external lifecycle
+  implemented, 2026-10-25; Windows managed connection/restart/reset and focused
+  fixtures passed. Publisher Google configuration, Funnel and full external/
+  shared-consumer/packaged acceptance remain open.
+  Separate installed Ask/Grok Bot acceptance passed through the one-time helper.
+  Auth needs no schema migration; ingress schema 3 has protected migration.
+  No release; remote Web deferred.
 
 - [PLAN-121: Shared image service and controlled Cat generation](PLAN-121-shared-image-service-and-controlled-cat-generation.md)
   — draft, 2026-10-23; Runtime compatibility, Studio-preserving extraction,
@@ -201,7 +205,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-10-25 (PLAN-122 first account-core batch recorded; later phases pending.)*
+*Last updated: 2026-10-25 (PLAN-122 identity/ngrok integration and Windows managed acceptance recorded; broader phases pending.)*
 
 *See also: [specs/](../specs/) for feature specifications*
 

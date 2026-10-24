@@ -285,6 +285,13 @@ export function createServer(dependencies: ServerDependencies) {
       const [state, core] = await Promise.all([chat.chatStore.read(), chat.chatStore.readCore()]);
       if (state.channels.some(channel => channel.roomRouting?.workflow.activeTurn)
         || core.runs.some(run => run.status === 'running')) throw new PlatformResetBusyError();
+      // End authenticated streams cleanly before revoking their tunnel sockets.
+      await Promise.all([...openStreams].map(response => new Promise<void>(resolve => {
+        if (response.writableFinished || response.destroyed) { resolve(); return; }
+        const timer = setTimeout(resolve, 1000);
+        response.end(() => { clearTimeout(timer); resolve(); });
+      })));
+      await ingress?.resetForDataReset();
       await operation(async () => {
         // Streaming handlers return after subscribing. Close their responses as
         // well as revoking auth, so close handlers remove listeners/heartbeats.
@@ -327,9 +334,10 @@ export function createServer(dependencies: ServerDependencies) {
   const auth = resolvedDependencies.shared.config.auth;
   const configuredOrigins = [...auth.allowedBrowserOrigins];
   const ingress = resolvedDependencies.shared.platformIngress ?? (appComponents ? new PlatformIngress({
+    secrets: resolvedDependencies.shared.ingressSecrets,
     platformDir: resolvePlatformStorageLayout(dependencies.shared.config.chatStatePath).platformDir,
     dispatch,
-    ready: async () => auth.mode !== 'unsafe_disabled' && !!auth.sessionSecret
+    ready: async () => !resetting && auth.mode !== 'unsafe_disabled' && !!auth.sessionSecret
       && !!(await resolvedDependencies.shared.coreStore.readCore()).setupCompleteAt
       && (await resolvedDependencies.shared.authStore.readStateStatus()).status === 'ready',
     onOrigin: origin => { auth.allowedBrowserOrigins = [...new Set([...configuredOrigins, ...(origin ? [origin] : [])])]; },
@@ -400,5 +408,6 @@ export function createServer(dependencies: ServerDependencies) {
   // Resolution means all best-effort passes settled, not that every pass succeeded.
   // Callers with private state can await this before submitting work or cleaning up.
   const startupRecovery = runServerStartupRecoveryPasses(resolvedDependencies).finally(() => { startupSettled = true; });
-  return Object.assign(server, { startupRecovery, appHostingReady: () => appHostingReady, closeAppHosting });
+  return Object.assign(server, { startupRecovery, appHostingReady: () => appHostingReady, closeAppHosting,
+    reconcileRemoteAccess: (event: 'suspend' | 'resume' | 'offline' | 'online') => ingress?.reconcile(event) ?? Promise.resolve() });
 }

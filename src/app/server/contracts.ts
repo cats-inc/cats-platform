@@ -70,6 +70,7 @@ export interface SharedServerDependencies {
   withPlatformDataReset?: import('../../shared/platformDataReset.js').PlatformResetCoordinator;
   appComponents?: import('../../platform/apps/componentHost.js').AppComponentHost;
   platformIngress?: import('../../platform/apps/platformIngress.js').PlatformIngress;
+  ingressSecrets?: import('#cats-ingress-secrets').IngressSecretProtector;
   desktopAppsKey?: string;
   managedPlugins?: import('../../platform/plugins/manager.js').ManagedPluginManager;
   config: AppConfig;

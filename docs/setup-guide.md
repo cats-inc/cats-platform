@@ -183,6 +183,10 @@ First Admin and password policy:
   identities, memberships, and browser/mobile sessions. The next setup creates
   a fresh Admin through either configured method; retaining an old Admin would block the wizard with
   `already_complete` after the setup timestamp was cleared.
+- Data reset also disables remote access and auto-connect before clearing
+  account/conversation data. It retains the configured origin and encrypted
+  credentials for explicit reuse. If tunnel cleanup or saving the disabled state
+  fails, data erasure is blocked. Repeating setup does not reconnect the tunnel.
 
 Linking a Google account:
 

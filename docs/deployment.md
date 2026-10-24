@@ -40,7 +40,12 @@ and other per-record UI state.
 Desktop startup/system tray preferences, configuration and installation
 identity, installed Apps/plugins and their data, Desktop/Runtime profiles,
 provider CLI logins/native transcripts, and external workspace files remain.
-The bilingual UI lists these boundaries.
+The bilingual UI lists these boundaries. Remote-access configuration and encrypted
+credentials remain, but reset durably clears enabled/auto-connect intent and
+closes the owned ingress before account/conversation erasure. Failed settings
+validation/persistence or unconfirmed worker cleanup blocks erasure. Completing
+setup again, restarting or waking does not reopen the old tunnel; enable it
+explicitly in Remote access.
 The one Desktop exception is the main window placement: on Desktop, reset forgets
 `window-state.json` and returns the window to its default size and position.
 This operation is not an uninstall or provider-account logout.

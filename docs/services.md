@@ -15,6 +15,7 @@
 | Isolated candidate Desktop sidecars | Explicit distinct non-default ports | TCP, `127.0.0.1` only | Candidate-owned Platform and Runtime; occupied listeners fail launch | Desktop with `CATS_DESKTOP_CANDIDATE_ROOT` and explicit host/port pairs |
 | Source candidate control | OS-assigned available port | HTTP, `127.0.0.1` only | Explicit candidate-only bearer-authenticated status, main-window screenshot and graceful stop; no normal Desktop listener | `npm run desktop:candidate -- start --workspace .. --root ../candidate-01` |
 | Installed Desktop renderer CDP (opt-in) | `9222` by default, `--port` to change | CDP over HTTP/WebSocket, `127.0.0.1` only | Remote debugging of the installed app's renderer; open only after an explicit relaunch, closed by `--disable` | `./scripts/macos/restart-desktop-with-cdp.sh` |
+| One-time Ask/ngrok acceptance helper | OS-assigned loopback form and temporary forwarding target | HTTP, `127.0.0.1` only | Developer acceptance only: user enters an in-memory ngrok authtoken; reuses Desktop's external shared-ingress mode and restores its initially unconfigured settings on stop | `node scripts/testing/ask-ngrok-session.mjs --cdp-port 9222` |
 | K4 live collaboration fixture Runtime | OS-assigned available port | TCP, `127.0.0.1` only | Temporary authenticated Runtime, stopped after the bounded fixture | `node scripts/testing/orchestrator-collaboration-live.mjs --help` |
 
 The host repo/package target is now `cats-platform`, but the running local app
@@ -41,6 +42,13 @@ gateways/ngrok workers with one host ingress. Bind failures leave it unavailable
 no occupied port is silently reused. The normal Platform listener is internal
 and must not be selected as the public tunnel target. Live external acceptance
 remains separate from local fixtures.
+
+Managed ngrok additionally binds one OS-assigned loopback TCP target in its owned
+worker and hands paused sockets to the same HTTP ingress boundary over private
+child IPC. The target stays reserved until SDK cleanup or worker exit, including
+parent loss; it exposes no second public origin or App-specific listener. Both
+worker handovers and boundary sockets are bounded to 64. OS-protected ingress
+credentials use private Desktop/Platform IPC and add no network listener.
 
 | Service Name | Port Range | Protocol | Status | Description |
 |--------------|------------|----------|--------|-------------|

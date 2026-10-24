@@ -17,7 +17,16 @@ initialization overwrites. The second authorized batch implements native Desktop
 PKCE/private handoff, dual onboarding, login, optional first password and explicit
 Google linking with configurable publisher-client injection. Publisher registration,
 live Google, packaged OS/Mobile and remote-access acceptance remain pending.
-No schema migration, reset, version bump or release is introduced.
+Auth remains schema 1 without migration or reset. The separately delivered
+ngrok/external slice provides protected schema-3 settings migration, bounded
+lifecycle and private broker integration. Data reset now durably disarms the
+shared ingress before account/conversation erasure, retaining configuration for
+manual re-enablement. Windows source-candidate managed ngrok passed live initial
+connection, complete host restart with encrypted-credential reuse and Reset;
+host-origin public HTTPS probes confirmed admission. Automatic requested domains
+remain blank when observed URLs change. Funnel, independent-device/full consumer
+and packaged OS acceptance remain pending.
+No version bump or release is introduced.
 
 Shared App ingress (2026-09-29): Platform, remote Cats Mobile and every App
 must share one public origin/HTTPS port/tunnel, with `/apps/<appId>/` routing.

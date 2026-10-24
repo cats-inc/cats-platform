@@ -5,6 +5,7 @@ import { DesktopGoogleAuthController } from './googleAuth.js';
 import { DESKTOP_GOOGLE_AUTH_CHANNELS } from './googleAuthContracts.js';
 import { createDesktopGoogleTransport, desktopGoogleSessionCookie,
   readDesktopGoogleClientId } from './googleAuthTransport.js';
+import { createIngressSecretProtector } from './ingressSecrets.js';
 
 import {
   app,
@@ -15,6 +16,9 @@ import {
   Menu,
   screen,
   session,
+  safeStorage,
+  powerMonitor,
+  net,
   shell,
   systemPreferences,
 } from 'electron';
@@ -2492,6 +2496,7 @@ async function main(): Promise<void> {
     env: { ...process.env, CATS_DESKTOP_APPS_KEY: appManagementKey,
       CATS_DESKTOP_AUTH_KEY: desktopAuthKey, CATS_AUTH_GOOGLE_DESKTOP_CLIENT_ID: googleClientId ?? '',
     },
+    ingressSecrets: createIngressSecretProtector(safeStorage, hostConfig.paths.platformDir),
     onStateChange: () => {
       if (hostConfig && supervisor) {
         publishSnapshot(buildSnapshot());
@@ -2499,6 +2504,17 @@ async function main(): Promise<void> {
       }
     },
   });
+  powerMonitor.on('suspend', () => supervisor?.signalPlatformIngress('suspend'));
+  powerMonitor.on('resume', () => supervisor?.signalPlatformIngress('resume'));
+  let ingressOnline = net.isOnline();
+  const ingressNetworkTimer = setInterval(() => {
+    const online = net.isOnline();
+    if (online !== ingressOnline) {
+      ingressOnline = online; supervisor?.signalPlatformIngress(online ? 'online' : 'offline');
+    }
+  }, 10_000);
+  ingressNetworkTimer.unref();
+  app.once('before-quit', () => clearInterval(ingressNetworkTimer));
   latestSnapshot = buildSnapshot(null);
   voiceCaptureController = new DesktopVoiceCaptureController({
     config: hostConfig,
