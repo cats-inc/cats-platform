@@ -8,8 +8,10 @@ ngrok/Funnel ingress for Mobile, Telegram webhook and external App routes.
 [SPEC-129](specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md) define
 identity; [ADR-139](decisions/139-manage-one-desktop-remote-ingress.md) /
 [SPEC-130](specs/SPEC-130-desktop-managed-remote-access.md) define remote access.
-Remote Web and a shared cloud auth service are deferred. These are planning
-documents; implementation, provider/live acceptance and releases are not authorized.
+The first identity-contract/account-core batch is implemented with isolated
+checks and independent source review. Native Desktop OAuth transport/UI,
+publisher setup and remote-access implementation/live acceptance remain pending.
+Remote Web and a shared cloud auth service are deferred; no release is authorized.
 
 [Provider catalog consumer validation](research/2026-10-24-provider-catalog-consumer-validation.md)
 records the sixteen-channel refresh, Auggie effort regression and isolated source Candidate check.

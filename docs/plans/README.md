@@ -1,9 +1,9 @@
 # Implementation Plans
 
 - [PLAN-122: Desktop identity and remote access](PLAN-122-desktop-identity-and-remote-access-rollout.md)
-  — draft, 2026-10-24; one delivery plan for dual Admin/bootstrap, native Google,
-  managed ngrok/Funnel and Mobile/Telegram/App acceptance. Documentation only;
-  implementation, provider mutation and releases not authorized; remote Web deferred.
+  — first identity-contract/account-core batch implemented, 2026-10-25;
+  native Desktop transport/UI, publisher registration and managed remote access
+  remain pending. No live provider changes or release; remote Web deferred.
 
 - [PLAN-121: Shared image service and controlled Cat generation](PLAN-121-shared-image-service-and-controlled-cat-generation.md)
   — draft, 2026-10-23; Runtime compatibility, Studio-preserving extraction,
@@ -201,7 +201,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-10-24 (PLAN-122 planning recorded; its implementation is not started.)*
+*Last updated: 2026-10-25 (PLAN-122 first account-core batch recorded; later phases pending.)*
 
 *See also: [specs/](../specs/) for feature specifications*
 

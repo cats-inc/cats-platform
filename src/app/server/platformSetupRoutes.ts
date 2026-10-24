@@ -25,17 +25,19 @@ import {
   type ChatApiDependencies,
 } from '../../products/chat/api/routeSupport.js';
 import {
-  createFirstAdminLocalAuthState,
+  createFirstAdminAuthState,
   createPlatformAuthSecurityEvent,
   evaluatePreAuthOriginGate,
   hasExistingPlatformAdmin,
   PLATFORM_AUTH_ERROR_CODES,
   PlatformAdminCredentialError,
   PlatformFirstAdminExistsError,
+  PlatformGoogleProofError,
   serializeAuthSessionCookie,
   validatePlatformAdminCredentials,
   describePlatformAdminCredentialRejection,
-  type PlatformAdminCredentials,
+  type PlatformFirstAdminCredential,
+  type PlatformGoogleProofStore,
   type PlatformAuthSecurityEventReporter,
   type PlatformAuthStore,
   type PlatformAuthState,
@@ -52,10 +54,15 @@ import { routePlatformGuideCatApi } from './platformSetupGuideCatRoutes.js';
 import { routePlatformPreferenceApi } from './platformSetupPreferenceRoutes.js';
 import { resolveGuideCatSystemName } from '../../shared/guideCatIdentity.js';
 import { sendPlatformAuthError } from './authErrorResponses.js';
+import {
+  PLATFORM_DESKTOP_AUTH_CONTEXT_HEADER,
+  PLATFORM_GOOGLE_PROOF_HEADER,
+} from '../../shared/nativeGoogleAuth.js';
 
 export interface PlatformSetupAuthDependencies {
   authStore: PlatformAuthStore;
   auth: PlatformAuthConfig;
+  googleProofStore?: PlatformGoogleProofStore;
   reportAuthSecurityEvent?: PlatformAuthSecurityEventReporter;
 }
 
@@ -83,6 +90,9 @@ class PlatformSetupConfigurationError extends Error {
     this.name = 'PlatformSetupConfigurationError';
   }
 }
+
+type SetupAdminCredential = Exclude<PlatformFirstAdminCredential, { provider: 'google' }>
+  | { provider: 'google'; proofToken: string; contextId: string; attemptId: string };
 
 function reportSyncFailure(scope: string, error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error);
@@ -131,33 +141,50 @@ async function handlePlatformSetupComplete(
     return;
   }
 
-  // SPEC-113 requirements 1 and 2: Admin credentials are mandatory and are
-  // rejected before any owner, Guide Cat, setup, or auth state is mutated.
-  const credentialValidation = validatePlatformAdminCredentials({
-    identifier: body.adminIdentifier,
-    password: body.adminPassword,
-  });
-  if (!credentialValidation.ok) {
-    sendJson(context.response, 400, {
-      error: {
-        code: 'invalid_admin_credentials',
-        reason: credentialValidation.reason,
-        message: describePlatformAdminCredentialRejection(credentialValidation.reason),
-      },
-    });
+  if (body.adminMethod !== undefined && body.adminMethod !== 'local_password'
+    && body.adminMethod !== 'google') {
+    sendJson(context.response, 400, { error: { code: 'invalid_admin_credentials' } });
     return;
   }
-  const adminCredentials = credentialValidation.credentials;
+  let adminCredential: SetupAdminCredential;
+  if (body.adminMethod === 'google') {
+    const proofToken = context.request.headers[PLATFORM_GOOGLE_PROOF_HEADER];
+    const contextId = context.request.headers[PLATFORM_DESKTOP_AUTH_CONTEXT_HEADER];
+    if (typeof proofToken !== 'string' || typeof contextId !== 'string' || !body.attemptId
+      || body.adminPassword !== undefined || body.adminIdentifier !== undefined) {
+      sendJson(context.response, 400, { error: { code: 'invalid_admin_credentials' } });
+      return;
+    }
+    adminCredential = { provider: 'google', proofToken, contextId, attemptId: body.attemptId };
+  } else {
+    // Preserve the existing local/repair identifier contract; P2's new-account
+    // form uses email. Google assertions are accepted only through a bound proof.
+    const credentialValidation = validatePlatformAdminCredentials({
+      identifier: body.adminIdentifier,
+      password: body.adminPassword,
+    });
+    if (!credentialValidation.ok) {
+      sendJson(context.response, 400, {
+        error: {
+          code: 'invalid_admin_credentials',
+          reason: credentialValidation.reason,
+          message: describePlatformAdminCredentialRejection(credentialValidation.reason),
+        },
+      });
+      return;
+    }
+    adminCredential = { provider: 'local_password', ...credentialValidation.credentials };
+  }
 
   await runExclusiveSetupOperation(
-    () => completePlatformSetupExclusively(context, body, adminCredentials),
+    () => completePlatformSetupExclusively(context, body, adminCredential),
   );
 }
 
 async function completePlatformSetupExclusively(
   context: PlatformSetupContext,
   body: LegacyPlatformSetupCompleteInput,
-  adminCredentials: PlatformAdminCredentials,
+  adminCredential: SetupAdminCredential,
 ): Promise<void> {
   const now = context.dependencies.now?.() ?? new Date();
   let core = await context.dependencies.chatStore.readCore();
@@ -213,8 +240,7 @@ async function completePlatformSetupExclusively(
     // (SPEC-113 requirement 7). The reverse order is rolled back below.
     const firstAdminSession = await createFirstAdminDuringSetup(context, {
       displayName: ownerDisplayName,
-      identifier: adminCredentials.identifier,
-      password: adminCredentials.password,
+      credential: adminCredential,
       now,
     });
 
@@ -382,6 +408,7 @@ async function completePlatformSetupExclusively(
       now,
       accountId: firstAdminSession.accountId,
       sessionId: firstAdminSession.sessionId,
+      reason: adminCredential.provider,
     });
 
     sendJson(
@@ -397,6 +424,11 @@ async function completePlatformSetupExclusively(
     );
   } catch (error) {
     reportSyncFailure('setup_complete', error);
+    await reportSetupSecurityEvent(context, {
+      kind: 'first_admin_failed', outcome: 'failure', now,
+      reason: error instanceof PlatformGoogleProofError ? error.code
+        : error instanceof PlatformFirstAdminExistsError ? 'already_complete' : 'setup_failed',
+    });
     await recordProductEvent(context, {
       now,
       attemptId,
@@ -429,7 +461,8 @@ async function completePlatformSetupExclusively(
 
 function resolveSetupCompleteResponseError(error: unknown): {
   status: number;
-  code: 'configuration_error' | 'internal_error' | 'already_complete' | 'invalid_admin_credentials';
+  code: 'configuration_error' | 'internal_error' | 'already_complete'
+    | 'invalid_admin_credentials' | 'google_confirmation_required';
   message: string;
 } {
   if (error instanceof PlatformSetupConfigurationError) {
@@ -453,6 +486,13 @@ function resolveSetupCompleteResponseError(error: unknown): {
       status: 400,
       code: 'invalid_admin_credentials',
       message: error.message,
+    };
+  }
+  if (error instanceof PlatformGoogleProofError) {
+    return {
+      status: 403,
+      code: 'google_confirmation_required',
+      message: 'Google confirmation is not valid for this setup attempt.',
     };
   }
   return {
@@ -512,8 +552,7 @@ async function createFirstAdminDuringSetup(
   context: PlatformSetupContext,
   input: {
     displayName: string;
-    identifier: string;
-    password: string;
+    credential: SetupAdminCredential;
     now: Date;
   },
 ): Promise<FirstAdminSetupResult> {
@@ -534,11 +573,27 @@ async function createFirstAdminDuringSetup(
       throw new PlatformFirstAdminExistsError();
     }
     previousState = structuredClone(state);
-    const created = await createFirstAdminLocalAuthState({
+    let credential: PlatformFirstAdminCredential;
+    if (input.credential.provider === 'google') {
+      const proofs = context.dependencies.googleProofStore;
+      if (!proofs) throw new PlatformSetupConfigurationError('Native Google is not configured.');
+      credential = {
+        provider: 'google',
+        identity: proofs.consume({
+          token: input.credential.proofToken,
+          binding: {
+            purpose: 'bootstrap', contextId: input.credential.contextId,
+            attemptId: input.credential.attemptId,
+          },
+        }),
+      };
+    } else {
+      credential = input.credential;
+    }
+    const created = await createFirstAdminAuthState({
       state,
       displayName: input.displayName,
-      identifier: input.identifier,
-      password: input.password,
+      credential,
       sessionSecret,
       sessionTtlMs: context.dependencies.auth.sessionTtlMs,
       now: input.now,

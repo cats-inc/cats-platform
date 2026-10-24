@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import { assertPlatformAdminCredentials } from './adminCredentials.js';
-import { createLocalPasswordHash } from './password.js';
+import { createLocalPasswordHash, type LocalPasswordHashResult } from './password.js';
+import type { PlatformVerifiedGoogleIdentity } from './googleVerifier.js';
 import { issueBrowserSession, type BrowserSessionIssueResult } from './session.js';
 import type {
   PlatformAccountRecord,
@@ -29,9 +30,22 @@ export class PlatformFirstAdminExistsError extends Error {
  */
 export function hasExistingPlatformAdmin(state: PlatformAuthState): boolean {
   return state.accounts.length > 0
-    || state.memberships.some((membership) =>
-      membership.roles.some((role) => role === 'owner' || role === 'admin'),
-    );
+    || state.memberships.length > 0
+    || state.identities.length > 0
+    || state.sessions.length > 0;
+}
+
+export type PlatformFirstAdminCredential =
+  | { provider: 'local_password'; identifier: string; password: string }
+  | { provider: 'google'; identity: PlatformVerifiedGoogleIdentity };
+
+export interface CreateFirstAdminInput {
+  state: PlatformAuthState;
+  displayName: string;
+  credential: PlatformFirstAdminCredential;
+  sessionSecret: string;
+  sessionTtlMs: number;
+  now?: Date;
 }
 
 export interface CreateFirstAdminLocalInput {
@@ -44,7 +58,7 @@ export interface CreateFirstAdminLocalInput {
   now?: Date;
 }
 
-export interface CreateFirstAdminLocalResult {
+export interface CreateFirstAdminResult {
   state: PlatformAuthState;
   account: PlatformAccountRecord;
   identity: PlatformIdentityRecord;
@@ -52,26 +66,49 @@ export interface CreateFirstAdminLocalResult {
   session: BrowserSessionIssueResult;
 }
 
+export interface CreateFirstAdminLocalResult extends CreateFirstAdminResult {}
+
 export async function createFirstAdminLocalAuthState(
   input: CreateFirstAdminLocalInput,
 ): Promise<CreateFirstAdminLocalResult> {
+  return createFirstAdminAuthState({
+    ...input,
+    credential: { provider: 'local_password', identifier: input.identifier, password: input.password },
+  });
+}
+
+/** Trusted domain input. HTTP must consume a bound Google proof before calling. */
+export async function createFirstAdminAuthState(
+  input: CreateFirstAdminInput,
+): Promise<CreateFirstAdminResult> {
   if (hasExistingPlatformAdmin(input.state)) {
     throw new PlatformFirstAdminExistsError();
   }
-  const credentials = assertPlatformAdminCredentials({
-    identifier: input.identifier,
-    password: input.password,
-  });
   const now = input.now ?? new Date();
   const nowIso = now.toISOString();
   const accountId = `auth-account-${randomUUID()}`;
-  const normalizedIdentifier = normalizeAccountIdentifier(credentials.identifier);
-  const password = await createLocalPasswordHash(credentials.password);
+  const credential = input.credential;
+  let email: string | null;
+  let providerSubject: string;
+  let passwordFields: Partial<LocalPasswordHashResult> = {};
+  if (credential.provider === 'local_password') {
+    const credentials = assertPlatformAdminCredentials(credential);
+    providerSubject = normalizeAccountIdentifier(credentials.identifier);
+    email = looksLikeEmail(providerSubject) ? providerSubject : null;
+    passwordFields = await createLocalPasswordHash(credentials.password);
+  } else {
+    providerSubject = credential.identity.providerSubject.trim();
+    email = credential.identity.email.trim().toLowerCase();
+    if (!providerSubject || !looksLikeEmail(email)
+      || !(Date.parse(credential.identity.expiresAt) > now.getTime())) {
+      throw new Error('A current verified Google identity is required.');
+    }
+  }
   const account: PlatformAccountRecord = {
     id: accountId,
     displayName: input.displayName.trim() || 'Owner',
-    email: looksLikeEmail(normalizedIdentifier) ? normalizedIdentifier : null,
-    avatarUrl: null,
+    email,
+    avatarUrl: credential.provider === 'google' ? credential.identity.avatarUrl : null,
     status: 'active',
     createdAt: nowIso,
     updatedAt: nowIso,
@@ -79,11 +116,10 @@ export async function createFirstAdminLocalAuthState(
   const identity: PlatformIdentityRecord = {
     id: `auth-identity-${randomUUID()}`,
     accountId,
-    provider: 'local_password',
-    providerSubject: normalizedIdentifier,
+    provider: credential.provider,
+    providerSubject,
     email: account.email,
-    passwordHash: password.passwordHash,
-    passwordHashAlgorithm: password.passwordHashAlgorithm,
+    ...passwordFields,
     createdAt: nowIso,
     updatedAt: nowIso,
   };

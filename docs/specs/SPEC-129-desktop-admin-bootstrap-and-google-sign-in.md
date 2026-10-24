@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Draft requirements; owner-confirmed product direction; implementation not started |
+| Status | Approved first batch; account core and identity contracts implemented; native Desktop flow/UI/live acceptance pending |
 | Date | 2026-10-24 |
 | Decision | [ADR-138](../decisions/138-converge-google-and-password-admin-bootstrap.md) |
 | Delivery | [PLAN-122](../plans/PLAN-122-desktop-identity-and-remote-access-rollout.md) |
@@ -16,8 +16,9 @@ Let an uninitialized Cats Desktop profile create its first owner/Admin through
 Google or email/password. Either account can later add the other login method
 without changing its identity, authority or data. Desktop Google sign-in uses
 the system browser and a local callback, independently of public remote access.
-The owner requested documentation only. This spec does not claim working
-native OAuth, changed onboarding, completed acceptance or release authorization.
+The owner authorized the first identity-contract/account-core implementation
+batch on 2026-10-25. Native OAuth host transport, onboarding UI, live Google
+acceptance and publication remain separate delivery work.
 
 ## Baseline and replacement scope
 
@@ -83,11 +84,45 @@ not required to complete this Desktop milestone.
 | AUTH-15 | Client registration, consent/publishing state and OS packaging support are independent readiness fields. Missing setup is reported truthfully; token-verifier fixtures do not establish live Google acceptance. |
 | AUTH-16 | Post-setup Google sign-in resolves only an existing linked subject. Unknown subjects neither create accounts nor acquire Admin by matching an email. |
 
-The private wire contract must define start, completion, cancellation and error
+The first-batch contract below defines start, completion, cancellation and error
 results for purposes `bootstrap`, `login`, `link_google` and `set_password`.
 Completion is tied to the server/host-issued transaction, not a caller-selected
-account ID. URI/IPC names are frozen in PLAN-122 P0; they are not existing APIs.
-The callback listener closes on success, cancellation, expiry and full host exit.
+account ID. The P2 callback listener must close on success, cancellation, expiry
+and full host exit.
+
+### Frozen identity contract — first batch, 2026-10-25
+
+The browser-safe contract is `src/shared/nativeGoogleAuth.ts`. Reserved IPC and
+private HTTP names are contracts for P2; **none of those issuer endpoints or
+IPC handlers is registered by this batch**.
+
+| Boundary | Contract |
+| --- | --- |
+| Renderer -> trusted Desktop | `cats-host:google-auth-start`, `cats-host:google-auth-status`, `cats-host:google-auth-cancel`. Start accepts only a purpose and, for bootstrap, the onboarding `attemptId`. Status exposes a transaction ID, waiting/verified/cancelled/failed phase and expiry. |
+| Private host -> Platform | `/api/desktop/auth/google/start`, `/complete`, `/cancel`, under the same `/api/desktop/auth/google` prefix. Require an ephemeral per-sidecar `x-cats-desktop-auth-key`; possession of a loopback address is insufficient. These paths must reject browser Origin requests and remain absent from public ingress. |
+| Host-owned binding | Context comes from the trusted top-level window/profile registry. Platform derives an active Account/Session from the initiating Cats browser session for sensitive purposes; the renderer cannot choose them. Bootstrap also binds `attemptId`. `link_google` retains the existing current-password action grant at authorization. |
+| Callback/code exchange | Host opens `http://127.0.0.1:<actual-port>/oauth/google/callback`, pins that exact URL, uses system-browser authorization code + PKCE S256 and checks state before exchange. Platform independently verifies the returned ID token with its pinned Desktop audience and server-issued nonce. |
+| Private transaction lifetime | Five minutes from start, including verification and final consumption. At most 32 pending/verifying/ready transactions per profile. Starting again in one context supersedes its previous attempt/proof; other contexts remain isolated. |
+| Completion | Receives transaction ID, exact callback URL, state and transient ID token over the private seam. Returns a random 256-bit proof capability, expiring no later than the transaction or ID token. No Cats account/session mutation occurs at completion. |
+| Final mutation | Trusted host attaches `x-cats-google-proof` and `x-cats-desktop-auth-context`. Bootstrap additionally checks the submitted `attemptId`; first-password checks the current Account/Session and linked subject/email inside the serialized mutation. Never accept proof through a URL or caller-supplied identity/role fields. |
+| Invalidation | First recognized proof use spends it, including a binding mismatch or later validation/write failure. Cancellation, replacement, reset, process exit/restart and expiry invalidate it; async verification cannot resurrect a cancelled transaction. |
+
+Nonces, state, PKCE material, ID tokens and final-mutation capabilities stay in
+the private host/Platform path, outside renderer IPC/status and diagnostics.
+The P1 in-memory proof store exposes `begin`/`complete` only to trusted in-process
+callers; injected test verifiers exercise that seam. Consumers receive only
+the consume/revoke/reset interface. Store instances and pinned configuration
+are profile-specific; proofs do not cross instances or survive restart.
+
+P2 distribution configuration uses a publisher-owned **Desktop** client through
+`CATS_AUTH_GOOGLE_DESKTOP_CLIENT_ID`, with no fallback to Web GIS or Mobile client
+IDs. That environment/packaging integration is reserved, not implemented here.
+Actual publisher registration, consent/publishing state, live test-account
+availability and callback acceptance on each OS remain **unverified**. Missing
+injected Desktop configuration fails closed as `not_configured`; no Google Cloud
+project/account was changed by this batch. The native public-client and OIDC
+choices follow Google's [Desktop OAuth documentation](https://developers.google.com/identity/protocols/oauth2/native-app)
+and [OIDC verification contract](https://developers.google.com/identity/openid-connect/openid-connect).
 
 ### Login-method completion
 
@@ -133,12 +168,40 @@ No fixtures or verification accounts are written into the user's working profile
 
 ## Open implementation gates
 
-- Freeze the publisher client configuration/consent process and private host/
-  Platform transaction interface, expiry values and concurrent-attempt behavior.
+- Implement the reserved private host transport and its initiating window/session
+  authorization, publisher client injection and consent/readiness projection.
 - Prove loopback delivery and Google ID-token/nonce handling for the chosen
   library and Desktop OAuth client on every supported package target.
 - Confirm which existing Settings/browser entrypoints must open the system
   browser and retain operator-configured GIS behavior without widening origins.
+
+## First-batch implementation and compatibility
+
+- One first-Admin factory now creates local or verified-Google identities with
+  the same Account/Membership/session rules. `/api/platform/setup/complete` adds
+  `adminMethod: 'google'` and consumes a bound proof inside its auth mutation.
+  Omitted/`local_password` retains the existing identifier/password contract;
+  P2's new-account UI will require email while existing handle profiles/repair
+  remain usable. Disabled accounts and orphan auth records cannot reopen setup.
+- `POST /api/auth/password/first` accepts only `{ password }`, an active browser
+  cookie, Cats CSRF and a `set_password` Google proof. It derives the login email
+  from the existing verified account, rejects overwrite/collisions and rotates
+  CSRF. The existing password-based `/api/auth/reauth` cannot mint this proof.
+- Web and Mobile Google login now commit against the latest serialized state,
+  preserving a password concurrently added by the first-password operation.
+  Missing-file initialization uses the same mutation lock as first-Admin creation.
+- Auth files remain version **1**, with unchanged identity/hash/session formats.
+  Replacement writes use an owner-permission temporary file and same-directory
+  rename. No data migration, API removal, version bump or release is introduced.
+- Caught Core snapshot failure rolls back the provisional auth state and spends
+  its proof; retry needs a new Google transaction. A hard process death between
+  the separate auth/Core commits remains **fail-closed incomplete setup** using
+  existing authenticated repair/reset procedures; this batch does not add an
+  automatic cross-file recovery journal or reopen first-claim authority.
+
+The PLAN-122 checkpoint records executed checks and independent source review.
+A1-A7 account/authorization behavior is exercised with isolated stores and
+injected verifiers; these are not live Desktop Google or packaged-OS acceptance.
 
 ## References
 

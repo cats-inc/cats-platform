@@ -12,14 +12,293 @@ import {
   createFileBackedPlatformAuthStore,
   hashSessionToken,
   MemoryPlatformAuthStore,
+  MemoryPlatformGoogleProofStore,
+  type PlatformGoogleIdTokenClaims,
+  type PlatformGoogleProofStore,
+  type PlatformGoogleIdTokenVerifier,
   type PlatformAuthStore,
 } from '../src/platform/auth/index.ts';
+import type { NativeGoogleAuthBinding } from '../src/shared/nativeGoogleAuth.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import { waitForGuideCatAssistRefreshIdle } from '../src/products/chat/api/guideCatAssist.ts';
 
 const NOW = new Date('2026-05-10T00:00:00.000Z');
 const SESSION_SECRET = 'test-session-secret-at-least-sixteen-chars';
+
+function testGoogleProvider() {
+  const claims = new Map<string, PlatformGoogleIdTokenClaims>();
+  const store = new MemoryPlatformGoogleProofStore({
+    clientId: 'desktop-test-client', now: () => NOW,
+    verifier: { async verifyIdToken({ token }) {
+      const value = claims.get(token);
+      if (!value) throw new Error('Invalid fixture token.');
+      return value;
+    } },
+  });
+  return {
+    store,
+    async proof(binding: NativeGoogleAuthBinding, overrides: Partial<PlatformGoogleIdTokenClaims> = {}) {
+      const start = store.begin({
+        binding, callbackUrl: 'http://127.0.0.1:34567/oauth/google/callback',
+      });
+      claims.set(start.transactionId, {
+        sub: 'google-owner', email: 'owner@example.test', email_verified: true,
+        iss: 'https://accounts.google.com', aud: 'desktop-test-client',
+        exp: NOW.getTime() / 1000 + 3600, nonce: start.nonce, ...overrides,
+      });
+      return (await store.complete({ ...start, idToken: start.transactionId })).proofToken;
+    },
+  };
+}
+
+test('Google bootstrap and fresh-proof password completion preserve account and owner', async (t) => {
+  const google = testGoogleProvider();
+  const f = await createSetupFixture(t, { googleProofStore: google.store, authPersistence: 'file' });
+  const setup = await request(f.server, '/api/platform/setup/complete', {
+    method: 'POST', origin: 'http://localhost:5173',
+    googleProof: await google.proof({ purpose: 'bootstrap', contextId: 'window', attemptId: 'setup' }),
+    desktopContext: 'window',
+    body: { ownerDisplayName: 'Owner', createGuideCat: false, adminMethod: 'google', attemptId: 'setup' },
+  });
+  assert.equal(setup.status, 200);
+  const before = await f.authStore.readState();
+  assert.equal(before.accounts.length, 1);
+  assert.equal(before.identities[0]?.provider, 'google');
+  const core = await f.chatStore.readCore();
+  const cookie = setup.setCookie!.split(';')[0]!;
+  const status = await request(f.server, '/api/auth/status', { cookie });
+  const binding = { purpose: 'set_password', contextId: 'window',
+    accountId: before.accounts[0]!.id, sessionId: before.sessions[0]!.id } as const;
+  const proof = await google.proof(binding);
+  const completed = await request(f.server, '/api/auth/password/first', {
+    method: 'POST', origin: 'http://localhost:5173', cookie,
+    csrfToken: status.payload?.csrfToken, googleProof: proof, desktopContext: 'window',
+    body: { password: 'correct-password' },
+  });
+  assert.equal(completed.status, 200);
+  assert.equal(completed.payload?.loginMethods.localPassword.linked, true);
+  assert.equal(completed.payload?.loginMethods.google.linked, true);
+  const after = await f.authStore.readState();
+  assert.deepEqual(after.accounts, before.accounts);
+  assert.deepEqual(after.memberships, before.memberships);
+  assert.deepEqual(await f.chatStore.readCore(), core);
+  assert.equal(after.identities.length, 2);
+  assert.equal(after.identities[1]?.providerSubject, 'owner@example.test');
+  assert.notEqual(completed.payload?.csrfToken, status.payload?.csrfToken);
+  const replay = await request(f.server, '/api/auth/password/first', {
+    method: 'POST', origin: 'http://localhost:5173', cookie,
+    csrfToken: completed.payload?.csrfToken, googleProof: proof, desktopContext: 'window',
+    body: { password: 'overwrite-password' },
+  });
+  assert.equal(replay.status, 403);
+  const login = await request(f.server, '/api/auth/login', {
+    method: 'POST', origin: 'http://localhost:5173',
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  assert.equal(login.status, 200);
+  assert.equal(login.payload?.principal.accountId, before.accounts[0]!.id);
+});
+
+test('concurrent Google and local setup has exactly one winner and session', async (t) => {
+  const google = testGoogleProvider();
+  const f = await createSetupFixture(t, { googleProofStore: google.store });
+  const [a, b] = await Promise.all([
+    request(f.server, '/api/platform/setup/complete', {
+      method: 'POST', origin: 'http://localhost:5173', desktopContext: 'window',
+      googleProof: await google.proof({ purpose: 'bootstrap', contextId: 'window', attemptId: 'setup' }),
+      body: { adminMethod: 'google', attemptId: 'setup', ownerDisplayName: 'Google' },
+    }),
+    request(f.server, '/api/platform/setup/complete', {
+      method: 'POST', origin: 'http://localhost:5173',
+      body: { ownerDisplayName: 'Local', adminIdentifier: 'local@example.test',
+        adminPassword: 'correct-password' },
+    }),
+  ]);
+  assert.deepEqual([a.status, b.status].sort(), [200, 409]);
+  const state = await f.authStore.readState();
+  assert.equal(state.accounts.length, 1);
+  assert.equal(state.identities.length, 1);
+  assert.equal(state.memberships.length, 1);
+  assert.equal(state.sessions.length, 1);
+  assert.equal((a.status === 409 ? a : b).setCookie, null);
+});
+
+test('Google setup rolls back on snapshot failure and requires a new proof for retry', async (t) => {
+  const google = testGoogleProvider();
+  const f = await createSetupFixture(t, { googleProofStore: google.store });
+  const original = f.chatStore.writeSnapshot.bind(f.chatStore);
+  let fail = true;
+  f.chatStore.writeSnapshot = async (...args) => {
+    if (fail) { fail = false; throw new Error('snapshot failure'); }
+    return original(...args);
+  };
+  const binding = { purpose: 'bootstrap', contextId: 'window', attemptId: 'setup' } as const;
+  const proof = await google.proof(binding);
+  const submit = (googleProof: string) => request(f.server, '/api/platform/setup/complete', {
+    method: 'POST', origin: 'http://localhost:5173', googleProof, desktopContext: 'window',
+    body: { adminMethod: 'google', attemptId: 'setup', ownerDisplayName: 'Owner' },
+  });
+  assert.equal((await submit(proof)).status, 500);
+  assert.equal((await f.authStore.readState()).accounts.length, 0);
+  assert.equal((await f.chatStore.readCore()).setupCompleteAt, null);
+  assert.equal((await submit(proof)).status, 403);
+  assert.equal((await submit(await google.proof(binding))).status, 200);
+});
+
+test('Google assertion or wrong-attempt proof alone cannot authorize bootstrap', async (t) => {
+  const google = testGoogleProvider();
+  const f = await createSetupFixture(t, { googleProofStore: google.store });
+  const proof = await google.proof({ purpose: 'bootstrap', contextId: 'window', attemptId: 'original' });
+  const submit = (googleProof?: string) => request(f.server, '/api/platform/setup/complete', {
+    method: 'POST', origin: 'http://localhost:5173', googleProof, desktopContext: 'window',
+    body: { adminMethod: 'google', attemptId: 'different', ownerDisplayName: 'Owner',
+      credential: 'arbitrary-id-token', email: 'owner@example.test' },
+  });
+  assert.equal((await submit()).status, 400);
+  assert.equal((await submit('arbitrary-id-token')).status, 403);
+  assert.equal((await submit(proof)).status, 403);
+  assert.equal((await f.authStore.readState()).accounts.length, 0);
+  assert.equal((await f.chatStore.readCore()).setupCompleteAt, null);
+});
+
+test('first-password mutation rejects a session without fresh Google and wrong linked subject',
+  async (t) => {
+    const google = testGoogleProvider();
+    const f = await createSetupFixture(t, { googleProofStore: google.store });
+    const setup = await request(f.server, '/api/platform/setup/complete', {
+      method: 'POST', origin: 'http://localhost:5173', desktopContext: 'window',
+      googleProof: await google.proof({ purpose: 'bootstrap', contextId: 'window', attemptId: 'setup' }),
+      body: { adminMethod: 'google', attemptId: 'setup', ownerDisplayName: 'Owner' },
+    });
+    const cookie = setup.setCookie!.split(';')[0]!;
+    const status = await request(f.server, '/api/auth/status', { cookie });
+    const state = await f.authStore.readState();
+    const binding = { purpose: 'set_password', contextId: 'window',
+      accountId: state.accounts[0]!.id, sessionId: state.sessions[0]!.id } as const;
+    const submit = (googleProof?: string, csrfToken: unknown = status.payload?.csrfToken) =>
+      request(f.server, '/api/auth/password/first', {
+        method: 'POST', origin: 'http://localhost:5173', cookie, csrfToken,
+        googleProof, desktopContext: 'window', body: { password: 'correct-password' },
+      });
+    assert.equal((await submit()).status, 403);
+    const wrong = await google.proof(binding, { sub: 'other-google-same-email' });
+    assert.equal((await submit(wrong)).status, 403);
+    const csrfProof = await google.proof(binding);
+    assert.equal((await submit(csrfProof, null)).status, 403);
+    const original = f.authStore.updateState.bind(f.authStore);
+    let fail = true;
+    f.authStore.updateState = (mutate) => original(async (current) => {
+      const next = await mutate(current);
+      if (fail) { fail = false; throw new Error('sensitive persistence detail'); }
+      return next;
+    });
+    const failure = await submit(csrfProof);
+    assert.equal(failure.status, 503);
+    assert.doesNotMatch(JSON.stringify(failure.payload), /sensitive persistence detail/u);
+    assert.equal((await f.authStore.readState()).identities.length, 1);
+    assert.equal((await submit(csrfProof)).status, 403, 'failed write spends proof');
+    assert.equal((await submit(await google.proof(binding))).status, 200);
+  });
+
+for (const client of ['web', 'mobile'] as const) {
+  test(`concurrent ${client} Google login preserves a newly committed first password`, async (t) => {
+    const google = testGoogleProvider();
+    const f = await createSetupFixture(t, {
+      googleProofStore: google.store,
+      env: { CATS_AUTH_GOOGLE_CLIENT_ID: 'web-client',
+        CATS_AUTH_GOOGLE_MOBILE_AUDIENCES: 'mobile-client' },
+      googleVerifier: { async verifyIdToken() { return {
+        sub: 'google-owner', email: 'owner@example.test', email_verified: true,
+        iss: 'https://accounts.google.com', aud: ['web-client', 'mobile-client'],
+        exp: NOW.getTime() / 1000 + 3600, nonce: 'mobile-nonce',
+      }; } },
+    });
+    const setup = await request(f.server, '/api/platform/setup/complete', {
+      method: 'POST', origin: 'http://localhost:5173', desktopContext: 'window',
+      googleProof: await google.proof({ purpose: 'bootstrap', contextId: 'window', attemptId: 'setup' }),
+      body: { adminMethod: 'google', attemptId: 'setup', ownerDisplayName: 'Owner' },
+    });
+    const cookie = setup.setCookie!.split(';')[0]!;
+    const status = await request(f.server, '/api/auth/status', { cookie });
+    const before = await f.authStore.readState();
+    const proof = await google.proof({ purpose: 'set_password', contextId: 'window',
+      accountId: before.accounts[0]!.id, sessionId: before.sessions[0]!.id });
+    let pause = true;
+    let entered!: () => void;
+    const paused = new Promise<void>((resolve) => { entered = resolve; });
+    let release!: () => void;
+    const hold = new Promise<void>((resolve) => { release = resolve; });
+    async function barrier() {
+      if (pause) { pause = false; entered(); await hold; }
+    }
+    const update = f.authStore.updateState.bind(f.authStore);
+    const write = f.authStore.writeState.bind(f.authStore);
+    f.authStore.updateState = async (mutate) => { await barrier(); return update(mutate); };
+    f.authStore.writeState = async (state) => { await barrier(); return write(state); };
+    const login = request(f.server, client === 'web'
+      ? '/api/auth/google/login' : '/api/mobile/auth/google/login', {
+      method: 'POST', origin: 'http://localhost:5173', cookie: 'g_csrf_token=gis-token',
+      body: client === 'web' ? { credential: 'id-token', csrfToken: 'gis-token' }
+        : { idToken: 'id-token', nonce: 'mobile-nonce' },
+    });
+    let completed: Awaited<ReturnType<typeof request>>;
+    try {
+      await paused;
+      completed = await request(f.server, '/api/auth/password/first', {
+        method: 'POST', origin: 'http://localhost:5173', cookie,
+        csrfToken: status.payload?.csrfToken, googleProof: proof, desktopContext: 'window',
+        body: { password: 'correct-password' },
+      });
+      assert.equal(completed.status, 200);
+    } finally { release(); }
+    assert.equal((await login).status, 200);
+    const after = await f.authStore.readState();
+    assert.equal(after.identities.filter((identity) => identity.provider === 'local_password').length, 1);
+    assert.equal(after.sessions.length, 2);
+    const preserved = await request(f.server, '/api/auth/password/first', {
+      method: 'POST', origin: 'http://localhost:5173', cookie,
+      csrfToken: completed.payload?.csrfToken, googleProof: proof, desktopContext: 'window',
+      body: { password: 'overwrite-password' },
+    });
+    assert.equal(preserved.status, 403);
+  });
+}
+
+test('session revocation immediately before password mutation cannot be bypassed by a fresh proof',
+  async (t) => {
+    const google = testGoogleProvider();
+    const f = await createSetupFixture(t, { googleProofStore: google.store });
+    const setup = await request(f.server, '/api/platform/setup/complete', {
+      method: 'POST', origin: 'http://localhost:5173', desktopContext: 'window',
+      googleProof: await google.proof({ purpose: 'bootstrap', contextId: 'window', attemptId: 'setup' }),
+      body: { adminMethod: 'google', attemptId: 'setup', ownerDisplayName: 'Owner' },
+    });
+    const cookie = setup.setCookie!.split(';')[0]!;
+    const status = await request(f.server, '/api/auth/status', { cookie });
+    const state = await f.authStore.readState();
+    const proof = await google.proof({ purpose: 'set_password', contextId: 'window',
+      accountId: state.accounts[0]!.id, sessionId: state.sessions[0]!.id });
+    const update = f.authStore.updateState.bind(f.authStore);
+    let revoke = true;
+    f.authStore.updateState = async (mutate) => {
+      if (revoke) {
+        revoke = false;
+        await update((current) => ({ ...current, sessions: current.sessions.map((session) =>
+          ({ ...session, revokedAt: NOW.toISOString() })) }));
+      }
+      return update(mutate);
+    };
+    const response = await request(f.server, '/api/auth/password/first', {
+      method: 'POST', origin: 'http://localhost:5173', cookie,
+      csrfToken: status.payload?.csrfToken, googleProof: proof, desktopContext: 'window',
+      body: { password: 'correct-password' },
+    });
+    assert.equal(response.status, 403);
+    const after = await f.authStore.readState();
+    assert.equal(after.identities.length, 1);
+    assert.equal(after.sessions[0]?.revokedAt, NOW.toISOString());
+  });
 
 test('platform setup can create first local admin and browser session', async (t) => {
   const fixture = await createSetupFixture(t);
@@ -699,7 +978,13 @@ test('setup completion waits for an in-flight reset to clear the previous Admin'
 
 async function createSetupFixture(
   t: TestContext,
-  options: { sessionSecret?: string | null; authPersistence?: 'memory' | 'file' } = {},
+  options: {
+    sessionSecret?: string | null;
+    authPersistence?: 'memory' | 'file';
+    googleProofStore?: PlatformGoogleProofStore;
+    googleVerifier?: PlatformGoogleIdTokenVerifier;
+    env?: NodeJS.ProcessEnv;
+  } = {},
 ): Promise<{
   server: ReturnType<typeof createServer>;
   authStore: PlatformAuthStore;
@@ -713,6 +998,7 @@ async function createSetupFixture(
     HOME: tempDir,
     CATS_PLATFORM_DIR: path.join(tempDir, 'platform'),
     ...(sessionSecret === null ? {} : { CATS_AUTH_SESSION_SECRET: sessionSecret }),
+    ...options.env,
   });
   const authStore = options.authPersistence === 'file'
     ? createFileBackedPlatformAuthStore(config.chatStatePath, () => NOW)
@@ -723,6 +1009,8 @@ async function createSetupFixture(
       config,
       runtimeClient: createRuntimeStub() as never,
       authStore,
+      googleProofStore: options.googleProofStore,
+      googleVerifier: options.googleVerifier,
       now: () => NOW,
     },
     chat: {
@@ -767,6 +1055,8 @@ async function request(
     secFetchSite?: string;
     cookie?: string;
     csrfToken?: unknown;
+    googleProof?: string;
+    desktopContext?: string;
   } = {},
 ): Promise<{
   status: number;
@@ -796,6 +1086,8 @@ async function request(
   if (typeof options.csrfToken === 'string') {
     headers['x-cats-csrf-token'] = options.csrfToken;
   }
+  if (options.googleProof) headers['x-cats-google-proof'] = options.googleProof;
+  if (options.desktopContext) headers['x-cats-desktop-auth-context'] = options.desktopContext;
   const response = await fetch(`http://127.0.0.1:${address.port}${pathname}`, {
     method: options.method ?? 'GET',
     headers,

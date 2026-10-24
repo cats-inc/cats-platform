@@ -4,14 +4,18 @@
 
 ## Current Status
 
-Desktop identity and remote-access planning (2026-10-24): the owner accepts
+Desktop identity and remote access (2026-10-25): the owner accepts
 Google or email/password first-admin creation, same-account method completion,
 and Desktop-managed ngrok/Funnel for a shared Mobile/Telegram/App ingress.
 Remote Web and a shared cloud auth service are deferred. Five primary documents
 are prepared: ADR-138/ADR-139, SPEC-129/SPEC-130 and
 [PLAN-122](docs/plans/PLAN-122-desktop-identity-and-remote-access-rollout.md).
-This changes the intended bootstrap policy, not the delivered auth code.
-Implementation, live/provider acceptance and releases are not authorized.
+The authorized first batch now implements the common Admin bootstrap, bound
+Google proof consumer and Google-only first password on the existing account.
+Independent review prompted fixes for concurrent Google-login and missing-file
+initialization overwrites. Native Desktop OAuth transport/UI, publisher setup,
+live/provider acceptance and remote-access phases remain pending. Ordinary
+onboarding is unchanged until P2; no version bump or release is authorized.
 
 Shared App ingress (2026-09-29): Platform, remote Cats Mobile and every App
 must share one public origin/HTTPS port/tunnel, with `/apps/<appId>/` routing.

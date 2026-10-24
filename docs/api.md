@@ -4,6 +4,28 @@
 
 ## Overview
 
+PLAN-122 first-batch auth additions (2026-10-25):
+
+- `POST /api/platform/setup/complete` optionally selects `adminMethod: "google"`
+  with the existing onboarding `attemptId`. It requires a private-host-issued
+  `x-cats-google-proof` and `x-cats-desktop-auth-context`, then uses the same
+  serialized first-Admin/Core commit as local setup. Default/`local_password`
+  preserves existing identifier/password callers. A raw Google token or email
+  never authorizes first-Admin creation.
+- `POST /api/auth/password/first` accepts `{ "password": "..." }` only. It needs
+  the current browser cookie, allowlisted origin, Cats CSRF and those proof/context
+  headers with purpose `set_password`. The server derives the verified login email,
+  rejects an existing password or identifier collision, and returns the existing
+  auth-status shape with refreshed CSRF. It never changes/reset passwords or
+  creates a second account. Proof rejection is 403 `E_REAUTH_REQUIRED`; unavailable
+  native configuration or persistence is 503 with a redacted response.
+
+Both are **consumers** of one-use Google proofs. The issuer is injectable only
+in this batch; native host transport, publisher configuration and Desktop UI
+arrive in P2. Reserved `/api/desktop/auth/google/*` issuer paths are not registered
+and must not be treated as available public APIs. See
+[SPEC-129's frozen identity contract](specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md#frozen-identity-contract--first-batch-2026-10-25).
+
 Planned component extension: `/apps/<appId>/` mounts launch/UI, private API and
 declared MCP routes on the same ingress as Platform/Mobile APIs. App API requests
 use ordinary HTTP with scoped view grants; MCP uses App connection credentials.

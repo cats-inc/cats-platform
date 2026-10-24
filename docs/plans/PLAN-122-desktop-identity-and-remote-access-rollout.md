@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Draft; planning documents prepared; implementation not started |
+| Status | In progress; first identity-contract/account-core batch implemented; P2 and remote-access phases pending |
 | Owner | User |
 | Date | 2026-10-24 |
 | Identity | [ADR-138](../decisions/138-converge-google-and-password-admin-bootstrap.md), [SPEC-129](../specs/SPEC-129-desktop-admin-bootstrap-and-google-sign-in.md) |
@@ -17,9 +17,11 @@ direction is dual Google/email-password Admin bootstrap, equivalent completed
 accounts, Desktop-managed ngrok/Funnel and one entry for Mobile/Telegram/Apps.
 Remote Web, including Google Web login and a central cloud authentication
 service, is deferred. The owner additionally authorized direct commit/push of
-documentation to main on 2026-10-25. Source implementation, account/provider
-configuration, a live tunnel, credentials, installation, version bumps and
-releases remain outside this request.
+documentation to main on 2026-10-25, then authorized the recommended first batch:
+P0 identity contracts plus P1 account core. The standing direct-main delivery
+instruction applies. P2 host/native OAuth/UI, remote-access implementation,
+external account/provider configuration, live tunnels, installation, version
+bumps and releases remain outside this batch.
 
 Future implementation can be delivered in independently validated slices under
 this plan. There is no requirement to finish tunnel support before local Google
@@ -63,7 +65,7 @@ boundaries pass focused integration checks.
 - [x] Record the owner's dual bootstrap and remote-Web deferral.
 - [x] Inspect Credential Vault and existing Cats code without user-state writes.
 - [x] Create the five planning documents and update supersession/extension links.
-- [ ] Freeze native OAuth start/complete/cancel purposes, private host/Platform
+- [x] Freeze native OAuth start/complete/cancel purposes, private host/Platform
   handoff, proof binding, expiry, concurrent attempts and browser-session issuance.
 - [ ] Establish publisher-owned Google Desktop client/consent configuration,
   packaging injection and live-test account availability without collecting
@@ -86,21 +88,23 @@ No unresolved security or persistence choice is disguised as an implementation d
 
 ### P1 — Convergent account model and initialization
 
-- [ ] Refactor the existing setup operation to accept one validated local
+- [x] Refactor the existing setup operation to accept one validated local
   credential or a bound verified Google setup result.
-- [ ] Preserve one serialized check for uninitialized/no-account state and
+- [x] Preserve one serialized check for uninitialized/no-account state and
   logically atomic auth/Core/owner commit with failure recovery.
-- [ ] Implement the Google-only first-password operation, unique local identifier,
+- [x] Implement the Google-only first-password operation, unique local identifier,
   same-account persistence and purpose-bound fresh Google proof.
-- [ ] Retain explicit same-email Google linking, stable subject uniqueness,
+- [x] Retain explicit same-email Google linking, stable subject uniqueness,
   legacy handle/email adoption and current-password grants where applicable.
-- [ ] Preserve usable-method/unlink invariants, session revocation and secret-free
+- [x] Preserve usable-method/unlink invariants, session revocation and secret-free
   security events.
-- [ ] Prove existing profile compatibility and all required migration/recovery
+- [x] Prove existing profile compatibility and all required migration/recovery
   behavior before adding UI.
 
-Exit: SPEC-129 A1-A7 pass with isolated stores and injected verifiers.
-No real Google acceptance claim from this phase.
+Exit: SPEC-129 A1-A7 core cases pass with isolated stores and injected verifiers.
+No real Google acceptance claim from this phase. Existing fail-closed behavior
+for hard interruption between auth/Core files is retained; automatic journaled
+crash recovery is not claimed. See the first-batch checkpoint below.
 
 ### P2 — Native Google and account/onboarding UX
 
@@ -217,7 +221,7 @@ consumer change, preserving the public package boundary. Runtime has no new
 public listener or account responsibility in this scope. cats-one and
 cats-plugins need no new services. Provider-specific work shares this plan.
 
-## Checkpoint — 2026-10-25
+## Planning checkpoint — 2026-10-25
 
 The five primary documents and related historical-reference/index amendments
 record the requested direction. All implementation, live Google/provider,
@@ -232,5 +236,40 @@ Documentation validation:
   REM-01 through REM-32. Scope is confined to Markdown documentation.
 - These are author-run document checks, not independent implementation review.
   No application suite/build, live OAuth, tunnel or user-state write was performed.
+
+## First-batch checkpoint — 2026-10-25
+
+P0's identity wire contract is frozen in SPEC-129 and its browser-safe shared
+contract. The private issuer routes/IPC are reserved for P2, not registered.
+P1 implements the common bootstrap factory, bound Google setup consumer,
+fresh-Google first-password consumer, protected atomic auth-file replacement
+and preserved same-account login/link/unlink rules. No auth schema migration is
+needed; version 1 and existing local hashes/handles/links/sessions remain valid.
+The native proof store is injectable only; ordinary Desktop still has its
+existing local onboarding until P2 supplies the private issuer and UI.
+
+Independent source review identified two concurrency hazards, both corrected
+and covered by deterministic regressions: Web/Mobile Google login overwriting
+a just-added password from an earlier snapshot, and missing-file initialization
+overwriting a concurrent Google first Admin. The reviewer reported no remaining
+blocking source finding and did not independently run tests.
+
+Validation:
+
+- **230/230** focused auth/bootstrap, Mobile session, setup API/renderer and
+  request-router cases passed across 33 bundled test files.
+- **103/103** architecture, documentation-input and renderer/browser import
+  boundary cases passed; this is not a full application-suite run.
+- Server, renderer and test-fixture TypeScript checks passed. Test checking
+  initially lacked worktree-local Mobile dependencies; reusing the existing
+  Mobile dependency installation resolved that environment-only failure.
+- Final diff/Markdown references were checked. No production/Desktop/mobile
+  package build, live provider call, installation, bump or publication ran.
+
+All fixtures use memory or dedicated temporary directories; no records were
+written to the user's profile. Live Google, publisher registration/consent, Mobile native UI,
+packaged OS callbacks and all remote-provider phases remain pending. Existing
+cross-file hard-interruption recovery remains fail-closed; only caught write
+failure rollback and guarded restart behavior are claimed.
 
 *Last updated: 2026-10-25*

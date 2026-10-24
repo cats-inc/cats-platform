@@ -309,6 +309,7 @@ export function createServer(dependencies: ServerDependencies) {
         await resolvedDependencies.work.scheduleStore?.writeState(createEmptySchedulerState());
         resolvedDependencies.shared.browserHandoffStore.clearForReset?.();
         resolvedDependencies.shared.actionGrantStore.clearForReset?.();
+        resolvedDependencies.shared.googleProofStore?.clearForReset();
         await resolvedDependencies.shared.setAuthRecoveryTokenState?.(null);
       });
     } finally {

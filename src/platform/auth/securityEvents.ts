@@ -10,12 +10,15 @@
 
 export const PLATFORM_AUTH_SECURITY_EVENT_KINDS = [
   'first_admin_created',
+  'first_admin_failed',
   'step_up_succeeded',
   'step_up_failed',
   'google_link_succeeded',
   'google_link_failed',
   'google_unlink_succeeded',
   'google_unlink_failed',
+  'first_password_set',
+  'first_password_failed',
 ] as const;
 
 export type PlatformAuthSecurityEventKind =
