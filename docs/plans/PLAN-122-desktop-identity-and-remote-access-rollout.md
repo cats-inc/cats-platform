@@ -18,8 +18,11 @@ accounts, Desktop-managed ngrok/Funnel and one entry for Mobile/Telegram/Apps.
 Remote Web, including Google Web login and a central cloud authentication
 service, is deferred. The owner additionally authorized direct commit/push of
 documentation to main on 2026-10-25, then authorized the recommended first batch:
-P0 identity contracts plus P1 account core. The standing direct-main delivery
-instruction applies. P2 host/native OAuth/UI, remote-access implementation,
+P0 identity contracts plus P1 account core. Implementation is delivered through
+[PR #314](https://github.com/cats-inc/cats-platform/pull/314): automatic approval
+review rejected direct-main source delivery and automatic merge/branch deletion
+because the visible direct-main grant covered documentation. Merge and cleanup
+therefore await explicit owner approval. P2 host/native OAuth/UI, remote-access implementation,
 external account/provider configuration, live tunnels, installation, version
 bumps and releases remain outside this batch.
 
@@ -265,6 +268,15 @@ Validation:
   Mobile dependency installation resolved that environment-only failure.
 - Final diff/Markdown references were checked. No production/Desktop/mobile
   package build, live provider call, installation, bump or publication ran.
+
+The first [hosted CI run](https://github.com/cats-inc/cats-platform/actions/runs/40113939928)
+passed all typechecks and the auth cases, then reported 5,833 passed, 60 skipped
+and one failed Code Task recovery case. The same case passed alone on unchanged
+main and this branch; giving its two attempts the same injected timestamp
+deterministically reproduced the failure. Its fixture now supplies successive
+attempt timestamps to exercise recovery independently of runner speed. No Code
+product source changed. This does not claim a fix for equal-timestamp run
+ordering in production; that separate baseline edge remains outside this batch.
 
 All fixtures use memory or dedicated temporary directories; no records were
 written to the user's profile. Live Google, publisher registration/consent, Mobile native UI,
