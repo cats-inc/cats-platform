@@ -45,8 +45,9 @@
 - **私訊 lane**：`status: 'active'` 的 channel，`roomRouting.mode === 'direct_message'` 且
   `roomRouting.defaultRecipientId` 等於該 Cat id。多個符合時取最近更新的一個。
 - **lease**：lane 上該 Cat participant 的 `execution.lease`。
-- **session 活著**：lease `status === 'ready'` 且 runtime `observeSession` 沒有回報可復活的
-  關閉狀態。runtime 無法連線時為「未知」。
+- **session 活著**：lease 已附上 session id，狀態為 `ready` 或 `initializing`，且 runtime
+  `observeSession` 沒有回報可復活的關閉狀態。原生 CLI 可到第一個回合才離開
+  `initializing`；主動心跳可以是該第一回合。runtime 無法連線時為「未知」。
 
 ## Requirements
 
@@ -84,8 +85,11 @@
 
 9. FR-9：平台啟動後約 5 秒第一次檢查，之後每 60 秒一次；同一時間只跑一輪。
 10. FR-10：應醒著時：
-    - lease 是 `ready`：以 `observeSession` 確認；session 活著則不做事（不寫狀態、不發事件）。
-    - lease 不是 `ready`，或 session 已關閉：走 channel activation 路徑喚醒。
+    - lease 是 `ready`，或是已附上 session id 的 `initializing`：以 `observeSession`
+      確認；session 活著則保留並進入心跳排程，不要求 owner 先傳訊息。
+    - `initializing` 尚無 session id：最多等待 5 分鐘；owner 回合仍在處理時保留其喚醒權。
+      無 owner 回合且逾時後，走既有 channel activation 與失敗退避；此等待計時在重啟後重算。
+    - 其他 lease，或 session 已關閉：走 channel activation 路徑喚醒。
     - runtime 無法連線：不做事。
 11. FR-11：喚醒失敗時退避 5 分鐘。錯誤訊息符合 `Max sessions (N) reached` 時原因為
     `no_capacity`，其他為 `wake_failed`。同一段失敗只記一次動態紀錄。
@@ -118,7 +122,9 @@
     陪伴記憶摘要，並要求不想說話時只回 `[quiet]`。
 22. FR-22：回覆是 `[quiet]`（忽略大小寫與前後空白）時丟棄；否則以該 Cat 的一般訊息
     （origin `runtime`，metadata `companionHeartbeat`）寫入 lane，並發出 `message_added`，
-    由 transport fanout 鏡像到 Telegram。
+    由 transport fanout 鏡像到 Telegram。成功的心跳（含 `[quiet]`）會在 mutation gate
+    內把同一個 `initializing` lease 更新為 `ready`；不覆蓋已關閉或已替換的 session。
+    背景紀錄包含每次心跳的 kind 與 spoke/quiet/busy/failed 結果，不含對話內容。
 23. FR-23：心跳持有以 runtime session 為鍵的程序內 gate；一般派送送出前等待該 gate。
     心跳本身若遇到 runtime busy（409），直接放棄並在 4 分鐘後重試同一次心跳。
     心跳訊息的事件是 `companion_heartbeat`，不是 `assistant_turn_segment`，

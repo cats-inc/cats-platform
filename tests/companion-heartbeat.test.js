@@ -6,15 +6,15 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
-import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { FileChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { MemoryCompanionBoxStore } from '../build/server/products/chat/state/companion-box/memoryStore.js';
-import { resolveLeadParticipantLease } from '../build/server/products/chat/state/model/index.js';
+import { resolveLeadParticipantLease, setChannelParticipantLease } from '../build/server/products/chat/state/model/index.js';
 import { createCompanionHeartbeatSpeaker } from '../build/server/products/chat/api/companionLifeLoop.js';
 import {
   buildCompanionHeartbeatPrompt,
   parseCompanionHeartbeatReply,
 } from '../build/server/products/chat/companion/life/heartbeat.js';
-import { createCompanionLifeLoop } from '../build/server/products/chat/companion/life/loop.js';
+import { createCompanionLifeLoop, startCompanionLifeLoop } from '../build/server/products/chat/companion/life/loop.js';
 import { normalizeCompanionLifeProfile } from '../build/server/products/chat/companion/life/profile.js';
 import {
   isSessionTurnGateHeld,
@@ -101,7 +101,7 @@ function laneFixture({ leaseStatus, messages = [], lastMessageAt = null }) {
       execution: {
         target: { provider: 'claude', instance: null, model: null },
         lease: {
-          sessionId: leaseStatus === 'ready' ? 'session-1' : null,
+          sessionId: ['ready', 'initializing'].includes(leaseStatus) ? 'session-1' : null,
           status: leaseStatus,
           laneId: null,
           cwd: null,
@@ -193,6 +193,29 @@ test('heartbeat: waking on the rhythm greets once, a few minutes later, then set
   harness.now = at(7, 32);
   await harness.loop.tick();
   assert.deepEqual(harness.spoken.map((beat) => beat.kind), ['wake', 'regular']);
+});
+
+test('heartbeat: a restarted initializing lane can greet without an owner message', async () => {
+  const harness = createHeartbeatHarness({ leaseStatus: 'initializing' });
+  assert.equal((await harness.loop.tick())[0].outcome, 'awake');
+  harness.now = at(7, 2);
+  assert.deepEqual((await harness.loop.tick())[0].heartbeat, { kind: 'wake', result: 'spoke' });
+  harness.now = at(7, 32);
+  await harness.loop.tick();
+  assert.deepEqual(harness.spoken.map((beat) => beat.kind), ['wake', 'regular']);
+});
+
+test('heartbeat: a failed first turn retries without requiring an owner to wake the Cat', async () => {
+  const harness = createHeartbeatHarness({ leaseStatus: 'initializing', speakResult: 'failed' });
+  await harness.loop.tick();
+  harness.now = at(7, 2);
+  assert.deepEqual((await harness.loop.tick())[0].heartbeat, { kind: 'wake', result: 'failed' });
+  harness.now = at(7, 31);
+  await harness.loop.tick();
+  assert.equal(harness.spoken.length, 1);
+  harness.speakResult = 'quiet';
+  harness.now = at(7, 32);
+  assert.deepEqual((await harness.loop.tick())[0].heartbeat, { kind: 'regular', result: 'quiet' });
 });
 
 test('heartbeat: never talks over a conversation, and skips the greeting once one started', async () => {
@@ -310,9 +333,11 @@ function createHeartbeatRuntimeStub(workingDir) {
   return stub;
 }
 
-async function withHeartbeatServer(callback) {
+async function withHeartbeatServer(callback, {
+  initialStatus = 'ready', fileBacked = false, initialNow = new Date('2026-03-23T12:00:00.000Z'),
+} = {}) {
   const workingDir = await mkdtemp(path.join(tmpdir(), 'cats-companion-heartbeat-'));
-  const now = new Date('2026-03-23T12:00:00.000Z');
+  const now = initialNow;
   const authConfig = createTestAuthConfig();
   const auth = await createAuthenticatedTestSession({
     now,
@@ -320,7 +345,11 @@ async function withHeartbeatServer(callback) {
     sessionTtlMs: authConfig.sessionTtlMs,
   });
   const runtimeClient = createHeartbeatRuntimeStub(workingDir);
-  const chatStore = new MemoryChatStore();
+  const createSession = runtimeClient.createSession;
+  runtimeClient.createSession = async (input) => ({ ...await createSession(input), status: initialStatus });
+  const chatStore = fileBacked
+    ? new FileChatStore(path.join(workingDir, 'platform', 'state', 'chat-state.local.json'))
+    : new MemoryChatStore();
   const companionStore = new MemoryCompanionBoxStore();
   const config = {
     host: '127.0.0.1',
@@ -328,6 +357,7 @@ async function withHeartbeatServer(callback) {
     runtimeBaseUrl: 'http://127.0.0.1:3110',
     runtimeApiKey: '',
     auth: authConfig,
+    platformDir: path.join(workingDir, 'platform'),
     chatStatePath: path.join(workingDir, 'platform', 'state', 'chat-state.local.json'),
     // Attachment copies default to the real ~/.cats/runtime/data otherwise.
     runtimeDataDir: path.join(workingDir, 'runtime-data'),
@@ -377,6 +407,8 @@ async function withHeartbeatServer(callback) {
       runtimeClient,
       chatStore,
       speak,
+      companionStore,
+      config,
     });
   } finally {
     restoreFetch();
@@ -404,6 +436,79 @@ test('heartbeat speaker: a quiet Cat leaves the lane untouched', async () => {
       before,
     );
   });
+});
+
+test('heartbeat: a file-backed initializing activation survives restart and completes its first hidden turn', async () => {
+  await withHeartbeatServer(async ({ lane, sessionId, now, runtimeClient, speak, companionStore, config }) => {
+    const restoredStore = new FileChatStore(config.chatStatePath);
+    const readLane = async () => (await restoredStore.read()).channels.find((channel) => channel.id === lane.id);
+    assert.equal(resolveLeadParticipantLease(await readLane()).status, 'initializing');
+    runtimeClient.observeSession = async () => ({ session: { id: sessionId, status: 'initializing' } });
+    runtimeClient.heartbeatReply = 'Good evening!';
+    const loop = createCompanionLifeLoop({
+      readChatState: () => restoredStore.read(),
+      readCompanionSnapshot: () => companionStore.readSnapshot(),
+      runtimeClient,
+      activateLane: async () => { assert.fail('the existing session should be reused'); },
+      deactivateLane: async () => { assert.fail('the Cat is in awake hours'); },
+      speak,
+      random: () => 0,
+      now: () => now,
+    });
+    await loop.tick();
+    assert.equal(runtimeClient.sentMessages.length, 0);
+    now.setMinutes(now.getMinutes() + 30);
+    assert.equal((await loop.tick())[0].heartbeat.result, 'spoke');
+    assert.equal(runtimeClient.sentMessages[0].sessionId, sessionId);
+    assert.equal(resolveLeadParticipantLease(await readLane()).status, 'ready');
+    assert.equal((await readLane()).messages.at(-1).body, 'Good evening!');
+  }, { initialStatus: 'initializing', fileBacked: true, initialNow: at(12) });
+});
+
+test('heartbeat speaker: a quiet first turn also completes initialization', async () => {
+  await withHeartbeatServer(async ({ cat, lane, sessionId, now, chatStore, speak }) => {
+    assert.equal(await speak({ catId: cat.id, laneId: lane.id, sessionId, kind: 'wake', now,
+      awakeSince: null, lastOwnerMessageAt: null }), 'quiet');
+    const channel = (await chatStore.read()).channels.find((row) => row.id === lane.id);
+    assert.equal(resolveLeadParticipantLease(channel).status, 'ready');
+    assert.equal(channel.messages.some((message) => message.metadata?.companionHeartbeat), false);
+  }, { initialStatus: 'initializing' });
+});
+
+for (const replacement of [
+  { status: 'closed', sessionId: null },
+  { status: 'initializing', sessionId: 'replacement-session' },
+]) {
+  test(`heartbeat speaker: a completed old turn preserves the replacement lease (${replacement.status})`, async () => {
+    await withHeartbeatServer(async ({ cat, lane, sessionId, now, runtimeClient, chatStore, speak }) => {
+      const send = runtimeClient.sendMessage;
+      runtimeClient.sendMessage = async (...args) => {
+        await chatStore.write(setChannelParticipantLease(await chatStore.read(), lane.id, cat.id, replacement, now));
+        return send(...args);
+      };
+      assert.equal(await speak({ catId: cat.id, laneId: lane.id, sessionId, kind: 'wake', now,
+        awakeSince: null, lastOwnerMessageAt: null }), 'quiet');
+      const lease = resolveLeadParticipantLease((await chatStore.read()).channels.find((row) => row.id === lane.id));
+      assert.equal(lease.status, replacement.status);
+      assert.equal(lease.sessionId, replacement.sessionId);
+    }, { initialStatus: 'initializing' });
+  });
+}
+
+test('life runner records quiet and failed heartbeat results without transcript content', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+  const lines = [];
+  const stop = startCompanionLifeLoop({ tick: async () => ['quiet', 'failed'].map((result) => ({
+    catId: 'cat-1', laneId: 'lane-1', outcome: 'awake', heartbeat: { kind: 'regular', result },
+  })) }, { startupDelayMs: 1, report: (line) => lines.push(line) });
+  try {
+    t.mock.timers.tick(1);
+    await new Promise(setImmediate);
+    assert.deepEqual(lines, [
+      'heartbeat cat=cat-1 lane=lane-1 kind=regular result=quiet',
+      'heartbeat cat=cat-1 lane=lane-1 kind=regular result=failed',
+    ]);
+  } finally { stop(); }
 });
 
 test('heartbeat speaker: what the Cat says lands in its lane as its own message', async () => {
