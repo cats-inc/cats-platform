@@ -250,6 +250,73 @@ test('life loop: an unreachable runtime is unknown, not asleep', async () => {
   assert.equal(harness.calls.activate, 0);
 });
 
+test('life loop: an initializing session is observed instead of waiting forever', async () => {
+  let probes = 0;
+  const harness = createHarness({
+    state: laneState({ leaseStatus: 'initializing' }),
+    observe: async () => { probes += 1; return { session: { status: 'initializing' } }; },
+  });
+  assert.equal((await harness.loop.tick())[0].outcome, 'awake');
+  assert.equal(probes, 1);
+  assert.equal(harness.calls.activate, 0, 'the existing session is preserved');
+});
+
+test('life loop: an initializing session recovers after Runtime becomes reachable', async () => {
+  let reachable = false;
+  const harness = createHarness({
+    state: laneState({ leaseStatus: 'initializing' }),
+    observe: async () => {
+      if (!reachable) throw new Error('connect ECONNREFUSED 127.0.0.1:3110');
+      return { session: { status: 'initializing' } };
+    },
+  });
+  assert.equal((await harness.loop.tick())[0].outcome, 'runtime_unknown');
+  reachable = true;
+  harness.now = at(12, 1);
+  assert.equal((await harness.loop.tick())[0].outcome, 'awake');
+  assert.equal(harness.calls.activate, 0);
+});
+
+test('life loop: a closed initializing session uses the normal wake path', async () => {
+  const harness = createHarness({
+    state: laneState({ leaseStatus: 'initializing' }),
+    observe: async () => ({ session: { status: 'closed' } }),
+  });
+  assert.equal((await harness.loop.tick())[0].outcome, 'woke');
+  assert.equal(harness.calls.activate, 1);
+});
+
+test('life loop: initialization without a session has a bounded wait and wake backoff', async () => {
+  const harness = createHarness({
+    state: laneState({ leaseStatus: 'initializing', sessionId: null }),
+    activation: [{ targetKind: 'cat', targetId: 'cat-1', status: 'error', error: 'Cannot start' }],
+  });
+  assert.equal((await harness.loop.tick())[0].outcome, 'waking');
+  harness.now = at(12, 4);
+  assert.equal((await harness.loop.tick())[0].outcome, 'waking');
+  assert.equal(harness.calls.activate, 0);
+  harness.now = at(12, 5);
+  assert.equal((await harness.loop.tick())[0].outcome, 'wake_failed');
+  harness.now = at(12, 6);
+  assert.equal((await harness.loop.tick())[0].outcome, 'backoff');
+  harness.now = at(12, 10);
+  assert.equal((await harness.loop.tick())[0].outcome, 'wake_failed');
+  assert.equal(harness.calls.activate, 2);
+});
+
+test('life loop: a pending owner turn keeps ownership of initialization', async () => {
+  const state = laneState({ leaseStatus: 'initializing', sessionId: null });
+  state.channels[0].roomRouting.workflow = { activeTurn: { id: 'owner-turn' } };
+  const harness = createHarness({ state });
+  await harness.loop.tick();
+  harness.now = at(12, 30);
+  assert.equal((await harness.loop.tick())[0].outcome, 'waking');
+  assert.equal(harness.calls.activate, 0);
+  state.channels[0].roomRouting.workflow.activeTurn = null;
+  assert.equal((await harness.loop.tick())[0].outcome, 'woke');
+  assert.equal(harness.calls.activate, 1);
+});
+
 test('life loop: a full session cap backs off and is recorded once', async () => {
   const harness = createHarness({
     state: laneState({ leaseStatus: 'error', sessionId: null }),

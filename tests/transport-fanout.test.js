@@ -14,12 +14,16 @@ import {
   appendMessage,
   createCat,
   createChannel,
+  resolveLeadParticipantLease,
+  setChannelCatLease,
+  setChannelStatus,
 } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { startTransportFanout } from '../build/server/platform/transports/fanout/subscriber.js';
 import { createTelegramRelay } from '../build/server/platform/transports/telegram/relay/index.js';
 import { createCompanionHeartbeatSpeaker } from '../build/server/products/chat/api/companionLifeLoop.js';
 import { MemoryCompanionBoxStore } from '../build/server/products/chat/state/companion-box/memoryStore.js';
+import { createCompanionLifeLoop } from '../build/server/products/chat/companion/life/loop.js';
 
 function createDeliveryClient(deliveries) {
   return {
@@ -319,41 +323,54 @@ test('transport fanout respects disabled outbound fanout bindings', async () => 
   }
 });
 
-test('a companion heartbeat that speaks reaches the linked Telegram chat once', async () => {
+test('a first heartbeat from an initializing lane reaches the linked Telegram chat once', async () => {
   const fixture = await createFanoutFixture();
   try {
     const catId = (await fixture.chatStore.read()).cats[0].id;
+    let now = new Date(2026, 3, 22, 9);
+    await fixture.chatStore.write(setChannelCatLease(setChannelStatus(
+      await fixture.chatStore.read(), fixture.channelId, 'active', now), fixture.channelId, catId,
+      { status: 'initializing', sessionId: 'session-heartbeat' }, now));
+    const companionStore = new MemoryCompanionBoxStore();
+    await companionStore.updateLifeProfile(catId, { wakeWindowStart: '09:00', wakeWindowEnd: '09:00' });
+    const runtimeClient = {
+      async observeSession() { return { session: { status: 'initializing' } }; },
+      async sendMessage() {
+        return {
+          segments: [{ kind: 'text', text: 'Good morning from the windowsill.', toolName: null, toolId: null }],
+          inputTokens: 1,
+          outputTokens: 1,
+          tokensUsed: 2,
+        };
+      },
+    };
     const speak = createCompanionHeartbeatSpeaker({
       chatStore: fixture.chatStore,
-      runtimeClient: {
-        async sendMessage() {
-          return {
-            segments: [{ kind: 'text', text: 'Good morning from the windowsill.', toolName: null, toolId: null }],
-            inputTokens: 1,
-            outputTokens: 1,
-            tokensUsed: 2,
-          };
-        },
-      },
-      companionStore: new MemoryCompanionBoxStore(),
+      runtimeClient,
+      companionStore,
       config: {},
       eventHub: fixture.eventHub,
       mutationGate: { run: (_key, operation) => operation() },
-      now: () => new Date('2026-04-22T07:05:00.000Z'),
+      now: () => now,
     });
-
-    const result = await speak({
-      catId,
-      laneId: fixture.channelId,
-      sessionId: 'session-heartbeat',
-      kind: 'wake',
-      now: new Date('2026-04-22T07:05:00.000Z'),
-      awakeSince: null,
-      lastOwnerMessageAt: null,
+    const loop = createCompanionLifeLoop({
+      readChatState: () => fixture.chatStore.read(),
+      readCompanionSnapshot: () => companionStore.readSnapshot(),
+      runtimeClient,
+      activateLane: async () => { assert.fail('reuse the newly created session'); },
+      deactivateLane: async () => { assert.fail('awake hours'); },
+      speak,
+      random: () => 0,
+      now: () => now,
     });
+    await loop.tick();
+    now = new Date(2026, 3, 22, 9, 2);
+    assert.deepEqual((await loop.tick())[0].heartbeat, { kind: 'wake', result: 'spoke' });
     await flushFanout();
 
-    assert.equal(result, 'spoke');
+    const lane = (await fixture.chatStore.read()).channels.find((row) => row.id === fixture.channelId);
+    assert.equal(resolveLeadParticipantLease(lane).status, 'ready');
+    assert.equal(lane.messages.filter((row) => row.metadata?.companionHeartbeat).length, 1);
     assert.deepEqual(
       fixture.deliveries.map((delivery) => [delivery.operation, delivery.chatId, delivery.text]),
       [['send', '12345', 'Good morning from the windowsill.']],

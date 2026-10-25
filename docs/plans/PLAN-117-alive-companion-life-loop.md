@@ -95,6 +95,29 @@
 
 ## Progress Log
 
+- 2026-10-26：修復原生 CLI 新會話的首次主動回合死等。
+  - 實機 Desktop 0.10.0 的陪伴貓在 10/25 08:53 自動建立會話後，lease 持續
+    `initializing`，整日 Runtime 訊息數為 0；23:00 才依作息關閉。舊 loop 直接略過
+    所有 `initializing` lease，不觀察也不送首回合。以當時唯讀快照在記憶體模擬
+    09:00–22:59，共 840 次均停在 `waking`；未修改實際 profile 或傳送驗證訊息。
+  - 已有 session id 的 `initializing` 與 `ready` 同樣檢查存活並排心跳；首次成功
+    （含安靜）後，只將仍指向同一 session 的 initializing lease 推進為 ready。
+    無 session id 的喚醒等待最多 5 分鐘，再沿用 activation/backoff；不介入 owner
+    仍在進行的回合。程序重啟後等待與心跳計時重新安排，不改持久化格式。
+  - 每次 heartbeat 記錄 kind 與 spoke/quiet/busy/failed，方便區分模型選擇安靜與
+    執行失敗，不記錄 prompt、回覆或憑證。
+  - 驗證：初版新增 9 個回歸案例在舊程式全數失敗、修正後通過；之後加上檔案
+    store 重建後的初始化恢復、真實 activation body、首個 hidden turn、安靜後狀態
+    推進、Telegram fanout 一次投遞，以及會話替換／關閉競爭。候選編譯輸出相關
+    4 檔 72 個通過；另 4 檔邊界／Telegram／lease attachment 共 108 個通過。
+    Server build 與 test TypeScript 檢查通過（worktree 使用既有 Platform/mobile 依賴）。
+  - 隔離 Desktop 候選以 Platform `a36a0c52` 加本修正、Runtime `5212fa59` 建立；
+    Runtime、server、host、renderer build 通過，檢視首次設定畫面後正常 drain（exit 0）。
+    候選內兩個修正來源的 SHA-256 與工作樹一致。這是 fixture 與候選來源驗證，
+    尚非安裝版的白天實際 provider／Telegram 長時間驗收；本修正不升版。
+  - 額外抽查既有 `chat-session-lease-projection` 在 Windows 單獨執行會報
+    `missing core session session-1`；未修改的主線也可重現同一失敗，本次未改該範圍。
+
 - 2026-09-29：ADR-127、SPEC-124、PLAN-117 建立；Phase 1 開始。
 - 2026-09-29：Phase 1 完成。
   - 順手修掉 `FileCompanionBoxStore` 的既有風險：原本寫入不是原子的，讀取遇到任何錯誤

@@ -23,6 +23,8 @@ import {
 export const COMPANION_IDLE_SLEEP_MS = 15 * 60_000;
 /** SPEC-124 FR-11. */
 export const COMPANION_WAKE_BACKOFF_MS = 5 * 60_000;
+/** A wake that never attached a Runtime session must not wait forever. */
+const WAKE_ATTACHMENT_TIMEOUT_MS = 5 * 60_000;
 
 /** SPEC-124 FR-20: never talk over a conversation that is still going. */
 export const COMPANION_HEARTBEAT_QUIET_LANE_MS = 10 * 60_000;
@@ -87,6 +89,7 @@ interface CatLifeMemory {
   awakeSince: number | null;
   nextHeartbeatAt: number | null;
   heartbeatKind: 'wake' | 'regular';
+  waitingForSessionSince: number | null;
 }
 
 /** The most recent local bedtime at or before `now`. */
@@ -117,6 +120,7 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
         awakeSince: null,
         nextHeartbeatAt: null,
         heartbeatKind: 'regular',
+        waitingForSessionSince: null,
       };
       memory.set(catId, entry);
     }
@@ -146,6 +150,7 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
   function forgetAwake(remembered: CatLifeMemory): void {
     remembered.awakeSince = null;
     remembered.nextHeartbeatAt = null;
+    remembered.waitingForSessionSince = null;
   }
 
   async function tick(): Promise<CompanionLifeTickEntry[]> {
@@ -185,11 +190,19 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
 
       if (desired.presence === 'awake') {
         if (dependencies.isImagePending?.(cat.id)) { record('awake'); continue; }
-        if (lease?.status === 'initializing') {
-          record('waking');
-          continue;
+        if (lease?.status === 'initializing' && !lease.sessionId) {
+          remembered.waitingForSessionSince ??= now.getTime();
+          if (lane.roomRouting?.workflow?.activeTurn
+            || now.getTime() - remembered.waitingForSessionSince < WAKE_ATTACHMENT_TIMEOUT_MS) {
+            record('waking');
+            continue;
+          }
+        } else {
+          remembered.waitingForSessionSince = null;
         }
-        if (lease?.status === 'ready' && lease.sessionId) {
+        // Native CLI sessions may stay initializing until their first message.
+        // The heartbeat itself must be able to perform that first turn.
+        if ((lease?.status === 'ready' || lease?.status === 'initializing') && lease.sessionId) {
           const liveness = await observeRuntimeSessionLiveness(
             dependencies.runtimeClient,
             lease.sessionId,
@@ -411,6 +424,9 @@ export function startCompanionLifeLoop(
       for (const entry of await loop.tick()) {
         if (entry.outcome === 'woke' || entry.outcome === 'slept' || entry.outcome === 'wake_failed') {
           report(`${entry.outcome} cat=${entry.catId} lane=${entry.laneId} reason=${entry.reason ?? ''}`);
+        }
+        if (entry.heartbeat) {
+          report(`heartbeat cat=${entry.catId} lane=${entry.laneId} kind=${entry.heartbeat.kind} result=${entry.heartbeat.result}`);
         }
       }
     } catch (error) {

@@ -18,7 +18,12 @@ import {
 import { COMPANION_HEARTBEAT_EVENT, isCompanionCat } from '../../../shared/companionRole.js';
 import { resolveFullResponseText } from '../../../platform/runtime/client.js';
 import { sendSupervisedRuntimeMessage } from '../../../platform/supervision/runtimeBoundary.js';
-import { appendMessage, requireChannel } from '../state/model/index.js';
+import {
+  appendMessage,
+  requireChannel,
+  resolveLeadParticipantLease,
+  setChannelParticipantLease,
+} from '../state/model/index.js';
 import { formatCompanionContext } from '../state/prompts.js';
 import { runWithSessionTurnGate } from '../state/runtime-dispatch/sessionTurnGate.js';
 import { updateChatState } from '../state/store.js';
@@ -93,6 +98,23 @@ export function createCompanionHeartbeatSpeaker(
       const message = error instanceof Error ? error.message : String(error);
       return RUNTIME_BUSY_PATTERN.test(message) ? 'busy' : 'failed';
     }
+
+    // Even [quiet] completes a real Runtime turn. Persist that progress without
+    // reviving a lane the owner closed, or overwriting a replacement session.
+    let becameReady = false;
+    await dependencies.mutationGate.run(request.laneId, async () => {
+      await updateChatState(dependencies.chatStore, (latest) => {
+        const current = latest.channels.find((row) => row.id === request.laneId);
+        const lease = current ? resolveLeadParticipantLease(current) : null;
+        if (current?.status !== 'active' || lease?.participantId !== request.catId
+          || lease.sessionId !== request.sessionId || lease.status !== 'initializing') return latest;
+        becameReady = true;
+        const now = dependencies.now?.() ?? new Date();
+        return setChannelParticipantLease(latest, request.laneId, request.catId,
+          { status: 'ready', lastUsedAt: now.toISOString() }, now);
+      });
+    });
+    if (becameReady) publishChannelLifecycleEvents(dependencies, request.laneId);
 
     const directive = extractCompanionPhotoDirective(replyText);
     const reply = parseCompanionHeartbeatReply(directive.body);
