@@ -2,6 +2,47 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-26 — Desktop 0.10.1 standard preview: companion wake and proactive messages
+
+Selected distribution: Desktop **0.10.1 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**. This selects Desktop publication only;
+Platform/Runtime npm, launcher and optional Marketplace Apps retain their releases.
+
+- **Proactive messages after waking or restarting.** Existing Cat direct
+  conversations retain their identity and history. Their newly attached Runtime
+  execution session can remain `initializing` until its first turn; the life loop
+  now probes that session and schedules its first heartbeat without requiring an
+  owner message. Successful heartbeats, including a quiet reply, advance only the
+  matching initializing lease to ready. Closed or replacement leases stay intact.
+- **Bounded recovery and useful outcomes.** Initialization without an attached
+  session waits up to five minutes before using the existing activation/backoff
+  path. Active owner turns retain ownership. Heartbeat logs include kind and
+  spoke/quiet/busy/failed outcomes without conversation content. Existing sleep
+  intent, quiet-lane checks, image grants, limits and Telegram routing remain in
+  force; the model still chooses whether to speak at each scheduled opportunity.
+- **Compatibility and data.** This compatible 0.10 patch changes no public API,
+  SDK or persisted-data format. No additional migration, reset or Telegram relink
+  is required. The validated, backed-up migration and protected recovery rules
+  introduced by 0.10.0 remain applicable to older installations; this patch does
+  not introduce a binary-only rollback path to 0.9.
+- **Exact source and artifacts.** Runtime remains
+  `5212fa59ee44fbee7eea0d85e7482933824ff775` (package **0.6.2**). Usage remains
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. The workflow records the
+  selected Platform bump commit and the same Runtime SHA in every OS/source receipt.
+- **Signing and validation.** Dispatch `desktop-release.yml` from the selected
+  bump commit with `tag=v0.10.1`, the Runtime SHA above and `unsigned=false`.
+  Expected standard trust: macOS **signed + notarized**, Windows **unsigned: no
+  certificate**, Linux **n/a**. The existing platform-specific update trust
+  requirements remain in force. The companion fix passed CI with **5,924 tests,
+  zero failures and 60 skipped**; its isolated Windows source candidate passed
+  72 related compiled-output tests plus 108 boundary/transport checks and drained
+  normally. Installed-provider/Telegram daytime acceptance remains separate.
+  The release workflow enforces full tests, packaged startup and offline App
+  activation on three OSes, source/receipt identity, signing and public asset
+  checks. Publication results: the `v0.10.1` GitHub prerelease and its Actions run.
+
 ## 2026-10-25 — Desktop 0.10.0 standard preview: identity and managed remote access
 
 Selected distribution: Desktop **0.10.0 standard-profile preview**, App SDK
