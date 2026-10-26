@@ -2,8 +2,10 @@
 
 - [SPEC-131: Catlas curated assist and conversation titles](SPEC-131-catlas-curated-assist-and-conversation-titles.md)
   — draft, 2026-10-27; host-validated Catlas titles, greeting/chip catalogs,
-  snapshot-grounded recommendations, receipts and cooldown. Owner review and
-  three open questions pending; implementation not started.
+  snapshot-grounded recommendations, receipts and cooldown. Review corrections
+  separate prompt/navigation calls, update shared consumers in the first phase,
+  require unresolved choices and preserve owner config through migration.
+  Three open questions pending; implementation not started.
 - [SPEC-130: Desktop-managed remote access](SPEC-130-desktop-managed-remote-access.md)
   — scoped ngrok/external lifecycle and protected migration implemented,
   2026-10-25; Windows managed connection/restart/reset and native storage checked.

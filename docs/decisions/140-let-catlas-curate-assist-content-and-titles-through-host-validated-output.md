@@ -41,7 +41,9 @@ deferred.
   shows the same line.
 - **The assist config cannot express curation.** `GuideCatAssistConfigFile` can
   only disable a whole surface or replace its content (`curatedOverrides`), and
-  nothing outside the store calls `writeGuideCatAssistConfig`.
+  nothing outside the store calls `writeGuideCatAssistConfig` in production.
+  Those fields are nevertheless supported user/product configuration; their
+  absence from a settings UI does not make populated files disposable.
 - **Nothing is generated.** `refreshGuideCatAssistEligibleScopes` rehydrates
   baselines and records `skipped`.
 - **Chips have three implementations.**
@@ -68,7 +70,7 @@ deferred.
    (ADR-132 §1, §6).
 2. **Catlas off means builtins.** When Catlas is absent or dismissed, nothing
    is generated and nothing generated renders: titles stay as drafted, and
-   surfaces show builtin content.
+   surfaces show builtin content with any preserved owner configuration applied.
 3. **Titles.** A conversation started from a composer draft is eligible for one
    Catlas title after its first reply. Platform writes it only while the title
    is still the drafted one. An owner rename, or a title set by any other
@@ -81,18 +83,33 @@ deferred.
    - A chip names its surface: `chat`, `code` or `work`.
    - The catalog is generated state with no owner-facing editor. Disabling
      Catlas is the owner's control.
+   - Existing owner overrides and seeded selections are migrated losslessly
+     into protected owner configuration. They take precedence over generated
+     catalogs, survive cache rebuilding and cannot be mutated by Catlas.
 5. **Recommendations are grounded in the owner's own work.**
    - Platform supplies a snapshot of what is waiting on the owner: pending
      approvals, blocked or stale work, conversations awaiting a reply, and
      active projects.
+   - Awaiting a reply requires an unresolved structured choice in the latest
+     completed assistant turn, not simply an agent-authored last message. A
+     later owner response or superseding assistant turn clears it.
    - Each recommendation cites basis ids from that snapshot, or Platform drops
      it.
    - Two actions exist: `prefill` fills a surface's composer, and `open`
      navigates to an existing record. Nothing is ever sent automatically.
    - A dismissed recommendation's basis cools down.
-6. **External text never becomes a Catlas-authored prompt.**
-   - Records imported or linked from an external tracker reach Catlas only as
-     titles flagged external. A recommendation based on one may only `open`.
+6. **External tracker text is separated from prompt generation.**
+   - Platform derives external provenance for both projects and work items,
+     including inherited provenance in derived tasks. Unknown-origin records
+     are navigation-only.
+   - A fresh prompt-generation session receives internal records only and may
+     return catalog operations and `prefill` recommendations.
+   - A separate fresh navigation session may see external titles, but may
+     return only ordered `open` targets and basis ids. It cannot return text,
+     prompts or catalog operations. Its input, transcript and output labels
+     never feed the prompt-generation session.
+   - A model-supplied internal basis id cannot change the call's permissions;
+     basis validation alone cannot establish the source of generated text.
    - DMs, private escalations and external-transport conversations are not in
      the snapshot.
    - Platform builds the label of an `open` recommendation from the target's
@@ -101,8 +118,12 @@ deferred.
    surfaces and idle time. It carries no message bodies or record summaries;
    the title call is the one exception and receives the first exchange. Catlas
    gets no web search or feed, so topical content is out of scope.
-8. **Rollout.** Chat, then Code, then Work. The Lobby shows at most three
-   `open` recommendations and nothing when there are none.
+8. **Rollout.** Content generation is enabled Chat, then Code, then Work. The
+   first phase updates every existing reader of changed shared shapes in the
+   same deployable change, including Code's action-discriminated chips and
+   greeting pools. Keeping the `entryChips` name does not preserve its old
+   shape. The Lobby shows at most three `open` recommendations and nothing
+   when there are none.
 9. **Tool-less sessions belong to cats-runtime.** Today "no tools" is an
    instruction plus rejection after the fact, and the provider sandbox, which
    differs per provider, is the real boundary. A
@@ -125,7 +146,8 @@ deferred.
 
 - Catlas sees titles and statuses across the workspace, wider than any
   participant does, and its bound provider receives them.
-- Each title and each refresh costs a Catlas session; CLI providers spend quota
+- Each title costs a Catlas session, and a refresh costs up to two isolated
+  sessions for prompt generation and navigation; CLI providers spend quota
   and seconds.
 - Chip, bundle and refresh shapes change across product trees and need the
   integration review the parallel-delivery rules require.
@@ -133,6 +155,9 @@ deferred.
 ### Neutral
 
 - ADR-061's capability framing and ADR-066's config/state split stand.
+- Config changes require a validated, backed-up, atomic and recoverable one-time
+  conversion. Only recognized generated cache may be rebuilt; it is not a
+  substitute for preserving owner configuration.
 - Work gains greeting copy of its own.
 
 ## Alternatives Considered
@@ -185,5 +210,7 @@ deferred.
 ---
 
 *Decision made: 2026-10-27*
+*Updated: 2026-10-27 — review corrections for input isolation, shared consumers,
+pending-choice detection and owner-config preservation.*
 *Decision maker: Owner*
 *Documented by: Claude*

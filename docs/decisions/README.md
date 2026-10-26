@@ -3,7 +3,9 @@
 - [ADR-140: Catlas curates assist content and titles through host-validated output](140-let-catlas-curate-assist-content-and-titles-through-host-validated-output.md)
   — accepted direction, 2026-10-27; Catlas titles conversations, curates greeting
   and chip catalogs and recommends grounded next actions, returning data only.
-  No web, no settings UI; Chat → Code → Work, Lobby ≤3. SPEC-131 awaits review.
+  No web, no settings UI; Chat → Code → Work, Lobby ≤3. Review corrections cover
+  isolated call inputs, shared-consumer rollout and protected owner config;
+  SPEC-131 remains draft.
 - [ADR-139: One Desktop-managed remote ingress](139-manage-one-desktop-remote-ingress.md)
   — accepted direction, 2026-10-24; shared ngrok/Funnel/existing-proxy setup for
   Mobile, Telegram webhook and external Apps. Provider completion and acceptance pending.

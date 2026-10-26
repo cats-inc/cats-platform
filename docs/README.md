@@ -9,6 +9,9 @@ most three. [ADR-140](decisions/140-let-catlas-curate-assist-content-and-titles-
 records the authority rules and
 [provider CLI session titles](research/2026-10-27-provider-cli-session-titles.md)
 why provider titles are not the source. Draft; not implemented.
+Review corrections separate prompt generation from external-title navigation,
+require unresolved choices for pending replies, update shared readers together
+and preserve existing owner configuration through a recoverable upgrade.
 
 [Desktop identity and remote access](plans/PLAN-122-desktop-identity-and-remote-access-rollout.md)
 records the 2026-10-24 owner-confirmed direction: Google or email/password first

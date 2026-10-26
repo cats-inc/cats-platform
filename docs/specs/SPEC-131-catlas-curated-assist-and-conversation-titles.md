@@ -17,7 +17,8 @@ is likely to want to do next. Recommendations are grounded in what is waiting
 on the owner: pending approvals, stalled work, conversations awaiting a reply
 and active projects. Catlas returns data from a read-only, tool-less call.
 Platform validates each result, applies it atomically, and keeps a receipt.
-When Catlas is off, surfaces show builtin content and titles stay as drafted.
+When Catlas is off, surfaces show builtin content with preserved owner
+configuration applied, and titles stay as drafted.
 This is the runtime-backed generation that
 [SPEC-067](SPEC-067-guide-cat-assist-content-cache-and-offline-refresh.md)
 deferred, under the authority rules of
@@ -51,12 +52,14 @@ deferred, under the authority rules of
   `catlas` in origin and each enabled or not.
 - **Recommendation**: a chip generated for one refresh. It cites `basis` ids
   from the snapshot and either opens a record or prefills a composer.
-- **Snapshot**: the bounded, Platform-built view of the owner's work that
-  Catlas receives.
+- **Snapshot**: the bounded, Platform-built view of the owner's work. Platform
+  derives a prompt-generation input containing internal records only and a
+  navigation input that may also contain externally sourced records (FR-18).
 - **Attention set**: the ids in the snapshot's `pendingApprovals`,
   `stalledWork` and `awaitingReply`.
 - **Unit**: the part of a Catlas result that applies all-or-nothing, either one
-  title or one surface of a refresh.
+  title or one surface's result from one refresh call kind. Prompt-generation
+  and navigation results are separate units and stored separately.
 
 ## Requirements
 
@@ -66,7 +69,8 @@ deferred, under the authority rules of
    every render of generated content. Today the assist read model checks only
    `Boolean(guideCat)`.
 2. FR-2: While Catlas is inactive, Platform makes no calls.
-   - Surfaces render builtin content.
+   - Surfaces render builtin content with any preserved owner configuration
+     applied (FR-37).
    - Drafted titles stay.
    - Stored generated content is kept but not rendered.
 3. FR-3: A call also requires the runtime to be reachable and
@@ -86,6 +90,12 @@ deferred, under the authority rules of
    - the session closed afterwards
 
    Once cats-runtime offers a tool-less session option, calls request it.
+   Prompt-generation and navigation refreshes always use separate fresh
+   sessions, without shared history or model-output handoff. Their record
+   inputs may overlap only on internal records. External titles, navigation
+   transcripts, receipt text and host-built navigation labels never enter the
+   prompt-generation session. A model-supplied `basis` is a relevance claim,
+   not proof of where its output text came from.
 5. FR-5: Platform validates the envelope, and an unknown field rejects its
    unit. Each unit applies all-or-nothing in one atomic write. A rejected unit
    leaves the last applied state in place.
@@ -136,6 +146,10 @@ deferred, under the authority rules of
     - `add`: a greeting or a chip
     - `remove`: `catlas` items only
     - `enable` and `disable`: any item
+
+    These operations are accepted only from the prompt-generation call. That
+    call sees no external record text. Preserved owner configuration (FR-37)
+    is outside this operation list; Catlas cannot edit, remove or disable it.
 13. FR-13: Initial limits per surface, kept as constants in code rather than
     contract:
     - 10 `catlas` greetings and 8 `catlas` chips
@@ -145,7 +159,8 @@ deferred, under the authority rules of
 14. FR-14: The read model sends the enabled greeting pool for the current
     locale. Builtins are translated, and `catlas` items in another locale are
     omitted. The renderer picks one greeting each time a surface opens. An
-    empty pool renders the builtin pool.
+    empty pool renders the builtin pool. A preserved owner greeting selection
+    takes precedence over rotation (FR-37).
 
 ### Snapshot
 
@@ -154,8 +169,13 @@ deferred, under the authority rules of
     - `pendingApprovals`: tasks whose `approval.status` is `pending`
     - `stalledWork`: work items that are `blocked`, or `in_progress` and idle
       for at least 2 days
-    - `awaitingReply`: non-archived conversations whose last message has
-      `senderKind: 'agent'` and that were active within 14 days
+    - `awaitingReply`: non-archived conversations active within 14 days whose
+      latest completed assistant turn presents non-empty structured `choices`,
+      with no `choiceResponse` referring to that choice message and no later
+      owner message. A later owner message counts as a response even when it
+      answers in free text. Superseded choices do not qualify. An ordinary
+      assistant answer, completion notice or unstructured question does not
+      make a conversation pending; it may appear in `recentConversations`.
     - `activeProjects`: projects that are `active` or `paused`, with whether
       `repoPath` is set
     - `recentConversations`: the 10 most recently active non-archived
@@ -171,28 +191,51 @@ deferred, under the authority rules of
       `external_transport`
     - completed, cancelled and archived records
     - ids in cooldown (FR-29)
-18. FR-18: `external` is true for a work item with an external binding, which
-    means imported or linked from GitHub, Bugzilla or another tracker.
+18. FR-18: Platform derives `external`; Catlas cannot choose or clear it.
+    - It is true for both projects and work items with an external binding or
+      external-import provenance, including GitHub, Bugzilla and other trackers.
+    - Tasks and other derived records inherit it when their title/context came
+      from an external work item or project through the existing planning links.
+      Unlinking a tracker alone does not erase known external provenance.
+    - Records whose internal origin cannot be established are navigation-only.
+    - The prompt-generation input omits these records entirely, including their
+      titles, identifiers and summaries. Its catalog input also omits navigation
+      output. It may return catalog operations and internal `prefill`
+      recommendations only.
+    - The navigation input may include the full eligible snapshot. Its fresh
+      session may return ordered `{ basis, action: 'open', target }` records
+      only. Text fields, `prefill` and catalog operations are rejected.
+
+    Platform builds these inputs before calling Runtime. Filtering output by
+    self-reported basis ids, or instructing the model to ignore external text,
+    does not replace this separation.
 
 ### Recommendations
 
-19. FR-19: Each refresh replaces a surface's recommendations wholesale. A
+19. FR-19: Each refresh call replaces only its own per-surface recommendation
+    list; it cannot overwrite the other call kind's list. A
     recommendation is `{ basis, action: 'open', target }` or
     `{ basis, action: 'prefill', surface, label, prompt }`.
 20. FR-20: Validation:
-    - every `basis` id is in the snapshot
+    - `basis` is non-empty and every id is in that call's Platform-built input
     - an `open` target is in `basis` and is a conversation, work item, task or
       project that is neither archived nor a DM
-    - `prefill` is allowed only when no basis entry is `external`
+    - `prefill` and catalog operations are allowed only from the
+      prompt-generation call, whose input excludes external and unknown-origin
+      records; a navigation response cannot acquire this permission by citing
+      an internal id
     - labels and prompts follow FR-13
     - a duplicate target is dropped
-    - a draft surface keeps at most 3 recommendations and the Lobby at most 3
-      `open` ones
+    - the cap applies after merging both call kinds: a draft surface keeps at
+      most 3 recommendations and the Lobby at most 3 `open` ones
 21. FR-21: Platform builds the label of an `open` recommendation from the
     target's current title and a localized verb. Catlas supplies none.
 22. FR-22: At render time, Platform drops a recommendation whose basis entries
     no longer qualify under FR-15 to FR-17: completed, archived, deleted or
-    replied to.
+    replied to. It rechecks external provenance under FR-18; a previously
+    internal basis that becomes external or unknown no longer permits a
+    `prefill`. Choice eligibility uses the same unresolved-choice predicate as
+    the snapshot builder, not the last message's sender kind.
 
 ### Surfaces
 
@@ -200,9 +243,19 @@ deferred, under the authority rules of
     recommendations, then enabled catalog chips in catalog order. The renderer
     renders this composed list whatever its origin. The rule that renders only
     runtime-origin chips, and the product fallback chip lists, are removed.
-    The composed list keeps the `entryChips` field name, so Code keeps
-    rendering through the Chat phase, and each phase deletes only its own
-    surface's fallback (FR-32 to FR-34).
+    Draft recommendations interleave the navigation and prefill lists,
+    starting with navigation and preserving each list's order, then apply the
+    cap. The Lobby consumes the navigation list only.
+
+    The composed list keeps the `entryChips` field name, but its entries are a
+    discriminated union: `open` entries have a target and host-built label;
+    `prefill` entries have a prompt and surface. Consumers must branch on the
+    action before reading `prompt`. The Chat phase updates every existing
+    consumer of the changed shared shape in the same deployable change,
+    including Code's chip and greeting readers. An `open` item must never
+    reach Code's current unconditional `chip.prompt.trim()` path. No legacy
+    payload alias or dummy prompt is introduced. Content-generation adoption
+    still proceeds Chat, Code, Work (FR-32 to FR-34).
 24. FR-24: A chip whose `surface` differs from the draft's switches the draft
     surface and prefetches it. Chips fill the composer or navigate; they never
     send.
@@ -212,14 +265,21 @@ deferred, under the authority rules of
 
 ### Refresh
 
-26. FR-26: One Catlas call refreshes every adopted surface. It is eligible when
+26. FR-26: One refresh job covers the surfaces whose generation has been
+    enabled in the current rollout phase. It makes at most two fresh calls:
+    a prompt-generation call and, when open candidates exist, a navigation
+    call, with the separated inputs and output permissions in FR-18. Updating
+    a consumer for shared-shape compatibility does not enable generation for
+    its surface. The job is eligible when
     FR-1 and FR-3 hold and either:
     - the cached bundle is stale under the existing TTL (6 hours by default), or
     - the attention set changed since the last refresh and that refresh is at
       least 30 minutes old.
 
     Refresh stays non-blocking and queued (`queueGuideCatAssistRefresh`). A
-    failure keeps last-good content.
+    failure keeps last-good content for the failed call kind; a successful
+    result never copies the other kind's text into its own input or catalog.
+    Read-time validation and the combined recommendation cap still apply.
 27. FR-27: The refresh context hash adds the locale. Snapshot content and
     feedback never enter it, because it governs cache invalidation
     (`cacheRefreshContextDrift`).
@@ -240,7 +300,8 @@ deferred, under the authority rules of
 ### Receipts
 
 31. FR-31: Each call records a receipt in `state/catlas-receipts.local.json`:
-    - request id, kind (`title` or `refresh`), provider and model
+    - request id, kind (`title`, `refresh_prompt` or `refresh_navigation`),
+      provider and model
     - an input digest
     - each unit's outcome (`applied`, or `rejected` with reason codes) and the
       operations applied
@@ -252,6 +313,12 @@ deferred, under the authority rules of
 ### Rollout
 
 32. FR-32: **Chat**:
+    - Ship the shared schema/read-model changes together with all existing
+      consumers. Code reads action-discriminated chips and greeting pools,
+      uses the explicit chip `surface`, and drops the `cross:` prefix parsing
+      in this integration change. Its five builtin starters keep their
+      behavior; Code curation and recommendations remain off until FR-33.
+      Work's existing hard-coded starters remain until FR-34.
     - Move Chat's five chips into the `chat:new` builtin catalog; the
       pomodoro chip has `surface: 'code'` and start-project `surface: 'work'`.
     - Delete the hard-coded array and its click closures.
@@ -259,8 +326,9 @@ deferred, under the authority rules of
     - Extend `tools/knowledge-practice/catlasEvaluator.mjs` beyond `code:new`.
 
     The Lobby row follows once `open` exists.
-33. FR-33: **Code**: replace the `cross:work:` id prefix with `surface` and
-    delete the prefix handling.
+33. FR-33: **Code**: enable `code:new` catalog curation and recommendations on
+    the reader already upgraded in FR-32. Remove remaining Code-only fallback
+    or id-based copy rewriting that would override generated content.
 34. FR-34: **Work**: add the `work:new` scope with its five chips and its own
     greeting copy, and delete the hard-coded array. Work drafts currently fall
     back to the generic draft greeting lines.
@@ -276,62 +344,99 @@ deferred, under the authority rules of
     rebuilt empty, since its content is generated and regenerable.
 36. FR-36: The cache moves to `schemaVersion` 2. `GuideCatAssistContent`
     carries the greeting pool and the composed chips instead of one greeting.
-    Version-1 cache files are discarded and rebuilt, which is the upgrade path
-    for a cache.
-37. FR-37: `curatedOverrides`, `deterministicSeed` and the seeded greeting pick
-    are removed. Nothing ever wrote them, so no migration is needed, and the
-    config normalizer drops them if present.
+    Recognized version-1 generated cache files may be rebuilt after owner
+    configuration has been preserved under FR-37. Unknown versions are kept
+    intact with a diagnostic. Cache rebuilding is not configuration migration,
+    and the new cache is deployed only with the updated consumers (FR-32).
+37. FR-37: Config moves to `schemaVersion` 2 through a bounded one-time
+    migration, before a normalizer can drop any old fields.
+    - Existing `curatedOverrides` become per-scope owner overrides in config,
+      retaining greeting text and the complete chip list, including explicit
+      empty lists. Platform resolves each chip's product from its old scope
+      and supported `cross:<surface>:` id convention into the new explicit
+      `surface`; a missing label keeps the old prompt-as-label behavior.
+    - A non-empty `deterministicSeed` becomes the equivalent owner-pinned
+      builtin greeting selection for existing scopes without a greeting
+      override. The old seeded execution path is then removed. Explicit
+      overrides keep their precedence.
+    - These owner values remain in config, outside regenerable catalog/cache
+      state. The host applies them after catalog selection, including while
+      Catlas is off, and never offers their ids to Catlas mutation operations.
+      No owner-facing editor is added.
+    - Preserve disabled scopes, refresh preferences and the effective content
+      selection. Validate the entire conversion, back up the original, write
+      atomically and verify. Restart/retry must be idempotent. Unknown scopes,
+      invalid data or any conversion/verification failure preserve the original
+      and expose a diagnostic; they must not normalize to empty defaults.
+    - Absence of a production write route is not evidence that config fields
+      are empty. Test both empty and populated previous-version profiles.
 38. FR-38: `titleSource` is additive: an absent value reads `manual`, and no
     existing data is rewritten. The release notes state what an active Catlas
     sends to its bound provider (FR-9, FR-15). The version follows the release
-    guide; no persisted-data requirement breaks.
+    guide. A transparent, lossless FR-37 conversion does not by itself require
+    a breaking release. If a supported configuration cannot be preserved,
+    record the next-minor boundary before implementation/release; do not
+    silently discard it. This spec authorizes no version bump or publication.
 
 ### Non-Functional Requirements
 
 - **Security**: All validation runs on the server. Chips never send. External
-  text reaches Catlas only as flagged titles and never becomes a Catlas-authored
-  prompt.
+  tracker text is excluded from prompt-generating refresh sessions; sessions
+  allowed to read it can return navigation ids only, never prompts or catalog
+  mutations. Model-reported basis ids do not grant permissions.
 - **Privacy**: Everything stays local except what FR-9 and FR-15 send to
   Catlas's bound provider, and nothing is sent while Catlas is inactive.
-- **Cost**: At most two title calls per conversation. Refreshes happen at most
-  every 30 minutes on attention changes, and otherwise per TTL.
+- **Cost**: At most two title calls per conversation and two calls per refresh
+  job. Refresh jobs happen at most every 30 minutes on attention changes, and
+  otherwise per TTL; navigation is skipped when it has no candidates.
 - **Compatibility**: Shared shapes change through integration review (see
   Dependencies).
 
 ## Design Overview
 
 ```
-chat + core state ──► snapshot (bounded, external-flagged, cooldown-filtered)
-                              │
-catalog + locale ─────────────┤
-                              ▼
-               Catlas call (read-only, no tools, JSON out)
-                              │
-                              ▼
-        validate per unit ──► atomic write (catalog, recommendations, title)
-                              │                      │
-                              ▼                      ▼
-                       read model                 receipt
-   (enabled greeting pool, composed chips, render-time revalidation)
-                              │
-                              ▼
-         renderer: greeting pick, helper row (≤5), Lobby row (≤3 open)
-                              │
-                              ▼
-                 feedback (accepted / dismissed) ──► cooldown
+chat + core state ──► snapshot (bounded, provenance-checked, cooldown-filtered)
+                         │                              │
+                 internal records only         eligible navigation records
+                  + catalog + locale           (may include external titles)
+                         │                              │
+                         ▼                              ▼
+                fresh prompt session           fresh navigation session
+                catalog ops + prefill          open targets/basis ids only
+                         │                              │
+                         └────► validate by call kind ◄──┘
+                                        │
+                               atomic apply per unit ──► receipt
+                                        │
+                   owner config ──► composed read model
+                  (greeting pool, merged chips, render-time revalidation)
+                                        │
+                renderer: greeting pick, helper row (≤5), Lobby (≤3 open)
+                                        │
+                    feedback (accepted / dismissed) ──► cooldown
+
+title: first exchange ──► separate fresh session ──► validate + compare-and-set
 ```
 
 ## Verification
 
 1. **Snapshot builder.** Fixture state yields an exact snapshot, covering the
-   exclusions, caps, `external` flags and cooldown.
+   exclusions, caps, `external` flags and cooldown. Include externally bound
+   projects, imported work items, derived tasks and unknown origins; none
+   reaches a prompt-generation request. A completed Q&A is not awaiting reply;
+   an unresolved structured choice is, until a matching choice response, later
+   free-text owner reply or superseding assistant turn clears it.
 2. **Validator and apply.** A fake runtime client returns fixed envelopes,
    and each of these is rejected:
    - builtin removal
    - a cap overrun
    - zero enabled greetings
    - an unknown basis id
-   - `prefill` on an external basis
+   - an empty basis or an id absent from that call's input
+   - `prefill`, a text field or catalog mutation in a navigation response,
+     including one that cites an internal id
+   - a prompt-generation response citing an external or unknown-origin id
+   - any attempted mutation of preserved owner configuration
    - `open` on a DM or an archived record
    - one bad operation, which rejects its whole unit
    - a title write after a rename (compare-and-set)
@@ -340,9 +445,21 @@ catalog + locale ─────────────┤
    - locale filtering
    - render-time revalidation
    - the Lobby cap and the empty Lobby row
+   - reclassification of an internal basis as external removes its prefill
+   - combined caps after both call kinds return, and independent last-good
+     retention when one fails
+   - a Chat-phase fixture with Code's five builtins plus an `open` entry renders
+     and navigates without reading a missing prompt; greeting pools and explicit
+     cross-surface targets work before Code curation is enabled
 4. **Upgrade.** These hold:
-   - a version-1 cache is discarded
-   - a config with `curatedOverrides` or `deterministicSeed` normalizes
+   - a recognized version-1 generated cache can be rebuilt after owner config
+     migration; an unknown version remains intact
+   - populated overrides, empty chip overrides, seeded greeting selection,
+     disabled scopes and refresh preferences retain their effective behavior
+   - owner overrides survive Catlas dismissal and generated-cache rebuilding
+   - backup, atomic replacement, repeated startup and interrupted/failed
+     conversion recover without dropping the original config
+   - unsupported scopes or invalid data stop conversion with a diagnostic
    - a channel without `titleSource` reads `manual`
 5. **Model evaluation.** `catlasEvaluator.mjs` gains workspace-state fixtures:
    a pending approval, a blocked item, a conversation awaiting a reply and idle
@@ -389,5 +506,7 @@ catalog + locale ─────────────┤
 ---
 
 *Created: 2026-10-27*
+*Updated: 2026-10-27 — review corrections: separated call inputs and permissions,
+shared-consumer rollout, unresolved-choice detection and lossless config upgrade.*
 *Author: Claude (with the owner)*
 *Related Plan: to follow approval*
