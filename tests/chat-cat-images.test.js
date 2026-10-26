@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
 import { createServer as createHttpServer } from 'node:http';
 import { createDefaultCoreState } from '../build/server/core/model/index.js';
 import { createCatActorId } from '../build/server/core/actors.js';
@@ -79,7 +80,7 @@ async function fixture(t, outcomes = ['sent']) {
   t.after(async () => { await service.close(); await rm(root, { recursive: true, force: true, maxRetries: 5 }); });
   const input = { revision: 0, enabled: true, manual: true, proactive: true, targetId: 'grok/native', profileId: 'grok-generate',
     profileRevision: '1', agentConfigId: 'grok-agent', dailyLimit: 2, totalLimit: 4, minIntervalMinutes: 1, timeZone: 'UTC',
-    windowStart: '00:00', windowEnd: '00:00', expiresAt: '2026-11-01T00:00:00Z', bindingId: binding.id };
+    expiresAt: '2026-11-01T00:00:00Z', bindingId: binding.id };
   const owner = (await store.readCore()).ownerProfile.actorId;
   const turn = { context: { metadata: { supervisionBoundary: RUNTIME_SUPERVISION_BOUNDARY, supervisionProduct: 'cats-chat',
     supervisionSurface: 'companion-heartbeat', supervisionToolName: 'cats.runtime.message.send',
@@ -94,6 +95,14 @@ async function fixture(t, outcomes = ['sent']) {
       dependencies.companionStore ??= new MemoryCompanionBoxStore();
       await dependencies.companionStore.updateLifeProfile(catId, profile, clock);
       const state = await store.read(); state.cats.find(row => row.id === catId).roles = ['companion']; await store.write(state);
+    },
+    legacyHours() {
+      const database = new DatabaseSync(path.join(root, 'state', 'multimedia', 'cat-images.sqlite'));
+      try {
+        const row = database.prepare('SELECT document FROM policies').get();
+        const raw = JSON.stringify({ ...JSON.parse(row.document), windowStart: '07:00', windowEnd: '22:00' });
+        database.prepare('UPDATE policies SET document=?').run(raw); return raw;
+      } finally { database.close(); }
     },
     setSourceBusy(value) { sourceBusy = value; }, setTurnActive(value) { hostTurnActive = value; },
     async restart() { await service.close(); service = createChatCatImages(dependencies); },
@@ -116,9 +125,8 @@ for (const trigger of ['manual', 'heartbeat']) test(`${trigger} image request re
     state.cats.find(cat => cat.id === f.catId).roles = ['companion'];
     await f.store.write(state);
   }
-  await f.service.save('account-owner', f.catId, { ...f.input, ...(trigger === 'manual'
-    ? { timeZone: 'Asia/Taipei', windowStart: '07:00', windowEnd: '22:00' } : {}) });
-  if (trigger === 'manual') f.advance(6 * 3600_000 + 39 * 60_000);
+  await f.service.save('account-owner', f.catId, { ...f.input, timeZone: 'Asia/Taipei' });
+  f.legacyHours(); f.advance(6 * 3600_000 + 39 * 60_000);
   f.setSourceBusy(false);
   let endpoint;
   let sourceCalls = 0;
@@ -164,17 +172,15 @@ for (const trigger of ['manual', 'heartbeat']) test(`${trigger} image request re
   } else {
     f.relay.linkRoom({ roomId: f.laneId, bindingId: f.binding.id, chatId: '12345' });
     const speak = createCompanionHeartbeatSpeaker({ chatStore: f.store, runtimeClient, companionStore,
-      config: { runtimeDataDir: path.join(f.root, 'runtime') }, now: () => NOW,
+      config: { runtimeDataDir: path.join(f.root, 'runtime') }, now: f.now,
       mutationGate: { run: (_key, operation) => operation() } });
     assert.equal(await speak({ catId: f.catId, laneId: f.laneId, sessionId: 'source-chat', kind: 'regular',
-      now: NOW, awakeSince: null, lastOwnerMessageAt: null }), 'quiet');
+      now: f.now(), awakeSince: null, lastOwnerMessageAt: null }), 'quiet');
   }
   assert.equal(sourceCalls, 1);
   assert.ok(suppliedTools.includes('cats'), 'the actual Telegram reply must receive the platform image tools');
-  if (trigger === 'manual') {
-    f.advance(3600_000); // The requested image finishes after bedtime, at 23:39.
-    await f.store.write(setChannelStatus(await f.store.read(), f.laneId, 'watching', f.now()));
-  }
+  f.advance(3600_000); // Accepted work finishes after bedtime, at 23:39.
+  await f.store.write(setChannelStatus(await f.store.read(), f.laneId, 'watching', f.now()));
   for (let n = 0; n < 200 && !(await f.service.status('account-owner', f.catId)).jobs.some(job => job.status === 'succeeded'); n++) {
     await new Promise(resolve => setTimeout(resolve, 10));
   }
@@ -230,9 +236,8 @@ test('only definite transient rejection retries automatically, within its bounde
   assert.equal(f.posted(), 1);
 });
 
-for (const revoke of ['sleep', 'binding', 'policy']) test('late send is suppressed after ' + revoke + ' changes', async t => {
+for (const revoke of ['binding', 'policy']) test('late send is suppressed after ' + revoke + ' changes', async t => {
   const f = await fixture(t); await f.service.save('account-owner', f.catId, f.input); await f.generate();
-  if (revoke === 'sleep') await f.store.write(setChannelStatus(await f.store.read(), f.laneId, 'watching', NOW));
   if (revoke === 'binding') f.relay.linkRoom({ roomId: 'different-lane', bindingId: f.binding.id, chatId: '12345' });
   if (revoke === 'policy') await f.service.save('account-owner', f.catId, { revision: 1, enabled: false });
   await f.service.tick(); assert.equal(f.sends.length, 0); assert.equal(f.posted(), 1);
@@ -297,11 +302,10 @@ test('non-owner members cannot read or mutate image policies or request delivery
   assert.equal(calls, 0);
 });
 
-for (const change of ['sleep', 'relink', 'token', 'account']) test('full delivery authorization is rechecked after asynchronous file reading: ' + change, async t => {
+for (const change of ['relink', 'token', 'account']) test('full delivery authorization is rechecked after asynchronous file reading: ' + change, async t => {
   const f = await fixture(t); await f.service.save('account-owner', f.catId, f.input); await f.generate();
   const release = f.holdMediaRead(); const pending = f.service.tick();
   while (!f.mediaReadEntered()) await new Promise(resolve => setTimeout(resolve, 1));
-  if (change === 'sleep') await f.store.write(setChannelStatus(await f.store.read(), f.laneId, 'watching', NOW));
   if (change === 'relink') f.relay.linkRoom({ roomId: 'another-lane', bindingId: f.binding.id, chatId: '12345' });
   if (change === 'token') {
     const core = await f.store.readCore(); await f.store.writeSnapshot(await f.store.read(),
@@ -337,28 +341,22 @@ test('a stale routing grant requires explicit owner confirmation without resetti
   assert.ok(await f.service.resolveTurn('source-chat', f.turn));
 });
 
-test('a proactive image receives the real policy restriction and recovers after restart and the window opens', async t => {
+test('legacy hours remain inert storage metadata and never become an editable or visible service restriction', async t => {
   const f = await fixture(t);
-  await f.service.save('account-owner', f.catId, { ...f.input, timeZone: 'Asia/Taipei', windowStart: '07:00', windowEnd: '22:00' });
-  const turn = f.turn;
-  f.advance(6 * 3600_000 + 39 * 60_000); // 22:39 Asia/Taipei, matching the installed failure.
-  const blocked = await f.service.resolveTurn('source-chat', turn);
-  assert.equal(blocked.unavailable.code, 'image_policy_outside_window');
-  assert.deepEqual({ ...blocked.unavailable, code: undefined }, { code: undefined, windowStart: '07:00', windowEnd: '22:00',
-    timeZone: 'Asia/Taipei', expiresAt: f.input.expiresAt });
-  await assert.rejects(f.service.service().submit(blocked.caller,
-    { requestId: randomUUID(), prompt: 'Bedtime cat', caption: '晚安' }, true), /image_policy_outside_window/);
-  const before = await f.service.status('account-owner', f.catId);
-  assert.equal(before.budget.totalUsed, 0); assert.equal(before.jobs.length, 0);
+  await f.service.save('account-owner', f.catId, { ...f.input, timeZone: 'Asia/Taipei' });
+  const raw = f.legacyHours();
+  f.advance(6 * 3600_000 + 39 * 60_000);
+  assert.equal((await f.service.resolveTurn('source-chat', f.turn)).unavailable, undefined);
   await f.restart();
-  assert.equal((await f.service.resolveTurn('source-chat', turn)).unavailable.code, 'image_policy_outside_window');
-  f.advance(9 * 3600_000); // 07:39 next morning; no policy save or rebind.
-  const recovered = await f.service.resolveTurn('source-chat', turn);
-  assert.equal(recovered.unavailable, undefined);
-  const job = await f.service.service().submit(recovered.caller,
-    { requestId: randomUUID(), prompt: 'Morning cat', caption: '早安' }, true);
-  assert.equal(job.status, 'submitting'); assert.equal(f.posted(), 0);
-  assert.equal((await f.service.status('account-owner', f.catId)).policy.revision, 1);
+  const status = await f.service.status('account-owner', f.catId);
+  assert.equal('windowStart' in status.policy, false); assert.equal('windowEnd' in status.policy, false);
+  assert.equal(status.policy.revision, 1); assert.equal(status.requiresBindingConfirmation, false);
+  assert.equal(status.budget.totalUsed, 0);
+  const database = new DatabaseSync(path.join(f.root, 'state', 'multimedia', 'cat-images.sqlite'));
+  try { assert.equal(database.prepare('SELECT document FROM policies').get().document, raw); }
+  finally { database.close(); }
+  await assert.rejects(f.service.save('account-owner', f.catId, { revision: 1, windowStart: '00:00' }), /invalid_image_policy/);
+  assert.equal((await f.service.resolveTurn('source-chat', f.turn)).unavailable, undefined);
 });
 
 test('a transient capability outage is explained, sanitized and retried on the next turn', async t => {
@@ -394,12 +392,11 @@ for (const life of [
   { enabled: false },
   { enabled: true, sleepUntil: '2026-10-24T23:00:00Z' },
   { enabled: true, bedtime: '00:00', wakeWindowStart: '23:00', wakeWindowEnd: '23:01' },
-]) test(`sleeping companion still receives and delivers an owner's requested image: ${JSON.stringify(life)}`, async t => {
+]) for (const trigger of ['manual', 'heartbeat']) test(`accepted ${trigger} image survives sleep and restart: ${JSON.stringify(life)}`, async t => {
   const f = await fixture(t); await f.setLife(life);
   await f.service.save('account-owner', f.catId, f.input);
-  assert.equal((await f.service.resolveTurn('source-chat', f.turn)).unavailable.code, 'image_not_authorized',
-    'the same sleeping profile still blocks autonomous images');
-  const turn = { context: { metadata: { ...f.turn.context.metadata, supervisionSurface: 'runtime-dispatch' } } };
+  const turn = { context: { metadata: { ...f.turn.context.metadata,
+    supervisionSurface: trigger === 'manual' ? 'runtime-dispatch' : 'companion-heartbeat' } } };
   const resolved = await f.service.resolveTurn('source-chat', turn);
   assert.equal(resolved.unavailable, undefined);
   const job = await f.service.service().submit(resolved.caller,

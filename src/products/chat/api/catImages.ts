@@ -13,8 +13,6 @@ import { authorizeCatImagePolicy, type CatImageCaller, type CatImageJob, type Ca
 import { MediaImageError, presentMediaCapabilities } from '../../../platform/multimedia/imageExecution.js';
 import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 import { RUNTIME_SUPERVISION_BOUNDARY } from '../../../platform/supervision/runtimeBoundary.js';
-import { isCompanionCat } from '../../../shared/companionRole.js';
-import { resolveCompanionDesiredPresence } from '../companion/life/rhythm.js';
 import { sendBinary, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import type { TelegramConversationBinding, TelegramRelayContext } from '../../../platform/transports/telegram/contracts.js';
 import { resolveLeadParticipantLease, appendMessage } from '../state/model/index.js';
@@ -24,9 +22,14 @@ import { buildRoomMessageMutationDetail, publishRoomMutation } from './transport
 import type { ChatApiDependencies, ChatApiRouteContext } from './routeSupport.js';
 
 type Dependencies = Pick<ChatApiDependencies, 'chatStore' | 'runtimeClient' | 'config' | 'mutationGate' | 'telegramRelay' | 'eventHub' | 'now'>
-  & Partial<Pick<ChatApiDependencies, 'companionStore' | 'authStore'>> & { isTurnActive?(sessionId: string): boolean };
+  & Partial<Pick<ChatApiDependencies, 'authStore'>> & { isTurnActive?(sessionId: string): boolean };
 const editable = ['enabled', 'manual', 'proactive', 'targetId', 'profileId', 'profileRevision', 'agentConfigId',
-  'dailyLimit', 'totalLimit', 'minIntervalMinutes', 'timeZone', 'windowStart', 'windowEnd', 'expiresAt', 'bindingId'] as const;
+  'dailyLimit', 'totalLimit', 'minIntervalMinutes', 'timeZone', 'expiresAt', 'bindingId'] as const;
+function presentPolicy(policy: CatImagePolicy | undefined) {
+  if (!policy) return null;
+  const { windowStart: _storedStart, windowEnd: _storedEnd, ...settings } = policy;
+  return settings;
+}
 const fingerprint = (binding: BotBindingRecord, mapped: TelegramConversationBinding): string => createHash('sha256')
   .update(JSON.stringify([binding.id, binding.botToken, binding.updatedAt, binding.catActorId, binding.bossCatActorId,
     binding.status, mapped.telegramChatId, mapped.conversationId, mapped.linkedRoomId,
@@ -57,7 +60,7 @@ export function createChatCatImages(dependencies: Dependencies) {
   async function authorizeCaller(caller: CatImageCaller) {
     const source = await context(caller.catId);
     if (stopped || !source.cat || source.cat.status !== 'active' || !source.lane
-      || (source.lane.status !== 'active' && !(caller.trigger === 'manual' && source.lane.status === 'watching'))
+      || !['active', 'watching'].includes(source.lane.status)
       || source.core.ownerProfile.actorId !== caller.ownerActorId
       || buildChatConversationId(source.lane.id) !== caller.conversationId) throw new MediaImageError('image_not_authorized', 403);
     if (dependencies.authStore && !(dependencies.config.auth?.mode === 'unsafe_disabled'
@@ -66,13 +69,6 @@ export function createChatCatImages(dependencies: Dependencies) {
       if (auth.status !== 'ready' || !auth.state.accounts.some(account => account.id === caller.accountId && account.status === 'active')
         || !auth.state.memberships.some(membership => membership.accountId === caller.accountId
           && membership.roles.some(role => role === 'owner' || role === 'admin'))) throw new MediaImageError('image_not_authorized', 403);
-    }
-    if (caller.trigger === 'heartbeat' && isCompanionCat(source.cat) && dependencies.companionStore) {
-      const life = await dependencies.companionStore.getLifeProfile(source.cat.id);
-      if ((life.sleepUntil && Date.parse(life.sleepUntil) > now().getTime())
-        || !life.enabled || resolveCompanionDesiredPresence(life, source.cat.id, now()).presence !== 'awake') {
-        throw new MediaImageError('image_not_authorized', 403);
-      }
     }
   }
 
@@ -117,7 +113,7 @@ export function createChatCatImages(dependencies: Dependencies) {
             await updateChatState(dependencies.chatStore, latest => {
               assertClaim();
               const lane = latest.channels.find(row => row.id === source.lane!.id);
-              if (!lane || (lane.status !== 'active' && !(job.trigger === 'manual' && lane.status === 'watching'))) {
+              if (!lane || !['active', 'watching'].includes(lane.status)) {
                 throw new MediaImageError('image_not_authorized', 403);
               }
               const existing = lane.messages.find(row => row.metadata.catImageJobId === job.id);
@@ -200,7 +196,7 @@ export function createChatCatImages(dependencies: Dependencies) {
         // missing integration. This grants no MCP tool or execution authority.
         return { caller, actionId: meta.supervisionActionId, unavailable: {
           code: error instanceof MediaImageError ? error.code : 'image_service_unavailable',
-          windowStart: policy.windowStart, windowEnd: policy.windowEnd, timeZone: policy.timeZone, expiresAt: policy.expiresAt,
+          expiresAt: policy.expiresAt,
         } };
       }
       return { caller, actionId: meta.supervisionActionId };
@@ -229,7 +225,7 @@ export function createChatCatImages(dependencies: Dependencies) {
         || !granted.binding || !granted.mapped || granted.mapped.bindingId !== policy.bindingId
         || granted.mapped.linkedRoomId !== granted.lane.id
         || fingerprint(granted.binding, granted.mapped) !== policy.bindingRevision));
-      return { policy: policy ?? null, capabilities: capabilities ? presentMediaCapabilities(capabilities) : null,
+      return { policy: presentPolicy(policy), capabilities: capabilities ? presentMediaCapabilities(capabilities) : null,
         ready: Boolean(capabilities?.sourceSessionYield && capabilities.profiles.length && source.lane && bindings.some(binding => binding.linked)),
         bindings, requiresBindingConfirmation,
         budget: policy ? ledger!.budget(identity, policy, now()) : null,
@@ -249,6 +245,8 @@ export function createChatCatImages(dependencies: Dependencies) {
       if (input.enabled !== false && (!source.lane || !source.binding || !source.mapped
         || source.mapped.bindingId !== source.binding.id || source.mapped.linkedRoomId !== source.lane.id)) throw new MediaImageError('image_telegram_binding_required', 409);
       const policy = { ...previous, ...Object.fromEntries(editable.filter(key => key in input).map(key => [key, input[key]])),
+        // Preserve the existing schema-1 record format without reviving an hours setting.
+        windowStart: previous?.windowStart ?? '00:00', windowEnd: previous?.windowEnd ?? '00:00',
         schemaVersion: 1, id: previous?.id ?? randomUUID(), ...identity, revision: Number(input.revision) + 1,
         conversationId: previous && !explicitBinding ? previous.conversationId
           : source.lane ? buildChatConversationId(source.lane.id) : previous?.conversationId,

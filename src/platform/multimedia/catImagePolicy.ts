@@ -18,6 +18,7 @@ export interface CatImagePolicy {
   totalLimit: number;
   minIntervalMinutes: number;
   timeZone: string;
+  /** Inert schema-1 storage metadata; never exposed as settings or used for admission. */
   windowStart: string;
   windowEnd: string;
   expiresAt: string;
@@ -110,19 +111,6 @@ export function imagePolicyDay(policy: Pick<CatImagePolicy, 'timeZone'>, now: Da
     month: '2-digit', day: '2-digit' }).format(now);
 }
 
-export function isImagePolicyTime(policy: CatImagePolicy, now: Date): boolean {
-  if (!Number.isFinite(now.getTime()) || Date.parse(policy.expiresAt) <= now.getTime()) return false;
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: policy.timeZone,
-    hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now);
-  const hour = parts.find((part) => part.type === 'hour')?.value;
-  const minute = parts.find((part) => part.type === 'minute')?.value;
-  const time = hour + ':' + minute;
-  return policy.windowStart === policy.windowEnd
-    || (policy.windowStart < policy.windowEnd
-      ? time >= policy.windowStart && time < policy.windowEnd
-      : time >= policy.windowStart || time < policy.windowEnd);
-}
-
 export function authorizeCatImagePolicy(policy: CatImagePolicy | undefined, caller: CatImageCaller, now: Date): CatImagePolicy {
   if (!policy || !policy.enabled || policy.accountId !== caller.accountId
     || policy.ownerActorId !== caller.ownerActorId || policy.catId !== caller.catId
@@ -132,9 +120,6 @@ export function authorizeCatImagePolicy(policy: CatImagePolicy | undefined, call
   }
   if (!Number.isFinite(now.getTime()) || Date.parse(policy.expiresAt) <= now.getTime()) {
     throw new MediaImageError('image_policy_expired', 403);
-  }
-  if (caller.trigger === 'heartbeat' && !isImagePolicyTime(policy, now)) {
-    throw new MediaImageError('image_policy_outside_window', 403);
   }
   return policy;
 }

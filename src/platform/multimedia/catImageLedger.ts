@@ -283,7 +283,7 @@ export class CatImageLedger {
       } else {
         const zone = this.budgetZone(policy, now);
         // A timezone edit takes effect for budgets after the current calendar bucket ends.
-        // It changes allowed-window calculations immediately, but never resets today's usage.
+        // A timezone edit never resets today's usage.
         this.database.prepare('UPDATE budget_clocks SET pending_zone=?,pending_day=?,changed_at=? WHERE caller_key=?')
           .run(policy.timeZone === zone ? null : policy.timeZone,
             policy.timeZone === zone ? null : imagePolicyDay({ timeZone: zone }, now), now.getTime(), callerKey(policy));

@@ -9,7 +9,7 @@ interface Policy {
   revision: number; enabled: boolean; manual: boolean; proactive: boolean;
   targetId: string; profileId: string; profileRevision: string; agentConfigId: string;
   dailyLimit: number; totalLimit: number; minIntervalMinutes: number;
-  timeZone: string; windowStart: string; windowEnd: string; expiresAt: string; bindingId: string;
+  timeZone: string; expiresAt: string; bindingId: string;
 }
 interface Status {
   policy: Policy | null; ready: boolean; capabilities: CatsImageCapabilitiesV2 | null;
@@ -19,7 +19,7 @@ interface Status {
   jobs: Array<CatsImageJobV2 & { delivery: { status: 'pending' | 'sending' | 'sent' | 'failed' | 'uncertain' | 'suppressed'; abandonedAt?: string | null } | null }>;
 }
 const fields = ['enabled', 'manual', 'proactive', 'targetId', 'profileId', 'profileRevision', 'agentConfigId',
-  'dailyLimit', 'totalLimit', 'minIntervalMinutes', 'timeZone', 'windowStart', 'windowEnd', 'expiresAt', 'bindingId'] as const;
+  'dailyLimit', 'totalLimit', 'minIntervalMinutes', 'timeZone', 'expiresAt', 'bindingId'] as const;
 const policyPath = (catId: string) => `/api/cats/${encodeURIComponent(catId)}/image-policy`;
 
 async function json(response: Response): Promise<Status> {
@@ -32,7 +32,7 @@ function draftFor(status: Status): Policy {
   return { revision: 0, enabled: false, manual: true, proactive: false,
     targetId: profile?.targetIds[0] ?? '', profileId: profile?.id ?? '', profileRevision: String(profile?.revision ?? ''),
     agentConfigId: profile?.agentConfigs[0]?.id ?? '', dailyLimit: 1, totalLimit: 10, minIntervalMinutes: 60,
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, windowStart: '07:00', windowEnd: '22:00',
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(), bindingId: status.bindings.find(binding => binding.linked)?.id ?? status.bindings[0]?.id ?? '' };
 }
 function localDateTime(value: string): string {
@@ -136,9 +136,6 @@ export function CatImagePolicyCard({ catId }: { catId: string }) {
           onChange={event => update(key, Number(event.target.value))} /></label>)}
       <label className="companionFormRow"><span>{t(messageKeys.catImagesTimeZone)}</span><input value={draft.timeZone} disabled={saving}
         onChange={event => update('timeZone', event.target.value)} /></label>
-      <label className="companionFormRow"><span>{t(messageKeys.catImagesWindow)}</span>
-        <input type="time" value={draft.windowStart} disabled={saving} onChange={event => update('windowStart', event.target.value)} />
-        <span>–</span><input type="time" value={draft.windowEnd} disabled={saving} onChange={event => update('windowEnd', event.target.value)} /></label>
       <label className="companionFormRow"><span>{t(messageKeys.catImagesExpiry)}</span><input type="datetime-local"
         value={localDateTime(draft.expiresAt)} disabled={saving} onChange={event => update('expiresAt', event.target.value ? new Date(event.target.value).toISOString() : '')} /></label>
       {status.budget && status.policy ? <p>{t(messageKeys.catImagesBudget, { daily: status.budget.dailyUsed, dailyLimit: status.policy.dailyLimit,

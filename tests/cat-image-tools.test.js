@@ -115,8 +115,7 @@ test('cancellation while resolving a tool grant cannot resurrect the originating
 
 test('a blocked turn explains its current restriction, revokes stale tools, and recovers next turn', async t => {
   let blocked = false;
-  const unavailable = { code: 'image_policy_outside_window', windowStart: '07:00', windowEnd: '22:00',
-    timeZone: 'Asia/Taipei', expiresAt: '2026-11-23T10:32:59.493Z' };
+  const unavailable = { code: 'image_service_unavailable', expiresAt: '2026-11-23T10:32:59.493Z' };
   const f = await fixture(t, { async resolveTurn() { return { caller, actionId: 'one',
     ...(blocked ? { unavailable } : {}) }; } });
   const sent = [];
@@ -131,23 +130,23 @@ test('a blocked turn explains its current restriction, revokes stale tools, and 
   blocked = true;
   await client.sendMessage('source-chat', 'late request', options);
   assert.deepEqual(sent[1].mcpServers, options.mcpServers);
-  assert.match(sent[1].instructions, /image_policy_outside_window/);
-  assert.match(sent[1].instructions, /07:00.*22:00.*Asia\/Taipei/);
+  assert.match(sent[1].instructions, /image_service_unavailable/);
+  assert.equal(sent[1].instructions.includes('07:00'), false);
   assert.match(sent[1].instructions, /Keep speaking the owner language/);
   assert.match(sent[1].instructions, /Do not search for plugins/);
-  assert.match(sent[1].instructions, /Owner-requested images use manual permission at any hour/);
+  assert.match(sent[1].instructions, /Image generation has no hours-of-day restriction/);
   assert.equal((await f.call(original.auth.token, 'tools/list')).status, 401);
   blocked = false;
   await client.sendMessage('source-chat', 'next morning', options);
   const recovered = sent[2].mcpServers.find(server => server.name === 'cats');
   assert.ok(recovered); assert.notEqual(recovered.auth.token, original.auth.token);
-  assert.equal(sent[2].instructions.includes('image_policy_outside_window'), false);
+  assert.equal(sent[2].instructions.includes('image_service_unavailable'), false);
   assert.deepEqual(f.submitted, []);
 });
 
 test('a blocked first turn after host restart explicitly clears persisted tool credentials', async t => {
   const f = await fixture(t, { async resolveTurn() { return { caller, actionId: 'one', unavailable: {
-    code: 'image_service_unavailable', windowStart: '07:00', windowEnd: '22:00', timeZone: 'Asia/Taipei',
+    code: 'image_service_unavailable',
     expiresAt: '2026-11-23T10:32:59.493Z',
   } }; } });
   const client = f.tools.wrapClient({ async sendMessage(id, content, input) {
@@ -163,4 +162,28 @@ test('an unexpected grant resolution failure cannot silently send a context-free
   const client = f.tools.wrapClient({ async sendMessage() { sent = true; } });
   await assert.rejects(client.sendMessage('source-chat', 'image please', {}), /image_service_unavailable/);
   assert.equal(sent, false);
+});
+
+test('sleep closes a completed chat worker without cancelling accepted image work or retaining its grant', async t => {
+  const f = await fixture(t); let token; let closed = 0;
+  const client = f.tools.wrapClient({ async sendMessage(id, content, input) {
+    token = input.mcpServers[0].auth.token;
+    const response = await (await f.call(token, 'tools/call',
+      { name: 'image_generate', arguments: { prompt: 'Bedtime cat', caption: '晚安' } })).json();
+    assert.equal(response.result.structuredContent.queued, true); return { segments: [] };
+  }, async closeSession() { closed++; } });
+  await client.sendMessage('source-chat', 'hello', { context: { metadata: { approved: true, actionId: 'one' } } });
+  await client.closeSession('source-chat');
+  assert.equal(closed, 1); assert.equal(f.submitted.length, 1);
+  assert.deepEqual(f.released, ['source-chat']); assert.deepEqual(f.cancelled, []);
+  assert.equal((await f.call(token, 'tools/list')).status, 401);
+});
+
+test('closing a still-active source turn cancels its proposals before the worker closes', async t => {
+  const f = await fixture(t);
+  const client = f.tools.wrapClient({ async sendMessage(id) {
+    await client.closeSession(id); return { segments: [] };
+  }, async closeSession() { assert.ok(f.cancelled.length > 0); } });
+  await client.sendMessage('source-chat', 'hello', { context: { metadata: { approved: true, actionId: 'one' } } });
+  assert.ok(f.cancelled.length > 0); assert.deepEqual(f.released, []);
 });

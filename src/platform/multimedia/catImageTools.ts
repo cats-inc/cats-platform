@@ -13,12 +13,13 @@ interface Session { token: string; turn?: Turn; }
 export interface CatImageTurnResolution {
   caller: CatImageCaller;
   actionId: string;
-  unavailable?: { code: string; windowStart: string; windowEnd: string; timeZone: string; expiresAt: string };
+  unavailable?: { code: string; expiresAt: string };
 }
 const instructions = 'Current Cats image-tool availability (supersedes earlier snapshots): available. '
   + 'You can use the cats image_generate tool when an image would be useful to your owner. '
   + 'It queues one image with a caption for this conversation and its authorized Telegram binding. '
-  + 'Owner-requested images use manual permission independently of companion sleep and proactive image hours. '
+  + 'Image generation has no hours-of-day restriction. Companion rhythm only schedules proactive interactions; '
+  + 'it does not limit this service or stop an accepted image job. '
   + 'For an owner image request, use cats image_generate. Provider-native image tools and imagegen skills '
   + 'do not create the Cats image job or its Telegram delivery. '
   + 'End this turn after queuing: generation starts after your turn releases its resources. '
@@ -26,9 +27,8 @@ const instructions = 'Current Cats image-tool availability (supersedes earlier s
 
 function unavailableInstructions(reason: NonNullable<CatImageTurnResolution['unavailable']>): string {
   return 'Current Cats image-tool availability (supersedes earlier snapshots): configured, but unavailable for this turn. '
-    + `Reason: ${reason.code}. Proactive image window: ${reason.windowStart}–${reason.windowEnd} (${reason.timeZone}); `
-    + `permission expires at ${reason.expiresAt}. Companion sleep and this window only limit autonomous images. `
-    + 'Owner-requested images use manual permission at any hour; expiry and other authorization limits still apply. '
+    + `Reason: ${reason.code}. Permission expires at ${reason.expiresAt}. `
+    + 'Image generation has no hours-of-day restriction; expiry and other authorization limits still apply. '
     + 'Explain this current restriction in the owner conversation language when asked for an image. '
     + 'Do not claim the platform integration is missing. Do not search for plugins or use provider-native image tools as a workaround. '
     + 'Do not promise an automatically scheduled image; a later request rechecks availability. '
@@ -116,7 +116,11 @@ export function createCatImageTools(options: {
         };
         if (property === 'cancelSession' || property === 'closeSession' || property === 'deleteSession') return async (sessionId: string) => {
           const tracked = sessions.has(sessionId);
-          revoke(sessionId); if (tracked) await options.service.cancelTurn(sessionId); return target[property](sessionId);
+          const turnActive = sessions.get(sessionId)?.turn?.active === true;
+          revoke(sessionId);
+          // Sleep releases a finished chat worker, not its accepted asynchronous images.
+          if (tracked && (property !== 'closeSession' || turnActive)) await options.service.cancelTurn(sessionId);
+          return target[property](sessionId);
         };
         const value = Reflect.get(target, property);
         return typeof value === 'function' ? value.bind(target) : value;
