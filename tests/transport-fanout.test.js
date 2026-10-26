@@ -389,6 +389,10 @@ test('a heartbeat photo shows inline on Desktop and reaches Telegram as a captio
   const fixture = await createFanoutFixture();
   try {
     const catId = (await fixture.chatStore.read()).cats[0].id;
+    const now = new Date('2026-04-22T07:05:00.000Z');
+    await fixture.chatStore.write(setChannelCatLease(setChannelStatus(
+      await fixture.chatStore.read(), fixture.channelId, 'active', now), fixture.channelId, catId,
+      { status: 'ready', sessionId: 'session-heartbeat' }, now));
     const photoFolder = await mkdtemp(path.join(tmpdir(), 'cats-heartbeat-photo-'));
     await writeFile(path.join(photoFolder, 'window-sun.png'), ONE_PIXEL_PNG);
     // The album check follows links, so the photo is sent from its real path.

@@ -6,7 +6,11 @@ import type {
 } from '../../../../shared/roomRouting.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
-import { parseProviderModelSelection, providerModelSelectionsEquivalent } from '../../../../shared/providerSelection.js';
+import {
+  createExplicitProviderModelSelection,
+  parseProviderModelSelection,
+  providerModelSelectionsEquivalent,
+} from '../../../../shared/providerSelection.js';
 import {
   requireChannel,
   setChannelParticipantLease,
@@ -101,12 +105,15 @@ function hasParticipantExecutionTargetDrift(input: {
     return true;
   }
 
-  return !providerModelSelectionsEquivalent(
-    participantLease.modelSelection ?? null,
-    assignment.execution.modelSelection === undefined
-      ? participantLease.modelSelection ?? null
-      : assignment.execution.modelSelection ?? null,
-  );
+  // Model-only requests become explicit selections at creation. An unselected
+  // provider default in an older lease is not itself an operator retarget.
+  const observedSelection = participantLease.modelSelection
+    ?? (assignmentModel ? createExplicitProviderModelSelection(participantLease.model) : null);
+  const requestedSelection = assignment.execution.modelSelection === undefined
+    ? observedSelection
+    : assignment.execution.modelSelection
+      ?? createExplicitProviderModelSelection(assignment.execution.target.model);
+  return !providerModelSelectionsEquivalent(observedSelection, requestedSelection);
 }
 
 function readObservedSessionState(
@@ -303,7 +310,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
   const channel = requireChannel(state, channelId);
   const lease = resolveExecutionLeaseSnapshot(channel, attachedTarget);
   if (lease && lease.modelSelection === undefined
-    && (lease.status === 'ready' || lease.status === 'error' || lease.status === 'initializing')) {
+    && (lease.status === 'ready' || lease.status === 'error' || lease.status === 'initializing' || lease.status === 'closed')) {
     try {
       const { session } = await runtimeClient.observeSession(attachedTarget.sessionId);
       if (session && typeof session === 'object') {
@@ -326,7 +333,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
     && { ...assignment.execution.target, modelSelection: assignment.execution.modelSelection };
   const currentLease = resolveExecutionLeaseSnapshot(channelState, attachedTarget);
   if (currentLease && currentLease.modelSelection === undefined && configuredTarget?.modelSelection
-    && (currentLease.status === 'ready' || currentLease.status === 'error' || currentLease.status === 'initializing')
+    && (currentLease.status === 'ready' || currentLease.status === 'error' || currentLease.status === 'initializing' || currentLease.status === 'closed')
     && currentLease.provider === configuredTarget.provider
     && (!configuredTarget.instance
       || normalizeOptionalExecutionValue(currentLease.instance) === normalizeOptionalExecutionValue(configuredTarget.instance))
@@ -351,7 +358,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
       ),
     });
 
-  if (await shouldReviveExistingTargetSession({
+  if (!hasDirectCatExecutionTargetDrift && await shouldReviveExistingTargetSession({
     state,
     channelId,
     target: attachedTarget,

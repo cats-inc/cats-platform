@@ -394,6 +394,8 @@ function createLaneRuntimeStub(workingDir) {
   let nextSession = 1;
   const stub = {
     closedSessionIds: [],
+    createdSessionIds: [],
+    resumedSessionIds: [],
     deadSessionIds: new Set(),
     async getHealth() {
       return { baseUrl: 'http://127.0.0.1:3110', reachable: true, status: 'ok', service: 'cats-runtime' };
@@ -415,6 +417,7 @@ function createLaneRuntimeStub(workingDir) {
     },
     async createSession(input) {
       const id = `session-${nextSession++}`;
+      stub.createdSessionIds.push(id);
       return {
         id,
         provider: input.provider,
@@ -424,6 +427,7 @@ function createLaneRuntimeStub(workingDir) {
       };
     },
     async resumeSession(sessionId) {
+      stub.resumedSessionIds.push(sessionId);
       stub.deadSessionIds.delete(sessionId);
       return { id: sessionId, provider: 'claude', model: null, status: 'ready', cwd: null };
     },
@@ -556,10 +560,17 @@ test('life route: the photo folder must exist on this computer', async () => {
   });
 });
 
-test('owner sleep on the companion lane holds until the next wake; waking clears it', async () => {
-  await withLifeServer(async ({ post, lane, cat, now, companionStore, companionActivityStore }) => {
+test('owner sleep preserves the DM runtime attachment and waking resumes it', async () => {
+  await withLifeServer(async ({ post, lane, cat, now, companionStore, companionActivityStore, chatStore, runtimeClient }) => {
     assert.equal((await post(`/api/channels/${lane.id}/activations`)).status, 200);
+    const readLease = async () => resolveLeadParticipantLease(
+      (await chatStore.read()).channels.find((channel) => channel.id === lane.id),
+    );
+    const before = await readLease();
     assert.equal((await post(`/api/channels/${lane.id}/deactivate`)).status, 200);
+    assert.equal((await readLease()).status, 'closed');
+    assert.equal((await readLease()).sessionId, before.sessionId, 'sleep releases the worker, not its continuity');
+    assert.deepEqual(runtimeClient.closedSessionIds, [before.sessionId]);
 
     const slept = await companionStore.getLifeProfile(cat.id);
     assert.ok(slept.sleepUntil && Date.parse(slept.sleepUntil) > now.getTime());
@@ -571,6 +582,9 @@ test('owner sleep on the companion lane holds until the next wake; waking clears
     ]);
 
     assert.equal((await post(`/api/channels/${lane.id}/activations`)).status, 200);
+    assert.equal((await readLease()).sessionId, before.sessionId);
+    assert.deepEqual(runtimeClient.resumedSessionIds, [before.sessionId]);
+    assert.equal(runtimeClient.createdSessionIds.length, 1, 'wake must not create a replacement');
     assert.equal((await companionStore.getLifeProfile(cat.id)).sleepUntil, null);
     assert.deepEqual((await presenceEvents()).at(-1), { presence: 'awake', reason: 'owner' });
   });
