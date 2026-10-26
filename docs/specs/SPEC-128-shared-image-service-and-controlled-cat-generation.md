@@ -149,6 +149,12 @@ Mission／Work Item，也不新增第二份工作真相。
   使用正式 session MCP descriptor。`image_generate(prompt,caption)` 的 request ID 由
   host supervised action 派生；`image_status(jobId)` 只讀原工作。bearer 不授權 owner API，
   每回合結束即失去 call 權限。公開 ingress 即使轉送自 loopback 仍拒絕此 route。
+- 已設定的 Cat 生圖政策若因時段、到期、trigger mode、帳號、binding 或 Runtime
+  capability 而受限，受監督回合取得當次安全原因及政策時段／時區／到期時間；
+  不再將 admission 拒絕靜默變成「沒有平台整合」。該回合不發工具 grant，也不預留
+  額度或自動排程；時段同樣約束 owner 明確請求及主動生圖。下回合重新檢查，
+  恢復時重新發送正式 descriptor；受限時明確替換舊 descriptor，包含 host 重啟後
+  留在 Runtime 的舊憑證。非適用對話／session 仍不能取得 Cat image scope。
 - owner/admin 路由為 `/api/cats/:catId/image-policy` 與同 Cat 下的 image／cancel／retry。
   actor、account、conversation、原 binding 及 revision 均由 host 解析；未知欄位拒絕。
   部分政策更新保留原 binding，disabled／失效帳號或移除管理角色即失去後續執行／外送權。

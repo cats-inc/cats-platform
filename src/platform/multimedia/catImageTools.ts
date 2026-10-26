@@ -10,18 +10,34 @@ import type { CatImageCaller } from './catImagePolicy.js';
 export const CAT_IMAGE_TOOLS_PATH = '/api/internal/cat-image-tools/mcp';
 interface Turn { caller: CatImageCaller; actionId: string; expiresAt: number; active: boolean; cancelled?: boolean; }
 interface Session { token: string; turn?: Turn; }
-const instructions = 'You can use the cats image_generate tool when an image would be useful to your owner. '
+export interface CatImageTurnResolution {
+  caller: CatImageCaller;
+  actionId: string;
+  unavailable?: { code: string; windowStart: string; windowEnd: string; timeZone: string; expiresAt: string };
+}
+const instructions = 'Current Cats image-tool availability (supersedes earlier snapshots): available. '
+  + 'You can use the cats image_generate tool when an image would be useful to your owner. '
   + 'It queues one image with a caption for this conversation and its authorized Telegram binding. '
   + 'For an owner image request, use cats image_generate. Provider-native image tools and imagegen skills '
   + 'do not create the Cats image job or its Telegram delivery. '
   + 'End this turn after queuing: generation starts after your turn releases its resources. '
   + 'A queued job is not proof of generation or Telegram delivery. Never claim it was sent until the job reports delivery.';
 
+function unavailableInstructions(reason: NonNullable<CatImageTurnResolution['unavailable']>): string {
+  return 'Current Cats image-tool availability (supersedes earlier snapshots): configured, but unavailable for this turn. '
+    + `Reason: ${reason.code}. Allowed generation and delivery window: ${reason.windowStart}–${reason.windowEnd} (${reason.timeZone}); `
+    + `permission expires at ${reason.expiresAt}. The window applies to both owner requests and proactive images. `
+    + 'Explain this current restriction in the owner conversation language when asked for an image. '
+    + 'Do not claim the platform integration is missing. Do not search for plugins or use provider-native image tools as a workaround. '
+    + 'Do not promise an automatically scheduled image; a later request rechecks availability. '
+    + 'No image was queued or sent by this availability check.';
+}
+
 /** Host-owned session credentials plus a short-lived, supervised turn scope. No owner API authority. */
 export function createCatImageTools(options: {
   service: Pick<CatImageService, 'submit' | 'releaseTurn' | 'cancelTurn' | 'status'>;
   endpoint(): string | null;
-  resolveTurn(sessionId: string, input: RuntimeSendMessageInput): Promise<{ caller: CatImageCaller; actionId: string } | null>;
+  resolveTurn(sessionId: string, input: RuntimeSendMessageInput): Promise<CatImageTurnResolution | null>;
   now?(): number;
 }) {
   const grants = new McpSessionGrantStore<{ sessionId: string }>();
@@ -54,7 +70,7 @@ export function createCatImageTools(options: {
           const pending = { sessionId, cancelled: false }; pendingTurns.add(pending);
           let resolved: Awaited<ReturnType<typeof options.resolveTurn>>;
           try { resolved = await options.resolveTurn(sessionId, input); }
-          catch { resolved = null; }
+          catch { throw new MediaImageError('image_service_unavailable', 503); }
           finally { pendingTurns.delete(pending); }
           if (closed || pending.cancelled) throw new MediaImageError('image_turn_cancelled', 409);
           if (!resolved) {
@@ -62,6 +78,13 @@ export function createCatImageTools(options: {
             return target.sendMessage(sessionId, content, tracked ? { ...input, mcpServers: input.mcpServers ?? [] } : input);
           }
           if (input.mcpServers?.some(server => server.name === 'cats')) throw new MediaImageError('image_tool_scope_conflict', 409);
+          if (resolved.unavailable) {
+            revoke(sessionId);
+            // A restarted host has no in-memory grant, but Runtime may still hold
+            // its old descriptor. Replace it explicitly while preserving other servers.
+            return target.sendMessage(sessionId, content, { ...input, mcpServers: input.mcpServers ?? [],
+              instructions: [input.instructions, unavailableInstructions(resolved.unavailable)].filter(Boolean).join('\n\n') });
+          }
           let session = sessions.get(sessionId);
           if (!session) {
             if (sessions.size >= 1000) throw new MediaImageError('image_service_busy', 429);

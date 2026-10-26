@@ -7,6 +7,7 @@ import type { BotBindingRecord } from '../../../core/types.js';
 import { RuntimeSessionNotFoundError, type RuntimeSendMessageInput } from '../../../platform/runtime/client.js';
 import { CatImageLedger } from '../../../platform/multimedia/catImageLedger.js';
 import { CatImageService, presentCatImage } from '../../../platform/multimedia/catImages.js';
+import type { CatImageTurnResolution } from '../../../platform/multimedia/catImageTools.js';
 import { createCatImageDelivery } from '../../../platform/multimedia/catImageDelivery.js';
 import { authorizeCatImagePolicy, type CatImageCaller, type CatImageJob, type CatImagePolicy } from '../../../platform/multimedia/catImagePolicy.js';
 import { MediaImageError, presentMediaCapabilities } from '../../../platform/multimedia/imageExecution.js';
@@ -168,7 +169,7 @@ export function createChatCatImages(dependencies: Dependencies) {
 
   return {
     service(): CatImageService { open(); return execution!; },
-    async resolveTurn(sessionId: string, input: RuntimeSendMessageInput) {
+    async resolveTurn(sessionId: string, input: RuntimeSendMessageInput): Promise<CatImageTurnResolution | null> {
       if (!ledger && !existsSync(filename)) return null;
       const meta = input.context?.metadata;
       if (meta?.supervisionBoundary !== RUNTIME_SUPERVISION_BOUNDARY || meta.supervisionProduct !== 'cats-chat'
@@ -182,12 +183,24 @@ export function createChatCatImages(dependencies: Dependencies) {
       const cat = cats.find(row => findCompanionDirectLane({ channels }, row.id)?.id === lane.id);
       if (!cat || cat.status !== 'active') return null;
       const core = await dependencies.chatStore.readCore();
-      const policies = open().policies().filter(row => row.enabled && row.catId === cat.id && row.ownerActorId === core.ownerProfile.actorId);
-      if (policies.length !== 1) return null;
-      const caller: CatImageCaller = { accountId: policies[0]!.accountId, ownerActorId: core.ownerProfile.actorId,
+      const policies = open().policies().filter(row => row.catId === cat.id && row.ownerActorId === core.ownerProfile.actorId);
+      const enabled = policies.filter(row => row.enabled);
+      const policy = enabled.length === 1 ? enabled[0] : policies.length === 1 ? policies[0] : undefined;
+      if (!policy) return null;
+      const caller: CatImageCaller = { accountId: policy.accountId, ownerActorId: core.ownerProfile.actorId,
         catId: cat.id, conversationId: buildChatConversationId(lane.id), runtimeSessionId: sessionId,
         trigger: meta.supervisionSurface === 'companion-heartbeat' ? 'heartbeat' : 'manual' };
-      try { await execution!.capabilities(caller); } catch { return null; }
+      try {
+        const capabilities = await execution!.capabilities(caller);
+        if (!capabilities.targets.length || !capabilities.profiles.length) throw new MediaImageError('image_profile_unavailable', 503);
+      } catch (error) {
+        // A scoped but blocked turn needs a truthful explanation, not a silently
+        // missing integration. This grants no MCP tool or execution authority.
+        return { caller, actionId: meta.supervisionActionId, unavailable: {
+          code: error instanceof MediaImageError ? error.code : 'image_service_unavailable',
+          windowStart: policy.windowStart, windowEnd: policy.windowEnd, timeZone: policy.timeZone, expiresAt: policy.expiresAt,
+        } };
+      }
       return { caller, actionId: meta.supervisionActionId };
     },
     hasPending(catId: string) { return execution?.hasPending(catId) ?? false; },

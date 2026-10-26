@@ -319,11 +319,65 @@ test('a stale routing grant requires explicit owner confirmation without resetti
   const stale = await f.service.status('account-owner', f.catId);
   assert.equal(stale.ready, true, 'transport prerequisites alone do not make the saved grant valid');
   assert.equal(stale.requiresBindingConfirmation, true);
-  assert.equal(await f.service.resolveTurn('source-chat', f.turn), null);
+  assert.equal((await f.service.resolveTurn('source-chat', f.turn)).unavailable.code, 'image_not_authorized');
   const confirmed = await f.service.save('account-owner', f.catId, { ...f.input, revision: 1 });
   assert.equal(confirmed.requiresBindingConfirmation, false);
   assert.deepEqual(confirmed.budget, stale.budget);
   assert.ok(await f.service.resolveTurn('source-chat', f.turn));
+});
+
+for (const trigger of ['manual', 'heartbeat']) test(`${trigger} receives the real policy restriction and recovers after restart and the window opens`, async t => {
+  const f = await fixture(t);
+  await f.service.save('account-owner', f.catId, { ...f.input, timeZone: 'Asia/Taipei', windowStart: '07:00', windowEnd: '22:00' });
+  const turn = { context: { metadata: { ...f.turn.context.metadata,
+    supervisionSurface: trigger === 'manual' ? 'runtime-dispatch' : 'companion-heartbeat' } } };
+  f.advance(6 * 3600_000 + 39 * 60_000); // 22:39 Asia/Taipei, matching the installed failure.
+  const blocked = await f.service.resolveTurn('source-chat', turn);
+  assert.equal(blocked.unavailable.code, 'image_policy_outside_window');
+  assert.deepEqual({ ...blocked.unavailable, code: undefined }, { code: undefined, windowStart: '07:00', windowEnd: '22:00',
+    timeZone: 'Asia/Taipei', expiresAt: f.input.expiresAt });
+  await assert.rejects(f.service.service().submit(blocked.caller,
+    { requestId: randomUUID(), prompt: 'Bedtime cat', caption: '晚安' }, true), /image_policy_outside_window/);
+  const before = await f.service.status('account-owner', f.catId);
+  assert.equal(before.budget.totalUsed, 0); assert.equal(before.jobs.length, 0);
+  await f.restart();
+  assert.equal((await f.service.resolveTurn('source-chat', turn)).unavailable.code, 'image_policy_outside_window');
+  f.advance(9 * 3600_000); // 07:39 next morning; no policy save or rebind.
+  const recovered = await f.service.resolveTurn('source-chat', turn);
+  assert.equal(recovered.unavailable, undefined);
+  const job = await f.service.service().submit(recovered.caller,
+    { requestId: randomUUID(), prompt: 'Morning cat', caption: '早安' }, true);
+  assert.equal(job.status, 'submitting'); assert.equal(f.posted(), 0);
+  assert.equal((await f.service.status('account-owner', f.catId)).policy.revision, 1);
+});
+
+test('a transient capability outage is explained, sanitized and retried on the next turn', async t => {
+  const f = await fixture(t); await f.service.save('account-owner', f.catId, f.input);
+  const original = f.runtimeClient.getImageCapabilities;
+  f.runtimeClient.getImageCapabilities = async () => { throw Error('private transport details'); };
+  const blocked = await f.service.resolveTurn('source-chat', f.turn);
+  assert.equal(blocked.unavailable.code, 'image_service_unavailable');
+  assert.equal(JSON.stringify(blocked).includes('private transport'), false);
+  f.runtimeClient.getImageCapabilities = original;
+  assert.equal((await f.service.resolveTurn('source-chat', f.turn)).unavailable, undefined);
+  assert.equal(f.posted(), 0);
+});
+
+for (const restriction of ['disabled', 'mode', 'expired', 'account', 'profile']) test(`blocked ${restriction} explains the restriction without lending image authority`, async t => {
+  const f = await fixture(t); await f.service.save('account-owner', f.catId, f.input);
+  if (restriction === 'disabled') await f.service.save('account-owner', f.catId, { revision: 1, enabled: false });
+  if (restriction === 'mode') await f.service.save('account-owner', f.catId, { revision: 1, proactive: false });
+  if (restriction === 'expired') f.advance(10 * 24 * 3600_000);
+  if (restriction === 'account') f.revokeAccount();
+  if (restriction === 'profile') f.runtimeClient.getImageCapabilities = async () => ({ ...capabilities, profiles: [] });
+  const blocked = await f.service.resolveTurn('source-chat', f.turn);
+  const code = restriction === 'expired' ? 'image_policy_outside_window'
+    : restriction === 'profile' ? 'image_profile_unavailable' : 'image_not_authorized';
+  assert.equal(blocked.unavailable.code, code);
+  await assert.rejects(f.service.service().submit(blocked.caller,
+    { requestId: randomUUID(), prompt: 'Cat', caption: '' }, true), new RegExp(code));
+  const status = await f.service.status('account-owner', f.catId);
+  assert.equal(status.jobs.length, 0); assert.equal(status.budget.totalUsed, 0); assert.equal(f.posted(), 0);
 });
 
 test('owner can stop an uncertain delivery after relinking, preserve its unknown outcome and unblock reset', async t => {
