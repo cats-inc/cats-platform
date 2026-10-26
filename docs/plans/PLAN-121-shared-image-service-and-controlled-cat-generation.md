@@ -12,7 +12,52 @@
 
 ## Overview
 
+### Image service has no operating hours — 2026-10-27
+
+- Owner correction supersedes both earlier schedule fixes below: there is no
+  image-service operating window, for either manual or proactive images. Rhythm
+  belongs only to proactive interaction scheduling. The image service no longer
+  reads CompanionBox life state or gates accepted jobs on sleep/watch transitions.
+- Removed the hours control and editable/public policy fields, window evaluator,
+  outside-window refusal and schedule details from MCP availability instructions.
+  Timezone only defines the daily budget bucket. Authority, trigger modes, expiry,
+  quotas, interval, exact original binding and archived/disabled scope checks remain.
+- Normal close of a finished chat worker revokes its MCP grant but preserves
+  accepted asynchronous image work. Closing an active source turn still cancels
+  its proposals; explicit cancel/delete retain their cancellation behavior.
+- SQLite schema 1 is unchanged. Its old window strings are inert storage metadata,
+  preserved byte-for-byte on reads; new records use neutral serialization values.
+  They are neither exposed nor editable and have no execution semantics. No data
+  rewrite/migration, grant revision change, budget reset or Telegram rebind is needed.
+  This avoids rewriting the user's valid ledger merely to remove a service feature.
+- Initial regression run against main failed six selected cases; the completed-
+  worker close regression also failed before its fix. Final focused checks pass
+  **281/281**: image/Telegram, rhythm/heartbeat/fanout, architecture/dependency and
+  Runtime MCP suites 274; image/rhythm UI/localization 7. Server build and test
+  TypeScript check pass; complete CI remains the merge gate.
+- Final Windows candidate snapshot
+  `f9a72e1797466d6615f598d486302182f16e7382b1c99982981db5399dcbbaed`
+  with Runtime `5212fa59ee44fbee7eea0d85e7482933824ff775` builds server, renderer,
+  Desktop and Runtime, reaches first-run setup and drains both services with exit
+  0. All eight modified production files match the snapshot. The initial candidate
+  was also drained before building the worker-close correction.
+- Real native Codex uses that compiled candidate with a synthetic policy carrying
+  legacy 07:00–22:00 strings and a CompanionBox reader that throws if consulted.
+  An in-flight heartbeat at 22:39 actually calls image_generate; normal worker
+  close preserves the one held job. After a whole Runtime and image-tool host
+  restart, the same Runtime/provider session at 23:39 actually calls image_status
+  for the same job without regenerating. Provider image execution and Telegram
+  network delivery were not run; fixtures separately cover attachment/delivery.
+  Evidence: `.image-service-hours-live-20261027/report.json`. Owned processes stopped
+  and temporary provider credentials were removed.
+- No real-profile writes or external Telegram test messages. Publication remains
+  unauthorized; the next authorized release must use 0.11 for removal of the
+  settings/API fields.
+
 ### Owner-requested tools are independent of proactive schedules — 2026-10-26
+
+Historical intermediate correction; its retained proactive image window is
+superseded by the 2026-10-27 decision above.
 
 - Owner correction: the preceding diagnosis found why tools disappeared, but
   incorrectly accepted the implementation's coupling of manual requests to
@@ -45,10 +90,8 @@
   Telegram network send was run; fixture integration separately proves attachment
   and delivery after sleep. Private evidence: `.cat-image-manual-live-20261026/report.json`.
   Owned processes stopped and temporary provider credentials were removed.
-- Publication is not included. The next authorized release must use the next
-  minor line (0.11) because the existing window's persisted configuration meaning
-  changes to proactive-only. No data-format rewrite is needed: expiry, exact
-  binding identity, policy revision and budget history remain intact.
+- Publication was not included. Release scope is governed by the current
+  2026-10-27 decision above.
 
 ### Image availability diagnosis — 2026-10-26
 

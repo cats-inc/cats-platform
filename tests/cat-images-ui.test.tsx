@@ -24,8 +24,9 @@ test('owner explicitly enables finite image permission and gets save feedback on
   t.after(() => { cleanup(); globalThis.fetch = originalFetch; resetTestDom(); });
   const view = render(<I18nProvider locale="en"><CatImagePolicyCard catId="cat-one" /></I18nProvider>);
   await waitFor(() => view.getByLabelText('Allow image generation'));
-  assert.ok(view.getByText(/Sleep and proactive hours do not limit images you request/));
-  assert.ok(view.getByText('Proactive image hours'));
+  assert.ok(view.getByText(/Image generation is available at any hour/));
+  assert.equal(view.container.querySelector('input[type="time"]'), null);
+  assert.equal(view.queryByText('Proactive image hours'), null);
   assert.equal((view.getByLabelText('Allow image generation') as HTMLInputElement).checked, false);
   assert.equal((view.getByLabelText('Allow occasional images from this Cat') as HTMLInputElement).checked, false);
   fireEvent.click(view.getByLabelText('Allow image generation'));
@@ -36,6 +37,7 @@ test('owner explicitly enables finite image permission and gets save feedback on
   assert.equal(writes[0]!.enabled, true); assert.equal(writes[0]!.proactive, true); assert.equal(writes[0]!.dailyLimit, 2);
   assert.equal(writes[0]!.totalLimit, 10); assert.equal(writes[0]!.minIntervalMinutes, 60); assert.equal(writes[0]!.bindingId, 'cat-bot');
   assert.equal('ownerActorId' in writes[0]!, false); assert.equal('accountId' in writes[0]!, false);
+  assert.equal('windowStart' in writes[0]!, false); assert.equal('windowEnd' in writes[0]!, false);
   await waitFor(() => assert.match(view.container.querySelector('.toast')?.textContent ?? '', /Image permission saved/));
   assert.equal(view.container.querySelectorAll('.companionFormRow .toast').length, 0);
 });
@@ -46,10 +48,11 @@ test('a stale Telegram grant can be explicitly saved again without changing its 
     profileId: 'grok-generate', profileRevision: '1', agentConfigId: 'grok-agent', bindingId: 'cat-bot',
     dailyLimit: 2, totalLimit: 10, minIntervalMinutes: 60, timeZone: 'UTC', windowStart: '07:00',
     windowEnd: '22:00', expiresAt: '2030-01-01T00:00:00.000Z' };
+  const { windowStart: _oldStart, windowEnd: _oldEnd, ...currentSettings } = policy;
   let confirmed = false;
   globalThis.fetch = (async (_url, input) => {
     if (input?.method === 'PUT') {
-      assert.deepEqual(JSON.parse(String(input.body)), policy);
+      assert.deepEqual(JSON.parse(String(input.body)), currentSettings);
       confirmed = true;
     }
     return json({ ...initial, policy, requiresBindingConfirmation: !confirmed });

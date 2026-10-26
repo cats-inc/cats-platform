@@ -32,7 +32,6 @@ export const messageKeys = {
   catImagesTotalLimit: "catImagesTotalLimit",
   catImagesInterval: "catImagesInterval",
   catImagesTimeZone: "catImagesTimeZone",
-  catImagesWindow: "catImagesWindow",
   catImagesExpiry: "catImagesExpiry",
   catImagesBudget: "catImagesBudget",
   catImagesSave: "catImagesSave",

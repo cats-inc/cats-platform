@@ -11,7 +11,6 @@ import { RuntimeImageError } from '../build/server/runtime/images.js';
 import { CatImageLedger } from '../build/server/platform/multimedia/catImageLedger.js';
 import { CatImageService } from '../build/server/platform/multimedia/catImages.js';
 import { createCatImageDelivery } from '../build/server/platform/multimedia/catImageDelivery.js';
-import { isImagePolicyTime } from '../build/server/platform/multimedia/catImagePolicy.js';
 
 const at = new Date('2026-10-23T08:00:00Z');
 const caller = { accountId: 'account-owner', ownerActorId: 'actor-owner', catId: 'cat-ordinary',
@@ -87,22 +86,17 @@ test('no implicit Boss, App or caller permission; scope, time and revision are c
   assert.throws(() => f.ledger.savePolicy({ ...original, revision: 3 }, 1), /image_policy_changed/);
   assert.throws(() => f.ledger.admit({ ...caller, trigger: 'manual' }, request(), 1, new Date('2026-10-26T00:00:00Z')), /image_policy_expired/);
   assert.equal(f.ledger.budget(caller, original, at).totalUsed, 0);
-  const overnight = policy({ windowStart: '23:00', windowEnd: '07:00' });
-  assert.equal(isImagePolicyTime(overnight, new Date('2026-10-23T23:30:00Z')), true);
-  assert.equal(isImagePolicyTime(overnight, new Date('2026-10-24T06:59:00Z')), true);
-  assert.equal(isImagePolicyTime(overnight, new Date('2026-10-24T07:00:00Z')), false);
 });
 
-test('the proactive window never blocks an owner-requested image or its dispatch after restart', async t => {
+for (const trigger of ['manual', 'heartbeat']) test(`${trigger} image admission and dispatch ignore legacy hours after restart`, async t => {
   const f = await fixture(t);
   const late = new Date('2026-10-23T14:39:00Z'); // 22:39 Asia/Taipei.
   f.ledger.savePolicy(policy({ timeZone: 'Asia/Taipei', windowStart: '07:00', windowEnd: '22:00' }), 0);
-  assert.throws(() => f.ledger.admit(caller, request(), 1, late), /image_policy_outside_window/);
-  const { job } = f.ledger.admit({ ...caller, trigger: 'manual' }, request(), 1, late, true);
+  const { job } = f.ledger.admit({ ...caller, trigger }, request(), 1, late, true);
   const reopened = f.open();
   assert.equal(reopened.releaseTurn(caller.runtimeSessionId, late).length, 1);
   assert.equal(reopened.claimDispatch(job.id, new Date('2026-10-23T15:01:00Z')), true);
-  assert.equal(reopened.get(job.id).trigger, 'manual');
+  assert.equal(reopened.get(job.id).trigger, trigger);
   assert.equal(reopened.budget(caller, reopened.policy(caller), late).totalUsed, 1);
 });
 
