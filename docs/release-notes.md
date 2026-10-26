@@ -2,6 +2,62 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-27 — Desktop 0.11.0 standard preview: image service without operating hours
+
+Selected distribution: Desktop **0.11.0 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**. This selects Desktop publication only;
+Platform/Runtime npm, launcher and optional Marketplace Apps retain their releases.
+
+- **Image generation has no operating hours.** Both requested images and images
+  proposed during a companion heartbeat use the same service without an extra
+  image window or service-level sleep check. Companion rhythm only schedules
+  proactive interactions. Accepted jobs can finish and reach the original
+  conversation/Telegram binding after the Cat sleeps. Closing a completed chat
+  worker revokes its tool grant without cancelling its accepted image work;
+  active-turn close and explicit cancel/delete retain cancellation behavior.
+- **Clear settings and failures.** The image-hours control and the editable/public
+  `windowStart`/`windowEnd` policy fields are removed. Custom clients must stop
+  submitting those fields; their removal is the **0.11 minor compatibility
+  boundary**. The displayed timezone controls daily budget accounting. Permission,
+  trigger modes, expiry, quotas, interval and original binding checks still apply.
+  A temporary service or authorization failure carries its real safe reason into
+  the Cat turn instead of silently presenting a missing Platform integration.
+- **Bundled product knowledge.** Catlas and orchestrator bundles target the
+  verified 0.11 host line; their bilingual contents and capability requirements
+  are unchanged. The release checks exercise model delivery and packaged assets.
+- **Existing profiles and data.** SQLite schema 1 and valid existing ledger
+  records, image assets, policy revisions, budgets and binding grants are retained.
+  Old window strings remain inert private storage metadata and are not exposed,
+  editable or evaluated. New records use neutral serialization values; there is
+  no data rewrite or new migration. No reset, allowance refill or Telegram rebind
+  is needed. Older installations retain the validated, backed-up upgrade and
+  protected recovery rules introduced in 0.10.0; this release does not add a
+  binary-only rollback path to 0.9.
+- **Exact source and artifacts.** Runtime remains
+  `5212fa59ee44fbee7eea0d85e7482933824ff775` (package **0.6.2**). Usage remains
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. Its Platform minimum
+  `^0.6.0` and SDK range `^1.2.0` remain accepted by the host's respective
+  minimum-version and SDK-range contracts. Every OS/source receipt records the
+  selected Platform bump commit and this same Runtime SHA.
+- **Signing and validation.** Dispatch `desktop-release.yml` from the selected
+  bump commit with `tag=v0.11.0`, the Runtime SHA above and `unsigned=false`.
+  Expected standard trust: macOS **signed + notarized**, Windows **unsigned: no
+  certificate**, Linux **n/a**. The implementation passed full CI with **5,957
+  passing, zero failing and 60 skipped tests**, plus 281 focused checks. An
+  isolated Windows candidate built and drained normally. Real native Codex called
+  the image tool in an in-flight heartbeat at 22:39 with legacy hours and sleep
+  metadata present; normal worker close preserved its held job, and after a whole
+  Runtime restart the same native session called image status at 23:39 without
+  regenerating. This used synthetic private state; provider image execution and
+  Telegram delivery were covered by fixtures, with no live-profile test writes.
+  Release preparation also passed 62 focused knowledge-delivery, packaging and
+  public App SDK checks with the 0.11 host and revised bundles.
+  The release workflow gates packaged startup, offline App activation, source
+  identity, signatures and public assets. Publication results: the `v0.11.0`
+  GitHub prerelease and its Actions run.
+
 ## 2026-10-26 — Desktop 0.10.2 standard preview: DM continuity after sleep and restart
 
 Selected distribution: Desktop **0.10.2 standard-profile preview**, App SDK
