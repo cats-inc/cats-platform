@@ -1,5 +1,9 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-140: Catlas curates assist content and titles through host-validated output](140-let-catlas-curate-assist-content-and-titles-through-host-validated-output.md)
+  — accepted direction, 2026-10-27; Catlas titles conversations, curates greeting
+  and chip catalogs and recommends grounded next actions, returning data only.
+  No web, no settings UI; Chat → Code → Work, Lobby ≤3. SPEC-131 awaits review.
 - [ADR-139: One Desktop-managed remote ingress](139-manage-one-desktop-remote-ingress.md)
   — accepted direction, 2026-10-24; shared ngrok/Funnel/existing-proxy setup for
   Mobile, Telegram webhook and external Apps. Provider completion and acceptance pending.
@@ -217,7 +221,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-10-25 (ADR-138 first account-core batch recorded; ADR-139 implementation pending.)*
+*Last updated: 2026-10-27 (ADR-140 Catlas curated assist and titles direction recorded.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*
 

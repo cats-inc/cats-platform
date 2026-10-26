@@ -1,5 +1,15 @@
 # Documentation Index
 
+[Catlas curated assist and conversation titles](specs/SPEC-131-catlas-curated-assist-and-conversation-titles.md)
+records the 2026-10-27 owner direction: when active, Catlas titles new
+conversations, curates greeting and chip catalogs and recommends next actions
+grounded in pending work, returning data that Platform validates and writes.
+No web access and no settings UI; Chat, then Code, then Work; the Lobby shows at
+most three. [ADR-140](decisions/140-let-catlas-curate-assist-content-and-titles-through-host-validated-output.md)
+records the authority rules and
+[provider CLI session titles](research/2026-10-27-provider-cli-session-titles.md)
+why provider titles are not the source. Draft; not implemented.
+
 [Desktop identity and remote access](plans/PLAN-122-desktop-identity-and-remote-access-rollout.md)
 records the 2026-10-24 owner-confirmed direction: Google or email/password first
 Admin, same-account method completion, native Desktop OAuth and one managed
@@ -582,6 +592,6 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-10-20*
+*Last updated: 2026-10-27*
 
 - Studio: [SDK specification](specs/SPEC-119-app-image-generation.md) and [delivery plan](plans/PLAN-111-app-image-generation.md).

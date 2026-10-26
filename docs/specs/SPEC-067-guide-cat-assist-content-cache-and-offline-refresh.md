@@ -272,7 +272,9 @@ runtime-backed model:
 - that local hydration updates freshness and invalidation metadata without
   blocking entry
 - runtime-backed assist generation and mission/run provenance remain follow-up
-  work after the v1 storage/read-path slice
+  work after the v1 storage/read-path slice; Catlas-generated catalogs and
+  recommendations are specified by
+  [SPEC-131](./SPEC-131-catlas-curated-assist-and-conversation-titles.md)
 
 ### V1 Scope Key
 
