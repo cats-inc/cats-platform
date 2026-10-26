@@ -12,7 +12,48 @@
 
 ## Overview
 
+### Owner-requested tools are independent of proactive schedules — 2026-10-26
+
+- Owner correction: the preceding diagnosis found why tools disappeared, but
+  incorrectly accepted the implementation's coupling of manual requests to
+  proactive hours. Its manual-denial instructions/assertions are superseded here.
+- `manual` image tools, ledger admission, deferred dispatch, attachment and
+  Telegram delivery ignore companion sleep/disabled life loop and proactive image
+  hours. An existing requested job can finish while its original DM is watching.
+  Autonomous images still obey rhythm, sleepUntil, proactive mode and image hours.
+- Cat/account/policy revocation, archived DM, original binding/revision, expiry,
+  daily/total budgets and minimum interval still apply to both trigger modes.
+  Expiry now has its own safe reason, `image_policy_expired`. Stored policy fields,
+  revision and used allowance are retained; no settings rewrite or rebind needed.
+- Settings label the existing window **Proactive image hours / 主動生圖時段**
+  and explain that requested images are independent of sleep and those hours.
+- Baseline regression run: all seven selected tests failed against main, including
+  the real Telegram bridge/MCP path at 22:39 and held jobs resumed after sleep.
+  Final focused checks pass **251/251**: image/Telegram suites 103, architecture/
+  Runtime MCP/heartbeat/fanout 142, image UI/localization 6. Server build and test
+  TypeScript check pass. Full-suite validation remains the PR CI gate.
+- Windows candidate snapshot `62fbb9ddfd097c66aa53cfe00ca41f805d6b6b6647e3b5329b92061e86346bcb`
+  with Runtime `5212fa59ee44fbee7eea0d85e7482933824ff775` builds server, renderer,
+  Desktop and Runtime, reaches first-run selection and drains both services with
+  exit 0. All five changed production files match the snapshot byte-for-byte.
+- Real native Codex acceptance uses the candidate's compiled code and private
+  synthetic DM/policy with the life loop disabled and future sleepUntil. At 22:39,
+  outside the 07:00–22:00 proactive window, the model actually calls image_generate
+  and admits one held job. After the complete Runtime and image-tool host restart,
+  the same Runtime/provider session actually calls image_status at 23:39, reading
+  the original job without a second generation. No provider image execution or
+  Telegram network send was run; fixture integration separately proves attachment
+  and delivery after sleep. Private evidence: `.cat-image-manual-live-20261026/report.json`.
+  Owned processes stopped and temporary provider credentials were removed.
+- Publication is not included. The next authorized release must use the next
+  minor line (0.11) because the existing window's persisted configuration meaning
+  changes to proactive-only. No data-format rewrite is needed: expiry, exact
+  binding identity, policy revision and budget history remain intact.
+
 ### Image availability diagnosis — 2026-10-26
+
+Historical diagnostic validation; its manual scheduling behavior was rejected by
+the owner and is superseded by the correction above.
 
 - Read-only CDP inspection of installed Desktop 0.10.2 confirmed the owner's
   22:39 Asia/Taipei image request reached the existing DM/Runtime session. The

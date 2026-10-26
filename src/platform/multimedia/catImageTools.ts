@@ -18,6 +18,7 @@ export interface CatImageTurnResolution {
 const instructions = 'Current Cats image-tool availability (supersedes earlier snapshots): available. '
   + 'You can use the cats image_generate tool when an image would be useful to your owner. '
   + 'It queues one image with a caption for this conversation and its authorized Telegram binding. '
+  + 'Owner-requested images use manual permission independently of companion sleep and proactive image hours. '
   + 'For an owner image request, use cats image_generate. Provider-native image tools and imagegen skills '
   + 'do not create the Cats image job or its Telegram delivery. '
   + 'End this turn after queuing: generation starts after your turn releases its resources. '
@@ -25,8 +26,9 @@ const instructions = 'Current Cats image-tool availability (supersedes earlier s
 
 function unavailableInstructions(reason: NonNullable<CatImageTurnResolution['unavailable']>): string {
   return 'Current Cats image-tool availability (supersedes earlier snapshots): configured, but unavailable for this turn. '
-    + `Reason: ${reason.code}. Allowed generation and delivery window: ${reason.windowStart}–${reason.windowEnd} (${reason.timeZone}); `
-    + `permission expires at ${reason.expiresAt}. The window applies to both owner requests and proactive images. `
+    + `Reason: ${reason.code}. Proactive image window: ${reason.windowStart}–${reason.windowEnd} (${reason.timeZone}); `
+    + `permission expires at ${reason.expiresAt}. Companion sleep and this window only limit autonomous images. `
+    + 'Owner-requested images use manual permission at any hour; expiry and other authorization limits still apply. '
     + 'Explain this current restriction in the owner conversation language when asked for an image. '
     + 'Do not claim the platform integration is missing. Do not search for plugins or use provider-native image tools as a workaround. '
     + 'Do not promise an automatically scheduled image; a later request rechecks availability. '

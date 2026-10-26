@@ -89,7 +89,12 @@ async function fixture(t, outcomes = ['sent']) {
     holdMediaRead() { let release; mediaReadGate = new Promise(resolve => { release = resolve; }); return release; },
     mediaReadEntered: () => mediaReadEntered,
     revokeAccount() { accountActive = false; },
-    get service() { return service; }, advance(ms) { clock = new Date(clock.getTime() + ms); },
+    get service() { return service; }, now: () => clock, advance(ms) { clock = new Date(clock.getTime() + ms); },
+    async setLife(profile) {
+      dependencies.companionStore ??= new MemoryCompanionBoxStore();
+      await dependencies.companionStore.updateLifeProfile(catId, profile, clock);
+      const state = await store.read(); state.cats.find(row => row.id === catId).roles = ['companion']; await store.write(state);
+    },
     setSourceBusy(value) { sourceBusy = value; }, setTurnActive(value) { hostTurnActive = value; },
     async restart() { await service.close(); service = createChatCatImages(dependencies); },
     async generate() {
@@ -111,7 +116,9 @@ for (const trigger of ['manual', 'heartbeat']) test(`${trigger} image request re
     state.cats.find(cat => cat.id === f.catId).roles = ['companion'];
     await f.store.write(state);
   }
-  await f.service.save('account-owner', f.catId, f.input);
+  await f.service.save('account-owner', f.catId, { ...f.input, ...(trigger === 'manual'
+    ? { timeZone: 'Asia/Taipei', windowStart: '07:00', windowEnd: '22:00' } : {}) });
+  if (trigger === 'manual') f.advance(6 * 3600_000 + 39 * 60_000);
   f.setSourceBusy(false);
   let endpoint;
   let sourceCalls = 0;
@@ -153,7 +160,7 @@ for (const trigger of ['manual', 'heartbeat']) test(`${trigger} image request re
     await bridgeTelegramWebhookToRoom({ update, receipt, context, telegramRelay: f.relay, runtimeClient,
       roomBridge: createChatTelegramRoomBridge({ chatStore: f.store, companionStore,
         platformDir: f.root, chatStatePath: path.join(f.root, 'chat.json'), runtimeDataDir: path.join(f.root, 'runtime') }),
-      now: () => NOW });
+      now: f.now });
   } else {
     f.relay.linkRoom({ roomId: f.laneId, bindingId: f.binding.id, chatId: '12345' });
     const speak = createCompanionHeartbeatSpeaker({ chatStore: f.store, runtimeClient, companionStore,
@@ -164,6 +171,10 @@ for (const trigger of ['manual', 'heartbeat']) test(`${trigger} image request re
   }
   assert.equal(sourceCalls, 1);
   assert.ok(suppliedTools.includes('cats'), 'the actual Telegram reply must receive the platform image tools');
+  if (trigger === 'manual') {
+    f.advance(3600_000); // The requested image finishes after bedtime, at 23:39.
+    await f.store.write(setChannelStatus(await f.store.read(), f.laneId, 'watching', f.now()));
+  }
   for (let n = 0; n < 200 && !(await f.service.status('account-owner', f.catId)).jobs.some(job => job.status === 'succeeded'); n++) {
     await new Promise(resolve => setTimeout(resolve, 10));
   }
@@ -326,11 +337,10 @@ test('a stale routing grant requires explicit owner confirmation without resetti
   assert.ok(await f.service.resolveTurn('source-chat', f.turn));
 });
 
-for (const trigger of ['manual', 'heartbeat']) test(`${trigger} receives the real policy restriction and recovers after restart and the window opens`, async t => {
+test('a proactive image receives the real policy restriction and recovers after restart and the window opens', async t => {
   const f = await fixture(t);
   await f.service.save('account-owner', f.catId, { ...f.input, timeZone: 'Asia/Taipei', windowStart: '07:00', windowEnd: '22:00' });
-  const turn = { context: { metadata: { ...f.turn.context.metadata,
-    supervisionSurface: trigger === 'manual' ? 'runtime-dispatch' : 'companion-heartbeat' } } };
+  const turn = f.turn;
   f.advance(6 * 3600_000 + 39 * 60_000); // 22:39 Asia/Taipei, matching the installed failure.
   const blocked = await f.service.resolveTurn('source-chat', turn);
   assert.equal(blocked.unavailable.code, 'image_policy_outside_window');
@@ -371,13 +381,62 @@ for (const restriction of ['disabled', 'mode', 'expired', 'account', 'profile'])
   if (restriction === 'account') f.revokeAccount();
   if (restriction === 'profile') f.runtimeClient.getImageCapabilities = async () => ({ ...capabilities, profiles: [] });
   const blocked = await f.service.resolveTurn('source-chat', f.turn);
-  const code = restriction === 'expired' ? 'image_policy_outside_window'
+  const code = restriction === 'expired' ? 'image_policy_expired'
     : restriction === 'profile' ? 'image_profile_unavailable' : 'image_not_authorized';
   assert.equal(blocked.unavailable.code, code);
   await assert.rejects(f.service.service().submit(blocked.caller,
     { requestId: randomUUID(), prompt: 'Cat', caption: '' }, true), new RegExp(code));
   const status = await f.service.status('account-owner', f.catId);
   assert.equal(status.jobs.length, 0); assert.equal(status.budget.totalUsed, 0); assert.equal(f.posted(), 0);
+});
+
+for (const life of [
+  { enabled: false },
+  { enabled: true, sleepUntil: '2026-10-24T23:00:00Z' },
+  { enabled: true, bedtime: '00:00', wakeWindowStart: '23:00', wakeWindowEnd: '23:01' },
+]) test(`sleeping companion still receives and delivers an owner's requested image: ${JSON.stringify(life)}`, async t => {
+  const f = await fixture(t); await f.setLife(life);
+  await f.service.save('account-owner', f.catId, f.input);
+  assert.equal((await f.service.resolveTurn('source-chat', f.turn)).unavailable.code, 'image_not_authorized',
+    'the same sleeping profile still blocks autonomous images');
+  const turn = { context: { metadata: { ...f.turn.context.metadata, supervisionSurface: 'runtime-dispatch' } } };
+  const resolved = await f.service.resolveTurn('source-chat', turn);
+  assert.equal(resolved.unavailable, undefined);
+  const job = await f.service.service().submit(resolved.caller,
+    { requestId: randomUUID(), prompt: 'Bedtime cat', caption: '晚安' }, true);
+  await f.store.write(setChannelStatus(await f.store.read(), f.laneId, 'watching', f.now()));
+  await f.restart(); f.setSourceBusy(false); f.setTurnActive(false);
+  for (let n = 0; n < 100 && (await f.service.status('account-owner', f.catId)).jobs[0].status !== 'succeeded'; n++) {
+    await f.service.tick(); await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  await f.service.tick();
+  assert.equal((await f.service.status('account-owner', f.catId)).jobs[0].delivery.status, 'sent');
+  assert.equal(f.posted(), 1); assert.equal(f.sends.length, 1);
+  assert.equal((await f.service.status('account-owner', f.catId)).jobs[0].id, job.id);
+});
+
+for (const revoke of ['account', 'binding', 'policy', 'cat', 'archive', 'expired']) test(`a requested image still respects ${revoke} revocation after the Cat sleeps`, async t => {
+  const f = await fixture(t); await f.service.save('account-owner', f.catId, f.input);
+  const turn = { context: { metadata: { ...f.turn.context.metadata, supervisionSurface: 'runtime-dispatch' } } };
+  const resolved = await f.service.resolveTurn('source-chat', turn);
+  const job = await f.service.service().submit(resolved.caller,
+    { requestId: randomUUID(), prompt: 'Bedtime cat', caption: '晚安' }, true);
+  f.service.service().releaseTurn('source-chat');
+  for (let n = 0; n < 100 && (await f.service.status('account-owner', f.catId)).jobs[0].status !== 'succeeded'; n++) {
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  await f.store.write(setChannelStatus(await f.store.read(), f.laneId, 'watching', f.now()));
+  if (revoke === 'account') f.revokeAccount();
+  if (revoke === 'binding') f.relay.linkRoom({ roomId: 'another-lane', bindingId: f.binding.id, chatId: '12345' });
+  if (revoke === 'policy') await f.service.save('account-owner', f.catId, { revision: 1, enabled: false });
+  if (revoke === 'cat') {
+    const state = await f.store.read(); state.cats.find(row => row.id === f.catId).status = 'disabled'; await f.store.write(state);
+  }
+  if (revoke === 'archive') await f.store.write(setChannelStatus(await f.store.read(), f.laneId, 'archived', f.now()));
+  if (revoke === 'expired') f.advance(10 * 86400_000);
+  await f.service.tick();
+  assert.equal(f.sends.length, 0); assert.equal(f.posted(), 1);
+  assert.equal((await f.service.status('account-owner', f.catId)).jobs.find(row => row.id === job.id).delivery.status, 'suppressed');
 });
 
 test('owner can stop an uncertain delivery after relinking, preserve its unknown outcome and unblock reset', async t => {

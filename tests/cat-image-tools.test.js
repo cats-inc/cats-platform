@@ -135,6 +135,7 @@ test('a blocked turn explains its current restriction, revokes stale tools, and 
   assert.match(sent[1].instructions, /07:00.*22:00.*Asia\/Taipei/);
   assert.match(sent[1].instructions, /Keep speaking the owner language/);
   assert.match(sent[1].instructions, /Do not search for plugins/);
+  assert.match(sent[1].instructions, /Owner-requested images use manual permission at any hour/);
   assert.equal((await f.call(original.auth.token, 'tools/list')).status, 401);
   blocked = false;
   await client.sendMessage('source-chat', 'next morning', options);

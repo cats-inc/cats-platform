@@ -56,7 +56,8 @@ export function createChatCatImages(dependencies: Dependencies) {
 
   async function authorizeCaller(caller: CatImageCaller) {
     const source = await context(caller.catId);
-    if (stopped || !source.cat || source.cat.status !== 'active' || source.lane?.status !== 'active'
+    if (stopped || !source.cat || source.cat.status !== 'active' || !source.lane
+      || (source.lane.status !== 'active' && !(caller.trigger === 'manual' && source.lane.status === 'watching'))
       || source.core.ownerProfile.actorId !== caller.ownerActorId
       || buildChatConversationId(source.lane.id) !== caller.conversationId) throw new MediaImageError('image_not_authorized', 403);
     if (dependencies.authStore && !(dependencies.config.auth?.mode === 'unsafe_disabled'
@@ -66,11 +67,10 @@ export function createChatCatImages(dependencies: Dependencies) {
         || !auth.state.memberships.some(membership => membership.accountId === caller.accountId
           && membership.roles.some(role => role === 'owner' || role === 'admin'))) throw new MediaImageError('image_not_authorized', 403);
     }
-    if (isCompanionCat(source.cat) && dependencies.companionStore) {
+    if (caller.trigger === 'heartbeat' && isCompanionCat(source.cat) && dependencies.companionStore) {
       const life = await dependencies.companionStore.getLifeProfile(source.cat.id);
       if ((life.sleepUntil && Date.parse(life.sleepUntil) > now().getTime())
-        || (caller.trigger === 'heartbeat' && (!life.enabled
-          || resolveCompanionDesiredPresence(life, source.cat.id, now()).presence !== 'awake'))) {
+        || !life.enabled || resolveCompanionDesiredPresence(life, source.cat.id, now()).presence !== 'awake') {
         throw new MediaImageError('image_not_authorized', 403);
       }
     }
@@ -117,7 +117,9 @@ export function createChatCatImages(dependencies: Dependencies) {
             await updateChatState(dependencies.chatStore, latest => {
               assertClaim();
               const lane = latest.channels.find(row => row.id === source.lane!.id);
-              if (!lane || lane.status !== 'active') throw new MediaImageError('image_not_authorized', 403);
+              if (!lane || (lane.status !== 'active' && !(job.trigger === 'manual' && lane.status === 'watching'))) {
+                throw new MediaImageError('image_not_authorized', 403);
+              }
               const existing = lane.messages.find(row => row.metadata.catImageJobId === job.id);
               if (existing) { messageId = existing.id; return latest; }
               const next = appendMessage(latest, lane.id, { senderKind: 'agent', senderName: source.cat!.name, body: job.caption }, now(), {
