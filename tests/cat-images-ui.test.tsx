@@ -24,6 +24,8 @@ test('owner explicitly enables finite image permission and gets save feedback on
   t.after(() => { cleanup(); globalThis.fetch = originalFetch; resetTestDom(); });
   const view = render(<I18nProvider locale="en"><CatImagePolicyCard catId="cat-one" /></I18nProvider>);
   await waitFor(() => view.getByLabelText('Allow image generation'));
+  assert.ok(view.getByText(/Sleep and proactive hours do not limit images you request/));
+  assert.ok(view.getByText('Proactive image hours'));
   assert.equal((view.getByLabelText('Allow image generation') as HTMLInputElement).checked, false);
   assert.equal((view.getByLabelText('Allow occasional images from this Cat') as HTMLInputElement).checked, false);
   fireEvent.click(view.getByLabelText('Allow image generation'));

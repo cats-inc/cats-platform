@@ -130,6 +130,11 @@ export function authorizeCatImagePolicy(policy: CatImagePolicy | undefined, call
     || !(caller.trigger === 'heartbeat' ? policy.proactive : policy.manual)) {
     throw new MediaImageError('image_not_authorized', 403);
   }
-  if (!isImagePolicyTime(policy, now)) throw new MediaImageError('image_policy_outside_window', 403);
+  if (!Number.isFinite(now.getTime()) || Date.parse(policy.expiresAt) <= now.getTime()) {
+    throw new MediaImageError('image_policy_expired', 403);
+  }
+  if (caller.trigger === 'heartbeat' && !isImagePolicyTime(policy, now)) {
+    throw new MediaImageError('image_policy_outside_window', 403);
+  }
   return policy;
 }

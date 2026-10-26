@@ -115,7 +115,7 @@ Mission／Work Item，也不新增第二份工作真相。
 | FR-03 Cat identity | caller Cat/account/conversation/session 由 host-issued context 建立；模型不能傳 App scope、owner ID、原始路徑或 Runtime credentials 取得能力 |
 | FR-04 Role separation | Boss/admin、companion role、Studio 安裝皆不自動賦予生圖權；授權可授予普通 Cat，主動觸發另要求 active companion 與有效私訊 |
 | FR-05 Capability | 只提供 Runtime 已啟用操作與 target，再與 caller 政策交集；查詢不 probe CLI、不產圖。提交重新檢查；不得偷偷換 provider、模型、effort 或 operation |
-| FR-06 Policy | 主動生圖預設關閉；owner 授予有限政策。明確請求生圖與主動生圖為不同 trigger mode；授權一者不暗含另一者或傳送權 |
+| FR-06 Policy | 主動生圖預設關閉；owner 授予有限政策。明確請求生圖與主動生圖為不同 trigger mode；授權一者不暗含另一者或傳送權。作息／主動生圖時段只約束 heartbeat；manual 請求及其生成／送達不受睡眠或主動時段限制，仍驗證期限／額度／間隔及原 scope |
 | FR-07 Durable budget | admission 原子執行 request dedupe、政策 revision 檢查、每日／總次數及間隔預留、建立 job 與固定 Runtime ID；跨 caller 併發不能超額 |
 | FR-08 Idempotency | 同 caller/request ID + 相同 canonical payload 回傳原 job；不同 payload conflict。payload 包含 operation、target、prompt 及授權的輸出脈絡 |
 | FR-09 Execution | 第一階段只投遞 Runtime 現有 `{id, instance, prompt}`；呼叫者不能傳 shell args、執行 cwd、檔案 destination 或擴大原生工具清單 |
@@ -125,7 +125,7 @@ Mission／Work Item，也不新增第二份工作真相。
 | FR-13 Verified asset | 從 matching receipt 取得原檔，驗證 MIME、大小、尺寸及 hash，原子保存後才標 succeeded；以 asset ID 引用，無任意 filesystem read |
 | FR-14 Access | read/list/cancel/reference 驗證 owner、initiator scope 或明確 sharing grant；猜 job/asset ID 不取得資料。Studio 不自動取得 Cat 全部作品 |
 | FR-15 Attachment | 圖片以同一 Cat 身分附到既有私訊。資料含來源 job、asset、Cat/account、conversation、trigger、policy revision，避免被當成其他 owner turn 的回覆 |
-| FR-16 Delivery admission | 圖片成功不等於允許送出；建立與執行傳送時重查 Cat/policy、對話、owner、binding identity／revision 及傳送時段，不跟著預設 bot 漂移 |
+| FR-16 Delivery admission | 圖片成功不等於允許送出；建立與執行傳送時重查 Cat/policy、對話、owner、binding identity／revision；主動圖片另查作息與主動傳送時段。manual 工作可在 DM watching 時送達，封存／停用／撤權仍拒絕；不跟著預設 bot 漂移 |
 | FR-17 Durable delivery | message 與 delivery intent 以可恢復交易或同一冪等 command 建立；eventHub 丟失／程序重啟仍可處理。重複 completion 不增加圖片訊息或 logical intent |
 | FR-18 Truthful receipt | 依 Telegram 回執實際 status 判定成功。確定未送達且可重試的失敗使用同 asset 退避；不明結果保留 uncertain，須明確 owner retry，不能宣稱 exactly-once |
 | FR-19 Lifecycle | 卸載 Studio 撤銷 Studio scope，不撤銷 Cat grant／刪掉 Cat 資產。關閉 Cat 不影響 Studio；有 pending delivery 的 asset 不被 retention 提前移除 |
@@ -152,7 +152,8 @@ Mission／Work Item，也不新增第二份工作真相。
 - 已設定的 Cat 生圖政策若因時段、到期、trigger mode、帳號、binding 或 Runtime
   capability 而受限，受監督回合取得當次安全原因及政策時段／時區／到期時間；
   不再將 admission 拒絕靜默變成「沒有平台整合」。該回合不發工具 grant，也不預留
-  額度或自動排程；時段同樣約束 owner 明確請求及主動生圖。下回合重新檢查，
+  額度或自動排程；時段僅約束主動生圖，manual 與 heartbeat 均驗證政策期限。
+  陪伴作息與 sleepUntil 同樣只限制主動圖片，owner 請求不因此失去工具。下回合重新檢查，
   恢復時重新發送正式 descriptor；受限時明確替換舊 descriptor，包含 host 重啟後
   留在 Runtime 的舊憑證。非適用對話／session 仍不能取得 Cat image scope。
 - owner/admin 路由為 `/api/cats/:catId/image-policy` 與同 Cat 下的 image／cancel／retry。
@@ -164,8 +165,8 @@ Mission／Work Item，也不新增第二份工作真相。
 - Cat 圖片附件只含受管 ref、hash、MIME 與尺寸；owner image route 每次驗證 account／
   owner／Cat scope。圖片顯示於原對話，普通 transport fanout 不再代送此 durable intent。
 - delivery 在 side effect 前取得持久 attempt claim。append 前後、外送前及 Telegram
-  完成讀檔後都重查 claim；最後 network 邊界重查完整 owner／Cat／睡眠／conversation／
-  binding revision。過期 sending 為 uncertain，需明確重送；只有 explicit API 429
+  完成讀檔後都重查 claim；最後 network 邊界重查完整 owner／Cat／conversation／
+  binding revision，主動工作另查睡眠／時段。過期 sending 為 uncertain，需明確重送；只有 explicit API 429
   自動有限重試。正常關機只 drain 已開始工作，不抑制仍待送的圖片。
 - reset 透過持久 maintenance fence，拒絕 active／未確認 generation 及 sending／uncertain
   delivery；owner 可明確停止 uncertain 的後續外送，留下 `abandonedAt` 並清除舊 claim，
@@ -175,7 +176,7 @@ Mission／Work Item，也不新增第二份工作真相。
 | Record | 必要內容 |
 | --- | --- |
 | Trusted caller | `kind: app | cat`、account／actor、受信 App installation 或 Cat/session、最小 tool grant |
-| Cat image policy | policy ID/revision、Cat/account、manual/proactive modes、operation／target、正整數 daily/total limits、min interval、allowed windows、IANA timezone、expiry、enabled/revoked、允許的 conversation/binding |
+| Cat image policy | policy ID/revision、Cat/account、manual/proactive modes、operation／target、正整數 daily/total limits、min interval、proactive windows、IANA timezone、expiry、enabled/revoked、允許的 conversation/binding |
 | Image intent/job | stable ID/request ID、initiator、trigger source、canonical request/hash、policy snapshot／reservation、Runtime ID、generation state、取消意圖、safe error、output asset |
 | Asset | stable ID、owner／origin scope、verified MIME/bytes/dimensions/hash、managed location、sharing grants／references；公開投影不含 path |
 | Delivery intent | stable key（job/asset/conversation/binding）、immutable payload reference、binding revision、pending/sending/sent/failed/uncertain/suppressed、attempts、Telegram message IDs、safe reason |
@@ -209,7 +210,7 @@ succeeded，delivery 為 failed 或 uncertain；後續 retry 不再呼叫 provid
 - completion、訊息與 intent 以 stable keys 防重；pending/sending 重啟時，已開始但
   未確認的 Telegram 發送標 uncertain，不直接回 pending。
 - Telegram 確定失敗的 retry 遵守 bounded attempts／retry-after；每次重查送出權限。
-  失效 binding、owner sleep 或政策撤銷時暫停／抑制送達，不改選別的收件人。
+  失效 binding 或政策撤銷時暫停／抑制送達；owner sleep 只抑制主動圖片，不改選別的收件人。
 - pending/uncertain 的資產必須仍可讀。刪除需先解除待送引用或明確取消，不能留下
   會在恢復時讀不到檔案的 intent。
 
