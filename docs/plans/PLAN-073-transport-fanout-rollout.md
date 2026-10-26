@@ -217,6 +217,25 @@ backend; UI surface can land in a follow-up.
 | Date | Update |
 |------|--------|
 | 2026-04-22 | Plan created alongside ADR-080 / SPEC-081 and research note. |
+| 2026-10-27 | Corrected source-bridge reply completeness: ordinary Telegram turns and product-choice callbacks now send all visible DM assistant segments in transcript order after completion, chunk full text, preserve each photo/caption, and attach choice buttons once. Fanout still skips the source binding; heartbeats and service-managed generated images keep their own delivery path. No persisted schema change, profile rewrite, historical backfill or version bump. The reported four-segment omission reproduced before the fix (6 of 7 initial regression cases failed); 186 focused bridge, webhook/fanout, polling, media, image and consumer checks pass after the fix. Validation details follow below. |
+
+### Source-bridge correction validation (2026-10-27)
+
+- 140 focused JavaScript tests and 46 TypeScript tests pass. The latter also pass
+  through the CI test bundler; server compilation and the test TypeScript check pass.
+- The real HTTP webhook, Chat room adapter, transcript persistence and fanout
+  subscriber produce the same four messages, in order, through a fake Telegram
+  delivery client. Repeating the accepted update is ignored without another send.
+- Source candidate digest `abf8c18b81974a224d28679a7acf6dc2e4d134bfa38bf0ac37fb5606279442ea`
+  built Runtime/server/host/renderer and displayed the initial provider-selection
+  page. The same HTTP regression passes against that candidate's compiled server;
+  all three changed production inputs match the worktree bytes. Runtime pin:
+  `5212fa59ee44fbee7eea0d85e7482933824ff775`.
+- Candidate instance `c7caa873f22d5eda2142b919299e8b2c` drained normally with exit 0
+  at `2026-10-26T18:34:50.282Z`; its Runtime and Platform services report stopped.
+  This verifies isolated source behavior, not installed-release or live-bot delivery.
+  No provider request, real Telegram send or controlling-profile test write was used.
+- Full-suite CI remains the merge gate; focused checks do not replace it.
 
 ---
 

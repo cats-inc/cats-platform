@@ -4,6 +4,7 @@ import type { RuntimeClient } from '../../runtime/client.js';
 import type { CatsMemoryService } from '../../memory/index.js';
 import type {
   TelegramDeliveryReceipt,
+  TelegramDeliveryRequest,
   TelegramInlineKeyboardMarkup,
   TelegramMessagePayload,
   TelegramRelayContext,
@@ -1116,31 +1117,74 @@ function restoreSelection<TState extends TelegramRoomBridgeState>(
   };
 }
 
-function buildTelegramReply<TState extends TelegramRoomBridgeState>(input: {
-  roomBridge: TelegramRoomBridge<TState>;
-  state: TState;
-  roomId: string;
-  messageCountBeforeDispatch: number;
-}): { text: string; photo: TransportPhoto | null } {
-  const channel = input.roomBridge.readRoom(input.state, input.roomId);
-  // A heartbeat that landed during this turn is already mirrored by the transport
-  // fanout; picking it as the reply would send it to Telegram a second time.
-  const newMessages = channel.messages
-    .slice(input.messageCountBeforeDispatch)
-    .filter((message) => message.metadata?.event !== COMPANION_HEARTBEAT_EVENT);
-  const replyMessage = [...newMessages].reverse().find((message) =>
-    message.senderKind === 'orchestrator' || message.senderKind === 'agent',
-  ) ?? [...newMessages].reverse().find((message) => message.senderKind === 'system') ?? null;
-  const photo = replyMessage ? readTransportPhoto(replyMessage) : null;
-  const replyBody = photo && replyMessage
-    ? stripTransportAttachmentBlock(replyMessage.body).trim()
-    : replyMessage?.body?.trim();
-  const combined = replyBody || (photo ? '' : 'The inbox has been routed into Cats Chat.');
-  const text = combined.length <= TELEGRAM_REPLY_LIMIT
-    ? combined
-    : `${combined.slice(0, TELEGRAM_REPLY_LIMIT - 1)}…`;
+interface TelegramRoomReply {
+  text: string;
+  photo: TransportPhoto | null;
+  replyMarkup: TelegramInlineKeyboardMarkup | null;
+}
 
-  return { text, photo };
+function buildTelegramReplies(messages: TelegramRoomBridgeMessage[]): TelegramRoomReply[] {
+  // Source-binding fanout is suppressed: this bridge owns every segment of the
+  // inbound turn, not only its last message. Independent publishers keep ownership
+  // of their heartbeats and generated images even if they land during the turn.
+  const candidates = messages.filter((message) =>
+    message.metadata?.event !== COMPANION_HEARTBEAT_EVENT
+    && message.metadata?.transportDeliveryManaged !== true);
+  const replies = candidates.filter((message) =>
+    message.senderKind === 'orchestrator'
+    || message.senderKind === 'agent'
+    || buildTelegramProductIntentReplyMarkup(message) !== null);
+  if (replies.length === 0) {
+    const fallback = [...candidates].reverse().find((message) => message.senderKind === 'system');
+    if (fallback) replies.push(fallback);
+  }
+  return replies.length > 0 ? replies.map((message) => {
+    const photo = readTransportPhoto(message);
+    return {
+      text: (photo ? stripTransportAttachmentBlock(message.body) : message.body).trim(),
+      photo,
+      replyMarkup: buildTelegramProductIntentReplyMarkup(message),
+    };
+  }).filter((reply) => reply.text.length > 0 || reply.photo !== null)
+    : [{ text: 'The inbox has been routed into Cats Chat.', photo: null, replyMarkup: null }];
+}
+
+async function deliverTelegramRoomReplies(input: {
+  messages: TelegramRoomBridgeMessage[];
+  relay: TelegramRelay;
+  context: TelegramRelayContext;
+  receipt: TelegramWebhookReceipt;
+  replyToMessageId?: string | null;
+}): Promise<TelegramDeliveryReceipt | null> {
+  let deliveryReceipt: TelegramDeliveryReceipt | null = null;
+  for (const reply of buildTelegramReplies(input.messages)) {
+    if (reply.photo) {
+      deliveryReceipt = await deliverTelegramPhoto({
+        relay: input.relay,
+        context: input.context,
+        conversationId: input.receipt.mappedConversationId,
+        chatId: input.receipt.chatId,
+        photo: reply.photo,
+        text: reply.text,
+        replyMarkup: reply.replyMarkup,
+      });
+      continue;
+    }
+    const chunks = chunkTelegramReply(reply.text, TELEGRAM_REPLY_LIMIT);
+    for (const [index, chunk] of chunks.entries()) {
+      const request: TelegramDeliveryRequest = {
+        operation: input.replyToMessageId && !deliveryReceipt ? 'reply' : 'send',
+        conversationId: input.receipt.mappedConversationId,
+        chatId: input.receipt.chatId,
+        replyToMessageId: !deliveryReceipt ? input.replyToMessageId : undefined,
+        text: chunk,
+        replyMarkup: index === chunks.length - 1 ? reply.replyMarkup : undefined,
+        disableLinkPreview: true,
+      };
+      deliveryReceipt = await input.relay.deliver({ request, context: input.context });
+    }
+  }
+  return deliveryReceipt;
 }
 
 function roomHasInboundMessage<TState extends TelegramRoomBridgeState>(input: {
@@ -1576,35 +1620,12 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
           .readRoom(persistedState, roomId)
           .messages
           .slice(messageCountBeforeDispatch);
-        const reply = buildTelegramReply({
-          roomBridge: input.roomBridge,
-          state: persistedState,
-          roomId,
-          messageCountBeforeDispatch,
-        });
-        if (reply.photo) {
-          deliveryReceipt = await deliverTelegramPhoto({
-            relay: input.telegramRelay,
-            context: input.context,
-            conversationId: input.receipt.mappedConversationId,
-            chatId: input.receipt.chatId,
-            photo: reply.photo,
-            text: reply.text,
-          });
-        }
-        const chunks = reply.photo ? [] : chunkTelegramReply(reply.text, TELEGRAM_REPLY_LIMIT);
-        for (const chunk of chunks) {
-          deliveryReceipt = await input.telegramRelay.deliver({
-            request: {
-              operation: 'send',
-              conversationId: input.receipt.mappedConversationId,
-              chatId: input.receipt.chatId,
-              text: chunk,
-              disableLinkPreview: true,
-            },
-            context: input.context,
-          });
-        }
+        deliveryReceipt = await deliverTelegramRoomReplies({
+          messages: appendedMessages,
+          relay: input.telegramRelay,
+          context: input.context,
+          receipt: input.receipt,
+        }) ?? deliveryReceipt;
 
         return {
           receipt: {
@@ -1659,54 +1680,13 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
         .messages
         .slice(messageCountBeforeDispatch);
 
-      const reply = buildTelegramReply({
-        roomBridge: input.roomBridge,
-        state: persistedState,
-        roomId,
-        messageCountBeforeDispatch,
+      const deliveryReceipt = await deliverTelegramRoomReplies({
+        messages: appendedMessages,
+        relay: input.telegramRelay,
+        context: input.context,
+        receipt: input.receipt,
+        replyToMessageId: input.receipt.messageId,
       });
-      let deliveryReceipt: TelegramDeliveryReceipt | null = null;
-      if (reply.photo) {
-        deliveryReceipt = await deliverTelegramPhoto({
-          relay: input.telegramRelay,
-          context: input.context,
-          conversationId: input.receipt.mappedConversationId,
-          chatId: input.receipt.chatId,
-          photo: reply.photo,
-          text: reply.text,
-        });
-      }
-      const chunks = reply.photo ? [] : chunkTelegramReply(reply.text, TELEGRAM_REPLY_LIMIT);
-      for (const chunk of chunks) {
-        deliveryReceipt = await input.telegramRelay.deliver({
-          request: {
-            operation: input.receipt.messageId && !deliveryReceipt ? 'reply' : 'send',
-            conversationId: input.receipt.mappedConversationId,
-            chatId: input.receipt.chatId,
-            replyToMessageId: !deliveryReceipt ? input.receipt.messageId : undefined,
-            text: chunk,
-            disableLinkPreview: true,
-          },
-          context: input.context,
-        });
-      }
-      for (const message of appendedMessages) {
-        const replyMarkup = buildTelegramProductIntentReplyMarkup(message);
-        if (!replyMarkup) {
-          continue;
-        }
-        deliveryReceipt = await input.telegramRelay.deliver({
-          request: {
-            operation: 'send',
-            conversationId: input.receipt.mappedConversationId,
-            chatId: input.receipt.chatId,
-            text: message.body,
-            replyMarkup,
-            disableLinkPreview: true,
-          },
-          context: input.context,
-        });
-      }
 
       return {
         receipt: {

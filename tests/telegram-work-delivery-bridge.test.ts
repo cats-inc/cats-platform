@@ -17,7 +17,12 @@ import test from 'node:test';
 import { MemoryCoreStore } from '../src/core/store.js';
 import { createDefaultCoreState } from '../src/core/model/index.js';
 import type { BotBindingRecord } from '../src/core/types.js';
-import { bridgeTelegramWebhookToRoom } from '../src/platform/transports/telegram/bridge.js';
+import {
+  bridgeTelegramWebhookToRoom,
+  buildTelegramImplicitProductIntentCallbackData,
+  type TelegramRoomBridge,
+  type TelegramRoomBridgeMessage,
+} from '../src/platform/transports/telegram/bridge.js';
 import type {
   TelegramDeliveryReceipt,
   TelegramDeliveryRequest,
@@ -367,6 +372,153 @@ test('a companion heartbeat that lands mid-turn is never re-sent as the Telegram
   assert.doesNotMatch(replies[0]!.detail ?? '', /windowsill/u);
   assert.match(replies[0]!.detail ?? '', /could not answer right now/u);
 });
+
+function candidateMessage(): TelegramRoomBridgeMessage {
+  return {
+    id: 'candidate-message', senderKind: 'system', senderName: 'Cats', body: 'Open Code?',
+    choices: [{ question: 'Open Code?', options: [
+      { id: 'confirm_code', label: 'Open Code' }, { id: 'decline', label: 'Keep chatting' },
+    ] }],
+    metadata: { implicitProductIntentCandidate: {
+      version: 1, candidateId: 'candidate-1', event: 'suggested',
+      source: { messageId: 'owner-message' }, candidate: { targetProduct: 'code' },
+    } },
+  };
+}
+
+async function deliverRoomMessages(
+  messages: TelegramRoomBridgeMessage[],
+  options: { callback?: boolean } = {},
+): Promise<TelegramDeliveryRequest[]> {
+  const history: TelegramRoomBridgeMessage[] = [
+    { senderKind: 'agent', senderName: 'Bridge Cat', body: 'An earlier reply.' },
+    ...(options.callback ? [candidateMessage()] : []),
+  ];
+  const state = {
+    selectedChannelId: 'channel-1', cats: [BRIDGE_CAT],
+    channels: [{ id: 'channel-1', title: 'Bridge Cat', messages: history }],
+  };
+  const roomBridge: TelegramRoomBridge<typeof state> = {
+    readState: async () => structuredClone(state),
+    writeState: async next => next,
+    findReusableRoomId: () => 'channel-1',
+    createRoom: () => assert.fail('the existing DM must be reused'),
+    readRoom: next => next.channels[0]!,
+    routeRoomMessage: async ({ state: next, choiceResponse }) => {
+      if (options.callback) assert.equal(choiceResponse?.sourceMessageId, 'candidate-message');
+      next.channels[0]!.messages.push(
+        { senderKind: 'user', senderName: 'Owner', body: 'The inbound message.' },
+        ...messages,
+      );
+      return { state: next };
+    },
+    buildRecoveryState: () => assert.fail('the turn should complete without recovery'),
+  };
+  const relay = createRecordingRelay([]);
+  const requests: TelegramDeliveryRequest[] = [];
+  const deliver = relay.deliver;
+  relay.deliver = async input => {
+    requests.push(input.request);
+    return deliver(input);
+  };
+  await bridgeTelegramWebhookToRoom({
+    update: options.callback ? callbackUpdate(buildTelegramImplicitProductIntentCallbackData({
+      sourceMessageId: 'owner-message', targetProduct: 'code', action: 'decline',
+    })) : workUpdate('show me a photo'),
+    receipt: acceptedReceipt(), context: relayContext(), roomBridge,
+    memoryService, runtimeClient, telegramRelay: relay, goldenPath: null,
+  });
+  return requests;
+}
+
+function replySegment(body: string, terminal = false): TelegramRoomBridgeMessage {
+  return { senderKind: 'agent', senderName: 'Bridge Cat', body,
+    metadata: { event: 'assistant_turn_segment', terminal } };
+}
+
+for (const callback of [false, true]) {
+  test(`all four DM reply segments reach Telegram once in order (${callback ? 'button' : 'message'})`, async () => {
+    const bodies = ['我來排一張照片。', '我再確認平台入口。', '查詢整合入口。', '這是最後的結果。'];
+    const requests = await deliverRoomMessages([
+      { senderKind: 'system', senderName: 'Runtime', body: 'session started' },
+      ...bodies.map((body, index) => replySegment(body, index === bodies.length - 1)),
+    ], { callback });
+    const replies = requests.filter(request => request.operation !== 'answer_callback');
+    assert.deepEqual(replies.map(request => request.text), bodies);
+    assert.deepEqual(replies.map(request => request.operation),
+      [callback ? 'send' : 'reply', 'send', 'send', 'send']);
+    assert.equal(replies[0]!.replyToMessageId ?? null, callback ? null : '55');
+    assert.ok(replies.slice(1).every(request => !request.replyToMessageId));
+  });
+}
+
+test('a long DM reply is chunked without discarding its tail', async () => {
+  const body = `${'長'.repeat(9000)}最後一句也要送達。`;
+  const requests = await deliverRoomMessages([replySegment(body, true)]);
+  assert.ok(requests.length > 1);
+  assert.equal(requests.map(request => request.text).join(''), body);
+  assert.ok(requests.every(request => (request.text?.length ?? 0) <= 4000));
+});
+
+test('an empty terminal segment does not send an empty Telegram message or hide earlier text', async () => {
+  const requests = await deliverRoomMessages([replySegment('I am here.'), replySegment('  ', true)]);
+  assert.deepEqual(requests.map(request => request.text), ['I am here.']);
+});
+
+test('a photo between DM reply segments keeps its caption and transcript order', async () => {
+  const photo = { path: '/album/sunset.png', fileName: 'sunset.png' };
+  const requests = await deliverRoomMessages([
+    replySegment('Here comes the beach.'),
+    { ...replySegment('A quiet sunset.'), metadata: { transportMedia: { kind: 'photo', ...photo } } },
+    replySegment('I saved you a spot.', true),
+  ]);
+  assert.deepEqual(requests.map(request => request.operation), ['reply', 'send_media', 'send']);
+  assert.equal(requests[0]!.text, 'Here comes the beach.');
+  assert.equal(requests[1]!.caption, 'A quiet sunset.');
+  assert.deepEqual(requests[1]!.mediaFile, photo);
+  assert.equal(requests[2]!.text, 'I saved you a spot.');
+});
+
+test('a concurrent heartbeat and a service-managed generated image are not sent again by the bridge', async () => {
+  const requests = await deliverRoomMessages([
+    replySegment('I queued your photo.'),
+    { ...replySegment('A greeting already mirrored by fanout.'),
+      metadata: { event: 'companion_heartbeat', origin: 'runtime' } },
+    { ...replySegment('A photo already delivered by the image service.'),
+      metadata: { event: 'cat_image_generated', transportDeliveryManaged: true,
+        transportMedia: { kind: 'photo', path: '/generated/photo.png', fileName: 'photo.png' } } },
+    replySegment('All done.', true),
+  ]);
+  assert.deepEqual(requests.map(request => request.text), ['I queued your photo.', 'All done.']);
+});
+
+for (const callback of [false, true]) {
+  test(`a product choice follows the DM reply once with its buttons (${callback ? 'button' : 'message'})`, async () => {
+    const requests = await deliverRoomMessages([
+      replySegment('Here are the next steps.', true), candidateMessage(),
+    ], { callback });
+    const replies = requests.filter(request => request.operation !== 'answer_callback');
+    assert.deepEqual(replies.map(request => request.text), ['Here are the next steps.', 'Open Code?']);
+    assert.equal(replies.filter(request => request.replyMarkup).length, 1);
+    assert.equal(replies[1]!.replyMarkup!.inline_keyboard[0]!.length, 2);
+  });
+}
+
+for (const longCaption of [false, true]) {
+  test(`a photo choice carries its buttons once (${longCaption ? 'long text' : 'caption'})`, async () => {
+    const body = longCaption ? `${'長'.repeat(4500)}最後。` : 'Open Code?';
+    const prompt = candidateMessage();
+    const requests = await deliverRoomMessages([{
+      ...prompt, body,
+      metadata: { ...prompt.metadata,
+        transportMedia: { kind: 'photo', path: '/album/sunset.png', fileName: 'sunset.png' } },
+    }]);
+    assert.equal(requests[0]!.operation, 'send_media');
+    assert.equal(requests.map(request => request.caption ?? request.text ?? '').join(''), body);
+    assert.equal(requests.filter(request => request.replyMarkup).length, 1);
+    assert.ok(requests.at(-1)!.replyMarkup);
+  });
+}
 
 test('a reply carrying an album photo reaches Telegram as that photo, captioned with the reply', async () => {
   const log: RecordedCall[] = [];

@@ -454,8 +454,8 @@ Recent additions:
 - [PLAN-074](./plans/PLAN-074-cats-work-agent-supervision-rollout.md)
 - [SPEC-082](./specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md)
 - [ADR-082](./decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md)
-- [PLAN-073](./plans/PLAN-073-transport-fanout-rollout.md)
-- [SPEC-081](./specs/SPEC-081-transport-fanout-for-web-originated-messages.md)
+- [PLAN-073](./plans/PLAN-073-transport-fanout-rollout.md) — source-bridge DM segment completeness correction (2026-10-27)
+- [SPEC-081](./specs/SPEC-081-transport-fanout-for-web-originated-messages.md) — ordered complete DM replies, with source-binding duplicate suppression
 - [ADR-080](./decisions/080-fan-out-web-originated-messages-to-bound-transports.md)
 - [2026-04-23 Claude Orchestrator as Capability Shell](./research/2026-04-23-claude-orchestrator-as-capability-shell.md)
 - [2026-04-23 Codex Cats Work Agent Supervision Model](./research/2026-04-23-codex-cats-work-agent-supervision-model.md)
