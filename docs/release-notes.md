@@ -2,6 +2,50 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-26 — Desktop 0.10.2 standard preview: DM continuity after sleep and restart
+
+Selected distribution: Desktop **0.10.2 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**. This selects Desktop publication only;
+Platform/Runtime npm, launcher and optional Marketplace Apps retain their releases.
+
+- **One continuing DM.** Sleep releases the worker while retaining its Runtime
+  attachment. Compatible wake and service-restart paths resume the same native
+  provider conversation. Explicit execution-target changes take priority; a
+  failed compatible resume preserves the attachment and reports the error.
+  Model-only choices and older leases no longer cause unintended replacements.
+- **Context reaches autonomous turns.** Heartbeats receive the same DM's
+  transcript continuity package, Cat identity, response language and Cat/channel
+  checkpoints. Unspecified language follows the owner conversation. Filtered
+  memory facts, owner preferences and open loops now reach the model rather than
+  remaining only in hydration metadata. Memory failures retry without silently
+  sending a context-free greeting. Existing contextless sessions also receive
+  the bounded package on their next heartbeat after updating.
+- **Long conversations and compatibility.** The existing continuity package is
+  capped at 12,000 characters and uses a lossy digest for long history; this is
+  not lossless recall or completed high-level memory consolidation. This
+  compatible 0.10 patch adds no public API or stored-data format change. No reset,
+  Telegram relink or new migration is required. The validated, backed-up upgrade
+  and protected recovery rules from 0.10.0 still apply; binary-only rollback to
+  0.9 is not introduced.
+- **Exact source and artifacts.** Runtime remains
+  `5212fa59ee44fbee7eea0d85e7482933824ff775` (package **0.6.2**). Usage remains
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. Every OS/source receipt
+  records the selected Platform bump commit and this same Runtime SHA.
+- **Signing and validation.** Dispatch `desktop-release.yml` from the selected
+  bump commit with `tag=v0.10.2`, the Runtime SHA above and `unsigned=false`.
+  Expected standard trust: macOS **signed + notarized**, Windows **unsigned: no
+  certificate**, Linux **n/a**. The fix passed full CI with **5,933 passing,
+  zero failing and 60 skipped tests**. An isolated Windows source candidate
+  passed the focused compiled-output checks; real Codex acceptance preserved
+  native identity and recalled an unreplayed secret across worker sleep and a
+  whole Runtime restart. A new session's first heartbeat recalled the same DM's
+  meeting place and companion memory in Chinese. These used synthetic private
+  state, with no real Cat/Telegram writes. The release workflow gates packaged
+  startup, offline App activation, source identity, signatures and public assets.
+  Publication results: the `v0.10.2` GitHub prerelease and its Actions run.
+
 ## 2026-10-26 — Desktop 0.10.1 standard preview: companion wake and proactive messages
 
 Selected distribution: Desktop **0.10.1 standard-profile preview**, App SDK
