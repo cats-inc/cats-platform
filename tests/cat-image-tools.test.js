@@ -112,3 +112,54 @@ test('cancellation while resolving a tool grant cannot resurrect the originating
   await client.cancelSession('source-chat'); resolved();
   await assert.rejects(pending, /image_turn_cancelled/); assert.equal(sent, 0);
 });
+
+test('a blocked turn explains its current restriction, revokes stale tools, and recovers next turn', async t => {
+  let blocked = false;
+  const unavailable = { code: 'image_policy_outside_window', windowStart: '07:00', windowEnd: '22:00',
+    timeZone: 'Asia/Taipei', expiresAt: '2026-11-23T10:32:59.493Z' };
+  const f = await fixture(t, { async resolveTurn() { return { caller, actionId: 'one',
+    ...(blocked ? { unavailable } : {}) }; } });
+  const sent = [];
+  const client = f.tools.wrapClient({ async sendMessage(id, content, input) {
+    sent.push(input); return { segments: [] };
+  } });
+  const options = { instructions: 'Keep speaking the owner language.', mcpServers: [
+    { name: 'plugin-fixture', transport: 'http', url: 'http://127.0.0.1/plugin' },
+  ] };
+  await client.sendMessage('source-chat', 'first', options);
+  const original = sent[0].mcpServers.find(server => server.name === 'cats');
+  blocked = true;
+  await client.sendMessage('source-chat', 'late request', options);
+  assert.deepEqual(sent[1].mcpServers, options.mcpServers);
+  assert.match(sent[1].instructions, /image_policy_outside_window/);
+  assert.match(sent[1].instructions, /07:00.*22:00.*Asia\/Taipei/);
+  assert.match(sent[1].instructions, /Keep speaking the owner language/);
+  assert.match(sent[1].instructions, /Do not search for plugins/);
+  assert.equal((await f.call(original.auth.token, 'tools/list')).status, 401);
+  blocked = false;
+  await client.sendMessage('source-chat', 'next morning', options);
+  const recovered = sent[2].mcpServers.find(server => server.name === 'cats');
+  assert.ok(recovered); assert.notEqual(recovered.auth.token, original.auth.token);
+  assert.equal(sent[2].instructions.includes('image_policy_outside_window'), false);
+  assert.deepEqual(f.submitted, []);
+});
+
+test('a blocked first turn after host restart explicitly clears persisted tool credentials', async t => {
+  const f = await fixture(t, { async resolveTurn() { return { caller, actionId: 'one', unavailable: {
+    code: 'image_service_unavailable', windowStart: '07:00', windowEnd: '22:00', timeZone: 'Asia/Taipei',
+    expiresAt: '2026-11-23T10:32:59.493Z',
+  } }; } });
+  const client = f.tools.wrapClient({ async sendMessage(id, content, input) {
+    assert.deepEqual(input.mcpServers, []);
+    assert.match(input.instructions, /image_service_unavailable/); return { segments: [] };
+  } });
+  await client.sendMessage('source-chat', 'late request', {});
+});
+
+test('an unexpected grant resolution failure cannot silently send a context-free turn', async t => {
+  const f = await fixture(t, { async resolveTurn() { throw Error('private storage failure'); } });
+  let sent = false;
+  const client = f.tools.wrapClient({ async sendMessage() { sent = true; } });
+  await assert.rejects(client.sendMessage('source-chat', 'image please', {}), /image_service_unavailable/);
+  assert.equal(sent, false);
+});

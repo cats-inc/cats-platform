@@ -12,6 +12,47 @@
 
 ## Overview
 
+### Image availability diagnosis — 2026-10-26
+
+- Read-only CDP inspection of installed Desktop 0.10.2 confirmed the owner's
+  22:39 Asia/Taipei image request reached the existing DM/Runtime session. The
+  Runtime image targets were available, the original Telegram grant still matched,
+  and the daily budget was unused. The saved generation/delivery window ended at
+  22:00. No new image job was admitted.
+- `resolveTurn` caught `image_policy_outside_window` and returned the same null
+  as an unrelated conversation. The tool wrapper also swallowed unexpected grant
+  resolution errors. Both paths let the Cat infer that Platform image integration
+  was missing; this is distinct from the earlier same-room binding revision bug.
+- Configured but blocked turns now carry a sanitized reason and the existing
+  policy window/timezone/expiry in current-turn instructions, without an MCP grant,
+  budget reservation or generation. Manual and proactive policy limits remain in
+  force. Each subsequent turn checks again; no implicit deferred image is promised.
+- Blocked turns explicitly replace the old descriptor even after a host restart,
+  revoke any in-memory bearer, preserve other contributed servers and existing
+  instructions, and recover the formal image tool when admission becomes available.
+  Unexpected resolver failures fail the turn instead of sending without diagnostics.
+- Initial regression run against unchanged production code failed all six new
+  cases plus the updated stale-binding assertion. Final focused checks pass
+  **236/236** (image ledger/tools/Chat/App and Telegram delivery/relay 94;
+  architecture/dependencies/Runtime MCP client 107; heartbeat/fanout 35).
+  Server build and test TypeScript check pass. Full-suite validation remains the
+  PR CI gate; no persisted schema, SDK or Runtime contract changes.
+- Windows isolated source candidate builds Runtime, server, Desktop and renderer,
+  reaches provider-selection setup, and drains both services with exit 0. Its
+  Platform snapshot digest is `548718b1d0cb60f8ba3c99f516c18a087db2070a2dbd99e9d50f6d41e33411fe`,
+  with Runtime `5212fa59ee44fbee7eea0d85e7482933824ff775`. Both changed production
+  files match the snapshot byte-for-byte. This startup check alone is not the
+  image regression acceptance.
+- A separate real native Codex acceptance uses that candidate's compiled server
+  and Runtime with private synthetic policy/DM state. The first 22:39 turn replies
+  in Chinese with the actual 07:00–22:00 restriction and admits zero jobs. After a
+  complete Runtime and image-tool host restart, the same Runtime/provider session
+  at simulated 07:39 actually calls `cats.image_generate`, admitting one held job
+  with unchanged policy revision. No image execution or external delivery is run.
+  Evidence is retained privately in `.cat-image-availability-live-20261026/report.json`;
+  both Runtime processes stopped and the temporary provider credential copy was
+  removed. No live-profile writes or Telegram test messages were created.
+
 ### Telegram tool-delivery repair — 2026-10-24
 
 - Installed Desktop observation: an owner Telegram image request reached the Cat,
