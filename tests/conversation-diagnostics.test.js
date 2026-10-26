@@ -73,7 +73,11 @@ for (const originSurface of ['chat', 'code']) test(`${originSurface}: selected i
     },
     async closeSession() {}, async cancelSession() {},
     async sendMessage(_id, content) {
-      const relativePath = content.match(/- (\.cats-attachments\/[^\r\n]+)/u)?.[1];
+      // Working-memory summaries can quote a flattened earlier attachment block.
+      // The fixture reads the actual attachment from the current owner message.
+      assert.match(content, /Latest user message:\n/u);
+      const ownerMessage = content.split('Latest user message:\n').at(-1);
+      const relativePath = ownerMessage.match(/- (\.cats-attachments\/[^\r\n]+)/u)?.[1];
       assert.ok(relativePath, content);
       delivered = await readFile(join(platformDir, relativePath), 'utf8');
       return { segments: [{ kind: 'text', text: 'Read diagnostic evidence.', toolName: null, toolId: null }], inputTokens: 1, outputTokens: 1, tokensUsed: 2 };

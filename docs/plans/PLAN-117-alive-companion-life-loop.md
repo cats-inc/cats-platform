@@ -125,6 +125,12 @@
     修正後通過；最終私有證據在 workspace parent `.dm-continuity-live-20261026-6/report.json`。
     probe 自有 Runtime 已停止、複製的登入已刪除。沒有寫入將將或傳送 Telegram 訊息；
     尚未聲稱安裝版已更新，也不聲稱已完成高階長對話濃縮或無損召回。本次不升版。
+  - PR #321 首次完整 CI 的 5 個失敗均為下游 fixture／斷言：明確 retarget 不再先 resume
+    舊 provider，Telegram duty stub 補上 resume，診斷附件 stub 從當前 owner 訊息取路徑
+    （channel checkpoint 可能含單行化的舊附件片段）。相關 3 檔 18 個本機通過，其中
+    2 個 JS 檔 8 個也在候選編譯輸出通過；production 來源未變動。
+    額外以同一候選重啟整個私有 Runtime 程序，原生 ID 與未重送暗號的召回仍通過，
+    證據 `.dm-continuity-live-20261026-7/report.json`；自有服務與暫存登入均清理完成。
 
 - 2026-10-26：修復原生 CLI 新會話的首次主動回合死等。
   - 實機 Desktop 0.10.0 的陪伴貓在 10/25 08:53 自動建立會話後，lease 持續

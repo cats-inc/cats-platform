@@ -53,6 +53,7 @@ function createRuntimeStub() {
   let next = 1;
   return {
     closed: [],
+    resumed: [],
     async createSession(input) {
       return { id: `session-${next++}`, provider: input.provider, model: null, status: 'ready', cwd: null };
     },
@@ -61,6 +62,10 @@ function createRuntimeStub() {
     },
     async closeSession(sessionId) {
       this.closed.push(sessionId);
+    },
+    async resumeSession(sessionId) {
+      this.resumed.push(sessionId);
+      return { id: sessionId, provider: 'claude', model: null, status: 'ready', cwd: null };
     },
     async getHealth() {
       return { reachable: true, status: 'ok' };
@@ -91,6 +96,7 @@ test('/sleep and /wake from a transport share the owner intent the life loop rea
 
   assert.deepEqual(await setCatDirectLanePresence(dependencies, catId, 'awake'), { outcome: 'changed' });
   assert.equal((await companionStore.getLifeProfile(catId)).sleepUntil, null);
+  assert.deepEqual(dependencies.runtimeClient.resumed, ['session-1']);
   assert.deepEqual(
     (await companionActivityStore.list(catId)).map((event) => event.metadata),
     [
