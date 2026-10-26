@@ -13,6 +13,7 @@ import {
 import { WORK_MCP_PROFILE_ID } from '../../../shared/catMcpProfiles.js';
 import { isCompanionCat } from '../../../shared/companionRole.js';
 import { COMPANION_PROFILE_METADATA_KEYS } from '../companion/profileReadModel.js';
+import type { MemoryRetrievalContext } from '../../../platform/memory/contracts.js';
 import { buildChoiceResponseBody } from '../shared/messageChoices.js';
 
 /**
@@ -27,6 +28,8 @@ export interface PromptCompanionContext {
   derived?: ReadonlyArray<{ title: string | null; metadata: Record<string, unknown> }>;
   /** SPEC-124 FR-29: the owner's photo folder, shown to companion Cats only. */
   photoAlbum?: string | null;
+  /** Policy-filtered retrieval output; raw/excluded records are never rendered. */
+  retrieval?: Pick<MemoryRetrievalContext, 'facts' | 'ownerProfileHints' | 'openLoops'> | null;
 }
 
 const COMPANION_PROMPT_TEXT_LIMIT = 280;
@@ -505,6 +508,12 @@ export function formatCompanionContext(
     .map((note) => truncateContinuityText(note, COMPANION_PROMPT_TEXT_LIMIT))
     .filter((note) => note.length > 0)
     .map((note) => `- ${note}`);
+  const boundedLines = (values: readonly string[], limit: number) => [...new Set(values
+    .map((value) => truncateContinuityText(value.trim(), COMPANION_PROMPT_TEXT_LIMIT))
+    .filter(Boolean))].slice(0, limit).map((value) => `- ${value}`);
+  const retrievedFacts = boundedLines(context.retrieval?.facts ?? [], 6);
+  const ownerHints = boundedLines(context.retrieval?.ownerProfileHints ?? [], 4);
+  const openLoops = boundedLines(context.retrieval?.openLoops ?? [], 4);
   // A post published earlier in this turn is already in the store, so the Cat can
   // acknowledge it truthfully instead of guessing whether the decision ran.
   const postLines = (context.derived ?? [])
@@ -540,6 +549,9 @@ export function formatCompanionContext(
     && postLines.length === 0
     && !expressionGuidance
     && albumLines.length === 0
+    && retrievedFacts.length === 0
+    && ownerHints.length === 0
+    && openLoops.length === 0
   ) {
     return null;
   }
@@ -548,6 +560,9 @@ export function formatCompanionContext(
     'Your companion memory (curated by your owner; use it naturally, do not recite it):',
     ...memoryLines,
     ...(noteLines.length > 0 ? ['Owner notes:', ...noteLines] : []),
+    ...(retrievedFacts.length > 0 ? ['Relevant recalled context:', ...retrievedFacts] : []),
+    ...(ownerHints.length > 0 ? ['Owner preferences:', ...ownerHints] : []),
+    ...(openLoops.length > 0 ? ['Open loops:', ...openLoops] : []),
     ...(postLines.length > 0 ? ['Your recent profile posts (newest first):', ...postLines] : []),
     ...(expressionGuidance ? [`Expression style: ${expressionGuidance}`] : []),
     ...albumLines,
@@ -691,6 +706,38 @@ export function buildTargetedChatHandoffPackage(input: {
   };
 }
 
+/** Shared identity and memory for owner-driven turns and autonomous heartbeats. */
+export function buildCatConversationContext(
+  channel: ChatChannelView,
+  orchestrator: GlobalOrchestratorSummary,
+  cat: PromptParticipant,
+  companionContext?: PromptCompanionContext | null,
+): string {
+  const roleLabel = cat.roles.length > 0
+    ? cat.roles.join(', ')
+    : cat.roleHint?.trim() || (cat.sourceKind === 'cat' ? 'general' : 'temporary');
+  return joinPromptSections([
+    cat.sourceKind === 'cat'
+      ? `You are ${cat.name}, a chat participant inside the Chat module for Cats Inc.`
+      : `You are ${cat.name}, a temporary chat participant for this room inside the Chat module for Cats Inc.`,
+    `Your provider is ${cat.execution.target.provider}${cat.execution.target.model ? ` and model ${cat.execution.target.model}` : ''}.`,
+    cat.sourceKind === 'cat'
+      ? `Your roles in this chat: ${roleLabel}.`
+      : `Your role in this room: ${roleLabel}.`,
+    languageInstruction(channel.responseLanguage),
+    `Global orchestrator guidance:\n${orchestrator.systemPrompt}`,
+    `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
+    `Your memory checkpoint:\n${formatMemoryCheckpoint(cat.memory)}`,
+    channel.workingMemory
+      ? `Conversation memory checkpoint:\n${formatMemoryCheckpoint(channel.workingMemory)}`
+      : null,
+    companionContext
+      ? formatCompanionContext(companionContext, cat.sourceKind === 'cat' && isCompanionCat(cat))
+      : null,
+    `Channel roster:\n${formatParticipantRoster(channel)}`,
+  ]);
+}
+
 export function buildCatPrompt(
   channel: ChatChannelView,
   orchestrator: GlobalOrchestratorSummary,
@@ -700,23 +747,12 @@ export function buildCatPrompt(
   companionContext?: PromptCompanionContext | null,
   options: { coordinator?: boolean } = {},
 ): string {
-  const roleLabel = cat.roles.length > 0
-    ? cat.roles.join(', ')
-    : cat.roleHint?.trim() || (cat.sourceKind === 'cat' ? 'general' : 'temporary');
   const recentMessages = routingContext?.recentMessages ?? channel.messages;
   const sourceLabel = sourceMessage.senderKind === 'user'
     ? 'Latest user message'
     : 'Latest routed handoff';
-  const transportGuidance = transportInstruction(routingContext?.transport);
-
   return joinPromptSections([
-    cat.sourceKind === 'cat'
-      ? `You are ${cat.name}, a chat participant inside the Chat module for Cats Inc.`
-      : `You are ${cat.name}, a temporary chat participant for this room inside the Chat module for Cats Inc.`,
-    `Your provider is ${cat.execution.target.provider}${cat.execution.target.model ? ` and model ${cat.execution.target.model}` : ''}.`,
-    cat.sourceKind === 'cat'
-      ? `Your roles in this chat: ${roleLabel}.`
-      : `Your role in this room: ${roleLabel}.`,
+    buildCatConversationContext(channel, orchestrator, cat, companionContext),
     'The system layer has already routed this turn to you. Do not reinterpret target selection.',
     routingContext?.reason ?? 'System routing selected you for the current turn.',
     routingContext?.sourceParticipantName
@@ -725,16 +761,8 @@ export function buildCatPrompt(
     options.coordinator
       ? 'You coordinate this conversation: when a teammate is better placed to continue, mention them with @Name and Chat routes the next turn to them.'
       : 'Work inside the current chat context and answer as a teammate. Mentioning a teammate does not route a turn to them.',
-    transportGuidance,
+    transportInstruction(routingContext?.transport),
     'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.',
-    languageInstruction(channel.responseLanguage),
-    `Global orchestrator guidance:\n${orchestrator.systemPrompt}`,
-    `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
-    `Your memory checkpoint:\n${formatMemoryCheckpoint(cat.memory)}`,
-    companionContext
-      ? formatCompanionContext(companionContext, cat.sourceKind === 'cat' && isCompanionCat(cat))
-      : null,
-    `Channel roster:\n${formatParticipantRoster(channel)}`,
     `Recent messages:\n${formatRecentMessages(recentMessages)}`,
     `${sourceLabel}:\n${sourceMessage.body}`,
     'Reply with the work product or the next useful observation.',

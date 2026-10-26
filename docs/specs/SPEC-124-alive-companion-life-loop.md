@@ -90,11 +90,14 @@
     - `initializing` 尚無 session id：最多等待 5 分鐘；owner 回合仍在處理時保留其喚醒權。
       無 owner 回合且逾時後，走既有 channel activation 與失敗退避；此等待計時在重啟後重算。
     - 其他 lease，或 session 已關閉：走 channel activation 路徑喚醒。
+      DM 入睡保留 session id，execution target 相容時原生 resume；失敗時保留 attachment
+      並回報錯誤，不靜默重建。明確 retarget 的選擇優先於舊 session 的 resume。
     - runtime 無法連線：不做事。
 11. FR-11：喚醒失敗時退避 5 分鐘。錯誤訊息符合 `Max sessions (N) reached` 時原因為
     `no_capacity`，其他為 `wake_failed`。同一段失敗只記一次動態紀錄。
 12. FR-12：應睡著而 lease 是 `ready` 或 `initializing` 時：lane 最後一則訊息在 15 分鐘內
-    則等待；否則走 channel deactivate 路徑讓他入睡。
+    則等待；否則走 channel deactivate 路徑讓他入睡。DM lease 保留原 session id 供醒來
+    resume，worker 與容量仍釋放；一般多人房間的 deactivate 行為不變。
 13. FR-13：喚醒或入睡成功時寫一筆 `presence_changed` 動態紀錄，`metadata` 含
     `presence`（`awake` / `sleeping`）與 `reason`（`rhythm`、`keep_alive`、`rest`、`owner`、
     `idle`、`no_capacity`、`wake_failed`）。session 原本就活著時不寫。
@@ -119,7 +122,12 @@
 20. FR-20：lane 最後一則訊息在 10 分鐘內時，延後到那則訊息後 10 分鐘再重新抽一般心跳
     （已經在聊天就不再道早安）；session 正在處理訊息時延後 4 分鐘。
 21. FR-21：心跳回合送進同一個 session，內容包含本地時間、醒了多久、主人上次說話距今多久、
-    陪伴記憶摘要，並要求不想說話時只回 `[quiet]`。
+    同一 DM 的對話承接包、共用角色與 Cat/channel checkpoint、回覆語言及陪伴記憶，
+    並要求不想說話時只回 `[quiet]`。未指定語言時依主人交談語言，不依隱藏提示語言。
+    承接包沿用 SPEC-069 的 12,000 字元上限與長對話 digest，不讀取其他 channel 或逐一
+    串接底層 session。檢索記憶只呈現已篩選的 facts、owner hints、open loops，限制數量
+    與每則長度；不把 raw/excluded records 直接交給模型。記憶 hydration 失敗回報 failed
+    並退避，不降級成缺少脈絡的問候。這不等於高階摘要／完整長期召回已完成。
 22. FR-22：回覆是 `[quiet]`（忽略大小寫與前後空白）時丟棄；否則以該 Cat 的一般訊息
     （origin `runtime`，metadata `companionHeartbeat`）寫入 lane，並發出 `message_added`，
     由 transport fanout 鏡像到 Telegram。成功的心跳（含 `[quiet]`）會在 mutation gate

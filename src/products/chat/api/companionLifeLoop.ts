@@ -20,11 +20,18 @@ import { resolveFullResponseText } from '../../../platform/runtime/client.js';
 import { sendSupervisedRuntimeMessage } from '../../../platform/supervision/runtimeBoundary.js';
 import {
   appendMessage,
+  buildChannelView,
   requireChannel,
   resolveLeadParticipantLease,
   setChannelParticipantLease,
 } from '../state/model/index.js';
-import { formatCompanionContext } from '../state/prompts.js';
+import {
+  buildCatConversationContext,
+  buildDefaultChatContinuityTransplantPackage,
+} from '../state/prompts.js';
+import { resolveRuntimeEnvelopeForTarget } from '../state/runtimeTargeting.js';
+import { findAssignedParticipant } from '../shared/channelParticipants.js';
+import { mergeRuntimeInvocationContextMetadata } from '../state/runtime-dispatch/context.js';
 import { runWithSessionTurnGate } from '../state/runtime-dispatch/sessionTurnGate.js';
 import { updateChatState } from '../state/store.js';
 import {
@@ -56,34 +63,50 @@ export function createCompanionHeartbeatSpeaker(
       return 'failed';
     }
     const lane = requireChannel(state, request.laneId);
-    const companionSession = await dependencies.companionStore.buildSessionContext({
-      cat,
-      channel: {
-        id: lane.id,
-        title: lane.title,
-        topic: lane.topic,
-        roomRouting: lane.roomRouting,
-        workingMemory: lane.workingMemory,
-      },
-      requestedSkills: [],
-      transport: null,
-      now: request.now,
-    }).catch(() => null);
-    const content = buildCompanionHeartbeatPrompt({
-      kind: request.kind,
-      now: request.now,
-      awakeSince: request.awakeSince,
-      lastOwnerMessageAt: request.lastOwnerMessageAt,
-      companionContext: companionSession ? formatCompanionContext(companionSession, true) : null,
-      hasPhotoAlbum: request.kind !== 'bedtime' && Boolean(companionSession?.photoAlbum),
-    });
-
+    const channel = buildChannelView(state, lane.id);
+    const participant = findAssignedParticipant(channel, request.catId);
+    const lease = resolveLeadParticipantLease(lane);
+    if (!participant || lane.status !== 'active' || lease?.participantId !== cat.id
+      || lease.sessionId !== request.sessionId || !['ready', 'initializing'].includes(lease.status)) {
+      return 'failed';
+    }
+    let companionSession: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>['companionSession'];
     let replyText: string;
     try {
+      const envelope = await resolveRuntimeEnvelopeForTarget(state, channel, {
+        participantKind: 'cat', participantId: cat.id, participantName: cat.name,
+        sessionId: request.sessionId, laneId: lease.laneId ?? null,
+      }, undefined, undefined, request.now, dependencies.companionStore);
+      companionSession = envelope.companionSession;
+      // Always bounded to the same product conversation. This also repairs
+      // sessions created by older builds without continuity, including quiet
+      // first turns that leave no visible message to mark hydration complete.
+      const continuity = buildDefaultChatContinuityTransplantPackage(lane.messages);
+      const content = buildCompanionHeartbeatPrompt({
+        kind: request.kind,
+        now: request.now,
+        awakeSince: request.awakeSince,
+        lastOwnerMessageAt: request.lastOwnerMessageAt,
+        companionContext: [
+          buildCatConversationContext(channel, state.globalOrchestrator, participant, companionSession),
+          !channel.responseLanguage || channel.responseLanguage === 'unspecified'
+            ? 'Use the language of your owner\'s conversation. The language of this hidden system prompt is not a language preference.'
+            : null,
+        ].filter(Boolean).join('\n\n'),
+        hasPhotoAlbum: request.kind !== 'bedtime' && Boolean(companionSession?.photoAlbum),
+      });
       const result = await runWithSessionTurnGate(request.sessionId, () => sendSupervisedRuntimeMessage({
         runtimeClient: dependencies.runtimeClient,
         sessionId: request.sessionId,
         content,
+        input: {
+          instructions: continuity.instructions ?? undefined,
+          context: mergeRuntimeInvocationContextMetadata(envelope.context, {
+            continuityMode: continuity.mode,
+            continuityDeliveryMode: continuity.instructions ? 'turn_instructions' : 'none',
+          }),
+          skills: envelope.skills,
+        },
         supervision: {
           product: 'cats-chat',
           surface: 'companion-heartbeat',

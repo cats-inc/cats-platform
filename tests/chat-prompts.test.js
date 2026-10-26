@@ -11,9 +11,30 @@ import {
   buildCatPrompt,
   buildBoundedRecentContextInstructions,
   buildDefaultChatContinuityTransplantPackage,
+  formatCompanionContext,
 } from '../build/server/products/chat/state/prompts.js';
 import { buildPromptForTarget } from '../build/server/products/chat/state/runtimeTargeting.js';
 import { buildChatLaneId } from '../build/server/shared/chatCoreIds.js';
+
+test('companion prompt delivers filtered retrieval facts, owner hints and open loops with bounds', () => {
+  const context = {
+    memory: [], ownerNotes: [], responseProfile: { expressionMode: 'anthropomorphic' },
+    retrieval: {
+      facts: ['The owner is preparing a balcony garden.', 'The owner is preparing a balcony garden.'],
+      ownerProfileHints: ['Prefers warm, concise conversation.'],
+      openLoops: ['Ask how the seedlings are doing.'],
+      excludedMemories: [{ content: 'PRIVATE EXCLUDED RECORD' }],
+    },
+  };
+  const prompt = formatCompanionContext(context, true);
+  assert.match(prompt, /The owner is preparing a balcony garden/u);
+  assert.match(prompt, /Prefers warm, concise conversation/u);
+  assert.match(prompt, /Ask how the seedlings are doing/u);
+  assert.doesNotMatch(prompt, /PRIVATE EXCLUDED RECORD/u);
+  assert.equal(prompt.split('The owner is preparing a balcony garden.').length - 1, 1);
+  context.retrieval.facts = Array.from({ length: 100 }, () => 'x'.repeat(10_000));
+  assert.ok(formatCompanionContext(context, true).length < 4_000);
+});
 
 function createChannel() {
   return {

@@ -15,6 +15,7 @@ import { closeSessionIds, collectActiveChannelSessionIds } from '../routeSession
 import type { ChatApiDependencies } from '../routeSupport.js';
 import { publishRoomMutation } from '../transportEventPublisher.js';
 import { notifyStreamTargetChanged } from './streamTargetSignal.js';
+import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 
 /**
  * Channel wake/sleep bodies shared by the REST routes and the SPEC-124
@@ -97,7 +98,9 @@ export async function deactivateChannelLocked(
         nextState,
         channelId,
         assignment.participantId,
-        { status: 'closed', sessionId: null },
+        // A DM sleep releases the worker while retaining its native resume
+        // identity. Reset/retarget own the explicit replacement boundary.
+        { status: 'closed', sessionId: isDirectLaneChannel(channel) ? attachment.sessionId : null },
         now,
       );
     }

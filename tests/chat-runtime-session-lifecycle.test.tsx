@@ -400,10 +400,10 @@ test('direct-message dispatch can replace a stale lease after explicit retarget 
   const channel = requireChannel(captured.result.state, channelId);
   const lease = resolveParticipantLeaseAttachment(channel, participantId);
 
-  assert.deepEqual(resumeCalls, ['session-direct-1']);
+  assert.deepEqual(resumeCalls, [], 'explicit retarget must not first resume the old provider');
   assert.equal(createCalls, 2);
   assert.deepEqual(sentSessionIds, ['session-direct-1', 'session-direct-2']);
-  assert.deepEqual(closeCalls, []);
+  assert.deepEqual(closeCalls, ['session-direct-1']);
   assert.equal(
     channel.messages.filter((message) => message.metadata.event === 'session_started').length,
     2,
@@ -415,7 +415,7 @@ test('direct-message dispatch can replace a stale lease after explicit retarget 
   assert.equal(lease?.model, 'gpt-5.4');
   assert.equal(lease?.status, 'ready');
   assert.equal(lease?.lastError, null);
-  assert.equal(captured.warnings.length, 1);
+  assert.equal(captured.warnings.length, 0);
 });
 
 test('dispatch merge preserves ready lease advancement for the same runtime session', () => {
@@ -792,7 +792,7 @@ test('direct-message room-entry wake can replace a stale lease after explicit re
   const channel = requireChannel(captured.result.state, channelId);
   const lease = resolveParticipantLeaseAttachment(channel, participantId);
 
-  assert.deepEqual(resumeCalls, ['session-direct-1']);
+  assert.deepEqual(resumeCalls, [], 'explicit retarget must not first resume the old provider');
   assert.equal(runtimeClient.createCalls, 1);
   assert.equal(captured.result.result?.status, 'started');
   assert.equal(captured.result.result?.sessionId, 'session-direct-2');
@@ -801,5 +801,5 @@ test('direct-message room-entry wake can replace a stale lease after explicit re
   assert.equal(lease?.model, 'gpt-5.4');
   assert.equal(lease?.status, 'ready');
   assert.equal(lease?.lastError, null);
-  assert.equal(captured.warnings.length, 1);
+  assert.equal(captured.warnings.length, 0);
 });

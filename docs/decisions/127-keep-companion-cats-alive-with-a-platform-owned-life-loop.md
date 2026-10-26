@@ -39,6 +39,17 @@ owner 要的是一隻「看起來活著、也會睡覺」的陪伴貓：綁好 T
   上 Cat participant 的 lease。Desktop 私訊與 Telegram 私訊共用同一個 lane
   （Telegram bridge 依 `defaultRecipientId` 重用），所以兩邊看到的是同一隻貓、同一段記憶。
 - 主動開口一律在這個 session 內發生，不另開 session。這是與 SPEC-094 排程的根本差別。
+- 入睡只關閉 worker、釋放容量，保留 DM lease 的 session id。醒來且 execution target
+  相容時，透過 Runtime resume 接回同一個 provider-native session；resume 失敗保留
+  原 attachment 並顯示錯誤，不能靜默換成空白 session。明確重設或 retarget 才更換。
+- 2026-10-26 修正：每個主動回合也帶入同一 DM 的產品對話承接包，以及與一般回合共用
+  的角色、回覆語言、Cat/channel checkpoint、已篩選陪伴記憶。這讓明確更換的 session
+  或舊版本建立但漏帶歷史的 session 都能接續同一 conversation。語言未指定時依主人
+  的交談語言；隱藏心跳提示本身的英文不是語言偏好。
+- 承接包沿用 ADR-068 / SPEC-069 的 12,000 字元上限：短對話原文，長對話使用既有
+  digest 與近期內容。讀取來源是同一產品 conversation 的 transcript，不串接各底層
+  session 的原始歷史，也不宣稱這個有損 digest 已完成高階記憶濃縮或無損長期召回。
+  原生 resume 保留 provider 的既有脈絡與 compaction；跨 session 的持久記憶仍由 Cats 擁有。
 
 ### 2. 由平台擁有的 life loop 維持作息與清醒
 

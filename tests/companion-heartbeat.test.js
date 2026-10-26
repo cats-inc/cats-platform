@@ -8,7 +8,7 @@ import test from 'node:test';
 import { createServer } from '../build/server/app/server/index.js';
 import { FileChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { MemoryCompanionBoxStore } from '../build/server/products/chat/state/companion-box/memoryStore.js';
-import { resolveLeadParticipantLease, setChannelParticipantLease } from '../build/server/products/chat/state/model/index.js';
+import { appendMessage, createChannel, resolveLeadParticipantLease, setChannelParticipantLease } from '../build/server/products/chat/state/model/index.js';
 import { createCompanionHeartbeatSpeaker } from '../build/server/products/chat/api/companionLifeLoop.js';
 import {
   buildCompanionHeartbeatPrompt,
@@ -21,6 +21,10 @@ import {
   runWithSessionTurnGate,
 } from '../build/server/products/chat/state/runtime-dispatch/sessionTurnGate.js';
 import { createMemoryCompanionActivityStore } from '../build/server/products/chat/companion/activityStore.js';
+import { activateChannelLocked, deactivateChannelLocked } from '../build/server/products/chat/api/resources/channelActivation.js';
+import { createCatsMemoryService, MemoryCanonicalMemoryStore } from '../build/server/platform/memory/index.js';
+import { createChatMemorySurface } from '../build/server/products/chat/state/memoryAdapter.js';
+import { createMemoryAwareCompanionBoxStore } from '../build/server/products/chat/state/companionMemoryAdapter.js';
 import {
   createAuthenticatedTestSession,
   createTestAuthConfig,
@@ -285,6 +289,8 @@ function createHeartbeatRuntimeStub(workingDir) {
   let nextSession = 1;
   const stub = {
     sentMessages: [],
+    createdSessionIds: [],
+    resumedSessionIds: [],
     heartbeatReply: '[quiet]',
     ownerReply: 'Purr, I am here.',
     async getHealth() {
@@ -307,6 +313,7 @@ function createHeartbeatRuntimeStub(workingDir) {
     },
     async createSession(input) {
       const id = `session-${nextSession++}`;
+      stub.createdSessionIds.push(id);
       return {
         id,
         provider: input.provider,
@@ -318,8 +325,12 @@ function createHeartbeatRuntimeStub(workingDir) {
     async observeSession(sessionId) {
       return { session: { id: sessionId, status: 'ready' } };
     },
-    async sendMessage(sessionId, content) {
-      stub.sentMessages.push({ sessionId, content });
+    async resumeSession(sessionId) {
+      stub.resumedSessionIds.push(sessionId);
+      return { id: sessionId, provider: 'claude', model: null, status: 'ready', cwd: null };
+    },
+    async sendMessage(sessionId, content, options) {
+      stub.sentMessages.push({ sessionId, content, options });
       const text = content.startsWith('[Cats heartbeat') ? stub.heartbeatReply : stub.ownerReply;
       return {
         segments: [{ kind: 'text', text, toolName: null, toolId: null }],
@@ -435,6 +446,161 @@ test('heartbeat speaker: a quiet Cat leaves the lane untouched', async () => {
       (await chatStore.read()).channels.find((channel) => channel.id === lane.id).messages.length,
       before,
     );
+  });
+});
+
+test('heartbeat carries the same DM conversation, identity and language even before an owner turn in this session', async () => {
+  await withHeartbeatServer(async ({ cat, lane, sessionId, now, runtimeClient, chatStore, speak }) => {
+    let state = await chatStore.read();
+    state.globalOrchestrator.systemPrompt = 'Be a gentle, attentive companion.';
+    state.cats.find((row) => row.id === cat.id).memory.facts = ['Our seaside bench is blue.'];
+    state = appendMessage(state, lane.id, { senderKind: 'user', senderName: 'Owner', body: '晚安，明天陪我去海邊。' }, now).state;
+    state = appendMessage(state, lane.id, { senderKind: 'agent', senderName: cat.name, body: '好呀，我會陪你。' }, now, {
+      metadata: { event: 'assistant_turn_segment', targetId: cat.id, targetKind: 'cat', sessionId: 'old-session' },
+    }).state;
+    state.channels.find((row) => row.id === lane.id).responseLanguage = 'unspecified';
+    state = createChannel(state, { title: 'Unrelated conversation', topic: '', originSurface: 'chat' }, now);
+    state = appendMessage(state, state.selectedChannelId, {
+      senderKind: 'user', senderName: 'Owner', body: 'UNRELATED_PRIVATE_CONVERSATION_SECRET',
+    }, now).state;
+    await chatStore.write(state);
+    await speak({ catId: cat.id, laneId: lane.id, sessionId, kind: 'wake', now, awakeSince: now, lastOwnerMessageAt: now });
+    const sent = runtimeClient.sentMessages.at(-1);
+    const prompt = `${sent.content}\n${sent.options?.instructions ?? ''}`;
+    assert.match(prompt, /晚安，明天陪我去海邊。/u);
+    assert.match(prompt, /好呀，我會陪你。/u);
+    assert.doesNotMatch(prompt, /UNRELATED_PRIVATE_CONVERSATION_SECRET/u);
+    assert.match(prompt, /You are Mochi/u);
+    assert.match(prompt, /gentle, attentive companion/u);
+    assert.match(prompt, /Our seaside bench is blue/u);
+    assert.match(prompt, /language.*owner.*conversation/iu);
+    assert.doesNotMatch(prompt, /Reply to the user in English/u);
+    assert.equal(sent.options.context.metadata.channelId, lane.id);
+    assert.equal(sent.options.context.metadata.conversationId, `conversation-channel-${lane.id}`);
+    assert.equal(sent.options.context.metadata.continuityDeliveryMode, 'turn_instructions');
+  }, { initialStatus: 'initializing' });
+});
+
+test('heartbeat honors an explicit response language and carries bounded continuity for a long DM', async () => {
+  await withHeartbeatServer(async ({ cat, lane, sessionId, now, runtimeClient, chatStore, speak }) => {
+    const state = await chatStore.read();
+    const channel = state.channels.find((row) => row.id === lane.id);
+    channel.responseLanguage = 'ja';
+    channel.messages.push(...Array.from({ length: 300 }, (_, index) => ({
+      id: `history-${index}`, channelId: lane.id, senderKind: index % 2 ? 'agent' : 'user',
+      senderName: index % 2 ? cat.name : 'Owner', body: `turn-${index}: ${'a long memory '.repeat(30)}`,
+      createdAt: now.toISOString(), metadata: { sessionId: `old-session-${index}` }, mentions: [], usage: null,
+    })));
+    await chatStore.write(state);
+    await speak({ catId: cat.id, laneId: lane.id, sessionId, kind: 'regular', now, awakeSince: now, lastOwnerMessageAt: now });
+    const sent = runtimeClient.sentMessages.at(-1);
+    assert.match(sent.content, /Reply to the user in Japanese/u);
+    assert.ok(sent.options.instructions.length <= 12_000);
+    assert.match(sent.options.instructions, /turn-299/u);
+    assert.match(sent.options.instructions, /Earlier continuity digest/u);
+    assert.doesNotMatch(sent.options.instructions, /old-session-/u, 'package comes from the product transcript, not raw runtime sessions');
+  });
+});
+
+test('heartbeat stops instead of silently omitting companion memory when hydration fails', async () => {
+  await withHeartbeatServer(async ({ cat, lane, sessionId, now, runtimeClient, companionStore, speak }) => {
+    companionStore.buildSessionContext = async () => { throw new Error('memory unavailable'); };
+    assert.equal(await speak({ catId: cat.id, laneId: lane.id, sessionId, kind: 'wake', now,
+      awakeSince: null, lastOwnerMessageAt: null }), 'failed');
+    assert.equal(runtimeClient.sentMessages.length, 0);
+  });
+});
+
+test('DM sleep, disk-store restart and wake resume the original session before a contextual heartbeat', async () => {
+  await withHeartbeatServer(async ({ cat, lane, sessionId, now, runtimeClient, chatStore, companionStore, config }) => {
+    const append = appendMessage(await chatStore.read(), lane.id, {
+      senderKind: 'user', senderName: 'Owner', body: '明天想一起喝烏龍茶。',
+    }, now);
+    await chatStore.write(append.state);
+    const dependencies = { chatStore, runtimeClient, companionStore, config, now: () => now };
+    await deactivateChannelLocked(dependencies, lane.id);
+    const restoredStore = new FileChatStore(config.chatStatePath);
+    const restoredDependencies = { ...dependencies, chatStore: restoredStore, mutationGate: { run: (_key, operation) => operation() } };
+    assert.equal(resolveLeadParticipantLease((await restoredStore.read()).channels.find((row) => row.id === lane.id)).sessionId, sessionId);
+    assert.equal((await activateChannelLocked(restoredDependencies, lane.id)).results[0].status, 'started');
+    const speaker = createCompanionHeartbeatSpeaker(restoredDependencies);
+    assert.equal(await speaker({ catId: cat.id, laneId: lane.id, sessionId, kind: 'wake', now,
+      awakeSince: now, lastOwnerMessageAt: now }), 'quiet');
+    assert.deepEqual(runtimeClient.resumedSessionIds, [sessionId]);
+    assert.deepEqual(runtimeClient.createdSessionIds, [sessionId]);
+    assert.match(runtimeClient.sentMessages.at(-1).options.instructions, /明天想一起喝烏龍茶。/u);
+  }, { fileBacked: true });
+});
+
+test('heartbeat delivers real layered memory retrieval, not only its metadata', async () => {
+  await withHeartbeatServer(async ({ cat, lane, sessionId, now, runtimeClient, chatStore, companionStore, config }) => {
+    const core = await chatStore.readCore();
+    await chatStore.writeCore({ ...core, ownerProfile: { ...core.ownerProfile,
+      communicationPreferences: ['Keep morning greetings gentle and concise.'],
+    } });
+    const memoryService = createCatsMemoryService(createChatMemorySurface(chatStore), new MemoryCanonicalMemoryStore());
+    await memoryService.flushOwnerProfile({ reason: 'owner_profile_sync', now });
+    const memoryAware = createMemoryAwareCompanionBoxStore(companionStore, memoryService, chatStore);
+    await memoryAware.createMemory(cat.id, { category: 'preference', content: '烏龍茶是我們的睡前儀式。', sourceIds: [] }, now);
+    const speaker = createCompanionHeartbeatSpeaker({ chatStore, runtimeClient, companionStore: memoryAware,
+      config, mutationGate: { run: (_key, operation) => operation() }, now: () => now });
+    await speaker({ catId: cat.id, laneId: lane.id, sessionId, kind: 'wake', now, awakeSince: now, lastOwnerMessageAt: null });
+    const sent = runtimeClient.sentMessages.at(-1);
+    assert.match(sent.content, /Keep morning greetings gentle and concise/u);
+    assert.match(sent.content, /烏龍茶是我們的睡前儀式/u);
+    assert.ok(sent.options.context.metadata.companionSession.retrieval.ownerProfileHints.length > 0);
+  });
+});
+
+test('a failed native DM resume preserves the old attachment and reports failure', async () => {
+  await withHeartbeatServer(async ({ lane, sessionId, now, runtimeClient, chatStore, companionStore, config }) => {
+    const dependencies = { chatStore, runtimeClient, companionStore, config, now: () => now };
+    await deactivateChannelLocked(dependencies, lane.id);
+    runtimeClient.resumeSession = async () => { throw new Error('Native session is unavailable'); };
+    const activation = await activateChannelLocked(dependencies, lane.id);
+    assert.equal(activation.results[0].status, 'error');
+    const lease = resolveLeadParticipantLease((await chatStore.read()).channels.find((row) => row.id === lane.id));
+    assert.equal(lease.sessionId, sessionId);
+    assert.equal(lease.status, 'error');
+    assert.match(lease.lastError, /Native session is unavailable/u);
+    assert.deepEqual(runtimeClient.createdSessionIds, [sessionId]);
+  });
+});
+
+test('retargeting a sleeping DM replaces its execution instead of resuming the old model', async () => {
+  await withHeartbeatServer(async ({ cat, lane, sessionId, now, runtimeClient, chatStore, companionStore, config }) => {
+    const dependencies = { chatStore, runtimeClient, companionStore, config, now: () => now };
+    await deactivateChannelLocked(dependencies, lane.id);
+    const state = await chatStore.read();
+    const channel = state.channels.find((row) => row.id === lane.id);
+    channel.catAssignments[0].execution.target = { provider: 'codex', instance: null, model: null };
+    channel.participantAssignments[0].execution.target = { provider: 'codex', instance: null, model: null };
+    await chatStore.write(state);
+    assert.equal((await activateChannelLocked(dependencies, lane.id)).results[0].status, 'started');
+    const lease = resolveLeadParticipantLease((await chatStore.read()).channels.find((row) => row.id === lane.id));
+    assert.notEqual(lease.sessionId, sessionId);
+    assert.equal(lease.provider, 'codex');
+    assert.deepEqual(runtimeClient.resumedSessionIds, []);
+  });
+});
+
+test('sleeping DM with a model string and no option overrides resumes its explicit Runtime choice', async () => {
+  await withHeartbeatServer(async ({ cat, lane, sessionId, now, runtimeClient, chatStore, companionStore, config }) => {
+    let state = await chatStore.read();
+    const channel = state.channels.find((row) => row.id === lane.id);
+    for (const assignment of [...channel.catAssignments, ...channel.participantAssignments]) {
+      assignment.execution.target.model = 'sonnet';
+      assignment.execution.modelSelection = null;
+    }
+    state = setChannelParticipantLease(state, lane.id, cat.id, {
+      status: 'ready', model: 'sonnet', modelSelection: { entryMode: 'explicit', entryId: 'sonnet' },
+    }, now);
+    await chatStore.write(state);
+    const dependencies = { chatStore, runtimeClient, companionStore, config, now: () => now };
+    await deactivateChannelLocked(dependencies, lane.id);
+    assert.equal((await activateChannelLocked(dependencies, lane.id)).results[0].status, 'started');
+    assert.deepEqual(runtimeClient.resumedSessionIds, [sessionId]);
+    assert.deepEqual(runtimeClient.createdSessionIds, [sessionId]);
   });
 });
 

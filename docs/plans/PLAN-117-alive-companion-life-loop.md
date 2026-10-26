@@ -95,6 +95,43 @@
 
 ## Progress Log
 
+- 2026-10-26：修復 DM 睡醒與主動回合的 conversation continuity。
+  - Desktop 0.10.1 實機唯讀確認：07:48 建立的新 Runtime 在 09:59 發英文問候；第一個
+    hidden prompt 只有英文時間／問候指令與 mixed expression，沒有先前中文對話。
+    hydration 為 `fresh_start` / `none`；產品 DM transcript 並未遺失。
+  - 入睡不再清空 DM session id，醒來走既有原生 resume；retarget 優先更換 execution，
+    resume 失敗保留 attachment 與錯誤。一般房間 deactivate 維持原語意。
+    同時修復 model-only 與 Runtime explicit selection 的等價判斷，並在 closed lease
+    缺少舊版 selection 時從 Runtime 觀察恢復；未選模型的舊 attachment 不誤判成 retarget。
+  - 心跳共用一般 Cat 回合的角色／語言／checkpoint 與 memory-aware envelope，並送入
+    同一 DM 的 bounded continuity instructions。短歷史原文、長歷史沿用 12,000 字元內
+    的既有 digest，未指定語言依主人交談。這也補救舊版本已開啟但漏承接的 Runtime。
+  - 分層記憶原本只被放進 hydration metadata；共用 prompt formatter 現在呈現已篩選
+    的 facts、owner hints、open loops，限制數量與每則 280 字元，不呈現 excluded records。
+    hydration 失敗不再吞錯後繼續發出空白脈絡問候。
+  - 前 5 個回歸案例在舊程式全數失敗。最終相關 9 檔 149 個通過，候選編譯輸出同樣
+    149 個通過；架構邊界 101、selection/continuity 38、Runtime 原生 wake/close 契約
+    33 個通過。Server build 與 test TypeScript 檢查通過。首次本機 routing fixture 因
+    預設附件路徑被 sandbox 阻擋而等待，停止該測試並改用私有 `CATS_RUNTIME_DIR` 後通過；
+    沒有提高權限讓該 fixture 寫入使用者 profile。圖片 fanout fixture 補上真實 active lease。
+  - 最終隔離 Desktop 候選完成 Runtime/server/host/renderer 建置並檢視 first-run 畫面，
+    正常 drain（exit 0）。Platform source digest
+    `4337f4414b5c56347197889b62d23f61af5bc381ae02f832e05cf4fe12f54b7e`，Runtime `5212fa59`；
+    四個 production 修正檔案與工作樹 SHA-256 一致。UI 啟動本身不當成功能驗收。
+  - 同一候選編譯輸出另以隔離 Codex `gpt-6.1-sol` 做 3 個真實回合：記住隨機暗號、
+    經 production sleep/wake 後在未重送暗號的請求中正確回答，Runtime/provider session id
+    均維持相同；再明確換成新 Runtime，首個主動回合用中文提到同一 DM 的「虹石灣」
+    與陪伴記憶的「桂花烏龍茶」。舊版 model-only 判斷確曾使首次 live probe 重建，
+    修正後通過；最終私有證據在 workspace parent `.dm-continuity-live-20261026-6/report.json`。
+    probe 自有 Runtime 已停止、複製的登入已刪除。沒有寫入將將或傳送 Telegram 訊息；
+    尚未聲稱安裝版已更新，也不聲稱已完成高階長對話濃縮或無損召回。本次不升版。
+  - PR #321 首次完整 CI 的 5 個失敗均為下游 fixture／斷言：明確 retarget 不再先 resume
+    舊 provider，Telegram duty stub 補上 resume，診斷附件 stub 從當前 owner 訊息取路徑
+    （channel checkpoint 可能含單行化的舊附件片段）。相關 3 檔 18 個本機通過，其中
+    2 個 JS 檔 8 個也在候選編譯輸出通過；production 來源未變動。
+    額外以同一候選重啟整個私有 Runtime 程序，原生 ID 與未重送暗號的召回仍通過，
+    證據 `.dm-continuity-live-20261026-7/report.json`；自有服務與暫存登入均清理完成。
+
 - 2026-10-26：修復原生 CLI 新會話的首次主動回合死等。
   - 實機 Desktop 0.10.0 的陪伴貓在 10/25 08:53 自動建立會話後，lease 持續
     `initializing`，整日 Runtime 訊息數為 0；23:00 才依作息關閉。舊 loop 直接略過
