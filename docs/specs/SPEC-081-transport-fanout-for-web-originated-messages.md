@@ -133,6 +133,15 @@ for their `binding.platform`.
    `room_updated` is emitted. Fanout reads this stable metadata and
    skips that exact `(messageId, bindingId)` pair; it does not wait
    for a post-delivery bridge marker.
+   The source bridge delivers all visible assistant segments from that DM
+   turn in transcript order after the turn completes, for both ordinary
+   messages and product-intent callbacks. It chunks full text without first
+   truncating it, preserves each photo/caption and sends each choice with its
+   buttons once. Independent companion heartbeats and messages marked
+   `transportDeliveryManaged` retain their existing delivery owner and are
+   excluded from source-bridge replies. Runtime/session system metadata and
+   the inbound owner message are not assistant replies; when no assistant or
+   choice was produced, the existing system/fallback response still applies.
 
 ### Non-Functional Requirements
 

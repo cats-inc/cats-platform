@@ -1,5 +1,9 @@
 import { TELEGRAM_REPLY_LIMIT, chunkTelegramReply } from './chunking.js';
-import type { TelegramDeliveryReceipt, TelegramRelayContext } from './contracts.js';
+import type {
+  TelegramDeliveryReceipt,
+  TelegramInlineKeyboardMarkup,
+  TelegramRelayContext,
+} from './contracts.js';
 import type { TelegramRelay } from './relay/index.js';
 
 /**
@@ -49,6 +53,7 @@ export async function deliverTelegramPhoto(input: {
   chatId: string | null;
   photo: TransportPhoto;
   text: string | null;
+  replyMarkup?: TelegramInlineKeyboardMarkup | null;
 }): Promise<TelegramDeliveryReceipt> {
   const text = input.text?.trim() || null;
   const captioned = text !== null && text.length <= TELEGRAM_CAPTION_LIMIT;
@@ -60,16 +65,19 @@ export async function deliverTelegramPhoto(input: {
       chatId: input.chatId,
       mediaFile: input.photo,
       caption: captioned ? text : null,
+      replyMarkup: !text || captioned ? input.replyMarkup : undefined,
     },
     context: input.context,
   });
-  for (const chunk of text && !captioned ? chunkTelegramReply(text, TELEGRAM_REPLY_LIMIT) : []) {
+  const chunks = text && !captioned ? chunkTelegramReply(text, TELEGRAM_REPLY_LIMIT) : [];
+  for (const [index, chunk] of chunks.entries()) {
     receipt = await input.relay.deliver({
       request: {
         operation: 'send',
         conversationId: input.conversationId,
         chatId: input.chatId,
         text: chunk,
+        replyMarkup: index === chunks.length - 1 ? input.replyMarkup : undefined,
         disableLinkPreview: true,
       },
       context: input.context,

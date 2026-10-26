@@ -103,6 +103,7 @@ test('telegram bot api delivery client configures commands and menu button', asy
 
 test('telegram bot api delivery client sends media by URL', async () => {
   const calls = [];
+  const replyMarkup = { inline_keyboard: [[{ text: 'Open Code', callback_data: 'fixture:code' }]] };
   const client = createTelegramBotApiDeliveryClient({
     botToken: 'bot-token',
     fetchImpl: async (url, options = {}) => {
@@ -136,6 +137,7 @@ test('telegram bot api delivery client sends media by URL', async () => {
     mediaKind: 'photo',
     mediaUrl: 'https://example.com/morning.jpg',
     caption: 'Good morning',
+    replyMarkup,
   });
 
   assert.equal(result.ok, true);
@@ -147,5 +149,26 @@ test('telegram bot api delivery client sends media by URL', async () => {
     chat_id: '4242',
     photo: 'https://example.com/morning.jpg',
     caption: 'Good morning',
+    reply_markup: replyMarkup,
   });
+});
+
+test('a local photo upload preserves the choice buttons on the Bot API wire', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'telegram-photo-choice-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const file = path.join(root, 'photo.jpg');
+  await writeFile(file, Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+  const replyMarkup = { inline_keyboard: [[{ text: 'Open Code', callback_data: 'fixture:code' }]] };
+  let body;
+  const client = createTelegramBotApiDeliveryClient({ botToken: 'fixture-token',
+    fetchImpl: async (_url, options) => {
+      body = options.body.toString('utf8');
+      return { ok: true, status: 200,
+        json: async () => ({ ok: true, result: { message_id: 42, chat: { id: 4242 } } }) };
+    },
+  });
+  const result = await client.deliver({ operation: 'send_media', mediaKind: 'photo', chatId: '4242',
+    mediaFile: { path: file, fileName: 'photo.jpg' }, caption: 'Open Code?', replyMarkup });
+  assert.equal(result.ok, true);
+  assert.ok(body.includes('name="reply_markup"\r\n\r\n' + JSON.stringify(replyMarkup)));
 });

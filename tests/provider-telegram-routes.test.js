@@ -1271,6 +1271,46 @@ test('telegram webhook routes inbox traffic into the Boss Cat DM and relays a re
   );
 });
 
+test('Telegram webhook and fanout deliver every canonical DM segment once, including a redelivered update', async () => {
+  const deliveryCalls = [];
+  const bodies = ['我來排一張照片。', '我再確認平台入口。', '查詢整合入口。', '這是最後的結果。'];
+  const runtime = createRuntimeStub();
+  runtime.sendMessage = async () => ({
+    segments: bodies.map(text => ({ kind: 'text', text, toolName: null, toolId: null })),
+    inputTokens: 42, outputTokens: 24, tokensUsed: 66,
+  });
+  await withServer(runtime, async baseUrl => {
+    await configureTelegramBossCat(baseUrl);
+    const update = { update_id: 301, message: {
+      message_id: 88, text: 'show me a photo', chat: { id: 12345, type: 'private' },
+      from: { id: 1, first_name: 'Kenny' },
+    } };
+    const sendUpdate = () => fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(update),
+    });
+    assert.equal((await sendUpdate()).status, 202);
+    await waitForAsync(() => deliveryCalls.length === bodies.length);
+    const roomId = await waitForTelegramLinkedRoom(baseUrl);
+    const transcript = await (await fetch(`${baseUrl}/api/channels/${roomId}/messages`)).json();
+    assert.deepEqual(transcript.messages.filter(message => message.senderKind === 'agent')
+      .map(message => message.body), bodies);
+    assert.deepEqual(deliveryCalls.map(request => request.text), bodies);
+    assert.deepEqual(deliveryCalls.map(request => request.operation), ['reply', 'send', 'send', 'send']);
+
+    const duplicate = await (await sendUpdate()).json();
+    assert.equal(duplicate.receipt.reason, 'duplicate_update');
+    const status = await (await fetch(`${baseUrl}/api/transports/telegram`)).json();
+    assert.equal(status.telegram.delivery.sentCount, 3);
+    assert.deepEqual(deliveryCalls.map(request => request.text), bodies);
+  }, undefined, { telegramRelay: createTelegramRelay({
+    deliveryClient: { async deliver(request) {
+      deliveryCalls.push(request);
+      return { ok: true, chatId: request.chatId, messageId: String(5000 + deliveryCalls.length) };
+    } },
+  }) });
+  assert.deepEqual(deliveryCalls.map(request => request.text), bodies);
+});
+
 test('telegram webhook without a cat to talk to opens no fallback room', async () => {
   const deliveryCalls = [];
   const chatStore = new MemoryChatStore();

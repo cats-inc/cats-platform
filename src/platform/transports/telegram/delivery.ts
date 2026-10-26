@@ -205,6 +205,7 @@ function buildApiPayload(
       [mediaSpec.payloadField]: request.fileId ?? request.mediaUrl,
       caption: request.caption ?? undefined,
       parse_mode: request.parseMode ?? undefined,
+      reply_markup: request.replyMarkup ?? undefined,
     };
   }
 
@@ -344,6 +345,7 @@ export function createTelegramBotApiDeliveryClient(
             chat_id: request.chatId,
             caption: request.caption ?? undefined,
             parse_mode: request.parseMode ?? undefined,
+            reply_markup: request.replyMarkup ? JSON.stringify(request.replyMarkup) : undefined,
           },
           {
             field: resolveMediaApiSpec(request.mediaKind).payloadField,
