@@ -1,5 +1,9 @@
 # Feature Specifications
 
+- [SPEC-132: Provider session interactions and capability visibility](SPEC-132-provider-session-interactions-and-capability-visibility.md)
+  — approved, 2026-10-28; shared native request UI, effective permissions and live
+  tools/helper diagnostics. Runtime SPEC-039 consumer; implementation not started.
+
 - [SPEC-131: Catlas curated assist and conversation titles](SPEC-131-catlas-curated-assist-and-conversation-titles.md)
   — implemented with scoped validation, 2026-10-27; host-validated Catlas titles, greeting/chip catalogs,
   snapshot-grounded recommendations, receipts and cooldown. Review corrections
