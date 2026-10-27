@@ -62,6 +62,15 @@ import {
   readStringArray,
 } from './shared.js';
 
+function normalizeCatlasTitleAttempts(value: unknown): ChatChannelState['catlasTitleAttempts'] {
+  if (value === undefined) return undefined;
+  const record = asRecord(value);
+  return record && Number.isInteger(record.count) && Number(record.count) >= 1 && Number(record.count) <= 2
+    && typeof record.lastReplyId === 'string'
+    ? { count: Number(record.count), lastReplyId: record.lastReplyId }
+    : { count: 2, lastReplyId: '' };
+}
+
 export function normalizeMessage(rawMessage: unknown, channelId: string): ChatMessage {
   const messageRecord = asRecord(rawMessage);
   const usageRecord = asRecord(messageRecord?.usage);
@@ -342,6 +351,8 @@ export function normalizeChannel(
   return {
     id: channelId,
     title: readString(channelRecord.title, 'Untitled chat'),
+    titleSource: channelRecord.titleSource === 'draft' || channelRecord.titleSource === 'catlas' ? channelRecord.titleSource : 'manual',
+    catlasTitleAttempts: normalizeCatlasTitleAttempts(channelRecord.catlasTitleAttempts),
     topic: readString(channelRecord.topic, 'This chat is still taking shape.'),
     originSurface: normalizePlatformSurface(channelRecord.originSurface),
     channelKind,

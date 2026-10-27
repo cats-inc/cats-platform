@@ -394,7 +394,7 @@ function writeExternalWorkBindingsMetadata(
   existingMetadata: Record<string, unknown>,
   bindings: ExternalWorkBinding[],
 ): Record<string, unknown> {
-  const metadata = { ...existingMetadata };
+  const metadata: Record<string, unknown> = { ...existingMetadata, contentOrigin: 'external' };
   if (bindings.length === 0) {
     delete metadata[EXTERNAL_WORK_BINDING_METADATA_KEY];
     return metadata;

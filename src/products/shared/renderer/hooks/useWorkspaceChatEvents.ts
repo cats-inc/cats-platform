@@ -147,6 +147,7 @@ export function useWorkspaceChatEvents<
       });
       source.addEventListener('room_updated', refreshAppShell);
       source.addEventListener('recents_changed', refreshAppShell);
+      source.addEventListener('assist_changed', refreshAppShell);
       source.addEventListener('unread_changed', refreshAppShell);
       source.addEventListener('transport_ingress', refreshAppShell);
       source.onerror = () => {

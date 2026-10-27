@@ -30,6 +30,7 @@ export function renameChannel(
   const channel = requireChannel(nextState, channelId);
   const nextTitle = title.trim() || channel.title;
   channel.title = nextTitle;
+  channel.titleSource = 'manual';
   channel.updatedAt = isoAt(now);
   for (const group of nextState.parallelChatGroups) {
     if (group.memberChannelIds.includes(channelId)) {
@@ -62,6 +63,7 @@ export function renameParallelChatGroup(
       continue;
     }
     channel.title = nextTitle;
+  channel.titleSource = 'manual';
     channel.updatedAt = updatedAt;
   }
   return nextState;

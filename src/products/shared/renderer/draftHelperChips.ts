@@ -45,7 +45,7 @@ export function shouldRenderDraftHelperChips(input: {
 // characters cannot collide with a different chip set under naive string joining.
 export function fingerprintDraftHelperChips(chips: ReadonlyArray<{
   id: string;
-  prompt: string;
+  prompt?: string;
   label?: string | null;
 }>): string | null {
   if (chips.length === 0) {
@@ -56,37 +56,13 @@ export function fingerprintDraftHelperChips(chips: ReadonlyArray<{
   );
 }
 
-/** Decides whether the composer's helperRegion should render runtime
- * starter suggestions, the product-supplied fallback chip list, or
- * nothing. Pure so it can be unit-tested without React, and so the
- * "runtime wins over fallback" invariant is anchored on the runtime
- * SOURCE (`runtimeChipCount > 0`) rather than the rendered visibility
- * (`showDraftHelperChips`). Tying it to the rendered visibility caused
- * a regression where dismissing a runtime chip — which flips
- * `showDraftHelperChips` to false — would re-surface the
- * chat-product fallback chip in its place, instead of letting the
- * helperRegion go quiet. */
+/** Builtin and generated chips share one composed source; a dismissed row stays empty. */
 export function resolveDraftHelperRegionVisibility(input: {
   isDirectLaneContext: boolean;
   showDraftHelperChips: boolean;
-  runtimeChipCount: number;
-  fallbackChipCount: number;
-}): {
-  runtimeChipsRendered: boolean;
-  fallbackChipsRendered: boolean;
-} {
-  if (input.isDirectLaneContext) {
-    return { runtimeChipsRendered: false, fallbackChipsRendered: false };
-  }
-  const hasRuntimeChipSource = input.runtimeChipCount > 0;
-  return {
-    runtimeChipsRendered: input.showDraftHelperChips && hasRuntimeChipSource,
-    // Once the runtime ever supplied chips for this draft, the fallback
-    // stays suppressed even if the user dismisses the runtime list. The
-    // fallback only appears when there is genuinely no runtime chip
-    // source to hand off to.
-    fallbackChipsRendered: !hasRuntimeChipSource && input.fallbackChipCount > 0,
-  };
+  chipCount: number;
+}): boolean {
+  return !input.isDirectLaneContext && input.showDraftHelperChips && input.chipCount > 0;
 }
 
 export function useDraftHelperChipVisibility(input: {

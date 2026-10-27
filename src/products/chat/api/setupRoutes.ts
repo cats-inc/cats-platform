@@ -1,3 +1,4 @@
+import { waitForCatlasTitlesIdle } from './catlasTitles.js';
 import path from 'node:path';
 import { hasPendingRuntimeResetConsent, preparePlatformOwnedDataReset, removePlatformOwnedData, PlatformResetBusyError } from '../../../shared/platformDataReset.js';
 import { isPlatformDataResetRequest } from '../../../shared/platformDataResetRequest.js';
@@ -66,6 +67,7 @@ async function handleSetupReset(
     await withReset(async clearCaches => {
       // Assist refreshes can write after their initiating HTTP request finishes.
       await waitForGuideCatAssistRefreshIdle(context.dependencies.config.chatStatePath);
+      await waitForCatlasTitlesIdle(context.dependencies.config.chatStatePath);
       const chatState = await context.dependencies.chatStore.read();
       const previousCore = await context.dependencies.chatStore.readCore();
       const removal = {

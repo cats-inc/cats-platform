@@ -321,6 +321,7 @@ export function buildNewChatChannelInput(options: {
       }];
   const baseInput: CreateChatChannelInput = {
     title: createDraftChannelTitle(body, existingCount, t),
+    titleSource: resolvedEntryKind === 'direct' ? 'manual' : 'draft',
     topic: createDraftChannelTopic(body),
     originSurface,
     entryKind: resolvedEntryKind,

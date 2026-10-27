@@ -12,8 +12,7 @@ import {
 import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import { resolveDraftPermissionModeFromRuntimeAccess } from '../../../../shared/runtimeSessionPolicy.js';
-import { prefetchCrossSurfaceNavigationTarget } from '../../../shared/renderer/crossSurfaceNavigationRegistry.js';
-import { messageKeys, type MessageKey } from '../../../../shared/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface NewChatDraftProps extends NewConversationDraftProps {
@@ -51,76 +50,6 @@ function NewChatDraftInner(props: NewChatDraftProps) {
     />
   ) : null;
 
-  const isDirectLaneDraft = !(props.allowAddCat ?? true) && Boolean(props.draftDefaultRecipientCatId);
-  const entryPreset = props.entryPreset ?? 'default';
-  // Chat owns the cross-surface starter strip for the three fresh entry
-  // routes (+New / +Group / +Parallel). Behaviour is symmetric across
-  // them: clicking +compare from any of the three keeps the chips (they
-  // just add another branch — not a mode change). Direct-lane drafts
-  // remain excluded because that surface owns its private cat-led flow.
-  // Runtime-backed `newChatAssist` chips still take precedence inside the
-  // shared composer helperRegion, so this fallback only renders when the
-  // route has no runtime chip source.
-  // Chips 1–3 stay on Chat. Chip 4 hands off to Code (existing pomodoro
-  // affordance). Chip 5 hands off to Work — temporary scaffolding for
-  // the draft-Chat → active-Work flow under test.
-  const showsChatStarterChip =
-    !isDirectLaneDraft
-    && (
-      entryPreset === 'group'
-      || entryPreset === 'parallel'
-      || entryPreset === 'default'
-    );
-
-  // Home-surface chips also call `onDraftSurfaceChange('chat')` so a
-  // user who crossed to Code/Work via the last two chips can come back
-  // simply by tapping any of the first three. Without this, draftSurface
-  // stays pinned to whichever surface the cross-chip last set.
-  function selectHomeSurfaceChip(promptKey: MessageKey): void {
-    props.onComposerChange(t(promptKey));
-    if (props.draftSurface !== 'chat') {
-      props.onDraftSurfaceChange('chat');
-    }
-  }
-
-  const leadingStarterChips = showsChatStarterChip
-    ? [
-      {
-        id: 'plan-my-day',
-        label: t(messageKeys.chatNewChatDraftPlanMyDayChipLabel),
-        onClick: () => selectHomeSurfaceChip(messageKeys.chatNewChatDraftPlanMyDayPrompt),
-      },
-      {
-        id: 'brainstorm-name',
-        label: t(messageKeys.chatNewChatDraftBrainstormNameChipLabel),
-        onClick: () => selectHomeSurfaceChip(messageKeys.chatNewChatDraftBrainstormNamePrompt),
-      },
-      {
-        id: 'summarize-link',
-        label: t(messageKeys.chatNewChatDraftSummarizeLinkChipLabel),
-        onClick: () => selectHomeSurfaceChip(messageKeys.chatNewChatDraftSummarizeLinkPrompt),
-      },
-      {
-        id: 'pomodoro-app',
-        label: t(messageKeys.chatNewChatDraftPomodoroChipLabel),
-        onClick: () => {
-          props.onComposerChange(t(messageKeys.chatNewChatDraftPomodoroPrompt));
-          void prefetchCrossSurfaceNavigationTarget('code');
-          props.onDraftSurfaceChange('code');
-        },
-      },
-      {
-        id: 'start-project',
-        label: t(messageKeys.chatNewChatDraftStartProjectChipLabel),
-        onClick: () => {
-          props.onComposerChange(t(messageKeys.chatNewChatDraftStartProjectPrompt));
-          void prefetchCrossSurfaceNavigationTarget('work');
-          props.onDraftSurfaceChange('work');
-        },
-      },
-    ]
-    : [];
-
   const composerHeaderAccessory = isCodeSurface
     ? codeChips.permissionChip
     : buildChatPermissionChip(props);
@@ -142,9 +71,7 @@ function NewChatDraftInner(props: NewChatDraftProps) {
       draftCopy={{
         folderActionLabel,
       }}
-      starterChips={{
-        leading: leadingStarterChips,
-      }}
+      assistSurface="chat"
     />
   );
 }

@@ -124,67 +124,10 @@ test('fingerprintDraftHelperChips resists delimiter-injection collisions when ch
   );
 });
 
-test('helperRegion stays empty in direct lane regardless of available chip sources', () => {
-  assert.deepEqual(
-    resolveDraftHelperRegionVisibility({
-      isDirectLaneContext: true,
-      showDraftHelperChips: true,
-      runtimeChipCount: 5,
-      fallbackChipCount: 1,
-    }),
-    { runtimeChipsRendered: false, fallbackChipsRendered: false },
-  );
-});
-
-test('helperRegion shows runtime chips when they are present and not yet dismissed', () => {
-  assert.deepEqual(
-    resolveDraftHelperRegionVisibility({
-      isDirectLaneContext: false,
-      showDraftHelperChips: true,
-      runtimeChipCount: 2,
-      fallbackChipCount: 1,
-    }),
-    { runtimeChipsRendered: true, fallbackChipsRendered: false },
-  );
-});
-
-test('runtime chips suppress the product fallback even after the user dismisses them so the fallback does not back-fill', () => {
-  // Reviewer-flagged regression for 94d9d6c7: when a +New draft is
-  // expanded into a group with runtime starter suggestions, dismissing
-  // a runtime chip used to flip the chat-product Pomodoro fallback
-  // back on. The fallback gate must be tied to the runtime chip
-  // SOURCE (count > 0), not the rendered visibility.
-  assert.deepEqual(
-    resolveDraftHelperRegionVisibility({
-      isDirectLaneContext: false,
-      showDraftHelperChips: false,
-      runtimeChipCount: 2,
-      fallbackChipCount: 1,
-    }),
-    { runtimeChipsRendered: false, fallbackChipsRendered: false },
-  );
-});
-
-test('product fallback chips render when no runtime chip source exists', () => {
-  assert.deepEqual(
-    resolveDraftHelperRegionVisibility({
-      isDirectLaneContext: false,
-      showDraftHelperChips: true,
-      runtimeChipCount: 0,
-      fallbackChipCount: 1,
-    }),
-    { runtimeChipsRendered: false, fallbackChipsRendered: true },
-  );
-});
-
-test('helperRegion stays empty when there is no runtime chip source and no product fallback either', () => {
-  assert.deepEqual(
-    resolveDraftHelperRegionVisibility({
-      isDirectLaneContext: false,
-      showDraftHelperChips: true,
-      runtimeChipCount: 0,
-      fallbackChipCount: 0,
-    }),
-    { runtimeChipsRendered: false, fallbackChipsRendered: false },
-  );
+test('composed chip rows are absent in DMs, after dismissal or when empty', () => {
+  const available = { isDirectLaneContext: false, showDraftHelperChips: true, chipCount: 5 };
+  assert.equal(resolveDraftHelperRegionVisibility(available), true);
+  assert.equal(resolveDraftHelperRegionVisibility({ ...available, isDirectLaneContext: true }), false);
+  assert.equal(resolveDraftHelperRegionVisibility({ ...available, showDraftHelperChips: false }), false);
+  assert.equal(resolveDraftHelperRegionVisibility({ ...available, chipCount: 0 }), false);
 });

@@ -190,7 +190,7 @@ test('PlatformLobby localizes deterministic Guide Cat assist greetings', () => {
                     audienceState: 'default',
                   },
                   content: {
-                    greeting: 'Choose a surface and get moving.',
+                    greetings: [{ id: 'fixture-greeting', text: 'Choose a surface and get moving.', messageKey: 'lobby.greeting.chooseSurface' }],
                     entryChips: [],
                   },
                   provenance: {
@@ -256,7 +256,7 @@ test('PlatformLobby prefers guide cat assist greeting from the platform envelope
                   audienceState: 'default',
                 },
                 content: {
-                  greeting: 'Cached lobby assist greeting.',
+                  greetings: [{ id: 'fixture-greeting', text: 'Cached lobby assist greeting.' }],
                   entryChips: [],
                 },
                 provenance: {

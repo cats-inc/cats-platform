@@ -1,3 +1,4 @@
+import { clearCatlasDraftSelection, reportCatlasFeedback, selectCatlasChip } from './catlasChipActions.js';
 import {
   useEffect,
   useRef,
@@ -177,11 +178,6 @@ export interface NewConversationDraftCopy {
 }
 
 export interface NewConversationDraftStarterChips {
-  leading?: ReadonlyArray<{
-    id: string;
-    label: string;
-    onClick: () => void;
-  }>;
   preserveOnSelect?: boolean;
 }
 
@@ -377,6 +373,8 @@ export interface NewConversationDraftProps {
   draftChrome?: NewConversationDraftChrome;
   draftCopy?: NewConversationDraftCopy;
   starterChips?: NewConversationDraftStarterChips;
+  assistSurface?: 'chat' | 'code' | 'work';
+  onDraftSurfaceChange?: (surface: 'chat' | 'code' | 'work') => void;
   sidePanel?: NewConversationDraftSidePanelComposition;
 }
 
@@ -444,9 +442,13 @@ export function NewConversationDraft({
   draftChrome,
   draftCopy,
   starterChips,
+  assistSurface = 'chat',
+  onDraftSurfaceChange,
   sidePanel,
 }: NewConversationDraftProps) {
   const navigate = useNavigate();
+  const [greetingPick] = useState(Math.random);
+  useEffect(() => { clearCatlasDraftSelection(); return clearCatlasDraftSelection; }, []);
   const {
     headerAccessory: composerHeaderAccessory = null,
     headerWhereExtras: composerHeaderWhereExtras = null,
@@ -467,7 +469,6 @@ export function NewConversationDraft({
   const folderActionLabel = draftCopy?.folderActionLabel
     ?? t(messageKeys.chatNewChatDraftFolderActionLabel);
   const sidePanelCopy = draftCopy?.sidePanel;
-  const leadingStarterChips = starterChips?.leading;
   const preserveHelperChipsOnSelect = starterChips?.preserveOnSelect ?? false;
   const onPickParallelBranchFolder = parallelBranchActions?.onPickFolder;
   const onSetParallelBranchAudienceKeys = parallelBranchActions?.onSetAudienceKeys;
@@ -541,7 +542,7 @@ export function NewConversationDraft({
     draftComposerRecipients,
     groupComposerParticipants,
   } = resolveNewConversationDraftViewState({
-    payload,
+    payload, assistSurface, greetingPick,
     draftDefaultRecipientCatId,
     draftCatIds,
     draftTemporaryParticipants,
@@ -1288,37 +1289,21 @@ export function NewConversationDraft({
   );
 
   const helperRegionJsx = (() => {
-    const { runtimeChipsRendered, fallbackChipsRendered } =
-      resolveDraftHelperRegionVisibility({
-        isDirectLaneContext,
-        showDraftHelperChips,
-        runtimeChipCount: visibleStarterSuggestions.length,
-        fallbackChipCount: leadingStarterChips?.length ?? 0,
-      });
-    if (!runtimeChipsRendered && !fallbackChipsRendered) return null;
+    if (!resolveDraftHelperRegionVisibility({ isDirectLaneContext, showDraftHelperChips,
+      chipCount: visibleStarterSuggestions.length })) return null;
     return (
       <div className="draftPromptSuggestions">
         <div className="chipRow">
-          {fallbackChipsRendered
-            ? leadingStarterChips?.map((chip) => (
-                <button
-                  key={chip.id}
-                  className="promptChip draftPromptChip"
-                  type="button"
-                  disabled={isSubmittingFirstTurn}
-                  onClick={() => {
-                    if (!preserveHelperChipsOnSelect) {
-                      dismissDraftHelperChips();
-                    }
-                    chip.onClick();
-                  }}
-                >
-                  {chip.label}
-                </button>
-              ))
-            : null}
-          {runtimeChipsRendered
-            ? visibleStarterSuggestions.map((suggestion) => (
+          {visibleStarterSuggestions.some(chip => chip.basis?.length) ? (
+            <button type="button" className="promptChip draftPromptDismiss"
+              aria-label={t(messageKeys.sharedCommonDismiss)} disabled={isSubmittingFirstTurn}
+              onClick={() => {
+                reportCatlasFeedback(`${assistSurface}:new:default:default`,
+                  visibleStarterSuggestions.flatMap(chip => chip.basis ?? []), 'dismissed');
+                dismissDraftHelperChips();
+              }}>×</button>
+          ) : null}
+          {visibleStarterSuggestions.map((suggestion) => (
                 <button
                   key={suggestion.id}
                   className="promptChip draftPromptChip"
@@ -1328,13 +1313,12 @@ export function NewConversationDraft({
                     if (!preserveHelperChipsOnSelect) {
                       dismissDraftHelperChips();
                     }
-                    onComposerChange(suggestion.prompt);
+                    selectCatlasChip(suggestion, `${assistSurface}:new:default:default`, { onComposerChange, onDraftSurfaceChange, navigate });
                   }}
                 >
-                  {suggestion.prompt}
+                  {suggestion.label}
                 </button>
-              ))
-            : null}
+              ))}
         </div>
       </div>
     );

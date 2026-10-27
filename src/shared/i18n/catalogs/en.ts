@@ -1,6 +1,11 @@
 import type { MessageCatalog } from '../index.js';
 
 export const enCatalog: MessageCatalog = {
+  workNewDraftGreeting: 'What shall we move forward today?',
+  workNewDraftGreetingPriorities: 'Ready to sort out the next priority?',
+  workNewDraftGreetingNextStep: 'Pick a project. Let’s find its next step.',
+  guideCatAssistOpen: 'Open {title}',
+
   authNativeContinue: 'Continue with Google',
   authNativeUnavailable: 'Google sign-in is not configured for this Cats distribution.',
   authNativeWaiting: 'Complete Google sign-in in your browser…',
@@ -926,7 +931,7 @@ export const enCatalog: MessageCatalog = {
   'settings.data.resetConfirmationDescription': 'Permanently erase Platform chats, cats, accounts, preferences and related data, then return to setup. Runtime data and installed tools are kept by default. Erased data cannot be recovered.',
   'settings.data.resetConfirmLabel': 'Erase selected data',
   'settings.data.resetAllDataDescription':
-    'Permanently erases Platform chats, cats, accounts, login sessions, setup state, backups (including migration backups), memory and companion data, local knowledge, evidence logs, Telegram / LINE bindings and delivery state, schedules, diagnostic caches, and attachments and runtime-history caches stored in the Platform directory, and returns interface and reply language, lobby animation, Code preview server and saved layout preferences to their defaults. Keeps Desktop startup and system tray preferences, configuration and installation identity, installed Apps/plugins and their data, Desktop and Runtime data, provider CLI logins and native transcripts, and files in external workspaces. The Desktop window returns to its default size and position. Stop active conversations and tasks first. Returns to the setup wizard; erased data cannot be recovered.',
+    'Permanently erases Platform chats, cats, accounts, login sessions, setup state, Catlas suggestions and receipts, backups (including migration backups), memory and companion data, local knowledge, evidence logs, Telegram / LINE bindings and delivery state, schedules, diagnostic caches, and attachments and runtime-history caches stored in the Platform directory, and returns interface and reply language, lobby animation, Code preview server and saved layout preferences to their defaults. Keeps Desktop startup and system tray preferences, configuration and installation identity, installed Apps/plugins and their data, Desktop and Runtime data, provider CLI logins and native transcripts, and files in external workspaces. The Desktop window returns to its default size and position. Stop active conversations and tasks first. Returns to the setup wizard; erased data cannot be recovered.',
   'settings.data.resetButtonResetting': 'Resetting...',
   'settings.data.resetButtonLabel': 'Erase Platform data',
   'settings.data.resetFailure': 'Failed to reset setup.',

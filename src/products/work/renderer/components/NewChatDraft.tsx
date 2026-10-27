@@ -6,65 +6,12 @@ import { ComposerSurfaceChip } from '../../../shared/renderer/components/Compose
 import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
 import { resolveNewConversationDraftBuilderControls } from '../../../shared/renderer/draftBuilderControls.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
-import { messageKeys, type MessageKey } from '../../../../shared/i18n/index.js';
-import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 export interface NewChatDraftProps extends NewConversationDraftProps {
   draftSurface: PlatformSurfaceId;
   onDraftSurfaceChange: (surface: PlatformSurfaceId) => void;
 }
 
-// Inline starter chips for Work drafts. All five stay on Work — the
-// chip strip is intentionally kept inline (not routed through the
-// guideCatAssist baseline + payload chain) until Work earns its own
-// surface scope. Mirrors the shape Chat uses in
-// `products/chat/renderer/components/NewChatDraft.tsx`.
-const WORK_STARTER_CHIPS = [
-  {
-    id: 'work-start-project',
-    labelKey: messageKeys.workNewChatDraftStartProjectChipLabel,
-    promptKey: messageKeys.workNewChatDraftStartProjectPrompt,
-  },
-  {
-    id: 'work-add-task',
-    labelKey: messageKeys.workNewChatDraftAddTaskChipLabel,
-    promptKey: messageKeys.workNewChatDraftAddTaskPrompt,
-  },
-  {
-    id: 'work-plan-sprint',
-    labelKey: messageKeys.workNewChatDraftPlanSprintChipLabel,
-    promptKey: messageKeys.workNewChatDraftPlanSprintPrompt,
-  },
-  {
-    id: 'work-schedule-review',
-    labelKey: messageKeys.workNewChatDraftScheduleReviewChipLabel,
-    promptKey: messageKeys.workNewChatDraftScheduleReviewPrompt,
-  },
-  {
-    id: 'work-triage-backlog',
-    labelKey: messageKeys.workNewChatDraftTriageBacklogChipLabel,
-    promptKey: messageKeys.workNewChatDraftTriageBacklogPrompt,
-  },
-] as const;
-
-type WorkDraftTranslate = (key: MessageKey) => string;
-
-function buildWorkStarterChips(
-  props: NewChatDraftProps,
-  t: WorkDraftTranslate,
-) {
-  return WORK_STARTER_CHIPS.map((chip) => ({
-    id: chip.id,
-    label: t(chip.labelKey),
-    onClick: () => props.onComposerChange(t(chip.promptKey)),
-  }));
-}
-
-// Surface tag follows the live `draftSurface` so any future
-// cross-surface chip (e.g. Work → Code) can swap the Work chip for the
-// destination chip on the composer header. Today every Work chip stays
-// on Work, so the chip is effectively static — the dynamic wiring is
-// here so adding a `cross:<surface>:` chip later is a one-line change.
 function buildWorkSurfaceTag(props: NewChatDraftProps) {
   return (
     <ComposerSurfaceChip
@@ -86,7 +33,6 @@ function buildWorkSurfaceTag(props: NewChatDraftProps) {
  * to Chat (ADR-129), so Work has no direct-lane draft.
  */
 function WorkChatDraft(props: NewChatDraftProps) {
-  const { t } = useI18n();
   const advancedDraftControlsEnabled = isAdvancedDraftControlsEnabled(
     props.payload.chat.advancedDraftControls,
     'work',
@@ -105,9 +51,7 @@ function WorkChatDraft(props: NewChatDraftProps) {
         surfaceTag: buildWorkSurfaceTag(props),
       }}
       builderControls={builderControls}
-      starterChips={{
-        leading: buildWorkStarterChips(props, t),
-      }}
+      assistSurface="work"
     />
   );
 }

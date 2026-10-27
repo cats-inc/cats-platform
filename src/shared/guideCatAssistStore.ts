@@ -1,445 +1,192 @@
-import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-
 import {
-  GUIDE_CAT_ASSIST_REFRESH_CONTEXT_HASH_PREFIX,
-  GUIDE_CAT_ASSIST_SCHEMA_VERSION,
-  createGuideCatAssistBundleId,
-  createGuideCatAssistScopeKey,
-  type GuideCatAssistBundle,
-  type GuideCatAssistCacheFile,
-  type GuideCatAssistConfigFile,
-  type GuideCatAssistContent,
-  type GuideCatAssistEntryChip,
-  type GuideCatAssistRefreshFailure,
-  type GuideCatAssistRefreshPreferences,
-  type GuideCatAssistScope,
+  GUIDE_CAT_ASSIST_SCHEMA_VERSION, GUIDE_CAT_ASSIST_SCOPE_KEYS,
+  type GuideCatAssistCacheFile, type GuideCatAssistConfigFile, type GuideCatAssistContent,
 } from './guideCatAssist.js';
-import {
-  resolveGuideCatAssistCachePathFromChatState,
-  resolveGuideCatAssistConfigPathFromChatState,
-} from './platformPaths.js';
+import { resolveGuideCatAssistBaseline } from './guideCatAssistBaselines.js';
+import { resolveGuideCatAssistCachePathFromChatState,
+  resolveGuideCatAssistConfigPathFromChatState } from './platformPaths.js';
 
-const EPOCH_ISO = new Date(0).toISOString();
-
-const DEFAULT_REFRESH_PREFERENCES: GuideCatAssistRefreshPreferences = {
-  runtimeRefreshEnabled: true,
-  defaultTtlMs: null,
-};
-
-const EMPTY_GUIDE_CAT_ASSIST_CONFIG: GuideCatAssistConfigFile = {
-  schemaVersion: GUIDE_CAT_ASSIST_SCHEMA_VERSION,
-  updatedAt: EPOCH_ISO,
-  disabledSurfaceKeys: [],
-  deterministicSeed: null,
-  curatedOverrides: {},
-  refreshPreferences: { ...DEFAULT_REFRESH_PREFERENCES },
-};
-
-const EMPTY_GUIDE_CAT_ASSIST_CACHE: GuideCatAssistCacheFile = {
-  schemaVersion: GUIDE_CAT_ASSIST_SCHEMA_VERSION,
-  updatedAt: EPOCH_ISO,
-  bundles: {},
-  refreshFailures: {},
-};
-
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+export const resolveGuideCatAssistConfigPath = resolveGuideCatAssistConfigPathFromChatState;
+export const resolveGuideCatAssistCachePath = resolveGuideCatAssistCachePathFromChatState;
+const epoch = new Date(0).toISOString();
+const queues = new Map<string, Promise<unknown>>();
+export async function withGuideCatFileLock<T>(file: string, action: () => Promise<T>): Promise<T> {
+  const previous = queues.get(file) ?? Promise.resolve();
+  const next = previous.catch(() => {}).then(action);
+  queues.set(file, next);
+  try { return await next; } finally { if (queues.get(file) === next) queues.delete(file); }
 }
-
-function readNonEmptyString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+export function isAssistRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
-
-function readNullableNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+export function emptyGuideCatAssistConfig(): GuideCatAssistConfigFile {
+  return { schemaVersion: 2, updatedAt: epoch, disabledSurfaceKeys: [], ownerOverrides: {},
+    refreshPreferences: { runtimeRefreshEnabled: true, defaultTtlMs: null } };
 }
-
-function normalizeStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  const seen = new Set<string>();
-  return value.reduce<string[]>((acc, entry) => {
-    const normalized = readNonEmptyString(entry);
-    if (!normalized || seen.has(normalized)) {
-      return acc;
-    }
-    seen.add(normalized);
-    acc.push(normalized);
-    return acc;
-  }, []);
+function emptyCache(): GuideCatAssistCacheFile {
+  return { schemaVersion: 2, updatedAt: epoch, bundles: {}, refreshFailures: {} };
 }
-
-function normalizeRefreshPreferences(value: unknown): GuideCatAssistRefreshPreferences {
-  if (!isObjectRecord(value)) {
-    return { ...DEFAULT_REFRESH_PREFERENCES };
-  }
-
-  return {
-    runtimeRefreshEnabled: value.runtimeRefreshEnabled !== false,
-    defaultTtlMs: readNullableNumber(value.defaultTtlMs),
-  };
+export class GuideCatAssistFormatError extends Error {
+  constructor(file: string) { super(`Unsupported or invalid Catlas state: ${file}`); }
 }
-
-function normalizeEntryChip(value: unknown): GuideCatAssistEntryChip | null {
-  if (!isObjectRecord(value)) {
-    return null;
-  }
-
-  const id = readNonEmptyString(value.id);
-  const prompt = readNonEmptyString(value.prompt);
-  if (!id || !prompt) {
-    return null;
-  }
-
-  return {
-    id,
-    prompt,
-    label: readNonEmptyString(value.label),
-  };
+export async function writeAssistAtomicJson(file: string, value: unknown): Promise<void> {
+  return writeAssistAtomicText(file, JSON.stringify(value, null, 2) + '\n');
 }
-
-function normalizeGuideCatAssistContent(value: unknown): GuideCatAssistContent {
-  if (!isObjectRecord(value)) {
-    return {
-      greeting: null,
-      entryChips: [],
-    };
-  }
-
-  return {
-    greeting: readNonEmptyString(value.greeting),
-    entryChips: Array.isArray(value.entryChips)
-      ? value.entryChips
-          .map((entry) => normalizeEntryChip(entry))
-          .filter((entry): entry is GuideCatAssistEntryChip => Boolean(entry))
-      : [],
-  };
-}
-
-function normalizeGuideCatAssistScope(value: unknown): GuideCatAssistScope | null {
-  if (!isObjectRecord(value)) {
-    return null;
-  }
-
-  const surfaceId = readNonEmptyString(value.surfaceId);
-  const surfaceMode = readNonEmptyString(value.surfaceMode) ?? 'default';
-  const audienceState = readNonEmptyString(value.audienceState) ?? 'default';
-  if (!surfaceId) {
-    return null;
-  }
-
-  return {
-    surfaceId,
-    surfaceMode,
-    audienceState,
-    product: readNonEmptyString(value.product),
-    route: readNonEmptyString(value.route),
-    workspace: readNonEmptyString(value.workspace),
-    recentActivityClass: readNonEmptyString(value.recentActivityClass),
-    variantKey: readNonEmptyString(value.variantKey),
-  };
-}
-
-function normalizeGuideCatAssistRefreshFailure(value: unknown): GuideCatAssistRefreshFailure | null {
-  if (!isObjectRecord(value)) {
-    return null;
-  }
-
-  const scopeKey = readNonEmptyString(value.scopeKey);
-  const failedAt = readNonEmptyString(value.failedAt);
-  const message = readNonEmptyString(value.message);
-  if (!scopeKey || !failedAt || !message) {
-    return null;
-  }
-
-  return {
-    scopeKey,
-    failedAt,
-    message,
-    code: readNonEmptyString(value.code),
-    attempts:
-      typeof value.attempts === 'number' && Number.isFinite(value.attempts) && value.attempts > 0
-        ? Math.trunc(value.attempts)
-        : 1,
-  };
-}
-
-function normalizeGuideCatAssistBundle(value: unknown): GuideCatAssistBundle | null {
-  if (!isObjectRecord(value)) {
-    return null;
-  }
-
-  const scope = normalizeGuideCatAssistScope(value.scope);
-  if (!scope) {
-    return null;
-  }
-
-  const bundleId = readNonEmptyString(value.bundleId) ?? createGuideCatAssistBundleId(scope);
-  const content = normalizeGuideCatAssistContent(value.content);
-  const provenanceRecord = isObjectRecord(value.provenance) ? value.provenance : null;
-  const freshnessRecord = isObjectRecord(value.freshness) ? value.freshness : null;
-  const lastRefreshStatus = readNonEmptyString(freshnessRecord?.lastRefreshStatus);
-
-  return {
-    bundleId,
-    scope,
-    content,
-    provenance: {
-      originMode: provenanceRecord?.originMode === 'runtime' ? 'runtime' : 'deterministic',
-      refreshContextHash:
-        readNonEmptyString(provenanceRecord?.refreshContextHash)
-        ?? `${GUIDE_CAT_ASSIST_REFRESH_CONTEXT_HASH_PREFIX}:missing`,
-      missionId: readNonEmptyString(provenanceRecord?.missionId),
-      runId: readNonEmptyString(provenanceRecord?.runId),
-    },
-    freshness: {
-      generatedAt: readNonEmptyString(freshnessRecord?.generatedAt) ?? EPOCH_ISO,
-      expiresAt: readNonEmptyString(freshnessRecord?.expiresAt),
-      lastRefreshStatus:
-        lastRefreshStatus === 'ok'
-        || lastRefreshStatus === 'failed'
-        || lastRefreshStatus === 'skipped'
-        || lastRefreshStatus === 'never'
-          ? lastRefreshStatus
-          : 'never',
-    },
-  };
-}
-
-function normalizeGuideCatAssistBundleRecord(
-  value: unknown,
-): Record<string, GuideCatAssistBundle> {
-  if (!isObjectRecord(value)) {
-    return {};
-  }
-
-  return Object.entries(value).reduce<Record<string, GuideCatAssistBundle>>((acc, [key, entry]) => {
-    const normalizedBundle = normalizeGuideCatAssistBundle(entry);
-    if (!normalizedBundle) {
-      return acc;
-    }
-
-    const scopeKey = createGuideCatAssistScopeKey(normalizedBundle.scope);
-    acc[scopeKey] = normalizedBundle;
-    return acc;
-  }, {});
-}
-
-function normalizeGuideCatAssistRefreshFailureRecord(
-  value: unknown,
-): Record<string, GuideCatAssistRefreshFailure> {
-  if (!isObjectRecord(value)) {
-    return {};
-  }
-
-  return Object.entries(value).reduce<Record<string, GuideCatAssistRefreshFailure>>((acc, [key, entry]) => {
-    const normalizedFailure = normalizeGuideCatAssistRefreshFailure(entry);
-    if (!normalizedFailure) {
-      return acc;
-    }
-
-    acc[normalizedFailure.scopeKey] = normalizedFailure;
-    return acc;
-  }, {});
-}
-
-function normalizeGuideCatAssistContentRecord(
-  value: unknown,
-): Record<string, GuideCatAssistContent> {
-  if (!isObjectRecord(value)) {
-    return {};
-  }
-
-  return Object.entries(value).reduce<Record<string, GuideCatAssistContent>>((acc, [key, entry]) => {
-    const normalizedKey = key.trim();
-    if (!normalizedKey) {
-      return acc;
-    }
-    acc[normalizedKey] = normalizeGuideCatAssistContent(entry);
-    return acc;
-  }, {});
-}
-
-function normalizeGuideCatAssistConfigFile(value: unknown): GuideCatAssistConfigFile {
-  if (!isObjectRecord(value)) {
-    return structuredClone(EMPTY_GUIDE_CAT_ASSIST_CONFIG);
-  }
-
-  return {
-    schemaVersion: GUIDE_CAT_ASSIST_SCHEMA_VERSION,
-    updatedAt: readNonEmptyString(value.updatedAt) ?? EPOCH_ISO,
-    disabledSurfaceKeys: normalizeStringArray(value.disabledSurfaceKeys),
-    deterministicSeed: readNonEmptyString(value.deterministicSeed),
-    curatedOverrides: normalizeGuideCatAssistContentRecord(value.curatedOverrides),
-    refreshPreferences: normalizeRefreshPreferences(value.refreshPreferences),
-  };
-}
-
-function normalizeGuideCatAssistCacheFile(value: unknown): GuideCatAssistCacheFile {
-  if (!isObjectRecord(value)) {
-    return structuredClone(EMPTY_GUIDE_CAT_ASSIST_CACHE);
-  }
-
-  return {
-    schemaVersion: GUIDE_CAT_ASSIST_SCHEMA_VERSION,
-    updatedAt: readNonEmptyString(value.updatedAt) ?? EPOCH_ISO,
-    bundles: normalizeGuideCatAssistBundleRecord(value.bundles),
-    refreshFailures: normalizeGuideCatAssistRefreshFailureRecord(value.refreshFailures),
-  };
-}
-
-async function writeAtomicJson(filePath: string, payload: unknown): Promise<void> {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  const tempPath = path.join(
-    path.dirname(filePath),
-    `.${path.basename(filePath)}.${process.pid}.${randomUUID()}.tmp`,
-  );
-  await writeFile(tempPath, JSON.stringify(payload, null, 2) + '\n', 'utf8');
-  await rename(tempPath, filePath);
-}
-
-export function resolveGuideCatAssistConfigPath(chatStatePath: string): string {
-  return resolveGuideCatAssistConfigPathFromChatState(chatStatePath);
-}
-
-export function resolveGuideCatAssistCachePath(chatStatePath: string): string {
-  return resolveGuideCatAssistCachePathFromChatState(chatStatePath);
-}
-
-export async function readGuideCatAssistConfig(
-  chatStatePath: string,
-): Promise<GuideCatAssistConfigFile> {
+async function writeAssistAtomicText(file: string, serialized: string): Promise<void> {
+  await mkdir(path.dirname(file), { recursive: true });
+  const temporary = `${file}.${randomUUID()}.tmp`;
   try {
-    const raw = await readFile(resolveGuideCatAssistConfigPath(chatStatePath), 'utf8');
-    return normalizeGuideCatAssistConfigFile(JSON.parse(raw) as unknown);
-  } catch {
-    return structuredClone(EMPTY_GUIDE_CAT_ASSIST_CONFIG);
+    await writeFile(temporary, serialized, 'utf8');
+    if (await readFile(temporary, 'utf8') !== serialized) throw new Error('Catlas write verification failed.');
+    for (let attempt = 0; ; attempt++) {
+      try { await rename(temporary, file); break; }
+      catch (error) {
+        if (attempt >= 5 || !['EPERM', 'EACCES', 'EEXIST'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+        await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 10));
+      }
+    }
+  } finally { await rm(temporary, { force: true }).catch(() => {}); }
+}
+function supportedScope(key: string): boolean {
+  return Object.values(GUIDE_CAT_ASSIST_SCOPE_KEYS).includes(key as typeof GUIDE_CAT_ASSIST_SCOPE_KEYS.lobbyDefault);
+}
+function assert(condition: unknown, file: string): asserts condition {
+  if (!condition) throw new GuideCatAssistFormatError(file);
+}
+function isContent(value: unknown): value is GuideCatAssistContent {
+  return isAssistRecord(value) && Array.isArray(value.greetings)
+    && value.greetings.every(item => isAssistRecord(item) && typeof item.id === 'string'
+      && typeof item.text === 'string' && (item.messageKey === undefined || typeof item.messageKey === 'string'))
+    && Array.isArray(value.entryChips) && value.entryChips.every(item => isAssistRecord(item)
+      && typeof item.id === 'string' && typeof item.label === 'string'
+      && (item.action === 'prefill' && typeof item.prompt === 'string'
+        && ['chat', 'code', 'work'].includes(String(item.surface))
+        || item.action === 'open' && isAssistRecord(item.target)
+          && ['conversation', 'project', 'task', 'work_item'].includes(String(item.target.kind))
+          && typeof item.target.id === 'string'));
+}
+function validateConfig(value: unknown, file: string): asserts value is GuideCatAssistConfigFile {
+  assert(isAssistRecord(value) && value.schemaVersion === 2 && typeof value.updatedAt === 'string'
+    && Object.keys(value).every(key => ['schemaVersion', 'updatedAt', 'disabledSurfaceKeys', 'ownerOverrides', 'refreshPreferences'].includes(key))
+    && Array.isArray(value.disabledSurfaceKeys) && value.disabledSurfaceKeys.every(key => typeof key === 'string' && supportedScope(key))
+    && isAssistRecord(value.ownerOverrides) && isAssistRecord(value.refreshPreferences), file);
+  assert(typeof value.refreshPreferences.runtimeRefreshEnabled === 'boolean'
+    && (value.refreshPreferences.defaultTtlMs === null || typeof value.refreshPreferences.defaultTtlMs === 'number'
+      && Number.isFinite(value.refreshPreferences.defaultTtlMs)), file);
+  for (const [key, override] of Object.entries(value.ownerOverrides)) {
+    assert(supportedScope(key) && isAssistRecord(override)
+      && Object.keys(override).every(field => ['greetings', 'entryChips'].includes(field))
+      && isContent({ greetings: override.greetings ?? [], entryChips: override.entryChips ?? [] }), file);
   }
 }
-
-export async function writeGuideCatAssistConfig(
-  chatStatePath: string,
-  config: GuideCatAssistConfigFile,
-): Promise<GuideCatAssistConfigFile> {
-  const normalizedConfig = normalizeGuideCatAssistConfigFile({
-    ...config,
-    updatedAt: new Date().toISOString(),
-  });
-  await writeAtomicJson(resolveGuideCatAssistConfigPath(chatStatePath), normalizedConfig);
-  return structuredClone(normalizedConfig);
-}
-
-export async function readGuideCatAssistCache(
-  chatStatePath: string,
-): Promise<GuideCatAssistCacheFile> {
-  try {
-    const raw = await readFile(resolveGuideCatAssistCachePath(chatStatePath), 'utf8');
-    return normalizeGuideCatAssistCacheFile(JSON.parse(raw) as unknown);
-  } catch {
-    return structuredClone(EMPTY_GUIDE_CAT_ASSIST_CACHE);
+export function migrateGuideCatAssistConfig(value: unknown, file = 'config'): GuideCatAssistConfigFile {
+  assert(isAssistRecord(value) && value.schemaVersion === 1, file);
+  assert(Object.keys(value).every(key => ['schemaVersion', 'updatedAt', 'disabledSurfaceKeys',
+    'deterministicSeed', 'curatedOverrides', 'refreshPreferences'].includes(key)), file);
+  assert(typeof value.updatedAt === 'string' && Array.isArray(value.disabledSurfaceKeys)
+    && isAssistRecord(value.curatedOverrides)
+    && (value.deterministicSeed === null || typeof value.deterministicSeed === 'string'), file);
+  const next = { ...emptyGuideCatAssistConfig(), updatedAt: value.updatedAt,
+    disabledSurfaceKeys: value.disabledSurfaceKeys.map(key => { assert(typeof key === 'string', file); return key.trim(); }), refreshPreferences: value.refreshPreferences } as GuideCatAssistConfigFile;
+  for (const [rawKey, old] of Object.entries(value.curatedOverrides)) {
+    const key = rawKey.trim();
+    assert(supportedScope(key) && isAssistRecord(old)
+      && Object.keys(old).every(field => ['greeting', 'entryChips'].includes(field))
+      && (old.greeting === null || typeof old.greeting === 'string') && Array.isArray(old.entryChips), file);
+    const entryChips = old.entryChips.map(chip => {
+      assert(isAssistRecord(chip) && typeof chip.id === 'string' && chip.id.trim()
+        && typeof chip.prompt === 'string' && chip.prompt.trim()
+        && (chip.label === undefined || chip.label === null || typeof chip.label === 'string')
+        && Object.keys(chip).every(field => ['id', 'prompt', 'label'].includes(field)), file);
+      const cross = /^cross:(chat|code|work):/u.exec(chip.id.trim());
+      const surface = cross?.[1] ?? (key.startsWith('code:') ? 'code' : key.startsWith('work:') ? 'work' : 'chat');
+      return { id: chip.id.trim(), action: 'prefill' as const, surface: surface as 'chat' | 'code' | 'work',
+        prompt: chip.prompt.trim(), label: typeof chip.label === 'string' && chip.label.trim() ? chip.label.trim() : chip.prompt.trim() };
+    });
+    next.ownerOverrides[key] = { greetings: old.greeting?.trim()
+      ? [{ id: `owner:${key}:greeting`, text: old.greeting.trim() }] : [], entryChips };
   }
-}
-
-export async function writeGuideCatAssistCache(
-  chatStatePath: string,
-  cache: GuideCatAssistCacheFile,
-): Promise<GuideCatAssistCacheFile> {
-  const normalizedCache = normalizeGuideCatAssistCacheFile({
-    ...cache,
-    updatedAt: new Date().toISOString(),
-  });
-  await writeAtomicJson(resolveGuideCatAssistCachePath(chatStatePath), normalizedCache);
-  return structuredClone(normalizedCache);
-}
-
-export async function clearGuideCatAssistCache(
-  chatStatePath: string,
-  now: Date = new Date(),
-): Promise<GuideCatAssistCacheFile> {
-  return writeGuideCatAssistCache(chatStatePath, {
-    ...EMPTY_GUIDE_CAT_ASSIST_CACHE,
-    updatedAt: now.toISOString(),
-  });
-}
-
-export async function readGuideCatAssistBundle(
-  chatStatePath: string,
-  scope:
-    | string
-    | Pick<GuideCatAssistScope, 'surfaceId' | 'surfaceMode' | 'audienceState'>,
-): Promise<GuideCatAssistBundle | null> {
-  const scopeKey = typeof scope === 'string'
-    ? scope
-    : createGuideCatAssistScopeKey(scope);
-  const cache = await readGuideCatAssistCache(chatStatePath);
-  return structuredClone(cache.bundles[scopeKey] ?? null);
-}
-
-export async function upsertGuideCatAssistBundle(
-  chatStatePath: string,
-  bundle: GuideCatAssistBundle,
-): Promise<GuideCatAssistBundle> {
-  const scopeKey = createGuideCatAssistScopeKey(bundle.scope);
-  const cache = await readGuideCatAssistCache(chatStatePath);
-  const normalizedBundle = normalizeGuideCatAssistBundle({
-    ...bundle,
-    bundleId: bundle.bundleId || createGuideCatAssistBundleId(bundle.scope),
-    provenance: {
-      ...bundle.provenance,
-      refreshContextHash:
-        readNonEmptyString(bundle.provenance.refreshContextHash)
-        ?? `${GUIDE_CAT_ASSIST_REFRESH_CONTEXT_HASH_PREFIX}:missing`,
-    },
-  });
-  if (!normalizedBundle) {
-    throw new Error(`Invalid Guide Cat assist bundle for scope '${scopeKey}'`);
+  if (typeof value.deterministicSeed === 'string' && value.deterministicSeed.trim()) {
+    for (const key of Object.values(GUIDE_CAT_ASSIST_SCOPE_KEYS).filter(key => !key.startsWith('work:'))) {
+      if (next.ownerOverrides[key]?.greetings !== undefined) continue;
+      const surface = key.slice(0, -':default:default'.length);
+      const pool = resolveGuideCatAssistBaseline(surface).content.greetings;
+      const index = createHash('sha256').update(`${value.deterministicSeed.trim()}:${key}`).digest()[0] % pool.length;
+      next.ownerOverrides[key] = { ...next.ownerOverrides[key], greetings: [pool[index]] };
+    }
   }
-
-  const nextCache: GuideCatAssistCacheFile = {
-    ...cache,
-    updatedAt: new Date().toISOString(),
-    bundles: {
-      ...cache.bundles,
-      [scopeKey]: normalizedBundle,
-    },
-    refreshFailures: {
-      ...cache.refreshFailures,
-    },
-  };
-  delete nextCache.refreshFailures[scopeKey];
-
-  await writeAtomicJson(resolveGuideCatAssistCachePath(chatStatePath), nextCache);
-  return structuredClone(normalizedBundle);
+  validateConfig(next, file);
+  return next;
 }
-
-export async function recordGuideCatAssistRefreshFailure(
-  chatStatePath: string,
-  failure: Omit<GuideCatAssistRefreshFailure, 'attempts'> & { attempts?: number | null },
-): Promise<GuideCatAssistRefreshFailure> {
-  const cache = await readGuideCatAssistCache(chatStatePath);
-  const existingFailure = cache.refreshFailures[failure.scopeKey];
-  const nextFailure: GuideCatAssistRefreshFailure = {
-    scopeKey: failure.scopeKey,
-    failedAt: failure.failedAt,
-    message: failure.message,
-    code: failure.code,
-    attempts:
-      typeof failure.attempts === 'number' && Number.isFinite(failure.attempts) && failure.attempts > 0
-        ? Math.trunc(failure.attempts)
-        : (existingFailure?.attempts ?? 0) + 1,
-  };
-  const nextCache: GuideCatAssistCacheFile = {
-    ...cache,
-    updatedAt: new Date().toISOString(),
-    refreshFailures: {
-      ...cache.refreshFailures,
-      [failure.scopeKey]: nextFailure,
-    },
-  };
-  await writeAtomicJson(resolveGuideCatAssistCachePath(chatStatePath), nextCache);
-  return structuredClone(nextFailure);
+export async function readGuideCatAssistConfig(statePath: string): Promise<GuideCatAssistConfigFile> {
+  const file = resolveGuideCatAssistConfigPath(statePath);
+  return withGuideCatFileLock(file, async () => {
+    let raw: string;
+    try { raw = await readFile(file, 'utf8'); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return emptyGuideCatAssistConfig(); throw error; }
+    let parsed: unknown;
+    try { parsed = JSON.parse(raw); } catch { throw new GuideCatAssistFormatError(file); }
+    if (isAssistRecord(parsed) && parsed.schemaVersion === 1) {
+      const next = migrateGuideCatAssistConfig(parsed, file);
+      const backup = `${file}.v1-${createHash('sha256').update(raw).digest('hex').slice(0, 12)}.bak`;
+      try { await copyFile(file, backup, 1); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST' || await readFile(backup, 'utf8') !== raw) throw error; }
+      assert(await readFile(backup, 'utf8') === raw, file);
+      try {
+        await writeAssistAtomicJson(file, next);
+        const verified: unknown = JSON.parse(await readFile(file, 'utf8'));
+        validateConfig(verified, file);
+        if (JSON.stringify(verified) !== JSON.stringify(next)) throw new Error('Catlas migration verification failed.');
+      } catch (error) {
+        // Restore the exact previous object through the same atomic replacement path.
+        await writeAssistAtomicText(file, raw);
+        throw error;
+      }
+      return next;
+    }
+    validateConfig(parsed, file);
+    return parsed;
+  });
+}
+export async function writeGuideCatAssistConfig(statePath: string, config: GuideCatAssistConfigFile) {
+  await readGuideCatAssistConfig(statePath); // Preserve/migrate existing owner data before replacement.
+  const next = { ...config, updatedAt: new Date().toISOString() };
+  validateConfig(next, resolveGuideCatAssistConfigPath(statePath));
+  await withGuideCatFileLock(resolveGuideCatAssistConfigPath(statePath), () => writeAssistAtomicJson(resolveGuideCatAssistConfigPath(statePath), next));
+  return next;
+}
+export async function readGuideCatAssistCache(statePath: string): Promise<GuideCatAssistCacheFile> {
+  await readGuideCatAssistConfig(statePath);
+  const file = resolveGuideCatAssistCachePath(statePath);
+  return withGuideCatFileLock(file, async () => {
+    let raw: string;
+    try { raw = await readFile(file, 'utf8'); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return emptyCache(); throw error; }
+    let parsed: unknown;
+    try { parsed = JSON.parse(raw); } catch { parsed = null; }
+    if (isAssistRecord(parsed) && typeof parsed.schemaVersion === 'number' && parsed.schemaVersion !== 1 && parsed.schemaVersion !== 2) throw new GuideCatAssistFormatError(file);
+    if (isAssistRecord(parsed) && parsed.schemaVersion === 1) {
+      const next = emptyCache();
+      await writeAssistAtomicJson(file, next);
+      return next;
+    }
+    if (isAssistRecord(parsed) && parsed.schemaVersion === 2 && isAssistRecord(parsed.bundles)
+      && isAssistRecord(parsed.refreshFailures) && Object.values(parsed.bundles).every(bundle =>
+        isAssistRecord(bundle) && isContent(bundle.content) && isAssistRecord(bundle.scope)
+        && isAssistRecord(bundle.freshness) && isAssistRecord(bundle.provenance))) return parsed as unknown as GuideCatAssistCacheFile;
+    await rename(file, `${file}.corrupt-${Date.now()}-${randomUUID()}`);
+    return emptyCache();
+  });
+}
+async function writeGuideCatAssistCache(statePath: string, cache: GuideCatAssistCacheFile) {
+  await readGuideCatAssistCache(statePath);
+  const next = { ...cache, schemaVersion: GUIDE_CAT_ASSIST_SCHEMA_VERSION, updatedAt: new Date().toISOString() };
+  await withGuideCatFileLock(resolveGuideCatAssistCachePath(statePath), () => writeAssistAtomicJson(resolveGuideCatAssistCachePath(statePath), next));
+  return next;
+}
+export async function clearGuideCatAssistCache(statePath: string, now = new Date()) {
+  return writeGuideCatAssistCache(statePath, { ...emptyCache(), updatedAt: now.toISOString() });
 }

@@ -207,6 +207,7 @@ export interface PlatformLobbyState extends PlatformLobbyPreferences {
 }
 
 export interface PlatformGuideCatAssistState {
+  workNewDraft?: GuideCatAssistSurfaceReadModel | null;
   codeNewDraft?: GuideCatAssistSurfaceReadModel | null;
 }
 

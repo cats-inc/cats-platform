@@ -1,3 +1,4 @@
+import { readCatlasCatalog, updateCatlasCatalog } from '../build/server/shared/guideCatCurationStore.js';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -6,17 +7,15 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
-import { GUIDE_CAT_ASSIST_V1_SCOPE_KEYS } from '../build/server/shared/guideCatAssist.js';
+import { GUIDE_CAT_ASSIST_SCOPE_KEYS } from '../build/server/shared/guideCatAssist.js';
 import {
   GUIDE_CAT_SYSTEM_NAME,
   resolveGuideCatSystemName,
 } from '../build/server/shared/guideCatIdentity.js';
 import {
   readGuideCatAssistCache,
-  upsertGuideCatAssistBundle,
 } from '../build/server/shared/guideCatAssistStore.js';
 import { waitForGuideCatAssistRefreshIdle } from '../build/server/products/chat/api/guideCatAssist.js';
-import { refreshGuideCatAssistEligibleScopes } from '../build/server/products/chat/api/guideCatAssist.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { createCat } from '../build/server/products/chat/state/model/index.js';
 import {
@@ -100,8 +99,13 @@ function createRuntimeStub(options = {}) {
     },
     async sendMessage(sessionId, content) {
       this.sentMessages.push({ sessionId, content });
+      const request = (() => { try { return JSON.parse(content); } catch { return null; } })();
+      const output = request?.scopes ? JSON.stringify({ surfaces: request.scopes.map(scope => ({ scopeKey: scope.scopeKey,
+        ...(scope.catalog ? { operations: [{ op: 'add', kind: 'greeting', text: state.greeting ?? 'Catlas fixture greeting', locale: request.snapshot.context.locale }] } : {}),
+        recommendations: [],
+      })) }) : 'Acknowledged.';
       return {
-        segments: [{ kind: 'text', text: 'Acknowledged.', toolName: null, toolId: null }],
+        segments: [{ kind: 'text', text: output, toolName: null, toolId: null }],
         inputTokens: 11,
         outputTokens: 7,
         tokensUsed: 18,
@@ -151,26 +155,25 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
     restoreFetch = installAuthenticatedFetch(`http://127.0.0.1:${address.port}`, auth, {
       origin: `http://${config.host}:${config.port}`,
     });
-    await callback(`http://127.0.0.1:${address.port}`, config);
+    await callback(`http://127.0.0.1:${address.port}`, config, chatStore);
   } finally {
+    await waitForGuideCatAssistRefreshIdle(config.chatStatePath);
     restoreFetch();
     server.close();
     await once(server, 'close');
   }
 }
 
-async function waitForGuideCatAssistBundle(
+async function waitForGuideCatAssistSurface(
   chatStatePath,
   scopeKey,
   options = {},
 ) {
   const deadline = Date.now() + (options.timeoutMs ?? 4_000);
   while (Date.now() < deadline) {
-    const cache = await readGuideCatAssistCache(chatStatePath);
-    const bundle = cache.bundles[scopeKey] ?? null;
-    if (bundle) {
-      return bundle;
-    }
+    const catalog = await readCatlasCatalog(chatStatePath);
+    const surface = catalog.surfaces[scopeKey] ?? null;
+    if (surface?.prompt) return surface;
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
   throw new Error(`Timed out waiting for assist bundle ${scopeKey}`);
@@ -641,9 +644,9 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
       }),
     });
 
-    await waitForGuideCatAssistBundle(
+    await waitForGuideCatAssistSurface(
       config.chatStatePath,
-      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
+      GUIDE_CAT_ASSIST_SCOPE_KEYS.lobbyDefault,
     );
 
     const diagnosticsBeforeReset = await fetch(`${baseUrl}/api/platform/bootstrap-diagnostics`);
@@ -864,9 +867,9 @@ test('DELETE /api/platform/guide-cat clears assist cache and restores determinis
     });
     assert.equal(setupResponse.status, 200);
 
-    await waitForGuideCatAssistBundle(
+    await waitForGuideCatAssistSurface(
       config.chatStatePath,
-      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
+      GUIDE_CAT_ASSIST_SCOPE_KEYS.lobbyDefault,
     );
 
     const deleteResponse = await fetch(`${baseUrl}/api/platform/guide-cat`, {
@@ -886,181 +889,51 @@ test('DELETE /api/platform/guide-cat clears assist cache and restores determinis
   });
 });
 
-test('GET /api/app-shell uses last-good assist cache when runtime is offline', async () => {
-  const runtime = createRuntimeStub({ reachable: false });
+test('GET /api/app-shell uses last-good generated assist when runtime is offline', async () => {
+  const runtime = createRuntimeStub();
   await withServer(runtime, async (baseUrl, config) => {
-    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ...TEST_ADMIN_CREDENTIALS,
-        ownerDisplayName: 'Kenny',
-        createGuideCat: true,
-      }),
-    });
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, { method: 'POST',
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...TEST_ADMIN_CREDENTIALS, ownerDisplayName: 'Kenny', createGuideCat: true }) });
     assert.equal(setupResponse.status, 200);
-    const setupPayload = await setupResponse.json();
-
-    await refreshGuideCatAssistEligibleScopes({
-      chatStatePath: config.chatStatePath,
-      guideCat: setupPayload.guideCat,
-      ownerDisplayName: 'Kenny',
-      runtimeReachable: true,
-      now: TEST_NOW,
-    });
-
-    const currentLobbyBundle = await waitForGuideCatAssistBundle(
-      config.chatStatePath,
-      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
-    );
-    const currentChatNewBundle = await waitForGuideCatAssistBundle(
-      config.chatStatePath,
-      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault,
-    );
-
-    await upsertGuideCatAssistBundle(config.chatStatePath, {
-      ...currentLobbyBundle,
-      bundleId: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
-      content: {
-        greeting: 'Cached offline lobby greeting',
-        entryChips: [],
-      },
-      provenance: {
-        ...currentLobbyBundle.provenance,
-        originMode: 'runtime',
-        missionId: 'mission-offline-lobby',
-        runId: 'run-offline-lobby',
-      },
-      freshness: {
-        generatedAt: '2026-03-24T23:59:00.000Z',
-        expiresAt: '2026-03-25T06:00:00.000Z',
-        lastRefreshStatus: 'ok',
-      },
-    });
-    await upsertGuideCatAssistBundle(config.chatStatePath, {
-      ...currentChatNewBundle,
-      bundleId: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault,
-      content: {
-        greeting: 'Cached offline new-chat greeting',
-        entryChips: [
-          {
-            id: 'cached-offline-new-chat',
-            prompt: 'Use the cached offline new-chat prompt.',
-          },
-        ],
-      },
-      provenance: {
-        ...currentChatNewBundle.provenance,
-        originMode: 'runtime',
-        missionId: 'mission-offline-new-chat',
-        runId: 'run-offline-new-chat',
-      },
-      freshness: {
-        generatedAt: '2026-03-24T23:59:00.000Z',
-        expiresAt: '2026-03-25T06:00:00.000Z',
-        lastRefreshStatus: 'ok',
-      },
-    });
-
-    const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
-    assert.equal(shellResponse.status, 200);
-    const shell = await shellResponse.json();
-
+    await waitForGuideCatAssistSurface(config.chatStatePath, GUIDE_CAT_ASSIST_SCOPE_KEYS.lobbyDefault);
+    runtime.state.reachable = false;
+    const shell = await (await fetch(`${baseUrl}/api/app-shell`)).json();
     assert.equal(shell.runtime.reachable, false);
-    assert.equal(shell.lobby.guideCatAssist?.renderSource, 'cache');
-    assert.equal(shell.lobby.guideCatAssist?.bundle.content.greeting, 'Cached offline lobby greeting');
-    assert.equal(shell.lobby.guideCatAssist?.refreshEligible, false);
-    assert.equal(
-      shell.guideCatAssist?.codeNewDraft?.scopeKey,
-      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.codeNewDefault,
-    );
-    assert.equal(shell.chat.newChatAssist?.renderSource, 'cache');
-    assert.equal(
-      shell.chat.newChatAssist?.bundle.content.entryChips[0]?.prompt,
-      'Use the cached offline new-chat prompt.',
-    );
+    assert.equal(shell.lobby.guideCatAssist.renderSource, 'cache');
+    assert.ok(shell.lobby.guideCatAssist.bundle.content.greetings.some(item => item.text === 'Catlas fixture greeting'));
+    assert.equal(shell.lobby.guideCatAssist.refreshEligible, false);
+    assert.equal(shell.guideCatAssist.codeNewDraft.scopeKey, GUIDE_CAT_ASSIST_SCOPE_KEYS.codeNewDefault);
+    assert.equal(shell.chat.newChatAssist.bundle.content.entryChips.length, 5);
   });
 });
 
-test('GET /api/app-shell serves stale assist cache first and lazily rehydrates it when runtime is back', async () => {
-  const runtime = createRuntimeStub({ reachable: false });
+test('GET /api/app-shell serves last-good assist immediately while stale generation refreshes in the background', async () => {
+  const runtime = createRuntimeStub();
   await withServer(runtime, async (baseUrl, config) => {
-    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ...TEST_ADMIN_CREDENTIALS,
-        ownerDisplayName: 'Kenny',
-        createGuideCat: true,
-      }),
-    });
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, { method: 'POST',
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...TEST_ADMIN_CREDENTIALS, ownerDisplayName: 'Kenny', createGuideCat: true }) });
     assert.equal(setupResponse.status, 200);
-    const setupPayload = await setupResponse.json();
-
-    await refreshGuideCatAssistEligibleScopes({
-      chatStatePath: config.chatStatePath,
-      guideCat: setupPayload.guideCat,
-      ownerDisplayName: 'Kenny',
-      runtimeReachable: true,
-      now: TEST_NOW,
+    await waitForGuideCatAssistSurface(config.chatStatePath, GUIDE_CAT_ASSIST_SCOPE_KEYS.lobbyDefault);
+    await waitForGuideCatAssistRefreshIdle(config.chatStatePath);
+    await updateCatlasCatalog(config.chatStatePath, catalog => {
+      const surface = catalog.surfaces[GUIDE_CAT_ASSIST_SCOPE_KEYS.lobbyDefault];
+      surface.prompt.refreshedAt = '2026-03-24T12:00:00Z';
+      surface.prompt.expiresAt = '2026-03-24T18:00:00Z';
+      surface.attemptedAt.prompt.at = surface.prompt.refreshedAt;
     });
-
-    const currentLobbyBundle = await waitForGuideCatAssistBundle(
-      config.chatStatePath,
-      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
-    );
-
-    await upsertGuideCatAssistBundle(config.chatStatePath, {
-      ...currentLobbyBundle,
-      bundleId: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
-      content: {
-        greeting: 'Stale cached lobby greeting',
-        entryChips: [],
-      },
-      provenance: {
-        ...currentLobbyBundle.provenance,
-        originMode: 'runtime',
-        missionId: 'mission-stale-lobby',
-        runId: 'run-stale-lobby',
-      },
-      freshness: {
-        generatedAt: '2026-03-24T12:00:00.000Z',
-        expiresAt: '2026-03-24T12:05:00.000Z',
-        lastRefreshStatus: 'ok',
-      },
-    });
-
-    runtime.state.reachable = true;
-
-    const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
-    assert.equal(shellResponse.status, 200);
-    const shell = await shellResponse.json();
-
-    assert.equal(shell.runtime.reachable, true);
-    assert.equal(shell.lobby.guideCatAssist?.renderSource, 'cache');
-    assert.equal(shell.lobby.guideCatAssist?.bundle.content.greeting, 'Stale cached lobby greeting');
-    assert.equal(shell.lobby.guideCatAssist?.stale, true);
-    assert.equal(shell.lobby.guideCatAssist?.refreshEligible, true);
-
-    const deadline = Date.now() + 5_000;
-    let refreshedBundle = null;
-    while (Date.now() < deadline) {
-      const cache = await readGuideCatAssistCache(config.chatStatePath);
-      const bundle = cache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault] ?? null;
-      if (bundle?.freshness.generatedAt === '2026-03-25T00:00:00.000Z') {
-        refreshedBundle = bundle;
-        break;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 25));
-    }
-
-    assert.ok(refreshedBundle);
-    assert.equal(refreshedBundle.content.greeting, 'Stale cached lobby greeting');
-    assert.equal(refreshedBundle.freshness.lastRefreshStatus, 'skipped');
+    runtime.state.greeting = 'A refreshed Catlas greeting';
+    const shell = await (await fetch(`${baseUrl}/api/app-shell`)).json();
+    assert.equal(shell.lobby.guideCatAssist.renderSource, 'cache');
+    assert.ok(shell.lobby.guideCatAssist.bundle.content.greetings.some(item => item.text === 'Catlas fixture greeting'));
+    assert.equal(shell.lobby.guideCatAssist.stale, true);
+    await waitForGuideCatAssistRefreshIdle(config.chatStatePath);
+    const current = await readCatlasCatalog(config.chatStatePath);
+    assert.equal(current.surfaces[GUIDE_CAT_ASSIST_SCOPE_KEYS.lobbyDefault].prompt.refreshedAt, TEST_NOW.toISOString());
+    assert.ok(current.surfaces[GUIDE_CAT_ASSIST_SCOPE_KEYS.lobbyDefault].catalog.greetings.some(item => item.text === 'A refreshed Catlas greeting'));
   });
 });
 
-test('PUT /api/platform/guide-cat hydrates assist cache without requiring an app-shell refresh', async () => {
+test('PUT /api/platform/guide-cat generates assist without requiring an app-shell refresh', async () => {
   await withServer(createRuntimeStub(), async (baseUrl, config) => {
     const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
@@ -1083,69 +956,38 @@ test('PUT /api/platform/guide-cat hydrates assist cache without requiring an app
     });
     assert.equal(updateResponse.status, 200);
 
-    const lobbyBundle = await waitForGuideCatAssistBundle(
+    const lobbyBundle = await waitForGuideCatAssistSurface(
       config.chatStatePath,
-      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
+      GUIDE_CAT_ASSIST_SCOPE_KEYS.lobbyDefault,
     );
-    const newChatBundle = await waitForGuideCatAssistBundle(
+    const newChatBundle = await waitForGuideCatAssistSurface(
       config.chatStatePath,
-      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault,
+      GUIDE_CAT_ASSIST_SCOPE_KEYS.chatNewDefault,
     );
 
-    assert.equal(lobbyBundle.freshness.lastRefreshStatus, 'skipped');
-    assert.equal(newChatBundle.freshness.lastRefreshStatus, 'skipped');
+    assert.ok(lobbyBundle.prompt);
+    assert.ok(lobbyBundle.catalog.greetings.some(item => item.origin === 'catlas'));
+    assert.ok(newChatBundle.prompt);
   });
 });
 
-test('PUT /api/platform/guide-cat refreshes a still-fresh assist cache when guide cat context changes', async () => {
+test('PUT /api/platform/guide-cat refreshes generated assist immediately when its binding changes', async () => {
   await withServer(createRuntimeStub(), async (baseUrl, config) => {
-    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ...TEST_ADMIN_CREDENTIALS,
-        ownerDisplayName: 'Kenny',
-        createGuideCat: true,
-        guideCatProvider: 'claude',
-        guideCatModel: 'claude-sonnet',
-      }),
-    });
-    assert.equal(setupResponse.status, 200);
-
-    const firstBundle = await waitForGuideCatAssistBundle(
-      config.chatStatePath,
-      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
-    );
-    const firstHash = firstBundle.provenance.refreshContextHash;
-
-    const updateResponse = await fetch(`${baseUrl}/api/platform/guide-cat`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        provider: 'codex',
-        model: 'gpt-5.4',
-      }),
-    });
-    assert.equal(updateResponse.status, 200);
+    const setup = await fetch(`${baseUrl}/api/platform/setup/complete`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...TEST_ADMIN_CREDENTIALS, ownerDisplayName: 'Kenny', createGuideCat: true, guideCatProvider: 'claude', guideCatModel: 'claude-sonnet' }) });
+    assert.equal(setup.status, 200);
+    const first = await waitForGuideCatAssistSurface(config.chatStatePath, GUIDE_CAT_ASSIST_SCOPE_KEYS.lobbyDefault);
     await waitForGuideCatAssistRefreshIdle(config.chatStatePath);
-
-    const deadline = Date.now() + 5_000;
-    let refreshedBundle = firstBundle;
-    while (Date.now() < deadline) {
-      const cache = await readGuideCatAssistCache(config.chatStatePath);
-      refreshedBundle = cache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault] ?? firstBundle;
-      if (refreshedBundle.provenance.refreshContextHash !== firstHash) {
-        break;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 25));
-    }
-
-    assert.notEqual(refreshedBundle.provenance.refreshContextHash, firstHash);
-    assert.equal(refreshedBundle.freshness.lastRefreshStatus, 'skipped');
+    const update = await fetch(`${baseUrl}/api/platform/guide-cat`, { method: 'PUT', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ provider: 'codex', model: 'gpt-5.4' }) });
+    assert.equal(update.status, 200);
+    await waitForGuideCatAssistRefreshIdle(config.chatStatePath);
+    const current = await readCatlasCatalog(config.chatStatePath);
+    assert.notEqual(current.surfaces[GUIDE_CAT_ASSIST_SCOPE_KEYS.lobbyDefault].prompt.refreshContextHash, first.prompt.refreshContextHash);
   });
 });
 
-test('PATCH /api/platform/guide-cat status=active rehydrates assist cache after restore', async () => {
+test('PATCH /api/platform/guide-cat status=active generates assist after restore', async () => {
   const runtime = createRuntimeStub({ reachable: false });
   await withServer(runtime, async (baseUrl, config) => {
     const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
@@ -1176,11 +1018,11 @@ test('PATCH /api/platform/guide-cat status=active rehydrates assist cache after 
     assert.equal(restoreResponse.status, 200);
     await waitForGuideCatAssistRefreshIdle(config.chatStatePath);
 
-    const newChatBundle = await waitForGuideCatAssistBundle(
+    const newChatBundle = await waitForGuideCatAssistSurface(
       config.chatStatePath,
-      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault,
+      GUIDE_CAT_ASSIST_SCOPE_KEYS.chatNewDefault,
     );
-    assert.equal(newChatBundle.freshness.lastRefreshStatus, 'skipped');
+    assert.ok(newChatBundle.prompt);
   });
 });
 
@@ -1237,4 +1079,28 @@ test('GET /api/app-shell treats legacy active chat state as setup-complete even 
     assert.ok(payload.setupCompleteAt, 'legacy active state should not be forced back into setup');
     assert.ok(payload.chat.cats.some((cat) => cat.group === 'admin'), 'boss cat should remain visible');
   }, chatStore);
+});
+
+test('feedback records only known workspace basis IDs and never returns or refetches the app shell', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl, config, chatStore) => {
+    const setup = await fetch(`${baseUrl}/api/platform/setup/complete`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...TEST_ADMIN_CREDENTIALS, ownerDisplayName: 'Kenny', createGuideCat: true }) });
+    assert.equal(setup.status, 200);
+    await waitForGuideCatAssistRefreshIdle(config.chatStatePath);
+    const { upsertCoreProject } = await import('../build/server/core/model/index.js');
+    await chatStore.updateCore(core => upsertCoreProject(core, { id: 'project-fixture', title: 'Feedback target', status: 'active' }, TEST_NOW).core);
+    const before = await fetch(`${baseUrl}/api/catlas-assist/signals`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ scopeKey: GUIDE_CAT_ASSIST_SCOPE_KEYS.chatNewDefault, basisIds: ['unknown'], event: 'dismissed' }) });
+    assert.equal(before.status, 200);
+    const response = await fetch(`${baseUrl}/api/catlas-assist/signals`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ scopeKey: GUIDE_CAT_ASSIST_SCOPE_KEYS.chatNewDefault, basisIds: ['project-fixture'], event: 'dismissed' }) });
+    assert.equal(response.status, 200); assert.deepEqual(await response.json(), { ok: true });
+    const { readCatlasSignals } = await import('../build/server/shared/guideCatCurationStore.js');
+    const signals = await readCatlasSignals(config.chatStatePath);
+    assert.equal(signals.length, 1);
+    assert.equal(signals[0].id, 'project-fixture');
+    const invalid = await fetch(`${baseUrl}/api/catlas-assist/signals`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ scopeKey: GUIDE_CAT_ASSIST_SCOPE_KEYS.chatNewDefault, basisIds: [], event: 'dismissed', prompt: 'cannot write content' }) });
+    assert.equal(invalid.status, 400);
+  });
 });

@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Implemented; scoped validation passed; live-model quality pending |
 | **Owner** | Owner |
 | **Reviewer** | Owner |
 | **Related ADR** | [ADR-140](../decisions/140-let-catlas-curate-assist-content-and-titles-through-host-validated-output.md) |
@@ -178,8 +178,8 @@ deferred, under the authority rules of
       make a conversation pending; it may appear in `recentConversations`.
     - `activeProjects`: projects that are `active` or `paused`, with whether
       `repoPath` is set
-    - `recentConversations`: the 10 most recently active non-archived
-      conversations
+    - `recentConversations`: at most 5 entries selected from the 10 most
+      recently active non-archived conversations (the FR-16 exposure cap)
     - `context`: the current time, weekday, daypart, locale and owner display
       name
 16. FR-16: Each entry carries its id, kind, title, status, surface, idle days
@@ -483,15 +483,40 @@ title: first exchange ──► separate fresh session ──► validate + comp
 - cats-runtime: a provider-neutral tool-less session option (ADR-140 §9).
 - The Catlas binding (`GuideCatRecord.executionTarget`, `modelSelection`).
 
+## Implementation notes (2026-10-27)
+
+- Chat, Code, Work and Lobby now consume one composed assist model. Open chips
+  receive a host-built `href` after target revalidation; models cannot return it.
+  Background completion notifies draft readers; Lobby uses its existing polling.
+- Local planning creation establishes `metadata.contentOrigin`; inherited external
+  or unknown provenance is preserved through later link changes. Existing records
+  without provable internal provenance remain navigation-only. No preference
+  profile or message-body store is introduced.
+- Config v1 conversion preserves owner greeting/chip overrides, explicit empty
+  chip lists, seeded greeting selection, disabled scopes and refresh preferences.
+  It validates, backs up, atomically replaces, verifies and restores on failure.
+- Conversation attempts are durable channel metadata; title writes compare both
+  title source and current Catlas binding inside the atomic Chat/Core mutation.
+- The action-discriminated assist JSON and greeting-pool response replace the old
+  response shape. The owner subsequently selected **Desktop 0.11.1 standard
+  preview** on 2026-10-27, explicitly overriding the earlier **0.12** planning
+  boundary. Custom assist readers must adopt the new shape; the public App SDK
+  is unchanged. Owner-config migration remains lossless and protected.
+- Model-practice attention fixtures and evaluator now cover all three drafts.
+  Frozen-evaluator plumbing and fake Runtime tests do not prove live-model quality.
+  See [PLAN-123](../plans/PLAN-123-catlas-curated-assist-rollout.md) for actual checks.
+
 ## Open Questions
 
-- [ ] Does the Chat phase ship under today's Catlas posture (read-only sandbox,
-      rejection after the fact, the snapshot rules), or wait for the
-      cats-runtime tool-less option?
-- [ ] Are the initial constants right: 5 chips including 3 recommendations,
-      30-minute attention refresh, 7-day cooldown, and the FR-13 caps?
-- [ ] Should dismissing Catlas also delete its stored generated content? FR-2
-      keeps it for reactivation.
+- [x] Ship under the existing read-only sandbox posture. The owner authorized
+      implementation on 2026-10-27; no new tools are granted. A future
+      provider-neutral tool-less option still belongs to cats-runtime.
+- [x] Start with the specified constants: 5 chips including 3 recommendations,
+      30-minute attention refresh, 7-day cooldown and the FR-13 caps. Binding
+      changes and the configured TTL can refresh sooner; failed calls are
+      throttled for 30 minutes without replacing last-good content.
+- [x] Keep generated content for reactivation. Dismissal suppresses calls and
+      generated rendering; Platform data reset removes generated files.
 
 ## References
 
@@ -506,7 +531,7 @@ title: first exchange ──► separate fresh session ──► validate + comp
 ---
 
 *Created: 2026-10-27*
-*Updated: 2026-10-27 — review corrections: separated call inputs and permissions,
-shared-consumer rollout, unresolved-choice detection and lossless config upgrade.*
+*Updated: 2026-10-27 — implementation, scoped checks and isolated Windows Desktop
+smoke recorded in PLAN-123; live-model quality and packaged acceptance pending.*
 *Author: Claude (with the owner)*
-*Related Plan: to follow approval*
+*Related Plan: [PLAN-123](../plans/PLAN-123-catlas-curated-assist-rollout.md)*

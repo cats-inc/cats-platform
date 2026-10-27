@@ -1,3 +1,4 @@
+import { preserveContentOrigin } from '../contentProvenance.js';
 import { randomUUID } from 'node:crypto';
 import { assertOwnerRecordDeletable } from '../ownerManagement.js';
 
@@ -94,10 +95,8 @@ export function upsertCoreTask(
     },
     createdAt: existingTask?.createdAt ?? input.createdAt ?? nowIso,
     updatedAt: nowIso,
-    metadata:
-      input.metadata === undefined
-        ? normalizeMetadata(existingTask?.metadata)
-        : normalizeMetadata(input.metadata),
+    metadata: preserveContentOrigin(input.metadata === undefined
+      ? normalizeMetadata(existingTask?.metadata) : normalizeMetadata(input.metadata), existingTask?.metadata, !existingTask),
   };
 
   const { records, created } = replaceById(core.tasks, task);

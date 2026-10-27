@@ -86,6 +86,7 @@ export function createAppShell(
     products?: PlatformProductDescriptor[];
     lobbyGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
     newChatAssist?: AppShellPayload['chat']['newChatAssist'];
+    workGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
     codeGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
     scopeId?: string;
   },
@@ -123,6 +124,7 @@ export function createAppShell(
     },
     guideCatAssist: {
       codeNewDraft: setup?.codeGuideCatAssist ?? null,
+      workNewDraft: setup?.workGuideCatAssist ?? null,
     },
     chat: {
       id: chat.id,

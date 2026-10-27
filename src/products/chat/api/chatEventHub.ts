@@ -1,4 +1,5 @@
 export type ChatEventKind =
+  | 'assist_changed'
   | 'room_updated'
   | 'recents_changed'
   | 'unread_changed'
