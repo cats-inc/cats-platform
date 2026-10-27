@@ -135,7 +135,8 @@ See individual notes and linked plans for validation scope and remaining limits.
       is preserved by a tested upgrade. Scoped tests/builds and isolated Windows
       Desktop smoke pass in [PLAN-123](docs/plans/PLAN-123-catlas-curated-assist-rollout.md).
       Live-provider recommendation quality and packaged acceptance remain pending;
-      the assist response change requires the next minor (0.12) release boundary.
+      the owner selected Desktop 0.11.1 as an explicit exception to the earlier
+      0.12 assist-response planning boundary. Custom assist readers need the new shape.
 
 - [x] Settings → Plugins can install, enable, disable and remove the reviewed Agency
       content package in an isolated internal experiment. Cats can select its two

@@ -3,7 +3,8 @@
 - [PLAN-123: Catlas curated assist](PLAN-123-catlas-curated-assist-rollout.md)
   — implemented with scoped tests/builds and isolated Windows Desktop smoke,
   2026-10-27; protected config migration, atomic titles and shared readers.
-  Live-model quality and packaged acceptance pending. No release.
+  Live-model quality and packaged acceptance pending. Owner-selected Desktop
+  0.11.1 standard preview follows an auto-merge PR with the same Runtime/App pins.
 
 - [PLAN-122: Desktop identity and remote access](PLAN-122-desktop-identity-and-remote-access-rollout.md)
   — account core, configurable Desktop P2 and scoped ngrok/external lifecycle

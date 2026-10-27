@@ -7,7 +7,8 @@
   require unresolved choices and preserve owner config through migration.
   Initial posture/constants/retention resolved; Chat, Code, Work and Lobby wired.
   PLAN-123 records tests/builds and isolated Desktop smoke; live-model quality and
-  packaged acceptance pending. Assist JSON requires the next minor (0.12) boundary.
+  packaged acceptance pending. The owner selected Desktop 0.11.1, overriding the
+  earlier 0.12 assist-response boundary; custom readers need the new shape.
 - [SPEC-130: Desktop-managed remote access](SPEC-130-desktop-managed-remote-access.md)
   — scoped ngrok/external lifecycle and protected migration implemented,
   2026-10-25; Windows managed connection/restart/reset and native storage checked.

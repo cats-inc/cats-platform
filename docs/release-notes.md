@@ -2,7 +2,11 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
-## Unreleased — Catlas curated assist and titles (next minor: 0.12)
+## 2026-10-27 — Desktop 0.11.1 standard preview: Catlas curation and titles
+
+Selected distribution: Desktop **0.11.1 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**. Platform/Runtime npm, launcher and optional
+Marketplace Apps retain their existing releases.
 
 When Catlas is active, new non-DM composer conversations can receive a short
 summarized title after the first completed reply. Manual names and existing
@@ -29,9 +33,32 @@ with diagnostics. Generated catalogs, signals and the last 100 call receipts are
 local state and are erased by Platform data reset.
 
 The assist JSON response now uses greeting pools and explicit `open`/`prefill`
-entries. Shared Desktop readers ship together; external consumers need this new
-shape. This is the next-minor boundary, **0.12**, pending separate release
-authorization. No version fields, source pins or published releases are changed here.
+entries. Shared Desktop readers ship together; custom app-shell consumers need
+this new shape. The owner explicitly selected **0.11.1** on 2026-10-27, overriding
+the earlier 0.12 planning boundary for this Desktop preview. This does not claim
+compatibility with old assist JSON readers. Existing owner data retains its
+validated, backed-up migration and failure recovery; the public App SDK is unchanged.
+
+- **Exact source and artifacts.** Runtime remains
+  `5212fa59ee44fbee7eea0d85e7482933824ff775` (package **0.6.2**). Usage remains
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. Its Platform minimum
+  `^0.6.0` and SDK range `^1.2.0` remain accepted by the host contracts.
+  Every OS/source receipt records this PR's selected Platform commit and the
+  same Runtime SHA.
+- **Signing and checks.** Dispatch `desktop-release.yml` from the merged bump
+  commit with `tag=v0.11.1`, the Runtime SHA above and `unsigned=false`.
+  Standard trust: macOS **signed + notarized**, Windows **unsigned: no
+  certificate**, Linux **n/a**. Local validation passed 280 targeted cases,
+  server/renderer/test/mobile type checks, renderer builds and isolated Windows
+  Desktop smoke. The data-upgrade tests include backup, atomic replacement,
+  restart and failed-conversion recovery. Version preparation also passed 19
+  release-version, public App SDK and packaged-App verifier checks, with server
+  and Desktop host builds. Live-provider recommendation quality
+  is unverified. The PR runs full CI; the release workflow gates packaged startup,
+  App activation, complete-source identity, signatures and public assets.
+  Publication results: the `v0.11.1` GitHub prerelease and its Actions run.
 
 ## 2026-10-27 — Desktop 0.11.0 standard preview: image service without operating hours
 

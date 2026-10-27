@@ -11,7 +11,8 @@ Governing documents: [ADR-140](../decisions/140-let-catlas-curate-assist-content
 5. Targeted storage/runtime/renderer/consumer checks, isolated Desktop smoke, evaluator updates.
 
 Implementation choices: use the existing read-only sandbox posture, retain generated state
-when Catlas is dismissed, and start with SPEC-131 constants. No version bump or publication.
+when Catlas is dismissed, and start with SPEC-131 constants. The owner subsequently
+selected a 0.11.1 bump, auto-merge PR and Desktop standard preview on 2026-10-27.
 Unknown-origin old planning records remain navigation-only. Known external provenance must
 survive unlinking. All tests use temporary or in-memory profiles; never write to owner state.
 
@@ -94,6 +95,14 @@ Receipts/screenshots remain private local candidate evidence, not tracked assets
 ## Release boundary
 
 The action-discriminated chip/greeting-pool JSON replaces the old assist response
-shape and requires the next minor **0.12** boundary. Config v1 has a tested,
-lossless one-time upgrade. Package version remains 0.11.0; no version bump,
-publication or installed-app replacement is part of this implementation.
+shape. The owner explicitly selected **0.11.1**, overriding the earlier **0.12**
+planning boundary for this Desktop preview; custom assist readers need updating.
+Config v1 has a tested, lossless one-time upgrade. Public App SDK 1.9.0 is unchanged.
+The release uses an auto-merge PR, then manual `desktop-release.yml` dispatch from
+the merged source with tag `v0.11.1`, Runtime
+`5212fa59ee44fbee7eea0d85e7482933824ff775` and `unsigned=false`. Usage 0.5.4 and
+its exact lock hash remain unchanged. Standard trust is macOS signed + notarized,
+Windows unsigned: no certificate, Linux n/a. Workflow results and download evidence
+belong to the GitHub Release/Actions run; no post-publication tracking edit is needed.
+Version preparation passed the tag/package/lock guard, server and Desktop host
+builds, and 19 release-version/App SDK/packaged-App verification cases.

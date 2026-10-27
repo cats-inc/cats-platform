@@ -498,9 +498,10 @@ title: first exchange ──► separate fresh session ──► validate + comp
 - Conversation attempts are durable channel metadata; title writes compare both
   title source and current Catlas binding inside the atomic Chat/Core mutation.
 - The action-discriminated assist JSON and greeting-pool response replace the old
-  response shape. This requires the **next minor (0.12) release boundary**. The
-  owner-config migration is lossless and adds no separate breaking requirement.
-  No version bump or publication is authorized by implementation.
+  response shape. The owner subsequently selected **Desktop 0.11.1 standard
+  preview** on 2026-10-27, explicitly overriding the earlier **0.12** planning
+  boundary. Custom assist readers must adopt the new shape; the public App SDK
+  is unchanged. Owner-config migration remains lossless and protected.
 - Model-practice attention fixtures and evaluator now cover all three drafts.
   Frozen-evaluator plumbing and fake Runtime tests do not prove live-model quality.
   See [PLAN-123](../plans/PLAN-123-catlas-curated-assist-rollout.md) for actual checks.
