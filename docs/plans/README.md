@@ -1,5 +1,9 @@
 # Implementation Plans
 
+- [PLAN-124: Provider session interactions and capability visibility](PLAN-124-provider-session-interactions-and-capability-visibility.md)
+  — ready, 2026-10-28; shared transport/lifecycle, product UI,
+  policy/inventory and isolated Desktop acceptance. All phases pending.
+
 - [PLAN-123: Catlas curated assist](PLAN-123-catlas-curated-assist-rollout.md)
   — implemented with scoped tests/builds and isolated Windows Desktop smoke,
   2026-10-27; protected config migration, atomic titles and shared readers.

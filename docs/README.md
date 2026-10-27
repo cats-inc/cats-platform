@@ -1,5 +1,12 @@
 # Documentation Index
 
+[Provider session interactions and capability visibility](specs/SPEC-132-provider-session-interactions-and-capability-visibility.md)
+is approved for sliced implementation (2026-10-28) for Chat/Work/Code native approvals and
+input, truthful permissions, live tool inventory and Desktop dependency diagnostics.
+[PLAN-124](plans/PLAN-124-provider-session-interactions-and-capability-visibility.md)
+consumes Runtime SPEC-039 / PLAN-049; standalone Bots integrates independently.
+Implementation has not started.
+
 [Catlas curated assist and conversation titles](specs/SPEC-131-catlas-curated-assist-and-conversation-titles.md)
 records the 2026-10-27 owner direction: when active, Catlas titles new
 conversations, curates greeting and chip catalogs and recommends next actions
