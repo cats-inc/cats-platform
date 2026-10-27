@@ -1,3 +1,4 @@
+import { builtinAssist } from './fixtures/guideCatAssist.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
@@ -19,8 +20,11 @@ function renderToStaticMarkup(element: React.ReactElement): string {
 }
 
 function createPayload(): AppShellPayload {
+  const assist = builtinAssist('chat:new');
+  assist.bundle.content.greetings = []; // These layout fixtures supply explicit greeting props.
   return {
     chat: {
+      newChatAssist: assist,
       botBindings: [],
       capabilities: {
         maxCats: 5,
@@ -237,10 +241,12 @@ test('default chat draft expanded to a group with runtime assist hides the chat-
         audienceState: 'default',
       },
       content: {
-        greeting: 'Round up the room.',
+        greetings: [{ id: 'fixture-greeting', text: 'Round up the room.' }],
         entryChips: [
           {
             id: 'group-roles',
+            action: 'prefill', surface: 'chat',
+            label: 'Brief the group, split roles, and ask for a coordinated plan.',
             prompt: 'Brief the group, split roles, and ask for a coordinated plan.',
           },
         ],
@@ -789,10 +795,12 @@ test('draft prefers payload-backed assist greeting and starter suggestions when 
         audienceState: 'default',
       },
       content: {
-        greeting: 'Payload says hello.',
+        greetings: [{ id: 'fixture-greeting', text: 'Payload says hello.' }],
         entryChips: [
           {
             id: 'payload-plan',
+            action: 'prefill', surface: 'chat',
+            label: 'Payload asks you to line up the first deliverable before you send anything.',
             prompt: 'Payload asks you to line up the first deliverable before you send anything.',
           },
         ],
@@ -825,7 +833,7 @@ test('draft prefers payload-backed assist greeting and starter suggestions when 
   assert.doesNotMatch(markup, /Plan today's priorities and turn them into next actions\./u);
 });
 
-test('group draft ignores deterministic payload-backed starter prompts', () => {
+test('group draft renders composed builtin content without product fallbacks', () => {
   const payload = createPayload();
   payload.chat.newChatAssist = {
     scopeKey: 'chat:new:default:default',
@@ -844,10 +852,12 @@ test('group draft ignores deterministic payload-backed starter prompts', () => {
         audienceState: 'default',
       },
       content: {
-        greeting: 'Round up the room.',
+        greetings: [{ id: 'fixture-greeting', text: 'Round up the room.' }],
         entryChips: [
           {
             id: 'group-roles',
+            action: 'prefill', surface: 'chat',
+            label: 'Brief the group, split roles, and ask for a coordinated plan.',
             prompt: 'Brief the group, split roles, and ask for a coordinated plan.',
           },
         ],
@@ -876,8 +886,8 @@ test('group draft ignores deterministic payload-backed starter prompts', () => {
     />,
   );
 
-  assert.doesNotMatch(markup, /Brief the group, split roles, and ask for a coordinated plan\./u);
-  assert.match(markup, />Build a pomodoro app</u);
+  assert.match(markup, /Brief the group, split roles, and ask for a coordinated plan\./u);
+  assert.doesNotMatch(markup, />Build a pomodoro app</u);
   assert.match(markup, /draftPromptChip/u);
 });
 
@@ -900,10 +910,12 @@ test('group draft surfaces runtime-origin payload-backed starter prompts', () =>
         audienceState: 'default',
       },
       content: {
-        greeting: 'Runtime new-chat greeting.',
+        greetings: [{ id: 'fixture-greeting', text: 'Runtime new-chat greeting.' }],
         entryChips: [
           {
             id: 'runtime-group-roles',
+            action: 'prefill', surface: 'chat',
+            label: 'Runtime-generated coordinated plan suggestion.',
             prompt: 'Runtime-generated coordinated plan suggestion.',
           },
         ],
@@ -954,10 +966,12 @@ test('group draft keeps runtime-origin helper chips visible while the user types
         audienceState: 'default',
       },
       content: {
-        greeting: 'Runtime new-chat greeting.',
+        greetings: [{ id: 'fixture-greeting', text: 'Runtime new-chat greeting.' }],
         entryChips: [
           {
             id: 'runtime-group-roles',
+            action: 'prefill', surface: 'chat',
+            label: 'Runtime-generated coordinated plan suggestion.',
             prompt: 'Runtime-generated coordinated plan suggestion.',
           },
         ],
@@ -1013,10 +1027,12 @@ test('direct-lane draft ignores deterministic payload-backed starter prompts', (
         audienceState: 'default',
       },
       content: {
-        greeting: 'Greeting that should stay hidden in DM.',
+        greetings: [{ id: 'fixture-greeting', text: 'Greeting that should stay hidden in DM.' }],
         entryChips: [
           {
             id: 'direct-update',
+            action: 'prefill', surface: 'chat',
+            label: 'Ask this Cat for a focused update or recommendation on this task.',
             prompt: 'Ask this Cat for a focused update or recommendation on this task.',
           },
         ],
@@ -1072,10 +1088,12 @@ test('direct-lane draft suppresses even runtime-origin payload-backed starter pr
         audienceState: 'default',
       },
       content: {
-        greeting: 'Runtime greeting that should stay hidden in DM.',
+        greetings: [{ id: 'fixture-greeting', text: 'Runtime greeting that should stay hidden in DM.' }],
         entryChips: [
           {
             id: 'runtime-direct',
+            action: 'prefill', surface: 'chat',
+            label: 'Runtime-generated suggestion that should stay hidden in DM.',
             prompt: 'Runtime-generated suggestion that should stay hidden in DM.',
           },
         ],

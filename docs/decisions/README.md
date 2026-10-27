@@ -5,7 +5,8 @@
   and chip catalogs and recommends grounded next actions, returning data only.
   No web, no settings UI; Chat → Code → Work, Lobby ≤3. Review corrections cover
   isolated call inputs, shared-consumer rollout and protected owner config;
-  SPEC-131 remains draft.
+  SPEC-131 implemented with scoped checks and isolated Desktop smoke on
+  2026-10-27; live-model quality pending in PLAN-123.
 - [ADR-139: One Desktop-managed remote ingress](139-manage-one-desktop-remote-ingress.md)
   — accepted direction, 2026-10-24; shared ngrok/Funnel/existing-proxy setup for
   Mobile, Telegram webhook and external Apps. Provider completion and acceptance pending.

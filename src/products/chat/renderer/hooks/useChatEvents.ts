@@ -43,6 +43,7 @@ export function useChatEvents(
         } catch { /* ignore parse errors */ }
       });
 
+      source.addEventListener('assist_changed', () => { callbacksRef.current.onRecentsChanged?.(); });
       source.addEventListener('recents_changed', () => {
         callbacksRef.current.onRecentsChanged?.();
       });

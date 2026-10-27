@@ -1,5 +1,10 @@
 # Implementation Plans
 
+- [PLAN-123: Catlas curated assist](PLAN-123-catlas-curated-assist-rollout.md)
+  — implemented with scoped tests/builds and isolated Windows Desktop smoke,
+  2026-10-27; protected config migration, atomic titles and shared readers.
+  Live-model quality and packaged acceptance pending. No release.
+
 - [PLAN-122: Desktop identity and remote access](PLAN-122-desktop-identity-and-remote-access-rollout.md)
   — account core, configurable Desktop P2 and scoped ngrok/external lifecycle
   implemented, 2026-10-25; Windows managed connection/restart/reset and focused
@@ -205,7 +210,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-10-25 (PLAN-122 identity/ngrok integration and Windows managed acceptance recorded; broader phases pending.)*
+*Last updated: 2026-10-27 (PLAN-123 Catlas implementation and scoped validation recorded.)*
 
 *See also: [specs/](../specs/) for feature specifications*
 

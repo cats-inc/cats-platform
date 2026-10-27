@@ -1,3 +1,4 @@
+import { preserveContentOrigin } from '../contentProvenance.js';
 import { randomUUID } from 'node:crypto';
 import { resolveCoreArtifactProvenanceMetadata } from '../artifactProvenance.js';
 import { assertOwnerRecordDeletable } from '../ownerManagement.js';
@@ -63,10 +64,8 @@ export function upsertCoreProject(
         : normalizeNullableString(input.primaryConversationId),
     createdAt: existing?.createdAt ?? input.createdAt ?? nowIso,
     updatedAt: nowIso,
-    metadata:
-      input.metadata === undefined
-        ? normalizeMetadata(existing?.metadata)
-        : normalizeMetadata(input.metadata),
+    metadata: preserveContentOrigin(input.metadata === undefined
+      ? normalizeMetadata(existing?.metadata) : normalizeMetadata(input.metadata), existing?.metadata, !existing),
   };
 
   const { records, created } = replaceById(core.projects, project);
@@ -135,10 +134,8 @@ export function upsertCoreWorkItem(
         : normalizeNullableString(input.summary),
     createdAt: existing?.createdAt ?? input.createdAt ?? nowIso,
     updatedAt: nowIso,
-    metadata:
-      input.metadata === undefined
-        ? normalizeMetadata(existing?.metadata)
-        : normalizeMetadata(input.metadata),
+    metadata: preserveContentOrigin(input.metadata === undefined
+      ? normalizeMetadata(existing?.metadata) : normalizeMetadata(input.metadata), existing?.metadata, !existing),
   };
 
   const { records, created } = replaceById(core.workItems, workItem);

@@ -1,3 +1,4 @@
+import { reportCatlasFeedback, selectCatlasChip } from '../../products/shared/renderer/components/catlasChipActions.js';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -39,6 +40,9 @@ export function PlatformLobby({
 }) {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const [greetingPick] = useState(Math.random);
+  const [recommendationsDismissed, setRecommendationsDismissed] = useState(false);
+  const recommendations = envelope.lobby.guideCatAssist?.bundle.content.entryChips.filter(chip => chip.action === 'open').slice(0, 3) ?? [];
   const [fallbackGreeting] = useState(() => pickLobbyGreeting(null, Math.random, t));
   const entries = buildPlatformLobbyEntries({
     products: envelope.products,
@@ -47,7 +51,7 @@ export function PlatformLobby({
   const appEntries = buildPlatformLobbyAppEntries({
     installedApps: envelope.installedApps ?? [],
   });
-  const greeting = resolveGuideCatAssistGreeting(envelope.lobby.guideCatAssist, t)
+  const greeting = resolveGuideCatAssistGreeting(envelope.lobby.guideCatAssist, t, greetingPick)
     ?? fallbackGreeting;
   const runtimeStatus = resolveRuntimePresentationStatus(envelope.runtime);
   const dotClass = resolveRuntimeLobbyDotClassName(runtimeStatus);
@@ -133,6 +137,14 @@ export function PlatformLobby({
 
         <div className="lobbyHero">
           <h1 className="lobbyGreeting">{greeting}</h1>
+          {!recommendationsDismissed && recommendations.length > 0 ? <div className="chipRow lobbyRecommendations">
+            {recommendations.map(chip => <button key={chip.id} type="button" className="promptChip"
+              onClick={() => selectCatlasChip(chip, 'lobby:default:default', { onComposerChange: () => {}, navigate })}>{chip.label}</button>)}
+            <button type="button" className="promptChip" aria-label={t('shared.common.dismiss')} onClick={() => {
+              reportCatlasFeedback('lobby:default:default', recommendations.flatMap(chip => chip.basis ?? []), 'dismissed');
+              setRecommendationsDismissed(true);
+            }}>×</button>
+          </div> : null}
         </div>
 
         <EntityIndexCards envelope={envelope} />

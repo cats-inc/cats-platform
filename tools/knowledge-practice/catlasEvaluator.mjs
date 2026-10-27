@@ -1,7 +1,11 @@
+import { internalCatlasSnapshot } from '../../build/server/products/chat/api/catlasSnapshot.js';
+import { createBuiltinGuideCatCatalog } from '../../build/server/shared/guideCatAssistCatalog.js';
+import { CATLAS_PROMPT_FORMAT, CATLAS_NAVIGATION_FORMAT } from '../../build/server/platform/catlas/assistProtocol.js';
+import { exactCatlasObject, applyCatlasCatalogOperations, validateCatlasRecommendations } from '../../build/server/products/chat/api/catlasCuration.js';
 import assert from 'node:assert/strict';
 import { assertNoRuntimeSkills } from './runtimeSkillState.mjs';
 import { join } from 'node:path';
-import { inferCatlasAdvice } from '../../build/server/platform/catlas/inference.js';
+import { inferCatlasAdvice, inferCatlasData } from '../../build/server/platform/catlas/inference.js';
 import { selectCatlasKnowledge } from '../../build/server/platform/catlas/knowledge.js';
 import { assembleProductKnowledgeContext } from '../../build/server/platform/knowledge/productKnowledge.js';
 import { validateRuntimeSessionPolicyInput } from '../../build/server/shared/runtimeSessionPolicy.js';
@@ -234,4 +238,97 @@ export function createCatlasEvaluator({ evaluationRoot, runtimeClient, guideCat,
     } catch { result.observed.responseValid = false; result.complete = false; }
     return result;
   };
+}
+
+/** Manual attention-recommendation practice. No owner state, knowledge file or default provider is read. */
+export function createCatlasAssistEvaluator({ evaluationRoot, runtimeClient, guideCat, authorId, reviewerId,
+  resolveRubric, judge, confirmCleanup }) {
+  id(authorId); id(reviewerId); assert.notEqual(authorId, reviewerId);
+  for (const callback of [resolveRubric, judge, confirmCleanup]) assert.equal(typeof callback, 'function');
+  return async ({ fixture, fixtureRoot, resetId, signal }) => {
+    validateCatlasAssistFixture(fixture);
+    assert.match(resetId, /^[a-f0-9-]{36}$/u);
+    assert.equal(await physical(fixtureRoot), join(await physical(evaluationRoot), 'resets', resetId));
+    const snapshot = fixture.kind === 'refresh_prompt' ? internalCatlasSnapshot(fixture.snapshot) : fixture.snapshot;
+    const catalog = createBuiltinGuideCatCatalog(fixture.scopeKey.slice(0, -':default:default'.length));
+    const payload = { snapshot, scopes: [{ scopeKey: fixture.scopeKey,
+      ...(fixture.kind === 'refresh_prompt' ? { catalog } : {}) }] };
+    const criteria = structuredClone(await resolveRubric(fixture.rubricId));
+    assert.ok(Array.isArray(criteria) && criteria.length > 0 && criteria.length <= 14);
+    for (const criterion of criteria) { fields(criterion, ['id', 'criterion']); id(criterion.id); safeText(criterion.criterion, 4000); }
+    assert.equal(new Set(criteria.map(criterion => criterion.id)).size, criteria.length);
+    const requestId = resetId;
+    await writeNew(join(fixtureRoot, 'catlas-assist-intent.json'), { resetId, inputDigest: digest(payload),
+      rubricDigest: digest(criteria), authorId, reviewerId, target: guideCat.executionTarget });
+    let failure = null, output = null, judgment = null;
+    const ownedSessions = [];
+    const tracked = {
+      async createSession(input) {
+        assert.equal(validateRuntimeSessionPolicyInput(input), null);
+        assert.equal(input.workspaceKind, 'sandbox'); assert.equal(input.workspaceAccess, 'read_only');
+        assert.deepEqual(input.mcpServers, []); assert.deepEqual(input.skills.requestedSkills, []);
+        const session = await runtimeClient.createSession(input);
+        ownedSessions.push({ id: session.id, closeAcknowledged: false });
+        return session;
+      },
+      async sendMessage(sessionId, content, input) {
+        assert.ok(ownedSessions.some(session => session.id === sessionId));
+        const { session } = await runtimeClient.observeSession(sessionId);
+        assert.equal(session.id, sessionId); assert.equal(session.providerName, guideCat.executionTarget.provider);
+        assert.equal(session.workspace?.kind, 'sandbox'); assert.equal(session.workspace?.access, 'read_only');
+        assert.equal(session.permissionMode, 'default'); assertNoRuntimeSkills(session);
+        return runtimeClient.sendMessage(sessionId, content, input);
+      },
+      async closeSession(sessionId) {
+        await runtimeClient.closeSession(sessionId);
+        ownedSessions.find(session => session.id === sessionId).closeAcknowledged = true;
+      },
+      cancelSession: sessionId => runtimeClient.cancelSession(sessionId),
+    };
+    try {
+      output = await inferCatlasData({ runtimeClient: tracked, guideCat, kind: fixture.kind, payload,
+        requestId, signal, format: fixture.kind === 'refresh_prompt' ? CATLAS_PROMPT_FORMAT : CATLAS_NAVIGATION_FORMAT });
+      const envelope = exactCatlasObject(output, ['surfaces']);
+      assert.ok(Array.isArray(envelope.surfaces) && envelope.surfaces.length === 1);
+      const unit = exactCatlasObject(envelope.surfaces[0], fixture.kind === 'refresh_prompt'
+        ? ['scopeKey', 'operations', 'recommendations'] : ['scopeKey', 'recommendations']);
+      assert.equal(unit.scopeKey, fixture.scopeKey);
+      validateCatlasRecommendations(unit.recommendations, fixture.kind, snapshot, fixture.scopeKey.startsWith('lobby:'));
+      if (fixture.kind === 'refresh_prompt') applyCatlasCatalogOperations(catalog, unit.operations, snapshot.context.locale, fixture.scopeKey.startsWith('lobby:'));
+      const response = canonical(output), responseDigest = digest(response);
+      await writeNew(join(fixtureRoot, 'catlas-assist-response.json'), { resetId, output, responseDigest });
+      const raw = await judge({ reviewerId, criteria, responseDigest, advice: response, fixture, signal });
+      judgment = validateCatlasJudgment(raw, responseDigest, reviewerId, criteria, response);
+    } catch (error) { failure = error instanceof Error ? error.message : String(error); }
+    const cleanup = await confirmCleanup({ resetId, sessions: ownedSessions });
+    fields(cleanup, ['status', 'evidenceRefs']); evidenceIds(cleanup.evidenceRefs);
+    assert.ok(['complete', 'incomplete'].includes(cleanup.status));
+    const receipt = { resetId, kind: fixture.kind, inputDigest: digest(payload), responseDigest: output ? digest(canonical(output)) : null,
+      judgment, failure, cleanup, sessions: ownedSessions, passed: !failure && cleanup.status === 'complete'
+        && judgment?.decisions.every(decision => decision.verdict === 'pass') === true };
+    await writeNew(join(fixtureRoot, 'catlas-assist-assessment.json'), receipt);
+    return receipt;
+  };
+}
+
+export function validateCatlasAssistFixture(fixture) {
+  fields(fixture, ['kind', 'scopeKey', 'snapshot', 'rubricId']);
+  assert.ok(['refresh_prompt', 'refresh_navigation'].includes(fixture.kind)); id(fixture.rubricId);
+  assert.ok(['lobby:default:default', 'chat:new:default:default', 'code:new:default:default', 'work:new:default:default'].includes(fixture.scopeKey));
+  const snapshot = fixture.snapshot;
+  fields(snapshot, ['pendingApprovals', 'stalledWork', 'awaitingReply', 'activeProjects', 'recentConversations', 'context']);
+  for (const category of ['pendingApprovals', 'stalledWork', 'awaitingReply', 'activeProjects', 'recentConversations']) {
+    assert.ok(Array.isArray(snapshot[category]) && snapshot[category].length <= 5);
+    for (const entry of snapshot[category]) {
+      fields(entry, ['id', 'kind', 'title', 'status', 'surface', 'idleDays', 'external', 'repoPathSet']);
+      safeText(entry.id, 160); safeText(entry.title, 200); safeText(entry.status, 80);
+      assert.ok(['project', 'work_item', 'task', 'conversation'].includes(entry.kind));
+      assert.ok(['chat', 'code', 'work'].includes(entry.surface)); assert.equal(typeof entry.external, 'boolean');
+      assert.ok(Number.isSafeInteger(entry.idleDays) && entry.idleDays >= 0);
+    }
+  }
+  fields(snapshot.context, ['now', 'weekday', 'daypart', 'locale', 'ownerDisplayName']);
+  assert.ok(['en', 'zh-TW'].includes(snapshot.context.locale));
+  safeText(canonical(snapshot), 16_000);
+  return fixture;
 }

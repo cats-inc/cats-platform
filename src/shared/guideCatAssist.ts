@@ -1,5 +1,5 @@
-export const GUIDE_CAT_ASSIST_SCHEMA_VERSION = 1 as const;
-export const GUIDE_CAT_ASSIST_REFRESH_CONTEXT_HASH_PREFIX = 'gca:v1';
+export const GUIDE_CAT_ASSIST_SCHEMA_VERSION = 2 as const;
+export const GUIDE_CAT_ASSIST_REFRESH_CONTEXT_HASH_PREFIX = 'gca:v2';
 
 export type GuideCatAssistSurfaceId =
   | 'lobby'
@@ -30,14 +30,33 @@ export interface GuideCatAssistScope {
   variantKey?: string | null;
 }
 
-export interface GuideCatAssistEntryChip {
+export type GuideCatAssistProduct = 'chat' | 'code' | 'work';
+export interface GuideCatAssistTarget {
+  kind: 'conversation' | 'work_item' | 'task' | 'project';
   id: string;
-  prompt: string;
-  label?: string | null;
 }
+interface GuideCatAssistChipBase {
+  id: string;
+  label: string;
+  basis?: string[];
+}
+export interface GuideCatAssistPrefillChip extends GuideCatAssistChipBase {
+  action: 'prefill';
+  surface: GuideCatAssistProduct;
+  prompt: string;
+  labelKey?: string;
+  promptKey?: string;
+}
+export interface GuideCatAssistOpenChip extends GuideCatAssistChipBase {
+  action: 'open';
+  /** Added by the host read model; never accepted from model output. */
+  href?: string;
+  target: GuideCatAssistTarget;
+}
+export type GuideCatAssistEntryChip = GuideCatAssistPrefillChip | GuideCatAssistOpenChip;
 
 export interface GuideCatAssistContent {
-  greeting: string | null;
+  greetings: Array<{ id: string; text: string; messageKey?: string }>;
   entryChips: GuideCatAssistEntryChip[];
 }
 
@@ -72,16 +91,16 @@ export interface GuideCatAssistRefreshPreferences {
 }
 
 export interface GuideCatAssistConfigFile {
-  schemaVersion: 1;
+  schemaVersion: 2;
   updatedAt: string;
   disabledSurfaceKeys: string[];
-  deterministicSeed: string | null;
-  curatedOverrides: Record<string, GuideCatAssistContent>;
+  ownerOverrides: Record<string, { greetings?: GuideCatAssistContent['greetings'];
+    entryChips?: GuideCatAssistEntryChip[] }>;
   refreshPreferences: GuideCatAssistRefreshPreferences;
 }
 
 export interface GuideCatAssistCacheFile {
-  schemaVersion: 1;
+  schemaVersion: 2;
   updatedAt: string;
   bundles: Record<string, GuideCatAssistBundle>;
   refreshFailures: Record<string, GuideCatAssistRefreshFailure>;
@@ -118,6 +137,7 @@ export interface GuideCatAssistRefreshContextInput {
     displayName?: string | null;
   } | null;
   assistTemplateRevision?: string | null;
+  locale?: string;
 }
 
 /**
@@ -133,10 +153,11 @@ export interface GuideCatAssistRefreshContextInput {
  * content for some sub-context, that is the moment to introduce a new
  * scope key — not before.
  */
-export const GUIDE_CAT_ASSIST_V1_SCOPE_KEYS = {
+export const GUIDE_CAT_ASSIST_SCOPE_KEYS = {
   lobbyDefault: 'lobby:default:default',
   chatNewDefault: 'chat:new:default:default',
   codeNewDefault: 'code:new:default:default',
+  workNewDefault: 'work:new:default:default',
 } as const;
 
 type StableJsonValue =
@@ -241,6 +262,7 @@ export function buildGuideCatAssistRefreshContextHash(
       displayName: input.ownerProfile?.displayName ?? null,
     },
     assistTemplateRevision: input.assistTemplateRevision ?? null,
+    locale: input.locale ?? 'en',
   });
   const digest = stableHashHex(JSON.stringify(payload));
   return `${GUIDE_CAT_ASSIST_REFRESH_CONTEXT_HASH_PREFIX}:${digest}`;

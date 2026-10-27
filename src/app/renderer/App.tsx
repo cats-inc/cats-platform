@@ -399,6 +399,9 @@ export default function PlatformApp() {
                 status: 'ready',
                 envelope: {
                   ...current.envelope,
+                  lobby: { ...current.envelope.lobby, guideCatAssist: envelope.lobby.guideCatAssist },
+                  guideCatAssist: envelope.guideCatAssist,
+                  guideCat: envelope.guideCat,
                   runtime: envelope.runtime,
                   runtimeSetup: envelope.runtimeSetup,
                   metadata: envelope.metadata,

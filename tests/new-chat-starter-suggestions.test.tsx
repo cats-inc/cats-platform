@@ -8,6 +8,7 @@ test('visible starter suggestions return sanitized externally supplied ideas', (
     suggestions: [
       {
         id: 'guide-cat-brief',
+        action: 'prefill', surface: 'chat', label: 'Guide Cat suggests starting with the real constraint before assigning roles.',
         prompt: 'Guide Cat suggests starting with the real constraint before assigning roles.',
       },
     ],
@@ -16,6 +17,7 @@ test('visible starter suggestions return sanitized externally supplied ideas', (
   assert.deepEqual(suggestions, [
     {
       id: 'guide-cat-brief',
+      action: 'prefill', surface: 'chat', label: 'Guide Cat suggests starting with the real constraint before assigning roles.',
       prompt: 'Guide Cat suggests starting with the real constraint before assigning roles.',
     },
   ]);
@@ -34,6 +36,7 @@ test('visible starter suggestions return empty when supplied ideas are all blank
     suggestions: [
       {
         id: '   ',
+        action: 'prefill', surface: 'chat', label: '   ',
         prompt: '   ',
       },
     ],

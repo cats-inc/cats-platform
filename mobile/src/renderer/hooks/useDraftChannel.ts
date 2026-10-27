@@ -185,6 +185,7 @@ export function useDraftChannel(
 
         const createInput: MobileCreateChannelInput = {
           title: channelTitle,
+          titleSource: directLane ? 'manual' : 'draft',
           topic: '',
           originSurface: productMode,
           entryKind: apiEntryKind,

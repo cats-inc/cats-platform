@@ -129,6 +129,14 @@ implementation tasks. They do not by themselves mean that the complete workflow
 or product has passed end-to-end acceptance or been validated in everyday use.
 See individual notes and linked plans for validation scope and remaining limits.
 
+- [x] Catlas can title eligible new conversations, curate greeting/chip catalogs,
+      and recommend pending workspace work through isolated, validated calls.
+      Chat, Code, Work and Lobby share the composed content; owner configuration
+      is preserved by a tested upgrade. Scoped tests/builds and isolated Windows
+      Desktop smoke pass in [PLAN-123](docs/plans/PLAN-123-catlas-curated-assist-rollout.md).
+      Live-provider recommendation quality and packaged acceptance remain pending;
+      the assist response change requires the next minor (0.12) release boundary.
+
 - [x] Settings → Plugins can install, enable, disable and remove the reviewed Agency
       content package in an isolated internal experiment. Cats can select its two
       skills; Runtime tracks exposure and actual CLI shutdown before cleanup.

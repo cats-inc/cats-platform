@@ -39,6 +39,8 @@ test('reset erases its explicit owned set and all state backups, logs it, and to
   const backups = ['chat-state.local.json.bak', 'chat-state.local.json.pre-companion-role.bak', 'other-migration.bak']
     .map(file => path.join(root, 'state', file));
   backups.push(path.join(root, 'state/.chat-state.local.json.123.crash.tmp'));
+  backups.push(path.join(root, 'state/catlas-receipts.local.json.corrupt-fixture'));
+  backups.push(path.join(root, 'state/guide-cat-assist-catalog.local.json.corrupt-fixture'));
   for (const file of [...ownedFiles, ...backups]) await seed(file);
   for (const directory of ownedDirectories) await seed(path.join(directory, 'nested/private.bak'));
   const attachment = path.join(root, 'project/.cats-attachments');
@@ -267,6 +269,7 @@ test('every locale discloses every erased category and the retained ownership bo
     [/telegram|line-relay|(?:^|\/)line$/, 'Telegram / LINE', 'Telegram／LINE'],
     [/work-delivery/, 'delivery', '交付'], [/scheduler/, 'schedules', '排程'],
     [/onboarding|guide-cat-assist/, 'setup state', '初始設定'],
+    [/catlas-receipts/, 'Catlas suggestions and receipts', 'Catlas 建議與收據'],
     [/auth-/, 'accounts', '帳號'], [/attachments/, 'attachments', '附件'],
     [/runtime-history/, 'runtime-history', 'runtime-history'],
     [/diagnostics|provider-snapshot/, 'diagnostic caches', '診斷快取'],

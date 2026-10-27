@@ -125,6 +125,7 @@ export interface MobileChannelMessagesPayload {
  *  `src/products/chat/api/contracts.ts` minus the optional fields that
  *  mobile does not need to set. The server defaults the rest. */
 export interface MobileCreateChannelInput {
+  titleSource?: 'draft' | 'manual';
   title: string;
   topic: string;
   originSurface: MobilePlatformSurfaceId;

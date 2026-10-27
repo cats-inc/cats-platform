@@ -8,7 +8,9 @@ No web access and no settings UI; Chat, then Code, then Work; the Lobby shows at
 most three. [ADR-140](decisions/140-let-catlas-curate-assist-content-and-titles-through-host-validated-output.md)
 records the authority rules and
 [provider CLI session titles](research/2026-10-27-provider-cli-session-titles.md)
-why provider titles are not the source. Draft; not implemented.
+why provider titles are not the source. [PLAN-123](plans/PLAN-123-catlas-curated-assist-rollout.md)
+records the implementation, passing scoped tests/builds and isolated Windows
+Desktop smoke; live-model quality and packaged acceptance remain pending.
 Review corrections separate prompt generation from external-title navigation,
 require unresolved choices for pending replies, update shared readers together
 and preserve existing owner configuration through a recoverable upgrade.

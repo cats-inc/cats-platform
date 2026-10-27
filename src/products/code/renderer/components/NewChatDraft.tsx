@@ -3,7 +3,6 @@ import {
   type NewConversationDraftProps,
 } from '../../../shared/renderer/components/NewConversationDraft.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
-import { prefetchCrossSurfaceNavigationTarget } from '../../../shared/renderer/crossSurfaceNavigationRegistry.js';
 
 export interface NewChatDraftProps extends NewConversationDraftProps {
   draftSurface: PlatformSurfaceId;
@@ -26,7 +25,6 @@ import {
   type MessageInterpolationValues,
   type MessageKey,
 } from '../../../../shared/i18n/index.js';
-import { resolveGuideCatAssistGreeting } from '../../../../shared/guideCatAssistPresentation.js';
 import {
   completeRuntimeSessionPolicy,
   resolveCreateRuntimeSessionPolicy,
@@ -44,9 +42,8 @@ type CodeDraftTranslate = (
 
 const defaultCodeDraftTranslator = createTranslator('en');
 
-/** Code-owned draft copy: the greeting, composer and side-panel labels. */
+/** Code-owned composer and side-panel labels; greetings come from assist content. */
 export interface NewCodeDraftCopy {
-  greeting?: string;
   composer?: {
     placeholder?: string;
   };
@@ -64,7 +61,6 @@ export function buildNewCodeDraftCopy(
   t: CodeDraftTranslate = defaultCodeDraftTranslator,
 ): NewCodeDraftCopy {
   return {
-    greeting: t(messageKeys.codeNewDraftGreeting),
     composer: {
       placeholder: t(messageKeys.codeNewDraftComposerPlaceholder),
     },
@@ -207,107 +203,6 @@ export function resolveCodeNewChatDraftSurfaceKind(input: {
 // Cap at 5 to leave room for the inline "Write tests" + cross-surface
 // "Start a project" affordances added on top of the original 3 baseline
 // chips. Bump if the chip strip ever exceeds five.
-const CODE_HELPER_CHIP_LIMIT = 5;
-
-const CODE_HELPER_CHIP_COPY_BY_ID: Record<
-  string,
-  {
-    labelKey: MessageKey;
-    promptKey: MessageKey;
-  }
-> = {
-  'code-pomodoro': {
-    labelKey: messageKeys.codeNewDraftStarterPomodoroLabel,
-    promptKey: messageKeys.codeNewDraftStarterPomodoroPrompt,
-  },
-  'code-fix-bug': {
-    labelKey: messageKeys.codeNewDraftStarterFixBugLabel,
-    promptKey: messageKeys.codeNewDraftStarterFixBugPrompt,
-  },
-  'code-refactor': {
-    labelKey: messageKeys.codeNewDraftStarterRefactorLabel,
-    promptKey: messageKeys.codeNewDraftStarterRefactorPrompt,
-  },
-  'code-write-tests': {
-    labelKey: messageKeys.codeNewDraftStarterWriteTestsLabel,
-    promptKey: messageKeys.codeNewDraftStarterWriteTestsPrompt,
-  },
-  'cross:work:start-project': {
-    labelKey: messageKeys.codeNewDraftStarterStartProjectLabel,
-    promptKey: messageKeys.codeNewDraftStarterStartProjectPrompt,
-  },
-};
-
-function resolveCodeDraftHelperChips(
-  props: NewChatDraftProps,
-  t?: CodeDraftTranslate,
-): Array<{
-  id: string;
-  label: string;
-  prompt: string;
-}> {
-  const translate = t;
-  return (props.payload.guideCatAssist?.codeNewDraft?.bundle.content.entryChips ?? [])
-    .filter((chip) => chip.prompt.trim().length > 0)
-    .slice(0, CODE_HELPER_CHIP_LIMIT)
-    .map((chip) => {
-      const localizedCopy = translate ? CODE_HELPER_CHIP_COPY_BY_ID[chip.id] : null;
-      if (localizedCopy && translate) {
-        return {
-          id: chip.id,
-          label: translate(localizedCopy.labelKey),
-          prompt: translate(localizedCopy.promptKey),
-        };
-      }
-      return {
-        id: chip.id,
-        label: chip.label?.trim() || chip.prompt,
-        prompt: chip.prompt,
-      };
-    });
-}
-
-// Chip IDs prefixed with `cross:work:` (or `cross:chat:`) hand off to the
-// matching draft surface instead of staying on Code. Today only the Code
-// → Work pomodoro/start-a-project handoff is wired; future cross-surface
-// chips can extend the prefix scheme without changing the renderer.
-const CROSS_SURFACE_CHIP_PREFIX = 'cross:';
-
-function resolveCrossSurfaceChipTarget(chipId: string): PlatformSurfaceId | null {
-  if (!chipId.startsWith(CROSS_SURFACE_CHIP_PREFIX)) return null;
-  const rest = chipId.slice(CROSS_SURFACE_CHIP_PREFIX.length);
-  const colon = rest.indexOf(':');
-  const surface = colon >= 0 ? rest.slice(0, colon) : rest;
-  if (surface === 'chat' || surface === 'work' || surface === 'code') {
-    return surface;
-  }
-  return null;
-}
-
-function buildCodeChipOnClick(
-  chip: { id: string; prompt: string },
-  props: NewChatDraftProps,
-): () => void {
-  const target = resolveCrossSurfaceChipTarget(chip.id);
-  if (target && target !== 'code') {
-    return () => {
-      props.onComposerChange(chip.prompt);
-      void prefetchCrossSurfaceNavigationTarget(target);
-      props.onDraftSurfaceChange(target);
-    };
-  }
-  // Home-surface chip: explicitly reset draftSurface back to 'code'.
-  // Without this, picking "Build a pomodoro app" after the user already
-  // crossed to Work via "Start a project" leaves draftSurface stuck on
-  // 'work' so the composer chip never returns to Code.
-  return () => {
-    props.onComposerChange(chip.prompt);
-    if (props.draftSurface !== 'code') {
-      props.onDraftSurfaceChange('code');
-    }
-  };
-}
-
 // Surface tag follows the live `draftSurface` so a cross-surface chip
 // (e.g. "Start a project" → work) immediately swaps the Code chip for a
 // Work chip on the composer header. The dismiss arrow only renders when
@@ -325,20 +220,6 @@ function buildCodeSurfaceTag(props: NewChatDraftProps) {
   );
 }
 
-function resolveCodeDraftGreeting(
-  props: NewChatDraftProps,
-  draftCopy: NewCodeDraftCopy,
-  t: CodeDraftTranslate,
-): string | undefined {
-  const assistGreeting = resolveGuideCatAssistGreeting(
-    props.payload.guideCatAssist?.codeNewDraft,
-    t,
-  );
-  if (assistGreeting) return assistGreeting;
-  if (props.greeting && props.greeting.trim().length > 0) return props.greeting;
-  return draftCopy.greeting;
-}
-
 /**
  * +New Code (including a cat-scoped `/code/new?cat=<id>`), +Team Code,
  * and +Peer Code all render through `NewConversationDraft` so +collaborate
@@ -353,7 +234,6 @@ function CodeChatDraft(props: NewChatDraftProps) {
     props.payload.chat.advancedDraftControls,
     'code',
   );
-  const helperChips = resolveCodeDraftHelperChips(props, t);
   const { permissionChip, whereExtras } = useDraftSessionChips({
     draftCwd: props.draftCwd,
     busy: props.busy,
@@ -366,7 +246,6 @@ function CodeChatDraft(props: NewChatDraftProps) {
     showStructuredDraftControls: true,
     hasVisibleParallelDraftTargets: (props.parallelTargets?.length ?? 0) > 1,
   });
-  const codeGreeting = resolveCodeDraftGreeting(props, draftCopy, t);
   const selectedCatId = props.draftDefaultRecipientCatId ?? props.draftCatIds[0];
   const selectedCat = props.payload.chat.cats.find((cat) => cat.id === selectedCatId);
   const helpTarget = selectedCat
@@ -376,17 +255,8 @@ function CodeChatDraft(props: NewChatDraftProps) {
   return (
     <NewConversationDraft
       {...props}
-      greeting={codeGreeting}
-      starterChips={{
-        preserveOnSelect: true,
-        leading: helperChips.length > 0
-          ? helperChips.map((chip) => ({
-              id: chip.id,
-              label: chip.label,
-              onClick: buildCodeChipOnClick(chip, props),
-            }))
-          : undefined,
-      }}
+      assistSurface="code"
+      starterChips={{ preserveOnSelect: true }}
       draftChrome={{
         headerAccessory: permissionChip,
         headerWhereExtras: whereExtras,

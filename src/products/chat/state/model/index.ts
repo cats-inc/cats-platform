@@ -497,6 +497,7 @@ export function createChannel(
   const channel: ChatChannelState = {
     id: channelId,
     title,
+    titleSource: requestedRoomMode !== 'direct_message' && input.titleSource === 'draft' ? 'draft' : 'manual',
     topic,
     originSurface,
     channelKind: inferChannelKind({

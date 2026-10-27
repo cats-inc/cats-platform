@@ -1,3 +1,4 @@
+import { captureCatlasDraftSelection, acceptCatlasDraftSelection } from '../components/catlasChipActions.js';
 import {
   useCallback,
   useRef,
@@ -262,6 +263,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
 
     const initialPayload = state.payload;
     const wasDraftingNewChat = showingNewChatDraft;
+    const catlasSelection = wasDraftingNewChat ? captureCatlasDraftSelection() : null;
     const { targetSurface, isCrossSurfaceDraftDispatch } = resolveCrossSurfaceDraftDispatchState({
       sourceSurface: surface, showingNewChatDraft: wasDraftingNewChat, draftSurface: originSurface,
     });
@@ -331,6 +333,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           signal: ackController.signal,
         });
 
+        acceptCatlasDraftSelection(catlasSelection);
         rollbackPayload = dispatch.createdAppShell;
         rollbackPath = dispatch.rollbackPath;
         channelId = dispatch.createdAppShell.chat.selectedChannelId;
@@ -538,6 +541,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         senderName: payload.ownerDisplayName,
         ...(messageMetadata ? { messageMetadata } : {}),
       }, ackController.signal);
+      acceptCatlasDraftSelection(catlasSelection);
       clearPendingOptimisticSend(channelId, optimisticAppend.optimisticMessageId);
       pendingOptimisticMessageId = null;
       clearAckRequestIfCurrent(submitId);

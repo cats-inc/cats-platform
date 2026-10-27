@@ -1,3 +1,4 @@
+import { builtinAssist } from './fixtures/guideCatAssist.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
@@ -14,6 +15,7 @@ import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
 function createPayload(overrides: Partial<AppShellPayload['chat']> = {}): AppShellPayload {
   return {
+    guideCatAssist: { workNewDraft: builtinAssist('work:new') },
     chat: {
       botBindings: [],
       capabilities: {

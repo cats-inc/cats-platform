@@ -1,3 +1,4 @@
+import { queueCatlasConversationTitle } from '../catlasTitles.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import { parseProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { messageLacksAudience } from '../../state/mentionRouter.js';
@@ -335,6 +336,7 @@ async function continueAcknowledgedChannelDispatchInBackground(
     logBackgroundDispatchPersistenceError(channelId, persistError);
   }
   publishChannelMutationEvents(context, channelId, 'updated');
+  queueCatlasConversationTitle(context.dependencies, channelId);
 }
 
 

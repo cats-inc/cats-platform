@@ -1,3 +1,4 @@
+import { builtinAssist, builtinChipKeys } from './fixtures/guideCatAssist.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
@@ -117,35 +118,46 @@ function createCodeAssistPayload(): AppShellPayload {
             audienceState: 'default',
           },
           content: {
-            greeting: 'Pick a small coding task.',
+            greetings: [{ id: 'fixture-greeting', text: 'Pick a small coding task.' }],
             entryChips: [
               {
                 id: 'code-pomodoro',
+                ...builtinChipKeys('code:new', 0),
+                action: 'prefill', surface: 'code',
                 label: 'Build a pomodoro app',
                 prompt: 'Write a small pomodoro timer app.',
               },
               {
                 id: 'code-fix-bug',
+                ...builtinChipKeys('code:new', 1),
+                action: 'prefill', surface: 'code',
                 label: 'Fix a bug',
                 prompt: 'Find and fix a bug in this codebase.',
               },
               {
                 id: 'code-refactor',
+                ...builtinChipKeys('code:new', 2),
+                action: 'prefill', surface: 'code',
                 label: 'Refactor code',
                 prompt: 'Refactor this code without changing behavior.',
               },
               {
                 id: 'code-write-tests',
+                ...builtinChipKeys('code:new', 3),
+                action: 'prefill', surface: 'code',
                 label: 'Write tests',
                 prompt: 'Add tests for the code we last touched.',
               },
               {
                 id: 'cross:work:start-project',
+                ...builtinChipKeys('code:new', 4),
+                action: 'prefill', surface: 'work',
                 label: 'Start a project',
                 prompt: 'Start a small project to track milestones.',
               },
               {
                 id: 'code-hidden',
+                action: 'prefill', surface: 'code',
                 label: 'Hidden helper',
                 prompt: 'This helper should not render.',
               },
@@ -169,7 +181,7 @@ function createCodeAssistPayload(): AppShellPayload {
 }
 
 test('new code draft publishes code-specific copy overrides for the shared workspace draft', () => {
-  assert.equal(NEW_CODE_DRAFT_COPY.greeting, 'Ready to code.');
+  assert.ok(builtinAssist('code:new').bundle.content.greetings.length > 0, 'greetings come from the shared pool');
   assert.equal(
     NEW_CODE_DRAFT_COPY.composer?.placeholder,
     'What should this code session build, fix, or investigate?',
@@ -322,6 +334,8 @@ test('new code helper chips stay visible while the user types manually', () => {
                   entryChips: [
                     {
                       id: 'code-pomodoro',
+                ...builtinChipKeys('code:new', 0),
+                      action: 'prefill', surface: 'code',
                       label: 'Build a pomodoro app',
                       prompt: 'Write a small pomodoro timer app.',
                     },
@@ -590,4 +604,15 @@ test('code draft presets expose the screenshot attachment action when wired', ()
       /<button class="composerPlusMenuItem" type="button"[^>]*>\s*<svg[^>]*aria-hidden="true"[\s\S]*Take screenshot/u,
     );
   }
+});
+
+test('Code renders an open recommendation without a prompt, alongside its builtin catalog', () => {
+  const payload = createCodeAssistPayload();
+  const assist = payload.guideCatAssist!.codeNewDraft!;
+  assist.bundle.content.entryChips = [{ id: 'open-project', action: 'open', label: 'Open roadmap',
+    target: { id: 'project-roadmap', kind: 'project' }, basis: ['project-roadmap'], href: '/work/projects/project-roadmap' },
+  ...assist.bundle.content.entryChips.slice(0, 4)];
+  const markup = renderToStaticMarkup(<NewChatDraft {...createProps({ payload })} />);
+  assert.match(markup, />Open roadmap</u);
+  assert.match(markup, />Build a pomodoro app</u);
 });

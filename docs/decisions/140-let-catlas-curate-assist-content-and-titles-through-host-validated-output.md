@@ -16,7 +16,7 @@ discussion:
 The mechanism that makes this safe (operation lists, basis ids, caps, cooldown
 and the external-text rule) is specified by
 [SPEC-131](../specs/SPEC-131-catlas-curated-assist-and-conversation-titles.md)
-and awaits owner review. This record builds on
+and was authorized for implementation by the owner on 2026-10-27. This record builds on
 [ADR-061](061-treat-guide-cat-as-an-optional-surface-assist-capability.md)
 and [ADR-066](066-persist-guide-cat-assist-content-as-platform-owned-local-state.md),
 which stand unchanged, and takes up the runtime-backed generation that
@@ -128,8 +128,8 @@ deferred.
    instruction plus rejection after the fact, and the provider sandbox, which
    differs per provider, is the real boundary. A
    provider-neutral tool-less session option belongs to cats-runtime, and
-   Catlas calls use it once it exists. SPEC-131 leaves to the owner whether the
-   Chat phase waits for it.
+   Catlas calls use it once it exists. The initial implementation uses today’s posture; it does not wait for that
+   future option. No new tool permission is granted.
 
 ## Consequences
 

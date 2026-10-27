@@ -322,6 +322,8 @@ export interface ChatMessage {
 }
 
 export interface ChatChannelState {
+  titleSource?: 'draft' | 'catlas' | 'manual';
+  catlasTitleAttempts?: { count: number; lastReplyId: string };
   id: string;
   title: string;
   topic: string;
@@ -616,6 +618,7 @@ export interface UpdateSelectedChannelInput {
 }
 
 interface CreateChatChannelInputBase {
+  titleSource?: 'draft' | 'manual';
   title: string;
   topic: string;
   originSurface: PlatformSurfaceId;

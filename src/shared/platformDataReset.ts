@@ -83,6 +83,7 @@ export const PLATFORM_RESET_FILES = [
   'chat-state.local.telegram-relay.json', 'chat-state.local.line-relay.json',
   'transport-work-delivery.json', 'scheduler-state.local.json',
   'platform-onboarding-history.json', 'guide-cat-assist-cache.local.json',
+  'guide-cat-assist-catalog.local.json', 'guide-cat-assist-signals.local.json', 'catlas-receipts.local.json',
   'provider-snapshot.local.json', 'auth-state.local.json', 'auth-recovery-token.local.txt',
   'runtime-client-diagnostics.local.json', 'provider-capability-bootstrap-diagnostics.local.json',
 ] as const;
@@ -155,6 +156,9 @@ export async function removePlatformOwnedData(chatStatePath: string, options: {
     // Includes rotating and one-time migration backups, even an invalid backup
     // directory. All are Platform-owned, directly beneath its state directory.
     if (entry.name.endsWith('.bak')) targets.add(path.join(stateDir, entry.name));
+    if (PLATFORM_RESET_FILES.some(file => entry.name.startsWith(`${file}.corrupt-`))) {
+      targets.add(path.join(stateDir, entry.name));
+    }
     if (entry.name.endsWith('.tmp') && PLATFORM_RESET_FILES.some(file =>
       entry.name.startsWith(`.${file}.`) || entry.name.startsWith(`${file}.`))) {
       targets.add(path.join(stateDir, entry.name));

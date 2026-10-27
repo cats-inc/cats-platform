@@ -52,49 +52,27 @@ export interface DraftComposerStackParticipant {
   participantId: string | null;
 }
 
-// Draft helper chips are gated on two rules the renderer treats as non-negotiable:
-//   1. Direct lane is a private chat; no prompt source may ever insert chips.
-//      The guide cat / boss cat will never insert content into a 1:1 DM and
-//      cannot author messages on the user's behalf, so DM has no assist
-//      content at all. Suppression is gated on `isDirectLaneContext`, not on
-//      a "direct" mode value — direct lane is a separate surface, not a
-//      sub-mode of +New chat.
-//   2. Non-direct surfaces only surface chips sourced from a runtime-refreshed bundle
-//      (provenance.originMode === 'runtime'); deterministic baselines stay silent so the
-//      composer does not advertise generic guidance the user has not opted into.
-// The payload bundle is therefore the single source of visible chips. Earlier revisions
-// exposed an `input.starterSuggestions` seam as a caller override, but that bypassed the
-// runtime-origin contract and no production caller used it; keep chip sourcing centralized
-// here rather than re-introducing that seam.
 function resolvePayloadDraftAssist(input: {
   payload: AppShellPayload;
   isDirectLaneContext: boolean;
+  assistSurface?: 'chat' | 'code' | 'work';
+  greetingPick?: number;
   t: NewConversationDraftTranslator;
 }) {
-  const assist = input.payload.chat.newChatAssist ?? null;
-  if (!assist) {
-    return {
-      greeting: null,
-      starterSuggestions: undefined as DraftStarterSuggestion[] | undefined,
-    };
-  }
-
-  const isRuntimeOriginForVisibleSurface =
-    !input.isDirectLaneContext && assist.bundle.provenance.originMode === 'runtime';
-
+  const assist = input.assistSurface === 'work' ? input.payload.guideCatAssist?.workNewDraft
+    : input.assistSurface === 'code' ? input.payload.guideCatAssist?.codeNewDraft : input.payload.chat.newChatAssist;
   return {
-    greeting: resolveGuideCatAssistGreeting(assist, input.t),
-    starterSuggestions: isRuntimeOriginForVisibleSurface
-      ? assist.bundle.content.entryChips.map((chip) => ({
-          id: chip.id,
-          prompt: chip.prompt,
-        }))
-      : undefined,
+    greeting: resolveGuideCatAssistGreeting(assist, input.t, input.greetingPick),
+    starterSuggestions: input.isDirectLaneContext ? [] : (assist?.bundle.content.entryChips ?? []).slice(0, 5).map(chip =>
+      chip.action === 'prefill' ? { ...chip, label: chip.labelKey ? input.t(chip.labelKey as MessageKey) : chip.label,
+        prompt: chip.promptKey ? input.t(chip.promptKey as MessageKey) : chip.prompt } : chip),
   };
 }
 
 export function resolveNewConversationDraftViewState(input: {
   payload: AppShellPayload;
+  assistSurface?: 'chat' | 'code' | 'work';
+  greetingPick?: number;
   draftDefaultRecipientCatId: string | null;
   draftCatIds: string[];
   draftTemporaryParticipants: DraftTemporaryParticipant[];
@@ -159,12 +137,11 @@ export function resolveNewConversationDraftViewState(input: {
   const payloadDraftAssist = resolvePayloadDraftAssist({
     payload: input.payload,
     isDirectLaneContext: draftSuggestionContext.isDirectLaneContext,
+    assistSurface: input.assistSurface, greetingPick: input.greetingPick,
     t: input.t,
   });
   const visibleDraftCatIds = draftParticipants.participantCatIds;
-  // Direct lane is private chat: no chips from any source. Other surfaces only
-  // surface runtime-origin payload chips (resolvePayloadDraftAssist already
-  // enforces this).
+  // Direct lanes never receive assist content.
   const starterSuggestionInput = draftSuggestionContext.isDirectLaneContext
     ? []
     : (payloadDraftAssist.starterSuggestions ?? []);
@@ -172,14 +149,10 @@ export function resolveNewConversationDraftViewState(input: {
     suggestions: starterSuggestionInput,
   });
   const resolvedGreeting = (() => {
-    const explicitGreeting = input.greeting?.trim();
-    if (explicitGreeting) {
-      return explicitGreeting;
-    }
     const payloadGreeting = payloadDraftAssist.greeting?.trim();
-    if (payloadGreeting) {
-      return payloadGreeting;
-    }
+    if (payloadGreeting) return payloadGreeting;
+    const explicitGreeting = input.greeting?.trim();
+    if (explicitGreeting) return explicitGreeting;
     return pickDraftGreeting({ pool: input.greetingPool, t: input.t });
   })();
   const isAckPending = isComposerAckBusyForDraft(input.busy);

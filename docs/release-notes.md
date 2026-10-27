@@ -2,6 +2,37 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## Unreleased — Catlas curated assist and titles (next minor: 0.12)
+
+When Catlas is active, new non-DM composer conversations can receive a short
+summarized title after the first completed reply. Manual names and existing
+conversations are protected. Greetings rotate, and Chat, Code and Work helper
+rows combine curated starters with recommendations grounded in pending decisions,
+blocked work and active projects. Lobby recommendations only open existing records;
+chips never send a message automatically. Turning Catlas off restores builtins
+with protected owner configuration applied.
+
+An active Catlas sends its bound provider the first owner message and first reply
+(up to 2,000 characters each) for titles, and bounded IDs, titles, statuses and
+context for recommendations. DMs, private escalations and external-transport
+conversations are excluded from refresh snapshots. External or unknown-origin
+record text is never sent to the prompt-generating call; a separate session may
+rank navigation IDs only. There is no web/feed access. Today's provider read-only
+sandbox and non-text rejection remain the boundary; a provider-neutral tool-less
+session option is not yet available.
+
+Assist config v1 upgrades through validation, an exact backup, atomic replacement
+and verification, with restoration on failure. Custom greetings/chips, explicit
+empty chip lists, seeded greeting selection, disabled scopes and refresh preferences
+are retained as protected owner config. Unknown config/cache versions are preserved
+with diagnostics. Generated catalogs, signals and the last 100 call receipts are
+local state and are erased by Platform data reset.
+
+The assist JSON response now uses greeting pools and explicit `open`/`prefill`
+entries. Shared Desktop readers ship together; external consumers need this new
+shape. This is the next-minor boundary, **0.12**, pending separate release
+authorization. No version fields, source pins or published releases are changed here.
+
 ## 2026-10-27 — Desktop 0.11.0 standard preview: image service without operating hours
 
 Selected distribution: Desktop **0.11.0 standard-profile preview**, App SDK

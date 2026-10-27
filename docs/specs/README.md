@@ -1,11 +1,13 @@
 # Feature Specifications
 
 - [SPEC-131: Catlas curated assist and conversation titles](SPEC-131-catlas-curated-assist-and-conversation-titles.md)
-  — draft, 2026-10-27; host-validated Catlas titles, greeting/chip catalogs,
+  — implemented with scoped validation, 2026-10-27; host-validated Catlas titles, greeting/chip catalogs,
   snapshot-grounded recommendations, receipts and cooldown. Review corrections
   separate prompt/navigation calls, update shared consumers in the first phase,
   require unresolved choices and preserve owner config through migration.
-  Three open questions pending; implementation not started.
+  Initial posture/constants/retention resolved; Chat, Code, Work and Lobby wired.
+  PLAN-123 records tests/builds and isolated Desktop smoke; live-model quality and
+  packaged acceptance pending. Assist JSON requires the next minor (0.12) boundary.
 - [SPEC-130: Desktop-managed remote access](SPEC-130-desktop-managed-remote-access.md)
   — scoped ngrok/external lifecycle and protected migration implemented,
   2026-10-25; Windows managed connection/restart/reset and native storage checked.
@@ -221,7 +223,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-10-27 (SPEC-131 drafted for owner review.)*
+*Last updated: 2026-10-27 (SPEC-131 implementation and scoped validation recorded.)*
 
 *See also: [plans/](../plans/) for implementation plans*
 

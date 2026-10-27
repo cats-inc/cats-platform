@@ -1,3 +1,4 @@
+import { preserveInheritedContentOrigins } from '../contentProvenance.js';
 import { CoreValidationError } from '../errors.js';
 import {
   createEmptyMemoryCheckpoint,
@@ -136,7 +137,7 @@ export function replaceById<T extends { id: string }>(
 
 export function touchCoreState(core: CatsCoreState, updatedAt: string): CatsCoreState {
   return {
-    ...core,
+    ...preserveInheritedContentOrigins(core),
     version: CATS_CORE_STATE_VERSION,
     updatedAt,
   };

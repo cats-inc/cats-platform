@@ -223,9 +223,9 @@ test('disabled Catlas, missing knowledge and unreachable Runtime do not start an
   assert.equal((await f.service.help(request(), new AbortController().signal)).reason, 'catlas_disabled');
   await f.coreStore.updateCore((core) => ({ ...core, guideCat }));
   await writeGuideCatAssistConfig(f.chatStatePath, {
-    schemaVersion: 1, updatedAt: new Date().toISOString(),
-    disabledSurfaceKeys: ['code:new:default:default'], deterministicSeed: null,
-    curatedOverrides: {}, refreshPreferences: { runtimeRefreshEnabled: true, defaultTtlMs: null },
+    schemaVersion: 2, updatedAt: new Date().toISOString(),
+    disabledSurfaceKeys: ['code:new:default:default'],
+    ownerOverrides: {}, refreshPreferences: { runtimeRefreshEnabled: true, defaultTtlMs: null },
   });
   assert.equal((await f.service.help(request(), new AbortController().signal)).reason, 'catlas_disabled');
   assert.equal(f.calls.create.length, 0);
@@ -316,9 +316,9 @@ test('disabling assistance invalidates an in-flight result', async (t) => {
   const send = f.runtimeClient.sendMessage;
   f.runtimeClient.sendMessage = async (...args) => {
     await writeGuideCatAssistConfig(f.chatStatePath, {
-      schemaVersion: 1, updatedAt: new Date().toISOString(),
-      disabledSurfaceKeys: ['code:new:default:default'], deterministicSeed: null,
-      curatedOverrides: {}, refreshPreferences: { runtimeRefreshEnabled: true, defaultTtlMs: null },
+      schemaVersion: 2, updatedAt: new Date().toISOString(),
+      disabledSurfaceKeys: ['code:new:default:default'],
+      ownerOverrides: {}, refreshPreferences: { runtimeRefreshEnabled: true, defaultTtlMs: null },
     });
     return send(...args);
   };

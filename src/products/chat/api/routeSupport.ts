@@ -250,6 +250,8 @@ export async function enqueueGuideCatAssistRefreshIfRuntimeReachable(
   try {
     const runtime = await dependencies.runtimeClient.getHealth();
     queueGuideCatAssistRefresh({
+      runtimeClient: dependencies.runtimeClient, coreStore: dependencies.chatStore, chatStore: dependencies.chatStore,
+      onUpdated: () => dependencies.eventHub?.emit({ kind: 'assist_changed', timestamp: new Date().toISOString() }),
       chatStatePath: dependencies.config.chatStatePath,
       guideCat: options.guideCat,
       ownerDisplayName: options.ownerDisplayName,
@@ -385,8 +387,11 @@ export async function buildAppShellPayload(
     guideCat: core.guideCat,
     ownerDisplayName: core.ownerProfile.displayName,
     runtimeReachable: runtime.reachable,
+    core, chat: resolvedState, now: nowFrom(dependencies),
   });
   queueGuideCatAssistRefresh({
+    runtimeClient: dependencies.runtimeClient, coreStore: dependencies.chatStore, chatStore: dependencies.chatStore,
+    onUpdated: () => dependencies.eventHub?.emit({ kind: 'assist_changed', timestamp: new Date().toISOString() }),
     chatStatePath: dependencies.config.chatStatePath,
     guideCat: core.guideCat,
     ownerDisplayName: core.ownerProfile.displayName,
@@ -425,6 +430,7 @@ export async function buildAppShellPayload(
       lobbyGuideCatAssist: guideCatAssist.lobby,
       newChatAssist: guideCatAssist.newChat,
       codeGuideCatAssist: guideCatAssist.newCode,
+      workGuideCatAssist: guideCatAssist.newWork,
       runtimeSetup,
       scopeId,
       installedApps,

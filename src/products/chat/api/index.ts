@@ -1,3 +1,4 @@
+import { routeCatlasFeedback } from './catlasFeedbackRoutes.js';
 import { routeBotBindingApi } from './botBindingRoutes.js';
 import { routeCanonicalCatApi } from './canonicalCatRoutes.js';
 import { routeCompanionBoxApi } from './companionBoxRoutes.js';
@@ -21,6 +22,7 @@ export type { ChatApiDependencies };
 export async function routeChatApi(
   context: ChatApiRouteContext,
 ): Promise<boolean> {
+  if (await routeCatlasFeedback(context)) return true;
   if (await routeCatImages(context)) return true;
   if (await routeChatShellApi(context)) {
     return true;
