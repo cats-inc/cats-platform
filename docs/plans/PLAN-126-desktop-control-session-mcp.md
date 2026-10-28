@@ -204,9 +204,17 @@ Earlier runs of the same script found two problems:
   timed out after 30 seconds. The red window had also moved during that run, which points to input
   from outside the script. Neither the hang nor the exit recurred in the final run, or in direct
   replays through the service and through the helper with `type` and `key` sent together. The
-  cause is still unknown. Diagnosing the next occurrence needs the helper's stderr, which the Platform
-  helper client discards today (it spawns the helper with stderr ignored); keeping its last lines
-  in memory is a follow-up.
+  cause is still unknown. If the helper exits unexpectedly again, Platform now logs its exit code
+  with the exception types and stack frames from the helper's stderr (SPEC-133 "Diagnostics").
+
+Follow-up (2026-10-29): Platform now matches Bots on Stop.
+- Stop and revoke forget the ids they issued.
+- A call that started before either answers `stopped`.
+- An input tool checks again just before it holds control (SPEC-133 "Stop and revoke win every
+  race").
+
+`tests/desktop-control.test.js` (13 tests) covers these rules and the stderr summary; mutation
+checks on both new checks fail it.
 
 Not exercised natively:
 - the Desktop host notice and tray item (covered by `tests/desktop-control-notice.test.js` only);

@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { PassThrough } from 'node:stream';
 import { EventEmitter } from 'node:events';
 import { createDesktopControlService, DESKTOP_CONTROL_MCP_PATH } from '../build/server/platform/desktopControl/service.js';
-import { createDesktopControlHelperClient } from '../build/server/platform/desktopControl/helper.js';
+import { createDesktopControlHelperClient, summarizeHelperStderr } from '../build/server/platform/desktopControl/helper.js';
 import { evaluateDesktopControlPolicy } from '../build/server/platform/desktopControl/policy.js';
 import { resolveDesktopControlTurn } from '../build/server/platform/desktopControl/server.js';
 import { isLocalOwnerRequest, routeDesktopControlHost } from '../build/server/platform/desktopControl/routes.js';
@@ -29,14 +29,18 @@ function fakeHelper(world) {
     const stdout = new PassThrough();
     const process = new EventEmitter();
     process.stdout = stdout;
+    process.stderr = new PassThrough();
     process.kill = () => { process.emit('exit', 0); return true; };
     process.stdin = { end() {}, write(line) {
       const { id, op, params } = JSON.parse(line);
       calls.push(op);
       requests.push({ op, params });
-      const reply = (result) => stdout.write(`${JSON.stringify({ id, ok: true, result })}\n`);
-      const fail = (code) => stdout.write(`${JSON.stringify({ id, ok: false, error: { code, message: code } })}\n`);
-      if (world.crashOn === op) { process.emit('exit', 1); return true; }
+      // world.delay[op] holds a reply back, so a test can stop while the helper works.
+      const out = (message) => { const line = `${JSON.stringify(message)}\n`; const ms = world.delay?.[op];
+        if (ms) setTimeout(() => stdout.write(line), ms); else stdout.write(line); };
+      const reply = (result) => out({ id, ok: true, result });
+      const fail = (code) => out({ id, ok: false, error: { code, message: code } });
+      if (world.crashOn === op) { if (world.stderr) process.stderr.write(world.stderr); setImmediate(() => process.emit('exit', 1)); return true; }
       if (world.hang?.includes(op)) return true;
       if (op === 'hello') reply({ protocol: world.protocol ?? 1, version: '1.0.0', platform: 'win32', dpiAwareness: 'per_monitor_v2' });
       else if (op === 'state') reply({ locked: world.locked === true, idleMs: 9000, operatorIdleMs: world.operatorIdleMs ?? 9000 });
@@ -384,4 +388,54 @@ test('input still running when its turn ends is cancelled, and so is input of a 
   assert.deepEqual(f.service.hostState(), { holding: [] });
   f.service.close();
   assert.equal((await typing).structuredContent.error.code, 'unavailable');
+});
+
+test('Stop forgets every id and wins over calls already in progress', async (t) => {
+  const f = await fixture(t);
+  const code = (result) => result.structuredContent.error?.code;
+  await f.send({ channelId: 'channel-1', owner: true }, async (token) => {
+    await f.grant(token, '記事本');
+    let [window] = (await f.call(token, 'list_windows')).structuredContent.windows;
+    const { snapshotId } = (await f.call(token, 'screenshot_window', { windowId: window.windowId })).structuredContent;
+    const ui = (await f.call(token, 'read_ui', { windowId: window.windowId })).structuredContent;
+
+    f.world.delay = { capture_window: 150 };
+    const shot = f.call(token, 'screenshot_window', { windowId: window.windowId });
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    f.service.stop('channel-1');
+    assert.equal(code(await shot), 'stopped', 'an answer that arrives after Stop is discarded');
+    f.world.delay = {};
+
+    await f.grant(token, '記事本');
+    assert.equal(code(await f.call(token, 'click', { snapshotId, x: 1, y: 1 })), 'stale_snapshot', 'snapshots from before Stop are gone');
+    assert.equal(code(await f.call(token, 'read_ui', { windowId: window.windowId })), 'window_changed', 'window ids from before Stop are gone');
+    assert.equal(code(await f.call(token, 'invoke_element', { elementId: ui.nodes[1].elementId, action: 'invoke' })), 'window_changed');
+
+    [window] = (await f.call(token, 'list_windows')).structuredContent.windows;
+    const fresh = (await f.call(token, 'screenshot_window', { windowId: window.windowId })).structuredContent.snapshotId;
+    f.world.delay = { list_windows: 150 };
+    const click = f.call(token, 'click', { snapshotId: fresh, x: 1, y: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    f.service.stop('channel-1');
+    assert.equal(code(await click), 'stopped', 'a Stop while the window is checked sends nothing');
+    assert.equal(f.helperFake.calls.includes('click'), false);
+    assert.deepEqual(f.service.hostState(), { holding: [] });
+  });
+});
+
+test('an unexpected helper exit reports exception types and frames, never their messages', async () => {
+  const exits = [];
+  const world = { apps: {}, windows: [], crashOn: 'list_windows',
+    stderr: "Unhandled exception. System.FormatException: The input string 'my secret note' was not in a correct format.\r\n"
+      + '   at Cats.DesktopControl.Windows.Input.Type(WindowInfo window, String text, CancellationToken cancel) in C:\\src\\Input.cs:line 160\r\n'
+      + ' ---> System.InvalidOperationException: clipboard said hello\r\n' };
+  const client = createDesktopControlHelperClient({ path: 'fake.exe', selfProcessIds: [], selfExecutables: [],
+    spawn: fakeHelper(world).spawn, onExit: (exit) => exits.push(exit) });
+  await assert.rejects(client.call('list_windows', { paths: [] }), (error) => error.code === 'executor_failed');
+  assert.equal(exits.length, 1);
+  assert.equal(exits[0].summary, 'System.FormatException\n'
+    + 'at Cats.DesktopControl.Windows.Input.Type(WindowInfo window, String text, CancellationToken cancel)\n'
+    + 'System.InvalidOperationException');
+  assert.equal(summarizeHelperStderr('plain text the helper printed'), '');
+  client.close();
 });

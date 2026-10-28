@@ -54,6 +54,9 @@ export function createDesktopControlForServer(options: {
     // The Platform server, its Desktop host parent and their executables are never grantable.
     selfProcessIds: [process.pid, process.ppid].filter((id) => id > 0),
     selfExecutables: [process.execPath, env.CATS_DESKTOP_HOST_EXECUTABLE].filter((value): value is string => Boolean(value)),
+    // Exception types and stack frames only (DC-17); the next call restarts the helper (DC-16).
+    onExit: ({ code, summary }) => process.stderr.write(`[desktop-control] helper exited unexpectedly (code ${code})`
+      + `${summary ? `: ${summary.replace(/\n/gu, ' | ')}` : ''}\n`),
   });
   const statePath = options.chatStatePath;
   return createDesktopControlService({

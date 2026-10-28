@@ -259,6 +259,17 @@ Phase B server rules (P5, 2026-10-29):
   is global, so it is sent only for a conversation that holds control or has input running.
 - **Clipboard.** `clipboard_read` and `clipboard_write` follow the owner-present, stopped and
   locked rules but need no app grant.
+- **Stop and revoke win every race.** Both forget the window, snapshot and element ids they
+  issued, so after a new grant an old `snapshotId` answers `stale_snapshot` and an old `windowId`
+  or `elementId` answers `window_changed`.
+  - A call that started before a Stop or revoke answers `stopped`, even when the helper finished;
+    its result is discarded.
+  - An input tool checks again just before it holds control, so a Stop that lands while its window
+    is being checked sends nothing to the helper.
+- **Diagnostics.** The helper client drains the helper's stderr and keeps only its tail in memory.
+  - When the helper exits unexpectedly, Platform logs one line with the exit code and, from that
+    tail, only exception type names and stack frames.
+  - Exception messages are dropped, since one could quote typed or on-screen text (DC-17).
 
 ### Exclusion categories (DC-10), matched on executable file name, case-insensitive
 
