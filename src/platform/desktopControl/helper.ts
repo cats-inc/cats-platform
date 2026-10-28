@@ -11,6 +11,8 @@ export const DESKTOP_CONTROL_PROTOCOL = 1;
 const IDLE_EXIT_MS = 5 * 60_000;
 const CRASH_WINDOW_MS = 5 * 60_000;
 const MAX_CRASHES = 3;
+const STDERR_TAIL_BYTES = 8 * 1024;
+const SUMMARY_CHARS = 2_000;
 
 export class DesktopControlHelperError extends Error {
   constructor(readonly code: string, message: string) {
@@ -19,10 +21,28 @@ export class DesktopControlHelperError extends Error {
   }
 }
 
+/**
+ * What a helper's stderr may say in Platform's logs (DC-17): exception type names and stack
+ * frames only. Exception messages are dropped, since one could quote typed or on-screen text.
+ */
+export function summarizeHelperStderr(text: string): string {
+  const lines: string[] = [];
+  for (const raw of text.split(/\r?\n/u)) {
+    const line = raw.trim();
+    const frame = /^at [\w.`<>$|,[\] ]+\([^()]*\)/u.exec(line);
+    if (frame) { lines.push(frame[0]); continue; }
+    const type = /^(?:(?:Unhandled exception\.|Fatal error\.|--->)\s*)?((?:[A-Za-z_][\w]*\.)+[A-Za-z_]\w*(?:Exception|Error))\b/u.exec(line);
+    if (type) lines.push(type[1]);
+  }
+  return lines.join('\n').slice(0, SUMMARY_CHARS);
+}
+
 /** The subset of a child process the client needs; tests pass a fake. */
 export interface DesktopControlHelperProcess {
   stdin: { write(chunk: string): boolean; end(): void };
   stdout: NodeJS.ReadableStream;
+  /** Kept in memory so an unexpected exit can be diagnosed; absent in fakes. */
+  stderr?: NodeJS.ReadableStream | null;
   once(event: 'exit', listener: (code: number | null) => void): unknown;
   kill(): boolean;
 }
@@ -35,6 +55,8 @@ export interface DesktopControlHelperOptions {
   now?(): number;
   setTimer?(callback: () => void, ms: number): { unref?(): void } | unknown;
   clearTimer?(timer: unknown): void;
+  /** An unexpected helper exit, with the redacted stderr summary (see summarizeHelperStderr). */
+  onExit?(exit: { code: number | null; summary: string }): void;
 }
 
 interface Pending {
@@ -61,7 +83,7 @@ export function createDesktopControlHelperClient(options: DesktopControlHelperOp
   });
   const clearTimer = options.clearTimer ?? ((timer: unknown) => clearTimeout(timer as NodeJS.Timeout));
   const spawn = options.spawn ?? ((path: string) => spawnProcess(path, [], {
-    stdio: ['pipe', 'pipe', 'ignore'],
+    stdio: ['pipe', 'pipe', 'pipe'],
     windowsHide: true,
   }) as unknown as DesktopControlHelperProcess);
 
@@ -130,12 +152,18 @@ export function createDesktopControlHelperClient(options: DesktopControlHelperOp
         typeof message.error?.message === 'string' ? message.error.message : 'The helper failed.',
       ));
     });
-    process.once('exit', () => {
+    // Always drained, so a chatty helper never blocks on a full pipe; only the tail is kept.
+    let stderrTail = '';
+    process.stderr?.on('data', (chunk: Buffer | string) => {
+      stderrTail = (stderrTail + chunk.toString()).slice(-STDERR_TAIL_BYTES);
+    });
+    process.once('exit', (code: number | null) => {
       if (child !== process) return;
       child = null;
       ready = null;
       crashes = [...crashes.filter((at) => now() - at < CRASH_WINDOW_MS), now()];
       failAll('executor_failed', 'The desktop control helper stopped.');
+      options.onExit?.({ code, summary: summarizeHelperStderr(stderrTail) });
     });
     return send('hello', {
       protocol: DESKTOP_CONTROL_PROTOCOL,
