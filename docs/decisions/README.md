@@ -1,5 +1,10 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-141: Host a consented desktop control MCP for provider sessions](141-host-a-consented-desktop-control-mcp-for-provider-sessions.md)
+  — proposed, 2026-10-29; Desktop host serves a session MCP that Runtime injects
+  only into explicit-policy, owner-present sessions. Global switch, per-app grants,
+  per-action `tool_approval`, single-window capture and a long-lived executor helper;
+  observe tools before input tools, Windows first, Bots later. Not implemented.
 - [ADR-140: Catlas curates assist content and titles through host-validated output](140-let-catlas-curate-assist-content-and-titles-through-host-validated-output.md)
   — accepted direction, 2026-10-27; Catlas titles conversations, curates greeting
   and chip catalogs and recommends grounded next actions, returning data only.
