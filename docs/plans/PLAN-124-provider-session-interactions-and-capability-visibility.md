@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Ready；2026-10-28 owner 授權切片實作，所有階段待開始 |
+| Status | Implementing；P0/P1 接線與測試完成，P2–P4 驗證進行中 |
 | Owner | Platform shared interaction、Desktop integration |
 | Assigned To | Unassigned |
 | Reviewer | Product owner、Runtime maintainers |
@@ -21,18 +21,18 @@ Owner 於 2026-10-28 授權文件 PR 自動合併後，拉最新程式碼切片�
 
 ### P0 — 契約與產品對應
 
-- [ ] 和 Runtime P0 對齊 capability、reply、snapshot/event、policy 及 receipt fixtures。
-- [ ] 確認 conversation／lane／participant／run 的身分對應，定義 provider interaction
+- [x] 和 Runtime P0 對齊 capability、reply、snapshot/event、policy 及 receipt fixtures。
+- [x] 確認 conversation／lane／participant／run 的身分對應，定義 provider interaction
   與 task/supervision approval 的不同操作，列出關閉與撤銷路徑。
-- [ ] 決定必要的持久化資料與 migration；凍結 legacy 權限呈現及不擴權升級行為。
+- [x] 決定必要的持久化資料與 migration；凍結 legacy 權限呈現及不擴權升級行為。
 
 **Exit:** 回覆控制路徑不依賴訊息 turn queue；舊 Runtime 的降級呈現已有測試案例。
 
 ### P1 — 後端與 runtime client
 
-- [ ] 消費 Runtime P1/P2，加入 authenticated product response API、身分驗證與去敏感 projection。
-- [ ] 整合 shared interaction／run lifecycle 的 waiting、cancel、expiry、resolve 和重連。
-- [ ] 處理多人並行、provider retarget、對話關閉及重複回答；保留既有 task approvals。
+- [x] 消費 Runtime P1/P2，加入 authenticated product response API、身分驗證與去敏感 projection。
+- [x] 整合 shared interaction／run lifecycle 的 waiting、cancel、expiry、resolve 和重連。
+- [x] 處理多人並行、provider retarget、對話關閉及重複回答；保留既有 task approvals。
 
 **Exit:** MemoryCoreStore／fixture Runtime 測試通過 A1–A3/A7 的後端部分。
 
@@ -80,12 +80,14 @@ Owner 於 2026-10-28 授權文件 PR 自動合併後，拉最新程式碼切片�
 優先以 isolated MemoryCoreStore、scripted Runtime/provider fixtures 驗證。
 最大的風險是回答串到別的 lane、把 live callback 當耐久資料復活、與 legacy 權限升級擴權；
 SPEC-132 A2–A4 對應這些情境。真實 UI 驗證使用隔離 candidate，清楚區分觀測與操作證據。
-這次文件變更只檢查差異、連結與規格一致性，不執行應用測試或模型回合。
+初始文件 PR 沒有模型回合；目前實作已使用隔離 memory/file fixtures，後續候選與真實
+工具驗收分開記錄，不把 discovery 當成功操作。
 
 ## Progress Log
 
 | Date | Update |
 | --- | --- |
 | 2026-10-28 | 依 Platform `595e9ca2` 建立文件草案；P0–P4 尚未實作，無版本或資料變更。 |
+| 2026-10-28 | Runtime PR #194 契約接入；新增 authenticated native controls、同 turn idle waiting、Work 早期 session 關聯／取消防復活；Core format 6 migration 備份與 failure recovery。首批 55 項 focused checks 通過；細節與 0.12 發布邊界見 SPEC-132。 |
 
 *Created / last updated: 2026-10-28*

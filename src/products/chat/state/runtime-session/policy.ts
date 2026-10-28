@@ -18,6 +18,7 @@ export function resolveChannelRuntimeSessionPolicy(
     | 'runtimeWorkspaceKind'
     | 'runtimeWorkspaceAccess'
     | 'runtimePermissionMode'
+    | 'runtimeExecutionPolicy'
   >,
 ): ResolvedChannelRuntimeSessionPolicy {
   const spawnCwd = resolveChannelSpawnCwd(channel.repoPath, channel.chatCwd);
@@ -27,6 +28,7 @@ export function resolveChannelRuntimeSessionPolicy(
     workspaceKind: channel.runtimeWorkspaceKind ?? undefined,
     workspaceAccess: channel.runtimeWorkspaceAccess ?? undefined,
     permissionMode: channel.runtimePermissionMode ?? undefined,
+    executionPolicy: channel.runtimeExecutionPolicy ?? undefined,
   });
 
   return { spawnCwd, ...storedPolicy };

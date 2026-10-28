@@ -53,6 +53,7 @@ import {
   sendMethodNotAllowed,
 } from '../../shared/http.js';
 import { routeChatApi } from '../../products/chat/api/index.js';
+import { routeProviderInteractions } from '../../products/shared/api/providerInteractions.js';
 import { routeCodeApi } from '../../products/code/api/index.js';
 import { routeArtifactCanvasApi } from '../../products/shared/artifactCanvas/api.js';
 import { routeWorkApi } from '../../products/work/api/index.js';
@@ -480,6 +481,10 @@ export async function routeRequest(
       resumeWorkflowContinuationDispatch: dependencies.shared.resumeWorkflowContinuationDispatch,
     },
   };
+  if (await routeProviderInteractions({ ...context, dependencies: {
+    chatStore: dependencies.chat.chatStore, runtimeClient: dependencies.shared.runtimeClient,
+    coreStore: dependencies.shared.coreStore,
+  } })) return;
   const chatContext = {
     ...context,
     dependencies: {

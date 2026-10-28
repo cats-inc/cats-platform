@@ -8,6 +8,16 @@ import type {
 } from './client.js';
 import { normalizeProductProviderEventCapabilities } from '../shared/providerCatalog.js';
 
+function providerContinuity(value: unknown): RuntimeProviderInstanceConfig['continuity'] {
+  const c = value && typeof value === 'object' ? value as Record<string, any> : {};
+  return {
+    ...(c.interactions?.version === 1 && Array.isArray(c.interactions.kinds)
+      ? { interactions: { version: 1 as const, kinds: c.interactions.kinds.filter((k: unknown) => typeof k === 'string') } } : {}),
+    ...(c.sessionCapabilities?.version === 1 ? { sessionCapabilities: { version: 1 as const,
+      executionPolicy: c.sessionCapabilities.executionPolicy === true, inventory: c.sessionCapabilities.inventory === true } } : {}),
+  };
+}
+
 export function readRuntimeErrorCode(body: string): string | undefined {
   try {
     const payload = JSON.parse(body);
@@ -78,6 +88,7 @@ export function normalizeRuntimeProviderConfigRegistry(
 
                 return {
                   id,
+                  ...(instance.continuity ? { continuity: providerContinuity(instance.continuity) } : {}),
                   target:
                     typeof instance.target === 'string' && instance.target.trim().length > 0
                       ? instance.target

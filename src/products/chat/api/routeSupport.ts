@@ -1,4 +1,5 @@
 import type { AppConfig } from '../../../config.js';
+import { PLATFORM_INTERACTION_HOST } from '../../../shared/providerInteractions.js';
 import { updateChatState } from '../state/store.js';
 import { createCatActorId } from '../../../core/actors.js';
 import type { GuideCatRecord } from '../../../core/types.js';
@@ -458,6 +459,7 @@ export async function persistCreatedChannel(
       workspaceKind: input.runtimeWorkspaceKind,
       workspaceAccess: input.runtimeWorkspaceAccess,
       permissionMode: input.runtimePermissionMode,
+        executionPolicy: input.runtimeExecutionPolicy ?? undefined,
     },
   });
   if (!parsed.ok) {
@@ -843,6 +845,7 @@ export async function persistCatAssignmentUpdate(
             ?? createExplicitProviderModelSelection(updatedCat.execution.target.model),
           cwd: spawnCwd ?? sessionPolicySpawnCwd ?? undefined,
           ...runtimePolicy,
+          interactionHost: PLATFORM_INTERACTION_HOST,
           workspaceKind: effectiveWorkspaceKind,
           context: runtimeEnvelope.context,
           skills: runtimeEnvelope.skills,

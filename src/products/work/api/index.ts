@@ -1,4 +1,5 @@
 import { routeOwnerRelationships } from './ownerRelationshipRoutes.js';
+import { PROVIDER_RUN_ADMISSION_CONFLICT } from '../../../platform/runtime/providerInteractionAdmission.js';
 import { applyWorkGoldenPathLifecycleAction } from '../state/workGoldenPathLifecycle.js';
 import {
   buildWorkGoldenPathDetailProjectionForTask,
@@ -442,19 +443,23 @@ export async function createWorkSupervisedRunLifecycleActionPayload(
     await requestRuntimeResumeForRun(dependencies, run);
   }
 
+  const persisted = await dependencies.coreStore.updateCore(latest => {
+  const latestRun = latest.runs.find(candidate => candidate.id === run.id);
+  if (!latestRun || latestRun.completedAt || ['completed', 'failed', 'cancelled'].includes(latestRun.status)) return latest;
+  const latestLifecycle = applyWorkSupervisedRunLifecycleAction(service, toSupervisedRunLifecycleRecord(latest, latestRun), action);
   const next = upsertCoreRun(
-    core,
+    latest,
     {
       id: run.id,
       title: run.title,
       status: 'running',
-      startedAt: run.startedAt ?? evaluatedAt,
+      startedAt: latestRun.startedAt ?? evaluatedAt,
       completedAt: null,
       summary: buildLifecycleActionRunSummary(action),
-      metadata: writeWorkLifecycleActionMetadata(lifecycle.metadata, {
+      metadata: writeWorkLifecycleActionMetadata(latestLifecycle.metadata, {
         action,
         occurredAt: evaluatedAt,
-        sessionId: readRuntimeBridgeSessionId(run),
+        sessionId: readRuntimeBridgeSessionId(latestRun),
       }),
     },
     now,
@@ -478,8 +483,9 @@ export async function createWorkSupervisedRunLifecycleActionPayload(
     },
     now,
   );
-  const persisted = await dependencies.coreStore.writeCore(traced.core);
-  const persistedRun = persisted.runs.find((candidate) => candidate.id === run.id) ?? next.run;
+  return traced.core;
+  });
+  const persistedRun = persisted.runs.find((candidate) => candidate.id === run.id) ?? run;
   const evidenceEvents = task.conversationId
     ? dependencies.readEvidenceEvents?.(task.conversationId) ?? []
     : [];
@@ -1083,62 +1089,68 @@ async function launchRuntimeForWorkSupervisedRun(input: {
       evaluatedAt,
     });
     const activeRunState = deriveRunState({ lifecycle: 'active' });
-    const metadata = writeRunStateMetadata({
-      metadata: writeRuntimeBridgeMetadata(input.run.metadata, {
-        status: 'started',
-        session: runtime.session,
-        message: runtime.message,
-        target: runtime.target,
-        startedAt: evaluatedAt,
-        messageSentAt: evaluatedAt,
-        handoff: runtime.handoff,
-        runLoop: runtime.runLoop,
-      }),
-      evaluation: activeRunState,
-      evaluatedAt,
-    });
-    const next = upsertCoreRun(
-      input.core,
-      {
-        id: input.run.id,
-        title: input.run.title,
-        status: 'running',
-        startedAt: input.run.startedAt ?? evaluatedAt,
-        summary: `Started supervised Work runtime session ${runtime.session.id}.`,
-        metadata,
-      },
-      now,
-    );
-    const traced = appendCoreTrace(
-      next.core,
-      {
-        id: `${input.run.id}:runtime-response`,
-        traceId: input.run.traceId ?? `trace-${input.run.id}`,
-        kind: 'outcome',
-        conversationId: input.run.conversationId,
-        runId: input.run.id,
-        taskId: input.task.id,
-        actorId: runtime.actorRef,
-        message: buildRuntimeResponseTraceMessage(runtime.session, runtime.message),
-        metadata: {
-          source: 'work_supervised_runtime_bridge',
-          sessionId: runtime.session.id,
-          provider: runtime.session.provider,
-          model: runtime.session.model,
-          tokensUsed: runtime.message.tokensUsed,
+    let applied = false;
+    const persisted = await dependencies.coreStore.updateCore(core => {
+      const latestRun = core.runs.find(candidate => candidate.id === input.run.id);
+      if (!latestRun || latestRun.completedAt || ['completed', 'failed', 'cancelled'].includes(latestRun.status)) return core;
+      const metadata = writeRunStateMetadata({
+        metadata: writeRuntimeBridgeMetadata(latestRun.metadata, {
+          status: 'started',
+          session: runtime.session,
+          message: runtime.message,
+          target: runtime.target,
+          startedAt: evaluatedAt,
+          messageSentAt: evaluatedAt,
+          handoff: runtime.handoff,
+          runLoop: runtime.runLoop,
+        }),
+        evaluation: activeRunState,
+        evaluatedAt,
+      });
+      const next = upsertCoreRun(
+        core,
+        {
+          id: input.run.id,
+          title: input.run.title,
+          status: 'running',
+          startedAt: latestRun.startedAt ?? evaluatedAt,
+          summary: `Started supervised Work runtime session ${runtime.session.id}.`,
+          metadata,
         },
-      },
-      now,
-    );
-    appendRuntimeRunLoopEvidence({
+        now,
+      );
+      const traced = appendCoreTrace(
+        next.core,
+        {
+          id: `${input.run.id}:runtime-response`,
+          traceId: input.run.traceId ?? `trace-${input.run.id}`,
+          kind: 'outcome',
+          conversationId: input.run.conversationId,
+          runId: input.run.id,
+          taskId: input.task.id,
+          actorId: runtime.actorRef,
+          message: buildRuntimeResponseTraceMessage(runtime.session, runtime.message),
+          metadata: {
+            source: 'work_supervised_runtime_bridge',
+            sessionId: runtime.session.id,
+            provider: runtime.session.provider,
+            model: runtime.session.model,
+            tokensUsed: runtime.message.tokensUsed,
+          },
+        },
+        now,
+      );
+      applied = true;
+      return traced.core;
+    });
+    if (applied) appendRuntimeRunLoopEvidence({
       dependencies,
       run: input.run,
       actorRef: runtime.actorRef,
       runLoop: runtime.runLoop,
       occurredAt: evaluatedAt,
     });
-    const persisted = await dependencies.coreStore.writeCore(traced.core);
-    const run = persisted.runs.find((candidate) => candidate.id === input.run.id) ?? next.run;
+    const run = persisted.runs.find((candidate) => candidate.id === input.run.id) ?? input.run;
 
     return {
       task,
@@ -1147,6 +1159,11 @@ async function launchRuntimeForWorkSupervisedRun(input: {
       supervision: buildSupervisedRunInspectionProjection(persisted, run.id),
     };
   } catch (error) {
+    if (error && typeof error === 'object' && 'causeCode' in error && error.causeCode === PROVIDER_RUN_ADMISSION_CONFLICT) {
+      const latest = await dependencies.coreStore.readCore();
+      return { task, run: latest.runs.find(run => run.id === input.run.id) ?? input.run, created: false,
+        supervision: buildSupervisedRunInspectionProjection(latest, input.run.id) };
+    }
     const blocker = {
       code: 'runtime_launch_failed',
       message: formatRuntimeLaunchError(error),
@@ -1155,28 +1172,32 @@ async function launchRuntimeForWorkSupervisedRun(input: {
       lifecycle: 'active',
       blockers: [blocker],
     });
-    const metadata = writeRunStateMetadata({
-      metadata: writeRuntimeBridgeMetadata(input.run.metadata, {
-        status: 'failed',
-        error: blocker.message,
-        failedAt: evaluatedAt,
-      }),
-      evaluation: blockedRunState,
-      evaluatedAt,
+    const persisted = await dependencies.coreStore.updateCore(core => {
+      const latestRun = core.runs.find(candidate => candidate.id === input.run.id);
+      if (!latestRun || latestRun.completedAt || ['completed', 'failed', 'cancelled'].includes(latestRun.status)) return core;
+      const metadata = writeRunStateMetadata({
+        metadata: writeRuntimeBridgeMetadata(latestRun.metadata, {
+          status: 'failed',
+          error: blocker.message,
+          failedAt: evaluatedAt,
+        }),
+        evaluation: blockedRunState,
+        evaluatedAt,
+      });
+      const next = upsertCoreRun(
+        core,
+        {
+          id: input.run.id,
+          title: input.run.title,
+          status: 'blocked',
+          summary: 'Blocked before runtime launch completed.',
+          metadata,
+        },
+        now,
+      );
+      return next.core;
     });
-    const next = upsertCoreRun(
-      input.core,
-      {
-        id: input.run.id,
-        title: input.run.title,
-        status: 'blocked',
-        summary: 'Blocked before runtime launch completed.',
-        metadata,
-      },
-      now,
-    );
-    const persisted = await dependencies.coreStore.writeCore(next.core);
-    const run = persisted.runs.find((candidate) => candidate.id === input.run.id) ?? next.run;
+    const run = persisted.runs.find((candidate) => candidate.id === input.run.id) ?? input.run;
 
     return {
       task,

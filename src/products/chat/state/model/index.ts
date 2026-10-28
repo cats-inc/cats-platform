@@ -166,6 +166,7 @@ function parseParallelCreateRuntimeSessionPolicy(input: {
       workspaceKind: input.policy?.workspaceKind,
       workspaceAccess: input.policy?.workspaceAccess,
       permissionMode: input.policy?.permissionMode,
+      executionPolicy: input.policy?.executionPolicy,
     },
   });
   if (parsed.ok) {
@@ -410,6 +411,7 @@ export function createChannel(
         workspaceKind: input.runtimeWorkspaceKind,
         workspaceAccess: input.runtimeWorkspaceAccess,
         permissionMode: input.runtimePermissionMode,
+        executionPolicy: input.runtimeExecutionPolicy ?? undefined,
       },
     });
     if (!parsed.ok) {
@@ -512,6 +514,7 @@ export function createChannel(
     runtimeWorkspaceKind: runtimeSessionPolicy.workspaceKind,
     runtimeWorkspaceAccess: runtimeSessionPolicy.workspaceAccess,
     runtimePermissionMode: runtimeSessionPolicy.permissionMode,
+    ...(runtimeSessionPolicy.executionPolicy ? { runtimeExecutionPolicy: runtimeSessionPolicy.executionPolicy } : {}),
     language: normalizeOptionalText(input.language),
     responseLanguage: normalizeOptionalText(input.responseLanguage) ?? 'unspecified',
     formationMode: input.formationMode ?? 'manual',

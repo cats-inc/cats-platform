@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { realpath, stat } from 'node:fs/promises';
 import { isAbsolute, normalize } from 'node:path';
 import { promisify } from 'node:util';
+import { isDeepStrictEqual } from 'node:util';
 import type { CatsCoreState } from '../../../core/types.js';
 import type { CoreStore } from '../../../core/store.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
@@ -119,6 +120,7 @@ export function createCodeSessionOperationService(options: {
           && Boolean(channel && channel.origin === 'code' && !channel.archived
             && channel.cwd === intent.cwd && channel.workspaceKind === draft.policy.workspaceKind
             && channel.workspaceAccess === draft.policy.workspaceAccess
+            && isDeepStrictEqual(channel.executionPolicy, draft.policy.executionPolicy)
             && channel.permissionMode === draft.policy.permissionMode && channel.sessionId === intent.sessionId);
       });
     }
@@ -131,12 +133,16 @@ export function createCodeSessionOperationService(options: {
       const target = session.providerTarget as Record<string, unknown> | undefined;
       const cwd = workspace?.runtimeCwd;
       const source = workspace?.sourceCwd;
+      const effective = draft.policy.executionPolicy ? await runtime.getSessionCapabilities?.(intent.sessionId) : null;
+      const policyMatches = draft.policy.executionPolicy
+        ? effective?.observation?.policy.status === 'verified' && isDeepStrictEqual(effective.observation.policy.requested, draft.policy.executionPolicy)
+        : session.permissionMode === draft.policy.permissionMode;
       if (session.id !== intent.sessionId || session.providerName !== intent.target.provider
         || target?.target !== intent.target.instance || target.resolved !== true
         || (intent.target.model && session.model !== intent.target.model)
         || !['ready', 'busy'].includes(String(session.status))
         || workspace?.kind !== draft.policy.workspaceKind || workspace.access !== draft.policy.workspaceAccess
-        || session.permissionMode !== draft.policy.permissionMode || typeof cwd !== 'string'
+        || !policyMatches || typeof cwd !== 'string'
         || !samePath(await realpath(typeof source === 'string' ? source : cwd), intent.cwd)) {
         return outcome(intent.requestId, 'unconfirmed', 'session_mismatch', intent);
       }

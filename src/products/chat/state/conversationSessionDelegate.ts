@@ -42,6 +42,7 @@ export function createConversationSessionDelegate(store: ChatStore, runtimeDataD
           archived: channel.status === 'archived', cwd: channel.repoPath,
           workspaceKind: channel.runtimeWorkspaceKind ?? null, workspaceAccess: channel.runtimeWorkspaceAccess ?? null,
           permissionMode: channel.runtimePermissionMode ?? null,
+          executionPolicy: channel.runtimeExecutionPolicy ?? undefined,
           sessionId: resolveCodeSessionId(channel) } : null);
         return { chat, core };
       });

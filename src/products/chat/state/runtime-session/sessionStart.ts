@@ -16,6 +16,7 @@ import type { RuntimeEnvelopeCanonicalMetadata } from './shared.js';
 import type { ChannelTaskExecutionContext } from './taskExecution.js';
 import type { ResolvedChannelRuntimeSessionPolicy } from './policy.js';
 import { enrichRuntimeInvocation } from '../../../../platform/runtime/invocationEnrichment.js';
+import { PLATFORM_INTERACTION_HOST } from '../../../../shared/providerInteractions.js';
 
 export interface RuntimeSessionExecutionTarget {
   provider: string;
@@ -66,6 +67,7 @@ export async function createParticipantTargetRuntimeSession(input: {
         ?? createExplicitProviderModelSelection(participant.execution.target.model),
       cwd: spawnCwd,
       ...runtimePolicy,
+      interactionHost: PLATFORM_INTERACTION_HOST,
       context: mergeRuntimeInvocationContextMetadata(
         input.runtimeEnvelope.context,
         input.dispatchContextMetadata ?? {},
