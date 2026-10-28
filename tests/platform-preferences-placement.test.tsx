@@ -19,6 +19,7 @@ function baselinePreferences(): PlatformPreferences {
     assistantResponseLanguage: 'unspecified',
     uiLanguagePreference: 'auto',
     codePreviewServersEnabled: false,
+    claudeInChromeEnabled: false,
   };
 }
 

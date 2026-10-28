@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | 進行中；P1–P2 實作完成，P3–P4 待實作 |
+| Status | 進行中；P1–P3 實作完成，P4 驗收待進行 |
 | Owner | Platform shared interaction、Desktop integration |
 | Assigned To | Claude |
 | Reviewer | Product owner、Runtime maintainers |
@@ -50,10 +50,15 @@ Runtime 已在 #196–#199 接上 Claude Code 的原生批准、提問、MCP 表
 
 ### P3 — Claude in Chrome 偏好
 
-- [ ] Settings 提供預設關閉的 Claude in Chrome 開關，存於 platform preferences。
-- [ ] 只有協商互動 host 的 Chat／Code 對話，在 target 宣告 `browserIntegration` 時送出 `true`；
+- [x] Settings > Runtime 提供預設關閉的 Claude in Chrome 開關，存於 platform preferences 的
+  `claudeInChromeEnabled`。讀寫走 `/api/provider-interactions/preferences`，與原生控制相同，
+  只接受本機 owner/admin 的 browser session；一般 preferences 路由不能改它，資料重設會恢復關閉。
+  舊版忽略此欄位只代表不載入 Chrome，不會擴權，因此不需要資料格式升級。
+- [x] 組合層的 wrapper 位於 Work admission wrapper 之外：只有呼叫端自己帶互動 host 的 Chat／Code
+  對話會要求 `browserIntegration: true`；client 只在 host 已協商且 target 宣告支援時送出。
   Work 監督／排程與 relay 執行不送，關閉時不送（保留使用者自己的 Claude Code 預設）。
-- [ ] 說明：變更只影響新 session 或下一次 worker 啟動；`skip`（完整存取）對話的 Chrome 動作不會詢問。
+- [x] 說明文字：變更只影響新 session 或下一次 worker 啟動；完整存取（skip）對話的 Chrome 動作不會詢問。
+  共用契約 pin 更新為 Runtime `b750d27e`（#200）。
 
 ### P4 — 驗收
 
@@ -73,5 +78,6 @@ P2／P3 分別以 admission 測試與 session create payload 測試覆蓋。
 | --- | --- |
 | 2026-10-28 | P1：契約對齊 Runtime `043155a1`、`tool_approval` 協商與卡片 DOM 測試、admissible ceilings 解析、內建工具清單與 provider 專屬設定連結。15 項 client／renderer、26 項 product／control／policy upgrade／raw-string audit 測試通過；server build 與 renderer typecheck 通過。 |
 | 2026-10-28 | P2：client 端 ceiling 拒絕（不送出 `/sessions`）與編輯器提示。16 項 client／renderer 測試通過，含 explicit workspace-write、provider 離線上限被拒與 full-access＋網路通過。 |
+| 2026-10-28 | P3：Claude in Chrome 偏好、本機 owner 路由、對話限定的 `browserIntegration` 與 Settings 開關。新增 3 項 Node（client 轉送、wrapper 範圍、路由權限與持久化）及 1 項 DOM 測試；更新 3 個 preferences 完整形狀 fixture。39 項 control／client／products／policy／ingress／raw-string 測試、60 項 preferences／setup／reset／preview 測試、8 項 renderer 測試通過；server／renderer／desktop／test typecheck 與 catalog check 通過。 |
 
 *Created / last updated: 2026-10-28*

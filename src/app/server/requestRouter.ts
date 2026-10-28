@@ -485,6 +485,7 @@ export async function routeRequest(
   if (await routeProviderInteractions({ ...context, dependencies: {
     runtimeClient: dependencies.shared.runtimeClient,
     bindings: id => currentProviderBindings(dependencies.chat.chatStore, id, dependencies.shared.coreStore),
+    chatStatePath: dependencies.shared.config.chatStatePath,
   } })) return;
   const chatContext = {
     ...context,

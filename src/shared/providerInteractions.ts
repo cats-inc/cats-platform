@@ -1,4 +1,4 @@
-// Runtime SPEC-039 v1 wire contract, pinned to source 043155a1. No Runtime implementation imports.
+// Runtime SPEC-039 v1 wire contract, pinned to source b750d27e. No Runtime implementation imports.
 /** Host-facing interaction contract. Native provider request IDs stay in the adapter. */
 export const INTERACTION_KINDS = [
   'command_approval', 'file_approval', 'tool_approval', 'permission_grant', 'user_input', 'mcp_form', 'mcp_url',

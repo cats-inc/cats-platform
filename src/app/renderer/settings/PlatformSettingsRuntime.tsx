@@ -22,6 +22,7 @@ import {
 } from '../../../shared/desktopRecoveryBridge.js';
 import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
 import { ProviderSessionSettings } from './ProviderSessionSettings.js';
+import { ClaudeInChromeSection } from './ClaudeInChromeSection.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { resolveRuntimePresentationStatus } from '../../../shared/runtimeStatusPresentation.js';
 import { mountProviderManager, type ProviderManagerBridge } from '../../../../packages/provider-setup/manager.js';
@@ -189,6 +190,7 @@ export function PlatformSettingsRuntime({
       {desktopEnvironment ? (
         <SettingsSection headerless><DesktopProviders onFeedback={showToast} /></SettingsSection>
       ) : null}
+      <ClaudeInChromeSection showToast={showToast} />
       <SettingsSection headerless><ProviderSessionSettings payload={payload} /></SettingsSection>
 
       <SettingsSection

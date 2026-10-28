@@ -9,6 +9,7 @@ import { ProviderInteractionCard } from '../src/products/shared/renderer/compone
 import { ProviderCapabilities } from '../src/products/shared/renderer/components/provider-interactions/ProviderCapabilities.tsx';
 import { ProviderPolicyEditor } from '../src/products/shared/renderer/components/provider-interactions/ProviderPolicyEditor.tsx';
 import { PermissionModeChip } from '../src/products/shared/renderer/components/PermissionModeChip.tsx';
+import { ClaudeInChromeSection } from '../src/app/renderer/settings/ClaudeInChromeSection.tsx';
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import { useDraftSessionChips } from '../src/products/shared/renderer/hooks/useDraftSessionChips.tsx';
 import type { RuntimeSessionPolicy } from '../src/shared/runtimeSessionPolicy.ts';
@@ -135,6 +136,29 @@ test('Claude session details list observed built-in tools and link to Claude in 
       });
     }
   } finally { globalThis.fetch = fetchBefore; globalThis.setInterval = intervalBefore; }
+});
+
+test('the Claude in Chrome setting saves the owner choice and reverts with a toast when saving fails', async () => {
+  const fetchBefore = globalThis.fetch;
+  const posts: unknown[] = []; let failPost = false;
+  globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+    if (init?.method === 'POST') { posts.push(JSON.parse(String(init.body))); if (failPost) return new Response('{}', { status: 403 }); }
+    return new Response(JSON.stringify({ claudeInChromeEnabled: false }), { headers: { 'content-type': 'application/json' } });
+  }) as typeof fetch;
+  const toasts: string[] = [];
+  try {
+    await domTest(async (document, render) => {
+      await render(<ClaudeInChromeSection showToast={message => toasts.push(message)} />);
+      const box = document.querySelector('input[type="checkbox"]') as HTMLInputElement;
+      assert.equal(box.checked, false); assert.equal(box.disabled, false);
+      assert.match(document.body.textContent!, /Claude in Chrome/);
+      act(() => { box.click(); }); await settle();
+      assert.deepEqual(posts, [{ claudeInChromeEnabled: true }]); assert.equal(box.checked, true);
+      failPost = true;
+      act(() => { box.click(); }); await settle();
+      assert.equal(box.checked, true); assert.deepEqual(toasts, ["Couldn't save the Claude in Chrome setting."]);
+    });
+  } finally { globalThis.fetch = fetchBefore; }
 });
 
 test('worker loss replaces a formerly verified policy without a model turn', async () => {

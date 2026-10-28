@@ -172,6 +172,8 @@ export function parsePlatformPreferencesUpdate(
       // Changed only through the Code preview settings route, which also stops
       // running dev previews when it is turned off.
       codePreviewServersEnabled: currentPrefs.codePreviewServersEnabled,
+      // Changed only through the local-owner provider controls route.
+      claudeInChromeEnabled: currentPrefs.claudeInChromeEnabled,
     },
   };
 }

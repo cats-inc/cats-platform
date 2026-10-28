@@ -59,7 +59,9 @@ import { assertProviderPolicyBoundary, parseProviderExecutionPolicy } from '../s
 export interface RuntimeProviderInstanceConfig {
   continuity?: { interactions?: { version: 1; kinds: string[] }; sessionCapabilities?: { version: 1; executionPolicy: boolean; inventory: boolean;
     /** Access/network ceilings the target enforces; absent means every valid ceiling. */
-    admissibleCeilings?: Array<{ access: ExecutionAccess; network: boolean }> } };
+    admissibleCeilings?: Array<{ access: ExecutionAccess; network: boolean }>;
+    /** Accepts `browserIntegration` (Claude in Chrome) on create/resume. */
+    browserIntegration?: boolean } };
   id: string;
   target: string | null;
   backend: string | null;
@@ -253,6 +255,8 @@ export interface RuntimeExecutionRequestInput {
 
 interface RuntimeSessionCreateInputBase extends RuntimeExecutionRequestInput {
   interactionHost?: InteractionHost;
+  /** Sent only with a negotiated host to a target that advertises it; otherwise dropped. */
+  browserIntegration?: boolean;
   provider: string;
   instance?: string | null;
   model?: string | null;
@@ -286,6 +290,7 @@ export interface RuntimeSendMessageInput extends RuntimeExecutionRequestInput {
 export interface RuntimeSessionResumeInput {
   interactionHost?: InteractionHost;
   executionPolicy?: SessionExecutionPolicy;
+  browserIntegration?: boolean;
   /** Needed after a Runtime restart, because descriptors are memory-only there. */
   mcpServers?: RuntimeSessionMcpServer[];
 }
@@ -575,7 +580,8 @@ export class CatsRuntimeClient implements RuntimeClient {
     return this.interactionRequest<SessionCapabilitiesSnapshot>(sessionId, `capabilities${refresh ? '?refresh=true' : ''}`);
   }
   private async negotiateInteractions(provider: string, instance: string | null | undefined, host: InteractionHost | undefined,
-    policy: SessionExecutionPolicy | undefined): Promise<{ interactionHost?: InteractionHost; executionPolicy?: SessionExecutionPolicy }> {
+    policy: SessionExecutionPolicy | undefined, browser?: boolean): Promise<{ interactionHost?: InteractionHost;
+      executionPolicy?: SessionExecutionPolicy; browserIntegration?: boolean }> {
     if (!host && !policy) return {};
     const config = await this.getProviderConfig().catch(() => ({} as RuntimeProviderConfigRegistry));
     const entry = config[provider];
@@ -597,7 +603,11 @@ export class CatsRuntimeClient implements RuntimeClient {
       const allowed = ceilings.map(c => `${c.access}${c.network ? ' with network' : ' offline'}`).join(', ');
       throw new RuntimeRequestError(`This provider target can only enforce: ${allowed || 'no explicit limit'}.`, 409, 'provider_policy_unsupported');
     }
-    return kinds.length ? { interactionHost: { ...PLATFORM_INTERACTION_HOST, ...host, kinds }, ...(policy ? { executionPolicy: policy } : {}) } : {};
+    // Browser tools only reach sessions whose approval cards someone can answer.
+    const browserIntegration = browser !== undefined && target?.continuity?.sessionCapabilities?.browserIntegration === true
+      ? { browserIntegration: browser } : {};
+    return kinds.length ? { interactionHost: { ...PLATFORM_INTERACTION_HOST, ...host, kinds }, ...(policy ? { executionPolicy: policy } : {}),
+      ...browserIntegration } : {};
   }
   private async imageRequest(route: string, body?: unknown, binary = false, method?: 'DELETE'): Promise<Uint8Array> {
     const response = await fetch(`${this.baseUrl}/media/images/${route}`, {
@@ -1009,7 +1019,7 @@ export class CatsRuntimeClient implements RuntimeClient {
     const policy = parseProviderExecutionPolicy(input.executionPolicy);
     assertProviderPolicyBoundary(policy, input);
     const host = input.interactionHost;
-    const controls = await this.negotiateInteractions(input.provider, input.instance, host, policy);
+    const controls = await this.negotiateInteractions(input.provider, input.instance, host, policy, input.browserIntegration);
     const payload: Record<string, unknown> = {
       provider: input.provider,
       ...(!policy ? { permissionMode: input.permissionMode ?? 'skip' } : {}),
@@ -1210,7 +1220,7 @@ export class CatsRuntimeClient implements RuntimeClient {
       if (!selector) throw new RuntimeRequestError('Cannot identify the original provider target for readmission.', 409);
       controls = await this.negotiateInteractions(String(observed.providerName ?? observed.provider ?? ''),
         selector,
-        input?.interactionHost ?? PLATFORM_INTERACTION_HOST, parseProviderExecutionPolicy(input?.executionPolicy));
+        input?.interactionHost ?? PLATFORM_INTERACTION_HOST, parseProviderExecutionPolicy(input?.executionPolicy), input?.browserIntegration);
     }
     const payload = { ...(input?.mcpServers ? { mcpServers: input.mcpServers } : {}), ...controls };
     const body = Object.keys(payload).length ? JSON.stringify(payload) : undefined;

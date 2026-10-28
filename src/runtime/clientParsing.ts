@@ -17,7 +17,8 @@ function providerContinuity(value: unknown): RuntimeProviderInstanceConfig['cont
       executionPolicy: c.sessionCapabilities.executionPolicy === true, inventory: c.sessionCapabilities.inventory === true,
       ...(Array.isArray(c.sessionCapabilities.admissibleCeilings) ? { admissibleCeilings: c.sessionCapabilities.admissibleCeilings
         .filter((x: any) => ['read-only', 'workspace-write', 'full-access'].includes(x?.access) && typeof x.network === 'boolean')
-        .map((x: any) => ({ access: x.access, network: x.network })) } : {}) } } : {}),
+        .map((x: any) => ({ access: x.access, network: x.network })) } : {}),
+      ...(c.sessionCapabilities.browserIntegration === true ? { browserIntegration: true } : {}) } } : {}),
   };
 }
 
