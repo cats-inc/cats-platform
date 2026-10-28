@@ -197,13 +197,47 @@ session that received them. Like every tool, `request_app_access` serves only ow
 | `resolve_apps` | `{ queries: string[] }` | `{ matches: [{ query, candidates: [{ path, publisher \| null, productName, displayName, running, category: 'normal' \| 'observe_only' \| 'excluded', aumid \| null }] }] }`; sources are running processes with windows, Start menu shortcuts and packaged apps, so localized display names resolve; `aumid` is set for packaged apps |
 | `list_windows` | `{ paths: string[] }` | `{ windows: [{ hwnd, pid, path, title, bounds, minimized, foreground }] }` |
 | `capture_window` | `{ hwnd, maxEdge }` | `{ pngBase64, width, height, scale, bounds }` |
-| `read_ui` | `{ hwnd, maxNodes }` | `{ nodes, truncated }` with helper-local element ids |
+| `read_ui` | `{ hwnd, maxNodes }` | `{ readId, nodes, truncated }` with helper-local element ids |
 | `open_app` | `{ path, aumid? }`; a packaged app launches through its AUMID | `{ pid }` |
-| `state` | `{}` | `{ locked, idleMs }` |
-| `cancel` | `{ id }` | `{ cancelled }` |
+| `state` | `{}` | `{ locked, idleMs, operatorIdleMs }` |
+| `cancel` | `{}` | `{ cancelled }`: whether an op was running |
+| `click` (B) | `{ hwnd, bounds, x, y, button, count }`, `x`/`y` in screen pixels | `{ done: true }` |
+| `scroll` (B) | `{ hwnd, bounds, x, y, direction, amount }` | `{ done: true }` |
+| `type` (B) | `{ hwnd, text }` | `{ done: true }` |
+| `key` (B) | `{ hwnd, keys }` | `{ done: true }` |
+| `invoke` (B) | `{ hwnd, readId, elementId, action }` | `{ done: true }` |
+| `clipboard_read` (B) | `{}` | `{ text: string \| null }` |
+| `clipboard_write` (B) | `{ text }` | `{ done: true }`, after reading the text back |
 
 Helper error codes add `invalid_request`, `window_gone`, `capture_failed` and `not_found` to the
 tool error codes; the server maps them to `window_changed`, `unavailable` or `not_granted`.
+
+Phase B helper rules (P5, 2026-10-29):
+
+- **Ordering and cancel.** Ops run one at a time in arrival order. `cancel` is answered at once
+  and stops the op in progress; `type` sends 16 characters per chunk and checks for cancel and
+  the foreground window between chunks, so Stop takes effect mid-text with `stopped`.
+- **Owner input versus the helper's own.** `operatorIdleMs` ignores input the helper injected:
+  input within 250 ms after its own injection counts as its own. Every input op refuses with
+  `operator_active` when the owner's input is under 3 seconds old or a key or mouse button is
+  held, and the server reads `state` immediately before every input op.
+- **Shared input guards.** Each input op re-resolves the window (`window_changed` if gone),
+  refuses `excluded` and `observe_only` categories (`excluded_app`, `observe_only`) and
+  elevated targets (`elevated_target`: the token cannot be read or has a higher integrity
+  level), then brings the window forward with `SetForegroundWindow` or UIA `SetFocus`
+  (`not_foreground` if it stays behind).
+- **Coordinate guards** for `click` and `scroll` (the developer skill's PR #336): the window
+  frame still equals `bounds` (`window_changed`), the point is inside it, the root owner of the
+  window under the point is the target (`covered`), and the cursor lands exactly. Buttons honor
+  swapped mouse buttons; a wheel step is 120 per `amount`.
+- **Typing targets.** `type` and the clipboard chords `ctrl+a`, `ctrl+c`, `ctrl+v` and `ctrl+x`
+  need UIA keyboard focus inside the target's process and refuse a focused `IsPassword` element
+  with `password_field`. Other allowlisted keys (Enter, Tab, arrows and so on) may reach a
+  password field.
+- **Element cache.** `invoke` resolves `elementId` in the read named by `readId`; the helper
+  keeps its last 8 reads, and an older or foreign id answers `window_changed`.
+- **Clipboard.** Text only, at most 100,000 characters (a longer read is cut there); a write
+  is read back and fails with `unavailable` if another program changed it.
 
 ### Exclusion categories (DC-10), matched on executable file name, case-insensitive
 
