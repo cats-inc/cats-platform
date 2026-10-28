@@ -2,7 +2,13 @@
 
 ## Status
 
-Proposed — 2026-10-29。只有文件，未授權實作；SPEC／PLAN 待本提案接受後另立。
+Accepted — 2026-10-29。Owner 接受此方向；實作需另行授權。
+規格：[SPEC-133](../specs/SPEC-133-desktop-control-session-mcp.md)。
+計畫：[PLAN-126](../plans/PLAN-126-desktop-control-session-mcp.md)。
+
+實作落點：本文的「Desktop host」包含 Desktop 管理的 Platform server。MCP endpoint
+位於 Platform server 的 internal listener（比照 `cat-image-tools`），executor helper 由
+Platform server 以 Desktop host 提供的路徑啟動；細節見 SPEC-133。
 
 ## Context
 
@@ -170,4 +176,4 @@ Platform 在能力面板上將它列為 Cats 自己的能力，與 provider 原�
 - [desktop-ui-automation skill](../../skills/desktop-ui-automation/SKILL.md) /
   [PR #336](https://github.com/cats-inc/cats-platform/pull/336)
 
-*Proposed: 2026-10-29. Documentation only; no implementation authorized.*
+*Proposed / accepted: 2026-10-29. Implementation not yet authorized.*

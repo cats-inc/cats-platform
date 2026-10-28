@@ -1,5 +1,11 @@
 # Feature Specifications
 
+- [SPEC-133: Desktop control session MCP (Windows)](SPEC-133-desktop-control-session-mcp.md)
+  — draft, 2026-10-29; `cats-desktop` session MCP on Platform's internal listener
+  with a native Windows helper. Injection gates, owner app-grant cards, exclusions,
+  single-window capture, observe tools (phase A) before input tools (phase B).
+  ADR-141; implementation not authorized.
+
 - [SPEC-132: Provider session interactions and capability visibility](SPEC-132-provider-session-interactions-and-capability-visibility.md)
   — approved, 2026-10-28; shared native request UI, effective permissions and live
   tools/helper diagnostics. Runtime SPEC-039 consumer; implementation not started.
