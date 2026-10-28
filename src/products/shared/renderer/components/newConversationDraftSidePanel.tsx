@@ -2,6 +2,8 @@ import type { BrowseDirectoryEntry } from '../api/index.js';
 import { FolderBrowserContent } from './FolderBrowser.js';
 import { type SidePanelSection } from '../../../../design/components/SidePanel.js';
 import type { RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
+import { createDefaultRuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
+import { ProviderPolicyEditor } from './provider-interactions/ProviderPolicyEditor.js';
 import {
   messageKeys,
   type MessageInterpolationValues,
@@ -109,5 +111,7 @@ export function buildNewConversationDraftSidePanelSections(
         <p className="operatorEmptyState">{copy.folder.emptyState}</p>
       )
     ),
-  }];
+  }, ...(input.onDraftRuntimeSessionPolicyChange ? [{ id: 'provider-access', title: input.t(messageKeys.providerControlsAccessApproval),
+    children: <ProviderPolicyEditor value={input.draftRuntimeSessionPolicy ?? createDefaultRuntimeSessionPolicy()}
+      onChange={input.onDraftRuntimeSessionPolicyChange} disabled={input.isSubmittingFirstTurn} /> }] : [])];
 }

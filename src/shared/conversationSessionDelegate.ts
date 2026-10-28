@@ -5,6 +5,7 @@ import type { RuntimeSessionPolicy } from './runtimeSessionPolicy.js';
 export interface ConversationSessionProjection {
   id: string; origin: string; archived: boolean; cwd: string | null; sessionId: string | null;
   workspaceKind: string | null; workspaceAccess: string | null; permissionMode: string | null;
+  executionPolicy?: RuntimeSessionPolicy['executionPolicy'];
 }
 
 /** Host-injected seam to the shared conversation engine, which is currently Chat-owned. */

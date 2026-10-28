@@ -71,9 +71,11 @@ export function useDraftSessionChips(input: UseDraftSessionChipsInput): DraftSes
         workspaceKind: resolvedRuntimeWorkspaceKind,
         workspaceAccess: currentSessionPolicy.workspaceAccess,
         permissionMode: currentSessionPolicy.permissionMode,
+        executionPolicy: currentSessionPolicy.executionPolicy,
       }),
     );
   }, [
+    currentSessionPolicy.executionPolicy,
     currentSessionPolicy.permissionMode,
     currentSessionPolicy.workspaceAccess,
     currentSessionPolicy.workspaceKind,
@@ -90,6 +92,7 @@ export function useDraftSessionChips(input: UseDraftSessionChipsInput): DraftSes
         workspaceKind: currentSessionPolicy.workspaceKind,
         workspaceAccess: currentSessionPolicy.workspaceAccess,
         permissionMode: currentSessionPolicy.permissionMode,
+        executionPolicy: currentSessionPolicy.executionPolicy,
         ...patch,
       }),
     );
@@ -97,6 +100,7 @@ export function useDraftSessionChips(input: UseDraftSessionChipsInput): DraftSes
 
   const permissionChip = draftCwd ? (
     <PermissionModeChip
+      executionPolicy={currentSessionPolicy.executionPolicy}
       value={permissionMode}
       onChange={(nextMode) => {
         updateSessionPolicy(resolveRuntimePermissionPolicyFromDraft(nextMode));

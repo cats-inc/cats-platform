@@ -323,6 +323,7 @@ export interface ChatChannelState {
   runtimeWorkspaceKind?: RuntimeWorkspaceKind | null;
   runtimeWorkspaceAccess?: RuntimeWorkspaceAccess | null;
   runtimePermissionMode?: RuntimePermissionMode | null;
+  runtimeExecutionPolicy?: import('../../../shared/providerInteractions.js').SessionExecutionPolicy | null;
   language: string | null;
   responseLanguage: string;
   formationMode: ChannelFormationMode;
@@ -380,6 +381,7 @@ export interface ChatChannelSummary {
   runtimeWorkspaceKind?: RuntimeWorkspaceKind | null;
   runtimeWorkspaceAccess?: RuntimeWorkspaceAccess | null;
   runtimePermissionMode?: RuntimePermissionMode | null;
+  runtimeExecutionPolicy?: import('../../../shared/providerInteractions.js').SessionExecutionPolicy | null;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
   defaultRecipientCatId?: string | null;

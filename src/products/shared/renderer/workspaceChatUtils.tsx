@@ -535,6 +535,7 @@ export function insertCreatedChannelIntoPayload<TPayload extends AppShellPayload
     runtimeWorkspaceKind: normalizedChannel.runtimeWorkspaceKind ?? null,
     runtimeWorkspaceAccess: normalizedChannel.runtimeWorkspaceAccess ?? null,
     runtimePermissionMode: normalizedChannel.runtimePermissionMode ?? null,
+    runtimeExecutionPolicy: normalizedChannel.runtimeExecutionPolicy ?? null,
     lastMessageAt: normalizedChannel.lastMessageAt,
     lastActivatedAt: normalizedChannel.lastActivatedAt,
     defaultRecipientCatId,

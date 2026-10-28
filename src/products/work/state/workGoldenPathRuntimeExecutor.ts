@@ -207,7 +207,17 @@ export function createWorkGoldenPathRuntimeExecutor(
   const sessionsByRun = new Map<string, RuntimeSessionInfo>();
 
   return async (context): Promise<WorkGoldenPathStepResult> => {
+    let session = sessionsByRun.get(context.runId) ?? null;
+    let stopping: Promise<void> | null = null;
+    const stop = () => {
+      if (session && !stopping) {
+        const id = session.id;
+        stopping = input.runtimeClient.cancelSession(id).catch(() => input.runtimeClient.closeSession(id)).catch(() => {});
+      }
+    };
+    context.signal?.addEventListener('abort', stop, { once: true });
     try {
+      context.signal?.throwIfAborted();
       const runToolScope = resolveToolScope(context);
       if (runToolScope !== 'narrow_write' && runToolScope !== 'broad_write') {
         return {
@@ -220,7 +230,6 @@ export function createWorkGoldenPathRuntimeExecutor(
           denial: { toolName: 'cats.runtime.session.create', code: 'E_TOOL_SCOPE_DENIED' },
         };
       }
-      let session = sessionsByRun.get(context.runId) ?? null;
       if (session === null) {
         const target = input.resolveTarget?.(context) ?? context.executionTarget ?? null;
         if (target === null) {
@@ -265,6 +274,8 @@ export function createWorkGoldenPathRuntimeExecutor(
         sessionsByRun.set(context.runId, session);
       }
 
+      if (context.signal?.aborted) { stop(); await stopping; context.signal.throwIfAborted(); }
+
       const message = await sendSupervisedRuntimeMessage({
         runtimeClient: input.runtimeClient,
         sessionId: session.id,
@@ -279,6 +290,7 @@ export function createWorkGoldenPathRuntimeExecutor(
           policyToolScope: 'broad_write',
         }),
       });
+      context.signal?.throwIfAborted();
       const summary = resolveFullResponseText(message.segments).trim();
       const evidence = await collectEvidence({
         runId: context.runId,
@@ -331,6 +343,6 @@ export function createWorkGoldenPathRuntimeExecutor(
         commit: null,
         blockedReason: error instanceof Error ? error.message : 'runtime_step_failed',
       };
-    }
+    } finally { context.signal?.removeEventListener('abort', stop); }
   };
 }

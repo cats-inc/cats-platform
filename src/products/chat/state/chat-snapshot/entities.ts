@@ -1,3 +1,4 @@
+import { parseProviderExecutionPolicy } from '../../../../shared/providerExecutionPolicy.js';
 import { randomUUID } from 'node:crypto';
 
 import type {
@@ -333,9 +334,11 @@ export function normalizeChannel(
   const rawRuntimeWorkspaceKind = readNullableString(channelRecord.runtimeWorkspaceKind);
   const rawRuntimeWorkspaceAccess = readNullableString(channelRecord.runtimeWorkspaceAccess);
   const rawRuntimePermissionMode = readNullableString(channelRecord.runtimePermissionMode);
+  const executionPolicy = parseProviderExecutionPolicy(channelRecord.runtimeExecutionPolicy);
   const runtimeSessionPolicy = resolveCreateRuntimeSessionPolicy({
     repoPath,
     policy: {
+      executionPolicy,
       workspaceKind: isRuntimeWorkspaceKind(rawRuntimeWorkspaceKind)
         ? rawRuntimeWorkspaceKind
         : undefined,
@@ -364,6 +367,7 @@ export function normalizeChannel(
     runtimeWorkspaceKind: runtimeSessionPolicy.workspaceKind,
     runtimeWorkspaceAccess: runtimeSessionPolicy.workspaceAccess,
     runtimePermissionMode: runtimeSessionPolicy.permissionMode,
+    ...(executionPolicy ? { runtimeExecutionPolicy: executionPolicy } : {}),
     language: readNullableString(channelRecord.language),
     responseLanguage: readString(channelRecord.responseLanguage, 'en'),
     formationMode,

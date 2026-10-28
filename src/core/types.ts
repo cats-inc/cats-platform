@@ -1,6 +1,6 @@
 import type { ProviderModelSelection } from '../shared/providerSelection.js';
 
-export const CATS_CORE_STATE_VERSION = 5 as const;
+export const CATS_CORE_STATE_VERSION = 6 as const;
 
 export const CORE_CANONICAL_ID_KEYS = [
   'agentId',

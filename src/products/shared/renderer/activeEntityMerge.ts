@@ -190,6 +190,7 @@ export function mergeChannelSummaryWithChannelView(
     runtimeWorkspaceKind: selectedChannel.runtimeWorkspaceKind ?? null,
     runtimeWorkspaceAccess: selectedChannel.runtimeWorkspaceAccess ?? null,
     runtimePermissionMode: selectedChannel.runtimePermissionMode ?? null,
+    runtimeExecutionPolicy: selectedChannel.runtimeExecutionPolicy ?? null,
     lastMessageAt: selectedChannel.lastMessageAt,
     lastActivatedAt: selectedChannel.lastActivatedAt,
     roomMode: roomRouting.mode,

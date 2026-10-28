@@ -244,6 +244,7 @@ async function resumeExistingTargetSession(input: {
     runtimeClient: input.runtimeClient,
     sessionId: input.sessionId,
     scope: 'target_session_revive',
+    executionPolicy: input.state.channels.find(c => c.id === input.channelId)?.runtimeExecutionPolicy ?? undefined,
   });
   const resumed = resumeOutcome.session;
   if (!resumed) {

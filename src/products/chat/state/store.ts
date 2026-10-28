@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { ProviderPolicyFormatError, parseProviderExecutionPolicy, assertProviderPolicyBoundary } from '../../../shared/providerExecutionPolicy.js';
 import { normalizeOwnerLifecycle, OwnerLifecycleFormatError } from '../../../core/ownerLifecycle.js';
 import { compactOwnerWorkflowHistory } from './ownerHistory.js';
 import { copyFile, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
@@ -7,6 +8,7 @@ import { isDeepStrictEqual } from 'node:util';
 
 import type { ChatState } from '../api/contracts.js';
 import type { CatsCoreState } from '../../../core/types.js';
+import { CATS_CORE_STATE_VERSION } from '../../../core/types.js';
 import {
   hasSubstantiveCoreChange,
   type CoreStore,
@@ -67,6 +69,21 @@ async function writePersistedChatSnapshot(
   snapshot: PersistedChatSnapshot,
   options: { preserveBackup?: boolean } = {},
 ): Promise<void> {
+  // A future writer may have updated its backup before crashing. Never rotate
+  // an unknown policy out of either copy, even when the primary still parses.
+  for (const source of [filePath, `${filePath}.bak`]) {
+    try {
+      const previous = JSON.parse(await readFile(source, 'utf8'));
+      if (previous?.version !== undefined && (!Number.isInteger(previous.version) || previous.version < 1 || previous.version > CATS_CORE_STATE_VERSION)) throw new OwnerLifecycleFormatError();
+      for (const channel of previous?.chat?.channels ?? []) {
+        const policy = parseProviderExecutionPolicy(channel.runtimeExecutionPolicy);
+        assertProviderPolicyBoundary(policy, { workspaceAccess: channel.runtimeWorkspaceAccess, permissionMode: channel.runtimePermissionMode });
+      }
+    } catch (error) {
+      if (error instanceof ProviderPolicyFormatError || error instanceof OwnerLifecycleFormatError) throw error;
+      if (!(error instanceof SyntaxError) && !(isErrnoException(error) && error.code === 'ENOENT')) throw error;
+    }
+  }
   await mkdir(path.dirname(filePath), { recursive: true });
   const serialized = `${JSON.stringify(snapshot, null, 2)}\n`;
   const tempPath = path.join(
@@ -232,7 +249,24 @@ export class FileChatStore implements ChatStore {
     if (!raw.trim()) {
       throw new SyntaxError('Persisted chat snapshot is empty');
     }
-    const normalized = normalizePersistedChatSnapshot(JSON.parse(raw) as unknown);
+    const parsed = JSON.parse(raw);
+    const normalized = normalizePersistedChatSnapshot(parsed as unknown);
+    if (parsed.version !== CATS_CORE_STATE_VERSION) {
+      // Version 6 is an admission boundary: old readers must reject new policies
+      // instead of discarding their restrictions and continuing with legacy skip.
+      const backupPath = `${this.filePath}.pre-provider-policy.bak`;
+      try {
+        if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed.chat ?? parsed).channels)
+          || !Array.isArray((parsed.chat ?? parsed).cats)) throw new Error('Unrecognized profile');
+        try { await writeFile(backupPath, raw, { encoding: 'utf8', flag: 'wx' }); }
+        catch (error) {
+          if (!(isErrnoException(error) && error.code === 'EEXIST') || await readFile(backupPath, 'utf8') !== raw) throw error;
+        }
+        if (filePath === this.filePath) await writePersistedChatSnapshot(this.filePath, normalized);
+      } catch {
+        throw new ProviderPolicyFormatError('Provider policy profile upgrade failed; original data was preserved.');
+      }
+    }
     const repaired = repairPersistedSetupCompletion(normalized);
     if (repaired.setupCompleteAt !== normalized.setupCompleteAt) {
       await writePersistedChatSnapshot(filePath, repaired);
@@ -325,6 +359,7 @@ export class FileChatStore implements ChatStore {
       });
       return this.cacheSnapshot(recovered);
     } catch (error) {
+      if (error instanceof ProviderPolicyFormatError || error instanceof OwnerLifecycleFormatError) throw error;
       if (isErrnoException(error) && error.code === 'ENOENT') {
         return null;
       }
@@ -342,7 +377,7 @@ export class FileChatStore implements ChatStore {
     try {
       return this.cacheSnapshot(await this.tryReadSnapshotFile(this.filePath));
     } catch (error) {
-      if (error instanceof OwnerLifecycleFormatError) throw error;
+      if (error instanceof OwnerLifecycleFormatError || error instanceof ProviderPolicyFormatError) throw error;
       if (isErrnoException(error) && error.code === 'ENOENT') {
         if (this.lastKnownSnapshot) {
           reportStoreDiagnostic('snapshot_missing_primary_using_memory_cache', {
@@ -424,13 +459,15 @@ export class FileChatStore implements ChatStore {
       if (!raw.trim()) {
         return null;
       }
-      const snapshot = normalizePersistedChatSnapshot(JSON.parse(raw) as unknown);
+      const parsed = JSON.parse(raw);
+      const snapshot = normalizePersistedChatSnapshot(parsed as unknown);
+      if (parsed.version !== CATS_CORE_STATE_VERSION) return null;
       return repairPersistedSetupCompletion(snapshot) === snapshot
         && migrateCompanionSkillProfiles(snapshot) === null
         ? snapshot
         : null;
     } catch (error) {
-      if (error instanceof OwnerLifecycleFormatError) throw error;
+      if (error instanceof OwnerLifecycleFormatError || error instanceof ProviderPolicyFormatError) throw error;
       return null;
     }
   }

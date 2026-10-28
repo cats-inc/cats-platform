@@ -1,5 +1,6 @@
 import type { RuntimeWorkspaceAccess } from '../../../../shared/runtimeSessionPolicy.js';
 import { resolveDraftPermissionModeFromRuntimeAccess } from '../../../../shared/runtimeSessionPolicy.js';
+import type { SessionExecutionPolicy } from '../../../../shared/providerInteractions.js';
 import {
   DEFAULT_PERMISSION_MODE,
   PermissionModeChip,
@@ -10,6 +11,7 @@ interface Props {
     repoPath?: string | null;
     chatCwd?: string | null;
     runtimeWorkspaceAccess?: RuntimeWorkspaceAccess | null;
+    runtimeExecutionPolicy?: SessionExecutionPolicy | null;
   };
 }
 
@@ -23,5 +25,5 @@ export function ActiveSessionPermissionChip({ channel }: Props) {
     ? resolveDraftPermissionModeFromRuntimeAccess(channel.runtimeWorkspaceAccess)
     : DEFAULT_PERMISSION_MODE;
 
-  return <PermissionModeChip value={permissionMode} onChange={() => {}} disabled />;
+  return <PermissionModeChip value={permissionMode} executionPolicy={channel.runtimeExecutionPolicy} onChange={() => {}} disabled />;
 }

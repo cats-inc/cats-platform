@@ -53,6 +53,8 @@ import {
   sendMethodNotAllowed,
 } from '../../shared/http.js';
 import { routeChatApi } from '../../products/chat/api/index.js';
+import { currentProviderBindings } from '../../products/chat/api/providerInteractionBindings.js';
+import { routeProviderInteractions } from '../../products/shared/api/providerInteractions.js';
 import { routeCodeApi } from '../../products/code/api/index.js';
 import { routeArtifactCanvasApi } from '../../products/shared/artifactCanvas/api.js';
 import { routeWorkApi } from '../../products/work/api/index.js';
@@ -480,6 +482,10 @@ export async function routeRequest(
       resumeWorkflowContinuationDispatch: dependencies.shared.resumeWorkflowContinuationDispatch,
     },
   };
+  if (await routeProviderInteractions({ ...context, dependencies: {
+    runtimeClient: dependencies.shared.runtimeClient,
+    bindings: id => currentProviderBindings(dependencies.chat.chatStore, id, dependencies.shared.coreStore),
+  } })) return;
   const chatContext = {
     ...context,
     dependencies: {

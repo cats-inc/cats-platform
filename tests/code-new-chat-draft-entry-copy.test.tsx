@@ -226,7 +226,7 @@ test('new code draft owns shared side panel sections through its product builder
   );
 
   // Participants are managed on the composer, not in the side panel.
-  assert.deepEqual(sections.map((section) => section.id), ['code:session-profile', 'cwd']);
+  assert.deepEqual(sections.map((section) => section.id), ['code:session-profile', 'cwd', 'provider-access']);
   assert.equal(
     sections.find((section) => section.id === 'code:session-profile')?.title,
     'Session Profile',

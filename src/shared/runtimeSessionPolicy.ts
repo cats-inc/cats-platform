@@ -1,3 +1,6 @@
+import type { SessionExecutionPolicy } from './providerInteractions.js';
+import { parseProviderExecutionPolicy, assertProviderPolicyBoundary } from './providerExecutionPolicy.js';
+
 export const RUNTIME_WORKSPACE_KINDS = ['source', 'sandbox', 'worktree'] as const;
 export const RUNTIME_WORKSPACE_ACCESS_VALUES = ['read_write', 'read_only'] as const;
 export const RUNTIME_PERMISSION_MODES = ['skip', 'default', 'whitelist'] as const;
@@ -22,10 +25,12 @@ export type RuntimeSessionPermissionBoundaryInput =
 
 export type RuntimeSessionTransportInput = {
   workspaceKind?: RuntimeWorkspaceKind | null;
+  executionPolicy?: SessionExecutionPolicy;
 } & RuntimeSessionPermissionBoundaryInput;
 
 export type RuntimeSessionCreateContractInput = {
   runtimeWorkspaceKind?: RuntimeWorkspaceKind | null;
+  runtimeExecutionPolicy?: SessionExecutionPolicy;
 } & (
   | {
       runtimeWorkspaceAccess?: null | undefined;
@@ -66,7 +71,7 @@ export class RuntimeSessionPolicyError extends Error {
 // skip-permission by default but may opt into a whitelist. Constructing any
 // other combination at the type level is forbidden — use applyReadOnlyInvariant
 // to coerce loose input into a valid variant.
-export type RuntimeSessionPolicy =
+export type RuntimeSessionPolicy = { executionPolicy?: SessionExecutionPolicy } & (
   | {
       workspaceKind: RuntimeWorkspaceKind;
       workspaceAccess: 'read_write';
@@ -76,12 +81,13 @@ export type RuntimeSessionPolicy =
       workspaceKind: RuntimeWorkspaceKind;
       workspaceAccess: 'read_only';
       permissionMode: 'default';
-    };
+    });
 
 // Loose input shape accepted by boundary helpers (HTTP payloads, persisted
 // snapshots, renderer state). Any combination of fields is allowed; the helpers
 // normalise it into a valid RuntimeSessionPolicy via applyReadOnlyInvariant.
 export interface RuntimeSessionPolicyInput {
+  executionPolicy?: SessionExecutionPolicy;
   workspaceKind?: RuntimeWorkspaceKind;
   workspaceAccess?: RuntimeWorkspaceAccess;
   permissionMode?: RuntimePermissionMode;
@@ -94,6 +100,7 @@ export const DEFAULT_DRAFT_WORKSPACE_MODE: DraftWorkspaceMode = 'current';
 export const DEFAULT_DRAFT_PERMISSION_MODE: DraftPermissionMode = 'full';
 
 interface RuntimeSessionPolicyFields {
+  executionPolicy?: SessionExecutionPolicy;
   workspaceKind: RuntimeWorkspaceKind;
   workspaceAccess: RuntimeWorkspaceAccess;
   permissionMode: RuntimePermissionMode;
@@ -154,6 +161,7 @@ function createDefaultPolicyFields(): RuntimeSessionPolicyFields {
   const workspaceAccess: RuntimeWorkspaceAccess = 'read_write';
   return {
     workspaceKind: 'sandbox',
+    executionPolicy: undefined,
     workspaceAccess,
     permissionMode: defaultPermissionModeFor(workspaceAccess),
   };
@@ -168,10 +176,18 @@ function describeAllowedPermissionModes(access: RuntimeWorkspaceAccess): string 
 }
 
 export function validateRuntimeSessionPolicyInput(policy: {
+  executionPolicy?: unknown;
   workspaceKind?: unknown | null;
   workspaceAccess?: unknown | null;
   permissionMode?: unknown | null;
 }): RuntimeSessionPolicyValidationIssue | null {
+  try {
+    const executionPolicy = parseProviderExecutionPolicy(policy.executionPolicy);
+    assertProviderPolicyBoundary(executionPolicy, { workspaceAccess: typeof policy.workspaceAccess === 'string' ? policy.workspaceAccess : null,
+      permissionMode: typeof policy.permissionMode === 'string' ? policy.permissionMode : null });
+  } catch {
+    return { code: 'invalid_runtime_policy_combination', message: 'Invalid provider policy or a policy that exceeds the workspace/tool boundary.' };
+  }
   if (policy.workspaceKind != null && !isRuntimeWorkspaceKind(policy.workspaceKind)) {
     return {
       code: 'invalid_runtime_workspace_kind',
@@ -233,6 +249,8 @@ export function validateRuntimeSessionPolicyInput(policy: {
 // runtime-facing policies can only ever be one of the valid discriminated
 // variants declared in VALID_PERMISSION_MODES_BY_ACCESS.
 function applyReadOnlyInvariant(raw: RuntimeSessionPolicyFields): RuntimeSessionPolicy {
+  const executionPolicy = parseProviderExecutionPolicy(raw.executionPolicy);
+  assertProviderPolicyBoundary(executionPolicy, raw);
   const { workspaceKind, workspaceAccess } = raw;
   const mode = isValidPermissionModeFor(workspaceAccess, raw.permissionMode)
     ? raw.permissionMode
@@ -243,12 +261,14 @@ function applyReadOnlyInvariant(raw: RuntimeSessionPolicyFields): RuntimeSession
       workspaceKind,
       workspaceAccess,
       permissionMode: mode as ValidPermissionModeFor<'read_only'>,
+      ...(executionPolicy ? { executionPolicy } : {}),
     };
   }
   return {
     workspaceKind,
     workspaceAccess,
     permissionMode: mode as ValidPermissionModeFor<'read_write'>,
+    ...(executionPolicy ? { executionPolicy } : {}),
   };
 }
 
@@ -267,12 +287,14 @@ export function createRuntimeSessionContractInput(
       runtimeWorkspaceKind: policy.workspaceKind,
       runtimeWorkspaceAccess: policy.workspaceAccess,
       runtimePermissionMode: policy.permissionMode,
+      ...(policy.executionPolicy ? { runtimeExecutionPolicy: policy.executionPolicy } : {}),
     };
   }
   return {
     runtimeWorkspaceKind: policy.workspaceKind,
     runtimeWorkspaceAccess: policy.workspaceAccess,
     runtimePermissionMode: policy.permissionMode,
+    ...(policy.executionPolicy ? { runtimeExecutionPolicy: policy.executionPolicy } : {}),
   };
 }
 
@@ -314,6 +336,7 @@ export type ParseRuntimeSessionPolicyResult =
 export function parseRuntimeSessionPolicyCreateInput(options: {
   repoPath?: string | null;
   policy: {
+    executionPolicy?: unknown;
     workspaceKind?: unknown | null;
     workspaceAccess?: unknown | null;
     permissionMode?: unknown | null;
@@ -324,6 +347,7 @@ export function parseRuntimeSessionPolicyCreateInput(options: {
     return { ok: false, issue };
   }
   const narrowed: RuntimeSessionPolicyInput = {
+    executionPolicy: parseProviderExecutionPolicy(options.policy.executionPolicy),
     workspaceKind: isRuntimeWorkspaceKind(options.policy.workspaceKind)
       ? options.policy.workspaceKind
       : undefined,

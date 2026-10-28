@@ -377,6 +377,7 @@ export async function executeDispatchWithRecovery(input: {
       runtimeClient: input.runtimeClient,
       sessionId: request.target.sessionId,
       scope: 'dispatch_stale_recovery',
+      executionPolicy: dispatchState.channels.find(c => c.id === input.channelId)?.runtimeExecutionPolicy ?? undefined,
     });
     const resumedSession = resumeOutcome.session;
     if (resumedSession) {

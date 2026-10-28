@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Approved；2026-10-28 owner 授權切片實作，尚未開始 |
+| Status | Implemented；產品／Windows candidate fixture 與原生呼叫已驗證，成功外部操作仍受 helper 限制 |
 | Owner | Platform shared interaction、Desktop integration |
 | Reviewer | Product owner、Runtime／Bots maintainers |
 | Baseline | Platform `595e9ca2`；2026-10-28 |
@@ -19,7 +19,9 @@ Platform 負責使用者操作與產品權限，Runtime 負責原生協定與執
 
 共用契約以 `cats-runtime/docs/specs/SPEC-039-provider-session-capabilities-and-interactions.md`
 為準；協作計畫是 Runtime PLAN-049、Bots SPEC-004／PLAN-004。
-這組文件位於各 repo 的 `docs/provider-session-capabilities` 分支，尚未發布。
+契約基於 Runtime PR #194；最後原生驗收採 source
+`50ef02b4686c1fff6b60819d292acc5b2e1ef773` 的 0.6.2 pack，SHA-1
+`5f360927ece194dc3e0abbd690fb7b43cb292fc3`；尚未發布新版套件。
 本案延伸既有 ADR-020 與共用互動引擎，不另立一份重複的 Platform 架構 ADR。
 
 ## Goals and User Stories
@@ -36,7 +38,7 @@ Platform 負責使用者操作與產品權限，Runtime 負責原生協定與執
 - 讓 standalone Bots 依賴 Platform；保證其他 provider 或所有 OS 已具有相同能力。
 - 本期加入 Mobile／遠端原生批准、重新設計 Work supervision，或重新包裝上游私有 helper。
 
-## Current State
+## Before implementation
 
 現有批准佇列主要以 Cats task 的 `dispatch_plan` 呈現，supervision 也以 task／binding
 記錄批准；它們尚未形成 Codex 原生請求的往返路徑。現有 Plugins 設定頁管理受管的 Cats
@@ -130,9 +132,61 @@ Desktop 顯示 Computer use／Chrome 的依賴檢查與修復入口：已選 CLI
 | A6 | 在隔離候選 Desktop 中分別驗證受控 Chrome 與桌面操作，記錄 Terminal 比較條件 |
 | A7 | 既有 task／supervision 批准、普通對話與取消行為通過適當回歸；無秘密寫入歷史 |
 
-## Dependencies and Open Questions
+## Implementation and compatibility boundary (2026-10-28)
 
-- Runtime SPEC-039 的 schema freeze、native interaction、effective policy 及 inventory。
+- 共用控制 API 是 `/api/provider-interactions/conversations/:id`，由既有登入／CSRF gate
+  保護，再限定直接 loopback transport 的 owner/admin browser session；Mobile bearer、
+  forwarded request、非本機來源拒絕。Runtime bearer 不進 renderer。
+- Chat／Code／Work 對話沿用 participant lease + active turn 的 lane/session 對應。
+  Work 有可見對話且屬於 owner task／mission 的 supervised run，在首次訊息前建立
+  `metadata.providerInteraction = {version:1,sessionId}` 及取消所需 Runtime bridge。
+  spawn 前先原子 claim 同一 run；重複 admission 不建立第二個 worker。已確認 cancel/close
+  後保留 ended receipt，明確 retry 可建立新 session；cleanup 未確認會保存已知 sessionId
+  與 cleanupRequired，阻止重試與回覆。程序在 claim 途中消失時不猜測重播，須先結束舊 run。
+  此記錄不含 prompt、answer 或 live callback；讀取時仍向 Runtime 驗證 generation、
+  execution、revision，回覆前再驗證產品關聯。已結束／blocked run 不能回答。
+- Work human wait 保持原 turn；原生等待會延長 token-idle 判定，但不延長既有明確的
+  wall-clock budget。Golden Path 到期會 abort/cancel 原 provider 執行；晚到的 create
+  不會開始訊息。取消後，成功／失敗回寫都保留最新 terminal 狀態。
+- 沒有可回覆對話的 headless/relay execution 不宣告互動 host；不把無 UI 的工作
+  偽裝成可等待真人的 session。Code 的對話有 host，獨立 relay/task 執行維持原邊界。
+- 舊 Runtime 保留既有 policy；明確選取新政策而 target 不支援時拒絕建立。
+  新 policy 不和舊 `permissionMode`／`allowedTools` 同送；read-only／whitelist ceiling
+  在持久化讀取及 session admission 兩次檢查。診斷 refresh 不建立模型 turn。
+
+### Persisted format 6
+
+Core snapshot 由 5 升為 6，防止舊版忽略新 `runtimeExecutionPolicy` 後擴權。
+升級在 store mutation lock 內驗證已識別格式，保存原始 bytes 到
+`<state>.pre-provider-policy.bak`，再以同目錄 temporary file + rename 原子替換。
+既有 backup 必須內容相同，不能覆蓋其他來源；primary 與常規 `.bak` 的未知 policy／
+outer schema 均 fail closed，不能用預設設定或較舊副本覆寫。
+寫入失敗保留原檔，可修復 I/O 原因後重試；malformed primary 仍沿用既有 backup recovery。
+舊版會拒絕 format 6，**不支援直接降版開啟新資料**；若需回復舊版，先關閉程序並另行
+保存新資料，再由 owner 明確選擇升級前的原始備份，會捨棄升級後變更。
+
+此資料邊界需要 **下一次發布採 0.12 minor**。本次 owner 只授權實作與 PR，
+package 仍為 0.11.1，未 bump／publish；不能把這份候選當作同 minor 已發布升級。
+
+### Validation evidence
+
+- 首批 55 項 Node tests 通過，另 62 項既有政策／Work／Chat／auth focused regression 通過：三產品同 turn 往返、跨 binding／generation／execution
+  拒絕、owner/local authentication、未知資料版本、backup failure/retry、既有 store 回歸。
+- 獨立 review 已修正 qualified provider/backend 選擇、caller kinds 交集、舊 reader 擴權、
+  future backup 覆寫、原生等待 polling 的 late-finally timer、Work cancellation／歷史清單等問題。
+- 產品接線後續回歸、3 項 renderer DOM tests、各層 typecheck 及 server/host/web build
+  通過；獨立 review 驗證政策切換與原生 form 的空值／整數邊界。
+- Windows Electron candidate 使用私有 profile 和 scripted provider，完成 reload 後
+  同 execution 回覆、空值表單、terminal receipt、diagnostics 與既有對話 UI smoke。
+- Codex 0.164.0 的真實 Platform Chat dispatch、Bot core 與 Terminal 均實際呼叫工具：
+  Chrome 回報 `Browser is not available: chrome`；computer use 回報 native pipe
+  unavailable（OS error 2）。Platform effective policy verified、configured MCP 為
+  279/3/4，Bot 另外注入 4 個工具。這證明呼叫路徑與匹配觀測，沒有成功 Chrome／桌面操作。
+  詳細 scope、候選 source 差異及未驗項見 PLAN-124 和 Runtime research。
+
+## Remaining environment validation
+
+- Runtime SPEC-039 的 supported fixture contract 已接線；新 native schema 仍需個別驗證。
 - 表單支援範圍、URL completion 與 provider deadline 以 Runtime P0 的 fixtures 為準。
 - Native Windows 為第一個整合驗收；其他 OS／遠端界面逐項記錄待驗，不繼承結果。
 - 接線與上游 Desktop-only helper 的重分發是不同議題；本案只規劃已安裝環境的診斷。

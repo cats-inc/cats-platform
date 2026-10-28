@@ -13,6 +13,7 @@ import { projectImageCapabilities, projectImageJob, readImageResponse,
 import {
   normalizeProviderAdvancedModelCatalog,
   normalizeProviderModelCatalog,
+  providerInstanceTarget,
   type ProductProviderEventCapabilities,
   type ProviderAdvancedModelCatalog,
   type ProviderModelCatalog,
@@ -51,8 +52,12 @@ import {
 import type { RuntimeSetupReadModel } from './setup.js';
 import { projectUsageSnapshot, projectUsageQuotaRefresh } from './usageSnapshot.js';
 import type { RuntimeWorkspaceActivitySnapshot } from './workspaceActivity.js';
+import { PLATFORM_INTERACTION_HOST, type InteractionHost, type InteractionSnapshot, type InteractionResponse,
+  type ProviderInteraction, type SessionExecutionPolicy, type SessionCapabilitiesSnapshot } from '../shared/providerInteractions.js';
+import { assertProviderPolicyBoundary, parseProviderExecutionPolicy } from '../shared/providerExecutionPolicy.js';
 
 export interface RuntimeProviderInstanceConfig {
+  continuity?: { interactions?: { version: 1; kinds: string[] }; sessionCapabilities?: { version: 1; executionPolicy: boolean; inventory: boolean } };
   id: string;
   target: string | null;
   backend: string | null;
@@ -245,6 +250,7 @@ export interface RuntimeExecutionRequestInput {
 }
 
 interface RuntimeSessionCreateInputBase extends RuntimeExecutionRequestInput {
+  interactionHost?: InteractionHost;
   provider: string;
   instance?: string | null;
   model?: string | null;
@@ -276,6 +282,8 @@ export interface RuntimeSendMessageInput extends RuntimeExecutionRequestInput {
 }
 
 export interface RuntimeSessionResumeInput {
+  interactionHost?: InteractionHost;
+  executionPolicy?: SessionExecutionPolicy;
   /** Needed after a Runtime restart, because descriptors are memory-only there. */
   mcpServers?: RuntimeSessionMcpServer[];
 }
@@ -334,6 +342,9 @@ export interface RuntimeDeleteSessionResult {
 }
 
 export interface RuntimeClient {
+  getSessionInteractions?(sessionId: string): Promise<InteractionSnapshot>;
+  respondSessionInteraction?(sessionId: string, interactionId: string, response: InteractionResponse): Promise<ProviderInteraction>;
+  getSessionCapabilities?(sessionId: string, refresh?: boolean): Promise<SessionCapabilitiesSnapshot>;
   getImageCapabilities?(): Promise<RuntimeImageCapabilities>;
   submitImageJob?(input: RuntimeImageRequest): Promise<RuntimeImageJob>;
   getImageJob?(id: string): Promise<RuntimeImageJob>;
@@ -534,6 +545,50 @@ function readRuntimeSessionInfo(
 }
 
 export class CatsRuntimeClient implements RuntimeClient {
+  private readonly interactionSessions = new Set<string>();
+
+  private async interactionRequest<T>(sessionId: string, suffix: string, body?: unknown): Promise<T> {
+    const response = await fetch(`${this.baseUrl}/sessions/${encodeURIComponent(sessionId)}/${suffix}`, {
+      headers: { ...this.authHeaders(), ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
+      ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }),
+      signal: this.createTimeoutSignal(12_000), cache: 'no-store',
+    });
+    // Provider answers/errors never enter diagnostic logs or error text.
+    if (!response.ok) throw new RuntimeRequestError('Provider request is unavailable or has changed.', response.status);
+    if (!response.body) throw new Error('Provider response is empty.');
+    const decoder = new TextDecoder(); let text = ''; let size = 0;
+    for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+      size += chunk.length;
+      if (size > 4 * 1024 * 1024) throw new Error('Provider response exceeds limit.');
+      text += decoder.decode(chunk, { stream: true });
+    }
+    return JSON.parse(text + decoder.decode()) as T;
+  }
+  getSessionInteractions(sessionId: string) { return this.interactionRequest<InteractionSnapshot>(sessionId, 'interactions'); }
+  respondSessionInteraction(sessionId: string, interactionId: string, response: InteractionResponse) {
+    if (new TextEncoder().encode(JSON.stringify(response)).byteLength > 36 * 1024) throw new Error('Provider response exceeds limit.');
+    return this.interactionRequest<ProviderInteraction>(sessionId, `interactions/${encodeURIComponent(interactionId)}/responses`, response);
+  }
+  getSessionCapabilities(sessionId: string, refresh = false) {
+    return this.interactionRequest<SessionCapabilitiesSnapshot>(sessionId, `capabilities${refresh ? '?refresh=true' : ''}`);
+  }
+  private async negotiateInteractions(provider: string, instance: string | null | undefined, host: InteractionHost | undefined,
+    policy: SessionExecutionPolicy | undefined): Promise<{ interactionHost?: InteractionHost; executionPolicy?: SessionExecutionPolicy }> {
+    if (!host && !policy) return {};
+    const config = await this.getProviderConfig().catch(() => ({} as RuntimeProviderConfigRegistry));
+    const entry = config[provider];
+    const selector = instance?.trim() || entry?.defaultInstance;
+    const candidates = entry?.instances.filter(i => providerInstanceTarget(i) === selector
+      || i.id === selector && (!entry.defaultBackend || i.backend === entry.defaultBackend)) ?? [];
+    const target = candidates.length === 1 ? candidates[0] : undefined;
+    const advertised = target?.continuity?.interactions;
+    const kinds = advertised?.version === 1 ? (host ?? PLATFORM_INTERACTION_HOST).kinds.filter(kind =>
+      PLATFORM_INTERACTION_HOST.kinds.includes(kind) && advertised.kinds.includes(kind)) : [];
+    if (policy && (!kinds.length || target?.continuity?.sessionCapabilities?.executionPolicy !== true)) {
+      throw new RuntimeRequestError('This Runtime/provider does not support the requested execution policy.', 409, 'provider_policy_unsupported');
+    }
+    return kinds.length ? { interactionHost: { ...PLATFORM_INTERACTION_HOST, ...host, kinds }, ...(policy ? { executionPolicy: policy } : {}) } : {};
+  }
   private async imageRequest(route: string, body?: unknown, binary = false, method?: 'DELETE'): Promise<Uint8Array> {
     const response = await fetch(`${this.baseUrl}/media/images/${route}`, {
       headers: { ...this.authHeaders(), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
@@ -935,16 +990,22 @@ export class CatsRuntimeClient implements RuntimeClient {
       workspaceKind: input.workspaceKind,
       workspaceAccess: input.workspaceAccess,
       permissionMode: input.permissionMode,
+      executionPolicy: input.executionPolicy,
     });
     if (runtimePolicyIssue) {
       throw new RuntimeSessionPolicyError(runtimePolicyIssue);
     }
 
+    const policy = parseProviderExecutionPolicy(input.executionPolicy);
+    assertProviderPolicyBoundary(policy, input);
+    const host = input.interactionHost;
+    const controls = await this.negotiateInteractions(input.provider, input.instance, host, policy);
     const payload: Record<string, unknown> = {
       provider: input.provider,
-      permissionMode: input.permissionMode ?? 'skip',
+      ...(!policy ? { permissionMode: input.permissionMode ?? 'skip' } : {}),
+      ...controls,
     };
-    if (input.allowedTools && input.allowedTools.length > 0) {
+    if (!policy && input.allowedTools && input.allowedTools.length > 0) {
       payload.allowedTools = [...input.allowedTools];
     }
 
@@ -1015,6 +1076,7 @@ export class CatsRuntimeClient implements RuntimeClient {
       cwd: input.cwd?.trim() || null,
     });
     this.warnOnSlowSessionCreate(startedAt, session.provider, session.id);
+    if (controls.interactionHost) this.interactionSessions.add(session.id);
     return session;
   }
 
@@ -1045,6 +1107,18 @@ export class CatsRuntimeClient implements RuntimeClient {
     appendTaskRuntimeExecutionRequestFields(payload, input);
 
     const idleTimeout = this.createIdleTimeoutController(this.messageIdleTimeoutMs);
+    // A live bounded human request is progress, even without model tokens. Do not
+    // reset for a disconnected worker, expired request or an ordinary idle turn.
+    let checking = false;
+    let finished = false;
+    const humanWait = this.interactionSessions.has(sessionId) ? setInterval(() => {
+      if (checking) return;
+      checking = true;
+      void this.getSessionInteractions(sessionId).then(snapshot => {
+        if (!finished && snapshot.interactions.some(i => ['pending', 'responding'].includes(i.status) && Date.parse(i.expiresAt) > Date.now())) idleTimeout.reset();
+      }).catch(() => {}).finally(() => { checking = false; });
+    }, Math.max(50, Math.min(10_000, this.messageIdleTimeoutMs / 3))) : null;
+    (humanWait as ReturnType<typeof setInterval> & { unref?: () => void } | null)?.unref?.();
 
     try {
       const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/messages`, {
@@ -1069,6 +1143,8 @@ export class CatsRuntimeClient implements RuntimeClient {
         onWorkspaceActivity: input?.onWorkspaceActivity,
       });
     } finally {
+      finished = true;
+      if (humanWait) clearInterval(humanWait);
       idleTimeout.clear();
     }
   }
@@ -1113,7 +1189,21 @@ export class CatsRuntimeClient implements RuntimeClient {
   }
 
   async resumeSession(sessionId: string, input?: RuntimeSessionResumeInput): Promise<RuntimeSessionInfo> {
-    const body = input?.mcpServers ? JSON.stringify({ mcpServers: input.mcpServers }) : undefined;
+    let controls = {};
+    if (input?.interactionHost || input?.executionPolicy || this.interactionSessions.has(sessionId)) {
+      const observed = (await this.observeSession(sessionId)).session;
+      const nativeTarget = observed.providerTarget as Record<string, unknown> | undefined;
+      const selector = typeof nativeTarget?.target === 'string' ? nativeTarget.target
+        : typeof observed.providerBackend === 'string' && typeof observed.providerInstanceId === 'string'
+          ? `${observed.providerBackend}/${observed.providerInstanceId}` : null;
+      // A resumed session must keep its original backend even if defaults changed.
+      if (!selector) throw new RuntimeRequestError('Cannot identify the original provider target for readmission.', 409);
+      controls = await this.negotiateInteractions(String(observed.providerName ?? observed.provider ?? ''),
+        selector,
+        input?.interactionHost ?? PLATFORM_INTERACTION_HOST, parseProviderExecutionPolicy(input?.executionPolicy));
+    }
+    const payload = { ...(input?.mcpServers ? { mcpServers: input.mcpServers } : {}), ...controls };
+    const body = Object.keys(payload).length ? JSON.stringify(payload) : undefined;
     const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/resume`, {
       method: 'POST',
       headers: {
@@ -1134,6 +1224,7 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
 
     const data = (await response.json()) as Record<string, unknown>;
+    if ('interactionHost' in controls) this.interactionSessions.add(sessionId);
     return readRuntimeSessionInfo(data, {
       provider: '',
       model: null,
@@ -1253,6 +1344,8 @@ export class CatsRuntimeClient implements RuntimeClient {
         response.status,
       );
     }
+
+    if (status === 'deleted') this.interactionSessions.delete(sessionId);
 
     return {
       action: payload?.action,

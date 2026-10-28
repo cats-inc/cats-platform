@@ -285,6 +285,11 @@ async function finishScheduledRunLaunch(input: {
   await input.coreStore.updateCore((core) => {
     const latestRun = core.runs.find((candidate) => candidate.id === input.context.run.id)
       ?? input.context.run;
+    if (!core.runs.some(candidate => candidate.id === latestRun.id) || latestRun.completedAt
+      || ['completed', 'failed', 'cancelled'].includes(latestRun.status)) {
+      result = { status: 'skipped', run: latestRun, mission: resolveRunMission(core, latestRun), message: 'Run ended while the provider was executing.' };
+      return core;
+    }
     const runState = deriveRunState({ lifecycle: 'active' });
     const next = upsertCoreRun(
       core,
@@ -440,6 +445,11 @@ async function blockScheduledRunLaunch(input: {
   await input.coreStore.updateCore((core) => {
     const latestRun = core.runs.find((candidate) => candidate.id === input.context.run.id)
       ?? input.context.run;
+    if (!core.runs.some(candidate => candidate.id === latestRun.id) || latestRun.completedAt
+      || ['completed', 'failed', 'cancelled'].includes(latestRun.status)) {
+      result = { status: 'skipped', run: latestRun, mission: resolveRunMission(core, latestRun), message: 'Run ended while the provider was executing.' };
+      return core;
+    }
     const runState = deriveRunState({
       lifecycle: 'active',
       blockers: [{ code: 'runtime_launch_failed', message }],

@@ -7,6 +7,8 @@ import { readCodePreviewServersEnabled } from '../../shared/platformPreferences.
 import { createChatEventHub } from '../../products/chat/api/chatEventHub.js';
 import { publishChannelMutation } from '../../products/chat/api/transportEventPublisher.js';
 import { createRuntimeDeliveryClient } from '../../platform/runtime/deliveryClient.js';
+import { withProviderRunInteractions } from '../../platform/runtime/providerInteractionAdmission.js';
+import { currentProviderBindings } from '../../products/chat/api/providerInteractionBindings.js';
 import { createAppStartupState } from './startup.js';
 import { createTelegramCommandSurfaceSync } from './telegramCommandSurfaceSync.js';
 import type {
@@ -227,6 +229,15 @@ export function resolveServerDependencies(
     );
 
   const sharedCoreStore = dependencies.shared.coreStore ?? dependencies.chat.chatStore;
+  const visibleConversation = (store: typeof sharedCoreStore) => async (id: string) => {
+    try { await currentProviderBindings(dependencies.chat.chatStore, id, store); return true; } catch { return false; }
+  };
+  const interactionRuntime = withProviderRunInteractions(dependencies.shared.runtimeClient, sharedCoreStore, visibleConversation(sharedCoreStore));
+  dependencies = { ...dependencies, shared: { ...dependencies.shared, runtimeClient: interactionRuntime },
+    ...(dependencies.work ? { work: { ...dependencies.work,
+      runtimeClient: dependencies.work.runtimeClient
+        ? withProviderRunInteractions(dependencies.work.runtimeClient, dependencies.work.coreStore ?? sharedCoreStore,
+          visibleConversation(dependencies.work.coreStore ?? sharedCoreStore)) : interactionRuntime } } : {}) };
   const authStore = dependencies.shared.authStore
     ?? createDefaultAuthStore(dependencies.shared, dependencies.chat);
   const browserHandoffStore = dependencies.shared.browserHandoffStore

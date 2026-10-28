@@ -17,6 +17,7 @@ import {
 import { useCodeRepoProbe } from '../hooks/useCodeRepoProbe.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import type { SessionExecutionPolicy } from '../../../../shared/providerInteractions.js';
 
 interface Props {
   channel: {
@@ -24,6 +25,7 @@ interface Props {
     chatCwd?: string | null;
     runtimeWorkspaceAccess?: RuntimeWorkspaceAccess | null;
     runtimeWorkspaceKind?: RuntimeWorkspaceKind | null;
+    runtimeExecutionPolicy?: SessionExecutionPolicy | null;
   };
   placement?: 'where' | 'permission';
 }
@@ -42,7 +44,7 @@ export function ActiveCodeComposerChips({ channel, placement = 'permission' }: P
       ? resolveDraftPermissionModeFromRuntimeAccess(channel.runtimeWorkspaceAccess)
       : DEFAULT_PERMISSION_MODE;
     const noop = () => {};
-    return <PermissionModeChip value={permissionMode} onChange={noop} disabled />;
+    return <PermissionModeChip value={permissionMode} executionPolicy={channel.runtimeExecutionPolicy} onChange={noop} disabled />;
   }
 
   const repoReady = Boolean(probe.isRepo && probe.repoRoot);

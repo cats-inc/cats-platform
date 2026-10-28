@@ -1,3 +1,4 @@
+import { PLATFORM_INTERACTION_HOST, type SessionExecutionPolicy } from '../../../../shared/providerInteractions.js';
 import type { ParticipantExecutionLease } from '../../api/contracts.js';
 import type {
   RuntimeClient,
@@ -46,6 +47,7 @@ export async function resumeRuntimeSession(input: {
   runtimeClient: RuntimeClient;
   sessionId: string | null | undefined;
   scope: RuntimeSessionResumeScope;
+  executionPolicy?: SessionExecutionPolicy;
 }): Promise<RuntimeSessionResumeOutcome> {
   const sessionId = input.sessionId?.trim() || null;
   if (!sessionId || typeof input.runtimeClient.resumeSession !== 'function') {
@@ -59,7 +61,7 @@ export async function resumeRuntimeSession(input: {
   try {
     return {
       attempted: true,
-      session: await input.runtimeClient.resumeSession(sessionId),
+      session: await input.runtimeClient.resumeSession(sessionId, { interactionHost: PLATFORM_INTERACTION_HOST, ...(input.executionPolicy ? { executionPolicy: input.executionPolicy } : {}) }),
       error: null,
     };
   } catch (error) {

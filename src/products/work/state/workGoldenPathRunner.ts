@@ -63,6 +63,8 @@ export interface WorkGoldenPathArtifactEvidence {
 }
 
 export interface WorkGoldenPathStepContext {
+  /** Explicit wall-clock budget expiry; distinct from an idle-token timeout. */
+  signal?: AbortSignal;
   runId: string;
   taskId: string | null;
   workItemId: string;
@@ -145,9 +147,8 @@ export interface WorkGoldenPathRunnerOptions {
   /**
    * Wall-clock ceiling for a single step.
    *
-   * A provider call cannot be cancelled from here, so a timed-out step is
-   * abandoned rather than killed: the Run is blocked for the owner and the
-   * terminal-state guard makes the late result harmless if it ever arrives.
+   * The step's abort signal revokes a pending provider turn when this expires.
+   * Human waiting does not reset an explicitly admitted wall-clock budget.
    */
   stepTimeoutMs?: number;
   now?: () => Date;
@@ -199,11 +200,12 @@ export function createWorkGoldenPathRunner(
     context: WorkGoldenPathStepContext,
   ): Promise<WorkGoldenPathStepResult | typeof STEP_TIMED_OUT> {
     let timer: NodeJS.Timeout | undefined;
+    const controller = new AbortController();
     try {
       return await Promise.race([
-        executeStep(context),
+        executeStep({ ...context, signal: controller.signal }),
         new Promise<typeof STEP_TIMED_OUT>((resolve) => {
-          timer = setTimeout(() => resolve(STEP_TIMED_OUT), stepTimeoutMs);
+          timer = setTimeout(() => { controller.abort(); resolve(STEP_TIMED_OUT); }, stepTimeoutMs);
         }),
       ]);
     } finally {

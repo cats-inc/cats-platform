@@ -298,6 +298,7 @@ export function toChannelSummary(
     runtimeWorkspaceKind: channel.runtimeWorkspaceKind ?? null,
     runtimeWorkspaceAccess: channel.runtimeWorkspaceAccess ?? null,
     runtimePermissionMode: channel.runtimePermissionMode ?? null,
+    ...(channel.runtimeExecutionPolicy ? { runtimeExecutionPolicy: channel.runtimeExecutionPolicy } : {}),
     lastMessageAt: channel.lastMessageAt,
     lastActivatedAt: channel.lastActivatedAt,
     defaultRecipientCatId: defaultRecipientCatId ?? null,
