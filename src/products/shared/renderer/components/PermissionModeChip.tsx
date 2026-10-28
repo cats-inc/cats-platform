@@ -4,13 +4,13 @@ import {
   DEFAULT_DRAFT_PERMISSION_MODE,
   type DraftPermissionMode,
 } from '../../../../shared/runtimeSessionPolicy.js';
-import { messageKeys } from '../../../../shared/i18n/index.js';
+import { messageKeys, type MessageKey, type MessageInterpolationValues } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 import type { SessionExecutionPolicy } from '../../../../shared/providerInteractions.js';
 
-export function formatRequestedProviderPolicy(policy: SessionExecutionPolicy): string {
-  return policy.mode === 'provider' ? `Provider configuration (limit: ${policy.constraints.maxAccess})`
-    : `Requested: ${policy.access} · ${policy.approval}`;
+export function formatRequestedProviderPolicy(policy: SessionExecutionPolicy, t: (key: MessageKey, values?: MessageInterpolationValues) => string): string {
+  return policy.mode === 'provider' ? t(messageKeys.providerControlsProviderLimit, { access: policy.constraints.maxAccess })
+    : t(messageKeys.providerControlsRequested, { access: policy.access, approval: policy.approval });
 }
 
 export type PermissionMode = DraftPermissionMode;
@@ -64,7 +64,7 @@ export function PermissionModeChip({ value, onChange, disabled, executionPolicy 
         type="button"
         className="composerSelectChip composerPermissionChip"
         disabled={disabled || !!executionPolicy}
-        title={executionPolicy ? 'Requested policy. See Session access and tools for the live effective policy.' : undefined}
+        title={executionPolicy ? t(messageKeys.providerControlsRequestedHint) : undefined}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
@@ -72,7 +72,7 @@ export function PermissionModeChip({ value, onChange, disabled, executionPolicy 
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
         </svg>
-        <span>{executionPolicy ? formatRequestedProviderPolicy(executionPolicy) : t(messageKeys[PERMISSION_MODE_LABEL_KEYS[value]])}</span>
+        <span>{executionPolicy ? formatRequestedProviderPolicy(executionPolicy, t) : t(messageKeys[PERMISSION_MODE_LABEL_KEYS[value]])}</span>
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2.5 4 5 6.5 7.5 4" />
         </svg>

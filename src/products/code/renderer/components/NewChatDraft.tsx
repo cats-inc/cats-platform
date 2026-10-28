@@ -110,7 +110,7 @@ function formatCodeSessionPermission(
   policy: RuntimeSessionPolicy,
   t: CodeDraftTranslate,
 ): string {
-  return policy.executionPolicy ? formatRequestedProviderPolicy(policy.executionPolicy) : policy.workspaceAccess === 'read_only'
+  return policy.executionPolicy ? formatRequestedProviderPolicy(policy.executionPolicy, t) : policy.workspaceAccess === 'read_only'
     ? t(messageKeys.codeNewDraftPermissionReadOnly)
     : t(messageKeys.codeNewDraftPermissionFullAccess);
 }

@@ -9,15 +9,17 @@ const request = { interactionId: 'i', sessionId: 'session', workerGeneration: 'w
 const response = { binding, workerGeneration: 'worker', executionId: 'execution', expectedRevision: 1, idempotencyKey: 'owner-attempt', answer: { action: 'accept' } };
 
 function setup() {
+  // The full suite loads this module long before its tests run. Start the TTL here.
+  const liveRequest = { ...request, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString() };
   let current = [{ binding: structuredClone(binding), canRespond: true }];
   const calls = [];
   const runtime = {
-    async getSessionInteractions() { return { version: 1, sessionId: 'session', workerGeneration: 'worker', revision: 1, interactions: [structuredClone(request)] }; },
-    async respondSessionInteraction(...args) { calls.push(args); return { ...request, status: 'resolved', prompt: undefined }; },
+    async getSessionInteractions() { return { version: 1, sessionId: 'session', workerGeneration: 'worker', revision: 1, interactions: [structuredClone(liveRequest)] }; },
+    async respondSessionInteraction(...args) { calls.push(args); return { ...liveRequest, status: 'resolved', prompt: undefined }; },
     async getSessionCapabilities() { return { version: 1, sessionId: 'session', workerGeneration: 'worker', supported: true }; },
   };
   const control = createProviderInteractionControl({ runtime, bindings: async id => id === 'conversation' ? current : [] });
-  return { control, runtime, calls, replace: rows => { current = rows; } };
+  return { control, runtime, calls, request: liveRequest, replace: rows => { current = rows; } };
 }
 
 test('native response preserves same execution and uses only the control path', async () => {
@@ -53,7 +55,7 @@ test('retarget or cancel while the authoritative request is loading revokes the 
 });
 
 test('worker loss, expired and unsafe URLs do not open stale authorization', async () => {
-  const { control, runtime, calls } = setup();
+  const { control, runtime, calls, request } = setup();
   runtime.getSessionInteractions = async () => { throw new Error('unavailable'); };
   await assert.rejects(control.url('conversation', 'session', 'i', response));
   assert.equal((await control.snapshot('conversation')).supported, false);

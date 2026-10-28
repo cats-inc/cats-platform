@@ -1,7 +1,10 @@
+import { messageKeys, type MessageKey } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BoundProviderInteraction, InteractionAnswer, InteractionField, BoundInteractionResponse } from '../../../../../shared/providerInteractions.js';
 
 function Field({ field }: { field: InteractionField }) {
+  const { t } = useI18n();
   const name = `field:${field.id}`;
   // Schema required means the key exists, not that strings/arrays are nonempty.
   const common = { name, required: field.required && (['number', 'integer', 'boolean'].includes(field.type)
@@ -9,19 +12,19 @@ function Field({ field }: { field: InteractionField }) {
   return <label className="native-provider-field">
     <span>{field.label}{field.required ? ' *' : ''}</span>
     {field.description && <small>{field.description}</small>}
-    {field.type === 'boolean' ? <select {...common} defaultValue=""><option value="">Choose…</option><option value="true">Yes</option><option value="false">No</option></select>
+    {field.type === 'boolean' ? <select {...common} defaultValue=""><option value="">{t(messageKeys.providerControlsChoose)}</option><option value="true">{t(messageKeys.providerControlsYes)}</option><option value="false">{t(messageKeys.providerControlsNo)}</option></select>
       : field.options && !field.allowOther ? <select {...common}
         required={field.required && field.type !== 'strings'}
         multiple={field.type === 'strings'} defaultValue={field.type === 'strings' ? [] : ''}>
-        {field.type !== 'strings' && <option value="">Choose…</option>}
+        {field.type !== 'strings' && <option value="">{t(messageKeys.providerControlsChoose)}</option>}
         {field.options.map((o, index) => <option key={o.id} value={`option:${index}`}>{o.label}</option>)}
       </select>
-        : field.type === 'strings' ? <textarea {...common} rows={3} placeholder="One value per line" />
+        : field.type === 'strings' ? <textarea {...common} rows={3} placeholder={t(messageKeys.providerControlsOnePerLine)} />
           : <input {...common} type={field.secret ? 'password' : field.type === 'number' || field.type === 'integer' ? 'number' : 'text'}
             min={field.type === 'integer' && field.min !== undefined ? Math.ceil(field.min) : field.min}
             max={field.type === 'integer' && field.max !== undefined ? Math.floor(field.max) : field.max}
             step={field.type === 'integer' ? 1 : 'any'} minLength={field.minLength} maxLength={field.maxLength} />}
-    {field.allowOther && field.options && <small>Suggestions: {field.options.map(o => o.label).join(', ')}. You may enter another value.</small>}
+    {field.allowOther && field.options && <small>{t(messageKeys.providerControlsSuggestions, { values: field.options.map(o => o.label).join(', ') })}</small>}
   </label>;
 }
 
@@ -30,8 +33,9 @@ export function ProviderInteractionCard({ interaction: i, refresh, respond, open
   respond(interaction: BoundProviderInteraction, response: BoundInteractionResponse): Promise<void>;
   openUrl(interaction: BoundProviderInteraction): Promise<void>;
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<MessageKey | null>(null);
   const [now, setNow] = useState(Date.now());
   const form = useRef<HTMLFormElement>(null);
   // Retries with unchanged input use the same key; input is held only in this mounted form.
@@ -67,7 +71,7 @@ export function ProviderInteractionCard({ interaction: i, refresh, respond, open
     }
     const body = JSON.stringify(answer);
     if (attempt.current?.body !== body) attempt.current = { body, key: crypto.randomUUID() };
-    setBusy(true); setError('');
+    setBusy(true); setError(null);
     try {
       await respond(i, {
         workerGeneration: i.workerGeneration, executionId: i.executionId, binding: i.binding,
@@ -76,37 +80,37 @@ export function ProviderInteractionCard({ interaction: i, refresh, respond, open
       form.current?.reset(); attempt.current = null;
       await refresh();
     } catch {
-      setError('The response was not confirmed. Refresh this request before retrying.');
+      setError(messageKeys.providerControlsUnconfirmed);
       await refresh().catch(() => {});
     } finally { setBusy(false); }
   };
   const submit = (event: FormEvent) => { event.preventDefault(); void send('accept'); };
-  return <section className="native-provider-card" aria-label="Provider request">
+  return <section className="native-provider-card" aria-label={t(messageKeys.providerControlsRequest)}>
     <small>{i.binding.label}</small>
-    <strong>{i.prompt?.title ?? `Provider ${i.kind.replaceAll('_', ' ')}`}</strong>
-    <small>{i.prompt?.server ?? 'Agent CLI'} · {i.status} · expires {new Date(i.expiresAt).toLocaleTimeString()}</small>
+    <strong>{i.prompt?.title ?? t(messageKeys.providerControlsRequestKind, { kind: i.kind.replaceAll('_', ' ') })}</strong>
+    <small>{t(messageKeys.providerControlsExpiry, { server: i.prompt?.server ?? t(messageKeys.providerControlsAgentCli), status: i.status, time: new Date(i.expiresAt).toLocaleTimeString() })}</small>
     {i.reason && <p>{i.reason.replaceAll('_', ' ')}</p>}
     {i.prompt?.message && <p>{i.prompt.message}</p>}
     {i.prompt?.command && <pre>{i.prompt.command}</pre>}
-    {i.prompt?.cwd && <small>Folder: {i.prompt.cwd}</small>}
+    {i.prompt?.cwd && <small>{t(messageKeys.providerControlsFolder, { cwd: i.prompt.cwd })}</small>}
     {active && <form ref={form} onSubmit={submit}>
       <fieldset disabled={busy}>
         {i.prompt?.fields?.map(f => <Field key={f.id} field={f} />)}
         {i.prompt?.permissions?.map(p => <label key={p.id}><input type="checkbox" name="grant" value={p.id} /> {p.label}</label>)}
-        {i.prompt?.scopes && <label>Grant duration <select name="scope" defaultValue={i.prompt.scopes[0]}>{i.prompt.scopes.map(s => <option key={s} value={s}>{s === 'turn' ? 'This turn' : 'This session'}</option>)}</select></label>}
+        {i.prompt?.scopes && <label>{t(messageKeys.providerControlsGrantDuration)} <select name="scope" defaultValue={i.prompt.scopes[0]}>{i.prompt.scopes.map(s => <option key={s} value={s}>{t(s === 'turn' ? messageKeys.providerControlsThisTurn : messageKeys.providerControlsThisSession)}</option>)}</select></label>}
         {i.prompt?.url && <div>
           <p className="native-provider-url">{i.prompt.url}</p>
-          <button type="button" onClick={() => void openUrl(i).catch(() => setError('This URL request is no longer available.'))}>Open in browser</button>
-          <p>Opening the page does not finish authorization. Complete its steps, then confirm below.</p>
+          <button type="button" onClick={() => void openUrl(i).catch(() => setError(messageKeys.providerControlsUrlUnavailable))}>{t(messageKeys.providerControlsOpenBrowser)}</button>
+          <p>{t(messageKeys.providerControlsUrlHelp)}</p>
         </div>}
         <div className="native-provider-actions">
           {i.prompt?.choices?.length ? i.prompt.choices.map(c => <button key={c.id} type="button" title={c.description} onClick={() => void send('accept', c.id)}>{c.label}</button>)
-            : <button type="submit">{i.kind === 'mcp_url' ? 'I completed the steps' : 'Submit response'}</button>}
-          <button type="button" onClick={() => void send('decline')}>Decline</button>
-          <button type="button" onClick={() => void send('cancel')}>Cancel request</button>
+            : <button type="submit">{t(i.kind === 'mcp_url' ? messageKeys.providerControlsCompletedSteps : messageKeys.providerControlsSubmit)}</button>}
+          <button type="button" onClick={() => void send('decline')}>{t(messageKeys.providerControlsDecline)}</button>
+          <button type="button" onClick={() => void send('cancel')}>{t(messageKeys.providerControlsCancel)}</button>
         </div>
       </fieldset>
     </form>}
-    {error && <p role="alert">{error}</p>}
+    {error && <p role="alert">{t(error)}</p>}
   </section>;
 }

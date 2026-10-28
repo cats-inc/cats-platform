@@ -111,7 +111,7 @@ export function buildNewConversationDraftSidePanelSections(
         <p className="operatorEmptyState">{copy.folder.emptyState}</p>
       )
     ),
-  }, ...(input.onDraftRuntimeSessionPolicyChange ? [{ id: 'provider-access', title: 'Provider access and approval',
+  }, ...(input.onDraftRuntimeSessionPolicyChange ? [{ id: 'provider-access', title: input.t(messageKeys.providerControlsAccessApproval),
     children: <ProviderPolicyEditor value={input.draftRuntimeSessionPolicy ?? createDefaultRuntimeSessionPolicy()}
       onChange={input.onDraftRuntimeSessionPolicyChange} disabled={input.isSubmittingFirstTurn} /> }] : [])];
 }

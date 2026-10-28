@@ -1,3 +1,5 @@
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import type { RuntimeSessionPolicy } from '../../../../../shared/runtimeSessionPolicy.js';
 import type { ExecutionAccess, ExecutionApproval, SessionExecutionPolicy } from '../../../../../shared/providerInteractions.js';
 import './providerInteractions.css';
@@ -5,6 +7,7 @@ import './providerInteractions.css';
 export function ProviderPolicyEditor({ value, onChange, disabled = false }: {
   value: RuntimeSessionPolicy; onChange(value: RuntimeSessionPolicy): void; disabled?: boolean;
 }) {
+  const { t } = useI18n();
   const p = value.executionPolicy;
   const mode = p?.mode ?? 'legacy';
   const access = p?.mode === 'provider' ? p.constraints.maxAccess : p?.access ?? (value.workspaceAccess === 'read_only' ? 'read-only' : 'workspace-write');
@@ -20,20 +23,20 @@ export function ProviderPolicyEditor({ value, onChange, disabled = false }: {
     onChange({ ...value, executionPolicy: policy });
   }
   return <div className="native-provider-policy">
-    <label>Provider execution policy<select disabled={disabled || limited} value={mode} onChange={e => update({ mode: e.target.value as typeof mode })}>
-      <option value="legacy">Keep existing execution behavior</option><option value="provider">Use provider configuration within a limit</option><option value="explicit">Choose access and approval separately</option>
+    <label>{t(messageKeys.providerControlsExecutionPolicy)}<select disabled={disabled || limited} value={mode} onChange={e => update({ mode: e.target.value as typeof mode })}>
+      <option value="legacy">{t(messageKeys.providerControlsLegacyMode)}</option><option value="provider">{t(messageKeys.providerControlsProviderMode)}</option><option value="explicit">{t(messageKeys.providerControlsExplicitMode)}</option>
     </select></label>
-    {limited && <p>This work uses a tool allowlist. Its execution boundary stays in effect.</p>}
-    {mode === 'legacy' ? <p>Existing permission settings are unchanged. “Skip approval” does not imply full machine access.</p> : <>
-      <label>{mode === 'provider' ? 'Maximum admitted access' : 'Local file access'}<select disabled={disabled} value={access} onChange={e => update({ access: e.target.value as ExecutionAccess })}>
-        <option value="read-only">Read only</option>
-        {value.workspaceAccess !== 'read_only' && <><option value="workspace-write">Write in the workspace</option><option value="full-access">Full machine access</option></>}
+    {limited && <p>{t(messageKeys.providerControlsAllowlist)}</p>}
+    {mode === 'legacy' ? <p>{t(messageKeys.providerControlsLegacyHelp)}</p> : <>
+      <label>{t(mode === 'provider' ? messageKeys.providerControlsMaximumAccess : messageKeys.providerControlsLocalAccess)}<select disabled={disabled} value={access} onChange={e => update({ access: e.target.value as ExecutionAccess })}>
+        <option value="read-only">{t(messageKeys.providerControlsReadOnly)}</option>
+        {value.workspaceAccess !== 'read_only' && <><option value="workspace-write">{t(messageKeys.providerControlsWorkspaceWrite)}</option><option value="full-access">{t(messageKeys.providerControlsFullAccess)}</option></>}
       </select></label>
-      <label><span><input type="checkbox" checked={network} disabled={disabled || mode === 'explicit' && access !== 'workspace-write'} onChange={e => update({ network: e.target.checked })} /> Network access</span></label>
-      {mode === 'explicit' && <label>Approval policy<select disabled={disabled} value={approval} onChange={e => update({ approval: e.target.value as ExecutionApproval })}>
-        <option value="on-request">Ask when requested by the agent</option><option value="untrusted">Ask for untrusted commands</option><option value="never">Never prompt; enforce the access limit</option>
+      <label><span><input type="checkbox" checked={network} disabled={disabled || mode === 'explicit' && access !== 'workspace-write'} onChange={e => update({ network: e.target.checked })} /> {t(messageKeys.providerControlsNetwork)}</span></label>
+      {mode === 'explicit' && <label>{t(messageKeys.providerControlsApproval)}<select disabled={disabled} value={approval} onChange={e => update({ approval: e.target.value as ExecutionApproval })}>
+        <option value="on-request">{t(messageKeys.providerControlsOnRequest)}</option><option value="untrusted">{t(messageKeys.providerControlsUntrusted)}</option><option value="never">{t(messageKeys.providerControlsNever)}</option>
       </select></label>}
-      <p>This choice applies when the new conversation admits its session. Unsupported Runtime/provider targets reject it. Remote MCP tools can have separate access.</p>
+      <p>{t(messageKeys.providerControlsPolicyHelp)}</p>
     </>}
   </div>;
 }

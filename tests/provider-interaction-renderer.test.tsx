@@ -3,9 +3,13 @@ import test from 'node:test';
 import { setImmediate as nextTurn } from 'node:timers/promises';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { JSDOM } from 'jsdom';
 import { ProviderInteractionCard } from '../src/products/shared/renderer/components/provider-interactions/ProviderInteractionCard.tsx';
 import { ProviderCapabilities } from '../src/products/shared/renderer/components/provider-interactions/ProviderCapabilities.tsx';
+import { ProviderPolicyEditor } from '../src/products/shared/renderer/components/provider-interactions/ProviderPolicyEditor.tsx';
+import { PermissionModeChip } from '../src/products/shared/renderer/components/PermissionModeChip.tsx';
+import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import { useDraftSessionChips } from '../src/products/shared/renderer/hooks/useDraftSessionChips.tsx';
 import type { RuntimeSessionPolicy } from '../src/shared/runtimeSessionPolicy.ts';
 import type { BoundProviderInteraction, BoundInteractionResponse, InteractionField } from '../src/shared/providerInteractions.ts';
@@ -13,6 +17,30 @@ import type { BoundProviderInteraction, BoundInteractionResponse, InteractionFie
 // React's async act leaks MessagePorts in the esbuild ESM test bundle. Keep act
 // synchronous and drain bounded event-loop turns, as the other renderer tests do.
 async function settle() { for (let turn = 0; turn < 5; turn++) await nextTurn(); }
+
+test('provider policy controls switch language while preserving provider identifiers and content', () => {
+  const policy: RuntimeSessionPolicy = { workspaceKind: 'source', workspaceAccess: 'read_write', permissionMode: 'skip',
+    executionPolicy: { version: 1, mode: 'explicit', access: 'workspace-write', network: false, approval: 'on-request' } };
+  const interaction = { kind: 'mcp_url', status: 'pending', interactionId: 'i', sessionId: 's', workerGeneration: 'w', executionId: 'e',
+    revision: 1, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    binding: { conversationId: 'c', sessionId: 's', label: 'Fixture Cat', participantId: 'cat', laneId: null, turnId: 'turn', runId: null },
+    prompt: { kind: 'mcp_url', title: 'Provider-owned title', url: 'https://example.com/authorize' } } as BoundProviderInteraction;
+  for (const locale of ['en', 'zh-TW'] as const) {
+    const markup = renderToStaticMarkup(<I18nProvider locale={locale}>
+      <ProviderPolicyEditor value={policy} onChange={() => {}} />
+      <PermissionModeChip value="full" executionPolicy={policy.executionPolicy} onChange={() => {}} />
+      <ProviderInteractionCard interaction={interaction} refresh={async () => {}} respond={async () => {}} openUrl={async () => {}} />
+    </I18nProvider>);
+    assert.match(markup, /Provider-owned title/); assert.match(markup, /https:\/\/example.com\/authorize/);
+    assert.match(markup, /workspace-write/); assert.match(markup, /on-request/);
+    if (locale === 'zh-TW') {
+      assert.match(markup, /供應商執行政策/); assert.match(markup, /在瀏覽器開啟/); assert.match(markup, /要求：/);
+      assert.doesNotMatch(markup, /Provider execution policy|Open in browser|Requested:/);
+    } else {
+      assert.match(markup, /Provider execution policy/); assert.match(markup, /Open in browser/); assert.match(markup, /Requested:/);
+    }
+  }
+});
 
 async function domTest(run: (document: Document, render: (element: React.ReactNode) => Promise<void>) => Promise<void>) {
   const dom = new JSDOM('<div id="root"></div>', { url: 'http://localhost' });

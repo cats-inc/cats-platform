@@ -109,7 +109,7 @@ function formatBranchRuntimeSessionPolicy(
     : policy.workspaceKind === 'source'
       ? t(messageKeys.chatNewChatDraftBranchPolicyWorkspaceSource)
       : t(messageKeys.chatNewChatDraftBranchPolicyWorkspaceSandbox);
-  const permissionLabel = policy.executionPolicy ? formatRequestedProviderPolicy(policy.executionPolicy) : policy.workspaceAccess === 'read_only'
+  const permissionLabel = policy.executionPolicy ? formatRequestedProviderPolicy(policy.executionPolicy, t) : policy.workspaceAccess === 'read_only'
     ? t(messageKeys.chatNewChatDraftBranchPolicyAccessReadOnly)
     : t(messageKeys.chatNewChatDraftBranchPolicyAccessFull);
   return `${workspaceLabel} / ${permissionLabel}`;
@@ -254,7 +254,7 @@ function BranchRuntimeSessionPolicyControls({
             updateDraftBranchRuntimePolicy(resolveRuntimePermissionPolicyFromDraft(nextMode))}
           disabled={isSubmittingFirstTurn || !!branchSessionPolicy.executionPolicy}
         />
-        <details><summary>Provider access</summary><ProviderPolicyEditor value={branchSessionPolicy}
+        <details><summary>{t(messageKeys.providerControlsAccess)}</summary><ProviderPolicyEditor value={branchSessionPolicy}
           onChange={policy => onSetParallelBranchRuntimeSessionPolicy?.(branchIndex, policy)} disabled={isSubmittingFirstTurn} /></details>
         <button
           className="composerChipClose"

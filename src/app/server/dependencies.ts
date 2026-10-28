@@ -8,7 +8,7 @@ import { createChatEventHub } from '../../products/chat/api/chatEventHub.js';
 import { publishChannelMutation } from '../../products/chat/api/transportEventPublisher.js';
 import { createRuntimeDeliveryClient } from '../../platform/runtime/deliveryClient.js';
 import { withProviderRunInteractions } from '../../platform/runtime/providerInteractionAdmission.js';
-import { currentProviderBindings } from '../../products/shared/api/providerInteractions.js';
+import { currentProviderBindings } from '../../products/chat/api/providerInteractionBindings.js';
 import { createAppStartupState } from './startup.js';
 import { createTelegramCommandSurfaceSync } from './telegramCommandSurfaceSync.js';
 import type {

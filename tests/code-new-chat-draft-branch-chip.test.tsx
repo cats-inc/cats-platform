@@ -105,5 +105,5 @@ test('new code default draft renders the permission chip in the header when a cw
     markup,
     /class="composerHeaderRight"[\s\S]*?composerPermissionChipWrapper/u,
   );
-  assert.match(markup, /composerPermissionChip[\s\S]*?Full access/u);
+  assert.match(markup, /composerPermissionChip[\s\S]*?Workspace write \(legacy\)/u);
 });

@@ -1,3 +1,5 @@
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ProviderConversationSnapshot } from '../../../../../shared/providerInteractions.js';
 import { readProviderConversation, respondProviderRequest, openProviderUrl } from './api.js';
@@ -6,6 +8,7 @@ import { ProviderCapabilities } from './ProviderCapabilities.js';
 import './providerInteractions.css';
 
 export function ProviderConversationControls({ conversationId, initiallyOpen = false }: { conversationId: string; initiallyOpen?: boolean }) {
+  const { t } = useI18n();
   const [snapshot, setSnapshot] = useState<ProviderConversationSnapshot | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [details, setDetails] = useState(initiallyOpen);
@@ -41,15 +44,15 @@ export function ProviderConversationControls({ conversationId, initiallyOpen = f
   const active = visible?.interactions.filter(i => ['pending', 'responding'].includes(i.status)) ?? [];
   const activeIds = active.map(i => `${i.sessionId}:${i.interactionId}`).join(',');
   useEffect(() => { if (activeIds) anchor.current?.scrollIntoView({ block: 'nearest' }); }, [activeIds]);
-  return <aside className="native-provider-controls" aria-label="Provider controls">
-    <div className="native-provider-toolbar"><span role="status">{active.length ? `Waiting for your response (${active.length})` : ''}</span>
-      <button type="button" onClick={() => setDetails(v => !v)} aria-expanded={details}>Session access and tools</button></div>
-    {unavailable && <p role="status">Provider controls are disconnected. Reconnecting; pending forms will return when their live state is confirmed.</p>}
+  return <aside className="native-provider-controls" aria-label={t(messageKeys.providerControlsControls)}>
+    <div className="native-provider-toolbar"><span role="status">{active.length ? t(messageKeys.providerControlsWaiting, { count: active.length }) : ''}</span>
+      <button type="button" onClick={() => setDetails(v => !v)} aria-expanded={details}>{t(messageKeys.providerControlsSessionTools)}</button></div>
+    {unavailable && <p role="status">{t(messageKeys.providerControlsDisconnected)}</p>}
     {details && <div>
-      {unavailable ? <p>Provider controls are unavailable. Sign in as the owner in the local app, then refresh.</p>
-        : !visible?.sessions.length ? <p>No current session has been observed.</p> : <>
-          <label>Session <select value={sessionId} onChange={e => setSessionId(e.target.value)}>{visible.sessions.map(s => <option key={s.sessionId} value={s.sessionId}>{s.label}</option>)}</select></label>
-          {visible.supported === false ? <p>Current worker controls are unavailable or unsupported. No live policy or tools have been confirmed.</p>
+      {unavailable ? <p>{t(messageKeys.providerControlsOwnerRequired)}</p>
+        : !visible?.sessions.length ? <p>{t(messageKeys.providerControlsNoSession)}</p> : <>
+          <label>{t(messageKeys.providerControlsSession)} <select value={sessionId} onChange={e => setSessionId(e.target.value)}>{visible.sessions.map(s => <option key={s.sessionId} value={s.sessionId}>{s.label}</option>)}</select></label>
+          {visible.supported === false ? <p>{t(messageKeys.providerControlsWorkerUnavailable)}</p>
             : sessionId && <ProviderCapabilities key={sessionId} conversationId={conversationId} sessionId={sessionId} />}
         </>}
     </div>}

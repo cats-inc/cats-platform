@@ -6,7 +6,8 @@ import { createDefaultChatState } from '../build/server/products/chat/state/defa
 import { createChannel } from '../build/server/products/chat/state/model/index.js';
 import { routeChannelMessage } from '../build/server/products/chat/state/runtime-dispatch/routing.js';
 import { buildChatConversationId } from '../build/server/shared/chatCoreIds.js';
-import { currentProviderBindings, routeProviderInteractions } from '../build/server/products/shared/api/providerInteractions.js';
+import { currentProviderBindings } from '../build/server/products/chat/api/providerInteractionBindings.js';
+import { routeProviderInteractions } from '../build/server/products/shared/api/providerInteractions.js';
 import { createProviderInteractionControl } from '../build/server/platform/runtime/providerInteractionControl.js';
 import { withProviderRunInteractions as bindProviderRunInteractions } from '../build/server/platform/runtime/providerInteractionAdmission.js';
 import { upsertCoreRun, upsertCoreTask } from '../build/server/core/model/index.js';
@@ -220,7 +221,7 @@ test('native API rejects unauthenticated/mobile/remote/forwarded access even wit
     const response = { writeHead(code, values) { status = code; responseHeaders = values; }, end(text) { body = JSON.parse(text); } };
     assert.equal(await routeProviderInteractions({ request, response, method: 'GET', auth,
       url: new URL(`http://localhost/api/provider-interactions/conversations/${f.conversationId}`),
-      dependencies: { chatStore: f.store, runtimeClient: n.runtime } }), true);
+      dependencies: { bindings: id => currentProviderBindings(f.store, id), runtimeClient: n.runtime } }), true);
     const valid = auth === owner && address === '127.0.0.1' && !headers['x-forwarded-for'];
     assert.equal(status, valid ? 200 : 403, JSON.stringify(body)); assert.equal(responseHeaders['cache-control'], 'no-store');
   }
