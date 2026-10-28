@@ -22,6 +22,8 @@ export function isInternalPlatformRoute(pathname: string, method: string): boole
   return pathname === '/api/code/agent-tools' || pathname.startsWith('/api/code/agent-tools/')
     || pathname === '/api/desktop/auth/google' || pathname.startsWith('/api/desktop/auth/google/')
     || pathname === '/api/internal/cat-image-tools' || pathname.startsWith('/api/internal/cat-image-tools/')
+    || pathname === '/api/internal/desktop-control' || pathname.startsWith('/api/internal/desktop-control/')
+    || pathname === '/api/desktop-control' || pathname.startsWith('/api/desktop-control/')
     || pathname === '/api/code/knowledge/agent' || pathname.startsWith('/api/code/knowledge/agent/')
     || pathname === '/api/runtime/mcp' || pathname.startsWith('/api/runtime/mcp/')
     || pathname === '/runtime/api/mcp' || pathname.startsWith('/runtime/api/mcp/')

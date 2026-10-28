@@ -690,6 +690,8 @@ export interface ChannelMessageMetadata extends Record<string, unknown> {
   implicitProductIntentTransition?: ImplicitProductIntentCandidateTransitionMetadata;
   catProductIntentProposal?: CatProductIntentProposalMetadata;
   catProductIntentProposalTransition?: CatProductIntentProposalTransitionMetadata;
+  /** Server-stamped for a local owner send (SPEC-133 DC-05); a client value is always replaced. */
+  desktopControlEntry?: 'local';
 }
 
 export type ClientMessageIdSource = 'client' | 'server_fallback';

@@ -167,7 +167,7 @@ for (const resetRuntime of [false, true]) test(`real reset route purges Platform
   await writePlatformPreferences(config.chatStatePath, { lastProductSurface: 'work', startAtLogin: false,
     openWindowOnStartup: true, systemTrayEnabled: false, lobbyAnimationMode: 'full',
     assistantResponseLanguage: 'zh-TW', uiLanguagePreference: 'zh-TW', codePreviewServersEnabled: true,
-    claudeInChromeEnabled: true });
+    claudeInChromeEnabled: true, desktopControlEnabled: true, desktopControlConversations: ['channel-old'] });
   const response = await reset();
   assert.equal(response.status, 200, await response.text());
   assert.equal(await readFile(runtimeConfig, 'utf8'), customRuntime,
@@ -180,7 +180,7 @@ for (const resetRuntime of [false, true]) test(`real reset route purges Platform
   assert.deepEqual(await readPlatformPreferences(config.chatStatePath), { lastProductSurface: null,
     startAtLogin: false, openWindowOnStartup: true, systemTrayEnabled: false, lobbyAnimationMode: 'reduced',
     assistantResponseLanguage: 'unspecified', uiLanguagePreference: 'auto', codePreviewServersEnabled: false,
-    claudeInChromeEnabled: false });
+    claudeInChromeEnabled: false, desktopControlEnabled: false, desktopControlConversations: [] });
   assert.equal(relayStore.getProcessedUpdateCount(), 0);
   assert.deepEqual(await activity.list('cat-old'), []);
   assert.equal((await readdir(config.platformStateDir)).some(file => file.endsWith('.bak')), false);

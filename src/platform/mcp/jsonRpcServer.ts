@@ -18,7 +18,8 @@ export interface McpToolDefinition {
 }
 
 export interface McpToolCallResult {
-  content: Array<{ type: 'text'; text: string }>;
+  /** Images carry base64 data, as desktop control screenshots do (SPEC-133). */
+  content: Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }>;
   structuredContent?: Record<string, unknown>;
   /** Tool-level failures the agent should read and act on; not protocol errors. */
   isError?: boolean;

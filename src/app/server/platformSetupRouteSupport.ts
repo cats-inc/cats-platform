@@ -174,6 +174,9 @@ export function parsePlatformPreferencesUpdate(
       codePreviewServersEnabled: currentPrefs.codePreviewServersEnabled,
       // Changed only through the local-owner provider controls route.
       claudeInChromeEnabled: currentPrefs.claudeInChromeEnabled,
+      // Changed only through the local-owner desktop control routes (SPEC-133).
+      desktopControlEnabled: currentPrefs.desktopControlEnabled,
+      desktopControlConversations: currentPrefs.desktopControlConversations,
     },
   };
 }

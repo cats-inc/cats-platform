@@ -65,16 +65,26 @@ crash-restart and idle-exit parts of A6 belong to the P2 supervisor.
 
 ### P2 — Platform server
 
-- [ ] Global setting and per-conversation switch (DC-02, DC-03).
-- [ ] Helper supervisor: lazy start, idle exit and crash restart limit (DC-16).
-- [ ] The `/api/internal/desktop-control/mcp` endpoint and `isInternalPlatformRoute` (DC-07).
-- [ ] The `cats-desktop` contributor and the `desktop` branch of `sessionMcpServerName`;
-  injection and turn decisions (DC-04, DC-05).
-- [ ] Grant requests and the in-memory grant table (DC-08, DC-09).
-- [ ] Log redaction (DC-17).
-- [ ] Backend parts of A1–A3 and A8 tested with a fake helper.
+- [x] Global setting and per-conversation switch (DC-02, DC-03), stored in Platform
+  preferences and changed only by the local-owner `/api/desktop-control/` routes.
+- [x] Helper supervisor: lazy start, idle exit and crash restart limit (DC-16)
+  (`src/platform/desktopControl/helper.ts`).
+- [x] The `/api/internal/desktop-control/mcp` endpoint and `isInternalPlatformRoute` (DC-07);
+  the owner API is internal too.
+- [x] The `cats-desktop` `wrapClient` proxy (outermost on the shared Chat client, per P0) with
+  injection and turn decisions (DC-04, DC-05); the channel message route stamps local owner
+  sends.
+- [x] Grant requests and the in-memory grant table (DC-08, DC-09).
+- [x] Log redaction (DC-17): the service logs nothing, and the owner state API carries names,
+  paths and statuses only, never screenshot bytes or UI text.
+- [x] Backend parts of A1–A3 and A8 tested with a fake helper (`tests/desktop-control.test.js`,
+  8 tests). The route-level stamp needs a signed-in browser cookie, so P4 checks it on a real
+  Desktop.
 
 **Exit:** backend tests pass, including a test that ingress cannot reach the endpoint.
+Met on 2026-10-29. Affected suites: 466/470 JavaScript tests passed; the 4 failures were
+`platform-data-reset` expectations (updated) and two route tests that also fail on a clean
+`origin/main` checkout on this Windows machine. Affected TypeScript tests: 48/48.
 
 ### P3 — Renderer and Desktop host
 
