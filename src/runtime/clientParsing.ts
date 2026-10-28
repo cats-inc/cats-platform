@@ -14,7 +14,10 @@ function providerContinuity(value: unknown): RuntimeProviderInstanceConfig['cont
     ...(c.interactions?.version === 1 && Array.isArray(c.interactions.kinds)
       ? { interactions: { version: 1 as const, kinds: c.interactions.kinds.filter((k: unknown) => typeof k === 'string') } } : {}),
     ...(c.sessionCapabilities?.version === 1 ? { sessionCapabilities: { version: 1 as const,
-      executionPolicy: c.sessionCapabilities.executionPolicy === true, inventory: c.sessionCapabilities.inventory === true } } : {}),
+      executionPolicy: c.sessionCapabilities.executionPolicy === true, inventory: c.sessionCapabilities.inventory === true,
+      ...(Array.isArray(c.sessionCapabilities.admissibleCeilings) ? { admissibleCeilings: c.sessionCapabilities.admissibleCeilings
+        .filter((x: any) => ['read-only', 'workspace-write', 'full-access'].includes(x?.access) && typeof x.network === 'boolean')
+        .map((x: any) => ({ access: x.access, network: x.network })) } : {}) } } : {}),
   };
 }
 

@@ -53,7 +53,8 @@ export function ProviderConversationControls({ conversationId, initiallyOpen = f
         : !visible?.sessions.length ? <p>{t(messageKeys.providerControlsNoSession)}</p> : <>
           <label>{t(messageKeys.providerControlsSession)} <select value={sessionId} onChange={e => setSessionId(e.target.value)}>{visible.sessions.map(s => <option key={s.sessionId} value={s.sessionId}>{s.label}</option>)}</select></label>
           {visible.supported === false ? <p>{t(messageKeys.providerControlsWorkerUnavailable)}</p>
-            : sessionId && <ProviderCapabilities key={sessionId} conversationId={conversationId} sessionId={sessionId} />}
+            : sessionId && <ProviderCapabilities key={sessionId} conversationId={conversationId} sessionId={sessionId}
+              provider={visible.sessions.find(s => s.sessionId === sessionId)?.provider} />}
         </>}
     </div>}
     <div ref={anchor} className="native-provider-active">{active.map(i => <ProviderInteractionCard key={`${i.workerGeneration}:${i.interactionId}`} interaction={i}

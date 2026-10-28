@@ -52,12 +52,14 @@ import {
 import type { RuntimeSetupReadModel } from './setup.js';
 import { projectUsageSnapshot, projectUsageQuotaRefresh } from './usageSnapshot.js';
 import type { RuntimeWorkspaceActivitySnapshot } from './workspaceActivity.js';
-import { PLATFORM_INTERACTION_HOST, type InteractionHost, type InteractionSnapshot, type InteractionResponse,
+import { PLATFORM_INTERACTION_HOST, type ExecutionAccess, type InteractionHost, type InteractionSnapshot, type InteractionResponse,
   type ProviderInteraction, type SessionExecutionPolicy, type SessionCapabilitiesSnapshot } from '../shared/providerInteractions.js';
 import { assertProviderPolicyBoundary, parseProviderExecutionPolicy } from '../shared/providerExecutionPolicy.js';
 
 export interface RuntimeProviderInstanceConfig {
-  continuity?: { interactions?: { version: 1; kinds: string[] }; sessionCapabilities?: { version: 1; executionPolicy: boolean; inventory: boolean } };
+  continuity?: { interactions?: { version: 1; kinds: string[] }; sessionCapabilities?: { version: 1; executionPolicy: boolean; inventory: boolean;
+    /** Access/network ceilings the target enforces; absent means every valid ceiling. */
+    admissibleCeilings?: Array<{ access: ExecutionAccess; network: boolean }> } };
   id: string;
   target: string | null;
   backend: string | null;

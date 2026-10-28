@@ -4,7 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import type { SessionCapabilitiesSnapshot } from '../../../../../shared/providerInteractions.js';
 import { readProviderCapabilities } from './api.js';
 
-export function ProviderCapabilities({ conversationId, sessionId }: { conversationId: string; sessionId: string }) {
+// Each provider documents its own browser/desktop host setup; an unknown provider gets no guess.
+const SETUP_LINKS = {
+  codex: { href: 'https://learn.chatgpt.com/docs/plugins', label: messageKeys.providerControlsSetup },
+  claude: { href: 'https://code.claude.com/docs/en/chrome', label: messageKeys.providerControlsClaudeChromeSetup },
+} as const;
+
+export function ProviderCapabilities({ conversationId, sessionId, provider }: { conversationId: string; sessionId: string; provider?: string | null }) {
   const { t } = useI18n();
   const [snapshot, setSnapshot] = useState<SessionCapabilitiesSnapshot | null>(null);
   const [busy, setBusy] = useState(false);
@@ -28,6 +34,7 @@ export function ProviderCapabilities({ conversationId, sessionId }: { conversati
     return () => { ticket.current++; clearInterval(timer); };
   }, [conversationId, sessionId]);
   const o = snapshot?.observation;
+  const setup = provider === 'codex' || provider === 'claude' ? SETUP_LINKS[provider] : null;
   return <div className="native-provider-capabilities">
     <button type="button" disabled={busy} onClick={() => void refresh(true)}>{t(messageKeys.providerControlsRefresh)}</button>
     {error && <p role="status">{t(messageKeys.providerControlsUnavailable)}</p>}
@@ -42,11 +49,12 @@ export function ProviderCapabilities({ conversationId, sessionId }: { conversati
           <p>{t(messageKeys.providerControlsAuthentication, { auth: s.auth, discovery: s.discovery })}</p>
           <ul>{s.tools.map(t => <li key={t.qualifiedName}>{t.qualifiedName}</li>)}</ul>
         </details>)}
+        {o.inventory.builtins === 'observed' && !!o.inventory.builtinTools?.length && <details><summary>{t(messageKeys.providerControlsBuiltinTools, { count: o.inventory.builtinTools.length })}</summary><ul>{o.inventory.builtinTools.map(name => <li key={name}>{name}</li>)}</ul></details>}
         {o.inventory.dynamicTools.length > 0 && <details><summary>{t(messageKeys.providerControlsDynamicTools)}</summary><ul>{o.inventory.dynamicTools.map(t => <li key={t.name}>{t.name}</li>)}</ul></details>}
         {o.policy.requested && <details><summary>{t(messageKeys.providerControlsRequestedPolicy)}</summary><pre>{JSON.stringify(o.policy.requested, null, 2)}</pre></details>}
       </details>
       {o.dependencies.map(d => <p key={d.kind}>{t(d.kind === 'browser' ? messageKeys.providerControlsBrowser : messageKeys.providerControlsComputer)}: {d.status}. {d.evidence} {d.remediation}</p>)}
-      <a href="https://learn.chatgpt.com/docs/plugins" target="_blank" rel="noopener noreferrer">{t(messageKeys.providerControlsSetup)}</a>
+      {setup && <a href={setup.href} target="_blank" rel="noopener noreferrer">{t(setup.label)}</a>}
     </>}
   </div>;
 }

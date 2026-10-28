@@ -4208,6 +4208,8 @@ export const enCatalog: MessageCatalog = {
   "providerControls.Browser": "Chrome / browser",
   "providerControls.Computer": "Computer use",
   "providerControls.Setup": "Codex plugins and host setup",
+  "providerControls.ClaudeChromeSetup": "Set up Claude in Chrome",
+  "providerControls.BuiltinTools": "Built-in tools ({count})",
   "providerControls.Controls": "Provider controls",
   "providerControls.Waiting": "Waiting for your response ({count})",
   "providerControls.SessionTools": "Session access and tools",

@@ -1,5 +1,9 @@
 # Implementation Plans
 
+- [PLAN-125: Claude Code provider controls in Desktop](PLAN-125-claude-code-provider-controls-in-desktop.md)
+  — in progress, 2026-10-28; `tool_approval`, Claude policy ceilings and a
+  Claude in Chrome preference over Runtime SPEC-039 R8. P1 implemented.
+
 - [PLAN-124: Provider session interactions and capability visibility](PLAN-124-provider-session-interactions-and-capability-visibility.md)
   — ready, 2026-10-28; shared transport/lifecycle, product UI,
   policy/inventory and isolated Desktop acceptance. All phases pending.

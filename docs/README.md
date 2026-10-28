@@ -1,5 +1,9 @@
 # Documentation Index
 
+[PLAN-125](plans/PLAN-125-claude-code-provider-controls-in-desktop.md) brings Claude Code's
+native approvals, policy ceilings and Claude in Chrome to Desktop (2026-10-28), extending
+SPEC-132 with a Claude Code section over Runtime SPEC-039 R8.
+
 [Provider session interactions and capability visibility](specs/SPEC-132-provider-session-interactions-and-capability-visibility.md)
 is approved for sliced implementation (2026-10-28) for Chat/Work/Code native approvals and
 input, truthful permissions, live tool inventory and Desktop dependency diagnostics.
