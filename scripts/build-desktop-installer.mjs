@@ -647,41 +647,54 @@ export function resolveWindowsHelperArches(archOverride, configuredTargets = [])
   return arches;
 }
 
+// Each helper publishes into native/<directory> beside the others (SPEC-133 adds desktop control).
+const WINDOWS_NATIVE_HELPERS = [
+  { directory: 'windows-stt', project: 'CatsSttWindows.csproj', binary: 'cats-stt-windows' },
+  { directory: 'windows-desktop-control', project: 'CatsDesktopControlWindows.csproj', binary: 'cats-desktop-control-windows' },
+];
+
 async function buildWindowsVoiceHelper(archOverride) {
   if (process.platform !== 'win32') {
-    throw new Error('The Windows voice helper must be built on Windows.');
+    throw new Error('The Windows native helpers must be built on Windows.');
   }
 
   const { build } = JSON.parse(await readFile(resolve(PROJECT_ROOT, 'package.json'), 'utf8'));
   for (const arch of resolveWindowsHelperArches(archOverride, build.win.target)) {
-    // An arm64 install must not carry the win-x64 helper, which would run only
-    // under emulation. Each architecture publishes into its own directory.
-    const outputDir = resolve(WINDOWS_NATIVE_BUILD_ROOT, arch, 'windows-stt');
-    await mkdir(outputDir, { recursive: true });
-    await runCommand(
-      'dotnet',
-      [
-        'publish',
-        resolve(PROJECT_ROOT, 'desktop', 'native', 'windows-stt', 'CatsSttWindows.csproj'),
-        '-c',
-        'Release',
-        '-r',
-        `win-${arch}`,
-        '--self-contained',
-        'true',
-        '-o',
-        outputDir,
-      ],
-      PROJECT_ROOT,
-    );
-    // dotnet publish copies the self-contained runtime but not its license texts.
-    const notices = await stageDotnetRuntimeNotices({
-      outputDir,
-      depsJsonPath: resolve(outputDir, 'cats-stt-windows.deps.json'),
-      helperName: 'cats-stt-windows.exe',
-    });
-    console.log(`Staged .NET runtime notices for ${notices.runtime.id} ${notices.runtime.version}`);
+    for (const helper of WINDOWS_NATIVE_HELPERS) {
+      await publishWindowsHelper(helper, arch);
+    }
   }
+}
+
+
+async function publishWindowsHelper(helper, arch) {
+  // An arm64 install must not carry the win-x64 helper, which would run only
+  // under emulation. Each architecture publishes into its own directory.
+  const outputDir = resolve(WINDOWS_NATIVE_BUILD_ROOT, arch, helper.directory);
+  await mkdir(outputDir, { recursive: true });
+  await runCommand(
+    'dotnet',
+    [
+      'publish',
+      resolve(PROJECT_ROOT, 'desktop', 'native', helper.directory, helper.project),
+      '-c',
+      'Release',
+      '-r',
+      `win-${arch}`,
+      '--self-contained',
+      'true',
+      '-o',
+      outputDir,
+    ],
+    PROJECT_ROOT,
+  );
+  // dotnet publish copies the self-contained runtime but not its license texts.
+  const notices = await stageDotnetRuntimeNotices({
+    outputDir,
+    depsJsonPath: resolve(outputDir, `${helper.binary}.deps.json`),
+    helperName: `${helper.binary}.exe`,
+  });
+  console.log(`Staged .NET runtime notices for ${helper.binary}: ${notices.runtime.id} ${notices.runtime.version}`);
 }
 
 async function buildNativeVoiceHelpers(target, archOverride) {

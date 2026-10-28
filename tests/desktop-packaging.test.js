@@ -1132,7 +1132,10 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   // Windows publishes one self-contained helper per architecture into the
   // directory package.json maps through electron-builder's ${arch} macro.
   assert.match(script, /resolve\(PROJECT_ROOT, 'build', 'native-windows'\)/);
-  assert.match(script, /resolve\(WINDOWS_NATIVE_BUILD_ROOT, arch, 'windows-stt'\)/);
+  // Both Windows helpers (voice and SPEC-133 desktop control) publish this way.
+  assert.match(script, /resolve\(WINDOWS_NATIVE_BUILD_ROOT, arch, helper\.directory\)/);
+  assert.match(script, /directory: 'windows-stt', project: 'CatsSttWindows\.csproj'/);
+  assert.match(script, /directory: 'windows-desktop-control', project: 'CatsDesktopControlWindows\.csproj'/);
   assert.match(script, /`win-\$\{arch\}`/);
   // The output directory is asked of SwiftPM rather than reconstructed: a plain
   // build, a single --arch cross-build, and a multi-arch build each land

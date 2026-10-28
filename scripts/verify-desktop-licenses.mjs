@@ -8,8 +8,10 @@ import { assertCatsLicense, verifyRuntimeBundleNotices } from '../build/desktop/
 import { verifyRendererNotices } from '../build/desktop/rendererLicenses.js';
 import { verifyDotnetRuntimeNotices } from './shared/dotnet-runtime-notices.mjs';
 
-const WINDOWS_HELPER_DIRECTORY = 'native/windows-stt';
-const WINDOWS_HELPER_BINARY = 'cats-stt-windows.exe';
+const WINDOWS_HELPERS = [
+  { directory: 'native/windows-stt', binary: 'cats-stt-windows.exe' },
+  { directory: 'native/windows-desktop-control', binary: 'cats-desktop-control-windows.exe' },
+];
 
 async function exists(path) {
   try {
@@ -41,12 +43,15 @@ export async function verifyDesktopLicenses(resourcesRoot) {
   } else {
     assert.equal(plan.sidecarLayout?.runtime, 'split', 'Unknown Runtime license layout');
   }
-  // The Windows voice helper bundles a self-contained .NET runtime; whenever the
-  // helper binary ships, its Microsoft license texts must ship beside it.
-  const helperDir = join(resourcesRoot, WINDOWS_HELPER_DIRECTORY);
-  const nativeWindowsNotices = await exists(join(helperDir, WINDOWS_HELPER_BINARY))
-    ? await verifyDotnetRuntimeNotices(helperDir)
-    : false;
+  // Each Windows helper bundles a self-contained .NET runtime; whenever a helper
+  // binary ships, its Microsoft license texts must ship beside it.
+  let nativeWindowsNotices = false;
+  for (const helper of WINDOWS_HELPERS) {
+    const helperDir = join(resourcesRoot, helper.directory);
+    if (await exists(join(helperDir, helper.binary))) {
+      nativeWindowsNotices = await verifyDotnetRuntimeNotices(helperDir);
+    }
+  }
   return {
     catsLicenses: true,
     rendererNotices: true,
