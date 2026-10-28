@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Contract frozen (P0, 2026-10-29); implementation in progress under PLAN-126 |
+| Status | Contract frozen (P0, 2026-10-29); phases A and B implemented under PLAN-126 |
 | Owner | Platform Desktop integration |
 | Reviewer | Product owner, Runtime and Bots maintainers |
 | Baseline | Platform `9159757e`; 2026-10-29 |
