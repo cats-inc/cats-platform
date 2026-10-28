@@ -24,6 +24,12 @@ import {
 } from 'electron';
 
 import { createLinuxDesktopRelaunch } from './linuxRelaunch.js';
+import {
+  createDesktopControlHoldWatcher,
+  createDesktopControlNotice,
+  desktopControlNoticeText,
+  type DesktopControlHold,
+} from './desktopControlNotice.js';
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
 import { buildDesktopContextMenuTemplate } from './contextMenu.js';
 import {
@@ -292,6 +298,9 @@ let shutdownPromise: Promise<void> | null = null;
 let setupHelperDrain: ReturnType<typeof pauseSelectedSetupHelpers> | null = null;
 let exitingAfterShutdown = false;
 let trayController: DesktopTrayController | null = null;
+// SPEC-133 DC-11: which apps a conversation currently holds desktop control of.
+let desktopControlHolding: DesktopControlHold[] = [];
+let stopDesktopControl: (() => void) | null = null;
 let stateStore: DesktopHostStateStore | null = null;
 let backgroundState: DesktopBackgroundState | null = null;
 let updateState: DesktopUpdateSnapshot | null = null;
@@ -986,7 +995,7 @@ function publishSnapshot(snapshot: DesktopBootstrapSnapshot): DesktopBootstrapSn
 }
 
 function resolveDesktopTrayMenuState(snapshot: DesktopBootstrapSnapshot) {
-  return buildElectronTrayMenuState({
+  const state = buildElectronTrayMenuState({
     phase: snapshot.phase,
     summary: snapshot.summary,
     setupCompleteAt: snapshot.app.setupCompleteAt,
@@ -996,6 +1005,9 @@ function resolveDesktopTrayMenuState(snapshot: DesktopBootstrapSnapshot) {
     locale: app.getLocale(),
     updates: updateState,
   });
+  if (!desktopControlHolding.length) return state;
+  const text = desktopControlNoticeText(desktopControlHolding, app.getLocale());
+  return { ...state, desktopControlStop: { label: text.trayStop }, tooltip: text.tooltip };
 }
 
 function isSystemTrayEnabled(): boolean {
@@ -1135,6 +1147,7 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
     onQuit: () => {
       void shutdownHost();
     },
+    onStopDesktopControl: () => stopDesktopControl?.(),
     canInteract: () => !shuttingDown,
     // One item, one handler, whatever state the host is in. The tray closes on
     // click, so the dialog is where every answer lives -- progress included.
@@ -2515,6 +2528,29 @@ async function main(): Promise<void> {
   }, 10_000);
   ingressNetworkTimer.unref();
   app.once('before-quit', () => clearInterval(ingressNetworkTimer));
+  if (process.platform === 'win32' && hostConfig.paths.desktopControlHelperPath) {
+    const notice = createDesktopControlNotice({
+      createWindow: (options) => new BrowserWindow(options),
+      workArea: () => screen.getPrimaryDisplay().workArea,
+      locale: () => app.getLocale(),
+      onStop: () => stopDesktopControl?.(),
+    });
+    const watcher = createDesktopControlHoldWatcher({
+      baseUrl: hostConfig.appBaseUrl, key: desktopAuthKey,
+      onChange: (holding) => {
+        desktopControlHolding = holding;
+        notice.update(holding);
+        if (latestSnapshot && !shuttingDown) trayController?.updateMenu(resolveDesktopTrayMenuState(latestSnapshot));
+      },
+    });
+    stopDesktopControl = () => {
+      void watcher.stop().catch((error) => {
+        process.stderr.write(`Desktop control stop failed: ${error instanceof Error ? error.message : String(error)}\n`);
+      });
+    };
+    watcher.start();
+    app.once('before-quit', () => { watcher.dispose(); notice.dispose(); });
+  }
   latestSnapshot = buildSnapshot(null);
   voiceCaptureController = new DesktopVoiceCaptureController({
     config: hostConfig,

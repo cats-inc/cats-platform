@@ -29,6 +29,7 @@ import { createCodeAgentToolsClientWrapper } from '../../products/code/agentTool
 import { createCodeAgentToolsService } from '../../products/code/agentTools/service.js';
 import { createCatImageTools, CAT_IMAGE_TOOLS_PATH } from '../../platform/multimedia/catImageTools.js';
 import { createDesktopControlForServer, DESKTOP_CONTROL_MCP_PATH } from '../../platform/desktopControl/server.js';
+import { routeDesktopControlHost } from '../../platform/desktopControl/routes.js';
 import { createChatCatImages, type ChatCatImages } from '../../products/chat/api/catImages.js';
 import { MemoryChatStore } from '../../products/chat/state/store.js';
 import type { CodeConversationPreviews } from '../../products/code/livePreview/conversationPreviews.js';
@@ -235,6 +236,7 @@ export function createServer(dependencies: ServerDependencies) {
     if (await codeAgentTools.route(request, response)) return;
     if (await catImageTools.route(request, response)) return;
     if (await desktopControl.route(request, response)) return;
+    if (await routeDesktopControlHost(request, response, desktopControl, dependencies.shared.desktopAuthKey)) return;
     if (await knowledge.route(request, response)) return;
     await routeRequest(request, response, resolvedDependencies);
   };

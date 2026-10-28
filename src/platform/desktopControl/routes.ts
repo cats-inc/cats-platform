@@ -1,6 +1,8 @@
-import type { IncomingMessage } from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { RouteContext } from '../../shared/http.js';
 import { sendJson } from '../../shared/http.js';
+import { PLATFORM_DESKTOP_AUTH_KEY_HEADER } from '../../shared/nativeGoogleAuth.js';
 import { isLoopbackAuthHost } from '../auth/effectiveMode.js';
 import type { DesktopControlService } from './service.js';
 
@@ -76,5 +78,35 @@ export async function routeDesktopControl(context: RouteContext<{ desktopControl
   }
   const channelId = typeof body.channelId === 'string' ? body.channelId : resource === 'conversations' ? id : undefined;
   sendJson(context.response, 200, await service.state(channelId), headers);
+  return true;
+}
+
+/** SPEC-133 DC-11, DC-12: the Desktop host reads hold state for its notice and tray and stops from them. */
+export const DESKTOP_CONTROL_HOST_STATE_PATH = '/api/internal/desktop-control/host-state';
+export const DESKTOP_CONTROL_HOST_STOP_PATH = '/api/internal/desktop-control/host-stop';
+
+/** Only the local Desktop host holds the key; the ingress listener strips this header and refuses the path. */
+export async function routeDesktopControlHost(request: IncomingMessage, response: ServerResponse,
+  service: Pick<DesktopControlService, 'hostState' | 'stop'>, expected: string | undefined): Promise<boolean> {
+  const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
+  if (pathname !== DESKTOP_CONTROL_HOST_STATE_PATH && pathname !== DESKTOP_CONTROL_HOST_STOP_PATH) return false;
+  const headers = { 'cache-control': 'no-store' };
+  const supplied = request.headers[PLATFORM_DESKTOP_AUTH_KEY_HEADER];
+  const address = request.socket.remoteAddress?.replace(/^::ffff:/u, '');
+  if (request.headers.origin !== undefined || !['127.0.0.1', '::1'].includes(address ?? '')
+    || typeof supplied !== 'string' || !expected || expected.length < 32
+    || Buffer.byteLength(supplied) !== Buffer.byteLength(expected)
+    || !timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))) {
+    sendJson(response, 403, { error: 'desktop_authority_required' }, headers);
+    return true;
+  }
+  if (pathname === DESKTOP_CONTROL_HOST_STATE_PATH && request.method === 'GET') {
+    sendJson(response, 200, service.hostState(), headers);
+  } else if (pathname === DESKTOP_CONTROL_HOST_STOP_PATH && request.method === 'POST') {
+    service.stop();
+    sendJson(response, 200, service.hostState(), headers);
+  } else {
+    sendJson(response, 405, { error: 'desktop_control_method_not_allowed' }, headers);
+  }
   return true;
 }

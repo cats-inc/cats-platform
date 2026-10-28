@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Phase A delivered (P0–P3 merged or in review, P4 recorded); waiting for owner sign-off before P5 |
+| Status | Phase A delivered and recorded (P0–P4); phase B (P5) authorized on 2026-10-29 and in progress |
 | Owner | Platform Desktop integration |
 | Assigned To | Claude |
 | Reviewer | Product owner, Runtime maintainers |
@@ -153,9 +153,19 @@ the owner's Desktop check. The native helper check (A4 with pixel counts) is rec
 
   Defender recorded no detection, and the observe-only `check.mjs` still passed 13/13. The
   clipboard was not exercised natively, so the owner's clipboard is not overwritten.
-- [ ] Pause while the owner is operating, hold state and the topmost notice (DC-11).
-- [ ] The matching MCP tools and guard fixtures; native acceptance against a throwaway test
-  window (A7).
+- [x] Pause while the owner is operating, hold state and the topmost notice (DC-11). The
+  server refuses input with `operator_active` after reading the helper's `state`; the first
+  input tool of a turn holds control until the turn ends; Stop from the conversation, the tray or
+  the notice revokes grants and cancels the helper op (DC-12). The Desktop host reads hold state
+  from the key-authenticated `host-state` route and shows the notice and the tray item (SPEC-133
+  "Desktop host routes").
+- [x] The matching MCP tools and guard fixtures. `tests/desktop-control.test.js` (10 tests) covers
+  coordinate conversion, stale and outside points, element ids, the observe-only tier,
+  `operator_active`, helper codes such as `password_field` reaching the model, holding and its
+  release, Stop cancelling only a holding conversation, and the host routes' key, `Origin` and
+  loopback checks. `tests/desktop-control-notice.test.js` (3 tests) covers the watcher, the
+  notice markup and a notice window that never takes focus.
+- [ ] Native acceptance against a throwaway test window (A7).
 
 **Exit:** A7 passes and is recorded; anything that did not pass is stated as such.
 
@@ -165,4 +175,4 @@ Follow [AGENTS.md: Local Validation Scope](../../AGENTS.md#local-validation-scop
 the checks each slice actually ran and their results; full CI remains the gate before merge.
 Native acceptance and fixture tests prove different things, so report them separately.
 
-*Created: 2026-10-29. Planned; implementation not authorized.*
+*Created: 2026-10-29. Phase A and phase B authorized by the owner on 2026-10-29.*
