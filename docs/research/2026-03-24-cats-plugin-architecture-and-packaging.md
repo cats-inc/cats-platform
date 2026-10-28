@@ -5,57 +5,60 @@
 - **Date**: 2026-03-24
 - **Author**: Claude
 - **Status**: Draft — pending review
-- **Scope**: cats 作為 plugin 平台的可行性、package 拆分策略、plugin contract 設計
+- **Scope**: Feasibility of cats as a plugin platform, package split strategy, plugin contract design
 - **Related**:
-  - [ADR-025](../decisions/025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md) — platform host 結構
-  - [ADR-035](../decisions/035-invert-platform-dependency-and-extract-shared-design-layer.md) — 依賴反轉
-  - [ADR-036](../decisions/036-unify-api-contract-and-namespace-endpoints-by-product.md) — API contract 統一
+  - [ADR-025](../decisions/025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md) — platform host structure
+  - [ADR-035](../decisions/035-invert-platform-dependency-and-extract-shared-design-layer.md) — dependency inversion
+  - [ADR-036](../decisions/036-unify-api-contract-and-namespace-endpoints-by-product.md) — unified API contract
   - [ADR-037](../decisions/037-serve-runtime-dashboard-and-playground-from-platform-host.md) — runtime tool hosting
-  - [PLAN-024](../plans/PLAN-024-platform-dependency-inversion-and-design-extraction.md) — 架構重整實作計畫
+  - [PLAN-024](../plans/PLAN-024-platform-dependency-inversion-and-design-extraction.md) — architecture restructuring implementation plan
 
 ---
 
-## 核心主張
+## Core Claim
 
-PLAN-024 完成後，cats 的內部結構已經具備 plugin 架構的先決條件：
+After PLAN-024 is complete, the internal structure of cats already meets the
+prerequisites of a plugin architecture:
 
-- `core/` 是共享 domain model，任何 product 都透過它讀寫組織狀態
-- `platform/` 依賴 interface 而非具體 product 實作
-- `design/` 是共享視覺語言
-- `app/` 是 platform shell，擁有 product switcher 和 sidebar slot
-- 每個 `products/*` 自包含：自己的 routes、components、styles
+- `core/` is the shared domain model, and every product reads and writes organization state through it
+- `platform/` depends on interfaces rather than concrete product implementations
+- `design/` is the shared visual language
+- `app/` is the platform shell, which owns the product switcher and sidebar slot
+- Each `products/*` is self-contained: its own routes, components, and styles
 
-將 cats 從「多 product monolith」演進為「host + plugins」所需的增量工作
-很小，本質上是定義一個正式的 Plugin Contract 並加上 dynamic loading。
+The incremental work needed to evolve cats from a "multi-product monolith" into
+"host + plugins" is small. In essence it is defining a formal Plugin Contract
+and adding dynamic loading.
 
 ---
 
-## Part 1: Package 拆分策略
+## Part 1: Package Split Strategy
 
-### 原則：host 合一包，products 各自獨立
+### Principle: the host is one package, each product is independent
 
-業界的 plugin host 都是一個 package：
+Industry plugin hosts are all a single package:
 
-- VS Code extension 依賴 `vscode`
-- Obsidian plugin 依賴 `obsidian`
-- Figma plugin 依賴 `figma`
+- A VS Code extension depends on `vscode`
+- An Obsidian plugin depends on `obsidian`
+- A Figma plugin depends on `figma`
 
-沒有人把 host 拆成多個 package 讓 plugin 各自 peer-depend。拆了只是給
-plugin 開發者製造版本對齊的麻煩，沒有任何消費端好處。
+Nobody splits the host into multiple packages and makes plugins peer-depend on
+each one. Splitting only creates version-alignment trouble for plugin
+developers, with no benefit on the consumer side.
 
-### 最終 npm package 結構
+### Final npm package structure
 
 ```
-@cats-inc/cats-platform          ← host（core + platform + design + shell 合一包）
-@cats-inc/chat          ← Chat plugin（預設內建，隨 host 安裝）
-@cats-inc/work          ← Work plugin（官方，可選安裝）
-@cats-inc/code          ← Code plugin（官方，可選安裝）
-@cats-inc/learn         ← 未來官方或社群 plugin
-@cats-inc/note          ← 未來
-@cats-inc/play          ← 未來
+@cats-inc/cats-platform          ← host (core + platform + design + shell in one package)
+@cats-inc/chat          ← Chat plugin (built in by default, installed with the host)
+@cats-inc/work          ← Work plugin (official, optional install)
+@cats-inc/code          ← Code plugin (official, optional install)
+@cats-inc/learn         ← future official or community plugin
+@cats-inc/note          ← future
+@cats-inc/play          ← future
 ```
 
-### host package 內部仍保持目錄分層
+### The host package still keeps its directory layering internally
 
 ```
 @cats-inc/cats-platform/
@@ -67,12 +70,13 @@ plugin 開發者製造版本對齊的麻煩，沒有任何消費端好處。
     shared/            ← errors, http utils, pagination
 ```
 
-目錄邊界服務內部開發者，package 邊界服務外部消費者。兩個尺度各自獨立。
+Directory boundaries serve internal developers, and package boundaries serve
+external consumers. The two scales are independent.
 
 ### subpath exports
 
-host package 透過 subpath exports 暴露分層 API，plugin 不需要 import
-整包 host，只 import 需要的部分：
+The host package exposes a layered API through subpath exports, so a plugin
+does not need to import the whole host, only the parts it needs:
 
 ```jsonc
 // @cats-inc/cats-platform/package.json
@@ -89,7 +93,7 @@ host package 透過 subpath exports 暴露分層 API，plugin 不需要 import
 }
 ```
 
-Plugin 的 import 風格：
+The plugin's import style:
 
 ```typescript
 import type { CatsPlugin, PluginDependencies } from '@cats-inc/cats-platform/plugin';
@@ -97,9 +101,9 @@ import type { CoreActorRecord, CoreTaskRecord } from '@cats-inc/cats-platform/co
 import type { ApiError, NotFoundError } from '@cats-inc/cats-platform/shared';
 ```
 
-### plugin package 的 peer dependency
+### A plugin package's peer dependency
 
-每個 plugin 只需要一個 peer dependency：
+Each plugin needs only one peer dependency:
 
 ```jsonc
 // @cats-inc/chat/package.json
@@ -113,11 +117,11 @@ import type { ApiError, NotFoundError } from '@cats-inc/cats-platform/shared';
 
 ---
 
-## Part 2: Plugin Contract 設計
+## Part 2: Plugin Contract Design
 
 ### CatsPlugin interface
 
-這是 plugin 向 host 註冊自己的 contract：
+This is the contract by which a plugin registers itself with the host:
 
 ```typescript
 // @cats-inc/cats-platform/plugin
@@ -154,8 +158,8 @@ export interface CatsPlugin {
 
 ### PluginDependencies
 
-Host 注入給 plugin 的共享服務。Plugin 不直接 import 實作，而是透過
-host 注入：
+Shared services the host injects into the plugin. A plugin does not import the
+implementations directly; they are injected by the host:
 
 ```typescript
 export interface PluginDependencies {
@@ -182,7 +186,7 @@ export interface PluginDependencies {
 
 ### PluginRenderProps
 
-Host 傳給 plugin React component 的 props：
+The props the host passes to a plugin's React components:
 
 ```typescript
 export interface PluginRenderProps {
@@ -199,9 +203,9 @@ export interface PluginRenderProps {
 
 ---
 
-## Part 3: Plugin Discovery 和 Loading
+## Part 3: Plugin Discovery and Loading
 
-### 配置方式
+### Configuration
 
 ```typescript
 // cats.config.ts
@@ -209,19 +213,19 @@ import type { CatsConfig } from '@cats-inc/cats-platform';
 
 export default {
   plugins: [
-    '@cats-inc/chat',           // 官方 plugin，npm install
-    '@cats-inc/work',           // 官方 plugin，npm install
-    './plugins/my-custom',      // local plugin（開發中）
+    '@cats-inc/chat',           // official plugin, npm install
+    '@cats-inc/work',           // official plugin, npm install
+    './plugins/my-custom',      // local plugin (in development)
   ],
 
-  /** 預設啟動時顯示的 product */
+  /** The product shown by default at startup */
   defaultPlugin: 'chat',
 } satisfies CatsConfig;
 ```
 
 ### Server-side loading
 
-Host 啟動時 dynamic import 各 plugin，掛載 routes：
+At startup the host dynamically imports each plugin and mounts its routes:
 
 ```typescript
 // app/server/pluginLoader.ts
@@ -255,7 +259,7 @@ async function loadPlugins(
 
 ### Client-side loading
 
-Product switcher 從 host 取得已載入的 plugin 清單，動態渲染：
+The product switcher gets the list of loaded plugins from the host and renders dynamically:
 
 ```typescript
 // app/renderer/PlatformShell.tsx
@@ -280,9 +284,9 @@ function PlatformShell({ plugins }: { plugins: CatsPlugin[] }) {
 
 ---
 
-## Part 4: 一個 Plugin 長什麼樣
+## Part 4: What a Plugin Looks Like
 
-以 `@cats-inc/work` 為例：
+Take `@cats-inc/work` as an example:
 
 ```
 packages/plugin-work/
@@ -299,7 +303,7 @@ packages/plugin-work/
       hooks/
         useProjects.ts        ← reads from coreStore
     styles/
-      work.css                ← Work-specific styles（imports @cats-inc/cats-platform/design tokens）
+      work.css                ← Work-specific styles (imports @cats-inc/cats-platform/design tokens)
 ```
 
 ```typescript
@@ -344,9 +348,9 @@ export function createBoardRoutes(deps: PluginDependencies) {
 
 ---
 
-## Part 5: Monorepo 工具鏈
+## Part 5: Monorepo Toolchain
 
-### 推薦 pnpm workspaces
+### Recommended: pnpm workspaces
 
 ```yaml
 # pnpm-workspace.yaml
@@ -355,9 +359,9 @@ packages:
 ```
 
 ```
-cats-platform/                 ← monorepo root（public target）
+cats-platform/                 ← monorepo root (public target)
   packages/
-    cats-platform/             ← @cats-inc/cats-platform（host）
+    cats-platform/             ← @cats-inc/cats-platform (host)
       package.json
       src/
         core/
@@ -375,84 +379,87 @@ cats-platform/                 ← monorepo root（public target）
       package.json
       src/
   pnpm-workspace.yaml
-  tsconfig.base.json           ← 共用 TypeScript config
+  tsconfig.base.json           ← shared TypeScript config
 ```
 
-### 為什麼 pnpm 而非 npm workspaces
+### Why pnpm rather than npm workspaces
 
-- pnpm 的 strict node_modules 結構防止 phantom dependencies
-- plugin 如果 import 了沒宣告的 dependency 會立刻報錯，不會靠 hoisting 意外成功
-- 對 plugin 架構來說，dependency 邊界正確性比 npm workspaces 更重要
+- pnpm's strict node_modules layout prevents phantom dependencies
+- If a plugin imports a dependency it did not declare, it fails immediately instead of accidentally succeeding through hoisting
+- For a plugin architecture, correct dependency boundaries matter more than they do with npm workspaces
 
 ---
 
-## Part 6: Electron 打包
+## Part 6: Electron Packaging
 
-Plugin 在 Electron build 時是 **bundled**，不是 runtime discovered：
+At Electron build time, plugins are **bundled**, not discovered at runtime:
 
 ```
 electron-dist/
   node_modules/
     @cats-inc/cats-platform/          ← host
-    @cats-inc/chat/          ← 預裝 plugin
-    @cats-inc/work/          ← 預裝 plugin
-  runtime-pages/             ← cats-runtime dashboard/playground（ADR-037）
+    @cats-inc/chat/          ← preinstalled plugin
+    @cats-inc/work/          ← preinstalled plugin
+  runtime-pages/             ← cats-runtime dashboard/playground (ADR-037)
 ```
 
-Electron 的 `main.js` 讀取 `cats.config.ts` 並 import 所有 plugins。
-使用者不需要 `npm install` — 預裝的 plugins 已經在 bundle 裡。
+Electron's `main.js` reads `cats.config.ts` and imports all plugins. Users do
+not need to `npm install` — the preinstalled plugins are already in the bundle.
 
-未來如果要支援「使用者安裝第三方 plugin」，那是另一個研究題目
-（涉及 sandbox、permissions、auto-update），不在本文範圍內。
-
----
-
-## Part 7: 時機與前提
-
-### PLAN-024 是必要前提
-
-Plugin 架構需要以下 PLAN-024 的 deliverables：
-
-- **Phase 1 完成**：platform 不再 import products — 否則 host package 內部有循環依賴
-- **Phase 2 完成**：shared/app-shell.ts 消除 — 否則 type 邊界不清楚
-- **Phase 3-4 完成**：core 和 chat 拆分成小模組 — 否則 plugin contract 的粒度太粗
-- **Phase 5 完成**：design 提取到 platform level — 否則 plugin 沒有共享 design tokens
-- **Phase 6-7 完成**：API contract 統一 + endpoint namespace — 否則 plugin 的 route 掛載規則無法一致
-
-### 推薦時機
-
-- **現在**：不做。PLAN-024 還沒開始。
-- **PLAN-024 完成後**：評估。如果只有 Chat 一個 product，plugin 架構是 over-engineering。
-- **第二個 product（Work）開始開發時**：正式啟動。Work 作為第一個非內建 plugin 的
-  試驗場，驗證 Plugin Contract 是否足夠。
-- **第三個 product 上線後**：穩定 contract，發布 `@cats-inc/cats-platform` v1.0.0。
-
-### 投入估計
-
-假設 PLAN-024 已完成：
-
-- 定義 `CatsPlugin` interface + `PluginDependencies`：1-2 天
-- 實作 server-side plugin loader：2-3 天
-- 實作 client-side plugin renderer：2-3 天
-- 將 Chat 改寫為 plugin 格式（`@cats-inc/chat`）：3-5 天
-- 設定 pnpm monorepo + build pipeline：1-2 天
-- 總計：**約 2 週**
-
-大部分工作是「把已經正確分離的 code 包裝成 plugin 格式」，不是重寫。
+If we later want to support "users installing third-party plugins", that is a
+separate research topic (involving sandboxing, permissions, auto-update) and is
+out of scope for this document.
 
 ---
 
-## 結論
+## Part 7: Timing and Prerequisites
 
-PLAN-024 的架構重整做的是 80% 的 plugin 基礎工作（正確的依賴方向、自包含的
-product 邊界、統一的 API contract、共享的 design system）。剩下 20% 是
-定義 Plugin Contract、加上 dynamic loading、設定 monorepo — 這些都是
-增量工作，不是重寫。
+### PLAN-024 is a required prerequisite
 
-關鍵決策：
+The plugin architecture needs the following PLAN-024 deliverables:
 
-- Host 合一包（`@cats-inc/cats-platform`），不拆成 4 個 package
-- 目錄邊界服務內部開發，package 邊界服務外部消費
-- Plugin 只需要一個 peer dependency：`@cats-inc/cats-platform`
-- 時機：等 PLAN-024 完成 + Work 開始開發時再啟動
+- **Phase 1 complete**: platform no longer imports products — otherwise the host package has circular dependencies internally
+- **Phase 2 complete**: shared/app-shell.ts eliminated — otherwise type boundaries are unclear
+- **Phases 3-4 complete**: core and chat split into small modules — otherwise the plugin contract is too coarse-grained
+- **Phase 5 complete**: design extracted to the platform level — otherwise plugins have no shared design tokens
+- **Phases 6-7 complete**: unified API contract + endpoint namespaces — otherwise plugin route mounting rules cannot be consistent
 
+### Recommended timing
+
+- **Now**: do not do it. PLAN-024 has not started.
+- **After PLAN-024 completes**: evaluate. If Chat is the only product, a plugin architecture is over-engineering.
+- **When development of the second product (Work) begins**: formally start. Work
+  serves as the proving ground for the first non-built-in plugin, validating
+  whether the Plugin Contract is sufficient.
+- **After the third product ships**: stabilize the contract and publish `@cats-inc/cats-platform` v1.0.0.
+
+### Effort estimate
+
+Assuming PLAN-024 is complete:
+
+- Define the `CatsPlugin` interface + `PluginDependencies`: 1-2 days
+- Implement the server-side plugin loader: 2-3 days
+- Implement the client-side plugin renderer: 2-3 days
+- Rewrite Chat into plugin form (`@cats-inc/chat`): 3-5 days
+- Set up the pnpm monorepo + build pipeline: 1-2 days
+- Total: **about 2 weeks**
+
+Most of the work is "wrapping already correctly separated code into plugin
+form", not rewriting.
+
+---
+
+## Conclusion
+
+The architecture restructuring in PLAN-024 does 80% of the plugin groundwork
+(correct dependency direction, self-contained product boundaries, a unified API
+contract, a shared design system). The remaining 20% is defining the Plugin
+Contract, adding dynamic loading, and setting up the monorepo — all incremental
+work, not a rewrite.
+
+Key decisions:
+
+- The host is one package (`@cats-inc/cats-platform`), not split into 4 packages
+- Directory boundaries serve internal development, and package boundaries serve external consumers
+- A plugin needs only one peer dependency: `@cats-inc/cats-platform`
+- Timing: start once PLAN-024 is complete and Work development begins

@@ -18,216 +18,214 @@
 
 ## Overview
 
-分四個可以各自展示的 PR：先讓「醒著」變成真的並有作息，再讓他主動開口，
-接著補 Telegram 的在職守體驗，最後加照片。
+Four PRs that can each be demonstrated on their own: first make "awake" real and give the Cat a rhythm, then let him speak up on his own, then add the on-duty experience for Telegram, and finally add photos.
 
-## Phase 1: 真的醒著與作息
+## Phase 1: Truly Awake, with a Rhythm
 
-- [x] `CompanionBox.life` 型別、讀取時補預設值、記憶體與檔案 store 的讀寫。
-- [x] `GET/PATCH /api/cats/:catId/companion-box/life` 與驗證。
-- [x] `rhythm.ts`：每天固定的起床時間、清醒／休息時段判斷、下一次起床時間。
-- [x] 從 REST handler 抽出 channel activation / deactivate 本體，REST 與 loop 共用。
-- [x] life loop：期望狀態、以 runtime 觀察確認 session、喚醒、閒置後入睡、上限退避。
-- [x] `presence_changed` 動態紀錄（喚醒、入睡、owner 操作、無法喚醒）。
-- [x] owner 的 activation / deactivate 作用在陪伴貓私訊 lane 時更新 `sleepUntil`。
-- [x] 正式入口開啟 loop；測試用 `createServer` 預設不啟動。
-- [x] 測試：舊檔讀取補預設、作息邊界（含跨午夜）、同日起床時間固定、loop 在 session
-  已活著時不寫狀態、runtime 重啟後自動醒回、上限滿時退避且只記一次、休息時段閒置後入睡、
-  owner 睡覺後不會被 loop 叫醒。
+- [x] The `CompanionBox.life` type, defaults filled in on read, and read/write in the in-memory and file stores.
+- [x] `GET/PATCH /api/cats/:catId/companion-box/life` with validation.
+- [x] `rhythm.ts`: a fixed wake-up time each day, awake/rest period checks, and the next wake-up time.
+- [x] Extract the channel activation / deactivate body from the REST handler so REST and the loop share it.
+- [x] Life loop: desired state, session confirmation by runtime observation, waking, sleeping after idle, and backoff at the cap.
+- [x] `presence_changed` activity entries (waking, sleeping, owner actions, unable to wake).
+- [x] The owner's activation / deactivate on a companion Cat's DM lane updates `sleepUntil`.
+- [x] The production entry point starts the loop; the test `createServer` does not start it by default.
+- [x] Tests: old files read with defaults filled in, rhythm boundaries (including across midnight), a fixed wake-up time within a day, the loop writing no state when the session
+  is already alive, automatically waking back up after a runtime restart, backing off at the cap and recording only once, sleeping after idle in the rest period,
+  and the loop not waking the Cat after the owner put him to sleep.
 
-**Exit**：重啟 runtime 後一分鐘內，陪伴貓私訊 session 自動回到 ready；就寢時間後閒置
-15 分鐘釋放 session；動態紀錄看得到醒來與入睡。
+**Exit**: within one minute of a runtime restart, the companion Cat's DM session automatically returns to ready; after bedtime, the session is released after
+15 minutes of idle; the activity log shows waking and sleeping.
 
-## Phase 2: 心跳
+## Phase 2: Heartbeat
 
-- [x] 以 runtime session 為鍵的程序內 gate；`executeDispatch` 送出前等待。
-- [x] 心跳排程（記憶體、隨機間隔、醒來後的 `wake` 心跳、延後條件、重啟不重複道早安）。
-- [x] 心跳 prompt（本地時間、醒了多久、主人上次說話、陪伴記憶）與 `[quiet]` 判斷。
-- [x] 回覆以該 Cat 的一般訊息寫入 lane（`senderKind: 'agent'`、origin `runtime`），但事件是
-  `companion_heartbeat` 而不是 `assistant_turn_segment`，避免 live indicator 把它當成 owner
-  訊息的回覆；發出 `message_added`，由 fanout 送到 Telegram 一次。
-- [x] 入睡前的 `bedtime` 心跳。
-- [x] 測試：安靜不寫入、開口寫入並鏡像到 Telegram、心跳進行中 owner 訊息會等待、runtime busy
-  時重排、重啟後不重複道早安、正在聊天時不插話。
+- [x] An in-process gate keyed by runtime session; `executeDispatch` waits on it before sending.
+- [x] Heartbeat scheduling (in memory, random interval, a `wake` heartbeat after waking, deferral conditions, no repeated good-morning after a restart).
+- [x] The heartbeat prompt (local time, how long he has been awake, when the owner last spoke, companion memory) and the `[quiet]` decision.
+- [x] The reply is written to the lane as that Cat's ordinary message (`senderKind: 'agent'`, origin `runtime`), but the event is
+  `companion_heartbeat` rather than `assistant_turn_segment`, so the live indicator does not treat it as a reply to an owner
+  message; it emits `message_added`, and fanout delivers it to Telegram once.
+- [x] A `bedtime` heartbeat before sleeping.
+- [x] Tests: quiet writes nothing, speaking up writes and mirrors to Telegram, an owner message waits while a heartbeat is in progress, rescheduling when the runtime is busy,
+  no repeated good-morning after a restart, and no interjecting while a chat is in progress.
 
-**Exit**：清醒時段內他會在同一段對話裡自己開口，Telegram 收得到。
+**Exit**: during awake hours he speaks up on his own in the same conversation, and Telegram receives it.
 
-## Phase 3: Telegram 在職守
+## Phase 3: Telegram On Duty
 
-- [x] 私訊進來立即送 `typing`，回覆前每 4 秒續送；走獨立的 `sendChatAction`，不產生 delivery
-  receipt，也不更新 `lastOutboundMessageId`。
-- [x] `/sleep`、`/wake` 指令，與 Desktop 按鈕共用 owner 意圖（`setCatDirectLanePresence`）。
-- [x] 綁定變更與手動重新連線重建的 polling consumer 帶入 transport 指令（重新連線也補上 `/work`
-  的 golden path）。
+- [x] On an incoming DM, send `typing` immediately and resend every 4 seconds before the reply; it uses a separate `sendChatAction`, produces no delivery
+  receipt, and does not update `lastOutboundMessageId`.
+- [x] The `/sleep` and `/wake` commands share the owner's intent with the Desktop buttons (`setCatDirectLanePresence`).
+- [x] Polling consumers rebuilt by binding changes and manual reconnects carry the transport commands (reconnecting also restores the `/work`
+  golden path).
 
-## Phase 4: 照片
+## Phase 4: Photos
 
-- [x] `life.photoFolder` 與陪伴設定的「作息與相簿」卡片（也涵蓋就寢時間與起床區間）。
-- [x] 心跳列出候選檔名（最多 6 個、≤ 10 MB），解析 `[photo: 檔名]`，只接受列出的檔名。
-- [x] Telegram multipart `sendPhoto`；fanout 對帶照片的訊息送圖片、文字當圖說；照片也複製到
-  lane 附件資料夾讓 Desktop 顯示。
+- [x] `life.photoFolder` and the "Rhythm and Album" card in companion settings (which also covers bedtime and the wake-up window).
+- [x] The heartbeat lists candidate file names (at most 6, ≤ 10 MB each), parses `[photo: filename]`, and accepts only listed file names.
+- [x] Telegram multipart `sendPhoto`; fanout sends the image for messages that carry a photo, with the text as the caption; the photo is also copied to the
+  lane attachment folder so Desktop can show it.
 
-## Phase 5: 貓自己翻相簿（ADR-127 §5）
+## Phase 5: The Cat Browses the Album Himself (ADR-127 §5)
 
-- [x] 陪伴脈絡（`CompanionSessionContext.photoAlbum`）帶相簿路徑；`formatCompanionContext`
-  只對陪伴貓說明相簿、唯讀約定與 `[photo: 路徑]`。心跳改為一句提示，不再抽候選檔名。
-- [x] `resolveCompanionAlbumPhoto`：相對或絕對路徑，`realpath` 後必須在相簿內；大小寫不符時
-  以同資料夾比對。
-- [x] 一般回覆：`executeDispatch` 在回合結束後處理 `[photo: …]`（`applyCompanionPhotoDirective`），
-  `results.ts` 把 `transportMedia` 蓋在最後一段；Telegram bridge 對帶照片的回覆直接送照片。
-- [x] 附件複製（`channelAttachments.ts`）從 `api/` 移到 `state/`，讓派送流程也能使用。
-- [x] Telegram 傳進來的照片下載到房間附件資料夾，讓貓看得到（SPEC-124 FR-33）。
+- [x] The companion context (`CompanionSessionContext.photoAlbum`) carries the album path; `formatCompanionContext`
+  explains the album, the read-only convention and `[photo: path]` only to the companion Cat. The heartbeat becomes a one-line nudge and no longer picks candidate file names.
+- [x] `resolveCompanionAlbumPhoto`: a relative or absolute path that, after `realpath`, must be inside the album; when the case does not match,
+  it matches within the same folder.
+- [x] Ordinary replies: `executeDispatch` handles `[photo: …]` after the turn ends (`applyCompanionPhotoDirective`),
+  and `results.ts` stamps `transportMedia` onto the last segment; the Telegram bridge sends the photo directly for replies that carry one.
+- [x] The attachment copy (`channelAttachments.ts`) moves from `api/` to `state/` so the dispatch flow can use it too.
+- [x] Photos arriving from Telegram are downloaded into the room attachment folder so the Cat can see them (SPEC-124 FR-33).
 
 ## Follow-ups (not in this plan)
 
-- 主動生圖到 Telegram 的完整 golden path 見
-  [PLAN-121](PLAN-121-shared-image-service-and-controlled-cat-generation.md)：
-  Platform 共用服務、有限 Cat grant、Studio 共用與 durable delivery；規劃文件，
-  尚未實作，不改本計畫既有相簿／文字心跳的驗收狀態。
+- The full golden path for proactively generating images to Telegram is in
+  [PLAN-121](PLAN-121-shared-image-service-and-controlled-cat-generation.md):
+  the shared Platform service, limited Cat grants, Studio sharing and durable delivery; it is a planning document and
+  is not yet implemented, and it does not change the acceptance status of this plan's existing album / text heartbeat.
 
-- 陪伴貓私訊回合前的 companion 發文決策 sidecar 讓延遲約加倍，影響在職守的感覺；
-  可改為只在需要時才做決策。
-- runtime 對同一 session 的併發訊息回 409，一般 owner 連發兩則訊息時也會碰到。
-- 每次心跳照片都會複製一份到 lane 的 `.cats-attachments/`，同一張照片會累積 `x (1).png`、
-  `x (2).png`；可改為依內容雜湊重用既有副本。
-- 相簿很大時，貓每次都得自己翻；可讓他替看過的照片留筆記，或由平台提供「最近傳過的」清單。
-- Desktop 串流回覆時，`[photo: …]` 那一行可能在收尾前短暫出現，收尾後才被移除。
+- The companion posting-decision sidecar before a companion Cat's DM turn roughly doubles latency, which hurts the feel of being on duty;
+  it could be changed to decide only when needed.
+- The runtime returns 409 for concurrent messages to the same session, which an ordinary owner sending two messages in a row also hits.
+- Every heartbeat photo is copied into the lane's `.cats-attachments/`, so the same photo accumulates as `x (1).png`,
+  `x (2).png`; this could be changed to reuse an existing copy by content hash.
+- When the album is large, the Cat has to browse it himself every time; he could leave notes on photos he has seen, or the platform could provide a "recently sent" list.
+- While Desktop streams a reply, the `[photo: …]` line may appear briefly before the turn finishes and is removed only afterwards.
 
 ## Progress Log
 
-- 2026-10-26：修復 DM 睡醒與主動回合的 conversation continuity。
-  - Desktop 0.10.1 實機唯讀確認：07:48 建立的新 Runtime 在 09:59 發英文問候；第一個
-    hidden prompt 只有英文時間／問候指令與 mixed expression，沒有先前中文對話。
-    hydration 為 `fresh_start` / `none`；產品 DM transcript 並未遺失。
-  - 入睡不再清空 DM session id，醒來走既有原生 resume；retarget 優先更換 execution，
-    resume 失敗保留 attachment 與錯誤。一般房間 deactivate 維持原語意。
-    同時修復 model-only 與 Runtime explicit selection 的等價判斷，並在 closed lease
-    缺少舊版 selection 時從 Runtime 觀察恢復；未選模型的舊 attachment 不誤判成 retarget。
-  - 心跳共用一般 Cat 回合的角色／語言／checkpoint 與 memory-aware envelope，並送入
-    同一 DM 的 bounded continuity instructions。短歷史原文、長歷史沿用 12,000 字元內
-    的既有 digest，未指定語言依主人交談。這也補救舊版本已開啟但漏承接的 Runtime。
-  - 分層記憶原本只被放進 hydration metadata；共用 prompt formatter 現在呈現已篩選
-    的 facts、owner hints、open loops，限制數量與每則 280 字元，不呈現 excluded records。
-    hydration 失敗不再吞錯後繼續發出空白脈絡問候。
-  - 前 5 個回歸案例在舊程式全數失敗。最終相關 9 檔 149 個通過，候選編譯輸出同樣
-    149 個通過；架構邊界 101、selection/continuity 38、Runtime 原生 wake/close 契約
-    33 個通過。Server build 與 test TypeScript 檢查通過。首次本機 routing fixture 因
-    預設附件路徑被 sandbox 阻擋而等待，停止該測試並改用私有 `CATS_RUNTIME_DIR` 後通過；
-    沒有提高權限讓該 fixture 寫入使用者 profile。圖片 fanout fixture 補上真實 active lease。
-  - 最終隔離 Desktop 候選完成 Runtime/server/host/renderer 建置並檢視 first-run 畫面，
-    正常 drain（exit 0）。Platform source digest
-    `4337f4414b5c56347197889b62d23f61af5bc381ae02f832e05cf4fe12f54b7e`，Runtime `5212fa59`；
-    四個 production 修正檔案與工作樹 SHA-256 一致。UI 啟動本身不當成功能驗收。
-  - 同一候選編譯輸出另以隔離 Codex `gpt-6.1-sol` 做 3 個真實回合：記住隨機暗號、
-    經 production sleep/wake 後在未重送暗號的請求中正確回答，Runtime/provider session id
-    均維持相同；再明確換成新 Runtime，首個主動回合用中文提到同一 DM 的「虹石灣」
-    與陪伴記憶的「桂花烏龍茶」。舊版 model-only 判斷確曾使首次 live probe 重建，
-    修正後通過；最終私有證據在 workspace parent `.dm-continuity-live-20261026-6/report.json`。
-    probe 自有 Runtime 已停止、複製的登入已刪除。沒有寫入將將或傳送 Telegram 訊息；
-    尚未聲稱安裝版已更新，也不聲稱已完成高階長對話濃縮或無損召回。本次不升版。
-  - PR #321 首次完整 CI 的 5 個失敗均為下游 fixture／斷言：明確 retarget 不再先 resume
-    舊 provider，Telegram duty stub 補上 resume，診斷附件 stub 從當前 owner 訊息取路徑
-    （channel checkpoint 可能含單行化的舊附件片段）。相關 3 檔 18 個本機通過，其中
-    2 個 JS 檔 8 個也在候選編譯輸出通過；production 來源未變動。
-    額外以同一候選重啟整個私有 Runtime 程序，原生 ID 與未重送暗號的召回仍通過，
-    證據 `.dm-continuity-live-20261026-7/report.json`；自有服務與暫存登入均清理完成。
+- 2026-10-26: Fixed conversation continuity for DM wake-ups and proactive turns.
+  - Desktop 0.10.1 read-only check on a real machine: a new Runtime created at 07:48 sent an English greeting at 09:59; the first
+    hidden prompt contained only an English time / greeting instruction and a mixed expression, with none of the earlier Chinese conversation.
+    Hydration was `fresh_start` / `none`; the product DM transcript was not lost.
+  - Going to sleep no longer clears the DM session id; waking uses the existing native resume; a retarget prefers replacing the execution, and
+    if resume fails the attachment and the error are kept. Ordinary room deactivate keeps its semantics.
+    Also fixed the equivalence check between model-only and Runtime explicit selection, and when a closed lease
+    lacks an old-version selection, it is recovered from Runtime observation; an old attachment with no selected model is not misjudged as a retarget.
+  - The heartbeat shares the ordinary Cat turn's role / language / checkpoint and memory-aware envelope, and sends in
+    the same DM's bounded continuity instructions. Short history is sent verbatim, long history reuses the existing digest within 12,000 characters,
+    and an unspecified language follows what the owner speaks. This also rescues Runtimes that an older version had opened but failed to carry over.
+  - Layered memory used to be placed only in hydration metadata; the shared prompt formatter now presents the filtered
+    facts, owner hints and open loops, limited in count and to 280 characters each, and does not present excluded records.
+    A hydration failure no longer swallows the error and goes on to send a greeting with empty context.
+  - The first 5 regression cases all failed on the old code. In the end, the 9 related files with 149 tests pass, and the candidate compiled output also
+    passes 149; architecture boundaries 101, selection/continuity 38 and the Runtime native wake/close contract
+    33 pass. The server build and the test TypeScript check pass. The first local routing fixture waited because the
+    default attachment path was blocked by the sandbox; I stopped that test and reran it with a private `CATS_RUNTIME_DIR`, and it passed;
+    permissions were not raised to let that fixture write into the user profile. The image fanout fixture was given a real active lease.
+  - The final isolated Desktop candidate completed the Runtime/server/host/renderer builds and the first-run screen was inspected,
+    with a normal drain (exit 0). Platform source digest
+    `4337f4414b5c56347197889b62d23f61af5bc381ae02f832e05cf4fe12f54b7e`, Runtime `5212fa59`;
+    the four production fix files match the working tree by SHA-256. Starting the UI is not counted as functional acceptance.
+  - The same candidate compiled output was also run through 3 real turns on an isolated Codex `gpt-6.1-sol`: remember a random passphrase,
+    answer it correctly after a production sleep/wake in a request that did not resend the passphrase, with the Runtime/provider session id
+    staying the same; then explicitly switch to a new Runtime, and the first proactive turn mentioned, in Chinese, the same DM's 「虹石灣」 ("Rainbow Stone Bay")
+    and the companion memory's 「桂花烏龍茶」 ("osmanthus oolong tea"). The old model-only check did cause the first live probe to rebuild;
+    it passed after the fix; the final private evidence is in the workspace parent `.dm-continuity-live-20261026-6/report.json`.
+    The probe's own Runtime has been stopped and the copied login deleted. Nothing was written to `將將` and no Telegram message was sent;
+    I have not claimed that the installed build is updated, nor that high-level long-conversation condensation or lossless recall is done. No version bump this time.
+  - All 5 failures in PR #321's first full CI were downstream fixtures / assertions: an explicit retarget no longer resumes the
+    old provider first, the Telegram duty stub gained resume, and the diagnostic attachment stub takes its path from the current owner message
+    (the channel checkpoint may contain a single-lined old attachment fragment). The 3 related files with 18 tests pass locally, and
+    2 JS files with 8 tests also pass on the candidate compiled output; production source is unchanged.
+    I also restarted the whole private Runtime process with the same candidate; the native ID and the recall without a resent passphrase still passed,
+    evidence `.dm-continuity-live-20261026-7/report.json`; the probe's own services and temporary logins were all cleaned up.
 
-- 2026-10-26：修復原生 CLI 新會話的首次主動回合死等。
-  - 實機 Desktop 0.10.0 的陪伴貓在 10/25 08:53 自動建立會話後，lease 持續
-    `initializing`，整日 Runtime 訊息數為 0；23:00 才依作息關閉。舊 loop 直接略過
-    所有 `initializing` lease，不觀察也不送首回合。以當時唯讀快照在記憶體模擬
-    09:00–22:59，共 840 次均停在 `waking`；未修改實際 profile 或傳送驗證訊息。
-  - 已有 session id 的 `initializing` 與 `ready` 同樣檢查存活並排心跳；首次成功
-    （含安靜）後，只將仍指向同一 session 的 initializing lease 推進為 ready。
-    無 session id 的喚醒等待最多 5 分鐘，再沿用 activation/backoff；不介入 owner
-    仍在進行的回合。程序重啟後等待與心跳計時重新安排，不改持久化格式。
-  - 每次 heartbeat 記錄 kind 與 spoke/quiet/busy/failed，方便區分模型選擇安靜與
-    執行失敗，不記錄 prompt、回覆或憑證。
-  - 驗證：初版新增 9 個回歸案例在舊程式全數失敗、修正後通過；之後加上檔案
-    store 重建後的初始化恢復、真實 activation body、首個 hidden turn、安靜後狀態
-    推進、Telegram fanout 一次投遞，以及會話替換／關閉競爭。候選編譯輸出相關
-    4 檔 72 個通過；另 4 檔邊界／Telegram／lease attachment 共 108 個通過。
-    Server build 與 test TypeScript 檢查通過（worktree 使用既有 Platform/mobile 依賴）。
-  - 隔離 Desktop 候選以 Platform `a36a0c52` 加本修正、Runtime `5212fa59` 建立；
-    Runtime、server、host、renderer build 通過，檢視首次設定畫面後正常 drain（exit 0）。
-    候選內兩個修正來源的 SHA-256 與工作樹一致。這是 fixture 與候選來源驗證，
-    尚非安裝版的白天實際 provider／Telegram 長時間驗收；本修正不升版。
-  - 額外抽查既有 `chat-session-lease-projection` 在 Windows 單獨執行會報
-    `missing core session session-1`；未修改的主線也可重現同一失敗，本次未改該範圍。
+- 2026-10-26: Fixed the first proactive turn waiting forever on a new native CLI session.
+  - On real-machine Desktop 0.10.0, after a companion Cat's session was created automatically at 08:53 on 10/25, the lease stayed
+    `initializing` and the Runtime message count for the whole day was 0; it was closed by the rhythm only at 23:00. The old loop skipped
+    every `initializing` lease directly, neither observing nor sending the first turn. Simulating 09:00–22:59 in memory from a read-only snapshot taken then,
+    all 840 ticks stayed at `waking`; the real profile was not modified and no verification message was sent.
+  - An `initializing` lease that already has a session id is now checked for liveness and gets heartbeats scheduled just like `ready`; after the first success
+    (including quiet), only an initializing lease still pointing at the same session is advanced to ready.
+    A wake with no session id waits at most 5 minutes, then reuses activation/backoff; it does not interfere with a turn the owner
+    still has in progress. After a process restart, the wait and heartbeat timers are rescheduled, and the persisted format is unchanged.
+  - Each heartbeat records its kind and spoke/quiet/busy/failed, making it easy to tell the model choosing quiet apart from an
+    execution failure; it does not record the prompt, the reply or credentials.
+  - Verification: the 9 regression cases added at first all failed on the old code and pass after the fix; later I added recovery from initialization after the file
+    store is rebuilt, the real activation body, the first hidden turn, state advance after quiet, Telegram fanout delivering exactly once,
+    and the session replace / close race. On the candidate compiled output, 4 related files with 72 tests pass; another 4 files for boundaries / Telegram / lease attachment pass 108.
+    The server build and the test TypeScript check pass (the worktree used the existing Platform/mobile dependencies).
+  - The isolated Desktop candidate was built from Platform `a36a0c52` plus this fix and Runtime `5212fa59`;
+    the Runtime, server, host and renderer builds pass, and after the first-setup screen was inspected it drained normally (exit 0).
+    The SHA-256 of the two fixed sources in the candidate matches the working tree. This is fixture and candidate-source verification,
+    not yet a daytime, long-running real provider / Telegram acceptance on the installed build; this fix does not bump the version.
+  - As an extra spot check, the existing `chat-session-lease-projection`, run alone on Windows, reports
+    `missing core session session-1`; the unmodified mainline reproduces the same failure, and this change does not touch that scope.
 
-- 2026-09-29：ADR-127、SPEC-124、PLAN-117 建立；Phase 1 開始。
-- 2026-09-29：Phase 1 完成。
-  - 順手修掉 `FileCompanionBoxStore` 的既有風險：原本寫入不是原子的，讀取遇到任何錯誤
-    （包括讀到寫到一半的檔案）都會把整份 companion 資料蓋成空的。loop 每分鐘讀一次會放大
-    這個風險，所以改為暫存檔加 rename，且只在檔案不存在時建立新檔；格式損壞時回報錯誤、
-    保留原檔。
-  - 活動紀錄的 render entry 帶上最新事件的 `metadata`，`presence_changed` 由 renderer 以
-    在地化文字顯示。
-  - 驗證：`tests/companion-life.test.js`（19）、`companion-box-store`、`companion-box-routes`、
-    `channel-deactivate`、`config`、`architecture-boundaries` 等 13 個 server 測試檔共 286 個通過；
-    renderer 相關 10 個測試檔 43 個通過。`provider-telegram-routes` 的「file-backed restart」
-    在合併執行時失敗一次，重跑通過（原因見 Phase 2 紀錄）。
-  - 尚未驗證：實機 Desktop 畫面（動態紀錄文字、狀態卡片在 loop 喚醒後的更新）。
-  - 已確認 Desktop 讓他睡的三個入口（個人頁、私訊工具列、`useDirectLaneCompanionMode`）都走
-    `POST /api/channels/:id/deactivate`，所以都會寫入 `sleepUntil`；進入私訊不會自動呼叫
-    activation。在清醒時段按一次睡覺，他會睡到下一次起床時間；期間 owner 傳訊息仍會醒來
-    回覆，閒置 15 分鐘後再睡回去。
-  - 已知取捨：休息時段裡卡在 `initializing` 超過 15 分鐘且 lane 安靜的 session 也會被關掉。
-- 2026-09-29：Phase 1 以 #186 merge（`7e2efe17`）。Phase 2 完成。
-  - Telegram bridge 選回覆時跳過 `companion_heartbeat` 訊息：owner 那一輪失敗而 lane 上只剩
-    心跳訊息時，原本會把它當成回覆再送一次（fanout 已經送過）。
-  - `provider-telegram-routes` 的「file-backed restart」是既有的不穩定測試：單獨執行各 10 次，
-    Phase 1 之前（`19b52694`）失敗 1 次、Phase 1 後的 main（`7e2efe17`）失敗 2 次、Phase 2
-    分支失敗 2 次。失敗時都是 `waitForTelegramLinkedRoom` 的 4 秒逾時（成功約 1.1 秒），
-    呈雙峰分布，像寫入競爭而非變慢；companion 檔案 store 在該測試中完全沒有被讀寫。差距在
-    樣本誤差內，另案追蹤。
-  - 驗證：`companion-heartbeat`（11）、`transport-fanout`（6，含心跳送到 Telegram 一次）、
-    `telegram-work-delivery-bridge`（11，含心跳不會被當成回覆）等，server 12 檔 248 個、
-    `provider-telegram-routes` 35 個、bundled 4 檔 21 個通過。
-  - 尚未驗證：實機 Desktop 私訊裡心跳訊息的呈現，以及真的 Telegram bot。
-- 2026-09-29：Phase 2 以 #187 merge（`015acac1`）。Phase 3 完成。
-  - 修正「喚醒」的變化判斷：channel activation 對已經活著的 session 也回報 `started`，原本會讓
-    Desktop 喚醒按鈕在已醒著時多記一筆「被你叫醒了」，`/wake` 也會回「醒來了」。改為看喚醒前
-    lead lease 是否已是 `ready`（`activateChannelLocked` 回傳 `leadWasReady`）。
-  - 驗證：`companion-telegram-duty`（3）、`telegram-commands-i18n`、`telegram-work-delivery-bridge`
-    （12，含 typing 在回合開始前送出且不產生 receipt）、`architecture-boundaries`、
-    `provider-telegram-routes` 等，server 15 檔 236 個與 bundled 5 檔 55 個通過。
-  - 尚未驗證：真的 Telegram bot 上的 typing 與 `/sleep` `/wake`。
-- 2026-09-29：Phase 3 以 #188 merge（`4ef1386f`）。Phase 4 完成。
-  - 驗證：`companion-photos`（5，含 multipart 實際上傳位元組）、`transport-fanout`（8，含心跳照片
-    在 Desktop 以附件顯示、Telegram 收到附圖說的照片、長文字先圖後文）、`companion-life`
-    （20，含相簿資料夾必須存在）、`companion-life-card`，server 12 檔 224 個與 bundled 8 檔通過。
-  - 尚未驗證：真的 Telegram bot、Desktop 上「作息與相簿」卡片與私訊照片的實際畫面。
-- 2026-09-29：Phase 4 以 #189 merge（`d96ea611`）。追查 `provider-telegram-routes` 的「file-backed
-  restart」不穩定測試，確認是產品 bug：`FileChatStore` 的讀取只等待、不持有寫入鎖，卻會在讀取時
-  寫回檔案（初始設定完成時間的修正、ADR-124 的 companion 轉換、備份還原、建立預設檔）。這個寫回
-  若晚於同時進行的儲存才落地，就會把剛存的資料蓋回舊版（測試中被蓋掉的是 Telegram bot 名稱）。
-  修正為讀取只讀；需要寫回時改在同一把寫入鎖內重新讀取再寫。修正後該測試單獨連跑 20 次全數通過
-  （修正前約 15% 失敗）。
-- 2026-09-29：讀取修正以 #193 merge（`8a1e94f0`）。owner 指出「平台抽 6 個檔名」與他的想法不同：
-  指定資料夾後，貓應該能主動存取底下任何檔案。Phase 5 完成（ADR-127 §5、SPEC-124 FR-29～FR-32）。
-  - 測試 harness 的假 runtime 原本把每個 session 的工作目錄固定在系統暫存資料夾下的同一路徑，
-    附件會跨次執行殘留、造成檔名變成 `sunset-3.png`；改為放在每次 harness 自己的暫存資料夾，
-    並設定 `runtimeDataDir`，避免附件複製落到真的 `~/.cats/runtime/data`。
-  - 驗證：`companion-photos`（8，含 `../`、相簿外絕對路徑、指向相簿外的 junction、超過 10 MB）、
-    `companion-heartbeat`（12，含一般回覆從子資料夾送照片、相簿外路徑不送、提示含相簿路徑）、
-    `telegram-work-delivery-bridge`（Telegram 進來的回覆直接送照片）、`transport-fanout` 等，
-    server 26 檔 384 個與 bundled 173 個通過；`tsc` 的 server、desktop、root、test 專案通過
-    （mobile 因工作區未安裝 mobile 依賴未檢查）。
-  - 尚未驗證：真的 provider（Claude、Codex）是否會照提示翻相簿、打開圖片；真的 Telegram bot。
-- 2026-09-29：Phase 5 相簿以 #206 merge（`ac33f5d3`）。Telegram 傳進來的照片（FR-33）完成。
-  - 平台的 Telegram HTTP 層原本把回應一律解成 UTF-8 文字，二進位下載會壞掉；改為保留原始位元組
-    並提供 `arrayBuffer()`。
-  - 下載是 best effort：relay 的 `downloadFile` 失敗一律回 null，bridge 退回原本的附件標示。
-    儲存由 room bridge 選配的 `storeInboundAttachments` 負責，平台不直接依賴 chat 的附件模組。
-  - 驗證：`telegram-inbound-photos`（4，含非 UTF-8 位元組完整、超過上限不下載、存進房間附件資料夾）、
-    `telegram-work-delivery-bridge`（15，含照片以附件區塊交給貓、下載失敗維持標示）、
-    `provider-telegram-routes`、`telegram-*`、`dependency-graph`、`architecture-boundaries` 等，
-    server 19 檔 233 個與 bundled Telegram 測試 64 個通過；`tsc` 的 server、desktop、root 專案通過。
-  - 尚未驗證：真的 Telegram bot 傳照片，以及貓實際打開照片。
-- 2026-09-30：Telegram 照片以 #208 merge（`206e2488`）。拿掉 Telegram 回覆前的房間說明：原本每則回覆
-  都以 `Continuing room "…" in Cats Chat.` 開頭，照片圖說也會帶著。現在只有群組 bot 開新房間時才加
-  `Opened room "…"`；Cat 自己的 bot（私訊 lane）只送他說的話，第一則也不加。
-  - 驗證：`telegram-work-delivery-bridge`（17，含私訊 lane 進行中與第一則訊息都只有 Cat 的話、照片圖說
-    只有回覆文字）、`provider-telegram-routes`（群組開新房間仍有 `Opened room`）等，server 8 檔 181 個與
-    bundled Telegram 測試 66 個通過；`tsc` 的 server 與 test 專案通過（mobile 依賴未安裝）。
+- 2026-09-29: ADR-127, SPEC-124 and PLAN-117 created; Phase 1 started.
+- 2026-09-29: Phase 1 completed.
+  - Also fixed an existing risk in `FileCompanionBoxStore`: writes were not atomic, and on any read error
+    (including reading a half-written file) it overwrote the whole companion data with an empty one. The loop reads once a minute, which amplifies
+    this risk, so it now writes a temp file and renames it, and creates a new file only when the file does not exist; on a corrupt format it reports the error and
+    keeps the original file.
+  - The activity log's render entry now carries the latest event's `metadata`, and the renderer shows `presence_changed` with
+    localized text.
+  - Verification: `tests/companion-life.test.js` (19), `companion-box-store`, `companion-box-routes`,
+    `channel-deactivate`, `config`, `architecture-boundaries` and others, 13 server test files with 286 tests in total, pass;
+    10 renderer-related test files with 43 tests pass. The "file-backed restart" in `provider-telegram-routes`
+    failed once in a combined run and passed on rerun (see the Phase 2 entry for the cause).
+  - Not yet verified: the real-machine Desktop screens (activity log text, the status card updating after the loop wakes him).
+  - Confirmed that all three Desktop entry points for putting him to sleep (the profile page, the DM toolbar, `useDirectLaneCompanionMode`) go through
+    `POST /api/channels/:id/deactivate`, so all of them write `sleepUntil`; entering a DM does not call
+    activation automatically. If you press sleep once during awake hours, he sleeps until the next wake-up time; during that time, if the owner sends a message he still wakes up to
+    reply, and goes back to sleep after 15 minutes of idle.
+  - Known trade-off: a session stuck in `initializing` for more than 15 minutes in the rest period with a quiet lane is also closed.
+- 2026-09-29: Phase 1 merged as #186 (`7e2efe17`). Phase 2 completed.
+  - When the Telegram bridge picks a reply, it skips `companion_heartbeat` messages: when the owner's turn failed and only a
+    heartbeat message was left on the lane, it used to be treated as the reply and sent again (fanout had already sent it).
+  - The "file-backed restart" in `provider-telegram-routes` is an existing flaky test: running alone 10 times each, it failed 1 time before
+    Phase 1 (`19b52694`), 2 times on main after Phase 1 (`7e2efe17`), and 2 times on the Phase 2
+    branch. Every failure was a 4-second timeout in `waitForTelegramLinkedRoom` (a success takes about 1.1 seconds),
+    with a bimodal distribution that looks like a write race rather than slowness; the companion file store is not read or written at all in that test. The difference is
+    within sampling error and is tracked separately.
+  - Verification: `companion-heartbeat` (11), `transport-fanout` (6, including the heartbeat delivered to Telegram once),
+    `telegram-work-delivery-bridge` (11, including a heartbeat not being treated as a reply) and others, 12 server files with 248 tests,
+    35 `provider-telegram-routes` tests and 21 tests in 4 bundled files pass.
+  - Not yet verified: how heartbeat messages look in a real-machine Desktop DM, and a real Telegram bot.
+- 2026-09-29: Phase 2 merged as #187 (`015acac1`). Phase 3 completed.
+  - Fixed the change check for "waking": channel activation also reports `started` for an already-alive session, which would have made the
+    Desktop wake button log an extra "woken by you" entry when he was already awake, and `/wake` would also reply "woke up". It now looks at whether the
+    lead lease was already `ready` before the wake (`activateChannelLocked` returns `leadWasReady`).
+  - Verification: `companion-telegram-duty` (3), `telegram-commands-i18n`, `telegram-work-delivery-bridge`
+    (12, including typing being sent before the turn starts and producing no receipt), `architecture-boundaries`,
+    `provider-telegram-routes` and others, 15 server files with 236 tests and 5 bundled files with 55 tests pass.
+  - Not yet verified: typing and `/sleep` `/wake` on a real Telegram bot.
+- 2026-09-29: Phase 3 merged as #188 (`4ef1386f`). Phase 4 completed.
+  - Verification: `companion-photos` (5, including the bytes actually uploaded via multipart), `transport-fanout` (8, including a heartbeat photo
+    shown as an attachment on Desktop, a photo with a caption received on Telegram, and long text sent as image first and text after), `companion-life`
+    (20, including the album folder having to exist), `companion-life-card`, 12 server files with 224 tests and 8 bundled files pass.
+  - Not yet verified: a real Telegram bot, and the actual screens of the "Rhythm and Album" card and DM photos on Desktop.
+- 2026-09-29: Phase 4 merged as #189 (`d96ea611`). Tracked down the flaky "file-backed
+  restart" test in `provider-telegram-routes` and confirmed it was a product bug: `FileChatStore` reads only waited and did not hold the write lock, yet wrote back to the file
+  during a read (the initial-setup completion time fix, ADR-124's companion conversion, backup restore, creating the default file). If this write-back
+  landed after a concurrent save, it overwrote the just-saved data with the old version (in the test, what got overwritten was the Telegram bot name).
+  Fixed so a read is read-only; when a write-back is needed, it re-reads and then writes inside the same write lock. After the fix, that test run alone 20 times in a row all passed
+  (about 15% failed before the fix).
+- 2026-09-29: The read fix merged as #193 (`8a1e94f0`). The owner pointed out that "the platform picks 6 file names" differs from his idea:
+  once a folder is designated, the Cat should be able to access any file under it on his own. Phase 5 completed (ADR-127 §5, SPEC-124 FR-29–FR-32).
+  - The test harness's fake runtime used to fix each session's working directory at the same path under the system temp folder,
+    so attachments lingered across runs and made file names become `sunset-3.png`; it now sits in each harness's own temp folder,
+    with `runtimeDataDir` set, to keep attachment copies from landing in the real `~/.cats/runtime/data`.
+  - Verification: `companion-photos` (8, including `../`, an absolute path outside the album, a junction pointing outside the album, and over 10 MB),
+    `companion-heartbeat` (12, including an ordinary reply sending a photo from a subfolder, a path outside the album not being sent, and the nudge containing the album path),
+    `telegram-work-delivery-bridge` (a reply coming in on Telegram sends the photo directly), `transport-fanout` and others,
+    26 server files with 384 tests and 173 bundled tests pass; the `tsc` server, desktop, root and test projects pass
+    (mobile was not checked because the workspace has no mobile dependencies installed).
+  - Not yet verified: whether a real provider (Claude, Codex) follows the nudge to browse the album and open images; a real Telegram bot.
+- 2026-09-29: Phase 5 album merged as #206 (`ac33f5d3`). Photos arriving from Telegram (FR-33) completed.
+  - The platform's Telegram HTTP layer used to parse every response as UTF-8 text, which broke binary downloads; it now keeps the raw bytes
+    and provides `arrayBuffer()`.
+  - Downloading is best effort: the relay's `downloadFile` failure always returns null, and the bridge falls back to the original attachment marker.
+    Storage is handled by the room bridge's optional `storeInboundAttachments`; the platform does not depend directly on chat's attachment module.
+  - Verification: `telegram-inbound-photos` (4, including non-UTF-8 bytes kept intact, no download when over the limit, saving into the room attachment folder),
+    `telegram-work-delivery-bridge` (15, including a photo handed to the Cat as an attachment block and a download failure keeping the marker),
+    `provider-telegram-routes`, `telegram-*`, `dependency-graph`, `architecture-boundaries` and others,
+    19 server files with 233 tests and 64 bundled Telegram tests pass; the `tsc` server, desktop and root projects pass.
+  - Not yet verified: a real Telegram bot sending a photo, and the Cat actually opening the photo.
+- 2026-09-30: Telegram photos merged as #208 (`206e2488`). Removed the room note before Telegram replies: every reply used to
+  start with `Continuing room "…" in Cats Chat.`, and photo captions carried it too. Now `Opened room "…"` is added only when a group bot opens a new room;
+  the Cat's own bot (DM lane) sends only what he says, with nothing added to the first message either.
+  - Verification: `telegram-work-delivery-bridge` (17, including a DM lane in progress and the first message both having only the Cat's words, and photo captions
+    having only the reply text), `provider-telegram-routes` (a group opening a new room still has `Opened room`) and others, 8 server files with 181 tests and
+    66 bundled Telegram tests pass; the `tsc` server and test projects pass (mobile dependencies not installed).

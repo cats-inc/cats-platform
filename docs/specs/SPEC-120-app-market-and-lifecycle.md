@@ -11,334 +11,334 @@ their explicit implementation status.
 | Field | Value |
 | --- | --- |
 | Status | Draft implementation contract; catalog schema v1 fixed; unreleased preview Market slice implemented (FR-09) |
-| Owner | cats-platform；App 產物與官方目錄內容由 cats-apps 負責 |
+| Owner | cats-platform; App artifacts and official catalog content are owned by cats-apps |
 | Decision | [ADR-121](../decisions/121-distribute-apps-independently-with-host-owned-lifecycle.md) |
 | Plan | [PLAN-112](../plans/PLAN-112-app-market-and-lifecycle.md) |
-| Baseline | Desktop 0.5.13、SDK 1.3.0、Usage 0.4.0、Studio 本機套件 0.1.0 |
+| Baseline | Desktop 0.5.13, SDK 1.3.0, Usage 0.4.0, Studio local package 0.1.0 |
 
 ## Summary and scope
 
-Related track: [SPEC-121](SPEC-121-managed-plugin-capabilities.md) 另案定義可選裝外部能力
-Plugins，共用適用的安裝治理，但不放寬本 SPEC 的 renderer-only／無 install hook 邊界。
-Agency content pilot 已交付；一般 Plugin SDK／目錄與本 SPEC 的 App Market 仍未實作，
-不能把 pilot 當成共用生命週期契約已完成的證據。
+Related track: [SPEC-121](SPEC-121-managed-plugin-capabilities.md) separately defines optional external capabilities,
+Plugins, which share the applicable installation governance but do not loosen this SPEC's renderer-only / no-install-hook boundary.
+The Agency content pilot has been delivered; the general Plugin SDK / catalog and this SPEC's App Market are still not implemented,
+and the pilot cannot be taken as evidence that the shared lifecycle contract is complete.
 
-讓一般使用者從 Cats Home／Market 安裝、啟用、停用、更新、修復與移除官方 Apps。
-Usage 預裝啟用且保留恢復入口；Studio 選裝，沒有安裝就沒有 Home placeholder。
-同一 App 可獨立發布更新；停用與卸載的資源效果必須可驗證。
+Let ordinary users install, enable, disable, update, repair and remove official Apps from Cats Home / Market.
+Usage is preinstalled and enabled and keeps a recovery entry point; Studio is optional, and without installation there is no Home placeholder.
+The same App can publish updates independently; the resource effects of disabling and uninstalling must be verifiable.
 
-本期包含官方靜態目錄、使用者確認更新、同版本修復、套件清理、資料保留與升級。
-不包含跨 owner 永久資料清除、第三方投稿、付費／評論、跨裝置同步、自動更新、任意 server／worker、影片／修圖，
-也不將 Chat／Work／Code 改成 Apps。SDK／CLI 已有能力不能被當成這些功能的實作證據。
+This phase includes the official static catalog, user-confirmed updates, same-version repair, package cleanup, data retention and upgrade.
+It does not include permanent data purge across owners, third-party submissions, payment / reviews, cross-device sync, automatic updates, arbitrary server / worker, video / image editing,
+and it does not turn Chat / Work / Code into Apps. Existing SDK / CLI capabilities cannot be taken as evidence that these features are implemented.
 
 ## Existing implementation and gaps
 
-| 項目 | 現況 | 本期增加 |
+| Item | Current state | Added in this phase |
 | --- | --- | --- |
-| 套件 | 獨立版本、digest、Platform／SDK 檢查、opaque iframe | 遠端來源驗證與安裝操作協調 |
-| Home | 目前只投影 enabled App 入口 | 宿主固定入口、停用卡片、修復入口 |
-| 停用 | 拒絕後續 bridge；圖片工作要求取消 | 跨視窗主動撤銷、停止完成證據與重啟恢復 |
-| 移除 | registry 標記；`purge` 只移除登記 | 真實套件／快取清理；保留移除意圖 |
-| 修復 | 已有版本會驗證現有 bytes，損壞時失敗 | 經驗證同版重新下載、原子替換 |
-| 預裝 | 保留 disabled／uninstalled 選擇 | 不覆蓋 Market 新版、壞 App 不阻斷 Home |
-| SDK | 宿主內部 private 套件與 browser 型別 | 可獨立取得的開發契約／文件／測試工具 |
-| Market | 未實作 | 官方目錄、版本選擇、下載、更新與恢復 UX |
+| Package | Independent version, digest, Platform / SDK checks, opaque iframe | Remote source verification and install-operation coordination |
+| Home | Currently projects only enabled App entries | Host-fixed entries, disabled cards, a repair entry |
+| Disable | Rejects later bridge calls; image jobs are asked to cancel | Cross-window active revocation, stop-completion evidence and restart recovery |
+| Remove | Registry mark; `purge` only removes the registration | Real package / cache cleanup; keeping the removal intent |
+| Repair | An existing version verifies existing bytes and fails when corrupt | Verified same-version re-download and atomic replacement |
+| Preinstall | Keeps the disabled / uninstalled choice | Does not overwrite a newer Market version; a broken App does not block Home |
+| SDK | Host-internal private package and browser types | An independently obtainable development contract / docs / test tools |
+| Market | Not implemented | Official catalog, version selection, download, update and recovery UX |
 
-現況依本輪 source inspection；不是新增功能的測試結果。
+The current state is based on this round's source inspection; it is not a test result for the new features.
 
-## FR-01 — 出貨與 Home 政策
+## FR-01 — Shipping and Home Policy
 
-Desktop 清單提供 `appId`、`preinstall`、`homePresence: pinned | installed-only`，
-以及供 placeholder 使用的靜態名稱／圖示／說明。政策不放入 App 可自行修改的權限欄位。
-`preinstall` 僅適用尚無使用者選擇的首次初始化，不是每次啟動強制安裝。
+The Desktop manifest provides `appId`, `preinstall`, `homePresence: pinned | installed-only`,
+and the static name / icon / description used by the placeholder. The policy is not placed in permission fields that an App can modify itself.
+`preinstall` applies only to the first initialization with no user choice yet; it is not a forced install on every launch.
 
-| 情境 | Usage：preinstall / pinned | Studio：optional / installed-only |
+| Scenario | Usage: preinstall / pinned | Studio: optional / installed-only |
 | --- | --- | --- |
-| 新 profile 開啟 Home | 已安裝啟用，點擊直接開啟 | 不顯示；Market 可選裝 |
-| 安裝並啟用 | 正常卡片 | 正常卡片 |
-| 停用 | 保留卡片＋已停用；動作「啟用」 | 保留卡片＋已停用；動作「啟用」 |
-| 移除 | placeholder＋未安裝；動作「重新安裝」 | 不顯示；Market 可重新安裝 |
-| 套件損壞／缺少 | 宿主卡片顯示「修復」 | 保留已安裝卡片，顯示「修復」 |
-| 與目前宿主不相容 | 保留卡片，說明需更新 App／Desktop | 保留已安裝卡片，說明下一步 |
+| A new profile opens Home | Installed and enabled; a click opens it directly | Not shown; can be installed from Market |
+| Installed and enabled | Normal card | Normal card |
+| Disabled | Keep the card + disabled; action 「啟用」 ("Enable") | Keep the card + disabled; action "Enable" |
+| Removed | Placeholder + not installed; action 「重新安裝」 ("Reinstall") | Not shown; can be reinstalled from Market |
+| Package corrupt / missing | The host card shows 「修復」 ("Repair") | Keep the installed card, show "Repair" |
+| Incompatible with the current host | Keep the card, explain that the App / Desktop needs updating | Keep the installed card, explain the next step |
 
-點卡片可開宿主管理的詳情／恢復面板；不因點 placeholder 就靜默下載或執行。
-初次正常啟動 Usage 不需 Market 網路。placeholder 不掛載 App iframe、不查 quota、
-不維持 App polling；其小量卡片資料不宣稱為零記憶體。
+Clicking a card can open a host-managed details / recovery panel; clicking a placeholder does not silently download or run anything.
+On the first normal launch, Usage needs no Market network. A placeholder does not mount the App iframe, query quota,
+or keep App polling; its small amount of card data is not claimed to be zero memory.
 
-## FR-02 — Market 與管理 UX
+## FR-02 — Market and Management UX
 
-Home 提供醒目的「探索 Apps」，直接開啟獨立 Desktop Marketplace；商店有探索、已安裝、
-更新與詳情視圖，可直接安裝，不必繞到 Settings。Settings Apps 聚焦已安裝清單、權限、
-機器層級設定、啟停、更新、修復與移除；商店詳情可提供適用操作，兩者共用管理服務與狀態。
-Home 保留既定 App 啟動／恢復卡片。Plugins 使用獨立 Settings 分頁；其 Home 管理捷徑
-若提供則維持小型入口，不限制 Apps 商店的醒目入口。
-詳情顯示名稱、用途、發布者、版本／更新說明、相容性、功能需求、權限與明確操作狀態。
-一般流程不要求使用者輸入檔案路徑、digest、CLI 指令或 API key。
+Home provides a prominent 「探索 Apps」 ("Explore Apps") that directly opens the standalone Desktop Marketplace; the store has Explore, Installed,
+Updates and Details views and can install directly, without a detour through Settings. Settings Apps focuses on the installed list, permissions,
+machine-level settings, enable / disable, update, repair and removal; store details can offer the applicable actions, and the two share the management service and state.
+Home keeps the established App launch / recovery cards. Plugins use a separate Settings tab; their Home management shortcut,
+if provided, remains a small entry and does not limit the prominent entry to the Apps store.
+Details show the name, purpose, publisher, version / update notes, compatibility, feature requirements, permissions and explicit operation state.
+The ordinary flow does not ask users to enter file paths, digests, CLI commands or API keys.
 
-安裝不代表 provider 已準備好。Studio 缺少 Grok 設定／登入時，顯示現有 setup 導引；
-不因安裝而呼叫生圖、切換 provider 選擇或自動安裝 CLI。作品讀取不依賴生成服務在線。
-診斷 hash、路徑、來源與清理詳細資訊放進可展開區域；Settings 操作回饋沿用既有 toast 規則。
+Installing does not mean the provider is ready. When Studio lacks Grok setup / login, the existing setup guidance is shown;
+installation does not trigger image generation, change provider selection or automatically install a CLI. Reading works does not depend on the generation service being online.
+Diagnostic hashes, paths, sources and cleanup details go in an expandable area; Settings operation feedback follows the existing toast rules.
 
 ### Desktop management authorization
 
-所有使用者發起的 install／enable／disable／update／repair／uninstall 與機器層級設定
-變更，必須在宿主管理服務邊界驗證 Desktop management context；拒絕未獲授權的請求時，
-不得改 registry、套件檔案或程序狀態。不能只藏 UI、信任 owner 登入、localhost、Origin
-或前端傳入的環境旗標。一般 browser／remote client 直接呼叫 endpoint 也適用此限制。
-M0 固定 context 的簽發／傳遞、生命週期與撤銷方式，以及拒絕偽造／重播的契約與 fixtures；
-本文件不把目前既有 API 宣稱為已符合要求。
+Every user-initiated install / enable / disable / update / repair / uninstall and every machine-level setting
+change must be verified against the Desktop management context at the host management service boundary; when an unauthorized request is rejected,
+the registry, package files and process state must not change. It is not enough to merely hide the UI, trust the owner login, localhost, the Origin
+or an environment flag passed in by the frontend. This restriction also applies when an ordinary browser / remote client calls the endpoint directly.
+M0 fixes how the context is issued / delivered, its lifecycle and revocation, and the contract and fixtures for rejecting forged / replayed requests;
+this document does not claim that the existing API already meets the requirement.
 
-Desktop Marketplace、Settings 與 Home 恢復操作使用同一授權與生命週期服務，頁面路徑
-不是授權條件。App iframe／SDK 不取得管理權限。Desktop 自有的首次 bundled 初始化
-與重啟調和仍依 FR-01／FR-08 的宿主政策執行，不接受 browser 代為要求執行。
-已安裝 App 能否從授權網頁使用、一般 App 內偏好設定，與此管理限制分開決定。
+Desktop Marketplace, Settings and Home recovery actions use the same authorization and lifecycle service; the page path
+is not an authorization condition. The App iframe / SDK does not obtain management permission. Desktop's own first bundled initialization
+and restart reconciliation still run under the host policy of FR-01 / FR-08, and do not accept a browser requesting them on its behalf.
+Whether an installed App can be used from an authorized web page, and ordinary in-App preferences, are decided separately from this management restriction.
 
-## FR-03 — 版本化狀態與操作協調
+## FR-03 — Versioned State and Operation Coordination
 
-規劃 registry schema 2；至少分開保存以下資訊，不以 Home 是否可見推論執行狀態：
+Plan registry schema 2; store at least the following information separately, and do not infer execution state from whether Home is visible:
 
-| 資訊 | 用途 |
+| Information | Purpose |
 | --- | --- |
-| 安裝內容 | active version／digest、已驗證 rollback 候選、package source 與 artifact identity |
-| 使用者意圖 | enabled／disabled／uninstalled、選用頻道、是否曾手動安裝／移除 |
-| 健康狀態 | ready／missing／corrupt／incompatible；失敗不抹掉意圖與作品 |
-| 來源證據 | bundle pin 或 catalog revision、publisher／key identity；不得自行提升權限 |
-| 未完成操作 | operation ID、kind、stage、previous／target、stop／cleanup 結果 |
-| 授權世代 | 每次停用／移除／版本切換遞增的 activation epoch，綁定所有 App context |
+| Installed content | active version / digest, verified rollback candidates, package source and artifact identity |
+| User intent | enabled / disabled / uninstalled, chosen channel, whether it was ever installed / removed manually |
+| Health state | ready / missing / corrupt / incompatible; a failure does not erase intent or works |
+| Source evidence | bundle pin or catalog revision, publisher / key identity; must not raise permissions by itself |
+| Pending operation | operation ID, kind, stage, previous / target, stop / cleanup results |
+| Authorization generation | an activation epoch incremented on every disable / removal / version switch, bound to all App contexts |
 
-持久化 operation journal 與原子 registry 更新一起構成可恢復協定；不假設兩個檔案能同時提交。
-安裝、更新、修復、移除、bundled reconciliation 對同一 App 串行；多程序／視窗也不可互相覆蓋。
-同一操作 ID 重送回傳同一進度，不重做下載後的發布或 CLI 生成。
-耗時 staging 後必須重查意圖／epoch，再決定能否提交；安裝不能蓋掉期間發生的停用／移除。
-enable 前重新驗證 artifact、權限與 host／SDK 相容，壞包導向修復，不只翻轉旗標。
-停用後再啟用必須發新 context；即使同版本同 hash，舊 iframe 的 epoch 也永遠失效。
+A persistent operation journal together with atomic registry updates forms a recoverable protocol; it does not assume two files can commit at the same time.
+Install, update, repair, removal and bundled reconciliation are serialized for the same App; multiple processes / windows also must not overwrite each other.
+Resending the same operation ID returns the same progress, and does not redo the post-download publishing or the CLI generation.
+After the long-running staging, intent / epoch must be re-checked before deciding whether it can commit; an install cannot overwrite a disable / removal that happened in the meantime.
+Before enable, re-verify the artifact, permissions and host / SDK compatibility; a bad package is directed to repair, not just a flag flip.
+Enabling again after disabling must issue a new context; even with the same version and hash, the old iframe's epoch is permanently invalid.
 
-## FR-04 — 停用與資源停止
+## FR-04 — Disabling and Resource Stop
 
-先持久化 disabled 意圖並拒絕新工作，再撤銷所有該 App 的活躍 iframe／SDK context，
-中止未完成 UI requests、輪詢、timer、subscription，釋放 blob 與 bridge。
-所有已開視窗要收到失效通知；不能等下一次 App 自己 polling 才算停止。
-Usage 已送出的 quota refresh 也要追蹤其 App 所有的工作；共用查詢只撤銷該 App 的訂閱，
-不得取消其他消費者仍在使用的工作。需要的 Runtime contract 納入 M0 明確確認。
+First persist the disabled intent and reject new work, then revoke all active iframe / SDK contexts of that App,
+abort unfinished UI requests, polling, timers and subscriptions, and release blobs and the bridge.
+All open windows must receive an invalidation notice; it does not count as stopped if we wait for the App's own next polling.
+Usage's already-sent quota refresh must also track the work that the App owns; a shared query revokes only that App's subscription,
+and must not cancel work that other consumers are still using. The needed Runtime contract is explicitly confirmed in M0.
 
-如有 App 專屬 Runtime 工作，持久化取消意圖並要求停止原工作。只有取得終止證據才顯示
-「已停止」；timeout／Runtime 離線顯示「已停用，工作停止待確認」，重啟只恢復查詢／取消，
-不新增生成。關閉 App 頁面仍沿用既有背景任務契約，與停用不同。
-不停止共用 Runtime、Chat／Work／Code、CLI 安裝或其他 App 的工作。
+If an App has App-specific Runtime work, persist the cancel intent and ask to stop the original work. Show
+"stopped" only when termination evidence is obtained; on timeout / Runtime offline show "Disabled, work stop pending confirmation", and a restart only resumes querying / canceling,
+and adds no generation. Closing the App page still follows the existing background-task contract, which is different from disabling.
+It does not stop the shared Runtime, Chat / Work / Code, the CLI installation or other Apps' work.
 
-## FR-05 — 卸載與磁碟回收
+## FR-05 — Uninstall and Disk Reclamation
 
-卸載先執行 FR-04，再讓 active package 不可執行。沒有活動使用者後，清除 App 受管理的
-所有版本副本、staging、下載快取與修復隔離副本；保留小量 uninstalled tombstone。
-共享 digest cache 只可在沒有其他引用時清除。所有刪除必須驗證實際路徑位於 App 管理根目錄，
-拒絕 symlink／junction 逸出；不能將 manifest／renderer 提供的任意路徑當刪除目標。
+Uninstall first runs FR-04, then makes the active package non-executable. Once there are no active users, it clears all of the App-managed
+version copies, staging, download cache and repair quarantine copies, and keeps a small uninstalled tombstone.
+A shared digest cache may be cleared only when nothing else references it. Every deletion must verify that the real path lies under the App management root,
+and reject symlink / junction escapes; an arbitrary path provided by the manifest / renderer cannot be used as a deletion target.
 
-檔案鎖住或工作仍可能運行時，先撤銷存取，保留 cleanup pending 並安全重試；不得聲稱空間已釋放。
-清理失敗不復活 App。診斷分開記錄實際移除的邏輯 bytes、待清 bytes、保留資料 bytes，
-不把壓縮／共享區塊推估稱成實際 OS 可用空間增量。
+When a file is locked or work may still be running, first revoke access, keep cleanup pending and retry safely; it must not claim that space has been freed.
+A cleanup failure does not resurrect the App. Diagnostics record separately the logical bytes actually removed, bytes pending cleanup and bytes of retained data,
+and do not present estimates of compression / shared blocks as an actual increase in free OS space.
 
-Desktop resources 內附 Usage 恢復包仍保留，不修改已簽章的安裝內容；其 bytes 不列入回收。
-Runtime 共用用量記錄也保留。Usage 未開啟時本來就無頁面輪詢，不能保證顯著 CPU／RAM 下降。
+The Usage recovery package bundled in Desktop resources is still kept, and the signed installation contents are not modified; its bytes are not counted as reclaimed.
+The Runtime shared usage records are also kept. Usage has no page polling when it is not open anyway, so a significant CPU / RAM drop cannot be guaranteed.
 
-## FR-06 — 使用者資料與刪除
+## FR-06 — User Data and Deletion
 
-安裝內容與資料分離；預設卸載保留設定、作品與必要歷史，重裝同 ID 可接回。
-Studio 作品與 Core task/run/artifact 由 Platform 管理，Runtime receipt 由 Runtime 管理，
-不能用刪除 `apps/data` 代替所有資料清除，也不能直接刪 Runtime 目錄。
-provider 原始 session、憑證與共用遙測不屬於 App 卸載的可刪除範圍。
+Installed content and data are separate; by default, uninstall keeps settings, works and necessary history, and a reinstall with the same ID can reconnect them.
+Studio works and Core task/run/artifact are managed by Platform, and Runtime receipts are managed by Runtime;
+deleting `apps/data` cannot substitute for all data purging, and the Runtime directory cannot be deleted directly.
+Raw provider sessions, credentials and shared telemetry are not within the scope that an App uninstall may delete.
 
-第一版卸載明示「保留作品與設定」，不提供可執行的永久資料刪除選項；重裝必須能接回。
-若管理詳情提到資料清除，只能清楚標示尚未提供，不能把目前的 registry `purge` 包裝成它。
+The first version of uninstall states explicitly "keeps works and settings" and offers no executable permanent data deletion option; a reinstall must be able to reconnect.
+If the management details mention data purge, they may only clearly mark it as not yet provided, and the current registry `purge` must not be packaged as it.
 
-完整「刪除 App 資料」另列後續 scope：先建立各資料 owner 的 scoped deletion／retention
-契約，預覽帳號／profile、會刪的作品與保留的共用／稽核資訊，再由 owner 確認。
-停止工作、封鎖競爭寫入後才清理，處理共享引用並留下可恢復進度；部分失敗顯示剩餘項目。
-其跨 owner 刪除／恢復驗收是後續獨立 gate，不阻擋第一版保留資料的卸載；不得宣稱清掉一切痕跡。
+A full "delete App data" is listed as later scope: first establish a scoped deletion / retention contract for each data owner,
+preview the account / profile, the works to be deleted and the shared / audit information to be kept, and then have the owner confirm.
+Clean up only after stopping work and blocking competing writes, handle shared references and leave recoverable progress; on a partial failure show the remaining items.
+Its cross-owner deletion / recovery acceptance is a later independent gate, and does not block the first version's data-retaining uninstall; it must not claim to have cleared every trace.
 
-## FR-07 — 安裝、更新、修復與回復
+## FR-07 — Install, Update, Repair and Rollback
 
-所有來源走同一 staged validation／activation 服務，沿用大小界限、manifest、digest、
-permissions、Platform／SDK 相容檢查；無 install hook、npm install、動態遠端程式或 shell。
-下載後的 manifest identity、版本、相容範圍與權限必須與目錄已驗證項目一致；
-不得先展示較少權限再啟用要求更多權限的套件。無相容候選時保留目前可用版，說明需更新
-Desktop 或等待相容 App；不能以略過檢查解決。
+All sources go through the same staged validation / activation service, reusing the size limits, manifest, digest,
+permissions and Platform / SDK compatibility checks; there is no install hook, npm install, dynamic remote code or shell.
+After download, the manifest identity, version, compatibility range and permissions must be consistent with the entry verified in the catalog;
+a package that first shows fewer permissions and then requests more on enable must not be allowed. When there is no compatible candidate, keep the currently usable version and explain that Desktop
+must be updated or that a compatible App must be awaited; it cannot be resolved by skipping checks.
 
-更新由使用者確認。版本選擇只採目錄允許且符合 host／SDK 的精確版本；新增權限要重新確認，
-舊授權不可自動擴張。活動工作期間顯示等待結束，或由使用者選擇停止後更新，不能靜默中斷。
-下載可與工作並行，但停止／啟用切換與資料轉換必須持有操作鎖。
+Updates are confirmed by the user. Version selection uses only exact versions that the catalog allows and that match the host / SDK; new permissions need reconfirmation,
+and old grants cannot be widened automatically. While work is active, show waiting for it to end, or let the user choose to stop and then update; it must not interrupt silently.
+Download can run in parallel with work, but stop / enable switching and data conversion must hold the operation lock.
 
-修復優先還原已安裝版的可信 digest；同版原始 bytes 可替換損壞副本，不容許新內容冒用版本。
-先驗證新副本，保留故障現場的有限 metadata，原子切換後清除隔離 bytes；失敗保留資料與
-修復入口。同版無可信來源或已撤回時，明確改選相容修正版；不信任損壞副本自帶的 hash。
+Repair first restores the trusted digest of the installed version; the original bytes of the same version can replace a corrupt copy, and new content is not allowed to pose as that version.
+Verify the new copy first, keep limited metadata of the failure scene, clear the quarantined bytes after an atomic switch; on failure keep the data and
+the repair entry. When the same version has no trusted source or has been withdrawn, explicitly switch to a compatible fixed version; the hash carried by a corrupt copy is not trusted.
 
-僅 retained、verified、相容且未撤回的候選可用於 rollback。資料若已升級，必須有經驗證的
-一致備份／還原路徑；不得只降程式版本讀新資料，也不得丟掉升級後新增作品。
-既有 renderer／host-owned data slice 的必要轉換由資料 owner 的宿主版本交付。
-新增 App-owned data 依 SPEC-122 由 App 套件提供受信任、版本化且限該 App 資料的
-migration hooks，Platform 協調鎖定、備份、驗證與原子啟用／恢復；App schema 更新
-不必因此發布新的宿主版本。這是受限資料升級契約，不開放任意 install hook、shell
-或 install-time npm build；相關執行能力尚未實作。
+Only retained, verified, compatible and non-withdrawn candidates can be used for rollback. If the data has already been upgraded, there must be a verified
+consistent backup / restore path; one must not just downgrade the program version to read the new data, nor discard works added after the upgrade.
+The necessary conversion of existing renderer / host-owned data slices is delivered by the data owner's host version.
+New App-owned data follows SPEC-122: the App package provides trusted, versioned migration hooks limited to that App's data,
+and Platform coordinates locking, backup, validation and atomic activation / recovery; an App schema update
+need not publish a new host version because of this. This is a restricted data upgrade contract, and it does not open arbitrary install hooks, shell
+or install-time npm build; the related execution capability is not yet implemented.
 
-## FR-08 — 預裝調和與損壞隔離
+## FR-08 — Preinstall Reconciliation and Corruption Isolation
 
-| 本機狀態 | Desktop 啟動／升級 |
+| Local state | Desktop launch / upgrade |
 | --- | --- |
-| 尚無選擇且為預裝 App | 驗證本機 bundled pin 後安裝啟用 |
-| 手動移除 | 保留移除；Usage placeholder 仍在 |
-| 已停用 | 保持停用；不自動更新既有安裝 |
-| 已有可用版本 | 保留；bundled 更新作為手動更新候選，不覆蓋 Market 新版 |
-| 已損壞或不相容 | 隔離 App、保留意圖／資料；Home 顯示修復，不靜默降版 |
+| No choice yet and a preinstalled App | Verify the local bundled pin, then install and enable |
+| Manually removed | Keep it removed; the Usage placeholder remains |
+| Disabled | Stay disabled; do not automatically update the existing installation |
+| A usable version exists | Keep it; the bundled update becomes a manual update candidate and does not overwrite a newer Market version |
+| Corrupt or incompatible | Isolate the App, keep intent / data; Home shows repair and does not silently downgrade |
 
-App bundle 的內容錯誤必須對 App fail closed，但不能令整個 Home／Market 無法啟動。
-新出貨產物仍須通過嚴格 bundle gate；runtime 恢復能力不放寬發布檢查。
-修復／重裝可從可信 bundled 包離線恢復相容 Usage，或選 Market 中的相容版本。
-較舊 bundled 包的恢復需要明示版本與資料相容性，不能假裝是原版修復。
+A content error in an App bundle must fail closed for that App, but must not make the whole Home / Market unable to start.
+Newly shipped artifacts must still pass the strict bundle gate; runtime recovery does not loosen release checks.
+Repair / reinstall can restore a compatible Usage offline from the trusted bundled package, or choose a compatible version in Market.
+Restoring from an older bundled package needs the version and data compatibility stated explicitly, and cannot pretend to be a repair of the original version.
 
-## FR-09 — 官方 Catalog 與信任
+## FR-09 — Official Catalog and Trust
 
-規劃由 cats-apps 維護靜態 metadata，Platform 提供 consumer 與內建信任根。
-Catalog 包含 schemaVersion、遞增 revision、issuedAt／expiresAt、publisher、App 清單、
-stable／preview 精確版本選擇，以及每版本的 artifact URL／size／SHA-256、manifest identity、
-相容範圍、權限、release notes 與 withdrawal 狀態。不得用 GitHub repo-wide latest 推斷 App 版本。
+Plan for cats-apps to maintain the static metadata and Platform to provide the consumer and the built-in trust root.
+The catalog contains schemaVersion, an increasing revision, issuedAt / expiresAt, publisher, the App list,
+exact stable / preview version selections, and per version the artifact URL / size / SHA-256, manifest identity,
+compatibility range, permissions, release notes and withdrawal state. A GitHub repo-wide latest must not be used to infer App versions.
 
-第一期採 Ed25519 簽署固定 payload bytes 的 envelope（algorithm、keyId、base64 payload、
-signature）；驗章先於信任內容，拒絕未知 schema／key／algorithm、重複 ID／版本、非法尺寸。
-傳輸、解碼、下載均有大小與時間上限；實作前在契約 fixtures 固定界限，沿用套件既有上限。
-Host 保存最高已驗證 revision 防 rollback，檢查有效期限。換 key 須經既有信任根授權，
-不得接受同一未知目錄提供的新 key；保留宿主更新提供緊急換根的路徑。
+The first phase uses an Ed25519-signed envelope over fixed payload bytes (algorithm, keyId, base64 payload,
+signature); verify the signature before trusting the content, and reject unknown schema / key / algorithm, duplicate IDs / versions and illegal sizes.
+Transport, decoding and download all have size and time limits; before implementation, fix the bounds in contract fixtures, reusing the package's existing limits.
+The host stores the highest verified revision to prevent rollback, and checks the validity period. A key change must be authorized by the existing trust root,
+and a new key offered by the same unknown catalog must not be accepted; keep a path for a host update to provide an emergency root change.
 
-目錄／artifact 只由宿主下載，限制 HTTPS、允許的官方 endpoint 與 redirect 目的地，
-禁止 loopback／私網與任意 URL 代理。簽章證明目錄來源，hash 綁定 artifact；兩者都需驗證。
-Catalog 是官方來源，不授予 `system` 特權；local-user 套件不因 ID 相同而成為官方，
-切換來源要由使用者確認並驗證 artifact，不能下載即覆蓋同 ID 的本機開發 App。
+The catalog / artifacts are downloaded by the host only, limited to HTTPS, allowed official endpoints and redirect destinations,
+and loopback / private networks and arbitrary URL proxies are forbidden. The signature proves the catalog source and the hash binds the artifact; both must be verified.
+The catalog is an official source and does not grant `system` privileges; a local-user package does not become official because it has the same ID,
+and switching the source requires user confirmation and artifact verification; a download must not overwrite a local development App with the same ID.
 
-離線可用最後驗證的目錄作為帶時間的瀏覽資料，已安裝 App／作品照常開啟。
-過期目錄不能授權新的遠端安裝／更新；可信 bundled 離線恢復不依賴網路目錄。
-版本撤回阻止新安裝／更新／修復使用該版；已安裝者顯示通知與替代版，不遠端刪作品。
-已知撤回同樣適用本機 cache／bundled 恢復候選，離線不能抹掉已知撤回紀錄。
-第一期不提供強制遠端 kill switch；未連線時也不能保證即時得知撤回。
+Offline, the last verified catalog can be used as time-stamped browsing data, and installed Apps / works open as usual.
+An expired catalog cannot authorize new remote installs / updates; trusted bundled offline recovery does not depend on the network catalog.
+Withdrawing a version blocks new installs / updates / repairs from using it; installed copies show a notice and a replacement version, and works are not deleted remotely.
+Known withdrawals equally apply to local cache / bundled recovery candidates, and offline cannot erase a known withdrawal record.
+The first phase offers no forced remote kill switch; without a connection, immediate knowledge of a withdrawal also cannot be guaranteed.
 
-### 第一期發布端點與簽章 key（2026-10-20 owner 決定）
+### First-Phase Publishing Endpoint and Signing Key (owner decision, 2026-10-20)
 
-先以 GitHub 網址盡快驗證 Market；自有網域等確定後再處理。
+Use GitHub URLs first to validate Market as soon as possible; handle an owned domain after it is decided.
 
-- Artifact 沿用 cats-apps 各 App 的 immutable GitHub Release（`<slug>-vX.Y.Z` tag），
-  catalog 中每版本的 artifact URL 指向該 release asset。
-- Catalog envelope 由 cats-apps 的 GitHub Pages 提供，例如
-  `https://cats-inc.github.io/cats-apps/catalog/v1/catalog.json`；確切路徑隨 M0 envelope 固定。
-  Pages 已於 2026-10-20 以 GitHub Actions 為 source 啟用，只允許從 `main` 部署。Promotion 以 PR 修改 catalog 來源，合併後由 CI 簽章並部署，
-  git 歷史即推廣紀錄。
-- 不用固定 tag 的 rolling release 放 catalog：每次推廣都要修改已發布 Release，違反 release
-  完成規範，換 asset 時也會暫時缺檔。用戶端不呼叫 `api.github.com` 列 releases，以免受未驗證
-  請求的速率限制影響。
-- 正式簽章 key 先存於 cats-apps 的 GitHub Actions secret。這只防 Pages 或傳輸遭竄改，不防
-  repo／workflow 被入侵；改為需人工核准的 environment 或離線簽章屬後續強化。
-- 官方 endpoint 內建於 Desktop；日後改用自有網域或其他主機，需先發布帶新 endpoint 的 Desktop。
+- Artifacts reuse the immutable GitHub Releases of each cats-apps App (`<slug>-vX.Y.Z` tags),
+  and each version's artifact URL in the catalog points to that release asset.
+- The catalog envelope is served by cats-apps's GitHub Pages, for example
+  `https://cats-inc.github.io/cats-apps/catalog/v1/catalog.json`; the exact path is fixed along with the M0 envelope.
+  Pages was enabled on 2026-10-20 with GitHub Actions as its source, and deploys only from `main`. Promotion edits the catalog source through a PR, and after merging CI signs and deploys,
+  so git history is the promotion record.
+- Do not put the catalog in a rolling release with a fixed tag: every promotion would have to modify a published Release, violating the release
+  completion rule, and swapping assets would also leave files temporarily missing. The client does not call `api.github.com` to list releases, so it is not affected by the rate limit on unauthenticated
+  requests.
+- The production signing key is first stored in a cats-apps GitHub Actions secret. This only protects against tampering with Pages or transport, not against a compromised
+  repo / workflow; moving to an environment needing manual approval, or to offline signing, is later hardening.
+- The official endpoint is built into Desktop; if an owned domain or another host is used later, a Desktop carrying the new endpoint must be published first.
 
-### Catalog schema v1（2026-10-20 固定）
+### Catalog schema v1 (fixed 2026-10-20)
 
-Producer 為 cats-apps `scripts/build-catalog.mjs`（[Apps SPEC-005](../../../cats-apps/docs/specs/SPEC-005-official-app-catalog.md)），
-consumer 為 `src/platform/apps/catalog.ts`。兩邊共用 `tests/fixtures/app-catalog/` 的 contract vector：
-cats-apps 以 test-only key 重現同一份 envelope，Platform 驗章後須得到同一份 payload。
+The producer is cats-apps `scripts/build-catalog.mjs` ([Apps SPEC-005](../../../cats-apps/docs/specs/SPEC-005-official-app-catalog.md)),
+and the consumer is `src/platform/apps/catalog.ts`. Both sides share the contract vectors in `tests/fixtures/app-catalog/`:
+cats-apps reproduces the same envelope with a test-only key, and Platform must obtain the same payload after verifying the signature.
 
-- Envelope：`{ algorithm: "ed25519", keyId, payload, signature }`。`payload` 是 UTF-8 JSON bytes 的
-  base64，`signature` 是對這些 bytes 的 Ed25519 簽章；consumer 不重新序列化。
-- Payload：`schemaVersion: 1`、`revision`、`issuedAt`、`expiresAt`、`publisher { name, homepage? }`、`apps[]`。
-- App：`id`、`displayName`、`description`、`icon`（字串或 null）、`channels { stable, preview? }`、`versions[]`。
-- Version：`version`、`artifact { url, size, sha256 }`、`compatibility { catsPlatform, appSdk }`、`permissions[]`、
-  `publisher`、`notes`（可為空字串）、`withdrawn { reason, at }?`。artifact URL 必須是 cats-apps 的
-  `<slug>-vX.Y.Z` release asset；channel 不能指向未列出或已撤回的版本。
-- 驗證順序：大小上限 → algorithm → 已信任 keyId → base64 解碼（payload 上限 256 KiB）→ 簽章 →
-  JSON → schema → `revision` 不得低於已驗證最高值（相等可接受）→ 有效期限。
-- `revision` 為 `issuedAt` 的 epoch 秒；`expiresAt = issuedAt + 30 天`。Publish workflow 每週重簽，
-  並以 concurrency group 保持 revision 遞增；只在 `main` 且簽章輸入仍與 `main` 相同時簽章。
-- Consumer 要求 `revision` 等於 `issuedAt` 秒數、有效期不超過 31 天，並拒絕 `issuedAt` 晚於宿主時間
-  一天以上的目錄；否則單一錯誤目錄就能永久抬高 rollback 下限或讓期限失效。
-- Producer 對來源檔嚴格（未知欄位即失敗）；consumer 接受並丟棄未知欄位，讓 v1 可加選用資料。
-  不相容的格式改用新 `schemaVersion` 與新路徑（`catalog/v2/`）。
-- 宿主狀態存於 `<platformDir>/apps/catalog-state.json`：最高已驗證 revision、最後驗證的 envelope、
-  取得時間與 Market 安裝來源紀錄。這是新增的自述檔案，不改既有 registry 格式；每次讀取都重新驗章。
-  檔案損毀時先備份為 `catalog-state.json.corrupt-<time>` 再重建（最高 revision 與安裝來源因此重設）；
-  其他讀取失敗或較新 Desktop 寫入的未知 schema 一律不覆寫，Market 顯示無法使用。
+- Envelope: `{ algorithm: "ed25519", keyId, payload, signature }`. `payload` is the base64 of the UTF-8 JSON bytes,
+  and `signature` is the Ed25519 signature over those bytes; the consumer does not re-serialize.
+- Payload: `schemaVersion: 1`, `revision`, `issuedAt`, `expiresAt`, `publisher { name, homepage? }`, `apps[]`.
+- App: `id`, `displayName`, `description`, `icon` (a string or null), `channels { stable, preview? }`, `versions[]`.
+- Version: `version`, `artifact { url, size, sha256 }`, `compatibility { catsPlatform, appSdk }`, `permissions[]`,
+  `publisher`, `notes` (may be an empty string), `withdrawn { reason, at }?`. The artifact URL must be a cats-apps
+  `<slug>-vX.Y.Z` release asset; a channel cannot point to an unlisted or withdrawn version.
+- Verification order: size limit → algorithm → trusted keyId → base64 decode (payload limit 256 KiB) → signature →
+  JSON → schema → `revision` must not be lower than the highest verified value (equal is acceptable) → validity period.
+- `revision` is the epoch seconds of `issuedAt`; `expiresAt = issuedAt + 30 days`. The publish workflow re-signs weekly,
+  and keeps revision increasing with a concurrency group; it signs only on `main` and only when the signing inputs are still the same as `main`.
+- The consumer requires `revision` to equal the `issuedAt` seconds and the validity period to be no more than 31 days, and rejects a catalog whose `issuedAt` is later than the host time
+  by more than one day; otherwise a single erroneous catalog could permanently raise the rollback floor or invalidate the expiry.
+- The producer is strict about source files (an unknown field fails); the consumer accepts and discards unknown fields so v1 can add optional data.
+  An incompatible format uses a new `schemaVersion` and a new path (`catalog/v2/`).
+- Host state is stored in `<platformDir>/apps/catalog-state.json`: the highest verified revision, the last verified envelope,
+  the fetch time and the Market install source records. This is a new self-describing file and does not change the existing registry format; the signature is re-verified on every read.
+  When the file is corrupt, it is first backed up as `catalog-state.json.corrupt-<time>` and then rebuilt (so the highest revision and install sources are reset);
+  any other read failure, or an unknown schema written by a newer Desktop, is never overwritten, and Market shows as unavailable.
 
-### Preview slice（2026-10-20，未發布）
+### Preview slice (2026-10-20, unreleased)
 
-為了先驗證 Market，Platform 交付下列最小範圍；本 SPEC 其餘要求與驗收仍未完成：
+To validate Market first, Platform delivers the following minimal scope; the rest of this SPEC's requirements and acceptance remain incomplete:
 
-- `GET /api/apps/_market[?refresh=1]` 與 `POST /api/apps/_market/install { id }`，與既有安裝同樣需要
-  Desktop management authority。`_` 開頭不會與任何 App ID 衝突，因此不必新增 reserved ID 或變更 SDK。
-- `/lobby/market` 頁面與 Home 的「探索 Apps」卡片，只在 Desktop 顯示；瀏覽器只看到 Desktop-only 說明。
-- 只讀 `channels.stable`；server 目前不知道 Desktop 的 preview／stable 發行通道。
-- 安裝請求帶著使用者看到的版本與權限；目錄在此期間改變時回 409 `catalog_changed`，不安裝任何東西。
-- 安裝與更新沿用既有 `local-package` installer（trust tier `local-user`），並在下載前檢查相容性、
-  下載後比對 SHA-256、manifest identity、權限、相容範圍與發行者。更新保留安裝當下的啟用狀態。
-- 已安裝的副本若不是本機從目錄安裝的（以記錄的 digest 判斷），更新確認會明示將取代非 Market 安裝。
-- Desktop bundle lock（`CATS_APP_BUNDLE_PATH`）列出的 App，以及 registry 中曾由 bundle 安裝的 App，
-  都顯示「隨 Cats Desktop 提供」且不可從 Market 安裝或更新，因為 FR-08 的 bundled reconciliation
-  尚未改寫，下次啟動會覆蓋 Market 版本。
-- 尚未提供：registry schema 2／operation journal、活動工作的延後或停止選擇、舊版本目錄回收、
-  bundled App 的 Market 更新、preview channel。
+- `GET /api/apps/_market[?refresh=1]` and `POST /api/apps/_market/install { id }`, which need Desktop management authority just like the existing install.
+  A leading `_` cannot collide with any App ID, so no reserved ID or SDK change is needed.
+- The `/lobby/market` page and the Home card 「探索 Apps」 ("Explore Apps") are shown only on Desktop; a browser sees only a Desktop-only notice.
+- Only `channels.stable` is read; the server does not currently know Desktop's preview / stable release channel.
+- The install request carries the version and permissions the user saw; if the catalog changes in the meantime, it returns 409 `catalog_changed` and installs nothing.
+- Install and update reuse the existing `local-package` installer (trust tier `local-user`), checking compatibility before download,
+  and after download comparing SHA-256, manifest identity, permissions, compatibility range and publisher. An update keeps the enabled state at the time of install.
+- If the installed copy was not installed locally from the catalog (judged by the recorded digest), the update confirmation states explicitly that it will replace a non-Market installation.
+- Apps listed in the Desktop bundle lock (`CATS_APP_BUNDLE_PATH`), and Apps in the registry that were ever installed from the bundle,
+  all show 「隨 Cats Desktop 提供」 ("Provided with Cats Desktop") and cannot be installed or updated from Market, because FR-08's bundled reconciliation
+  has not been rewritten yet and the next launch would overwrite the Market version.
+- Not yet provided: registry schema 2 / operation journal, the defer-or-stop choice for active work, reclaiming old version directories,
+  Market updates for bundled Apps, the preview channel.
 
-## FR-10 — SDK 與相容性
+## FR-10 — SDK and Compatibility
 
-SDK 型別／能力定義／文件／隔離測試工具可獨立版本化取得，開發者不依賴 sibling source。
-宿主仍注入唯一執行 bridge，App 套件不捆綁另一份特權實作。
-保留既有 manifest `catsPlatform` 與 `appSdk` 的雙重驗證，沿用目前有限版本語法；
-能力是否可用另經 Runtime projection，不靠 App 版本猜測 provider 可用性。
+SDK types / capability definitions / docs / isolated test tools can be obtained with independent versions, so developers do not depend on sibling source.
+The host still injects the only execution bridge, and App packages do not bundle another privileged implementation.
+Keep the existing double verification of manifest `catsPlatform` and `appSdk`, reusing the current limited version syntax;
+whether a capability is available goes separately through the Runtime projection, and provider availability is not guessed from the App version.
 
-新增能力以相容 SDK minor 交付；breaking SDK 契約需要下一 major。套件壓縮格式與現有
-SDK 1.3 image methods 本期可保留；Market 管理 API 屬宿主，不自動暴露給每個 App。
-開發工具對 Usage／Studio 的 minimum-host 與 candidate-host 都跑契約 fixtures。
-開發 SDK 的可取得產物與 npm 發布是另有發布範圍的交付，不因寫文件執行 publication。
+New capabilities are delivered in a compatible SDK minor; a breaking SDK contract needs the next major. The package compression format and the existing
+SDK 1.3 image methods can be kept in this phase; the Market management API belongs to the host and is not automatically exposed to every App.
+Development tools run contract fixtures against both the minimum-host and candidate-host of Usage / Studio.
+Obtainable artifacts of the development SDK and npm publication are a delivery with its own release scope, and writing documents does not run publication.
 
-取得方式依 [ADR-123](../decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)（第一階段已實作、未發布）
-分階段：第一階段由 Platform npm 的 `@cats-inc/cats-platform/app-sdk` subpath 提供 allowlist
-契約，包含型別、安裝器所用的同一套驗證與跨 OS byte-deterministic 的官方 encoder，不公開
-`browser.js` bridge 與宿主專用函式；第三方開發啟動後，再從同一目錄獨立發布
-`@cats-inc/app-sdk`。`exports` 隨 0.6.0 minor 只允許 `.`、`./package.json` 與 `./app-sdk`。
+Per [ADR-123](../decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md) (first stage implemented, unreleased),
+the way to obtain it is staged: the first stage provides an allowlist contract through the Platform npm `@cats-inc/cats-platform/app-sdk` subpath,
+including the types, the same validation the installer uses and the cross-OS byte-deterministic official encoder, and does not expose the
+`browser.js` bridge and host-only functions; after third-party development starts, `@cats-inc/app-sdk` is published independently from the same directory.
+With the 0.6.0 minor, `exports` allows only `.`, `./package.json` and `./app-sdk`.
 
-## FR-11 — 現有 profile 升級與版本界線
+## FR-11 — Upgrading Existing Profiles and Version Boundary
 
-registry schema 1 → 2 必須驗證、備份、原子替換、故障可恢復，重啟不可重複套用。
-enabled／disabled／uninstalled 映射保留，manifest-only 未驗證項目不得變成可執行。
-不再把 `purge` 解讀成刪除 tombstone；舊資料清空登記後無法確知過去意圖，
-升級既有 profile 時保守地不對這類缺席 App 自動預裝，供 Usage placeholder 明確重裝。
-新 minor 對舊 `purge=true` 管理請求明確回報不支援並指向一般卸載；不默默清登記，
-也不把該參數改作尚未交付的永久資料刪除。這是管理 API 的 breaking boundary。
-新 profile 的首次初始化必須有可辨識、可恢復的 bootstrap marker。
+The registry schema 1 → 2 migration must validate, back up, replace atomically and be recoverable on failure, and must not be applied twice on restart.
+The enabled / disabled / uninstalled mapping is kept, and manifest-only unverified entries must not become executable.
+`purge` is no longer interpreted as deleting a tombstone; once old data has emptied the registration, past intent cannot be known,
+so when upgrading an existing profile, such absent Apps are conservatively not preinstalled automatically, leaving the Usage placeholder for an explicit reinstall.
+The new minor explicitly reports an old `purge=true` management request as unsupported and points to the ordinary uninstall; it does not silently clear the registration,
+and does not repurpose that parameter as an undelivered permanent data deletion. This is a breaking boundary of the management API.
+The first initialization of a new profile must have an identifiable, recoverable bootstrap marker.
 
-既有本機 Studio 保留相同 ID、啟用選擇、版本／hash 與既有作品／job ID。
-它不再受預設 bundle 清單管理；轉接官方更新來源需要可信 identity 與使用者確認，
-不能為轉接先移除作品或重送生成。未知 schema 原樣保留並提供宿主恢復指引。
+An existing local Studio keeps the same ID, enabled choice, version / hash and existing work / job IDs.
+It is no longer managed by the default bundle list; moving it to the official update source needs a trusted identity and user confirmation,
+and works must not be removed or generation resent in order to move it. An unknown schema is kept as is, with host recovery guidance provided.
 
-schema 2 無法由舊 host 安全解讀，規劃下一個 Platform／Desktop 0.x minor 邊界
-（原以 0.5.13 為基線定為 0.6.0；2026-09-29 #171 的 companion 遷移已使用 0.6.0，
-schema 2 改為 0.6.0 之後的下一個 minor）。舊執行檔不能直接使用已升級 profile。
-Usage／Studio 的 ^0.5 範圍不接受 0.6，需另發布正確相容範圍的 immutable App 版本；
-不可覆寫舊 artifact 或略過 compatibility check。發版時重新核對當時實際版本與其他團隊進度。
+Schema 2 cannot be safely read by an old host, so plan the next Platform / Desktop 0.x minor boundary
+(originally set to 0.6.0 on the 0.5.13 baseline; the companion migration of #171 on 2026-09-29 already used 0.6.0,
+so schema 2 becomes the next minor after 0.6.0). An old executable cannot use an upgraded profile directly.
+The ^0.5 range of Usage / Studio does not accept 0.6, so an immutable App version with the correct compatibility range must be published separately;
+an old artifact must not be overwritten and the compatibility check must not be skipped. At release time, re-check the actual version then and the other teams' progress.
 
 ## Acceptance matrix
 
-| ID | 必須驗證的結果 | 方法 |
+| ID | Result that must be verified | Method |
 | --- | --- | --- |
-| AC-01 | 新 profile 離線可開 Usage；Studio 無 Home 卡片 | 真實 built bundles＋隔離 Desktop |
-| AC-02 | Usage 停用／移除／重啟後 placeholder 正確；明確重裝成功 | Home／Market 整合 |
-| AC-03 | Studio 安裝／停用保留卡片／移除消失／重裝接回作品 | App 套件＋fixture Runtime |
-| AC-04 | 所有視窗撤銷，timer／bridge／訂閱消失；未知取消不假稱完成；重啟用不復活舊 epoch | 多視窗、quota in-flight、假程序、斷線與重啟 |
-| AC-05 | 套件與快取實際刪除；資料與 bundled archive 保留 | 前後檔案清單／bytes／引用檢查 |
-| AC-06 | file lock、symlink／junction、清理中重啟不誤刪且可恢復 | 各 OS 真實暫存 filesystem |
-| AC-07 | 已損壞同版可修復；錯 hash 拒絕；Home 仍可操作 | 獨立損壞 fixture、failed activation |
-| AC-08 | Desktop 舊 bundle 不降版／復活 App；離線恢復明示版本 | 先 Market 更新再升級 Desktop |
-| AC-09 | 更新途中斷線／崩潰／權限增加／活動工作皆正確處理；install/update/repair 不覆蓋並行 disable/uninstall | transaction fault injection |
-| AC-10 | 假簽章、過期／replay 目錄、任意 URL／redirect、撤回版本遭拒 | downloader／catalog 邊界 tests |
-| AC-11 | schema 1→2 保留意圖與作品；失敗原檔可恢復；重跑安全 | migration fixtures＋backup hashes |
-| AC-12 | 新 SDK 不破壞既有 App；不相容 App 安裝前攔下 | minimum/candidate host 契約測試 |
-| AC-13 | 新 Studio artifact 可更新同一宿主，無需重打 Desktop | source-free 兩版本安裝演練 |
-| AC-14 | 卸載明示保留資料；重裝接回作品／設定；共用引用與其他帳號無變更；不提供假資料清除動作 | owner fixtures、前後資料 digest／引用檢查 |
-| AC-15 | Home 醒目入口直接開獨立 Marketplace，探索／詳情／安裝不跳 Settings；完成後 Home／Settings／Market 狀態一致 | 隔離 Desktop 與共用 lifecycle 操作證據 |
-| AC-16 | owner browser／remote、localhost、偽造環境旗標、失效／重播 context 與 App iframe 均不能管理套件；拒絕後 registry／package／process 無變更；已授權 Desktop 操作仍成功 | 直接 API 拒絕 fixtures、context 撤銷、多入口 Desktop 驗收 |
+| AC-01 | A new profile opens Usage offline; Studio has no Home card | Real built bundles + isolated Desktop |
+| AC-02 | The placeholder is correct after Usage is disabled / removed / restarted; an explicit reinstall succeeds | Home / Market integration |
+| AC-03 | Studio install / disable keeps the card / removal makes it disappear / reinstall reconnects works | App package + fixture Runtime |
+| AC-04 | All windows are revoked and timers / bridge / subscriptions disappear; an unknown cancel does not falsely claim completion; a restart does not resurrect an old epoch | Multi-window, quota in-flight, fake process, disconnect and restart |
+| AC-05 | Packages and caches are really deleted; data and the bundled archive are kept | Before/after file lists / bytes / reference checks |
+| AC-06 | A file lock, symlink / junction, and a restart during cleanup do not delete by mistake and are recoverable | Real temp filesystems on each OS |
+| AC-07 | A corrupt same version can be repaired; a wrong hash is rejected; Home is still operable | Independent corruption fixtures, failed activation |
+| AC-08 | An old Desktop bundle does not downgrade or resurrect an App; offline recovery states the version explicitly | Update through Market first, then upgrade Desktop |
+| AC-09 | A disconnect / crash / permission increase / active work during an update are all handled correctly; install/update/repair do not overwrite a concurrent disable/uninstall | transaction fault injection |
+| AC-10 | A fake signature, an expired / replayed catalog, an arbitrary URL / redirect and a withdrawn version are rejected | downloader / catalog boundary tests |
+| AC-11 | schema 1→2 keeps intent and works; the original file is recoverable on failure; a rerun is safe | migration fixtures + backup hashes |
+| AC-12 | The new SDK does not break existing Apps; an incompatible App is blocked before install | minimum/candidate host contract tests |
+| AC-13 | A new Studio artifact can update the same host without rebuilding Desktop | source-free two-version install drill |
+| AC-14 | Uninstall states that data is kept; reinstall reconnects works / settings; shared references and other accounts are unchanged; no fake data purge action is offered | owner fixtures, before/after data digest / reference checks |
+| AC-15 | The prominent Home entry opens the standalone Marketplace directly; explore / details / install do not jump to Settings; after completion, Home / Settings / Market state is consistent | Isolated Desktop and shared lifecycle operation evidence |
+| AC-16 | An owner browser / remote, localhost, forged environment flags, invalid / replayed contexts and the App iframe all cannot manage packages; after rejection the registry / package / process is unchanged; authorized Desktop operations still succeed | Direct API rejection fixtures, context revocation, multi-entry Desktop acceptance |
 
-以上均未執行。合成資料只能放暫存 profile／registry；不污染使用者狀態，不消耗 Grok 額度。
-量測以活動資源與檔案證據為主，RAM/RSS 僅輔助，不以固定 MB 或立刻下降當驗收門檻。
+None of the above has been run. Synthetic data may only go in a temporary profile / registry; it must not pollute user state or consume Grok quota.
+Measurement is based mainly on active resource and file evidence, with RAM/RSS only as a supplement, and a fixed MB figure or an immediate drop is not an acceptance gate.
 
 *Last updated: 2026-10-20*

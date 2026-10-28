@@ -8,39 +8,40 @@
 - **Scope**: Cats Chat GUI interactive choice mechanism
 - **Design Reference**: `prompt-forge/` subproject (same monorepo)
 - **Related**:
-  - `prompt-forge/src/components/ClarifyQuestions.tsx` — UI 元件參考
-  - `prompt-forge/supabase/functions/enhance-prompt/providers/fleet.ts` — runtime 整合參考
-  - `prompt-forge/supabase/functions/enhance-prompt/providers/types.ts` — 資料結構參考
-  - `cats-platform/docs/research/2026-03-24-task-substrate-as-heartbeat-foundation.md` — 相關提議
+  - `prompt-forge/src/components/ClarifyQuestions.tsx` — UI component reference
+  - `prompt-forge/supabase/functions/enhance-prompt/providers/fleet.ts` — runtime integration reference
+  - `prompt-forge/supabase/functions/enhance-prompt/providers/types.ts` — data structure reference
+  - `cats-platform/docs/research/2026-03-24-task-substrate-as-heartbeat-foundation.md` — related proposal
 
 ---
 
-## 問題
+## Problem
 
-目前 Cats Chat 中，Cat（God Cat / Boss Cat / Lead Cat / Normal Cat）無法在聊天訊息中
-附帶可點選的結構化選項。現有的互動機制只有：
+Today in Cats Chat, a Cat (God Cat / Boss Cat / Lead Cat / Normal Cat) cannot attach
+clickable structured options to a chat message. The only existing interaction mechanisms are:
 
-- **Approval 決策按鈕**（Approve / Reroute / Reject）— 僅 Boss Cat dispatch plan 觸發，
-  在右側 operator rail 中呈現
-- **Incident 操作按鈕**（Retry / Acknowledge）— run 失敗時出現在 operator rail
+- **Approval decision buttons** (Approve / Reroute / Reject) — triggered only by a Boss Cat
+  dispatch plan and shown in the right-hand operator rail
+- **Incident action buttons** (Retry / Acknowledge) — shown in the operator rail when a run fails
 
-沒有通用機制讓任何 Cat 在對話中向 owner 提問並呈現可點選的選項。
+There is no general mechanism for any Cat to ask the owner a question in the conversation
+and present clickable options.
 
-這與 `CLAUDE.md` 中的產品願景衝突：
+This conflicts with the product vision in `CLAUDE.md`:
 
-> 發包工作前應與 owner 有幾輪互動，提供選項讓 owner 優化決策
+> Before dispatching work, have a few rounds of interaction with the owner and offer options so the owner can refine the decision
 
 ---
 
 ## Design Reference: prompt-forge
 
-monorepo 中的 `prompt-forge/` 子專案已實作了完整的「AI 生成結構化選項 → 使用者點選
-回答 → 結果餵回 AI」的 flow，且底層支援 agent-fleet（cats-runtime 的前身）作為
-AI provider。
+The `prompt-forge/` subproject in the monorepo already implements the full flow of "AI
+generates structured options → user clicks to answer → result is fed back to the AI", and
+its backend supports agent-fleet (the predecessor of cats-runtime) as the AI provider.
 
-### 資料結構
+### Data structures
 
-`prompt-forge/supabase/functions/enhance-prompt/providers/types.ts`：
+`prompt-forge/supabase/functions/enhance-prompt/providers/types.ts`:
 
 ```typescript
 interface ClarifyQuestion {
@@ -58,173 +59,174 @@ interface AIProvider {
 }
 ```
 
-### AI 端：如何生成選項
+### AI side: how options are generated
 
-`prompt-forge/supabase/functions/enhance-prompt/providers/fleet.ts` 的 `clarify()` 方法：
+The `clarify()` method in `prompt-forge/supabase/functions/enhance-prompt/providers/fleet.ts`:
 
-- 建立 runtime session（`POST /sessions`）
-- 送出 clarify prompt，要求 AI 回傳 JSON：
+- Creates a runtime session (`POST /sessions`)
+- Sends the clarify prompt, asking the AI to return JSON:
   `{"questions": [{"question": "...", "options": ["A", "B", "C"]}]}`
-- 收集 NDJSON stream 的完整文字
-- 解析 JSON，回傳 `ClarifyResult`
-- 刪除 session
+- Collects the full text of the NDJSON stream
+- Parses the JSON and returns a `ClarifyResult`
+- Deletes the session
 
-AI 可以判斷「不需要釐清」→ 回傳空陣列 `{"questions": []}`，直接進入下一步。
+The AI can decide "no clarification needed" → return an empty array `{"questions": []}` and
+go straight to the next step.
 
-### UI 端：如何呈現選項
+### UI side: how options are presented
 
-`prompt-forge/src/components/ClarifyQuestions.tsx`：
+`prompt-forge/src/components/ClarifyQuestions.tsx`:
 
-- 每個問題渲染為一排 **toggle buttons**（多選）
-- 每個選項點擊後 toggle selected/unselected 狀態
-- 額外的 `…` 按鈕可展開自訂文字輸入框
-- 底部有 **確認** 和 **跳過** 按鈕
-- 回答完成後，所有選擇拼成文字附在原始 prompt 後面送出
+- Each question is rendered as a row of **toggle buttons** (multi-select)
+- Clicking an option toggles it between selected and unselected
+- An extra `…` button expands a custom text input
+- The bottom has **Confirm** and **Skip** buttons (labeled "Confirm" and "Skip" in the UI)
+- When answering is done, all choices are joined into text and appended to the original prompt before sending
 
-### 狀態機
+### State machine
 
-`prompt-forge/src/pages/Index.tsx`：
+`prompt-forge/src/pages/Index.tsx`:
 
 ```
-idle → clarifying（等 AI 生成問題）
-     → answering（使用者看到按鈕，點選回答）
-     → enhancing（帶著答案做最終處理）
+idle → clarifying (waiting for the AI to generate questions)
+     → answering (the user sees the buttons and clicks to answer)
+     → enhancing (final processing with the answers)
      → idle
 ```
 
-### Runtime 整合
+### Runtime integration
 
-prompt-forge 的 fleet provider 使用的 API：
+The API used by the prompt-forge fleet provider:
 
 ```
-POST   /sessions                    → 建 session
-GET    /sessions/:id                → 等 ready
-POST   /sessions/:id/messages       → 送訊息（NDJSON stream）
-DELETE /sessions/:id                → 清 session
+POST   /sessions                    → create session
+GET    /sessions/:id                → wait for ready
+POST   /sessions/:id/messages       → send message (NDJSON stream)
+DELETE /sessions/:id                → clear session
 ```
 
-**這跟 cats-runtime 的 HTTP API 完全相同**——cats-runtime 從 agent-fleet 演化而來，
-這些端點都保留了。cats-runtime 不需要任何改動即可支援此 flow。
+**This is exactly the same as the cats-runtime HTTP API** — cats-runtime evolved from
+agent-fleet, and these endpoints were all kept. cats-runtime needs no changes to support
+this flow.
 
 ---
 
-## 建議的 Cats Chat Contract
+## Proposed Cats Chat Contract
 
-基於 prompt-forge 的 `ClarifyQuestion` 延伸，增加通用性：
+Extends prompt-forge's `ClarifyQuestion` with more generality:
 
 ```typescript
 interface ChatMessageChoice {
-  question: string;              // 問題文字
-  options: ChatMessageOption[];  // 可選項
-  allowCustom?: boolean;         // 對應 prompt-forge 的 "…" 按鈕
-  allowSkip?: boolean;           // 對應 prompt-forge 的 Skip
-  multiSelect?: boolean;         // 對應 prompt-forge 的 toggle 多選
+  question: string;              // question text
+  options: ChatMessageOption[];  // selectable options
+  allowCustom?: boolean;         // corresponds to the prompt-forge "…" button
+  allowSkip?: boolean;           // corresponds to prompt-forge Skip
+  multiSelect?: boolean;         // corresponds to prompt-forge toggle multi-select
 }
 
 interface ChatMessageOption {
-  id: string;                    // 選項識別碼
-  label: string;                 // 按鈕文字
-  description?: string;          // tooltip 說明
+  id: string;                    // option identifier
+  label: string;                 // button text
+  description?: string;          // tooltip description
   style?: 'primary' | 'secondary' | 'danger';
 }
 
 interface ChatMessage {
   // ...existing fields (id, body, senderName, senderKind, metadata)
-  choices?: ChatMessageChoice[];  // Cat 附帶的結構化選項
+  choices?: ChatMessageChoice[];  // structured options attached by the Cat
 }
 ```
 
-### 與 prompt-forge 的差異
+### Differences from prompt-forge
 
-| 面向 | prompt-forge | Cats Chat（建議） |
+| Aspect | prompt-forge | Cats Chat (proposed) |
 |------|-------------|-------------------|
-| 觸發點 | 固定在 enhance 前問一次 | 任何 Cat 在任何訊息都能附帶 |
-| 嵌入方式 | 獨立 panel（transcript 外） | 嵌在聊天 transcript 的訊息內 |
-| 選項來源 | clarify prompt 要求 AI 生成 | Cat 的 skill/prompt 指示或 runtime 結構化輸出 |
-| 回傳方式 | 拼成文字附在 prompt 後面 | payload 送回對應 Cat session 繼續對話 |
-| 多輪 | 單次 clarify → enhance | Cat 可多次提問，每次都帶 choices |
-| 選項 metadata | 無（純文字） | 有 id + description + style |
+| Trigger point | Fixed: asks once before enhance | Any Cat can attach choices to any message |
+| Embedding | Separate panel (outside the transcript) | Inside the message in the chat transcript |
+| Option source | The clarify prompt asks the AI to generate them | The Cat's skill/prompt instructions or runtime structured output |
+| Return path | Joined into text appended to the prompt | Payload sent back to the corresponding Cat session to continue the conversation |
+| Multiple rounds | Single clarify → enhance | A Cat can ask repeatedly, each time with choices |
+| Option metadata | None (plain text) | id + description + style |
 
-### 可直接複用的 UI 邏輯
+### UI logic that can be reused directly
 
-`ClarifyQuestions.tsx` 中以下邏輯可直接參考或移植：
+The following logic in `ClarifyQuestions.tsx` can be referenced or ported directly:
 
-- `toggleOption()` — 多選 toggle 狀態管理
-- `toggleCustom()` / `setCustom()` — `…` 自訂輸入展開/收合
-- `allAnswered` — 驗證所有問題都已回答
-- `handleSubmit()` — 將多選 + 自訂輸入合併為最終回答
-- CSS 樣式 — selected/unselected button 的視覺切換（已用 Tailwind）
-
----
-
-## 實作路徑
-
-### 需要改動的（cats 產品層）
-
-1. **ChatMessage 擴充** — 加入 `choices?: ChatMessageChoice[]` 欄位
-2. **Chat renderer** — 新增 `MessageChoices` 元件（參考 `ClarifyQuestions.tsx`），
-   在訊息泡泡內渲染按鈕
-3. **選擇回傳** — 使用者點選後，將 payload 透過現有的 message route 送回
-   Cat 的 runtime session
-4. **Cat prompt 指引** — 在 Cat 的 skill/prompt 中加入指示，告知 AI 可以回傳
-   `{"choices": [...]}` 格式來觸發互動按鈕
-
-### 不需要改動的
-
-- **cats-runtime** — 現有 session/message API 已足夠。prompt-forge 用 agent-fleet
-  （cats-runtime 前身）的同一套 API 已經跑通
-- **Runtime message format** — NDJSON stream 中的 `type: "text"` 事件已能攜帶
-  任何文字內容，包含 JSON 結構化輸出
-- **Session lifecycle** — 不需要為 choices 建新 session 或改變 session 行為
+- `toggleOption()` — multi-select toggle state management
+- `toggleCustom()` / `setCustom()` — expanding/collapsing the `…` custom input
+- `allAnswered` — validates that every question has been answered
+- `handleSubmit()` — merges multi-select and custom input into the final answer
+- CSS styles — visual switch between selected/unselected buttons (already in Tailwind)
 
 ---
 
-## 使用場景
+## Implementation Path
 
-### 場景一：Boss Cat 派工前詢問 Owner
+### What needs to change (cats product layer)
 
-```
-Boss Cat: 了解，你想做一個 landing page。我有幾個問題想確認：
+1. **ChatMessage extension** — add a `choices?: ChatMessageChoice[]` field
+2. **Chat renderer** — add a `MessageChoices` component (modeled on `ClarifyQuestions.tsx`)
+   that renders the buttons inside the message bubble
+3. **Choice return** — after the user clicks, send the payload back to the Cat's runtime
+   session through the existing message route
+4. **Cat prompt guidance** — add instructions to the Cat's skill/prompt telling the AI it can
+   return the `{"choices": [...]}` format to trigger interactive buttons
 
-  1. 你偏好哪種風格？
-     [簡約現代] [企業正式] [活潑創意] [...]
+### What does not need to change
 
-  2. 需要哪些區塊？
-     [Hero Banner] [功能介紹] [定價方案] [客戶見證] [...]
-
-  3. 有沒有偏好的技術棧？
-     [React + Tailwind] [Vue + UnoCSS] [純 HTML/CSS] [...]
-
-  [確認] [跳過，直接開始]
-```
-
-### 場景二：Coder Cat 遇到設計決策
-
-```
-Coder Cat: 資料庫 schema 有兩種方案，各有取捨：
-
-  方案 A 或方案 B？
-  [A: 正規化，查詢彈性高] [B: 反正規化，讀取快]
-
-  [選擇]
-```
-
-### 場景三：Boss Cat 在 Telegram 詢問（未來）
-
-Telegram 本身支援 inline keyboard buttons，同一套 `choices` 結構可以映射為
-Telegram 的 `InlineKeyboardMarkup`，不需要額外的資料結構。
+- **cats-runtime** — the existing session/message API is sufficient. prompt-forge already
+  runs end to end on the same API with agent-fleet (the predecessor of cats-runtime)
+- **Runtime message format** — the `type: "text"` events in the NDJSON stream can already carry
+  any text content, including JSON structured output
+- **Session lifecycle** — no new session for choices and no change to session behavior
 
 ---
 
-## 結論
+## Use Cases
 
-- prompt-forge 已驗證「AI 生成結構化選項 → 按鈕 UI → 回傳繼續對話」的完整 flow
-- 底層使用的 runtime API 跟 cats-runtime 相同，不需要 runtime 端改動
-- UI 元件（`ClarifyQuestions.tsx`）的邏輯可直接參考移植
-- Cats Chat 需要的是將此機制從「固定兩階段 flow」泛化為「任何 Cat 任何訊息都能用」
-- 建議將 `ChatMessageChoice` contract 納入 Chat renderer 的工作範圍（Team 1）
+### Scenario 1: Boss Cat asks the owner before dispatching work
+
+```
+Boss Cat: Got it, you want to build a landing page. I have a few questions to confirm:
+
+  1. Which style do you prefer?
+     [Minimal modern] [Corporate formal] [Lively creative] [...]
+
+  2. Which sections do you need?
+     [Hero Banner] [Feature overview] [Pricing plans] [Customer testimonials] [...]
+
+  3. Any preferred tech stack?
+     [React + Tailwind] [Vue + UnoCSS] [Plain HTML/CSS] [...]
+
+  [Confirm] [Skip, just start]
+```
+
+### Scenario 2: Coder Cat hits a design decision
+
+```
+Coder Cat: There are two options for the database schema, each with trade-offs:
+
+  Option A or Option B?
+  [A: normalized, flexible queries] [B: denormalized, fast reads]
+
+  [Choose]
+```
+
+### Scenario 3: Boss Cat asks on Telegram (future)
+
+Telegram itself supports inline keyboard buttons, so the same `choices` structure can be
+mapped to Telegram's `InlineKeyboardMarkup` with no extra data structure.
 
 ---
 
-*本文件供 review 討論用。如 review 通過，建議納入 Cats Chat 的 SPEC 或
-既有 SPEC 的補充章節。*
+## Conclusion
+
+- prompt-forge has already validated the full flow of "AI generates structured options → button UI → return and continue the conversation"
+- The runtime API it uses is the same as cats-runtime, so no runtime-side change is needed
+- The logic of the UI component (`ClarifyQuestions.tsx`) can be referenced and ported directly
+- What Cats Chat needs is to generalize this mechanism from a "fixed two-stage flow" to "any Cat can use it on any message"
+- Recommend including the `ChatMessageChoice` contract in the Chat renderer's scope of work (Team 1)
+
+---
+
+*This document is for review discussion. If the review passes, it is recommended to fold it into the Cats Chat SPEC or into a supplementary section of an existing SPEC.*

@@ -1,11 +1,11 @@
-# Companion / Agent 一鍵切換研究：Baseline 技能工具組與架構調整
+# Companion / Agent One-Click Toggle Research: Baseline Skill and Tool Set and Architecture Adjustments
 
 ## Metadata
 
 - **Date**: 2026-03-27
 - **Author**: Codex
-- **Scope**: `Cats Chat`（產品層）+ `cats-runtime`（執行層）+ `openclaw` submodule 參考狀態
-- **Goal**: 支援「companion/agent 一鍵 toggle 的雙重人格」，且 `agent mode` 代理能力需對標 OpenClaw 目前最強能力帶
+- **Scope**: `Cats Chat` (product layer) + `cats-runtime` (execution layer) + `openclaw` submodule reference status
+- **Goal**: Support a "dual persona with a one-click companion/agent toggle", with the `agent mode` agent capability benchmarked against OpenClaw's strongest current capability band
 - **Related**:
   - [2026-03-20-openclaw-chat-runtime-gap-analysis](./2026-03-20-openclaw-chat-runtime-gap-analysis.md)
   - [2026-03-20-openclaw-killer-feature-gap-analysis](./2026-03-20-openclaw-killer-feature-gap-analysis.md)
@@ -13,239 +13,239 @@
 
 ---
 
-## 1) 目前進度快照（cats / cats-runtime / openclaw）
+## 1) Current Progress Snapshot (cats / cats-runtime / openclaw)
 
-### 1.1 `cats`（產品層）
+### 1.1 `cats` (product layer)
 
-目前 `cats` 已是 chat-first 產品殼，並已完成：
+`cats` is already a chat-first product shell and has completed:
 
-- 以 `cats-runtime` 作為唯一執行邊界
-- chat/work/code 平行產品樹
-- orchestrator execution-loop 與 operator loop（approval/reroute/retry）
-- companion-box（來源、衍生記憶、response-profile、session-context）
-- Cats-owned canonical memory/retrieval 基礎
+- Using `cats-runtime` as the only execution boundary
+- Parallel chat/work/code product trees
+- Orchestrator execution-loop and operator loop (approval/reroute/retry)
+- companion-box (sources, derived memory, response-profile, session-context)
+- Cats-owned canonical memory/retrieval foundation
 
-但仍處於「Launch Track In Progress」：
+But it is still in "Launch Track In Progress":
 
-- Chat 仍有待補（例如更深的 automation、group replan、escalation/takeover）
-- companion 能力有基礎資料層，但尚未成為「一鍵雙人格」產品體驗
-- 目前仍缺少明確的 companion ↔ agent mode 切換契約（UI 與 runtime request contract）
+- Chat still has gaps (for example deeper automation, group replan, escalation/takeover)
+- Companion capabilities have a foundational data layer but are not yet a "one-click dual persona" product experience
+- There is still no explicit companion ↔ agent mode switching contract (UI and runtime request contract)
 
-### 1.2 `cats-runtime`（執行層）
+### 1.2 `cats-runtime` (execution layer)
 
-`cats-runtime` 目前已具備關鍵代理執行底座：
+`cats-runtime` already has the key agent execution foundation:
 
-- `cli + api + agent` 三類 backend
-- runtime-managed skills（含 catalog、hydration、delivery mode）
-- local tool runtime（檔案/搜尋/shell/patch 等）
-- MCP facade（HTTP + stdio）
-- usage guardrail、diagnostics、session lifecycle
+- Three backend types: `cli + api + agent`
+- Runtime-managed skills (including catalog, hydration, delivery mode)
+- Local tool runtime (files/search/shell/patch, etc.)
+- MCP facade (HTTP + stdio)
+- Usage guardrail, diagnostics, session lifecycle
 
-其中 **Agent Backend = In Progress**，但已落地：
+Of these, **Agent Backend = In Progress**, but the following have landed:
 
-- OpenClaw gateway adapter（`openclaw_gateway`）
-- 第二驗證目標 agent SDK bridge
-- OpenClaw health/model/tool catalog 的第一層診斷接軌
+- OpenClaw gateway adapter (`openclaw_gateway`)
+- A second validation target, the agent SDK bridge
+- First-layer diagnostic hookup for OpenClaw health/model/tool catalog
 
-未完成重點是：
+What remains:
 
-- broader remote tool discovery
-- 更完整 agent-target semantic probes
-- 更深的工具能力語義驗證與政策分層
+- Broader remote tool discovery
+- More complete agent-target semantic probes
+- Deeper semantic validation of tool capabilities and policy layering
 
-### 1.3 `openclaw` submodule 狀態（本 repo 內）
+### 1.3 `openclaw` submodule status (in this repo)
 
-在此 monorepo 內，`openclaw` 是已登記 submodule 依賴（`.gitmodules` 有 path+url）；
-但目前工作樹顯示為未初始化內容（根目錄僅資料夾、無 checkout 檔案），代表此 repo 當前狀態下**無法直接在本地對 openclaw 原始碼做最新實作比對**。
+In this monorepo, `openclaw` is a registered submodule dependency (`.gitmodules` has path+url);
+but the working tree currently shows uninitialized content (the root has only the folder and no checked-out files), meaning that in this repo's current state **the latest OpenClaw source cannot be compared locally**.
 
-因此本研究的 OpenClaw 對標基準採用：
+The OpenClaw benchmark baseline for this research is therefore:
 
-1. 既有研究文件中已紀錄的 OpenClaw 能力地圖
-2. `cats-runtime` 已宣告並已實作的 OpenClaw adapter 能力
+1. The OpenClaw capability map already recorded in existing research documents
+2. The OpenClaw adapter capabilities that `cats-runtime` has declared and implemented
 
-> 結論：你現在可以先做「對標等級契約」而不是被 submodule checkout 狀態阻塞。
-
----
-
-## 2) 目標定義：雙人格 toggle 要解的不是 UI，而是「契約切換」
-
-你要的「companion/agent 一鍵 toggle」本質上有三層：
-
-1. **Interaction Contract（互動契約）**
-   - companion mode：關係連續性、角色感、低干擾、偏對話
-   - agent mode：任務完成、工具導向、可中斷重規劃、可追蹤治理
-
-2. **Execution Contract（執行契約）**
-   - 同一 Cat identity，可切換不同 runtime strategy / skill bundles / tool policy
-
-3. **Governance Contract（治理契約）**
-   - 哪些動作需要 owner approval
-   - 哪些通道可自動執行（尤其 transport）
-
-如果只做 UI toggle，不會達到 OpenClaw 等級；
-必須把 toggle 直接連到 runtime request + skill/tool policy 選擇。
+> Conclusion: you can start with a "benchmark-level contract" now instead of being blocked by the submodule checkout state.
 
 ---
 
-## 3) Baseline 技能與工具組（先求「可用代理人」，再談最強）
+## 2) Goal Definition: What the Dual-Persona Toggle Must Solve Is Not the UI but a "Contract Switch"
 
-以下是建議的 **MVP baseline（必備）**，可讓 agent mode 達到「可靠可用」；
-再往上堆到 OpenClaw parity。
+The "companion/agent one-click toggle" you want has three layers in essence:
 
-### 3.1 Skills Baseline（runtime-managed skills）
+1. **Interaction Contract**
+   - companion mode: relationship continuity, character feel, low interruption, conversation-leaning
+   - agent mode: task completion, tool orientation, interruptible replanning, traceable governance
 
-#### A. `companion-core`（預設）
+2. **Execution Contract**
+   - The same Cat identity can switch between different runtime strategies / skill bundles / tool policies
 
-- identity/style/presence 指令層（語氣、回應長度、打擾閾值）
-- memory recall discipline（只拉必要記憶，避免過度工具化）
-- transport-safe response formatting（短句、可 chunk）
+3. **Governance Contract**
+   - Which actions require owner approval
+   - Which channels may execute automatically (especially transport)
 
-#### B. `agent-core`（toggle 後主 skill）
+A UI toggle alone will not reach OpenClaw level;
+the toggle must be wired directly to the runtime request + skill/tool policy selection.
 
-- task intake normalization（目標、限制、完成定義）
-- plan-execute-report loop（最小可追蹤步驟）
-- blocked-state policy（需升級時回報、請求 reroute）
-- retry-safe semantics（避免重複副作用）
+---
 
-#### C. `agent-openclaw-parity-pack`（對標包）
+## 3) Baseline Skills and Tools (first a "usable agent", then the strongest)
 
-聚焦 OpenClaw 強項：
+Below is the suggested **MVP baseline (required)**, which gets agent mode to "reliable and usable";
+build on top of it to reach OpenClaw parity.
 
-- queue mode policy（steer/followup/collect 對等語義）
+### 3.1 Skills Baseline (runtime-managed skills)
+
+#### A. `companion-core` (default)
+
+- identity/style/presence instruction layer (tone, response length, interruption threshold)
+- memory recall discipline (pull only the necessary memory, avoid over-tooling)
+- transport-safe response formatting (short sentences, chunkable)
+
+#### B. `agent-core` (main skill after toggling)
+
+- task intake normalization (goal, constraints, definition of done)
+- plan-execute-report loop (minimal traceable steps)
+- blocked-state policy (report when escalation is needed, request reroute)
+- retry-safe semantics (avoid repeated side effects)
+
+#### C. `agent-openclaw-parity-pack` (benchmark pack)
+
+Focused on OpenClaw's strengths:
+
+- queue mode policy (steer/followup/collect equivalent semantics)
 - transport chunking policy
 - pre-compaction memory flush discipline
 - cross-session subagent messaging policy
 - exec approval + escalation protocol
 
-### 3.2 Tools Baseline（runtime tool policy）
+### 3.2 Tools Baseline (runtime tool policy)
 
-#### 必備 `standard` 集
+#### Required `standard` set
 
 - `read_file`, `read_files`, `list_files`, `inspect_path`, `grep`, `glob`
-- `run_shell`（受政策限制）
-- `apply_patch`, `write_file`, `edit_file`（需要 approval gate）
+- `run_shell` (restricted by policy)
+- `apply_patch`, `write_file`, `edit_file` (need an approval gate)
 
-#### 代理必備控制面工具
+#### Control-plane tools required for agents
 
 - session inspect/observe
 - provider diagnostics
 - runtime skills catalog
-- maintenance / compaction follow-through 回報
+- maintenance / compaction follow-through reporting
 
-#### OpenClaw 對標增補工具語義
+#### Added tool semantics for OpenClaw parity
 
-- queue management controls（中斷/排隊/合併）
-- transport delivery controls（chunk / coalesce / thread reply）
-- subagent messaging primitives（list/send/history）
+- queue management controls (interrupt/queue/merge)
+- transport delivery controls (chunk / coalesce / thread reply)
+- subagent messaging primitives (list/send/history)
 - memory flush trigger + durable note write primitives
 
 ---
 
-## 4) 一鍵 Toggle 的建議架構（不破壞現有分層）
+## 4) Suggested Architecture for the One-Click Toggle (without breaking the existing layering)
 
-### 4.1 `cats` 產品層：新增 mode contract（不改 runtime boundary）
+### 4.1 `cats` product layer: add a mode contract (without changing the runtime boundary)
 
-在 `Cats Chat` 增加 `personaMode`：
+Add `personaMode` to `Cats Chat`:
 
 - `companion`
 - `agent`
 
-並在每次 dispatch 時，送出結構化 execution hints（而非散落 prompt）：
+and on every dispatch, send structured execution hints (rather than scattered prompts):
 
 - `personaMode`
 - `requestedSkillProfiles[]`
-- `toolPolicyProfile`（read_only / standard / extended）
+- `toolPolicyProfile` (read_only / standard / extended)
 - `approvalPolicyRef`
 - `transportPolicyRef`
 
-> 關鍵：`cats` 只決定「意圖與政策」，不直接綁死 provider 或 backend 細節。
+> Key point: `cats` decides only "intent and policy" and does not hard-bind to provider or backend details.
 
-### 4.2 `cats-runtime` 執行層：新增 mode-aware policy resolver
+### 4.2 `cats-runtime` execution layer: add a mode-aware policy resolver
 
-在 runtime 端增加統一 resolver：
+Add a unified resolver on the runtime side:
 
-- 輸入：session metadata + message request hints
-- 輸出：
+- Input: session metadata + message request hints
+- Output:
   - resolved skill bundles
   - resolved tool capability profile
   - execution strategy family
   - approval hooks requirement
 
-這讓同一 session 可在 turn-level 切換行為（受政策保護）。
+This lets the same session switch behavior at turn level (protected by policy).
 
-### 4.3 Agent Backend（OpenClaw adapter）強化點
+### 4.3 Agent Backend (OpenClaw adapter) hardening points
 
-為對標 OpenClaw 強代理能力，建議優先補三件：
+To benchmark against OpenClaw's strong agent capabilities, three things are suggested first:
 
 1. **Remote tool catalog semantic map**
-   - 不只列舉工具，還要映射到 runtime capability taxonomy
+   - Not just listing tools, but mapping them to the runtime capability taxonomy
 2. **Queue/interrupt semantics bridge**
-   - 將 OpenClaw queue mode 抽象成 runtime-neutral contract
+   - Abstract OpenClaw queue mode into a runtime-neutral contract
 3. **Session-memory lifecycle bridge**
-   - 對齊 pre-compaction flush 與 maintenance hooks
+   - Align pre-compaction flush with maintenance hooks
 
 ---
 
-## 5) 建議分期（務實可交付）
+## 5) Suggested Phasing (pragmatic and deliverable)
 
-### Phase 0（本週可啟動）
+### Phase 0 (can start this week)
 
-- 定義 `personaMode` request/response contract（Cats API + runtime metadata）
-- 定義 `agent-core` / `companion-core` skills baseline
-- 建立 `toolPolicyProfile` 三層：`read_only`, `standard`, `extended`
+- Define the `personaMode` request/response contract (Cats API + runtime metadata)
+- Define the `agent-core` / `companion-core` skills baseline
+- Establish three `toolPolicyProfile` tiers: `read_only`, `standard`, `extended`
 
-### Phase 1（先做可用 agent mode）
+### Phase 1 (first make a usable agent mode)
 
-- UI 一鍵 toggle 串接上述 contract
-- Agent mode 預設使用 `agent-core + standard tools + approval-required mutations`
-- 補觀測：mode 切換後每 turn 實際套用 skill/tool policy 的 inspectability
+- Wire the one-click UI toggle to the contract above
+- Agent mode defaults to `agent-core + standard tools + approval-required mutations`
+- Add observability: inspectability of the skill/tool policy actually applied on each turn after a mode switch
 
-### Phase 2（OpenClaw parity 第一階）
+### Phase 2 (OpenClaw parity, stage one)
 
-- queue mode（steer/followup/collect）runtime 契約落地
+- Land the queue mode (steer/followup/collect) runtime contract
 - transport chunking / coalescing
-- pre-compaction memory flush 自動化
+- Automate pre-compaction memory flush
 
-### Phase 3（OpenClaw parity 第二階）
+### Phase 3 (OpenClaw parity, stage two)
 
 - subagent messaging primitives
-- 更完整 remote tool semantic probes
-- escalation/takeover 全鏈路（含 transport）
+- More complete remote tool semantic probes
+- Full-chain escalation/takeover (including transport)
 
 ---
 
-## 6) 風險與防呆
+## 6) Risks and Safeguards
 
-### 6.1 主要風險
+### 6.1 Main risks
 
-- 只做 UI toggle，沒有 runtime policy resolver（會變成假切換）
-- agent mode 工具權限過大，缺少 approval gate
-- companion mode 被 agent 工具語氣污染，失去陪伴體驗
+- Only a UI toggle without a runtime policy resolver (becomes a fake switch)
+- Agent mode tool permissions too broad, lacking an approval gate
+- Companion mode polluted by the tone of agent tools, losing the companion experience
 
-### 6.2 防呆設計
+### 6.2 Safeguard design
 
-- 預設 `companion => read_only/standard`，禁止高風險 mutation
-- `agent => standard` 起步，`extended` 一律 owner 明確授權
-- 所有高風險工具呼叫帶 `policy reason + approval trail`
+- Default `companion => read_only/standard`, forbidding high-risk mutations
+- `agent => standard` as the starting point; `extended` always requires explicit owner authorization
+- All high-risk tool calls carry a `policy reason + approval trail`
 
 ---
 
-## 7) 可執行結論
+## 7) Actionable Conclusion
 
-若你的目標是：
+If your goal is:
 
-- 在 Cats Chat 內一鍵切換 companion/agent
-- agent mode 仍對標 OpenClaw 最強代理能力
+- One-click switching between companion/agent inside Cats Chat
+- Agent mode still benchmarked against OpenClaw's strongest agent capabilities
 
-那麼最短路徑是：
+then the shortest path is:
 
-1. 先把 toggle 變成「mode-aware execution contract」
-2. 立刻建立 `companion-core` / `agent-core` / `agent-openclaw-parity-pack`
-3. 在 `cats-runtime` 補 mode-aware policy resolver + queue/memory lifecycle bridge
-4. 再逐步追上 OpenClaw 的 queue/subagent/transport 細節成熟度
+1. First turn the toggle into a "mode-aware execution contract"
+2. Immediately create `companion-core` / `agent-core` / `agent-openclaw-parity-pack`
+3. Add the mode-aware policy resolver + queue/memory lifecycle bridge in `cats-runtime`
+4. Then gradually catch up with OpenClaw's maturity in queue/subagent/transport details
 
-這條路能保持既有架構原則：
+This path keeps the existing architectural principles:
 
-- `cats` 仍是產品與治理層
-- `cats-runtime` 仍是唯一執行邊界
-- OpenClaw 以 adapter 能力吸收，而不是把產品綁回外部實作細節
+- `cats` remains the product and governance layer
+- `cats-runtime` remains the only execution boundary
+- OpenClaw is absorbed as adapter capability, rather than binding the product back to external implementation details

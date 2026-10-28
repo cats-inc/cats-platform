@@ -12,19 +12,24 @@
 
 ## Summary
 
-讓 Studio 與 Cat 使用同一個 Platform 圖片服務。Studio 透過 App SDK，Cat 透過
-受 session／actor scope 約束的 agent tool。Cat 的能力不依賴 Studio 是否安裝，
-也不要求 Boss Cat。主動產圖以 owner 預先授予的有限政策執行；圖片保存後附到
-原私訊並送往已授權的 Telegram binding。
+Let Studio and Cats use the same Platform image service. Studio goes through the App SDK;
+a Cat goes through an agent tool constrained by session/actor scope. A Cat's capability does
+not depend on whether Studio is installed, and does not require a Boss Cat. Proactive image
+generation runs under a limited policy the owner grants in advance; once saved, the image is
+attached to the original DM and sent to the authorized Telegram binding.
 
-本文件定義實作契約；已完成的範圍與實際驗證記錄於 PLAN-121，未完成驗收不得視為已交付。
+This document defines the implementation contract; the scope already completed and the
+actual verification are recorded in PLAN-121, and unfinished acceptance must not be treated
+as delivered.
 
 ## Delivery baseline and scope
 
-2026-10-23 implementation rebaseline：owner 已核准實作與必要 releases，並澄清
-共用對象為 Studio，Usage 不改。開始時 SDK 已是 1.7.0；Runtime SPEC-038 與
-Studio 已提供 image contract 2，Runtime 的 Grok／Muse／Codex／Antigravity profiles
-均已啟用，輸出包含 JPEG／PNG。保留新舊 App contract 與已交付能力，不降回 Grok-only。
+2026-10-23 implementation rebaseline: the owner approved implementation and the necessary
+releases, and clarified that the shared object is Studio and that Usage is unchanged. At the
+start, the SDK was already 1.7.0; Runtime SPEC-038 and Studio already provided image
+contract 2, all of Runtime's Grok / Muse / Codex / Antigravity profiles were enabled, and the
+output includes JPEG / PNG. Keep both the old and new App contracts and the capabilities
+already delivered; do not fall back to Grok-only.
 
 2026-10-24 source extension adds Cursor to Runtime image projection and SDK contract 2 provider
 types. The shared Cat ledger uses the same provider set so a valid new profile cannot be offered
@@ -38,48 +43,66 @@ installed Desktop update. Runtime owns that runner and its enablement evidence: 
 authorized extra image passed the corrected native Windows runner, retaining an original
 1024-square JPEG (90,500 bytes). The Cursor profile is enabled. This host exposes it through
 SDK 1.9 without changing existing App scopes or the image request schema.
-實際發布仍須通過對應 release SOP 與所有完成條件。
+Actual publication must still pass the corresponding release SOP and all completion
+conditions.
 
-| 項目 | 已存在 | 本計畫 |
+| Item | Already exists | This plan |
 | --- | --- | --- |
-| Studio／SDK | App/account/version/digest-scoped contract 1／2 生圖、作品讀取／匯出 | 共用執行層；SDK 1.8 新增 `media.images`，保留既有 namespace／scope |
-| Cat 陪伴 | 作息、文字心跳、相簿圖片附到 Telegram | 加受控生圖與圖片資產附件 |
-| Runtime | SPEC-038 contract 2 四個已啟用 profiles、JPEG／PNG、無自動 regeneration | 加原 source turn 的完成證據與必要 idle handoff；保留執行界線 |
-| 修圖／合成 | Apps SPEC-006 的 successor 規劃及研究證據 | 保留 extension seam；本階段只使用已交付 generation |
-| 送達 | Chat event fanout 與 Telegram 回執 | 為產圖結果增加 durable intent、回執判斷及恢復 |
+| Studio / SDK | App/account/version/digest-scoped contract 1 / 2 image generation, work read/export | Shared execution layer; SDK 1.8 adds `media.images`, keeping existing namespaces / scopes |
+| Cat companion | Rhythm, text heartbeat, album images attached to Telegram | Add controlled image generation and image asset attachments |
+| Runtime | SPEC-038 contract 2 with four enabled profiles, JPEG / PNG, no automatic regeneration | Add completion evidence for the original source turn and the necessary idle handoff; keep the execution boundary |
+| Image editing / compositing | Apps SPEC-006 successor plan and research evidence | Keep an extension seam; this phase uses only the generation already delivered |
+| Delivery | Chat event fanout and Telegram receipts | Add a durable intent, receipt judgment and recovery for image results |
 
 ### Goals
 
-- owner 授權一隻普通陪伴貓後，牠可在清醒時段自己產生圖片並傳到同一段 Telegram 私訊。
-- Studio 與 Cat 使用同一套 admission、工作狀態、結果驗證及原檔保存。
-- 併發、重啟、重送及 Telegram 故障不造成未授權或重複生圖。
-- 可分辨「未授權」「沒有可用圖片服務」「產圖中」「已產圖但未送達」。
+- After the owner authorizes an ordinary companion Cat, it can generate images by itself
+  during awake hours and send them to the same Telegram DM.
+- Studio and Cats use the same admission, job state, result verification and original-file
+  retention.
+- Concurrency, restart, resend and Telegram failure do not cause unauthorized or duplicate
+  image generation.
+- It can distinguish "not authorized", "no usable image service", "generating" and
+  "generated but not delivered".
 
 ### Non-goals
 
-- 本階段不新增修圖、合成、新 provider 或任意 CLI／圖片 URL／檔案路徑；保留現有 PNG 與 profiles。
-- 不建立通用 App 執行框架，不讓 Cat 操作 Studio iframe，也不把所有 App 邏輯搬到 Platform。
-- 不預設共用 Studio 與 Cat 的作品清單；跨 caller 分享另有明確授權。
-- 不新增 OS 喚醒或雲端常駐；Cats／主機不運作時不承諾即時生成或傳送。
-- 不改 companion heartbeat 預設間隔，也不把每次文字心跳變成生圖。
-- 不變更 Usage。版本／發布依本次 owner 授權與 release SOP；驗證使用隔離 profile，
-  不將 demo 資料寫入使用者 dev state。
+- This phase adds no image editing, compositing, new provider, or arbitrary CLI / image URL /
+  file path; the existing PNG and profiles are kept.
+- It builds no general App execution framework, does not let a Cat operate the Studio iframe,
+  and does not move all App logic into Platform.
+- It does not share the Studio and Cat work lists by default; cross-caller sharing needs
+  separate explicit authorization.
+- It adds no OS wake-up or cloud residency; instant generation or delivery is not promised
+  while Cats / the host is not running.
+- It does not change the companion heartbeat default interval, and does not turn every text
+  heartbeat into image generation.
+- Usage is not changed. Versions / release follow this owner authorization and the release
+  SOP; verification uses an isolated profile, and no demo data is written to the user's dev
+  state.
 
 ## Owner-visible golden path
 
-1. owner 選一隻 active companion Cat，建立其私訊及 Telegram 對應。
-2. owner 為該 Cat 開啟主動生圖，選可用圖片 target，設定有限的每日次數、最短間隔、
-   額度時區、到期時間，以及可送達的對話與 binding；生圖服務不設營業時段。
-3. 清醒時段的心跳讓 Cat 選擇安靜、說話、使用既有相簿，或請求生圖。
-4. Platform 重新檢查授權與可用性，原子預留次數並保存工作，再提交一次 Runtime。
-5. Cat 回合可先結束；不持有 session gate 或 channel mutation gate 等待圖片完成。
-6. 圖片經驗證與保存後，以該 Cat 的圖片訊息出現在原私訊，並有同一筆 durable
-   delivery intent。文字圖說可使用提交時已保存的 Cat 文案，不強制再跑一個模型回合。
-7. Telegram 收到圖片與圖說。owner 回覆繼續同一對話；失敗與未知送達狀態可被檢視。
+1. The owner picks an active companion Cat and creates its DM and Telegram mapping.
+2. The owner turns on proactive image generation for that Cat, picks an available image
+   target, and sets a limited daily count, minimum interval, budget timezone, expiry, and the
+   conversations and bindings it may deliver to; the image service has no business hours.
+3. During awake hours, a heartbeat lets the Cat choose to stay quiet, speak, use an existing
+   album, or request image generation.
+4. Platform re-checks authorization and availability, atomically reserves the count and
+   saves the job, then submits to Runtime once.
+5. The Cat's turn may end first; it does not hold the session gate or channel mutation gate
+   waiting for the image to finish.
+6. After the image is verified and saved, it appears in the original DM as that Cat's image
+   message, with the same durable delivery intent. The text caption may use the Cat copy
+   saved at submission time and does not force another model turn.
+7. Telegram receives the image and caption. The owner's reply continues the same conversation;
+   failed and unknown delivery states can be inspected.
 
-早上喚醒、文字心跳及 owner 睡覺意圖仍由 SPEC-124 管理。產圖／送達各自必須符合
-當下適用政策；進入休息、owner 讓 Cat 睡覺或 binding 失效後，晚到結果可保存，
-但不得不經政策檢查直接傳出。
+Morning wake-up, text heartbeats and the owner's sleep intent are still governed by SPEC-124.
+Generation and delivery must each satisfy the policy applicable at that moment; after entering
+rest, the owner putting the Cat to sleep, or the binding becoming invalid, a late result may
+be saved but must not be sent out without a policy check.
 
 ## Architecture and ownership
 
@@ -97,194 +120,242 @@ Cat session / heartbeat -> scoped agent tool adapter --+-> Platform image servic
 Platform asset -> conversation attachment + delivery intent -> Telegram
 ```
 
-共同服務只依賴受信 caller context、圖片工作／資產 store、Runtime client 與政策介面。
-它不 import Studio、Chat renderer 或 Telegram 的實作。Chat adapter 管理 Cat 訊息，
-transport adapter 管理 Telegram。Platform host 只做 composition；product-local routes
-不向外暴露共用 Runtime 憑證。
+The shared service depends only on a trusted caller context, the image job / asset store, the
+Runtime client and the policy interface. It does not import the Studio, Chat renderer or
+Telegram implementation. The Chat adapter manages Cat messages, and the transport adapter
+manages Telegram. The Platform host only does composition; product-local routes do not expose
+the shared Runtime credentials.
 
-Apps 自己的模板、編輯歷史及作品管理邏輯仍歸 Apps。共同 image job 的來源與共享
-權限由 Platform 管理。Core task/run/artifact 可沿用，但不把每個心跳變成 Work
-Mission／Work Item，也不新增第二份工作真相。
+Apps' own templates, edit history and work management logic still belong to Apps. The source
+and sharing permissions of a shared image job are managed by Platform. Core task/run/artifact
+can be reused, but not every heartbeat becomes a Work Mission / Work Item, and no second
+source of truth for jobs is added.
 
 ## Functional requirements
 
 | ID | Requirement |
 | --- | --- |
-| FR-01 Shared execution | App 與 Cat adapter 使用同一工作服務、Runtime client 及資產驗證，不複製 runner 或 provider catalog |
-| FR-02 App admission | 保留既有 App 啟用狀態、exact version、package digest、account、`ui.route`／`media.images` 與 CSRF／bridge 檢查；同帳號的其他 App 不能繼承權限 |
-| FR-03 Cat identity | caller Cat/account/conversation/session 由 host-issued context 建立；模型不能傳 App scope、owner ID、原始路徑或 Runtime credentials 取得能力 |
-| FR-04 Role separation | Boss/admin、companion role、Studio 安裝皆不自動賦予生圖權；授權可授予普通 Cat，主動觸發另要求 active companion 與有效私訊 |
-| FR-05 Capability | 只提供 Runtime 已啟用操作與 target，再與 caller 政策交集；查詢不 probe CLI、不產圖。提交重新檢查；不得偷偷換 provider、模型、effort 或 operation |
-| FR-06 Policy | 主動生圖預設關閉；owner 授予有限政策。manual／heartbeat 為不同 trigger mode；授權一者不暗含另一者或傳送權。生圖服務沒有時段限制；作息只排程主動互動，不介入工具／admission／生成／送達。兩種 trigger 均驗證期限／額度／間隔及原 scope |
-| FR-07 Durable budget | admission 原子執行 request dedupe、政策 revision 檢查、每日／總次數及間隔預留、建立 job 與固定 Runtime ID；跨 caller 併發不能超額 |
-| FR-08 Idempotency | 同 caller/request ID + 相同 canonical payload 回傳原 job；不同 payload conflict。payload 包含 operation、target、prompt 及授權的輸出脈絡 |
-| FR-09 Execution | 第一階段只投遞 Runtime 現有 `{id, instance, prompt}`；呼叫者不能傳 shell args、執行 cwd、檔案 destination 或擴大原生工具清單 |
-| FR-10 Async tools | Cat 實際收到可呼叫的 session-scoped tool descriptor／executor；只有 prompt、工具登錄或工具名字不算交付。submit 回 job reference，不等待被同一 Cat 回合占用的資源 |
-| FR-11 Recovery | 不明 POST、重啟及 refresh 只 GET／collect／cancel 同一 Runtime ID；不重送新生成。未確認是否已呼叫 provider 時預留不自動退還 |
-| FR-12 Cancellation | Cat/policy 撤銷、owner 取消與 App 停用只影響各自的工作。取消必須等待原執行停止；晚到成功不越過撤銷或取消意圖 |
-| FR-13 Verified asset | 從 matching receipt 取得原檔，驗證 MIME、大小、尺寸及 hash，原子保存後才標 succeeded；以 asset ID 引用，無任意 filesystem read |
-| FR-14 Access | read/list/cancel/reference 驗證 owner、initiator scope 或明確 sharing grant；猜 job/asset ID 不取得資料。Studio 不自動取得 Cat 全部作品 |
-| FR-15 Attachment | 圖片以同一 Cat 身分附到既有私訊。資料含來源 job、asset、Cat/account、conversation、trigger、policy revision，避免被當成其他 owner turn 的回覆 |
-| FR-16 Delivery admission | 圖片成功不等於允許送出；建立與執行傳送時重查 Cat/policy、對話、owner、binding identity／revision；所有已接受工作可在 DM watching 時送達，不另查時段或睡眠。封存／停用／撤權仍拒絕；不跟著預設 bot 漂移 |
-| FR-17 Durable delivery | message 與 delivery intent 以可恢復交易或同一冪等 command 建立；eventHub 丟失／程序重啟仍可處理。重複 completion 不增加圖片訊息或 logical intent |
-| FR-18 Truthful receipt | 依 Telegram 回執實際 status 判定成功。確定未送達且可重試的失敗使用同 asset 退避；不明結果保留 uncertain，須明確 owner retry，不能宣稱 exactly-once |
-| FR-19 Lifecycle | 卸載 Studio 撤銷 Studio scope，不撤銷 Cat grant／刪掉 Cat 資產。關閉 Cat 不影響 Studio；有 pending delivery 的 asset 不被 retention 提前移除 |
-| FR-20 Observability | owner 可檢視 readiness、政策剩餘次數、最近 generation／delivery 結果與安全錯誤；未知費用／結果保留未知。Settings 寫入回饋遵循 Toast 規則 |
+| FR-01 Shared execution | The App and Cat adapters use the same job service, Runtime client and asset verification, without duplicating the runner or provider catalog |
+| FR-02 App admission | Keep the existing App enablement state, exact version, package digest, account, `ui.route` / `media.images` and CSRF / bridge checks; other Apps of the same account cannot inherit permission |
+| FR-03 Cat identity | The caller Cat/account/conversation/session is established by a host-issued context; the model cannot pass an App scope, owner ID, raw path or Runtime credentials to obtain capability |
+| FR-04 Role separation | Boss/admin, the companion role and a Studio install each do not automatically grant image-generation rights; a grant can be given to an ordinary Cat, and a proactive trigger additionally requires an active companion and a valid DM |
+| FR-05 Capability | Offer only the operations and targets Runtime has enabled, intersected with the caller policy; querying does not probe the CLI or generate images. Submission re-checks; it must not quietly swap provider, model, effort or operation |
+| FR-06 Policy | Proactive generation is off by default; the owner grants a limited policy. manual / heartbeat are different trigger modes; authorizing one does not imply the other or delivery rights. The image service has no time-window restriction; rhythm only schedules proactive interaction and does not intervene in tool / admission / generation / delivery. Both triggers verify the expiry / quota / interval and the original scope |
+| FR-07 Durable budget | Admission atomically performs request dedupe, policy revision check, daily / total count and interval reservation, job creation and the fixed Runtime ID; cross-caller concurrency cannot exceed the quota |
+| FR-08 Idempotency | The same caller/request ID + the same canonical payload returns the original job; a different payload conflicts. The payload includes operation, target, prompt and the authorized output context |
+| FR-09 Execution | The first phase delivers only Runtime's existing `{id, instance, prompt}`; the caller cannot pass shell args, an execution cwd, a file destination, or widen the native tool list |
+| FR-10 Async tools | The Cat actually receives a callable session-scoped tool descriptor / executor; a prompt, tool registration or tool name alone does not count as delivery. submit returns a job reference and does not wait on a resource occupied by the same Cat's turn |
+| FR-11 Recovery | An unknown POST, restart and refresh only GET / collect / cancel the same Runtime ID; they do not resend a new generation. When it is unconfirmed whether the provider was called, the reservation is not automatically refunded |
+| FR-12 Cancellation | Cat/policy revocation, owner cancel and App disable each affect only their own jobs. Cancellation must wait for the original execution to stop; a late success does not override the revocation or cancel intent |
+| FR-13 Verified asset | Obtain the original file from the matching receipt, verify MIME, size, dimensions and hash, and mark succeeded only after an atomic save; reference by asset ID, with no arbitrary filesystem read |
+| FR-14 Access | read/list/cancel/reference verify owner, initiator scope or an explicit sharing grant; guessing a job/asset ID yields no data. Studio does not automatically obtain all of a Cat's works |
+| FR-15 Attachment | The image is attached to the existing DM under the same Cat identity. The data includes the source job, asset, Cat/account, conversation, trigger and policy revision, to avoid being treated as a reply to another owner's turn |
+| FR-16 Delivery admission | Image success does not mean sending is allowed; at creation and at send execution, re-check Cat/policy, conversation, owner and binding identity / revision; all accepted jobs can be delivered while the DM is being watched, with no separate window or sleep check. Archived / disabled / revoked is still rejected; it does not drift with the default bot |
+| FR-17 Durable delivery | The message and delivery intent are created in a recoverable transaction or the same idempotent command; a lost eventHub or a process restart can still be handled. A duplicate completion does not add an image message or a logical intent |
+| FR-18 Truthful receipt | Success is judged from the actual status of the Telegram receipt. A definite, retryable non-delivery failure uses backoff with the same asset; an unknown result stays uncertain and needs an explicit owner retry, and exactly-once cannot be claimed |
+| FR-19 Lifecycle | Uninstalling Studio revokes the Studio scope, and does not revoke the Cat grant or delete Cat assets. Turning off a Cat does not affect Studio; an asset with a pending delivery is not removed early by retention |
+| FR-20 Observability | The owner can inspect readiness, remaining policy count, the latest generation / delivery results and safe errors; unknown cost / results stay unknown. Settings write feedback follows the Toast rule |
 
 ## Policy and record semantics
 
-以下為 internal shape；Cat 身分／政策／binding 與 SDK／Runtime payload 分開。
-公開 SDK 不接受 Cat 身分、source session hint、路徑或傳送目的地。
+The following is the internal shape; Cat identity / policy / binding is kept separate from the
+SDK / Runtime payload. The public SDK does not accept a Cat identity, source session hint,
+path or delivery destination.
 
 ### Implemented boundaries
 
-- SDK 1.8 的 `media.images` 與既有 `images` adapter 使用同一個 executor；新 namespace
-  只對 manifest floor 至少 1.8 的 App 提供。Studio 使用 host 注入的 SDK，archive encoder
-  的公開 exact Platform 0.6.0 pin 與此獨立；SDK 1.8 也隨本次 Platform npm 發布公開 types。
-- 新 Cat store 為獨立 SQLite schema 1，使用 FULL synchronous／WAL／immediate
-  transactions，原子保留 request identity、政策 revision、次數與單筆 active 工作。
-  不搬動既有 App Core metadata／原檔，不清空未知或損壞 DB。SQLite lazy load：未具備
-  `node:sqlite` 的舊 Node host 仍保留 App 功能，Cat 入口明確回報 storage unavailable。
-- Cat 工具為 loopback-only `/api/internal/cat-image-tools/mcp` 的 host `cats` server；
-  使用正式 session MCP descriptor。`image_generate(prompt,caption)` 的 request ID 由
-  host supervised action 派生；`image_status(jobId)` 只讀原工作。bearer 不授權 owner API，
-  每回合結束即失去 call 權限。公開 ingress 即使轉送自 loopback 仍拒絕此 route。
-- 已設定的 Cat 生圖政策若因到期、trigger mode、帳號、binding 或 Runtime
-  capability 而受限，受監督回合取得當次安全原因及到期時間；
-  不再將 admission 拒絕靜默變成「沒有平台整合」。該回合不發工具 grant，也不預留
-  額度或自動排程。manual 與 heartbeat 均驗證政策期限，服務不查作息或時段。
-  life loop 決定主動互動的觸發，已接受的圖片不因 Cat 入睡而中止。下回合重新檢查，
-  恢復時重新發送正式 descriptor；受限時明確替換舊 descriptor，包含 host 重啟後
-  留在 Runtime 的舊憑證。非適用對話／session 仍不能取得 Cat image scope。
-- owner/admin 路由為 `/api/cats/:catId/image-policy` 與同 Cat 下的 image／cancel／retry。
-  actor、account、conversation、原 binding 及 revision 均由 host 解析；未知欄位拒絕。
-  部分政策更新保留原 binding，disabled／失效帳號或移除管理角色即失去後續執行／外送權。
-- 工作先 durable held，成功 turn receipt 才釋放；lost ack 只經 host active-turn gate
-  與 Runtime 明確 `turnInFlight=false` 或 definite session 404 恢復。Runtime只交接自己的
-  idle source，等待所有 owned helpers 停止；不搶別隻 Cat 的 worker，不調高 pool cap。
-- Cat 圖片附件只含受管 ref、hash、MIME 與尺寸；owner image route 每次驗證 account／
-  owner／Cat scope。圖片顯示於原對話，普通 transport fanout 不再代送此 durable intent。
-- delivery 在 side effect 前取得持久 attempt claim。append 前後、外送前及 Telegram
-  完成讀檔後都重查 claim；最後 network 邊界重查完整 owner／Cat／conversation／
-  binding revision。過期 sending 為 uncertain，需明確重送；只有 explicit API 429
-  自動有限重試。正常關機只 drain 已開始工作，不抑制仍待送的圖片。
-- reset 透過持久 maintenance fence，拒絕 active／未確認 generation 及 sending／uncertain
-  delivery；owner 可明確停止 uncertain 的後續外送，留下 `abandonedAt` 並清除舊 claim，
-  先前結果仍為 uncertain，之後才可 reset。跨程序新 admission／dispatch／delivery
-  在清理期間被拒絕。
+- SDK 1.8's `media.images` and the existing `images` adapter use the same executor; the new
+  namespace is offered only to Apps whose manifest floor is at least 1.8. Studio uses the
+  host-injected SDK, and the public exact Platform 0.6.0 pin of the archive encoder is
+  independent of this; SDK 1.8 also publishes its types with this Platform npm release.
+- The new Cat store is a separate SQLite schema 1, using FULL synchronous / WAL / immediate
+  transactions, atomically reserving request identity, policy revision, count and the single
+  active job. It does not move existing App Core metadata / original files, and does not
+  clear an unknown or corrupt DB. SQLite is lazy-loaded: an older Node host without
+  `node:sqlite` still keeps App functionality, and the Cat entry explicitly reports storage
+  unavailable.
+- The Cat tool is the host `cats` server on the loopback-only
+  `/api/internal/cat-image-tools/mcp`; it uses the official session MCP descriptor.
+  `image_generate(prompt,caption)` has its request ID derived from the host supervised action;
+  `image_status(jobId)` only reads the original job. The bearer does not authorize owner APIs,
+  and loses call permission when each turn ends. A public ingress rejects this route even if
+  forwarded from loopback.
+- If a configured Cat image policy is restricted by expiry, trigger mode, account, binding or
+  Runtime capability, the supervised turn receives the safe reason and expiry time for that
+  turn; an admission rejection is no longer silently turned into "no platform integration".
+  That turn issues no tool grant, and reserves no quota or automatic schedule. Both manual and
+  heartbeat verify the policy expiry, and the service does not look at rhythm or time windows.
+  The life loop decides the trigger of proactive interaction, and an accepted image is not
+  aborted because the Cat falls asleep. The next turn re-checks; on recovery the official
+  descriptor is sent again; when restricted, the old descriptor is explicitly replaced,
+  including old credentials left in Runtime after a host restart. A non-applicable
+  conversation/session still cannot obtain the Cat image scope.
+- The owner/admin routes are `/api/cats/:catId/image-policy` and the image / cancel / retry
+  under the same Cat. The actor, account, conversation, original binding and revision are all
+  resolved by the host; unknown fields are rejected. A partial policy update keeps the
+  original binding, and a disabled / invalid account or a removed management role loses
+  subsequent execution / outbound rights.
+- A job is first durably held, and released only by a successful turn receipt; a lost ack
+  recovers only through the host active-turn gate and Runtime's explicit
+  `turnInFlight=false` or a definite session 404. Runtime hands off only its own idle source,
+  waiting for all owned helpers to stop; it does not seize another Cat's worker or raise the
+  pool cap.
+- A Cat image attachment contains only the managed ref, hash, MIME and dimensions; the owner
+  image route verifies account / owner / Cat scope every time. The image is shown in the
+  original conversation, and ordinary transport fanout no longer sends this durable intent on
+  its behalf.
+- Delivery takes a persistent attempt claim before the side effect. The claim is re-checked
+  before and after append, before sending, and after Telegram finishes reading the file; the
+  last network boundary re-checks the full owner / Cat / conversation / binding revision. An
+  expired sending becomes uncertain and needs an explicit resend; only an explicit API 429 is
+  automatically retried a limited number of times. A normal shutdown only drains work already
+  started and does not suppress images still waiting to be sent.
+- reset goes through a persistent maintenance fence, rejecting active / unconfirmed
+  generations and sending / uncertain delivery; the owner can explicitly stop later outbound
+  sending of an uncertain one, leaving `abandonedAt` and clearing the old claim; the previous
+  result stays uncertain, and only then can reset happen. Cross-process new
+  admission / dispatch / delivery is rejected during cleanup.
 
-| Record | 必要內容 |
+| Record | Required content |
 | --- | --- |
-| Trusted caller | `kind: app | cat`、account／actor、受信 App installation 或 Cat/session、最小 tool grant |
-| Cat image policy | policy ID/revision、Cat/account、manual/proactive modes、operation／target、正整數 daily/total limits、min interval、budget IANA timezone、expiry、enabled/revoked、允許的 conversation/binding；無生圖時段設定 |
-| Image intent/job | stable ID/request ID、initiator、trigger source、canonical request/hash、policy snapshot／reservation、Runtime ID、generation state、取消意圖、safe error、output asset |
-| Asset | stable ID、owner／origin scope、verified MIME/bytes/dimensions/hash、managed location、sharing grants／references；公開投影不含 path |
-| Delivery intent | stable key（job/asset/conversation/binding）、immutable payload reference、binding revision、pending/sending/sent/failed/uncertain/suppressed、attempts、Telegram message IDs、safe reason |
+| Trusted caller | `kind: app | cat`, account / actor, trusted App installation or Cat/session, minimal tool grant |
+| Cat image policy | policy ID/revision, Cat/account, manual/proactive modes, operation / target, positive-integer daily/total limits, min interval, budget IANA timezone, expiry, enabled/revoked, allowed conversation/binding; no image-generation time-window setting |
+| Image intent/job | stable ID/request ID, initiator, trigger source, canonical request/hash, policy snapshot / reservation, Runtime ID, generation state, cancel intent, safe error, output asset |
+| Asset | stable ID, owner / origin scope, verified MIME/bytes/dimensions/hash, managed location, sharing grants / references; the public projection contains no path |
+| Delivery intent | stable key (job/asset/conversation/binding), immutable payload reference, binding revision, pending/sending/sent/failed/uncertain/suppressed, attempts, Telegram message IDs, safe reason |
 
-政策預設沒有任何主動生圖額度；啟用必須選定有限值，未設定不以無限取代。
-每日額度以政策 IANA timezone 的日期分桶；間隔以持久 UTC timestamps 計算。
-變更 timezone／政策 revision 不重置當日／總用量，也不解除既有預留。
-第一階段每 Cat 最多一筆 active image job；Studio 保留既有每 App/account 的 active
-及 retention 限制，整體仍服從 Runtime 的全域單圖與 pool/singleton admission。
+By default the policy has no proactive image quota; enabling must pick finite values, and
+unset is not replaced by unlimited.
+The daily quota is bucketed by date in the policy IANA timezone; the interval is computed from
+persistent UTC timestamps. Changing the timezone / policy revision does not reset the
+daily / total usage, nor release existing reservations.
+In the first phase each Cat has at most one active image job; Studio keeps its existing
+per-App/account active and retention limits, and the whole still obeys Runtime's global
+single-image and pool/singleton admission.
 
-預留跨午夜仍歸原 admission bucket；只有可信證據證明未執行 provider 時才可原子釋放，
-且 release 本身冪等。未知結果仍占次數，不能靠重啟、取消或改 policy 反覆生圖。
-次數限制不保證金額；實際成本只呈現 Runtime 回報的資料。
+A reservation across midnight still belongs to the original admission bucket; it can be
+atomically released only when trusted evidence proves the provider was not run, and the
+release itself is idempotent. An unknown result still occupies the count, and one cannot
+generate images repeatedly by restarting, cancelling or changing the policy.
+A count limit does not guarantee an amount of money; actual cost is presented only from the
+data Runtime reports.
 
-既有 App 方法沿用：getCapabilities/list/submit/cancel/refresh/read/export。Cat 模型工具只
-暴露 generate 與 status；owner 可取消。下載及送圖由 host 處理。
-兩個 adapter 不共用可由呼叫端偽造的 scope。任何額外 agent transport 使用現有受控
-session MCP／工具邊界，不從 public ingress 直接暴露內部工具。
+The existing App methods are kept: getCapabilities/list/submit/cancel/refresh/read/export. The
+Cat model tools expose only generate and status; the owner can cancel. Download and sending
+the image are handled by the host.
+The two adapters do not share a scope that the caller can forge. Any additional agent
+transport uses the existing controlled session MCP / tool boundary, and does not expose
+internal tools directly from the public ingress.
 
 ## Result, delivery and failure behavior
 
-Generation state 與 delivery state 分離。圖片保存成功但 Telegram 失敗時，工作仍為
-succeeded，delivery 為 failed 或 uncertain；後續 retry 不再呼叫 provider。
+Generation state and delivery state are separate. When the image is saved successfully but
+Telegram fails, the job is still succeeded and delivery is failed or uncertain; a later retry
+does not call the provider again.
 
-- 沒有 profile／授權／容量或超額：不執行 provider，留下可理解的原因。Cat 可維持文字
-  或安靜；不得把降級內容當已生成圖片，也不自動換 target。
-- 心跳提案或模型輸出不是 authorization。生成與傳送必須各通過 host 檢查。
-- Runtime／Platform 中斷：用相同 ID 查詢。確定找不到也不擅自開另一個 attempt；
-  原本可能延遲抵達的 POST 必須被視為尚有歧義。
-- 保存失敗：保留原 receipt 可重新收集；不得「修復」成再生一張。
-- completion、訊息與 intent 以 stable keys 防重；pending/sending 重啟時，已開始但
-  未確認的 Telegram 發送標 uncertain，不直接回 pending。
-- Telegram 確定失敗的 retry 遵守 bounded attempts／retry-after；每次重查送出權限。
-  失效 binding 或政策撤銷時暫停／抑制送達；睡眠不撤銷已接受的圖片，不改選別的收件人。
-- pending/uncertain 的資產必須仍可讀。刪除需先解除待送引用或明確取消，不能留下
-  會在恢復時讀不到檔案的 intent。
+- No profile / authorization / capacity, or over quota: the provider is not run, and an
+  understandable reason is left. The Cat can stay with text or stay quiet; degraded content
+  must not be treated as a generated image, and the target is not switched automatically.
+- A heartbeat proposal or model output is not authorization. Generation and delivery must
+  each pass the host check.
+- Runtime / Platform interruption: query with the same ID. Even if it is definitely not found,
+  do not start another attempt on one's own; a POST that might arrive late must be treated as
+  still ambiguous.
+- Save failure: keep the original receipt so it can be collected again; it must not be
+  "repaired" by generating another image.
+- Completion, message and intent are deduplicated by stable keys; on a pending/sending
+  restart, a Telegram send that had started but is unconfirmed is marked uncertain, not
+  returned directly to pending.
+- A retry after a definite Telegram failure obeys bounded attempts / retry-after; each time
+  the send permission is re-checked. When the binding is invalid or the policy revoked,
+  delivery is paused / suppressed; sleep does not revoke an accepted image and does not pick
+  another recipient.
+- A pending/uncertain asset must remain readable. Deletion must first release the pending
+  reference or be explicitly cancelled, and must not leave an intent whose file cannot be
+  read on recovery.
 
 ## Runtime evaluation
 
-Runtime 已確認需最小資源交接擴充，仍使用既有 image routes 與 schema 2。
-見 [Runtime SPEC-038](../../../cats-runtime/docs/specs/SPEC-038-image-generation-contract-2.md)
-與 [PLAN-048](../../../cats-runtime/docs/plans/PLAN-048-image-generation-contract-2.md)。
+Runtime has confirmed that a minimal resource-handoff extension is needed, still using the
+existing image routes and schema 2. See
+[Runtime SPEC-038](../../../cats-runtime/docs/specs/SPEC-038-image-generation-contract-2.md)
+and [PLAN-048](../../../cats-runtime/docs/plans/PLAN-048-image-generation-contract-2.md).
 
-| 檢查 | Gate |
+| Check | Gate |
 | --- | --- |
-| 現有 contract 2 request／receipt／MIME／取消／restart | 可透過兩種 adapter 共用；只新增 host-only `sourceSessionId`，不增加 Cat／App policy 欄位 |
-| Cat chat 與圖片 target 不同／相同 provider instance | 不同步等待自己持有的 worker／singleton；unsupported 組合清楚不可用，不宣稱所有 Cat/provider 配對都可執行 |
-| 工具及 heartbeat/session gate | submit／completion 無重入 deadlock；owner 訊息可繼續，shutdown 可 bounded 停止 |
-| Pool 滿／singleton busy | 原 Runtime 錯誤可正確映射；不搶占任意聊天、不自動調高上限、不放寬執行規則 |
-| 需要 runtime resource handoff 的組合 | 等 source 的實際 turn／完整 process lifetime 證據；回歸涵蓋 persistent source、helper、abort 與舊 handle |
-| 修圖／新 provider／新 options | 依 Apps PLAN-006 協調，不列入本階段成功條件 |
+| Existing contract 2 request / receipt / MIME / cancel / restart | Shareable through both adapters; only a host-only `sourceSessionId` is added, with no Cat / App policy fields added |
+| Cat chat and image target on different / the same provider instance | Does not synchronously wait on a worker / singleton it holds itself; an unsupported combination is clearly unavailable, and it does not claim every Cat/provider pairing can run |
+| Tools and heartbeat/session gate | submit / completion have no re-entrant deadlock; owner messages can continue, and shutdown can stop within bounds |
+| Pool full / singleton busy | The original Runtime error maps correctly; it does not preempt arbitrary chats, does not raise the cap automatically, and does not relax execution rules |
+| Combinations needing runtime resource handoff | Wait for evidence of the source's actual turn / full process lifetime; regression covers persistent source, helper, abort and old handles |
+| Image editing / new provider / new options | Coordinate under Apps PLAN-006; not part of this phase's success criteria |
 
-Runtime 不處理 owner 發訊意圖、App registry、Cat 預算、資產分享或 Telegram。
-不為了避免 Studio 安裝依賴，就讓 Cat 持有 Runtime 通用憑證。
+Runtime does not handle the owner's messaging intent, the App registry, the Cat budget, asset
+sharing or Telegram. A Cat is not given Runtime's general credentials merely to avoid
+depending on a Studio install.
 
 ## Upgrade and compatibility
 
-- 新服務在既有 SDK 下接住 Studio 的相同 payload／response、隔離及歷史 IDs。
-  不以 SDK major 或新 App 發布作為純內部抽取的必要前提。
-- 新 caller／policy／asset／delivery 紀錄必須有版本化格式。既有 Studio jobs 映射為
-  App initiator，保留 App/account/version、request ID、Runtime ID、Core IDs 與圖片 hash；
-  不補出 Cat owner、共享權或自動生圖額度。
-- 既有 App schema 1／2 圖片不做大量改寫。新增可選 private `cancelRequestedAt`，
-  老 cancelling receipt 以原 updatedAt 推得取消意圖，僅在既有 Core mutation 路徑持久化；
-  該路徑沿用 snapshot backup／atomic replace。舊 interrupted receipt 不假造取消證據。
-  新 Cat store 與舊 App records 無資料搬移，SQLite 回滾／WAL 保留未完成的原子更新。
-- 先驗證全部來源、建立可驗證備份、stage 新 metadata／原檔引用並驗證，再 atomic
-  activate；失敗保留原始資料並提供 recovery。跨 store 中斷須可重入，未知格式拒絕
-  開啟，不能清空重建或把舊 job 重新執行。
-- App 移除／停用仍對 App scope 生效；不為共用服務取消現有撤銷語意。
-- 若 persisted-data／外部契約確有 breaking boundary，依 0.x minor／SDK major 政策
-  記錄所需邊界與最低相容組合；發布仍須符合本次明確授權與 release SOP。
+- The new service takes over Studio's same payload / response, isolation and history IDs under
+  the existing SDK. An SDK major or a new App release is not a necessary precondition for a
+  purely internal extraction.
+- The new caller / policy / asset / delivery records must have a versioned format. Existing
+  Studio jobs map to an App initiator, keeping App/account/version, request ID, Runtime ID,
+  Core IDs and image hash; no Cat owner, sharing rights or automatic image quota is invented.
+- Existing App schema 1 / 2 images are not bulk rewritten. An optional private
+  `cancelRequestedAt` is added; an old cancelling receipt infers its cancel intent from the
+  original updatedAt, persisted only on the existing Core mutation path; that path keeps the
+  snapshot backup / atomic replace. An old interrupted receipt does not fabricate cancel
+  evidence. The new Cat store and the old App records have no data migration, and SQLite
+  rollback / WAL preserves incomplete atomic updates.
+- First verify all sources, create a verifiable backup, stage and verify the new metadata /
+  original-file references, then atomically activate; on failure keep the original data and
+  provide recovery. A cross-store interruption must be re-entrant, an unknown format is
+  refused to open, and one cannot clear and rebuild or re-run an old job.
+- App removal / disable still takes effect on the App scope; the existing revocation
+  semantics are not cancelled for the shared service.
+- If the persisted-data / external contract really has a breaking boundary, record the needed
+  boundary and the minimum compatible combination under the 0.x minor / SDK major policy;
+  release must still conform to this explicit authorization and the release SOP.
 
 ## Acceptance criteria
 
 | ID | Required evidence |
 | --- | --- |
-| AC-01 | Studio 未安裝，普通 active companion + 有限 grant 經實際工具 delivery 可產圖；Boss 無 grant 被拒，0 provider calls |
-| AC-02 | 同一共用服務下，既有 Studio package 的提交／取消／重開／離線原圖匯出保持 byte-identical |
-| AC-03 | 跨 App/account/Cat、假造 caller／session／job ID 或借 Studio scope 全被拒；無 raw path 或 credentials 洩漏 |
-| AC-04 | 併發 heartbeat／owner 請求、重複 request、跨程序重啟、跨午夜／改時區都不超次數，預留釋放冪等 |
-| AC-05 | 相同 ID 改 prompt/target/operation 衝突；丟失 POST response、GET 暫時 404、refresh/reopen 不增加 native invocation |
-| AC-06 | 不同及相同 provider instance、busy/full pool、session gate、shutdown 無 deadlock；列出通過與尚不可用的配對 |
-| AC-07 | 撤銷、Cat 停用、Studio 停用各只影響本 scope；取消先於晚到結果，其他 caller 工作不被取消 |
-| AC-08 | 一筆成功生圖對應一張原檔、一個 logical Cat 圖片訊息、一個 delivery intent；丟失 event／重複 completion／restart 不複製它們 |
-| AC-09 | Telegram `failed` 回執不標 delivered；確定失敗 bounded retry 使用同 asset；ambiguous send 保持 uncertain，0 次重新生圖 |
-| AC-10 | binding rotation／owner sleep／政策撤銷／對話刪除／owner identity 改變後晚到結果不誤送；回覆仍落同一個 Cat 私訊 |
-| AC-11 | Studio 卸載後 Cat 可依原 grant 產圖，Studio 看不到 Cat 私有圖；明確分享後只開放被分享的資產 |
-| AC-12 | 舊 Studio 原圖及全部 IDs/hash、失敗／中斷狀態保存；malformed、ENOSPC、斷電、再次啟動與不支援降版均有 upgrade fixtures |
-| AC-13 | Desktop 可辨識未授權／未設定／忙碌／產圖中／已產圖未送達；Settings 變更錯誤用 Toast；未生成不冒稱有圖 |
-| AC-14 | pending/uncertain delivery 的資產不被 retention 移除；明確取消／清理後引用一致，不擴大任意檔案讀取 |
-| AC-15 | isolated host＋built Studio＋fixture Runtime＋fake Telegram 完整閉環；另一個測試以真 session tool delivery 驗證 Cat 可實際呼叫 |
-| AC-16 | 真 provider／Telegram／installed Desktop 驗收需記錄版本、支持配對與 owner 核准的生成次數；未執行就標 pending，不能用研究圖或 fixture 代替 |
+| AC-01 | With Studio not installed, an ordinary active companion + limited grant can generate an image through actual tool delivery; a Boss without a grant is rejected, with 0 provider calls |
+| AC-02 | Under the same shared service, the existing Studio package's submit / cancel / reopen / offline original-file export stay byte-identical |
+| AC-03 | Cross App/account/Cat, forged caller / session / job IDs, or borrowing the Studio scope are all rejected; no raw path or credentials leak |
+| AC-04 | Concurrent heartbeat / owner requests, duplicate requests, cross-process restart, crossing midnight / changing timezone never exceed the count, and reservation release is idempotent |
+| AC-05 | The same ID with a changed prompt/target/operation conflicts; a lost POST response, a transient GET 404, refresh/reopen add no native invocation |
+| AC-06 | Different and same provider instance, busy/full pool, session gate and shutdown have no deadlock; list the pairings that pass and those not yet available |
+| AC-07 | Revocation, Cat disable and Studio disable each affect only this scope; cancel precedes a late result, and other callers' jobs are not cancelled |
+| AC-08 | One successful generation corresponds to one original file, one logical Cat image message and one delivery intent; a lost event / duplicate completion / restart does not duplicate them |
+| AC-09 | A Telegram `failed` receipt is not marked delivered; a definite-failure bounded retry uses the same asset; an ambiguous send stays uncertain, with 0 regenerations |
+| AC-10 | After binding rotation / owner sleep / policy revocation / conversation deletion / owner identity change, a late result is not misdelivered; the reply still lands in the same Cat DM |
+| AC-11 | After Studio is uninstalled the Cat can still generate images under the original grant, and Studio cannot see the Cat's private images; after explicit sharing, only the shared assets are opened |
+| AC-12 | Old Studio originals and all IDs/hash, failure / interrupted states are preserved; malformed, ENOSPC, power loss, restart and unsupported downgrade each have upgrade fixtures |
+| AC-13 | Desktop can distinguish not authorized / not configured / busy / generating / generated but not delivered; Settings change errors use Toast; not generated does not claim to have an image |
+| AC-14 | An asset with pending/uncertain delivery is not removed by retention; after explicit cancel / cleanup the references are consistent, and arbitrary file reads are not widened |
+| AC-15 | The isolated host + built Studio + fixture Runtime + fake Telegram form a full closed loop; another test verifies with real session tool delivery that the Cat can actually call it |
+| AC-16 | Acceptance with a real provider / Telegram / installed Desktop must record the version, supported pairings and the owner-approved number of generations; if not run, mark pending, and a research image or fixture cannot substitute |
 
 ## Open engineering gates
 
-- [ ] P0 凍結 Cat 工具的實際 schema／session MCP 授權、policy defaults UI 與管理入口。
-- [ ] P0 凍結 reservation/job/asset/delivery 的交易及跨程序鎖邊界。
-- [ ] P0 用隔離 fixtures 判定哪些 caller／image target 配對可沿用 Runtime。
-- [ ] P0 凍結 durable 格式、升級／恢復邊界，以及既有 Studio package 契約矩陣。
-- [ ] 獨立 implementation review 與各 OS／真實 provider 驗收安排。
+- [ ] P0 freeze the Cat tool's actual schema / session MCP authorization, the policy defaults
+      UI and the management entry.
+- [ ] P0 freeze the transaction and cross-process lock boundary of reservation/job/asset/delivery.
+- [ ] P0 use isolated fixtures to determine which caller / image target pairings can reuse Runtime.
+- [ ] P0 freeze the durable format, upgrade / recovery boundary, and the existing Studio
+      package contract matrix.
+- [ ] Independent implementation review and the arrangement of per-OS / real-provider acceptance.
 
-這些是實作前的 contract gates；不影響本次完成可審閱文件，也不暗含實作核准。
+These are contract gates before implementation; they do not affect this completion of a
+reviewable document, and do not imply implementation approval.
 
 ## References
 
 - [ADR-136](../decisions/136-share-controlled-image-capabilities-between-cats-and-studio.md)
-- [SPEC-119](SPEC-119-app-image-generation.md)、[SPEC-124](SPEC-124-alive-companion-life-loop.md)
+- [SPEC-119](SPEC-119-app-image-generation.md), [SPEC-124](SPEC-124-alive-companion-life-loop.md)
 - [Apps SPEC-006](../../../cats-apps/docs/specs/SPEC-006-studio-image-workspace.md)
 - [Apps PLAN-006](../../../cats-apps/docs/plans/PLAN-006-studio-image-workspace.md)
 

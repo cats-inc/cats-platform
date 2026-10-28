@@ -4,85 +4,85 @@
 
 | Field | Value |
 | --- | --- |
-| Status | 實作完成；真實 Claude Code 驗收通過，Chrome 實際瀏覽器操作尚未驗證 |
-| Owner | Platform shared interaction、Desktop integration |
+| Status | Implementation complete; real Claude Code acceptance passed, actual Chrome browser operation not yet verified |
+| Owner | Platform shared interaction, Desktop integration |
 | Assigned To | Claude |
-| Reviewer | Product owner、Runtime maintainers |
+| Reviewer | Product owner, Runtime maintainers |
 | Related spec | [SPEC-132 § Claude Code](../specs/SPEC-132-provider-session-interactions-and-capability-visibility.md#claude-code-2026-10-28) |
-| Runtime contract | Runtime SPEC-039 R8；PLAN-050 P1–P4（#196–#200） |
+| Runtime contract | Runtime SPEC-039 R8; PLAN-050 P1–P4 (#196–#200) |
 
 ## Overview
 
-Owner 於 2026-10-28 確認目前的 Desktop 無法使用 Claude in Chrome，並授權開 worktree 切 slice 實作。
-Runtime 已在 #196–#199 接上 Claude Code 的原生批准、提問、MCP 表單、執行政策與工具清單，
-#200 再加上 session 層級的 `browserIntegration`（Claude in Chrome 的 `--chrome`）。
-本計畫讓 Desktop 消費這些契約，沿用 PLAN-124 的互動引擎、卡片與設定入口，不另建一套。
+On 2026-10-28 the owner confirmed that the current Desktop cannot use Claude in Chrome, and authorized opening a worktree and implementing in slices.
+Runtime has hooked up Claude Code's native approval, questions, MCP forms, execution policy and tool inventory in #196–#199,
+and #200 adds the session-level `browserIntegration` (Claude in Chrome's `--chrome`).
+This plan has Desktop consume these contracts, reusing PLAN-124's interaction engine, cards and settings entry rather than building a separate set.
 
-本授權不含版本 bump 或發布。Desktop 從 Runtime checkout 打包，因此 Desktop 建置
-必須包含 Runtime #200 的合併 commit。Owner 之後另行選定 Desktop 0.12.0 standard
-preview，pin Runtime `af405ff7`（含 #200／#201），見 [release notes](../release-notes.md)。
+This authorization does not include a version bump or release. Desktop is packaged from the Runtime checkout, so the Desktop build
+must include the merge commit of Runtime #200. The owner later separately selected the Desktop 0.12.0 standard
+preview, pinning Runtime `af405ff7` (including #200/#201); see the [release notes](../release-notes.md).
 
 ## Non-Goals
 
-- Windows 上的 Claude computer use：Claude Code 只開放給 macOS 互動 session，Runtime 回報 `unavailable`。
-- 修改使用者自己的 Claude Code 設定（例如 `/chrome` 的 Enabled by default）或 `providers.yaml`。
-- Codex helper 的可用性；那是 PLAN-124 記錄的上游環境限制。
+- Claude computer use on Windows: Claude Code opens it only to macOS interactive sessions, and Runtime reports `unavailable`.
+- Modifying the user's own Claude Code settings (for example `/chrome`'s Enabled by default) or `providers.yaml`.
+- Availability of the Codex helper; that is an upstream environment limitation recorded in PLAN-124.
 
 ## Implementation Phases
 
-### P1 — 契約更新與 `tool_approval` 卡片
+### P1 — Contract update and the `tool_approval` card
 
-- [x] 共用契約對齊 Runtime `043155a1`：`INTERACTION_KINDS` 加入 `tool_approval`，
-  inventory 的 `builtins` 擴充為 `not_exposed_by_provider | not_observed | observed` 並帶 `builtinTools`。
-- [x] provider discovery 解析 `sessionCapabilities.admissibleCeilings`，無效項目被丟棄（fail closed）。
-- [x] `PLATFORM_INTERACTION_HOST` 與 target 宣告取交集，Claude 對話因此協商 `tool_approval`；
-  既有通用卡片顯示工具、MCP server、輸入摘要與「允許一次／本工作階段允許」。
-- [x] 互動 binding 帶 lease 的 provider；工作階段詳情列出內建工具，設定連結依 provider 分開
-  （Codex 插件文件／Claude in Chrome 文件，未知 provider 不顯示）。
+- [x] The shared contract is aligned with Runtime `043155a1`: `INTERACTION_KINDS` gains `tool_approval`,
+  and the inventory's `builtins` is extended to `not_exposed_by_provider | not_observed | observed` and carries `builtinTools`.
+- [x] Provider discovery parses `sessionCapabilities.admissibleCeilings`, and invalid entries are dropped (fail closed).
+- [x] `PLATFORM_INTERACTION_HOST` is intersected with the target declaration, so Claude conversations negotiate `tool_approval`;
+  the existing generic card shows the tool, MCP server, input summary and 「允許一次／本工作階段允許」 ("Allow once / Allow for this session").
+- [x] The interaction binding carries the lease's provider; the session details list the built-in tools, and settings links are split by provider
+  (Codex plugin docs / Claude in Chrome docs; an unknown provider shows none).
 
-**Exit:** Claude 對話的 MCP 與 Chrome 工具呼叫在 on-request 政策下變成同 turn 卡片，不再因未協商而被拒絕。
+**Exit:** MCP and Chrome tool calls in a Claude conversation become same-turn cards under the on-request policy, and are no longer rejected for lack of negotiation.
 
-### P2 — 權限上限提示
+### P2 — Permission ceiling prompts
 
-- [x] runtime client 在送出前依 target 的 `admissibleCeilings` 拒絕上限外的政策（create 與 resume），
-  錯誤沿用 `provider_policy_unsupported`，訊息列出 target 可強制的上限。
-- [x] 政策編輯器在選擇較窄的上限時提示 Claude Code 只能以「完整存取＋網路」執行。草稿可同時包含
-  不同 provider 的 Cat，編輯器不知道最終 target，因此以提示呈現，不替 Codex 隱藏可用選項。
+- [x] Before sending, the runtime client rejects a policy beyond the target's `admissibleCeilings` (create and resume),
+  and the error reuses `provider_policy_unsupported`, with a message listing the ceilings the target can enforce.
+- [x] When a narrower ceiling is chosen, the policy editor hints that Claude Code can only run with "full access + network". A draft can contain
+  Cats of different providers, and the editor does not know the final target, so this is shown as a hint and does not hide options available to Codex.
 
-### P3 — Claude in Chrome 偏好
+### P3 — Claude in Chrome preference
 
-- [x] Settings > Runtime 提供預設關閉的 Claude in Chrome 開關，存於 platform preferences 的
-  `claudeInChromeEnabled`。讀寫走 `/api/provider-interactions/preferences`，與原生控制相同，
-  只接受本機 owner/admin 的 browser session；一般 preferences 路由不能改它，資料重設會恢復關閉。
-  舊版忽略此欄位只代表不載入 Chrome，不會擴權，因此不需要資料格式升級。
-- [x] 組合層的 wrapper 位於 Work admission wrapper 之外：只有呼叫端自己帶互動 host 的 Chat／Code
-  對話會要求 `browserIntegration: true`；client 只在 host 已協商且 target 宣告支援時送出。
-  Work 監督／排程與 relay 執行不送，關閉時不送（保留使用者自己的 Claude Code 預設）。
-- [x] 說明文字：變更只影響新 session 或下一次 worker 啟動；哪些瀏覽器動作需要核准由 Claude Code 與
-  擴充決定（P4 實測讀取分頁的工具不詢問），完整存取（skip）會略過 Claude Code 的詢問。
-  共用契約 pin 更新為 Runtime `b750d27e`（#200）。
+- [x] Settings > Runtime provides a Claude in Chrome switch that is off by default, stored in the platform preferences'
+  `claudeInChromeEnabled`. Reads and writes go through `/api/provider-interactions/preferences`, the same as native controls,
+  and accept only a local owner/admin browser session; the ordinary preferences routes cannot change it, and a data reset restores it to off.
+  An old version ignoring this field only means Chrome is not loaded and does not widen privileges, so no data-format upgrade is needed.
+- [x] The composition-layer wrapper sits outside the Work admission wrapper: only Chat/Code conversations whose caller carries its own interaction host
+  request `browserIntegration: true`; the client sends it only when the host has negotiated and the target declares support.
+  Work supervision/scheduling and relay execution do not send it, and when it is off it is not sent (keeping the user's own Claude Code default).
+- [x] Explanatory text: the change affects only new sessions or the next worker start; which browser actions need approval is decided by Claude Code and the
+  extension (P4 testing showed the tool that reads tabs does not ask), and full access (skip) skips Claude Code's prompts.
+  The shared contract pin was updated to Runtime `b750d27e` (#200).
 
-### P4 — 驗收
+### P4 — Acceptance
 
-- [x] Focused Node／renderer 測試、受影響 typecheck 與 build（各片 progress log）。
-- [x] 以隔離 state 透過真實 `CatsRuntimeClient` 與 Claude Code 驗證 `tool_approval` 往返與
-  `--chrome` 載入；Chrome 實際操作需 owner 開啟瀏覽器並同意後才進行，本次未進行。
+- [x] Focused Node/renderer tests, affected typecheck and build (see each slice's progress log).
+- [x] With isolated state, verified the `tool_approval` round-trip and `--chrome` loading through the real `CatsRuntimeClient` and Claude Code;
+  actual Chrome operation requires the owner to open the browser and consent before proceeding, and was not done this time.
 
 ## Testing Strategy and Risks
 
-優先使用 scripted Runtime fixtures 與 DOM tests。風險：把 Chrome 帶進無人監看的 Work／排程執行；
-在 Claude target 上提供它無法強制的權限上限；把 Codex 的設定連結顯示在 Claude session。
-P2／P3 分別以 admission 測試與 session create payload 測試覆蓋。
+Prefer scripted Runtime fixtures and DOM tests. Risks: bringing Chrome into unattended Work/scheduled runs;
+offering a permission ceiling on the Claude target that it cannot enforce; showing Codex settings links in a Claude session.
+P2/P3 are covered by admission tests and session create payload tests respectively.
 
 ## Progress Log
 
 | Date | Update |
 | --- | --- |
-| 2026-10-28 | P1：契約對齊 Runtime `043155a1`、`tool_approval` 協商與卡片 DOM 測試、admissible ceilings 解析、內建工具清單與 provider 專屬設定連結。15 項 client／renderer、26 項 product／control／policy upgrade／raw-string audit 測試通過；server build 與 renderer typecheck 通過。 |
-| 2026-10-28 | P2：client 端 ceiling 拒絕（不送出 `/sessions`）與編輯器提示。16 項 client／renderer 測試通過，含 explicit workspace-write、provider 離線上限被拒與 full-access＋網路通過。 |
-| 2026-10-28 | P3：Claude in Chrome 偏好、本機 owner 路由、對話限定的 `browserIntegration` 與 Settings 開關。新增 3 項 Node（client 轉送、wrapper 範圍、路由權限與持久化）及 1 項 DOM 測試；更新 3 個 preferences 完整形狀 fixture。39 項 control／client／products／policy／ingress／raw-string 測試、60 項 preferences／setup／reset／preview 測試、8 項 renderer 測試通過；server／renderer／desktop／test typecheck 與 catalog check 通過。 |
-| 2026-10-28 | P4：Claude Code 2.1.312（haiku）、Runtime 原始碼 `b750d27e`（#200）以私有暫存 `CATS_RUNTIME_DIR` 啟動，Claude Code 使用 owner 自己的登入；經 Platform `CatsRuntimeClient` 與對話 wrapper（偏好開啟），explicit full-access／網路／on-request。結果：discovery 宣告 `tool_approval`、`admissibleCeilings` 與 `browserIntegration`；workspace-write 政策在 client 端被拒且未送出 `/sessions`；WebFetch 產生 `tool_approval`，接受後同 turn 完成；工作階段 policy `verified`（回報 `default`、reviewer `user`）、`claude-in-chrome` 已連線（22 個工具）、34 個內建工具、browser `unknown`、computer use `unavailable`；偏好關閉的工作階段（Runtime `af405ff7` 重跑，跑完一個 turn 後讀取）有 7 個 claude.ai connectors、沒有 `claude-in-chrome`，內建工具 31 個（開啟時 34 個），browser `unavailable`。`tabs_context_mcp` 沒有送出核准請求就執行，因擴充未連線而失敗；當時沒有 Chrome／Edge 程序，未觸及瀏覽器。尚未驗證：連線的瀏覽器中實際的 Chrome 動作與其網站核准呈現。 |
-| 2026-10-28 | P3 review：Settings 描述改為 Cats 不替 Work／排程「要求」瀏覽器工具（使用者自己的 Claude Code Enabled by default 仍會套用）；新 POST 由既有 auth gate 的 cookie CSRF 檢查保護（renderer 全域 fetch 自動帶 token）；新增依 server 組合順序的 Work admission 測試（順序對調即失敗）；resume 遇到仍存活、以另一設定啟動的 worker（409 `interaction_conflict`）時改為不帶此欄位重試一次，保留該 worker，設定於下次 admission 生效。 |
-| 2026-10-28 | Owner 選定 Desktop 0.12.0 standard preview（format 6 資料邊界）。Runtime pin `af405ff7`；隔離升級驗收以已安裝 0.11.1 sidecar 產生的私有 profile 進行，結果與發布檢查見 release notes。 |
+| 2026-10-28 | P1: contract aligned with Runtime `043155a1`, `tool_approval` negotiation and card DOM tests, admissible ceilings parsing, built-in tool inventory and provider-specific settings links. 15 client/renderer and 26 product/control/policy upgrade/raw-string audit tests pass; server build and renderer typecheck pass. |
+| 2026-10-28 | P2: client-side ceiling rejection (`/sessions` is not sent) and the editor hint. 16 client/renderer tests pass, including explicit workspace-write, a provider-offline ceiling rejected, and full-access + network passing. |
+| 2026-10-28 | P3: Claude in Chrome preference, local owner route, conversation-scoped `browserIntegration` and the Settings switch. Added 3 Node tests (client forwarding, wrapper scope, route permission and persistence) and 1 DOM test; updated 3 preferences full-shape fixtures. 39 control/client/products/policy/ingress/raw-string tests, 60 preferences/setup/reset/preview tests and 8 renderer tests pass; server/renderer/desktop/test typecheck and catalog check pass. |
+| 2026-10-28 | P4: Claude Code 2.1.312 (haiku), Runtime source `b750d27e` (#200) started with a private temporary `CATS_RUNTIME_DIR`, with Claude Code using the owner's own login; through Platform `CatsRuntimeClient` and the conversation wrapper (preference on), explicit full-access/network/on-request. Results: discovery declared `tool_approval`, `admissibleCeilings` and `browserIntegration`; a workspace-write policy was rejected on the client side and `/sessions` was not sent; WebFetch produced a `tool_approval` and, once accepted, completed within the same turn; the session policy was `verified` (reported `default`, reviewer `user`), `claude-in-chrome` was connected (22 tools), 34 built-in tools, browser `unknown`, computer use `unavailable`; the session with the preference off (re-run on Runtime `af405ff7`, read after one turn completed) had 7 claude.ai connectors, no `claude-in-chrome`, 31 built-in tools (34 when on), and browser `unavailable`. `tabs_context_mcp` ran without sending an approval request and failed because the extension was not connected; there was no Chrome/Edge process at the time and the browser was not touched. Not yet verified: actual Chrome actions in a connected browser and how their site approvals are presented. |
+| 2026-10-28 | P3 review: the Settings description was changed to say Cats does not "request" browser tools for Work/scheduled runs (the user's own Claude Code Enabled by default still applies); the new POST is protected by the cookie CSRF check of the existing auth gate (the renderer's global fetch attaches the token automatically); added a Work admission test that depends on the server composition order (it fails if the order is swapped); when resume meets a still-alive worker started with another configuration (409 `interaction_conflict`), it retries once without this field, keeping that worker, and the setting takes effect at the next admission. |
+| 2026-10-28 | The owner selected the Desktop 0.12.0 standard preview (format 6 data boundary). Runtime pin `af405ff7`; isolated upgrade acceptance used a private profile produced by the installed 0.11.1 sidecar, and the results and release checks are in the release notes. |
 
 *Created / last updated: 2026-10-28*

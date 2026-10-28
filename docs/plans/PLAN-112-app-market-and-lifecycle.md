@@ -5,16 +5,18 @@
 | Field | Value |
 | --- | --- |
 | Status | In progress; unreleased preview Market slice (2026-10-20); M0–M4 milestones open |
-| Owner | cats-platform integration；cats-apps package/catalog；Runtime scoped operations |
+| Owner | cats-platform integration; cats-apps package/catalog; Runtime scoped operations |
 | Spec | [SPEC-120](../specs/SPEC-120-app-market-and-lifecycle.md) |
 | Decision | [ADR-121](../decisions/121-distribute-apps-independently-with-host-owned-lifecycle.md) |
 | App delivery | [Apps PLAN-004](../../../cats-apps/docs/plans/PLAN-004-independent-app-distribution.md) |
 
 ## Outcome
 
-一次宿主升級補齊 App 生命週期與官方 Market。Usage 預裝並可恢復；Studio 從目錄選裝，
-之後相容的 App 更新不必重打 Desktop。停用停止活動，移除真實清掉安裝副本。
-以下階段是依賴順序，不是分別宣布產品完成；首版發布 gate 必須覆蓋完整交付範圍。
+One host upgrade completes the App lifecycle and the official Market. Usage is preinstalled
+and recoverable; Studio is installed from the catalog, and later compatible App updates do
+not require rebuilding Desktop. Disabling stops activity, and removing really deletes the
+installed copy. The phases below are in dependency order and are not announced as separate
+product completions; the first-release gate must cover the full delivery scope.
 
 ## Ownership and integration seams
 
@@ -25,211 +27,251 @@ its components together. The renderer-only scope below describes this plan's
 initial consumer coverage, not a permanent restriction on Apps or a reason to
 install their backends separately.
 
-[PLAN-113](PLAN-113-managed-plugin-capabilities.md) 是另案的 managed Plugins 工作。
-Agency content pilot 已交付，一般 SDK／目錄仍待實作。M0 與其 P0 協調可共用的
-installer／catalog／journal 契約；本案維持 renderer Apps，不等待 Plugin executor，
-也不新增任意背景程式。本段是交叉規劃，未新增本案已完成項目。
+[PLAN-113](PLAN-113-managed-plugin-capabilities.md) is a separate managed Plugins work item.
+The Agency content pilot has shipped; the general SDK/catalog is still to be implemented.
+M0 and its P0 coordinate the shareable installer/catalog/journal contracts; this plan stays
+with renderer Apps, does not wait for a Plugin executor, and adds no arbitrary background
+programs. This paragraph is cross-planning and adds no completed items to this plan.
 
-| Owner | 工作／契約 | 不越界的項目 |
+| Owner | Work / contract | Out of bounds |
 | --- | --- | --- |
-| Platform | SDK、Catalog consumer、下載、registry、journal、管理／Home、Core 作品資料 | 不解析 provider CLI 或讓 App 操作 host shell |
-| Apps | Usage／Studio 套件、metadata、相容性證據、build/release、官方目錄 promotion | 不修改 Desktop pins 或自行授予預裝／system 權限 |
-| Runtime | 工作終止證據、receipt retention 與必要 scoped cleanup | 不管理 Home／Market／安裝 registry |
-| cats-one | 必要時更新跨 repo release guide／workspace 文件 | 不成為 App 更新服務 |
+| Platform | SDK, Catalog consumer, download, registry, journal, management/Home, Core work data | Does not parse provider CLIs or let Apps operate the host shell |
+| Apps | Usage/Studio packages, metadata, compatibility evidence, build/release, official catalog promotion | Does not modify Desktop pins or grant itself preinstall/system permissions |
+| Runtime | Work-termination evidence, receipt retention and necessary scoped cleanup | Does not manage Home/Market/the install registry |
+| cats-one | Update the cross-repo release guide/workspace docs when needed | Does not become an App update service |
 
-Platform freeze shared DTO 後 Apps 可並行做 artifact/catalog fixtures。Runtime 若需新增
-停止查詢或 scoped deletion 契約，先在 Runtime owner repo 讀規範、補 SPEC／PLAN／ADR，
-再實作與串接；本輪不修改 Runtime，也不假設目前已完整提供這些契約。
+Once Platform freezes the shared DTOs, Apps can build artifact/catalog fixtures in parallel.
+If Runtime needs a new stop-query or scoped-deletion contract, first read the rules in the
+Runtime owner repo, add the SPEC/PLAN/ADR, then implement and integrate; this round does not
+modify Runtime and does not assume these contracts are already fully provided.
 
 ## M0 — Freeze contract and upgrade fixtures
 
-- [x] 確認 Usage／Studio 出貨與 Home 規則、資料與資源邊界。
-- [x] 查核既有 registry-only uninstall、corrupt same-version repair 與 bundle 選版缺口。
-- [x] 同步 Apps 規劃：獨立 Marketplace／Home 醒目入口、Settings 已安裝管理，以及
-      宿主驗證 Desktop management context 的要求；此項只完成規劃同步。
-- [ ] 固定 Desktop management context 的簽發／傳遞、撤銷與防偽造／重播契約；
-      所有管理入口共用授權，App SDK 不授予套件管理能力，建立 browser 拒絕 fixtures。
-- [ ] 固定 schema 2／operation journal／bootstrap marker、catalog signature envelope、
-      source transition、錯誤／進度 DTO；設定下載／目錄大小與逾時界限。
-- [ ] 建立 schema 1 enabled／disabled／uninstalled／缺席／manifest-only／本機 Studio fixtures。
-- [ ] 確認 Runtime 可提供的停止證據與資料清理 ownership，記錄必須擴充的 contract。
-- [ ] 完成技術契約獨立 review；記錄下一 Platform minor 與 App range 更新依賴。
+- [x] Confirm the Usage/Studio shipping and Home rules, and the data and resource boundaries.
+- [x] Audit the existing gaps in registry-only uninstall, corrupt same-version repair and bundle version selection.
+- [x] Sync the Apps plan: a standalone Marketplace/prominent Home entry, Settings installed
+      management, and the requirement that the host verify the Desktop management context;
+      this item completes only the planning sync.
+- [ ] Fix the contract for issuing/passing, revoking, and anti-forgery/replay protection of
+      the Desktop management context; all management entries share the authorization, the
+      App SDK grants no package-management capability, and browser-rejection fixtures are built.
+- [ ] Fix schema 2 / operation journal / bootstrap marker, the catalog signature envelope,
+      source transition, and error/progress DTOs; set download/catalog size and timeout limits.
+- [ ] Build schema 1 fixtures for enabled / disabled / uninstalled / absent / manifest-only / local Studio.
+- [ ] Confirm the stop evidence and data-cleanup ownership Runtime can provide, and record the contracts that must be extended.
+- [ ] Complete an independent review of the technical contract; record the next Platform minor and the App range update dependency.
 
-Exit：沒有未指定的刪除 owner 或以新 schema 覆蓋舊資料的捷徑。
+Exit: no unassigned deletion owner and no shortcut that overwrites old data with the new schema.
 
 ## M1 — Local lifecycle, recovery and Home
 
-- [ ] 實作驗證／backup／atomic migration、operation lock／journal、崩潰重啟恢復。
-- [ ] 管理服務驗證 Desktop context；拒絕一般 browser／remote lifecycle mutation，
-      含 owner 登入與 localhost；被拒絕的操作不得修改 registry／package／process。
-- [ ] 實作宿主出貨／Home policy：Usage placeholder、Studio 安裝後卡片、跨視窗狀態同步。
-- [ ] 停用：立即撤銷新工作權限、卸載所有活躍 renderer、追蹤取消與待確認狀態。
-- [ ] 移除：真實清理 managed packages／cache，保留資料與 tombstone，支援 file-lock 重試。
-- [ ] 修復：可信 local archive 同版 atomic replacement；壞 App 不阻擋 Home。
-- [ ] 改寫 bundled reconciliation：首裝與使用者意圖分開，不 downgrade、不復活移除項目。
-- [ ] 卸載說明資料保留，重裝接回作品／設定，不提供尚未實作的永久資料清除動作。
+- [ ] Implement validation / backup / atomic migration, operation lock / journal, and crash-restart recovery.
+- [ ] The management service verifies the Desktop context; it rejects ordinary browser/remote
+      lifecycle mutations, including owner login and localhost; a rejected operation must not
+      modify the registry/package/process.
+- [ ] Implement the host shipping/Home policy: Usage placeholder, Studio card after install, cross-window state sync.
+- [ ] Disable: immediately revoke new-work permission, unload every active renderer, and track cancellation and pending-confirmation state.
+- [ ] Remove: really clean the managed packages/cache, keep data and a tombstone, and support file-lock retry.
+- [ ] Repair: same-version atomic replacement from a trusted local archive; a broken App does not block Home.
+- [ ] Rewrite bundled reconciliation: first install is separate from user intent, no downgrade, and removed items are not resurrected.
+- [ ] The uninstall copy explains data retention, reinstall reattaches works/settings, and no permanent data-purge action that is not yet implemented is offered.
 
-Exit：先用暫存套件完成 AC-01–AC-08、AC-11、AC-14 及 AC-16 的本機管理路徑；
-不需要真 Grok 或公開 Market，Market 入口的 AC-16 驗收留到 M2。
+Exit: first complete the local management paths of AC-01–AC-08, AC-11, AC-14 and AC-16 with
+temporary packages; a real Grok or the public Market is not needed, and the Market-entry AC-16
+acceptance is left to M2.
 
 ## M2 — Official Catalog and Market
 
-- [ ] 實作已簽章 Catalog 驗證、revision／expiry／withdrawal、信任根與 key rotation fixtures。
-- [ ] bounded host downloader、URL／redirect allowlist、artifact digest／manifest／相容驗證。
-- [ ] Home 醒目入口開獨立 Market，探索／已安裝／更新／詳情可直接安裝；
-      整合 Home 修復與 Settings 共用授權、生命週期服務與狀態，不複製安裝邏輯。
-- [ ] 安裝與手動更新 UX、新增權限確認、活動工作延後／停止選擇、離線／過期目錄提示。
-- [ ] 驗證同 ID local-user→官方來源轉接；不能隱性升權或覆蓋本機開發套件。
-- [ ] 整合 Apps 兩版本 fixture，驗證下載錯誤／中斷／同版修復／相容 rollback。
+- [ ] Implement signed Catalog verification, revision/expiry/withdrawal, and trust-root and key-rotation fixtures.
+- [ ] A bounded host downloader, URL/redirect allowlist, and artifact digest/manifest/compatibility verification.
+- [ ] The prominent Home entry opens a standalone Market; discover/installed/updates/details
+      can install directly; integrate Home repair and Settings through the shared authorization,
+      lifecycle service and state, without duplicating install logic.
+- [ ] Install and manual-update UX, confirmation of newly added permissions, defer/stop choice for active work, and offline/expired-catalog prompts.
+- [ ] Verify the same-ID local-user to official-source transition; it must not silently escalate permissions or overwrite a local development package.
+- [ ] Integrate the Apps two-version fixture and verify download errors / interruption / same-version repair / compatible rollback.
 
-Exit：AC-02／03／07–AC-10／13／15 及 AC-16 的 Market 路徑成功；
-Catalog 暫存簽章 key 僅用於測試。
+Exit: the Market paths of AC-02/03/07–AC-10/13/15 and AC-16 succeed;
+the temporary Catalog signing key is used for tests only.
 
 ## M3 — Developer SDK and independent App delivery
 
-- [x] 從既有 host-owned SDK 整理可獨立取得的型別、文件、範例與 conformance fixtures；
-      依 [ADR-123](../decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)
-      先以 `./app-sdk` subpath 提供 allowlist 契約與跨 OS byte-deterministic 官方 encoder，
-      公開入口不載入 `build/server` 內部模組，`APP_SDK_VERSION` 與
-      `packages/app-sdk/package.json` 版本以單一來源或 CI 斷言一致，Platform 測試 fixtures
-      改用同一 encoder。2026-09-29 已實作 subpath、encoder、共用驗證與版本一致檢查，
-      並補齊 fixture 轉換、範例與 conformance 向量；Platform npm 0.6.0 已於同日發布此入口。
-- [ ] Apps 只依賴版本化開發契約；runtime bridge 不被重複打包或擴大能力。最低宿主不低於
-      首個提供 subpath 版本的 App，以各自宣告的最低 `catsPlatform` 驗證產物，前提是該版本
-      已在 npm 發布；逐 App 的安裝或 CI matrix 由 cats-apps 設計。
-- [ ] Usage／Studio 對 candidate Desktop 新 minor 建立最低版本與實際驗證矩陣。
-- [ ] Apps build/release 產生 immutable bytes、lock、來源證據；catalog promotion 是另一動作。
-- [ ] 驗證 Usage 與 Studio 都在目錄，Desktop 只預裝 Usage，Studio 無預設 placeholder。
-- [ ] 以 source-free 宿主完成 Studio A→B 更新，不 rebuild Desktop；通過 AC-12／13。
+- [x] From the existing host-owned SDK, extract independently obtainable types, docs, examples
+      and conformance fixtures; per
+      [ADR-123](../decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md),
+      first provide the allowlist contract and a cross-OS byte-deterministic official encoder
+      through the `./app-sdk` subpath, the public entry does not load `build/server` internal
+      modules, `APP_SDK_VERSION` and the `packages/app-sdk/package.json` version are kept
+      consistent by a single source or a CI assertion, and Platform test fixtures use the same
+      encoder. On 2026-09-29 the subpath, encoder, shared validation and version-consistency
+      check were implemented, and fixture conversion, examples and conformance vectors were
+      added; Platform npm 0.6.0 published this entry the same day.
+- [ ] Apps depend only on the versioned development contract; the runtime bridge is not
+      repackaged or widened in capability. Apps whose minimum host is not below the first
+      version that provides the subpath validate their artifacts against their own declared
+      minimum `catsPlatform`, provided that version is published on npm; the per-App install
+      or CI matrix is designed by cats-apps.
+- [ ] Build a minimum-version and real-validation matrix for Usage/Studio against the candidate Desktop's new minor.
+- [ ] Apps build/release produces immutable bytes, a lock and source evidence; catalog promotion is a separate action.
+- [ ] Verify that both Usage and Studio are in the catalog, Desktop preinstalls only Usage, and Studio has no default placeholder.
+- [ ] Complete the Studio A→B update on a source-free host without rebuilding Desktop; pass AC-12/13.
 
-Exit：可 review 的 App／Catalog／SDK 候選產物與驗證紀錄齊備；尚不代表已公開發布。
+Exit: reviewable App/Catalog/SDK candidate artifacts and validation records are complete; this
+does not yet mean a public release.
 
 ## M4 — Installed acceptance and release preparation
 
-- [ ] 跨 OS 隔離安裝／既有 schema 1 升級，含 Windows file locks、Unix path／permissions。
-- [ ] 真宿主多視窗停用、取消中重啟、壞包恢復、套件前後 inventory／bytes 證據。
-- [ ] 由另一位 reviewer 檢查 data ownership、刪除 containment、migration 與信任邊界。
-- [ ] 完成 SPEC 全部 AC 對應表；未驗證 OS／行為明列，不用 fixture 冒充 installed acceptance。
-- [ ] 準備版本／release notes／信任根／exact pins，啟用 SPEC-120 FR-09 選定的 Pages endpoint
-      與 Actions 簽章；保留其他團隊的新變更。
-- [ ] 依新的發布授權安排 SDK（如需）、App、Catalog、Desktop 的發布，不沿用 0.5.13 授權。
+- [ ] Cross-OS isolated install / upgrade from the existing schema 1, including Windows file locks and Unix path/permissions.
+- [ ] On a real host: multi-window disable, restart during cancellation, broken-package recovery, and before/after package inventory/bytes evidence.
+- [ ] Have another reviewer check data ownership, deletion containment, migration and trust boundaries.
+- [ ] Complete the table mapping every SPEC AC; list unverified OSes/behaviors explicitly and do not pass off fixtures as installed acceptance.
+- [ ] Prepare version / release notes / trust root / exact pins, enable the Pages endpoint
+      selected in SPEC-120 FR-09 and the Actions signing; keep other teams' new changes.
+- [ ] Schedule the SDK (if needed), App, Catalog and Desktop releases under a new release authorization, not reusing the 0.5.13 authorization.
 
 ## Change map
 
-| Surface | 預計工作 |
+| Surface | Planned work |
 | --- | --- |
-| `src/platform/apps/registry.ts`, `packageInstaller.ts`, `paths.ts` | schema、操作協調、bundle policy、修復與受限清理 |
-| `src/platform/apps/envelope.ts`, `src/shared/catsAppManifest.ts` | 狀態投影、來源與 Home 政策；先 freeze 再串接 |
-| `src/app/server/appPackageRoutes.ts`, `src/platform/apps/images.ts` | 管理操作、撤銷、停止追蹤、資料 owner 整合 |
-| `src/app/renderer/AppRendererSurface.tsx`, `AppHostRoute.tsx` | 主動 teardown、失效與宿主恢復 UI |
-| Home／Settings Apps／新 Market surface | 共用管理 client 與操作 DTO |
-| `packages/app-sdk`, Desktop bundle config／packaging | 可取得開發契約、信任根、Usage pins 與出貨政策 |
-| root `package.json` `exports` | 只允許 `.`、`./package.json` 與 `./app-sdk`；相容用的 `./*` 隨 0.6.0 移除（ADR-123） |
-| Apps shared builder／release workflow／新 catalog tooling | immutable package 與獨立 promotion，見 Apps PLAN-004；catalog 經 PR 合併後由 Actions 簽章並部署到 cats-apps Pages |
+| `src/platform/apps/registry.ts`, `packageInstaller.ts`, `paths.ts` | schema, operation coordination, bundle policy, repair and restricted cleanup |
+| `src/platform/apps/envelope.ts`, `src/shared/catsAppManifest.ts` | state projection, source and Home policy; freeze first, then integrate |
+| `src/app/server/appPackageRoutes.ts`, `src/platform/apps/images.ts` | management operations, revocation, stop tracking, data-owner integration |
+| `src/app/renderer/AppRendererSurface.tsx`, `AppHostRoute.tsx` | active teardown, invalidation and host-recovery UI |
+| Home / Settings Apps / new Market surface | shared management client and operation DTOs |
+| `packages/app-sdk`, Desktop bundle config / packaging | obtainable development contract, trust root, Usage pins and shipping policy |
+| root `package.json` `exports` | allow only `.`, `./package.json` and `./app-sdk`; the compatibility `./*` is removed with 0.6.0 (ADR-123) |
+| Apps shared builder / release workflow / new catalog tooling | immutable package and independent promotion, see Apps PLAN-004; after a catalog PR is merged, Actions signs it and deploys to cats-apps Pages |
 
-變更地圖是規劃，尚未建立新 endpoint 或宣稱現有 API 支援新參數。
+The change map is a plan; no new endpoint has been created, and no claim is made that existing
+APIs support new parameters.
 
 ## Deferred data deletion
 
-完整永久刪除跨 Platform／Runtime 的 App 資料是後續獨立 work package，不屬首版 gate。
-M0 盤點 ownership，但 M1 只保證保留資料的卸載／重裝。後續必須先補各資料 owner 的
-scoped deletion／retention contract，再驗證共享引用、權限、部分失敗與恢復，才能提供刪除操作。
+Fully and permanently deleting App data across Platform/Runtime is a later, separate work
+package and is not part of the first-release gate. M0 inventories ownership, but M1 only
+guarantees data-preserving uninstall/reinstall. Later, the scoped deletion/retention contract
+of each data owner must be added first, and shared references, permissions, partial failure
+and recovery verified, before a delete operation can be offered.
 
 ## Validation and risks
 
-文件階段僅檢查 diff、連結、需求一致性，不跑 App build、Desktop 安裝或 provider。
-實作依各階段做單元／邊界／整合與真宿主檢查，全部合成資料放隔離 profile。
-發布前依 release SOP 跑完整 candidate CI；不得用局部測試代表全部通過。
+The documentation phase only checks the diff, links and requirement consistency; it does not
+run App builds, Desktop installs or providers. Implementation runs unit / boundary /
+integration and real-host checks per phase, with all synthetic data in an isolated profile.
+Before release, run the full candidate CI per the release SOP; partial tests must not stand in
+for all passing.
 
-| 風險 | 必要驗證／防護 |
+| Risk | Required validation / safeguard |
 | --- | --- |
-| 升級後舊 Desktop 啟動 | 明確 minor boundary、profile upgrade／restore 指引，不加雙套執行 API |
-| App 獨立更新被 bundle 蓋回 | 較新 Market 版＋較舊 bundled 版＋重啟／Desktop 更新情境 |
-| 卸載只隱藏但持續工作 | 主動 revoke、多視窗、假 CLI 終止證據與 pending 狀態 |
-| 修復刪作品或越界 | 同版 staged replacement、資料外置、symlink/junction 與共享引用 tests |
-| 同 ID 偽裝官方／目錄 replay | 已信任根、digest identity、source transition confirmation、revision gate |
-| browser 或 App iframe 取得 Desktop 管理權 | 服務邊界驗證 context、拒絕偽造／失效／重播，並驗證無套件狀態副作用 |
-| scope 擴成一般 extension host | 僅官方 renderer；新 background executor 另案 |
+| Old Desktop startup after upgrade | explicit minor boundary, profile upgrade/restore guidance, no dual-run execution API |
+| Independent App update overwritten by the bundle | newer Market version + older bundled version + restart / Desktop update scenarios |
+| Uninstall only hides but work continues | active revoke, multi-window, fake-CLI termination evidence and pending state |
+| Repair deletes works or crosses boundaries | same-version staged replacement, externalized data, symlink/junction and shared-reference tests |
+| Same-ID impersonating official / catalog replay | trust root, digest identity, source transition confirmation, revision gate |
+| Browser or App iframe obtaining Desktop management rights | verify context at the service boundary, reject forged/invalid/replayed, and verify no package-state side effects |
+| Scope growing into a general extension host | official renderer only; a new background executor is a separate plan |
 
 ## Resume checkpoint
 
-2026-09-28：規劃文件建立，沒有產品程式／manifest／版本／使用者資料變更。
-下一步從 M0 的持久化狀態／操作契約與 fixtures 開始，再做 M1 本機生命周期。
-公共 Catalog endpoint、正式 signing key 保管／輪替責任人與精確 release 版本留到發布準備；
-這些部署選擇不阻擋隔離實作，也不授權生成正式 key 或上傳產物。
+2026-09-28: planning document created, with no product code / manifest / version / user-data changes.
+The next step starts from M0's persisted-state / operation contract and fixtures, then M1 local lifecycle.
+The public Catalog endpoint, the owner for official signing-key custody/rotation, and the exact
+release version are left to release preparation; these deployment choices do not block isolated
+implementation and do not authorize generating an official key or uploading artifacts.
 
-文件驗證：獨立唯讀審查已完成，首版資料保留與後續永久清除的範圍矛盾已修正，無剩餘阻擋。
-Platform 本輪 10 份 Markdown 的 970 個本機連結目標存在；Apps 文件檢查也通過。
-兩 repo 的 diff whitespace 檢查通過。未執行產品測試、build、安裝或 provider 呼叫；
-這些結果僅驗證規劃文件，不勾選任何新增功能的 acceptance。
+Document validation: an independent read-only review is complete, the scope contradiction between
+first-release data retention and later permanent purge was fixed, and no blockers remain.
+In this round the 970 local link targets across 10 Platform Markdown files exist; the Apps docs
+check also passed. The diff whitespace check passed in both repos. No product tests, build,
+install or provider calls were run; these results validate only the planning documents and
+check no acceptance of any newly added feature.
 
-2026-09-29：補齊 Apps PLAN-004 的管理入口與 Desktop 授權要求，新增 AC-15／16 與
-對應 M0–M2 工作。Agency Plugin pilot 的交付狀態已同步，但不抵免 App Market 驗收。
-本次僅更新規劃，未實作管理限制、修改版本或發布。獨立唯讀審查無阻擋；兩 repo 的
-6 份變更 Markdown、35 個本機檔案／anchor 目標以對應 worktree 檢查通過，Apps 的
-`npm run check:docs` 通過（38 份 Markdown、156 個本機目標，無略過 sibling links）。
-兩 repo 的 `git diff --check` 通過。未執行產品測試、build、安裝或 provider 呼叫；
-未將任何新增功能的 acceptance 標記完成。
+2026-09-29: filled in the management-entry and Desktop authorization requirements of Apps PLAN-004,
+added AC-15/16 and the corresponding M0–M2 work. The delivery status of the Agency Plugin pilot
+was synced, but it does not exempt App Market acceptance. This change updates the plan only; it
+did not implement management restrictions, change versions or publish. The independent read-only
+review had no blockers; the 6 changed Markdown files across the two repos, with 35 local file/anchor
+targets, passed using the matching worktrees, and Apps `npm run check:docs` passed (38 Markdown
+files, 156 local targets, no skipped sibling links). `git diff --check` passed in both repos. No
+product tests, build, install or provider calls were run; no newly added feature's acceptance was
+marked complete.
 
-2026-09-29：新增 [ADR-123](../decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)
-（Proposed），記錄 SDK 開發契約先以 Platform npm 的 `./app-sdk` subpath 提供，第三方開發
-啟動後再獨立發布 `@cats-inc/app-sdk`；同步 M3、change map、SPEC-120 FR-10 與索引。
-僅文件變更，未修改 `package.json`、SDK、版本或發布。查證：npm registry 顯示 Platform
-`latest` 0.5.8（unpacked 約 18.9 MB、3,609 檔），0.5 線只有 0.5.1 與 0.5.8；Usage 與 Studio
-manifest 的最低宿主分別為 `^0.5.0` 與 `^0.5.11`。五個 checkout 分別搜尋裸套件名與
-`<subpath>`，程式碼只有 cats-one 的 `package.json` 解析。本機 Windows 的 `zlib.gzipSync`
-header OS byte 為 10，Linux／macOS 未驗證。6 份變更 Markdown 的 399 個本機連結目標
-（含 sibling repo）存在，`git diff --check` 通過。未執行產品測試、build、安裝或 provider 呼叫。
+2026-09-29: added [ADR-123](../decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)
+(Proposed), recording that the SDK development contract is first provided through the Platform npm
+`./app-sdk` subpath, and `@cats-inc/app-sdk` is published separately once third-party development
+starts; synced M3, the change map, SPEC-120 FR-10 and the index. Documentation changes only; did
+not modify `package.json`, the SDK, versions or publishing. Findings: the npm registry shows Platform
+`latest` 0.5.8 (unpacked about 18.9 MB, 3,609 files), and the 0.5 line has only 0.5.1 and 0.5.8; the
+minimum hosts in the Usage and Studio manifests are `^0.5.0` and `^0.5.11`. Searching five checkouts
+for the bare package name and `<subpath>` found that only cats-one's `package.json` resolves them in
+code. On local Windows the `zlib.gzipSync` header OS byte is 10; Linux/macOS are unverified. The 399
+local link targets (including sibling repos) in the 6 changed Markdown files exist, and
+`git diff --check` passed. No product tests, build, install or provider calls were run.
 
-2026-09-29：實作 ADR-123 第一階段（不含獨立 npm 發布）。新增 `./app-sdk` exports、
-`packages/app-sdk/format.js`／`encode.js`、`src/app-sdk/` 公開入口與共用驗證，安裝器改用同一
-驗證；`exports` 以保留 `.` 與 `./*` 的相容方式加入。未 bump 版本或發布。本機驗證：server、
-desktop、renderer 的 `tsc --noEmit` 通過；test 設定只剩 worktree 未安裝 mobile 依賴造成的
-2 個 `mobile/` 錯誤。`build:server`、`build:host`、`build:web`、`build:test-ui` 完成後，含新測試在內
-與 App／SDK／package／Desktop 打包相關的 17 個測試檔共 97 項通過。另以外部 consumer
-（NodeNext）完成型別檢查與執行期 import。未跑完整 `npm test`、mobile 檢查或 macOS；
-fixture 轉換與 cats-apps 切換仍待後續。
+2026-09-29: implemented the first phase of ADR-123 (excluding the separate npm release). Added the
+`./app-sdk` exports, `packages/app-sdk/format.js`/`encode.js`, the `src/app-sdk/` public entry and
+shared validation, and the installer now uses the same validation; `exports` was added in a
+compatible way that keeps `.` and `./*`. No version bump or release. Local validation: `tsc --noEmit`
+for server, desktop and renderer passed; the test config has only 2 `mobile/` errors caused by the
+worktree not having mobile dependencies installed. After `build:server`, `build:host`, `build:web` and
+`build:test-ui` completed, 17 test files, including the new tests and those for App/SDK/package/Desktop
+packaging, passed with 97 cases in total. An external consumer (NodeNext) also completed type-checking
+and runtime import. The full `npm test`, mobile checks and macOS were not run; fixture conversion and
+the cats-apps switchover are still pending.
 
-2026-09-29：Platform 測試中有效的手組套件改用官方 encoder（無效套件與一份 zlib 基準包保留
-手組）；新增 `examples/app-sdk-minimal-app` 與 25 個 conformance 向量。向量發現 decoder 的
-base64 regex 對約 3 MiB 以上的檔案 stack overflow，已改為線性檢查。Desktop 源碼包在重建
-宣告依賴的 App revision 前先 `npm ci --ignore-scripts`。#171 把下一版定為 0.6.0，
-`exports` 隨之移除相容用的 `./*`，重做的 import 調查仍只有 `package.json` 解析。本機驗證：server、
-desktop、renderer 的 `tsc --noEmit` 通過，test 設定只剩 2 個 `mobile/` 依賴錯誤；mobile
-boundary 通過；重建後 15 個相關測試檔共 121 項通過。未跑完整 `npm test`、mobile 或 macOS。
+2026-09-29: Valid hand-assembled packages in Platform tests now use the official encoder (invalid
+packages and one zlib baseline package stay hand-assembled); added `examples/app-sdk-minimal-app` and
+25 conformance vectors. The vectors found that the decoder's base64 regex overflows the stack on files
+of about 3 MiB or more, which was changed to a linear check. The Desktop source package runs
+`npm ci --ignore-scripts` before rebuilding the App revision of the declared dependencies. #171 set the
+next version to 0.6.0, and `exports` accordingly drops the compatibility `./*`; the redone import
+survey still found only the `package.json` resolution. Local validation: `tsc --noEmit` for server,
+desktop and renderer passed, with the test config left with only 2 `mobile/` dependency errors; the
+mobile boundary passed; after the rebuild 15 related test files passed with 121 cases in total. The
+full `npm test`, mobile and macOS were not run.
 
-2026-10-20：Owner 決定第一期部署選擇，記於 SPEC-120 FR-09：artifact 沿用 cats-apps
-GitHub Releases，catalog 放 cats-apps GitHub Pages，正式簽章 key 先存 Actions secret；
-自有網域與更嚴格的 key 保管留待日後。取代 2026-09-28 checkpoint 中「endpoint 與 key 保管
-留到發布準備」的部分；key 輪替責任人與精確 release 版本仍待發布準備。本次僅更新文件，
-未啟用 Pages、未生成 key，也未修改 workflow 或上傳產物。查證：`cats-inc/cats-apps` 為
-public，Pages API 回 404（未啟用）。僅檢查 diff 與 `git diff --check`，未執行產品測試或 build。
+2026-10-20: The owner decided the first-phase deployment choices, recorded in SPEC-120 FR-09: artifacts
+keep using cats-apps GitHub Releases, the catalog goes on cats-apps GitHub Pages, and the official
+signing key is stored first as an Actions secret; a custom domain and stricter key custody are left
+for later. This replaces the part of the 2026-09-28 checkpoint that said "endpoint and key custody are
+left to release preparation"; the key-rotation owner and the exact release version are still pending
+release preparation. This change only updates documents; it did not enable Pages, generate a key, or
+modify workflows or upload artifacts. Findings: `cats-inc/cats-apps` is public, and the Pages API
+returned 404 (not enabled). Only the diff and `git diff --check` were checked; no product tests or
+build were run.
 
-2026-10-20：使用者要求先做可驗證的最小 Market，並授權產生正式簽章 key。SPEC-120 FR-09
-固定 catalog schema v1 並記錄 preview slice 與未完成項目；M2 的勾選項目都只部分完成，
-因此不勾選。cats-apps 已把 `CATALOG_SIGNING_KEY` 設為 repo secret，keyId
-`cats-apps-catalog-2026-10` 的公鑰同時寫入 `src/platform/apps/catalogTrust.ts`。
-新增 `catalog.ts`（驗章、schema、快取、防 rollback、期限）、`catalogFetch.ts`（HTTPS、
-手動 redirect 與 host allowlist、位元組上限）、`market.ts`（相容性、bundle 保護、manifest 比對、
-安裝來源紀錄）、`/api/apps/_market` 兩個路由、`/lobby/market` 頁面與 Home 卡片。
-以 Node 24 實測 release asset 的 `redirect: 'manual'` 回 302 至
-`release-assets.githubusercontent.com`；Desktop IPC 以完整 path 組 URL，`?refresh=1` 會保留。
-本機驗證：`tsx --test` 跑 `app-catalog`、`app-market-routes`、`app-component-authority`、
-`app-market-page`；`npm run build:server`、`npm run build:test-ui` 後以 `node --test --test-isolation=none`
-跑 `platform-lobby-apps`、`app-market-page`、`app-catalog`、`app-market-routes`、
-`app-component-authority`、`mobile-i18n-web-parity`、`app-package-routes`、`cats-app-hosting`、
-`platform-settings-apps`、`settings-apps-error-i18n` 與 `tests/app-sdk-bundled-sidecar.test.js`、
-`app-components.test.js`、`app-images.test.js`，共 79 項通過。`tsc --noEmit` 的 server、desktop、
-renderer 設定通過；test 設定只剩 worktree 未安裝 mobile 依賴的 2 個既有錯誤。`npm run catalog:check`
-通過。未跑完整 `npm test`、mobile 檢查、macOS／Linux 或安裝後的 Desktop；Pages 尚未啟用，
-真實 catalog 端到端驗證待推送與首次發布後以 source candidate Desktop 進行。
+2026-10-20: The user asked for a verifiable minimal Market first and authorized generating the
+official signing key. SPEC-120 FR-09 fixes catalog schema v1 and records the preview slice and the
+unfinished items; the checked items of M2 are all only partly done, so they are not ticked. cats-apps
+has set `CATALOG_SIGNING_KEY` as a repo secret, and the public key for keyId
+`cats-apps-catalog-2026-10` is also written into `src/platform/apps/catalogTrust.ts`. Added
+`catalog.ts` (signature verification, schema, cache, anti-rollback, expiry), `catalogFetch.ts` (HTTPS,
+manual redirect and host allowlist, byte cap), `market.ts` (compatibility, bundle protection, manifest
+comparison, install-source record), two `/api/apps/_market` routes, the `/lobby/market` page and a Home
+card. Measured on Node 24: a release asset with `redirect: 'manual'` returns 302 to
+`release-assets.githubusercontent.com`; Desktop IPC builds the URL from the full path, and `?refresh=1`
+is preserved. Local validation: `tsx --test` ran `app-catalog`, `app-market-routes`,
+`app-component-authority` and `app-market-page`; after `npm run build:server` and
+`npm run build:test-ui`, `node --test --test-isolation=none` ran `platform-lobby-apps`,
+`app-market-page`, `app-catalog`, `app-market-routes`, `app-component-authority`,
+`mobile-i18n-web-parity`, `app-package-routes`, `cats-app-hosting`, `platform-settings-apps`,
+`settings-apps-error-i18n` and `tests/app-sdk-bundled-sidecar.test.js`, `app-components.test.js`,
+`app-images.test.js`, 79 cases in total passed. `tsc --noEmit` for the server, desktop and renderer
+configs passed; the test config has only the 2 existing errors from the worktree lacking mobile
+dependencies. `npm run catalog:check` passed. The full `npm test`, mobile checks, macOS/Linux and the
+installed Desktop were not run; real-catalog end-to-end validation waits for the push and first
+release, then runs with a source candidate Desktop.
 
-2026-10-20 獨立審查：唯讀 reviewer 指出安裝請求未綁定使用者看到的版本（阻擋），以及 key 輪替、
-producer 欄位上限、revision／期限界限、workflow 簽章範圍、purge 後的 bundle 判斷、非 Market
-副本取代、狀態檔讀取失敗與啟用狀態時機等非阻擋問題，全部已修正並補測試：安裝請求帶版本與權限、
-`catalog_changed` 409、bundle lock 判斷、`installedSource`、時間界限、損毀備份與未知 schema 不覆寫、
-安裝佇列內保留啟用狀態、來源紀錄寫入失敗不影響安裝、下載逾時 45 秒。重跑 build 與上列 13 個
-測試檔共 81 項通過；四個 `tsc` 設定與 `catalog:check` 結果同上。第二次獨立審查確認這些修正，
-未發現新缺陷。使用者要求後，cats-apps 的 GitHub Pages 已以 Actions 為 source 啟用。
+2026-10-20 independent review: the read-only reviewer pointed out that the install request was not
+bound to the version the user saw (blocking), and non-blocking issues in key rotation, producer field
+limits, revision/expiry bounds, workflow signing scope, bundle judgment after purge, replacement of a
+non-Market copy, state-file read failure and enabled-state timing; all were fixed with tests added:
+the install request carries version and permissions, `catalog_changed` 409, bundle lock judgment,
+`installedSource`, time bounds, corrupt backup and unknown schema not overwritten, enabled state kept
+inside the install queue, source-record write failure not affecting install, and a 45-second download
+timeout. Re-running the build and the 13 test files listed above passed with 81 cases in total; the
+four `tsc` configs and `catalog:check` results are the same as above. A second independent review
+confirmed these fixes and found no new defects. At the user's request, GitHub Pages for cats-apps was
+enabled with Actions as the source.
 
 *Last updated: 2026-10-20*

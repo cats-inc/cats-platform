@@ -8,65 +8,79 @@ Related: [ADR-122](../decisions/122-adopt-managed-plugins-for-upstream-capabilit
 
 ## Recommendation
 
-Agency Agents 比 C2C 更適合作為第一個 **內容型 Plugin** 的候選：上游主要價值就是
-角色指引、領域流程與交付範本，Cats 已有 skill validation／delivery 基礎，不需要
-另造 browser controller 或上游執行引擎。建議透過 Platform 的 Plugin 管理服務分發
-固定版本的上游內容，Cats 維護薄的格式／metadata／來源適配，逐步減少人工重寫、
-複製維護同類角色的工作。
+Agency Agents is a better candidate than C2C for the first **content Plugin**: upstream's main
+value is role guidance, domain workflows and delivery templates, and Cats already has a
+foundation for skill validation/delivery, so no separate browser controller or upstream
+execution engine is needed. We recommend distributing a fixed version of the upstream content
+through Platform's Plugin management service, with Cats maintaining a thin format / metadata /
+source adaptation, gradually reducing the manual rewriting and copy-maintaining of similar roles.
 
-這裡的「引用」是 **build 時釘選並封裝 upstream bytes，使用時由 Runtime 投遞已安裝內容**。
-它不是執行時讀 GitHub main、依賴開發機 sibling checkout，或將上游 installer 放進
-Desktop 執行。安裝這類 Plugin 增加可選的角色／skills，不新增模型 provider、工具權限、
-持久記憶或自動建立 Cat／執行任務。
+Here "reference" means **pinning and packaging upstream bytes at build time, and having Runtime
+deliver the installed content at use time**. It is not reading GitHub main at runtime, depending
+on a sibling checkout on a development machine, or running the upstream installer inside
+Desktop. Installing this kind of Plugin adds optional roles/skills; it does not add a model
+provider, tool permissions, persistent memory, or automatic Cat creation / task execution.
 
-後續規劃已在 [SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md) FR-09／10
-補入通用 lifecycle、context 撤銷與 source lock＋recipe；上游無 release 不影響以固定
-commit 建置 Cats 版本。Agency 預設走無 hooks 的內容路徑，Submodule 為可選開發方式。
+Later planning has added, in [SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md) FR-09/10,
+the general lifecycle, context revocation and source lock + recipe; upstream having no release
+does not prevent building the Cats version from a fixed commit. Agency defaults to the content
+path with no hooks, and Submodule is an optional development method.
 
-第一個候選範圍建議是 Code Reviewer 與 UX Researcher，先與 Cats 內建 skills 並存。
-不能直接把現有內建庫全部換掉：來源關係、內容範圍與使用中的 skill IDs 都尚未完成遷移盤點。
-本輪只完成 source fit 評估，沒有宣稱套件已可安裝、輸出品質已提升或 Plugin lifecycle 已交付。
+The first candidate scope is recommended to be Code Reviewer and UX Researcher, coexisting
+with Cats built-in skills at first. The existing built-in library cannot simply be replaced
+wholesale: the source relationships, content scope and in-use skill IDs have not yet had a
+migration inventory.
+This round completed only a source-fit evaluation, and does not claim the package is
+installable, output quality has improved, or the Plugin lifecycle has been delivered.
 
 ## Source and reproducibility
 
 | Evidence | Pinned observation |
 | --- | --- |
-| Original upstream | [msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents)；由使用者指定本機 checkout 的 Git remote 確認 |
-| Existing local reference | a local checkout of the upstream repository，detached `00fb28a4cf60a719363dce0de67fafc6301857ce`，commit 日期 2026-07-12；保留原樣 |
-| Current upstream reviewed | [`479193dcce1cf6432ce0f5aa230ab8cc739a8c6b`](https://github.com/msitarzewski/agency-agents/tree/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b)，commit 日期 2026-09-27；另 clone 至 Cats workspace 的隔離研究目錄 |
-| Cats baselines | Platform `dec5af9b58939b973920d72f3d870390f501c2df`；Runtime `73f9def922e27e4b0bb3156db7a9b62026b22f5e` |
+| Original upstream | [msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents); confirmed from the Git remote of the local checkout the user specified |
+| Existing local reference | a local checkout of the upstream repository, detached `00fb28a4cf60a719363dce0de67fafc6301857ce`, commit date 2026-07-12; left as is |
+| Current upstream reviewed | [`479193dcce1cf6432ce0f5aa230ab8cc739a8c6b`](https://github.com/msitarzewski/agency-agents/tree/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b), commit date 2026-09-27; separately cloned into an isolated research directory in the Cats workspace |
+| Cats baselines | Platform `dec5af9b58939b973920d72f3d870390f501c2df`; Runtime `73f9def922e27e4b0bb3156db7a9b62026b22f5e` |
 
-按 pinned `divisions.json` 的 18 個分類遞迴盤點，找到 279 份具 `name` frontmatter 的
-Markdown agent 檔案；這是此次 source inventory，不是已驗證可用 skills 的數量。
-沒有執行上游 convert／install、安裝其 Desktop app、載入其角色指令、修改使用者設定，
-也沒有測模型品質。上游內容在此只作資料閱讀，不作本次代理的操作指令。
+Recursively inventorying the 18 categories in the pinned `divisions.json` found 279 Markdown
+agent files with a `name` frontmatter; this is this round's source inventory, not the number
+of verified usable skills.
+We did not run upstream convert/install, install its Desktop app, load its role instructions,
+modify user settings, or test model quality. Upstream content was read here only as data, and
+not as operating instructions for this agent.
 
-釘定版本的 [LICENSE](https://github.com/msitarzewski/agency-agents/blob/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b/LICENSE)
-為 MIT；包裝應保留原始 copyright／license 與來源。這輪沒有盤點所有角色引用的外部素材，
-正式 pilot 仍需對選定 payload 做內容、引用與 notices 檢查；不是整個 repo 的發布許可審計。
+The pinned [LICENSE](https://github.com/msitarzewski/agency-agents/blob/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b/LICENSE)
+is MIT; packaging should keep the original copyright/license and source. This round did not
+inventory all external material the roles reference; a formal pilot must still check the
+content, references and notices of the selected payload; this is not a release-license audit of
+the whole repo.
 
 ## Existing Cats library and provenance limits
 
-Cats [Runtime library README](https://github.com/cats-inc/cats-runtime/blob/73f9def922e27e4b0bb3156db7a9b62026b22f5e/runtime-skills/README.md)
-明列 Agency 為 authoring/reference source，且禁止執行時依賴該 sibling repo。
-Runtime [建庫提交 `03910ed`](https://github.com/cats-inc/cats-runtime/commit/03910ed048df9eb9455308208d69bb35dac43ce7)
-在 2026-03-24 建立自己的 family／role taxonomy；後續 `91bba98` 才將出貨內容移到
-`runtime-skills/`。目前盤點為 33 個 release packages、含 preview 共 36 個。
+The Cats [Runtime library README](https://github.com/cats-inc/cats-runtime/blob/73f9def922e27e4b0bb3156db7a9b62026b22f5e/runtime-skills/README.md)
+lists Agency as an authoring/reference source and forbids a runtime dependency on that sibling
+repo. Runtime's [library-creation commit `03910ed`](https://github.com/cats-inc/cats-runtime/commit/03910ed048df9eb9455308208d69bb35dac43ce7)
+established its own family/role taxonomy on 2026-03-24; only the later `91bba98` moved the
+shipping content into `runtime-skills/`. The current inventory is 33 release packages, 36
+including preview.
 
-因此能確認的是當時採用「外部角色庫可作參考、Cats 持有最終內容」的設計；尚不能由此
-證明實際逐檔移植關係。本輪沒有找到 upstream revision／轉換 recipe 的來源對照，
-不能斷言全部是原樣 port，也不能否認個別
-內容曾經受上游啟發。以下只作同類角色的樣本比較，不是聲稱它們有一對一衍生關係。
+So what can be confirmed is that the design at the time was "an external role library may be
+used as reference, and Cats owns the final content"; it cannot yet prove an actual file-by-file
+port relationship. This round found no source mapping to an upstream revision / conversion
+recipe, so we cannot assert that everything is an as-is port, nor deny that individual content
+was inspired by upstream. The following is only a sample comparison of similar roles, not a
+claim that they have a one-to-one derivation relationship.
 
 | Current Cats skill | Comparable upstream role | Body lines: Cats / upstream | Replacement implication |
 | --- | --- | --- | --- |
-| `code-reviewer` | [Code Reviewer](https://github.com/msitarzewski/agency-agents/blob/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b/engineering/engineering-code-reviewer.md) | 10 / 68 | 都關注 review；上游另含 persona、評分標記與回覆格式，行為不等價 |
-| `ux` | [UX Researcher](https://github.com/msitarzewski/agency-agents/blob/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b/design/design-ux-researcher.md) | 10 / 321 | 現有 UX 流程指引不等於完整研究角色；需另外選用及評估 |
-| `advanced-programmer-frontend` | [Frontend Developer](https://github.com/msitarzewski/agency-agents/blob/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b/engineering/engineering-frontend-developer.md) | 10 / 217 | 上游還要求 editor extensions、WebSocket/RPC bridges 等特定工作；不列入第一批 pilot |
+| `code-reviewer` | [Code Reviewer](https://github.com/msitarzewski/agency-agents/blob/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b/engineering/engineering-code-reviewer.md) | 10 / 68 | Both focus on review; upstream also contains a persona, scoring markers and a reply format, so behavior is not equivalent |
+| `ux` | [UX Researcher](https://github.com/msitarzewski/agency-agents/blob/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b/design/design-ux-researcher.md) | 10 / 321 | The existing UX process guidance is not a full research role; it needs separate selection and evaluation |
+| `advanced-programmer-frontend` | [Frontend Developer](https://github.com/msitarzewski/agency-agents/blob/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b/engineering/engineering-frontend-developer.md) | 10 / 217 | Upstream also requires specific work such as editor extensions and WebSocket/RPC bridges; not in the first pilot batch |
 
-行數以移除第一個 frontmatter、正規化 LF 並 trim 後計算；三組 body 均不相同。
-這不是品質評分。Cats 的 companion、Runtime／repo 維護、投遞政策與治理 skills 亦有自身用途，
-不因新增 Agency Plugin 就轉交給外部角色庫。
+Line counts are computed after removing the first frontmatter, normalizing LF and trimming; the
+bodies of all three pairs differ. This is not a quality rating. Cats' companion, Runtime/repo
+maintenance, delivery policy and governance skills also have their own purposes, and are not
+handed over to an external role library just because an Agency Plugin is added.
 
 ## Thin integration path
 
@@ -79,59 +93,74 @@ upstream @ fixed SHA + selected source paths + original license
   -> a Cat/session explicitly requests the installed role
 ```
 
-上游 [converter](https://github.com/msitarzewski/agency-agents/blob/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b/scripts/convert.sh)
-已有 antigravity／osaurus／dsh 的 `agency-<slug>/SKILL.md` 產物形態，包含 name、description
-與角色本文。可優先重用這個 build-time 步驟，不重寫角色內容。converter 的
+Upstream's [converter](https://github.com/msitarzewski/agency-agents/blob/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b/scripts/convert.sh)
+already has the `agency-<slug>/SKILL.md` output shape for antigravity / osaurus / dsh,
+containing name, description and the role body. This build-time step can be reused first,
+without rewriting role content. The converter's
 [body helper](https://github.com/msitarzewski/agency-agents/blob/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b/scripts/lib.sh)
-會略過獨立 `---` 行，shell substitution 也影響結尾換行，所以不能僅依文件宣稱轉換後
-本文 byte-identical；應封存原文並測試允許的格式正規化與內容差異。
+skips standalone `---` lines, and shell substitution also affects trailing newlines, so one
+cannot claim from the docs alone that the converted body is byte-identical; the original text
+should be archived and the allowed format normalization and content differences tested.
 
-它的 [Codex target](https://github.com/msitarzewski/agency-agents/blob/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b/integrations/codex/README.md)
-產生 custom-agent TOML；這不等於 Cats Runtime skill 契約。Cats 可以透過既有 Runtime
-skill delivery 供 Codex 及其他已支援 provider 使用，而不以該 TOML／全域安裝路徑為前提。
-不同 provider 的品質與 delivery mode 仍要各自驗證，不能由格式支援推論完全相容。
+Its [Codex target](https://github.com/msitarzewski/agency-agents/blob/479193dcce1cf6432ce0f5aa230ab8cc739a8c6b/integrations/codex/README.md)
+produces custom-agent TOML; this is not the Cats Runtime skill contract. Cats can serve Codex
+and other supported providers through the existing Runtime skill delivery, without assuming
+that TOML / global install path. Quality and delivery mode per provider still have to be
+verified separately, and format support does not imply full compatibility.
 
 | Boundary | Proposed handling |
 | --- | --- |
-| Source and maintenance | Plugin recipe 固定 upstream SHA、source path、source hash、converter revision、Cats envelope revision；上游更新產生可審查的新 artifact，使用者端不自行 git pull |
-| Format and identity | 沿用或適配上游 SKILL.md 輸出，補 Cats family／role／version／tags；Plugin ownership 與 skill ID 映射在 P0 固定，`agency-code-reviewer` 等只是候選 slug。不可覆蓋內建或手動同名 skill |
-| Content | 原文可追溯；Cats 只加必要 metadata／宿主邊界。若需要大量改寫某角色才可用，先排除該角色，避免又變成手工 port 維護 |
-| Scope and context | 先兩個角色，按 session 明確選用，不把 279 份內容全部塞進 prompt。Persona 的 memory／experience 文字不授予真實記憶或證明專業能力 |
-| Ownership | Platform 的 Plugin 管理服務負責下載、安裝意圖與版本；artifact／recipe 提供釘選內容與來源；Runtime 管理驗證、投遞、provenance 與執行准入。Cats 不使用上游 installer 管理使用者全域 agent／skill 目錄 |
-| Disable and uninstall | 禁止新投遞，處理帶有來源的受影響 turn／context；只移除 Plugin-owned artifact／投影。保留使用者選擇與歷史，缺少套件的引用顯示 unavailable，不默默回退成內建角色 |
+| Source and maintenance | The Plugin recipe pins the upstream SHA, source path, source hash, converter revision and Cats envelope revision; an upstream update produces a reviewable new artifact, and the user side does not git pull on its own |
+| Format and identity | Reuse or adapt upstream's SKILL.md output, adding Cats family/role/version/tags; Plugin ownership and the skill ID mapping are fixed in P0, and `agency-code-reviewer` and the like are only candidate slugs. Must not overwrite a built-in or manually installed skill of the same name |
+| Content | The original text is traceable; Cats adds only the necessary metadata / host boundary. If a role needs heavy rewriting to be usable, exclude that role first, to avoid again becoming a hand-port to maintain |
+| Scope and context | Two roles first, selected explicitly per session, without stuffing all 279 items into the prompt. A persona's memory/experience text neither grants real memory nor proves professional ability |
+| Ownership | Platform's Plugin management service is responsible for download, install intent and version; the artifact / recipe provides the pinned content and source; Runtime manages verification, delivery, provenance and execution admission. Cats does not use the upstream installer to manage the user's global agent / skill directories |
+| Disable and uninstall | Forbid new delivery and handle affected turns/contexts that carry the provenance; remove only Plugin-owned artifacts / projections. Keep user selections and history; a reference to a missing package shows unavailable and does not quietly fall back to a built-in role |
 
 ## Required Cats contract changes
 
-現在的 [Runtime catalog](https://github.com/cats-inc/cats-runtime/blob/73f9def922e27e4b0bb3156db7a9b62026b22f5e/src/core/skills/catalog.ts)
-掃描選定 root 下的 SKILL.md、驗證名稱／內容並拒絕重複 ID／symlink；已有 fingerprint、
-delivery 與 requested/resolved/applied 基礎，但不是已完成的 managed Plugin source registry。
-將 `skillsRoot` 指向上游、把 Plugin 檔案塞進出貨庫，或全域安裝成功，都不算完成接入。
+The current [Runtime catalog](https://github.com/cats-inc/cats-runtime/blob/73f9def922e27e4b0bb3156db7a9b62026b22f5e/src/core/skills/catalog.ts)
+scans SKILL.md under a selected root, validates names/content and rejects duplicate IDs /
+symlinks; it already has foundations for fingerprint, delivery and requested/resolved/applied,
+but it is not a completed managed Plugin source registry. Pointing `skillsRoot` at upstream,
+stuffing Plugin files into the shipping library, or a successful global install does not count
+as completing the integration.
 
-Runtime 的 accepted
-[ADR-018](../../../cats-runtime/docs/decisions/018-separate-skill-library-content-from-runtime-execution-engine.md)、
+Runtime's accepted
+[ADR-018](../../../cats-runtime/docs/decisions/018-separate-skill-library-content-from-runtime-execution-engine.md),
 [SPEC-013](../../../cats-runtime/docs/specs/SPEC-013-internal-skill-library-and-role-taxonomy.md)
-及 library README 目前限定自有、本地出貨庫。P0 應明確擴充為「內建內容由 Runtime
-維護，受管理外部 artifact 是另一個經准入的來源；Runtime 仍擁有投遞與執行」。
-這保留 content／execution 分工，但必須在 Runtime owner repo 更新決策及精確契約，
-不能悄悄忽略舊限制。本輪沒有改 accepted ADR 或實作多來源 discovery。
+and the library README currently limit it to a self-owned, locally shipped library. P0 should
+explicitly extend this to "built-in content is maintained by Runtime, and a managed external
+artifact is another admitted source; Runtime still owns delivery and execution".
+This keeps the content/execution split, but the decision and exact contract must be updated in
+the Runtime owner repo, and the old restriction cannot be quietly ignored. This round did not
+change an accepted ADR or implement multi-source discovery.
 
-初期保留內建 skill IDs；新增 Agency 角色使用不同身分，讓使用者明確選用。
-若之後決定淘汰某個既有 port／內建角色，需先盤點 Cat 設定、profiles、sessions、
-版本／fingerprint refs、歷史與使用者客製內容。不得靜默重綁；若改持久化格式或引用要求，
-依版本政策提供驗證、備份、原子替換與失敗恢復。新增可選來源本身不代表必須遷移所有資料。
+Initially keep the built-in skill IDs; the new Agency roles use a different identity so the
+user selects them explicitly. If it is later decided to retire an existing port / built-in
+role, first inventory Cat settings, profiles, sessions, version / fingerprint refs, history
+and user customizations. No silent rebinding; if the persisted format or reference requirements
+change, provide validation, backup, atomic replacement and failure recovery under the version
+policy. Adding an optional source does not by itself mean all data must be migrated.
 
 ## Pilot gates and next step
 
-1. **Artifact:** 只選 Code Reviewer／UX Researcher，固定來源與 license，驗證轉換差異、
-   YAML／名稱、引用檔案、大小及 digest；不跑上游 install，也不修改真實使用者 profile。
-2. **Admission and delivery:** 先固定多來源註冊與撤銷契約；在隔離 Runtime profile 安裝、
-   列舉、選用，記錄 requested/resolved/applied 與 upstream/plugin provenance；未安裝不能使用。
-3. **Value:** 用相同模型、相同固定 review／UX 題目比較無 skill、Cats 內建及 Agency 角色；
-   分別記錄 findings、誤報、格式／scope 遵循與 context 成本，不以更長回答當品質提升。
-4. **Lifecycle:** 更新、停用／移除、重啟後不得重新投遞舊 generation；既有 context 不能
-   靠刪檔聲稱乾淨，手動 skills 與無關 sessions 不受影響。
+1. **Artifact:** pick only Code Reviewer / UX Researcher, pin the source and license, and verify
+   conversion differences, YAML / names, referenced files, size and digest; do not run the
+   upstream install, and do not modify a real user profile.
+2. **Admission and delivery:** first fix the multi-source registration and revocation contract;
+   in an isolated Runtime profile install, enumerate and select, recording
+   requested/resolved/applied and upstream/plugin provenance; what is not installed cannot be used.
+3. **Value:** with the same model and the same fixed review / UX questions, compare no skill,
+   the Cats built-in and the Agency role; record findings, false positives, format / scope
+   adherence and context cost separately, and do not treat a longer answer as a quality gain.
+4. **Lifecycle:** after update, disable/remove and restart, an old generation must not be
+   delivered again; an existing context cannot claim to be clean by deleting files, and manual
+   skills and unrelated sessions are unaffected.
 
-以上皆未執行；本輪只是確認候選的架構方向較合適。建議先完成這個 skills-only pilot，
-不以它取代另一路獨立 provider 的驗證。文件與獨立 review 結果記錄於 PLAN-113。
+None of the above has been executed; this round only confirms that the candidate's architectural
+direction is the more suitable. We recommend completing this skills-only pilot first, and not
+using it to replace the verification of the other, standalone provider path. The documentation
+and independent review results are recorded in PLAN-113.
 
 *Last updated: 2026-09-28*

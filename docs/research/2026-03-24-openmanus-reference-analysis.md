@@ -5,8 +5,8 @@
 - **Date**: 2026-03-24
 - **Author**: Claude
 - **Status**: Draft — pending review
-- **Scope**: 從 OpenManus（FoundationAgents）中提取對 Cats 有參考價值的設計與實作
-- **Source**: `OpenManus/` submodule（MIT 授權，MetaGPT 團隊，Python，~6,449 行）
+- **Scope**: Extract the designs and implementations from OpenManus (FoundationAgents) that are worth referencing for Cats
+- **Source**: `OpenManus/` submodule (MIT license, MetaGPT team, Python, ~6,449 lines)
 - **Related**:
   - `cats-platform/docs/research/2026-03-24-cats-code-peer-review-workflow.md`
   - `cats-platform/docs/research/2026-03-24-cats-work-aggregator-and-mesh-vision.md`
@@ -15,81 +15,84 @@
 
 ---
 
-## 概述
+## Overview
 
-OpenManus 是 MetaGPT 團隊的開源 AI agent 框架，定位為開源版 Devin。
-本文件不評估 OpenManus 的整體成熟度，只聚焦於**對 Cats 有直接參考價值的部分**。
+OpenManus is an open-source AI agent framework from the MetaGPT team,
+positioned as an open-source Devin. This document does not evaluate OpenManus's
+overall maturity; it focuses only on **the parts with direct reference value for
+Cats**.
 
 ---
 
-## 參考項目 1: PlanningFlow（Multi-Agent Task Decomposition）
+## Reference Item 1: PlanningFlow (Multi-Agent Task Decomposition)
 
-### OpenManus 的做法
+### What OpenManus does
 
 `OpenManus/app/flow/planning.py`
 
-- 大任務進來 → LLM 自動拆成多個 step
-- 每個 step 分派給不同的 specialist agent（Manus / DataAnalysis / SandboxAgent）
-- 有完整的 step 狀態追蹤（pending → running → completed / failed）
-- Plan 可以在執行過程中動態調整（新增 / 修改 step）
+- A large task comes in → the LLM automatically breaks it into multiple steps
+- Each step is assigned to a different specialist agent (Manus / DataAnalysis / SandboxAgent)
+- Complete step status tracking (pending → running → completed / failed)
+- The plan can be adjusted dynamically during execution (add / modify steps)
 
-### 對 Cats 的參考價值
+### Reference value for Cats
 
-**直接對應 Boss Cat 的 dispatch 行為：**
+**Maps directly to the Boss Cat's dispatch behavior:**
 
 ```
-Owner: 「幫我做一個有登入功能的 landing page」
+Owner: "Build me a landing page with login"
 
-Boss Cat（PlanningFlow 等價物）:
-  Step 1: 設計 UI mockup → assign Designer Cat
-  Step 2: 實作 auth module → assign Coder Cat A
-  Step 3: 實作 landing page → assign Coder Cat B（依賴 Step 1）
-  Step 4: Review → assign Peer Cat A + B（依賴 Step 2, 3）
-  Step 5: 整合測試 → assign QA Cat（依賴 Step 4）
+Boss Cat (PlanningFlow equivalent):
+  Step 1: Design the UI mockup → assign Designer Cat
+  Step 2: Implement the auth module → assign Coder Cat A
+  Step 3: Implement the landing page → assign Coder Cat B (depends on Step 1)
+  Step 4: Review → assign Peer Cat A + B (depends on Step 2, 3)
+  Step 5: Integration testing → assign QA Cat (depends on Step 4)
 ```
 
-**可借鑑的設計：**
+**Designs worth borrowing:**
 
-- **Step 狀態機**：OpenManus 用 `not_started` / `in_progress` / `completed` /
-  `blocked` — 跟我們的 `CoreTaskStatus` 幾乎一致
-- **動態 re-planning**：執行到一半發現需要額外步驟，LLM 可以修改 plan —
-  Boss Cat 也需要這個能力
-- **Agent 選擇邏輯**：PlanningFlow 根據 step 的性質選 specialist —
-  Boss Cat 根據 SKILL.md capabilityTags 選 Cat
+- **Step state machine**: OpenManus uses `not_started` / `in_progress` / `completed` /
+  `blocked` — nearly identical to our `CoreTaskStatus`
+- **Dynamic re-planning**: if extra steps are found to be needed midway, the LLM can modify the plan —
+  the Boss Cat needs this ability too
+- **Agent selection logic**: PlanningFlow picks a specialist according to the nature of the step —
+  the Boss Cat picks a Cat according to SKILL.md capabilityTags
 
-**我們已有但 OpenManus 沒有的：**
+**What we already have but OpenManus does not:**
 
-- Task substrate 的 DB 持久化（OpenManus 只在 memory 中）
-- Approval gate（OpenManus 的 plan 不需要 owner 批准）
-- Budget pre-check（OpenManus 不追蹤 cost）
+- DB persistence for the task substrate (OpenManus keeps it only in memory)
+- Approval gate (OpenManus plans do not need owner approval)
+- Budget pre-check (OpenManus does not track cost)
 
-### 建議
+### Recommendation
 
-PlanningFlow 的 step decomposition 邏輯可作為 Boss Cat dispatch prompt
-的 reference。不需要移植 code，但 plan 的資料結構和 re-planning 機制
-值得在 orchestrator SKILL.md 中參考。
+PlanningFlow's step decomposition logic can serve as a reference for the Boss
+Cat dispatch prompt. There is no need to port code, but the plan's data
+structure and the re-planning mechanism are worth referencing in the
+orchestrator SKILL.md.
 
 ---
 
-## 參考項目 2: A2A Protocol 整合
+## Reference Item 2: A2A Protocol Integration
 
-### OpenManus 的做法
+### What OpenManus does
 
 `OpenManus/protocol/a2a/`
 
-- 實作了 Google 的 Agent-to-Agent protocol
-- Agent 暴露為 JSON-RPC 2.0 endpoint
-- 有標準的 agent-card（能力宣告）
-- 支援 task 的 send / get / cancel
+- Implements Google's Agent-to-Agent protocol
+- Agents are exposed as JSON-RPC 2.0 endpoints
+- Has a standard agent-card (capability declaration)
+- Supports task send / get / cancel
 
-### 對 Cats 的參考價值
+### Reference value for Cats
 
-**直接對應 mesh network 的跨節點通訊：**
+**Maps directly to cross-node communication in the mesh network:**
 
-我們的 monorepo 裡 `docs/a2a/` 已有 A2A 的 agent-card 和 task example files。
-OpenManus 有**跑通的實作**可以對照。
+Our monorepo already has A2A agent-card and task example files in `docs/a2a/`.
+OpenManus has a **working implementation** to compare against.
 
-**Mesh 場景下的用途：**
+**Use in the mesh scenario:**
 
 ```
 Node A (cats-runtime) ── A2A ── Node B (cats-runtime)
@@ -103,128 +106,131 @@ Node A (cats-runtime) ── A2A ── Node B (cats-runtime)
                             }
 ```
 
-- 每個 cats-runtime node 暴露 A2A agent-card，宣告自己的能力
-- Hub 透過 A2A 發現節點、dispatch task、收集結果
-- 不需要自己發明 discovery protocol — A2A 已經定義好了
+- Each cats-runtime node exposes an A2A agent-card declaring its capabilities
+- The Hub discovers nodes, dispatches tasks, and collects results through A2A
+- We do not need to invent our own discovery protocol — A2A has already defined it
 
-**比自造協議的好處：**
+**Benefits over a homemade protocol:**
 
-- Google 維護的開放標準，有生態系
-- 已有多個框架支援（OpenManus、LangChain、CrewAI）
-- Agent-card 的 capability 宣告跟 SKILL.md 的 capabilityTags 天然對應
-- Task 的 send / get / cancel 跟 CoreTaskRecord 的 lifecycle 對應
+- An open standard maintained by Google, with an ecosystem
+- Already supported by multiple frameworks (OpenManus, LangChain, CrewAI)
+- The agent-card capability declaration maps naturally to SKILL.md capabilityTags
+- Task send / get / cancel maps to the CoreTaskRecord lifecycle
 
-### 建議
+### Recommendation
 
-Mesh network 的 Phase 1（Star Topology）可以直接採用 A2A protocol
-作為節點間通訊標準，而不是自建協議。OpenManus 的 `protocol/a2a/`
-實作可作為 cats-runtime A2A adapter 的 reference。
-
----
-
-## 參考項目 3: AskHuman Tool（Human-in-the-Loop 中斷）
-
-### OpenManus 的做法
-
-`OpenManus/app/tool/` 中的 AskHuman tool
-
-- Agent 跑到不確定的地方 → 呼叫 AskHuman tool
-- 執行暫停，等待人類輸入
-- 人類回覆後，agent 繼續執行
-
-### 對 Cats 的參考價值
-
-**這就是 structured choices 的 runtime 端對應物：**
-
-- Cat 在 session 中遇到需要 owner 決策的時刻
-- Cat 呼叫一個類似 AskHuman 的 tool → session 暫停
-- 產品層收到暫停事件 → 在 Chat UI 中渲染 structured choices
-- Owner 選擇後 → 回覆送回 session → Cat 繼續
-
-**跟我們既有架構的對應：**
-
-- OpenManus 的 `AskHuman` → Cat 的 structured choices output
-- OpenManus 的 tool call 暫停 → cats-runtime session 的 `busy` → `ready` 狀態轉換
-- OpenManus 的人類回覆 → 產品層 `POST /sessions/:id/messages` 送回選擇結果
-
-**差異：**
-
-- OpenManus 的 AskHuman 是純文字 prompt（問什麼由 agent 自己寫）
-- 我們的 structured choices 是結構化 JSON（帶 options、multiSelect、allowSkip）
-- 我們的做法 UX 更好（按鈕 vs 打字），但底層的中斷/恢復機制相同
-
-### 建議
-
-AskHuman 的中斷/恢復模式確認了 structured choices 的 runtime 端不需要
-特殊機制 — 就是一個 tool call 讓 session 等待外部輸入，跟現有的
-session message flow 完全一致。
+Phase 1 (Star Topology) of the mesh network can adopt the A2A protocol directly
+as the inter-node communication standard instead of building a custom protocol.
+OpenManus's `protocol/a2a/` implementation can serve as a reference for a
+cats-runtime A2A adapter.
 
 ---
 
-## 參考項目 4: StrReplaceEditor（File Editing Tool）
+## Reference Item 3: AskHuman Tool (Human-in-the-Loop Interruption)
 
-### OpenManus 的做法
+### What OpenManus does
+
+The AskHuman tool in `OpenManus/app/tool/`
+
+- When the agent reaches something it is unsure about → it calls the AskHuman tool
+- Execution pauses and waits for human input
+- After the human replies, the agent continues
+
+### Reference value for Cats
+
+**This is the runtime-side counterpart of structured choices:**
+
+- A Cat in a session hits a moment that needs an owner decision
+- The Cat calls a tool similar to AskHuman → the session pauses
+- The product layer receives the pause event → renders structured choices in the Chat UI
+- After the owner chooses → the reply is sent back to the session → the Cat continues
+
+**Mapping to our existing architecture:**
+
+- OpenManus's `AskHuman` → the Cat's structured choices output
+- OpenManus's tool call pause → the cats-runtime session's `busy` → `ready` state transition
+- OpenManus's human reply → the product layer `POST /sessions/:id/messages` sends back the choice result
+
+**Differences:**
+
+- OpenManus's AskHuman is a plain-text prompt (what to ask is written by the agent itself)
+- Our structured choices are structured JSON (with options, multiSelect, allowSkip)
+- Our approach has better UX (buttons vs typing), but the underlying interrupt/resume mechanism is the same
+
+### Recommendation
+
+AskHuman's interrupt/resume pattern confirms that the runtime side of
+structured choices needs no special mechanism — it is just a tool call that
+makes the session wait for external input, fully consistent with the existing
+session message flow.
+
+---
+
+## Reference Item 4: StrReplaceEditor (File Editing Tool)
+
+### What OpenManus does
 
 `OpenManus/app/tool/str_replace_editor.py`
 
-- 四個操作：`view` / `create` / `str_replace` / `insert`
-- 支援 undo（每次 edit 記錄 history）
-- Path validation + 安全檢查
-- 行號顯示 + 範圍限制（避免讀太多）
+- Four operations: `view` / `create` / `str_replace` / `insert`
+- Supports undo (each edit records history)
+- Path validation + safety checks
+- Line number display + range limits (to avoid reading too much)
 
-### 對 Cats 的參考價值
+### Reference value for Cats
 
-**Coder Cat 在 cats-runtime session 中編輯檔案時的 tool contract：**
+**The tool contract for a Coder Cat editing files in a cats-runtime session:**
 
-- 跟 Claude Code 的 Edit tool 幾乎一樣的介面
-- cats-runtime 的 `LocalToolRuntime` 已有 read / write / patch / grep / shell
-- OpenManus 多了 **undo** — 如果 Peer Cat review 後要 revert 某個 edit，
-  undo history 會很有用
+- An interface nearly identical to Claude Code's Edit tool
+- cats-runtime's `LocalToolRuntime` already has read / write / patch / grep / shell
+- OpenManus adds **undo** — if a Peer Cat's review calls for reverting an edit,
+  the undo history would be useful
 
-### 建議
+### Recommendation
 
-低優先。我們的 LocalToolRuntime 已經覆蓋核心操作。
-Undo 功能可以作為未來 Coder Cat 工作流的增強參考。
-
----
-
-## 不需要參考的部分
-
-- **Browser automation（browser-use + Playwright）**：我們有 `browser-rpa-core`，
-  且 Cats Code 的 preview 用 iframe + local dev server 就夠了
-- **Daytona sandbox**：跳過，不符合我們的 native 軟體方向
-- **Web search tools（Google / DuckDuckGo / Baidu）**：不是 Cats 的重點
-- **Data analysis agent**：跟 Cats 定位不同
-- **crawl4ai**：我們的 freelance-job-aggregator 已有自己的 scraping 框架
-- **ComputerUseTool（desktop automation）**：我們有 `rpa-automate`
+Low priority. Our LocalToolRuntime already covers the core operations.
+Undo can serve as a reference for enhancing the Coder Cat workflow in the future.
 
 ---
 
-## 與其他 Research 的關係
+## Parts Not Worth Referencing
 
-| OpenManus 參考項 | 對應的 Cats Research |
+- **Browser automation (browser-use + Playwright)**: we have `browser-rpa-core`,
+  and for Cats Code a preview with an iframe + local dev server is enough
+- **Daytona sandbox**: skip; it does not fit our native-software direction
+- **Web search tools (Google / DuckDuckGo / Baidu)**: not a focus of Cats
+- **Data analysis agent**: different from Cats's positioning
+- **crawl4ai**: our freelance-job-aggregator already has its own scraping framework
+- **ComputerUseTool (desktop automation)**: we have `rpa-automate`
+
+---
+
+## Relationship to Other Research
+
+| OpenManus reference item | Corresponding Cats research |
 |------------------|---------------------|
-| PlanningFlow | Task Substrate + Peer Review Workflow（fan-out/converge） |
-| A2A Protocol | Aggregator + Mesh Vision（跨節點通訊） |
-| AskHuman | Structured Choices（runtime 端中斷/恢復） |
-| StrReplaceEditor | （cats-runtime LocalToolRuntime 已覆蓋） |
+| PlanningFlow | Task Substrate + Peer Review Workflow (fan-out/converge) |
+| A2A Protocol | Aggregator + Mesh Vision (cross-node communication) |
+| AskHuman | Structured Choices (runtime-side interrupt/resume) |
+| StrReplaceEditor | (already covered by cats-runtime LocalToolRuntime) |
 
 ---
 
-## 結論
+## Conclusion
 
-OpenManus 對 Cats 最有價值的 reference 是：
+The most valuable references from OpenManus for Cats are:
 
-- **PlanningFlow** — Boss Cat dispatch 的 step decomposition 和 re-planning
-  機制的實作參考
-- **A2A protocol** — mesh network 可以直接採用的跨節點通訊標準，
-  不需要自建 discovery protocol
-- **AskHuman** — 確認 structured choices 的 runtime 端不需要新機制，
-  跟現有 session message flow 一致
+- **PlanningFlow** — an implementation reference for the Boss Cat dispatch's
+  step decomposition and re-planning mechanism
+- **A2A protocol** — an inter-node communication standard the mesh network can
+  adopt directly, with no need to build our own discovery protocol
+- **AskHuman** — confirms that the runtime side of structured choices needs no
+  new mechanism, consistent with the existing session message flow
 
-其餘部分我們已有對應的解決方案，不需要重複引入。
+For everything else we already have a corresponding solution and need not
+introduce it again.
 
 ---
 
-*本文件供 review 討論用。如 review 通過，A2A protocol 的採用建議
-可提升為正式 ADR。*
+*This document is for review discussion. If the review passes, the
+recommendation to adopt the A2A protocol can be promoted to a formal ADR.*

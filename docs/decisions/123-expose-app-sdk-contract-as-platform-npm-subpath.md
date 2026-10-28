@@ -2,245 +2,313 @@
 
 ## Status
 
-Accepted for Stage 1, 2026-09-29。使用者先要求把 npm／SDK 分發討論整理成文件，同日再要求
-開始第一階段實作（不含獨立 npm 發布）。第一階段已在 Platform 實作並附測試，但尚未隨任何
-Platform npm 版本發布；第二階段、版本 bump 與任何 npm 發布都仍需另外授權。
-[實作紀錄](#stage-1-implementation-2026-09-29)列出與原提案不同的兩處修正。
+Accepted for Stage 1, 2026-09-29. The user first asked for the npm/SDK distribution
+discussion to be organized into a document, and the same day asked to start Stage 1
+implementation (excluding independent npm publication). Stage 1 is implemented in Platform
+with tests, but has not been released in any Platform npm version; Stage 2, version bumps
+and any npm publication still need separate authorization. The
+[implementation record](#stage-1-implementation-2026-09-29) lists two corrections that
+differ from the original proposal.
 
-本 ADR 採用 [ADR-094](094-adopt-cats-app-packages-as-extension-boundary.md)（Proposed）
-Interface Direction 已提出的 `@cats-inc/cats-platform/app-sdk` 入口名稱，並為
-[SPEC-120](../specs/SPEC-120-app-market-and-lifecycle.md) FR-10 與
-[PLAN-112](../plans/PLAN-112-app-market-and-lifecycle.md) M3 的「可獨立取得的開發契約」
-選定分階段交付方式。它不改變 [ADR-121](121-distribute-apps-independently-with-host-owned-lifecycle.md)
-的 App 分發與生命週期決策，也不擴大 App 的執行能力。
+This ADR adopts the `@cats-inc/cats-platform/app-sdk` entry name already proposed in the
+Interface Direction of [ADR-094](094-adopt-cats-app-packages-as-extension-boundary.md)
+(Proposed), and picks a staged delivery approach for the "independently obtainable
+development contract" of [SPEC-120](../specs/SPEC-120-app-market-and-lifecycle.md) FR-10 and
+[PLAN-112](../plans/PLAN-112-app-market-and-lifecycle.md) M3. It does not change the App
+distribution and lifecycle decisions of
+[ADR-121](121-distribute-apps-independently-with-host-owned-lifecycle.md), and does not
+expand what Apps can execute.
 
 ## Context
 
-### Apps 與 Plugins 已經以 artifact 分發
+### Apps and Plugins are already distributed as artifacts
 
-- cats-apps 逐 App 推送 `<slug>-vX.Y.Z` tag，把不可變的 `.catsapp` 發到 GitHub Releases；
-  Desktop 以 `config/desktop-apps.lock.json` 的精確版本、URL 與 SHA-256 選用。
-- cats-plugins 產生 canonical ZIP；宿主以自己的固定 digest allowlist 接納
-  （[ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md)）。
-- 各 owner 已寫明不走 npm：SPEC-120 FR-07 禁止安裝路徑執行 `npm install`；
-  [cats-one architecture](../../../cats-one/docs/architecture.md) 說明 cats-apps 不是
-  launcher 依賴；[cats-apps AGENTS.md](../../../cats-apps/AGENTS.md) 寫明 App 套件不是
-  npm 發布目標；[cats-plugins deployment](../../../cats-plugins/docs/deployment.md) 以
-  `private` 阻擋 npm 發布。
-- 若改由 npm 依賴，每新增一個 App／Plugin 都要改 launcher 並發版；npm range 會在重新
-  解析時換版或重新安裝已被使用者移除的單元，與 ADR-121 §1、§3、§6 的宿主政策、
-  發布／推進／安裝分離與使用者選擇優先相衝突。
+- cats-apps pushes a `<slug>-vX.Y.Z` tag per App and publishes the immutable `.catsapp` to
+  GitHub Releases; Desktop selects it by the exact version, URL and SHA-256 in
+  `config/desktop-apps.lock.json`.
+- cats-plugins produces a canonical ZIP; the host admits it through its own fixed digest
+  allowlist ([ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md)).
+- Each owner has already written that npm is not used: SPEC-120 FR-07 forbids running
+  `npm install` in the install path; the
+  [cats-one architecture](../../../cats-one/docs/architecture.md) states that cats-apps is
+  not a launcher dependency; [cats-apps AGENTS.md](../../../cats-apps/AGENTS.md) states that
+  App packages are not an npm publishing target; the
+  [cats-plugins deployment](../../../cats-plugins/docs/deployment.md) blocks npm publication
+  with `private`.
+- If npm dependencies were used instead, every new App/Plugin would require changing the
+  launcher and releasing; an npm range would swap versions on re-resolution or reinstall a
+  unit the user had removed, which conflicts with the host policy of ADR-121 §1, §3, §6, the
+  separation of publication/promotion/installation, and user choice taking priority.
 
-### 需要 npm 的是開發期契約
+### What needs npm is the development-time contract
 
-- SDK 現況：`packages/app-sdk`（`@cats-inc/app-sdk` 1.3.0，`private`）隨 Platform npm
-  的 `files` 與 Desktop sidecar 出貨；Platform 透過內部 alias `#cats-app-package` 在執行時
-  使用它，`scripts/bundle-server.mjs` 將該 alias 保持 external。
-- `packages/app-sdk/package.js` 同時包含作者契約與宿主專用程式：
-  - 作者契約：`decodeAppPackage`、`supportsVersion`、`MAX_PACKAGE_BYTES`、`APP_SDK_VERSION`。
-  - 宿主專用：`PLATFORM_VERSION`（以 `createRequire` 讀 `../../package.json`）、
-    `resolveAppLock`（含 GitHub 下載政策）、`materializeAppSelection`、`readBrowserSdk`。
-- 安裝器實際套用的驗證分散兩處：`validateRendererPackage`
-  （`src/platform/apps/packageInstaller.ts`）先呼叫 `decodeAppPackage`，再以
-  `src/shared/catsAppValidation.ts` 的 `parseCatsAppManifestV1` 檢查 manifest。
-  manifest 型別與驗證是 `src/shared/*.ts`，編譯進 `build/server`；`packages/app-sdk`
-  則是沒有 build step 的原始 JS 與 `.d.ts`。
-- `.catsapp` 格式沒有官方 encoder。cats-apps 的 `scripts/build-app.mjs` 自行組 gzip JSON
-  envelope；Platform 也有 6 個測試檔各自手組 envelope。cats-apps CI 只 checkout 自己的
-  repo，產物要等 Desktop packaging 或實際安裝時才被宿主驗證，那時對應的
-  `<slug>-vX.Y.Z` Release 已不可變更。
-- 現有 encoder 只在同一 OS 上可重現：Node `zlib.gzipSync` 會在 gzip header 寫入 OS byte，
-  本機 Windows 實測為 10。cats-apps 的 CI 與 release 都在 `ubuntu-latest` 執行，
-  所以在 Windows 重建同一版本會得到不同 bytes；Linux／macOS 的值未在本機驗證。
-- cats-apps 規定「使用已發布的宿主契約，不 import sibling source」；沒有已發布契約時，
-  只能重寫格式。
+- Current SDK state: `packages/app-sdk` (`@cats-inc/app-sdk` 1.3.0, `private`) ships with
+  the `files` of the Platform npm package and the Desktop sidecar; Platform uses it at
+  runtime through the internal alias `#cats-app-package`, and `scripts/bundle-server.mjs`
+  keeps that alias external.
+- `packages/app-sdk/package.js` contains both the author contract and host-only code:
+  - Author contract: `decodeAppPackage`, `supportsVersion`, `MAX_PACKAGE_BYTES`,
+    `APP_SDK_VERSION`.
+  - Host-only: `PLATFORM_VERSION` (read from `../../package.json` with `createRequire`),
+    `resolveAppLock` (including the GitHub download policy), `materializeAppSelection`,
+    `readBrowserSdk`.
+- The validation the installer actually applies is split across two places:
+  `validateRendererPackage` (`src/platform/apps/packageInstaller.ts`) first calls
+  `decodeAppPackage`, then checks the manifest with `parseCatsAppManifestV1` from
+  `src/shared/catsAppValidation.ts`. The manifest types and validation are `src/shared/*.ts`,
+  compiled into `build/server`; `packages/app-sdk` is plain JS and `.d.ts` with no build
+  step.
+- The `.catsapp` format has no official encoder. The `scripts/build-app.mjs` of cats-apps
+  assembles the gzip JSON envelope itself; Platform also has 6 test files that each
+  hand-assemble envelopes. cats-apps CI checks out only its own repo, so artifacts are not
+  validated by the host until Desktop packaging or actual installation, by which time the
+  corresponding `<slug>-vX.Y.Z` Release is already immutable.
+- The existing encoder is reproducible only on the same OS: Node `zlib.gzipSync` writes an
+  OS byte into the gzip header, measured as 10 on local Windows. The CI and release of
+  cats-apps both run on `ubuntu-latest`, so rebuilding the same version on Windows yields
+  different bytes; the Linux/macOS values were not verified locally.
+- cats-apps requires "use the published host contract, do not import sibling source"; with
+  no published contract, the only option is to rewrite the format.
 
-### 已查證的 npm 與 import 事實（2026-09-29）
+### Verified npm and import facts (2026-09-29)
 
-- npm registry：Platform `latest` 為 0.5.8，unpacked 約 18.9 MB、3,609 個檔案；0.5 線上
-  只發布過 0.5.1 與 0.5.8。App 宣告的最低宿主各不相同：Usage 0.4.0 為
-  `catsPlatform ^0.5.0`／`appSdk ^1.2.0`，Studio 0.1.0 為 `^0.5.11`／`^1.3.0`。
-- Platform `package.json` 沒有 `exports` 欄位，只有 `main`（`build/desktop/main.js`）、
-  `bin` 與內部 `imports`。[ADR-013](013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md)
-  §2 定位此套件以應用為主，可以提供小型程式介面。
-- cats-one 以 `require.resolve('@cats-inc/cats-platform/package.json')` 讀取 manifest，
-  再依 `bin` 以檔案路徑啟動 Platform；cats-one CI 的封裝檢查也走同一路徑。
-- cats-runtime 已用 `exports` 同時提供主入口、`./catalogs` 與 `./package.json`。
-- 在五個 checkout（排除 `node_modules`、build 與 dist 輸出）分別搜尋裸套件名
-  `'@cats-inc/cats-platform'` 與 `@cats-inc/cats-platform/<subpath>`：程式碼只有上述
-  `package.json` 解析，沒有 import 主入口或其他 subpath；其餘是文件，包括 ADR-094／SPEC-098
-  的 `app-sdk`，以及 ADR-092／SPEC-095／PLAN-084 規劃中給 mobile 的 `core`（mobile 程式目前未使用）。
+- npm registry: Platform `latest` is 0.5.8, about 18.9 MB unpacked, 3,609 files; only 0.5.1
+  and 0.5.8 have been published on the 0.5 line. The minimum hosts Apps declare differ:
+  Usage 0.4.0 is `catsPlatform ^0.5.0` / `appSdk ^1.2.0`, Studio 0.1.0 is `^0.5.11` /
+  `^1.3.0`.
+- Platform `package.json` has no `exports` field, only `main` (`build/desktop/main.js`),
+  `bin` and internal `imports`. [ADR-013](013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md)
+  §2 positions this package as application-first, and it may offer a small programmatic
+  interface.
+- cats-one reads the manifest with `require.resolve('@cats-inc/cats-platform/package.json')`,
+  then launches Platform by file path according to `bin`; the packaging check in cats-one CI
+  goes through the same path.
+- cats-runtime already uses `exports` to provide the main entry, `./catalogs` and
+  `./package.json` together.
+- Searching the five checkouts (excluding `node_modules`, build and dist output) for the bare
+  package name `'@cats-inc/cats-platform'` and `@cats-inc/cats-platform/<subpath>`: the only
+  code is the `package.json` resolution above, with no import of the main entry or other
+  subpaths; the rest is documentation, including `app-sdk` in ADR-094/SPEC-098, and the
+  `core` planned for mobile in ADR-092/SPEC-095/PLAN-084 (mobile code does not currently use
+  it).
 
 ## Decision
 
-1. **Apps 與 Plugins 不經 npm 解析安裝（Platform 端重申）。** 宿主只接納經驗證的
-   artifact，不從 `node_modules` 載入 App 或 Plugin，也不要求 launcher 或 Platform 以
-   npm 依賴它們。npm 只承載開發期契約。其他 repo 的對應規則由各自 owner 維持，
-   本 ADR 不替它們新增規則。
+1. **Apps and Plugins are not installed through npm resolution (restated for the Platform
+   side).** The host admits only verified artifacts, does not load an App or Plugin from
+   `node_modules`, and does not require the launcher or Platform to depend on them via npm.
+   npm carries only the development-time contract. The corresponding rules in other repos are
+   kept by their own owners; this ADR adds no rules for them.
 
-2. **第一階段：由 Platform npm 提供 `./app-sdk` subpath。** Platform 在 `exports` 宣告
-   `./app-sdk`，指向只 re-export allowlist 的公開入口檔；宿主內部繼續以
-   `#cats-app-package` 使用完整內容。檔案實體如何拆分屬實作細節，但不得改變
-   `readBrowserSdk` 找到 `browser.js` 的方式（[app-packages](../app-packages.md) 記錄過
-   `import.meta.url` 被 bundling 搬移後讀不到 SDK 的事故）。
-   - 公開：`browser.d.ts` 的 `CatsAppBrowserSdkV1` 等型別、`cats.app.json` manifest 型別、
-     安裝器所套用的同一套套件與 manifest 驗證、`supportsVersion`、大小限制常數、
-     `APP_SDK_VERSION`，以及新增的官方 `encodeAppPackage`。
-   - 不公開：`PLATFORM_VERSION`、`resolveAppLock`、`materializeAppSelection`、
-     `readBrowserSdk`，以及 `browser.js` 本身。
-   - `browser.d.ts` 是作者契約；`browser.js` 是宿主注入的執行 bridge，App 套件不得捆綁
-     （ADR-121 §7、SPEC-120 FR-10）。
-   - 公開驗證必須就是安裝器使用的驗證，不另寫第二套 validator；App CI 通過的套件
-     不能在同版本宿主安裝時因格式或 manifest 規則被拒。
-   - 公開入口不得載入 server 執行期模組（server entry、routes、store 等）或 Platform
-     執行期依賴，只能載入格式、encoder 與 manifest 驗證模組。manifest 驗證在
-     `src/shared/*.ts` 且編譯進 `build/server`，讓它從單一來源同時供安裝器與公開入口
-     使用，是實作的主要工作。
+2. **Stage 1: Platform npm provides an `./app-sdk` subpath.** Platform declares `./app-sdk`
+   in `exports`, pointing to a public entry file that re-exports only an allowlist; the host
+   internals keep using the full content through `#cats-app-package`. How the file is
+   physically split is an implementation detail, but it must not change how `readBrowserSdk`
+   finds `browser.js` ([app-packages](../app-packages.md) records an incident where the SDK
+   could not be read after `import.meta.url` was moved by bundling).
+   - Public: types such as `CatsAppBrowserSdkV1` from `browser.d.ts`, the `cats.app.json`
+     manifest types, the same package and manifest validation the installer applies,
+     `supportsVersion`, the size-limit constants, `APP_SDK_VERSION`, and the newly added
+     official `encodeAppPackage`.
+   - Not public: `PLATFORM_VERSION`, `resolveAppLock`, `materializeAppSelection`,
+     `readBrowserSdk`, and `browser.js` itself.
+   - `browser.d.ts` is the author contract; `browser.js` is the runtime bridge injected by
+     the host, and App packages must not bundle it (ADR-121 §7, SPEC-120 FR-10).
+   - The public validation must be exactly the validation the installer uses, with no second
+     validator; a package that passes App CI must not be rejected at install time by the
+     same-version host because of format or manifest rules.
+   - The public entry must not load server runtime modules (server entry, routes, store,
+     etc.) or Platform runtime dependencies; it may load only the format, encoder and
+     manifest validation modules. Manifest validation lives in `src/shared/*.ts` and is
+     compiled into `build/server`; making it serve both the installer and the public entry
+     from a single source is the main implementation work.
 
-3. **官方 encoder 必須跨 OS byte-deterministic。** 相同輸入在 Windows、macOS、Linux 上
-   都必須產生相同 bytes，才能保留 cats-apps「同版本不同內容即失敗」的重建檢查與 SHA-256
-   pin。encoder 必須固定 gzip header 中與平台或時間有關的欄位（OS byte、mtime），或改用
-   能保證相同 bytes 的等效寫法，並以跨 OS 的 hash 比對測試證明；cats-plugins 的
-   producer CI 已用同類方法比對 Windows、Linux、macOS。Platform 測試除了刻意構造的
-   無效套件，也改用同一 encoder 產生 fixtures。
+3. **The official encoder must be byte-deterministic across OSes.** The same input must
+   produce the same bytes on Windows, macOS and Linux, so that the cats-apps rebuild check
+   "same version with different content fails" and the SHA-256 pin are preserved. The encoder
+   must fix the platform- or time-dependent fields in the gzip header (OS byte, mtime), or
+   use an equivalent approach that guarantees identical bytes, and prove it with a cross-OS
+   hash comparison test; the producer CI of cats-plugins already compares Windows, Linux and
+   macOS with a similar method. Platform tests also use the same encoder to generate
+   fixtures, apart from deliberately constructed invalid packages.
 
-4. **以相容方式加入 `exports`；收緊為 allowlist 才是 breaking，隨 minor 邊界交付。**
-   宣告 `exports` 會封鎖所有未列出的套件路徑，因此第一階段同時宣告：
-   - `.`：等同原本的 `main`（Electron main，不是可 import 的函式庫 API）。
-   - `./package.json`：cats-one 依賴它找到 Platform。
-   - `./app-sdk`：公開 SDK 入口。
-   - `./*`：讓先前可解析的套件路徑維持可解析。它只是相容措施，不是公開契約；文件只承諾
-     `./app-sdk` 與 `./package.json`。
-   - 如此加入 `exports` 本身不是 breaking，下一次 Platform npm 發布不會因此被迫升 minor。
-     唯一失去的是 CommonJS 對無副檔名深路徑的自動補副檔名；調查沒有這類使用者。
-   - 移除 `./*`（真正封鎖未列出路徑）是 breaking，放在下一個 minor 邊界，屆時重做 import
-     調查。本 ADR 不 bump 版本。
-   - 2026-09-29 補充：#171 已把下一版定為 0.6.0 minor（ADR-124），`./*` 隨 0.6.0 移除；
-     `exports` 只剩 `.`、`./package.json` 與 `./app-sdk`。npm 上從未發布過含 `./*` 的版本，
-     重做的 import 調查仍只有 `package.json` 解析。
-   - `bin` 與 Electron 的 `main` 不經 `exports` 解析，不受影響。消費端需使用
-     `node16`、`nodenext` 或 `bundler` module resolution；舊的 `node10` 解析不支援 subpath。
+4. **`exports` is added compatibly; tightening it to an allowlist is the breaking step and
+   ships at a minor boundary.** Declaring `exports` blocks every package path not listed, so
+   Stage 1 declares at the same time:
+   - `.`: equal to the original `main` (Electron main, not an importable library API).
+   - `./package.json`: cats-one depends on it to find Platform.
+   - `./app-sdk`: the public SDK entry.
+   - `./*`: keeps previously resolvable package paths resolvable. It is only a compatibility
+     measure, not a public contract; documentation promises only `./app-sdk` and
+     `./package.json`.
+   - Adding `exports` this way is not itself breaking, so the next Platform npm release is
+     not forced to bump minor because of it. The only thing lost is CommonJS's automatic
+     extension completion for extensionless deep paths; the investigation found no such
+     users.
+   - Removing `./*` (truly blocking unlisted paths) is breaking and goes at the next minor
+     boundary, when the import investigation is redone. This ADR does not bump the version.
+   - 2026-09-29 addendum: #171 set the next version as the 0.6.0 minor (ADR-124), and `./*`
+     is removed with 0.6.0; `exports` keeps only `.`, `./package.json` and `./app-sdk`. No
+     version containing `./*` was ever published to npm, and the redone import investigation
+     still finds only `package.json` resolution.
+   - `bin` and Electron's `main` are not resolved through `exports` and are unaffected.
+     Consumers need `node16`, `nodenext` or `bundler` module resolution; the old `node10`
+     resolution does not support subpaths.
 
-5. **SDK 版本只有一個來源。** `packages/app-sdk/package.json` 的 `version` 為權威；
-   `APP_SDK_VERSION` 由它衍生，或以 CI 斷言兩者相等。宿主宣告的 SDK 版本、subpath
-   內容與日後的獨立套件因此一致。
+5. **The SDK version has a single source.** The `version` of `packages/app-sdk/package.json`
+   is authoritative; `APP_SDK_VERSION` derives from it, or CI asserts the two are equal. The
+   SDK version the host declares, the subpath content and a later standalone package are thus
+   consistent.
 
-6. **cats-apps 以已發布的 Platform 作為開發依賴。** 每個 App 以它自己宣告的最低
-   `catsPlatform` 版本（不是 `latest`）取得官方 encoder 與驗證，在 CI 檢查產物，並退役
-   `build-app.mjs` 裡的 envelope 實作。candidate 宿主版本另依 PLAN-112 M3 測試。
-   - 只有提供 `./app-sdk` 的 Platform 版本能這樣使用，因此只適用於最低宿主不低於該版本的
-     App 新版本。SPEC-120 FR-11 已要求 0.6.0 後的 App 另發宣告新範圍的版本；已發布的
-     `^0.5` 版本不重建，現有 builder 保留到切換為止。
-   - 各 App 的最低宿主可能不同（目前 Usage 與 Studio 就不同），單一 workspace
-     devDependency 無法同時滿足；以 CI matrix 或逐 App 安裝處理，由 cats-apps 設計。
-   - 這些是 cats-apps 的工作，由其 owner 在自己的 repo 規劃。
+6. **cats-apps uses the published Platform as a development dependency.** Each App obtains
+   the official encoder and validation at the minimum `catsPlatform` version it declares
+   (not `latest`), checks its artifact in CI, and retires the envelope implementation in
+   `build-app.mjs`. Candidate host versions are tested separately per PLAN-112 M3.
+   - Only Platform versions that provide `./app-sdk` can be used this way, so it applies only
+     to new App versions whose minimum host is not below that version. SPEC-120 FR-11
+     already requires that Apps after 0.6.0 ship separate versions declaring the new range;
+     published `^0.5` versions are not rebuilt, and the existing builder is kept until the
+     switch.
+   - Each App's minimum host may differ (Usage and Studio differ today), and a single
+     workspace devDependency cannot satisfy all of them; handle it with a CI matrix or
+     per-App installation, designed by cats-apps.
+   - This is cats-apps work, planned by its owner in its own repo.
 
-7. **第二階段：獨立發布 `@cats-inc/app-sdk`。** 觸發條件是 ADR-121 §8 所述第三方 App
-   開發另案啟動，或出現需要輕量安裝的非官方作者。屆時從 cats-platform 的同一目錄發布，
-   套件版本即 SDK 版本，使用獨立 tag 或手動 workflow，不影響 Platform npm 與 Desktop。
-   是否保留 `./app-sdk` subpath 依當時的版本政策決定；第二階段需要另外的發布授權。
+7. **Stage 2: publish `@cats-inc/app-sdk` independently.** The trigger is that third-party
+   App development described in ADR-121 §8 is started separately, or a non-official author
+   appears who needs a lightweight install. Then it is published from the same directory in
+   cats-platform, the package version is the SDK version, using a separate tag or a manual
+   workflow, without affecting the Platform npm package and Desktop. Whether to keep the
+   `./app-sdk` subpath is decided by the version policy at that time; Stage 2 needs separate
+   publication authorization.
 
-8. **不另建 repository。** SDK 型別、宿主 bridge 與驗證器必須能在同一個 PR 修改，並以
-   真實宿主測試。只有 ownership 或發布節奏實際分開時才重新評估拆分，標準與
-   [cats-apps ADR-001](../../../cats-apps/docs/decisions/001-own-official-utility-apps-and-coordinate-desktop-distribution.md)
-   對「每個 App 一個 repo」的評估相同。
+8. **No separate repository.** The SDK types, the host bridge and the validator must be
+   changeable in one PR and tested against the real host. Splitting is reevaluated only when
+   ownership or release cadence actually separate, by the same standard as the evaluation of
+   "one repo per App" in
+   [cats-apps ADR-001](../../../cats-apps/docs/decisions/001-own-official-utility-apps-and-coordinate-desktop-distribution.md).
 
 ## Stage 1 implementation (2026-09-29)
 
-- 公開入口：`src/app-sdk/index.ts` 編譯為 `build/server/app-sdk/index.js` 與 `.d.ts`，由
-  `exports['./app-sdk']` 指向。它只 re-export `APP_SDK_VERSION`、`MAX_PACKAGE_BYTES`、
-  `decodeAppPackage`、`supportsVersion`、`encodeAppPackage`、`validateRendererAppPackage`、
-  `parseCatsAppManifestV1`、manifest 常數，以及 manifest、browser SDK 與驗證結果型別。
-- 套件格式拆分：`packages/app-sdk/format.js` 是宿主與公開入口共用的格式（解碼、版本比對、
-  限制常數）；`packages/app-sdk/encode.js` 是只供公開入口使用的 encoder；`package.js` 只留
-  宿主專用函式並 re-export 格式。內部以 `#cats-app-format`、`#cats-app-encode` alias 引用；
-  既有 `#cats-app-package` 的語意不變，server 執行路徑不載入 encoder。
-- 同一套驗證：`src/app-sdk/packageValidation.ts` 的 `validateRendererAppPackage` 就是安裝器
-  的完整檢查（解碼、manifest、`user-app` 與保留 ID、相容版本、renderer 權限）；安裝器的
-  `validateRendererPackage` 改為傳入宿主版本後呼叫它。呼叫端必須明確提供
-  `platformVersion`，`PLATFORM_VERSION` 不公開。
-- Encoder（修正第 3 點的實作方式）：使用 exact-pinned 的 fflate 0.8.3 純 JS deflate
-  （level 9）、固定 gzip header（mtime 0、OS byte 3）、檔案依路徑的 code-unit 順序排序、
-  manifest key 遞迴排序、拒絕非 JSON 值，並在回傳前以 `decodeAppPackage` 自我驗證。
-  - 取捨證據：以 Node zlib 在本機 Windows x64 重新壓縮已發布的 Usage 0.4.0（ubuntu 建置），
-    把 OS byte 改成 3 後 bytes 完全相同；但 Node 內建 zlib 可能隨 Node 版本或 CPU 路徑改變
-    輸出，arm64 無法在此驗證，因此改用建構上即 deterministic 的純 JS 實作。
-  - 代價：與先前用 Node zlib 建置的已發布 artifact 不 byte 相容，同輸入約大 2%。已發布版本
-    不可變，cats-apps 的重建檢查只比對同一輸出目錄，因此沒有功能影響。升級 fflate 等同改變
-    所有 App 的 bytes，由 golden hash 測試攔截。
-- `exports`（修正第 4 點）：以相容方式加入，見上方第 4 點。
-- 測試：`tests/app-sdk-public-entry.test.js` 固定公開名稱；以靜態 import 圖限制公開入口只
-  載入格式、encoder 與 manifest 驗證模組；檢查 SDK 版本三處一致、golden hash 與 header、
-  順序無關；並確認公開驗證與安裝器拒絕相同的套件。`tests/package-contract.test.js` 檢查
-  每個 `exports` 目標都在 npm tarball 內。
-- 跨 OS 證據：golden hash 測試在本機 Windows 與 PR #170 的 CI（Linux）都通過；macOS
-  未驗證，純 JS 實作不依賴平台。
-- 後續補齊（同日）：Platform 測試中有效的手組套件改用 encoder，刻意構造的無效套件與一份
-  Node zlib 產生的基準包保留手組，後者確保 decoder 仍接受先前發布的 App。新增
-  `examples/app-sdk-minimal-app` 範例與 `tests/fixtures/app-sdk-conformance-v1.json`
-  的 accept／reject 向量，兩者都由測試執行。向量發現 decoder 的 base64 regex 在檔案超過約
-  3 MiB 時會 stack overflow，使 3–8 MiB 的合法檔案被拒；改為線性檢查加上既有的 round trip，
-  接受的範圍仍是 canonical base64。
-- Desktop 源碼包在 App 發布 commit 重建 payload；若該 revision 的 `package.json` 宣告依賴
-  （例如 exact-pin 的 Platform App SDK），先在該 checkout 執行 `npm ci --ignore-scripts`。
-  切換前的 revision 沒有依賴，照舊直接重建。
-- 發布（同日）：Platform npm 0.6.0 以 `latest` 發布此入口；cats-apps #16 改以 exact-pin 的
-  0.6.0 建置，Usage 0.5.0 是第一個用它發布的 App，Desktop 0.6.0 preview 選用它。
-  CI（Linux）與本機 Windows 建出的同一 App bytes 相同。第二階段仍未開始。
+- Public entry: `src/app-sdk/index.ts` compiles to `build/server/app-sdk/index.js` and
+  `.d.ts`, pointed to by `exports['./app-sdk']`. It re-exports only `APP_SDK_VERSION`,
+  `MAX_PACKAGE_BYTES`, `decodeAppPackage`, `supportsVersion`, `encodeAppPackage`,
+  `validateRendererAppPackage`, `parseCatsAppManifestV1`, the manifest constants, and the
+  manifest, browser SDK and validation-result types.
+- Package format split: `packages/app-sdk/format.js` is the format shared by the host and the
+  public entry (decoding, version comparison, limit constants); `packages/app-sdk/encode.js`
+  is the encoder used only by the public entry; `package.js` keeps only host-only functions
+  and re-exports the format. They are referenced internally through the `#cats-app-format`
+  and `#cats-app-encode` aliases; the semantics of the existing `#cats-app-package` are
+  unchanged, and the server execution path does not load the encoder.
+- One validation: `validateRendererAppPackage` in `src/app-sdk/packageValidation.ts` is the
+  installer's full check (decoding, manifest, `user-app` and reserved IDs, compatible
+  versions, renderer permissions); the installer's `validateRendererPackage` now passes in
+  the host version and calls it. Callers must provide `platformVersion` explicitly;
+  `PLATFORM_VERSION` is not public.
+- Encoder (correction to how point 3 is implemented): uses the exact-pinned fflate 0.8.3
+  pure-JS deflate (level 9), a fixed gzip header (mtime 0, OS byte 3), files sorted in
+  path code-unit order, manifest keys sorted recursively, non-JSON values rejected, and
+  self-verifies with `decodeAppPackage` before returning.
+  - Trade-off evidence: recompressing the published Usage 0.4.0 (built on ubuntu) with Node
+    zlib on local Windows x64, after changing the OS byte to 3, gave identical bytes; but the
+    built-in Node zlib output may change with the Node version or CPU path, and arm64 cannot
+    be verified here, so a pure-JS implementation that is deterministic by construction is
+    used instead.
+  - Cost: not byte-compatible with previously published artifacts built with Node zlib, and
+    about 2% larger for the same input. Published versions are immutable, and the cats-apps
+    rebuild check compares only the same output directory, so there is no functional impact.
+    Upgrading fflate is equivalent to changing the bytes of all Apps, which the golden hash
+    test catches.
+- `exports` (correction to point 4): added compatibly, see point 4 above.
+- Tests: `tests/app-sdk-public-entry.test.js` pins the public names; uses the static import
+  graph to restrict the public entry to loading only the format, encoder and manifest
+  validation modules; checks the SDK version is consistent in three places, the golden hash
+  and header, and order independence; and confirms the public validation and the installer
+  reject the same packages. `tests/package-contract.test.js` checks that every `exports`
+  target is inside the npm tarball.
+- Cross-OS evidence: the golden hash test passes on local Windows and in the CI (Linux) of
+  PR #170; macOS is unverified, and the pure-JS implementation does not depend on the
+  platform.
+- Follow-up completion (same day): valid hand-assembled packages in Platform tests now use the
+  encoder; deliberately constructed invalid packages and one baseline package produced by
+  Node zlib stay hand-assembled, the latter ensuring the decoder still accepts previously
+  published Apps. Added the `examples/app-sdk-minimal-app` example and the accept/reject
+  vectors of `tests/fixtures/app-sdk-conformance-v1.json`, both run by tests. The vectors
+  found that the decoder's base64 regex overflows the stack for files over about 3 MiB,
+  rejecting valid 3-8 MiB files; it was changed to a linear check plus the existing round
+  trip, and the accepted range is still canonical base64.
+- The Desktop source bundle rebuilds the payload at the App release commit; if the
+  `package.json` at that revision declares dependencies (for example the exact-pinned
+  Platform App SDK), first run `npm ci --ignore-scripts` in that checkout. Revisions before
+  the switch have no dependencies and are rebuilt directly as before.
+- Release (same day): Platform npm 0.6.0 published this entry as `latest`; cats-apps #16 now
+  builds with the exact-pinned 0.6.0, Usage 0.5.0 is the first App published with it, and the
+  Desktop 0.6.0 preview selects it. The same App bytes are produced by CI (Linux) and a local
+  Windows build. Stage 2 has still not started.
 
 ## Consequences
 
 ### Positive
 
-- `.catsapp` 只有一份官方 encoder 與驗證；App 產物在 App CI 就被宿主契約檢查，
-  不必等到 Desktop packaging。
-- 不需要新套件名稱、新 publish workflow 或新 repo，沿用現有 Platform npm 發布流程。
-- cats-apps 以宣告的最低宿主版本測試，一次涵蓋 `catsPlatform` 與 `appSdk` 兩個宣告。
-- 落實 ADR-094 已命名的入口，不引入新名稱。
+- `.catsapp` has a single official encoder and validation; App artifacts are checked against
+  the host contract in App CI, without waiting for Desktop packaging.
+- No new package name, new publish workflow or new repo is needed; the existing Platform npm
+  release flow is reused.
+- cats-apps tests at the declared minimum host version, covering both the `catsPlatform` and
+  `appSdk` declarations at once.
+- It realizes the entry already named in ADR-094, without introducing a new name.
 
 ### Negative
 
-- 作者必須安裝整個 Platform 套件（0.5.8 約 18.9 MB，另含其 runtime dependencies）。
-  對 cats-apps CI 可以接受，對第三方作者不友善；這是第二階段的觸發理由之一。
-- 開發依賴寫的是 Platform 版本，manifest 宣告的是 SDK 版本，需要文件說明兩者對照。
-  Platform 因與 SDK 無關的原因升 minor 時，作者的依賴範圍也得跟著調整。
-- App 若要以某個宿主版本測試或使用新 SDK 能力，該 Platform 版本必須先發布到 npm。
-  npm 目前落後 Desktop：0.5 線只有 0.5.1 與 0.5.8，Studio 宣告的 `^0.5.11` 在 npm 上
-  沒有對應版本。首個提供 subpath 的 Platform 版本，以及之後各 App 採用的最低宿主版本，
-  都必須先發布到 npm，cats-apps 才能切換；這些發布都需要另外授權。
-- 移除 `./*` 後，npm 0.5.8 以前可行的 deep import 在 0.6.0 會被 Node 擋下；調查沒有這類
-  使用者，並隨 0.6.0 minor 交付。
+- Authors must install the whole Platform package (0.5.8 is about 18.9 MB, plus its runtime
+  dependencies). This is acceptable for cats-apps CI but unfriendly to third-party authors;
+  it is one of the triggers for Stage 2.
+- The development dependency is written as a Platform version while the manifest declares an
+  SDK version, so documentation must explain the mapping. When Platform bumps minor for
+  reasons unrelated to the SDK, authors' dependency ranges also have to be adjusted.
+- For an App to test with or use a new SDK capability at some host version, that Platform
+  version must first be published to npm. npm currently lags Desktop: the 0.5 line has only
+  0.5.1 and 0.5.8, and the `^0.5.11` that Studio declares has no matching version on npm.
+  The first Platform version that provides the subpath, and the minimum host version each App
+  later adopts, must first be published to npm before cats-apps can switch; all these
+  publications need separate authorization.
+- After `./*` is removed, a deep import that worked up to npm 0.5.8 will be blocked by Node in
+  0.6.0; the investigation found no such users, and it ships with the 0.6.0 minor.
 
 ### Neutral
 
-- Desktop 與 Platform npm 仍攜帶完整的 `packages/app-sdk`；公開 subpath 只是其中
-  allowlist 的入口。
-- ADR-122 §4 的 Plugin SDK／validator 出現時採相同原則：格式與驗證放在 owner 端，
-  producer 只當使用者；確切位置屆時決定。
-- 跨 repo 後續不在本 ADR 範圍：cats-apps 的 PLAN-004、`build-app.mjs` 退役與 CI 驗證；
-  cats-one release guide 說明 Platform npm 攜帶 SDK subpath，以及它與 App 相容性宣告的關係。
+- Desktop and the Platform npm package still carry the full `packages/app-sdk`; the public
+  subpath is only the entry to the allowlist within it.
+- When the Plugin SDK/validator of ADR-122 §4 appears, the same principle applies: format and
+  validation live on the owner side, and the producer is only a user; the exact location is
+  decided then.
+- Cross-repo follow-ups are out of scope for this ADR: PLAN-004 of cats-apps, the retirement
+  of `build-app.mjs` and CI validation; the cats-one release guide explaining that the
+  Platform npm package carries the SDK subpath and its relation to App compatibility
+  declarations.
 
 ## Alternatives Considered
 
-| 選項 | 取捨與決定 |
+| Option | Trade-off and decision |
 | --- | --- |
-| Apps／Plugins 發 npm，由 cats-one 依賴 | 違反 SPEC-120 FR-07 與 ADR-121 §1、§3、§6，每新增單元都要發 launcher；不採用 |
-| Apps／Plugins 發 npm 供需要者自取 | 沒有消費端，安裝仍走 artifact；GitHub Releases 與 npm 形成兩個不可變來源；不採用 |
-| 立即發布獨立 `@cats-inc/app-sdk` | 輕量且版本清楚，但需先完成拆分、新 workflow 與發布順序；目前只有官方 Apps，延後為第二階段 |
-| 為 SDK 建立獨立 repo | 無法在同一 PR 修改宿主與契約，ownership 與節奏也未分開；不採用 |
-| cats-apps CI checkout Platform 原始碼驗證 | 違反「不 import sibling source」，且不對應已發布宿主；不採用 |
-| 維持各自實作格式 | 格式漂移要到 Desktop packaging 或安裝才會發現；不採用 |
+| Publish Apps/Plugins to npm, with cats-one depending on them | Violates SPEC-120 FR-07 and ADR-121 §1, §3, §6, and every new unit requires releasing the launcher; not adopted |
+| Publish Apps/Plugins to npm for those who need them | No consumer, installation still goes through artifacts; GitHub Releases and npm would form two immutable sources; not adopted |
+| Publish a standalone `@cats-inc/app-sdk` immediately | Lightweight with clear versioning, but needs the split, a new workflow and a publication order first; only official Apps exist now, deferred to Stage 2 |
+| Create a separate repo for the SDK | The host and contract cannot be changed in one PR, and ownership and cadence are not separate; not adopted |
+| cats-apps CI checks out Platform source to validate | Violates "do not import sibling source" and does not correspond to a published host; not adopted |
+| Keep each implementing the format on its own | Format drift is found only at Desktop packaging or installation; not adopted |
 
 ## References
 
-- [ADR-094](094-adopt-cats-app-packages-as-extension-boundary.md)、
+- [ADR-094](094-adopt-cats-app-packages-as-extension-boundary.md),
   [SPEC-098](../specs/SPEC-098-cats-app-package-and-extension-interface.md)
-- [ADR-121](121-distribute-apps-independently-with-host-owned-lifecycle.md)、
-  [SPEC-120](../specs/SPEC-120-app-market-and-lifecycle.md)、
+- [ADR-121](121-distribute-apps-independently-with-host-owned-lifecycle.md),
+  [SPEC-120](../specs/SPEC-120-app-market-and-lifecycle.md),
   [PLAN-112](../plans/PLAN-112-app-market-and-lifecycle.md)
 - [ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md)
-- [目前套件能力](../app-packages.md)
-- [cats-apps ADR-001](../../../cats-apps/docs/decisions/001-own-official-utility-apps-and-coordinate-desktop-distribution.md)、
+- [Current package capabilities](../app-packages.md)
+- [cats-apps ADR-001](../../../cats-apps/docs/decisions/001-own-official-utility-apps-and-coordinate-desktop-distribution.md),
   [cats-apps PLAN-004](../../../cats-apps/docs/plans/PLAN-004-independent-app-distribution.md)
 - [Cross-repository release guide](../../../cats-one/docs/release-guide.md)
 - [Node.js package entry points](https://nodejs.org/api/packages.html#package-entry-points)

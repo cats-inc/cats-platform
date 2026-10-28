@@ -2,66 +2,99 @@
 
 ## Status
 
-Accepted direction, 2026-09-28；使用者已核准整理規劃文件。實作、版本變更、SDK／App
-發布與 Market 上線尚未開始，也不由這份 ADR 自動授權。
+Accepted direction, 2026-09-28; the user approved organizing the planning documents.
+Implementation, version changes, SDK/App publication and Market launch have not started
+and are not authorized automatically by this ADR.
 
-本決策接續 [ADR-114](114-separate-official-app-sources-and-coordinate-desktop-distribution.md)
-的初期協同出貨階段；保留其 repo／SDK／Runtime 分工，將獨立下載與生命週期列為下一階段。
-不代表 ADR-094 中一般 connector、server、worker、product module 已實作。
+This decision continues the initial coordinated-shipping stage of
+[ADR-114](114-separate-official-app-sources-and-coordinate-desktop-distribution.md). It
+keeps that ADR's repo/SDK/Runtime split and lists independent download and lifecycle as the
+next stage. It does not mean the general connectors, servers, workers and product modules
+of ADR-094 are implemented.
 
 ## Context
 
 Related track: [ADR-122](122-adopt-managed-plugins-for-upstream-capabilities.md)
-另案管理可選裝的外部能力 Plugins。2026-09-29 已交付 Agency content pilot，一般 Plugin
-SDK／目錄仍待實作。兩案協調適用的安裝／來源／生命週期機制；本 ADR 的 renderer App
-範圍不因此擴大，也不以一般 Plugin SDK 已完成作為本案實作前提。
+separately manages optional external-capability Plugins. The Agency content pilot was
+delivered on 2026-09-29; the general Plugin SDK and catalog are still to be implemented. The
+two tracks coordinate the install, source and lifecycle mechanisms they share. This ADR's
+renderer App scope does not grow because of that, and the general Plugin SDK being complete
+is not a precondition for implementing this ADR.
 
-Usage 已是獨立版本的 `.catsapp`，隨公開 Desktop 預裝。Studio 已有獨立套件與 SDK 1.3
-生圖介面，但只在先前本機客製安裝時選入；公開 Desktop 0.5.13 的預設清單只有 Usage。
-現有本機登記與停用／移除 API 不是完整 Market：移除不刪套件、一般修復沒有完成，
-bundled activation 也尚未解決 Market 較新版本與 bundled 舊版本之間的選擇。
+Usage is already an independently versioned `.catsapp`, preinstalled with the public
+Desktop. Studio already has its own package and the SDK 1.3 image-generation interface, but
+it was selected only in an earlier local custom install; the default list of public Desktop
+0.5.13 contains only Usage. The existing local registration and disable/remove APIs are not
+a complete Market: removal does not delete the package, general repair is unfinished, and
+bundled activation does not yet resolve the choice between a newer Market version and an
+older bundled version.
 
-使用者確認兩種體驗：Usage 初次安裝即能從 Home 開啟，停用／移除後仍可從 Home 恢復；
-Studio 未安裝時只在 Market 出現。兩者停用必須停止 App 活動，移除必須能釋放套件空間。
+The user confirmed two experiences: Usage can be opened from Home right after the first
+install and can be restored from Home after being disabled or removed; Studio appears only
+in the Market when it is not installed. Disabling either must stop App activity, and
+removing either must be able to free the package's space.
 
 ## Decision
 
-1. **一種套件，兩種出貨政策。** Usage 與 Studio 共用套件、安裝、權限、更新、修復與
-   移除機制。Desktop 自有清單分別指定 `preinstall` 與 `homePresence`，不由 App 自我宣告。
-   Usage 為預裝＋固定入口；Studio 為選裝＋安裝後入口。官方身分、預裝與執行權限分開。
-2. **Home 入口由宿主管理。** Usage placeholder 只需要宿主內建的名稱、圖示、說明與 App ID；
-   不載入 App 程式、不讀即時用量、不啟動 App 背景工作。Studio 停用後仍是已安裝卡片，
-   移除後消失。修復、重新安裝與啟用都由宿主操作，App 損壞時也可使用。
-3. **發布、推廣與安裝分開。** cats-apps 逐 App build／發 immutable artifact；初期沿用
-   GitHub Releases。官方簽章 Catalog 決定哪些版本供 stable／preview 選用；本機 registry
-   記錄實際安裝。Catalog 是可替換的發現來源，不是執行遠端網頁的入口。
-4. **Platform 擁有生命週期。** App 包裹、可清除快取與使用者資料分離。停用撤銷 bridge 並
-   停止 App 活動；移除另清除受管理套件。預設保留作品／設定，另行確認資料刪除。
-   共用 Runtime、provider 安裝／登入與其他 App 不受影響。
-5. **修復是獨立動作。** 重新取得同一可信版本的原始 bytes、驗證並原子替換損壞副本，
-   保留資料。相同版本不同內容仍不可發布。程式 bug／provider 問題不能聲稱靠重裝保證修好。
-6. **使用者選擇優先於預裝。** Desktop 重啟／升級不得復活移除 App、重新啟用停用 App，
-   也不得將 Market 較新版本覆蓋成 bundled 舊版。Usage 離線恢復包保留於 Desktop resources；
-   App 移除不修改簽章安裝內容，磁碟回收應分開報告這份不可回收副本。
-7. **SDK 是公開契約。** 開發套件提供型別、文件與隔離測試工具；執行 bridge 留在宿主。
-   App 依相容範圍與實際能力使用功能，不內嵌另一套 Runtime、不直接取得 shell 或憑證。
-   同 SDK 能力內的 App 更新可獨立交付；新宿主能力仍需先更新 Desktop。
-8. **先官方 renderer Apps。** 第一階段只開放受信任官方目錄與既有 renderer 能力。
-   來源簽章不能等同 `system` 特權；本機開發安裝維持明確 local-user 身分。
-   第三方投稿、付款、評分與任意背景程式執行另案規劃。
-9. **升級資料先於發布。** 新 registry、操作 journal 與來源／使用者意圖需要受測的升級與
-   失敗恢復。詳見 SPEC-120；不得用清空 profile 或降版讀新資料替代 migration。
-10. **商店與已安裝管理各有入口。** Apps Marketplace 是獨立 Desktop 頁面，由 Home
-    醒目進入，可直接探索、查看詳情與安裝。Settings Apps 聚焦已安裝管理；兩者共用
-    同一生命週期服務與狀態，不要求先到 Settings 才能安裝。Plugins 使用獨立 Settings
-    分頁，Home 若提供 Plugin 管理入口則為小型捷徑，不套用到 Apps 商店入口。
-11. **管理權限由宿主驗證。** 使用者發起的安裝、啟停、更新、修復、移除與機器層級
-    設定變更，必須具備可驗證的 Desktop management context。一般 browser／remote
-    client、owner 登入、localhost 或前端環境旗標都不足以取得此權限；App SDK 也不
-    提供套件管理權。這不決定已安裝 App 的網頁可用性或 App 內一般偏好設定。
+1. **One package, two shipping policies.** Usage and Studio share the package, install,
+   permission, update, repair and removal mechanisms. The Desktop-owned list specifies
+   `preinstall` and `homePresence` separately; an App does not declare them about itself.
+   Usage is preinstalled with a fixed entry; Studio is optional with an entry after
+   installation. Official identity, preinstallation and execution permission are separate.
+2. **The host manages the Home entry.** The Usage placeholder needs only the host's built-in
+   name, icon, description and App ID; it loads no App code, reads no live usage and starts
+   no App background work. A disabled Studio remains an installed card, and disappears once
+   removed. Repair, reinstall and enable are all host operations and work even when the App
+   is damaged.
+3. **Publication, promotion and installation are separate.** cats-apps builds and
+   publishes an immutable artifact per App; GitHub Releases continue to be used at first. An
+   officially signed Catalog decides which versions are available to the stable and preview
+   channels; the local registry records what is actually installed. The Catalog is a
+   replaceable discovery source, not an entry point for running remote web pages.
+4. **Platform owns the lifecycle.** The App package, clearable cache and user data are kept
+   separate. Disabling revokes the bridge and stops App activity; removal additionally
+   clears the managed package. Works and settings are kept by default, and data deletion is
+   confirmed separately. The shared Runtime, provider installation/login and other Apps are
+   unaffected.
+5. **Repair is its own action.** It fetches the original bytes of the same trusted version
+   again, verifies them and atomically replaces the damaged copy, keeping data. The same
+   version with different content still cannot be published. A code bug or provider problem
+   cannot be claimed to be fixed by reinstalling.
+6. **User choice takes priority over preinstallation.** A Desktop restart or upgrade must
+   not resurrect a removed App, re-enable a disabled App, or overwrite a newer Market version
+   with an older bundled one. The Usage offline recovery bundle stays in the Desktop
+   resources; removing the App does not modify signed installed content, so disk
+   reclamation should report this non-reclaimable copy separately.
+7. **The SDK is a public contract.** The development kit provides types, documentation and
+   isolated test tools; the runtime bridge stays in the host. An App uses features according
+   to the compatible range and actual capabilities, embeds no second Runtime, and obtains no
+   shell or credentials directly. App updates within the same SDK capabilities can be
+   delivered independently; new host capabilities still require updating Desktop first.
+8. **Official renderer Apps first.** The first stage opens only the trusted official catalog
+   and existing renderer capabilities. A source signature does not equal `system`
+   privilege; local development installs keep an explicit local-user identity. Third-party
+   submissions, payment, ratings and arbitrary background program execution are planned
+   separately.
+9. **Upgrade data comes before publication.** The new registry, operation journal and
+   source/user intent need tested upgrade and failure recovery. See SPEC-120; clearing the
+   profile or downgrading to read new data is not a substitute for migration.
+10. **The store and installed management each have an entry.** The Apps Marketplace is a
+    separate Desktop page, entered prominently from Home, where users can explore, view
+    details and install directly. Settings Apps focuses on managing installed Apps; both
+    share the same lifecycle service and state, and users need not go to Settings before
+    installing. Plugins use a separate Settings tab; if Home offers a Plugin management
+    entry it is a small shortcut and does not apply to the Apps store entry.
+11. **Management permission is verified by the host.** User-initiated install,
+    enable/disable, update, repair, removal and machine-level setting changes must have a
+    verifiable Desktop management context. A general browser/remote client, owner login,
+    localhost or a front-end environment flag is not enough to obtain this permission; the
+    App SDK also provides no package-management permission. This does not decide the web
+    availability of installed Apps or general in-App preferences.
 
-2026-09-29 管理入口與授權補充為已接受的規劃要求；具體 transport／驗證契約與
-Desktop／browser 驗收仍在 PLAN-112 M0 起執行，不代表目前已實施此限制。
+The 2026-09-29 management-entry and authorization addendum is an accepted planning
+requirement; the concrete transport/verification contract and the Desktop/browser
+acceptance still run from PLAN-112 M0 and do not mean this restriction is currently
+implemented.
 
 ## Consequences
 
@@ -72,33 +105,40 @@ Current renderer delivery is the baseline; component execution remains planned.
 
 ### Positive
 
-- Usage 保有初次開箱與損壞恢復入口，Studio 證明 App 能按需安裝與獨立更新。
-- 使用者可停止 App 活動並回收安裝副本，不必移除整個 Desktop。
-- App 發布不再要求同步出貨 Desktop；現有 repo 與 Runtime 分工維持一致。
+- Usage keeps a first-run and damage-recovery entry, and Studio shows that an App can be
+  installed on demand and updated independently.
+- Users can stop App activity and reclaim the installed copy without removing the whole
+  Desktop.
+- App publication no longer requires shipping Desktop in sync; the existing repo and Runtime
+  split stays consistent.
 
 ### Costs and limits
 
-- 需要簽章目錄、來源政策、migration、操作協調與真實磁碟清理，不能只加 Market 頁面。
-- 保留 Desktop 內附恢復包與使用者作品，因此卸載不等於釋放所有相關 bytes。
-- 未開啟的 renderer 原本就很少耗用活動資源；不承諾固定 RAM 節省或每 App 一個程序。
-- 第一版手動確認更新；資源回收、跨視窗撤銷、故障恢復需在實際宿主與各 OS 驗證。
+- A signed catalog, source policy, migration, operation coordination and real disk cleanup
+  are needed; adding a Market page alone is not enough.
+- The recovery bundle shipped inside Desktop and the user's works are kept, so uninstalling
+  does not free all related bytes.
+- An unopened renderer already consumes few active resources; no fixed RAM saving or
+  one-process-per-App is promised.
+- The first version confirms updates manually; resource reclamation, cross-window
+  revocation and failure recovery must be verified on the real host and each OS.
 
 ## Alternatives Considered
 
-| 選項 | 取捨與決定 |
+| Option | Trade-off and decision |
 | --- | --- |
-| 所有 App 跟 Desktop 一起更新 | 實作較少，但 Studio 交付仍綁宿主；保留預裝選擇，新增獨立更新 |
-| Usage 不可移除 | 方便假設固定存在，但無法滿足使用者控制／恢復要求；不採用 |
-| 移除後所有 Home 卡片都消失 | 簡單，但 Usage 失去恢復入口；採宿主明確的 Home 政策 |
-| 把隱藏入口當成停用／移除 | 無法保證停止工作或釋放磁碟；不採用 |
-| 先建完整第三方商店 | 上架治理與執行範圍遠超兩個官方 App；延後 |
+| Update all Apps together with Desktop | Less implementation, but Studio delivery stays tied to the host; keep the preinstall choice and add independent updates |
+| Usage cannot be removed | Convenient to assume it always exists, but fails the user control/recovery requirement; not adopted |
+| All Home cards disappear after removal | Simple, but Usage loses its recovery entry; adopt an explicit host Home policy |
+| Treat hiding the entry as disable/remove | Cannot guarantee that work stops or disk is freed; not adopted |
+| Build a full third-party store first | Listing governance and execution scope go far beyond two official Apps; deferred |
 
 ## References
 
 - [SPEC-120](../specs/SPEC-120-app-market-and-lifecycle.md)
 - [PLAN-112](../plans/PLAN-112-app-market-and-lifecycle.md)
 - [Apps PLAN-004](../../../cats-apps/docs/plans/PLAN-004-independent-app-distribution.md)
-- [目前套件能力](../app-packages.md)
-- [圖片與作品 ownership](../specs/SPEC-119-app-image-generation.md)
+- [Current package capabilities](../app-packages.md)
+- [Image and work ownership](../specs/SPEC-119-app-image-generation.md)
 
 *Last updated: 2026-09-29*

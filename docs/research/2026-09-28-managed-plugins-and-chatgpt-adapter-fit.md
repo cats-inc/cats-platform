@@ -1,75 +1,91 @@
 # Managed Plugins and ChatGPT Adapter Fit
 
 Date: 2026-09-28
-Scope: 初步文件研究與 Cats 本機 source inspection；沒有執行、安裝或審計上游全部程式。
+Scope: preliminary document research and local Cats source inspection; upstream code was not run, installed or fully audited.
 
 Follow-up: [C2C pinned feasibility evaluation](2026-09-28-c2c-plugin-fit-evaluation.md)
-查核精確 revision 的程式入口、宿主依賴與 managed lifecycle 差異；完整 workflow 暫緩，
-bridge 子集另列未選定候選。下列初步研究保留原始範圍與 baseline。
+checks the exact revision's code entry points, host dependencies and the differences from the
+managed lifecycle; the full workflow is deferred, and the bridge subset is listed separately
+as an unselected candidate. The preliminary research below keeps its original scope and baseline.
 
 ## User direction
 
-使用者希望 Runtime、Platform／Products、Apps 之外有可安裝／移除的 Plugins。
-Plugin 可將外部能力橋接為 provider adapter、MCP、skills 或其他受限整合，在 Desktop
-設定裡看見與管理。一般做法是重用上游、Cats 維護薄橋接；不重寫外部核心功能。
-有疑慮的整合不由 Cats 自研，外部現成 repo 可以列內部實驗候選，是否測試／release 分別判斷。
-自行安裝的 MCP／skills 維持使用者管理。
+The user wants Plugins that can be installed and removed, beyond Runtime, Platform/Products
+and Apps. A Plugin can bridge an external capability as a provider adapter, MCP, skills or
+another restricted integration, visible and managed in Desktop settings. The general approach
+is to reuse upstream and have Cats maintain a thin bridge, not rewrite the external core
+functionality. Cats does not build in-house an integration that is a concern; existing
+external repos can be listed as internal experiment candidates, and whether to test or release
+is judged separately. MCP/skills the user installs themselves remain user-managed.
 
 ## The two repositories
 
-下列是當日讀取 default-branch 文件的觀察；未釘定 upstream commit 或驗證 release bytes，
-不可當成可重現 build／相容性／服務許可的證據。若選為 pilot，需重查精確 revision。
+The following are observations from reading default-branch documents that day; the upstream
+commit was not pinned and release bytes were not verified, so they cannot be treated as
+evidence of reproducible builds, compatibility or service permission. If one is chosen as a
+pilot, the exact revision must be re-checked.
 
-| Repo | 文件描述的呼叫方向 | 與獨立 Runtime provider 的差距 |
+| Repo | Call direction described by the docs | Gap from a standalone Runtime provider |
 | --- | --- | --- |
-| [OpenChatX](https://github.com/XiaoPuOuO/openchatx-mcp) | ChatGPT 透過 MCP／Tunnel 呼叫本機工具、其他 MCP、skills 與 agent 能力 | 提供工具給 ChatGPT，不因此提供 Cats 主動提交 ChatGPT 對話的介面 |
-| [C2C](https://github.com/XiaoDuoYa/codex-with-chatgpt) | Codex 操作 ChatGPT Web 做規劃／審查；ChatGPT 經唯讀 MCP 讀取 workspace | 獨立 provider 還缺脫離 Codex 的對話控制／結果生命週期；重造此流程偏離薄橋接原則 |
+| [OpenChatX](https://github.com/XiaoPuOuO/openchatx-mcp) | ChatGPT calls local tools, other MCP, skills and agent capabilities through MCP/Tunnel | Provides tools to ChatGPT; it does not thereby give Cats an interface to proactively submit ChatGPT conversations |
+| [C2C](https://github.com/XiaoDuoYa/codex-with-chatgpt) | Codex operates ChatGPT Web for planning/review; ChatGPT reads the workspace through read-only MCP | A standalone provider still lacks conversation control / result lifecycle independent of Codex; rebuilding this flow departs from the thin-bridge principle |
 
-來源：[OpenChatX README](https://github.com/XiaoPuOuO/openchatx-mcp/blob/main/README.md)、
-[C2C architecture](https://github.com/XiaoDuoYa/codex-with-chatgpt/blob/main/docs/architecture.md)。
-這是依文件做的適配判斷，不是 repo 品質評分，也不排除將來上游新增可用入口。
+Sources: [OpenChatX README](https://github.com/XiaoPuOuO/openchatx-mcp/blob/main/README.md),
+[C2C architecture](https://github.com/XiaoDuoYa/codex-with-chatgpt/blob/main/docs/architecture.md).
+This is a fit judgment based on the docs, not a quality rating of the repos, and does not rule
+out upstream adding a usable entry point later.
 
-兩個主專案 LICENSE 當日皆為 MIT；保留其版權／授權聲明，捆綁依賴另行盤點。
-[OpenChatX LICENSE](https://github.com/XiaoPuOuO/openchatx-mcp/blob/main/LICENSE)、
-[C2C LICENSE](https://github.com/XiaoDuoYa/codex-with-chatgpt/blob/main/LICENSE)。
-MIT 只處理程式碼授權，不提供第三方服務的帳戶或自動化使用許可。
+The LICENSE of both main projects was MIT that day; keep their copyright/license notices, and
+inventory bundled dependencies separately.
+[OpenChatX LICENSE](https://github.com/XiaoPuOuO/openchatx-mcp/blob/main/LICENSE),
+[C2C LICENSE](https://github.com/XiaoDuoYa/codex-with-chatgpt/blob/main/LICENSE).
+MIT covers only code licensing; it does not provide permission for accounts or automation of a
+third-party service.
 
 ## Service-interface distinction
 
-[OpenAI Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
-文件描述 OpenAI 產品向私有 MCP server 呼叫工具、server 回傳結果；這條連線本身不提供
-外部程式主動建立 ChatGPT 對話的能力。工具服務與模型／agent provider 需分開驗收。
+The [OpenAI Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
+documentation describes OpenAI products calling tools on a private MCP server and the server
+returning results; this connection does not itself give an external program the ability to
+proactively create a ChatGPT conversation. A tool service and a model/agent provider need
+separate acceptance.
 
-當日 [個人 Terms of Use](https://openai.com/policies/terms-of-use/)（生效 2026-01-01）限制
-自動／程式化擷取資料或 Output，以及繞過服務限制；
-[Services Agreement](https://openai.com/policies/services-agreement/)（生效 2026-01-01）
-也限制未允許的資料擷取及規避用量限制。網頁自動化 adapter 因而需要具體介面與適用條款
-判讀；不能只靠「官方網頁」「MIT」「內測不發布」推定允許。此處是風險研究，不對任何
-特定 repo 作違約定論，也不阻擋使用文件化、獲允許的服務介面。
+That day's [personal Terms of Use](https://openai.com/policies/terms-of-use/) (effective 2026-01-01)
+restrict automated/programmatic extraction of data or Output, and circumventing service
+restrictions; the [Services Agreement](https://openai.com/policies/services-agreement/)
+(effective 2026-01-01) also restricts unpermitted data extraction and circumventing usage
+limits. A web-automation adapter therefore needs a concrete interface and an interpretation of
+the applicable terms; permission cannot be presumed from "official web page", "MIT" or
+"internal testing, not released". This is risk research; it draws no breach-of-terms
+conclusion about any specific repo, and does not block using documented, permitted service
+interfaces.
 
 ## Local baseline
 
-Platform worktree 起點 `cbca3311`；Runtime 本機起點
-`3e47f46b3087e6a5543a59f0c69bf4327cd59533`。以下為唯讀觀察，非新增功能測試結果。
+Platform worktree starting point `cbca3311`; Runtime local starting point
+`3e47f46b3087e6a5543a59f0c69bf4327cd59533`. The following are read-only observations, not
+results of new feature tests.
 
-- [App package contract](../app-packages.md)：已交付 renderer／SDK；一般 server／worker 不在現行封裝內。
-- [ADR-094](../decisions/094-adopt-cats-app-packages-as-extension-boundary.md)／
-  [SPEC-098](../specs/SPEC-098-cats-app-package-and-extension-interface.md)：曾提出一種 App 覆蓋多種擴充，
-  不等於 connector executor 已交付。
-- [SPEC-120](../specs/SPEC-120-app-market-and-lifecycle.md)／
-  [PLAN-112](../plans/PLAN-112-app-market-and-lifecycle.md)：獨立 App Market、完整清理與恢復尚是規劃。
-- [Runtime agent registry](../../../cats-runtime/src/backends/agent/adapters/registry.ts)：內建 switch
-  選 OpenClaw、Agent SDK bridge、ACP transport；沒有從受管理 Plugin inventory 動態載入的完整流程。
-- [Runtime agent contract](../../../cats-runtime/src/backends/agent/types.ts)：已有 turn invocation／events、
-  probe、model／tool／session discovery、cancel／close 等介面；optional capability 需如實回報。
-- [Runtime architecture](../../../cats-runtime/docs/architecture.md)：provider universe／machine detection／
-  enabled config 分開；skills 由 Runtime delivery 並受 release／preview policy 約束。
+- [App package contract](../app-packages.md): renderer/SDK delivered; a general server/worker is not in the current packaging.
+- [ADR-094](../decisions/094-adopt-cats-app-packages-as-extension-boundary.md) /
+  [SPEC-098](../specs/SPEC-098-cats-app-package-and-extension-interface.md): once proposed one App covering
+  many kinds of extensions; this does not mean a connector executor has been delivered.
+- [SPEC-120](../specs/SPEC-120-app-market-and-lifecycle.md) /
+  [PLAN-112](../plans/PLAN-112-app-market-and-lifecycle.md): a standalone App Market, full cleanup and recovery are still planned.
+- [Runtime agent registry](../../../cats-runtime/src/backends/agent/adapters/registry.ts): a built-in switch
+  selects OpenClaw, the Agent SDK bridge, or the ACP transport; there is no complete flow for dynamic loading from a managed Plugin inventory.
+- [Runtime agent contract](../../../cats-runtime/src/backends/agent/types.ts): already has interfaces for turn invocation/events,
+  probe, model/tool/session discovery, cancel/close and so on; optional capabilities must be reported truthfully.
+- [Runtime architecture](../../../cats-runtime/docs/architecture.md): provider universe / machine detection /
+  enabled config are separate; skills are delivered by Runtime and bound by release/preview policy.
 
 ## Recommendation
 
-先設計受管理 Plugin 的來源、安裝與能力註冊契約，沿用合適的 Runtime transport，另找
-具清楚許可和獨立機器入口的 upstream pilot。OpenChatX／C2C 保留為方向辨識案例，
-不作首版依賴或 ChatGPT provider 支援承諾。
+First design the source, install and capability-registration contract for managed Plugins,
+reusing a suitable Runtime transport, and separately find an upstream pilot with a clear
+license and a standalone machine entry point. OpenChatX / C2C are kept as cases for
+recognizing direction, not as first-version dependencies or a commitment to ChatGPT provider
+support.
 
 - [ADR-122](../decisions/122-adopt-managed-plugins-for-upstream-capabilities.md)
 - [SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md)

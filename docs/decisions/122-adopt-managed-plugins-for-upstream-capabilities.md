@@ -2,187 +2,244 @@
 
 ## Status
 
-2026-09-29：使用者已授權繼續 Desktop 安裝／移除及 Runtime 接入。
-採納下列 Agency skills-only pilot；一般 Plugin SDK、provider adapter、MCP、可執行 hooks
-與正式發布仍未納入。宿主以自己的固定 digest allowlist 接納既有
-`cats-plugin-producer-preview/v1` artifact，不更改 0.1.0 的不可變 bytes，也不把其
-`hostCompatibility.integration-pending` 建置描述當作任意套件的信任授權。
+2026-09-29: The user authorized continuing with Desktop install/remove and Runtime
+integration. The Agency skills-only pilot below is adopted; the general Plugin SDK, provider
+adapters, MCP, executable hooks and formal release remain out of scope. The host admits the
+existing `cats-plugin-producer-preview/v1` artifact through its own fixed digest allowlist,
+without changing the immutable bytes of 0.1.0, and does not treat its
+`hostCompatibility.integration-pending` build description as a trust grant for arbitrary
+packages.
 
-Platform 單獨持有套件、意圖及 journal；Runtime protocol 1 持有觀察、30 秒 lease、
-generation fence、durable session/native exposure 及 CLI lifetime receipt。
-兩邊明確開啟 internal-experiment policy 並使用獨立資料目錄；Runtime 必須有 bearer key。
-首版只投遞 instructions 到原生、直接啟動的 Codex／Claude，不投影使用者專案檔案。
-停用先 fence，重新確認新增影響，再斷開受影響 CLI；只有實際 child close 與 owned
-Codex host closed 才視為停止。重啟遺留的未確認 receipt 保留為 pending，不自動刪除。
-Platform 另持久保存 conversation exposure，避免改 Cat／技能／新 Runtime UUID 時
-自動重播含已撤銷技能的對話。必須建立全新 conversation；歷史仍可閱讀。
+Platform alone holds the package, intent and journal; Runtime protocol 1 holds observation,
+the 30-second lease, the generation fence, durable session/native exposure and the CLI
+lifetime receipt. Both sides explicitly enable the internal-experiment policy and use
+separate data directories; Runtime must have a bearer key. The first version delivers
+instructions only to natively, directly launched Codex/Claude and projects no user project
+files. Disabling fences first, re-confirms newly added impact, then disconnects the affected
+CLIs; only an actual child close and a closed owned Codex host count as stopped. Unconfirmed
+receipts left over from a restart are kept as pending and not deleted automatically.
+Platform also durably stores the conversation exposure, so that changing the Cat, skill or
+new Runtime UUID does not automatically replay a conversation containing a revoked skill. A
+brand-new conversation must be created; history can still be read.
 
-操作與限制見 [internal pilot guide](../managed-plugins-pilot.md)。以下保留原提案脈絡；
-超出這個 pilot 的條目仍為後續設計。
+For operation and limits see the [internal pilot guide](../managed-plugins-pilot.md). The
+original proposal context is kept below; items beyond this pilot remain later design.
 
-Proposed, 2026-09-28。使用者已確認重用外部能力、可安裝移除、內部實驗與正式分發分開的
-方向，並要求建立 worktree 提案。後續已授權以 project-bootstrap 建立 `cats-plugins`、
-直接 commit／push main，並以 Agency Agents 建置首個內容封裝 MVP。此授權涵蓋該 repo
-的基礎與封裝驗證；完整宿主協定仍為提案，不代表 Desktop／Runtime 接入或產品 release 已交付。
+Proposed, 2026-09-28. The user confirmed the direction of reusing external capabilities,
+making them installable and removable, and keeping internal experiments separate from formal
+distribution, and asked for a worktree proposal. It was later authorized to create
+`cats-plugins` with project-bootstrap, commit and push directly to main, and build the first
+content-packaging MVP with Agency Agents. This authorization covers the foundation and
+packaging verification of that repo; the full host protocol remains a proposal and does not
+mean Desktop/Runtime integration or a product release has been delivered.
 
 ## Context
 
-Cats 需要讓外部 repo 的既有能力成為可選裝的成員。使用者可在 Desktop 看見、設定、
-停用與移除套件，Platform／Runtime 則透過明確介面使用其能力。套件可以增加獨立的
-provider 執行目標，也可以提供 MCP 工具或 skills，不必有可開啟的 App 主畫面。
+Cats needs existing capabilities from external repos to become optionally installable
+members. Users can see, configure, disable and remove packages in Desktop, while
+Platform/Runtime use their capabilities through explicit interfaces. A package can add an
+independent provider execution target, or provide MCP tools or skills, without needing an
+openable App main screen.
 
-目前 App renderer、App SDK 與受管理封裝已存在；獨立 App Market／完整生命週期仍由
-[ADR-121](121-distribute-apps-independently-with-host-owned-lifecycle.md) 規劃。
-Runtime 已有 CLI、API/local、external agent 邊界，但 agent transport factory 仍是內建
-選擇，沒有安裝外部 Plugin 後動態註冊新 adapter 的完整機制。詳見
-[研究與現況](../research/2026-09-28-managed-plugins-and-chatgpt-adapter-fit.md)。
+The App renderer, App SDK and managed packaging already exist; the independent App
+Market/full lifecycle is still planned by
+[ADR-121](121-distribute-apps-independently-with-host-owned-lifecycle.md). Runtime already
+has CLI, API/local and external-agent boundaries, but the agent transport factory is still a
+built-in selection, with no complete mechanism to dynamically register a new adapter after an
+external Plugin is installed. See the
+[research and current state](../research/2026-09-28-managed-plugins-and-chatgpt-adapter-fit.md).
 
-先前 [ADR-048](048-separate-platform-products-from-installable-apps.md) 將所有可分發單位
-統稱 Apps；[ADR-094](094-adopt-cats-app-packages-as-extension-boundary.md) 又提出
-capability-connector 等 App 類別。新需求讓「開啟應用」與「替宿主增加能力」有必要在
-使用者介面與執行契約上分開，但沒有理由重造兩套下載、來源驗證與更新機制。
+The earlier [ADR-048](048-separate-platform-products-from-installable-apps.md) called every
+distributable unit an App, and [ADR-094](094-adopt-cats-app-packages-as-extension-boundary.md)
+further proposed App classes such as capability-connector. The new requirement makes it
+necessary to separate "open an application" from "add a capability to the host" in the user
+interface and the execution contract, but there is no reason to rebuild two sets of download,
+source verification and update mechanisms.
 
 ## Decision
 
-### 1. Plugins 是可管理的能力套件
+### 1. Plugins are manageable capability packages
 
-| 概念 | 責任 |
+| Concept | Responsibility |
 | --- | --- |
-| Runtime | 執行、provider、工具與 skill delivery 的共同邊界 |
-| Platform／Products | Desktop 宿主、管理 UI、Chat／Work／Code 等體驗 |
-| Apps | 使用者開啟來完成事情的應用，例如 Usage／Studio |
-| Plugins | 可選裝的能力套件，供 Platform／Runtime 使用，可只有設定介面 |
+| Runtime | The shared boundary for execution, providers, tools and skill delivery |
+| Platform/Products | The Desktop host, management UI, and experiences such as Chat/Work/Code |
+| Apps | Applications users open to get things done, for example Usage/Studio |
+| Plugins | Optional capability packages used by Platform/Runtime; may have only a settings interface |
 
-這是生態系第四種可交付成員，不是在 Platform 與 Runtime 之間插入新的必經層。
-cats-one 仍負責開發工作區／啟動編排，不屬於這四種產品能力分類。
-Plugin 是分發單位；provider adapter、MCP／tool connector、skill 是它可提供的貢獻。
-設定 UI 的存在不會自動把 Plugin 變成 App；一套件也不必對應一個上游 repo。
+This is a fourth kind of deliverable member of the ecosystem, not a new mandatory layer
+inserted between Platform and Runtime. cats-one still owns the development workspace and
+launch orchestration and is not in these four product-capability categories. A Plugin is a
+distribution unit; provider adapters, MCP/tool connectors and skills are contributions it can
+provide. Having a settings UI does not automatically make a Plugin an App; and one package
+need not correspond to one upstream repo.
 
-### 2. 重用上游，Cats 維護薄橋接
+### 2. Reuse upstream; Cats maintains a thin bridge
 
-優先調用上游已提供的 CLI、API、MCP、SDK 或 agent protocol。Cats 維護封裝、版本釘選、
-介面轉換、設定與生命週期，不將外部核心演算法、agent loop 或網頁控制流程重寫成 Cats
-自有版本。必要小 patch 要有理由、測試與上游追蹤；若接入必須重造主要功能，重新選候選。
+Prefer calling the CLI, API, MCP, SDK or agent protocol the upstream already provides. Cats
+maintains packaging, version pinning, interface conversion, configuration and lifecycle, and
+does not rewrite external core algorithms, agent loops or web-control flows into Cats-owned
+versions. A necessary small patch needs a reason, tests and upstream tracking; if integration
+would require rebuilding a major feature, choose the candidate again.
 
-建議未來以 `cats-plugins` 維護整合 recipe、薄橋接、來源／授權證據與版本化產物；可依
-授權捆綁上游 bytes，也可連接使用者已有的服務。使用者已授權建立該 repo 與 Agency MVP；
-workspace composition 依 cats-one 的 owner 契約同步。
-Plugin 版本與 upstream revision 分開記錄；不能在使用者機器上隱性追蹤 upstream main。
+It is suggested that `cats-plugins` later maintain integration recipes, thin bridges,
+source/license evidence and versioned artifacts; upstream bytes may be bundled where the
+license allows, or the user's existing services may be connected. The user has authorized
+creating that repo and the Agency MVP; workspace composition syncs according to the cats-one
+owner contract. The Plugin version and the upstream revision are recorded separately; a
+user's machine cannot implicitly track upstream main.
 
 #### Upstream source acquisition
 
-`cats-plugins` 預設維護每個套件的 source lock、build recipe、內容選單、必要 patch 與
-notices；source lock 固定 repository URL、完整 commit ID、來源內容校驗與依賴。
-上游沒有 tag／release 也能選定 commit，經驗證後發布獨立的 Cats Plugin 版本與 channel。
-build worker 取得該來源並產生可安裝 artifact；Desktop 不需要上游 Git checkout 或建置工具。
+By default `cats-plugins` maintains, per package, a source lock, build recipe, content
+selection, necessary patches and notices; the source lock pins the repository URL, full
+commit ID, source content checksum and dependencies. Even if upstream has no tag/release, a
+commit can be selected and, once verified, published as an independent Cats Plugin version
+and channel. A build worker fetches that source and produces an installable artifact;
+Desktop needs no upstream Git checkout or build tools.
 
-Submodule 可用於需要經常閱讀／修改上游的開發情境，但不是 Plugin 分發契約，也不要求
-每個來源都以 submodule 加入。使用時 gitlink 必須與 source lock 一致，CI 不接受追蹤
-branch tip 的隱性更新。大型或授權要求的 vendored snapshot 可另選用，仍保留相同來源證據。
-來源封存／mirror 與 artifact retention 由 Cats 管理，不能只保留可能失去可取用性的 URL。
-具體取捨及驗收見 SPEC-121 FR-10；目前授權建立來源／封裝 MVP，沒有產品 release 授權。
+Submodules can be used in development scenarios that often need to read or modify upstream,
+but they are not the Plugin distribution contract, and not every source is required to be
+added as a submodule. When used, the gitlink must match the source lock, and CI does not
+accept implicit updates that track a branch tip. A large or license-required vendored
+snapshot may be chosen separately, still keeping the same source evidence. Source
+archives/mirrors and artifact retention are managed by Cats; keeping only a URL that may
+become inaccessible is not enough. For the concrete trade-offs and acceptance see SPEC-121
+FR-10; currently the source/packaging MVP is authorized, and no product release is.
 
-### 3. 共用套件機制，保留不同執行邊界
+### 3. Shared package mechanisms, distinct execution boundaries
 
-Apps／Plugins 在 UI 分類、manifest kind 與驗證上明確區分，重用可適用的下載、來源驗證、
-immutable artifact、操作 journal、資料保留與恢復機制。共用部分從具體需求提取；
-不把尚未實作的 App Market 當成現成依賴，也不為此重寫已交付的 App renderer host。
+Apps and Plugins are clearly distinguished in UI classification, manifest kind and
+validation, and reuse the applicable download, source verification, immutable artifact,
+operation journal, data retention and recovery mechanisms. The shared parts are extracted
+from concrete needs; the unimplemented App Market is not treated as a ready dependency, nor
+is the delivered App renderer host rewritten for this.
 
-現有 `.catsapp` 的 renderer 限制不因本提案放寬。Plugin archive／manifest 的精確格式在
-P0 固定；不能借用 App 身分載入背景程式，也不能讓套件自行宣告 `system` 特權。
-第一版採受控目錄與明確本地安裝，不開放任意第三方投稿或任意宿主內 JavaScript 載入。
+The renderer restriction of the existing `.catsapp` is not relaxed by this proposal. The
+exact format of the Plugin archive/manifest is fixed in P0; an App identity cannot be used to
+load background programs, and a package cannot declare `system` privilege itself. The first
+version uses a controlled catalog and explicit local installation, and does not open
+arbitrary third-party submission or arbitrary in-host JavaScript loading.
 
-### 4. 管理在 Platform，執行與能力註冊在 Runtime
+### 4. Management lives in Platform; execution and capability registration in Runtime
 
-Platform 擁有 Desktop 的 Plugin inventory、安裝意圖、相容檢查、設定與更新 UI。
-Runtime 擁有執行能力的准入、discovery、provider selection、session、工具與 skills。
-Platform 透過版本化 Runtime 管理契約交付已驗證描述；Runtime 不 import Platform source。
-同一個安裝意圖只有一個 writer，Runtime 回報實際觀察／執行狀態，不形成第二個 installer。
+Platform owns the Desktop Plugin inventory, install intent, compatibility checks, settings
+and update UI. Runtime owns admission of execution capabilities, discovery, provider
+selection, sessions, tools and skills. Platform delivers verified descriptions through a
+versioned Runtime management contract; Runtime does not import Platform source. A single
+install intent has only one writer, and Runtime reports actual observed/executed state,
+without forming a second installer.
 
-第一版讓外部 process／服務透過已支援的版本化協定連接，必要 Cats 橋接也在受管理 process
-中執行。Runtime 的一般 transport client 留在 Runtime；新套件不必為每個上游改寫內建
-factory，但新協定仍須明確的 Runtime 契約工作。process 分離本身不是完整 OS sandbox。
-套件不可直接 import Runtime／Platform 私有類別或任意操作 Core store。
+The first version lets external processes/services connect through already supported
+versioned protocols, and any necessary Cats bridge also runs in a managed process.
+Runtime's general transport client stays in Runtime; a new package need not rewrite the
+built-in factory for each upstream, but a new protocol still requires explicit Runtime
+contract work. Process separation by itself is not a full OS sandbox. A package must not
+directly import private Runtime/Platform classes or arbitrarily operate the Core store.
 
-安裝不等於登入、可用或選用；新 provider 必須遵守既有 Runtime selection／readiness
-契約，不替換 Codex native 或其他目標。停用立即禁止新工作並撤銷註冊，停止與清理結果
-分別確認。使用者自行安裝的 MCP／skills／CLI 與外部共享服務不被接管或刪除。
+Installed does not mean logged in, available or selected; a new provider must obey the
+existing Runtime selection/readiness contract and does not replace Codex native or other
+targets. Disabling immediately forbids new work and revokes registration, and the results of
+stopping and cleanup are confirmed separately. MCP/skills/CLIs the user installed themselves
+and external shared services are not taken over or deleted.
 
 #### Host-owned lifecycle and optional hooks
 
-先固定 manifest 宣告、生命週期協定與宿主狀態機，再提供小型 SDK／validator／fixtures。
-純 skills Plugin 由宿主完成來源註冊、投遞與撤銷，不要求自行撰寫卸載程式。
-需要特殊設定或外部資源處理的套件，可宣告 pre/post-install、pre/post-uninstall 等有限
-hooks；由 Platform 編排，Runtime 依版本化協定執行已驗證的獨立 helper，無任意宿主內載入。
+First fix the manifest declaration, lifecycle protocol and host state machine, then provide a
+small SDK/validator/fixtures. A skills-only Plugin has source registration, delivery and
+revocation completed by the host, and is not required to write its own uninstaller. A package
+needing special configuration or external-resource handling may declare limited hooks such as
+pre/post-install and pre/post-uninstall; Platform orchestrates them and Runtime runs the
+verified independent helper under the versioned protocol, with no arbitrary in-host loading.
 
-Hooks 回傳結構化進度、完成證據、失敗及必要操作；不能自行修改 installer inventory、
-擴權或終止共享 provider。重試、逾時、崩潰恢復及外部副作用由 operation journal 協調，
-失敗不視為成功，也不假設跨外部服務具原子 rollback。停用准入不能被失敗的 hook 擋住。
+Hooks return structured progress, completion evidence, failures and required actions; they
+cannot modify the installer inventory, escalate privileges or terminate shared providers
+themselves. Retry, timeout, crash recovery and external side effects are coordinated by the
+operation journal; a failure is not treated as success, and atomic rollback across external
+services is not assumed. Disable admission cannot be blocked by a failing hook.
 
-宿主負責找出受影響工作／sessions 並呈現操作影響。移除 skill 檔案、斷開 CLI、重新
-啟動 Desktop 都不證明模型 context 已清除；重新載入舊 session／fork 仍須檢查來源暴露。
-優先對受影響範圍建立乾淨 context，只有具體宿主限制才要求重啟自有服務或 Desktop。
-完整要求與驗收列於 SPEC-121 FR-09；SDK 是協定實作輔助，不是另一套 installer。
+The host is responsible for finding the affected work/sessions and presenting the operation's
+impact. Removing skill files, disconnecting the CLI and restarting Desktop do not prove that
+the model context has been cleared; reloading an old session/fork must still check the source
+exposure. Prefer creating a clean context for the affected scope, and require restarting
+owned services or Desktop only for a concrete host limitation. The full requirements and
+acceptance are listed in SPEC-121 FR-09; the SDK helps implement the protocol and is not
+another installer.
 
-### 5. 內部實驗與正式分發分開
+### 5. Internal experiments are separate from formal distribution
 
-允許在隔離開發 profile 中安裝有明確來源的實驗套件；實驗不自動進入官方目錄、Desktop
-預裝、stable 或一般 preview。宿主的 build／profile policy 決定是否接納實驗產物，
-不能只相信套件自己填的 channel。升級／複製 profile 也不能把實驗來源提升為正式來源。
+Experimental packages with a clear source may be installed in an isolated development
+profile; experiments do not automatically enter the official catalog, Desktop preinstall,
+stable or general preview. The host's build/profile policy decides whether to admit an
+experimental artifact, and cannot just trust the channel the package fills in itself.
+Upgrading or copying a profile also cannot promote an experimental source to an official one.
 
-原始碼授權、外部服務使用條款、內部測試適用性與正式分發各自判斷。MIT、private repo、
-不 release 或第三方作者身分都不自動授權服務存取。Cats 不自研有疑慮的 ChatGPT 網頁
-adapter；現有外部 repo 可列研究／測試候選，但不是因為存在就保證可用或可發布。
-OpenChatX／C2C 目前僅是研究案例，沒有選作 pilot，也沒有新增 ChatGPT provider 的承諾。
+Source license, external-service terms, internal-test suitability and formal distribution are
+each judged separately. MIT, a private repo, no release, or third-party author identity does
+not automatically authorize service access. Cats does not build its own questionable ChatGPT
+web adapter; existing external repos can be listed as research/test candidates, but existing
+is no guarantee of being usable or publishable. OpenChatX/C2C is currently only a research
+case, was not selected as a pilot, and there is no commitment to add a ChatGPT provider.
 
-### 6. 與既有決策的關係
+### 6. Relationship to existing decisions
 
-若採納本 ADR，局部調整 ADR-048 的「所有可安裝項都叫 App」與 ADR-094／SPEC-098 的
-capability-connector 公開命名及執行歸屬；保留 Products、既有 Apps、App SDK 與已交付的
-renderer 契約。Product-module 的一般擴充仍延後。既有 App 資料不直接改名或自動搬遷。
+If this ADR is adopted, it partially adjusts ADR-048's "everything installable is called an
+App" and the public naming and execution ownership of capability-connector in
+ADR-094/SPEC-098; Products, existing Apps, the App SDK and the delivered renderer contract
+are kept. General Product-module extension remains deferred. Existing App data is not
+renamed or moved automatically.
 
-ADR-121／SPEC-120／PLAN-112 繼續負責 renderer Apps，Plugins 的新增執行範圍由
-[SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md) 與
-[PLAN-113](../plans/PLAN-113-managed-plugin-capabilities.md) 規劃。接受此提案後，才在
-Runtime owner repo 固定必要的協定／狀態契約，不在 Platform 文件冒充 Runtime 已提供 API。
+ADR-121/SPEC-120/PLAN-112 continue to own renderer Apps, and the new execution scope of
+Plugins is planned by [SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md) and
+[PLAN-113](../plans/PLAN-113-managed-plugin-capabilities.md). Only after this proposal is
+accepted are the necessary protocol/state contracts fixed in the Runtime owner repo; Platform
+documents do not pretend Runtime already provides an API.
 
 ## Consequences
 
 ### Positive
 
-- 可沿用外部專案能力與上游更新，減少 Cats 必須自行維護的功能。
-- 使用者能理解安裝了什麼、誰提供能力、如何停止與移除。
-- provider、MCP、skills 共用套件治理，又保留不同的執行與授權語意。
+- External project capabilities and upstream updates can be reused, reducing what Cats must
+  maintain itself.
+- Users can understand what was installed, who provides the capability, and how to stop and
+  remove it.
+- Providers, MCP and skills share package governance while keeping distinct execution and
+  authorization semantics.
 
 ### Negative
 
-- 需要跨 Platform／Runtime 的註冊、撤銷、崩潰恢復與版本契約，不能只做商店卡片。
-- 上游相容性、授權與更新供應鏈成為持續維護工作；薄橋接也不是零維護。
-- 受管理 native process 的權限通常比 App iframe 大，必須如實揭露且限制接納範圍。
+- Cross-Platform/Runtime registration, revocation, crash recovery and version contracts are
+  needed; store cards alone are not enough.
+- Upstream compatibility, licensing and the update supply chain become continuing
+  maintenance work; a thin bridge is not zero maintenance either.
+- A managed native process usually has more permission than an App iframe, so it must be
+  disclosed honestly and its admission scope limited.
 
 ### Neutral
 
-- App Market 與 Plugin 工作可按里程碑共用基礎，不需要同時發布。
-- schema／API 若破壞現有契約，依各 owner 的版本規則升 minor／major，並提供受測升級。
-  本文件不 bump 版本、不選 release 日期，也不將未實作功能標成完成。
+- App Market and Plugin work can share foundations by milestone and need not be released at
+  the same time.
+- If a schema/API breaks an existing contract, bump minor/major according to each owner's
+  version rules and provide a tested upgrade. This document does not bump versions, choose a
+  release date, or mark unimplemented features as complete.
 
 ## Alternatives Considered
 
-| 選項 | 取捨 |
+| Option | Trade-off |
 | --- | --- |
-| 一律叫 Apps 並擴大 App executor | 可沿用舊詞，但使用者難分應用與宿主能力；不作本案建議 |
-| 每個外部 repo 都直接加進 Runtime core | 初次簡單，日後難選裝、獨立更新與移除；只保留通用協定 client |
-| 重新實作上游功能 | 能完全控制，但偏離重用外部能力的明確方向 |
-| Plugin 與 App 各自重造 installer／catalog | 邊界明顯但治理重複；共用機制、分開 executor |
-| v1 接受任意宿主內程式與公開投稿 | 範圍過大；先受控來源與有限貢獻 |
+| Call everything Apps and widen the App executor | Reuses the old term, but users can hardly tell applications from host capabilities; not recommended here |
+| Add every external repo directly into Runtime core | Simple at first, but hard to make optional, update independently and remove later; keep only a general protocol client |
+| Re-implement upstream features | Full control, but departs from the explicit direction of reusing external capabilities |
+| Plugin and App each rebuild their own installer/catalog | Clear boundary but duplicated governance; share mechanisms, separate executors |
+| v1 accepts arbitrary in-host programs and public submissions | Scope too large; start with controlled sources and limited contributions |
 
 ## References
 
 - [SPEC-121](../specs/SPEC-121-managed-plugin-capabilities.md)
 - [PLAN-113](../plans/PLAN-113-managed-plugin-capabilities.md)
-- [外部案例與條款研究](../research/2026-09-28-managed-plugins-and-chatgpt-adapter-fit.md)
-- [App Market 契約](../specs/SPEC-120-app-market-and-lifecycle.md)
+- [External cases and terms research](../research/2026-09-28-managed-plugins-and-chatgpt-adapter-fit.md)
+- [App Market contract](../specs/SPEC-120-app-market-and-lifecycle.md)
 - [Runtime selection](115-bound-bootstrap-and-provider-choices-by-runtime-selection.md)
-- [目前 App 封裝邊界](../app-packages.md)
+- [Current App packaging boundary](../app-packages.md)
 
 *Last updated: 2026-09-28*

@@ -5,45 +5,47 @@
 - **Date**: 2026-03-24
 - **Author**: Claude
 - **Status**: Draft — pending review
-- **Scope**: 將 image/video generation 封裝為 Cat 的能力，非 API gateway
+- **Scope**: Package image/video generation as a Cat capability, not an API gateway
 - **Related**:
-  - `cats-runtime/src/core/browser/previewSurfaces.ts` — 已能辨認 image 副檔名
-  - `cats-runtime/src/core/browser/RuntimeBrowserService.ts` — preview surface 註冊
+  - `cats-runtime/src/core/browser/previewSurfaces.ts` — already recognizes image file extensions
+  - `cats-runtime/src/core/browser/RuntimeBrowserService.ts` — preview surface registration
   - `cats-runtime/docs/specs/SPEC-005-runtime-managed-skills-v0.md`
   - `cats-runtime/docs/decisions/011-runtime-owned-browser-preview-subsystem.md`
 
 ---
 
-## 核心主張
+## Core Claim
 
-> **Image/video generation 是 Cat 的一種能力（capability），不是 API gateway。
-> Runtime 不代理 API、不管 API key、不做 rate limit。
-> Cat 透過自己的 CLI subscription 呼叫 provider 提供的生成功能，
-> 產出檔案存在 workspace，產品層負責呈現。**
+> **Image/video generation is a capability of a Cat, not an API gateway.
+> The runtime does not proxy APIs, manage API keys, or do rate limiting.
+> A Cat calls the generation features its provider offers through its own CLI
+> subscription, the output files are stored in the workspace, and the product
+> layer is responsible for presenting them.**
 
 ---
 
-## 為什麼不是 API Gateway
+## Why Not an API Gateway
 
-| | API Gateway 做法 | Capability 做法（本提議） |
+| | API gateway approach | Capability approach (this proposal) |
 |--|------------------|-------------------------|
-| API key | Runtime 代管 | Cat 的 CLI subscription 自帶 |
-| 呼叫方式 | Runtime 轉發 HTTP request | Cat 在 session 中自己呼叫 CLI tool |
-| 計費 | Runtime 需要追蹤 | Provider 直接向 subscription owner 收費 |
-| 產出 | API response（base64 / URL） | 檔案落在 workspace 目錄 |
-| 錯誤處理 | Runtime 需要處理每個 provider 的 error | Cat 自己處理，回報成功或失敗 |
-| 新 provider 支援 | Runtime 要加 adapter | 寫新的 SKILL.md 即可 |
+| API key | Held by the runtime | Comes with the Cat's CLI subscription |
+| Invocation | Runtime forwards HTTP requests | The Cat calls the CLI tool itself in its session |
+| Billing | Runtime must track it | The provider bills the subscription owner directly |
+| Output | API response (base64 / URL) | Files land in the workspace directory |
+| Error handling | Runtime must handle each provider's errors | The Cat handles it and reports success or failure |
+| Support for a new provider | Runtime must add an adapter | Just write a new SKILL.md |
 
-**Capability 做法的好處**：Runtime 完全不需要懂 image generation 的細節。
-對 runtime 來說，Cat 產出 `.png` 跟產出 `.ts` 沒有差別 — 都是 workspace 裡的檔案。
+**The benefit of the capability approach**: the runtime needs no knowledge of
+image generation details at all. To the runtime, a Cat producing a `.png` is no
+different from producing a `.ts` — both are files in the workspace.
 
 ---
 
-## 運作方式
+## How It Works
 
-### Cat 端（SKILL.md 注入）
+### Cat Side (SKILL.md injection)
 
-宣告 Cat 擁有 image/video generation 能力：
+Declare that the Cat has image/video generation capability:
 
 ```yaml
 # SKILL.md frontmatter
@@ -54,158 +56,159 @@ capabilityTags:
   - video_gen
 ```
 
-Prompt 指引（SKILL.md body）告訴 Cat：
+The prompt guidance (SKILL.md body) tells the Cat:
 
-- 你可以使用 provider 提供的 image generation tool
-- 產出的檔案存到 workspace 的指定目錄（例如 `output/`）
-- 回報產出的檔案路徑和 metadata（尺寸、格式、prompt used）
-- 如果 provider 不支援或生成失敗，誠實回報
+- You can use the image generation tool the provider offers
+- Save output files to a designated directory in the workspace (for example `output/`)
+- Report the output file path and metadata (size, format, prompt used)
+- If the provider does not support it or generation fails, report honestly
 
-### Runtime 端（不需要改動）
+### Runtime Side (no changes needed)
 
-cats-runtime 已有的機制足以支撐：
+The mechanisms cats-runtime already has are sufficient:
 
 **Workspace**
-- Cat 的 session 有獨立的 workspace 目錄（shared / isolated / worktree）
-- 生成的檔案直接寫入 workspace，跟 code 產出無異
+- A Cat's session has its own workspace directory (shared / isolated / worktree)
+- Generated files are written straight into the workspace, no different from code output
 
-**Preview Surface 辨識**
-- `previewSurfaces.ts` 已能辨認 image 副檔名：
+**Preview Surface recognition**
+- `previewSurfaces.ts` already recognizes image file extensions:
   `.png` / `.jpg` / `.jpeg` / `.gif` / `.webp` / `.svg`
-- 會自動標記 `mediaType: 'image/png'` 等
-- 會設定 `renderHint: 'download'`（目前）
+- It automatically tags `mediaType: 'image/png'` and so on
+- It sets `renderHint: 'download'` (currently)
 
 **Delivery Primitives**
-- 已有 artifact publish / export 機制
-- 生成的圖片可作為 delivery artifact 交付
+- Artifact publish / export mechanisms already exist
+- Generated images can be delivered as delivery artifacts
 
 **Usage Metering**
-- 已有 token 追蹤
-- 如果 provider 在 image gen 時消耗 token，metering 照常記錄
+- Token tracking already exists
+- If the provider consumes tokens during image generation, metering records them as usual
 
-### 產品端（需要小幅擴充）
+### Product Side (needs a small extension)
 
-**Canvas / Chat 中顯示圖片**
-- 目前 preview surface 的 `renderHint` 對 image 是 `'download'`
-- 需要新增 `'inline_image'` 或類似的 render hint
-- 產品層收到此 hint 後，用 `<img>` 直接顯示 workspace 中的檔案
-- 影片同理，用 `<video>` 顯示
+**Showing images in the Canvas / Chat**
+- Currently the preview surface `renderHint` for images is `'download'`
+- A new `'inline_image'` or similar render hint is needed
+- On receiving this hint, the product layer shows the file in the workspace directly with `<img>`
+- Video works the same way, shown with `<video>`
 
-**圖片出現在對話中**
-- Cat 的訊息中附帶圖片路徑 → renderer 偵測到圖片 → inline 顯示
-- 類似 chat app 中傳圖片的體驗
-
----
-
-## 支援的場景
-
-### 場景一：Designer Cat 生成素材
-
-```
-Owner: 幫我的 landing page 做一張 hero image，科技感、藍色調
-
-Boss Cat: 了解，派給 Designer Cat
-
-Designer Cat:（透過 CLI provider 的 image gen tool 生成圖片）
-Designer Cat: 生成了 3 張候選，請看：
-  [圖片 1] [圖片 2] [圖片 3]
-  你喜歡哪一張？
-
-Owner: [選擇圖片 2]
-
-Designer Cat: 好的，已存到 output/hero-image.png
-```
-
-### 場景二：Coder Cat 生成 placeholder 圖
-
-```
-Coder Cat 在實作 landing page 時，需要 placeholder 圖片
-→ 自己呼叫 image gen tool 生成
-→ 存到 public/images/
-→ 直接引用在 code 中
-→ Canvas 中可以看到跑起來的 page 含圖片
-```
-
-### 場景三：Marketing Cat 生成社群素材
-
-```
-Owner: 幫我做一張 Instagram post 圖
-
-Marketing Cat: 你想要什麼風格？
-  [簡約文字] [產品照風格] [插畫風格] [...]
-
-Owner: [插畫風格]
-
-Marketing Cat:（生成圖片）
-  完成，已存到 output/ig-post.png
-  [預覽圖片]
-  要直接發布嗎？
-
-Owner: [下載] [修改] [發布]
-```
-
-### 場景四：Video gen（未來）
-
-同樣的模式適用於 video generation：
-- Cat 呼叫 provider 的 video gen tool
-- 產出 `.mp4` / `.webm` 存到 workspace
-- Canvas 用 `<video>` 顯示
-- 時間較長 → 可搭配 wakeup substrate（生成完通知 owner）
+**Images appearing in the conversation**
+- A Cat's message carries an image path → the renderer detects the image → shows it inline
+- Similar to the experience of sending a picture in a chat app
 
 ---
 
-## 哪些 Provider 可能支援
+## Supported Scenarios
 
-不同 CLI provider 的 image gen 能力不同，但 capability 模型不需要
-關心具體是哪個 provider：
+### Scenario 1: Designer Cat generates assets
 
-- **Claude**：目前 CLI 不直接支援 image gen，但可透過 MCP tool 串接
-- **Codex / OpenAI**：可能透過 DALL-E tool 生成
-- **Gemini**：原生支援 image generation
-- **Ollama + local model**：可串接本地 Stable Diffusion 等
-- **未來的 provider**：只要 CLI 有 image gen 能力，寫 SKILL.md 即可支援
+```
+Owner: Make a hero image for my landing page, techy, blue tones
 
-**重點：新增 provider 支援不需要改 runtime code，只需要新的 SKILL.md。**
+Boss Cat: Understood, assigning to the Designer Cat
+
+Designer Cat: (generates images through the CLI provider's image gen tool)
+Designer Cat: Generated 3 candidates, please take a look:
+  [Image 1] [Image 2] [Image 3]
+  Which one do you like?
+
+Owner: [selects Image 2]
+
+Designer Cat: Okay, saved to output/hero-image.png
+```
+
+### Scenario 2: Coder Cat generates placeholder images
+
+```
+While implementing a landing page, the Coder Cat needs placeholder images
+→ calls the image gen tool itself to generate them
+→ saves to public/images/
+→ references them directly in the code
+→ the running page, images included, can be seen in the Canvas
+```
+
+### Scenario 3: Marketing Cat generates social media assets
+
+```
+Owner: Make me an Instagram post image
+
+Marketing Cat: What style do you want?
+  [Minimal text] [Product photo style] [Illustration style] [...]
+
+Owner: [Illustration style]
+
+Marketing Cat: (generates the image)
+  Done, saved to output/ig-post.png
+  [Preview image]
+  Publish it directly?
+
+Owner: [Download] [Revise] [Publish]
+```
+
+### Scenario 4: Video gen (future)
+
+The same pattern applies to video generation:
+- The Cat calls the provider's video gen tool
+- Output `.mp4` / `.webm` is stored in the workspace
+- The Canvas shows it with `<video>`
+- Takes longer → can pair with the wakeup substrate (notify the owner when generation finishes)
 
 ---
 
-## 品質與限制
+## Which Providers May Support It
 
-**不保證產出品質**
-- Image/video generation 的品質完全取決於 provider 和 model
-- Cat 可以在 prompt 中盡可能描述需求，但最終品質不由我們控制
-- Owner 的 approval gate（structured choices）是品質控制的最後一道防線
+Different CLI providers have different image gen capabilities, but the
+capability model does not need to care which provider it is:
 
-**不保證一定能生成**
-- Provider 可能拒絕（content policy）
-- Provider 可能暫時不可用（rate limit / downtime）
-- Cat 應該誠實回報失敗，不要硬湊
+- **Claude**: the CLI does not support image gen directly today, but it can be connected through an MCP tool
+- **Codex / OpenAI**: may generate through a DALL-E tool
+- **Gemini**: natively supports image generation
+- **Ollama + local model**: can connect a local Stable Diffusion and similar
+- **Future providers**: as long as the CLI has image gen capability, writing a SKILL.md is enough to support it
 
-**不做 prompt engineering 代管**
-- Cat 的 SKILL.md 可以提供基本的 image prompt 撰寫指引
-- 但 owner 描述的需求怎麼轉成 image prompt 是 Cat 自己的能力
-- 不同 provider 的 prompt 風格不同，由 SKILL.md 針對性指引
+**Key point: supporting a new provider needs no runtime code changes, only a new SKILL.md.**
 
 ---
 
-## 與既有 Research 的關係
+## Quality and Limits
 
-- **Structured Choices**：Owner 選擇候選圖片時使用
-- **Peer Review**：Designer Cat 產出可由 Peer Cat 評審（構圖、品牌一致性）
-- **Task Substrate**：image gen 任務作為 CoreTaskRecord 追蹤
-- **Cats Work Aggregator**：freelance 案子如果需要設計素材，Designer Cat 可以直接產出
+**Output quality is not guaranteed**
+- The quality of image/video generation depends entirely on the provider and model
+- The Cat can describe the requirement as fully as possible in the prompt, but final quality is not under our control
+- The Owner's approval gate (structured choices) is the last line of defense for quality control
+
+**Successful generation is not guaranteed**
+- The provider may refuse (content policy)
+- The provider may be temporarily unavailable (rate limit / downtime)
+- The Cat should report failure honestly and not fake a result
+
+**No managed prompt engineering**
+- A Cat's SKILL.md can provide basic guidance on writing image prompts
+- But how the requirement the owner describes is turned into an image prompt is the Cat's own ability
+- Different providers have different prompt styles, which SKILL.md guides specifically
 
 ---
 
-## 結論
+## Relationship to Existing Research
 
-- Image/video generation 自然地作為 Cat 的 capability 存在，不需要 API gateway
-- Runtime 不需要任何改動 — workspace 檔案 + preview surface metadata 已足夠
-- 產品層只需小幅擴充 Canvas 的 render hint 來 inline 顯示圖片/影片
-- 新 provider 支援只需寫 SKILL.md，不需要改 code
-- 品質和成功率由 provider 決定，owner approval 作為最終 gate
+- **Structured Choices**: used when the Owner picks among candidate images
+- **Peer Review**: a Designer Cat's output can be reviewed by Peer Cats (composition, brand consistency)
+- **Task Substrate**: image gen tasks are tracked as CoreTaskRecord
+- **Cats Work Aggregator**: if a freelance job needs design assets, the Designer Cat can produce them directly
 
 ---
 
-*本文件供 review 討論用。如 review 通過，建議作為 SKILL.md capability
-標準的一部分納入 cats-runtime 的 skill library 文件。*
+## Conclusion
+
+- Image/video generation naturally exists as a Cat capability and needs no API gateway
+- The runtime needs no changes — workspace files plus preview surface metadata are enough
+- The product layer needs only a small extension to the Canvas render hint to show images/videos inline
+- Supporting a new provider needs only a SKILL.md, no code changes
+- Quality and success rate are decided by the provider, with the owner's approval as the final gate
+
+---
+
+*This document is for review discussion. If the review passes, it is
+recommended to fold it into the cats-runtime skill library documentation as
+part of the SKILL.md capability standard.*
