@@ -38,6 +38,14 @@ test('a Claude Code target negotiates tool approval and reports its admissible c
     await client.createSession({ provider: 'claude', interactionHost: PLATFORM_INTERACTION_HOST });
     const payload = JSON.parse(calls.find(c => c.url.endsWith('/sessions')).init.body);
     assert.deepEqual(payload.interactionHost.kinds, claudeKinds);
+    for (const narrow of [policy, { version: 1, mode: 'provider', constraints: { maxAccess: 'full-access', network: false } }]) {
+      await assert.rejects(client.createSession({ provider: 'claude', interactionHost: PLATFORM_INTERACTION_HOST, executionPolicy: narrow }),
+        error => error.code === 'provider_policy_unsupported' && /full-access with network/.test(error.message));
+    }
+    assert.equal(calls.filter(c => c.url.endsWith('/sessions')).length, 1);
+    const full = { version: 1, mode: 'explicit', access: 'full-access', network: true, approval: 'on-request' };
+    await client.createSession({ provider: 'claude', interactionHost: PLATFORM_INTERACTION_HOST, executionPolicy: full });
+    assert.deepEqual(JSON.parse(calls.filter(c => c.url.endsWith('/sessions')).at(-1).init.body).executionPolicy, full);
   });
 });
 

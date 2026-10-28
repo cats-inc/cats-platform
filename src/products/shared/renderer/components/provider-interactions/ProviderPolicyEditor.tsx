@@ -37,6 +37,7 @@ export function ProviderPolicyEditor({ value, onChange, disabled = false }: {
         <option value="on-request">{t(messageKeys.providerControlsOnRequest)}</option><option value="untrusted">{t(messageKeys.providerControlsUntrusted)}</option><option value="never">{t(messageKeys.providerControlsNever)}</option>
       </select></label>}
       <p>{t(messageKeys.providerControlsPolicyHelp)}</p>
+      {(access !== 'full-access' || !network) && <p>{t(messageKeys.providerControlsClaudeCeiling)}</p>}
     </>}
   </div>;
 }

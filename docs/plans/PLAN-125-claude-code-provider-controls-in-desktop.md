@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | 進行中；P1 實作完成，P2–P4 待實作 |
+| Status | 進行中；P1–P2 實作完成，P3–P4 待實作 |
 | Owner | Platform shared interaction、Desktop integration |
 | Assigned To | Claude |
 | Reviewer | Product owner、Runtime maintainers |
@@ -43,8 +43,10 @@ Runtime 已在 #196–#199 接上 Claude Code 的原生批准、提問、MCP 表
 
 ### P2 — 權限上限提示
 
-- [ ] 政策編輯器依所選 target 的 `admissibleCeilings` 限制或標示選項；Claude 只能選「完整存取＋網路」。
-- [ ] runtime client 在送出前拒絕上限外的政策，錯誤沿用 `provider_policy_unsupported`。
+- [x] runtime client 在送出前依 target 的 `admissibleCeilings` 拒絕上限外的政策（create 與 resume），
+  錯誤沿用 `provider_policy_unsupported`，訊息列出 target 可強制的上限。
+- [x] 政策編輯器在選擇較窄的上限時提示 Claude Code 只能以「完整存取＋網路」執行。草稿可同時包含
+  不同 provider 的 Cat，編輯器不知道最終 target，因此以提示呈現，不替 Codex 隱藏可用選項。
 
 ### P3 — Claude in Chrome 偏好
 
@@ -70,5 +72,6 @@ P2／P3 分別以 admission 測試與 session create payload 測試覆蓋。
 | Date | Update |
 | --- | --- |
 | 2026-10-28 | P1：契約對齊 Runtime `043155a1`、`tool_approval` 協商與卡片 DOM 測試、admissible ceilings 解析、內建工具清單與 provider 專屬設定連結。15 項 client／renderer、26 項 product／control／policy upgrade／raw-string audit 測試通過；server build 與 renderer typecheck 通過。 |
+| 2026-10-28 | P2：client 端 ceiling 拒絕（不送出 `/sessions`）與編輯器提示。16 項 client／renderer 測試通過，含 explicit workspace-write、provider 離線上限被拒與 full-access＋網路通過。 |
 
 *Created / last updated: 2026-10-28*
