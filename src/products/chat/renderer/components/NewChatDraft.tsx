@@ -77,10 +77,8 @@ function NewChatDraftInner(props: NewChatDraftProps) {
 }
 
 // Chat@chat: when the user has selected a cwd, show a disabled
-// PermissionModeChip so the effective permission mode is visible.
-// The chip is read-only because Chat's permission mode is governed
-// by the boss cat / runtime, not a free-form draft toggle (Code is
-// where the user authors the policy directly).
+// PermissionModeChip shows the requested policy. Effective policy is observed
+// from the live provider session; editing the draft uses the policy editor.
 function buildChatPermissionChip(props: NewChatDraftProps): ReactNode {
   if (!props.draftCwd) {
     return null;
@@ -89,5 +87,5 @@ function buildChatPermissionChip(props: NewChatDraftProps): ReactNode {
   const mode = workspaceAccess
     ? resolveDraftPermissionModeFromRuntimeAccess(workspaceAccess)
     : DEFAULT_PERMISSION_MODE;
-  return <PermissionModeChip value={mode} onChange={() => {}} disabled />;
+  return <PermissionModeChip value={mode} executionPolicy={props.draftRuntimeSessionPolicy?.executionPolicy} onChange={() => {}} disabled />;
 }

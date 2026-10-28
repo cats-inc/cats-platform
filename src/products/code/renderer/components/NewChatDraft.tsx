@@ -15,7 +15,7 @@ import {
 } from '../../../shared/renderer/components/newConversationDraftSidePanel.js';
 import type { SidePanelSection } from '../../../../design/components/SidePanel.js';
 import { ComposerSurfaceChip } from '../../../shared/renderer/components/ComposerSurfaceChip.js';
-import { PermissionModeChip } from '../../../shared/renderer/components/PermissionModeChip.js';
+import { PermissionModeChip, formatRequestedProviderPolicy } from '../../../shared/renderer/components/PermissionModeChip.js';
 import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
 import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
 import { resolveNewConversationDraftBuilderControls } from '../../../shared/renderer/draftBuilderControls.js';
@@ -110,7 +110,7 @@ function formatCodeSessionPermission(
   policy: RuntimeSessionPolicy,
   t: CodeDraftTranslate,
 ): string {
-  return policy.workspaceAccess === 'read_only'
+  return policy.executionPolicy ? formatRequestedProviderPolicy(policy.executionPolicy) : policy.workspaceAccess === 'read_only'
     ? t(messageKeys.codeNewDraftPermissionReadOnly)
     : t(messageKeys.codeNewDraftPermissionFullAccess);
 }
@@ -142,6 +142,7 @@ export function buildCodeNewChatDraftSessionProfileSection(
             <span>{workspaceLabel}</span>
           </span>
           <PermissionModeChip
+            executionPolicy={currentSessionPolicy.executionPolicy}
             value={resolveDraftPermissionModeFromRuntimeAccess(
               currentSessionPolicy.workspaceAccess,
             )}
@@ -155,6 +156,7 @@ export function buildCodeNewChatDraftSessionProfileSection(
             }}
             disabled={
               input.isSubmittingFirstTurn
+              || !!currentSessionPolicy.executionPolicy
               || input.onDraftRuntimeSessionPolicyChange == null
             }
           />

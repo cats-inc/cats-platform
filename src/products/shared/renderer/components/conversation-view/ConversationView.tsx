@@ -56,6 +56,8 @@ import {
 import { useTranscriptAutoScroll } from '../../hooks/useTranscriptAutoScroll.js';
 import { useWorkspaceParticipantPresentation } from '../../hooks/useWorkspaceParticipantPresentation.js';
 import { ConversationViewFrame } from './ConversationViewFrame.js';
+import { ProviderConversationControls } from '../provider-interactions/ProviderConversationControls.js';
+import { buildChatConversationId } from '../../../../../shared/chatCoreIds.js';
 import { ConversationViewTopBar } from './ConversationViewTopBar.js';
 import { buildConversationSidePanelSections, type BuildConversationSidePanelSectionsOptions } from './ConversationSidePanelSections.js';
 import { ConversationComposerArea } from './ConversationComposerArea.js';
@@ -1207,6 +1209,7 @@ export function ConversationView({
         buildConcurrentClusterActions={buildConcurrentClusterActions}
         buildTranscriptMessageActions={buildTranscriptMessageActions}
       />
+      <ProviderConversationControls key={selectedChannel.id} conversationId={buildChatConversationId(selectedChannel.id)} />
       <ConversationComposerArea
         hasConversationStarted={hasConversationStarted}
         isCompareGroup={isCompareGroup}

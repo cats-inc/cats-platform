@@ -6,6 +6,12 @@ import {
 } from '../../../../shared/runtimeSessionPolicy.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import type { SessionExecutionPolicy } from '../../../../shared/providerInteractions.js';
+
+export function formatRequestedProviderPolicy(policy: SessionExecutionPolicy): string {
+  return policy.mode === 'provider' ? `Provider configuration (limit: ${policy.constraints.maxAccess})`
+    : `Requested: ${policy.access} · ${policy.approval}`;
+}
 
 export type PermissionMode = DraftPermissionMode;
 
@@ -22,9 +28,10 @@ export interface PermissionModeChipProps {
   value: PermissionMode;
   onChange: (next: PermissionMode) => void;
   disabled?: boolean;
+  executionPolicy?: SessionExecutionPolicy | null;
 }
 
-export function PermissionModeChip({ value, onChange, disabled }: PermissionModeChipProps) {
+export function PermissionModeChip({ value, onChange, disabled, executionPolicy }: PermissionModeChipProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -56,7 +63,8 @@ export function PermissionModeChip({ value, onChange, disabled }: PermissionMode
       <button
         type="button"
         className="composerSelectChip composerPermissionChip"
-        disabled={disabled}
+        disabled={disabled || !!executionPolicy}
+        title={executionPolicy ? 'Requested policy. See Session access and tools for the live effective policy.' : undefined}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
@@ -64,12 +72,12 @@ export function PermissionModeChip({ value, onChange, disabled }: PermissionMode
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
         </svg>
-        <span>{t(messageKeys[PERMISSION_MODE_LABEL_KEYS[value]])}</span>
+        <span>{executionPolicy ? formatRequestedProviderPolicy(executionPolicy) : t(messageKeys[PERMISSION_MODE_LABEL_KEYS[value]])}</span>
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2.5 4 5 6.5 7.5 4" />
         </svg>
       </button>
-      {open ? (
+      {open && !executionPolicy ? (
         <div className="composerSelectChipMenu" role="listbox">
           {PERMISSION_MODE_ORDER.map((mode) => {
             const selected = mode === value;

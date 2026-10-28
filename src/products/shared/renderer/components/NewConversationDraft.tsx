@@ -82,7 +82,8 @@ import {
   buildAudienceParticipantFromTemporaryParticipant,
 } from '../audienceParticipantBuilder.js';
 import { AudienceChip, type AudienceTargetEditor } from './AudienceChip.js';
-import { PermissionModeChip } from './PermissionModeChip.js';
+import { PermissionModeChip, formatRequestedProviderPolicy } from './PermissionModeChip.js';
+import { ProviderPolicyEditor } from './provider-interactions/ProviderPolicyEditor.js';
 import { WorkspaceModeChip } from './WorkspaceModeChip.js';
 import { useRepoProbe } from '../hooks/useRepoProbe.js';
 import { useVoiceInputComposer } from '../hooks/useVoiceInputComposer.js';
@@ -108,7 +109,7 @@ function formatBranchRuntimeSessionPolicy(
     : policy.workspaceKind === 'source'
       ? t(messageKeys.chatNewChatDraftBranchPolicyWorkspaceSource)
       : t(messageKeys.chatNewChatDraftBranchPolicyWorkspaceSandbox);
-  const permissionLabel = policy.workspaceAccess === 'read_only'
+  const permissionLabel = policy.executionPolicy ? formatRequestedProviderPolicy(policy.executionPolicy) : policy.workspaceAccess === 'read_only'
     ? t(messageKeys.chatNewChatDraftBranchPolicyAccessReadOnly)
     : t(messageKeys.chatNewChatDraftBranchPolicyAccessFull);
   return `${workspaceLabel} / ${permissionLabel}`;
@@ -218,6 +219,7 @@ function BranchRuntimeSessionPolicyControls({
         workspaceKind: currentPolicy.workspaceKind,
         workspaceAccess: currentPolicy.workspaceAccess,
         permissionMode: currentPolicy.permissionMode,
+        executionPolicy: currentPolicy.executionPolicy,
         ...patch,
       }),
     );
@@ -244,13 +246,16 @@ function BranchRuntimeSessionPolicyControls({
           />
         ) : null}
         <PermissionModeChip
+          executionPolicy={branchSessionPolicy.executionPolicy}
           value={resolveDraftPermissionModeFromRuntimeAccess(
             branchSessionPolicy.workspaceAccess,
           )}
           onChange={(nextMode) =>
             updateDraftBranchRuntimePolicy(resolveRuntimePermissionPolicyFromDraft(nextMode))}
-          disabled={isSubmittingFirstTurn}
+          disabled={isSubmittingFirstTurn || !!branchSessionPolicy.executionPolicy}
         />
+        <details><summary>Provider access</summary><ProviderPolicyEditor value={branchSessionPolicy}
+          onChange={policy => onSetParallelBranchRuntimeSessionPolicy?.(branchIndex, policy)} disabled={isSubmittingFirstTurn} /></details>
         <button
           className="composerChipClose"
           type="button"

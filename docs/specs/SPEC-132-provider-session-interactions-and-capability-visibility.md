@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Implementing；Runtime contract、產品控制路徑及資料升級已接線，候選驗收進行中 |
+| Status | Implemented；產品／Windows candidate fixture 與原生呼叫已驗證，成功外部操作仍受 helper 限制 |
 | Owner | Platform shared interaction、Desktop integration |
 | Reviewer | Product owner、Runtime／Bots maintainers |
 | Baseline | Platform `595e9ca2`；2026-10-28 |
@@ -19,7 +19,9 @@ Platform 負責使用者操作與產品權限，Runtime 負責原生協定與執
 
 共用契約以 `cats-runtime/docs/specs/SPEC-039-provider-session-capabilities-and-interactions.md`
 為準；協作計畫是 Runtime PLAN-049、Bots SPEC-004／PLAN-004。
-契約實作採 Runtime `b75da37b5e79f1f9831406ab5017359ce47cf0e6`（PR #194）；尚未發布新版套件。
+契約基於 Runtime PR #194；最後原生驗收採 source
+`50ef02b4686c1fff6b60819d292acc5b2e1ef773` 的 0.6.2 pack，SHA-1
+`5f360927ece194dc3e0abbd690fb7b43cb292fc3`；尚未發布新版套件。
 本案延伸既有 ADR-020 與共用互動引擎，不另立一份重複的 Platform 架構 ADR。
 
 ## Goals and User Stories
@@ -36,7 +38,7 @@ Platform 負責使用者操作與產品權限，Runtime 負責原生協定與執
 - 讓 standalone Bots 依賴 Platform；保證其他 provider 或所有 OS 已具有相同能力。
 - 本期加入 Mobile／遠端原生批准、重新設計 Work supervision，或重新包裝上游私有 helper。
 
-## Current State
+## Before implementation
 
 現有批准佇列主要以 Cats task 的 `dispatch_plan` 呈現，supervision 也以 task／binding
 記錄批准；它們尚未形成 Codex 原生請求的往返路徑。現有 Plugins 設定頁管理受管的 Cats
@@ -172,13 +174,19 @@ package 仍為 0.11.1，未 bump／publish；不能把這份候選當作同 mino
   拒絕、owner/local authentication、未知資料版本、backup failure/retry、既有 store 回歸。
 - 獨立 review 已修正 qualified provider/backend 選擇、caller kinds 交集、舊 reader 擴權、
   future backup 覆寫、原生等待 polling 的 late-finally timer、Work cancellation／歷史清單等問題。
-- Windows Terminal Codex 0.164.0 已實際呼叫工具：Chrome 回報 `Browser is not available: chrome`；
-  computer use 回報 native pipe unavailable。這是 helper/host 未就緒的操作證據，
-  不是 Cats 已完成 Chrome／桌面操作的證據。候選 Desktop／Bots 對照仍進行中。
+- 產品接線後續回歸、3 項 renderer DOM tests、各層 typecheck 及 server/host/web build
+  通過；獨立 review 驗證政策切換與原生 form 的空值／整數邊界。
+- Windows Electron candidate 使用私有 profile 和 scripted provider，完成 reload 後
+  同 execution 回覆、空值表單、terminal receipt、diagnostics 與既有對話 UI smoke。
+- Codex 0.164.0 的真實 Platform Chat dispatch、Bot core 與 Terminal 均實際呼叫工具：
+  Chrome 回報 `Browser is not available: chrome`；computer use 回報 native pipe
+  unavailable（OS error 2）。Platform effective policy verified、configured MCP 為
+  279/3/4，Bot 另外注入 4 個工具。這證明呼叫路徑與匹配觀測，沒有成功 Chrome／桌面操作。
+  詳細 scope、候選 source 差異及未驗項見 PLAN-124 和 Runtime research。
 
 ## Remaining environment validation
 
-- Runtime SPEC-039 的 schema freeze、native interaction、effective policy 及 inventory。
+- Runtime SPEC-039 的 supported fixture contract 已接線；新 native schema 仍需個別驗證。
 - 表單支援範圍、URL completion 與 provider deadline 以 Runtime P0 的 fixtures 為準。
 - Native Windows 為第一個整合驗收；其他 OS／遠端界面逐項記錄待驗，不繼承結果。
 - 接線與上游 Desktop-only helper 的重分發是不同議題；本案只規劃已安裝環境的診斷。
