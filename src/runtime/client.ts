@@ -1240,6 +1240,7 @@ export class CatsRuntimeClient implements RuntimeClient {
       throw new RuntimeRequestError(
         readRuntimeErrorText(rawBody, `Failed to resume session (${response.status})`),
         response.status,
+        readRuntimeErrorCode(rawBody),
       );
     }
 

@@ -15,7 +15,16 @@ export function withConversationBrowserIntegration(runtime: RuntimeClient, enabl
         return async (input: RuntimeSessionCreateInput) => target.createSession(await request(input));
       }
       if (key === 'resumeSession' && target.resumeSession) {
-        return async (sessionId: string, input?: RuntimeSessionResumeInput) => target.resumeSession!(sessionId, await request(input));
+        return async (sessionId: string, input?: RuntimeSessionResumeInput) => {
+          const requested = await request(input);
+          try { return await target.resumeSession!(sessionId, requested); } catch (error) {
+            // A live worker keeps its launch choice, and the setting applies at the next
+            // admission after it ends, so a changed setting resumes without it once.
+            if (requested === input || (error as { status?: number; code?: string }).status !== 409
+              || (error as { code?: string }).code !== 'interaction_conflict') throw error;
+            return target.resumeSession!(sessionId, input);
+          }
+        };
       }
       const value = Reflect.get(target, key);
       return typeof value === 'function' ? value.bind(target) : value;

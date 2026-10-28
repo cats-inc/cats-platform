@@ -52,6 +52,19 @@ test('only callers that host approval cards request Claude in Chrome, and only w
     ['create', undefined], ['create', undefined]]);
 });
 
+test('resuming a live worker started with the other setting keeps that worker instead of failing', async () => {
+  const conflict = Object.assign(new Error('Close the active worker before changing its browser integration.'), { status: 409, code: 'interaction_conflict' });
+  const calls = [];
+  const runtime = { async createSession() { return { id: 's' }; }, async resumeSession(id, input) {
+    calls.push(input?.browserIntegration); if (input?.browserIntegration) throw conflict; return { id }; } };
+  const wrapped = withConversationBrowserIntegration(runtime, async () => true);
+  assert.deepEqual(await wrapped.resumeSession('s', { interactionHost: PLATFORM_INTERACTION_HOST }), { id: 's' });
+  assert.deepEqual(calls, [true, undefined]);
+  const other = withConversationBrowserIntegration({ async createSession() { return {}; },
+    async resumeSession() { throw Object.assign(new Error('gone'), { status: 404 }); } }, async () => true);
+  await assert.rejects(other.resumeSession('s', { interactionHost: PLATFORM_INTERACTION_HOST }), /gone/);
+});
+
 function routeContext({ method = 'GET', body, remoteAddress = '127.0.0.1', role = 'owner', credentialKind = 'browser_cookie', chatStatePath }) {
   const chunks = body === undefined ? [] : [Buffer.from(typeof body === 'string' ? body : JSON.stringify(body))];
   const request = Object.assign((async function* () { yield* chunks; })(), { socket: { remoteAddress }, headers: {} });
