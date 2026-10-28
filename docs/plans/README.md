@@ -3,7 +3,7 @@
 - [PLAN-126: Desktop control session MCP](PLAN-126-desktop-control-session-mcp.md)
   — planned, 2026-10-29; contracts, observe-only helper, Platform server endpoint,
   UI and native phase A acceptance, then input tools after owner sign-off.
-  Implementation not authorized.
+  Aligned with Bots PLAN-006. Implementation not authorized.
 
 - [PLAN-125: Claude Code provider controls in Desktop](PLAN-125-claude-code-provider-controls-in-desktop.md)
   — in progress, 2026-10-28; `tool_approval`, Claude policy ceilings and a

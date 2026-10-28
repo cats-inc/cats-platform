@@ -4,8 +4,9 @@
   — accepted, 2026-10-29; Desktop host serves a session MCP that Runtime injects
   only into explicit-policy, owner-present sessions. Global switch, per-app grants,
   per-action `tool_approval`, single-window capture and a long-lived executor helper;
-  observe tools before input tools, Windows first, Bots later. SPEC-133/PLAN-126
-  written; implementation not authorized.
+  observe tools before input tools, Windows first. Amended the same day: Desktop
+  and Bots each implement it against SPEC-133's shared contract (Bots ADR-005).
+  SPEC-133/PLAN-126 written; implementation not authorized.
 - [ADR-140: Catlas curates assist content and titles through host-validated output](140-let-catlas-curate-assist-content-and-titles-through-host-validated-output.md)
   — accepted direction, 2026-10-27; Catlas titles conversations, curates greeting
   and chip catalogs and recommends grounded next actions, returning data only.

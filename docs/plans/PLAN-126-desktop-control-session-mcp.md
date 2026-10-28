@@ -4,86 +4,102 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Planned；未授權實作 |
+| Status | Planned; implementation not authorized |
 | Owner | Platform Desktop integration |
 | Assigned To | Unassigned |
-| Reviewer | Product owner、Runtime maintainers |
+| Reviewer | Product owner, Runtime maintainers |
 | Related spec | [SPEC-133](../specs/SPEC-133-desktop-control-session-mcp.md) |
 | Decision | [ADR-141](../decisions/141-host-a-consented-desktop-control-mcp-for-provider-sessions.md) |
 
 ## Overview
 
-依 ADR-141 與 SPEC-133，先交付階段 A（觀察），真機驗收通過並經 owner 確認後，
-才開始階段 B（操作）。沿用既有的 session MCP 貢獻機制、`cat-image-tools` 的
-endpoint 模式、`windows-stt` 的原生 helper 打包方式，以及 PLAN-124／PLAN-125 的
-互動卡片與能力面板，不另建平行機制。本計畫不含版本 bump 或發布。
+Following ADR-141 and SPEC-133, deliver phase A (observe) first. Phase B (act) starts only
+after native acceptance passes and the owner confirms it. Reuse the existing session MCP
+contribution mechanism, the `cat-image-tools` endpoint pattern, the `windows-stt` native
+helper packaging, and the interaction cards and capability panel from PLAN-124 and PLAN-125;
+build no parallel mechanism. Cats Bots runs its own plan,
+[Bots PLAN-006](../../../cats-bots/docs/plans/PLAN-006-desktop-control-session-mcp.md),
+against the same contract. This plan includes no version bump or release.
 
 ## Implementation Phases
 
-### P0 — 契約凍結
+### P0 — Freeze contracts
 
-- [ ] 凍結階段 A 工具的 input／output schema、錯誤代碼與給模型的說明文字。
-- [ ] 凍結 helper protocol（DC-14）與 `hello` 的版本／protocol 欄位。
-- [ ] 確認 Runtime SPEC-039 的 policy 回報中，判斷 DC-04 所需的欄位與值；記錄
-  Claude Code 與 Codex 的實際回報。
-- [ ] 定出 DC-10 排除清單的比對方式（可執行檔名稱加簽章發行者）與測試案例。
-- [ ] 確認判斷 DC-05「本機 owner 回合」所需的資訊在 send 路徑上都拿得到。
+- [ ] Freeze phase A tool input/output schemas, error codes and the wording returned to
+  the model.
+- [ ] Freeze the helper protocol (DC-14) and the `hello` version and protocol fields.
+- [ ] Confirm which fields and values of Runtime SPEC-039's policy report decide DC-04, and
+  record what Claude Code and Codex actually report.
+- [ ] Define how the DC-10 exclusion list matches (executable name plus signing publisher)
+  and its test cases.
+- [ ] Confirm that everything needed to decide a DC-05 "local owner turn" is available on
+  the send path.
+- [ ] Freeze SPEC-133's cross-implementation contract together with Bots PLAN-006 P0, so
+  both sides refer to the same version.
 
-**Exit:** schema、protocol、排除清單與注入判斷都有 fixture，owner 確認。
+**Exit:** schemas, protocol, exclusion list and injection decisions have fixtures, the
+cross-implementation contract is aligned with Bots, and the owner confirms.
 
-### P1 — Helper（觀察）
+### P1 — Helper (observe)
 
-- [ ] 建立 `desktop/native/windows-desktop-control/`，實作 `hello`、`resolve_apps`、
-  `list_windows`、`capture_window`（Windows Graphics Capture，`PrintWindow` 備援）、
-  `read_ui`、`open_app`、`state`、`cancel`。
-- [ ] 實作排除清單、UIPI 檢查、per-monitor DPI v2、鎖定偵測（DC-13）。
-- [ ] 接入 `build-desktop-installer.mjs`、簽章與 `verify-desktop-licenses.mjs`。
-- [ ] Helper 自身的測試：解析、排除、protocol 錯誤、遮擋視窗的擷取（A4）。
+- [ ] Create `desktop/native/windows-desktop-control/` and implement `hello`,
+  `resolve_apps`, `list_windows`, `capture_window` (Windows Graphics Capture with a
+  `PrintWindow` fallback), `read_ui`, `open_app`, `state` and `cancel`.
+- [ ] Implement the exclusion list, UIPI checks, per-monitor DPI awareness v2 and lock
+  detection (DC-13).
+- [ ] Wire it into `build-desktop-installer.mjs`, signing and `verify-desktop-licenses.mjs`.
+- [ ] Helper tests: resolution, exclusions, protocol errors and capture under a covering
+  window (A4).
 
-**Exit:** helper 單獨在 Windows 上通過 A4 與 A6 的 helper 部分。
+**Exit:** the helper alone passes A4 and the helper part of A6 on Windows.
 
 ### P2 — Platform server
 
-- [ ] 全域設定與每對話開關（DC-02、DC-03）。
-- [ ] Helper supervisor：延遲啟動、閒置結束、崩潰重啟上限（DC-16）。
-- [ ] `/api/internal/desktop-control/mcp` endpoint 與 `isInternalPlatformRoute`（DC-07）。
-- [ ] `cats-desktop` contributor 與 `sessionMcpServerName` 的 `desktop` 分支；注入與回合
-  判斷（DC-04、DC-05）。
-- [ ] 授權請求與記憶體授權表（DC-08、DC-09）。
-- [ ] 記錄去敏感（DC-17）。
-- [ ] 以 fake helper 測試 A1～A3、A8 的後端部分。
+- [ ] Global setting and per-conversation switch (DC-02, DC-03).
+- [ ] Helper supervisor: lazy start, idle exit and crash restart limit (DC-16).
+- [ ] The `/api/internal/desktop-control/mcp` endpoint and `isInternalPlatformRoute` (DC-07).
+- [ ] The `cats-desktop` contributor and the `desktop` branch of `sessionMcpServerName`;
+  injection and turn decisions (DC-04, DC-05).
+- [ ] Grant requests and the in-memory grant table (DC-08, DC-09).
+- [ ] Log redaction (DC-17).
+- [ ] Backend parts of A1–A3 and A8 tested with a fake helper.
 
-**Exit:** 後端測試通過；ingress 無法存取 endpoint 的測試通過。
+**Exit:** backend tests pass, including a test that ingress cannot reach the endpoint.
 
-### P3 — Renderer 與 Desktop host
+### P3 — Renderer and Desktop host
 
-- [ ] 設定頁開關與不可用原因。
-- [ ] 對話內的啟用開關與授權卡；授權卡不與 provider 互動卡共用回覆路徑。
-- [ ] 能力面板的「Cats 桌面控制」列（DC-18）。
-- [ ] Desktop host 傳入 `CATS_DESKTOP_CONTROL_HELPER`；系統匣狀態與停止選項（DC-12）。
+- [ ] Settings switch and the reason when unavailable.
+- [ ] The per-conversation switch and grant cards; grant cards do not share a reply path
+  with provider interaction cards.
+- [ ] The "Cats desktop control" row in the capability panel (DC-18).
+- [ ] The Desktop host passes `CATS_DESKTOP_CONTROL_HELPER`; tray state and the stop item
+  (DC-12).
 
-**Exit:** UI 測試與 isolated Desktop smoke 通過。
+**Exit:** UI tests and an isolated Desktop smoke test pass.
 
-### P4 — 階段 A 真機驗收
+### P4 — Phase A native acceptance
 
-- [ ] 在 Windows 真機上以真實 Claude Code 跑 A1～A6、A8；Codex 確認 image content（Open Questions）。
-- [ ] 記錄 Defender 結果、實際截圖與 UIA 輸出的樣本（去敏感），以及未通過的項目。
+- [ ] Run A1–A6 and A8 on a real Windows machine with a real Claude Code; for Codex, check
+  image content (Open Questions).
+- [ ] Record the Defender result, redacted samples of real screenshots and UIA output, and
+  any items that did not pass.
 
-**Exit:** owner 確認階段 A 的同意介面可用，並授權開始階段 B。
+**Exit:** the owner confirms phase A's consent flow is usable and authorizes phase B.
 
-### P5 — 階段 B（操作）
+### P5 — Phase B (act)
 
-- [ ] Helper 加入 `click`、`invoke`、`type`、`key`、`scroll`、`clipboard_read`、
-  `clipboard_write`，移植 PR #336 的防護。
-- [ ] Owner 正在操作時暫停、控制中狀態與置頂提示（DC-11）。
-- [ ] 對應的 MCP 工具與防護 fixture；用一次性測試視窗的真機驗收（A7）。
+- [ ] Add `click`, `invoke`, `type`, `key`, `scroll`, `clipboard_read` and
+  `clipboard_write` to the helper, porting the PR #336 guards.
+- [ ] Pause while the owner is operating, hold state and the topmost notice (DC-11).
+- [ ] The matching MCP tools and guard fixtures; native acceptance against a throwaway test
+  window (A7).
 
-**Exit:** A7 通過並記錄；未通過的項目照實寫明。
+**Exit:** A7 passes and is recorded; anything that did not pass is stated as such.
 
 ## Validation
 
-依 [AGENTS.md: Local Validation Scope](../../AGENTS.md#local-validation-scope) 執行，
-每個 slice 記錄實際跑過的檢查與結果；完整 CI 仍是合併前的閘門。真機驗收與
-fixture 測試證明的東西不同，報告時分開寫。
+Follow [AGENTS.md: Local Validation Scope](../../AGENTS.md#local-validation-scope) and record
+the checks each slice actually ran and their results; full CI remains the gate before merge.
+Native acceptance and fixture tests prove different things, so report them separately.
 
 *Created: 2026-10-29. Planned; implementation not authorized.*

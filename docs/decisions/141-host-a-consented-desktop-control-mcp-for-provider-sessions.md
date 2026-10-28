@@ -2,44 +2,53 @@
 
 ## Status
 
-Accepted — 2026-10-29。Owner 接受此方向；實作需另行授權。
-規格：[SPEC-133](../specs/SPEC-133-desktop-control-session-mcp.md)。
-計畫：[PLAN-126](../plans/PLAN-126-desktop-control-session-mcp.md)。
+Accepted — 2026-10-29. The owner accepted this direction; implementation is not yet
+authorized. Spec: [SPEC-133](../specs/SPEC-133-desktop-control-session-mcp.md).
+Plan: [PLAN-126](../plans/PLAN-126-desktop-control-session-mcp.md).
 
-實作落點：本文的「Desktop host」包含 Desktop 管理的 Platform server。MCP endpoint
-位於 Platform server 的 internal listener（比照 `cat-image-tools`），executor helper 由
-Platform server 以 Desktop host 提供的路徑啟動；細節見 SPEC-133。
+Amended the same day: the owner wants desktop control in both Cats Desktop and Cats
+Bots, implemented separately in each, with no shared package (§2). The Bots decision is
+[Bots ADR-005](../../../cats-bots/docs/decisions/005-give-the-bot-owner-consented-desktop-control.md).
+
+Placement: "Desktop host" in this ADR includes the Desktop-managed Platform server. The
+MCP endpoint sits on the Platform server's internal listener, like `cat-image-tools`, and
+the Platform server starts the executor helper from a path the Desktop host provides.
+SPEC-133 has the details.
 
 ## Context
 
-Owner 想讓 Cats 起的 agent 能像 hosted computer use 一樣，看見並操作使用者電腦上的
-原生 app。目前的狀況：
+The owner wants agents that Cats starts to see and operate the owner's native apps, the
+way hosted computer use does. Today:
 
-- **Provider 原生的 computer use 在這裡用不到。** Runtime 在本機啟動 Claude Code
-  2.1.312。Windows 上 Claude Code 的 computer use 走雲端 session 加上 desktop app 的
-  `remote-devices` bridge，需要伺服器注入的 session id；本機啟動不符合任何一個
-  啟用條件（[Runtime 研究](../../../cats-runtime/docs/research/2026-10-28-claude-computer-use-remote-devices-gate.md)）。
-  Codex 的桌面 helper 在 Runtime 託管的 session 裡也沒有可用證據
-  （[Codex 研究](../../../cats-runtime/docs/research/2026-10-28-codex-host-capability-gaps.md)）。
-  SPEC-039 因此把 Claude 的 computer use 回報為 `unavailable`。
-- **開發者 skill 已經證明作業系統介面夠用。** `desktop-ui-automation` 用
-  UI Automation、`CopyFromScreen`、`SendInput` 讀取和操作視窗；
-  [PR #336](https://github.com/cats-inc/cats-platform/pull/336) 補上有防護的
-  點擊與剪貼簿。但它是 agent 自己跑 PowerShell：每個動作在核准畫面上都是一段
-  shell 指令，防護也能被 agent 改寫指令繞過，而且只有能跑 shell 的 CLI 用得到。
-- **交付與核准的管道已經存在。** Runtime SPEC-035 讓 host 自己跑 loopback HTTP MCP
-  server，再把描述交給 Runtime 注入 CLI；Platform 已用這個方式交付 Cat 工具
-  （[ADR-136](136-share-controlled-image-capabilities-between-cats-and-studio.md) §8）。
-  SPEC-039 的 Claude 對應規則寫明：
-  「Session MCP tools are pre-approved only without a policy or with explicit
-  `never`.」有明確 policy 時，每次 MCP 工具呼叫都會變成 `tool_approval`，經由
-  Platform 的互動引擎（[PLAN-124](../plans/PLAN-124-provider-session-interactions-and-capability-visibility.md)）問使用者。
+- **Provider-native computer use is out of reach.** Runtime launches Claude Code 2.1.312
+  as a local process. On Windows, Claude Code's computer use goes through a remote
+  session plus the desktop app's `remote-devices` bridge, which needs a server-injected
+  session id; a local launch meets none of its enabling conditions
+  ([Runtime research](../../../cats-runtime/docs/research/2026-10-28-claude-computer-use-remote-devices-gate.md)).
+  There is no evidence that Codex's desktop helper works in Runtime-hosted sessions
+  either ([Codex research](../../../cats-runtime/docs/research/2026-10-28-codex-host-capability-gaps.md)).
+  SPEC-039 therefore reports Claude's computer use as `unavailable`.
+- **The developer skill shows the OS interfaces are enough.** `desktop-ui-automation`
+  reads and operates windows through UI Automation, `CopyFromScreen` and `SendInput`;
+  [PR #336](https://github.com/cats-inc/cats-platform/pull/336) added a guarded click and
+  clipboard. But the agent runs the PowerShell itself: every action shows up as a shell
+  command on the approval screen, the agent can rewrite the command to skip a guard, and
+  only CLIs with a shell can use it.
+- **Delivery and approval paths already exist.** Runtime SPEC-035 lets a host run its own
+  loopback HTTP MCP server and hand Runtime a descriptor to inject into the CLI. Platform
+  already delivers Cat tools this way
+  ([ADR-136](136-share-controlled-image-capabilities-between-cats-and-studio.md) §8).
+  SPEC-039's Claude mapping states: "Session MCP tools are pre-approved only without a
+  policy or with explicit `never`." With an explicit policy, every MCP tool call becomes a
+  `tool_approval` that Platform's interaction engine asks the owner about
+  ([PLAN-124](../plans/PLAN-124-provider-session-interactions-and-capability-visibility.md)).
 
-缺的是一個由 Cats 自己提供、能跨 CLI 使用、而且同意流程完整的桌面控制能力。
+What is missing is a Cats-owned desktop control capability that works across CLIs and has a
+complete consent flow.
 
 ## Decision
 
-### 1. Desktop host 提供 session MCP，Runtime 只負責注入
+### 1. The host serves a session MCP; Runtime only injects it
 
 ```mermaid
 flowchart LR
@@ -50,114 +59,146 @@ flowchart LR
   Server -->|tool_approval via SPEC-039| Owner["Owner in Desktop UI"]
 ```
 
-Desktop host 以 SPEC-035 的 `mcpServers` 描述（`transport: 'http'`、loopback URL、
-bearer token）交給 Runtime 注入。Runtime 不 host 這個 server：Runtime 可能經由 peer
-路由或在其他機器執行，由它 host 會操作到錯誤的桌面。Executor 必須以使用者身分、
-不提權，跑在使用者的互動桌面（`WinSta0\Default`）上；Desktop host 本來就符合。
+The Desktop host hands Runtime a SPEC-035 `mcpServers` descriptor (`transport: 'http'`,
+loopback URL, bearer token) to inject. Runtime does not host this server: Runtime can be
+peer-routed or run on another machine, and a Runtime-hosted server would then operate the
+wrong desktop. The executor must run as the user, unelevated, on the user's interactive
+desktop (`WinSta0\Default`); the Desktop host already does.
 
-### 2. 第一個消費者只有 Desktop
+### 2. Desktop and Bots implement it separately against one contract
 
-本 ADR 只決定 Desktop。Bots 是另一個獨立消費者，要在 cats-bots 另立 ADR 採用。
-Executor 與工具定義不引用 Platform 專屬模組，等 Bots 真的採用時再抽成共用套件，
-落點屆時決定；遵循 ADR-136「兩個實際消費者才抽取」的原則，不預先放進 Runtime。
+Cats Desktop and Cats Bots both provide desktop control. Each implements its own MCP
+server and native helper, with no shared package: Bots depend only on Runtime, not on
+Platform (SPEC-132), and the owner chose not to put OS automation into Runtime or a new
+repository.
 
-### 3. 只注入符合條件的 session
+To keep the two implementations from drifting, the "Cross-implementation contract" in
+[SPEC-133](../specs/SPEC-133-desktop-control-session-mcp.md) is the common baseline: the
+server name, tool names and schemas, error codes, exclusion categories, and the injection,
+turn, grant and stop rules. The Bots SPEC refers to that contract; a change to it updates
+both SPECs. Settings, grant UI, indicators and packaging follow each repository's own
+surfaces.
 
-同時符合以下條件才注入：
+### 3. Inject only into qualifying sessions
 
-- 使用者在 Desktop 設定中開啟桌面控制（預設關閉），並對該對話啟用。
-- Session 套用明確的 `on-request` 或 `untrusted` policy，並協商了互動 host。
-  `skip`、`never` 或沒有 policy 的 session 一律不注入，因為它們的 session MCP
-  工具會被預先核准。
-- 回合是 owner 在本機 Desktop 發起的。遠端入口（[ADR-139](139-manage-one-desktop-remote-ingress.md)）
-  與 life loop 心跳（[ADR-127](127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md)）
-  發起的回合在第一階段不注入。
+All of these must hold:
 
-### 4. 三層同意，加上不受授權影響的排除
+- The owner has turned desktop control on in Desktop settings (off by default) and enabled
+  it for the conversation.
+- The session runs an explicit `on-request` or `untrusted` policy with a negotiated
+  interaction host. Sessions with `skip`, `never` or no policy are never injected, because
+  their session MCP tools would be pre-approved.
+- The owner started the turn locally in Desktop. Turns started through remote ingress
+  ([ADR-139](139-manage-one-desktop-remote-ingress.md)) or by a life loop heartbeat
+  ([ADR-127](127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md)) are not
+  injected in the first phase.
 
-- **全域開關**：預設關閉。
-- **逐 app 授權**：以可執行檔身分（路徑加簽章發行者）識別，不用視窗標題；標題會
-  依語系改變，也可能重複。授權只在該 session 有效。觀察類工具同樣需要授權。
-- **逐次核准**：輸入類工具每次都走 `tool_approval`。只有在 provider 提供
-  `addRules` 建議時，才能選「本 session 內允許」；永久規則不轉送（SPEC-039）。
+### 4. Three layers of consent, plus exclusions no grant can lift
 
-以下限制由 executor 強制，授權也無法解除：
+- **Global switch**: off by default.
+- **Per-app grant**: identified by executable identity (path plus signing publisher), not
+  window title, since titles are localized and can repeat. A grant lasts only for that
+  session. Observation tools need the grant too.
+- **Per-action approval**: every input tool goes through `tool_approval`. "Allow for this
+  session" is offered only when the provider suggests `addRules`; persistent rules are
+  never forwarded (SPEC-039).
 
-- Cats Desktop 自己的視窗：agent 不能點自己的核准對話框。
-- UI Automation 標記為 `IsPassword` 的欄位：不輸入。
-- UAC 與安全桌面：一般輸入本來就做不到，也不嘗試繞過。
-- 終端機與 IDE：只能觀察。對它們輸入等於取得 shell，shell 已有 `command_approval`。
-- 瀏覽器：只能觀察。網頁操作用既有的 browser integration（`--chrome`）。
+The executor enforces these regardless of grants:
 
-### 5. 只擷取已授權的視窗
+- Cats Desktop's own windows: an agent must never click its own approval dialog.
+- Elements UI Automation marks `IsPassword`: no input.
+- UAC and the secure desktop: ordinary input cannot reach them, and nothing tries to
+  work around that.
+- Terminals and IDEs: observe only. Typing into them is a shell by proxy, and shell
+  commands already have `command_approval`.
+- Browsers: observe only. Web work uses the existing browser integration (`--chrome`).
 
-截圖使用 Windows Graphics Capture 或 `PrintWindow` 這類「擷取單一視窗」的介面。
-Skill 以視窗範圍做 `CopyFromScreen`，會把疊在上面的其他視窗一起拍進去；產品不能這樣
-做。因此不需要像 Claude 那樣在操作期間隱藏其他視窗，使用者可以繼續用電腦。
-截圖只送給該 session 的 provider，Platform 預設不保存。
+### 5. Capture only the granted window
 
-### 6. Owner 必須在場，隨時能停止
+Screenshots use a single-window capture API such as Windows Graphics Capture or
+`PrintWindow`. The skill's `CopyFromScreen` over the window's bounds also captures any
+window lying on top of it; the product must not do that. With single-window capture there
+is no need to hide other windows during control, as Claude does, and the owner can keep
+using the computer. Screenshots go only to that session's provider, and Platform does not
+store them by default.
 
-- Session 持有桌面控制時，Desktop 顯示常駐提示（系統匣狀態與畫面提示）與停止鍵。
-  停止會立即撤銷該 session 的授權，並中止進行中的動作。
-- 螢幕鎖定時暫停。偵測到 owner 在 N 秒內有鍵盤或滑鼠輸入時（`GetLastInputInfo`），
-  輸入類動作暫停並回報，不搶焦點；N 由 SPEC 決定。
+### 6. The owner must be present and able to stop at any time
 
-### 7. Executor 是常駐 helper，不是每次啟動 PowerShell
+- While a session holds desktop control, Desktop shows a persistent indicator (tray state
+  and an on-screen notice) with a stop control. Stopping immediately revokes that session's
+  grants and aborts the action in progress.
+- Actions pause while the screen is locked. When `GetLastInputInfo` shows owner keyboard or
+  mouse input within N seconds, input actions pause and report it instead of competing for
+  focus; SPEC-133 sets N.
 
-Executor 是 Desktop host 管理的常駐 helper 程序，透過 stdio 傳 JSON。不採用每個
-動作啟動一次 PowerShell：每次都要重新編譯 `Add-Type`，延遲高；而且 agent 啟動的
-PowerShell 曾被 Defender 攔截（skill 的 Windows reference 記錄的 Junie 事件）。
-PR #336 的 C# 防護邏輯是起點：截圖綁定、視窗未移動、未被遮蔽、游標落點驗證、
-按鍵狀態檢查。實作語言與簽章由 SPEC 決定。
+### 7. The executor is a long-lived helper, not PowerShell per action
 
-### 8. 工具分兩階段
+The executor is a long-lived helper process managed by the Desktop host, speaking JSON over
+stdio. Starting PowerShell for every action is rejected: each start recompiles `Add-Type`,
+which adds latency, and Defender has flagged agent-launched PowerShell before (the Junie
+incident recorded in the skill's Windows reference). The C# guard logic from PR #336 is the
+starting point: snapshot binding, an unmoved window, no covering window, cursor landing
+verification and held-key checks. The implementation language and signing are SPEC scope.
 
-- **A 觀察**：`list_windows`、`screenshot_window`、`read_ui`（UI Automation 名稱、狀態、文字）。
-- **B 操作**：`click`、`type_text`、`key`、`scroll`、剪貼簿讀寫、`invoke_element`（UIA pattern）。
+### 8. Two tool phases
 
-A 的同意介面要先在真實桌面上跑過並通過驗收，B 才開始實作。第一階段只做 Windows，
-其他作業系統另行決定。
+- **A, observe**: `list_windows`, `screenshot_window`, `read_ui` (UI Automation names,
+  states and text).
+- **B, act**: `click`, `type_text`, `key`, `scroll`, clipboard read and write,
+  `invoke_element` (UIA patterns).
 
-### 9. 能力回報分開
+Phase B is implemented only after phase A's consent flow has run on a real desktop and
+passed acceptance. The first phase covers Windows only; other operating systems are a
+separate decision.
 
-Runtime 的 computer use 欄位維持 provider 原生的狀態（Claude on Windows 為
-`unavailable`）。Cats 桌面控制在 SPEC-039 中是 `session-injected` 的 MCP server，
-Platform 在能力面板上將它列為 Cats 自己的能力，與 provider 原生能力分開。本 ADR
-不要求 Runtime 改變欄位定義。
+### 9. Report capabilities separately
+
+Runtime's computer use field keeps the provider-native state (`unavailable` for Claude on
+Windows). In SPEC-039 terms, Cats desktop control is a `session-injected` MCP server, and
+Platform lists it in the capability panel as a Cats capability, separate from provider-native
+ones. This ADR asks Runtime for no change to the field's definition.
 
 ## Consequences
 
 ### Positive
 
-- 任何支援 session MCP 的 CLI 都能用同一套能力，不受 provider 原生功能限制。
-- 核准畫面顯示有意義的動作（哪個 app、哪個位置、輸入什麼），不是 PowerShell 指令。
-- 防護在 executor 內強制，agent 無法繞過。
-- 單一視窗擷取，不打斷使用者，也不外洩未授權的視窗。
+- Every CLI that supports session MCP gets the same capability, independent of provider
+  features.
+- Approval screens show meaningful actions (which app, where, what text), not PowerShell.
+- Guards are enforced inside the executor, so the agent cannot bypass them.
+- Single-window capture neither interrupts the owner nor leaks ungranted windows.
 
 ### Negative
 
-- Desktop 多一個常駐 helper，需要打包、簽章與防毒相容驗證。
-- 需要新的設定、授權、提示與停止介面，以及對應的狀態管理。
-- 逐次核准讓多步驟操作變慢；「本 session 內允許」的範圍要謹慎設計。
-- 自繪介面或 UIA 資訊很少的 app，只能靠截圖和座標，可靠度較低。
+- Desktop gains a long-lived helper that needs packaging, signing and antivirus checks.
+- New settings, grant, indicator and stop UI, with the state behind them.
+- Per-action approval slows multi-step work; the scope of "allow for this session" needs
+  care.
+- Custom-drawn apps or apps with little UIA information rely on screenshots and
+  coordinates, which is less reliable.
+- Two implementations: the native helper is built, signed and maintained twice, and
+  contract changes must land on both sides.
 
 ### Neutral
 
-- 開發者 skill 繼續作為驗收與除錯工具，不交付給產品 session。
-- Bots 要用時另立 ADR；屆時抽取共用套件。
-- Provider 日後若在本機開放原生 computer use，兩者並存，由 owner 選用。
+- The developer skill remains an acceptance and debugging tool and is not delivered to
+  product sessions.
+- Bots decide their own settings, grant and stop surfaces, as long as they meet the shared
+  contract.
+- If a provider later offers native computer use to local sessions, both can coexist and
+  the owner chooses.
 
 ## Alternatives Considered
 
-| 方案 | 評估 |
+| Alternative | Assessment |
 | --- | --- |
-| 把 skill 交付進 session（runtime-skills） | 核准畫面是原始 PowerShell，防護可被改寫，只有能跑 shell 的 CLI 能用 |
-| 依賴 provider 原生 computer use | Windows 上本機啟動的 Claude Code 與 Codex 都拿不到（見兩份 Runtime 研究） |
-| 由 Runtime host 這個 MCP | Runtime 可能經 peer 路由或在遠端，會操作到錯誤的桌面；也不符合 SPEC-035 的分工 |
-| 每個動作啟動一次 PowerShell | 編譯延遲高，且曾被 Defender 攔截 |
-| 全螢幕截圖並隱藏其他視窗 | 打斷使用者；單一視窗擷取可以達到相同的隱私目的 |
-| 採用第三方 Windows MCP server | 同意模型與 SPEC-039 互動不相容，且增加供應鏈風險 |
+| Deliver the skill into sessions (runtime-skills) | Approvals show raw PowerShell, guards can be rewritten, and only CLIs with a shell can use it |
+| Rely on provider-native computer use | Locally launched Claude Code and Codex on Windows cannot reach it (see both Runtime research notes) |
+| Let Runtime host this MCP | Runtime may be peer-routed or remote and would operate the wrong desktop; it also breaks SPEC-035's division of work |
+| Start PowerShell for each action | High compile latency, and Defender has flagged it before |
+| Full-screen capture while hiding other windows | Interrupts the owner; single-window capture meets the same privacy goal |
+| Adopt a third-party Windows MCP server | Its consent model does not fit SPEC-039 interactions, and it adds supply-chain risk |
+| Share one package (in Runtime or a new repository) | Avoids duplicate work; on 2026-10-29 the owner chose separate implementations held together by the shared contract |
 
 ## References
 
@@ -173,7 +214,9 @@ Platform 在能力面板上將它列為 Cats 自己的能力，與 provider 原�
 - [ADR-139: Desktop remote ingress](139-manage-one-desktop-remote-ingress.md)
 - [ADR-127: Companion life loop](127-keep-companion-cats-alive-with-a-platform-owned-life-loop.md)
 - [Bots PLAN-004: Provider interactions](../../../cats-bots/docs/plans/PLAN-004-provider-interactions-and-tool-visibility.md)
+- [Bots ADR-005: Owner-consented desktop control](../../../cats-bots/docs/decisions/005-give-the-bot-owner-consented-desktop-control.md) /
+  [SPEC-006](../../../cats-bots/docs/specs/SPEC-006-desktop-control-session-mcp.md)
 - [desktop-ui-automation skill](../../skills/desktop-ui-automation/SKILL.md) /
   [PR #336](https://github.com/cats-inc/cats-platform/pull/336)
 
-*Proposed / accepted: 2026-10-29. Implementation not yet authorized.*
+*Proposed and accepted: 2026-10-29. Implementation not yet authorized.*

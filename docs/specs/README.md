@@ -4,7 +4,8 @@
   — draft, 2026-10-29; `cats-desktop` session MCP on Platform's internal listener
   with a native Windows helper. Injection gates, owner app-grant cards, exclusions,
   single-window capture, observe tools (phase A) before input tools (phase B).
-  ADR-141; implementation not authorized.
+  Its cross-implementation contract also binds Bots SPEC-006. ADR-141;
+  implementation not authorized.
 
 - [SPEC-132: Provider session interactions and capability visibility](SPEC-132-provider-session-interactions-and-capability-visibility.md)
   — approved, 2026-10-28; shared native request UI, effective permissions and live
