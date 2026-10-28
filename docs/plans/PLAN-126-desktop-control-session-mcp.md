@@ -140,8 +140,19 @@ the owner's Desktop check. The native helper check (A4 with pixel counts) is rec
 
 ### P5 — Phase B (act)
 
-- [ ] Add `click`, `invoke`, `type`, `key`, `scroll`, `clipboard_read` and
-  `clipboard_write` to the helper, porting the PR #336 guards.
+- [x] Add `click`, `invoke`, `type`, `key`, `scroll`, `clipboard_read` and
+  `clipboard_write` to the helper, porting the PR #336 guards. The owner authorized phase B on
+  2026-10-29. The helper rules are recorded under SPEC-133 "Phase B helper rules".
+  `native-check/input-check.mjs` passed 13/13 on Windows 11, sending input only to its own
+  probe app (`native-check/probe/`) and only after 5 quiet seconds from the owner:
+  - The button click, checkbox toggle and button invoke all landed.
+  - `type_text` typed "hello cats 喵", and Enter and the wheel registered.
+  - Typing and pasting into the password box returned `password_field`; a covered point
+    returned `covered`, a moved window `window_changed`, and an observe-only app `observe_only`.
+  - `cancel` stopped a 2000-character `type` after 112 characters.
+
+  Defender recorded no detection, and the observe-only `check.mjs` still passed 13/13. The
+  clipboard was not exercised natively, so the owner's clipboard is not overwritten.
 - [ ] Pause while the owner is operating, hold state and the topmost notice (DC-11).
 - [ ] The matching MCP tools and guard fixtures; native acceptance against a throwaway test
   window (A7).
