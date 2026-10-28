@@ -7,7 +7,7 @@ import { createDesktopControlService, DESKTOP_CONTROL_MCP_PATH } from '../build/
 import { createDesktopControlHelperClient } from '../build/server/platform/desktopControl/helper.js';
 import { evaluateDesktopControlPolicy } from '../build/server/platform/desktopControl/policy.js';
 import { resolveDesktopControlTurn } from '../build/server/platform/desktopControl/server.js';
-import { isLocalOwnerRequest } from '../build/server/platform/desktopControl/routes.js';
+import { isLocalOwnerRequest, routeDesktopControlHost } from '../build/server/platform/desktopControl/routes.js';
 import { isInternalPlatformRoute } from '../build/server/platform/apps/ingressBoundary.js';
 
 const NOTEPAD = 'C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad\\Notepad\\Notepad.exe';
@@ -24,6 +24,7 @@ function snapshot({ approval = 'on-request', status = 'verified', source = 'expl
 /** A fake helper: answers protocol 1 requests from a script; `windows` and `locked` are mutable. */
 function fakeHelper(world) {
   const calls = [];
+  const requests = [];
   const spawn = () => {
     const stdout = new PassThrough();
     const process = new EventEmitter();
@@ -32,23 +33,30 @@ function fakeHelper(world) {
     process.stdin = { end() {}, write(line) {
       const { id, op, params } = JSON.parse(line);
       calls.push(op);
+      requests.push({ op, params });
       const reply = (result) => stdout.write(`${JSON.stringify({ id, ok: true, result })}\n`);
       const fail = (code) => stdout.write(`${JSON.stringify({ id, ok: false, error: { code, message: code } })}\n`);
       if (world.crashOn === op) { process.emit('exit', 1); return true; }
       if (op === 'hello') reply({ protocol: world.protocol ?? 1, version: '1.0.0', platform: 'win32', dpiAwareness: 'per_monitor_v2' });
-      else if (op === 'state') reply({ locked: world.locked === true, idleMs: 9000 });
+      else if (op === 'state') reply({ locked: world.locked === true, idleMs: 9000, operatorIdleMs: world.operatorIdleMs ?? 9000 });
       else if (op === 'resolve_apps') reply({ matches: params.queries.map((query) => ({ query, candidates: world.apps[query] ?? [] })) });
       else if (op === 'list_windows') reply({ windows: world.windows.filter((w) => params.paths.includes(w.path)) });
-      else if (op === 'capture_window') reply({ pngBase64: 'iVBORw0KGgo=', width: 100, height: 50, scale: 0.5, bounds: {} });
-      else if (op === 'read_ui') reply({ nodes: [{ elementId: 'e0', parentId: null, role: 'window', name: 'Notepad', value: null },
+      else if (op === 'capture_window') reply({ pngBase64: 'iVBORw0KGgo=', width: 100, height: 50, scale: 0.5,
+        bounds: { x: 100, y: 200, width: 200, height: 100 } });
+      else if (op === 'read_ui') reply({ readId: 5, nodes: [{ elementId: 'e0', parentId: null, role: 'window', name: 'Notepad', value: null },
         { elementId: 'e1', parentId: 'e0', role: 'edit', name: 'Text', value: 'hello' }], truncated: false });
       else if (op === 'open_app') reply({ pid: 42 });
+      else if (world.fail?.[op]) fail(world.fail[op]);
+      else if (['click', 'scroll', 'type', 'key', 'invoke'].includes(op)) reply({ done: true });
+      else if (op === 'clipboard_read') reply({ text: world.clipboard ?? null });
+      else if (op === 'clipboard_write') { world.clipboard = params.text; reply({ done: true }); }
+      else if (op === 'cancel') reply({ cancelled: true });
       else fail('invalid_request');
       return true;
     } };
     return process;
   };
-  return { calls, spawn };
+  return { calls, requests, spawn };
 }
 
 async function fixture(t, overrides = {}) {
@@ -59,7 +67,9 @@ async function fixture(t, overrides = {}) {
   cats: [{ path: 'C:\\Cats\\Cats.exe', publisher: null, productName: 'Cats', displayName: 'Cats', running: true,
     category: 'excluded', aumid: null }] },
   windows: [{ hwnd: 7, pid: 1, path: NOTEPAD, title: 'Untitled - Notepad', bounds: { x: 0, y: 0, width: 800, height: 600 },
-    minimized: false, foreground: true }], ...overrides.world };
+    minimized: false, foreground: true }, { hwnd: 9, pid: 2, path: 'C:\\Windows\\powershell.exe', title: 'PowerShell',
+    bounds: { x: 0, y: 0, width: 400, height: 300 }, minimized: false, foreground: false }], ...overrides.world };
+  const clock = { now: Date.now() };
   const helperFake = fakeHelper(world);
   const settings = { enabled: true, conversations: ['channel-1'], ...overrides.settings };
   let endpoint;
@@ -74,6 +84,7 @@ async function fixture(t, overrides = {}) {
       ? { channelId: input.context.metadata.channelId, ownerPresent: input.context.metadata.owner === true } : null,
     capabilities: async () => overrides.snapshot ?? snapshot(),
     grantWaitMs: 300,
+    now: () => clock.now,
   });
   const server = createServer((req, res) => { void service.route(req, res).then((handled) => { if (!handled) res.writeHead(404).end(); }); });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -94,7 +105,14 @@ async function fixture(t, overrides = {}) {
     headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }) })).json()).result;
   const send = (meta, during) => { if (during) turns.push(during); return client.sendMessage('session-1', 'hi', { context: { metadata: meta } }); };
-  return { service, settings, world, helperFake, sent, call, send };
+  /** Asks for an app and allows it the way the owner would in Cats. */
+  const grant = async (token, query) => {
+    const pending = call(token, 'request_app_access', { apps: [query], reason: 'Test' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    for (const request of (await service.state('channel-1')).conversation.pendingRequests) service.decideGrant(request.requestId, 'allow');
+    return (await pending).structuredContent.results[0].app.appId;
+  };
+  return { service, settings, world, helperFake, sent, call, send, grant, clock };
 }
 
 test('DC-04 policy gate passes only explicit interactive approval and fails closed', () => {
@@ -253,4 +271,96 @@ test('the helper client restarts after a crash and stops after repeated crashes'
     spawn: fakeHelper({ protocol: 2, apps: {}, windows: [] }).spawn });
   await assert.rejects(mismatched.call('state'), (error) => error.code === 'unavailable');
   client.close();
+});
+
+test('phase B tools convert coordinates, keep the guards and hold control until the turn ends', async (t) => {
+  const f = await fixture(t);
+  const sent = (op) => f.helperFake.requests.filter((row) => row.op === op).at(-1)?.params;
+  const code = (result) => result.structuredContent.error?.code;
+  await f.send({ channelId: 'channel-1', owner: true }, async (token) => {
+    await f.grant(token, '記事本');
+    await f.grant(token, 'powershell');
+    const windows = (await f.call(token, 'list_windows')).structuredContent.windows;
+    const notepad = windows.find((row) => row.title === 'Untitled - Notepad').windowId;
+    const shell = windows.find((row) => row.title === 'PowerShell').windowId;
+    const { snapshotId } = (await f.call(token, 'screenshot_window', { windowId: notepad })).structuredContent;
+
+    assert.equal((await f.service.state('channel-1')).conversation.status, 'active_turn');
+    assert.deepEqual((await f.call(token, 'click', { snapshotId, x: 10, y: 20 })).structuredContent, { done: true });
+    assert.deepEqual(sent('click'), { hwnd: 7, bounds: { x: 100, y: 200, width: 200, height: 100 }, x: 120, y: 240, button: 'left', count: 1 },
+      'image pixels become screen pixels through the snapshot scale, with the capture-time bounds');
+    assert.equal((await f.service.state('channel-1')).conversation.status, 'holding');
+    assert.deepEqual(f.service.hostState(), { holding: [{ channelId: 'channel-1', app: '記事本' }] });
+
+    assert.equal(code(await f.call(token, 'click', { snapshotId, x: 100, y: 0 })), 'stale_snapshot', 'a point outside the image');
+    assert.equal(code(await f.call(token, 'click', { snapshotId: 'snap_unknown', x: 1, y: 1 })), 'stale_snapshot');
+    await f.call(token, 'scroll', { snapshotId, x: 0, y: 0, direction: 'down', amount: 3 });
+    assert.deepEqual(sent('scroll'), { hwnd: 7, bounds: { x: 100, y: 200, width: 200, height: 100 }, x: 100, y: 200, direction: 'down', amount: 3 });
+    f.clock.now += 61_000;
+    assert.equal(code(await f.call(token, 'click', { snapshotId, x: 1, y: 1 })), 'stale_snapshot', 'older than 60 seconds');
+
+    const ui = (await f.call(token, 'read_ui', { windowId: notepad })).structuredContent;
+    await f.call(token, 'invoke_element', { elementId: ui.nodes[1].elementId, action: 'toggle' });
+    assert.deepEqual(sent('invoke'), { hwnd: 7, readId: 5, elementId: 'e1', action: 'toggle' }, 'element ids resolve to the helper read');
+    assert.equal(code(await f.call(token, 'invoke_element', { elementId: 'ui99.e1', action: 'invoke' })), 'window_changed');
+
+    await f.call(token, 'type_text', { windowId: notepad, text: 'hello 喵' });
+    assert.deepEqual(sent('type'), { hwnd: 7, text: 'hello 喵' });
+    assert.equal(code(await f.call(token, 'type_text', { windowId: notepad, text: 'a\nb' })), 'unavailable', 'no control characters');
+    f.world.fail = { type: 'password_field' };
+    assert.equal(code(await f.call(token, 'type_text', { windowId: notepad, text: 'x' })), 'password_field', 'helper codes reach the model');
+    f.world.fail = {};
+    await f.call(token, 'key', { windowId: notepad, keys: 'Ctrl+S' });
+    assert.deepEqual(sent('key'), { hwnd: 7, keys: 'ctrl+s' });
+    assert.equal(code(await f.call(token, 'key', { windowId: notepad, keys: 'alt+tab' })), 'unavailable', 'keys outside the allowlist');
+
+    const shellShot = (await f.call(token, 'screenshot_window', { windowId: shell })).structuredContent.snapshotId;
+    assert.equal(code(await f.call(token, 'click', { snapshotId: shellShot, x: 1, y: 1 })), 'observe_only');
+    assert.equal(code(await f.call(token, 'type_text', { windowId: shell, text: 'dir' })), 'observe_only');
+
+    f.world.operatorIdleMs = 1_000;
+    const before = f.helperFake.requests.filter((row) => row.op === 'key').length;
+    assert.equal(code(await f.call(token, 'key', { windowId: notepad, keys: 'enter' })), 'operator_active');
+    assert.equal(f.helperFake.requests.filter((row) => row.op === 'key').length, before, 'nothing is sent while the owner is active');
+    f.world.operatorIdleMs = 9_000;
+
+    await f.call(token, 'clipboard_write', { text: 'copied' });
+    assert.deepEqual((await f.call(token, 'clipboard_read')).structuredContent, { text: 'copied' });
+    assert.equal(JSON.stringify(await f.service.state('channel-1')).includes('copied'), false, 'state never carries clipboard text');
+  });
+  assert.equal((await f.service.state('channel-1')).conversation.status, 'injected', 'the end of the turn releases control');
+  assert.deepEqual(f.service.hostState(), { holding: [] });
+});
+
+test('Stop from the Desktop host cancels the helper op and only the Desktop host key may use it', async (t) => {
+  const f = await fixture(t);
+  const key = 'k'.repeat(64);
+  const server = createServer((req, res) => { void routeDesktopControlHost(req, res, f.service, key)
+    .then((handled) => { if (!handled) res.writeHead(404).end(); }); });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}/api/internal/desktop-control`;
+  const host = (path, init = {}) => fetch(`${base}/${path}`, init);
+
+  await f.send({ channelId: 'channel-1', owner: true }, async (token) => {
+    await f.grant(token, '記事本');
+    const [window] = (await f.call(token, 'list_windows')).structuredContent.windows;
+    const { snapshotId } = (await f.call(token, 'screenshot_window', { windowId: window.windowId })).structuredContent;
+    f.service.stop('channel-2');
+    await f.call(token, 'click', { snapshotId, x: 1, y: 1 });
+
+    assert.equal((await host('host-state')).status, 403);
+    assert.equal((await host('host-state', { headers: { 'x-cats-desktop-auth-key': 'k'.repeat(63) + 'x' } })).status, 403);
+    assert.equal((await host('host-state', { headers: { 'x-cats-desktop-auth-key': key, origin: 'http://127.0.0.1' } })).status, 403);
+    const state = await host('host-state', { headers: { 'x-cats-desktop-auth-key': key } });
+    assert.deepEqual(await state.json(), { holding: [{ channelId: 'channel-1', app: '記事本' }] });
+    assert.equal(f.helperFake.calls.includes('cancel'), false, 'stopping another conversation never cancels this one');
+
+    const stopped = await host('host-stop', { method: 'POST', headers: { 'x-cats-desktop-auth-key': key } });
+    assert.deepEqual(await stopped.json(), { holding: [] });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(f.helperFake.calls.includes('cancel'), true, 'Stop cancels the helper op in progress');
+    assert.equal((await f.call(token, 'click', { snapshotId, x: 1, y: 1 })).structuredContent.error.code, 'stopped');
+  });
+  assert.equal(isInternalPlatformRoute('/api/internal/desktop-control/host-stop', 'POST'), true);
 });

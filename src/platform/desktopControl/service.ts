@@ -7,15 +7,17 @@ import { McpSessionGrantStore } from '../mcp/sessionGrants.js';
 import { DesktopControlHelperError, type DesktopControlHelperClient } from './helper.js';
 import { evaluateDesktopControlPolicy } from './policy.js';
 import {
-  DESKTOP_CONTROL_INSTRUCTIONS, DESKTOP_CONTROL_SERVER_NAME, DESKTOP_CONTROL_TOOLS, DesktopControlToolError,
-  parseNoArgs, parseOpenApp, parseReadUi, parseRequestAppAccess, parseScreenshot, type DesktopControlErrorCode,
+  DESKTOP_CONTROL_ERROR_CODES, DESKTOP_CONTROL_INSTRUCTIONS, DESKTOP_CONTROL_SERVER_NAME, DESKTOP_CONTROL_TOOLS,
+  DesktopControlToolError, parseClick, parseClipboardWrite, parseInvokeElement, parseKey, parseNoArgs, parseOpenApp,
+  parseReadUi, parseRequestAppAccess, parseScreenshot, parseScroll, parseTypeText, type DesktopControlErrorCode,
 } from './tools.js';
 
 /**
- * SPEC-133 phase A: the `cats-desktop` session MCP. A Runtime client proxy attaches the
- * descriptor to sends in conversations that qualify (DC-04); the endpoint serves tools only
- * during a turn the owner sent locally (DC-05) and only for apps the owner granted in Cats
- * (DC-08, DC-09). Screenshots, UI text and typed text are never stored or logged (DC-17).
+ * SPEC-133: the `cats-desktop` session MCP. A Runtime client proxy attaches the descriptor to
+ * sends in conversations that qualify (DC-04); the endpoint serves tools only during a turn the
+ * owner sent locally (DC-05) and only for apps the owner granted in Cats (DC-08, DC-09). The
+ * first input action of a turn holds control until the turn ends (DC-11). Screenshots, UI text,
+ * typed text and clipboard content are never stored or logged (DC-17).
  */
 
 export const DESKTOP_CONTROL_MCP_PATH = '/api/internal/desktop-control/mcp';
@@ -24,6 +26,11 @@ const TURN_TTL_MS = 30 * 60_000;
 const MAX_SESSIONS = 200;
 const MAX_PENDING_PER_CHANNEL = 5;
 const REQUEST_TTL_MS = 10 * 60_000;
+const SNAPSHOT_TTL_MS = 60_000;
+const MAX_SNAPSHOTS = 20;
+/** The helper keeps its last 8 UI reads, so older element ids cannot be resolved anyway. */
+const MAX_READS = 8;
+const OPERATOR_QUIET_MS = 3_000;
 
 export interface DesktopControlSettings { enabled: boolean; conversations: string[] }
 export interface DesktopControlTurnResolution { channelId: string; ownerPresent: boolean }
@@ -44,6 +51,8 @@ export interface DesktopControlServiceOptions {
 
 interface GrantedApp { appId: string; path: string; publisher: string | null; aumid: string | null; name: string; tier: 'full' | 'observe_only' }
 interface Candidate { path: string; publisher: string | null; productName: string; displayName: string; category: string; aumid: string | null }
+interface Bounds { x: number; y: number; width: number; height: number }
+interface Snapshot { windowId: string; hwnd: number; bounds: Bounds; scale: number; width: number; height: number; capturedAt: number }
 interface Session {
   token: string;
   channelId: string;
@@ -52,6 +61,11 @@ interface Session {
   windows: Map<string, number>;
   windowIdsByHwnd: Map<number, string>;
   reads: number;
+  snapshots: Map<string, Snapshot>;
+  /** read_ui id prefix to the helper read it came from. */
+  uiReads: Map<string, { windowId: string; hwnd: number; readId: number }>;
+  /** The app the current turn holds control of (DC-11). */
+  holding: string | null;
 }
 interface GrantRequest {
   requestId: string;
@@ -93,14 +107,14 @@ function toolResult(value: Record<string, unknown>, summary: string): McpToolCal
   return { content: [{ type: 'text', text: summary }], structuredContent: value };
 }
 
+/** Helper codes that are also tool codes pass through; the helper-only ones map per SPEC-133. */
 function mapHelperError(error: unknown): DesktopControlToolError {
   if (error instanceof DesktopControlToolError) return error;
   if (!(error instanceof DesktopControlHelperError)) return new DesktopControlToolError('unavailable', 'Desktop control failed.');
   const code: DesktopControlErrorCode = error.code === 'window_gone' ? 'window_changed'
-    : error.code === 'excluded_app' ? 'excluded_app'
-      : error.code === 'executor_failed' ? 'executor_failed'
-        : error.code === 'stopped' ? 'stopped'
-          : 'unavailable';
+    : error.code === 'not_found' ? 'not_granted'
+      : (DESKTOP_CONTROL_ERROR_CODES as readonly string[]).includes(error.code) ? error.code as DesktopControlErrorCode
+        : 'unavailable';
   return new DesktopControlToolError(code, error.message);
 }
 
@@ -173,17 +187,21 @@ export function createDesktopControlService(options: DesktopControlServiceOption
             const issued = grants.issue({ sessionId });
             grants.bind(issued.token, sessionId);
             session = { token: issued.token, channelId: verdict.channelId, turn: null, apps: new Map(), windows: new Map(),
-              windowIdsByHwnd: new Map(), reads: 0 };
+              windowIdsByHwnd: new Map(), reads: 0, snapshots: new Map(), uiReads: new Map(), holding: null };
             sessions.set(sessionId, session);
           }
           const turn = verdict.ownerPresent ? { active: true, expiresAt: now() + TURN_TTL_MS } : null;
           session.turn = turn;
+          session.holding = null;
+          const current = session;
           try {
             return await target.sendMessage(sessionId, content, { ...input,
               mcpServers: [...(input.mcpServers ?? []), descriptor(endpoint, session.token)],
               instructions: [input.instructions, DESKTOP_CONTROL_INSTRUCTIONS].filter(Boolean).join('\n\n') });
           } finally {
             if (turn) turn.active = false;
+            // DC-11: the end of the turn releases control.
+            if (current.turn === turn) current.holding = null;
           }
         };
         if (property === 'resumeSession' && target.resumeSession) return async (sessionId: string, input?: RuntimeSessionResumeInput) => {
@@ -213,8 +231,39 @@ export function createDesktopControlService(options: DesktopControlServiceOption
   }
 
   async function requireUnlocked() {
-    const state = await options.helper!.call<{ locked: boolean }>('state', {}, 5_000);
+    const state = await options.helper!.call<{ locked: boolean; operatorIdleMs: number }>('state', {}, 5_000);
     if (state.locked) throw new DesktopControlToolError('locked', 'The screen is locked.');
+    return state;
+  }
+
+  /** Shared input rules (R5): a granted window in a full-tier app, and an owner who is not using the computer. */
+  async function inputTarget(session: Session, windowId: string, operatorIdleMs: number) {
+    const target = await grantedWindow(session, windowId);
+    if (target.app.tier === 'observe_only') {
+      throw new DesktopControlToolError('observe_only', `${target.app.name} is granted for observing only.`);
+    }
+    if (operatorIdleMs >= 0 && operatorIdleMs < OPERATOR_QUIET_MS) {
+      throw new DesktopControlToolError('operator_active', 'The owner is using the computer right now.');
+    }
+    session.holding = target.app.name;
+    return target;
+  }
+
+  /** Converts screenshot pixels to screen pixels with the snapshot's own bounds and scale. */
+  function snapshotPoint(session: Session, snapshotId: string, x: number, y: number) {
+    const snapshot = session.snapshots.get(snapshotId);
+    if (!snapshot || now() - snapshot.capturedAt > SNAPSHOT_TTL_MS) {
+      throw new DesktopControlToolError('stale_snapshot', 'That screenshot is unknown or older than 60 seconds; take a new one.');
+    }
+    if (x >= snapshot.width || y >= snapshot.height) {
+      throw new DesktopControlToolError('stale_snapshot', 'That point is outside the screenshot; take a new one.');
+    }
+    return { snapshot, x: snapshot.bounds.x + Math.round(x / snapshot.scale), y: snapshot.bounds.y + Math.round(y / snapshot.scale) };
+  }
+
+  function remember<K, V>(map: Map<K, V>, key: K, value: V, max: number) {
+    map.set(key, value);
+    while (map.size > max) map.delete(map.keys().next().value as K);
   }
 
   async function grantedWindow(session: Session, windowId: string): Promise<{ hwnd: number; app: GrantedApp }> {
@@ -315,7 +364,7 @@ export function createDesktopControlService(options: DesktopControlServiceOption
       if (name !== 'request_app_access' && stoppedChannels.has(session.channelId)) {
         throw new DesktopControlToolError('stopped', 'The owner stopped desktop control; ask for access again.');
       }
-      await requireUnlocked();
+      const { operatorIdleMs } = await requireUnlocked();
       switch (name) {
         case 'request_app_access':
           return await requestAccess(sessionId, session, args);
@@ -336,19 +385,23 @@ export function createDesktopControlService(options: DesktopControlServiceOption
         case 'screenshot_window': {
           const { windowId, maxEdge } = parseScreenshot(args);
           const { hwnd } = await grantedWindow(session, windowId);
-          const shot = await options.helper!.call<{ pngBase64: string; width: number; height: number; scale: number }>(
+          const shot = await options.helper!.call<{ pngBase64: string; width: number; height: number; scale: number; bounds: Bounds }>(
             'capture_window', { hwnd, maxEdge }, 30_000);
+          const capturedAt = now();
           const value = { snapshotId: opaque('snap'), windowId, width: shot.width, height: shot.height, scale: shot.scale,
-            capturedAt: new Date(now()).toISOString() };
+            capturedAt: new Date(capturedAt).toISOString() };
+          remember(session.snapshots, value.snapshotId, { windowId, hwnd, bounds: shot.bounds, scale: shot.scale,
+            width: shot.width, height: shot.height, capturedAt }, MAX_SNAPSHOTS);
           return { content: [{ type: 'image', data: shot.pngBase64, mimeType: 'image/png' },
             { type: 'text', text: `Screenshot ${shot.width}x${shot.height}.` }], structuredContent: value };
         }
         case 'read_ui': {
           const { windowId, maxNodes } = parseReadUi(args);
           const { hwnd } = await grantedWindow(session, windowId);
-          const ui = await options.helper!.call<{ nodes: Array<Record<string, unknown>>; truncated: boolean }>(
+          const ui = await options.helper!.call<{ readId: number; nodes: Array<Record<string, unknown>>; truncated: boolean }>(
             'read_ui', { hwnd, maxNodes }, 30_000);
           const prefix = `ui${++session.reads}`;
+          remember(session.uiReads, prefix, { windowId, hwnd, readId: ui.readId }, MAX_READS);
           const nodes = ui.nodes.map((node) => ({ ...node, elementId: `${prefix}.${String(node.elementId)}`,
             parentId: node.parentId === null ? null : `${prefix}.${String(node.parentId)}` }));
           return toolResult({ windowId, nodes, truncated: ui.truncated }, `${nodes.length} element(s)${ui.truncated ? ', truncated' : ''}.`);
@@ -359,6 +412,48 @@ export function createDesktopControlService(options: DesktopControlServiceOption
           if (!app) throw new DesktopControlToolError('not_granted', 'That app is not granted; call request_app_access.');
           await options.helper!.call('open_app', { path: app.path, ...(app.aumid ? { aumid: app.aumid } : {}) });
           return toolResult({ opened: true }, `Opened ${app.name}.`);
+        }
+        case 'click':
+        case 'scroll': {
+          const parsed = name === 'click' ? parseClick(args) : parseScroll(args);
+          const point = snapshotPoint(session, parsed.snapshotId, parsed.x, parsed.y);
+          const { hwnd, app } = await inputTarget(session, point.snapshot.windowId, operatorIdleMs);
+          // The capture-time bounds make the helper refuse a window that moved since the screenshot.
+          const rest = 'button' in parsed ? { button: parsed.button, count: parsed.count }
+            : { direction: parsed.direction, amount: parsed.amount };
+          await options.helper!.call(name, { hwnd, bounds: point.snapshot.bounds, x: point.x, y: point.y, ...rest }, 30_000);
+          return toolResult({ done: true }, `${name === 'click' ? 'Clicked' : 'Scrolled'} in ${app.name}.`);
+        }
+        case 'invoke_element': {
+          const { elementId, action } = parseInvokeElement(args);
+          const dot = elementId.indexOf('.');
+          const read = dot > 0 ? session.uiReads.get(elementId.slice(0, dot)) : undefined;
+          if (!read) throw new DesktopControlToolError('window_changed', 'Unknown or old elementId; call read_ui again.');
+          const { hwnd, app } = await inputTarget(session, read.windowId, operatorIdleMs);
+          await options.helper!.call('invoke', { hwnd, readId: read.readId, elementId: elementId.slice(dot + 1), action }, 30_000);
+          return toolResult({ done: true }, `${action} done in ${app.name}.`);
+        }
+        case 'type_text': {
+          const { windowId, text } = parseTypeText(args);
+          const { hwnd, app } = await inputTarget(session, windowId, operatorIdleMs);
+          await options.helper!.call('type', { hwnd, text }, 180_000);
+          return toolResult({ done: true }, `Typed ${text.length} character(s) in ${app.name}.`);
+        }
+        case 'key': {
+          const { windowId, keys } = parseKey(args);
+          const { hwnd, app } = await inputTarget(session, windowId, operatorIdleMs);
+          await options.helper!.call('key', { hwnd, keys }, 30_000);
+          return toolResult({ done: true }, `Pressed ${keys} in ${app.name}.`);
+        }
+        case 'clipboard_read': {
+          parseNoArgs(args);
+          const { text } = await options.helper!.call<{ text: string | null }>('clipboard_read', {}, 10_000);
+          return toolResult({ text }, text === null ? 'The clipboard holds no text.' : `Read ${text.length} character(s) from the clipboard.`);
+        }
+        case 'clipboard_write': {
+          const { text } = parseClipboardWrite(args);
+          await options.helper!.call('clipboard_write', { text }, 10_000);
+          return toolResult({ done: true }, `Wrote ${text.length} character(s) to the clipboard.`);
         }
         default:
           throw new DesktopControlToolError('unavailable', `Unknown tool ${name}.`);
@@ -394,6 +489,7 @@ export function createDesktopControlService(options: DesktopControlServiceOption
     if (!settings.enabled) return { status: 'off', reason: 'off' };
     if (!settings.conversations.includes(channelId)) return { status: 'off', reason: 'conversation_off' };
     const tracked = [...sessions.values()].filter((session) => session.channelId === channelId);
+    if (tracked.some((session) => session.holding)) return { status: 'holding', reason: null };
     if (tracked.some((session) => session.turn?.active)) return { status: 'active_turn', reason: null };
     if (tracked.length) return { status: 'injected', reason: null };
     return { status: 'not_injected', reason: lastReason.get(channelId) ?? 'no_turn_yet' };
@@ -451,13 +547,27 @@ export function createDesktopControlService(options: DesktopControlServiceOption
       request.settle(decision);
       return true;
     },
+    /** DC-12: revokes grants, releases control and cancels the helper op of a conversation that holds control. */
     stop(channelId?: string) {
       const channels = channelId ? [channelId] : [...new Set([...sessions.values()].map((session) => session.channelId))];
+      let held = false;
       for (const id of channels) {
         stoppedChannels.add(id);
         denyPending((request) => request.channelId === id);
-        for (const session of sessions.values()) if (session.channelId === id) session.apps.clear();
+        for (const session of sessions.values()) {
+          if (session.channelId !== id) continue;
+          held ||= session.holding !== null;
+          session.apps.clear();
+          session.holding = null;
+        }
       }
+      // The helper's cancel is global, so only a conversation that holds control may send it.
+      if (held) options.helper?.call('cancel', {}, 5_000).catch(() => undefined);
+    },
+    /** What the Desktop host shows in the tray and the topmost notice (DC-11). */
+    hostState(): { holding: Array<{ channelId: string; app: string }> } {
+      return { holding: [...sessions.values()].flatMap((session) => session.holding
+        ? [{ channelId: session.channelId, app: session.holding }] : []) };
     },
     isTurnActive: (sessionId: string) => sessions.get(sessionId)?.turn?.active === true,
     /** Platform data reset: forget every grant and request; preferences reset turns the feature off. */
