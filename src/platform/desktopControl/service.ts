@@ -66,6 +66,8 @@ interface Session {
   uiReads: Map<string, { windowId: string; hwnd: number; readId: number }>;
   /** The app the current turn holds control of (DC-11). */
   holding: string | null;
+  /** Input ops this session has in the helper right now. */
+  inputs: number;
 }
 interface GrantRequest {
   requestId: string;
@@ -138,9 +140,16 @@ export function createDesktopControlService(options: DesktopControlServiceOption
     for (const request of [...requests.values()]) if (predicate(request)) request.settle('deny');
   }
 
+  /** The helper's cancel is global, so only a session with input in the helper may send it. */
+  function cancelInput(session: Session) {
+    if (session.inputs > 0) options.helper?.call('cancel', {}, 5_000).catch(() => undefined);
+  }
+
   function revoke(sessionId: string) {
     const session = sessions.get(sessionId);
     if (!session) return;
+    cancelInput(session);
+    session.holding = null;
     grants.revoke(session.token);
     sessions.delete(sessionId);
     denyPending((request) => request.sessionId === sessionId);
@@ -187,7 +196,7 @@ export function createDesktopControlService(options: DesktopControlServiceOption
             const issued = grants.issue({ sessionId });
             grants.bind(issued.token, sessionId);
             session = { token: issued.token, channelId: verdict.channelId, turn: null, apps: new Map(), windows: new Map(),
-              windowIdsByHwnd: new Map(), reads: 0, snapshots: new Map(), uiReads: new Map(), holding: null };
+              windowIdsByHwnd: new Map(), reads: 0, snapshots: new Map(), uiReads: new Map(), holding: null, inputs: 0 };
             sessions.set(sessionId, session);
           }
           const turn = verdict.ownerPresent ? { active: true, expiresAt: now() + TURN_TTL_MS } : null;
@@ -200,8 +209,11 @@ export function createDesktopControlService(options: DesktopControlServiceOption
               instructions: [input.instructions, DESKTOP_CONTROL_INSTRUCTIONS].filter(Boolean).join('\n\n') });
           } finally {
             if (turn) turn.active = false;
-            // DC-11: the end of the turn releases control.
-            if (current.turn === turn) current.holding = null;
+            // DC-11: the end of the turn releases control, and input it left running (a cancelled turn) stops.
+            if (current.turn === turn) {
+              cancelInput(current);
+              current.holding = null;
+            }
           }
         };
         if (property === 'resumeSession' && target.resumeSession) return async (sessionId: string, input?: RuntimeSessionResumeInput) => {
@@ -259,6 +271,15 @@ export function createDesktopControlService(options: DesktopControlServiceOption
       throw new DesktopControlToolError('stale_snapshot', 'That point is outside the screenshot; take a new one.');
     }
     return { snapshot, x: snapshot.bounds.x + Math.round(x / snapshot.scale), y: snapshot.bounds.y + Math.round(y / snapshot.scale) };
+  }
+
+  async function sendInput(session: Session, op: string, params: Record<string, unknown>, timeoutMs: number) {
+    session.inputs += 1;
+    try {
+      await options.helper!.call(op, params, timeoutMs);
+    } finally {
+      session.inputs -= 1;
+    }
   }
 
   function remember<K, V>(map: Map<K, V>, key: K, value: V, max: number) {
@@ -421,7 +442,7 @@ export function createDesktopControlService(options: DesktopControlServiceOption
           // The capture-time bounds make the helper refuse a window that moved since the screenshot.
           const rest = 'button' in parsed ? { button: parsed.button, count: parsed.count }
             : { direction: parsed.direction, amount: parsed.amount };
-          await options.helper!.call(name, { hwnd, bounds: point.snapshot.bounds, x: point.x, y: point.y, ...rest }, 30_000);
+          await sendInput(session, name, { hwnd, bounds: point.snapshot.bounds, x: point.x, y: point.y, ...rest }, 30_000);
           return toolResult({ done: true }, `${name === 'click' ? 'Clicked' : 'Scrolled'} in ${app.name}.`);
         }
         case 'invoke_element': {
@@ -430,19 +451,19 @@ export function createDesktopControlService(options: DesktopControlServiceOption
           const read = dot > 0 ? session.uiReads.get(elementId.slice(0, dot)) : undefined;
           if (!read) throw new DesktopControlToolError('window_changed', 'Unknown or old elementId; call read_ui again.');
           const { hwnd, app } = await inputTarget(session, read.windowId, operatorIdleMs);
-          await options.helper!.call('invoke', { hwnd, readId: read.readId, elementId: elementId.slice(dot + 1), action }, 30_000);
+          await sendInput(session, 'invoke', { hwnd, readId: read.readId, elementId: elementId.slice(dot + 1), action }, 30_000);
           return toolResult({ done: true }, `${action} done in ${app.name}.`);
         }
         case 'type_text': {
           const { windowId, text } = parseTypeText(args);
           const { hwnd, app } = await inputTarget(session, windowId, operatorIdleMs);
-          await options.helper!.call('type', { hwnd, text }, 180_000);
+          await sendInput(session, 'type', { hwnd, text }, 180_000);
           return toolResult({ done: true }, `Typed ${text.length} character(s) in ${app.name}.`);
         }
         case 'key': {
           const { windowId, keys } = parseKey(args);
           const { hwnd, app } = await inputTarget(session, windowId, operatorIdleMs);
-          await options.helper!.call('key', { hwnd, keys }, 30_000);
+          await sendInput(session, 'key', { hwnd, keys }, 30_000);
           return toolResult({ done: true }, `Pressed ${keys} in ${app.name}.`);
         }
         case 'clipboard_read': {
@@ -556,12 +577,12 @@ export function createDesktopControlService(options: DesktopControlServiceOption
         denyPending((request) => request.channelId === id);
         for (const session of sessions.values()) {
           if (session.channelId !== id) continue;
-          held ||= session.holding !== null;
+          held ||= session.holding !== null || session.inputs > 0;
           session.apps.clear();
           session.holding = null;
         }
       }
-      // The helper's cancel is global, so only a conversation that holds control may send it.
+      // The helper's cancel is global, so only a conversation that holds control or has input running may send it.
       if (held) options.helper?.call('cancel', {}, 5_000).catch(() => undefined);
     },
     /** What the Desktop host shows in the tray and the topmost notice (DC-11). */
