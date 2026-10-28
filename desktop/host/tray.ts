@@ -33,6 +33,7 @@ interface CreateDesktopTrayControllerOptions {
   // of a check, an offer, a percentage, an install about to start. The tray
   // item that triggers this reads the same in every state.
   onOpenUpdateDialog?: () => Promise<void>;
+  onStopDesktopControl?: () => void;
 }
 
 function createBundledTrayImage(name: string): Electron.NativeImage | null {
@@ -129,7 +130,7 @@ function buildDesktopTrayMenuTemplate(
   options: Pick<
     CreateDesktopTrayControllerOptions,
     'onNavigate' | 'onRunAction' | 'onQuit' | 'canInteract'
-    | 'onOpenUpdateDialog'
+    | 'onOpenUpdateDialog' | 'onStopDesktopControl'
   >,
   showWindow: () => void,
 ): MenuItemConstructorOptions[] {
@@ -147,6 +148,15 @@ function buildDesktopTrayMenuTemplate(
       template.push({ type: 'separator' });
     }
   };
+
+  if (state.desktopControlStop) {
+    // Stop works even while the host is busy: it only releases control.
+    template.push({
+      label: state.desktopControlStop.label,
+      click: () => options.onStopDesktopControl?.(),
+    });
+    pushSeparator();
+  }
 
   for (const action of state.actions) {
     template.push({

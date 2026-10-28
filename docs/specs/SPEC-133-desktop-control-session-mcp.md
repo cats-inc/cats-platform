@@ -239,6 +239,26 @@ Phase B helper rules (P5, 2026-10-29):
 - **Clipboard.** Text only, at most 100,000 characters (a longer read is cut there); a write
   is read back and fails with `unavailable` if another program changed it.
 
+Phase B server rules (P5, 2026-10-29):
+
+- **Snapshots.** `click` and `scroll` take image pixels from one `screenshot_window` result. The
+  server keeps the window, its capture-time bounds and the scale for 60 seconds; an unknown or
+  older `snapshotId`, or a point outside the image, returns `stale_snapshot`. The screen point is
+  `bounds.x + round(x / scale)` (and likewise for y), and the helper receives the capture-time
+  bounds, so a window that moved since the screenshot answers `window_changed`.
+- **Elements.** A `read_ui` element id is `ui<n>.<helper id>`; the server maps `ui<n>` to the
+  helper's `readId` and keeps the last 8 reads like the helper.
+- **Order of checks** for the five input tools: owner-present turn, not stopped, not locked, the
+  window still granted, tier `full` (`observe_only` otherwise), then `operator_active` when the
+  `state` read just before shows owner input under 3 seconds old. Nothing reaches the helper when
+  a check fails. Helper error codes that are tool codes reach the model unchanged.
+- **Holding.** The five input tools hold control from their first call in a turn (DC-11);
+  `list_windows`, screenshots, `read_ui`, `open_app` and the clipboard tools do not. The end of
+  the turn, Stop and revoking the session release it. The helper's `cancel` is global, so Stop
+  sends it only for a conversation that holds control.
+- **Clipboard.** `clipboard_read` and `clipboard_write` follow the owner-present, stopped and
+  locked rules but need no app grant.
+
 ### Exclusion categories (DC-10), matched on executable file name, case-insensitive
 
 - **Excluded**: every process in `hello.selfProcessIds` or `hello.selfExecutables` (Cats Desktop,
@@ -258,8 +278,17 @@ Owner-authenticated, internal listener only: `GET /api/desktop-control/state` (a
 switches, pending grant requests, grants and hold state), `PUT /api/desktop-control/settings`
 `{ enabled }`, `PUT /api/desktop-control/conversations/:channelId` `{ enabled }`,
 `POST /api/desktop-control/grant-requests/:requestId` `{ decision: 'allow' | 'deny' }` and
-`POST /api/desktop-control/stop` `{ channelId? }`. The Desktop host polls the state endpoint for
-the tray while any conversation is enabled.
+`POST /api/desktop-control/stop` `{ channelId? }`.
+
+Desktop host routes, internal listener only: `GET /api/internal/desktop-control/host-state`
+returns `{ holding: [{ channelId, app }] }` and `POST /api/internal/desktop-control/host-stop`
+stops every conversation and returns the same shape. They require the
+`x-cats-desktop-auth-key` header to equal `CATS_DESKTOP_AUTH_KEY` (compared in constant time),
+a loopback peer and no `Origin` header, like the native Google sign-in routes. The Desktop host
+on Windows polls `host-state` every 1.5 seconds; while anything is held it shows the notice (a
+frameless, non-focusable, topmost Cats window in the bottom-right corner of the primary work
+area, with the app name and a Stop link and no script) and a tray item "Stop desktop control
+(app)". Two failed polls in a row hide both.
 
 ## Cross-implementation contract
 

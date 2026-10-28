@@ -64,6 +64,9 @@ export interface DesktopTrayMenuState {
   // Present only for builds whose capability allows update checks. Rendered
   // before Settings and Quit.
   updateItem?: DesktopTrayUpdateItem | null;
+  // SPEC-133 DC-12: present while a conversation holds desktop control, and
+  // rendered first so Stop is the nearest item.
+  desktopControlStop?: { label: string } | null;
   // Hover text for the tray icon. Carries download progress, which a menu
   // item cannot: an open native menu does not repaint when the menu behind it
   // is rebuilt, so the percentage there is only visible to someone who closes
