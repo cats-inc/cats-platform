@@ -204,7 +204,9 @@ Earlier runs of the same script found two problems:
   timed out after 30 seconds. The red window had also moved during that run, which points to input
   from outside the script. Neither the hang nor the exit recurred in the final run, or in direct
   replays through the service and through the helper with `type` and `key` sent together. The
-  cause is still unknown; the next occurrence needs the helper's stderr, which the script now keeps.
+  cause is still unknown. Diagnosing the next occurrence needs the helper's stderr, which the Platform
+  helper client discards today (it spawns the helper with stderr ignored); keeping its last lines
+  in memory is a follow-up.
 
 Not exercised natively:
 - the Desktop host notice and tray item (covered by `tests/desktop-control-notice.test.js` only);
