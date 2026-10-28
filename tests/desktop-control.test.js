@@ -37,6 +37,7 @@ function fakeHelper(world) {
       const reply = (result) => stdout.write(`${JSON.stringify({ id, ok: true, result })}\n`);
       const fail = (code) => stdout.write(`${JSON.stringify({ id, ok: false, error: { code, message: code } })}\n`);
       if (world.crashOn === op) { process.emit('exit', 1); return true; }
+      if (world.hang?.includes(op)) return true;
       if (op === 'hello') reply({ protocol: world.protocol ?? 1, version: '1.0.0', platform: 'win32', dpiAwareness: 'per_monitor_v2' });
       else if (op === 'state') reply({ locked: world.locked === true, idleMs: 9000, operatorIdleMs: world.operatorIdleMs ?? 9000 });
       else if (op === 'resolve_apps') reply({ matches: params.queries.map((query) => ({ query, candidates: world.apps[query] ?? [] })) });
@@ -365,4 +366,22 @@ test('Stop from the Desktop host cancels the helper op and only the Desktop host
     assert.equal((await f.call(token, 'click', { snapshotId, x: 1, y: 1 })).structuredContent.error.code, 'stopped');
   });
   assert.equal(isInternalPlatformRoute('/api/internal/desktop-control/host-stop', 'POST'), true);
+});
+
+test('input still running when its turn ends is cancelled, and so is input of a revoked session', async (t) => {
+  const f = await fixture(t);
+  let typing;
+  await f.send({ channelId: 'channel-1', owner: true }, async (token) => {
+    await f.grant(token, '記事本');
+    const [window] = (await f.call(token, 'list_windows')).structuredContent.windows;
+    f.world.hang = ['type'];
+    typing = f.call(token, 'type_text', { windowId: window.windowId, text: 'a long text' });
+    for (let i = 0; i < 50 && !f.helperFake.calls.includes('type'); i++) await new Promise((resolve) => setTimeout(resolve, 10));
+    // The turn ends here, as when the owner cancels it, while the helper is still typing.
+  });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.equal(f.helperFake.calls.includes('cancel'), true, 'the end of the turn cancels input it left running');
+  assert.deepEqual(f.service.hostState(), { holding: [] });
+  f.service.close();
+  assert.equal((await typing).structuredContent.error.code, 'unavailable');
 });

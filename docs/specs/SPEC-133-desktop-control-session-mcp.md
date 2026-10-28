@@ -254,8 +254,9 @@ Phase B server rules (P5, 2026-10-29):
   a check fails. Helper error codes that are tool codes reach the model unchanged.
 - **Holding.** The five input tools hold control from their first call in a turn (DC-11);
   `list_windows`, screenshots, `read_ui`, `open_app` and the clipboard tools do not. The end of
-  the turn, Stop and revoking the session release it. The helper's `cancel` is global, so Stop
-  sends it only for a conversation that holds control.
+  the turn, Stop and revoking the session release it. Input still in the helper at that moment
+  (for example when the owner cancels the turn mid-`type_text`) is cancelled. The helper's `cancel`
+  is global, so it is sent only for a conversation that holds control or has input running.
 - **Clipboard.** `clipboard_read` and `clipboard_write` follow the owner-present, stopped and
   locked rules but need no app grant.
 
