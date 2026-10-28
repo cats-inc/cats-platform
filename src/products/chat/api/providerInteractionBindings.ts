@@ -22,7 +22,7 @@ export async function currentProviderBindings(store: ChatStore, conversationId: 
     const target = turn?.targetStatuses.find(t => t.participant.participantId === p.participantId && t.sessionId === lease.sessionId
       && !['completed', 'failed', 'cancelled', 'skipped'].includes(t.status));
     rows.push({ binding: { conversationId, sessionId: lease.sessionId, participantId: p.participantId,
-      laneId: target?.laneId ?? lease.laneId, turnId: turn?.id ?? null, runId: null, label: p.name },
+      laneId: target?.laneId ?? lease.laneId, turnId: turn?.id ?? null, runId: null, label: p.name, provider: lease.provider ?? null },
       canRespond: !!target && !turn?.completedAt && !['completed', 'failed', 'cancelled'].includes(turn?.status ?? '') });
   }
   const runs = core.runs.filter(r => r.conversationId === conversationId && providerRunSession(r));
@@ -32,7 +32,7 @@ export async function currentProviderBindings(store: ChatStore, conversationId: 
     const sessionId = providerRunSession(run);
     if (!sessionId || rows.some(row => row.binding.sessionId === sessionId)) continue;
     rows.push({ binding: { conversationId, sessionId, participantId: run.orchestratorActorId,
-      laneId: null, turnId: null, runId: run.id, label: run.title }, canRespond: canControlProviderRun(core, run) });
+      laneId: null, turnId: null, runId: run.id, label: run.title, provider: null }, canRespond: canControlProviderRun(core, run) });
   }
   return rows;
 }

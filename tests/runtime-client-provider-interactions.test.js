@@ -26,6 +26,21 @@ test('qualified native target negotiates only declared kinds and omits all legac
   });
 });
 
+test('a Claude Code target negotiates tool approval and reports its admissible ceilings', async () => {
+  const claudeKinds = ['command_approval', 'file_approval', 'tool_approval', 'user_input', 'mcp_form', 'mcp_url'];
+  const claude = { providers: { claude: { defaultInstance: 'native', instances: [{ id: 'native', target: 'cli/native', backend: 'cli',
+    continuity: { interactions: { version: 1, kinds: claudeKinds }, sessionCapabilities: { version: 1, executionPolicy: true, inventory: true,
+      admissibleCeilings: [{ access: 'full-access', network: true }, { access: 'unknown', network: true }] } } }] } } };
+  await fakeFetch(url => json(url.endsWith('/providers/config') ? claude : { id: 'session', providerName: 'claude' }), async calls => {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    const config = await client.getProviderConfig();
+    assert.deepEqual(config.claude.instances[0].continuity.sessionCapabilities.admissibleCeilings, [{ access: 'full-access', network: true }]);
+    await client.createSession({ provider: 'claude', interactionHost: PLATFORM_INTERACTION_HOST });
+    const payload = JSON.parse(calls.find(c => c.url.endsWith('/sessions')).init.body);
+    assert.deepEqual(payload.interactionHost.kinds, claudeKinds);
+  });
+});
+
 test('old Runtime retains legacy behavior but cannot silently ignore a requested policy', async () => {
   await fakeFetch(url => json(url.endsWith('/providers/config') ? { providers: {} } : { id: 's' }), async calls => {
     const client = new CatsRuntimeClient('http://runtime.test');

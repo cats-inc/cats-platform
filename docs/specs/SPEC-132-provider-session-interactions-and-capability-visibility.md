@@ -184,6 +184,19 @@ package 仍為 0.11.1，未 bump／publish；不能把這份候選當作同 mino
   279/3/4，Bot 另外注入 4 個工具。這證明呼叫路徑與匹配觀測，沒有成功 Chrome／桌面操作。
   詳細 scope、候選 source 差異及未驗項見 PLAN-124 和 Runtime research。
 
+## Claude Code (2026-10-28)
+
+Runtime SPEC-039 R8 讓 Claude Code 成為第二個原生 target，由
+[PLAN-125](../plans/PLAN-125-claude-code-provider-controls-in-desktop.md) 接入 Desktop：
+
+- Claude 宣告 `tool_approval`（MCP 與 Claude in Chrome 等非命令、非檔案工具），不宣告
+  `permission_grant`。Platform 渲染它；未渲染的種類不協商，Runtime 會直接拒絕該請求。
+- Claude 在原生 Windows 沒有 sandbox，只接受「完整存取＋網路」上限。Desktop 不得提供或送出
+  target 不能強制的上限，也不能把 Claude 的 `verified` 說成檔案／網路受限。
+- Claude in Chrome 需要 Runtime session 的 `browserIntegration: true`。只有可回覆的對話 session
+  才送出；沒有人能回覆卡片的 Work／排程／relay 執行不得載入瀏覽器工具。
+- Computer use 在 Windows 為 `unavailable`（Claude Code 只開放給 macOS 互動 session），顯示原因即可。
+
 ## Remaining environment validation
 
 - Runtime SPEC-039 的 supported fixture contract 已接線；新 native schema 仍需個別驗證。

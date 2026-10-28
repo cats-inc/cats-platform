@@ -4243,6 +4243,8 @@ export const messageKeys = {
   providerControlsBrowser: "providerControls.Browser",
   providerControlsComputer: "providerControls.Computer",
   providerControlsSetup: "providerControls.Setup",
+  providerControlsClaudeChromeSetup: "providerControls.ClaudeChromeSetup",
+  providerControlsBuiltinTools: "providerControls.BuiltinTools",
   providerControlsControls: "providerControls.Controls",
   providerControlsWaiting: "providerControls.Waiting",
   providerControlsSessionTools: "providerControls.SessionTools",

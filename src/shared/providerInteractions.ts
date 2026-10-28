@@ -1,7 +1,7 @@
-// Runtime SPEC-039 v1 wire contract, pinned to source b75da37b. No Runtime implementation imports.
+// Runtime SPEC-039 v1 wire contract, pinned to source 043155a1. No Runtime implementation imports.
 /** Host-facing interaction contract. Native provider request IDs stay in the adapter. */
 export const INTERACTION_KINDS = [
-  'command_approval', 'file_approval', 'permission_grant', 'user_input', 'mcp_form', 'mcp_url',
+  'command_approval', 'file_approval', 'tool_approval', 'permission_grant', 'user_input', 'mcp_form', 'mcp_url',
 ] as const;
 export type InteractionKind = typeof INTERACTION_KINDS[number];
 export type InteractionStatus = 'pending' | 'responding' | 'resolved' | 'expired'
@@ -125,7 +125,9 @@ export interface SessionToolInventory {
   pages: number;
   servers: SessionToolServer[];
   dynamicTools: Array<{ name: string; source: 'runtime-dynamic' }>;
-  builtins: 'not_exposed_by_provider';
+  /** Built-in provider tools: listed once the provider reports them, otherwise not claimed. */
+  builtins: 'not_exposed_by_provider' | 'not_observed' | 'observed';
+  builtinTools?: string[];
   reason?: string;
 }
 
@@ -157,6 +159,8 @@ export interface ProviderInteractionBinding {
   turnId: string | null;
   runId: string | null;
   label: string;
+  /** Provider of a participant lease; null when the binding does not record one. */
+  provider?: string | null;
 }
 export interface BoundProviderInteraction extends ProviderInteraction { binding: ProviderInteractionBinding }
 export interface ProviderConversationSnapshot { version: 1; conversationId: string; supported: boolean;

@@ -84,6 +84,49 @@ test('native forms submit required empty values, empty enums and integers with f
   });
 });
 
+test('a Claude tool approval shows its server and input summary and answers with the chosen scope', async () => {
+  const interaction = { kind: 'tool_approval', status: 'pending', interactionId: 'i', sessionId: 's', workerGeneration: 'w', executionId: 'e',
+    revision: 3, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    binding: { conversationId: 'c', sessionId: 's', label: 'Claude Cat', participantId: 'cat', laneId: null, turnId: 'turn', runId: null, provider: 'claude' },
+    prompt: { kind: 'tool_approval', title: 'Tool approval', message: 'Navigate', server: 'claude-in-chrome',
+      command: '{\n  "url": "https://example.com"\n}', cwd: '/synthetic-workspace',
+      choices: [{ id: 'accept', label: 'Allow once' }, { id: 'acceptForSession', label: 'Allow for this session' }] } } as BoundProviderInteraction;
+  await domTest(async (document, render) => {
+    const answers: BoundInteractionResponse[] = [];
+    await render(<ProviderInteractionCard interaction={interaction} refresh={async () => {}} openUrl={async () => {}}
+      respond={async (_i, body) => { answers.push(body); }} />);
+    const text = document.body.textContent!;
+    assert.match(text, /Tool approval/); assert.match(text, /claude-in-chrome/); assert.match(text, /https:\/\/example.com/);
+    const session = [...document.querySelectorAll('button')].find(b => b.textContent === 'Allow for this session')!;
+    act(() => { session.dispatchEvent(new window.MouseEvent('click', { bubbles: true })); });
+    await settle();
+    assert.deepEqual(answers.map(a => a.answer), [{ action: 'accept', choice: 'acceptForSession' }]);
+    assert.equal(answers[0]!.expectedRevision, 3);
+  });
+});
+
+test('Claude session details list observed built-in tools and link to Claude in Chrome setup', async () => {
+  const fetchBefore = globalThis.fetch, intervalBefore = globalThis.setInterval;
+  globalThis.setInterval = (() => 0) as unknown as typeof setInterval;
+  globalThis.fetch = async () => new Response(JSON.stringify({ version: 1, sessionId: 's', workerGeneration: 'w', supported: true,
+    observation: { policy: { source: 'legacy', status: 'not_observed' },
+      inventory: { state: 'observed', servers: [], dynamicTools: [], builtins: 'observed', builtinTools: ['Bash', 'Read'] },
+      dependencies: [{ kind: 'computer_use', status: 'unavailable', evidence: 'macOS only.', remediation: '' }] } }),
+  { headers: { 'content-type': 'application/json' } });
+  try {
+    for (const provider of ['claude', 'codex', null]) {
+      await domTest(async (document, render) => {
+        await render(<ProviderCapabilities conversationId="c" sessionId="s" provider={provider} />);
+        const links = [...document.querySelectorAll('a')].map(a => a.getAttribute('href'));
+        assert.deepEqual(links, provider === 'claude' ? ['https://code.claude.com/docs/en/chrome']
+          : provider === 'codex' ? ['https://learn.chatgpt.com/docs/plugins'] : []);
+        assert.match(document.body.textContent!, /Built-in tools \(2\)/);
+        assert.deepEqual([...document.querySelectorAll('li')].map(li => li.textContent), ['Bash', 'Read']);
+      });
+    }
+  } finally { globalThis.fetch = fetchBefore; globalThis.setInterval = intervalBefore; }
+});
+
 test('worker loss replaces a formerly verified policy without a model turn', async () => {
   const fetchBefore = globalThis.fetch, intervalBefore = globalThis.setInterval;
   const pollers: Array<() => void> = []; let reads = 0;
