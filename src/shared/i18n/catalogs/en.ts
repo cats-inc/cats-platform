@@ -4209,6 +4209,7 @@ export const enCatalog: MessageCatalog = {
   "providerControls.Computer": "Computer use",
   "providerControls.Setup": "Codex plugins and host setup",
   "providerControls.ClaudeChromeSetup": "Set up Claude in Chrome",
+  "providerControls.ClaudeCeiling": "Claude Code Cats can only run with full access and network. A narrower limit is refused when the session starts; choose full access or keep the legacy mode.",
   "providerControls.BuiltinTools": "Built-in tools ({count})",
   "providerControls.Controls": "Provider controls",
   "providerControls.Waiting": "Waiting for your response ({count})",

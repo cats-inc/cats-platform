@@ -4112,6 +4112,7 @@ export const zhTWCatalog: MessageCatalog = {
   "providerControls.Computer": "電腦操作",
   "providerControls.Setup": "Codex 插件與主機設定",
   "providerControls.ClaudeChromeSetup": "設定 Claude in Chrome",
+  "providerControls.ClaudeCeiling": "Claude Code 的 Cat 只能以「完整存取＋網路」執行。較窄的限制會在建立工作階段時被拒絕；請選完整存取，或維持舊模式。",
   "providerControls.BuiltinTools": "內建工具（{count}）",
   "providerControls.Controls": "供應商控制",
   "providerControls.Waiting": "等待你的回覆（{count}）",

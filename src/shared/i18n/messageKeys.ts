@@ -4244,6 +4244,7 @@ export const messageKeys = {
   providerControlsComputer: "providerControls.Computer",
   providerControlsSetup: "providerControls.Setup",
   providerControlsClaudeChromeSetup: "providerControls.ClaudeChromeSetup",
+  providerControlsClaudeCeiling: "providerControls.ClaudeCeiling",
   providerControlsBuiltinTools: "providerControls.BuiltinTools",
   providerControlsControls: "providerControls.Controls",
   providerControlsWaiting: "providerControls.Waiting",

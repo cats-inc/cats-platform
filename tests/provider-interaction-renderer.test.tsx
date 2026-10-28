@@ -84,6 +84,16 @@ test('native forms submit required empty values, empty enums and integers with f
   });
 });
 
+test('the policy editor warns that Claude Code accepts only full access with network', () => {
+  const base: RuntimeSessionPolicy = { workspaceKind: 'source', workspaceAccess: 'read_write', permissionMode: 'skip' };
+  const render = (executionPolicy?: RuntimeSessionPolicy['executionPolicy']) =>
+    renderToStaticMarkup(<ProviderPolicyEditor value={{ ...base, executionPolicy }} onChange={() => {}} />);
+  assert.match(render({ version: 1, mode: 'explicit', access: 'workspace-write', network: true, approval: 'on-request' }), /only run with full access and network/);
+  assert.match(render({ version: 1, mode: 'provider', constraints: { maxAccess: 'full-access', network: false } }), /only run with full access and network/);
+  assert.doesNotMatch(render({ version: 1, mode: 'explicit', access: 'full-access', network: true, approval: 'on-request' }), /only run with full access/);
+  assert.doesNotMatch(render(), /only run with full access/);
+});
+
 test('a Claude tool approval shows its server and input summary and answers with the chosen scope', async () => {
   const interaction = { kind: 'tool_approval', status: 'pending', interactionId: 'i', sessionId: 's', workerGeneration: 'w', executionId: 'e',
     revision: 3, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(),

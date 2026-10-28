@@ -589,6 +589,14 @@ export class CatsRuntimeClient implements RuntimeClient {
     if (policy && (!kinds.length || target?.continuity?.sessionCapabilities?.executionPolicy !== true)) {
       throw new RuntimeRequestError('This Runtime/provider does not support the requested execution policy.', 409, 'provider_policy_unsupported');
     }
+    // Refuse a ceiling the target cannot enforce here, before Runtime would.
+    const ceilings = target?.continuity?.sessionCapabilities?.admissibleCeilings;
+    const access = policy?.mode === 'provider' ? policy.constraints.maxAccess : policy?.access;
+    const network = policy?.mode === 'provider' ? policy.constraints.network : policy?.network;
+    if (policy && ceilings && !ceilings.some(c => c.access === access && c.network === network)) {
+      const allowed = ceilings.map(c => `${c.access}${c.network ? ' with network' : ' offline'}`).join(', ');
+      throw new RuntimeRequestError(`This provider target can only enforce: ${allowed || 'no explicit limit'}.`, 409, 'provider_policy_unsupported');
+    }
     return kinds.length ? { interactionHost: { ...PLATFORM_INTERACTION_HOST, ...host, kinds }, ...(policy ? { executionPolicy: policy } : {}) } : {};
   }
   private async imageRequest(route: string, body?: unknown, binary = false, method?: 'DELETE'): Promise<Uint8Array> {
