@@ -165,8 +165,9 @@ outer schema 均 fail closed，不能用預設設定或較舊副本覆寫。
 舊版會拒絕 format 6，**不支援直接降版開啟新資料**；若需回復舊版，先關閉程序並另行
 保存新資料，再由 owner 明確選擇升級前的原始備份，會捨棄升級後變更。
 
-此資料邊界需要 **下一次發布採 0.12 minor**。本次 owner 只授權實作與 PR，
-package 仍為 0.11.1，未 bump／publish；不能把這份候選當作同 minor 已發布升級。
+此資料邊界由 **0.12.0 minor** 承接：owner 於 2026-10-28 選定 Desktop 0.12.0
+standard preview，pin 與升級驗收記在 [release notes](../release-notes.md)。
+同 0.11 minor 的版本不能讀取這份資料。
 
 ### Validation evidence
 

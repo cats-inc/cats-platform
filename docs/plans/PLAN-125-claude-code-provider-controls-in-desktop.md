@@ -18,8 +18,9 @@ Runtime 已在 #196–#199 接上 Claude Code 的原生批准、提問、MCP 表
 #200 再加上 session 層級的 `browserIntegration`（Claude in Chrome 的 `--chrome`）。
 本計畫讓 Desktop 消費這些契約，沿用 PLAN-124 的互動引擎、卡片與設定入口，不另建一套。
 
-本授權不含版本 bump 或發布。Desktop 從 Runtime checkout 打包，`desktop-release.yml`
-的 `runtime_ref` 預設為 main；下一次 Desktop 建置需包含 Runtime #200 的合併 commit。
+本授權不含版本 bump 或發布。Desktop 從 Runtime checkout 打包，因此 Desktop 建置
+必須包含 Runtime #200 的合併 commit。Owner 之後另行選定 Desktop 0.12.0 standard
+preview，pin Runtime `af405ff7`（含 #200／#201），見 [release notes](../release-notes.md)。
 
 ## Non-Goals
 
@@ -82,5 +83,6 @@ P2／P3 分別以 admission 測試與 session create payload 測試覆蓋。
 | 2026-10-28 | P3：Claude in Chrome 偏好、本機 owner 路由、對話限定的 `browserIntegration` 與 Settings 開關。新增 3 項 Node（client 轉送、wrapper 範圍、路由權限與持久化）及 1 項 DOM 測試；更新 3 個 preferences 完整形狀 fixture。39 項 control／client／products／policy／ingress／raw-string 測試、60 項 preferences／setup／reset／preview 測試、8 項 renderer 測試通過；server／renderer／desktop／test typecheck 與 catalog check 通過。 |
 | 2026-10-28 | P4：Claude Code 2.1.312（haiku）、Runtime 原始碼 `b750d27e`（#200）以私有暫存 `CATS_RUNTIME_DIR` 啟動，Claude Code 使用 owner 自己的登入；經 Platform `CatsRuntimeClient` 與對話 wrapper（偏好開啟），explicit full-access／網路／on-request。結果：discovery 宣告 `tool_approval`、`admissibleCeilings` 與 `browserIntegration`；workspace-write 政策在 client 端被拒且未送出 `/sessions`；WebFetch 產生 `tool_approval`，接受後同 turn 完成；工作階段 policy `verified`（回報 `default`、reviewer `user`）、`claude-in-chrome` 已連線（22 個工具）、34 個內建工具、browser `unknown`、computer use `unavailable`；偏好關閉的工作階段（Runtime `af405ff7` 重跑，跑完一個 turn 後讀取）有 7 個 claude.ai connectors、沒有 `claude-in-chrome`，內建工具 31 個（開啟時 34 個），browser `unavailable`。`tabs_context_mcp` 沒有送出核准請求就執行，因擴充未連線而失敗；當時沒有 Chrome／Edge 程序，未觸及瀏覽器。尚未驗證：連線的瀏覽器中實際的 Chrome 動作與其網站核准呈現。 |
 | 2026-10-28 | P3 review：Settings 描述改為 Cats 不替 Work／排程「要求」瀏覽器工具（使用者自己的 Claude Code Enabled by default 仍會套用）；新 POST 由既有 auth gate 的 cookie CSRF 檢查保護（renderer 全域 fetch 自動帶 token）；新增依 server 組合順序的 Work admission 測試（順序對調即失敗）；resume 遇到仍存活、以另一設定啟動的 worker（409 `interaction_conflict`）時改為不帶此欄位重試一次，保留該 worker，設定於下次 admission 生效。 |
+| 2026-10-28 | Owner 選定 Desktop 0.12.0 standard preview（format 6 資料邊界）。Runtime pin `af405ff7`；隔離升級驗收以已安裝 0.11.1 sidecar 產生的私有 profile 進行，結果與發布檢查見 release notes。 |
 
 *Created / last updated: 2026-10-28*

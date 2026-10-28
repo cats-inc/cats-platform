@@ -3,11 +3,13 @@
 - [PLAN-125: Claude Code provider controls in Desktop](PLAN-125-claude-code-provider-controls-in-desktop.md)
   — in progress, 2026-10-28; `tool_approval`, Claude policy ceilings and a
   Claude in Chrome preference over Runtime SPEC-039 R8. P1–P3 implemented;
-  real-CLI acceptance recorded in P4.
+  real-CLI acceptance recorded in P4. Owner-selected Desktop 0.12.0 standard
+  preview bundles Runtime `af405ff7`.
 
 - [PLAN-124: Provider session interactions and capability visibility](PLAN-124-provider-session-interactions-and-capability-visibility.md)
-  — ready, 2026-10-28; shared transport/lifecycle, product UI,
-  policy/inventory and isolated Desktop acceptance. All phases pending.
+  — implemented, 2026-10-28; shared transport/lifecycle, product UI,
+  policy/inventory and isolated Desktop acceptance. Its format 6 data boundary
+  sets the Desktop 0.12.0 minor.
 
 - [PLAN-123: Catlas curated assist](PLAN-123-catlas-curated-assist-rollout.md)
   — implemented with scoped tests/builds and isolated Windows Desktop smoke,
