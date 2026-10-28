@@ -586,6 +586,12 @@ export function buildManagedServiceSpecs(
         CATS_RUNTIME_BASE_URL: config.runtimeBaseUrl,
         CATS_RUNTIME_PACKAGE_ROOT: config.runtimePackageRoot,
         CATS_RUNTIME_CATALOG_CONFIG_PATH: config.paths.runtimeConfigPath,
+        // SPEC-133 DC-01: only a Windows Desktop offers desktop control; the host's own
+        // executable is never grantable.
+        ...(platform === 'win32' ? {
+          CATS_DESKTOP_CONTROL_HELPER: config.paths.desktopControlHelperPath,
+          CATS_DESKTOP_HOST_EXECUTABLE: process.execPath,
+        } : {}),
       },
       healthUrl: `${config.appBaseUrl}/health`,
       logPath: join(config.paths.hostLogsDir, 'cats.log'),

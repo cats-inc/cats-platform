@@ -30,6 +30,8 @@ export interface DesktopHostPaths {
   runtimeManagementConfigPath: string;
   runtimeCuratedModelCatalogPath: string;
   mobileBundleRoot: string;
+  /** SPEC-133 desktop control helper; the Platform server checks that it exists. */
+  desktopControlHelperPath: string;
   hostStatePath: string;
   windowStatePath: string;
   hostLogsDir: string;
@@ -363,6 +365,16 @@ export function resolveDesktopHostConfig(
             options.packaged === true
               ? joinDesktopPath(resolveDesktopPath(options.resourcesPath ?? joinDesktopPath(packageRoot, '..')), 'mobile')
               : joinDesktopPath(packageRoot, 'build', 'mobile')
+          ),
+      ),
+      desktopControlHelperPath: resolveDesktopPath(
+        env.CATS_DESKTOP_CONTROL_HELPER?.trim()
+          || (
+            options.packaged === true
+              ? joinDesktopPath(resolveDesktopPath(options.resourcesPath ?? joinDesktopPath(packageRoot, '..')),
+                'native', 'windows-desktop-control', 'cats-desktop-control-windows.exe')
+              : joinDesktopPath(packageRoot, 'desktop', 'native', 'windows-desktop-control', 'bin', 'Release',
+                'net8.0-windows10.0.19041.0', 'cats-desktop-control-windows.exe')
           ),
       ),
       hostStatePath: resolveDesktopPath(joinDesktopPath(desktopDir, 'state.json')),

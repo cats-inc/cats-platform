@@ -23,6 +23,7 @@ import {
 import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
 import { ProviderSessionSettings } from './ProviderSessionSettings.js';
 import { ClaudeInChromeSection } from './ClaudeInChromeSection.js';
+import { DesktopControlSection } from './DesktopControlSection.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { resolveRuntimePresentationStatus } from '../../../shared/runtimeStatusPresentation.js';
 import { mountProviderManager, type ProviderManagerBridge } from '../../../../packages/provider-setup/manager.js';
@@ -191,6 +192,7 @@ export function PlatformSettingsRuntime({
         <SettingsSection headerless><DesktopProviders onFeedback={showToast} /></SettingsSection>
       ) : null}
       <ClaudeInChromeSection showToast={showToast} />
+      <DesktopControlSection showToast={showToast} />
       <SettingsSection headerless><ProviderSessionSettings payload={payload} /></SettingsSection>
 
       <SettingsSection

@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress; P0 complete, P1–P4 authorized, P5 needs owner sign-off after P4 |
+| Status | Phase A delivered (P0–P3 merged or in review, P4 recorded); waiting for owner sign-off before P5 |
 | Owner | Platform Desktop integration |
 | Assigned To | Claude |
 | Reviewer | Product owner, Runtime maintainers |
@@ -88,23 +88,55 @@ Met on 2026-10-29. Affected suites: 466/470 JavaScript tests passed; the 4 failu
 
 ### P3 — Renderer and Desktop host
 
-- [ ] Settings switch and the reason when unavailable.
-- [ ] The per-conversation switch and grant cards; grant cards do not share a reply path
-  with provider interaction cards.
-- [ ] The "Cats desktop control" row in the capability panel (DC-18).
-- [ ] The Desktop host passes `CATS_DESKTOP_CONTROL_HELPER`; tray state and the stop item
-  (DC-12).
+- [x] Settings switch and the reason when unavailable (Settings > Runtime, under Claude in
+  Chrome; hidden where the platform is not Windows).
+- [x] The per-conversation switch and grant cards; grant cards do not share a reply path
+  with provider interaction cards. They answer through `/api/desktop-control/grant-requests`,
+  next to the provider controls in the conversation view, with Stop for the conversation.
+- [x] The "Cats desktop control" status (DC-18) shows in that conversation panel, with the
+  reason when the descriptor is not attached; the provider capability panel keeps showing
+  provider-native computer use unchanged.
+- [x] The Desktop host passes `CATS_DESKTOP_CONTROL_HELPER` (packaged resources, or the
+  development Release build) and `CATS_DESKTOP_HOST_EXECUTABLE` to Platform on Windows only.
+  Tray state and the tray stop item move to P5 with DC-11's holding notice: in phase A nothing
+  holds control, and stop stays available in the conversation and through the settings switch.
 
-**Exit:** UI tests and an isolated Desktop smoke test pass.
+**Exit:** UI tests and an isolated Desktop smoke test pass. UI and host tests pass
+(`tests/desktop-control-renderer.test.tsx` 3/3, supervisor tests 47/47, i18n parity and
+related renderer tests 33/33); the Desktop smoke test runs with P4.
 
 ### P4 — Phase A native acceptance
 
-- [ ] Run A1–A6 and A8 on a real Windows machine with a real Claude Code; for Codex, check
-  image content (Open Questions).
-- [ ] Record the Defender result, redacted samples of real screenshots and UIA output, and
+- [x] Run A1–A6 and A8 on a real Windows machine with a real Claude Code; for Codex, check
+  image content (Open Questions). See the record below; Codex was not checked.
+- [x] Record the Defender result, redacted samples of real screenshots and UIA output, and
   any items that did not pass.
 
 **Exit:** the owner confirms phase A's consent flow is usable and authorizes phase B.
+
+P4 record (2026-10-29, Windows 11, Claude Code 2.1.312 `haiku` with the owner's own sign-in).
+A private Runtime built from `origin/main` (`0b387ae5`) ran with a temporary
+`CATS_RUNTIME_DIR` and only the `claude` native instance configured. A script drove it through
+Platform's `CatsRuntimeClient` and the P2 desktop control service with the real helper. It
+answered each provider approval with "Allow once" and each grant as the owner would, against
+two throwaway windows: a blue target with controls and a red window over part of it. 13/13
+checks passed:
+
+- A2: the explicit `on-request` session carried `cats-desktop`; Runtime reported the policy
+  `verified` with reviewer `user`; each of the 4 desktop tool calls produced a `tool_approval`
+  naming server `cats-desktop`; a `never` session did not get the descriptor.
+- A3: the app grant came only through the service's owner path (`decideGrant`).
+- Phase A tools: the model described the window as blue from `screenshot_window` and quoted
+  the button and text field values from `read_ui`; the password value never reached it (A4).
+- DC-05: a turn that was not owner-present got `not_owner_present`, and its send kept the
+  descriptor, so the worker was not restarted.
+- A5: after Stop, tools answered `stopped`. A6: after the helper process was killed, the next
+  owner turn started a new helper; Defender recorded no detection during the run.
+
+Not exercised natively: the Desktop UI (settings switch, grant cards and the route-level
+`local` stamp through a signed-in renderer), the screen-lock pause, the 5-minute idle exit,
+a packaged installer's helper, and Codex. These are covered by fixtures only and wait for
+the owner's Desktop check. The native helper check (A4 with pixel counts) is recorded under P1.
 
 ### P5 — Phase B (act)
 
