@@ -64,6 +64,7 @@ import {
   assertClientMessageIdLengthCap,
 } from '../../shared/clientMessageIdentity.js';
 import type { RuntimeTransportContext } from '../../state/runtimeTargeting.js';
+import { isLocalOwnerRequest } from '../../../../platform/desktopControl/routes.js';
 
 function resolveRestMessageTransport(
   request: ChatApiRouteContext['request'],
@@ -564,6 +565,13 @@ async function handleRestSendMessage(
   try {
     requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<SendChannelMessageInput>(context.request);
+    // SPEC-133 DC-05: only the server marks a send from the local owner, which desktop
+    // control treats as owner-present; a client-supplied value never survives.
+    const localOwner = isLocalOwnerRequest(context) && resolveRestMessageTransport(context.request) !== 'mobile';
+    if (body.messageMetadata || localOwner) {
+      const { desktopControlEntry: _clientEntry, ...clientMetadata } = body.messageMetadata ?? {};
+      body.messageMetadata = { ...clientMetadata, ...(localOwner ? { desktopControlEntry: 'local' as const } : {}) };
+    }
     // Length-only sanitation gate. Malformed UUIDs intentionally fall back to
     // server ids in the dispatch layer per SPEC-106 FR-4.
     assertClientMessageIdLengthCap(body.clientMessageId);

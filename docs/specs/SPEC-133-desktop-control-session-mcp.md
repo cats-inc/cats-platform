@@ -73,9 +73,10 @@ flowchart LR
   `SessionMcpServerContributor`s are only consumed by the Code agent-tools wrapper, which injects
   only for Code sessions, so a contributor would never reach Chat. Phase A covers Chat
   conversations (`supervisionProduct: 'cats-chat'`); Code and Work follow separately.
-- **Settings**: `desktop-control.json` in the Platform data directory (`config.platformDir`),
-  written atomically: `{ "version": 1, "enabled": false, "conversations": [] }`, where
-  `conversations` lists enabled channel ids.
+- **Settings**: Platform preferences, beside "Claude in Chrome": `desktopControlEnabled`
+  (default `false`) and `desktopControlConversations` (enabled channel ids). The general
+  preferences update never changes them; only the owner API does, and Platform data reset
+  turns them off.
 
 ## Requirements
 
@@ -92,7 +93,7 @@ flowchart LR
 | ID | Requirement |
 | --- | --- |
 | DC-04 | The wrapper adds `cats-desktop` to a send only when DC-01 to DC-03 hold and `getSessionCapabilities(sessionId)` returns an observation where `interactions.host` exists and lists `tool_approval`, `policy.source` is `explicit`, `policy.requested` is `{ mode: 'explicit', approval: 'on-request' | 'untrusted' }`, and `policy.status` is `verified` or `not_observed`. `not_observed` is accepted because Runtime verifies the policy before it releases the first turn and fails the turn on a mismatch. A `mismatch` or `unsupported` status, `skip`, `never`, a missing snapshot or any error injects nothing (fail closed), and the capability panel shows why |
-| DC-05 | Tools serve only turns the owner sent from the local Desktop window. The channel message route stamps `messageMetadata.desktopControlEntry = 'local'` on an owner message only when the request did not arrive through the public ingress entry (`platformRequestEntry(request).publicEntry`) and its transport is not `mobile`; it always overwrites a client-supplied value. Telegram inbound messages never carry it. A turn is owner-present when its send metadata has `supervisionProduct: 'cats-chat'`, `supervisionSurface: 'runtime-dispatch'` and a `sourceMessageId` whose message in channel `supervisionRunId` is a `user` message stamped `local`. Every other turn, including heartbeats, schedules and delegation, gets `not_owner_present`. Once a conversation qualifies, the descriptor is attached to all its sends and only the turn scope changes, which avoids the worker restart of SPEC-035 SMCP-08 |
+| DC-05 | Tools serve only turns the owner sent from the local Desktop window. The channel message route stamps `messageMetadata.desktopControlEntry = 'local'` on an owner message only for a local owner request (loopback socket and host, no forwarding headers, an owner or admin signed in with a browser cookie; the same test the provider controls use) whose transport is not `mobile`; it always removes a client-supplied value. Telegram inbound messages never carry it. A turn is owner-present when its send metadata has `supervisionProduct: 'cats-chat'`, `supervisionSurface: 'runtime-dispatch'` and a `sourceMessageId` whose message in channel `supervisionRunId` is a `user` message stamped `local`. Every other turn, including heartbeats, schedules and delegation, gets `not_owner_present`. Once a conversation qualifies, the descriptor is attached to all its sends and only the turn scope changes, which avoids the worker restart of SPEC-035 SMCP-08 |
 | DC-06 | Session bearer tokens are never logged and are revoked when the session is removed, stopped or turned off |
 | DC-07 | `/api/internal/desktop-control/` is added to `isInternalPlatformRoute`: reachable only from the internal listener and always refused through ingress |
 
@@ -100,7 +101,7 @@ flowchart LR
 
 | ID | Requirement |
 | --- | --- |
-| DC-08 | `request_app_access({apps, reason})` has the helper resolve names (including localized display names and exe names) to an executable identity: path, signing publisher and product name. Platform posts a grant card in the conversation, waits at most 60 seconds and returns `granted`, `denied` or `pending` per app. Only the owner acting on the card counts |
+| DC-08 | `request_app_access({apps, reason})` has the helper resolve names (including localized display names and exe names) to an executable identity: path, signing publisher and product name. Platform posts a grant card in the conversation, waits at most 60 seconds and returns `granted`, `denied` or `pending` per app. Only the owner acting on the card counts. Asking again for an app that already waits joins that request; an unanswered request is denied after 10 minutes, and a conversation holds at most 5 open requests |
 | DC-09 | Grants match on executable path plus signing publisher, never on window title. They are scoped to that conversation's session and kept only in memory; removing the session, stopping, turning the feature off or restarting Platform clears them |
 | DC-10 | The helper enforces an exclusion list. Cats Desktop and its helpers can never be granted. System security UI (such as `consent.exe`, `LogonUI.exe` and credential dialogs) can never be granted. Terminals and IDEs (such as Windows Terminal, conhost, PowerShell, cmd, VS Code, Visual Studio and JetBrains IDEs) and browsers (Chrome, Edge, Firefox, Brave, Opera) are observe only. The list has test coverage |
 

@@ -55,6 +55,7 @@ import {
 import { routeChatApi } from '../../products/chat/api/index.js';
 import { currentProviderBindings } from '../../products/chat/api/providerInteractionBindings.js';
 import { routeProviderInteractions } from '../../products/shared/api/providerInteractions.js';
+import { routeDesktopControl } from '../../platform/desktopControl/routes.js';
 import { routeCodeApi } from '../../products/code/api/index.js';
 import { routeArtifactCanvasApi } from '../../products/shared/artifactCanvas/api.js';
 import { routeWorkApi } from '../../products/work/api/index.js';
@@ -487,6 +488,7 @@ export async function routeRequest(
     bindings: id => currentProviderBindings(dependencies.chat.chatStore, id, dependencies.shared.coreStore),
     chatStatePath: dependencies.shared.config.chatStatePath,
   } })) return;
+  if (await routeDesktopControl({ ...context, dependencies: { desktopControl: dependencies.shared.desktopControl } })) return;
   const chatContext = {
     ...context,
     dependencies: {

@@ -135,6 +135,8 @@ export interface ServerDependencies {
 export interface ResolvedSharedServerDependencies extends SharedServerDependencies {
   /** Preserve the bootstrap client's identity for provider caches and persistence. */
   providerSelectorClient?: RuntimeClient;
+  /** SPEC-133 desktop control; the owner API routes read and change it. */
+  desktopControl?: import('../../platform/desktopControl/service.js').DesktopControlService;
   coreStore: CoreStore;
   startup: AppStartupState;
   authStore: PlatformAuthStore;

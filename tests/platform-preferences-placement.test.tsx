@@ -20,6 +20,8 @@ function baselinePreferences(): PlatformPreferences {
     uiLanguagePreference: 'auto',
     codePreviewServersEnabled: false,
     claudeInChromeEnabled: false,
+    desktopControlEnabled: false,
+    desktopControlConversations: [],
   };
 }
 

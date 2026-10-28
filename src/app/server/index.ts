@@ -28,6 +28,7 @@ import {
 import { createCodeAgentToolsClientWrapper } from '../../products/code/agentTools/runtimeClientWrapper.js';
 import { createCodeAgentToolsService } from '../../products/code/agentTools/service.js';
 import { createCatImageTools, CAT_IMAGE_TOOLS_PATH } from '../../platform/multimedia/catImageTools.js';
+import { createDesktopControlForServer, DESKTOP_CONTROL_MCP_PATH } from '../../platform/desktopControl/server.js';
 import { createChatCatImages, type ChatCatImages } from '../../products/chat/api/catImages.js';
 import { MemoryChatStore } from '../../products/chat/state/store.js';
 import type { CodeConversationPreviews } from '../../products/code/livePreview/conversationPreviews.js';
@@ -86,6 +87,13 @@ export function createServer(dependencies: ServerDependencies) {
     resolveTurn: async (id, input) => await catImages?.resolveTurn(id, input) ?? null,
     now: () => dependencies.shared.now?.().getTime() ?? Date.now(),
   });
+  let desktopControlEndpoint: string | null = null;
+  const desktopControl = createDesktopControlForServer({
+    endpoint: () => desktopControlEndpoint,
+    chatStatePath: dependencies.shared.config.chatStatePath,
+    chatStore: () => dependencies.chat.chatStore,
+    runtimeClient: providerSelectorClient,
+  });
   let codeAgentToolsEndpoint: string | null = null;
   let codeConversationPreviews: CodeConversationPreviews | undefined;
   const codeAgentToolsClients = createCodeAgentToolsClientWrapper({
@@ -116,11 +124,12 @@ export function createServer(dependencies: ServerDependencies) {
   });
   dependencies = {
     ...dependencies,
-    shared: { ...dependencies.shared, managedPlugins: plugins, runtimeClient: plugins.wrapClient(knowledge.wrapClient(catImageTools.wrapClient(codeAgentToolsClients.wrapClient(dependencies.shared.runtimeClient)))) },
+    shared: { ...dependencies.shared, managedPlugins: plugins, runtimeClient: desktopControl.wrapClient(plugins.wrapClient(knowledge.wrapClient(catImageTools.wrapClient(codeAgentToolsClients.wrapClient(dependencies.shared.runtimeClient))))) },
     ...(dependencies.code?.runtimeClient ? { code: { ...dependencies.code, runtimeClient: plugins.wrapClient(knowledge.wrapClient(codeAgentToolsClients.wrapClient(dependencies.code.runtimeClient))) } } : {}),
     ...(dependencies.work?.runtimeClient ? { work: { ...dependencies.work, runtimeClient: plugins.wrapClient(knowledge.wrapClient(dependencies.work.runtimeClient)) } } : {}),
   };
   const resolvedDependencies = resolveServerDependencies(dependencies);
+  resolvedDependencies.shared.desktopControl = desktopControl;
   // Memory-backed test servers never discover or mutate an on-disk user multimedia ledger.
   if (!catImages && !(resolvedDependencies.chat.chatStore instanceof MemoryChatStore)) {
     catImages = createChatCatImages({ ...resolvedDependencies.chat, config: resolvedDependencies.shared.config,
@@ -225,6 +234,7 @@ export function createServer(dependencies: ServerDependencies) {
     }
     if (await codeAgentTools.route(request, response)) return;
     if (await catImageTools.route(request, response)) return;
+    if (await desktopControl.route(request, response)) return;
     if (await knowledge.route(request, response)) return;
     await routeRequest(request, response, resolvedDependencies);
   };
@@ -298,6 +308,7 @@ export function createServer(dependencies: ServerDependencies) {
         for (const response of openStreams) response.end();
         knowledge.revoke();
         catImageTools.revoke();
+        desktopControl.reset();
         await catImages?.clearForReset();
         codeAgentTools.clearForReset();
         getDefaultArtifactCanvasRenderIntentHub().clearForReset();
@@ -389,6 +400,7 @@ export function createServer(dependencies: ServerDependencies) {
       knowledgeEndpoint = `http://${host}:${address.port}${AGENT_KNOWLEDGE_PATH}`;
       codeAgentToolsEndpoint = `http://${host}:${address.port}${CODE_AGENT_TOOLS_MCP_PATH}`;
       catImageToolsEndpoint = `http://${host}:${address.port}${CAT_IMAGE_TOOLS_PATH}`;
+      desktopControlEndpoint = `http://${host}:${address.port}${DESKTOP_CONTROL_MCP_PATH}`;
     }
   });
 
@@ -397,6 +409,7 @@ export function createServer(dependencies: ServerDependencies) {
     clearInterval(pluginTimer);
     knowledge.close();
     catImageTools.close();
+    desktopControl.close();
     loops.stopMediaLoop();
     loops.stopSchedulerLoop();
     loops.stopHistoryRetentionLoop();

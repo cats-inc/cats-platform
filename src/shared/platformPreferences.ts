@@ -29,6 +29,13 @@ export interface PlatformPreferences {
    * conversations that can show approval cards load browser tools.
    */
   claudeInChromeEnabled: boolean;
+  /**
+   * Settings > Runtime "Desktop control" (SPEC-133 DC-02). Opt-in: off until the
+   * local owner turns it on; Platform data reset turns it off again.
+   */
+  desktopControlEnabled: boolean;
+  /** Chat channels the owner enabled desktop control for (SPEC-133 DC-03). */
+  desktopControlConversations: string[];
 }
 
 const DEFAULTS: PlatformPreferences = {
@@ -41,6 +48,8 @@ const DEFAULTS: PlatformPreferences = {
   uiLanguagePreference: 'auto',
   codePreviewServersEnabled: false,
   claudeInChromeEnabled: false,
+  desktopControlEnabled: false,
+  desktopControlConversations: [],
 };
 
 export function parsePlatformLobbyAnimationMode(
@@ -95,6 +104,11 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
     uiLanguagePreference: normalizePlatformUiLanguagePreference(record.uiLanguagePreference),
     codePreviewServersEnabled: record.codePreviewServersEnabled === true,
     claudeInChromeEnabled: record.claudeInChromeEnabled === true,
+    desktopControlEnabled: record.desktopControlEnabled === true,
+    desktopControlConversations: Array.isArray(record.desktopControlConversations)
+      ? [...new Set(record.desktopControlConversations.filter((id): id is string =>
+        typeof id === 'string' && id.length > 0 && id.length <= 300))].slice(0, 500)
+      : [],
   };
 }
 
