@@ -88,14 +88,22 @@ Met on 2026-10-29. Affected suites: 466/470 JavaScript tests passed; the 4 failu
 
 ### P3 — Renderer and Desktop host
 
-- [ ] Settings switch and the reason when unavailable.
-- [ ] The per-conversation switch and grant cards; grant cards do not share a reply path
-  with provider interaction cards.
-- [ ] The "Cats desktop control" row in the capability panel (DC-18).
-- [ ] The Desktop host passes `CATS_DESKTOP_CONTROL_HELPER`; tray state and the stop item
-  (DC-12).
+- [x] Settings switch and the reason when unavailable (Settings > Runtime, under Claude in
+  Chrome; hidden where the platform is not Windows).
+- [x] The per-conversation switch and grant cards; grant cards do not share a reply path
+  with provider interaction cards. They answer through `/api/desktop-control/grant-requests`,
+  next to the provider controls in the conversation view, with Stop for the conversation.
+- [x] The "Cats desktop control" status (DC-18) shows in that conversation panel, with the
+  reason when the descriptor is not attached; the provider capability panel keeps showing
+  provider-native computer use unchanged.
+- [x] The Desktop host passes `CATS_DESKTOP_CONTROL_HELPER` (packaged resources, or the
+  development Release build) and `CATS_DESKTOP_HOST_EXECUTABLE` to Platform on Windows only.
+  Tray state and the tray stop item move to P5 with DC-11's holding notice: in phase A nothing
+  holds control, and stop stays available in the conversation and through the settings switch.
 
-**Exit:** UI tests and an isolated Desktop smoke test pass.
+**Exit:** UI tests and an isolated Desktop smoke test pass. UI and host tests pass
+(`tests/desktop-control-renderer.test.tsx` 3/3, supervisor tests 47/47, i18n parity and
+related renderer tests 33/33); the Desktop smoke test runs with P4.
 
 ### P4 — Phase A native acceptance
 

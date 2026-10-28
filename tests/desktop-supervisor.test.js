@@ -101,6 +101,12 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   const [runtimeSpec, appSpec] = buildManagedServiceSpecs(config, { CATS_DESKTOP_AUTH_KEY: 'private-host-key' }, 'win32');
   assert.equal(runtimeSpec.env.CATS_DESKTOP_AUTH_KEY, undefined);
   assert.equal(appSpec.env.CATS_DESKTOP_AUTH_KEY, 'private-host-key');
+  // SPEC-133 DC-01: a Windows Desktop tells Platform where the desktop control helper is, and
+  // which host executable it must never grant; Runtime gets neither.
+  assert.equal(appSpec.env.CATS_DESKTOP_CONTROL_HELPER, config.paths.desktopControlHelperPath);
+  assert.match(config.paths.desktopControlHelperPath, /windows-desktop-control[\\/].*cats-desktop-control-windows\.exe$/u);
+  assert.equal(appSpec.env.CATS_DESKTOP_HOST_EXECUTABLE, process.execPath);
+  assert.equal(runtimeSpec.env.CATS_DESKTOP_CONTROL_HELPER, undefined);
 
   assert.equal(runtimeSpec.name, 'cats-runtime');
   assert.deepEqual(runtimeSpec.args.slice(1), [
@@ -436,6 +442,7 @@ test('managed desktop services augment PATH for macOS packaged CLI discovery', (
   });
 
   const [runtimeSpec, appSpec] = buildManagedServiceSpecs(config, env, 'darwin');
+  assert.equal(appSpec.env.CATS_DESKTOP_CONTROL_HELPER, undefined, 'desktop control is Windows only');
   const runtimePathEntries = splitManagedPathEntries(runtimeSpec.env.PATH, 'darwin');
   const appPathEntries = splitManagedPathEntries(appSpec.env.PATH, 'darwin');
 
