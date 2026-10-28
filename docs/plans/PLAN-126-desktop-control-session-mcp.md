@@ -47,16 +47,21 @@ contributors only reach Code sessions, so Chat injection uses a `wrapClient` pro
 
 ### P1 — Helper (observe)
 
-- [ ] Create `desktop/native/windows-desktop-control/` and implement `hello`,
-  `resolve_apps`, `list_windows`, `capture_window` (Windows Graphics Capture with a
-  `PrintWindow` fallback), `read_ui`, `open_app`, `state` and `cancel`.
-- [ ] Implement the exclusion list, UIPI checks, per-monitor DPI awareness v2 and lock
-  detection (DC-13).
-- [ ] Wire it into `build-desktop-installer.mjs`, signing and `verify-desktop-licenses.mjs`.
-- [ ] Helper tests: resolution, exclusions, protocol errors and capture under a covering
-  window (A4).
+- [x] Create `desktop/native/windows-desktop-control/` and implement `hello`,
+  `resolve_apps`, `list_windows`, `capture_window` (`PrintWindow`, per P0), `read_ui`,
+  `open_app`, `state` and `cancel`. Packaged apps launch through their AUMID.
+- [x] Implement the exclusion list, per-monitor DPI awareness v2 and lock detection (DC-13).
+  UIPI only blocks input, so the `elevated_target` check moves to P5 with the input ops.
+- [x] Wire it into `build-desktop-installer.mjs`, `verify-desktop-licenses.mjs` and the
+  per-architecture check in `verify-desktop-app-bundle.mjs`; it is signed with the installer
+  like the voice helper.
+- [x] Helper tests: resolution, exclusions, protocol errors and capture under a covering
+  window (A4). `native-check/check.mjs` passed 13/13 on Windows 11 on 2026-10-29: the overlap of
+  a red covering window contained 0 red pixels, password values were absent, 「記事本」
+  ("Notepad") resolved to the packaged Notepad and PowerShell resolved as observe only.
 
-**Exit:** the helper alone passes A4 and the helper part of A6 on Windows.
+**Exit:** the helper alone passes A4 and the helper part of A6 on Windows. A4 passed; the
+crash-restart and idle-exit parts of A6 belong to the P2 supervisor.
 
 ### P2 — Platform server
 

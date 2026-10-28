@@ -6,8 +6,10 @@ import { join } from 'node:path';
 
 import {
   WINDOWS_APP_EXECUTABLE,
+  WINDOWS_DESKTOP_CONTROL_HELPER,
   WINDOWS_VOICE_HELPER,
   readPeArchitecture,
+  verifyWindowsDesktopControlHelperArch,
   verifyWindowsVoiceHelperArch,
 } from '../scripts/shared/windows-voice-helper-arch.mjs';
 
@@ -24,17 +26,31 @@ function peImage(arch) {
   return image;
 }
 
-async function unpackedWindowsApp(t, { app, helper }) {
+async function unpackedWindowsApp(t, { app, helper, desktopControl = null }) {
   const root = await mkdtemp(join(tmpdir(), 'cats-win-helper-arch-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const resources = join(root, 'resources');
   await mkdir(join(resources, 'native', 'windows-stt'), { recursive: true });
+  await mkdir(join(resources, 'native', 'windows-desktop-control'), { recursive: true });
   await writeFile(join(root, WINDOWS_APP_EXECUTABLE), peImage(app));
   if (helper) {
     await writeFile(join(resources, WINDOWS_VOICE_HELPER), peImage(helper));
   }
+  if (desktopControl) {
+    await writeFile(join(resources, WINDOWS_DESKTOP_CONTROL_HELPER), peImage(desktopControl));
+  }
   return resources;
 }
+
+test('the desktop control helper must match the app architecture and be present', async (t) => {
+  const matching = await unpackedWindowsApp(t, { app: 'arm64', helper: 'arm64', desktopControl: 'arm64' });
+  assert.deepEqual(await verifyWindowsDesktopControlHelperArch(matching), { arch: 'arm64' });
+  const emulated = await unpackedWindowsApp(t, { app: 'arm64', helper: 'arm64', desktopControl: 'x64' });
+  await assert.rejects(verifyWindowsDesktopControlHelperArch(emulated),
+    /Windows desktop control helper is x64 but the app is arm64/u);
+  const missing = await unpackedWindowsApp(t, { app: 'x64', helper: 'x64' });
+  await assert.rejects(verifyWindowsDesktopControlHelperArch(missing), /lack the desktop control helper/u);
+});
 
 test('PE machine fields map to the shipped Windows architectures', async (t) => {
   const resources = await unpackedWindowsApp(t, { app: 'arm64', helper: 'x64' });
