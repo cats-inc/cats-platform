@@ -9,8 +9,8 @@ Selected distribution: Desktop **0.12.1 standard-profile preview**, App SDK
 Marketplace Apps keep their existing releases.
 
 - **Let a Cat see and operate apps on this Windows computer.**
-  - **Switches.** Settings > Runtime adds **Cats desktop control** (Windows only, off by
-    default), and each conversation has its own switch.
+  - **Switches.** Settings > Runtime adds **Desktop control** (toggle **Allow desktop
+    control**; Windows only, off by default), and each conversation has its own switch.
   - **When it applies.** Both switches must be on, and the conversation's explicit execution
     policy must ask for approval (`on-request` or `untrusted`). Chat sessions then get the
     `cats-desktop` MCP server.
@@ -51,7 +51,7 @@ Marketplace Apps keep their existing releases.
     Catlas and orchestrator bundles keep `platformRange: "0.12.x"`.
 - **Exact source and artifacts.**
   - **Runtime.** `0b387ae5abfc2a789fde590b8450a723f077fd60` (package **0.6.2**, bundled from
-    source). Since 0.12.0's `af405ff7` it adds only a research document, so the packaged
+    source). Since 0.12.0's `af405ff7` it changes only research documents, so the packaged
     Runtime code is unchanged. Desktop control relies on Runtime's existing session MCP
     injection and execution-policy report.
   - **Usage.** Remains
@@ -73,9 +73,14 @@ Marketplace Apps keep their existing releases.
     - Both ran a development build of the helper against throwaway windows. They did not use a
       packaged installer.
   - **Fixture suites.** The server, helper client and host-notice suites pass.
-  - **Not verified:**
+  - **Not verified.** The native runs drove the desktop control service directly, not a
+    Desktop window. Not covered:
     - the helper from a packaged installer;
+    - the Settings switch and grant cards in a running Desktop;
+    - the owner-present `local` stamp from a signed-in Desktop window, which every tool
+      call depends on;
     - the notice and tray in a running Desktop;
+    - the 5-minute idle exit;
     - the clipboard tools on a real desktop;
     - the lock pause;
     - Codex.
