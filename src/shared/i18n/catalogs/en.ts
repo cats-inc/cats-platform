@@ -4213,7 +4213,7 @@ export const enCatalog: MessageCatalog = {
   "providerControls.ChromeTitle": "Claude in Chrome",
   "providerControls.ChromeDescription": "Lets Claude Code Cats use Chrome or Edge through the Claude extension, only in conversations where you can answer their approval cards. Work runs and scheduled tasks never load browser tools.",
   "providerControls.ChromeToggle": "Load Claude in Chrome in Claude Code conversations",
-  "providerControls.ChromeToggleHelp": "Applies to new sessions and the next time a session restarts. With an on-request policy each browser action asks first; with full access it runs without asking. Off keeps Claude Code's own default. Needs Chrome or Edge with the Claude extension signed in to the same account.",
+  "providerControls.ChromeToggleHelp": "Applies to new sessions and the next time a session restarts. Claude Code and the Claude extension decide which browser actions need approval, such as acting on a site you have not allowed: a request Claude Code sends appears here as an approval card, and the extension's site prompts appear in the browser. Some tools, such as reading the open tabs, run without asking, and full access skips Claude Code's prompts. Off keeps Claude Code's own default. Needs Chrome or Edge with the Claude extension signed in to the same account.",
   "providerControls.ChromeLoadFailure": "Couldn't load the Claude in Chrome setting.",
   "providerControls.ChromeSaveFailure": "Couldn't save the Claude in Chrome setting.",
   "providerControls.BuiltinTools": "Built-in tools ({count})",

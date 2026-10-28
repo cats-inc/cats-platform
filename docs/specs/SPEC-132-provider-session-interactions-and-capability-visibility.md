@@ -195,6 +195,8 @@ Runtime SPEC-039 R8 讓 Claude Code 成為第二個原生 target，由
   target 不能強制的上限，也不能把 Claude 的 `verified` 說成檔案／網路受限。
 - Claude in Chrome 需要 Runtime session 的 `browserIntegration: true`。只有可回覆的對話 session
   才送出；沒有人能回覆卡片的 Work／排程／relay 執行不得載入瀏覽器工具。
+  哪些 Chrome 工具需要核准由 Claude Code 與擴充決定（實測讀取分頁的 `tabs_context_mcp` 不詢問），
+  因此 Desktop 不宣稱每個瀏覽器動作都會出現卡片。
 - Computer use 在 Windows 為 `unavailable`（Claude Code 只開放給 macOS 互動 session），顯示原因即可。
 
 ## Remaining environment validation

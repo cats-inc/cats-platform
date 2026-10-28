@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | 進行中；P1–P3 實作完成，P4 驗收待進行 |
+| Status | 實作完成；真實 Claude Code 驗收通過，Chrome 實際瀏覽器操作尚未驗證 |
 | Owner | Platform shared interaction、Desktop integration |
 | Assigned To | Claude |
 | Reviewer | Product owner、Runtime maintainers |
@@ -57,14 +57,15 @@ Runtime 已在 #196–#199 接上 Claude Code 的原生批准、提問、MCP 表
 - [x] 組合層的 wrapper 位於 Work admission wrapper 之外：只有呼叫端自己帶互動 host 的 Chat／Code
   對話會要求 `browserIntegration: true`；client 只在 host 已協商且 target 宣告支援時送出。
   Work 監督／排程與 relay 執行不送，關閉時不送（保留使用者自己的 Claude Code 預設）。
-- [x] 說明文字：變更只影響新 session 或下一次 worker 啟動；完整存取（skip）對話的 Chrome 動作不會詢問。
+- [x] 說明文字：變更只影響新 session 或下一次 worker 啟動；哪些瀏覽器動作需要核准由 Claude Code 與
+  擴充決定（P4 實測讀取分頁的工具不詢問），完整存取（skip）會略過 Claude Code 的詢問。
   共用契約 pin 更新為 Runtime `b750d27e`（#200）。
 
 ### P4 — 驗收
 
-- [ ] Focused Node／renderer 測試、受影響 typecheck 與 build。
-- [ ] 以隔離 state 透過真實 `CatsRuntimeClient` 與 Claude Code 驗證 `tool_approval` 往返與
-  `--chrome` 載入；Chrome 實際操作需 owner 開啟瀏覽器並同意後才進行。
+- [x] Focused Node／renderer 測試、受影響 typecheck 與 build（各片 progress log）。
+- [x] 以隔離 state 透過真實 `CatsRuntimeClient` 與 Claude Code 驗證 `tool_approval` 往返與
+  `--chrome` 載入；Chrome 實際操作需 owner 開啟瀏覽器並同意後才進行，本次未進行。
 
 ## Testing Strategy and Risks
 
@@ -79,5 +80,6 @@ P2／P3 分別以 admission 測試與 session create payload 測試覆蓋。
 | 2026-10-28 | P1：契約對齊 Runtime `043155a1`、`tool_approval` 協商與卡片 DOM 測試、admissible ceilings 解析、內建工具清單與 provider 專屬設定連結。15 項 client／renderer、26 項 product／control／policy upgrade／raw-string audit 測試通過；server build 與 renderer typecheck 通過。 |
 | 2026-10-28 | P2：client 端 ceiling 拒絕（不送出 `/sessions`）與編輯器提示。16 項 client／renderer 測試通過，含 explicit workspace-write、provider 離線上限被拒與 full-access＋網路通過。 |
 | 2026-10-28 | P3：Claude in Chrome 偏好、本機 owner 路由、對話限定的 `browserIntegration` 與 Settings 開關。新增 3 項 Node（client 轉送、wrapper 範圍、路由權限與持久化）及 1 項 DOM 測試；更新 3 個 preferences 完整形狀 fixture。39 項 control／client／products／policy／ingress／raw-string 測試、60 項 preferences／setup／reset／preview 測試、8 項 renderer 測試通過；server／renderer／desktop／test typecheck 與 catalog check 通過。 |
+| 2026-10-28 | P4：Claude Code 2.1.312（haiku）、Runtime 原始碼 `b750d27e`（#200）以私有暫存 `CATS_RUNTIME_DIR` 啟動，Claude Code 使用 owner 自己的登入；經 Platform `CatsRuntimeClient` 與對話 wrapper（偏好開啟），explicit full-access／網路／on-request。結果：discovery 宣告 `tool_approval`、`admissibleCeilings` 與 `browserIntegration`；workspace-write 政策在 client 端被拒且未送出 `/sessions`；WebFetch 產生 `tool_approval`，接受後同 turn 完成；工作階段 policy `verified`（回報 `default`、reviewer `user`）、`claude-in-chrome` 已連線（22 個工具）、34 個內建工具、browser `unknown`、computer use `unavailable`；偏好關閉的工作階段沒有 `claude-in-chrome`（browser `unavailable`）。`tabs_context_mcp` 沒有送出核准請求就執行，因擴充未連線而失敗；當時沒有 Chrome／Edge 程序，未觸及瀏覽器。尚未驗證：連線的瀏覽器中實際的 Chrome 動作與其網站核准呈現。 |
 
 *Created / last updated: 2026-10-28*
