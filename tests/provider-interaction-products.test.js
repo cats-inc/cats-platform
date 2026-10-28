@@ -10,6 +10,7 @@ import { currentProviderBindings } from '../build/server/products/chat/api/provi
 import { routeProviderInteractions } from '../build/server/products/shared/api/providerInteractions.js';
 import { createProviderInteractionControl } from '../build/server/platform/runtime/providerInteractionControl.js';
 import { withProviderRunInteractions as bindProviderRunInteractions } from '../build/server/platform/runtime/providerInteractionAdmission.js';
+import { withConversationBrowserIntegration } from '../build/server/platform/runtime/providerBrowserIntegration.js';
 import { upsertCoreRun, upsertCoreTask } from '../build/server/core/model/index.js';
 import { createWorkSupervisedRunPayload, createWorkSupervisedRunLifecycleActionPayload } from '../build/server/products/work/api/index.js';
 import { stopRun } from '../build/server/platform/supervision/runCancellation.js';
@@ -91,6 +92,17 @@ test('supervised Work attaches before send, retains allowlist, and cancel revoke
   await assert.rejects(control.respond(f.conversationId, 'session', 'question', answer(request)));
   await assert.rejects(client.resumeSession('session'));
   assert.equal(n.calls.messages, 1); assert.equal(n.calls.responses.length, 1);
+});
+
+test('supervised Work admission never requests Claude in Chrome even while the setting is on', async () => {
+  const f = fixture('work'), n = nativeRuntime(); await addRun(f);
+  // Same order as server dependencies: the conversation wrapper sits outside Work admission.
+  const client = withConversationBrowserIntegration(withProviderRunInteractions(n.runtime, f.store), async () => true);
+  await client.createSession(supervised);
+  assert.ok(n.calls.create[0].interactionHost, 'Work admission negotiated its own host');
+  assert.equal(n.calls.create[0].browserIntegration, undefined);
+  await client.createSession({ provider: 'claude', interactionHost: n.calls.create[0].interactionHost });
+  assert.equal(n.calls.create[1].browserIntegration, true, 'a conversation caller that hosts cards still opts in');
 });
 
 test('failed persistence or cancellation during Work admission closes its unbound worker', async () => {

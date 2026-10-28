@@ -3,11 +3,12 @@ import { createCodeLivePreviewSupervisor } from '../../products/code/livePreview
 import { createCodeConversationPreviews } from '../../products/code/livePreview/conversationPreviews.js';
 import { createFileLivePreviewProcessRegistry } from '../../products/code/livePreview/processRegistry.js';
 import { resolveCodeLivePreviewProcessRegistryPath } from '../../products/code/livePreview/processRegistryPath.js';
-import { readCodePreviewServersEnabled } from '../../shared/platformPreferences.js';
+import { readClaudeInChromeEnabled, readCodePreviewServersEnabled } from '../../shared/platformPreferences.js';
 import { createChatEventHub } from '../../products/chat/api/chatEventHub.js';
 import { publishChannelMutation } from '../../products/chat/api/transportEventPublisher.js';
 import { createRuntimeDeliveryClient } from '../../platform/runtime/deliveryClient.js';
 import { withProviderRunInteractions } from '../../platform/runtime/providerInteractionAdmission.js';
+import { withConversationBrowserIntegration } from '../../platform/runtime/providerBrowserIntegration.js';
 import { currentProviderBindings } from '../../products/chat/api/providerInteractionBindings.js';
 import { createAppStartupState } from './startup.js';
 import { createTelegramCommandSurfaceSync } from './telegramCommandSurfaceSync.js';
@@ -233,7 +234,10 @@ export function resolveServerDependencies(
     try { await currentProviderBindings(dependencies.chat.chatStore, id, store); return true; } catch { return false; }
   };
   const interactionRuntime = withProviderRunInteractions(dependencies.shared.runtimeClient, sharedCoreStore, visibleConversation(sharedCoreStore));
-  dependencies = { ...dependencies, shared: { ...dependencies.shared, runtimeClient: interactionRuntime },
+  // Outside the Work admission wrapper: only callers that host cards themselves opt in.
+  const conversationRuntime = withConversationBrowserIntegration(interactionRuntime,
+    () => readClaudeInChromeEnabled(dependencies.shared.config.chatStatePath));
+  dependencies = { ...dependencies, shared: { ...dependencies.shared, runtimeClient: conversationRuntime },
     ...(dependencies.work ? { work: { ...dependencies.work,
       runtimeClient: dependencies.work.runtimeClient
         ? withProviderRunInteractions(dependencies.work.runtimeClient, dependencies.work.coreStore ?? sharedCoreStore,

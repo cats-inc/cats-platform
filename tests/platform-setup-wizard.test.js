@@ -732,6 +732,7 @@ test('POST /api/platform/preferences updates lastProductSurface', async () => {
       assistantResponseLanguage: 'unspecified',
       uiLanguagePreference: 'auto',
       codePreviewServersEnabled: false,
+      claudeInChromeEnabled: false,
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
@@ -762,6 +763,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       assistantResponseLanguage: 'unspecified',
       uiLanguagePreference: 'auto',
       codePreviewServersEnabled: false,
+      claudeInChromeEnabled: false,
     });
 
     const secondResponse = await fetch(`${baseUrl}/api/platform/preferences`, {
@@ -782,6 +784,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       assistantResponseLanguage: 'unspecified',
       uiLanguagePreference: 'auto',
       codePreviewServersEnabled: false,
+      claudeInChromeEnabled: false,
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);

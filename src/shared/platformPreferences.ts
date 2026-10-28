@@ -24,6 +24,11 @@ export interface PlatformPreferences {
    * off until the user turns it on.
    */
   codePreviewServersEnabled: boolean;
+  /**
+   * Settings > Runtime "Claude in Chrome" (PLAN-125). Opt-in: Claude Code
+   * conversations that can show approval cards load browser tools.
+   */
+  claudeInChromeEnabled: boolean;
 }
 
 const DEFAULTS: PlatformPreferences = {
@@ -35,6 +40,7 @@ const DEFAULTS: PlatformPreferences = {
   assistantResponseLanguage: 'unspecified',
   uiLanguagePreference: 'auto',
   codePreviewServersEnabled: false,
+  claudeInChromeEnabled: false,
 };
 
 export function parsePlatformLobbyAnimationMode(
@@ -88,6 +94,7 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
       ?? DEFAULTS.assistantResponseLanguage,
     uiLanguagePreference: normalizePlatformUiLanguagePreference(record.uiLanguagePreference),
     codePreviewServersEnabled: record.codePreviewServersEnabled === true,
+    claudeInChromeEnabled: record.claudeInChromeEnabled === true,
   };
 }
 
@@ -141,4 +148,9 @@ export function platformPreferencesAfterDataReset(current: PlatformPreferences):
 /** Settings > Code "Cats may run preview servers", read fresh for each check. */
 export async function readCodePreviewServersEnabled(chatStatePath: string): Promise<boolean> {
   return (await readPlatformPreferences(chatStatePath)).codePreviewServersEnabled;
+}
+
+/** Settings > Runtime "Claude in Chrome", read fresh for each session admission. */
+export async function readClaudeInChromeEnabled(chatStatePath: string): Promise<boolean> {
+  return (await readPlatformPreferences(chatStatePath)).claudeInChromeEnabled;
 }

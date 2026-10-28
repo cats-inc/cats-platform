@@ -4,10 +4,37 @@ import type { RuntimeClient } from '../../../runtime/client.js';
 import { createProviderInteractionControl, ProviderControlError, type ProviderBindingAccess } from '../../../platform/runtime/providerInteractionControl.js';
 import type { BoundInteractionResponse } from '../../../shared/providerInteractions.js';
 import { isLoopbackAuthHost } from '../../../platform/auth/effectiveMode.js';
+import { readPlatformPreferences, writePlatformPreferences } from '../../../shared/platformPreferences.js';
 
-export async function routeProviderInteractions(context: RouteContext<{ bindings: (conversationId: string) => Promise<ProviderBindingAccess[]>; runtimeClient: RuntimeClient }>): Promise<boolean> {
+export const PROVIDER_PREFERENCES_PATH = '/api/provider-interactions/preferences';
+
+/** Claude in Chrome lets Cats act in the owner's browser, so only the local owner can change it. */
+async function routeProviderPreferences(context: RouteContext<{ chatStatePath: string }>, headers: Record<string, string>) {
+  const statePath = context.dependencies.chatStatePath;
+  if (context.method === 'POST') {
+    let size = 0; const chunks: Buffer[] = [];
+    for await (const chunk of context.request) {
+      const bytes = Buffer.from(chunk); size += bytes.length;
+      if (size > 4 * 1024) { sendJson(context.response, 413, { error: 'provider_preferences_too_large' }, headers); return; }
+      chunks.push(bytes);
+    }
+    let body: { claudeInChromeEnabled?: unknown } = {};
+    try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as typeof body; } catch {}
+    if (typeof body.claudeInChromeEnabled !== 'boolean') {
+      sendJson(context.response, 400, { error: 'invalid_provider_preferences' }, headers); return;
+    }
+    await writePlatformPreferences(statePath, { ...await readPlatformPreferences(statePath), claudeInChromeEnabled: body.claudeInChromeEnabled });
+  } else if (context.method !== 'GET') {
+    sendJson(context.response, 405, { error: 'provider_method_not_allowed' }, headers); return;
+  }
+  sendJson(context.response, 200, { claudeInChromeEnabled: (await readPlatformPreferences(statePath)).claudeInChromeEnabled }, headers);
+}
+
+export async function routeProviderInteractions(context: RouteContext<{ bindings: (conversationId: string) => Promise<ProviderBindingAccess[]>;
+  runtimeClient: RuntimeClient; chatStatePath: string }>): Promise<boolean> {
   const prefix = '/api/provider-interactions/conversations/';
-  if (!context.url.pathname.startsWith(prefix)) return false;
+  const preferences = context.url.pathname === PROVIDER_PREFERENCES_PATH;
+  if (!preferences && !context.url.pathname.startsWith(prefix)) return false;
   const headers = { 'cache-control': 'no-store' };
   const remote = context.request.socket.remoteAddress?.replace(/^::ffff:/u, '');
   const forwarded = ['forwarded', 'x-forwarded-for', 'x-real-ip', 'x-forwarded-host'].some(h => context.request.headers[h] !== undefined);
@@ -19,6 +46,7 @@ export async function routeProviderInteractions(context: RouteContext<{ bindings
     || !context.auth.principal.membership.roles.some(r => r === 'owner' || r === 'admin')) {
     sendJson(context.response, 403, { error: 'provider_owner_required' }, headers); return true;
   }
+  if (preferences) { await routeProviderPreferences(context, headers); return true; }
   const control = createProviderInteractionControl({ runtime: context.dependencies.runtimeClient,
     bindings: context.dependencies.bindings });
   try {
