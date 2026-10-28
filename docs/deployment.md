@@ -1157,7 +1157,11 @@ membership (USD 99/year; Individual enrollment is sufficient and needs no
 D-U-N-S number). Notarization is included in the membership. Windows
 certificates, by contrast, can be bought from any commercial CA.
 
-Repository secrets an official macOS release reads:
+macOS release credentials are shared organization secrets in `cats-inc`, with
+**Selected repositories** access limited to `cats-platform` and `cats-bots`.
+Desktop and Bots use the same Developer ID Application certificate and App Store
+Connect API key; adding the second app does not require a new certificate or key.
+Both release workflows read these existing names:
 
 - `CSC_LINK` — the Developer ID Application certificate exported as a `.p12`,
   base64-encoded (`base64 -i DeveloperID.p12 | pbcopy`).
@@ -1169,6 +1173,14 @@ Repository secrets an official macOS release reads:
 - `APPLE_API_KEY_ID` — the key's 10-character ID.
 - `APPLE_API_ISSUER` — the issuer UUID shown above the key list in App Store
   Connect.
+
+Manage and rotate this set in the organization's **Settings → Secrets and
+variables → Actions**. Keep the selected-repository access on all five secrets;
+do not grant access to every repository. Avoid repository or environment secrets
+with the same names: they override the shared values and can leave one app using
+stale credentials. Pause signed releases while replacing a certificate/password
+or API-key set, and verify signing and notarization authentication from both
+repositories before resuming. Windows signing remains separately configured.
 
 An API key is used rather than `APPLE_ID` plus an app-specific password
 because it is revocable on its own and survives an Apple ID password change,
