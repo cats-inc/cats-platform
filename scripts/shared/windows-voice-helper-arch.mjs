@@ -1,4 +1,5 @@
-// Windows installers carry native/windows-stt from build/native-windows/${arch}.
+// Windows installers carry native/windows-stt and native/windows-desktop-control
+// from build/native-windows/${arch}.
 // electron-builder only warns when an extraResources source is missing, and an
 // x64 helper still starts on Windows on Arm under emulation, so neither mistake
 // fails a build. Compare the helper's PE machine with the app executable beside
@@ -9,6 +10,7 @@ import { join } from 'node:path';
 
 export const WINDOWS_APP_EXECUTABLE = 'Cats.exe';
 export const WINDOWS_VOICE_HELPER = 'native/windows-stt/cats-stt-windows.exe';
+export const WINDOWS_DESKTOP_CONTROL_HELPER = 'native/windows-desktop-control/cats-desktop-control-windows.exe';
 
 const PE_MACHINES = { 0x8664: 'x64', 0xaa64: 'arm64', 0x014c: 'ia32' };
 
@@ -43,17 +45,26 @@ export async function readPeArchitecture(file) {
  * built for the same architecture as the app.
  */
 export async function verifyWindowsVoiceHelperArch(resourcesRoot) {
+  return verifyHelperArch(resourcesRoot, WINDOWS_VOICE_HELPER, 'voice helper');
+}
+
+/** SPEC-133: the desktop control helper follows the same per-architecture rule. */
+export async function verifyWindowsDesktopControlHelperArch(resourcesRoot) {
+  return verifyHelperArch(resourcesRoot, WINDOWS_DESKTOP_CONTROL_HELPER, 'desktop control helper');
+}
+
+async function verifyHelperArch(resourcesRoot, relativePath, label) {
   const app = join(resourcesRoot, '..', WINDOWS_APP_EXECUTABLE);
   if (!(await exists(app))) {
     return null;
   }
-  const helper = join(resourcesRoot, WINDOWS_VOICE_HELPER);
-  assert.ok(await exists(helper), `Windows installer resources lack the voice helper at ${helper}`);
+  const helper = join(resourcesRoot, relativePath);
+  assert.ok(await exists(helper), `Windows installer resources lack the ${label} at ${helper}`);
   const [appArch, helperArch] = await Promise.all([
     readPeArchitecture(app),
     readPeArchitecture(helper),
   ]);
   assert.equal(helperArch, appArch,
-    `Windows voice helper is ${helperArch} but the app is ${appArch}`);
+    `Windows ${label} is ${helperArch} but the app is ${appArch}`);
   return { arch: appArch };
 }

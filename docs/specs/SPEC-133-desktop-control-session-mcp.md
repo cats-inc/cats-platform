@@ -194,11 +194,11 @@ session that received them. Like every tool, `request_app_access` serves only ow
 | Op | Params | Result |
 | --- | --- | --- |
 | `hello` | `{ protocol: 1, selfProcessIds: number[], selfExecutables: string[] }` | `{ protocol: 1, version, platform: 'win32', dpiAwareness }` |
-| `resolve_apps` | `{ queries: string[] }` | `{ matches: [{ query, candidates: [{ path, publisher \| null, productName, displayName, running, category: 'normal' \| 'observe_only' \| 'excluded' }] }] }`; sources are running processes with windows and Start menu shortcuts, so localized display names resolve |
+| `resolve_apps` | `{ queries: string[] }` | `{ matches: [{ query, candidates: [{ path, publisher \| null, productName, displayName, running, category: 'normal' \| 'observe_only' \| 'excluded', aumid \| null }] }] }`; sources are running processes with windows, Start menu shortcuts and packaged apps, so localized display names resolve; `aumid` is set for packaged apps |
 | `list_windows` | `{ paths: string[] }` | `{ windows: [{ hwnd, pid, path, title, bounds, minimized, foreground }] }` |
 | `capture_window` | `{ hwnd, maxEdge }` | `{ pngBase64, width, height, scale, bounds }` |
 | `read_ui` | `{ hwnd, maxNodes }` | `{ nodes, truncated }` with helper-local element ids |
-| `open_app` | `{ path }` | `{ pid }` |
+| `open_app` | `{ path, aumid? }`; a packaged app launches through its AUMID | `{ pid }` |
 | `state` | `{}` | `{ locked, idleMs }` |
 | `cancel` | `{ id }` | `{ cancelled }` |
 

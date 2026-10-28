@@ -175,4 +175,16 @@ test('installed Desktop resources that ship the Windows voice helper must ship i
 
   await writeFile(join(helper, 'licenses', 'README.txt'), 'notices elsewhere');
   await assert.rejects(verifyDesktopLicenses(resources), /must name the \.NET runtime pack/);
+
+  // SPEC-133: the desktop control helper ships its own runtime and needs its own notices.
+  await stageDotnetRuntimeNotices({ outputDir: helper, depsJsonPath, helperName: 'cats-stt-windows.exe', nugetRoot });
+  const control = join(resources, 'native', 'windows-desktop-control');
+  await mkdir(control, { recursive: true });
+  await writeFile(join(control, 'cats-desktop-control-windows.exe'), 'MZ');
+  await assert.rejects(verifyDesktopLicenses(resources), /ENOENT/);
+  const controlDeps = join(control, 'cats-desktop-control-windows.deps.json');
+  await writeFile(controlDeps, JSON.stringify(depsJson()));
+  await stageDotnetRuntimeNotices({ outputDir: control, depsJsonPath: controlDeps,
+    helperName: 'cats-desktop-control-windows.exe', nugetRoot });
+  assert.equal((await verifyDesktopLicenses(resources)).nativeWindowsNotices, true);
 });
