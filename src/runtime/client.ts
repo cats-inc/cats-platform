@@ -556,17 +556,17 @@ export class CatsRuntimeClient implements RuntimeClient {
     // Provider answers/errors never enter diagnostic logs or error text.
     if (!response.ok) throw new RuntimeRequestError('Provider request is unavailable or has changed.', response.status);
     if (!response.body) throw new Error('Provider response is empty.');
-    const chunks: Uint8Array[] = []; let size = 0;
+    const decoder = new TextDecoder(); let text = ''; let size = 0;
     for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
       size += chunk.length;
       if (size > 4 * 1024 * 1024) throw new Error('Provider response exceeds limit.');
-      chunks.push(chunk);
+      text += decoder.decode(chunk, { stream: true });
     }
-    return JSON.parse(Buffer.concat(chunks).toString('utf8')) as T;
+    return JSON.parse(text + decoder.decode()) as T;
   }
   getSessionInteractions(sessionId: string) { return this.interactionRequest<InteractionSnapshot>(sessionId, 'interactions'); }
   respondSessionInteraction(sessionId: string, interactionId: string, response: InteractionResponse) {
-    if (Buffer.byteLength(JSON.stringify(response), 'utf8') > 36 * 1024) throw new Error('Provider response exceeds limit.');
+    if (new TextEncoder().encode(JSON.stringify(response)).byteLength > 36 * 1024) throw new Error('Provider response exceeds limit.');
     return this.interactionRequest<ProviderInteraction>(sessionId, `interactions/${encodeURIComponent(interactionId)}/responses`, response);
   }
   getSessionCapabilities(sessionId: string, refresh = false) {
@@ -1118,7 +1118,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         if (!finished && snapshot.interactions.some(i => ['pending', 'responding'].includes(i.status) && Date.parse(i.expiresAt) > Date.now())) idleTimeout.reset();
       }).catch(() => {}).finally(() => { checking = false; });
     }, Math.max(50, Math.min(10_000, this.messageIdleTimeoutMs / 3))) : null;
-    humanWait?.unref();
+    (humanWait as ReturnType<typeof setInterval> & { unref?: () => void } | null)?.unref?.();
 
     try {
       const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/messages`, {

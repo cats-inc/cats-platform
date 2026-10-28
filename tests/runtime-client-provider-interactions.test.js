@@ -57,6 +57,32 @@ test('same-turn native control and inventory requests use bearer auth without se
   });
 });
 
+test('bounded native snapshots preserve UTF-8 characters split across stream chunks', async () => {
+  const snapshot = { version: 1, label: '貓🐈', interactions: [] };
+  const bytes = new TextEncoder().encode(JSON.stringify(snapshot));
+  await fakeFetch(() => new Response(new ReadableStream({
+    start(controller) { for (const byte of bytes) controller.enqueue(Uint8Array.of(byte)); controller.close(); },
+  })), async () => {
+    assert.deepEqual(await new CatsRuntimeClient('http://runtime.test').getSessionInteractions('s'), snapshot);
+  });
+});
+
+test('native control bounds count bytes and cancel oversized response streams', async () => {
+  let cancelled = false;
+  await fakeFetch(() => new Response(new ReadableStream({
+    start(controller) { controller.enqueue(new Uint8Array(4 * 1024 * 1024 + 1)); },
+    cancel() { cancelled = true; },
+  })), async calls => {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    const response = { answer: { action: 'accept', values: { text: '🐈'.repeat(10_000) } } };
+    assert.ok(JSON.stringify(response).length < 36 * 1024);
+    assert.throws(() => client.respondSessionInteraction('s', 'i', response), /exceeds limit/);
+    assert.equal(calls.length, 0);
+    await assert.rejects(client.getSessionInteractions('s'), /exceeds limit/);
+    assert.equal(cancelled, true);
+  });
+});
+
 test('bounded human waiting resets message idle timeout until the native turn continues', async () => {
   let resets = 0, polls = 0;
   let finishMessage;
