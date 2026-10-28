@@ -1157,7 +1157,11 @@ membership (USD 99/year; Individual enrollment is sufficient and needs no
 D-U-N-S number). Notarization is included in the membership. Windows
 certificates, by contrast, can be bought from any commercial CA.
 
-Repository secrets an official macOS release reads:
+Desktop and Bots can reuse the same Developer ID Application certificate and
+App Store Connect API key; adding the second app does not require a new
+certificate or key. Store the shared macOS release credentials as organization
+secrets in `cats-inc`, with **Selected repositories** access limited to
+`cats-platform` and `cats-bots`. Both release workflows already read these names:
 
 - `CSC_LINK` — the Developer ID Application certificate exported as a `.p12`,
   base64-encoded (`base64 -i DeveloperID.p12 | pbcopy`).
@@ -1169,6 +1173,37 @@ Repository secrets an official macOS release reads:
 - `APPLE_API_KEY_ID` — the key's 10-character ID.
 - `APPLE_API_ISSUER` — the issuer UUID shown above the key list in App Store
   Connect.
+
+Manage and rotate this set in the organization's **Settings → Secrets and
+variables → Actions**. Keep the selected-repository access on all five secrets;
+do not grant access to every repository. Avoid repository or environment secrets
+with the same names: they override the shared values and can leave one app using
+stale credentials. Pause signed releases while replacing a certificate/password
+or API-key set, and verify signing and notarization authentication from both
+repositories before resuming. Windows signing remains separately configured.
+
+Repository secrets are not inherited by another repository. When moving an
+existing Desktop set to organization scope, use this order:
+
+1. Verify the existing Desktop set can import its Developer ID private key, sign
+   and verify a temporary executable, and authenticate to Apple's notarization
+   API. These checks do not publish an app or prove full product notarization.
+2. Transfer all five values to the organization secrets, each restricted to the
+   two repositories. Keep the Desktop repository copies during this transition.
+   GitHub cannot return stored plaintext through its API: use the original
+   credentials, or an authorized runner that seals the existing values directly
+   to the verified organization public key. Never export plaintext in logs or
+   artifacts, and remove any temporary transfer workflows and ciphertext after
+   use.
+3. Verify the same signing and authentication checks from Bots, without
+   repository or environment overrides. Only then remove the five Desktop
+   repository copies and repeat the checks from Desktop to prove inheritance.
+
+If the baseline or Bots checks fail, keep the Desktop source copies and stop.
+If Desktop fails after removing its overrides, pause signed releases and diagnose
+the shared configuration before proceeding. A failed temporary probe alone does
+not establish that the production certificate is invalid. This configuration
+change needs no release-workflow edit, version bump or product publication.
 
 An API key is used rather than `APPLE_ID` plus an app-specific password
 because it is revocable on its own and survives an Apple ID password change,
