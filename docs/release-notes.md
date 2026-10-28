@@ -15,8 +15,8 @@ Marketplace Apps retain their existing releases.
   have no effect. Live cards return after a renderer reload and end after a
   Runtime restart, cancel or provider resolution. The control API accepts only
   owner/admin browser sessions over direct loopback; Mobile bearer, forwarded
-  and non-local requests are refused. Runs without a conversation (headless,
-  relay, scheduled) do not offer an interaction host.
+  and non-local requests are refused. Headless and relay runs without a
+  conversation do not offer an interaction host.
 - **See what a session can actually use.** Session details show the effective
   execution policy as Runtime reports it, built-in tools, configured MCP servers
   and connectors, and browser/desktop dependency status. They keep "installed",
@@ -25,8 +25,9 @@ Marketplace Apps retain their existing releases.
   enforce is refused before the session is created, and the editor says why.
   Claude Code has no native Windows sandbox, so it accepts only full access
   with network.
-- **Claude Code.** MCP and Claude in Chrome tool calls now show an approval card
-  (allow once, allow for this session, deny) instead of being denied. Settings >
+- **Claude Code.** When the policy asks for approval, MCP and Claude in Chrome
+  tool calls show a card (allow once, allow for this session, deny) instead of
+  being denied. Settings >
   Runtime adds **Claude in Chrome**, off by default. When on, only Chat and Code
   conversations ask Runtime for browser tools; Work runs, scheduled tasks and
   relay runs never do, although the user's own Claude Code "Enabled by default"
