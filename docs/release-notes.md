@@ -2,6 +2,93 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-28 — Desktop 0.12.0 standard preview: native provider requests and Claude Code controls
+
+Selected distribution: Desktop **0.12.0 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**. Platform/Runtime npm, launcher and optional
+Marketplace Apps retain their existing releases.
+
+- **Answer provider requests in the conversation.** Chat, Code and supervised
+  Work conversations show the provider's own approvals, questions and MCP
+  form/URL requests as cards. The answer returns to the same running request
+  instead of a new turn. Duplicate, expired, unauthorized or retargeted answers
+  have no effect. Live cards return after a renderer reload and end after a
+  Runtime restart, cancel or provider resolution. The control API accepts only
+  owner/admin browser sessions over direct loopback; Mobile bearer, forwarded
+  and non-local requests are refused. Headless and relay runs without a
+  conversation do not offer an interaction host.
+- **See what a session can actually use.** Session details show the effective
+  execution policy as Runtime reports it, built-in tools, configured MCP servers
+  and connectors, and browser/desktop dependency status. They keep "installed",
+  "visible to the session" and "connected" apart. Conversations can select an
+  explicit access, network and approval policy. A policy the target cannot
+  enforce is refused before the session is created, and the editor says why.
+  Claude Code has no native Windows sandbox, so it accepts only full access
+  with network.
+- **Claude Code.** When the policy asks for approval, MCP and Claude in Chrome
+  tool calls show a card (allow once, allow for this session, deny) instead of
+  being denied. Settings >
+  Runtime adds **Claude in Chrome**, off by default. When on, only Chat and Code
+  conversations ask Runtime for browser tools; Work runs, scheduled tasks and
+  relay runs never do, although the user's own Claude Code "Enabled by default"
+  Chrome setting still applies to every launch. A change applies when the next
+  session or worker starts. Claude Code and the extension decide which browser
+  actions ask: reading tabs (`tabs_context_mcp`) ran without a request in testing.
+  Claude Code offers computer use only to interactive macOS sessions, so Windows
+  shows it as `unavailable` with the reason.
+- **0.12 compatibility boundary.** The Core snapshot moves from format 5 to 6 so
+  an older reader cannot ignore the new `runtimeExecutionPolicy` and widen
+  access. On first start, Desktop validates the recognized format under the store
+  lock, saves the original bytes once to
+  `chat-state.local.json.pre-provider-policy.bak` and atomically replaces the
+  primary file. Existing conversations keep their current access settings; no
+  reset is needed. An unknown policy or newer format in the primary or the
+  regular `.bak` fails closed and is never overwritten. If the backup or write
+  fails, the original stays intact; fix the I/O cause and restart to finish.
+  Quitting within moments of that first start can interrupt the write the same
+  way; the next start completes it and may leave an orphaned `.tmp` file beside
+  the state. Desktop 0.11.x and earlier refuse format 6 ("Profile or owner
+  management data is unsupported or damaged") without rewriting it, so a
+  binary-only downgrade is not supported. To return to an older build, close
+  Cats, keep a copy of the new data, and restore the pre-upgrade backup, which
+  discards later changes. Platform preferences gain `claudeInChromeEnabled`
+  (default off). The public App SDK is unchanged.
+- **Bundled product knowledge.** Catlas and orchestrator bundles advance to
+  revision `2026-10-28.1` with `platformRange: "0.12.x"`, because the 0.11-only
+  declarations would disable them on the new host. Their bilingual contents and
+  capability requirements are unchanged.
+- **Exact source and artifacts.** Runtime advances to
+  `af405ff718dacca2a9d6acd58447081a09d96086` (package **0.6.2**, bundled from
+  source). It carries Runtime #193–#201; the Claude Code controls need at least
+  `b750d27e` (#200). Runtime adds new admission-marker files for host-required
+  sessions and does not migrate existing Runtime data. Usage remains
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. Its Platform minimum
+  `^0.6.0` and SDK range `^1.2.0` remain accepted by the host contracts. Every
+  OS/source receipt records the merged bump commit and the same Runtime SHA.
+- **Signing and checks.** Dispatch `desktop-release.yml` from the merged bump
+  commit with `tag=v0.12.0`, the Runtime SHA above and `unsigned=false`.
+  Standard trust: macOS **signed + notarized**, Windows **unsigned: no
+  certificate**, Linux **n/a**. Standard-profile installs of 0.11.x self-update
+  on each OS under the existing trust rules. An isolated upgrade check used real
+  0.11.1 bytes: the installed 0.11.1 packaged sidecar created a private temporary
+  profile, and 0.11.1 store code added a Codex conversation with read-only legacy
+  access. The 0.12.0 sidecar upgraded it to format 6 with a byte-identical backup
+  and unchanged access; a repeat start changed nothing; 0.11.1 refused the
+  upgraded file without rewriting it; a blocked backup kept the original and a
+  retry finished. These runs used a sidecar with an unavailable Runtime fixture,
+  not an installed Electron upgrade. Release preparation also passed 289
+  release-version, App SDK, packaging, knowledge-bundle, policy-upgrade and
+  Chrome-setting checks, with server and Desktop host builds. Real-CLI acceptance
+  (Codex 0.164.0, Claude Code 2.1.312, Windows) is recorded in PLAN-124 and
+  PLAN-125. Not verified: a successful Chrome or desktop action in a connected
+  browser, the cards on screen in a packaged build, real MCP form/URL servers,
+  and macOS/Linux provider sessions. The PR runs full CI; the release workflow
+  gates packaged startup, App activation, complete-source identity, signatures
+  and public assets. Publication results: the `v0.12.0` GitHub prerelease and
+  its Actions run.
+
 ## 2026-10-27 — Desktop 0.11.1 standard preview: Catlas curation and titles
 
 Selected distribution: Desktop **0.11.1 standard-profile preview**, App SDK
