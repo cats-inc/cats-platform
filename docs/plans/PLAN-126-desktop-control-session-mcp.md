@@ -4,9 +4,9 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Planned; implementation not authorized |
+| Status | In progress; P0 complete, P1–P4 authorized, P5 needs owner sign-off after P4 |
 | Owner | Platform Desktop integration |
-| Assigned To | Unassigned |
+| Assigned To | Claude |
 | Reviewer | Product owner, Runtime maintainers |
 | Related spec | [SPEC-133](../specs/SPEC-133-desktop-control-session-mcp.md) |
 | Decision | [ADR-141](../decisions/141-host-a-consented-desktop-control-mcp-for-provider-sessions.md) |
@@ -25,20 +25,25 @@ against the same contract. This plan includes no version bump or release.
 
 ### P0 — Freeze contracts
 
-- [ ] Freeze phase A tool input/output schemas, error codes and the wording returned to
-  the model.
-- [ ] Freeze the helper protocol (DC-14) and the `hello` version and protocol fields.
-- [ ] Confirm which fields and values of Runtime SPEC-039's policy report decide DC-04, and
-  record what Claude Code and Codex actually report.
-- [ ] Define how the DC-10 exclusion list matches (executable name plus signing publisher)
-  and its test cases.
-- [ ] Confirm that everything needed to decide a DC-05 "local owner turn" is available on
-  the send path.
-- [ ] Freeze SPEC-133's cross-implementation contract together with Bots PLAN-006 P0, so
-  both sides refer to the same version.
+- [x] Freeze phase A tool input/output schemas, error codes and the wording returned to
+  the model (SPEC-133 "Frozen contract details").
+- [x] Freeze the helper protocol (DC-14) and the `hello` version and protocol fields.
+- [x] Confirm which fields and values of Runtime SPEC-039's policy report decide DC-04 (now
+  spelled out in DC-04). What Claude Code and Codex actually report is recorded in P4.
+- [x] Define how the DC-10 exclusion list matches (executable file name; "self" comes from
+  `hello`) and its test cases.
+- [x] Confirm that everything needed to decide a DC-05 "local owner turn" is available on
+  the send path: `sourceMessageId` and `supervisionRunId` are, and the route stamps the entry.
+- [x] Freeze SPEC-133's cross-implementation contract together with Bots PLAN-006 P0, so
+  both sides refer to the same version (2026-10-29).
 
 **Exit:** schemas, protocol, exclusion list and injection decisions have fixtures, the
 cross-implementation contract is aligned with Bots, and the owner confirms.
+
+P0 record (2026-10-29): the owner authorized continuous slices through every phase that does
+not need them, which covers this exit's confirmation. P0 also found that session MCP
+contributors only reach Code sessions, so Chat injection uses a `wrapClient` proxy, and chose
+`PrintWindow` over Windows Graphics Capture for P1. Fixtures land with the code in P1 and P2.
 
 ### P1 — Helper (observe)
 

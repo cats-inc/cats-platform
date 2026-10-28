@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Draft; direction accepted, implementation not authorized |
+| Status | Contract frozen (P0, 2026-10-29); implementation in progress under PLAN-126 |
 | Owner | Platform Desktop integration |
 | Reviewer | Product owner, Runtime and Bots maintainers |
 | Baseline | Platform `9159757e`; 2026-10-29 |
@@ -68,8 +68,14 @@ flowchart LR
 - **Server module**: `src/platform/desktopControl/`, modeled on `cat-image-tools`. It serves
   the endpoint with `handleMcpHttpRequest` and issues session bearer tokens with
   `McpSessionGrantStore`.
-- **Injection**: a new `SessionMcpServerContributor` with origin `{ kind: 'desktop' }` and
-  server name `cats-desktop` (`sessionMcpServerName` gains this branch).
+- **Injection**: a `wrapClient` proxy around the shared (Chat) Runtime client, outermost in the
+  composition in `src/app/server/index.ts`, like `catImageTools`. P0 found that
+  `SessionMcpServerContributor`s are only consumed by the Code agent-tools wrapper, which injects
+  only for Code sessions, so a contributor would never reach Chat. Phase A covers Chat
+  conversations (`supervisionProduct: 'cats-chat'`); Code and Work follow separately.
+- **Settings**: `desktop-control.json` in the Platform data directory (`config.platformDir`),
+  written atomically: `{ "version": 1, "enabled": false, "conversations": [] }`, where
+  `conversations` lists enabled channel ids.
 
 ## Requirements
 
@@ -77,7 +83,7 @@ flowchart LR
 
 | ID | Requirement |
 | --- | --- |
-| DC-01 | Available only when the Desktop host started the Platform server, the platform is Windows, `CATS_DESKTOP_CONTROL_HELPER` is set and the helper's `hello` handshake succeeds (matching version and protocol). Otherwise settings show `unavailable` with the reason and the contributor emits no server |
+| DC-01 | Available only when the Desktop host started the Platform server, the platform is Windows, `CATS_DESKTOP_CONTROL_HELPER` is set and the helper's `hello` handshake succeeds (matching version and protocol). Otherwise settings show `unavailable` with the reason and the wrapper injects nothing |
 | DC-02 | A global setting, off by default, that only the owner can change. Turning it off revokes all grants and control, cancels helper actions in progress and ends the helper process |
 | DC-03 | A per-conversation switch, off by default and persisted. Turning it off revokes that conversation's grants and control |
 
@@ -85,8 +91,8 @@ flowchart LR
 
 | ID | Requirement |
 | --- | --- |
-| DC-04 | The contributor adds `cats-desktop` only when DC-01 to DC-03 hold and the effective policy Runtime reports for the session (SPEC-039) is an explicit `on-request` or `untrusted`, with a negotiated interaction host, under which injected MCP tools require interactive approval. With `skip`, `never`, no policy or a mismatched report, nothing is injected and the capability panel shows why |
-| DC-05 | Tools serve only turns the owner sent from the local Desktop window. For turns started through the public ingress entry (`platformRequestEntry(...).publicEntry`), Mobile, Telegram, the life loop, schedules or Cat delegation, every tool returns `not_owner_present`. Turn scope is decided at send time without changing the descriptor, which avoids the worker restart of SPEC-035 SMCP-08 |
+| DC-04 | The wrapper adds `cats-desktop` to a send only when DC-01 to DC-03 hold and `getSessionCapabilities(sessionId)` returns an observation where `interactions.host` exists and lists `tool_approval`, `policy.source` is `explicit`, `policy.requested` is `{ mode: 'explicit', approval: 'on-request' | 'untrusted' }`, and `policy.status` is `verified` or `not_observed`. `not_observed` is accepted because Runtime verifies the policy before it releases the first turn and fails the turn on a mismatch. A `mismatch` or `unsupported` status, `skip`, `never`, a missing snapshot or any error injects nothing (fail closed), and the capability panel shows why |
+| DC-05 | Tools serve only turns the owner sent from the local Desktop window. The channel message route stamps `messageMetadata.desktopControlEntry = 'local'` on an owner message only when the request did not arrive through the public ingress entry (`platformRequestEntry(request).publicEntry`) and its transport is not `mobile`; it always overwrites a client-supplied value. Telegram inbound messages never carry it. A turn is owner-present when its send metadata has `supervisionProduct: 'cats-chat'`, `supervisionSurface: 'runtime-dispatch'` and a `sourceMessageId` whose message in channel `supervisionRunId` is a `user` message stamped `local`. Every other turn, including heartbeats, schedules and delegation, gets `not_owner_present`. Once a conversation qualifies, the descriptor is attached to all its sends and only the turn scope changes, which avoids the worker restart of SPEC-035 SMCP-08 |
 | DC-06 | Session bearer tokens are never logged and are revoked when the session is removed, stopped or turned off |
 | DC-07 | `/api/internal/desktop-control/` is added to `isInternalPlatformRoute`: reachable only from the internal listener and always refused through ingress |
 
@@ -103,10 +109,10 @@ flowchart LR
 | Tool | Behavior |
 | --- | --- |
 | `request_app_access` | See DC-08 |
-| `list_windows` | Visible top-level windows of granted apps: `window_id` (opaque, session-scoped), app, title, bounds, minimized or foreground |
-| `screenshot_window({window_id, max_edge?})` | Captures one window with Windows Graphics Capture (falling back to `PrintWindow` with `PW_RENDERFULLCONTENT`); never a screen region. The image is scaled to fit `max_edge` (default 1568) and returned as MCP image content with a `snapshot_id` bound to the window, its bounds, the time and the scale factor |
-| `read_ui({window_id, max_nodes?})` | The window's UI Automation subtree: `element_id`, role, name, value, enabled, focused, bounds in snapshot coordinates and supported actions. 200 nodes by default, at most 1000. `IsPassword` elements never return a value |
-| `open_app({app})` | Starts a granted app from the executable path recorded at grant time, without arguments |
+| `list_windows` | Visible top-level windows of granted apps: `windowId` (opaque, session-scoped), app, title, bounds, minimized or foreground |
+| `screenshot_window({windowId, maxEdge?})` | Captures one window with `PrintWindow` and `PW_RENDERFULLCONTENT`, which renders the window itself rather than the screen, so overlapping windows never appear; never a screen region. Windows Graphics Capture is a follow-up, adopted only if `PrintWindow` returns blank frames for acceptance targets. The image is scaled to fit `maxEdge` (default 1568) and returned as MCP image content with a `snapshotId` bound to the window, its bounds, the time and the scale factor |
+| `read_ui({windowId, maxNodes?})` | The window's UI Automation subtree: `elementId`, role, name, value, enabled, focused, bounds in window pixels and supported actions. 200 nodes by default, at most 1000. `IsPassword` elements never return a value |
+| `open_app({appId})` | Starts a granted app from the executable path recorded at grant time, without arguments |
 
 ### R5. Phase B tools: act
 
@@ -118,11 +124,11 @@ when `GetLastInputInfo` shows owner input within 3 seconds, the tool returns
 
 | Tool | Behavior |
 | --- | --- |
-| `click({snapshot_id, x, y, button?, count?})` | Applies the PR #336 guards: snapshot no older than 60 seconds, same window, not moved, point inside the snapshot, point not covered by a window the target does not own, no held keys, exact cursor landing, and swapped mouse buttons honored. Coordinates are converted with the `snapshot_id` scale factor |
-| `invoke_element({element_id, action})` | Operates through UIA patterns (invoke, toggle, select, expand); preferred over `click` |
-| `type_text({window_id, text})` | The focused element must belong to the window and must not be `IsPassword`; at most 2000 characters, no control characters |
-| `key({window_id, keys})` | Allowlist only: Enter, Esc, Tab, arrow keys, PageUp/PageDown, Home/End, Backspace, Delete, F1–F12 and Ctrl+A/C/V/X/Z/Y/S/F. Win-key combinations, Alt+Tab and Ctrl+Alt+Del are refused |
-| `scroll({snapshot_id, x, y, direction, amount})` | The same coordinate guards as `click`; amount 1–10 |
+| `click({snapshotId, x, y, button?, count?})` | Applies the PR #336 guards: snapshot no older than 60 seconds, same window, not moved, point inside the snapshot, point not covered by a window the target does not own, no held keys, exact cursor landing, and swapped mouse buttons honored. Coordinates are converted with the `snapshotId` scale factor |
+| `invoke_element({elementId, action})` | Operates through UIA patterns (invoke, toggle, select, expand); preferred over `click` |
+| `type_text({windowId, text})` | The focused element must belong to the window and must not be `IsPassword`; at most 2000 characters, no control characters |
+| `key({windowId, keys})` | Allowlist only: Enter, Esc, Tab, arrow keys, PageUp/PageDown, Home/End, Backspace, Delete, F1–F12 and Ctrl+A/C/V/X/Z/Y/S/F. Win-key combinations, Alt+Tab and Ctrl+Alt+Del are refused |
+| `scroll({snapshotId, x, y, direction, amount})` | The same coordinate guards as `click`; amount 1–10 |
 | `clipboard_read()` / `clipboard_write({text})` | Text only, at most 100,000 characters; a write is read back and compared |
 
 ### R6. Holding control, indicator and stop
@@ -155,6 +161,71 @@ when `GetLastInputInfo` shows owner input within 3 seconds, the tool returns
 `not_foreground`, `elevated_target`, `password_field`, `executor_failed`. Each error carries
 one sentence for the model and never suggests another way around it.
 
+## Frozen contract details (P0, 2026-10-29)
+
+These details are part of the cross-implementation contract. Parameter names are camelCase.
+Every tool returns `structuredContent` plus a one-line text summary; screenshots add one
+`image` content item (`image/png`). Errors return `isError: true` with
+`structuredContent: { "error": { "code": "<error code>", "message": "<one sentence>" } }`.
+
+### Tool input schemas (all `additionalProperties: false`)
+
+| Tool | Input | Result `structuredContent` |
+| --- | --- | --- |
+| `request_app_access` | `apps`: 1–5 strings, each 1–120 characters; `reason`: string, 1–500 characters | `results`: one entry per query: `{ query, status: 'granted' \| 'denied' \| 'pending' \| 'not_found' \| 'excluded', app?: { appId, name, path, publisher \| null, tier: 'full' \| 'observe_only' } }` |
+| `list_windows` | none | `windows`: at most 50 `{ windowId, appId, title, bounds: { x, y, width, height }, minimized, foreground }` |
+| `screenshot_window` | `windowId`; `maxEdge`: integer 256–2048, default 1568 | `{ snapshotId, windowId, width, height, scale, capturedAt }`, where `scale` is image pixels per window pixel |
+| `read_ui` | `windowId`; `maxNodes`: integer 1–1000, default 200 | `{ windowId, nodes: [{ elementId, parentId \| null, role, name, value \| null, enabled, focused, bounds \| null, actions }], truncated }`; `bounds` are window pixels; `actions` lists `invoke`, `toggle`, `select`, `expand`, `collapse`, `value` |
+| `open_app` | `appId` of a granted app | `{ opened: true }` |
+| `click` (B) | `snapshotId`; `x`, `y`: integer image pixels; `button`: `left` \| `right` \| `middle`, default `left`; `count`: 1–3, default 1 | `{ done: true }` |
+| `invoke_element` (B) | `elementId`; `action`: `invoke` \| `toggle` \| `select` \| `expand` \| `collapse` | `{ done: true }` |
+| `type_text` (B) | `windowId`; `text`: 1–2000 characters, no control characters | `{ done: true }` |
+| `key` (B) | `windowId`; `keys`: one allowlisted chord such as `enter` or `ctrl+s` | `{ done: true }` |
+| `scroll` (B) | `snapshotId`; `x`, `y`; `direction`: `up` \| `down` \| `left` \| `right`; `amount`: 1–10 | `{ done: true }` |
+| `clipboard_read` (B) | none | `{ text: string \| null }` |
+| `clipboard_write` (B) | `text`: 1–100,000 characters | `{ done: true }` |
+
+`appId`, `windowId`, `snapshotId` and `elementId` are opaque, server-issued and valid only in the
+session that received them. Like every tool, `request_app_access` serves only owner-present turns.
+
+### Helper protocol (stdio JSON lines, protocol 1)
+
+| Op | Params | Result |
+| --- | --- | --- |
+| `hello` | `{ protocol: 1, selfProcessIds: number[], selfExecutables: string[] }` | `{ protocol: 1, version, platform: 'win32', dpiAwareness }` |
+| `resolve_apps` | `{ queries: string[] }` | `{ matches: [{ query, candidates: [{ path, publisher \| null, productName, displayName, running, category: 'normal' \| 'observe_only' \| 'excluded' }] }] }`; sources are running processes with windows and Start menu shortcuts, so localized display names resolve |
+| `list_windows` | `{ paths: string[] }` | `{ windows: [{ hwnd, pid, path, title, bounds, minimized, foreground }] }` |
+| `capture_window` | `{ hwnd, maxEdge }` | `{ pngBase64, width, height, scale, bounds }` |
+| `read_ui` | `{ hwnd, maxNodes }` | `{ nodes, truncated }` with helper-local element ids |
+| `open_app` | `{ path }` | `{ pid }` |
+| `state` | `{}` | `{ locked, idleMs }` |
+| `cancel` | `{ id }` | `{ cancelled }` |
+
+Helper error codes add `invalid_request`, `window_gone`, `capture_failed` and `not_found` to the
+tool error codes; the server maps them to `window_changed`, `unavailable` or `not_granted`.
+
+### Exclusion categories (DC-10), matched on executable file name, case-insensitive
+
+- **Excluded**: every process in `hello.selfProcessIds` or `hello.selfExecutables` (Cats Desktop,
+  its Platform server, its helpers), `consent.exe`, `LogonUI.exe`, `CredentialUIBroker.exe`,
+  `LockApp.exe`.
+- **Observe only, terminals and IDEs**: `WindowsTerminal.exe`, `OpenConsole.exe`, `conhost.exe`,
+  `cmd.exe`, `powershell.exe`, `pwsh.exe`, `wsl.exe`, `bash.exe`, `mintty.exe`, `Code.exe`,
+  `Code - Insiders.exe`, `Cursor.exe`, `Windsurf.exe`, `devenv.exe`, `idea64.exe`,
+  `pycharm64.exe`, `webstorm64.exe`, `rider64.exe`, `clion64.exe`, `goland64.exe`,
+  `rubymine64.exe`, `phpstorm64.exe`, `datagrip64.exe`, `studio64.exe`, `zed.exe`.
+- **Observe only, browsers**: `chrome.exe`, `msedge.exe`, `firefox.exe`, `brave.exe`, `opera.exe`,
+  `vivaldi.exe`, `arc.exe`, `iexplore.exe`.
+
+### Platform owner API (Desktop only)
+
+Owner-authenticated, internal listener only: `GET /api/desktop-control/state` (availability,
+switches, pending grant requests, grants and hold state), `PUT /api/desktop-control/settings`
+`{ enabled }`, `PUT /api/desktop-control/conversations/:channelId` `{ enabled }`,
+`POST /api/desktop-control/grant-requests/:requestId` `{ decision: 'allow' | 'deny' }` and
+`POST /api/desktop-control/stop` `{ channelId? }`. The Desktop host polls the state endpoint for
+the tray while any conversation is enabled.
+
 ## Cross-implementation contract
 
 Cats Desktop (this document) and Cats Bots
@@ -164,13 +235,14 @@ same behavior in both. A change on either side updates both SPECs on the same da
 implementation follows.
 
 - **Name**: MCP server name `cats-desktop`.
-- **Tools**: the tool names, parameters, returned fields, limits and guards in R4 and R5.
+- **Tools**: the tool names, parameters, returned fields, limits and guards in R4 and R5, and the
+  schemas, result shapes and error format under "Frozen contract details".
 - **Error codes**: the codes and meanings under "Error codes".
 - **Injection and turns**: the policy condition in DC-04, and the meaning of DC-05: only turns
   the owner sends from a local surface; autonomous or remote turns always get
   `not_owner_present`.
 - **Grants**: how grants are made and scoped (DC-08, DC-09) and the exclusion categories
-  (DC-10). Each implementation also adds its own windows to the never-grantable list.
+  (DC-10) with the executable lists under "Frozen contract details". Each implementation also adds its own windows to the never-grantable list.
 - **Holding control and stop**: the meaning of DC-11 to DC-13.
 - **Privacy**: DC-17.
 - **Capability states**: the state values in DC-18.
