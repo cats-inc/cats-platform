@@ -140,12 +140,14 @@ function fail(message: string): never {
 }
 
 function onlyKeys(args: Args, allowed: string[]) {
-  for (const key of Object.keys(args)) if (!allowed.includes(key)) fail(`Unexpected argument ${key}.`);
+  for (const key of Object.keys(args)) {
+    if (!allowed.includes(key)) fail(`Unexpected argument ${key}; this tool takes only ${allowed.join(', ') || 'no arguments'}.`);
+  }
 }
 
 function opaque(args: Args, key: string): string {
   const value = args[key];
-  if (typeof value !== 'string' || value.length < 1 || value.length > 64) fail(`${key} must be an id returned by a tool.`);
+  if (typeof value !== 'string' || value.length < 1 || value.length > 64) fail(`${key} is required and must be an id returned by a tool.`);
   return value;
 }
 
