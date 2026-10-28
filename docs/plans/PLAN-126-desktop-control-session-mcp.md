@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Phase A delivered and recorded (P0–P4); phase B (P5) authorized on 2026-10-29 and in progress |
+| Status | Phase A and phase B delivered (P0–P5); A7 recorded with the open items listed under P5 |
 | Owner | Platform Desktop integration |
 | Assigned To | Claude |
 | Reviewer | Product owner, Runtime maintainers |
@@ -165,7 +165,52 @@ the owner's Desktop check. The native helper check (A4 with pixel counts) is rec
   release, Stop cancelling only a holding conversation, and the host routes' key, `Origin` and
   loopback checks. `tests/desktop-control-notice.test.js` (3 tests) covers the watcher, the
   notice markup and a notice window that never takes focus.
-- [ ] Native acceptance against a throwaway test window (A7).
+- [x] Native acceptance against a throwaway test window (A7). See the record below.
+
+P5 record (2026-10-29, Windows 11, Claude Code 2.1.312 `sonnet` with the owner's own sign-in).
+A private Runtime built from `origin/main` (`0b387ae5`) ran with a temporary `CATS_RUNTIME_DIR`. A
+script drove it through Platform's `CatsRuntimeClient` and the desktop control service with the real
+helper. It answered each provider approval with "Allow once", always after 4 quiet seconds on the
+keyboard and mouse, and each grant as the owner would.
+- **Targets.** Input went only to the throwaway probe app (`native-check/probe/`). A red
+  PowerShell window, observe only, lay over the probe's corner.
+- **Checks.** A second helper process read the probe back on its own. The final run passed 17 of 18
+  checks:
+
+- **Act tools.** All 7 act calls of the first turn produced a `tool_approval` from `cats-desktop`
+  before they ran. The probe then read "Clicks: 2" (`invoke_element` and `click`), "Checked:
+  True", text "hello from cats", "Last key: Return" or Enter, and "Wheel: -2".
+- **DC-11.** Control was held during that turn and released when it ended.
+- **Guards.** The model received:
+  - `covered` for a point under the red window;
+  - `observe_only` for typing into PowerShell;
+  - `operator_active` when the script nudged the mouse by one pixel just before approving `key`.
+
+  The password value never appeared in a reply or a UI read (A4).
+- **DC-12.** Stop while control was held made the next call answer `stopped`, released control and
+  revoked the grants. Defender recorded no detection.
+- **Did not pass in the final run.** The model clicked the password box but chose not to send
+  `type_text` there. In an earlier run the same request reached the helper and returned
+  `password_field` to the model, and the S1 native check covers it.
+
+Earlier runs of the same script found two problems:
+- **Guessed arguments.** Claude Code called the deferred `cats-desktop` tools before loading their
+  schemas, guessed argument names (`windowId` on `click`, `key` instead of `keys`), and the
+  server refused each call. Argument errors now name the arguments the tool takes, for example
+  "Unexpected argument key; this tool takes only windowId, keys.", and the model corrected its calls
+  from them.
+- **Open: a hung op and a helper exit.** In one of four runs a `type` op hung for about 30 seconds
+  and the helper process exited. The next call started a new helper (DC-16), and a `scroll` then
+  timed out after 30 seconds. The red window had also moved during that run, which points to input
+  from outside the script. Neither the hang nor the exit recurred in the final run, or in direct
+  replays through the service and through the helper with `type` and `key` sent together. The
+  cause is still unknown; the next occurrence needs the helper's stderr, which the script now keeps.
+
+Not exercised natively:
+- the Desktop host notice and tray item (covered by `tests/desktop-control-notice.test.js` only);
+- the clipboard tools, so the owner's clipboard is not overwritten;
+- the screen-lock pause;
+- Codex.
 
 **Exit:** A7 passes and is recorded; anything that did not pass is stated as such.
 
@@ -175,4 +220,4 @@ Follow [AGENTS.md: Local Validation Scope](../../AGENTS.md#local-validation-scop
 the checks each slice actually ran and their results; full CI remains the gate before merge.
 Native acceptance and fixture tests prove different things, so report them separately.
 
-*Created: 2026-10-29. Phase A and phase B authorized by the owner on 2026-10-29.*
+*Created: 2026-10-29. Phase A and phase B authorized by the owner on 2026-10-29; P5 recorded on 2026-10-29.*

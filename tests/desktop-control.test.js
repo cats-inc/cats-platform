@@ -313,6 +313,8 @@ test('phase B tools convert coordinates, keep the guards and hold control until 
     await f.call(token, 'key', { windowId: notepad, keys: 'Ctrl+S' });
     assert.deepEqual(sent('key'), { hwnd: 7, keys: 'ctrl+s' });
     assert.equal(code(await f.call(token, 'key', { windowId: notepad, keys: 'alt+tab' })), 'unavailable', 'keys outside the allowlist');
+    const misnamed = await f.call(token, 'key', { windowId: notepad, key: 'enter' });
+    assert.match(misnamed.structuredContent.error.message, /this tool takes only windowId, keys/u, 'argument errors name what the tool expects');
 
     const shellShot = (await f.call(token, 'screenshot_window', { windowId: shell })).structuredContent.snapshotId;
     assert.equal(code(await f.call(token, 'click', { snapshotId: shellShot, x: 1, y: 1 })), 'observe_only');
