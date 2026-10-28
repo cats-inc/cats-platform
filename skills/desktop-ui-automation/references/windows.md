@@ -95,7 +95,9 @@ architecture; a copied 32-bit struct is not a portable 64-bit implementation.
 Focus the intended window and verify foreground identity immediately before
 input. Map screenshot pixels, DPI scaling, virtual-screen origin (possibly
 negative), and SendInput's absolute/virtual-desktop coordinate convention.
-Prefer a verified existing helper over rebuilding that mapping casually.
+Prefer a verified existing helper over rebuilding that mapping casually. For a
+pointer click, use the helper's `Send-WindowsUiClick` (see
+[Pointer and clipboard](#pointer-and-clipboard)).
 
 Windows foreground lock can make `SetForegroundWindow` fail for a process that does
 not own the current foreground. This happens, for example, after another app
@@ -202,6 +204,38 @@ Send-WindowsUiKey $target -Key Enter -ExpectedText $typedCommandPattern
     to the window they open, resolving it by that title.
   - In one Junie run, Defender blocked the CLI's startup credential read
     (`powershell -NoProfile -NonInteractive -EncodedCommand …`) only when an agent launched it.
+
+### Pointer and clipboard
+
+`Send-WindowsUiClick` clicks a pixel of a snapshot image. Use it for custom-drawn UI;
+prefer `InvokePattern` and other UIA patterns when the control exposes them.
+
+```powershell
+Set-WindowsUiFocus $target
+$snapshot = Save-WindowsUiSnapshot $target -OutputPrefix $privateSnapshotPrefix -ImageOnly
+# Inspect the image, then pass a pixel position from that same image.
+Send-WindowsUiClick $target -Snapshot $snapshot -X 412 -Y 88
+```
+
+- X and Y are pixels in that snapshot. The helper adds the window origin, which may be
+  negative on a monitor left of or above the primary one.
+- It sends nothing when the snapshot belongs to another window or is older than
+  `-MaxSnapshotAgeSeconds` (60 by default), when the window moved or resized, when the
+  point is outside the image, or when a window not owned by the target covers the point.
+- `-Button Left|Right|Middle` and `-Count 1..3` give right, double and triple clicks.
+  Buttons are logical: a swapped-button setting is honored.
+- The cursor moves to the point and stays there. A held mouse button or modifier, or a
+  cursor that does not land on the exact pixel (clipping, mixed-DPI virtualization),
+  stops the click before any button event.
+- Drag, scroll and hover are not wrapped. One click is one action: re-capture and
+  inspect before the next, since a click can open a popup or change layout.
+
+`Set-WindowsUiClipboardText` replaces the operator's clipboard with text, reads it back
+and fails if another program replaced it in between. The previous content is not
+restored. Paste with `Send-WindowsUiKey -Key CtrlV` on a TextPattern surface, or through
+an app's own menu with `Send-WindowsUiClick`. `Get-WindowsUiClipboardText` returns
+`$null` when the clipboard holds no text. Both handle text only. Clipboard text can be
+private: keep it out of Git and logs.
 
 Native pilot lessons:
 

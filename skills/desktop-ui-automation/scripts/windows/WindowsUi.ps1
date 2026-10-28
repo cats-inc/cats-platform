@@ -1,15 +1,16 @@
 <#
 .SYNOPSIS
-    Provides scoped Windows UI Automation text, capture and keyboard helpers.
+    Provides scoped Windows UI Automation text, capture, keyboard, pointer and clipboard helpers.
 .DESCRIPTION
     Dot-source in an authorized interactive Windows PowerShell session. Only
     Start-WindowsUiTerminal launches anything, and only a new, uniquely titled Windows
     Terminal window for a command the operator authorized. The other functions do not
     launch apps. None of them grant access or bypass desktop isolation. Resolve one target, focus it
-    explicitly, inspect a snapshot, then use state-checked keyboard or text actions.
+    explicitly, inspect a snapshot, then use state-checked keyboard, text or pointer actions.
     Text/input require exactly one visible, keyboard-focusable TextPattern surface.
     Split panes are rejected. Use -ImageOnly for visual capture without TextPattern.
-    Save snapshots outside Git; they can contain private screen and terminal content.
+    Clicks take pixel coordinates from a fresh snapshot of the same, unmoved window.
+    Save snapshots and clipboard text outside Git; they can contain private content.
 .EXAMPLE
     . ./WindowsUi.ps1
     $target = Get-WindowsUiTarget -Title 'Evidence terminal' -ProcessName WindowsTerminal
@@ -21,6 +22,9 @@
     Send-WindowsUiText $target -Text '/model' -ExpectedText $emptyPromptPattern
     $null = Wait-WindowsUiText $target -ExpectedText $typedCommandPattern
     Send-WindowsUiKey $target -Key Enter -ExpectedText $typedCommandPattern
+.EXAMPLE
+    $snapshot = Save-WindowsUiSnapshot $target -OutputPrefix 'C:\private-evidence\canvas' -ImageOnly
+    Send-WindowsUiClick $target -Snapshot $snapshot -X 412 -Y 88
 #>
 
 Add-Type -AssemblyName UIAutomationClient
@@ -107,6 +111,61 @@ public static class CatsSkillWindowsInput {
         if (inserted != 2) {
             if (inserted == 1) SendInput(1, new Input[] { events[1] }, size); // one best-effort key-up
             throw new InvalidOperationException("Incomplete text input; re-observe before retrying.");
+        }
+    }
+}
+'@
+}
+if (-not ('CatsSkillWindowsPointer' -as [type])) {
+    Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class CatsSkillWindowsPointer {
+    [StructLayout(LayoutKind.Sequential)] public struct Point { public int x, y; }
+    [StructLayout(LayoutKind.Sequential)] public struct MouseInput {
+        public int x, y;
+        public uint data, flags, time;
+        public UIntPtr extra;
+    }
+    // MOUSEINPUT is the largest INPUT member, so it fixes the native size without a union.
+    [StructLayout(LayoutKind.Sequential)] public struct Input {
+        public uint type;
+        public MouseInput mouse;
+    }
+    [DllImport("user32.dll", SetLastError=true)]
+    static extern uint SendInput(uint count, Input[] events, int size);
+    [DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] static extern bool GetCursorPos(out Point point);
+    [DllImport("user32.dll")] static extern IntPtr WindowFromPoint(Point point);
+    [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr handle, uint flags);
+    [DllImport("user32.dll")] static extern int GetSystemMetrics(int index);
+    [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
+    public static long RootOwnerAt(int x, int y) {
+        Point point; point.x = x; point.y = y;
+        IntPtr handle = WindowFromPoint(point);
+        return handle == IntPtr.Zero ? 0 : GetAncestor(handle, 3).ToInt64(); // GA_ROOTOWNER
+    }
+    public static void Click(int x, int y, string button, int count) {
+        foreach (int key in new int[] { 0x01, 0x02, 0x04, 0x10, 0x11, 0x12, 0x5B, 0x5C }) {
+            if ((GetAsyncKeyState(key) & 0x8000) != 0)
+                throw new InvalidOperationException("A mouse button or modifier is already held; no click was sent.");
+        }
+        Point landed;
+        if (!SetCursorPos(x, y) || !GetCursorPos(out landed) || landed.x != x || landed.y != y)
+            throw new InvalidOperationException("Cursor did not land on the requested point; no click was sent.");
+        // SendInput buttons are physical; honor the user's swapped-button setting.
+        bool swapped = GetSystemMetrics(23) != 0;
+        uint down, up;
+        if (button == "Middle") { down = 0x20; up = 0x40; }
+        else if ((button == "Left") != swapped) { down = 0x02; up = 0x04; }
+        else { down = 0x08; up = 0x10; }
+        Input[] events = new Input[count * 2];
+        for (int i = 0; i < events.Length; i++) events[i].mouse.flags = i % 2 == 0 ? down : up;
+        int size = Marshal.SizeOf(typeof(Input));
+        uint inserted = SendInput((uint)events.Length, events, size);
+        if (inserted != events.Length) {
+            if (inserted % 2 == 1) SendInput(1, new Input[] { events[inserted] }, size); // one best-effort release
+            throw new InvalidOperationException("Incomplete pointer input; re-observe before retrying.");
         }
     }
 }
@@ -260,24 +319,34 @@ function Assert-WindowsUiInputState {
     }
 }
 
-function Save-WindowsUiSnapshot {
-    param([Parameter(Mandatory)]$Target, [Parameter(Mandatory)][string]$OutputPrefix, [switch]$ImageOnly)
-    Assert-WindowsUiFocus $Target
+function Get-WindowsUiBounds {
+    param([Parameter(Mandatory)]$Target)
     $element = Get-WindowsUiElement $Target
     $bounds = $element.Current.BoundingRectangle
     if ($element.Current.IsOffscreen -or $bounds.Width -le 0 -or $bounds.Height -le 0) {
         throw 'Target is offscreen or has no capturable bounds.'
     }
+    [pscustomobject]@{ X=[int]$bounds.X; Y=[int]$bounds.Y; Width=[int]$bounds.Width; Height=[int]$bounds.Height }
+}
+
+function Save-WindowsUiSnapshot {
+    param([Parameter(Mandatory)]$Target, [Parameter(Mandatory)][string]$OutputPrefix, [switch]$ImageOnly)
+    Assert-WindowsUiFocus $Target
+    $bounds = Get-WindowsUiBounds $Target
     $text = if ($ImageOnly) { $null } else { Get-WindowsUiText $Target }
-    $bitmap = New-Object System.Drawing.Bitmap([int]$bounds.Width, [int]$bounds.Height)
+    $bitmap = New-Object System.Drawing.Bitmap($bounds.Width, $bounds.Height)
     $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
     try {
         Assert-WindowsUiFocus $Target
-        $graphics.CopyFromScreen([int]$bounds.X, [int]$bounds.Y, 0, 0, $bitmap.Size)
+        $capturedAt = [DateTime]::UtcNow
+        $graphics.CopyFromScreen($bounds.X, $bounds.Y, 0, 0, $bitmap.Size)
         $bitmap.Save(($OutputPrefix + '.png'), [System.Drawing.Imaging.ImageFormat]::Png)
     } finally { $graphics.Dispose(); $bitmap.Dispose() }
     if (-not $ImageOnly) { $text | Set-Content -LiteralPath ($OutputPrefix + '.txt') -Encoding UTF8 }
-    [pscustomobject]@{ Text = $text; Image = $OutputPrefix + '.png'; Bounds = $bounds.ToString() }
+    [pscustomobject]@{
+        Text = $text; Image = $OutputPrefix + '.png'; Bounds = $bounds
+        Handle = $Target.Handle; CapturedAt = $capturedAt
+    }
 }
 
 function Invoke-WindowsUiKeyInput([uint16]$Code, [bool]$Control) {
@@ -287,7 +356,7 @@ function Invoke-WindowsUiKeyInput([uint16]$Code, [bool]$Control) {
 function Send-WindowsUiKey {
     param(
         [Parameter(Mandatory)]$Target,
-        [Parameter(Mandatory)][ValidateSet('Enter','Escape','Up','Down','Left','Right','CtrlC','CtrlD')]
+        [Parameter(Mandatory)][ValidateSet('Enter','Escape','Up','Down','Left','Right','CtrlC','CtrlD','CtrlV')]
         [string]$Key,
         [Parameter(Mandatory)][string]$ExpectedText
     )
@@ -295,7 +364,7 @@ function Send-WindowsUiKey {
     if ((Get-WindowsUiText $Target) -notmatch $ExpectedText) {
         throw 'Expected screen was not observed; no key was sent.'
     }
-    $codes = @{ Enter=13; Escape=27; Up=38; Down=40; Left=37; Right=39; CtrlC=67; CtrlD=68 }
+    $codes = @{ Enter=13; Escape=27; Up=38; Down=40; Left=37; Right=39; CtrlC=67; CtrlD=68; CtrlV=86 }
     Assert-WindowsUiInputState $Target (Get-WindowsUiInputState $Target)
     Invoke-WindowsUiKeyInput -Code ([uint16]$codes[$Key]) -Control ($Key.StartsWith('Ctrl'))
 }
@@ -337,4 +406,60 @@ function Wait-WindowsUiText {
         Start-Sleep -Milliseconds 120
     } while ([DateTime]::UtcNow -lt $deadline)
     throw 'Expected screen did not appear within the bounded wait; do not resend the key.'
+}
+
+function Get-WindowsUiRootOwnerAt([int]$X, [int]$Y) {
+    [CatsSkillWindowsPointer]::RootOwnerAt($X, $Y)
+}
+
+function Invoke-WindowsUiPointerInput([int]$X, [int]$Y, [string]$Button, [int]$Count) {
+    [CatsSkillWindowsPointer]::Click($X, $Y, $Button, $Count)
+}
+
+function Send-WindowsUiClick {
+    param(
+        [Parameter(Mandatory)]$Target, [Parameter(Mandatory)]$Snapshot,
+        [Parameter(Mandatory)][int]$X, [Parameter(Mandatory)][int]$Y,
+        [ValidateSet('Left','Right','Middle')][string]$Button = 'Left',
+        [ValidateRange(1,3)][int]$Count = 1,
+        [ValidateRange(1,600)][int]$MaxSnapshotAgeSeconds = 60
+    )
+    # X and Y are pixels in the snapshot image; they mean nothing once the window moves.
+    if ($Snapshot.Handle -ne $Target.Handle) { throw 'Snapshot belongs to another window; no click was sent.' }
+    if (([DateTime]::UtcNow - $Snapshot.CapturedAt).TotalSeconds -gt $MaxSnapshotAgeSeconds) {
+        throw 'Snapshot is too old; capture and inspect again before clicking.'
+    }
+    Assert-WindowsUiFocus $Target
+    $bounds = Get-WindowsUiBounds $Target
+    foreach ($name in 'X','Y','Width','Height') {
+        if ($bounds.$name -ne $Snapshot.Bounds.$name) { throw 'Window moved or resized since the snapshot; no click was sent.' }
+    }
+    if ($X -lt 0 -or $Y -lt 0 -or $X -ge $bounds.Width -or $Y -ge $bounds.Height) {
+        throw 'Point is outside the captured window; no click was sent.'
+    }
+    $screenX = $bounds.X + $X
+    $screenY = $bounds.Y + $Y
+    if ((Get-WindowsUiRootOwnerAt $screenX $screenY) -ne $Target.Handle) {
+        throw 'Another window covers that point; no click was sent.'
+    }
+    Invoke-WindowsUiPointerInput -X $screenX -Y $screenY -Button $Button -Count $Count
+}
+
+function Invoke-WindowsUiClipboardRead { Get-Clipboard -Raw }
+
+function Invoke-WindowsUiClipboardWrite([string]$Text) { Set-Clipboard -Value $Text }
+
+function Get-WindowsUiClipboardText {
+    $text = Invoke-WindowsUiClipboardRead
+    if ($null -eq $text -or $text.Length -eq 0) { return $null }
+    return [string]$text
+}
+
+function Set-WindowsUiClipboardText {
+    param([Parameter(Mandatory)][ValidateLength(1,100000)][string]$Text)
+    # Replaces the operator's clipboard; the previous content is not restored.
+    Invoke-WindowsUiClipboardWrite $Text
+    if ((Invoke-WindowsUiClipboardRead) -cne $Text) {
+        throw 'Clipboard did not keep the text; another program may have replaced it. Do not paste.'
+    }
 }

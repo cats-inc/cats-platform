@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Tests keyboard guards with simulated UI state; never sends native desktop input.
+    Tests input guards with simulated UI state; never sends native input or touches the clipboard.
 #>
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'WindowsUi.ps1')
@@ -57,6 +57,56 @@ Test-TextCase 'text into the inspected prompt' '/model' @('pane-a','window') $pr
 Test-TextCase 'text with focus outside the pane' '/model' @('tab-strip','window') $prompt $false
 Test-TextCase 'text carrying its own Enter' "/model`r" @('pane-a','window') $prompt $false
 Test-TextCase 'text before the prompt appears' '/model' @('pane-a','window') "Claude Code`nLoading" $false
+
+$script:bounds = $null
+$script:ownerAtPoint = 0
+$script:clicks = @()
+function Get-WindowsUiBounds($Target) { $script:bounds }
+function Get-WindowsUiRootOwnerAt([int]$X, [int]$Y) { $script:ownerAtPoint }
+function Invoke-WindowsUiPointerInput([int]$X, [int]$Y, [string]$Button, [int]$Count) {
+    $script:clicks += "$Button x$Count at $X,$Y"
+}
+
+function Test-ClickCase($Name, $Snapshot, $Bounds, $Owner, [int]$X, [string]$Expected) {
+    $script:bounds = $Bounds
+    $script:ownerAtPoint = $Owner
+    $script:clicks = @()
+    $failed = $false
+    try { Send-WindowsUiClick $target -Snapshot $Snapshot -X $X -Y 20 -Button Right -Count 2 } catch { $failed = $true }
+    if ($Expected) {
+        if ($failed -or ($script:clicks -join ';') -ne $Expected) { throw "$Name rejected a valid click." }
+    } elseif (-not $failed -or $script:clicks.Count -ne 0) { throw "$Name did not block the click." }
+    Write-Output "PASS $Name"
+}
+
+# A monitor left of the primary one gives the window a negative origin.
+$window = [pscustomobject]@{ X=-1600; Y=200; Width=800; Height=600 }
+$moved = [pscustomobject]@{ X=0; Y=200; Width=800; Height=600 }
+$fresh = [pscustomobject]@{ Handle=100; CapturedAt=[DateTime]::UtcNow; Bounds=$window }
+$stale = [pscustomobject]@{ Handle=100; CapturedAt=[DateTime]::UtcNow.AddMinutes(-5); Bounds=$window }
+$other = [pscustomobject]@{ Handle=200; CapturedAt=[DateTime]::UtcNow; Bounds=$window }
+Test-ClickCase 'click inside the captured window' $fresh $window 100 10 'Right x2 at -1590,220'
+Test-ClickCase 'snapshot of another window' $other $window 100 10 $null
+Test-ClickCase 'stale snapshot' $stale $window 100 10 $null
+Test-ClickCase 'window moved since the snapshot' $fresh $moved 100 10 $null
+Test-ClickCase 'point outside the image' $fresh $window 100 800 $null
+Test-ClickCase 'another window covers the point' $fresh $window 999 10 $null
+
+$script:clipboard = $null
+$script:keepsWrites = $true
+function Invoke-WindowsUiClipboardRead { $script:clipboard }
+function Invoke-WindowsUiClipboardWrite([string]$Text) { if ($script:keepsWrites) { $script:clipboard = $Text } }
+
+if ($null -ne (Get-WindowsUiClipboardText)) { throw 'Empty clipboard did not read as null.' }
+Write-Output 'PASS empty clipboard'
+Set-WindowsUiClipboardText -Text "line 1`nline 2"
+if ((Get-WindowsUiClipboardText) -cne "line 1`nline 2") { throw 'Clipboard text did not round-trip.' }
+Write-Output 'PASS clipboard round trip'
+$script:keepsWrites = $false
+$failed = $false
+try { Set-WindowsUiClipboardText -Text 'replaced' } catch { $failed = $true }
+if (-not $failed) { throw 'A clipboard write that did not stick was accepted.' }
+Write-Output 'PASS clipboard replaced by another program'
 
 $script:launched = $null
 $script:titleTaken = $false
