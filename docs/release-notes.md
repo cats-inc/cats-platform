@@ -2,6 +2,88 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-29 — Desktop 0.12.1 standard preview: Cats desktop control on Windows
+
+Selected distribution: Desktop **0.12.1 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**. Platform/Runtime npm, launcher and optional
+Marketplace Apps keep their existing releases.
+
+- **Let a Cat see and operate apps on this Windows computer.**
+  - **Switches.** Settings > Runtime adds **Cats desktop control** (Windows only, off by
+    default), and each conversation has its own switch.
+  - **When it applies.** Both switches must be on, and the conversation's explicit execution
+    policy must ask for approval (`on-request` or `untrusted`). Chat sessions then get the
+    `cats-desktop` MCP server.
+  - **Tools.**
+    - Observe: `request_app_access`, `list_windows`, `screenshot_window`, `read_ui` and
+      `open_app`.
+    - Act: `click`, `invoke_element`, `type_text`, `key`, `scroll` and the two clipboard
+      tools.
+  - **Who can use them.** The tools serve only turns the owner sends from Cats on this
+    computer. Scheduled, heartbeat, Telegram, Mobile and other remote turns get
+    `not_owner_present`. The owner grants each app on a card in the conversation, and the
+    provider asks before every tool call.
+  - **Grants.** Terminals, IDEs and browsers can only be observed. Cats itself and Windows
+    consent and credential UI can never be granted. Grants are kept in memory only, per
+    conversation.
+- **Holding control and Stop.**
+  - **Notice.** While a Cat operates an app, a small topmost notice in the bottom-right corner
+    names the app and offers Stop. It never takes focus. The tray adds
+    "Stop desktop control (app)", and the conversation has Stop too.
+  - **What Stop does.** It revokes the grants and cancels input in progress, typing included.
+    Ids issued before Stop stop working, and later calls answer `stopped`.
+  - **Pauses.** Input pauses with `operator_active` while the owner uses the keyboard or mouse,
+    and every action answers `locked` while the screen is locked.
+- **Privacy.** Desktop never stores or logs screenshots, UI text, typed text or clipboard
+  content. When the helper exits unexpectedly, the log keeps only exception types and stack
+  frames.
+- **Windows helper.** Windows packages add `cats-desktop-control-windows`, a .NET 8 helper
+  published self-contained for each architecture, with the .NET license texts.
+  - It starts on first use and exits after 5 idle minutes.
+  - It runs as the current user and unelevated, and refuses elevated targets.
+  - Like the rest of the Windows build it has no code-signing certificate.
+  - On macOS and Linux, desktop control shows as unavailable (`not_windows`).
+- **Compatibility.** There is no data migration.
+  - **Preferences.** Platform preferences gain `desktopControlEnabled` (default off) and
+    `desktopControlConversations` (default empty). Desktop 0.12.0 reads a 0.12.1 preferences
+    file and ignores both fields; if it rewrites the file, they are dropped.
+  - **Unchanged.** The Core snapshot stays format 6, and the public App SDK is unchanged. The
+    Catlas and orchestrator bundles keep `platformRange: "0.12.x"`.
+- **Exact source and artifacts.**
+  - **Runtime.** `0b387ae5abfc2a789fde590b8450a723f077fd60` (package **0.6.2**, bundled from
+    source). Since 0.12.0's `af405ff7` it adds only a research document, so the packaged
+    Runtime code is unchanged. Desktop control relies on Runtime's existing session MCP
+    injection and execution-policy report.
+  - **Usage.** Remains
+    `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`, producer
+    `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
+  - **Receipts.** Every OS/source receipt records the merged bump commit and the same Runtime
+    SHA.
+- **Signing.** Dispatch `desktop-release.yml` from the merged bump commit with `tag=v0.12.1`,
+  the Runtime SHA above and `unsigned=false`.
+  - Standard trust: macOS **signed + notarized**, Windows **unsigned: no certificate**, Linux
+    **n/a**.
+  - Standard-profile installs of 0.12.0 self-update on each OS under the existing trust rules.
+- **Checks.**
+  - **Native acceptance.** Recorded in PLAN-126, on Windows 11 with Claude Code 2.1.312:
+    - Phase A passed 13 of 13.
+    - Phase B's final run passed 17 of 18. The model declined to type into a password box; an
+      earlier run showed the guard returning `password_field`.
+    - Both ran a development build of the helper against throwaway windows. They did not use a
+      packaged installer.
+  - **Fixture suites.** The server, helper client and host-notice suites pass.
+  - **Not verified:**
+    - the helper from a packaged installer;
+    - the notice and tray in a running Desktop;
+    - the clipboard tools on a real desktop;
+    - the lock pause;
+    - Codex.
+  - **Hosted gates.** The PR runs full CI. The release workflow gates packaged startup, App
+    activation, the .NET license notices of each packaged helper, complete-source identity,
+    signatures and public assets.
+  - Publication results: the `v0.12.1` GitHub prerelease and its Actions run.
+
 ## 2026-10-28 — Desktop 0.12.0 standard preview: native provider requests and Claude Code controls
 
 Selected distribution: Desktop **0.12.0 standard-profile preview**, App SDK
