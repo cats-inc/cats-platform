@@ -1,5 +1,25 @@
 # System Architecture
 
+## Proposed shared packages and independent products (2026-10-29)
+
+[ADR-142](decisions/142-publish-reusable-platform-packages-for-independent-products.md)
+proposes versioned shared packages/resources in this repository for Desktop, Bot
+and Mobile, preserving Runtime ownership and product-specific state/authority.
+[ADR-143](decisions/143-separate-product-repositories-after-platform-contracts-stabilize.md)
+proposes moving Desktop and then Mobile only after those public contracts work.
+Platform retains its headless server, optional product services and self-hosted
+Web application; cats-one retains launch/developer-workspace composition.
+
+These proposals follow merged Bot #51's identity/Hub/coordinator/environment
+design without claiming it is implemented. The current layout, package entries
+and deployed processes remain as described below. See
+[SPEC-134](specs/SPEC-134-reusable-platform-packages-and-consumer-boundaries.md) /
+[PLAN-127](plans/PLAN-127-shared-platform-package-extraction.md) and
+[SPEC-135](specs/SPEC-135-independent-product-repositories-and-distribution.md) /
+[PLAN-128](plans/PLAN-128-product-repository-extraction.md) for requirements and gates.
+
+## Current architecture
+
 Platform data reset requires typed confirmation and keeps its current scope by
 default. An explicit optional Runtime reset is authorized by Platform and handed
 to Desktop through its bounded reset journal; Desktop stops managed services and

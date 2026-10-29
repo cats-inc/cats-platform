@@ -1,5 +1,15 @@
 # Documentation Index
 
+The proposed shared-Platform architecture follows merged
+[Bot PR #51](https://github.com/cats-inc/cats-bots/pull/51). It has two stages:
+[reusable packages](decisions/142-publish-reusable-platform-packages-for-independent-products.md)
+([SPEC-134](specs/SPEC-134-reusable-platform-packages-and-consumer-boundaries.md),
+[PLAN-127](plans/PLAN-127-shared-platform-package-extraction.md)), then
+[independent product repositories](decisions/143-separate-product-repositories-after-platform-contracts-stabilize.md)
+([SPEC-135](specs/SPEC-135-independent-product-repositories-and-distribution.md),
+[PLAN-128](plans/PLAN-128-product-repository-extraction.md)). No package extraction,
+repository move, identity change or release is implemented by these draft documents.
+
 [PLAN-125](plans/PLAN-125-claude-code-provider-controls-in-desktop.md) brings Claude Code's
 native approvals, policy ceilings and Claude in Chrome to Desktop (2026-10-28), extending
 SPEC-132 with a Claude Code section over Runtime SPEC-039 R8.

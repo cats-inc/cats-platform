@@ -1,5 +1,12 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-143: Separate product repositories after Platform contracts stabilize](143-separate-product-repositories-after-platform-contracts-stabilize.md)
+  — proposed, 2026-10-29; Desktop then Mobile extraction, retained Platform
+  server/Web, independent distribution and cats-one composition. No source move.
+- [ADR-142: Publish reusable Platform packages for independent products](142-publish-reusable-platform-packages-for-independent-products.md)
+  — proposed, 2026-10-29; bounded pure/client/Node/Electron/Web exports and native
+  resources, with Desktop/Bot consumer gates. Based on merged Bot #51; no extraction.
+
 - [ADR-141: Host a consented desktop control MCP for provider sessions](141-host-a-consented-desktop-control-mcp-for-provider-sessions.md)
   — accepted, 2026-10-29; Desktop host serves a session MCP that Runtime injects
   only into explicit-policy, owner-present sessions. Global switch, per-app grants,
