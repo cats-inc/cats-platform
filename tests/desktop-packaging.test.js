@@ -2086,9 +2086,31 @@ test('NSIS installer.nsh provides an uninstaller page for optional user-data rem
   assert.match(nsh, /RemoveUserDataCheckbox/);
   assert.match(nsh, /RemoveUserDataState/);
   assert.match(nsh, /\$PROFILE\\\.cats/);
-  assert.match(nsh, /RMDir \/r "\$PROFILE\\\.cats"/);
-  assert.match(nsh, /RMDir \/r "\$APPDATA\\Cats"/);
+  assert.match(nsh, /!insertmacro removeDataRoot "\$PROFILE\\\.cats"/);
+  assert.match(nsh, /!insertmacro removeDataRoot "\$APPDATA\\Cats"/);
   assert.match(nsh, /customUnInstall/);
+  // A per-machine install would remove another account's data: customUnInit,
+  // which runs after initMultiUser, makes its uninstall skip the page.
+  assert.match(nsh, /Function un\.UserDataRemovalPage\s+\$\{If\} \$RemoveUserDataPerUser != "1"\s+Abort/);
+  assert.match(nsh, /!macro customUnInit\s+StrCpy \$RemoveUserDataPerUser "1"\s+\$\{If\} \$installMode == "all"\s+StrCpy \$RemoveUserDataPerUser ""/);
+});
+
+test('NSIS user-data removal never follows a junction or symlink', async () => {
+  const nsh = await readFile(
+    join(process.cwd(), 'assets', 'build', 'installer.nsh'),
+    'utf8',
+  );
+  const code = nsh.split('\n').filter((line) => !line.trimStart().startsWith(';')).join('\n');
+
+  // NSIS's RMDir /r enters reparse points and empties their targets, for
+  // example a junctioned node_modules inside an agent workspace under ~/.cats.
+  assert.doesNotMatch(code, /RMDir \/r/);
+  const remove = nsh.match(/!macro removeDataRoot DIR([\s\S]*?)!macroend/)?.[1] ?? '';
+  assert.match(remove, /GetFileAttributesW\(w "\$\{DIR\}"\) i \.R0'[\s\S]*IntOp \$R0 \$R0 & 0x400/);
+  assert.match(
+    remove,
+    /\$\{If\} \$R0 != 0\s+RMDir "\$\{DIR\}"\s+\$\{Else\}\s+nsExec::Exec '"\$SYSDIR\\cmd\.exe" \/d \/c rd \/s \/q "\$\{DIR\}"'\s+Pop \$R0/,
+  );
 });
 
 test('NSIS customUnInstall keeps user-data removals inside the RemoveUserDataState gate', async () => {
@@ -2111,15 +2133,25 @@ test('NSIS customUnInstall keeps user-data removals inside the RemoveUserDataSta
   // .cats tree (sessions/state) must only be deleted when the user opts in;
   // installer-driven upgrades run the old uninstaller silently and would
   // otherwise reset Guide Cat placement, sidecarSeen, etc. on every upgrade.
-  assert.match(conditionalBody, /RMDir \/r "\$APPDATA\\Cats"/);
-  assert.match(conditionalBody, /RMDir \/r "\$PROFILE\\\.cats"/);
+  assert.match(conditionalBody, /!insertmacro removeDataRoot "\$APPDATA\\Cats"/);
+  assert.match(conditionalBody, /!insertmacro removeDataRoot "\$PROFILE\\\.cats"/);
 
   const before = macroBody.slice(0, macroMatch[1].indexOf(conditionalMatch[0]));
   const after = macroBody.slice(
     macroMatch[1].indexOf(conditionalMatch[0]) + conditionalMatch[0].length,
   );
-  assert.equal(/RMDir \/r/.test(before), false, 'no RMDir outside the gate (before)');
-  assert.equal(/RMDir \/r/.test(after), false, 'no RMDir outside the gate (after)');
+  assert.equal(/removeDataRoot|RMDir/.test(before), false, 'no removal outside the gate (before)');
+  assert.equal(/removeDataRoot|RMDir/.test(after), false, 'no removal outside the gate (after)');
+  // Defense in depth: the gate also sits inside the not-an-update, per-user guard.
+  assert.match(
+    macroBody,
+    /\$\{IfNot\} \$\{isUpdated\}\s+\$\{AndIf\} \$installMode != "all"[\s\S]*\$\{If\} \$RemoveUserDataState == \$\{BST_CHECKED\}/,
+  );
+  // Anything left behind, for example files another program still holds, is reported.
+  for (const root of ['$APPDATA\\Cats', '$PROFILE\\.cats', '$LOCALAPPDATA\\cats-updater']) {
+    assert.ok(macroBody.includes(`!insertmacro noteDataRootLeft "${root}"`), root);
+  }
+  assert.match(macroBody, /MessageBox MB_OK\|MB_ICONEXCLAMATION "[^"]*\$RemoveUserDataLeft[^"]*" \/SD IDOK/);
 });
 
 test('NSIS user-data removal UI names both data roots Cats actually deletes', async () => {
@@ -2167,6 +2199,44 @@ test('NSIS $APPDATA\\Cats path stays in sync with DESKTOP_USER_DATA_DIR_NAME', a
   const escaped = dirName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   assert.match(nsh, new RegExp(`\\$APPDATA\\\\${escaped}\\b`));
   assert.match(nsh, new RegExp(`%APPDATA%\\\\${escaped}\\b`));
+});
+
+test('NSIS uninstall removes this install\'s Start at login entry, but never during an update', async () => {
+  const nsh = await readFile(join(process.cwd(), 'assets', 'build', 'installer.nsh'), 'utf8');
+  const startup = await readFile(join(process.cwd(), 'desktop', 'host', 'desktopStartup.ts'), 'utf8');
+  const name = startup.match(/export const DESKTOP_WINDOWS_LOGIN_ITEM_NAME = '([^']+)'/)?.[1];
+  assert.equal(name, 'Cats', 'guard against silent rename');
+
+  // Installing over a copy runs the old uninstaller with --updated, and a
+  // per-machine uninstall acts for another account: both keep the entry.
+  const macroBody = nsh.match(/!macro customUnInstall([\s\S]*?)!macroend/)?.[1] ?? '';
+  assert.match(
+    macroBody,
+    new RegExp(`\\$\\{IfNot\\} \\$\\{isUpdated\\}\\s+\\$\\{AndIf\\} \\$installMode != "all"\\s+!insertmacro removeLoginEntry "\\$\\{CATS_RUN_KEY\\}" "\\$\\{CATS_APPROVED_KEY\\}" "${name}"`),
+  );
+  assert.match(nsh, /!define CATS_RUN_KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Run"/);
+  assert.match(nsh, /!define CATS_APPROVED_KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run"/);
+  // Only a value that starts this installation's executable is deleted, with
+  // the StartupApproved value of the same name.
+  const entry = nsh.match(/!macro removeLoginEntry RUN_KEY APPROVED_KEY NAME([\s\S]*?)!macroend/)?.[1];
+  assert.ok(entry, 'removeLoginEntry macro must exist');
+  assert.match(
+    entry,
+    /\$\{If\} \$R0 == '"\$INSTDIR\\'\s+ClearErrors\s+DeleteRegValue HKCU "\$\{RUN_KEY\}" "\$\{NAME\}"\s+\$\{IfNot\} \$\{Errors\}\s+DeleteRegValue HKCU "\$\{APPROVED_KEY\}" "\$\{NAME\}"/,
+  );
+});
+
+test('NSIS user-data removal also removes the updater cache electron-builder names', async () => {
+  const nsh = await readFile(join(process.cwd(), 'assets', 'build', 'installer.nsh'), 'utf8');
+  const manifest = await readPackageJson(join(process.cwd(), 'package.json'));
+  const appInfo = new AppInfo({ metadata: { ...manifest, ...manifest.build.extraMetadata }, config: manifest.build });
+  assert.equal(appInfo.updaterCacheDirName, 'cats-updater', 'guard against silent rename');
+
+  const macroBody = nsh.match(/!macro customUnInstall([\s\S]*?)!macroend/)?.[1] ?? '';
+  const gate = macroBody.match(/\$\{If\} \$RemoveUserDataState == \$\{BST_CHECKED\}([\s\S]*?)\$\{EndIf\}/)?.[1] ?? '';
+  assert.ok(gate.includes(`!insertmacro removeDataRoot "$LOCALAPPDATA\\${appInfo.updaterCacheDirName}"`));
+  const description = nsh.match(/NSD_CreateLabel[^"\n]*"([^"]+)"/)?.[1] ?? '';
+  assert.ok(description.includes(`%LOCALAPPDATA%\\${appInfo.updaterCacheDirName}`));
 });
 
 test('NSIS installer.nsh forces per-user install via customInstallMode so admin/all-users is not offered', async () => {
