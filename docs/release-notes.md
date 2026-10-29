@@ -2,6 +2,66 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-29 — Desktop 0.12.2 standard preview: Codex tool and App consent
+
+Selected distribution: Desktop **0.12.2 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**. Platform/Runtime npm, launcher and optional
+Marketplace Apps keep their existing releases.
+
+- **Codex consent reaches the conversation.** The bundled Runtime recognizes
+  Codex's native marked MCP approval form as `tool_approval`, including plugin
+  App consent from `node_repl` and Cats tools from `cats-desktop`. The card shows
+  the provider's request and bounded input summary with **Allow**, **Decline** and
+  **Cancel request**. Replies return to the original execution without another
+  model message. The native App controls its grant scope; Allow does not promise
+  a one-use or permanent grant. Terminal receipts remove the prompt.
+- **Interactive policy is required.** Legacy skip can resolve to Codex `never`
+  and suppress requests. For a new conversation, choose **Choose access and
+  approval separately**, the needed access ceiling and **Ask when requested by
+  the agent**. English and Traditional Chinese help now explain this. Existing
+  conversations retain their admitted policy. Explicit interactive policies also
+  make injected MCP tools ask before each call, including read-only tools.
+- **Cats desktop-control grants stay separate.** Its global/conversation
+  switches, local-owner requirement, explicit approval policy, per-App grant and
+  Stop remain in force. Accepting a provider request does not grant a Cats App
+  target or bypass Windows permission UI.
+- **Compatibility and recovery.** This is a compatible 0.12 patch. Core remains
+  format 6, preferences and the public App SDK are unchanged, and there is no new
+  data migration. Back up the Platform profile before an update as usual. A
+  failed update must preserve that profile; existing 0.12 recovery procedures
+  apply. Returning to 0.12.1 requires no data conversion but loses this consent
+  fix. Older pre-0.12 versions still cannot read Core format 6.
+- **Exact source and artifacts.**
+  - Runtime package **0.6.2**, built from
+    `399e63571be8188fc685ba3925ff47f80a256f27` (Runtime PR #202).
+  - Usage stays at
+    `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+    producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
+  - The complete-source manifest and every OS receipt record the selected merged
+    Platform bump commit and this exact Runtime SHA.
+- **Signing and updates.** Dispatch `desktop-release.yml` from the merged bump
+  commit with `tag=v0.12.2`, the Runtime SHA above and `unsigned=false`. Standard
+  trust with the configured shared credentials is expected to be macOS
+  **signed + notarized**, Windows **unsigned: no certificate**, Linux **n/a**. When output
+  trust matches this expectation, standard-profile 0.12.1 Windows NSIS, signed
+  macOS and Linux DEB installations retain their existing update paths; portable
+  builds use manual replacement. Actual trust comes from the workflow receipts.
+  If macOS credentials are absent, the preview workflow can produce unsigned
+  output, which cannot self-update an existing signed macOS installation.
+- **Validation boundary.** The feature passed 63 focused checks, independent
+  review and full CI. An isolated Windows Electron source candidate with real
+  Runtime and a scripted Codex wire fixture verified actual Allow/Decline/Cancel
+  clicks, one native turn per case, original execution identity and scrubbed
+  receipts. Real Codex 0.165 consent evidence is recorded in Runtime PR #202 and
+  Bots PR #44. Paint screenshots in those native checks were blank/title-only or
+  black; this release fixes consent, not capture quality or general desktop input.
+  Candidate checks are not an installed 0.12.1-to-0.12.2 upgrade test. The release
+  workflow enforces packaged startup, offline App activation, helper architecture
+  and license checks, complete-source identity, signing, updater metadata and
+  public-asset provenance. Publication results: the `v0.12.2` GitHub prerelease
+  and its Actions run.
+
 ## 2026-10-29 — Desktop 0.12.1 standard preview: Cats desktop control on Windows
 
 Selected distribution: Desktop **0.12.1 standard-profile preview**, App SDK
