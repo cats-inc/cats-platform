@@ -23,6 +23,9 @@
     "cats-platform": "build/server/index.js"
   },
   "main": "build/desktop/main.js",
+  "bundledDependencies": [
+    "@cats-inc/platform-ui-web"
+  ],
   "files": [
     "build/renderer",
     "build/server",
@@ -83,7 +86,8 @@
     "mobile:typecheck": "npm run mobile:boundary && npm run typecheck --prefix mobile",
     "mobile:boundary": "node scripts/check-mobile-boundary.mjs",
     "mobile:export": "cd mobile && npx expo export --platform all --output-dir ../build/mobile",
-    "mobile:install": "npm ci --prefix mobile && node scripts/patch-mobile-hermesc.mjs"
+    "mobile:install": "npm ci --prefix mobile && node scripts/patch-mobile-hermesc.mjs",
+    "pack:conversation-ui": "node scripts/pack-conversation-ui.mjs"
   },
   "keywords": [
     "cats",
@@ -93,6 +97,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@cats-inc/platform-ui-web": "file:vendor/platform-ui-web-0.1.0-957e4717942c.tgz",
     "@ngrok/ngrok": "1.7.0",
     "@tanstack/react-query": "^5.100.6",
     "electron-updater": "^6.8.9",
@@ -356,5 +361,8 @@
     "electron@41.2.0": true,
     "esbuild@0.27.3": true,
     "electron-winstaller@5.4.0": true
-  }
+  },
+  "bundleDependencies": [
+    "@cats-inc/platform-ui-web"
+  ]
 }

@@ -1,0 +1,525 @@
+/* Extracted from Cats Desktop at 157652085b39a0be0f68190e532e35df50208454. */
+
+.transcriptMessage {
+  min-width: 0;
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.transcriptMessageUser {
+  margin-left: auto;
+  background: var(--user-bubble-bg);
+  color: var(--text);
+}
+
+.transcriptMessageOrchestrator,
+.transcriptMessageAgent {
+  margin-right: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.transcriptAvatar {
+  width: 28px;
+  height: 28px;
+  font-size: 0.65rem;
+  flex-shrink: 0;
+}
+
+.transcriptMessageTop {
+  margin-bottom: 4px;
+}
+
+.transcriptMessageSystem {
+  margin: 4px auto;
+  max-width: 90%;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+
+.transcriptMessageStack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 4px;
+}
+
+.transcriptMessageStackUser {
+  align-items: flex-end;
+}
+
+.transcriptMessageStackOrchestrator,
+.transcriptMessageStackAgent {
+  align-items: flex-start;
+}
+
+.transcriptMessageStackSystem {
+  align-items: center;
+}
+
+.transcriptMessageUser {
+  margin-left: 0;
+}
+
+.transcriptMessageOrchestrator,
+.transcriptMessageAgent {
+  margin-right: 0;
+}
+
+.transcriptMessageSystem {
+  margin: 0;
+}
+
+
+.messageActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-inline: 4px;
+}
+
+.messageActionIcon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-soft);
+  cursor: pointer;
+  padding: 0;
+}
+
+.messageActionIcon:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.messageActionIcon:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.messageActionsHoverOnly {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.transcriptMessageStackUser > .messageActions {
+  justify-content: flex-end;
+}
+
+.transcriptMessageStackUser:hover .messageActionsHoverOnly,
+.transcriptMessageStackUser:focus-within .messageActionsHoverOnly {
+  opacity: 1;
+}
+
+.userTurnStatus {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.userTurnStatusFailed {
+  color: color-mix(in srgb, #b42318 72%, var(--text) 28%);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.messageActionsPersistent {
+  opacity: 1;
+}
+
+.messageActionMenu {
+  position: relative;
+}
+
+.messageActionPopover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  gap: 4px;
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  z-index: 8;
+}
+
+.messageActionPopover button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.messageActionPopover button:hover:not(:disabled) {
+  background: var(--panel-hover);
+}
+
+.messageActionPopover button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.messageActionPopoverDivider {
+  height: 1px;
+  margin: 2px 4px;
+  background: var(--border);
+}
+
+
+.typingIndicator {
+  animation: typingFadeIn 0.2s ease;
+}
+
+@keyframes typingFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.typingDots {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  height: 1.5em;
+}
+
+.typingDots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: typingBounce 1.4s ease-in-out infinite;
+}
+
+.typingDots span:nth-child(2) { animation-delay: 0.2s; }
+.typingDots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+.typingStatusText {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+  white-space: pre-wrap;
+}
+
+.typingToolChip {
+  display: inline-block;
+  margin-top: 4px;
+  margin-right: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--panel-hover);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* ── Tool segment chips (content-block-based rendering) ── */
+
+.toolSegmentChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel-hover) 80%, var(--accent) 20%);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.toolSegmentChip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: toolSegmentPulse 1.4s ease-in-out infinite;
+}
+
+.toolSegmentChipDone {
+  background: var(--panel-hover);
+  color: var(--muted);
+}
+
+.toolSegmentChipDone::before {
+  background: var(--muted);
+  animation: none;
+  opacity: 0.5;
+}
+
+.toolSegmentChipError { color: var(--danger, #a93226); background: var(--panel-hover); }
+.toolSegmentChipError::before { display: none; animation: none; }
+
+.toolSegmentChipName {
+  font-weight: 500;
+}
+
+.toolSegmentChipDetail {
+  color: var(--muted);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 240px;
+}
+
+@keyframes toolSegmentPulse {
+  0%, 60%, 100% { opacity: 0.4; }
+  30% { opacity: 1; }
+}
+
+
+.messageBody {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.messageBodyLink {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.messageBodyLink:hover {
+  text-decoration-thickness: 2px;
+}
+
+.messageBodyMention {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: #8B7E74;
+}
+
+/* ── Agent markdown ── */
+
+.messageBodyMarkdown {
+  word-break: break-word;
+}
+
+.messageBodyMarkdown :where(
+  p, ul, ol, blockquote, pre, hr, h1, h2, h3, h4, h5, h6, .messageBodyTableScroll
+) {
+  margin: 0 0 0.65em;
+}
+
+.messageBodyMarkdown :where(
+  p, ul, ol, blockquote, pre, hr, h1, h2, h3, h4, h5, h6, .messageBodyTableScroll
+):last-child {
+  margin-bottom: 0;
+}
+
+.messageBodyMarkdown :where(h1, h2, h3, h4, h5, h6) {
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.messageBodyMarkdown h1 {
+  font-size: 1.2em;
+}
+
+.messageBodyMarkdown h2 {
+  font-size: 1.1em;
+}
+
+.messageBodyMarkdown :where(h3, h4, h5, h6) {
+  font-size: 1em;
+}
+
+.messageBodyMarkdown :where(ul, ol) {
+  padding-left: 1.4em;
+}
+
+.messageBodyMarkdown li + li {
+  margin-top: 0.2em;
+}
+
+.messageBodyMarkdown li > :where(p, ul, ol) {
+  margin: 0.2em 0 0;
+}
+
+.messageBodyMarkdown li > p:first-child {
+  margin-top: 0;
+}
+
+.messageBodyMarkdown .contains-task-list {
+  padding-left: 0.2em;
+  list-style: none;
+}
+
+.messageBodyMarkdown .task-list-item input {
+  margin: 0 0.45em 0 0;
+  vertical-align: middle;
+}
+
+.messageBodyMarkdown blockquote {
+  padding-left: 10px;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.messageBodyMarkdown hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.messageBodyMarkdown code {
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+  background: var(--muted-bg);
+  font-size: 0.88em;
+}
+
+.messageBodyMarkdown pre {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-subtle);
+  overflow-x: auto;
+  line-height: 1.45;
+}
+
+.messageBodyMarkdown pre code {
+  padding: 0;
+  background: none;
+  font-size: 0.85em;
+  white-space: pre;
+  word-break: normal;
+}
+
+.messageBodyTableScroll {
+  overflow-x: auto;
+}
+
+.messageBodyMarkdown table {
+  border-collapse: collapse;
+  font-size: 0.95em;
+  /* Keep words readable; wide tables scroll instead of breaking every letter. */
+  word-break: normal;
+}
+
+.messageBodyMarkdown :where(th, td) {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.messageBodyMarkdown th {
+  background: var(--panel-subtle);
+  font-weight: 600;
+}
+
+.messageBodyMarkdown th:not([align]) {
+  text-align: start;
+}
+
+.messageBodyInertLink {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+/* ── Message body attachments ── */
+
+.messageBodyWrapper {
+  display: contents;
+}
+
+.messageBodyImages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.messageBodyImageLink {
+  display: block;
+  border-radius: 10px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.messageBodyImage {
+  max-width: 240px;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.messageBodyImage:hover {
+  opacity: 0.85;
+}
+
+.messageBodyFiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.messageBodyFileChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: var(--panel-hover);
+  color: var(--text);
+  font-size: 0.82rem;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.messageBodyFileChip:hover {
+  background: var(--border);
+}
+
+.transcriptMessageTop { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
+
+.transcriptMessage { box-sizing: border-box; overflow-wrap: anywhere; }
+
+.toolSegmentChip { min-width: 0; }
+.toolSegmentChip::before { flex-shrink: 0; }
+.toolSegmentChipName { overflow-wrap: anywhere; min-width: 0; flex-shrink: 0; max-width: 45%; }
+
+.conversationToolDetails { min-width: 0; max-width: 100%; }
+.conversationToolDetails summary { cursor: pointer; list-style-position: outside; margin-left: 1em; }
+.conversationToolDetails summary .toolSegmentChip { display: inline-flex; max-width: 100%; box-sizing: border-box; vertical-align: middle; }
+.conversationToolDetails pre { max-width: 100%; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.78rem; }
+.conversationToolLabel { color: var(--muted); font-size: 0.75rem; margin-top: 6px; }
+
+@media (hover: none) { .messageActionsHoverOnly { opacity: 1; } }

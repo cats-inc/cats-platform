@@ -1,4 +1,5 @@
 import type { AppConfig } from '../../../config.js';
+import { enrichConversationPresentation } from '../shared/conversationPresentationView.js';
 import { PLATFORM_INTERACTION_HOST } from '../../../shared/providerInteractions.js';
 import { updateChatState } from '../state/store.js';
 import { createCatActorId } from '../../../core/actors.js';
@@ -231,7 +232,7 @@ export async function buildChannelSubscriptionView(
   }, channelId, state);
   return {
     selectedChannelId: channelId,
-    selectedChannel: buildChannelView(state, channelId),
+    selectedChannel: enrichConversationPresentation(buildChannelView(state, channelId), await dependencies.chatStore.readCore()),
     parallelChatGroups: summarizeParallelChatGroups(state, channelId),
   };
 }
@@ -401,7 +402,7 @@ export async function buildAppShellPayload(
     readModel: guideCatAssist,
   });
 
-  return createAppShell(
+  const payload = createAppShell(
     dependencies.config,
     runtime,
     resolvedState,
@@ -438,6 +439,8 @@ export async function buildAppShellPayload(
       products,
     },
   );
+  if (payload.chat.selectedChannel) payload.chat.selectedChannel = enrichConversationPresentation(payload.chat.selectedChannel, core);
+  return payload;
 }
 
 export interface PersistedChannelCreate {

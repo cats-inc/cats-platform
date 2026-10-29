@@ -3,6 +3,7 @@ import {
   type LiveIndicatorContentBlock,
 } from './runtimeContentBlocks.js';
 import { normalizeRuntimeMessageSegmentEntry } from '../runtime/messageSegments.js';
+import { groupConversationBlocks } from '@cats-inc/platform-ui-web/contracts';
 import { buildChatConversationId } from './chatCoreIds.js';
 import { isBrowserLiveTraceEnabled, pushBrowserLiveTrace } from './liveTrace.js';
 export type { LiveIndicatorContentBlock } from './runtimeContentBlocks.js';
@@ -85,7 +86,12 @@ export interface LiveIndicatorTranscriptMessageLike {
   createdAt: string;
 }
 
-const MAX_LIVE_INDICATOR_BLOCKS = 12;
+const MAX_LIVE_STATUS_BLOCKS = 12;
+function retainConversationBlocks(blocks: LiveIndicatorContentBlock[]): LiveIndicatorContentBlock[] {
+  const statuses = blocks.filter(block => block.kind === 'status' && block.status !== 'error');
+  const retained = new Set(statuses.slice(-MAX_LIVE_STATUS_BLOCKS));
+  return blocks.filter(block => block.kind !== 'status' || block.status === 'error' || retained.has(block));
+}
 const MAX_LIVE_INDICATOR_EVENTS = 8;
 const MAX_EVENT_TEXT = 220;
 // UI-side heuristic for when a streaming text bubble has gone visually stale
@@ -439,19 +445,13 @@ function projectLogicalLiveIndicatorSegments(
   const projected: LiveIndicatorSegmentState[] = [];
 
   for (const segment of segments) {
-    const sortedBlocks = [...segment.contentBlocks].sort((left, right) => left.index - right.index);
-    if (sortedBlocks.length === 0) {
+    const groups = groupConversationBlocks(segment.contentBlocks);
+    if (groups.length === 0) {
       projected.push(segment);
       continue;
     }
 
-    let currentBlocks: LiveIndicatorContentBlock[] = [];
-    let logicalOffset = 0;
-
-    const flushCurrentBlocks = (phase: LiveIndicatorSegmentPhase): void => {
-      if (currentBlocks.length === 0) {
-        return;
-      }
+    groups.forEach((contentBlocks, logicalOffset) => {
       projected.push(createLiveIndicatorSegmentState({
         ...segment,
         id: buildLiveIndicatorSegmentId({
@@ -464,38 +464,11 @@ function projectLogicalLiveIndicatorSegments(
           speakerLabel: segment.speakerLabel,
           segmentIndex: segment.segmentIndex + logicalOffset,
         }),
-        phase,
+        phase: logicalOffset === groups.length - 1 ? segment.phase : 'sealed',
         segmentIndex: segment.segmentIndex + logicalOffset,
-        contentBlocks: currentBlocks,
+        contentBlocks,
       }));
-      logicalOffset += 1;
-      currentBlocks = [];
-    };
-
-    for (let blockIndex = 0; blockIndex < sortedBlocks.length; blockIndex += 1) {
-      const block = sortedBlocks[blockIndex]!;
-      const currentHasText = currentBlocks.some((candidate) => candidate.kind === 'text');
-      if (block.kind === 'text') {
-        if (currentBlocks.length === 0 || !currentHasText) {
-          currentBlocks.push(block);
-          continue;
-        }
-
-        flushCurrentBlocks('sealed');
-        currentBlocks.push(block);
-        continue;
-      }
-
-      if (currentBlocks.length === 0 || !currentHasText) {
-        currentBlocks.push(block);
-        continue;
-      }
-
-      flushCurrentBlocks('sealed');
-      currentBlocks.push(block);
-    }
-
-    flushCurrentBlocks(segment.phase);
+    });
   }
 
   return projected;
@@ -1559,7 +1532,7 @@ function synthesizeTextContentBlock(
         syntheticTextFallback: true,
       },
     },
-  ].slice(-MAX_LIVE_INDICATOR_BLOCKS);
+  ];
 }
 
 function isSyntheticFallbackTextBlock(
@@ -1694,12 +1667,11 @@ function applyContentBlockEvent(
     const baseContentBlocks = block.kind === 'text' && segmentHasOnlySyntheticTextFallback(segment)
       ? []
       : segment.contentBlocks;
-    const nextContentBlocks = [
+    const nextContentBlocks = retainConversationBlocks([
       ...baseContentBlocks.filter((candidate) => !isSameLogicalContentBlock(candidate, block)),
       block,
     ]
-      .sort((left, right) => left.index - right.index)
-      .slice(-MAX_LIVE_INDICATOR_BLOCKS);
+      .sort((left, right) => left.index - right.index));
 
     return {
       ...segment,

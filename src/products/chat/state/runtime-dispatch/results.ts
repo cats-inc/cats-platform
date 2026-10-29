@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { readConversationPresentation } from '@cats-inc/platform-ui-web/contracts';
 
 import type {
   ChannelDispatchResult,
@@ -858,14 +859,22 @@ export function applyDispatchExecutions(
     }
 
     if (responseMessages.length === 0) {
+      const fallbackBody = extractedWorkflowRecommendation.body
+        || `${execution.target.participantName} completed the routed turn without text output.`;
+      const retained = readConversationPresentation(execution.terminalMessageMetadata?.presentation);
+      const fallbackMetadata = retained ? { ...execution.terminalMessageMetadata, presentation: {
+        ...retained, blocks: [...retained.blocks, {
+          id: `${retained.id}:fallback`, index: Math.max(-1, ...retained.blocks.map(block => block.index)) + 1,
+          kind: 'text', status: 'complete', text: fallbackBody, title: null, toolName: null, toolId: null,
+        }],
+      } } : execution.terminalMessageMetadata;
       const fallback = appendMessage(
         nextState,
         channelId,
         {
           senderKind,
           senderName,
-          body: extractedWorkflowRecommendation.body
-            || `${execution.target.participantName} completed the routed turn without text output.`,
+          body: fallbackBody,
         },
         now,
         {
@@ -897,6 +906,7 @@ export function applyDispatchExecutions(
             ...(serializedWorkflowRecommendation
               ? { workflowRecommendation: serializedWorkflowRecommendation }
               : {}),
+            ...fallbackMetadata,
           },
           usage: execution.usage,
           execution: executionMeta,

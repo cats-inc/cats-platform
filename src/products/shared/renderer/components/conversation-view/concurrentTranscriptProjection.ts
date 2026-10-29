@@ -1,4 +1,5 @@
 import { buildChatLaneId } from '../../../../../shared/chatCoreIds.js';
+import { readConversationPresentation } from '@cats-inc/platform-ui-web/contracts';
 import type {
   RoomWorkflowState,
   RoomWorkflowTargetState,
@@ -202,6 +203,7 @@ function buildDurableClusterProjection<Message extends ConcurrentTranscriptMessa
     });
     const fullText = target.response?.fullText ?? targetMessages.map((message) => message.body).join('');
     const normalizedText = fullText.trim();
+    const retained = targetMessages.map(message => readConversationPresentation(message.metadata?.presentation)).find(Boolean);
 
     if (!normalizedText && targetMessages.length === 0) {
       continue;
@@ -225,7 +227,7 @@ function buildDurableClusterProjection<Message extends ConcurrentTranscriptMessa
       sessionId: target.sessionId,
       participantId: target.participant.participantId,
       speakerLabel: target.participant.participantName,
-      contentBlocks: normalizedText
+      contentBlocks: retained ? retained.blocks.map(block => ({ ...block, metadata: null })) : normalizedText
         ? [buildTextContentBlock(`${turn.id}:${target.id}:text`, fullText)]
         : [],
     }));

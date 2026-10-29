@@ -1,3 +1,5 @@
+import { ConversationMessage, ConversationSegmentBody } from '@cats-inc/platform-ui-web';
+import { readConversationPresentation, splitConversationPresentation, conversationPlainText } from '@cats-inc/platform-ui-web/contracts';
 import type { CSSProperties } from 'react';
 
 import type {
@@ -23,7 +25,6 @@ import {
 import {
   RelayActionIcon,
   RetryActionIcon,
-  TranscriptMessageActions,
   type TranscriptMessageActionDescriptor,
 } from './TranscriptMessageActions.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
@@ -87,6 +88,7 @@ export interface TranscriptMessageItemProps {
     catRecord?: ChatCat | null,
   ) => string;
   showSpeakerHeader?: boolean;
+  showProgressDetails?: boolean;
 }
 
 export function TranscriptMessageItem({
@@ -116,10 +118,12 @@ export function TranscriptMessageItem({
   resolveParticipantAvatarUrl,
   resolveParticipantDisplayName,
   showSpeakerHeader = true,
+  showProgressDetails = false,
 }: TranscriptMessageItemProps) {
   const { t } = useI18n();
   const speaker = resolveTranscriptMessageSpeaker(message, cats, t);
   const displayBody = resolveLocalizedChatMessageBody(message, t);
+  const presentation = readConversationPresentation(message.metadata?.presentation);
   const transcriptParticipant = resolveMessageParticipant(message);
   const transcriptParticipantCat = resolveParticipantCatRecord(transcriptParticipant);
   const resolvedExtraActions: TranscriptMessageActionDescriptor[] = [...extraActions];
@@ -158,10 +162,7 @@ export function TranscriptMessageItem({
     });
   }
 
-  return (
-    <article className={stackClassName}>
-      <div className={messageTone(message.senderKind)}>
-        {showSpeakerHeader && message.senderKind !== 'user' && message.senderKind !== 'system' ? (
+  const speakerHeader = (showSpeakerHeader && message.senderKind !== 'user' && message.senderKind !== 'system' ? (
           transcriptParticipant ? (
             <div className="transcriptMessageTop">
               <div
@@ -213,9 +214,38 @@ export function TranscriptMessageItem({
               <strong>{speaker.label}</strong>
             </div>
           ) : null
-        ) : null}
-        <CatImageAttachment key={message.id} metadata={message.metadata} />
-        {displayBody ? (
+        ) : null);
+  const parts = presentation ? splitConversationPresentation(presentation).filter(part =>
+    part.phase !== 'sealed' || part.blocks.some(block => block.kind === 'text'
+      ? block.text.trim() : showProgressDetails || block.status === 'error')) : [null];
+  return <>{parts.map((part, index) => {
+    const last = index === parts.length - 1;
+    const body = part ? conversationPlainText(part.blocks) : displayBody;
+    return (
+    <ConversationMessage
+      key={part?.id ?? message.id}
+      id={part?.id}
+      senderKind={message.senderKind}
+      stackClassName={stackClassName}
+      bubbleClassName={messageTone(message.senderKind)}
+      speaker={index === 0 ? speakerHeader : null}
+      copyLabel={t(messageKeys.chatTranscriptMessageCopyLabel)}
+      showCopy={body.trim().length > 0}
+      onCopy={() => { void onCopyMessage(body); }}
+      actions={last ? resolvedExtraActions : []}
+      afterBubble={last && message.choices && message.choices.length > 0 ? (
+        <MessageChoices channelId={selectedChannelId} messageId={message.id}
+          choices={message.choices} existingResponse={existingChoiceResponse}
+          busy={choiceBusy} onSubmit={onChoiceSubmit} />
+      ) : null}
+    >
+        {last ? <CatImageAttachment key={message.id} metadata={message.metadata} /> : null}
+        {part ? <ConversationSegmentBody phase={part.phase} blocks={part.blocks}
+          showProgressDetails={showProgressDetails}
+          labels={{ tool: t(messageKeys.chatConcurrentToolLabel), input: t(messageKeys.chatConversationToolInput),
+            result: t(messageKeys.chatConversationToolResult), noResult: t(messageKeys.chatConversationNoResult), error: t(messageKeys.chatConversationToolError) }}
+          renderText={body => <MessageBody body={body} cats={cats} channelId={selectedChannelId}
+            disabledMentionNames={disabledMentionNames} format="markdown" />} /> : displayBody ? (
           <MessageBody
             body={displayBody}
             cats={cats}
@@ -224,36 +254,16 @@ export function TranscriptMessageItem({
             format={message.senderKind === 'agent' ? 'markdown' : 'plain'}
           />
         ) : null}
-        <CompanionMessageReferencePreviews
+        {last ? <CompanionMessageReferencePreviews
           body={displayBody}
           metadata={message.metadata}
-        />
+        /> : null}
         {message.senderKind === 'user' && userTurnStatus === 'failed' ? (
           <div className="userTurnStatus userTurnStatusFailed">
             {t(messageKeys.chatTranscriptMessageFailedStatusLabel)}
           </div>
         ) : null}
-      </div>
-      <TranscriptMessageActions
-        senderKind={message.senderKind}
-        showDefaultCopyAction={displayBody.trim().length > 0}
-        copyActionLabel={t(messageKeys.chatTranscriptMessageCopyLabel)}
-        onCopyMessage={() => {
-          void onCopyMessage(displayBody);
-        }}
-        extraActions={resolvedExtraActions}
-      />
-
-      {message.choices && message.choices.length > 0 ? (
-        <MessageChoices
-          channelId={selectedChannelId}
-          messageId={message.id}
-          choices={message.choices}
-          existingResponse={existingChoiceResponse}
-          busy={choiceBusy}
-          onSubmit={onChoiceSubmit}
-        />
-      ) : null}
-    </article>
-  );
+    </ConversationMessage>
+    );
+  })}</>;
 }

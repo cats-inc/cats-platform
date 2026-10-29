@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft; documentation only, no implementation authorized |
+| **Status** | Conversation slice authorized 2026-10-30; dual-consumer candidate implemented. Other slices remain draft. |
 | **Owner** | Platform integration owner |
 | **Reviewer** | Independent architecture reviewer and affected product owners |
 
@@ -127,7 +127,8 @@ measured dependency or ownership reason; this table is not a six-package first P
 14. **FR-14 — Governance cutover.** Update import-boundary tests, member instructions,
     affected ADR status and resource provenance in the consumer implementation PR.
     Permit only the new public entries; do not remove headless/environment guards.
-    This draft does not relax today's blanket Bot Platform-import prohibition.
+    The implemented conversation slice permits the public `@cats-inc/platform-ui-web`
+    entries; Bot still cannot import the Platform application or private source.
 15. **FR-15 — Required conversation renderer.** Extract from the working Desktop
     implementation identified in the source map below. Desktop and Bot consume the
     same packed renderer and stylesheet artifact through public entries. Reusing

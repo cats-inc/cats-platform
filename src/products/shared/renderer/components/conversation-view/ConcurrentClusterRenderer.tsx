@@ -1,3 +1,5 @@
+import { ConversationContentBlock, ConversationSegmentBody, ConversationResponse } from '@cats-inc/platform-ui-web';
+import { sanitizeConversationBlock } from '../../../../../shared/conversationPresentation.js';
 import type { CSSProperties } from 'react';
 
 import type {
@@ -27,7 +29,6 @@ import {
   stripLeadingLiveTranscriptBlankLines,
 } from './liveTranscriptBlockSupport.js';
 import type { ConcurrentClusterAction } from './concurrentClusterUiState.js';
-import { TranscriptMessageActions as SharedTranscriptMessageActions } from './TranscriptMessageActions.js';
 import { CompareCardsLayout } from './CompareCardsLayout.js';
 import { FocusRailLayout } from './FocusRailLayout.js';
 import { isAdminCat } from '../../../catGroups.js';
@@ -110,54 +111,16 @@ export function renderContentBlockSegment(
   showProgressDetails: boolean,
   translate: (key: MessageKey, values?: MessageInterpolationValues) => string = enTranslator,
 ): JSX.Element | null {
-  if (!shouldRenderLiveTranscriptBlock(block, showProgressDetails)) {
-    return null;
-  }
-
-  if (block.kind === 'text') {
-    const text = stripLeadingLiveTranscriptBlankLines(block.text);
-    if (!text.trim()) {
-      return null;
-    }
-    return (
-      <MessageBody
-        key={block.id}
-        body={text}
-        cats={cats}
-        channelId={channelId}
-        disabledMentionNames={disabledMentionNames}
-        format="markdown"
-      />
-    );
-  }
-
-  if (block.kind === 'tool') {
-    return (
-      <div
-        key={block.id}
-        className={block.status === 'streaming'
-          ? 'toolSegmentChip'
-          : 'toolSegmentChip toolSegmentChipDone'}
-      >
-        <span className="toolSegmentChipName">
-          {block.toolName ?? block.title ?? translate(messageKeys.chatConcurrentToolLabel)}
-        </span>
-        {block.text ? (
-          <span className="toolSegmentChipDetail">{block.text}</span>
-        ) : null}
-      </div>
-    );
-  }
-
-  if (block.kind === 'status' && block.text) {
-    return (
-      <p key={block.id} className="typingStatusText">
-        {localizeCatsOwnedLiveText(block.text, null, translate)}
-      </p>
-    );
-  }
-
-  return null;
+  if (!shouldRenderLiveTranscriptBlock(block, showProgressDetails)
+    || (block.kind === 'text' && !stripLeadingLiveTranscriptBlankLines(block.text).trim())
+    || (block.kind === 'status' && !block.text)) return null;
+  return <ConversationContentBlock key={block.id}
+    block={sanitizeConversationBlock(block.kind === 'status' ? { ...block, text: localizeCatsOwnedLiveText(block.text, null, translate) } : block)}
+    showProgressDetails={showProgressDetails}
+    labels={{ tool: translate(messageKeys.chatConcurrentToolLabel), input: translate(messageKeys.chatConversationToolInput),
+      result: translate(messageKeys.chatConversationToolResult), noResult: translate(messageKeys.chatConversationNoResult), error: translate(messageKeys.chatConversationToolError) }}
+    renderText={text => <MessageBody body={text} cats={cats} channelId={channelId}
+      disabledMentionNames={disabledMentionNames} format="markdown" />} />;
 }
 
 export function resolveSegmentPresentation<Participant>(
@@ -424,35 +387,12 @@ export function SegmentContentBody({
   showProgressDetails: boolean;
 }): JSX.Element | null {
   const { t } = useI18n();
-  if (segment.phase === 'waiting') {
-    return <span className="typingDots"><span /><span /><span /></span>;
-  }
-  if (renderedBlocks.length === 0) {
-    if (showProgressDetails && segment.progressText) {
-      return (
-        <p className="typingStatusText">
-          {localizeCatsOwnedLiveText(segment.progressText, segment.progressKind, t)}
-        </p>
-      );
-    }
-    // A streaming segment with identity but no visible text/progress/tools/events yet
-    // is the "waiting for reply" state - show typing dots instead of an orphan avatar.
-    if (segment.phase === 'streaming') {
-      return <span className="typingDots"><span /><span /><span /></span>;
-    }
-    if (showTrailingDots) {
-      return <span className="typingDots"><span /><span /><span /></span>;
-    }
-    return null;
-  }
-  return (
-    <>
-      {renderedBlocks}
-      {showTrailingDots ? (
-        <span className="typingDots"><span /><span /><span /></span>
-      ) : null}
-    </>
-  );
+  return <ConversationSegmentBody phase={segment.phase} blocks={segment.contentBlocks}
+    renderedBlocks={renderedBlocks} showTrailingDots={showTrailingDots}
+    showProgressDetails={showProgressDetails}
+    progressText={localizeCatsOwnedLiveText(segment.progressText, segment.progressKind, t)}
+    labels={{ tool: t(messageKeys.chatConcurrentToolLabel), input: t(messageKeys.chatConversationToolInput),
+      result: t(messageKeys.chatConversationToolResult), noResult: t(messageKeys.chatConversationNoResult), error: t(messageKeys.chatConversationToolError) }} />;
 }
 
 function localizeCatsOwnedLiveText(
@@ -501,12 +441,9 @@ function InlineStackLayout<Participant>(props: ClusterLayoutProps<Participant>):
           : '';
         const showCopyAction = sealedPlainText.trim().length > 0;
         return (
-          <article
-            key={segment.id}
-            className="transcriptMessageStack transcriptMessageStackAgent typingIndicator"
-          >
-            <div className="transcriptMessage transcriptMessageAgent">
-              <SegmentSpeakerHeader
+          <ConversationResponse key={segment.id}
+            response={{ version: 1, id: segment.id, phase: segment.phase, blocks: segment.contentBlocks }}
+            speaker={<SegmentSpeakerHeader
                 segmentParticipant={presentation.segmentParticipant}
                 segmentParticipantCat={presentation.segmentParticipantCat}
                 speakerCat={presentation.speakerCat}
@@ -515,25 +452,16 @@ function InlineStackLayout<Participant>(props: ClusterLayoutProps<Participant>):
                 buildParticipantAvatarStyle={buildParticipantAvatarStyle}
                 resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
                 resolveParticipantDisplayName={resolveParticipantDisplayName}
-              />
-              <SegmentContentBody
-                segment={segment}
-                renderedBlocks={presentation.renderedBlocks}
-                showTrailingDots={presentation.showTrailingDots}
-                showProgressDetails={showProgressDetails}
-              />
-            </div>
-            <SharedTranscriptMessageActions
-              senderKind="agent"
-              showDefaultCopyAction={showCopyAction}
-              copyActionLabel={buildSegmentCopyLabel(presentation, t)}
-              onCopyMessage={showCopyAction
-                ? (() => {
-                  void copySegmentPlainTextToClipboard(sealedPlainText);
-                })
-                : undefined}
-            />
-          </article>
+              />}
+            renderedBlocks={presentation.renderedBlocks}
+            showTrailingDots={presentation.showTrailingDots}
+            showProgressDetails={showProgressDetails}
+            progressText={localizeCatsOwnedLiveText(segment.progressText, segment.progressKind, t)}
+            labels={{ tool: t(messageKeys.chatConcurrentToolLabel), input: t(messageKeys.chatConversationToolInput),
+              result: t(messageKeys.chatConversationToolResult), noResult: t(messageKeys.chatConversationNoResult), error: t(messageKeys.chatConversationToolError) }}
+            copyLabel={buildSegmentCopyLabel(presentation, t)}
+            onCopy={showCopyAction ? () => { void copySegmentPlainTextToClipboard(sealedPlainText); } : undefined}
+          />
         );
       })}
     </>

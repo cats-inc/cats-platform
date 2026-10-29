@@ -2169,6 +2169,10 @@ export const messageKeys = {
   chatConcurrentClusterDismissActionLabel: 'chat.concurrentCluster.dismissActionLabel',
   chatConcurrentClusterDismissActionTitle: 'chat.concurrentCluster.dismissActionTitle',
   chatConcurrentToolLabel: 'chat.concurrent.toolLabel',
+  chatConversationToolInput: 'chat.conversation.toolInput',
+  chatConversationToolResult: 'chat.conversation.toolResult',
+  chatConversationNoResult: 'chat.conversation.noResult',
+  chatConversationToolError: 'chat.conversation.toolError',
   chatConcurrentProgressFinalizing: 'chat.concurrent.progress.finalizing',
   chatConcurrentProgressFinishing: 'chat.concurrent.progress.finishing',
   chatConcurrentErrorRuntimeStreamUnavailable:

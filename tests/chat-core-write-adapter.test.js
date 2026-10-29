@@ -213,9 +213,46 @@ function readOrderedTurnLanes(core, turnId) {
 
 function readTurnSegments(core, turnId) {
   return core.segments
-    .filter((segment) => segment.turnId === turnId)
+    // Presentation checkpoints are display-only, never assistant completion evidence.
+    .filter((segment) => segment.turnId === turnId && segment.metadata?.event !== 'conversation_presentation')
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
 }
+
+test('a presentation write failure settles its target without aborting the parallel batch', async () => {
+  const { state, channelId } = await createGroupChannelState();
+  const store = new MemoryChatStore(state);
+  const update = store.updateCore.bind(store);
+  store.updateCore = mutate => update(async core => {
+    const next = await mutate(core);
+    if (next.segments.some(segment => segment.metadata?.event === 'conversation_presentation'
+      && segment.metadata.speakerLabel === 'Agent-1')) throw new Error('fixture disk full');
+    return next;
+  });
+  const runtime = createRuntimeStub(async ({ content }) => usage(content.includes('You are Agent-1') ? 'first' : 'second'));
+  await routeChannelMessage(state, channelId, { body: '@Agent-1 @Agent-2 review.' }, runtime,
+    new Date('2026-04-15T00:00:00.000Z'), { chatStore: store });
+  const core = await store.readCore();
+  const turn = readLatestConversationTurn(core, buildChatConversationId(channelId));
+  assert.ok(turn);
+  assert.deepEqual(readOrderedTurnLanes(core, turn.id).map(lane => lane.status).sort(), ['completed', 'failed']);
+  assert.ok(core.segments.some(segment => segment.content === 'second'));
+});
+
+test('tool-only canonical fallback remains visible in retained presentation after reopen', async () => {
+  const { state, channelId } = await createGroupChannelState();
+  const store = new MemoryChatStore(state);
+  const runtime = createRuntimeStub(async () => ({ ...usage(''), segments: [
+    { kind: 'tool_use', toolName: 'Read', toolId: 'read', text: 'input' },
+    { kind: 'tool_result', toolName: 'Read', toolId: 'read', text: 'result' },
+  ] }));
+  await routeChannelMessage(state, channelId, { body: '@Agent-1 review.' }, runtime,
+    new Date('2026-04-15T00:00:00.000Z'), { chatStore: store });
+  const messages = requireChannel(await store.read(), channelId).messages.filter(message => message.metadata?.event === 'assistant_turn_segment');
+  const message = messages.at(-1);
+  assert.ok(message);
+  assert.match(message.body, /without text output/);
+  assert.equal(message.metadata.presentation.blocks.filter(block => block.kind === 'text').map(block => block.text).join(''), message.body);
+});
 
 test('routeChannelMessage persists in-flight canonical turns, lanes, and sessions through chatStore writes', async () => {
   const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
@@ -1194,6 +1231,10 @@ test('resumeWorkflowContinuationReplay can rebuild a missing user continuation s
     async readCore() {
       return structuredClone(replayCore);
     },
+    async updateCore(mutate) {
+      replayCore = await mutate(structuredClone(replayCore));
+      return structuredClone(replayCore);
+    },
     async writeCore(nextCore) {
       replayCore = structuredClone(nextCore);
       return structuredClone(replayCore);
@@ -1312,6 +1353,10 @@ test('resumeWorkflowContinuationReplay can rebuild a missing routed handoff sour
       return structuredClone(replayState);
     },
     async readCore() {
+      return structuredClone(replayCore);
+    },
+    async updateCore(mutate) {
+      replayCore = await mutate(structuredClone(replayCore));
       return structuredClone(replayCore);
     },
     async writeCore(nextCore) {
@@ -1440,6 +1485,10 @@ test('resumeWorkflowContinuationReplay can rebuild a missing assistant continuat
     async readCore() {
       return structuredClone(replayCore);
     },
+    async updateCore(mutate) {
+      replayCore = await mutate(structuredClone(replayCore));
+      return structuredClone(replayCore);
+    },
     async writeCore(nextCore) {
       replayCore = structuredClone(nextCore);
       return structuredClone(replayCore);
@@ -1535,6 +1584,10 @@ test('resumeWorkflowContinuationReplay rebuilds recent prompt context from canon
       return structuredClone(replayState);
     },
     async readCore() {
+      return structuredClone(replayCore);
+    },
+    async updateCore(mutate) {
+      replayCore = await mutate(structuredClone(replayCore));
       return structuredClone(replayCore);
     },
     async writeCore(nextCore) {

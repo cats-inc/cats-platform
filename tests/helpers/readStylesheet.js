@@ -2,8 +2,12 @@ import { access, readFile as readFileAsync } from 'node:fs/promises';
 import { constants, readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 const IMPORT_PATTERN = /@import\s+['"]([^'"]+)['"];\s*/gu;
+const require = createRequire(import.meta.url);
+const importedPath = (directory, specifier) => specifier.startsWith('@cats-inc/')
+  ? require.resolve(specifier) : path.resolve(directory, specifier);
 
 function resolvePath(input) {
   return input instanceof URL ? fileURLToPath(input) : input;
@@ -56,7 +60,7 @@ async function readStylesheetInternal(filePath, seen) {
 
   for (const match of source.matchAll(IMPORT_PATTERN)) {
     output += source.slice(lastIndex, match.index);
-    output += await readStylesheetInternal(path.resolve(directory, match[1]), seen);
+    output += await readStylesheetInternal(importedPath(directory, match[1]), seen);
     lastIndex = match.index + match[0].length;
   }
 
@@ -78,7 +82,7 @@ function readStylesheetSyncInternal(filePath, seen) {
 
   for (const match of source.matchAll(IMPORT_PATTERN)) {
     output += source.slice(lastIndex, match.index);
-    output += readStylesheetSyncInternal(path.resolve(directory, match[1]), seen);
+    output += readStylesheetSyncInternal(importedPath(directory, match[1]), seen);
     lastIndex = match.index + match[0].length;
   }
 

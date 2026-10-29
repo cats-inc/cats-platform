@@ -1,5 +1,6 @@
 import { queueCatlasConversationTitle } from '../catlasTitles.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
+import { enrichConversationPresentation } from '../../shared/conversationPresentationView.js';
 import { parseProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { messageLacksAudience } from '../../state/mentionRouter.js';
 import { ChatApiError } from '../routeErrors.js';
@@ -404,7 +405,7 @@ async function handleRestGetChannel(
       state,
     );
     sendJson(context.response, 200, {
-      channel: buildChannelView(state, channelId),
+      channel: enrichConversationPresentation(buildChannelView(state, channelId), await context.dependencies.chatStore.readCore()),
     });
   } catch (error) {
     handleRestError(context, error);

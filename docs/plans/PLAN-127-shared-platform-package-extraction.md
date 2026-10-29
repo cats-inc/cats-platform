@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft; implementation not started |
+| **Status** | Phase 4 authorized and in progress; other extraction phases remain draft |
 | **Owner** | Platform integration owner |
 | **Reviewer** | Independent architecture reviewer; affected Desktop/Bot owners |
 
@@ -13,7 +13,9 @@
 [SPEC-134](../specs/SPEC-134-reusable-platform-packages-and-consumer-boundaries.md),
 following [ADR-142](../decisions/142-publish-reusable-platform-packages-for-independent-products.md).
 The owner requested this draft plan with the ADR/SPEC package after Bot #51
-merged. This does not authorize executing its implementation or release steps.
+merged. On 2026-10-30 the owner authorized the conversation-renderer slice in
+Phase 4. Other extraction phases, repository moves and publication remain outside
+this implementation request.
 
 ## Overview
 
@@ -87,13 +89,37 @@ native-only support and every existing approval boundary remain unchanged.
 
 ### Phase 4: Desktop-derived conversation renderer in both products
 
-- [ ] 4.1: Freeze exact Desktop/Bot source revisions, existing behavior and the
+Implementation baseline: Desktop `157652085b39a0be0f68190e532e35df50208454`,
+Bot `ce4ff774a852c001b9337b71f3dc6f0d37ad62ba`. The first private candidate is
+`@cats-inc/platform-ui-web@0.1.0`, with root React components, a pure `contracts`
+entry and `conversation.css`. Both products pin the same local tarball with
+integrity; this does not publish a library or bump either application.
+
+| Behavior | Frozen reference / intended correction | Product boundary |
+|----------|-----------------------------------------|------------------|
+| User/agent bubble, actions | Desktop DOM/classes, content-sized 85% maximum, user hover/focus copy, persistent agent copy | Speaker identity, clipboard and extra actions supplied by consumer |
+| Response hierarchy | Ordered text/tool/status blocks inside stable execution/segment identity | No fabricated lanes/speakers from plain text; Bot remains one bot per conversation |
+| Detail visibility | Desktop defaults collapse progress, preserves errors; supported tool inputs/results expand with keyboard | Sanitization before persistence and host transport; no raw metadata |
+| Streaming/final/reopen | Correct both products' known retention gaps; stable IDs and no duplicate legacy/raw rows | Bot retains legacy JSONL and adds validated, backed-up atomic display sidecar; execution/approval authority stays in original stores |
+| Markdown/resources | Existing Desktop Markdown layout and safe-link/image behavior | Desktop supplies mention/routes/attachments; Bot does not invent attachment support |
+| Existing Desktop modes | Direct/group/parallel/compare/focus workflow behavior stays product-owned | Shared bubble, response body and action implementation only |
+| Narrow layout | 340/480 CSS px, 720 px Desktop reference, Bot 260 px minimum window and smaller actual content area | Chrome differs; controls and long content must remain readable |
+
+Before/after evidence must use isolated product profiles. Original source and
+renderer build are retained in the private baseline candidate while gates run.
+No gate below is complete merely because both renderer typechecks pass.
+
+The [implementation record](../research/conversation-ui-acceptance.md) records the
+shared candidate, retention contract, completed checks and outstanding acceptance
+at the owner's 2026-10-30 request to close out immediately.
+
+- [x] 4.1: Freeze exact Desktop/Bot source revisions, existing behavior and the
       source/style/locale dependency closure from SPEC-134's source map. Capture
       reference fixtures for user/agent bubbles, internal segments and ordered
       text/tool/status blocks, including supported expansion and action rules.
       Record the parity matrix before implementation; a smaller Bot window is not
       a reason to discard hierarchy or simplify the Desktop reference.
-- [ ] 4.2: Trace live and persisted data in both products. Identify fields lost
+- [x] 4.2: Trace live and persisted data in both products. Identify fields lost
       between Runtime, product execution, transcript storage and renderer; specify stable
       identities/order and the product adapters that reconstruct presentation DTOs.
       Resolve any Runtime-owned contract gap separately. Design and test required
@@ -103,7 +129,7 @@ native-only support and every existing approval boundary remain unchanged.
       baseline and implement that bounded data slice before UI-3 acceptance. Record
       intended live-to-final projection rules; existing data loss is not proof of
       parity. Preserve redaction and do not invent absent provider structure.
-- [ ] 4.3: Freeze public UI/pure-projection entries, React peers, stylesheet/assets
+- [x] 4.3: Freeze public UI/pure-projection entries, React peers, stylesheet/assets
       exports and callback contracts. Extract from Desktop's existing implementation
       while retaining its DOM/CSS and mode behavior. Remove required router,
       application-context and `/api/channels` coupling through product adapters.
@@ -207,5 +233,6 @@ actual isolated renderers, not only a shared component harness.
 |------|--------|
 | 2026-10-29 | Drafted after Bot #51 merged; all implementation and acceptance gates remain open. |
 | 2026-10-29 | Owner clarified message-internal hierarchy and required Desktop/Bot conversation parity; added the dedicated renderer phase and UI acceptance gates. No extraction implemented. |
+| 2026-10-30 | Owner authorized Phase 4. Frozen two-product baseline and extraction boundary; implementation and acceptance are in progress. |
 
 *Created: 2026-10-29*

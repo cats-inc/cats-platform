@@ -19,6 +19,7 @@ export interface RuntimeNdjsonReadOptions {
   onChunk?: () => void;
   sessionId?: string;
   onWorkspaceActivity?: (snapshot: RuntimeWorkspaceActivitySnapshot) => void | Promise<void>;
+  onMessageEvent?: (event: Record<string, unknown>) => void;
 }
 
 export async function readRuntimeNdjsonResponse(
@@ -69,6 +70,7 @@ export async function readRuntimeNdjsonResponse(
   }
 
   function processEvent(event: Record<string, unknown>): void {
+    options.onMessageEvent?.(event);
     const type = String(event.type ?? '');
     if (type === 'workspace_activity') {
       const snapshot = readRuntimeWorkspaceActivity(event.workspaceActivity, options.sessionId);

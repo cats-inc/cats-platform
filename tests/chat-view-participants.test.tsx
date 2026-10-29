@@ -822,7 +822,7 @@ test('ConversationView shows an anonymous assistant typing bubble until session 
   assert.match(markup, /typingDots/u);
   assert.match(
     markup,
-    /typingIndicator"><div class="transcriptMessage transcriptMessageAgent"><span class="typingDots"/u,
+    /typingIndicator"[^>]*><div class="transcriptMessage transcriptMessageAgent"><span class="typingDots"/u,
   );
   assert.doesNotMatch(markup, /typingIndicator[\s\S]*transcriptMessageTop/u);
   assert.doesNotMatch(markup, /catAvatarPulsing/u);

@@ -176,7 +176,7 @@ async function seedAppSidecarRuntimeDependencies(packageRoot) {
   await seedFile(join(packageRoot, 'packages', 'app-sdk', 'package.js'), 'export {};');
   await seedFile(join(packageRoot, 'packages', 'app-sdk', 'browser.js'), '// SDK fixture');
   const natives = appIngressNativePackages(['windows', 'macos', 'linux']);
-  for (const dependency of ['js-yaml', 'argparse', 'fflate', '@ngrok/ngrok', ...natives]) {
+  for (const dependency of ['js-yaml', 'argparse', 'fflate', '@ngrok/ngrok', '@cats-inc/platform-ui-web', ...natives]) {
     await seedFile(
       join(packageRoot, 'node_modules', dependency, 'package.json'),
       JSON.stringify({ name: dependency, version: '0.0.0-test', main: 'index.js',

@@ -908,6 +908,7 @@ export function projectChatChannelInteractionToCore(
               sourceParticipantKind: target.source?.participantKind ?? null,
               sourceParticipantName: target.source?.participantName ?? null,
               terminal: message.metadata?.terminal === true,
+              ...(message.metadata?.presentation ? { presentation: message.metadata.presentation } : {}),
               executionProvider: message.executionProvider ?? null,
               executionModel: message.executionModel ?? null,
               executionInstance: message.executionInstance ?? null,
