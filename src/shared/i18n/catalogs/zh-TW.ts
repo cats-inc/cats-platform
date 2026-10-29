@@ -4178,7 +4178,7 @@ export const zhTWCatalog: MessageCatalog = {
   "providerControls.ProviderMode": "在限制內沿用供應商設定",
   "providerControls.ExplicitMode": "分別選擇存取權限與核准方式",
   "providerControls.Allowlist": "這項工作使用工具允許清單，原有執行限制持續生效。",
-  "providerControls.LegacyHelp": "既有權限設定維持不變。「略過核准」不代表可存取整台電腦。",
+  "providerControls.LegacyHelp": "既有權限設定維持不變。「略過核准」可能讓 Codex 不送出原生同意請求。若要接收請求，請在新對話選擇「分別選擇存取權限與核准方式」及「代理要求時詢問」。這不會授予整台電腦的存取權限。",
   "providerControls.MaximumAccess": "允許的最高存取權限",
   "providerControls.LocalAccess": "本機檔案存取權限",
   "providerControls.ReadOnly": "唯讀",

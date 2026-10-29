@@ -253,6 +253,53 @@ Runtime SPEC-039 R8 makes Claude Code the second native target, wired into Deskt
 - Computer use is `unavailable` on Windows (Claude Code opens it only to macOS interactive
   sessions); showing the reason is enough.
 
+## Codex tool and App consent (2026-10-29)
+
+Desktop consumes Runtime [PR #202](https://github.com/cats-inc/cats-runtime/pull/202),
+source `399e63571be8188fc685ba3925ff47f80a256f27`. Codex's native
+`mcpServer/elicitation/request` empty form marked `codex_approval_kind=mcp_tool_call`
+now reaches the existing `tool_approval` card, including plugin App consent from
+`node_repl` and injected tools from `cats-desktop`. Runtime includes the bounded
+tool-input summary in `prompt.message`; Platform preserves the native single
+`Allow` choice. It must not invent a one-use or persistent scope for an App grant.
+
+The existing host negotiation, owner-authenticated response path and Desktop
+control policy gate already handle this kind. No provider-specific Platform
+response branch, dependency pin, contract change or data migration is needed.
+Desktop bundles a separate Runtime checkout: the next artifact must include the
+above Runtime source or a descendant containing the fix. A successful source
+candidate does not update an installed Desktop. This change stays within the
+0.12 compatibility line; no version bump or publication is part of this work.
+
+Policy is a separate prerequisite. Legacy `skip` can resolve to Codex `never`,
+suppressing native requests before they reach Desktop. For interactive consent,
+start a new conversation with **Choose access and approval separately**, select
+the required access ceiling and **Ask when requested by the agent**. Acceptance
+used `workspace-write`, network disabled, and `on-request`. Existing conversations
+retain their admitted policy; their disabled policy chip is not a live policy
+editor. English and Traditional Chinese legacy help now explain this choice.
+The `tool_approval` host requirement and rejection of preapproving policies remain
+in force for Cats Desktop control, including its separate per-App grant.
+
+Validation used an isolated Windows Electron candidate built by the standard
+source-candidate command, with real Runtime and a scripted Codex app-server wire
+fixture. Actual clicks on the App card's Allow and the tool card's Decline/Cancel
+returned native `{action, content, _meta}` responses to the original session,
+generation and execution. Each fixture received exactly one `turn/start`; its
+post-consent gate count was 1 for accept and 0 for decline/cancel. Accept/decline
+receipts were `resolved/providerConfirmed`; cancel was `cancelled/response_sent`
+with `providerConfirmed=false`, while the wire and transcript independently showed
+that the fixture received cancel and continued. Terminal receipts removed the
+prompt. This verifies Desktop integration, not a real Paint capture or input.
+
+The 63 focused client, product, Desktop-control and renderer tests passed; the
+40 affected product/renderer tests passed again after aligning the fixture's
+message and cancellation shapes with the observed wire. Server build, renderer
+typecheck, focused renderer-test typecheck, catalog boundary check and candidate
+Runtime/server/host/web builds passed. Full test-project typechecking requires
+Mobile dependencies absent in the local checkout and remains part of required CI.
+PLAN-124 records the candidate source identity and evidence scope.
+
 ## Remaining environment validation
 
 - The supported fixture contract of Runtime SPEC-039 is wired; new native schemas still need
@@ -271,4 +318,4 @@ Runtime SPEC-039 R8 makes Claude Code the second native target, wired into Deskt
 - [Managed Cats plugins](SPEC-121-managed-plugin-capabilities.md)
 - Runtime ADR-048 / SPEC-039 / PLAN-049 and research `2026-10-28-codex-host-capability-gaps`.
 
-*Created / last updated: 2026-10-28*
+*Created: 2026-10-28 / last updated: 2026-10-29*

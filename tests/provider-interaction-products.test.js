@@ -28,19 +28,18 @@ function fixture(surface = 'chat') {
   const store = new MemoryChatStore(state), channelId = state.selectedChannelId;
   return { state, store, channelId, conversationId: buildChatConversationId(channelId) };
 }
-function nativeRuntime() {
+function nativeRuntime(prompt = { kind: 'user_input', title: 'Continue?', fields: [{ id: 'answer', type: 'string', required: true, secret: true, label: 'Answer' }] }) {
   let release, started;
   const waiting = new Promise(resolve => { started = resolve; });
   const request = { interactionId: 'question', sessionId: 'session', workerGeneration: 'worker', executionId: 'execution', revision: 1,
-    createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), status: 'pending', kind: 'user_input',
-    prompt: { kind: 'user_input', title: 'Continue?', fields: [{ id: 'answer', type: 'string', required: true, secret: true, label: 'Answer' }] } };
+    createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), status: 'pending', kind: prompt.kind, prompt };
   const calls = { create: [], messages: 0, responses: [], close: [] };
   const runtime = {
     async createSession(input) { calls.create.push(input); return { id: 'session', provider: 'codex', model: 'test', status: 'ready', cwd: null }; },
     async sendMessage() { calls.messages++; started(); return new Promise(resolve => { release = resolve; }); },
     async getSessionInteractions() { return { version: 1, sessionId: 'session', workerGeneration: 'worker', revision: 1, interactions: [structuredClone(request)] }; },
     async respondSessionInteraction(...args) {
-      calls.responses.push(args); request.status = 'resolved'; delete request.prompt;
+      calls.responses.push(args); request.status = args[2].answer.action === 'cancel' ? 'cancelled' : 'resolved'; delete request.prompt;
       release?.({ segments: [{ kind: 'text', text: 'Native response received.', toolId: null, toolName: null }], tokensUsed: 1 });
       return structuredClone(request);
     },
@@ -65,6 +64,34 @@ for (const surface of ['chat', 'code', 'work']) test(`${surface} conversation an
   assert.equal(n.calls.messages, 1); assert.equal(n.calls.responses.length, 1);
   assert.equal(JSON.stringify(result.state).includes('private-fixture-answer'), false);
 });
+
+for (const surface of ['chat', 'code', 'work']) for (const action of ['accept', 'decline', 'cancel']) {
+  test(`${surface} forwards Codex App consent ${action} to the same native execution`, async () => {
+    const f = fixture(surface), n = nativeRuntime({ kind: 'tool_approval', title: 'Tool approval',
+      server: 'node_repl', message: 'Allow Codex to use Paint?\n\n{"app":"private-tool-input"}', choices: [{ id: 'accept', label: 'Allow' }] });
+    const dispatch = routeChannelMessage(f.state, f.channelId, { body: 'Use the desktop App', senderName: 'Owner' }, n.runtime, new Date(), { chatStore: f.store });
+    await n.waiting;
+    const control = createProviderInteractionControl({ runtime: n.runtime, bindings: id => currentProviderBindings(f.store, id) });
+    const before = (await control.snapshot(f.conversationId)).interactions[0];
+    // Reload/poll reconstructs the binding without restarting the model turn.
+    const reloaded = (await control.snapshot(f.conversationId)).interactions[0];
+    assert.deepEqual(reloaded, before);
+    assert.equal(reloaded.kind, 'tool_approval');
+    assert.deepEqual(reloaded.prompt.choices, [{ id: 'accept', label: 'Allow' }]);
+    assert.ok(n.calls.create[0].interactionHost.kinds.includes('tool_approval'));
+    const response = { ...answer(reloaded), answer: { action, ...(action === 'accept' ? { choice: 'accept' } : {}) } };
+    const receipt = await control.respond(f.conversationId, reloaded.sessionId, reloaded.interactionId, response);
+    const result = await dispatch;
+    assert.deepEqual(n.calls.responses, [[reloaded.sessionId, reloaded.interactionId, {
+      expectedRevision: reloaded.revision, idempotencyKey: response.idempotencyKey, answer: response.answer,
+    }]]);
+    assert.equal(n.calls.messages, 1);
+    assert.equal(receipt.status, action === 'cancel' ? 'cancelled' : 'resolved');
+    assert.equal(receipt.prompt, undefined);
+    assert.equal(JSON.stringify(result.state).includes('private-tool-input'), false);
+    assert.deepEqual(receipt.binding, before.binding);
+  });
+}
 
 async function addRun(f, id = 'work-run', status = 'running') {
   await f.store.updateCore(core => {
