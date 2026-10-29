@@ -2107,9 +2107,11 @@ test('NSIS user-data removal never follows a junction or symlink', async () => {
   assert.doesNotMatch(code, /RMDir \/r/);
   const remove = nsh.match(/!macro removeDataRoot DIR([\s\S]*?)!macroend/)?.[1] ?? '';
   assert.match(remove, /GetFileAttributesW\(w "\$\{DIR\}"\) i \.R0'[\s\S]*IntOp \$R0 \$R0 & 0x400/);
+  assert.match(remove, /\$\{If\} \$R0 != 0\s+RMDir "\$\{DIR\}"\s+\$\{Else\}/);
+  // The path reaches cmd through a variable, so % and ! in it are never expanded.
   assert.match(
     remove,
-    /\$\{If\} \$R0 != 0\s+RMDir "\$\{DIR\}"\s+\$\{Else\}\s+nsExec::Exec '"\$SYSDIR\\cmd\.exe" \/d \/c rd \/s \/q "\$\{DIR\}"'\s+Pop \$R0/,
+    /SetEnvironmentVariableW\(w "CATS_REMOVE_ROOT", w "\$\{DIR\}"\) i \.R0'\s+nsExec::Exec '"\$SYSDIR\\cmd\.exe" \/d \/v:off \/c rd \/s \/q "%CATS_REMOVE_ROOT%"'\s+Pop \$R0/,
   );
 });
 
