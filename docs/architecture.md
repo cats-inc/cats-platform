@@ -9,6 +9,11 @@ and Mobile, preserving Runtime ownership and product-specific state/authority.
 proposes moving Desktop and then Mobile only after those public contracts work.
 Platform retains its headless server, optional product services and self-hosted
 Web application; cats-one retains launch/developer-workspace composition.
+The required Web UI slice extracts Desktop's conversation renderer and styles
+for Desktop and Bot. Product adapters preserve independent data/authority while
+sharing user/agent bubbles, message-internal hierarchy and live/durable behavior.
+SPEC-134's visual, interaction and narrow-layout gates must pass in both products.
+This proposal does not change native window layers or select a WebView2 host.
 
 These proposals follow merged Bot #51's identity/Hub/coordinator/environment
 design without claiming it is implemented. The current layout, package entries

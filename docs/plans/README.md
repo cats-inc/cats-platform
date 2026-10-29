@@ -4,8 +4,9 @@
   — draft, 2026-10-29; package readiness, Desktop source/distribution handover,
   Mobile extraction and workspace reconciliation. All implementation gates open.
 - [PLAN-127: Shared Platform package extraction](PLAN-127-shared-platform-package-extraction.md)
-  — draft, 2026-10-29; setup and native helper first, additional host/client
-  capabilities next, verified consumers before duplicate removal or repo moves.
+  — draft, 2026-10-29; setup/native helpers, a required Desktop/Bot conversation
+  renderer phase, then additional host/client capabilities; verified consumers
+  before duplicate removal or repo moves.
 
 - [PLAN-126: Desktop control session MCP](PLAN-126-desktop-control-session-mcp.md)
   — planned, 2026-10-29; contracts, observe-only helper, Platform server endpoint,

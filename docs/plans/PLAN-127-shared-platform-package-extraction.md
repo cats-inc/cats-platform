@@ -18,8 +18,9 @@ merged. This does not authorize executing its implementation or release steps.
 ## Overview
 
 Use small producer/consumer slices, beginning with setup scripts and the native
-Windows helper, whose required consumers are Desktop and Bot. For later client/UI
-slices, name two actual consumers (such as Desktop/Web/Mobile) before extraction.
+Windows helper, followed by the required Desktop-derived conversation renderer.
+All three slices require Desktop and Bot as actual consumers. Other client/UI
+slices name two actual consumers (such as Desktop/Web/Mobile) before extraction.
 A producer is complete only when its named consumers use the same packed artifact
 with preserved behavior. Do not add a Bot API/domain dependency to meet a reuse gate.
 Establish boundaries in the current
@@ -41,6 +42,9 @@ Desktop or Mobile. Do not add unused package skeletons just to match a diagram.
       consumers. Record explicit host configuration inputs and forbid import-time work.
 - [ ] 1.4: Record baseline Desktop/Bot behavior and performance for the affected
       paths. Use disposable profiles and no real user-state writes.
+- [ ] 1.5: Reserve the required conversation-renderer slice and its Desktop/Bot
+      owners; inventory the source map and UI-1 through UI-6 gates in SPEC-134.
+      Message hierarchy means content inside a conversation, not native layers.
 
 **Exit gate:** reviewed export/resource contract, two named consumers, affected
 behavior list and package-specific validation plan. No publication is needed to
@@ -81,33 +85,81 @@ be restored. Before publication, report candidate proof separately from delivere
 **Exit gate:** one canonical helper producer and two validated packaged consumers;
 native-only support and every existing approval boundary remain unchanged.
 
-### Phase 4: Additional mechanisms and client-safe exports
+### Phase 4: Desktop-derived conversation renderer in both products
 
-- [ ] 4.1: Compare update/dialog, window state, language and provider-control flows.
+- [ ] 4.1: Freeze exact Desktop/Bot source revisions, existing behavior and the
+      source/style/locale dependency closure from SPEC-134's source map. Capture
+      reference fixtures for user/agent bubbles, internal segments and ordered
+      text/tool/status blocks, including supported expansion and action rules.
+      Record the parity matrix before implementation; a smaller Bot window is not
+      a reason to discard hierarchy or simplify the Desktop reference.
+- [ ] 4.2: Trace live and persisted data in both products. Identify fields lost
+      between Runtime, product execution, transcript storage and renderer; specify stable
+      identities/order and the product adapters that reconstruct presentation DTOs.
+      Resolve any Runtime-owned contract gap separately. Design and test required
+      Desktop or Bot format upgrades under FR-13 before writing the new format.
+      Explicitly inventory Desktop's text-only durable concurrent reconstruction;
+      separate any needed retention correction from the frozen visual/interaction
+      baseline and implement that bounded data slice before UI-3 acceptance. Record
+      intended live-to-final projection rules; existing data loss is not proof of
+      parity. Preserve redaction and do not invent absent provider structure.
+- [ ] 4.3: Freeze public UI/pure-projection entries, React peers, stylesheet/assets
+      exports and callback contracts. Extract from Desktop's existing implementation
+      while retaining its DOM/CSS and mode behavior. Remove required router,
+      application-context and `/api/channels` coupling through product adapters.
+      Keep BotHostApi/channel, navigation, clipboard, resources and authorization
+      outside the shared components; no Platform server is required by Bot.
+- [ ] 4.4: Wire Desktop and Bot to the same locally packed renderer/style artifact.
+      Adapt Bot's actual core events and durable history rather than feeding a UI
+      gallery alone. Run UI-1 through UI-5, including live-to-final continuity,
+      reconnect/reopen, scoped decisions, keyboard/focus and manual scroll behavior.
+      Keep Desktop direct/group/parallel/concurrent modes and their actions intact.
+- [ ] 4.5: Perform UI-6 in the actual isolated products at matched fonts/theme/
+      locale/scale and 340/480 CSS-pixel content widths, the normal Desktop width
+      and any smaller supported Bot minimum. Review long code/tables/URLs, nested
+      lists, localized labels and expanded tool/decision content. Record baseline
+      comparisons and all intentional product differences; fix clipping, missing
+      hierarchy and lost actions before accepting the slice.
+- [ ] 4.6: Obtain independent review of the final API/dependency graph, data mapping
+      and parity evidence. Prepare version/pin/compatibility and rollback inputs
+      before any separately authorized package publication. Both consumer PRs pin
+      the same accepted artifact; remove replaced implementations only after the
+      packed-product gates pass. Coordinate Bot ADR-003/SPEC-003's cutover note and
+      import guards without claiming PLAN-009's Hub or coordinator is implemented.
+
+**Exit gate:** Desktop and Bot use the same Desktop-derived conversation renderer,
+with UI-1 through UI-6 demonstrated. Same React dependencies, generic controls,
+only live rendering or a Desktop/Web consumer pair cannot complete this phase.
+Candidate proof and released package adoption remain separate statuses.
+
+### Phase 5: Additional mechanisms and client-safe exports
+
+- [ ] 5.1: Compare update/dialog, window state, language and provider-control flows.
       Extract a capability only with two concrete consumers and explicit product hooks.
-- [ ] 4.2: Coordinate Bot adoption with PLAN-009's host-service phase. Setup, updates,
+- [ ] 5.2: Coordinate Bot adoption with PLAN-009's host-service phase. Setup, updates,
       language and secret cipher remain Hub-owned; core helper/Runtime ownership and
       the bidirectional authenticated host channel remain Bot-owned. Do not implement
       coordinator policy or claim the Hub delivered as a side effect of extraction.
-- [ ] 4.3: Publish pure/client boundaries from the existing Mobile-safe entry and
+- [ ] 5.3: Publish pure/client boundaries from the existing Mobile-safe entry and
       Platform API contracts. Replace internal Mobile imports with packed consumers;
       prove browser/Metro bundles and emitted declarations contain no Node/Electron.
-- [ ] 4.4: Review Telegram/process/life-loop reuse separately. Keep policy branches
+- [ ] 5.4: Review Telegram/process/life-loop reuse separately. Keep policy branches
       local when a common implementation would flatten product behavior. Do not
       migrate Bot storage to the Platform domain model.
-- [ ] 4.5: Preserve existing root Platform and App SDK entry points; update consumer
+- [ ] 5.5: Preserve existing root Platform and App SDK entry points; update consumer
       boundary guards and governing docs per completed slice, not globally in advance.
 
 **Exit gate:** every claimed shared capability meets SPEC-134's matrix. Unextracted
 capabilities remain explicitly product-owned or tracked with their remaining reason.
 
-### Phase 5: Readiness for repository extraction
+### Phase 6: Readiness for repository extraction
 
-- [ ] 5.1: Build Desktop and Bot from declared artifacts with sibling source absent;
+- [ ] 6.1: Build Desktop and Bot from declared artifacts with sibling source absent;
       record their Platform/Runtime/helper versions and resource digests.
-- [ ] 5.2: Validate affected UI/lifecycle/consent cases, dependency footprint and
-      failure recovery. Perform independent review of the final export graph.
-- [ ] 5.3: Record Desktop and Mobile readiness separately for PLAN-128. Mobile does
+- [ ] 6.2: Validate affected UI/lifecycle/consent cases, dependency footprint and
+      failure recovery. Require Phase 4's Desktop/Bot conversation acceptance;
+      setup/helper reuse alone is insufficient. Independently review the final graph.
+- [ ] 6.3: Record Desktop and Mobile readiness separately for PLAN-128. Mobile does
       not pass merely because Desktop and Bot share a setup package.
 
 **Deliverable:** reusable package contracts and real consumers; no repository move
@@ -117,9 +169,9 @@ or product release is implied by this plan's completion.
 
 | Owner | Expected change in an authorized implementation slice |
 |-------|-------------------------------------------------------|
-| Platform | `packages/`, manifests/build/package resources, setup scripts, native helper producer, bounded exports and boundary/conformance tests |
-| Desktop (currently Platform) | Host adapters, consumer pins and packaging; preserve product UX and app identity |
-| Bot (`cats-bots` until ADR-007 lands) | Replace vendored resources/adapters, update exact pins and import guards; coordinate with PLAN-009 |
+| Platform | `packages/`, manifests/build/resources, setup/native producers, Desktop-derived conversation renderer/styles and pure presentation contracts, bounded exports and conformance tests |
+| Desktop (currently Platform) | Host/conversation adapters, required live/durable retention corrections and validated upgrades, consumer pins and packaging; preserve existing visual/interaction UX, modes and app identity |
+| Bot (`cats-bots` until ADR-007 lands) | Shared renderer adoption, live/durable transcript mapping and any validated format upgrade; replace vendored resources/adapters, update pins/guards and coordinate with PLAN-009 |
 | Runtime | None assumed; missing public contracts require a separately scoped Runtime change |
 | cats-one | Integration/workspace references only when a real new boundary requires them; no incidental dependency-minimum change |
 
@@ -130,6 +182,11 @@ consumer builds, negative environment imports, real native helper checks, isolat
 product acceptance and packaging/signing verification. Reuse existing passing
 checks while inputs are unchanged. A source-only link is insufficient consumer
 evidence. Documentation work runs only diff/link/consistency checks.
+For Phase 4, test the same event/content corpus through both real product adapters
+and compare Desktop reference, extracted Desktop and Bot at matched presentation
+conditions. Include coarse and structured provider output, live/final/reconnect
+transitions and scoped owner interactions; run visual and behavioral checks in
+actual isolated renderers, not only a shared component harness.
 
 ## Risks and Mitigations
 
@@ -140,11 +197,15 @@ evidence. Documentation work runs only diff/link/consistency checks.
 | Native resources missing after packaging | Manifest/digest/resource-location checks in both products and every claimed target |
 | Parallel Bot Hub work changes adapter ownership | Recheck PLAN-009 phase at each consumer PR; preserve BotHostApi/channel authority |
 | Package published but consumers still copy | Separate producer publication from dual-consumer completion in the plan |
+| Shared UI is reduced to a lookalike or generic controls | Desktop-derived extraction, required Desktop/Bot consumption and UI-1 through UI-6 exit gates |
+| Either product loses hierarchy when a streamed reply becomes history | Inventory both products, including Desktop's text-only durable projection; validate bounded data corrections and test final seal/reload/reopen |
+| Narrow conversations hide controls or Desktop modes regress | Matched visual fixtures, responsive content checks and existing mode/interaction regressions |
 
 ## Progress Log
 
 | Date | Update |
 |------|--------|
 | 2026-10-29 | Drafted after Bot #51 merged; all implementation and acceptance gates remain open. |
+| 2026-10-29 | Owner clarified message-internal hierarchy and required Desktop/Bot conversation parity; added the dedicated renderer phase and UI acceptance gates. No extraction implemented. |
 
 *Created: 2026-10-29*
