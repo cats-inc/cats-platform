@@ -1157,11 +1157,11 @@ membership (USD 99/year; Individual enrollment is sufficient and needs no
 D-U-N-S number). Notarization is included in the membership. Windows
 certificates, by contrast, can be bought from any commercial CA.
 
-Desktop and Bots can reuse the same Developer ID Application certificate and
+Desktop and Cats Bot can reuse the same Developer ID Application certificate and
 App Store Connect API key; adding the second app does not require a new
 certificate or key. Store the shared macOS release credentials as organization
 secrets in `cats-inc`, with **Selected repositories** access limited to
-`cats-platform` and `cats-bots`. Both release workflows already read these names:
+`cats-platform` and `cats-bot`. Both release workflows already read these names:
 
 - `CSC_LINK` — the Developer ID Application certificate exported as a `.p12`,
   base64-encoded (`base64 -i DeveloperID.p12 | pbcopy`).
@@ -1195,11 +1195,11 @@ existing Desktop set to organization scope, use this order:
    to the verified organization public key. Never export plaintext in logs or
    artifacts, and remove any temporary transfer workflows and ciphertext after
    use.
-3. Verify the same signing and authentication checks from Bots, without
+3. Verify the same signing and authentication checks from Cats Bot, without
    repository or environment overrides. Only then remove the five Desktop
    repository copies and repeat the checks from Desktop to prove inheritance.
 
-If the baseline or Bots checks fail, keep the Desktop source copies and stop.
+If the baseline or Cats Bot checks fail, keep the Desktop source copies and stop.
 If Desktop fails after removing its overrides, pause signed releases and diagnose
 the shared configuration before proceeding. A failed temporary probe alone does
 not establish that the production certificate is invalid. This configuration
