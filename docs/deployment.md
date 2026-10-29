@@ -1015,6 +1015,16 @@ npm run desktop:icons -- --shape square
   - installation directory selection enabled
   - executable signing/editing intentionally disabled for the current
     unsigned test-install path
+  - uninstalling removes the Start at login entry (HKCU Run value `Cats`)
+    and its StartupApproved value when it starts that installation;
+    installing over a copy, updates included, keeps it
+  - the uninstaller's unchecked Remove all user data box deletes
+    `%APPDATA%\Cats`, `%USERPROFILE%\.cats` and the update cache
+    `%LOCALAPPDATA%\cats-updater`. It goes through `rd /s`, never NSIS's
+    `RMDir /r`, which empties the targets of junctions inside the tree, so a
+    link inside a root, or a root that is itself a link, loses only the link.
+    Any root that remains is listed. A per-machine install skips the page
+    and keeps the login entry
 - macOS packaging mode in this slice:
   - `electron-builder`
   - targets: `dmg`, `pkg`, `zip`

@@ -48,14 +48,17 @@ test('the uninstaller only removes user data when the user opts in', () => {
 
   const guarded = /\$\{If\}\s+\$RemoveUserDataState[\s\S]*?\$\{EndIf\}/u.exec(installerScript);
   assert.ok(guarded, 'user-data removal is no longer inside an opt-in guard');
-  assert.match(guarded[0], /RMDir \/r "\$APPDATA\\Cats"/u);
-  assert.match(guarded[0], /RMDir \/r "\$PROFILE\\\.cats"/u);
+  assert.match(guarded[0], /!insertmacro removeDataRoot "\$APPDATA\\Cats"/u);
+  assert.match(guarded[0], /!insertmacro removeDataRoot "\$PROFILE\\\.cats"/u);
 
-  // Neither path may be removed anywhere outside that guard.
+  // Neither path may be removed anywhere outside that guard, and nothing uses
+  // NSIS's RMDir /r, which empties the targets of junctions inside the tree.
   const unguarded = installerScript
     .replace(guarded[0], '')
-    .match(/RMDir \/r "\$(APPDATA\\Cats|PROFILE\\\.cats)"/gu);
+    .match(/removeDataRoot "\$(APPDATA\\Cats|PROFILE\\\.cats)"|RMDir \/r "\$(APPDATA\\Cats|PROFILE\\\.cats)"/gu);
   assert.equal(unguarded, null);
+  const code = installerScript.split('\n').filter((line) => !line.trimStart().startsWith(';')).join('\n');
+  assert.doesNotMatch(code, /RMDir \/r/u);
 
   // The checkbox has to start unchecked, or a silent upgrade would inherit a
   // pre-ticked "remove all user data".
