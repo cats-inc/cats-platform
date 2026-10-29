@@ -193,7 +193,7 @@ async function collectPlatformKnowledgeAssets(packageRoot: string) {
 // Each entry must appear at cats-platform/node_modules/<name> AND in the staging
 // output as shared/app-sidecar/node_modules/<name>. Transitive runtime deps must
 // be listed explicitly so packaging is deterministic.
-const APP_SIDECAR_RUNTIME_DEPENDENCIES = ['js-yaml', 'argparse', 'fflate', '@ngrok/ngrok'] as const;
+const APP_SIDECAR_RUNTIME_DEPENDENCIES = ['js-yaml', 'argparse', 'fflate', '@ngrok/ngrok', '@cats-inc/platform-ui-web'] as const;
 export function appIngressNativePackages(platforms: readonly string[]): string[] {
   const modules: Record<string, string[]> = {
     windows: ['win32-x64-msvc', 'win32-arm64-msvc'],

@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [conversation-ui-acceptance](conversation-ui-acceptance.md) | 2026-10-30 | Shared Desktop/Bot message hierarchy | Packed dual-consumer candidate, durable data compatibility, actual product captures and completed UI-1 through UI-6 review |
 | [2026-10-27-provider-cli-session-titles](2026-10-27-provider-cli-session-titles.md) | 2026-10-27 | Provider CLI session titles | Runtime-driven Claude Code writes no `ai-title`; Codex `thread/name/updated` exists but is unsubscribed and unverified; one session per participant rules provider titles out as the room's source (ADR-140) |
 | [2026-10-24-provider-catalog-consumer-validation](2026-10-24-provider-catalog-consumer-validation.md) | 2026-10-24 | Shared Runtime catalogs and Auggie effort | Sixteen current channel scopes, generic selector regression, focused checks and isolated source Candidate evidence |
 | [2026-09-30-canvas-office-documents-and-tabs](2026-09-30-canvas-office-documents-and-tabs.md) | 2026-09-30 | Canvas Office documents, tabs and reopening (PLAN-116 F2) | mammoth `.docx`→HTML is fast and escapes scripts; `.pptx` needs LibreOffice for rendering, else a text outline; recommends one Recent switcher from show Activity instead of tabs |

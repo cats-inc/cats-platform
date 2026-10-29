@@ -243,7 +243,16 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal([...packedPaths].some((path) => path.startsWith('tests/')), false);
   assert.equal([...packedPaths].some((path) => path.startsWith('docs/')), false); // docs-boundary-ignore: asserts the package excludes docs
   assert.equal([...packedPaths].some((path) => path.startsWith('mobile/')), false);
-  assert.equal([...packedPaths].some((path) => path.startsWith('node_modules/')), false);
+  // The local shared UI candidate must travel with the root package; consumers
+  // cannot resolve its producer's vendor path. Only the lockfile-marked bundle
+  // closure is allowed, not development dependencies or sibling source trees.
+  assert.deepEqual(manifest.bundleDependencies ?? manifest.bundledDependencies, ['@cats-inc/platform-ui-web']);
+  assert.equal(packedPaths.has('node_modules/@cats-inc/platform-ui-web/dist/contracts.js'), true);
+  const lock = JSON.parse(readFileSync(join(projectRoot, 'package-lock.json'), 'utf8'));
+  const bundledRoots = Object.entries(lock.packages).filter(([, entry]) => entry.inBundle).map(([name]) => `${name}/`);
+  for (const path of packedPaths) if (path.startsWith('node_modules/')) {
+    assert.ok(bundledRoots.some(root => path.startsWith(root)), `undeclared bundled file: ${path}`);
+  }
   assert.equal(packedPaths.has('tsconfig.json'), false);
   assert.equal(packedPaths.has('vite.config.ts'), false);
 });

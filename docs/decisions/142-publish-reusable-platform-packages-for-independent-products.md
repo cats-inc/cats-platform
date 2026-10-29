@@ -5,7 +5,9 @@
 Proposed — 2026-10-29. The owner requested this design package after
 [Cats Bot PR #51](https://github.com/cats-inc/cats-bots/pull/51) merged at
 `4fa3a395640799e9556fffca9d958b5249c3e179`. Documentation is authorized;
-package extraction, dependency changes and publication have not started.
+the conversation slice was authorized on 2026-10-30 and is implemented as a
+private packed candidate consumed by Desktop and Bot. Other extraction slices
+and publication remain pending. See the [implementation record](../research/conversation-ui-acceptance.md).
 Requirements and delivery gates are in [SPEC-134](../specs/SPEC-134-reusable-platform-packages-and-consumer-boundaries.md)
 and [PLAN-127](../plans/PLAN-127-shared-platform-package-extraction.md).
 

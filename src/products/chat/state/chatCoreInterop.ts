@@ -205,6 +205,7 @@ function buildCanonicalChatSegmentMessage(
       ...(workflowRecommendation
         ? { workflowRecommendation }
         : {}),
+      ...(terminalSegment.metadata?.presentation ? { presentation: terminalSegment.metadata.presentation } : {}),
     },
     usage: null,
     executionProvider: readChatCoreMetadataString(segment.metadata, 'executionProvider'),

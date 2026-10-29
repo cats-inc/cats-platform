@@ -39,6 +39,7 @@ node_modules/
 dist/
 .npm/
 *.tgz
+!vendor/platform-ui-web-*.tgz
 !src/workspace/
 !src/workspace/**
 !src/products/chat/workspace/

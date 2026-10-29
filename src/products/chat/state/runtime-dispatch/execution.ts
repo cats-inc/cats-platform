@@ -34,6 +34,8 @@ import { resolveActorIdForTarget } from '../runtime-session/state.js';
 import type { DispatchLeasePatch } from './recovery.js';
 import { applyCompanionPhotoDirective } from './companionPhoto.js';
 import { waitForSessionTurnGate } from './sessionTurnGate.js';
+import { createDispatchPresentationRecorder } from './presentationRecorder.js';
+import { extractWorkflowRecommendationFromBody } from '../room-routing/recommendations.js';
 import {
   buildDispatchRuntimeContextMetadata,
   mergeRuntimeInvocationContextMetadata,
@@ -147,6 +149,7 @@ export async function executeDispatch(
   platformDir?: string,
   runtimeDataDir?: string,
 ): Promise<DispatchExecution> {
+  const presentationRecorder = createDispatchPresentationRecorder(coreStore, channelId, request, now);
   let resolvedConversationId: string | null = null;
   let resolvedContainerId: string | null = null;
   let resolvedTransportBindingId: string | null = typeof transportBindingId === 'string'
@@ -230,7 +233,7 @@ export async function executeDispatch(
       runtimeClient,
       sessionId,
       content: dispatchPrompt.message,
-      input: runtimeInvocationInput,
+      input: { ...runtimeInvocationInput, onMessageEvent: event => presentationRecorder.accept(event) },
       supervision: {
         product: 'cats-chat',
         surface: 'runtime-dispatch',
@@ -287,6 +290,13 @@ export async function executeDispatch(
       runtimeDataDir,
     });
     responseSegments = companionPhoto.segments;
+    // Coarse providers may emit only a result snapshot. Preserve their observed segments too.
+    if (!presentationRecorder.snapshot().blocks.length) {
+      for (const segment of responseSegments) presentationRecorder.accept({ ...segment, type: segment.kind });
+    }
+    presentationRecorder.replaceText(responseSegments.filter(segment => segment.kind === 'text')
+      .map(segment => extractWorkflowRecommendationFromBody(segment.text).body), responseSegments);
+    const presentation = await presentationRecorder.seal();
 
     return {
       ...request,
@@ -300,9 +310,13 @@ export async function executeDispatch(
         ? { runtimeAssistantMetadata }
         : {}),
       ...(runtimeResult.finalization ? { runtimeFinalization: runtimeResult.finalization } : {}),
-      ...(companionPhoto.metadata ? { terminalMessageMetadata: companionPhoto.metadata } : {}),
+      terminalMessageMetadata: { ...companionPhoto.metadata, presentation },
     };
   } catch (error) {
+    try { await presentationRecorder.seal(true); }
+    catch (saveError) {
+      error = new Error(`${error instanceof Error ? error.message : String(error)}; conversation history could not be saved: ${saveError instanceof Error ? saveError.message : String(saveError)}`);
+    }
     const supervisedRejection = error instanceof RuntimeSupervisionRejectedError
       ? error
       : null;

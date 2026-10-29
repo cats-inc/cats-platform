@@ -39,6 +39,7 @@ import type {
 } from '../../../../shared/renderer/components/conversation-view/concurrentClusterUiState.js';
 import { LiveTranscriptIndicator } from '../../../../shared/renderer/components/conversation-view/LiveTranscriptIndicator.js';
 import type { TranscriptMessageActionDescriptor } from './TranscriptMessageActions.js';
+import { reconcileConversationPresentationLive } from '../../../../../shared/conversationPresentationLive.js';
 
 export interface TranscriptMessageActionContext {
   message: SelectedChannelView['messages'][number];
@@ -177,6 +178,9 @@ export function ConversationTranscriptPanel({
     );
   }
 
+  const reconciled = reconcileConversationPresentationLive(visibleMessages, liveIndicator);
+  liveIndicator = reconciled.live;
+  visibleMessages = reconciled.messages;
   const shouldRenderLiveTranscriptIndicator = Boolean(
     liveIndicator?.active
     && resolveLiveIndicatorSegments(liveIndicator).length > 0
@@ -194,7 +198,8 @@ export function ConversationTranscriptPanel({
   ): JSX.Element {
     return (
       <TranscriptMessageItem
-        key={message.id}
+        key={String((message.metadata?.presentation as { id?: string } | undefined)?.id ?? message.id)}
+        showProgressDetails={showLiveProgressDetails}
         message={message}
         stackClassName={messageStackTone(message.senderKind)}
         cats={cats}

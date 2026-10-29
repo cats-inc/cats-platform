@@ -1,0 +1,22 @@
+{
+  "name": "@cats-inc/platform-ui-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop-derived conversation presentation for Cats product renderers.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./contracts": { "types": "./dist/contracts.d.ts", "default": "./dist/contracts.js" },
+    "./conversation.css": "./conversation.css",
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "conversation.css", "LICENSE", "README.md", "provenance.json"],
+  "sideEffects": ["*.css"],
+  "peerDependencies": { "react": "^18.3.1", "react-dom": "^18.3.1" },
+  "dependencies": {
+    "react-markdown": "10.1.0",
+    "remark-breaks": "4.0.0",
+    "remark-gfm": "4.0.1"
+  }
+}

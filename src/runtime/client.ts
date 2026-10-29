@@ -279,6 +279,8 @@ export type RuntimeSessionCreateInput =
 export interface RuntimeSendMessageInput extends RuntimeExecutionRequestInput {
   /** Server-owned side-channel observer; never serialized into the Runtime request. */
   onWorkspaceActivity?: (snapshot: RuntimeWorkspaceActivitySnapshot) => void | Promise<void>;
+  /** Local presentation observer. Never serialized into the Runtime request. */
+  onMessageEvent?: (event: Record<string, unknown>) => void;
   instructions?: string | null;
   context?: RuntimeSessionInvocationContext;
   outputDir?: string | null;
@@ -1161,6 +1163,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         onChunk: idleTimeout.reset,
         sessionId,
         onWorkspaceActivity: input?.onWorkspaceActivity,
+        onMessageEvent: input?.onMessageEvent,
       });
     } finally {
       finished = true;
