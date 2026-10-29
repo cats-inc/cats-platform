@@ -37,7 +37,7 @@ Rollback may ignore the sidecar, but must not delete or downgrade it. A subseque
 raw final message supersedes an older unbound projection. No profile migration is
 required. Desktop-control data remains redacted before persistence/display.
 
-## Evidence and remaining gates
+## Evidence and completion
 
 - Bot typecheck/build and full suite: **235 passed**. Final artifact boundary and
   persistence rerun: **14 passed**.
@@ -50,8 +50,9 @@ required. Desktop-control data remains redacted before persistence/display.
   companion route and Windows POSIX file-mode failures, and the no-repo attachment
   route failure, also reproduce on the exact frozen baseline. This is not a claim
   that the full suite is green. Final root-package validation passed all 4 tests,
-  including a source-independent installed consumer. Hosted CI remains a separate
-  gate; the owner requested immediate closeout before further checks.
+  including a source-independent installed consumer. The full hosted Desktop
+  [CI run](https://github.com/cats-inc/cats-platform/actions/runs/40925836421)
+  subsequently passed on the unchanged implementation. No new test scope was added.
 - Isolated actual Electron Desktop and Bot used private app/Runtime/provider/auth
   directories. Fixture messages traversed real Runtime streams. Original/extracted
   Desktop normal-width bubbles match; both use the same body typography. Desktop
@@ -61,10 +62,18 @@ required. Desktop-control data remains redacted before persistence/display.
   manual-scroll preservation passed. Desktop copy writes the expected fixture
   text. Existing interaction tests cover stale/wrong-conversation authority.
 - Bot 260-pixel minimum and 340/480-pixel content lanes retain code/table scrolling
-  and expanded localized tool content. Desktop 480-pixel lane passed; its 340-pixel
-  grid minimum-width correction was checked in the actual renderer before rebuild.
-  A final post-build narrow Desktop capture and complete UI-6 signoff remain open.
-  Bot window chrome, avatar and timestamps are intentional product differences.
+  and expanded localized tool content. Final-build Desktop captures at exactly
+  340/480-pixel content widths confirm no body/tool horizontal overflow. Independent
+  UI-6 review accepted the existing captures with no remaining blocker. Bot window
+  chrome, avatar and timestamps are intentional product differences.
 
-PLAN-127's broader phases and final acceptance/release gates remain open. This
-record separates implemented shared components from uncompleted release proof.
+The conversation candidate's UI-1 through UI-6 checks are complete. PLAN-127's
+broader extraction phases and any separately authorized publication remain open.
+Bot's three-platform package/source contract is gated by its existing
+[CI run](https://github.com/cats-inc/cats-bots/actions/runs/40925851983) and PR #59.
+
+Retained actual-product captures: [Desktop before](conversation-ui/desktop-before.png),
+[Desktop after](conversation-ui/desktop-after.png),
+[Desktop 340](conversation-ui/desktop-340.png), [Desktop 480](conversation-ui/desktop-480.png),
+[Bot 340](conversation-ui/bot-340.png), [Bot 480](conversation-ui/bot-480.png),
+[Bot minimum](conversation-ui/bot-minimum.png).

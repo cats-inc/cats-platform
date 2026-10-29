@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Phase 4 authorized and in progress; other extraction phases remain draft |
+| **Status** | Phase 4 private dual-consumer candidate complete; other extraction phases remain draft |
 | **Owner** | Platform integration owner |
 | **Reviewer** | Independent architecture reviewer; affected Desktop/Bot owners |
 
@@ -135,18 +135,18 @@ at the owner's 2026-10-30 request to close out immediately.
       application-context and `/api/channels` coupling through product adapters.
       Keep BotHostApi/channel, navigation, clipboard, resources and authorization
       outside the shared components; no Platform server is required by Bot.
-- [ ] 4.4: Wire Desktop and Bot to the same locally packed renderer/style artifact.
+- [x] 4.4: Wire Desktop and Bot to the same locally packed renderer/style artifact.
       Adapt Bot's actual core events and durable history rather than feeding a UI
       gallery alone. Run UI-1 through UI-5, including live-to-final continuity,
       reconnect/reopen, scoped decisions, keyboard/focus and manual scroll behavior.
       Keep Desktop direct/group/parallel/concurrent modes and their actions intact.
-- [ ] 4.5: Perform UI-6 in the actual isolated products at matched fonts/theme/
+- [x] 4.5: Perform UI-6 in the actual isolated products at matched fonts/theme/
       locale/scale and 340/480 CSS-pixel content widths, the normal Desktop width
       and any smaller supported Bot minimum. Review long code/tables/URLs, nested
       lists, localized labels and expanded tool/decision content. Record baseline
       comparisons and all intentional product differences; fix clipping, missing
       hierarchy and lost actions before accepting the slice.
-- [ ] 4.6: Obtain independent review of the final API/dependency graph, data mapping
+- [x] 4.6: Obtain independent review of the final API/dependency graph, data mapping
       and parity evidence. Prepare version/pin/compatibility and rollback inputs
       before any separately authorized package publication. Both consumer PRs pin
       the same accepted artifact; remove replaced implementations only after the
