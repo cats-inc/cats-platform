@@ -28,7 +28,8 @@ milestones. Bot's rename/Hub work is not a repository move performed by this pla
 
 - [ ] 1.1: Map every Desktop/Mobile source, test, asset, workflow and guide to a
       target owner. Identify shared Web/product modules and preserve traceable history.
-- [ ] 1.2: Confirm the relevant PLAN-127 package gates, including a fully packed
+- [ ] 1.2: Confirm the relevant PLAN-127 package gates: its Phase 4 Desktop/Bot
+      conversation-renderer parity before Desktop extraction, and a fully packed
       Mobile client build before Mobile extraction. List unresolved source imports.
 - [ ] 1.3: Specify application, Platform-host/library, Runtime and App SDK version
       sources. Define where manifests/receipts retain the actual embedded Platform

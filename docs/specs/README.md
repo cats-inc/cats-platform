@@ -5,7 +5,8 @@
   delivery, version meanings and cats-one workspace gates. No cutover implemented.
 - [SPEC-134: Reusable Platform packages and consumer boundaries](SPEC-134-reusable-platform-packages-and-consumer-boundaries.md)
   — draft, 2026-10-29; supported exports/resources, dependency isolation,
-  product authority, two-consumer parity and packed/native acceptance.
+  product authority, required Desktop/Bot bubbles and message hierarchy,
+  streaming/interaction/narrow-layout parity and packed/native acceptance.
 
 - [SPEC-133: Desktop control session MCP (Windows)](SPEC-133-desktop-control-session-mcp.md)
   — draft, 2026-10-29; `cats-desktop` session MCP on Platform's internal listener

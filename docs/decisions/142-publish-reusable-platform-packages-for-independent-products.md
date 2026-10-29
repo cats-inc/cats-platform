@@ -30,6 +30,12 @@ Platform's product policies. A shared name does not establish a shared schema.
 Separate repositories can consume packages; missing package boundaries currently
 make source copying the practical integration path.
 
+Owner clarification (2026-10-29): shared UI must include Desktop's existing
+user/agent bubbles and the hierarchy **inside conversation messages**. This is
+not native wallpaper/desktop/topmost window layering. Bot ADR-003 aligned React
+and Vite while explicitly keeping a separate implementation; sharing the stack
+or a few controls did not deliver conversation presentation parity.
+
 ## Decision
 
 1. **Keep `cats-platform` as the shared platform owner.** Do not create a
@@ -40,7 +46,7 @@ make source copying the practical integration path.
    a library does not require a Platform server, Desktop installation or shared
    Runtime process. Product hosts may still pin and launch Runtime directly.
 3. **Separate execution environments physically.** Establish pure core/contracts,
-   network client, Node host, Electron host and optional Web UI package boundaries.
+   network client, Node host, Electron host and Web UI package boundaries.
    App SDK keeps its existing independent public contract. SPEC-134 defines the
    allowed dependencies. Package names are proposed until the first export review;
    create only packages backed by a concrete extraction and consumer.
@@ -69,12 +75,27 @@ make source copying the practical integration path.
    [ADR-143](143-separate-product-repositories-after-platform-contracts-stabilize.md)
    governs subsequent source moves. Existing Bot import guards and vendoring remain
    the implemented contract until the corresponding consumer change lands.
+9. **Extract Desktop's conversation presentation for Desktop and Bot.** The Web UI
+   slice is a required deliverable with these two consumers; other products select
+   it only when appropriate. Start from Desktop's working renderer, message/block
+   projections and styles. Preserve user/agent bubbles, internal message hierarchy,
+   streaming and supported interactions, with a verified narrow conversation layout.
+   Do not replace the reference with a reduced renderer merely to make extraction
+   easier. Product adapters supply data and authorized actions without importing
+   Platform application state, routes or APIs into Bot. Sharing presentation does
+   not give Bot Chat/Work/Code's workflow modes or merge their domain models.
+   SPEC-134 defines the hierarchy/data, parity and dual-consumer gates; PLAN-127
+   gives the UI slice its own phase. This supersedes Bot ADR-003's separate-UI
+   direction only when the coordinated consumer cutover is implemented. It does
+   not change either Electron host or authorize a WebView2 migration.
 
 ## Consequences
 
 ### Positive
 
 - Shared fixes have one implementation and a tested release consumed by products.
+- Desktop and Bot use the same conversation renderer instead of maintaining
+  progressively different bubble and message-hierarchy implementations.
 - Native and mobile dependency boundaries become installable contracts.
 - Bot remains independently runnable and its data remains independently owned.
 
@@ -83,10 +104,17 @@ make source copying the practical integration path.
 - Public exports, helper protocols and package resources become versioned obligations.
 - Consumers must deliberately update pins; sharing does not update installed products.
 - Prematurely combining product policies would create a less reusable platform.
+- Renderer extraction must remove current router/API/domain coupling without
+  losing Desktop presentation behavior. Both products need a live/durable gap
+  inventory; either may need a separately validated transcript-data correction
+  to satisfy the hierarchy/recovery contract. The reference is not evidence that
+  Desktop already retains every live block in history.
 
 ### Neutral
 
 - Shared modules need two real consumers, not necessarily all three products.
+  The required conversation-renderer slice specifically needs Desktop and Bot;
+  Desktop/Web or a component gallery cannot substitute for Bot acceptance.
 - The existing application-first `@cats-inc/cats-platform` package and CLI continue
   to work. New library packages do not silently repurpose its public entry points.
 - This proposal does not change App/Plugin producers, release versions or user data.

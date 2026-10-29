@@ -44,7 +44,9 @@ tooling. Bot's independent rename/Hub work remains governed by merged PR #51.
 3. **FR-3 — Desktop destination.** `cats-desktop` owns application entry/composition,
    Desktop-specific renderer/navigation, native host policy, app identity, App
    payload lock, packaging resources and Desktop release workflows. Reusable
-   Electron mechanisms remain in Platform packages. Desktop imports no Bot code.
+   Electron mechanisms and SPEC-134's shared conversation renderer remain in
+   Platform packages; Desktop owns its domain/navigation/action adapters. Desktop
+   imports no Bot code. The Desktop/Bot renderer gate passes before this cutover.
 4. **FR-4 — Platform host continuity.** Platform retains the headless API/server,
    shared interaction engine, composable Chat/Work/Code services, App SDK/install/load
    mechanisms and a thin self-hosted Web application. Shared Web/product modules

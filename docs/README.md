@@ -9,6 +9,9 @@ The proposed shared-Platform architecture follows merged
 ([SPEC-135](specs/SPEC-135-independent-product-repositories-and-distribution.md),
 [PLAN-128](plans/PLAN-128-product-repository-extraction.md)). No package extraction,
 repository move, identity change or release is implemented by these draft documents.
+The owner-required conversation slice extracts Desktop's existing user/agent
+bubbles and internal message hierarchy for Desktop and Bot, with streaming,
+interaction and narrow-layout gates in SPEC-134 and PLAN-127 Phase 4.
 
 [PLAN-125](plans/PLAN-125-claude-code-provider-controls-in-desktop.md) brings Claude Code's
 native approvals, policy ceilings and Claude in Chrome to Desktop (2026-10-28), extending
