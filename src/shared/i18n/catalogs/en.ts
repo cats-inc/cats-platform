@@ -4275,7 +4275,7 @@ export const enCatalog: MessageCatalog = {
   "providerControls.ProviderMode": "Use provider configuration within a limit",
   "providerControls.ExplicitMode": "Choose access and approval separately",
   "providerControls.Allowlist": "This work uses a tool allowlist. Its execution boundary stays in effect.",
-  "providerControls.LegacyHelp": "Existing permission settings are unchanged. “Skip approval” does not imply full machine access.",
+  "providerControls.LegacyHelp": "Existing permission settings are unchanged. “Skip approval” can suppress native consent requests in Codex. To receive them, start a new conversation with “Choose access and approval separately” and “Ask when requested by the agent”. This does not grant full machine access.",
   "providerControls.MaximumAccess": "Maximum admitted access",
   "providerControls.LocalAccess": "Local file access",
   "providerControls.ReadOnly": "Read only",

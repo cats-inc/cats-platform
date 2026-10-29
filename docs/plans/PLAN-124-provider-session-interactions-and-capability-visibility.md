@@ -101,5 +101,24 @@ tool acceptance are recorded separately, without counting discovery as a success
 | 2026-10-28 | The native comparison used Codex 0.164.0, the same user/config/test cwd, workspace-write/offline/on-request/reviewer=user, through the real CatsRuntimeClient + Chat dispatch (MemoryChatStore), without bypassing Runtime. Found and fixed a Runtime same-cwd old-thread discovery race; after switching to the exact pack 50ef02b4686c1fff6b60819d292acc5b2e1ef773, policy was verified and configured MCP was 279/3/4. Chrome and computer use were both actually called, getting Chrome unavailable and native pipe missing respectively, the same as Terminal/Bot. Successful external operation and helper recovery still wait for a usable environment; the Electron fixture and this native product dispatch evidence are recorded separately. |
 | 2026-10-28 | CI fix slice: the UTF-8 bounds / stream decoder of the shared Runtime client now uses Web APIs, timer unref is called only when supported, keeping Mobile's transitive type graph compilable. Mobile boundary/typecheck, server build and 39 client tests pass, including cross-chunk Chinese/emoji and over-limit stream cancel / UTF-8 byte limit; this is Mobile compile compatibility, and no Mobile native control feature was added. |
 | 2026-10-28 | Full CI convergence: the Chat binding adapter is now injected into the shared API by the app composition, keeping the original owner/lease/turn/run checks; updated old UI expectations, and the URL fixture times from the start of each test. Added 74 en/zh-TW catalog entries for the control surface integration, without growing the raw-string allowlist. 30 control/product/client/boundary, 27 UI/i18n checks and Mobile typecheck pass; an independent review additionally verified 101 architecture checks, interpolation consistency across the two locales, a fixture TTL deferred by one hour and expiry rejection. The last source rebuilt an isolated Windows Electron candidate (Runtime main e043d5b2), confirming the Traditional Chinese native form / requested-policy chip, and that an empty-value reply gets the same turn's empty form accepted and a providerConfirmed receipt. This candidate includes the later chip/hook and translation fixes; the scope record of the earlier candidate is retained. |
+| 2026-10-29 | Codex tool/App consent adoption: Runtime PR #202 (`399e63571be8188fc685ba3925ff47f80a256f27`) feeds the existing Desktop `tool_approval` host/card/control path. Added Codex negotiation and gate regressions, native neutral Allow / Decline / Cancel renderer checks, and same-execution responses across Chat/Code/Work. Localized legacy help explains that skip can suppress requests and that explicit on-request is selected in a new conversation. 63 focused checks passed; the final 40 affected product/renderer checks passed after fixture fidelity review. Standard isolated Windows candidate with real Runtime and scripted Codex wire passed actual UI accept/decline/cancel; one native turn each, post-consent fixture gate counts 1/0/0, prompts scrubbed. This does not claim real Paint capture/input or an updated installed Desktop. |
 
-*Created / last updated: 2026-10-28*
+### 2026-10-29 candidate provenance
+
+- Runtime source: clean `399e63571be8188fc685ba3925ff47f80a256f27`, source digest
+  `a5f0a09895041213cda21436715a2ea63576f13fe676041be40727caae99414d`.
+- Platform source: `9b5856737ca616a3a216d8665a5e4a307d46c27f` plus this change's
+  localized policy help; source snapshot digest
+  `d8fe6e261ba6ad6cef69d600c16b599cdaf5c911dd333c006106035ce50e4f20`.
+  Later changes affect tests/docs only; the candidate includes the final product source.
+- Launch receipt: `db9850f90624625998188172f6175e068bbf49a85c140fff12c4eb35bdaa5fc2`.
+  Private local evidence is under workspace `tmp/candidates/desktop-consent-20261029`:
+  `launch.json`, screenshots, native wire, before/after snapshots and `acceptance.json`.
+  The candidate uses fresh owner/provider/profile data; no writes were made to the user's real profile.
+- The provider is a scripted native-protocol fixture, not the installed Codex binary.
+  Real Codex 0.165 tool/plugin consent evidence belongs to Runtime PR #202 and Bots
+  PR #44. Desktop's fixture verifies its consumer and UI against that wire contract.
+  Cancel's terminal receipt intentionally remains unconfirmed; native wire and the
+  continuing original turn are the separate delivery evidence. See SPEC-132 for details.
+
+*Created: 2026-10-28 / last updated: 2026-10-29*

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CatsRuntimeClient } from '../build/server/runtime/client.js';
 import { PLATFORM_INTERACTION_HOST } from '../build/server/shared/providerInteractions.js';
+import { evaluateDesktopControlPolicy } from '../build/server/platform/desktopControl/policy.js';
 const policy = { version: 1, mode: 'explicit', access: 'workspace-write', network: false, approval: 'on-request' };
 const registry = { providers: { codex: { defaultInstance: 'native', defaultBackend: 'api', instances: [
   { id: 'native', target: 'api/native', backend: 'api' },
@@ -23,6 +24,30 @@ test('qualified native target negotiates only declared kinds and omits all legac
     const payload = JSON.parse(calls.find(c => c.url.endsWith('/sessions')).init.body);
     assert.deepEqual(payload.interactionHost.kinds, ['mcp_form']);
     assert.deepEqual(payload.executionPolicy, policy); assert.equal('permissionMode' in payload, false); assert.equal('allowedTools' in payload, false);
+  });
+});
+
+test('Codex tool consent is negotiated before desktop control admission without weakening the policy gate', async () => {
+  const kinds = ['command_approval', 'file_approval', 'tool_approval', 'permission_grant', 'user_input', 'mcp_form', 'mcp_url'];
+  const codex = structuredClone(registry);
+  codex.providers.codex.instances[1].continuity.interactions.kinds = kinds;
+  await fakeFetch(url => json(url.endsWith('/providers/config') ? codex : { id: 'session', providerName: 'codex' }), async calls => {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    await client.createSession({ provider: 'codex', instance: 'cli/native', executionPolicy: policy, interactionHost: PLATFORM_INTERACTION_HOST });
+    const payload = JSON.parse(calls.find(c => c.url.endsWith('/sessions')).init.body);
+    assert.deepEqual(payload.interactionHost.kinds, kinds);
+    assert.deepEqual(payload.executionPolicy, policy);
+    assert.equal('permissionMode' in payload, false);
+    const snapshot = { supported: true, observation: {
+      interactions: { host: payload.interactionHost, supported: kinds },
+      policy: { source: 'explicit', requested: payload.executionPolicy, status: 'verified' },
+    } };
+    assert.deepEqual(evaluateDesktopControlPolicy(snapshot), { ok: true });
+    snapshot.observation.interactions.supported = kinds.filter(kind => kind !== 'tool_approval');
+    assert.deepEqual(evaluateDesktopControlPolicy(snapshot), { ok: false, reason: 'no_tool_approval_host' });
+    snapshot.observation.interactions.supported = kinds;
+    snapshot.observation.policy.requested = { ...policy, approval: 'never' };
+    assert.deepEqual(evaluateDesktopControlPolicy(snapshot), { ok: false, reason: 'policy_preapproves_tools' });
   });
 });
 

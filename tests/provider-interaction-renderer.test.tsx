@@ -116,6 +116,42 @@ test('a Claude tool approval shows its server and input summary and answers with
   });
 });
 
+for (const source of [
+  { server: 'cats-desktop', message: 'Allow tool "screenshot_window"?\n\n{"windowId":"paint-fixture"}' },
+  { server: 'node_repl', message: 'Allow Codex to use 小畫家?\n\n{"app":"paint-fixture"}' },
+]) for (const action of ['accept', 'decline', 'cancel'] as const) {
+  test(`Codex ${source.server} consent ${action} preserves its native choice and execution binding`, async () => {
+    const interaction: BoundProviderInteraction = { kind: 'tool_approval', status: 'pending', interactionId: 'codex-consent',
+      sessionId: 'session', workerGeneration: 'generation', executionId: 'execution', revision: 7,
+      createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      binding: { conversationId: 'conversation', sessionId: 'session', label: 'Codex Cat', participantId: 'cat',
+        laneId: null, turnId: 'turn', runId: null, provider: 'codex' },
+      prompt: { kind: 'tool_approval', title: 'Tool approval', ...source, choices: [{ id: 'accept', label: 'Allow' }] } };
+    await domTest(async (document, render) => {
+      const answers: BoundInteractionResponse[] = [];
+      const props = { interaction, refresh: async () => {}, openUrl: async () => {},
+        respond: async (_i: BoundProviderInteraction, body: BoundInteractionResponse) => { answers.push(body); } };
+      await render(<ProviderInteractionCard {...props} />);
+      assert.ok(document.body.textContent!.includes(source.message));
+      const buttons = [...document.querySelectorAll('button')];
+      // The native App may define its own grant duration; do not invent a scope.
+      assert.deepEqual(buttons.map(b => b.textContent), ['Allow', 'Decline', 'Cancel request']);
+      act(() => { buttons[['accept', 'decline', 'cancel'].indexOf(action)]!.dispatchEvent(new window.MouseEvent('click', { bubbles: true })); });
+      await settle();
+      assert.equal(answers.length, 1);
+      assert.deepEqual(answers[0]!.answer, { action, ...(action === 'accept' ? { choice: 'accept' } : {}) });
+      assert.deepEqual(answers[0]!.binding, interaction.binding);
+      assert.equal(answers[0]!.workerGeneration, interaction.workerGeneration);
+      assert.equal(answers[0]!.executionId, interaction.executionId);
+      assert.equal(answers[0]!.expectedRevision, interaction.revision);
+      assert.ok(answers[0]!.idempotencyKey);
+      await render(<ProviderInteractionCard {...props} interaction={{ ...interaction, status: action === 'cancel' ? 'cancelled' : 'resolved', prompt: undefined }} />);
+      assert.equal(document.querySelector('form'), null);
+      assert.equal(document.body.textContent!.includes('paint-fixture'), false);
+    });
+  });
+}
+
 test('Claude session details list observed built-in tools and link to Claude in Chrome setup', async () => {
   const fetchBefore = globalThis.fetch, intervalBefore = globalThis.setInterval;
   globalThis.setInterval = (() => 0) as unknown as typeof setInterval;
