@@ -1,5 +1,12 @@
 # Feature Specifications
 
+- [SPEC-135: Independent product repositories and distribution](SPEC-135-independent-product-repositories-and-distribution.md)
+  — draft, 2026-10-29; ownership, Desktop feed/data continuity, Mobile artifact
+  delivery, version meanings and cats-one workspace gates. No cutover implemented.
+- [SPEC-134: Reusable Platform packages and consumer boundaries](SPEC-134-reusable-platform-packages-and-consumer-boundaries.md)
+  — draft, 2026-10-29; supported exports/resources, dependency isolation,
+  product authority, two-consumer parity and packed/native acceptance.
+
 - [SPEC-133: Desktop control session MCP (Windows)](SPEC-133-desktop-control-session-mcp.md)
   — draft, 2026-10-29; `cats-desktop` session MCP on Platform's internal listener
   with a native Windows helper. Injection gates, owner app-grant cards, exclusions,

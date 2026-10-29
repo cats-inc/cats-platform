@@ -4,6 +4,13 @@
 
 Accepted
 
+Proposed follow-up (2026-10-29):
+[ADR-142](142-publish-reusable-platform-packages-for-independent-products.md) and
+[ADR-143](143-separate-product-repositories-after-platform-contracts-stabilize.md)
+define package extraction before Desktop/Mobile repository moves. This record
+continues to describe the implemented layout; its repository-placement decision
+is superseded only for slices that pass PLAN-128's cutover gates.
+
 ## Date
 
 2026-08-28
