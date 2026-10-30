@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 
 import type { DesktopHostConfig } from './config.js';
 import type {
+  DesktopCliInventory,
   DesktopPackagingPlan,
   DesktopProviderSetupPlatform,
   DesktopProviderSetupPackId,
@@ -690,6 +691,44 @@ function readInterruptions(
 
 export function createEmptyDesktopSetupState(): DesktopSetupState {
   return createDefaultSetupState();
+}
+
+// Windows helpers whose relaunch or restart request is about the user PATH they changed.
+const PATH_REFRESH_HELPER = /^windows-(?:.+-native-installer|npm-prefix-helper|node-host-installer|cli-readiness-helper|github-cli-installer)$/u;
+const PATH_REFRESH_KINDS: ReadonlySet<string> = new Set(['relaunch_required', 'restart_required']);
+
+/**
+ * Windows copies PATH into a process when it starts, so a helper that changed the user
+ * PATH asks for a relaunch or a restart. cats-runtime re-reads PATH from the registry
+ * before every CLI scan, so a scan that lands after the action already sees what that
+ * relaunch would: the request is settled, and the notice and resume step it fed go.
+ * A native installer's request stands while that scan cannot find its CLI. Other
+ * helpers and other kinds, such as a reboot the VC++ runtime asks for, stay as they are.
+ */
+export function settleSetupPathRefresh(
+  state: DesktopSetupState,
+  inventory: DesktopCliInventory | null,
+): DesktopSetupState {
+  const action = state.lastAction;
+  if (!action || action.runState !== 'completed' || !action.completedAt) return state;
+  if (!PATH_REFRESH_HELPER.test(action.helperId)) return state;
+  if (inventory?.source !== 'runtime' || !inventory.scannedAt) return state;
+  if (Date.parse(inventory.scannedAt) <= Date.parse(action.completedAt)) return state;
+  if (action.helperId.endsWith('-native-installer') && !inventory.installed.includes(action.helperId)) return state;
+  const interruptions = action.interruptions.filter((entry) => !PATH_REFRESH_KINDS.has(entry.kind));
+  if (interruptions.length === action.interruptions.length && !action.restartRequired) return state;
+  return {
+    ...state,
+    lastAction: {
+      ...action,
+      interruptions,
+      restartRequired: false,
+      // As the helpers report it: the first remaining interruption, or ready.
+      status: action.status !== null && PATH_REFRESH_KINDS.has(action.status)
+        ? interruptions[0]?.kind ?? 'ready'
+        : action.status,
+    },
+  };
 }
 
 export async function buildDesktopSetupSnapshot(
