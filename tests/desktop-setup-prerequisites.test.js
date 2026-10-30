@@ -6,14 +6,17 @@ const ready = { runState: 'completed', status: 'ready', summary: 'Ready', warnin
 
 test('prerequisite observations are retained independently and passive reads do not run helpers', async () => {
   const checks = new DesktopPrerequisiteChecks('windows');
-  assert.equal(checks.read().length, 3);
+  assert.deepEqual(checks.read().map((entry) => entry.helperId), ['windows-node-host-installer',
+    'windows-npm-prefix-helper', 'windows-github-cli-installer', 'windows-git-installer']);
   assert.ok(checks.read().every((entry) => !entry.checking && entry.result === null));
   await checks.run('windows-node-host-installer', async () => ready);
   await checks.run('windows-github-cli-installer', async () => ({ ...ready, status: 'not_installed' }));
+  await checks.run('windows-git-installer', async () => ({ ...ready, status: 'changes_required', plannedActions: ['install_git'] }));
   await checks.run('windows-codex-native-installer', async () => ({ ...ready, status: 'failed' }));
   assert.equal(checks.read()[0].result.status, 'ready');
   assert.equal(checks.read()[1].result, null);
   assert.equal(checks.read()[2].result.status, 'not_installed');
+  assert.deepEqual(checks.read()[3].result.plannedActions, ['install_git']);
 });
 
 test('a slow background check cannot overwrite a newer explicit prerequisite installation', async () => {

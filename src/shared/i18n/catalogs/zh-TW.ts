@@ -713,6 +713,7 @@ export const zhTWCatalog: MessageCatalog = {
     'Windows Microsoft Visual C++ 2015-2022 可轉散發套件 (x64)',
   'settings.runtime.helperLabel.nodeHostInstaller': '{platform} Node.js LTS 主機安裝器',
   'settings.runtime.helperLabel.githubCliHostInstaller': '{platform} GitHub CLI 主機安裝器',
+  'settings.runtime.helperLabel.gitHostInstaller': '{platform} Git 主機安裝器',
   'settings.runtime.helperLabel.npmPrefixHelper':
     '{platform} npm prefix 與 PATH 先決條件輔助工具',
   'settings.runtime.helperLabel.setupReadinessAudit': '{platform} 設定就緒稽核',

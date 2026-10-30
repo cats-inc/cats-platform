@@ -70,7 +70,7 @@ test('onboarding keeps the original compact cards and grouping without a provide
 test('Node/npm preparation is actionable on an empty fresh machine and never saves or scans providers', async (t) => {
   const f = fixture(t, 'onboarding', true); await flush();
   const missing = { runState: 'completed', status: 'not_installed', summary: 'Node missing', warnings: [], manualSteps: [], plannedActions: [] };
-  f.snapshot.prerequisites = ['node-host-installer', 'npm-prefix-helper', 'github-cli-installer'].map((suffix) => ({
+  f.snapshot.prerequisites = ['node-host-installer', 'npm-prefix-helper', 'github-cli-installer', 'git-installer'].map((suffix) => ({
     helperId: `windows-${suffix}`, checking: false, result: suffix === 'node-host-installer' ? missing : null,
   }));
   f.snapshot.helpers.push(...f.snapshot.prerequisites.map((entry) => ({ id: entry.helperId, available: true, supported: true, supportsApply: true })));
@@ -92,6 +92,48 @@ test('Node/npm preparation is actionable on an empty fresh machine and never sav
   assert.match(f.root.querySelector('[data-prerequisite=node] .pm-status').textContent, /Installed/);
   assert.deepEqual(f.calls, []);
   assert.equal(f.button('continue').disabled, true);
+});
+
+const prerequisiteButton = (f, label) => [...f.root.querySelectorAll('[data-prerequisite] button')]
+  .find((entry) => entry.textContent === label);
+
+test('Git is set up from the prerequisite card and its manual steps stay visible once ready', async (t) => {
+  const f = fixture(t); await flush();
+  const identity = 'Set your commit identity: git config --global user.name "Your Name" and git config --global user.email "you@example.com".';
+  f.snapshot.prerequisites = [{ helperId: 'windows-git-installer', checking: false, result: { runState: 'completed',
+    status: 'changes_required', summary: 'Git missing', warnings: [], manualSteps: [], plannedActions: ['install_git'] } }];
+  f.snapshot.helpers.push({ id: 'windows-git-installer', available: true, supported: true, supportsApply: true });
+  const helpers = [];
+  f.bridge.runSetupHelper = async (id, mode) => {
+    helpers.push([id, mode]);
+    const result = { runState: 'completed', status: 'ready', summary: 'Checked', warnings: [], plannedActions: [],
+      manualSteps: mode === 'check' ? [identity] : [] };
+    f.snapshot.prerequisites[0].result = result;
+    return { state: { lastAction: result } };
+  };
+  await f.view.refresh();
+  assert.match(f.root.querySelector('[data-details=prerequisites]').textContent, /Git: Needs setup/);
+  prerequisiteButton(f, 'Set up Git').click(); await flush(); await flush();
+  assert.deepEqual(helpers, [['windows-git-installer', 'apply'], ['windows-git-installer', 'check']]);
+  const details = f.root.querySelector('[data-details=prerequisites]');
+  assert.match(details.textContent, /Git: Ready/);
+  assert.ok([...details.querySelectorAll('li')].some((entry) => entry.textContent === identity));
+  assert.equal(prerequisiteButton(f, 'Set up Git'), undefined);
+  assert.deepEqual(f.calls, []);
+});
+
+test('Linux Git shows its install command instead of a setup button it cannot run', async (t) => {
+  const f = fixture(t); await flush();
+  f.snapshot.platform = 'linux';
+  f.snapshot.prerequisites = [{ helperId: 'linux-git-installer', checking: false, result: { runState: 'completed',
+    status: 'changes_required', summary: 'Git missing', warnings: [], plannedActions: ['install_git'],
+    manualSteps: ['Install Git in a terminal with: sudo apt-get install git'] } }];
+  f.snapshot.helpers.push({ id: 'linux-git-installer', available: true, supported: true, supportsApply: false });
+  f.bridge.runSetupHelper = async () => assert.fail('No helper runs without a click');
+  await f.view.refresh();
+  assert.match(f.root.querySelector('[data-details=prerequisites]').textContent, /sudo apt-get install git/);
+  assert.equal(prerequisiteButton(f, 'Set up Git'), undefined);
+  assert.equal(prerequisiteButton(f, 'Check Git').disabled, false);
 });
 
 test('technical observations and maintenance stay under closed details in Settings', async (t) => {

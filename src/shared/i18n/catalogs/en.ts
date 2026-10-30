@@ -724,6 +724,7 @@ export const enCatalog: MessageCatalog = {
     'Windows Microsoft Visual C++ 2015-2022 Redistributable (x64)',
   'settings.runtime.helperLabel.nodeHostInstaller': '{platform} Node.js LTS host installer',
   'settings.runtime.helperLabel.githubCliHostInstaller': '{platform} GitHub CLI host installer',
+  'settings.runtime.helperLabel.gitHostInstaller': '{platform} Git host installer',
   'settings.runtime.helperLabel.npmPrefixHelper':
     '{platform} npm prefix and PATH prerequisite helper',
   'settings.runtime.helperLabel.setupReadinessAudit': '{platform} setup readiness audit',

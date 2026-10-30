@@ -200,6 +200,7 @@ async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Node.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-VcRedist.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-GitHubCli.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Git.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-CliReadiness.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');
@@ -230,6 +231,7 @@ async function seedUnixSetupAssets(packageRoot, platform) {
   await seedFile(join(packageRoot, 'scripts', platform, 'node-cli-common.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-node.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-github-cli.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-git.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'setup-node-global-prefix.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-claude-code.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-cursor-agent.sh'), '#!/usr/bin/env bash\n');
@@ -492,6 +494,40 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
     true,
   );
   assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-git-installer'
+        && helper.assetId === 'windows-git-installer-script'
+        && helper.kind === 'prerequisite_helper'
+        && helper.requiresElevation === true
+        && helper.supportsApply === true
+        && helper.supportsUninstall === false,
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'macos-git-installer'
+        && helper.kind === 'prerequisite_helper'
+        && helper.requiresElevation === false
+        && helper.supportsApply === true
+        && helper.supportsUninstall === false,
+    ),
+    true,
+  );
+  // Linux names the package-manager command instead of running sudo.
+  assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'linux-git-installer'
+        && helper.kind === 'prerequisite_helper'
+        && helper.supportsCheckOnly === true
+        && helper.supportsApply === false
+        && helper.supportsUpgrade === false
+        && helper.supportsForce === false
+        && helper.supportsUninstall === false,
+    ),
+    true,
+  );
+  assert.equal(
     plan.installer.providerSetup.prioritizedAssets.some(
       (asset) => asset.id === 'windows-opencode-native-installer' && asset.status === 'ported',
     ),
@@ -563,6 +599,12 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   assert.equal(
     windowsTarget?.artifacts.some(
       (artifact) => artifact.id === 'windows-github-cli-installer-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    windowsTarget?.artifacts.some(
+      (artifact) => artifact.id === 'windows-git-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -944,6 +986,8 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /cats-runtime\\node_modules\\playwright-core\\package\.json/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Node\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-GitHubCli\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-Git\.ps1/);
+  assert.match(script, /windows-git-installer-script/);
   assert.match(script, /desktop\\setup-assets\\windows\\Setup-NodeGlobalPrefix\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\_NpmCliInstaller\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Codex\.ps1/);
@@ -993,6 +1037,7 @@ test('macOS and Linux unpacked smoke-check scripts validate bundled sidecars and
   assert.match(linuxScript, /desktop\/setup-assets\/linux\/setup-node-global-prefix\.sh/);
   assert.match(linuxScript, /desktop\/setup-assets\/linux\/provider-cli-common\.sh/);
   assert.match(linuxScript, /desktop\/setup-assets\/linux\/install-grok\.sh/);
+  assert.match(linuxScript, /desktop\/setup-assets\/linux\/install-git\.sh/);
   assert.match(linuxScript, /--check --json/);
   assert.match(linuxScript, /--force --dry-run --json/);
   assert.match(linuxScript, /linux-opencode-native-installer-script/);
@@ -1001,6 +1046,7 @@ test('macOS and Linux unpacked smoke-check scripts validate bundled sidecars and
   assert.match(macosScript, /desktop\/setup-assets\/macos\/setup-node-global-prefix\.sh/);
   assert.match(macosScript, /desktop\/setup-assets\/macos\/node-cli-common\.sh/);
   assert.match(macosScript, /desktop\/setup-assets\/macos\/install-grok\.sh/);
+  assert.match(macosScript, /desktop\/setup-assets\/macos\/install-git\.sh/);
   assert.match(macosScript, /--check --json/);
   assert.match(macosScript, /--force --dry-run --json/);
   assert.match(macosScript, /macos-opencode-native-installer-script/);
@@ -1464,6 +1510,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Node.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-GitHubCli.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Git.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Setup-NodeGlobalPrefix.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', '_NpmCliInstaller.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Codex.ps1'));
@@ -1484,6 +1531,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', '_HiddenProcess.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-node.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-github-cli.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-git.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'setup-node-global-prefix.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-codex.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-antigravity.sh'));

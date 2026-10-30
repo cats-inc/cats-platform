@@ -247,7 +247,7 @@ export function mountProviderManager(root, bridge, options = {}) {
       async function prepare(name) {
         const applied = await execute(name, 'apply');
         const verified = await execute(name, 'check');
-        if (verified.status !== 'ready') throw new Error([verified.summary, ...(applied.manualSteps || []), ...(verified.manualSteps || [])].join(' '));
+        if (verified.status !== 'ready') throw new Error([verified.summary, ...new Set([...(applied.manualSteps || []), ...(verified.manualSteps || [])])].join(' '));
         return verified;
       }
       const result = mode === 'apply' ? await prepare(suffix) : await execute(suffix, mode);
@@ -265,6 +265,7 @@ export function mountProviderManager(root, bridge, options = {}) {
     const node = prerequisite('node-host-installer');
     const npm = prerequisite('npm-prefix-helper');
     const github = prerequisite('github-cli-installer');
+    const git = prerequisite('git-installer');
     const nodeReady = node?.result?.status === 'ready' && node.result.runState !== 'failed';
     const prefixReady = npm?.result?.status === 'ready' && npm.result.runState !== 'failed';
     const checking = node?.checking || npm?.checking;
@@ -286,11 +287,14 @@ export function mountProviderManager(root, bridge, options = {}) {
     const more = el('details', { class: 'pm-more', 'data-details': 'prerequisites' },
       el('summary', {}, text('Details', '詳細資訊')),
       el('small', {}, text('Needed by the tools in this group. Cats checks your computer; nothing is installed automatically.', '這一類工具需要 Node.js／npm。Cats 會先檢查，不會自動安裝。')));
-    for (const [entry, label] of [[node, 'Node.js / npm'], [npm, text('Tool installation location', '工具安裝位置')], [github, 'GitHub CLI']]) {
+    for (const [entry, label] of [[node, 'Node.js / npm'], [npm, text('Tool installation location', '工具安裝位置')], [github, 'GitHub CLI'], [git, 'Git']]) {
       if (!entry) continue;
       more.append(el('small', {}, `${label}: ${entry.checking ? text('Checking…', '偵測中…') : entry.result?.status === 'ready'
         ? text('Ready', '已就緒') : entry.result?.runState === 'failed' ? text('Check failed', '偵測失敗') : entry.result ? text('Needs setup', '尚待設定') : text('Not checked', '尚未偵測')}`));
       if (entry.result && entry.result.status !== 'ready') more.append(el('small', {}, entry.result.summary));
+      // Steps a helper leaves to the user, such as a sudo install or a commit identity.
+      const steps = entry.result?.manualSteps || [];
+      if (steps.length) more.append(el('ul', {}, steps.map((value) => el('li', {}, value))));
     }
     if (github && !github.checking && github.result?.status !== 'ready') {
       more.append(button(text('Set up GitHub CLI', '安裝 GitHub CLI'), () => runPrerequisite('github-cli-installer', 'apply'),
@@ -298,6 +302,13 @@ export function mountProviderManager(root, bridge, options = {}) {
     }
     more.append(button(text('Check GitHub CLI', '偵測 GitHub CLI'), () => runPrerequisite('github-cli-installer', 'check'),
       unavailable || github?.checking || !prerequisiteHelper('github-cli-installer')));
+    // Linux checks Git only; its manual step above replaces the setup button.
+    const gitHelper = prerequisiteHelper('git-installer');
+    if (git && !git.checking && git.result?.status !== 'ready' && gitHelper?.supportsApply) {
+      more.append(button(text('Set up Git', '安裝 Git'), () => runPrerequisite('git-installer', 'apply'), unavailable));
+    }
+    more.append(button(text('Check Git', '偵測 Git'), () => runPrerequisite('git-installer', 'check'),
+      unavailable || git?.checking || !gitHelper));
     return el('div', { class: context === 'onboarding' ? 'pm-card cli-card pm-prerequisite' : 'pm-row pm-prerequisite', 'data-prerequisite': 'node' },
       el('div', { class: 'pm-detail' }, el('strong', { class: 'pm-name' }, 'Node.js / npm'),
         el('div', { class: `pm-status ${nodeReady && prefixReady ? 'pm-ok' : ''}` }, checking ? spinner() : null, status)), controls, more);

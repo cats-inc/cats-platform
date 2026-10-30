@@ -1,11 +1,11 @@
 import type { ProviderSelection } from './providerSelection.js';
 
 export const DESKTOP_PREREQUISITE_SUFFIXES = [
-  'node-host-installer', 'npm-prefix-helper', 'github-cli-installer',
+  'node-host-installer', 'npm-prefix-helper', 'github-cli-installer', 'git-installer',
 ] as const;
 
 export function isDesktopPrerequisiteHelper(helperId: string): boolean {
-  return /^(windows|macos|linux)-(node-host-installer|npm-prefix-helper|github-cli-installer)$/u.test(helperId);
+  return /^(windows|macos|linux)-(node-host-installer|npm-prefix-helper|github-cli-installer|git-installer)$/u.test(helperId);
 }
 
 export interface DesktopSetupAuditAction { helperId: string }

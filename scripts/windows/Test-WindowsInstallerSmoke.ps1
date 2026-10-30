@@ -195,6 +195,7 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\_VerifiedNpmUpdate.ps1'); Label = 'bundled verified npm update support' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Node.ps1'); Label = 'bundled Windows Node.js LTS host installer' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-GitHubCli.ps1'); Label = 'bundled Windows GitHub CLI host installer' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Git.ps1'); Label = 'bundled Windows Git host installer' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Setup-NodeGlobalPrefix.ps1'); Label = 'bundled Windows npm prefix helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\_NpmCliInstaller.ps1'); Label = 'bundled Windows shared npm CLI installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Codex.ps1'); Label = 'bundled Windows native OpenAI Codex installer helper' },
@@ -254,6 +255,7 @@ Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'runtime-skill
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'runtime-dependencies' -or $_.id -eq 'runtime-external-dependencies' }).Count -ge 1) 'Windows target includes the bundled cats-runtime dependency artifact'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-node-host-installer-script' }).Count -ge 1) 'Windows target includes the bundled Node.js LTS host installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-github-cli-installer-script' }).Count -ge 1) 'Windows target includes the bundled GitHub CLI host installer asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-git-installer-script' }).Count -ge 1) 'Windows target includes the bundled Git host installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-npm-prefix-helper-script' }).Count -ge 1) 'Windows target includes the bundled npm prefix setup asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-codex-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native OpenAI Codex installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-antigravity-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Antigravity installer asset'
