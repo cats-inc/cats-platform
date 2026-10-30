@@ -219,6 +219,10 @@ host-operations depth around that first slice:
   Codex, Claude Code, Antigravity, Grok and Muse helpers on a clean Windows 11
   VM without winget, Git for Windows, the VC++ runtime or PowerShell 7 (its
   PLAN-010 Phase 3).
+- The VC++ runtime step is offered only for native CLIs that link against it
+  (Kiro CLI, Goose, Cursor's crepectl). The VC++-free set is Codex, Claude Code,
+  Grok, Antigravity, Muse, Devin and Junie, checked by their DLL imports; a
+  provider not checked yet keeps the step.
 
 ## Design Overview
 

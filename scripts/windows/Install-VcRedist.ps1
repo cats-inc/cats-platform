@@ -3,9 +3,11 @@
     Install or update the Microsoft Visual C++ 2015-2022 Redistributable (x64).
 
 .DESCRIPTION
-    Rust binaries built with the MSVC toolchain (codex, native Claude/Cursor/
-    Kiro/Goose backends, future Rust-based CLIs) link against the modern VC++
-    runtime, including vcruntime140_1.dll which Microsoft only began shipping
+    Native CLIs built with the MSVC toolchain and a dynamic CRT (Kiro CLI,
+    Goose, Cursor's crepectl) link against the modern VC++ runtime. Codex,
+    Claude Code, Grok, Antigravity, Muse, Devin and Junie do not, as of
+    2026-10-31, so Desktop offers this step only for the others. The runtime
+    includes vcruntime140_1.dll, which Microsoft only began shipping
     with Visual Studio 2019 16.7. Older Windows machines that have an older
     redist (vcruntime140.dll + msvcp140.dll, but no _1) launch those binaries
     successfully but exit with 0xC0000135 (STATUS_DLL_NOT_FOUND) before any

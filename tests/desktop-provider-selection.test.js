@@ -121,3 +121,16 @@ test('host restart waits for active helpers and receipt release while rejecting 
   } finally { finish(); pause.resume(); }
   await withSelectedSetupTargets({ ...options, run: async () => 'after recovery' });
 });
+
+// Cats Bot PLAN-010 Phase 3: these native CLIs started on a clean Windows 11 with no VC++
+// redistributable and import none of its DLLs; Kiro CLI, Goose and Cursor's crepectl do.
+test('the VC++ runtime step is offered only for native CLIs that need it', () => {
+  assert.throws(
+    () => targetsForSetupHelper('windows-vcredist-installer', selection(['codex', 'claude', 'grok', 'antigravity', 'junie'])),
+    /outside/,
+  );
+  assert.deepEqual(
+    targetsForSetupHelper('windows-vcredist-installer', selection(['claude', 'kiro', 'goose', 'cursor'])),
+    ['kiro', 'goose', 'cursor'].map(nativeSetupTarget),
+  );
+});
