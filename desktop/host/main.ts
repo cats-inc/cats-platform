@@ -106,6 +106,7 @@ import {
   buildDesktopSetupSnapshot,
   createEmptyDesktopSetupState,
   runDesktopSetupHelper,
+  settleSetupPathRefresh,
   shouldAutoRunSetupAudit,
 } from './setupBridge.js';
 import {
@@ -383,6 +384,8 @@ function rememberRuntimeCliInventoryProbe(probe: RuntimeCliInventoryProbe | null
   if (probe.selection?.state !== 'selected' || (probe.scan && !isRuntimeCliInventoryScanActive(probe))) {
     runtimeCliInventoryScanPending = false;
     clearCliInventoryError();
+    // A finished scan re-read the user PATH, which settles a helper's relaunch request.
+    if (setupState) setupState = settleSetupPathRefresh(setupState, buildDesktopCliInventoryFromRuntime(probe));
     return true;
   }
   if (isRuntimeCliInventoryScanActive(probe)) {
