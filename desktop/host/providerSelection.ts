@@ -30,6 +30,12 @@ export const NPM_PROVIDERS = new Set([
   'codex', 'copilot', 'opencode', 'kilo', 'auggie', 'pi', 'cline',
 ]);
 
+// Native CLIs that ship without a VC++ runtime dependency: each started on a clean
+// Windows 11 with no redistributable, and none imports vcruntime140 or msvcp140
+// (Cats Bot PLAN-010 Phase 3, 2026-10-31). Cursor's crepectl, Kiro CLI and Goose
+// import it; providers not checked keep the step.
+const VC_RUNTIME_FREE_PROVIDERS = new Set(['codex', 'claude', 'grok', 'antigravity', 'muse', 'devin', 'junie']);
+
 export function nativeSetupTarget(provider: string): SelectedProviderTarget {
   if (provider === 'ollama') return { provider, backend: 'local', instance: 'local' };
   if (provider === 'devin') return { provider, backend: 'agent', instance: 'acp' };
@@ -50,7 +56,8 @@ export function targetsForSetupHelper(helperId: string, selection: ProviderSelec
     targets = (selection.nativeSetupTargets ?? []).filter((target) => target.provider === 'copilot'
       && target.backend === 'cli' && target.instance === 'native');
   } else if (helperId === 'windows-vcredist-installer') {
-    targets = (selection.nativeSetupTargets ?? []).filter((target) => target.backend === 'cli' && target.instance === 'native');
+    targets = (selection.nativeSetupTargets ?? []).filter((target) => target.backend === 'cli'
+      && target.instance === 'native' && !VC_RUNTIME_FREE_PROVIDERS.has(target.provider));
   } else {
     throw new Error('This helper has no selected-provider scope. Use individual provider helpers.');
   }
