@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile as execFileCallback } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -115,4 +116,14 @@ test('Install-ClaudeCode retains recovery guidance without claiming a skipped re
   assert.equal(result.interruptions.some((entry) => entry.kind === 'relaunch_required'), true);
   assert.equal(result.interruptions.some((entry) => entry.kind === 'auth_required'), true);
   assert.equal(result.manualSteps.some((step) => step.includes('ANTHROPIC_API_KEY')), true);
+});
+
+// Writing the user PATH touches the real registry, so only the wiring is checked here.
+test('Install-ClaudeCode puts the native install folder on the user PATH, never under -SkipInstaller', async () => {
+  const script = await readFile(helperPath, 'utf8');
+  assert.match(script, /function Add-ClaudeToUserPath \{[\s\S]*?SetEnvironmentVariable\('Path', "\$installDir;\$userPath", 'User'\)/u);
+  assert.match(
+    script,
+    /if \(\$detected\.installed -and -not \$SkipInstaller -and \(Test-Path -LiteralPath \(Resolve-ClaudeExecutablePath\)\)\) \{\s*Add-ClaudeToUserPath\s*\}/u,
+  );
 });
