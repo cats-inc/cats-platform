@@ -221,7 +221,7 @@ function Invoke-GooseInstaller {
     # captured stderr — instead of dying silently and producing no JSON for
     # the bridge to surface.
     $installScript = Invoke-RestMethod 'https://raw.githubusercontent.com/block/goose/main/download_cli.ps1'
-    [System.IO.File]::WriteAllText($tempScript, [string]$installScript, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($tempScript, (Add-CatsScriptPrologue -ScriptText ([string]$installScript) -Prologue $CatsTls12Prologue), [System.Text.UTF8Encoding]::new($false))
 
     $env:CONFIGURE = 'false'
     $process = Start-Process -FilePath 'powershell.exe' `
