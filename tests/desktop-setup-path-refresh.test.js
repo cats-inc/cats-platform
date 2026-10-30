@@ -66,6 +66,16 @@ test('a scan after the npm folder settles its restart request', () => {
   assert.equal(settled.lastAction.restartRequired, false);
 });
 
+// Git for Windows extends the machine PATH, which the scan re-reads as well.
+test('a scan after the Git install settles its relaunch request', () => {
+  const state = stateAfter('windows-git-installer', 'ready', ['relaunch_required']);
+  assert.equal(settleSetupPathRefresh(state, inventory('2026-10-31T00:59:00.000Z')), state);
+  const settled = settleSetupPathRefresh(state, inventory(LATER));
+  assert.deepEqual(settled.lastAction.interruptions, []);
+  assert.equal(settled.lastAction.status, 'ready');
+  assert.equal(settled.lastAction.restartRequired, false);
+});
+
 test('the request stands until a scan after the action finds what it needs', () => {
   const native = stateAfter('windows-grok-native-installer', 'relaunch_required', ['relaunch_required']);
   // No scan yet, a scan from before the action, or one that does not find the CLI.
@@ -81,7 +91,7 @@ test('the request stands until a scan after the action finds what it needs', () 
 
 test('other helpers, other systems and other kinds keep their requests', () => {
   // The VC++ runtime can need a real reboot; a macOS helper's PATH is not re-read by the scan.
-  for (const helperId of ['windows-vcredist-installer', 'macos-claude-native-installer', 'windows-ollama-local-model-installer']) {
+  for (const helperId of ['windows-vcredist-installer', 'macos-claude-native-installer', 'macos-git-installer', 'windows-ollama-local-model-installer']) {
     const state = stateAfter(helperId, 'restart_required', ['restart_required'], { restartRequired: true });
     assert.equal(settleSetupPathRefresh(state, inventory(LATER, [helperId])), state, helperId);
   }

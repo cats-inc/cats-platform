@@ -694,8 +694,8 @@ export function createEmptyDesktopSetupState(): DesktopSetupState {
   return createDefaultSetupState();
 }
 
-// Windows helpers whose relaunch or restart request is about the user PATH they changed.
-const PATH_REFRESH_HELPER = /^windows-(?:.+-native-installer|npm-prefix-helper|node-host-installer|cli-readiness-helper|github-cli-installer)$/u;
+// Windows helpers whose relaunch or restart request is about the user or machine PATH they changed.
+const PATH_REFRESH_HELPER = /^windows-(?:.+-native-installer|npm-prefix-helper|node-host-installer|cli-readiness-helper|github-cli-installer|git-installer)$/u;
 const PATH_REFRESH_KINDS: ReadonlySet<string> = new Set(['relaunch_required', 'restart_required']);
 
 /**

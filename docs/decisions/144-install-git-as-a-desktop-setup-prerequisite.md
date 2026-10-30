@@ -88,9 +88,12 @@ non-interactive process.
 
 ### Negative
 
-- Runtime remembers that git was unavailable until it restarts. A newly installed Git
-  reaches Code only after Cats relaunches, which is why the Windows and macOS installs
-  report `relaunch_required`.
+- Runtime remembers that git was unavailable until it restarts. The Windows and macOS
+  installs report `relaunch_required`. On Windows, Desktop settles that notice once
+  Runtime has rescanned with the new PATH, as it does for GitHub CLI. That is right
+  when Code had not yet asked for git. If it had, Code's git features still wait for a
+  relaunch after the notice is gone; Runtime caching only a successful answer would
+  close the gap.
 - Desktop's managed-service PATH keeps the inherited PATH first, so on a
   Finder-launched Mac Runtime finds `/usr/bin/git` before Homebrew's. Homebrew's own
   installer brings the Command Line Tools, whose git already passes the check. The
