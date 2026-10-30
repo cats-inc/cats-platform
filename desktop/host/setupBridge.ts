@@ -694,8 +694,10 @@ export function createEmptyDesktopSetupState(): DesktopSetupState {
   return createDefaultSetupState();
 }
 
-// Windows helpers whose relaunch or restart request is about the user or machine PATH they changed.
-const PATH_REFRESH_HELPER = /^windows-(?:.+-native-installer|npm-prefix-helper|node-host-installer|cli-readiness-helper|github-cli-installer|git-installer)$/u;
+// Windows helpers whose relaunch or restart request is about the user PATH they changed.
+// Git is not one: cats-runtime remembers a missing git for its whole life
+// (RuntimeDeliveryService isGitAvailable), so Code needs the relaunch it asks for.
+const PATH_REFRESH_HELPER = /^windows-(?:.+-native-installer|npm-prefix-helper|node-host-installer|cli-readiness-helper|github-cli-installer)$/u;
 const PATH_REFRESH_KINDS: ReadonlySet<string> = new Set(['relaunch_required', 'restart_required']);
 
 /**

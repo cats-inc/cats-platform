@@ -66,14 +66,11 @@ test('a scan after the npm folder settles its restart request', () => {
   assert.equal(settled.lastAction.restartRequired, false);
 });
 
-// Git for Windows extends the machine PATH, which the scan re-reads as well.
-test('a scan after the Git install settles its relaunch request', () => {
+// cats-runtime caches a missing git for its whole life, so a rescan does not bring
+// Code's git features back: the Git installer's relaunch request stands.
+test('a scan after the Git install leaves its relaunch request in place', () => {
   const state = stateAfter('windows-git-installer', 'ready', ['relaunch_required']);
-  assert.equal(settleSetupPathRefresh(state, inventory('2026-10-31T00:59:00.000Z')), state);
-  const settled = settleSetupPathRefresh(state, inventory(LATER));
-  assert.deepEqual(settled.lastAction.interruptions, []);
-  assert.equal(settled.lastAction.status, 'ready');
-  assert.equal(settled.lastAction.restartRequired, false);
+  assert.equal(settleSetupPathRefresh(state, inventory(LATER)), state);
 });
 
 test('the request stands until a scan after the action finds what it needs', () => {

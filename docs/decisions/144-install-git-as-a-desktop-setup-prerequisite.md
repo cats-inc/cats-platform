@@ -77,6 +77,12 @@ non-interactive process.
   runs the named command and checks again.
 - **D3. Identity is a manual step only.** There is no form, no default value and no
   status change.
+- **D4. Git is checked before GitHub CLI.** The startup audit runs the prerequisites
+  in turn, and the last result leads the bootstrap's recommended next step. With Git
+  last, a missing Git or commit identity would lead it for every Desktop user,
+  including those who never use Code. Git's status, its manual steps and its setup
+  button stay in the prerequisite card's details, and a Git check the user runs
+  there still leads.
 
 ## Consequences
 
@@ -88,12 +94,12 @@ non-interactive process.
 
 ### Negative
 
-- Runtime remembers that git was unavailable until it restarts. The Windows and macOS
-  installs report `relaunch_required`. On Windows, Desktop settles that notice once
-  Runtime has rescanned with the new PATH, as it does for GitHub CLI. That is right
-  when Code had not yet asked for git. If it had, Code's git features still wait for a
-  relaunch after the notice is gone; Runtime caching only a successful answer would
-  close the gap.
+- Runtime remembers that git was unavailable until it restarts
+  (`RuntimeDeliveryService` `isGitAvailable`). So the `relaunch_required` that the
+  Windows and macOS installs report stands. Unlike the PATH-only requests of other
+  Windows helpers, a rescan does not settle it, and Code gets git back after a
+  relaunch. Runtime caching only a successful answer would let it be settled like
+  the others; that is a cats-runtime follow-up.
 - Desktop's managed-service PATH keeps the inherited PATH first, so on a
   Finder-launched Mac Runtime finds `/usr/bin/git` before Homebrew's. Homebrew's own
   installer brings the Command Line Tools, whose git already passes the check. The

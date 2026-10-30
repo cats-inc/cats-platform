@@ -1,7 +1,9 @@
 import type { ProviderSelection } from './providerSelection.js';
 
+// Order matters: the startup audit runs these in turn and the last result leads the
+// bootstrap's recommended next step. Git, which only Code needs, is not that one.
 export const DESKTOP_PREREQUISITE_SUFFIXES = [
-  'node-host-installer', 'npm-prefix-helper', 'github-cli-installer', 'git-installer',
+  'node-host-installer', 'npm-prefix-helper', 'git-installer', 'github-cli-installer',
 ] as const;
 
 export function isDesktopPrerequisiteHelper(helperId: string): boolean {
