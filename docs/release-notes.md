@@ -2,6 +2,78 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-30 — Platform npm and Desktop 0.12.3 standard preview: shared conversation components and a link-safe uninstaller
+
+Selected distribution: Desktop **0.12.3 standard-profile preview** and Platform
+npm **0.12.3** with explicit `latest`, from one merged bump commit. App SDK
+**1.9.0**, bundled **Usage 0.5.4**. Runtime npm 0.6.2 and launcher cats-one 0.6.0
+are separate releases; optional Marketplace Apps keep their existing releases.
+
+- **Conversations share their components with Cats Bot.** Desktop's message
+  bubbles, Markdown, actions and ordered text, tool and status segments come from
+  one packed package, `@cats-inc/platform-ui-web` 0.1.0, which Cats Bot vendors
+  too. Grouping inside a message survives streaming, completion, cancellation and
+  reopening. Execution and approval authority are unchanged (#351).
+- **The Windows uninstaller no longer follows links.** With "Remove all user
+  data" checked, it used to enter junctions and directory symlinks under `~/.cats`
+  and `%APPDATA%\Cats` and empty their targets, such as a junctioned
+  `node_modules` in an agent workspace. Removal now deletes a link without
+  entering it, and lists any folder it could not remove (#353).
+  - A real uninstall also removes the Start at login entry that points at this
+    installation. Installing over a copy keeps it.
+  - The box now also deletes the update cache `%LOCALAPPDATA%\cats-updater`.
+  - A per-machine install keeps the data and the login entry, as before.
+- **Platform npm moves from 0.9.3 to 0.12.3.** npm consumers, including the
+  launcher, receive everything in the Desktop 0.9.4 to 0.12.2 entries below. That
+  includes three minor boundaries:
+  - 0.10: ingress schema-3 credentials with a validated, protected-backup
+    migration. Headless protected migration requires the native broker.
+  - 0.11: the image service's operating-hours fields are removed.
+  - 0.12: the Core snapshot moves to format 6 with a one-time backed-up upgrade;
+    0.11.x and earlier refuse format 6.
+
+  Back up the Platform profile before the first 0.12.3 start. The migrations run
+  in Platform; the launcher implements none.
+- **Compatibility and recovery.** For Desktop this is a compatible 0.12 patch:
+  Core stays format 6, and preferences and the public App SDK are unchanged.
+  There is no new data migration. Returning to 0.12.2 needs no conversion, but it
+  brings back the link-following uninstaller.
+- **Exact source and artifacts.**
+  - Runtime package **0.6.2**, built from
+    `38e5475a4ffcbe0d31880c4b28f41a6eadcfd56c` (Runtime #203). It adds only release
+    notes to `399e63571be8188fc685ba3925ff47f80a256f27`, which 0.12.2 bundled, and
+    npm 0.6.2 is published from it.
+  - Usage stays at
+    `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+    producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
+  - The complete-source manifest and every OS receipt record the selected merged
+    Platform bump commit and this exact Runtime SHA.
+- **Signing and updates.** Dispatch `desktop-release.yml` from the merged bump
+  commit with `tag=v0.12.3`, the Runtime SHA above and `unsigned=false`.
+  - Standard trust with the configured shared credentials: macOS **signed +
+    notarized**, Windows **unsigned: no certificate**, Linux **n/a**. Actual
+    trust comes from the workflow receipts.
+  - When output trust matches, standard-profile 0.12.2 Windows NSIS, signed macOS
+    and Linux DEB installations keep their update paths; portable builds use
+    manual replacement.
+- **npm.** Dispatch `npm-publish.yml` from the same commit with
+  `dist_tag=latest`. The workflow runs the full test gate and a fresh prepack
+  build before trusted publication.
+- **Validation boundary.**
+  - #351 passed the full hosted CI, 95 affected regressions, root package and
+    install contracts, isolated Desktop and Bot checks, and independent review.
+  - #353's NSIS tests pass, and its link-safe removal and login-entry macros ran
+    in throwaway NSIS builds against temporary folders and a test key. No full
+    Desktop package was built for it, and no interactive uninstall ran.
+  - Neither covers an installed 0.12.2-to-0.12.3 update, or an npm profile
+    upgrade from 0.9.3 or from the launcher's earlier 0.8.x line.
+  - The release workflow enforces packaged startup, offline App activation,
+    complete-source identity, signing, updater metadata and public-asset
+    provenance.
+  - Publication results: the `v0.12.3` GitHub prerelease and its Actions run, and
+    the npm registry entry and its `npm-publish.yml` run.
+
 ## 2026-10-29 — Desktop 0.12.2 standard preview: Codex tool and App consent
 
 Selected distribution: Desktop **0.12.2 standard-profile preview**, App SDK
