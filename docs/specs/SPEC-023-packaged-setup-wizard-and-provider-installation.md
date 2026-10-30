@@ -209,6 +209,13 @@ host-operations depth around that first slice:
   script interactions
 - the product must not require users to understand `environment-bootstrap`
   terminology, script names, or subproject boundaries
+- Windows helpers download over TLS 1.2 even where Windows PowerShell 5.1 still
+  defaults to TLS 1.0, and so do vendor installers run in a child process
+  (`_HiddenProcess.ps1`). A native CLI's folder is on the user PATH after its
+  install, so a new terminal can run its sign-in command. Cats Bot verified the
+  Codex, Claude Code, Antigravity, Grok and Muse helpers on a clean Windows 11
+  VM without winget, Git for Windows, the VC++ runtime or PowerShell 7 (its
+  PLAN-010 Phase 3).
 
 ## Design Overview
 
