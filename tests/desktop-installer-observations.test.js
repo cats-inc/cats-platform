@@ -129,3 +129,21 @@ function Get-Command {
   assert.equal(result.status, 'ready');
   assert.equal(result.commandPath, 'fixture-gh.exe');
 });
+
+test('Git check refreshes registry PATH after installation without restarting Desktop', windows, async () => {
+  const helper = literal(join(process.cwd(), 'scripts/windows/Install-Git.ps1'));
+  const { stdout } = await run(`
+$env:Path = 'stale-desktop-environment'
+function Get-Command {
+ param($Name)
+ if ($Name -eq 'git' -and $env:Path.Contains([Environment]::GetEnvironmentVariable('Path', 'Machine'))) {
+   return [pscustomobject]@{ Source = 'fixture-git.exe' }
+ }
+}
+function git { if ($args[0] -eq 'config') { 'Fixture' } }
+& ${helper} -CheckOnly -Json -DetectedVersion '2.47.1'`);
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'ready');
+  assert.equal(result.commandPath, 'fixture-git.exe');
+  assert.deepEqual(result.manualSteps, []);
+});

@@ -25,6 +25,7 @@ const linuxScripts = [
   'setup-node-global-prefix.sh',
   'install-node.sh',
   'install-github-cli.sh',
+  'install-git.sh',
   'install-codex.sh',
   'install-antigravity.sh',
   'install-grok.sh',
@@ -47,6 +48,7 @@ const macosScripts = [
   'setup-node-global-prefix.sh',
   'install-node.sh',
   'install-github-cli.sh',
+  'install-git.sh',
   'install-codex.sh',
   'install-antigravity.sh',
   'install-grok.sh',
@@ -113,6 +115,7 @@ test('Unix self-hosted provider helpers expose help text without mutating the ho
     await assertHelp(join(rootDir, 'scripts', platform, 'install-kiro-cli.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-grok.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-meta-cli.sh'));
+    await assertHelp(join(rootDir, 'scripts', platform, 'install-git.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'upgrade-cli-tools.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'check-installation.sh'));
   }

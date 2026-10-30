@@ -5,9 +5,9 @@
 .DESCRIPTION
     Composes the repo-owned packaged prerequisite helpers into one structured
     host-side readiness audit. The helper is read-only and reports whether the
-    Node.js host, the GitHub CLI host, and the npm prefix substrate are ready,
-    missing, or still require changes before deeper provider installation flows
-    can proceed. The optional local-model runtime is included on request.
+    Node.js host, the GitHub CLI host, Git, and the npm prefix substrate are
+    ready, missing, or still require changes before deeper provider installation
+    flows can proceed. The optional local-model runtime is included on request.
 
     Provider presence is deliberately NOT audited here. cats-runtime's setup
     scan already probes every provider CLI, reports a version and a probe-backed
@@ -35,7 +35,7 @@
     tracing.
 
 .PARAMETER SkipNodeCheck
-    Skip probing node/npm binaries for deterministic tests.
+    Skip probing node/npm, gh and git binaries for deterministic tests.
 
 .PARAMETER DesiredPrefix
     Override the desired npm prefix passed to the sibling prefix helper.
@@ -57,6 +57,9 @@
 
 .PARAMETER GitHubCliInstallState
     Override GitHub CLI host installation detection for deterministic tests.
+
+.PARAMETER GitInstallState
+    Override Git installation detection for deterministic tests.
 #>
 param(
   [switch]$Json,
@@ -70,6 +73,8 @@ param(
   [string]$NodeHostInstallState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$GitHubCliInstallState = 'auto',
+  [ValidateSet('auto', 'installed', 'missing')]
+  [string]$GitInstallState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$OllamaInstallState = 'auto',
   [ValidateSet('auto', 'reachable', 'unreachable')]
@@ -238,6 +243,7 @@ function Invoke-HelperJsonBatch {
 
 $nodeHostHelperPath = Join-Path $PSScriptRoot 'Install-Node.ps1'
 $githubCliHelperPath = Join-Path $PSScriptRoot 'Install-GitHubCli.ps1'
+$gitHelperPath = Join-Path $PSScriptRoot 'Install-Git.ps1'
 $prefixHelperPath = Join-Path $PSScriptRoot 'Setup-NodeGlobalPrefix.ps1'
 $ollamaHelperPath = Join-Path $PSScriptRoot 'Install-Ollama.ps1'
 
@@ -271,6 +277,14 @@ if ($GitHubCliInstallState -ne 'auto') {
   $githubCliArguments += @('-InstallState', $GitHubCliInstallState)
 }
 
+$gitArguments = @('-CheckOnly', '-Json')
+if ($SkipNodeCheck) {
+  $gitArguments += '-SkipGitProbe'
+}
+if ($GitInstallState -ne 'auto') {
+  $gitArguments += @('-InstallState', $GitInstallState)
+}
+
 $helperInvocations = [System.Collections.Generic.List[object]]::new()
 $helperInvocations.Add([pscustomobject]@{
     Key = 'nodeHost'
@@ -281,6 +295,11 @@ $helperInvocations.Add([pscustomobject]@{
     Key = 'githubCli'
     ScriptPath = $githubCliHelperPath
     Arguments = $githubCliArguments
+  })
+$helperInvocations.Add([pscustomobject]@{
+    Key = 'git'
+    ScriptPath = $gitHelperPath
+    Arguments = $gitArguments
   })
 $helperInvocations.Add([pscustomobject]@{
     Key = 'prefixHelper'
@@ -310,13 +329,14 @@ $helperResults = if ($parallelChecksEnabled) {
 }
 $nodeHostResult = $helperResults['nodeHost']
 $githubCliResult = $helperResults['githubCli']
+$gitResult = $helperResults['git']
 $prefixHelper = $helperResults['prefixHelper']
 $ollamaResult = if ($helperResults.ContainsKey('ollama')) { $helperResults['ollama'] } else { $null }
 
 $warnings = [System.Collections.Generic.List[string]]::new()
 $plannedActions = [System.Collections.Generic.List[string]]::new()
 $interruptions = [System.Collections.Generic.List[object]]::new()
-$statuses = @($nodeHostResult.status, $githubCliResult.status, $prefixHelper.status)
+$statuses = @($nodeHostResult.status, $githubCliResult.status, $gitResult.status, $prefixHelper.status)
 if ($null -ne $ollamaResult) {
   $statuses += $ollamaResult.status
 }
@@ -328,6 +348,10 @@ if ($nodeMissing) {
 
 if ($githubCliResult.status -ne 'ready') {
   $plannedActions.Add('install_github_cli')
+}
+
+if ($gitResult.status -ne 'ready') {
+  $plannedActions.Add('install_git')
 }
 
 if (-not $nodeMissing -and $prefixHelper.status -ne 'ready') {
@@ -344,6 +368,9 @@ foreach ($warning in $nodeHostResult.warnings) {
   $warnings.Add([string]$warning)
 }
 foreach ($warning in $githubCliResult.warnings) {
+  $warnings.Add([string]$warning)
+}
+foreach ($warning in $gitResult.warnings) {
   $warnings.Add([string]$warning)
 }
 foreach ($warning in $prefixHelper.warnings) {
@@ -381,6 +408,7 @@ function Add-InterruptionsFromResult {
 
 Add-InterruptionsFromResult -HelperResult $nodeHostResult
 Add-InterruptionsFromResult -HelperResult $githubCliResult
+Add-InterruptionsFromResult -HelperResult $gitResult
 Add-InterruptionsFromResult -HelperResult $ollamaResult
 
 function Test-InterruptionPresent {
@@ -420,6 +448,7 @@ $result = [pscustomobject]@{
   interruptions = $interruptions.ToArray()
   nodeHost = $nodeHostResult
   githubCli = $githubCliResult
+  git = $gitResult
   prefixHelper = $prefixHelper
   localModels = [pscustomobject]@{
     ollama = $ollamaResult

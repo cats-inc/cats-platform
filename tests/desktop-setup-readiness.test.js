@@ -41,6 +41,7 @@ test('Check-WindowsSetupReadiness reports ready when the prerequisite substrate 
     '-CurrentUserPath', `${desiredPrefix};C:\\Windows\\System32`,
     '-NodeHostInstallState', 'installed',
     '-GitHubCliInstallState', 'installed',
+    '-GitInstallState', 'installed',
   ]);
 
   assert.equal(result.helper, 'windows-setup-readiness-audit');
@@ -66,12 +67,14 @@ test('Check-WindowsSetupReadiness audits prerequisites only, never provider CLIs
     '-CurrentUserPath', `${desiredPrefix};C:\\Windows\\System32`,
     '-NodeHostInstallState', 'installed',
     '-GitHubCliInstallState', 'installed',
+    '-GitInstallState', 'installed',
   ]);
 
   assert.deepEqual(
     Object.keys(result).sort(),
     [
       'collectionMode',
+      'git',
       'githubCli',
       'helper',
       'interruptions',
@@ -93,7 +96,7 @@ test('Check-WindowsSetupReadiness audits prerequisites only, never provider CLIs
     false,
     'the npm-global CLI pack is inventory territory now',
   );
-  // Without -IncludeLocalModels only the three prerequisite helpers run.
+  // Without -IncludeLocalModels only the four prerequisite helpers run.
   assert.equal(result.localModels.ollama, null);
 });
 
@@ -107,6 +110,7 @@ test('Check-WindowsSetupReadiness reports repair actions when the npm prefix is 
     '-CurrentUserPath', 'C:\\Windows\\System32',
     '-NodeHostInstallState', 'installed',
     '-GitHubCliInstallState', 'installed',
+    '-GitInstallState', 'installed',
   ]);
 
   assert.equal(result.plannedActions.includes('repair_npm_prefix'), true);
@@ -123,6 +127,7 @@ test('Check-WindowsSetupReadiness routes the user to the Node host installer whe
     '-CurrentUserPath', 'C:\\Windows\\System32',
     '-NodeHostInstallState', 'missing',
     '-GitHubCliInstallState', 'installed',
+    '-GitInstallState', 'installed',
   ]);
 
   assert.equal(result.nodeHost.status, 'changes_required');
@@ -143,9 +148,29 @@ test('Check-WindowsSetupReadiness routes the user to the GitHub CLI installer wh
     '-CurrentUserPath', `${desiredPrefix};C:\\Windows\\System32`,
     '-NodeHostInstallState', 'installed',
     '-GitHubCliInstallState', 'missing',
+    '-GitInstallState', 'installed',
   ]);
 
   assert.equal(result.plannedActions.includes('install_github_cli'), true);
+});
+
+test('Check-WindowsSetupReadiness routes the user to the Git installer when git is missing', skipUnlessWindows(), async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-no-git-'));
+  const desiredPrefix = join(workingDir, '.npm-global');
+  await mkdir(desiredPrefix, { recursive: true });
+
+  const result = await runAudit([
+    '-DesiredPrefix', desiredPrefix,
+    '-CurrentPrefix', desiredPrefix,
+    '-CurrentUserPath', `${desiredPrefix};C:\\Windows\\System32`,
+    '-NodeHostInstallState', 'installed',
+    '-GitHubCliInstallState', 'installed',
+    '-GitInstallState', 'missing',
+  ]);
+
+  assert.equal(result.status, 'changes_required');
+  assert.equal(result.git.helper, 'windows-git-installer');
+  assert.deepEqual(result.plannedActions, ['install_git']);
 });
 
 test('Check-WindowsSetupReadiness reports Ollama follow-through when local-model helpers are included', skipUnlessWindows(), async () => {
@@ -159,6 +184,7 @@ test('Check-WindowsSetupReadiness reports Ollama follow-through when local-model
     '-CurrentUserPath', `${desiredPrefix};C:\\Windows\\System32`,
     '-NodeHostInstallState', 'installed',
     '-GitHubCliInstallState', 'installed',
+    '-GitInstallState', 'installed',
     '-IncludeLocalModels:$true',
     '-OllamaInstallState', 'installed',
     '-OllamaApiState', 'unreachable',
@@ -181,6 +207,7 @@ test('Check-WindowsSetupReadiness can force serial collection for deterministic 
     '-CurrentUserPath', `${desiredPrefix};C:\\Windows\\System32`,
     '-NodeHostInstallState', 'installed',
     '-GitHubCliInstallState', 'installed',
+    '-GitInstallState', 'installed',
   ]);
 
   assert.equal(result.collectionMode, 'serial');
