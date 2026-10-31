@@ -245,6 +245,7 @@ const PLANNED_ACTION_HELPER_SUFFIXES: Record<string, string> = {
   install_node_lts: '-node-host-installer',
   install_node_lts_via_nvm: '-node-host-installer',
   install_github_cli: '-github-cli-installer',
+  install_git: '-git-installer',
 };
 
 function findHelperByPlannedAction(
@@ -284,7 +285,7 @@ function deriveResumeAction(
   }
 
   // If the audit emitted a host-installer planned action (install_node_lts,
-  // install_github_cli, ...), route the resume slot to the host installer's
+  // install_github_cli, install_git, ...), route the resume slot to the host installer's
   // apply mode rather than re-running the audit's check mode.
   if (lastAction.helperId.endsWith('-install-readiness-audit')) {
     for (const planned of lastAction.plannedActions) {
@@ -694,6 +695,8 @@ export function createEmptyDesktopSetupState(): DesktopSetupState {
 }
 
 // Windows helpers whose relaunch or restart request is about the user PATH they changed.
+// Git is not one: cats-runtime remembers a missing git for its whole life
+// (RuntimeDeliveryService isGitAvailable), so Code needs the relaunch it asks for.
 const PATH_REFRESH_HELPER = /^windows-(?:.+-native-installer|npm-prefix-helper|node-host-installer|cli-readiness-helper|github-cli-installer)$/u;
 const PATH_REFRESH_KINDS: ReadonlySet<string> = new Set(['relaunch_required', 'restart_required']);
 

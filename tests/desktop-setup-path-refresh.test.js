@@ -66,6 +66,13 @@ test('a scan after the npm folder settles its restart request', () => {
   assert.equal(settled.lastAction.restartRequired, false);
 });
 
+// cats-runtime caches a missing git for its whole life, so a rescan does not bring
+// Code's git features back: the Git installer's relaunch request stands.
+test('a scan after the Git install leaves its relaunch request in place', () => {
+  const state = stateAfter('windows-git-installer', 'ready', ['relaunch_required']);
+  assert.equal(settleSetupPathRefresh(state, inventory(LATER)), state);
+});
+
 test('the request stands until a scan after the action finds what it needs', () => {
   const native = stateAfter('windows-grok-native-installer', 'relaunch_required', ['relaunch_required']);
   // No scan yet, a scan from before the action, or one that does not find the CLI.
@@ -81,7 +88,7 @@ test('the request stands until a scan after the action finds what it needs', () 
 
 test('other helpers, other systems and other kinds keep their requests', () => {
   // The VC++ runtime can need a real reboot; a macOS helper's PATH is not re-read by the scan.
-  for (const helperId of ['windows-vcredist-installer', 'macos-claude-native-installer', 'windows-ollama-local-model-installer']) {
+  for (const helperId of ['windows-vcredist-installer', 'macos-claude-native-installer', 'macos-git-installer', 'windows-ollama-local-model-installer']) {
     const state = stateAfter(helperId, 'restart_required', ['restart_required'], { restartRequired: true });
     assert.equal(settleSetupPathRefresh(state, inventory(LATER, [helperId])), state, helperId);
   }

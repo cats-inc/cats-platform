@@ -11,7 +11,7 @@ function selection(providers = []) {
 
 for (const [platform, prefix] of [['win32', 'windows'], ['darwin', 'macos'], ['linux', 'linux']]) {
   test(`${platform} checks the Desktop environment before provider selection while bounding provider probes`, () => {
-    const baseline = ['node-host-installer', 'npm-prefix-helper', 'github-cli-installer'].map((suffix) => ({ helperId: `${prefix}-${suffix}` }));
+    const baseline = ['node-host-installer', 'npm-prefix-helper', 'git-installer', 'github-cli-installer'].map((suffix) => ({ helperId: `${prefix}-${suffix}` }));
     assert.deepEqual(resolveSelectedSetupAuditActions(null, platform), baseline);
     assert.deepEqual(resolveSelectedSetupAuditActions(selection(), platform), baseline);
     assert.deepEqual(resolveSelectedSetupAuditActions(selection(['claude']), platform), baseline);
@@ -22,20 +22,22 @@ for (const [platform, prefix] of [['win32', 'windows'], ['darwin', 'macos'], ['l
     assert.deepEqual(targetsForSetupHelper(`${prefix}-codex-native-installer`, selection(['codex'])), [nativeSetupTarget('codex')]);
     assert.throws(() => targetsForSetupHelper(`${prefix}-claude-native-installer`, selection(['codex'])), /outside/);
     assert.throws(() => targetsForSetupHelper(`${prefix}-install-readiness-audit`, selection(['codex'])), /scope/);
+    // Git is a Desktop prerequisite for every user, never admitted through a provider.
+    assert.throws(() => targetsForSetupHelper(`${prefix}-git-installer`, selection(['codex'])), /scope/);
   });
 }
 
 test('remote variants and a remote Ollama named local cannot admit local helpers', () => {
   const remote = { ...selection(['codex', 'ollama']), nativeSetupTargets: [] };
   assert.deepEqual(resolveSelectedSetupAuditActions(remote, 'linux').map((entry) => entry.helperId),
-    ['linux-node-host-installer', 'linux-npm-prefix-helper', 'linux-github-cli-installer']);
+    ['linux-node-host-installer', 'linux-npm-prefix-helper', 'linux-git-installer', 'linux-github-cli-installer']);
   assert.throws(() => targetsForSetupHelper('linux-node-host-installer', remote), /outside/);
   assert.throws(() => targetsForSetupHelper('linux-ollama-local-model-installer', remote), /outside/);
 });
 
 test('Desktop prerequisite helpers can prepare a clean host without reading or expanding Runtime selection', async () => {
   for (const platform of ['windows', 'macos', 'linux']) {
-    for (const suffix of ['node-host-installer', 'npm-prefix-helper', 'github-cli-installer']) {
+    for (const suffix of ['node-host-installer', 'npm-prefix-helper', 'git-installer', 'github-cli-installer']) {
       const result = await withSelectedSetupTargets({ baseUrl: 'http://runtime.test', helperId: `${platform}-${suffix}`,
         fetch: async () => { assert.fail('Desktop prerequisites must not depend on Runtime selection'); }, run: async () => 'checked' });
       assert.equal(result, 'checked');

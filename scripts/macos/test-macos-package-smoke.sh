@@ -49,6 +49,7 @@ assert_file "${RESOURCES_ROOT}/cats-runtime/config/curated-model-catalogs.yaml.e
 assert_file "${RESOURCES_ROOT}/cats-runtime/node_modules/playwright-core/package.json" 'bundled cats-runtime external dependency marker'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-node.sh" 'bundled macOS Node.js LTS host installer'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-github-cli.sh" 'bundled macOS GitHub CLI host installer'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-git.sh" 'bundled macOS Git host installer'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/setup-node-global-prefix.sh" 'bundled macOS npm prefix helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-codex.sh" 'bundled macOS OpenAI Codex installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-antigravity.sh" 'bundled macOS Antigravity installer helper'

@@ -772,6 +772,9 @@ Coverage in this slice:
 
 - host substrate install and upgrade for Node.js LTS (via nvm) and GitHub
   CLI (via Homebrew or a user-local tarball)
+- Git via Homebrew on macOS; on Linux `install-git.sh` only checks and names
+  the `apt-get`/`dnf`/`yum` install command, because these helpers never use
+  sudo
 - native CLI install and upgrade for Claude Code, Antigravity, Grok, Cursor
   Agent, Goose, Junie, and Kiro
 - npm global-prefix/PATH repair for user-scoped installs
@@ -800,7 +803,7 @@ Cross-platform JSON audit core:
   `Check-WindowsSetupReadiness.ps1 -Json` now share `helper`, `status`,
   `plannedActions`, `warnings`, and `interruptions`
 - Windows additionally surfaces nested per-CLI detail under `nativeCliPack`
-  and the host-installer probes under `nodeHost` and `githubCli`
+  and the host-installer probes under `nodeHost`, `githubCli` and `git`
 
 ### Windows Host Substrate Helpers
 
@@ -811,6 +814,7 @@ non-wizard operational use:
 .\scripts\windows\Install-Node.ps1 -CheckOnly -Json
 .\scripts\windows\Install-Node.ps1 -Apply        # self-elevates through UAC
 .\scripts\windows\Install-GitHubCli.ps1 -Apply   # self-elevates through UAC
+.\scripts\windows\Install-Git.ps1 -Apply         # self-elevates through UAC
 .\scripts\windows\Install-Codex.ps1 -Apply
 .\scripts\windows\Install-Codex.ps1 -Upgrade
 .\scripts\windows\Install-Antigravity.ps1 -Apply
@@ -823,6 +827,8 @@ non-wizard operational use:
 Coverage in this slice:
 
 - Node.js LTS and GitHub CLI host installers (winget primary, MSI fallback)
+- Git for Windows host installer (winget primary, with the official x64 or
+  ARM64 installer from the Git for Windows releases as fallback)
 - per-CLI npm-global helpers for Codex, Copilot, OpenCode, Kilo,
   Auggie, and Pi (one script per CLI, no bulk install/uninstall)
 - aggregate readiness audit composing the host installer, prefix helper,
@@ -874,7 +880,8 @@ The current substrate writes:
 - `build/desktop-packaging/shared/*`
 - `build/desktop-packaging/shared/setup-assets/windows/*`
   - Node.js LTS host installer (`Install-Node.ps1`), GitHub CLI host
-    installer (`Install-GitHubCli.ps1`), npm prefix helper, the shared
+    installer (`Install-GitHubCli.ps1`), Git host installer
+    (`Install-Git.ps1`), npm prefix helper, the shared
     `_NpmCliInstaller.ps1` and per-CLI npm installers (Codex, Copilot,
     OpenCode, Kilo, Auggie, Pi), the native provider installers
     (Claude Code, Antigravity, Cursor Agent, Goose, Junie, Kiro), the Ollama
@@ -882,16 +889,16 @@ The current substrate writes:
     `_HiddenProcess.ps1` / `_PackagedUninstall.ps1` support scripts
 - `build/desktop-packaging/shared/setup-assets/linux/*`
   - Node.js LTS host installer (`install-node.sh`), GitHub CLI host
-    installer (`install-github-cli.sh`), npm prefix helper, per-CLI npm
-    installers (Codex, Copilot, OpenCode, Kilo, Auggie, Pi),
-    Claude/Antigravity/Cursor/Goose/Junie/Kiro native installers, and the Linux
-    readiness audit
+    installer (`install-github-cli.sh`), Git host helper (`install-git.sh`),
+    npm prefix helper, per-CLI npm installers (Codex, Copilot, OpenCode, Kilo,
+    Auggie, Pi), Claude/Antigravity/Cursor/Goose/Junie/Kiro native installers,
+    and the Linux readiness audit
 - `build/desktop-packaging/shared/setup-assets/macos/*`
   - Node.js LTS host installer (`install-node.sh`), GitHub CLI host
-    installer (`install-github-cli.sh`), npm prefix helper, per-CLI npm
-    installers (Codex, Copilot, OpenCode, Kilo, Auggie, Pi),
-    Claude/Antigravity/Cursor/Goose/Junie/Kiro native installers, and the macOS
-    readiness audit
+    installer (`install-github-cli.sh`), Git host helper (`install-git.sh`),
+    npm prefix helper, per-CLI npm installers (Codex, Copilot, OpenCode, Kilo,
+    Auggie, Pi), Claude/Antigravity/Cursor/Goose/Junie/Kiro native installers,
+    and the macOS readiness audit
 - `build/desktop-packaging/shared/setup-assets/linux/provider-cli-common.sh`
 - `build/desktop-packaging/shared/setup-assets/linux/node-cli-common.sh`
 - `build/desktop-packaging/shared/setup-assets/macos/provider-cli-common.sh`
@@ -1157,4 +1164,4 @@ See `Dependency install warnings` under `Installation`.
 
 ---
 
-*Last updated: 2026-10-03*
+*Last updated: 2026-10-31*

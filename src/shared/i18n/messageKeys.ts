@@ -695,6 +695,8 @@ export const messageKeys = {
     'settings.runtime.helperLabel.nodeHostInstaller',
   settingsRuntimeHelperLabelGithubCliHostInstaller:
     'settings.runtime.helperLabel.githubCliHostInstaller',
+  settingsRuntimeHelperLabelGitHostInstaller:
+    'settings.runtime.helperLabel.gitHostInstaller',
   settingsRuntimeHelperLabelNpmPrefixHelper:
     'settings.runtime.helperLabel.npmPrefixHelper',
   settingsRuntimeHelperLabelSetupReadinessAudit:

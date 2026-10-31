@@ -223,6 +223,15 @@ host-operations depth around that first slice:
   (Kiro CLI, Goose, Cursor's crepectl). The VC++-free set is Codex, Claude Code,
   Grok, Antigravity, Muse, Devin and Junie, checked by their DLL imports; a
   provider not checked yet keeps the step.
+- Git is a Desktop prerequisite for Cats Code, checked read-only for every user
+  and installed only on request: the full Git for Windows (winget, then the
+  official x64 or ARM64 installer) and Homebrew's git on macOS. Linux helpers
+  never use sudo, so Linux names the package-manager command instead. An empty
+  commit identity is a manual step, not a setup failure
+  ([ADR-144](../decisions/144-install-git-as-a-desktop-setup-prerequisite.md)).
+  On that clean Windows 11 VM, at medium integrity with UAC on, winget failed and
+  `Install-Git.ps1` installed Git for Windows with the official installer;
+  `git --version` then ran in `cmd.exe` and in PowerShell.
 
 ## Design Overview
 
@@ -574,6 +583,6 @@ Current implementation truth:
 
 *Created: 2026-03-20*
 *Author: Codex*
-*Last updated: 2026-03-30*
+*Last updated: 2026-10-31*
 
 *Related Plan: [PLAN-030](../plans/PLAN-030-packaged-setup-wizard-and-provider-installation.md)*

@@ -60,10 +60,11 @@ Users can finish initial setup now and add providers later.
 10. Windows, macOS, and Linux share behavior and expose only supported helpers.
     Browser Settings retains links to the connected Runtime setup.
 11. Before any provider is selected, Desktop checks Node.js/npm, npm installation
-    location/PATH and GitHub CLI in the background. These host checks never scan
-    unselected providers or install software. Retain each result independently
-    so unrelated checks/installs cannot erase it. Keep Node.js/npm visible in
-    collapsed onboarding; show its install/fix action on a clean computer.
+    location/PATH, GitHub CLI and Git (ADR-144) in the background. These host
+    checks never scan unselected providers or install software. Retain each
+    result independently so unrelated checks/installs cannot erase it. Keep
+    Node.js/npm visible in collapsed onboarding; show its install/fix action on
+    a clean computer.
 12. Restore the original native/local-model row, followed by Node/npm tools,
     with Claude, Antigravity, Node.js/npm and Codex initially visible and Show
     more revealing the rest. Existing selected tools remain visible. Connection

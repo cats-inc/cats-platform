@@ -49,6 +49,7 @@ assert_file "${RESOURCES_ROOT}/cats-runtime/config/curated-model-catalogs.yaml.e
 assert_file "${RESOURCES_ROOT}/cats-runtime/node_modules/playwright-core/package.json" 'bundled cats-runtime external dependency marker'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-node.sh" 'bundled Linux Node.js LTS host installer'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-github-cli.sh" 'bundled Linux GitHub CLI host installer'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-git.sh" 'bundled Linux Git host installer'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/setup-node-global-prefix.sh" 'bundled Linux npm prefix helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-codex.sh" 'bundled Linux OpenAI Codex installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-antigravity.sh" 'bundled Linux Antigravity installer helper'

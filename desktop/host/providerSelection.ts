@@ -94,7 +94,7 @@ export async function withSelectedSetupTargets<T>(options: SelectedSetupOperatio
 }
 
 async function runSelectedSetupOperation<T>(options: SelectedSetupOperation<T>): Promise<T> {
-  // Node/npm/PATH and GitHub CLI prepare the Desktop host, including before a
+  // Node/npm/PATH, GitHub CLI and Git prepare the Desktop host, including before a
   // Runtime selection exists. The allowlist is exact; provider helpers still
   // require their saved target and revision-bound operation admission below.
   if (isDesktopPrerequisiteHelper(options.helperId)) return options.run();

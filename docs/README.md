@@ -282,6 +282,10 @@ Desktop onboarding and Settings share the provider manager described by
 [SPEC-116](./specs/SPEC-116-desktop-provider-management.md), and
 [PLAN-107](./plans/PLAN-107-desktop-provider-management.md). The plan records
 native installer reconciliation, validation, and unsigned preview delivery.
+Git joined Node.js/npm, the npm prefix and GitHub CLI as a Desktop prerequisite
+on 2026-10-31
+([ADR-144](./decisions/144-install-git-as-a-desktop-setup-prerequisite.md),
+with three decisions to confirm).
 
 Runtime owns the active provider selection for standalone, local development,
 and Desktop. First-run choices are saved before inventory or helper work;
@@ -621,6 +625,6 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-10-27*
+*Last updated: 2026-10-31*
 
 - Studio: [SDK specification](specs/SPEC-119-app-image-generation.md) and [delivery plan](plans/PLAN-111-app-image-generation.md).

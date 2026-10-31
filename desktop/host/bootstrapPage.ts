@@ -735,6 +735,7 @@ export function buildDesktopBootstrapPage(): string {
         'setupHelper.windowsVcRedist': 'Windows Microsoft Visual C++ 2015-2022 Redistributable (x64)',
         'setupHelper.nodeHostInstaller': '{platform} Node.js LTS host installer',
         'setupHelper.githubCliHostInstaller': '{platform} GitHub CLI host installer',
+        'setupHelper.gitHostInstaller': '{platform} Git host installer',
         'setupHelper.npmPrefixHelper': '{platform} npm prefix and PATH prerequisite helper',
         'setupHelper.setupReadinessAudit': '{platform} setup readiness audit',
         'setupHelper.packagedBackgroundProcessHelper': '{platform} packaged setup background process helper',
@@ -998,6 +999,7 @@ export function buildDesktopBootstrapPage(): string {
         'setupHelper.windowsVcRedist': 'Windows Microsoft Visual C++ 2015-2022 可轉散發套件 (x64)',
         'setupHelper.nodeHostInstaller': '{platform} Node.js LTS 主機安裝器',
         'setupHelper.githubCliHostInstaller': '{platform} GitHub CLI 主機安裝器',
+        'setupHelper.gitHostInstaller': '{platform} Git 主機安裝器',
         'setupHelper.npmPrefixHelper': '{platform} npm 前置路徑與 PATH 先決條件輔助程式',
         'setupHelper.setupReadinessAudit': '{platform} 設定就緒稽核',
         'setupHelper.packagedBackgroundProcessHelper': '{platform} 套裝設定背景程序輔助程式',
@@ -1385,6 +1387,11 @@ export function buildDesktopBootstrapPage(): string {
       match = text.match(/^(Windows|Linux|macOS) GitHub CLI host installer$/);
       if (match) {
         return tx('setupHelper.githubCliHostInstaller', { platform: match[1] });
+      }
+
+      match = text.match(/^(Windows|Linux|macOS) Git host installer$/);
+      if (match) {
+        return tx('setupHelper.gitHostInstaller', { platform: match[1] });
       }
 
       match = text.match(/^(Windows|Linux|macOS) npm prefix and PATH prerequisite helper$/);

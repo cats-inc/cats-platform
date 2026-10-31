@@ -255,6 +255,7 @@ packaging and installer flows.
 
 - `scripts/windows/Install-Node.ps1`
 - `scripts/windows/Install-GitHubCli.ps1`
+- `scripts/windows/Install-Git.ps1`
 - `scripts/windows/Setup-NodeGlobalPrefix.ps1`
 - `scripts/windows/_NpmCliInstaller.ps1`
 - `scripts/windows/Install-Codex.ps1`
@@ -291,6 +292,11 @@ the actual install (Node and gh both land in Program Files) while keeping
 `-CheckOnly` user-scoped so the renderer can probe state without prompting.
 They intentionally omit `-Uninstall`: removing Node would break the bundled
 `cats-runtime` sidecar and every npm-global CLI helper.
+
+`Install-Git.ps1` installs the full Git for Windows the same way: winget first,
+then the official x64 or ARM64 installer from the Git for Windows releases. Its
+`-CheckOnly` also reports a manual step when the global `user.name` or
+`user.email` is empty. See [ADR-144](../docs/decisions/144-install-git-as-a-desktop-setup-prerequisite.md).
 
 The per-CLI npm-global installers (`Install-Codex.ps1`, `Install-Copilot.ps1`,
 `Install-OpenCode.ps1`, `Install-KiloCli.ps1`,
@@ -377,6 +383,7 @@ runtime:
 
 - `scripts/linux/install-node.sh`
 - `scripts/linux/install-github-cli.sh`
+- `scripts/linux/install-git.sh`
 - `scripts/linux/setup-node-global-prefix.sh`
 - `scripts/linux/install-codex.sh`
 - `scripts/linux/install-antigravity.sh`
@@ -398,6 +405,7 @@ runtime:
 - `scripts/linux/check-installation.sh`
 - `scripts/macos/install-node.sh`
 - `scripts/macos/install-github-cli.sh`
+- `scripts/macos/install-git.sh`
 - `scripts/macos/setup-node-global-prefix.sh`
 - `scripts/macos/install-codex.sh`
 - `scripts/macos/install-antigravity.sh`
@@ -423,6 +431,8 @@ These helpers cover the same first-pass self-hosted provider baseline that
 
 - host substrate installers for Node.js LTS (via nvm) and GitHub CLI (via
   Homebrew or a user-local tarball)
+- Git through Homebrew on macOS; on Linux a check that names the
+  `apt-get`/`dnf`/`yum` install command, since these helpers never use sudo
 - native installers for Claude Code, Antigravity, Grok, Cursor Agent, Goose, Junie, and Kiro
 - npm global-prefix setup for user-scoped installs
 - per-CLI npm-global installers for Codex, Copilot, OpenCode, Kilo,
