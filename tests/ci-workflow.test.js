@@ -114,3 +114,40 @@ test('a main push reuses its merged pull request\'s green run only for that exac
   assert.equal(reuse(squash8, squash7, `8 ${head8}`, '1'), 'tested=false',
     'a head without the previous main was tested on other code');
 });
+
+test('npm publication skips its test gate only after CI passed on the commit on main', (t) => {
+  const publish = load(readFileSync('.github/workflows/npm-publish.yml', 'utf8'));
+  assert.equal(publish.permissions.actions, 'read');
+  const steps = publish.jobs.publish.steps;
+  assert.equal(steps.find((item) => item.name === 'Run test gate')?.if, "steps.ci.outputs.tested != 'true'");
+  for (const name of ['Install dependencies', 'Install mobile dependencies']) {
+    assert.equal(steps.find((item) => item.name === name)?.if, undefined, `${name} still feeds the prepack build`);
+  }
+  const check = steps.find((item) => item.id === 'ci');
+  assert.equal(check.if, undefined, 'the lookup itself always runs');
+  const root = mkdtempSync(join(tmpdir(), 'cats-publish-check-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const bin = join(root, 'bin');
+  mkdirSync(bin);
+  writeFileSync(join(bin, 'gh'), [
+    '#!/usr/bin/env bash',
+    'printf \'%s\\n\' "$2" >> "$STUB_LOG"',
+    'case "$2" in',
+    '  */actions/workflows/*) [ -n "${STUB_PASSED:-}" ] || exit 1; printf \'%s\\n\' "$STUB_PASSED" ;;',
+    '  *) exit 1 ;;',
+    'esac',
+  ].join('\n') + '\n', { mode: 0o755 });
+  const sha = 'a'.repeat(40);
+  const lookup = (passed) => runStep(check.run, {
+    cwd: root,
+    env: {
+      PATH: `${bin}${delimiter}${process.env.PATH}`, GITHUB_REPOSITORY: 'cats-inc/cats-platform', GITHUB_SHA: sha,
+      STUB_PASSED: passed, STUB_LOG: join(root, 'gh.log'),
+    },
+  });
+  assert.equal(lookup('1'), 'tested=true');
+  assert.match(readFileSync(join(root, 'gh.log'), 'utf8'),
+    new RegExp(`actions/workflows/ci\\.yaml/runs\\?head_sha=${sha}&event=push&branch=main&status=success`));
+  assert.equal(lookup('0'), 'tested=false', 'without a passing main run the gate runs as before');
+  assert.equal(lookup(''), 'tested=false', 'a failed lookup runs the gate');
+});

@@ -235,8 +235,9 @@ all of these hold:
 
 Main requires up-to-date branches, so an ordinary squash merge meets these. Any other
 push, or a failed lookup, runs everything. The reuse trusts the pull request's run as
-much as branch protection already does. `tests/ci-workflow.test.js` runs this step
-against a local origin with a stubbed `gh`.
+much as branch protection already does. `npm-publish.yml` likewise skips its test gate
+when CI passed on the dispatched commit on main, and runs it otherwise.
+`tests/ci-workflow.test.js` runs both steps against a local origin with a stubbed `gh`.
 
 A pull request can also reuse a green run from main when its code outside `docs/` equals
 main's, which means that exact code already passed there. The skip trusts everyone who can
