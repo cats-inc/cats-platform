@@ -106,6 +106,15 @@ opener commands. Native browser/physical-terminal smoke on each OS is separate.
 
 ### Desktop Host Tests
 
+Unix npm-prefix JSON regression checks run with the system `/bin/bash` on macOS,
+including Bash 3.2 with `set -u`. They cover an already configured folder, required
+configuration changes and forced nvm preparation without installing software or
+changing the owner's npm settings. Run these focused cases with:
+
+```sh
+node --test --test-name-pattern='prefix checks emit complete JSON|forced nvm prefix preparation' tests/unix-installer-observations.test.js
+```
+
 - **Location**: `tests/app-startup.test.js`,
   `tests/desktop-readiness.test.js`, `tests/desktop-supervisor.test.js`
 - **Framework**: `node:test`
