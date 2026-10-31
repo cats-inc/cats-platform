@@ -1166,11 +1166,10 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
         showDialog: (dialogSpec) => showDesktopUpdateMessageBox({
           platform: process.platform,
           dialogSpec,
-          createOwner: (options) => new BaseWindow(options),
+          createActivationWindow: (options) => new BaseWindow(options),
           focusApp: () => app.focus({ steal: true }),
-          showMessageBox: (options, owner) => owner
-            ? dialog.showMessageBox(owner, options)
-            : dialog.showMessageBox(options),
+          isShuttingDown: () => shuttingDown,
+          showMessageBox: (options) => dialog.showMessageBox(options),
         }),
       });
     },
