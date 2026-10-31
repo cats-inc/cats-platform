@@ -142,8 +142,10 @@ procedure.
 
 Publish `@cats-inc/cats-platform` through the manual
 [npm publish workflow](../.github/workflows/npm-publish.yml), which runs the full
-test gate and fresh prepack build before trusted publication. Update the root
-manifest and lockfile version together and integrate remote main first:
+test gate and fresh prepack build before trusted publication. It skips the test gate
+when CI already passed on that commit on main, so dispatch after main's CI finishes.
+Update the root manifest and lockfile version together and integrate remote main
+first:
 
 ```sh
 gh workflow run npm-publish.yml --repo cats-inc/cats-platform --ref main -f dist_tag=latest

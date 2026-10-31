@@ -15,6 +15,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  actions: read
 
 jobs:
   publish:
@@ -40,7 +41,20 @@ jobs:
       - name: Install mobile dependencies
         run: npm ci --prefix mobile
 
+      # When CI already passed on this exact commit on main, it ran npm test, so
+      # the publish does not repeat it. Anything else, or a failed lookup, runs
+      # the gate here as before.
+      - name: Check whether CI passed on this commit on main
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yaml/runs?head_sha=$GITHUB_SHA&event=push&branch=main&status=success&per_page=1" --jq '.total_count' 2>/dev/null || true)
+          if [[ "$passed" =~ ^[1-9][0-9]*$ ]]; then tested=true; else tested=false; fi
+          echo "tested=$tested" | tee -a "$GITHUB_OUTPUT"
+
       - name: Run test gate
+        if: steps.ci.outputs.tested != 'true'
         run: npm test
 
       # prepack runs npm run build, so publish ships fresh artifacts.
