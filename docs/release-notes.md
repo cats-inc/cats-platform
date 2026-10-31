@@ -2,6 +2,87 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-10-31 — Platform npm and Desktop 0.12.4 standard preview: Git in setup and clean-machine Windows fixes
+
+Selected distribution: Desktop **0.12.4 standard-profile preview** and Platform
+npm **0.12.4** with explicit `latest`, from one merged bump commit. App SDK
+**1.9.0**, bundled **Usage 0.5.4**. Runtime npm 0.6.2 and launcher cats-one 0.6.0
+are unchanged; cats-one's `^0.12.3` range accepts 0.12.4 on a fresh resolution.
+Optional Marketplace Apps keep their existing releases.
+
+- **Git is a setup prerequisite** (ADR-144, #358). Desktop checks Git in the
+  background for every user and installs it only when the user clicks Set up Git.
+  - Windows installs the full Git for Windows: winget first, then the official
+    x64 or ARM64 installer through UAC.
+  - macOS installs Homebrew's git; without Homebrew it names Homebrew as a manual
+    step.
+  - Linux only checks, and names the `apt-get`, `dnf` or `yum` command to run.
+  - An empty commit identity is a manual step, not a failure.
+  - Git is checked before GitHub CLI, so it does not lead the startup
+    recommendation. Its relaunch notice stays until Desktop restarts, because
+    Runtime remembers a missing git for its whole life.
+- **Clean Windows setup** (#355).
+  - Claude Code's folder, `%USERPROFILE%\.local\bin`, is added to the user PATH,
+    so a new terminal can run `claude` to sign in.
+  - Setup downloads, and the vendor installers they start, add TLS 1.2 where
+    Windows PowerShell 5.1 still defaults to TLS 1.0. A system default is left
+    alone.
+- **Setup notices settle** (#356). A relaunch or restart that a Windows helper
+  asked for after changing the user PATH clears with the next Runtime scan, which
+  re-reads PATH from the registry. A native installer's request also needs that
+  scan to find its CLI.
+- **The VC++ runtime step is narrower** (#357). It is offered only for Kiro CLI,
+  Goose, Cursor's crepectl and providers not checked yet. Codex, Claude Code,
+  Grok, Antigravity, Muse, Devin and Junie no longer require it; their DLL
+  imports were checked.
+- **Compatibility and recovery.** This is a compatible 0.12 patch:
+  - Core stays format 6, and preferences and the public App SDK are unchanged.
+  - There is no data migration.
+  - Returning to 0.12.3 needs no conversion. It drops the Git prerequisite and
+    the setup fixes above.
+- **Exact source and artifacts.**
+  - Runtime package **0.6.2**, built from
+    `38e5475a4ffcbe0d31880c4b28f41a6eadcfd56c`, the same source 0.12.3 bundled
+    and npm 0.6.2 was published from.
+  - Usage stays at
+    `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+    producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
+  - The complete-source manifest and every OS receipt record the selected merged
+    Platform bump commit and this exact Runtime SHA.
+- **Signing and updates.** Dispatch `desktop-release.yml` from the merged bump
+  commit with `tag=v0.12.4`, the Runtime SHA above and `unsigned=false`.
+  - Standard trust with the configured shared credentials: macOS **signed +
+    notarized**, Windows **unsigned: no certificate**, Linux **n/a**. Actual
+    trust comes from the workflow receipts.
+  - When output trust matches, standard-profile 0.12.3 Windows NSIS, signed macOS
+    and Linux DEB installations keep their update paths; portable builds use
+    manual replacement.
+- **npm.** Dispatch `npm-publish.yml` from the same commit with
+  `dist_tag=latest`. The workflow skips its test gate when CI already passed on
+  that commit on `main` (#361), runs it otherwise, and builds fresh artifacts in
+  `prepack` before trusted publication.
+- **Validation boundary.**
+  - Each change passed the full hosted CI and its regression tests; #358's
+    affected suites ran 118 tests.
+  - In a clean Windows 11 26H2 Hyper-V VM, at medium integrity with UAC on, Cats
+    Bot's pinned copies of the #355 helpers installed every native provider and
+    Node.js. The VM could not force the legacy TLS 1.0 default, so that path
+    rests on unit tests.
+  - In the same VM, `Install-Git.ps1` checked, installed Git for Windows
+    2.56.0.windows.4 through UAC after winget failed (0x8A15005E), then reported
+    ready with the commit-identity step. `git --version` ran in `cmd.exe` and in
+    PowerShell.
+  - Desktop's own Git card and setup bridge, and the #356 and #357 changes, were
+    not driven on a clean machine. The macOS and Linux git helpers have unit tests
+    and shell checks only.
+  - Not covered: an installed 0.12.3-to-0.12.4 update.
+  - The release workflow enforces packaged startup, offline App activation,
+    complete-source identity, signing, updater metadata and public-asset
+    provenance.
+  - Publication results: the `v0.12.4` GitHub prerelease and its Actions run, and
+    the npm registry entry and its `npm-publish.yml` run.
+
 ## 2026-10-30 — Platform npm and Desktop 0.12.3 standard preview: shared conversation components and a link-safe uninstaller
 
 Selected distribution: Desktop **0.12.3 standard-profile preview** and Platform
