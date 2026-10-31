@@ -284,8 +284,8 @@ Desktop onboarding and Settings share the provider manager described by
 native installer reconciliation, validation, and unsigned preview delivery.
 Git joined Node.js/npm, the npm prefix and GitHub CLI as a Desktop prerequisite
 on 2026-10-31
-([ADR-144](./decisions/144-install-git-as-a-desktop-setup-prerequisite.md),
-with three decisions to confirm).
+([ADR-144](./decisions/144-install-git-as-a-desktop-setup-prerequisite.md);
+the owner confirmed its decisions D1–D4 the same day).
 
 Runtime owns the active provider selection for standalone, local development,
 and Desktop. First-run choices are saved before inventory or helper work;
