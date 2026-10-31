@@ -229,6 +229,9 @@ host-operations depth around that first slice:
   never use sudo, so Linux names the package-manager command instead. An empty
   commit identity is a manual step, not a setup failure
   ([ADR-144](../decisions/144-install-git-as-a-desktop-setup-prerequisite.md)).
+  On that clean Windows 11 VM, at medium integrity with UAC on, winget failed and
+  `Install-Git.ps1` installed Git for Windows with the official installer;
+  `git --version` then ran in `cmd.exe` and in PowerShell.
 
 ## Design Overview
 

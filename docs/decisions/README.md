@@ -3,7 +3,7 @@
 - [ADR-144: Install Git as a Desktop setup prerequisite](144-install-git-as-a-desktop-setup-prerequisite.md)
   — accepted, 2026-10-31; full Git for Windows (winget, then the x64/ARM64 release
   installer), Homebrew git on macOS, check-only Linux with the package-manager
-  command, identity as a manual step. D1–D3 await confirmation.
+  command, identity as a manual step. D1–D4 await confirmation.
 - [ADR-143: Separate product repositories after Platform contracts stabilize](143-separate-product-repositories-after-platform-contracts-stabilize.md)
   — proposed, 2026-10-29; Desktop then Mobile extraction, retained Platform
   server/Web, independent distribution and cats-one composition. No source move.

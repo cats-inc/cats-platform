@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — 2026-10-31, from the owner's tool and platform decisions. D1–D3 under
+Accepted — 2026-10-31, from the owner's tool and platform decisions. D1–D4 under
 [Decisions to confirm](#decisions-to-confirm) are open for the owner's review.
 
 ## Context
