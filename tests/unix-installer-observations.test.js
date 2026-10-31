@@ -13,7 +13,8 @@ async function run(platform, body) {
   const dir = await mkdtemp(join(tmpdir(), 'cats-unix-observation-'));
   const script = join(dir, 'fixture.sh');
   await writeFile(script, `#!/usr/bin/env bash\nset -euo pipefail\nexport HOME=${quote(bashPath(dir) + '/home')}\nmkdir -p "$HOME"\n. ${quote(bashPath(join(process.cwd(), `scripts/${platform}/node-cli-common.sh`)))}\n${body}\n`);
-  return execFile('bash', [bashPath(script)], { timeout: 30000 });
+  // Desktop invokes the system Bash, including macOS's Bash 3.2.
+  return execFile(process.platform === 'darwin' ? '/bin/bash' : 'bash', [bashPath(script)], { timeout: 30000 });
 }
 
 test('Unix native gate handles versions and leaves metadata failures unknown', async () => {
@@ -130,6 +131,55 @@ run_node_prefix_setup ${platform} --check --json`);
     const result = JSON.parse(stdout);
     assert.equal(result.status, 'ready');
     assert.match(result.desiredPrefix, /custom-npm$/);
+  }
+});
+
+test('Unix npm prefix checks emit complete JSON for ready and incomplete setups under nounset', async () => {
+  for (const platform of ['linux', 'macos']) {
+    for (const ready of [true, false]) {
+      const { stdout } = await run(platform, `
+mkdir -p "$HOME/custom-npm/bin"
+export NPM_CONFIG_PREFIX="$HOME/custom-npm"
+load_nvm_if_present() { :; }
+nvm_is_active() { return 1; }
+node() { :; }
+npm() {
+ case "$*" in
+  'config get prefix') printf '%s' "$HOME/custom-npm" ;;
+  'config get registry') printf '%s' '${ready ? 'https://registry.npmjs.org/' : 'https://example.invalid/'}' ;;
+  *) printf 'Unexpected npm mutation: %s\\n' "$*" >&2; return 95 ;;
+ esac
+}
+run_node_prefix_setup ${platform} --check --json`);
+      const result = JSON.parse(stdout);
+      assert.equal(result.status, ready ? 'ready' : 'changes_required');
+      assert.deepEqual(result.plannedActions, ready ? [] : ['set_npm_registry']);
+      assert.deepEqual(result.appliedChanges, []);
+    }
+  }
+});
+
+test('Unix forced nvm prefix preparation emits an empty plan and the applied registry change', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const { stdout } = await run(platform, `
+unset NPM_CONFIG_PREFIX npm_config_prefix NPM_CONFIG_GLOBALCONFIG npm_config_globalconfig
+mkdir -p "$HOME/custom-npm"
+load_nvm_if_present() { :; }
+nvm() { :; }
+node() { printf 'v24.0.0'; }
+npm() {
+ case "$*" in
+  'config get prefix') printf '%s' "$HOME/custom-npm" ;;
+  'config get registry') printf 'https://registry.npmjs.org/' ;;
+  'config delete prefix'|'config delete globalconfig'|'config set registry https://registry.npmjs.org/') : ;;
+  *) printf 'Unexpected npm mutation: %s\\n' "$*" >&2; return 95 ;;
+ esac
+}
+run_node_prefix_setup ${platform} -force --json`);
+    const result = JSON.parse(stdout);
+    assert.equal(result.status, 'ready');
+    assert.deepEqual(result.plannedActions, []);
+    assert.deepEqual(result.appliedChanges, ['set_npm_registry']);
   }
 });
 
