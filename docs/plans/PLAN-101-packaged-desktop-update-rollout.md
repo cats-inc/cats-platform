@@ -7,7 +7,7 @@
 | **Status** | Draft |
 | **Owner** | User |
 | **Reviewer** | User |
-| **Last updated** | 2026-10-23 |
+| **Last updated** | 2026-11-01 |
 
 ## Related Spec
 
@@ -485,6 +485,39 @@ ownership boundaries in ADR-108 and SPEC-111.
 - Do not add a renderer fallback that fetches GitHub directly.
 
 ## Progress Log
+
+### macOS tray dialog placement — 2026-11-01 (unreleased)
+
+The 2026-10-23 sheet brought the dialog forward but placed it low: its 1x1
+owner had no position, so Electron centered it, and a sheet hangs from its
+owner's top edge. A minimal Electron 41.2.0 probe on macOS 27 (1920x1080,
+TextEdit frontmost, no tray click) measured each presentation with
+`CGWindowListCopyWindowInfo`:
+
+- Sheet on the centered owner: Cats frontmost; sheet top at y=540, the screen's
+  vertical middle.
+- `app.focus({ steal: true })` and a parentless alert (the pre-#298 code): Cats
+  never became active (`did-become-active` did not fire within 1 s); the alert
+  sat at y=216 behind TextEdit's windows on layer 0, and main-process timers
+  stopped until it was dismissed.
+- Transient window made key, destroyed after its focus event, then the
+  parentless alert: Cats frontmost; alert at y=211-215 on the modal-panel layer
+  (8) above other apps; timers kept running. The window's focus event also
+  fired when Cats was already active.
+
+The presenter now uses the last presentation; SPEC-111 Tray requirement 7
+records why. Because the alert now waits up to 1 s for activation, the presenter
+checks for shutdown again after the wait: a quit that begins then returns the
+dialog's dismissal instead of opening the alert over a host that is quitting. The earlier entry's synchronous-modal-loop explanation matched
+only an inactive Cats: once Cats was active, main-process timers kept running
+under the parentless alert.
+
+Validation: `npm run build:host` and 173 focused update, tray and test-collection
+tests passed. The built presenter, wired as `main.ts` wires it, ran in the same
+probe: Cats frontmost and the alert at y=215 on layer 8, with no other Cats
+window on screen. Native acceptance through the installed app's tray, other Spaces
+and full-screen apps remains pending; no installer or self-update acceptance is
+claimed.
 
 ### macOS tray dialog foreground — 2026-10-23 (unreleased)
 
