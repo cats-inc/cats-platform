@@ -11,12 +11,20 @@ jobs:
   # A change confined to docs/ skips install, typecheck and tests. So does code
   # that already passed: the fingerprint covers every tracked file outside docs/,
   # so a rebase that only brings in docs from main reuses the earlier green run.
+  # A pull request's cache is scoped to that request, so a push to main instead
+  # reuses its merged pull request's run when that run tested the same tree.
   # The required nodejs (24) job still runs and passes, so branch protection is
   # satisfied; its matrix name stays stable because only steps are skipped. Any
   # other path, a manual run or a failed detection runs every step.
   # tests/docs-boundary.test.js keeps tests, scripts and tools from reading docs/.
   changes:
     runs-on: ubuntu-latest
+    # Job permissions replace the defaults: checkout and the merge lookups read
+    # contents, the merged pull request and its CI runs.
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
     outputs:
       code: ${{ steps.paths.outputs.code }}
       fingerprint: ${{ steps.fingerprint.outputs.fingerprint }}
@@ -64,15 +72,50 @@ jobs:
           key: ci-green-v1-${{ steps.fingerprint.outputs.fingerprint }}
           lookup-only: true
 
+      - name: Reuse the merged pull request's green run
+        id: merged
+        if: github.event_name == 'push' && steps.paths.outputs.code == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # Main requires up-to-date branches, so a squash merge lands the tree
+          # its pull request's CI already passed. Reuse that run only when this
+          # push adds one commit, the commit is a pull request's merge, the
+          # request's final head contains the previous main and has this exact
+          # tree, and CI passed on that head. Anything else, or any failed
+          # lookup, runs every check.
+          tested=false
+          sha=$(git rev-parse HEAD)
+          if [ -n "$BEFORE" ] && [ "$(git rev-parse --verify --quiet 'HEAD^' || true)" = "$BEFORE" ]; then
+            pr=$(gh api "repos/$REPO/commits/$sha/pulls" --jq ".[] | select(.merge_commit_sha == \"$sha\") | \"\(.number) \(.head.sha)\"" 2>/dev/null | head -n 1 || true)
+            number=${pr%% *}
+            head=${pr##* }
+            if [[ "$number" =~ ^[0-9]+$ && "$head" =~ ^[0-9a-f]{40}$ ]] &&
+              git fetch --no-tags --quiet origin "refs/pull/$number/head" &&
+              [ "$(git rev-parse FETCH_HEAD)" = "$head" ] &&
+              git merge-base --is-ancestor "$BEFORE" "$head" &&
+              [ "$(git rev-parse "$head^{tree}")" = "$(git rev-parse 'HEAD^{tree}')" ]; then
+              passed=$(gh api "repos/$REPO/actions/workflows/ci.yaml/runs?head_sha=$head&event=pull_request&status=success&per_page=1" --jq '.total_count' 2>/dev/null || true)
+              if [[ "$passed" =~ ^[1-9][0-9]*$ ]]; then
+                tested=true
+                echo "Pull request #$number passed CI on $head, which has this exact tree."
+              fi
+            fi
+          fi
+          echo "tested=$tested" | tee -a "$GITHUB_OUTPUT"
+
       - name: Decide what to skip
         id: plan
         env:
           CODE: ${{ steps.paths.outputs.code }}
           GREEN: ${{ steps.green.outputs.cache-hit }}
+          MERGED: ${{ steps.merged.outputs.tested }}
         run: |
           set -euo pipefail
           skip=
-          if [ "$CODE" = "false" ]; then skip=docs; elif [ "$GREEN" = "true" ]; then skip=tested; fi
+          if [ "$CODE" = "false" ]; then skip=docs; elif [ "$GREEN" = "true" ] || [ "$MERGED" = "true" ]; then skip=tested; fi
           echo "skip=$skip" | tee -a "$GITHUB_OUTPUT"
 
   nodejs:
