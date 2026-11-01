@@ -2,6 +2,98 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-01 — Desktop 0.13.0 standard preview: assistant language follows the display language
+
+Selected distribution: Desktop **0.13.0 standard-profile preview**. App SDK
+**1.9.0**, bundled **Usage 0.5.4**. Platform npm is not part of this release:
+the registry keeps 0.12.4 as `latest`, and `npm-publish.yml` is not dispatched.
+Runtime npm 0.6.2 and launcher cats-one 0.6.0 are unchanged. Optional Marketplace
+Apps keep their existing releases.
+
+0.13.0 is a minor because #366 changes a script CLI contract (PLAN-129). The
+product and its stored data stay compatible with 0.12.
+
+- **The assistant language can follow the display language** (#368). In
+  Settings → General → Assistant response language:
+  - The new first choice is **Same as display language (<language>)**. Its
+    label names the display language actually in use, so it shows what
+    Auto-detect resolved to.
+  - The supported languages follow, and **Unspecified** moves to the end.
+  - A new chat with this choice is told to reply in that resolved display
+    language. The default stays Unspecified, so nothing changes for an owner who
+    has not picked the new choice.
+  - Existing chats keep the language they were created with, as for every other
+    choice.
+- **The macOS tray update alert opens where macOS places it** (#364). Since
+  0.9.2 it came forward as a sheet hanging below the middle of the screen.
+  - Desktop now becomes active through a transparent 1×1 window, which is
+    destroyed once it gets focus, within at most one second.
+  - The standard alert then opens at its native position, with no Cats window
+    behind it.
+  - Quitting during that wait dismisses the check instead of opening the alert.
+  - Windows and Linux are unchanged.
+- **macOS setup and the system Bash** (#363). The npm-folder check of an
+  already configured npm no longer aborts under macOS's Bash 3.2 with partial
+  JSON. Both Unix helper copies were fixed.
+- **Development scripts** (#366, PLAN-129). Desktop and Cats Bot now share
+  their development and build mechanisms:
+  - CDP restart, isolated source candidates, exact Git source reads, icon
+    rendering, notices and release primitives;
+  - source-vendored with pinned commits, SHA-256 and licenses.
+  - **Script CLI change:** `sync-agent-skills` `--clean` / `-Clean` now keeps
+    unrelated discovery skills instead of clearing the whole discovery folder.
+  - macOS and Linux gain `remove-merged-branches.sh`.
+  - None of this ships in the installed app.
+- **Compatibility and recovery.**
+  - Core stays format 6, the public App SDK is unchanged, and there is no data
+    migration.
+  - The one new stored value is `assistantResponseLanguage: "display"` in
+    `platform-preferences.json`, written only when an owner picks the new
+    choice.
+  - Returning to 0.12.4 needs no conversion. 0.12.4 treats `display` as invalid
+    and uses Unspecified, as it does for any unknown value. The tray alert then
+    returns to the sheet below the middle of the screen.
+  - Usage 0.5.4 declares `catsPlatform` `^0.6.0`, a minimum host version
+    (ADR-128), so it accepts 0.13.0.
+- **Exact source and artifacts.**
+  - Runtime package **0.6.2**, built from
+    `38e5475a4ffcbe0d31880c4b28f41a6eadcfd56c`. This is the source that 0.12.3
+    and 0.12.4 bundled and that npm 0.6.2 was published from. Later Runtime
+    `main` commits change only CI and agent documentation.
+  - Usage stays at
+    `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+    producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
+  - The complete-source manifest and every OS receipt record the selected merged
+    Platform bump commit and this exact Runtime SHA.
+- **Signing and updates.** Dispatch `desktop-release.yml` from the merged bump
+  commit with `tag=v0.13.0`, the Runtime SHA above and `unsigned=false`.
+  - Standard trust with the configured shared credentials: macOS **signed +
+    notarized**, Windows **unsigned: no certificate**, Linux **n/a**. Actual
+    trust comes from the workflow receipts.
+  - When output trust matches, standard-profile 0.12.4 Windows NSIS, signed macOS
+    and Linux DEB installations keep their update paths. Portable builds are
+    replaced by hand.
+- **Validation boundary.**
+  - Each change passed the full hosted CI and its regression tests.
+  - #368: 140 affected tests, including new tests for option order and labels in
+    English and Traditional Chinese, the preference round trip, and resolution to
+    the display locale.
+  - #364: the presenter's 11 tests and 173 focused update and tray tests. The
+    alert position was measured with a minimal Electron 41.2.0 probe on macOS 27.
+  - #363: regressions under the system Bash 3.2.
+  - #366: real isolated Desktop and Bot candidates reached setup and stopped
+    cleanly.
+  - Not covered:
+    - the Settings dropdown in the running Desktop app;
+    - the installed app's tray-click update path, other Spaces, full-screen
+      apps and multiple monitors;
+    - an installed 0.12.4-to-0.13.0 update.
+  - The release workflow enforces packaged startup, offline App activation,
+    complete-source identity, signing, updater metadata and public-asset
+    provenance.
+  - Publication results: the `v0.13.0` GitHub prerelease and its Actions run.
+
 ## 2026-10-31 — Platform npm and Desktop 0.12.4 standard preview: Git in setup and clean-machine Windows fixes
 
 Selected distribution: Desktop **0.12.4 standard-profile preview** and Platform
