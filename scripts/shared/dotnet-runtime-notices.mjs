@@ -44,7 +44,8 @@ export function nugetPackagesRoot(env = process.env, home = homedir()) {
   return env.NUGET_PACKAGES || join(home, '.nuget', 'packages');
 }
 
-export function renderNoticesReadme({ helperName, runtime, windowsSdk }) {
+export function renderNoticesReadme({ helperName, runtime, windowsSdk,
+  applicationNotice = 'The Cats application itself is licensed separately; see LICENSE next to the application.' }) {
   const lines = [
     `Third-party components bundled with ${helperName}`,
     '',
@@ -67,7 +68,7 @@ export function renderNoticesReadme({ helperName, runtime, windowsSdk }) {
       '',
     );
   }
-  lines.push('The Cats application itself is licensed separately; see LICENSE next to the application.');
+  lines.push(applicationNotice);
   return `${lines.join('\n')}\n`;
 }
 
@@ -76,7 +77,7 @@ export function renderNoticesReadme({ helperName, runtime, windowsSdk }) {
  * index naming every Microsoft component and its license. Returns what was staged.
  */
 export async function stageDotnetRuntimeNotices({
-  outputDir, depsJsonPath, helperName, nugetRoot = nugetPackagesRoot(),
+  outputDir, depsJsonPath, helperName, nugetRoot = nugetPackagesRoot(), applicationNotice,
 }) {
   const depsJson = JSON.parse(await readFile(depsJsonPath, 'utf8'));
   const { runtime, windowsSdk } = classifyRuntimePacks(resolveRuntimePacks(depsJson));
@@ -98,7 +99,7 @@ export async function stageDotnetRuntimeNotices({
     await copyFile(source, join(runtimeDir, file));
     files.push(join(NOTICES_DIRECTORY, DOTNET_NOTICES_DIRECTORY, file));
   }
-  await writeFile(join(noticesDir, NOTICES_README), renderNoticesReadme({ helperName, runtime, windowsSdk }), 'utf8');
+  await writeFile(join(noticesDir, NOTICES_README), renderNoticesReadme({ helperName, runtime, windowsSdk, applicationNotice }), 'utf8');
   files.push(join(NOTICES_DIRECTORY, NOTICES_README));
   await verifyDotnetRuntimeNotices(outputDir);
   return { runtime, windowsSdk, files };

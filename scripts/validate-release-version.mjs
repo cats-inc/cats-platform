@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stableReleaseVersion } from './shared/release-primitives.mjs';
 //
 // Script: validate-release-version.mjs
 // Description: Guard that a desktop release tag matches the package version in
@@ -79,7 +80,9 @@ export function parseStableReleaseTag(tag) {
     };
   }
 
-  if (!STABLE_RELEASE_TAG.test(candidate)) {
+  let valid = true;
+  try { stableReleaseVersion(candidate, { allowLeadingZeros: true }); } catch { valid = false; }
+  if (!valid) {
     return {
       ok: false,
       code: 'tag_malformed',

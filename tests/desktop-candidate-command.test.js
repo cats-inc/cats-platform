@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { request as httpRequest } from 'node:http';
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -21,7 +21,7 @@ import {
 const exec = promisify(execFile);
 const json = async (file) => JSON.parse(await readFile(file, 'utf8'));
 async function temporary(t) {
-  const root = await mkdtemp(path.join(tmpdir(), 'cats-candidate-command-'));
+  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'cats-candidate-command-')));
   t.after(() => rm(root, { recursive: true, force: true }));
   return root;
 }
@@ -116,7 +116,7 @@ test('two member worktrees use explicit matching dependency checkouts without ch
 });
 
 test('candidate-only control authenticates, captures only its window and confirms graceful drain', async (t) => {
-  const root = await mkdtemp(path.join(tmpdir(), 'cats-candidate-control-'));
+  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'cats-candidate-control-')));
   const candidateRoot = path.join(root, 'candidate');
   await mkdir(candidateRoot);
   const profile = resolveDesktopCandidateProfile({

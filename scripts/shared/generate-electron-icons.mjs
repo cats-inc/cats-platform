@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { renderIconVariants } from './icon-pipeline.mjs';
 
 import process from 'node:process';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -394,12 +395,10 @@ export async function generateElectronIcons(options = {}) {
   const pngBuffersBySize = new Map();
   const icnsBuffersBySize = new Map();
 
-  for (const size of new Set([
-    ...LINUX_ICON_SIZES,
-    ...ICO_SIZES,
-    1024,
-  ])) {
-    const png = await renderSvgPng(svgBuffer, size, iconShape);
+  const variants = await renderIconVariants(svgBuffer, [...LINUX_ICON_SIZES, ...ICO_SIZES, 1024], {
+    render: (svg, size) => renderSvgPng(svg, size, iconShape),
+  });
+  for (const [size, png] of variants) {
     icnsBuffersBySize.set(size, await insetPng(png, size, macosInset));
     // The Windows/Linux source carries its own background (or none), so it
     // skips the shape mask.

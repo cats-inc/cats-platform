@@ -225,6 +225,7 @@ const STUB_COMMANDS = {
   // `open` launches the fake app; pgrep then reports it running and no runtime children.
   open: 'printf "%s\\n" "$@" > "$STUB_LOG/open.args"\ntouch "$STUB_LOG/opened"\n',
   pgrep: '[ "$1" = "-P" ] && exit 1\n[ -f "$STUB_LOG/opened" ] && { echo 4242; exit 0; }\nexit 1\n',
+  ps: 'printf "%s\\n" "$STUB_APP_EXEC"\n',
   osascript: 'touch "$STUB_LOG/osascript.called"\n',
 };
 
@@ -255,7 +256,7 @@ async function createDisableFixture() {
     app,
     log,
     portFile: join(userData, 'DevToolsActivePort'),
-    env: { ...process.env, HOME: home, STUB_LOG: log, PATH: `${bin}:/usr/bin:/bin` },
+    env: { ...process.env, HOME: home, STUB_LOG: log, STUB_APP_EXEC: join(app, 'Contents/MacOS/Cats'), PATH: `${bin}:/usr/bin:/bin` },
   };
 }
 

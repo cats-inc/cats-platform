@@ -87,7 +87,8 @@
     "mobile:boundary": "node scripts/check-mobile-boundary.mjs",
     "mobile:export": "cd mobile && npx expo export --platform all --output-dir ../build/mobile",
     "mobile:install": "npm ci --prefix mobile && node scripts/patch-mobile-hermesc.mjs",
-    "pack:conversation-ui": "node scripts/pack-conversation-ui.mjs"
+    "pack:conversation-ui": "node scripts/pack-conversation-ui.mjs",
+    "tools:check": "node scripts/sync-shared-tools.mjs"
   },
   "keywords": [
     "cats",
