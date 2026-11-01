@@ -59,6 +59,10 @@ product and its stored data stay compatible with 0.12.
     screen.
   - Usage 0.5.4 declares `catsPlatform` `^0.6.0`, a minimum host version
     (ADR-128), so it accepts 0.13.0.
+- **Bundled product knowledge.** The Catlas and orchestrator bundles advance to
+  revision `2026-11-01.1` with `platformRange: "0.13.x"`. Without the change, the
+  0.12-only declarations would disable them on the new host. Their bilingual
+  contents and capability requirements are unchanged.
 - **Exact source and artifacts.**
   - Runtime package **0.6.2**, built from
     `38e5475a4ffcbe0d31880c4b28f41a6eadcfd56c`. This is the source that 0.12.3
