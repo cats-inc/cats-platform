@@ -1,17 +1,18 @@
 <#
 .SYNOPSIS
-    Remove local branches whose upstream was deleted after a squash merge.
+    Remove local branches whose upstream was deleted after the pull request merged.
 
 .DESCRIPTION
-    Intended as the opening step of an agent session in a repository that is
-    shared by several agents working from one clone.
+    Intended as the opening step of a working session, and especially useful in a
+    clone that several people or agents share.
 
-    The project merges with `gh pr merge --auto --squash` and lets GitHub delete
-    the head branch. A squashed commit has a different SHA than the branch it
-    came from, so `git branch -d` always reports "not fully merged" and refuses.
-    This script therefore starts from upstream state, not commit reachability: a
-    branch is a candidate once it had an upstream and that upstream is gone,
-    which is what happens when the pull request lands.
+    When a pull request is squash-merged and its head branch is deleted on the
+    remote, the local branch stays behind, and `git branch -d` refuses to remove
+    it: a squashed commit has a different SHA than the branch it came from, so
+    the branch never looks fully merged. This script therefore starts from
+    upstream state rather than commit reachability: a branch is a candidate once
+    it had an upstream and that upstream is gone, which is what happens when the
+    remote deletes the head branch on merge.
 
     A gone upstream alone is not proof of a merge, though. A pull request closed
     without merging and a branch that gained commits after its merge look exactly
@@ -22,23 +23,23 @@
     is kept and reported, with the command to delete it by hand.
 
     A branch that was never pushed has no upstream at all and can never be
-    reported as gone, so local-only experiments are never swept. Branches that
-    are checked out in another worktree are reported and skipped rather than
-    left to fail. The landed check needs Git 2.38 or newer; an older Git keeps
-    every candidate and says so.
+    reported as gone, so local-only experiments are never swept. Branches checked
+    out in another worktree are reported and skipped rather than left to fail,
+    and the default branch is never removed. The landed check needs Git 2.38 or
+    newer; an older Git keeps every candidate and says so.
 
-    The working tree must be clean. In a shared clone a dirty tree usually means
-    another agent left work behind, so the script stops instead of guessing.
-    A clean tree is not enough to leave a branch, though: another agent may have
-    committed and be waiting on CI. The script only moves off a branch whose
-    upstream is gone.
+    The working tree must be clean. A dirty tree usually means unfinished work,
+    so the script stops rather than guessing what to do with it. A clean tree is
+    not enough to leave a branch, though: someone may have committed and be
+    waiting on CI. The script only moves off a branch whose upstream is gone.
 
-    The default branch comes from origin/HEAD, falling back to init.defaultBranch,
-    main, or master, and only ever to a branch that actually exists - guessing a
-    name breaks a clone whose default is not what this script assumed. A fetch
-    that fails because the remote is unreachable only warns, since the recorded
-    upstream state stays accurate and an offline run can at worst miss a recently
-    merged branch.
+    Run `git config --global fetch.prune true` once per machine so the gone
+    markers appear without passing --prune on every fetch.
+
+    A repository with no remote yet, as a freshly initialized project has, is
+    fine: there is simply nothing to sweep. A fetch that fails because the remote
+    is unreachable only warns, since the recorded upstream state stays accurate
+    and an offline run can at worst miss a recently merged branch.
 
 .PARAMETER ReturnToDefault
     Switch to the default branch and fast-forward it after sweeping. The switch
@@ -47,8 +48,8 @@
     not merged - its upstream still exists, it was never pushed, it still holds
     changes the default branch lacks, or HEAD is detached - is left checked out
     with a warning, and the default branch is not fast-forwarded. A fast-forward that fails is reported as a warning and leaves
-    the default branch where it was; a default branch with no upstream is left
-    as it is.
+    the default branch where it was; a default branch with no upstream yet is
+    left as it is.
 
 .PARAMETER SkipFetch
     Skip `git fetch --prune`. Only useful when a fetch just ran, since without a
@@ -107,7 +108,7 @@ function Update-DefaultBranch {
     $before = (Invoke-Git @("rev-parse", "--short", "HEAD") | Select-Object -First 1).ToString().Trim()
     Invoke-Git @("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}") -AllowFailure | Out-Null
     if ($LASTEXITCODE -ne 0) {
-        # A default branch that was never pushed has nothing to fast-forward from.
+        # A freshly initialized project has nothing to fast-forward from yet.
         Write-Host "  stay   $Name (no upstream to fast-forward from, at $before)"
         return
     }
@@ -156,8 +157,8 @@ function Resolve-DefaultBranch {
     if ($name) { return $name }
 
     # No remote, or one that has never been reachable. Guessing a name here is
-    # how a fresh clone breaks, because init.defaultBranch varies by machine.
-    # Only return a branch that actually exists.
+    # how a freshly initialized project breaks, because init.defaultBranch
+    # varies by machine. Only return a branch that actually exists.
     $configured = Invoke-Git @("config", "--get", "init.defaultBranch") -AllowFailure
     $configuredName = if ($LASTEXITCODE -eq 0 -and $configured) {
         ($configured | Select-Object -First 1).ToString().Trim()
@@ -345,7 +346,7 @@ if ($ReturnToDefault) {
         Write-Warning "No default branch could be determined, so -ReturnToDefault did nothing."
     } elseif ($currentBranch -ne $defaultBranch -and -not $currentMerged) {
         # A clean tree only shows the work was committed. In a shared clone this
-        # branch may be another agent's, still waiting on its pull request.
+        # branch may be someone else's, still waiting on its pull request.
         $position = if ($currentBranch) {
             "'$currentBranch', which has not merged (its upstream still exists, it was never pushed, or it still holds changes '$defaultBranch' lacks)"
         } else {

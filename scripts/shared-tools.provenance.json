@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "repository": "cats-inc/cats-one",
+      "commit": "f17ae5f488b774116b82f04ff2781576a3460b12",
+      "files": [
+        {
+          "source": "scripts/shared/sync-agent-skills.mjs",
+          "path": "scripts/shared/sync-agent-skills.mjs",
+          "sha256": "8685feaad78ada08ded230dec8da5e96ab529e2d88fe592bc75893de445b8ec7",
+          "executable": false
+        },
+        {
+          "source": "scripts/sync-shared-tools.mjs",
+          "path": "scripts/sync-shared-tools.mjs",
+          "sha256": "4ffc224ff29aae919ed8cc0ef9f0a58365b609e0b0e6172ec37b38c7a44dd71d",
+          "executable": false
+        },
+        {
+          "source": "scripts/macos/sync-agent-skills.sh",
+          "path": "scripts/macos/sync-agent-skills.sh",
+          "sha256": "16cad7a6c10855661d67e5d80914028a7b51f524f37b18b4e440fcc0b2b24561",
+          "executable": true
+        },
+        {
+          "source": "scripts/linux/sync-agent-skills.sh",
+          "path": "scripts/linux/sync-agent-skills.sh",
+          "sha256": "16cad7a6c10855661d67e5d80914028a7b51f524f37b18b4e440fcc0b2b24561",
+          "executable": true
+        },
+        {
+          "source": "scripts/windows/Sync-AgentSkills.ps1",
+          "path": "scripts/windows/Sync-AgentSkills.ps1",
+          "sha256": "ccdc1b0e6f8965871777c8cb8dc59bac3530dc22afc01be179a923ea4ce5577b",
+          "executable": false
+        },
+        {
+          "source": "scripts/macos/remove-merged-branches.sh",
+          "path": "scripts/macos/remove-merged-branches.sh",
+          "sha256": "4d4beed35b39dd8cabac057f6de35babab22947efcbbb231daf2bcdcd1a6eea7",
+          "executable": true
+        },
+        {
+          "source": "scripts/linux/remove-merged-branches.sh",
+          "path": "scripts/linux/remove-merged-branches.sh",
+          "sha256": "4d4beed35b39dd8cabac057f6de35babab22947efcbbb231daf2bcdcd1a6eea7",
+          "executable": true
+        },
+        {
+          "source": "scripts/windows/Remove-MergedBranches.ps1",
+          "path": "scripts/windows/Remove-MergedBranches.ps1",
+          "sha256": "3a56d75c39d4bc9e7a247ef4fe77da4acd96db8cc975aac48476349f1b2c7aaa",
+          "executable": false
+        },
+        {
+          "source": "LICENSE",
+          "path": "scripts/licenses/cats-one-LICENSE",
+          "sha256": "096afcaa76b8b0b37020c7ec2ad46e59bbfdf968dbf3670d1924f45c1d238cde",
+          "executable": false
+        }
+      ]
+    }
+  ]
+}

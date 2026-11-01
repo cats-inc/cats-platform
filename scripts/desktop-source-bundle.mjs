@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { digest } from './shared/release-primitives.mjs';
+import { archiveRepository } from './shared/git-source.mjs';
+export { archiveRepository } from './shared/git-source.mjs';
 // Build and verify the complete first-party source archive for a Desktop release.
 // Usage: node scripts/desktop-source-bundle.mjs build --tag vX.Y.Z --platform-commit <sha>
 //   --runtime-root <checkout> --runtime-commit <sha> --output <directory>
@@ -22,7 +25,7 @@ const execute = promisify(execFile);
 const SHA = /^[a-f0-9]{40}$/;
 const TAG = /^v\d+\.\d+\.\d+$/;
 const MAX_BYTES = 256 * 1024 * 1024;
-export const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
+export { digest } from './shared/release-primitives.mjs';
 const jsonBytes = (value) => Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
 const parseJson = (bytes) => JSON.parse(Buffer.from(bytes).toString('utf8'));
 const safePath = (name) => typeof name === 'string' && name.length > 0 && !name.includes('\\')
@@ -47,43 +50,6 @@ export function appBuildInstallCommand(manifest, platform = process.platform) {
   return platform === 'win32' ? { command: 'npm.cmd', args, shell: true } : { command: 'npm', args, shell: false };
 }
 
-export async function archiveRepository(root, commit, repository, directory) {
-  assert.match(commit, SHA, 'Source commit must be immutable');
-  assert.ok(safePath(directory), 'Invalid source directory');
-  const tree = await run('git', ['--no-replace-objects', 'ls-tree', '-rz', '--full-tree', commit], root);
-  const tracked = tree.split('\0').filter(Boolean).map((entry) => {
-    const match = /^(100644|100755) blob ([a-f0-9]{40})\t([\s\S]+)$/.exec(entry);
-    assert.ok(match && safePath(match[3]), 'Unsupported source entry: symlinks/submodules need explicit source handling');
-    return { mode: match[1], blob: match[2], name: match[3] };
-  });
-  // Read blobs directly: git archive can apply autocrlf, export-ignore and
-  // export-subst. None of those should alter the exact committed source bytes.
-  const ids = [...new Set(tracked.map((entry) => entry.blob))];
-  const packed = await run('git', ['--no-replace-objects', 'cat-file', '--batch'], root,
-    { encoding: 'buffer', input: `${ids.join('\n')}\n` });
-  const blobs = new Map();
-  let offset = 0;
-  for (const id of ids) {
-    const newline = packed.indexOf(10, offset);
-    assert.ok(newline >= offset, 'Incomplete Git blob header');
-    const header = /^([a-f0-9]{40}) blob (\d+)$/.exec(packed.subarray(offset, newline).toString());
-    assert.ok(header && header[1] === id, 'Unexpected Git blob response');
-    const length = Number(header[2]);
-    const start = newline + 1;
-    assert.ok(Number.isSafeInteger(length) && length >= 0 && start + length < packed.length && packed[start + length] === 10, 'Incomplete Git blob');
-    const bytes = packed.subarray(start, start + length);
-    assert.equal(createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex'), id, 'Git blob identity mismatch');
-    blobs.set(id, bytes);
-    offset = start + length + 1;
-  }
-  assert.equal(offset, packed.length, 'Unexpected trailing Git blob data');
-  const files = Object.create(null);
-  for (const { name, mode, blob } of tracked) {
-    files[name] = { bytes: blobs.get(blob), mode };
-  }
-  assert.ok(files['LICENSE'] && files['package.json'] && files['package-lock.json'], 'Repository source/license/lock missing');
-  return { repository, commit, directory, files };
-}
 
 function inventory(files) {
   return Object.keys(files).sort().map((name) => [name, files[name].mode, digest(files[name].bytes)]);

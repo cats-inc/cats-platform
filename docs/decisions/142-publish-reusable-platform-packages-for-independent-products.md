@@ -11,6 +11,12 @@ and publication remain pending. See the [implementation record](../research/conv
 Requirements and delivery gates are in [SPEC-134](../specs/SPEC-134-reusable-platform-packages-and-consumer-boundaries.md)
 and [PLAN-127](../plans/PLAN-127-shared-platform-package-extraction.md).
 
+On 2026-11-01 the owner authorized the complete Desktop/Bot script-convergence
+inventory. [PLAN-129](../plans/PLAN-129-desktop-bot-script-convergence.md) tracks
+that bounded development/build slice. It uses pinned, licensed source closures
+and product adapters while retaining standalone checkouts. It does not claim
+publication or completion of the proposed production host-library packages.
+
 ## Context
 
 Platform currently combines a product server, Web renderer, Electron host,

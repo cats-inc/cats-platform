@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, realpath, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -12,7 +12,7 @@ async function put(root, file, text) {
 }
 
 test('actual multi-entry Vite inputs determine notices; stale resources and omitted licenses fail closed', async t => {
-  const root = await mkdtemp(join(tmpdir(), 'cats-renderer-notices-'));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'cats-renderer-notices-')));
   t.after(() => rm(root, { recursive: true, force: true }));
   const plugin = new URL('../scripts/renderer-license-plugin.ts', import.meta.url).pathname;
   // Vite compiles this config together with the production TypeScript plugin.

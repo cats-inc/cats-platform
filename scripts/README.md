@@ -219,6 +219,11 @@ support:
 - `--clean` / `-Clean`
 - `--agent <claude|codex>` / `-Agent <...>`
 
+The shared cats-one implementation preserves unrelated discovery skills even
+with `--clean`, rejects linked sources/destinations and validates both hosts
+before writing. `--dry-run` / `-DryRun` previews. `remove-merged-branches.sh` is
+also available under macOS/Linux, with the same safeguards as PowerShell.
+
 Antigravity CLI is intentionally not a skill sync target yet. Its repo/project
 skill discovery path has not been verified, so these helpers do not create an
 `.antigravity/skills` convention.
@@ -545,3 +550,20 @@ Three copies of this script exist and are meant to stay in step:
 
 The template copy is the one to treat as canonical when they disagree, since it
 has to work in a repository whose default branch and remote are unknown.
+
+## Shared development/build mechanisms
+
+The implementation and validation scope is recorded in
+[PLAN-129](../docs/plans/PLAN-129-desktop-bot-script-convergence.md). Maintenance
+sources are owned by cats-one; CDP transport/restart, source snapshots/control,
+exact Git source reads, icon rendering and notice collection are owned by Platform.
+Product adapters keep their own profiles, app/bridge identity, artwork, output
+formats, signing policy and release authority. No sibling source is imported.
+
+Run `npm run tools:check` to verify every pinned copy and producer license offline.
+To check the source commit too, add `--source cats-inc/cats-one=/path/to/cats-one`.
+Explicit refresh uses `node scripts/sync-shared-tools.mjs --refresh --source
+cats-inc/cats-one=/path/to/cats-one` (Bot additionally supplies its Platform source).
+Commit producer edits first; the refresh rejects dirty source bytes. Review the
+resulting pins and hashes with the consumer change. This command never installs,
+starts applications or publishes anything.

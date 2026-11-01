@@ -19,6 +19,11 @@ this implementation request.
 
 ## Overview
 
+The owner separately authorized development/build script convergence on
+2026-11-01. See [PLAN-129](PLAN-129-desktop-bot-script-convergence.md) for the
+implemented source-closure/adaptor boundary and its validation. This does not
+complete the production package publication gates below.
+
 Use small producer/consumer slices, beginning with setup scripts and the native
 Windows helper, followed by the required Desktop-derived conversation renderer.
 All three slices require Desktop and Bot as actual consumers. Other client/UI
