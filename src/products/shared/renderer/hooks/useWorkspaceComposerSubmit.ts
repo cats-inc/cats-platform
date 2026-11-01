@@ -88,6 +88,7 @@ import { formatWorkspaceChatActionError } from './workspaceChatActionErrorLabels
 import type { DraftParallelTargetBranchFields } from '../draftParallelTargets.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
+import { resolveAssistantResponseLanguage } from '../../../../shared/assistantResponseLanguage.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -216,7 +217,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setFeedback,
     hydratePendingDispatch = null,
   } = options;
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const managedNavigationLocationRef = useRef<string | null>(null);
   const submittingRef = useRef(false);
   const {
@@ -322,6 +323,10 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           draftParticipantCatIds: draftCatIds,
           draftTemporaryParticipants,
           draftCatExecutionTargetOverrides,
+          assistantResponseLanguage: resolveAssistantResponseLanguage(
+            initialPayload.language?.assistantResponseLanguage,
+            locale,
+          ),
           buildChannelPath: buildTargetChannelPath,
           onCreated: (created, activeId) => {
             rollbackPayload = created.appShell;
@@ -446,7 +451,10 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         temporaryParticipants: draftTemporaryParticipants,
         draftEntryKind,
         draftExecutionTarget,
-        assistantResponseLanguage: initialPayload.language?.assistantResponseLanguage,
+        assistantResponseLanguage: resolveAssistantResponseLanguage(
+          initialPayload.language?.assistantResponseLanguage,
+          locale,
+        ),
         draftFiles,
         channelFiles,
         createChatChannel,
@@ -696,6 +704,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     showingNewChatDraft,
     resetDraftParallelChatTargets,
     state,
+    locale,
     t,
   ]);
 

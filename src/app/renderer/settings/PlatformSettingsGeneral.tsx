@@ -10,14 +10,15 @@ import {
 } from '../../../design/components/settings/index.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import type {
-  AssistantResponseLanguage,
+  AssistantResponseLanguageCode,
+  AssistantResponseLanguagePreference,
   GuideCatSidecarMode,
   PlatformLanguagePreferences,
   PlatformUiLanguagePreference,
 } from '../../../shared/platform-contract.js';
 import {
   ASSISTANT_RESPONSE_LANGUAGE_CODES,
-  isAssistantResponseLanguage,
+  isAssistantResponseLanguagePreference,
 } from '../../../shared/assistantResponseLanguage.js';
 import { useGuideCatUiPrefs } from '../guideCatUiPrefsStore.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
@@ -55,7 +56,7 @@ function resolveLanguagePreferences(
 }
 
 function formatAssistantLanguageName(
-  languageCode: Exclude<AssistantResponseLanguage, 'unspecified'>,
+  languageCode: AssistantResponseLanguageCode,
   locale: string,
 ): string {
   const displayCode = languageCode === 'zh-TW'
@@ -262,7 +263,7 @@ export function PlatformSettingsGeneral({
   }
 
   async function updateAssistantResponseLanguage(
-    nextLanguage: AssistantResponseLanguage,
+    nextLanguage: AssistantResponseLanguagePreference,
   ): Promise<void> {
     const previousLanguage = resolveLanguagePreferences(payload.language, languagePreference);
     if (nextLanguage === previousLanguage.assistantResponseLanguage) {
@@ -290,7 +291,7 @@ export function PlatformSettingsGeneral({
       const body = await response.json() as {
         assistantResponseLanguage?: unknown;
       };
-      const persistedLanguage = isAssistantResponseLanguage(body.assistantResponseLanguage)
+      const persistedLanguage = isAssistantResponseLanguagePreference(body.assistantResponseLanguage)
         ? body.assistantResponseLanguage
         : nextLanguage;
       onPayloadUpdate({
@@ -372,6 +373,10 @@ export function PlatformSettingsGeneral({
     })),
     [locale],
   );
+  // The display language actually in use, auto-detect resolved.
+  const displayLanguageLabel = locale === 'zh-TW'
+    ? t('settingsGeneralLanguageTraditionalChineseOption')
+    : t('settingsGeneralLanguageEnglishOption');
 
   return (
     <>
@@ -520,20 +525,25 @@ export function PlatformSettingsGeneral({
                 disabled={savingAssistantLanguage}
                 onChange={(event) => {
                   const nextLanguage = event.target.value;
-                  if (isAssistantResponseLanguage(nextLanguage)) {
+                  if (isAssistantResponseLanguagePreference(nextLanguage)) {
                     void updateAssistantResponseLanguage(nextLanguage);
                   }
                 }}
                 aria-label={t('settingsGeneralAssistantLanguageSelectAriaLabel')}
               >
-                <option value="unspecified">
-                  {t('settingsGeneralAssistantLanguageUnspecifiedOption')}
+                <option value="display">
+                  {t('settingsGeneralAssistantLanguageDisplayOption', {
+                    language: displayLanguageLabel,
+                  })}
                 </option>
                 {assistantLanguageOptions.map((option) => (
                   <option key={option.code} value={option.code}>
                     {option.label}
                   </option>
                 ))}
+                <option value="unspecified">
+                  {t('settingsGeneralAssistantLanguageUnspecifiedOption')}
+                </option>
               </select>
             }
           />

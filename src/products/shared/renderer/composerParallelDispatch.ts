@@ -82,6 +82,8 @@ export interface SubmitNewParallelChatDraftOptions {
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
   /** Per-cat model picks made in the draft; applied to every lane the cat joins. */
   draftCatExecutionTargetOverrides?: ReadonlyMap<string, DraftCatExecutionTarget>;
+  /** Already resolved from the Settings choice; see resolveAssistantResponseLanguage. */
+  assistantResponseLanguage?: AssistantResponseLanguage;
   buildChannelPath: (channelId: string) => string;
   onCreated?: (created: CreateParallelChatGroupResponse, activeChannelId: string) => void;
   t?: WorkspaceChatTranslator;
@@ -171,6 +173,7 @@ export async function submitNewParallelChatDraft({
   draftParticipantCatIds = [],
   draftTemporaryParticipants = [],
   draftCatExecutionTargetOverrides = new Map(),
+  assistantResponseLanguage,
   buildChannelPath,
   onCreated,
   t = defaultParallelDispatchTranslator,
@@ -203,7 +206,7 @@ export async function submitNewParallelChatDraft({
       draftParallelChatTargets,
       draftParticipantCatIds,
       draftTemporaryParticipants,
-      assistantResponseLanguage: payload.language?.assistantResponseLanguage,
+      assistantResponseLanguage,
       t,
     }),
     signal,

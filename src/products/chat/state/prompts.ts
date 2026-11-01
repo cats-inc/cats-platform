@@ -392,7 +392,9 @@ function languageInstruction(responseLanguage: string): string {
   if (instruction) {
     return instruction;
   }
-  if (!responseLanguage || responseLanguage === 'unspecified') {
+  // `display` is a Settings choice that the renderer resolves before it creates
+  // a chat; a stray one carries no language to name.
+  if (!responseLanguage || responseLanguage === 'unspecified' || responseLanguage === 'display') {
     return '';
   }
 

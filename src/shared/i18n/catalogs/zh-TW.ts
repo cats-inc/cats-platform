@@ -549,6 +549,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.general.assistantLanguagePreferenceDescription':
     '設定助理回覆時預設使用的語言指令。單次對話中使用者明確要求的語言仍會優先。',
   'settings.general.assistantLanguageSelectAriaLabel': '助理回覆語言',
+  'settings.general.assistantLanguageDisplayOption': '與顯示語言相同（{language}）',
   'settings.general.assistantLanguageUnspecifiedOption': '不指定',
   'settings.general.languagePreferenceLabel': '顯示語言',
   'settings.general.languagePreferenceDescription':

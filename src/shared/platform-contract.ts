@@ -167,8 +167,8 @@ export interface PlatformLobbyPreferences {
 
 export type PlatformUiLanguage = 'en' | 'zh-TW';
 export type PlatformUiLanguagePreference = 'auto' | PlatformUiLanguage;
-export type AssistantResponseLanguage =
-  | 'unspecified'
+/** A language an assistant can be told to reply in. */
+export type AssistantResponseLanguageCode =
   | 'en'
   | 'zh-TW'
   | 'zh-CN'
@@ -187,9 +187,16 @@ export type AssistantResponseLanguage =
   | 'th'
   | 'hi'
   | 'ar';
+/** What a chat is stamped with: a language, or no language instruction. */
+export type AssistantResponseLanguage = AssistantResponseLanguageCode | 'unspecified';
+/**
+ * The Settings choice. `display` follows the display language the renderer
+ * resolved, auto-detect included, and is resolved before a chat is created.
+ */
+export type AssistantResponseLanguagePreference = 'display' | AssistantResponseLanguage;
 
 export interface PlatformLanguagePreferences {
-  assistantResponseLanguage: AssistantResponseLanguage;
+  assistantResponseLanguage: AssistantResponseLanguagePreference;
   uiLanguagePreference: PlatformUiLanguagePreference;
 }
 

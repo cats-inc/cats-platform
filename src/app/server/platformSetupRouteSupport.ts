@@ -8,7 +8,7 @@ import {
   normalizePlatformLobbyAnimationMode,
   type PlatformPreferences,
 } from '../../shared/platformPreferences.js';
-import { parseAssistantResponseLanguage } from '../../shared/assistantResponseLanguage.js';
+import { parseAssistantResponseLanguagePreference } from '../../shared/assistantResponseLanguage.js';
 import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import { GUIDE_CAT_SYSTEM_NAME } from '../../shared/guideCatIdentity.js';
@@ -146,11 +146,11 @@ export function parsePlatformPreferencesUpdate(
   }
   if (
     body.assistantResponseLanguage !== undefined
-    && parseAssistantResponseLanguage(body.assistantResponseLanguage) === undefined
+    && parseAssistantResponseLanguagePreference(body.assistantResponseLanguage) === undefined
   ) {
     return {
       ok: false,
-      message: 'assistantResponseLanguage must be unspecified or a supported BCP 47 language code',
+      message: 'assistantResponseLanguage must be display, unspecified, or a supported BCP 47 language code',
     };
   }
 
@@ -164,7 +164,7 @@ export function parsePlatformPreferencesUpdate(
       lobbyAnimationMode:
         parseLobbyAnimationMode(body.lobbyAnimationMode) ?? currentPrefs.lobbyAnimationMode,
       assistantResponseLanguage:
-        parseAssistantResponseLanguage(body.assistantResponseLanguage)
+        parseAssistantResponseLanguagePreference(body.assistantResponseLanguage)
         ?? currentPrefs.assistantResponseLanguage,
       uiLanguagePreference:
         parsePlatformUiLanguagePreference(body.uiLanguagePreference)
