@@ -2,6 +2,65 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-01 — Desktop 0.13.1 standard preview: refreshed provider model catalogs
+
+Selected distribution: Desktop **0.13.1 standard-profile preview**, using App SDK
+**1.9.0** and bundled **Usage 0.5.4**. This is a compatible 0.13 patch. Platform
+npm, Runtime npm, cats-one, Apps and Plugins are separate release targets.
+
+- **Current provider/model choices.** Runtime #207 refreshes the requested
+  Codex, Claude, Antigravity, Grok, Muse and Cursor catalogs from account/picker
+  evidence, preserving per-model controls, labels and native execution IDs.
+  - Codex adds **GPT-6.1 Terra**, third in picker order: Low, Medium, High,
+    Extra high, Max and Ultra; default **Low**, context **500000**.
+  - Cursor adds **DeepSeek V4.1 Flash 1017**, retaining its exact native variants
+    and picker-preselected defaults.
+  - Counts are 8 Codex, 12 Claude, 5 Antigravity, 4 Grok, 3 Muse and 49 Cursor
+    entries. No existing model was removed or changed. Other provider scopes
+    retain their catalogs; custom model-string input remains available.
+  - Copilot retains its earlier 14-entry catalog and date: both machine and
+    interactive reads returned feature HTTP 403 after sign-in. This release
+    does not claim a fresh Copilot account catalog.
+  - Desktop and Playground consume one Runtime factory. Existing resumed
+    sessions retain resolved bindings; new selections use the current catalog.
+- **Exact source and artifacts.**
+  - Runtime **0.6.2**, source
+    `c6e575b672ecaf3d6113c08260720b57c7d62765`; catalog sourceDigest
+    `b9f8c46b2b9add026804082b219a0d3350ab17f264b2c481beb00dc3cfacff64`.
+    Compared with the Runtime source selected for 0.13.0, only the authored and
+    generated catalog files differ in the packaged inputs; executable code is unchanged.
+  - Usage **0.5.4** remains
+    `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+    producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
+  - The complete source manifest and each packaged OS receipt record the merged
+    Platform bump commit and the exact Runtime/App inputs above.
+- **Compatibility and recovery.** Core stays format 6, App SDK stays 1.9.0,
+  and no persisted format, public API or configuration requirement changes.
+  No data migration is introduced. The 0.13.x product-knowledge ranges and
+  Usage's existing host/SDK compatibility remain applicable.
+  - Returning to 0.13.0 needs no format conversion. Its older factory omits the
+    two added choices; select an older offered model or a supported custom raw
+    model string when necessary. Existing user data is not rewritten by the bump.
+- **Signing and updates.** Manually dispatch `desktop-release.yml` from the
+  merged bump source with `tag=v0.13.1`, the Runtime SHA above and `unsigned=false`.
+  The workflow creates a prerelease and its tag; no tag push selects this preview.
+  - Expected standard trust: macOS **signed + notarized**, Windows
+    **unsigned: no certificate**, Linux **n/a**. Actual trust is recorded by
+    the platform receipts and signature/notarization checks.
+  - Standard-profile 0.13.0 Windows NSIS, signed macOS using the same Developer
+    ID team and Linux DEB installs retain their update paths. Portable builds
+    use manual replacement; an unsigned Mac install needs a manual standard install.
+- **Validation boundary.** Runtime #207 passed full hosted preflight. Its
+  focused checks passed 110 catalog/Playground tests and 31 HTTP catalog cases;
+  independent review found no data or binding issue. Platform's 13 focused
+  consumer tests and real HTTP/Playground projection checks passed.
+  - The release workflow enforces packaged startup, offline App activation,
+    complete-source identity, signing, updater metadata and asset provenance.
+    A public source ZIP is verified against its published manifest/checksum.
+  - An installed 0.13.0-to-0.13.1 updater acceptance is separate from these checks.
+  - Publication results: the `v0.13.1` GitHub prerelease and its Actions run.
+
 ## 2026-11-01 — Desktop 0.13.0 standard preview: assistant language follows the display language
 
 Selected distribution: Desktop **0.13.0 standard-profile preview**. App SDK
