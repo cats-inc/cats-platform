@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { reportHostError } from './hostDiagnostics.js';
 import { app, Menu, Tray, nativeImage } from 'electron';
 
 import type {
@@ -115,9 +116,7 @@ async function createTrayIcon(): Promise<Electron.NativeImage> {
 
 function runTrayAction(action: () => Promise<void>): void {
   void action().catch((error) => {
-    process.stderr.write(
-      `Desktop tray action failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    reportHostError('Desktop tray action failed', error);
   });
 }
 

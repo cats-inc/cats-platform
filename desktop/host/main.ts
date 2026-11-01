@@ -1,4 +1,6 @@
 import { dirname, join } from 'node:path';
+import { configureHostLogger, observeDisplays, observeHostApp, observeHostProcess,
+  reportHostError, type HostLogger } from './hostDiagnostics.js';
 import { randomBytes } from 'node:crypto';
 import { validateDesktopAppRequest } from './appRequests.js';
 import { DesktopGoogleAuthController } from './googleAuth.js';
@@ -275,6 +277,7 @@ const relaunchDesktopHost = process.platform === 'linux'
 let mainWindow: BrowserWindow | null = null;
 let mainWindowPlacementTracker: DesktopWindowPlacementTracker | null = null;
 let hostConfig: DesktopHostConfig | null = null;
+let hostLogger: HostLogger | null = null;
 let supervisor: ManagedServiceSupervisor | null = null;
 let googleAuthController: DesktopGoogleAuthController | null = null;
 let latestSnapshot: DesktopBootstrapSnapshot | null = null;
@@ -557,9 +560,7 @@ async function openExternalDesktopUrl(rawUrl: string): Promise<void> {
 }
 
 function reportExternalUrlOpenFailure(error: unknown): void {
-  process.stderr.write(
-    `Failed to open external desktop URL: ${error instanceof Error ? error.message : String(error)}\n`,
-  );
+  reportHostError('Failed to open external desktop URL', error);
 }
 
 function resolveAllowedAppHosts(config: DesktopHostConfig): string[] {
@@ -773,6 +774,8 @@ function recordSnapshotTransitions(snapshot: DesktopBootstrapSnapshot): void {
   const attemptId = diagnosticsState.activeAttemptId;
   const previousSnapshot = latestSnapshot;
   if (!previousSnapshot || previousSnapshot.phase !== snapshot.phase) {
+    hostLogger?.record('bootstrap-phase', { phase: snapshot.phase, status: snapshot.status,
+      previousPhase: previousSnapshot?.phase ?? null });
     diagnosticsState = appendHostEvent(diagnosticsState, createDesktopBootstrapEvent({
       layer: 'host',
       kind: 'host_phase_changed',
@@ -962,7 +965,7 @@ function writePersistedHostState(snapshot: DesktopBootstrapSnapshot): void {
     setup: snapshot.setup,
     diagnostics: snapshot.diagnostics,
   }).catch((error) => {
-    process.stderr.write(`Failed to persist desktop host state: ${error instanceof Error ? error.message : String(error)}\n`);
+    reportHostError('Failed to persist desktop host state', error);
   });
 }
 
@@ -1553,7 +1556,7 @@ async function maybePrimeSetupAudit(
     } catch (error) {
       // Each failed prerequisite remains retryable in its card; do not let one
       // missing host tool prevent the other environment checks from finishing.
-      process.stderr.write(`Desktop setup check failed (${action.helperId}): ${String(error)}\n`);
+      reportHostError('Desktop setup check failed', error);
     }
   }
 }
@@ -1567,9 +1570,7 @@ function scheduleBackgroundSetupAudit(
   }
   backgroundSetupAuditPromise = maybePrimeSetupAudit(snapshot, persistedSetup)
     .catch((error) => {
-      process.stderr.write(
-        `Background setup audit failed: ${error instanceof Error ? error.message : String(error)}\n`,
-      );
+      reportHostError('Background setup audit failed', error);
     })
     .finally(() => {
       backgroundSetupAuditPromise = null;
@@ -1588,9 +1589,7 @@ function scheduleRuntimeCliInventoryPoll(options: {
   runtimeCliInventoryPollTimer = setTimeout(() => {
     runtimeCliInventoryPollTimer = null;
     void pollRuntimeCliInventory(options).catch((error) => {
-      process.stderr.write(
-        `Background CLI inventory poll failed: ${error instanceof Error ? error.message : String(error)}\n`,
-      );
+      reportHostError('Background CLI inventory poll failed', error);
       scheduleRuntimeCliInventoryPoll(options);
     });
   }, options.delayMs ?? RUNTIME_CLI_INVENTORY_POLL_INTERVAL_MS);
@@ -1717,18 +1716,14 @@ function scheduleBackgroundBootstrapWork(
     forceRescan: false,
     setupCompleted,
   }).catch((error) => {
-    process.stderr.write(
-      `Background CLI inventory rescan failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    reportHostError('Background CLI inventory rescan failed', error);
   });
 
   // Provider diagnostics — only meaningful after setup is applied. Best
   // effort, single-shot; failures fall back to "Cats can still open".
   if (setupCompleted) {
     void fetchProviderDiagnosticsInBackground().catch((error) => {
-      process.stderr.write(
-        `Background provider diagnostics fetch failed: ${error instanceof Error ? error.message : String(error)}\n`,
-      );
+      reportHostError('Background provider diagnostics fetch failed', error);
     });
   }
 }
@@ -1789,9 +1784,7 @@ async function maybeRecoverFromLateReadyStateChange(): Promise<void> {
       publishSnapshot(snapshot);
       await maybeOpenApp(snapshot);
     } catch (error) {
-      process.stderr.write(
-        `Failed to recover desktop host after late service readiness: ${error instanceof Error ? error.message : String(error)}\n`,
-      );
+      reportHostError('Failed to recover desktop host after late service readiness', error);
     } finally {
       lateReadyRecoveryPromise = null;
     }
@@ -1900,10 +1893,7 @@ async function createUpdateManagerForLaunch(
         },
       });
     } catch (error) {
-      process.stderr.write(
-        '[desktop-update] updater unavailable, continuing without self-update: '
-          + `${error instanceof Error ? error.message : String(error)}\n`,
-      );
+      reportHostError('[desktop-update] updater unavailable, continuing without self-update', error);
       adapter = null;
     }
   }
@@ -2305,11 +2295,10 @@ async function drainManagedServices(): Promise<{ timedOut: boolean }> {
   process.stderr.write(
     `Desktop host shutdown watchdog tripped after ${shutdownWatchdogMs}ms; forcing managed services down.\n`,
   );
+  hostLogger?.record('shutdown-watchdog', { timeoutMs: shutdownWatchdogMs }, 'error');
   await supervisor?.forceStopAll();
   void drain.catch((error) => {
-    process.stderr.write(
-      `Desktop host graceful shutdown failed after watchdog: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
-    );
+    reportHostError('Desktop host graceful shutdown failed after watchdog', error);
   });
   return { timedOut: true };
 }
@@ -2321,6 +2310,7 @@ async function shutdownHost(exitCode = 0): Promise<void> {
     return shutdownPromise;
   }
   shuttingDown = true;
+  hostLogger?.record('shutdown-requested', { exitCode });
   // The exit path reaches app.exit() without emitting the window's close.
   mainWindowPlacementTracker?.flush();
   candidateControl?.revoke();
@@ -2337,20 +2327,17 @@ async function shutdownHost(exitCode = 0): Promise<void> {
       voiceCaptureController = null;
       activeTrayController?.updateMenu(buildDesktopTrayQuittingMenuState(app.getLocale()));
       const { timedOut } = await drainManagedServices();
+      hostLogger?.record('shutdown-drain', { timedOut }, timedOut ? 'error' : 'info');
       if (timedOut) {
         shutdownExitCode = 1;
         forcedStopAttempted = true;
       }
     } catch (error) {
       shutdownExitCode = 1;
-      process.stderr.write(
-        `Desktop host shutdown failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
-      );
+      reportHostError('Desktop host shutdown failed', error);
       if (!forcedStopAttempted) {
         await supervisor?.forceStopAll().catch((forceStopError) => {
-          process.stderr.write(
-            `Desktop host force-stop failed during shutdown recovery: ${forceStopError instanceof Error ? forceStopError.stack ?? forceStopError.message : String(forceStopError)}\n`,
-          );
+          reportHostError('Desktop host force-stop failed during shutdown recovery', forceStopError);
         });
       }
     } finally {
@@ -2358,12 +2345,10 @@ async function shutdownHost(exitCode = 0): Promise<void> {
       try {
         activeTrayController?.dispose();
       } catch (disposeError) {
-        process.stderr.write(
-          `Desktop host tray dispose failed during shutdown: ${disposeError instanceof Error ? disposeError.message : String(disposeError)}\n`,
-        );
+        reportHostError('Desktop host tray dispose failed during shutdown', disposeError);
       }
       await candidateControl?.close(shutdownExitCode).catch((error: unknown) => {
-        process.stderr.write(`Candidate exit receipt failed: ${String(error)}\n`);
+        reportHostError('Candidate exit receipt failed', error);
       });
       exitingAfterShutdown = true;
       app.exit(shutdownExitCode);
@@ -2385,15 +2370,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (candidate) await assertDesktopCandidatePortsAvailable(candidate);
-  // Keep the packaged process identity aligned with the installer-created
-  // Windows shortcuts and taskbar grouping.
-  if (!candidate && process.platform === 'win32' && app.isPackaged && DESKTOP_APP_USER_MODEL_ID) {
-    app.setAppUserModelId(DESKTOP_APP_USER_MODEL_ID);
-  }
-  await app.whenReady();
   const nodeProcess = process as NodeJS.Process & { resourcesPath?: string };
-
   hostConfig = resolveDesktopHostConfig({
     candidateProfile: candidate,
     userDataDir: app.getPath('userData'),
@@ -2401,6 +2378,21 @@ async function main(): Promise<void> {
     packaged: app.isPackaged,
     resourcesPath: nodeProcess.resourcesPath,
   });
+  hostLogger = configureHostLogger(hostConfig.paths.hostLogsDir, process.env.CATS_DESKTOP_LOG_LEVEL);
+  observeHostProcess(hostLogger);
+  observeHostApp(app, () => BrowserWindow.getAllWindows(), hostLogger);
+  hostLogger.record('start', { version: DESKTOP_HOST_VERSION, electron: process.versions.electron,
+    node: process.versions.node, platform: process.platform, arch: process.arch,
+    executable: process.execPath, userData: app.getPath('userData'), catsHome: hostConfig.catsHomeDir,
+    packaged: app.isPackaged, candidate: Boolean(candidate), level: hostLogger.level });
+  if (candidate) await assertDesktopCandidatePortsAvailable(candidate);
+  // Keep the packaged process identity aligned with the installer-created
+  // Windows shortcuts and taskbar grouping.
+  if (!candidate && process.platform === 'win32' && app.isPackaged && DESKTOP_APP_USER_MODEL_ID) {
+    app.setAppUserModelId(DESKTOP_APP_USER_MODEL_ID);
+  }
+  await app.whenReady();
+  observeDisplays(screen, () => BrowserWindow.getAllWindows(), hostLogger);
   platformShellReader = new DesktopPlatformShellReader(
     hostConfig.appBaseUrl,
     (url, init) => session.defaultSession.fetch(url, init),
@@ -2411,7 +2403,7 @@ async function main(): Promise<void> {
     void platformShellReader.refresh().then(() => {
       if (!shuttingDown) publishSnapshot(buildSnapshot());
     }).catch((error: unknown) => {
-      process.stderr.write(`Desktop platform shell refresh failed: ${String(error)}\n`);
+      reportHostError('Desktop platform shell refresh failed', error);
     });
   });
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
@@ -2431,6 +2423,7 @@ async function main(): Promise<void> {
     preferences: latestDesktopStartupPreferences,
     background: hostConfig.background,
   });
+  hostLogger.record('launch-context', { ...startupLaunchContext });
   latestPersistedSetupState = await readPersistedSetupCompletionState(hostConfig.paths.appStatePath);
   stateStore = new DesktopHostStateStore(hostConfig.paths.hostStatePath);
   {
@@ -2493,7 +2486,7 @@ async function main(): Promise<void> {
   const appManagementKey = randomBytes(32).toString('hex');
   const desktopAuthKey = randomBytes(32).toString('hex');
   const googleClientId = await readDesktopGoogleClientId(hostConfig.paths.platformBundledConfigDir, process.env)
-    .catch(() => { process.stderr.write('Google Desktop distribution configuration is unavailable.\n'); return null; });
+    .catch((error) => { reportHostError('Google Desktop distribution configuration is unavailable', error); return null; });
   googleAuthController = new DesktopGoogleAuthController({
     clientId: googleClientId,
     openBrowser: openExternalDesktopUrl,
@@ -2512,15 +2505,16 @@ async function main(): Promise<void> {
       CATS_DESKTOP_AUTH_KEY: desktopAuthKey, CATS_AUTH_GOOGLE_DESKTOP_CLIENT_ID: googleClientId ?? '',
     },
     ingressSecrets: createIngressSecretProtector(safeStorage, hostConfig.paths.platformDir),
-    onStateChange: () => {
+    onStateChange: (service) => {
+      hostLogger?.service(service);
       if (hostConfig && supervisor) {
         publishSnapshot(buildSnapshot());
         void maybeRecoverFromLateReadyStateChange();
       }
     },
   });
-  powerMonitor.on('suspend', () => supervisor?.signalPlatformIngress('suspend'));
-  powerMonitor.on('resume', () => supervisor?.signalPlatformIngress('resume'));
+  powerMonitor.on('suspend', () => { hostLogger?.record('suspend'); supervisor?.signalPlatformIngress('suspend'); });
+  powerMonitor.on('resume', () => { hostLogger?.record('resume'); supervisor?.signalPlatformIngress('resume'); });
   let ingressOnline = net.isOnline();
   const ingressNetworkTimer = setInterval(() => {
     const online = net.isOnline();
@@ -2547,7 +2541,7 @@ async function main(): Promise<void> {
     });
     stopDesktopControl = () => {
       void watcher.stop().catch((error) => {
-        process.stderr.write(`Desktop control stop failed: ${error instanceof Error ? error.message : String(error)}\n`);
+        reportHostError('Desktop control stop failed', error);
       });
     };
     watcher.start();
@@ -2953,7 +2947,7 @@ async function main(): Promise<void> {
 }
 
 void main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+  reportHostError('startup-failed', error);
   if (hostConfig?.candidateProfile && supervisor) void shutdownHost(1);
   else process.exit(1);
 });
