@@ -43,7 +43,9 @@ product and its stored data stay compatible with 0.12.
   - **Script CLI change:** `sync-agent-skills` `--clean` / `-Clean` now keeps
     unrelated discovery skills instead of clearing the whole discovery folder.
   - macOS and Linux gain `remove-merged-branches.sh`.
-  - None of this ships in the installed app.
+  - None of this changes the installed app. The scripts ship in the Platform npm
+    package, which shares this version line, so the `--clean` change sets the
+    minor.
 - **Compatibility and recovery.**
   - Core stays format 6, the public App SDK is unchanged, and there is no data
     migration.
@@ -51,23 +53,26 @@ product and its stored data stay compatible with 0.12.
     `platform-preferences.json`, written only when an owner picks the new
     choice.
   - Returning to 0.12.4 needs no conversion. 0.12.4 treats `display` as invalid
-    and uses Unspecified, as it does for any unknown value. The tray alert then
-    returns to the sheet below the middle of the screen.
+    and uses Unspecified, as it does for any unknown value. Its next preferences
+    save writes `unspecified`, so after coming back to 0.13.0 the owner picks the
+    choice again. The tray alert returns to the sheet below the middle of the
+    screen.
   - Usage 0.5.4 declares `catsPlatform` `^0.6.0`, a minimum host version
     (ADR-128), so it accepts 0.13.0.
 - **Exact source and artifacts.**
   - Runtime package **0.6.2**, built from
     `38e5475a4ffcbe0d31880c4b28f41a6eadcfd56c`. This is the source that 0.12.3
-    and 0.12.4 bundled and that npm 0.6.2 was published from. Later Runtime
-    `main` commits change only CI and agent documentation.
+    and 0.12.4 bundled and that npm 0.6.2 was published from. Runtime `main`
+    through `d9a6d68f` adds only CI workflow, test and documentation changes.
   - Usage stays at
     `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
     SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
     producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
   - The complete-source manifest and every OS receipt record the selected merged
     Platform bump commit and this exact Runtime SHA.
-- **Signing and updates.** Dispatch `desktop-release.yml` from the merged bump
-  commit with `tag=v0.13.0`, the Runtime SHA above and `unsigned=false`.
+- **Signing and updates.** Dispatch `desktop-release.yml` from `main` while its
+  head is the merged bump commit, with `tag=v0.13.0`, the Runtime SHA above and
+  `unsigned=false`.
   - Standard trust with the configured shared credentials: macOS **signed +
     notarized**, Windows **unsigned: no certificate**, Linux **n/a**. Actual
     trust comes from the workflow receipts.
