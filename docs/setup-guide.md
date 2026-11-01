@@ -840,6 +840,12 @@ Coverage in this slice:
 These helpers are repo-owned script surfaces and supported entries are staged
 for the packaged setup wizard/bootstrap flow.
 
+The Windows Claude helper recognizes browser/subscription sign-in through the
+installed CLI's read-only `claude auth status --json` response, with a ten-second
+timeout. It does not read credential files or return auth output. API-key setup
+remains supported. The macOS/Linux native-provider checks report installation
+readiness; that result alone is not an authentication check.
+
 ### Manual Operator Matrix
 
 - **Linux host**
