@@ -1,6 +1,7 @@
 # PLAN-129: Desktop and Bot script convergence
 
-Status: In progress. The owner authorized the complete script inventory on 2026-11-01.
+Status: Implementation, local acceptance and independent review complete. PR CI/merge pending.
+The owner authorized the complete script inventory on 2026-11-01.
 
 ## Scope and boundaries
 
@@ -29,7 +30,7 @@ Platform minor boundary (0.13.x); this task does not bump or publish a version.
 - [x] Shared icon rendering primitives and explicit product output specifications.
 - [x] Isolated candidate controls for Bot; share process/environment/source primitives.
 - [x] Share bounded build/source verification utilities while retaining release policy.
-- [ ] Validate both consumers without sibling imports; independent review and documentation.
+- [x] Validate both consumers without sibling imports; independent review and documentation.
 
 ## Validation
 
@@ -46,14 +47,19 @@ provider installation are excluded. Record actual commands/results here at compl
 - Platform: host/renderer builds and 26 focused consumer tests passed; additional
   CDP handshake regression passed. Source-candidate and renderer fixtures now
   canonicalize macOS temporary paths rather than comparing `/var` aliases.
-- Bot: 16 focused source/CDP/release/native-notice cases and typecheck passed;
-  complete suite and immutable consumer refresh follow the producer commit.
+- Bot: complete suite 368 passed, no skips, after integrating the Linux icon
+  update; typecheck and production build passed.
 - Real isolated candidates: Desktop `/private/tmp/cats-desktop-tools-candidate-20261101-d`
   and Bot `/private/tmp/cats-bot-tools-candidate-20261101-b` reached setup, produced
   inspected screenshots and stopped with `drained`, exit code 0. Installed apps
   and real profiles were not restarted or modified. Initial candidate issues
   found by acceptance were fixed before this successful run.
-- Both icon adapters generated their actual PNG/ICO/ICNS outputs in temporary
-  roots; the shared pipeline's real PNG dimensions are regression tested.
+- Platform generated its actual PNG/ICO/ICNS outputs in a temporary root; Bot
+  generated all 12 PNG outputs, including the eight Linux sizes, in another
+  temporary root. The shared pipeline's real PNG dimensions are regression tested.
 - Independent review closed the preflight, executable-mode, Git-replacement and
-  CDP handshake/redirect findings. Final consumer pins are checked after commits.
+  CDP handshake/redirect findings. Final consumers verify exact committed source
+  bytes, SHA-256 and executable modes: maintenance sources use cats-one
+  `f17ae5f488b774116b82f04ff2781576a3460b12`; Bot's Platform closure and 35 provider
+  resources use `fd61bc2bb980e491f63b4035d04abee9b99c5021`. Both consumers' offline
+  checks and producer-Git verification passed.
