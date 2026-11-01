@@ -1,4 +1,9 @@
-import type { AssistantResponseLanguage } from './platform-contract.js';
+import type {
+  AssistantResponseLanguage,
+  AssistantResponseLanguageCode,
+  AssistantResponseLanguagePreference,
+  PlatformUiLanguage,
+} from './platform-contract.js';
 
 export const ASSISTANT_RESPONSE_LANGUAGE_CODES = [
   'en',
@@ -19,12 +24,9 @@ export const ASSISTANT_RESPONSE_LANGUAGE_CODES = [
   'th',
   'hi',
   'ar',
-] as const satisfies ReadonlyArray<Exclude<AssistantResponseLanguage, 'unspecified'>>;
+] as const satisfies ReadonlyArray<AssistantResponseLanguageCode>;
 
-const ASSISTANT_RESPONSE_LANGUAGE_PROMPT_NAMES: Record<
-  Exclude<AssistantResponseLanguage, 'unspecified'>,
-  string
-> = {
+const ASSISTANT_RESPONSE_LANGUAGE_PROMPT_NAMES: Record<AssistantResponseLanguageCode, string> = {
   en: 'English',
   'zh-TW': 'Traditional Chinese',
   'zh-CN': 'Simplified Chinese',
@@ -47,15 +49,40 @@ const ASSISTANT_RESPONSE_LANGUAGE_PROMPT_NAMES: Record<
 
 export function isAssistantResponseLanguage(value: unknown): value is AssistantResponseLanguage {
   return value === 'unspecified'
-    || ASSISTANT_RESPONSE_LANGUAGE_CODES.includes(
-      value as Exclude<AssistantResponseLanguage, 'unspecified'>,
-    );
+    || ASSISTANT_RESPONSE_LANGUAGE_CODES.includes(value as AssistantResponseLanguageCode);
 }
 
 export function parseAssistantResponseLanguage(
   value: unknown,
 ): AssistantResponseLanguage | undefined {
   return isAssistantResponseLanguage(value) ? value : undefined;
+}
+
+export function isAssistantResponseLanguagePreference(
+  value: unknown,
+): value is AssistantResponseLanguagePreference {
+  return value === 'display' || isAssistantResponseLanguage(value);
+}
+
+export function parseAssistantResponseLanguagePreference(
+  value: unknown,
+): AssistantResponseLanguagePreference | undefined {
+  return isAssistantResponseLanguagePreference(value) ? value : undefined;
+}
+
+/**
+ * The language a new chat is stamped with. `display` takes the display
+ * language the renderer resolved, so an auto-detected locale counts; a missing
+ * preference means no instruction.
+ */
+export function resolveAssistantResponseLanguage(
+  preference: AssistantResponseLanguagePreference | undefined,
+  displayLanguage: PlatformUiLanguage,
+): AssistantResponseLanguage {
+  if (preference === 'display') {
+    return displayLanguage;
+  }
+  return preference ?? 'unspecified';
 }
 
 export function resolveAssistantResponseLanguagePromptName(

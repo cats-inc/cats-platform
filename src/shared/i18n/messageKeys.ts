@@ -532,6 +532,8 @@ export const messageKeys = {
     'settings.general.assistantLanguagePreferenceDescription',
   settingsGeneralAssistantLanguageSelectAriaLabel:
     'settings.general.assistantLanguageSelectAriaLabel',
+  settingsGeneralAssistantLanguageDisplayOption:
+    'settings.general.assistantLanguageDisplayOption',
   settingsGeneralAssistantLanguageUnspecifiedOption:
     'settings.general.assistantLanguageUnspecifiedOption',
   settingsGeneralLanguagePreferenceLabel: 'settings.general.languagePreferenceLabel',

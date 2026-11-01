@@ -120,6 +120,50 @@ test('PlatformSettingsGeneral localizes display language options', () => {
   assert.doesNotMatch(markup, /Traditional Chinese/u);
 });
 
+function assistantLanguageOptions(markup: string): Array<{ value: string; label: string }> {
+  const select = /<select[^>]*aria-label="(?:Assistant response language|助理回覆語言)"[^>]*>(.*?)<\/select>/su
+    .exec(markup)?.[1];
+  assert.ok(select, 'assistant response language select not rendered');
+  return [...select.matchAll(/<option[^>]*value="([^"]+)"[^>]*>(.*?)<\/option>/gsu)]
+    .map((match) => ({ value: match[1]!, label: match[2]! }));
+}
+
+test('PlatformSettingsGeneral offers the display language first and Unspecified last', () => {
+  const payload = createPayload();
+  payload.language = { assistantResponseLanguage: 'display', uiLanguagePreference: 'auto' };
+  const markup = renderToStaticMarkup(
+    <I18nProvider locale="en" languagePreference="auto">
+      <StaticRouter location="/settings/general">
+        <PlatformSettingsGeneral payload={payload} onPayloadUpdate={() => {}} />
+      </StaticRouter>
+    </I18nProvider>,
+  );
+
+  const options = assistantLanguageOptions(markup);
+  assert.deepEqual(options[0], { value: 'display', label: 'Same as display language (English)' });
+  assert.equal(options.at(-1)?.value, 'unspecified');
+  assert.equal(options.filter((option) => option.value === 'unspecified').length, 1);
+  assert.equal(options[1]?.value, 'en');
+  assert.match(
+    /<select[^>]*aria-label="Assistant response language"[^>]*>.*?<\/select>/su.exec(markup)?.[0] ?? '',
+    /<option value="display" selected="">/u,
+  );
+});
+
+test('PlatformSettingsGeneral names the auto-detected display language in Traditional Chinese', () => {
+  const markup = renderToStaticMarkup(
+    <I18nProvider locale="zh-TW" languagePreference="auto">
+      <StaticRouter location="/settings/general">
+        <PlatformSettingsGeneral payload={createPayload()} onPayloadUpdate={() => {}} />
+      </StaticRouter>
+    </I18nProvider>,
+  );
+
+  const options = assistantLanguageOptions(markup);
+  assert.deepEqual(options[0], { value: 'display', label: '與顯示語言相同（繁體中文）' });
+  assert.deepEqual(options.at(-1), { value: 'unspecified', label: '不指定' });
+});
+
 test('PlatformSettingsGeneral points disabled guide cat users to Assistants', () => {
   const payload = createPayload();
   payload.guideCat = {

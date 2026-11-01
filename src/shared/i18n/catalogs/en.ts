@@ -549,6 +549,7 @@ export const enCatalog: MessageCatalog = {
   'settings.general.assistantLanguagePreferenceDescription':
     'Sets the default language instruction for assistant replies. User requests in a turn still take priority.',
   'settings.general.assistantLanguageSelectAriaLabel': 'Assistant response language',
+  'settings.general.assistantLanguageDisplayOption': 'Same as display language ({language})',
   'settings.general.assistantLanguageUnspecifiedOption': 'Unspecified',
   'settings.general.languagePreferenceLabel': 'Display language',
   'settings.general.languagePreferenceDescription':

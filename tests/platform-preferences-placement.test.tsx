@@ -1,10 +1,20 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { parsePlatformPreferencesUpdate } from '../src/app/server/platformSetupRouteSupport.ts';
-import { buildAssistantResponseLanguageInstruction } from '../src/shared/assistantResponseLanguage.ts';
+import {
+  buildAssistantResponseLanguageInstruction,
+  parseAssistantResponseLanguage,
+  parseAssistantResponseLanguagePreference,
+  resolveAssistantResponseLanguage,
+} from '../src/shared/assistantResponseLanguage.ts';
 import {
   normalizePlatformLobbyAnimationMode,
+  readPlatformPreferences,
+  writePlatformPreferences,
   type PlatformPreferences,
 } from '../src/shared/platformPreferences.ts';
 import type { PlatformPreferencesUpdateBody } from '../src/app/server/platformSetupRouteSupport.ts';
@@ -88,6 +98,17 @@ test('parsePlatformPreferencesUpdate accepts a valid assistant response language
   assert.equal(result.ok, true);
   if (result.ok) {
     assert.equal(result.value.assistantResponseLanguage, 'ja');
+  }
+});
+
+test('parsePlatformPreferencesUpdate accepts following the display language', () => {
+  const result = parsePlatformPreferencesUpdate(
+    { assistantResponseLanguage: 'display' },
+    baselinePreferences(),
+  );
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.value.assistantResponseLanguage, 'display');
   }
 });
 
@@ -183,4 +204,37 @@ test('buildAssistantResponseLanguageInstruction emits prompt policy from stable 
     buildAssistantResponseLanguageInstruction('zh-CN') ?? '',
     /Simplified Chinese/u,
   );
+});
+
+test('the display choice is a preference, never a language a chat carries', () => {
+  assert.equal(parseAssistantResponseLanguagePreference('display'), 'display');
+  assert.equal(parseAssistantResponseLanguagePreference('unspecified'), 'unspecified');
+  assert.equal(parseAssistantResponseLanguagePreference('ja'), 'ja');
+  assert.equal(parseAssistantResponseLanguagePreference('debug'), undefined);
+  assert.equal(parseAssistantResponseLanguage('display'), undefined);
+});
+
+test('resolveAssistantResponseLanguage follows the resolved display language', () => {
+  assert.equal(resolveAssistantResponseLanguage('display', 'zh-TW'), 'zh-TW');
+  assert.equal(resolveAssistantResponseLanguage('display', 'en'), 'en');
+  assert.equal(resolveAssistantResponseLanguage('ja', 'zh-TW'), 'ja');
+  assert.equal(resolveAssistantResponseLanguage('unspecified', 'zh-TW'), 'unspecified');
+  assert.equal(resolveAssistantResponseLanguage(undefined, 'zh-TW'), 'unspecified');
+});
+
+test('platform preferences keep the display choice across a reload', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'cats-language-prefs-'));
+  try {
+    const chatStatePath = path.join(root, 'platform', 'state', 'chat-state.local.json');
+    await writePlatformPreferences(chatStatePath, {
+      ...baselinePreferences(),
+      assistantResponseLanguage: 'display',
+    });
+    assert.equal(
+      (await readPlatformPreferences(chatStatePath)).assistantResponseLanguage,
+      'display',
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

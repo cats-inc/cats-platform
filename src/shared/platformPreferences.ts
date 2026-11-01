@@ -2,12 +2,12 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 import type {
-  AssistantResponseLanguage,
+  AssistantResponseLanguagePreference,
   PlatformLobbyAnimationMode,
   PlatformSurfaceId,
   PlatformUiLanguagePreference,
 } from './platform-contract.js';
-import { parseAssistantResponseLanguage } from './assistantResponseLanguage.js';
+import { parseAssistantResponseLanguagePreference } from './assistantResponseLanguage.js';
 import { resolvePlatformPreferencesPathFromChatState } from './platformPaths.js';
 import { normalizePlatformSurface } from './platformSurfaces.js';
 
@@ -17,7 +17,7 @@ export interface PlatformPreferences {
   openWindowOnStartup: boolean;
   systemTrayEnabled: boolean;
   lobbyAnimationMode: PlatformLobbyAnimationMode;
-  assistantResponseLanguage: AssistantResponseLanguage;
+  assistantResponseLanguage: AssistantResponseLanguagePreference;
   uiLanguagePreference: PlatformUiLanguagePreference;
   /**
    * Settings > Code "Cats may run preview servers" (SPEC-123 CAP-08). Opt-in:
@@ -99,7 +99,7 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
     systemTrayEnabled: record.systemTrayEnabled !== false,
     lobbyAnimationMode: normalizePlatformLobbyAnimationMode(record.lobbyAnimationMode),
     assistantResponseLanguage:
-      parseAssistantResponseLanguage(record.assistantResponseLanguage)
+      parseAssistantResponseLanguagePreference(record.assistantResponseLanguage)
       ?? DEFAULTS.assistantResponseLanguage,
     uiLanguagePreference: normalizePlatformUiLanguagePreference(record.uiLanguagePreference),
     codePreviewServersEnabled: record.codePreviewServersEnabled === true,

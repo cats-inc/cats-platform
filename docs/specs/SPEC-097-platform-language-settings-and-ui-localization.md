@@ -93,7 +93,11 @@ The current Settings **state** architecture needs a deliberate extension:
 ### Functional Requirements
 
 - **FR-1**: Add platform language preference types:
-  - `AssistantResponseLanguage = 'unspecified' | 'en' | 'zh-TW'`
+  - `AssistantResponseLanguagePreference = 'display' | AssistantResponseLanguage`
+    (the Settings choice)
+  - `AssistantResponseLanguage = 'unspecified' | AssistantResponseLanguageCode`
+    (what a chat carries; the codes are listed in
+    `src/shared/assistantResponseLanguage.ts`)
   - `UiLanguagePreference = 'auto' | 'en' | 'zh-TW'`
   - `ResolvedUiLanguage = 'en' | 'zh-TW'`
 - **FR-2**: Persist these defaults:
@@ -122,11 +126,20 @@ The current Settings **state** architecture needs a deliberate extension:
   - all other locales resolve to `en`
 - **FR-7**: Add one **Language** section to General Settings with two option
   groups:
-  - Assistant response language: `Unspecified`, `English`, `繁體中文`
+  - Assistant response language: `Same as display language (<language>)`
+    first, then each supported language, then `Unspecified` last. The first
+    option names the display language currently in use, so an auto-detected
+    language is shown.
   - Cats UI display language: `Auto-detect`, `English`, `繁體中文`
-- **FR-8**: The two option groups must be independent. Changing UI language
-  must not change assistant response language, and changing assistant response
-  language must not change UI language.
+- **FR-8**: The two stored preferences must be independent. Changing one
+  setting never rewrites the other. Under `display`, the assistant language of
+  a new chat follows the display language the renderer resolved, auto-detect
+  included.
+- **FR-8a**: The renderer resolves `display` when it creates a chat and stamps
+  the chat with the concrete code. A chat never carries `display`. Existing
+  chats keep the language they were created with, as they do for every other
+  choice. A stray `display` that reaches prompt assembly yields no
+  instruction.
 - **FR-9**: General Settings must use existing Settings primitives and must not
   render inline feedback. Use toast only for failed saves.
 - **FR-10**: Add a shared assistant language policy helper that converts
@@ -369,5 +382,6 @@ literals in those categories.
 ---
 
 *Created: 2026-04-29*
+*Updated: 2026-11-01 (assistant language follows the display language)*
 *Author: Codex*
 *Related Plan: [PLAN-086](../plans/PLAN-086-platform-language-settings-and-ui-localization-rollout.md)*
