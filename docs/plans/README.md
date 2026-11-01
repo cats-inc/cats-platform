@@ -1,6 +1,6 @@
 # Implementation Plans
 
-- [PLAN-129: Desktop and Bot script convergence](PLAN-129-desktop-bot-script-convergence.md) — implementation, local acceptance and independent review complete; PR CI/merge pending.
+- [PLAN-129: Desktop and Bot script convergence](PLAN-129-desktop-bot-script-convergence.md) — implementation, local acceptance and independent review complete.
 
 - [PLAN-128: Product repository extraction](PLAN-128-product-repository-extraction.md)
   — draft, 2026-10-29; package readiness, Desktop source/distribution handover,

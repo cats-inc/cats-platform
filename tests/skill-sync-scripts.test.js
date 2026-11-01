@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 
-test('cats ships cross-platform skill sync helpers as repo-owned collaboration scripts', async () => {
+test('cross-platform skill sync entrypoints delegate to the documented shared mechanism', async () => {
   const windowsScript = await readFile(
     join(process.cwd(), 'scripts', 'windows', 'Sync-AgentSkills.ps1'),
     'utf8',
@@ -21,13 +21,12 @@ test('cats ships cross-platform skill sync helpers as repo-owned collaboration s
   );
   const readme = await readFile(join(process.cwd(), 'scripts', 'README.md'), 'utf8');
 
-  assert.match(windowsScript, /Join-Path \(Join-Path \$ProjectRoot "\.claude"\) "skills"/);
-  assert.match(windowsScript, /Join-Path \(Join-Path \$ProjectRoot "\.agents"\) "skills"/);
+  assert.match(windowsScript, /shared\/sync-agent-skills\.mjs/);
   assert.doesNotMatch(windowsScript, /\.gemini/);
-  assert.match(linuxScript, /\.claude\/skills/);
-  assert.match(linuxScript, /\.agents\/skills/);
+  assert.match(linuxScript, /shared\/sync-agent-skills\.mjs/);
   assert.doesNotMatch(linuxScript, /\.gemini/);
   assert.doesNotMatch(macosScript, /\.gemini/);
+  assert.match(macosScript, /shared\/sync-agent-skills\.mjs/);
   assert.match(macosScript, /Usage: sync-agent-skills\.sh/);
   assert.match(readme, /Sync-AgentSkills\.ps1/);
   assert.match(readme, /scripts\/linux\/sync-agent-skills\.sh/);
@@ -65,6 +64,9 @@ async function skillFixture(t, runner) {
   const relativeScript = join('scripts', runner.platform, runner.filename);
   await mkdir(dirname(join(root, relativeScript)), { recursive: true });
   await cp(join(process.cwd(), relativeScript), join(root, relativeScript));
+  await mkdir(join(root, 'scripts/shared'), { recursive: true });
+  await cp(join(process.cwd(), 'scripts/shared/sync-agent-skills.mjs'),
+    join(root, 'scripts/shared/sync-agent-skills.mjs'));
   await seed(root, 'skills/orchestration/handoff/SKILL.md', 'handoff instructions');
   await seed(root, 'skills/orchestration/handoff/references/SKILL.md', 'bundled resource');
   await seed(root, 'skills/direct/SKILL.md', 'direct instructions');
@@ -89,7 +91,7 @@ for (const runner of runners) {
         mirror === '.agents' ? ['direct', 'handoff', 'personal'] : ['direct', 'handoff']);
     }
     await seed(root, 'skills/orchestration/handoff/SKILL.md', 'updated instructions');
-    const second = run();
+    const second = run(true);
     assert.equal(second.status, 0, `${second.stdout}\n${second.stderr}`);
     assert.equal(await readFile(join(root, '.agents/skills/handoff/SKILL.md'), 'utf8'), 'updated instructions');
     assert.equal(await readFile(join(root, '.agents/skills/personal/SKILL.md'), 'utf8'), 'personal instructions');

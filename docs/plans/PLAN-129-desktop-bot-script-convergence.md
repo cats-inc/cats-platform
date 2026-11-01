@@ -1,6 +1,6 @@
 # PLAN-129: Desktop and Bot script convergence
 
-Status: Implementation, local acceptance and independent review complete. PR CI/merge pending.
+Status: Implementation, local acceptance and independent review complete.
 The owner authorized the complete script inventory on 2026-11-01.
 
 ## Scope and boundaries
@@ -47,6 +47,9 @@ provider installation are excluded. Record actual commands/results here at compl
 - Platform: host/renderer builds and 26 focused consumer tests passed; additional
   CDP handshake regression passed. Source-candidate and renderer fixtures now
   canonicalize macOS temporary paths rather than comparing `/var` aliases.
+  The full-suite skill fixtures now copy the complete shared helper closure and
+  verify unrelated skills survive `--clean`; Desktop's original strict release
+  tag parser remains product-owned, including rejection of leading zeros.
 - Bot: complete suite 368 passed, no skips, after integrating the Linux icon
   update; typecheck and production build passed.
 - Real isolated candidates: Desktop `/private/tmp/cats-desktop-tools-candidate-20261101-d`
