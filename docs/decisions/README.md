@@ -233,6 +233,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [050-use-ack-first-chat-dispatch-lifecycle](./050-use-ack-first-chat-dispatch-lifecycle.md) | Use an ACK-first chat dispatch lifecycle | Accepted | 2026-04-03 |
 | [116](./116-share-desktop-provider-management-across-onboarding-and-settings.md) | Share Desktop provider management across onboarding and Settings | Accepted | 2026-09-16 |
 | [117](./117-separate-artifact-trust-from-desktop-release-identity.md) | Separate artifact trust from desktop release identity | Accepted | 2026-09-18 |
+| [145](./145-keep-bounded-production-desktop-host-diagnostics.md) | Keep Bounded Production Desktop Host Diagnostics | Accepted | 2026-11-02 |
 <!-- Add new ADRs above this line -->
 
 ## For AI Agents
@@ -243,7 +244,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-10-31 (ADR-144 Git as a Desktop setup prerequisite recorded; the owner confirmed its D1–D4.)*
+*Last updated: 2026-11-02 (ADR-145 production Desktop host diagnostics recorded.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*
 

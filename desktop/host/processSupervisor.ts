@@ -1,7 +1,9 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
-import { access, appendFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { createLogWriter, LOG_MAX_BYTES, trimLegacyLog } from './diagnosticLog.js';
+import { reportHostError } from './hostDiagnostics.js';
 import { delimiter, dirname, join, posix, win32 } from 'node:path';
 
 import type { DesktopHostConfig } from './config.js';
@@ -175,7 +177,9 @@ async function ensureLaunchAssets(config: DesktopHostConfig): Promise<void> {
   await mkdir(config.paths.runtimeDataDir, { recursive: true });
   await mkdir(config.paths.runtimeSessionBaseDir, { recursive: true });
   await mkdir(dirname(config.paths.runtimeConfigPath), { recursive: true });
-  await mkdir(config.paths.hostLogsDir, { recursive: true });
+  await mkdir(config.paths.hostLogsDir, { recursive: true }).catch((error) => {
+    reportHostError('Service log directory unavailable', error);
+  });
   await seedBundledRuntimeConfigTemplates(config);
 }
 
@@ -329,17 +333,19 @@ function buildPreviousLogPath(logPath: string): string {
 }
 
 export async function prepareManagedServiceLog(logPath: string): Promise<void> {
-  await mkdir(dirname(logPath), { recursive: true });
-  const previousLogPath = buildPreviousLogPath(logPath);
-  await rm(previousLogPath, { force: true });
   try {
-    await rename(logPath, previousLogPath);
-  } catch (error) {
-    if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) {
-      throw error;
+    await mkdir(dirname(logPath), { recursive: true });
+    const previousLogPath = buildPreviousLogPath(logPath);
+    trimLegacyLog(logPath, LOG_MAX_BYTES);
+    trimLegacyLog(previousLogPath, LOG_MAX_BYTES);
+    if (existsSync(logPath) && statSync(logPath).size > 0) {
+      await rm(previousLogPath, { force: true });
+      await rename(logPath, previousLogPath);
     }
+    await writeFile(logPath, '', { encoding: 'utf8', mode: 0o600 });
+  } catch {
+    // Diagnostic storage must not prevent a service from starting.
   }
-  await writeFile(logPath, '', 'utf8');
 }
 
 function resolvePathEnvKey(env: NodeJS.ProcessEnv): string {
@@ -617,6 +623,7 @@ export class ManagedServiceSupervisor {
   private managedEnv: NodeJS.ProcessEnv;
 
   private readonly logQueues = new Map<ManagedServiceName, Promise<void>>();
+  private readonly logWriters = new Map<string, (line: string) => void>();
 
   constructor(
     private readonly config: DesktopHostConfig,
@@ -722,11 +729,15 @@ export class ManagedServiceSupervisor {
     line: string,
   ): void {
     const previous = this.logQueues.get(serviceName) ?? Promise.resolve();
+    let write = this.logWriters.get(logPath);
+    if (!write) {
+      write = createLogWriter(logPath, { backups: 1, backupPath: () => buildPreviousLogPath(logPath) });
+      this.logWriters.set(logPath, write);
+    }
+    const writer = write;
     const next = previous
       .catch(() => undefined)
-      .then(async () => {
-        await appendFile(logPath, line, 'utf8');
-      });
+      .then(() => writer(line));
     this.logQueues.set(serviceName, next.catch(() => undefined));
   }
 

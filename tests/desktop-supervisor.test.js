@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { LOG_MAX_BYTES } from '../build/desktop/diagnosticLog.js';
 import { tmpdir } from 'node:os';
 import { dirname, join, posix } from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -595,6 +596,75 @@ test('prepareManagedServiceLog rotates the previous attempt log into a bounded b
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
+});
+
+test('managed log preparation bounds old files and preserves useful evidence on a quiet start', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-managed-log-legacy-'));
+  const file = join(root, 'cats.log'), previous = `${file}.previous`;
+  try {
+    await writeFile(previous, 'x'.repeat(LOG_MAX_BYTES * 4) + 'old crash\n');
+    await writeFile(file, '');
+    await prepareManagedServiceLog(file);
+    assert.ok((await stat(previous)).size <= LOG_MAX_BYTES);
+    assert.match(await readFile(previous, 'utf8'), /old crash\n$/u);
+    await writeFile(file, 'x'.repeat(LOG_MAX_BYTES * 4) + 'latest crash\n');
+    await prepareManagedServiceLog(file);
+    assert.ok((await stat(previous)).size <= LOG_MAX_BYTES);
+    assert.match(await readFile(previous, 'utf8'), /latest crash\n$/u);
+    const obstacle = join(root, 'obstacle'); await writeFile(obstacle, 'file');
+    await assert.doesNotReject(prepareManagedServiceLog(join(obstacle, 'cats.log')));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('live service stdout and stderr rotate without blocking readiness or shutdown', async (t) => {
+  t.mock.method(process.stderr, 'write', () => true);
+  const root = await mkdtemp(join(tmpdir(), 'cats-managed-log-live-'));
+  const config = resolveDesktopHostConfig({ env: {}, userDataDir: root, catsHomeDir: join(root, 'cats-home') });
+  const child = new FakeChildProcess(); child.pid = 12345;
+  const supervisor = new ManagedServiceSupervisor(config, {
+    spawn: () => child,
+    waitForServiceReadiness: async () => { throw new Error('fetch failed'); },
+  });
+  const [, spec] = buildManagedServiceSpecs(config);
+  try {
+    const started = supervisor.startService(spec);
+    setTimeout(() => child.stdout.write(`${JSON.stringify({ event: 'app.ready', service: 'cats-platform', phase: 'ready', ready: true, healthUrl: 'http://127.0.0.1:8181/health' })}\n`), 10);
+    await started;
+    for (let n = 0; n < 40; n++) child.stderr.write(`diagnostic-${n} ${'x'.repeat(8192)}\n`);
+    child.stdout.write('latest diagnostic\n');
+    await supervisor.logQueues.get('cats-platform');
+    assert.ok((await stat(spec.logPath)).size <= LOG_MAX_BYTES);
+    assert.ok((await stat(`${spec.logPath}.previous`)).size <= LOG_MAX_BYTES);
+    assert.match(await readFile(spec.logPath, 'utf8'), /latest diagnostic/u);
+  } finally { await supervisor.stopAll(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('an unavailable log directory does not prevent startAll from starting both services', async (t) => {
+  t.mock.method(process.stderr, 'write', () => true);
+  const root = await mkdtemp(join(tmpdir(), 'cats-managed-log-unavailable-'));
+  const config = resolveDesktopHostConfig({ env: {
+    CATS_DESKTOP_APP_ENTRY: join(root, 'app.js'), CATS_DESKTOP_RUNTIME_ENTRY: join(root, 'runtime.js'),
+    CATS_DESKTOP_PRELOAD_SCRIPT: join(root, 'preload.cjs'),
+  }, userDataDir: root, catsHomeDir: join(root, 'cats-home') });
+  const supervisor = new ManagedServiceSupervisor(config, {
+    spawn: (_command, args) => {
+      const child = new FakeChildProcess();
+      const runtime = args[0] === config.paths.runtimeEntryScript;
+      child.pid = runtime ? 12345 : 12346;
+      setTimeout(() => child.stdout.write(`${JSON.stringify({ event: runtime ? 'runtime.ready' : 'app.ready',
+        service: runtime ? 'cats-runtime' : 'cats-platform', phase: 'ready', ready: true,
+        healthUrl: runtime ? 'http://127.0.0.1:3110/health' : 'http://127.0.0.1:8181/health' })}\n`), 10);
+      return child;
+    },
+    waitForServiceReadiness: async () => { throw new Error('fetch failed'); },
+  });
+  try {
+    for (const file of [config.paths.appEntryScript, config.paths.runtimeEntryScript, config.paths.preloadScript]) await writeFile(file, 'fixture');
+    await mkdir(dirname(config.paths.hostLogsDir), { recursive: true });
+    await writeFile(config.paths.hostLogsDir, 'file blocking the log directory');
+    await supervisor.startAll();
+    assert.ok(supervisor.getSnapshots().every((service) => service.ready));
+  } finally { await supervisor.stopAll(); await rm(root, { recursive: true, force: true }); }
 });
 
 test('startService hides Windows child consoles for managed services', async () => {
