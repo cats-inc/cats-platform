@@ -297,7 +297,8 @@ test('placement tracker skips destroyed windows and survives write failures', (t
 
   window.emit('resize');
   assert.doesNotThrow(() => tracker.flush());
-  assert.match(stderrWrites.join(''), /Desktop window state save failed: disk full/u);
+  assert.match(stderrWrites.join(''), /Desktop window state save failed: Error/u);
+  assert.ok(!stderrWrites.join('').includes('disk full'));
 
   const destroyed = new FakeWindow();
   const { tracker: destroyedTracker, writes } = trackFakeWindow(destroyed);

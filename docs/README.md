@@ -1,5 +1,8 @@
 # Documentation Index
 
+[Production Desktop host diagnostics](decisions/145-keep-bounded-production-desktop-host-diagnostics.md)
+records bounded host/service logs, metadata privacy and the no-crash-dump policy.
+
 [Provider catalog validation](research/2026-11-01-provider-catalog-consumer-validation.md)
 records consumption of the latest requested Runtime catalogs and Copilot's feature-access gap.
 

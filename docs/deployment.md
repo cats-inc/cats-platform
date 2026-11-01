@@ -1068,6 +1068,34 @@ for the planned desktop host model.
 
 ## Configuration
 
+### Desktop Diagnostic Logs
+
+The primary Electron host writes `host.log` under `~/.cats/desktop/logs` by
+default, or `<CATS_DESKTOP_DIR>/logs` when overridden. It starts after the
+single-instance lock and before readiness. It records lifecycle, bootstrap phase,
+service state, display geometry/scaling, window visibility/placement and renderer/
+GPU exits. Failures before JavaScript or before the lock may leave no file record.
+No crash reporter, dump collection or upload is enabled.
+
+`host.log` and its three numbered backups each have a 256 KiB limit; each record
+has a 16 KiB limit. Existing oversized files are bounded on first use. Host events
+exclude titles, URL paths/queries, prompts, replies, raw argv/environment and
+arbitrary exception messages. Exception summaries retain type/code/frame locations.
+
+`cats.log` and `cats-runtime.log` continue capturing existing service diagnostics,
+including stdout/stderr, with a 256 KiB current file and one bounded `.previous`
+snapshot each. Oversized legacy files are reduced to their newest bytes; empty
+starts preserve previous useful evidence. Size rotation can replace the previous
+launch snapshot with a newer segment. Readiness and in-memory diagnostic parsing
+use the original stream independently of file truncation. Diagnostic storage
+failures do not prevent service startup.
+
+Set `CATS_DESKTOP_LOG_LEVEL=debug` in the launch environment for movement/resize
+details. Allowed values are `trace`, `debug`, `info` (default), `warn`, `error`;
+invalid values use INFO. Restart Desktop to change the level. TRACE currently
+includes the same events as DEBUG. Packaged builds support this without a debug
+installer. See [ADR-145](decisions/145-keep-bounded-production-desktop-host-diagnostics.md).
+
 ### Environment Variables
 
 | Variable | Required | Description |
@@ -1076,6 +1104,7 @@ for the planned desktop host model.
 | `CATS_PORT` | Yes | Service port (`CATS_INC_PORT` remains a compatibility alias) |
 | `CATS_PLATFORM_DIR` | No | Override the platform root used for `state/chat-state.local.json`, `state/platform-onboarding-history.json`, and `config/platform-preferences.json` |
 | `CATS_DESKTOP_DIR` | No | Override the desktop root used for `state.json`, `window-state.json` and `logs/` |
+| `CATS_DESKTOP_LOG_LEVEL` | No | Host file verbosity: trace/debug/info/warn/error; defaults to info. See [diagnostic logs](#desktop-diagnostic-logs). |
 | `CATS_AUTH_GOOGLE_DESKTOP_CLIENT_ID` | No | Public distributor Desktop OAuth client; environment override of bundled config, separate from Web/Mobile; see [configuration](#distributor-desktop-google-configuration) |
 | `CATS_DESKTOP_CANDIDATE_ROOT` | No | Opt into [isolated candidate acceptance](#isolated-candidate-acceptance); explicit loopback hosts and distinct non-default ports are required |
 | `CATS_RUNTIME_DIR` | No | Override the runtime root used for `config/`, `data/`, and `sessions/` |

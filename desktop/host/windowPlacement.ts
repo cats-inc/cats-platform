@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { reportHostError } from './hostDiagnostics.js';
 
 /**
  * Main window size and position.
@@ -283,9 +284,7 @@ export function trackDesktopWindowPlacement(
     try {
       writeState(options.statePath, { bounds: window.getNormalBounds(), maximized });
     } catch (error) {
-      process.stderr.write(
-        `Desktop window state save failed: ${error instanceof Error ? error.message : String(error)}\n`,
-      );
+      reportHostError('Desktop window state save failed', error);
     }
   };
 

@@ -106,6 +106,45 @@ opener commands. Native browser/physical-terminal smoke on each OS is separate.
 
 ### Desktop Host Tests
 
+Production host diagnostics (ADR-145) use `npm run build:host` followed by focused
+`node --test` runs for `desktop-host-diagnostics.test.js`,
+`desktop-supervisor.test.js`, `desktop-window-placement.test.js`, the tray/startup
+tests and affected bootstrap/candidate tests. Coverage includes privacy, severity,
+native-query failure isolation, fatal nonzero exit, bounded UTF-8 records and
+legacy/current/previous logs, live stdout/stderr rotation, readiness and shutdown.
+
+After the host build, run
+`electron scripts/testing/desktop-host-diagnostics-acceptance.mjs` for a real
+fixture window's show/hide and renderer crash events. It creates a temporary
+profile, starts no sidecars/provider or crash reporter, and prints retained
+`host.log`/`result.json` evidence. Real monitor hot-plug/DPI changes and GPU loss
+still require separate native OS acceptance; synthetic events do not prove them.
+
+Validation on 2026-11-02, Windows x64 / Node 26.13.0: scoped host/supervisor/
+placement/tray/startup checks passed (74 tests); bootstrap/state/lifecycle checks
+passed (19); candidate command/profile/interaction checks passed (22). After adding
+the final log-directory startup-failure guard, host compilation and the affected
+diagnostics/supervisor/placement checks passed again (56 tests, including the new
+full two-service `startAll` case). No full Platform/mobile suite is claimed.
+Independent review found no remaining issues.
+
+Real Electron 41.2.0 acceptance captured show/hide, `renderer-gone` with
+`reason=crashed` / exit code 2, and clean host exit. The source candidate command
+also built the pinned Runtime plus Platform server/host and production renderer;
+both private services became ready, a visible first-run window was captured and
+inspected, and its host log recorded lifecycle/display/service/bootstrap events.
+Authenticated stop returned exit code 0; an OS process check confirmed host and
+both sidecars had exited. The candidate preceded only the final diagnostic-directory
+failure guard, which the separate full-startup regression covers.
+
+Private evidence/launch/source receipt:
+parent workspace `.diagnostics/desktop-host-log-candidate-20261102-2` (Platform
+source digest `4558c543863dbd75b273f65330bb8368242cc04c927f66f5471d4f1813a08809`,
+Runtime commit `c6e575b672ecaf3d6113c08260720b57c7d62765`). The initial attempt
+stopped during compilation because the shared checkout's installed dependencies
+lacked its pinned UI package; locked dependencies in the task worktree resolved it.
+No installed application, real user profile or provider selection was changed.
+
 Unix npm-prefix JSON regression checks run with the system `/bin/bash` on macOS,
 including Bash 3.2 with `set -u`. They cover an already configured folder, required
 configuration changes and forced nvm preparation without installing software or
