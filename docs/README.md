@@ -1,5 +1,8 @@
 # Documentation Index
 
+[Provider catalog validation](research/2026-11-01-provider-catalog-consumer-validation.md)
+records consumption of the latest requested Runtime catalogs and Copilot's feature-access gap.
+
 The proposed shared-Platform architecture follows merged
 [Bot PR #51](https://github.com/cats-inc/cats-bots/pull/51). It has two stages:
 [reusable packages](decisions/142-publish-reusable-platform-packages-for-independent-products.md)
