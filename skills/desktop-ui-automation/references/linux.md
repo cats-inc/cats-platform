@@ -11,8 +11,13 @@ id -u
 printf 'session=%s desktop=%s wayland=%s display=%s\n' \
   "${XDG_SESSION_TYPE-}" "${XDG_CURRENT_DESKTOP-}" \
   "${WAYLAND_DISPLAY-}" "${DISPLAY-}"
-command -v grim wlrctl wtype xdotool gdbus
+for tool in grim wlrctl wtype xdotool gdbus; do
+  command -v "$tool" || printf 'missing: %s\n' "$tool"
+done
 ```
+
+Check one tool per `command -v`: given several names, dash reports only the first,
+so a shorter list does not mean the others are absent.
 
 Inspect the current session's `XDG_RUNTIME_DIR` and D-Bus connectivity as needed.
 Do not dump the whole environment or guess another user's socket paths. `DISPLAY`
