@@ -36,6 +36,39 @@ test('installation stays per-user so an update never asks for elevation', () => 
   assert.match(installerScript, /StrCpy\s+\$isForceCurrentInstall\s+"1"/u);
 });
 
+test('an update stops only this installation, never a sibling such as Cats Bot', () => {
+  // Without a separator, closing ...\Programs\Cats also terminates everything
+  // under ...\Programs\Cats Bot, and nothing starts it again. NSIS removes a
+  // trailing separator from $INSTDIR when expanding it, so assigning one has no
+  // effect: it has to follow the variable in both commands.
+  assert.deepEqual(installerScript.match(/StartsWith\('[^']*'/gu), [
+    "StartsWith('$INSTDIR\\'",
+    "StartsWith('$INSTDIR\\'",
+  ]);
+  assert.doesNotMatch(installerScript, /StrCpy\s+\$INSTDIR/u);
+  // One remaining process counts as none without @() in Windows PowerShell 5.1,
+  // and with it an uninstaller running from $INSTDIR would match only itself.
+  assert.match(installerScript, /if \(@\(Get-CimInstance [^`]*\)\.Count -gt 0\)/u);
+  assert.equal(installerScript.match(/\$\$_\.ProcessId -ne \$pid -and /gu)?.length, 2);
+
+  // Those commands only take effect through the hook electron-builder looks for.
+  const hook = /!macro customCheckAppRunning\b([\s\S]*?)!macroend/u.exec(installerScript)?.[1] ?? '';
+  assert.match(hook, /!insertmacro IS_POWERSHELL_AVAILABLE\s+\$\{GetProcessInfo\} 0 \$pid /u);
+  assert.equal(hook.match(/!insertmacro catsFindRunningApp \$R0/gu)?.length, 3);
+  assert.equal(hook.match(/!insertmacro catsStopRunningApp /gu)?.length, 2);
+
+  // The hook replaces only part of the stock check, so an electron-builder upgrade
+  // that changes this seam has to fail here rather than on a user's machine.
+  const stock = readProjectFile(
+    'node_modules/app-builder-lib/templates/nsis/include/allowOnlyOneInstallerInstance.nsh',
+  );
+  assert.match(stock, /!ifmacrodef customCheckAppRunning\s+!insertmacro customCheckAppRunning/u);
+  assert.match(stock, /!ifmacrondef customCheckAppRunning\s+!include "getProcessInfo\.nsh"\s+Var pid/u);
+  assert.match(stock, /!macro IS_POWERSHELL_AVAILABLE/u);
+  assert.match(stock, /StrCpy \$PowerShellPath [\s\S]*?!ifmacrodef customCheckAppRunning/u);
+  assert.match(installerScript, /^!include "getProcessInfo\.nsh"\s+Var pid$/mu);
+});
+
 test('the uninstaller only removes user data when the user opts in', () => {
   // A Windows upgrade runs the previous uninstaller silently before installing.
   // An unconditional wipe here would reset Electron UI state and Cats runtime
