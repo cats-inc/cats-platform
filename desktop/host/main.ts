@@ -107,6 +107,7 @@ import {
 import {
   buildDesktopSetupSnapshot,
   createEmptyDesktopSetupState,
+  reconcileSetupAuthRecovery,
   runDesktopSetupHelper,
   settleSetupPathRefresh,
   shouldAutoRunSetupAudit,
@@ -1267,7 +1268,7 @@ async function getSetupSnapshot(): Promise<DesktopSetupSnapshot> {
   if (snapshot.resumeAction && !snapshot.helpers.some((helper) => helper.id === snapshot.resumeAction!.helperId)) {
     snapshot.resumeAction = null;
   }
-  return snapshot;
+  return reconcileSetupAuthRecovery(snapshot, buildDesktopCliInventoryFromRuntime(probe));
 }
 
 let providerManager: DesktopProviderManager | null = null;

@@ -846,6 +846,12 @@ timeout. It does not read credential files or return auth output. API-key setup
 remains supported. The macOS/Linux native-provider checks report installation
 readiness; that result alone is not an authentication check.
 
+Desktop keeps a helper's previous result as history. A newer Runtime observation
+for that same installed CLI updates the current recovery recommendation: missing
+authentication keeps the sign-in action; an unknown result offers a read-only
+verification check; a result that needs no authentication clears the sign-in
+recommendation. Another provider's scan timestamp cannot settle this one.
+
 ### Manual Operator Matrix
 
 - **Linux host**

@@ -822,6 +822,8 @@ export interface DesktopCliInventoryEntry {
   available: boolean;
   supported: boolean;
   authStatus: DesktopCliAuthStatus;
+  /** Observation time for this target, rather than another provider in the scan. */
+  observedAt?: string | null;
 }
 
 export interface DesktopCliInventory {
