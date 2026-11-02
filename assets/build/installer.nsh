@@ -22,6 +22,92 @@
   StrCpy $isForceCurrentInstall "1"
 !macroend
 
+; --- Running-app check: stop only this installation's processes ---
+;
+; electron-builder's check (allowOnlyOneInstallerInstance.nsh) stops every
+; process whose path StartsWith $INSTDIR, with no separator, so updating
+; ...\Programs\Cats also terminates ...\Programs\Cats Bot and nothing restarts
+; it. These macros follow that file's per-user path with two changes. The
+; separator follows the variable in each command, because NSIS removes a
+; trailing one from $INSTDIR when expanding it. @() counts one process as one,
+; because a single CIM object has no .Count in Windows PowerShell 5.1. Defining
+; this hook makes that file skip the getProcessInfo include and $pid, so they
+; are declared here.
+!include "getProcessInfo.nsh"
+Var pid
+
+!macro catsFindRunningApp RETURN
+  ${if} $IsPowerShellAvailable == 0
+    nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -C "if (@(Get-CimInstance -ClassName Win32_Process | ? {$$_.Path -and $$_.Path.StartsWith('$INSTDIR\', 'CurrentCultureIgnoreCase')}).Count -gt 0) { exit 0 } else { exit 1 }"`
+  ${else}
+    nsExec::Exec `"$CmdPath" /C tasklist /FI "USERNAME eq %USERNAME%" /FI "IMAGENAME eq ${APP_EXECUTABLE_FILENAME}" /FO CSV /NH | "$SYSDIR\findstr.exe" /B /I /C:"\"${APP_EXECUTABLE_FILENAME}\""`
+  ${endIf}
+  Pop ${RETURN}
+!macroend
+
+!macro catsStopRunningApp POWERSHELL_FORCE TASKKILL_FORCE
+  ${if} $IsPowerShellAvailable == 0
+    nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -C "Get-CimInstance -ClassName Win32_Process | ? {$$_.Path -and $$_.Path.StartsWith('$INSTDIR\', 'CurrentCultureIgnoreCase')} | % { Stop-Process -Id $$_.ProcessId ${POWERSHELL_FORCE} }"`
+  ${else}
+    nsExec::Exec `"$CmdPath" /C taskkill ${TASKKILL_FORCE} /IM "${APP_EXECUTABLE_FILENAME}" /FI "PID ne $pid" /FI "USERNAME eq %USERNAME%"`
+  ${endIf}
+  Pop $0
+!macroend
+
+!macro customCheckAppRunning
+  !insertmacro IS_POWERSHELL_AVAILABLE
+  ${GetProcessInfo} 0 $pid $1 $2 $3 $4
+  ${if} $3 != "${APP_EXECUTABLE_FILENAME}"
+    ${if} ${isUpdated}
+      ; The app is already closing for the update.
+      Sleep 300
+    ${endIf}
+
+    !insertmacro catsFindRunningApp $R0
+    ${if} $R0 == 0
+      ${if} ${isUpdated}
+        Sleep 1000
+        Goto catsStopApp
+      ${endIf}
+      MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION "$(appRunning)" /SD IDOK IDOK catsStopApp
+      Quit
+
+      catsStopApp:
+      DetailPrint "$(appClosing)"
+      !insertmacro catsStopRunningApp "" ""
+      ; Files may stay in use for a moment after the process ends.
+      Sleep 300
+      StrCpy $R1 0
+
+      catsStopRetry:
+        IntOp $R1 $R1 + 1
+        !insertmacro catsFindRunningApp $R0
+        ${if} $R0 == 0
+          Sleep 1000
+          !insertmacro catsStopRunningApp "-Force" "/F"
+          !insertmacro catsFindRunningApp $R0
+          ${if} $R0 == 0
+            DetailPrint `Waiting for "${PRODUCT_NAME}" to close.`
+            Sleep 2000
+          ${else}
+            Goto catsAppStopped
+          ${endIf}
+        ${else}
+          Goto catsAppStopped
+        ${endIf}
+
+        ; Likely running elevated, so the owner has to close it.
+        ${if} $R1 > 1
+          MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "$(appCannotBeClosed)" /SD IDCANCEL IDRETRY catsStopRetry
+          Quit
+        ${else}
+          Goto catsStopRetry
+        ${endIf}
+      catsAppStopped:
+    ${endIf}
+  ${endIf}
+!macroend
+
 ; --- Uninstaller: optional user-data removal ---
 !include "LogicLib.nsh"
 !include "nsDialogs.nsh"
