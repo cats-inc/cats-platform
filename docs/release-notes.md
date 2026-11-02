@@ -35,7 +35,8 @@ npm, Runtime npm, cats-one, Apps and Plugins are separate release targets.
     ACP work tools (#208) and the Copilot catalog refresh (#209), are not included.
   - Usage **0.5.4** remains
     `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
-    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`.
+    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+    producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
   - The complete source manifest and each packaged OS receipt record the merged
     Platform bump commit and the exact Runtime/App inputs above.
 - **Compatibility and recovery.** Core format, App SDK, public API and configuration
@@ -44,7 +45,8 @@ npm, Runtime npm, cats-one, Apps and Plugins are separate release targets.
   - Log rotation bounds ordinary diagnostic logs, not user data. An oversized existing
     Platform or Runtime log is reduced to the bounded files on start.
   - Returning to 0.13.1 needs no format conversion. It restores the Windows Claude
-    misdetection and the previous unbounded logging, and leaves existing logs in place.
+    misdetection, the stale setup advice and the previous logging: `host.log` is no
+    longer written, and each start replaces the service logs' `.previous` snapshots.
 - **Signing and updates.** Manually dispatch `desktop-release.yml` from the merged bump
   source with `tag=v0.13.2`, the Runtime SHA above and `unsigned=false`. The workflow
   creates a prerelease and its tag; no tag push selects this preview.
@@ -55,8 +57,9 @@ npm, Runtime npm, cats-one, Apps and Plugins are separate release targets.
     and Linux DEB installs retain their update paths. Portable builds use manual
     replacement; an unsigned Mac install needs a manual standard install.
 - **Validation boundary.** #372 passed 56 affected diagnostics, supervisor and placement
-  tests after its final change, including a full two-service startup case, and an isolated
-  candidate acceptance on this Runtime source. #373 passed 8 targeted Windows installer
+  tests after its final change, including a full two-service startup case. An isolated
+  candidate acceptance on this Runtime source ran before that final change, and monitor
+  hot-plug, DPI changes and GPU loss were not exercised. #373 passed 8 targeted Windows installer
   tests and a read-only run on an affected Windows machine. #374 passed 72 focused
   setup, auth, inventory, readiness and bootstrap tests. Each had independent review.
   - The release workflow enforces packaged startup, offline App activation,
