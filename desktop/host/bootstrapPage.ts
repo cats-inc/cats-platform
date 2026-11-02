@@ -684,6 +684,8 @@ export function buildDesktopBootstrapPage(): string {
         'selection.reset': 'Discard unsaved changes',
         'selection.loading': 'Loading provider selection…',
         'setup.recommendedNextStep': 'Recommended next step',
+        'setup.previousResult': 'Previous setup result',
+        'setupSummary.verifyAuthentication': 'Authentication could not be verified. Rerun {helperLabel} in check mode.',
         'setup.restartNeeded': 'A restart is needed before the next step.',
         'setupError.failedBeforeStructuredOutput': '{helperLabel} failed before emitting structured output.',
         'setupError.missingPackaged': '{helperLabel} is missing from the current packaged host build.',
@@ -948,6 +950,8 @@ export function buildDesktopBootstrapPage(): string {
         'selection.reset': '捨棄尚未儲存的變更',
         'selection.loading': '正在載入 provider 選擇…',
         'setup.recommendedNextStep': '建議的下一步',
+        'setup.previousResult': '先前的設定結果',
+        'setupSummary.verifyAuthentication': '目前無法確認登入狀態，請重新檢查 {helperLabel}。',
         'setup.restartNeeded': '下一步前需要重新啟動。',
         'setupError.failedBeforeStructuredOutput': '{helperLabel} 在輸出結構化結果前失敗。',
         'setupError.missingPackaged': '目前的套裝主機版本缺少 {helperLabel}。',
@@ -1493,6 +1497,12 @@ export function buildDesktopBootstrapPage(): string {
     function localizeSetupSummary(summary) {
       var text = String(summary || '');
       var match = null;
+      match = text.match(/^Authentication could not be verified[.] Rerun (.+) in check mode[.]$/);
+      if (match) {
+        return tx('setupSummary.verifyAuthentication', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
+      }
       if (text === 'Launch the target WSL distro once to finish first-user setup, then rerun the packaged setup check.') {
         return tx('setupSummary.launchWslFirstBoot');
       }
@@ -2537,6 +2547,7 @@ export function buildDesktopBootstrapPage(): string {
         var las = lastAction.runState === 'failed' ? 'err'
           : lastAction.status === 'ready' ? 'ok' : 'warn';
         var lac = [
+          el('div', { class: 'detail-meta' }, tx('setup.previousResult')),
           CardHead(
             lastAction.label ? localizeSetupHelperLabel(lastAction.label) : lastAction.helperId,
             displayStatus(lastAction.status || lastAction.runState), 'c-' + las),

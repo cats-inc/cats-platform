@@ -157,12 +157,14 @@ export function buildDesktopCliInventoryFromRuntime(
   // Runtime provider id -> installed command detected by the runtime setup scan.
   const runtimeAvailability = new Map<string, boolean>();
   const runtimeAuthStatus = new Map<string, DesktopCliAuthStatus>();
+  const runtimeObservedAt = new Map<string, string>();
   let scannedAt: string | null = null;
   if (probe?.observations) {
     for (const provider of probe.observations) {
       if (provider.configurationStatus !== 'unchanged') continue;
       runtimeAvailability.set(targetKey(provider), provider.available === true);
       runtimeAuthStatus.set(targetKey(provider), normalizeCliAuthStatus(provider.authStatus));
+      runtimeObservedAt.set(targetKey(provider), provider.observedAt);
       if (!scannedAt || provider.observedAt > scannedAt) scannedAt = provider.observedAt;
     }
   }
@@ -190,6 +192,9 @@ export function buildDesktopCliInventoryFromRuntime(
       available: helperId !== '',
       supported: helperPrefix !== null,
       authStatus,
+      observedAt: runtimeProvider !== null
+        ? runtimeObservedAt.get(targetKey(nativeSetupTarget(runtimeProvider))) ?? null
+        : null,
     };
   });
   const installed = candidates

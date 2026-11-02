@@ -160,6 +160,13 @@ node --test --test-name-pattern='prefix checks emit complete JSON|forced nvm pre
 - **Scope**: app-managed startup contract, host prerequisite snapshot logic,
   and managed child-process launch/shutdown seams
 
+`tests/desktop-setup-auth-recovery.test.js` covers the setup bridge's current
+authentication recommendation after newer per-target Runtime observations,
+including unknown/missing status, stale or unrelated evidence and preservation
+of helper history and other recovery actions. Run it after `npm run build:host`
+alongside `tests/desktop-cli-inventory-probe.test.js` and
+`tests/desktop-setup-bridge.test.js`.
+
 ## Choosing Local Validation
 
 The hosted Node.js CI job has a 20-minute deadline. Catlas cancellation fixtures

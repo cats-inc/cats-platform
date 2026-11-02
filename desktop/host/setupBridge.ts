@@ -694,6 +694,39 @@ export function createEmptyDesktopSetupState(): DesktopSetupState {
   return createDefaultSetupState();
 }
 
+/** Reconcile the current recommendation without rewriting the helper's history. */
+export function reconcileSetupAuthRecovery(
+  snapshot: DesktopSetupSnapshot,
+  inventory: DesktopCliInventory | null,
+): DesktopSetupSnapshot {
+  const recovery = snapshot.resumeAction;
+  const action = snapshot.state.lastAction;
+  if (recovery?.reason !== 'auth_required' || !action || action.runState !== 'completed') return snapshot;
+  if (recovery.restartRequired || recovery.requiresElevation
+    || recovery.interruptions.some((entry) => entry.kind !== 'auth_required')) return snapshot;
+  if (inventory?.source !== 'runtime' || recovery.helperId !== action.helperId) return snapshot;
+  const candidate = inventory.candidates.find((entry) => entry.helperId === recovery.helperId && entry.installed);
+  if (!candidate || candidate.authStatus === 'missing') return snapshot;
+  const completedAt = action.completedAt ? Date.parse(action.completedAt) : NaN;
+  const observedAt = candidate.observedAt ? Date.parse(candidate.observedAt) : NaN;
+  if (!Number.isFinite(completedAt) || !Number.isFinite(observedAt) || observedAt <= completedAt) return snapshot;
+  if (candidate.authStatus === 'not_required') return { ...snapshot, resumeAction: null };
+  if (!snapshot.helpers.some((helper) => helper.id === recovery.helperId && helper.supportsCheckOnly)) return snapshot;
+  // An inconclusive scan cannot establish that the owner is signed out. Offer
+  // the read-only check, which can ask the CLI, without repeating old login advice.
+  return {
+    ...snapshot,
+    resumeAction: {
+      ...recovery,
+      mode: 'check',
+      reason: 'verification_recommended',
+      summary: `Authentication could not be verified. Rerun ${recovery.label} in check mode.`,
+      manualSteps: [],
+      interruptions: recovery.interruptions.filter((entry) => entry.kind !== 'auth_required'),
+    },
+  };
+}
+
 // Windows helpers whose relaunch or restart request is about the user PATH they changed.
 // Git is not one: cats-runtime remembers a missing git for its whole life
 // (RuntimeDeliveryService isGitAvailable), so Code needs the relaunch it asks for.

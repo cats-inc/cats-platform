@@ -38,6 +38,17 @@ test('retains selected unavailable providers before the first scan', () => {
   assert.equal(inventory.candidates[0].installed, false);
 });
 
+test('inventory retains each target observation time independently of the newest global scan', () => {
+  const data = probe([{ provider: 'claude', available: true, authStatus: 'unknown' },
+    { provider: 'codex', available: true, authStatus: 'not_required' }]);
+  data.observations[0].observedAt = '2026-09-15T00:00:00.000Z';
+  const inventory = buildDesktopCliInventoryFromRuntime(data, 'win32');
+  assert.equal(inventory.scannedAt, '2026-09-16T00:00:00.000Z');
+  assert.equal(inventory.candidates.find(entry => entry.providerId === 'claude_code').observedAt, '2026-09-15T00:00:00.000Z');
+  data.observations[0].configurationStatus = 'changed';
+  assert.equal(buildDesktopCliInventoryFromRuntime(data, 'win32').candidates.find(entry => entry.providerId === 'claude_code').observedAt, null);
+});
+
 test('ignores observations from old revisions and targets with the same bare instance name', () => {
   const data = probe([{ provider: 'codex', available: true }]);
   data.observations[0].configurationStatus = 'changed';
