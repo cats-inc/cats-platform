@@ -106,11 +106,20 @@ jobs:
           repository: cats-inc/cats-runtime
           ref: ${{ inputs.runtime_ref || 'main' }}
           path: runtime-source
+          # The check below compares this commit with the whole of Runtime main.
+          fetch-depth: 0
 
       - name: Pin Runtime commit
         id: runtime
         working-directory: runtime-source
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Also before any build, so a stale or unmerged Runtime fails fast.
+      - name: Check the Runtime commit against Runtime main
+        env:
+          RELEASE_TAG: ${{ steps.resolve.outputs.tag }}
+          RUNTIME_COMMIT: ${{ steps.runtime.outputs.sha }}
+        run: node scripts/validate-runtime-pin.mjs --tag "$RELEASE_TAG" --runtime-root runtime-source --commit "$RUNTIME_COMMIT"
 
   draft:
     name: Create draft release

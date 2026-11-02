@@ -197,6 +197,16 @@ and passes that exact Runtime commit to every OS and the source job. The complet
 source manifest and three receipts read from the packaged hosts must agree before
 publication. Record the resolved commit; Runtime npm publication is still separate.
 
+Choose the Runtime SHA when preparing the bump, by reading what Runtime `main` has
+after it. The guard then runs `scripts/validate-runtime-pin.mjs` before any build and
+refuses a commit that is not on Runtime `main`, such as a pull request's branch head.
+It also refuses a commit that lacks shipped changes on `main`, unless this version's
+section of the release notes names each one as `cats-runtime#N`, or by the first 8
+characters of its SHA, and says why it is left out. Commits that change only `docs/`
+and `.github/` do not count. A bare `#N` does not count either, because pull request
+numbers collide between repositories. If Runtime merges a shipped change after the
+bump, the dispatch fails: move to the newer commit or name it, in a new bump commit.
+
 Apps are selected separately through `config/desktop-apps.lock.json`, using exact
 versions, published URLs and SHA-256 values. Reuse the selected artifacts unless
 the authorized Desktop release includes an App update. An App release does not
