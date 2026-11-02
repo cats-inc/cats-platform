@@ -2,6 +2,72 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-02 — Desktop 0.13.2 standard preview: host diagnostics and setup sign-in advice
+
+Selected distribution: Desktop **0.13.2 standard-profile preview**, using App SDK
+**1.9.0** and bundled **Usage 0.5.4**. This is a compatible 0.13 patch. Platform
+npm, Runtime npm, cats-one, Apps and Plugins are separate release targets.
+
+- **Windows Claude subscription sign-in (#373).** Setup asks the installed CLI for
+  `auth status --json` through the existing hidden process runner, with a 10-second
+  timeout. Only a successful boolean `loggedIn` marks authentication ready, so a
+  signed-in subscription no longer asks for login when `ANTHROPIC_API_KEY` is absent.
+  API-key and fixture overrides remain, and the CLI's output is never returned.
+  macOS and Linux helpers are unchanged.
+- **Stale setup advice (#374).** A newer Runtime inventory observation for the same
+  installed CLI now supersedes an older helper recommendation: explicit missing auth
+  stays, an auth-only recommendation is omitted when auth is not required, and unknown
+  auth offers a neutral read-only check. Failed or incomplete actions and other restart
+  or elevation advice remain. The original helper record is kept unchanged and labelled
+  as the previous setup result, in English and Traditional Chinese.
+- **Bounded host diagnostics (#372).** Installed Desktop now writes `host.log` for
+  startup and exit, launch context, bootstrap and service state, display and window
+  geometry, and renderer or GPU exits. Records exclude arbitrary error messages,
+  conversation text, titles, URLs and environment or argument dumps, and detailed
+  movement logging is opt-in. The host log keeps a 256 KiB current file and three
+  backups. Platform and Runtime stdout/stderr logs keep a 256 KiB current file and one
+  `.previous` snapshot, including oversized existing files. A diagnostic storage
+  failure does not stop service startup. There are no crash dumps or uploads. See
+  [Desktop diagnostic logs](deployment.md#desktop-diagnostic-logs).
+- **Exact source and artifacts.**
+  - Runtime **0.6.2**, source `c6e575b672ecaf3d6113c08260720b57c7d62765`, the same
+    source Desktop 0.13.1 selected. Later Runtime changes, including native Muse and
+    ACP work tools (#208) and the Copilot catalog refresh (#209), are not included.
+  - Usage **0.5.4** remains
+    `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+    producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
+  - The complete source manifest and each packaged OS receipt record the merged
+    Platform bump commit and the exact Runtime/App inputs above.
+- **Compatibility and recovery.** Core format, App SDK, public API and configuration
+  requirements do not change, and no data migration is introduced. Usage's existing
+  host/SDK compatibility remains applicable.
+  - Log rotation bounds ordinary diagnostic logs, not user data. An oversized existing
+    Platform or Runtime log is reduced to the bounded files on start.
+  - Returning to 0.13.1 needs no format conversion. It restores the Windows Claude
+    misdetection, the stale setup advice and the previous logging: `host.log` is no
+    longer written, and each start replaces the service logs' `.previous` snapshots.
+- **Signing and updates.** Manually dispatch `desktop-release.yml` from the merged bump
+  source with `tag=v0.13.2`, the Runtime SHA above and `unsigned=false`. The workflow
+  creates a prerelease and its tag; no tag push selects this preview.
+  - Expected standard trust: macOS **signed + notarized**, Windows
+    **unsigned: no certificate**, Linux **n/a**. Actual trust is recorded by the
+    platform receipts and signature/notarization checks.
+  - Standard-profile 0.13.1 Windows NSIS, signed macOS using the same Developer ID team
+    and Linux DEB installs retain their update paths. Portable builds use manual
+    replacement; an unsigned Mac install needs a manual standard install.
+- **Validation boundary.** #372 passed 56 affected diagnostics, supervisor and placement
+  tests after its final change, including a full two-service startup case. An isolated
+  candidate acceptance on this Runtime source ran before that final change, and monitor
+  hot-plug, DPI changes and GPU loss were not exercised. #373 passed 8 targeted Windows installer
+  tests and a read-only run on an affected Windows machine. #374 passed 72 focused
+  setup, auth, inventory, readiness and bootstrap tests. Each had independent review.
+  - The release workflow enforces packaged startup, offline App activation,
+    complete-source identity, signing, updater metadata and asset provenance. A public
+    source ZIP is verified against its published manifest/checksum.
+  - An installed 0.13.1-to-0.13.2 updater acceptance is separate from these checks.
+  - Publication results: the `v0.13.2` GitHub prerelease and its Actions run.
+
 ## 2026-11-01 — Desktop 0.13.1 standard preview: refreshed provider model catalogs
 
 Selected distribution: Desktop **0.13.1 standard-profile preview**, using App SDK
