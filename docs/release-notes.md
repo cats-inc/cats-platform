@@ -2,6 +2,62 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-02 — Desktop 0.13.3 standard preview: Windows updates no longer stop Cats Bot
+
+Selected distribution: Desktop **0.13.3 standard-profile preview**, using App SDK
+**1.9.0** and bundled **Usage 0.5.4**. This is a compatible 0.13 patch. Platform
+npm, Runtime npm, cats-one, Apps and Plugins are separate release targets.
+
+- **Windows updates stop only Desktop (#376).** The NSIS installer and uninstaller
+  closed every process whose path started with the install folder, with no separator,
+  so `Programs\Cats` also matched `Programs\Cats Bot`. Installing or uninstalling
+  Desktop terminated a running Cats Bot without an exit record, and nothing started it
+  again. The running-app check now matches only `Programs\Cats\`.
+  - It also finds a single remaining Desktop process, which the previous check read as
+    none on Windows PowerShell 5.1, and it never stops the process running the check.
+  - When PowerShell is unavailable, the check still matches `Cats.exe` by image name
+    for the current user. macOS and Linux packages are unchanged.
+- **One more stop during the transition.** An upgrade runs the uninstaller of the
+  installed copy, so updating from 0.13.2 or earlier still stops a running Cats Bot
+  once. Start Cats Bot again after that update, or sign in again if it starts at login.
+  Updates from 0.13.3 onward leave it running.
+- **Exact source and artifacts.**
+  - Runtime **0.6.2**, source `c6e575b672ecaf3d6113c08260720b57c7d62765`, the same
+    source Desktop 0.13.2 selected. Later Runtime changes, including native Muse and
+    ACP work tools (#208) and the Copilot catalog refresh (#209), are not included.
+  - Usage **0.5.4** remains
+    `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+    producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
+  - The complete source manifest and each packaged OS receipt record the merged
+    Platform bump commit and the exact Runtime/App inputs above.
+- **Compatibility and recovery.** Core format, App SDK, public API and configuration
+  requirements do not change, and no data migration is introduced. Usage's existing
+  host/SDK compatibility remains applicable. Returning to 0.13.2 needs no format
+  conversion and restores the previous check, so its updates stop Cats Bot again.
+- **Signing and updates.** Manually dispatch `desktop-release.yml` from the merged bump
+  source with `tag=v0.13.3`, the Runtime SHA above and `unsigned=false`. The workflow
+  creates a prerelease and its tag; no tag push selects this preview.
+  - Expected standard trust: macOS **signed + notarized**, Windows
+    **unsigned: no certificate**, Linux **n/a**. Actual trust is recorded by the
+    platform receipts and signature/notarization checks.
+  - Standard-profile 0.13.2 Windows NSIS, signed macOS using the same Developer ID team
+    and Linux DEB installs retain their update paths. Portable builds use manual
+    replacement; an unsigned Mac install needs a manual standard install.
+- **Validation boundary.** #376 passed its required CI and two rounds of independent
+  review. The complete `installer.nsh` compiled through electron-builder 26.16.1 for
+  both installer and uninstaller. Throwaway x64 installers ran silently against
+  sentinel processes in a sibling folder: the previous check reproduced the stop, the
+  new check spared the sibling on a fresh install, an upgrade, a single remaining
+  process and a direct uninstall, and an upgrade from the previous check stopped it once.
+  - The interactive wizard, arm64, a packaged Desktop build and an installed
+    Desktop-with-Cats-Bot update were not exercised by these checks.
+  - The release workflow enforces packaged startup, offline App activation,
+    complete-source identity, signing, updater metadata and asset provenance. A public
+    source ZIP is verified against its published manifest/checksum.
+  - An installed 0.13.2-to-0.13.3 updater acceptance is separate from these checks.
+  - Publication results: the `v0.13.3` GitHub prerelease and its Actions run.
+
 ## 2026-11-02 — Desktop 0.13.2 standard preview: host diagnostics and setup sign-in advice
 
 Selected distribution: Desktop **0.13.2 standard-profile preview**, using App SDK
