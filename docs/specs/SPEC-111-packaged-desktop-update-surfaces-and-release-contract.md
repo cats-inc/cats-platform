@@ -426,11 +426,12 @@ installer may ask the user to confirm the installation directory:
   update never requests elevation. Packaged provider setup helpers refuse to
   run elevated, so this behavior shall be preserved rather than relaxed for
   updates.
-- The `customCheckAppRunning` hook in the same file limits the running-app check
-  to `$INSTDIR\`. The stock check omits the separator, so updating
-  `Programs\Cats` also terminated `Programs\Cats Bot`. An install from a copy
-  whose uninstaller predates this hook still stops Cats Bot once, because that
-  uninstaller runs the stock check.
+- The `customCheckAppRunning` hook in the same file limits the PowerShell
+  running-app check to `$INSTDIR\`. The stock check omits the separator, so
+  updating `Programs\Cats` also terminated `Programs\Cats Bot`. An install from a
+  copy whose uninstaller predates this hook still stops Cats Bot once, because
+  that uninstaller runs the stock check. When PowerShell is unavailable, the
+  check still matches `Cats.exe` by image name for the current user.
 
 Because updates stay per-user, restart/install shall not be designed around an
 elevation prompt or an admin-install branch.

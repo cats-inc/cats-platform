@@ -46,8 +46,16 @@ test('an update stops only this installation, never a sibling such as Cats Bot',
     "StartsWith('$INSTDIR\\'",
   ]);
   assert.doesNotMatch(installerScript, /StrCpy\s+\$INSTDIR/u);
-  // One remaining process counts as none without @() in Windows PowerShell 5.1.
+  // One remaining process counts as none without @() in Windows PowerShell 5.1,
+  // and with it an uninstaller running from $INSTDIR would match only itself.
   assert.match(installerScript, /if \(@\(Get-CimInstance [^`]*\)\.Count -gt 0\)/u);
+  assert.equal(installerScript.match(/\$\$_\.ProcessId -ne \$pid -and /gu)?.length, 2);
+
+  // Those commands only take effect through the hook electron-builder looks for.
+  const hook = /!macro customCheckAppRunning\b([\s\S]*?)!macroend/u.exec(installerScript)?.[1] ?? '';
+  assert.match(hook, /!insertmacro IS_POWERSHELL_AVAILABLE\s+\$\{GetProcessInfo\} 0 \$pid /u);
+  assert.equal(hook.match(/!insertmacro catsFindRunningApp \$R0/gu)?.length, 3);
+  assert.equal(hook.match(/!insertmacro catsStopRunningApp /gu)?.length, 2);
 
   // The hook replaces only part of the stock check, so an electron-builder upgrade
   // that changes this seam has to fail here rather than on a user's machine.
