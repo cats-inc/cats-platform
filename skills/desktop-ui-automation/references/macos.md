@@ -11,7 +11,9 @@ an extra click utility is optional.
 sw_vers
 uname -m
 id -u
-command -v osascript screencapture
+for tool in osascript screencapture; do
+  command -v "$tool" || printf 'missing: %s\n' "$tool"
+done
 ```
 
 The executor must reach the logged-in user's graphical session. SSH access or
