@@ -33,7 +33,7 @@ async function sourceRepository(t) {
 test('a selected source with nothing shipped after it passes', async (t) => {
   const source = await sourceRepository(t);
   const pin = await source.commit('feat: base (#1)', 'src/a.ts');
-  await source.commit('docs: only docs (#2)', 'docs/a.md');
+  await source.commit('docs: only docs (#2)', 'docs/a.md'); // docs-boundary-ignore: a path in a temporary Git fixture.
   await source.commit('ci: only workflows (#3)', '.github/workflows/a.yml');
   await source.publish();
   assert.deepEqual(await missingSourceChanges(source.root, pin), []);
@@ -43,7 +43,7 @@ test('a selected source with nothing shipped after it passes', async (t) => {
 test('a shipped change the notes leave unnamed is refused, and the refusal names it', async (t) => {
   const source = await sourceRepository(t);
   const pin = await source.commit('feat: base (#1)', 'src/a.ts');
-  await source.commit('fix: preserve Grok provenance (#212)', 'src/b.ts', 'docs/b.md');
+  await source.commit('fix: preserve Grok provenance (#212)', 'src/b.ts', 'docs/b.md'); // docs-boundary-ignore: a path in a temporary Git fixture.
   await source.commit('fix: no pull request', 'src/c.ts');
   await source.publish();
   await assert.rejects(assertSelectedSource({ root: source.root, commit: pin, notes: 'Nothing here.', repository: 'cats-runtime' }), (error) => {

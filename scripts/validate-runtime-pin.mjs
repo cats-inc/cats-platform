@@ -34,7 +34,7 @@ cats-runtime#N (or by the first 8 characters of the commit's SHA).
 `;
 
 export function parseArgs(argv) {
-  const options = { help: false, tag: '', runtimeRoot: '', commit: '', notes: resolve(PROJECT_ROOT, 'docs', 'release-notes.md') };
+  const options = { help: false, tag: '', runtimeRoot: '', commit: '', notes: resolve(PROJECT_ROOT, 'docs', 'release-notes.md') }; // docs-boundary-ignore: manual publication reads notes; tests supply a temporary file.
   const names = { '--tag': 'tag', '--runtime-root': 'runtimeRoot', '--commit': 'commit', '--notes': 'notes' };
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
