@@ -333,7 +333,10 @@ pattern needs a code-level guardrail (e.g. dev-server seal mode).
   for previews and exact App versions/URLs/hashes for Desktop. The release guard
   resolves one Runtime commit shared by every OS and the complete source bundle;
   source and packaged identity validation gate publication. Bundling Runtime
-  does not require a preceding Runtime npm release.
+  does not require a preceding Runtime npm release. The guard refuses a Runtime
+  commit off Runtime main, or one lacking other changes there that the version's
+  notes do not list on a `Left out of this release:` line as `cats-runtime#N`; see
+  [the SOP](docs/deployment.md#desktop-publication).
 - Publishing an App does not automatically change config/desktop-apps.lock.json
   or publish Desktop. Compatibility requirements determine coordinated changes.
 - Preserve App manifest `catsPlatform` and `appSdk` compatibility checks. The
