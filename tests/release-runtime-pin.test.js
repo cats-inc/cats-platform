@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { assertSelectedSource, missingSourceChanges } from '../scripts/shared/release-primitives.mjs';
+import { assertSelectedSource, leftOutStatements, missingSourceChanges } from '../scripts/shared/source-selection.mjs';
 import { releaseNotesSection, validateRuntimePin } from '../scripts/validate-runtime-pin.mjs';
 
 const exec = promisify(execFile);
@@ -40,7 +40,7 @@ test('a selected source with nothing shipped after it passes', async (t) => {
   assert.deepEqual(await assertSelectedSource({ root: source.root, commit: pin, notes: '', repository: 'cats-runtime' }), []);
 });
 
-test('a shipped change the notes leave unnamed is refused, and the refusal names it', async (t) => {
+test('a change the notes do not list is refused, and the refusal names it', async (t) => {
   const source = await sourceRepository(t);
   const pin = await source.commit('feat: base (#1)', 'src/a.ts');
   await source.commit('fix: preserve Grok provenance (#212)', 'src/b.ts', 'docs/b.md'); // docs-boundary-ignore: a path in a temporary Git fixture.
@@ -61,19 +61,86 @@ test('a README change counts, because the package ships it', async (t) => {
   assert.equal((await missingSourceChanges(source.root, pin)).length, 1);
 });
 
-test('notes name a change by qualified pull request or SHA prefix, never a bare or longer number', async (t) => {
+test('a statement lists a change by qualified pull request or SHA prefix, never a bare, longer or embedded one', async (t) => {
   const source = await sourceRepository(t);
   const pin = await source.commit('feat: base (#1)', 'src/a.ts');
   const unnumbered = await source.commit('fix: no pull request', 'src/c.ts');
   await source.commit('fix: Grok (#212)', 'src/b.ts');
   await source.publish();
-  const check = notes => assertSelectedSource({ root: source.root, commit: pin, notes, repository: 'cats-runtime' });
+  const check = notes => assertSelectedSource({ root: source.root, commit: pin, notes: `Left out of this release: ${notes}`, repository: 'cats-runtime' });
   const prefix = unnumbered.slice(0, 8);
-  assert.equal((await check(`Left out cats-runtime#212 and ${prefix}.`)).length, 2);
-  assert.equal((await check(`Left out cats-inc/cats-runtime#212 and ${prefix}.`)).length, 2);
-  await assert.rejects(check(`Left out #212 and ${prefix}.`), /cats-runtime#212/u);
-  await assert.rejects(check(`Left out cats-runtime#2120 and ${prefix}.`), /cats-runtime#212/u);
-  await assert.rejects(check('Left out cats-runtime#212.'), /fix: no pull request/u);
+  assert.equal((await check(`cats-runtime#212 and ${prefix}.`)).length, 2);
+  assert.equal((await check(`cats-inc/cats-runtime#212 and ${prefix}.`)).length, 2);
+  assert.equal((await check(`cats-runtime#212 and ${unnumbered}.`)).length, 2);
+  await assert.rejects(check(`#212 and ${prefix}.`), /cats-runtime#212/u);
+  await assert.rejects(check(`cats-runtime#2120 and ${prefix}.`), /cats-runtime#212/u);
+  await assert.rejects(check(`not-cats-runtime#212 and ${prefix}.`), /cats-runtime#212/u);
+  await assert.rejects(check(`cats-runtime#212 and abc${prefix}.`), /fix: no pull request/u);
+  await assert.rejects(check('cats-runtime#212.'), /fix: no pull request/u);
+});
+
+test('a mention outside a statement does not count, even when it names the commit', async (t) => {
+  const source = await sourceRepository(t);
+  const pin = await source.commit('feat: base (#1)', 'src/a.ts');
+  const later = await source.commit('fix: Grok (#212)', 'src/b.ts');
+  await source.publish();
+  const check = notes => assertSelectedSource({ root: source.root, commit: pin, notes, repository: 'cats-runtime' });
+  await assert.rejects(check('This release carries cats-runtime#212.'), /cats-runtime#212/u);
+  await assert.rejects(check(`- Runtime source ${later}, the commit this release needs.`), /cats-runtime#212/u);
+  await assert.rejects(check('- Left out of this release: nothing.\n- Carries cats-runtime#212.'), /cats-runtime#212/u);
+  assert.equal((await check('- **Left out of this release:** cats-runtime#212, because it needs more testing.')).length, 1);
+});
+
+test('a statement runs through its wrapped lines and nested list, and stops at its own level', () => {
+  assert.equal(leftOutStatements('Before.\n\nAfter.'), '');
+  assert.equal(leftOutStatements('- First.\n- Left out of this release: a\n  b\n- Next: c'), '- Left out of this release: a\n  b');
+  assert.equal(leftOutStatements('- Left out of this release:\n  - a\n  - b\n\nAfter: c'), '- Left out of this release:\n  - a\n  - b');
+  assert.equal(leftOutStatements('Left out of this release: a\n## Next heading\nb'), 'Left out of this release: a');
+  assert.equal(leftOutStatements('Left out of this release: a\r\n\r\nb'), 'Left out of this release: a');
+  assert.equal(leftOutStatements('Left out of this release: a\n\nLeft out of this release: b\nc'), 'Left out of this release: a\nLeft out of this release: b\nc');
+});
+
+test('moving a packaged file into docs or .github still counts', async (t) => {
+  const source = await sourceRepository(t);
+  const pin = await source.commit('feat: base (#1)', 'runtime-skills/old/SKILL.md', 'README.md', 'docs/seed.md', '.github/seed.yml'); // docs-boundary-ignore: paths in a temporary Git fixture.
+  await source.git('mv', 'runtime-skills/old/SKILL.md', 'docs/old-skill.md'); // docs-boundary-ignore: a path in a temporary Git fixture.
+  await source.git('commit', '-q', '-m', 'docs: move a skill (#2)');
+  await source.git('mv', 'README.md', '.github/README.md');
+  await source.git('commit', '-q', '-m', 'docs: move the readme (#3)');
+  await source.publish();
+  assert.deepEqual((await missingSourceChanges(source.root, pin)).map(change => change.pull), ['3', '2']);
+});
+
+test('a merge counts only for what it changes itself', async (t) => {
+  const source = await sourceRepository(t);
+  const pin = await source.commit('feat: base (#1)', 'src/a.ts');
+  await source.git('switch', '-q', '-c', 'side');
+  await source.commit('docs: side (#2)', 'docs/side.md'); // docs-boundary-ignore: a path in a temporary Git fixture.
+  await source.git('switch', '-q', 'main');
+  await source.commit('docs: main (#3)', 'docs/main.md'); // docs-boundary-ignore: a path in a temporary Git fixture.
+  await source.git('merge', '-q', '--no-ff', '-m', 'Merge side cleanly', 'side');
+  await source.publish();
+  assert.deepEqual(await missingSourceChanges(source.root, pin), []);
+
+  await source.git('switch', '-q', '-c', 'side2');
+  await source.commit('docs: side two (#4)', 'docs/side2.md'); // docs-boundary-ignore: a path in a temporary Git fixture.
+  await source.git('switch', '-q', 'main');
+  await source.commit('docs: main two (#5)', 'docs/main2.md'); // docs-boundary-ignore: a path in a temporary Git fixture.
+  await source.git('merge', '-q', '--no-ff', '--no-commit', 'side2');
+  await writeFile(path.join(source.root, 'src', 'added-in-merge.ts'), 'export {};\n');
+  await source.git('add', '.');
+  await source.git('commit', '-q', '-m', 'Merge with its own change');
+  await source.publish();
+  assert.deepEqual((await missingSourceChanges(source.root, pin)).map(change => change.subject), ['Merge with its own change']);
+});
+
+test('a tag named like the branch does not stand in for it', async (t) => {
+  const source = await sourceRepository(t);
+  const pin = await source.commit('feat: base (#1)', 'src/a.ts');
+  await source.commit('fix: later (#2)', 'src/b.ts');
+  await source.publish();
+  await source.git('tag', 'origin/main', pin);
+  assert.deepEqual((await missingSourceChanges(source.root, pin)).map(change => change.pull), ['2']);
 });
 
 test('a commit off main, an unknown commit and an abbreviated SHA are refused', async (t) => {
@@ -113,10 +180,11 @@ test('the Desktop guard reads this version only, and its command line exits 1 wi
   await source.commit('fix: Grok (#212)', 'src/b.ts');
   await source.publish();
   const notes = path.join(source.root, 'notes.md');
-  await writeFile(notes, '## 2026-11-03 — Desktop 0.14.0 standard preview: a\nNothing left out.\n\n## 2026-11-02 — Desktop 0.13.3 standard preview: b\nLeaves out cats-runtime#212.\n');
+  await writeFile(notes, '## 2026-11-03 — Desktop 0.14.0 standard preview: a\nNothing left out.\n\n## 2026-11-02 — Desktop 0.13.3 standard preview: b\nLeft out of this release: cats-runtime#212, for now.\n');
   const options = { runtimeRoot: source.root, commit: pin, notes };
   assert.equal((await validateRuntimePin({ ...options, tag: 'v0.13.3' })).length, 1);
   await assert.rejects(validateRuntimePin({ ...options, tag: 'v0.14.0' }), /cats-runtime#212/u);
+  await assert.rejects(validateRuntimePin({ ...options, tag: 'v0.14.1' }), /no section headed "Desktop 0\.14\.1"/u);
   const command = ['--runtime-root', source.root, '--commit', pin, '--notes', notes];
   await assert.rejects(exec(process.execPath, [script, '--tag', 'v0.14.0', ...command]), (error) => {
     assert.equal(error.code, 1);
@@ -124,7 +192,7 @@ test('the Desktop guard reads this version only, and its command line exits 1 wi
     return true;
   });
   const passed = await exec(process.execPath, [script, '--tag', 'v0.13.3', ...command]);
-  assert.match(passed.stdout, /leaves out 1 shipped change/u);
+  assert.match(passed.stdout, /leaves out 1 change/u);
 });
 
 test('the release workflow checks the Runtime commit with full history before any build', async () => {

@@ -2,8 +2,8 @@
 //
 // Script: validate-runtime-pin.mjs
 // Description: Guard that a Desktop release's Runtime commit is on Runtime main
-//              and that this version's release notes name every shipped change
-//              it leaves out, before any platform build work starts.
+//              and that this version's release notes list every change it leaves
+//              out, before any platform build work starts.
 //
 // Usage: node scripts/validate-runtime-pin.mjs --tag <vX.Y.Z> --runtime-root <checkout> --commit <sha>
 //
@@ -15,22 +15,24 @@
 //   --help                   Show this help text.
 //
 // Exit codes:
-//   0  the commit is on Runtime main and the notes name whatever it leaves out
-//   1  the commit is off main, or a shipped change on main is left out unnamed
+//   0  the commit is on Runtime main and the notes list whatever it leaves out
+//   1  the commit is off main, or a change on main is left out without being listed
 
 import process from 'node:process';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertSelectedSource, stableReleaseVersion } from './shared/release-primitives.mjs';
+import { stableReleaseVersion } from './shared/release-primitives.mjs';
+import { assertSelectedSource } from './shared/source-selection.mjs';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
 const USAGE = `Usage: node scripts/validate-runtime-pin.mjs --tag <vX.Y.Z> --runtime-root <checkout> --commit <sha> [--notes <path>]
 
-Refuses a Runtime commit that is not on Runtime main, or that lacks shipped changes
-on main which this version's section of the release notes does not name as
-cats-runtime#N (or by the first 8 characters of the commit's SHA).
+Refuses a Runtime commit that is not on Runtime main, or that lacks changes on main
+which this version's section of the release notes does not list on a
+"Left out of this release:" line as cats-runtime#N (or by the first 8 characters of
+the commit's SHA). Commits changing only docs/ and .github/ do not count.
 `;
 
 export function parseArgs(argv) {
@@ -53,8 +55,14 @@ export function releaseNotesSection(markdown, version) {
 }
 
 export async function validateRuntimePin({ tag, runtimeRoot, commit, notes }) {
-  const section = releaseNotesSection(await readFile(notes, 'utf8'), stableReleaseVersion(tag));
-  return assertSelectedSource({ root: runtimeRoot, commit, notes: section, repository: 'cats-runtime' });
+  const version = stableReleaseVersion(tag);
+  const section = releaseNotesSection(await readFile(notes, 'utf8'), version);
+  try {
+    return await assertSelectedSource({ root: runtimeRoot, commit, notes: section, repository: 'cats-runtime' });
+  } catch (error) {
+    if (!section) error.message += `\nThe release notes have no section headed "Desktop ${version}".`;
+    throw error;
+  }
 }
 
 async function main() {
@@ -66,8 +74,8 @@ async function main() {
   if (!options.runtimeRoot || !options.commit) throw new Error('Pass --runtime-root and --commit.');
   const missing = await validateRuntimePin(options);
   process.stdout.write(missing.length === 0
-    ? `Runtime ${options.commit} has every shipped change on main.\n`
-    : `Runtime ${options.commit} leaves out ${missing.length} shipped change(s) on main, all named in the ${options.tag} notes.\n`);
+    ? `Runtime ${options.commit} has every change on main.\n`
+    : `Runtime ${options.commit} leaves out ${missing.length} change(s) on main, all listed in the ${options.tag} notes.\n`);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === SCRIPT_PATH) {
