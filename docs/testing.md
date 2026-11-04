@@ -145,6 +145,17 @@ stopped during compilation because the shared checkout's installed dependencies
 lacked its pinned UI package; locked dependencies in the task worktree resolved it.
 No installed application, real user profile or provider selection was changed.
 
+Windows npm-provider checks in `tests/desktop-installer-observations.test.js`
+cover a fresh account whose global npm prefix does not exist. Native npm
+`ENOENT` under Windows PowerShell must yield a JSON install plan without creating
+the folder; a CLI already on PATH keeps its installed state with an unknown npm
+package version. Other native errors, including permission failures, still fail
+instead of being interpreted as a missing package. Non-native PowerShell errors
+that merely mention `ENOENT` also propagate. Both Pi legacy-package lookups use
+the same guarded list probe. The fixtures invoke no real provider, registry query
+or install. Windows PowerShell 5.1 validation passed all 15 cases in this file;
+this is focused helper validation, not a full Platform or installed-upgrade run.
+
 Unix npm-prefix JSON regression checks run with the system `/bin/bash` on macOS,
 including Bash 3.2 with `set -u`. They cover an already configured folder, required
 configuration changes and forced nvm preparation without installing software or

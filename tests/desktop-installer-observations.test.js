@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile as callback } from 'node:child_process';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -83,6 +84,80 @@ test('npm mutation preview performs neither registry queries nor package mutatio
 function npm { throw 'Preview invoked npm' }
 Invoke-PackagedNpmCliInstall -HelperId fixture -PackageName fixture -CommandName missing-fixture -DisplayName Fixture -Force -DryRun -Json -AllowAdmin -InstallState installed -DetectedVersion '1.2.3' -SkipNpmInvocation`);
   assert.equal(JSON.parse(stdout).status, 'preview');
+});
+
+test('a missing npm prefix returns a JSON install plan without creating it', windows, async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-npm-empty-prefix-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const prefix = join(root, 'prefix');
+  const library = literal(join(process.cwd(), 'scripts/windows/_NpmCliInstaller.ps1'));
+  const { stdout } = await run(`. ${library}
+$env:npm_config_prefix = ${literal(prefix)}
+function Test-NpmCliInstallerAdminGuard { return $true }
+function npm {
+ if ($args[0] -ne 'list') { throw 'Check attempted a non-list npm command' }
+ & $env:ComSpec /d /c 'echo npm error code ENOENT 1>&2 & exit /b 1'
+}
+Invoke-PackagedNpmCliInstall -HelperId fixture -PackageName fixture-package -CommandName cats-missing-npm-fixture -DisplayName Fixture -CheckOnly -Json`);
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'changes_required');
+  assert.equal(result.installed, false);
+  assert.equal(result.detectedVersion, '');
+  assert.deepEqual(result.plannedActions, ['fixture-package:install']);
+  assert.deepEqual(result.appliedChanges, []);
+  assert.equal(existsSync(prefix), false);
+});
+
+test('a CLI on PATH survives a missing npm prefix with an unknown package version', windows, async () => {
+  const library = literal(join(process.cwd(), 'scripts/windows/_NpmCliInstaller.ps1'));
+  const { stdout } = await run(`. ${library}
+function Test-NpmCliInstallerAdminGuard { return $true }
+function Resolve-NpmCliCommandPath { return 'C:\\fixture\\legacy-cli.cmd' }
+function npm { & $env:ComSpec /d /c 'echo npm error code ENOENT 1>&2 & exit /b 1' }
+Invoke-PackagedNpmCliInstall -HelperId fixture -PackageName fixture-package -CommandName cats-legacy-npm-fixture -DisplayName Fixture -CheckOnly -Json -InstallState installed`);
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'ready');
+  assert.equal(result.installed, true);
+  assert.equal(result.detectedVersion, '');
+  assert.deepEqual(result.plannedActions, []);
+  assert.deepEqual(result.appliedChanges, []);
+});
+
+test('npm probe permission errors are not mistaken for an absent package', windows, async () => {
+  const library = literal(join(process.cwd(), 'scripts/windows/_NpmCliInstaller.ps1'));
+  await assert.rejects(run(`. ${library}
+function Test-NpmCliInstallerAdminGuard { return $true }
+function npm { & $env:ComSpec /d /c 'echo npm error code EACCES 1>&2 & exit /b 1' }
+Invoke-PackagedNpmCliInstall -HelperId fixture -PackageName fixture-package -CommandName cats-missing-npm-fixture -DisplayName Fixture -CheckOnly -Json`), error => {
+    assert.equal(error.stdout, '');
+    return error.stderr.includes('EACCES');
+  });
+});
+
+test('non-native PowerShell errors mentioning ENOENT are not suppressed', windows, async () => {
+  const library = literal(join(process.cwd(), 'scripts/windows/_NpmCliInstaller.ps1'));
+  for (const probe of [
+    'Test-NpmCliPackageInstalled -PackageName fixture-package -CommandName cats-missing-npm-fixture',
+    'Get-NpmCliPackageVersion -PackageName fixture-package',
+  ]) {
+    await assert.rejects(run(`. ${library}
+function npm { throw [System.InvalidOperationException]::new('fixture ENOENT unexpected PowerShell error') }
+${probe}`), error => error.stdout === '' && error.stderr.includes('fixture ENOENT unexpected PowerShell error'));
+  }
+});
+
+test('Pi legacy package probing also tolerates a missing global npm prefix', windows, async () => {
+  const library = literal(join(process.cwd(), 'scripts/windows/_NpmCliInstaller.ps1'));
+  const { stdout } = await run(`. ${library}
+function Test-NpmCliInstallerAdminGuard { return $true }
+function Resolve-NpmCliCommandPath { return 'C:\\fixture\\pi.cmd' }
+function npm { & $env:ComSpec /d /c 'echo npm error code ENOENT 1>&2 & exit /b 1' }
+Invoke-PackagedNpmCliInstall -HelperId fixture -PackageName '@earendil-works/pi-coding-agent' -CommandName cats-legacy-npm-fixture -DisplayName Fixture -CheckOnly -Json -InstallState installed`);
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'ready');
+  assert.equal(result.installed, true);
+  assert.deepEqual(result.plannedActions, []);
+  assert.deepEqual(result.appliedChanges, []);
 });
 
 test('Node check refreshes registry PATH before detecting a newly installed prerequisite', windows, async () => {
