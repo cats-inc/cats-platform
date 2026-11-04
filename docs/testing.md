@@ -178,6 +178,16 @@ and without nvm, using blocked curl and nvm mutations. These passed with Git Bas
 on Windows; the same file selects `/bin/bash` on native macOS/Linux. Native Unix
 execution and real clean-machine installs remain separate acceptance checks.
 
+Windows MSI advice also has consumer coverage: `desktop-setup-prerequisites`,
+`desktop-setup-path-refresh`, `desktop-setup-bridge`, `desktop-provider-manager`,
+`desktop-bootstrap-provider-manager` and `provider-manager-view` passed 61 checks
+after the host build. They retain an explicit machine reboot across ready/failed
+rechecks and unrelated helper runs without preserving it in a new process.
+The real first-run page fixture passed 51 distinct scenarios (50 in the full run,
+then all seven Windows-restart scenarios after the host-session addition), with
+zero page errors. Ready and missing Node screenshots were visually checked.
+These use fake helpers and private profiles, not real UAC or system installers.
+
 Unix npm-prefix JSON regression checks run with the system `/bin/bash` on macOS,
 including Bash 3.2 with `set -u`. They cover an already configured folder, required
 configuration changes and forced nvm preparation without installing software or

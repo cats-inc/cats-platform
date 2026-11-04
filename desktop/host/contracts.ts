@@ -772,6 +772,7 @@ export interface DesktopSetupState {
 export interface DesktopSetupSnapshot {
   helpers: DesktopSetupHelperSummary[];
   prerequisiteChecks?: DesktopPrerequisite[];
+  systemRestartHelpers?: string[];
   state: DesktopSetupState;
   resumeAction: DesktopSetupResumeAction | null;
 }

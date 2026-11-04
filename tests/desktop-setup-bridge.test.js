@@ -590,6 +590,19 @@ test('runDesktopSetupHelper normalizes successful helper execution', async () =>
   assert.equal(record.error, null);
 });
 
+test('Windows MSI interruption summaries require a machine reboot, not a new session', async () => {
+  const config = await createDesktopConfig();
+  const packaging = createDesktopPackagingPlan(config);
+  for (const helperId of ['windows-node-host-installer', 'windows-github-cli-installer', 'windows-vcredist-installer']) {
+    const result = await runDesktopSetupHelper({ config, packaging, action: { helperId, mode: 'apply' } }, {
+      platform: 'win32', pathExists: async () => true,
+      execFile: async () => ({ stdout: JSON.stringify({ status: 'restart_required', restartRequired: true,
+        interruptions: [{ kind: 'restart_required', requiresRestart: true, reason: 'Restart Windows to complete the installation.' }] }), stderr: '' }),
+    });
+    assert.equal(result.interruptions[0].summary, 'Restart Windows to complete installation.');
+  }
+});
+
 test('runDesktopSetupHelper forwards extra audit arguments when requested by the host', async () => {
   const config = await createDesktopConfig();
   const packaging = createDesktopPackagingPlan(config, {

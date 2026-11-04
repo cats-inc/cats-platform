@@ -219,7 +219,7 @@ function installFakeHost(spec) {
       return bootstrap();
     },
     setupWizard: {
-      facts: async () => clone({ platform: os, helpers: helperFacts, signIn: { claude: 'claude', codex: 'codex login', grok: 'grok login' }, order: spec.order, npmProviders: NPM, vcRuntimeFree: ['codex', 'claude', 'grok', 'antigravity', 'muse', 'devin', 'junie'], ollamaSuggestions: ['qwen2.5-coder:7b'], state: state.wizardState, setupComplete: Boolean(spec.setupComplete) }),
+      facts: async () => clone({ platform: os, helpers: helperFacts, signIn: { claude: 'claude', codex: 'codex login', grok: 'grok login' }, order: spec.order, npmProviders: NPM, vcRuntimeFree: ['codex', 'claude', 'grok', 'antigravity', 'muse', 'devin', 'junie'], ollamaSuggestions: ['qwen2.5-coder:7b'], state: state.wizardState, systemRestartHelpers: spec.systemRestartHelpers || [], setupComplete: Boolean(spec.setupComplete) }),
       runHelper: async (helperId, mode) => {
         record('runHelper', helperId, mode);
         const row = rowOf(helperId);
@@ -227,6 +227,13 @@ function installFakeHost(spec) {
         await wait(spec.helperDelay || 30);
         const fault = faulted(`${mode}:${row}`);
         if (fault && fault.throw) { runEnd(run, { status: 'failed', error: fault.message }); throw new Error(fault.message); }
+        if (fault && fault.systemRestart) {
+          if (fault.ready) applyEffect(row);
+          const report = { ...reportFor(row, mode), status: 'restart_required', restartRequired: true,
+            interruptions: [{ kind: 'restart_required', requiresRestart: true }], appliedChanges: [`install_${row}`] };
+          runEnd(run, { status: report.status, applied: report.appliedChanges });
+          return report;
+        }
         if (fault) {
           const report = { helperId, mode, runState: fault.status === 'elevation_required' || fault.restart ? 'completed' : 'failed', status: fault.status || 'failed', summary: fault.message, plannedActions: [`install_${row}`], appliedChanges: [], warnings: [], manualSteps: fault.manual || [], interruptions: fault.restart ? [{ kind: 'relaunch_required' }] : fault.status === 'elevation_required' ? [{ kind: 'elevation_required' }] : [], error: fault.restart ? null : fault.message, restartRequired: Boolean(fault.restart), timedOut: Boolean(fault.timedOut) };
           runEnd(run, { status: report.status, error: report.error, manual: report.manualSteps });
@@ -454,6 +461,42 @@ await check('installed but not found offers check again first, then restart, whi
   equal(await page.evaluate(() => window.__host.wizardState.page), 2, 'page kept');
   await close();
 });
+
+await check('Windows system restart advice returns from the current host session when the wizard mounts', async () => {
+  const { page, close } = await open({ systemRestartHelpers: ['windows-node-host-installer'] }, { locale: 'en' });
+  await pickAndCheck(page, 'codex');
+  await page.waitForSelector('[data-row="node"].is-ready');
+  truthy((await textOf(page, '[data-row="node"]')).includes('Restart Windows'), 'host advice restored');
+  await close();
+});
+
+for (const row of ['node', 'gh', 'vc']) for (const ready of [false, true]) {
+await check(`Windows system restart for ${row} survives a ${ready ? 'ready' : 'missing'} fresh check`, async () => {
+  const { page, close } = await open({ machine: { [row]: 'missing' }, faults: { [`apply:${row}`]: { systemRestart: true, ready } } }, { locale: 'en' });
+  await pickAndCheck(page, row === 'node' ? 'codex' : 'copilot');
+  await page.check(`#tick-${row}`);
+  await page.click('#apply');
+  await page.waitForFunction((id) => document.querySelector(`[data-row="${id}"]`)?.textContent.includes('Restart Windows to finish installation.'), row);
+  equal(await page.locator('#restart-app').count(), 0, 'no app restart action');
+  equal(await page.locator(`#tick-${row}`).count(), 0, 'no repeated install');
+  truthy(!/restart Cats/.test(await textOf(page, '.cats-setup')), 'Windows wording');
+  if (shotDir && row === 'node') await page.screenshot({ path: join(shotDir, `windows-restart-${ready ? 'ready' : 'missing'}.png`) });
+  await page.click('#recheck');
+  await page.waitForFunction((id) => !document.querySelector('.cats-setup [aria-busy="true"]') && document.querySelector(`[data-row="${id}"]`)?.textContent.includes('Restart Windows to finish installation.'), row);
+  equal(await page.locator(`#tick-${row}`).count(), 0, 'no install after recheck');
+  await page.evaluate((id) => { window.__host.machine[id] = 'ready'; }, row);
+  await page.click('#recheck');
+  await page.waitForSelector(`[data-row="${row}"].is-ready`);
+  truthy((await textOf(page, `[data-row="${row}"]`)).includes('Restart Windows'), 'ready retains advice');
+  if (row === 'node') {
+    await page.evaluate(() => { window.__host.faults['check:node'] = { throw: true, message: 'probe failed' }; });
+    await page.click('#recheck');
+    await page.waitForSelector('#recheck-node');
+    truthy((await textOf(page, '[data-row="node"]')).includes('Restart Windows'), 'check failure retains advice');
+  }
+  await close();
+});
+}
 
 await check('a check that fails stays on its row and leaves the others alone', async () => {
   const { page, close } = await open({ faults: { 'check:claude': { message: 'powershell.exe not found', throw: true } } });

@@ -746,6 +746,7 @@ ${SETUP_WIZARD_CSS}
         'setupSummary.relaunchThenVerify': 'Relaunch Cats Desktop Host, then rerun {helperLabel} to verify the updated packaged setup state.',
         'setupSummary.rerunCheckToVerify': 'Rerun {helperLabel} in check mode if you want to verify the packaged setup state again.',
         'setupSummary.restartThenRerun': 'Restart Windows or the current session, then rerun {helperLabel}.',
+        'setupSummary.restartWindows': 'Restart Windows to complete installation.',
         'setupSummary.restartThenRerunMode': 'Restart the host or Windows session, then rerun {helperLabel} in {mode} mode.',
         'setupSummary.retryAfterFailure': 'Retry {helperLabel} after addressing the last failure.',
         'setupSummary.runApplyRemainingChanges': 'Run {helperLabel} again to apply the remaining packaged setup changes.',
@@ -1041,6 +1042,7 @@ ${SETUP_WIZARD_CSS}
         'setupSummary.relaunchThenVerify': '請重新啟動 Cats 桌面主機，然後重新執行 {helperLabel} 以驗證更新後的套裝設定狀態。',
         'setupSummary.rerunCheckToVerify': '如需再次驗證套裝設定狀態，請以檢查模式重新執行 {helperLabel}。',
         'setupSummary.restartThenRerun': '請重新啟動 Windows 或目前工作階段，然後重新執行 {helperLabel}。',
+        'setupSummary.restartWindows': '請重新啟動 Windows 以完成安裝。',
         'setupSummary.restartThenRerunMode': '請重新啟動主機或 Windows 工作階段，然後以{mode}模式重新執行 {helperLabel}。',
         'setupSummary.retryAfterFailure': '處理上一次失敗後，請重試 {helperLabel}。',
         'setupSummary.runApplyRemainingChanges': '請再次執行 {helperLabel}，套用剩餘的套裝設定變更。',
@@ -1575,6 +1577,7 @@ ${SETUP_WIZARD_CSS}
     }
 
     function localizeSetupSummary(summary) {
+      if (summary === 'Restart Windows to complete installation.') return tx('setupSummary.restartWindows');
       var text = String(summary || '');
       var match = null;
       match = text.match(/^Authentication could not be verified[.] Rerun (.+) in check mode[.]$/);
@@ -2690,7 +2693,8 @@ ${SETUP_WIZARD_CSS}
     function SetupRecoverySection(snap, setupSnap, bridge) {
       var lastAction = (setupSnap && setupSnap.state && setupSnap.state.lastAction)
         || (snap.setup && snap.setup.lastAction);
-      if (!lastAction && (!setupSnap || !setupSnap.resumeAction)) return null;
+      var systemRestart = setupSnap && setupSnap.systemRestartHelpers && setupSnap.systemRestartHelpers.length;
+      if (!lastAction && (!setupSnap || !setupSnap.resumeAction) && !systemRestart) return null;
 
       var cards = [];
 
@@ -2738,7 +2742,8 @@ ${SETUP_WIZARD_CSS}
         cards.push(el('div', { class: 'card' }, lac));
       }
 
-      return ExpandableSection(tx('section.setupFix'), cards);
+      var section = ExpandableSection(tx('section.setupFix'), cards);
+      return systemRestart ? el('div', {}, el('p', { role: 'status', class: 'c-warn' }, tx('setupSummary.restartWindows')), section) : section;
     }
 
     /* ================================================================

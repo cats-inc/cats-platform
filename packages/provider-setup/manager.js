@@ -344,6 +344,8 @@ export function mountProviderManager(root, bridge, options = {}) {
     const heading = el('h2', {}, text('AI tools', 'AI 工具'));
     const intro = el('p', { class: 'pm-intro' }, text('Choose what you want to use. Cats can help you install it. You can change this later in Settings.', '勾選想使用的工具，Cats 可以協助安裝。之後也能在設定中調整。'));
     const content = [style, heading, intro];
+    if (snapshot?.systemRestartHelpers?.length) content.push(el('p', { role: 'status', class: 'pm-warn' },
+      text('Restart Windows to finish installation.', '請重新啟動 Windows 以完成安裝。')));
     if (error) content.push(el('div', { role: 'alert' }, error, ' ', button(text('Refresh', '重新讀取'), () => { signature = ''; void refresh(); }, busy)));
     if (!snapshot) {
       content.push(el('div', { class: 'pm-progress', role: 'status' }, spinner(), text('Loading tools…', '正在載入工具…')));
