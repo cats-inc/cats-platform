@@ -225,7 +225,7 @@ function Invoke-GooseInstaller {
 
     $env:CONFIGURE = 'false'
     $process = Start-Process -FilePath 'powershell.exe' `
-      -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tempScript) `
+      -ArgumentList (ConvertTo-CatsWindowsArgumentString -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tempScript)) `
       -Wait -PassThru -NoNewWindow `
       -RedirectStandardOutput $stdoutPath `
       -RedirectStandardError $stderrPath

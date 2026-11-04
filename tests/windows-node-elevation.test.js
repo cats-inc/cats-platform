@@ -12,39 +12,43 @@ const literal = (value) => `'${value.replaceAll("'", "''")}'`;
 const ready = { helper: 'windows-node-host-installer', mode: 'apply', status: 'ready', installed: true,
   detectedVersion: '24.0.0', appliedChanges: ['fixture_install'], warnings: [], interruptions: [] };
 
-async function fixture(t, { scriptFolder = 'Cats Bot', tempFolder = "Owner's Temp", outcome = 'child' } = {}) {
+const helperIds = { Node: 'windows-node-host-installer', Git: 'windows-git-installer', GitHubCli: 'windows-github-cli-installer', VcRedist: 'windows-vcredist-installer' };
+const probeFlags = { Node: 'SkipNodeProbe', Git: 'SkipGitProbe', GitHubCli: 'SkipGhProbe', VcRedist: 'SkipProbe' };
+
+async function fixture(t, { scriptFolder = 'Cats Bot', tempFolder = "Owner's Temp", outcome = 'child', helper = 'Node' } = {}) {
+  const successfulResult = { ...ready, helper: helperIds[helper] };
   const root = await mkdtemp(join(tmpdir(), 'cats-node-elevation-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const scripts = join(root, scriptFolder);
   const temp = join(root, tempFolder);
   await Promise.all([mkdir(scripts), mkdir(temp)]);
-  const source = (await readFile('scripts/windows/Install-Node.ps1', 'utf8')).replaceAll('\r\n', '\n');
+  const source = (await readFile(`scripts/windows/Install-${helper}.ps1`, 'utf8')).replaceAll('\r\n', '\n');
   const admin = '$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).\n' +
     '  IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)';
   assert.ok(source.includes(admin), 'the fixture must force only the administrator observation');
   // Keep the production relay and installer logic; select its unelevated branch
   // regardless of the test account. SkipNodeProbe prevents every real installer.
-  await writeFile(join(scripts, 'Install-Node.ps1'), source.replace(admin, '$isAdmin = $false'));
+  await writeFile(join(scripts, `Install-${helper}.ps1`), source.replace(admin, '$isAdmin = $false'));
   await copyFile('scripts/windows/_HiddenProcess.ps1', join(scripts, '_HiddenProcess.ps1'));
   const invoke = outcome === 'child'
     ? `Microsoft.PowerShell.Management\\Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput ${literal(join(root, 'child.stdout'))} -RedirectStandardError ${literal(join(root, 'child.stderr'))}`
     : outcome === 'cancel'
       ? "throw [ComponentModel.Win32Exception]::new(1223, 'Fixture UAC cancelled')"
       : ['empty', 'invalid', 'no-status', 'ready', 'locked'].includes(outcome)
-        ? `$index = [Array]::IndexOf($ArgumentList, '-ResultRelayPath')
-  $path = $ArgumentList[$index + 1].Trim('"')
-  [IO.File]::WriteAllText($path, ${literal({ empty: '', invalid: 'not JSON', 'no-status': '{"installed":true}', ready: JSON.stringify(ready), locked: JSON.stringify(ready) }[outcome])})
+        ? `$match = [regex]::Match(($ArgumentList -join ' '), '-ResultRelayPath\\s+(?:"([^"]+)"|(\\S+))')
+  $path = if ($match.Groups[1].Success) { $match.Groups[1].Value } else { $match.Groups[2].Value }
+  [IO.File]::WriteAllText($path, ${literal({ empty: '', invalid: 'not JSON', 'no-status': '{"installed":true}', ready: JSON.stringify(successfulResult), locked: JSON.stringify(successfulResult) }[outcome])})
   ${outcome === 'locked' ? '$script:lockedRelay = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)' : ''}
   [pscustomobject]@{ ExitCode = 0 }`
         : `[pscustomobject]@{ ExitCode = ${Number(outcome)} }`;
   const entry = join(root, 'invoke.ps1');
   await writeFile(entry, `\uFEFF$ErrorActionPreference = 'Stop'
 function Start-Process {
-  param($FilePath, $ArgumentList, $Verb, [switch]$Wait, [switch]$PassThru)
-  if ($Verb -ne 'RunAs' -or -not $Wait -or -not $PassThru) { throw 'Unexpected elevation request' }
+  param($FilePath, $ArgumentList, $Verb, $WindowStyle, [switch]$Wait, [switch]$PassThru)
+  if ($Verb -ne 'RunAs' -or $WindowStyle -ne 'Hidden' -or -not $Wait -or -not $PassThru) { throw 'Unexpected elevation request' }
   ${invoke}
 }
-& ${literal(join(scripts, 'Install-Node.ps1'))} -Apply -Json -InstallState missing -SkipNodeProbe
+& ${literal(join(scripts, `Install-${helper}.ps1`))} -Apply -Json -InstallState missing -${probeFlags[helper]}
 exit $LASTEXITCODE
 `);
   let result;
@@ -114,3 +118,23 @@ test('a declined Node UAC prompt retains its elevation interruption', windows, a
   assert.deepEqual(result.appliedChanges, []);
   assert.equal(result.interruptions[0].kind, 'elevation_required');
 });
+
+for (const helper of ['Git', 'GitHubCli', 'VcRedist']) {
+  for (const outcome of ['child', 0, 'locked', 'ready', 'cancel']) {
+    test(`${helper} elevation handles ${outcome} with spaced script and relay paths`, windows, async (t) => {
+      const result = await fixture(t, { helper, outcome });
+      if (outcome === 'ready') {
+        assert.deepEqual(result, { ...ready, helper: helperIds[helper] });
+      } else if (outcome === 'cancel') {
+        assert.equal(result.status, 'changes_required');
+        assert.equal(result.interruptions[0].kind, 'elevation_required');
+      } else {
+        assert.equal(result.helper, helperIds[helper]);
+        assert.equal(result.status, 'failed');
+        assert.equal(result.installed, false);
+        if (outcome === 'child') assert.deepEqual(result.warnings, []);
+        else assert.match(result.warnings.join('\n'), /did not return a valid result/iu);
+      }
+    });
+  }
+}

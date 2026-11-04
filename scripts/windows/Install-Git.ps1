@@ -43,8 +43,7 @@
     Emit the structured JSON result.
 
 .PARAMETER DryRun
-    Accepted for contract parity and relayed through elevation; not honored.
-    Desktop requests dry runs only for uninstall previews.
+    Report a preview without elevation, downloads or installation.
 
 .PARAMETER InstallState
     Override installation detection for deterministic tests.
@@ -313,6 +312,24 @@ if ($mode -eq 'check') {
   ) -ExitCode 0
 }
 
+# A preview returns before UAC, downloads or installer invocation.
+if ($DryRun) {
+  $previewAction = switch ($mode) {
+    apply { 'install_git' }
+    upgrade { 'upgrade_git' }
+    force { 'reinstall_git' }
+  }
+  $planned = @(if ($mode -ne 'apply' -or -not $installed) { $previewAction })
+  Write-StructuredResult -Result (New-Result `
+    -Mode $mode `
+    -Status 'preview' `
+    -Installed $installed `
+    -DetectedVersion $detected `
+    -CommandPath $commandPath `
+    -PlannedActions $planned `
+  ) -ExitCode 0
+}
+
 if ($mode -eq 'apply' -and $installed) {
   Write-StructuredResult -Result (New-Result `
     -Mode $mode `
@@ -347,33 +364,8 @@ if (-not $isAdmin -and -not $SkipElevation) {
   $relayArgs += '-SkipElevation'
   $relayArgs += @('-ResultRelayPath', $relayPath)
 
-  try {
-    $process = Start-Process -FilePath 'powershell.exe' `
-      -ArgumentList $relayArgs `
-      -Verb RunAs `
-      -Wait `
-      -PassThru
-    if ([System.IO.File]::Exists($relayPath)) {
-      $relayed = [System.IO.File]::ReadAllText($relayPath)
-      [System.IO.File]::Delete($relayPath)
-      if ($Json -and -not [string]::IsNullOrWhiteSpace($relayed)) {
-        Write-Output $relayed
-      } elseif (-not $Json -and -not [string]::IsNullOrWhiteSpace($relayed)) {
-        try {
-          $relayedResult = $relayed | ConvertFrom-Json
-          Write-Host "Helper: $($relayedResult.helper)"
-          Write-Host "Mode: $($relayedResult.mode)"
-          Write-Host "Status: $($relayedResult.status)"
-        } catch {
-          # If the child crashed before writing, fall through to the synthesized failure result below.
-        }
-      }
-    }
-    exit $process.ExitCode
-  } catch {
-    if ([System.IO.File]::Exists($relayPath)) {
-      [System.IO.File]::Delete($relayPath)
-    }
+  $elevation = Invoke-CatsElevatedHelper -ArgumentList $relayArgs -RelayPath $relayPath
+  if ($null -ne $elevation.LaunchError) {
     Write-StructuredResult -Result (New-Result `
       -Mode $mode `
       -Status 'changes_required' `
@@ -381,9 +373,28 @@ if (-not $isAdmin -and -not $SkipElevation) {
       -DetectedVersion $detected `
       -CommandPath $commandPath `
       -Warnings @('Administrator elevation was cancelled or failed.') `
-      -Interruptions @([pscustomobject]@{ kind = 'elevation_required'; reason = $_.Exception.Message }) `
+      -Interruptions @([pscustomobject]@{ kind = 'elevation_required'; reason = $elevation.LaunchError }) `
     ) -ExitCode 1
   }
+  if ($null -ne $elevation.Result) {
+    if ($Json) {
+      Write-Output $elevation.Payload
+    } else {
+      Write-Host "Helper: $($elevation.Result.helper)"
+      Write-Host "Mode: $($elevation.Result.mode)"
+      Write-Host "Status: $($elevation.Result.status)"
+    }
+    exit $elevation.ExitCode
+  }
+  Write-StructuredResult -Result (New-Result `
+    -Mode $mode `
+    -Status 'failed' `
+    -Installed $installed `
+    -DetectedVersion $detected `
+    -CommandPath $commandPath `
+    -Warnings @("The elevated $DisplayName helper did not return a valid result (exit code $($elevation.ExitCode)).") `
+    -ManualSteps @('Install Git for Windows manually from https://git-scm.com/download/win.') `
+  ) -ExitCode 1
 }
 
 # === Elevated execution path ===

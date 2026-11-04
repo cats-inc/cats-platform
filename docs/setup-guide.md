@@ -696,6 +696,14 @@ update. A dropped receipt release is retried on the next inventory/save/helper
 interaction. The standalone aggregate readiness scripts remain manual operator
 utilities; Desktop no longer runs an all-provider startup audit.
 
+The Windows Node, Git, GitHub CLI and VC++ Runtime helpers support `-DryRun`
+with `-Apply`, `-Upgrade` or `-Force`: they return `status: preview` and a plan
+before elevation, downloads or installation. The macOS/Linux Node helpers do
+the same with `--dry-run`. Remove the preview flag to apply the plan. Windows
+installer exit `3010` is successful installation requiring a Windows restart;
+Node, GitHub CLI and VC++ Runtime report `restart_required`, `restartRequired`
+and a restart interruption instead of reporting failure or restarting Windows.
+
 ### Self-Hosted npm Package Smoke
 
 To build a local npm tarball and optionally install it globally:

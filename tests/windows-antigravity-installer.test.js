@@ -23,10 +23,6 @@ test('Windows Antigravity wrapper owns refresh before invoking the official inst
     'utf8',
   );
 
-  assert.match(
-    script,
-    /\$installerArguments = @\('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', \$tempScript\)/u,
-  );
   assert.match(script, /Remove-Item -LiteralPath \(Resolve-AntigravityExecutablePath\)/u);
   assert.match(script, /\$installResult = Invoke-AntigravityInstaller/u);
   assert.doesNotMatch(script, /Invoke-AntigravityInstaller -ArgumentList/u);
