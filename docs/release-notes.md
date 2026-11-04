@@ -2,6 +2,65 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-04 — Desktop 0.13.4 standard preview: fresh Windows npm-provider checks
+
+Selected distribution: Desktop **0.13.4 standard-profile preview**, using App SDK
+**1.9.0** and bundled **Usage 0.5.4**. This is a compatible 0.13 patch. Platform
+npm, Runtime npm, cats-one, Cats Bot, Apps and Plugins are separate release targets.
+
+- **Fresh Windows accounts can plan provider installation.** When the npm global
+  directory did not exist yet, npm's `ENOENT` stderr terminated the read-only
+  provider check under Windows PowerShell 5.1 before it could return JSON. The
+  shared npm installer now treats that native missing-directory result as an
+  absent package or unknown version, allowing npm-folder setup and provider
+  installation to be planned together. Check-only mode does not create the folder.
+  - The same handling covers an installed CLI whose npm version cannot be read
+    and Pi's superseded-package probes. Permission errors and PowerShell errors
+    that merely mention `ENOENT` still propagate.
+- **Current Runtime source.** Compared with Desktop 0.13.3, the bundled Runtime
+  includes native Muse and ACP work tools (cats-runtime#208), refreshed Copilot
+  models and Fusion tier (#209), separate startup and turn-inactivity timeouts
+  (#211), and preserved Grok session provenance during discovery (#212).
+- **Exact source and artifacts.**
+  - Runtime **0.6.2**, source `c1d0111dd8d2bd4668e0d6d4f93afc20af9bd77b`,
+    Runtime main at source selection, with no changes left out.
+  - Usage **0.5.4** remains
+    `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+    producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
+  - The complete source manifest and each packaged OS receipt record the merged
+    Platform bump commit and these exact Runtime/App inputs.
+- **Compatibility and recovery.** Core format, App SDK, public API and configuration
+  requirements do not change, and no data migration is introduced. Usage's existing
+  host/SDK compatibility remains applicable. Returning to 0.13.3 needs no format
+  conversion and restores its older helper and Runtime behavior.
+  - Before upgrading, stop Cats processes using these data roots and back up
+    `~/.cats`, including any configured Desktop, Platform or Runtime data-root
+    overrides. If installation or startup fails, keep the data and reinstall
+    0.13.4 or return to 0.13.3 without resetting data. Restore a backup only with
+    all processes using those roots stopped.
+- **Signing and updates.** Manually dispatch `desktop-release.yml` from the merged
+  bump source with `tag=v0.13.4`, the Runtime SHA above and `unsigned=false`. The
+  workflow creates a prerelease and its tag; no tag push selects this preview.
+  - Expected standard trust: macOS **signed + notarized**, Windows
+    **unsigned: no certificate**, Linux **n/a**. Actual trust is recorded by the
+    platform receipts and signature/notarization checks.
+  - Standard-profile Windows NSIS, signed macOS using the same Developer ID team
+    and Linux DEB installs retain their update paths. Portable builds use manual
+    replacement; an unsigned Mac install needs a manual standard install.
+- **Validation boundary.** The focused Windows helper suite passed 15 tests under
+  Windows PowerShell 5.1 and the helper fix passed independent review. The Cats Bot
+  consumer regression passed 25 tests with one Unix-only case skipped, and its
+  typecheck passed; this does not publish a Cats Bot update. The affected customer
+  confirmed that creating the missing folder allowed Bot launch and conversation.
+  - Full candidate validation uses the required CI checks. The release workflow
+    enforces packaged startup, offline App activation, complete-source identity,
+    signing, updater metadata and asset provenance. A public source ZIP is verified
+    against its published manifest/checksum.
+  - Installed Desktop updater and clean-machine installation acceptance are
+    separate from these checks.
+  - Publication results: the `v0.13.4` GitHub prerelease and its Actions run.
+
 ## 2026-11-02 — Desktop 0.13.3 standard preview: Windows updates no longer stop Cats Bot
 
 Selected distribution: Desktop **0.13.3 standard-profile preview**, using App SDK
