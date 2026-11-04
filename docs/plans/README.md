@@ -1,6 +1,6 @@
 # Implementation Plans
 
-- [PLAN-130: Desktop first-run wizard](PLAN-130-desktop-first-run-wizard.md) — in progress.
+- [PLAN-130: Desktop first-run wizard](PLAN-130-desktop-first-run-wizard.md) — implemented; clean-machine acceptance pending.
 
 - [PLAN-129: Desktop and Bot script convergence](PLAN-129-desktop-bot-script-convergence.md) — implementation, local acceptance and independent review complete.
 

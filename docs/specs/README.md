@@ -2,7 +2,7 @@
 
 - [SPEC-136: Desktop first-run wizard](SPEC-136-desktop-first-run-wizard.md)
   — approved, 2026-11-04; pages, rows, log, sign-in, Ollama, connections, details and the
-  events behind them. Implementation in progress under PLAN-130.
+  events behind them. Implemented under PLAN-130; clean-machine acceptance pending.
 - [SPEC-135: Independent product repositories and distribution](SPEC-135-independent-product-repositories-and-distribution.md)
   — draft, 2026-10-29; ownership, Desktop feed/data continuity, Mobile artifact
   delivery, version meanings and cats-one workspace gates. No cutover implemented.

@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Implemented, uncommitted, awaiting the owner. Clean-machine acceptance pending |
+| **Status** | Implemented and merged (#382; Runtime #213). ADR-146 D1 to D3 and clean-machine acceptance pending |
 | **Owner** | Product owner |
 | **Assigned To** | Claude |
 | **Reviewer** | Independent agent before each merge |
@@ -156,6 +156,7 @@ FR-37 to FR-39).
 | 2026-11-04 | Validation on the final code. Real page with a fake host: `scripts/test-first-run-wizard-renderer.mjs`, 44 of 44. Affected suites with each file isolated: 1,236 passed, 7 skipped, 1 failed: `desktop renderer CDP writes the decoded screenshot`, in a file this change does not touch. It also fails on the unmodified main checkout on this machine, expecting a Unix file mode on Windows. The old `platform-setup-wizard-auth-fields` Catlas test also failed on unmodified main here, because its fixture answered `native` for a request about `cli/native`; its rewrite answers for the target asked about. `tests/package-contract.test.js` did not finish locally because its build includes Mobile, so it is left to CI; `npm pack --dry-run` lists the new modules. Full `npm test` was not run |
 | 2026-11-04 | Isolated Electron candidates, Windows: real main process, preload, Runtime and Platform. Tools to Lobby, back from Platform to page 2 and forward, start at login unticked persisted as false, `host.log` holding fixed words. A candidate cannot run helpers, so ticking and applying were not exercised in Electron |
 | 2026-11-04 | CI caught what the focused local run could not: the new pages test left a stubbed `fetch` behind in the shared test process, which failed 18 later router and channel tests; it read `sessionStorage`, which Node 26 has and CI's Node 24 does not; and a raw "Google" string failed the localization audit. All fixed in the test and the page |
+| 2026-11-04 | Merged after full CI: Runtime [#213](https://github.com/cats-inc/cats-runtime/pull/213), Platform [#382](https://github.com/cats-inc/cats-platform/pull/382). No version bump or publication |
 | 2026-11-04 | Independent review, fixed before handing back: the Windows terminal never ran its command because an unquoted `start` title is read as the program; the login item was registered at first launch; Platform pages could reach helper IPC; page text could reach `host.log`; page 5 undercounted changes; a failed save disabled the main button; Back during a scan broke the next save; a data reset restored stale wizard state; a stale ticket could orphan an apply; a restored page could be stuck on a skeleton |
 
 ---

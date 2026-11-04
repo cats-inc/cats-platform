@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Approved by the owner after an interactive mock, 2026-11-04. Implementation in progress under PLAN-130 |
+| **Status** | Implemented on 2026-11-04 (PLAN-130), approved by the owner after an interactive mock. ADR-146 D1 to D3 and clean-machine acceptance are pending |
 | **Owner** | Product owner |
 | **Reviewer** | Independent agent before each merge |
 | **Related decision** | [ADR-146](../decisions/146-make-desktop-first-run-one-wizard-that-runs-only-what-the-owner-asks.md) |
