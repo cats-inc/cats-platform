@@ -228,10 +228,9 @@ for (const authStatus of [401, 403]) {
     fireEvent.change(view.getByRole('textbox', { name: 'Your name' }), { target: { value: 'Test Owner' } });
     fireEvent.change(view.getByRole('textbox', { name: 'Admin login email' }), { target: { value: 'owner@example.test' } });
     fireEvent.change(view.getByLabelText('Admin password'), { target: { value: 'test-password' } });
-    fireEvent.click(view.getByRole('button', { name: 'Get started' }));
     await settle();
-    assert.equal(providerReads, 0, 'Guide Cat opt-in owns provider reads');
-    fireEvent.click(view.getByRole('checkbox', { name: /Enable Catlas/ }));
+    assert.equal(providerReads, 0, 'nothing reads providers before the Catlas page opens');
+    fireEvent.click(view.getByRole('button', { name: 'Next' }));
     await settle();
     function assertAutomaticRecovery() {
       assert.doesNotMatch(view.container.textContent ?? '', /Authentication is required|aborted|timeout|Retry|Runtime setup/i);
@@ -239,19 +238,20 @@ for (const authStatus of [401, 403]) {
       assert.equal(view.container.querySelectorAll('a').length, 0);
       assert.ok(view.container.querySelector('[role="status"] .providerPickerSpinner'));
     }
-    assert.equal(providerReads, 1, 'wizard prefetch and picker share the same request');
+    assert.equal(providerReads, 1, 'the Catlas page and its picker share the same request');
     assertAutomaticRecovery();
     await clock.advance(2_000);
     assertAutomaticRecovery();
     await clock.advance(4_000);
     assertAutomaticRecovery();
     await clock.advance(2_000);
-    assert.equal((view.getByRole('combobox', { name: 'Provider' }) as HTMLSelectElement).value, 'codex');
+    fireEvent.click(view.getByRole('radio', { name: /codex/iu }));
+    await clock.advance(6_000);
     assert.equal((view.getByRole('combobox', { name: /Model/ }) as HTMLSelectElement).value, 'model-a');
     assert.equal(view.container.querySelectorAll('[role="status"]').length, 0);
-    assert.equal((view.getByRole('button', { name: 'Open Cats' }) as HTMLButtonElement).disabled, false);
+    assert.equal((view.getByRole('button', { name: 'Create account and open Cats' }) as HTMLButtonElement).disabled, false);
     const calls = providerReads;
-    fireEvent.click(view.getByRole('checkbox', { name: /Enable Catlas/ }));
+    fireEvent.click(view.container.querySelector('#setup-guide-off')!);
     await clock.advance(60_000);
     assert.equal(providerReads, calls, 'disabling Guide Cat stops recovery reads');
     assert.equal(clock.timers.size, 0);

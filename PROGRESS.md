@@ -4,6 +4,13 @@
 
 ## Current Status
 
+Desktop first-run wizard (2026-11-04): the owner approved an interactive mock of one
+five-step wizard across the Desktop host and Platform `/setup`, where nothing runs until
+asked and every changing script is ticked. Documents:
+[ADR-146](docs/decisions/146-make-desktop-first-run-one-wizard-that-runs-only-what-the-owner-asks.md),
+[SPEC-136](docs/specs/SPEC-136-desktop-first-run-wizard.md) and
+[PLAN-130](docs/plans/PLAN-130-desktop-first-run-wizard.md).
+
 Desktop identity and remote access (2026-10-25): the owner accepts
 Google or email/password first-admin creation, same-account method completion,
 and Desktop-managed ngrok/Funnel for a shared Mobile/Telegram/App ingress.

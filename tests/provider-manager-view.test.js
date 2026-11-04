@@ -22,18 +22,18 @@ function fixture(t, context = 'settings', missing = false) {
     runProviderSetup: async (input) => { calls.push(input); return structuredClone(snapshot); },
   };
   const root = dom.window.document.querySelector('main');
-  const view = mountProviderManager(root, bridge, { context, onContinue: async () => calls.push('continue') });
+  const view = mountProviderManager(root, bridge, { onContinue: async () => calls.push('continue') });
   t.after(() => { view.destroy(); dom.window.close(); });
   return { root, view, bridge, calls, snapshot, button: (action) => root.querySelector(`[data-action="${action}"]`),
     choice: (name) => root.querySelector(`[data-provider="${name}"] input[type=checkbox]`) };
 }
 
-test('new users explicitly select intent; Apply stays busy until detection finishes; Continue never requires readiness', async (t) => {
-  const f = fixture(t, 'onboarding', true); await flush();
+test('a missing selection starts unticked; Apply stays busy until detection finishes; Continue never requires readiness', async (t) => {
+  const f = fixture(t, 'settings', true); await flush();
   assert.equal(f.choice('codex').checked, false);
-  assert.equal(f.button('detect-after').checked, true);
+  assert.equal(f.button('detect-after').checked, false);
+  f.button('detect-after').click();
   assert.equal(f.button('continue').disabled, true);
-  f.button('show-more').click();
   f.choice('pi').click();
   const gate = defer(); const apply = f.bridge.applyProviderSetup;
   f.bridge.applyProviderSetup = async (input) => { await gate.promise; return apply(input); };
@@ -48,27 +48,8 @@ test('new users explicitly select intent; Apply stays busy until detection finis
   assert.equal(f.calls[0].detectAfter, true);
 });
 
-test('onboarding keeps the original compact cards and grouping without a provider search form', async (t) => {
-  const f = fixture(t, 'onboarding', true); await flush();
-  const names = ['claude', 'antigravity', 'cursor', 'kiro', 'junie', 'goose', 'grok', 'devin', 'muse', 'ollama',
-    'codex', 'copilot', 'opencode', 'kilo', 'auggie', 'pi', 'cline', 'openclaw'];
-  f.snapshot.runtime.universe = names.map((provider) => ({ provider, backend: 'cli', instance: 'native', familyLabel: provider }));
-  await f.view.refresh();
-  const order = () => [...f.root.querySelectorAll('.cli-card')].map((card) => card.dataset.provider || 'node');
-  assert.deepEqual(order(), ['claude', 'antigravity', 'node', 'codex']);
-  assert.equal(f.root.querySelector('input[type=search]'), null);
-  assert.equal(f.root.querySelector('[data-prerequisite] input[type=checkbox]'), null);
-  f.button('show-more').click();
-  assert.deepEqual(order(), [...names.slice(0, 10), 'node', ...names.slice(10)]);
-  assert.ok(f.root.querySelector('[data-group=npm]'));
-  f.choice('pi').click();
-  f.button('show-more').click();
-  assert.deepEqual(order(), ['claude', 'antigravity', 'node', 'codex', 'pi']);
-  assert.deepEqual(f.calls, []);
-});
-
 test('Node/npm preparation is actionable on an empty fresh machine and never saves or scans providers', async (t) => {
-  const f = fixture(t, 'onboarding', true); await flush();
+  const f = fixture(t, 'settings', true); await flush();
   const missing = { runState: 'completed', status: 'not_installed', summary: 'Node missing', warnings: [], manualSteps: [], plannedActions: [] };
   f.snapshot.prerequisites = ['node-host-installer', 'npm-prefix-helper', 'github-cli-installer', 'git-installer'].map((suffix) => ({
     helperId: `windows-${suffix}`, checking: false, result: suffix === 'node-host-installer' ? missing : null,

@@ -733,6 +733,15 @@ export interface DesktopSetupActionRecord {
   manualSteps: string[];
   interruptions: DesktopSetupInterruption[];
   error: string | null;
+  /** The whole command this ran, for the first-run wizard's log. */
+  commandLine?: string | null;
+  /** What the helper reports having found. */
+  detectedVersion?: string | null;
+  installed?: boolean | null;
+  /** Ollama only: its service answered. */
+  apiReady?: boolean | null;
+  /** The run hit its time limit and was stopped. */
+  timedOut?: boolean;
 }
 
 export interface DesktopSetupInterruption {

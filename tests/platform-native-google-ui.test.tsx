@@ -61,7 +61,7 @@ test('native onboarding submits a provisional transaction without password or re
   const view = render(<I18nProvider locale="en"><PlatformSetupWizard envelope={envelope()}
     onComplete={() => { completed = true; }} /></I18nProvider>);
   fireEvent.change(view.getByLabelText('Your name'), { target: { value: 'Owner' } });
-  fireEvent.click(view.getByRole('button', { name: /^Google$/u }));
+  fireEvent.click(view.getByRole('radio', { name: /^Google/u }));
   const google = view.getByRole('button', { name: 'Continue with Google' }) as HTMLButtonElement;
   await waitFor(() => assert.equal(google.disabled, false));
   fireEvent.click(google);
@@ -69,6 +69,7 @@ test('native onboarding submits a provisional transaction without password or re
   assert.deepEqual(f.starts, [{ purpose: 'bootstrap', attemptId: 'native-setup' }]);
   assert.equal(view.queryByLabelText('Admin password'), null);
   fireEvent.click(view.container.querySelector('.setupPrimaryButton')!);
+  fireEvent.click(view.container.querySelector('#setup-guide-off')!);
   fireEvent.click(view.container.querySelector('.setupPrimaryButton')!);
   await waitFor(() => assert.equal(completed, true));
   assert.equal(f.submits[0]?.transactionId, 'native-transaction');
@@ -80,16 +81,20 @@ test('native onboarding submits a provisional transaction without password or re
 test('unconfigured native onboarding explains availability and keeps email/password usable', async (t) => {
   fixture(t, false);
   const view = render(<I18nProvider locale="en"><PlatformSetupWizard envelope={envelope()} onComplete={() => {}} /></I18nProvider>);
-  fireEvent.click(view.getByRole('button', { name: /^Google$/u }));
+  fireEvent.click(view.getByRole('radio', { name: /^Google/u }));
   assert.match(view.container.textContent ?? '', /not configured for this Cats distribution/u);
   assert.equal((view.getByRole('button', { name: 'Continue with Google' }) as HTMLButtonElement).disabled, true);
-  fireEvent.click(view.getByRole('button', { name: 'Email and password' }));
+  fireEvent.click(view.getByRole('radio', { name: /^Email and password/u }));
   fireEvent.change(view.getByLabelText('Your name'), { target: { value: 'Owner' } });
   fireEvent.change(view.getByLabelText('Admin password'), { target: { value: 'fixture-password' } });
   fireEvent.change(view.getByLabelText('Admin login email'), { target: { value: 'old-handle' } });
-  assert.equal((view.container.querySelector('.setupPrimaryButton') as HTMLButtonElement).disabled, true);
+  // Next says what is wrong rather than sitting disabled, and does not move on.
+  fireEvent.click(view.container.querySelector('.setupPrimaryButton')!);
+  assert.ok(view.queryByLabelText('Admin login email'));
+  assert.match(view.container.textContent ?? '', /Enter an email address/u);
   fireEvent.change(view.getByLabelText('Admin login email'), { target: { value: 'owner@example.test' } });
-  assert.equal((view.container.querySelector('.setupPrimaryButton') as HTMLButtonElement).disabled, false);
+  fireEvent.click(view.container.querySelector('.setupPrimaryButton')!);
+  assert.equal(view.queryByLabelText('Admin login email'), null);
 });
 
 test('native login refreshes Cats session status and enters the ordinary app shell without GIS', async (t) => {

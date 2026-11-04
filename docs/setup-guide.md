@@ -438,14 +438,19 @@ Notes:
   `/api/platform/ingress`, `/runtime`, `/runtime/setup`, and `/runtime/api/health`
   through the Cats origin.
 
-Current first-run behavior:
+Current first-run behavior ([SPEC-136](specs/SPEC-136-desktop-first-run-wizard.md)):
 
-- `/setup` is a 2-step flow: owner name, then optional Guide Cat
-- Guide Cat provider/model selectors only show truthful runtime-backed usable
-  targets from `cats-runtime`
-- if no usable provider target is currently available, the Guide Cat step
-  shows recovery messaging plus a deep-link to Cats Runtime setup instead of
-  static fallback catalog choices
+- On Desktop, first run is one five-step wizard. The host draws choose tools,
+  this computer, and sign-in and models; Platform draws your account, and Catlas
+  and start. A browser without the Desktop host sees the last two only.
+- Nothing runs until asked: choosing tools starts no process, Check this computer
+  saves the choice and reads, and only a ticked row changes the computer. During
+  first run Desktop also skips its background prerequisite audit.
+- Every failure offers Show details, which opens the recovery details page.
+- Guide Cat model selectors only show truthful runtime-backed usable targets from
+  `cats-runtime`
+- if no usable provider target is currently available, the Guide Cat step says
+  so and offers a way back to the tools, instead of static fallback catalog choices
 - finishing setup lands on `/lobby`
 - if runtime/provider health regresses later, Cats stays in recovery instead
   of sending the user back through onboarding

@@ -1,5 +1,10 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-146: Make Desktop first run one wizard that runs only what the owner asks](146-make-desktop-first-run-one-wizard-that-runs-only-what-the-owner-asks.md)
+  — accepted, 2026-11-04, after an interactive mock. Five steps across the host and
+  Platform, nothing before the owner asks, ticked scripts, a host-owned log, sign-in in a
+  real terminal, and the details page from every failure. D1–D4 name the earlier owner
+  decisions this reverses.
 - [ADR-144: Install Git as a Desktop setup prerequisite](144-install-git-as-a-desktop-setup-prerequisite.md)
   — accepted, 2026-10-31; full Git for Windows (winget, then the x64/ARM64 release
   installer), Homebrew git on macOS, check-only Linux with the package-manager

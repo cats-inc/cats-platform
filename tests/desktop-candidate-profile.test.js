@@ -235,7 +235,8 @@ test('candidate mutation gates fail closed while ordinary host actions remain co
   // These are the production entry points; no tests patch Electron or an updater
   // into enabling installation behind the profile's denied capability.
   const main = await readFile(path.join(process.cwd(), 'desktop', 'host', 'main.ts'), 'utf8');
-  assert.equal((main.match(/if \(!candidate\) await syncDesktopStartupPreferences/gu) ?? []).length, 2);
+  // Startup also waits for setup to finish (SPEC-136 FR-31). A candidate never touches login items.
+  assert.equal((main.match(/if \(!candidate[^\n]*\)\s*\{?\s*await syncDesktopStartupPreferences/gu) ?? []).length, 2);
   assert.match(main, /if \(!hostConfig \|\| hostConfig\.candidateProfile\) return;/u);
   assert.match(main, /assertDesktopCandidateActionAllowed\(hostConfig\.candidateProfile, 'setup-helper'\)/u);
   assert.match(main, /assertDesktopCandidateActionAllowed\(hostConfig\?\.candidateProfile, 'provider-install'\)/u);

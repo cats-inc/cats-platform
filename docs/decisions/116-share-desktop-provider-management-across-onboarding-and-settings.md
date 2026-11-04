@@ -8,6 +8,11 @@ incremental commits, auto-merge, a version bump, and an unsigned Desktop preview
 Amended — 2026-09-17 after user acceptance. That release authorization is no
 longer ongoing: do not bump versions or publish without a new user request.
 
+Amended — 2026-11-04 by [ADR-146](146-make-desktop-first-run-one-wizard-that-runs-only-what-the-owner-asks.md).
+Point 1's onboarding presentation (cards, grouping, Show more), point 3's Apply and its
+checkbox on first run, and point 5's checks before anyone asks on first run are replaced by
+the first-run wizard. Settings > Runtime and the remaining points stand.
+
 ## Context
 
 Desktop currently separates selection checkboxes from installer cards. A card's

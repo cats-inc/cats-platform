@@ -9,6 +9,7 @@
 
 import type { VoiceCaptureBridge } from './voiceCaptureBridge.js';
 import type { ProviderManagerBridge } from '../../packages/provider-setup/manager.js';
+import type { SetupWizardBridge } from '../../packages/provider-setup/setupChrome.js';
 
 interface DesktopSetupResumeAction {
   helperId: string;
@@ -167,6 +168,8 @@ export interface DesktopUpdateSnapshot {
 }
 
 export interface DesktopHostBridge extends Partial<ProviderManagerBridge> {
+  updateDesktopPreferences?: (prefs: { startAtLogin: boolean; openWindowOnStartup: boolean; systemTrayEnabled: boolean }) => Promise<unknown>;
+  setupWizard?: SetupWizardBridge;
   googleAuth?: import('./nativeGoogleAuth.js').DesktopGoogleAuthBridge;
   requestApp?: (input: { path: string; method: string; body?: unknown }) => Promise<{ status: number; body: unknown }>;
   getSetupSnapshot?: () => Promise<DesktopSetupSnapshot>;

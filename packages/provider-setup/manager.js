@@ -4,7 +4,6 @@ export function mountProviderManager(root, bridge, options = {}) {
   const win = doc.defaultView;
   const zh = String(options.locale || 'en').startsWith('zh');
   const text = (en, tw) => zh ? tw : en;
-  const context = options.context || 'settings';
   const key = (target) => JSON.stringify([target.provider, target.backend, target.instance]);
   const identity = (target) => ({ provider: target.provider, backend: target.backend, instance: target.instance });
   let snapshot = null;
@@ -21,7 +20,6 @@ export function mountProviderManager(root, bridge, options = {}) {
   let filter = '';
   let signature = '';
   let confirmation = null;
-  let expanded = false;
   const endpointEdits = new Map();
   const elements = (...items) => items.flat().filter((item) => item !== null && item !== undefined);
   function el(tag, attrs = {}, ...children) {
@@ -58,16 +56,14 @@ export function mountProviderManager(root, bridge, options = {}) {
       revision = next.runtime.selection.revision;
       if (reset) endpointEdits.clear();
     }
-    if (detectAfter === null) {
-      detectAfter = context === 'onboarding' && ['missing', 'invalid'].includes(next.runtime.selection.state);
-    }
+    if (detectAfter === null) detectAfter = false;
   }
   async function refresh() {
     if (destroyed || refreshing) return;
     refreshing = true;
     const readEpoch = epoch;
     try {
-      const next = await bridge.getProviderSetup(context);
+      const next = await bridge.getProviderSetup('settings');
       if (destroyed || readEpoch !== epoch) return;
       // Preserve dirty drafts, including their original revision, across external edits.
       const dirty = draft !== null && changed();
@@ -223,9 +219,8 @@ export function mountProviderManager(root, bridge, options = {}) {
       if (remaining.length) more.append(el('ul', {}, remaining.map((value) => el('li', {}, value))));
     }
     const extra = (wanted || target.custom) && more.childNodes.length > 1 ? more : null;
-    if (extra && context === 'settings') details.append(extra);
-    return el('div', { class: context === 'onboarding' ? 'pm-card cli-card' : 'pm-row', 'data-provider': target.provider, 'data-target': id },
-      details, controls, context === 'onboarding' ? extra : null);
+    if (extra) details.append(extra);
+    return el('div', { class: 'pm-row', 'data-provider': target.provider, 'data-target': id }, details, controls);
   }
 
   function prerequisite(suffix) {
@@ -258,7 +253,7 @@ export function mountProviderManager(root, bridge, options = {}) {
         if (mode === 'apply' && prefix.status !== 'ready') await prepare('npm-prefix-helper');
       }
       feedback(mode === 'check' ? text('Check finished.', '偵測完成。') : text('Setup finished.', '準備完成。'));
-      return bridge.getProviderSetup(context);
+      return bridge.getProviderSetup('settings');
     });
   }
   function prerequisiteCard() {
@@ -309,7 +304,7 @@ export function mountProviderManager(root, bridge, options = {}) {
     }
     more.append(button(text('Check Git', '偵測 Git'), () => runPrerequisite('git-installer', 'check'),
       unavailable || git?.checking || !gitHelper));
-    return el('div', { class: context === 'onboarding' ? 'pm-card cli-card pm-prerequisite' : 'pm-row pm-prerequisite', 'data-prerequisite': 'node' },
+    return el('div', { class: 'pm-row pm-prerequisite', 'data-prerequisite': 'node' },
       el('div', { class: 'pm-detail' }, el('strong', { class: 'pm-name' }, 'Node.js / npm'),
         el('div', { class: `pm-status ${nodeReady && prefixReady ? 'pm-ok' : ''}` }, checking ? spinner() : null, status)), controls, more);
   }
@@ -320,7 +315,6 @@ export function mountProviderManager(root, bridge, options = {}) {
     const focus = doc.activeElement?.getAttribute('data-focus');
     const cursor = doc.activeElement?.selectionStart;
     root.classList.add('catsProviderManager');
-    root.classList.toggle('pm-onboarding', context === 'onboarding');
     const style = el('style', {}, `
       .catsProviderManager{--pm-border:#ddd8d0;--pm-muted:#6b6560;--pm-accent:#a84724;font:inherit;color:inherit;max-width:960px;margin:auto}
       .catsProviderManager *{box-sizing:border-box}.catsProviderManager h2{font-size:1.35rem;margin:0 0 8px}.catsProviderManager p{margin:8px 0}
@@ -343,26 +337,11 @@ export function mountProviderManager(root, bridge, options = {}) {
       @keyframes pm-spin{to{transform:rotate(360deg)}}.catsProviderManager a{font-size:.8rem;color:var(--pm-accent)}.catsProviderManager summary{font-size:.83rem;cursor:pointer;padding:7px 0}
       .catsProviderManager .pm-more button{display:block;margin:4px 0}.catsProviderManager .pm-dialog{border:2px solid var(--pm-accent);border-radius:10px;padding:20px;margin:16px 0;background:var(--panel,#fff);max-height:45vh;overflow:auto}
       .catsProviderManager .pm-more{max-width:100%;overflow-wrap:anywhere}.catsProviderManager .pm-row.pm-prerequisite{flex-wrap:wrap}.catsProviderManager .pm-row.pm-prerequisite>.pm-more{flex-basis:100%}
-      .catsProviderManager.pm-onboarding{max-width:720px;text-align:center;width:100%}
-      .catsProviderManager.pm-onboarding h2{font-size:1.1rem;font-weight:500}.catsProviderManager.pm-onboarding .pm-intro{font-size:.87rem}
-      .catsProviderManager.pm-onboarding .pm-list{max-height:none;overflow:visible;padding:0}
-      .catsProviderManager .pm-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;text-align:center}
-      .catsProviderManager .pm-card{background:var(--panel,#fff);border:1px solid var(--pm-border);border-radius:12px;padding:14px 10px 12px;display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
-      .catsProviderManager .pm-card .pm-name{justify-content:center;gap:7px;font-size:.92rem;line-height:1.4;min-height:24px}
-      .catsProviderManager .pm-card input[type=checkbox]{width:16px;height:16px}.catsProviderManager .pm-card .pm-status{justify-content:center;font-size:.74rem;margin:8px 0 0;min-height:20px}
-      .catsProviderManager .pm-card .pm-actions{flex-direction:column;align-items:stretch;max-width:none;gap:6px}
-      .catsProviderManager .pm-card button{font-size:.78rem;border-radius:8px;padding:6px 8px;width:100%}
-      .catsProviderManager .pm-card .pm-more{margin-top:auto}.catsProviderManager .pm-card .pm-more[open]{text-align:left}
-      .catsProviderManager .pm-card .pm-more small{font-size:.76rem}.catsProviderManager .pm-card .pm-more summary{text-align:center;font-size:.74rem;padding:0}
-      .catsProviderManager .pm-group{grid-column:1/-1;text-align:left;color:var(--pm-muted);font-size:.78rem;font-weight:500;padding:10px 0 0;border-top:1px solid var(--pm-border)}
-      .catsProviderManager.pm-onboarding .pm-footer{position:static;justify-content:center;border:0;background:transparent;margin:14px 0 22px;padding:0;gap:10px}
-      .catsProviderManager.pm-onboarding .pm-continue{margin-left:0}.catsProviderManager.pm-onboarding button.pm-primary{background:var(--panel,#fff);border-color:var(--pm-border);color:inherit}
-      .catsProviderManager.pm-onboarding .pm-progress{justify-content:center}.catsProviderManager.pm-onboarding .pm-discard{font-size:.78rem}
       .catsProviderManager [role=alert]{color:#b2342c;overflow-wrap:anywhere}.catsProviderManager li{margin-left:20px;font-size:.83rem;overflow-wrap:anywhere}
-      @media(max-width:580px){.catsProviderManager .pm-row{flex-direction:column}.catsProviderManager .pm-actions{max-width:none;justify-content:flex-start}.catsProviderManager .pm-footer{gap:8px}.catsProviderManager .pm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+      @media(max-width:580px){.catsProviderManager .pm-row{flex-direction:column}.catsProviderManager .pm-actions{max-width:none;justify-content:flex-start}.catsProviderManager .pm-footer{gap:8px}}
       @media(prefers-reduced-motion:reduce){.catsProviderManager .pm-spinner{animation-duration:2s}}
     `);
-    const heading = el('h2', {}, context === 'onboarding' ? text('Choose your AI tools', '選擇你的 AI 工具') : text('AI tools', 'AI 工具'));
+    const heading = el('h2', {}, text('AI tools', 'AI 工具'));
     const intro = el('p', { class: 'pm-intro' }, text('Choose what you want to use. Cats can help you install it. You can change this later in Settings.', '勾選想使用的工具，Cats 可以協助安裝。之後也能在設定中調整。'));
     const content = [style, heading, intro];
     if (error) content.push(el('div', { role: 'alert' }, error, ' ', button(text('Refresh', '重新讀取'), () => { signature = ''; void refresh(); }, busy)));
@@ -381,29 +360,13 @@ export function mountProviderManager(root, bridge, options = {}) {
     if (snapshot.runtime.state?.error) content.push(el('p', { role: 'alert' }, snapshot.runtime.state.error));
     if (busy || operationBusy) content.push(el('div', { class: 'pm-progress', role: 'status', 'aria-live': 'polite' }, spinner(), stage || text('Checking your tools…', '正在檢查工具…')));
     if (notice && !busy && !operationBusy) content.push(el('p', { role: 'status' }, notice));
-    if (context === 'settings') content.push(el('input', { type: 'search', value: filter, placeholder: text('Find a tool', '尋找工具'), 'data-focus': 'search',
+    content.push(el('input', { type: 'search', value: filter, placeholder: text('Find a tool', '尋找工具'), 'data-focus': 'search',
       'aria-label': text('Find a tool', '尋找工具'), oninput: (event) => { filter = event.target.value; render(); } }));
     const catalog = snapshot.runtime.universe.slice();
     for (const target of selection.targets) if (!catalog.some((entry) => key(entry) === key(target))) catalog.push({ ...target, familyLabel: `${target.provider} · ${target.instance}`, custom: true });
     const list = el('div', { class: 'pm-list' });
-    if (context === 'onboarding') {
-      const nativeOrder = ['claude', 'antigravity', 'cursor', 'kiro', 'junie', 'goose', 'grok', 'devin', 'muse', 'ollama'];
-      const npmOrder = ['codex', 'copilot', 'opencode', 'kilo', 'auggie', 'pi', 'cline'];
-      const primary = ['claude', 'antigravity', 'codex'];
-      const show = (target) => expanded || primary.includes(target.provider) || draft.has(key(target));
-      const grid = el('div', { class: 'pm-grid cli-grid' });
-      for (const id of nativeOrder) for (const target of catalog.filter((entry) => !entry.custom && entry.provider === id && show(entry))) grid.append(row(target, selection, operationBusy));
-      if (expanded) grid.append(el('div', { class: 'pm-group', 'data-group': 'npm' }, text('Tools that use Node.js / npm', '使用 Node.js／npm 的工具')));
-      grid.append(prerequisiteCard());
-      for (const id of npmOrder) for (const target of catalog.filter((entry) => !entry.custom && entry.provider === id && show(entry))) grid.append(row(target, selection, operationBusy));
-      const others = catalog.filter((entry) => (entry.custom || (!nativeOrder.includes(entry.provider) && !npmOrder.includes(entry.provider))) && show(entry));
-      if (others.length) grid.append(el('div', { class: 'pm-group', 'data-group': 'connections' }, text('Other connections', '其他連線')),
-        ...others.map((target) => row(target, selection, operationBusy)));
-      list.append(grid);
-    } else {
-      if (!filter) list.append(prerequisiteCard());
-      list.append(...catalog.filter((target) => `${target.familyLabel} ${target.provider}`.toLowerCase().includes(filter.toLowerCase())).map((target) => row(target, selection, operationBusy)));
-    }
+    if (!filter) list.append(prerequisiteCard());
+    list.append(...catalog.filter((target) => `${target.familyLabel} ${target.provider}`.toLowerCase().includes(filter.toLowerCase())).map((target) => row(target, selection, operationBusy)));
     content.push(list);
     if (confirmation) {
       const current = confirmation;
@@ -425,10 +388,7 @@ export function mountProviderManager(root, bridge, options = {}) {
       footer.append(button(text('Detect selected', '重新偵測已選項目'), () => run('detect', selection.targets), busy || operationBusy || Boolean(confirmation) || Boolean(error) || selection.diskChanged || !selection.targets.length, { 'data-action': 'detect-selected' }));
     }
     if (options.onContinue) footer.append(button(text('Continue', '繼續'), () => void perform(text('Continuing…', '繼續設定…'), async () => { await options.onContinue(); }), invalid || dirty || busy || operationBusy || Boolean(confirmation) || Boolean(error) || selection.diskChanged, { class: 'pm-primary pm-continue', 'data-action': 'continue' }));
-    if (context === 'onboarding') {
-      footer.append(button(expanded ? text('Show fewer', '顯示較少') : text('Show more', '顯示更多'), () => { expanded = !expanded; render(); }, false, { 'data-action': 'show-more' }));
-      content.splice(content.indexOf(list), 0, footer);
-    } else content.push(footer);
+    content.push(footer);
     if (!invalid && !dirty) {
       content.push(el('p', { class: 'pm-intro' }, selection.targets.length === 0
         ? text('You can choose your tools later in Settings.', '你可以稍後再到設定中選擇工具。')

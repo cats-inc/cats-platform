@@ -9,7 +9,8 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   // Core structure
   assert.match(html, /id="app"/);
   assert.match(html, /class="app[\s"]/);
-  assert.match(html, /class="hero/);
+  assert.match(html, /id="splash-title"/);
+  assert.match(html, /id="btn-quit"/);
 
   // Recovery summary card with 3-slot action row
   assert.match(html, /recovery-summary/);

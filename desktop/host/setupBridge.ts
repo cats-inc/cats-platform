@@ -31,6 +31,8 @@ interface DesktopSetupBridgeDependencies {
     args: string[],
     options: {
       windowsHide?: boolean;
+      timeout?: number;
+      signal?: AbortSignal;
     },
   ) => Promise<ExecFileResult>;
   now?: () => Date;
@@ -43,6 +45,9 @@ interface RunDesktopSetupHelperInput {
   mode: DesktopSetupHelperMode;
   extraArguments?: string[];
   dryRun?: boolean;
+  /** Stops the helper after this long. Only read-only checks set this. */
+  timeoutMs?: number;
+  signal?: AbortSignal;
 }
 
 interface ExecFileLikeError {
@@ -503,6 +508,9 @@ function buildFailedActionRecord(input: {
   scriptPath: string | null;
   error: string;
   warnings?: string[];
+  status?: string;
+  commandLine?: string | null;
+  timedOut?: boolean;
 }): DesktopSetupActionRecord {
   return {
     helperId: input.helper.id,
@@ -511,8 +519,8 @@ function buildFailedActionRecord(input: {
     pack: input.helper.pack,
     mode: input.mode,
     runState: 'failed',
-    status: 'failed',
-    summary: buildSummary(input.helper.label, input.mode, 'failed', 'failed'),
+    status: input.status ?? 'failed',
+    summary: buildSummary(input.helper.label, input.mode, 'failed', input.status ?? 'failed'),
     packagedRelativePath: input.helper.packagedRelativePath,
     scriptPath: input.scriptPath,
     requiresElevation: input.helper.requiresElevation,
@@ -527,6 +535,8 @@ function buildFailedActionRecord(input: {
     manualSteps: [],
     interruptions: [],
     error: input.error,
+    commandLine: input.commandLine ?? null,
+    ...(input.timedOut ? { timedOut: true } : {}),
   };
 }
 
@@ -598,6 +608,27 @@ function buildHelperExecution(
     ],
     windowsHide: false,
   };
+}
+
+/** One line a person can read and run themselves, quoting what needs quoting. */
+function formatCommandLine(command: string, args: string[]): string {
+  return [command, ...args.map((arg) => (/[\s"]/u.test(arg) ? `"${arg.replaceAll('"', '\\"')}"` : arg))].join(' ');
+}
+
+/** The script a helper runs and the command that runs it, without running anything. */
+export async function describeDesktopSetupHelper(
+  input: { config: DesktopHostConfig; helper: Pick<DesktopSetupHelperSummary, 'id' | 'platform'>; modes: DesktopSetupHelperMode[] },
+  dependencies: Pick<DesktopSetupBridgeDependencies, 'pathExists'> = {},
+): Promise<{ scriptPath: string | null; commands: Partial<Record<DesktopSetupHelperMode, string>> }> {
+  const scriptPath = await resolveHelperScriptPath(input.config, input.helper.id, dependencies.pathExists ?? defaultPathExists);
+  const commands: Partial<Record<DesktopSetupHelperMode, string>> = {};
+  if (scriptPath) {
+    for (const mode of input.modes) {
+      const execution = buildHelperExecution(input.helper, scriptPath, mode, undefined, undefined);
+      commands[mode] = formatCommandLine(execution.command, execution.args);
+    }
+  }
+  return { scriptPath, commands };
 }
 
 function buildInterruptionSummary(
@@ -817,6 +848,8 @@ export async function runDesktopSetupHelper(
     const result = await execFile(file, args, {
       windowsHide: options.windowsHide,
       encoding: 'utf8',
+      ...(options.timeout ? { timeout: options.timeout } : {}),
+      ...(options.signal ? { signal: options.signal } : {}),
     });
     return {
       stdout: result.stdout,
@@ -875,6 +908,7 @@ export async function runDesktopSetupHelper(
     input.action.extraArguments,
     input.action.dryRun,
   );
+  const commandLine = formatCommandLine(execution.command, execution.args);
 
   let output: ExecFileResult;
   let runState: DesktopSetupActionRecord['runState'] = 'completed';
@@ -883,11 +917,30 @@ export async function runDesktopSetupHelper(
   try {
     output = await execRunner(execution.command, execution.args, {
       windowsHide: execution.windowsHide,
+      ...(input.action.timeoutMs ? { timeout: input.action.timeoutMs } : {}),
+      ...(input.action.signal ? { signal: input.action.signal } : {}),
     });
   } catch (error) {
     output = toExecFileResult(error);
     runState = 'failed';
     errorMessage = error instanceof Error ? error.message : String(error);
+    const stopped = input.action.signal?.aborted === true;
+    const timedOut = !stopped && Boolean(input.action.timeoutMs) && (error as { killed?: boolean }).killed === true;
+    if (stopped || timedOut) {
+      return buildFailedActionRecord({
+        helper,
+        mode: input.action.mode,
+        startedAt,
+        completedAt: now().toISOString(),
+        scriptPath,
+        commandLine,
+        status: stopped ? 'stopped' : 'failed',
+        timedOut,
+        error: stopped
+          ? 'You stopped this check.'
+          : `The check did not finish in ${Math.round(input.action.timeoutMs! / 1000)} s.`,
+      });
+    }
   }
 
   const parsed = parseHelperJson(output.stdout);
@@ -907,6 +960,7 @@ export async function runDesktopSetupHelper(
       startedAt,
       completedAt,
       scriptPath,
+      commandLine,
       error: stderrMessage ?? errorMessage ?? `${helper.label} failed before emitting structured output.`,
     });
   }
@@ -934,5 +988,9 @@ export async function runDesktopSetupHelper(
     manualSteps,
     interruptions,
     error: errorMessage ?? stderrMessage,
+    commandLine,
+    detectedVersion: readString(parsed?.detectedVersion),
+    installed: typeof parsed?.installed === 'boolean' ? parsed.installed : null,
+    apiReady: typeof parsed?.apiReady === 'boolean' ? parsed.apiReady : null,
   };
 }

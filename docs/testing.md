@@ -167,6 +167,16 @@ of helper history and other recovery actions. Run it after `npm run build:host`
 alongside `tests/desktop-cli-inventory-probe.test.js` and
 `tests/desktop-setup-bridge.test.js`.
 
+The first-run wizard has its own check of the real pages: the page the host
+would load, in headless Chrome, with a fake `window.catsDesktopHost`, so no
+script, install or terminal runs and no user state is touched. It needs
+`playwright-core` here or in a sibling `cats-runtime` checkout.
+
+```bash
+npm run build:host
+node scripts/test-first-run-wizard-renderer.mjs [screenshot-dir]
+```
+
 ## Choosing Local Validation
 
 The hosted Node.js CI job has a 20-minute deadline. Catlas cancellation fixtures

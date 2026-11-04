@@ -10,6 +10,14 @@ export function isDesktopPrerequisiteHelper(helperId: string): boolean {
   return /^(windows|macos|linux)-(node-host-installer|npm-prefix-helper|github-cli-installer|git-installer)$/u.test(helperId);
 }
 
+/**
+ * Helpers that prepare this computer and name no provider, so Runtime has nothing to admit. The
+ * Windows PowerShell scripts row is optional in the first-run wizard, and no selection implies it.
+ */
+export function isDesktopHostOnlyHelper(helperId: string): boolean {
+  return isDesktopPrerequisiteHelper(helperId) || helperId === 'windows-cli-readiness-helper';
+}
+
 export interface DesktopSetupAuditAction { helperId: string }
 
 export function resolveSelectedSetupAuditActions(

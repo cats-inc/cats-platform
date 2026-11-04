@@ -7,6 +7,13 @@
 | Status | Approved; implementation authorized 2026-09-16 |
 | Owner / Reviewer | User |
 
+## Amendment — 2026-11-04
+
+[SPEC-136](./SPEC-136-desktop-first-run-wizard.md) replaces the onboarding half of this
+spec with the first-run wizard: FR-2, FR-3, FR-11 and FR-12 no longer apply on first run, and
+the card layout is gone. Settings > Runtime keeps them. FR-8's rule that an empty or
+incomplete selection can finish still holds on both surfaces.
+
 ## Summary
 
 Onboarding and Settings > Runtime share selection, detection and installation

@@ -218,6 +218,59 @@ const bridge = {
   runProviderSetup(payload: Parameters<ProviderManagerBridge['runProviderSetup']>[0]) {
     return ipcRenderer.invoke('cats-host:provider-setup-run', payload);
   },
+  // SPEC-136: the first-run wizard. A fixed helper, action or provider crosses here, never a
+  // path or an argument, and a model name is checked again on the other side.
+  setupWizard: {
+    facts(): Promise<unknown> {
+      return ipcRenderer.invoke('cats-host:setup-wizard-facts');
+    },
+    runHelper(helperId: string, mode: 'check' | 'apply'): Promise<unknown> {
+      return ipcRenderer.invoke('cats-host:setup-wizard-run-helper', { helperId, mode });
+    },
+    cancelChecks(): Promise<void> {
+      return ipcRenderer.invoke('cats-host:setup-wizard-cancel-checks');
+    },
+    runs(): Promise<unknown[]> {
+      return ipcRenderer.invoke('cats-host:setup-runs');
+    },
+    onRun(listener: (run: unknown) => void): () => void {
+      const handler = (_event: Electron.IpcRendererEvent, run: unknown) => listener(run);
+      ipcRenderer.on('cats-host:setup-run', handler);
+      return () => { ipcRenderer.off('cats-host:setup-run', handler); };
+    },
+    startRun(input: { command: string }): Promise<number> {
+      return ipcRenderer.invoke('cats-host:setup-run-start', input);
+    },
+    finishRun(id: number, result: { status?: string; error?: string; applied?: string[] }): Promise<void> {
+      return ipcRenderer.invoke('cats-host:setup-run-finish', id, result);
+    },
+    openTerminal(provider: string): Promise<{ opened: boolean; command: string | null }> {
+      return ipcRenderer.invoke('cats-host:setup-open-terminal', provider);
+    },
+    ollamaModels(): Promise<string[]> {
+      return ipcRenderer.invoke('cats-host:setup-ollama-models');
+    },
+    pullOllamaModel(name: string): Promise<{ stopped: boolean }> {
+      return ipcRenderer.invoke('cats-host:setup-ollama-pull', name);
+    },
+    cancelOllamaPull(): Promise<void> {
+      return ipcRenderer.invoke('cats-host:setup-ollama-cancel');
+    },
+    onOllamaProgress(listener: (progress: unknown) => void): () => void {
+      const handler = (_event: Electron.IpcRendererEvent, progress: unknown) => listener(progress);
+      ipcRenderer.on('cats-host:setup-ollama-progress', handler);
+      return () => { ipcRenderer.off('cats-host:setup-ollama-progress', handler); };
+    },
+    saveState(state: unknown): Promise<void> {
+      return ipcRenderer.invoke('cats-host:setup-wizard-state-set', state);
+    },
+    returnToPage(page: number): Promise<void> {
+      return ipcRenderer.invoke('cats-host:setup-wizard-return', page);
+    },
+    relaunch(state: unknown): Promise<void> {
+      return ipcRenderer.invoke('cats-host:setup-wizard-relaunch', state);
+    },
+  },
   runAction(actionId: DesktopHostActionId): Promise<DesktopBootstrapSnapshot> {
     return ipcRenderer.invoke('cats-host:run-action', assertDesktopHostActionId(actionId));
   },
