@@ -15,7 +15,7 @@ export function mountSetupWizard(root, bridge, options) {
     lang: String(options.locale || 'en').startsWith('zh') ? 'zh-TW' : 'en',
     page: 1, snap: null, facts: null, catalog: 'slow', catalogError: null, saved: false, notice: null, reloading: false,
     picks: new Set(), expanded: false, revision: null, skipped: new Set(),
-    phase: 'idle', rows: {}, checked: false, lastChecked: null, ticked: new Set(), details: new Set(), applied: new Set(), attempted: new Set(),
+    phase: 'idle', rows: {}, checked: false, lastChecked: null, ticked: new Set(), details: new Set(), applied: new Set(), attempted: new Set(), systemRestarts: new Set(),
     queue: [], running: null, runStart: null, stopAfter: false, stopRequested: false, pageError: null, ticket: 0,
     conn: {
       ollama: { remote: false, address: ADDRESS_DEFAULT.ollama, state: 'untested', error: null, changed: false },
@@ -152,6 +152,7 @@ export function mountSetupWizard(root, bridge, options) {
       if (record.status === 'ready' || record.apiReady === true) return { ...base, kind: 'ready' };
     }
     if (record.status === 'ready' || (record.status === 'auth_required' && record.installed !== false)) return { ...base, kind: 'ready' };
+    if (S.systemRestarts.has(id)) return { ...base, kind: 'restart' };
     if (record.status === 'prerequisite_required') return { ...base, kind: 'waiting' };
     const helper = helperOf(id);
     return helper && helper.supportsApply ? { ...base, kind: 'needs' } : { ...base, kind: 'manual' };
@@ -334,6 +335,13 @@ export function mountSetupWizard(root, bridge, options) {
         break;
       }
       // A fresh read after each step decides, not the script's own word.
+      // Keep explicit MSI reboot advice throughout this wizard, even when its CLI already works.
+      if (platform() === 'windows' && ['node', 'gh', 'vc'].includes(id)
+        && record.restartRequired && record.status === 'restart_required'
+        && (record.interruptions || []).some((entry) => entry.kind === 'restart_required' && entry.requiresRestart)) {
+        S.systemRestarts.add(id);
+        S.applied.add(id);
+      }
       let check = null;
       try { check = await wizardBridge.runHelper(helperIdOf(id), 'check'); } catch { check = null; }
       if (mine !== S.ticket) return;
@@ -923,6 +931,7 @@ export function mountSetupWizard(root, bridge, options) {
     const row = S.rows[id] || { kind: 'pending' };
     const fact = factsOf(id);
     const optional = isOptional(id) ? `<em>${E(T('(optional)', '（選用）'))}</em>` : '';
+    const systemAdvice = S.systemRestarts.has(id) ? `<p>${E(T('Restart Windows to finish installation.', '請重新啟動 Windows 以完成安裝。'))}</p>` : '';
     const open = S.details.has(id);
     const elevates = helperOf(id) && helperOf(id).requiresElevation;
     if (row.kind === 'pending') return plainRow(id, depCls, '', E(T('Waiting', '等待中')));
@@ -940,7 +949,7 @@ export function mountSetupWizard(root, bridge, options) {
           <span class="row-state ${count ? 'ok' : 'attn'}">${E(count ? T(`${count} model(s)`, `${count} 個模型`) : T('No models yet', '還沒有模型'))}</span></div>${stagesHtml(false)}</li>`;
       }
       return `<li class="row is-ready ${depCls}" data-row="${E(id)}"><div class="row-top"><span class="glyph">${ICON.check}</span>
-        <div class="row-text"><strong>${E(fact.title)}</strong>${optional}</div>
+        <div class="row-text"><strong>${E(fact.title)}</strong>${optional}${systemAdvice}</div>
         <span class="row-state ok">${E(S.applied.has(id) ? T('Just finished', '剛完成') : T('Ready', '就緒'))}${row.version ? `<span class="version">${E(row.version)}</span>` : ''}</span></div>${row.manual && row.manual.length ? `<div class="row-actions">${row.manual.map((line) => `<span class="hint-inline">${E(line)}</span>`).join('')}</div>` : ''}</li>`;
     }
     if (row.kind === 'waiting') {
@@ -959,13 +968,13 @@ export function mountSetupWizard(root, bridge, options) {
     }
     if (row.kind === 'restart') {
       return `<li class="row is-failed ${depCls}" data-row="${E(id)}"><div class="row-top"><span class="glyph">${ICON.wait}</span>
-        <div class="row-text"><strong>${E(fact.title)}</strong>${optional}<p>${E(T('Installed, but Cats cannot find it yet. Check again first. If that does not help, restart Cats.', '已經安裝，但 Cats 還找不到它。請先再檢查一次；還是不行再重新啟動 Cats。'))}</p></div>
+        <div class="row-text"><strong>${E(fact.title)}</strong>${optional}${systemAdvice || `<p>${E(T('Installed, but Cats cannot find it yet. Check again first. If that does not help, restart Cats.', '已經安裝，但 Cats 還找不到它。請先再檢查一次；還是不行再重新啟動 Cats。'))}</p>`}</div>
         <span class="row-state attn">${E(T('Not found yet', '還找不到'))}</span></div><div class="row-actions">${detailsLink(`row:${id}`)}</div></li>`;
     }
     if (row.kind === 'checkFailed') {
       const text = row.timeout ? T('The check did not finish in time. Nothing changed. Check it again, or set it up yourself.', '檢查逾時沒有結束，沒有任何變更。可以再檢查一次，或自己處理。') : T('Its check could not run, so nothing is known about it. Nothing changed. Other rows are not affected.', '這一項的檢查沒有跑成，所以狀態不明，也沒有任何變更。其他項目不受影響。');
       return `<li class="row is-failed ${depCls}" data-row="${E(id)}"><div class="row-top"><span class="glyph">${ICON.cross}</span>
-        <div class="row-text"><strong>${E(fact.title)}</strong>${optional}<p>${E(text)}</p></div>
+        <div class="row-text"><strong>${E(fact.title)}</strong>${optional}<p>${E(text)}</p>${systemAdvice}</div>
         <span class="row-state bad">${E(T('Cannot check', '無法檢查'))}</span></div>
         <div class="row-actions"><button type="button" class="btn small" id="recheck-${E(id)}" data-act="recheck-row" data-arg="${E(id)}" ${S.phase !== 'idle' ? 'disabled' : ''}>${E(T('Check this again', '再檢查這一項'))}</button><button type="button" class="more" id="more-${E(id)}" aria-expanded="${open}" data-act="details" data-arg="${E(id)}">${E(open ? T('Hide', '收起') : T('What happened', '發生了什麼'))}</button>${detailsLink(`row:${id}`)}</div>
         ${open ? detailsHtml(id) : ''}</li>`;
@@ -975,7 +984,7 @@ export function mountSetupWizard(root, bridge, options) {
         ? T('You chose No in the permission prompt, so nothing changed.', '你在權限視窗選了「否」，所以沒有任何變更。')
         : row.human || T('It did not finish. The log below says why.', '沒有完成，原因寫在下方記錄裡。');
       return `<li class="row is-failed ${depCls}" data-row="${E(id)}"><div class="row-top"><span class="glyph">${ICON.cross}</span>
-        <div class="row-text"><strong>${E(fact.title)}</strong>${optional}<p>${E(text)}</p></div>
+        <div class="row-text"><strong>${E(fact.title)}</strong>${optional}<p>${E(text)}</p>${systemAdvice}</div>
         <span class="row-state bad">${E(row.kind === 'declined' ? T('Not installed', '尚未安裝') : T('Did not finish', '沒有完成'))}</span></div>
         ${id === 'ollama' ? stagesHtml(true) : ''}${tagsHtml(id, detailsLink(`row:${id}`))}${open ? detailsHtml(id) : ''}</li>`;
     }
@@ -992,7 +1001,9 @@ export function mountSetupWizard(root, bridge, options) {
     if (S.phase === 'checking') return [T('Checking this computer', '正在檢查這台電腦'), T('This only reads what is there and changes nothing. Back stops it, if you want other tools.', '這只會讀取目前的狀態，不會變更任何東西。想換工具可以按「返回」停止。')];
     if (S.phase === 'applying') return [T('Applying what you ticked', '正在套用你勾選的項目'), T('One at a time, with a fresh check after each. This window cannot close until it finishes.', '一次一項，每項做完都會重新檢查。完成前無法關閉這個視窗。')];
     if (S.pageError) return [T('The check did not finish', '檢查沒有跑完'), T('Your choices are saved and nothing on this computer changed.', '選擇已經存好，這台電腦沒有任何變更。')];
-    if (stopped && S.rows[stopped].kind === 'restart') return [T(`Cannot find ${rowLabel(stopped)} yet`, `還找不到 ${rowLabel(stopped)}`), T('Check again first. Your choices stay if Cats has to restart.', '請先再檢查一次。就算要重新啟動 Cats，你的選擇也都還在。')];
+    if (stopped && S.rows[stopped].kind === 'restart') return S.systemRestarts.has(stopped)
+      ? [T('Windows needs a restart', '需要重新啟動 Windows'), T('Restart Windows to finish installation. You can check again or leave this for later.', '請重新啟動 Windows 以完成安裝。也可以再檢查一次，或之後再處理。')]
+      : [T(`Cannot find ${rowLabel(stopped)} yet`, `還找不到 ${rowLabel(stopped)}`), T('Check again first. Your choices stay if Cats has to restart.', '請先再檢查一次。就算要重新啟動 Cats，你的選擇也都還在。')];
     if (stopped && retryQueue(stopped).length) return [T(`${rowLabel(stopped)} did not finish`, `${rowLabel(stopped)} 沒有完成`), queueOf().length ? T('What comes after it has not run, and your ticks are kept. Try again, set it up yourself, or skip it for now.', '後面的項目還沒執行，勾選都留著。可以重試、自己處理，或先跳過它。') : T('Try again, set it up yourself, or skip it for now.', '可以重試、自己處理，或先跳過它。')];
     if (stopped) return [T(`Cannot check ${rowLabel(stopped)}`, `無法檢查 ${rowLabel(stopped)}`), T('Its script did not run. You can still apply the other rows.', '它的腳本沒有跑成。其他項目還是可以套用。')];
     if (pending.length) return [T(`${pending.length} left before these tools are ready`, `還有 ${pending.length} 項要處理，這些工具才能用`), T('Tick what Cats should do. Nothing unticked runs. You can also set things up yourself and check again, or leave them for later.', '勾選要讓 Cats 做的事，沒勾的不會執行。也可以自己處理後再檢查，或之後再說。')];
@@ -1044,7 +1055,7 @@ export function mountSetupWizard(root, bridge, options) {
     if (S.pageError) return `<p class="hint"></p>${back}<button type="button" class="btn" id="skip-next" data-act="next2" ${opening ? 'disabled' : ''}>${E(T('Skip for now', '先跳過'))}</button>`;
     const stopped = stoppedRow();
     if (stopped && S.rows[stopped].kind === 'restart') {
-      return `<p class="hint"></p><button type="button" class="btn" id="restart-app" data-act="restart-app">${E(T('Restart Cats', '重新啟動 Cats'))}</button>
+      return `<p class="hint"></p>${S.systemRestarts.has(stopped) ? '' : `<button type="button" class="btn" id="restart-app" data-act="restart-app">${E(T('Restart Cats', '重新啟動 Cats'))}</button>`}
         <button type="button" class="btn" id="next" data-act="next2" ${opening ? 'disabled' : ''}>${E(T('Skip for now', '先跳過'))}</button>
         <button type="button" class="btn primary" id="recheck" data-act="recheck">${E(T('Check again', '再檢查一次'))}</button>`;
     }
@@ -1407,6 +1418,9 @@ export function mountSetupWizard(root, bridge, options) {
   const start = (async () => {
     try {
       S.facts = await wizardBridge.facts();
+      for (const id of ['node', 'gh', 'vc']) {
+        if ((S.facts.systemRestartHelpers || []).includes(helperIdOf(id))) S.systemRestarts.add(id);
+      }
       S.setupComplete = Boolean(S.facts.setupComplete);
       restoreState(S.facts.state);
       if (S.lang !== (String(options.locale || 'en').startsWith('zh') ? 'zh-TW' : 'en')) {

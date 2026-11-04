@@ -158,6 +158,12 @@ test('a failed installer remains visible alongside retained installation evidenc
   assert.match(p.row('codex').textContent, /Retry after closing the CLI/);
 });
 
+test('bootstrap recovery retains host-session reboot advice without an active helper action', async (t) => {
+  const p = await page(t, { recovery: true, setup: { helpers: [], state: { lastAction: null },
+    resumeAction: null, systemRestartHelpers: ['windows-node-host-installer'] } });
+  assert.match(p.root.body.textContent, /Restart Windows to complete installation/);
+});
+
 test('the explicit recovery accordion still distinguishes unscanned inventory from missing commands', async (t) => {
   const p = await page(t, { recovery: true });
   const details = [...p.root.querySelectorAll('button')].find((button) => /Show details/.test(button.textContent));

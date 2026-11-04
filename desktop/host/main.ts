@@ -1274,6 +1274,7 @@ async function getSetupSnapshot(): Promise<DesktopSetupSnapshot> {
     try { return targetsForSetupHelper(helper.id, probe.selection).length > 0; } catch { return false; }
   });
   snapshot.prerequisiteChecks = desktopPrerequisites.read();
+  snapshot.systemRestartHelpers = desktopPrerequisites.systemRestartHelpers();
   if (hostConfig.candidateProfile) snapshot.resumeAction = null;
   if (snapshot.resumeAction && !snapshot.helpers.some((helper) => helper.id === snapshot.resumeAction!.helperId)) {
     snapshot.resumeAction = null;
@@ -1381,6 +1382,7 @@ async function readSetupWizardFacts(): Promise<Record<string, unknown>> {
     vcRuntimeFree: [...VC_RUNTIME_FREE_PROVIDERS],
     ollamaSuggestions,
     state: readSetupWizardState(),
+    systemRestartHelpers: desktopPrerequisites.systemRestartHelpers(),
     setupComplete: hasPersistedSetupCompletion(),
   };
 }
@@ -1403,6 +1405,7 @@ function getProviderManager(): DesktopProviderManager {
   providerManager ??= new DesktopProviderManager({
     platform: process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'macos' : 'linux',
     prerequisites: () => desktopPrerequisites.read(),
+    systemRestartHelpers: () => desktopPrerequisites.systemRestartHelpers(),
     request: async <T>(path: string, init: RequestInit = {}): Promise<T> => {
       const response = await fetchWithTimeout(`${hostConfig!.runtimeBaseUrl}${path}`, init, RUNTIME_SETUP_STATE_TIMEOUT_MS);
       if (!response.ok) {

@@ -156,6 +156,38 @@ the same guarded list probe. The fixtures invoke no real provider, registry quer
 or install. Windows PowerShell 5.1 validation passed all 15 cases in this file;
 this is focused helper validation, not a full Platform or installed-upgrade run.
 
+Windows elevation checks in `tests/windows-node-elevation.test.js` run the
+real Windows PowerShell 5.1 child and JSON relay from temporary script and user
+temp directories. They cover the packaged `Cats Bot` path, spaces in either
+path, Unicode and shell punctuation, missing/empty/invalid/locked child results,
+successful result passthrough and a declined UAC prompt for Node, Git, GitHub CLI
+and VC++ Runtime. Only the administrator observation and UAC launch are
+substituted; probe-skip flags prevent downloads and real installers. The
+28 regression cases passed on Windows. Actual UAC acceptance and clean-machine installation still need
+manual validation. These focused helper checks do not compile the Desktop host;
+host integration suites require `npm run build:host` first. That build and the
+six Desktop setup PATH-refresh integration cases also passed separately.
+
+`tests/windows-setup-process-contracts.test.js` covers native argv roundtrips,
+all four substrate helpers' Apply/Upgrade/Force previews, successful and failed
+vendor children under spaced Unicode TEMP paths, and installer exits 0/3010/1603.
+Its 34 cases passed under Windows PowerShell 5.1; installer/network calls use
+private fixtures. A 3010 result must retain its explicit Windows-restart data.
+`tests/unix-node-preview.test.js` covers 14 macOS/Linux Node preview cases with
+and without nvm, using blocked curl and nvm mutations. These passed with Git Bash
+on Windows; the same file selects `/bin/bash` on native macOS/Linux. Native Unix
+execution and real clean-machine installs remain separate acceptance checks.
+
+Windows MSI advice also has consumer coverage: `desktop-setup-prerequisites`,
+`desktop-setup-path-refresh`, `desktop-setup-bridge`, `desktop-provider-manager`,
+`desktop-bootstrap-provider-manager` and `provider-manager-view` passed 61 checks
+after the host build. They retain an explicit machine reboot across ready/failed
+rechecks and unrelated helper runs without preserving it in a new process.
+The real first-run page fixture passed 51 distinct scenarios (50 in the full run,
+then all seven Windows-restart scenarios after the host-session addition), with
+zero page errors. Ready and missing Node screenshots were visually checked.
+These use fake helpers and private profiles, not real UAC or system installers.
+
 Unix npm-prefix JSON regression checks run with the system `/bin/bash` on macOS,
 including Bash 3.2 with `set -u`. They cover an already configured folder, required
 configuration changes and forced nvm preparation without installing software or

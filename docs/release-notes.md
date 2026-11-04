@@ -2,6 +2,74 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-05 — Desktop 0.14.1 standard preview: reliable clean-machine setup
+
+Selected distribution: Desktop **0.14.1 standard-profile preview**, using App SDK
+**1.9.0** and bundled **Usage 0.5.4**. Platform npm, Runtime npm, cats-one, Cats Bot,
+Apps and Plugins remain separate release targets.
+
+- **Windows installation paths survive elevation.** Node.js, Git, GitHub CLI and
+  Visual C++ Runtime preserve paths containing spaces, Unicode and quotes when
+  asking for administrator permission. A cancelled launch or missing/unreadable
+  elevated result returns a structured failure instead of silently losing JSON.
+- **Provider installers preserve temporary paths.** Antigravity, Grok, Muse and
+  Goose use the same native argument serialization, including a TEMP directory
+  with spaces, and retain the child installer's exit status.
+- **Successful MSI installs can request a Windows restart.** Node.js, GitHub CLI
+  and Visual C++ Runtime accept MSI 3010 as success with an explicit system-restart
+  result. They never reboot Windows automatically. Genuine installer errors remain
+  failures. Desktop retains system-restart advice for the current host session
+  through rechecks and subsequent helper runs, including a ready CLI, in Settings,
+  first-run setup and bootstrap recovery. The wizard never substitutes a Restart
+  Cats button. Runtime PATH refresh cannot clear an explicit Node.js/GitHub CLI reboot.
+- **DryRun previews do not install.** Windows Node.js, Git, GitHub CLI and Visual
+  C++ Runtime, and macOS/Linux Node.js, return planned actions before elevation,
+  download or installation, including Apply, Upgrade and Force modes.
+- **First-run wizard.** This carries the 0.14.0 source changes described below:
+  one wizard, explicit read/check actions, only selected rows applied, and a final
+  start-at-login choice. Compared with the previous published Desktop 0.13.4, it
+  also carries Runtime's unreadable-provider-configuration backup and the 0.14.x
+  product-knowledge declarations. No 0.14.0 installation is required first.
+- **Exact source and artifacts.** Runtime **0.6.2**, source
+  `1bbba8d0f12450af8c9fcdedcb55d7051fe69f5f`, is current Runtime main at source
+  selection, with no changes left out. Usage **0.5.4** stays at
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. The source manifest and
+  packaged OS receipts record the merged bump commit and exact Runtime/App inputs.
+- **Compatibility and recovery.** This patch preserves 0.14 public API, App SDK,
+  configuration and stored-data formats and introduces no migration. The 0.14.0
+  section below describes the compatible wizard changes from 0.13.4. Usage 0.5.4's
+  minimum host requirement accepts 0.14.1. Before installation, stop processes
+  using the data roots and back up `~/.cats`, including configured overrides.
+  On installation/startup failure, keep those directories and configuration backups
+  intact and reinstall 0.14.1 or the previous published 0.13.4. Returning to 0.13.4
+  needs no data conversion and restores its previous setup behavior. Restore a
+  backup only while all processes using the roots are stopped.
+- **Signing and updates.** Dispatch `desktop-release.yml` from the merged bump
+  source with `tag=v0.14.1`, the full Runtime SHA above and `unsigned=false`.
+  The workflow creates the prerelease and tag. Expected Standard trust is macOS
+  **signed + notarized**, Windows **unsigned: no certificate**, Linux **n/a**;
+  platform receipts and native checks establish the actual trust. Windows NSIS,
+  signed macOS with the same Developer ID team and Linux DEB retain their update
+  paths. Portable and unsigned macOS installations require manual replacement.
+- **Validation boundary.** The installer fixes passed 140 focused checks on
+  Windows, including real PowerShell 5.1 child processes, elevation relay fixtures,
+  native argv round trips, MSI exit results and mutation-blocked previews. All 38
+  Windows PowerShell sources parsed. Unix previews ran in Git Bash; native macOS
+  and Linux and a real clean-machine UAC installation were not exercised locally.
+  The host build and 61 consumer checks passed; the real first-run page fixture
+  passed 51 distinct scenarios with zero page errors. Ready/missing reboot advice
+  screenshots were visually checked. Release-contract checks passed 145 cases.
+  Independent review found no remaining blockers. Candidate CI supplies full test
+  validation; publication checks all architectures, packaged identity, updater
+  metadata, complete sources, checksums, provenance and configured signing.
+  Installed upgrade/rollback acceptance remains separate from packaging evidence.
+
+Publication results: the `v0.14.1` GitHub Standard Preview, its platform receipts
+and Actions run. Verification checks immutable status, tag source, the complete
+public asset set and hashes, updater metadata and build provenance.
+
 ## 2026-11-04 — Desktop 0.14.0 standard preview: first run is one wizard that runs only what you ask
 
 Selected distribution: Desktop **0.14.0 standard-profile preview**, using App SDK

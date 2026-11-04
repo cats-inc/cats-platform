@@ -66,6 +66,15 @@ test('a scan after the npm folder settles its restart request', () => {
   assert.equal(settled.lastAction.restartRequired, false);
 });
 
+test('a fresh scan cannot clear Node or GitHub CLI MSI system restart requests', () => {
+  for (const helperId of ['windows-node-host-installer', 'windows-github-cli-installer']) {
+    const state = stateAfter(helperId, 'restart_required', ['restart_required'], { restartRequired: true });
+    for (const installed of [[], [helperId]]) {
+      assert.equal(settleSetupPathRefresh(state, inventory(LATER, installed)), state);
+    }
+  }
+});
+
 // cats-runtime caches a missing git for its whole life, so a rescan does not bring
 // Code's git features back: the Git installer's relaunch request stands.
 test('a scan after the Git install leaves its relaunch request in place', () => {

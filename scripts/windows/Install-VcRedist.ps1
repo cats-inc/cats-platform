@@ -21,6 +21,8 @@
     -Uninstall is intentionally omitted: removing the redist mid-flight would
     break every Rust-based CLI on the host, so uninstalling must remain a
     manual step.
+.PARAMETER DryRun
+    Report a preview without elevation, downloads or installation.
 #>
 param(
   [switch]$CheckOnly,
@@ -92,6 +94,7 @@ function New-Result {
     [string[]]$AppliedChanges = @(),
     [string[]]$Warnings = @(),
     [string[]]$ManualSteps = @(),
+    [bool]$RestartRequired = $false,
     [object[]]$Interruptions = @()
   )
 
@@ -106,6 +109,7 @@ function New-Result {
     appliedChanges = $AppliedChanges
     warnings = $Warnings
     manualSteps = $ManualSteps
+    restartRequired = $RestartRequired
     interruptions = $Interruptions
   }
 }
@@ -192,6 +196,23 @@ if ($mode -eq 'check') {
   ) -ExitCode 0
 }
 
+# A preview returns before UAC, downloads or installer invocation.
+if ($DryRun) {
+  $previewAction = switch ($mode) {
+    apply { 'install_vcredist' }
+    upgrade { 'upgrade_vcredist' }
+    force { 'reinstall_vcredist' }
+  }
+  $planned = @(if ($mode -ne 'apply' -or -not $installed) { $previewAction })
+  Write-StructuredResult -Result (New-Result `
+    -Mode $mode `
+    -Status 'preview' `
+    -Installed $installed `
+    -DetectedVersion $detected `
+    -PlannedActions $planned `
+  ) -ExitCode 0
+}
+
 if ($mode -eq 'apply' -and $installed) {
   Write-StructuredResult -Result (New-Result `
     -Mode $mode `
@@ -222,48 +243,42 @@ if (-not $isAdmin -and -not $SkipElevation) {
   $relayArgs += '-SkipElevation'
   $relayArgs += @('-ResultRelayPath', $relayPath)
 
-  try {
-    $process = Start-Process -FilePath 'powershell.exe' `
-      -ArgumentList $relayArgs `
-      -Verb RunAs `
-      -Wait `
-      -PassThru
-    if ([System.IO.File]::Exists($relayPath)) {
-      $relayed = [System.IO.File]::ReadAllText($relayPath)
-      [System.IO.File]::Delete($relayPath)
-      if ($Json -and -not [string]::IsNullOrWhiteSpace($relayed)) {
-        Write-Output $relayed
-      } elseif (-not $Json -and -not [string]::IsNullOrWhiteSpace($relayed)) {
-        try {
-          $relayedResult = $relayed | ConvertFrom-Json
-          Write-Host "Helper: $($relayedResult.helper)"
-          Write-Host "Mode: $($relayedResult.mode)"
-          Write-Host "Status: $($relayedResult.status)"
-        } catch {
-          # Child crashed before writing; fall through to synthesized failure.
-        }
-      }
-    }
-    exit $process.ExitCode
-  } catch {
-    if ([System.IO.File]::Exists($relayPath)) {
-      [System.IO.File]::Delete($relayPath)
-    }
+  $elevation = Invoke-CatsElevatedHelper -ArgumentList $relayArgs -RelayPath $relayPath
+  if ($null -ne $elevation.LaunchError) {
     Write-StructuredResult -Result (New-Result `
       -Mode $mode `
       -Status 'changes_required' `
       -Installed $installed `
       -DetectedVersion $detected `
       -Warnings @('Administrator elevation was cancelled or failed.') `
-      -Interruptions @([pscustomobject]@{ kind = 'elevation_required'; reason = $_.Exception.Message }) `
+      -Interruptions @([pscustomobject]@{ kind = 'elevation_required'; reason = $elevation.LaunchError }) `
     ) -ExitCode 1
   }
+  if ($null -ne $elevation.Result) {
+    if ($Json) {
+      Write-Output $elevation.Payload
+    } else {
+      Write-Host "Helper: $($elevation.Result.helper)"
+      Write-Host "Mode: $($elevation.Result.mode)"
+      Write-Host "Status: $($elevation.Result.status)"
+    }
+    exit $elevation.ExitCode
+  }
+  Write-StructuredResult -Result (New-Result `
+    -Mode $mode `
+    -Status 'failed' `
+    -Installed $installed `
+    -DetectedVersion $detected `
+    -Warnings @("The elevated $DisplayName helper did not return a valid result (exit code $($elevation.ExitCode)).") `
+    -ManualSteps @("Install $DisplayName manually from $RedistDownloadUrl.") `
+  ) -ExitCode 1
 }
 
 # === Elevated execution path ===
 $applied = [System.Collections.Generic.List[string]]::new()
 $warnings = [System.Collections.Generic.List[string]]::new()
 $installSuccess = $false
+$restartRequired = $false
 
 $wingetExists = [bool](Get-Command winget -ErrorAction SilentlyContinue)
 
@@ -308,6 +323,10 @@ if (-not $installSuccess -and -not $SkipProbe) {
     # 0 = success, 1638 = newer version already installed, 3010 = success + reboot required
     if ($redistResult.ExitCode -in @(0, 1638, 3010)) {
       $installSuccess = $true
+      if ($redistResult.ExitCode -eq 3010) {
+        $restartRequired = $true
+        $warnings.Add('Windows requires a system restart to complete the installation.')
+      }
       $applied.Add("vc_redist_install_exit_$($redistResult.ExitCode)")
     } else {
       $warnings.Add("vc_redist installer exited $($redistResult.ExitCode).")
@@ -332,11 +351,17 @@ if (-not $installSuccess) {
 $postInstalled = Test-VcRedistInstalled
 $postVersion = Get-VcRedistDetectedVersion -Override ''
 
+$interruptions = @(if ($restartRequired) {
+  [pscustomobject]@{ kind = 'restart_required'; reason = 'Restart Windows to complete the installation.'; requiresRestart = $true }
+})
+
 Write-StructuredResult -Result (New-Result `
   -Mode $mode `
-  -Status 'ready' `
+  -Status $(if ($restartRequired) { 'restart_required' } else { 'ready' }) `
   -Installed $postInstalled `
   -DetectedVersion $postVersion `
   -AppliedChanges $applied.ToArray() `
   -Warnings $warnings.ToArray() `
+  -RestartRequired $restartRequired `
+  -Interruptions $interruptions `
 ) -ExitCode 0

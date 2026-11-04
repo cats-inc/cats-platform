@@ -60,6 +60,7 @@ export interface ProviderManagerSnapshot {
   operations: Array<{ targets: ProviderTarget[]; stage: string }>;
   outcomes: Record<string, ProviderSetupOutcome>;
   prerequisites?: DesktopPrerequisite[];
+  systemRestartHelpers?: string[];
   preview?: { target: ProviderTarget; result: ProviderSetupOutcome; revision: string };
 }
 export interface ProviderManagerBridge {

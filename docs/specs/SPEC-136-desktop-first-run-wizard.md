@@ -235,6 +235,13 @@ failure reaches the details page. Settings > Runtime keeps its rows.
 39. FR-39: No step needs a relaunch on the normal path. Each helper run reads PATH afresh. When a helper asks for a restart
     and the fresh check cannot confirm the step, the row says it is installed but not found yet. Restart keeps the page,
     the ticks and how many changes setup made so far through a draft file read once and removed at the next start.
+    Explicit Windows MSI system-restart results from Node.js, GitHub CLI or Visual C++ Runtime are separate:
+    the current host session keeps the Windows restart advice through fresh reads and unrelated helper runs,
+    even when the tool is usable. Settings and bootstrap recovery expose the same session advice; the wizard
+    restores it when its page is mounted again.
+    An unavailable tool offers Check again or Skip for now, without reinstall or Restart Cats; a usable tool
+    remains ready. A Runtime PATH scan cannot clear that system-restart result. No automatic reboot or new
+    persistent restart marker is introduced, and generic PATH/relaunch requests retain the normal policy.
 
 **Runtime**
 

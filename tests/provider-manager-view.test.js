@@ -78,6 +78,19 @@ test('Node/npm preparation is actionable on an empty fresh machine and never sav
 const prerequisiteButton = (f, label) => [...f.root.querySelectorAll('[data-prerequisite] button')]
   .find((entry) => entry.textContent === label);
 
+test('Settings retains host-session Windows restart advice through ready reads and other actions', async (t) => {
+  const f = fixture(t); await flush();
+  f.snapshot.systemRestartHelpers = ['windows-node-host-installer'];
+  await f.view.refresh();
+  assert.match(f.root.textContent, /Restart Windows to finish installation/);
+  f.button('detect-selected').click(); await flush(); await flush();
+  assert.match(f.root.textContent, /Restart Windows to finish installation/);
+  assert.doesNotMatch(f.root.textContent, /Restart Cats/);
+  f.snapshot.systemRestartHelpers = [];
+  await f.view.refresh();
+  assert.doesNotMatch(f.root.textContent, /Restart Windows to finish installation/);
+});
+
 test('Git is set up from the prerequisite card and its manual steps stay visible once ready', async (t) => {
   const f = fixture(t); await flush();
   const identity = 'Set your commit identity: git config --global user.name "Your Name" and git config --global user.email "you@example.com".';

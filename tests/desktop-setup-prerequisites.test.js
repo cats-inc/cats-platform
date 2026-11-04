@@ -4,6 +4,30 @@ import { DesktopPrerequisiteChecks } from '../build/desktop/setupPrerequisites.j
 
 const ready = { runState: 'completed', status: 'ready', summary: 'Ready', warnings: [], manualSteps: [], plannedActions: [] };
 
+test('explicit Windows MSI advice survives rechecks and unrelated helpers for this host session', async () => {
+  const checks = new DesktopPrerequisiteChecks('windows');
+  const restart = { ...ready, status: 'restart_required', restartRequired: true,
+    interruptions: [{ kind: 'restart_required', requiresRestart: true }] };
+  const ids = ['windows-node-host-installer', 'windows-github-cli-installer', 'windows-vcredist-installer'];
+  for (const id of ids) {
+    await checks.run(id, async () => restart);
+    await checks.run(id, async () => ready);
+    await assert.rejects(checks.run(id, async () => { throw new Error('read failed'); }), /read failed/);
+  }
+  await checks.run('windows-npm-prefix-helper', async () => ready);
+  assert.deepEqual(checks.systemRestartHelpers(), ids);
+  assert.deepEqual(new DesktopPrerequisiteChecks('windows').systemRestartHelpers(), []);
+  for (const id of ['windows-npm-prefix-helper', 'windows-git-installer', 'linux-node-host-installer']) {
+    const separate = new DesktopPrerequisiteChecks('windows');
+    await separate.run(id, async () => restart);
+    assert.deepEqual(separate.systemRestartHelpers(), []);
+  }
+  const failed = new DesktopPrerequisiteChecks('windows');
+  await failed.run(ids[0], async () => ({ ...restart, runState: 'failed' }));
+  await failed.run(ids[0], async () => ({ ...restart, interruptions: [{ kind: 'relaunch_required' }] }));
+  assert.deepEqual(failed.systemRestartHelpers(), []);
+});
+
 test('prerequisite observations are retained independently and passive reads do not run helpers', async () => {
   const checks = new DesktopPrerequisiteChecks('windows');
   assert.deepEqual(checks.read().map((entry) => entry.helperId), ['windows-node-host-installer',

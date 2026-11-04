@@ -19,6 +19,7 @@ import type {
   DesktopSetupState,
 } from './contracts.js';
 import { DESKTOP_SETUP_ASSETS } from './setupAssets.js';
+import { isWindowsSystemRestart } from './setupPrerequisites.js';
 
 interface ExecFileResult {
   stdout: string;
@@ -706,8 +707,9 @@ function readInterruptions(
 
     return [{
       kind,
-      summary: readString((entry as { summary?: unknown }).summary)
-        ?? buildInterruptionSummary(helper, kind, manualSteps),
+      summary: kind === 'restart_required' && isWindowsSystemRestart(helper.id, parsed)
+        ? 'Restart Windows to complete installation.'
+        : readString((entry as { summary?: unknown }).summary) ?? buildInterruptionSummary(helper, kind, manualSteps),
       resumable: (entry as { resumable?: unknown }).resumable !== false && helper.resumable,
       requiresRestart: (entry as { requiresRestart?: unknown }).requiresRestart === true
         || kind === 'restart_required',
@@ -779,6 +781,8 @@ export function settleSetupPathRefresh(
   const action = state.lastAction;
   if (!action || action.runState !== 'completed' || !action.completedAt) return state;
   if (!PATH_REFRESH_HELPER.test(action.helperId)) return state;
+  // MSI 3010 is a Windows reboot request, which a successful PATH scan cannot settle.
+  if (isWindowsSystemRestart(action.helperId, action)) return state;
   if (inventory?.source !== 'runtime' || !inventory.scannedAt) return state;
   if (Date.parse(inventory.scannedAt) <= Date.parse(action.completedAt)) return state;
   if (action.helperId.endsWith('-native-installer') && !inventory.installed.includes(action.helperId)) return state;
