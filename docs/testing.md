@@ -156,6 +156,18 @@ the same guarded list probe. The fixtures invoke no real provider, registry quer
 or install. Windows PowerShell 5.1 validation passed all 15 cases in this file;
 this is focused helper validation, not a full Platform or installed-upgrade run.
 
+Windows Node elevation checks in `tests/windows-node-elevation.test.js` run the
+real Windows PowerShell 5.1 child and JSON relay from temporary script and user
+temp directories. They cover the packaged `Cats Bot` path, spaces in either
+path, Unicode and shell punctuation, missing/empty/invalid/locked child results,
+successful result passthrough and a declined UAC prompt. Only the administrator observation and UAC launch are
+substituted; `-SkipNodeProbe` prevents every download and real installer. The
+13 regression cases and the 15 existing installer-observation cases passed on
+Windows. Actual UAC acceptance and clean-machine Node installation still need
+manual validation. These focused helper checks do not compile the Desktop host;
+host integration suites require `npm run build:host` first. That build and the
+six Desktop setup PATH-refresh integration cases also passed separately.
+
 Unix npm-prefix JSON regression checks run with the system `/bin/bash` on macOS,
 including Bash 3.2 with `set -u`. They cover an already configured folder, required
 configuration changes and forced nvm preparation without installing software or
