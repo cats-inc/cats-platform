@@ -16,6 +16,23 @@ import { createFixtureProviderAdvancedCatalog, createFixtureProviderModelCatalog
 
 const envelope = { bootstrapAttemptId: 'pages', runtime: { reachable: true } } as PlatformHostEnvelope;
 
+// These suites share one process with the rest of the renderer tests, and a test here can call
+// setup twice, so everything is put back to what it was before this file ran. Node 24 has no
+// sessionStorage and Node 26 does, so the tests bring their own.
+const realFetch = globalThis.fetch;
+const realStorage = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
+function memoryStorage(): Storage {
+  const items = new Map<string, string>();
+  return {
+    get length() { return items.size; },
+    clear: () => items.clear(),
+    getItem: (key: string) => items.get(key) ?? null,
+    key: (index: number) => [...items.keys()][index] ?? null,
+    removeItem: (key: string) => { items.delete(key); },
+    setItem: (key: string, value: string) => { items.set(key, value); },
+  };
+}
+
 function desktopBridge(state: Record<string, unknown> | null = null) {
   const runs: Array<Record<string, unknown>> = [];
   const finished: Array<[number, Record<string, unknown>]> = [];
@@ -46,8 +63,7 @@ function setup(t: { after(fn: () => void): void }, options: {
   resetTestDom();
   clearProviderRegistryClientCache();
   clearProviderCatalogClientCache();
-  globalThis.sessionStorage?.clear();
-  const originalFetch = globalThis.fetch;
+  Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, writable: true, value: memoryStorage() });
   const submitted: Array<Record<string, unknown>> = [];
   let completed = false;
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -74,7 +90,9 @@ function setup(t: { after(fn: () => void): void }, options: {
     cleanup();
     delete host.catsDesktopHost;
     resetTestDom();
-    globalThis.fetch = originalFetch;
+    globalThis.fetch = realFetch;
+    if (realStorage) Object.defineProperty(globalThis, 'sessionStorage', realStorage);
+    else delete (globalThis as { sessionStorage?: Storage }).sessionStorage;
     clearProviderRegistryClientCache();
     clearProviderCatalogClientCache();
   });

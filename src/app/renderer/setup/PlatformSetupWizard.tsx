@@ -506,7 +506,7 @@ export function PlatformSetupWizard({
       ) : null}
       {adminMethod === 'google' ? (
         <div className="field">
-          <span className="label">Google</span>
+          <span className="label">{t(messageKeys.setupWizardGoogleMethod)}</span>
           <small className={googleTransactionId ? '' : shownProblem('google') ? 'bad' : ''} role={shownProblem('google') ? 'alert' : undefined}>
             {googleTransactionId
               ? t(messageKeys.authNativeVerified)
