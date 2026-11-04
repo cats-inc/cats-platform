@@ -2,6 +2,128 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-04 — Desktop 0.14.0 standard preview: first run is one wizard that runs only what you ask
+
+Selected distribution: Desktop **0.14.0 standard-profile preview**, using App SDK
+**1.9.0** and bundled **Usage 0.5.4**. Platform npm, Runtime npm, cats-one, Cats Bot,
+Apps and Plugins are separate release targets.
+
+0.14.0 is a minor because #382 replaces the first-run workflow
+([ADR-146](decisions/146-make-desktop-first-run-one-wizard-that-runs-only-what-the-owner-asks.md)).
+Stored data stays compatible with 0.13, and an owner who has finished setup does not
+see the wizard.
+
+- **First run is one five-step wizard** (#382,
+  [SPEC-136](specs/SPEC-136-desktop-first-run-wizard.md)). Desktop draws choose tools,
+  this computer, and sign-in and models. Platform draws your account, and Catlas and
+  start. A browser without Desktop sees the last two only.
+  - **Nothing runs until asked.** Choosing tools starts no process, and no tool is
+    preselected. Check this computer saves the choice and then reads. With nothing
+    chosen, the button is Continue without tools.
+  - **Only a ticked row changes the computer.** Rows start unticked and run top down,
+    one at a time, with a fresh read after each. A row shows the command, the script's
+    SHA-256 and how to do it by hand. Nothing installs a dependency implicitly, so the
+    wizard never starts a Node.js installer its page did not name.
+  - **Tools keep the provider/model selector's order.** The this computer page alone
+    groups them by dependency, because Node.js has to come before what needs it.
+  - **Sign-in opens a real terminal** with a fixed command for each tool. A tool without
+    a verified command gets Runtime's hint and documentation link.
+  - **Ollama and connections say what they are.** Ollama shows its three stages, and
+    its first model downloads through the loopback endpoint Runtime has saved. OpenClaw
+    and remote Ollama are connections, which never say "installed".
+  - **Failures stay readable.** A failed tool never blocks finishing, and every setup
+    failure reaches the details page, on the Desktop and Platform pages alike. Without
+    Desktop there is no details page.
+  - **The final button lists what it does**, including how many changes setup made to
+    the computer. Start at login is now a visible checkbox, ticked by default, and it
+    takes effect when that button is pressed. Quitting earlier registers nothing.
+- **Decisions this release carries.** ADR-146 names four first-run behaviors that
+  reverse earlier records, and each can be reversed without undoing the rest:
+  - D1: no background checks during first run;
+  - D2: Node.js leaves the picker and the this computer page uses rows;
+  - D3: Apply and Detect after applying leave onboarding, and Settings → Runtime keeps
+    both;
+  - D4: the selector's order replaces native-then-npm.
+- **Current Runtime source.** Compared with Desktop 0.13.4, the bundled Runtime adds
+  only cats-runtime#213. Saving over a `providers.yaml` Runtime could not read now keeps
+  a copy beside it (`providers.yaml.invalid-*.bak`, the five newest), and refuses the
+  save with a 409 if that copy cannot be made. The wizard's first page offers this
+  replacement, so this release needs that commit.
+- **Bundled product knowledge.** The Catlas and orchestrator bundles advance to revision
+  `2026-11-04.1` with `platformRange: "0.14.x"`. Without the change, the 0.13-only
+  declarations would disable them on the new host. Their contents and capability
+  requirements are unchanged.
+- **Exact source and artifacts.**
+  - Runtime **0.6.2**, source `1bbba8d0f12450af8c9fcdedcb55d7051fe69f5f`,
+    Runtime main at source selection, with no changes left out.
+  - Usage **0.5.4** remains
+    `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+    SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+    producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`.
+  - The complete source manifest and each packaged OS receipt record the merged
+    Platform bump commit and these exact Runtime/App inputs.
+- **Compatibility and recovery.** Core format, App SDK, public API and configuration
+  requirements do not change, and no data migration is introduced. Usage 0.5.4 declares
+  `catsPlatform` `^0.6.0`, a minimum host version (ADR-128), so it accepts 0.14.0.
+  - **An owner who finished setup** keeps their start-at-login preference, applied at
+    each launch as before, and later launches keep the background checks.
+  - **A 0.13.4 profile that never finished setup** opens the wizard, which reads its
+    saved selection. 0.13.4 registered start at login at first launch. 0.14.0 leaves
+    that entry alone until the final button writes the choice.
+  - **No new preference or state key.** Three things can newly appear on disk, and none
+    needs conversion:
+    - `setup-wizard-draft.json` beside the host state, written only when the wizard asks
+      for a restart, then read once and removed. 0.13.4 ignores it.
+    - New event kinds in the existing bounded setup history. 0.13.4 keeps them as
+      ordinary entries.
+    - `providers.yaml.invalid-*.bak`, as above. 0.13.4 ignores these copies.
+  - **Returning to 0.13.4** needs no conversion and restores its older first-run screens
+    and Runtime behavior.
+  - Before upgrading, stop Cats processes using these data roots and back up
+    `~/.cats`, including any configured Desktop, Platform or Runtime data-root
+    overrides. If installation or startup fails, keep the data and reinstall
+    0.14.0 or return to 0.13.4 without resetting data. Restore a backup only with
+    all processes using those roots stopped.
+- **Signing and updates.** Manually dispatch `desktop-release.yml` from the merged
+  bump source with `tag=v0.14.0`, the Runtime SHA above and `unsigned=false`. The
+  workflow creates a prerelease and its tag; no tag push selects this preview.
+  - Expected standard trust: macOS **signed + notarized**, Windows
+    **unsigned: no certificate**, Linux **n/a**. Actual trust is recorded by the
+    platform receipts and signature/notarization checks.
+  - Standard-profile Windows NSIS, signed macOS using the same Developer ID team
+    and Linux DEB installs retain their update paths. Portable builds use manual
+    replacement; an unsigned Mac install needs a manual standard install.
+- **Validation boundary.** #382 and cats-runtime#213 each passed the full hosted CI, and
+  an independent review of the whole change had its 12 findings fixed.
+  - The real wizard page against a fake host passed 44 of 44
+    (`scripts/test-first-run-wizard-renderer.mjs`).
+  - Isolated Electron candidates on Windows, with the real main process, preload, Runtime
+    and Platform, went from tools to the Lobby and from Platform back to the this
+    computer page and forward. Start at login unticked persisted as false, and `host.log`
+    held fixed words. The build after the review repeated only back and forward.
+  - All 23 row helpers ran in check mode through the host's own code on a development
+    machine, with nothing applied.
+  - Affected suites with each file isolated on Windows: 1,236 passed, 7 skipped, and 1
+    failed, `desktop renderer CDP writes the decoded screenshot`. It expects a Unix file
+    mode and fails the same way on unmodified main on that machine.
+  - Runtime's affected suite: 31 passed, and the refused-backup case is skipped on
+    Windows.
+  - Not covered, on any OS:
+    - a real install through a ticked row, because a candidate cannot run helpers,
+      including installs on a clean Windows 11 VM and declining UAC;
+    - first runs on macOS and Linux;
+    - opening a real terminal and signing in through it;
+    - pulling a real Ollama model;
+    - start at login left unticked, and restarting Cats from the wizard, on an installed
+      copy;
+    - an installed 0.13.4-to-0.14.0 update, including an existing profile.
+  - The release workflow enforces packaged startup, offline App activation,
+    complete-source identity, signing, updater metadata and asset provenance. A public
+    source ZIP is verified against its published manifest/checksum.
+  - Installed Desktop updater and clean-machine installation acceptance are separate
+    from these checks.
+  - Publication results: the `v0.14.0` GitHub prerelease and its Actions run.
+
 ## 2026-11-04 — Desktop 0.13.4 standard preview: fresh Windows npm-provider checks
 
 Selected distribution: Desktop **0.13.4 standard-profile preview**, using App SDK
