@@ -124,7 +124,8 @@ export async function completePlatformSetup(
   });
 
   if (!response.ok) {
-    throw new Error(await readSetupApiErrorMessage(response, options));
+    const details = await readSetupApiErrorDetails(response, options);
+    throw new PlatformSetupApiError(details.message, response.status, details.code);
   }
 
   return (await response.json()) as PlatformHostEnvelope;

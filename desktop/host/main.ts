@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path';
 import { configureHostLogger, observeDisplays, observeHostApp, observeHostProcess,
-  reportHostError, type HostLogger } from './hostDiagnostics.js';
+  redactLogText, reportHostError, type HostLogger } from './hostDiagnostics.js';
 import { randomBytes } from 'node:crypto';
 import { validateDesktopAppRequest } from './appRequests.js';
 import { DesktopGoogleAuthController } from './googleAuth.js';
@@ -48,6 +48,7 @@ import {
   type DesktopHostConfig,
 } from './config.js';
 import type {
+  DesktopSetupActionRecord,
   DesktopBackgroundState,
   DesktopBootstrapEventStatus,
   DesktopBootstrapSnapshot,
@@ -108,6 +109,7 @@ import {
   buildDesktopSetupSnapshot,
   createEmptyDesktopSetupState,
   reconcileSetupAuthRecovery,
+  describeDesktopSetupHelper,
   runDesktopSetupHelper,
   settleSetupPathRefresh,
   shouldAutoRunSetupAudit,
@@ -122,8 +124,16 @@ import { runDesktopUpdateDialog } from './updateDialog.js';
 import { showDesktopUpdateMessageBox } from './updateDialogPresenter.js';
 import { isDesktopPrerequisiteHelper, resolveSelectedSetupAuditActions } from './setupAudit.js';
 import { DesktopPrerequisiteChecks } from './setupPrerequisites.js';
-import { pauseSelectedSetupHelpers, retryPendingSetupOperationReleases, targetsForSetupHelper, withSelectedSetupTargets } from './providerSelection.js';
+import { NPM_PROVIDERS, VC_RUNTIME_FREE_PROVIDERS, pauseSelectedSetupHelpers, retryPendingSetupOperationReleases, targetsForSetupHelper, withSelectedSetupTargets } from './providerSelection.js';
 import { DesktopProviderManager, type ProviderManagerRuntime } from './providerManager.js';
+import { SETUP_PROVIDER_ORDER } from '../../packages/provider-setup/setupFacts.js';
+import { createHash } from 'node:crypto';
+import { readFile as readSetupFile } from 'node:fs/promises';
+import { isValidOllamaModelName, isLoopbackEndpoint, listOllamaModels, pullOllamaModel } from './ollamaModels.js';
+import { SetupRunLog } from './setupRunLog.js';
+import { openSignInTerminal, signInCommands } from './setupTerminal.js';
+import { takeSetupWizardDraft, validSetupWizardState, writeSetupWizardDraft } from './setupWizardDraft.js';
+import { isSetupHostPage, scanEvents, selectionSaveEvent, type SetupEventInput } from './setupWizardEvents.js';
 import {
   buildDesktopCliInventoryFromRuntime,
   probeContradictsCachedBootstrapState,
@@ -1276,6 +1286,118 @@ const desktopPrerequisites = new DesktopPrerequisiteChecks(
   process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'macos' : 'linux',
 );
 let holdProviderOnboarding = false;
+
+// SPEC-136 FR-21, FR-22: the wizard's log. The page is replaced when setup moves to Platform.
+const setupRuns = new SetupRunLog({
+  redact: redactLogText,
+  onChange: (run) => sendMainWindowEvent('cats-host:setup-run', run),
+  record: (fields) => hostLogger?.record('setup-run', fields),
+});
+// A helper changing this computer or a model downloading: the window stays open (FR-17).
+let activeSetupChanges = 0;
+let setupWizardState: Record<string, unknown> | null = null;
+let setupWizardDraftRead = false;
+let ollamaPull: AbortController | null = null;
+const runningSetupChecks = new Set<AbortController>();
+// A check that hangs is reported rather than waited on (SPEC-136 non-functional requirements).
+const SETUP_CHECK_TIMEOUT_MS = 120_000;
+
+function recordSetupEvent(input: SetupEventInput): void {
+  if (!diagnosticsState) return;
+  diagnosticsState = appendHostEvent(diagnosticsState, createDesktopBootstrapEvent({
+    layer: 'host',
+    kind: input.kind,
+    attemptId: diagnosticsState.activeAttemptId,
+    summary: input.summary,
+    status: input.status,
+    context: input.context ?? null,
+    error: input.errorMessage ? toDesktopBootstrapError(input.errorMessage) : null,
+  }));
+}
+
+function setupRuntimeUrl(path: string): string {
+  return `${hostConfig ? hostConfig.runtimeBaseUrl : ''}${path}`;
+}
+
+function setupWizardDraftPath(): string {
+  return join(dirname(hostConfig!.paths.hostStatePath), 'setup-wizard-draft.json');
+}
+
+function readSetupWizardState(): Record<string, unknown> | null {
+  if (!setupWizardDraftRead && hostConfig) {
+    setupWizardDraftRead = true;
+    setupWizardState ??= takeSetupWizardDraft(setupWizardDraftPath());
+  }
+  return setupWizardState;
+}
+
+const setupScriptHashes = new Map<string, string>();
+async function hashSetupScript(path: string): Promise<string | null> {
+  const known = setupScriptHashes.get(path);
+  if (known) return known;
+  try {
+    const hash = createHash('sha256').update(await readSetupFile(path)).digest('hex');
+    setupScriptHashes.set(path, hash);
+    return hash;
+  } catch {
+    return null;
+  }
+}
+
+/** What the wizard's pages state about each script, read from the files that would really run. */
+async function readSetupWizardFacts(): Promise<Record<string, unknown>> {
+  const config = hostConfig!;
+  const { helpers } = await buildDesktopSetupSnapshot({
+    config, packaging: resolveCurrentPackagingPlan(config), state: setupState ?? createEmptyDesktopSetupState(),
+  });
+  const entries = await Promise.all(helpers.map(async (helper) => {
+    const { scriptPath, commands } = await describeDesktopSetupHelper({ config, helper, modes: ['check', 'apply'] });
+    return [helper.id, {
+      id: helper.id,
+      file: helper.packagedRelativePath.split('/').pop() ?? helper.id,
+      sha256: scriptPath ? await hashSetupScript(scriptPath) : null,
+      commands,
+      available: helper.available,
+      supported: helper.supported,
+      unsupportedReason: helper.unsupportedReason,
+      supportsCheckOnly: helper.supportsCheckOnly,
+      supportsApply: helper.supportsApply,
+      requiresElevation: helper.requiresElevation,
+    }] as const;
+  }));
+  let ollamaSuggestions: string[] = [];
+  try {
+    const catalog = await fetchJsonWithTimeout<{ models?: Array<{ id?: unknown }> }>(
+      setupRuntimeUrl('/providers/ollama/models'), { method: 'GET' }, RUNTIME_SETUP_STATE_TIMEOUT_MS,
+    );
+    ollamaSuggestions = (catalog.models ?? []).map((model) => model.id).filter(isValidOllamaModelName);
+  } catch { /* Only suggestions: a person can still type a name. */ }
+  return {
+    platform: process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'macos' : 'linux',
+    helpers: Object.fromEntries(entries),
+    signIn: signInCommands(),
+    order: SETUP_PROVIDER_ORDER,
+    npmProviders: [...NPM_PROVIDERS],
+    vcRuntimeFree: [...VC_RUNTIME_FREE_PROVIDERS],
+    ollamaSuggestions,
+    state: readSetupWizardState(),
+    setupComplete: hasPersistedSetupCompletion(),
+  };
+}
+
+async function resolveLocalOllamaEndpoint(): Promise<string> {
+  const state = await fetchJsonWithTimeout<{
+    selection?: { nativeSetupTargets?: Array<{ provider?: string; backend?: string; instance?: string }> };
+    connections?: Array<{ provider?: string; backend?: string; instance?: string; endpoint?: string }>;
+  }>(setupRuntimeUrl('/setup-state'), { method: 'GET' }, RUNTIME_SETUP_STATE_TIMEOUT_MS);
+  const local = (entry: { provider?: string; backend?: string; instance?: string }) =>
+    entry.provider === 'ollama' && entry.backend === 'local' && entry.instance === 'local';
+  if (!state.selection?.nativeSetupTargets?.some(local)) throw new Error('Choose Ollama on this computer first.');
+  const endpoint = state.connections?.find(local)?.endpoint || 'http://127.0.0.1:11434';
+  if (!isLoopbackEndpoint(endpoint)) throw new Error('Only an Ollama on this computer can be used here.');
+  return endpoint;
+}
+
 function getProviderManager(): DesktopProviderManager {
   if (!hostConfig) throw new Error('Desktop host is not initialized.');
   providerManager ??= new DesktopProviderManager({
@@ -1569,6 +1691,11 @@ function scheduleBackgroundSetupAudit(
   if (isDesktopBootstrapLoadingPhase(snapshot.phase) || backgroundSetupAuditPromise) {
     return;
   }
+  // During first run nothing runs until the owner asks (ADR-146 point 4). The wizard's own check
+  // takes this place, and later launches keep it.
+  if (!snapshot.app.setupCompleteAt && !persistedSetup?.setupCompleteAt && !persistedSetup?.productSetupCompleted) {
+    return;
+  }
   backgroundSetupAuditPromise = maybePrimeSetupAudit(snapshot, persistedSetup)
     .catch((error) => {
       reportHostError('Background setup audit failed', error);
@@ -1641,7 +1768,8 @@ async function retryCliInventoryScanInBackground(options: {
     let probe: RuntimeCliInventoryProbe | null = null;
     try {
       probe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
-        triggerScanIfMissing: true,
+        // A person mid first run has not asked for a scan yet (ADR-146 point 4).
+        triggerScanIfMissing: options.setupCompleted,
         forceRescan: attempt === 0 ? options.forceRescan : false,
         scanTimeoutMs: options.setupCompleted
           ? RUNTIME_SETUP_SCAN_TIMEOUT_MS
@@ -1942,6 +2070,8 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
       setupState = createEmptyDesktopSetupState();
       providerManager = null;
       holdProviderOnboarding = false;
+      // What the wizard remembered described the data that was just erased.
+      setupWizardState = null;
     }
 
     const attemptTimestamp = new Date();
@@ -2014,6 +2144,20 @@ async function runHostAction(actionId: DesktopHostActionId): Promise<DesktopBoot
   if (actionId === 'open_setup') {
     const snapshot = await refreshBootstrapSnapshot();
     if (!latestCliInventoryProbe?.selection || ['missing', 'invalid'].includes(latestCliInventoryProbe.selection.state)) return snapshot;
+    // Check before leaving: navigating to a dead Platform would lose the wizard's page (FR-26).
+    const run = setupRuns.start({ kind: 'service', label: 'Cats Platform', command: `GET ${hostConfig.appBaseUrl}/setup` });
+    try {
+      const reply = await fetchWithTimeout(`${hostConfig.appBaseUrl}/setup`, { method: 'GET' }, RUNTIME_SETUP_STATE_TIMEOUT_MS);
+      if (!reply.ok) throw new Error(`Cats Platform answered ${reply.status}.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setupRuns.finish(run, { status: 'failed', error: message });
+      recordSetupEvent({
+        kind: 'setup_open_failed', summary: 'Could not open Cats Platform setup.', status: 'unavailable', errorMessage: message,
+      });
+      throw new Error(message);
+    }
+    setupRuns.finish(run, { status: 'ready' });
     holdProviderOnboarding = false;
     await showMainWindow(`${hostConfig.appBaseUrl}/setup`);
     return snapshot;
@@ -2039,6 +2183,8 @@ async function runSetupAction(
     mode: DesktopSetupHelperMode;
     extraArguments?: string[];
     dryRun?: boolean;
+    timeoutMs?: number;
+    signal?: AbortSignal;
   },
   options: {
     publishMode?: 'always' | 'bootstrap-only';
@@ -2053,11 +2199,50 @@ async function runSetupAction(
   assertDesktopCandidateActionAllowed(hostConfig.candidateProfile, 'setup-helper');
 
   const packaging = resolveCurrentPackagingPlan(hostConfig);
-  const result = await desktopPrerequisites.run(action.helperId, () => withSelectedSetupTargets({
-    baseUrl: hostConfig!.runtimeBaseUrl, helperId: action.helperId,
-    expectedRevision: options.expectedRevision,
-    run: () => runDesktopSetupHelper({ config: hostConfig!, packaging, action }),
-  }));
+  const changes = action.mode !== 'check' && !action.dryRun;
+  const helperFacts = (await buildDesktopSetupSnapshot({
+    config: hostConfig, packaging, state: setupState ?? createEmptyDesktopSetupState(),
+  })).helpers.find((helper) => helper.id === action.helperId);
+  const described = helperFacts
+    ? await describeDesktopSetupHelper({ config: hostConfig, helper: helperFacts, modes: [action.mode] })
+    : null;
+  const runId = setupRuns.start({
+    kind: changes ? 'change' : 'check',
+    label: helperFacts?.packagedRelativePath.split('/').pop() ?? action.helperId,
+    command: described?.commands[action.mode] ?? action.helperId,
+  });
+  if (changes) activeSetupChanges += 1;
+  let result: DesktopSetupActionRecord;
+  try {
+    result = await desktopPrerequisites.run(action.helperId, () => withSelectedSetupTargets({
+      baseUrl: hostConfig!.runtimeBaseUrl, helperId: action.helperId,
+      expectedRevision: options.expectedRevision,
+      run: () => runDesktopSetupHelper({ config: hostConfig!, packaging, action }),
+    }));
+  } catch (error) {
+    // It never reached the helper: Runtime refused it, or the selection changed.
+    const message = error instanceof Error ? error.message : String(error);
+    setupRuns.finish(runId, { status: 'failed', error: message });
+    recordSetupEvent({
+      kind: 'helper_run_completed',
+      summary: `${action.helperId} did not start.`,
+      status: 'unavailable',
+      context: { helperId: action.helperId, mode: action.mode },
+      errorMessage: message,
+    });
+    throw error;
+  } finally {
+    if (changes) activeSetupChanges -= 1;
+  }
+  setupRuns.finish(runId, {
+    status: result.status,
+    version: result.detectedVersion ?? null,
+    planned: result.plannedActions,
+    applied: result.appliedChanges,
+    warnings: result.warnings,
+    manual: result.manualSteps,
+    error: result.error,
+  });
   packagingState = packaging;
   setupState = {
     lastAction: result,
@@ -2415,7 +2600,12 @@ async function main(): Promise<void> {
     callback(shouldAllowDesktopRendererPermission(permission));
   });
   latestDesktopStartupPreferences = await readDesktopStartupPreferences(hostConfig.paths.appStatePath);
-  if (!candidate) await syncDesktopStartupPreferences(app, latestDesktopStartupPreferences);
+  // A first run has not been asked yet: setup's final button decides (SPEC-136 FR-31). Someone who
+  // quits on the first page must not find Cats starting at their next sign-in.
+  const setupFinishedBefore = await readPersistedSetupCompletionState(hostConfig.paths.appStatePath);
+  if (!candidate && (setupFinishedBefore.setupCompleteAt || setupFinishedBefore.productSetupCompleted)) {
+    await syncDesktopStartupPreferences(app, latestDesktopStartupPreferences);
+  }
   startupLaunchContext = resolveDesktopStartupLaunchContext({
     argv: process.argv,
     wasOpenedAtLogin: !candidate && process.platform === 'darwin'
@@ -2636,15 +2826,198 @@ async function main(): Promise<void> {
   ipcMain.handle('cats-host:provider-setup-apply', async (event, payload: unknown) => {
     assertMainWindowIpcSender(event, mainWindow, 'Provider setup is only available to the main Cats window.');
     await retryPendingSetupOperationReleases();
-    return await getProviderManager().apply(payload);
+    const targets = (payload as { targets?: unknown } | null)?.targets;
+    const named = Array.isArray(targets) ? targets as Array<{ provider?: unknown }> : [];
+    const run = setupRuns.start({
+      kind: 'change', label: 'Cats Runtime',
+      command: `PUT ${setupRuntimeUrl('/setup-selection')} ${JSON.stringify({ targets: named.map((target) => target.provider) })}`,
+    });
+    try {
+      const snapshot = await getProviderManager().apply(payload);
+      setupRuns.finish(run, { status: 'ready', applied: ['saved your selection'] });
+      recordSetupEvent(selectionSaveEvent(named.length));
+      return snapshot;
+    } catch (error) {
+      setupRuns.finish(run, { status: 'failed', error: error instanceof Error ? error.message : String(error) });
+      recordSetupEvent(selectionSaveEvent(named.length, error));
+      throw error;
+    }
   });
   ipcMain.handle('cats-host:provider-setup-run', async (event, payload: unknown) => {
     assertMainWindowIpcSender(event, mainWindow, 'Provider setup is only available to the main Cats window.');
-    if ((payload as { action?: unknown } | null)?.action !== 'detect') {
+    const action = (payload as { action?: unknown } | null)?.action;
+    if (action !== 'detect') {
       assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'provider-install');
     }
     await retryPendingSetupOperationReleases();
-    return await getProviderManager().run(payload);
+    if (action !== 'detect') return await getProviderManager().run(payload);
+    const targets = (payload as { targets?: Array<{ provider: string; backend: string; instance: string }> }).targets ?? [];
+    const run = setupRuns.start({
+      kind: 'check', label: 'Cats Runtime',
+      command: `POST ${setupRuntimeUrl('/setup-scan')} ${JSON.stringify({ targets: targets.map((target) => target.provider) })}`,
+    });
+    try {
+      const snapshot = await getProviderManager().run(payload);
+      setupRuns.finish(run, { status: 'ready' });
+      for (const entry of scanEvents(targets, snapshot.runtime.observations)) recordSetupEvent(entry);
+      return snapshot;
+    } catch (error) {
+      setupRuns.finish(run, { status: 'failed', error: error instanceof Error ? error.message : String(error) });
+      for (const entry of scanEvents(targets, undefined, error)) recordSetupEvent(entry);
+      throw error;
+    }
+  });
+  const assertSetupWizardSender = (event: import('electron').IpcMainInvokeEvent) => {
+    assertMainWindowIpcSender(event, mainWindow, 'First-run setup is only available to the main Cats window.');
+    if (event.senderFrame !== mainWindow!.webContents.mainFrame) {
+      throw new Error('First-run setup requires the Desktop main frame.');
+    }
+  };
+  const assertSetupHostPage = (event: import('electron').IpcMainInvokeEvent) => {
+    assertSetupWizardSender(event);
+    if (!isSetupHostPage(event.senderFrame?.url)) throw new Error('This is only available to the first-run page.');
+  };
+  const platformSetupRuns = new Set<number>();
+  ipcMain.handle('cats-host:setup-wizard-facts', async (event) => {
+    assertSetupWizardSender(event);
+    return await readSetupWizardFacts();
+  });
+  ipcMain.handle('cats-host:setup-wizard-run-helper', async (event, payload: unknown) => {
+    assertSetupHostPage(event);
+    const helperId = (payload as { helperId?: unknown } | null)?.helperId;
+    const mode = (payload as { mode?: unknown } | null)?.mode;
+    if (typeof helperId !== 'string' || (mode !== 'check' && mode !== 'apply')) {
+      throw new Error('Invalid setup helper request.');
+    }
+    if (mode === 'apply') assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'setup-helper');
+    const checks = mode === 'check' ? new AbortController() : null;
+    if (checks) runningSetupChecks.add(checks);
+    try {
+      const snapshot = await runSetupAction({
+        helperId, mode, ...(checks ? { timeoutMs: SETUP_CHECK_TIMEOUT_MS, signal: checks.signal } : {}),
+      }, { refreshBootstrap: false, refreshInventory: false, publishMode: 'bootstrap-only' });
+      return snapshot.state.lastAction;
+    } finally {
+      if (checks) runningSetupChecks.delete(checks);
+    }
+  });
+  ipcMain.handle('cats-host:setup-wizard-cancel-checks', (event) => {
+    assertSetupHostPage(event);
+    for (const checks of runningSetupChecks) checks.abort();
+  });
+  ipcMain.handle('cats-host:setup-runs', (event) => {
+    assertSetupWizardSender(event);
+    return setupRuns.list();
+  });
+  // Platform's final request joins the log. The password is the page's to leave out, and the host
+  // fixes the kind and label, because those reach host.log, which holds fixed words only (ADR-145).
+  // A page can finish only a run it started, never a helper's.
+  ipcMain.handle('cats-host:setup-run-start', (event, payload: unknown) => {
+    assertSetupWizardSender(event);
+    const command = (payload as { command?: unknown } | null)?.command;
+    if (typeof command !== 'string' || !command.startsWith('POST /api/platform/setup/complete')) {
+      throw new Error('Invalid setup run.');
+    }
+    const id = setupRuns.start({ kind: 'change', label: 'Cats Platform', command });
+    platformSetupRuns.add(id);
+    return id;
+  });
+  ipcMain.handle('cats-host:setup-run-finish', (event, id: unknown, result: unknown) => {
+    assertSetupWizardSender(event);
+    if (typeof id !== 'number' || !platformSetupRuns.delete(id)) throw new Error('Invalid setup run.');
+    const { status, error, applied } = (result ?? {}) as { status?: unknown; error?: unknown; applied?: unknown };
+    setupRuns.finish(id, {
+      status: status === 'ready' ? 'ready' : 'failed',
+      ...(typeof error === 'string' ? { error } : {}),
+      ...(Array.isArray(applied) ? { applied: applied.filter((item): item is string => typeof item === 'string') } : {}),
+    });
+  });
+  ipcMain.handle('cats-host:setup-open-terminal', async (event, provider: unknown) => {
+    assertSetupHostPage(event);
+    const name = typeof provider === 'string' ? provider : '';
+    const command = signInCommands()[name] ?? null;
+    if (!command) return { opened: false, command: null };
+    const run = setupRuns.start({ kind: 'terminal', label: name, command });
+    const result = await openSignInTerminal(name);
+    if (result.opened) {
+      setupRuns.finish(run, { status: 'ready' });
+      recordSetupEvent({ kind: 'terminal_opened', summary: `Opened a terminal for ${name}.`, status: 'ok', context: { provider: name } });
+    } else {
+      const message = 'No terminal could be opened.';
+      setupRuns.finish(run, { status: 'failed', error: message });
+      recordSetupEvent({
+        kind: 'terminal_open_failed', summary: `Could not open a terminal for ${name}.`, status: 'unavailable',
+        context: { provider: name }, errorMessage: message,
+      });
+    }
+    return result;
+  });
+  ipcMain.handle('cats-host:setup-ollama-models', async (event) => {
+    assertSetupHostPage(event);
+    return await listOllamaModels(await resolveLocalOllamaEndpoint());
+  });
+  ipcMain.handle('cats-host:setup-ollama-pull', async (event, name: unknown) => {
+    assertSetupHostPage(event);
+    if (!isValidOllamaModelName(name)) throw new Error('Enter a model name, such as qwen2.5-coder:7b.');
+    if (ollamaPull) throw new Error('A model is already downloading.');
+    assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'setup-helper');
+    const endpoint = await resolveLocalOllamaEndpoint();
+    const run = setupRuns.start({
+      kind: 'change', label: 'Ollama API', command: `POST ${endpoint}/api/pull ${JSON.stringify({ model: name })}`,
+    });
+    ollamaPull = new AbortController();
+    activeSetupChanges += 1;
+    try {
+      await pullOllamaModel(endpoint, name, {
+        signal: ollamaPull.signal,
+        onProgress: (progress) => sendMainWindowEvent('cats-host:setup-ollama-progress', progress),
+      });
+      setupRuns.finish(run, { status: 'ready', applied: [`pull ${name}`] });
+      recordSetupEvent({ kind: 'model_pulled', summary: `Downloaded ${name}.`, status: 'ok', context: { model: name } });
+    } catch (error) {
+      const stopped = ollamaPull.signal.aborted;
+      const message = stopped ? 'You stopped this download.' : error instanceof Error ? error.message : String(error);
+      setupRuns.finish(run, { status: stopped ? 'stopped' : 'failed', error: message });
+      if (stopped) return { stopped: true };
+      recordSetupEvent({
+        kind: 'model_pull_failed', summary: `Could not download ${name}.`, status: 'unavailable',
+        context: { model: name }, errorMessage: message,
+      });
+      throw new Error(message);
+    } finally {
+      ollamaPull = null;
+      activeSetupChanges -= 1;
+    }
+    return { stopped: false };
+  });
+  ipcMain.handle('cats-host:setup-ollama-cancel', (event) => {
+    assertSetupHostPage(event);
+    ollamaPull?.abort();
+  });
+  ipcMain.handle('cats-host:setup-wizard-state-set', (event, state: unknown) => {
+    assertSetupHostPage(event);
+    const valid = validSetupWizardState(state);
+    if (!valid) throw new Error('Invalid setup wizard state.');
+    setupWizardState = valid;
+  });
+  // From Platform's pages back to the host's: the page reloads and reads its state from here.
+  ipcMain.handle('cats-host:setup-wizard-return', async (event, page: unknown) => {
+    assertSetupWizardSender(event);
+    if (page !== 1 && page !== 2 && page !== 3) throw new Error('Invalid setup page.');
+    setupWizardState = { ...(setupWizardState ?? {}), page };
+    holdProviderOnboarding = true;
+    await ensureBootstrapPageVisible(true);
+  });
+  // Installed but not found yet: restart, keeping the wizard's page and ticks (FR-39).
+  ipcMain.handle('cats-host:setup-wizard-relaunch', (event, state: unknown) => {
+    assertSetupHostPage(event);
+    const valid = validSetupWizardState(state);
+    if (valid && hostConfig) {
+      try { writeSetupWizardDraft(setupWizardDraftPath(), valid); }
+      catch (error) { reportHostError('Could not keep the setup wizard state', error); }
+    }
+    relaunchDesktopHost();
+    app.quit();
   });
   ipcMain.handle('cats-host:run-setup-helper', async (event, payload: unknown) => {
     assertMainWindowIpcSender(event, mainWindow, 'Setup helpers are only available to the main Cats window.');
@@ -2868,6 +3241,11 @@ async function main(): Promise<void> {
     }
   });
   window.on('close', (event) => {
+    // A script is changing this computer or a model is downloading (SPEC-136 FR-17).
+    if (!shuttingDown && !exitingAfterShutdown && activeSetupChanges > 0) {
+      event.preventDefault();
+      return;
+    }
     // Two separate reasons to stop hiding to tray, and both are needed.
     //
     // shuttingDown: once shutdownHost has flipped it the user has explicitly

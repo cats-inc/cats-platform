@@ -99,6 +99,27 @@ function reportSyncFailure(scope: string, error: unknown): void {
   process.stderr.write(`[cats-platform-setup] ${scope}: ${message}\n`);
 }
 
+/**
+ * A refusal before setup starts (SPEC-136 FR-37). It records the code alone: never a field the
+ * person typed, because refusals are exactly where a mistyped secret can end up.
+ */
+async function rejectSetup(
+  context: PlatformSetupContext,
+  status: number,
+  error: { code: string; message?: string; reason?: string },
+  attemptId: string | null = null,
+): Promise<void> {
+  await recordProductEvent(context, {
+    now: context.dependencies.now?.() ?? new Date(),
+    attemptId,
+    kind: 'setup_rejected',
+    status: 'unavailable',
+    summary: `Setup request refused: ${error.code}.`,
+    context: { code: error.code, ...(error.reason ? { reason: error.reason } : {}) },
+  });
+  sendJson(context.response, status, { error });
+}
+
 async function recordProductEvent(
   context: PlatformSetupContext,
   input: Parameters<typeof appendPlatformOnboardingEvent>[1],
@@ -122,9 +143,7 @@ async function handlePlatformSetupComplete(
     body = await readJsonBody<LegacyPlatformSetupCompleteInput>(context.request);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Invalid request body';
-    sendJson(context.response, 400, {
-      error: { code: 'bad_request', message },
-    });
+    await rejectSetup(context, 400, { code: 'bad_request', message });
     return;
   }
 
@@ -132,18 +151,16 @@ async function handlePlatformSetupComplete(
     Object.prototype.hasOwnProperty.call(body, 'guideCatName')
     || Object.prototype.hasOwnProperty.call(body, 'bossCatName')
   ) {
-    sendJson(context.response, 400, {
-      error: {
-        code: 'bad_request',
-        message: 'Unexpected name field. Guide Cat name is system-managed.',
-      },
-    });
+    await rejectSetup(context, 400, {
+      code: 'bad_request',
+      message: 'Unexpected name field. Guide Cat name is system-managed.',
+    }, body.attemptId ?? null);
     return;
   }
 
   if (body.adminMethod !== undefined && body.adminMethod !== 'local_password'
     && body.adminMethod !== 'google') {
-    sendJson(context.response, 400, { error: { code: 'invalid_admin_credentials' } });
+    await rejectSetup(context, 400, { code: 'invalid_admin_credentials' }, body.attemptId ?? null);
     return;
   }
   let adminCredential: SetupAdminCredential;
@@ -152,7 +169,7 @@ async function handlePlatformSetupComplete(
     const contextId = context.request.headers[PLATFORM_DESKTOP_AUTH_CONTEXT_HEADER];
     if (typeof proofToken !== 'string' || typeof contextId !== 'string' || !body.attemptId
       || body.adminPassword !== undefined || body.adminIdentifier !== undefined) {
-      sendJson(context.response, 400, { error: { code: 'invalid_admin_credentials' } });
+      await rejectSetup(context, 400, { code: 'invalid_admin_credentials' }, body.attemptId ?? null);
       return;
     }
     adminCredential = { provider: 'google', proofToken, contextId, attemptId: body.attemptId };
@@ -164,13 +181,11 @@ async function handlePlatformSetupComplete(
       password: body.adminPassword,
     });
     if (!credentialValidation.ok) {
-      sendJson(context.response, 400, {
-        error: {
-          code: 'invalid_admin_credentials',
-          reason: credentialValidation.reason,
-          message: describePlatformAdminCredentialRejection(credentialValidation.reason),
-        },
-      });
+      await rejectSetup(context, 400, {
+        code: 'invalid_admin_credentials',
+        reason: credentialValidation.reason,
+        message: describePlatformAdminCredentialRejection(credentialValidation.reason),
+      }, body.attemptId ?? null);
       return;
     }
     adminCredential = { provider: 'local_password', ...credentialValidation.credentials };
@@ -193,12 +208,10 @@ async function completePlatformSetupExclusively(
   const previousChatState = structuredClone(chatState);
 
   if (core.setupCompleteAt) {
-    sendJson(context.response, 409, {
-      error: {
-        code: 'already_complete',
-        message: 'Setup has already been completed',
-      },
-    });
+    await rejectSetup(context, 409, {
+      code: 'already_complete',
+      message: 'Setup has already been completed',
+    }, body.attemptId ?? null);
     return;
   }
 

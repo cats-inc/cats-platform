@@ -1,4 +1,7 @@
-import { mountProviderManager } from '../../packages/provider-setup/manager.js';
+import { mountSetupChrome } from '../../packages/provider-setup/setupChrome.js';
+import { setupRowFacts } from '../../packages/provider-setup/setupFacts.js';
+import { mountSetupWizard } from '../../packages/provider-setup/setupWizard.js';
+import { SETUP_CAT_HEAD, SETUP_WIZARD_CSS } from '../../packages/provider-setup/setupWizardStyles.js';
 
 export function buildDesktopBootstrapPage(): string {
   return `<!doctype html>
@@ -8,6 +11,7 @@ export function buildDesktopBootstrapPage(): string {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cats</title>
   <style>
+${SETUP_WIZARD_CSS}
     :root {
       color-scheme: light;
       --bg: #FAFAF7;
@@ -500,22 +504,29 @@ export function buildDesktopBootstrapPage(): string {
 </head>
 <body>
   <div id="app">
-    <div id="splash" class="app app-centered">
-      <section class="hero">
-        <h1 class="hero-title">Cats</h1>
-        <p id="splash-summary" class="hero-summary">
+    <div id="splash" class="cats-setup startup">
+      <div class="solo"><div class="solo-body"><div class="solo-card wide">
+        <div class="solo-cat" aria-hidden="true">${SETUP_CAT_HEAD}</div>
+        <h1 id="splash-title" tabindex="-1"></h1>
+        <p id="splash-summary" class="lead">
           <span id="splash-dot" class="dot dot-warn dot-pulse"></span>
           <span id="splash-text"></span>
         </p>
-      </section>
-      <p id="slow-hint" class="slow-hint hero-summary"></p>
-      <div id="error-area" class="error-area">
-        <p id="startup-error-copy" class="hero-summary"></p>
-        <div class="error-actions">
-          <button id="btn-retry" class="btn" type="button"></button>
-          <button id="btn-details" class="btn" type="button"></button>
+        <ul id="splash-services" class="rows"></ul>
+        <p id="slow-hint" class="slow-hint wait-hint" role="status"></p>
+        <div id="slow-actions" class="solo-actions hidden">
+          <button id="btn-slow-retry" class="btn" type="button"></button>
+          <button id="btn-slow-details" class="btn" type="button"></button>
         </div>
-      </div>
+        <div id="error-area" class="error-area">
+          <p id="startup-error-copy" class="lead" role="alert"></p>
+          <div class="solo-actions">
+            <button id="btn-retry" class="btn primary" type="button"></button>
+            <button id="btn-details" class="btn" type="button"></button>
+            <button id="btn-quit" class="btn" type="button"></button>
+          </div>
+        </div>
+      </div></div></div>
     </div>
     <div id="onboarding" class="hidden"></div>
     <div id="recovery" class="app hidden"></div>
@@ -641,6 +652,24 @@ export function buildDesktopBootstrapPage(): string {
         'issue.setup.manualFollowThrough.title': 'Packaged setup still has manual follow-through',
         'issue.runtimeDiagnosticsPending.title': 'Runtime diagnostics are still loading',
         'issue.runtimeDiagnosticsPending.detail': 'The desktop host has not finished its prerequisite scan yet.',
+        'startup.title': 'Starting Cats',
+        'startup.lead': 'Getting two background services ready. This usually takes less than a minute, and it changes nothing on your computer.',
+        'startup.failedTitle': '{service} did not start',
+        'startup.failedTitleGeneric': 'Cats did not finish starting',
+        'startup.runtimeNote': 'Runs your AI tools',
+        'startup.platformNote': 'The app you are about to see',
+        'startup.running': 'Running',
+        'startup.starting': 'Starting',
+        'startup.waiting': 'Waiting',
+        'startup.notStarted': 'Did not start',
+        'startup.startAgain': 'Start again',
+        'startup.tryAgain': 'Try again',
+        'startup.noBridgeTitle': 'This window is missing part of Cats',
+        'startup.noBridgeBody': 'The connection between this page and the Cats app did not load, so Cats cannot continue. Nothing on this computer changed. Reload this window first; if it happens again, reinstall Cats.',
+        'startup.reload': 'Reload',
+        'diagnostics.runtimeDown': 'Cats Runtime is not running, so this page cannot open.',
+        'diagnostics.copy': 'Copy details',
+        'diagnostics.copied': 'Copied',
         'loading.almostReady': 'Almost ready\u2026',
         'loading.ready': 'Ready.',
         'loading.retrying': 'Trying again\u2026',
@@ -757,6 +786,17 @@ export function buildDesktopBootstrapPage(): string {
         'eventKind.setupOpened': 'Setup opened',
         'eventKind.setupPayloadFallback': 'Setup payload fallback used',
         'eventKind.setupStarted': 'Setup started',
+        'eventKind.selectionSaved': 'Selection saved',
+        'eventKind.selectionSaveFailed': 'Saving the selection failed',
+        'eventKind.scanFailed': 'Checking the tools failed',
+        'eventKind.connectionTested': 'Connection tested',
+        'eventKind.connectionTestFailed': 'Connection test failed',
+        'eventKind.modelPulled': 'Model downloaded',
+        'eventKind.modelPullFailed': 'Model download failed',
+        'eventKind.terminalOpened': 'Terminal opened',
+        'eventKind.terminalOpenFailed': 'Could not open a terminal',
+        'eventKind.setupOpenFailed': 'Could not open setup',
+        'eventKind.setupRejected': 'Setup request refused',
         'eventKind.setupStatePersisted': 'Setup state persisted',
         'eventLayer.host': 'host',
         'eventLayer.product': 'product',
@@ -907,6 +947,24 @@ export function buildDesktopBootstrapPage(): string {
         'issue.setup.manualFollowThrough.title': '套裝設定仍有手動後續步驟',
         'issue.runtimeDiagnosticsPending.title': '執行階段診斷仍在載入',
         'issue.runtimeDiagnosticsPending.detail': '桌面主機尚未完成先決條件掃描。',
+        'startup.title': '正在啟動 Cats',
+        'startup.lead': '正在準備兩個背景服務，通常不用一分鐘，不會變更你的電腦。',
+        'startup.failedTitle': '{service} 沒有啟動',
+        'startup.failedTitleGeneric': 'Cats 沒有啟動完成',
+        'startup.runtimeNote': '負責執行 AI 工具',
+        'startup.platformNote': '接下來會看到的主程式',
+        'startup.running': '已啟動',
+        'startup.starting': '啟動中',
+        'startup.waiting': '等待中',
+        'startup.notStarted': '沒有啟動',
+        'startup.startAgain': '重新啟動',
+        'startup.tryAgain': '再試一次',
+        'startup.noBridgeTitle': '這個視窗少了 Cats 的一部分',
+        'startup.noBridgeBody': '這個頁面和 Cats 應用程式之間的連線沒有載入，所以無法繼續。這台電腦沒有任何變更。請先重新載入這個視窗；如果還是一樣，請重新安裝 Cats。',
+        'startup.reload': '重新載入',
+        'diagnostics.runtimeDown': 'Cats Runtime 沒有執行，這個頁面打不開。',
+        'diagnostics.copy': '複製診斷資訊',
+        'diagnostics.copied': '已複製',
         'loading.almostReady': '幾乎準備好了…',
         'loading.ready': '已就緒。',
         'loading.retrying': '正在重試…',
@@ -1023,6 +1081,17 @@ export function buildDesktopBootstrapPage(): string {
         'eventKind.setupOpened': '設定已開啟',
         'eventKind.setupPayloadFallback': '已使用設定酬載備援',
         'eventKind.setupStarted': '設定已開始',
+        'eventKind.selectionSaved': '選擇已儲存',
+        'eventKind.selectionSaveFailed': '儲存選擇失敗',
+        'eventKind.scanFailed': '檢查工具失敗',
+        'eventKind.connectionTested': '已測試連線',
+        'eventKind.connectionTestFailed': '連線測試失敗',
+        'eventKind.modelPulled': '模型已下載',
+        'eventKind.modelPullFailed': '模型下載失敗',
+        'eventKind.terminalOpened': '已開啟終端機',
+        'eventKind.terminalOpenFailed': '開啟終端機失敗',
+        'eventKind.setupOpenFailed': '開啟設定失敗',
+        'eventKind.setupRejected': '設定請求被拒絕',
         'eventKind.setupStatePersisted': '設定狀態已保存',
         'eventLayer.host': '主機',
         'eventLayer.product': '產品',
@@ -1116,6 +1185,17 @@ export function buildDesktopBootstrapPage(): string {
       setup_opened: 'eventKind.setupOpened',
       setup_payload_fallback: 'eventKind.setupPayloadFallback',
       setup_started: 'eventKind.setupStarted',
+      selection_saved: 'eventKind.selectionSaved',
+      selection_save_failed: 'eventKind.selectionSaveFailed',
+      scan_failed: 'eventKind.scanFailed',
+      connection_tested: 'eventKind.connectionTested',
+      connection_test_failed: 'eventKind.connectionTestFailed',
+      model_pulled: 'eventKind.modelPulled',
+      model_pull_failed: 'eventKind.modelPullFailed',
+      terminal_opened: 'eventKind.terminalOpened',
+      terminal_open_failed: 'eventKind.terminalOpenFailed',
+      setup_open_failed: 'eventKind.setupOpenFailed',
+      setup_rejected: 'eventKind.setupRejected',
       setup_state_persisted: 'eventKind.setupStatePersisted'
     };
 
@@ -1612,6 +1692,8 @@ export function buildDesktopBootstrapPage(): string {
     }
 
     function getServiceDisplayName(name) {
+      if (name === 'cats-runtime') return 'Cats Runtime';
+      if (name === 'cats-platform') return 'Cats Platform';
       return name;
     }
 
@@ -2163,13 +2245,23 @@ export function buildDesktopBootstrapPage(): string {
     var onboardingEl = document.getElementById('onboarding');
     var btnRetry = document.getElementById('btn-retry');
     var btnDetails = document.getElementById('btn-details');
+    var btnQuit = document.getElementById('btn-quit');
     var slowHint = document.getElementById('slow-hint');
+    var slowActions = document.getElementById('slow-actions');
+    var btnSlowRetry = document.getElementById('btn-slow-retry');
+    var btnSlowDetails = document.getElementById('btn-slow-details');
+    var splashTitle = document.getElementById('splash-title');
+    var splashServices = document.getElementById('splash-services');
 
     function applyStaticCopy() {
       splashText.textContent = tx('loading.startingUp');
       startupErrorCopy.textContent = tx('fixed.startupError');
-      btnRetry.textContent = tx('action.retry');
+      splashTitle.textContent = tx('startup.title');
+      btnRetry.textContent = tx('startup.tryAgain');
       btnDetails.textContent = tx('action.showDetails');
+      btnQuit.textContent = tx('actionLabel.quitCats');
+      btnSlowRetry.textContent = tx('startup.startAgain');
+      btnSlowDetails.textContent = tx('action.showDetails');
     }
 
     function friendlyLoadingSummary(phase) {
@@ -2200,6 +2292,7 @@ export function buildDesktopBootstrapPage(): string {
       slowHintStep = 0;
       retryHintActive = false;
       hideSlowHint();
+      slowActions.classList.add('hidden');
     }
 
     function showRetryLoadingState() {
@@ -2216,8 +2309,43 @@ export function buildDesktopBootstrapPage(): string {
       showSlowHintMessage(retryHintMessage);
     }
 
+    var STARTUP_ICONS = {
+      ready: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5" fill="none" stroke="#207A53" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      failed: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="#B5342A" stroke-width="2" stroke-linecap="round"/></svg>',
+      waiting: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="#6B6560" stroke-width="1.5"/><path d="M8 4.5V8l2.2 1.6" fill="none" stroke="#6B6560" stroke-width="1.5" stroke-linecap="round"/></svg>'
+    };
+
+    /* Only what the host reports. A service it has not started says it is waiting. */
+    function renderStartupServices(snap) {
+      var services = Array.isArray(snap.services) ? snap.services : [];
+      splashServices.innerHTML = '';
+      services.forEach(function (service) {
+        var state = service.status === 'ready' ? 'ready'
+          : service.status === 'failed' ? 'failed'
+            : service.status === 'starting' ? 'starting' : 'waiting';
+        var glyph = el('span', { class: 'glyph' });
+        if (state === 'starting') glyph.append(el('span', { class: 'spinner' }));
+        else glyph.innerHTML = STARTUP_ICONS[state];
+        var isRuntime = /runtime/i.test(service.name);
+        splashServices.append(el('li', { class: 'row', 'data-row': 'service-' + service.name },
+          el('div', { class: 'row-top' }, glyph,
+            el('div', { class: 'row-text' },
+              el('strong', null, getServiceDisplayName(service.name)),
+              el('p', null, tx(isRuntime ? 'startup.runtimeNote' : 'startup.platformNote'))),
+            el('span', { class: 'row-state' + (state === 'ready' ? ' ok' : state === 'failed' ? ' bad' : '') },
+              tx(state === 'ready' ? 'startup.running' : state === 'failed' ? 'startup.notStarted'
+                : state === 'starting' ? 'startup.starting' : 'startup.waiting')))));
+      });
+    }
+
     function updateSplash(snap) {
       var isError = resolvePageMode(snap) === 'recovery';
+      var failedService = (snap.services || []).find(function (service) { return service.status === 'failed'; });
+      renderStartupServices(snap);
+      splashTitle.textContent = !isError ? tx('startup.title')
+        : failedService ? tx('startup.failedTitle', { service: getServiceDisplayName(failedService.name) })
+          : tx('startup.failedTitleGeneric');
+      startupErrorCopy.textContent = isError ? recoverySummary(snap) : tx('fixed.startupError');
       var isPending = snap.phase === 'starting_services' || snap.phase === 'checking_prerequisites';
       var isReady = snap.phase === 'ready_for_setup' || snap.phase === 'ready_for_chat';
 
@@ -2226,7 +2354,7 @@ export function buildDesktopBootstrapPage(): string {
       splashDot.style.display = isError ? 'none' : '';
 
       /* Update text */
-      splashText.textContent = isError ? '' : friendlyLoadingSummary(snap.phase);
+      splashText.textContent = isError ? '' : (isPending ? tx('startup.lead') : friendlyLoadingSummary(snap.phase));
 
       /* Dismiss or resume slow-launch hint state */
       if (isError || isReady) {
@@ -2321,6 +2449,38 @@ export function buildDesktopBootstrapPage(): string {
      *  Recovery — summary card + 3-slot actions
      * ================================================================ */
 
+    /* Everything on this page in plain text, for a report. */
+    function copyStartupDetails(snap) {
+      var lines = [recoveryTitle(snap), recoverySummary(snap), ''];
+      (snap.services || []).forEach(function (service) {
+        lines.push(getServiceDisplayName(service.name) + ': ' + service.status + (service.error ? ' (' + service.error + ')' : ''));
+        if (service.lastOutput) lines.push('output: ' + service.lastOutput);
+      });
+      (snap.issues || []).forEach(function (issue) { lines.push(issue.severity + ': ' + issue.title + ': ' + issue.detail); });
+      var aggregation = snap.diagnostics && snap.diagnostics.aggregation;
+      if (aggregation) {
+        lines.push('', 'attempt: ' + (aggregation.attemptId || ''));
+        (aggregation.chronology || []).slice(0, 8).forEach(function (event) {
+          lines.push(event.timestamp + ' ' + event.layer + ' ' + event.kind + ' ' + event.summary
+            + (event.error && event.error.message ? ' (' + event.error.message + ')' : ''));
+        });
+      }
+      var text = lines.join('\\n');
+      var fallback = function () {
+        var box = document.createElement('textarea');
+        box.value = text;
+        document.body.append(box);
+        box.select();
+        try { document.execCommand('copy'); } catch (error) { /* Nothing more to try. */ }
+        box.remove();
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).catch(fallback);
+      }
+      fallback();
+      return Promise.resolve();
+    }
+
     function RecoverySummaryCard(snap, bridge) {
       var actionButtons = (snap.actions || []).map(function (action) {
         return Btn(localizeActionLabel(action.label), {
@@ -2342,11 +2502,21 @@ export function buildDesktopBootstrapPage(): string {
         });
       });
 
+      var copyButton = Btn(tx('diagnostics.copy'), {
+        onclick: function () {
+          var self = this;
+          copyStartupDetails(snap).then(function () {
+            self.textContent = tx('diagnostics.copied');
+            window.setTimeout(function () { self.textContent = tx('diagnostics.copy'); }, 1400);
+          });
+        }
+      });
       return el('div', { class: 'recovery-summary anim' },
         el('h1', { class: 'hero-title' }, 'Cats'),
         el('h2', { class: 'recovery-title' }, recoveryTitle(snap)),
         el('p', { class: 'recovery-desc' }, recoverySummary(snap)),
-        el('div', { class: 'recovery-actions' }, actionButtons)
+        el('div', { class: 'recovery-actions' }, actionButtons),
+        el('div', { class: 'actions', style: 'margin-top:8px' }, copyButton)
       );
     }
 
@@ -2418,12 +2588,16 @@ export function buildDesktopBootstrapPage(): string {
 
     function DiagnosticsSection(snap) {
       var diagnostics = snap.diagnostics;
+      var runtimeService = (snap.services || []).find(function (service) { return /runtime/i.test(service.name); });
+      var runtimeDown = Boolean(runtimeService) && runtimeService.status !== 'ready';
       var actionRow = el('div', { class: 'actions', style: 'margin-top:12px' },
         Btn(tx('diagnostics.openAdvanced'), {
+          disabled: runtimeDown,
           onclick: function () {
             bridge.runAction('open_runtime_diagnostics');
           }
-        })
+        }),
+        runtimeDown ? el('span', { class: 'detail-meta' }, tx('diagnostics.runtimeDown')) : false
       );
 
       if (!diagnostics || !diagnostics.aggregation) {
@@ -2652,6 +2826,8 @@ export function buildDesktopBootstrapPage(): string {
         if (phase === 'ready_for_setup' || phase === 'ready_for_chat') return;
         showSlowHintMessage(slowHintMessages[slowHintStep]);
         slowHintStep += 1;
+        // The last hint: a person can act now, and still keep waiting.
+        if (slowHintStep >= slowHintMessages.length) slowActions.classList.remove('hidden');
         scheduleSlowHint();
       }, 20000);
     }
@@ -2691,14 +2867,14 @@ export function buildDesktopBootstrapPage(): string {
       // focus, progress and the footer must not jump during a long operation.
       if (providerManagerView) return;
       onboardingEl.innerHTML = '';
-      var providerRoot = el('section', {});
-      onboardingEl.append(el('section', { class: 'hero' }, el('h1', { class: 'hero-title' }, 'Cats')), providerRoot);
-      providerManagerView = (${mountProviderManager.toString()})(providerRoot, bridge, {
-        context: 'onboarding', locale: bootstrapLocale,
-        onContinue: async function () {
-          await bridge.runAction('open_setup');
-          onboardingActive = false;
-        }
+      var providerRoot = el('div', {});
+      onboardingEl.append(providerRoot);
+      providerManagerView = (${mountSetupWizard.toString()})(providerRoot, bridge, {
+        locale: bootstrapLocale,
+        css: ${JSON.stringify(SETUP_WIZARD_CSS)},
+        catHead: ${JSON.stringify(SETUP_CAT_HEAD)},
+        createChrome: ${mountSetupChrome.toString()},
+        facts: ${setupRowFacts.toString()}
       });
       window.addEventListener('pagehide', function () { providerManagerView.destroy(); });
     }
@@ -2886,11 +3062,25 @@ export function buildDesktopBootstrapPage(): string {
       if (!bridge) {
         splashDot.style.display = 'none';
         splashText.textContent = '';
+        splashTitle.textContent = tx('startup.noBridgeTitle');
+        startupErrorCopy.textContent = tx('startup.noBridgeBody');
         errorArea.classList.add('visible');
-        btnRetry.style.display = 'none';
+        btnRetry.textContent = tx('startup.reload');
+        btnRetry.addEventListener('click', function () { window.location.reload(); });
         btnDetails.style.display = 'none';
+        btnQuit.style.display = 'none';
         return;
       }
+
+      btnQuit.addEventListener('click', function () { bridge.runAction('quit'); });
+      btnSlowRetry.addEventListener('click', function () {
+        btnSlowRetry.disabled = true;
+        runRetryAction(btnSlowRetry, false);
+      });
+      btnSlowDetails.addEventListener('click', function () {
+        showRecoveryDetails = true;
+        doRender();
+      });
 
       btnRetry.addEventListener('click', function () {
         btnRetry.disabled = true;

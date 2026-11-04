@@ -5,6 +5,11 @@
 Accepted — 2026-10-31, from the owner's tool and platform decisions. The owner
 confirmed D1–D4 under [Decisions to confirm](#decisions-to-confirm) the same day.
 
+Amended — 2026-11-04 by [ADR-146](146-make-desktop-first-run-one-wizard-that-runs-only-what-the-owner-asks.md):
+during first run, nothing is checked until the owner asks, so point 1's background check
+starts only once setup is complete. Git is an optional row on the wizard's page 2. The rest
+stands.
+
 ## Context
 
 Cats Code runs `git` from PATH for worktrees and branches. When `git --version`

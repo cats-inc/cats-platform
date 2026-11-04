@@ -8,6 +8,12 @@
 | **Owner** | User |
 | **Reviewer** | Codex |
 
+## Amendment — 2026-11-04
+
+[SPEC-136](./SPEC-136-desktop-first-run-wizard.md) FR-34 to FR-37 add entry points: every
+setup failure on pages 1–5 reaches this page, and pages 1–5 return to where they were. The
+rules below govern it. The recovery row becomes Try again, Show details, Quit Cats.
+
 ## Summary
 
 The current desktop bootstrap recovery/details page is too close to an

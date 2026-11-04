@@ -196,6 +196,10 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   }
   assert.equal(packedPaths.has('packages/provider-setup/manager.js'), true);
   assert.equal(packedPaths.has('packages/provider-setup/manager.d.ts'), true);
+  for (const name of ['setupWizard', 'setupChrome', 'setupFacts', 'setupWizardStyles']) {
+    assert.equal(packedPaths.has(`packages/provider-setup/${name}.js`), true, name);
+    assert.equal(packedPaths.has(`packages/provider-setup/${name}.d.ts`), true, name);
+  }
   assert.equal(packedPaths.has('config/catlas-knowledge.json'), true);
   assert.equal(packedPaths.has('config/orchestrator-knowledge.json'), true);
   assert.equal(packedPaths.has('scripts/linux/install-node.sh'), true);

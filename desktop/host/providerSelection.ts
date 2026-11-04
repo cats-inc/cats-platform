@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { isDesktopPrerequisiteHelper } from './setupAudit.js';
+import { isDesktopHostOnlyHelper } from './setupAudit.js';
 
 /** The connected Runtime owns both selection and operation admission. */
 export interface SelectedProviderTarget {
@@ -34,7 +34,7 @@ export const NPM_PROVIDERS = new Set([
 // Windows 11 with no redistributable, and none imports vcruntime140 or msvcp140
 // (Cats Bot PLAN-010 Phase 3, 2026-10-31). Cursor's crepectl, Kiro CLI and Goose
 // import it; providers not checked keep the step.
-const VC_RUNTIME_FREE_PROVIDERS = new Set(['codex', 'claude', 'grok', 'antigravity', 'muse', 'devin', 'junie']);
+export const VC_RUNTIME_FREE_PROVIDERS = new Set(['codex', 'claude', 'grok', 'antigravity', 'muse', 'devin', 'junie']);
 
 export function nativeSetupTarget(provider: string): SelectedProviderTarget {
   if (provider === 'ollama') return { provider, backend: 'local', instance: 'local' };
@@ -97,7 +97,7 @@ async function runSelectedSetupOperation<T>(options: SelectedSetupOperation<T>):
   // Node/npm/PATH, GitHub CLI and Git prepare the Desktop host, including before a
   // Runtime selection exists. The allowlist is exact; provider helpers still
   // require their saved target and revision-bound operation admission below.
-  if (isDesktopPrerequisiteHelper(options.helperId)) return options.run();
+  if (isDesktopHostOnlyHelper(options.helperId)) return options.run();
   const request = options.fetch ?? fetch;
   const base = options.baseUrl.replace(/\/+$/u, '');
   await retryPendingSetupOperationReleases();

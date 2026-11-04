@@ -69,7 +69,7 @@ function DesktopProviders({ onFeedback }: { onFeedback: (message: string) => voi
     const bridge = resolveDesktopHostBridge();
     if (!root.current || !bridge?.getProviderSetup || !bridge.applyProviderSetup || !bridge.runProviderSetup) return;
     const view = mountProviderManager(root.current, bridge as ProviderManagerBridge, {
-      context: 'settings', locale, onFeedback,
+      locale, onFeedback,
     });
     return () => view.destroy();
   }, [locale, onFeedback]);

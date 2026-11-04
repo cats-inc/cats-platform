@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
+import { mountProviderManager } from '../packages/provider-setup/manager.js';
 import { buildDesktopBootstrapPage } from '../build/desktop/bootstrapPage.js';
 
 const codex = { provider: 'codex', backend: 'cli', instance: 'native' };
@@ -42,21 +43,27 @@ async function page(t, { observations = [], selected = [codex, ollama], recovery
   t.after(() => dom.window.close());
   await settle();
   const root = dom.window.document;
+  if (!recovery) {
+    // The manager now serves Settings alone; the first-run wizard has its own tests.
+    const host = dom.window.document.createElement('main');
+    dom.window.document.body.replaceChildren(host);
+    const view = mountProviderManager(host, dom.window.catsDesktopHost, {});
+    t.after(() => view.destroy());
+    await settle();
+  }
   return { root, state, actions, oldActions, helperActions, bridge: dom.window.catsDesktopHost,
     row: (id) => root.querySelector(`[data-provider="${id}"]`),
     button: (id, action) => root.querySelector(`[data-provider="${id}"] [data-action="${action}"]`) };
 }
 
-test('onboarding distinguishes selected-but-unchecked providers from providers outside the saved scope', async (t) => {
+test('Settings distinguishes selected-but-unchecked providers from providers outside the saved scope', async (t) => {
   const p = await page(t);
   assert.match(p.row('codex').textContent, /Not detected/);
   assert.equal(p.button('codex', 'detect').disabled, false);
   assert.equal(p.button('codex', 'install').disabled, false);
-  assert.ok(p.root.querySelector('[data-prerequisite="node"].cli-card'));
-  p.root.querySelector('[data-action="show-more"]').click();
+  assert.ok(p.root.querySelector('[data-prerequisite="node"]'));
   assert.match(p.row('muse').textContent, /Not selected/);
   assert.equal(p.button('muse', 'install'), null);
-  assert.ok(p.row('muse').classList.contains('cli-card'));
 });
 
 const recoveryHelpers = ['windows-node-host-installer', 'windows-ollama-local-model-installer', 'windows-codex-native-installer']

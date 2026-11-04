@@ -72,7 +72,6 @@ export interface ProviderManagerBridge {
     targets: ProviderTarget[]; expectedRevision: string }): Promise<ProviderManagerSnapshot>;
 }
 export function mountProviderManager(root: HTMLElement, bridge: ProviderManagerBridge, options?: {
-  context?: 'onboarding' | 'settings';
   locale?: string;
   onContinue?: () => void | Promise<void>;
   onFeedback?: (message: string) => void;

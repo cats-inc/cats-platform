@@ -84,6 +84,8 @@ export interface ProviderModelFieldsProps extends ProviderModelFieldsReads {
   modelSelection?: ProviderModelSelection | null;
   onTargetChange: (target: ProviderTargetSelection) => void;
   onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
+  /** The surface around it chooses the provider, as first-run setup's tool list does. */
+  hideProviderField?: boolean;
 }
 
 export function ProviderModelFields({
@@ -96,6 +98,7 @@ export function ProviderModelFields({
   fetchProviderModels = defaultFetchProviderModels,
   fetchAdvancedProviderModels = defaultFetchAdvancedProviderModels,
   onProviderRegistryChange,
+  hideProviderField = false,
 }: ProviderModelFieldsProps) {
   const { t } = useI18n();
 
@@ -223,7 +226,7 @@ export function ProviderModelFields({
 
   return (
     <>
-      <label className="fieldLabel">
+      {hideProviderField ? null : <label className="fieldLabel">
         <span className="fieldLabelInline">
           <span>{t(messageKeys.sharedProviderModelFieldProviderLabel)}</span>
           {providersLoading ? (
@@ -253,7 +256,7 @@ export function ProviderModelFields({
             </>
           )}
         </select>
-      </label>
+      </label>}
       {showInstanceField ? (
         <label className="fieldLabel">
           <span>{t(messageKeys.sharedProviderModelFieldProviderInstanceLabel)}</span>
@@ -412,7 +415,7 @@ function CatalogBasisInfo({ basis }: { basis: ProviderCatalogBasis }) {
   );
 }
 
-function ProviderPickerLoading({ label }: { label: string }) {
+export function ProviderPickerLoading({ label }: { label: string }) {
   return (
     <span className="providerPickerLoading" role="status" aria-label={label}>
       <span className="providerPickerSpinner" aria-hidden="true" />

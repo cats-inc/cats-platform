@@ -5,6 +5,7 @@ import path from 'node:path';
 import test, { type TestContext } from 'node:test';
 
 import { loadConfig } from '../src/config.ts';
+import { readPlatformOnboardingHistoryFile } from '../src/shared/platformOnboardingHistory.ts';
 import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { createServer } from '../src/app/server/index.ts';
 import {
@@ -475,6 +476,31 @@ test('platform setup rejects partial first-admin credentials before completion',
   assert.equal(response.payload?.error?.reason, 'password_required');
   assert.equal((await fixture.authStore.readState()).accounts.length, 0);
   assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
+});
+
+test('a refused setup leaves an event with the code and nothing that was typed (SPEC-136 FR-37)', async (t) => {
+  const fixture = await createSetupFixture(t);
+  const response = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      attemptId: 'refused-attempt',
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'tiny7',
+    },
+  });
+  assert.equal(response.status, 400);
+  const history = await readPlatformOnboardingHistoryFile(fixture.chatStatePath);
+  const refused = history.events.find((event) => event.kind === 'setup_rejected');
+  assert.ok(refused, JSON.stringify(history.events.map((event) => event.kind)));
+  assert.equal(refused.context?.code, 'invalid_admin_credentials');
+  assert.equal(refused.attemptId, 'refused-attempt');
+  const stored = JSON.stringify(history);
+  assert.doesNotMatch(stored, /tiny7|owner@example.test/u);
+  assert.equal(history.events.some((event) => event.kind === 'setup_started'), false);
 });
 
 test('platform setup requires admin credentials rather than falling through to repair', async (t) => {
@@ -989,6 +1015,7 @@ async function createSetupFixture(
   server: ReturnType<typeof createServer>;
   authStore: PlatformAuthStore;
   chatStore: MemoryChatStore;
+  chatStatePath: string;
 }> {
   const sessionSecret = options.sessionSecret === undefined
     ? SESSION_SECRET
@@ -1025,7 +1052,8 @@ async function createSetupFixture(
     await waitForGuideCatAssistRefreshIdle(config.chatStatePath);
     await rm(tempDir, { recursive: true, force: true });
   });
-  return { server, authStore, chatStore };
+  return {
+    chatStatePath: config.chatStatePath, server, authStore, chatStore };
 }
 
 function createRuntimeStub() {

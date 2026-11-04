@@ -1,5 +1,10 @@
 # Documentation Index
 
+[Desktop first-run wizard](specs/SPEC-136-desktop-first-run-wizard.md) replaces onboarding's
+provider cards and `/setup` with one five-step wizard that runs only what the owner asks
+([ADR-146](decisions/146-make-desktop-first-run-one-wizard-that-runs-only-what-the-owner-asks.md),
+[PLAN-130](plans/PLAN-130-desktop-first-run-wizard.md)).
+
 [Production Desktop host diagnostics](decisions/145-keep-bounded-production-desktop-host-diagnostics.md)
 records bounded host/service logs, metadata privacy and the no-crash-dump policy.
 
