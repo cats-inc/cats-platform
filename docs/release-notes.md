@@ -19,6 +19,8 @@ npm, cats-one, Apps and Plugins are separate release targets.
   Unverified native setup keeps account entry intact and offers the sign-in page,
   another tool or Catlas off. Unknown or ambiguous targets, and native launch
   arguments concealed by Runtime's public configuration, stay unverified.
+  While tool discovery is pending, no default is submitted; explicitly choosing
+  Not now permits finishing immediately and survives a late discovery reply.
 - **Keep checks read-only and bounded.** The probe sends only initialize,
   initialized and windowsSandbox/readiness. It creates no thread or model turn,
   writes no provider configuration and installs no sandbox. Shutdown waits for
@@ -52,9 +54,11 @@ npm, cats-one, Apps and Plugins are separate release targets.
   and Desktop/server/renderer builds. Four private Codex 0.166.0 configurations
   remained byte-identical after native checks. The isolated source candidate
   reached first-run setup and drained normally. Independent review found no
-  remaining blockers. Full candidate CI and the existing release source,
-  package, signing, checksum and provenance gates remain required. Real
-  clean-machine UAC initialization and installed upgrade/rollback were not
+  remaining blockers. A further 26 Google onboarding and Catlas-page regression
+  checks passed after correcting the pending-discovery Not now selection.
+  Full candidate CI and the existing release source, package, signing, checksum
+  and provenance gates remain required. Real clean-machine UAC initialization
+  and installed upgrade/rollback were not
   exercised locally; startup and fixture results are separate evidence.
 
 Publication results: the `v0.14.2` GitHub Standard Preview, platform receipts and

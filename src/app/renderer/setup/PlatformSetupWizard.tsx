@@ -632,7 +632,7 @@ export function PlatformSetupWizard({
             <span><strong>{t(messageKeys.setupWizardEnableGuideLabel, { guideCatName })}</strong><small>{t(messageKeys.setupWizardEnableGuideNote)}</small></span>
           </label>
           <label>
-            <input type="radio" name="setup-guide" id="setup-guide-off" checked={!createGuideCat}
+            <input type="radio" name="setup-guide" id="setup-guide-off" checked={guideChoiceMade && !createGuideCat}
               onChange={() => { setCreateGuideCat(false); setGuideChoiceMade(true); }} />
             <span><strong>{t(messageKeys.setupWizardGuideNotNow)}</strong><small>{t(messageKeys.setupWizardGuideNotNowNote)}</small></span>
           </label>

@@ -190,6 +190,30 @@ test('an unready Codex never prevents finishing without Catlas', async t => {
   assert.equal(f.submitted[0]!.createGuideCat, false);
 });
 
+test('Not now can be chosen while providers are pending, without a late reply enabling Catlas', async t => {
+  const f = setup(t);
+  const fetch = globalThis.fetch;
+  let reply: ((response: Response) => void) | undefined;
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    if (String(input) === '/api/providers') return new Promise<Response>(resolve => { reply = resolve; });
+    return fetch(input, init);
+  }) as typeof fetch;
+  await f.toCatlas();
+  await waitFor(() => assert.ok(reply));
+  const off = f.view.container.querySelector('#setup-guide-off') as HTMLInputElement;
+  assert.equal(off.checked, false, 'a pending default is not an explicit choice');
+  assert.equal(f.create().disabled, true, 'loading alone cannot submit the default');
+  fireEvent.click(off);
+  assert.equal(off.checked, true);
+  assert.equal(f.create().disabled, false);
+  reply!(Response.json({ state: 'ready', providers: listProductProviders().filter(entry => entry.id === 'codex') }));
+  await nextTurn();
+  assert.equal(off.checked, true, 'the explicit choice survives discovery');
+  fireEvent.click(f.create());
+  await waitFor(() => assert.equal(f.submitted.length, 1));
+  assert.equal(f.submitted[0]!.createGuideCat, false);
+});
+
 test('closing the setup view during a pending readiness check cannot submit a late result', async t => {
   const host = desktopBridge();
   let complete: ((value: { status: string }) => void) | undefined;
