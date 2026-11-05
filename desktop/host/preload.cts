@@ -247,6 +247,12 @@ const bridge = {
     openTerminal(provider: string): Promise<{ opened: boolean; command: string | null }> {
       return ipcRenderer.invoke('cats-host:setup-open-terminal', provider);
     },
+    checkCodexInitialization(instance?: string) {
+      return ipcRenderer.invoke('cats-host:setup-codex-initialization-check', instance);
+    },
+    openCodexInitialization(instance?: string): Promise<{ opened: boolean; command: string | null }> {
+      return ipcRenderer.invoke('cats-host:setup-codex-initialization-open', instance);
+    },
     ollamaModels(): Promise<string[]> {
       return ipcRenderer.invoke('cats-host:setup-ollama-models');
     },

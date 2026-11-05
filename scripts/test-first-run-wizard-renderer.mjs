@@ -257,6 +257,14 @@ function installFakeHost(spec) {
         runEnd(run, { status: 'ready' });
         return { opened: true, command: 'claude' };
       },
+      checkCodexInitialization: async () => {
+        record('checkCodexInitialization');
+        return { status: state.machine.codexInitialization || 'ready' };
+      },
+      openCodexInitialization: async () => {
+        record('openCodexInitialization');
+        return { opened: true, command: 'codex' };
+      },
       ollamaModels: async () => { record('ollamaModels'); return clone(state.machine.ollama.models); },
       pullOllamaModel: async (name) => {
         record('pullOllamaModel', name);
@@ -591,6 +599,28 @@ await check('the log stays closed once closed, except a failure opens it', async
   await page.click('#recheck');
   await page.waitForSelector('[data-row="claude"].is-failed');
   equal(await logOpen(page), true, 'failure opens');
+  await close();
+});
+
+await check('Codex initialization follows login and only a fresh check marks it ready', async () => {
+  const { page, close } = await open({ machine: { installed: ['codex'], codexInitialization: 'required' } });
+  await pickAndCheck(page, 'codex');
+  await page.click('#next');
+  await page.waitForSelector('#codex-initialize');
+  truthy(await page.locator('[data-row="signin-codex"] + [data-row="codex-initialization"]').count(), 'after login');
+  truthy(!(await page.locator('#go-account').isDisabled()), 'unfinished Codex can continue to account');
+  await page.click('#codex-initialize');
+  await page.waitForFunction(() => /Terminal opened|已開啟終端/.test(document.querySelector('[data-row="codex-initialization"]').textContent));
+  truthy(!await page.locator('[data-row="codex-initialization"]').evaluate(row => row.classList.contains('is-ready')), 'opened is not ready');
+  await page.evaluate(() => { window.__host.machine.codexInitialization = 'unavailable'; });
+  await page.click('#codex-initialization-recheck');
+  await page.waitForFunction(() => /Could not verify|無法確認/.test(document.querySelector('[data-row="codex-initialization"]').textContent));
+  await page.evaluate(() => { window.__host.machine.codexInitialization = 'ready'; });
+  await page.click('#codex-initialization-recheck');
+  await page.waitForSelector('[data-row="codex-initialization"].is-ready');
+  equal(await page.locator('[data-row="codex-initialization"] .hint-inline').count(), 0, 'ready state clears stale terminal instructions');
+  equal((await calls(page, 'checkCodexInitialization')).length, 3, 'new checks after each user action');
+  if (shotDir) await page.screenshot({ path: join(shotDir, 'codex-initialization-ready.png') });
   await close();
 });
 

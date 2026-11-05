@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import { setImmediate as nextTurn } from 'node:timers/promises';
 
 import { clearProviderCatalogClientCache } from '../src/app/renderer/providerCatalogClient.ts';
 import { clearProviderRegistryClientCache } from '../src/app/renderer/providerRegistryClient.ts';
@@ -45,6 +46,7 @@ function desktopBridge(state: Record<string, unknown> | null = null) {
     updateDesktopPreferences: async (value: unknown) => { preferences.push(value); return value; },
     setupWizard: {
       facts: async () => ({ state }),
+      checkCodexInitialization: async (_instance?: string): Promise<{ status: string }> => ({ status: 'not_applicable' }),
       runs: async (): Promise<unknown[]> => [],
       onRun: () => () => {},
       startRun: async (input: Record<string, unknown>) => { runs.push(input); return runs.length; },
@@ -150,6 +152,71 @@ test('Catlas: on when a tool can answer, one tool chooses itself, off when none 
   await waitFor(() => assert.match(none.view.container.textContent ?? '', /No tool is ready for Catlas yet/u));
   assert.equal((none.view.container.querySelector('#setup-guide-on') as HTMLInputElement).disabled, true);
   assert.equal(none.create().disabled, false, 'finishing without Catlas stays possible');
+});
+
+test('Codex Catlas requires fresh host readiness on each submit, before creating the account', async t => {
+  const host = desktopBridge();
+  const checks: Array<string | undefined> = [];
+  let status = 'required';
+  host.bridge.setupWizard.checkCodexInitialization = async instance => { checks.push(instance); return { status }; };
+  const f = setup(t, { providers: ['codex'], bridge: host.bridge });
+  await f.toCatlas();
+  await waitFor(() => assert.equal((f.view.container.querySelector('#setup-guide-codex') as HTMLInputElement)?.checked, true));
+  await waitFor(() => assert.equal(f.create().disabled, false));
+  assert.equal(checks.length, 0, 'rendering and choosing a tool run no Codex probe');
+  fireEvent.click(f.create());
+  await waitFor(() => assert.ok(f.view.container.querySelector('#setup-fix-codex')));
+  assert.equal(f.submitted.length, 0);
+  status = 'unavailable';
+  fireEvent.click(f.create());
+  await waitFor(() => assert.equal(checks.length, 2));
+  await waitFor(() => assert.equal(f.create().disabled, false));
+  assert.equal(f.submitted.length, 0, 'an inconclusive probe cannot create anything');
+  status = 'ready';
+  fireEvent.click(f.create());
+  await waitFor(() => assert.equal(f.submitted.length, 1));
+  assert.equal(checks.length, 3);
+  assert.equal(checks[2], f.submitted[0]!.guideCatInstance, 'checks the actual submitted target');
+});
+
+test('an unready Codex never prevents finishing without Catlas', async t => {
+  const host = desktopBridge();
+  let probes = 0;
+  host.bridge.setupWizard.checkCodexInitialization = async () => { probes++; return { status: 'required' }; };
+  const f = setup(t, { providers: ['codex'], bridge: host.bridge });
+  await f.finishWithoutCatlas();
+  await waitFor(() => assert.equal(f.submitted.length, 1));
+  assert.equal(probes, 0);
+  assert.equal(f.submitted[0]!.createGuideCat, false);
+});
+
+test('closing the setup view during a pending readiness check cannot submit a late result', async t => {
+  const host = desktopBridge();
+  let complete: ((value: { status: string }) => void) | undefined;
+  host.bridge.setupWizard.checkCodexInitialization = () => new Promise(resolve => { complete = resolve; });
+  const f = setup(t, { providers: ['codex'], bridge: host.bridge });
+  await f.toCatlas();
+  await waitFor(() => assert.equal((f.view.container.querySelector('#setup-guide-codex') as HTMLInputElement)?.checked, true));
+  await waitFor(() => assert.equal(f.create().disabled, false));
+  fireEvent.click(f.create());
+  await waitFor(() => assert.ok(complete));
+  f.view.unmount();
+  complete!({ status: 'ready' });
+  await nextTurn();
+  assert.equal(f.submitted.length, 0);
+});
+
+test('a known non-native Codex target passes the host preflight without native initialization', async t => {
+  const host = desktopBridge();
+  let probes = 0;
+  host.bridge.setupWizard.checkCodexInitialization = async () => { probes++; return { status: 'not_applicable' }; };
+  const f = setup(t, { providers: ['codex'], bridge: host.bridge });
+  await f.toCatlas();
+  await waitFor(() => assert.equal((f.view.container.querySelector('#setup-guide-codex') as HTMLInputElement)?.checked, true));
+  await waitFor(() => assert.equal(f.create().disabled, false));
+  fireEvent.click(f.create());
+  await waitFor(() => assert.equal(f.submitted.length, 1));
+  assert.equal(probes, 1);
 });
 
 test('with several tools nothing is chosen for you, and the button waits for a choice or Not now', async (t) => {

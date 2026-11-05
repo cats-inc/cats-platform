@@ -26,7 +26,7 @@ import { syncDesktopHostPlatformShell } from './desktopHostBridge.js';
 import { nextSetupStep, previousSetupStep, type SetupStep } from './flow';
 import { canContinueGuideCatSetupStep } from './plugins';
 
-type SubmitError = 'already' | 'bad' | 'server' | 'network' | 'google';
+type SubmitError = 'already' | 'bad' | 'server' | 'network' | 'google' | 'codex';
 type AdminMethod = 'local_password' | 'google';
 
 interface WizardRow {
@@ -127,6 +127,10 @@ export function PlatformSetupWizard({
   const [modelLabel, setModelLabel] = useState('');
   const [startAtLogin, setStartAtLogin] = useState(true);
   const [memory, setMemory] = useState<WizardMemory | null>(null);
+  const submitTicket = useRef(0);
+  const submitContext = useRef({ provider, instance, createGuideCat, step });
+  submitContext.current = { provider, instance, createGuideCat, step };
+  useEffect(() => () => { submitTicket.current++; }, []);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [toolLabels, setToolLabels] = useState<Record<string, string>>({});
 
@@ -141,6 +145,7 @@ export function PlatformSetupWizard({
   /* ---------- The chrome: the same rail, log and details page as the host's pages ---------- */
 
   const goToHostPage = useCallback((page: number) => {
+    submitTicket.current++;
     try {
       globalThis.sessionStorage?.setItem(ACCOUNT_DRAFT_KEY, JSON.stringify({
         name: ownerNameRef.current, email: emailRef.current, method: methodRef.current,
@@ -323,9 +328,12 @@ export function PlatformSetupWizard({
 
   /* ---------- The final button ---------- */
 
-  const canCreate = canContinueGuideCatSetupStep({ createGuideCat, model }) && (!createGuideCat || Boolean(provider));
+  const canCreate = guideChoiceMade && canContinueGuideCatSetupStep({ createGuideCat, model }) && (!createGuideCat || Boolean(provider));
 
   const finishSetup = useCallback(async (): Promise<void> => {
+    const mine = ++submitTicket.current;
+    const context = JSON.stringify(submitContext.current);
+    const current = () => mine === submitTicket.current && JSON.stringify(submitContext.current) === context;
     chrome?.beginWork();
     setCreating(true);
     setSubmitError(null);
@@ -334,15 +342,28 @@ export function PlatformSetupWizard({
     const runBody = adminMethod === 'google'
       ? '{"adminMethod":"google"}'
       : `{"adminIdentifier":${JSON.stringify(adminIdentifier.trim())},"adminPassword":"(not logged)"}`;
-    const run = wizard
-      ? await Promise.resolve(wizard.startRun({ command: `POST /api/platform/setup/complete ${runBody}` })).catch(() => null)
-      : null;
+    let run: number | null = null;
     const finishRun = (status: string, error?: string) => {
       if (run !== null) {
         void Promise.resolve(wizard?.finishRun(run, { status, ...(error ? { error } : {}), ...(status === 'ready' ? { applied: ['created the first admin'] } : {}) })).catch(() => undefined);
       }
     };
     try {
+      if (wizard && createGuideCat && provider === 'codex') {
+        // Fresh host evidence for this exact target on every attempt. Nothing is posted yet.
+        const readiness = await Promise.resolve().then(() => wizard.checkCodexInitialization(instance || undefined)).catch(() => ({ status: 'unavailable' }));
+        if (!current()) return;
+        if (readiness.status !== 'ready' && readiness.status !== 'not_applicable') {
+          setSubmitError('codex');
+          setSubmitDetail(readiness.status);
+          return;
+        }
+      }
+      if (!current()) return;
+      run = wizard
+        ? await Promise.resolve(wizard.startRun({ command: `POST /api/platform/setup/complete ${runBody}` })).catch(() => null)
+        : null;
+      if (!current()) return;
       const result = await completePlatformSetup({
         attemptId,
         ownerDisplayName: ownerName.trim(),
@@ -407,6 +428,9 @@ export function PlatformSetupWizard({
   function submitReason(): SetupFailureReason {
     const retry = { label: t(messageKeys.setupWizardTryAgain), run: () => { void finishSetup(); } };
     switch (submitError) {
+      case 'codex':
+        return { title: t(messageKeys.setupWizardCodexTitle), body: t(messageKeys.setupWizardCodexBody), raw: submitDetail,
+          severity: 'warning', repair: { label: t(messageKeys.setupWizardCodexFix), run: () => goToHostPage(3) } };
       case 'already':
         return { title: t(messageKeys.setupWizardAlreadyTitle), body: t(messageKeys.setupWizardAlreadyBody), raw: submitDetail, severity: 'error',
           repair: { label: t(messageKeys.setupWizardGoToSignIn), run: () => globalThis.location?.assign('/') } };
@@ -561,7 +585,11 @@ export function PlatformSetupWizard({
         <div className="alert-text"><strong>{reason.title}</strong><span>{reason.body}</span></div>
         <div className="alert-actions">
           {detailsButton('setup-details-submit', submitReason)}
-          {submitError === 'already' ? (
+          {submitError === 'codex' ? (
+            <button type="button" className="btn small" id="setup-fix-codex" onClick={() => goToHostPage(3)}>
+              {t(messageKeys.setupWizardCodexFix)}
+            </button>
+          ) : submitError === 'already' ? (
             <button type="button" className="btn small" id="setup-to-sign-in" onClick={() => globalThis.location?.assign('/')}>
               {t(messageKeys.setupWizardGoToSignIn)}
             </button>

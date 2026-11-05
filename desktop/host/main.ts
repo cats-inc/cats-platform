@@ -131,7 +131,9 @@ import { createHash } from 'node:crypto';
 import { readFile as readSetupFile } from 'node:fs/promises';
 import { isValidOllamaModelName, isLoopbackEndpoint, listOllamaModels, pullOllamaModel } from './ollamaModels.js';
 import { SetupRunLog } from './setupRunLog.js';
-import { openSignInTerminal, signInCommands } from './setupTerminal.js';
+import { freshWindowsEnv, openCodexInitializationTerminal, openSignInTerminal, signInCommands } from './setupTerminal.js';
+import { CodexInitializationChecks, codexInitializationTarget, probeCodexInitialization, resolveCodexSetupCommand } from './codexInitialization.js';
+import type { CodexInitialization } from '../../packages/provider-setup/setupChrome.js';
 import { takeSetupWizardDraft, validSetupWizardState, writeSetupWizardDraft } from './setupWizardDraft.js';
 import { isSetupHostPage, scanEvents, selectionSaveEvent, type SetupEventInput } from './setupWizardEvents.js';
 import {
@@ -1300,6 +1302,8 @@ let setupWizardState: Record<string, unknown> | null = null;
 let setupWizardDraftRead = false;
 let ollamaPull: AbortController | null = null;
 const runningSetupChecks = new Set<AbortController>();
+const codexInitializationChecks = new CodexInitializationChecks(runningSetupChecks);
+let lastCodexInitialization: CodexInitialization | null = null;
 // A check that hangs is reported rather than waited on (SPEC-136 non-functional requirements).
 const SETUP_CHECK_TIMEOUT_MS = 120_000;
 
@@ -1384,6 +1388,7 @@ async function readSetupWizardFacts(): Promise<Record<string, unknown>> {
     state: readSetupWizardState(),
     systemRestartHelpers: desktopPrerequisites.systemRestartHelpers(),
     setupComplete: hasPersistedSetupCompletion(),
+    codexInitialization: lastCodexInitialization,
   };
 }
 
@@ -2499,6 +2504,7 @@ async function shutdownHost(exitCode = 0): Promise<void> {
     return shutdownPromise;
   }
   shuttingDown = true;
+  for (const checks of runningSetupChecks) checks.abort();
   hostLogger?.record('shutdown-requested', { exitCode });
   // The exit path reaches app.exit() without emitting the window's close.
   mainWindowPlacementTracker?.flush();
@@ -2506,6 +2512,7 @@ async function shutdownHost(exitCode = 0): Promise<void> {
   setupHelperDrain ??= pauseSelectedSetupHelpers();
   clearRuntimeCliInventoryPoll();
   shutdownPromise = (async () => {
+    await codexInitializationChecks.drain();
     await setupHelperDrain!.drained;
     let shutdownExitCode = exitCode;
     let forcedStopAttempted = false;
@@ -2884,6 +2891,65 @@ async function main(): Promise<void> {
   ipcMain.handle('cats-host:setup-wizard-facts', async (event) => {
     assertSetupWizardSender(event);
     return await readSetupWizardFacts();
+  });
+  const codexTarget = async (instance?: unknown) => {
+    const configuration = await fetchJsonWithTimeout<{ revision?: unknown }>(
+      setupRuntimeUrl('/providers/config'), { method: 'GET' }, RUNTIME_SETUP_STATE_TIMEOUT_MS,
+    );
+    return { revision: configuration.revision, target: codexInitializationTarget(configuration, instance) };
+  };
+  ipcMain.handle('cats-host:setup-codex-initialization-check', async (event, instance?: unknown): Promise<CodexInitialization> => {
+    assertSetupWizardSender(event);
+    if (process.platform !== 'win32') return { status: 'not_applicable' };
+    if (shuttingDown) throw new Error('Cats is stopping.');
+    return codexInitializationChecks.run(async (signal): Promise<CodexInitialization> => {
+      let run: number | null = null;
+      try {
+        const { target, revision } = await codexTarget(instance);
+        if (target.status !== 'native') return lastCodexInitialization = { status: target.status };
+        const env = await freshWindowsEnv(process.env);
+        signal.throwIfAborted();
+        const result = await probeCodexInitialization(resolveCodexSetupCommand(env, target.command), signal, {
+          env, onCommand: (command) => { run = setupRuns.start({ kind: 'check', label: 'Codex first-time setup', command }); },
+        });
+        signal.throwIfAborted();
+        const current = await codexTarget(instance);
+        signal.throwIfAborted();
+        if (current.revision !== revision || JSON.stringify(current.target) !== JSON.stringify(target)) {
+          throw new Error('Provider settings changed during the check.');
+        }
+        if (run !== null) setupRuns.finish(run, { status: result.status,
+          ...(result.status === 'unavailable' ? { error: 'Could not verify Codex first-time setup.' } : {}) });
+        return lastCodexInitialization = result;
+      } catch (error) {
+        if (run !== null) setupRuns.finish(run, { status: 'failed', error: signal.aborted ? 'Stopped' : 'Could not verify Codex first-time setup.' });
+        signal.throwIfAborted();
+        return lastCodexInitialization = { status: 'unavailable' };
+      }
+    });
+  });
+  ipcMain.handle('cats-host:setup-codex-initialization-open', async (event, instance?: unknown) => {
+    assertSetupHostPage(event);
+    assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'setup-helper');
+    if (process.platform !== 'win32' || shuttingDown || activeSetupChanges || runningSetupChecks.size) return { opened: false, command: null };
+    const { target } = await codexTarget(instance);
+    if (target.status !== 'native') return { opened: false, command: null };
+    const env = await freshWindowsEnv(process.env);
+    if (shuttingDown) return { opened: false, command: null };
+    const commandPath = resolveCodexSetupCommand(env, target.command);
+    if (!commandPath) return { opened: false, command: 'codex' };
+    const filename = commandPath.split(/[\\/]/u).pop()?.toLowerCase();
+    const command = filename === 'codex.exe' ? 'codex.exe'
+      : filename === 'codex.bat' ? 'codex.bat'
+        : filename === 'codex.cmd' || filename === 'codex.ps1' ? 'codex.cmd' : null;
+    if (!command) return { opened: false, command: 'codex' };
+    const pathKey = Object.keys(env).find(key => key.toLowerCase() === 'path') ?? 'PATH';
+    env[pathKey] = `${dirname(commandPath)};${env[pathKey] ?? ''}`;
+    const run = setupRuns.start({ kind: 'terminal', label: 'Codex first-time setup', command });
+    const result = await openCodexInitializationTerminal({ env, codexCommand: command, freshEnv: async value => value });
+    setupRuns.finish(run, { status: result.opened ? 'ready' : 'failed',
+      ...(!result.opened ? { error: 'No terminal could be opened.' } : {}) });
+    return result;
   });
   ipcMain.handle('cats-host:setup-wizard-run-helper', async (event, payload: unknown) => {
     assertSetupHostPage(event);
