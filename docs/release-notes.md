@@ -2,6 +2,69 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-05 — Desktop 0.14.2 standard preview: initialize Codex before starting Catlas
+
+Selected distribution: Desktop **0.14.2 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**. This compatible 0.14 patch adds Codex
+first-time setup to the existing Windows onboarding flow. Platform npm, Runtime
+npm, cats-one, Apps and Plugins are separate release targets.
+
+- **Complete Codex setup after login.** The native Windows Codex row offers a
+  real Command Prompt terminal in an owned empty temporary workspace. Codex
+  handles sandbox choices, configuration and UAC. PowerShell scripts stays
+  optional; opening a terminal does not count as initialization completing.
+- **Check the actual target before enabling Catlas.** Every Codex submission
+  and retry asks the host for fresh readiness before posting account completion.
+  Known WSL, Docker and non-CLI targets do not require the native Windows sandbox.
+  Unverified native setup keeps account entry intact and offers the sign-in page,
+  another tool or Catlas off. Unknown or ambiguous targets, and native launch
+  arguments concealed by Runtime's public configuration, stay unverified.
+  While tool discovery is pending, no default is submitted; explicitly choosing
+  Not now permits finishing immediately and survives a late discovery reply.
+- **Keep checks read-only and bounded.** The probe sends only initialize,
+  initialized and windowsSandbox/readiness. It creates no thread or model turn,
+  writes no provider configuration and installs no sandbox. Shutdown waits for
+  owned process cleanup. Runtime retains its actual-session permission guard;
+  this Desktop UI preflight is not an API authorization flag.
+- **Exact inputs.** Runtime **0.6.2**, source
+  `1bbba8d0f12450af8c9fcdedcb55d7051fe69f5f`, is current Runtime main at
+  selection, with no changes left out. Usage **0.5.4** remains at
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. The shared conversation UI
+  remains 0.1.0, content digest
+  `957e4717942c5e987270769a4dea593e2d26b321715abf6dfed1046eb507c680`,
+  tarball SHA-256 `363e784f2d0571522006797b01772be55384ecec4ae0bccb254eabd7b6783501`.
+  The workflow records the merged Platform bump commit and all packaged sources.
+- **Compatibility and recovery.** Public API, App SDK, configuration and stored
+  data retain their formats; there is no migration. Usage's host requirement
+  accepts 0.14.2. Before installing, stop processes using the data roots and back
+  up `~/.cats` and configured overrides. Preserve these directories on failure
+  and reinstall 0.14.2 or return to 0.14.1 without conversion. Restore backups
+  only while all processes using those roots are stopped.
+- **Signing and updates.** Dispatch desktop-release.yml from the merged bump
+  source with `tag=v0.14.2`, the full Runtime SHA above and `unsigned=false`.
+  The workflow creates the preview tag and immutable prerelease. Expected
+  Standard trust is macOS **signed + notarized**, Windows **unsigned: no
+  certificate**, Linux **n/a**. Configured native checks and receipts establish
+  actual trust. NSIS, same-team signed macOS and Linux DEB retain their update
+  paths; portable and unsigned macOS installations require manual replacement.
+- **Validation boundary.** The source fix passed 90 focused host, probe, renderer
+  and boundary tests, ten Chrome wizard scenarios, affected TypeScript checks
+  and Desktop/server/renderer builds. Four private Codex 0.166.0 configurations
+  remained byte-identical after native checks. The isolated source candidate
+  reached first-run setup and drained normally. Independent review found no
+  remaining blockers. A further 26 Google onboarding and Catlas-page regression
+  checks passed after correcting the pending-discovery Not now selection.
+  Full candidate CI and the existing release source, package, signing, checksum
+  and provenance gates remain required. Real clean-machine UAC initialization
+  and installed upgrade/rollback were not
+  exercised locally; startup and fixture results are separate evidence.
+
+Publication results: the `v0.14.2` GitHub Standard Preview, platform receipts and
+Actions run. Verification checks immutable status, tag source, the complete
+public asset set and hashes, updater metadata and build provenance.
+
 ## 2026-11-05 — Desktop 0.14.1 standard preview: reliable clean-machine setup
 
 Selected distribution: Desktop **0.14.1 standard-profile preview**, using App SDK

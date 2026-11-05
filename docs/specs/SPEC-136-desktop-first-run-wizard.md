@@ -170,6 +170,14 @@ failure reaches the details page. Settings > Runtime keeps its rows.
     hint and documentation link until someone verifies a command. Where no terminal is found, the row says
     so and the command can be copied. After a change, the row says terminals already open need reopening to
     see the new PATH.
+    - On Windows, the native Codex row adds **Open Codex first-time setup** after login.
+      It runs the resolved Codex command in Command Prompt from an owned empty temporary
+      workspace. Codex owns configuration, sandbox choices and UAC; PowerShell scripts
+      remains optional. Opening a terminal never counts as initialization completing.
+      Explicit checks call the public app-server `windowsSandbox/readiness` API without
+      creating a thread, running a model turn or writing configuration. Unknown,
+      unsupported and failed checks remain unverified. The native row checks its own
+      target even when a different instance is the provider default.
 25. FR-25: Where Ollama is usable and has no models, a row offers a first download with a name field and
     suggestions taken only from Runtime's curated catalog for Ollama. Never invent names. It shows progress,
     a Stop button and any failure with Try again. It works only against a loopback endpoint Runtime has saved
@@ -197,6 +205,15 @@ failure reaches the details page. Settings > Runtime keeps its rows.
     contract: options are retained across failures and recover by themselves with a spinner, so this page adds no
     error text, Retry button or Runtime Setup link around them, even though the mock showed some. A menu mirrors the
     CLI's own picker and never invents an option.
+    - Desktop checks the actual Codex execution target afresh before posting setup completion
+      when Catlas is enabled with Codex. On native Windows, `ready` is required; a known WSL,
+      Docker or non-CLI target does not require the native sandbox. An ambiguous target,
+      unreadable configuration or unverified readiness cannot proceed with Codex Catlas.
+      The failure keeps the entered account data, links back to page 3, and allows another
+      tool or Catlas off. Rendering, selecting a tool and entering the account page start
+      no Codex initialization probe. Every submit/retry checks again and discards a late result after
+      a target change or unmount. This is a Desktop UI preflight, not API authorization;
+      Runtime retains the actual-turn permission check.
 31. FR-31: On Desktop, "Start Cats when I sign in" is a checkbox, ticked by default, tagged "Changes your login
     items". The final button writes the choice. Until setup is complete Desktop registers no login item, so
     someone who quits on page 1 does not find Cats starting at their next sign-in.

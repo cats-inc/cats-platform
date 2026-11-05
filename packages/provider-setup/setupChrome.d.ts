@@ -14,6 +14,9 @@ export interface SetupRun {
   error: string | null;
   tookMs?: number | null;
 }
+export interface CodexInitialization {
+  status: 'ready' | 'required' | 'unavailable' | 'not_applicable';
+}
 export interface SetupWizardBridge {
   facts(): Promise<unknown>;
   runHelper(helperId: string, mode: 'check' | 'apply'): Promise<unknown>;
@@ -23,6 +26,8 @@ export interface SetupWizardBridge {
   startRun(input: { command: string }): Promise<number>;
   finishRun(id: number, result: { status?: string; error?: string; applied?: string[] }): Promise<void>;
   openTerminal(provider: string): Promise<{ opened: boolean; command: string | null }>;
+  checkCodexInitialization(instance?: string): Promise<CodexInitialization>;
+  openCodexInitialization(instance?: string): Promise<{ opened: boolean; command: string | null }>;
   ollamaModels(): Promise<string[]>;
   pullOllamaModel(name: string): Promise<{ stopped: boolean }>;
   cancelOllamaPull(): Promise<void>;

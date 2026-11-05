@@ -359,6 +359,60 @@ rule. A line that names a docs path without reading it carries
 
 ## Running Tests
 
+### Codex Windows first-time setup
+
+The Desktop wizard adds an official Codex terminal entry after login. Its readiness
+probe is read-only: initialize, initialized and windowsSandbox/readiness only, with
+no thread, turn, configuration write or sandbox installation. Tests use private
+temporary homes and workspaces, not the owner's Codex configuration.
+
+Focused Windows validation (2026-11-05) covers:
+
+- 45 host/setup, provider-selection and prerequisite cases, 39 native-probe,
+  target-resolution and Platform account/Catlas page cases, and six host/bootstrap
+  and test-collection boundary cases all passed. The final page
+  submission checks the actual target on every retry, keeps account entry on failure,
+  allows Catlas off, and ignores a successful result after the view closes.
+- Native launcher fixtures cover both x64/arm64 Node architectures independently of
+  Electron, npm cmd/ps1 and standalone executables. RPC cases cover fragmentation,
+  unknown statuses, cancellation, timeout, excessive output and owned descendants.
+  Shutdown cancels and waits for preflight cleanup before the host exits.
+- The headless Chrome wizard fixture's focused sign-in, Codex initialization, optional
+  steps, page-one and language cases passed 10/10 without an installer or real terminal.
+- Native Codex 0.166.0 checks used four private CODEX_HOME configurations; all four
+  config files remained byte-identical. MXC readiness follows the current account's
+  machine capabilities. Initialization readiness does not replace Runtime's actual
+  permission check.
+
+Desktop host/server and renderer builds and renderer/affected-test TypeScript checks
+passed. The repository-wide test TypeScript project also imports mobile tests and
+could not complete without this checkout's optional mobile dependencies; mobile and
+the full suite were not validated locally. A focused test config checks the two
+changed TypeScript suites without substituting types for missing mobile packages.
+
+The account completion API remains unchanged: the fresh check is Desktop UI
+preflight, not a server authorization flag. Known non-native targets do not need a
+native sandbox. Unknown targets or native launch arguments concealed by Runtime's
+public configuration remain unverified; setup can finish with another tool or Catlas
+off. Real clean-machine terminal/UAC completion remains manual acceptance.
+
+The pending-close renderer test resolves its mock and waits one Node event-loop turn
+after unmount. React's bundled asynchronous act fallback leaves a referenced
+MessagePort under this ESM test harness, so it is not used for an already unmounted
+view. The corrected tests must exit naturally; force-exit is not passing evidence.
+
+Source candidate `desktop-codex-init-20261105-04` reached first-run setup with
+both owned services ready, was visually inspected, then drained with exit code 0
+and both service PIDs cleared. Its launch receipt is
+`76869e6c8c1bc61bc2850d9154aa9f32a40d5e75869b9864b1727d5e7a1c4208`:
+Platform base `32305a506505f284dd28c17748cdc95c796ded02` plus working changes,
+source digest `1b89481da6f24c1ac5bd05d8276fd8c7e4a1e537ec2ce2a3d711ed0d9b5fe6b1`;
+Runtime `c1d0111dd8d2bd4668e0d6d4f93afc20af9bd77b`, source digest
+`9d9d99518d3a108ce3e7d58cef1f42c53642d43b6ee919a3298bdd7ac5b6cef7`.
+This proves isolated startup/shutdown, not an authenticated provider turn or UAC
+completion. A subsequent cosmetic ready-state hint fix passed the same 10-case
+Chrome fixture and its ready screenshot was inspected.
+
 ### Developer skills and runtime library packaging
 
 ```sh

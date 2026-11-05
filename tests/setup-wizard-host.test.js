@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { existsSync, mkdtempSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -9,7 +9,7 @@ import {
   createPullProgressTracker, isLoopbackEndpoint, isValidOllamaModelName, listOllamaModels, pullOllamaModel,
 } from '../build/desktop/ollamaModels.js';
 import { SetupRunLog } from '../build/desktop/setupRunLog.js';
-import { openSignInTerminal, signInCommand, signInScript, terminalInvocation } from '../build/desktop/setupTerminal.js';
+import { openCodexInitializationTerminal, openSignInTerminal, signInCommand, signInScript, terminalInvocation } from '../build/desktop/setupTerminal.js';
 import { takeSetupWizardDraft, validSetupWizardState, writeSetupWizardDraft } from '../build/desktop/setupWizardDraft.js';
 import { isSetupHostPage, scanEvents, selectionSaveEvent } from '../build/desktop/setupWizardEvents.js';
 import { isDesktopHostOnlyHelper, isDesktopPrerequisiteHelper } from '../build/desktop/setupAudit.js';
@@ -101,6 +101,25 @@ test('a page cannot make the terminal run anything else, and a failed launch off
 });
 
 /* ------------------------------ Ollama (FR-25) ------------------------------ */
+
+test('Codex initialization uses Command Prompt, an owned folder and the existing profile without a policy change', async t => {
+  const calls = [];
+  const launch = (command, args, options) => {
+    calls.push({ command, args, options });
+    const child = new EventEmitter(); child.unref = () => {};
+    queueMicrotask(() => child.emit('spawn')); return child;
+  };
+  const env = { ComSpec: 'cmd.exe', CODEX_HOME: 'same-profile' };
+  const cwd = mkdtempSync(join(tmpdir(), 'cats-codex-terminal-'));
+  t.after(() => rmSync(cwd, { recursive: true, force: true }));
+  const result = await openCodexInitializationTerminal({ platform: 'win32', env, cwd, launch, freshEnv: async value => value });
+  assert.deepEqual(result, { opened: true, command: 'codex' });
+  assert.equal(calls[0].args.at(-1), 'codex');
+  assert.equal(calls[0].options.cwd, cwd);
+  assert.equal(calls[0].options.env, env);
+  assert.ok(!calls[0].args.some(arg => /powershell|ExecutionPolicy|--yolo/u.test(arg)));
+  assert.deepEqual(await openCodexInitializationTerminal({ platform: 'darwin', launch }), { opened: false, command: null });
+});
 
 test('only a loopback endpoint and a plain model name are accepted', async () => {
   assert.equal(isLoopbackEndpoint('http://127.0.0.1:11434'), true);

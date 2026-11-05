@@ -24,6 +24,7 @@ export function mountSetupWizard(root, bridge, options) {
     ollama: { installed: false, running: false, models: [], modelsKnown: false },
     pull: { name: '', state: 'idle', percent: null, error: null, status: '' },
     terminal: {}, handoffError: null, copied: null, setupComplete: false,
+    codexInitialization: null,
   };
   const T = (en, zh) => (S.lang === 'zh-TW' ? zh : en);
   const E = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -247,6 +248,8 @@ export function mountSetupWizard(root, bridge, options) {
     }
     await loadOllamaModels();
     if (mine !== S.ticket) return;
+    await readCodexInitialization(mine);
+    if (mine !== S.ticket) return;
     S.ticked = new Set([...S.ticked].filter((id) => S.rows[id] && S.rows[id].kind === 'needs'));
     S.checked = true;
     S.checkedAt = new Date().toISOString();
@@ -268,6 +271,30 @@ export function mountSetupWizard(root, bridge, options) {
     chrome.setElapsedFrom(null);
   }
 
+  async function readCodexInitialization(mine) {
+    if (platform() !== 'windows' || !S.picks.has('codex') || S.rows.codex?.kind !== 'ready') return;
+    try {
+      const target = TOOLS.codex.target;
+      const result = await wizardBridge.checkCodexInitialization?.(`${target.backend}/${target.instance}`);
+      if (mine === S.ticket) S.codexInitialization = result ?? { status: 'unavailable' };
+    } catch {
+      if (mine === S.ticket) S.codexInitialization = { status: 'unavailable' };
+    }
+  }
+
+  async function recheckCodexInitialization() {
+    if (S.phase !== 'idle') return;
+    const mine = ++S.ticket;
+    S.phase = 'checking';
+    chrome.beginWork();
+    renderPage();
+    await readCodexInitialization(mine);
+    if (mine !== S.ticket) return;
+    S.phase = 'idle';
+    saveState();
+    renderPage();
+  }
+
   async function recheckRow(id) {
     if (S.phase !== 'idle') return;
     chrome.beginWork();
@@ -278,6 +305,8 @@ export function mountSetupWizard(root, bridge, options) {
     await readOne(id, mine);
     if (mine !== S.ticket) return;
     await readWaiting(mine);
+    if (mine !== S.ticket) return;
+    await readCodexInitialization(mine);
     if (mine !== S.ticket) return;
     S.phase = 'idle';
     S.runStart = null;
@@ -376,6 +405,8 @@ export function mountSetupWizard(root, bridge, options) {
       catch { /* The rows already say what the helpers found. The scan repeats on Check again. */ }
     }
     await loadOllamaModels();
+    if (mine !== S.ticket) return;
+    await readCodexInitialization(mine);
     if (mine !== S.ticket) return;
     S.running = null;
     S.runStart = null;
@@ -548,6 +579,7 @@ export function mountSetupWizard(root, bridge, options) {
       conn: { ollama: { remote: S.conn.ollama.remote, address: S.conn.ollama.address, state: S.conn.ollama.state === 'connected' ? 'connected' : 'untested' },
         openclaw: { address: S.conn.openclaw.address, state: S.conn.openclaw.state === 'connected' ? 'connected' : 'untested' } },
       ollama: S.ollama, pullName: S.pull.name,
+      codexInitialization: S.codexInitialization,
     };
   }
   function saveState() {
@@ -572,6 +604,7 @@ export function mountSetupWizard(root, bridge, options) {
       Object.assign(S.conn.openclaw, state.conn.openclaw || {});
     }
     if (state.ollama) Object.assign(S.ollama, state.ollama);
+    if (state.codexInitialization) S.codexInitialization = state.codexInitialization;
     if (state.pullName) S.pull.name = state.pullName;
     // Only pages this half draws. A run in progress did not survive, so nothing resumes by itself.
     if ([1, 2, 3].includes(state.page)) S.page = state.page;
@@ -1147,11 +1180,27 @@ export function mountSetupWizard(root, bridge, options) {
     });
   }
 
+  function codexInitializationRow() {
+    if (platform() !== 'windows' || S.codexInitialization?.status === 'not_applicable') return '';
+    const ready = S.codexInitialization?.status === 'ready';
+    const missing = S.codexInitialization?.status === 'unavailable';
+    return `<li class="row ${ready ? 'is-ready' : ''}" data-row="codex-initialization"><div class="row-top"><span class="glyph">${ready ? ICON.check : ICON.wait}</span>
+      <div class="row-text"><strong>${E(T('Complete Codex first-time setup', '完成 Codex 首次設定'))}</strong>
+      ${ready ? '' : `<p>${E(T('After signing in, open Codex and complete its Windows sandbox prompts. Exit Codex, then check again. Codex handles sandbox choices and any administrator prompt.', '登入後，開啟 Codex 並完成 Windows 安全執行環境的設定。離開 Codex 後，再按「重新檢查」。安全環境選擇與權限提示會由 Codex 處理。'))}</p>`}
+      ${missing ? `<p>${E(T('Could not verify Codex setup. Complete it in the terminal, then check again.', '目前無法確認 Codex 設定是否完成。請在終端完成設定後，再重新檢查。'))}</p>` : ''}</div>
+      <span class="row-state ${ready ? 'ok' : 'attn'}">${E(ready ? T('Ready', '已就緒') : T('First-time setup needed', '尚需首次設定'))}</span></div>
+      <div class="row-actions">${ready ? '' : `<code class="cmd">codex</code><button type="button" class="btn small" id="codex-initialize" data-act="codex-initialize" ${S.phase !== 'idle' ? 'disabled' : ''}>${E(T('Open Codex first-time setup', '開啟 Codex 完成首次設定'))}</button>`}
+      <button type="button" class="btn small" id="codex-initialization-recheck" data-act="codex-initialization-recheck" ${S.phase !== 'idle' ? 'disabled' : ''}>${E(T('Check again', '重新檢查'))}</button>
+      ${!ready && S.terminal['codex-initialization'] === 'opened' ? `<span class="hint-inline">${E(T('Terminal opened. Complete setup there, exit Codex, then check again.', '已開啟終端。請在終端完成設定並離開 Codex，再按「重新檢查」。'))}</span>` : ''}
+      ${!ready && S.terminal['codex-initialization'] === 'missing' ? `<span class="hint-inline">${E(T('Open Command Prompt in a working folder you trust and run codex.', '請在你信任的工作資料夾中開啟「命令提示字元」，再執行 codex。'))}</span>` : ''}
+      ${!ready && (missing || S.terminal['codex-initialization'] === 'missing') ? detailsLink('codex-initialization') : ''}</div></li>`;
+  }
+
   function pageThree() {
     const signIn = signInRows();
     const missing = ORDER.filter((id) => S.picks.has(id) && (!S.rows[id] || S.rows[id].kind !== 'ready'));
     const needsLead = signIn.length ? T('Cats only asks each CLI whether it is signed in, and reads no credential files. You can skip any of these and do it later.', 'Cats 只會問 CLI 是否已登入，不會讀取憑證檔。這些都可以先跳過，之後再做。') : T('You can skip this and do it later.', '可以先跳過，之後再做。');
-    const rows = [...signIn.map(signInRow), ...(ollamaUsable() ? [ollamaModelRow()] : [])].join('');
+    const rows = [...signIn.map(id => signInRow(id) + (id === 'codex' ? codexInitializationRow() : '')), ...(ollamaUsable() ? [ollamaModelRow()] : [])].join('');
     return `<h1 id="setup-h" tabindex="-1">${E(signIn.length ? (ollamaUsable() ? T('Sign in, and get a model', '登入，並準備模型') : T('Sign in to your tools', '登入你的工具')) : T('Get a model for Ollama', '幫 Ollama 準備模型'))}</h1>
       <p class="lead">${E(needsLead)}</p>${S.handoffError ? handoffAlert() : ''}<ul class="rows">${rows}</ul>
       ${missing.length ? `<p class="footnote">${E(T(`${list(missing.map((id) => TOOLS[id].label))} not installed yet, so not listed here. You can finish it later in Settings.`, `${list(missing.map((id) => TOOLS[id].label))} 還沒安裝，所以不在這裡。可以之後在設定完成。`))}</p>` : ''}`;
@@ -1176,6 +1225,11 @@ export function mountSetupWizard(root, bridge, options) {
     const repair = (label, run) => ({ label, run });
     const tryAgain = T('Try again', '再試一次');
     switch (kind) {
+      case 'codex-initialization':
+        return { title: T('Codex setup could not be verified', '無法確認 Codex 設定'),
+          body: T('Complete first-time setup in Codex, then check again. You can choose another tool or leave Catlas off while finishing your account.', '請在 Codex 完成首次設定，再重新檢查。也可以改選其他工具，或先不啟用 Catlas，繼續完成帳號設定。'),
+          raw: S.codexInitialization?.status || 'unavailable', severity: 'warning',
+          repair: repair(T('Check again', '重新檢查'), () => { void recheckCodexInitialization(); }) };
       case 'catalog-fail':
         return { title: T('Could not load the list of tools', '讀不到工具清單'), body: T('Cats Runtime did not answer. Nothing on this computer changed.', 'Cats Runtime 沒有回應，這台電腦沒有任何變更。'), raw: S.catalogError, severity: 'error', repair: repair(tryAgain, () => reconnect()) };
       case 'catalog-lost':
@@ -1335,6 +1389,8 @@ export function mountSetupWizard(root, bridge, options) {
       case 'copy-manual': copyInto(factsOf(arg).manual, `manual:${arg}`); break;
       case 'copy-signin': copyInto((S.facts.signIn || {})[arg], `signin:${arg}`); break;
       case 'terminal': void openTerminal(arg); break;
+      case 'codex-initialize': void openCodexInitialization(); break;
+      case 'codex-initialization-recheck': void recheckCodexInitialization(); break;
       case 'signin-recheck': void recheckRow(arg); break;
       case 'pull-pick': S.pull.name = arg; if (S.pull.state === 'invalid') S.pull.state = 'idle'; render(); break;
       case 'pull-start': void startPull(); break;
@@ -1358,6 +1414,18 @@ export function mountSetupWizard(root, bridge, options) {
     } catch {
       S.terminal[id] = 'missing';
     }
+    renderPage();
+  }
+  async function openCodexInitialization() {
+    if (S.phase !== 'idle') return;
+    S.phase = 'terminal';
+    renderPage();
+    try {
+      const target = TOOLS.codex.target;
+      const result = await wizardBridge.openCodexInitialization?.(`${target.backend}/${target.instance}`);
+      S.terminal['codex-initialization'] = result?.opened ? 'opened' : 'missing';
+    } catch { S.terminal['codex-initialization'] = 'missing'; }
+    S.phase = 'idle';
     renderPage();
   }
   function onChange(event) {

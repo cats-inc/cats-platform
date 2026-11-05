@@ -3,6 +3,7 @@ import { accessSync, chmodSync, constants, mkdtempSync, writeFileSync } from 'no
 import { homedir, tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { promisify } from 'node:util';
+import { codexSetupWorkspace } from './codexInitialization.js';
 
 /**
  * SPEC-136 FR-24: sign-in needs a real terminal, so this opens one with a fixed command per
@@ -138,14 +139,27 @@ export interface OpenTerminalResult {
 /** Opens the terminal. False when none could be opened, so the page offers the command to copy. */
 export async function openSignInTerminal(
   provider: unknown,
-  options: {
-    platform?: NodeJS.Platform;
-    env?: NodeJS.ProcessEnv;
-    launch?: typeof spawn;
-    freshEnv?: (env: NodeJS.ProcessEnv) => Promise<NodeJS.ProcessEnv>;
-  } = {},
+  options: TerminalOptions = {},
 ): Promise<OpenTerminalResult> {
-  const command = signInCommand(provider);
+  return openTerminalCommand(signInCommand(provider), options);
+}
+
+interface TerminalOptions {
+  platform?: NodeJS.Platform;
+  env?: NodeJS.ProcessEnv;
+  launch?: typeof spawn;
+  freshEnv?: (env: NodeJS.ProcessEnv) => Promise<NodeJS.ProcessEnv>;
+  cwd?: string;
+  codexCommand?: 'codex' | 'codex.exe' | 'codex.cmd' | 'codex.bat';
+}
+
+/** Codex owns configuration, sandbox selection and UAC. Opening is never readiness evidence. */
+export function openCodexInitializationTerminal(options: TerminalOptions = {}): Promise<OpenTerminalResult> {
+  if ((options.platform ?? process.platform) !== 'win32') return Promise.resolve({ opened: false, command: null });
+  return openTerminalCommand(options.codexCommand ?? 'codex', { ...options, cwd: options.cwd ?? codexSetupWorkspace() });
+}
+
+async function openTerminalCommand(command: string | null, options: TerminalOptions): Promise<OpenTerminalResult> {
   if (!command) return { opened: false, command: null };
   const platform = options.platform ?? process.platform;
   const baseEnv = options.env ?? process.env;
@@ -158,7 +172,7 @@ export async function openSignInTerminal(
       const script = invocation.script ? writeScript(invocation.script, platform) : '';
       const args = invocation.args.map((arg) => (arg === '{script}' ? script : arg));
       const child = launch(invocation.command, args, {
-        detached: true, stdio: 'ignore', env, cwd: homedir(), windowsHide: false,
+        detached: true, stdio: 'ignore', env, cwd: options.cwd ?? homedir(), windowsHide: false,
       });
       child.once('error', () => resolve({ opened: false, command }));
       // A launcher with no display to open on starts, then exits with an error right away.
