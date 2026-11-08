@@ -2,6 +2,69 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-09 — Desktop 0.14.3 standard preview: reliable npm provider installation
+
+Selected distribution: Desktop **0.14.3 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**. This compatible 0.14 patch repairs provider
+installation and makes Codex initialization advisory during Catlas creation.
+Platform npm, Runtime npm, cats-one, Apps and Plugins are separate release targets.
+
+- **Install on current Node LTS.** Provider installers use npm's normal engine
+  policy instead of adding `--engine-strict`. This lets Cline install on Node 26
+  when a transitive dependency still declares Node 20/22/24. Explicit user engine
+  policy remains effective; the separate npm self-update retains its engine guard.
+- **Run the selected install script.** Newer npm receives one-off approval for
+  the selected CLI at its resolved exact version. Older npm keeps its normal
+  behavior. No persistent approval or blanket transitive-script authorization is
+  added; user policies such as `ignore-scripts` remain effective. Installation
+  and Repair verify both the exact package and a bounded successful CLI
+  `--version` response. Repair can restore an already-current broken installation.
+- **Create Catlas while initialization is unverified.** The Codex initialization
+  terminal and explicit recheck remain available. Initialization status no longer
+  locks creation or runs a diagnostic during submission. Actual model turns retain
+  Runtime's permission checks; finish Codex setup before chatting if needed.
+- **Exact inputs.** Runtime **0.6.2**, source
+  `1bbba8d0f12450af8c9fcdedcb55d7051fe69f5f`, is current Runtime main at
+  selection, with no changes left out. Usage **0.5.4** remains at
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. Shared conversation UI
+  0.1.0 retains content digest
+  `957e4717942c5e987270769a4dea593e2d26b321715abf6dfed1046eb507c680`
+  and tarball SHA-256
+  `363e784f2d0571522006797b01772be55384ecec4ae0bccb254eabd7b6783501`.
+  Shared tooling selects cats-one main
+  `0ddce6621b4f0b60b93bfee7c617ee5ecab01eb9`; its nine pinned files retain
+  identical bytes and executable modes.
+  The workflow records the merged Platform bump SHA and all packaged sources.
+- **Compatibility and recovery.** Public API, App SDK, configuration and stored
+  data retain their formats; there is no migration. Usage's host requirement
+  accepts 0.14.3. Before installing, stop processes using the data roots and back
+  up `~/.cats` and configured overrides. Preserve them on failure and reinstall
+  0.14.3 or return to 0.14.2 without conversion. Returning restores the previous
+  setup behavior. Restore backups only while processes using those roots are stopped.
+- **Signing and updates.** Dispatch desktop-release.yml from the merged bump
+  source with `tag=v0.14.3`, the full Runtime SHA above and `unsigned=false`.
+  Expected Standard trust is macOS **signed + notarized**, Windows **unsigned:
+  no certificate**, Linux **n/a**. Native checks and build receipts establish
+  actual trust. NSIS, same-team signed macOS and Linux DEB retain their update
+  paths; portable and unsigned macOS installations require manual replacement.
+- **Validation boundary.** cats-platform#386 and cats-platform#387 passed full
+  CI and independent review. Isolated Windows installs on Node 26.13.0/npm 11.20.0
+  passed actual Cline 3.0.74, OpenCode 1.19.5 and Kilo 7.8.27 version probes;
+  same-version OpenCode Repair recovered a deliberately broken command. Windows
+  provider regressions passed 13 tests, existing observations 15, and setup asset
+  checks 6. Linux/macOS helper regressions passed 25 tests under WSL. The Desktop
+  host build and isolated source-candidate startup/shutdown passed. Basic CLI
+  startup does not assert authentication or a model turn. Native macOS helper
+  execution, clean-machine UAC and installed upgrade/rollback were not exercised
+  locally. Full release CI, packaged source, signing, checksum and provenance
+  gates remain required.
+
+Publication results: the `v0.14.3` GitHub Standard Preview, platform receipts and
+Actions run. Verification checks immutable status, tag source, complete public
+assets and hashes, updater metadata and build provenance.
+
 ## 2026-11-05 — Desktop 0.14.2 standard preview: initialize Codex before starting Catlas
 
 Selected distribution: Desktop **0.14.2 standard-profile preview**, App SDK
