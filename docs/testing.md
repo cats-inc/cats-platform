@@ -366,13 +366,25 @@ probe is read-only: initialize, initialized and windowsSandbox/readiness only, w
 no thread, turn, configuration write or sandbox installation. Tests use private
 temporary homes and workspaces, not the owner's Codex configuration.
 
+After the clean-machine creation regression reported on 2026-11-08, readiness is
+advisory. Account/Catlas regression tests cover incomplete, unverified and ready
+status, creation without calling the readiness API (even if it would hang), and
+discarding a pending run-log result after the view closes. Page 3 keeps the official
+terminal entry and read-only readiness status; Runtime retains actual-turn checks.
+
+Focused validation for this correction passed 31 account/Catlas/Google/i18n tests
+and the headless Chrome initialization scenario (zero page errors), plus renderer
+typecheck, affected-test typecheck, host and renderer builds. Independent review
+found no blocker. The full test TypeScript project still requires the optional
+mobile dependencies; no full-suite, real-model or customer-machine claim is made.
+
 Focused Windows validation (2026-11-05) covers:
 
 - 45 host/setup, provider-selection and prerequisite cases, 39 native-probe,
   target-resolution and Platform account/Catlas page cases, and six host/bootstrap
   and test-collection boundary cases all passed. The final page
-  submission checks the actual target on every retry, keeps account entry on failure,
-  allows Catlas off, and ignores a successful result after the view closes.
+  submission originally required a ready target; that UI gate is superseded by the
+  advisory behavior above. Catlas off and late-result cancellation remain covered.
 - Native launcher fixtures cover both x64/arm64 Node architectures independently of
   Electron, npm cmd/ps1 and standalone executables. RPC cases cover fragmentation,
   unknown statuses, cancellation, timeout, excessive output and owned descendants.

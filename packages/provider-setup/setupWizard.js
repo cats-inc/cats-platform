@@ -1187,8 +1187,9 @@ export function mountSetupWizard(root, bridge, options) {
     return `<li class="row ${ready ? 'is-ready' : ''}" data-row="codex-initialization"><div class="row-top"><span class="glyph">${ready ? ICON.check : ICON.wait}</span>
       <div class="row-text"><strong>${E(T('Complete Codex first-time setup', '完成 Codex 首次設定'))}</strong>
       ${ready ? '' : `<p>${E(T('After signing in, open Codex and complete its Windows sandbox prompts. Exit Codex, then check again. Codex handles sandbox choices and any administrator prompt.', '登入後，開啟 Codex 並完成 Windows 安全執行環境的設定。離開 Codex 後，再按「重新檢查」。安全環境選擇與權限提示會由 Codex 處理。'))}</p>`}
-      ${missing ? `<p>${E(T('Could not verify Codex setup. Complete it in the terminal, then check again.', '目前無法確認 Codex 設定是否完成。請在終端完成設定後，再重新檢查。'))}</p>` : ''}</div>
-      <span class="row-state ${ready ? 'ok' : 'attn'}">${E(ready ? T('Ready', '已就緒') : T('First-time setup needed', '尚需首次設定'))}</span></div>
+      ${missing ? `<p>${E(T('Could not verify Codex setup. Complete it in the terminal, then check again.', '目前無法確認 Codex 設定是否完成。請在終端完成設定後，再重新檢查。'))}</p>` : ''}
+      ${ready ? '' : `<p>${E(T('You can continue and create Catlas now. If Codex setup is incomplete, finish it before chatting.', '現在可以繼續並建立 Catlas。若 Codex 尚未完成設定，請在開始對話前完成。'))}</p>`}</div>
+      <span class="row-state ${ready ? 'ok' : 'attn'}">${E(ready ? T('Ready', '已就緒') : missing ? T('Cannot tell', '無法確認') : T('First-time setup needed', '尚需首次設定'))}</span></div>
       <div class="row-actions">${ready ? '' : `<code class="cmd">codex</code><button type="button" class="btn small" id="codex-initialize" data-act="codex-initialize" ${S.phase !== 'idle' ? 'disabled' : ''}>${E(T('Open Codex first-time setup', '開啟 Codex 完成首次設定'))}</button>`}
       <button type="button" class="btn small" id="codex-initialization-recheck" data-act="codex-initialization-recheck" ${S.phase !== 'idle' ? 'disabled' : ''}>${E(T('Check again', '重新檢查'))}</button>
       ${!ready && S.terminal['codex-initialization'] === 'opened' ? `<span class="hint-inline">${E(T('Terminal opened. Complete setup there, exit Codex, then check again.', '已開啟終端。請在終端完成設定並離開 Codex，再按「重新檢查」。'))}</span>` : ''}

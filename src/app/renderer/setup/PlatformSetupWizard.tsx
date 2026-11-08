@@ -26,7 +26,7 @@ import { syncDesktopHostPlatformShell } from './desktopHostBridge.js';
 import { nextSetupStep, previousSetupStep, type SetupStep } from './flow';
 import { canContinueGuideCatSetupStep } from './plugins';
 
-type SubmitError = 'already' | 'bad' | 'server' | 'network' | 'google' | 'codex';
+type SubmitError = 'already' | 'bad' | 'server' | 'network' | 'google';
 type AdminMethod = 'local_password' | 'google';
 
 interface WizardRow {
@@ -349,16 +349,6 @@ export function PlatformSetupWizard({
       }
     };
     try {
-      if (wizard && createGuideCat && provider === 'codex') {
-        // Fresh host evidence for this exact target on every attempt. Nothing is posted yet.
-        const readiness = await Promise.resolve().then(() => wizard.checkCodexInitialization(instance || undefined)).catch(() => ({ status: 'unavailable' }));
-        if (!current()) return;
-        if (readiness.status !== 'ready' && readiness.status !== 'not_applicable') {
-          setSubmitError('codex');
-          setSubmitDetail(readiness.status);
-          return;
-        }
-      }
       if (!current()) return;
       run = wizard
         ? await Promise.resolve(wizard.startRun({ command: `POST /api/platform/setup/complete ${runBody}` })).catch(() => null)
@@ -428,9 +418,6 @@ export function PlatformSetupWizard({
   function submitReason(): SetupFailureReason {
     const retry = { label: t(messageKeys.setupWizardTryAgain), run: () => { void finishSetup(); } };
     switch (submitError) {
-      case 'codex':
-        return { title: t(messageKeys.setupWizardCodexTitle), body: t(messageKeys.setupWizardCodexBody), raw: submitDetail,
-          severity: 'warning', repair: { label: t(messageKeys.setupWizardCodexFix), run: () => goToHostPage(3) } };
       case 'already':
         return { title: t(messageKeys.setupWizardAlreadyTitle), body: t(messageKeys.setupWizardAlreadyBody), raw: submitDetail, severity: 'error',
           repair: { label: t(messageKeys.setupWizardGoToSignIn), run: () => globalThis.location?.assign('/') } };
@@ -585,11 +572,7 @@ export function PlatformSetupWizard({
         <div className="alert-text"><strong>{reason.title}</strong><span>{reason.body}</span></div>
         <div className="alert-actions">
           {detailsButton('setup-details-submit', submitReason)}
-          {submitError === 'codex' ? (
-            <button type="button" className="btn small" id="setup-fix-codex" onClick={() => goToHostPage(3)}>
-              {t(messageKeys.setupWizardCodexFix)}
-            </button>
-          ) : submitError === 'already' ? (
+          {submitError === 'already' ? (
             <button type="button" className="btn small" id="setup-to-sign-in" onClick={() => globalThis.location?.assign('/')}>
               {t(messageKeys.setupWizardGoToSignIn)}
             </button>
