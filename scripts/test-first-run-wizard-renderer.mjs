@@ -609,12 +609,14 @@ await check('Codex initialization follows login and only a fresh check marks it 
   await page.waitForSelector('#codex-initialize');
   truthy(await page.locator('[data-row="signin-codex"] + [data-row="codex-initialization"]').count(), 'after login');
   truthy(!(await page.locator('#go-account').isDisabled()), 'unfinished Codex can continue to account');
+  truthy(await page.locator('[data-row="codex-initialization"]').textContent().then(text => /You can continue and create Catlas now|現在可以繼續並建立 Catlas/u.test(text)), 'initialization is advisory');
   await page.click('#codex-initialize');
   await page.waitForFunction(() => /Terminal opened|已開啟終端/.test(document.querySelector('[data-row="codex-initialization"]').textContent));
   truthy(!await page.locator('[data-row="codex-initialization"]').evaluate(row => row.classList.contains('is-ready')), 'opened is not ready');
   await page.evaluate(() => { window.__host.machine.codexInitialization = 'unavailable'; });
   await page.click('#codex-initialization-recheck');
   await page.waitForFunction(() => /Could not verify|無法確認/.test(document.querySelector('[data-row="codex-initialization"]').textContent));
+  truthy(!(await page.locator('#go-account').isDisabled()), 'unverified Codex can continue to account');
   await page.evaluate(() => { window.__host.machine.codexInitialization = 'ready'; });
   await page.click('#codex-initialization-recheck');
   await page.waitForSelector('[data-row="codex-initialization"].is-ready');

@@ -154,10 +154,10 @@ test('Catlas: on when a tool can answer, one tool chooses itself, off when none 
   assert.equal(none.create().disabled, false, 'finishing without Catlas stays possible');
 });
 
-test('Codex Catlas requires fresh host readiness on each submit, before creating the account', async t => {
+for (const status of ['required', 'unavailable', 'ready']) test(`Codex Catlas can be created with ${status} initialization advice`, async t => {
   const host = desktopBridge();
   const checks: Array<string | undefined> = [];
-  let status = 'required';
+  host.bridge.setupWizard.facts = async () => ({ state: { codexInitialization: { status } } });
   host.bridge.setupWizard.checkCodexInitialization = async instance => { checks.push(instance); return { status }; };
   const f = setup(t, { providers: ['codex'], bridge: host.bridge });
   await f.toCatlas();
@@ -165,18 +165,10 @@ test('Codex Catlas requires fresh host readiness on each submit, before creating
   await waitFor(() => assert.equal(f.create().disabled, false));
   assert.equal(checks.length, 0, 'rendering and choosing a tool run no Codex probe');
   fireEvent.click(f.create());
-  await waitFor(() => assert.ok(f.view.container.querySelector('#setup-fix-codex')));
-  assert.equal(f.submitted.length, 0);
-  status = 'unavailable';
-  fireEvent.click(f.create());
-  await waitFor(() => assert.equal(checks.length, 2));
-  await waitFor(() => assert.equal(f.create().disabled, false));
-  assert.equal(f.submitted.length, 0, 'an inconclusive probe cannot create anything');
-  status = 'ready';
-  fireEvent.click(f.create());
   await waitFor(() => assert.equal(f.submitted.length, 1));
-  assert.equal(checks.length, 3);
-  assert.equal(checks[2], f.submitted[0]!.guideCatInstance, 'checks the actual submitted target');
+  assert.equal(checks.length, 0, 'submission never adds a sandbox-readiness gate');
+  assert.equal(f.submitted[0]!.guideCatProvider, 'codex');
+  assert.equal(f.submitted[0]!.createGuideCat, true);
 });
 
 test('an unready Codex never prevents finishing without Catlas', async t => {
@@ -214,10 +206,10 @@ test('Not now can be chosen while providers are pending, without a late reply en
   assert.equal(f.submitted[0]!.createGuideCat, false);
 });
 
-test('closing the setup view during a pending readiness check cannot submit a late result', async t => {
+test('closing the setup view during a pending run log cannot submit a late result', async t => {
   const host = desktopBridge();
-  let complete: ((value: { status: string }) => void) | undefined;
-  host.bridge.setupWizard.checkCodexInitialization = () => new Promise(resolve => { complete = resolve; });
+  let complete: ((value: number) => void) | undefined;
+  host.bridge.setupWizard.startRun = () => new Promise(resolve => { complete = resolve; });
   const f = setup(t, { providers: ['codex'], bridge: host.bridge });
   await f.toCatlas();
   await waitFor(() => assert.equal((f.view.container.querySelector('#setup-guide-codex') as HTMLInputElement)?.checked, true));
@@ -225,22 +217,22 @@ test('closing the setup view during a pending readiness check cannot submit a la
   fireEvent.click(f.create());
   await waitFor(() => assert.ok(complete));
   f.view.unmount();
-  complete!({ status: 'ready' });
+  complete!(1);
   await nextTurn();
   assert.equal(f.submitted.length, 0);
 });
 
-test('a known non-native Codex target passes the host preflight without native initialization', async t => {
+test('a pending Codex readiness API cannot hold account or Catlas creation open', async t => {
   const host = desktopBridge();
   let probes = 0;
-  host.bridge.setupWizard.checkCodexInitialization = async () => { probes++; return { status: 'not_applicable' }; };
+  host.bridge.setupWizard.checkCodexInitialization = () => { probes++; return new Promise(() => {}); };
   const f = setup(t, { providers: ['codex'], bridge: host.bridge });
   await f.toCatlas();
   await waitFor(() => assert.equal((f.view.container.querySelector('#setup-guide-codex') as HTMLInputElement)?.checked, true));
   await waitFor(() => assert.equal(f.create().disabled, false));
   fireEvent.click(f.create());
   await waitFor(() => assert.equal(f.submitted.length, 1));
-  assert.equal(probes, 1);
+  assert.equal(probes, 0);
 });
 
 test('with several tools nothing is chosen for you, and the button waits for a choice or Not now', async (t) => {
