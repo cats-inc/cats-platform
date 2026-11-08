@@ -938,6 +938,28 @@ elevation expectations consumed by the desktop host bridge. Target installer
 manifests now scope that catalog down to the assets for the current target
 platform.
 
+Packaged npm-provider installs follow npm's normal engine policy. Cats does not
+add `--engine-strict` to provider installs: a transitive dependency can declare
+an older Node upper bound even when the CLI supports the installed LTS. An
+explicit user `engine-strict` setting remains effective. The separate npm
+self-update still enforces npm's own Node engine requirements.
+
+For npm versions that expose `allow-scripts`, each provider install or Repair
+passes a one-off approval for the selected package at its resolved exact version.
+This does not persist approvals or authorize all transitive dependency scripts;
+older npm retains its normal behavior. Other user policies, including
+`ignore-scripts`, remain effective. After mutation, both the npm package version
+and a successful, bounded CLI `--version` response must match before reporting
+ready. This proves basic startup, not authentication or a model turn. Use Repair
+to rerun installation for an already-current package whose script was previously
+skipped; an ordinary no-op install/upgrade does not repair it.
+
+Isolated Windows install verification uses Node 26.13.0/npm 11.20.0: Cline 3.0.74,
+OpenCode 1.19.5 and Kilo 7.8.27 install and pass their command-version probes.
+Cline's `@sap/xsenv@6.2.2` engine warning remains visible without becoming a
+Cats-added hard failure. See the upstream [Cline install instructions](https://docs.cline.bot/getting-started/installing-cline)
+and [npm engine/script policy](https://docs.npmjs.com/cli/v11/using-npm/config/).
+
 The same staged contract now also carries
 `installer.providerSetup.localProviders`, which freezes the current packaged
 local-provider rollout:
@@ -1189,4 +1211,4 @@ See `Dependency install warnings` under `Installation`.
 
 ---
 
-*Last updated: 2026-10-31*
+*Last updated: 2026-11-09*
