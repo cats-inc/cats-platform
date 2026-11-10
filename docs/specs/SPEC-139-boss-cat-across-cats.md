@@ -136,6 +136,11 @@ board, nothing else.
 
 #### Joining an existing conversation
 
+> Placement note (2026-11-11): Settings › Cats no longer exists. Cats Directory now owns
+> per-cat settings, including the admin switch (SPEC-102, cats-platform#405). The per-Cat
+> visibility switch belongs on the Cat's Directory page. Where this one policy for every
+> Boss Cat lives still needs the owner's decision before implementation.
+
 8. FR-8: Settings › Cats has one setting for every Boss Cat: 「主控貓加入其他對話」, with
    「不允許」, 「每次問我」 and 「允許」. The default is 「每次問我」.
    - It covers Chat, Code and Work conversations alike.
