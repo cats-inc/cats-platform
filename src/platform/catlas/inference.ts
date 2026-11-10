@@ -114,6 +114,8 @@ export async function inferCatlasAdvice(input: {
     runtimeClient: input.runtimeClient,
     input: {
       ...input.guideCat.executionTarget,
+      ...(input.guideCat.executionTarget.provider === 'codex'
+        ? { providerSessionPersistence: 'ephemeral' as const } : {}),
       modelSelection: input.guideCat.modelSelection,
       workspaceKind: 'sandbox', workspaceAccess: 'read_only', permissionMode: 'default',
       sharingMode: 'isolated',
@@ -132,6 +134,9 @@ export async function inferCatlasAdvice(input: {
     input.signal.throwIfAborted();
     if (!session.id || session.provider !== input.guideCat.executionTarget.provider) {
       throw new Error('Catlas execution target did not match its binding.');
+    }
+    if (session.provider === 'codex' && session.providerSessionPersistence !== 'ephemeral') {
+      throw new Error('Catlas requires ephemeral Codex sessions.');
     }
     const response = await waitForMessage(sendSupervisedRuntimeMessage({
       runtimeClient: input.runtimeClient, sessionId: session.id,
@@ -206,6 +211,8 @@ export async function inferCatlasData(input: {
   const session = await createSupervisedRuntimeSession({
     runtimeClient: input.runtimeClient, supervision,
     input: { ...input.guideCat.executionTarget, modelSelection: input.guideCat.modelSelection,
+      ...(input.guideCat.executionTarget.provider === 'codex'
+        ? { providerSessionPersistence: 'ephemeral' as const } : {}),
       workspaceKind: 'sandbox', workspaceAccess: 'read_only', permissionMode: 'default',
       sharingMode: 'isolated', skills: { requestedSkills: [], strict: true }, mcpServers: [], instructions,
       context: { source: 'interactive', reason: 'catlas-assist', labels: ['catlas', input.kind],
@@ -214,6 +221,9 @@ export async function inferCatlasData(input: {
   try {
     input.signal.throwIfAborted();
     if (!session.id || session.provider !== input.guideCat.executionTarget.provider) throw new CatlasAdviceError();
+    if (session.provider === 'codex' && session.providerSessionPersistence !== 'ephemeral') {
+      throw new Error('Catlas requires ephemeral Codex sessions.');
+    }
     input.onSession?.({ provider: session.provider, model: session.model ?? null });
     const response = await waitForMessage(sendSupervisedRuntimeMessage({
       runtimeClient: input.runtimeClient, sessionId: session.id, content: JSON.stringify(input.payload),

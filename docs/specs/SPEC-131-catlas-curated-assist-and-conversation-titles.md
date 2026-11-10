@@ -63,6 +63,25 @@ deferred, under the authority rules of
 
 ## Requirements
 
+### Native session retention (2026-11-11 amendment)
+
+Both Catlas inference paths request `providerSessionPersistence: 'ephemeral'`
+when the selected provider is Codex. The Runtime client verifies support on the
+exact selected backend/instance before creation and verifies the admitted policy
+before sending content. Unsupported or ignored admission fails the job without
+a persistent retry; background callers retain their existing cache/builtin
+fallback, and explicit help retains its current failure presentation.
+
+Each independent prompt/navigation/title/help job keeps its own session. A
+bounded advice operation and its feedback use the same live ephemeral worker;
+worker loss never replays a host operation. Existing validation, read-only
+policy, input isolation and finally-close cleanup still apply. Non-Codex behavior
+is unchanged. Ephemeral native history does not erase product/Runtime receipts.
+Persistent Chat creation supplies a bounded product label; Runtime seeds an
+unnamed native conversation and preserves later user renames. See
+[PLAN-132](../plans/PLAN-132-codex-session-retention.md) for validation and rollout
+limits; this is an additive contract with no saved-data migration.
+
 ### Catlas availability
 
 1. FR-1: Platform checks "Catlas active" on the server before every call and

@@ -1,5 +1,10 @@
 # Implementation Plans
 
+- [PLAN-132: Codex session retention](PLAN-132-codex-session-retention.md)
+  — implemented, unpublished, 2026-11-11; ephemeral Catlas jobs, Runtime capability admission and
+  persistent conversation labels. Scoped and isolated native acceptance passed.
+
+
 - [PLAN-131: Settings AI tools](PLAN-131-settings-ai-tools.md) — in progress.
 - [PLAN-130: Desktop first-run wizard](PLAN-130-desktop-first-run-wizard.md) — implemented; clean-machine acceptance pending.
 
