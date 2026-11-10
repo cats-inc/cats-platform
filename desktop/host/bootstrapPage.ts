@@ -128,6 +128,18 @@ ${SETUP_WIZARD_CSS}
       animation: fadeSlideIn 0.4s ease both;
     }
     .hidden { display: none; }
+    /* Service detail stays behind this toggle; the splash itself is the short status. */
+    .splash-more {
+      margin: 4px auto 0;
+      padding: 2px 6px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .splash-more:hover { color: var(--text); text-decoration: underline; }
 
     /* Dot */
     .dot {
@@ -512,7 +524,8 @@ ${SETUP_WIZARD_CSS}
           <span id="splash-dot" class="dot dot-warn dot-pulse"></span>
           <span id="splash-text"></span>
         </p>
-        <ul id="splash-services" class="rows"></ul>
+        <button id="btn-splash-more" class="splash-more hidden" type="button" aria-expanded="false" aria-controls="splash-services"></button>
+        <ul id="splash-services" class="rows hidden"></ul>
         <p id="slow-hint" class="slow-hint wait-hint" role="status"></p>
         <div id="slow-actions" class="solo-actions hidden">
           <button id="btn-slow-retry" class="btn" type="button"></button>
@@ -652,10 +665,6 @@ ${SETUP_WIZARD_CSS}
         'issue.setup.manualFollowThrough.title': 'Packaged setup still has manual follow-through',
         'issue.runtimeDiagnosticsPending.title': 'Runtime diagnostics are still loading',
         'issue.runtimeDiagnosticsPending.detail': 'The desktop host has not finished its prerequisite scan yet.',
-        'startup.title': 'Starting Cats',
-        'startup.lead': 'Getting two background services ready. This usually takes less than a minute, and it changes nothing on your computer.',
-        'startup.failedTitle': '{service} did not start',
-        'startup.failedTitleGeneric': 'Cats did not finish starting',
         'startup.runtimeNote': 'Runs your AI tools',
         'startup.platformNote': 'The app you are about to see',
         'startup.running': 'Running',
@@ -663,7 +672,6 @@ ${SETUP_WIZARD_CSS}
         'startup.waiting': 'Waiting',
         'startup.notStarted': 'Did not start',
         'startup.startAgain': 'Start again',
-        'startup.tryAgain': 'Try again',
         'startup.noBridgeTitle': 'This window is missing part of Cats',
         'startup.noBridgeBody': 'The connection between this page and the Cats app did not load, so Cats cannot continue. Nothing on this computer changed. Reload this window first; if it happens again, reinstall Cats.',
         'startup.reload': 'Reload',
@@ -948,10 +956,6 @@ ${SETUP_WIZARD_CSS}
         'issue.setup.manualFollowThrough.title': '套裝設定仍有手動後續步驟',
         'issue.runtimeDiagnosticsPending.title': '執行階段診斷仍在載入',
         'issue.runtimeDiagnosticsPending.detail': '桌面主機尚未完成先決條件掃描。',
-        'startup.title': '正在啟動 Cats',
-        'startup.lead': '正在準備兩個背景服務，通常不用一分鐘，不會變更你的電腦。',
-        'startup.failedTitle': '{service} 沒有啟動',
-        'startup.failedTitleGeneric': 'Cats 沒有啟動完成',
         'startup.runtimeNote': '負責執行 AI 工具',
         'startup.platformNote': '接下來會看到的主程式',
         'startup.running': '已啟動',
@@ -959,7 +963,6 @@ ${SETUP_WIZARD_CSS}
         'startup.waiting': '等待中',
         'startup.notStarted': '沒有啟動',
         'startup.startAgain': '重新啟動',
-        'startup.tryAgain': '再試一次',
         'startup.noBridgeTitle': '這個視窗少了 Cats 的一部分',
         'startup.noBridgeBody': '這個頁面和 Cats 應用程式之間的連線沒有載入，所以無法繼續。這台電腦沒有任何變更。請先重新載入這個視窗；如果還是一樣，請重新安裝 Cats。',
         'startup.reload': '重新載入',
@@ -2255,12 +2258,27 @@ ${SETUP_WIZARD_CSS}
     var btnSlowDetails = document.getElementById('btn-slow-details');
     var splashTitle = document.getElementById('splash-title');
     var splashServices = document.getElementById('splash-services');
+    var btnSplashMore = document.getElementById('btn-splash-more');
+    /* Each service's own state is detail: it shows only after the owner asks. */
+    var showServiceDetails = false;
+
+    function applyServiceDetailsToggle() {
+      btnSplashMore.textContent = tx(showServiceDetails ? 'action.showFewer' : 'action.showMore');
+      btnSplashMore.setAttribute('aria-expanded', showServiceDetails ? 'true' : 'false');
+      splashServices.classList.toggle('hidden', !showServiceDetails);
+    }
+
+    btnSplashMore.addEventListener('click', function () {
+      showServiceDetails = !showServiceDetails;
+      applyServiceDetailsToggle();
+    });
 
     function applyStaticCopy() {
       splashText.textContent = tx('loading.startingUp');
       startupErrorCopy.textContent = tx('fixed.startupError');
-      splashTitle.textContent = tx('startup.title');
-      btnRetry.textContent = tx('startup.tryAgain');
+      splashTitle.textContent = 'Cats';
+      applyServiceDetailsToggle();
+      btnRetry.textContent = tx('action.retry');
       btnDetails.textContent = tx('action.showDetails');
       btnQuit.textContent = tx('actionLabel.quitCats');
       btnSlowRetry.textContent = tx('startup.startAgain');
@@ -2341,14 +2359,16 @@ ${SETUP_WIZARD_CSS}
       });
     }
 
+    /* The splash keeps its short copy in every state. Which service is starting,
+     * running or failed is detail behind "Show more"; "Show details" still opens
+     * the full diagnostics. */
     function updateSplash(snap) {
       var isError = resolvePageMode(snap) === 'recovery';
-      var failedService = (snap.services || []).find(function (service) { return service.status === 'failed'; });
       renderStartupServices(snap);
-      splashTitle.textContent = !isError ? tx('startup.title')
-        : failedService ? tx('startup.failedTitle', { service: getServiceDisplayName(failedService.name) })
-          : tx('startup.failedTitleGeneric');
-      startupErrorCopy.textContent = isError ? recoverySummary(snap) : tx('fixed.startupError');
+      btnSplashMore.classList.toggle('hidden', splashServices.childElementCount === 0);
+      applyServiceDetailsToggle();
+      splashTitle.textContent = 'Cats';
+      startupErrorCopy.textContent = tx('fixed.startupError');
       var isPending = snap.phase === 'starting_services' || snap.phase === 'checking_prerequisites';
       var isReady = snap.phase === 'ready_for_setup' || snap.phase === 'ready_for_chat';
 
@@ -2357,7 +2377,7 @@ ${SETUP_WIZARD_CSS}
       splashDot.style.display = isError ? 'none' : '';
 
       /* Update text */
-      splashText.textContent = isError ? '' : (isPending ? tx('startup.lead') : friendlyLoadingSummary(snap.phase));
+      splashText.textContent = isError ? '' : friendlyLoadingSummary(snap.phase);
 
       /* Dismiss or resume slow-launch hint state */
       if (isError || isReady) {
