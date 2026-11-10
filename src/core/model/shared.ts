@@ -127,7 +127,10 @@ export function replaceById<T extends { id: string }>(
     };
   }
 
-  const nextRecords = structuredClone(records);
+  // A shallow copy, like the append above. Store reads and writes already clone
+  // the whole state at their boundary; deep-cloning the collection here made
+  // every projection pass quadratic in the number of records.
+  const nextRecords = records.slice();
   nextRecords[index] = nextRecord;
   return {
     records: nextRecords,
