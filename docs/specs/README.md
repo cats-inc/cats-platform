@@ -1,5 +1,9 @@
 # Feature Specifications
 
+- [SPEC-139: Boss Cat across Cats](SPEC-139-boss-cat-across-cats.md)
+  — approved, 2026-11-11; not implemented; a status board without message text, group conversations the Boss Cat
+  creates, and joining Chat, Code or Work conversations under one owner switch (ask every
+  time by default). Counterpart of Cats Bot SPEC-012.
 - [SPEC-138: Settings AI tools](SPEC-138-settings-ai-tools.md)
   — approved, 2026-11-11; Settings > Runtime runs the first-run wizard's rows in a Settings
   layout, with update, reinstall and uninstall as ticked changes. PLAN-131.
