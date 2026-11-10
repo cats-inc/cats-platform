@@ -2,7 +2,7 @@
 
 [Settings AI tools](specs/SPEC-138-settings-ai-tools.md) gives Settings > Runtime the first-run
 wizard's rows, log and details, with Update, Reinstall and Uninstall as ticked changes
-([ADR-147](decisions/147-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md),
+([ADR-148](decisions/148-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md),
 [PLAN-131](plans/PLAN-131-settings-ai-tools.md)).
 
 [Desktop first-run wizard](specs/SPEC-136-desktop-first-run-wizard.md) replaces onboarding's

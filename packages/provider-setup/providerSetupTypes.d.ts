@@ -1,4 +1,4 @@
-/** Shapes the host and its pages share for provider selection and setup (ADR-116, ADR-147). */
+/** Shapes the host and its pages share for provider selection and setup (ADR-116, ADR-148). */
 export interface ProviderTarget {
   provider: string;
   backend: 'cli' | 'api' | 'local' | 'agent';

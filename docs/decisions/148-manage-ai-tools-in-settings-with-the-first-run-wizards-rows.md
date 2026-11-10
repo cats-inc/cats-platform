@@ -1,4 +1,4 @@
-# ADR-147: Manage AI Tools in Settings with the First-Run Wizard's Rows
+# ADR-148: Manage AI Tools in Settings with the First-Run Wizard's Rows
 
 ## Status
 

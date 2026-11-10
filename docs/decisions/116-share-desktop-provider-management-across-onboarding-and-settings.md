@@ -13,7 +13,7 @@ Point 1's onboarding presentation (cards, grouping, Show more), point 3's Apply 
 checkbox on first run, and point 5's checks before anyone asks on first run are replaced by
 the first-run wizard. Settings > Runtime and the remaining points stand.
 
-Amended — 2026-11-11 by [ADR-147](147-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md).
+Amended — 2026-11-11 by [ADR-148](148-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md).
 Settings > Runtime no longer shares this presentation either; both surfaces use the first-run
 wizard's rows. Host-owned operations remain shared.
 

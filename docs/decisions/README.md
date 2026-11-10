@@ -1,5 +1,9 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-148: Manage AI tools in Settings with the first-run wizard's rows](148-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md)
+  — accepted, 2026-11-11. Reverses ADR-146 point 16: Settings > Runtime gets the wizard's rows,
+  log and details, Update is offered but never announced, and the host admits Settings to the
+  wizard's helper, terminal and model channels.
 - [ADR-147: Send the owner to the macOS System Settings pane a permission needs](147-send-the-owner-to-the-macos-system-settings-pane-a-permission-needs.md)
   — accepted, 2026-11-11. The host opens a named Microphone, Speech Recognition, Screen
   Recording or Login Items pane from a toast action; Speech Recognition gets its own

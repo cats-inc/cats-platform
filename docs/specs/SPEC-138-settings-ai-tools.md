@@ -7,7 +7,7 @@
 | **Status** | Approved 2026-11-11 (owner request); implementation in PLAN-131 |
 | **Owner** | Product owner |
 | **Reviewer** | Independent agent before each merge |
-| **Related decision** | [ADR-147](../decisions/147-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md) |
+| **Related decision** | [ADR-148](../decisions/148-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md) |
 | **Related plan** | [PLAN-131](../plans/PLAN-131-settings-ai-tools.md) |
 | **Updates** | SPEC-136 Non-Goals (Settings > Runtime), FR-38 and FR-41; SPEC-116 FR-2 and FR-3 for Settings |
 
@@ -27,7 +27,7 @@ ticks.
 
 ## Non-Goals
 
-- A read-only "update available" signal (ADR-147 Alternative 3).
+- A read-only "update available" signal (ADR-148 Alternative 3).
 - Changing helper scripts, Runtime routes or persisted formats.
 - Browser Settings, which has no Desktop host.
 - The rest of Settings > Runtime: status, Claude in Chrome, desktop control, session settings and
@@ -212,12 +212,12 @@ Settings > Runtime (canvas)
 
 ## Open Questions
 
-- None for implementation. A read-only update check is a separate decision (ADR-147
+- None for implementation. A read-only update check is a separate decision (ADR-148
   Alternative 3).
 
 ## References
 
-- [ADR-147](../decisions/147-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md)
+- [ADR-148](../decisions/148-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md)
 - [SPEC-054](SPEC-054-bootstrap-recovery-summary-and-bounded-detail-actions.md)
 - [SPEC-116](SPEC-116-desktop-provider-management.md)
 - [SPEC-136](SPEC-136-desktop-first-run-wizard.md)

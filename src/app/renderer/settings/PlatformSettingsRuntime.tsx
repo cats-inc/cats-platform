@@ -73,7 +73,7 @@ function resolveRuntimeStatusChip(
 let aiTools: { host: HTMLDivElement; view: ReturnType<typeof mountSetupWizard> } | null = null;
 let aiToolsFeedback: ((message: string) => void) | null = null;
 
-/** The first-run wizard's rows, log and details, in Settings' layout (ADR-147). */
+/** The first-run wizard's rows, log and details, in Settings' layout (ADR-148). */
 function DesktopAiTools({ onFeedback }: { onFeedback: (message: string) => void }) {
   const root = useRef<HTMLDivElement>(null);
   const { locale } = useI18n();
