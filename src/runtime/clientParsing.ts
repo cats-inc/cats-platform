@@ -11,6 +11,8 @@ import { normalizeProductProviderEventCapabilities } from '../shared/providerCat
 function providerContinuity(value: unknown): RuntimeProviderInstanceConfig['continuity'] {
   const c = value && typeof value === 'object' ? value as Record<string, any> : {};
   return {
+    ...(Array.isArray(c.providerSessionPersistence) ? { providerSessionPersistence: c.providerSessionPersistence
+      .filter((p: unknown): p is 'persistent' | 'ephemeral' => p === 'persistent' || p === 'ephemeral') } : {}),
     ...(c.interactions?.version === 1 && Array.isArray(c.interactions.kinds)
       ? { interactions: { version: 1 as const, kinds: c.interactions.kinds.filter((k: unknown) => typeof k === 'string') } } : {}),
     ...(c.sessionCapabilities?.version === 1 ? { sessionCapabilities: { version: 1 as const,

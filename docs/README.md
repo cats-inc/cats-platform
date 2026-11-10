@@ -1,5 +1,9 @@
 # Documentation Index
 
+[Codex session retention](plans/PLAN-132-codex-session-retention.md) implements ephemeral
+Catlas inference through Runtime, with persistent product conversation names and
+existing continuity preserved. Scoped and isolated native acceptance passed; unpublished.
+
 [Settings AI tools](specs/SPEC-138-settings-ai-tools.md) gives Settings > Runtime the first-run
 wizard's rows, log and details, with Update, Reinstall and Uninstall as ticked changes
 ([ADR-148](decisions/148-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md),

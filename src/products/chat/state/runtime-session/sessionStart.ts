@@ -60,6 +60,8 @@ export async function createParticipantTargetRuntimeSession(input: {
     runtimeClient: input.runtimeClient,
     input: enrichRuntimeInvocation(channel, {
       provider: participant.execution.target.provider,
+      sessionLabel: Array.from(`Cats Chat · ${channel.title} · ${participant.name}`
+        .replace(/[\u0000-\u001f\u007f]/gu, ' ')).slice(0, 160).join(''),
       instance: participant.execution.target.instance,
       model: participant.execution.target.model,
       modelSelection:

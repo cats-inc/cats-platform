@@ -43,6 +43,17 @@ Use this guide together with:
 
 ## Foundational Integration Rules
 
+Catlas Codex jobs use Runtime's optional `providerSessionPersistence: 'ephemeral'`
+contract. The shared client checks the exact selected target's capability and
+create readback before sending. An unsupported Runtime fails the job without
+silently creating a persistent conversation; background callers retain their
+existing cached/builtin fallback. Keep each job's inputs separate, while bounded
+operation feedback stays in its original live worker. Product conversations
+retain persistent identity and use an optional, bounded `sessionLabel`; native
+protocol, expiration and naming remain Runtime-owned. See
+[PLAN-132](plans/PLAN-132-codex-session-retention.md) and
+[SPEC-131](specs/SPEC-131-catlas-curated-assist-and-conversation-titles.md).
+
 All product teams must treat these as frozen architectural rules:
 
 1. Chat, Work, and Code share one interaction engine.

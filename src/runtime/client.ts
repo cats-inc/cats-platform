@@ -59,7 +59,8 @@ import { PLATFORM_INTERACTION_HOST, type ExecutionAccess, type InteractionHost, 
 import { assertProviderPolicyBoundary, parseProviderExecutionPolicy } from '../shared/providerExecutionPolicy.js';
 
 export interface RuntimeProviderInstanceConfig {
-  continuity?: { interactions?: { version: 1; kinds: string[] }; sessionCapabilities?: { version: 1; executionPolicy: boolean; inventory: boolean;
+  continuity?: { providerSessionPersistence?: Array<'persistent' | 'ephemeral'>;
+    interactions?: { version: 1; kinds: string[] }; sessionCapabilities?: { version: 1; executionPolicy: boolean; inventory: boolean;
     /** Access/network ceilings the target enforces; absent means every valid ceiling. */
     admissibleCeilings?: Array<{ access: ExecutionAccess; network: boolean }>;
     /** Accepts `browserIntegration` (Claude in Chrome) on create/resume. */
@@ -137,6 +138,8 @@ export interface RuntimeStatusSummary {
 
 export interface RuntimeSessionInfo {
   id: string;
+  providerSessionPersistence?: 'persistent' | 'ephemeral';
+  sessionLabel?: string;
   provider: string;
   model: string | null;
   modelSelection?: ProviderModelSelection | null;
@@ -256,6 +259,8 @@ export interface RuntimeExecutionRequestInput {
 }
 
 interface RuntimeSessionCreateInputBase extends RuntimeExecutionRequestInput {
+  providerSessionPersistence?: 'persistent' | 'ephemeral';
+  sessionLabel?: string;
   interactionHost?: InteractionHost;
   /** Sent only with a negotiated host to a target that advertises it; otherwise dropped. */
   browserIntegration?: boolean;
@@ -292,6 +297,7 @@ export interface RuntimeSendMessageInput extends RuntimeExecutionRequestInput {
 }
 
 export interface RuntimeSessionResumeInput {
+  sessionLabel?: string;
   interactionHost?: InteractionHost;
   executionPolicy?: SessionExecutionPolicy;
   browserIntegration?: boolean;
@@ -545,6 +551,9 @@ function readRuntimeSessionInfo(
   const mcpServers = readRuntimeSessionMcpDeliveryReport(data.mcpServers);
   return {
     id: String(data.id ?? ''),
+    ...(data.providerSessionPersistence === 'ephemeral' || data.providerSessionPersistence === 'persistent'
+      ? { providerSessionPersistence: data.providerSessionPersistence } : {}),
+    ...(typeof data.sessionLabel === 'string' ? { sessionLabel: data.sessionLabel } : {}),
     provider: String(data.providerName ?? data.provider ?? fallback.provider),
     model: typeof data.model === 'string' ? data.model : fallback.model,
     modelSelection:
@@ -1018,6 +1027,16 @@ export class CatsRuntimeClient implements RuntimeClient {
   }
 
   private async postSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo> {
+    if (input.providerSessionPersistence === 'ephemeral') {
+      const entry = (await this.getProviderConfig())[input.provider];
+      const selector = input.instance?.trim() || entry?.defaultInstance;
+      const candidates = entry?.instances.filter(i => providerInstanceTarget(i) === selector
+        || i.id === selector && (!entry.defaultBackend || i.backend === entry.defaultBackend)) ?? [];
+      if (candidates.length !== 1 || !candidates[0]?.continuity?.providerSessionPersistence?.includes('ephemeral')) {
+        throw new RuntimeRequestError('This Runtime/provider does not support ephemeral sessions.',
+          409, 'provider_session_persistence_unsupported');
+      }
+    }
     // Defensive guard for any untyped caller that bypasses the discriminated
     // transport input. Boundary-owned callers should already be type-safe.
     const runtimePolicyIssue = validateRuntimeSessionPolicyInput({
@@ -1036,6 +1055,8 @@ export class CatsRuntimeClient implements RuntimeClient {
     const controls = await this.negotiateInteractions(input.provider, input.instance, host, policy, input.browserIntegration);
     const payload: Record<string, unknown> = {
       provider: input.provider,
+      ...(input.providerSessionPersistence ? { providerSessionPersistence: input.providerSessionPersistence } : {}),
+      ...(input.sessionLabel ? { sessionLabel: input.sessionLabel } : {}),
       ...(!policy ? { permissionMode: input.permissionMode ?? 'skip' } : {}),
       ...controls,
     };
@@ -1110,6 +1131,11 @@ export class CatsRuntimeClient implements RuntimeClient {
       cwd: input.cwd?.trim() || null,
     });
     this.warnOnSlowSessionCreate(startedAt, session.provider, session.id);
+    if (input.providerSessionPersistence === 'ephemeral' && session.providerSessionPersistence !== 'ephemeral') {
+      if (session.id) await this.closeSession(session.id).catch(() => {});
+      throw new RuntimeRequestError('Runtime did not admit ephemeral session persistence.',
+        409, 'provider_session_persistence_unsupported');
+    }
     if (controls.interactionHost) this.interactionSessions.add(session.id);
     return session;
   }
@@ -1241,7 +1267,8 @@ export class CatsRuntimeClient implements RuntimeClient {
         selector,
         input?.interactionHost ?? PLATFORM_INTERACTION_HOST, parseProviderExecutionPolicy(input?.executionPolicy), input?.browserIntegration);
     }
-    const payload = { ...(input?.mcpServers ? { mcpServers: input.mcpServers } : {}), ...controls };
+    const payload = { ...(input?.mcpServers ? { mcpServers: input.mcpServers } : {}),
+      ...(input?.sessionLabel ? { sessionLabel: input.sessionLabel } : {}), ...controls };
     const body = Object.keys(payload).length ? JSON.stringify(payload) : undefined;
     const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/resume`, {
       method: 'POST',
