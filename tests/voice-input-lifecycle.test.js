@@ -118,7 +118,9 @@ test('useVoiceInputComposer surfaces recognition errors via toast', async () => 
   const enCatalog = await readFile(path.join(I18N_DIR, 'catalogs', 'en.ts'), 'utf8');
 
   assert.match(source, /useToast/u);
-  assert.match(source, /showToast\(resolveVoiceErrorMessage\(kind, t\)\)/u);
+  // ADR-147: a denied permission's toast also opens its System Settings pane.
+  assert.match(source, /showToast\(resolveVoiceErrorMessage\(kind, t\), pane && canOpenDesktopSystemSettings\(\)/u);
+  assert.match(source, /speech_permission_denied: messageKeys\.sharedVoiceInputErrorSpeechPermissionDenied/u);
   assert.match(source, /permission_denied/u);
   assert.match(source, /permission_not_determined/u);
   assert.match(source, /mic_unavailable/u);

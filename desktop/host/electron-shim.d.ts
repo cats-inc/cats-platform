@@ -169,6 +169,8 @@ declare module 'electron' {
       openAtLogin?: boolean;
       wasOpenedAtLogin?: boolean;
       executableWillLaunchAtLogin?: boolean;
+      // macOS 13+ (SMAppService): ADR-147 reads `requires-approval`.
+      status?: 'not-registered' | 'enabled' | 'requires-approval' | 'not-found';
     };
     setLoginItemSettings(settings: {
       openAtLogin: boolean;

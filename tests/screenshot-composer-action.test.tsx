@@ -198,7 +198,7 @@ test('screenshot permission errors resolve to toast feedback', async () => {
       captureScreenshotRegion: async () => ({
         outcome: 'permission_denied',
         message:
-          'Screen Recording permission is required to capture a screenshot. Grant Cats screen access in macOS System Settings, then restart Cats.',
+          'Screen Recording permission is required to capture a screenshot. Turn on Cats in System Settings > Privacy & Security > Screen & System Audio Recording (add it with + if it is not listed), then restart Cats.',
       }),
     };
 
@@ -209,7 +209,9 @@ test('screenshot permission errors resolve to toast feedback', async () => {
         assert.deepEqual(resolveScreenshotCaptureFeedback(error, zh), {
           surface: 'toast',
           message:
-            '需要螢幕錄製權限才能擷取截圖。請在 macOS「系統設定」授予 Cats 螢幕存取權，然後重新啟動 Cats。',
+            '需要螢幕錄製權限才能擷取截圖。請在「系統設定 > 隱私權與安全性 > 螢幕與系統錄音」開啟 Cats（清單裡沒有就按 + 加入），然後重新啟動 Cats。',
+          // ADR-147: the toast offers this pane where the host can open it.
+          systemSettingsPane: 'screen_recording',
         });
         return true;
       },

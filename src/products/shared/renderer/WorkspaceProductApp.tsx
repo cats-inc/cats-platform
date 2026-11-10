@@ -114,6 +114,10 @@ import {
   type RuntimeSessionPolicy,
 } from "../../../shared/runtimeSessionPolicy.js";
 import { messageKeys } from "../../../shared/i18n/messageKeys.js";
+import {
+  canOpenDesktopSystemSettings,
+  openDesktopSystemSettings,
+} from "../../../shared/desktopSystemSettings.js";
 import { useI18n } from "../../../app/renderer/i18n/index.js";
 import { resolvePlatformProductDisplayNameById } from "../../../app/renderer/platformProductCopy.js";
 import {
@@ -459,7 +463,14 @@ export function createWorkspaceProductApp({
 
     const showScreenshotCaptureError = useCallback((error: unknown): void => {
       const feedback = resolveScreenshotCaptureFeedback(error, t);
-      showToast(feedback.message);
+      const pane = feedback.systemSettingsPane;
+      // ADR-147: on macOS the toast opens the Screen Recording pane.
+      showToast(feedback.message, pane && canOpenDesktopSystemSettings()
+        ? { action: {
+            label: t(messageKeys.sharedSystemSettingsOpen),
+            onSelect: () => { void openDesktopSystemSettings(pane); },
+          } }
+        : undefined);
     }, [showToast, t]);
     const captureAndAppendDraftScreenshot = useCallback((): void => {
       const capturePromise = captureScreenshotFile(screenshotCaptureRoute, t);

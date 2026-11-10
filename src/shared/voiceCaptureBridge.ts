@@ -3,7 +3,10 @@ export type VoiceCaptureSessionId = string;
 export type VoiceCaptureMode = 'on-device' | 'cloud' | 'unknown';
 
 export const VOICE_CAPTURE_ERROR_REASONS = [
+  // Microphone (macOS and Windows).
   'permission_denied',
+  // macOS Speech Recognition, a pane of its own (ADR-147).
+  'speech_permission_denied',
   'permission_not_determined',
   'mic_unavailable',
   'language_not_supported',

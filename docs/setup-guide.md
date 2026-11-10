@@ -1041,10 +1041,20 @@ recognition where Cats has a host-owned helper:
 - macOS uses the bundled Swift helper under `resources/native/macos-stt/`.
   The helper requests Speech Recognition and Microphone permission, enforces
   on-device recognition, and fails closed when the requested locale does not
-  support on-device recognition. If dictation does not start, check System
-  Settings > Privacy & Security > Speech Recognition and Microphone for Cats.
+  support on-device recognition. A denied Speech Recognition and a denied
+  microphone are separate toasts, each with an "Open System Settings" action
+  for its own Privacy & Security pane (ADR-147).
   Fresh-profile validation must confirm whether macOS TCC attributes those
   prompts to the app bundle or the spawned helper binary before release.
+- The same helper's `--request-screen-capture` mode asks macOS for Screen
+  Recording once per run, the first time a screenshot is refused as
+  `not-determined`. On a fresh profile, check that Cats (not the helper) then
+  appears in Privacy & Security > Screen & System Audio Recording, and that the
+  toast's "Open System Settings" opens that pane. A grant applies after
+  restarting Cats.
+- With start at login on, check Settings > Desktop on a Mac where General >
+  Login Items has Cats switched off: the page shows a toast whose action opens
+  Login Items.
 - Windows uses the bundled WinRT helper under `resources/native/windows-stt/`.
   The installer publishes this helper self-contained, so users do not need to
   install the .NET 8 runtime separately.

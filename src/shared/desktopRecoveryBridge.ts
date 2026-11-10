@@ -184,6 +184,14 @@ export interface DesktopHostBridge extends Partial<ProviderManagerBridge> {
   screenshotRegionCaptureAvailable?: boolean;
   captureScreenshotRegion?: () => Promise<DesktopScreenshotCaptureResult>;
   enableMobilePairing?: () => Promise<DesktopMobilePairingEnvUpdateResult>;
+  // ADR-147: the macOS System Settings pane for a missing permission. The
+  // renderer names a pane; the host owns its URL.
+  systemSettingsAvailable?: boolean;
+  openSystemSettings?: (
+    pane: import('./desktopSystemSettings.js').DesktopSystemSettingsPane,
+  ) => Promise<void>;
+  // ADR-147: macOS registered the login item but wants the owner's approval.
+  loginItemNeedsApproval?: () => Promise<boolean>;
   startVoiceCapture?: VoiceCaptureBridge['startVoiceCapture'];
   stopVoiceCapture?: VoiceCaptureBridge['stopVoiceCapture'];
   cancelVoiceCapture?: VoiceCaptureBridge['cancelVoiceCapture'];

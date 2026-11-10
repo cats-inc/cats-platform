@@ -979,6 +979,7 @@ export const messageKeys = {
   settingsDesktopStartupDescription: 'settings.desktop.startupDescription',
   settingsDesktopStartupSignInLabel: 'settings.desktop.startupSignInLabel',
   settingsDesktopStartupSignInDescription: 'settings.desktop.startupSignInDescription',
+  settingsDesktopStartupSignInNeedsApproval: 'settings.desktop.startupSignInNeedsApproval',
   settingsDesktopStartupTrayLabel: 'settings.desktop.startupTrayLabel',
   settingsDesktopStartupTrayDescription: 'settings.desktop.startupTrayDescription',
   settingsDesktopStartupOpenWindowLabel: 'settings.desktop.startupOpenWindowLabel',
@@ -2566,6 +2567,8 @@ export const messageKeys = {
     'shared.voiceInput.error.languageNotSupported',
   sharedVoiceInputErrorPermissionDenied:
     'shared.voiceInput.error.permissionDenied',
+  sharedVoiceInputErrorSpeechPermissionDenied:
+    'shared.voiceInput.error.speechPermissionDenied',
   sharedVoiceInputErrorPermissionNotDetermined:
     'shared.voiceInput.error.permissionNotDetermined',
   sharedVoiceInputErrorMicUnavailable:
@@ -3404,6 +3407,7 @@ export const messageKeys = {
   sharedFolderBrowserUseThisFolder: 'shared.folderBrowserUseThisFolder',
   sharedCommonSaving: 'shared.common.saving',
   sharedCommonDismiss: 'shared.common.dismiss',
+  sharedSystemSettingsOpen: 'shared.systemSettings.open',
   setupWizardWelcomeTitle: 'setup.wizard.welcomeTitle',
   setupWizardWelcomeIntro: 'setup.wizard.welcomeIntro',
   setupWizardOwnerNameLabel: 'setup.wizard.ownerNameLabel',

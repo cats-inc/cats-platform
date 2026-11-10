@@ -1,5 +1,6 @@
 import { resolveDesktopHostBridge } from '../../../shared/desktopRecoveryBridge.js';
 import type { DesktopScreenshotCaptureResult } from '../../../shared/desktopRecoveryBridge.js';
+import type { DesktopSystemSettingsPane } from '../../../shared/desktopSystemSettings.js';
 import {
   createTranslator,
   messageKeys,
@@ -11,7 +12,7 @@ export type ScreenshotCaptureRoute = 'desktop_region' | 'web_picker' | 'unavaila
 
 const SCREENSHOT_PERMISSION_DENIED_ERROR_CODE = 'screenshot_permission_denied';
 const MACOS_SCREEN_RECORDING_PERMISSION_MESSAGE =
-  'Screen Recording permission is required to capture a screenshot. Grant Cats screen access in macOS System Settings, then restart Cats.';
+  'Screen Recording permission is required to capture a screenshot. Turn on Cats in System Settings > Privacy & Security > Screen & System Audio Recording (add it with + if it is not listed), then restart Cats.';
 
 const DESKTOP_SCREENSHOT_HOST_MESSAGE_KEYS: Record<string, MessageKey> = {
   [MACOS_SCREEN_RECORDING_PERMISSION_MESSAGE]:
@@ -116,6 +117,8 @@ export function isScreenshotPermissionDeniedError(
 export interface ScreenshotCaptureFeedback {
   surface: 'toast';
   message: string;
+  /** ADR-147: the System Settings pane that fixes it, offered where the host can open it. */
+  systemSettingsPane?: Extract<DesktopSystemSettingsPane, 'screen_recording'>;
 }
 
 export function resolveScreenshotCaptureFeedback(
@@ -125,6 +128,7 @@ export function resolveScreenshotCaptureFeedback(
   return {
     surface: 'toast',
     message: resolveScreenshotCaptureToastMessage(error, t),
+    ...(isScreenshotPermissionDeniedError(error) ? { systemSettingsPane: 'screen_recording' as const } : {}),
   };
 }
 

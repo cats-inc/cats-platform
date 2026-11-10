@@ -23,7 +23,13 @@ test('macOS STT helper enforces on-device recognition and typed bridge events', 
   assert.match(source, /"mode": "on-device"/u);
   assert.match(source, /"language_not_supported"/u);
   assert.match(source, /"permission_denied"/u);
+  // ADR-147: a denied Speech Recognition is reported apart from the microphone.
+  assert.match(source, /speechStatus == \.denied \|\| speechStatus == \.restricted \{[\s\S]*?"speech_permission_denied"/u);
   assert.match(source, /"permission_not_determined"/u);
+  // ADR-147: the host asks for Screen Recording through this helper.
+  assert.match(source, /"--request-screen-capture"/u);
+  assert.match(source, /CGRequestScreenCaptureAccess\(\)/u);
+  assert.match(source, /\\"type\\":\\"screen_capture\\"/u);
   assert.match(source, /SFSpeechURLRecognitionRequest/u);
   assert.match(source, /SFSpeechAudioBufferRecognitionRequest/u);
   assert.match(source, /options\.inputPath == nil/u);

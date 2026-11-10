@@ -1,5 +1,10 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-147: Send the owner to the macOS System Settings pane a permission needs](147-send-the-owner-to-the-macos-system-settings-pane-a-permission-needs.md)
+  — accepted, 2026-11-11. The host opens a named Microphone, Speech Recognition, Screen
+  Recording or Login Items pane from a toast action; Speech Recognition gets its own
+  denial; Cats asks for Screen Recording once through its speech helper; a login item
+  waiting for approval is reported.
 - [ADR-146: Make Desktop first run one wizard that runs only what the owner asks](146-make-desktop-first-run-one-wizard-that-runs-only-what-the-owner-asks.md)
   — accepted, 2026-11-04, after an interactive mock. Five steps across the host and
   Platform, nothing before the owner asks, ticked scripts, a host-owned log, sign-in in a

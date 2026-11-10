@@ -30,6 +30,15 @@ const DESKTOP_GOOGLE_AUTH_START_CHANNEL = 'cats-host:google-auth-start';
 const DESKTOP_GOOGLE_AUTH_STATUS_CHANNEL = 'cats-host:google-auth-status';
 const DESKTOP_GOOGLE_AUTH_CANCEL_CHANNEL = 'cats-host:google-auth-cancel';
 const DESKTOP_GOOGLE_AUTH_SUBMIT_CHANNEL = 'cats-host:google-auth-submit';
+// ADR-147: mirrors contracts.ts DESKTOP_SYSTEM_SETTINGS_*.
+const DESKTOP_SYSTEM_SETTINGS_OPEN_CHANNEL = 'cats-host:open-system-settings';
+const DESKTOP_LOGIN_ITEM_APPROVAL_CHANNEL = 'cats-host:login-item-needs-approval';
+const DESKTOP_SYSTEM_SETTINGS_PANES = new Set([
+  'microphone',
+  'speech_recognition',
+  'screen_recording',
+  'login_items',
+]);
 
 type DesktopHostActionId =
   | 'retry'
@@ -319,6 +328,17 @@ const bridge = {
       DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL,
       assertBrowserHandoffLaunchPath(launchPath),
     );
+  },
+  // ADR-147: only macOS has the panes; the renderer offers the action where this is true.
+  systemSettingsAvailable: process.platform === 'darwin',
+  openSystemSettings(pane: string): Promise<void> {
+    if (!DESKTOP_SYSTEM_SETTINGS_PANES.has(pane)) {
+      throw new Error('Unknown System Settings pane.');
+    }
+    return ipcRenderer.invoke(DESKTOP_SYSTEM_SETTINGS_OPEN_CHANNEL, pane);
+  },
+  loginItemNeedsApproval(): Promise<boolean> {
+    return ipcRenderer.invoke(DESKTOP_LOGIN_ITEM_APPROVAL_CHANNEL);
   },
   captureScreenshotRegion(): Promise<DesktopScreenshotCaptureResult> {
     return ipcRenderer.invoke('cats-host:capture-screenshot-region', {
