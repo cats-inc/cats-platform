@@ -2,6 +2,84 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-10 — Desktop 0.14.4 standard preview: faster chat deletes and a quieter idle sidecar
+
+Selected distribution: Desktop **0.14.4 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**. This compatible 0.14 patch makes deleting a
+chat from RECENTS show progress and spend less time waiting. It also stops a
+paused companion lane from rewriting the profile every minute.
+Platform npm, Runtime npm, cats-one, Apps and Plugins are separate release targets.
+
+- **Delete progress on the row.** A RECENTS item being deleted swaps its overflow
+  button for a spinner and stops selecting; a parallel group shows the spinner on
+  its header and locks its rows. Delete stays disabled on other recents until
+  the delete in flight settles (cats-platform#389).
+- **Cheaper state reads and writes.** Replacing one Core record no longer
+  deep-copies its whole collection, so the Chat-to-Core projection on every store
+  read and write is no longer quadratic in profile size (cats-platform#390). The
+  Chat store reuses its normalized snapshot while the state file's text is
+  unchanged. Every read still loads the file, so other writers are seen; text that
+  needed an upgrade, repair or migration is never reused (cats-platform#391).
+- **Deletes are not cancelled by a slow Runtime.** Deleting a chat waits for
+  Runtime to delete its sessions with a 60-second limit instead of the general
+  5-second one. Previously a slower provider delete failed the chat delete while
+  Runtime still finished it. A session Runtime no longer has is no longer recorded
+  as a maintenance error, which rewrote the profile during the delete
+  (cats-platform#392).
+- **Background polls wait for the previous answer.** The operator snapshot
+  (5 s) and the desktop-control panel (2 s) skip a tick while their previous
+  request is out, so a slow server no longer collects a queue of identical
+  requests that hold the connections a delete needs (cats-platform#393).
+- **A paused companion lane is left alone.** When a companion's direct lane is
+  paused on a session error, the life loop no longer reports it woken every
+  minute, logging an "awake" event and rewriting the whole profile, its backup and
+  the activity log each time. It backs off for five minutes and records the
+  failure once. The lane stays paused until its owner resets or retargets it, as
+  its error says (cats-platform#394).
+- **Exact inputs.** Runtime **0.6.2**, source
+  `1bbba8d0f12450af8c9fcdedcb55d7051fe69f5f`, is current Runtime main at
+  selection, with no changes left out. Usage **0.5.4** remains at
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. Shared conversation UI
+  0.1.0 retains content digest
+  `957e4717942c5e987270769a4dea593e2d26b321715abf6dfed1046eb507c680`
+  and tarball SHA-256
+  `363e784f2d0571522006797b01772be55384ecec4ae0bccb254eabd7b6783501`.
+  Shared tooling selects cats-one main
+  `0ddce6621b4f0b60b93bfee7c617ee5ecab01eb9`; its nine pinned files retain
+  identical bytes and executable modes.
+  The workflow records the merged Platform bump SHA and all packaged sources.
+- **Compatibility and recovery.** Public API, App SDK, configuration and stored
+  data retain their formats; there is no migration. The read cache lives in
+  memory only. Usage's minimum host version accepts 0.14.4. Before installing,
+  stop processes using the data roots and back up `~/.cats` and configured
+  overrides. Preserve them on failure and reinstall 0.14.4 or return to 0.14.3
+  without conversion. Restore backups only while processes using those roots are
+  stopped.
+- **Signing and updates.** Dispatch desktop-release.yml from the merged bump
+  source with `tag=v0.14.4`, the full Runtime SHA above and `unsigned=false`.
+  Expected Standard trust is macOS **signed + notarized**, Windows **unsigned:
+  no certificate**, Linux **n/a**. Native checks and build receipts establish
+  actual trust. NSIS, same-team signed macOS and Linux DEB retain their update
+  paths; portable and unsigned macOS installations require manual replacement.
+- **Validation boundary.** cats-platform#389 to cats-platform#394 each passed
+  full CI before merging. Offline replays ran under the Cats Electron runtime on
+  copies of a 5.5–6.1 MB profile. A chat delete's store work fell from 3.0–3.2 s
+  to 0.7–0.8 s, and a background poll's two Core reads from about 0.7 s to 0.2 s.
+  Old and new projection outputs were byte-identical. A companion life tick on the
+  paused lane cost 1.4–1.9 s per minute before these changes; with #394 the loop
+  backs off instead. The isolated source candidate built, reached first-run setup
+  with Platform and Runtime ready, and stopped cleanly. Not exercised locally: a
+  delete in an installed build, visible-window CPU, the cost of `/api/app-shell`
+  (which still awaits Runtime health and setup state), native macOS and Linux, and
+  installed upgrade and rollback. Full release CI, packaged source, signing,
+  checksum and provenance gates remain required.
+
+Publication results: the `v0.14.4` GitHub Standard Preview, platform receipts and
+Actions run. Verification checks immutable status, tag source, complete public
+assets and hashes, updater metadata and build provenance.
+
 ## 2026-11-09 — Desktop 0.14.3 standard preview: reliable npm provider installation
 
 Selected distribution: Desktop **0.14.3 standard-profile preview**, App SDK
