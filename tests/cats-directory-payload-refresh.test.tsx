@@ -50,13 +50,25 @@ test('a cats canvas update refreshes the platform envelope the Directory sidebar
   const view = render(<Probe />);
   assert.ok(view.getByText('loading'));
 
-  // A deliberately partial payload: the probe reads only `chat.cats`.
-  const created = { chat: { cats: [{ id: 'cat-new' }] } } as unknown as AppShellPayload;
-  act(() => {
-    report?.(created);
-  });
+  // Deliberately partial payloads: the hook reads only `chat.cats`.
+  const cat = { id: 'cat-new', name: 'Mochi', status: 'active', group: 'standard', avatarUrl: null };
+  const payloadWith = (entry: Record<string, unknown>) =>
+    ({ chat: { cats: [entry] } }) as unknown as AppShellPayload;
 
+  act(() => {
+    report?.(payloadWith(cat));
+  });
   await waitFor(() => assert.ok(view.getByText('cats:1')));
-  assert.equal(refreshes, 1);
+  assert.equal(refreshes, 1, 'a created cat refreshes the sidebar');
+
+  act(() => {
+    report?.(payloadWith({ ...cat, skillProfile: 'companion' }));
+  });
+  assert.equal(refreshes, 1, 'a save the sidebar does not show skips the refresh');
+
+  act(() => {
+    report?.(payloadWith({ ...cat, name: 'Mochi II' }));
+  });
+  assert.equal(refreshes, 2, 'a rename refreshes the sidebar');
   view.unmount();
 });

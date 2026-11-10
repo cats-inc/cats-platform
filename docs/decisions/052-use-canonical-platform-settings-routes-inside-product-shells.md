@@ -6,7 +6,9 @@
 
 ## Status
 
-Accepted
+Accepted. `/settings/cats` was removed by
+[ADR-150](./150-manage-cats-in-cats-directory-and-keep-settings-app-level.md); cats are
+managed in Cats Directory. The canonical `/settings/*` namespace stands.
 
 ## Context
 

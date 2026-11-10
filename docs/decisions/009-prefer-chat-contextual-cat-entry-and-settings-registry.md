@@ -5,7 +5,9 @@
 
 ## Status
 
-Accepted
+Accepted. The Settings-hosted registry (decisions 5 and 7) is superseded by
+[ADR-150](./150-manage-cats-in-cats-directory-and-keep-settings-app-level.md): cats are
+managed in Cats Directory. Chat-contextual cat entry stands.
 
 > Clarified by [ADR-027](./027-adopt-chat-first-information-architecture-with-default-boss-cat.md):
 > `Recents` stays the primary chat surface, a lightweight `My Cats` roster may

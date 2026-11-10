@@ -174,8 +174,10 @@
   navigate, and `/entities/cats` resolves to the first cat's settings or to
   `/new` (`resolveCatsCanvasRedirect`). The profile header's gear button opens
   the settings; the settings card's "View profile" opens the profile. The
-  profile's Telegram hint and the marked-avatar model link open that cat's
-  settings URL, and model focus state no longer carries a cat id. Folding the
+  profile's Telegram hint, the marked-avatar model link and the conversation
+  audience popover's "Edit {name}'s settings" open that cat's settings URL, and
+  model focus state no longer carries a cat id. Cancel on the add-cat flow
+  returns to the cat that was open when + was pressed. Folding the
   settings form into the profile page itself is deferred until the owner has
   reviewed the layout.
 - **`/entities/cats/:catId` mounts `CatProfilePage`** (`src/app/renderer/entities/CatProfilePage.tsx`).

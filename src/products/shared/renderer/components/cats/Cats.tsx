@@ -52,6 +52,17 @@ import {
   buildCatSettingsPath,
 } from '../../../../../shared/catsDirectoryPaths.js';
 
+/** Navigation state for the add-cat flow: the cat Cancel returns to. */
+interface CatsCreateReturnState {
+  returnToCatId: string;
+}
+
+function readCatsCreateReturnState(state: unknown): string | null {
+  if (!state || typeof state !== 'object') return null;
+  const value = (state as { returnToCatId?: unknown }).returnToCatId;
+  return typeof value === 'string' && value ? value : null;
+}
+
 export interface CatsRegistryController<TBotForm> {
   botForm: TBotForm;
   renameValue: string;
@@ -270,7 +281,19 @@ export function CatsCanvas({
 
   const handleStartCreate = () => {
     if (atCatLimit) return;
-    navigate(CATS_DIRECTORY_NEW_CAT_PATH);
+    navigate(
+      CATS_DIRECTORY_NEW_CAT_PATH,
+      selectedCatId ? { state: { returnToCatId: selectedCatId } satisfies CatsCreateReturnState } : undefined,
+    );
+  };
+  // Cancel goes back to the cat that was open when + was pressed; other
+  // entry points (sidebar, index card) fall back to the roster root.
+  const createReturnCatId = readCatsCreateReturnState(location.state);
+  const handleCancelCreate = () => {
+    navigate(
+      createReturnCatId ? buildCatSettingsPath(createReturnCatId) : CATS_DIRECTORY_PATH,
+      { replace: true },
+    );
   };
 
   const selectedCat = useMemo(
@@ -588,7 +611,7 @@ export function CatsCanvas({
                       <button
                         type="button"
                         className="secondaryButton"
-                        onClick={() => navigate(CATS_DIRECTORY_PATH, { replace: true })}
+                        onClick={handleCancelCreate}
                         disabled={isCatBusy(busy, 'create')}
                       >
                         {t(messageKeys.sharedCatsCreateCancel)}

@@ -58,7 +58,7 @@ function context(overrides: Partial<ConversationTargetEditorContext> = {}): Conv
     directLaneCat: null,
     directLaneExecutionTarget: null,
     isDirectLane: false,
-    openCatPage: () => assert.fail('no cat page expected'),
+    openCatSettings: () => assert.fail('no cat page expected'),
     ...overrides,
   };
 }
@@ -86,7 +86,7 @@ test('a direct-lane cat edits the conversation\'s own participant target, never 
       defaultRecipientParticipant: participant,
       onUpdateParticipantTarget: (participantId, value) => updates.push([participantId, value]),
       onDirectLaneExecutionTargetChange: () => assert.fail('the cat profile must not change'),
-      openCatPage: (catId) => opened.push(catId),
+      openCatSettings: (catId) => opened.push(catId),
     }),
   );
   assert.ok(editor);
@@ -112,7 +112,7 @@ test('a direct lane without a participant yet seeds from the cat and saves throu
       directLaneExecutionTarget: codexSol,
       onUpdateParticipantTarget: () => assert.fail('there is no participant to update'),
       onDirectLaneExecutionTargetChange: (catId, value) => saved.push([catId, value]),
-      openCatPage: () => {},
+      openCatSettings: () => {},
     }),
   );
   assert.ok(editor);
@@ -129,7 +129,7 @@ test('group participants resolve by participant id, and only cats link to a cat 
       roomParticipant('participant-temp', null, codexSol),
     ],
     onUpdateParticipantTarget: (participantId) => updates.push(participantId),
-    openCatPage: () => {},
+    openCatSettings: () => {},
   });
   const temporary = resolveConversationTargetEditor(
     chip({ key: 'participant:participant-temp', name: 'Reviewer', participantId: 'participant-temp' }),
@@ -183,7 +183,7 @@ test('a temporary participant in a conversation edits its name and role hint; a 
     ],
     onUpdateParticipantTarget: () => {},
     onUpdateParticipantProfile: (participantId, update) => profiles.push([participantId, update]),
-    openCatPage: () => {},
+    openCatSettings: () => {},
   });
   const temporary = resolveConversationTargetEditor(
     chip({ key: 'participant:participant-temp', name: 'Reviewer', participantId: 'participant-temp' }),
