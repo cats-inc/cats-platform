@@ -292,6 +292,12 @@ pattern needs a code-level guardrail (e.g. dev-server seal mode).
 - Prepare version fields, release notes, exact source/artifact pins, compatibility
   and migration notes, and the applicable signing profile in the original bump
   commit/PR before publication. Do not claim future verification has passed.
+- Freeze the selected source and all pins after preparing the bump. "Latest"
+  means latest at selection; later PRs do not reopen it. Use `release/vX.Y.Z`
+  with exact-source CI and dispatch; main's up-to-date merge work belongs on a
+  separate integration branch. Reopen only for an explicit owner addition or a
+  concrete release defect, then revalidate the changed inputs. Follow the
+  frozen source/baseline procedure in the Desktop publication SOP.
 - After publication, verify the required workflow and public assets/registry,
   report the results in the final response, and stop. Actions run results/logs
   and release assets are the hosted evidence; do not create a GitHub Release for
@@ -333,9 +339,10 @@ pattern needs a code-level guardrail (e.g. dev-server seal mode).
   for previews and exact App versions/URLs/hashes for Desktop. The release guard
   resolves one Runtime commit shared by every OS and the complete source bundle;
   source and packaged identity validation gate publication. Bundling Runtime
-  does not require a preceding Runtime npm release. The guard refuses a Runtime
-  commit off Runtime main, or one lacking other changes there that the version's
-  notes do not list on a `Left out of this release:` line as `cats-runtime#N`; see
+  does not require a preceding Runtime npm release. The guard checks the frozen
+  Runtime pin and main-at-selection baseline from the version's notes, including
+  any `Left out of this release:` entries. Later Runtime main commits do not
+  reopen that selection; see
   [the SOP](docs/deployment.md#desktop-publication).
 - Publishing an App does not automatically change config/desktop-apps.lock.json
   or publish Desktop. Compatibility requirements determine coordinated changes.

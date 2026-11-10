@@ -170,6 +170,17 @@ The [Desktop workflow](../.github/workflows/desktop-release.yml) validates that
 the tag matches the manifest and lockfile versions, builds into a draft, validates
 the assets, then publishes. Prepare the version files and commit/push the chosen
 source before triggering it.
+When changing the minor line, review the bundled Catlas and orchestrator knowledge
+and update their revision and `platformRange` to the selected host version.
+
+Freeze the completed bump SHA and all pins in `release/vX.Y.Z`. "Latest" means
+latest when those inputs were selected. Later Platform, Runtime or App PRs do
+not reopen this release. Run `ci.yaml` manually on that fixed branch and wait for
+success at its exact SHA; a successful main-push CI at the same SHA also qualifies.
+Keep review and any required main merge on a separate integration branch, so
+main's up-to-date PR rule cannot move the packaging source. Do not force-push or
+relax branch protection. Only an explicit owner addition or a concrete release
+defect justifies a new selection and validation of the affected inputs.
 
 - **Official:** push the matching `vX.Y.Z` Git tag pointing at the selected
   Platform commit. This selects the official signing/release gates and publishes
@@ -179,7 +190,9 @@ source before triggering it.
   would select the official path. Example with placeholders:
 
   ```sh
-  gh workflow run desktop-release.yml --repo cats-inc/cats-platform --ref main -f tag=vX.Y.Z -f runtime_ref=RUNTIME_COMMIT_SHA
+  gh workflow run ci.yaml --repo cats-inc/cats-platform --ref release/vX.Y.Z
+  # After that exact source passes CI:
+  gh workflow run desktop-release.yml --repo cats-inc/cats-platform --ref release/vX.Y.Z -f tag=vX.Y.Z -f runtime_ref=RUNTIME_COMMIT_SHA
   ```
 
   The workflow creates the preview tag and publishes a GitHub prerelease, not
@@ -191,16 +204,25 @@ source before triggering it.
   does not guarantee update support on every OS.
 
 Desktop builds Runtime from source, so Runtime npm publication is unnecessary.
-For previews, pass the full Runtime SHA rather than accepting the default `main`.
-The release guard resolves the requested ref (or `main` for official builds) once
-and passes that exact Runtime commit to every OS and the source job. The complete
+The release guard reads the current version's frozen Runtime selection for both
+preview and official builds. Optional `runtime_ref` is an assertion of that full
+SHA, never a floating ref or an override. The guard passes that exact commit to
+every OS and the source job. The complete
 source manifest and three receipts read from the packaged hosts must agree before
 publication. Record the resolved commit; Runtime npm publication is still separate.
 
 Choose the Runtime SHA when preparing the bump, by reading what Runtime `main` has
-after it. The guard then runs `scripts/validate-runtime-pin.mjs` before any build and
-refuses a commit that is not on Runtime `main`, such as a pull request's branch head.
-It also refuses a commit that lacks other changes on `main`, unless this version's
+after it, then record both full SHAs in that version's notes:
+
+```md
+- **Source selection:** cats-runtime@FULL_COMMIT_SHA; main@FULL_BASELINE_SHA.
+```
+
+The guard runs `scripts/validate-runtime-pin.mjs` before any build. It requires the
+selected commit to be an ancestor of the recorded baseline, and the baseline to
+have landed on Runtime `main`. It refuses a pin different from the recorded
+selection or missing/malformed/duplicate selection lines. It refuses omitted
+changes present at that baseline unless this version's
 section of the release notes lists each one on a `Left out of this release:` line:
 
 ```md
@@ -215,9 +237,11 @@ item at its own level. Only commits changing nothing outside `docs/` and `.githu
 are exempt, because those do not reach the package or the installers. A mention
 elsewhere in the notes does not count, because notes also cite what they include, and
 a bare `#N` does not count, because pull request numbers collide between repositories.
-The guard checks the names, so reviewers check that the line gives a reason. If Runtime
-merges another change after the bump, the dispatch fails: move to the newer commit or
-list it, in a new bump commit.
+The guard checks the names, so reviewers check that the line gives a reason.
+Runtime commits after the recorded baseline do not require new omission entries,
+repinning, or another bump. Re-running failed jobs or dispatching again uses the
+same frozen source and pins. A draft can be reused only for its original Platform
+and Runtime identities; a different source must not overwrite that draft.
 
 Apps are selected separately through `config/desktop-apps.lock.json`, using exact
 versions, published URLs and SHA-256 values. Reuse the selected artifacts unless
