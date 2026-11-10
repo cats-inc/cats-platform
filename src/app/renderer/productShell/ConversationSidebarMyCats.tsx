@@ -293,6 +293,7 @@ export function ConversationSidebarMyCatsSection<
   onDirectMessageCat,
   terminalActionLabelKey,
   disableTerminalActionWhenDraft = false,
+  terminalActionLocked = false,
   hideLabel = false,
 }: {
   label?: string;
@@ -318,6 +319,10 @@ export function ConversationSidebarMyCatsSection<
    * to clear. The Entities sidebar leaves this off — Archive applies
    * to the cat itself, not to a channel. */
   disableTerminalActionWhenDraft?: boolean;
+  /** Disables the terminal action on every row. Chat sets it while a chat
+   * delete is in flight, because its "Clear" deletes the direct-lane chat
+   * and deletes cannot queue yet. */
+  terminalActionLocked?: boolean;
   /** Suppresses the section's own `<p class="sectionLabel">` header.
    * The Entities sidebar uses this when it pairs the cats
    * list with an outer `.navItem` button (Cats / Clowders / Catteries
@@ -362,7 +367,7 @@ export function ConversationSidebarMyCatsSection<
           const overflowKey = `cat:${cat.id}`;
           const catOverflowOpen = overflowMenuOpenId === overflowKey;
           const terminalActionDisabled =
-            disableTerminalActionWhenDraft && !directLane;
+            terminalActionLocked || (disableTerminalActionWhenDraft && !directLane);
 
           return (
             <MyCatRowItem

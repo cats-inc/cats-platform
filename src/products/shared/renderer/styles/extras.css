@@ -305,6 +305,10 @@
   background: var(--panel-hover);
 }
 
+.myCatOverflowMenu button:disabled:hover {
+  background: transparent;
+}
+
 .myCatOverflowMenuDivider {
   /* Mirrors `.recentOverflowMenuDivider` in chat-thread-base.css —
    * 1px hairline of `--border` between popover entries (currently

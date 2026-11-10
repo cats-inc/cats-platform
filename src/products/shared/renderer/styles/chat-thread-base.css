@@ -1060,6 +1060,17 @@ button.draftHeaderAvatar.draftHeaderAvatarEditable:hover .draftHeaderAvatarCamer
   background: var(--panel-hover);
 }
 
+/* A disabled action, such as Delete while another delete runs, must not look
+ * or react like one that can be clicked. Matches `.myCatOverflowMenu`. */
+.recentOverflowMenu button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.recentOverflowMenu button:disabled:hover {
+  background: transparent;
+}
+
 .composerFooterMinimal {
   display: flex;
   justify-content: center;
