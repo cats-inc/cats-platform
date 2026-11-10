@@ -812,7 +812,31 @@ await check('a failed hand-off from page 2 says so on page 2', async () => {
   await close();
 });
 
-await check('startup failure: names the service, with Try again, Show details and Quit Cats', async () => {
+await check('startup keeps its short copy and shows each service only after Show more', async () => {
+  const { page, close } = await open({
+    phase: 'starting_services',
+    services: [
+      { name: 'cats-runtime', status: 'ready', healthUrl: 'http://127.0.0.1:3110/health', error: null, lastOutput: null },
+      { name: 'cats-platform', status: 'starting', healthUrl: 'http://127.0.0.1:8181/health', error: null, lastOutput: null },
+    ],
+  });
+  await page.waitForSelector('#splash:not(.hidden)');
+  equal(await page.locator('#splash-title').innerText(), 'Cats', 'title');
+  equal(await page.locator('#splash-text').innerText(), '正在啟動…', 'status line');
+  truthy(!(await page.locator('#splash-services').isVisible()), 'service states start hidden');
+  equal(await page.locator('#btn-splash-more').innerText(), '顯示更多', 'toggle label');
+  await page.click('#btn-splash-more');
+  truthy(await page.locator('#splash-services').isVisible(), 'shown after Show more');
+  equal(await page.locator('#splash-services .row').count(), 2, 'one row per service');
+  equal(await page.locator('#btn-splash-more').getAttribute('aria-expanded'), 'true', 'expanded state');
+  equal(await page.locator('#btn-splash-more').innerText(), '顯示較少', 'toggle label after opening');
+  if (shotDir) await page.screenshot({ path: join(shotDir, 'startup-more.png') });
+  await page.click('#btn-splash-more');
+  truthy(!(await page.locator('#splash-services').isVisible()), 'hidden again');
+  await close();
+});
+
+await check('startup failure: short copy with Retry, Show details and Quit Cats; the failed service behind Show more', async () => {
   const { page, close } = await open({
     phase: 'failed', lastError: 'listen EADDRINUSE', actions: [{ id: 'retry', label: 'Retry' }, { id: 'quit', label: 'Quit Cats' }],
     services: [
@@ -821,9 +845,13 @@ await check('startup failure: names the service, with Try again, Show details an
     ],
   });
   await page.waitForSelector('#error-area.visible');
-  const startupTitle = await page.locator('#splash-title').innerText();
-  truthy(/Runtime|執行階段/.test(startupTitle), `names the service: ${startupTitle}`);
+  equal(await page.locator('#splash-title').innerText(), 'Cats', 'title');
+  equal(await page.locator('#startup-error-copy').innerText(), '喵…啟動時有地方出錯了。', 'error copy');
+  truthy(!(await page.locator('#splash-services').isVisible()), 'service states start hidden');
+  await page.click('#btn-splash-more');
   equal(await page.locator('#splash-services .row').count(), 2, 'service rows');
+  truthy(/沒有啟動/.test(await page.locator('[data-row="service-cats-runtime"]').innerText()), 'the failed service says so');
+  equal(await page.locator('#btn-retry').innerText(), '重試', 'retry label');
   truthy(await page.locator('#btn-retry').isVisible(), 'retry');
   truthy(await page.locator('#btn-quit').isVisible(), 'quit');
   if (shotDir) await page.screenshot({ path: join(shotDir, 'recovery.png') });
