@@ -39,14 +39,17 @@ Accessibility is not needed yet.
    (`systemSettingsAvailable`), and the renderer offers it only where the bridge says so.
    All four URLs were checked on macOS 27.2.
 2. **A missing permission is a toast with "Open System Settings".** A toast with an action
-   stays until it is used or dismissed. The message still names the pane, because
+   stays until it is used or dismissed, and the same message is not stacked twice. The message still names the pane, because
    opening it can fail and the action exists only on macOS.
 3. **Speech Recognition is its own reason.** The macOS helper emits
    `speech_permission_denied` when Speech Recognition is denied or restricted.
    `permission_denied` keeps meaning the microphone, on macOS and Windows.
-4. **Cats asks for Screen Recording once.** While the status is `not-determined`, the host
+4. **Cats asks for Screen Recording once.** While Screen Recording is not granted, the host
    runs the speech helper it already ships with `--request-screen-capture`, which calls
-   `CGRequestScreenCaptureAccess`. This happens once per run. The call lists Cats in Screen
+   `CGRequestScreenCaptureAccess`. This happens once per run. Any refusal asks, because
+   Electron reports an app macOS has never asked as `denied`: `CGPreflightScreenCaptureAccess`
+   is a yes or no, so `not-determined` never appears for the screen (checked with Electron
+   41.2.0 on macOS 27.2). Once macOS has an answer the request shows nothing. The call lists Cats in Screen
    & System Audio Recording and may show the system prompt. It never grants access by
    itself: macOS applies the grant after a restart. The capture is therefore still refused,
    with the action, as PLAN-071 decided. Without a helper the request is skipped. The

@@ -12,6 +12,7 @@ import {
   loginItemNeedsApproval,
   parseScreenCaptureRequestOutput,
   resolveMacosSystemSettingsUrl,
+  shouldRequestScreenCaptureAccess,
 } from '../build/desktop/systemSettings.js';
 
 // ADR-147: the host opens a fixed set of System Settings panes, by name.
@@ -80,6 +81,14 @@ test('Screen Recording access is requested once per run, through the helper, and
   });
   assert.equal(await noHelper(), false);
   assert.equal(ran, false);
+});
+
+test('any refused Screen Recording asks, since a never-asked app reads as denied', () => {
+  for (const status of ['denied', 'not-determined', 'restricted', 'unknown']) {
+    assert.equal(shouldRequestScreenCaptureAccess(status), true, status);
+  }
+  assert.equal(shouldRequestScreenCaptureAccess('granted'), false);
+  assert.equal(shouldRequestScreenCaptureAccess(null), false, 'not macOS');
 });
 
 test('the helper reply is read strictly', () => {
