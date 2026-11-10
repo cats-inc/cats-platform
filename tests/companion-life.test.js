@@ -6,13 +6,17 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
-import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { MemoryChatStore, updateChatState } from '../build/server/products/chat/state/store.js';
 import { MemoryCompanionBoxStore } from '../build/server/products/chat/state/companion-box/memoryStore.js';
-import { resolveLeadParticipantLease } from '../build/server/products/chat/state/model/index.js';
+import {
+  resolveLeadParticipantLease,
+  setChannelParticipantLease,
+} from '../build/server/products/chat/state/model/index.js';
 import {
   activateChannelLocked,
   deactivateChannelLocked,
 } from '../build/server/products/chat/api/resources/channelActivation.js';
+import { activateCompanionLaneForLife } from '../build/server/products/chat/api/companionLifeLoop.js';
 import {
   createAuthenticatedTestSession,
   createTestAuthConfig,
@@ -629,5 +633,66 @@ test('life loop revives a companion session the runtime closed, through the REST
     assert.equal(after.sessionId, before.sessionId, 'the same conversation is resumed, not replaced');
     assert.equal(runtimeClient.deadSessionIds.has(after.sessionId), false);
     assert.equal((await loop.tick())[0].outcome, 'awake');
+  });
+});
+
+test('life loop backs off a companion lane paused on a session error instead of re-waking it every minute', async () => {
+  await withLifeServer(async ({
+    baseUrl, post, lane, cat, config, runtimeClient, chatStore, companionStore, companionActivityStore,
+  }) => {
+    // Awake around the clock so the test does not depend on the host time zone.
+    assert.equal((await patchLife(baseUrl, cat.id, {
+      wakeWindowStart: '00:00',
+      wakeWindowEnd: '00:00',
+      bedtime: '23:59',
+    })).status, 200);
+    assert.equal((await post(`/api/channels/${lane.id}/activations`)).status, 200);
+    const readLease = async () => resolveLeadParticipantLease(
+      (await chatStore.read()).channels.find((channel) => channel.id === lane.id),
+    );
+    const ready = await readLease();
+    assert.equal(ready.status, 'ready', JSON.stringify(ready));
+
+    // What a timed-out resume leaves behind: Runtime still has the session, and
+    // the lane waits for the owner to reset or retarget it. Activation then
+    // reports `started` without changing anything.
+    await updateChatState(chatStore, (state) => setChannelParticipantLease(state, lane.id, cat.id, {
+      status: 'error',
+      lastError: `Direct lane runtime session ${ready.sessionId} could not be resumed; lane is paused until you reset or retarget. The operation was aborted due to timeout`,
+    }, new Date('2026-03-23T12:00:00.000Z')));
+    const eventsBefore = (await companionActivityStore.list(cat.id)).length;
+
+    const start = Date.parse('2026-03-23T12:00:00.000Z');
+    let now = new Date(start);
+    let writes = 0;
+    for (const method of ['write', 'writeCore', 'updateCore', 'updateSnapshot']) {
+      const original = chatStore[method].bind(chatStore);
+      chatStore[method] = async (...args) => { writes += 1; return original(...args); };
+    }
+    const dependencies = { chatStore, runtimeClient, companionStore, config, now: () => now };
+    const loop = createCompanionLifeLoop({
+      readChatState: () => chatStore.read(),
+      readCompanionSnapshot: () => companionStore.readSnapshot(),
+      runtimeClient,
+      activityStore: companionActivityStore,
+      activateLane: (channelId) => activateCompanionLaneForLife(dependencies, channelId),
+      deactivateLane: (channelId) => deactivateChannelLocked(dependencies, channelId),
+      now: () => now,
+    });
+
+    assert.deepEqual(await loop.tick(), [
+      { catId: cat.id, laneId: lane.id, outcome: 'wake_failed', reason: 'wake_failed' },
+    ]);
+    assert.equal((await readLease()).status, 'error', 'the paused lane is left for the owner');
+
+    writes = 0;
+    for (const minute of [1, 2, 3, 4]) {
+      now = new Date(start + minute * 60_000);
+      assert.equal((await loop.tick())[0].outcome, 'backoff', `minute ${minute}`);
+    }
+    assert.equal(writes, 0, 'backed-off ticks leave the profile alone');
+
+    const events = (await companionActivityStore.list(cat.id)).slice(eventsBefore);
+    assert.deepEqual(events.map((event) => event.metadata), [{ presence: 'sleeping', reason: 'wake_failed' }]);
   });
 });
