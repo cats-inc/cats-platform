@@ -11,7 +11,7 @@ import type {
   RoomRoutingMode,
 } from '../../../shared/roomRouting.js';
 import type { RuntimeSetupStatus } from '../../../shared/runtimeSetup.js';
-import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
+import { isConversationDeleteBusy, type WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import { messageKeys, type MessageKey } from '../../../shared/i18n/messageKeys.js';
 import { GuideCatDockSlot } from '../../../design/components/GuideCatDockSlot.js';
 import { ConversationSidebarFooter } from './ConversationSidebarFooter.js';
@@ -184,6 +184,9 @@ export interface ConversationSidebarProps<
    * cats that have no direct-lane channel yet. Chat sets this so the
    * Clear menu item greys out on draft / cleared rows. */
   myCatsDisableTerminalActionWhenDraft?: boolean;
+  /** The terminal action deletes the cat's direct-lane chat (chat's Clear),
+   * so it is disabled while another chat delete is in flight. */
+  myCatsTerminalActionDeletesChat?: boolean;
   helpers: ConversationSidebarHelpers<TCat, TChannel, TDot>;
   onToggleSidebar: () => void;
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
@@ -228,6 +231,7 @@ export function ConversationSidebarContent<
   myCatsEmptyStatePlaceholder,
   myCatsTerminalActionLabelKey,
   myCatsDisableTerminalActionWhenDraft,
+  myCatsTerminalActionDeletesChat,
   helpers,
   onToggleSidebar,
   onCollapsedSidebarClick,
@@ -362,6 +366,7 @@ export function ConversationSidebarContent<
               emptyStatePlaceholder={myCatsEmptyStatePlaceholder}
               terminalActionLabelKey={myCatsTerminalActionLabelKey}
               disableTerminalActionWhenDraft={myCatsDisableTerminalActionWhenDraft}
+              terminalActionLocked={myCatsTerminalActionDeletesChat === true && isConversationDeleteBusy(busy)}
             />
           ) : null}
 

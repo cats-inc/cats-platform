@@ -2,6 +2,7 @@ import { useRef, type ReactNode } from 'react';
 import {
   isChannelBusy,
   isConcurrentGroupBusy,
+  isConversationDeleteBusy,
   type WorkspaceBusyState,
 } from '../../../shared/workspaceBusy.js';
 import { messageKeys } from '../../../shared/i18n/messageKeys.js';
@@ -20,13 +21,10 @@ import { useFloatingSidebarMenu } from './useFloatingSidebarMenu.js';
 import { useSidebarInlineRename } from './useSidebarInlineRename.js';
 
 /* A confirmed delete closes the overflow menu and can take seconds, so the row
- * itself shows the progress. `busy` holds one mutation at a time: a second
- * delete would overwrite the first one's state, so Delete stays disabled on
- * every row until the delete in flight settles. */
-function isRecentDeleteInFlight(busy: WorkspaceBusyState): boolean {
-  return (busy.kind === 'channel' || busy.kind === 'concurrent-group')
-    && busy.action === 'delete';
-}
+ * itself shows the progress. Deletes cannot queue yet, so Delete stays disabled
+ * on every row until the delete in flight settles. The shell passes the delete
+ * it holds in place of the shared busy slot, which other actions overwrite. */
+const isRecentDeleteInFlight = isConversationDeleteBusy;
 
 function groupIdFromBusyKey(busyKey?: string): string | undefined {
   return busyKey?.split(':').at(-1);

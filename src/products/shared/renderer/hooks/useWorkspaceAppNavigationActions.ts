@@ -1,6 +1,8 @@
 import {
   startTransition,
   useCallback,
+  useRef,
+  useState,
   type Dispatch,
   type SetStateAction,
 } from 'react';
@@ -254,6 +256,30 @@ export function useWorkspaceAppNavigationActions<
     providedNavigationApi ?? defaultNavigationApi
   ) as WorkspaceAppNavigationApi<TPayload>;
 
+  /* One chat delete at a time until deletes can queue. The shared busy slot
+   * cannot hold this: any other action that writes it and then clears it in its
+   * `finally` would release the guard while the delete is still running. The ref
+   * refuses a second delete synchronously; the state lets the sidebar disable
+   * every Delete for as long as this one runs. */
+  const deleteInFlightRef = useRef<WorkspaceBusyState | null>(null);
+  const [deleteInFlight, setDeleteInFlight] = useState<WorkspaceBusyState | null>(null);
+  const runExclusiveDelete = useCallback(async (
+    lock: WorkspaceBusyState,
+    run: () => Promise<void>,
+  ): Promise<void> => {
+    if (deleteInFlightRef.current) return;
+    deleteInFlightRef.current = lock;
+    setDeleteInFlight(lock);
+    setBusy(lock);
+    try {
+      await run();
+    } finally {
+      deleteInFlightRef.current = null;
+      setDeleteInFlight(null);
+      setBusy(clearBusyState());
+    }
+  }, [setBusy]);
+
   const clearDraftRouteState = useCallback((options?: {
     includeCompareTarget?: boolean;
   }) => {
@@ -380,78 +406,78 @@ export function useWorkspaceAppNavigationActions<
     catId: string,
     channelId: string,
   ): Promise<void> => {
-    setBusy(createChannelBusyState('delete', channelId));
-    try {
-      const result = await navigationApi.deleteChatChannel(channelId);
-      const payload = isDeleteChatChannelResult(result) ? result.payload : result;
-      startTransition(() => {
-        setState({ status: 'ready', payload });
-        setAddCatOpen(false);
-        setFeedback('');
-      });
-      navigate(buildMyCatPathForPrefix(chatPrefix, catId));
-    } catch (error) {
-      setFeedback(formatWorkspaceNavigationMutationError(
-        error,
-        t(messageKeys.sharedWorkspaceNavigationDeleteChatError),
-        t,
-      ));
-    } finally {
-      setBusy(clearBusyState());
-    }
+    await runExclusiveDelete(createChannelBusyState('delete', channelId), async () => {
+      try {
+        const result = await navigationApi.deleteChatChannel(channelId);
+        const payload = isDeleteChatChannelResult(result) ? result.payload : result;
+        startTransition(() => {
+          setState({ status: 'ready', payload });
+          setAddCatOpen(false);
+          setFeedback('');
+        });
+        navigate(buildMyCatPathForPrefix(chatPrefix, catId));
+      } catch (error) {
+        setFeedback(formatWorkspaceNavigationMutationError(
+          error,
+          t(messageKeys.sharedWorkspaceNavigationDeleteChatError),
+          t,
+        ));
+      }
+    });
   }, [
     chatPrefix,
     navigate,
     navigationApi,
+    runExclusiveDelete,
     setAddCatOpen,
-    setBusy,
     setFeedback,
     setState,
     t,
   ]);
 
   const onDeleteChannel = useCallback(async (channelId: string): Promise<void> => {
+    // Refuse before asking: a confirmed second delete could not start anyway.
+    if (deleteInFlightRef.current) return;
     const chat = state.status === 'ready' ? state.payload.chat : null;
     const channel = chat?.channels.find((entry) => entry.id === channelId);
     const confirmed = confirmDialog ? await confirmDialog(buildDeleteChannelConfirmation(
       channel?.title, chat ? channelDeleteTargets(chat, channelId) : [], t,
     )) : false;
     if (!confirmed) return;
-    setBusy(createChannelBusyState('delete', channelId));
-    try {
-      const result = await navigationApi.deleteChatChannel(channelId);
-      const payload = isDeleteChatChannelResult(result) ? result.payload : result;
-      const feedback = resolveDeleteChannelFeedback(result, t);
-      startTransition(() => {
-        setState({ status: 'ready', payload });
-        setAddCatOpen(false);
-        setFeedback(feedback);
-      });
-      navigate(
-        resolveWorkspaceVisibleChatPath(
-          chatPrefix,
-          payload.chat.channels,
-          payload.chat.selectedChannelId,
-          platformShellSurface,
-        ),
-      );
-    } catch (error) {
-      setFeedback(formatWorkspaceNavigationMutationError(
-        error,
-        t(messageKeys.sharedWorkspaceNavigationDeleteChatError),
-        t,
-      ));
-    } finally {
-      setBusy(clearBusyState());
-    }
+    await runExclusiveDelete(createChannelBusyState('delete', channelId), async () => {
+      try {
+        const result = await navigationApi.deleteChatChannel(channelId);
+        const payload = isDeleteChatChannelResult(result) ? result.payload : result;
+        const feedback = resolveDeleteChannelFeedback(result, t);
+        startTransition(() => {
+          setState({ status: 'ready', payload });
+          setAddCatOpen(false);
+          setFeedback(feedback);
+        });
+        navigate(
+          resolveWorkspaceVisibleChatPath(
+            chatPrefix,
+            payload.chat.channels,
+            payload.chat.selectedChannelId,
+            platformShellSurface,
+          ),
+        );
+      } catch (error) {
+        setFeedback(formatWorkspaceNavigationMutationError(
+          error,
+          t(messageKeys.sharedWorkspaceNavigationDeleteChatError),
+          t,
+        ));
+      }
+    });
   }, [
     chatPrefix,
     confirmDialog,
     navigate,
     navigationApi,
     platformShellSurface,
+    runExclusiveDelete,
     setAddCatOpen,
-    setBusy,
     setFeedback,
     setState,
     state,
@@ -500,6 +526,7 @@ export function useWorkspaceAppNavigationActions<
   }, [navigationApi, setBusy, setFeedback, setState, t]);
 
   const onDeleteParallelChatGroup = useCallback(async (groupId: string): Promise<void> => {
+    if (deleteInFlightRef.current) return;
     const fallbackGroupTitle = t(messageKeys.sharedWorkspaceNavigationParallelChatFallbackName);
     const groupTitle = state.status === 'ready'
       ? (
@@ -512,39 +539,38 @@ export function useWorkspaceAppNavigationActions<
       : true;
     if (!confirmed) return;
 
-    setBusy(createConcurrentGroupBusyState('delete', groupId));
-    try {
-      const payload = await navigationApi.deleteParallelChatGroup(groupId);
-      startTransition(() => {
-        setState({ status: 'ready', payload });
-        setAddCatOpen(false);
-        setFeedback('');
-      });
-      navigate(
-        resolveWorkspaceVisibleChatPath(
-          chatPrefix,
-          payload.chat.channels,
-          payload.chat.selectedChannelId,
-          platformShellSurface,
-        ),
-      );
-    } catch (error) {
-      setFeedback(formatWorkspaceNavigationMutationError(
-        error,
-        t(messageKeys.sharedWorkspaceNavigationDeleteParallelChatGroupError),
-        t,
-      ));
-    } finally {
-      setBusy(clearBusyState());
-    }
+    await runExclusiveDelete(createConcurrentGroupBusyState('delete', groupId), async () => {
+      try {
+        const payload = await navigationApi.deleteParallelChatGroup(groupId);
+        startTransition(() => {
+          setState({ status: 'ready', payload });
+          setAddCatOpen(false);
+          setFeedback('');
+        });
+        navigate(
+          resolveWorkspaceVisibleChatPath(
+            chatPrefix,
+            payload.chat.channels,
+            payload.chat.selectedChannelId,
+            platformShellSurface,
+          ),
+        );
+      } catch (error) {
+        setFeedback(formatWorkspaceNavigationMutationError(
+          error,
+          t(messageKeys.sharedWorkspaceNavigationDeleteParallelChatGroupError),
+          t,
+        ));
+      }
+    });
   }, [
     chatPrefix,
     confirmDialog,
     navigate,
     navigationApi,
     platformShellSurface,
+    runExclusiveDelete,
     setAddCatOpen,
-    setBusy,
     setFeedback,
     setState,
     state,
@@ -694,6 +720,8 @@ export function useWorkspaceAppNavigationActions<
   ]);
 
   return {
+    /** The chat or parallel-chat delete in flight, or null. */
+    deleteInFlight,
     onOpenChatsOverview,
     onSelect,
     onRenameChannel,
