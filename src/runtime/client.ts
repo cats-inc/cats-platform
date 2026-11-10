@@ -404,6 +404,7 @@ interface RuntimeClientOptions {
   apiKey?: string;
   timeoutMs?: number;
   sessionCreateTimeoutMs?: number;
+  sessionDeleteTimeoutMs?: number;
   sessionCreateSlowWarningMs?: number;
   messageIdleTimeoutMs?: number;
   providerRegistryTimeoutMs?: number;
@@ -427,6 +428,12 @@ export type RuntimeClientDiagnosticEvent = {
 const DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS = 5_000;
 const SETUP_SCAN_POLL_INTERVAL_MS = 1_000;
 export const DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS = 60_000;
+/**
+ * Deleting a session stops its provider process and removes native transcripts,
+ * which has taken over 13 s. A shorter timeout cancels the product delete while
+ * Runtime still finishes it, leaving the chat behind with its session gone.
+ */
+export const DEFAULT_RUNTIME_SESSION_DELETE_TIMEOUT_MS = 60_000;
 export const DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS = 120_000;
 const DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS = 10_000;
 const DEFAULT_RUNTIME_PROVIDER_CATALOG_REFRESH_TIMEOUT_MS = 60_000;
@@ -663,6 +670,7 @@ export class CatsRuntimeClient implements RuntimeClient {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
   private readonly sessionCreateTimeoutMs: number;
+  private readonly sessionDeleteTimeoutMs: number;
   private readonly sessionCreateSlowWarningMs: number;
   private readonly messageIdleTimeoutMs: number;
   private readonly providerRegistryTimeoutMs: number;
@@ -681,6 +689,8 @@ export class CatsRuntimeClient implements RuntimeClient {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS;
     this.sessionCreateTimeoutMs = options.sessionCreateTimeoutMs
       ?? DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS;
+    this.sessionDeleteTimeoutMs = options.sessionDeleteTimeoutMs
+      ?? Math.max(this.timeoutMs, DEFAULT_RUNTIME_SESSION_DELETE_TIMEOUT_MS);
     this.sessionCreateSlowWarningMs = options.sessionCreateSlowWarningMs
       ?? resolveDefaultSessionCreateSlowWarningMs(this.sessionCreateTimeoutMs);
     this.messageIdleTimeoutMs = options.messageIdleTimeoutMs
@@ -1349,7 +1359,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: this.createTimeoutSignal(this.timeoutMs),
+      signal: this.createTimeoutSignal(this.sessionDeleteTimeoutMs),
     });
 
     if (!response.ok) {
