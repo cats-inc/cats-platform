@@ -26,8 +26,8 @@ is a different System Settings pane. Before this record:
   `requires-approval`, the "Start Cats when I sign in" checkbox showed on although Cats
   would not start.
 
-Desktop control (computer use) is Windows-only, and macOS is a SPEC-133 non-goal, so
-Accessibility is not needed yet.
+Desktop control (SPEC-133) has no macOS helper yet, so Accessibility is not needed yet. The
+macOS helper adds that pane when it is built.
 
 ## Decision
 

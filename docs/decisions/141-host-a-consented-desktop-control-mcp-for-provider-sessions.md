@@ -10,6 +10,9 @@ Amended the same day: the owner wants desktop control in both Cats Desktop and C
 Bots, implemented separately in each, with no shared package (§2). The Bots decision is
 [Bots ADR-005](../../../cats-bots/docs/decisions/005-give-the-bot-owner-consented-desktop-control.md).
 
+Amended 2026-11-11: Windows is the first platform, not the only one. The owner wants desktop
+control on macOS and Linux too, in both Cats Desktop and Cats Bot; they are not built yet (§8).
+
 Placement: "Desktop host" in this ADR includes the Desktop-managed Platform server. The
 MCP endpoint sits on the Platform server's internal listener, like `cat-image-tools`, and
 the Platform server starts the executor helper from a path the Desktop host provides.
@@ -148,8 +151,8 @@ verification and held-key checks. The implementation language and signing are SP
   `invoke_element` (UIA patterns).
 
 Phase B is implemented only after phase A's consent flow has run on a real desktop and
-passed acceptance. The first phase covers Windows only; other operating systems are a
-separate decision.
+passed acceptance. Windows is built first. macOS and Linux are wanted too and are not built
+yet; each gets its own helper and OS permissions under a later plan.
 
 ### 9. Report capabilities separately
 

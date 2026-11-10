@@ -21,6 +21,9 @@ build no parallel mechanism. Cats Bots runs its own plan,
 [Bots PLAN-006](../../../cats-bots/docs/plans/PLAN-006-desktop-control-session-mcp.md),
 against the same contract. This plan includes no version bump or release.
 
+This plan delivers Windows. macOS and Linux are wanted too; their helpers are not built yet
+and need a plan of their own (SPEC-133 Platform coverage).
+
 ## Implementation Phases
 
 ### P0 — Freeze contracts
