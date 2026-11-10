@@ -422,9 +422,6 @@ ${SETUP_WIZARD_CSS}
       text-align: center;
     }
     .onboarding-page > .hero { flex-shrink: 0; }
-    .onboarding-page > .catsProviderManager {
-      width: 100%; margin: 0 auto;
-    }
     .onboarding-headline {
       font-size: 0.92rem;
       color: var(--muted);

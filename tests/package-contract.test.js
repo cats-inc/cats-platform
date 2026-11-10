@@ -194,8 +194,8 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
       assert.equal(packedPaths.has(file.replace(/^\.\//u, '')), true, `${subpath} -> ${file}`);
     }
   }
-  assert.equal(packedPaths.has('packages/provider-setup/manager.js'), true);
-  assert.equal(packedPaths.has('packages/provider-setup/manager.d.ts'), true);
+  assert.equal(packedPaths.has('packages/provider-setup/providerSetupTypes.d.ts'), true);
+  assert.equal(packedPaths.has('packages/provider-setup/manager.js'), false, 'the old manager view is gone (ADR-147)');
   for (const name of ['setupWizard', 'setupChrome', 'setupFacts', 'setupWizardStyles']) {
     assert.equal(packedPaths.has(`packages/provider-setup/${name}.js`), true, name);
     assert.equal(packedPaths.has(`packages/provider-setup/${name}.d.ts`), true, name);

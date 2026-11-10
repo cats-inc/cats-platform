@@ -1,4 +1,4 @@
-import type { DesktopPrerequisite } from '../../packages/provider-setup/manager.js';
+import type { DesktopPrerequisite } from '../../packages/provider-setup/providerSetupTypes.js';
 
 export const DESKTOP_HOST_NAME = 'cats-electron-host';
 export const DESKTOP_BOOTSTRAP_PHASES = [

@@ -1,4 +1,4 @@
-import type { DesktopPrerequisite, ProviderManagerSnapshot, ProviderSetupOutcome, ProviderTarget } from '../../packages/provider-setup/manager.js';
+import type { DesktopPrerequisite, ProviderManagerSnapshot, ProviderSetupOutcome, ProviderTarget } from '../../packages/provider-setup/providerSetupTypes.js';
 import type { DesktopSetupActionRecord, DesktopSetupHelperMode, DesktopSetupHelperSummary } from './contracts.js';
 import { NPM_PROVIDERS, targetKey, targetsForSetupHelper } from './providerSelection.js';
 import { isDesktopPrerequisiteHelper } from './setupAudit.js';

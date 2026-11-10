@@ -1,3 +1,4 @@
+/** Shapes the host and its pages share for provider selection and setup (ADR-116, ADR-147). */
 export interface ProviderTarget {
   provider: string;
   backend: 'cli' | 'api' | 'local' | 'agent';
@@ -72,8 +73,3 @@ export interface ProviderManagerBridge {
   runProviderSetup(input: { action: 'detect' | 'install' | 'upgrade' | 'repair' | 'uninstall' | 'preview_uninstall';
     targets: ProviderTarget[]; expectedRevision: string }): Promise<ProviderManagerSnapshot>;
 }
-export function mountProviderManager(root: HTMLElement, bridge: ProviderManagerBridge, options?: {
-  locale?: string;
-  onContinue?: () => void | Promise<void>;
-  onFeedback?: (message: string) => void;
-}): { refresh(): Promise<void>; destroy(): void };

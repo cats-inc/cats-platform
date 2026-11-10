@@ -19,7 +19,10 @@ export function mountSetupChrome(root, bridge, options = {}) {
     chev: '<svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   };
 
+  // SPEC-137: Settings shows the same rows without the rail, with the log at the section's foot.
+  const settingsLayout = options.layout === 'settings';
   root.classList.add('cats-setup');
+  if (settingsLayout) root.classList.add('is-settings');
   if (options.css) {
     const style = doc.createElement('style');
     style.textContent = options.css;
@@ -27,7 +30,25 @@ export function mountSetupChrome(root, bridge, options = {}) {
   }
   const frame = doc.createElement('div');
   frame.className = 'wz';
-  frame.innerHTML = `<div class="wz-frame">
+  const logMarkup = `<div class="log" data-log>
+      <div class="log-bar" data-logbar></div>
+      <div class="log-panel"><div class="log-scroll" data-logscroll role="log" aria-live="polite"></div></div>
+    </div>`;
+  frame.innerHTML = settingsLayout ? `<div class="wz-frame">
+      <nav class="rail" data-rail hidden>
+        <div class="brand" data-brand></div>
+        <ol class="steps" data-steps></ol>
+        <div class="perch" data-perch aria-hidden="true">
+          <div class="cat"></div>
+          <div class="cat-note"><strong data-note-a></strong><span data-note-b></span></div>
+        </div>
+      </nav>
+      <div class="main">
+        <div class="pane" data-pane></div>
+        <div class="pane" data-details hidden></div>
+        <div class="dock"><div class="foot" data-foot></div>${logMarkup}</div>
+      </div>
+    </div>` : `<div class="wz-frame">
       <nav class="rail" data-rail>
         <div class="brand" data-brand></div>
         <ol class="steps" data-steps></ol>

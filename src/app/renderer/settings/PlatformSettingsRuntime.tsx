@@ -26,7 +26,10 @@ import { ClaudeInChromeSection } from './ClaudeInChromeSection.js';
 import { DesktopControlSection } from './DesktopControlSection.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { resolveRuntimePresentationStatus } from '../../../shared/runtimeStatusPresentation.js';
-import { mountProviderManager, type ProviderManagerBridge } from '../../../../packages/provider-setup/manager.js';
+import { mountSetupChrome } from '../../../../packages/provider-setup/setupChrome.js';
+import { setupRowFacts } from '../../../../packages/provider-setup/setupFacts.js';
+import { mountSetupWizard } from '../../../../packages/provider-setup/setupWizard.js';
+import { SETUP_CAT_HEAD, SETUP_WIZARD_CSS } from '../../../../packages/provider-setup/setupWizardStyles.js';
 import {
   useI18n,
 } from '../i18n/index.js';
@@ -62,18 +65,43 @@ function resolveRuntimeStatusChip(
   }
 }
 
-function DesktopProviders({ onFeedback }: { onFeedback: (message: string) => void }) {
+/**
+ * SPEC-137: what the last check found lasts for this window's session, across Settings pages, so
+ * coming back shows it rather than starting a check by itself.
+ */
+let settingsToolsState: unknown = null;
+
+/** The first-run wizard's rows, log and details, in Settings' layout (ADR-147). */
+function DesktopAiTools({ onFeedback }: { onFeedback: (message: string) => void }) {
   const root = useRef<HTMLDivElement>(null);
+  const view = useRef<ReturnType<typeof mountSetupWizard> | null>(null);
+  const feedback = useRef(onFeedback);
+  feedback.current = onFeedback;
   const { locale } = useI18n();
+  const initialLocale = useRef(locale);
   useEffect(() => {
     const bridge = resolveDesktopHostBridge();
-    if (!root.current || !bridge?.getProviderSetup || !bridge.applyProviderSetup || !bridge.runProviderSetup) return;
-    const view = mountProviderManager(root.current, bridge as ProviderManagerBridge, {
-      locale, onFeedback,
+    if (!root.current || !bridge?.setupWizard || !bridge.getProviderSetup) return undefined;
+    // Mounted once: a language change must not drop a check or an install in progress.
+    const mounted = mountSetupWizard(root.current, bridge, {
+      mode: 'settings',
+      locale: initialLocale.current,
+      css: SETUP_WIZARD_CSS,
+      catHead: SETUP_CAT_HEAD,
+      createChrome: mountSetupChrome,
+      facts: setupRowFacts,
+      settingsState: settingsToolsState,
+      onSettingsState: (state) => { settingsToolsState = state; },
+      onFeedback: (message) => feedback.current(message),
     });
-    return () => view.destroy();
-  }, [locale, onFeedback]);
-  return <div ref={root} />;
+    view.current = mounted;
+    return () => {
+      view.current = null;
+      mounted.destroy();
+    };
+  }, []);
+  useEffect(() => { view.current?.setLocale(locale); }, [locale]);
+  return <div ref={root} className="settingsAiTools" />;
 }
 
 export function PlatformSettingsRuntime({
@@ -189,7 +217,7 @@ export function PlatformSettingsRuntime({
       ) : null}
 
       {desktopEnvironment ? (
-        <SettingsSection headerless><DesktopProviders onFeedback={showToast} /></SettingsSection>
+        <SettingsSection headerless><DesktopAiTools onFeedback={showToast} /></SettingsSection>
       ) : null}
       <ClaudeInChromeSection showToast={showToast} />
       <DesktopControlSection showToast={showToast} />

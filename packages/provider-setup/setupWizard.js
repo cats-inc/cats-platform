@@ -10,10 +10,17 @@ export function mountSetupWizard(root, bridge, options) {
   const CHECKS_AT_ONCE = 4;
   const ADDRESS_DEFAULT = { ollama: 'http://127.0.0.1:11434', openclaw: 'ws://127.0.0.1:18789' };
   const MODEL_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$/;
+  // SPEC-137: Settings > Runtime. Page 1 is the picker behind "Choose tools"; page 2 holds the rows,
+  // their updates and removals, and sign-in. Nothing hands off, and Settings owns the language.
+  const SETTINGS = options.mode === 'settings';
+  const CONTEXT = SETTINGS ? 'settings' : 'onboarding';
 
   const S = {
     lang: String(options.locale || 'en').startsWith('zh') ? 'zh-TW' : 'en',
-    page: 1, snap: null, facts: null, catalog: 'slow', catalogError: null, saved: false, notice: null, reloading: false,
+    page: SETTINGS ? 2 : 1, snap: null, facts: null, catalog: 'slow', catalogError: null, saved: false, notice: null, reloading: false,
+    // Settings: a ready row's chosen change (upgrade, force or uninstall), an uninstall's dry run,
+    // which rows show More, and what the last change did.
+    changes: {}, previews: {}, more: new Set(), changed: {},
     picks: new Set(), expanded: false, revision: null, skipped: new Set(),
     phase: 'idle', rows: {}, checked: false, lastChecked: null, ticked: new Set(), details: new Set(), applied: new Set(), attempted: new Set(), systemRestarts: new Set(),
     queue: [], running: null, runStart: null, stopAfter: false, stopRequested: false, pageError: null, ticket: 0,
@@ -35,6 +42,7 @@ export function mountSetupWizard(root, bridge, options) {
     locale: S.lang,
     css: options.css,
     catHead: options.catHead,
+    layout: SETTINGS ? 'settings' : 'wizard',
     isBusy: () => S.phase !== 'idle',
     onStep: (page) => goTo(page),
     onDetailsClosed: () => render(),
@@ -129,14 +137,55 @@ export function mountSetupWizard(root, bridge, options) {
     if (id === 'gh') return TOOLS.copilot ? labels(['copilot']) : [];
     return [];
   }
-  const factsOf = (id) => options.facts(T, id, {
+  const factsOf = (id, change = null) => options.facts(T, id, {
     platform: platform(),
     tool: TOOLS[id],
     neededBy: neededBy(id),
     planned: (S.rows[id] && S.rows[id].planned) || [],
     ollamaInstalled: S.ollama.installed,
+    ...(change ? { change, requiresElevation: Boolean(helperOf(id) && helperOf(id).requiresElevation) } : {}),
   });
   const rowLabel = (id) => factsOf(id).title;
+
+  /* ------------------------------ Settings: changes to a ready row (SPEC-137) ------------------------------ */
+
+  /** What a ticked row runs: its install, or the change chosen for it once it is there. */
+  const modeOf = (id) => (SETTINGS && S.changes[id]) || 'apply';
+  /** An update is offered where the helper supports one; the npm folder and PowerShell only re-apply settings. */
+  const canUpdate = (id) => SETTINGS && !['npm', 'shell'].includes(id) && !isConnection(id)
+    && Boolean(helperOf(id) && helperOf(id).supportsUpgrade);
+  const canReinstall = (id) => SETTINGS && !['npm', 'shell'].includes(id) && !isConnection(id)
+    && Boolean(helperOf(id) && helperOf(id).supportsForce);
+  const canUninstall = (id) => SETTINGS && !isConnection(id) && Boolean(helperOf(id) && helperOf(id).supportsUninstall);
+  const updatable = () => rowIds().filter((id) => S.rows[id] && S.rows[id].kind === 'ready' && canUpdate(id));
+  function clearChange(id) {
+    delete S.changes[id];
+    delete S.previews[id];
+    S.ticked.delete(id);
+  }
+
+  /** Settings, before a check: what Cats already knows without starting anything (FR-2). */
+  function passiveState(id) {
+    const tool = TOOLS[id];
+    if (tool) {
+      const observation = ((S.snap && S.snap.runtime.observations) || [])
+        .find((entry) => targetKey(entry) === targetKey(tool.target) && entry.configurationStatus !== 'not_selected');
+      if (observation && observation.commandStatus === 'ready') {
+        return { text: T('Found in the last scan', '上次掃描有找到'), version: observation.version || null, ok: true };
+      }
+      if (observation && ['missing_install', 'missing_path', 'missing'].includes(observation.commandStatus)) {
+        return { text: T('Not found in the last scan', '上次掃描沒找到'), version: null, ok: false };
+      }
+      return { text: T('Not checked yet', '還沒檢查'), version: null, ok: false };
+    }
+    const prerequisite = ((S.snap && S.snap.prerequisites) || []).find((entry) => entry.helperId === helperIdOf(id));
+    if (prerequisite && prerequisite.result && prerequisite.result.runState !== 'failed') {
+      return prerequisite.result.status === 'ready'
+        ? { text: T('Ready when Cats started', 'Cats 啟動時已就緒'), version: null, ok: true }
+        : { text: T('Needed setup when Cats started', 'Cats 啟動時還沒設定好'), version: null, ok: false };
+    }
+    return { text: T('Not checked yet', '還沒檢查'), version: null, ok: false };
+  }
 
   /* ------------------------------ What a helper reported ------------------------------ */
 
@@ -199,7 +248,7 @@ export function mountSetupWizard(root, bridge, options) {
     .map((id) => TOOLS[id].target);
 
   async function refreshSnapshot() {
-    const next = await bridge.getProviderSetup('onboarding');
+    const next = await bridge.getProviderSetup(CONTEXT);
     S.snap = next;
     S.revision = next.runtime.selection.revision;
     buildTools();
@@ -250,7 +299,12 @@ export function mountSetupWizard(root, bridge, options) {
     if (mine !== S.ticket) return;
     await readCodexInitialization(mine);
     if (mine !== S.ticket) return;
-    S.ticked = new Set([...S.ticked].filter((id) => S.rows[id] && S.rows[id].kind === 'needs'));
+    // A ready row keeps its chosen change in Settings; anything else that is no longer ready drops it.
+    for (const id of Object.keys(S.changes)) {
+      if (!S.rows[id] || S.rows[id].kind !== 'ready') clearChange(id);
+    }
+    S.ticked = new Set([...S.ticked].filter((id) => S.rows[id]
+      && (S.rows[id].kind === 'needs' || (S.rows[id].kind === 'ready' && S.changes[id]))));
     S.checked = true;
     S.checkedAt = new Date().toISOString();
     S.phase = 'idle';
@@ -316,6 +370,44 @@ export function mountSetupWizard(root, bridge, options) {
     renderPage();
   }
 
+  /**
+   * SPEC-137 FR-9: an uninstall's dry run reads what it would remove, and changes nothing. A plan
+   * becomes a ticked change; an empty one says there is nothing to remove.
+   */
+  async function previewUninstall(id) {
+    if (S.phase !== 'idle' || !canUninstall(id)) return;
+    chrome.beginWork();
+    const mine = ++S.ticket;
+    S.phase = 'checking';
+    S.running = id;
+    S.runStart = Date.now();
+    chrome.setElapsedFrom(S.runStart);
+    renderPage();
+    let record = null;
+    let thrown = null;
+    try { record = await wizardBridge.runHelper(helperIdOf(id), 'uninstall', { dryRun: true }); }
+    catch (error) { thrown = error; }
+    if (mine !== S.ticket) return;
+    const planned = record ? [...(record.plannedActions || []), ...(record.plannedChanges || [])] : [];
+    if (thrown || !record || record.runState === 'failed') {
+      S.previews[id] = { planned: [], warnings: [], error: thrown ? String(thrown.message || thrown) : (record && (record.error || record.summary)) || T('The dry run did not finish.', '試跑沒有完成。') };
+    } else if (!planned.length) {
+      S.previews[id] = { planned: [], warnings: record.warnings || [], empty: true };
+    } else {
+      S.previews[id] = { planned, warnings: record.warnings || [] };
+      S.changes[id] = 'uninstall';
+      S.ticked.add(id);
+      S.details.add(id);
+      S.more.delete(id);
+    }
+    S.running = null;
+    S.runStart = null;
+    chrome.setElapsedFrom(null);
+    S.phase = 'idle';
+    saveState();
+    renderPage();
+  }
+
   /** Whatever was waiting on Node.js can now say what it needs. */
   async function readWaiting(mine) {
     const ready = rowIds().filter((id) => S.rows[id] && S.rows[id].kind === 'waiting' && !waitsOnNode(id) && helperOf(id));
@@ -342,9 +434,11 @@ export function mountSetupWizard(root, bridge, options) {
       chrome.setElapsedFrom(S.runStart);
       S.attempted.add(id);
       renderPage();
+      const mode = modeOf(id);
+      const before = S.rows[id] && S.rows[id].version ? S.rows[id].version : null;
       let record = null;
       let thrown = null;
-      try { record = await wizardBridge.runHelper(helperIdOf(id), 'apply'); }
+      try { record = await wizardBridge.runHelper(helperIdOf(id), mode); }
       catch (error) { thrown = error; }
       if (mine !== S.ticket) return;
       S.queue = S.queue.filter((item) => item !== id);
@@ -375,9 +469,34 @@ export function mountSetupWizard(root, bridge, options) {
       try { check = await wizardBridge.runHelper(helperIdOf(id), 'check'); } catch { check = null; }
       if (mine !== S.ticket) return;
       const next = classifyCheck(id, check);
-      if (next.kind === 'ready') {
+      if (mode === 'uninstall') {
+        // A removal is done when the fresh check no longer finds it.
+        if (next.kind !== 'ready' && next.kind !== 'checkFailed') {
+          S.rows[id] = next;
+          S.changed[id] = { mode, from: before, to: null };
+          clearChange(id);
+          S.applied.add(id);
+          S.attempted.delete(id);
+          finished.push(id);
+        } else {
+          S.rows[id] = {
+            kind: 'failed', status: next.status || record.status, error: record.summary || null,
+            human: T('The script finished, but a fresh check still finds it.', '腳本跑完了，但重新檢查後還是找得到它。'),
+            manual: [...(record.manualSteps || []), ...(next.manual || [])], planned: (S.previews[id] && S.previews[id].planned) || [],
+          };
+          S.details.add(id);
+          stopped = true;
+          break;
+        }
+      } else if (next.kind === 'ready') {
         S.rows[id] = next;
-        S.applied.add(id);
+        // An update that found this already the newest changed nothing, so it is not counted.
+        const unchanged = mode === 'upgrade' && before && next.version && before === next.version;
+        if (mode !== 'apply') {
+          S.changed[id] = { mode, from: before, to: next.version || null };
+          clearChange(id);
+        }
+        if (!unchanged) S.applied.add(id);
         S.attempted.delete(id);
         finished.push(id);
       } else if (record.restartRequired || (interruption || []).some((kind) => ['relaunch_required', 'restart_required'].includes(kind))) {
@@ -420,7 +539,8 @@ export function mountSetupWizard(root, bridge, options) {
   }
 
   const FAILED_KINDS = ['failed', 'declined', 'restart', 'checkFailed'];
-  const queueOf = () => rowIds().filter((id) => S.ticked.has(id) && S.rows[id] && S.rows[id].kind === 'needs');
+  const queueOf = () => rowIds().filter((id) => S.ticked.has(id) && S.rows[id]
+    && (S.rows[id].kind === 'needs' || (SETTINGS && S.rows[id].kind === 'ready' && Boolean(S.changes[id]))));
   const stoppedRow = () => rowIds().find((id) => S.rows[id] && FAILED_KINDS.includes(S.rows[id].kind)) || null;
   function retryQueue(stopped) {
     if (!stopped || S.rows[stopped].kind === 'restart' || !S.attempted.has(stopped)) return [];
@@ -569,6 +689,21 @@ export function mountSetupWizard(root, bridge, options) {
     renderPage();
   }
 
+  function feedback(message) {
+    if (options.onFeedback) {
+      try { options.onFeedback(message); } catch { /* A Settings page that went away. */ }
+    }
+  }
+
+  /** Settings: back from the picker to the rows, with the saved selection's ticks. */
+  function cancelChoose() {
+    const targets = (S.snap && S.snap.runtime.selection.targets) || [];
+    S.picks = new Set(targets.filter((target) => TOOLS[target.provider]
+      && targetKey(TOOLS[target.provider].target) === targetKey(target)).map((target) => target.provider));
+    S.page = 2;
+    render(true);
+  }
+
   /* ------------------------------ Page changes ------------------------------ */
 
   function stateBlob() {
@@ -580,14 +715,27 @@ export function mountSetupWizard(root, bridge, options) {
         openclaw: { address: S.conn.openclaw.address, state: S.conn.openclaw.state === 'connected' ? 'connected' : 'untested' } },
       ollama: S.ollama, pullName: S.pull.name,
       codexInitialization: S.codexInitialization,
+      ...(SETTINGS ? { changes: S.changes, previews: S.previews, changed: S.changed } : {}),
     };
   }
   function saveState() {
+    // Settings keeps its own session state; the host's wizard state belongs to first run.
+    if (SETTINGS) {
+      if (options.onSettingsState) {
+        try { options.onSettingsState(stateBlob()); } catch { /* A Settings page that went away. */ }
+      }
+      return;
+    }
     if (wizardBridge.saveState) Promise.resolve(wizardBridge.saveState(stateBlob())).catch(() => undefined);
   }
   function restoreState(state) {
     if (!state) return;
-    if (state.lang === 'en' || state.lang === 'zh-TW') S.lang = state.lang;
+    if (!SETTINGS && (state.lang === 'en' || state.lang === 'zh-TW')) S.lang = state.lang;
+    if (SETTINGS) {
+      S.changes = state.changes && typeof state.changes === 'object' ? state.changes : {};
+      S.previews = state.previews && typeof state.previews === 'object' ? state.previews : {};
+      S.changed = state.changed && typeof state.changed === 'object' ? state.changed : {};
+    }
     S.expanded = Boolean(state.expanded);
     S.checked = Boolean(state.checked);
     S.lastChecked = state.lastChecked || null;
@@ -607,7 +755,8 @@ export function mountSetupWizard(root, bridge, options) {
     if (state.codexInitialization) S.codexInitialization = state.codexInitialization;
     if (state.pullName) S.pull.name = state.pullName;
     // Only pages this half draws. A run in progress did not survive, so nothing resumes by itself.
-    if ([1, 2, 3].includes(state.page)) S.page = state.page;
+    if (SETTINGS) S.page = 2;
+    else if ([1, 2, 3].includes(state.page)) S.page = state.page;
   }
 
   const signInRows = () => ORDER.filter((id) => S.picks.has(id) && S.rows[id] && S.rows[id].kind === 'ready');
@@ -650,6 +799,13 @@ export function mountSetupWizard(root, bridge, options) {
     } catch (error) {
       S.phase = 'idle';
       await classifySaveFailure(error);
+      // Settings reports a save in a toast (AGENTS.md, Settings UI Conventions); the ticks stay.
+      if (SETTINGS && ['savefail', 'partial'].includes(S.catalog)) {
+        feedback(S.catalog === 'partial'
+          ? T('Your choices are saved, but Cats Runtime did not reload them. Try again.', '選擇已經存好，但 Cats Runtime 沒有重新載入。請再試一次。')
+          : T('Your choices were not saved. Nothing on this computer changed. Try again.', '選擇沒有存好，這台電腦沒有任何變更。請再試一次。'));
+        S.catalog = 'ready';
+      }
       render();
       return;
     }
@@ -659,6 +815,22 @@ export function mountSetupWizard(root, bridge, options) {
       const facts = await wizardBridge.facts();
       S.facts = { ...S.facts, ollamaSuggestions: facts.ollamaSuggestions };
     } catch { /* Only suggestions: a person can still type a name. */ }
+    if (SETTINGS) {
+      // The rows read again for what is chosen now. An empty selection has nothing to read.
+      S.page = 2;
+      S.rows = {};
+      S.ticked = new Set();
+      S.changes = {};
+      S.previews = {};
+      S.changed = {};
+      S.checked = false;
+      S.applied = new Set();
+      S.attempted = new Set();
+      saveState();
+      render(true);
+      if (S.picks.size && !empty) await runCheck();
+      return;
+    }
     if (S.picks.size === 0 || empty) {
       S.skipped = new Set([2, 3]);
       await handoff();
@@ -676,7 +848,7 @@ export function mountSetupWizard(root, bridge, options) {
     const message = String(error.message || error);
     S.catalogError = message;
     let current = null;
-    try { current = await bridge.getProviderSetup('onboarding'); } catch { current = null; }
+    try { current = await bridge.getProviderSetup(CONTEXT); } catch { current = null; }
     if (!current) { S.catalog = 'lost'; return; }
     S.snap = current;
     if (current.runtime.selection.diskChanged || /changed|revision/i.test(message)) {
@@ -767,6 +939,7 @@ export function mountSetupWizard(root, bridge, options) {
   }
 
   function renderRail() {
+    if (SETTINGS) { chrome.setBusy(S.phase !== 'idle'); return; }
     const hasOllama = S.picks.has('ollama');
     const all = [
       { n: 1, title: T('Choose tools', '選擇工具'), note: T('Changes nothing', '不會動到你的電腦') },
@@ -817,7 +990,10 @@ export function mountSetupWizard(root, bridge, options) {
   }
 
   function pageOne() {
-    const head = `<div class="head"><h1 id="setup-h" tabindex="-1">${E(T('Which AI tools do you want to use?', '你想用哪些 AI 工具？'))}</h1>${langSelect()}</div>
+    const head = SETTINGS
+      ? `<div class="head"><h2 class="section-title" id="setup-h" tabindex="-1">${E(T('Choose your AI tools', '選擇你的 AI 工具'))}</h2></div>
+      <p class="lead">${E(T('Tick the ones you want. Saving checks this computer again, read-only; nothing changes until you tick a row and apply it.', '勾選想用的就好。儲存後會再唯讀檢查一次這台電腦；要等你勾選並套用，才會有變更。'))}</p>`
+      : `<div class="head"><h1 id="setup-h" tabindex="-1">${E(T('Which AI tools do you want to use?', '你想用哪些 AI 工具？'))}</h1>${langSelect()}</div>
       <p class="lead">${E(T('Tick the ones you want. This page runs nothing and scans nothing, and you can change it later in Settings.', '勾選想用的就好。這一頁不會執行或掃描任何東西，之後也能在設定裡改。'))}</p>`;
     if (S.catalog === 'slow') {
       return `${head}<div class="picks" aria-busy="true" aria-label="${E(T('Loading tools', '正在載入工具'))}">${'<div class="skeleton"></div>'.repeat(4)}</div>`;
@@ -888,6 +1064,15 @@ export function mountSetupWizard(root, bridge, options) {
   function pageOneFoot() {
     const blocked = !['ready', 'invalid', 'partial', 'savefail'].includes(S.catalog);
     const saving = S.phase === 'saving' || S.phase === 'handoff';
+    if (SETTINGS) {
+      const count = checksPlanned();
+      const hint = S.picks.size
+        ? T(`Saves your choices, then runs up to ${count} read-only checks. Nothing on this computer changes.`, `會儲存你的選擇，再做最多 ${count} 項唯讀檢查，不會變更這台電腦。`)
+        : T('Chats and Catlas need a tool before they can answer.', '聊天和 Catlas 要有工具才能回話。');
+      return `<p class="hint">${E(hint)}</p>
+        <button type="button" class="btn" id="choose-cancel" data-act="choose-cancel" ${saving ? 'disabled' : ''}>${E(T('Cancel', '取消'))}</button>
+        <button type="button" class="btn primary" id="go-check" data-act="go-check" ${blocked || saving ? 'disabled' : ''}>${E(saving ? T('Saving…', '儲存中…') : S.picks.size ? T('Save and check', '儲存並檢查') : T('Save without tools', '不選工具，直接儲存'))}</button>`;
+    }
     if (S.picks.size === 0) {
       return `<p class="hint">${E(T('You can add tools later in Settings. Chats and Catlas need one before they can answer.', '可以之後在設定加入。聊天和 Catlas 要有工具才能回話。'))}</p>
         <button type="button" class="btn" id="go-check" data-act="go-check" ${blocked || saving ? 'disabled' : ''}>${E(saving ? T('Continuing…', '繼續中…') : T('Continue without tools', '不選工具，直接繼續'))}</button>`;
@@ -918,22 +1103,29 @@ export function mountSetupWizard(root, bridge, options) {
 
   function detailsHtml(id) {
     const row = S.rows[id] || {};
-    const fact = factsOf(id);
+    const change = SETTINGS ? S.changes[id] || null : null;
+    const fact = factsOf(id, change);
     const helper = helperOf(id);
     const copied = S.copied === `manual:${id}`;
     const parts = [];
+    const planned = change === 'uninstall' ? ((S.previews[id] && S.previews[id].planned) || []) : change ? [] : row.planned || [];
+    const command = helper && helper.commands ? helper.commands[change || 'apply'] : null;
     if (row.error) parts.push(`<dt>${E(T('Reason', '原因'))}</dt><dd class="mono" style="font-size:12px">${E(row.error)}</dd>`);
-    if (row.planned && row.planned.length) parts.push(`<dt>${E(T('It will', '它會'))}</dt><dd>${row.planned.map((line) => `<div>${E(line)}</div>`).join('')}</dd>`);
-    if (helper && helper.commands && helper.commands.apply) parts.push(`<dt>${E(T('Runs', '實際執行'))}</dt><dd><span class="cmd">${E(helper.commands.apply)}</span></dd>`);
+    // A change's summary sits on the row already; "It will" holds only what a helper itself planned.
+    if (planned.length) parts.push(`<dt>${E(T('It will', '它會'))}</dt><dd>${planned.map((line) => `<div>${E(line)}</div>`).join('')}</dd>`);
+    if (command) parts.push(`<dt>${E(T('Runs', '實際執行'))}</dt><dd><span class="cmd">${E(command)}</span></dd>`);
     if (helper && helper.sha256) parts.push(`<dt>${E(T('Script', '腳本'))}</dt><dd title="${E(helper.sha256)}">${E(T(`${helper.file}, SHA-256 ${helper.sha256.slice(0, 8)}…`, `${helper.file}，SHA-256 ${helper.sha256.slice(0, 8)}…`))}</dd>`);
     if (fact.manual) parts.push(`<dt>${E(T('By hand', '自己來'))}</dt><dd class="with-copy"><span class="cmd">${E(fact.manual)}</span><button type="button" class="more" id="copy-manual-${E(id)}" data-act="copy-manual" data-arg="${E(id)}">${E(copied ? T('Copied', '已複製') : T('Copy', '複製'))}</button></dd>`);
+    if (change === 'uninstall' && S.previews[id] && S.previews[id].warnings && S.previews[id].warnings.length) {
+      parts.push(`<dt>${E(T('Warnings', '注意'))}</dt><dd>${S.previews[id].warnings.map((line) => `<div>${E(line)}</div>`).join('')}</dd>`);
+    }
     if (row.manual && row.manual.length) parts.push(`<dt>${E(T('Next', '下一步'))}</dt><dd>${row.manual.map((line) => `<div>${E(line)}</div>`).join('')}</dd>`);
     return `<div class="details"><dl>${parts.join('')}</dl></div>`;
   }
 
-  function tagsHtml(id, extra = '') {
+  function tagsHtml(id, extra = '', change = null) {
     const open = S.details.has(id);
-    return `<div class="tags">${factsOf(id).tags.map((tag) => `<span class="tag ${tag.danger ? 'danger' : ''}">${E(tag.text)}</span>`).join('')}
+    return `<div class="tags">${factsOf(id, change).tags.map((tag) => `<span class="tag ${tag.danger ? 'danger' : ''}">${E(tag.text)}</span>`).join('')}
       <button type="button" class="more" id="more-${E(id)}" aria-expanded="${open}" data-act="details" data-arg="${E(id)}">${E(open ? T('Hide', '收起') : T('What it does', '它會做什麼'))}</button>${extra}</div>`;
   }
 
@@ -959,6 +1151,51 @@ export function mountSetupWizard(root, bridge, options) {
     </li>`;
   }
 
+  /** A ready row's state in Settings, saying what the last change did (FR-8). */
+  function readyState(id, row) {
+    const version = (value) => (value ? `<span class="version">${E(value)}</span>` : '');
+    const changed = S.changed[id];
+    if (changed && changed.mode === 'upgrade') {
+      if (changed.from && changed.to && changed.from !== changed.to) {
+        return `${E(T('Updated', '已更新'))}${version(changed.from)}<span class="arrow" aria-label="${E(T('to', '到'))}">→</span><span class="version" style="margin-left:0">${E(changed.to)}</span>`;
+      }
+      if (changed.from && changed.to) return `${E(T('Already the newest', '已經是最新版'))}${version(changed.to)}`;
+    }
+    if (changed && changed.mode === 'force') return `${E(T('Reinstalled', '已重新安裝'))}${version(row.version)}`;
+    return `${E(S.applied.has(id) ? T('Just finished', '剛完成') : T('Ready', '就緒'))}${version(row.version)}`;
+  }
+  /** The tick box for a ready row's change: Update by default, or what More chose. */
+  function changeControl(id) {
+    if (!SETTINGS) return '';
+    const change = S.changes[id] || null;
+    if (!change && !canUpdate(id)) return '';
+    const label = change === 'uninstall' ? T('Uninstall', '解除安裝') : change === 'force' ? T('Reinstall', '重新安裝') : T('Update', '更新');
+    return `<label class="row-change ${change === 'uninstall' ? 'is-danger' : ''}"><input type="checkbox" id="change-${E(id)}" data-change="change" data-arg="${E(id)}" ${S.ticked.has(id) && change ? 'checked' : ''} ${S.phase !== 'idle' ? 'disabled' : ''}>${E(label)}</label>`;
+  }
+  function moreControl(id) {
+    if (!SETTINGS || !(canReinstall(id) || canUninstall(id))) return '';
+    const open = S.more.has(id);
+    return `<button type="button" class="more" id="row-more-${E(id)}" aria-expanded="${open}" data-act="row-more" data-arg="${E(id)}" ${S.phase !== 'idle' ? 'disabled' : ''}>${E(open ? T('Less', '收起') : T('More', '更多'))}</button>`;
+  }
+  /** A ticked change shows what it does, as an install does (FR-8, FR-9). */
+  function changeBody(id) {
+    const change = SETTINGS && S.ticked.has(id) ? S.changes[id] || null : null;
+    if (!change) return '';
+    const open = S.details.has(id);
+    return `<p class="row-extra" style="color:var(--muted);font-size:13px">${E(factsOf(id, change).summary)}</p>${tagsHtml(id, '', change)}${open ? detailsHtml(id) : ''}`;
+  }
+  function moreActions(id) {
+    if (!SETTINGS || !S.more.has(id)) return '';
+    const preview = S.previews[id];
+    const items = [];
+    if (canReinstall(id) && S.changes[id] !== 'force') items.push(`<button type="button" class="btn small" id="reinstall-${E(id)}" data-act="reinstall" data-arg="${E(id)}" ${S.phase !== 'idle' ? 'disabled' : ''}>${E(T('Reinstall', '重新安裝'))}</button>`);
+    if (canUninstall(id) && S.changes[id] !== 'uninstall') items.push(`<button type="button" class="btn small" id="uninstall-${E(id)}" data-act="preview-uninstall" data-arg="${E(id)}" ${S.phase !== 'idle' ? 'disabled' : ''}>${E(T('Uninstall…', '解除安裝…'))}</button>`);
+    if (canUninstall(id) && !preview) items.push(`<span class="hint-inline">${E(T('Uninstall… first runs a dry run that changes nothing.', '「解除安裝…」會先試跑一次，不會變更任何東西。'))}</span>`);
+    if (preview && preview.empty) items.push(`<span class="hint-inline">${E(T('Its dry run found nothing to remove.', '試跑後沒有找到要移除的東西。'))}</span>`);
+    if (preview && preview.error) items.push(`<span class="hint-inline bad" role="alert">${E(T('The dry run did not finish. The log has the reason.', '試跑沒有完成，原因寫在記錄裡。'))}</span>`);
+    return `<div class="row-actions">${items.join('')}</div>`;
+  }
+
   function stepRow(id, depCls) {
     if (isConnection(id)) return connectionRow(id, depCls);
     const row = S.rows[id] || { kind: 'pending' };
@@ -967,6 +1204,12 @@ export function mountSetupWizard(root, bridge, options) {
     const systemAdvice = S.systemRestarts.has(id) ? `<p>${E(T('Restart Windows to finish installation.', '請重新啟動 Windows 以完成安裝。'))}</p>` : '';
     const open = S.details.has(id);
     const elevates = helperOf(id) && helperOf(id).requiresElevation;
+    if (row.kind === 'pending' && SETTINGS && S.phase === 'idle') {
+      // Settings before a check: what is already known, with no tick box (SPEC-137 FR-2).
+      const known = passiveState(id);
+      return plainRow(id, depCls, known.ok ? ICON.check : ICON.wait,
+        `${E(known.text)}${known.version ? `<span class="version">${E(known.version)}</span>` : ''}`);
+    }
     if (row.kind === 'pending') return plainRow(id, depCls, '', E(T('Waiting', '等待中')));
     if (row.kind === 'checking') return plainRow(id, depCls, '<span class="spinner"></span>', E(T('Checking', '檢查中')));
     if (id === S.running) {
@@ -978,8 +1221,14 @@ export function mountSetupWizard(root, bridge, options) {
       if (id === 'ollama') {
         const count = S.ollama.models.length;
         return `<li class="row is-ready ${depCls}" data-row="${E(id)}"><div class="row-top"><span class="glyph">${ICON.check}</span>
-          <div class="row-text"><strong>Ollama</strong>${count ? '' : `<p>${E(T('It has no models yet. The next page can download one.', '還沒有模型。下一頁可以下載第一個。'))}</p>`}</div>
-          <span class="row-state ${count ? 'ok' : 'attn'}">${E(count ? T(`${count} model(s)`, `${count} 個模型`) : T('No models yet', '還沒有模型'))}</span></div>${stagesHtml(false)}</li>`;
+          <div class="row-text"><strong>Ollama</strong>${count ? '' : `<p>${E(SETTINGS ? T('It has no models yet. You can download one under Sign in.', '還沒有模型。可以在下方「登入」下載第一個。') : T('It has no models yet. The next page can download one.', '還沒有模型。下一頁可以下載第一個。'))}</p>`}</div>
+          <span class="row-state ${count ? 'ok' : 'attn'}">${E(count ? T(`${count} model(s)`, `${count} 個模型`) : T('No models yet', '還沒有模型'))}</span>${changeControl(id)}${moreControl(id)}</div>${stagesHtml(false)}${changeBody(id)}${moreActions(id)}</li>`;
+      }
+      if (SETTINGS) {
+        const ticked = S.ticked.has(id) && Boolean(S.changes[id]);
+        return `<li class="row is-ready ${ticked ? 'is-changing' : ''} ${depCls}" data-row="${E(id)}"><div class="row-top"><span class="glyph">${ICON.check}</span>
+          <div class="row-text"><strong>${E(fact.title)}</strong>${optional}${systemAdvice}</div>
+          <span class="row-state ok">${readyState(id, row)}</span>${changeControl(id)}${moreControl(id)}</div>${changeBody(id)}${moreActions(id)}</li>`;
       }
       return `<li class="row is-ready ${depCls}" data-row="${E(id)}"><div class="row-top"><span class="glyph">${ICON.check}</span>
         <div class="row-text"><strong>${E(fact.title)}</strong>${optional}${systemAdvice}</div>
@@ -1018,13 +1267,13 @@ export function mountSetupWizard(root, bridge, options) {
         : row.human || T('It did not finish. The log below says why.', '沒有完成，原因寫在下方記錄裡。');
       return `<li class="row is-failed ${depCls}" data-row="${E(id)}"><div class="row-top"><span class="glyph">${ICON.cross}</span>
         <div class="row-text"><strong>${E(fact.title)}</strong>${optional}<p>${E(text)}</p>${systemAdvice}</div>
-        <span class="row-state bad">${E(row.kind === 'declined' ? T('Not installed', '尚未安裝') : T('Did not finish', '沒有完成'))}</span></div>
-        ${id === 'ollama' ? stagesHtml(true) : ''}${tagsHtml(id, detailsLink(`row:${id}`))}${open ? detailsHtml(id) : ''}</li>`;
+        <span class="row-state bad">${E(row.kind === 'declined' ? (SETTINGS && S.changes[id] ? T('Nothing changed', '沒有變更') : T('Not installed', '尚未安裝')) : T('Did not finish', '沒有完成'))}</span></div>
+        ${id === 'ollama' ? stagesHtml(true) : ''}${tagsHtml(id, detailsLink(`row:${id}`), SETTINGS ? S.changes[id] || null : null)}${open ? detailsHtml(id) : ''}</li>`;
     }
     const remoteLink = id === 'ollama' ? `<div class="row-actions"><button type="button" class="more" id="ollama-remote" data-act="ollama-remote" data-arg="on" ${S.phase !== 'idle' ? 'disabled' : ''}>${E(T('Use Ollama on another computer instead', '改用另一台電腦上的 Ollama'))}</button></div>` : '';
     return `<li class="row is-needs ${depCls}" data-row="${E(id)}"><div class="row-top"><label>
         <input type="checkbox" id="tick-${E(id)}" data-change="tick" data-arg="${E(id)}" ${S.ticked.has(id) ? 'checked' : ''} ${S.phase !== 'idle' ? 'disabled' : ''}>
-        <span class="row-text"><strong>${E(fact.title)}</strong>${optional}<span class="p">${E(fact.summary)}</span></span></label></div>
+        <span class="row-text"><strong>${E(fact.title)}</strong>${optional}<span class="p">${E(fact.summary)}</span>${SETTINGS && S.changed[id] && S.changed[id].mode === 'uninstall' ? `<span class="p">${E(T('Removed just now. Tick it to install it again.', '剛移除。要再裝回來就勾選它。'))}</span>` : ''}</span></label></div>
       ${id === 'ollama' ? stagesHtml(false) : ''}${tagsHtml(id)}${open ? detailsHtml(id) : ''}${remoteLink}</li>`;
   }
 
@@ -1044,7 +1293,134 @@ export function mountSetupWizard(root, bridge, options) {
     return [T('This computer is ready', '這台電腦準備好了'), T('Nothing needed installing, and nothing here changed.', '不需要安裝，這台電腦沒有任何變更。')];
   }
 
+  /* ------------------------------ Settings > Runtime (SPEC-137) ------------------------------ */
+
+  function settingsLead() {
+    if (S.phase === 'checking') return [T('Checking this computer', '正在檢查這台電腦'), T('This only reads what is there and changes nothing. Stop ends it and keeps what was read.', '這只會讀取目前的狀態，不會變更任何東西。按「停止」會結束檢查，已讀到的結果會留著。')];
+    if (S.phase === 'applying') return [T('Applying what you ticked', '正在套用你勾選的項目'), T('One at a time, with a fresh check after each. Cats cannot close until it finishes.', '一次一項，每項做完都會重新檢查。完成前無法關閉 Cats。')];
+    if (!S.picks.size) return [T('No AI tools chosen', '還沒選 AI 工具'), T('Chats and Catlas need one before they can answer. Choose tools to add one.', '聊天和 Catlas 要有工具才能回話。按「選擇工具」加入。')];
+    if (!S.checked) return [T('Not checked yet', '還沒檢查'), T('Nothing runs until you ask. Check this computer to see what each tool needs, or to update or fix one.', '你沒按之前什麼都不會執行。檢查這台電腦，就會看到每個工具需要什麼，也可以更新或修復。')];
+    return pageTwoTitle();
+  }
+
+  function settingsPage() {
+    const head = `<div class="head"><h2 class="section-title" id="setup-h" tabindex="-1">${E(T('AI tools', 'AI 工具'))}</h2>
+      <button type="button" class="btn small" id="choose" data-act="choose" ${S.phase !== 'idle' || !S.snap ? 'disabled' : ''}>${E(T('Choose tools', '選擇工具'))}</button></div>`;
+    if (!S.snap) {
+      if (S.catalog === 'fail') {
+        return head + alertHtml({
+          title: T('Could not load the list of tools', '讀不到工具清單'),
+          body: E(T('Cats Runtime did not answer. Nothing on this computer changed. Try again.', 'Cats Runtime 沒有回應，這台電腦沒有任何變更。請再試一次。')),
+          actions: `${detailsLink('catalog-fail')}<button type="button" class="btn small" id="catalog-retry" data-act="catalog-retry" ${S.reloading ? 'disabled' : ''}>${E(S.reloading ? T('Trying…', '重試中…') : T('Try again', '再試一次'))}</button>`,
+        });
+      }
+      return `${head}<div class="picks" aria-busy="true" aria-label="${E(T('Loading tools', '正在載入工具'))}">${'<div class="skeleton"></div>'.repeat(4)}</div>`;
+    }
+    const [title, lead] = settingsLead();
+    const clock = (lang) => new Date(S.checkedAt).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' });
+    const when = S.checked && S.checkedAt && S.phase === 'idle'
+      ? ` ${T(`Checked at ${clock('en')}.`, `${clock('zh-TW')} 檢查過。`)}`
+      : '';
+    let banner = '';
+    if (S.catalog === 'invalid') {
+      banner = alertHtml({
+        tone: 'warn', title: T('The saved tool settings could not be read', '讀不懂已儲存的工具設定'),
+        body: `<span class="cmd">providers.yaml</span> ${E(T('is not valid. Saving in Choose tools replaces it, and keeps a backup of the old file.', '有問題。在「選擇工具」儲存會取代它，舊檔會留一份備份。'))}`,
+        actions: detailsLink('catalog-invalid'),
+      });
+    } else if (S.catalog === 'changed') {
+      banner = alertHtml({
+        tone: 'warn', title: T('These settings were changed somewhere else', '工具設定在別的地方被改了'),
+        body: E(T('Another window or a person edited the file. Reload to see what is saved now.', '可能是另一個視窗或有人改了設定檔。重新讀取可以看到目前存的內容。')),
+        actions: `${detailsLink('catalog-changed')}<button type="button" class="btn small" id="catalog-reload" data-act="catalog-reload" ${S.reloading ? 'disabled' : ''}>${E(T('Reload', '重新讀取'))}</button>`,
+      });
+    } else if (S.catalog === 'lost') {
+      banner = alertHtml({
+        tone: 'warn', title: T('Lost the connection to Cats Runtime', '和 Cats Runtime 的連線中斷了'),
+        body: E(T('What is shown here may be out of date. Reconnect before checking this computer.', '這裡顯示的內容可能不是最新的。重新連上後才能檢查這台電腦。')),
+        actions: `${detailsLink('catalog-lost')}<button type="button" class="btn small" id="catalog-retry" data-act="catalog-retry" ${S.reloading ? 'disabled' : ''}>${E(S.reloading ? T('Reconnecting…', '連線中…') : T('Reconnect', '重新連線'))}</button>`,
+      });
+    }
+    if (S.pageError) {
+      banner += alertHtml({
+        title: T('Cats Runtime stopped answering during the check', '檢查途中 Cats Runtime 沒有回應'),
+        body: E(T('This does not mean your tools are missing. Check again; the log has the details.', '這不代表你的工具沒安裝。請再檢查一次，記錄裡有細節。')),
+        actions: detailsLink('scan'),
+      });
+    }
+    const idle = S.phase === 'idle';
+    const required = tickableRequired();
+    const updates = updatable();
+    const shortcuts = [];
+    if (idle && required.length >= 2) {
+      const all = required.every((id) => S.ticked.has(id));
+      shortcuts.push(`<button type="button" class="more" id="tick-all" data-act="tick-all">${E(all ? T('Untick all required', '取消全部勾選') : T(`Tick all ${required.length} required`, `勾選全部 ${required.length} 項必要項目`))}</button>`);
+    }
+    if (idle && updates.length >= 2) {
+      const all = updates.every((id) => S.ticked.has(id) && S.changes[id] === 'upgrade');
+      shortcuts.push(`<button type="button" class="more" id="tick-updates" data-act="tick-updates">${E(all ? T('Untick all updates', '取消勾選全部更新') : T(`Tick all ${updates.length} updates`, `勾選全部 ${updates.length} 項更新`))}</button>`);
+    }
+    const groups = layout().map((group) => {
+      const unlocked = group.root && S.rows[group.root] && S.rows[group.root].kind === 'ready';
+      const rows = group.rows.map((id, index) => {
+        let dep = '';
+        if (group.root && id === group.root) dep = 'dep-root';
+        else if (group.root) dep = index === group.rows.length - 1 ? 'dep last' : 'dep';
+        return stepRow(id, dep);
+      }).join('');
+      return `<div class="block"><p class="group-label">${E(group.title)}</p><ul class="rows ${unlocked ? 'unlocked' : ''}" aria-busy="${!idle}">${rows}</ul></div>`;
+    }).join('');
+    const signIn = S.checked ? signInRows() : [];
+    const signInHtml = [...signIn.map((id) => signInRow(id) + (id === 'codex' ? codexInitializationRow() : '')), ...(S.checked && ollamaUsable() ? [ollamaModelRow()] : [])].join('');
+    const signInBlock = signInHtml
+      ? `<div class="block"><p class="group-label">${E(ollamaUsable() ? T('Sign in and models', '登入與模型') : T('Sign in', '登入'))}</p><ul class="rows">${signInHtml}</ul></div>`
+      : '';
+    const empty = S.picks.size ? '' : `<div class="block"><p class="empty">${E(T('No AI tools are chosen. Choose tools to pick the ones you use; nothing installs until you tick it.', '還沒有選 AI 工具。按「選擇工具」挑你要用的；沒勾選之前不會安裝任何東西。'))}</p></div>`;
+    const custom = CUSTOM.length
+      ? `<p class="footnote">${E(T(`${CUSTOM.length} other configured target(s) are not managed here and stay as they are.`, `另外 ${CUSTOM.length} 個已設定的目標不在這裡管理，會維持原樣。`))}</p>`
+      : '';
+    return `${head}<p class="lead"><strong>${E(title)}</strong><br>${E(lead)}${E(when)}</p>${banner}
+      ${shortcuts.length ? `<p class="shortcuts">${shortcuts.join('')}</p>` : ''}${empty}${groups}${signInBlock}${custom}`;
+  }
+
+  function settingsFoot() {
+    const label = S.checked ? T('Check again', '再檢查一次') : T('Check this computer', '檢查這台電腦');
+    const again = (primary) => `<button type="button" class="btn ${primary ? 'primary' : ''}" id="recheck" data-act="recheck" ${S.phase !== 'idle' || !S.picks.size || !S.snap ? 'disabled' : ''}>${E(label)}</button>`;
+    if (S.phase === 'checking') {
+      return `<p class="hint"></p><button type="button" class="btn" id="stop-check" data-act="stop-check">${E(T('Stop', '停止'))}</button>
+        <button type="button" class="btn primary" disabled>${E(T('Checking…', '檢查中…'))}</button>`;
+    }
+    if (S.phase === 'applying') {
+      return `<p class="hint">${E(S.stopAfter ? T('Stops after this one.', '這項做完就會停。') : '')}</p>
+        <button type="button" class="btn" id="stop-after" data-act="stop-after" ${S.stopAfter ? 'disabled' : ''}>${E(T('Stop after this one', '這項做完就停'))}</button>
+        <button type="button" class="btn primary" disabled>${E(T('Applying…', '套用中…'))}</button>`;
+    }
+    if (S.phase !== 'idle') return `<p class="hint"></p>${again(false)}`;
+    if (S.pageError) return `<p class="hint"></p>${again(true)}`;
+    const stopped = stoppedRow();
+    if (stopped && S.rows[stopped].kind === 'restart') {
+      return `<p class="hint">${E(S.systemRestarts.has(stopped) ? T('Restart Windows to finish installation.', '請重新啟動 Windows 以完成安裝。') : T('If Cats still cannot find it after checking again, restart Cats.', '再檢查一次還是找不到的話，請重新啟動 Cats。'))}</p>${again(true)}`;
+    }
+    const retry = retryQueue(stopped);
+    if (retry.length) {
+      return `<p class="hint">${E(T('You can also set it up yourself and check again.', '也可以自己處理，再檢查一次。'))}</p>${again(false)}
+        <button type="button" class="btn primary" id="retry" data-act="retry">${E(T('Try again', '重試'))}</button>`;
+    }
+    const queued = queueOf();
+    if (queued.length) {
+      const admin = queued.some((id) => helperOf(id) && helperOf(id).requiresElevation);
+      return `<p class="hint">${E(admin ? T(`${queued.length} ticked. Your system will ask for administrator permission.`, `已勾選 ${queued.length} 項。系統會跳出系統管理員權限視窗。`) : T(`${queued.length} ticked.`, `已勾選 ${queued.length} 項。`))}</p>${again(false)}
+        <button type="button" class="btn primary" id="apply" data-act="apply">${E(T(`Apply ${queued.length} ticked`, `套用 ${queued.length} 項`))}</button>`;
+    }
+    const pending = S.checked ? pendingRows() : [];
+    const hint = !S.picks.size ? ''
+      : !S.checked ? T(`Runs up to ${checksPlanned()} read-only checks. Nothing on this computer changes.`, `最多做 ${checksPlanned()} 項唯讀檢查，不會變更這台電腦。`)
+        : pending.length ? T(`${pending.length} not ready yet. Tick what Cats should do, or set it up yourself.`, `${pending.length} 項還沒好。勾選要讓 Cats 做的事，或自己處理。`) : '';
+    return `<p class="hint">${E(hint)}</p>${again(!S.checked)}`;
+  }
+
   function pageTwo() {
+    if (SETTINGS) return settingsPage();
     const [title, lead] = pageTwoTitle();
     const handoffNote = S.handoffError ? handoffAlert() : '';
     if (S.pageError) {
@@ -1076,6 +1452,7 @@ export function mountSetupWizard(root, bridge, options) {
   }
 
   function pageTwoFoot() {
+    if (SETTINGS) return settingsFoot();
     const back = `<button type="button" class="btn" id="back" data-act="back" ${['applying', 'handoff', 'testing'].includes(S.phase) ? 'disabled' : ''}>${E(T('Back', '返回'))}</button>`;
     const again = `<button type="button" class="btn" id="recheck" data-act="recheck" ${S.phase !== 'idle' ? 'disabled' : ''}>${E(T('Check again', '再檢查一次'))}</button>`;
     if (S.phase === 'checking') return `<p class="hint"></p>${back}<button type="button" class="btn primary" disabled>${E(T('Checking…', '檢查中…'))}</button>`;
@@ -1249,7 +1626,7 @@ export function mountSetupWizard(root, bridge, options) {
         const label = rowLabel(id);
         const extras = [[T('Status', '狀態'), row.status || '']];
         if (helper && helper.sha256) extras.push([T('Script', '腳本'), `${helper.file}, SHA-256 ${helper.sha256}`]);
-        const command = helper && helper.commands ? (row.kind === 'checkFailed' ? helper.commands.check : helper.commands.apply) : null;
+        const command = helper && helper.commands ? (row.kind === 'checkFailed' ? helper.commands.check : helper.commands[modeOf(id)]) : null;
         if (command) extras.push([T('Ran', '執行的指令'), command]);
         for (const line of row.manual || []) extras.push([T('Next', '下一步'), line]);
         if (row.kind === 'restart') return { title: T(`Cannot find ${label} yet`, `還找不到 ${label}`), body: T('Its script finished and asked for a restart, but a fresh check still cannot find it.', '腳本跑完並要求重新啟動，但重新檢查還是找不到它。'), raw: null, extras, severity: 'warning', repair: repair(T('Check again', '再檢查一次'), () => { void recheckRow(id); }) };
@@ -1305,20 +1682,25 @@ export function mountSetupWizard(root, bridge, options) {
     else if (['slow', 'fail', 'lost', 'invalid', 'changed'].includes(S.catalog)) S.catalog = 'ready';
   }
 
+  let lastSeen = '';
   async function poll(first) {
     try {
-      const next = await bridge.getProviderSetup('onboarding');
+      const next = await bridge.getProviderSetup(CONTEXT);
       if (destroyed) return;
       const before = S.catalog;
+      const seen = SETTINGS ? JSON.stringify([next.runtime.observations, next.prerequisites]) : '';
       acceptSnapshot(next);
       everLoaded = true;
-      if (first || before !== S.catalog) render(first);
+      // Settings rows before a check show the last scan, so a new scan redraws them.
+      const rescanned = SETTINGS && !S.checked && seen !== lastSeen;
+      lastSeen = seen;
+      if (first || before !== S.catalog || rescanned) render(first);
     } catch (error) {
       if (destroyed) return;
       S.catalogError = String(error.message || error);
       // Nothing loaded yet: a restored page has nothing to draw, so page 1 says what happened.
-      if (first && !everLoaded) S.page = 1;
-      if (S.page === 1 && S.phase === 'idle') {
+      if (first && !everLoaded && !SETTINGS) S.page = 1;
+      if ((S.page === 1 || SETTINGS) && S.phase === 'idle') {
         const nextState = everLoaded ? 'lost' : 'fail';
         if (S.catalog !== nextState || first) { S.catalog = nextState; render(first); }
       }
@@ -1337,7 +1719,7 @@ export function mountSetupWizard(root, bridge, options) {
     S.reloading = true;
     render();
     try {
-      const next = await bridge.getProviderSetup('onboarding');
+      const next = await bridge.getProviderSetup(CONTEXT);
       S.snap = next;
       S.revision = next.runtime.selection.revision;
       S.picks = new Set();
@@ -1373,6 +1755,25 @@ export function mountSetupWizard(root, bridge, options) {
         break;
       }
       case 'details': if (S.details.has(arg)) S.details.delete(arg); else S.details.add(arg); render(); break;
+      case 'choose': S.page = 1; S.notice = null; render(true); break;
+      case 'choose-cancel': cancelChoose(); break;
+      case 'stop-check': stopCheck(); saveState(); render(); break;
+      case 'tick-updates': {
+        const rows = updatable();
+        const all = rows.every((id) => S.ticked.has(id) && S.changes[id] === 'upgrade');
+        for (const id of rows) {
+          if (all) clearChange(id);
+          else { S.changes[id] = 'upgrade'; S.ticked.add(id); delete S.previews[id]; }
+        }
+        saveState();
+        render();
+        break;
+      }
+      case 'row-more': if (S.more.has(arg)) S.more.delete(arg); else S.more.add(arg); render(); break;
+      case 'reinstall':
+        if (canReinstall(arg)) { S.changes[arg] = 'force'; S.ticked.add(arg); S.more.delete(arg); delete S.previews[arg]; saveState(); render(); }
+        break;
+      case 'preview-uninstall': void previewUninstall(arg); break;
       case 'open-details': chrome.openDetails(reasonFor(arg), target); break;
       case 'back': if (S.phase === 'checking') stopCheck(); goTo(S.page - 1); break;
       case 'recheck': void runCheck(); break;
@@ -1387,7 +1788,7 @@ export function mountSetupWizard(root, bridge, options) {
         break;
       case 'test': void testConnection(arg); break;
       case 'ollama-remote': void setOllamaRemote(arg === 'on'); break;
-      case 'copy-manual': copyInto(factsOf(arg).manual, `manual:${arg}`); break;
+      case 'copy-manual': copyInto(factsOf(arg, SETTINGS ? S.changes[arg] || null : null).manual, `manual:${arg}`); break;
       case 'copy-signin': copyInto((S.facts.signIn || {})[arg], `signin:${arg}`); break;
       case 'terminal': void openTerminal(arg); break;
       case 'codex-initialize': void openCodexInitialization(); break;
@@ -1439,6 +1840,19 @@ export function mountSetupWizard(root, bridge, options) {
       render();
     } else if (kind === 'tick') {
       if (target.checked) S.ticked.add(target.dataset.arg); else S.ticked.delete(target.dataset.arg);
+      saveState();
+      render();
+    } else if (kind === 'change') {
+      // A ready row's tick: Update unless More chose a reinstall or a removal. Unticking those
+      // goes back to Update, so a removal is never left half chosen.
+      const id = target.dataset.arg;
+      if (target.checked) {
+        if (!S.changes[id]) S.changes[id] = 'upgrade';
+        S.ticked.add(id);
+      } else {
+        clearChange(id);
+      }
+      saveState();
       render();
     } else if (kind === 'lang') {
       S.lang = target.value;
@@ -1491,7 +1905,8 @@ export function mountSetupWizard(root, bridge, options) {
         if ((S.facts.systemRestartHelpers || []).includes(helperIdOf(id))) S.systemRestarts.add(id);
       }
       S.setupComplete = Boolean(S.facts.setupComplete);
-      restoreState(S.facts.state);
+      // Settings keeps its own session; the host's wizard state belongs to first run.
+      restoreState(SETTINGS ? options.settingsState : S.facts.state);
       if (S.lang !== (String(options.locale || 'en').startsWith('zh') ? 'zh-TW' : 'en')) {
         doc.documentElement.lang = S.lang;
         chrome.setLocale(S.lang);
@@ -1503,21 +1918,34 @@ export function mountSetupWizard(root, bridge, options) {
     await poll(true);
     // A restored page needs what it described. Without a saved selection, or a finished check, it starts over.
     const noSelection = S.snap && ['missing', 'invalid'].includes(S.snap.runtime.selection.state);
-    if (!destroyed && S.page !== 1 && (!S.checked || noSelection)) {
+    if (SETTINGS) {
+      // A selection Runtime cannot read has nothing to check: its rows start over.
+      if (!destroyed && noSelection && S.checked) { S.rows = {}; S.ticked = new Set(); S.changes = {}; S.checked = false; render(); }
+    } else if (!destroyed && S.page !== 1 && (!S.checked || noSelection)) {
       S.page = 1;
       if (noSelection) { S.rows = {}; S.ticked = new Set(); S.skipped = new Set(); S.checked = false; }
       render(true);
     }
   })();
   // Reads are passive: they notice a lost connection or an edit elsewhere, and start nothing.
+  // Settings polls on its rows too, so a scan or an edit elsewhere shows without a check.
+  const polling = () => S.phase === 'idle' && (S.page === 1 || SETTINGS);
   const timer = win.setInterval(() => {
-    if (doc.visibilityState !== 'hidden' && S.page === 1 && S.phase === 'idle') void poll(false);
+    if (doc.visibilityState !== 'hidden' && polling()) void poll(false);
   }, 5000);
-  const onFocus = () => { if (S.page === 1 && S.phase === 'idle') void poll(false); };
+  const onFocus = () => { if (polling()) void poll(false); };
   win.addEventListener('focus', onFocus);
 
   return {
     ready: start,
+    /** Settings follows its own language; first run picks one on page 1. */
+    setLocale(locale) {
+      const next = String(locale || 'en').startsWith('zh') ? 'zh-TW' : 'en';
+      if (next === S.lang) return;
+      S.lang = next;
+      chrome.setLocale(S.lang);
+      render();
+    },
     destroy() {
       destroyed = true;
       win.clearInterval(timer);

@@ -1,4 +1,4 @@
-import type { DesktopPrerequisite, ProviderSetupOutcome } from '../../packages/provider-setup/manager.js';
+import type { DesktopPrerequisite, ProviderSetupOutcome } from '../../packages/provider-setup/providerSetupTypes.js';
 import { DESKTOP_PREREQUISITE_SUFFIXES, isDesktopPrerequisiteHelper } from './setupAudit.js';
 
 /** Explicit MSI reboot advice, separate from older PATH/session restart requests. */

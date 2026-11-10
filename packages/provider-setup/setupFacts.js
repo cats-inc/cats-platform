@@ -19,6 +19,7 @@ export const SETUP_PROVIDER_ORDER = [
  * @param {{ platform: string, tool?: object, neededBy?: string[], planned?: string[], ollamaInstalled?: boolean }} context
  */
 export function setupRowFacts(T, id, context) {
+  if (context.change) return changeFacts(T, id, context, setupRowFacts(T, id, { ...context, change: undefined }));
   const platform = context.platform;
   const windows = platform === 'windows';
   const who = context.neededBy && context.neededBy.length ? context.neededBy.join(T(', ', '、')) : null;
@@ -149,4 +150,42 @@ export function setupRowFacts(T, id, context) {
       };
     }
   }
+}
+
+/**
+ * SPEC-137 FR-8 and FR-9: what an update, a reinstall or a removal of a ready row says. A helper
+ * cannot say beforehand whether a newer release exists, so an update never promises one.
+ */
+function changeFacts(T, id, context, base) {
+  const windows = context.platform === 'windows';
+  const tool = context.tool || {};
+  const admin = context.requiresElevation ? [{ text: T('Needs administrator rights', '需要系統管理員權限') }] : [];
+  const kept = base.tags.filter((tag) => !tag.danger && !admin.some((entry) => entry.text === tag.text));
+  if (context.change === 'uninstall') {
+    return {
+      title: base.title,
+      summary: T('Removes it from this computer. "It will" lists what its script reported it would remove.', '從這台電腦移除。「它會」列出的是腳本回報會移除的東西。'),
+      tags: [...admin, { text: T('Removes it from this computer', '從這台電腦移除'), danger: true }],
+      manual: tool.kind === 'npm' && tool.pkg ? `npm uninstall -g ${tool.pkg}` : null,
+    };
+  }
+  if (context.change === 'force') {
+    return {
+      title: base.title,
+      summary: T('Runs its installer again over what is there, which can repair a broken install.', '重新執行安裝程式，蓋過現有的版本，可以修好壞掉的安裝。'),
+      tags: [...admin, ...kept],
+      manual: base.manual,
+    };
+  }
+  const winget = { node: 'OpenJS.NodeJS.LTS', vc: 'Microsoft.VCRedist.2015+.x64', gh: 'GitHub.cli', git: 'Git.Git' }[id];
+  let manual = base.manual;
+  if (tool.kind === 'npm' && tool.pkg) manual = `npm install -g ${tool.pkg}@latest`;
+  else if (windows && winget) manual = `winget upgrade --id ${winget} -e`;
+  else if (!windows && (id === 'gh' || id === 'git') && context.platform === 'macos') manual = `brew upgrade ${id}`;
+  return {
+    title: base.title,
+    summary: T('Installs the newest release if there is one. If this one is already the newest, nothing changes.', '有新版就安裝新版；已經是最新版的話，不會有任何變更。'),
+    tags: [...admin, ...kept],
+    manual,
+  };
 }

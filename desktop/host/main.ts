@@ -136,7 +136,9 @@ import { freshWindowsEnv, openCodexInitializationTerminal, openSignInTerminal, s
 import { CodexInitializationChecks, codexInitializationTarget, probeCodexInitialization, resolveCodexSetupCommand } from './codexInitialization.js';
 import type { CodexInitialization } from '../../packages/provider-setup/setupChrome.js';
 import { takeSetupWizardDraft, validSetupWizardState, writeSetupWizardDraft } from './setupWizardDraft.js';
-import { isSetupHostPage, scanEvents, selectionSaveEvent, type SetupEventInput } from './setupWizardEvents.js';
+import {
+  isSetupHostPage, isSetupToolsPage, readSetupToolsHelperRequest, scanEvents, selectionSaveEvent, type SetupEventInput,
+} from './setupWizardEvents.js';
 import {
   buildDesktopCliInventoryFromRuntime,
   probeContradictsCachedBootstrapState,
@@ -1382,7 +1384,11 @@ async function readSetupWizardFacts(): Promise<Record<string, unknown>> {
     config, packaging: resolveCurrentPackagingPlan(config), state: setupState ?? createEmptyDesktopSetupState(),
   });
   const entries = await Promise.all(helpers.map(async (helper) => {
-    const { scriptPath, commands } = await describeDesktopSetupHelper({ config, helper, modes: ['check', 'apply'] });
+    const modes: DesktopSetupHelperMode[] = ['check', 'apply'];
+    if (helper.supportsUpgrade) modes.push('upgrade');
+    if (helper.supportsForce) modes.push('force');
+    if (helper.supportsUninstall) modes.push('uninstall');
+    const { scriptPath, commands } = await describeDesktopSetupHelper({ config, helper, modes });
     return [helper.id, {
       id: helper.id,
       file: helper.packagedRelativePath.split('/').pop() ?? helper.id,
@@ -1393,6 +1399,9 @@ async function readSetupWizardFacts(): Promise<Record<string, unknown>> {
       unsupportedReason: helper.unsupportedReason,
       supportsCheckOnly: helper.supportsCheckOnly,
       supportsApply: helper.supportsApply,
+      supportsUpgrade: helper.supportsUpgrade,
+      supportsForce: helper.supportsForce,
+      supportsUninstall: helper.supportsUninstall,
       requiresElevation: helper.requiresElevation,
     }] as const;
   }));
@@ -2913,6 +2922,13 @@ async function main(): Promise<void> {
     assertSetupWizardSender(event);
     if (!isSetupHostPage(event.senderFrame?.url)) throw new Error('This is only available to the first-run page.');
   };
+  // SPEC-137: Settings > Runtime shows the same rows, so it may run what they run.
+  const assertSetupToolsPage = (event: import('electron').IpcMainInvokeEvent) => {
+    assertSetupWizardSender(event);
+    if (!isSetupToolsPage(event.senderFrame?.url, hostConfig?.appBaseUrl)) {
+      throw new Error('This is only available to first-run setup and Settings > Runtime.');
+    }
+  };
   const platformSetupRuns = new Set<number>();
   ipcMain.handle('cats-host:setup-wizard-facts', async (event) => {
     assertSetupWizardSender(event);
@@ -2955,7 +2971,7 @@ async function main(): Promise<void> {
     });
   });
   ipcMain.handle('cats-host:setup-codex-initialization-open', async (event, instance?: unknown) => {
-    assertSetupHostPage(event);
+    assertSetupToolsPage(event);
     assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'setup-helper');
     if (process.platform !== 'win32' || shuttingDown || activeSetupChanges || runningSetupChecks.size) return { opened: false, command: null };
     const { target } = await codexTarget(instance);
@@ -2978,18 +2994,17 @@ async function main(): Promise<void> {
     return result;
   });
   ipcMain.handle('cats-host:setup-wizard-run-helper', async (event, payload: unknown) => {
-    assertSetupHostPage(event);
-    const helperId = (payload as { helperId?: unknown } | null)?.helperId;
-    const mode = (payload as { mode?: unknown } | null)?.mode;
-    if (typeof helperId !== 'string' || (mode !== 'check' && mode !== 'apply')) {
-      throw new Error('Invalid setup helper request.');
-    }
-    if (mode === 'apply') assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'setup-helper');
-    const checks = mode === 'check' ? new AbortController() : null;
+    assertSetupToolsPage(event);
+    // A dry run previews an uninstall and changes nothing, so it is read like a check.
+    const { helperId, mode, dryRun } = readSetupToolsHelperRequest(payload);
+    const reading = mode === 'check' || dryRun;
+    if (!reading) assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'setup-helper');
+    const checks = reading ? new AbortController() : null;
     if (checks) runningSetupChecks.add(checks);
     try {
       const snapshot = await runSetupAction({
-        helperId, mode, ...(checks ? { timeoutMs: SETUP_CHECK_TIMEOUT_MS, signal: checks.signal } : {}),
+        helperId, mode, ...(dryRun ? { dryRun: true } : {}),
+        ...(checks ? { timeoutMs: SETUP_CHECK_TIMEOUT_MS, signal: checks.signal } : {}),
       }, { refreshBootstrap: false, refreshInventory: false, publishMode: 'bootstrap-only' });
       return snapshot.state.lastAction;
     } finally {
@@ -2997,7 +3012,7 @@ async function main(): Promise<void> {
     }
   });
   ipcMain.handle('cats-host:setup-wizard-cancel-checks', (event) => {
-    assertSetupHostPage(event);
+    assertSetupToolsPage(event);
     for (const checks of runningSetupChecks) checks.abort();
   });
   ipcMain.handle('cats-host:setup-runs', (event) => {
@@ -3028,7 +3043,7 @@ async function main(): Promise<void> {
     });
   });
   ipcMain.handle('cats-host:setup-open-terminal', async (event, provider: unknown) => {
-    assertSetupHostPage(event);
+    assertSetupToolsPage(event);
     const name = typeof provider === 'string' ? provider : '';
     const command = signInCommands()[name] ?? null;
     if (!command) return { opened: false, command: null };
@@ -3048,11 +3063,11 @@ async function main(): Promise<void> {
     return result;
   });
   ipcMain.handle('cats-host:setup-ollama-models', async (event) => {
-    assertSetupHostPage(event);
+    assertSetupToolsPage(event);
     return await listOllamaModels(await resolveLocalOllamaEndpoint());
   });
   ipcMain.handle('cats-host:setup-ollama-pull', async (event, name: unknown) => {
-    assertSetupHostPage(event);
+    assertSetupToolsPage(event);
     if (!isValidOllamaModelName(name)) throw new Error('Enter a model name, such as qwen2.5-coder:7b.');
     if (ollamaPull) throw new Error('A model is already downloading.');
     assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'setup-helper');
@@ -3086,7 +3101,7 @@ async function main(): Promise<void> {
     return { stopped: false };
   });
   ipcMain.handle('cats-host:setup-ollama-cancel', (event) => {
-    assertSetupHostPage(event);
+    assertSetupToolsPage(event);
     ollamaPull?.abort();
   });
   ipcMain.handle('cats-host:setup-wizard-state-set', (event, state: unknown) => {

@@ -34,6 +34,49 @@ export function isSetupHostPage(url: unknown): boolean {
   return typeof url === 'string' && url.startsWith('data:');
 }
 
+/** The one Platform route that manages tools (SPEC-137). */
+export const SETTINGS_TOOLS_PATH = '/settings/runtime';
+
+/**
+ * SPEC-137: Settings > Runtime runs the same rows, so it may run what they run: a helper, a check's
+ * cancellation, a sign-in terminal and an Ollama model. Only the app's own origin counts, and only
+ * that route. Wizard state and the restart draft stay with the host's page.
+ */
+export function isSettingsToolsPage(url: unknown, appBaseUrl: string | null | undefined): boolean {
+  if (typeof url !== 'string' || !appBaseUrl) return false;
+  let page: URL;
+  let app: URL;
+  try {
+    page = new URL(url);
+    app = new URL(appBaseUrl);
+  } catch {
+    return false;
+  }
+  if (page.origin !== app.origin || page.username || page.password) return false;
+  return page.pathname === SETTINGS_TOOLS_PATH || page.pathname.startsWith(`${SETTINGS_TOOLS_PATH}/`);
+}
+
+/** Where a helper run, terminal or model download may come from. */
+export function isSetupToolsPage(url: unknown, appBaseUrl: string | null | undefined): boolean {
+  return isSetupHostPage(url) || isSettingsToolsPage(url, appBaseUrl);
+}
+
+/** The modes a page may ask for. A dry run only previews an uninstall. */
+export function readSetupToolsHelperRequest(payload: unknown):
+  { helperId: string; mode: 'check' | 'apply' | 'upgrade' | 'force' | 'uninstall'; dryRun: boolean } {
+  const value = (payload ?? {}) as { helperId?: unknown; mode?: unknown; dryRun?: unknown };
+  const modes = ['check', 'apply', 'upgrade', 'force', 'uninstall'] as const;
+  if (typeof value.helperId !== 'string' || !value.helperId
+    || !modes.includes(value.mode as typeof modes[number])) {
+    throw new Error('Invalid setup helper request.');
+  }
+  if (value.dryRun !== undefined && typeof value.dryRun !== 'boolean') throw new Error('Invalid setup helper request.');
+  const mode = value.mode as typeof modes[number];
+  const dryRun = value.dryRun === true;
+  if (dryRun && mode !== 'uninstall') throw new Error('A dry run only previews an uninstall.');
+  return { helperId: value.helperId, mode, dryRun };
+}
+
 export function selectionSaveEvent(targetCount: number, error?: unknown): SetupEventInput {
   if (error === undefined) {
     return {

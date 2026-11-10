@@ -7,7 +7,7 @@
  * Usage: npm run build:host && node scripts/test-first-run-wizard-renderer.mjs [screenshot-dir]
  *   ONLY=<regex>   run only the checks whose name matches
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -35,6 +35,31 @@ const HTML = buildDesktopBootstrapPage();
 const pageFile = join(process.env.TEMP || process.env.TMPDIR || '/tmp', `cats-first-run-${process.pid}.html`);
 writeFileSync(pageFile, HTML);
 
+/*
+ * SPEC-137: Settings > Runtime mounts the same module in its own layout, inside a scrolling canvas
+ * with other sections around it. The modules import nothing, so they are inlined as they are.
+ */
+const moduleSource = (name) => readFileSync(join(root, 'packages', 'provider-setup', `${name}.js`), 'utf8').replace(/^export /gm, '');
+const SETTINGS_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>Settings</title>
+<style>html,body{margin:0;height:100%;font:14px system-ui;background:#F6F4EF}.canvas{height:100%;overflow-y:auto;padding:0 28px;box-sizing:border-box}
+.canvas h1{font-size:22px;margin:20px 0 12px}.other{height:420px;margin-top:16px;padding:16px;border:1px solid #ddd;border-radius:12px;background:#fff}</style></head>
+<body><main class="canvas"><h1>Runtime</h1><div class="other" style="height:80px">Runtime status</div><div id="tools" style="margin-top:16px"></div><div class="other">Claude in Chrome</div></main>
+<script>${['setupWizardStyles', 'setupFacts', 'setupChrome', 'setupWizard'].map(moduleSource).join('\n')}
+window.__toasts = [];
+window.__settingsState = null;
+window.__mount = () => {
+  if (window.__view) window.__view.destroy();
+  window.__view = mountSetupWizard(document.getElementById('tools'), window.catsDesktopHost, {
+    mode: 'settings', locale: navigator.language, css: SETUP_WIZARD_CSS, catHead: SETUP_CAT_HEAD,
+    createChrome: mountSetupChrome, facts: setupRowFacts, settingsState: window.__settingsState,
+    onSettingsState: (state) => { window.__settingsState = state; }, onFeedback: (message) => window.__toasts.push(message),
+  });
+};
+window.__mount();
+</script></body></html>`;
+const settingsFile = join(process.env.TEMP || process.env.TMPDIR || '/tmp', `cats-settings-tools-${process.pid}.html`);
+writeFileSync(settingsFile, SETTINGS_HTML);
+
 /* ------------------------------ The fake host, inside the page ------------------------------ */
 
 function installFakeHost(spec) {
@@ -54,9 +79,9 @@ function installFakeHost(spec) {
   }));
   const state = {
     calls: [],
-    machine: { node: 'ready', npm: 'ready', vc: 'ready', gh: 'missing', git: 'ready', shell: 'ready', installed: [], ollama: { installed: false, running: false, models: [] }, signedIn: [], ...(spec.machine || {}) },
+    machine: { node: 'ready', npm: 'ready', vc: 'ready', gh: 'missing', git: 'ready', shell: 'ready', installed: [], ollama: { installed: false, running: false, models: [] }, signedIn: [], versions: {}, latest: {}, nothingToRemove: [], ...(spec.machine || {}) },
     selection: { state: 'missing', revision: 'missing', targets: [], nativeSetupTargets: [], diskChanged: false, error: null, ...(spec.selection || {}) },
-    observations: [],
+    observations: spec.observations || [],
     connections: spec.connections || [],
     runs: [],
     listeners: [],
@@ -89,7 +114,7 @@ function installFakeHost(spec) {
   };
   const snapshot = () => clone({
     runtime: { selection: state.selection, universe, observations: state.observations, connections: state.connections, state: { status: 'ready', error: null } },
-    helpers: [], platform: spec.platform || 'windows', operations: [], outcomes: {}, prerequisites: [],
+    helpers: [], platform: spec.platform || 'windows', operations: [], outcomes: {}, prerequisites: spec.prerequisites || [],
   });
   const helperName = (id) => id.replace(/^(windows|macos|linux)-/, '');
   const rowOf = (helperId) => {
@@ -115,7 +140,7 @@ function installFakeHost(spec) {
     }
     if (m.installed.includes(row)) {
       if (row === 'claude' && !m.signedIn.includes('claude')) return { ...base, status: 'auth_required', installed: true, detectedVersion: '2.1.0' };
-      return { ...base, status: 'ready', installed: true, detectedVersion: '1.2.3' };
+      return { ...base, status: 'ready', installed: true, detectedVersion: m.versions[row] || '1.2.3' };
     }
     return { ...base, status: 'not_installed', installed: false, plannedActions: [`install_${row}`] };
   };
@@ -133,8 +158,11 @@ function installFakeHost(spec) {
   for (const key of Object.keys(helperFacts)) {
     helperFacts[key] = {
       id: key, file: `${key}.ps1`, sha256: 'ab'.repeat(32),
-      commands: { check: `powershell.exe -File "C:\\Cats\\${key}.ps1" -CheckOnly -Json`, apply: `powershell.exe -File "C:\\Cats\\${key}.ps1" -Apply -Json` },
+      commands: { check: `powershell.exe -File "C:\\Cats\\${key}.ps1" -CheckOnly -Json`, apply: `powershell.exe -File "C:\\Cats\\${key}.ps1" -Apply -Json`,
+        upgrade: `powershell.exe -File "C:\\Cats\\${key}.ps1" -Upgrade -Json`, force: `powershell.exe -File "C:\\Cats\\${key}.ps1" -Force -Json`,
+        uninstall: `powershell.exe -File "C:\\Cats\\${key}.ps1" -Uninstall -Json` },
       available: true, supported: true, unsupportedReason: null, supportsCheckOnly: true, supportsApply: true,
+      supportsUpgrade: !key.endsWith('cli-readiness-helper'), supportsForce: !key.endsWith('cli-readiness-helper'), supportsUninstall: key.endsWith('-native-installer'),
       requiresElevation: ['node-host-installer', 'git-installer', 'vcredist-installer', 'github-cli-installer'].some((part) => key.endsWith(part)),
     };
   }
@@ -220,11 +248,33 @@ function installFakeHost(spec) {
     },
     setupWizard: {
       facts: async () => clone({ platform: os, helpers: helperFacts, signIn: { claude: 'claude', codex: 'codex login', grok: 'grok login' }, order: spec.order, npmProviders: NPM, vcRuntimeFree: ['codex', 'claude', 'grok', 'antigravity', 'muse', 'devin', 'junie'], ollamaSuggestions: ['qwen2.5-coder:7b'], state: state.wizardState, systemRestartHelpers: spec.systemRestartHelpers || [], setupComplete: Boolean(spec.setupComplete) }),
-      runHelper: async (helperId, mode) => {
-        record('runHelper', helperId, mode);
+      runHelper: async (helperId, mode, options) => {
+        record('runHelper', helperId, mode, options || null);
         const row = rowOf(helperId);
-        const run = runStart(mode === 'check' ? 'check' : 'change', `${helperId}.ps1`, helperFacts[helperId].commands[mode]);
+        const dryRun = Boolean(options && options.dryRun);
+        const run = runStart(mode === 'check' || dryRun ? 'check' : 'change', `${helperId}.ps1`, helperFacts[helperId].commands[mode]);
         await wait(spec.helperDelay || 30);
+        // SPEC-137: an update, a reinstall and a removal, with an uninstall's dry run.
+        if (['upgrade', 'force', 'uninstall'].includes(mode) && !state.faults[`${mode}:${row}`]) {
+          const m = state.machine;
+          const base = { helperId, mode, runState: 'completed', summary: `${row} ${mode}`, warnings: [], manualSteps: [], appliedChanges: [], plannedActions: [], interruptions: [], error: null, restartRequired: false };
+          if (mode === 'uninstall' && dryRun) {
+            const planned = m.nothingToRemove.includes(row) ? [] : [`remove_${row}`];
+            runEnd(run, { status: 'preview', planned });
+            return { ...base, status: 'preview', plannedActions: planned };
+          }
+          if (mode === 'uninstall') {
+            m.installed = m.installed.filter((entry) => entry !== row);
+            runEnd(run, { status: 'ready', applied: [`remove_${row}`] });
+            return { ...base, status: 'ready', appliedChanges: [`remove_${row}`] };
+          }
+          const from = m.versions[row] || '1.2.3';
+          const to = mode === 'upgrade' ? (m.latest[row] || from) : from;
+          m.versions[row] = to;
+          const applied = to !== from || mode === 'force' ? [`${mode}_${row}`] : [];
+          runEnd(run, { status: 'ready', version: to, applied });
+          return { ...base, status: 'ready', detectedVersion: to, appliedChanges: applied };
+        }
         const fault = faulted(`${mode}:${row}`);
         if (fault && fault.throw) { runEnd(run, { status: 'failed', error: fault.message }); throw new Error(fault.message); }
         if (fault && fault.systemRestart) {
@@ -306,6 +356,24 @@ async function open(spec = {}, { size = [1280, 800], locale = 'zh-TW' } = {}) {
   await page.waitForTimeout(40);
   return { page, close: () => context.close() };
 }
+async function openSettings(spec = {}, { size = [1280, 800], locale = 'zh-TW' } = {}) {
+  const context = await browser.newContext({ viewport: { width: size[0], height: size[1] }, locale });
+  const page = await context.newPage();
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await page.addInitScript(installFakeHost, { order: SETUP_PROVIDER_ORDER, setupComplete: true, ...spec });
+  await page.goto(pathToFileURL(settingsFile).href);
+  await page.waitForFunction(() => document.querySelector('#setup-h') && !document.querySelector('.cats-setup .skeleton'), null, { timeout: 8000 });
+  await page.waitForTimeout(60);
+  return { page, close: () => context.close() };
+}
+const SELECTED = (...ids) => {
+  const targets = ids.map((provider) => (provider === 'ollama' ? { provider, backend: 'local', instance: 'local' } : { provider, backend: 'cli', instance: 'native' }));
+  return { state: 'selected', revision: 'r1', targets, nativeSetupTargets: targets, diskChanged: false, error: null };
+};
+const settled = (page) => page.waitForFunction(() => {
+  const button = document.querySelector('#recheck');
+  return button && !button.disabled && !document.querySelector('.cats-setup .spinner');
+}, null, { timeout: 10000 });
 const calls = (page, name) => page.evaluate((key) => window.__host.calls.filter((call) => call.name === key), name);
 const shown = (page) => page.evaluate(() => [...document.querySelectorAll('.cats-setup .pick input')].map((node) => node.id.replace('pick-', '')));
 const rowIds = (page) => page.evaluate(() => [...document.querySelectorAll('.cats-setup [data-row]')].map((node) => node.dataset.row));
@@ -973,6 +1041,195 @@ await check('English and Traditional Chinese switch in place, without losing tic
   truthy(/Choose tools/.test(await page.locator('.cats-setup .steps').innerText()), 'rail');
   await close();
 });
+
+/* ------------------------------ Settings > Runtime (SPEC-137) ------------------------------ */
+
+await check('settings: opening runs nothing, reads in the settings context and shows the last scan without ticks', async () => {
+  const { page, close } = await openSettings({
+    selection: SELECTED('codex', 'claude'), machine: { installed: ['claude'] },
+    observations: [{ provider: 'claude', backend: 'cli', instance: 'native', commandStatus: 'ready', version: '2.1.0', authStatus: 'unknown', observedAt: '2026-11-11T00:00:00Z', configurationStatus: 'unchanged' }],
+    prerequisites: [{ helperId: 'windows-node-host-installer', checking: false, result: { status: 'ready', summary: 'ok', manualSteps: [], warnings: [], plannedActions: [], runState: 'completed' } }],
+  });
+  await page.waitForTimeout(150);
+  equal((await calls(page, 'runHelper')).length, 0, 'helpers');
+  equal((await calls(page, 'runProviderSetup')).length, 0, 'scans');
+  equal((await calls(page, 'applyProviderSetup')).length, 0, 'saves');
+  truthy((await calls(page, 'getProviderSetup')).every((call) => call.args[0] === 'settings'), 'context');
+  equal(await page.evaluate(() => document.querySelectorAll('.cats-setup input[type="checkbox"]').length), 0, 'tick boxes');
+  truthy(/上次掃描有找到/.test(await textOf(page, '[data-row="claude"]')), 'claude passive');
+  truthy(/2\.1\.0/.test(await textOf(page, '[data-row="claude"]')), 'claude version');
+  truthy(/Cats 啟動時已就緒/.test(await textOf(page, '[data-row="node"]')), 'node passive');
+  equal(await page.locator('.cats-setup .rail').isVisible(), false, 'rail');
+  truthy(/檢查這台電腦/.test(await textOf(page, '#recheck')), 'button');
+  if (shotDir) await page.screenshot({ path: join(shotDir, 'settings-before-check.png') });
+  await close();
+});
+
+await check('settings: a check offers ticks; Apply installs top down with a fresh check', async () => {
+  const { page, close } = await openSettings({ selection: SELECTED('codex', 'claude'), machine: { installed: [] } });
+  await page.click('#recheck');
+  await settled(page);
+  truthy(/再檢查一次/.test(await textOf(page, '#recheck')), 'again');
+  await page.check('#tick-claude');
+  await page.click('#apply');
+  await settled(page);
+  const modes = (await calls(page, 'runHelper')).filter((call) => call.args[1] !== 'check').map((call) => [call.args[0], call.args[1]]);
+  equal(modes, [['windows-claude-native-installer', 'apply']], 'changes');
+  truthy(/剛完成/.test(await textOf(page, '[data-row="claude"]')), 'just finished');
+  await close();
+});
+
+await check('settings: Update runs the upgrade, says what it runs first, and reports before and after', async () => {
+  const { page, close } = await openSettings({
+    selection: SELECTED('codex', 'claude'),
+    machine: { installed: ['codex', 'claude'], signedIn: ['claude'], versions: { claude: '2.1.0', codex: '0.58.0' }, latest: { claude: '2.2.0' } },
+  });
+  await page.click('#recheck');
+  await settled(page);
+  // Node.js, Codex, Claude and Git can update; the npm folder and PowerShell only re-apply settings.
+  truthy(/勾選全部 4 項更新/.test(await textOf(page, '#tick-updates')), 'shortcut');
+  equal(await page.locator('#change-npm').count(), 0, 'no update for the npm folder');
+  await page.check('#change-claude');
+  truthy(/有新版就安裝新版/.test(await textOf(page, '[data-row="claude"]')), 'summary');
+  await page.click('[data-row="claude"] [data-act="details"]');
+  truthy(/-Upgrade -Json/.test(await textOf(page, '[data-row="claude"] .details')), 'command');
+  truthy(/SHA-256/.test(await textOf(page, '[data-row="claude"] .details')), 'hash');
+  await page.check('#change-codex');
+  if (shotDir) {
+    await page.waitForTimeout(1600);
+    await page.locator('[data-row="claude"]').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: join(shotDir, 'settings-update-ticked.png') });
+  }
+  await page.click('#apply');
+  await settled(page);
+  if (shotDir) {
+    await page.waitForTimeout(1600);
+    await page.screenshot({ path: join(shotDir, 'settings-update-done.png') });
+  }
+  const changes = (await calls(page, 'runHelper')).filter((call) => call.args[1] !== 'check').map((call) => call.args[1]);
+  equal(changes, ['upgrade', 'upgrade'], 'modes');
+  truthy(/已更新\s*2\.1\.0\s*→\s*2\.2\.0/.test(await textOf(page, '[data-row="claude"] .row-state')), 'updated');
+  truthy(/已經是最新版\s*0\.58\.0/.test(await textOf(page, '[data-row="codex"] .row-state')), 'already newest');
+  truthy(/改了 1 項/.test(await textOf(page, '.cats-setup .lead')), 'an update that changed nothing is not counted');
+  await close();
+});
+
+await check('settings: Uninstall runs a dry run first, then is a ticked removal', async () => {
+  const { page, close } = await openSettings({ selection: SELECTED('claude'), machine: { installed: ['claude'], signedIn: ['claude'] } });
+  await page.click('#recheck');
+  await settled(page);
+  await page.click('#row-more-claude');
+  await page.click('#uninstall-claude');
+  await page.waitForFunction(() => document.querySelector('#change-claude') && document.querySelector('#change-claude').checked, null, { timeout: 5000 });
+  const preview = (await calls(page, 'runHelper')).find((call) => call.args[1] === 'uninstall');
+  equal(preview.args[2], { dryRun: true }, 'dry run');
+  truthy(/解除安裝/.test(await textOf(page, '[data-row="claude"] .row-change')), 'label');
+  truthy(await page.locator('[data-row="claude"] .tag.danger').count() === 1, 'removal tag');
+  truthy(/remove_claude/.test(await textOf(page, '[data-row="claude"] .details')), 'plan');
+  await page.click('#apply');
+  await settled(page);
+  const removal = (await calls(page, 'runHelper')).filter((call) => call.args[1] === 'uninstall');
+  equal(removal.length, 2, 'removal ran once after its dry run');
+  equal(removal[1].args[2], null, 'real removal');
+  truthy(/剛移除/.test(await textOf(page, '[data-row="claude"]')), 'removed');
+  equal(await page.locator('#tick-claude').count(), 1, 'install again');
+  await close();
+});
+
+await check('settings: a dry run that finds nothing offers no tick', async () => {
+  const { page, close } = await openSettings({ selection: SELECTED('claude'), machine: { installed: ['claude'], signedIn: ['claude'], nothingToRemove: ['claude'] } });
+  await page.click('#recheck');
+  await settled(page);
+  await page.click('#row-more-claude');
+  await page.click('#uninstall-claude');
+  await page.waitForFunction(() => /試跑後沒有找到/.test(document.querySelector('[data-row="claude"]').textContent), null, { timeout: 5000 });
+  equal(await page.locator('#change-claude').isChecked(), false, 'not ticked');
+  await close();
+});
+
+await check('settings: Choose tools saves and checks; a failed save is a toast and keeps the ticks', async () => {
+  const { page, close } = await openSettings({ selection: SELECTED('claude'), machine: { installed: ['claude'] }, faults: { save: { message: 'Runtime refused the save.' } } });
+  await page.click('#choose');
+  await page.check('#pick-antigravity');
+  await page.click('#go-check');
+  await page.waitForFunction(() => window.__toasts.length > 0, null, { timeout: 5000 });
+  truthy(/選擇沒有存好/.test((await page.evaluate(() => window.__toasts))[0]), 'toast');
+  equal(await page.locator('.cats-setup [role="alert"]').count(), 0, 'no inline save error');
+  equal(await page.locator('#pick-antigravity').isChecked(), true, 'tick kept');
+  await page.click('#go-check');
+  await settled(page);
+  equal((await calls(page, 'applyProviderSetup')).length, 2, 'saved');
+  truthy((await rowIds(page)).includes('antigravity'), 'new row');
+  truthy((await calls(page, 'runHelper')).length > 0, 'checked after saving');
+  await close();
+});
+
+await check('settings: the last check survives leaving Settings and coming back, and nothing reruns', async () => {
+  const { page, close } = await openSettings({ selection: SELECTED('claude'), machine: { installed: [] } });
+  await page.click('#recheck');
+  await settled(page);
+  await page.check('#tick-claude');
+  const before = (await calls(page, 'runHelper')).length;
+  await page.evaluate(() => window.__mount());
+  await page.waitForFunction(() => document.querySelector('#tick-claude'), null, { timeout: 5000 });
+  await page.waitForTimeout(120);
+  equal((await calls(page, 'runHelper')).length, before, 'no new helper runs');
+  equal(await page.locator('#tick-claude').isChecked(), true, 'tick kept');
+  truthy(/檢查過/.test(await textOf(page, '.cats-setup .lead')), 'checked at');
+  await close();
+});
+
+await check('settings: sign-in rows open a terminal from Settings', async () => {
+  const { page, close } = await openSettings({ selection: SELECTED('claude'), machine: { installed: ['claude'] } });
+  await page.click('#recheck');
+  await settled(page);
+  truthy(await page.locator('[data-row="signin-claude"]').count() === 1, 'sign-in row');
+  await page.click('#terminal-claude');
+  await page.waitForFunction(() => window.__host.calls.some((call) => call.name === 'openTerminal'));
+  await close();
+});
+
+await check('settings: a failed update opens the log and its details page returns to the rows', async () => {
+  const { page, close } = await openSettings({
+    selection: SELECTED('claude'), machine: { installed: ['claude'], signedIn: ['claude'] },
+    faults: { 'upgrade:claude': { message: 'The vendor installer exited with 1.', always: true } },
+  });
+  await page.click('#recheck');
+  await settled(page);
+  await page.check('#change-claude');
+  await page.click('#apply');
+  await page.waitForSelector('#retry', { timeout: 8000 });
+  truthy(await logOpen(page), 'log open');
+  truthy(/沒有完成/.test(await textOf(page, '[data-row="claude"]')), 'failed row');
+  await page.click('[data-row="claude"] [data-act="open-details"]');
+  await page.waitForSelector('[data-details]:not([hidden]) [data-diag-title]');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[data-row="claude"]');
+  await page.click('#retry');
+  await page.waitForFunction(() => (window.__host.calls.filter((call) => call.name === 'runHelper' && call.args[1] === 'upgrade').length >= 2), null, { timeout: 8000 });
+  await close();
+});
+
+for (const locale of ['zh-TW', 'en-US']) {
+  await check(`settings: fits the Desktop minimum window, with the action foot and log docked (${locale})`, async () => {
+    const { page, close } = await openSettings({
+      selection: SELECTED('codex', 'claude', 'antigravity', 'ollama'),
+      machine: { installed: ['codex', 'claude'], node: 'ready', versions: { claude: '2.1.0' } },
+    }, { size: [700, 600], locale });
+    await page.click('#recheck');
+    await settled(page);
+    await page.check('#tick-antigravity');
+    const box = await page.evaluate(() => {
+      const dock = document.querySelector('.cats-setup .dock').getBoundingClientRect();
+      const canvas = document.querySelector('.canvas');
+      return { dockBottom: Math.round(dock.bottom), height: innerHeight, sideways: canvas.scrollWidth > canvas.clientWidth + 1 };
+    });
+    truthy(box.dockBottom <= box.height, `dock below the fold ${JSON.stringify(box)}`);
+    truthy(!box.sideways, 'scrolls sideways');
+    if (shotDir) await page.screenshot({ path: join(shotDir, `settings-${locale}-700.png`) });
+    await close();
+  });
+}
 
 await browser.close();
 const passed = results.passed;
