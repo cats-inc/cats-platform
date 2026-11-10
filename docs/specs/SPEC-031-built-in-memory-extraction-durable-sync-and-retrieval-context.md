@@ -371,6 +371,11 @@ needs a stable hook and payload contract.
 - [SPEC-029: Companion Boxes, Ingestion, and Response Profiles](./SPEC-029-companion-boxes-ingestion-and-response-profiles.md)
 - [OpenClaw memory benchmark](../research/2026-03-19-openclaw-memory-layering-benchmark.md)
 - [OpenClaw chat/runtime gap analysis](../research/2026-03-20-openclaw-chat-runtime-gap-analysis.md)
+- Cats Bot
+  [SPEC-015](https://github.com/cats-inc/cats-bot/blob/main/docs/specs/SPEC-015-bot-memory-layers-recall-and-consolidation.md)
+  (approved 2026-11-11) specifies extraction from transcript evidence by nightly
+  consolidation, with derived trust, evidence links, scopes and an owner approval queue. Its
+  record shapes follow this spec, so a later shared package can serve both products.
 
 ---
 

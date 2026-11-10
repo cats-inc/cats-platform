@@ -5,12 +5,13 @@
   live at `/entities/cats/:catId/settings`; Settings drops its Cats group and keeps Assistants.
   Supersedes ADR-009's Settings-hosted registry and ADR-052's `/settings/cats`.
 - [ADR-149: Give each conversation a product scope that can be raised, never lowered](149-let-a-conversation-gain-product-scopes-and-never-lose-them.md)
-  — decided by the owner (D1–D6), 2026-11-11; not implemented. A conversation's product scope
+  — decided by the owner (D1–D7), 2026-11-11; not implemented. A conversation's product scope
   is a ladder, `chat` < `code` < `work`, so Work always includes Code. It decides which Cats
-  tools and records the conversation reaches. The composer's surface chip sets it on a draft,
-  and the owner can raise it later but never lower it. P1–P6 are proposed defaults. CLI
-  permission, roles and owner-started gates stay separate, so the scope is not a security
-  boundary. Records the risk of Work's approval-free supervised runs.
+  tools and records the conversation reaches, and which product's Recents it lives in. The
+  composer's surface chip sets it on a draft, and the owner can raise it later but never lower
+  it; a raise moves the conversation to its new product's Recents. P1–P3, P5 and P6 are
+  proposed defaults. CLI permission, roles and owner-started gates stay separate, so the scope
+  is not a security boundary. Records the risk of Work's approval-free supervised runs.
 - [ADR-148: Manage AI tools in Settings with the first-run wizard's rows](148-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md)
   — accepted, 2026-11-11. Reverses ADR-146 point 16: Settings > Runtime gets the wizard's rows,
   log and details, Update is offered but never announced, and the host admits Settings to the
