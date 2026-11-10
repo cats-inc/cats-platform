@@ -61,6 +61,16 @@ export function loginItemNeedsApproval(
   }
 }
 
+/**
+ * Whether a capture refused for Screen Recording should ask macOS first: on any
+ * status but `granted`. Electron reports an app macOS has never asked as
+ * `denied` (CGPreflightScreenCaptureAccess is yes or no), so waiting for
+ * `not-determined` would never ask. Checked with Electron 41.2.0 on macOS 27.2.
+ */
+export function shouldRequestScreenCaptureAccess(mediaAccessStatus: string | null): boolean {
+  return mediaAccessStatus !== null && mediaAccessStatus !== 'granted';
+}
+
 export type ScreenCaptureRequestRunner = (
   helperPath: string,
   args: readonly string[],
@@ -89,7 +99,8 @@ const runHelper: ScreenCaptureRequestRunner = (helperPath, args) => new Promise(
 });
 
 /**
- * ADR-147: asks macOS for Screen Recording access once per run, through the
+ * ADR-147: asks macOS for Screen Recording access once per run while it is not
+ * granted (a never-asked app reads as `denied` in Electron), through the
  * macOS speech helper the app already ships (`--request-screen-capture`, which
  * calls `CGRequestScreenCaptureAccess`). The request lists the app in Screen &
  * System Audio Recording and may show the system prompt; it never grants

@@ -282,6 +282,7 @@ import {
   createScreenCaptureAccessRequester,
   loginItemNeedsApproval,
   resolveMacosSystemSettingsUrl,
+  shouldRequestScreenCaptureAccess,
 } from './systemSettings.js';
 
 // A native updater is expected to enter Electron's quit path promptly after
@@ -527,8 +528,8 @@ async function openElectronScreenshotOverlay(
   }
 }
 
-// ADR-147: once per run, an unanswered Screen Recording permission is asked
-// for through the speech helper, so Cats is listed in System Settings.
+// ADR-147: once per run, a missing Screen Recording permission is asked for
+// through the speech helper, so Cats is listed in System Settings.
 const requestScreenCaptureAccess = createScreenCaptureAccessRequester({
   resolveHelperPath: () => {
     const helperPath = hostConfig
@@ -546,7 +547,9 @@ async function captureNativeScreenshotRegion(
     const mediaAccessStatus = process.platform === 'darwin'
       ? systemPreferences.getMediaAccessStatus('screen') as DesktopScreenshotMediaAccessStatus
       : null;
-    if (mediaAccessStatus === 'not-determined') {
+    // Any refusal asks (a never-asked app reads as `denied`); once macOS has an
+    // answer the request shows nothing.
+    if (shouldRequestScreenCaptureAccess(mediaAccessStatus)) {
       await requestScreenCaptureAccess();
     }
     // Still refused after a request: the grant applies only after a restart.

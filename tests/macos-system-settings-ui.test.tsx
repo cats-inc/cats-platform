@@ -80,6 +80,19 @@ test('a toast with an action keeps its button until it is used, then goes', asyn
   assert.equal(view.queryByRole('button', { name: 'Open System Settings' }), null);
 });
 
+test('the same action toast is shown once while it is open', (t) => {
+  t.after(() => { cleanup(); resetTestDom(); });
+  let show!: ShowToast;
+  const view = render(<I18nProvider locale="en"><ToastHarness onReady={(next) => { show = next; }} /></I18nProvider>);
+  const action = { label: 'Open System Settings', onSelect: () => {} };
+  act(() => {
+    show('Screen Recording is off.', { action });
+    show('Screen Recording is off.', { action });
+    show('Login Items needs you.', { action });
+  });
+  assert.equal(view.getAllByRole('alert').length, 2);
+});
+
 test('a toast with an action can be dismissed without using it', async (t) => {
   t.after(() => { cleanup(); resetTestDom(); });
   let show!: ShowToast;

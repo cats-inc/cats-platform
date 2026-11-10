@@ -1047,8 +1047,8 @@ recognition where Cats has a host-owned helper:
   Fresh-profile validation must confirm whether macOS TCC attributes those
   prompts to the app bundle or the spawned helper binary before release.
 - The same helper's `--request-screen-capture` mode asks macOS for Screen
-  Recording once per run, the first time a screenshot is refused as
-  `not-determined`. On a fresh profile, check that Cats (not the helper) then
+  Recording once per run, the first time a screenshot is refused (Electron
+  reports a never-asked app as `denied`, so any refusal asks). On a fresh profile, check that Cats (not the helper) then
   appears in Privacy & Security > Screen & System Audio Recording, and that the
   toast's "Open System Settings" opens that pane. A grant applies after
   restarting Cats.
