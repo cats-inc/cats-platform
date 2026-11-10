@@ -1,5 +1,9 @@
 # Feature Specifications
 
+- [SPEC-141: Conversation product scope](SPEC-141-conversation-product-scope.md)
+  — draft, 2026-11-11; not implemented. Specifies ADR-149: the `productScope` field, what
+  follows it and what stays with the origin, the owner-only raise with its confirmation, and
+  Work conversations gaining Code's tools. S1–S6 and Q1–Q4 wait for the owner. PLAN-134.
 - [SPEC-140: Telegram owner pin](SPEC-140-telegram-owner-pin.md)
   — implemented, 2026-11-11; a Telegram bot binding answers only its owner (the first private
   chat that writes, as in Cats Bot, or settled from the chats that wrote to it) and sends only
