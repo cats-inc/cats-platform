@@ -34,6 +34,7 @@ import { findAssignedParticipant } from '../shared/channelParticipants.js';
 import { mergeRuntimeInvocationContextMetadata } from '../state/runtime-dispatch/context.js';
 import { runWithSessionTurnGate } from '../state/runtime-dispatch/sessionTurnGate.js';
 import { updateChatState } from '../state/store.js';
+import type { ChannelActivationResult } from './contracts.js';
 import {
   activateChannelLocked,
   deactivateChannelLocked,
@@ -201,6 +202,34 @@ export function createCompanionHeartbeatSpeaker(
 }
 
 /**
+ * Wakes a companion lane for the life loop and reports the Cat's result by the
+ * lease it leaves behind. Activation reports `started` even when it changed
+ * nothing: a direct lane paused on a session error, which only the owner's reset
+ * or retarget clears, kept its error lease while the loop logged a wake and
+ * rewrote the profile every minute. Unless the lead lease is now ready or
+ * initializing, the Cat's result becomes an error, so the loop backs off and
+ * records the failure once.
+ */
+export async function activateCompanionLaneForLife(
+  dependencies: ChannelLifecycleDependencies,
+  channelId: string,
+): Promise<ChannelActivationResult[]> {
+  const activation = await activateChannelLocked(dependencies, channelId);
+  publishChannelLifecycleEvents(dependencies, channelId);
+  const lane = (await dependencies.chatStore.read()).channels.find((row) => row.id === channelId);
+  const lease = lane ? resolveLeadParticipantLease(lane) : null;
+  if (lease?.status === 'ready' || lease?.status === 'initializing') {
+    return activation.results;
+  }
+  const error = lease?.lastError?.trim() || 'The companion lane did not wake.';
+  return activation.results.map((result) => (
+    result.targetKind === 'cat' && result.status !== 'error'
+      ? { ...result, status: 'error' as const, sessionId: null, error }
+      : result
+  ));
+}
+
+/**
  * SPEC-124 life loop wired to the same wake/sleep bodies and mutation gate as
  * the REST routes, so Desktop presence updates the same way for both.
  */
@@ -213,11 +242,10 @@ export function startChatCompanionLifeLoop(
     runtimeClient: dependencies.runtimeClient,
     isImagePending: catId => dependencies.catImages?.hasPending(catId) ?? false,
     activityStore: dependencies.companionActivityStore,
-    activateLane: (channelId) => dependencies.mutationGate.run(channelId, async () => {
-      const activation = await activateChannelLocked(dependencies, channelId);
-      publishChannelLifecycleEvents(dependencies, channelId);
-      return activation.results;
-    }),
+    activateLane: (channelId) => dependencies.mutationGate.run(
+      channelId,
+      () => activateCompanionLaneForLife(dependencies, channelId),
+    ),
     deactivateLane: (channelId) => dependencies.mutationGate.run(channelId, async () => {
       const deactivation = await deactivateChannelLocked(dependencies, channelId);
       publishChannelLifecycleEvents(dependencies, channelId);
