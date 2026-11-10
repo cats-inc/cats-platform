@@ -66,9 +66,9 @@ separate release targets.
   source with `tag=v0.15.0`, the full Runtime SHA above and `unsigned=false`.
   Expected Standard trust is macOS **signed + notarized**, Windows **unsigned:
   no certificate**, Linux **n/a**. Native checks and build receipts establish
-  actual trust. Windows x64/arm64 installers and portable EXEs, universal macOS
-  DMG/ZIP and Linux amd64/arm64 DEBs retain their existing update paths; portable
-  and unsigned macOS installations require manual replacement.
+  actual trust. Windows x64/arm64 NSIS installers, universal macOS DMG/ZIP and
+  Linux amd64/arm64 DEBs retain their existing update paths. Unsigned macOS
+  installations require manual replacement.
 - **Validation boundary.** Selected Platform main and Runtime #215 passed their
   required CI. Isolated Windows Codex acceptance exercised actual Catlas jobs,
   confirmed zero saved native threads/rollouts and same-ID persistent resume.
