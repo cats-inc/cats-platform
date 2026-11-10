@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In progress |
+| **Status** | Implemented; real installs, updates and removals unverified (candidates refuse helpers) |
 | **Owner** | Product owner |
 | **Assigned To** | Claude |
 | **Reviewer** | Independent agent before merge |
@@ -28,56 +28,70 @@ publication is part of this plan.
 **Goal:** Settings > Runtime can run what the rows need, and nothing else widens (FR-8 to FR-11,
 NFR Security).
 
-- [ ] The sender rule: the host's own page, or the main frame at the app origin under
+- [x] The sender rule: the host's own page, or the main frame at the app origin under
       `/settings/runtime`, for run-helper, cancel-checks, open-terminal, Codex initialization
       open, and Ollama list, download and cancel.
-- [ ] Run-helper accepts check, apply, upgrade, force and uninstall, with `dryRun` for uninstall
+- [x] Run-helper accepts check, apply, upgrade, force and uninstall, with `dryRun` for uninstall
       only. Candidate profiles refuse every change.
-- [ ] Facts carry the upgrade, force and uninstall commands and the `supports*` flags.
-- [ ] Tests for the sender rule and the payload checks.
+- [x] Facts carry the upgrade, force and uninstall commands and the `supports*` flags.
+- [x] Tests for the sender rule and the payload checks.
 
 ### Phase 2: The module
 
 **Goal:** the same rows in a Settings layout (FR-1 to FR-14).
 
-- [ ] Chrome `layout: 'settings'`: no rail; the log and foot stick to the section's bottom; the
+- [x] Chrome `layout: 'settings'`: no rail; the log and foot stick to the section's bottom; the
       details page opens in place.
-- [ ] Wizard `mode: 'settings'`:
-  - [ ] passive row states before a check;
-  - [ ] the picker behind Choose tools;
-  - [ ] update, reinstall and uninstall changes;
-  - [ ] the sign-in group under the rows;
-  - [ ] session state through `onSettingsState`;
-  - [ ] save failures through `onFeedback`.
-- [ ] Facts for the three changes.
-- [ ] The first-run wizard's behavior is unchanged: its renderer checks pass as they are.
+- [x] Wizard `mode: 'settings'`:
+  - [x] passive row states before a check;
+  - [x] the picker behind Choose tools;
+  - [x] update, reinstall and uninstall changes;
+  - [x] the sign-in group under the rows;
+  - [x] session state through `onSettingsState`;
+  - [x] save failures through `onFeedback`.
+- [x] Facts for the three changes.
+- [x] The first-run wizard's behavior is unchanged: its renderer checks pass as they are.
 
 ### Phase 3: Settings
 
 **Goal:** Settings > Runtime shows it, and the old presentation is gone (FR-1, FR-6).
 
-- [ ] `PlatformSettingsRuntime.tsx` mounts the module with toasts and session state.
-- [ ] Remove `mountProviderManager` and its view tests; keep the type declarations the host and
+- [x] `PlatformSettingsRuntime.tsx` mounts the module with toasts and session state.
+- [x] Remove `mountProviderManager` and its view tests; keep the type declarations the host and
       preload use.
-- [ ] Renderer checks in headless Chrome with a fake host:
-  - [ ] passive state;
-  - [ ] a check;
-  - [ ] ticks and Apply;
-  - [ ] Update before and after;
-  - [ ] uninstall dry run;
-  - [ ] sign-in;
-  - [ ] a failure with details;
-  - [ ] in both languages, at the Desktop minimum window.
+- [x] Renderer checks in headless Chrome with a fake host:
+  - [x] passive state;
+  - [x] a check;
+  - [x] ticks and Apply;
+  - [x] Update before and after;
+  - [x] uninstall dry run;
+  - [x] sign-in;
+  - [x] a failure with details;
+  - [x] in both languages, at the Desktop minimum window.
 
 ### Phase 4: Acceptance
 
-- [ ] An isolated candidate on Windows renders the section against real helper checks. Candidates
-      refuse changes, so applying stays covered by the fake host only.
-- [ ] Not on this machine's real profile: an Update would change the owner's CLIs.
+- [x] An isolated Windows candidate rendered the section in the real Settings page. It showed the
+      passive state, the picker, saving and checking, and the log. The candidate has no packaged
+      helpers, so its rows were hand-install rows. That exposed a fix: a tool Runtime finds is ready
+      even without a helper.
+- [ ] A packaged build checks, installs, updates and removes a tool on a clean machine. Not run:
+      candidates refuse helper runs, and running them on this machine's real profile would change the
+      owner's CLIs.
 
 ## Validation
 
-To be recorded at merge.
+- `scripts/test-first-run-wizard-renderer.mjs`, real modules in headless Chrome with a fake host:
+  65 of 65.
+  - The 53 first-run checks are unchanged.
+  - The 12 Settings checks cover: nothing runs on open; the settings read context; ticks and Apply;
+    Update before and after; Uninstall's dry run; an empty dry run; a failed save as a toast; session
+    state; sign-in; a failed update with details and Try again; a tool found without a helper; and
+    layout at 700×600 in both languages.
+- `tests/setup-wizard-host.test.js` (sender rule, helper request): 18 of 18. Affected suites:
+  107 of 107.
+- `tsc` for the desktop, renderer, server and test projects. The only errors are in `mobile/`, whose
+  dependencies are not installed here.
 
 ## References
 
