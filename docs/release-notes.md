@@ -51,7 +51,12 @@ separate release targets.
   its producer files are unchanged on selected Platform main
   `c0d49d898d030ab47256000cfcf51d9f615c4cce`. The nine shared-tool file pins
   still match cats-one main `0ddce6621b4f0b60b93bfee7c617ee5ecab01eb9`.
-  The workflow records the merged Platform bump SHA and all packaged sources.
+  The workflow records the frozen Platform bump SHA and all packaged sources.
+  Bundled Catlas and orchestrator knowledge revision `2026-11-11.1` declares
+  the matching `0.15.x` host range. Existing local knowledge adoptions remain
+  stored but their former bundle digest no longer applies; resubmit and adopt
+  them against the new bundle to make them active again. No stored-data rewrite
+  is required.
 - **Compatibility, backup and recovery.** The Cat-management route removal is
   the supported-workflow break requiring 0.15.0. App SDK, public provider APIs,
   configuration and stored data retain compatible formats; added session and
@@ -62,7 +67,7 @@ separate release targets.
   return to 0.14.4, and restore backups only while all users of those roots are
   stopped. Returning restores the old Cat-management routes and prior native
   history behavior; it does not remove already-created native conversations.
-- **Signing and updates.** Dispatch desktop-release.yml from the merged bump
+- **Signing and updates.** Dispatch desktop-release.yml from the frozen bump
   source with `tag=v0.15.0`, the full Runtime SHA above and `unsigned=false`.
   Expected Standard trust is macOS **signed + notarized**, Windows **unsigned:
   no certificate**, Linux **n/a**. Native checks and build receipts establish
