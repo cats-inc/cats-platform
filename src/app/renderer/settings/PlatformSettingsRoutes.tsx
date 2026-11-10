@@ -3,7 +3,6 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import type { AppShellPayload as WorkspaceAppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
-import { WorkspaceSettingsCatsCanvas } from '../../../products/shared/renderer/components/settings-cats/SettingsCats.js';
 import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
 import { SettingsAssistants } from './SettingsAssistants.js';
 import { ModelSettingsFocusOnArrival } from '../SavedSelectionAvatarAttention.js';
@@ -29,8 +28,6 @@ export interface PlatformSettingsRoutesProps<
   payload: TPayload;
   onPayloadUpdate: (payload: TPayload) => void;
   busy: WorkspaceBusyState;
-  onFeedback: (message: string) => void;
-  onBusy: (busy: WorkspaceBusyState) => void;
   onResetSetup: () => Promise<void>;
 }
 
@@ -47,9 +44,6 @@ export function resolveSettingsSectionConfig(
   }
   if (isSettingsSectionPath(pathname, '/settings/assistants')) {
     return { section: 'assistants', title: translate('settingsRouteTitleAssistants') };
-  }
-  if (isCatsSettingsSectionPath(pathname)) {
-    return { section: 'cats', title: translate('settingsRouteTitleMyCats') };
   }
   if (isSettingsSectionPath(pathname, '/settings/chat')) {
     return { section: 'chat', title: translate('settingsRouteTitleChat') };
@@ -81,21 +75,12 @@ function isSettingsSectionPath(pathname: string, sectionPath: string): boolean {
   return pathname === sectionPath || pathname.startsWith(`${sectionPath}/`);
 }
 
-function isCatsSettingsSectionPath(pathname: string): boolean {
-  // `/settings/cats` is a temporary holdout while cat creation still
-  // lives in Settings. Keep this as an allow-list so removed routes like
-  // `/settings/cats/my-cats` and `/settings/cats/assistants` stay gone.
-  return pathname === '/settings/cats' || pathname === '/settings/cats/new';
-}
-
 // Pure builder — deliberately hook-free so route structure tests can call it
 // directly without entering a React render context.
 export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShellPayload>({
   payload,
   onPayloadUpdate,
   busy,
-  onFeedback,
-  onBusy,
   onResetSetup,
 }: PlatformSettingsRoutesProps<TPayload>): ReactElement {
   const workProduct = payload.products.find((product) => product.id === 'work');
@@ -104,15 +89,6 @@ export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShel
   const onWorkspacePayloadUpdate = (nextPayload: WorkspaceAppShellPayload) => {
     onPayloadUpdate(nextPayload as TPayload);
   };
-  const catsElement = (
-    <WorkspaceSettingsCatsCanvas
-      payload={payload}
-      busy={busy}
-      onPayloadUpdate={onWorkspacePayloadUpdate}
-      onFeedback={onFeedback}
-      onBusy={onBusy}
-    />
-  );
 
   return (
     <Routes>
@@ -128,8 +104,6 @@ export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShel
           />
         )}
       />
-      <Route path="cats" element={catsElement} />
-      <Route path="cats/new" element={catsElement} />
       <Route
         path="assistants"
         element={(

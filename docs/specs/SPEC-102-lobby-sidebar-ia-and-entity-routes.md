@@ -143,14 +143,29 @@
 
 ### `/entities/cats*` canvas + companion
 
-- **`/entities/cats` mounts `CatsCanvasPage`** (`src/app/renderer/entities/CatsCanvasPage.tsx`)
-  inside `EntitiesShell`. The page fetches `AppShellPayload` once
-  via `fetchAppShell()` and renders
-  `<WorkspaceCatsCanvas>` from a fresh **copy** of the settings
-  canvas at `src/products/shared/renderer/components/cats/`. The
-  Settings canvas at `/settings/cats` still exists in parallel —
-  whether to delete it is **TBD** (cat creation flow at
-  `/settings/cats/new` is the holdout reason).
+- **`/entities/cats` and `/entities/cats/new` mount `CatsCanvasPage`**
+  (`src/app/renderer/entities/CatsCanvasPage.tsx`) inside `EntitiesShell`.
+  The page fetches `AppShellPayload` once via `fetchAppShell()` and renders
+  `<WorkspaceCatsCanvas>` from `src/products/shared/renderer/components/cats/`.
+- **Cats Directory owns cat management (2026-11-11).** The cat roster, the
+  per-cat detail panel and the add-cat flow live only in Cats Directory;
+  Settings keeps app-level pages. Every entry point that used to open
+  `/settings/cats` or `/settings/cats/new` now opens `/entities/cats` or
+  `/entities/cats/new` (`src/shared/catsDirectoryPaths.ts`), so a user who
+  adds a cat, or has none yet, stays in the Directory shell:
+  - the Directory sidebar and index card "New cat" rows, the chat sidebar's
+    new-cat action, and the canvas's own no-cats redirect;
+  - a marked cat avatar opening that cat's model field (the hint now says
+    "in Cats Directory"; Catlas's mark still opens Settings > Assistants);
+  - the profile's Telegram hint, the Plugins page's cat link and the guide
+    cat's "Meet your cats" action.
+
+  `/settings/cats` and `/settings/cats/new` are removed with no redirect and
+  render the Settings not-found pane, matching how `/settings/cats/my-cats`
+  was retired. The path stays in the App reserved-settings list so an App
+  cannot claim it. The `settings-cats/` canvas copies (shared and the unused
+  Chat / Code / Work wrappers, with their hook wrappers) are deleted, so the
+  canvas has one implementation.
 - **`/entities/cats/:catId` mounts `CatProfilePage`** (`src/app/renderer/entities/CatProfilePage.tsx`).
   Renders a platform-level **copy** of the chat
   `CompanionWorkspace` at
@@ -198,13 +213,12 @@
 
 ### Settings sidebar
 
-- Assistants navigates to `/settings/assistants` (per phase 3)
-  but the sidebar **UI** still nests it under the `CATS`
-  subheading group, mirroring `My Cats` indentation. The lift
-  applied to the route, not the visual grouping.
-- `/settings/cats/my-cats` is **removed**. Settings sidebar's My Cats
-  row navigates directly to canonical `/settings/cats`; no compatibility
-  redirect is kept.
+- The `CATS` subheading group is gone (2026-11-11). Assistants
+  (`/settings/assistants`: Catlas and assistant presets) is a top-level item
+  right after General; there is no My Cats row because cats are managed in
+  Cats Directory.
+- `/settings/cats/my-cats`, `/settings/cats` and `/settings/cats/new` are
+  **removed** with no compatibility redirect.
 - Unknown Settings child routes render the Settings not-found pane instead
   of redirecting to `/settings/general`, so removed routes cannot survive
   as implicit aliases.
@@ -424,6 +438,10 @@ close. The follow-up:
     differs.
 
 #### Settings
+
+> Superseded 2026-11-11: FR-26 and FR-28 are replaced by the Implementation
+> Status note "Cats Directory owns cat management". `/settings/cats` was
+> removed instead of narrowed; no global cat preference page exists yet.
 
 26. `/settings/cats` shall be narrowed to **global cat preferences only**
     (model defaults, visibility, registration, app integrations). Per-cat
@@ -652,7 +670,8 @@ click → /chat/my-cats/:id        click → /chat/dm/:id
                                              no /lobby/{type}/:id family
 
 /entities                                  ← Cats Directory index
-/entities/cats                             ← Cats canvas
+/entities/cats                             ← Cats canvas (roster + per-cat detail)
+/entities/cats/new                         ← Cats canvas, add-cat flow
 /entities/cats/:catId                      ← CatProfilePage companion/profile mount
 /entities/clowders                         ← Clowders canvas
 /entities/clowders/:clowderId              ← Clowder home (Cats default)
@@ -663,7 +682,8 @@ click → /chat/my-cats/:id        click → /chat/dm/:id
 
 /chat/dm/:catId                            ← Chat DM (renamed; old path removed)
 
-/settings/cats                             ← global cat preferences (narrowed)
+/settings/cats                             ← removed 2026-11-11 (Settings not-found; reserved
+                                             against Apps); cats live in Cats Directory
 /settings/assistants                       ← assistants registry (lifted from /settings/cats/assistants;
                                              old path removed in the same change)
 ```

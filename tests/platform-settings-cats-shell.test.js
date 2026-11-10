@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
-test('platform My Cats no longer renders a nested shared settings shell', async () => {
+test('Cats Directory canvas does not render a nested shared settings shell', async () => {
   const source = await readFile(
     path.join(
       process.cwd(),
@@ -12,8 +12,8 @@ test('platform My Cats no longer renders a nested shared settings shell', async 
       'shared',
       'renderer',
       'components',
-      'settings-cats',
-      'SettingsCats.tsx',
+      'cats',
+      'Cats.tsx',
     ),
     'utf8',
   );

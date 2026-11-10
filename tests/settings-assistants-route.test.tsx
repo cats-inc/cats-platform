@@ -28,15 +28,11 @@ test('resolveSettingsSectionConfig treats /settings root as General', () => {
   assert.equal(general.title, 'settingsRouteTitleGeneral');
 });
 
-test('resolveSettingsSectionConfig keeps cats active only for canonical cats settings routes', () => {
-  const cats = resolveSettingsSectionConfig('/settings/cats', translate);
-  assert.equal(cats.section, 'cats');
-
-  const newCat = resolveSettingsSectionConfig('/settings/cats/new', translate);
-  assert.equal(newCat.section, 'cats');
-
-  const myCats = resolveSettingsSectionConfig('/settings/cats/my-cats', translate);
-  assert.equal(myCats.section, 'not-found');
+test('resolveSettingsSectionConfig has no cats section: cats live in Cats Directory (clean-cut, no alias)', () => {
+  for (const pathname of ['/settings/cats', '/settings/cats/new', '/settings/cats/my-cats']) {
+    const config = resolveSettingsSectionConfig(pathname, translate);
+    assert.equal(config.section, 'not-found', pathname);
+  }
 });
 
 test('resolveSettingsSectionConfig no longer routes /settings/cats/assistants to the assistants section (clean-cut, no alias)', () => {

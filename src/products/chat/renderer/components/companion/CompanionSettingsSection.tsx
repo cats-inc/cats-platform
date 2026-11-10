@@ -10,6 +10,7 @@ import type {
 import type { AppShellPayload } from '../../../api/contracts.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
+import { CATS_DIRECTORY_PATH } from '../../../../../shared/catsDirectoryPaths.js';
 
 export interface CompanionSettingsSectionProps {
   catId: string;
@@ -183,7 +184,7 @@ export function CompanionSettingsSection({
             </p>
             <p className="companionMuted">
               {t(messageKeys.chatCompanionSettingsTelegramBindingManageHint)}
-              <Link to="/settings/cats">
+              <Link to={CATS_DIRECTORY_PATH}>
                 {t(messageKeys.chatCompanionSettingsTelegramBindingSettingsLabel)}
               </Link>
               {t(messageKeys.chatCompanionSettingsTelegramBindingSuffix)}
@@ -192,7 +193,7 @@ export function CompanionSettingsSection({
         ) : (
           <p className="companionEmpty">
             {t(messageKeys.chatCompanionSettingsNoTelegramBindingState)}
-            <Link to="/settings/cats">
+            <Link to={CATS_DIRECTORY_PATH}>
               {t(messageKeys.chatCompanionSettingsTelegramBindingSettingsLabel)}
             </Link>
             {t(messageKeys.chatCompanionSettingsTelegramBindingSuffix)}

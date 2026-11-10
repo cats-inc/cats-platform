@@ -272,7 +272,7 @@ test('Work app view state keeps shared settings and direct-lane derivation seman
   const selectedDirectLane = normalizeSelectedChannelView(payload.chat.selectedChannel);
 
   const viewState = deriveAppViewState({
-    pathname: '/settings/cats',
+    pathname: '/settings/assistants',
     payload,
     draftDefaultRecipientCatId: null,
     selectedChannel: null,

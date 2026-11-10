@@ -45,6 +45,7 @@ import {
   scrollModelSettingsFieldIntoView,
 } from '../../../../../app/renderer/savedSelectionAttention.js';
 import { isAdminCat } from '../../../catGroups.js';
+import { CATS_DIRECTORY_NEW_CAT_PATH, CATS_DIRECTORY_PATH } from '../../../../../shared/catsDirectoryPaths.js';
 
 export interface CatsRegistryController<TBotForm> {
   botForm: TBotForm;
@@ -226,7 +227,7 @@ export function CatsCanvas({
       } else {
         setSelectedCatId(null);
         if (!location.pathname.endsWith('/cats/new')) {
-          navigate('/settings/cats/new', { replace: true });
+          navigate(CATS_DIRECTORY_NEW_CAT_PATH, { replace: true });
         }
       }
     }
@@ -261,7 +262,7 @@ export function CatsCanvas({
         setSelectedCatId(newCat.id);
       }
       if (location.pathname.endsWith('/cats/new')) {
-        navigate('/settings/cats', { replace: true });
+        navigate(CATS_DIRECTORY_PATH, { replace: true });
       }
     }
     prevActiveCatCountRef.current = activeCatCount;
@@ -271,13 +272,13 @@ export function CatsCanvas({
   const handleSelectCat = (catId: string) => {
     setSelectedCatId(catId);
     if (location.pathname.endsWith('/cats/new')) {
-      navigate('/settings/cats', { replace: true });
+      navigate(CATS_DIRECTORY_PATH, { replace: true });
     }
   };
 
   const handleStartCreate = () => {
     if (atCatLimit) return;
-    navigate('/settings/cats/new');
+    navigate(CATS_DIRECTORY_NEW_CAT_PATH);
   };
 
   const selectedCat = useMemo(
@@ -408,7 +409,7 @@ export function CatsCanvas({
     if (newCat) {
       setSelectedCatId(newCat.id);
       if (location.pathname.endsWith('/cats/new')) {
-        navigate('/settings/cats', { replace: true });
+        navigate(CATS_DIRECTORY_PATH, { replace: true });
       }
       if (pendingCreateAvatar) {
         try {
@@ -591,7 +592,7 @@ export function CatsCanvas({
                       <button
                         type="button"
                         className="secondaryButton"
-                        onClick={() => navigate('/settings/cats', { replace: true })}
+                        onClick={() => navigate(CATS_DIRECTORY_PATH, { replace: true })}
                         disabled={isCatBusy(busy, 'create')}
                       >
                         {t(messageKeys.sharedCatsCreateCancel)}

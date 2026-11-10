@@ -97,6 +97,8 @@ const RESERVED_APP_IDS = new Set(['install', 'validate']);
 const BASE_RESERVED_SETTINGS_PATHS = [
   '/settings',
   '/settings/general',
+  // Cats moved to Cats Directory; the retired path stays reserved so an
+  // App cannot claim the old "My Cats" address.
   '/settings/cats',
   '/settings/assistants',
   '/settings/apps',

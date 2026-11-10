@@ -20,8 +20,6 @@ export interface ProductReadyShellProps<
   appContent: ReactNode;
   confirmDialog: { options: ConfirmDialogOptions } | null;
   onPayloadUpdate: (payload: TPayload) => void;
-  onFeedback: (message: string) => void;
-  onBusy: (busy: WorkspaceBusyState) => void;
   onResetSetup: () => Promise<void>;
   onConfirmClose: (action: ConfirmDialogAction | boolean) => void;
 }
@@ -35,8 +33,6 @@ export function ProductReadyShell<TPayload extends WorkspaceAppShellPayload>({
   appContent,
   confirmDialog,
   onPayloadUpdate,
-  onFeedback,
-  onBusy,
   onResetSetup,
   onConfirmClose,
 }: ProductReadyShellProps<TPayload>) {
@@ -49,8 +45,6 @@ export function ProductReadyShell<TPayload extends WorkspaceAppShellPayload>({
           payload={payload}
           onPayloadUpdate={onPayloadUpdate}
           busy={busy}
-          onFeedback={onFeedback}
-          onBusy={onBusy}
           onResetSetup={onResetSetup}
         />
       ) : appContent}

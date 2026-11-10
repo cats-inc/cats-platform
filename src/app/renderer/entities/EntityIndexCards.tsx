@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
+import { CATS_DIRECTORY_NEW_CAT_PATH } from '../../../shared/catsDirectoryPaths.js';
 import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import type {
@@ -140,7 +141,7 @@ function buildEntityIndexCards(envelope: PlatformHostEnvelope): EntityIndexCard[
       detailPathPrefix: '/entities/cats/',
       placeholderLabelKey: messageKeys.entitiesSidebarNewCat,
       placeholderIconKind: 'singlePerson',
-      placeholderTarget: '/settings/cats/new',
+      placeholderTarget: CATS_DIRECTORY_NEW_CAT_PATH,
     },
     {
       key: 'clowders',

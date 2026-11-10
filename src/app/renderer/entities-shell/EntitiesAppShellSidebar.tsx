@@ -6,6 +6,7 @@ import type {
 } from '../../../design/components/ConfirmDialog.js';
 import { GuideCatDockSlot } from '../../../design/components/GuideCatDockSlot.js';
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
+import { CATS_DIRECTORY_NEW_CAT_PATH } from '../../../shared/catsDirectoryPaths.js';
 import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import { buildMyCatPathForPrefix } from '../productShell/myCatNavigation.js';
@@ -270,13 +271,9 @@ export function EntitiesAppShellSidebar({
 
   const catsPlaceholder: ConversationSidebarMyCatsPlaceholder = {
     label: t(messageKeys.entitiesSidebarNewCat),
-    /* Mirrors the chat sidebar's "+ New cat" affordance — the
-     * canonical add-cat flow lives at `/settings/cats/new` (see
-     * `useWorkspaceAppNavigationActions.onCreateNewCat`). We carry
-     * the same `platformShellSurface` nav state so the settings
-     * pane knows which surface chrome to wrap itself in on return. */
-    onClick: () =>
-      navigate('/settings/cats/new', { state: settingsNavState }),
+    /* The add-cat flow lives in Cats Directory, so the user stays in
+     * this shell while creating a cat. */
+    onClick: () => navigate(CATS_DIRECTORY_NEW_CAT_PATH),
     iconKind: 'singlePerson',
   };
   /* Clowders / Catteries don't have an add route yet (PLAN-091 phase

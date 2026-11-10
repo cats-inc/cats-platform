@@ -100,11 +100,6 @@ export function SettingsAppShellSidebar({
 
   const isSection = (sectionPath: string): boolean =>
     currentPath === sectionPath || currentPath.startsWith(`${sectionPath}/`);
-  // `/settings/cats` is the temporary holdout while cat creation lives
-  // here; the allow-list mirrors `isCatsSettingsSectionPath` in
-  // PlatformSettingsRoutes so the highlight stays accurate.
-  const isCatsRoute = currentPath === '/settings/cats' || currentPath === '/settings/cats/new';
-  const isAssistantsRoute = isSection('/settings/assistants');
 
   const { payload } = buildSidebarPayload(liveEnvelope);
   const runtimeFooterStatus = resolveRuntimePresentationStatus(payload.runtime);
@@ -183,24 +178,11 @@ export function SettingsAppShellSidebar({
                 {t(messageKeys.settingsShellSectionGeneral)}
               </span>
             </button>
-          </nav>
-
-          <p className="settingsSidebarGroupHeading">
-            {t(messageKeys.settingsShellSectionCats)}
-          </p>
-          <nav className="navGroup settingsSidebarGroupNav">
+            {/* Cats themselves are managed in Cats Directory; Settings keeps
+              * only the app-level assistants (Catlas and assistant presets). */}
             <button
               type="button"
-              className={navItemClass(isCatsRoute)}
-              onClick={() => navigate('/settings/cats')}
-            >
-              <span className="navLabel">
-                {t(messageKeys.settingsShellSubsectionMyCats)}
-              </span>
-            </button>
-            <button
-              type="button"
-              className={navItemClass(isAssistantsRoute)}
+              className={navItemClass(isSection('/settings/assistants'))}
               onClick={() => navigate('/settings/assistants')}
             >
               <span className="navLabel">

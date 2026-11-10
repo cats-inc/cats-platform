@@ -12,7 +12,7 @@ import {
   MEMORY_CATEGORIES,
   MCP_PROFILES,
   SKILL_PROFILES,
-} from '../src/products/shared/renderer/components/settings-cats/viewSupport.ts';
+} from '../src/products/shared/renderer/components/cats/viewSupport.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 import { messageKeys } from '../src/shared/i18n/messageKeys.ts';
 

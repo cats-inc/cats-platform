@@ -7,7 +7,7 @@ import { messageKeys } from '../../../../shared/i18n/index.js';
 import {
   getCatMcpProfileLabel,
   getCatSkillProfileLabel,
-} from './settings-cats/viewSupport.js';
+} from './cats/viewSupport.js';
 
 export interface CatInspectTarget {
   id: string;

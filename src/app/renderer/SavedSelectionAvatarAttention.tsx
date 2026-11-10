@@ -16,7 +16,7 @@ import {
 
 /**
  * Marks a saved cat's avatar when its model choice is no longer offered; a
- * click on the marked avatar opens that cat's model field in Settings.
+ * click on the marked avatar opens that cat's model field in Cats Directory.
  */
 export function CatAvatarSelectionAttention(input: {
   catId: string;
@@ -32,7 +32,7 @@ function CatAvatarSettingsLink(input: { catId: string; attention: string }) {
   const openCatModelSettings = useOpenCatModelSettings();
   return (
     <AvatarSelectionAttention
-      hint={`${input.attention} ${t(messageKeys.sharedProviderModelAttentionChooseInSettings)}`}
+      hint={`${input.attention} ${t(messageKeys.sharedProviderModelAttentionChooseInCatsDirectory)}`}
       onOpen={() => openCatModelSettings(input.catId)}
     />
   );

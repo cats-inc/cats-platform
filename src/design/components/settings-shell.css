@@ -20,26 +20,6 @@
   font-size: 1.05rem;
 }
 
-/* Sidebar group separator: the "Cats" subheading above the My Cats
- * / Assistants nav items reads as a small uppercase label sitting
- * just inside the sidebar inset. Styled to look like the
- * `sectionLabel` rule used in chat / code / work for "DIRECT
- * MESSAGES" etc., but lives in this file because Settings is the
- * only surface that uses it. */
-.settingsSidebarGroupHeading {
-  padding: 12px 12px 4px;
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-.settingsSidebarGroupNav {
-  padding-left: 8px;
-}
-
 .settingsCanvasBoot {
   width: 100%;
   height: 100%;
@@ -88,12 +68,6 @@
   display: flex;
   gap: 8px;
   margin-top: 4px;
-}
-
-.settingsFeedback {
-  margin: 12px 0 0;
-  font-size: 0.9rem;
-  color: var(--muted);
 }
 
 /* ── Canvas side (per-section page chrome) ─────────────────────── */
