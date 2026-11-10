@@ -139,9 +139,17 @@ ticks.
   - The host admits helper runs, check cancellation, sign-in and Codex terminals, and Ollama list,
     download and cancel from the main window's main frame when its URL is the host's own page, or
     the app origin under `/settings/runtime`.
-  - Wizard state, the restart draft and returning to host pages stay host-page only.
+  - Wizard state and the restart draft stay host-page only.
   - Only a fixed helper id and mode cross IPC, plus `dryRun` for uninstall. Candidate profiles
-    refuse every change.
+    refuse every helper run.
+  - The host runs one change at a time. A change asked for while another runs is refused, so two
+    pages cannot start two installers for the same tool.
+  - Limits, stated plainly:
+    - The route check keeps other Platform pages from using these channels by accident. It is not
+      a boundary against code on the app's own origin, which can change its URL with
+      `history.replaceState`.
+    - The older `cats-host:run-setup-helper` channel, which bootstrap recovery uses, still accepts
+      any main-window sender. This change does not narrow it.
 - **Compatibility:** no change to Runtime, host state or Platform data. This fits the `0.x` minor
   line.
 - **Accessibility:** the same as SPEC-136:

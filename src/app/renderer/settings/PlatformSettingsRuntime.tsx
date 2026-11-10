@@ -66,42 +66,47 @@ function resolveRuntimeStatusChip(
 }
 
 /**
- * SPEC-137: what the last check found lasts for this window's session, across Settings pages, so
- * coming back shows it rather than starting a check by itself.
+ * SPEC-137: one instance for the window's life. Leaving Settings > Runtime detaches it and coming
+ * back attaches the same one, so a check or an install that is still running is never left behind
+ * by a second copy that does not know about it, and what the last check found is still there.
  */
-let settingsToolsState: unknown = null;
+let aiTools: { host: HTMLDivElement; view: ReturnType<typeof mountSetupWizard> } | null = null;
+let aiToolsFeedback: ((message: string) => void) | null = null;
 
 /** The first-run wizard's rows, log and details, in Settings' layout (ADR-147). */
 function DesktopAiTools({ onFeedback }: { onFeedback: (message: string) => void }) {
   const root = useRef<HTMLDivElement>(null);
-  const view = useRef<ReturnType<typeof mountSetupWizard> | null>(null);
-  const feedback = useRef(onFeedback);
-  feedback.current = onFeedback;
   const { locale } = useI18n();
-  const initialLocale = useRef(locale);
+  aiToolsFeedback = onFeedback;
   useEffect(() => {
     const bridge = resolveDesktopHostBridge();
-    if (!root.current || !bridge?.setupWizard || !bridge.getProviderSetup) return undefined;
-    // Mounted once: a language change must not drop a check or an install in progress.
-    const mounted = mountSetupWizard(root.current, bridge, {
-      mode: 'settings',
-      locale: initialLocale.current,
-      css: SETUP_WIZARD_CSS,
-      catHead: SETUP_CAT_HEAD,
-      createChrome: mountSetupChrome,
-      facts: setupRowFacts,
-      settingsState: settingsToolsState,
-      onSettingsState: (state) => { settingsToolsState = state; },
-      onFeedback: (message) => feedback.current(message),
-    });
-    view.current = mounted;
+    const container = root.current;
+    if (!container || !bridge?.setupWizard || !bridge.getProviderSetup) return undefined;
+    if (!aiTools) {
+      const host = document.createElement('div');
+      host.className = 'settingsAiTools';
+      const view = mountSetupWizard(host, bridge, {
+        mode: 'settings',
+        locale,
+        css: SETUP_WIZARD_CSS,
+        catHead: SETUP_CAT_HEAD,
+        createChrome: mountSetupChrome,
+        facts: setupRowFacts,
+        // A toast reaches whichever Settings page is showing; none is shown while away.
+        onFeedback: (message) => aiToolsFeedback?.(message),
+      });
+      aiTools = { host, view };
+    }
+    container.append(aiTools.host);
     return () => {
-      view.current = null;
-      mounted.destroy();
+      aiToolsFeedback = null;
+      aiTools?.host.remove();
     };
+    // Attached once per visit; the language follows below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => { view.current?.setLocale(locale); }, [locale]);
-  return <div ref={root} className="settingsAiTools" />;
+  useEffect(() => { aiTools?.view.setLocale(locale); }, [locale]);
+  return <div ref={root} />;
 }
 
 export function PlatformSettingsRuntime({

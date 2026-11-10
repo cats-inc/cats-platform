@@ -101,7 +101,7 @@
   padding: 0;
 }
 
-.settingsAiToolsSection > .settingsAiTools.cats-setup.is-settings {
+.settingsAiToolsSection .settingsAiTools.cats-setup.is-settings {
   border: 0;
   border-radius: inherit;
 }

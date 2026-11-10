@@ -150,7 +150,13 @@ export function mountSetupWizard(root, bridge, options) {
   /* ------------------------------ Settings: changes to a ready row (SPEC-137) ------------------------------ */
 
   /** What a ticked row runs: its install, or the change chosen for it once it is there. */
-  const modeOf = (id) => (SETTINGS && S.changes[id]) || 'apply';
+  function modeOf(id) {
+    if (!SETTINGS || !S.changes[id]) return 'apply';
+    const kind = S.rows[id] && S.rows[id].kind;
+    if (kind === 'ready') return S.changes[id];
+    if (['failed', 'declined'].includes(kind) && S.attempted.has(id)) return S.changes[id];
+    return 'apply';
+  }
   /** An update is offered where the helper supports one; the npm folder and PowerShell only re-apply settings. */
   const canUpdate = (id) => SETTINGS && !['npm', 'shell'].includes(id) && !isConnection(id)
     && Boolean(helperOf(id) && helperOf(id).supportsUpgrade);
@@ -219,6 +225,7 @@ export function mountSetupWizard(root, bridge, options) {
     S.rows[id] = thrown
       ? { kind: 'checkFailed', status: 'failed', error: String(thrown.message || thrown), planned: [] }
       : classifyCheck(id, record);
+    if (S.rows[id].kind !== 'ready' && S.changes[id]) clearChange(id);
     if (S.rows[id].kind === 'checkFailed') S.details.add(id);
     renderPage();
   }
@@ -287,6 +294,9 @@ export function mountSetupWizard(root, bridge, options) {
     S.pageError = null;
     S.runStart = Date.now();
     S.lastChecked = null;
+    // What the last change did belongs to the read before this one.
+    S.changed = {};
+    if (SETTINGS) S.applied = new Set();
     chrome.setElapsedFrom(S.runStart);
     const ids = rowIds().filter((id) => !isConnection(id));
     for (const id of ids) S.rows[id] = helperOf(id) ? { kind: 'pending' } : { kind: 'manual', status: 'not_supported', planned: [] };
@@ -333,6 +343,7 @@ export function mountSetupWizard(root, bridge, options) {
 
   function stopCheck() {
     S.ticket++;
+    S.running = null;
     if (wizardBridge.cancelChecks) Promise.resolve(wizardBridge.cancelChecks()).catch(() => undefined);
     for (const id of Object.keys(S.rows)) {
       if (['checking', 'pending'].includes(S.rows[id].kind)) delete S.rows[id];
@@ -739,7 +750,7 @@ export function mountSetupWizard(root, bridge, options) {
     // Settings keeps its own session state; the host's wizard state belongs to first run.
     if (SETTINGS) {
       if (options.onSettingsState) {
-        try { options.onSettingsState(stateBlob()); } catch { /* A Settings page that went away. */ }
+        try { options.onSettingsState(JSON.parse(JSON.stringify(stateBlob()))); } catch { /* A Settings page that went away. */ }
       }
       return;
     }
@@ -1229,6 +1240,10 @@ export function mountSetupWizard(root, bridge, options) {
     }
     if (row.kind === 'pending') return plainRow(id, depCls, '', E(T('Waiting', '等待中')));
     if (row.kind === 'checking') return plainRow(id, depCls, '<span class="spinner"></span>', E(T('Checking', '檢查中')));
+    if (id === S.running && S.phase === 'checking') {
+      return plainRow(id, depCls, '<span class="spinner"></span>', '<span data-elapsed></span>',
+        T('Reading what it would remove. This changes nothing.', '正在讀取它會移除什麼，不會變更任何東西。'));
+    }
     if (id === S.running) {
       return plainRow(id, depCls, '<span class="spinner"></span>', '<span data-elapsed></span>',
         elevates ? T('Windows asks for permission; choose Yes. This updates when the installer ends.', 'Windows 會跳出權限視窗，請選「是」。安裝程式結束後這裡才會更新。') : T(`Running ${helperOf(id).file}`, `正在執行 ${helperOf(id).file}`));
@@ -1775,7 +1790,7 @@ export function mountSetupWizard(root, bridge, options) {
       case 'choose-cancel': cancelChoose(); break;
       case 'stop-check': stopCheck(); saveState(); render(); break;
       case 'tick-updates': {
-        const rows = updatable();
+        const rows = updatable().filter((id) => !['force', 'uninstall'].includes(S.changes[id]));
         const all = rows.every((id) => S.ticked.has(id) && S.changes[id] === 'upgrade');
         for (const id of rows) {
           if (all) clearChange(id);
@@ -1945,7 +1960,8 @@ export function mountSetupWizard(root, bridge, options) {
   })();
   // Reads are passive: they notice a lost connection or an edit elsewhere, and start nothing.
   // Settings polls on its rows too, so a scan or an edit elsewhere shows without a check.
-  const polling = () => S.phase === 'idle' && (S.page === 1 || SETTINGS);
+  // Settings keeps this instance while another page shows; it reads only while it is on screen.
+  const polling = () => S.phase === 'idle' && (S.page === 1 || SETTINGS) && root.isConnected;
   const timer = win.setInterval(() => {
     if (doc.visibilityState !== 'hidden' && polling()) void poll(false);
   }, 5000);
@@ -1964,6 +1980,8 @@ export function mountSetupWizard(root, bridge, options) {
     },
     destroy() {
       destroyed = true;
+      // A helper that runs now finishes in the host; nothing queued after it starts.
+      S.ticket++;
       win.clearInterval(timer);
       win.removeEventListener('focus', onFocus);
       root.removeEventListener('click', onClick);

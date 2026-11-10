@@ -47,15 +47,22 @@ const SETTINGS_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>S
 <script>${['setupWizardStyles', 'setupFacts', 'setupChrome', 'setupWizard'].map(moduleSource).join('\n')}
 window.__toasts = [];
 window.__settingsState = null;
+// A fresh instance from the kept session state, which the module supports for any host.
 window.__mount = () => {
   if (window.__view) window.__view.destroy();
-  window.__view = mountSetupWizard(document.getElementById('tools'), window.catsDesktopHost, {
+  if (window.__holder) window.__holder.remove();
+  window.__holder = document.createElement('div');
+  document.getElementById('tools').append(window.__holder);
+  window.__view = mountSetupWizard(window.__holder, window.catsDesktopHost, {
     mode: 'settings', locale: navigator.language, css: SETUP_WIZARD_CSS, catHead: SETUP_CAT_HEAD,
     createChrome: mountSetupChrome, facts: setupRowFacts, settingsState: window.__settingsState,
     onSettingsState: (state) => { window.__settingsState = state; }, onFeedback: (message) => window.__toasts.push(message),
   });
 };
 window.__mount();
+// What Settings > Runtime does when the owner goes to another page and back: the same instance.
+window.__leave = () => window.__holder.remove();
+window.__return = () => document.getElementById('tools').append(window.__holder);
 </script></body></html>`;
 const settingsFile = join(process.env.TEMP || process.env.TMPDIR || '/tmp', `cats-settings-tools-${process.pid}.html`);
 writeFileSync(settingsFile, SETTINGS_HTML);
@@ -1146,6 +1153,91 @@ await check('settings: a dry run that finds nothing offers no tick', async () =>
   await page.click('#uninstall-claude');
   await page.waitForFunction(() => /試跑後沒有找到/.test(document.querySelector('[data-row="claude"]').textContent), null, { timeout: 5000 });
   equal(await page.locator('#change-claude').isChecked(), false, 'not ticked');
+  await close();
+});
+
+await check('settings: leaving mid-apply and coming back shows the same run, and nothing runs twice', async () => {
+  const { page, close } = await openSettings({
+    selection: SELECTED('codex', 'claude'), helperDelay: 250,
+    machine: { installed: ['codex', 'claude'], signedIn: ['claude'], versions: { claude: '2.1.0', codex: '0.58.0' }, latest: { claude: '2.2.0', codex: '0.59.0' } },
+  });
+  await page.click('#recheck');
+  await settled(page);
+  await page.check('#change-codex');
+  await page.check('#change-claude');
+  await page.click('#apply');
+  await page.waitForTimeout(100);
+  await page.evaluate(() => window.__leave());
+  await page.waitForTimeout(150);
+  await page.evaluate(() => window.__return());
+  equal(await page.locator('#apply').count(), 0, 'Apply offered again while running');
+  truthy(await page.locator('#stop-after').count() === 1, 'the run is still shown');
+  await settled(page);
+  const upgrades = (await calls(page, 'runHelper')).filter((call) => call.args[1] === 'upgrade').length;
+  equal(upgrades, 2, 'updates');
+  await close();
+});
+
+await check('settings: a removal chosen earlier never runs on a row that now needs installing', async () => {
+  const { page, close } = await openSettings({ selection: SELECTED('claude'), machine: { installed: ['claude'], signedIn: ['claude'] } });
+  await page.click('#recheck');
+  await settled(page);
+  await page.click('#row-more-claude');
+  await page.click('#uninstall-claude');
+  await page.waitForFunction(() => document.querySelector('#change-claude') && document.querySelector('#change-claude').checked, null, { timeout: 5000 });
+  // Meanwhile the tool goes missing, and a fresh check reads it as needing an install.
+  await page.evaluate(() => { window.__host.machine.installed = []; });
+  await page.click('#recheck');
+  await settled(page);
+  await page.check('#tick-claude');
+  await page.click('#apply');
+  await settled(page);
+  const modes = (await calls(page, 'runHelper')).filter((call) => call.args[1] !== 'check' && !(call.args[2] && call.args[2].dryRun)).map((call) => call.args[1]);
+  equal(modes, ['apply'], 'what ran');
+  await close();
+});
+
+await check('settings: stopping a dry run clears its row, and a dry run asks for no permission', async () => {
+  const { page, close } = await openSettings({ selection: SELECTED('claude'), helperDelay: 400, machine: { installed: ['claude'], signedIn: ['claude'] } });
+  await page.click('#recheck');
+  await settled(page);
+  await page.click('#row-more-claude');
+  await page.click('#uninstall-claude');
+  await page.waitForFunction(() => /正在讀取它會移除什麼/.test(document.querySelector('[data-row="claude"]').textContent), null, { timeout: 5000 });
+  await page.click('#stop-check');
+  await page.waitForTimeout(500);
+  equal(await page.locator('[data-row="claude"] .spinner').count(), 0, 'still spinning');
+  truthy(/就緒/.test(await textOf(page, '[data-row="claude"] .row-state')), 'back to ready');
+  await close();
+});
+
+await check('settings: a new check drops the last update\'s outcome', async () => {
+  const { page, close } = await openSettings({
+    selection: SELECTED('claude'), machine: { installed: ['claude'], signedIn: ['claude'], versions: { claude: '2.1.0' }, latest: { claude: '2.2.0' } },
+  });
+  await page.click('#recheck');
+  await settled(page);
+  await page.check('#change-claude');
+  await page.click('#apply');
+  await settled(page);
+  truthy(/已更新/.test(await textOf(page, '[data-row="claude"] .row-state')), 'updated');
+  await page.evaluate(() => { window.__host.machine.versions.claude = '2.3.0'; });
+  await page.click('#recheck');
+  await settled(page);
+  const state = await textOf(page, '[data-row="claude"] .row-state');
+  truthy(/就緒\s*2\.3\.0/.test(state) && !/已更新/.test(state), `stale outcome: ${state}`);
+  await close();
+});
+
+await check('settings: Tick all updates leaves a chosen reinstall alone', async () => {
+  const { page, close } = await openSettings({ selection: SELECTED('codex', 'claude'), machine: { installed: ['codex', 'claude'], signedIn: ['claude'] } });
+  await page.click('#recheck');
+  await settled(page);
+  await page.click('#row-more-claude');
+  await page.click('#reinstall-claude');
+  await page.click('#tick-updates');
+  truthy(/重新安裝/.test(await textOf(page, '[data-row="claude"] .row-change')), 'reinstall kept');
+  equal(await page.locator('#change-codex').isChecked(), true, 'codex update ticked');
   await close();
 });
 

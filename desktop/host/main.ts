@@ -2252,7 +2252,8 @@ async function runSetupAction(
   const runId = setupRuns.start({
     kind: changes ? 'change' : 'check',
     label: helperFacts?.packagedRelativePath.split('/').pop() ?? action.helperId,
-    command: described?.commands[action.mode] ?? action.helperId,
+    // A dry run previews an uninstall, and the log says so rather than looking like a removal.
+    command: described?.commands[action.mode] ? `${described.commands[action.mode]}${action.dryRun ? ' -DryRun' : ''}` : action.helperId,
   });
   if (changes) activeSetupChanges += 1;
   let result: DesktopSetupActionRecord;
@@ -2999,6 +3000,9 @@ async function main(): Promise<void> {
     const { helperId, mode, dryRun } = readSetupToolsHelperRequest(payload);
     const reading = mode === 'check' || dryRun;
     if (!reading) assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'setup-helper');
+    // SPEC-137: two pages (first run and Settings, or Settings mounted twice) must never run two
+    // changes at once, which could start two installers for the same tool.
+    if (!reading && activeSetupChanges > 0) throw new Error('Another setup change is running. Wait for it to finish.');
     const checks = reading ? new AbortController() : null;
     if (checks) runningSetupChecks.add(checks);
     try {

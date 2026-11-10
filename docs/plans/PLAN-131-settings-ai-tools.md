@@ -82,12 +82,17 @@ NFR Security).
 ## Validation
 
 - `scripts/test-first-run-wizard-renderer.mjs`, real modules in headless Chrome with a fake host:
-  65 of 65.
+  70 of 70.
   - The 53 first-run checks are unchanged.
-  - The 12 Settings checks cover: nothing runs on open; the settings read context; ticks and Apply;
+  - The 17 Settings checks cover: nothing runs on open; the settings read context; ticks and Apply;
     Update before and after; Uninstall's dry run; an empty dry run; a failed save as a toast; session
     state; sign-in; a failed update with details and Try again; a tool found without a helper; and
-    layout at 700×600 in both languages.
+    layout at 700×600 in both languages. Added after the independent review:
+    - leaving mid-apply and coming back shows the same run, which does not run twice;
+    - a removal chosen earlier never runs on a row that now needs installing;
+    - stopping a dry run clears its row;
+    - a new check drops the last update's outcome;
+    - Tick all updates leaves a chosen reinstall alone.
 - `tests/setup-wizard-host.test.js` (sender rule, helper request): 18 of 18. Affected suites:
   107 of 107.
 - `tsc` for the desktop, renderer, server and test projects. The only errors are in `mobile/`, whose
