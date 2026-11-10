@@ -200,6 +200,8 @@ export function Sidebar(props: SidebarProps) {
      * one yet (brand-new cat or just-cleared row showing NewChatDraft)
      * the menu item should grey out, not pretend to act. */
     myCatsDisableTerminalActionWhenDraft: true,
+    /* Clear deletes the direct-lane chat, so it waits for any chat delete in flight. */
+    myCatsTerminalActionDeletesChat: true,
     helpers: {
       catInitials,
       presentChannelTitle: (title) => presentChannelTitle(title, t),

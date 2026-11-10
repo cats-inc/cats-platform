@@ -206,6 +206,11 @@ export function isChannelBusy(
   return busy?.kind === 'channel' && busy.action === action && busy.channelId === channelId;
 }
 
+/** A chat or parallel-chat delete. Until deletes can queue, only one runs at a time. */
+export function isConversationDeleteBusy(busy: WorkspaceBusyState | null | undefined): boolean {
+  return (busy?.kind === 'channel' || busy?.kind === 'concurrent-group') && busy.action === 'delete';
+}
+
 export function isChannelParticipantBusy(
   busy: WorkspaceBusyState | null | undefined,
   participantId?: string,

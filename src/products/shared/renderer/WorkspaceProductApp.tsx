@@ -1220,6 +1220,7 @@ export function createWorkspaceProductApp({
       supportsStructuredDraftModes,
     ]);
     const {
+      deleteInFlight,
       onOpenChatsOverview,
       onSelect,
       onRenameChannel,
@@ -1767,7 +1768,8 @@ export function createWorkspaceProductApp({
                 sidebarOpen,
                 accountMenuOpen,
                 overflowMenuOpenId,
-                busy,
+                // The delete in flight outlasts whatever else writes the shared busy slot.
+                busy: deleteInFlight ?? busy,
                 surface,
                 shellSurface,
                 routeChannelId,
