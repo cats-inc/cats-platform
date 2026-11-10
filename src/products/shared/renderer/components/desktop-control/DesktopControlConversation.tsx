@@ -35,8 +35,15 @@ export function DesktopControlConversation({ channelId }: { channelId: string })
   useEffect(() => {
     generation.current++;
     setState(null);
-    void refresh();
-    const timer = setInterval(() => void refresh(), 2000);
+    let polling: Promise<void> | null = refresh();
+    void polling.finally(() => { polling = null; });
+    // Skip a tick while the previous state request is still out, so a slow
+    // server is not handed a growing queue of identical requests.
+    const timer = setInterval(() => {
+      if (polling) return;
+      polling = refresh();
+      void polling.finally(() => { polling = null; });
+    }, 2000);
     return () => { generation.current++; clearInterval(timer); };
   }, [refresh]);
 

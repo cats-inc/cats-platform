@@ -5,6 +5,7 @@ import {
   CatsRuntimeClient,
   DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS,
   DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
+  DEFAULT_RUNTIME_SESSION_DELETE_TIMEOUT_MS,
   resolveDefaultSessionCreateSlowWarningMs,
 } from '../build/server/runtime/client.js';
 import {
@@ -1218,4 +1219,41 @@ test('runtime client forwards explicit workspace access and permission policy on
     workspaceKind: 'worktree',
     workspaceAccess: 'read_only',
   });
+});
+
+async function deleteWithTimeoutRecorder(options) {
+  const timeoutSignals = createTimeoutSignalRecorder();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (url.endsWith('/sessions/session-1') && init?.method === 'DELETE') {
+      return new Response(JSON.stringify({ status: 'deleted' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test', {
+      ...options,
+      createTimeoutSignal: timeoutSignals.createTimeoutSignal,
+    });
+    const result = await client.deleteSession('session-1');
+    assert.equal(result.status, 'deleted');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  return timeoutSignals.calls;
+}
+
+test('runtime client gives session deletes their own longer timeout', async () => {
+  // A provider delete took 13 s; the 5 s request timeout cancelled the product
+  // delete while Runtime still finished it.
+  assert.deepEqual(await deleteWithTimeoutRecorder({ timeoutMs: 5_000 }), [DEFAULT_RUNTIME_SESSION_DELETE_TIMEOUT_MS]);
+  assert.ok(DEFAULT_RUNTIME_SESSION_DELETE_TIMEOUT_MS >= 30_000);
+});
+
+test('runtime client lets callers override the session-delete timeout separately', async () => {
+  assert.deepEqual(await deleteWithTimeoutRecorder({ timeoutMs: 5_000, sessionDeleteTimeoutMs: 20_000 }), [20_000]);
 });

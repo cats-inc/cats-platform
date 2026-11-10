@@ -19,6 +19,30 @@ import { SidebarFloatingMenuPortal } from './SidebarFloatingMenuPortal.js';
 import { useFloatingSidebarMenu } from './useFloatingSidebarMenu.js';
 import { useSidebarInlineRename } from './useSidebarInlineRename.js';
 
+/* A confirmed delete closes the overflow menu and can take seconds, so the row
+ * itself shows the progress. `busy` holds one mutation at a time: a second
+ * delete would overwrite the first one's state, so Delete stays disabled on
+ * every row until the delete in flight settles. */
+function isRecentDeleteInFlight(busy: WorkspaceBusyState): boolean {
+  return (busy.kind === 'channel' || busy.kind === 'concurrent-group')
+    && busy.action === 'delete';
+}
+
+function groupIdFromBusyKey(busyKey?: string): string | undefined {
+  return busyKey?.split(':').at(-1);
+}
+
+function RecentDeletingIndicator({ label }: { label: string }) {
+  return (
+    <span
+      className="recentDeletingSpinner"
+      role="status"
+      aria-label={label}
+      data-tooltip={label}
+    />
+  );
+}
+
 function resolveCatForChannel<
   TCat extends ConversationSidebarCat,
   TChannel extends ConversationSidebarChannel,
@@ -61,6 +85,7 @@ function ChannelItem<
   onOverflowToggle,
   titleOverride,
   disableRename,
+  groupDeleting,
 }: {
   channel: TChannel;
   payload: ConversationSidebarPayload<TCat, TChannel>;
@@ -74,8 +99,12 @@ function ChannelItem<
   onOverflowToggle: () => void;
   titleOverride?: string;
   disableRename?: boolean;
+  /** The parallel group this row belongs to is being deleted; its header shows the progress. */
+  groupDeleting?: boolean;
 }) {
   const { t } = useI18n();
+  const deleting = isChannelBusy(busy, 'delete', channel.id);
+  const locked = deleting || Boolean(groupDeleting);
   const cat = resolveCatForChannel(channel, payload);
   const overflowButtonRef = useRef<HTMLButtonElement>(null);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
@@ -103,10 +132,12 @@ function ChannelItem<
       className={[
         'recentItemCard',
         isSelected ? 'recentItemSelected' : '',
-        overflowOpen ? 'recentItemOverflowOpen' : '',
+        overflowOpen && !locked ? 'recentItemOverflowOpen' : '',
+        locked ? 'recentItemDeleting' : '',
       ].filter(Boolean).join(' ')}
+      aria-busy={deleting || undefined}
       onClick={() => {
-        if (!renaming) {
+        if (!renaming && !locked) {
           onSelect();
         }
       }}
@@ -131,6 +162,7 @@ function ChannelItem<
       ) : (
         <button
           className="recentSelectButton"
+          disabled={locked}
           onClick={(event) => {
             event.stopPropagation();
             onSelect();
@@ -140,7 +172,12 @@ function ChannelItem<
           <strong>{helpers.presentChannelTitle(titleOverride ?? channel.title)}</strong>
         </button>
       )}
-      {!renaming ? (
+      {!renaming && deleting ? (
+        <span className="recentItemTrailing">
+          <RecentDeletingIndicator label={t(messageKeys.conversationSidebarDeletingLabel)} />
+        </span>
+      ) : null}
+      {!renaming && !deleting ? (
         <span className="recentItemTrailing">
           {cat ? (
             <span
@@ -157,20 +194,22 @@ function ChannelItem<
               {cat.avatarUrl ? null : helpers.catInitials(cat.name)}
             </span>
           ) : null}
-          <button
-            ref={overflowButtonRef}
-            className="recentOverflowButton"
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOverflowToggle();
-            }}
-          >
-            &#x22EF;
-          </button>
+          {!locked ? (
+            <button
+              ref={overflowButtonRef}
+              className="recentOverflowButton"
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOverflowToggle();
+              }}
+            >
+              &#x22EF;
+            </button>
+          ) : null}
         </span>
       ) : null}
-      {overflowOpen ? (
+      {overflowOpen && !locked ? (
         <SidebarFloatingMenuPortal
           menuRef={overflowMenuRef}
           className="recentOverflowMenu"
@@ -187,12 +226,10 @@ function ChannelItem<
           ) : null}
           <button
             type="button"
-            disabled={isChannelBusy(busy, 'delete', channel.id)}
+            disabled={isRecentDeleteInFlight(busy)}
             onClick={onDelete}
           >
-            {isChannelBusy(busy, 'delete', channel.id)
-              ? t(messageKeys.conversationSidebarDeletingLabel)
-              : t(messageKeys.conversationSidebarDeleteLabel)}
+            {t(messageKeys.conversationSidebarDeleteLabel)}
           </button>
         </SidebarFloatingMenuPortal>
       ) : null}
@@ -235,7 +272,6 @@ function GroupHeaderItem({
     overflowMenuRef,
     overflowOpen,
   );
-  const groupIdFromBusyKey = (busyKey?: string): string | undefined => busyKey?.split(':').at(-1);
   const renameBusy = renameBusyKey
     ? isConcurrentGroupBusy(busy, 'rename', groupIdFromBusyKey(renameBusyKey))
     : false;
@@ -265,10 +301,12 @@ function GroupHeaderItem({
       className={[
         'recentItemCard',
         isSelected ? 'recentItemSelected' : '',
-        overflowOpen ? 'recentItemOverflowOpen' : '',
+        overflowOpen && !deleteBusy ? 'recentItemOverflowOpen' : '',
+        deleteBusy ? 'recentItemDeleting' : '',
       ].filter(Boolean).join(' ')}
+      aria-busy={deleteBusy || undefined}
       onClick={() => {
-        if (!renaming) {
+        if (!renaming && !deleteBusy) {
           onSelect();
         }
       }}
@@ -293,6 +331,7 @@ function GroupHeaderItem({
       ) : (
         <button
           className="recentSelectButton"
+          disabled={deleteBusy}
           onClick={(event) => {
             event.stopPropagation();
             onSelect();
@@ -302,7 +341,12 @@ function GroupHeaderItem({
           <strong>{title}</strong>
         </button>
       )}
-      {!renaming ? (
+      {!renaming && deleteBusy ? (
+        <span className="recentItemTrailing">
+          <RecentDeletingIndicator label={t(messageKeys.conversationSidebarDeletingLabel)} />
+        </span>
+      ) : null}
+      {!renaming && !deleteBusy ? (
         <span className="recentItemTrailing">
           <span className="recentParallelGlyph">
             <svg
@@ -335,7 +379,7 @@ function GroupHeaderItem({
           ) : null}
         </span>
       ) : null}
-      {overflowOpen && hasOverflowActions ? (
+      {overflowOpen && hasOverflowActions && !deleteBusy ? (
         <SidebarFloatingMenuPortal
           menuRef={overflowMenuRef}
           className="recentOverflowMenu"
@@ -366,10 +410,8 @@ function GroupHeaderItem({
           {onDelete ? (
             <>
               {onRename || onUngroup ? <div className="recentOverflowMenuDivider" /> : null}
-              <button type="button" disabled={deleteBusy} onClick={onDelete}>
-                {deleteBusy
-                  ? t(messageKeys.conversationSidebarDeletingLabel)
-                  : t(messageKeys.conversationSidebarDeleteAllLabel)}
+              <button type="button" disabled={isRecentDeleteInFlight(busy)} onClick={onDelete}>
+                {t(messageKeys.conversationSidebarDeleteAllLabel)}
               </button>
             </>
           ) : null}
@@ -411,6 +453,7 @@ export function ConversationSidebarRecentsSection<
   const { t } = useI18n();
   function renderChannelItem(
     entry: ConversationSidebarRecentChannelEntry<TChannel>,
+    groupDeleting = false,
   ): ReactNode {
     const overflowKey = entry.key ?? entry.channel.id;
     return (
@@ -435,6 +478,7 @@ export function ConversationSidebarRecentsSection<
         )}
         titleOverride={entry.titleOverride}
         disableRename={entry.disableRename}
+        groupDeleting={groupDeleting}
       />
     );
   }
@@ -454,6 +498,9 @@ export function ConversationSidebarRecentsSection<
       }
 
       const overflowKey = entry.overflowKey ?? entry.key;
+      const groupDeleting = entry.deleteBusyKey
+        ? isConcurrentGroupBusy(busy, 'delete', groupIdFromBusyKey(entry.deleteBusyKey))
+        : false;
       return (
         <section key={entry.key} className="recentGroupCard">
           <GroupHeaderItem
@@ -473,7 +520,7 @@ export function ConversationSidebarRecentsSection<
             deleteBusyKey={entry.deleteBusyKey}
           />
           <div className="recentGroupList">
-            {entry.channels.map((channelEntry) => renderChannelItem(channelEntry))}
+            {entry.channels.map((channelEntry) => renderChannelItem(channelEntry, groupDeleting))}
           </div>
         </section>
       );
