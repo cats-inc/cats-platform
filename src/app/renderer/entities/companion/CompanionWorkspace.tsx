@@ -201,6 +201,7 @@ export function CompanionWorkspace({
       <CompanionSettingsSection
         catId={cat.id}
         catName={cat.name}
+        bossCat={cat.group === 'admin'}
         responseProfile={workspace.responseProfile}
         life={workspace.life}
         payload={payload}

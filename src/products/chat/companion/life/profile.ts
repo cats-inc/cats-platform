@@ -1,17 +1,24 @@
 import type {
+  CompanionInitiativeMode,
   CompanionLifeProfile,
   UpdateCompanionLifeProfileInput,
 } from '../contracts.js';
 
-/** SPEC-124 FR-1 defaults. */
+/** SPEC-124 FR-1 and SPEC-137 FR-1 defaults. */
 export const COMPANION_LIFE_DEFAULTS = {
   enabled: true,
+  mode: 'auto',
   bedtime: '23:00',
   wakeWindowStart: '07:00',
   wakeWindowEnd: '09:00',
 } as const;
 
 const CLOCK_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/u;
+const INITIATIVE_MODES: readonly CompanionInitiativeMode[] = ['auto', 'assist', 'companion'];
+
+export function isCompanionInitiativeMode(value: unknown): value is CompanionInitiativeMode {
+  return typeof value === 'string' && (INITIATIVE_MODES as readonly string[]).includes(value);
+}
 
 /** Minutes since local midnight for an `HH:MM` value, or null when malformed. */
 export function parseClockMinutes(value: unknown): number | null {
@@ -29,6 +36,7 @@ const ABSOLUTE_HOST_PATH_PATTERN = /^(?:\/|[A-Za-z]:[\\/]|\\\\)/u;
 export function createDefaultCompanionLifeProfile(nowIso: string): CompanionLifeProfile {
   return {
     ...COMPANION_LIFE_DEFAULTS,
+    enabledAt: null,
     sleepUntil: null,
     photoFolder: null,
     updatedAt: nowIso,
@@ -54,6 +62,10 @@ export function normalizeCompanionLifeProfile(raw: unknown, nowIso: string): Com
     : null;
   return {
     enabled: typeof record.enabled === 'boolean' ? record.enabled : COMPANION_LIFE_DEFAULTS.enabled,
+    mode: isCompanionInitiativeMode(record.mode) ? record.mode : COMPANION_LIFE_DEFAULTS.mode,
+    enabledAt: typeof record.enabledAt === 'string' && Number.isFinite(Date.parse(record.enabledAt))
+      ? record.enabledAt
+      : null,
     bedtime: readClock(record.bedtime, COMPANION_LIFE_DEFAULTS.bedtime),
     wakeWindowStart: readClock(record.wakeWindowStart, COMPANION_LIFE_DEFAULTS.wakeWindowStart),
     wakeWindowEnd: readClock(record.wakeWindowEnd, COMPANION_LIFE_DEFAULTS.wakeWindowEnd),
@@ -73,8 +85,12 @@ export function applyCompanionLifeProfilePatch(
   patch: CompanionLifeProfilePatch,
   nowIso: string,
 ): CompanionLifeProfile {
+  const enabled = patch.enabled ?? current.enabled;
   return {
-    enabled: patch.enabled ?? current.enabled,
+    enabled,
+    mode: patch.mode ?? current.mode,
+    // SPEC-137 FR-4: turning it back on is the owner asking for it.
+    enabledAt: enabled && !current.enabled ? nowIso : current.enabledAt,
     bedtime: patch.bedtime ?? current.bedtime,
     wakeWindowStart: patch.wakeWindowStart ?? current.wakeWindowStart,
     wakeWindowEnd: patch.wakeWindowEnd ?? current.wakeWindowEnd,
@@ -105,6 +121,12 @@ export function validateCompanionLifeUpdate(
       return { ok: false, code: 'invalid_companion_life', message: 'enabled must be a boolean.' };
     }
     update.enabled = input.enabled;
+  }
+  if (input.mode !== undefined) {
+    if (!isCompanionInitiativeMode(input.mode)) {
+      return { ok: false, code: 'invalid_companion_life_mode', message: 'mode must be auto, assist or companion.' };
+    }
+    update.mode = input.mode;
   }
   if (input.photoFolder !== undefined) {
     const folder = input.photoFolder === null ? null : readPhotoFolder(input.photoFolder);

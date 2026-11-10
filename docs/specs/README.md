@@ -1,5 +1,8 @@
 # Feature Specifications
 
+- [SPEC-137: Companion own initiative, modes and back-off](SPEC-137-companion-own-initiative-modes-and-back-off.md)
+  — 2026-11-11; the heartbeat shown as own initiative, `auto`/`assist`/`companion` and the
+  unanswered back-off, matching Cats Bot. Updates SPEC-124.
 - [SPEC-136: Desktop first-run wizard](SPEC-136-desktop-first-run-wizard.md)
   — approved, 2026-11-04; pages, rows, log, sign-in, Ollama, connections, details and the
   events behind them. Implemented under PLAN-130; clean-machine acceptance pending.
