@@ -44,6 +44,9 @@ export interface CompanionWorkspaceProps {
    * and the only audience. Wired by `CatProfilePage` to
    * `/chat/new?cat=<catId>` so the chat draft auto-fills. */
   onStartNewChatWithCat?: (catId: string) => void;
+  /** Open this cat's settings in Cats Directory
+   * (`/entities/cats/:catId/settings`). */
+  onOpenSettings?: (catId: string) => void;
   /** Hide the bottom Post / Photo / activity feed (CompanionFeed).
    * Used by the platform-level `/entities/cats/:catId` mount when the cat
    * doesn't have the companion skill — same chrome / header /
@@ -64,6 +67,7 @@ export function CompanionWorkspace({
   onCatAvatarSave,
   onDirectMessage,
   onStartNewChatWithCat,
+  onOpenSettings,
   hideFeed = false,
   hideCompanionToggle = false,
 }: CompanionWorkspaceProps) {
@@ -350,6 +354,31 @@ export function CompanionWorkspace({
                     <path d="M3 8h10" />
                   </svg>
                 </button>
+                {onOpenSettings ? (
+                  <button
+                    type="button"
+                    className="companionHeaderAction companionHeaderActionIconOnly"
+                    onClick={() => onOpenSettings(cat.id)}
+                    aria-label={t(messageKeys.catProfileOpenSettingsLabel, { name: cat.name })}
+                    title={t(messageKeys.catProfileOpenSettingsLabel, { name: cat.name })}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      {/* Gear: this cat's settings. */}
+                      <circle cx="8" cy="8" r="2.2" />
+                      <path d="M8 1.5v1.8M8 12.7v1.8M1.5 8h1.8M12.7 8h1.8M3.4 3.4l1.3 1.3M11.3 11.3l1.3 1.3M3.4 12.6l1.3-1.3M11.3 4.7l1.3-1.3" />
+                    </svg>
+                  </button>
+                ) : null}
               </>
             )}
           />

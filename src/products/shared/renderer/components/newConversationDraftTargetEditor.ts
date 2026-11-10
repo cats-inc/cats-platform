@@ -22,7 +22,7 @@ export interface DraftTargetEditorContext {
   /** Cats and temporary participants in the draft, its default participant included. */
   draftParticipantCount?: number;
   onUpdateDraftTemporaryParticipant: (participantId: string, input: DraftTemporaryParticipantUpdate) => void;
-  openCatPage: (catId: string) => void;
+  openCatSettings: (catId: string) => void;
 }
 
 /**
@@ -63,7 +63,7 @@ export function resolveDraftTargetEditor(
         modelSelection: cat.defaultModelSelection ?? null,
       },
       onChange: (value) => context.onDraftCatExecutionTargetOverride(catId, value),
-      onOpenSettings: () => context.openCatPage(catId),
+      onOpenSettings: () => context.openCatSettings(catId),
     };
   }
   const temporary = participant.participantId

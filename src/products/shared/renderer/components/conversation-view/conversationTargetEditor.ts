@@ -22,7 +22,7 @@ export interface ConversationTargetEditorContext {
     update: { name?: string; roleHint?: string | null },
   ) => void;
   /** Opens a cat's own page, where its default model lives. */
-  openCatPage: (catId: string) => void;
+  openCatSettings: (catId: string) => void;
   /** A room participant's conversation actions: coordinating, removing. */
   resolveParticipantActions?: (participantId: string) => AudienceTargetEditorAction[];
 }
@@ -64,7 +64,7 @@ export function resolveConversationTargetEditor(
           onUpdateParticipantTarget(roomParticipant.participantId, value);
         }
       },
-      onOpenSettings: catId ? () => context.openCatPage(catId) : undefined,
+      onOpenSettings: catId ? () => context.openCatSettings(catId) : undefined,
       actions: actions.length > 0 ? actions : undefined,
       profile: catId
         ? undefined
@@ -89,7 +89,7 @@ export function resolveConversationTargetEditor(
     return {
       target: directLaneExecutionTarget,
       onChange: (value) => onDirectLaneExecutionTargetChange(directLaneCat.id, value),
-      onOpenSettings: () => context.openCatPage(directLaneCat.id),
+      onOpenSettings: () => context.openCatSettings(directLaneCat.id),
     };
   }
   return null;

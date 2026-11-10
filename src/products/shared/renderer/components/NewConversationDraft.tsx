@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
+import { buildCatSettingsPath } from '../../../../shared/catsDirectoryPaths.js';
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel.js';
 import { ToastContainer } from '../../../../design/components/Toast.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
@@ -691,7 +692,7 @@ export function NewConversationDraft({
     draftTemporaryParticipants: draftRosterTemporaryParticipants,
     draftParticipantCount,
     onUpdateDraftTemporaryParticipant,
-    openCatPage: (catId) => navigate(`/entities/cats/${encodeURIComponent(catId)}`),
+    openCatSettings: (catId) => navigate(buildCatSettingsPath(catId)),
   });
   const {
     sidePanelOpen,

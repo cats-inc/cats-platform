@@ -15,6 +15,7 @@ import {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { browserLocalStorage } from '../../../../../shared/browserStorage.js';
+import { buildCatSettingsPath } from '../../../../../shared/catsDirectoryPaths.js';
 
 import type {
   AppShellPayload,
@@ -963,7 +964,7 @@ export function ConversationView({
               void onUpdateChannelParticipant(participantId, update);
             }
           : undefined,
-        openCatPage: (catId) => navigate(`/entities/cats/${encodeURIComponent(catId)}`),
+        openCatSettings: (catId) => navigate(buildCatSettingsPath(catId)),
         resolveParticipantActions,
       });
     },

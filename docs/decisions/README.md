@@ -1,5 +1,9 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-150: Manage cats in Cats Directory and keep Settings app-level](150-manage-cats-in-cats-directory-and-keep-settings-app-level.md)
+  — accepted, 2026-11-11. Directory is the only place to add and edit cats; each cat's settings
+  live at `/entities/cats/:catId/settings`; Settings drops its Cats group and keeps Assistants.
+  Supersedes ADR-009's Settings-hosted registry and ADR-052's `/settings/cats`.
 - [ADR-149: Let a conversation gain product scopes and never lose them](149-let-a-conversation-gain-product-scopes-and-never-lose-them.md)
   — decided by the owner (D1–D4), 2026-11-11; not implemented. A conversation's product scopes
   (`chat`, `code`, `work`) decide which Cats tools and records it reaches; the owner can add
@@ -205,7 +209,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [055-retire-lead-and-separate-composer-recipients-from-dispatch-policy](./055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md) | Retire lead semantics and separate composer recipients from dispatch policy | Accepted | 2026-04-08 |
 | [054-use-a-platform-level-guide-sidecar-for-day-0-assist](./054-use-a-platform-level-guide-sidecar-for-day-0-assist.md) | Use a platform-level Guide sidecar for day-0 assist | Superseded by ADR-070 | 2026-04-07 |
 | [053-use-structured-cats-home-platform-storage](./053-use-structured-cats-home-platform-storage.md) | Use structured `~/.cats` platform storage | Accepted | 2026-04-05 |
-| [052-use-canonical-platform-settings-routes-inside-product-shells](./052-use-canonical-platform-settings-routes-inside-product-shells.md) | Use canonical platform settings routes inside product shells | Accepted | 2026-04-04 |
+| [052-use-canonical-platform-settings-routes-inside-product-shells](./052-use-canonical-platform-settings-routes-inside-product-shells.md) | Use canonical platform settings routes inside product shells | Accepted; `/settings/cats` removed by ADR-150 | 2026-04-04 |
 | [051-generalize-participants-and-adopt-guide-cat-terminology](./051-generalize-participants-and-adopt-guide-cat-terminology.md) | Generalize participants and adopt Guide Cat terminology | Accepted | 2026-04-04 |
 | [049-cascade-product-deletes-into-runtime-session-deletion](./049-cascade-product-deletes-into-runtime-session-deletion.md) | Cascade product deletes into runtime session deletion | Accepted | 2026-04-02 |
 | [048-separate-platform-products-from-installable-apps](./048-separate-platform-products-from-installable-apps.md) | Separate platform products from installable apps | Accepted | 2026-03-31 |
@@ -241,7 +245,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [011-model-primary-orchestrator-as-visible-cat](./011-model-primary-orchestrator-as-visible-cat.md) | Model the primary orchestrator as a visible Cat | Accepted | 2026-03-19 |
 | [013-ship-cats-inc-as-an-executable-self-hosted-npm-app](./013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md) | Ship `cats` as an executable self-hosted npm app | Proposed | 2026-03-19 |
 | [010-separate-read-model-app-shell-from-restful-resource-apis](./010-separate-read-model-app-shell-from-restful-resource-apis.md) | Separate read-model app shell from RESTful resource APIs | Accepted | 2026-03-18 |
-| [009-prefer-chat-contextual-cat-entry-and-settings-registry](./009-prefer-chat-contextual-cat-entry-and-settings-registry.md) | Prefer chat-contextual cat entry and a Settings-hosted registry | Accepted | 2026-03-17 |
+| [009-prefer-chat-contextual-cat-entry-and-settings-registry](./009-prefer-chat-contextual-cat-entry-and-settings-registry.md) | Prefer chat-contextual cat entry and a Settings-hosted registry | Accepted; registry superseded by ADR-150 | 2026-03-17 |
 | [008-expose-cats-runtime-via-direct-api-and-mcp-facade](./008-expose-cats-runtime-via-direct-api-and-mcp-facade.md) | Expose `cats-runtime` via direct API and MCP facade | Accepted | 2026-03-16 |
 | [007-establish-cats-core-v1-for-chat-and-work](./007-establish-cats-core-v1-for-chat-and-work.md) | Establish `Cats Core v1` for Chat and Work | Accepted | 2026-03-16 |
 | [006-absorb-paperclip-concepts-without-copying-runtime](./006-absorb-paperclip-concepts-without-copying-runtime.md) | Absorb Paperclip concepts without copying Paperclip runtime | Proposed (Exploratory) | 2026-03-16 |

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { fetchAppShell } from '../../../products/shared/renderer/api/index.js';
@@ -14,23 +14,41 @@ import {
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 
 /**
- * The canvas's own copy of the chat payload. Every update the canvas reports
- * (create, rename, archive, avatar, boss, …) also refreshes the platform
- * envelope, because the Directory sidebar beside the canvas lists the
- * envelope's cats; without it a newly created cat would be missing from
- * "My Cats" until the user left the Directory.
+ * What the Directory sidebar shows for each cat. The sidebar lists the
+ * platform envelope's cats, so only a change here needs an envelope refresh;
+ * model, skill or memory saves do not.
+ */
+export function sidebarCatsSignature(payload: AppShellPayload): string {
+  return JSON.stringify(payload.chat.cats.map((cat) => [
+    cat.id,
+    cat.name,
+    cat.status,
+    cat.group,
+    cat.avatarUrl ?? null,
+    cat.avatarColor ?? null,
+  ]));
+}
+
+/**
+ * The canvas's own copy of the chat payload. An update that changes what the
+ * Directory sidebar shows (create, rename, archive, avatar, boss) also
+ * refreshes the platform envelope; without it a newly created cat would be
+ * missing from "My Cats" until the user left the Directory.
  */
 export function useDirectoryCatsPayload(): [
   AppShellPayload | null,
   (next: AppShellPayload) => void,
 ] {
   const [payload, setPayload] = useState<AppShellPayload | null>(null);
+  const sidebarSignature = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void fetchAppShell()
       .then((next) => {
-        if (!cancelled) setPayload(next);
+        if (cancelled) return;
+        sidebarSignature.current = sidebarCatsSignature(next);
+        setPayload(next);
       })
       .catch(() => {
         // Swallow — the chat product's own background refresh keeps
@@ -44,6 +62,9 @@ export function useDirectoryCatsPayload(): [
 
   const onPayloadUpdate = useCallback((next: AppShellPayload) => {
     setPayload(next);
+    const signature = sidebarCatsSignature(next);
+    if (signature === sidebarSignature.current) return;
+    sidebarSignature.current = signature;
     dispatchPlatformEnvelopeRefresh();
   }, []);
 
@@ -51,7 +72,9 @@ export function useDirectoryCatsPayload(): [
 }
 
 /**
- * Platform-level page for `/entities/cats` and `/entities/cats/new`.
+ * Platform-level page for `/entities/cats`, `/entities/cats/new` and a cat's
+ * settings at `/entities/cats/:catId/settings`. The URL is the only source of
+ * the selected cat; `/entities/cats` resolves to the first cat's settings.
  * Cats Directory owns the cat roster and the add-cat flow; Settings no
  * longer hosts a copy. Mounts `WorkspaceCatsCanvas` inside EntitiesShell,
  * so the sidebar is the platform-level directory sidebar, not chat's

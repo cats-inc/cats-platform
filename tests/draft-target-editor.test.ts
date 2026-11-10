@@ -40,7 +40,7 @@ function context(overrides: Partial<DraftTargetEditorContext> = {}): DraftTarget
     onDraftCatExecutionTargetOverride: () => assert.fail('no cat override expected'),
     draftTemporaryParticipants: [],
     onUpdateDraftTemporaryParticipant: () => assert.fail('no temporary participant update expected'),
-    openCatPage: () => {},
+    openCatSettings: () => {},
     ...overrides,
   };
 }
@@ -69,7 +69,7 @@ test('a draft cat edits a draft override that starts from the cat default', () =
   const mochi = chip('cat:mochi', { isCat: true, catId: 'mochi', name: 'Mochi' });
   const fresh = resolveDraftTargetEditor(mochi, context({
     onDraftCatExecutionTargetOverride: (catId, value) => overrides.push([catId, value]),
-    openCatPage: (catId) => opened.push(catId),
+    openCatSettings: (catId) => opened.push(catId),
   }));
   assert.ok(fresh);
   assert.deepEqual(fresh.target, claude);
