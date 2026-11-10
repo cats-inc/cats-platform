@@ -219,11 +219,12 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
 - **Priority**: High
 - **Status**: Planned
 
-### FR-027: Settings-Hosted Cat Registry
+### FR-027: Directory-Hosted Cat Registry
 
 - **Description**: The product shall keep the reusable cat registry as a global
-  management surface under `Settings > Cats`, reachable from the left-panel
-  account menu, while still allowing direct `Create new` there.
+  management surface in Cats Directory (`/entities/cats`), reachable from the
+  Lobby and the Directory sidebar, with direct `Create new` at
+  `/entities/cats/new`. Settings keeps app-level pages only (SPEC-102).
 - **Priority**: High
 - **Status**: Planned
 
@@ -742,16 +743,16 @@ screen first.
 - [ ] Successful assignment updates the current chat roster without requiring a
       separate registry visit
 
-### US-016: Operator Manages the Registry from Settings
+### US-016: Operator Manages the Registry from Cats Directory
 
 **As an** operator,
-**I want to** manage reusable cats from Settings,
+**I want to** manage reusable cats from Cats Directory,
 **So that** the registry stays global without crowding the main chat workflow.
 
 **Acceptance Criteria**:
-- [ ] A `Settings` entry is reachable from the left-panel account menu
-- [ ] `Settings > Cats` exposes the reusable registry
-- [ ] `Settings > Cats` still supports direct `Create new`
+- [ ] Cats Directory is reachable from the Lobby
+- [ ] `Cats Directory > My Cats` exposes the reusable registry
+- [ ] `Cats Directory > My Cats` still supports direct `Create new`
 
 ### US-017: Owner Optionally Creates a Guide Cat During Setup
 

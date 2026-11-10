@@ -940,7 +940,8 @@ Active routes:
 - `/chats/:channelId` — individual chat view with deep-link support
 - `/settings` — redirect to `/settings/general`
 - `/settings/general` — general settings
-- `/settings/cats` — cats registry
+- `/settings/assistants` — Catlas and assistant presets
+- `/entities/cats` — Cats Directory cat registry; `/entities/cats/new` adds a cat
 
 Persisted `channelId` values are opaque ids rather than title-derived slugs.
 
