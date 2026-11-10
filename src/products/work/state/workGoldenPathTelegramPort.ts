@@ -237,6 +237,8 @@ function buildInlineKeyboard(
 const BINDING_UNAVAILABLE_REASONS: ReadonlySet<string> = new Set([
   'telegram_not_bound_to_boss_cat',
   'delivery_client_not_configured',
+  // SPEC-140: the binding sends only to its owner's chat; this one definitely did not go.
+  'not_owner_chat',
 ]);
 
 /**

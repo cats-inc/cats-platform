@@ -9,6 +9,7 @@ import type {
 } from '../contracts.js';
 import { describeTelegramRoomRouting, type TelegramConversationMapper } from '../mapping.js';
 import { normalizeTelegramMessageSummary } from '../normalization.js';
+import { admitTelegramOwnerChat } from '../owner.js';
 import type { TelegramRelayStore } from '../store/index.js';
 import {
   pickTelegramMessage,
@@ -170,6 +171,43 @@ export function receiveTelegramUpdate(options: ReceiveTelegramUpdateOptions): Te
       status: 'ignored',
       roomRouting,
       reason: 'unsupported_chat_type',
+    });
+  }
+
+  // SPEC-140: only the binding's owner gets through; anyone else is ignored without a reply.
+  const ownerDecision = admitTelegramOwnerChat(options.store, {
+    bindingId: activeBinding.id,
+    chatId,
+    sender: {
+      displayName: [sender?.first_name, sender?.last_name]
+        .map((part) => readTelegramString(part))
+        .filter((part): part is string => part !== null)
+        .join(' ') || null,
+      username: readTelegramString(sender?.username) ?? readTelegramString(message.chat?.username),
+      preview: normalizeTelegramMessageSummary(message, { isEdited: pickedMessage.isEdited }).textPreview ?? null,
+    },
+    nowIso: acceptedAt,
+    scope: {
+      defaultBindingId: options.context.defaultBotBinding?.id ?? null,
+      bindingCreatedAt: activeBinding.createdAt ?? null,
+    },
+  });
+  if (!ownerDecision.allowed) {
+    // Like the other ignored updates, it takes no place in the dedupe window, and the
+    // receipt keeps no summary of a message that is not the owner's.
+    return recordTelegramIngressReceipt(options.store, {
+      context: options.context,
+      binding: activeBinding,
+      acceptedAt,
+      updateId,
+      chatId,
+      messageId,
+      mappedConversationId: null,
+      message: null,
+      isEdited: pickedMessage.isEdited,
+      status: 'ignored',
+      roomRouting,
+      reason: ownerDecision.reason,
     });
   }
 

@@ -224,7 +224,7 @@ test('transport fanout links a recent unlinked Telegram conversation for first w
   }
 });
 
-test('transport fanout skips auto-link when multiple unlinked Telegram conversations are ambiguous', async () => {
+test('transport fanout never mirrors to a stranger: a chat that is not the owner is ignored, and web messages reach only the owner (SPEC-140)', async () => {
   const fixture = await createFanoutFixture({}, { linkRoom: false });
   try {
     const context = {
@@ -235,7 +235,7 @@ test('transport fanout skips auto-link when multiple unlinked Telegram conversat
       defaultBotBinding: fixture.binding,
       selectedBotBinding: fixture.binding,
     };
-    fixture.relay.receiveUpdate({
+    const stranger = fixture.relay.receiveUpdate({
       update: {
         update_id: 102,
         message: {
@@ -246,6 +246,8 @@ test('transport fanout skips auto-link when multiple unlinked Telegram conversat
       },
       context,
     });
+    assert.equal(stranger.status, 'ignored');
+    assert.equal(stranger.reason, 'not_owner');
 
     await appendAndPublish(
       fixture,
@@ -257,13 +259,14 @@ test('transport fanout skips auto-link when multiple unlinked Telegram conversat
       { origin: 'web' },
     );
 
-    assert.equal(fixture.deliveries.length, 0);
+    assert.equal(fixture.deliveries.length, 1);
+    assert.equal(String(fixture.deliveries[0].chatId), '12345', 'only the owner, who wrote first, receives it');
     assert.equal(
       fixture.relay.resolveBinding({
         roomId: fixture.channelId,
         bindingId: fixture.binding.id,
-      }),
-      null,
+      })?.telegramChatId,
+      '12345',
     );
   } finally {
     fixture.stop();

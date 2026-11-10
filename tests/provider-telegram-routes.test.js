@@ -1,3 +1,4 @@
+import { request as httpRequest } from 'node:http';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -1148,6 +1149,90 @@ test('telegram status reports Boss Cat binding after Telegram ingress is configu
     assert.equal(payload.telegram.ingress.secretTokenConfigured, false);
     assert.equal(payload.telegram.delivery.status, 'not_configured');
   });
+});
+
+test('telegram owner: a stranger is ignored, and the owner resets or chooses through the API (SPEC-140)', async () => {
+  await withServer(
+    createRuntimeStub(),
+    async (baseUrl) => {
+      await configureTelegramBossCat(baseUrl);
+      const send = async (chatId, updateId) => {
+        const response = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            update_id: updateId,
+            message: { message_id: updateId, text: 'hi', chat: { id: chatId, type: 'private' } },
+          }),
+        });
+        return (await response.json()).receipt;
+      };
+
+      assert.equal((await send(12345, 501)).status, 'accepted');
+      const stranger = await send(67890, 502);
+      assert.equal(stranger.status, 'ignored');
+      assert.equal(stranger.reason, 'not_owner');
+
+      // One gate: a stranger's Work request, photo and button press go nowhere either.
+      for (const [index, update] of [
+        { message: { message_id: 1, text: '/work fix the build', chat: { id: 67890, type: 'private' } } },
+        { message: { message_id: 2, photo: [{ file_id: 'photo-1', file_unique_id: 'u1', width: 1, height: 1 }], chat: { id: 67890, type: 'private' } } },
+        { callback_query: { id: 'cb-1', data: 'work:approve:x', from: { id: 67890 }, message: { message_id: 3, chat: { id: 67890, type: 'private' } } } },
+      ].entries()) {
+        const response = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ update_id: 510 + index, ...update }),
+        });
+        const { receipt } = await response.json();
+        assert.equal(receipt.status, 'ignored');
+        assert.equal(receipt.reason, 'not_owner');
+      }
+      const afterStranger = await (await fetch(`${baseUrl}/api/transports/telegram/diagnostics`)).json();
+      assert.equal(afterStranger.telegram.bindings.some((binding) => binding.telegramChatId === '67890'), false);
+
+      const diagnostics = await (await fetch(`${baseUrl}/api/transports/telegram/diagnostics`)).json();
+      const [owner] = diagnostics.telegram.owners;
+      assert.equal(owner.state, 'pinned');
+      assert.equal(owner.userId, '12345');
+
+      const choose = await fetch(`${baseUrl}/api/transports/telegram/owners/${owner.bindingId}/choose`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ userId: '67890' }),
+      });
+      assert.equal(choose.status, 409, 'no choice is offered once an owner is pinned');
+
+      const reset = await fetch(`${baseUrl}/api/transports/telegram/owners/${owner.bindingId}/reset`, { method: 'POST' });
+      assert.equal(reset.status, 200);
+      assert.equal((await reset.json()).owner.state, 'choose');
+      const collected = await send(67890, 503);
+      assert.equal(collected.status, 'ignored');
+      assert.equal(collected.reason, 'owner_not_confirmed', 'after a reset nobody wins by writing first');
+      const picked = await fetch(`${baseUrl}/api/transports/telegram/owners/${owner.bindingId}/choose`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ userId: '67890' }),
+      });
+      assert.equal(picked.status, 200);
+      assert.equal((await picked.json()).owner.how, 'owner_choice');
+      assert.equal((await send(67890, 504)).status, 'accepted', 'the chosen chat is the owner now');
+
+      // Without the owner's session the route is refused (the auth gate's protected API).
+      const anonymous = await new Promise((resolve, reject) => {
+        const request = httpRequest(`${baseUrl}/api/transports/telegram/owners/${owner.bindingId}/reset`, { method: 'POST' }, resolve);
+        request.on('error', reject);
+        request.end();
+      });
+      anonymous.resume();
+      assert.ok([401, 403].includes(anonymous.statusCode), `anonymous reset refused (got ${anonymous.statusCode})`);
+
+      const missing = await fetch(`${baseUrl}/api/transports/telegram/owners/no-such-binding/reset`, { method: 'POST' });
+      assert.equal(missing.status, 404);
+      const wrongMethod = await fetch(`${baseUrl}/api/transports/telegram/owners/${owner.bindingId}/reset`);
+      assert.equal(wrongMethod.status, 405);
+    },
+  );
 });
 
 test('telegram webhook routes inbox traffic into the Boss Cat DM and relays a reply back to Telegram', async () => {

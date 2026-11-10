@@ -206,6 +206,35 @@ export interface TelegramConversationBinding {
   updatedAt: string;
 }
 
+/** SPEC-140: a private chat that once wrote to a binding, offered when the owner must choose. */
+export interface TelegramOwnerCandidate {
+  userId: string;
+  displayName: string | null;
+  username: string | null;
+  lastInboundAt: string | null;
+  /** The start of its last message, so the owner can tell accounts without names apart. */
+  lastMessagePreview: string | null;
+}
+
+/**
+ * SPEC-140: who owns a bot binding on Telegram. Only the pinned account's
+ * private chat reaches the bound Cat and receives its messages. In a private
+ * chat the chat id is the user's id, so `userId` is that chat id.
+ */
+export type TelegramOwnerRecord =
+  | {
+    state: 'pinned';
+    userId: string;
+    displayName: string | null;
+    username: string | null;
+    pinnedAt: string;
+    how: 'first_message' | 'history' | 'owner_choice';
+  }
+  | { state: 'open'; since: string }
+  | { state: 'choose'; since: string; candidates: TelegramOwnerCandidate[] };
+
+export type TelegramOwnerStatus = TelegramOwnerRecord & { bindingId: string; botName: string | null };
+
 export interface TelegramRelayContext {
   bossCatId: string | null;
   bossCatName: string | null;
@@ -284,7 +313,9 @@ export interface TelegramWebhookReceipt {
     | 'duplicate_update'
     | 'unsupported_update'
     | 'unsupported_chat_type'
-    | 'message_from_bot';
+    | 'message_from_bot'
+    | 'not_owner'
+    | 'owner_not_confirmed';
 }
 
 export interface TelegramWebhookIngressDiagnostics {
@@ -353,7 +384,8 @@ export interface TelegramDeliveryReceipt {
     | 'message_id_required'
     | 'text_required'
     | 'media_required'
-    | 'telegram_api_error';
+    | 'telegram_api_error'
+    | 'not_owner_chat';
   errorMessage?: string | null;
 }
 
@@ -404,5 +436,7 @@ export interface TelegramRelayDiagnostics {
     statuses: TelegramPollingStatus[];
   };
   bindings: TelegramConversationBinding[];
+  /** SPEC-140: the owner of each Telegram bot binding. */
+  owners: TelegramOwnerStatus[];
   note: string;
 }

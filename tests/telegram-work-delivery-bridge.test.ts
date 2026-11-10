@@ -127,6 +127,8 @@ function createRecordingRelay(log: RecordedCall[]): TelegramRelay {
     },
     resolveBinding: () => null,
     findSoleUnlinkedConversation: () => null,
+    resetOwner: () => ({ state: 'open', since: '2026-11-11T00:00:00.000Z' }),
+    chooseOwner: () => null,
     linkRoom: () => null,
     receiveUpdate: () => acceptedReceipt(),
     markUpdateProcessed: () => undefined,

@@ -14,6 +14,18 @@ import {
   InMemoryTelegramRelayStore,
 } from '../build/server/platform/transports/telegram/store/index.js';
 
+/** SPEC-140: the binding's owner, as if that chat had written to it first. */
+function pinOwner(store, bindingId, chatId) {
+  store.setOwner(bindingId, {
+    state: 'pinned',
+    userId: chatId,
+    displayName: null,
+    username: null,
+    pinnedAt: '2026-03-19T00:00:00.000Z',
+    how: 'first_message',
+  });
+}
+
 function createContext(overrides = {}) {
   const defaultBotBinding = {
     id: 'bot-binding-telegram-global',
@@ -400,12 +412,13 @@ test('telegram relay accepts older unseen update ids and keeps the high-water ma
     context,
   });
 
+  // The owner's own older update (SPEC-140: only the owner's chat gets through).
   const olderButUnseen = relay.receiveUpdate({
     update: {
       update_id: 99,
       message: {
         message_id: 77,
-        chat: { id: 67890, type: 'private' },
+        chat: { id: 12345, type: 'private' },
       },
     },
     context,
@@ -415,7 +428,7 @@ test('telegram relay accepts older unseen update ids and keeps the high-water ma
 
   const status = relay.getStatus(context);
   assert.equal(status.lastProcessedUpdateId, 101);
-  assert.equal(status.mappedConversationCount, 2);
+  assert.equal(status.mappedConversationCount, 1);
 });
 
 test('telegram relay bounds retained update ids while keeping a high-water status marker', () => {
@@ -425,6 +438,7 @@ test('telegram relay bounds retained update ids while keeping a high-water statu
     now: () => new Date('2026-03-19T00:00:00.000Z'),
   });
   const context = createContext();
+  // One owner chat (SPEC-140); the point here is the update-id window.
 
   relay.receiveUpdate({
     update: {
@@ -441,7 +455,7 @@ test('telegram relay bounds retained update ids while keeping a high-water statu
       update_id: 102,
       message: {
         message_id: 2,
-        chat: { id: 2, type: 'private' },
+        chat: { id: 1, type: 'private' },
       },
     },
     context,
@@ -451,7 +465,7 @@ test('telegram relay bounds retained update ids while keeping a high-water statu
       update_id: 103,
       message: {
         message_id: 3,
-        chat: { id: 3, type: 'private' },
+        chat: { id: 1, type: 'private' },
       },
     },
     context,
@@ -540,6 +554,7 @@ test('telegram relay exposes outbound delivery diagnostics and updates bindings 
     },
   });
   const context = createContext();
+  pinOwner(store, context.defaultBotBinding.id, '12345');
 
   const sendReceipt = await relay.deliver({
     request: {
@@ -634,6 +649,7 @@ test('telegram relay selects delivery clients per active binding when scoped bin
     botBindings: [createContext().defaultBotBinding, companionBinding],
     selectedBotBinding: companionBinding,
   });
+  pinOwner(store, companionBinding.id, '12345');
 
   const receipt = await relay.deliver({
     request: {

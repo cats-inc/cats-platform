@@ -18,6 +18,7 @@ import { MemoryCoreStore } from '../src/core/store.js';
 import { createDefaultCoreState } from '../src/core/model/index.js';
 import type { BotBindingRecord } from '../src/core/types.js';
 import { createTelegramRelay } from '../src/platform/transports/telegram/relay/index.js';
+import { InMemoryTelegramRelayStore } from '../src/platform/transports/telegram/store/index.js';
 import type {
   TelegramDeliveryClient,
   TelegramDeliveryClientResult,
@@ -100,7 +101,18 @@ function createHarness(): Harness {
   const sent: SentMessage[] = [];
   const bindings: BotBindingRecord[] = [botBinding()];
 
+  // SPEC-140: the binding sends only to its owner; the /work request came from the owner's chat.
+  const relayStore = new InMemoryTelegramRelayStore();
+  relayStore.setOwner(botBinding().id, {
+    state: 'pinned',
+    userId: CHAT_REF,
+    displayName: null,
+    username: null,
+    pinnedAt: '2026-09-02T10:00:00.000Z',
+    how: 'first_message',
+  });
   const relay = createTelegramRelay({
+    store: relayStore,
     resolveDeliveryClient: (binding) => {
       if (binding === null) {
         return null;
