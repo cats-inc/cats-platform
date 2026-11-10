@@ -136,12 +136,14 @@ board, nothing else.
 
 #### Joining an existing conversation
 
-> Placement note (2026-11-11): Settings › Cats no longer exists. Cats Directory now owns
-> per-cat settings, including the admin switch (SPEC-102, cats-platform#405). The per-Cat
-> visibility switch belongs on the Cat's Directory page. Where this one policy for every
-> Boss Cat lives still needs the owner's decision before implementation.
+> Placement (owner, 2026-11-11): Settings › Cats no longer exists (ADR-150). Cats Directory owns
+> per-cat settings, including the admin switch. The one policy for every Boss Cat is app-level,
+> so it gets a small Settings page of its own, 「主控貓」 (`/settings/boss-cat`). The page sits in
+> the Settings sidebar after 「助理」. The route joins the App reserved-settings paths. FR-15's
+> per-Cat switch is on each Cat's settings in Cats Directory.
 
-8. FR-8: Settings › Cats has one setting for every Boss Cat: 「主控貓加入其他對話」, with
+8. FR-8: Settings › 主控貓 (`/settings/boss-cat`) has one setting for every Boss Cat:
+   「主控貓加入其他對話」, with
    「不允許」, 「每次問我」 and 「允許」. The default is 「每次問我」.
    - It covers Chat, Code and Work conversations alike.
    - Its hint says that joining a Code or Work conversation grants that conversation's
@@ -203,7 +205,8 @@ board, nothing else.
 
 #### Owner control and privacy
 
-15. FR-15: Each Cat has a switch, 「讓主控貓看到這隻 Cat 的狀態」, on by default. When it is off:
+15. FR-15: Each Cat has a switch, 「讓主控貓看到這隻 Cat 的狀態」, on by default, on its settings in
+    Cats Directory (`/entities/cats/:catId/settings`). When it is off:
     - the board and the peer section show only the Cat's name;
     - group entries leave the Cat out of their participant lists;
     - a conversation whose only Cat participants are hidden appears as surface, id and age.
@@ -252,8 +255,9 @@ board, nothing else.
   in `runtimeTargeting.ts` is bounded by `joinedAt`.
 - **The card.** It is a new card kind with its own binding, rendered by the UI from live state
   and excluded from model context and transport fanout.
-- **Settings.** Settings › Cats gains the join policy next to the admin switch, and each Cat
-  gains its visibility switch.
+- **Settings.** A new Settings page, 「主控貓」 (`/settings/boss-cat`), after 「助理」, holds the join
+  policy; `/settings/boss-cat` joins the App reserved-settings paths. Each Cat's settings in Cats
+  Directory gain its visibility switch, next to the admin switch.
 - **Memory checkpoint.** `memoryLayers.ts` derives the checkpoint per target conversation.
 
 ## Test Plan

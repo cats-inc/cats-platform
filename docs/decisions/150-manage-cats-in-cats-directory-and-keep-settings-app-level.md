@@ -55,7 +55,9 @@ chat-contextual cat entry, and ADR-052's canonical `/settings/*` namespace, stan
 - The settings form and the profile are still two pages joined by links. Folding them into
   one tabbed page needs the owner to review the layout.
 - SPEC-139 FR-8 (one join policy for every Boss Cat) was written for "Settings › Cats".
-  Under decision 5, its home needs the owner's call.
+  Applying decision 5, the owner placed it on a small Settings page, 「主控貓」
+  (`/settings/boss-cat`), on 2026-11-11. SPEC-139 FR-15's per-Cat switch goes on the Cat's
+  Directory settings.
 
 ### Neutral
 
