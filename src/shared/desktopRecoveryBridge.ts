@@ -8,7 +8,7 @@
  */
 
 import type { VoiceCaptureBridge } from './voiceCaptureBridge.js';
-import type { ProviderManagerBridge } from '../../packages/provider-setup/manager.js';
+import type { ProviderManagerBridge } from '../../packages/provider-setup/providerSetupTypes.js';
 import type { SetupWizardBridge } from '../../packages/provider-setup/setupChrome.js';
 
 interface DesktopSetupResumeAction {

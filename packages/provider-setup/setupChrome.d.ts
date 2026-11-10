@@ -19,7 +19,7 @@ export interface CodexInitialization {
 }
 export interface SetupWizardBridge {
   facts(): Promise<unknown>;
-  runHelper(helperId: string, mode: 'check' | 'apply'): Promise<unknown>;
+  runHelper(helperId: string, mode: 'check' | 'apply' | 'upgrade' | 'force' | 'uninstall', options?: { dryRun?: boolean }): Promise<unknown>;
   cancelChecks(): Promise<void>;
   runs(): Promise<SetupRun[]>;
   onRun(listener: (run: SetupRun) => void): () => void;
@@ -78,6 +78,8 @@ export function mountSetupChrome(root: HTMLElement, bridge: unknown, options?: {
   css?: string;
   catHead?: string;
   browserOnly?: boolean;
+  /** SPEC-138: no rail, and the log at the foot of a Settings section. */
+  layout?: 'wizard' | 'settings';
   isBusy?: () => boolean;
   onStep?: (page: number) => void;
   onDetailsClosed?: () => void;

@@ -11,6 +11,14 @@
 | **Related plan** | [PLAN-130](../plans/PLAN-130-desktop-first-run-wizard.md) |
 | **Updates** | SPEC-116 FR-2, FR-3, FR-11 and FR-12 for onboarding; SPEC-054's entry points; SPEC-129's setup page layout, not its account rules |
 
+## Amendment — 2026-11-11
+
+[SPEC-138](SPEC-138-settings-ai-tools.md) gives Settings > Runtime these rows. The Non-Goal
+"Redesigning Settings > Runtime" and FR-41's "Settings keeps its behavior" no longer hold. FR-38's
+host-page-only rule also admits the main frame at the app origin under `/settings/runtime` for
+running a helper, cancelling checks, opening a terminal and Ollama models; wizard state, the
+restart draft and returning to host pages stay host-page only.
+
 ## Summary
 
 First run becomes one five-step wizard. The Desktop host draws tools, this computer and

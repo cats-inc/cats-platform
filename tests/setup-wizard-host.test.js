@@ -11,7 +11,9 @@ import {
 import { SetupRunLog } from '../build/desktop/setupRunLog.js';
 import { openCodexInitializationTerminal, openSignInTerminal, signInCommand, signInScript, terminalInvocation } from '../build/desktop/setupTerminal.js';
 import { takeSetupWizardDraft, validSetupWizardState, writeSetupWizardDraft } from '../build/desktop/setupWizardDraft.js';
-import { isSetupHostPage, scanEvents, selectionSaveEvent } from '../build/desktop/setupWizardEvents.js';
+import {
+  isSettingsToolsPage, isSetupHostPage, isSetupToolsPage, readSetupToolsHelperRequest, scanEvents, selectionSaveEvent,
+} from '../build/desktop/setupWizardEvents.js';
 import { isDesktopHostOnlyHelper, isDesktopPrerequisiteHelper } from '../build/desktop/setupAudit.js';
 
 /* ------------------------------ The log (SPEC-136 FR-21, FR-22) ------------------------------ */
@@ -207,12 +209,43 @@ test('a save and a scan leave evidence, in fixed words plus the error text', () 
   assert.equal(scanEvents([cli], undefined, new Error('down'))[0].kind, 'scan_failed');
 });
 
-test('only the host page can run helpers: a Platform page cannot', () => {
+test('wizard state belongs to the host page alone: a Platform page is not it', () => {
   assert.equal(isSetupHostPage('data:text/html;base64,PGh0bWw+'), true);
   assert.equal(isSetupHostPage('http://127.0.0.1:8181/setup'), false);
   assert.equal(isSetupHostPage('http://127.0.0.1:8181/settings/runtime'), false);
   assert.equal(isSetupHostPage(''), false);
   assert.equal(isSetupHostPage(undefined), false);
+});
+
+test('SPEC-138: helpers, terminals and models also run from Settings > Runtime, and nowhere else on Platform', () => {
+  const app = 'http://127.0.0.1:8181';
+  assert.equal(isSettingsToolsPage(`${app}/settings/runtime`, app), true);
+  assert.equal(isSettingsToolsPage(`${app}/settings/runtime?tab=x#top`, app), true);
+  assert.equal(isSettingsToolsPage(`${app}/settings/runtime/more`, app), true);
+  assert.equal(isSettingsToolsPage(`${app}/settings/runtimeish`, app), false);
+  assert.equal(isSettingsToolsPage(`${app}/settings/general`, app), false);
+  assert.equal(isSettingsToolsPage(`${app}/chat/c1`, app), false);
+  assert.equal(isSettingsToolsPage(`${app}/setup`, app), false);
+  assert.equal(isSettingsToolsPage('http://127.0.0.1:9999/settings/runtime', app), false, 'another port');
+  assert.equal(isSettingsToolsPage('http://evil.example/settings/runtime', app), false, 'another host');
+  assert.equal(isSettingsToolsPage('http://u:p@127.0.0.1:8181/settings/runtime', app), false, 'credentials');
+  assert.equal(isSettingsToolsPage(`${app}/settings/runtime`, null), false, 'no app yet');
+  assert.equal(isSettingsToolsPage('not a url', app), false);
+  assert.equal(isSetupToolsPage('data:text/html;base64,PGh0bWw+', app), true);
+  assert.equal(isSetupToolsPage(`${app}/settings/runtime`, app), true);
+  assert.equal(isSetupToolsPage(`${app}/settings/data`, app), false);
+});
+
+test('SPEC-138: a helper request takes a fixed mode, and a dry run only previews an uninstall', () => {
+  assert.deepEqual(readSetupToolsHelperRequest({ helperId: 'windows-claude-native-installer', mode: 'upgrade' }),
+    { helperId: 'windows-claude-native-installer', mode: 'upgrade', dryRun: false });
+  assert.deepEqual(readSetupToolsHelperRequest({ helperId: 'h', mode: 'uninstall', dryRun: true }), { helperId: 'h', mode: 'uninstall', dryRun: true });
+  for (const mode of ['check', 'apply', 'force']) assert.equal(readSetupToolsHelperRequest({ helperId: 'h', mode }).mode, mode);
+  assert.throws(() => readSetupToolsHelperRequest({ helperId: 'h', mode: 'upgrade', dryRun: true }), /only previews an uninstall/);
+  assert.throws(() => readSetupToolsHelperRequest({ helperId: 'h', mode: 'apply', dryRun: 'yes' }), /Invalid/);
+  assert.throws(() => readSetupToolsHelperRequest({ helperId: 'h', mode: 'shell' }), /Invalid/);
+  assert.throws(() => readSetupToolsHelperRequest({ helperId: '', mode: 'check' }), /Invalid/);
+  assert.throws(() => readSetupToolsHelperRequest(null), /Invalid/);
 });
 
 test('the PowerShell scripts row needs no selected provider, and stays out of the audit', () => {

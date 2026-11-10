@@ -26,7 +26,10 @@ import { ClaudeInChromeSection } from './ClaudeInChromeSection.js';
 import { DesktopControlSection } from './DesktopControlSection.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { resolveRuntimePresentationStatus } from '../../../shared/runtimeStatusPresentation.js';
-import { mountProviderManager, type ProviderManagerBridge } from '../../../../packages/provider-setup/manager.js';
+import { mountSetupChrome } from '../../../../packages/provider-setup/setupChrome.js';
+import { setupRowFacts } from '../../../../packages/provider-setup/setupFacts.js';
+import { mountSetupWizard } from '../../../../packages/provider-setup/setupWizard.js';
+import { SETUP_CAT_HEAD, SETUP_WIZARD_CSS } from '../../../../packages/provider-setup/setupWizardStyles.js';
 import {
   useI18n,
 } from '../i18n/index.js';
@@ -62,17 +65,47 @@ function resolveRuntimeStatusChip(
   }
 }
 
-function DesktopProviders({ onFeedback }: { onFeedback: (message: string) => void }) {
+/**
+ * SPEC-138: one instance for the window's life. Leaving Settings > Runtime detaches it and coming
+ * back attaches the same one, so a check or an install that is still running is never left behind
+ * by a second copy that does not know about it, and what the last check found is still there.
+ */
+let aiTools: { host: HTMLDivElement; view: ReturnType<typeof mountSetupWizard> } | null = null;
+let aiToolsFeedback: ((message: string) => void) | null = null;
+
+/** The first-run wizard's rows, log and details, in Settings' layout (ADR-148). */
+function DesktopAiTools({ onFeedback }: { onFeedback: (message: string) => void }) {
   const root = useRef<HTMLDivElement>(null);
   const { locale } = useI18n();
+  aiToolsFeedback = onFeedback;
   useEffect(() => {
     const bridge = resolveDesktopHostBridge();
-    if (!root.current || !bridge?.getProviderSetup || !bridge.applyProviderSetup || !bridge.runProviderSetup) return;
-    const view = mountProviderManager(root.current, bridge as ProviderManagerBridge, {
-      locale, onFeedback,
-    });
-    return () => view.destroy();
-  }, [locale, onFeedback]);
+    const container = root.current;
+    if (!container || !bridge?.setupWizard || !bridge.getProviderSetup) return undefined;
+    if (!aiTools) {
+      const host = document.createElement('div');
+      host.className = 'settingsAiTools';
+      const view = mountSetupWizard(host, bridge, {
+        mode: 'settings',
+        locale,
+        css: SETUP_WIZARD_CSS,
+        catHead: SETUP_CAT_HEAD,
+        createChrome: mountSetupChrome,
+        facts: setupRowFacts,
+        // A toast reaches whichever Settings page is showing; none is shown while away.
+        onFeedback: (message) => aiToolsFeedback?.(message),
+      });
+      aiTools = { host, view };
+    }
+    container.append(aiTools.host);
+    return () => {
+      aiToolsFeedback = null;
+      aiTools?.host.remove();
+    };
+    // Attached once per visit; the language follows below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => { aiTools?.view.setLocale(locale); }, [locale]);
   return <div ref={root} />;
 }
 
@@ -189,7 +222,7 @@ export function PlatformSettingsRuntime({
       ) : null}
 
       {desktopEnvironment ? (
-        <SettingsSection headerless><DesktopProviders onFeedback={showToast} /></SettingsSection>
+        <SettingsSection headerless className="settingsAiToolsSection"><DesktopAiTools onFeedback={showToast} /></SettingsSection>
       ) : null}
       <ClaudeInChromeSection showToast={showToast} />
       <DesktopControlSection showToast={showToast} />

@@ -258,6 +258,36 @@ export const SETUP_WIZARD_CSS = `
 .cats-setup *, .cats-setup *::before, .cats-setup *::after { animation-duration: 2.5s !important; transition: none !important; }
 .cats-setup .perch.busy .cat svg { animation: none; }
 }
+/* SPEC-138: the same rows inside Settings > Runtime. The section flows with the page; its action
+   foot and log dock to the bottom of the visible canvas while the section is on screen. */
+.cats-setup.is-settings { position: relative; inset: auto; z-index: auto; overflow: visible; container: cats-setup / inline-size;
+  border: 1px solid var(--line); border-radius: 12px; }
+.cats-setup.is-settings .wz { height: auto; display: block; }
+.cats-setup.is-settings .wz-frame { display: block; }
+.cats-setup.is-settings .main { display: block; }
+.cats-setup.is-settings .pane { overflow: visible; padding: 18px 20px 14px; scrollbar-gutter: auto; }
+.cats-setup.is-settings .pane > * { max-width: none; }
+.cats-setup.is-settings .pane > .lead { max-width: 72ch; }
+.cats-setup.is-settings .dock { position: sticky; bottom: 0; z-index: 2; border-radius: 0 0 11px 11px; overflow: hidden; }
+.cats-setup.is-settings .foot { padding: 10px 20px; min-height: 52px; }
+.cats-setup.is-settings .log.open .log-panel { height: clamp(96px, 22vh, 200px); }
+.cats-setup.is-settings .head { align-items: center; }
+.cats-setup.is-settings .section-title { flex: 1; min-width: 0; margin: 0; font-size: 18px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
+.cats-setup.is-settings .section-title:focus { outline: none; }
+.cats-setup.is-settings .lead strong { color: var(--ink); font-weight: 600; }
+.cats-setup .row-top .row-change { flex: none; display: inline-flex; align-items: center; gap: 5px; margin-left: 4px; font-size: 12.5px; color: var(--ink); cursor: pointer; white-space: nowrap; }
+.cats-setup .row-change input { margin: 0 !important; }
+.cats-setup .row-change.is-danger { color: var(--danger); font-weight: 600; }
+.cats-setup .row-top > .more { flex: none; margin-top: 1px; }
+.cats-setup .row.is-changing { background: var(--accent-soft); }
+.cats-setup .row-state .arrow { margin: 0 4px; color: var(--muted); }
+.cats-setup .shortcuts { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: -6px 0 8px; }
+@container cats-setup (max-width: 640px) {
+.cats-setup.is-settings .pane { padding: 14px 14px 10px; }
+.cats-setup.is-settings .foot { padding: 8px 14px; flex-wrap: wrap; }
+.cats-setup .picks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cats-setup .pick-pair { grid-template-columns: minmax(0, 1fr); }
+}
 @container cats-setup (max-height: 640px) {
 .cats-setup .pane { padding: 14px 28px 8px; }
 .cats-setup h1 { font-size: 22px; }

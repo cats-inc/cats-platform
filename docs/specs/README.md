@@ -1,5 +1,8 @@
 # Feature Specifications
 
+- [SPEC-138: Settings AI tools](SPEC-138-settings-ai-tools.md)
+  — approved, 2026-11-11; Settings > Runtime runs the first-run wizard's rows in a Settings
+  layout, with update, reinstall and uninstall as ticked changes. PLAN-131.
 - [SPEC-137: Companion own initiative, modes and back-off](SPEC-137-companion-own-initiative-modes-and-back-off.md)
   — 2026-11-11; the heartbeat shown as own initiative, `auto`/`assist`/`companion` and the
   unanswered back-off, matching Cats Bot. Updates SPEC-124.

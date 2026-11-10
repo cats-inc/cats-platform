@@ -15,6 +15,11 @@ point 1. Selection, admission, retained observations and helper ownership in tho
 records stand. It extends [ADR-021](021-keep-packaged-setup-and-provider-installation-in-the-host.md):
 OS installation stays in the host.
 
+Amended — 2026-11-11 by [ADR-148](148-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md).
+Point 16 is reversed: Settings > Runtime shows this wizard's rows in a Settings layout, and the
+shared manager's presentation is removed. Point 11's host-page-only rule, as SPEC-136 FR-38 words
+it, now also admits Settings > Runtime for helper runs, terminals and Ollama models.
+
 ## Context
 
 The owner compared Cats Desktop's first run with Cats Bot's wizard

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { ProviderManagerBridge } from '../../packages/provider-setup/manager.js';
+import type { ProviderManagerBridge } from '../../packages/provider-setup/providerSetupTypes.js';
 import type { DesktopGoogleAuthStartInput, DesktopGoogleAuthStatus,
   DesktopGoogleAuthAvailability } from './googleAuthContracts.js';
 
@@ -233,8 +233,11 @@ const bridge = {
     facts(): Promise<unknown> {
       return ipcRenderer.invoke('cats-host:setup-wizard-facts');
     },
-    runHelper(helperId: string, mode: 'check' | 'apply'): Promise<unknown> {
-      return ipcRenderer.invoke('cats-host:setup-wizard-run-helper', { helperId, mode });
+    // SPEC-138: Settings also updates, reinstalls and removes; a dry run only previews a removal.
+    runHelper(helperId: string, mode: 'check' | 'apply' | 'upgrade' | 'force' | 'uninstall', options?: { dryRun?: boolean }): Promise<unknown> {
+      return ipcRenderer.invoke('cats-host:setup-wizard-run-helper', {
+        helperId, mode, ...(options?.dryRun === true ? { dryRun: true } : {}),
+      });
     },
     cancelChecks(): Promise<void> {
       return ipcRenderer.invoke('cats-host:setup-wizard-cancel-checks');
