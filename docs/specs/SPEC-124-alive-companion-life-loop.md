@@ -119,7 +119,8 @@ installation and Boss Cat identity are not prerequisites for the new capability.
       the old session and rotates to a replacement in the same cwd, with a visible notice.
       The next heartbeat carries the handoff pack as usual. A heartbeat that fails with this
       class marks the lease `error`, so the next tick takes this wake path instead of
-      repeating the failed heartbeat.
+      repeating the failed heartbeat. A replacement that fails the same way before completing
+      a turn is not rotated again: the wake fails into the FR-11 backoff and the lane pauses.
     - runtime unreachable: do nothing.
 11. FR-11: When waking fails, back off 5 minutes. When the error message matches
     `Max sessions (N) reached` the reason is `no_capacity`, otherwise `wake_failed`. The same

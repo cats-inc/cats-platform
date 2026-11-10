@@ -55,6 +55,8 @@ import {
 import {
   appendProviderSessionRotationMessage,
   buildDirectMessageRuntimeResumeFailure,
+  buildProviderSessionReplacementFailure,
+  isUnconfirmedProviderSessionReplacement,
   shouldPreserveDirectMessageRuntimeSession,
 } from '../runtime-session/sessionContinuity.js';
 import { requireChannel } from '../model/index.js';
@@ -62,6 +64,8 @@ import { requireChannel } from '../model/index.js';
 export interface ReadyDispatchRequest {
   request: DispatchRequest;
   core?: CatsCoreState;
+  /** Waking the target already rotated off an unavailable provider session (ADR-068 §2). */
+  providerSessionRotated?: boolean;
 }
 
 function collectRecoveredDispatchMessages(
@@ -230,6 +234,7 @@ export async function prepareReadyRequests(
         target: ensured.target,
       },
       ...(taskExecutionContext ? { core: taskExecutionContext.core } : {}),
+      ...(ensured.rotatedProviderSession ? { providerSessionRotated: true } : {}),
     });
     updateDispatch(outcome, request.dispatchId, {
       laneId: ensured.target.laneId ?? request.target.laneId ?? null,
@@ -299,6 +304,8 @@ export async function executeDispatchWithRecovery(input: {
   runtimeDataDir?: string;
   runtimeRecovery: RuntimeDispatchRecoveryPolicy;
   core?: CatsCoreState;
+  /** Waking the target already used this send's one rotation. */
+  providerSessionRotated?: boolean;
 }): Promise<DispatchExecution> {
   let dispatchState = input.state;
   let request = input.request;
@@ -306,7 +313,7 @@ export async function executeDispatchWithRecovery(input: {
   let recoveredChannelChatCwd: string | undefined;
   let recoveredMessages: DispatchExecution['recoveredMessages'];
   let staleRecoveryCount = 0;
-  let providerSessionRotated = false;
+  let providerSessionRotated = input.providerSessionRotated === true;
   let dispatchCore = input.core;
 
   while (true) {
@@ -338,7 +345,6 @@ export async function executeDispatchWithRecovery(input: {
 
     const classifiedError = classifyRuntimeDispatchRecoveryError(execution.error, {
       code: execution.errorCode,
-      status: execution.errorStatus,
     });
     if (!classifiedError) {
       return {
@@ -350,8 +356,10 @@ export async function executeDispatchWithRecovery(input: {
     }
 
     // ADR-068 §2 (amended 2026-11-11): the provider-native session is gone, so a
-    // resume cannot restore it. DM lanes and rooms alike rotate once per send to a
-    // replacement in the same cwd; the next turn carries the continuity transplant.
+    // resume cannot restore it. DM lanes and rooms alike rotate to a replacement in
+    // the same cwd; the next turn carries the continuity transplant. A send rotates
+    // at most once, counting a rotation its wake already made, and a replacement is
+    // never rotated again until a turn completes in it.
     if (classifiedError.reason === 'provider_session_unavailable') {
       const unavailableError = describeProviderSessionUnavailableError(execution.error);
       const previousSessionId = request.target.sessionId?.trim() || null;
@@ -368,8 +376,17 @@ export async function executeDispatchWithRecovery(input: {
           ...(allMessages.length > 0 ? { recoveredMessages: allMessages } : {}),
         };
       };
-      if (providerSessionRotated || !previousSessionId) {
+      if (!previousSessionId) {
         return stopWith(unavailableError);
+      }
+      if (
+        providerSessionRotated
+        || isUnconfirmedProviderSessionReplacement(dispatchState, input.channelId, previousSessionId)
+      ) {
+        return stopWith(buildProviderSessionReplacementFailure({
+          sessionId: previousSessionId,
+          detail: unavailableError,
+        }));
       }
       providerSessionRotated = true;
 
@@ -430,6 +447,7 @@ export async function executeDispatchWithRecovery(input: {
       const rotatedState = appendProviderSessionRotationMessage(ensured.state, input.channelId, {
         target: ensured.target,
         previousSessionId,
+        replacementSessionId: ensured.target.sessionId,
         laneId: ensured.target.laneId ?? null,
         now: input.now,
       });

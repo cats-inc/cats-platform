@@ -41,7 +41,6 @@ const PROVIDER_SESSION_UNAVAILABLE_PATTERNS = [
 
 export interface RuntimeErrorSignal {
   code: string | null;
-  status: number | null;
 }
 
 function readErrorCodeField(value: unknown): string | null {
@@ -49,19 +48,17 @@ function readErrorCodeField(value: unknown): string | null {
 }
 
 /**
- * Reads the machine-readable fields a Runtime client error may carry. A send
- * through the supervision boundary arrives rewrapped, with Runtime's code kept
- * as `causeCode`.
+ * Reads Runtime's machine-readable code from a client error. A send through the
+ * supervision boundary arrives rewrapped, with the code kept as `causeCode`.
+ * Recovery keys on the code alone; an HTTP status does not survive that
+ * boundary and is not needed.
  */
 export function readRuntimeErrorSignal(error: unknown): RuntimeErrorSignal {
   if (!error || typeof error !== 'object') {
-    return { code: null, status: null };
+    return { code: null };
   }
-  const { code, causeCode, status } = error as { code?: unknown; causeCode?: unknown; status?: unknown };
-  return {
-    code: readErrorCodeField(causeCode) ?? readErrorCodeField(code),
-    status: typeof status === 'number' && Number.isFinite(status) ? status : null,
-  };
+  const { code, causeCode } = error as { code?: unknown; causeCode?: unknown };
+  return { code: readErrorCodeField(causeCode) ?? readErrorCodeField(code) };
 }
 
 const STALE_SESSION_PATTERNS = [
@@ -90,9 +87,10 @@ export function classifyRuntimeDispatchRecoveryError(
   reason: RuntimeDispatchRecoveryReason;
   retryable: boolean;
 } | null {
+  // Another typed code wins over the provider text, which is only a fallback.
   if (
     signal.code === PROVIDER_SESSION_UNAVAILABLE_CODE
-    || PROVIDER_SESSION_UNAVAILABLE_PATTERNS.some((pattern) => pattern.test(message))
+    || (!signal.code && PROVIDER_SESSION_UNAVAILABLE_PATTERNS.some((pattern) => pattern.test(message)))
   ) {
     return {
       reason: 'provider_session_unavailable',

@@ -607,6 +607,7 @@ export async function processDispatchQueue(
           runtimeDataDir: options.runtimeDataDir,
           runtimeRecovery,
           ...(readyRequest.core ? { core: readyRequest.core } : {}),
+          ...(readyRequest.providerSessionRotated ? { providerSessionRotated: true } : {}),
         }),
       ),
     );

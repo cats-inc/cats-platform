@@ -9,8 +9,11 @@ import type {
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
 import {
   requireChannel,
+  setChannelParticipantLease,
 } from '../model/index.js';
 import type { RoutingTarget } from '../mentionRouter.js';
+import { describeProviderSessionUnavailableError } from '../runtime-dispatch/recovery.js';
+import { appendProviderSessionRotationMessage } from './sessionContinuity.js';
 import {
   ensureChannelMarkedActive,
 } from './state.js';
@@ -23,6 +26,7 @@ import {
   resolveExistingTargetSessionOutcome,
   type EnsureTargetSessionResult,
   type ExistingTargetSessionOutcome,
+  type ProviderSessionRotation,
 } from './sessionReuse.js';
 import { startAttachedTargetSession } from './sessionLaunch.js';
 import {
@@ -46,6 +50,64 @@ type EnsureTargetSessionOptions = RuntimeSessionRoutingOptions & {
    */
   replacementSpawnCwd?: string | null;
 };
+
+const REPLACEMENT_START_FAILURE = ' A replacement session could not be started:';
+
+/**
+ * ADR-068 §2: a rotation counts only once its replacement exists. Then the
+ * notice names the replacement and the result reports the rotation. If the
+ * replacement could not be created, the lease goes back to the old session
+ * with the unavailable-provider error and its cwd, so the next attempt rotates
+ * into the same workspace instead of a default one.
+ */
+function commitProviderSessionRotation(
+  retried: EnsureTargetSessionResult,
+  input: {
+    channelId: string;
+    target: RoutingTarget;
+    rotation: ProviderSessionRotation;
+    now: Date;
+  },
+): EnsureTargetSessionResult {
+  const { rotation } = input;
+  const replacementSessionId = retried.target.sessionId?.trim() || null;
+  if (retried.error || !replacementSessionId) {
+    // A lease that already failed a replacement carries that suffix; keep one.
+    const cause = rotation.error.split(REPLACEMENT_START_FAILURE)[0]!.trim();
+    const error = describeProviderSessionUnavailableError(
+      `${cause}${REPLACEMENT_START_FAILURE} ${retried.error ?? 'no session was created.'}`,
+    );
+    return {
+      ...retried,
+      state: setChannelParticipantLease(
+        retried.state,
+        input.channelId,
+        input.target.participantId,
+        {
+          sessionId: rotation.previousSessionId,
+          cwd: rotation.previousCwd,
+          status: 'error',
+          lastError: error,
+          lastUsedAt: input.now.toISOString(),
+        },
+        input.now,
+      ),
+      target: { ...retried.target, sessionId: rotation.previousSessionId },
+      error,
+    };
+  }
+  return {
+    ...retried,
+    state: appendProviderSessionRotationMessage(retried.state, input.channelId, {
+      target: retried.target,
+      previousSessionId: rotation.previousSessionId,
+      replacementSessionId,
+      laneId: retried.target.laneId ?? null,
+      now: input.now,
+    }),
+    rotatedProviderSession: true,
+  };
+}
 
 export async function ensureTargetSession(
   state: ChatState,
@@ -90,7 +152,8 @@ export async function ensureTargetSession(
     },
   });
   if (existingSessionOutcome.kind === 'retry') {
-    return ensureTargetSession(
+    const rotation = existingSessionOutcome.providerSessionRotation;
+    const retried = await ensureTargetSession(
       existingSessionOutcome.state,
       channelId,
       existingSessionOutcome.target,
@@ -99,11 +162,17 @@ export async function ensureTargetSession(
       {
         ...options,
         resolvedTaskExecutionContext: preparedWake.taskExecutionContext ?? null,
-        ...(existingSessionOutcome.replacementSpawnCwd
-          ? { replacementSpawnCwd: existingSessionOutcome.replacementSpawnCwd }
-          : {}),
+        ...(rotation?.previousCwd ? { replacementSpawnCwd: rotation.previousCwd } : {}),
       },
     );
+    return rotation
+      ? commitProviderSessionRotation(retried, {
+          channelId,
+          target: existingSessionOutcome.target,
+          rotation,
+          now,
+        })
+      : retried;
   }
   if (existingSessionOutcome.kind === 'resolved') {
     return existingSessionOutcome.result;

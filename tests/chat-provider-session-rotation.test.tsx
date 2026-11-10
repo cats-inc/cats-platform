@@ -66,13 +66,18 @@ interface RotationStub {
 function rotationRuntimeStub(options: {
   fail: (sessionId: string, sendIndex: number) => Error | null;
   resume?: (sessionId: string) => RuntimeSessionInfo;
+  createFail?: (createCall: number) => Error | null;
 }): RotationStub {
+  let createCalls = 0;
   const created: Array<Record<string, unknown>> = [];
   const closed: string[] = [];
   const resumed: string[] = [];
   const sent: RotationStub['sent'] = [];
   const client = {
     async createSession(input: Record<string, unknown>) {
+      createCalls += 1;
+      const createError = options.createFail?.(createCalls);
+      if (createError) throw createError;
       created.push(input);
       const id = `session-${created.length}`;
       return {
@@ -203,6 +208,11 @@ test('provider session unavailable is its own class, matched by code first and t
   );
   assert.equal(classifyRuntimeDispatchRecoveryError('Session is closed. Resume it first.')?.reason, 'stale_session');
   assert.equal(classifyRuntimeDispatchRecoveryError('Native session is unavailable'), null);
+  assert.notEqual(
+    classifyRuntimeDispatchRecoveryError(GROK_GONE, { code: 'session_busy' })?.reason,
+    'provider_session_unavailable',
+    'another typed code wins over the provider text',
+  );
   // A typed code survives in a lease's lastError text.
   const stored = describeProviderSessionUnavailableError('Gone.');
   assert.equal(classifyRuntimeDispatchRecoveryError(stored)?.reason, 'provider_session_unavailable');
@@ -249,6 +259,7 @@ for (const signal of UNAVAILABLE_SIGNALS) {
     assert.equal(notices[0]?.senderKind, 'system');
     assert.equal(notices[0]?.metadata.verbosity, undefined, 'the notice is visible by default');
     assert.equal(notices[0]?.metadata.previousSessionId, 'session-1');
+    assert.equal(notices[0]?.metadata.replacementSessionId, 'session-2');
     assert.match(notices[0]?.body ?? '', /continues in a new session in the same workspace/u);
   });
 }
@@ -292,6 +303,7 @@ test('a replacement that fails the same way stops after one rotation and keeps t
   assert.deepEqual(stub.sent.map((row) => row.sessionId), ['session-1', 'session-1', 'session-2']);
   assert.equal(second.results[0]?.status, 'error');
   assert.match(second.results[0]?.error ?? '', /No saved copy of session/u);
+  assert.match(second.results[0]?.error ?? '', /paused until you reset or retarget/u);
   assert.equal(lease?.sessionId, 'session-2');
   assert.equal(lease?.status, 'error');
   assert.equal(lease?.cwd, LANE_WORKSPACE);
@@ -390,4 +402,146 @@ test('any other resume failure still pauses the direct lane', async () => {
   assert.equal(lease?.status, 'error');
   assert.match(lease?.lastError ?? '', /lane is paused until you reset or retarget/u);
   assert.equal(rotationNotices(awakened.state, channelId).length, 0);
+});
+
+test('after a failed replacement, the next send creates no session and pauses the lane', async () => {
+  const { state, channelId, participantId } = createDirectLane();
+  const stub = rotationRuntimeStub({
+    fail: (_sessionId, sendIndex) => (sendIndex >= 2 ? new Error(GROK_GONE) : null),
+  });
+  const first = await routeChannelMessage(state, channelId, { body: 'Hello', senderName: 'Owner' },
+    stub.client, new Date('2026-11-11T01:01:00.000Z'));
+  const second = await routeChannelMessage(first.state, channelId, { body: 'Hello again', senderName: 'Owner' },
+    stub.client, new Date('2026-11-11T01:02:00.000Z'));
+  const sentBefore = stub.sent.length;
+
+  const third = await routeChannelMessage(second.state, channelId, { body: 'Third', senderName: 'Owner' },
+    stub.client, new Date('2026-11-11T01:03:00.000Z'));
+
+  const lease = resolveParticipantLeaseAttachment(requireChannel(third.state, channelId), participantId);
+  assert.equal(stub.created.length, 2, 'the replacement is not rotated again before it completes a turn');
+  assert.deepEqual(stub.closed, ['session-1']);
+  assert.equal(stub.sent.length, sentBefore, 'the paused lane does not send into the failed replacement');
+  assert.equal(rotationNotices(third.state, channelId).length, 1);
+  assert.equal(third.results[0]?.status, 'error');
+  assert.match(third.results[0]?.error ?? '', /paused until you reset or retarget/u);
+  assert.equal(lease?.sessionId, 'session-2');
+  assert.equal(lease?.status, 'error');
+});
+
+test('a send whose wake already rotated does not rotate a second time', async () => {
+  const { state, channelId, participantId } = directLaneWithLease({ status: 'error', lastError: GROK_GONE });
+  const stub = rotationRuntimeStub({ fail: () => new Error(GROK_GONE) });
+
+  const routed = await routeChannelMessage(state, channelId, { body: 'Are you there?', senderName: 'Owner' },
+    stub.client, new Date('2026-11-11T01:05:00.000Z'));
+
+  const lease = resolveParticipantLeaseAttachment(requireChannel(routed.state, channelId), participantId);
+  assert.equal(stub.created.length, 1, 'one rotation per send across the wake and send paths');
+  assert.deepEqual(stub.closed, ['session-old']);
+  assert.deepEqual(stub.sent.map((row) => row.sessionId), ['session-1']);
+  assert.equal(rotationNotices(routed.state, channelId).length, 1);
+  assert.equal(routed.results[0]?.status, 'error');
+  assert.equal(lease?.sessionId, 'session-1');
+  assert.equal(lease?.cwd, LANE_WORKSPACE);
+});
+
+test('a successful turn in a replacement re-arms rotation', async () => {
+  const { state, channelId, participantId } = createDirectLane();
+  const stub = rotationRuntimeStub({
+    fail: (sessionId, sendIndex) => (
+      (sessionId === 'session-1' && sendIndex === 2) || (sessionId === 'session-2' && sendIndex === 4)
+        ? new Error(GROK_GONE)
+        : null
+    ),
+  });
+  let current = state;
+  for (const [index, body] of ['One', 'Two', 'Three'].entries()) {
+    current = (await routeChannelMessage(current, channelId, { body, senderName: 'Owner' }, stub.client,
+      new Date(`2026-11-11T01:0${index + 1}:00.000Z`))).state;
+  }
+
+  const lease = resolveParticipantLeaseAttachment(requireChannel(current, channelId), participantId);
+  assert.deepEqual(stub.sent.map((row) => row.sessionId),
+    ['session-1', 'session-1', 'session-2', 'session-2', 'session-3']);
+  assert.deepEqual(stub.closed, ['session-1', 'session-2']);
+  assert.equal(rotationNotices(current, channelId).length, 2);
+  assert.equal(lease?.sessionId, 'session-3');
+  assert.equal(lease?.status, 'ready');
+  assert.equal(stub.created[2]?.cwd, LANE_WORKSPACE);
+});
+
+test('an activation rotation whose replacement cannot start keeps the class and cwd, posts no notice, and the next wake rotates into the same workspace', async () => {
+  const { state, channelId, participantId } = directLaneWithLease({ status: 'error', lastError: GROK_GONE });
+  const stub = rotationRuntimeStub({
+    fail: () => null,
+    createFail: (createCall) => (createCall === 1 ? new Error('Max sessions (5) reached') : null),
+  });
+
+  const firstWake = await wakeChannelEntryParticipant(state, channelId, stub.client,
+    new Date('2026-11-11T01:05:00.000Z'), { observeRuntimeForRevive: true });
+  const failed = resolveParticipantLeaseAttachment(requireChannel(firstWake.state, channelId), participantId);
+  assert.equal(firstWake.result?.status, 'error');
+  assert.equal(rotationNotices(firstWake.state, channelId).length, 0, 'no notice before a replacement exists');
+  assert.equal(failed?.sessionId, 'session-old');
+  assert.equal(failed?.cwd, LANE_WORKSPACE);
+  assert.equal(failed?.status, 'error');
+  assert.equal(classifyRuntimeDispatchRecoveryError(failed?.lastError ?? '')?.reason, 'provider_session_unavailable');
+  assert.match(failed?.lastError ?? '', /Max sessions \(5\) reached/u);
+
+  const secondWake = await wakeChannelEntryParticipant(firstWake.state, channelId, stub.client,
+    new Date('2026-11-11T01:11:00.000Z'), { observeRuntimeForRevive: true });
+  const rotated = resolveParticipantLeaseAttachment(requireChannel(secondWake.state, channelId), participantId);
+  assert.equal(secondWake.result?.status, 'started');
+  assert.equal(stub.created.length, 1);
+  assert.equal(stub.created[0]?.cwd, LANE_WORKSPACE, 'the retry keeps the old workspace, not a default one');
+  assert.equal(rotated?.sessionId, 'session-1');
+  assert.equal(rotated?.status, 'ready');
+  assert.equal(rotationNotices(secondWake.state, channelId).length, 1);
+  assert.equal(rotationNotices(secondWake.state, channelId)[0]?.metadata.replacementSessionId, 'session-1');
+});
+
+test('after an activation rotation the next owner send reaches the replacement with a full transplant', async () => {
+  const { state, channelId, participantId } = createDirectLane();
+  const stub = rotationRuntimeStub({ fail: () => null });
+  const store = new MemoryChatStore(state);
+  const first = await routeChannelMessage(state, channelId, { body: 'Watch the birds', senderName: 'Owner' },
+    stub.client, new Date('2026-11-11T01:01:00.000Z'), { chatStore: store });
+  const paused = setChannelParticipantLease(first.state, channelId, participantId,
+    { status: 'error', lastError: GROK_GONE }, new Date('2026-11-11T01:03:00.000Z'));
+
+  const awakened = await wakeChannelEntryParticipant(paused, channelId, stub.client,
+    new Date('2026-11-11T01:05:00.000Z'), { observeRuntimeForRevive: true });
+  const routed = await routeChannelMessage(awakened.state, channelId, { body: 'Hello after rotation', senderName: 'Owner' },
+    stub.client, new Date('2026-11-11T01:06:00.000Z'), { chatStore: store });
+
+  const last = stub.sent.at(-1)!;
+  const lease = resolveParticipantLeaseAttachment(requireChannel(routed.state, channelId), participantId);
+  assert.deepEqual(stub.closed, ['session-1']);
+  assert.equal(stub.created[1]?.cwd, LANE_WORKSPACE);
+  assert.equal(last.sessionId, 'session-2');
+  assert.equal(last.input?.context?.metadata?.continuityMode, 'full_transplant');
+  assert.match(last.input?.instructions ?? '', /\[user:Owner\] Watch the birds/u);
+  assert.match(last.input?.instructions ?? '', /\[agent:Tabby\] reply from session-1/u);
+  assert.equal(lease?.sessionId, 'session-2');
+  assert.equal(lease?.status, 'ready');
+});
+
+test('repeated replacement start failures keep one cause in the stored error', async () => {
+  const { state, channelId, participantId } = directLaneWithLease({ status: 'error', lastError: GROK_GONE });
+  const stub = rotationRuntimeStub({
+    fail: () => null,
+    createFail: () => new Error('Max sessions (5) reached'),
+  });
+  let current = state;
+  for (const minute of ['05', '11', '17']) {
+    current = (await wakeChannelEntryParticipant(current, channelId, stub.client,
+      new Date(`2026-11-11T01:${minute}:00.000Z`), { observeRuntimeForRevive: true })).state;
+  }
+  const lease = resolveParticipantLeaseAttachment(requireChannel(current, channelId), participantId);
+  assert.equal((lease?.lastError ?? '').split('A replacement session could not be started').length - 1, 1);
+  assert.equal(classifyRuntimeDispatchRecoveryError(lease?.lastError ?? '')?.reason, 'provider_session_unavailable');
+  assert.equal(lease?.sessionId, 'session-old');
+  assert.equal(lease?.cwd, LANE_WORKSPACE);
+  assert.equal(rotationNotices(current, channelId).length, 0);
 });

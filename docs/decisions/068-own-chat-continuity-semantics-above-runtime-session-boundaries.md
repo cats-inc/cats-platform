@@ -98,10 +98,16 @@ only, a direct lane behaves like a room:
   not the channel's default spawn cwd.
 - The replacement's first turn receives the continuity transplant from Chat's
   own transcript, as for a retarget.
-- The conversation gets a visible system message saying it continues in a new
-  session in the same workspace.
-- At most one rotation happens per send. If the replacement fails the same way,
-  the error is shown and the turn stops.
+- Once the replacement exists, the conversation gets a visible system message
+  saying it continues in a new session in the same workspace. If the
+  replacement cannot be created, there is no notice; the lease keeps the old
+  session, its cwd and the error, so the next attempt rotates into the same
+  workspace.
+- A session produced by a rotation is never rotated again until a turn
+  completes successfully in it. Until then the same failure surfaces the error
+  and pauses the lane, as other direct-lane errors do. A send rotates at most
+  once, counting a rotation made while waking its target. A quiet heartbeat
+  leaves no message, so it does not count as a completed turn.
 
 Every other error keeps the direct-lane rule: surface it, preserve the
 attachment, and wait for an explicit reset or retarget. The reason for the

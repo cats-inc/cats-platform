@@ -51,9 +51,8 @@ export interface DispatchExecution extends DispatchRequest {
   responseSegments: RuntimeMessageSegment[] | null;
   usage: MessageUsageSummary | null;
   error: string | null;
-  /** Runtime's machine-readable cause and HTTP status for `error`, when it gave them. */
+  /** Runtime's machine-readable cause for `error`, when it gave one. */
   errorCode?: string | null;
-  errorStatus?: number | null;
   conversationId?: string | null;
   containerId?: string | null;
   transportBindingId?: string | null;
@@ -330,7 +329,6 @@ export async function executeDispatch(
       usage: null,
       error: error instanceof Error ? error.message : 'Unknown runtime error',
       errorCode: errorSignal.code,
-      errorStatus: errorSignal.status,
       conversationId: resolvedConversationId,
       containerId: resolvedContainerId,
       transportBindingId: resolvedTransportBindingId,

@@ -16,7 +16,10 @@ import {
   setChannelParticipantLease,
 } from '../model/index.js';
 import type { RoutingTarget } from '../mentionRouter.js';
-import { classifyRuntimeDispatchRecoveryError } from '../runtime-dispatch/recovery.js';
+import {
+  classifyRuntimeDispatchRecoveryError,
+  describeProviderSessionUnavailableError,
+} from '../runtime-dispatch/recovery.js';
 import {
   resolvePrimaryParticipantExecutionAssignment,
   resolveParticipantLeaseAttachment,
@@ -32,8 +35,9 @@ import {
   resumeRuntimeSession,
 } from './sessionResume.js';
 import {
-  appendProviderSessionRotationMessage,
   buildDirectMessageRuntimeResumeFailure,
+  buildProviderSessionReplacementFailure,
+  isUnconfirmedProviderSessionReplacement,
   shouldPreserveDirectMessageRuntimeSession,
 } from './sessionContinuity.js';
 
@@ -44,7 +48,7 @@ const MANUALLY_REVIVABLE_SESSION_STATES = new Set([
   'terminated_with_error',
 ]);
 
-type EnsureTargetWakeRecorder = (
+export type EnsureTargetWakeRecorder = (
   status: RoomWakeRequest['status'],
   error?: string | null,
 ) => RoomWakeRequest | null;
@@ -55,6 +59,17 @@ export interface EnsureTargetSessionResult {
   error: string | null;
   wakeRequest: RoomWakeRequest | null;
   taskExecutionContext: ChannelTaskExecutionContext | undefined;
+  /** This ensure rotated off an unavailable provider session; a send counts it against its budget. */
+  rotatedProviderSession?: boolean;
+}
+
+/** What a replacement for a session whose provider session is gone must keep. */
+export interface ProviderSessionRotation {
+  previousSessionId: string;
+  /** The old lease's workspace, which the replacement is created in. */
+  previousCwd: string | null;
+  /** The error that showed the provider session is gone; kept if the replacement cannot start. */
+  error: string;
 }
 
 export type ExistingTargetSessionOutcome =
@@ -65,8 +80,8 @@ export type ExistingTargetSessionOutcome =
       kind: 'retry';
       state: ChatState;
       target: RoutingTarget;
-      /** The workspace the replacement must keep (ADR-068 §2). */
-      replacementSpawnCwd?: string | null;
+      /** Set when this retry replaces a session whose provider session is gone (ADR-068 §2). */
+      providerSessionRotation?: ProviderSessionRotation;
     }
   | {
       kind: 'resolved';
@@ -228,59 +243,92 @@ function applyLeaseLaneAttachmentToTarget(
   );
 }
 
-function leaseHasUnavailableProviderSession(
+function readUnavailableProviderSessionLeaseError(
   state: ChatState,
   channelId: string,
   target: RoutingTarget,
-): boolean {
+): string | null {
   const lease = resolveParticipantLeaseAttachment(
     requireChannel(state, channelId),
     target.participantId,
   );
   return lease?.status === 'error'
     && typeof lease.lastError === 'string'
-    && classifyRuntimeDispatchRecoveryError(lease.lastError)?.reason === 'provider_session_unavailable';
+    && classifyRuntimeDispatchRecoveryError(lease.lastError)?.reason === 'provider_session_unavailable'
+    ? lease.lastError
+    : null;
 }
 
 /**
  * ADR-068 §2 (amended 2026-11-11): the provider-native session behind this
  * Runtime session is gone, so resuming cannot restore it. DM lanes and rooms
- * alike close it and continue in a replacement session in the same cwd; the
+ * alike close it and retry with a replacement in the same cwd; the
  * replacement's first turn receives the continuity transplant.
+ * `ensureTargetSession` commits the rotation (notice, budget) only once the
+ * replacement exists, and restores the error and cwd if it cannot be created.
  */
 async function rotateUnavailableProviderSession(input: {
   state: ChatState;
   channelId: string;
   target: RoutingTarget;
   sessionId: string;
+  error: string;
   runtimeClient: RuntimeClient;
   now: Date;
 }): Promise<ExistingTargetSessionOutcome> {
   const lease = resolveExecutionLeaseSnapshot(requireChannel(input.state, input.channelId), input.target);
-  const previousCwd = lease?.cwd?.trim() || null;
+  // Closing first also frees the capacity slot the replacement needs.
   await input.runtimeClient.closeSession(input.sessionId).catch(() => {});
-  const resetState = setChannelParticipantLease(
+  return {
+    kind: 'retry',
+    state: setChannelParticipantLease(
+      input.state,
+      input.channelId,
+      input.target.participantId,
+      { sessionId: null, status: 'not_started', lastError: null, startedAt: null },
+      input.now,
+    ),
+    target: { ...input.target, sessionId: null },
+    providerSessionRotation: {
+      previousSessionId: input.sessionId,
+      previousCwd: lease?.cwd?.trim() || null,
+      error: input.error,
+    },
+  };
+}
+
+/**
+ * A rotation replacement that hits the same failure before completing a turn
+ * is not rotated again: it pauses with the error, as other DM errors do.
+ */
+function pauseUnconfirmedProviderSessionReplacement(input: {
+  state: ChatState;
+  channelId: string;
+  target: RoutingTarget;
+  sessionId: string;
+  detail: string;
+  laneId: string | null;
+  now: Date;
+  recordTargetWake: EnsureTargetWakeRecorder;
+  taskExecutionContext: ChannelTaskExecutionContext | undefined;
+}): ExistingTargetSessionOutcome {
+  const error = buildProviderSessionReplacementFailure({ sessionId: input.sessionId, detail: input.detail });
+  const errorState = setChannelParticipantLease(
     input.state,
     input.channelId,
     input.target.participantId,
-    {
-      sessionId: null,
-      status: 'not_started',
-      lastError: null,
-      startedAt: null,
-    },
+    { status: 'error', lastError: error, lastUsedAt: input.now.toISOString() },
     input.now,
   );
   return {
-    kind: 'retry',
-    state: appendProviderSessionRotationMessage(resetState, input.channelId, {
+    kind: 'resolved',
+    result: {
+      state: applyLeaseLaneAttachmentToTarget(errorState, input.channelId, input.target, input.laneId, input.now),
       target: input.target,
-      previousSessionId: input.sessionId,
-      laneId: input.target.laneId ?? null,
-      now: input.now,
-    }),
-    target: { ...input.target, sessionId: null },
-    replacementSpawnCwd: previousCwd,
+      error,
+      wakeRequest: input.recordTargetWake('failed', error),
+      taskExecutionContext: input.taskExecutionContext,
+    },
   };
 }
 
@@ -420,18 +468,31 @@ export async function resolveExistingTargetSessionOutcome(input: {
       ),
     });
 
-  if (
-    !hasDirectCatExecutionTargetDrift
-    && leaseHasUnavailableProviderSession(state, channelId, attachedTarget)
-  ) {
-    return rotateUnavailableProviderSession({
-      state,
-      channelId,
-      target: attachedTarget,
-      sessionId: attachedTarget.sessionId,
-      runtimeClient,
-      now,
-    });
+  const unavailableLeaseError = hasDirectCatExecutionTargetDrift
+    ? null
+    : readUnavailableProviderSessionLeaseError(state, channelId, attachedTarget);
+  if (unavailableLeaseError) {
+    return isUnconfirmedProviderSessionReplacement(state, channelId, attachedTarget.sessionId)
+      ? pauseUnconfirmedProviderSessionReplacement({
+          state,
+          channelId,
+          target: attachedTarget,
+          sessionId: attachedTarget.sessionId,
+          detail: unavailableLeaseError,
+          laneId,
+          now,
+          recordTargetWake,
+          taskExecutionContext,
+        })
+      : rotateUnavailableProviderSession({
+          state,
+          channelId,
+          target: attachedTarget,
+          sessionId: attachedTarget.sessionId,
+          error: unavailableLeaseError,
+          runtimeClient,
+          now,
+        });
   }
 
   if (!hasDirectCatExecutionTargetDrift && await shouldReviveExistingTargetSession({
@@ -472,14 +533,28 @@ export async function resolveExistingTargetSessionOutcome(input: {
     if (classifyRuntimeDispatchRecoveryError(resumed.error ?? '', {
       code: resumed.errorCode,
     })?.reason === 'provider_session_unavailable') {
-      return rotateUnavailableProviderSession({
-        state,
-        channelId,
-        target: attachedTarget,
-        sessionId: attachedTarget.sessionId,
-        runtimeClient,
-        now,
-      });
+      const detail = describeProviderSessionUnavailableError(resumed.error ?? '');
+      return isUnconfirmedProviderSessionReplacement(state, channelId, attachedTarget.sessionId)
+        ? pauseUnconfirmedProviderSessionReplacement({
+            state,
+            channelId,
+            target: attachedTarget,
+            sessionId: attachedTarget.sessionId,
+            detail,
+            laneId,
+            now,
+            recordTargetWake,
+            taskExecutionContext,
+          })
+        : rotateUnavailableProviderSession({
+            state,
+            channelId,
+            target: attachedTarget,
+            sessionId: attachedTarget.sessionId,
+            error: detail,
+            runtimeClient,
+            now,
+          });
     }
 
     const shouldPreserveDirectSession = shouldPreserveDirectMessageRuntimeSession({

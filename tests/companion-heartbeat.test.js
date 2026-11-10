@@ -567,51 +567,104 @@ test('a failed native DM resume preserves the old attachment and reports failure
   });
 });
 
-test('a heartbeat into an unavailable provider session marks the lane, and the next wake rotates it in the same cwd', async () => {
+const GROK_GONE = 'No saved copy of session 01a1c2b4 was found remotely. Check the id, or run `grok --resume` to pick a session.';
+
+/** A lane whose listed sessions have lost their provider session, with probes for what rotation did. */
+function failProviderSessions(runtimeClient) {
+  const gone = new Set();
+  const closed = [];
+  const createInputs = [];
+  runtimeClient.closeSession = async (id) => { closed.push(id); };
+  const createSession = runtimeClient.createSession;
+  runtimeClient.createSession = async (input) => {
+    createInputs.push(input);
+    return createSession(input);
+  };
+  const sendMessage = runtimeClient.sendMessage;
+  runtimeClient.sendMessage = async (id, content, options) => {
+    if (gone.has(id)) throw new Error(GROK_GONE);
+    return sendMessage.call(runtimeClient, id, content, options);
+  };
+  return { gone, closed, createInputs };
+}
+
+async function readLaneLease(chatStore, laneId) {
+  return resolveLeadParticipantLease((await chatStore.read()).channels.find((row) => row.id === laneId));
+}
+
+async function countRotationNotices(chatStore, laneId) {
+  return (await chatStore.read()).channels.find((row) => row.id === laneId).messages
+    .filter((message) => message.metadata.event === 'session_rotated').length;
+}
+
+test('a heartbeat into an unavailable provider session marks the lane, the next wake rotates it once, and a failing replacement pauses', async () => {
   await withHeartbeatServer(async ({ cat, lane, sessionId, now, runtimeClient, chatStore, companionStore, config, speak }) => {
-    const readLease = async () => resolveLeadParticipantLease(
-      (await chatStore.read()).channels.find((row) => row.id === lane.id),
-    );
-    const before = await readLease();
-    const closed = [];
-    const createInputs = [];
-    runtimeClient.closeSession = async (id) => { closed.push(id); };
-    const createSession = runtimeClient.createSession;
-    runtimeClient.createSession = async (input) => {
-      createInputs.push(input);
-      return createSession(input);
-    };
-    const sendMessage = runtimeClient.sendMessage;
-    runtimeClient.sendMessage = async (id, content, options) => {
-      if (id === sessionId) {
-        throw new Error(`No saved copy of session 01a1c2b4 was found remotely. Check the id, or run \`grok --resume\` to pick a session.`);
-      }
-      return sendMessage.call(runtimeClient, id, content, options);
-    };
+    const probe = failProviderSessions(runtimeClient);
+    const dependencies = { chatStore, runtimeClient, companionStore, config, now: () => now };
     const beat = (forSession) => speak({
       catId: cat.id, laneId: lane.id, sessionId: forSession, kind: 'regular', now, awakeSince: null, lastOwnerMessageAt: null,
     });
+    const before = await readLaneLease(chatStore, lane.id);
+    probe.gone.add(sessionId);
 
     assert.equal(await beat(sessionId), 'failed');
-    const marked = await readLease();
+    const marked = await readLaneLease(chatStore, lane.id);
     assert.equal(marked.sessionId, sessionId);
     assert.equal(marked.status, 'error', 'a dead session must not stay ready for the next heartbeat');
     assert.match(marked.lastError, /No saved copy of session/u);
 
-    const activation = await activateChannelLocked({ chatStore, runtimeClient, companionStore, config, now: () => now }, lane.id);
+    const activation = await activateChannelLocked(dependencies, lane.id);
     assert.notEqual(activation.results[0].status, 'error');
-    const rotated = await readLease();
+    const rotated = await readLaneLease(chatStore, lane.id);
     assert.notEqual(rotated.sessionId, sessionId);
     assert.equal(rotated.status, 'ready');
-    assert.deepEqual(closed, [sessionId]);
+    assert.deepEqual(probe.closed, [sessionId]);
     assert.deepEqual(runtimeClient.resumedSessionIds, [], 'a session whose provider copy is gone is not resumed');
-    assert.equal(createInputs.at(-1).cwd, before.cwd, 'the replacement keeps the lane workspace');
-    const notice = (await chatStore.read()).channels.find((row) => row.id === lane.id).messages
-      .find((message) => message.metadata.event === 'session_rotated');
-    assert.ok(notice, 'the owner sees that the conversation moved to a new session');
+    assert.equal(probe.createInputs.at(-1).cwd, before.cwd, 'the replacement keeps the lane workspace');
+    assert.equal(await countRotationNotices(chatStore, lane.id), 1);
 
-    assert.equal(await beat(rotated.sessionId), 'quiet');
-    assert.equal(runtimeClient.sentMessages.at(-1).sessionId, rotated.sessionId);
+    // The replacement fails the same way before completing any turn.
+    probe.gone.add(rotated.sessionId);
+    assert.equal(await beat(rotated.sessionId), 'failed');
+    const sessionsBefore = runtimeClient.createdSessionIds.length;
+    for (let wake = 0; wake < 2; wake += 1) {
+      const again = await activateChannelLocked(dependencies, lane.id);
+      assert.equal(again.results[0].status, 'error', 'the paused replacement is reported, not rotated');
+    }
+    const paused = await readLaneLease(chatStore, lane.id);
+    assert.equal(runtimeClient.createdSessionIds.length, sessionsBefore, 'no second rotation before a completed turn');
+    assert.deepEqual(probe.closed, [sessionId]);
+    assert.equal(paused.sessionId, rotated.sessionId);
+    assert.equal(paused.status, 'error');
+    assert.match(paused.lastError, /paused until you reset or retarget/u);
+    assert.equal(await countRotationNotices(chatStore, lane.id), 1);
+  });
+});
+
+test('a replacement that completes a turn may rotate again when its own provider session is lost', async () => {
+  await withHeartbeatServer(async ({ cat, lane, sessionId, now, runtimeClient, chatStore, companionStore, config, speak }) => {
+    const probe = failProviderSessions(runtimeClient);
+    const dependencies = { chatStore, runtimeClient, companionStore, config, now: () => now };
+    const beat = (forSession) => speak({
+      catId: cat.id, laneId: lane.id, sessionId: forSession, kind: 'regular', now, awakeSince: null, lastOwnerMessageAt: null,
+    });
+    probe.gone.add(sessionId);
+    assert.equal(await beat(sessionId), 'failed');
+    await activateChannelLocked(dependencies, lane.id);
+    const replacement = await readLaneLease(chatStore, lane.id);
+
+    runtimeClient.heartbeatReply = 'Purr. The birds are back.';
+    assert.equal(await beat(replacement.sessionId), 'spoke', 'a completed turn in the replacement re-arms rotation');
+
+    probe.gone.add(replacement.sessionId);
+    assert.equal(await beat(replacement.sessionId), 'failed');
+    const activation = await activateChannelLocked(dependencies, lane.id);
+    assert.notEqual(activation.results[0].status, 'error');
+    const third = await readLaneLease(chatStore, lane.id);
+    assert.notEqual(third.sessionId, replacement.sessionId);
+    assert.equal(third.status, 'ready');
+    assert.deepEqual(probe.closed, [sessionId, replacement.sessionId]);
+    assert.equal(await countRotationNotices(chatStore, lane.id), 2);
   });
 });
 

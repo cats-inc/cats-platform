@@ -311,15 +311,33 @@ For this class, direct lanes and rooms behave the same:
   channel's default spawn cwd. The replacement goes through the ordinary
   new-session continuity decision, so its first turn carries the
   `full_transplant` or `semantic_transplant` built from Chat's transcript.
-- Chat appends a visible, non-verbose system message (`event: "session_rotated"`,
-  `reason: "provider_session_unavailable"`) saying the conversation continues
-  in a new session in the same workspace.
+- Once the replacement exists, Chat appends a visible, non-verbose system
+  message (`event: "session_rotated"`, `reason: "provider_session_unavailable"`,
+  `previousSessionId`, `replacementSessionId`) saying the conversation
+  continues in a new session in the same workspace.
+- If the replacement cannot be created (for example `Max sessions (N)
+  reached`), Chat appends no notice. The lease keeps the old `sessionId`, its
+  `cwd`, status `error` and a `lastError` that still carries the class, so the
+  next attempt rotates into the same workspace.
+
+**Rotation budget.** A session produced by a rotation is never rotated again
+until a turn completes successfully in it. Until then the same failure
+surfaces the error and pauses, as other direct-lane errors do: the lease keeps
+the replacement with status `error`.
+
+- The rule needs no lease field. The notice's `replacementSessionId` marks the
+  replacement, and an agent message carrying that `sessionId` marks a completed
+  turn.
+- A quiet heartbeat leaves no message, so it does not count as a completed
+  turn.
+- A send rotates at most once, and a rotation made by `ensureTargetSession`
+  while waking the send's target counts against it.
 
 The rotation happens on whichever path sees the condition first:
 
 - **Send-time recovery.** The failed turn is sent again once, to the
   replacement. If the replacement fails the same way, or cannot be created,
-  Chat surfaces the error and stops; a later send may rotate once again.
+  Chat surfaces the error and stops.
 - **Wake/activation**, including the companion life loop:
   - A lease in `error` whose `lastError` carries the class rotates without a
     resume attempt.

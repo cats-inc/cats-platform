@@ -53,11 +53,15 @@ Current state (surveyed 2026-09-29):
   is shown, and it must not be silently replaced by a blank session. Only an explicit reset or
   retarget changes it.
 - 2026-11-11 amendment (ADR-068 §2): the exception is a provider-native session that is
-  confirmed unavailable (Runtime's `provider_session_unavailable`, or the provider's own
-  "session not found" text). Resuming cannot restore it, so the lane rotates to a replacement
+  confirmed unavailable: Runtime's `provider_session_unavailable`, or, until every Runtime
+  sends it, the provider's own text, grok's `No saved copy of session <id> was found` or
+  claude's `No conversation found with session ID`. A generic "session not found" still
+  pauses. Resuming cannot restore the provider session, so the lane rotates to a replacement
   Runtime session in the same cwd. The replacement gets the handoff pack below and a visible
   notice in the conversation. A heartbeat that hits this class marks the lease `error`, so the
-  next wake rotates it rather than heartbeating into a dead session indefinitely.
+  next wake rotates it rather than heartbeating into a dead session indefinitely. A
+  replacement that fails the same way before completing a turn is not rotated again; the
+  lane pauses until a turn succeeds there or the owner resets or retargets.
 - 2026-10-26 correction: every proactive turn also carries the product conversation handoff
   pack of the same DM, together with the role, reply language, Cat/channel checkpoint and
   filtered companion memory shared with ordinary turns. This lets an explicitly replaced
