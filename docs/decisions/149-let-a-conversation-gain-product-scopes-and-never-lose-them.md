@@ -1,23 +1,28 @@
-# ADR-149: Let a Conversation Gain Product Scopes and Never Lose Them
+# ADR-149: Give Each Conversation a Product Scope That Can Be Raised, Never Lowered
 
 ## Status
 
-Decided by the owner on 2026-11-11 (D1 to D4), who left the name to the agent (Decision 1).
-Decision 2, the set shape, and P1 to P5 are proposed defaults the owner may change. This
-records a direction only: nothing is implemented, and a SPEC and a PLAN must come first.
+Decided by the owner on 2026-11-11 (D1 to D6), who left the name to the agent (Decision 1).
+P1 to P6 are proposed defaults the owner may change. This records a direction only: nothing
+is implemented, and a SPEC and a PLAN must come first.
 
 When implemented, it will:
 
 - amend [ADR-126](126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md):
-  the `cats` session MCP server goes to conversations whose product scopes include `code`,
-  not only to conversations created on Code;
+  the `cats` session MCP server goes to every conversation whose product scope is `code` or
+  `work`, not only to conversations created on Code, so existing Work conversations gain it
+  (D5);
 - extend [ADR-073](073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md) without
-  reversing it: a draft's target surface still sets `originSurface` and the starting scopes,
-  and a conversation can gain scopes afterwards;
+  reversing it: a draft's surface chip still sets `originSurface`, now sets the starting product
+  scope too (D6), and a conversation's scope can be raised afterwards;
 - keep [ADR-069](069-scope-recents-to-channel-origin-surface-by-default.md): Recents still
   follow `originSurface` (P4);
-- touch [SPEC-139](../specs/SPEC-139-boss-cat-across-cats.md): a Boss Cat that joined a
-  conversation also gains any scope the conversation gains later (P2).
+- touch [SPEC-139](../specs/SPEC-139-boss-cat-across-cats.md) in three places:
+  - joining a Work conversation now also grants Code's tools (D5), so FR-8's hint and FR-10's
+    card, which name the Code tools for Code only, must name them for Work too;
+  - a raise is a new way for a conversation to become Code or Work, beside the creation flows
+    FR-6 names;
+  - a Boss Cat that joined a conversation also gains what a later raise grants (P2).
 
 ## Context
 
@@ -48,18 +53,29 @@ What exists today, read from the code on 2026-11-11:
     `--dangerously-skip-permissions`, and Codex accepts commands and file changes.
   - The policy is set when the conversation is created (`persistCreatedChannel`). No route
     edits it on a live conversation, and the active permission chip only displays it.
+- **A new draft picks its product with the composer's surface chip.**
+  - Helper chips carry a product. On +New chat, 「做一個番茄鐘」 (`pomodoro-app`) carries
+    `code` and 「開個專案」 (`start-project`) carries `work` (`src/shared/guideCatAssistCatalog.ts:72`).
+    Code's new draft has its own project chip that carries `work` (line 80).
+  - Clicking a helper chip sets the surface chip
+    (`src/products/shared/renderer/components/catlasChipActions.ts:33`). Dismissing the surface
+    chip returns the draft to its own product: Chat on +New chat
+    (`src/products/chat/renderer/components/NewChatDraft.tsx:49`), Code on Code's draft.
+  - On submit, the surface chip becomes the target surface and the new conversation's
+    `originSurface` (ADR-073).
 - **`originSurface` is stamped at creation** (ADR-069). About 50 source files mention it:
   Recents, route builders, history, tool delivery, Catlas and owner actions among them.
 - **No conversation changes product after creation.** ADR-073 covers draft submit only. The
   Task level has a precedent: a Code Task linked through `WorkItem.taskId` projects as Work
   (`resolveTaskProductBinding`).
 - **Task and Run are shared Execution records**
-  ([ADR-081](081-canonicalize-three-tier-core-record-taxonomy.md)). New Code creates a Task,
-  and Chat may create Chat Tasks. Project and WorkItem are Work's Planning records. Code's
-  `cats` server has no task or run tool. The task and run tools that exist sit on other paths
-  ([tool-calls.md](../tool-calls.md)): `work.collaboration.request_role` on the Chat
-  Orchestrator's decision path, `work.task.create_from_work_item` behind an owner-confirmed
-  Chat sidecar, and `cats.lifecycle.run.spawn` as an internal delegate.
+  ([ADR-081](081-canonicalize-three-tier-core-record-taxonomy.md)).
+  - New Code creates a primary Task. New Work creates one too, plus a Project and a WorkItem.
+    Chat may create Chat Tasks.
+  - Code's `cats` server has no task or run tool. The task and run tools that exist sit on other
+    paths ([tool-calls.md](../tool-calls.md)): `work.collaboration.request_role` on the Chat
+    Orchestrator's decision path, `work.task.create_from_work_item` behind an owner-confirmed
+    Chat sidecar, and `cats.lifecycle.run.spawn` as an internal delegate.
 - **Chat, Code and Work all mount the shared canvas viewer** (`withSharedViewerRoutes`,
   [ADR-098](098-url-driven-canvas-and-platform-shared-viewer.md)). Code's `show_in_canvas`
   focus is stored on its Task ([ADR-097](097-store-code-canvas-focus-on-task-metadata.md)).
@@ -68,9 +84,8 @@ What exists today, read from the code on 2026-11-11:
 
 ### 1. The name is "product scope"
 
-A conversation has a set of product scopes, drawn from `chat`, `code` and `work`. The field is
-`productScopes`. User-facing copy names the product ("Add Code", 「加上 Code」) and needs no
-generic word.
+A conversation has one product scope: `chat`, `code` or `work`. The field is `productScope`.
+User-facing copy names the product, as the surface chip already does, and needs no generic word.
 
 - Not "capability": it already names Runtime and provider capability profiles,
   [SPEC-132](../specs/SPEC-132-provider-session-interactions-and-capability-visibility.md)'s
@@ -83,45 +98,57 @@ generic word.
   conversation a tool call is bound to.
 - "Product scope" sits beside the Task level's "task product binding".
 
-### 2. A set with `chat` always in it (proposed)
+### 2. A ladder: Work includes Code (D5)
 
-This shape is a proposed default, not an owner decision. The owner described a cumulative
-Chat → Code → Work and may choose the ordered level in Alternative 1 instead.
+- The scopes are ordered, `chat < code < work`, and each includes everything below it.
+- New Chat starts at `chat`, New Code at `code` and New Work at `work`. Existing conversations
+  take the level of their `originSurface`.
+- So existing Work conversations gain Code's tools once this is implemented: the `cats` server,
+  artifacts, the canvas and live previews. Live previews still need the Settings > Code switch,
+  which is off by default (ADR-126).
+- The records already nest this way: New Work creates the primary Task that New Code creates,
+  plus a Project and a WorkItem.
 
-- New Chat starts with `chat`. New Code starts with `chat` and `code`. New Work starts with
-  `chat` and `work`.
-- Existing conversations take their scopes from `originSurface` the same way, so their tools
-  do not change.
-- The scopes are a set, not a ladder. An ordered `chat < code < work` would give every Work
-  conversation Code's tools on the first day. The owner decided that Work is not tightened
-  (D3), not that Work includes Code.
+### 3. A scope can be raised, never lowered (D2)
 
-### 3. Scopes can be gained, never lost (D2)
-
-- The server refuses to remove a scope, and the UI offers no way to.
+- The server refuses a lower scope, and the UI offers no way to lower one.
 - Records made under a scope stay anchored: Tasks, artifacts, canvas focus, Projects and
   WorkItems.
 - Live sessions never lose tools in the middle of a conversation.
-- Removing a scope would undo nothing an agent has already done.
+- Lowering would undo nothing an agent has already done.
 - To stop a conversation, the owner removes a participant, stops the turn or run, or archives
   the conversation. There is no live permission editor today; a SPEC may add one.
 
-### 4. What a scope grants
+### 4. The surface chip sets a new draft's scope (D6)
+
+- On a new draft, the composer's surface chip is the product scope. The owner picks it
+  directly or through a helper chip, such as 「做一個番茄鐘」 for Code or 「開個專案」 for Work.
+- On submit, the chip sets both `originSurface` and the starting scope (ADR-073).
+- Catlas-made helper chips may carry any of the three products. The host checks only that the
+  value is `chat`, `code` or `work` (`src/products/chat/api/catlasCuration.ts:28`,
+  [ADR-140](140-let-catlas-curate-assist-content-and-titles-through-host-validated-output.md)).
+  The owner's click and send are still the choice.
+- On a draft the chip can still be dismissed back to the draft's own product, because nothing
+  exists yet.
+- D6 covers drafts. Using the same chip to raise an existing conversation is a proposal (P6).
+
+### 5. What a scope grants
 
 A scope decides which Cats tools and APIs the conversation's participants may use, and which
 product records the conversation anchors:
 
 - `chat`: the conversation itself.
-- `code`: its codespace (the conversation's folder, or its sandbox), its Task family and Runs,
-  artifacts, the canvas and live previews.
-- `work`: its Project and WorkItems, and Work's tools for assigning and running its Tasks.
+- `code`: everything in `chat`, plus its codespace (the conversation's folder, or its sandbox),
+  its Task family and Runs, artifacts, the canvas and live previews.
+- `work`: everything in `code`, plus its Project and WorkItems, and Work's tools for assigning
+  and running its Tasks.
 
 A tool still appears only once it is delivered to the session (ADR-126 point 5).
 
-### 5. What a scope does not decide (D3, D4)
+### 6. What a scope does not decide (D3, D4)
 
-- **CLI permission.** It stays a per-conversation setting with today's defaults. Product scopes
-  limit what Cats' own tools and APIs do. They are not a security boundary: every provider CLI
+- **CLI permission.** It stays a per-conversation setting with today's defaults. Product scope
+  limits what Cats' own tools and APIs do. It is not a security boundary: every provider CLI
   runs under the owner's OS account, as SPEC-139's "Keeps" line says.
 - **Actions beyond the conversation.** They stay with roles
   ([SPEC-125](../specs/SPEC-125-conversation-participants-audience-and-orchestrator-binding.md)
@@ -129,29 +156,34 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
   conversation does not need `work` to capture a work item.
 - **Turns the owner did not start.** They keep their own gates (ADR-141, SPEC-139).
 
-### 6. Owner decisions (2026-11-11)
+### 7. Owner decisions (2026-11-11)
 
 - D1: An existing conversation can be upgraded after creation.
-- D2: It can gain scopes but never lose them. The owner proposed this and left the name to the
-  agent.
+- D2: Its scope can be raised but never lowered. The owner proposed this and left the name to
+  the agent.
 - D3: Work is not tightened. The risk is recorded below.
 - D4: Chat's default CLI permission stays as it is.
+- D5: The scopes form a ladder. Work always includes Code.
+- D6: On a new draft, the composer's surface chip, which helper chips also set, is how the
+  owner sets the starting product scope.
 
-### 7. Proposed defaults (the owner may change them)
+### 8. Proposed defaults (the owner may change them)
 
-- P1: Only the owner adds a scope, from the Desktop or mobile UI. Agents, transports, schedules
-  and heartbeats cannot. An agent proposing one belongs to a later SPEC, because it needs
-  SPEC-139's owner-started stamp, which does not exist yet.
-- P2: Before a scope is added, the owner sees what it grants, which records it creates, and
-  every participant who gains it. A Boss Cat that joined under SPEC-139 is one of them, and
-  later joiners gain it too.
-- P3: Direct lanes and parallel groups cannot gain scopes. Direct lanes take transport and
+- P1: Only the owner raises a scope, from the Desktop or mobile UI. Agents, transports,
+  schedules and heartbeats cannot. An agent proposing a raise belongs to a later SPEC, because
+  it needs SPEC-139's owner-started stamp, which does not exist yet.
+- P2: Before a raise, the owner sees what it grants, which records it creates, and every
+  participant who gains it. A Boss Cat that joined under SPEC-139 is one of them, and later
+  joiners gain it too.
+- P3: Direct lanes and parallel groups cannot be raised. Direct lanes take transport and
   heartbeat turns, and SPEC-139 keeps each lane to its own Cat. To work on code from a lane,
   the owner opens a Code conversation.
-- P4: Recents keep following `originSurface` (ADR-069). A conversation that gained a scope can
-  also be opened on that scope's surface.
-- P5: Adding a scope runs that product's entry contract (ADR-073) only for what is missing,
-  reusing the `WorkItem.taskId` link for Work. The SPEC defines the records.
+- P4: Recents keep following `originSurface` (ADR-069). A raised conversation can also be
+  opened on each surface its scope includes.
+- P5: A raise runs the entry contract (ADR-073) of each level it passes, only for what is
+  missing, reusing the `WorkItem.taskId` link for Work. The SPEC defines the records.
+- P6: On an existing conversation, the surface chip offers only wider levels, and choosing one
+  opens P2's confirmation. It cannot be dismissed, since that would lower the scope.
 
 ## Recorded Risk: Work Runs Without Approvals (D3)
 
@@ -161,6 +193,9 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
     `read_write` and `skip` (`src/products/work/api/index.ts:1278`). Its CLI runs shell
     commands and edits files without asking.
   - Conversations on Work use the same defaults as any other conversation.
+- **Widened by D5.** Every Work conversation gains Code's tools under those same defaults.
+  Whether Work's supervised runs, which start their own sessions, receive them too is for the
+  SPEC.
 - **Inferred, not verified.** Work is where runs become repetitive and unattended: ADR-082
   plans for high-frequency runs, and schedules and triggers are Work rules. Once a schedule or
   trigger starts such a run, it acts with no one watching, and text from imported issues,
@@ -175,40 +210,46 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 
 ### Positive
 
-- One rule, in product words, for what a conversation can reach.
+- One ordered rule, in product words, for what a conversation can reach.
 - The owner's Chat → Code → Work path works without starting over in a new conversation.
+- The surface chip the owner already uses on drafts sets the scope, and P6 proposes the same
+  chip for raises.
 - Nothing a conversation made loses its anchor.
 
 ### Negative
 
+- Existing Work conversations gain Code's tools (D5). The SPEC must make Work's conversation
+  view show Code's canvas, artifacts and codespace. The shared viewer is mounted on Work's
+  project, task and work item routes, but nothing yet renders Code's task-scoped canvas focus
+  (ADR-097) there.
 - Each of the roughly 50 files that mention `originSurface` must be sorted into "follows
-  product scopes" (tool and instruction delivery) or "stays with the origin" (Recents, routes, history, Catlas). That
-  includes the `code_thread` fallback in `resolveTaskProductBinding` and the owner actions'
-  source path ([ADR-133](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md)).
+  product scope" (tool and instruction delivery) or "stays with the origin" (Recents, routes,
+  history, Catlas). That includes the `code_thread` fallback in `resolveTaskProductBinding`
+  and the owner actions' source path
+  ([ADR-133](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md)).
 - It changes frozen shared contracts: the channel state in `src/products/chat/api/contracts.ts`
   and the integration-owned session composition in `src/app/server/**`. Both need integration
   review.
-- Product scopes are not a security boundary (D3, D4), and the Work risk stays open.
-- A gained scope cannot be taken back. A mistaken one means a new conversation.
+- Product scope is not a security boundary (D3, D4), and the Work risk stays open.
+- A raise cannot be taken back. A mistaken one means a new conversation.
 
 ### Neutral
 
 - `originSurface` keeps meaning where the conversation started.
 - The role and owner-started gates are unchanged.
-- For existing data, the SPEC chooses between a one-time migration and deriving scopes on read,
-  under the Pre-Release Compatibility Policy.
+- For existing data, the SPEC chooses between a one-time migration and deriving the scope on
+  read, under the Pre-Release Compatibility Policy.
 
 ## Alternatives Considered
 
-### Alternative 1: One ordered level, `chat < code < work`
+### Alternative 1: A set, where Work need not include Code
 
-- **Pros**: One value, and "only up" is a single comparison.
-- **Cons**: Every Work conversation would gain Code's tools at once. The owner decided that
-  Work is not tightened, not that Work includes Code.
-- **Why not proposed**: A set keeps today's Work behavior and still lets a Work conversation
-  add `code`. The owner may still choose this shape (Decision 2).
+- **Pros**: Existing Work conversations keep today's tools, and a Work conversation could do
+  without Code's.
+- **Cons**: Two independent choices, and no single widest surface for a conversation.
+- **Why rejected**: D5.
 
-### Alternative 2: Allow removing a scope
+### Alternative 2: Allow lowering a scope
 
 - **Pros**: Undoes a mistaken upgrade.
 - **Cons**: Orphans records made under the scope, pulls tools from live sessions, and undoes
@@ -241,6 +282,7 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
   [ADR-105](105-adopt-phase-scoped-work-tool-surface.md),
   [ADR-126](126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md),
   [ADR-133](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md),
+  [ADR-140](140-let-catlas-curate-assist-content-and-titles-through-host-validated-output.md),
   [ADR-141](141-host-a-consented-desktop-control-mcp-for-provider-sessions.md)
 - [SPEC-118](../specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md),
   [SPEC-125](../specs/SPEC-125-conversation-participants-audience-and-orchestrator-binding.md),
@@ -251,4 +293,4 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 ---
 
 *Decision made: 2026-11-11*
-*Decision makers: owner (D1 to D4); drafted by Claude*
+*Decision makers: owner (D1 to D6); drafted by Claude*
