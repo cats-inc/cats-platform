@@ -32,6 +32,11 @@ import {
 import { resolveRuntimeEnvelopeForTarget } from '../state/runtimeTargeting.js';
 import { findAssignedParticipant } from '../shared/channelParticipants.js';
 import { mergeRuntimeInvocationContextMetadata } from '../state/runtime-dispatch/context.js';
+import {
+  classifyRuntimeDispatchRecoveryError,
+  describeProviderSessionUnavailableError,
+  readRuntimeErrorSignal,
+} from '../state/runtime-dispatch/recovery.js';
 import { runWithSessionTurnGate } from '../state/runtime-dispatch/sessionTurnGate.js';
 import { updateChatState } from '../state/store.js';
 import type { ChannelActivationResult } from './contracts.js';
@@ -48,6 +53,32 @@ export type ChatCompanionLifeLoopDependencies = ChannelLifecycleDependencies
   & Pick<ChatApiDependencies, 'mutationGate' | 'companionActivityStore' | 'catImages'>;
 
 const RUNTIME_BUSY_PATTERN = /\bbusy\b/iu;
+
+async function markCompanionLaneProviderSessionUnavailable(
+  dependencies: ChatCompanionLifeLoopDependencies,
+  request: CompanionHeartbeatRequest,
+  error: string,
+): Promise<void> {
+  let changed = false;
+  await dependencies.mutationGate.run(request.laneId, async () => {
+    await updateChatState(dependencies.chatStore, (latest) => {
+      const current = latest.channels.find((row) => row.id === request.laneId);
+      const lease = current ? resolveLeadParticipantLease(current) : null;
+      // Only the session this heartbeat used: a replacement must not be marked.
+      if (!current || lease?.participantId !== request.catId || lease.sessionId !== request.sessionId) {
+        return latest;
+      }
+      changed = true;
+      const now = dependencies.now?.() ?? new Date();
+      return setChannelParticipantLease(latest, request.laneId, request.catId, {
+        status: 'error',
+        lastError: describeProviderSessionUnavailableError(error),
+        lastUsedAt: now.toISOString(),
+      }, now);
+    });
+  });
+  if (changed) publishChannelLifecycleEvents(dependencies, request.laneId);
+}
 
 /**
  * SPEC-124 FR-21..FR-23: one hidden turn in the Cat's own lane session. A reply
@@ -120,6 +151,13 @@ export function createCompanionHeartbeatSpeaker(
       replyText = resolveFullResponseText(result.segments);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      if (classifyRuntimeDispatchRecoveryError(message, readRuntimeErrorSignal(error))?.reason
+        === 'provider_session_unavailable') {
+        // The lane would otherwise stay `ready` on a session that can never answer.
+        // Marking it lets the next wake rotate it in the same cwd (ADR-068 §2).
+        await markCompanionLaneProviderSessionUnavailable(dependencies, request, message);
+        return 'failed';
+      }
       return RUNTIME_BUSY_PATTERN.test(message) ? 'busy' : 'failed';
     }
 

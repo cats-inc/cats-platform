@@ -32,6 +32,7 @@ import {
   resumeRuntimeSession,
 } from './sessionResume.js';
 import {
+  appendProviderSessionRotationMessage,
   buildDirectMessageRuntimeResumeFailure,
   shouldPreserveDirectMessageRuntimeSession,
 } from './sessionContinuity.js';
@@ -64,6 +65,8 @@ export type ExistingTargetSessionOutcome =
       kind: 'retry';
       state: ChatState;
       target: RoutingTarget;
+      /** The workspace the replacement must keep (ADR-068 §2). */
+      replacementSpawnCwd?: string | null;
     }
   | {
       kind: 'resolved';
@@ -225,6 +228,62 @@ function applyLeaseLaneAttachmentToTarget(
   );
 }
 
+function leaseHasUnavailableProviderSession(
+  state: ChatState,
+  channelId: string,
+  target: RoutingTarget,
+): boolean {
+  const lease = resolveParticipantLeaseAttachment(
+    requireChannel(state, channelId),
+    target.participantId,
+  );
+  return lease?.status === 'error'
+    && typeof lease.lastError === 'string'
+    && classifyRuntimeDispatchRecoveryError(lease.lastError)?.reason === 'provider_session_unavailable';
+}
+
+/**
+ * ADR-068 §2 (amended 2026-11-11): the provider-native session behind this
+ * Runtime session is gone, so resuming cannot restore it. DM lanes and rooms
+ * alike close it and continue in a replacement session in the same cwd; the
+ * replacement's first turn receives the continuity transplant.
+ */
+async function rotateUnavailableProviderSession(input: {
+  state: ChatState;
+  channelId: string;
+  target: RoutingTarget;
+  sessionId: string;
+  runtimeClient: RuntimeClient;
+  now: Date;
+}): Promise<ExistingTargetSessionOutcome> {
+  const lease = resolveExecutionLeaseSnapshot(requireChannel(input.state, input.channelId), input.target);
+  const previousCwd = lease?.cwd?.trim() || null;
+  await input.runtimeClient.closeSession(input.sessionId).catch(() => {});
+  const resetState = setChannelParticipantLease(
+    input.state,
+    input.channelId,
+    input.target.participantId,
+    {
+      sessionId: null,
+      status: 'not_started',
+      lastError: null,
+      startedAt: null,
+    },
+    input.now,
+  );
+  return {
+    kind: 'retry',
+    state: appendProviderSessionRotationMessage(resetState, input.channelId, {
+      target: input.target,
+      previousSessionId: input.sessionId,
+      laneId: input.target.laneId ?? null,
+      now: input.now,
+    }),
+    target: { ...input.target, sessionId: null },
+    replacementSpawnCwd: previousCwd,
+  };
+}
+
 async function resumeExistingTargetSession(input: {
   state: ChatState;
   channelId: string;
@@ -239,6 +298,7 @@ async function resumeExistingTargetSession(input: {
 } | {
   kind: 'failed';
   error: string | null;
+  errorCode: string | null;
 }> {
   const resumeOutcome = await resumeRuntimeSession({
     runtimeClient: input.runtimeClient,
@@ -251,6 +311,7 @@ async function resumeExistingTargetSession(input: {
     return {
       kind: 'failed',
       error: resumeOutcome.error,
+      errorCode: resumeOutcome.errorCode ?? null,
     };
   }
 
@@ -359,6 +420,20 @@ export async function resolveExistingTargetSessionOutcome(input: {
       ),
     });
 
+  if (
+    !hasDirectCatExecutionTargetDrift
+    && leaseHasUnavailableProviderSession(state, channelId, attachedTarget)
+  ) {
+    return rotateUnavailableProviderSession({
+      state,
+      channelId,
+      target: attachedTarget,
+      sessionId: attachedTarget.sessionId,
+      runtimeClient,
+      now,
+    });
+  }
+
   if (!hasDirectCatExecutionTargetDrift && await shouldReviveExistingTargetSession({
     state,
     channelId,
@@ -392,6 +467,19 @@ export async function resolveExistingTargetSessionOutcome(input: {
           taskExecutionContext,
         },
       };
+    }
+
+    if (classifyRuntimeDispatchRecoveryError(resumed.error ?? '', {
+      code: resumed.errorCode,
+    })?.reason === 'provider_session_unavailable') {
+      return rotateUnavailableProviderSession({
+        state,
+        channelId,
+        target: attachedTarget,
+        sessionId: attachedTarget.sessionId,
+        runtimeClient,
+        now,
+      });
     }
 
     const shouldPreserveDirectSession = shouldPreserveDirectMessageRuntimeSession({

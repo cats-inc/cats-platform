@@ -45,6 +45,7 @@ import {
   applyDispatchLeasePatch,
   classifyRuntimeDispatchRecoveryError,
   createDispatchRecoveryErrorLeasePatch,
+  describeProviderSessionUnavailableError,
   extractTargetLeasePatchFromState,
 } from './recovery.js';
 import {
@@ -52,6 +53,7 @@ import {
   resumeRuntimeSession,
 } from '../runtime-session/sessionResume.js';
 import {
+  appendProviderSessionRotationMessage,
   buildDirectMessageRuntimeResumeFailure,
   shouldPreserveDirectMessageRuntimeSession,
 } from '../runtime-session/sessionContinuity.js';
@@ -304,6 +306,7 @@ export async function executeDispatchWithRecovery(input: {
   let recoveredChannelChatCwd: string | undefined;
   let recoveredMessages: DispatchExecution['recoveredMessages'];
   let staleRecoveryCount = 0;
+  let providerSessionRotated = false;
   let dispatchCore = input.core;
 
   while (true) {
@@ -333,7 +336,10 @@ export async function executeDispatchWithRecovery(input: {
       };
     }
 
-    const classifiedError = classifyRuntimeDispatchRecoveryError(execution.error);
+    const classifiedError = classifyRuntimeDispatchRecoveryError(execution.error, {
+      code: execution.errorCode,
+      status: execution.errorStatus,
+    });
     if (!classifiedError) {
       return {
         ...execution,
@@ -341,6 +347,108 @@ export async function executeDispatchWithRecovery(input: {
         ...(recoveredChannelChatCwd ? { channelChatCwd: recoveredChannelChatCwd } : {}),
         ...(recoveredMessages ? { recoveredMessages } : {}),
       };
+    }
+
+    // ADR-068 §2 (amended 2026-11-11): the provider-native session is gone, so a
+    // resume cannot restore it. DM lanes and rooms alike rotate once per send to a
+    // replacement in the same cwd; the next turn carries the continuity transplant.
+    if (classifiedError.reason === 'provider_session_unavailable') {
+      const unavailableError = describeProviderSessionUnavailableError(execution.error);
+      const previousSessionId = request.target.sessionId?.trim() || null;
+      const stopWith = (error: string, messages?: ChatMessage[]): DispatchExecution => {
+        const allMessages = [...(recoveredMessages ?? []), ...(messages ?? [])];
+        return {
+          ...execution,
+          error,
+          leasePatch: {
+            ...(recoveredLeasePatch ?? {}),
+            ...createDispatchRecoveryErrorLeasePatch(error, input.now, { clearSession: false }),
+          },
+          ...(recoveredChannelChatCwd ? { channelChatCwd: recoveredChannelChatCwd } : {}),
+          ...(allMessages.length > 0 ? { recoveredMessages: allMessages } : {}),
+        };
+      };
+      if (providerSessionRotated || !previousSessionId) {
+        return stopWith(unavailableError);
+      }
+      providerSessionRotated = true;
+
+      const previousCwd = extractTargetLeasePatchFromState(
+        dispatchState,
+        input.channelId,
+        request.target,
+      ).cwd?.trim() || null;
+      await input.runtimeClient.closeSession(previousSessionId).catch(() => {});
+      const ensured = await ensureTargetSession(
+        dispatchState,
+        input.channelId,
+        { ...request.target, sessionId: null },
+        input.runtimeClient,
+        input.now,
+        {
+          transport: input.transport,
+          transportBindingId: input.transportBindingId,
+          companionStore: input.companionStore,
+          memoryService: input.memoryService,
+          chatStore: input.chatStore,
+          chatStatePath: input.chatStatePath,
+          runtimeDataDir: input.runtimeDataDir,
+          ignoreLeaseSessionAttachment: true,
+          replacementSpawnCwd: previousCwd,
+          wakeTrigger: 'route_target',
+          wakeReason: request.trigger === 'continuation_mention'
+            ? 'workflow_continuation'
+            : resolveWakeReasonFromRoutingTrigger(request.trigger),
+          sourceMessageId: request.sourceMessage.id,
+          dispatchContextMetadata: buildDispatchRuntimeContextMetadata(request),
+        },
+      );
+      if (ensured.error || !ensured.target.sessionId) {
+        return stopWith(
+          `${unavailableError} A replacement session could not be started: ${ensured.error ?? 'no session was created.'}`,
+          collectRecoveredDispatchMessages(dispatchState, ensured.state, input.channelId),
+        );
+      }
+
+      if (input.chatStore) {
+        const taskExecutionContext = await maybeAutoCheckoutChannelTask(
+          input.chatStore,
+          input.runtimeClient,
+          input.channelId,
+          ensured.target,
+          input.now,
+          ensured.taskExecutionContext,
+        );
+        dispatchCore = taskExecutionContext?.core;
+      }
+
+      recoveredLeasePatch = extractTargetLeasePatchFromState(
+        ensured.state,
+        input.channelId,
+        ensured.target,
+      );
+      const rotatedState = appendProviderSessionRotationMessage(ensured.state, input.channelId, {
+        target: ensured.target,
+        previousSessionId,
+        laneId: ensured.target.laneId ?? null,
+        now: input.now,
+      });
+      recoveredMessages = [
+        ...(recoveredMessages ?? []),
+        ...collectRecoveredDispatchMessages(dispatchState, rotatedState, input.channelId),
+      ];
+      dispatchState = applyDispatchLeasePatch(
+        dispatchState,
+        input.channelId,
+        ensured.target,
+        recoveredLeasePatch,
+        input.now,
+      );
+      request = {
+        ...request,
+        target: ensured.target,
+      };
+      continue;
     }
 
     if (

@@ -114,6 +114,12 @@ installation and Boss Cat identity are not prerequisites for the new capability.
       DM sleep keeps the session id and, when the execution target is compatible, resumes
       natively; on failure the attachment is kept and the error reported, without silent
       rebuild. An explicit retarget choice takes priority over resuming the old session.
+    - Amended 2026-11-11 (ADR-068 §2, SPEC-069 *Provider Session Unavailable*): when the
+      provider-native session is confirmed unavailable, the wake does not resume. It closes
+      the old session and rotates to a replacement in the same cwd, with a visible notice.
+      The next heartbeat carries the handoff pack as usual. A heartbeat that fails with this
+      class marks the lease `error`, so the next tick takes this wake path instead of
+      repeating the failed heartbeat.
     - runtime unreachable: do nothing.
 11. FR-11: When waking fails, back off 5 minutes. When the error message matches
     `Max sessions (N) reached` the reason is `no_capacity`, otherwise `wake_failed`. The same

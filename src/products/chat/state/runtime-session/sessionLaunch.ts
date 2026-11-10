@@ -140,6 +140,8 @@ export async function startAttachedTargetSession(input: {
   laneId: string | null;
   recordTargetWake: EnsureTargetWakeRecorder;
   taskExecutionContext: ChannelTaskExecutionContext | undefined;
+  /** Keeps a replaced session's workspace instead of the channel's spawn cwd. */
+  replacementSpawnCwd?: string | null;
   routingOptions: Pick<
     RuntimeSessionRoutingOptions,
     'transport' | 'transportBindingId' | 'companionStore' | 'runtimeDataDir'
@@ -160,9 +162,13 @@ export async function startAttachedTargetSession(input: {
     routingOptions,
   } = input;
   let nextState = state;
-  const sessionPolicy = resolveChannelRuntimeSessionPolicy(
+  const channelSessionPolicy = resolveChannelRuntimeSessionPolicy(
     requireChannel(nextState, channelId),
   );
+  const replacementSpawnCwd = input.replacementSpawnCwd?.trim() || null;
+  const sessionPolicy = replacementSpawnCwd
+    ? { ...channelSessionPolicy, spawnCwd: replacementSpawnCwd }
+    : channelSessionPolicy;
   let createdExecutionTarget: RuntimeSessionExecutionTarget | null = null;
   const sessionLifecycleMetadata: TargetSessionLifecycleMetadata = {
     targetStateId,

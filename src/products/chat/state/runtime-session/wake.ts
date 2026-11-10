@@ -39,6 +39,12 @@ type EnsureTargetSessionOptions = RuntimeSessionRoutingOptions & {
   sourceMessageId?: string | null;
   ignoreLeaseSessionAttachment?: boolean;
   resolvedTaskExecutionContext?: EnsureTargetSessionTaskExecutionContext | null;
+  /**
+   * The workspace a replacement session must keep: the previous session's cwd
+   * when its provider session is gone (ADR-068 §2). Overrides the channel's
+   * spawn cwd for a newly created session only.
+   */
+  replacementSpawnCwd?: string | null;
 };
 
 export async function ensureTargetSession(
@@ -93,6 +99,9 @@ export async function ensureTargetSession(
       {
         ...options,
         resolvedTaskExecutionContext: preparedWake.taskExecutionContext ?? null,
+        ...(existingSessionOutcome.replacementSpawnCwd
+          ? { replacementSpawnCwd: existingSessionOutcome.replacementSpawnCwd }
+          : {}),
       },
     );
   }
@@ -112,6 +121,7 @@ export async function ensureTargetSession(
       laneId: preparedWake.laneId,
       recordTargetWake: preparedWake.recordTargetWake,
       taskExecutionContext: preparedWake.taskExecutionContext,
+      replacementSpawnCwd: options.replacementSpawnCwd ?? null,
       routingOptions: {
         transport: options.transport,
         transportBindingId: options.transportBindingId,

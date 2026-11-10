@@ -15,6 +15,17 @@ import {
 } from './sessionMcpServers.js';
 import { readRuntimeWorkspaceActivity, type RuntimeWorkspaceActivitySnapshot } from './workspaceActivity.js';
 
+/**
+ * A turn Runtime ended with an in-stream `error` event. `code` is Runtime's
+ * machine-readable cause, such as `provider_session_unavailable`.
+ */
+export class RuntimeTurnError extends Error {
+  constructor(message: string, readonly code?: string) {
+    super(message);
+    this.name = 'RuntimeTurnError';
+  }
+}
+
 export interface RuntimeNdjsonReadOptions {
   onChunk?: () => void;
   sessionId?: string;
@@ -139,7 +150,8 @@ export async function readRuntimeNdjsonResponse(
     }
 
     if (type === 'error') {
-      throw new Error(String(event.text ?? 'Agent turn failed'));
+      const code = typeof event.code === 'string' && event.code.trim() ? event.code.trim() : undefined;
+      throw new RuntimeTurnError(String(event.text ?? 'Agent turn failed'), code);
     }
   }
 
