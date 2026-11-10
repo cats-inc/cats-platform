@@ -27,7 +27,7 @@
   product authority, required Desktop/Bot bubbles and message hierarchy,
   streaming/interaction/narrow-layout parity and packed/native acceptance.
 
-- [SPEC-133: Desktop control session MCP (Windows)](SPEC-133-desktop-control-session-mcp.md)
+- [SPEC-133: Desktop control session MCP (Windows first)](SPEC-133-desktop-control-session-mcp.md)
   — draft, 2026-10-29; `cats-desktop` session MCP on Platform's internal listener
   with a native Windows helper. Injection gates, owner app-grant cards, exclusions,
   single-window capture, observe tools (phase A) before input tools (phase B).

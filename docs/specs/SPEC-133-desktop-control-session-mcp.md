@@ -1,4 +1,4 @@
-# SPEC-133: Desktop Control Session MCP (Windows)
+# SPEC-133: Desktop Control Session MCP (Windows first)
 
 ## Metadata
 
@@ -17,7 +17,8 @@ Let provider sessions that Cats starts observe and operate native Windows apps, 
 owner's consent, through a Platform-provided session MCP server named `cats-desktop`. The
 server lives on the Desktop-managed Platform server; the actual OS calls go to a native
 helper that Desktop packages. Tools come in two phases, A (observe) and B (act); phase B is
-implemented only after phase A passes native acceptance.
+implemented only after phase A passes native acceptance. Windows is built first; macOS and
+Linux are wanted too and are not built yet (see [Platform coverage](#platform-coverage)).
 
 Cats Bots implements the same capability separately in
 [Bots SPEC-006](../../../cats-bots/docs/specs/SPEC-006-desktop-control-session-mcp.md).
@@ -34,9 +35,19 @@ Both follow the [cross-implementation contract](#cross-implementation-contract) 
 - The capability panel shows whether desktop control is available and injected, and why not
   when it is not.
 
+## Platform Coverage
+
+- Only the Windows helper is built so far. macOS and Linux are wanted, not excluded; they are
+  unbuilt work, not a platform limit.
+- Until a platform has a helper, nothing is injected there and settings show `unavailable`
+  with the reason (DC-01).
+- Each one needs its own native helper and the OS permissions it asks for (on macOS,
+  Accessibility and Screen Recording), added under its own plan. The cross-implementation
+  contract stays shared; its Windows-specific parts (UI Automation, `PrintWindow`, the
+  exclusion lists) gain macOS and Linux counterparts then, in Desktop and Bots together.
+
 ## Non-Goals
 
-- macOS and Linux.
 - The Bots implementation; [Bots SPEC-006](../../../cats-bots/docs/specs/SPEC-006-desktop-control-session-mcp.md)
   implements it against this document's cross-implementation contract.
 - Turns started by remote ingress, Mobile, Telegram, the life loop, schedules or Cat-to-Cat
@@ -84,7 +95,7 @@ flowchart LR
 
 | ID | Requirement |
 | --- | --- |
-| DC-01 | Available only when the Desktop host started the Platform server, the platform is Windows, `CATS_DESKTOP_CONTROL_HELPER` is set and the helper's `hello` handshake succeeds (matching version and protocol). Otherwise settings show `unavailable` with the reason and the wrapper injects nothing |
+| DC-01 | Available only when the Desktop host started the Platform server, the platform has a built helper (only Windows so far), `CATS_DESKTOP_CONTROL_HELPER` is set and the helper's `hello` handshake succeeds (matching version and protocol). Otherwise settings show `unavailable` with the reason and the wrapper injects nothing |
 | DC-02 | A global setting, off by default, that only the owner can change. Turning it off revokes all grants and control, cancels helper actions in progress and ends the helper process |
 | DC-03 | A per-conversation switch, off by default and persisted. Turning it off revokes that conversation's grants and control |
 
@@ -331,7 +342,7 @@ implementation, protocol and packaging (R7).
 
 | ID | Required evidence |
 | --- | --- |
-| A1 | Nothing is injected on non-Windows platforms, without the helper or after a failed handshake, and settings show the reason |
+| A1 | Nothing is injected on a platform with no helper built yet (macOS and Linux so far), without the helper or after a failed handshake, and settings show the reason |
 | A2 | Injection matrix: with the global switch off, the conversation switch off, `skip`, `never`, no interaction host, an ingress turn or a life loop turn, no tool can be used; a local owner turn with an explicit `on-request` policy is injected, and a real Claude Code run shows a `tool_approval` for every call |
 | A3 | Grant cards: neither a provider approval nor "allow for this session" can grant an app; excluded apps are refused; grants are cleared after stop, turning the feature off and restart |
 | A4 | Observation: with a known-color ungranted window laid over a granted one, the screenshot contains none of its pixels; `read_ui` contains no password values; the node count is bounded |
