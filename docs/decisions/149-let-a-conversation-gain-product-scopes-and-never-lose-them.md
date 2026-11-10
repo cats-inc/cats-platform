@@ -2,9 +2,9 @@
 
 ## Status
 
-Decided by the owner on 2026-11-11 (D1 to D6), who left the name to the agent (Decision 1).
-P1 to P6 are proposed defaults the owner may change. This records a direction only: nothing
-is implemented, and a SPEC and a PLAN must come first.
+Decided by the owner on 2026-11-11 (D1 to D7), who left the name to the agent (Decision 1).
+P1 to P3, P5 and P6 are proposed defaults the owner may change; P4 became D7. This records a
+direction only: nothing is implemented, and a SPEC and a PLAN must come first.
 
 When implemented, it will:
 
@@ -15,14 +15,16 @@ When implemented, it will:
 - extend [ADR-073](073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md) without
   reversing it: a draft's surface chip still sets `originSurface`, now sets the starting product
   scope too (D6), and a conversation's scope can be raised afterwards;
-- keep [ADR-069](069-scope-recents-to-channel-origin-surface-by-default.md): Recents still
-  follow `originSurface` (P4);
-- touch [SPEC-139](../specs/SPEC-139-boss-cat-across-cats.md) in three places:
+- amend [ADR-069](069-scope-recents-to-channel-origin-surface-by-default.md): Recents and the
+  conversation's route follow its product scope instead of `originSurface`, so a raise moves
+  the conversation to its new product's Recents (D7);
+- touch [SPEC-139](../specs/SPEC-139-boss-cat-across-cats.md) in four places:
   - joining a Work conversation now also grants Code's tools (D5), so FR-8's hint and FR-10's
     card, which name the Code tools for Code only, must name them for Work too;
   - a raise is a new way for a conversation to become Code or Work, beside the creation flows
     FR-6 names;
-  - a Boss Cat that joined a conversation also gains what a later raise grants (P2).
+  - a Boss Cat that joined a conversation also gains what a later raise grants (P2);
+  - the board's surface for a group conversation (FR-3) is its product scope (D7).
 
 ## Context
 
@@ -166,6 +168,8 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 - D5: The scopes form a ladder. Work always includes Code.
 - D6: On a new draft, the composer's surface chip, which helper chips also set, is how the
   owner sets the starting product scope.
+- D7: A conversation lives in the Recents of its product scope and opens on that product's
+  surface. A raise moves it there; `originSurface` still records where it started.
 
 ### 8. Proposed defaults (the owner may change them)
 
@@ -178,8 +182,7 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 - P3: Direct lanes and parallel groups cannot be raised. Direct lanes take transport and
   heartbeat turns, and SPEC-139 keeps each lane to its own Cat. To work on code from a lane,
   the owner opens a Code conversation.
-- P4: Recents keep following `originSurface` (ADR-069). A raised conversation can also be
-  opened on each surface its scope includes.
+- P4: Became D7 on 2026-11-11. It had proposed keeping Recents on `originSurface`.
 - P5: A raise runs the entry contract (ADR-073) of each level it passes, only for what is
   missing, reusing the `WorkItem.taskId` link for Work. The SPEC defines the records.
 - P6: On an existing conversation, the surface chip offers only wider levels, and choosing one
@@ -214,6 +217,7 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 - The owner's Chat → Code → Work path works without starting over in a new conversation.
 - The surface chip the owner already uses on drafts sets the scope, and P6 proposes the same
   chip for raises.
+- A raised conversation shows up where its new tools are (D7).
 - Nothing a conversation made loses its anchor.
 
 ### Negative
@@ -223,10 +227,12 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
   project, task and work item routes, but nothing yet renders Code's task-scoped canvas focus
   (ADR-097) there.
 - Each of the roughly 50 files that mention `originSurface` must be sorted into "follows
-  product scope" (tool and instruction delivery) or "stays with the origin" (Recents, routes,
-  history, Catlas). That includes the `code_thread` fallback in `resolveTaskProductBinding`
-  and the owner actions' source path
+  product scope" (tool and instruction delivery, and Recents and routes under D7) or "stays
+  with the origin" (where the conversation started). That includes the `code_thread` fallback
+  in `resolveTaskProductBinding` and the owner actions' source path
   ([ADR-133](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md)).
+- A raise moves the conversation out of the Recents the owner last saw it in (D7). The SPEC
+  must make the move visible, so the conversation is not lost.
 - It changes frozen shared contracts: the channel state in `src/products/chat/api/contracts.ts`
   and the integration-owned session composition in `src/app/server/**`. Both need integration
   review.
@@ -293,4 +299,4 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 ---
 
 *Decision made: 2026-11-11*
-*Decision makers: owner (D1 to D6); drafted by Claude*
+*Decision makers: owner (D1 to D7); drafted by Claude*
