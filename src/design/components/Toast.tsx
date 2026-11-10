@@ -50,10 +50,13 @@ export function useToast() {
     // three seconds is too short to reach a button.
     if (options?.action) {
       const action = options.action;
-      setToasts((prev) => [
-        ...prev,
-        { id, message, fading: false, action, dismiss: () => dismiss(id) },
-      ]);
+      // The same refusal twice (another screenshot, Settings opened again) is
+      // one toast, since these stay until the owner acts.
+      setToasts((prev) => (
+        prev.some((entry) => entry.action && !entry.fading && entry.message === message)
+          ? prev
+          : [...prev, { id, message, fading: false, action, dismiss: () => dismiss(id) }]
+      ));
       return;
     }
     setToasts((prev) => [...prev, { id, message, fading: false }]);

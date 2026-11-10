@@ -112,10 +112,10 @@ APIs.
     pattern already used for non-inline product feedback — inline composer
     feedback is prohibited (matches the broader Settings feedback rule).
 18. On macOS a missing Screen Recording permission is refused before any
-    overlay opens, including the `not-determined` status. While the status
-    is `not-determined`, the host first asks macOS once per run through the
-    speech helper (`--request-screen-capture`), so Cats is listed in Privacy &
-    Security > Screen & System Audio Recording. The toast names that pane, says
+    overlay opens. Before refusing, the host asks macOS once per run through
+    the speech helper (`--request-screen-capture`), so Cats is listed in Privacy &
+    Security > Screen & System Audio Recording. It asks on any status but
+    `granted`, since Electron reports an app macOS has never asked as `denied`. The toast names that pane, says
     a restart is needed, and has an "Open System Settings" action
     ([ADR-147](../decisions/147-send-the-owner-to-the-macos-system-settings-pane-a-permission-needs.md)).
 
