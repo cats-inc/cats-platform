@@ -105,6 +105,7 @@ function renderApp(pathname: string, envelope: PlatformHostEnvelope): string {
             <Route element={<EntitiesShell envelope={envelope} />}>
               <Route path="/entities" element={<EntitiesIndexPage envelope={envelope} />} />
               <Route path="/entities/cats" element={<CatsCanvasPage />} />
+              <Route path="/entities/cats/new" element={<CatsCanvasPage />} />
               <Route path="/entities/cats/:catId" element={<CatProfilePage />} />
               <Route
                 path="/entities/clowders"
@@ -395,6 +396,23 @@ test('EntitiesAppShellSidebar header shows the back button + "Directory" label a
   // slot used to host is gone; the back button replaces it with smarter
   // history-delta exit behaviour.
   assert.doesNotMatch(markup, />Back to Lobby</u);
+});
+
+test('/entities/cats/new opens the add-cat canvas inside Cats Directory, not a cat profile', () => {
+  const markup = renderApp('/entities/cats/new', createEnvelope());
+
+  assert.match(markup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="entities"/u);
+  assert.match(markup, /class="catsCanvasPageBoot"/u);
+  assert.doesNotMatch(markup, /data-shell-surface="settings"/u);
+  // The static `new` segment must win over `/entities/cats/:catId`.
+  assert.doesNotMatch(markup, /entityComingSoonPanel/u);
+});
+
+test('App registers the Cats Directory add-cat route before the cat profile route', () => {
+  const appSource = readFileSync('src/app/renderer/App.tsx', 'utf8');
+
+  assert.match(appSource, /<Route path="\/entities\/cats\/new" element=\{<CatsCanvasPage \/>\} \/>/u);
+  assert.doesNotMatch(appSource, /settings\/cats/u);
 });
 
 test('Drilled-down /entities/cats/:catId route also mounts the EntitiesShell', () => {

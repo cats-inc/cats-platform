@@ -58,7 +58,6 @@ export function SettingsCanvasContent() {
     onRetryLoad,
   } = useOutletContext<SettingsCanvasOutletContext>();
   const [busy, setBusy] = useState<WorkspaceBusyState>(IDLE_BUSY_STATE);
-  const [feedback, setFeedback] = useState<string>('');
   const {
     dialog: confirmDialog,
     confirm,
@@ -136,13 +135,8 @@ export function SettingsCanvasContent() {
         payload={loadState.payload}
         onPayloadUpdate={onPayloadUpdate}
         busy={busy}
-        onFeedback={setFeedback}
-        onBusy={setBusy}
         onResetSetup={onResetSetup}
       />
-      {feedback ? (
-        <p className="settingsFeedback" role="status">{feedback}</p>
-      ) : null}
       <ConfirmDialog dialog={confirmDialog} onClose={onConfirmClose} />
     </>
   );

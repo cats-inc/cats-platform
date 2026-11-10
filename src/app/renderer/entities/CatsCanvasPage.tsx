@@ -3,10 +3,9 @@ import { useEffect, useState } from 'react';
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { fetchAppShell } from '../../../products/shared/renderer/api/index.js';
 import { WorkspaceCatsCanvas } from '../../../products/shared/renderer/components/cats/Cats.js';
-// The cats canvas was originally Settings-only, so its styling lives
-// in `products/shared/renderer/styles/settings.css`. Pull it in here
-// so the canvas renders correctly when mounted from `/entities/cats`
-// (the chat product surface no longer hosts it for this path).
+// The cats canvas started in Settings, so its styling still lives in
+// `products/shared/renderer/styles/settings.css`. Pull it in here so the
+// canvas renders correctly inside Cats Directory.
 import '../../../products/shared/renderer/styles/settings.css';
 import {
   IDLE_BUSY_STATE,
@@ -14,10 +13,10 @@ import {
 } from '../../../shared/workspaceBusy.js';
 
 /**
- * Platform-level page for `/entities/cats`. Mounts the
- * `WorkspaceCatsCanvas` (the same canvas the Settings shell hosts at
- * `/settings/cats`) but inside EntitiesShell, so
- * the sidebar is the platform-level directory sidebar — not chat's
+ * Platform-level page for `/entities/cats` and `/entities/cats/new`.
+ * Cats Directory owns the cat roster and the add-cat flow; Settings no
+ * longer hosts a copy. Mounts `WorkspaceCatsCanvas` inside EntitiesShell,
+ * so the sidebar is the platform-level directory sidebar, not chat's
  * Direct Messages sidebar.
  *
  * `WorkspaceCatsCanvas` needs the chat-product `AppShellPayload` to

@@ -173,20 +173,19 @@ test('PlatformSettingsRoutes owns canonical platform settings routes', () => {
       payload: createPayload(),
       onPayloadUpdate: () => {},
       busy: clearBusyState(),
-      onFeedback: () => {},
-      onBusy: () => {},
       onResetSetup: async () => {},
     }),
   );
 
   try {
     assertConcreteRoute(routes, 'general');
-    assertConcreteRoute(routes, 'cats');
     assertConcreteRoute(routes, 'chat');
     assertConcreteRoute(routes, 'work');
     assertConcreteRoute(routes, 'code');
     assertConcreteRoute(routes, 'apps/*');
     assertConcreteRoute(routes, 'desktop');
+    assertNoRoute(routes, 'cats');
+    assertNoRoute(routes, 'cats/new');
     assertNoRoute(routes, 'cats/my-cats');
     assertNoRoute(routes, 'desktop-startup');
     assertConcreteRoute(routes, 'runtime');

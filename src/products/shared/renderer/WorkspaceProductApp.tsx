@@ -2059,8 +2059,6 @@ export function createWorkspaceProductApp({
               )}
               confirmDialog={appDialog}
               onPayloadUpdate={publishReadyPayload}
-              onFeedback={setFeedback}
-              onBusy={setBusy}
               onResetSetup={onResetSetup}
               onConfirmClose={appHandleClose}
             />

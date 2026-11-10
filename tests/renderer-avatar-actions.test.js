@@ -49,49 +49,23 @@ test('product renderer settings wrappers for general and data pages were removed
   }));
 });
 
-for (const product of ['chat', 'work', 'code']) {
-  test(`${product} cat settings can remove uploaded cat avatars`, async () => {
-    const source = await readFile(
-      path.join(
-        process.cwd(),
-        'src',
-        'products',
-        product,
-        'renderer',
-        'components',
-        'settings-cats',
-        'SettingsCatsDetailPanel.tsx',
-      ),
-      'utf8',
-    );
-    const implementationSource = source.includes(
-      "shared/renderer/components/settings-cats/SettingsCatsDetailPanel.js",
-    )
-      ? await readFile(
-        path.join(
-          process.cwd(),
-          'src',
-          'products',
-          'shared',
-          'renderer',
-          'components',
-          'settings-cats',
-          'SettingsCatsDetailPanel.tsx',
-        ),
-        'utf8',
-      )
-      : source;
+test('cats canvas can remove uploaded cat avatars', async () => {
+  const source = await readFile(
+    path.join(
+      process.cwd(),
+      'src',
+      'products',
+      'shared',
+      'renderer',
+      'components',
+      'cats',
+      'CatsDetailPanel.tsx',
+    ),
+    'utf8',
+  );
 
-    if (implementationSource !== source) {
-      assert.match(
-        source,
-        /shared\/renderer\/components\/settings-cats\/SettingsCatsDetailPanel\.js/u,
-      );
-    }
-
-    assert.match(implementationSource, /async function handleCatAvatarRemove\(\): Promise<void> \{/u);
-    assert.match(implementationSource, /updateCatProfile\(cat\.id, \{ avatarUrl: null \}\)/u);
-    assert.match(implementationSource, /className="secondaryButton"/u);
-    assert.match(implementationSource, /\{t\(messageKeys\.settingsGeneralAvatarRemoveLabel\)\}/u);
-  });
-}
+  assert.match(source, /async function handleCatAvatarRemove\(\): Promise<void> \{/u);
+  assert.match(source, /updateCatProfile\(cat\.id, \{ avatarUrl: null \}\)/u);
+  assert.match(source, /className="secondaryButton"/u);
+  assert.match(source, /\{t\(messageKeys\.settingsGeneralAvatarRemoveLabel\)\}/u);
+});

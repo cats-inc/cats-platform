@@ -7,10 +7,6 @@ async function readText(relativePath) {
   return readFile(path.join(process.cwd(), relativePath), 'utf8');
 }
 
-function resolveSharedImplementationSource(productSource, sharedSource, sharedPattern) {
-  return sharedPattern.test(productSource) ? sharedSource : productSource;
-}
-
 // Chat, Work and Code share one app shell (createWorkspaceProductApp), so the
 // My Cats archive action and its confirmation live in WorkspaceProductApp.
 test('workspace app confirms before archiving cats from My Cats', async () => {
@@ -25,47 +21,28 @@ test('workspace app confirms before archiving cats from My Cats', async () => {
   assert.match(source, /updateCatProfile\(catId, \{ archive: true \}\)/u);
 });
 
-for (const product of ['chat', 'work', 'code']) {
+test('cats registry actions confirm before archiving and recovering cats', async () => {
+  const source = await readText(
+    path.join('src', 'products', 'shared', 'renderer', 'hooks', 'useSettingsCatsRegistryActions.ts'),
+  );
 
-  test(`${product} settings cats registry confirms before archiving cats`, async () => {
-    const productSource = await readText(
-      path.join('src', 'products', product, 'renderer', 'hooks', 'useSettingsCatsRegistryActions.ts'),
-    );
-    const sharedSource = await readText(
-      path.join('src', 'products', 'shared', 'renderer', 'hooks', 'useSettingsCatsRegistryActions.ts'),
-    );
-    const source = resolveSharedImplementationSource(
-      productSource,
-      sharedSource,
-      /shared\/renderer\/hooks\/useSettingsCatsRegistryActions\.js/u,
-    );
+  assert.match(source, /async function onArchiveCat\(catId: string, catName: string\): Promise<void> \{/u);
+  assert.match(source, /title: t\(messageKeys\.sharedSettingsCatsArchiveConfirmTitle\)/u);
+  assert.match(source, /confirmLabel: t\(messageKeys\.sharedSettingsCatsArchiveLabel\)/u);
+  assert.match(source, /if \(!confirmed\) return;/u);
+  assert.match(source, /updateCatProfile\(catId, \{ archive: true \}\)/u);
+  assert.match(source, /async function onUnarchiveCat\(catId: string, catName: string\): Promise<void> \{/u);
+  assert.match(source, /title: t\(messageKeys\.sharedSettingsCatsRecoverConfirmTitle\)/u);
+  assert.match(source, /confirmLabel: t\(messageKeys\.sharedSettingsCatsRecoverConfirmLabel\)/u);
+  assert.match(source, /updateCatProfile\(catId, \{ unarchive: true \}\)/u);
+});
 
-    assert.match(source, /async function onArchiveCat\(catId: string, catName: string\): Promise<void> \{/u);
-    assert.match(source, /title: t\(messageKeys\.sharedSettingsCatsArchiveConfirmTitle\)/u);
-    assert.match(source, /confirmLabel: t\(messageKeys\.sharedSettingsCatsArchiveLabel\)/u);
-    assert.match(source, /if \(!confirmed\) return;/u);
-    assert.match(source, /updateCatProfile\(catId, \{ archive: true \}\)/u);
-    assert.match(source, /async function onUnarchiveCat\(catId: string, catName: string\): Promise<void> \{/u);
-    assert.match(source, /title: t\(messageKeys\.sharedSettingsCatsRecoverConfirmTitle\)/u);
-    assert.match(source, /confirmLabel: t\(messageKeys\.sharedSettingsCatsRecoverConfirmLabel\)/u);
-    assert.match(source, /updateCatProfile\(catId, \{ unarchive: true \}\)/u);
-  });
+test('cats registry shows recover actions for archived cats', async () => {
+  const source = await readText(
+    path.join('src', 'products', 'shared', 'renderer', 'components', 'cats', 'CatsRegistry.tsx'),
+  );
 
-  test(`${product} settings cats registry shows recover actions for archived cats`, async () => {
-    const productSource = await readText(
-      path.join('src', 'products', product, 'renderer', 'components', 'settings-cats', 'SettingsCatsRegistry.tsx'),
-    );
-    const sharedSource = await readText(
-      path.join('src', 'products', 'shared', 'renderer', 'components', 'settings-cats', 'SettingsCatsRegistry.tsx'),
-    );
-    const source = resolveSharedImplementationSource(
-      productSource,
-      sharedSource,
-      /shared\/renderer\/components\/settings-cats\/SettingsCatsRegistry\.js/u,
-    );
-
-    assert.match(source, /registryController\.onUnarchiveCat\(cat\.id, cat\.name\)/u);
-    assert.match(source, /messageKeys\.sharedSettingsCatsRegistryRecoverLabel/u);
-    assert.match(source, /messageKeys\.sharedSettingsCatsRegistryRecoverTooltip/u);
-  });
-}
+  assert.match(source, /registryController\.onUnarchiveCat\(cat\.id, cat\.name\)/u);
+  assert.match(source, /messageKeys\.sharedSettingsCatsRegistryRecoverLabel/u);
+  assert.match(source, /messageKeys\.sharedSettingsCatsRegistryRecoverTooltip/u);
+});

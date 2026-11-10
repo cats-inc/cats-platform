@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readdir, readFile } from 'node:fs/promises';
+import { access, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -1492,21 +1492,9 @@ test('renderer app consumes dedicated draft-ui actions instead of defining menu 
   assert.match(hookImplementationSource, /openDraftAddCatPanel/u);
 });
 
-test('settings cats consumes dedicated telegram and memory hooks instead of defining side effects inline', async () => {
-  const settingsCatsSource = await readFile(
-    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
-    'utf8',
-  );
-  const sharedSettingsCatsSource = await readFile(
-    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
-    'utf8',
-  );
-  const telegramHookSource = await readFile(
-    new URL('../src/products/chat/renderer/hooks/useSettingsCatsTelegram.ts', import.meta.url),
-    'utf8',
-  );
-  const memoryHookSource = await readFile(
-    new URL('../src/products/chat/renderer/hooks/useSettingsCatsMemory.ts', import.meta.url),
+test('cats canvas consumes dedicated telegram and memory hooks instead of defining side effects inline', async () => {
+  const catsSource = await readFile(
+    new URL('../src/products/shared/renderer/components/cats/Cats.tsx', import.meta.url),
     'utf8',
   );
   const sharedTelegramHookSource = await readFile(
@@ -1518,34 +1506,18 @@ test('settings cats consumes dedicated telegram and memory hooks instead of defi
     'utf8',
   );
 
-  assert.match(
-    settingsCatsSource,
-    /shared\/renderer\/components\/settings-cats\/SettingsCats\.js/u,
-  );
-  assert.match(sharedSettingsCatsSource, /useSettingsCatsTelegram/u);
-  assert.match(sharedSettingsCatsSource, /useSettingsCatsMemory/u);
-  assert.doesNotMatch(settingsCatsSource, /beginSettingsCatsTelegramScopeLoad/u);
-  assert.doesNotMatch(settingsCatsSource, /createSettingsCatsTelegramAutoLoader/u);
-  assert.doesNotMatch(settingsCatsSource, /listCatMemory\(/u);
-  assert.match(telegramHookSource, /export function useSettingsCatsTelegram/u);
-  assert.match(memoryHookSource, /export function useSettingsCatsMemory/u);
-  assert.match(telegramHookSource, /useWorkspaceSettingsCatsTelegram/u);
-  assert.match(memoryHookSource, /useWorkspaceSettingsCatsMemory/u);
+  assert.match(catsSource, /useSettingsCatsTelegram/u);
+  assert.match(catsSource, /useSettingsCatsMemory/u);
+  assert.doesNotMatch(catsSource, /beginSettingsCatsTelegramScopeLoad/u);
+  assert.doesNotMatch(catsSource, /createSettingsCatsTelegramAutoLoader/u);
+  assert.doesNotMatch(catsSource, /listCatMemory\(/u);
   assert.match(sharedTelegramHookSource, /createSettingsCatsTelegramAutoLoader/u);
   assert.match(sharedMemoryHookSource, /listCatMemory\(/u);
 });
 
-test('settings cats consumes dedicated registry actions instead of defining cat and binding mutations inline', async () => {
-  const settingsCatsSource = await readFile(
-    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
-    'utf8',
-  );
-  const sharedSettingsCatsSource = await readFile(
-    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
-    'utf8',
-  );
-  const registryHookSource = await readFile(
-    new URL('../src/products/chat/renderer/hooks/useSettingsCatsRegistryActions.ts', import.meta.url),
+test('cats canvas consumes dedicated registry actions instead of defining cat and binding mutations inline', async () => {
+  const catsSource = await readFile(
+    new URL('../src/products/shared/renderer/components/cats/Cats.tsx', import.meta.url),
     'utf8',
   );
   const sharedRegistryHookSource = await readFile(
@@ -1553,114 +1525,76 @@ test('settings cats consumes dedicated registry actions instead of defining cat 
     'utf8',
   );
 
-  assert.match(
-    settingsCatsSource,
-    /shared\/renderer\/components\/settings-cats\/SettingsCats\.js/u,
-  );
-  assert.match(settingsCatsSource, /useSettingsCatsRegistryActionsHook/u);
-  assert.match(sharedSettingsCatsSource, /useSettingsCatsRegistryActionsHook/u);
-  assert.doesNotMatch(settingsCatsSource, /async function onCreateCat\(/u);
-  assert.doesNotMatch(settingsCatsSource, /async function onRenameCat\(/u);
-  assert.doesNotMatch(settingsCatsSource, /async function onMakeBossCat\(/u);
-  assert.doesNotMatch(settingsCatsSource, /async function onCreateBinding\(/u);
-  assert.doesNotMatch(settingsCatsSource, /async function onDeleteBinding\(/u);
-  assert.match(
-    registryHookSource,
-    /shared\/renderer\/hooks\/useSettingsCatsRegistryActions\.js/u,
-  );
+  assert.match(catsSource, /useSettingsCatsRegistryActionsHook/u);
+  assert.doesNotMatch(catsSource, /async function onCreateCat\(/u);
+  assert.doesNotMatch(catsSource, /async function onRenameCat\(/u);
+  assert.doesNotMatch(catsSource, /async function onMakeBossCat\(/u);
+  assert.doesNotMatch(catsSource, /async function onCreateBinding\(/u);
+  assert.doesNotMatch(catsSource, /async function onDeleteBinding\(/u);
   assert.match(sharedRegistryHookSource, /export function useSettingsCatsRegistryActions/u);
   assert.match(sharedRegistryHookSource, /createSettingsCatsRegistryActions/u);
   assert.match(sharedRegistryHookSource, /updateCatProfile/u);
 });
 
-test('settings cats consumes dedicated detail content instead of rendering telegram diagnostics inline', async () => {
-  const settingsCatsSource = await readFile(
-    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
+test('cats canvas consumes dedicated detail content instead of rendering telegram diagnostics inline', async () => {
+  const catsSource = await readFile(
+    new URL('../src/products/shared/renderer/components/cats/Cats.tsx', import.meta.url),
     'utf8',
   );
-  const sharedSettingsCatsSource = await readFile(
-    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
-    'utf8',
-  );
-  const sharedDetailContentSource = await readFile(
-    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCatsDetailPanelContent.tsx', import.meta.url),
+  const detailContentSource = await readFile(
+    new URL('../src/products/shared/renderer/components/cats/CatsDetailPanelContent.tsx', import.meta.url),
     'utf8',
   );
 
-  assert.match(
-    settingsCatsSource,
-    /shared\/renderer\/components\/settings-cats\/SettingsCats\.js/u,
-  );
-  assert.match(sharedSettingsCatsSource, /SettingsCatsDetailPanel/u);
-  assert.doesNotMatch(settingsCatsSource, /Last inbound: \{formatTransportTimestamp/u);
-  assert.doesNotMatch(settingsCatsSource, /Tracked inboxes \{telegramDiagnostics\.bindings\.length\}/u);
-  assert.match(sharedDetailContentSource, /export function SettingsCatsDetailPanelContent/u);
-  assert.match(sharedDetailContentSource, /formatTransportTimestamp/u);
-  assert.match(sharedDetailContentSource, /sharedSettingsCatsLastInboundLabel/u);
-  assert.match(sharedDetailContentSource, /time: formatTransportTimestamp/u);
+  assert.match(catsSource, /CatsDetailPanelContent/u);
+  assert.doesNotMatch(catsSource, /Last inbound: \{formatTransportTimestamp/u);
+  assert.doesNotMatch(catsSource, /Tracked inboxes \{telegramDiagnostics\.bindings\.length\}/u);
+  assert.match(detailContentSource, /export function CatsDetailPanelContent/u);
+  assert.match(detailContentSource, /formatTransportTimestamp/u);
+  assert.match(detailContentSource, /sharedSettingsCatsLastInboundLabel/u);
+  assert.match(detailContentSource, /time: formatTransportTimestamp/u);
 });
 
-test('settings cats composes dedicated shared settings modules instead of keeping helper logic inline', async () => {
-  const settingsCatsSource = await readFile(
-    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
+test('cats canvas composes dedicated shared modules instead of keeping helper logic inline', async () => {
+  const read = (name) => readFile(
+    new URL(`../src/products/shared/renderer/components/cats/${name}`, import.meta.url),
     'utf8',
   );
-  const sharedSettingsCatsSource = await readFile(
-    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
-    'utf8',
-  );
-  const registrySource = await readFile(
-    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCatsRegistry.tsx', import.meta.url),
-    'utf8',
-  );
-  const sharedRegistrySource = await readFile(
-    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCatsRegistry.tsx', import.meta.url),
-    'utf8',
-  );
-  const detailPanelSource = await readFile(
-    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCatsDetailPanel.tsx', import.meta.url),
-    'utf8',
-  );
-  const sharedDetailPanelSource = await readFile(
-    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCatsDetailPanel.tsx', import.meta.url),
-    'utf8',
-  );
-  const createFormSource = await readFile(
-    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCatsCreateForm.tsx', import.meta.url),
-    'utf8',
-  );
-  const sharedCreateFormSource = await readFile(
-    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCatsCreateForm.tsx', import.meta.url),
-    'utf8',
-  );
+  const catsSource = await read('Cats.tsx');
+  const registrySource = await read('CatsRegistry.tsx');
+  const detailPanelSource = await read('CatsDetailPanel.tsx');
+  const createFormSource = await read('CatsCreateForm.tsx');
 
-  assert.match(
-    settingsCatsSource,
-    /shared\/renderer\/components\/settings-cats\/SettingsCats\.js/u,
-  );
-  assert.match(sharedSettingsCatsSource, /SettingsCatsRegistryComponent/u);
-  assert.match(sharedSettingsCatsSource, /SettingsCatsDetailPanelContent/u);
-  assert.match(sharedSettingsCatsSource, /settingsCatsSupport/u);
-  assert.doesNotMatch(settingsCatsSource, /className="catDetailSection"/u);
-  assert.doesNotMatch(settingsCatsSource, /ProviderModelFields/u);
-  assert.match(
-    registrySource,
-    /shared\/renderer\/components\/settings-cats\/SettingsCatsRegistry\.js/u,
-  );
-  assert.match(sharedRegistrySource, /SettingsCatsDetailPanel/u);
-  assert.doesNotMatch(sharedRegistrySource, /className="memoryForm"/u);
-  assert.match(
-    detailPanelSource,
-    /shared\/renderer\/components\/settings-cats\/SettingsCatsDetailPanel\.js/u,
-  );
-  assert.match(sharedDetailPanelSource, /AvatarCropDialog/u);
-  assert.match(sharedDetailPanelSource, /export function SettingsCatsDetailPanel/u);
-  assert.match(
-    createFormSource,
-    /shared\/renderer\/components\/settings-cats\/SettingsCatsCreateForm\.js/u,
-  );
-  assert.match(sharedCreateFormSource, /CatCreationFields/u);
-  assert.match(sharedCreateFormSource, /export function SettingsCatsCreateForm/u);
+  assert.match(catsSource, /CatsRegistry/u);
+  assert.match(catsSource, /catsSupport/u);
+  assert.doesNotMatch(catsSource, /className="memoryForm"/u);
+  assert.doesNotMatch(registrySource, /className="memoryForm"/u);
+  assert.match(detailPanelSource, /AvatarCropDialog/u);
+  assert.match(detailPanelSource, /export function CatsDetailPanel/u);
+  assert.match(createFormSource, /CatCreationFields/u);
+  assert.match(createFormSource, /export function CatsCreateForm/u);
+});
+
+test('cats management has one implementation: the Settings and per-product copies stay deleted', async () => {
+  const removedPaths = [
+    'src/products/shared/renderer/components/settings-cats',
+    'src/products/chat/renderer/components/settings-cats',
+    'src/products/code/renderer/components/settings-cats',
+    'src/products/work/renderer/components/settings-cats',
+    ...['chat', 'code', 'work'].flatMap((product) => [
+      `src/products/${product}/renderer/hooks/useSettingsCatsMemory.ts`,
+      `src/products/${product}/renderer/hooks/useSettingsCatsRegistryActions.ts`,
+      `src/products/${product}/renderer/hooks/useSettingsCatsTelegram.ts`,
+    ]),
+  ];
+
+  await Promise.all(removedPaths.map(async (relativePath) => {
+    await assert.rejects(
+      access(new URL(`../${relativePath}`, import.meta.url)),
+      (error) => Boolean(error && typeof error === 'object' && error.code === 'ENOENT'),
+      relativePath,
+    );
+  }));
 });
 
 test('renderer styles compose a shared design layer with chat-owned companion overrides', async () => {

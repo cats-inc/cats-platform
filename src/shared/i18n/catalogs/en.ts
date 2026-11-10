@@ -594,8 +594,6 @@ export const enCatalog: MessageCatalog = {
   'settings.general.saveAvatarError': 'Failed to save avatar',
   'settings.shell.heading': 'Settings',
   'settings.shell.sectionGeneral': 'General',
-  'settings.shell.sectionCats': 'Cats',
-  'settings.shell.subsectionMyCats': 'My Cats',
   'settings.shell.subsectionAssistants': 'Assistants',
   'settings.shell.sectionApps': 'Apps',
   'settings.shell.sectionDesktop': 'Desktop',
@@ -794,7 +792,6 @@ export const enCatalog: MessageCatalog = {
   'settings.runtime.lifecycleMode.uninstall': 'uninstall',
   'settings.runtime.lifecycleMode.upgrade': 'upgrade',
   'settings.route.title.assistants': 'Assistants',
-  'settings.route.title.myCats': 'My Cats',
   'settings.route.title.chat': 'Chat',
   'settings.route.title.work': 'Work',
   'settings.route.title.code': 'Code',
@@ -2363,7 +2360,7 @@ export const enCatalog: MessageCatalog = {
   'chat.companionSettingsTelegramBindingConnected': 'Connected',
   'chat.companionSettingsTelegramBindingDefaultMode': 'Default',
   'chat.companionSettingsTelegramBindingManageHint': 'Manage Telegram binding in ',
-  'chat.companionSettingsTelegramBindingSettingsLabel': 'Settings > My Cats',
+  'chat.companionSettingsTelegramBindingSettingsLabel': 'Cats Directory > My Cats',
   'chat.companionSettingsTelegramBindingSuffix': '.',
   'chat.companionSettingsNoTelegramBindingState':
     'No Telegram binding. Configure one in ',
@@ -3302,6 +3299,7 @@ export const enCatalog: MessageCatalog = {
   'shared.providerModel.attention.noLongerOffered': '{value} (no longer offered)',
   'shared.providerModel.attention.chooseHere': 'Click to choose again.',
   'shared.providerModel.attention.chooseInSettings': 'Click to choose again in Settings.',
+  'shared.providerModel.attention.chooseInCatsDirectory': 'Click to choose again in Cats Directory.',
   'shared.providerModel.attention.badgeLabel': 'Model choice needs attention',
   'shared.providerModel.field.advancedCatalogUnavailable':
     'Runtime advanced model catalog unavailable.',

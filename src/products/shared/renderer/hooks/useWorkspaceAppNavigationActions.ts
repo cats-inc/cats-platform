@@ -75,6 +75,7 @@ import {
 } from '../../../../shared/workspaceBusy.js';
 import { type RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { CATS_DIRECTORY_NEW_CAT_PATH } from '../../../../shared/catsDirectoryPaths.js';
 
 type WorkspaceNavigationTranslator = (
   key: MessageKey,
@@ -619,13 +620,11 @@ export function useWorkspaceAppNavigationActions<
   }, [navigate, platformShellSurface, setAccountMenuOpen, setAddCatOpen, setFeedback]);
 
   const onCreateNewCat = useCallback((): void => {
-    navigate('/settings/cats/new', {
-      state: { platformShellSurface },
-    });
+    navigate(CATS_DIRECTORY_NEW_CAT_PATH);
     setAccountMenuOpen(false);
     setAddCatOpen(false);
     setFeedback('');
-  }, [navigate, platformShellSurface, setAccountMenuOpen, setAddCatOpen, setFeedback]);
+  }, [navigate, setAccountMenuOpen, setAddCatOpen, setFeedback]);
 
   const onDirectChatCat = useCallback(async (catId: string): Promise<void> => {
     if (state.status !== 'ready') {

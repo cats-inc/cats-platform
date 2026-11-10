@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   findNewlyCreatedActiveCat,
   hasModelSelectionChanged,
-} from '../src/products/shared/renderer/components/settings-cats/settingsCatsSupport.ts';
+} from '../src/products/shared/renderer/components/cats/catsSupport.ts';
 
 test('hasModelSelectionChanged treats advanced-control changes as dirty', () => {
   assert.equal(

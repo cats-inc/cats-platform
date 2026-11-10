@@ -262,7 +262,7 @@ function DirectMessageCatRow({ cat, onPress }: DirectMessageCatRowProps) {
   // Avatar bubble + name layout. Mirrors the Cats Directory cat
   // row shape so the visual stays consistent across surfaces. No
   // swipe action here yet — DMs don't have a delete-row shortcut
-  // (the desktop archives the cat from /settings/cats; mobile
+  // (the desktop archives the cat from Cats Directory; mobile
   // routes a no-op tap to a desktop-only alert when no channel
   // exists yet).
   const initial = cat.name.slice(0, 1).toUpperCase();

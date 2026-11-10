@@ -31,6 +31,7 @@ import {
 import { resolveGuideCatSurfaceClass } from '../../app/renderer/guideCatPlacement.js';
 import { useGuideCatUiPrefs } from '../../app/renderer/guideCatUiPrefsStore.js';
 import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import { CATS_DIRECTORY_PATH } from '../../shared/catsDirectoryPaths.js';
 import { messageKeys, type MessageKey } from '../../shared/i18n/index.js';
 
 import {
@@ -169,7 +170,7 @@ function WelcomePeek({
           labelKey={messageKeys.sharedGuideCatWelcomeStartChat}
         />
         <GuideCatActionButton
-          route="/settings/cats"
+          route={CATS_DIRECTORY_PATH}
           onAction={onAction}
           labelKey={messageKeys.sharedGuideCatWelcomeMeetCats}
         />
@@ -263,7 +264,7 @@ function OpenPanel({
             className="guideCatPanelAction"
           />
           <GuideCatActionButton
-            route="/settings/cats"
+            route={CATS_DIRECTORY_PATH}
             onAction={onAction}
             labelKey={messageKeys.sharedGuideCatWelcomeMeetCats}
             className="guideCatPanelAction"

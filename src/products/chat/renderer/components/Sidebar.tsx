@@ -155,7 +155,7 @@ export function Sidebar(props: SidebarProps) {
   /* Chat reframes the row's terminal popover action as "Clear" —
    * wipes the cat's direct-lane channel so the next visit starts a
    * fresh NewChatDraft. The cat itself is NOT archived (the canonical
-   * archive flow lives in /settings/cats, where it belongs at the
+   * archive flow lives in Cats Directory, where it belongs at the
    * platform level). Implementation: locate the existing direct-lane
    * channel for the cat and call the channel-delete handler the
    * sidebar already has wired in. Uses the app-level

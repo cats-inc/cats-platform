@@ -111,7 +111,7 @@ function SettingsProbe() {
   return <span>{`settings:${focus?.catId ?? 'none'}:${focus?.focus ?? 'none'}`}</span>;
 }
 
-test('a marked cat avatar opens its model field in Settings instead of its usual action', async (t) => {
+test('a marked cat avatar opens its model field in Cats Directory instead of its usual action', async (t) => {
   resetTestDom();
   t.after(() => { cleanup(); resetTestDom(); });
   let rowClicks = 0;
@@ -126,14 +126,14 @@ test('a marked cat avatar opens its model field in Settings instead of its usual
               </span>
             </button>
           )} />
-          <Route path="/settings/cats" element={<SettingsProbe />} />
+          <Route path="/entities/cats" element={<SettingsProbe />} />
         </Routes>
       </MemoryRouter>
     </I18nProvider>,
   );
   const mark = await waitFor(() => view.getByRole('button', {
     name: 'Model choice needs attention: Opus 5.5 no longer offers Reasoning effort ultracode. Choose it again. '
-      + 'Click to choose again in Settings.',
+      + 'Click to choose again in Cats Directory.',
   }));
   fireEvent.click(mark);
   await waitFor(() => assert.ok(view.getByText('settings:cat-1:model')));

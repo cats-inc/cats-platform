@@ -4,6 +4,7 @@ import { ConfirmDialog, useConfirmDialog } from '../../../design/components/Conf
 import { SettingsActionBar, SettingsSection, SettingsSectionHeader } from '../../../design/components/settings/index.js';
 import { AGENCY_PLUGIN, type PluginInventory } from '../../../shared/managedPlugins.js';
 import { useI18n } from '../i18n/index.js';
+import { CATS_DIRECTORY_PATH } from '../../../shared/catsDirectoryPaths.js';
 
 export async function pluginRequest<T>(action = '', body?: unknown): Promise<T> {
   const response = await fetch(`/api/plugins${action ? `/${action}` : ''}`, body === undefined ? undefined : {
@@ -52,7 +53,7 @@ export function PlatformSettingsPlugins() {
       {inventory?.phase === 'enabled' && !inventory.availableSkills.length && <p>{t('pluginsUnavailable')}</p>}
       {inventory?.observation?.pendingRuns.length ? <p>{t('pluginsPendingExplanation')}</p> : null}
       <p>{t('pluginsNewConversation')}</p>
-      <Link to="/settings/cats">{t('pluginsChooseCat')}</Link>
+      <Link to={CATS_DIRECTORY_PATH}>{t('pluginsChooseCat')}</Link>
       {(error || inventory?.error) && <p role="alert">{error || inventory?.error}</p>}
       <SettingsActionBar>
         {!inventory?.installed ? <>
