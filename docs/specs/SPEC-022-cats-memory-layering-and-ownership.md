@@ -378,6 +378,17 @@ The most suitable contemporary technical pattern for Cats is:
 - [OpenClaw compaction](https://docs.openclaw.ai/concepts/compaction)
 - [OpenClaw session management deep dive](https://docs.openclaw.ai/reference/session-management-compaction)
 - [OpenClaw hooks](https://docs.openclaw.ai/automation/hooks)
+- Cats Bot (2026-11-11): accepted
+  [ADR-021](https://github.com/cats-inc/cats-bot/blob/main/docs/decisions/021-keep-each-bots-state-in-a-sqlite-database.md)
+  and
+  [ADR-022](https://github.com/cats-inc/cats-bot/blob/main/docs/decisions/022-give-each-bot-layered-memory-it-consolidates-while-asleep.md).
+  They apply these layers to resident bots: a SQLite evidence store and nightly
+  consolidation, with record shapes aligned to this spec and SPEC-031 for a possible
+  shared package (ADR-142). Desktop is unchanged.
+  - Its [agent memory architecture survey](https://github.com/cats-inc/cats-bot/blob/main/docs/research/2026-11-11-agent-memory-architecture-survey.md)
+    updates this spec's OpenClaw benchmark from source: transcripts now in SQLite, dreaming,
+    and weak keyword search for Chinese.
+  - The survey also covers Hermes Agent and Paperclip.
 
 ---
 
