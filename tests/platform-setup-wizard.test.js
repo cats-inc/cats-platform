@@ -92,6 +92,7 @@ function createRuntimeStub(options = {}) {
         provider: input.provider,
         model: input.model ?? null,
         status: 'ready',
+        providerSessionPersistence: input.providerSessionPersistence ?? 'persistent',
         cwd: input.cwd ?? path.join(tmpdir(), '.cats', 'runtime', 'sessions', sessionId),
       };
       this.createdSessions.push({ ...input, id: session.id });

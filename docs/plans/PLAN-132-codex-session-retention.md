@@ -99,6 +99,12 @@ Chat lifecycle/rotation/parsing tests passed. The first lifecycle run was blocke
 by sandbox filesystem access; the same isolated tests passed outside that sandbox.
 Independent review found no Platform correctness issue.
 
+The first PR CI run exposed six setup-wizard cases whose shared Runtime stub did
+not return the new persistence admission field. A focused reset case reproduced
+the failure locally. The stub now returns the requested policy, matching Runtime;
+all 34 setup-wizard and session-retention tests passed together. Production
+admission remains strict, including the existing missing-readback rejection tests.
+
 The actual built client and both Catlas inference paths ran against the Runtime
 candidate with SHA-256
 `256fb37a5b218fc9137910969a5d3b4c1e77a138f09273d8caa6018b0d087a76` on Windows
