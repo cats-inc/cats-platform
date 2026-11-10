@@ -11,6 +11,7 @@ import {
 } from '../../../products/shared/renderer/api/index.js';
 import { hasCompanionSkill } from '../../../products/chat/renderer/chatUtils.js';
 import { buildWorkspaceNewChatPath } from '../../../products/shared/channelPaths.js';
+import { CATS_DIRECTORY_PATH, buildCatSettingsPath } from '../../../shared/catsDirectoryPaths.js';
 import { messageKeys } from '../../../shared/i18n/index.js';
 import { buildMyCatPathForPrefix } from '../productShell/myCatNavigation.js';
 import { useI18n } from '../i18n/index.js';
@@ -128,7 +129,7 @@ export function CatProfilePage() {
   // No back-to-chat path here; Entities sidebar already provides
   // navigation back to /lobby via its surface switcher.
   const onBackToChat = (): void => {
-    navigate('/entities/cats');
+    navigate(CATS_DIRECTORY_PATH);
   };
 
   // Header actions delegate into the chat surface: Direct message
@@ -142,6 +143,9 @@ export function CatProfilePage() {
   const onStartNewChatWithCat = (targetCatId: string): void => {
     navigate(buildWorkspaceNewChatPath(chatPrefix, targetCatId));
   };
+  const onOpenSettings = (targetCatId: string): void => {
+    navigate(buildCatSettingsPath(targetCatId));
+  };
 
   return (
     <CompanionWorkspace
@@ -153,6 +157,7 @@ export function CatProfilePage() {
       onCatAvatarSave={onCatAvatarSave}
       onDirectMessage={onDirectMessage}
       onStartNewChatWithCat={onStartNewChatWithCat}
+      onOpenSettings={onOpenSettings}
       hideFeed={hideFeed}
       hideCompanionToggle
     />

@@ -107,6 +107,7 @@ function renderApp(pathname: string, envelope: PlatformHostEnvelope): string {
               <Route path="/entities/cats" element={<CatsCanvasPage />} />
               <Route path="/entities/cats/new" element={<CatsCanvasPage />} />
               <Route path="/entities/cats/:catId" element={<CatProfilePage />} />
+              <Route path="/entities/cats/:catId/settings" element={<CatsCanvasPage />} />
               <Route
                 path="/entities/clowders"
                 element={<ClowdersCanvasPage envelope={envelope} />}
@@ -408,8 +409,22 @@ test('/entities/cats/new opens the add-cat canvas inside Cats Directory, not a c
   assert.doesNotMatch(markup, /entityComingSoonPanel/u);
 });
 
-test('App registers the Cats Directory add-cat route before the cat profile route', () => {
+test('/entities/cats/:catId/settings opens the cats canvas, while /entities/cats/:catId stays the profile', () => {
+  const markup = renderApp('/entities/cats/cat-concierge/settings', createEnvelope());
+
+  assert.match(markup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="entities"/u);
+  assert.match(markup, /class="catsCanvasPageBoot"/u);
+  assert.doesNotMatch(markup, /class="catProfilePageBoot"/u);
+
+  const profile = renderApp('/entities/cats/cat-concierge', createEnvelope());
+  assert.match(profile, /class="catProfilePageBoot"/u);
+});
+
+test('App registers the Cats Directory add-cat and cat settings routes beside the profile route', () => {
   const appSource = readFileSync('src/app/renderer/App.tsx', 'utf8');
+
+  assert.match(appSource, /<Route path="\/entities\/cats\/:catId" element=\{<CatProfilePage \/>\} \/>/u);
+  assert.match(appSource, /<Route path="\/entities\/cats\/:catId\/settings" element=\{<CatsCanvasPage \/>\} \/>/u);
 
   assert.match(appSource, /<Route path="\/entities\/cats\/new" element=\{<CatsCanvasPage \/>\} \/>/u);
   assert.doesNotMatch(appSource, /settings\/cats/u);

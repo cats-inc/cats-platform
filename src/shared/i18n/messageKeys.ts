@@ -4276,6 +4276,8 @@ export const messageKeys = {
   entityCanvasOpenCatteryAction: 'entityCanvas.openCatteryAction',
   entityCanvasCatterySubtitle: 'entityCanvas.catterySubtitle',
   catProfileNotFoundTitle: 'catProfile.notFound.title',
+  catProfileOpenSettingsLabel: 'catProfile.openSettingsLabel',
+  catProfileViewProfileAction: 'catProfile.viewProfileAction',
   catProfileNotFoundBody: 'catProfile.notFound.body',
   // Entities sidebar reuses the ConversationSidebarMyCatsSection
   // primitive. The section needs only a header label and a "+ New X"

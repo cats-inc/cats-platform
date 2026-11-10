@@ -135,7 +135,7 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
   assert.equal(t(messageKeys.codeWorkspacesListSourceCodes), '程式碼任務');
   assert.equal(
     t(messageKeys.chatCompanionSettingsTelegramBindingSettingsLabel),
-    'Cats 目錄 > 我的貓咪',
+    '這隻貓的設定',
   );
   assert.equal(t(messageKeys.chatCompanionSettingsTelegramBindingConnected), '已連線');
   assert.equal(t(messageKeys.sharedTelegramConnectDialogTitle), '連線 Telegram');
