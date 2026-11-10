@@ -7,6 +7,7 @@
 | **Status** | Implemented (owner approved 2026-09-29); real-bot and Desktop visual acceptance pending |
 | **Owner** | Claude |
 | **Reviewer** | Owner |
+| **Changed by** | [SPEC-137](SPEC-137-companion-own-initiative-modes-and-back-off.md) adds `mode` and `enabledAt` to FR-1 to FR-3, backs off FR-18 and FR-19 while the owner does not answer, lets an `assist` heartbeat read the Cat's other Chat conversations (FR-21) and limits FR-24 to `companion`; the switch is shown as own initiative (自主活動) |
 
 ## Summary
 
@@ -153,6 +154,8 @@ installation and Boss Cat identity are not prerequisites for the new capability.
 18. FR-18: Heartbeats are scheduled only when "should be awake, session alive, waking hours".
     The interval is random between 30 and 120 minutes, held in memory, and redrawn after a
     restart.
+    SPEC-137 FR-5 updates this: the regular interval doubles with each unanswered heartbeat and
+    stops after five until the owner writes; the count is read from the lane, so it survives a restart.
 19. FR-19: The first heartbeat after waking falls within 2–10 minutes and is of type `wake`;
     but if the lane already has a `wake` heartbeat message after today's `W(d)`, or more than
     3 hours have passed since `W(d)`, it becomes an ordinary heartbeat, so a restart does not
@@ -172,6 +175,8 @@ installation and Boss Cat identity are not prerequisites for the new capability.
     not handed directly to the model. A memory hydration failure is reported as failed and
     backs off, and does not degrade to a greeting lacking context. This does not mean
     high-level summarization / full long-term recall is complete.
+    SPEC-137 FR-7 updates this: an `assist` heartbeat also carries a bounded review of the Cat's
+    other Chat conversations.
 22. FR-22: A reply of `[quiet]` (ignoring case and surrounding whitespace) is discarded;
     otherwise it is written to the lane as an ordinary message of that Cat (origin `runtime`,
     metadata `companionHeartbeat`), and `message_added` is emitted, mirrored to Telegram by
@@ -186,6 +191,7 @@ installation and Boss Cat identity are not prerequisites for the new capability.
     reply to an owner message.
 24. FR-24: Before going to sleep because of rest hours, one `bedtime` heartbeat may be sent to
     let him say good night, with the same rules as FR-21–22.
+    SPEC-137 FR-9 updates this: only `companion` says good night, and only while nothing is unanswered.
 
 ### Telegram on duty (Phase 3)
 

@@ -55,11 +55,24 @@ export interface CompanionResponseProfile {
 }
 
 /**
+ * SPEC-137: what a Cat does on its own initiative. `auto` is `assist` for a
+ * Boss Cat (an admin Cat) and `companion` for the others.
+ */
+export type CompanionInitiativeMode = 'auto' | 'assist' | 'companion';
+
+/**
  * SPEC-124 daily rhythm. Clock values are host-local `HH:MM`; `sleepUntil`
  * is written only by owner wake/sleep actions.
  */
 export interface CompanionLifeProfile {
   enabled: boolean;
+  /** SPEC-137 FR-1. */
+  mode: CompanionInitiativeMode;
+  /**
+   * SPEC-137 FR-4: when the owner last turned own initiative on. Heartbeats
+   * before it no longer count as unanswered.
+   */
+  enabledAt: string | null;
   bedtime: string;
   wakeWindowStart: string;
   wakeWindowEnd: string;
@@ -71,6 +84,7 @@ export interface CompanionLifeProfile {
 
 export interface UpdateCompanionLifeProfileInput {
   enabled?: boolean;
+  mode?: CompanionInitiativeMode;
   bedtime?: string;
   wakeWindowStart?: string;
   wakeWindowEnd?: string;

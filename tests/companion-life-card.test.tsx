@@ -24,3 +24,19 @@ test('the rhythm card shows the saved rhythm, the photo folder and what the Cat 
   assert.match(markup, /aria-pressed="true"[^>]*>On</u);
   assert.match(markup, /<button[^>]*disabled=""[^>]*>Save<\/button>/u, 'nothing to save until something changes');
 });
+
+test('the rhythm card names own initiative, its mode and what auto means for this Cat (SPEC-137 FR-1, FR-10)', () => {
+  const life = normalizeCompanionLifeProfile(undefined, '2026-09-29T00:00:00.000Z');
+  const ordinary = renderToStaticMarkup(
+    React.createElement(CompanionLifeCard, { catName: 'Mochi', life, onSave: async () => undefined }),
+  );
+  assert.match(ordinary, /Own initiative: stays awake on a daily rhythm and does things on its own now and then/u);
+  assert.match(ordinary, /<select[^>]*id="companion-life-mode"/u);
+  assert.match(ordinary, /<option value="auto" selected="">Automatic: Assist for a Boss Cat, Companion for the others \(now Companion\)<\/option>/u);
+  assert.match(ordinary, /<option value="assist">Assist: follow up on work you left unfinished<\/option>/u);
+  assert.match(ordinary, /Between bedtime and waking up Mochi sleeps/u);
+  const boss = renderToStaticMarkup(
+    React.createElement(CompanionLifeCard, { catName: 'Mochi', bossCat: true, life, onSave: async () => undefined }),
+  );
+  assert.match(boss, /\(now Assist\)<\/option>/u);
+});

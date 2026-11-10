@@ -50,6 +50,7 @@ function at(hours, minutes = 0, day = 29) {
 test('life profile: a box written before SPEC-124 reads as the defaults', () => {
   assert.deepEqual(normalizeCompanionLifeProfile(undefined, NOW_ISO), {
     ...COMPANION_LIFE_DEFAULTS,
+    enabledAt: null,
     sleepUntil: null,
     photoFolder: null,
     updatedAt: NOW_ISO,

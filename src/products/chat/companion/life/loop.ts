@@ -13,11 +13,14 @@ import {
 } from './presence.js';
 import { resolveCompanionDesiredPresence, resolveCompanionRhythm } from './rhythm.js';
 import {
-  findLastOwnerMessageAt,
+  COMPANION_HEARTBEAT_MAX_UNANSWERED,
+  countUnansweredHeartbeats,
   laneHasHeartbeatSince,
   pickCompanionHeartbeatDelayMs,
+  type CompanionEffectiveInitiativeMode,
   type CompanionHeartbeatKind,
 } from './heartbeat.js';
+import { buildCompanionWorkReview, findLastOwnerMessageAcross } from './review.js';
 
 /** SPEC-124 FR-12: a lane quieter than this may fall asleep. */
 export const COMPANION_IDLE_SLEEP_MS = 15 * 60_000;
@@ -41,9 +44,16 @@ export interface CompanionHeartbeatRequest {
   now: Date;
   awakeSince: Date | null;
   lastOwnerMessageAt: Date | null;
+  /** SPEC-137 FR-1. */
+  mode: CompanionEffectiveInitiativeMode;
+  /** SPEC-137 FR-5. */
+  unanswered: number;
+  /** SPEC-137 FR-7: `assist` only. */
+  review: string | null;
 }
 
-export type CompanionHeartbeatResult = 'spoke' | 'quiet' | 'busy' | 'failed';
+/** `skipped`: an `assist` heartbeat with nothing new to look over ran no turn (SPEC-137 FR-8). */
+export type CompanionHeartbeatResult = 'spoke' | 'quiet' | 'busy' | 'failed' | 'skipped';
 
 const MAX_SESSIONS_PATTERN = /\bmax sessions\b[^.]*\breached\b/iu;
 
@@ -90,6 +100,20 @@ interface CatLifeMemory {
   nextHeartbeatAt: number | null;
   heartbeatKind: 'wake' | 'regular';
   waitingForSessionSince: number | null;
+  /** SPEC-137 FR-5: the unanswered count the next heartbeat was drawn with, and when. */
+  drawnWith: number;
+  drawnAt: number;
+  /** SPEC-137 FR-8: the review fingerprint the last quiet `assist` heartbeat saw. */
+  reviewedThrough: string | null;
+}
+
+/** What one tick knows about a Cat's own initiative (SPEC-137). */
+interface CatInitiative {
+  mode: CompanionEffectiveInitiativeMode;
+  /** The owner's latest message across the Cat's conversations, or turning it on. */
+  answeredAt: number;
+  lastOwnerAt: number;
+  unanswered: number;
 }
 
 /** The most recent local bedtime at or before `now`. */
@@ -121,15 +145,32 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
         nextHeartbeatAt: null,
         heartbeatKind: 'regular',
         waitingForSessionSince: null,
+        drawnWith: 0,
+        drawnAt: 0,
+        reviewedThrough: null,
       };
       memory.set(catId, entry);
     }
     return entry;
   }
 
-  function scheduleHeartbeat(remembered: CatLifeMemory, kind: 'wake' | 'regular', fromMs: number): void {
+  function scheduleHeartbeat(
+    remembered: CatLifeMemory,
+    kind: 'wake' | 'regular',
+    fromMs: number,
+    unanswered: number,
+    nowMs: number,
+  ): void {
+    remembered.drawnWith = unanswered;
+    remembered.drawnAt = nowMs;
+    if (unanswered >= COMPANION_HEARTBEAT_MAX_UNANSWERED) {
+      // SPEC-137 FR-5: stopped until the owner writes; nothing is drawn meanwhile.
+      remembered.heartbeatKind = 'regular';
+      remembered.nextHeartbeatAt = null;
+      return;
+    }
     remembered.heartbeatKind = kind;
-    remembered.nextHeartbeatAt = fromMs + pickCompanionHeartbeatDelayMs(kind, random);
+    remembered.nextHeartbeatAt = fromMs + pickCompanionHeartbeatDelayMs(kind, random, unanswered);
   }
 
   /**
@@ -141,10 +182,29 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
     lane: Pick<ChatState['channels'][number], 'messages'>,
     wakeAt: Date,
     now: Date,
+    initiative: CatInitiative,
   ): void {
-    const greetable = now.getTime() - wakeAt.getTime() < WAKE_GREETING_WINDOW_MS
+    // SPEC-137 FR-5: no good morning while a message is unanswered.
+    const greetable = initiative.unanswered === 0
+      && now.getTime() - wakeAt.getTime() < WAKE_GREETING_WINDOW_MS
       && !laneHasHeartbeatSince(lane, wakeAt, ['wake']);
-    scheduleHeartbeat(remembered, greetable ? 'wake' : 'regular', now.getTime());
+    scheduleHeartbeat(remembered, greetable ? 'wake' : 'regular', now.getTime(), initiative.unanswered, now.getTime());
+  }
+
+  /** SPEC-137 FR-1, FR-5, FR-6: the mode and the unanswered count, read from the lanes. */
+  function readInitiative(
+    state: ChatState,
+    cat: ChatState['cats'][number],
+    lane: ChatState['channels'][number],
+    life: { mode: string; enabledAt: string | null },
+  ): CatInitiative {
+    const mode: CompanionEffectiveInitiativeMode = life.mode === 'assist' || life.mode === 'companion'
+      ? life.mode
+      : cat.group === 'admin' ? 'assist' : 'companion';
+    const lastOwnerAt = findLastOwnerMessageAcross(state.channels, cat.id);
+    const enabledAt = life.enabledAt ? Date.parse(life.enabledAt) : Number.NaN;
+    const answeredAt = Math.max(lastOwnerAt, Number.isFinite(enabledAt) ? enabledAt : Number.NEGATIVE_INFINITY);
+    return { mode, answeredAt, lastOwnerAt, unanswered: countUnansweredHeartbeats(lane, answeredAt) };
   }
 
   function forgetAwake(remembered: CatLifeMemory): void {
@@ -187,6 +247,7 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
       const desired = resolveCompanionDesiredPresence(life, cat.id, now);
       const lease = resolveLeadParticipantLease(lane);
       const remembered = rememberFor(cat.id);
+      const initiative = readInitiative(state, cat, lane, life);
 
       if (desired.presence === 'awake') {
         if (dependencies.isImagePending?.(cat.id)) { record('awake'); continue; }
@@ -215,15 +276,24 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
             remembered.backoffUntil = 0;
             remembered.failureRecorded = false;
             remembered.awakeSince ??= now.getTime();
-            if (remembered.nextHeartbeatAt === null) {
-              scheduleFirstHeartbeat(remembered, lane, resolveCompanionRhythm(life, cat.id, now).wakeAt, now);
+            const waiting = initiative.unanswered >= COMPANION_HEARTBEAT_MAX_UNANSWERED;
+            if (waiting) {
+              remembered.nextHeartbeatAt = null;
+            } else if (
+              remembered.nextHeartbeatAt === null
+              // SPEC-137 FR-5: the owner answered a backed-off Cat: back to the ordinary pace.
+              || (remembered.drawnWith > 0 && initiative.answeredAt > remembered.drawnAt)
+            ) {
+              scheduleFirstHeartbeat(remembered, lane, resolveCompanionRhythm(life, cat.id, now).wakeAt, now, initiative);
             }
-            const heartbeat = await maybeSpeak({
+            const heartbeat = waiting ? undefined : await maybeSpeak({
               remembered,
               catId: cat.id,
               lane,
               sessionId: lease.sessionId,
               now,
+              initiative,
+              channels: state.channels,
             });
             entries.push({
               catId: cat.id,
@@ -268,7 +338,7 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
         remembered.failureRecorded = false;
         if (wakeReason === 'rhythm') {
           remembered.awakeSince = now.getTime();
-          scheduleFirstHeartbeat(remembered, lane, resolveCompanionRhythm(life, cat.id, now).wakeAt, now);
+          scheduleFirstHeartbeat(remembered, lane, resolveCompanionRhythm(life, cat.id, now).wakeAt, now, initiative);
         }
         if (result.status === 'started') {
           await appendCompanionPresenceActivity(dependencies.activityStore, {
@@ -309,6 +379,9 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
         && dependencies.speak
         && lease.status === 'ready'
         && lease.sessionId
+        // SPEC-137 FR-9: only `companion` says good night, and not while a message is unanswered.
+        && initiative.mode === 'companion'
+        && initiative.unanswered === 0
         && !laneHasHeartbeatSince(lane, resolveRestStartedAt(life.bedtime, now), ['bedtime'])
       ) {
         bedtime = {
@@ -320,7 +393,10 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
             kind: 'bedtime',
             now,
             awakeSince: remembered.awakeSince === null ? null : new Date(remembered.awakeSince),
-            lastOwnerMessageAt: findLastOwnerMessageAt(lane),
+            lastOwnerMessageAt: Number.isFinite(initiative.lastOwnerAt) ? new Date(initiative.lastOwnerAt) : null,
+            mode: initiative.mode,
+            unanswered: 0,
+            review: null,
           }),
         };
       }
@@ -353,8 +429,11 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
     lane: ChatState['channels'][number];
     sessionId: string;
     now: Date;
+    initiative: CatInitiative;
+    channels: ChatState['channels'];
   }): Promise<CompanionLifeTickEntry['heartbeat'] | undefined> {
-    const { remembered, lane, now } = input;
+    const { remembered, lane, now, initiative } = input;
+    const nowMs = now.getTime();
     if (
       !dependencies.speak
       || remembered.nextHeartbeatAt === null
@@ -369,10 +448,22 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
     const lastMessageAt = lane.lastMessageAt ? Date.parse(lane.lastMessageAt) : Number.NaN;
     if (Number.isFinite(lastMessageAt) && now.getTime() - lastMessageAt < COMPANION_HEARTBEAT_QUIET_LANE_MS) {
       // Already talking: a later good-morning would be odd, so fall back to an ordinary beat.
-      scheduleHeartbeat(remembered, 'regular', lastMessageAt + COMPANION_HEARTBEAT_QUIET_LANE_MS);
+      scheduleHeartbeat(remembered, 'regular', lastMessageAt + COMPANION_HEARTBEAT_QUIET_LANE_MS, initiative.unanswered, nowMs);
       return undefined;
     }
     const kind = remembered.heartbeatKind;
+    let review: string | null = null;
+    let fingerprint: string | null = null;
+    if (initiative.mode === 'assist') {
+      // SPEC-137 FR-7 / FR-8: no turn when there is nothing to look over, or nothing new since a quiet look.
+      const built = buildCompanionWorkReview(input.channels, input.catId, now);
+      if (!built || built.fingerprint === remembered.reviewedThrough) {
+        scheduleHeartbeat(remembered, 'regular', nowMs, initiative.unanswered, nowMs);
+        return { kind, result: 'skipped' };
+      }
+      review = built.text;
+      fingerprint = built.fingerprint;
+    }
     const result = await dependencies.speak({
       catId: input.catId,
       laneId: lane.id,
@@ -380,15 +471,20 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
       kind,
       now,
       awakeSince: remembered.awakeSince === null ? null : new Date(remembered.awakeSince),
-      lastOwnerMessageAt: findLastOwnerMessageAt(lane),
+      lastOwnerMessageAt: Number.isFinite(initiative.lastOwnerAt) ? new Date(initiative.lastOwnerAt) : null,
+      mode: initiative.mode,
+      unanswered: initiative.unanswered,
+      review,
     });
     if (result === 'busy') {
-      remembered.nextHeartbeatAt = now.getTime() + HEARTBEAT_BUSY_RETRY_MS;
+      remembered.nextHeartbeatAt = nowMs + HEARTBEAT_BUSY_RETRY_MS;
     } else if (result === 'failed') {
       remembered.heartbeatKind = 'regular';
-      remembered.nextHeartbeatAt = now.getTime() + HEARTBEAT_FAILED_RETRY_MS;
+      remembered.nextHeartbeatAt = nowMs + HEARTBEAT_FAILED_RETRY_MS;
     } else {
-      scheduleHeartbeat(remembered, 'regular', now.getTime());
+      if (result === 'quiet' && fingerprint !== null) remembered.reviewedThrough = fingerprint;
+      // SPEC-137 FR-5: a spoken heartbeat is one more message the owner has not answered yet.
+      scheduleHeartbeat(remembered, 'regular', nowMs, initiative.unanswered + (result === 'spoke' ? 1 : 0), nowMs);
     }
     return { kind, result };
   }

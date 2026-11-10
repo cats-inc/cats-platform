@@ -125,7 +125,10 @@ export function createCompanionHeartbeatSpeaker(
             ? 'Use the language of your owner\'s conversation. The language of this hidden system prompt is not a language preference.'
             : null,
         ].filter(Boolean).join('\n\n'),
-        hasPhotoAlbum: request.kind !== 'bedtime' && Boolean(companionSession?.photoAlbum),
+        hasPhotoAlbum: request.mode === 'companion' && request.kind !== 'bedtime' && Boolean(companionSession?.photoAlbum),
+        mode: request.mode,
+        unanswered: request.unanswered,
+        review: request.review,
       });
       const result = await runWithSessionTurnGate(request.sessionId, () => sendSupervisedRuntimeMessage({
         runtimeClient: dependencies.runtimeClient,
