@@ -31,6 +31,7 @@ test('desktop voice capture contract exposes channels, modes, and closed errors'
   assert.deepEqual(VOICE_CAPTURE_MODES, ['on-device', 'cloud', 'unknown']);
   assert.deepEqual(VOICE_CAPTURE_ERROR_REASONS, [
     'permission_denied',
+    'speech_permission_denied',
     'permission_not_determined',
     'mic_unavailable',
     'language_not_supported',

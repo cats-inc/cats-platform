@@ -1014,6 +1014,8 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.desktop.startupSignInLabel': '登入電腦時啟動 Cats 桌面版',
   'settings.desktop.startupSignInDescription':
     '登入後讓 Cats 桌面版在背景準備就緒。',
+  'settings.desktop.startupSignInNeedsApproval':
+    'macOS 需要你核准，Cats 才能在登入時開啟。請在「系統設定 > 一般 > 登入項目」開啟 Cats。',
   'settings.desktop.startupTrayLabel': '關閉視窗時保留在系統匣',
   'settings.desktop.startupTrayDescription':
     '啟用時，關閉視窗只會隱藏應用程式並持續運行；停用則直接退出。',
@@ -2403,7 +2405,7 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.screenshotCapture.tooltipWebPicker': '擷取螢幕、視窗或分頁',
   'shared.screenshotCapture.tooltipUnavailable': '此環境無法使用螢幕擷取',
   'shared.screenshotCapture.permissionRequired':
-    '需要螢幕錄製權限才能擷取截圖。請在 macOS「系統設定」授予 Cats 螢幕存取權，然後重新啟動 Cats。',
+    '需要螢幕錄製權限才能擷取截圖。請在「系統設定 > 隱私權與安全性 > 螢幕與系統錄音」開啟 Cats（清單裡沒有就按 + 加入），然後重新啟動 Cats。',
   'shared.screenshotCapture.permissionStatusUnknown':
     '螢幕錄製權限狀態未知：{status}',
   'shared.screenshotCapture.failed': '擷取截圖失敗。',
@@ -2456,6 +2458,8 @@ export const zhTWCatalog: MessageCatalog = {
     '語音輸入不支援目前語言。',
   'shared.voiceInput.error.permissionDenied':
     '麥克風存取遭拒。請檢查系統語音權限。',
+  'shared.voiceInput.error.speechPermissionDenied':
+    '語音辨識存取遭拒。請在「系統設定 > 隱私權與安全性 > 語音辨識」允許 Cats。',
   'shared.voiceInput.error.permissionNotDetermined':
     '語音輸入需要系統麥克風與語音權限。',
   'shared.voiceInput.error.micUnavailable': '未偵測到麥克風。',
@@ -3271,6 +3275,7 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.folderBrowserUseThisFolder': '使用此資料夾',
   'shared.common.saving': '儲存中…',
   'shared.common.dismiss': '關閉',
+  'shared.systemSettings.open': '開啟系統設定',
   'setup.wizard.welcomeIntroDesktop': '之後要用它登入 Cats。資料留在這台電腦，到最後一步才會建立。',
   'setup.wizard.methodLabel': '登入方式',
   'setup.wizard.passwordMethodNote': '離線也能登入',

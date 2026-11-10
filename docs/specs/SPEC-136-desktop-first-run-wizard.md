@@ -215,7 +215,10 @@ failure reaches the details page. Settings > Runtime keeps its rows.
       or unmount.
 31. FR-31: On Desktop, "Start Cats when I sign in" is a checkbox, ticked by default, tagged "Changes your login
     items". The final button writes the choice. Until setup is complete Desktop registers no login item, so
-    someone who quits on page 1 does not find Cats starting at their next sign-in.
+    someone who quits on page 1 does not find Cats starting at their next sign-in. On a packaged macOS app,
+    Settings > Desktop reads the login item's status when start at login is turned on or the page opens with it
+    on; `requires-approval` is a toast with an "Open System Settings" action for General > Login Items
+    ([ADR-147](../decisions/147-send-the-owner-to-the-macos-system-settings-pane-a-permission-needs.md)).
 32. FR-32: Before the final button, a list states what it does: the admin account and its email or Google, Catlas
     with its tool and model or off, start at login when ticked, and opening the Lobby. It also states how many
     changes setup made to the computer.

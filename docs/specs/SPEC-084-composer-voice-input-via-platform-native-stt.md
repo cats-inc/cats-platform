@@ -194,8 +194,11 @@ the end-to-end transcription goal has been met.
     action — before opening any audio device — by querying
     `SFSpeechRecognizer.authorizationStatus()` and
     `AVCaptureDevice.authorizationStatus(for: .audio)`. Status `.denied`
-    or `.restricted` for either shall cause the helper to emit
-    `permission_denied` and exit immediately. Status `.notDetermined`
+    or `.restricted` shall cause the helper to emit
+    `speech_permission_denied` for Speech Recognition or
+    `permission_denied` for the microphone, and exit immediately
+    ([ADR-147](../decisions/147-send-the-owner-to-the-macos-system-settings-pane-a-permission-needs.md)).
+    Status `.notDetermined`
     shall cause the helper to request OS authorization for Speech Recognition
     and Microphone before opening audio; if the user still has not granted
     access, the helper emits `permission_not_determined` or
@@ -204,9 +207,10 @@ the end-to-end transcription goal has been met.
     `systemPreferences.getMediaAccessStatus('microphone')` (Node-callable
     on macOS), but the authoritative check lives in the helper because
     no equivalent Electron API exists for Speech Recognition status.
-    The renderer toast for `permission_denied` points at the relevant
-    System Settings pane (Privacy > Speech Recognition or Privacy >
-    Microphone).
+    The renderer toast names the pane, and on macOS it has an "Open
+    System Settings" action that opens Privacy & Security > Microphone
+    for `permission_denied` or Privacy & Security > Speech Recognition
+    for `speech_permission_denied` (ADR-147).
 14. On Windows, the helper shall handle `UnauthorizedAccessException` and
     similar permission errors by emitting `permission_denied` with a
     toast pointing at Settings > Privacy & Security > Microphone.

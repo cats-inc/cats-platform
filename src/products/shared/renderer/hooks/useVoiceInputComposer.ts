@@ -8,6 +8,11 @@ import {
   type MessageKey,
 } from '../../../../shared/i18n/index.js';
 import type { VoiceCaptureMode } from '../../../../shared/voiceCaptureBridge.js';
+import {
+  canOpenDesktopSystemSettings,
+  openDesktopSystemSettings,
+  type DesktopSystemSettingsPane,
+} from '../../../../shared/desktopSystemSettings.js';
 import { useNativeVoiceInput } from './useNativeVoiceInput.js';
 import { useWebSpeechInput } from './useWebSpeechInput.js';
 
@@ -41,12 +46,23 @@ const ERROR_MESSAGE_KEYS: Record<string, MessageKey> = {
   network: messageKeys.sharedVoiceInputErrorNetwork,
   'language-not-supported': messageKeys.sharedVoiceInputErrorLanguageNotSupported,
   permission_denied: messageKeys.sharedVoiceInputErrorPermissionDenied,
+  speech_permission_denied: messageKeys.sharedVoiceInputErrorSpeechPermissionDenied,
   permission_not_determined: messageKeys.sharedVoiceInputErrorPermissionNotDetermined,
   mic_unavailable: messageKeys.sharedVoiceInputErrorMicUnavailable,
   language_not_supported: messageKeys.sharedVoiceInputErrorLanguageNotSupported,
   engine_unavailable: messageKeys.sharedVoiceInputErrorEngineUnavailable,
   helper_crashed: messageKeys.sharedVoiceInputErrorHelperCrashed,
 };
+
+// ADR-147: the System Settings pane that fixes a denied permission.
+const SYSTEM_SETTINGS_PANES: Partial<Record<string, DesktopSystemSettingsPane>> = {
+  permission_denied: 'microphone',
+  speech_permission_denied: 'speech_recognition',
+};
+
+export function resolveVoiceErrorSystemSettingsPane(kind: string): DesktopSystemSettingsPane | null {
+  return SYSTEM_SETTINGS_PANES[kind] ?? null;
+}
 
 function resolveVoiceErrorMessage(kind: string, t: VoiceInputI18n): string {
   const key = ERROR_MESSAGE_KEYS[kind];
@@ -159,7 +175,14 @@ export function useVoiceInputComposer({
   const { toasts, showToast } = useToast();
   const handleRecognitionError = useCallback(
     (kind: string) => {
-      showToast(resolveVoiceErrorMessage(kind, t));
+      const pane = resolveVoiceErrorSystemSettingsPane(kind);
+      // On macOS the toast opens the pane; elsewhere the message stands alone.
+      showToast(resolveVoiceErrorMessage(kind, t), pane && canOpenDesktopSystemSettings()
+        ? { action: {
+            label: t(messageKeys.sharedSystemSettingsOpen),
+            onSelect: () => { void openDesktopSystemSettings(pane); },
+          } }
+        : undefined);
     },
     [showToast, t],
   );

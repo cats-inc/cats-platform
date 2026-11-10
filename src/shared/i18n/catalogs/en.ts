@@ -1040,6 +1040,8 @@ export const enCatalog: MessageCatalog = {
     'Start Cats Desktop when you sign in to your computer',
   'settings.desktop.startupSignInDescription':
     'Keep Cats Desktop ready in the background as soon as you sign in.',
+  'settings.desktop.startupSignInNeedsApproval':
+    'macOS needs your approval to open Cats at sign-in. Turn on Cats in System Settings > General > Login Items.',
   'settings.desktop.startupTrayLabel':
     'Keep Cats in the system tray when you close the window',
   'settings.desktop.startupTrayDescription':
@@ -2456,7 +2458,7 @@ export const enCatalog: MessageCatalog = {
   'shared.screenshotCapture.tooltipUnavailable':
     'Screen capture is unavailable in this environment',
   'shared.screenshotCapture.permissionRequired':
-    'Screen Recording permission is required to capture a screenshot. Grant Cats screen access in macOS System Settings, then restart Cats.',
+    'Screen Recording permission is required to capture a screenshot. Turn on Cats in System Settings > Privacy & Security > Screen & System Audio Recording (add it with + if it is not listed), then restart Cats.',
   'shared.screenshotCapture.permissionStatusUnknown':
     'Screen Recording permission status is unknown: {status}',
   'shared.screenshotCapture.failed': 'Failed to capture screenshot.',
@@ -2511,6 +2513,8 @@ export const enCatalog: MessageCatalog = {
     'Voice input does not support the current language.',
   'shared.voiceInput.error.permissionDenied':
     'Microphone access was denied. Check your system voice permissions.',
+  'shared.voiceInput.error.speechPermissionDenied':
+    'Speech Recognition access was denied. Allow Cats in System Settings > Privacy & Security > Speech Recognition.',
   'shared.voiceInput.error.permissionNotDetermined':
     'Voice input needs system microphone and speech permissions.',
   'shared.voiceInput.error.micUnavailable': 'No microphone was detected.',
@@ -3340,6 +3344,7 @@ export const enCatalog: MessageCatalog = {
   'shared.folderBrowserUseThisFolder': 'Use this folder',
   'shared.common.saving': 'Saving...',
   'shared.common.dismiss': 'Dismiss',
+  'shared.systemSettings.open': 'Open System Settings',
   'setup.wizard.welcomeIntroDesktop': 'You use it to sign in to Cats. It stays on this computer, and nothing is created until the last step.',
   'setup.wizard.methodLabel': 'How you sign in',
   'setup.wizard.passwordMethodNote': 'Works offline',

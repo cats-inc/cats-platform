@@ -220,6 +220,17 @@ export const DESKTOP_VOICE_CAPTURE_STOP_CHANNEL = 'cats-host:voice-stop';
 export const DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL = 'cats-host:voice-cancel';
 export const DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL = 'cats-host:voice-event';
 export const DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL = 'cats-host:browser-handoff-open';
+// ADR-147: the macOS System Settings panes the host opens for a missing
+// permission; mirrors src/shared/desktopSystemSettings.ts.
+export const DESKTOP_SYSTEM_SETTINGS_PANES = [
+  'microphone',
+  'speech_recognition',
+  'screen_recording',
+  'login_items',
+] as const;
+export type DesktopSystemSettingsPane = typeof DESKTOP_SYSTEM_SETTINGS_PANES[number];
+export const DESKTOP_SYSTEM_SETTINGS_OPEN_CHANNEL = 'cats-host:open-system-settings';
+export const DESKTOP_LOGIN_ITEM_APPROVAL_CHANNEL = 'cats-host:login-item-needs-approval';
 export const DESKTOP_BROWSER_HANDOFF_EXCHANGE_PATH =
   '/api/auth/browser-handoff/exchange';
 
@@ -246,7 +257,10 @@ export const VOICE_CAPTURE_MODES = [
   'unknown',
 ] as const;
 export const VOICE_CAPTURE_ERROR_REASONS = [
+  // Microphone (macOS and Windows).
   'permission_denied',
+  // macOS Speech Recognition, a pane of its own (ADR-147).
+  'speech_permission_denied',
   'permission_not_determined',
   'mic_unavailable',
   'language_not_supported',

@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { configureHostLogger, observeDisplays, observeHostApp, observeHostProcess,
   redactLogText, reportHostError, type HostLogger } from './hostDiagnostics.js';
@@ -270,8 +271,16 @@ import {
   DesktopVoiceCaptureController,
   parseVoiceCaptureSessionId,
   parseVoiceCaptureStartOptions,
+  resolveVoiceCaptureHelperPath,
   shouldAllowDesktopRendererPermission,
 } from './voiceCapture.js';
+import {
+  DESKTOP_LOGIN_ITEM_APPROVAL_CHANNEL,
+  DESKTOP_SYSTEM_SETTINGS_OPEN_CHANNEL,
+  createScreenCaptureAccessRequester,
+  loginItemNeedsApproval,
+  resolveMacosSystemSettingsUrl,
+} from './systemSettings.js';
 
 // A native updater is expected to enter Electron's quit path promptly after
 // the user confirms restart/install. macOS can perform another native fetch at
@@ -516,16 +525,33 @@ async function openElectronScreenshotOverlay(
   }
 }
 
+// ADR-147: once per run, an unanswered Screen Recording permission is asked
+// for through the speech helper, so Cats is listed in System Settings.
+const requestScreenCaptureAccess = createScreenCaptureAccessRequester({
+  resolveHelperPath: () => {
+    const helperPath = hostConfig
+      ? resolveVoiceCaptureHelperPath({ config: hostConfig, resourcesPath: process.resourcesPath })
+      : null;
+    return helperPath && existsSync(helperPath) ? helperPath : null;
+  },
+  log: (fields) => hostLogger?.record('screen-capture-access-request', fields),
+});
+
 async function captureNativeScreenshotRegion(
   _request: DesktopScreenshotCaptureRequest,
 ): Promise<DesktopScreenshotCaptureResult> {
   try {
-    const permissionResult = process.platform === 'darwin'
+    const mediaAccessStatus = process.platform === 'darwin'
+      ? systemPreferences.getMediaAccessStatus('screen') as DesktopScreenshotMediaAccessStatus
+      : null;
+    if (mediaAccessStatus === 'not-determined') {
+      await requestScreenCaptureAccess();
+    }
+    // Still refused after a request: the grant applies only after a restart.
+    const permissionResult = mediaAccessStatus
       ? resolveDesktopScreenshotPermissionResult({
           platform: process.platform,
-          mediaAccessStatus: systemPreferences.getMediaAccessStatus(
-            'screen',
-          ) as DesktopScreenshotMediaAccessStatus,
+          mediaAccessStatus,
         })
       : null;
     if (permissionResult) {
@@ -3134,6 +3160,17 @@ async function main(): Promise<void> {
       allowedHosts: resolveAllowedAppHosts(hostConfig),
     });
     await openExternalDesktopUrl(url);
+  });
+  ipcMain.handle(DESKTOP_SYSTEM_SETTINGS_OPEN_CHANNEL, async (event, pane: unknown) => {
+    assertMainWindowIpcSender(event, mainWindow, 'System Settings are only opened from the main Cats window.');
+    if (process.platform !== 'darwin') {
+      throw new Error('System Settings panes are only opened on macOS.');
+    }
+    await shell.openExternal(resolveMacosSystemSettingsUrl(pane));
+  });
+  ipcMain.handle(DESKTOP_LOGIN_ITEM_APPROVAL_CHANNEL, (event) => {
+    assertMainWindowIpcSender(event, mainWindow, 'Login item status is only read by the main Cats window.');
+    return loginItemNeedsApproval(app, { candidate: Boolean(candidate) });
   });
   ipcMain.handle(DESKTOP_SCREENSHOT_IPC_CHANNEL, async (event, payload: unknown) => {
     assertMainWindowScreenshotIpcSender(event, mainWindow);

@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   SettingsOptionRow,
   SettingsSection,
   SettingsSectionHeader,
 } from '../../../design/components/settings/index.js';
+import type { ShowToast } from '../../../design/components/Toast.js';
+import {
+  canOpenDesktopSystemSettings,
+  desktopLoginItemNeedsApproval,
+  openDesktopSystemSettings,
+} from '../../../shared/desktopSystemSettings.js';
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { useI18n } from '../i18n/index.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
@@ -14,7 +20,7 @@ import { resolveDefaultDesktopPreferences } from './settingsDesktopPreferences.j
 export interface PlatformSettingsDesktopStartupBehaviorProps {
   payload: AppShellPayload;
   onPayloadUpdate: (payload: AppShellPayload) => void;
-  showToast: (message: string) => void;
+  showToast: ShowToast;
 }
 
 /**
@@ -33,6 +39,28 @@ export function PlatformSettingsDesktopStartupBehavior({
   const { t } = useI18n();
   const [savingDesktopPrefs, setSavingDesktopPrefs] = useState(false);
   const desktopPrefs = payload.desktop ?? resolveDefaultDesktopPreferences();
+
+  // ADR-147: macOS can register the login item and still wait for the owner's
+  // approval in Login Items; the toggle alone would then claim it works.
+  const showLoginItemApproval = useCallback(async (): Promise<void> => {
+    if (!canOpenDesktopSystemSettings() || !(await desktopLoginItemNeedsApproval())) {
+      return;
+    }
+    showToast(t('settingsDesktopStartupSignInNeedsApproval'), {
+      action: {
+        label: t('sharedSystemSettingsOpen'),
+        onSelect: () => { void openDesktopSystemSettings('login_items'); },
+      },
+    });
+  }, [showToast, t]);
+  const checkedApprovalOnOpen = useRef(false);
+  useEffect(() => {
+    if (checkedApprovalOnOpen.current || !desktopPrefs.startAtLogin) {
+      return;
+    }
+    checkedApprovalOnOpen.current = true;
+    void showLoginItemApproval();
+  }, [desktopPrefs.startAtLogin, showLoginItemApproval]);
 
   async function updateDesktopPreferences(
     nextDesktopPrefs: AppShellPayload['desktop'],
@@ -81,6 +109,10 @@ export function PlatformSettingsDesktopStartupBehavior({
         desktop: persistedPrefs,
       });
       dispatchPlatformEnvelopeRefresh();
+      if (persistedPrefs.startAtLogin && !previousDesktopPrefs.startAtLogin) {
+        checkedApprovalOnOpen.current = true;
+        void showLoginItemApproval();
+      }
     } catch (error) {
       onPayloadUpdate({
         ...payload,

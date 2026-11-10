@@ -58,6 +58,8 @@ test('browser handoff, voice capture, and update channels stay aligned', () => {
     'DESKTOP_UPDATE_DOWNLOAD_CHANNEL',
     'DESKTOP_UPDATE_INSTALL_CHANNEL',
     'DESKTOP_UPDATE_EVENT_CHANNEL',
+    'DESKTOP_SYSTEM_SETTINGS_OPEN_CHANNEL',
+    'DESKTOP_LOGIN_ITEM_APPROVAL_CHANNEL',
   ];
 
   for (const name of channelNames) {
@@ -73,4 +75,21 @@ test('browser handoff, voice capture, and update channels stay aligned', () => {
         + 'Update both copies together — preload cannot import contracts at runtime in sandbox mode.',
     );
   }
+});
+
+test('the System Settings panes are the same in preload.cts, contracts.ts and the renderer (ADR-147)', () => {
+  const list = (source, pattern) => {
+    const match = source.match(pattern);
+    assert.ok(match, `pane list not found by ${pattern}`);
+    return [...match[1].matchAll(/'([a-z_]+)'/gu)].map((entry) => entry[1]);
+  };
+  const preload = list(readFileSync(PRELOAD_SOURCE, 'utf8'), /DESKTOP_SYSTEM_SETTINGS_PANES = new Set\(\[([^\]]*)\]/u);
+  const contracts = list(readFileSync(CONTRACTS_SOURCE, 'utf8'), /DESKTOP_SYSTEM_SETTINGS_PANES = \[([^\]]*)\]/u);
+  const renderer = list(
+    readFileSync('./src/shared/desktopSystemSettings.ts', 'utf8'),
+    /DESKTOP_SYSTEM_SETTINGS_PANES = \[([^\]]*)\]/u,
+  );
+  assert.deepEqual(contracts, ['microphone', 'speech_recognition', 'screen_recording', 'login_items']);
+  assert.deepEqual(preload, contracts);
+  assert.deepEqual(renderer, contracts);
 });

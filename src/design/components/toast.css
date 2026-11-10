@@ -22,6 +22,59 @@
   animation: toastIn 0.2s ease-out;
 }
 
+/* ADR-147: a toast with a button stays until it is used or dismissed. */
+.toastWithAction {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 10px 10px 10px 20px;
+}
+
+.toastWithAction .toastMessage {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.toastAction,
+.toastDismiss {
+  flex: none;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.toastAction {
+  padding: 6px 12px;
+  background: var(--app-bg, #FAFAF7);
+  color: var(--text, #1A1A1A);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.toastDismiss {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.toastAction:hover,
+.toastDismiss:hover {
+  opacity: 0.85;
+}
+
+.toastAction:focus-visible,
+.toastDismiss:focus-visible {
+  outline: 2px solid var(--app-bg, #FAFAF7);
+  outline-offset: 2px;
+}
+
 .toastFading {
   animation: toastOut 0.3s ease-in forwards;
 }
