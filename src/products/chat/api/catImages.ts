@@ -152,7 +152,9 @@ export function createChatCatImages(dependencies: Dependencies) {
             mediaFile: { path: path.join(assetsDir, job.id + (job.output?.mimeType === 'image/png' ? '.png' : '.jpg')),
               fileName: 'cat-image' + (job.output?.mimeType === 'image/png' ? '.png' : '.jpg') }, caption: job.caption || null } });
           const matched = receipt.bindingId === job.bindingId && receipt.chatId === confirmed.mapped.telegramChatId;
-          return { status: receipt.reason === 'delivery_not_authorized' ? 'suppressed' as const
+          // SPEC-140: a chat that is not the binding's owner is never sent to, so the image is suppressed.
+          return { status: receipt.reason === 'delivery_not_authorized' || receipt.reason === 'not_owner_chat'
+            ? 'suppressed' as const
             : receipt.status === 'sent' && receipt.messageId && matched ? 'sent' as const
             : receipt.status !== 'failed' || !matched ? 'uncertain' as const
               : receipt.failureKind === 'retryable' ? 'retryable' as const

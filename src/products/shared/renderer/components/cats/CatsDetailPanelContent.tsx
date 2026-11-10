@@ -4,6 +4,7 @@ import { PluginSkillOptions } from '../../../../../app/renderer/settings/PluginS
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import type {
   DurableMemoryItem,
+  TelegramOwnerSummary,
   TelegramTransportBindingDiagnostics,
 } from '../../api/index.js';
 import type { SettingsCatsMemoryController } from '../../hooks/useSettingsCatsMemory.js';
@@ -21,6 +22,7 @@ import { isCompanionCat } from '../../../../../shared/companionRole.js';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { MemoryEditorDialog } from './MemoryEditorDialog.js';
 import { TelegramConnectDialog } from './TelegramConnectDialog.js';
+import { TelegramOwnerRow } from './TelegramOwnerRow.js';
 import {
   COMPANION_PILL_LABEL,
   getMemoryCategoryLabel,
@@ -60,6 +62,7 @@ export interface CatsDetailPanelContentProps {
   registryController: CatsDetailPanelRegistryController;
   telegramDiagnostics: {
     bindings: TelegramTransportBindingDiagnostics[];
+    owners?: TelegramOwnerSummary[];
   } | null;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
   sections?: ReadonlyArray<CatsDetailSectionKey>;
@@ -313,6 +316,11 @@ export function CatsDetailPanelContent({
                       </span>
                     ) : null}
                   </div>
+                  <TelegramOwnerRow
+                    bindingId={binding.id}
+                    owner={telegramDiagnostics?.owners?.find((entry) => entry.bindingId === binding.id) ?? null}
+                    {...(confirmDialog ? { confirm: confirmDialog } : {})}
+                  />
                 </div>
               );
             })}

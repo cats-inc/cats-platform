@@ -13,6 +13,7 @@ import type { TelegramDeliveryClient, TelegramDownloadedFile } from '../delivery
 import { TelegramDispatchGuardError, checkTelegramDispatchGuard } from '../delivery.js';
 import type { TelegramConversationMapper } from '../mapping.js';
 import { normalizeTelegramDeliveryTextPreview } from '../normalization.js';
+import { isTelegramOwnerChat } from '../owner.js';
 import type { TelegramRelayStore } from '../store/index.js';
 import { readTelegramString, resolveActiveTelegramBinding } from '../utils.js';
 
@@ -247,6 +248,31 @@ export async function deliverTelegramRequest(
   let binding = options.request.chatId
     ? options.store.getBinding(options.request.chatId, scopedBindingId)
     : null;
+  const requestedChatId = readTelegramString(options.request.chatId);
+  if (
+    !binding
+    && requestedChatId
+    && !isTelegramOwnerChat(options.store, {
+      bindingId: activeBinding.id,
+      chatId: requestedChatId,
+      nowIso: deliveredAt,
+      scope: {
+        defaultBindingId: options.context.defaultBotBinding?.id ?? null,
+        bindingCreatedAt: activeBinding.createdAt ?? null,
+      },
+    })
+  ) {
+    // SPEC-140: refused before a record is made for a chat that is not the owner's.
+    return recordFailedTelegramDelivery(options.store, {
+      baseReceipt,
+      request: options.request,
+      bindingId: activeBinding.id,
+      botName: activeBinding.botName,
+      chatId: requestedChatId,
+      conversationId: readTelegramString(options.request.conversationId),
+      reason: 'not_owner_chat',
+    });
+  }
   if (!binding && options.request.chatId) {
     binding = options.conversationMapper.resolveChatConversation({
       chatId: options.request.chatId,
@@ -296,6 +322,28 @@ export async function deliverTelegramRequest(
   }
 
   const conversationId = binding?.conversationId ?? `telegram:${chatId}`;
+
+  // SPEC-140: a binding sends only to its owner's chat.
+  const ownerBindingId = deliveryBinding?.id ?? activeBinding.id;
+  if (!isTelegramOwnerChat(options.store, {
+    bindingId: ownerBindingId,
+    chatId,
+    nowIso: deliveredAt,
+    scope: {
+      defaultBindingId: options.context.defaultBotBinding?.id ?? null,
+      bindingCreatedAt: (deliveryBinding ?? activeBinding).createdAt ?? null,
+    },
+  })) {
+    return recordFailedTelegramDelivery(options.store, {
+      baseReceipt,
+      request: options.request,
+      bindingId: ownerBindingId,
+      botName: deliveryBinding?.botName ?? activeBinding.botName,
+      chatId,
+      conversationId,
+      reason: 'not_owner_chat',
+    });
+  }
 
   try {
     await checkTelegramDispatchGuard(options.assertAllowed);

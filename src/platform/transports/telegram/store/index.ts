@@ -3,10 +3,11 @@ import path from 'node:path';
 import type {
   TelegramConversationBinding,
   TelegramDeliveryReceipt,
+  TelegramOwnerRecord,
   TelegramWebhookReceipt,
 } from '../contracts.js';
 import {
-  readPersistedTelegramRelayState,
+  readPersistedTelegramRelayStateWithHealth,
   writePersistedTelegramRelayState,
 } from './persistence.js';
 import type { PersistedTelegramRelayState } from './state.js';
@@ -41,6 +42,14 @@ export interface TelegramRelayStore {
   getIngressStats(): TelegramIngressStatsSnapshot;
   recordDeliveryReceipt(receipt: TelegramDeliveryReceipt): void;
   getDeliveryStats(): TelegramDeliveryStatsSnapshot;
+  /** SPEC-140: the owner of a bot binding, by binding id. */
+  getOwner(bindingId: string): TelegramOwnerRecord | null;
+  setOwner(bindingId: string, owner: TelegramOwnerRecord): void;
+  /**
+   * SPEC-140 FR-7: true when the persisted relay state was damaged and lost, so
+   * an owner cannot be settled from history and must be confirmed.
+   */
+  isOwnerStateUncertain?(): boolean;
 }
 
 function createBindingKey(chatId: string, bindingId?: string | null): string {
@@ -52,6 +61,7 @@ function createBindingKey(chatId: string, bindingId?: string | null): string {
 
 class BaseTelegramRelayStore implements TelegramRelayStore {
   clearForReset(): void {
+    this.ownersByBindingId.clear();
     this.processedUpdateOrder.length = 0;
     this.bindingsByChatId.clear();
     this.bindingsByConversationId.clear();
@@ -63,6 +73,8 @@ class BaseTelegramRelayStore implements TelegramRelayStore {
     this.lastIngressReceipt = this.lastDeliveryReceipt = null;
   }
   protected readonly processedUpdateOrder: number[] = [];
+
+  protected readonly ownersByBindingId = new Map<string, TelegramOwnerRecord>();
 
   protected readonly bindingsByChatId = new Map<string, TelegramConversationBinding>();
 
@@ -145,6 +157,14 @@ class BaseTelegramRelayStore implements TelegramRelayStore {
     this.recordDeliveryReceiptInMemory(receipt);
   }
 
+  getOwner(bindingId: string): TelegramOwnerRecord | null {
+    return this.ownersByBindingId.get(bindingId) ?? null;
+  }
+
+  setOwner(bindingId: string, owner: TelegramOwnerRecord): void {
+    this.ownersByBindingId.set(bindingId, owner);
+  }
+
   getDeliveryStats(): TelegramDeliveryStatsSnapshot {
     return {
       sentCount: this.deliverySentCount,
@@ -221,6 +241,7 @@ class BaseTelegramRelayStore implements TelegramRelayStore {
       lastProcessedUpdateId: this.lastProcessedUpdateId,
       ingress: this.getIngressStats(),
       delivery: this.getDeliveryStats(),
+      owners: Object.fromEntries(this.ownersByBindingId),
     };
   }
 
@@ -241,18 +262,35 @@ class BaseTelegramRelayStore implements TelegramRelayStore {
     this.deliveryDeletedCount = payload.delivery.deletedCount;
     this.deliveryFailedCount = payload.delivery.failedCount;
     this.lastDeliveryReceipt = payload.delivery.lastReceipt;
+    for (const [bindingId, owner] of Object.entries(payload.owners ?? {})) {
+      this.ownersByBindingId.set(bindingId, owner);
+    }
   }
 }
 
 export class InMemoryTelegramRelayStore extends BaseTelegramRelayStore {}
 
 export class FileBackedTelegramRelayStore extends BaseTelegramRelayStore {
+  private ownerStateUncertain = false;
+
   constructor(
     private readonly statePath: string,
     maxProcessedUpdates = 2048,
   ) {
     super(maxProcessedUpdates);
-    this.hydrate(this.readPersistedState());
+    const read = readPersistedTelegramRelayStateWithHealth(this.statePath, this.maxProcessedUpdates);
+    this.ownerStateUncertain = read.damaged;
+    this.hydrate(read.state);
+  }
+
+  isOwnerStateUncertain(): boolean {
+    return this.ownerStateUncertain;
+  }
+
+  override clearForReset(): void {
+    super.clearForReset();
+    // A data reset starts over: nothing left to be uncertain about.
+    this.ownerStateUncertain = false;
   }
 
   override upsertBinding(binding: TelegramConversationBinding): void {
@@ -278,8 +316,9 @@ export class FileBackedTelegramRelayStore extends BaseTelegramRelayStore {
     this.persist();
   }
 
-  private readPersistedState(): PersistedTelegramRelayState {
-    return readPersistedTelegramRelayState(this.statePath, this.maxProcessedUpdates);
+  override setOwner(bindingId: string, owner: TelegramOwnerRecord): void {
+    super.setOwner(bindingId, owner);
+    this.persist();
   }
 
   private persist(): void {

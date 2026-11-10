@@ -20,6 +20,7 @@ import {
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay/index.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../shared/platformSurfaces.js';
+import { readJsonBody } from '../../shared/http.js';
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import { normalizeEffectiveBotBinding } from '../../products/chat/state/botBindings.js';
@@ -234,6 +235,56 @@ export async function handleTelegramDiagnostics(
   sendJson(response, 200, {
     telegram: dependencies.telegramRelay.getDiagnostics(context),
   });
+}
+
+/**
+ * SPEC-140: the owner's actions on a binding's Telegram owner. `reset` forgets
+ * the owner (the next private chat that writes becomes it); `choose` pins one
+ * of the chats the binding had seen, when it is asking the owner to choose.
+ */
+export async function handleTelegramOwnerAction(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: TelegramQueryDependencies & {
+    bindingId: string;
+    action: 'reset' | 'choose';
+    /** The signed-in principal's roles; null when the server runs without accounts. */
+    roles: readonly string[] | null;
+  },
+): Promise<void> {
+  // Changing who a Cat answers on Telegram is the owner's (or an admin's) call, as for Cat images.
+  if (dependencies.roles && !dependencies.roles.some((role) => role === 'owner' || role === 'admin')) {
+    sendRestError(response, 403, 'owner_required', 'Only the owner or an admin can change the Telegram owner');
+    return;
+  }
+  const core = await dependencies.chatStore.readCore();
+  const binding = core.botBindings.find((candidate) => candidate.id === dependencies.bindingId);
+  if (!binding || binding.platform !== 'telegram') {
+    sendRestError(response, 404, 'binding_not_found', 'Bot binding not found');
+    return;
+  }
+  if (dependencies.action === 'reset') {
+    sendJson(response, 200, { owner: dependencies.telegramRelay.resetOwner(binding.id) });
+    return;
+  }
+  let body: { userId?: unknown };
+  try {
+    body = await readJsonBody<{ userId?: unknown }>(request);
+  } catch {
+    sendRestError(response, 400, 'invalid_json', 'Expected a JSON body');
+    return;
+  }
+  const userId = typeof body?.userId === 'string' ? body.userId.trim() : '';
+  if (!userId) {
+    sendRestError(response, 400, 'user_id_required', 'userId is required');
+    return;
+  }
+  const owner = dependencies.telegramRelay.chooseOwner(binding.id, userId);
+  if (!owner) {
+    sendRestError(response, 409, 'owner_choice_unavailable', 'That chat is not offered as this binding\'s owner');
+    return;
+  }
+  sendJson(response, 200, { owner });
 }
 
 export function publishTelegramBridgeResult(

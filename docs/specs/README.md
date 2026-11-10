@@ -1,5 +1,10 @@
 # Feature Specifications
 
+- [SPEC-140: Telegram owner pin](SPEC-140-telegram-owner-pin.md)
+  — implemented, 2026-11-11; a Telegram bot binding answers only its owner (the first private
+  chat that writes, as in Cats Bot, or settled from the chats that wrote to it) and sends only
+  to them. A reset collects candidates for the owner to pick, never first-come. Deep-link
+  pairing is planned for both apps.
 - [SPEC-139: Boss Cat across Cats](SPEC-139-boss-cat-across-cats.md)
   — approved, 2026-11-11, and revised after its security review; not implemented. A status
   board without message text, group conversations the Boss Cat creates, and joining Chat, Code
@@ -22,7 +27,7 @@
   product authority, required Desktop/Bot bubbles and message hierarchy,
   streaming/interaction/narrow-layout parity and packed/native acceptance.
 
-- [SPEC-133: Desktop control session MCP (Windows)](SPEC-133-desktop-control-session-mcp.md)
+- [SPEC-133: Desktop control session MCP (Windows first)](SPEC-133-desktop-control-session-mcp.md)
   — draft, 2026-10-29; `cats-desktop` session MCP on Platform's internal listener
   with a native Windows helper. Injection gates, owner app-grant cards, exclusions,
   single-window capture, observe tools (phase A) before input tools (phase B).
