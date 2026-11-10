@@ -166,6 +166,8 @@ function installFakeHost(spec) {
       requiresElevation: ['node-host-installer', 'git-installer', 'vcredist-installer', 'github-cli-installer'].some((part) => key.endsWith(part)),
     };
   }
+  // A helper this OS has no script for, so its row can only be set up by hand.
+  for (const key of spec.unsupported || []) if (helperFacts[key]) helperFacts[key].supported = false;
   const services = spec.services || [
     { name: 'cats-runtime', status: 'ready', healthUrl: 'http://127.0.0.1:3110/health', error: null, lastOutput: null },
     { name: 'cats-platform', status: 'ready', healthUrl: 'http://127.0.0.1:8181/health', error: null, lastOutput: null },
@@ -1176,6 +1178,19 @@ await check('settings: the last check survives leaving Settings and coming back,
   equal((await calls(page, 'runHelper')).length, before, 'no new helper runs');
   equal(await page.locator('#tick-claude').isChecked(), true, 'tick kept');
   truthy(/檢查過/.test(await textOf(page, '.cats-setup .lead')), 'checked at');
+  await close();
+});
+
+await check('a tool with no helper here that Runtime finds is ready, not "install it yourself"', async () => {
+  const { page, close } = await openSettings({
+    selection: SELECTED('claude', 'antigravity'), machine: { installed: ['claude'] },
+    unsupported: ['windows-claude-native-installer', 'windows-antigravity-native-installer'],
+  });
+  await page.click('#recheck');
+  await settled(page);
+  truthy(/就緒/.test(await textOf(page, '[data-row="claude"] .row-state')), 'found by Runtime');
+  truthy(/要自己安裝/.test(await textOf(page, '[data-row="antigravity"] .row-state')), 'still missing');
+  equal(await page.locator('#change-claude').count(), 0, 'no update without a helper');
   await close();
 });
 

@@ -282,7 +282,6 @@ export const SETUP_WIZARD_CSS = `
 .cats-setup .row.is-changing { background: var(--accent-soft); }
 .cats-setup .row-state .arrow { margin: 0 4px; color: var(--muted); }
 .cats-setup .shortcuts { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: -6px 0 8px; }
-.cats-setup .empty { padding: 14px; background: var(--panel); border: 1px dashed var(--line-strong); border-radius: 10px; color: var(--muted); }
 @container cats-setup (max-width: 640px) {
 .cats-setup.is-settings .pane { padding: 14px 14px 10px; }
 .cats-setup.is-settings .foot { padding: 8px 14px; flex-wrap: wrap; }

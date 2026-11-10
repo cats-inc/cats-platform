@@ -263,6 +263,22 @@ export function mountSetupWizard(root, bridge, options) {
     } catch { /* The row still offers a download, and a failed list is not a failed computer. */ }
   }
 
+  /**
+   * A tool with no helper on this OS cannot be read by a script, but Runtime's scan can still find
+   * it. Then it is there, and telling the person to install it themselves would be wrong.
+   */
+  function adoptRuntimeFindings() {
+    for (const id of rowIds()) {
+      const row = S.rows[id];
+      if (!row || row.kind !== 'manual' || !TOOLS[id] || isConnection(id)) continue;
+      const observation = ((S.snap && S.snap.runtime.observations) || [])
+        .find((entry) => targetKey(entry) === targetKey(TOOLS[id].target) && entry.configurationStatus !== 'not_selected');
+      if (observation && observation.commandStatus === 'ready') {
+        S.rows[id] = { kind: 'ready', status: 'ready', version: observation.version || null, planned: [], manual: [] };
+      }
+    }
+  }
+
   async function runCheck() {
     if (S.phase !== 'idle') return;
     chrome.beginWork();
@@ -290,6 +306,7 @@ export function mountSetupWizard(root, bridge, options) {
         const next = await providerOperation(() => bridge.runProviderSetup({ action: 'detect', targets, expectedRevision: S.revision }));
         if (mine !== S.ticket) return;
         S.snap = next;
+        adoptRuntimeFindings();
       } catch (error) {
         if (mine !== S.ticket) return;
         S.pageError = { raw: String(error.message || error) };
@@ -1375,12 +1392,11 @@ export function mountSetupWizard(root, bridge, options) {
     const signInBlock = signInHtml
       ? `<div class="block"><p class="group-label">${E(ollamaUsable() ? T('Sign in and models', '登入與模型') : T('Sign in', '登入'))}</p><ul class="rows">${signInHtml}</ul></div>`
       : '';
-    const empty = S.picks.size ? '' : `<div class="block"><p class="empty">${E(T('No AI tools are chosen. Choose tools to pick the ones you use; nothing installs until you tick it.', '還沒有選 AI 工具。按「選擇工具」挑你要用的；沒勾選之前不會安裝任何東西。'))}</p></div>`;
     const custom = CUSTOM.length
       ? `<p class="footnote">${E(T(`${CUSTOM.length} other configured target(s) are not managed here and stay as they are.`, `另外 ${CUSTOM.length} 個已設定的目標不在這裡管理，會維持原樣。`))}</p>`
       : '';
     return `${head}<p class="lead"><strong>${E(title)}</strong><br>${E(lead)}${E(when)}</p>${banner}
-      ${shortcuts.length ? `<p class="shortcuts">${shortcuts.join('')}</p>` : ''}${empty}${groups}${signInBlock}${custom}`;
+      ${shortcuts.length ? `<p class="shortcuts">${shortcuts.join('')}</p>` : ''}${groups}${signInBlock}${custom}`;
   }
 
   function settingsFoot() {
