@@ -846,6 +846,50 @@ button.draftHeaderAvatar.draftHeaderAvatarEditable:hover .draftHeaderAvatarCamer
   background: var(--panel-hover);
 }
 
+/* A recent whose delete is in flight: the spinner takes the overflow button's
+ * slot without waiting for hover, and the row no longer selects. */
+.recentItemCard.recentItemDeleting,
+.recentItemCard.recentItemDeleting .recentSelectButton {
+  cursor: progress;
+}
+
+.recentItemCard.recentItemDeleting:hover {
+  background: transparent;
+}
+
+.recentItemCard.recentItemDeleting.recentItemSelected {
+  background: var(--sidebar-active-bg);
+}
+
+/* Rows locked by a group delete keep their avatar or glyph: no overflow
+ * button replaces it on hover. */
+.recentItemCard.recentItemDeleting:hover .recentCatAvatar,
+.recentItemCard.recentItemDeleting:hover .recentParallelGlyph {
+  opacity: 1;
+}
+
+.recentItemDeleting .recentSelectButton strong {
+  color: var(--muted);
+}
+
+.recentDeletingSpinner {
+  grid-area: 1 / 1;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--muted);
+  border-radius: 50%;
+  animation: recentDeletingSpin 0.8s linear infinite;
+}
+
+@keyframes recentDeletingSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recentDeletingSpinner { animation-duration: 2s; }
+}
+
 .recentRenameInput {
   width: 100%;
   padding: 2px 4px;
