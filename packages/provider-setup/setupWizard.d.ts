@@ -4,7 +4,7 @@ export function mountSetupWizard(root: HTMLElement, bridge: unknown, options: {
   catHead?: string;
   createChrome: typeof import('./setupChrome.js').mountSetupChrome;
   facts: typeof import('./setupFacts.js').setupRowFacts;
-  /** SPEC-137: Settings > Runtime's layout and behavior. */
+  /** SPEC-138: Settings > Runtime's layout and behavior. */
   mode?: 'wizard' | 'settings';
   /** Settings: what the last check found, kept for the window's session. */
   settingsState?: unknown;

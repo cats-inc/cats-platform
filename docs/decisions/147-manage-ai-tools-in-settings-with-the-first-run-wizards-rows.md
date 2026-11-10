@@ -4,7 +4,7 @@
 
 Accepted — 2026-11-11, by the owner's request to bring Settings' install and upgrade guidance up
 to the first-run wizard "in function and in look". Specified by
-[SPEC-137](../specs/SPEC-137-settings-ai-tools.md) and carried out by
+[SPEC-138](../specs/SPEC-138-settings-ai-tools.md) and carried out by
 [PLAN-131](../plans/PLAN-131-settings-ai-tools.md).
 
 This reverses [ADR-146](146-make-desktop-first-run-one-wizard-that-runs-only-what-the-owner-asks.md)
@@ -130,7 +130,7 @@ Facts that bound the design:
 
 ## References
 
-- [SPEC-137](../specs/SPEC-137-settings-ai-tools.md)
+- [SPEC-138](../specs/SPEC-138-settings-ai-tools.md)
 - [PLAN-131](../plans/PLAN-131-settings-ai-tools.md)
 - [ADR-116](116-share-desktop-provider-management-across-onboarding-and-settings.md)
 - [ADR-146](146-make-desktop-first-run-one-wizard-that-runs-only-what-the-owner-asks.md)

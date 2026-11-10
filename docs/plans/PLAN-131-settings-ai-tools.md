@@ -11,7 +11,7 @@
 
 ## Related Spec
 
-[SPEC-137: Settings AI Tools](../specs/SPEC-137-settings-ai-tools.md), under
+[SPEC-138: Settings AI Tools](../specs/SPEC-138-settings-ai-tools.md), under
 [ADR-147](../decisions/147-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md).
 
 ## Overview
@@ -101,5 +101,5 @@ NFR Security).
 ## References
 
 - [ADR-147](../decisions/147-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md)
-- [SPEC-137](../specs/SPEC-137-settings-ai-tools.md)
+- [SPEC-138](../specs/SPEC-138-settings-ai-tools.md)
 - [PLAN-130](PLAN-130-desktop-first-run-wizard.md)

@@ -34,11 +34,11 @@ export function isSetupHostPage(url: unknown): boolean {
   return typeof url === 'string' && url.startsWith('data:');
 }
 
-/** The one Platform route that manages tools (SPEC-137). */
+/** The one Platform route that manages tools (SPEC-138). */
 export const SETTINGS_TOOLS_PATH = '/settings/runtime';
 
 /**
- * SPEC-137: Settings > Runtime runs the same rows, so it may run what they run: a helper, a check's
+ * SPEC-138: Settings > Runtime runs the same rows, so it may run what they run: a helper, a check's
  * cancellation, a sign-in terminal and an Ollama model. Only the app's own origin counts, and only
  * that route. Wizard state and the restart draft stay with the host's page.
  */

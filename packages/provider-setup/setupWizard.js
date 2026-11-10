@@ -10,7 +10,7 @@ export function mountSetupWizard(root, bridge, options) {
   const CHECKS_AT_ONCE = 4;
   const ADDRESS_DEFAULT = { ollama: 'http://127.0.0.1:11434', openclaw: 'ws://127.0.0.1:18789' };
   const MODEL_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$/;
-  // SPEC-137: Settings > Runtime. Page 1 is the picker behind "Choose tools"; page 2 holds the rows,
+  // SPEC-138: Settings > Runtime. Page 1 is the picker behind "Choose tools"; page 2 holds the rows,
   // their updates and removals, and sign-in. Nothing hands off, and Settings owns the language.
   const SETTINGS = options.mode === 'settings';
   const CONTEXT = SETTINGS ? 'settings' : 'onboarding';
@@ -147,7 +147,7 @@ export function mountSetupWizard(root, bridge, options) {
   });
   const rowLabel = (id) => factsOf(id).title;
 
-  /* ------------------------------ Settings: changes to a ready row (SPEC-137) ------------------------------ */
+  /* ------------------------------ Settings: changes to a ready row (SPEC-138) ------------------------------ */
 
   /** What a ticked row runs: its install, or the change chosen for it once it is there. */
   function modeOf(id) {
@@ -399,7 +399,7 @@ export function mountSetupWizard(root, bridge, options) {
   }
 
   /**
-   * SPEC-137 FR-9: an uninstall's dry run reads what it would remove, and changes nothing. A plan
+   * SPEC-138 FR-9: an uninstall's dry run reads what it would remove, and changes nothing. A plan
    * becomes a ticked change; an empty one says there is nothing to remove.
    */
   async function previewUninstall(id) {
@@ -1233,7 +1233,7 @@ export function mountSetupWizard(root, bridge, options) {
     const open = S.details.has(id);
     const elevates = helperOf(id) && helperOf(id).requiresElevation;
     if (row.kind === 'pending' && SETTINGS && S.phase === 'idle') {
-      // Settings before a check: what is already known, with no tick box (SPEC-137 FR-2).
+      // Settings before a check: what is already known, with no tick box (SPEC-138 FR-2).
       const known = passiveState(id);
       return plainRow(id, depCls, known.ok ? ICON.check : ICON.wait,
         `${E(known.text)}${known.version ? `<span class="version">${E(known.version)}</span>` : ''}`);
@@ -1325,7 +1325,7 @@ export function mountSetupWizard(root, bridge, options) {
     return [T('This computer is ready', '這台電腦準備好了'), T('Nothing needed installing, and nothing here changed.', '不需要安裝，這台電腦沒有任何變更。')];
   }
 
-  /* ------------------------------ Settings > Runtime (SPEC-137) ------------------------------ */
+  /* ------------------------------ Settings > Runtime (SPEC-138) ------------------------------ */
 
   function settingsLead() {
     if (S.phase === 'checking') return [T('Checking this computer', '正在檢查這台電腦'), T('This only reads what is there and changes nothing. Stop ends it and keeps what was read.', '這只會讀取目前的狀態，不會變更任何東西。按「停止」會結束檢查，已讀到的結果會留著。')];

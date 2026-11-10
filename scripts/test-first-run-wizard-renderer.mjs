@@ -36,7 +36,7 @@ const pageFile = join(process.env.TEMP || process.env.TMPDIR || '/tmp', `cats-fi
 writeFileSync(pageFile, HTML);
 
 /*
- * SPEC-137: Settings > Runtime mounts the same module in its own layout, inside a scrolling canvas
+ * SPEC-138: Settings > Runtime mounts the same module in its own layout, inside a scrolling canvas
  * with other sections around it. The modules import nothing, so they are inlined as they are.
  */
 const moduleSource = (name) => readFileSync(join(root, 'packages', 'provider-setup', `${name}.js`), 'utf8').replace(/^export /gm, '');
@@ -263,7 +263,7 @@ function installFakeHost(spec) {
         const dryRun = Boolean(options && options.dryRun);
         const run = runStart(mode === 'check' || dryRun ? 'check' : 'change', `${helperId}.ps1`, helperFacts[helperId].commands[mode]);
         await wait(spec.helperDelay || 30);
-        // SPEC-137: an update, a reinstall and a removal, with an uninstall's dry run.
+        // SPEC-138: an update, a reinstall and a removal, with an uninstall's dry run.
         if (['upgrade', 'force', 'uninstall'].includes(mode) && !state.faults[`${mode}:${row}`]) {
           const m = state.machine;
           const base = { helperId, mode, runState: 'completed', summary: `${row} ${mode}`, warnings: [], manualSteps: [], appliedChanges: [], plannedActions: [], interruptions: [], error: null, restartRequired: false };
@@ -1051,7 +1051,7 @@ await check('English and Traditional Chinese switch in place, without losing tic
   await close();
 });
 
-/* ------------------------------ Settings > Runtime (SPEC-137) ------------------------------ */
+/* ------------------------------ Settings > Runtime (SPEC-138) ------------------------------ */
 
 await check('settings: opening runs nothing, reads in the settings context and shows the last scan without ticks', async () => {
   const { page, close } = await openSettings({

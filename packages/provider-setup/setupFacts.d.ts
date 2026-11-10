@@ -14,7 +14,7 @@ export function setupRowFacts(
     neededBy?: string[];
     planned?: string[];
     ollamaInstalled?: boolean;
-    /** SPEC-137: a change to a ready row instead of its install. */
+    /** SPEC-138: a change to a ready row instead of its install. */
     change?: 'upgrade' | 'force' | 'uninstall';
     requiresElevation?: boolean;
   },

@@ -153,7 +153,7 @@ export function setupRowFacts(T, id, context) {
 }
 
 /**
- * SPEC-137 FR-8 and FR-9: what an update, a reinstall or a removal of a ready row says. A helper
+ * SPEC-138 FR-8 and FR-9: what an update, a reinstall or a removal of a ready row says. A helper
  * cannot say beforehand whether a newer release exists, so an update never promises one.
  */
 function changeFacts(T, id, context, base) {

@@ -258,7 +258,7 @@ export const SETUP_WIZARD_CSS = `
 .cats-setup *, .cats-setup *::before, .cats-setup *::after { animation-duration: 2.5s !important; transition: none !important; }
 .cats-setup .perch.busy .cat svg { animation: none; }
 }
-/* SPEC-137: the same rows inside Settings > Runtime. The section flows with the page; its action
+/* SPEC-138: the same rows inside Settings > Runtime. The section flows with the page; its action
    foot and log dock to the bottom of the visible canvas while the section is on screen. */
 .cats-setup.is-settings { position: relative; inset: auto; z-index: auto; overflow: visible; container: cats-setup / inline-size;
   border: 1px solid var(--line); border-radius: 12px; }

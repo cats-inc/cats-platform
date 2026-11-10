@@ -13,7 +13,7 @@
 
 ## Amendment — 2026-11-11
 
-[SPEC-137](SPEC-137-settings-ai-tools.md) gives Settings > Runtime these rows. The Non-Goal
+[SPEC-138](SPEC-138-settings-ai-tools.md) gives Settings > Runtime these rows. The Non-Goal
 "Redesigning Settings > Runtime" and FR-41's "Settings keeps its behavior" no longer hold. FR-38's
 host-page-only rule also admits the main frame at the app origin under `/settings/runtime` for
 running a helper, cancelling checks, opening a terminal and Ollama models; wizard state, the

@@ -1,6 +1,6 @@
 # Feature Specifications
 
-- [SPEC-137: Settings AI tools](SPEC-137-settings-ai-tools.md)
+- [SPEC-138: Settings AI tools](SPEC-138-settings-ai-tools.md)
   — approved, 2026-11-11; Settings > Runtime runs the first-run wizard's rows in a Settings
   layout, with update, reinstall and uninstall as ticked changes. PLAN-131.
 - [SPEC-137: Companion own initiative, modes and back-off](SPEC-137-companion-own-initiative-modes-and-back-off.md)

@@ -66,7 +66,7 @@ function resolveRuntimeStatusChip(
 }
 
 /**
- * SPEC-137: one instance for the window's life. Leaving Settings > Runtime detaches it and coming
+ * SPEC-138: one instance for the window's life. Leaving Settings > Runtime detaches it and coming
  * back attaches the same one, so a check or an install that is still running is never left behind
  * by a second copy that does not know about it, and what the last check found is still there.
  */

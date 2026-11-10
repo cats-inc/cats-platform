@@ -78,7 +78,7 @@ export function mountSetupChrome(root: HTMLElement, bridge: unknown, options?: {
   css?: string;
   catHead?: string;
   browserOnly?: boolean;
-  /** SPEC-137: no rail, and the log at the foot of a Settings section. */
+  /** SPEC-138: no rail, and the log at the foot of a Settings section. */
   layout?: 'wizard' | 'settings';
   isBusy?: () => boolean;
   onStep?: (page: number) => void;

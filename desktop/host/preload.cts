@@ -233,7 +233,7 @@ const bridge = {
     facts(): Promise<unknown> {
       return ipcRenderer.invoke('cats-host:setup-wizard-facts');
     },
-    // SPEC-137: Settings also updates, reinstalls and removes; a dry run only previews a removal.
+    // SPEC-138: Settings also updates, reinstalls and removes; a dry run only previews a removal.
     runHelper(helperId: string, mode: 'check' | 'apply' | 'upgrade' | 'force' | 'uninstall', options?: { dryRun?: boolean }): Promise<unknown> {
       return ipcRenderer.invoke('cats-host:setup-wizard-run-helper', {
         helperId, mode, ...(options?.dryRun === true ? { dryRun: true } : {}),

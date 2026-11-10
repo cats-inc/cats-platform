@@ -19,7 +19,7 @@ export function mountSetupChrome(root, bridge, options = {}) {
     chev: '<svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   };
 
-  // SPEC-137: Settings shows the same rows without the rail, with the log at the section's foot.
+  // SPEC-138: Settings shows the same rows without the rail, with the log at the section's foot.
   const settingsLayout = options.layout === 'settings';
   root.classList.add('cats-setup');
   if (settingsLayout) root.classList.add('is-settings');

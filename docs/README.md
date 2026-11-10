@@ -1,6 +1,6 @@
 # Documentation Index
 
-[Settings AI tools](specs/SPEC-137-settings-ai-tools.md) gives Settings > Runtime the first-run
+[Settings AI tools](specs/SPEC-138-settings-ai-tools.md) gives Settings > Runtime the first-run
 wizard's rows, log and details, with Update, Reinstall and Uninstall as ticked changes
 ([ADR-147](decisions/147-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md),
 [PLAN-131](plans/PLAN-131-settings-ai-tools.md)).

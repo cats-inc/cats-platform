@@ -1,4 +1,4 @@
-# SPEC-137: Settings AI Tools
+# SPEC-138: Settings AI Tools
 
 ## Metadata
 

@@ -16,7 +16,7 @@ incomplete selection can finish still holds on both surfaces.
 
 ## Amendment — 2026-11-11
 
-[SPEC-137](./SPEC-137-settings-ai-tools.md) replaces the Settings half too: FR-2 and FR-3 (Apply
+[SPEC-138](./SPEC-138-settings-ai-tools.md) replaces the Settings half too: FR-2 and FR-3 (Apply
 and "Detect after applying") and the shared row presentation are gone from Settings > Runtime,
 which now shows the first-run wizard's rows. Selection, scans and FR-8 still hold.
 

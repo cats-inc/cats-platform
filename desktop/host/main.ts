@@ -2923,7 +2923,7 @@ async function main(): Promise<void> {
     assertSetupWizardSender(event);
     if (!isSetupHostPage(event.senderFrame?.url)) throw new Error('This is only available to the first-run page.');
   };
-  // SPEC-137: Settings > Runtime shows the same rows, so it may run what they run.
+  // SPEC-138: Settings > Runtime shows the same rows, so it may run what they run.
   const assertSetupToolsPage = (event: import('electron').IpcMainInvokeEvent) => {
     assertSetupWizardSender(event);
     if (!isSetupToolsPage(event.senderFrame?.url, hostConfig?.appBaseUrl)) {
@@ -3000,7 +3000,7 @@ async function main(): Promise<void> {
     const { helperId, mode, dryRun } = readSetupToolsHelperRequest(payload);
     const reading = mode === 'check' || dryRun;
     if (!reading) assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'setup-helper');
-    // SPEC-137: two pages (first run and Settings, or Settings mounted twice) must never run two
+    // SPEC-138: two pages (first run and Settings, or Settings mounted twice) must never run two
     // changes at once, which could start two installers for the same tool.
     if (!reading && activeSetupChanges > 0) throw new Error('Another setup change is running. Wait for it to finish.');
     const checks = reading ? new AbortController() : null;

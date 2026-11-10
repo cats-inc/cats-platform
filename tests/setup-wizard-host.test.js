@@ -217,7 +217,7 @@ test('wizard state belongs to the host page alone: a Platform page is not it', (
   assert.equal(isSetupHostPage(undefined), false);
 });
 
-test('SPEC-137: helpers, terminals and models also run from Settings > Runtime, and nowhere else on Platform', () => {
+test('SPEC-138: helpers, terminals and models also run from Settings > Runtime, and nowhere else on Platform', () => {
   const app = 'http://127.0.0.1:8181';
   assert.equal(isSettingsToolsPage(`${app}/settings/runtime`, app), true);
   assert.equal(isSettingsToolsPage(`${app}/settings/runtime?tab=x#top`, app), true);
@@ -236,7 +236,7 @@ test('SPEC-137: helpers, terminals and models also run from Settings > Runtime, 
   assert.equal(isSetupToolsPage(`${app}/settings/data`, app), false);
 });
 
-test('SPEC-137: a helper request takes a fixed mode, and a dry run only previews an uninstall', () => {
+test('SPEC-138: a helper request takes a fixed mode, and a dry run only previews an uninstall', () => {
   assert.deepEqual(readSetupToolsHelperRequest({ helperId: 'windows-claude-native-installer', mode: 'upgrade' }),
     { helperId: 'windows-claude-native-installer', mode: 'upgrade', dryRun: false });
   assert.deepEqual(readSetupToolsHelperRequest({ helperId: 'h', mode: 'uninstall', dryRun: true }), { helperId: 'h', mode: 'uninstall', dryRun: true });
