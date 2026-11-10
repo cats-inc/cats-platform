@@ -2360,7 +2360,7 @@ export const enCatalog: MessageCatalog = {
   'chat.companionSettingsTelegramBindingConnected': 'Connected',
   'chat.companionSettingsTelegramBindingDefaultMode': 'Default',
   'chat.companionSettingsTelegramBindingManageHint': 'Manage Telegram binding in ',
-  'chat.companionSettingsTelegramBindingSettingsLabel': 'Cats Directory > My Cats',
+  'chat.companionSettingsTelegramBindingSettingsLabel': "this cat's settings",
   'chat.companionSettingsTelegramBindingSuffix': '.',
   'chat.companionSettingsNoTelegramBindingState':
     'No Telegram binding. Configure one in ',
@@ -3568,6 +3568,8 @@ export const enCatalog: MessageCatalog = {
   'entityCanvas.catterySubtitle':
     '{clowderCount} Clowders · {memberCount} members',
   'catProfile.notFound.title': 'Cat not found',
+  'catProfile.openSettingsLabel': "Edit {name}'s settings",
+  'catProfile.viewProfileAction': 'View profile',
   'catProfile.notFound.body':
     'No Cat with id "{catId}" exists in this workspace. It may have been removed, or the link is stale.',
   'entitiesSidebar.section.cats': 'My Cats',

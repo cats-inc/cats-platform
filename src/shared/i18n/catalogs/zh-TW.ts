@@ -2310,7 +2310,7 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.companionSettingsTelegramBindingConnected': '已連線',
   'chat.companionSettingsTelegramBindingDefaultMode': '預設',
   'chat.companionSettingsTelegramBindingManageHint': '請到',
-  'chat.companionSettingsTelegramBindingSettingsLabel': 'Cats 目錄 > 我的貓咪',
+  'chat.companionSettingsTelegramBindingSettingsLabel': '這隻貓的設定',
   'chat.companionSettingsTelegramBindingSuffix': '內進行管理。',
   'chat.companionSettingsNoTelegramBindingState': '尚未設定 Telegram 綁定，請到',
   'chat.companionOverviewLoadingState': '載入中…',
@@ -3494,6 +3494,8 @@ export const zhTWCatalog: MessageCatalog = {
   'entityCanvas.openCatteryAction': '開啟貓窩',
   'entityCanvas.catterySubtitle': '{clowderCount} 個貓群 · {memberCount} 位成員',
   'catProfile.notFound.title': '找不到這隻貓',
+  'catProfile.openSettingsLabel': '編輯 {name} 的設定',
+  'catProfile.viewProfileAction': '查看個人檔案',
   'catProfile.notFound.body':
     '此工作區中沒有 id 為「{catId}」的貓。可能已被移除，或連結已失效。',
   'entitiesSidebar.section.cats': '我的貓咪',

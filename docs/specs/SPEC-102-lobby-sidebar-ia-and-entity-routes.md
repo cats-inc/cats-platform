@@ -166,6 +166,18 @@
   cannot claim it. The `settings-cats/` canvas copies (shared and the unused
   Chat / Code / Work wrappers, with their hook wrappers) are deleted, so the
   canvas has one implementation.
+- **Each cat's settings have their own URL (2026-11-11):**
+  `/entities/cats/:catId/settings` mounts the cats canvas with that cat
+  selected, beside the profile at `/entities/cats/:catId` (kept as the stable
+  profile contract). The URL is the only source of the selected cat: picking a
+  cat in the selector strip, creating one and falling back after a delete all
+  navigate, and `/entities/cats` resolves to the first cat's settings or to
+  `/new` (`resolveCatsCanvasRedirect`). The profile header's gear button opens
+  the settings; the settings card's "View profile" opens the profile. The
+  profile's Telegram hint and the marked-avatar model link open that cat's
+  settings URL, and model focus state no longer carries a cat id. Folding the
+  settings form into the profile page itself is deferred until the owner has
+  reviewed the layout.
 - **`/entities/cats/:catId` mounts `CatProfilePage`** (`src/app/renderer/entities/CatProfilePage.tsx`).
   Renders a platform-level **copy** of the chat
   `CompanionWorkspace` at
@@ -670,9 +682,10 @@ click → /chat/my-cats/:id        click → /chat/dm/:id
                                              no /lobby/{type}/:id family
 
 /entities                                  ← Cats Directory index
-/entities/cats                             ← Cats canvas (roster + per-cat detail)
+/entities/cats                             ← resolves to the first cat's settings (or /new)
 /entities/cats/new                         ← Cats canvas, add-cat flow
 /entities/cats/:catId                      ← CatProfilePage companion/profile mount
+/entities/cats/:catId/settings             ← Cats canvas with that cat selected
 /entities/clowders                         ← Clowders canvas
 /entities/clowders/:clowderId              ← Clowder home (Cats default)
 /entities/clowders/:clowderId/:tab         ← cats|settings

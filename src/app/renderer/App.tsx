@@ -735,6 +735,7 @@ export default function PlatformApp() {
             <Route path="/entities/cats" element={<CatsCanvasPage />} />
             <Route path="/entities/cats/new" element={<CatsCanvasPage />} />
             <Route path="/entities/cats/:catId" element={<CatProfilePage />} />
+            <Route path="/entities/cats/:catId/settings" element={<CatsCanvasPage />} />
             <Route path="/entities/clowders" element={<ClowdersCanvasPage envelope={readyEnvelope} />} />
             <Route path="/entities/clowders/:clowderId" element={<ClowderHome envelope={readyEnvelope} />} />
             <Route path="/entities/clowders/:clowderId/:tab" element={<ClowderHome envelope={readyEnvelope} />} />

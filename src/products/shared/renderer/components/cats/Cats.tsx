@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type Dispatch, type FormEvent, type SetStateAction } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { PluginSkillOptions } from '../../../../../app/renderer/settings/PluginSkillOptions.js';
 
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
@@ -35,7 +35,7 @@ import { CHAT_MCP_PROFILE_ID } from '../../../../../shared/catMcpProfiles.js';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { CatsDetailPanelContent } from './CatsDetailPanelContent.js';
 import { CatsRegistry } from './CatsRegistry.js';
-import { findNewlyCreatedActiveCat } from './catsSupport.js';
+import { findNewlyCreatedActiveCat, resolveCatsCanvasRedirect } from './catsSupport.js';
 import { COMPANION_PILL_LABEL, MCP_PROFILES, SKILL_PROFILES } from './viewSupport.js';
 import { isCompanionCat } from '../../../../../shared/companionRole.js';
 import { CatAvatarSelectionAttention } from '../../../../../app/renderer/SavedSelectionAvatarAttention.js';
@@ -45,7 +45,12 @@ import {
   scrollModelSettingsFieldIntoView,
 } from '../../../../../app/renderer/savedSelectionAttention.js';
 import { isAdminCat } from '../../../catGroups.js';
-import { CATS_DIRECTORY_NEW_CAT_PATH, CATS_DIRECTORY_PATH } from '../../../../../shared/catsDirectoryPaths.js';
+import {
+  CATS_DIRECTORY_NEW_CAT_PATH,
+  CATS_DIRECTORY_PATH,
+  buildCatProfilePath,
+  buildCatSettingsPath,
+} from '../../../../../shared/catsDirectoryPaths.js';
 
 export interface CatsRegistryController<TBotForm> {
   botForm: TBotForm;
@@ -118,7 +123,12 @@ export function CatsCanvas({
   const { dialog, confirm, handleClose } = useConfirmDialog();
   const location = useLocation();
   const navigate = useNavigate();
-  const isCreateRoute = location.pathname.endsWith('/cats/new');
+  const isCreateRoute = location.pathname === CATS_DIRECTORY_NEW_CAT_PATH;
+  // The URL is the only source of the selected cat:
+  // `/entities/cats/:catId/settings`. Picking, creating or falling back to a
+  // cat all navigate; nothing keeps a second copy in component state.
+  const { catId: routeCatId } = useParams<{ catId?: string }>();
+  const selectedCatId = isCreateRoute ? null : routeCatId ?? null;
   const { t } = useI18n();
 
   useEffect(() => {
@@ -199,39 +209,30 @@ export function CatsCanvas({
   );
   const atCatLimit = activeCatCount >= payload.chat.capabilities.maxCats;
   const [showArchived, setShowArchived] = useState(
-    () => payload.chat.cats.filter((c) => c.status === 'active').length === 0
-      && payload.chat.cats.some((c) => c.status === 'archived'),
+    () => (payload.chat.cats.filter((c) => c.status === 'active').length === 0
+      && payload.chat.cats.some((c) => c.status === 'archived'))
+      // A link straight to an archived cat's settings shows the archived row.
+      || payload.chat.cats.some((c) => c.id === selectedCatId && c.status === 'archived'),
   );
 
-  // A marked avatar elsewhere opens this page on that cat's model field.
-  const modelFocus = readModelSettingsFocusState(location.state);
-  const [selectedCatId, setSelectedCatId] = useState<string | null>(
-    () => (modelFocus?.catId && payload.chat.cats.some((cat) => cat.id === modelFocus.catId)
-      ? modelFocus.catId
-      : null)
-      ?? sortedActiveCats[0]?.id ?? sortedArchivedCats[0]?.id ?? null,
-  );
+  // A marked avatar elsewhere opens a cat's settings on its model field.
+  const hasModelFocus = readModelSettingsFocusState(location.state) !== null;
   const hasAnyCat = activeCatCount > 0 || sortedArchivedCats.length > 0;
   const effectiveMode: 'create' | 'view' = isCreateRoute || !hasAnyCat ? 'create' : 'view';
 
+  // Resolve a URL that names no visible cat: the roster root, a cat that was
+  // deleted, or an archived cat whose row the owner just hid.
   useEffect(() => {
-    if (effectiveMode !== 'view') return;
-    const current = selectedCatId
-      ? payload.chat.cats.find((cat) => cat.id === selectedCatId) ?? null
-      : null;
-    const hiddenBecauseArchived = current?.status === 'archived' && !showArchived;
-    if (!current || hiddenBecauseArchived) {
-      const fallback = sortedActiveCats[0] ?? (showArchived ? sortedArchivedCats[0] : null);
-      if (fallback) {
-        setSelectedCatId(fallback.id);
-      } else {
-        setSelectedCatId(null);
-        if (!location.pathname.endsWith('/cats/new')) {
-          navigate(CATS_DIRECTORY_NEW_CAT_PATH, { replace: true });
-        }
-      }
-    }
-  }, [effectiveMode, location.pathname, navigate, payload.chat.cats, selectedCatId, showArchived, sortedActiveCats, sortedArchivedCats]);
+    const target = resolveCatsCanvasRedirect({
+      isCreateRoute,
+      selectedCatId,
+      cats: payload.chat.cats,
+      sortedActiveCats,
+      sortedArchivedCats,
+      showArchived,
+    });
+    if (target) navigate(target, { replace: true });
+  }, [isCreateRoute, navigate, payload.chat.cats, selectedCatId, showArchived, sortedActiveCats, sortedArchivedCats]);
 
   useEffect(() => {
     if (effectiveMode === 'view' && selectedCatId) {
@@ -241,15 +242,11 @@ export function CatsCanvas({
 
   const handledModelFocusKey = useRef<string | null>(null);
   useEffect(() => {
-    if (!modelFocus?.catId || handledModelFocusKey.current === location.key) return;
-    if (selectedCatId !== modelFocus.catId) {
-      if (payload.chat.cats.some((cat) => cat.id === modelFocus.catId)) setSelectedCatId(modelFocus.catId);
-      return;
-    }
-    if (effectiveMode !== 'view') return;
+    if (!hasModelFocus || !selectedCatId || effectiveMode !== 'view') return;
+    if (handledModelFocusKey.current === location.key) return;
     handledModelFocusKey.current = location.key;
     requestAnimationFrame(scrollModelSettingsFieldIntoView);
-  }, [effectiveMode, location.key, modelFocus?.catId, payload.chat.cats, selectedCatId]);
+  }, [effectiveMode, hasModelFocus, location.key, selectedCatId]);
 
   const prevActiveCatCountRef = useMemo(() => ({ current: activeCatCount }), []);
   const prevActiveCatIdsRef = useMemo(() => ({ current: new Set<string>(activeCats.map((c) => c.id)) }), []);
@@ -258,22 +255,17 @@ export function CatsCanvas({
       const prevIds = prevActiveCatIdsRef.current;
       const newCat = sortedActiveCats.find((cat) => !prevIds.has(cat.id))
         ?? sortedActiveCats[sortedActiveCats.length - 1];
-      if (newCat) {
-        setSelectedCatId(newCat.id);
-      }
-      if (location.pathname.endsWith('/cats/new')) {
-        navigate(CATS_DIRECTORY_PATH, { replace: true });
+      if (newCat && isCreateRoute) {
+        navigate(buildCatSettingsPath(newCat.id), { replace: true });
       }
     }
     prevActiveCatCountRef.current = activeCatCount;
     prevActiveCatIdsRef.current = new Set(activeCats.map((c) => c.id));
-  }, [activeCatCount, activeCats, location.pathname, navigate, onPayloadUpdate, prevActiveCatCountRef, prevActiveCatIdsRef, sortedActiveCats]);
+  }, [activeCatCount, activeCats, isCreateRoute, navigate, prevActiveCatCountRef, prevActiveCatIdsRef, sortedActiveCats]);
 
   const handleSelectCat = (catId: string) => {
-    setSelectedCatId(catId);
-    if (location.pathname.endsWith('/cats/new')) {
-      navigate(CATS_DIRECTORY_PATH, { replace: true });
-    }
+    if (catId === selectedCatId) return;
+    navigate(buildCatSettingsPath(catId), { replace: isCreateRoute });
   };
 
   const handleStartCreate = () => {
@@ -394,23 +386,20 @@ export function CatsCanvas({
   // copies whose saved choice is gone its current choice, when that still maps.
   const repairedModelFocusKey = useRef<string | null>(null);
   useEffect(() => {
-    if (!modelFocus?.catId || repairedModelFocusKey.current === location.key) return;
+    if (!hasModelFocus || !selectedCatId || repairedModelFocusKey.current === location.key) return;
     repairedModelFocusKey.current = location.key;
     void commitCatProfile(
-      modelFocus.catId,
+      selectedCatId,
       { repairSelectionCopies: true },
       t(messageKeys.sharedSettingsCatsUpdateBrainError),
     );
-  }, [commitCatProfile, location.key, modelFocus?.catId, t]);
+  }, [commitCatProfile, hasModelFocus, location.key, selectedCatId, t]);
 
   const handleCreateCat = async () => {
     const next = await performCreateCat();
     const newCat = next ? findNewlyCreatedActiveCat(activeCats, next.chat.cats) : null;
     if (newCat) {
-      setSelectedCatId(newCat.id);
-      if (location.pathname.endsWith('/cats/new')) {
-        navigate(CATS_DIRECTORY_PATH, { replace: true });
-      }
+      navigate(buildCatSettingsPath(newCat.id), { replace: true });
       if (pendingCreateAvatar) {
         try {
           const nextWithAvatar = await updateCatProfile(newCat.id, { avatarUrl: pendingCreateAvatar });
@@ -556,6 +545,13 @@ export function CatsCanvas({
               status={
                 effectiveMode === 'view' && selectedCat ? (
                   <SettingsActionBar>
+                    <button
+                      type="button"
+                      className="secondaryButton"
+                      onClick={() => navigate(buildCatProfilePath(selectedCat.id))}
+                    >
+                      {t(messageKeys.catProfileViewProfileAction)}
+                    </button>
                     {selectedCat.status === 'active' ? (
                       <button
                         type="button"

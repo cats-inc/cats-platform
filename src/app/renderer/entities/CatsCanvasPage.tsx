@@ -51,7 +51,9 @@ export function useDirectoryCatsPayload(): [
 }
 
 /**
- * Platform-level page for `/entities/cats` and `/entities/cats/new`.
+ * Platform-level page for `/entities/cats`, `/entities/cats/new` and a cat's
+ * settings at `/entities/cats/:catId/settings`. The URL is the only source of
+ * the selected cat; `/entities/cats` resolves to the first cat's settings.
  * Cats Directory owns the cat roster and the add-cat flow; Settings no
  * longer hosts a copy. Mounts `WorkspaceCatsCanvas` inside EntitiesShell,
  * so the sidebar is the platform-level directory sidebar, not chat's

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { GuideCatRecord } from '../../core/types.js';
-import { CATS_DIRECTORY_PATH } from '../../shared/catsDirectoryPaths.js';
+import { buildCatSettingsPath } from '../../shared/catsDirectoryPaths.js';
 import { messageKeys, type MessageInterpolationValues, type MessageKey } from '../../shared/i18n/index.js';
 import type {
   ProductProviderRegistryReadModel,
@@ -154,25 +154,26 @@ export function useSavedSelectionAttention(
 /** Element id of a page's model field, the target of a model focus request. */
 export const MODEL_SETTINGS_FIELD_ID = 'model-settings-field';
 
-/** Navigation state asking a page to select a cat (or Catlas) and show its model field. */
+/**
+ * Navigation state asking a page to show its model field. The page's URL says
+ * whose model it is (a cat's settings path, or Settings > Assistants for Catlas).
+ */
 export interface ModelSettingsFocusState {
   focus: 'model';
-  catId?: string;
 }
 
 export function readModelSettingsFocusState(state: unknown): ModelSettingsFocusState | null {
   if (!state || typeof state !== 'object' || (state as { focus?: unknown }).focus !== 'model') {
     return null;
   }
-  const catId = (state as { catId?: unknown }).catId;
-  return { focus: 'model', ...(typeof catId === 'string' && catId ? { catId } : {}) };
+  return { focus: 'model' };
 }
 
 /** Open a saved cat's model field in Cats Directory, where its saved choice is replaced. */
 export function useOpenCatModelSettings(): (catId: string) => void {
   const navigate = useNavigate();
   return useCallback((catId: string) => {
-    navigate(CATS_DIRECTORY_PATH, { state: { focus: 'model', catId } satisfies ModelSettingsFocusState });
+    navigate(buildCatSettingsPath(catId), { state: { focus: 'model' } satisfies ModelSettingsFocusState });
   }, [navigate]);
 }
 
