@@ -32,6 +32,9 @@ export function useOperatorLoop(
     message: '',
   });
   const operatorRequestIdRef = useRef(0);
+  // Each snapshot moves the whole Core state. A background tick that fires while
+  // one is still loading would only queue behind it and hold another connection.
+  const operatorRequestsInFlightRef = useRef(0);
 
   const refreshOperatorSnapshot = useCallback((
     options: { background?: boolean } = {},
@@ -57,6 +60,7 @@ export function useOperatorLoop(
       }));
     }
 
+    operatorRequestsInFlightRef.current += 1;
     void fetchOperatorLoopSnapshot(controller.signal)
       .then((snapshot) => {
         if (controller.signal.aborted || requestId !== operatorRequestIdRef.current) {
@@ -88,6 +92,9 @@ export function useOperatorLoop(
             ),
           };
         });
+      })
+      .finally(() => {
+        operatorRequestsInFlightRef.current -= 1;
       });
 
     return () => controller.abort();
@@ -103,7 +110,7 @@ export function useOperatorLoop(
     }
 
     const refreshInBackground = () => {
-      if (document.visibilityState === 'hidden') {
+      if (document.visibilityState === 'hidden' || operatorRequestsInFlightRef.current > 0) {
         return;
       }
       void refreshOperatorSnapshot({ background: true });

@@ -194,9 +194,22 @@ function repairPersistedSetupCompletion(
 export class FileChatStore implements ChatStore {
   private mutationQueue: Promise<void> = Promise.resolve();
   private lastKnownSnapshot: PersistedChatSnapshot | null = null;
+  /**
+   * The primary file's exact text from its last clean read, with the snapshot it
+   * normalized to. Normalizing re-projects every channel into Core, which costs
+   * far more than reading the file, and most reads see unchanged text. Every read
+   * still loads the file, so a write by anyone, including another process, is seen.
+   * The snapshot is never handed out: callers get a clone.
+   */
+  private cleanPrimary: { raw: string; snapshot: PersistedChatSnapshot } | null = null;
   private readonly coreListeners = new Set<CoreStoreListener>();
 
   constructor(private readonly filePath: string) {}
+
+  private reuseCleanPrimary(filePath: string, raw: string): PersistedChatSnapshot | null {
+    const cached = this.cleanPrimary;
+    return filePath === this.filePath && cached?.raw === raw ? structuredClone(cached.snapshot) : null;
+  }
 
   private async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
     const previous = this.mutationQueue;
@@ -248,6 +261,11 @@ export class FileChatStore implements ChatStore {
     const raw = await readFile(filePath, 'utf-8');
     if (!raw.trim()) {
       throw new SyntaxError('Persisted chat snapshot is empty');
+    }
+    // Text that already read clean needs no upgrade, repair or migration write-back.
+    const reused = this.reuseCleanPrimary(filePath, raw);
+    if (reused) {
+      return reused;
     }
     const parsed = JSON.parse(raw);
     const normalized = normalizePersistedChatSnapshot(parsed as unknown);
@@ -459,13 +477,18 @@ export class FileChatStore implements ChatStore {
       if (!raw.trim()) {
         return null;
       }
+      const reused = this.reuseCleanPrimary(this.filePath, raw);
+      if (reused) {
+        return reused;
+      }
       const parsed = JSON.parse(raw);
       const snapshot = normalizePersistedChatSnapshot(parsed as unknown);
       if (parsed.version !== CATS_CORE_STATE_VERSION) return null;
-      return repairPersistedSetupCompletion(snapshot) === snapshot
-        && migrateCompanionSkillProfiles(snapshot) === null
-        ? snapshot
-        : null;
+      if (repairPersistedSetupCompletion(snapshot) !== snapshot || migrateCompanionSkillProfiles(snapshot) !== null) {
+        return null;
+      }
+      this.cleanPrimary = { raw, snapshot: structuredClone(snapshot) };
+      return snapshot;
     } catch (error) {
       if (error instanceof OwnerLifecycleFormatError || error instanceof ProviderPolicyFormatError) throw error;
       return null;

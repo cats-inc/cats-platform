@@ -1,9 +1,10 @@
 import type {
   CoreStore,
 } from '../../core/store.js';
-import type {
-  RuntimeClient,
-  RuntimeObservedSessionPayload,
+import {
+  RuntimeSessionNotFoundError,
+  type RuntimeClient,
+  type RuntimeObservedSessionPayload,
 } from '../../runtime/client.js';
 import type {
   CatsMemoryService,
@@ -233,7 +234,10 @@ export async function bestEffortFlushRuntimeSessionMemory(input: {
       }
     }
   } catch (error) {
-    if (input.coreStore && input.requestedPhase) {
+    // A session Runtime no longer has holds nothing to flush, which is not a
+    // maintenance failure. Recording it would rewrite the whole profile for a
+    // note, typically while that session's chat is being deleted.
+    if (input.coreStore && input.requestedPhase && !(error instanceof RuntimeSessionNotFoundError)) {
       await appendMemoryMaintenanceActivity({
         coreStore: input.coreStore,
         trigger: 'runtime_hook',
