@@ -2,9 +2,9 @@
 
 ## Status
 
-Decided by the owner on 2026-11-11 (D1 to D4). P1 to P5 are proposed defaults the owner may
-change. This records a direction only: nothing is implemented, and a SPEC and a PLAN must come
-first.
+Decided by the owner on 2026-11-11 (D1 to D4), who left the name to the agent (Decision 1).
+Decision 2, the set shape, and P1 to P5 are proposed defaults the owner may change. This
+records a direction only: nothing is implemented, and a SPEC and a PLAN must come first.
 
 When implemented, it will:
 
@@ -48,15 +48,18 @@ What exists today, read from the code on 2026-11-11:
     `--dangerously-skip-permissions`, and Codex accepts commands and file changes.
   - The policy is set when the conversation is created (`persistCreatedChannel`). No route
     edits it on a live conversation, and the active permission chip only displays it.
-- **`originSurface` is stamped at creation** (ADR-069). 54 source files read it: Recents,
-  route builders, history, tool delivery, Catlas and owner actions among them.
+- **`originSurface` is stamped at creation** (ADR-069). About 50 source files mention it:
+  Recents, route builders, history, tool delivery, Catlas and owner actions among them.
 - **No conversation changes product after creation.** ADR-073 covers draft submit only. The
   Task level has a precedent: a Code Task linked through `WorkItem.taskId` projects as Work
   (`resolveTaskProductBinding`).
 - **Task and Run are shared Execution records**
   ([ADR-081](081-canonicalize-three-tier-core-record-taxonomy.md)). New Code creates a Task,
-  and Chat may create Chat Tasks. Project and WorkItem are Work's Planning records. The host
-  writes these records; no agent has a task or run tool today.
+  and Chat may create Chat Tasks. Project and WorkItem are Work's Planning records. Code's
+  `cats` server has no task or run tool. The task and run tools that exist sit on other paths
+  ([tool-calls.md](../tool-calls.md)): `work.collaboration.request_role` on the Chat
+  Orchestrator's decision path, `work.task.create_from_work_item` behind an owner-confirmed
+  Chat sidecar, and `cats.lifecycle.run.spawn` as an internal delegate.
 - **Chat, Code and Work all mount the shared canvas viewer** (`withSharedViewerRoutes`,
   [ADR-098](098-url-driven-canvas-and-platform-shared-viewer.md)). Code's `show_in_canvas`
   focus is stored on its Task ([ADR-097](097-store-code-canvas-focus-on-task-metadata.md)).
@@ -80,7 +83,10 @@ generic word.
   conversation a tool call is bound to.
 - "Product scope" sits beside the Task level's "task product binding".
 
-### 2. A set with `chat` always in it
+### 2. A set with `chat` always in it (proposed)
+
+This shape is a proposed default, not an owner decision. The owner described a cumulative
+Chat → Code → Work and may choose the ordered level in Alternative 1 instead.
 
 - New Chat starts with `chat`. New Code starts with `chat` and `code`. New Work starts with
   `chat` and `work`.
@@ -175,8 +181,8 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 
 ### Negative
 
-- Each of the 54 readers of `originSurface` must be sorted into "follows product scopes" (tool
-  and instruction delivery) or "stays with the origin" (Recents, routes, history, Catlas). That
+- Each of the roughly 50 files that mention `originSurface` must be sorted into "follows
+  product scopes" (tool and instruction delivery) or "stays with the origin" (Recents, routes, history, Catlas). That
   includes the `code_thread` fallback in `resolveTaskProductBinding` and the owner actions'
   source path ([ADR-133](133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md)).
 - It changes frozen shared contracts: the channel state in `src/products/chat/api/contracts.ts`
@@ -199,8 +205,8 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 - **Pros**: One value, and "only up" is a single comparison.
 - **Cons**: Every Work conversation would gain Code's tools at once. The owner decided that
   Work is not tightened, not that Work includes Code.
-- **Why rejected**: A set keeps today's Work behavior and still lets a Work conversation add
-  `code`.
+- **Why not proposed**: A set keeps today's Work behavior and still lets a Work conversation
+  add `code`. The owner may still choose this shape (Decision 2).
 
 ### Alternative 2: Allow removing a scope
 
@@ -212,7 +218,7 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 ### Alternative 3: Change `originSurface` instead
 
 - **Pros**: No new field.
-- **Cons**: "Origin" would no longer be true, and 54 readers rely on it meaning where the
+- **Cons**: "Origin" would no longer be true, and about 50 files rely on it meaning where the
   conversation started.
 - **Why rejected**: Where a conversation started and what it may reach are different facts.
 

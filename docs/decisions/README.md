@@ -1,11 +1,11 @@
 # Architecture Decision Records (ADR)
 
 - [ADR-149: Let a conversation gain product scopes and never lose them](149-let-a-conversation-gain-product-scopes-and-never-lose-them.md)
-  — decided by the owner, 2026-11-11; not implemented. A conversation's product scopes
+  — decided by the owner (D1–D4), 2026-11-11; not implemented. A conversation's product scopes
   (`chat`, `code`, `work`) decide which Cats tools and records it reaches; the owner can add
-  one after creation but never remove one. CLI permission, roles and owner-started gates stay
-  separate, so scopes are not a security boundary. Records the risk of Work's approval-free
-  supervised runs.
+  one after creation but never remove one. The set shape and P1–P5 are proposed defaults.
+  CLI permission, roles and owner-started gates stay separate, so scopes are not a security
+  boundary. Records the risk of Work's approval-free supervised runs.
 - [ADR-148: Manage AI tools in Settings with the first-run wizard's rows](148-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md)
   — accepted, 2026-11-11. Reverses ADR-146 point 16: Settings > Runtime gets the wizard's rows,
   log and details, Update is offered but never announced, and the host admits Settings to the
