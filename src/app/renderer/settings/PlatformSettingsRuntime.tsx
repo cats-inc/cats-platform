@@ -217,7 +217,7 @@ export function PlatformSettingsRuntime({
       ) : null}
 
       {desktopEnvironment ? (
-        <SettingsSection headerless><DesktopAiTools onFeedback={showToast} /></SettingsSection>
+        <SettingsSection headerless className="settingsAiToolsSection"><DesktopAiTools onFeedback={showToast} /></SettingsSection>
       ) : null}
       <ClaudeInChromeSection showToast={showToast} />
       <DesktopControlSection showToast={showToast} />

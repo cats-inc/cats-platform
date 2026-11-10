@@ -95,6 +95,21 @@
  * handles row-gap; declaring it here would fight the section contract
  * (this is what `.setupRuntimeList` did before, zeroing out the gap). */
 
+/* SPEC-137: the AI tools section is the first-run wizard's rows. The card is their frame, so the
+ * section drops its padding and the rows keep their own paper, border-free, to the card's edge. */
+.settingsAiToolsSection {
+  padding: 0;
+}
+
+.settingsAiToolsSection > .settingsAiTools.cats-setup.is-settings {
+  border: 0;
+  border-radius: inherit;
+}
+
+.settingsAiToolsSection .cats-setup.is-settings .dock {
+  border-radius: 0 0 15px 15px;
+}
+
 .settingsRuntimeMetrics {
   display: grid;
   gap: var(--space-2);
