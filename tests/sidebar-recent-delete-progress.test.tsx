@@ -61,12 +61,30 @@ const groupEntries: ConversationSidebarRecentEntry<ConversationSidebarChannel>[]
   { kind: 'channel', channel: channels[2]! },
 ];
 
+/**
+ * Renders as a server would, without a DOM. Suites that share this test process
+ * can leave a JSDOM `document` installed, and an open overflow menu portals into
+ * it when one exists, which the server renderer cannot encode.
+ */
+function renderWithoutDom(render: () => string): string {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  if (!descriptor) {
+    return render();
+  }
+  Object.defineProperty(globalThis, 'document', { value: undefined, configurable: true, writable: true });
+  try {
+    return render();
+  } finally {
+    Object.defineProperty(globalThis, 'document', descriptor);
+  }
+}
+
 function renderRecents(input: {
   busy: WorkspaceBusyState;
   entries?: ConversationSidebarRecentEntry<ConversationSidebarChannel>[];
   overflowMenuOpenId?: string | null;
 }): string {
-  return renderToStaticMarkup(
+  return renderWithoutDom(() => renderToStaticMarkup(
     <ConversationSidebarRecentsSection
       entries={input.entries ?? channelEntries}
       payload={payload}
@@ -79,7 +97,7 @@ function renderRecents(input: {
       onRenameChannel={() => {}}
       onOverflowMenuToggle={() => {}}
     />,
-  );
+  ));
 }
 
 /** One markup chunk per row, keyed by the row's visible title. */
