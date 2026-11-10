@@ -18,6 +18,8 @@ import { CatImagePolicyCard } from './CatImagePolicyCard.js';
 export interface CompanionSettingsSectionProps {
   catId: string;
   catName: string;
+  /** SPEC-137 FR-1: whether this Cat is a Boss Cat (an admin Cat). */
+  bossCat?: boolean;
   responseProfile: CompanionResponseProfile | null;
   life: CompanionLifeProfile | null;
   payload: AppShellPayload;
@@ -42,6 +44,7 @@ const OUTPUT_MODES: readonly { value: CompanionOutputMode; label: string }[] = [
 export function CompanionSettingsSection({
   catId,
   catName,
+  bossCat = false,
   responseProfile,
   life,
   payload,
@@ -175,7 +178,7 @@ export function CompanionSettingsSection({
         </div>
       </div>
 
-      {life ? <CompanionLifeCard catName={catName} life={life} onSave={onUpdateLife} /> : null}
+      {life ? <CompanionLifeCard catName={catName} bossCat={bossCat} life={life} onSave={onUpdateLife} /> : null}
       <CatImagePolicyCard key={catId} catId={catId} />
 
       <div className="companionCard">

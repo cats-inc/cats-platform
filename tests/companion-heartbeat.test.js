@@ -191,10 +191,10 @@ test('heartbeat: waking on the rhythm greets once, a few minutes later, then set
   assert.deepEqual(harness.spoken, []);
   harness.now = at(7, 2);
   assert.deepEqual((await harness.loop.tick())[0].heartbeat, { kind: 'wake', result: 'spoke' });
-  harness.now = at(7, 31);
+  harness.now = at(8, 1);
   await harness.loop.tick();
-  assert.equal(harness.spoken.length, 1, 'the next beat is at least 30 minutes away');
-  harness.now = at(7, 32);
+  assert.equal(harness.spoken.length, 1, 'the greeting is not answered yet: twice the 30 minutes (SPEC-137 FR-5)');
+  harness.now = at(8, 2);
   await harness.loop.tick();
   assert.deepEqual(harness.spoken.map((beat) => beat.kind), ['wake', 'regular']);
 });
@@ -204,7 +204,7 @@ test('heartbeat: a restarted initializing lane can greet without an owner messag
   assert.equal((await harness.loop.tick())[0].outcome, 'awake');
   harness.now = at(7, 2);
   assert.deepEqual((await harness.loop.tick())[0].heartbeat, { kind: 'wake', result: 'spoke' });
-  harness.now = at(7, 32);
+  harness.now = at(8, 2);
   await harness.loop.tick();
   assert.deepEqual(harness.spoken.map((beat) => beat.kind), ['wake', 'regular']);
 });
@@ -248,7 +248,10 @@ test('heartbeat: a restart after the morning greeting does not greet again', asy
   harness.now = at(8, 2);
   await harness.loop.tick();
   assert.deepEqual(harness.spoken, []);
-  harness.now = at(8, 30);
+  harness.now = at(8, 59);
+  await harness.loop.tick();
+  assert.deepEqual(harness.spoken, [], 'the greeting in the lane is unanswered: twice the 30 minutes (SPEC-137 FR-5)');
+  harness.now = at(9, 0);
   await harness.loop.tick();
   assert.deepEqual(harness.spoken.map((beat) => beat.kind), ['regular']);
 });

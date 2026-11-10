@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import type {
+  CompanionInitiativeMode,
   CompanionLifeProfile,
   UpdateCompanionLifeProfileInput,
 } from '../../../../products/chat/companion/contracts.js';
@@ -10,12 +11,15 @@ import { useI18n } from '../../i18n/useI18n.js';
 
 export interface CompanionLifeCardProps {
   catName: string;
+  /** SPEC-137 FR-1: a Boss Cat (an admin Cat) assists in `auto` mode. */
+  bossCat?: boolean;
   life: CompanionLifeProfile;
   onSave: (input: UpdateCompanionLifeProfileInput) => Promise<void>;
 }
 
 interface LifeDraft {
   enabled: boolean;
+  mode: CompanionInitiativeMode;
   bedtime: string;
   wakeWindowStart: string;
   wakeWindowEnd: string;
@@ -25,6 +29,7 @@ interface LifeDraft {
 function toDraft(life: CompanionLifeProfile): LifeDraft {
   return {
     enabled: life.enabled,
+    mode: life.mode,
     bedtime: life.bedtime,
     wakeWindowStart: life.wakeWindowStart,
     wakeWindowEnd: life.wakeWindowEnd,
@@ -32,8 +37,11 @@ function toDraft(life: CompanionLifeProfile): LifeDraft {
   };
 }
 
-/** SPEC-124: the rhythm the life loop follows and the folder heartbeats pick photos from. */
-export function CompanionLifeCard({ catName, life, onSave }: CompanionLifeCardProps) {
+/**
+ * SPEC-124: the rhythm the life loop follows and the folder heartbeats pick
+ * photos from. SPEC-137: what the Cat does on its own initiative.
+ */
+export function CompanionLifeCard({ catName, bossCat = false, life, onSave }: CompanionLifeCardProps) {
   const { t } = useI18n();
   const [draft, setDraft] = useState<LifeDraft>(() => toDraft(life));
   const [saving, setSaving] = useState(false);
@@ -56,6 +64,7 @@ export function CompanionLifeCard({ catName, life, onSave }: CompanionLifeCardPr
     try {
       await onSave({
         enabled: draft.enabled,
+        mode: draft.mode,
         bedtime: draft.bedtime,
         wakeWindowStart: draft.wakeWindowStart,
         wakeWindowEnd: draft.wakeWindowEnd,
@@ -103,6 +112,27 @@ export function CompanionLifeCard({ catName, life, onSave }: CompanionLifeCardPr
             {t(messageKeys.chatCompanionLifeEnabledOff)}
           </button>
         </div>
+      </div>
+
+      <div className="companionFormRow">
+        <label className="companionLabel" htmlFor="companion-life-mode">
+          {t(messageKeys.chatCompanionLifeModeLabel)}
+        </label>
+        <select
+          id="companion-life-mode"
+          className="companionInput"
+          value={draft.mode}
+          onChange={(event) => update('mode', event.target.value as CompanionInitiativeMode)}
+          disabled={saving}
+        >
+          <option value="auto">
+            {`${t(messageKeys.chatCompanionLifeModeAuto)} (${t(bossCat
+              ? messageKeys.chatCompanionLifeModeNowAssist
+              : messageKeys.chatCompanionLifeModeNowCompanion)})`}
+          </option>
+          <option value="assist">{t(messageKeys.chatCompanionLifeModeAssist)}</option>
+          <option value="companion">{t(messageKeys.chatCompanionLifeModeCompanion)}</option>
+        </select>
       </div>
 
       <div className="companionFormRow">
@@ -161,6 +191,8 @@ export function CompanionLifeCard({ catName, life, onSave }: CompanionLifeCardPr
           {t(messageKeys.chatCompanionLifePhotoFolderHint, { name: catName })}
         </span>
       </div>
+
+      <p className="companionMuted">{t(messageKeys.chatCompanionLifeRhythmHint, { name: catName })}</p>
 
       {error ? <div className="companionError" role="alert">{error}</div> : null}
 
