@@ -6,7 +6,8 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { assertSelectedSource, leftOutStatements, missingSourceChanges } from '../scripts/shared/source-selection.mjs';
+import { load } from 'js-yaml';
+import { assertFrozenSource, assertSelectedSource, frozenSourceSelection, leftOutStatements, missingSourceChanges, requireTestedReleaseSource } from '../scripts/shared/source-selection.mjs';
 import { releaseNotesSection, validateRuntimePin } from '../scripts/validate-runtime-pin.mjs';
 
 const exec = promisify(execFile);
@@ -177,10 +178,11 @@ test('only the notes for this Desktop version count', () => {
 test('the Desktop guard reads this version only, and its command line exits 1 with the reason', async (t) => {
   const source = await sourceRepository(t);
   const pin = await source.commit('feat: base (#1)', 'src/a.ts');
-  await source.commit('fix: Grok (#212)', 'src/b.ts');
+  const baseline = await source.commit('fix: Grok (#212)', 'src/b.ts');
   await source.publish();
   const notes = path.join(source.root, 'notes.md');
-  await writeFile(notes, '## 2026-11-03 — Desktop 0.14.0 standard preview: a\nNothing left out.\n\n## 2026-11-02 — Desktop 0.13.3 standard preview: b\nLeft out of this release: cats-runtime#212, for now.\n');
+  const selection = `- **Source selection:** cats-runtime@${pin}; main@${baseline}.`;
+  await writeFile(notes, `## 2026-11-03 — Desktop 0.14.0 standard preview: a\n${selection}\nNothing left out.\n\n## 2026-11-02 — Desktop 0.13.3 standard preview: b\n${selection}\nLeft out of this release: cats-runtime#212, for now.\n`);
   const options = { runtimeRoot: source.root, commit: pin, notes };
   assert.equal((await validateRuntimePin({ ...options, tag: 'v0.13.3' })).length, 1);
   await assert.rejects(validateRuntimePin({ ...options, tag: 'v0.14.0' }), /cats-runtime#212/u);
@@ -193,14 +195,78 @@ test('the Desktop guard reads this version only, and its command line exits 1 wi
   });
   const passed = await exec(process.execPath, [script, '--tag', 'v0.13.3', ...command]);
   assert.match(passed.stdout, /leaves out 1 change/u);
+  const selected = await exec(process.execPath, [script, '--tag', 'v0.13.3', '--notes', notes, '--print-commit']);
+  assert.equal(selected.stdout.trim(), pin);
 });
 
 test('the release workflow checks the Runtime commit with full history before any build', async () => {
   const workflow = await readFile(new URL('../.github/workflows/desktop-release.yml', import.meta.url), 'utf8');
-  const resolveIndex = workflow.indexOf('Resolve one Runtime source for the whole release');
-  const pinIndex = workflow.indexOf('Pin Runtime commit');
-  const guardIndex = workflow.indexOf('validate-runtime-pin.mjs');
+  const pinIndex = workflow.indexOf('Read the frozen Runtime selection');
+  const resolveIndex = workflow.indexOf('Checkout the frozen Runtime source');
+  const guardIndex = workflow.indexOf('Check Runtime against the frozen selection baseline');
   const draftIndex = workflow.indexOf('name: Create draft release');
-  assert.ok(resolveIndex > 0 && pinIndex > resolveIndex && guardIndex > pinIndex && draftIndex > guardIndex, 'the check must follow the pin and precede the draft');
-  assert.match(workflow.slice(resolveIndex, pinIndex), /fetch-depth: 0/u);
+  assert.ok(pinIndex > 0 && resolveIndex > pinIndex && guardIndex > resolveIndex && draftIndex > guardIndex, 'the frozen selection must precede checkout, validation and the draft');
+  assert.match(workflow.slice(resolveIndex, guardIndex), /fetch-depth: 0/u);
+  assert.doesNotMatch(workflow, /inputs\.runtime_ref \|\| 'main'/u);
+});
+
+test('publication keeps the bump baseline when Runtime main advances, but still requires omissions at selection', async t => {
+  const source = await sourceRepository(t);
+  const pin = await source.commit('feat: base (#1)', 'src/a.ts');
+  const baseline = await source.commit('fix: deliberately held back (#2)', 'src/b.ts');
+  const selection = `- **Source selection:** cats-runtime@${pin}; main@${baseline}.`;
+  await source.publish();
+  const check = notes => assertFrozenSource({ root: source.root, commit: pin, notes, repository: 'cats-runtime' });
+  await assert.rejects(check(selection), /cats-runtime#2/u);
+  const notes = `${selection}\n- **Left out of this release:** cats-runtime#2, pending acceptance.`;
+  assert.equal((await check(notes)).length, 1);
+  await source.commit('feat: next release (#3)', 'src/c.ts');
+  await source.publish();
+  assert.deepEqual((await check(notes)).map(change => change.pull), ['2']);
+  await assert.rejects(assertFrozenSource({ root: source.root, commit: baseline, notes, repository: 'cats-runtime' }), /differs from the frozen source/u);
+  await assert.rejects(check(`- **Source selection:** cats-runtime@${baseline}; main@${pin}.`), /differs/u);
+  await assert.rejects(assertFrozenSource({ root: source.root, commit: baseline, notes: `- **Source selection:** cats-runtime@${baseline}; main@${pin}.`, repository: 'cats-runtime' }), /is not on/u);
+  await source.git('switch', '-q', '-c', 'unmerged');
+  const unmerged = await source.commit('fix: not landed (#4)', 'src/d.ts');
+  await assert.rejects(check(`- **Source selection:** cats-runtime@${pin}; main@${unmerged}.`), /baseline .* is not on origin\/main/u);
+});
+
+test('a frozen selection cannot be absent, ambiguous, abbreviated or floating', () => {
+  const line = `- **Source selection:** cats-runtime@${'a'.repeat(40)}; main@${'b'.repeat(40)}.`;
+  assert.deepEqual(frozenSourceSelection(line, 'cats-runtime'), { commit: 'a'.repeat(40), baseline: 'b'.repeat(40) });
+  for (const notes of ['', `${line}\n${line}`, line.replace('a'.repeat(40), 'main'), line.replace('b'.repeat(40), 'b'.repeat(8)), line.replace('cats-runtime', 'cats-bot')]) {
+    assert.throws(() => frozenSourceSelection(notes, 'cats-runtime'), /Record exactly one/u);
+  }
+});
+
+test('release CI accepts only exact same-repository main push or manual release-branch evidence', async () => {
+  const sourceCommit = 'a'.repeat(40), tag = 'v1.2.3';
+  const options = { owner: 'cats-inc', repo: 'cats-platform', sourceCommit, tag, sourceRef: `refs/heads/release/${tag}` };
+  const passed = { head_sha: sourceCommit, head_branch: `release/${tag}`, event: 'workflow_dispatch', status: 'completed', conclusion: 'success', head_repository: { full_name: 'cats-inc/cats-platform' } };
+  let runs = [passed];
+  const github = { rest: { actions: { listWorkflowRuns: async query => {
+    assert.equal(query.workflow_id, 'ci.yaml'); assert.equal(query.head_sha, sourceCommit);
+    return { data: { workflow_runs: runs } };
+  } } } };
+  const check = overrides => requireTestedReleaseSource({ github, ...options, ...overrides });
+  await check();
+  for (const override of [{ head_sha: 'b'.repeat(40) }, { head_branch: 'release/v9.9.9' }, { event: 'pull_request' }, { status: 'in_progress' }, { conclusion: 'failure' }, { head_repository: { full_name: 'fork/cats-platform' } }]) {
+    runs = [{ ...passed, ...override }]; await assert.rejects(check(), /CI has not passed/u);
+  }
+  runs = [passed];
+  await assert.rejects(check({ sourceRef: 'refs/heads/fix/feature' }), /ordinary feature branches/u);
+  runs = [{ ...passed, event: 'push', head_branch: 'main' }];
+  await check({ sourceRef: 'refs/heads/main' });
+  await check({ sourceRef: `refs/tags/${tag}` });
+});
+
+test('Desktop preview rejects an existing tag even without a release and never treats lookup failures as absence', async () => {
+  const workflow = load(await readFile(new URL('../.github/workflows/desktop-release.yml', import.meta.url), 'utf8'));
+  const step = workflow.jobs.guard.steps.find(item => item.name === 'Reject existing preview tags');
+  assert.equal(step.if, "steps.resolve.outputs.preview == 'true'");
+  const run = new (Object.getPrototypeOf(async () => {}).constructor)('github', 'context', 'process', step.with.script);
+  const check = getRef => run({ rest: { git: { getRef } } }, { repo: { owner: 'cats-inc', repo: 'cats-platform' } }, { env: { RELEASE_TAG: 'v1.2.3' } });
+  await check(async query => { assert.equal(query.ref, 'tags/v1.2.3'); throw Object.assign(new Error('missing'), { status: 404 }); });
+  await assert.rejects(check(async () => ({ data: { object: { sha: 'a'.repeat(40) } } })), /already exists/u);
+  await assert.rejects(check(async () => { throw Object.assign(new Error('forbidden'), { status: 403 }); }), /forbidden/u);
 });

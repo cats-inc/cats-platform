@@ -58,7 +58,7 @@ test('confirmed operation returns its authoritative outcome to the same guide se
   }
 });
 
-test('cancelling during the host operation never dispatches a result model turn', async t => {
+test('cancelling during the host operation never dispatches a result model turn', { timeout: 5_000 }, async t => {
   let release, entered;
   const started = new Promise(resolve => { entered = resolve; });
   const operation = new Promise(resolve => { release = resolve; });
@@ -68,7 +68,14 @@ test('cancelling during the host operation never dispatches a result model turn'
   } });
   const controller = new AbortController();
   const pending = f.service.help(request({ openSession: { requestId: 'fixture', revision: 'r' } }), controller.signal);
-  await started;
+  t.after(async () => {
+    controller.abort();
+    release({ operationId: 'code.session.open', status: 'unconfirmed', reason: 'cancelled' });
+    await pending;
+  });
+  await Promise.race([started, pending.then(result => {
+    assert.fail(`Expected the host operation to start; help returned ${result.reason}.`);
+  })]);
   controller.abort();
   release({ operationId: 'code.session.open', requestId: 'fixture', status: 'unconfirmed', reason: 'cancelled',
     channelId: 'retained', sessionId: null, path: '/code/chats/retained' });

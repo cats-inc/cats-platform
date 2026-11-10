@@ -2,6 +2,91 @@
 
 > Operator-facing behavior changes and migration notes for Cats Platform.
 
+## 2026-11-11 — Desktop 0.15.0 standard preview: Cats Directory and quieter native history
+
+Selected distribution: Desktop **0.15.0 standard-profile preview**, App SDK
+**1.9.0**, bundled **Usage 0.5.4**. The minor boundary records the removal of the
+previous Settings Cat-management routes; ordinary Cat management now belongs to
+Cats Directory. Platform npm, Runtime npm, cats-one, Apps and Plugins are
+separate release targets.
+
+- **Manage Cats in Directory.** Listing, editing and adding Cats now use Cats
+  Directory, including `/entities/cats/new`. Sidebar, Chat, Plugins, Catlas and
+  model-attention entry points open that surface, and the Directory sidebar
+  refreshes after changes. `/settings/cats` and `/settings/cats/new` are removed
+  without redirects; update saved links to Directory. Settings keeps app-level
+  settings and the separate Assistants item. Each Cat's settings now has its own
+  `/entities/cats/:catId/settings` URL; deep links and browser history select the
+  same Cat. Its profile URL remains `/entities/cats/:catId`.
+  (cats-platform#405, cats-platform#407)
+- **Catlas jobs stay out of saved Codex history.** Title, navigation and help
+  jobs request ephemeral native sessions and check the selected Runtime's
+  capability and admission before sending content. Separate jobs stay isolated;
+  advice feedback reuses its live job session. Persistent Chat sessions receive
+  recognizable names. Unsupported Runtime uses existing cached/builtin fallback
+  instead of sending a persistent job. Existing native history is not deleted.
+  (cats-platform#404, cats-runtime#215)
+- **Recover unavailable conversations and preserve intentional pauses.** Chat
+  and direct lanes can replace a confirmed lost native session with transcript
+  handoff and bounded retry. Companion own initiative has assist/companion
+  modes, daily rhythm and unanswered-message back-off. (cats-platform#398,
+  cats-platform#400, cats-runtime#214)
+- **Manage AI tools and macOS permissions.** Settings uses the first-run
+  install/repair rows for agent CLIs. Permission notices open the relevant macOS
+  System Settings pane, and any Screen Recording refusal can request access.
+  Startup keeps service details under Show more; every chat delete stays locked
+  while another delete is in flight. (cats-platform#396, cats-platform#397,
+  cats-platform#399, cats-platform#401, cats-platform#402)
+- **Exact inputs.** Runtime **0.6.2**, source
+  `fb50e59ab2244bd2c45ae93fa11345cb7507011c`, is current Runtime main at
+  selection, with no changes left out. Usage **0.5.4** remains the latest Usage
+  artifact at
+  `https://github.com/cats-inc/cats-apps/releases/download/usage-v0.5.4/usage-0.5.4.catsapp`,
+  SHA-256 `46f6ca1ada461a5e6c828e3218c7a11054ffa9f28ead4940a9ed2643703610d9`,
+  producer `714c3dc1a393b6e4488ec8c6de5e1df1831925e8`. Shared conversation UI
+  **0.1.0** retains content digest
+  `957e4717942c5e987270769a4dea593e2d26b321715abf6dfed1046eb507c680`
+  and tarball SHA-256
+  `363e784f2d0571522006797b01772be55384ecec4ae0bccb254eabd7b6783501`;
+  its producer files are unchanged on selected Platform main
+  `c0d49d898d030ab47256000cfcf51d9f615c4cce`. The nine shared-tool file pins
+  still match cats-one main `0ddce6621b4f0b60b93bfee7c617ee5ecab01eb9`.
+  The workflow records the frozen Platform bump SHA and all packaged sources.
+  Bundled Catlas and orchestrator knowledge revision `2026-11-11.1` declares
+  the matching `0.15.x` host range. Existing local knowledge adoptions remain
+  stored but their former bundle digest no longer applies; resubmit and adopt
+  them against the new bundle to make them active again. No stored-data rewrite
+  is required.
+- **Compatibility, backup and recovery.** The Cat-management route removal is
+  the supported-workflow break requiring 0.15.0. App SDK, public provider APIs,
+  configuration and stored data retain compatible formats; added session and
+  companion fields normalize existing records without a mandatory conversion.
+  Usage remains compatible with SDK 1.9.0 and the minimum host requirement.
+  Before installation, stop processes using the data roots and back up `~/.cats`
+  and configured overrides. Preserve those roots on failure, reinstall 0.15.0 or
+  return to 0.14.4, and restore backups only while all users of those roots are
+  stopped. Returning restores the old Cat-management routes and prior native
+  history behavior; it does not remove already-created native conversations.
+- **Signing and updates.** Dispatch desktop-release.yml from the frozen bump
+  source with `tag=v0.15.0`, the full Runtime SHA above and `unsigned=false`.
+  Expected Standard trust is macOS **signed + notarized**, Windows **unsigned:
+  no certificate**, Linux **n/a**. Native checks and build receipts establish
+  actual trust. Windows x64/arm64 NSIS installers, universal macOS DMG/ZIP and
+  Linux amd64/arm64 DEBs retain their existing update paths. Unsigned macOS
+  installations require manual replacement.
+- **Validation boundary.** Selected Platform main and Runtime #215 passed their
+  required CI. Isolated Windows Codex acceptance exercised actual Catlas jobs,
+  confirmed zero saved native threads/rollouts and same-ID persistent resume.
+  Setup and missing-admission regressions passed after updating the Runtime
+  fixture. Version, source and artifact-pin checks apply to this bump. Full
+  release CI, source bundles, packaged identity, signing, updater metadata,
+  checksums and provenance gate publication. Installed upgrade/rollback and
+  native macOS/Linux interaction were not exercised by that local acceptance.
+  Boss Cat and product-scope proposals added to docs are not shipped features.
+
+Publication results: the `v0.15.0` GitHub Standard Preview, its platform/source
+receipts and Actions run.
+
 ## 2026-11-10 — Desktop 0.14.4 standard preview: faster chat deletes and a quieter idle sidecar
 
 Selected distribution: Desktop **0.14.4 standard-profile preview**, App SDK
