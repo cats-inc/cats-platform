@@ -27,9 +27,8 @@ on:
         required: true
         type: string
       runtime_ref:
-        description: 'cats-runtime ref to package against.'
+        description: 'Optional full Runtime SHA assertion; must match this version’s frozen Source selection.'
         required: false
-        default: main
         type: string
       unsigned:
         description: >-
@@ -59,6 +58,9 @@ jobs:
   guard:
     name: Validate release identity
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     outputs:
       tag: ${{ steps.resolve.outputs.tag }}
       version: ${{ steps.resolve.outputs.version }}
@@ -100,22 +102,54 @@ jobs:
       - name: Check tag matches both package files
         run: node scripts/validate-release-version.mjs --tag "${{ steps.resolve.outputs.tag }}"
 
-      - name: Resolve one Runtime source for the whole release
+      - name: Require CI for the frozen source
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ steps.resolve.outputs.tag }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
+        with:
+          script: |
+            const { requireTestedReleaseSource } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/shared/source-selection.mjs`);
+            await requireTestedReleaseSource({ github, ...context.repo, sourceCommit: process.env.SOURCE_COMMIT,
+              sourceRef: context.ref, tag: process.env.RELEASE_TAG });
+
+      - name: Reject existing preview tags
+        if: steps.resolve.outputs.preview == 'true'
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ steps.resolve.outputs.tag }}
+        with:
+          script: |
+            try {
+              await github.rest.git.getRef({ ...context.repo, ref: `tags/${process.env.RELEASE_TAG}` });
+              throw new Error('Preview tag already exists; select an unused version.');
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+
+      - name: Read the frozen Runtime selection
+        id: runtime
+        env:
+          RELEASE_TAG: ${{ steps.resolve.outputs.tag }}
+          REQUESTED_RUNTIME: ${{ inputs.runtime_ref }}
+        run: |
+          commit=$(node scripts/validate-runtime-pin.mjs --tag "$RELEASE_TAG" --print-commit)
+          if [ -n "$REQUESTED_RUNTIME" ] && [ "$REQUESTED_RUNTIME" != "$commit" ]; then
+            echo 'runtime_ref must equal the full SHA recorded in this version’s Source selection.'
+            exit 1
+          fi
+          echo "sha=$commit" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the frozen Runtime source
         uses: actions/checkout@v4
         with:
           repository: cats-inc/cats-runtime
-          ref: ${{ inputs.runtime_ref || 'main' }}
+          ref: ${{ steps.runtime.outputs.sha }}
           path: runtime-source
-          # The check below compares this commit with the whole of Runtime main.
+          # Validate the frozen baseline's ancestry, not freshness against later main.
           fetch-depth: 0
 
-      - name: Pin Runtime commit
-        id: runtime
-        working-directory: runtime-source
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      # Also before any build, so a stale or unmerged Runtime fails fast.
-      - name: Check the Runtime commit against Runtime main
+      - name: Check Runtime against the frozen selection baseline
         env:
           RELEASE_TAG: ${{ steps.resolve.outputs.tag }}
           RUNTIME_COMMIT: ${{ steps.runtime.outputs.sha }}
@@ -139,17 +173,30 @@ jobs:
           TAG: ${{ needs.guard.outputs.tag }}
           PREVIEW: ${{ needs.guard.outputs.preview }}
           COMMIT: ${{ needs.guard.outputs.source_commit }}
+          RUNTIME_COMMIT: ${{ needs.guard.outputs.runtime_commit }}
         run: |
+          printf -v identity 'Source commit: `%s`\nRuntime commit: `%s`' "$COMMIT" "$RUNTIME_COMMIT"
           if gh release view "$TAG" >/dev/null 2>&1; then
             if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" != "true" ]; then
               echo "Release $TAG is already published; refusing to replace its artifacts."
               exit 1
             fi
+            if [ "$PREVIEW" = 'true' ] && [ "$(gh release view "$TAG" --json targetCommitish --jq .targetCommitish)" != "$COMMIT" ]; then
+              echo 'Draft target differs from the frozen source; refusing to overwrite it.'
+              exit 1
+            fi
+            gh release view "$TAG" --json body --jq .body > draft-notes.md
+            while IFS= read -r line; do
+              if ! grep -Fxq "$line" draft-notes.md; then
+                echo 'Draft source identity differs; retry the original frozen source.'
+                exit 1
+              fi
+            done <<< "$identity"
             echo "Draft release for $TAG already exists; reusing it."
           elif [ "$PREVIEW" = "true" ]; then
-            gh release create "$TAG" --target "$COMMIT" --draft --prerelease --title "Cats $TAG (preview)" --generate-notes
+            gh release create "$TAG" --target "$COMMIT" --draft --prerelease --title "Cats $TAG (preview)" --notes "$identity" --generate-notes
           else
-            gh release create "$TAG" --verify-tag --draft --title "Cats $TAG" --generate-notes
+            gh release create "$TAG" --verify-tag --draft --title "Cats $TAG" --notes "$identity" --generate-notes
           fi
 
   build:
