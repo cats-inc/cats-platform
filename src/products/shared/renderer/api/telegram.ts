@@ -151,12 +151,37 @@ export interface TelegramTransportStatus {
   note: string;
 }
 
+/** SPEC-140: a private chat a binding had seen, offered when the owner must choose. */
+export interface TelegramOwnerCandidateSummary {
+  userId: string;
+  displayName: string | null;
+  username: string | null;
+  lastInboundAt: string | null;
+  lastMessagePreview?: string | null;
+}
+
+/** SPEC-140: who a Telegram bot binding answers. */
+export type TelegramOwnerRecordSummary =
+  | {
+    state: 'pinned';
+    userId: string;
+    displayName: string | null;
+    username: string | null;
+    pinnedAt: string;
+    how: 'first_message' | 'history' | 'owner_choice';
+  }
+  | { state: 'open'; since: string }
+  | { state: 'choose'; since: string; candidates: TelegramOwnerCandidateSummary[] };
+
+export type TelegramOwnerSummary = TelegramOwnerRecordSummary & { bindingId: string; botName: string | null };
+
 export interface TelegramTransportDiagnostics extends TelegramTransportStatus {
   dedupe: {
     retainedUpdateCount: number;
     maxRetainedUpdateCount: number;
   };
   bindings: TelegramTransportBindingDiagnostics[];
+  owners?: TelegramOwnerSummary[];
 }
 
 export async function fetchTelegramTransportStatus(
@@ -197,6 +222,34 @@ export async function reconnectTelegramPolling(
     signal,
   });
   return expectJson(response, `polling reconnect returned ${response.status}`);
+}
+
+/** SPEC-140: forget the owner; the next private chat that writes becomes it. */
+export async function resetTelegramOwner(
+  bindingId: string,
+  signal?: AbortSignal,
+): Promise<{ owner: TelegramOwnerRecordSummary }> {
+  const response = await fetch(`/api/transports/telegram/owners/${encodeURIComponent(bindingId)}/reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+  });
+  return expectJson(response, `telegram owner reset returned ${response.status}`);
+}
+
+/** SPEC-140: pin one of the chats the binding had seen as its owner. */
+export async function chooseTelegramOwner(
+  bindingId: string,
+  userId: string,
+  signal?: AbortSignal,
+): Promise<{ owner: TelegramOwnerRecordSummary }> {
+  const response = await fetch(`/api/transports/telegram/owners/${encodeURIComponent(bindingId)}/choose`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+    signal,
+  });
+  return expectJson(response, `telegram owner choice returned ${response.status}`);
 }
 
 const workspaceTelegramApi = createTelegramApi<AppShellPayload>({

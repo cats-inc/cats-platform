@@ -704,6 +704,58 @@
   word-break: break-word;
 }
 
+/* SPEC-140: who the binding answers on Telegram. */
+.catsTelegramOwner {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  min-width: 0;
+}
+
+.catsTelegramOwnerPinned,
+.catsTelegramOwnerChoose li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.catsTelegramOwnerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.catsTelegramOwnerChoose ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.catsTelegramOwnerChoose p,
+.catsTelegramOwnerOpen,
+.catsTelegramOwnerHint {
+  margin: 0;
+}
+
+.catsTelegramOwnerHow,
+.catsTelegramOwnerLastMessage,
+.catsTelegramOwnerPreview,
+.catsTelegramOwnerHint {
+  font-size: 0.82rem;
+  color: var(--muted-soft);
+}
+
+.catsTelegramOwnerError {
+  font-size: 0.82rem;
+  color: var(--danger, #c0392b);
+}
+
 /* Inline delete icon button: 24×24 square with a 14×14 × glyph
  * centred. Scoped class (not `.chromeButton`) so the sidebar's 28×28
  * icon-button tan-hover rules do not leak onto text-adjacent × buttons

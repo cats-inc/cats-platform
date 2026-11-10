@@ -2,6 +2,8 @@ import type {
   TelegramAttachmentKind,
   TelegramConversationBinding,
   TelegramDeliveryReceipt,
+  TelegramOwnerCandidate,
+  TelegramOwnerRecord,
   TelegramWebhookReceipt,
 } from '../contracts.js';
 import type { TelegramDeliveryStatsSnapshot, TelegramIngressStatsSnapshot } from './index.js';
@@ -13,6 +15,12 @@ export interface PersistedTelegramRelayState {
   lastProcessedUpdateId: number | null;
   ingress: TelegramIngressStatsSnapshot;
   delivery: TelegramDeliveryStatsSnapshot;
+  /**
+   * SPEC-140: the owner of each bot binding, by binding id. Additive within
+   * version 2: an older build ignores it, and a missing or damaged entry is
+   * derived again from the chats the binding has seen.
+   */
+  owners?: Record<string, TelegramOwnerRecord>;
 }
 
 const ATTACHMENT_KINDS = new Set<string>([
@@ -34,6 +42,8 @@ const WEBHOOK_REASONS = new Set<NonNullable<TelegramWebhookReceipt['reason']>>([
   'unsupported_update',
   'unsupported_chat_type',
   'message_from_bot',
+  'not_owner',
+  'owner_not_confirmed',
 ]);
 
 const DELIVERY_OPERATIONS = new Set<TelegramDeliveryReceipt['operation']>([
@@ -57,6 +67,7 @@ const DELIVERY_REASONS = new Set<NonNullable<TelegramDeliveryReceipt['reason']>>
   'message_id_required',
   'text_required',
   'telegram_api_error',
+  'not_owner_chat',
 ]);
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -367,5 +378,76 @@ export function asPersistedTelegramRelayState(
       failedCount: readNumber(deliveryRecord?.failedCount) ?? fallback.delivery.failedCount,
       lastReceipt: toDeliveryReceipt(deliveryRecord?.lastReceipt),
     },
+    owners: toOwners(record.owners),
   };
+}
+
+function toOwnerCandidate(value: unknown): TelegramOwnerCandidate | null {
+  const record = asRecord(value);
+  const userId = readString(record?.userId);
+  if (!record || !userId) {
+    return null;
+  }
+  return {
+    userId,
+    displayName: readString(record.displayName),
+    username: readString(record.username),
+    lastInboundAt: readString(record.lastInboundAt),
+    lastMessagePreview: readString(record.lastMessagePreview),
+  };
+}
+
+/** SPEC-140: one owner record; anything damaged is dropped and derived again. */
+export function toOwnerRecord(value: unknown): TelegramOwnerRecord | null {
+  const record = asRecord(value);
+  if (!record) {
+    return null;
+  }
+  if (record.state === 'pinned') {
+    const userId = readString(record.userId);
+    const pinnedAt = readString(record.pinnedAt);
+    const how = record.how === 'first_message' || record.how === 'history' || record.how === 'owner_choice'
+      ? record.how
+      : null;
+    return userId && pinnedAt && how
+      ? {
+        state: 'pinned',
+        userId,
+        displayName: readString(record.displayName),
+        username: readString(record.username),
+        pinnedAt,
+        how,
+      }
+      : null;
+  }
+  const since = readString(record.since);
+  if (!since) {
+    return null;
+  }
+  if (record.state === 'open') {
+    return { state: 'open', since };
+  }
+  if (record.state === 'choose' && Array.isArray(record.candidates)) {
+    const candidates = record.candidates
+      .map((candidate) => toOwnerCandidate(candidate))
+      .filter((candidate): candidate is TelegramOwnerCandidate => candidate !== null);
+    // An empty list is a binding collecting candidates after a reset.
+    return { state: 'choose', since, candidates };
+  }
+  return null;
+}
+
+function toOwners(value: unknown): Record<string, TelegramOwnerRecord> {
+  const record = asRecord(value);
+  const owners: Record<string, TelegramOwnerRecord> = {};
+  if (!record) {
+    return owners;
+  }
+  for (const [key, raw] of Object.entries(record)) {
+    const owner = toOwnerRecord(raw);
+    if (key.trim().length > 0 && owner) {
+      owners[key] = owner;
+    }
+  }
+  return owners;
 }

@@ -3,6 +3,7 @@ import type {
   TelegramConversationBinding,
   TelegramDeliveryReceipt,
   TelegramDeliveryRequest,
+  TelegramOwnerRecord,
   TelegramPollingStatus,
   TelegramRelayContext,
   TelegramRelayDiagnostics,
@@ -22,6 +23,13 @@ import {
   sendTelegramChatAction,
 } from './delivery.js';
 import { linkTelegramRoom, receiveTelegramUpdate } from './ingress.js';
+import {
+  chooseTelegramOwner,
+  peekTelegramOwner,
+  resetTelegramOwner,
+  resolveTelegramOwner,
+  type TelegramOwnerScope,
+} from '../owner.js';
 import {
   buildTelegramRelayDiagnostics,
   buildTelegramRelayStatus,
@@ -46,6 +54,10 @@ export interface TelegramRelay {
     roomId?: string | null;
   }): TelegramConversationBinding | null;
   findSoleUnlinkedConversation(bindingId: string): TelegramConversationBinding | null;
+  /** SPEC-140: forget the owner; the next private chat that writes becomes it. */
+  resetOwner(bindingId: string): TelegramOwnerRecord;
+  /** SPEC-140: the owner picks themselves among the chats the binding had seen; null when not offered. */
+  chooseOwner(bindingId: string, userId: string): TelegramOwnerRecord | null;
   linkRoom(input: {
     conversationId?: string | null;
     chatId?: string | null;
@@ -110,6 +122,7 @@ function resolveStoredBinding(
     bindingId?: string | null;
     roomId?: string | null;
   },
+  nowIso: string = new Date().toISOString(),
 ): TelegramConversationBinding | null {
   const bindingId = readTelegramString(input.bindingId);
   const conversationId = readTelegramString(input.conversationId);
@@ -124,13 +137,29 @@ function resolveStoredBinding(
 
   const roomId = readTelegramString(input.roomId);
   if (roomId) {
-    return store.listBindings().find((binding) =>
+    const linked = store.listBindings().filter((binding) =>
       binding.linkedRoomId === roomId
       && (!bindingId || binding.bindingId === bindingId),
-    ) ?? null;
+    );
+    if (!bindingId) {
+      return linked[0] ?? null;
+    }
+    // SPEC-140: a room mirrors only to its binding's owner, never to the chat that touched it last.
+    // Without the binding's scope nothing is stored here; ingress, delivery and Settings do that.
+    const owner = peekTelegramOwner(store, bindingId);
+    return owner.state === 'pinned'
+      ? linked.find((binding) => binding.telegramChatId === owner.userId) ?? null
+      : null;
   }
 
   return null;
+}
+
+function ownerScope(context: TelegramRelayContext, binding: BotBindingRecord): TelegramOwnerScope {
+  return {
+    defaultBindingId: context.defaultBotBinding?.id ?? null,
+    bindingCreatedAt: binding.createdAt ?? null,
+  };
 }
 
 export function createTelegramRelay(options: TelegramRelayOptions = {}): TelegramRelay {
@@ -178,28 +207,50 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
     },
 
     getDiagnostics(context: TelegramRelayContext): TelegramRelayDiagnostics {
+      const nowIso = now().toISOString();
       return buildTelegramRelayDiagnostics({
         status: readStatus(context),
         store,
         conversationMapper,
+        // SPEC-140: who each Telegram bot binding answers.
+        owners: context.botBindings
+          .filter((binding) => binding.platform === 'telegram')
+          .map((binding) => ({
+            ...resolveTelegramOwner(store, binding.id, nowIso, ownerScope(context, binding)),
+            bindingId: binding.id,
+            botName: binding.botName,
+          })),
       });
     },
 
     resolveBinding(input): TelegramConversationBinding | null {
-      return resolveStoredBinding(store, input);
+      return resolveStoredBinding(store, input, now().toISOString());
     },
 
     findSoleUnlinkedConversation(bindingId: string): TelegramConversationBinding | null {
       const normalized = readTelegramString(bindingId);
       if (!normalized) return null;
+      // SPEC-140: only the owner's chat may be linked to a room.
+      const owner = peekTelegramOwner(store, normalized);
+      if (owner.state !== 'pinned') return null;
       const unlinked = store
         .listBindings()
-        .filter((binding) => binding.bindingId === normalized && !binding.linkedRoomId);
+        .filter((binding) => binding.bindingId === normalized
+          && !binding.linkedRoomId
+          && binding.telegramChatId === owner.userId);
       return unlinked.length === 1 ? unlinked[0] : null;
     },
 
+    resetOwner(bindingId: string): TelegramOwnerRecord {
+      return resetTelegramOwner(store, bindingId, now().toISOString());
+    },
+
+    chooseOwner(bindingId: string, userId: string): TelegramOwnerRecord | null {
+      return chooseTelegramOwner(store, { bindingId, userId, nowIso: now().toISOString() });
+    },
+
     linkRoom(input): TelegramConversationBinding | null {
-      const binding = resolveStoredBinding(store, input);
+      const binding = resolveStoredBinding(store, input, now().toISOString());
       if (!binding) {
         return null;
       }
@@ -257,6 +308,12 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
     },
 
     async sendChatAction({ chatId, action, context }): Promise<void> {
+      // SPEC-140: even a typing action goes only to the owner.
+      const binding = context.selectedBotBinding ?? context.defaultBotBinding ?? null;
+      const owner = binding ? peekTelegramOwner(store, binding.id) : null;
+      if (owner?.state !== 'pinned' || owner.userId !== chatId) {
+        return;
+      }
       await sendTelegramChatAction({
         deliveryClient,
         resolveDeliveryClient,

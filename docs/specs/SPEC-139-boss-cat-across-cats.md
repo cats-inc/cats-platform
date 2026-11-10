@@ -10,7 +10,7 @@
 | **Updates** | SPEC-125 FR-17 (three new actions beyond the conversation, and the turns they may run in); SPEC-118's K2 direct-lane exclusion (the Boss Cat tools, not K2, may run for a Boss Cat's own direct lane, from Desktop or mobile only; transports stay excluded); SPEC-137 FR-7 (a Boss Cat's `assist` review drops other Cats' lines and gains a peer section); the memory checkpoint (`memoryLayers.ts`, FR-17) |
 | **Keeps** | SPEC-118 FR-05: no tool returns another conversation's contents. A direct lane holds only its own Cat (SPEC-125, `assignCatToChannel`). These are limits on the server's tools, not a security boundary: every Cat's provider CLI runs under the owner's OS account and can edit app state, these settings included |
 | **Counterpart** | Cats Bot SPEC-012 Phase 1. Desktop differs by design: it has group conversations the owner speaks in, so it needs no contact notes and no status questions |
-| **Related finding** | Desktop's Telegram bindings do not pin the owner's Telegram account: any private chat with the bot reaches the bound Cat's direct lane as a `user` message. That affects every Cat and is fixed separately. This spec never trusts a transport message |
+| **Related finding** | Desktop's Telegram bindings did not pin the owner's Telegram account: any private chat with the bot reached the bound Cat's direct lane as a `user` message. That affected every Cat and is fixed by [SPEC-140](SPEC-140-telegram-owner-pin.md). This spec still never trusts a transport message |
 
 ## Summary
 

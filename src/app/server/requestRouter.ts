@@ -39,6 +39,7 @@ import {
 } from '../../server/routes/providerCapabilityBootstrap.js';
 import {
   handleTelegramDiagnostics,
+  handleTelegramOwnerAction,
   handleTelegramPollingReconnect,
   handleTelegramPollingStatus,
   handleTelegramStatus,
@@ -813,6 +814,26 @@ export async function routeRequest(
       },
       telegramWebhookMatch[0],
     );
+    return;
+  }
+
+  const telegramOwnerMatch = matchRoute(
+    url.pathname,
+    /^\/api\/transports\/telegram\/owners\/([^/]+)\/(reset|choose)$/u,
+  );
+  if (telegramOwnerMatch) {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return;
+    }
+    // SPEC-140: the owner's actions on a binding's Telegram owner.
+    await handleTelegramOwnerAction(request, response, {
+      chatStore: dependencies.chat.chatStore,
+      telegramRelay: dependencies.chat.telegramRelay,
+      bindingId: telegramOwnerMatch[0]!,
+      action: telegramOwnerMatch[1] === 'choose' ? 'choose' : 'reset',
+      roles: authGateResult.auth?.principal?.membership.roles ?? null,
+    });
     return;
   }
 

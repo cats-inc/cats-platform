@@ -1,5 +1,6 @@
 import type {
   TelegramDeliveryOperation,
+  TelegramOwnerStatus,
   TelegramPollingStatus,
   TelegramRelayContext,
   TelegramRelayDiagnostics,
@@ -129,6 +130,8 @@ export function buildTelegramRelayDiagnostics(input: {
   status: TelegramRelayStatus;
   store: TelegramRelayStore;
   conversationMapper: TelegramConversationMapper;
+  /** SPEC-140: settled by the relay, which knows each binding's scope. */
+  owners: TelegramOwnerStatus[];
 }): TelegramRelayDiagnostics {
   return {
     platform: 'telegram',
@@ -151,6 +154,7 @@ export function buildTelegramRelayDiagnostics(input: {
     delivery: input.status.delivery,
     polling: input.status.polling,
     bindings: input.conversationMapper.listBindings(),
+    owners: input.owners,
     note: input.status.note,
   };
 }
