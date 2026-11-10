@@ -15,7 +15,10 @@ separate release targets.
   model-attention entry points open that surface, and the Directory sidebar
   refreshes after changes. `/settings/cats` and `/settings/cats/new` are removed
   without redirects; update saved links to Directory. Settings keeps app-level
-  settings and the separate Assistants item. (cats-platform#405)
+  settings and the separate Assistants item. Each Cat's settings now has its own
+  `/entities/cats/:catId/settings` URL; deep links and browser history select the
+  same Cat. Its profile URL remains `/entities/cats/:catId`.
+  (cats-platform#405, cats-platform#407)
 - **Catlas jobs stay out of saved Codex history.** Title, navigation and help
   jobs request ephemeral native sessions and check the selected Runtime's
   capability and admission before sending content. Separate jobs stay isolated;
