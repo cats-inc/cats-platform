@@ -5,7 +5,8 @@
 
 ## Status
 
-Accepted
+Accepted. Amended 2026-11-11 with the owner's approval: §2 lets a direct-message
+lane rotate when its provider-native session is confirmed unavailable.
 
 ## Context
 
@@ -81,6 +82,41 @@ intended recovery surface is resetting the participant runtime attachment,
 starting a fresh direct lane, or retargeting the Cat execution
 provider/model/instance from the channel or Cat detail controls so the old
 lease drifts from the selected execution target.
+
+**Amendment (2026-11-11): an unavailable provider session rotates.** One
+failure class is exempt from the rule above: the provider-native session behind
+the Runtime session is confirmed unavailable. Runtime reports it with the code
+`provider_session_unavailable`, on the in-stream `error` event of the turn and
+as HTTP 410 on later sends and resumes. Until every Runtime in use does, the
+provider's own text is the same signal: grok's `No saved copy of session <id>
+was found` and claude's `No conversation found with session ID`. For this class
+only, a direct lane behaves like a room:
+
+- Chat closes the old Runtime session and does not attempt a resume, which
+  Runtime would refuse.
+- The replacement Runtime session is created in the same cwd as the old lease,
+  not the channel's default spawn cwd.
+- The replacement's first turn receives the continuity transplant from Chat's
+  own transcript, as for a retarget.
+- Once the replacement exists, the conversation gets a visible system message
+  saying it continues in a new session in the same workspace. If the
+  replacement cannot be created, there is no notice; the lease keeps the old
+  session, its cwd and the error, so the next attempt rotates into the same
+  workspace.
+- A session produced by a rotation is never rotated again until a turn
+  completes successfully in it. Until then the same failure surfaces the error
+  and pauses the lane, as other direct-lane errors do. A send rotates at most
+  once, counting a rotation made while waking its target. A quiet heartbeat
+  leaves no message, so it does not count as a completed turn.
+
+Every other error keeps the direct-lane rule: surface it, preserve the
+attachment, and wait for an explicit reset or retarget. The reason for the
+exception: the rule exists so that a lane's session is never replaced silently
+while it could still be resumed. Once the provider-native session is gone,
+nothing can resume it. Waiting for the owner only produces the same rebuild
+later and by hand, while every turn and heartbeat in between fails. A visible
+rotation in the same workspace, carrying the conversation, is neither silent
+nor a fresh start.
 
 ### 3. `group handoff` and `group join` are distinct continuity modes
 

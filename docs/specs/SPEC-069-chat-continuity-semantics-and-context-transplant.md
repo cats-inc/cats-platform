@@ -11,6 +11,12 @@
 | **Owner** | Codex |
 | **Reviewer** | User |
 
+> **Amendment (2026-11-11):** per the amended
+> [ADR-068](../decisions/068-own-chat-continuity-semantics-above-runtime-session-boundaries.md)
+> §2, a direct-message lane whose provider-native session is unavailable rotates
+> to a replacement in the same cwd, with a continuity transplant and a visible
+> notice. See *Provider Session Unavailable* under the recovery contract below.
+
 > **Amendment (2026-10-20):** [SPEC-125](./SPEC-125-conversation-participants-audience-and-orchestrator-binding.md) removes Start fresh: the chip
 > popover's action and hint, the `resetContinuity` channel update,
 > `continuityResetAt` and its system message. Changing a participant's model
@@ -269,7 +275,8 @@ a hidden conversation boundary; the replacement path is then responsible for the
 appropriate `native_resume`, `full_transplant`, `semantic_transplant`,
 `targeted_handoff`, or `fresh_start` decision described above.
 
-Direct-message Cat lanes are stricter than shared rooms. When a direct-message
+Direct-message Cat lanes are stricter than shared rooms, except when the
+provider session is unavailable (below). When a direct-message
 lane already has a runtime `sessionId`, stale-session recovery must not silently
 rotate to a replacement runtime session. If native resume is unavailable or
 fails, Chat shall mark the existing direct-lane lease `error`, preserve its
@@ -282,6 +289,64 @@ still disables the resume attempt. Recovery surfaces are the same operations
 that intentionally clear or drift the direct-lane lease: resetting the
 participant runtime attachment, starting a fresh direct lane, or retargeting the
 Cat execution provider/model/instance from the channel or Cat detail controls.
+
+#### Provider Session Unavailable
+
+The direct-lane rule above has one exception (ADR-068 §2, amended
+2026-11-11). It applies when the provider-native session behind a Runtime
+session is confirmed unavailable. Chat recognises the condition, in this order:
+
+1. Runtime's `code: "provider_session_unavailable"`, either on the turn's
+   in-stream `error` event or on an HTTP 410 from `POST /sessions/:id/messages`
+   or `POST /sessions/:id/resume`.
+2. Until every Runtime in use attaches the code, the provider's own text: grok's
+   `No saved copy of session <id> was found` and claude's `No conversation
+   found with session ID`.
+
+For this class, direct lanes and rooms behave the same:
+
+- Chat does not resume the session, because Runtime would refuse.
+- Chat closes the old Runtime session.
+- Chat creates the replacement in the old lease's `cwd`, which overrides the
+  channel's default spawn cwd. The replacement goes through the ordinary
+  new-session continuity decision, so its first turn carries the
+  `full_transplant` or `semantic_transplant` built from Chat's transcript.
+- Once the replacement exists, Chat appends a visible, non-verbose system
+  message (`event: "session_rotated"`, `reason: "provider_session_unavailable"`,
+  `previousSessionId`, `replacementSessionId`) saying the conversation
+  continues in a new session in the same workspace.
+- If the replacement cannot be created (for example `Max sessions (N)
+  reached`), Chat appends no notice. The lease keeps the old `sessionId`, its
+  `cwd`, status `error` and a `lastError` that still carries the class, so the
+  next attempt rotates into the same workspace.
+
+**Rotation budget.** A session produced by a rotation is never rotated again
+until a turn completes successfully in it. Until then the same failure
+surfaces the error and pauses, as other direct-lane errors do: the lease keeps
+the replacement with status `error`.
+
+- The rule needs no lease field. The notice's `replacementSessionId` marks the
+  replacement, and an agent message carrying that `sessionId` marks a completed
+  turn.
+- A quiet heartbeat leaves no message, so it does not count as a completed
+  turn.
+- A send rotates at most once, and a rotation made by `ensureTargetSession`
+  while waking the send's target counts against it.
+
+The rotation happens on whichever path sees the condition first:
+
+- **Send-time recovery.** The failed turn is sent again once, to the
+  replacement. If the replacement fails the same way, or cannot be created,
+  Chat surfaces the error and stops.
+- **Wake/activation**, including the companion life loop:
+  - A lease in `error` whose `lastError` carries the class rotates without a
+    resume attempt.
+  - So does a resume refused with the code.
+  - A companion heartbeat that fails with the class marks its lease `error`
+    with that `lastError`, so the next life-loop wake rotates it instead of
+    beating against the dead session.
+
+An explicit retarget still takes priority, through the drift path.
 
 In-flight dispatch persistence must also treat an execution lease as a
 single-owner lifecycle object. When concurrent product writes touch the same

@@ -31,7 +31,7 @@ import {
 } from '../../../../platform/knowledge/productKnowledge.js';
 import { resolveChatWorkToolIntentManifest } from '../workToolIntentResolver.js';
 import { resolveActorIdForTarget } from '../runtime-session/state.js';
-import type { DispatchLeasePatch } from './recovery.js';
+import { readRuntimeErrorSignal, type DispatchLeasePatch } from './recovery.js';
 import { applyCompanionPhotoDirective } from './companionPhoto.js';
 import { waitForSessionTurnGate } from './sessionTurnGate.js';
 import { createDispatchPresentationRecorder } from './presentationRecorder.js';
@@ -51,6 +51,8 @@ export interface DispatchExecution extends DispatchRequest {
   responseSegments: RuntimeMessageSegment[] | null;
   usage: MessageUsageSummary | null;
   error: string | null;
+  /** Runtime's machine-readable cause for `error`, when it gave one. */
+  errorCode?: string | null;
   conversationId?: string | null;
   containerId?: string | null;
   transportBindingId?: string | null;
@@ -313,6 +315,7 @@ export async function executeDispatch(
       terminalMessageMetadata: { ...companionPhoto.metadata, presentation },
     };
   } catch (error) {
+    const errorSignal = readRuntimeErrorSignal(error);
     try { await presentationRecorder.seal(true); }
     catch (saveError) {
       error = new Error(`${error instanceof Error ? error.message : String(error)}; conversation history could not be saved: ${saveError instanceof Error ? saveError.message : String(saveError)}`);
@@ -325,6 +328,7 @@ export async function executeDispatch(
       responseSegments: null,
       usage: null,
       error: error instanceof Error ? error.message : 'Unknown runtime error',
+      errorCode: errorSignal.code,
       conversationId: resolvedConversationId,
       containerId: resolvedContainerId,
       transportBindingId: resolvedTransportBindingId,

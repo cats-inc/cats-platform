@@ -4,6 +4,7 @@ import type {
   RuntimeClient,
   RuntimeSessionInfo,
 } from '../../../../platform/runtime/client.js';
+import { readRuntimeErrorSignal } from '../runtime-dispatch/recovery.js';
 import { normalizeRuntimeStatus } from './state.js';
 
 export interface ResumedRuntimeSessionLeasePatch extends Partial<ParticipantExecutionLease> {
@@ -18,6 +19,8 @@ export interface RuntimeSessionResumeOutcome {
   attempted: boolean;
   session: RuntimeSessionInfo | null;
   error: string | null;
+  /** Runtime's machine-readable cause for `error`, when it gave one. */
+  errorCode?: string | null;
 }
 
 function normalizeResumeError(error: unknown): string {
@@ -72,10 +75,12 @@ export async function resumeRuntimeSession(input: {
       sessionId,
       error: normalizedError,
     });
+    const errorCode = readRuntimeErrorSignal(error).code;
     return {
       attempted: true,
       session: null,
       error: normalizedError,
+      ...(errorCode ? { errorCode } : {}),
     };
   }
 }

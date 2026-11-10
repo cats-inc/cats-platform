@@ -49,6 +49,8 @@ import {
   readRuntimeNdjsonResponse,
   readRuntimeSseResponse,
 } from './clientStreams.js';
+
+export { RuntimeTurnError } from './clientStreams.js';
 import type { RuntimeSetupReadModel } from './setup.js';
 import { projectUsageSnapshot, projectUsageQuotaRefresh } from './usageSnapshot.js';
 import type { RuntimeWorkspaceActivitySnapshot } from './workspaceActivity.js';
@@ -1166,7 +1168,11 @@ export class CatsRuntimeClient implements RuntimeClient {
 
       if (!response.ok) {
         const rawBody = await response.text();
-        throw new Error(readRuntimeErrorText(rawBody, `Failed to send message (${response.status})`));
+        throw new RuntimeRequestError(
+          readRuntimeErrorText(rawBody, `Failed to send message (${response.status})`),
+          response.status,
+          readRuntimeErrorCode(rawBody),
+        );
       }
 
       return await readRuntimeNdjsonResponse(response, {
