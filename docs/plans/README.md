@@ -8,8 +8,9 @@
   `originSurface` readers.
 - [PLAN-133: Boss Cat across Cats](PLAN-133-boss-cat-across-cats.md)
   — in progress, 2026-11-11; SPEC-139 in seven slices, each guarded before it is reachable.
-  Slices 1 to 4a are implemented: the memory checkpoint per conversation (FR-17), the
-  owner-started stamp, the status board, and the board tool in an isolated session.
+  Slices 1 to 4a and 7 are implemented: the memory checkpoint per conversation (FR-17), the
+  owner-started stamp, the status board, the board tool in an isolated session, and the Boss
+  Cat's own initiative with a peer section.
 
 - [PLAN-132: Codex session retention](PLAN-132-codex-session-retention.md)
   — implemented, unpublished, 2026-11-11; ephemeral Catlas jobs, Runtime capability admission and

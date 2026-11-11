@@ -129,6 +129,7 @@ export function createCompanionHeartbeatSpeaker(
         mode: request.mode,
         unanswered: request.unanswered,
         review: request.review,
+        ...(request.peers ? { peers: true } : {}),
       });
       const result = await runWithSessionTurnGate(request.sessionId, () => sendSupervisedRuntimeMessage({
         runtimeClient: dependencies.runtimeClient,
@@ -293,6 +294,7 @@ export function startChatCompanionLifeLoop(
       return deactivation;
     }),
     speak: createCompanionHeartbeatSpeaker(dependencies),
+    readCore: () => dependencies.chatStore.readCore(),
     now: () => dependencies.now?.() ?? new Date(),
   });
   return startCompanionLifeLoop(loop);

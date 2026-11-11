@@ -1,7 +1,10 @@
 import type { ChannelActivationResult, ChatState } from '../../api/contracts.js';
 import type { CompanionSnapshot } from '../contracts.js';
+import type { CatsCoreState } from '../../../../core/types.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
 import { isCompanionCat } from '../../../../shared/companionRole.js';
+import { isAdminCat } from '../../../shared/catGroups.js';
+import { buildBossCatBoard } from '../../state/bossCatBoard.js';
 import { resolveLeadParticipantLease } from '../../state/model/index.js';
 import { observeRuntimeSessionLiveness } from '../../state/runtime-session/sessionReuse.js';
 import type { CompanionActivityStore } from '../activityStore.js';
@@ -21,6 +24,7 @@ import {
   type CompanionHeartbeatKind,
 } from './heartbeat.js';
 import { buildCompanionWorkReview, findLastOwnerMessageAcross } from './review.js';
+import { buildBossCatPeerSection, hasNewPeerMarks, mergePeerMarks, type BossCatPeerSection } from './peerSection.js';
 
 /** SPEC-124 FR-12: a lane quieter than this may fall asleep. */
 export const COMPANION_IDLE_SLEEP_MS = 15 * 60_000;
@@ -50,6 +54,8 @@ export interface CompanionHeartbeatRequest {
   unanswered: number;
   /** SPEC-137 FR-7: `assist` only. */
   review: string | null;
+  /** SPEC-139 FR-13: the review carries a Boss Cat's peer section. */
+  peers?: boolean;
 }
 
 /** `skipped`: an `assist` heartbeat with nothing new to look over ran no turn (SPEC-137 FR-8). */
@@ -70,6 +76,8 @@ export interface CompanionLifeLoopDependencies {
   deactivateLane(channelId: string): Promise<{ closedSessionCount: number }>;
   /** SPEC-124 Phase 2: one hidden turn in the lane's session. Omitted, the loop only keeps Cats awake. */
   speak?(request: CompanionHeartbeatRequest): Promise<CompanionHeartbeatResult>;
+  /** SPEC-139 FR-13: pending approvals for the Boss Cat's peer section. Omitted or failing, none are counted. */
+  readCore?(): Promise<Pick<CatsCoreState, 'tasks' | 'approvalBindings'>>;
   random?(): number;
   now(): Date;
 }
@@ -105,6 +113,8 @@ interface CatLifeMemory {
   drawnAt: number;
   /** SPEC-137 FR-8: the review fingerprint the last quiet `assist` heartbeat saw. */
   reviewedThrough: string | null;
+  /** SPEC-139 FR-14: per other Cat, the peer section's marks the last quiet look saw. */
+  reviewedPeers: Map<string, string[]>;
 }
 
 /** What one tick knows about a Cat's own initiative (SPEC-137). */
@@ -148,6 +158,7 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
         drawnWith: 0,
         drawnAt: 0,
         reviewedThrough: null,
+        reviewedPeers: new Map(),
       };
       memory.set(catId, entry);
     }
@@ -289,11 +300,12 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
             const heartbeat = waiting ? undefined : await maybeSpeak({
               remembered,
               catId: cat.id,
+              bossCat: isAdminCat(cat),
               lane,
               sessionId: lease.sessionId,
               now,
               initiative,
-              channels: state.channels,
+              state,
             });
             entries.push({
               catId: cat.id,
@@ -423,14 +435,39 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
   }
 
   /** FR-18..FR-20: speak when due, unless the lane is mid-conversation. */
+  /**
+   * SPEC-139 FR-13: the other Cats on the board, for a Boss Cat's `assist`
+   * heartbeat that is due. Built without the model; a Core that cannot be read
+   * only leaves approvals out.
+   */
+  async function readPeerSection(
+    state: ChatState,
+    bossCatId: string,
+    now: Date,
+    seen: ReadonlyMap<string, readonly string[]>,
+  ): Promise<BossCatPeerSection> {
+    let core: Pick<CatsCoreState, 'tasks' | 'approvalBindings'> | null = null;
+    if (dependencies.readCore) {
+      try {
+        core = await dependencies.readCore();
+      } catch {
+        core = null;
+      }
+    }
+    const board = buildBossCatBoard({ state, bossCatId, now, core });
+    return buildBossCatPeerSection({ board, state, core, now, seen });
+  }
+
   async function maybeSpeak(input: {
     remembered: CatLifeMemory;
     catId: string;
+    /** SPEC-139: an admin Cat. */
+    bossCat: boolean;
     lane: ChatState['channels'][number];
     sessionId: string;
     now: Date;
     initiative: CatInitiative;
-    channels: ChatState['channels'];
+    state: ChatState;
   }): Promise<CompanionLifeTickEntry['heartbeat'] | undefined> {
     const { remembered, lane, now, initiative } = input;
     const nowMs = now.getTime();
@@ -454,15 +491,32 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
     const kind = remembered.heartbeatKind;
     let review: string | null = null;
     let fingerprint: string | null = null;
+    let peerMarks: Map<string, string[]> | null = null;
+    let peersShown = false;
     if (initiative.mode === 'assist') {
       // SPEC-137 FR-7 / FR-8: no turn when there is nothing to look over, or nothing new since a quiet look.
-      const built = buildCompanionWorkReview(input.channels, input.catId, now);
-      if (!built || built.fingerprint === remembered.reviewedThrough) {
+      // SPEC-139 FR-13 / FR-14: a Boss Cat's review leaves other Cats' lines out and gains the peer
+      // section; only an item there that the last quiet look did not see is news.
+      const built = buildCompanionWorkReview(input.state.channels, input.catId, now, { leaveOutOtherCats: input.bossCat });
+      // A board that cannot be built costs this Cat its peer section, never the tick.
+      const peers = input.bossCat
+        ? await readPeerSection(input.state, input.catId, now, remembered.reviewedPeers).catch(() => null)
+        : null;
+      const ownNew = built !== null && built.fingerprint !== remembered.reviewedThrough;
+      const peersNew = peers !== null && peers.text !== null && hasNewPeerMarks(peers.marks, remembered.reviewedPeers);
+      if (!ownNew && !peersNew) {
+        // An item that is gone is forgotten, so it is news if it comes back.
+        if (peers) remembered.reviewedPeers = mergePeerMarks(peers.marks, remembered.reviewedPeers);
         scheduleHeartbeat(remembered, 'regular', nowMs, initiative.unanswered, nowMs);
         return { kind, result: 'skipped' };
       }
-      review = built.text;
-      fingerprint = built.fingerprint;
+      review = [built?.text, peers?.text].filter((part): part is string => Boolean(part)).join('\n\n');
+      fingerprint = built?.fingerprint ?? null;
+      // A Cat the bounds left out was not seen by this look, so it stays news.
+      peerMarks = peers
+        ? new Map([...peers.marks].filter(([catId]) => !peers.omitted.has(catId)))
+        : null;
+      peersShown = Boolean(peers?.text);
     }
     const result = await dependencies.speak({
       catId: input.catId,
@@ -475,6 +529,7 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
       mode: initiative.mode,
       unanswered: initiative.unanswered,
       review,
+      ...(peersShown ? { peers: true } : {}),
     });
     if (result === 'busy') {
       remembered.nextHeartbeatAt = nowMs + HEARTBEAT_BUSY_RETRY_MS;
@@ -483,6 +538,7 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
       remembered.nextHeartbeatAt = nowMs + HEARTBEAT_FAILED_RETRY_MS;
     } else {
       if (result === 'quiet' && fingerprint !== null) remembered.reviewedThrough = fingerprint;
+      if (result === 'quiet' && peerMarks !== null) remembered.reviewedPeers = mergePeerMarks(peerMarks, remembered.reviewedPeers);
       // SPEC-137 FR-5: a spoken heartbeat is one more message the owner has not answered yet.
       scheduleHeartbeat(remembered, 'regular', nowMs, initiative.unanswered + (result === 'spoke' ? 1 : 0), nowMs);
     }
