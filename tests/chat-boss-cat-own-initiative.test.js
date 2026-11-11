@@ -139,15 +139,12 @@ function fixture() {
     catMessage('room-shared', 'cat-boss', 'Planned: notes first.', at(18, 5, 28)),
     catMessage('room-shared', 'cat-kiki', `${MARKER} Kiki said this`, at(18, 6, 28)),
   ]);
-  // Shared with Lulu, so Kiki's turns there count; a Kiki-only room is one-to-one (FR-3).
-  const taxes = room('room-taxes', 'Taxes', [['cat-kiki', 'Kiki'], ['cat-lulu', 'Lulu']], [
+  const taxes = room('room-taxes', 'Taxes', [['cat-kiki', 'Kiki']], [
     message('room-taxes', 'user', `${MARKER} owner words`, at(18, 0, 28)),
     choiceCard('room-taxes', 'cat-kiki', at(18, 10, 28)),
   ]);
   taxes.roomRouting.workflow.turnHistory = [turn('turn-k1', 'cat-kiki', 'failed', at(18, 20, 28))];
-  const solo = room('room-solo', 'Solo', [['cat-kiki', 'Kiki']], [choiceCard('room-solo', 'cat-kiki', at(18, 12, 28))]);
-  solo.roomRouting.workflow.turnHistory = [turn('turn-solo', 'cat-kiki', 'failed', at(18, 25, 28))];
-  const momo = room('room-momo', 'Momo things', [['cat-momo', 'Momo'], ['cat-lulu', 'Lulu']]);
+  const momo = room('room-momo', 'Momo things', [['cat-momo', 'Momo']]);
   momo.roomRouting.workflow.turnHistory = [turn('turn-m1', 'cat-momo', 'failed', at(18, 20, 28))];
   // Kiki's own direct lane: it leaves Kiki only as message times (SPEC-139 Goals).
   const kikiLane = room('lane-kiki', '', [['cat-kiki', 'Kiki']], [
@@ -164,9 +161,8 @@ function fixture() {
       { id: 'cat-boss', name: 'Boss', status: 'active', roles: ['companion'], group: 'admin' },
       { id: 'cat-kiki', name: 'Kiki', status: 'active', roles: [], group: 'standard' },
       { id: 'cat-momo', name: 'Momo', status: 'active', roles: [], group: 'standard', hiddenFromBossCat: true },
-      { id: 'cat-lulu', name: 'Lulu', status: 'active', roles: [], group: 'standard' },
     ],
-    channels: [lane([message('lane-boss', 'user', 'hi Boss', at(17, 0, 28))]), shared, taxes, momo, kikiLane, solo],
+    channels: [lane([message('lane-boss', 'user', 'hi Boss', at(17, 0, 28))]), shared, taxes, momo, kikiLane],
   };
 }
 
@@ -396,7 +392,7 @@ test('a Cat the cap left out is not seen by that look: the next one lists it fir
     cats: [{ id: 'cat-boss', name: 'Boss', status: 'active', roles: ['companion'], group: 'admin' },
       ...Array.from({ length: count }, (_, index) => ({ id: `cat-${index}`, name: `Cat ${index}`, status: 'active', roles: [], group: 'standard' }))],
     channels: [lane(), ...Array.from({ length: count }, (_, index) => {
-      const entry = room(`room-${index}`, `Room ${index}`, [[`cat-${index}`, `Cat ${index}`], ['cat-boss', 'Boss']]);
+      const entry = room(`room-${index}`, `Room ${index}`, [[`cat-${index}`, `Cat ${index}`]]);
       entry.roomRouting.workflow.turnHistory = [turn(`turn-${index}`, `cat-${index}`, 'failed', at(6, 0))];
       return entry;
     })],
