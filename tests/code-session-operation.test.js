@@ -198,7 +198,14 @@ test('a Code session is confirmed by the conversation scope, not by its origin',
   await rewrite(channel => { channel.originSurface = 'code'; channel.productScope = 'work'; });
   assert.equal((await createCodeSessionOperationService(f.options).open(f.draft, request, f.signal)).status, 'verified');
 
-  // A Code origin and the chat scope: no longer one.
-  await rewrite(channel => { channel.originSurface = 'code'; channel.productScope = 'chat'; });
+  // A scope never falls (SPEC-141 D2): writing `chat` over `work` keeps `work`, and the session
+  // stays a Code session.
+  await rewrite(channel => { channel.productScope = 'chat'; });
+  assert.equal((await f.store.read()).channels.find(row => row.id === result.channelId).productScope, 'work');
+  assert.equal((await createCodeSessionOperationService(f.options).open(f.draft, request, f.signal)).status, 'verified');
+
+  // The chat scope: no longer one. A conversation that is a direct lane reads as chat whatever
+  // it stores.
+  await rewrite(channel => { channel.channelKind = 'direct_message'; });
   assert.equal((await createCodeSessionOperationService(f.options).open(f.draft, request, f.signal)).status, 'unconfirmed');
 });

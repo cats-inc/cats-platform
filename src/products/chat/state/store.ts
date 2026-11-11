@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { ProviderPolicyFormatError, parseProviderExecutionPolicy, assertProviderPolicyBoundary } from '../../../shared/providerExecutionPolicy.js';
 import { normalizeOwnerLifecycle, OwnerLifecycleFormatError } from '../../../core/ownerLifecycle.js';
 import { compactOwnerWorkflowHistory } from './ownerHistory.js';
+import { keepRaisedProductScopes } from './model/productScope.js';
 import { copyFile, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -31,6 +32,18 @@ import {
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && 'code' in error;
+}
+
+/**
+ * SPEC-141 D2: a write never lowers a conversation's product scope. A caller that read the whole
+ * chat before a raise and writes its copy back keeps the raise (see `keepRaisedProductScopes`).
+ */
+function keepStoredProductScopes(source: string, stored: ChatState, incoming: ChatState): ChatState {
+  const { state, keptChannelIds } = keepRaisedProductScopes(stored, incoming);
+  if (keptChannelIds.length > 0) {
+    reportStoreDiagnostic('product_scope_kept', { store: source, channelIds: keptChannelIds });
+  }
+  return state;
 }
 
 function reportStoreDiagnostic(
@@ -233,8 +246,10 @@ export class FileChatStore implements ChatStore {
   private async writeSnapshotUnsafe(
     chat: ChatState,
     core: CatsCoreState,
+    stored: ChatState,
   ): Promise<PersistedChatSnapshot> {
-    const nextChatState = compactOwnerWorkflowHistory(structuredClone(chat), core);
+    const nextChatState = compactOwnerWorkflowHistory(
+      structuredClone(keepStoredProductScopes(this.filePath, stored, chat)), core);
     const nextCore = syncCoreStateWithChatState(nextChatState, structuredClone(core));
     normalizeOwnerLifecycle(nextCore.ownerLifecycle);
     const snapshot = buildPersistedChatSnapshot(nextChatState, nextCore);
@@ -270,19 +285,30 @@ export class FileChatStore implements ChatStore {
     const parsed = JSON.parse(raw);
     const normalized = normalizePersistedChatSnapshot(parsed as unknown);
     if (parsed.version !== CATS_CORE_STATE_VERSION) {
-      // Version 6 is an admission boundary: old readers must reject new policies
-      // instead of discarding their restrictions and continuing with legacy skip.
-      const backupPath = `${this.filePath}.pre-provider-policy.bak`;
+      // Each version is an admission boundary: an older reader refuses the newer file instead
+      // of discarding what it does not know. Version 6 brought provider policies; version 7
+      // (SPEC-141 D9) the product scope a raise sets. Each upgrade keeps the original bytes
+      // under its own name, so a profile that already went through the version 6 upgrade, whose
+      // `.pre-provider-policy.bak` holds older bytes, can still go to 7.
+      const fromVersion6 = parsed?.version === 6;
+      const backupPath = `${this.filePath}.${fromVersion6 ? 'pre-product-scope' : 'pre-provider-policy'}.bak`;
       try {
         if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed.chat ?? parsed).channels)
           || !Array.isArray((parsed.chat ?? parsed).cats)) throw new Error('Unrecognized profile');
-        try { await writeFile(backupPath, raw, { encoding: 'utf8', flag: 'wx' }); }
-        catch (error) {
-          if (!(isErrnoException(error) && error.code === 'EEXIST') || await readFile(backupPath, 'utf8') !== raw) throw error;
+        // Only an upgrade of the primary file keeps a backup and writes. Reading `.bak` to
+        // recover leaves every file as it is, so bytes that differ from an earlier upgrade's
+        // backup cannot block the recovery.
+        if (filePath === this.filePath) {
+          try { await writeFile(backupPath, raw, { encoding: 'utf8', flag: 'wx' }); }
+          catch (error) {
+            if (!(isErrnoException(error) && error.code === 'EEXIST') || await readFile(backupPath, 'utf8') !== raw) throw error;
+          }
+          await writePersistedChatSnapshot(this.filePath, normalized);
         }
-        if (filePath === this.filePath) await writePersistedChatSnapshot(this.filePath, normalized);
       } catch {
-        throw new ProviderPolicyFormatError('Provider policy profile upgrade failed; original data was preserved.');
+        throw new ProviderPolicyFormatError(fromVersion6
+          ? 'Product scope profile upgrade failed; original data was preserved.'
+          : 'Provider policy profile upgrade failed; original data was preserved.');
       }
     }
     const repaired = repairPersistedSetupCompletion(normalized);
@@ -505,8 +531,9 @@ export class FileChatStore implements ChatStore {
 
   async writeSnapshot(chat: ChatState, core: CatsCoreState): Promise<PersistedChatSnapshot> {
     return this.runExclusive(async () => {
-      const previousCore = extractCoreState(await this.readPersistedSnapshotUnsafe());
-      const persisted = await this.writeSnapshotUnsafe(chat, core);
+      const previous = await this.readPersistedSnapshotUnsafe();
+      const previousCore = extractCoreState(previous);
+      const persisted = await this.writeSnapshotUnsafe(chat, core, previous.chat);
       const nextCore = extractCoreState(persisted);
       if (hasSubstantiveCoreChange(previousCore, nextCore)) {
         this.emitCoreChange(nextCore);
@@ -521,7 +548,7 @@ export class FileChatStore implements ChatStore {
       const previousCore = extractCoreState(current);
       const next = mutator({ chat: structuredClone(current.chat), core: structuredClone(previousCore) });
       if (isDeepStrictEqual(next.chat, current.chat) && isDeepStrictEqual(next.core, previousCore)) return current;
-      const persisted = await this.writeSnapshotUnsafe(next.chat, next.core);
+      const persisted = await this.writeSnapshotUnsafe(next.chat, next.core, current.chat);
       const nextCore = extractCoreState(persisted);
       if (hasSubstantiveCoreChange(previousCore, nextCore)) this.emitCoreChange(nextCore);
       return persisted;
@@ -530,9 +557,11 @@ export class FileChatStore implements ChatStore {
 
   async write(state: ChatState): Promise<ChatState> {
     return this.runExclusive(async () => {
-      const currentCore = extractCoreState(await this.readPersistedSnapshotUnsafe());
-      const nextChatState = structuredClone(state);
-      const persisted = await this.writeSnapshotUnsafe(nextChatState, currentCore);
+      const current = await this.readPersistedSnapshotUnsafe();
+      const currentCore = extractCoreState(current);
+      // The caller gets its state back as before, with any product scope the store kept.
+      const nextChatState = keepStoredProductScopes(this.filePath, current.chat, structuredClone(state));
+      const persisted = await this.writeSnapshotUnsafe(nextChatState, currentCore, current.chat);
       const nextCore = extractCoreState(persisted);
       if (hasSubstantiveCoreChange(currentCore, nextCore)) {
         this.emitCoreChange(nextCore);
@@ -545,7 +574,7 @@ export class FileChatStore implements ChatStore {
     return this.runExclusive(async () => {
       const currentSnapshot = await this.readPersistedSnapshotUnsafe();
       const previousCore = extractCoreState(currentSnapshot);
-      const persisted = await this.writeSnapshotUnsafe(currentSnapshot.chat, state);
+      const persisted = await this.writeSnapshotUnsafe(currentSnapshot.chat, state, currentSnapshot.chat);
       const nextCore = extractCoreState(persisted);
       if (hasSubstantiveCoreChange(previousCore, nextCore)) {
         return this.emitCoreChange(nextCore);
@@ -559,7 +588,7 @@ export class FileChatStore implements ChatStore {
       const current = await this.readPersistedSnapshotUnsafe();
       const previousCore = extractCoreState(current);
       const nextCore = await mutator(structuredClone(previousCore));
-      const persisted = await this.writeSnapshotUnsafe(current.chat, nextCore);
+      const persisted = await this.writeSnapshotUnsafe(current.chat, nextCore, current.chat);
       const persistedCore = extractCoreState(persisted);
       if (hasSubstantiveCoreChange(previousCore, persistedCore)) {
         return this.emitCoreChange(persistedCore);
@@ -607,7 +636,7 @@ export class MemoryChatStore implements ChatStore {
 
   private writeSnapshotUnsafe(chat: ChatState, core: CatsCoreState): PersistedChatSnapshot {
     const previousCore = this.coreState;
-    const snapshot = this.applySnapshotState(chat, core);
+    const snapshot = this.applySnapshotState(keepStoredProductScopes('memory', this.chatState, chat), core);
     if (hasSubstantiveCoreChange(previousCore, this.coreState)) {
       this.emitCoreChange();
     }

@@ -28,7 +28,7 @@ test('version 5 upgrade keeps exact backup bytes and legacy access, then round-t
   const store = new FileChatStore(file); const state = await store.read();
   assert.equal(await readFile(`${file}.pre-provider-policy.bak`, 'utf8'), raw);
   assert.equal(JSON.parse(await readFile(file, 'utf8')).version, CATS_CORE_STATE_VERSION);
-  assert.equal(CATS_CORE_STATE_VERSION, 6);
+  assert.equal(CATS_CORE_STATE_VERSION, 7, 'a version 5 profile goes straight to the current version');
   const channel = state.channels.find(c => c.id === state.selectedChannelId);
   assert.equal(channel.runtimeExecutionPolicy, undefined);
   assert.equal(channel.runtimeWorkspaceAccess, 'read_write'); assert.equal(channel.runtimePermissionMode, 'skip');
@@ -58,7 +58,7 @@ test('upgrade backup failure preserves the original and a retry can finish atomi
   assert.equal(await readFile(file, 'utf8'), raw);
   await rm(`${file}.pre-provider-policy.bak`, { recursive: true });
   await new FileChatStore(file).read();
-  assert.equal(JSON.parse(await readFile(file, 'utf8')).version, 6);
+  assert.equal(JSON.parse(await readFile(file, 'utf8')).version, CATS_CORE_STATE_VERSION);
 }));
 
 test('new policy survives create/normalize while readonly and allowlist ceilings reject widening', () => {
