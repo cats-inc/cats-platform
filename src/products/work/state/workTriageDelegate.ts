@@ -42,6 +42,11 @@ export interface WorkTriageDelegateOptions {
 
 export interface WorkTriageMutationContext {
   actorRef: string;
+  /**
+   * SPEC-142 FR-19: the owner who confirmed a proposal, when the write performs one. `actorRef`
+   * is then the participant that proposed it, and the record keeps both.
+   */
+  confirmedByActorId?: string;
   actionId?: string;
   runId?: string;
 }
@@ -223,6 +228,7 @@ export async function updateWorkItem(
           conversationId: workItemWrite.workItem.conversationId,
           message: `Updated Work Item: ${workItemWrite.workItem.title}`,
           metadata: {
+            ...(context.confirmedByActorId ? { confirmedByActorId: context.confirmedByActorId } : {}),
             [WORK_TRIAGE_METADATA_KEY]: {
               schemaVersion: WORK_TRIAGE_METADATA_VERSION,
               phase: 'triage',
@@ -359,6 +365,7 @@ export async function assignWorkItemProject(
           conversationId: workItemWrite.workItem.conversationId,
           message: `Assigned Work Item to Project: ${workItemWrite.workItem.title}`,
           metadata: {
+            ...(context.confirmedByActorId ? { confirmedByActorId: context.confirmedByActorId } : {}),
             [WORK_TRIAGE_METADATA_KEY]: {
               schemaVersion: WORK_TRIAGE_METADATA_VERSION,
               phase: 'triage',
@@ -464,6 +471,7 @@ export async function createWorkProject(
           conversationId: projectWrite.project.primaryConversationId,
           message: `Created Project: ${projectWrite.project.title}`,
           metadata: {
+            ...(context.confirmedByActorId ? { confirmedByActorId: context.confirmedByActorId } : {}),
             [WORK_TRIAGE_METADATA_KEY]: {
               schemaVersion: WORK_TRIAGE_METADATA_VERSION,
               phase: 'triage',
@@ -690,7 +698,7 @@ function buildWorkItemAssignProjectMetadata(
   };
 }
 
-function readExistingWorkItemTriageMetadata(workItem: CoreWorkItemRecord): {
+export function readExistingWorkItemTriageMetadata(workItem: CoreWorkItemRecord): {
   kind: string | null;
   priority: string | null;
   assignmentHint: string | null;

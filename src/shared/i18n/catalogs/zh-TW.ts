@@ -2689,7 +2689,7 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.productScopeRaise.addsCodeView': 'Code 的對話元件：畫布與預覽按鈕、工作區面板，以及資料夾與權限標籤。',
   'shared.productScopeRaise.keepsCode': 'Code 的工具與對話元件維持不變。',
   'shared.productScopeRaise.addsWorkItem': 'Work 會把這個對話的工作項目列為自己的。',
-  'shared.productScopeRaise.addsNoWorkTool': '目前還不會為它的 agent 新增 Work 的工具。',
+  'shared.productScopeRaise.addsWorkTools': '它的 agent 會取得 Work 的工具：讀取這個對話的工作項目，並提出由你確認的變更。',
   'shared.productScopeRaise.participantsHeading': '適用對象',
   'shared.productScopeRaise.participants': '{names}，從下一輪起適用。之後加入的成員也一樣。',
   'shared.productScopeRaise.participantsNone': '目前還沒有成員。之後加入的成員會在這個層級工作。',

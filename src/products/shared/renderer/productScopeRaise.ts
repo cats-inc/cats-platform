@@ -98,7 +98,7 @@ export function buildProductScopeRaiseConfirmation(
   }
   if (target === 'work') {
     adds.push(t(messageKeys.sharedProductScopeRaiseAddsWorkItem));
-    adds.push(t(messageKeys.sharedProductScopeRaiseAddsNoWorkTool));
+    adds.push(t(messageKeys.sharedProductScopeRaiseAddsWorkTools));
   }
   const names = view.participants.map((participant) => participant.name).filter(Boolean);
   return {

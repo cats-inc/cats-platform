@@ -3197,7 +3197,7 @@ export const messageKeys = {
   sharedProductScopeRaiseAddsCodeView: 'shared.productScopeRaise.addsCodeView',
   sharedProductScopeRaiseKeepsCode: 'shared.productScopeRaise.keepsCode',
   sharedProductScopeRaiseAddsWorkItem: 'shared.productScopeRaise.addsWorkItem',
-  sharedProductScopeRaiseAddsNoWorkTool: 'shared.productScopeRaise.addsNoWorkTool',
+  sharedProductScopeRaiseAddsWorkTools: 'shared.productScopeRaise.addsWorkTools',
   sharedProductScopeRaiseParticipantsHeading: 'shared.productScopeRaise.participantsHeading',
   sharedProductScopeRaiseParticipants: 'shared.productScopeRaise.participants',
   sharedProductScopeRaiseParticipantsNone: 'shared.productScopeRaise.participantsNone',
