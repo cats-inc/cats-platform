@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft, 2026-11-11, revised the same day after an independent review and again after the owner answered Q1, Q2 and Q4. The owner's decisions D1 to D13 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S2 to S6 and Q3 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects. S1 was put to the owner the same day. Implementation in progress: the field exists (FR-1 to FR-7, PLAN-134 Phase 1), Recents, routes, labels, Work's own-record check and Code's tool checks read it (FR-12 to FR-15, and FR-8 for `code` only, Phase 2), and the role tools are offered at every level (FR-19, Phase 3) |
+| **Status** | Draft, 2026-11-11, revised the same day after an independent review and again after the owner answered Q1, Q2 and Q4. The owner's decisions D1 to D13 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S2 to S6 and Q3 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects. S1 was put to the owner the same day. Implemented on `main` on 2026-11-12 through PLAN-134 Phases 1 to 7 (#433 to #446 and the documents that follow); not yet in a release, and the first one with it must be 0.16.0 (chat state version 7, `docs/deployment.md`). Provider acceptance did not run (PLAN-134 Phase 7) |
 | **Owner** | Product owner |
 | **Reviewer** | Owner; an independent review before implementation |
 | **Decision** | [ADR-149](../decisions/149-let-a-conversation-gain-product-scopes-and-never-lose-them.md) |

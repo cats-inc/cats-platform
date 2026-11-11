@@ -191,8 +191,8 @@ actor and the confirming owner as `confirmedByActorId`.
 ADR-105's decision path keeps its roles and flags, with one change (SPEC-142 A1): a
 `work.project.create` request that names a `repoPath` no longer creates the Project. On the
 owner's own turn it posts a `work.project.create` card with that folder; on any other turn, or
-without the proposal service, it creates nothing. Without a folder it creates the Project as
-before.
+without the proposal service, it creates nothing and a system message tells the owner why.
+Without a folder it creates the Project as before.
 
 ## Agent Knowledge Drafts
 

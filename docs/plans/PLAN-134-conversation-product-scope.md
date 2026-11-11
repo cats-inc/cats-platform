@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In progress: Phases 1 to 6 are done, Phase 7 is not started. The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
+| **Status** | Done on `main` on 2026-11-12, apart from the checks that need a provider turn: Phase 4's candidate check and Phase 7's provider acceptance did not run (see each). The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -344,7 +344,8 @@ real provider.
         Work conversation. Three existing expectations flipped as D5 intends: Code's tools
         for `code` only, Work's work areas refused, and Work's routes without a canvas.
   - [ ] The candidate check was not run. It needs a built Desktop on an isolated profile and
-        a real agent turn that calls the tools, so it stays for Phase 7's acceptance.
+        a real agent turn that calls the tools, so it stays for Phase 7's acceptance, which
+        could not run either (see there).
 
 **Deliverables:** a conversation created on Work receives the `cats` server, and its canvas,
 previews and work areas appear under `/work`.
@@ -519,12 +520,23 @@ previews and work areas appear under `/work`.
 - [x] Check that the persisted-data boundary recorded in Phase 5 reached the release notes. No
       bump here.
   - Checked 2026-11-12: not in `docs/release-notes.md` yet (no unreleased section);
-    `docs/deployment.md` records it for 0.16.0, naming only the product scope.
+    `docs/deployment.md` records it for 0.16.0, with the product scope and, since
+    PLAN-135 Phase 5, a Work conversation's Project.
 - [ ] Provider acceptance: the mid-conversation tool delivery with Claude Code and with Codex.
+  - Not run on 2026-11-12. In an isolated candidate (`npm run desktop:candidate`, synthetic
+    owner), Codex refused before any model turn because its native Windows sandbox is not set
+    up on this machine, and Claude Code reported that it is not logged in inside the isolated
+    home. Setting up either would change the owner's own configuration. What was confirmed
+    without a model: both sessions carried the `cats` grant marker at level `work`, with the
+    participant and the proposal gate open on the owner's turn.
 - [ ] Provider acceptance: a Code session with one agent still does its coding task. Since
       Phase 3 that agent is told it is the Cats Orchestrator with every turn, and a coding
       request brings the collaboration and recovery procedures. No model was run against it.
-- [ ] Update ADR-149's status.
+  - Not run on 2026-11-12, for the same reasons as the item above. The instructions this
+    agent receives are covered by the orchestrator tests; whether a model still codes with them
+    is not checked.
+- [x] Update ADR-149's status.
+  - As built: implemented on `main`, not yet released, with the acceptance that did not run.
 
 ## Not in This Plan
 

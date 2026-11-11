@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In progress from 2026-11-12. The owner answered SPEC-142's Q3 to Q5 (A1 to A3) and asked for the plan to be carried out in full. PLAN-134 Phases 1 to 5 have landed. Phases 1 to 4 are done |
+| **Status** | Started 2026-11-12. The owner answered SPEC-142's Q3 to Q5 (A1 to A3) and asked for the plan to be carried out in full. Phases 1 to 6 are done on `main` on 2026-11-12, apart from Phase 6's provider acceptance, which did not run (see it) |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -242,8 +242,10 @@ D12; FR-10 to FR-14, without the parts that need a conversation's Project).
 - [x] Tests for each kind, for each refusal, and for ADR-105's path still behaving as before.
   - `tests/work-conversation-tools.test.ts`. ADR-105's path is untouched: its delegates gained
     only an optional field, and its suites pass.
-- [ ] An independent security review before merge: this is the first path on which a session
+- [x] An independent security review before merge: this is the first path on which a session
       tool leads to a Work write.
+  - As built: one blocker (the card showed text other than what is written) and several
+    should-fix items, all fixed and re-checked before #450 merged.
 - [x] Add the tools to `docs/tool-calls.md`.
 - [x] Every proposing tool refuses unless the turn is the owner's own (the Phase 3 turn gate).
 - [x] Change the raise confirmation's line that no Work tool is added yet (SPEC-141 FR-29,
@@ -307,7 +309,12 @@ folder goes through a card that says so (D12; FR-12, FR-13, FR-16, FR-22 to FR-2
     `tests/work-conversation-tools.test.ts` and the A1 case in
     `tests/chat-work-triage-dispatch.test.tsx`. FR-26 is checked through the projected Work
     Item's Project and Task, which Work's supervised-run target reads for its folder.
-- [ ] An isolated candidate walk with screenshots.
+- [x] An isolated candidate walk with screenshots.
+  - As built: the chip, its menu and its confirmation; the Project kept after a confirmed
+    change; the Project page counting the conversation; and the owner-actions delete listing it
+    as a blocker. The first walk found that the file store dropped the conversation's Project,
+    and the walk also found the Project page's sections shrinking to their headers; both are
+    fixed in #451.
 
 **Deliverables:** Project membership, the folder proposals and the remaining Work tools.
 
@@ -326,7 +333,14 @@ folder goes through a card that says so (D12; FR-12, FR-13, FR-16, FR-22 to FR-2
   - As built: SPEC-126 FR-12 and the terminology record FR-22 to FR-27, with Turn Run defined.
 - [ ] Provider acceptance: Claude Code and Codex each list the tools at all three levels and
       complete a read and a proposal, under the default policy and an interactive one.
-- [ ] Update ADR-149's status.
+  - Not run on 2026-11-12. In an isolated candidate (`npm run desktop:candidate`, synthetic
+    owner), Codex refused before any model turn because its native Windows sandbox is not set
+    up on this machine, and Claude Code reported that it is not logged in inside the isolated
+    home. Setting up either would change the owner's own configuration. What was confirmed
+    without a model: both sessions carried the `cats` grant marker at level `work`, with the
+    participant and the proposal gate open on the owner's turn.
+- [x] Update ADR-149's status.
+  - As built: with PLAN-134 Phase 7's update.
 
 ## Not in This Plan
 
