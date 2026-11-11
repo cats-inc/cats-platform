@@ -221,6 +221,27 @@ test('shell permission follows the session posture (CAP-08)', () => {
   assert.equal(hasShellExecutionPermission({ permissionMode: 'whitelist', allowedTools: ['BashOutput'] }), false);
 });
 
+test('a provider execution policy decides the shell, not the permission mode beside it', () => {
+  // A dev preview runs the workspace's commands in Platform's own process, outside the
+  // provider's sandbox and approvals. Before, a policy that turned off network or asked for
+  // approval still let start_dev_preview run, because only the permission mode was read.
+  const explicit = (access: 'read-only' | 'workspace-write' | 'full-access', network: boolean,
+    approval: 'never' | 'untrusted' | 'on-request') => ({ version: 1 as const, mode: 'explicit' as const, access, network, approval });
+  const withPolicy = (executionPolicy: Parameters<typeof hasShellExecutionPermission>[0]['executionPolicy']) =>
+    hasShellExecutionPermission({ permissionMode: 'skip', executionPolicy });
+  assert.equal(withPolicy(explicit('workspace-write', true, 'never')), true, 'unattended, write, network');
+  assert.equal(withPolicy(explicit('full-access', true, 'never')), true);
+  assert.equal(withPolicy(explicit('workspace-write', false, 'never')), false, 'network off');
+  assert.equal(withPolicy(explicit('workspace-write', true, 'on-request')), false, 'approval on request');
+  assert.equal(withPolicy(explicit('workspace-write', true, 'untrusted')), false, 'approval for untrusted commands');
+  assert.equal(withPolicy(explicit('read-only', false, 'never')), false, 'read-only');
+  // A provider policy leaves approvals to the provider, so Platform cannot know they are off.
+  assert.equal(withPolicy({ version: 1, mode: 'provider', constraints: { maxAccess: 'full-access', network: true } }), false);
+  // No policy: the permission mode decides, as before.
+  assert.equal(withPolicy(null), true);
+  assert.equal(hasShellExecutionPermission({ workspaceAccess: 'read_only', executionPolicy: explicit('full-access', true, 'never') }), false);
+});
+
 test('start_dev_preview refuses before spawning unless the user and the session allow it', async () => {
   const workspace = makeWorkspace();
   try {

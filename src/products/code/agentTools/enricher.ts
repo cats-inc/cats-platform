@@ -41,6 +41,7 @@ export function createCodeAgentToolsInvocationEnricher(): RuntimeInvocationEnric
         shellExecution: hasShellExecutionPermission({
           workspaceAccess: channel.runtimeWorkspaceAccess,
           permissionMode: channel.runtimePermissionMode,
+          executionPolicy: channel.runtimeExecutionPolicy ?? null,
         }),
       };
       return {
