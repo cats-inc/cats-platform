@@ -469,8 +469,9 @@ conversation created on Chat unless it says what is new.
     failure, so the turn continues without a decision and nothing says why. With
     the decision flag off, the only one-shot decision is a companion lane's post
     decision, so a companion Cat on one of those providers no longer posts.
-    Whether to restore that, and how without giving the owner's text to a
-    session that skips approvals, is the owner's decision.
+    Decided 2026-11-11 (the owner left it to the implementer): it stays so.
+    Restoring it would put the owner's text back into a session that skips
+    approvals, the risk this fix removed.
   - Platform's client sends `sharingMode` only when no workspace kind is given,
     so `isolated` is not sent with this posture, as it was not for the Boss
     Cat's. The Runtime pinned for Desktop was not checked, and no live provider

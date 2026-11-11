@@ -326,13 +326,15 @@ real provider.
     renaming it could break a reader outside Platform.
   - The join hint and card no longer say the Code tools include a shell; a shell comes from
     the conversation's permission.
-- [ ] Known, not changed here: a dev preview ignores the conversation's execution policy.
-      `shellPermission.ts` and the enricher decide whether a session may start one from the
-      access and permission mode alone, so a policy that turns off network or asks for every
-      approval still lets `start_dev_preview` run a package.json script in Platform's own
-      process. This held for Code conversations before; Work includes Code, so it now holds
-      for Work conversations too. It needs Settings › Code's preview switch, which is off by
-      default. It needs a change of its own.
+- [x] Found by this phase's review and fixed in its own pull request (2026-11-11): a dev
+      preview ignored the conversation's execution policy. `shellPermission.ts` and the
+      enricher read the access and permission mode alone, so a policy that turned off network
+      or asked for every approval still let `start_dev_preview` run a package.json script in
+      Platform's own process, on Code conversations before and on Work ones after D5. Now a
+      policy decides: only an `explicit` one with `full-access`, network on and approval
+      `never` allows a preview, and a `provider` one, which leaves approvals to the provider,
+      does not. The legacy `skip` posture keeps the old rule; SPEC-123's Known Limits records
+      what that leaves open.
 - [ ] Tests, plus an isolated candidate check of a Work conversation that shows an artifact and
       a live preview.
   - [x] Tests: the scope predicate at the four places, the wrapper keeping other servers and

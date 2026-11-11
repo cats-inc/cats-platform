@@ -1,3 +1,5 @@
+import type { SessionExecutionPolicy } from '../../../shared/providerInteractions.js';
+
 /**
  * SPEC-123 CAP-08: a Cat may start a dev preview only when its session can
  * already run shell commands, because a dev server runs the same workspace
@@ -9,12 +11,30 @@ export interface CodeSessionPermissionPosture {
   permissionMode?: string | null;
   /** Provider tools a `whitelist` session may use. */
   allowedTools?: readonly string[] | null;
+  /**
+   * A provider execution policy. When present it replaces the permission mode: the Runtime
+   * client sends no permission mode with it.
+   */
+  executionPolicy?: SessionExecutionPolicy | null;
 }
 
 const SHELL_TOOL = /^(bash|shell|powershell|local_shell|exec_command|run_shell_command|terminal)(\(|$)/iu;
 
 export function hasShellExecutionPermission(posture: CodeSessionPermissionPosture): boolean {
   if (posture.workspaceAccess === 'read_only') return false;
+  const policy = posture.executionPolicy;
+  if (policy) {
+    // A dev preview runs the workspace's commands in Platform's own process, outside the
+    // provider's sandbox and approvals, with full access to the disk. So only a policy under
+    // which the Cat itself already runs commands unattended, with full access and network,
+    // allows one. `workspace-write` confines the Cat to its workspace, and a preview would let
+    // it step outside by changing a package.json script. A `provider` policy leaves approvals
+    // to the provider, so Platform cannot know they are off.
+    return policy.mode === 'explicit'
+      && policy.access === 'full-access'
+      && policy.network
+      && policy.approval === 'never';
+  }
   if (posture.permissionMode === 'default') return false;
   if (posture.permissionMode === 'whitelist') {
     return (posture.allowedTools ?? []).some((tool) => SHELL_TOOL.test(tool.trim()));
