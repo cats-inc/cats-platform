@@ -181,9 +181,11 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 ### 8. Proposed defaults (the owner may change them)
 
 - P1: Only the owner raises a scope, from the Desktop or mobile UI. Agents, transports,
-  schedules and heartbeats cannot. An agent proposing a raise belongs to a later SPEC, because
-  it needs SPEC-139's owner-started stamp, which does not exist yet.
-- P2: Before a raise, the owner sees what it grants and every participant who gains it. A Boss Cat that joined under SPEC-139 is one of them, and later
+  schedules and heartbeats cannot. An agent proposing a raise belongs to a later SPEC. It would
+  build on SPEC-139's owner-started stamp, which landed with #417, and on its bound choice
+  card, which is not built yet.
+- P2: Before a raise, the owner sees what it grants and every participant who gains it. A Boss
+  Cat that joined under SPEC-139 is one of them, and later
   joiners gain it too.
 - P3: Direct lanes and parallel groups cannot be raised. Direct lanes take transport and
   heartbeat turns, and SPEC-139 keeps each lane to its own Cat. To work on code from a lane,
