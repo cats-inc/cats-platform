@@ -9,6 +9,7 @@ import { buildChatWorkItemId } from '../../../shared/chatCoreIds.js';
 import {
   isProjectedWorkItem,
   WORK_PROPOSAL_ASSIGN_PROJECT,
+  CONVERSATION_PROJECT_SCOPE,
   WORK_PROPOSAL_CAPTURE,
   WORK_PROPOSAL_CREATE_PROJECT,
   WORK_PROPOSAL_MAX_ITEMS,
@@ -274,8 +275,12 @@ export function createWorkConversationToolsProvider(options: WorkConversationToo
           // FR-12: the conversation's own Project is open to any participant; FR-13: another
           // Project needs an admin coordinator.
           const own = conversationProjectId(await options.coreStore.readCore(), grant.binding.channelId);
-          const denied = own !== null && args.projectId === own ? null : await requireAdmin(grant);
-          return denied ?? propose(grant, WORK_PROPOSAL_ASSIGN_PROJECT, args);
+          if (await options.isAdminCoordinator(grant.binding.channelId, grant.binding.participantId)) {
+            return propose(grant, WORK_PROPOSAL_ASSIGN_PROJECT, args);
+          }
+          if (own === null || args.projectId !== own) return (await requireAdmin(grant))!;
+          // The card is marked, so it stays bound to the conversation's Project until confirmed.
+          return propose(grant, WORK_PROPOSAL_ASSIGN_PROJECT, { ...args, scope: CONVERSATION_PROJECT_SCOPE });
         }
         case PROPOSE_CONVERSATION_PROJECT_TOOL.name: {
           const denied = await requireAdmin(grant);

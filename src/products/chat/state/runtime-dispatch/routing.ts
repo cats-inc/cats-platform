@@ -2614,16 +2614,25 @@ async function appendWorkProjectCreateResultSidecar(input: {
         proposerParticipantId: input.state.channels.find((entry) => entry.id === input.channelId)?.coordinatorParticipantId ?? null,
       })
       : { refusal: 'project_folder_needs_owner_turn', message: '' };
-    if ('refusal' in posted) {
-      warnWorkProjectCreateToolCallIgnored({
-        channelId: input.channelId,
-        messageId: input.userMessage.id,
-        decisionId: input.providerAgentDecision.decisionId,
-        reason: posted.refusal,
-      });
-    }
-    // The card is the conversation's message; nothing is created until the owner confirms it.
-    return { state: input.state, resultMessage: null };
+    // A posted card is the conversation's message; nothing is created until the owner confirms it.
+    if (!('refusal' in posted)) return { state: input.state, resultMessage: null };
+    warnWorkProjectCreateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: posted.refusal,
+    });
+    // The owner learns why nothing happened, not only the log.
+    const deferred = appendMessage(input.state, input.channelId, {
+      senderKind: 'system',
+      senderName: 'Cats Work',
+      body: `Did not create Project ${title}: a Project with a folder is created only when you confirm its card, `
+        + `posted from your own message in a Work conversation (${posted.refusal}).`,
+    }, input.now, {
+      metadata: { event: 'work_project_create_deferred', sourceMessageId: input.userMessage.id, refusal: posted.refusal },
+      incrementUnread: false,
+    });
+    return { state: refreshDerivedMemoryLayers(deferred.state, input.channelId, input.now), resultMessage: deferred.message };
   }
   const delegate = createWorkTriageDelegate({
     coreStore: input.chatStore,

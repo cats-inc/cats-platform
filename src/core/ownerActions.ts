@@ -13,7 +13,8 @@ import { readCoreEffectiveDeliveryPolicy } from './governance.js';
 const collections = { project: 'projects', work_item: 'workItems', task: 'tasks', artifact: 'artifacts' } as const;
 const terminal = (status: string) => ['completed', 'failed', 'cancelled'].includes(status);
 /** A conversation's Turn Run, which the conversation's own turns start and finish. */
-const isTurnRun = (run: { metadata?: Record<string, unknown> | null }) => run.metadata?.source === 'chat-room-workflow';
+const isTurnRun = (run: { taskId?: string | null; metadata?: Record<string, unknown> | null }) =>
+  run.metadata?.source === 'chat-room-workflow' && !!run.taskId?.startsWith('task-channel-');
 const token = (core: CatsCoreState) => createHash('sha256').update(JSON.stringify({
   projects: core.projects, workItems: core.workItems, tasks: core.tasks, runs: core.runs, missions: core.missions,
   artifacts: core.artifacts, checkpoints: core.checkpoints, outcomes: core.outcomes, traces: core.traces,

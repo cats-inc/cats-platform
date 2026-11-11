@@ -171,6 +171,7 @@ test('the conversation kind: an admin coordinator proposes, the owner confirms, 
   const context = async (overrides = {}) => ({
     channelId, conversationId: `conversation-channel-${channelId}`, core: await store.readCore(), level: 'work',
     parallelMember: false, workProjectId: (await channelOf(store, channelId)).workProjectId ?? null,
+    workProjectRevision: (await channelOf(store, channelId)).workProjectRevision ?? 0,
     otherConversationsInProject: (projectId) => projectId === 'project-site' ? 1 : 0, ...overrides,
   });
   const refusal = (action) => { try { action(); return null; } catch (error) { if (error instanceof ConversationProposalRefusal) return error.code; throw error; } };
@@ -191,6 +192,11 @@ test('the conversation kind: an admin coordinator proposes, the owner confirms, 
   assert.equal(activity.actorId, 'chat-participant:participant-boss');
   assert.equal(activity.metadata.confirmedByActorId, 'owner-actor');
   assert.notEqual(JSON.stringify(kind.binding(content, await context())), before, 'the card is bound to the Project it changes');
+  // A card confirmed after the owner changed the Project is refused (FR-18).
+  const second = kind.validate({ projectId: 'project-bare' }, await context());
+  await applyChannelWorkProject(store, { channelId, projectId: null, now: NOW });
+  await assert.rejects(kind.perform(second, await context({ workProjectRevision: 1 }), { proposerParticipantId: null, ownerActorId: 'owner-actor' }),
+    (error) => error instanceof ConversationProposalRefusal && error.code === 'revision_stale');
   // A supervised run under way refuses the proposal too.
   await addRun(store, channelId, { status: 'queued', turn: false });
   const fresh = await context();

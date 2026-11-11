@@ -11,11 +11,12 @@ import {
   ConversationWorkProjectChip,
   describeWorkProjectRefusal,
 } from '../src/products/shared/renderer/components/ConversationWorkProjectChip.tsx';
+import type { ConversationWorkProjectView } from '../src/products/shared/renderer/api/workProject.ts';
 
 const en = createTranslator('en');
 const zh = createTranslator('zh-TW');
 
-const VIEW = {
+const VIEW: ConversationWorkProjectView = {
   channelId: 'w1',
   projectId: null,
   project: null,

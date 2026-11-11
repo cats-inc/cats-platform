@@ -24,6 +24,7 @@ import { createDefaultChatState } from '../src/products/chat/state/defaults.js';
 import { assignCatToChannel, createCat, createChannel } from '../src/products/chat/state/model/index.js';
 import { isAdminCoordinator } from '../src/products/chat/state/coordinator.js';
 import { createWorkTriageDelegate } from '../src/products/work/state/workTriageDelegate.js';
+import { normalizeWorkProjectFolder, visibleWorkProjectFolder } from '../src/products/work/state/workProjectFolder.js';
 
 const NOW = new Date('2026-11-12T08:00:00.000Z');
 const OWN = 'conversation-channel-own';
@@ -45,16 +46,18 @@ function seedCore(): CatsCoreState {
   return core;
 }
 
-function setup(options: { workProjectId?: string | null; parallelMember?: boolean; joinRefusal?: string | null } = {}) {
+function setup(options: { workProjectId?: string | null; parallelMember?: boolean; joinRefusal?: string | null; revision?: number } = {}) {
   const coreStore = new MemoryCoreStore(seedCore());
   const intake = createWorkIntakeDelegate({ coreStore, now: () => NOW });
   const triage = createWorkTriageDelegate({ coreStore, now: () => NOW });
   const kinds = new ConversationProposalKindRegistry();
   const joins: Array<{ channelId: string; projectId: string }> = [];
+  const joinOptions: Array<Record<string, unknown>> = [];
   for (const kind of createWorkProposalKinds({
-    intake, triage, coreStore,
-    async joinConversationProject(channelId, projectId) {
+    intake, triage, coreStore, platform: 'win32',
+    async joinConversationProject(channelId, projectId, join) {
       joins.push({ channelId, projectId });
+      joinOptions.push(join);
       return options.joinRefusal ?? null;
     },
   })) kinds.register(kind);
@@ -62,10 +65,11 @@ function setup(options: { workProjectId?: string | null; parallelMember?: boolea
     channelId: 'own', conversationId: OWN, core: await coreStore.readCore(), level: 'work',
     parallelMember: options.parallelMember ?? false,
     workProjectId: options.workProjectId ?? null,
+    workProjectRevision: options.revision ?? 0,
     otherConversationsInProject: (projectId) => projectId === 'project-site' ? 2 : 0,
   });
   const actors = { proposerParticipantId: 'participant-1', ownerActorId: 'owner-actor' };
-  return { coreStore, kinds, context, actors, joins };
+  return { coreStore, kinds, context, actors, joins, joinOptions };
 }
 
 function refusalOf(action: () => unknown): string | null {
@@ -142,7 +146,18 @@ test('create project: this conversation as its primary conversation, and it join
   assert.equal(project.status, 'planned');
   assert.equal(project.primaryConversationId, OWN, 'FR-28');
   assert.deepEqual(h.joins, [{ channelId: 'own', projectId: project.id }], 'FR-13: the conversation joins it');
+  assert.deepEqual(h.joinOptions, [{ expectedRevision: 0, actorId: 'chat-participant:participant-1', confirmedByActorId: 'owner-actor' }],
+    'the join is bound to the revision the card was confirmed against and records both actors');
   assert.match(result.summary, /the conversation joined it/u);
+  // Create is keyed by title and folder: a second card that matches returns the existing
+  // Project, which it did not describe, so it refuses and joins nothing.
+  const again = setup();
+  const againKind = again.kinds.get(WORK_PROPOSAL_CREATE_PROJECT)!;
+  const againCtx = await again.context();
+  await againKind.perform(againKind.validate({ title: 'Twin', folder: 'C:/twin' }, againCtx), againCtx, again.actors);
+  await assert.rejects(againKind.perform(againKind.validate({ title: 'twin', folder: 'C:/twin' }, againCtx), againCtx, again.actors),
+    (error: unknown) => error instanceof ConversationProposalRefusal && error.code === 'project_exists');
+  assert.equal(again.joins.length, 1, 'only the Project the first card created was joined');
 });
 
 test('create project with a folder: an absolute path on one line, shown whole with the warning (A1)', async () => {
@@ -154,6 +169,9 @@ test('create project with a folder: an absolute path on one line, shown whole wi
   assert.equal(refusalOf(() => kind.validate({ title: 'Docs', folder: 'C:/x' + String.fromCodePoint(0x202E) }, ctx)), 'invalid_folder');
   assert.equal(refusalOf(() => kind.validate({ title: 'Docs', folder: 'C:/x' + String.fromCharCode(0x2028) + 'y' }, ctx)), 'invalid_folder');
   assert.equal(refusalOf(() => kind.validate({ title: 'Docs', folder: 'C:/' + 'd'.repeat(600) }, ctx)), 'invalid_folder');
+  for (const folder of ['\\\\host\\share', '//host/share', '\\\\?\\C:\\x', 'C:/work/../secrets']) {
+    assert.equal(refusalOf(() => kind.validate({ title: 'Docs', folder }, ctx)), 'invalid_folder', folder);
+  }
   const longFolder = 'C:/' + 'd'.repeat(400);
   const content = kind.validate({ title: 'Docs', folder: longFolder, status: 'active' }, ctx);
   const view = kind.describe(content, ctx);
@@ -185,6 +203,60 @@ test('create project: a conversation in a Project, or a parallel member, does no
   // Whether it joins is part of the card: a change makes it out of date.
   const joined = await setup({ workProjectId: 'project-site' }).context();
   assert.notEqual(JSON.stringify(kind.binding({}, ctx)), JSON.stringify(kind.binding({}, joined)));
+});
+
+test('folders: absolute for this OS, no shares, devices or parent segments, and hidden characters shown', () => {
+  assert.equal(normalizeWorkProjectFolder('C:/work/site', 'win32'), 'C:/work/site');
+  assert.equal(normalizeWorkProjectFolder('/home/me/site', 'win32'), null, 'drive-relative on Windows');
+  assert.equal(normalizeWorkProjectFolder('/home/me/site', 'linux'), '/home/me/site');
+  assert.equal(normalizeWorkProjectFolder('C:/work/site', 'linux'), null);
+  assert.equal(normalizeWorkProjectFolder('//host/share', 'linux'), null);
+  assert.equal(normalizeWorkProjectFolder('/srv/../etc', 'linux'), null);
+  assert.equal(visibleWorkProjectFolder('C:/a' + String.fromCharCode(0x200B) + 'b'), 'C:/a\\u{200B}b');
+  assert.equal(visibleWorkProjectFolder(null), null);
+});
+
+test("what moves with the conversation is shown on the card and bound (FR-16, FR-18)", async () => {
+  const h = setup();
+  const core = await h.coreStore.readCore();
+  const withProjected = { ...core, workItems: [...core.workItems,
+    { ...core.workItems.find((entry) => entry.id === 'wi-projected')!, id: 'work-item-chat-channel-own' }] };
+  await h.coreStore.writeCore(upsertCoreWorkItem(withProjected, { id: 'wi-child', title: 'Child with a Task', status: 'planned',
+    conversationId: OWN, taskId: 'task-child', parentWorkItemId: 'work-item-chat-channel-own' }, NOW).core);
+  const kind = h.kinds.get(WORK_PROPOSAL_CREATE_PROJECT)!;
+  const ctx = await h.context();
+  const content = kind.validate({ title: 'Docs', folder: 'C:/docs' }, ctx);
+  const view = kind.describe(content, ctx);
+  assert.equal(view.fields.find((field) => field.name === 'moves with it')!.value, '1 Work Item, some with a Task');
+  assert.deepEqual(view.records.slice(1).map((record) => record.id), ['wi-child']);
+  assert.equal(view.folderWarning!.workItems, 1);
+  const before = JSON.stringify(kind.binding(content, ctx));
+  const later = await h.coreStore.readCore();
+  await h.coreStore.writeCore({ ...later, workItems: later.workItems.map((entry) => entry.id === 'wi-child'
+    ? { ...entry, taskId: 'task-other', updatedAt: '2026-11-12T09:00:00.000Z' } : entry) });
+  assert.notEqual(JSON.stringify(kind.binding(content, await h.context())), before, 'a change to a moving Work Item makes the card out of date');
+  // The revision is bound too: a P to Q to P change in between makes the card out of date.
+  const revised = setup({ revision: 2 });
+  assert.notEqual(JSON.stringify(kind.binding(content, await revised.context())), JSON.stringify(kind.binding(content, await setup().context())));
+});
+
+test("an assignment proposed under the conversation's Project stays bound to it (FR-12)", async () => {
+  const h = setup({ workProjectId: 'project-site' });
+  const kind = h.kinds.get(WORK_PROPOSAL_ASSIGN_PROJECT)!;
+  const ctx = await h.context();
+  const content = kind.validate({ workItemId: 'wi-with-task', projectId: 'project-site', scope: 'conversation_project' }, ctx);
+  assert.equal(content.scope, 'conversation_project');
+  const other = setup({ workProjectId: null });
+  const otherCtx = await other.context();
+  assert.equal(refusalOf(() => kind.validate({ workItemId: 'wi-with-task', projectId: 'project-site', scope: 'conversation_project' }, otherCtx)),
+    'not_conversation_project');
+  assert.notEqual(JSON.stringify(kind.binding(content, ctx)), JSON.stringify(kind.binding(content, { ...ctx, workProjectId: null, workProjectRevision: 1 })),
+    'the owner moving the conversation makes the card out of date');
+  await assert.rejects(kind.perform(content, { ...ctx, workProjectId: null }, h.actors), (error: unknown) =>
+    error instanceof ConversationProposalRefusal && error.code === 'not_conversation_project');
+  // Without the mark, as an admin coordinator proposes, the card is not bound to the conversation's Project.
+  const admin = kind.validate({ workItemId: 'wi-with-task', projectId: 'project-site' }, ctx);
+  assert.equal(admin.scope, undefined);
 });
 
 test("capture joins the conversation's Project in the same write (FR-12, FR-19)", async () => {
@@ -359,9 +431,10 @@ test("Phase 5 tools: the conversation's Project in get_work_items, and who may p
   const items = (await provider.callTool('get_work_items', {}, grant())).structuredContent as { project: Record<string, unknown> | null };
   assert.deepEqual(items.project, { id: 'project-site', title: '«Site»', status: 'active', folder: '«C:/work/site»' });
 
-  // FR-12: the conversation's own Project is open to any participant.
+  // FR-12: the conversation's own Project is open to any participant, and the card is marked.
   const own = await provider.callTool('propose_work_item_project', { workItemId: 'wi-captured', projectId: 'project-site' }, grant());
   assert.equal(own.isError, undefined);
+  assert.equal((proposals[0]!.content as Record<string, unknown>).scope, 'conversation_project');
   // FR-13: any other Project, the conversation's Project and a folder need an admin coordinator.
   for (const [name, args] of [
     ['propose_work_item_project', { workItemId: 'wi-captured', projectId: 'project-other' }],

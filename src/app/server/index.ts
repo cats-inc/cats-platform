@@ -189,8 +189,8 @@ export function createServer(dependencies: ServerDependencies) {
       ...workDelegates,
       coreStore: resolvedDependencies.work.coreStore,
       // FR-13: a confirmed new Project takes in its conversation, through the conversation's own write.
-      async joinConversationProject(channelId, projectId) {
-        const outcome = await applyChannelWorkProject(chatStore, { channelId, projectId, now: now() });
+      async joinConversationProject(channelId, projectId, join) {
+        const outcome = await applyChannelWorkProject(chatStore, { channelId, projectId, now: now(), ...join });
         return 'refusal' in outcome ? outcome.refusal : null;
       },
     })) proposalKinds.register(kind);

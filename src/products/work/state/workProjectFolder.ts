@@ -10,23 +10,40 @@ import type { WorkTriageMutationContext } from './workTriageDelegate.js';
  */
 
 const UNSAFE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
+const HIDDEN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
 
-/** A folder as a path: absolute, one line, bounded. */
-export function normalizeWorkProjectFolder(value: unknown): string | null {
+/**
+ * A folder as a path on this computer: absolute for this OS, one line, bounded, with no `..`
+ * segment. Network shares (`\\host\share`, `//host`) and device paths (`\\?\`, `\\.\`) are
+ * refused, since a supervised run that opens one could reach another machine.
+ */
+export function normalizeWorkProjectFolder(value: unknown, platform: NodeJS.Platform = process.platform): string | null {
   if (typeof value !== 'string') return null;
   const folder = value.trim();
   if (!folder || folder.length > 500 || UNSAFE.test(folder)) return null;
-  const absolute = /^[A-Za-z]:[\\/]/u.test(folder) || folder.startsWith('/') || folder.startsWith('\\\\');
+  if (/^[\\/]{2}/u.test(folder)) return null;
+  if (folder.split(/[\\/]/u).some((segment) => segment === '..')) return null;
+  const absolute = platform === 'win32' ? /^[A-Za-z]:[\\/]/u.test(folder) : folder.startsWith('/');
   return absolute ? folder : null;
+}
+
+/**
+ * A folder as a card or a dialog shows it: whole, with any hidden character written out as
+ * `\u{…}`, so a folder stored before these checks cannot look like another one.
+ */
+export function visibleWorkProjectFolder(value: string | null | undefined): string | null {
+  if (typeof value !== 'string' || !value) return null;
+  return value.replace(HIDDEN, (char) => `\\u{${char.codePointAt(0)!.toString(16).toUpperCase()}}`);
 }
 
 export async function setWorkProjectFolder(
   coreStore: CoreStore,
   input: { projectId: string; folder: string },
   context: WorkTriageMutationContext,
-  now: () => Date = () => new Date(),
+  options: { now?: () => Date; platform?: NodeJS.Platform } = {},
 ): Promise<ToolResult<{ projectId: string; folder: string }>> {
-  const folder = normalizeWorkProjectFolder(input.folder);
+  const now = options.now ?? (() => new Date());
+  const folder = normalizeWorkProjectFolder(input.folder, options.platform);
   if (!folder) {
     return { status: 'rejected', error: { code: 'E_SCHEMA_INVALID', message: 'The folder must be an absolute path.' } as never };
   }

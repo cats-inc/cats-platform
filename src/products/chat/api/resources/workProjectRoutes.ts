@@ -5,6 +5,7 @@ import { ChatApiError, handleRestError } from '../routeErrors.js';
 import { nowFrom, type ChatApiRouteContext } from '../routeSupport.js';
 import { publishChannelMutation } from '../transportEventPublisher.js';
 import { isOwnerPrincipal } from './productScopeRoutes.js';
+import { visibleWorkProjectFolder } from '../../../work/state/workProjectFolder.js';
 
 /**
  * SPEC-142 FR-23: the owner sets, changes or clears a conversation's Project here, or by
@@ -52,13 +53,13 @@ export async function routeWorkProjectResourceApi(context: ChatApiRouteContext):
       sendJson(context.response, 200, {
         channelId,
         projectId,
-        project: project ? { id: project.id, title: project.title, status: project.status, folder: project.repoPath } : null,
+        project: project ? { id: project.id, title: project.title, status: project.status, folder: visibleWorkProjectFolder(project.repoPath) } : null,
         revision: channelWorkProjectRevision(channel),
         canChange: standing === null,
         refusal: standing,
         // FR-16: the folder where the conversation's supervised runs would start, per Project.
         projects: core.projects.filter((entry) => entry.status !== 'archived').map((entry) => ({
-          id: entry.id, title: entry.title, status: entry.status, folder: entry.repoPath,
+          id: entry.id, title: entry.title, status: entry.status, folder: visibleWorkProjectFolder(entry.repoPath),
           ...workProjectReach(state, core, entry.id, channelId),
         })),
       }, { 'cache-control': 'no-store' });

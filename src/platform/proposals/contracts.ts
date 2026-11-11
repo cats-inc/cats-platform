@@ -59,6 +59,8 @@ export interface ConversationProposalContext {
   parallelMember: boolean;
   /** The Project the conversation belongs to (FR-22), or null. */
   workProjectId: string | null;
+  /** How many times the owner changed it; a card that changes or relies on it binds this. */
+  workProjectRevision: number;
   /** FR-16: how many other conversations belong to this Project. */
   otherConversationsInProject(projectId: string): number;
 }

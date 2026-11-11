@@ -7,6 +7,8 @@ import {
 } from '../../../platform/proposals/contracts.js';
 import { cleanRecordValue, fenceRecordText } from '../../shared/conversationRecordTools.js';
 import { hasActiveSupervisedRun } from '../state/model/workProject.js';
+import { conversationMoveView } from '../../work/agentTools/workConversationProposals.js';
+import { visibleWorkProjectFolder } from '../../work/state/workProjectFolder.js';
 import type { ChatStore } from '../state/store.js';
 import { applyChannelWorkProject } from './conversationWorkProject.js';
 
@@ -25,17 +27,13 @@ const REFUSAL_MESSAGES: Record<string, string> = {
   project_not_found: 'No such Project.',
   project_archived: 'That Project is archived.',
   supervised_run_active: 'A supervised run of this conversation is queued, running or waiting for approval.',
+  revision_stale: "The conversation's Project changed since the card was posted.",
 };
 
 function refuse(code: string): never {
   throw new ConversationProposalRefusal(code, REFUSAL_MESSAGES[code] ?? 'The conversation cannot change its Project now.');
 }
 
-/** A folder as the card shows it: whole, without invisible characters. */
-function folderText(value: string | null | undefined): string | null {
-  const flat = (value ?? '').replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, '').trim();
-  return flat || null;
-}
 
 function projectOf(context: ConversationProposalContext, projectId: unknown) {
   return typeof projectId === 'string' ? context.core.projects.find((entry) => entry.id === projectId) : undefined;
@@ -67,22 +65,27 @@ export function createConversationWorkProjectProposalKind(options: {
       const project = projectOf(context, content.projectId);
       return {
         workProjectId: context.workProjectId,
+        workProjectRevision: context.workProjectRevision,
         project: project ? { id: project.id, updatedAt: project.updatedAt, status: project.status, repoPath: project.repoPath } : null,
+        children: conversationMoveView(context.core, context.channelId).binding,
       };
     },
     describe(content, context): ConversationProposalView {
       const project = projectOf(context, content.projectId);
       const previous = projectOf(context, context.workProjectId);
-      const folder = folderText(project?.repoPath);
+      const folder = visibleWorkProjectFolder(project?.repoPath);
+      const moves = conversationMoveView(context.core, context.channelId);
       return {
         title: 'Put this conversation into a Project',
         fields: [
           { name: 'project', value: fenceRecordText(project?.title, 161) },
           ...(previous ? [{ name: 'previous project', value: fenceRecordText(previous.title, 161) }] : []),
+          ...moves.fields,
         ],
         records: [
           { kind: 'conversation', id: null, title: 'This conversation' },
           { kind: 'project', id: cleanRecordValue(String(content.projectId)), title: fenceRecordText(project?.title, 161) },
+          ...moves.records,
         ],
         // FR-16, FR-26: the conversation's supervised runs then start in the Project's folder.
         folderWarning: folder && project ? {
@@ -96,6 +99,8 @@ export function createConversationWorkProjectProposalKind(options: {
       const outcome = await applyChannelWorkProject(options.chatStore, {
         channelId: context.channelId,
         projectId: String(content.projectId),
+        // FR-18: the revision the card was bound to, so a change since then is refused.
+        expectedRevision: context.workProjectRevision,
         now: options.now(),
         actorId: actors.proposerParticipantId ? `chat-participant:${actors.proposerParticipantId}` : actors.ownerActorId,
         confirmedByActorId: actors.ownerActorId,
