@@ -458,7 +458,23 @@ conversation created on Chat unless it says what is new.
     approvals skipped; it returns one JSON object.
   - Every decision now fails on native tool activity, not only the loops'. With
     `failureMode: 'return_null'` the turn continues as it does when a decision
-    is malformed.
+    is malformed. The check runs on the returned turn, so a tool the model ran
+    has already run; the read-only sandbox is what limits it.
+  - **A provider that cannot enforce read-only access gets no decision.** By the
+    review's reading of Runtime's main branch, a session asking for read-only
+    access is refused for an adapter whose capabilities report no permission
+    control: Copilot, Cursor, Goose, Junie, Kiro, Pi and the agent backend. The
+    Boss Cat's decisions and the collaboration loops were already refused for
+    them. One-shot decisions now are too, and production asks for `null` on
+    failure, so the turn continues without a decision and nothing says why. With
+    the decision flag off, the only one-shot decision is a companion lane's post
+    decision, so a companion Cat on one of those providers no longer posts.
+    Whether to restore that, and how without giving the owner's text to a
+    session that skips approvals, is the owner's decision.
+  - Platform's client sends `sharingMode` only when no workspace kind is given,
+    so `isolated` is not sent with this posture, as it was not for the Boss
+    Cat's. The Runtime pinned for Desktop was not checked, and no live provider
+    was run.
 - **The card does not show what joining grants.** After a reuse the two Cats
   stay participants of the source conversation. Their next ordinary turn runs
   in its folder at its access and permission mode, with Code's session tools on
