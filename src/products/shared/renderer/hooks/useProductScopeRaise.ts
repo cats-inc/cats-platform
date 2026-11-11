@@ -15,6 +15,7 @@ import {
   clearPendingRaiseNotice,
   endRaise,
   hasPendingRaiseNotice,
+  pendingRaiseTarget,
   postRaiseNotice,
   stagePendingRaiseNotice,
   subscribeRaiseNotices,
@@ -25,8 +26,9 @@ import {
 type Translate = (key: MessageKey, values?: MessageInterpolationValues) => string;
 
 export interface ProductScopeRaiseOptions {
-  /** The conversation the owner is looking at now. */
+  /** The conversation the owner is looking at now, and the product this app is. */
   routeChannelId: string | null;
+  surface: ProductScope;
   refreshAppShell: () => void;
   showToast: ShowToast;
   t: Translate;
@@ -55,19 +57,23 @@ export function useProductScopeRaise(options: ProductScopeRaiseOptions): {
   const [pendingChannelId, setPendingChannelId] = useState<string | null>(null);
   const routeChannelIdRef = useRef(options.routeChannelId);
   routeChannelIdRef.current = options.routeChannelId;
+  const surfaceRef = useRef(options.surface);
+  surfaceRef.current = options.surface;
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
   /**
-   * A raise's outcome, in the app mounted now. A success about the conversation this app shows is
-   * left to that conversation's redirect, which is coming and carries the notice; anything else
-   * is shown here.
+   * A raise's outcome, in the app mounted now. A success about the conversation this app shows,
+   * in another product than the one it moved to, is left to that conversation's redirect, which
+   * is coming and carries the notice. Anything else is shown here, including a conversation the
+   * owner already opened in its new product, where no redirect will come.
    */
   const receive = useCallback((entry: RaiseNoticeMessage) => {
     if (entry.channelId !== null && hasPendingRaiseNotice(entry.channelId)) {
-      if (routeChannelIdRef.current === entry.channelId) return;
+      if (routeChannelIdRef.current === entry.channelId
+        && pendingRaiseTarget(entry.channelId) !== surfaceRef.current) return;
       clearPendingRaiseNotice(entry.channelId);
     }
     showToast(entry.message);

@@ -301,7 +301,7 @@ test('while a raise is in flight the chip is disabled and opens nothing', () => 
 });
 
 /** Mounts the raise hook with a raise request that stays open until settled. */
-function createRaiseHarness(initialRoute: string | null = 'chat-a') {
+function createRaiseHarness(initialRoute: string | null = 'chat-a', surface: ProductScope = 'chat') {
   const toasts: string[] = [];
   let refreshes = 0;
   let routeChannelId: string | null = initialRoute;
@@ -317,6 +317,7 @@ function createRaiseHarness(initialRoute: string | null = 'chat-a') {
   function Harness() {
     hook = useProductScopeRaise({
       routeChannelId,
+      surface,
       refreshAppShell: () => { refreshes += 1; },
       showToast: (message) => { toasts.push(message); },
       t: en,
@@ -473,6 +474,23 @@ test('back on the same conversation, the toast waits for its redirect, and a sec
       'the redirect carries it');
   } finally {
     back?.restore();
+    first.restore();
+  }
+});
+
+test('opened straight in its new product, the conversation shows the toast where no redirect will come', async () => {
+  const first = createRaiseHarness();
+  let code: ReturnType<typeof createRaiseHarness> | null = null;
+  try {
+    act(() => { void first.hook.control.raise('chat-a', 'code', 'rev-1'); });
+    first.unmount();
+    await first.settleFirst('resolve');
+    // The owner opens the conversation from Code's Recents, where it now lives.
+    code = createRaiseHarness('chat-a', 'code');
+    assert.deepEqual(code.toasts, ['This conversation moved to Code.']);
+    assert.equal(code.hook.takeRedirectNotice('chat-a', 'code'), undefined, 'and the notice does not linger');
+  } finally {
+    code?.restore();
     first.restore();
   }
 });

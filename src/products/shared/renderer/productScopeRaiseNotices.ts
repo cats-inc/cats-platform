@@ -64,6 +64,11 @@ export function takePendingRaiseNotice(channelId: string, target: ProductScope, 
   return entry.notice;
 }
 
+/** The product a waiting notice's conversation was raised to. */
+export function pendingRaiseTarget(channelId: string): ProductScope | null {
+  return hasPendingRaiseNotice(channelId) ? pending.get(channelId)!.target : null;
+}
+
 export function clearPendingRaiseNotice(channelId: string): void {
   pending.delete(channelId);
 }

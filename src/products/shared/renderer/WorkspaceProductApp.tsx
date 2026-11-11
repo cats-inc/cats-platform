@@ -518,6 +518,7 @@ export function createWorkspaceProductApp({
     });
     const { control: productScopeRaise, takeRedirectNotice } = useProductScopeRaise({
       routeChannelId,
+      surface: shellSurface,
       refreshAppShell,
       showToast,
       t,
