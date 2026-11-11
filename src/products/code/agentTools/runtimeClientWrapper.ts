@@ -36,6 +36,8 @@ interface TrackedSession {
   channelId: string;
   workspacePath: string | null;
   report: RuntimeSessionMcpDeliveryReport | undefined;
+  /** The grant was issued on a send and Runtime could not say the session's folder. */
+  folderUnknown?: boolean;
 }
 
 export interface CodeAgentToolsClientWrapperOptions {
@@ -189,11 +191,26 @@ export function createCodeAgentToolsClientWrapper(
                 // session works in, not the conversation's (SPEC-141 FR-25).
                 const marker = readCodeAgentToolsInvocationMarker(input?.context);
                 if (marker) {
-                  const token = issue(marker);
-                  options.grants.bind(token, sessionId, { workspacePath: await sessionWorkspacePath(target, sessionId) });
-                  tracked = { token, channelId: marker.channelId, workspacePath: marker.workspacePath, report: undefined };
-                  sessions.set(sessionId, tracked);
-                  options.onSessionStarted?.(marker.channelId);
+                  const workspacePath = await sessionWorkspacePath(target, sessionId);
+                  // Another send for this session may have issued its grant while Runtime was
+                  // asked for the folder. Issue at most one grant per session.
+                  tracked = sessions.get(sessionId);
+                  if (!tracked) {
+                    const token = issue(marker);
+                    options.grants.bind(token, sessionId, { workspacePath });
+                    tracked = { token, channelId: marker.channelId, workspacePath: marker.workspacePath,
+                      report: undefined, folderUnknown: workspacePath === null };
+                    sessions.set(sessionId, tracked);
+                    options.onSessionStarted?.(marker.channelId);
+                  }
+                }
+              } else if (tracked?.folderUnknown && endpoint) {
+                // Runtime could not say where the session works when its grant was issued. Ask
+                // again, so one failed read does not leave the tools without a folder.
+                const workspacePath = await sessionWorkspacePath(target, sessionId);
+                if (workspacePath && sessions.get(sessionId) === tracked) {
+                  options.grants.bind(tracked.token, sessionId, { workspacePath });
+                  tracked.folderUnknown = false;
                 }
               }
               if (!tracked || !endpoint) return target.sendMessage(sessionId, content, input);
@@ -218,7 +235,10 @@ export function createCodeAgentToolsClientWrapper(
                 mcpServers: withServers(input?.mcpServers, descriptor(endpoint, tracked.token, tracked)),
               });
               if (session.mcpServers) tracked.report = session.mcpServers;
-              if (session.cwd) options.grants.bind(tracked.token, sessionId, { workspacePath: session.cwd });
+              if (session.cwd) {
+                options.grants.bind(tracked.token, sessionId, { workspacePath: session.cwd });
+                tracked.folderUnknown = false;
+              }
               return session;
             };
           }

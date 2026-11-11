@@ -132,3 +132,11 @@ test("Work's conversation route shows the canvas pane beside the conversation", 
   assert.match(parent, /fixtureConversation/u);
   assert.doesNotMatch(parent, /artifactCanvasPane/u);
 });
+
+test('a path with broken percent-encoding is not a canvas URL', () => {
+  // The renderer parses the location while it renders; a URIError would take the shell down.
+  for (const path of ['/work/chats/%E0%A4%A', '/code/chats/%E0%A4%A/canvas/a', '/work/chats/c/canvas/%E0%A4%A']) {
+    assert.equal(canvasSurfaceRouteRegistry.parse(path), null, path);
+  }
+  assert.equal(canvasSurfaceRouteRegistry.parseProjectionApiPath('/api/canvas/code_conversation/%E0%A4%A/artifacts/a'), null);
+});

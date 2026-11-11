@@ -308,11 +308,13 @@ export const canvasSurfaceRouteRegistry: CanvasSurfaceRouteRegistry = {
   projectionApiUrl(surface, artifactId, presentation = 'auto') {
     return composeProjectionApiUrl(surface, artifactId, presentation);
   },
+  // A path with broken percent-encoding is not a canvas URL. The renderer parses the location
+  // while it renders, so a thrown URIError would take the whole shell down.
   parse(pathname) {
-    return parseCanvasSurfacePath(pathname);
+    return withoutUriError(() => parseCanvasSurfacePath(pathname));
   },
   parseProjectionApiPath(pathname) {
-    return parseCanvasProjectionApiPath(pathname);
+    return withoutUriError(() => parseCanvasProjectionApiPath(pathname));
   },
 };
 
@@ -423,6 +425,15 @@ export function composeArtifactCanvasNavigateIntent(input: {
     triggeredAt: input.triggeredAt,
     expiresAt: new Date(new Date(input.triggeredAt).getTime() + ttlMs).toISOString(),
   };
+}
+
+function withoutUriError<T>(parse: () => T | null): T | null {
+  try {
+    return parse();
+  } catch (error) {
+    if (error instanceof URIError) return null;
+    throw error;
+  }
 }
 
 function surfaceRoutePrefix(kind: CanvasSurfaceKind, route?: CanvasRouteOptions): string {

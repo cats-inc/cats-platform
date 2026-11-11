@@ -277,8 +277,12 @@ real provider.
     four places. A direct lane reads as `chat` and gets none of it.
   - Who gets the `cats` server: a conversation's own turns and session starts, the only
     callers of the invocation enrichment. Work's supervised runs, schedules and the golden
-    path use Work's runtime client, which has no Code wrapper, and get no server. FR-8 names
-    conversations, so this is what it asks for.
+    path carry no marker, because they never pass through the enrichment, so the wrapper adds
+    no server to them. FR-8 names conversations, so this is what it asks for.
+    - It is the marker, not the client, that keeps them out. In production Work gets the
+      shared runtime client, which the Code wrapper wraps (`src/index.ts`,
+      `app/server/dependencies.ts`). A marker added to a Work run's context would bring the
+      server with it.
 - [x] Make Code's conversation parts usable from Work's route: the preview controls, the
       preview button, the work areas panel and the folder and permission chips.
   - They stay in `src/products/code/renderer/components/`. `tests/dependency-graph.test.js`
@@ -305,6 +309,11 @@ real provider.
     need one answer `workspace_unknown`.
   - The same path serves a Platform restart, which now also binds the session's folder
     instead of the conversation's.
+  - When Runtime cannot say at first, the next send asks again, so one failed read does not
+    leave the grant without a folder.
+  - Two sends racing on a session that has no grant yet issue one grant, not two. The
+    review of this phase ran the race: two grants, and closing the session revoked one, so
+    the conversation's previews would not stop.
 - [x] Keep the other servers on the session. Code's wrapper keeps the servers a call already
       carries and replaces only entries named like its own, on create, send and resume.
   - The image tools' server is also named `cats`. It is offered only in a companion's
@@ -315,6 +324,15 @@ real provider.
     Cats, not Cats Code.
   - The `product:code` label stays. It names Code's tools, nothing in Platform reads it, and
     renaming it could break a reader outside Platform.
+  - The join hint and card no longer say the Code tools include a shell; a shell comes from
+    the conversation's permission.
+- [ ] Known, not changed here: a dev preview ignores the conversation's execution policy.
+      `shellPermission.ts` and the enricher decide whether a session may start one from the
+      access and permission mode alone, so a policy that turns off network or asks for every
+      approval still lets `start_dev_preview` run a package.json script in Platform's own
+      process. This held for Code conversations before; Work includes Code, so it now holds
+      for Work conversations too. It needs Settings › Code's preview switch, which is off by
+      default. It needs a change of its own.
 - [ ] Tests, plus an isolated candidate check of a Work conversation that shows an artifact and
       a live preview.
   - [x] Tests: the scope predicate at the four places, the wrapper keeping other servers and

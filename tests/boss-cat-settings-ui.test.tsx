@@ -79,7 +79,9 @@ test('SPEC-139 FR-10: the card shows what joining grants and the owner answers i
   const view = render(<BossCatJoinRequestCard laneId="lane" requestId="request-1" status="pending" />);
   await waitFor(() => assert.ok(view.queryByText(/Ops/u)));
   const text = view.container.textContent ?? '';
-  for (const expected of ['/repo', 'Kiki, Mochi', 'acts without asking', 'shell', 'claude · opus', 'companion memory', '8']) {
+  // The Code tools are named for what they are; a shell comes from the permission shown above
+  // them ("acts without asking"), not from the tools.
+  for (const expected of ['/repo', 'Kiki, Mochi', 'acts without asking', 'Code tools for previews and artifacts', 'claude · opus', 'companion memory', '8']) {
     assert.ok(text.includes(expected), expected);
   }
   fireEvent.click(view.getByRole('button', { name: /Allow the join/u }));

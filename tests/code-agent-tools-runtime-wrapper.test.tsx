@@ -264,3 +264,52 @@ test('SPEC-141 FR-25: a session that gains the server is bound to the folder it 
     assert.equal(grant?.binding.channelId, 'channel-1');
   }
 });
+
+test('two first sends racing on one session issue one grant, and close revokes it', async () => {
+  // Found by the Phase 4 review: with the folder read awaited between the lookup and the
+  // write, two sends each issued a grant and close revoked only one.
+  const { grants, wrapper } = setup();
+  const { client, calls } = fakeClient();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  (client as unknown as { observeSession: (id: string) => Promise<unknown> }).observeSession = async (id: string) => {
+    await gate;
+    return { session: { id, workspace: { runtimeCwd: '/runtime/worktrees/rt-race' } } };
+  };
+  const wrapped = wrapper.wrapClient(client);
+  const first = wrapped.sendMessage('rt-race', 'one', { context: MARKER_CONTEXT });
+  const second = wrapped.sendMessage('rt-race', 'two', { context: MARKER_CONTEXT });
+  release();
+  await Promise.all([first, second]);
+  const tokens = calls.send.map((input) => {
+    const server = input?.mcpServers?.find((entry) => entry.name === 'cats');
+    return server?.auth.kind === 'bearer_env' ? server.auth.token : '';
+  });
+  assert.equal(new Set(tokens).size, 1, 'both sends carry the same grant');
+  assert.equal(grants.some((grant) => grant.runtimeSessionId === 'rt-race'), true);
+  await wrapped.closeSession('rt-race');
+  assert.equal(grants.some(() => true), false, 'no grant outlives the session');
+});
+
+test('a grant issued without a folder gets one when Runtime can later say it', async () => {
+  const { grants, wrapper } = setup();
+  const { client, calls } = fakeClient();
+  let answers = 0;
+  (client as unknown as { observeSession: (id: string) => Promise<unknown> }).observeSession = async (id: string) => {
+    answers += 1;
+    if (answers === 1) throw new Error('runtime busy');
+    return { session: { id, workspace: { runtimeCwd: '/runtime/worktrees/rt-late' } } };
+  };
+  const wrapped = wrapper.wrapClient(client);
+  const tokenOf = (index: number) => {
+    const server = calls.send[index]?.mcpServers?.find((entry) => entry.name === 'cats');
+    return server?.auth.kind === 'bearer_env' ? server.auth.token : '';
+  };
+  await wrapped.sendMessage('rt-late', 'one', { context: MARKER_CONTEXT });
+  assert.equal(grants.resolve(tokenOf(0))?.binding.workspacePath, null, 'unknown at first: no folder');
+  await wrapped.sendMessage('rt-late', 'two', { context: MARKER_CONTEXT });
+  assert.equal(tokenOf(1), tokenOf(0), 'the same grant');
+  assert.equal(grants.resolve(tokenOf(1))?.binding.workspacePath, '/runtime/worktrees/rt-late');
+  await wrapped.sendMessage('rt-late', 'three', { context: MARKER_CONTEXT });
+  assert.equal(answers, 2, 'once known, the folder is not asked for again');
+});

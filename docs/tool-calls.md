@@ -568,7 +568,8 @@ ADR-149 D5; the scope starts as the conversation's `originSurface`, and a direct
 message is always `chat`; see
 [SPEC-141](specs/SPEC-141-conversation-product-scope.md)), the
 Code agent-tools enricher adds a secret-free marker at
-`context.metadata.codeAgentTools` (`channelId`, `workspacePath`) and the
+`context.metadata.codeAgentTools` (`channelId`, `workspacePath`,
+`shellExecution`) and the
 `product:code` label on session create and message send. The label names
 Code's tools, not the product the conversation lives on. Only a conversation's
 own turns and session starts pass through the enricher; Work's supervised runs,
