@@ -327,7 +327,12 @@ export interface ChatMessage {
 }
 
 export interface ChatChannelState {
-  titleSource?: 'draft' | 'catlas' | 'manual';
+  /**
+   * `owner`: the owner renamed it, the only title a Boss Cat's board shows (SPEC-139 FR-4).
+   * `manual` is the creation default and what older data was normalized to, so its origin is
+   * unknown; `draft` came from a message and `catlas` from Catlas.
+   */
+  titleSource?: 'draft' | 'catlas' | 'manual' | 'owner';
   catlasTitleAttempts?: { count: number; lastReplyId: string };
   id: string;
   title: string;

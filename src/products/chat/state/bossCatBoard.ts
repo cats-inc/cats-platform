@@ -65,19 +65,23 @@ export interface BossCatBoardCat {
   waitingApprovals?: number;
 }
 
-/** `title` is null unless the owner set it and a visible Cat takes part (FR-4, FR-15). */
+/**
+ * `title` is null unless the owner set it (FR-4). A conversation whose only Cats are hidden
+ * carries its surface, id and age alone (`redacted`, FR-15).
+ */
 export interface BossCatBoardGroup {
   conversationId: string;
   surface: PlatformSurfaceId;
   createdAt: string;
-  title: string | null;
-  participantNames: string[];
-  bossCatIsMember: boolean;
-  lastOwnerMessageAt: string | null;
-  lastMessageAt: string | null;
-  turnRunning: boolean;
-  turnFailed: boolean;
-  waitingChoice: boolean;
+  redacted: boolean;
+  title?: string | null;
+  participantNames?: string[];
+  bossCatIsMember?: boolean;
+  lastOwnerMessageAt?: string | null;
+  lastMessageAt?: string | null;
+  turnRunning?: boolean;
+  turnFailed?: boolean;
+  waitingChoice?: boolean;
 }
 
 export interface BossCatBoard {
@@ -109,11 +113,13 @@ export function sanitizeBoardText(value: string | null | undefined): string | nu
 }
 
 /**
- * FR-4: only a title the owner set. Drafted, Catlas-set and Boss-Cat-set titles count as
- * message text; a transport's sender name lives in the topic, which the board never reads.
+ * FR-4: only a title the owner set by renaming (`owner`). `manual` is only the creation default
+ * (K3 uses the owner's goal text, older data was normalized to it), and drafted, Catlas-set and
+ * Boss-Cat-set titles count as message text. A transport's sender name lives in the topic, which
+ * the board never reads.
  */
 export function readOwnerSetTitle(channel: Pick<ChatChannelState, 'title' | 'titleSource'>): string | null {
-  return channel.titleSource === 'manual' ? sanitizeBoardText(channel.title) : null;
+  return channel.titleSource === 'owner' ? sanitizeBoardText(channel.title) : null;
 }
 
 export function isHiddenFromBossCat(cat: Pick<ChatCat, 'hiddenFromBossCat'> | null | undefined): boolean {
@@ -179,13 +185,16 @@ function countPendingApprovals(
   conversationIds: ReadonlySet<string>,
 ): number {
   if (!core || conversationIds.size === 0) return 0;
-  const pendingTaskIds = new Set(core.tasks
-    .filter((task) => task.approval?.status === 'pending')
-    .map((task) => task.id));
-  return new Set(core.approvalBindings
-    .filter((binding) => binding.conversationId && conversationIds.has(binding.conversationId)
-      && pendingTaskIds.has(binding.approvalTaskId))
-    .map((binding) => binding.approvalTaskId)).size;
+  const pending = core.tasks.filter((task) => task.approval?.status === 'pending');
+  const pendingIds = new Set(pending.map((task) => task.id));
+  return new Set([
+    ...pending.filter((task) => task.conversationId && conversationIds.has(task.conversationId))
+      .map((task) => task.id),
+    ...core.approvalBindings
+      .filter((binding) => binding.conversationId && conversationIds.has(binding.conversationId)
+        && pendingIds.has(binding.approvalTaskId))
+      .map((binding) => binding.approvalTaskId),
+  ]).size;
 }
 
 function catProblems(channels: ChatChannelState[], catId: string, since: number): BossCatBoardProblem[] {
@@ -272,12 +281,16 @@ export function buildBossCatBoard(input: BuildBossCatBoardInput): BossCatBoard {
         .filter((cat): cat is ChatCat => Boolean(cat) && !isHiddenFromBossCat(cat))
         .map((cat) => sanitizeBoardText(cat.name) ?? 'Cat');
       const otherCatIds = catIds.filter((catId) => catId !== input.bossCatId);
-      const onlyHiddenCats = otherCatIds.length > 0 && visibleNames.length === 0;
-      return {
+      const identity = {
         conversationId: channel.id,
         surface: channel.originSurface ?? 'chat',
         createdAt: channel.createdAt,
-        title: onlyHiddenCats ? null : readOwnerSetTitle(channel),
+      };
+      if (otherCatIds.length > 0 && visibleNames.length === 0) return { ...identity, redacted: true };
+      return {
+        ...identity,
+        redacted: false,
+        title: readOwnerSetTitle(channel),
         participantNames: visibleNames,
         bossCatIsMember: catIds.includes(input.bossCatId),
         lastOwnerMessageAt: lastMessageAt(channel, (message) => isOwnerMessage(channel, message)),

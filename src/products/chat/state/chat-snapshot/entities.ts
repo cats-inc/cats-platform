@@ -355,7 +355,8 @@ export function normalizeChannel(
   return {
     id: channelId,
     title: readString(channelRecord.title, 'Untitled chat'),
-    titleSource: channelRecord.titleSource === 'draft' || channelRecord.titleSource === 'catlas' ? channelRecord.titleSource : 'manual',
+    titleSource: channelRecord.titleSource === 'draft' || channelRecord.titleSource === 'catlas'
+      || channelRecord.titleSource === 'owner' ? channelRecord.titleSource : 'manual',
     catlasTitleAttempts: normalizeCatlasTitleAttempts(channelRecord.catlasTitleAttempts),
     topic: readString(channelRecord.topic, 'This chat is still taking shape.'),
     originSurface: normalizePlatformSurface(channelRecord.originSurface),
