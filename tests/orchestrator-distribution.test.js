@@ -227,7 +227,9 @@ function assertRequest(result, raw, bundleDigest, locale) {
   assert.equal(created.provider, result.binding.provider);
   assert.equal(created.instance, result.binding.instance);
   assert.equal(created.model, result.binding.model);
-  assert.equal(created.skills, undefined);
+  // A decision session is a read-only sandbox that asks for no skills.
+  assert.deepEqual(created.skills, { requestedSkills: [], strict: true });
+  assert.equal(created.workspaceAccess, 'read_only');
   const request = result.calls.send[0];
   const knowledge = JSON.parse(request.content).productKnowledge;
   assert.equal(knowledge.status, 'ready');

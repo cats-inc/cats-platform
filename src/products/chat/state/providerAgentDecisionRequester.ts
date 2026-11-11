@@ -116,11 +116,15 @@ export function createChatProviderAgentDecisionRequester(
             instance: binding?.instance,
             model: binding ? binding.model : target.model,
             createInput: {
-              ...(receipts ? {
-                workspaceKind: 'sandbox' as const, workspaceAccess: 'read_only' as const,
-                permissionMode: 'default' as const, sharingMode: 'isolated' as const,
-                skills: { requestedSkills: [], strict: true },
-              } : {}),
+              // Every decision session is a read-only sandbox with default permission and no
+              // skills, as the Boss Cat's is. A decision is one JSON object; it needs no folder,
+              // no write access and no approvals skipped. Before, a one-shot decision was
+              // created with no posture, so Platform's client sent the permission mode `skip`
+              // and Runtime gave it a read-write sandbox, while the owner's message (up to 4,000
+              // characters) went into its prompt.
+              workspaceKind: 'sandbox' as const, workspaceAccess: 'read_only' as const,
+              permissionMode: 'default' as const, sharingMode: 'isolated' as const,
+              skills: { requestedSkills: [], strict: true },
               modelSelection: binding?.modelSelection ?? undefined,
               context: {
                 source: 'automation',
@@ -151,8 +155,11 @@ export function createChatProviderAgentDecisionRequester(
             reason: 'chat_provider_agent_decision',
           },
         });
-        if (receipts && result.runtimeMessage.segments.some((segment) => segment.kind !== 'text')) {
-          throw new Error('Native tool activity is not part of collaboration preparation.');
+        // A decision is text only. Native tool activity fails it, whatever the decision is for.
+        if (result.runtimeMessage.segments.some((segment) => segment.kind !== 'text')) {
+          throw new Error(receipts
+            ? 'Native tool activity is not part of collaboration preparation.'
+            : 'Native tool activity is not part of a provider-agent decision.');
         }
         return result;
       };

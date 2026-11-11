@@ -443,23 +443,38 @@ receive none of Code's tools. The review recorded the limits below. Each needs
 the decision flag unless it says otherwise, and each already held for a
 conversation created on Chat unless it says what is new.
 
-- **One-shot decision sessions are created outside the conversation's posture.**
-  A decision request that runs no collaboration loop creates its session with
-  no workspace kind, access or skill list, and the Platform client then sends
-  the permission mode `skip`. By the reviewer's reading of Runtime's main
-  branch that gives a read-write sandbox with approvals skipped; the Runtime
-  pinned for Desktop was not checked, and no live model was used. Among a
-  coordinator's decision requests, only the collaboration loops ask for a
-  read-only sandbox, default permission and no skills, and only they reject
-  native tool activity. A Boss Cat's own decision session does both.
-  - New: the owner's message, up to 4,000 characters, now enters that session
-    for a Code or Work coordinator. Before, its prompt held counts and
-    reference ids.
-  - A Code conversation set to read-only can so hand text its Cat wrote,
-    through a choice answer, to a session that is not read-only.
-  - Not fixed with FR-19. The fix is to create every decision session as the
-    loops do and to reject native activity in all of them, as a change of its
-    own.
+- **One-shot decision sessions were created outside the conversation's
+  posture. Fixed on 2026-11-11, after FR-19.** A decision request that ran no
+  collaboration loop created its session with no workspace kind, access or
+  skill list, and the Platform client then sent the permission mode `skip`. By
+  the reviewer's reading of Runtime's main branch that gave a read-write
+  sandbox with approvals skipped. Since FR-19 the owner's message, up to 4,000
+  characters, entered that session for a Code or Work coordinator, so a Code
+  conversation set to read-only could hand text its Cat wrote, through a
+  choice answer, to a session that was not read-only.
+  - Every decision session is now created as the collaboration loops' and the
+    Boss Cat's are: a read-only sandbox, default permission, isolated, with no
+    skills. A one-shot decision needs no folder, no write access and no
+    approvals skipped; it returns one JSON object.
+  - Every decision now fails on native tool activity, not only the loops'. With
+    `failureMode: 'return_null'` the turn continues as it does when a decision
+    is malformed. The check runs on the returned turn, so a tool the model ran
+    has already run; the read-only sandbox is what limits it.
+  - **A provider that cannot enforce read-only access gets no decision.** By the
+    review's reading of Runtime's main branch, a session asking for read-only
+    access is refused for an adapter whose capabilities report no permission
+    control: Copilot, Cursor, Goose, Junie, Kiro, Pi and the agent backend. The
+    Boss Cat's decisions and the collaboration loops were already refused for
+    them. One-shot decisions now are too, and production asks for `null` on
+    failure, so the turn continues without a decision and nothing says why. With
+    the decision flag off, the only one-shot decision is a companion lane's post
+    decision, so a companion Cat on one of those providers no longer posts.
+    Whether to restore that, and how without giving the owner's text to a
+    session that skips approvals, is the owner's decision.
+  - Platform's client sends `sharingMode` only when no workspace kind is given,
+    so `isolated` is not sent with this posture, as it was not for the Boss
+    Cat's. The Runtime pinned for Desktop was not checked, and no live provider
+    was run.
 - **The card does not show what joining grants.** After a reuse the two Cats
   stay participants of the source conversation. Their next ordinary turn runs
   in its folder at its access and permission mode, with Code's session tools on

@@ -87,7 +87,7 @@ function observation(
   };
 }
 
-function createRuntimeStub(options: { responseText?: string } = {}): RuntimeClient & {
+function createRuntimeStub(options: { responseText?: string; nativeTool?: boolean } = {}): RuntimeClient & {
   createdSessions: unknown[];
   sentMessages: Array<{ sessionId: string; content: string; input: unknown }>;
 } {
@@ -132,6 +132,9 @@ function createRuntimeStub(options: { responseText?: string } = {}): RuntimeClie
       sentMessages.push({ sessionId, content, input });
       return {
         segments: [
+          ...(options.nativeTool
+            ? [{ kind: 'tool_use', text: '', toolName: 'Bash', toolId: 'tool-1' }]
+            : []),
           {
             kind: 'text',
             text: options.responseText ?? JSON.stringify(decision()),
@@ -187,11 +190,41 @@ test('Chat provider-agent decision requester calls the runtime adapter for execu
     'cats-supervision-runtime-boundary',
   );
   assert.match(createdSession.instructions ?? '', /Return exactly one JSON object/u);
+  // A one-shot decision is a read-only sandbox with default permission and no skills, like
+  // the collaboration loops' and the Boss Cat's. Before, it carried no posture, so the client
+  // sent the permission mode `skip`.
+  const posture = createdSession as RuntimeSessionCreateInput;
+  assert.equal(posture.workspaceKind, 'sandbox');
+  assert.equal(posture.workspaceAccess, 'read_only');
+  assert.equal(posture.permissionMode, 'default');
+  assert.equal(posture.sharingMode, 'isolated');
+  assert.deepEqual(posture.skills, { requestedSkills: [], strict: true });
+  assert.equal(posture.cwd, undefined);
   assert.equal(runtimeClient.sentMessages[0]?.sessionId, 'provider-agent-session-1');
   assert.equal(
     runtimeClient.sentMessages[0]?.content.includes('"observationId":"chat-observation-1"'),
     true,
   );
+});
+
+test('a one-shot decision that used a native tool fails, and fails open when asked to', async () => {
+  const input = {
+    state: {} as never,
+    channelId: 'channel-1',
+    payload: { body: 'hello' },
+    observation: observation(),
+    now: new Date('2026-04-28T00:00:00.000Z'),
+  };
+  // Before, only the collaboration loops rejected native activity.
+  await assert.rejects(
+    createChatProviderAgentDecisionRequester()({ ...input, runtimeClient: createRuntimeStub({ nativeTool: true }) }),
+    /Native tool activity is not part of a provider-agent decision/u,
+  );
+  assert.equal(await createChatProviderAgentDecisionRequester({ failureMode: 'return_null' })(
+    { ...input, runtimeClient: createRuntimeStub({ nativeTool: true }) }), null);
+  // The same text with no tool activity is a decision.
+  assert.equal((await createChatProviderAgentDecisionRequester()(
+    { ...input, runtimeClient: createRuntimeStub() }))?.kind, 'semantic_plan');
 });
 
 test('Chat provider-agent decision requester ignores non-execution targets', async () => {

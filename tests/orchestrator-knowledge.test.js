@@ -289,7 +289,9 @@ test('decision session receives actual goal and procedures using its own binding
     assert.equal(result.kind, 'semantic_plan');
     assert.equal(client.calls.create[0].instance, binding.instance);
     assert.equal(client.calls.create[0].model, binding.model);
-    assert.equal(client.calls.create[0].skills, undefined);
+    // Every decision session asks for no skills, with or without a tool descriptor.
+    assert.deepEqual(client.calls.create[0].skills, { requestedSkills: [], strict: true });
+    assert.equal(client.calls.create[0].workspaceAccess, 'read_only');
     const call = client.calls.send[0];
     const prompt = JSON.parse(call.content);
     assert.equal(call.sessionId, 'decision-session');
