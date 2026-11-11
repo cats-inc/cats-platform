@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Approved by the owner on 2026-11-11 (D1 to D3). Revised the same day after the independent security review (see Security Review), with the conservative choices R1 to R4. Implementation in progress under [PLAN-133](../plans/PLAN-133-boss-cat-across-cats.md): FR-17, the owner-started stamp and the status board (not yet offered as a tool) are implemented; the rest is not |
+| **Status** | Approved by the owner on 2026-11-11 (D1 to D3). Revised the same day after the independent security review (see Security Review), with the conservative choices R1 to R4. Implementation in progress under [PLAN-133](../plans/PLAN-133-boss-cat-across-cats.md): FR-1 (for the board), FR-2 to FR-4, FR-15's board side, FR-16 for the board and FR-17 are implemented; groups, joining, the UI and FR-13/14 are not |
 | **Owner** | Product owner |
 | **Reviewer** | Owner; independent security review on 2026-11-11 |
 | **Updates** | SPEC-125 FR-17 (three new actions beyond the conversation, and the turns they may run in); SPEC-118's K2 direct-lane exclusion (the Boss Cat tools, not K2, may run for a Boss Cat's own direct lane, from Desktop or mobile only; transports stay excluded); SPEC-137 FR-7 (a Boss Cat's `assist` review drops other Cats' lines and gains a peer section); the memory checkpoint (`memoryLayers.ts`, FR-17) |

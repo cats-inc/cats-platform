@@ -535,6 +535,36 @@ export interface ChatState {
   conversationBehavior?: ConversationBehaviorPreferences;
   advancedDraftControls?: AdvancedDraftControlsPreferences;
   folderBrowsePreferences?: FolderBrowsePreferences;
+  /** SPEC-139: Boss Cat tool use within the last hour, across every Boss Cat (FR-2, FR-7, FR-9). */
+  bossCatUsage?: BossCatUsageEntry[];
+}
+
+export type BossCatUsageKind = 'board' | 'group' | 'join_request';
+
+export interface BossCatUsageEntry {
+  kind: BossCatUsageKind;
+  at: string;
+}
+
+/** One Boss Cat tool call, recorded with ids and status only, plus a board when one was read. */
+export interface BossCatToolReceipt {
+  toolName: string;
+  decisionId: string;
+  status: 'applied' | 'refused';
+  reason?: string;
+  at: string;
+  /** The board an applied `chat.boss.status_board` returned (no message text, FR-4). */
+  board?: unknown;
+}
+
+/**
+ * SPEC-139: what the Boss Cat tools did for one owner message, on that message. A retry
+ * replays it and calls no tool again.
+ */
+export interface BossCatTurnRecord {
+  schemaVersion: 1;
+  bossCatId: string;
+  receipts: BossCatToolReceipt[];
 }
 
 export interface BotBindingSummary {
@@ -707,6 +737,8 @@ export interface ChannelMessageMetadata extends Record<string, unknown> {
    * always dropped. Never set for transports, choice answers or other automated sources.
    */
   ownerStarted?: OwnerStartedSurface;
+  /** Server-owned (SPEC-139); a client value is always dropped. */
+  bossCatTurn?: BossCatTurnRecord;
 }
 
 /** Where an owner-started message came from (SPEC-139). */

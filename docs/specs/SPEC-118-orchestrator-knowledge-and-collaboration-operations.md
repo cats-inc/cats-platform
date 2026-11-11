@@ -158,6 +158,9 @@ intersected with policy; tool and output revisions are checked. Roles are
 declared metadata, not verified skill or permission claims. Light availability
 does not admit execution. Default-provider Chat, direct Cat replies, Code/Work
 and external transports do not inherit owner-directory access from an actor name.
+A Boss Cat's own direct lane is the one exception, and not through K2: SPEC-139's
+Boss Cat tools run there for an owner-started Desktop or mobile turn, in their own isolated
+decision session. Transports stay excluded.
 
 The requester performs bounded, sequential calls in one ephemeral decision
 session, after the ordinary message ACK and active-turn persistence. Every

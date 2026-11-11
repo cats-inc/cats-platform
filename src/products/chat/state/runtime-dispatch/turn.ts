@@ -121,6 +121,13 @@ import {
 } from '../runtime-session/state.js';
 import { resolveCurrentTurnRecipientTargets } from '../mentionRouter.js';
 import { buildChatWorkIntakeSourceContext } from '../workIntakeSourceContext.js';
+import {
+  BOSS_CAT_INVARIANTS,
+  BOSS_STATUS_BOARD,
+  bossCatToolDescriptors,
+  bossCatToolManifests,
+  resolveBossCatTurnGate,
+} from '../bossCatSurface.js';
 import type { DeterministicChatRoutingPlan } from './deterministicPlan.js';
 
 const WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES = new Set([
@@ -180,11 +187,15 @@ export interface PreparedDispatchTurn {
   maxTargetVisits: number;
   providerAgentObservation: ProviderAgentBoundedObservation | null;
   providerAgentDecisionDeferred?: boolean;
+  /** SPEC-139: Boss Cat tools only, for the isolated decision session that runs first. */
+  bossCatObservation?: ProviderAgentBoundedObservation | null;
   terminalResult: { state: ChatState; results: ChannelDispatchResult[] } | null;
 }
 
 export interface PrepareDispatchTurnOptions {
   preparationBudget?: Readonly<CollaborationPreparationBudget>;
+  /** The full provider-agent decision path is on (SPEC-139 FR-1). */
+  enableBossCatTools?: boolean;
   enableCollaborationReads?: boolean;
   enableCollaborationExecution?: boolean;
   deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
@@ -313,6 +324,16 @@ export function prepareDispatchTurnForUserMessage(
     transport: options.transport,
     transportBindingId: options.transportBindingId,
   });
+  const bossCatObservation = options.enableBossCatTools
+    ? buildBossCatObservationForTurn({
+      state: nextState,
+      channelId,
+      userMessage,
+      initialResolution,
+      nowIso,
+      providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
+    })
+    : null;
   const channelRouting = requireChannel(nextState, channelId).roomRouting;
   const baseRoomRouting = resolveRoomRoutingState(channelRouting);
   const workflow = resolveRoomWorkflowState(baseRoomRouting.workflow);
@@ -525,6 +546,7 @@ export function prepareDispatchTurnForUserMessage(
       maxDispatches,
       maxTargetVisits,
       providerAgentObservation,
+      bossCatObservation,
       terminalResult: {
         state: nextState,
         results,
@@ -547,8 +569,69 @@ export function prepareDispatchTurnForUserMessage(
     maxDispatches,
     maxTargetVisits,
     providerAgentObservation,
+    bossCatObservation,
     terminalResult: null,
   };
+}
+
+/**
+ * SPEC-139 FR-1: offered only in the Boss Cat's own direct lane, for a turn the owner started on
+ * Desktop or mobile, to that lane's admin coordinator. Boss tools only, so nothing else a lane
+ * turn may carry (Work intake, companion posts) reaches the isolated session.
+ */
+function buildBossCatObservationForTurn(input: {
+  state: ChatState;
+  channelId: string;
+  userMessage: ChatMessage;
+  initialResolution: TargetResolution;
+  nowIso: string;
+  providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
+}): ProviderAgentBoundedObservation | null {
+  const gate = resolveBossCatTurnGate(input.state, input.channelId, input.userMessage);
+  const target = input.initialResolution.targets.length === 1 ? input.initialResolution.targets[0]! : null;
+  if (!gate || target?.participantId !== gate.participantId) {
+    return null;
+  }
+  const executionTarget = resolveExecutionMetadataForTarget(input.state, input.channelId, target);
+  const capabilityProfile = resolveProviderCapabilityProfile({
+    provider: executionTarget.provider ?? 'unknown',
+    instance: executionTarget.instance,
+    model: executionTarget.model,
+    modelSelection: executionTarget.modelSelection ?? null,
+  }, { assessedAt: input.nowIso, bootstrapConfig: input.providerCapabilityBootstrapConfig });
+  const policyDecision = decideSupervisionPolicy({
+    actionId: `${input.userMessage.id}:boss-cat-observation`,
+    runId: `chat:${input.channelId}`,
+    actorRef: `cat:${gate.participantId}`,
+    targetRef: BOSS_STATUS_BOARD,
+    providerRef: capabilityProfile.profileId,
+    actionType: 'boss_cat_status_board',
+    evaluatedAt: input.nowIso,
+    capabilityAssessment: capabilityProfile.assessment,
+    toolManifest: bossCatToolManifests()[0]!,
+  });
+  if (policyDecision.status !== 'applied') {
+    return null;
+  }
+  return buildChatProviderAgentObservation({
+    state: input.state,
+    channelId: input.channelId,
+    actorRef: `cat:${gate.participantId}`,
+    capabilityProfile,
+    policy: policyDecision.result.policy,
+    availableTools: bossCatToolDescriptors(),
+    invariants: [...BOSS_CAT_INVARIANTS],
+    messageCharacterCount: input.userMessage.body.length,
+    goal: input.userMessage.body,
+    routing: {
+      trigger: input.initialResolution.trigger,
+      resolution: input.initialResolution.resolution,
+      targetCount: input.initialResolution.targets.length,
+      unresolvedCount: input.initialResolution.unresolved.length,
+      mentionCount: input.initialResolution.mentionNames.length,
+    },
+    now: new Date(input.nowIso),
+  });
 }
 
 function buildProviderAgentObservationForTurn(input: {

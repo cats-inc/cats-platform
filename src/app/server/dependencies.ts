@@ -361,6 +361,10 @@ export function resolveServerDependencies(
       apiKey: dependencies.shared.config.runtimeApiKey }),
     publishCollaboration: (channelId, action) => publishChannelMutation(chatEventHub, channelId, action),
     runChatMutation: (channelId, operation) => mutationGate.run(channelId, operation),
+    readLifeProfiles: async () => new Map((await companionStore.readSnapshot()).boxes
+      .map((box) => [box.catId, box.life] as const)),
+    // The directory Work and Code record supervision evidence in, which data reset clears.
+    evidenceDataDir: dependencies.work?.evidenceDataDir ?? dependencies.shared.config.chatStatePath,
   });
   // With the flag off, decisions still run for companion posts only (PLAN-077);
   // the flag widens them to every provider-agent tool.

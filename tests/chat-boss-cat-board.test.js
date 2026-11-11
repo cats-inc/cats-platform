@@ -155,17 +155,19 @@ test('SPEC-139 FR-3: failed and interrupted turns of the last 7 days, per conver
     reviewRequired: false, lastCheckpointId: null, convergeTargetId: null, continuationCount: 0, dispatchCount: 1,
     targetStatuses: [{ status: targetStatus, participant: { participantKind: 'cat', participantId: catId, participantName: 'x' } }],
     events: [], startedAt: at(minutesAgo).toISOString(), updatedAt: at(minutesAgo).toISOString(), completedAt: null });
+  // Newest first, as the workflow keeps it.
   channel.roomRouting.workflow.turnHistory = [
+    turn(30, 'completed', ids.mochi),
     turn(60, 'failed', ids.kiki),
+    turn(90, 'failed', ids.mochi),
     turn(120, 'cancelled', ids.kiki),
     turn(60 * 24 * 8, 'failed', ids.kiki),
-    turn(90, 'failed', ids.mochi),
   ];
   const board = buildBossCatBoard({ state, bossCatId: ids.boss, now: NOW });
   assert.deepEqual(board.cats.find((cat) => cat.catId === ids.kiki).problems,
     [{ conversationId: group, failed: 1, interrupted: 1 }]);
-  assert.deepEqual(board.cats.find((cat) => cat.catId === ids.mochi).problems,
-    [{ conversationId: group, failed: 1, interrupted: 0 }]);
+  assert.deepEqual(board.cats.find((cat) => cat.catId === ids.mochi).problems, [],
+    'a later completed turn settles the earlier failure');
 });
 
 test('SPEC-139 FR-3: pending owner approvals on the Cat conversations are counted', () => {

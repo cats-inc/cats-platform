@@ -5,7 +5,7 @@ import type {
   ProviderAgentDecisionRequester,
 } from './runtime-dispatch/routing.js';
 import { knowledgeDigest } from '../../../platform/knowledge/productKnowledge.js';
-import { buildChannelView, requireChannel } from './model/index.js';
+import { buildChannelView, requireChannel, resolveChannelCanonicalIdentity } from './model/index.js';
 import { isCoordinatorActorRef, resolveCoordinatorParticipant } from './coordinator.js';
 import { isOrchestratorKnowledgeChannel, loadOrchestratorKnowledge } from './orchestratorKnowledge.js';
 import { resolveProviderCapabilityProfile } from '../../../platform/supervision/providerCapabilityProfiles.js';
@@ -19,6 +19,9 @@ import { runCollaborationExecutionLoop } from './collaborationExecutionLoop.js';
 import type { ChatStore } from './store.js';
 import type { RuntimeDeliveryClient } from '../../../platform/runtime/deliveryClient.js';
 import { createProviderAgentPromptSession } from '../../../platform/orchestration/providerAgentPromptSession.js';
+import { isBossCatTool, runBossCatDecisionLoop, type BossCatBoardSources } from './bossCatSurface.js';
+import { updateChatState } from './store.js';
+import { createDurableToolEvidenceSink } from '../../../platform/supervision/evidenceSink.js';
 import { resolveCollaborationPreparationBudget,
   type CollaborationPreparationBudget } from '../shared/collaborationPreparationBudget.js';
 
@@ -32,6 +35,10 @@ export interface ChatProviderAgentDecisionRequesterOptions {
   deliveryClient?: RuntimeDeliveryClient;
   publishCollaboration?: (channelId: string, action: 'created' | 'updated') => void;
   runChatMutation?: <T>(channelId: string, operation: () => Promise<T>) => Promise<T>;
+  /** Own-initiative profiles for the Boss Cat board (SPEC-137, SPEC-139 FR-3). */
+  readLifeProfiles?: BossCatBoardSources['readLifeProfiles'];
+  /** Where SPEC-139 FR-16 supervision records go (ids only), per conversation. */
+  evidenceDataDir?: string;
 }
 
 export function createChatProviderAgentDecisionRequester(
@@ -45,6 +52,9 @@ export function createChatProviderAgentDecisionRequester(
     }
 
     try {
+      if (input.bossCat) {
+        return await runBossCatDecision(input, input.bossCat, options);
+      }
       // The coordinator decides with product knowledge, bound to its own model.
       const coordinator = isCoordinatorActorRef(input.state, input.channelId, input.observation.actor.actorRef)
         && isOrchestratorKnowledgeChannel(requireChannel(input.state, input.channelId))
@@ -176,6 +186,87 @@ export function createChatProviderAgentDecisionRequester(
   };
   requester.supportsCollaboration = true;
   requester.supportsCollaborationExecution = Boolean(options.chatStore?.updateSnapshot && options.deliveryClient);
+  requester.supportsBossCat = Boolean(options.chatStore?.updateSnapshot);
   Object.defineProperty(requester, 'preparationBudget', { value: preparationBudget, enumerable: true });
   return requester;
+}
+
+/**
+ * SPEC-139 FR-1: the Boss Cat decides in an isolated session. Its input is the owner's current
+ * message and the boards it reads: no product knowledge, lane transcript, heartbeat, review,
+ * file or tool output. The session is a read-only sandbox with no skills, on the Boss Cat's own
+ * model, and it is closed when the loop ends.
+ */
+async function runBossCatDecision(
+  input: Parameters<ProviderAgentDecisionRequester>[0],
+  bossCat: NonNullable<Parameters<ProviderAgentDecisionRequester>[0]['bossCat']>,
+  options: ChatProviderAgentDecisionRequesterOptions,
+): Promise<null> {
+  const chatStore = options.chatStore;
+  const target = input.observation.actor.target;
+  if (!chatStore?.updateSnapshot || target.kind !== 'execution_target'
+    || !input.observation.availableTools.every(({ manifest }) => isBossCatTool(manifest.name))) {
+    return null;
+  }
+  const participant = resolveCoordinatorParticipant(input.state, input.channelId);
+  const execution = participant?.execution ?? null;
+  const promptSession = createProviderAgentPromptSession(4);
+  const record = await runBossCatDecisionLoop({
+    channelId: input.channelId,
+    sourceMessageId: bossCat.sourceMessageId,
+    bossCatId: bossCat.bossCatId,
+    observation: input.observation,
+    runtimeClient: input.runtimeClient,
+    isCancelled: input.isCancelled,
+    readState: () => chatStore.read(),
+    updateState: (mutate) => updateChatState(chatStore, mutate),
+    readCore: () => chatStore.readCore(),
+    readLifeProfiles: options.readLifeProfiles,
+    evidenceSink: options.evidenceDataDir
+      ? createDurableToolEvidenceSink({
+          dataDir: options.evidenceDataDir,
+          conversationId: resolveChannelCanonicalIdentity(input.state, input.channelId).conversationId,
+        })
+      : undefined,
+    request: async (observation, sessionId, feedback) => requestProviderAgentDecision({
+      runtimeClient: input.runtimeClient,
+      observation,
+      toolResults: feedback.length > 0 ? feedback : undefined,
+      promptSession,
+      closeCreatedSession: false,
+      target: {
+        sessionId,
+        provider: target.provider,
+        instance: execution?.target.instance ?? undefined,
+        model: execution?.target.model ?? target.model,
+        createInput: {
+          workspaceKind: 'sandbox', workspaceAccess: 'read_only', permissionMode: 'default',
+          sharingMode: 'isolated', skills: { requestedSkills: [], strict: true },
+          modelSelection: execution?.modelSelection ?? undefined,
+          context: {
+            source: 'automation',
+            reason: 'chat-boss-cat-decision-session',
+            metadata: { channelId: input.channelId, observationId: observation.observationId },
+          },
+        },
+        sendInput: {
+          context: {
+            source: 'automation',
+            reason: 'chat-boss-cat-decision',
+            metadata: { channelId: input.channelId, observationId: observation.observationId },
+          },
+        },
+      },
+      supervision: {
+        product: 'cats-chat',
+        surface: 'boss-cat-decision',
+        runId: input.channelId,
+        actionId: `${observation.observationId}:decision`,
+        actorRef: input.observation.actor.actorRef,
+        reason: 'chat_boss_cat_decision',
+      },
+    }),
+  });
+  if (record) input.onBossCatResult?.(record);
+  return null;
 }

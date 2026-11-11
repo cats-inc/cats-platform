@@ -204,10 +204,13 @@ function catProblems(channels: ChatChannelState[], catId: string, since: number)
     const turns = [...(workflow?.activeTurn ? [workflow.activeTurn] : []), ...(workflow?.turnHistory ?? [])];
     let failed = 0;
     let interrupted = 0;
+    // Newest first. A later completed turn for this Cat settles the earlier problems
+    // (as in Cats Bot SPEC-012 FR-2).
     for (const turn of turns) {
-      if (!(Date.parse(turn.startedAt) >= since)) continue;
+      if (!(Date.parse(turn.startedAt) >= since)) break;
       const own = turn.targetStatuses.filter((target) => target.participant.participantId === catId
         || target.participant.participantId === `cat:${catId}`);
+      if (own.some((target) => target.status === 'completed')) break;
       if (own.some((target) => target.status === 'failed' || target.status === 'blocked')) failed += 1;
       else if (own.some((target) => target.status === 'cancelled')) interrupted += 1;
     }
