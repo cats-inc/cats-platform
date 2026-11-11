@@ -47,7 +47,7 @@ async function handleDispatch(
       async () => dispatchOrchestratorTurn({
         ...body,
         chatStore: createLockedDispatchChatStore(context.dependencies.chatStore, body.channelId,
-          await context.dependencies.chatStore.read(), () => context.dependencies.now?.() ?? new Date()),
+          await context.dependencies.chatStore.read(), () => context.dependencies.now?.() ?? new Date(), context.dependencies.runtimeClient),
         channelRouter: context.dependencies.orchestratorChannelRouter,
         plannerSurface: context.dependencies.orchestratorPlannerSurface,
         runtimeClient: context.dependencies.runtimeClient,

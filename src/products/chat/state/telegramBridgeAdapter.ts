@@ -121,7 +121,7 @@ export function createChatTelegramRoomBridge(input: {
       memoryService,
       timestamp,
     }) {
-      const writer = createLockedDispatchChatStore(input.chatStore, roomId, state, () => timestamp);
+      const writer = createLockedDispatchChatStore(input.chatStore, roomId, state, () => timestamp, runtimeClient);
       let lastPersisted = structuredClone(state);
       const routed = await routeChannelMessage(
         state,
