@@ -123,6 +123,7 @@ import { resolveCurrentTurnRecipientTargets } from '../mentionRouter.js';
 import { buildChatWorkIntakeSourceContext } from '../workIntakeSourceContext.js';
 import {
   BOSS_CAT_INVARIANTS,
+  BOSS_CREATE_GROUP,
   BOSS_STATUS_BOARD,
   bossCatToolDescriptors,
   bossCatToolManifests,
@@ -599,17 +600,22 @@ function buildBossCatObservationForTurn(input: {
     model: executionTarget.model,
     modelSelection: executionTarget.modelSelection ?? null,
   }, { assessedAt: input.nowIso, bootstrapConfig: input.providerCapabilityBootstrapConfig });
-  const policyDecision = decideSupervisionPolicy({
+  // The policy is decided for the widest tool offered. A model held to read-only scope (a weak
+  // worker) gets the board alone.
+  const decide = (toolName: string) => decideSupervisionPolicy({
     actionId: `${input.userMessage.id}:boss-cat-observation`,
     runId: `chat:${input.channelId}`,
     actorRef: `cat:${gate.participantId}`,
-    targetRef: BOSS_STATUS_BOARD,
+    targetRef: toolName,
     providerRef: capabilityProfile.profileId,
-    actionType: 'boss_cat_status_board',
+    actionType: toolName === BOSS_CREATE_GROUP ? 'boss_cat_create_group' : 'boss_cat_status_board',
     evaluatedAt: input.nowIso,
     capabilityAssessment: capabilityProfile.assessment,
-    toolManifest: bossCatToolManifests()[0]!,
+    toolManifest: bossCatToolManifests().find((manifest) => manifest.name === toolName)!,
   });
+  const writeDecision = decide(BOSS_CREATE_GROUP);
+  const canWrite = writeDecision.status === 'applied' && writeDecision.result.policy.toolScope !== 'read_only';
+  const policyDecision = canWrite ? writeDecision : decide(BOSS_STATUS_BOARD);
   if (policyDecision.status !== 'applied') {
     return null;
   }
@@ -619,7 +625,8 @@ function buildBossCatObservationForTurn(input: {
     actorRef: `cat:${gate.participantId}`,
     capabilityProfile,
     policy: policyDecision.result.policy,
-    availableTools: bossCatToolDescriptors(),
+    availableTools: bossCatToolDescriptors()
+      .filter(({ manifest }) => canWrite || manifest.name === BOSS_STATUS_BOARD),
     invariants: [...BOSS_CAT_INVARIANTS],
     messageCharacterCount: input.userMessage.body.length,
     goal: input.userMessage.body,

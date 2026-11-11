@@ -2281,6 +2281,7 @@ export const messageKeys = {
   chatCompanionFeedTabActivity: 'chat.companionFeedTabActivity',
   chatCompanionFeedNavAriaLabel: 'chat.companionFeedNavAriaLabel',
   chatCompanionPostPublishedNotice: 'chat.companionPostPublishedNotice',
+  chatBossCatGroupCreatedNotice: 'chat.bossCatGroupCreatedNotice',
   chatCompanionPostRemoveAction: 'chat.companionPostRemoveAction',
   chatCompanionPostRemoveConfirmTitle: 'chat.companionPostRemoveConfirmTitle',
   chatCompanionPostRemoveConfirmMessage: 'chat.companionPostRemoveConfirmMessage',

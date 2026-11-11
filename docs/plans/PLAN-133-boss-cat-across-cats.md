@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress: slices 1 to 3 and 4a implemented |
+| Status | In progress: slices 1 to 4b implemented |
 | Owner | Cats Chat |
 | Reviewer | Owner |
 | Date | 2026-11-11 |
@@ -135,16 +135,35 @@ are tested as live behaviour.
 
 ### Slice 4b: Group conversations
 
-- [ ] `chat.boss.create_group` with ids from a board read in the same run, its title and
-      opening message bounds, and 5 groups an hour.
-- [ ] Created groups: Chat, no repository or cwd, `read_only`, `default`; the opening message
-      posted without dispatch; the invited Cats load no companion memory there; a notice in the
-      Boss Cat's lane.
-- [ ] Write each receipt in the same atomic store update as its effect. The dispatch merge keeps
-      an edit to an existing message only when no other writer touched it.
-- [ ] A retry of a message rebuilt from Core keeps the stamp but not `bossCatTurn`, so it would
-      run the tools again. Carry a marker in the Core turn metadata, or refuse tools on a rebuilt
-      message.
+- [x] `chat.boss.create_group`:
+      - it is offered only after a board was read in the same run;
+      - it takes `{ title, catIds, openingMessage }` and no other fields;
+      - the title is 1 to 80 characters with control and bidi characters removed, and the
+        opening message is 1 to 2,000 characters;
+      - every id must be another Cat on that board and still active;
+      - 5 groups an hour per owner.
+- [x] The Boss observation's policy is decided for `create_group` (`narrow_write`). A model held
+      to read-only scope (a weak worker) is offered the board alone.
+- [x] The created group:
+      - a Chat conversation with no repository or cwd, `read_only` and `default`;
+      - the Boss Cat as coordinator, plus the chosen Cats;
+      - the opening message is the Boss Cat's own message, and nothing is dispatched (R1);
+      - `bossCatGroup` marks it, so the invited Cats load no companion memory there (R2,
+        `isBossCatGroupGuest` in `resolveCompanionSessionForTarget`);
+      - the owner keeps the conversation they had open;
+      - a localized notice in the Boss Cat's lane names the group and its Cats;
+      - the owner's list updates live.
+- [x] One atomic store update does all of it together: it reserves the use, creates the group,
+      posts the notice and writes the receipt on the owner's message. The dispatch merge alone
+      would drop an edit to a message another writer touched.
+- [x] Core turn metadata carries `bossCatTurnCatId`. A message rebuilt from Core gets an empty
+      record, so a retry runs no tool and replays nothing.
+- [x] Tests in `tests/chat-boss-cat-tools.test.js`:
+      - a group created end to end, checking its policy, members, coordinator, opening message,
+        no dispatch, selection, notice, usage, the lane instructions, the Core marker and R2;
+      - refusals: ids not on the board, the Boss Cat's own id, a long title, an empty opening
+        message, extra fields, and the sixth group in an hour;
+      - `create_group` is not offered before a board.
 
 ### Slice 5: Joining
 

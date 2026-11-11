@@ -334,6 +334,11 @@ export interface ChatChannelState {
    */
   titleSource?: 'draft' | 'catlas' | 'manual' | 'owner';
   catlasTitleAttempts?: { count: number; lastReplyId: string };
+  /**
+   * SPEC-139 FR-5: a group conversation a Boss Cat created. The Cats it invited load no
+   * companion memory here (R2).
+   */
+  bossCatGroup?: { bossCatId: string; createdAt: string };
   id: string;
   title: string;
   topic: string;
@@ -555,6 +560,8 @@ export interface BossCatToolReceipt {
   at: string;
   /** The board an applied `chat.boss.status_board` returned (no message text, FR-4). */
   board?: unknown;
+  /** The conversation an applied `chat.boss.create_group` created. */
+  conversationId?: string;
 }
 
 /**

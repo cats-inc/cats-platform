@@ -222,6 +222,7 @@ async function runBossCatDecision(
     updateState: (mutate) => updateChatState(chatStore, mutate),
     readCore: () => chatStore.readCore(),
     readLifeProfiles: options.readLifeProfiles,
+    onGroupCreated: (channelId) => options.publishCollaboration?.(channelId, 'created'),
     evidenceSink: options.evidenceDataDir
       ? createDurableToolEvidenceSink({
           dataDir: options.evidenceDataDir,

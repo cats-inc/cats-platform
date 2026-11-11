@@ -2202,6 +2202,7 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.companionFeedTabActivity': '動態',
   'chat.companionFeedNavAriaLabel': '陪伴者動態',
   'chat.companionPostPublishedNotice': '{name} 在個人頁發布了貼文「{title}」。',
+  'chat.bossCatGroupCreatedNotice': '{name} 建立了群組對話「{title}」，成員有 {cats}。你在那裡開口後，牠們才會回覆。',
   'chat.companionPostRemoveAction': '移除',
   'chat.companionPostRemoveConfirmTitle': '要移除這篇貼文嗎？',
   'chat.companionPostRemoveConfirmMessage': '「{title}」將不再顯示在 {name} 的個人頁。',
