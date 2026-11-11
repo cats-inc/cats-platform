@@ -73,6 +73,8 @@ export interface MobileChatChannelSummary {
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
   originSurface?: MobilePlatformSurfaceId | null;
+  /** SPEC-141: the conversation's product scope, on the ladder `chat < code < work`. */
+  productScope?: MobilePlatformSurfaceId;
   channelKind?: MobileChatChannelKind;
   /**
    * For direct-lane channels (`channelKind === 'direct_message'`),

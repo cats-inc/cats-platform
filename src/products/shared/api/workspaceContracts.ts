@@ -45,6 +45,7 @@ import type {
   PlatformHostEnvelope,
   PlatformSurfaceId,
 } from '../../../shared/platform-contract.js';
+import type { ProductScope } from '../../../shared/productScope.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { MessageLocale } from '../../../shared/i18n/index.js';
 import type { FolderBrowsePreferences } from '../folderBrowsePreferences.js';
@@ -317,6 +318,8 @@ export interface ChatChannelState {
   title: string;
   topic: string;
   originSurface?: PlatformSurfaceId | null;
+  /** SPEC-141: the conversation's product scope. */
+  productScope?: ProductScope;
   channelKind?: ChatChannelKind;
   status: ChatChannelStatus;
   unreadCount: number;
@@ -369,6 +372,8 @@ export interface ChatChannelSummary {
   title: string;
   topic: string;
   originSurface?: PlatformSurfaceId | null;
+  /** SPEC-141: the conversation's product scope. */
+  productScope?: ProductScope;
   channelKind?: ChatChannelKind;
   status: ChatChannelStatus;
   unreadCount: number;

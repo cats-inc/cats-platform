@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft, 2026-11-11, revised the same day after an independent review and again after the owner answered Q1, Q2 and Q4. The owner's decisions D1 to D13 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S2 to S6 and Q3 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects. S1 was put to the owner the same day. Not implemented |
+| **Status** | Draft, 2026-11-11, revised the same day after an independent review and again after the owner answered Q1, Q2 and Q4. The owner's decisions D1 to D13 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S2 to S6 and Q3 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects. S1 was put to the owner the same day. Implementation started: the field exists (FR-1 to FR-7, PLAN-134 Phase 1) and nothing reads it yet |
 | **Owner** | Product owner |
 | **Reviewer** | Owner; an independent review before implementation |
 | **Decision** | [ADR-149](../decisions/149-let-a-conversation-gain-product-scopes-and-never-lose-them.md) |
@@ -352,8 +352,12 @@ inventory of every `originSurface` reader.
     and PLAN-134 asks for an independent security review of that phase.
 - **Privacy**: The system line carries the two levels and nothing else.
 - **Compatibility**:
-  - `productScope` is a new stored field. A build without it would drop the field on its next
-    write and silently lower a raised conversation, which D2 forbids.
+  - `productScope` is a new stored field. A build without it would drop the field from the
+    conversation on its next write and silently lower a raised conversation, which D2 forbids.
+    - That build also drops the copy from the records it rebuilds: Run, Mission, Trace,
+      Checkpoint, Outcome and Activity.
+    - It keeps the copy on a Task and a WorkItem, whose metadata it carries over, until a
+      build with the field syncs again.
   - The state version therefore rises (D9), and an older build refuses the file, as it does
     for any newer version today.
   - It rises in the change that first lets a conversation be raised. Until then a dropped

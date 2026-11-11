@@ -3,6 +3,11 @@ import type {
   ChannelCatAssignment,
   ChatChannelKind,
 } from '../api/contracts.js';
+import {
+  deriveProductScope,
+  isProductScope,
+  type ProductScope,
+} from '../../../shared/productScope.js';
 import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
 
 type ChannelParticipantTopologyRef = Pick<
@@ -120,6 +125,22 @@ export function resolveChannelKindForChannel(
 
 export function isDirectLaneChannel(channel: ChannelTopologyCarrier): boolean {
   return resolveChannelKindForChannel(channel) === 'direct_message';
+}
+
+/**
+ * SPEC-141: the conversation's product scope. A valid stored value is returned as stored,
+ * even when it is below the origin, so reading never raises a scope (FR-3). The lane check
+ * runs only when nothing valid is stored, which creation and loading make the rare case.
+ */
+export function resolveChannelProductScope(
+  channel: ChannelTopologyCarrier & { productScope?: unknown; originSurface?: unknown },
+): ProductScope {
+  return isProductScope(channel.productScope)
+    ? channel.productScope
+    : deriveProductScope({
+      originSurface: channel.originSurface,
+      directLane: isDirectLaneChannel(channel),
+    });
 }
 
 export function isParticipantChatChannel(channel: ChannelTopologyCarrier): boolean {

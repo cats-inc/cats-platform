@@ -18,6 +18,7 @@ import {
   buildChatWorkItemId,
 } from '../../../../shared/chatCoreIds.js';
 import type { ChatChannelState } from '../../api/contracts.js';
+import { resolveChannelProductScope } from '../../shared/channelTopology.js';
 import type {
   RoomRoutingParticipantRef,
   RoomWorkflowEvent,
@@ -205,6 +206,7 @@ export function createWorkflowRun(
     metadata: {
       source: 'chat-room-workflow',
       originSurface: channel.originSurface,
+      productScope: resolveChannelProductScope(channel),
       channelId: channel.id,
       containerId,
       turnId: turn.id,
@@ -262,6 +264,7 @@ export function createWorkflowMission(
     metadata: {
       source: 'chat-room-workflow',
       originSurface: channel.originSurface,
+      productScope: resolveChannelProductScope(channel),
       channelId: channel.id,
       containerId,
       turnId: turn.id,
@@ -327,6 +330,7 @@ export function createWorkflowTrace(
     metadata: {
       source: 'chat-room-workflow',
       originSurface: channel.originSurface,
+      productScope: resolveChannelProductScope(channel),
       channelId: channel.id,
       containerId,
       turnId: turn.id,
@@ -365,6 +369,7 @@ export function createWorkflowCheckpoint(
     metadata: {
       source: 'chat-room-workflow',
       originSurface: channel.originSurface,
+      productScope: resolveChannelProductScope(channel),
       channelId: channel.id,
       containerId,
       turnId: turn.id,
@@ -408,6 +413,7 @@ export function createWorkflowOutcome(
     metadata: {
       source: 'chat-room-workflow',
       originSurface: channel.originSurface,
+      productScope: resolveChannelProductScope(channel),
       channelId: channel.id,
       containerId,
       turnId: turn.id,
@@ -477,6 +483,7 @@ export function createWorkflowActivity(
     metadata: {
       source: 'chat-room-workflow',
       originSurface: channel.originSurface,
+      productScope: resolveChannelProductScope(channel),
       channelId: channel.id,
       containerId,
       turnId: turn.id,

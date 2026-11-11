@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft; not started. The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
+| **Status** | In progress: Phase 1 is done, Phases 2 to 7 are not started. The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -36,35 +36,85 @@ that pull request records it.
 
 **Goal:** every conversation carries a scope, and nothing reads it yet (FR-1 to FR-7).
 
-- [ ] Add `productScope` to the conversation state, the summary and view types, the renderer
+- [x] Add `productScope` to the conversation state, the summary and view types, the renderer
       mirrors and the mobile summary type. The create input types do not get the field.
-- [ ] Creation stamps it: the validated origin, or `chat` for a direct lane, for a single
+  - The field is optional on the types, like `originSurface`. Chat's state code reads it
+    through `resolveChannelProductScope`, which derives a value when the field is absent. The
+    summary, the view and the projected metadata always carry one.
+  - The two places where Desktop rebuilds a summary field by field copy it too.
+- [x] Creation stamps it: the validated origin, or `chat` for a direct lane, for a single
       conversation and for each parallel member.
-- [ ] Loading derives it as FR-3 says when the stored value is missing or invalid, for a direct
+- [x] Loading derives it as FR-3 says when the stored value is missing or invalid, for a direct
       lane and for a no-origin conversation or group. A valid stored value is kept, so loading
       never raises a scope.
-- [ ] Add the one raise function to the Chat model. It refuses an equal or lower level, a
+  - A parallel group stores no scope of its own (FR-5), and its members load by their own
+    origin, not the group's. Listing a no-origin group's own entry under Chat is Phase 2's
+    Recents change.
+- [x] Add the one raise function to the Chat model. It refuses an equal or lower level, a
       direct lane and a parallel member.
-- [ ] Add the raise revision helper (FR-7). `collaborationExecutionRevision` is not touched.
-- [ ] Core metadata projected from a conversation gains `productScope` beside `originSurface`:
+  - It also refuses an archived conversation and a value that is not a scope. Each of these
+    refusals has a stable code for Phase 5's routes. A conversation that does not exist throws
+    from `requireChannel`, as in every model function, and the route maps that case.
+  - A parallel member belongs to an active group, as SPEC-141 defines it. Recents lists the
+    members of a group that is not active as ordinary conversations, so they can be raised,
+    and so can a conversation whose group was dissolved or no longer lists it.
+  - No route calls it yet.
+- [x] Add the raise revision helper (FR-7). `collaborationExecutionRevision` is not touched.
+  - The folder in the digest is `repoPath`. `chatCwd` is left out: a first session fills it
+    in for a sandbox, which changes nothing the confirmation says.
+- [x] Core metadata projected from a conversation gains `productScope` beside `originSurface`:
       Task, WorkItem, Run, Mission, Trace, Checkpoint, Outcome and Activity.
-- [ ] Tests for FR-1 to FR-7, with a load-and-save round trip that shows only the new field
+- [x] Tests for FR-1 to FR-7, with a load-and-save round trip that shows only the new field
       added.
 
-**Deliverables:** the field exists everywhere and the state version is unchanged. This phase
-changes the frozen contract `src/products/chat/api/contracts.ts`, so it needs integration
-review.
+**Deliverables:** the field is on the stored conversation, the summary, the view, the mobile
+summary type and the eight kinds of projected Core record, and the state version is unchanged.
+Two copies in the inventory do not carry it yet and move to Phase 2: the conversation
+diagnostic report and Work's history listing. This phase changes the frozen contract
+`src/products/chat/api/contracts.ts`, so it needs integration review.
+
+**Result:** the contract change is additive: one optional field on the state and the summary
+types, which the view inherits, mirrored in the shared and the mobile contracts. Nothing reads
+the field, so S4's and S6's outcomes are stored and not yet visible: a no-origin conversation
+and a direct lane created outside Chat are stored as `chat`, and Phase 2 is where Recents and
+tool delivery start to follow that.
+
+An independent review of this phase found no change in behavior. What it found for later
+phases is recorded in Phase 2 (the read rule and two copies) and Phase 5 (stale whole-state
+writes and the execution policy in the revision).
 
 ### Phase 2: Readers follow the scope
 
 **Goal:** every reader in the inventory's "follows the scope" group reads the scope (FR-12 to
 FR-15, and FR-8's checks still limited to `code`).
 
+- [ ] Put the read rule in `src/shared/productScope.ts`, where every reader can import it.
+  - Readers in `products/shared`, `app/renderer`, `core` and mobile cannot import Chat's
+    `resolveChannelProductScope`: `tests/dependency-graph.test.js` keeps the edges from
+    `products/shared` into Chat exact, and `core` imports no product.
+  - Proposed rule, which the owner has not seen: a direct lane reads as `chat` whatever is
+    stored, then a valid stored value as stored, else the derived one.
+    - Today the lane check runs only when nothing valid is stored. A lane that carried a
+      stored `code` would therefore receive Code's tools once tools follow the scope.
+    - No consistent state has such a lane. Creation makes a lane at `chat`, the raise refuses
+      one, and `restoreRecoverableDirectLane` sets the kind only on a conversation that
+      carries the recoverable-lane mark, which only a lane gets.
+    - The stored value is left as it is, so nothing is lowered (D2). The rule narrows FR-3's
+      "kept as stored" for a lane and makes S6 hold on every read; SPEC-141 changes with it.
+  - Chat's helper calls the shared rule, and the loader keeps a valid stored value as stored.
+  - A summary decides whether it is a lane by `channelKind`, else by `roomMode`. Chat's helper
+    looks at `channelKind` and `roomRouting.mode`, and a summary has no `roomRouting`.
 - [ ] Recents: the shared filter and the sidebar view model.
 - [ ] Routes: the landing conversation, the redirect, the selection target, the owner-action
-      source path and the Catlas conversation link.
+      source path and the Catlas conversation link. The routing hook's narrowed conversation
+      type gains the scope.
 - [ ] Labels: the Catlas snapshot.
-- [ ] Work: the own-WorkItem check.
+- [ ] Work: the own-WorkItem check. Work's history listing copies the scope beside the origin.
+  - The copy in Core metadata is rewritten on every sync by a build that knows the field, so
+    a reader of the copy sees the current scope. A build without the field keeps the copy on
+    a Task and a WorkItem while it drops the conversation's field; the next sync by a build
+    with the field corrects it.
+- [ ] The conversation diagnostic report shows the scope beside the origin.
 - [ ] Tools: the enricher's channel type, the enricher, the Code session verification and the
       Code work areas read the scope, still accepting `code` only.
 - [ ] Tests: for fixtures of all three origins, every moved reader gives the same result as on
@@ -149,6 +199,35 @@ previews and work areas appear under `/work`.
     frozen, so this needs integration review.
 - [ ] Confirm how a turn whose session was lost is handled today. FR-25 relies on it for a
       failed recycle, and this plan has not read that code.
+- [ ] Stop a stale whole-state write from lowering a raised scope. The store's `write` and
+      `writeSnapshot` replace the whole chat with the caller's copy, and the conversation's
+      mutation gate does not cover them.
+  - Phase 1's review forced the interleaving: a request read the state, a raise landed, and
+    the request wrote its copy back. The conversation was at its old level again, and loading
+    keeps that level because it is a valid value.
+  - Callers that read and then write their copy back: `products/chat/api/shellRoutes.ts` (the
+    selected conversation), `app/server/telegramCommandSurface.ts` (`/mode`),
+    `app/server/platformSetupGuideCatRoutes.ts`, `app/server/platformSetupAssistantRoutes.ts`
+    and, at startup only, `app/server/chatWorkflowRecovery.ts`.
+  - Either the store refuses to write a scope lower than the one it holds, or these callers
+    move to `updateChatState`. Add a test with the forced interleaving.
+  - Adding and removing a participant in `products/chat/api/routeSupport.ts` replace one whole
+    conversation from a copy read earlier. Both run inside the conversation's mutation gate,
+    so the raise must take the same gate, as FR-22 says.
+- [ ] If Phase 2's lane-first read rule has not landed, confirm that a raised conversation
+      cannot become a direct lane. Phase 1 found no such path in consistent state: creation
+      makes a lane, the raise refuses one, and `restoreRecoverableDirectLane` sets the kind
+      only on a conversation that carries the recoverable-lane mark. A valid stored scope is
+      kept as stored (FR-3), so such a path would leave a lane above `chat`, against S6.
+- [ ] Add the execution policy to the raise revision. The permission chip is drawn from the
+      permission mode and `runtimeExecutionPolicy`, and the digest has only the mode.
+  - Digest the policy's values in a fixed order: the stored object's key order is not
+    normalized.
+  - Update FR-7's list with it. The list also omits the archived state and the workspace kind,
+    which the digest already has.
+- [ ] Expect a raise to make a pending owner-action, history or schedule preview stale when
+      its token hashes the conversation's projected Task or WorkItem, since the scope copy on
+      those records changes. That is the intended answer to a changed record.
 - [ ] Tests that a session created without the `cats` server gains it on its next send, that a
       running turn keeps its tools, and that a failed recycle leaves the scope raised.
 - [ ] Tests that a prepared and a running SPEC-118 collaboration are unaffected.
@@ -261,12 +340,16 @@ These gates open to every conversation that is not a direct lane.
   `conversationSidebarRecentEntries.tsx:57`, `:90`. A group with no origin is treated as `chat`
   (FR-3).
 - **Copies, which keep the origin and add the scope.**
-  - `products/chat/state/model/readModels.ts:284`, `:388`.
-  - `products/chat/state/core-projection/entities.ts:572`, `:624` and `workflow.ts:207-479`.
-  - `products/shared/renderer/workspaceChatUtils.tsx:525`, `activeEntityMerge.ts:183` and
-    `hooks/useWorkspaceAppShellRouting.ts:36`.
-  - `products/chat/api/resources/diagnosticRoutes.ts:66`.
-  - `products/work/state/historyListing.ts:12-60`.
+  - Done in Phase 1:
+    - `products/chat/state/model/readModels.ts:284`, the conversation summary. The group
+      summary at `:388` keeps only its origin, since a group has no scope (FR-5).
+    - `products/chat/state/core-projection/entities.ts:572`, `:624` and `workflow.ts:207-479`.
+    - `products/shared/renderer/workspaceChatUtils.tsx:525` and `activeEntityMerge.ts:183`.
+  - In Phase 2:
+    - `products/shared/renderer/hooks/useWorkspaceAppShellRouting.ts:36`, a narrowed type that
+      the routes read.
+    - `products/chat/api/resources/diagnosticRoutes.ts:66`.
+    - `products/work/state/historyListing.ts:12-60`.
 - **Catlas titling.** `products/chat/api/catlasTitles.ts:21`, `:60`.
 - **Posture.** `products/chat/state/runtime-dispatch/routing.ts:1149-1150`.
 - **Knowledge scope copy.** `products/chat/state/orchestratorKnowledge.ts:62`.
@@ -297,10 +380,13 @@ scope.
 | File | Action | Description |
 |------|--------|-------------|
 | `src/products/chat/api/contracts.ts`, `src/products/shared/api/workspaceContracts.ts`, `src/mobile/contracts.ts` | Modify | `productScope` on the state, summary and view types |
-| `src/shared/productScope.ts` | Create | The order, the comparison, the derivation and the raise revision |
+| `src/shared/productScope.ts` | Create | The order, the comparison and the derivation |
+| `src/products/chat/state/model/productScope.ts` | Create | The raise function and the raise revision, which need Chat state and a hash |
+| `src/products/chat/shared/channelTopology.ts` | Modify | `resolveChannelProductScope`, how Chat's state code reads a conversation's scope; Phase 2 moves the rule to `src/shared/` |
 | `src/core/types.ts`, `src/products/chat/state/store.ts`, `chat-snapshot/index.ts` | Modify | The state version and its upgrade (D9), in Phase 5 |
 | `src/products/chat/state/model/index.ts`, `chat-snapshot/entities.ts`, `model/readModels.ts` | Modify | Stamp, derive, raise and summarize |
 | `src/products/chat/state/core-projection/entities.ts`, `workflow.ts` | Modify | The metadata copy |
+| `src/products/shared/renderer/workspaceChatUtils.tsx`, `activeEntityMerge.ts` | Modify | The scope in Desktop's two summary copies |
 | `src/platform/runtime/invocationEnrichment.ts` | Modify | The scope on the enricher's channel type |
 | The "follows the scope" files in the inventory | Modify | Read the scope |
 | `src/products/chat/state/orchestratorKnowledge.ts`, `collaborationExecution.ts`, `orchestratorCollaboration.ts` | Modify | The role tools at every level (D8) |

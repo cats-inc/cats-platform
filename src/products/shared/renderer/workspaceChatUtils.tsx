@@ -523,6 +523,7 @@ export function insertCreatedChannelIntoPayload<TPayload extends AppShellPayload
     title: normalizedChannel.title,
     topic: normalizedChannel.topic,
     originSurface: normalizedChannel.originSurface,
+    productScope: normalizedChannel.productScope,
     channelKind: normalizedChannel.channelKind,
     status: normalizedChannel.status,
     unreadCount: normalizedChannel.unreadCount,

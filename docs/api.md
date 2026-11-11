@@ -656,6 +656,18 @@ Channels also expose a topology-oriented `channelKind` field:
 stream selection, and renderer chrome now key off `channelKind` instead of
 inferring topology from the routing policy.
 
+Each channel summary and view also carries `productScope` (`chat`, `code` or
+`work`, in that order) beside `originSurface`
+([SPEC-141](specs/SPEC-141-conversation-product-scope.md)):
+
+- The server sets it when the channel is created: the channel's
+  `originSurface`, or `chat` for a direct message. A `productScope` in a create
+  request is ignored.
+- A stored channel without a valid value gets one when the state is loaded, by
+  the same rule, with `chat` when no origin was recorded.
+- Nothing reads it yet and no route changes it. `originSurface` still decides
+  which product lists a conversation and which tools its agents receive.
+
 ### Channel Messages
 
 ```text

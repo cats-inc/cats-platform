@@ -181,6 +181,7 @@ export function mergeChannelSummaryWithChannelView(
     title: selectedChannel.title,
     topic: selectedChannel.topic,
     originSurface: selectedChannel.originSurface ?? currentSummary?.originSurface,
+    productScope: selectedChannel.productScope ?? currentSummary?.productScope,
     channelKind: selectedChannel.channelKind ?? currentSummary?.channelKind,
     status: selectedChannel.status,
     unreadCount: selectedChannel.unreadCount,
