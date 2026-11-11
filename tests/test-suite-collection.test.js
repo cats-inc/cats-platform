@@ -22,15 +22,44 @@ function readProjectFile(relativePath) {
   return readFileSync(join(projectRoot, relativePath), 'utf8');
 }
 
+// `node`, any `--import <module>` preloads, then `--test`.
+const NODE_TEST_INVOCATION = /\bnode((?:\s+--import\s+\S+)*)\s+--test\b/u;
+const ISOLATION_PRELOAD = './scripts/testing/isolate-cats-home.mjs';
+
+function readScripts() {
+  return JSON.parse(readProjectFile('package.json')).scripts;
+}
+
 /** The path arguments the `test` script hands to `node --test`. */
 function resolveRunTargets() {
-  const { scripts } = JSON.parse(readProjectFile('package.json'));
-  const testScript = scripts.test;
-  const nodeTest = testScript.slice(testScript.indexOf('node --test'));
-  return nodeTest
-    .split(/\s+/u)
-    .filter((argument) => !argument.startsWith('--') && argument !== 'node');
+  const testScript = readScripts().test;
+  const invocation = NODE_TEST_INVOCATION.exec(testScript);
+  assert.ok(invocation, 'the test script no longer runs node --test');
+  const args = testScript.slice(invocation.index).split(/\s+/u);
+  const targets = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === 'node') continue;
+    // A preload's module path is not a run target.
+    if (argument === '--import') { index += 1; continue; }
+    if (argument.startsWith('--')) continue;
+    targets.push(argument);
+  }
+  return targets;
 }
+
+test('npm test and test:file keep the run out of the developer\'s ~/.cats', () => {
+  // scripts/testing/isolate-cats-home.mjs points CATS_RUNTIME_DIR and CATS_PLATFORM_DIR at a
+  // temporary folder. Without it, tests write conversations and attachment folders into the
+  // developer's own ~/.cats.
+  const scripts = readScripts();
+  for (const name of ['test', 'test:file']) {
+    const invocation = NODE_TEST_INVOCATION.exec(scripts[name] ?? '');
+    assert.ok(invocation, `${name} runs node --test`);
+    assert.ok(invocation[1].split(/\s+/u).includes(ISOLATION_PRELOAD), `${name} loads ${ISOLATION_PRELOAD}`);
+  }
+  assert.ok(existsSync(join(projectRoot, ISOLATION_PRELOAD)), 'the preload exists');
+});
 
 /** The extensions `build-test-ui.mjs` bundles into `build/test/`. */
 function resolveBundledExtensions() {
