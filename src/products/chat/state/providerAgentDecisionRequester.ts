@@ -224,6 +224,7 @@ async function runBossCatDecision(
     readCore: () => chatStore.readCore(),
     readLifeProfiles: options.readLifeProfiles,
     onConversationChanged: (channelId, action) => options.publishCollaboration?.(channelId, action),
+    runChatMutation: options.runChatMutation,
     recordEvent: options.evidenceDataDir
       ? (event) => appendEvidenceEvent(options.evidenceDataDir!,
           resolveChannelCanonicalIdentity(input.state, input.channelId).conversationId, {

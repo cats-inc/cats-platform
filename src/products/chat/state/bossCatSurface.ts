@@ -337,6 +337,8 @@ export interface RunBossCatDecisionLoopInput extends BossCatBoardSources {
   onConversationChanged?: (channelId: string, action: 'created' | 'updated') => void;
   /** FR-16: an ids-only supervision record of what a tool changed. */
   recordEvent?: (event: BossCatRecordedEvent) => void;
+  /** Serializes a write to another conversation with that conversation's own writers. */
+  runChatMutation?: <T>(channelId: string, operation: () => Promise<T>) => Promise<T>;
 }
 
 export interface BossCatRecordedEvent {
@@ -346,6 +348,15 @@ export interface BossCatRecordedEvent {
   catIds?: string[];
   decisionId: string;
   at: string;
+}
+
+/** The change already committed; a failed record must not turn it into a refusal. */
+function recordSafely(input: RunBossCatDecisionLoopInput, event: BossCatRecordedEvent): void {
+  try {
+    input.recordEvent?.(event);
+  } catch {
+    console.warn('Boss Cat record not written.', { action: event.action, conversationId: event.conversationId });
+  }
 }
 
 function refuse(reason: string, code: 'E_SCHEMA_INVALID' | 'E_PRECHECK_FAILED' | 'E_BUDGET_EXCEEDED'
@@ -449,7 +460,7 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
             if ('refusal' in created) return refuse(created.refusal, created.code);
             createdConversationId = created.conversationId;
             input.onConversationChanged?.(created.conversationId, 'created');
-            input.recordEvent?.({ action: 'create_group', bossCatId: input.bossCatId,
+            recordSafely(input, { action: 'create_group', bossCatId: input.bossCatId,
               conversationId: created.conversationId, catIds: created.catIds,
               decisionId: decision.decisionId, at: at.toISOString() });
             return { status: 'applied', result: { conversationId: created.conversationId } };
@@ -462,7 +473,7 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
             if ('refusal' in changed) return refuse(changed.refusal, changed.code);
             createdConversationId = changed.conversationId;
             input.onConversationChanged?.(changed.conversationId, 'updated');
-            input.recordEvent?.({ action: decision.toolName === BOSS_JOIN_CONVERSATION ? 'join' : 'leave',
+            recordSafely(input, { action: decision.toolName === BOSS_JOIN_CONVERSATION ? 'join' : 'leave',
               bossCatId: input.bossCatId, conversationId: changed.conversationId,
               decisionId: decision.decisionId, at: at.toISOString() });
             return { status: 'applied', result: { conversationId: changed.conversationId } };
@@ -711,7 +722,8 @@ async function changeBossCatMembership(
   const refuse = (refusal: string, code: GroupRefusal['code'] = 'E_PRECHECK_FAILED') => {
     outcome = { refusal, code };
   };
-  await input.updateState((latest) => {
+  const serialize = input.runChatMutation ?? (<T>(_channelId: string, operation: () => Promise<T>) => operation());
+  await serialize(conversationId, () => input.updateState((latest) => {
     const lane = latest.channels.find((entry) => entry.id === input.channelId);
     const source = lane?.messages.find((entry) => entry.id === input.sourceMessageId);
     if (!lane || resolveBossCatTurnGate(latest, input.channelId, source)?.bossCatId !== input.bossCatId) {
@@ -793,6 +805,6 @@ async function changeBossCatMembership(
     });
     outcome = { conversationId };
     return next;
-  });
+  }));
   return outcome;
 }

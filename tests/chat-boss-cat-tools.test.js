@@ -29,6 +29,8 @@ import {
 } from '../build/server/products/chat/state/bossCatSurface.js';
 import { resolveRuntimeEnvelopeForTarget } from '../build/server/products/chat/state/runtimeTargeting.js';
 import { normalizeChatState } from '../build/server/products/chat/state/chat-snapshot/index.js';
+import { createCatsMemoryService, MemoryCanonicalMemoryStore } from '../build/server/platform/memory/index.js';
+import { createChatMemorySurface } from '../build/server/products/chat/state/memoryAdapter.js';
 import { buildCanonicalChatUserMessage } from '../build/server/products/chat/state/chatCoreInterop.js';
 import { createAuthenticatedTestSession, createTestAuthConfig, waitForCondition } from './testUtils.js';
 
@@ -371,6 +373,9 @@ test('SPEC-139 FR-5: create_group makes a blank read-only Chat group that waits 
   // A retry of the message rebuilt from Core finds the tools already ran.
   const rebuilt = buildCanonicalChatUserMessage(await h.chatStore.readCore(), h.bossLane, messageId);
   assert.equal(readBossCatTurnRecord(rebuilt)?.bossCatId, h.ids.boss);
+  const evidence = await readFile(join(h.platformDir, 'state/evidence', `conversation-channel-${h.bossLane}.jsonl`), 'utf8');
+  assert.match(evidence, new RegExp(`"action":"create_group"[^\n]*"targetConversationId":"${group.id}"`, 'u'));
+  assert.match(evidence, new RegExp(`"catIds":\\["${h.ids.kiki}","${h.ids.mochi}"\\]`, 'u'));
   // R2: the invited Cats carry no companion memory in it; the Boss Cat itself is not a guest.
   assert.equal(isBossCatGroupGuest(group, h.ids.kiki), true);
   assert.equal(isBossCatGroupGuest(group, h.ids.boss), false);
@@ -483,6 +488,13 @@ function toolCall(name, input) {
 }
 
 /** Reads the board first, then performs `hooks.action` on `hooks.conversationId` when offered. */
+/** Everything but what a join may change: the assignments, the joined notice and the bound. */
+function joinInvariant(channel) {
+  const { catAssignments: _cats, participantAssignments: _participants, messages: _messages, bossCatJoins: _joins,
+    updatedAt: _updated, lastMessageAt: _last, unreadCount: _unread, ...rest } = structuredClone(channel);
+  return JSON.stringify(rest);
+}
+
 function membershipDecider(hooks) {
   return async (_index, envelope) => {
     const offered = envelope.observation.availableTools.map((entry) => entry.manifest.name);
@@ -507,7 +519,7 @@ function seedOps(hooks, policy = 'allow') {
     const at = (minute) => new Date(base + minute * 60_000).toISOString();
     const message = (minute, senderKind, senderName, body, metadata = {}) => ({ id: `ops-${minute}`, channelId: ops.id,
       senderKind, senderName, body, mentions: [], metadata, usage: null, createdAt: at(minute) });
-    ops.messages.push(message(1, 'user', 'Owner', 'OLD-MARKER secret plan', { recipientParticipantIds: [kiki.participantId] }));
+    ops.messages.push(message(1, 'user', 'Owner', 'Can you keep the OLD-MARKER secret plan?', { recipientParticipantIds: [kiki.participantId] }));
     ops.messages.push(message(2, 'agent', 'Kiki', 'Kiki heard the plan.', { targetId: kiki.participantId,
       targetKind: 'cat', sessionId: 'kiki-old-session', event: 'assistant_turn_segment' }));
     for (let minute = 3; minute < 15; minute += 1) {
@@ -552,17 +564,13 @@ const membershipOf = (state, channelId, catId) => state.channels.find((entry) =>
 test('SPEC-139 FR-11/FR-12: a join changes nothing else, and the Boss Cat sees 8 messages before it, in every session', async (t) => {
   const hooks = { action: 'join' };
   const h = await start(t, { seed: seedOps(hooks), decide: membershipDecider(hooks) });
-  const stable = (state) => {
-    const ops = state.channels.find((entry) => entry.id === hooks.conversationId);
-    return JSON.stringify([ops.coordinatorParticipantId, ops.roomRouting.defaultRecipientId, ops.channelKind, ops.status,
-      ops.originSurface, ops.repoPath ?? null, ops.chatCwd ?? null, ops.runtimeWorkspaceAccess ?? null,
-      ops.runtimePermissionMode ?? null, ops.title, ops.titleSource]);
-  };
+  const stable = (state) => joinInvariant(state.channels.find((entry) => entry.id === hooks.conversationId));
 
   // Positive control: Kiki, an ordinary participant, gets the full transcript in a new session.
   await replaceSession(h, hooks.conversationId, h.ids.kiki);
-  const kikiSeen = await sendInConversation(h, hooks.conversationId, hooks.kikiParticipantId, 'Kiki, status?');
+  const kikiSeen = await sendInConversation(h, hooks.conversationId, hooks.kikiParticipantId, 'Kiki, report back.');
   assert.match(kikiSeen, /OLD-MARKER/u, 'positive control');
+  assert.match(kikiSeen, /Open loops: [^\n]*OLD-MARKER/u, 'positive control: the old question is an open loop');
   const before = stable(await h.chatStore.read());
 
   const messageId = await h.send('Join Ops.');
@@ -659,4 +667,72 @@ test('SPEC-139 FR-8/FR-9: the policy decides when the join runs, and every refus
     ['rate limited', 'refused', 'rate_limited'],
     ['leave without a join', 'refused', 'not_joined'],
   ]);
+});
+
+test('SPEC-139 FR-12: a join into a Work conversation with a coordinator changes nothing else', async (t) => {
+  const hooks = { action: 'join' };
+  const h = await start(t, { decide: membershipDecider(hooks), seed: (state) => {
+    const ids = Object.fromEntries(state.cats.map((cat) => [cat.name.toLowerCase(), cat.id]));
+    const next = createChannel(state, { title: 'Roadmap', topic: '', originSurface: 'work',
+      participantCatIds: [ids.kiki, ids.mochi] }, new Date(Date.now() - 60_000));
+    const work = next.channels.find((entry) => entry.id === next.selectedChannelId);
+    assert.ok(work.coordinatorParticipantId, 'creation binds a coordinator');
+    Object.assign(state, next, { selectedChannelId: state.selectedChannelId, bossCatJoinPolicy: 'allow' });
+    state.channels = next.channels;
+    hooks.conversationId = work.id;
+  } });
+  const before = joinInvariant((await h.chatStore.read()).channels.find((entry) => entry.id === hooks.conversationId));
+  await h.send('Join Roadmap.');
+  const state = await h.chatStore.read();
+  assert.ok(membershipOf(state, hooks.conversationId, h.ids.boss));
+  assert.equal(joinInvariant(state.channels.find((entry) => entry.id === hooks.conversationId)), before);
+});
+
+test('SPEC-139 FR-12: a joined Cat hydrates its own memory but nothing summarizing that conversation', async () => {
+  const { state, ids, group } = world();
+  for (const cat of state.cats) if (cat.id !== ids.mochi) cat.roles = ['companion'];
+  const channel = state.channels.find((entry) => entry.id === group);
+  channel.workingMemory = { summary: 'WORKING-MEMORY-MARKER', facts: [], openLoops: [], updatedAt: NOW.toISOString() };
+  channel.bossCatJoins = { [ids.boss]: { since: NOW.toISOString() } };
+  const inputs = [];
+  const companionStore = {
+    async getBoxSummary() { return { box: { sourceIds: [], derivedIds: [] } }; },
+    async buildSessionContext(input) { inputs.push(input); return { ownerNotes: [] }; },
+  };
+  const view = buildChannelView(state, group);
+  for (const catId of [ids.boss, ids.kiki]) {
+    const participant = view.assignedParticipants.find((entry) => (entry.sourceRefId ?? entry.participantId) === catId);
+    await resolveRuntimeEnvelopeForTarget(state, view,
+      { participantKind: 'cat', participantId: participant.participantId, participantName: participant.name },
+      undefined, null, NOW, companionStore);
+  }
+  const [boss, kiki] = inputs;
+  assert.equal(boss.cat.id, ids.boss);
+  assert.equal(boss.excludeChannelMemory, true);
+  assert.equal(boss.channel.workingMemory, undefined);
+  assert.equal(kiki.cat.id, ids.kiki);
+  assert.equal(kiki.excludeChannelMemory, undefined, 'control: an ordinary participant');
+  assert.equal(kiki.channel.workingMemory.summary, 'WORKING-MEMORY-MARKER');
+});
+
+test('SPEC-139 FR-12: the memory service leaves out a conversation\'s records when asked', async () => {
+  const chatStore = new MemoryChatStore();
+  let state = createChannel(await chatStore.read(), { title: 'Plans', topic: 'CHANNEL-TOPIC', originSurface: 'chat' }, NOW);
+  const channelId = state.selectedChannelId;
+  state.channels.find((entry) => entry.id === channelId).workingMemory = {
+    summary: 'CHANNEL-MEMORY-MARKER', facts: ['CHANNEL-FACT-MARKER'], openLoops: [], updatedAt: NOW.toISOString(),
+  };
+  await chatStore.write(state);
+  const memoryService = createCatsMemoryService(createChatMemorySurface(chatStore), new MemoryCanonicalMemoryStore());
+  await memoryService.flushChannel({ channelId, now: NOW });
+  const retrieve = async (excludeChannelMemory) => JSON.stringify(await memoryService.buildCompanionRetrievalContext({
+    cat: { id: 'cat-1' },
+    channel: { id: channelId, title: 'Plans', topic: 'CHANNEL-TOPIC', roomRouting: { mode: 'chat_channel' } },
+    transport: 'web',
+    companionStore: { async listSources() { return []; }, async listDerived() { return []; }, async listMemory() { return []; } },
+    now: NOW,
+    ...(excludeChannelMemory ? { excludeChannelMemory } : {}),
+  }));
+  assert.match(await retrieve(false), /CHANNEL-MEMORY-MARKER/u, 'control: the channel record is retrieved');
+  assert.doesNotMatch(await retrieve(true), /CHANNEL-MEMORY-MARKER|CHANNEL-FACT-MARKER/u);
 });
