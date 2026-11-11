@@ -28,7 +28,9 @@ async function fixture(t, options = {}) {
     async getProviderModels(provider) { return { provider, backend: 'cli', instance: 'native', models: [], warnings: [] }; },
     async getProviderDiagnostics() { return { probe: 'light', providers: ['native', 'coordinator'].map(instance => ({
       provider: 'codex', instance, defaultTarget: instance === 'native', availability: { status: 'ok', attentionCodes: [] } })) }; },
-    async createSession(input) { calls.create.push(input); return { id: 'k2-decision', provider: 'codex', status: 'ready', cwd: null }; },
+    async createSession(input) { calls.create.push(input); return { id: 'k2-decision', provider: 'codex',
+      providerSessionPersistence: input.providerSessionPersistence, status: 'ready', cwd: null }; },
+    async observeSession(id) { return { session: { id, provider: 'codex', providerSessionPersistence: 'ephemeral' } }; },
     async sendMessage(id, content) {
       const envelope = JSON.parse(content);
       calls.send.push(envelope);

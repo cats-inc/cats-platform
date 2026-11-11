@@ -8,6 +8,8 @@ import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import { requireChannel } from '../model/index.js';
 import type { ChatStore } from '../store.js';
 import type { CatsCoreState } from '../../../../core/types.js';
+import type { RuntimeClient } from '../../../../platform/runtime/client.js';
+import { resolveChannelParticipantAssignments, resolveParticipantLeaseAttachment } from '../../shared/channelParticipants.js';
 
 interface MutationGateLike {
   run<T>(key: string, operation: () => Promise<T>): Promise<T>;
@@ -153,7 +155,9 @@ function mergeDispatchExecutionLease(
   latest: ParticipantExecutionLease,
   baseline: ParticipantExecutionLease,
   dispatch: ParticipantExecutionLease,
+  sameTarget: boolean,
 ): ParticipantExecutionLease {
+  if (!sameTarget) return latest;
   if (sameSnapshot(dispatch, baseline)) {
     return latest;
   }
@@ -163,6 +167,14 @@ function mergeDispatchExecutionLease(
 
   const latestSessionId = normalizeSessionId(latest);
   const dispatchSessionId = normalizeSessionId(dispatch);
+  // Stream/status updates to the old session must not discard a completed
+  // recovery. Otherwise the next heartbeat recovers that same old ID again.
+  if (latestSessionId && latestSessionId === normalizeSessionId(baseline)
+    && dispatchSessionId && dispatchSessionId !== latestSessionId) {
+    return { ...structuredClone(dispatch),
+      ...(latest.status === 'closed' && baseline.status !== 'closed'
+        ? { status: 'closed' as const, lastError: latest.lastError } : {}) };
+  }
   if (latestSessionId && dispatchSessionId && latestSessionId === dispatchSessionId) {
     return mergeSameRuntimeLease(latest, dispatch);
   }
@@ -247,6 +259,8 @@ function mergeDispatchAssignmentLeases(
       latestAssignment.execution.lease,
       baselineAssignment.execution.lease,
       dispatchAssignment.execution.lease,
+      sameSnapshot(latestAssignment.execution.target, baselineAssignment.execution.target)
+        && sameSnapshot(latestAssignment.execution.modelSelection, baselineAssignment.execution.modelSelection),
     );
     mergeDispatchExecutionTarget(
       latestAssignment.execution,
@@ -268,6 +282,8 @@ function mergeDispatchAssignmentLeases(
       latestAssignment.execution.lease,
       baselineAssignment.execution.lease,
       dispatchAssignment.execution.lease,
+      sameSnapshot(latestAssignment.execution.target, baselineAssignment.execution.target)
+        && sameSnapshot(latestAssignment.execution.modelSelection, baselineAssignment.execution.modelSelection),
     );
   }
 }
@@ -401,9 +417,10 @@ export function createLockedDispatchChatStore(
   channelId: string,
   baselineState: ChatState,
   now: () => Date,
+  runtimeClient?: Pick<RuntimeClient, 'closeSession'>,
 ) {
   return { read: chatStore.read.bind(chatStore), ...createMergedDispatchChatStore({
-    chatStore, channelId, baselineState, now,
+    chatStore, channelId, baselineState, now, runtimeClient,
     mutationGate: { run: (_key, operation) => operation() },
   }) };
 }
@@ -414,6 +431,7 @@ export function createMergedDispatchChatStore(options: {
   channelId: string;
   baselineState: ChatState;
   now: () => Date;
+  runtimeClient?: Pick<RuntimeClient, 'closeSession'>;
   beforeMerge?: (latestState: ChatState, dispatchState: ChatState, core?: CatsCoreState) => ChatState;
   onPersistMergedState?: (input: {
     previousState: ChatState;
@@ -423,6 +441,21 @@ export function createMergedDispatchChatStore(options: {
   }) => void;
 }): Pick<ChatStore, 'write' | 'readCore' | 'writeCore' | 'updateCore'> {
   let previousState = structuredClone(options.baselineState);
+  // Runs before the writer releases the channel gate, so a wake cannot resume
+  // the retained ID between this decision and closing its worker.
+  const closeRetiredWorkers = async (dispatch: ChatState, persisted: ChatState) => {
+    if (!options.runtimeClient) return;
+    const proposedChannel = requireChannel(dispatch, options.channelId);
+    const current = persisted.channels.find(channel => channel.id === options.channelId);
+    const retired = new Set<string>();
+    for (const assignment of resolveChannelParticipantAssignments(proposedChannel)) {
+      const proposed = assignment.execution.lease;
+      if (!proposed.sessionId || !['ready', 'initializing'].includes(proposed.status)) continue;
+      const observed = current && resolveParticipantLeaseAttachment(current, assignment.participantId);
+      if (!observed || observed.sessionId !== proposed.sessionId || observed.status === 'closed') retired.add(proposed.sessionId);
+    }
+    for (const id of retired) await options.runtimeClient.closeSession(id);
+  };
 
   return {
     readCore: options.chatStore.readCore.bind(options.chatStore),
@@ -440,6 +473,7 @@ export function createMergedDispatchChatStore(options: {
               return { chat: mergeCompletedDispatchState(chat, previousState, checked, options.channelId, options.now()), core };
             });
             previousState = structuredClone(dispatchState);
+            await closeRetiredWorkers(dispatchState, snapshot.chat);
             options.onPersistMergedState?.({ previousState: before, persistedState: snapshot.chat,
               dispatchState, channelId: options.channelId });
             return snapshot.chat;
@@ -447,6 +481,7 @@ export function createMergedDispatchChatStore(options: {
           const latestState = await options.chatStore.read();
           if (!latestState.channels.some((channel) => channel.id === options.channelId)) {
             previousState = structuredClone(dispatchState);
+            await closeRetiredWorkers(dispatchState, latestState);
             return latestState;
           }
 
@@ -460,6 +495,7 @@ export function createMergedDispatchChatStore(options: {
           );
           const persisted = await options.chatStore.write(mergedState);
           previousState = structuredClone(dispatchState);
+          await closeRetiredWorkers(dispatchState, persisted);
           options.onPersistMergedState?.({
             previousState: latestState,
             persistedState: persisted,

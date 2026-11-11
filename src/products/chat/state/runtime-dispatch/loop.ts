@@ -20,7 +20,9 @@ import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
 import {
   appendMessage,
+  requireChannel,
 } from '../model/index.js';
+import { resolveExecutionLeaseSnapshot } from '../../shared/channelParticipants.js';
 import {
   type DispatchFrame,
   type DispatchRequest,
@@ -547,7 +549,21 @@ export async function processDispatchQueue(
     nextState = await persistInFlightDispatchState(chatStore, nextState);
     options.onStateWritten?.(channelId);
     latestCheckpoint = wakePrepared.latestCheckpoint;
-    const readyRequests = wakePrepared.readyRequests;
+    const readyRequests = wakePrepared.readyRequests.filter(({ request }) => {
+      const lease = resolveExecutionLeaseSnapshot(requireChannel(nextState, channelId), request.target);
+      const prepared = resolveExecutionLeaseSnapshot(requireChannel(wakePrepared.state, channelId), request.target);
+      // A retry may deliberately retain an error/closed lease until send or
+      // resume succeeds. Suppress a newly concurrent sleep, not that retry.
+      if (lease?.sessionId === request.target.sessionId
+        && !(lease.status === 'closed' && prepared?.status !== 'closed')) return true;
+      const error = 'The conversation session changed or was put to sleep before this turn started.';
+      updateDispatch(outcome, request.dispatchId, { status: 'error', error, completedAt: nowIso });
+      updateWorkflowTarget(activeTurn, request.targetStateId, nowIso, { status: 'failed', error, completedAt: nowIso });
+      results.push({ targetKind: request.target.participantKind, targetId: request.target.participantId,
+        targetName: request.target.participantName, sessionId: request.target.sessionId ?? null, laneId: request.target.laneId ?? null,
+        status: 'error', error });
+      return false;
+    });
 
     cancellationRequest = cancellationRequest
       ?? consumeCancellationRequest(

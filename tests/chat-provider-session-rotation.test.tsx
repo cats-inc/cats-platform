@@ -28,6 +28,7 @@ import {
 } from '../src/products/chat/state/runtime-dispatch/recovery.ts';
 import { wakeChannelEntryParticipant } from '../src/products/chat/state/runtime-session/activation.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
+import { createMergedDispatchChatStore } from '../src/products/chat/state/runtime-dispatch/merge.ts';
 import { resolveParticipantLeaseAttachment } from '../src/products/chat/shared/channelParticipants.ts';
 import type { ChatState } from '../src/products/chat/api/contracts.ts';
 
@@ -157,6 +158,41 @@ function rotationNotices(state: ChatState, channelId: string) {
   return requireChannel(state, channelId).messages
     .filter((message) => message.metadata.event === 'session_rotated');
 }
+
+test('sleep during recovery preparation closes the replacement under the gate and sends no turn', async () => {
+  const { state, channelId, participantId } = createDirectLane();
+  const now = new Date('2026-11-11T03:39:00Z');
+  const baseline = setChannelParticipantLease(state, channelId, participantId, {
+    sessionId: 'old', status: 'error', provider: 'grok', instance: 'native', model: 'grok-4.7',
+    cwd: LANE_WORKSPACE, lastError: 'provider_session_unavailable',
+  }, now);
+  const store = new MemoryChatStore(baseline);
+  const runtime = rotationRuntimeStub({ fail: () => null });
+  let held = 0;
+  const writer = createMergedDispatchChatStore({
+    chatStore: store, channelId, baselineState: baseline, now: () => now,
+    mutationGate: { async run(_key, operation) { held++; try { return await operation(); } finally { held--; } } },
+    runtimeClient: { async closeSession(id) { assert.ok(held > 0); await runtime.client.closeSession(id); } },
+  });
+  let slept = false;
+  const chatStore = { ...writer, async write(candidate: ChatState) {
+    const lease = resolveParticipantLeaseAttachment(requireChannel(candidate, channelId), participantId);
+    if (!slept && lease?.sessionId === 'session-1') {
+      slept = true;
+      await store.write(setChannelParticipantLease(await store.read(), channelId, participantId, { status: 'closed' }, now));
+    }
+    return writer.write(candidate);
+  } };
+  const result = await routeChannelMessage(baseline, channelId, { body: 'Continue' }, runtime.client, now, { chatStore });
+  assert.equal(slept, true);
+  assert.equal(runtime.created.length, 1);
+  assert.equal(runtime.sent.length, 0);
+  assert.ok(runtime.closed.includes('session-1'));
+  const lease = resolveParticipantLeaseAttachment(requireChannel(result.state, channelId), participantId);
+  assert.equal(lease?.sessionId, 'session-1');
+  assert.equal(lease?.status, 'closed');
+  assert.equal(result.results.at(-1)?.status, 'error');
+});
 
 test('an in-stream error event keeps Runtime\'s code', async () => {
   const body = [
