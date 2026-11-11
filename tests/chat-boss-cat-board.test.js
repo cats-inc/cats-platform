@@ -235,67 +235,17 @@ test('SPEC-139 FR-3 and Privacy: a direct lane leaves its Cat only as presence, 
   assert.equal(again.waitingApprovals, 1);
 });
 
-test('SPEC-139 FR-3: a one-to-one conversation is like a direct lane: who and when, never its turns, choices or approvals', () => {
-  const { state, ids } = fixture();
-  let next = createChannel(state, { title: 'Solo work', topic: '', originSurface: 'code' }, at(200));
-  const solo = next.selectedChannelId;
-  next = renameChannel(next, solo, 'Solo work', at(199));
-  next = assignCatToChannel(next, solo, { catId: ids.kiki, provider: 'codex' }, at(200));
-  next = appendMessage(next, solo, { senderKind: 'user', senderName: 'Owner', body: 'SOLO-OWNER-MARKER' }, at(25)).state;
-  next = appendMessage(next, solo, { senderKind: 'agent', senderName: 'Kiki', body: 'SOLO-CHOICE-MARKER' }, at(24), {
-    metadata: { targetId: ids.kiki }, choices: [{ question: 'SOLO-QUESTION-MARKER', options: [{ id: 'a', label: 'x' }] }],
-  }).state;
-  const channel = next.channels.find((entry) => entry.id === solo);
-  const turn = (id, minutesAgo, status) => ({ id, status: status === 'running' ? 'running' : 'completed',
-    sourceMessageId: 'm', sourceSenderKind: 'user', sourceSenderName: 'Owner', guard: null, stageId: 'dispatch',
-    workflowShape: 'sequential', reviewRequired: false, lastCheckpointId: null, convergeTargetId: null,
-    continuationCount: 0, dispatchCount: 1,
-    targetStatuses: [{ status, participant: { participantKind: 'cat', participantId: ids.kiki, participantName: 'x' } }],
-    events: [], startedAt: at(minutesAgo).toISOString(), updatedAt: at(minutesAgo).toISOString(), completedAt: null });
-  channel.roomRouting.workflow.activeTurn = turn('solo-running', 1, 'running');
-  channel.roomRouting.workflow.turnHistory = [turn('solo-failed', 20, 'failed')];
-  const core = { tasks: [{ id: 'solo-task', conversationId: `conversation-channel-${solo}`, approval: { status: 'pending' } }],
-    approvalBindings: [] };
-
-  const board = buildBossCatBoard({ state: next, bossCatId: ids.boss, now: NOW, core });
-  const kiki = board.cats.find((cat) => cat.catId === ids.kiki);
-  assert.equal(kiki.problems.some((problem) => problem.conversationId === solo), false, 'its failed turn does not count');
-  assert.equal(kiki.waitingChoices, 1, 'only the choice in the shared group counts');
-  assert.equal(kiki.waitingApprovals, 0, 'nor its approval');
-  assert.equal(kiki.turnRunning, false, 'nor its running turn');
-  const entry = board.groups.find((group) => group.conversationId === solo);
-  assert.deepEqual(entry, {
-    conversationId: solo, surface: 'code', createdAt: at(200).toISOString(), redacted: false, oneToOne: true,
-    title: 'Solo work', participantNames: ['Kiki'], bossCatIsMember: false,
-    lastOwnerMessageAt: at(25).toISOString(), lastMessageAt: at(24).toISOString(),
-  }, 'it stays on the board, so it can be joined, with who and when only');
-  assert.doesNotMatch(JSON.stringify(board), /SOLO-.*MARKER/u);
-
-  // A second Cat makes it shared, and its turns count again.
-  next = assignCatToChannel(next, solo, { catId: ids.mochi, provider: 'claude' }, at(10));
-  Object.assign(next.channels.find((entry) => entry.id === solo).roomRouting.workflow,
-    { activeTurn: turn('solo-running', 1, 'running'), turnHistory: [turn('solo-failed', 20, 'failed')] });
-  const shared = buildBossCatBoard({ state: next, bossCatId: ids.boss, now: NOW, core });
-  assert.equal(shared.groups.find((group) => group.conversationId === solo).oneToOne, undefined);
-  assert.deepEqual(shared.cats.find((cat) => cat.catId === ids.kiki).problems.find((problem) => problem.conversationId === solo),
-    { conversationId: solo, failed: 1, interrupted: 0 });
-});
-
 test('SPEC-139 FR-3: a real failed turn shows on the Cat and the group', async (t) => {
   const platformDir = await mkdtemp(join(tmpdir(), 'cats-boss-board-'));
   const chatStore = new MemoryChatStore();
   let state = await chatStore.read();
   state = createCat(state, { name: 'Boss', provider: 'claude', group: 'admin' }, NOW);
   state = createCat(state, { name: 'Kiki', provider: 'codex' }, NOW);
-  state = createCat(state, { name: 'Nono', provider: 'codex' }, NOW);
   const bossId = state.cats.find((cat) => cat.name === 'Boss').id;
   const kikiId = state.cats.find((cat) => cat.name === 'Kiki').id;
-  const nonoId = state.cats.find((cat) => cat.name === 'Nono').id;
   state = createChannel(state, { title: 'Build', topic: '', originSurface: 'chat', repoPath: platformDir }, NOW);
   const groupId = state.selectedChannelId;
-  // Two Cats, so the conversation is shared and its turns count (FR-3).
   state = assignCatToChannel(state, groupId, { catId: kikiId, provider: 'codex' }, NOW);
-  state = assignCatToChannel(state, groupId, { catId: nonoId, provider: 'codex' }, NOW);
   await chatStore.write(state);
   const runtimeClient = {
     async getHealth() { return { reachable: true, status: 'ok', version: '0.3.1' }; },

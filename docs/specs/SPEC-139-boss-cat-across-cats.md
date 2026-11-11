@@ -54,10 +54,6 @@ board, nothing else.
 - **Boss Cat**: a Cat whose `group` is `admin` (SPEC-125 FR-19). There may be several.
 - **Group conversation**: an active conversation that is not a direct lane, on the Chat, Code
   or Work surface.
-- **One-to-one conversation**: a group conversation with a single Cat, such as a Code or Work
-  conversation with one Cat, or a Chat opened with one Cat outside its direct lane. It is still
-  a group conversation (it can be joined, FR-9), but the board treats it like a direct lane
-  (FR-3; the owner's call on 2026-11-11).
 - **Owner-started turn**: a turn whose source message the server stamped `ownerStarted`.
   - The stamp is set only at the authenticated owner message route, for the owner principal:
     Desktop's cookie with CSRF, or mobile's bearer.
@@ -95,8 +91,7 @@ board, nothing else.
      - its name and group, and whether its direct lane is awake or asleep;
      - its own initiative: the effective mode, the unanswered count, and whether it waits for
        the owner (SPEC-137);
-     - in group conversations shared by two or more Cats only, never its direct lane or a
-       one-to-one conversation (Goals, Privacy):
+     - in its group conversations only, never its direct lane (Goals, Privacy):
        - whether a turn is running;
        - turns that failed or were interrupted in the last 7 days, per conversation;
        - how many owner choices and approvals wait.
@@ -104,8 +99,7 @@ board, nothing else.
      - id, title, surface and participant names;
      - whether the Boss Cat is a member;
      - the owner's last message time and the last message time;
-     - whether a turn is running, failed, or waits for an owner choice, except for a one-to-one
-       conversation (`oneToOne`), which shows only the above: who and when.
+     - whether a turn is running, failed, or waits for an owner choice.
    - **Each direct lane**: only the owner's and the Cat's last message times, and its presence,
      awake or asleep and nothing finer (waking and an error read as asleep). Its Cat's
      own-initiative state is read from it (SPEC-137). These two are the only things beyond the
@@ -219,8 +213,8 @@ board, nothing else.
     - The peer section lists each other Cat that needs the owner: its failed and interrupted
       turns of the last 7 days with the places they happened, and its waiting choices and
       approvals. A place is an owner-set title, or else the surface and age.
-    - Only conversations shared by two or more Cats count. A direct lane, or a one-to-one
-      conversation, leaves its Cat only as FR-3 allows, so nothing in them reaches the section.
+    - Only group conversations count. A direct lane leaves its Cat only as FR-3 allows, so
+      nothing in another Cat's direct lane reaches the section.
     - Its Cat lines total at most 12 Cats and 3,000 characters, with a count of the rest. Cats
       with something the last look did not see come first.
     - A hidden Cat (FR-15) is left out of the section.
@@ -327,8 +321,7 @@ board, nothing else.
   - Drafted, model-set and sender-name titles appear as surface, id and age.
   - A marker in messages, choices and errors never shows.
   - A running, failed or interrupted turn, a waiting choice and a pending approval in a Cat's
-    direct lane or in a one-to-one conversation never show; the lane's presence reads only awake
-    or asleep, and a one-to-one conversation shows only who and when.
+    direct lane never show, and its presence reads only awake or asleep.
   - The 31st call within an hour is refused.
 - `create_group`:
   - It makes a Chat conversation with no repository or cwd, `read_only` and `default`.
