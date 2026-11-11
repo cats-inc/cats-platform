@@ -1,3 +1,4 @@
+import { CompanionPendingPosts } from './CompanionAiComposer.js';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import type { ChatCat } from '../../../../products/chat/api/contracts.js';
@@ -12,6 +13,8 @@ import {
   type MessageKey,
 } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../i18n/useI18n.js';
+import { CompanionPostCard } from './CompanionPostCard.js';
+import { CompanionPostComposer } from './CompanionPostComposer.js';
 
 type FeedTab = 'posts' | 'photos' | 'videos' | 'music' | 'files' | 'activity';
 type CompanionFeedSurface = 'photo' | 'video' | 'music' | 'file';
@@ -140,63 +143,6 @@ function renderActivity(
   );
 }
 
-function renderProfilePosts(
-  profile: CompanionProfileReadModel | null | undefined,
-  catName: string,
-  translate: TranslateFn,
-  mediaItemsLabel: (count: number) => string,
-  onRemovePost?: (post: CompanionProfilePost) => void,
-): ReactNode {
-  const posts = profile?.posts ?? [];
-  const active = posts.filter((post) => post.status === 'active');
-  if (active.length === 0) {
-    return <CompanionPostsEmptyState catName={catName} translate={translate} />;
-  }
-  return (
-    <div className="companionProfilePostList">
-      {active.map((post) => (
-        <article key={post.id} className="companionProfilePostCard">
-          <header className="companionProfilePostHeader">
-            <h3 className="companionProfilePostTitle">{post.title}</h3>
-            <time className="companionProfilePostTimestamp" dateTime={post.publishedAt}>
-              {post.publishedAt}
-            </time>
-            {onRemovePost ? (
-              <button
-                type="button"
-                className="companionActionButton companionActionSecondary"
-                onClick={() => onRemovePost(post)}
-              >
-                {translate(messageKeys.chatCompanionPostRemoveAction)}
-              </button>
-            ) : null}
-          </header>
-          {post.body ? <p className="companionProfilePostBody">{post.body}</p> : null}
-          {post.tags.length > 0 ? (
-            <ul className="companionProfilePostTags">
-              {post.tags.map((tag) => (
-                <li key={tag}>{tag}</li>
-              ))}
-            </ul>
-          ) : null}
-          {post.mediaRefs.length > 0 ? (
-            <div className="companionProfilePostMediaGrid" aria-label={mediaItemsLabel(post.mediaRefs.length)}>
-              {post.mediaRefs.map((ref) => (
-                <span
-                  key={`${ref.kind}:${ref.id}`}
-                  className="companionProfilePostMediaTile"
-                  data-kind={ref.kind}
-                  data-id={ref.id}
-                />
-              ))}
-            </div>
-          ) : null}
-        </article>
-      ))}
-    </div>
-  );
-}
-
 function renderProfileMedia(
   tiles: CompanionProfileReadModel['photos'] | undefined,
   surface: 'photo' | 'video' | 'music',
@@ -215,6 +161,8 @@ function renderProfileMedia(
     >
       {items.map((tile) => (
         <li key={tile.id} className="companionProfileMediaTile">
+          {tile.url && (surface === 'video' ? <video src={tile.url} controls playsInline preload="metadata" aria-label={tile.title} />
+            : <a href={tile.url} target="_blank" rel="noreferrer"><img src={tile.url} alt={tile.title} loading="lazy" /></a>)}
           <span className="companionProfileMediaTitle">{tile.title}</span>
           {tile.mimeType ? <span className="companionProfileMediaMime">{tile.mimeType}</span> : null}
         </li>
@@ -260,6 +208,7 @@ export interface CompanionFeedProps {
   activity?: CompanionActivityProjection | null;
   /** Owner moderation for agent-authored posts; omitted, the cards stay read-only. */
   onRemovePost?: (post: CompanionProfilePost) => void;
+  onChanged?: () => void;
 }
 
 export function CompanionFeed({
@@ -267,8 +216,11 @@ export function CompanionFeed({
   profile = null,
   activity = null,
   onRemovePost,
+  onChanged,
 }: CompanionFeedProps) {
   const [activeTab, setActiveTab] = useState<FeedTab>('posts');
+  const [visiblePosts, setVisiblePosts] = useState(20);
+  useEffect(() => { setVisiblePosts(20); }, [cat.id]);
   const { t } = useI18n();
 
   const surfaceLabels: Record<CompanionFeedSurface, string> = {
@@ -293,13 +245,26 @@ export function CompanionFeed({
   let content: ReactNode;
   switch (activeTab) {
     case 'posts':
-      content = renderProfilePosts(
-        profile,
-        cat.name,
-        t,
-        (count) => mediaItemsLabel(count, t(messageKeys.chatCompanionFeedMediaItemDefaultLabel)),
-        onRemovePost,
-      );
+      content = <div className="companionTimeline">
+        <aside className="companionTimelineIntro"><h2>{t(messageKeys.postIntro, { name: cat.name })}</h2>
+          <p>{t(messageKeys.postIntroHint)}</p>
+          {(profile?.photos.length ?? 0) > 0 && <div className="companionTimelinePhotoPreview">
+            {profile!.photos.filter(item => item.url).slice(0, 6).map(item => <button key={item.id} type="button" onClick={() => setActiveTab('photos')}>
+              <img src={item.url} alt={item.title} loading="lazy" />
+            </button>)}
+          </div>}
+        </aside>
+        <div className="companionTimelineMain">
+          {onChanged && <><CompanionPostComposer key={cat.id} cat={cat} onPublished={onChanged} /><CompanionPendingPosts key={`pending:${cat.id}`} catId={cat.id} onChanged={onChanged} /></>}
+          <div className="companionTimelineHeading"><h2>{t(messageKeys.postFeedTitle)}</h2><span>{t(messageKeys.postFeedAbout, { name: cat.name })}</span></div>
+          {(profile?.posts.filter(post => post.status === 'active').length ?? 0) === 0
+            ? <CompanionPostsEmptyState catName={cat.name} translate={t} />
+            : <div className="companionProfilePostList">{profile!.posts.filter(post => post.status === 'active').slice(0, visiblePosts).map(post =>
+              <CompanionPostCard key={post.id} cat={cat} post={post} onChanged={onChanged} onRemove={onRemovePost} />)}</div>}
+          {(profile?.posts.filter(post => post.status === 'active').length ?? 0) > visiblePosts &&
+            <button type="button" className="companionActionButton" onClick={() => setVisiblePosts(count => count + 20)}>{t(messageKeys.postLoadMore)}</button>}
+        </div>
+      </div>;
       break;
     case 'photos':
       content = renderProfileMedia(

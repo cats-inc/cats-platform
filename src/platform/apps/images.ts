@@ -187,10 +187,16 @@ export class AppImageService {
     this.execution = new ImageExecutionService({
       runtimeClient: deps.runtimeClient,
       read: async (id) => jobs(await deps.coreStore.readCore()).find((job) => job.id === id),
-      update: (id, patch) => this.update(id, patch),
+      update: (id, patch) => {
+        if (patch.output?.mimeType === 'video/mp4') throw new AppImageError('invalid_image');
+        return this.update(id, { ...patch, output: patch.output });
+      },
       resumeReceipt: job => this.resumeReceipt(job),
       authorize: (job) => this.authorize(this.scope(job)),
-      imagePath: (job, output) => this.imagePath(job, output),
+      imagePath: (job, output) => {
+        if (output?.mimeType === 'video/mp4') throw new AppImageError('invalid_image');
+        return this.imagePath(job, output as Pick<RuntimeImageMetadata, 'mimeType'> | null);
+      },
       revokedCode: 'app_context_revoked',
       reviveSource: async (job) => {
         await this.mutate((core) => {

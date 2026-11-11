@@ -30,6 +30,33 @@ import {
   detectCompanionReferences,
 } from '../../companion/composerReferenceDetector.js';
 import type { CompanionProfileReadModel } from '../../companion/profileReadModel.js';
+import type { CompanionMediaAsset, CompanionMediaSettings, CompanionPostAttachment } from '../../companion/contracts.js';
+
+export async function companionPublicationRequest<T>(catId: string, suffix: string, method = 'GET', input?: unknown): Promise<T> {
+  const response = await fetch(`${catPath(catId)}/${suffix}`, { method,
+    headers: { Accept: 'application/json', ...(input === undefined ? {} : { 'content-type': 'application/json' }) },
+    body: input === undefined ? undefined : JSON.stringify(input) });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload?.error?.code ?? 'publication_request_failed');
+  return payload as T;
+}
+
+export function createCompanionPost(catId: string, input: { requestKey: string; body: string; attachments: CompanionPostAttachment[] }) {
+  return companionPublicationRequest<{ post: CompanionProfileReadModel['posts'][number] }>(catId, 'posts', 'POST', input);
+}
+
+export function updateCompanionPost(catId: string, postId: string, input: { requestKey: string; expectedRevision: number; body: string }) {
+  return companionPublicationRequest(catId, `posts/${encodeURIComponent(postId)}`, 'PATCH', input);
+}
+
+export type CompanionMediaLibrary = { assets: CompanionMediaAsset[]; settings: CompanionMediaSettings; coverUrl: string | null;
+  sourceFiles: Array<{ path: string; kind: 'image' | 'video' }> };
+export function getCompanionMedia(catId: string) { return companionPublicationRequest<CompanionMediaLibrary>(catId, 'media'); }
+export async function uploadCompanionMedia(catId: string, file: Blob, origin: 'source' | 'cover' = 'source', ifEmpty = false) {
+  const response = await fetch(`${catPath(catId)}/media?origin=${origin}&ifEmpty=${ifEmpty}`, {
+    method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream' }, body: file });
+  return expectJson<{ asset: CompanionMediaAsset; url: string }>(response, `Media upload returned ${response.status}`);
+}
 
 function catPath(catId: string): string {
   return `/api/cats/${encodeURIComponent(catId)}/companion-box`;

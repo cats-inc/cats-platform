@@ -14,12 +14,20 @@ export interface CatImageServiceDependencies {
   assetsDir: string;
   /** Host checks active Cat, owner, original conversation and exact binding; never supplied by the agent. */
   authorizeCaller(caller: CatImageCaller): Promise<void>;
+  authorizePublication?(caller: CatImageCaller): Promise<void>;
+  prepareSources?(job: CatImageJob): Promise<void>;
   /** Startup recovery must prove the originating turn is no longer running before releasing held work. */
   canReleaseTurn?(runtimeSessionId: string): Promise<boolean>;
   now?(): Date;
 }
 
-export const presentCatImage = presentMediaImage;
+export const presentCatImage = (job: CatImageJob) => job.deliveryMode === 'profile'
+  ? { schemaVersion: 3, id: job.id, requestId: job.requestId, operation: job.operation, status: job.status,
+    prompt: job.prompt, error: job.error, output: job.output, createdAt: job.createdAt, updatedAt: job.updatedAt,
+    provider: job.provider, targetId: job.targetId, profileId: job.profileId, profileRevision: job.profileRevision,
+    agentConfigId: job.agentConfigId, agentModel: job.agentModel, agentEffort: job.agentEffort,
+    warnings: job.warnings, executionOutcome: job.executionOutcome, instanceLabel: job.instance, sources: job.sourceIds ?? [], options: job.options ?? {} }
+  : presentMediaImage(job);
 
 /** Cat admission adapter for the same execution service used by Studio's App SDK. */
 export class CatImageService {
@@ -36,9 +44,14 @@ export class CatImageService {
       observeRuntime: async (job, remote) => dependencies.ledger.observeRuntime(job.id, remote, this.now()),
       beforeDispatch: async (job) => dependencies.ledger.claimDispatch(job.id, this.now()),
       resumeReceipt: async job => dependencies.ledger.recover(job.id, this.now()),
-      sourceSessionId: (job) => job.runtimeSessionId,
+      sourceSessionId: (job) => job.runtimeSessionId.startsWith('owner-profile:') ? undefined : job.runtimeSessionId,
+      prepareSources: async job => { if (job.deliveryMode === 'profile') await dependencies.prepareSources?.(job); },
       authorize: async (job) => {
         try {
+        if (job.deliveryMode === 'profile') {
+          if (!dependencies.authorizePublication) throw new MediaImageError('image_not_authorized', 403);
+          await dependencies.authorizePublication(job); dependencies.ledger.authorizePublication(job, this.now()); return;
+        }
         await dependencies.authorizeCaller(job);
         const policy = authorizeCatImagePolicy(dependencies.ledger.policy(job), job, this.now());
         if (policy.id !== job.policyId || policy.revision !== job.policyRevision
@@ -50,7 +63,7 @@ export class CatImageService {
           throw error;
         }
       },
-      imagePath: (job, output) => path.join(dependencies.assetsDir, job.id + (output?.mimeType === 'image/png' ? '.png' : '.jpg')),
+      imagePath: (job, output) => path.join(dependencies.assetsDir, job.id + (output?.mimeType === 'video/mp4' ? '.mp4' : output?.mimeType === 'image/png' ? '.png' : '.jpg')),
       revokedCode: 'image_not_authorized',
     });
   }
@@ -88,6 +101,29 @@ export class CatImageService {
   releaseTurn(runtimeSessionId: string): void {
     for (const job of this.dependencies.ledger.releaseTurn(runtimeSessionId, this.now())) this.execution.start(job);
   }
+
+  async submitPublication(caller: CatImageCaller, request: CatImageRequest & { sourceIds: string[]; operation: 'image.edit' | 'video.generate'; options: { durationSeconds?: 6 | 10 } },
+    limits: { dailyLimit: number; intervalMinutes: number }, defer = true, assertAllowed = () => {}) {
+    if (!this.dependencies.authorizePublication || !this.dependencies.runtimeClient.getMediaCapabilities) throw new MediaImageError('image_runtime_upgrade_required', 503);
+    await this.dependencies.authorizePublication(caller);
+    const capabilities = await this.dependencies.runtimeClient.getMediaCapabilities();
+    const policy = this.dependencies.ledger.publicationPolicy(caller);
+    const profile = capabilities.profiles.find(row => row.operation === request.operation && (!policy || row.targetIds.includes(policy.targetId)));
+    if (!profile || !profile.agentConfigs[0] || !capabilities.sourceSessionYield) throw new MediaImageError('image_profile_unavailable', 503);
+    const targetId = policy?.targetId ?? profile.targetIds[0]!;
+    assertAllowed();
+    const result = this.dependencies.ledger.admitPublication(caller, request, { targetId, profileId: profile.id,
+      profileRevision: String(profile.revision), agentConfigId: profile.agentConfigs[0].id }, limits, this.now(), defer);
+    if (result.created && !defer) this.execution.start(result.job);
+    return result.job;
+  }
+
+  publicationJob(catId: string, id: string) {
+    const job = this.dependencies.ledger.get(id);
+    if (!job || job.catId !== catId || job.deliveryMode !== 'profile') throw new MediaImageError('image_not_found', 404);
+    return job;
+  }
+  publicationJobs() { return this.dependencies.ledger.list().filter(job => job.deliveryMode === 'profile'); }
 
   hasPending(catId: string): boolean {
     return this.dependencies.ledger.list().some(job => job.catId === catId
@@ -152,6 +188,7 @@ export class CatImageService {
     let job = this.dependencies.ledger.get(id);
     if (!job || job.accountId !== accountId || job.ownerActorId !== ownerActorId || job.catId !== catId) throw new MediaImageError('image_not_found', 404);
     if (job.status === 'succeeded') {
+      if (job.deliveryMode === 'profile') return;
       this.dependencies.ledger.ensureDelivery(id, this.now());
       this.dependencies.ledger.abandonDelivery(id, this.now());
       return;

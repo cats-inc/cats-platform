@@ -1,3 +1,4 @@
+import { projectMediaJob, projectMediaOutput, projectMediaCapabilities, MEDIA_MAX_BYTES, type RuntimeMediaRequest, type RuntimeMediaJob, type RuntimeMediaCapabilities, type RuntimeMediaMetadata } from './media.js';
 import {
   readRuntimeSessionMcpDeliveryReport,
   type RuntimeSessionMcpDeliveryReport,
@@ -363,6 +364,12 @@ export interface RuntimeClient {
   respondSessionInteraction?(sessionId: string, interactionId: string, response: InteractionResponse): Promise<ProviderInteraction>;
   getSessionCapabilities?(sessionId: string, refresh?: boolean): Promise<SessionCapabilitiesSnapshot>;
   getImageCapabilities?(): Promise<RuntimeImageCapabilities>;
+  getMediaCapabilities?(): Promise<RuntimeMediaCapabilities>;
+  putMediaSource?(id: string, bytes: Uint8Array): Promise<{ id: string; metadata: RuntimeMediaMetadata }>;
+  submitMediaJob?(input: RuntimeMediaRequest): Promise<RuntimeMediaJob>;
+  getMediaJob?(id: string): Promise<RuntimeMediaJob>;
+  cancelMediaJob?(id: string): Promise<RuntimeMediaJob>;
+  getMediaBytes?(id: string): Promise<Uint8Array>;
   submitImageJob?(input: RuntimeImageRequest): Promise<RuntimeImageJob>;
   getImageJob?(id: string): Promise<RuntimeImageJob>;
   cancelImageJob?(id: string): Promise<RuntimeImageJob>;
@@ -643,6 +650,22 @@ export class CatsRuntimeClient implements RuntimeClient {
   async cancelImageJob(id: string) { return projectImageJob(JSON.parse(new TextDecoder().decode(await this.imageRequest(`jobs/${encodeURIComponent(id)}/cancel`, {})))); }
   async deleteImageJob(id: string) { await this.imageRequest(`jobs/${encodeURIComponent(id)}`, undefined, false, 'DELETE'); }
   async getImageBytes(id: string) { return this.imageRequest(`jobs/${encodeURIComponent(id)}/image`, undefined, true); }
+  async getMediaCapabilities() { return projectMediaCapabilities(JSON.parse(new TextDecoder().decode(await this.imageRequest('capabilities')))); }
+  async submitMediaJob(input: RuntimeMediaRequest) { return projectMediaJob(JSON.parse(new TextDecoder().decode(await this.imageRequest('jobs', input)))); }
+  async getMediaJob(id: string) { return projectMediaJob(JSON.parse(new TextDecoder().decode(await this.imageRequest(`jobs/${encodeURIComponent(id)}`)))); }
+  async cancelMediaJob(id: string) { return projectMediaJob(JSON.parse(new TextDecoder().decode(await this.imageRequest(`jobs/${encodeURIComponent(id)}/cancel`, {})))); }
+  async getMediaBytes(id: string) {
+    const response = await fetch(`${this.baseUrl}/media/images/jobs/${encodeURIComponent(id)}/image`, { headers: this.authHeaders(), signal: AbortSignal.timeout(30000) });
+    return readImageResponse(response, true, MEDIA_MAX_BYTES);
+  }
+  async putMediaSource(id: string, bytes: Uint8Array) {
+    const response = await fetch(`${this.baseUrl}/media/images/sources/${encodeURIComponent(id)}`, {
+      method: 'PUT', body: Buffer.from(bytes), headers: { ...this.authHeaders(), 'Content-Type': 'application/octet-stream' }, signal: AbortSignal.timeout(90000),
+    });
+    const value = JSON.parse(new TextDecoder().decode(await readImageResponse(response)));
+    if (value.id !== id) throw new Error('invalid_media_source');
+    return { id, metadata: projectMediaOutput(value.metadata) };
+  }
   async getUsageSnapshot(): Promise<Record<string, unknown>> {
     const response = await fetch(`${this.baseUrl}/usage/snapshot`, {
       headers: this.authHeaders(), signal: AbortSignal.timeout(8000),

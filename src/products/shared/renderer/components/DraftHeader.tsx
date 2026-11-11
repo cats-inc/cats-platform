@@ -29,6 +29,9 @@ export interface DraftHeaderProps {
   avatarUrl?: string | null;
   avatarColor?: string | null;
   coverStorageKey?: string | null;
+  /** Host-managed profile cover, when supplied by the Directory. */
+  coverUrl?: string | null;
+  onCoverSave?: (dataUrl: string) => void;
   onAvatarSave?: (dataUrl: string) => void;
   alwaysEditable?: boolean;
   /**
@@ -89,13 +92,16 @@ export function DraftHeader({
   avatarUrl,
   avatarColor,
   coverStorageKey,
+  coverUrl: managedCoverUrl,
+  onCoverSave,
   onAvatarSave,
   alwaysEditable = false,
   readOnlyVisuals = false,
 }: DraftHeaderProps) {
   const hasAvatar = variant === 'profile' && Boolean(avatarName);
   const hasCover = variant === 'profile' && Boolean(coverStorageKey);
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [localCoverUrl, setCoverUrl] = useState<string | null>(null);
+  const coverUrl = managedCoverUrl === undefined ? localCoverUrl : managedCoverUrl;
   const [coverDialogOpen, setCoverDialogOpen] = useState(false);
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
   const { t } = useI18n();
@@ -111,6 +117,7 @@ export function DraftHeader({
 
   function handleCoverSave(dataUrl: string) {
     setCoverDialogOpen(false);
+    if (onCoverSave) { onCoverSave(dataUrl); return; }
     if (!coverStorageKey) return;
     writeCatCover(coverStorageKey, dataUrl);
   }

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -93,7 +93,7 @@ async function removeMaterializedStoredSource(
   await rm(targetPath, { force: true });
 }
 
-export class FileCompanionBoxStore implements CompanionBoxStore {
+class FileCompanionBoxData implements CompanionBoxStore {
   constructor(private readonly snapshotPath: string) {}
 
   private async readOrCreateSnapshot(): Promise<CompanionSnapshot> {
@@ -110,18 +110,54 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
       return snapshot;
     }
     // A malformed file is surfaced, never replaced with an empty snapshot.
-    return normalizeSnapshot(JSON.parse(raw) as unknown, nowIso);
+    const parsed: unknown = JSON.parse(raw);
+    const snapshot = normalizeSnapshot(parsed, nowIso);
+    if ((parsed as { version: number }).version === 1) {
+      const digest = createHash('sha256').update(raw).digest('hex').slice(0, 16);
+      const backupPath = `${this.snapshotPath}.v1-${digest}.bak`;
+      const backupTempPath = `${backupPath}.${randomUUID()}.tmp`;
+      try {
+        const existing = await readFile(backupPath, 'utf-8').catch(error => {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+          return null;
+        });
+        if (existing !== raw) {
+          // Preserve an incomplete backup from an interrupted older writer for recovery.
+          if (existing !== null) await rename(backupPath, `${backupPath}.incomplete-${randomUUID()}`);
+          await writeFile(backupTempPath, raw, { encoding: 'utf-8', flag: 'wx', mode: 0o600 });
+          if (await readFile(backupTempPath, 'utf-8') !== raw) throw new Error('Companion backup readback failed.');
+          await rename(backupTempPath, backupPath);
+        }
+      } finally {
+        await rm(backupTempPath, { force: true }).catch(() => {});
+      }
+      try {
+        await this.writeSnapshot(snapshot);
+        const readback = normalizeSnapshot(JSON.parse(await readFile(this.snapshotPath, 'utf-8')), nowIso);
+        if (JSON.stringify(readback) !== JSON.stringify(snapshot)) throw new Error('Companion upgrade readback failed.');
+      } catch (error) {
+        try { await this.writeContents(raw); } catch (restoreError) {
+          throw new AggregateError([error, restoreError], `Companion upgrade needs recovery from ${backupPath}`);
+        }
+        throw error;
+      }
+    }
+    return snapshot;
   }
 
   /** Temp file + rename so a concurrent reader never sees a partial snapshot. */
   private async writeSnapshot(snapshot: CompanionSnapshot): Promise<void> {
+    await this.writeContents(`${JSON.stringify(snapshot, null, 2)}\n`);
+  }
+
+  private async writeContents(contents: string): Promise<void> {
     await mkdir(path.dirname(this.snapshotPath), { recursive: true });
     const tempPath = path.join(
       path.dirname(this.snapshotPath),
       `.${path.basename(this.snapshotPath)}.${process.pid}.${randomUUID()}.tmp`,
     );
     try {
-      await writeFile(tempPath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf-8');
+      await writeFile(tempPath, contents, { encoding: 'utf-8', mode: 0o600, flag: 'wx' });
       // Windows can briefly refuse the replace while a reader holds the file.
       for (let attempt = 0; ; attempt += 1) {
         try {
@@ -142,6 +178,20 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
 
   async readSnapshot(): Promise<CompanionSnapshot> {
     return cloneSnapshot(await this.readOrCreateSnapshot());
+  }
+
+  async transaction<T>(mutate: (snapshot: CompanionSnapshot) => T): Promise<T> {
+    const snapshot = await this.readOrCreateSnapshot();
+    const result = mutate(snapshot);
+    if (result instanceof Promise) throw new Error('Companion transactions must be synchronous.');
+    const validated = normalizeSnapshot(snapshot);
+    const detached = structuredClone(result);
+    await this.writeSnapshot(validated);
+    return detached;
+  }
+
+  async clearForReset(): Promise<void> {
+    await this.writeSnapshot(createEmptySnapshot(new Date().toISOString()));
   }
 
   async getBox(catId: string, now: Date = new Date()) {
@@ -426,4 +476,50 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
       hydratedAt,
     });
   }
+}
+
+// One platform process owns a profile. Multiple adapters for that profile must share its writer.
+const writers = new Map<string, Promise<void>>();
+
+export class FileCompanionBoxStore implements CompanionBoxStore {
+  private readonly data: FileCompanionBoxData;
+  private readonly key: string;
+
+  constructor(snapshotPath: string) {
+    this.data = new FileCompanionBoxData(snapshotPath);
+    this.key = path.resolve(snapshotPath);
+    if (process.platform === 'win32') this.key = this.key.toLowerCase();
+  }
+
+  private run<T>(work: () => Promise<T>): Promise<T> {
+    const result = (writers.get(this.key) ?? Promise.resolve()).then(work);
+    const settled = result.then(() => {}, () => {});
+    writers.set(this.key, settled);
+    void settled.then(() => { if (writers.get(this.key) === settled) writers.delete(this.key); });
+    return result;
+  }
+
+  transaction<T>(mutate: (snapshot: CompanionSnapshot) => T): Promise<T> {
+    return this.run(() => this.data.transaction(mutate));
+  }
+
+  readonly clearForReset = () => this.run(() => this.data.clearForReset());
+  readonly readSnapshot = () => this.run(() => this.data.readSnapshot());
+  readonly getBox: CompanionBoxStore['getBox'] = (...args) => this.run(() => this.data.getBox(...args));
+  readonly getBoxSummary: CompanionBoxStore['getBoxSummary'] = (...args) => this.run(() => this.data.getBoxSummary(...args));
+  readonly listSources: CompanionBoxStore['listSources'] = (...args) => this.run(() => this.data.listSources(...args));
+  readonly ingestSource: CompanionBoxStore['ingestSource'] = (...args) => this.run(() => this.data.ingestSource(...args));
+  readonly updateSource: CompanionBoxStore['updateSource'] = (...args) => this.run(() => this.data.updateSource(...args));
+  readonly deleteSource: CompanionBoxStore['deleteSource'] = (...args) => this.run(() => this.data.deleteSource(...args));
+  readonly listDerived: CompanionBoxStore['listDerived'] = (...args) => this.run(() => this.data.listDerived(...args));
+  readonly upsertDerived: CompanionBoxStore['upsertDerived'] = (...args) => this.run(() => this.data.upsertDerived(...args));
+  readonly listMemory: CompanionBoxStore['listMemory'] = (...args) => this.run(() => this.data.listMemory(...args));
+  readonly createMemory: CompanionBoxStore['createMemory'] = (...args) => this.run(() => this.data.createMemory(...args));
+  readonly deleteMemory: CompanionBoxStore['deleteMemory'] = (...args) => this.run(() => this.data.deleteMemory(...args));
+  readonly updateMemoryStatus: CompanionBoxStore['updateMemoryStatus'] = (...args) => this.run(() => this.data.updateMemoryStatus(...args));
+  readonly getResponseProfile: CompanionBoxStore['getResponseProfile'] = (...args) => this.run(() => this.data.getResponseProfile(...args));
+  readonly updateResponseProfile: CompanionBoxStore['updateResponseProfile'] = (...args) => this.run(() => this.data.updateResponseProfile(...args));
+  readonly getLifeProfile: CompanionBoxStore['getLifeProfile'] = (...args) => this.run(() => this.data.getLifeProfile(...args));
+  readonly updateLifeProfile: CompanionBoxStore['updateLifeProfile'] = (...args) => this.run(() => this.data.updateLifeProfile(...args));
+  readonly buildSessionContext: CompanionBoxStore['buildSessionContext'] = (...args) => this.run(() => this.data.buildSessionContext(...args));
 }

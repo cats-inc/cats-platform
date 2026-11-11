@@ -1,19 +1,20 @@
 import { createHash } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { RuntimeClient, RuntimeSendMessageInput, RuntimeSessionResumeInput } from '../runtime/client.js';
-import { handleMcpHttpRequest } from '../mcp/jsonRpcServer.js';
+import { handleMcpHttpRequest, type McpToolDefinition, type McpToolCallResult } from '../mcp/jsonRpcServer.js';
 import { McpSessionGrantStore } from '../mcp/sessionGrants.js';
 import { MediaImageError } from './imageExecution.js';
 import { CatImageService, presentCatImage } from './catImages.js';
 import type { CatImageCaller } from './catImagePolicy.js';
 
 export const CAT_IMAGE_TOOLS_PATH = '/api/internal/cat-image-tools/mcp';
-interface Turn { caller: CatImageCaller; actionId: string; expiresAt: number; active: boolean; cancelled?: boolean; }
+interface Turn extends CatImageTurnResolution { expiresAt: number; active: boolean; cancelled?: boolean; }
 interface Session { token: string; turn?: Turn; }
 export interface CatImageTurnResolution {
   caller: CatImageCaller;
   actionId: string;
   unavailable?: { code: string; expiresAt: string };
+  publication?: { channelId: string; requestKey: string; heartbeatKind?: 'wake' | 'regular' | 'bedtime' };
 }
 const instructions = 'Current Cats image-tool availability (supersedes earlier snapshots): available. '
   + 'You can use the cats image_generate tool when an image would be useful to your owner. '
@@ -41,6 +42,11 @@ export function createCatImageTools(options: {
   endpoint(): string | null;
   resolveTurn(sessionId: string, input: RuntimeSendMessageInput): Promise<CatImageTurnResolution | null>;
   now?(): number;
+  publications?: {
+    tools: McpToolDefinition[];
+    instructions: string;
+    callTool(name: string, args: Record<string, unknown>, turn: CatImageTurnResolution, assertAllowed: () => void): Promise<McpToolCallResult>;
+  };
 }) {
   const grants = new McpSessionGrantStore<{ sessionId: string }>();
   const sessions = new Map<string, Session>();
@@ -80,7 +86,7 @@ export function createCatImageTools(options: {
             return target.sendMessage(sessionId, content, tracked ? { ...input, mcpServers: input.mcpServers ?? [] } : input);
           }
           if (input.mcpServers?.some(server => server.name === 'cats')) throw new MediaImageError('image_tool_scope_conflict', 409);
-          if (resolved.unavailable) {
+          if (resolved.unavailable && !resolved.publication) {
             revoke(sessionId);
             // A restarted host has no in-memory grant, but Runtime may still hold
             // its old descriptor. Replace it explicitly while preserving other servers.
@@ -100,13 +106,20 @@ export function createCatImageTools(options: {
           try {
             const result = await target.sendMessage(sessionId, content, { ...input,
               mcpServers: [...(input.mcpServers ?? []), descriptor(endpoint, session.token)],
-              instructions: [input.instructions, instructions].filter(Boolean).join('\n\n') });
+              instructions: [input.instructions, resolved.unavailable
+                ? resolved.publication
+                  ? `Cats direct-image conversation delivery is unavailable for this turn (${resolved.unavailable.code}). Profile publication and media tools below have their own capability checks; use them for profile posts.`
+                  : unavailableInstructions(resolved.unavailable)
+                : instructions,
+                resolved.publication ? options.publications?.instructions : null].filter(Boolean).join('\n\n') });
             completed = true;
             return result;
           } finally {
             turn.active = false;
-            if (turn.cancelled) await options.service.cancelTurn(sessionId);
-            else if (completed) options.service.releaseTurn(sessionId);
+            if (!turn.unavailable || turn.publication) {
+              if (turn.cancelled) await options.service.cancelTurn(sessionId);
+              else if (completed) options.service.releaseTurn(sessionId);
+            }
           }
         };
         if (property === 'resumeSession' && target.resumeSession) return async (sessionId: string, input?: RuntimeSessionResumeInput) => {
@@ -117,9 +130,10 @@ export function createCatImageTools(options: {
         if (property === 'cancelSession' || property === 'closeSession' || property === 'deleteSession') return async (sessionId: string) => {
           const tracked = sessions.has(sessionId);
           const turnActive = sessions.get(sessionId)?.turn?.active === true;
+          const imageAllowed = !sessions.get(sessionId)?.turn?.unavailable || !!sessions.get(sessionId)?.turn?.publication;
           revoke(sessionId);
           // Sleep releases a finished chat worker, not its accepted asynchronous images.
-          if (tracked && (property !== 'closeSession' || turnActive)) await options.service.cancelTurn(sessionId);
+          if (tracked && imageAllowed && (property !== 'closeSession' || turnActive)) await options.service.cancelTurn(sessionId);
           return target[property](sessionId);
         };
         const value = Reflect.get(target, property);
@@ -142,16 +156,23 @@ export function createCatImageTools(options: {
         return session;
       },
       server: {
-        name: 'cats', version: '1.0.0', instructions,
-        listTools: () => [{ name: 'image_generate', description: 'Queue one controlled image and its caption for your owner. '
+        name: 'cats', version: '1.0.0', instructions: options.publications
+          ? 'Use only tools listed for your current Cat turn. Profile posts and direct conversation image delivery have distinct receipts; check the result before claiming completion.' : instructions,
+        listTools: session => [...(session.turn?.publication ? options.publications?.tools ?? [] : []),
+          ...(session.turn?.unavailable ? [] : [{ name: 'image_generate', description: 'Queue one controlled image and its caption for your owner. '
           + 'Generation and delivery happen after this turn. Retry only the identical prompt/caption.',
           inputSchema: { type: 'object', additionalProperties: false, required: ['prompt', 'caption'],
             properties: { prompt: { type: 'string', minLength: 1, maxLength: 2000 }, caption: { type: 'string', maxLength: 1024 } } } },
           { name: 'image_status', description: 'Read the original image job and its actual delivery status. This never generates or resends an image.',
-            inputSchema: { type: 'object', additionalProperties: false, required: ['jobId'], properties: { jobId: { type: 'string', format: 'uuid' } } } }],
+            inputSchema: { type: 'object', additionalProperties: false, required: ['jobId'], properties: { jobId: { type: 'string', format: 'uuid' } } } }])],
         async callTool(name, args, session) {
           try {
             const turn = session.turn;
+            if (turn?.publication && options.publications?.tools.some(tool => tool.name === name)) {
+              assertActive(session, turn);
+              return await options.publications.callTool(name, args, turn, () => assertActive(session, turn));
+            }
+            if (turn?.unavailable) throw new MediaImageError(turn.unavailable.code, 403);
             if (turn && name === 'image_status') {
               assertActive(session, turn);
               if (Object.keys(args).length !== 1 || typeof args.jobId !== 'string'

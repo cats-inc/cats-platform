@@ -31,6 +31,8 @@ import { createCatImageTools, CAT_IMAGE_TOOLS_PATH } from '../../platform/multim
 import { createDesktopControlForServer, DESKTOP_CONTROL_MCP_PATH } from '../../platform/desktopControl/server.js';
 import { routeDesktopControlHost } from '../../platform/desktopControl/routes.js';
 import { createChatCatImages, type ChatCatImages } from '../../products/chat/api/catImages.js';
+import { createCompanionPublications, COMPANION_PUBLICATION_TOOLS, COMPANION_PUBLICATION_INSTRUCTIONS,
+  type ChatCompanionPublications } from '../../products/chat/api/companionPublications.js';
 import { MemoryChatStore } from '../../products/chat/state/store.js';
 import type { CodeConversationPreviews } from '../../products/code/livePreview/conversationPreviews.js';
 import { sweepOrphanLivePreviewProcesses } from '../../products/code/livePreview/processRegistry.js';
@@ -74,6 +76,7 @@ export function createServer(dependencies: ServerDependencies) {
   const providerSelectorClient = dependencies.shared.runtimeClient;
   const codeAgentToolGrants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
   let catImages: ChatCatImages | undefined = dependencies.chat.catImages;
+  let publications: ChatCompanionPublications | undefined = dependencies.chat.companionPublications;
   let catImageToolsEndpoint: string | null = null;
   const catImageTools = createCatImageTools({
     endpoint: () => catImageToolsEndpoint,
@@ -82,14 +85,23 @@ export function createServer(dependencies: ServerDependencies) {
         if (!catImages) throw new Error('Cat image service unavailable');
         return catImages.service().submit(...args);
       },
-      releaseTurn: id => catImages?.service().releaseTurn(id),
-      cancelTurn: async id => { await catImages?.service().cancelTurn(id); },
+      releaseTurn: id => catImages?.releaseTurn(id),
+      cancelTurn: async id => { await catImages?.cancelTurn(id); },
       status: (...args) => {
         if (!catImages) throw new Error('Cat image service unavailable');
         return catImages.service().status(...args);
       },
     },
-    resolveTurn: async (id, input) => await catImages?.resolveTurn(id, input) ?? null,
+    resolveTurn: async (id, input) => {
+      const imageTurn = await catImages?.resolveTurn(id, input);
+      const publicationTurn = await publications?.resolveTurn(id, input);
+      return imageTurn ? { ...imageTurn, publication: publicationTurn?.publication } : publicationTurn ?? null;
+    },
+    publications: { tools: COMPANION_PUBLICATION_TOOLS, instructions: COMPANION_PUBLICATION_INSTRUCTIONS,
+      callTool: async (...args) => {
+        if (!publications) throw new Error('Publication service unavailable');
+        return publications.callTool(...args);
+      } },
     now: () => dependencies.shared.now?.().getTime() ?? Date.now(),
   });
   let desktopControlEndpoint: string | null = null;
@@ -140,15 +152,24 @@ export function createServer(dependencies: ServerDependencies) {
     catImages = createChatCatImages({ ...resolvedDependencies.chat, config: resolvedDependencies.shared.config,
       runtimeClient: providerSelectorClient, now: resolvedDependencies.shared.now,
       authStore: resolvedDependencies.shared.authStore,
-      isTurnActive: id => catImageTools.isTurnActive(id) });
+      isTurnActive: id => catImageTools.isTurnActive(id),
+      preparePublicationSources: job => publications?.generation.prepareSources(job) ?? Promise.reject(new Error('Publication service unavailable')),
+      authorizePublication: caller => publications?.generation.authorize(caller, 'deliveryMode' in caller) ?? Promise.reject(new Error('Publication service unavailable')) });
   }
   resolvedDependencies.chat.catImages = catImages;
+  if (!publications && typeof resolvedDependencies.shared.config.chatStatePath === 'string') {
+    publications = createCompanionPublications({ ...resolvedDependencies.chat, runtimeClient: providerSelectorClient,
+      config: resolvedDependencies.shared.config, now: resolvedDependencies.shared.now,
+      publicOrigin: () => resolvedDependencies.shared.platformIngress?.publicOrigin(), imageService: () => catImages?.service() });
+  }
+  resolvedDependencies.chat.companionPublications = publications;
   codeConversationPreviews = resolvedDependencies.code.conversationPreviews;
   let pluginTimer: ReturnType<typeof setInterval> | undefined;
   resolvedDependencies.shared.providerSelectorClient = providerSelectorClient;
   function startBackgroundLoops() {
     const mediaTimer = setInterval(() => {
       if (!resetting) void catImages?.tick().catch(reportUnhandledServerError);
+      if (!resetting) void publications?.tick().catch(reportUnhandledServerError);
     }, 2000);
     mediaTimer.unref();
     const stopHistoryRetentionLoop = startHistoryRetentionLoop({ coreStore: resolvedDependencies.work.coreStore, now: resolvedDependencies.work.now });
@@ -232,6 +253,7 @@ export function createServer(dependencies: ServerDependencies) {
 
   const dispatchProduct = async (request: IncomingMessage, response: ServerResponse) => {
     const entry = platformRequestEntry(request);
+    if (await publications?.shares.route(request, response)) return;
     if (entry && appComponents && await appComponents.route(request, response, entry.origin)) return;
     // An opaque App frame can only use its App view grant, never Platform cookies.
     if (request.headers.origin === 'null') {
@@ -288,7 +310,7 @@ export function createServer(dependencies: ServerDependencies) {
     if (!startupSettled || livePreviewSweepPending || activeRequests.size || chat.mutationGate.isIdle?.() === false
       || !loops.stopSchedulerLoop.isIdle() || !loops.stopCompanionLifeLoop.isIdle() || !loops.stopHistoryRetentionLoop.isIdle()
       || !loops.stopTransportFanout.isIdle() || golden?.runner?.isIdle?.() === false
-      || golden?.outbox.isIdle?.() === false || catImages?.isIdle() === false) throw new PlatformResetBusyError();
+      || golden?.outbox.isIdle?.() === false || catImages?.isIdle() === false || publications?.isIdle() === false) throw new PlatformResetBusyError();
     resetting = true;
     loops.stopSchedulerLoop();
     loops.stopHistoryRetentionLoop();
@@ -366,10 +388,13 @@ export function createServer(dependencies: ServerDependencies) {
   let livePreviewSweep: ReturnType<typeof setInterval> | undefined;
   let livePreviewSweepPending: Promise<unknown> | undefined;
   let hostingClose: Promise<void> | undefined;
+  const closePublicationsAndImages = async () => {
+    try { await publications?.close(); } finally { await catImages?.close(); }
+  };
   const closeAppHosting = () => {
     clearInterval(livePreviewSweep);
     return hostingClose ??= Promise.allSettled([
-      ingress?.close(), appComponents?.close(), livePreviewSupervisor?.stopAll('platform_shutdown'), catImages?.close(),
+      ingress?.close(), appComponents?.close(), livePreviewSupervisor?.stopAll('platform_shutdown'), closePublicationsAndImages(),
     ]).then(results => {
       const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected');
       if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Hosted service cleanup failed.');

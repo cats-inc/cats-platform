@@ -36,6 +36,8 @@ export interface CompanionSessionContextInput {
 }
 
 export interface CompanionBoxStore {
+  /** Atomic, synchronous mutation. Never call another store method from this callback. */
+  transaction<T>(mutate: (snapshot: CompanionSnapshot) => T): Promise<T>;
   clearForReset?(): Promise<void>;
   readSnapshot(): Promise<CompanionSnapshot>;
   getBox(catId: string, now?: Date): Promise<CompanionBox>;

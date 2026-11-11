@@ -1,3 +1,4 @@
+import { mediaByteLimit, type MediaOperation, type RuntimeMediaMetadata, type RuntimeMediaJob } from '../../runtime/media.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, open, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -29,14 +30,16 @@ export interface MediaImageExecution {
   profileId: string;
   profileRevision: string;
   agentConfigId: string | null;
-  operation: 'image.generate';
+  operation: MediaOperation;
+  sourceIds?: string[];
+  options?: { durationSeconds?: 6 | 10 };
   status: MediaImageStatus;
   agentModel: string | null;
   agentEffort: string | null;
   error: string | null;
   warnings: string[];
   executionOutcome: 'completed' | 'stopped_after_image' | null;
-  output: RuntimeImageMetadata | null;
+  output: RuntimeMediaMetadata | null;
 }
 
 export type MediaImagePatch = Partial<Pick<MediaImageExecution,
@@ -47,7 +50,7 @@ export class MediaImageError extends Error {
 }
 
 export type ImageRuntimeClient = Pick<RuntimeClient, 'getImageCapabilities' | 'submitImageJob'
-  | 'getImageJob' | 'cancelImageJob' | 'deleteImageJob' | 'getImageBytes'>;
+  | 'getImageJob' | 'cancelImageJob' | 'deleteImageJob' | 'getImageBytes' | 'getMediaCapabilities' | 'putMediaSource' | 'submitMediaJob' | 'getMediaJob' | 'getMediaBytes' | 'cancelMediaJob'>;
 
 export interface ImageExecutionDependencies<Job extends MediaImageExecution> {
   runtimeClient: ImageRuntimeClient;
@@ -57,13 +60,14 @@ export interface ImageExecutionDependencies<Job extends MediaImageExecution> {
   update(id: string, patch: MediaImagePatch): Promise<Job | undefined>;
   /** Rechecked before dispatch, collection and exposing bytes. Never derived from model input. */
   authorize(job: Job): Promise<unknown>;
-  observeRuntime?(job: Job, remote: RuntimeImageJob): Promise<void>;
+  observeRuntime?(job: Job, remote: RuntimeMediaJob): Promise<void>;
   /** Atomically claim a durable dispatch after a Cat's source turn has released it. */
   beforeDispatch?(job: Job): Promise<boolean>;
   resumeReceipt?(job: Job): Promise<Job | undefined>;
-  sourceSessionId?(job: Job): string;
+  sourceSessionId?(job: Job): string | undefined;
+  prepareSources?(job: Job): Promise<void>;
   /** Managed asset location; an adapter must never accept a caller-supplied path. */
-  imagePath(job: Job, output: Pick<RuntimeImageMetadata, 'mimeType'> | null): string;
+  imagePath(job: Job, output: Pick<RuntimeMediaMetadata, 'mimeType'> | null): string;
   /** Collection-only repair of a previously validated legacy source failure. */
   reviveSource?(job: Job): Promise<void>;
   revokedCode: string;
@@ -79,11 +83,13 @@ export const isImageSourceFailure = (job: Pick<MediaImageExecution, 'status' | '
 export const IMAGE_PREEXECUTION_REFUSALS: ReadonlySet<string> = new Set([
   'image_service_busy', 'runtime_capacity_full', 'image_transport_unsupported', 'invalid_image_request',
   'image_profile_unavailable', 'image_profile_changed', 'image_storage_limit', 'image_source_busy', 'image_source_unavailable',
+  'media_source_preparation_failed',
 ]);
 
 const hash = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex');
 /** Shared public projection; private caller, policy, file and installation data never leave it. */
 export function presentMediaImage(job: MediaImageExecution): CatsImageJobV2 {
+  if (job.operation !== 'image.generate' || job.output?.mimeType === 'video/mp4') throw new MediaImageError('unsupported_image_contract');
   return { schemaVersion: 2, id: job.id, requestId: job.requestId, provider: job.provider,
     targetId: job.targetId, instanceLabel: job.instance, operation: job.operation,
     profileId: job.profileId, profileRevision: job.profileRevision, agentConfigId: job.agentConfigId,
@@ -153,21 +159,23 @@ export class ImageExecutionService<Job extends MediaImageExecution> {
     }).catch(() => {}).finally(() => this.resuming.delete(job.id));
   }
 
-  private matches(job: Job, remote: RuntimeImageJob): boolean {
+  private matches(job: Job, remote: RuntimeMediaJob): boolean {
     return remote.id === job.id && remote.targetId === job.targetId && remote.prompt === job.prompt
-      && remote.operation === job.operation && remote.profileId === job.profileId
+      && remote.operation === job.operation
+      && (job.operation === 'image.generate' || (JSON.stringify(remote.sourceIds) === JSON.stringify(job.sourceIds) && JSON.stringify(remote.options) === JSON.stringify(job.options))) && remote.profileId === job.profileId
       && remote.profileRevision === job.profileRevision
       && (!this.dependencies.sourceSessionId || remote.sourceSessionId === this.dependencies.sourceSessionId(job))
       && (job.agentConfigId === null || remote.agentConfigId === job.agentConfigId);
   }
 
-  private async observe(job: Job, remote: RuntimeImageJob): Promise<void> {
+  private async observe(job: Job, remote: RuntimeMediaJob): Promise<void> {
     if (!this.matches(job, remote)) throw new MediaImageError('invalid_image');
     await this.dependencies.observeRuntime?.(job, remote);
   }
 
   private async dispatch(job: Job): Promise<void> {
     const deps = this.dependencies;
+    let submitted = false;
     try {
       await deps.authorize(job);
       const before = await deps.read(job.id);
@@ -175,18 +183,26 @@ export class ImageExecutionService<Job extends MediaImageExecution> {
       if (!job.agentConfigId || !deps.runtimeClient.submitImageJob) {
         throw new MediaImageError('image_service_unavailable', 503);
       }
-      if (deps.beforeDispatch && !await deps.beforeDispatch(job)) return;
-      if (this.closed) return;
-      const remote = await deps.runtimeClient.submitImageJob({
+      await deps.prepareSources?.(job);
+      const submit = job.operation === 'image.generate' ? deps.runtimeClient.submitImageJob.bind(deps.runtimeClient)
+        : deps.runtimeClient.submitMediaJob?.bind(deps.runtimeClient);
+      if (!submit) throw new MediaImageError('image_runtime_upgrade_required', 503);
+      await deps.authorize(job);
+      if (this.closed || (deps.beforeDispatch && !await deps.beforeDispatch(job))) return;
+      const request = {
         id: job.id, targetId: job.targetId, profileId: job.profileId,
         profileRevision: job.profileRevision, agentConfigId: job.agentConfigId,
-        operation: job.operation, prompt: job.prompt, sourceIds: [], options: {},
+        operation: job.operation, prompt: job.prompt, sourceIds: job.sourceIds ?? [], options: job.options ?? {},
+        ...(job.operation === 'image.generate' ? {} : { contractVersion: 3 as const }),
         ...(deps.sourceSessionId ? { sourceSessionId: deps.sourceSessionId(job) } : {}),
-      });
+      };
+      submitted = true;
+      const remote = await submit(request as never);
       let after = await deps.read(job.id);
       if (after?.status === 'interrupted' && deps.resumeReceipt) after = await deps.resumeReceipt(after);
       if (!after || after.status === 'cancelling' || after.status === 'cancelled') {
-        await deps.runtimeClient.cancelImageJob?.(job.id);
+        if (job.operation === 'image.generate') await deps.runtimeClient.cancelImageJob?.(job.id);
+        else await deps.runtimeClient.cancelMediaJob?.(job.id);
         return;
       }
       if (!isActiveImage(after)) return;
@@ -194,7 +210,9 @@ export class ImageExecutionService<Job extends MediaImageExecution> {
       await this.poll(job);
     } catch (error) {
       // Only definite pre-execution refusals are terminal. An unknown POST is read, never replayed.
-      if (error instanceof RuntimeImageError && IMAGE_PREEXECUTION_REFUSALS.has(error.code)) {
+      if (!submitted) {
+        await deps.update(job.id, { status: 'failed', error: 'media_source_preparation_failed' });
+      } else if (error instanceof RuntimeImageError && IMAGE_PREEXECUTION_REFUSALS.has(error.code)) {
         await deps.update(job.id, { status: 'failed', error: error.code });
       } else await this.poll(job);
     }
@@ -214,9 +232,11 @@ export class ImageExecutionService<Job extends MediaImageExecution> {
           if (cancelled?.status === 'cancelling') { await delay(); continue; }
           return;
         }
-        let remote: RuntimeImageJob;
+        let remote: RuntimeMediaJob;
         try {
-          const read = current.status === 'cancelling' ? deps.runtimeClient.cancelImageJob : deps.runtimeClient.getImageJob;
+          const read = job.operation === 'image.generate'
+            ? current.status === 'cancelling' ? deps.runtimeClient.cancelImageJob : deps.runtimeClient.getImageJob
+            : current.status === 'cancelling' ? deps.runtimeClient.cancelMediaJob : deps.runtimeClient.getMediaJob;
           if (!read) throw new MediaImageError('image_service_unavailable', 503);
           remote = await read.call(deps.runtimeClient, job.id);
           readFailures = 0;
@@ -261,7 +281,7 @@ export class ImageExecutionService<Job extends MediaImageExecution> {
     }
   }
 
-  private async accept(job: Job, remote: RuntimeImageJob): Promise<void> {
+  private async accept(job: Job, remote: RuntimeMediaJob): Promise<void> {
     const deps = this.dependencies;
     await this.observe(job, remote);
     const execution = { agentModel: remote.agentModel, agentEffort: remote.agentEffort,
@@ -272,8 +292,8 @@ export class ImageExecutionService<Job extends MediaImageExecution> {
     }
     if (!remote.output || !deps.runtimeClient.getImageBytes) throw new MediaImageError('invalid_image');
     await deps.update(job.id, { status: 'collecting' });
-    const bytes = await deps.runtimeClient.getImageBytes(job.id);
-    if (bytes.length > IMAGE_MAX_BYTES || bytes.length !== remote.output.bytes || hash(bytes) !== remote.output.sha256) {
+    const bytes = await (job.operation === 'image.generate' ? deps.runtimeClient.getImageBytes!(job.id) : deps.runtimeClient.getMediaBytes!(job.id));
+    if (bytes.length > mediaByteLimit(job.output ?? remote.output) || bytes.length !== remote.output.bytes || hash(bytes) !== remote.output.sha256) {
       throw new MediaImageError('invalid_image');
     }
     await deps.authorize(job);
@@ -305,7 +325,7 @@ export class ImageExecutionService<Job extends MediaImageExecution> {
     await deps.update(job.id, { status: 'cancelling' });
     try {
       if (!deps.runtimeClient.cancelImageJob) throw new MediaImageError('image_service_unavailable', 503);
-      const stopped = await deps.runtimeClient.cancelImageJob(job.id);
+      const stopped = await (job.operation === 'image.generate' ? deps.runtimeClient.cancelImageJob!(job.id) : deps.runtimeClient.cancelMediaJob!(job.id));
       await this.observe(job, stopped);
       await deps.update(job.id, stopped.status === 'interrupted'
         ? { status: 'interrupted', error: 'execution_interrupted' }
@@ -325,7 +345,7 @@ export class ImageExecutionService<Job extends MediaImageExecution> {
     await deps.update(job.id, { status: 'cancelling' });
     try {
       if (!deps.runtimeClient.cancelImageJob) throw new MediaImageError('image_service_unavailable', 503);
-      const remote = await deps.runtimeClient.cancelImageJob(job.id);
+      const remote = await (job.operation === 'image.generate' ? deps.runtimeClient.cancelImageJob!(job.id) : deps.runtimeClient.cancelMediaJob!(job.id));
       await this.observe(job, remote);
       await deps.update(job.id, remote.status === 'running' || remote.status === 'cancelling'
         ? { status: 'cancelling', error: deps.revokedCode }
@@ -338,7 +358,7 @@ export class ImageExecutionService<Job extends MediaImageExecution> {
     }
   }
 
-  async image(job: Job, authorizeRead: () => Promise<unknown>): Promise<{ bytes: Buffer; mimeType: RuntimeImageMetadata['mimeType'] }> {
+  async image(job: Job, authorizeRead: () => Promise<unknown>): Promise<{ bytes: Buffer; mimeType: RuntimeMediaMetadata['mimeType'] }> {
     if (job.status !== 'succeeded' || !job.output) throw new MediaImageError('image_not_ready', 409);
     await authorizeRead();
     try { return await this.readAsset(job, authorizeRead); } catch (error) {
@@ -346,12 +366,12 @@ export class ImageExecutionService<Job extends MediaImageExecution> {
         && !(error instanceof MediaImageError && error.code === 'invalid_image')) throw error;
       const client = this.dependencies.runtimeClient;
       if (!client.getImageJob || !client.getImageBytes) throw error;
-      const original = await client.getImageJob(job.id);
+      const original = await (job.operation === 'image.generate' ? client.getImageJob!(job.id) : client.getMediaJob!(job.id));
       if (!this.matches(job, original) || original.status !== 'succeeded'
         || original.output?.sha256 !== job.output.sha256 || original.output.bytes !== job.output.bytes
         || original.output.mimeType !== job.output.mimeType) throw new MediaImageError('invalid_image', 503);
-      const bytes = await client.getImageBytes(job.id);
-      if (bytes.length !== job.output.bytes || bytes.length > IMAGE_MAX_BYTES || hash(bytes) !== job.output.sha256) {
+      const bytes = await (job.operation === 'image.generate' ? client.getImageBytes!(job.id) : client.getMediaBytes!(job.id));
+      if (bytes.length !== job.output.bytes || bytes.length > mediaByteLimit(job.output) || hash(bytes) !== job.output.sha256) {
         throw new MediaImageError('invalid_image', 503);
       }
       await authorizeRead();
@@ -365,14 +385,14 @@ export class ImageExecutionService<Job extends MediaImageExecution> {
     }
   }
 
-  private async readAsset(job: Job, authorizeRead: () => Promise<unknown>): Promise<{ bytes: Buffer; mimeType: RuntimeImageMetadata['mimeType'] }> {
+  private async readAsset(job: Job, authorizeRead: () => Promise<unknown>): Promise<{ bytes: Buffer; mimeType: RuntimeMediaMetadata['mimeType'] }> {
     if (!job.output) throw new MediaImageError('image_not_ready', 409);
     if (!await this.currentAsset(job)) throw new MediaImageError('image_not_found', 404);
     const file = await open(this.dependencies.imagePath(job, job.output), 'r');
     let bytes: Buffer;
     try {
       const info = await file.stat();
-      if (!info.isFile() || info.size !== job.output.bytes || info.size > IMAGE_MAX_BYTES) throw new MediaImageError('invalid_image', 503);
+      if (!info.isFile() || info.size !== job.output.bytes || info.size > mediaByteLimit(job.output)) throw new MediaImageError('invalid_image', 503);
       bytes = Buffer.alloc(info.size);
       let offset = 0;
       while (offset < bytes.length) {

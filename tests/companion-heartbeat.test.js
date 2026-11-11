@@ -801,7 +801,7 @@ test('heartbeat speaker: what the Cat says lands in its lane as its own message'
     assert.equal(message.senderKind, 'agent');
     assert.equal(message.senderName, 'Mochi');
     assert.equal(message.metadata.origin, 'runtime');
-    assert.deepEqual(message.metadata.companionHeartbeat, { kind: 'wake' });
+    assert.deepEqual(message.metadata.companionHeartbeat, { kind: 'wake', actionId: `companion-heartbeat:${cat.id}:${now.toISOString()}` });
     assert.notEqual(message.metadata.event, 'assistant_turn_segment');
   });
 });

@@ -9,7 +9,6 @@ import {
   fetchAppShell,
   updateCatProfile,
 } from '../../../products/shared/renderer/api/index.js';
-import { hasCompanionSkill } from '../../../products/chat/renderer/chatUtils.js';
 import { buildWorkspaceNewChatPath } from '../../../products/shared/channelPaths.js';
 import { CATS_DIRECTORY_PATH, buildCatSettingsPath } from '../../../shared/catsDirectoryPaths.js';
 import { messageKeys } from '../../../shared/i18n/index.js';
@@ -44,10 +43,8 @@ export function CatProfileNotFound({ catId }: { catId: string }) {
  * `CompanionWorkspace` under `EntitiesShell`, so the sidebar is the
  * platform-level directory chrome — not chat's.
  *
- * Cats with the `companion` skill render the full workspace
- * (header / Post / Photo / activity feed / side panel). Cats
- * without it use the same shell but with the feed hidden — same
- * header + side panel, no Post / Photo region.
+ * Every Cat can publish manually in the shared profile feed.
+ * Autonomous creation additionally uses the Companion role and settings.
  *
  * Cat-mutating actions (avatar save, wake, sleep) hit the chat
  * product API directly and refresh the local payload; there is no
@@ -79,7 +76,7 @@ export function CatProfilePage() {
     return <CatProfileNotFound catId={catId} />;
   }
 
-  const hideFeed = !hasCompanionSkill(cat);
+  const hideFeed = false;
 
   const refreshPayload = (): void => {
     void fetchAppShell()

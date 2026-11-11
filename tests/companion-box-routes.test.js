@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -98,6 +98,7 @@ async function withServer(
       config: {
         ...baseConfig,
         chatStatePath: path.join(workingDir, 'platform', 'state', 'chat-state.local.json'),
+        runtimeDataDir: path.join(workingDir, 'runtime', 'data'),
       },
       runtimeClient,
       authStore: auth.authStore,
@@ -127,6 +128,7 @@ async function withServer(
     restoreFetch();
     server.close();
     await once(server, 'close');
+    await rm(workingDir, { recursive: true, force: true });
   }
 }
 
@@ -495,6 +497,8 @@ test('direct companion chat routes hydrated companion session context into runti
     const sendMessagePayload = await sendMessageResponse.json();
 
     // Companion direct lanes also open a provider-agent decision session (companion posts).
+    await waitForCondition(() => runtimeClient.sentMessages.some(message =>
+      message.input?.context?.reason !== 'chat-provider-agent-decision'), { timeoutMs: 2000 });
     const replySessions = runtimeClient.createdSessions
       .filter((session) => session.context?.reason !== 'chat-provider-agent-decision-session');
     assert.equal(replySessions.length, 1, JSON.stringify(sendMessagePayload));

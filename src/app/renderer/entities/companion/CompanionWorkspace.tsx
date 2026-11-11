@@ -18,6 +18,7 @@ import {
   type CompanionPresencePending,
 } from './hooks/useCompanionPresence.js';
 import { useCompanionProfile } from './hooks/useCompanionProfile.js';
+import { useCompanionCover } from './hooks/useCompanionCover.js';
 import { useCompanionWorkspace } from './hooks/useCompanionWorkspace.js';
 import { CompanionFeed } from './CompanionFeed.js';
 import { CompanionModeToggleChip } from './CompanionModeToggleChip.js';
@@ -90,6 +91,7 @@ export function CompanionWorkspace({
 
   const { dialog: confirmDialog, confirm, handleClose: onConfirmClose } = useConfirmDialog();
   const { toasts, showToast } = useToast();
+  const cover = useCompanionCover(cat.id, () => showToast(t(messageKeys.postActionFailed)));
   const { refresh: refreshProfile } = profile;
   const handleRemovePost = useCallback(async (post: { id: string; title: string }) => {
     const confirmed = await confirm({
@@ -299,6 +301,8 @@ export function CompanionWorkspace({
             avatarUrl={cat.avatarUrl}
             avatarColor={cat.avatarColor}
             coverStorageKey={cat.id}
+            coverUrl={cover.url}
+            onCoverSave={cover.save}
             onAvatarSave={
               onCatAvatarSave
                 ? (dataUrl) => onCatAvatarSave(cat.id, dataUrl)
@@ -388,6 +392,7 @@ export function CompanionWorkspace({
               profile={profile.profile}
               activity={activity.projection}
               onRemovePost={(post) => void handleRemovePost(post)}
+              onChanged={refreshProfile}
             />
           )}
         </div>

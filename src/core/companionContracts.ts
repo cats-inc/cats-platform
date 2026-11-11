@@ -1,4 +1,6 @@
 import type { MemoryRetrievalContext } from '../platform/memory/contracts.js';
+import type { CompanionPublicationState } from './companionPublicationContracts.js';
+export type * from './companionPublicationContracts.js';
 
 export type CompanionSourceKind =
   | 'note'
@@ -280,8 +282,8 @@ export interface CompanionSourceDeleteResult {
   prunedMemoryIds: string[];
 }
 
-export interface CompanionSnapshot {
-  version: 1;
+export interface CompanionSnapshot extends CompanionPublicationState {
+  version: 2;
   updatedAt: string;
   boxes: CompanionBox[];
   sources: CompanionSourceRecord[];

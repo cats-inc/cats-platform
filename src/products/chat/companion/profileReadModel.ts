@@ -1,10 +1,20 @@
-import type { CompanionDerivedRecord } from './contracts.js';
+import type { CompanionDerivedRecord, CompanionMediaAsset, CompanionShareGrant } from './contracts.js';
+
+export interface CompanionProfileAttachment {
+  assetId: string;
+  kind: 'image' | 'video';
+  url: string;
+  alt: string;
+  width: number;
+  height: number;
+  aiGenerated: boolean;
+}
 
 /**
  * Companion profile read model — projections the companion main surface
- * tabs render. The model is intentionally agent-only: posts, photos, videos,
- * music, and files all come from `CompanionDerivedRecord` entries that the
- * Cat (or future agent producers) wrote with `metadata.profileSurface` set
+ * tabs render. The model is intentionally publication-only: posts, photos, videos,
+ * music, and files all come from `CompanionDerivedRecord` entries that an owner or
+ * Cat producer wrote with `metadata.profileSurface` set
  * to one of `post` / `photo` / `video` / `music` / `file`. Owner-supplied
  * `CompanionSourceRecord` data is NOT projected into these tabs — sources
  * are the ingredients the Cat reads from, never auto-published material on
@@ -32,6 +42,10 @@ export interface CompanionProfilePost {
   sourceIds: string[];
   publishedAt: string;
   updatedAt: string;
+  revision?: number;
+  attachments?: CompanionProfileAttachment[];
+  aiGenerated?: boolean;
+  shared?: boolean;
 }
 
 export type CompanionProfileMediaSurface = 'photo' | 'video' | 'music';
@@ -45,6 +59,7 @@ export interface CompanionProfileMediaTile {
   storedPath: string | null;
   publishedAt: string;
   updatedAt: string;
+  url?: string;
 }
 
 export interface CompanionProfileFileTile {
@@ -80,6 +95,8 @@ const PROFILE_MEDIA_MIME_TYPE_KEY = 'profileMediaMimeType';
 
 export interface ProjectCompanionProfileInput {
   derived: readonly CompanionDerivedRecord[];
+  mediaAssets?: readonly CompanionMediaAsset[];
+  shareGrants?: readonly CompanionShareGrant[];
 }
 
 export function projectCompanionProfile(
@@ -94,7 +111,27 @@ export function projectCompanionProfile(
   for (const record of input.derived) {
     const surface = readSurface(record);
     if (surface === PROFILE_POST_SURFACE) {
-      posts.push(buildPost(record));
+      const post = buildPost(record);
+      post.shared = input.shareGrants?.some(grant => grant.catId === record.catId && grant.postId === post.id && !grant.revokedAt) ?? false;
+      const requested = Array.isArray(record.metadata.profilePostAttachments) ? record.metadata.profilePostAttachments : [];
+      post.attachments = requested.flatMap(item => {
+        if (!isPlainObject(item)) return [];
+        const asset = input.mediaAssets?.find(row => row.id === item.assetId && row.catId === record.catId);
+        if (!asset) return [];
+        return [{ assetId: asset.id, kind: asset.kind, alt: typeof item.alt === 'string' ? item.alt : '',
+          url: `/api/cats/${encodeURIComponent(record.catId)}/companion-box/media/${encodeURIComponent(asset.id)}`,
+          width: asset.width, height: asset.height, aiGenerated: asset.origin === 'generated' }];
+      });
+      post.revision = Number.isSafeInteger(record.metadata.profilePostRevision) ? Number(record.metadata.profilePostRevision) : 1;
+      post.aiGenerated = record.metadata.profilePostAiGenerated === true;
+      posts.push(post);
+      if (post.status === 'active') for (const attachment of post.attachments) {
+        const tiles = attachment.kind === 'image' ? photos : videos;
+        if (tiles.some(tile => tile.id === attachment.assetId)) continue;
+        tiles.push({ id: attachment.assetId, surface: attachment.kind === 'image' ? 'photo' : 'video',
+          derivedId: record.id, title: attachment.alt || record.title || '', mimeType: null, storedPath: null,
+          publishedAt: post.publishedAt, updatedAt: post.updatedAt, url: attachment.url });
+      }
       continue;
     }
     if (surface === PROFILE_PHOTO_SURFACE) {
