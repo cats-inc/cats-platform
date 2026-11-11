@@ -66,11 +66,9 @@ export interface ProductScopeRaiseConfirmation {
 }
 
 function folderLabel(view: ProductScopeRaiseView, t: Translate): string {
-  const folder = view.workspace.repoPath ?? view.workspace.chatCwd;
-  if (folder) return folder;
-  return view.workspace.workspaceKind === 'sandbox'
-    ? t(messageKeys.sharedProductScopeRaiseFolderSandbox)
-    : t(messageKeys.sharedProductScopeRaiseFolderNone);
+  // A sandbox conversation's `chatCwd` is the sandbox Runtime made, not a folder of the owner's.
+  if (view.workspace.workspaceKind === 'sandbox') return t(messageKeys.sharedProductScopeRaiseFolderSandbox);
+  return view.workspace.repoPath ?? view.workspace.chatCwd ?? t(messageKeys.sharedProductScopeRaiseFolderNone);
 }
 
 function permissionLabel(view: ProductScopeRaiseView, t: Translate): string {
@@ -98,7 +96,10 @@ export function buildProductScopeRaiseConfirmation(
   } else {
     adds.push(t(messageKeys.sharedProductScopeRaiseKeepsCode));
   }
-  if (target === 'work') adds.push(t(messageKeys.sharedProductScopeRaiseAddsNoWorkTool));
+  if (target === 'work') {
+    adds.push(t(messageKeys.sharedProductScopeRaiseAddsWorkItem));
+    adds.push(t(messageKeys.sharedProductScopeRaiseAddsNoWorkTool));
+  }
   const names = view.participants.map((participant) => participant.name).filter(Boolean);
   return {
     title: t(messageKeys.sharedProductScopeRaiseTitle, { product }),
@@ -126,11 +127,21 @@ const FAILURE_KEYS: Record<string, MessageKey> = {
   channel_not_found: messageKeys.sharedProductScopeRaiseErrorNotFound,
 };
 
-/** FR-30: a refusal's reason in the owner's language; anything else is a generic failure. */
+/**
+ * FR-30: a refusal's reason in the owner's language. A refusal with another code is a generic
+ * failure. A request that got no refusal at all may have reached the server, so it says only
+ * that the move is not confirmed.
+ */
 export function describeProductScopeRaiseFailure(error: unknown, t: Translate): string {
   const code = error instanceof ProductScopeRaiseError ? error.code : null;
-  const key = code ? FAILURE_KEYS[code] : undefined;
-  return t(key ?? messageKeys.sharedProductScopeRaiseErrorGeneric);
+  if (!code) return t(messageKeys.sharedProductScopeRaiseErrorUnconfirmed);
+  return t(FAILURE_KEYS[code] ?? messageKeys.sharedProductScopeRaiseErrorGeneric);
+}
+
+/** A failed read of what a raise would do: nothing was asked to move. */
+export function describeProductScopeReadFailure(error: unknown, t: Translate): string {
+  const code = error instanceof ProductScopeRaiseError ? error.code : null;
+  return t((code && FAILURE_KEYS[code]) || messageKeys.sharedProductScopeRaiseErrorGeneric);
 }
 
 /** FR-28: a refusal the read route reported, where the owner chose a level. */

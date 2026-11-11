@@ -1055,7 +1055,8 @@ export function ConversationView({
   const composerSurfaceTag = (
     <ConversationScopeChip
       channel={selectedChannel}
-      parallelMember={compareGroup !== null || (payload.chat.parallelChatGroups ?? []).some((group) =>
+      // As the server counts it: a member of an active group only.
+      parallelMember={compareGroup?.status === 'active' || (payload.chat.parallelChatGroups ?? []).some((group) =>
         group.status === 'active' && group.memberChannelIds.includes(selectedChannel.id))}
       control={productScopeRaise}
     />

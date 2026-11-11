@@ -7,7 +7,6 @@ import { NewChatDraft as ChatDraft } from '../../src/products/chat/renderer/comp
 import { NewChatDraft as CodeDraft } from '../../src/products/code/renderer/components/NewChatDraft.js';
 import { NewChatDraft as WorkDraft } from '../../src/products/work/renderer/components/NewChatDraft.js';
 import { ConversationView } from '../../src/products/shared/renderer/components/conversation-view/ConversationView.js';
-import { ComposerSurfaceChip } from '../../src/products/shared/renderer/components/ComposerSurfaceChip.js';
 import { PermissionModeChip } from '../../src/products/shared/renderer/components/PermissionModeChip.js';
 import { useAppChrome } from '../../src/products/shared/renderer/hooks/useAppChrome.js';
 import { clearBusyState } from '../../src/shared/workspaceBusy.js';
@@ -128,7 +127,6 @@ function App() {
           onOperatorAction={noop} autoResize={autoResize} onSelect={noop} onOpenAddCat={noop}
           activeWorkflowShape="sequential" onToggleActiveWorkflowShape={noop}
           renderComposerHeaderAccessory={() => <PermissionModeChip value="full" onChange={noop} />}
-          renderComposerSurfaceTag={() => <ComposerSurfaceChip surface={product} />}
           compareGroup={compareGroup} compareSendScope="active_only"
         /> : <Draft
           payload={payload} composerDraft={draft} busy={clearBusyState()} greeting="Fixture draft"

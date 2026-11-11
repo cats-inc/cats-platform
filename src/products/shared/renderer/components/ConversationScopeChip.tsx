@@ -7,7 +7,7 @@ import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 import { fetchProductScopeRaise, type ProductScopeRaiseView } from '../api/productScope.js';
 import {
   buildProductScopeRaiseConfirmation,
-  describeProductScopeRaiseFailure,
+  describeProductScopeReadFailure,
   describeProductScopeRaiseRefusal,
   productScopeLabel,
   productScopeRaiseMenuLevels,
@@ -35,6 +35,7 @@ export function ConversationScopeChip({ channel, parallelMember, control }: Conv
   const [loading, setLoading] = useState(false);
   const [dialog, setDialog] = useState<{ view: ProductScopeRaiseView; target: ProductScope } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   // One read at a time, locked in the handler and not only on the button.
   const readRef = useRef<AbortController | null>(null);
 
@@ -88,7 +89,7 @@ export function ConversationScopeChip({ channel, parallelMember, control }: Conv
         setDialog({ view, target });
       }
     } catch (error) {
-      if (!controller.signal.aborted) raiseControl.report(describeProductScopeRaiseFailure(error, t));
+      if (!controller.signal.aborted) raiseControl.report(describeProductScopeReadFailure(error, t));
     } finally {
       if (readRef.current === controller) {
         readRef.current = null;
@@ -107,6 +108,7 @@ export function ConversationScopeChip({ channel, parallelMember, control }: Conv
   return (
     <div className="composerSelectChipWrapper conversationScopeChipWrapper" ref={wrapperRef}>
       <button
+        ref={buttonRef}
         type="button"
         className={`composerSurfaceChip composerSurfaceChip${capitalize(scope)} conversationScopeChip`}
         disabled={busy}
@@ -147,6 +149,8 @@ export function ConversationScopeChip({ channel, parallelMember, control }: Conv
           target={dialog.target}
           onCancel={() => setDialog(null)}
           onConfirm={confirm}
+          // The menu item that opened it is gone, so focus returns to the chip.
+          returnFocus={() => buttonRef.current?.focus()}
         />
       ) : null}
     </div>
@@ -154,11 +158,12 @@ export function ConversationScopeChip({ channel, parallelMember, control }: Conv
 }
 
 /** FR-29: the confirmation, from the read route's answer, with Cancel focused first. */
-export function ProductScopeRaiseDialog({ view, target, onCancel, onConfirm }: {
+export function ProductScopeRaiseDialog({ view, target, onCancel, onConfirm, returnFocus }: {
   view: ProductScopeRaiseView;
   target: ProductScope;
   onCancel: () => void;
   onConfirm: () => void;
+  returnFocus?: () => void;
 }) {
   const { t } = useI18n();
   const content = buildProductScopeRaiseConfirmation(view, target, t);
@@ -166,10 +171,14 @@ export function ProductScopeRaiseDialog({ view, target, onCancel, onConfirm }: {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
 
+  const returnFocusRef = useRef(returnFocus);
+  returnFocusRef.current = returnFocus;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     cancelRef.current?.focus();
-    return () => previous?.focus?.();
+    return () => {
+      if (returnFocusRef.current) returnFocusRef.current(); else previous?.focus?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -182,6 +191,12 @@ export function ProductScopeRaiseDialog({ view, target, onCancel, onConfirm }: {
         const controls = containerRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled)');
         const first = controls?.[0];
         const last = controls?.[controls.length - 1];
+        // Focus that left the dialog, such as a click on its text, comes back into it.
+        if (!containerRef.current?.contains(document.activeElement)) {
+          event.preventDefault();
+          (event.shiftKey ? last : first)?.focus();
+          return;
+        }
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
         if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }

@@ -21,6 +21,11 @@ import {
 import { ComposerSurfaceChip } from '../src/products/shared/renderer/components/ComposerSurfaceChip.tsx';
 import { ConversationScopeChip } from '../src/products/shared/renderer/components/ConversationScopeChip.tsx';
 import { useProductScopeRaise } from '../src/products/shared/renderer/hooks/useProductScopeRaise.ts';
+import {
+  postRaiseNotice,
+  resetRaiseNoticesForTests,
+  subscribeRaiseNotices,
+} from '../src/products/shared/renderer/productScopeRaiseNotices.ts';
 import { stageCrossSurfaceConversationNavigationHandoff } from '../src/products/shared/renderer/crossSurfaceConversationNavigation.ts';
 import {
   clearCrossSurfaceNavigationHandoff,
@@ -31,6 +36,8 @@ const en = createTranslator('en');
 const zh = createTranslator('zh-TW');
 
 async function settle() { for (let turn = 0; turn < 5; turn++) await nextTurn(); }
+
+test.beforeEach(() => resetRaiseNoticesForTests());
 
 function view(overrides: Partial<ProductScopeRaiseView> = {}): ProductScopeRaiseView {
   return {
@@ -73,6 +80,7 @@ function mount(node: () => React.ReactElement, respond?: (url: string, init?: Re
     Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
   }
   const root = createRoot(dom.window.document.getElementById('root')!);
+  let mounted = true;
   act(() => { root.render(node()); });
   return {
     document: dom.window.document,
@@ -81,8 +89,13 @@ function mount(node: () => React.ReactElement, respond?: (url: string, init?: Re
       assert.ok(element, 'element to click');
       act(() => { (element as HTMLElement).dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true })); });
     },
+    unmount() {
+      if (mounted) act(() => root.unmount());
+      mounted = false;
+    },
     restore() {
-      act(() => root.unmount());
+      if (mounted) act(() => root.unmount());
+      mounted = false;
       dom.window.close();
       for (const [key, descriptor] of saved) {
         if (descriptor) Object.defineProperty(globalThis, key, descriptor); else Reflect.deleteProperty(globalThis, key);
@@ -133,26 +146,45 @@ test('the confirmation names what a raise to Code adds, who gains it, what stays
 
 test('a raise to Work says no Work tool is added yet, from Chat and from Code', () => {
   const fromChat = buildProductScopeRaiseConfirmation(view({ livePreviewsEnabled: true }), 'work', en);
-  assert.equal(fromChat.adds.length, 4);
+  assert.equal(fromChat.adds.length, 5);
   assert.match(fromChat.adds[1]!, /so they can run live previews too/u);
+  assert.equal(fromChat.adds.at(-2), "Work lists the conversation's Work Item as its own.");
   assert.equal(fromChat.adds.at(-1), 'No Work tool is added to its agents yet.');
   const fromCode = buildProductScopeRaiseConfirmation(view({
     scope: 'code',
     widerLevels: ['work'],
     participants: [],
-    workspace: { repoPath: null, chatCwd: null, workspaceKind: 'sandbox', workspaceAccess: 'read_write', permissionMode: 'skip', executionPolicy: null },
+    // A sandbox conversation's chatCwd is Runtime's sandbox, which the owner did not choose.
+    workspace: { repoPath: null, chatCwd: 'C:/Users/o/.cats/runtime/sessions/s1', workspaceKind: 'sandbox', workspaceAccess: 'read_write', permissionMode: 'skip', executionPolicy: null },
   }), 'work', en);
-  assert.deepEqual(fromCode.adds, ["Code's tools and conversation parts stay as they are.", 'No Work tool is added to its agents yet.']);
+  assert.deepEqual(fromCode.adds, [
+    "Code's tools and conversation parts stay as they are.",
+    "Work lists the conversation's Work Item as its own.",
+    'No Work tool is added to its agents yet.',
+  ]);
   assert.equal(fromCode.participants, 'No one has joined yet. Anyone added later works at this level.');
   assert.deepEqual(fromCode.unchanged, ['Folder: a sandbox, with no folder of yours', 'CLI permission: Workspace write (legacy)']);
   assert.equal(fromCode.moves, "It moves to Work's Recents and opens with Work's view and preferences.");
 });
 
-test('the confirmation and refusals exist in zh-TW', () => {
+test('the confirmation and refusals exist in zh-TW, for each transition', () => {
+  const toCode = buildProductScopeRaiseConfirmation(view(), 'code', zh);
+  assert.equal(toCode.title, '要把這個對話移到 Code 嗎？');
+  assert.equal(toCode.adds[0], '從下一輪起，它的 agent 會取得 Code 的工具，可以宣告產物並顯示在畫布中。');
+  assert.deepEqual(toCode.unchanged, ['資料夾：C:/repo/app', 'CLI 權限：唯讀']);
   const content = buildProductScopeRaiseConfirmation(view(), 'work', zh);
   assert.equal(content.title, '要把這個對話移到 Work 嗎？');
   assert.equal(content.adds.at(-1), '目前還不會為它的 agent 新增 Work 的工具。');
   assert.match(content.permanent, /無法復原/u);
+  const fromCode = buildProductScopeRaiseConfirmation(view({ scope: 'code', widerLevels: ['work'] }), 'work', zh);
+  assert.deepEqual(fromCode.adds, [
+    'Code 的工具與對話元件維持不變。',
+    'Work 會把這個對話的工作項目列為自己的。',
+    '目前還不會為它的 agent 新增 Work 的工具。',
+  ]);
+  for (const line of [...toCode.adds, ...content.adds, toCode.participants, toCode.moves]) {
+    assert.doesNotMatch(line, /shared\.productScopeRaise/u, 'every line has zh-TW copy');
+  }
   assert.equal(describeProductScopeRaiseFailure(new ProductScopeRaiseError('owner_required', 'x'), zh), '只有擁有者可以把對話移到其他產品。');
 });
 
@@ -166,7 +198,9 @@ test('each refusal code reads as its own reason, and anything else as a generic 
   assert.match(reason('revision_stale'), /changed after the confirmation was shown/u);
   assert.equal(reason('channel_not_found'), 'This conversation no longer exists.');
   assert.match(reason('E_CSRF_MISMATCH'), /^Couldn't move the conversation/u);
-  assert.match(describeProductScopeRaiseFailure(new Error('offline'), en), /^Couldn't move the conversation/u);
+  // No refusal at all: the request may have reached the server, so the move is only unconfirmed.
+  assert.match(reason(null), /^Couldn't confirm the move/u);
+  assert.match(describeProductScopeRaiseFailure(new Error('offline'), en), /^Couldn't confirm the move/u);
 });
 
 test('an existing conversation chip is never dismissable; a draft chip still is', () => {
@@ -298,6 +332,7 @@ function createRaiseHarness() {
     get refreshes() { return refreshes; },
     get hook() { return hook; },
     moveTo(channelId: string | null) { routeChannelId = channelId; harness.rerender(); },
+    unmount() { harness.unmount(); },
     async settleFirst(outcome: 'resolve' | Error) {
       const first = pending.shift()!;
       if (outcome === 'resolve') first.resolve(); else first.reject(outcome);
@@ -315,7 +350,8 @@ test('a raise hands its toast to the redirect, whichever of the response and the
     assert.equal(responseFirst.hook.control.pendingChannelId, 'chat-a');
     await responseFirst.settleFirst('resolve');
     await done;
-    assert.equal(responseFirst.refreshes, 1, 'the app shell refresh brings the redirect');
+    // The update event's subscription patch brings the redirect; the refresh updates the rest.
+    assert.equal(responseFirst.refreshes, 1);
     assert.deepEqual(responseFirst.toasts, [], 'the destination shows the toast, not this app');
     assert.equal(responseFirst.hook.takeRedirectNotice('chat-a', 'work'), undefined, 'only the raised product');
     assert.equal(responseFirst.hook.takeRedirectNotice('chat-b', 'code'), undefined, 'only the raised conversation');
@@ -401,5 +437,80 @@ test('the redirect handoff carries the toast to the destination', () => {
     );
   } finally {
     clearCrossSurfaceNavigationHandoff();
+  }
+});
+
+test('a raise whose app is gone before it settles tells the next product app', async () => {
+  const harness = createRaiseHarness();
+  try {
+    act(() => { void harness.hook.control.raise('chat-a', 'code', 'rev-1'); });
+    // The owner opens Settings or another product while the raise waits on a running turn.
+    harness.unmount();
+    await harness.settleFirst('resolve');
+    const shown: string[] = [];
+    const unsubscribe = subscribeRaiseNotices((message) => shown.push(message));
+    assert.deepEqual(shown, ['This conversation moved to Code.'], 'shown by the next app to mount');
+    assert.equal(harness.hook.takeRedirectNotice('chat-a', 'code'), undefined, 'and not again on a later redirect');
+    unsubscribe();
+  } finally {
+    harness.restore();
+  }
+});
+
+test('a refusal after the app is gone is told too, and a mounted app shows a posted message at once', async () => {
+  const harness = createRaiseHarness();
+  try {
+    act(() => { void harness.hook.control.raise('chat-a', 'code', 'rev-1'); });
+    harness.unmount();
+    await harness.settleFirst(new ProductScopeRaiseError('revision_stale', 'changed'));
+    const shown: string[] = [];
+    const unsubscribe = subscribeRaiseNotices((message) => shown.push(message));
+    postRaiseNotice('later');
+    unsubscribe();
+    assert.deepEqual(shown, [
+      'The conversation changed after the confirmation was shown. Nothing moved; try again.',
+      'later',
+    ]);
+  } finally {
+    harness.restore();
+  }
+});
+
+test('a request that got no answer keeps the toast for a redirect that may still come', async () => {
+  const harness = createRaiseHarness();
+  try {
+    act(() => { void harness.hook.control.raise('chat-a', 'work', 'rev-1'); });
+    await harness.settleFirst(new Error('connection reset'));
+    assert.deepEqual(harness.toasts, ["Couldn't confirm the move. If the conversation did not move, try again."]);
+    assert.equal(harness.hook.takeRedirectNotice('chat-a', 'work'), 'This conversation moved to Work.');
+  } finally {
+    harness.restore();
+  }
+});
+
+test('the confirmation returns focus to the chip and keeps Tab inside it', async () => {
+  const chat = control();
+  const harness = mount(
+    () => <ConversationScopeChip channel={{ id: 'chat-a', originSurface: 'chat' }} parallelMember={false} control={chat.value} />,
+    () => json(200, view()),
+  );
+  try {
+    const doc = harness.document;
+    const chip = doc.querySelector<HTMLButtonElement>('button.conversationScopeChip');
+    harness.click(chip);
+    harness.click(doc.querySelectorAll('[role="menuitem"]')[0]);
+    await settle();
+    assert.equal(doc.activeElement?.className, 'confirmCancelButton');
+    // A click on the dialog's text leaves the focus on the page; Tab brings it back in.
+    (doc.activeElement as HTMLElement).blur();
+    assert.equal(doc.activeElement, doc.body);
+    act(() => { doc.dispatchEvent(new doc.defaultView!.KeyboardEvent('keydown', { key: 'Tab', bubbles: true })); });
+    assert.equal(doc.activeElement?.className, 'confirmCancelButton');
+    act(() => { doc.dispatchEvent(new doc.defaultView!.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+    assert.equal(doc.querySelector('[role="dialog"]'), null);
+    assert.equal(doc.activeElement, chip, 'focus returns to the chip');
+    assert.deepEqual(chat.calls.raises, []);
+  } finally {
+    harness.restore();
   }
 });
