@@ -867,7 +867,9 @@ export async function persistCatAssignmentUpdate(
           ...runtimePolicy,
           interactionHost: PLATFORM_INTERACTION_HOST,
           workspaceKind: effectiveWorkspaceKind,
-          context: runtimeEnvelope.context,
+          // The host tools' grant names the participant whose session this is (SPEC-142).
+          context: { ...runtimeEnvelope.context, metadata: {
+            ...(runtimeEnvelope.context?.metadata ?? {}), targetParticipantId: assignmentTargetId } },
           skills: runtimeEnvelope.skills,
         }, { phase: 'session_create' }),
         supervision: {

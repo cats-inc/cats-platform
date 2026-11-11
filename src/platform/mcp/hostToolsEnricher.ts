@@ -23,7 +23,12 @@ export function createHostToolsInvocationEnricher(): RuntimeInvocationEnricher {
     id: HOST_TOOLS_HOOK_ID,
     priority: RuntimeEnricherPriority.POST_PROCESS,
     enrich(channel, input) {
-      if (!channel.id) return null;
+      if (!channel.id) {
+        // No conversation, no marker: drop one an earlier step may have left.
+        if (!input.context?.metadata || !(HOST_TOOLS_CONTEXT_METADATA_KEY in input.context.metadata)) return null;
+        const { [HOST_TOOLS_CONTEXT_METADATA_KEY]: _dropped, ...metadata } = input.context.metadata;
+        return { context: { ...input.context, metadata } };
+      }
       const level = readProductScope(channel);
       const participantId = input.context?.metadata?.[TARGET_PARTICIPANT_METADATA_KEY];
       const marker: HostToolsInvocationMarker = {

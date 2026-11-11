@@ -92,7 +92,7 @@ test('the Code wrapper delivers contributed servers through the same descriptor 
   ];
   const wrapper = createHostToolsClientWrapper({
     grants: new McpSessionGrantStore<CodeAgentToolGrantBinding>(),
-    server: { hasTools: () => true, instructions: () => undefined },
+    server: { hasTools: () => true, instructions: () => undefined, listTools: () => [] },
     endpoint: () => 'http://127.0.0.1:9/api/code/agent-tools/mcp',
     contributors,
     onContributionError: (id) => failures.push(id),

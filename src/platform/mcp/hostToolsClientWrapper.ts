@@ -9,7 +9,7 @@ import type {
   RuntimeSessionMcpDeliveryReport,
   RuntimeSessionMcpServer,
 } from '../../runtime/sessionMcpServers.js';
-import type { ProductScope } from '../../shared/productScope.js';
+import { compareProductScopes, type ProductScope } from '../../shared/productScope.js';
 import {
   HOST_TOOLS_SERVER_NAME,
   readHostToolsInvocationMarker,
@@ -54,7 +54,7 @@ interface TrackedSession {
 
 export interface HostToolsClientWrapperOptions {
   grants: McpSessionGrantStore<HostToolGrantBinding>;
-  server: Pick<HostToolServer, 'hasTools' | 'instructions'>;
+  server: Pick<HostToolServer, 'hasTools' | 'instructions' | 'listTools'>;
   /** The loopback MCP URL, or null while Platform cannot offer it. */
   endpoint(): string | null;
   /** A conversation gained a session with the `cats` server. */
@@ -166,18 +166,35 @@ export function createHostToolsClientWrapper(options: HostToolsClientWrapperOpti
   }
 
   /**
-   * FR-3: the conversation reached a wider level since this session's grant was issued. Its next
-   * send carries a new grant, so Runtime recycles the worker and the agent lists its tools again.
+   * FR-3: the conversation reached a wider level since this session's grant was issued. When that
+   * level lists other tools, its next send carries a new grant, so Runtime recycles the worker and
+   * the agent lists its tools again. When it lists the same ones (Code to Work, until Work has
+   * tools of its own), the grant takes the new level and nothing recycles.
    */
   function raiseGrant(sessionId: string, tracked: TrackedSession, marker: HostToolsInvocationMarker): void {
     const current = options.grants.resolve(tracked.token);
-    const token = issue(marker, current?.binding.shellExecution ?? marker.shellExecution);
+    const participantId = marker.participantId ?? tracked.participantId;
+    // The same tools at the wider level: the worker keeps its grant, now at that level. Only a
+    // changed tool list is worth recycling the worker for.
+    const sameTools = toolNames(marker.level) === toolNames(tracked.level);
+    if (sameTools && current) {
+      options.grants.bind(tracked.token, sessionId, { level: marker.level, participantId });
+      tracked.level = marker.level;
+      tracked.participantId = participantId;
+      return;
+    }
+    // Without the current grant (only after a data reset), fail closed on the shell posture.
+    const token = issue({ ...marker, participantId }, current?.binding.shellExecution ?? false);
     options.grants.bind(token, sessionId, { workspacePath: current?.binding.workspacePath ?? null });
     tracked.retired.push(tracked.token);
     tracked.token = token;
     tracked.level = marker.level;
-    tracked.participantId = marker.participantId ?? tracked.participantId;
+    tracked.participantId = participantId;
     tracked.report = undefined;
+  }
+
+  function toolNames(level: ProductScope): string {
+    return options.server.listTools(level).map((tool) => tool.name).sort().join(' ');
   }
 
   function settleReport(tracked: TrackedSession, report: RuntimeSessionMcpDeliveryReport | undefined): void {
@@ -259,8 +276,9 @@ export function createHostToolsClientWrapper(options: HostToolsClientWrapperOpti
                 }
               }
               if (!tracked || !endpoint) return target.sendMessage(sessionId, content, input);
-              if (marker && marker.channelId === tracked.channelId && marker.level !== tracked.level
-                && options.server.hasTools(marker.level)) {
+              // Levels only rise (SPEC-141 D2), so only a wider one is acted on.
+              if (marker && marker.channelId === tracked.channelId
+                && compareProductScopes(marker.level, tracked.level) > 0 && options.server.hasTools(marker.level)) {
                 raiseGrant(sessionId, tracked, marker);
               }
               const result = await target.sendMessage(sessionId, content, {

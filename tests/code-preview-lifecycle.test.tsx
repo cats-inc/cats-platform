@@ -290,7 +290,7 @@ test('the Code runtime wrapper reports when a conversation gains and loses sessi
   const grants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
   const wrapper = createHostToolsClientWrapper({
     grants,
-    server: { hasTools: () => true, instructions: () => undefined },
+    server: { hasTools: () => true, instructions: () => undefined, listTools: () => [] },
     endpoint: () => 'http://127.0.0.1:1/api/code/agent-tools/mcp',
     onSessionStarted: (channelId) => events.push(`start:${channelId}`),
     onSessionEnded: (channelId, reason) => events.push(`${reason}:${channelId}:${grants.some((grant) => grant.binding.channelId === channelId)}`),

@@ -64,7 +64,8 @@ instructions listed by level (FR-1 to FR-5).
     generic name, and Claude Code's `mcp__cats__…` names appear only in Code's policy.
 - [x] The marker and the grant carry the level and the participant. Today they carry neither.
   - The participant is the dispatch's target, which the dispatch context now carries as
-    `targetParticipantId`. A session start or a send without one carries `null`.
+    `targetParticipantId`, as does a session started for a newly assigned Cat. A raise keeps
+    the participant when the marker names none.
 - [x] The tool list and the server's `instructions` are built per grant. Today the
       instructions are one fixed string.
   - `McpServerDefinition.instructions` may be a function of the caller. The turn policy is
@@ -75,7 +76,11 @@ instructions listed by level (FR-1 to FR-5).
 - [x] The wrapper issues a new grant when the level it sees has changed, and keeps the old one
       valid until the worker is recycled (FR-3).
   - The old grants are revoked once Runtime reports the new set `delivered`, or when the
-    session closes. The new grant keeps the session's folder and shell posture.
+    session closes. The new grant keeps the session's folder, shell posture and participant.
+  - Only a wider level is acted on. When it lists the same tools (Code to Work, until Work has
+    tools), the grant takes the new level in place and nothing recycles.
+  - Without the current grant, which happens only after a data reset, the new grant has no
+    shell posture (fails closed).
 - [x] Confirm that the wrapper keeps the other servers on create, send and resume. PLAN-134
       Phase 4 makes that fix; this phase adds the test with the desktop control server, and
       fixes the order in which servers are merged, because Runtime's fingerprint depends on
@@ -92,10 +97,17 @@ instructions listed by level (FR-1 to FR-5).
     lists a base tool. Phase 2 adds that check end to end.
 - [x] Decide and record whether a lane's transport and heartbeat turns get the read tools, and
       put it to the security review.
-  - Decided: they do, as the lane's other turns do. The tools read only the lane's own Tasks
-    and Runs (FR-9), which those turns' agent already works in, and write nothing. Holding them
-    back would need a per-turn grant, which Runtime would see as a new set and recycle the
-    worker for on every heartbeat.
+  - Decided: the read tools are not held back from them. They read only the lane's own Tasks
+    and Runs (FR-9), scoped by the grant's conversation and never by arguments, and write
+    nothing; their output is limited to what the lane already shows.
+  - What actually happens (the security review): a Telegram transport turn passes through the
+    enricher like an owner's turn. A heartbeat turn does not (`companionLifeLoop.ts` sends its
+    own context), so it carries the server only while the session's grant is tracked from an
+    earlier turn; after a Platform restart a heartbeat-first turn gets none, and the next
+    owner's turn recycles the worker. That is acceptable for read-only tools.
+  - For tools that propose or write (Phase 3 on), a turn gate that refuses transport and
+    heartbeat triggers is needed: Telegram text is an injection surface. The trigger and the
+    transport are in the turn's context metadata. Phase 3 records it with the proposal tools.
 - [x] Checked in Runtime: a provider that cannot take session servers is sent none and its
       report says `unsupported`; nothing fails (`RuntimeSessionManager.supportsSessionMcpServers`).
       A hosted ACP agent that is offered servers but advertises no MCP capability fails its

@@ -180,6 +180,41 @@ test('FR-3: a raise brings a new grant on the next send; the old one lasts until
   assert.equal(host.grants.resolve(codeToken), null);
 });
 
+test('a raise to a level with the same tools keeps the grant, and a lower level is ignored', async () => {
+  const host = createHostToolServer();
+  host.register(BASE);
+  host.register(createCodeAgentToolsProvider({ coreStore: new MemoryCoreStore() }));
+  const wrapper = createHostToolsClientWrapper({ grants: host.grants, server: host, endpoint: () => 'http://127.0.0.1:1/mcp' });
+  const { client, calls } = fakeRuntime({ sendReports: [DELIVERED, DELIVERED, DELIVERED] });
+  const wrapped = wrapper.wrapClient(client);
+  await wrapped.createSession({ provider: 'claude', context: marker('code') } as RuntimeSessionCreateInput);
+  const codeToken = tokenOf(calls.create[0]!.mcpServers)!;
+  // Work lists the same tools as Code until Work has tools of its own.
+  await wrapped.sendMessage('rt-1', 'after a raise to work', { context: marker('work') });
+  assert.equal(tokenOf(calls.send[0]!.mcpServers), codeToken, 'no new grant, so no recycle');
+  assert.equal(host.grants.resolve(codeToken)?.binding.level, 'work', 'the grant takes the new level');
+  // A marker below the grant's level is never acted on: levels only rise.
+  await wrapped.sendMessage('rt-1', 'a stale marker', { context: marker('chat') });
+  assert.equal(tokenOf(calls.send[1]!.mcpServers), codeToken);
+  assert.equal(host.grants.resolve(codeToken)?.binding.level, 'work');
+});
+
+test('a raise after a data reset fails closed on the shell posture, and keeps the participant', async () => {
+  const host = createHostToolServer();
+  host.register(BASE);
+  host.register(createCodeAgentToolsProvider({ coreStore: new MemoryCoreStore() }));
+  const wrapper = createHostToolsClientWrapper({ grants: host.grants, server: host, endpoint: () => 'http://127.0.0.1:1/mcp' });
+  const { client, calls } = fakeRuntime({ sendReports: [DELIVERED] });
+  const wrapped = wrapper.wrapClient(client);
+  await wrapped.createSession({ provider: 'claude', context: marker('chat') } as RuntimeSessionCreateInput);
+  host.clearForReset();
+  const withoutParticipant = { metadata: { hostTools: { ...marker('code').metadata.hostTools, participantId: null } } };
+  await wrapped.sendMessage('rt-1', 'after a reset and a raise', { context: withoutParticipant });
+  const token = tokenOf(calls.send[0]!.mcpServers)!;
+  assert.equal(host.grants.resolve(token)?.binding.shellExecution, false);
+  assert.equal(host.grants.resolve(token)?.binding.participantId, 'participant-1');
+});
+
 test("a companion's lane keeps its image tools beside the host server (SPEC-142 A3)", async () => {
   const host = createHostToolServer();
   host.register(BASE);

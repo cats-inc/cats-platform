@@ -606,7 +606,9 @@ marker into the `cats` MCP server:
 - After a raise, the session's next send carries a new grant at the new level, so
   Runtime recycles the worker and the agent lists its tools again (SPEC-142
   FR-3). The old grant stays valid until Runtime reports the new set
-  `delivered`, so a worker still running with it keeps its tools.
+  `delivered`, so a worker still running with it keeps its tools. When the wider
+  level lists the same tools, the grant takes the new level and nothing
+  recycles.
 - It adds the turn policy of the grant's level to a turn's instructions only
   while Runtime reports the server as `delivered` for that session.
 - It revokes the session's grants on close and delete.
