@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In progress: Phases 1 to 3 are done, Phases 4 to 7 are not started. The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
+| **Status** | In progress: Phases 1 to 6 are done, Phase 7 is not started. The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -445,14 +445,49 @@ previews and work areas appear under `/work`.
 
 **Goal:** the owner raises a conversation from its chip (FR-27 to FR-32).
 
-- [ ] The scope chip on existing conversations in Chat, Code and Work, with the menu of wider
+- [x] The scope chip on existing conversations in Chat, Code and Work, with the menu of wider
       levels and no menu on direct lanes and parallel members.
-- [ ] The confirmation, built from the read route's answer.
-- [ ] After a raise: open the conversation at its new route and show the toast. On failure:
+  - The shared conversation view renders it for every product (`ConversationScopeChip`), so
+    Chat's conversations and its direct lanes show it too. The products no longer pass their
+    own fixed chip.
+  - The menu lists the wider levels from the conversation as the app shell shows it. A direct
+    lane, a parallel member, an archived conversation and a Work conversation get a chip with
+    no menu. The server rechecks all of it.
+  - It is never dismissable on an existing conversation. A draft's chip is unchanged.
+- [x] The confirmation, built from the read route's answer.
+  - Choosing a level reads `GET /api/channels/:id/product-scope`. A refusal there, or a level
+    that is no longer wider, shows its reason instead of a confirmation.
+  - The confirmation lists what the level adds (by the transition: from Chat, Code's tools,
+    the preview switch's state and Code's conversation parts; from Code, that these stay), that
+    no Work tool is added yet for Work, the participants and that later ones join too, the
+    folder or sandbox and the CLI permission as unchanged, the move to the product's Recents,
+    view and preferences, and that it cannot be undone. Cancel has the focus.
+  - It is rendered into the page body: the composer sits in a size container, which would
+    hold a fixed overlay inside it.
+- [x] After a raise: open the conversation at its new route and show the toast. On failure:
       show the reason and stay.
-- [ ] Copy in zh-TW and en.
-- [ ] Renderer tests, plus an isolated candidate walk with screenshots at the Desktop minimum
+  - The existing origin redirect moves the conversation once the app shell shows the new
+    scope. The raise's response and its update event can reach the app in either order, so
+    the toast is recorded before the request and handed to whichever redirect comes, through
+    the cross-surface handoff. The new product's app shows it once.
+  - An owner who has left the conversation by then gets the toast where they are and stays
+    there.
+  - Each refusal code has its own reason; anything else reads as a generic failure. One raise
+    at a time, locked in the handler.
+- [x] Copy in zh-TW and en.
+- [x] Renderer tests, plus an isolated candidate walk with screenshots at the Desktop minimum
       window width.
+  - `tests/product-scope-raise-renderer.test.tsx`: the menu's levels, the confirmation for
+    each transition in both languages, the refusal reasons, the chip never dismissable and a
+    draft's still dismissable, the read and the raise with its revision, refusals with no
+    confirmation, the chip disabled during a raise, the toast handed over in both orders, an
+    owner who left, a refused raise and the lock.
+  - The source candidate (`npm run desktop:candidate`, isolated profile, a synthetic owner
+    account, no provider set up, so no model was called): the owner's Desktop session reads
+    the route; a Chat conversation raised to Code moved to `/code/chats/…` and Code's Recents
+    with the toast, then to Work the same way, where its chip has no menu. At the minimum
+    window (960 px, sidebar open) the chip, its menu and the confirmation fit, and Escape
+    closes the confirmation and leaves the conversation where it was.
 
 **Deliverables:** the complete raise flow in Desktop.
 

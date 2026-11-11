@@ -120,6 +120,8 @@ D12; FR-10 to FR-14, without the parts that need a conversation's Project).
 - [ ] An independent security review before merge: this is the first path on which a session
       tool leads to a Work write.
 - [ ] Add the tools to `docs/tool-calls.md`.
+- [ ] Change the raise confirmation's line that no Work tool is added yet (SPEC-141 FR-29,
+      `shared.productScopeRaise.addsNoWorkTool`) to name the tools a Work conversation now gets.
 
 **Deliverables:** the Work tools, except those that need a conversation's Project or a folder.
 
