@@ -217,8 +217,10 @@ Work conversations too (D8; FR-19).
       descriptions sent to the model still said Chat.
   - Recorded and not fixed here: SPEC-118, "Limits recorded with SPEC-141 FR-19". Two need
     changes of their own:
-    - the one-shot decision session, which is created outside the conversation's posture and
-      now receives the owner's message on Code and Work;
+    - the one-shot decision session, which was created outside the conversation's posture and
+      now received the owner's message on Code and Work. Fixed in its own pull request on
+      2026-11-11: every decision session is a read-only sandbox and fails on native tool
+      activity;
     - an accepted click that is not offered the execution tools still runs as an ordinary
       turn in the source folder. A `weak_worker` coordinator and a card found stale as it was
       published reach that with no setting changed. Chat behaved the same before.
@@ -259,10 +261,10 @@ tools stay off everywhere. What changes without any setting is the knowledge.
   directory) replaces entries of this knowledge, so it now reaches Code and Work
   coordinators too.
 
-**Open with the owner.** Whether the one agent of a Code or Work conversation should be told
-that it is the Cats Orchestrator. D8 asked for the knowledge on Code and Work, and the code
-gives it to whoever coordinates. Giving the role entry only to a Boss Cat coordinator is a
-small change if the owner wants it.
+**Decided by the owner (2026-11-11).** The one agent of a Code or Work conversation is told
+that it is the Cats Orchestrator, as it is on Chat: the knowledge goes to whoever coordinates,
+and the role entry is not limited to a Boss Cat coordinator. Phase 7 still accepts it with a
+real provider.
 
 ### Phase 4: Work includes Code
 
