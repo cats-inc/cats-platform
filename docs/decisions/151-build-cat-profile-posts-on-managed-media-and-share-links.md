@@ -2,8 +2,8 @@
 
 ## Status
 
-Proposed — 2026-11-11。依使用者要求先交付 ADR／spec／plan；本次沒有實作、
-啟用公開連線、呼叫生成服務或發送訊息。產品目標已明確，以下是供實作採用的 PoC 設計。
+Accepted for implementation — 2026-11-11。使用者在文件合併後指示「開始實作」。
+依 PLAN-136 分階段實作與驗收；不把此授權當成發版或已完成外部驗收。
 
 - Spec: [SPEC-143](../specs/SPEC-143-cat-profile-posts-media-and-sharing.md)
 - Plan: [PLAN-136](../plans/PLAN-136-cat-profile-posts-media-and-sharing.md)

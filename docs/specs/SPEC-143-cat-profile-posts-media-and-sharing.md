@@ -4,11 +4,13 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Draft — documentation only; implementation not started |
+| Status | PoC implemented on feature branches — 2026-11-11; full external acceptance pending |
 | Owner | Platform integration; Runtime owns media execution |
 | Reviewer | Product owner; independent implementation review |
 | Decision | [ADR-151](../decisions/151-build-cat-profile-posts-on-managed-media-and-share-links.md) |
 | Plan | [PLAN-136](../plans/PLAN-136-cat-profile-posts-media-and-sharing.md) |
+
+Implementation evidence and bounded PoC differences: [PLAN-136 checkpoint](../plans/PLAN-136-cat-profile-posts-media-and-sharing.md#implementation-checkpoint--2026-11-11).
 
 ## Summary
 
