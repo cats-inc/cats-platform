@@ -1,5 +1,9 @@
 # Implementation Plans
 
+- [PLAN-134: Conversation product scope](PLAN-134-conversation-product-scope.md)
+  — draft, 2026-11-11; not started. Six phases for SPEC-141: the field, readers on the scope,
+  Work including Code, the raise on the server, the raise in Desktop, then documents and
+  acceptance. Holds the inventory of `originSurface` readers.
 - [PLAN-133: Boss Cat across Cats](PLAN-133-boss-cat-across-cats.md)
   — in progress, 2026-11-11; SPEC-139 in seven slices, each guarded before it is reachable.
   Slices 1 (FR-17, the memory checkpoint per conversation) and 2 (the owner-started stamp) are
