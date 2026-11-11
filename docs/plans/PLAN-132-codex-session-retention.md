@@ -152,8 +152,23 @@ must select that exact Runtime source through the normal release SOP.
 The 125 focused decision, DM lifecycle/rotation, heartbeat, life-loop, knowledge
 and packaged-distribution tests passed. Server and Desktop-host builds passed;
 independent read-only review closed all findings, including cleanup ordering and
-the non-atomic writer's removed-conversation case. Installed user profiles were
-not modified by verification.
+the non-atomic writer's removed-conversation case.
+
+Full PR CI exposed an overly restrictive pre-send lease check: explicit retries
+can legitimately retain an error or closed lease until send/resume succeeds.
+The check now compares prepared and persisted state, preserving that retry while
+rejecting a newly concurrent sleep or identity change. Runtime fixtures now
+return the admitted persistence policy on creation/readback; failure cleanup
+asserts the exact unique closed IDs because the independent cleanup layers are
+idempotent. The 228 affected retry/collaboration tests and 36 lifecycle/rotation
+tests passed; the latter include explicit error/closed owner retries. Incremental
+independent review passed.
+
+Before integrating the repository's test-home isolation change, a focused test
+run created 40 empty channel directories in the real Runtime profile. Read-only
+checks confirmed no files and no references in real persisted state; all 40 were
+then removed and their absence verified. No real conversation data was changed.
+Subsequent tests use `npm run test:file -- ...` and its isolated Cats homes.
 
 | Date | Update |
 | --- | --- |

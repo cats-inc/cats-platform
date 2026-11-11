@@ -551,7 +551,11 @@ export async function processDispatchQueue(
     latestCheckpoint = wakePrepared.latestCheckpoint;
     const readyRequests = wakePrepared.readyRequests.filter(({ request }) => {
       const lease = resolveExecutionLeaseSnapshot(requireChannel(nextState, channelId), request.target);
-      if (lease?.sessionId === request.target.sessionId && ['ready', 'initializing'].includes(lease.status)) return true;
+      const prepared = resolveExecutionLeaseSnapshot(requireChannel(wakePrepared.state, channelId), request.target);
+      // A retry may deliberately retain an error/closed lease until send or
+      // resume succeeds. Suppress a newly concurrent sleep, not that retry.
+      if (lease?.sessionId === request.target.sessionId
+        && !(lease.status === 'closed' && prepared?.status !== 'closed')) return true;
       const error = 'The conversation session changed or was put to sleep before this turn started.';
       updateDispatch(outcome, request.dispatchId, { status: 'error', error, completedAt: nowIso });
       updateWorkflowTarget(activeTurn, request.targetStateId, nowIso, { status: 'failed', error, completedAt: nowIso });

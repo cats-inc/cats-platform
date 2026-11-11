@@ -516,6 +516,21 @@ for (const status of ['ready', 'error'] as const) {
   });
 }
 
+for (const status of ['error', 'closed'] as const) {
+  test(`an explicit owner turn can retry an existing ${status} lease`, async () => {
+    const { state, channelId, participantId } = createDirectState();
+    const now = new Date('2026-11-11T03:39:00Z');
+    const runtime = resumableRuntimeStub();
+    const first = await routeChannelMessage(state, channelId, { body: 'First' }, runtime, now);
+    const paused = setChannelParticipantLease(first.state, channelId, participantId, { status, lastError: 'retry fixture error' }, now);
+    runtime.sentSessionIds.length = 0;
+    const result = await routeChannelMessage(paused, channelId, { body: 'Retry' }, runtime, now);
+    assert.equal(result.results[0]?.status, 'sent');
+    assert.deepEqual(runtime.sentSessionIds, ['session-direct-1']);
+    assert.equal(runtime.createCalls, 1);
+  });
+}
+
 test('dispatch recovery preserves an explicit concurrent reset', () => {
   const { state, channelId, participantId } = createDirectState();
   const now = new Date('2026-11-11T03:39:00Z');
