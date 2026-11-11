@@ -111,7 +111,8 @@ export async function routeProductScopeResourceApi(context: ChatApiRouteContext)
       return true;
     }
     requireOwnerPrincipal(context);
-    const body = await readJsonBody<{ target?: unknown; revision?: unknown }>(context.request);
+    const parsed = await readJsonBody<{ target?: unknown; revision?: unknown } | null>(context.request);
+    const body = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
     if (typeof body.revision !== 'string' || !body.revision) {
       throw new ChatApiError(400, 'revision_required', 'revision is the raise revision the owner saw.');
     }

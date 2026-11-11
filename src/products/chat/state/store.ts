@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { ProviderPolicyFormatError, parseProviderExecutionPolicy, assertProviderPolicyBoundary } from '../../../shared/providerExecutionPolicy.js';
 import { normalizeOwnerLifecycle, OwnerLifecycleFormatError } from '../../../core/ownerLifecycle.js';
 import { compactOwnerWorkflowHistory } from './ownerHistory.js';
@@ -165,6 +165,41 @@ async function writePersistedChatSnapshot(
   }
 }
 
+/**
+ * Keeps an upgrade's original bytes before the profile is rewritten, and returns the path that
+ * holds them.
+ * - Under `basePath` when that name is free or already holds these bytes (a repeat start).
+ * - Otherwise next to it, under a name that carries the bytes' digest. An earlier upgrade's
+ *   different bytes can hold the base name: the owner went back to an older build with the
+ *   restore recipe and saved. Refusing then would block every later start.
+ * - Written through a temporary file and a rename, so a crash never leaves a partial backup.
+ * - Anything but a regular file under a name refuses the upgrade, which leaves the original as
+ *   it is.
+ */
+async function keepUpgradeBackup(basePath: string, raw: string): Promise<string> {
+  const digest = createHash('sha256').update(raw).digest('hex').slice(0, 12);
+  for (const candidate of [basePath, basePath.replace(/\.bak$/u, `.${digest}.bak`)]) {
+    const existing = await lstat(candidate).catch((error: unknown) => {
+      if (isErrnoException(error) && error.code === 'ENOENT') return null;
+      throw error;
+    });
+    if (!existing) {
+      const tempPath = path.join(path.dirname(candidate), `.${path.basename(candidate)}.${process.pid}.${randomUUID()}.tmp`);
+      try {
+        await writeFile(tempPath, raw, { encoding: 'utf8', flag: 'wx' });
+        await rename(tempPath, candidate);
+      } finally {
+        await rm(tempPath, { force: true }).catch(() => {});
+      }
+      if (await readFile(candidate, 'utf8') !== raw) throw new Error(`Upgrade backup ${candidate} did not verify.`);
+      return candidate;
+    }
+    if (!existing.isFile()) throw new Error(`Upgrade backup ${candidate} is not a file.`);
+    if (await readFile(candidate, 'utf8') === raw) return candidate;
+  }
+  throw new Error(`Both upgrade backup names next to ${basePath} hold other bytes.`);
+}
+
 function createDefaultSnapshot(now: Date = new Date()): PersistedChatSnapshot {
   const chat = createDefaultChatState();
   const core = syncCoreStateWithChatState(chat, createDefaultCoreState());
@@ -295,16 +330,12 @@ export class FileChatStore implements ChatStore {
       try {
         if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed.chat ?? parsed).channels)
           || !Array.isArray((parsed.chat ?? parsed).cats)) throw new Error('Unrecognized profile');
-        // Only an upgrade of the primary file keeps a backup and writes. Reading `.bak` to
-        // recover leaves every file as it is, so bytes that differ from an earlier upgrade's
-        // backup cannot block the recovery.
-        if (filePath === this.filePath) {
-          try { await writeFile(backupPath, raw, { encoding: 'utf8', flag: 'wx' }); }
-          catch (error) {
-            if (!(isErrnoException(error) && error.code === 'EEXIST') || await readFile(backupPath, 'utf8') !== raw) throw error;
-          }
-          await writePersistedChatSnapshot(this.filePath, normalized);
-        }
+        // The original bytes are kept first, on the primary and on the `.bak` recovery path
+        // alike: recovery writes the upgraded primary and later writes rotate `.bak`, so this
+        // backup can be the only copy of the older bytes. Only the primary is rewritten here;
+        // `recoverFromBackup` writes the primary from what a `.bak` read returns.
+        await keepUpgradeBackup(backupPath, raw);
+        if (filePath === this.filePath) await writePersistedChatSnapshot(this.filePath, normalized);
       } catch {
         throw new ProviderPolicyFormatError(fromVersion6
           ? 'Product scope profile upgrade failed; original data was preserved.'

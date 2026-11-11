@@ -194,6 +194,12 @@ test('FR-23: each refusal has its own code, and a refused raise changes nothing'
   assert.equal(stale.status, 409);
   assert.equal((await stale.json()).error.code, 'revision_stale');
   assert.equal((await h.raise(h.ids.chat, { target: 'code' })).status, 400, 'a revision is required');
+  // A body that is not an object is the same missing revision, not an internal error.
+  for (const body of [null, ['code'], 'code']) {
+    const response = await h.raise(h.ids.chat, body);
+    assert.equal(response.status, 400, JSON.stringify(body));
+    assert.equal((await response.json()).error.code, 'revision_required', JSON.stringify(body));
+  }
   assert.equal((await h.raise('no-such-conversation', { target: 'code', revision: seen })).status, 404);
   const after = await h.chatStore.read();
   channelOf(after, h.ids.chat).runtimePermissionMode = channelOf(JSON.parse(before), h.ids.chat).runtimePermissionMode;

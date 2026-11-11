@@ -370,8 +370,15 @@ previews and work areas appear under `/work`.
       conversation. `CATS_CORE_STATE_VERSION` is 7.
   - A version 6 file upgrades once and keeps its original bytes in
     `chat-state.local.json.pre-product-scope.bak`; older files keep the version 6 path and its
-    `.pre-provider-policy.bak`. Reading `.bak` to recover writes no upgrade backup, so bytes
-    that differ from an earlier upgrade's backup cannot block the recovery.
+    `.pre-provider-policy.bak`.
+  - The review of this phase found two ways the backup could block or vanish, both fixed:
+    - an owner who went back with the restore recipe and saved, or whose first upgrade failed
+      and who kept using 0.15.x, could never upgrade again, because the backup name held other
+      bytes. Such bytes are now kept beside it under a digest name;
+    - recovering from a version 6 `.bak` kept no copy of those bytes, which `main` did. It does
+      again, before the setup-completion repair rewrites that `.bak`.
+  - Backups are written through a temporary file and a rename, so a crash never leaves a
+    partial one, and a partial one left by anything else no longer blocks the upgrade.
   - Tests: an upgrade that adds nothing an ordinary load does not; an upgrade with the
     version 6 backup already present; a version 5 file going straight to 7; a failed upgrade
     and its retry; recovery from a version 6 `.bak` after the upgrade; a newer file refused.
