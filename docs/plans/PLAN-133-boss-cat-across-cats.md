@@ -117,8 +117,11 @@ are tested as live behaviour.
 - [x] A stored board is dropped from its receipt once the reply for that message settles. A
       failed reply keeps it for the retry. Backticks in names and titles become quotes, so they
       cannot close the board's fence.
-- [x] Boards are bounded: 40 Cats and the 30 most recently active groups, with counts of what
-      was left out.
+- [x] Boards are bounded by their serialized size: 16,000 characters, at most 40 Cats and 30
+      groups, and 5 problem conversations per Cat. Cats needing attention come first, then the
+      most recently active groups, with counts of what was left out. A full board measured
+      47,000 characters before this bound, over the session's 24,000-character feedback
+      envelope.
 - [x] Tests: `tests/chat-boss-cat-tools.test.js`. They cover the gate matrix and, through an
       isolated server with the flag on, these cases:
       - what the stubbed Runtime receives for the decision session: its create input, and no
@@ -163,7 +166,18 @@ are tested as live behaviour.
         no dispatch, selection, notice, usage, the lane instructions, the Core marker and R2;
       - refusals: ids not on the board, the Boss Cat's own id, a long title, an empty opening
         message, extra fields, and the sixth group in an hour;
-      - `create_group` is not offered before a board.
+      - `create_group` is not offered before a board;
+      - the owner writing to an invited Cat in the created group: the session Runtime receives
+        is `read_only` with `default` permissions and no repository, and the Cat's prompt
+        carries the opening message;
+      - R2 through `resolveRuntimeEnvelopeForTarget` with the real channel view: an ordinary
+        group hydrates companion memory (the positive control), and the Boss Cat's group does
+        not;
+      - a full-size board fits the envelope, attention first.
+- [x] `docs/tool-calls.md` registers both tools.
+- [ ] Remaining: the FR-16 evidence record for a creation names the tool and status only; the
+      created conversation and Cat ids are on the receipt. The weak-worker fallback (board only)
+      has no test.
 
 ### Slice 5: Joining
 

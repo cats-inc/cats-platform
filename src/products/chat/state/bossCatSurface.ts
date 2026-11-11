@@ -57,9 +57,14 @@ export const BOSS_CAT_HOURLY_LIMITS: Readonly<Record<BossCatUsageKind, number>> 
   join_request: 10,
 };
 const HOUR_MS = 60 * 60_000;
-/** The board stays well inside the decision session's 24 KB feedback envelope. */
+/**
+ * The board must fit the decision session's 24,000-character feedback envelope with room for
+ * the receipts after it, so it is bounded by its serialized size, not only by counts.
+ */
+export const BOSS_CAT_BOARD_MAX_CHARS = 16_000;
 export const BOSS_CAT_BOARD_MAX_CATS = 40;
 export const BOSS_CAT_BOARD_MAX_GROUPS = 30;
+export const BOSS_CAT_BOARD_MAX_PROBLEMS_PER_CAT = 5;
 const BOSS_CAT_MAX_DECISION_CALLS = 3;
 export const BOSS_CAT_GROUP_TITLE_LIMIT = 80;
 export const BOSS_CAT_GROUP_OPENING_LIMIT = 2_000;
@@ -161,18 +166,41 @@ export function reserveBossCatUsage(
   };
 }
 
-/** The newest Cats and groups, with counts of what was left out. */
-export function boundBossCatBoard(board: BossCatBoard): BossCatBoard & { omittedCats: number; omittedGroups: number } {
+export type BoundedBossCatBoard = BossCatBoard & { omittedCats: number; omittedGroups: number };
+
+/**
+ * Cats that need attention come first, then groups by recent activity. What does not fit
+ * (at most 40 Cats, 30 groups and 16,000 characters) is left out, with counts of what was.
+ */
+export function boundBossCatBoard(board: BossCatBoard): BoundedBossCatBoard {
   const recency = (value: string | null | undefined) => (value ? Date.parse(value) || 0 : 0);
+  const attention = (cat: BossCatBoard['cats'][number]) => (cat.problems?.length ?? 0)
+    + (cat.waitingChoices ?? 0) + (cat.waitingApprovals ?? 0) + (cat.turnRunning ? 1 : 0)
+    + (cat.initiative?.waitingForOwner ? 1 : 0);
+  const cats = board.cats
+    .map((cat) => (cat.problems && cat.problems.length > BOSS_CAT_BOARD_MAX_PROBLEMS_PER_CAT
+      ? { ...cat, problems: cat.problems.slice(0, BOSS_CAT_BOARD_MAX_PROBLEMS_PER_CAT) }
+      : cat))
+    .map((cat, index) => ({ cat, index }))
+    .sort((left, right) => attention(right.cat) - attention(left.cat) || left.index - right.index)
+    .map(({ cat }) => cat)
+    .slice(0, BOSS_CAT_BOARD_MAX_CATS);
   const groups = [...board.groups].sort((left, right) =>
-    recency(right.lastMessageAt ?? right.createdAt) - recency(left.lastMessageAt ?? left.createdAt));
-  return {
+    recency(right.lastMessageAt ?? right.createdAt) - recency(left.lastMessageAt ?? left.createdAt))
+    .slice(0, BOSS_CAT_BOARD_MAX_GROUPS);
+  const bounded = () => ({
     generatedAt: board.generatedAt,
-    cats: board.cats.slice(0, BOSS_CAT_BOARD_MAX_CATS),
-    groups: groups.slice(0, BOSS_CAT_BOARD_MAX_GROUPS),
-    omittedCats: Math.max(0, board.cats.length - BOSS_CAT_BOARD_MAX_CATS),
-    omittedGroups: Math.max(0, groups.length - BOSS_CAT_BOARD_MAX_GROUPS),
-  };
+    cats,
+    groups,
+    omittedCats: board.cats.length - cats.length,
+    omittedGroups: board.groups.length - groups.length,
+  });
+  // Drop the least recent group, or else the Cat needing the least attention, until it fits.
+  while (JSON.stringify(bounded()).length > BOSS_CAT_BOARD_MAX_CHARS && (cats.length || groups.length)) {
+    if (groups.length >= cats.length && groups.length > 0) groups.pop();
+    else cats.pop();
+  }
+  return bounded();
 }
 
 /** R2: in a group a Boss Cat created, the Cats it invited load no companion memory. */
@@ -351,7 +379,7 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
       if (decision.kind !== 'tool_request'
         || !availableTools.some(({ manifest }) => manifest.name === decision.toolName)) break;
 
-      let board: ReturnType<typeof boundBossCatBoard> | null = null;
+      let board: BoundedBossCatBoard | null = null;
       let createdConversationId: string | null = null;
       const result = await boundary.invoke<unknown, unknown>({
         toolName: decision.toolName,

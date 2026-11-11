@@ -10,6 +10,7 @@ import { createDefaultChatState } from '../build/server/products/chat/state/defa
 import {
   appendMessage,
   assignCatToChannel,
+  buildChannelView,
   createCat,
   createChannel,
 } from '../build/server/products/chat/state/model/index.js';
@@ -19,10 +20,13 @@ import {
   BOSS_STATUS_BOARD,
   bossCatToolDescriptors,
   isBossCatGroupGuest,
+  boundBossCatBoard,
   readBossCatTurnRecord,
   resolveBossCatTurnGate,
   runBossCatDecisionLoop,
 } from '../build/server/products/chat/state/bossCatSurface.js';
+import { resolveRuntimeEnvelopeForTarget } from '../build/server/products/chat/state/runtimeTargeting.js';
+import { normalizeChatState } from '../build/server/products/chat/state/chat-snapshot/index.js';
 import { buildCanonicalChatUserMessage } from '../build/server/products/chat/state/chatCoreInterop.js';
 import { createAuthenticatedTestSession, createTestAuthConfig, waitForCondition } from './testUtils.js';
 
@@ -127,8 +131,9 @@ function runtime(platformDir, { decide = () => decision('board'), failLane = fal
         // Any other decision (companion posts, Work intake) answers with a plain respond.
         return { id: 'other-decision-session', provider: input.provider, model: input.model, status: 'ready', cwd: null };
       }
-      calls.ordinaryCreates.push(input);
-      return { id: 'lane-session', provider: input.provider, model: input.model, status: 'ready', cwd: platformDir };
+      const id = `session-${calls.ordinaryCreates.length + 1}`;
+      calls.ordinaryCreates.push({ id, input });
+      return { id, provider: input.provider, model: input.model, status: 'ready', cwd: input.cwd ?? platformDir };
     },
     async observeSession(id) { return { session: { id, status: 'ready', provider: 'claude', model: 'fixture', cwd: platformDir } }; },
     async cancelSession(id) { calls.cancelled.push(id); },
@@ -147,7 +152,7 @@ function runtime(platformDir, { decide = () => decision('board'), failLane = fal
         return { segments: [{ kind: 'text', text: JSON.stringify(decision('respond')), toolName: null, toolId: null }],
           inputTokens: 1, outputTokens: 1, tokensUsed: 2 };
       }
-      calls.laneSends.push({ content, instructions: options?.instructions ?? '' });
+      calls.laneSends.push({ sessionId, content, instructions: options?.instructions ?? '' });
       if (calls.failLane) throw new Error('Injected lane failure.');
       return { segments: [{ kind: 'text', text: 'Lane reply.', toolName: null, toolId: null }], inputTokens: 1, outputTokens: 1, tokensUsed: 2 };
     },
@@ -354,7 +359,8 @@ test('SPEC-139 FR-5: create_group makes a blank read-only Chat group that waits 
     .map((message) => [message.senderKind, message.senderName, message.body]),
     [['agent', 'Boss', 'Kiki and Mochi, let us review the release.']]);
   assert.equal(group.roomRouting.workflow.activeTurn, null, 'R1: nothing is dispatched until the owner writes');
-  assert.equal(h.calls.ordinaryCreates.some((input) => input.context?.metadata?.channelId === group.id), false);
+  assert.equal(h.calls.ordinaryCreates.some(({ input }) => JSON.stringify(input).includes(group.id)), false,
+    'no session opens for the group before the owner writes');
   assert.equal(state.selectedChannelId, h.bossLane, 'the owner stays where they were');
   assert.ok(state.channels.find((entry) => entry.id === h.bossLane).messages
     .some((message) => message.metadata?.event === 'boss_cat_group_created' && message.metadata.conversationId === group.id));
@@ -367,6 +373,68 @@ test('SPEC-139 FR-5: create_group makes a blank read-only Chat group that waits 
   assert.equal(isBossCatGroupGuest(group, h.ids.kiki), true);
   assert.equal(isBossCatGroupGuest(group, h.ids.boss), false);
   assert.equal(isBossCatGroupGuest({}, h.ids.kiki), false);
+  assert.deepEqual(buildChannelView(state, group.id).bossCatGroup, group.bossCatGroup, 'the prompt path sees the marker');
+  assert.deepEqual(normalizeChatState(JSON.parse(JSON.stringify(state))).channels
+    .find((entry) => entry.id === group.id).bossCatGroup, group.bossCatGroup, 'the marker survives a reload');
+
+  // The owner writes to Kiki in the group: the session Runtime receives is read-only with
+  // default permissions and no repository, and Kiki's prompt carries the opening message.
+  const kiki = active.find((entry) => (entry.sourceRefId ?? entry.participantId) === h.ids.kiki);
+  const sendsBefore = h.calls.laneSends.length;
+  const response = await fetch(`${h.base}/api/channels/${group.id}/messages`, { method: 'POST', headers: h.headers,
+    body: JSON.stringify({ body: 'Kiki, start with the changelog.', messageMetadata: { recipientParticipantIds: [kiki.participantId] } }) });
+  assert.equal(response.status, 200, await response.clone().text());
+  await waitForCondition(() => h.calls.laneSends.length > sendsBefore, { timeoutMs: 15_000 });
+  const groupSession = h.calls.ordinaryCreates.find(({ input }) => JSON.stringify(input).includes(group.id));
+  assert.ok(groupSession, 'a session opened for the group once the owner wrote');
+  assert.equal(groupSession.input.workspaceAccess, 'read_only');
+  assert.equal(groupSession.input.permissionMode, 'default');
+  assert.equal(groupSession.input.repoPath ?? null, null);
+  assert.ok(!String(groupSession.input.cwd ?? '').includes('cats-platform'));
+  const groupSend = h.calls.laneSends.find((entry) => entry.sessionId === groupSession.id);
+  assert.match(`${groupSend.content}\n${groupSend.instructions}`, /let us review the release/u);
+});
+
+test('SPEC-139 R2: an invited Cat hydrates no companion memory in a Boss Cat group, as it would elsewhere', async () => {
+  const { state, ids } = world();
+  state.cats.find((cat) => cat.id === ids.kiki).roles = ['companion'];
+  const companionStore = {
+    async getBoxSummary() { return { box: { sourceIds: [], derivedIds: [] } }; },
+    async buildSessionContext() { return { ownerNotes: ['COMPANION-NOTE-MARKER'] }; },
+  };
+  const hydrated = async (bossGroup) => {
+    let next = createChannel(state, { title: 'Group', topic: '', originSurface: 'chat',
+      participantCatIds: [ids.boss, ids.kiki] }, NOW);
+    const channelId = next.selectedChannelId;
+    if (bossGroup) next.channels.find((entry) => entry.id === channelId).bossCatGroup = { bossCatId: ids.boss, createdAt: NOW.toISOString() };
+    const view = buildChannelView(next, channelId);
+    const kiki = view.assignedParticipants.find((entry) => (entry.sourceRefId ?? entry.participantId) === ids.kiki);
+    const envelope = await resolveRuntimeEnvelopeForTarget(next, view,
+      { participantKind: 'cat', participantId: kiki.participantId, participantName: kiki.name }, undefined, null, NOW, companionStore);
+    return JSON.stringify(envelope.companionSession ?? null);
+  };
+  assert.match(await hydrated(false), /COMPANION-NOTE-MARKER/u, 'positive control: an ordinary group carries the note');
+  assert.doesNotMatch(await hydrated(true), /COMPANION-NOTE-MARKER/u);
+});
+
+test('SPEC-139: a full board fits the decision session envelope, attention first', () => {
+  const iso = NOW.toISOString();
+  const name = (index) => `${'N'.repeat(76)}${String(index).padStart(4, '0')}`;
+  const cats = Array.from({ length: 60 }, (_, index) => ({ catId: `cat-${index}`, name: name(index), hidden: false,
+    group: 'standard', lane: { presence: 'sleeping', lastOwnerMessageAt: iso, lastCatMessageAt: iso },
+    initiative: null, turnRunning: false, waitingChoices: 0, waitingApprovals: 0,
+    problems: index === 59 ? [{ conversationId: 'c', failed: 1, interrupted: 0 }] : [] }));
+  const groups = Array.from({ length: 50 }, (_, index) => ({ conversationId: `g-${index}`, surface: 'chat', createdAt: iso,
+    redacted: false, title: name(index), participantNames: [name(1), name(2), name(3)], bossCatIsMember: false,
+    lastOwnerMessageAt: iso, lastMessageAt: new Date(NOW.getTime() - index * 1000).toISOString(),
+    turnRunning: false, turnFailed: false, waitingChoice: false }));
+  const board = boundBossCatBoard({ generatedAt: iso, cats, groups });
+  const feedback = [{ toolName: BOSS_STATUS_BOARD, decisionId: 'read-board', result: { status: 'applied', result: board } }];
+  assert.ok(JSON.stringify(feedback).length < 24_000 - 2_000, `${JSON.stringify(feedback).length} characters`);
+  assert.equal(board.cats[0].catId, 'cat-59', 'the Cat with a failed turn comes first');
+  assert.equal(board.groups[0].conversationId, 'g-0', 'the most recent group comes first');
+  assert.equal(board.omittedCats + board.cats.length, 60);
+  assert.equal(board.omittedGroups + board.groups.length, 50);
 });
 
 test('SPEC-139 FR-5/FR-7: ids not on the board, bad input and the sixth group in an hour are refused', async (t) => {

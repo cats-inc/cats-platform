@@ -69,6 +69,8 @@ validation and full CI pass; live/native and installed-profile acceptance remain
 | `chat.collaboration.inspect_context` | Cats Chat | Implemented; opt-in K2 read/result loop | `provider_agent_tool_request` | Authenticated Chat Orchestrator with read scope | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
 | `chat.collaboration.prepare` | Cats Chat | Implemented; proposal only | `provider_agent_tool_request` | Authenticated Chat Orchestrator after discovery/inspection | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
 | `chat.collaboration.ensure_conversation` | Cats Chat | Implemented; owner-confirmed K3 | `provider_agent_tool_request` | Orchestrator with admitted proposal and narrow write scope | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
+| `chat.boss.status_board` | Cats Chat | Implemented; behind the decision flag | `provider_agent_tool_request` | A Boss Cat in its own direct lane, owner-started Desktop or mobile turn | [Boss Cat Tools](#boss-cat-tools) |
+| `chat.boss.create_group` | Cats Chat | Implemented; behind the decision flag | `provider_agent_tool_request` | Same, after a board in the same session, narrow write scope | [Boss Cat Tools](#boss-cat-tools) |
 | `chat.collaboration.ensure_participants` | Cats Chat | Implemented; owner-confirmed K3 | `provider_agent_tool_request` | Same admitted scope | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
 | `work.collaboration.request_role` | Cats Work | Implemented; queues a fixed Run only | `provider_agent_tool_request` | Same admitted scope; host separately authorizes execution | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
 | `work.collaboration.inspect` | Cats Work | Implemented; own-intent read only | `provider_agent_tool_request` / host inspection | Same admitted scope | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
@@ -164,6 +166,20 @@ limits calls/elapsed time/usage, returns results to that model, and consumes
 ordinary cancellation. Publication revalidates revision and source message
 inside the existing merge gate. No new MCP or public HTTP operation is exposed.
 Provider-native enforcement and installed/live acceptance remain K4.
+
+## Boss Cat Tools
+
+[SPEC-139](specs/SPEC-139-boss-cat-across-cats.md) and
+[PLAN-133](plans/PLAN-133-boss-cat-across-cats.md). The manifests, gate, limits and loop live in
+`src/products/chat/state/bossCatSurface.ts`. They run before the ordinary reply, in an isolated
+decision session: sandbox, read-only, no skills, no cwd, no product knowledge. Its input is the
+owner's message and the boards it reads. Receipts land on the owner's message (`bossCatTurn`), and
+the reply receives them as per-turn instructions.
+
+| Operation | Exact input | Effect / authoritative result |
+|-----------|-------------|-------------------------------|
+| `chat.boss.status_board` | `{}` | No mutation; the board (no message text), bounded to 16,000 characters; 30 an hour per owner |
+| `chat.boss.create_group` | `{ "title", "catIds", "openingMessage" }` | Local state; a read-only Chat group with the Boss Cat as coordinator, the opening message posted without dispatch; 5 an hour per owner |
 
 ## Orchestrator Collaboration Execution
 
