@@ -48,6 +48,7 @@ import {
 } from './resources/channelActivation.js';
 import type { ChatApiDependencies } from './routeSupport.js';
 import { buildRoomMessageMutationDetail, publishRoomMutation } from './transportEventPublisher.js';
+import { withoutBossCatJoinRequests } from '../shared/ownerStarted.js';
 
 export type ChatCompanionLifeLoopDependencies = ChannelLifecycleDependencies
   & Pick<ChatApiDependencies, 'mutationGate' | 'companionActivityStore' | 'catImages'>;
@@ -113,7 +114,8 @@ export function createCompanionHeartbeatSpeaker(
       // Always bounded to the same product conversation. This also repairs
       // sessions created by older builds without continuity, including quiet
       // first turns that leave no visible message to mark hydration complete.
-      const continuity = buildDefaultChatContinuityTransplantPackage(lane.messages);
+      // SPEC-139 FR-10: the owner's join card never enters a model's context.
+      const continuity = buildDefaultChatContinuityTransplantPackage(withoutBossCatJoinRequests(lane.messages));
       const content = buildCompanionHeartbeatPrompt({
         kind: request.kind,
         now: request.now,
