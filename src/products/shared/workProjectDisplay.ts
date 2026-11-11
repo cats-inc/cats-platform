@@ -8,17 +8,19 @@ import { cleanRecordValue, fenceRecordText } from './conversationRecordTools.js'
  * such cards.
  */
 
-const HIDDEN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
+/** Hidden characters, and the mark's own opening bracket so the display stays one-to-one. */
+const WRITTEN_OUT = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}⟦]/gu;
 const CHILD_RECORD_LIMIT = 20;
 const TITLE_LIMIT = 161;
 
 /**
  * A folder as a card or a dialog shows it: whole, with any hidden character written out as
- * `\u{…}`, so a folder stored before the folder checks cannot look like another one.
+ * `⟦U+200B⟧`, so a folder stored before the folder checks cannot look like another one. A literal
+ * `⟦` is written out the same way, so no folder can spell another one's mark.
  */
 export function visibleWorkProjectFolder(value: string | null | undefined): string | null {
   if (typeof value !== 'string' || !value) return null;
-  return value.replace(HIDDEN, (char) => `\\u{${char.codePointAt(0)!.toString(16).toUpperCase()}}`);
+  return value.replace(WRITTEN_OUT, (char) => `⟦U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}⟧`);
 }
 
 /** The Work Items parented under the conversation's projected Work Item, which follow it into a Project. */

@@ -421,7 +421,8 @@ test('SPEC-142 A1: a new Project with a folder becomes the owner card on the own
   assert.equal(transport.proposed.length, 0, 'a turn the owner did not start posts no card');
   const told = requireChannel(transport.begun.state, transport.channelId).messages
     .find((message) => message.metadata.event === 'work_project_create_deferred');
-  assert.match(told?.body ?? '', /^Did not create Project Cats Mobile: a Project with a folder is created only when you confirm its card/u);
+  assert.equal(told?.body, 'Did not create Project Cats Mobile: a Project with a folder is created only when you confirm its card, '
+    + 'and its card is posted only from your own message in Cats (project_folder_needs_owner_turn).');
   assert.equal(told?.metadata.refusal, 'project_folder_needs_owner_turn');
 
   const noPort = await dispatch({ ownerStarted: 'desktop', withPort: false });

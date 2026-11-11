@@ -516,6 +516,19 @@ interface RouteChannelMessageOptions {
 /** SPEC-142 A1: the Work proposal kind for a new Project, registered by Work. */
 const WORK_PROJECT_CREATE_PROPOSAL_KIND = 'work.project.create';
 
+/** Why a new Project with a folder was not created, by the refusal that stopped its card. */
+function workProjectCardNotPostedMessage(title: string, refusal: string): string {
+  const reason = refusal === 'project_folder_needs_owner_turn'
+    ? 'its card is posted only from your own message in Cats'
+    : refusal === 'level_too_narrow'
+      ? 'its card can be posted only in a Work conversation'
+      : refusal === 'proposal_limit' || refusal === 'proposal_rate_limited'
+        ? 'this conversation has too many cards waiting or posted in the last hour'
+        : 'its card could not be posted';
+  return `Did not create Project ${title}: a Project with a folder is created only when you confirm its card, `
+    + `and ${reason} (${refusal}).`;
+}
+
 interface ClientMessageAppendPlan {
   kind: 'none' | 'append' | 'idempotent';
   existingMessage?: ChatMessage;
@@ -2626,8 +2639,7 @@ async function appendWorkProjectCreateResultSidecar(input: {
     const deferred = appendMessage(input.state, input.channelId, {
       senderKind: 'system',
       senderName: 'Cats Work',
-      body: `Did not create Project ${title}: a Project with a folder is created only when you confirm its card, `
-        + `posted from your own message in a Work conversation (${posted.refusal}).`,
+      body: workProjectCardNotPostedMessage(title, posted.refusal),
     }, input.now, {
       metadata: { event: 'work_project_create_deferred', sourceMessageId: input.userMessage.id, refusal: posted.refusal },
       incrementUnread: false,

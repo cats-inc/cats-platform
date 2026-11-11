@@ -212,7 +212,11 @@ test('folders: absolute for this OS, no shares, devices or parent segments, and 
   assert.equal(normalizeWorkProjectFolder('C:/work/site', 'linux'), null);
   assert.equal(normalizeWorkProjectFolder('//host/share', 'linux'), null);
   assert.equal(normalizeWorkProjectFolder('/srv/../etc', 'linux'), null);
-  assert.equal(visibleWorkProjectFolder('C:/a' + String.fromCharCode(0x200B) + 'b'), 'C:/a\\u{200B}b');
+  assert.equal(visibleWorkProjectFolder('C:/a' + String.fromCharCode(0x200B) + 'b'), 'C:/a' + String.fromCharCode(0x27E6) + 'U+200B' + String.fromCharCode(0x27E7) + 'b');
+  const open = String.fromCharCode(0x27E6);
+  const close = String.fromCharCode(0x27E7);
+  assert.equal(visibleWorkProjectFolder(`C:/${open}U+200B${close}b`), `C:/${open}U+27E6${close}U+200B${close}b`,
+    "a folder cannot spell another one's mark");
   assert.equal(visibleWorkProjectFolder(null), null);
 });
 
