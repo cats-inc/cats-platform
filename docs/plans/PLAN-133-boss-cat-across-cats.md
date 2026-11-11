@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress: slices 1 and 2 implemented |
+| Status | In progress: slices 1 to 3 implemented |
 | Owner | Cats Chat |
 | Reviewer | Owner |
 | Date | 2026-11-11 |
@@ -62,10 +62,24 @@ are tested as live behaviour.
 
 ### Slice 3: Status board
 
-- [ ] `bossCatBoard.ts` builds FR-3 from Chat and Core state, as a pure function.
-- [ ] FR-4 title rule: only `titleSource: 'manual'` titles; others appear as surface, id and
-      age. Names and titles cut to 80 characters, control and bidi-override characters removed.
-- [ ] FR-15 per-Cat visibility field, absent meaning visible.
+- [x] `bossCatBoard.ts` builds FR-3 as a pure function of Chat state, own-initiative profiles
+      and Core approvals. Nothing reads it yet. Definitions it fixes:
+      - a lane's presence follows the UI's status dot (its lead lease, `resolveChatLifecycleState`);
+      - initiative is read as the life loop reads it (SPEC-137), only for companion Cats;
+      - a choice card waits while nobody answered it and the owner has not written past it;
+        a Cat's count covers the cards it posted;
+      - approvals are pending Core approval tasks bound to the Cat's conversations;
+      - a failed or interrupted turn is one of the last 7 days whose target for that Cat
+        failed, was blocked, or was cancelled;
+      - group participants are Cat names only; temporary participants' names are free text.
+- [x] FR-4 title rule: only `titleSource: 'manual'` titles (an absent source is not the
+      owner); the board never reads topics, where a transport's sender name lives. Names and
+      titles cut to 80 characters, control and bidi-override characters removed.
+- [x] FR-15: `ChatCat.hiddenFromBossCat?: true`, absent meaning visible, kept by the snapshot
+      normalizer. A hidden Cat shows by name only, leaves group participant lists, and a group
+      of only hidden Cats loses its title.
+- [x] Tests: `tests/chat-boss-cat-board.test.js` (every field, markers in messages, choices,
+      errors, topics and paths never show, title rule, hidden Cats, reload, turn problems).
 
 ### Slice 4: Tool surface, board and groups
 

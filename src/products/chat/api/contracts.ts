@@ -222,6 +222,11 @@ export interface ChatCat {
   defaultModelSelection?: ProviderModelSelection | null;
   products: string[];
   memory: MemoryCheckpointSummary;
+  /**
+   * SPEC-139 FR-15: the owner turned off 「讓主控貓看到這隻 Cat 的狀態」. Absent means visible;
+   * a Boss Cat's board then shows only this Cat's name.
+   */
+  hiddenFromBossCat?: true;
 }
 
 export interface ChannelCatAssignment {

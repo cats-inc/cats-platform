@@ -153,6 +153,7 @@ export function normalizeChatCat(rawCat: unknown): ChatCat | null {
     memory: asRecord(catRecord.memory)
       ? normalizeMemoryCheckpoint(catRecord.memory)
       : createEmptyMemoryCheckpoint(),
+    ...(catRecord.hiddenFromBossCat === true ? { hiddenFromBossCat: true as const } : {}),
   };
 }
 
