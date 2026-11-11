@@ -746,6 +746,10 @@ export function removeCatFromChannel(
 
   assignment.status = 'removed';
   assignment.leftAt = nowIso;
+  if (channel.bossCatJoins?.[catId]) {
+    const { [catId]: _left, ...remaining } = channel.bossCatJoins;
+    channel.bossCatJoins = Object.keys(remaining).length > 0 ? remaining : undefined;
+  }
   assignment.execution.lease = {
     ...assignment.execution.lease,
     sessionId: null,

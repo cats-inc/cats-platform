@@ -31,6 +31,8 @@ export interface CompanionSessionContextInput {
   requestedSkills: string[];
   transport: 'telegram' | 'line' | 'web' | null;
   now?: Date;
+  /** SPEC-139 FR-12: leave out memory that summarizes this conversation. */
+  excludeChannelMemory?: boolean;
 }
 
 export interface CompanionBoxStore {

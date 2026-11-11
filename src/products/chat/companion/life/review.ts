@@ -5,6 +5,7 @@ import {
 } from '../../shared/channelParticipants.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import { describeDuration, isOwnerMessage, readCompanionHeartbeatKind } from './heartbeat.js';
+import { boundMessagesToJoin, readBossCatJoinSince } from '../../shared/bossCatJoins.js';
 
 /**
  * SPEC-137 FR-7: what an `assist` heartbeat looks over. The Cat reviews its
@@ -34,7 +35,13 @@ export interface CompanionWorkReview {
 type ReviewChannel = Pick<
   ChatChannelState,
   'id' | 'title' | 'status' | 'originSurface' | 'messages' | 'participantAssignments' | 'catAssignments'
-> & Parameters<typeof isDirectLaneChannel>[0];
+> & Partial<Pick<ChatChannelState, 'bossCatJoins'>> & Parameters<typeof isDirectLaneChannel>[0];
+
+/** SPEC-139 FR-12: a conversation the Cat joined through a Boss Cat join, bounded to the join. */
+function boundToJoin<T extends ReviewChannel>(channel: T, catId: string): T {
+  const since = readBossCatJoinSince(channel, catId);
+  return since ? { ...channel, messages: boundMessagesToJoin(channel.messages, since) } : channel;
+}
 
 function oneLine(text: string, limit: number): string {
   const flat = text.replace(/\s+/gu, ' ').trim();
@@ -215,6 +222,7 @@ export function buildCompanionWorkReview(
   const since = now.getTime() - COMPANION_REVIEW_LOOKBACK_MS;
   const recent = channels
     .filter((channel) => isCatChatConversation(channel, catId))
+    .map((channel) => boundToJoin(channel, catId))
     .map((channel) => ({ channel, ownerAt: lastOwnerAt(channel) }))
     .filter((entry) => Number.isFinite(entry.ownerAt) && entry.ownerAt >= since)
     .sort((a, b) => b.ownerAt - a.ownerAt);

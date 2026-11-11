@@ -17,6 +17,8 @@ import {
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import {
   BOSS_CREATE_GROUP,
+  BOSS_JOIN_CONVERSATION,
+  BOSS_LEAVE_CONVERSATION,
   BOSS_STATUS_BOARD,
   bossCatToolDescriptors,
   isBossCatGroupGuest,
@@ -141,7 +143,7 @@ function runtime(platformDir, { decide = () => decision('board'), failLane = fal
     async sendMessage(sessionId, content, options) {
       if (sessionId === 'decision-session') {
         calls.decisionSends.push(content);
-        const value = decide(calls.decisionSends.length - 1, JSON.parse(content));
+        const value = await decide(calls.decisionSends.length - 1, JSON.parse(content));
         if (typeof value === 'string') {
           return { segments: [{ kind: 'text', text: value, toolName: null, toolId: null }], inputTokens: 1, outputTokens: 1, tokensUsed: 2 };
         }
@@ -209,10 +211,10 @@ test('SPEC-139 FR-1/FR-2: an isolated session reads the board, and the lane repl
   assert.equal(created.sharingMode, 'isolated');
   assert.deepEqual(created.skills, { requestedSkills: [], strict: true });
   assert.equal(created.cwd, undefined);
-  // The board call, then one more where only create_group is offered; the stub declines it.
+  // The board call, then one more where the board-bound tools are offered; the stub declines.
   assert.deepEqual(h.calls.decisionSends.map((content) =>
     JSON.parse(content).observation.availableTools.map((entry) => entry.manifest.name)),
-  [[BOSS_STATUS_BOARD, BOSS_CREATE_GROUP].filter((name) => name === BOSS_STATUS_BOARD), [BOSS_CREATE_GROUP]]);
+  [[BOSS_STATUS_BOARD], [BOSS_CREATE_GROUP, BOSS_JOIN_CONVERSATION, BOSS_LEAVE_CONVERSATION]]);
   const decisionInput = h.calls.decisionSends.join('\n');
   assert.match(decisionInput, /Which Cats need my attention\?/u);
   assert.doesNotMatch(decisionInput, /LANE-HISTORY-MARKER|LANE-REPLY-MARKER|GROUP-MESSAGE-MARKER|MOCHI-LANE-MARKER/u);
@@ -471,4 +473,190 @@ test('SPEC-139 FR-5: create_group is not offered before a board was read in the 
   }
   assert.deepEqual(firstTools[0], [BOSS_STATUS_BOARD]);
   assert.equal((await h.laneMessages()).find((message) => message.id === messageId).metadata.bossCatTurn, undefined);
+});
+
+function toolCall(name, input) {
+  return { contractVersion: 1, kind: 'tool_request', decisionId: `${name}-${Math.random().toString(36).slice(2, 8)}`,
+    confidence: 'high', toolName: name, target: { kind: 'worker_tool', toolName: name }, input,
+    expectedOutputSchemaRef: { id: `${name}.output`, version: '1.0', format: 'json_schema' },
+    rationaleSummary: 'The owner asked.' };
+}
+
+/** Reads the board first, then performs `hooks.action` on `hooks.conversationId` when offered. */
+function membershipDecider(hooks) {
+  return async (_index, envelope) => {
+    const offered = envelope.observation.availableTools.map((entry) => entry.manifest.name);
+    if (offered.includes(BOSS_STATUS_BOARD)) return decision('board');
+    const tool = hooks.action === 'join' ? BOSS_JOIN_CONVERSATION : BOSS_LEAVE_CONVERSATION;
+    if (!offered.includes(tool)) return decision('respond');
+    await hooks.beforeAction?.();
+    return toolCall(tool, { conversationId: hooks.conversationId });
+  };
+}
+
+/** A Code conversation, Kiki and Mochi, no coordinator, with an old marker more than 8 messages back. */
+function seedOps(hooks, policy = 'allow') {
+  return (state) => {
+    const ids = Object.fromEntries(state.cats.map((cat) => [cat.name.toLowerCase(), cat.id]));
+    const base = Date.now() - 60 * 60_000;
+    const next = createChannel(state, { title: 'Ops', topic: '', originSurface: 'code',
+      participantCatIds: [ids.kiki, ids.mochi] }, new Date(base));
+    const ops = next.channels.find((entry) => entry.id === next.selectedChannelId);
+    ops.coordinatorParticipantId = null;
+    const kiki = ops.participantAssignments.find((entry) => entry.sourceRefId === ids.kiki || entry.participantId === ids.kiki);
+    const at = (minute) => new Date(base + minute * 60_000).toISOString();
+    const message = (minute, senderKind, senderName, body, metadata = {}) => ({ id: `ops-${minute}`, channelId: ops.id,
+      senderKind, senderName, body, mentions: [], metadata, usage: null, createdAt: at(minute) });
+    ops.messages.push(message(1, 'user', 'Owner', 'OLD-MARKER secret plan', { recipientParticipantIds: [kiki.participantId] }));
+    ops.messages.push(message(2, 'agent', 'Kiki', 'Kiki heard the plan.', { targetId: kiki.participantId,
+      targetKind: 'cat', sessionId: 'kiki-old-session', event: 'assistant_turn_segment' }));
+    for (let minute = 3; minute < 15; minute += 1) {
+      ops.messages.push(message(minute, 'user', 'Owner', `filler ${minute}`, { recipientParticipantIds: [kiki.participantId] }));
+    }
+    Object.assign(state, next, { selectedChannelId: state.selectedChannelId });
+    state.channels = next.channels;
+    // null: the owner never set it, which must read as 「每次問我」.
+    if (policy === null) delete state.bossCatJoinPolicy;
+    else state.bossCatJoinPolicy = policy;
+    hooks.conversationId = ops.id;
+    hooks.kikiParticipantId = kiki.participantId;
+  };
+}
+
+async function sendInConversation(h, channelId, participantId, body) {
+  const before = h.calls.laneSends.length;
+  const response = await fetch(`${h.base}/api/channels/${channelId}/messages`, { method: 'POST', headers: h.headers,
+    body: JSON.stringify({ body, messageMetadata: { recipientParticipantIds: [participantId] } }) });
+  assert.equal(response.status, 200, await response.clone().text());
+  await waitForCondition(async () => h.calls.laneSends.length > before
+    && !(await h.chatStore.read()).channels.find((entry) => entry.id === channelId).roomRouting.workflow.activeTurn,
+  { timeoutMs: 15_000 });
+  const sessions = new Set(h.calls.ordinaryCreates.filter(({ input }) => JSON.stringify(input).includes(channelId)).map(({ id }) => id));
+  return h.calls.laneSends.slice(before).filter((entry) => sessions.has(entry.sessionId))
+    .map((entry) => `${entry.content}\n${entry.instructions}`).join('\n');
+}
+
+async function replaceSession(h, channelId, catId) {
+  const state = await h.chatStore.read();
+  const channel = state.channels.find((entry) => entry.id === channelId);
+  for (const assignment of [...channel.participantAssignments, ...channel.catAssignments]) {
+    if ((assignment.sourceRefId ?? assignment.catId ?? assignment.participantId) !== catId) continue;
+    assignment.execution.lease = { ...assignment.execution.lease, sessionId: null, status: 'not_started' };
+  }
+  await h.chatStore.write(state);
+}
+
+const membershipOf = (state, channelId, catId) => state.channels.find((entry) => entry.id === channelId)
+  .participantAssignments.find((entry) => entry.status === 'active' && (entry.sourceRefId ?? entry.participantId) === catId);
+
+test('SPEC-139 FR-11/FR-12: a join changes nothing else, and the Boss Cat sees 8 messages before it, in every session', async (t) => {
+  const hooks = { action: 'join' };
+  const h = await start(t, { seed: seedOps(hooks), decide: membershipDecider(hooks) });
+  const stable = (state) => {
+    const ops = state.channels.find((entry) => entry.id === hooks.conversationId);
+    return JSON.stringify([ops.coordinatorParticipantId, ops.roomRouting.defaultRecipientId, ops.channelKind, ops.status,
+      ops.originSurface, ops.repoPath ?? null, ops.chatCwd ?? null, ops.runtimeWorkspaceAccess ?? null,
+      ops.runtimePermissionMode ?? null, ops.title, ops.titleSource]);
+  };
+
+  // Positive control: Kiki, an ordinary participant, gets the full transcript in a new session.
+  await replaceSession(h, hooks.conversationId, h.ids.kiki);
+  const kikiSeen = await sendInConversation(h, hooks.conversationId, hooks.kikiParticipantId, 'Kiki, status?');
+  assert.match(kikiSeen, /OLD-MARKER/u, 'positive control');
+  const before = stable(await h.chatStore.read());
+
+  const messageId = await h.send('Join Ops.');
+  let state = await h.chatStore.read();
+  const receipt = state.channels.find((entry) => entry.id === h.bossLane).messages
+    .find((message) => message.id === messageId).metadata.bossCatTurn.receipts.find((entry) => entry.toolName === BOSS_JOIN_CONVERSATION);
+  assert.deepEqual([receipt.status, receipt.conversationId], ['applied', hooks.conversationId]);
+  assert.equal(stable(state), before, 'coordinator, audience, workspace, permissions and title are unchanged');
+  const ops = state.channels.find((entry) => entry.id === hooks.conversationId);
+  assert.ok(ops.messages.some((message) => message.metadata?.event === 'cat_assigned' && message.metadata.catId === h.ids.boss),
+    'the conversation shows the join');
+  assert.ok(ops.bossCatJoins[h.ids.boss].since);
+  assert.ok(state.channels.find((entry) => entry.id === h.bossLane).messages
+    .some((message) => message.metadata?.event === 'boss_cat_joined' && message.metadata.conversationId === hooks.conversationId));
+  assert.equal(state.bossCatUsage.filter((entry) => entry.kind === 'join_request').length, 1);
+  const boss = membershipOf(state, hooks.conversationId, h.ids.boss);
+
+  // First turn, then a replaced session: never the old marker.
+  const first = await sendInConversation(h, hooks.conversationId, boss.participantId, 'Q1-AFTER-JOIN');
+  assert.match(first, /Q1-AFTER-JOIN/u);
+  assert.doesNotMatch(first, /OLD-MARKER/u);
+  await replaceSession(h, hooks.conversationId, h.ids.boss);
+  const replaced = await sendInConversation(h, hooks.conversationId, boss.participantId, 'Q2-AFTER-REPLACE');
+  assert.match(replaced, /Q1-AFTER-JOIN/u, 'a replaced session still carries what came after the join');
+  assert.doesNotMatch(replaced, /OLD-MARKER/u);
+
+  // Leave, the owner talks while the Boss Cat is away, then it rejoins.
+  hooks.action = 'leave';
+  await h.send('Leave Ops.');
+  state = await h.chatStore.read();
+  assert.equal(membershipOf(state, hooks.conversationId, h.ids.boss), undefined);
+  assert.equal(state.channels.find((entry) => entry.id === hooks.conversationId).bossCatJoins, undefined);
+  await sendInConversation(h, hooks.conversationId, hooks.kikiParticipantId, 'AWAY-MARKER while the Boss is out');
+  for (let index = 0; index < 9; index += 1) {
+    await sendInConversation(h, hooks.conversationId, hooks.kikiParticipantId, `away filler ${index}`);
+  }
+  hooks.action = 'join';
+  await h.send('Join Ops again.');
+  state = await h.chatStore.read();
+  const rejoined = membershipOf(state, hooks.conversationId, h.ids.boss);
+  const afterRejoin = await sendInConversation(h, hooks.conversationId, rejoined.participantId, 'Q3-AFTER-REJOIN');
+  assert.match(afterRejoin, /Q3-AFTER-REJOIN/u);
+  assert.doesNotMatch(afterRejoin, /OLD-MARKER|AWAY-MARKER/u);
+
+  const evidence = await readFile(join(h.platformDir, 'state/evidence', `conversation-channel-${h.bossLane}.jsonl`), 'utf8');
+  assert.match(evidence, /"action":"join"/u);
+  assert.match(evidence, /"action":"leave"/u);
+  assert.match(evidence, new RegExp(`"targetConversationId":"${hooks.conversationId}"`, 'u'));
+});
+
+test('SPEC-139 FR-8/FR-9: the policy decides when the join runs, and every refusal holds', async (t) => {
+  const outcomes = [];
+  const run = async (options) => {
+    const hooks = { action: options.action ?? 'join' };
+    const h = await start(t, { seed: seedOps(hooks, options.policy), decide: membershipDecider(hooks) });
+    if (options.beforeAction) hooks.beforeAction = () => options.beforeAction(h, hooks);
+    if (options.prepare) await options.prepare(h, hooks);
+    const messageId = await h.send('Do it.');
+    const turn = (await h.laneMessages()).find((message) => message.id === messageId).metadata.bossCatTurn;
+    const receipt = turn.receipts.find((entry) => entry.toolName !== BOSS_STATUS_BOARD);
+    outcomes.push([options.label, receipt.status, receipt.reason]);
+    assert.equal(membershipOf(await h.chatStore.read(), hooks.conversationId, h.ids.boss) !== undefined,
+      ['already member', 'leave without a join'].includes(options.label), options.label);
+  };
+  await run({ label: 'ask is the default', policy: null });
+  await run({ label: 'never', policy: 'never' });
+  await run({ label: 'policy flipped after the board', policy: 'allow', beforeAction: async (h) => {
+    const state = await h.chatStore.read(); state.bossCatJoinPolicy = 'never'; await h.chatStore.write(state);
+  } });
+  await run({ label: 'archived after the board', policy: 'allow', beforeAction: async (h, hooks) => {
+    const state = await h.chatStore.read();
+    state.channels.find((entry) => entry.id === hooks.conversationId).status = 'archived';
+    await h.chatStore.write(state);
+  } });
+  await run({ label: 'already member', policy: 'allow', prepare: async (h, hooks) => {
+    const state = await h.chatStore.read();
+    await h.chatStore.write(assignCatToChannel(state, hooks.conversationId, { catId: h.ids.boss }, new Date()));
+  } });
+  await run({ label: 'rate limited', policy: 'allow', prepare: async (h) => {
+    const state = await h.chatStore.read();
+    state.bossCatUsage = Array.from({ length: 10 }, () => ({ kind: 'join_request', at: new Date().toISOString() }));
+    await h.chatStore.write(state);
+  } });
+  await run({ label: 'leave without a join', action: 'leave', policy: 'allow', prepare: async (h, hooks) => {
+    const state = await h.chatStore.read();
+    await h.chatStore.write(assignCatToChannel(state, hooks.conversationId, { catId: h.ids.boss }, new Date()));
+  } });
+  assert.deepEqual(outcomes, [
+    ['ask is the default', 'refused', 'owner_card_required'],
+    ['never', 'refused', 'policy_never'],
+    ['policy flipped after the board', 'refused', 'policy_never'],
+    ['archived after the board', 'refused', 'conversation_archived'],
+    ['already member', 'refused', 'already_member'],
+    ['rate limited', 'refused', 'rate_limited'],
+    ['leave without a join', 'refused', 'not_joined'],
+  ]);
 });

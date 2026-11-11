@@ -120,6 +120,17 @@ export function normalizeMessage(rawMessage: unknown, channelId: string): ChatMe
   };
 }
 
+/** SPEC-139 FR-12 join bounds; anything malformed is dropped. */
+function normalizeBossCatJoins(raw: unknown): Pick<ChatChannelState, 'bossCatJoins'> {
+  const record = asRecord(raw);
+  if (!record) return {};
+  const joins = Object.fromEntries(Object.entries(record).flatMap(([catId, value]) => {
+    const since = asRecord(value)?.since;
+    return catId && typeof since === 'string' && Number.isFinite(Date.parse(since)) ? [[catId, { since }]] : [];
+  }));
+  return Object.keys(joins).length > 0 ? { bossCatJoins: joins } : {};
+}
+
 /** SPEC-139 FR-5 marker; anything malformed is dropped. */
 function normalizeBossCatGroup(raw: unknown): Pick<ChatChannelState, 'bossCatGroup'> {
   const record = asRecord(raw);
@@ -368,6 +379,7 @@ export function normalizeChannel(
       || channelRecord.titleSource === 'owner' ? channelRecord.titleSource : 'manual',
     catlasTitleAttempts: normalizeCatlasTitleAttempts(channelRecord.catlasTitleAttempts),
     ...normalizeBossCatGroup(channelRecord.bossCatGroup),
+    ...normalizeBossCatJoins(channelRecord.bossCatJoins),
     topic: readString(channelRecord.topic, 'This chat is still taking shape.'),
     originSurface: normalizePlatformSurface(channelRecord.originSurface),
     channelKind,
