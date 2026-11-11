@@ -5,6 +5,7 @@ import { buildChatAssignedParticipantId, buildChatConversationId } from '../../.
 import { buildRoomWorkflowRunId, buildRoomWorkflowMissionId } from '../../../platform/orchestration/runIds.js';
 import { ownerEntry } from '../../../core/ownerLifecycle.js';
 import { resolveChannelParticipantAssignments, resolveParticipantLeaseAttachment } from '../shared/channelParticipants.js';
+import { resolveChannelProductScope } from '../shared/channelTopology.js';
 
 /** The shared conversation engine supplies provenance without starting/resuming or writing anything. */
 export function createConversationExecutionInspector(store: ChatStore): ConversationExecutionInspector {
@@ -93,6 +94,7 @@ export function createConversationExecutionInspector(store: ChatStore): Conversa
         .filter(attempt => !ambiguous.has(attempt.sessionId));
       truncated ||= ambiguous.size > 0;
       const context = { conversationId, channelId: channel.id, origin: channel.originSurface ?? '',
+        scope: resolveChannelProductScope(channel),
         owned: channel.ownerActorId === core.ownerProfile.actorId, rootPath: channel.repoPath,
         participants, truncated };
       return { ...context, bindingKey: JSON.stringify(context) };

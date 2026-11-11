@@ -51,8 +51,8 @@ test('Code route rejects unavailable, non-Code, foreign and revoked conversation
   const url = await serve(t, service);
   assert.equal((await fetch(url, { method: 'POST' })).status, 405);
   assert.equal((await fetch(url.replace('conversation-a', 'foreign'))).status, 404);
-  context.origin = 'work'; assert.equal((await fetch(url)).status, 404);
-  context.origin = 'code'; context.owned = false;
+  context.scope = 'work'; assert.equal((await fetch(url)).status, 404);
+  context.scope = 'code'; context.owned = false;
   assert.equal((await fetch(url, { headers: { accept: 'text/event-stream' } })).status, 404);
   context.owned = true;
   let release!: () => void; let started = false;

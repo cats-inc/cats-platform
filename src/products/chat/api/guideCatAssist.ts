@@ -4,6 +4,7 @@ import type { CatsCoreState, GuideCatRecord } from '../../../core/types.js';
 import type { CoreStore } from '../../../core/store.js';
 import type { ChatState } from './contracts.js';
 import type { ChatStore } from '../state/store.js';
+import { resolveChannelProductScope } from '../shared/channelTopology.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import { inferCatlasData } from '../../../platform/catlas/inference.js';
 import { buildGuideCatAssistRefreshContextHash,
@@ -93,6 +94,11 @@ function catalogContent(catalog: GuideCatCatalog, surfaceId: string, locale: Mes
       ...(item.labelKey ? { labelKey: item.labelKey, promptKey: item.promptKey } : {}) }));
   return { greetings: greetings.length ? greetings : resolveGuideCatAssistBaseline(surfaceId).content.greetings, entryChips: chips };
 }
+/** SPEC-141 FR-14: a Catlas link opens a conversation under the product of its scope. */
+export function catlasConversationHref(channel: ChatState['channels'][number]): string {
+  return `/${resolveChannelProductScope(channel)}/chats/${encodeURIComponent(channel.id)}`;
+}
+
 export async function resolveChatGuideCatAssistReadModel(input: {
   chatStatePath: string; guideCat: GuideCatRecord | null; ownerDisplayName?: string | null;
   runtimeReachable: boolean; now?: Date; core?: CatsCoreState; chat?: ChatState; locale?: MessageLocale;
@@ -110,7 +116,7 @@ export async function resolveChatGuideCatAssistReadModel(input: {
     if (kind === 'conversation') {
       const record = input.core?.conversations.find(item => item.id === id);
       const channel = input.chat?.channels.find(item => item.id === (record?.sourceChannelId ?? id));
-      return channel ? `/${channel.originSurface ?? 'chat'}/chats/${encodeURIComponent(channel.id)}` : undefined;
+      return channel ? catlasConversationHref(channel) : undefined;
     }
     const segment = kind === 'project' ? 'projects' : kind === 'task' ? 'tasks' : 'work-items';
     const product = kind === 'task' ? catlasSnapshotEntries(snapshot!).find(item => item.id === id)?.surface ?? 'work' : 'work';

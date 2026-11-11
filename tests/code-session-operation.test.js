@@ -176,3 +176,24 @@ test('cancel before admission changes nothing; late-created session is closed an
   await createCodeSessionOperationService(f.options).open(f.draft, request, f.signal);
   assert.equal(f.calls.create.length, 1);
 });
+
+test('a Code session is confirmed by the conversation scope, not by its origin', async t => {
+  // SPEC-141 FR-8: the check that a conversation is still a Code session reads the scope.
+  const f = await fixture(t);
+  const request = await f.request();
+  const result = await f.service.open(f.draft, request, f.signal);
+  assert.equal(result.status, 'verified', JSON.stringify(result));
+  const rewrite = async change => {
+    const state = await f.store.read();
+    change(state.channels.find(row => row.id === result.channelId));
+    await f.store.write(state);
+  };
+
+  // Another origin and a code scope: still a Code session.
+  await rewrite(channel => { channel.originSurface = 'chat'; });
+  assert.equal((await createCodeSessionOperationService(f.options).open(f.draft, request, f.signal)).status, 'verified');
+
+  // A Code origin and another scope: no longer one.
+  await rewrite(channel => { channel.originSurface = 'code'; channel.productScope = 'chat'; });
+  assert.equal((await createCodeSessionOperationService(f.options).open(f.draft, request, f.signal)).status, 'unconfirmed');
+});

@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft, 2026-11-11, revised the same day after an independent review and again after the owner answered Q1, Q2 and Q4. The owner's decisions D1 to D13 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S2 to S6 and Q3 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects. S1 was put to the owner the same day. Implementation started: the field exists (FR-1 to FR-7, PLAN-134 Phase 1) and nothing reads it yet |
+| **Status** | Draft, 2026-11-11, revised the same day after an independent review and again after the owner answered Q1, Q2 and Q4. The owner's decisions D1 to D13 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S2 to S6 and Q3 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects. S1 was put to the owner the same day. Implementation in progress: the field exists (FR-1 to FR-7, PLAN-134 Phase 1), and Recents, routes, labels, Work's own-record check and Code's tool checks read it (FR-12 to FR-15, and FR-8 for `code` only, Phase 2) |
 | **Owner** | Product owner |
 | **Reviewer** | Owner; an independent review before implementation |
 | **Decision** | [ADR-149](../decisions/149-let-a-conversation-gain-product-scopes-and-never-lose-them.md) |
@@ -191,6 +191,7 @@ inventory of every `originSurface` reader.
    - A valid stored scope is kept as stored, even when it is lower than the origin. Loading
      never raises a scope: a former lane with a Code origin stays at `chat` until the owner
      raises it.
+   - A direct lane is read as `chat` whatever is stored (S6). What is stored is left as it is.
 4. FR-4: One state function raises the scope. No other code path writes the field after
    creation, and the function refuses an equal or lower level.
 5. FR-5: A direct lane or a parallel member cannot be raised (P3). A parallel group keeps its
@@ -406,8 +407,14 @@ were put to the owner on 2026-11-11 as defaults that stand unless the owner obje
   becomes visible in Chat's Recents (FR-3). This puts ADR-069 section 3 into effect.
 - S5: The raise is recorded as the system line in the conversation and nowhere else (FR-24).
 - S6: A direct lane's scope is always `chat` (FR-2).
-  - A lane created with a Code origin receives the `cats` server today and would stop.
-  - Desktop has no path that creates such a lane. Whether the mobile app does is not verified.
+  - It is `chat` at creation and on load, and every reader treats a lane as `chat` whatever is
+    stored. The stored value is left alone, so a conversation that stops being a lane has the
+    level it had (D2). The owner was told of this reading order on 2026-11-11 as a default
+    that stands unless the owner objects.
+  - A lane created with a Code origin received the `cats` server before PLAN-134 Phase 2 and
+    no longer does.
+  - Desktop has no path that creates such a lane. The mobile app's only direct-lane create is
+    on its Chat tab and sends `chat`.
 
 ## Test Plan
 

@@ -2,6 +2,7 @@ import type { CatsCoreState } from '../../../core/types.js';
 import type { WorkGraphDiagnostic, WorkGraphObjectSummary } from '../shared/workGraphTypes.js';
 import { resolveTaskProductBinding } from './projectionSupport.js';
 import { executionSource } from '../state/historyManagement.js';
+import { readProductScope } from '../../../shared/productScope.js';
 
 export function ownerManagedObject(core: CatsCoreState, object: WorkGraphObjectSummary): boolean {
   if (object.kind === 'run' || object.kind === 'mission') {
@@ -9,7 +10,10 @@ export function ownerManagedObject(core: CatsCoreState, object: WorkGraphObjectS
     return !!record && (['work', 'schedule', 'delegation'].includes(executionSource(record)) || ['failed', 'blocked'].includes(record.status));
   }
   if (object.kind === 'conversation') return core.conversations.some(conversation => conversation.id === object.sourceRecordId && conversation.kind === 'work_thread');
-  if (object.kind === 'task' || object.kind === 'work_item') return !['chat-channel', 'chat-room-workflow'].includes(String(object.metadata?.source)) || object.metadata?.originSurface === 'work' || object.productBinding === 'work';
+  // SPEC-141 FR-15: a record projected from a conversation is Work's own when the scope is work.
+  if (object.kind === 'task' || object.kind === 'work_item') return !['chat-channel', 'chat-room-workflow'].includes(String(object.metadata?.source))
+    || readProductScope({ productScope: object.metadata?.productScope, originSurface: object.metadata?.originSurface, roomMode: object.metadata?.roomRoutingMode }) === 'work'
+    || object.productBinding === 'work';
   return true;
 }
 

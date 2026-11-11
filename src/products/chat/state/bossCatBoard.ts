@@ -12,7 +12,7 @@ import {
   resolveChannelParticipantAssignments,
   resolveParticipantCatId,
 } from '../shared/channelParticipants.js';
-import { isDirectLaneChannel } from '../shared/channelTopology.js';
+import { isDirectLaneChannel, resolveChannelProductScope } from '../shared/channelTopology.js';
 import { resolveChatLifecycleState } from '../shared/lifecycle.js';
 import {
   COMPANION_HEARTBEAT_MAX_UNANSWERED,
@@ -296,7 +296,7 @@ export function buildBossCatBoard(input: BuildBossCatBoardInput): BossCatBoard {
       const otherCatIds = catIds.filter((catId) => catId !== input.bossCatId);
       const identity = {
         conversationId: channel.id,
-        surface: channel.originSurface ?? 'chat',
+        surface: resolveChannelProductScope(channel),
         createdAt: channel.createdAt,
       };
       if (otherCatIds.length > 0 && visibleNames.length === 0) return { ...identity, redacted: true };

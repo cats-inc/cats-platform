@@ -3,6 +3,7 @@ import { coreContentOrigins } from '../../../core/contentProvenance.js';
 import type { CatsCoreState } from '../../../core/types.js';
 import { effectiveOwnerListing, ownerEntry } from '../../../core/ownerLifecycle.js';
 import type { ChatChannelState, ChatState, ChatMessage } from './contracts.js';
+import { resolveChannelProductScope } from '../shared/channelTopology.js';
 import type { GuideCatAssistProduct, GuideCatAssistTarget } from '../../../shared/guideCatAssist.js';
 
 export interface CatlasSnapshotEntry extends GuideCatAssistTarget {
@@ -84,7 +85,7 @@ export function buildCatlasSnapshot(input: {
   const conversationEntry = (channel: ChatChannelState): CatlasSnapshotEntry => ({
     id: core.conversations.find(record => record.sourceChannelId === channel.id)?.id ?? channel.id,
     kind: 'conversation', title: channel.title.slice(0, 200), status: channel.status,
-    surface: channel.originSurface ?? 'chat', idleDays: idle(channel.lastMessageAt ?? channel.updatedAt),
+    surface: resolveChannelProductScope(channel), idleDays: idle(channel.lastMessageAt ?? channel.updatedAt),
     external: !core.conversations.some(record => record.sourceChannelId === channel.id),
   });
   const hour = now.getHours();

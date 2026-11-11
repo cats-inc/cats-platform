@@ -55,7 +55,7 @@ export function createCodeWorkAreasService(options: {
 
   async function contextFor(id: string) {
     const context = await options.inspector.read(id);
-    if (!context || !context.owned || context.origin !== 'code' || context.conversationId !== id) {
+    if (!context || !context.owned || context.scope !== 'code' || context.conversationId !== id) {
       for (const cacheKey of cache.keys()) if (JSON.parse(cacheKey)[0] === id) cache.delete(cacheKey);
       return null;
     }

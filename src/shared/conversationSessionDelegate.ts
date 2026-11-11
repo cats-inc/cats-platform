@@ -4,6 +4,8 @@ import type { RuntimeSessionPolicy } from './runtimeSessionPolicy.js';
 
 export interface ConversationSessionProjection {
   id: string; origin: string; archived: boolean; cwd: string | null; sessionId: string | null;
+  /** SPEC-141: the conversation's product scope, which decides whether it is a Code session. */
+  scope: string;
   workspaceKind: string | null; workspaceAccess: string | null; permissionMode: string | null;
   executionPolicy?: RuntimeSessionPolicy['executionPolicy'];
 }

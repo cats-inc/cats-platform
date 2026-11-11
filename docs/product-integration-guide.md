@@ -141,12 +141,17 @@ All product teams must preserve this rule:
 - every new channel carries the creating product's `originSurface`
 - every new parallel/compare group carries the creating product's
   `originSurface`
-- sidebar `RECENTS` defaults to entries whose `originSurface` matches the
-  current product surface
+- sidebar `RECENTS` lists a conversation under the product of its
+  `productScope`, which starts as its `originSurface`
+  ([SPEC-141](specs/SPEC-141-conversation-product-scope.md)); a
+  parallel/compare group stays under its own `originSurface`
 
 Rules:
 
-- `originSurface` is product-ownership metadata, not routing metadata.
+- `originSurface` records the product that created a conversation and never
+  changes. `productScope` decides which product lists a conversation, owns its
+  routes and gives it tools. Read it through `readProductScope`
+  (`src/shared/productScope.ts`) and do not read `originSurface` for those.
 - Product teams must stamp `originSurface` at create time instead of inferring
   it later from `repoPath`, `entryKind`, `composerMode`, `roomMode`, or other
   indirect fields.

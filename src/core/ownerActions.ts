@@ -7,6 +7,7 @@ import { effectiveOwnerListing, ownerEntry, setOwnerEntry } from './ownerLifecyc
 import { applyOwnerLifecycleProjection } from './ownerLifecycleProjection.js';
 import { upsertCoreProject, upsertCoreWorkItem, upsertCoreTask, upsertCoreArtifact } from './model/index.js';
 import { readTaskPlanningMetadata } from '../shared/taskPlanning.js';
+import { readProductScope } from '../shared/productScope.js';
 import { readCoreEffectiveDeliveryPolicy } from './governance.js';
 
 const collections = { project: 'projects', work_item: 'workItems', task: 'tasks', artifact: 'artifacts' } as const;
@@ -45,7 +46,8 @@ export function ownerActionView(core: CatsCoreState, family: PlanningOwnerFamily
   const renderer = metadata.workRenderer && typeof metadata.workRenderer === 'object' ? metadata.workRenderer as Record<string, unknown> : metadata;
   const channelId = typeof metadata.channelId === 'string' ? metadata.channelId : 'conversationId' in record && record.conversationId ? core.conversations.find(conversation => conversation.id === record.conversationId)?.sourceChannelId : null;
   return { family, id, token: token(core), title: record.title, summary: record.summary, status: record.status, listing: effectiveOwnerListing(core, family, id, record.status), source,
-    sourcePath: channelId ? `/${metadata.originSurface === 'code' ? 'code' : metadata.originSurface === 'work' ? 'work' : 'chat'}/chats/${encodeURIComponent(channelId)}` : null,
+    // SPEC-141 FR-14: the source link uses the conversation's scope, as copied onto the record.
+    sourcePath: channelId ? `/${readProductScope({ productScope: metadata.productScope, originSurface: metadata.originSurface, roomMode: metadata.roomRoutingMode })}/chats/${encodeURIComponent(channelId)}` : null,
     assignedActorIds: 'assignedActorIds' in record ? record.assignedActorIds : [], projectId: 'projectId' in record ? record.projectId : null,
     parentId: 'parentTaskId' in record ? record.parentTaskId ?? null : 'parentWorkItemId' in record ? record.parentWorkItemId : null,
     priority: typeof renderer.priority === 'string' ? renderer.priority : '', acceptanceCriteria: typeof renderer.acceptanceCriteria === 'string' ? renderer.acceptanceCriteria : readTaskPlanningMetadata(metadata).acceptanceCriteria,

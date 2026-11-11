@@ -117,7 +117,7 @@ export function createCodeSessionOperationService(options: {
         const current = readIntent(core, intent.requestId);
         return !signal.aborted && core.ownerProfile.actorId === intent.ownerActorId
           && current?.digest === intent.digest && current.channelId === intent.channelId && current.sessionId === intent.sessionId
-          && Boolean(channel && channel.origin === 'code' && !channel.archived
+          && Boolean(channel && channel.scope === 'code' && !channel.archived
             && channel.cwd === intent.cwd && channel.workspaceKind === draft.policy.workspaceKind
             && channel.workspaceAccess === draft.policy.workspaceAccess
             && isDeepStrictEqual(channel.executionPolicy, draft.policy.executionPolicy)

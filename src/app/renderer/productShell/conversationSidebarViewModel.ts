@@ -1,6 +1,7 @@
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import { resolvePlatformSurfaceFromPath } from '../../../core/platformSurface.js';
 import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
+import { readProductScope } from '../../../shared/productScope.js';
 import {
   resolveRuntimePresentationStatus,
   resolveRuntimeTooltip,
@@ -19,6 +20,8 @@ interface ConversationSidebarChannel {
   id: string;
   title: string;
   originSurface?: PlatformSurfaceId | null;
+  /** SPEC-141: the product that lists the conversation. */
+  productScope?: PlatformSurfaceId | null;
   defaultRecipientCatId?: string | null;
   defaultRecipientLeaseStatus?: unknown;
   channelKind?: 'chat_channel' | 'direct_message' | null;
@@ -89,17 +92,22 @@ interface ConversationSidebarHelpers<
   isDirectLaneSummary: (channel: TChannel) => boolean;
 }
 
-export function resolveConversationSidebarChannelSurface(
+/**
+ * SPEC-141 FR-12: a parallel group is listed under its own origin, since a group has no scope.
+ * A group with no recorded origin is listed under Chat (FR-3).
+ */
+export function resolveConversationSidebarGroupSurface(
   originSurface: PlatformSurfaceId | null | undefined,
-): PlatformSurfaceId | null {
-  return normalizePlatformSurface(originSurface);
+): PlatformSurfaceId {
+  return normalizePlatformSurface(originSurface) ?? 'chat';
 }
 
+/** SPEC-141 FR-12: a conversation is listed under the product of its scope. */
 function channelMatchesActiveSurface<TChannel extends ConversationSidebarChannel>(
   channel: TChannel,
   activeSurface: PlatformSurfaceId,
 ): boolean {
-  return resolveConversationSidebarChannelSurface(channel.originSurface) === activeSurface;
+  return readProductScope(channel) === activeSurface;
 }
 
 function filterRecentEntryBySurface<TChannel extends ConversationSidebarChannel>(
@@ -117,8 +125,7 @@ function filterRecentEntryBySurface<TChannel extends ConversationSidebarChannel>
     return null;
   }
 
-  const groupSurface = entry.originSurface ?? channels[0]?.channel.originSurface ?? null;
-  if (resolveConversationSidebarChannelSurface(groupSurface) !== activeSurface) {
+  if (resolveConversationSidebarGroupSurface(entry.originSurface) !== activeSurface) {
     return null;
   }
 

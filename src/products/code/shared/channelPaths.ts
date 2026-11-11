@@ -62,7 +62,7 @@ export function resolveDefaultChatPath(selectedChannelId: string | null | undefi
 }
 
 export function resolveVisibleChatPath(
-  channels: ReadonlyArray<Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind' | 'originSurface'>>,
+  channels: ReadonlyArray<Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind' | 'originSurface' | 'productScope'>>,
   selectedChannelId: string | null | undefined,
 ): string {
   return resolveWorkspaceVisibleChatPath(CHAT_PREFIX, channels, selectedChannelId, 'code');

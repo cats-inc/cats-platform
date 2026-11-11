@@ -30,6 +30,8 @@ export interface ConversationExecutionInspection {
   conversationId: string;
   channelId: string;
   origin: string;
+  /** SPEC-141: the conversation's product scope, which decides whether Code serves it. */
+  scope: string;
   owned: boolean;
   rootPath: string | null;
   participants: ConversationExecutionParticipant[];

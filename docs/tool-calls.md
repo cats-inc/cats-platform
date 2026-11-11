@@ -557,7 +557,9 @@ rather than to a later hook that happened to receive the merged context.
 Assistant metadata contributions are stored under each enricher id rather than
 flattened into Chat metadata.
 
-When a chat/channel originates from Cats Code (`originSurface = "code"`), the
+When a conversation's product scope is `code` (it starts as the
+conversation's `originSurface`, and a direct message is always `chat`; see
+[SPEC-141](specs/SPEC-141-conversation-product-scope.md)), the
 Code agent-tools enricher adds a secret-free marker at
 `context.metadata.codeAgentTools` (`channelId`, `workspacePath`) on session
 create and message send.

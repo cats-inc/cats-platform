@@ -16,7 +16,7 @@ import {
 } from '../../../shared/chatMessageLocalization.js';
 import { isCompanionCat } from '../../../shared/companionRole.js';
 import { resolveChannelParticipantAssignments, resolveParticipantCatId } from '../shared/channelParticipants.js';
-import { isDirectLaneChannel } from '../shared/channelTopology.js';
+import { isDirectLaneChannel, resolveChannelProductScope } from '../shared/channelTopology.js';
 import { BOSS_CAT_JOIN_PRIOR_MESSAGES, resolveBossCatJoinPolicy } from '../shared/bossCatJoins.js';
 import { BOSS_CAT_JOIN_REQUEST_METADATA_KEY } from '../shared/ownerStarted.js';
 import { readOwnerSetTitle } from './bossCatBoard.js';
@@ -59,7 +59,7 @@ export function appendBossCatLaneNotice(
   input: {
     laneId: string;
     sourceMessageId: string;
-    target: Pick<ChatChannelState, 'id' | 'title' | 'titleSource' | 'originSurface'>;
+    target: Pick<ChatChannelState, 'id' | 'title' | 'titleSource' | 'originSurface' | 'productScope' | 'channelKind' | 'roomRouting'>;
     bossName: string;
     kind: LaneNoticeKind;
     at: Date;
@@ -75,7 +75,7 @@ export function appendBossCatLaneNotice(
       : input.kind === 'joined'
         ? title ? messageKeys.chatBossCatJoinedNotice : messageKeys.chatBossCatJoinedUntitledNotice
         : title ? messageKeys.chatBossCatLeftNotice : messageKeys.chatBossCatLeftUntitledNotice,
-    values: { name: input.bossName, title: title ?? '', surface: input.target.originSurface ?? 'chat' },
+    values: { name: input.bossName, title: title ?? '', surface: resolveChannelProductScope(input.target) },
   };
   return appendMessage(state, input.laneId, {
     senderKind: 'system',
@@ -344,7 +344,7 @@ export function readBossCatJoinRequestDetails(
       ? {
           id: target.id,
           title: target.title,
-          surface: target.originSurface ?? 'chat',
+          surface: resolveChannelProductScope(target),
           participantNames: resolveChannelParticipantAssignments(target)
             .filter((entry) => entry.status === 'active').map((entry) => entry.name),
           archived: target.status === 'archived',
@@ -355,7 +355,7 @@ export function readBossCatJoinRequestDetails(
           repoPath: target.repoPath ?? null,
           workspaceAccess: policy.workspaceAccess,
           permissionMode: policy.permissionMode,
-          codeTools: target.originSurface === 'code',
+          codeTools: resolveChannelProductScope(target) === 'code',
         }
       : null,
     bossCat: boss

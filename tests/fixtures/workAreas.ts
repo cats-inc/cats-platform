@@ -5,7 +5,7 @@ import type { RuntimeWorkspaceActivitySnapshot } from '../../src/runtime/workspa
 export function workAreaContext(): ConversationExecutionInspection {
   const binding: ConversationExecutionBinding = { sessionId: 'session-a', turnId: 'turn-a', laneId: 'lane-a',
     runId: 'product-run-a', targetStateId: 'target-a' };
-  return { conversationId: 'conversation-a', channelId: 'channel-a', origin: 'code', owned: true,
+  return { conversationId: 'conversation-a', channelId: 'channel-a', origin: 'code', scope: 'code', owned: true,
     rootPath: '/fixture/cats-inc', bindingKey: 'initial', truncated: false, participants: [{
       participantId: 'participant-a', canonicalParticipantId: 'canonical-a', sourceKind: 'provider_model',
       sourceRefId: null, name: 'Coder', coordinator: true,
