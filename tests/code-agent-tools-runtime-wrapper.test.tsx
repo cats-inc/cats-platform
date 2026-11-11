@@ -319,7 +319,7 @@ test("a conversation's execution policy reaches the grant's shell posture", asyn
   const enricher = createCodeAgentToolsInvocationEnricher();
   const phase = { phase: 'message_send' as const };
   const policy = (network: boolean, approval: 'never' | 'on-request') =>
-    ({ version: 1 as const, mode: 'explicit' as const, access: 'workspace-write' as const, network, approval });
+    ({ version: 1 as const, mode: 'explicit' as const, access: 'full-access' as const, network, approval });
   const markerFor = (runtimeExecutionPolicy: ReturnType<typeof policy> | null) => readCodeAgentToolsInvocationMarker(
     enricher.enrich({ originSurface: 'work', id: 'channel-p', runtimePermissionMode: 'skip', runtimeExecutionPolicy }, {}, phase)?.context);
   assert.equal(markerFor(null)?.shellExecution, true);

@@ -25,11 +25,13 @@ export function hasShellExecutionPermission(posture: CodeSessionPermissionPostur
   const policy = posture.executionPolicy;
   if (policy) {
     // A dev preview runs the workspace's commands in Platform's own process, outside the
-    // provider's sandbox and approvals. So only a policy under which the Cat itself runs
-    // commands unattended, with write access and network, allows one. A `provider` policy
-    // leaves approvals to the provider, so Platform cannot know they are off.
+    // provider's sandbox and approvals, with full access to the disk. So only a policy under
+    // which the Cat itself already runs commands unattended, with full access and network,
+    // allows one. `workspace-write` confines the Cat to its workspace, and a preview would let
+    // it step outside by changing a package.json script. A `provider` policy leaves approvals
+    // to the provider, so Platform cannot know they are off.
     return policy.mode === 'explicit'
-      && policy.access !== 'read-only'
+      && policy.access === 'full-access'
       && policy.network
       && policy.approval === 'never';
   }

@@ -331,9 +331,10 @@ real provider.
       enricher read the access and permission mode alone, so a policy that turned off network
       or asked for every approval still let `start_dev_preview` run a package.json script in
       Platform's own process, on Code conversations before and on Work ones after D5. Now a
-      policy decides: only an `explicit` one with write access, network on and approval
+      policy decides: only an `explicit` one with `full-access`, network on and approval
       `never` allows a preview, and a `provider` one, which leaves approvals to the provider,
-      does not.
+      does not. The legacy `skip` posture keeps the old rule; SPEC-123's Known Limits records
+      what that leaves open.
 - [ ] Tests, plus an isolated candidate check of a Work conversation that shows an artifact and
       a live preview.
   - [x] Tests: the scope predicate at the four places, the wrapper keeping other servers and

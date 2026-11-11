@@ -229,11 +229,11 @@ test('a provider execution policy decides the shell, not the permission mode bes
     approval: 'never' | 'untrusted' | 'on-request') => ({ version: 1 as const, mode: 'explicit' as const, access, network, approval });
   const withPolicy = (executionPolicy: Parameters<typeof hasShellExecutionPermission>[0]['executionPolicy']) =>
     hasShellExecutionPermission({ permissionMode: 'skip', executionPolicy });
-  assert.equal(withPolicy(explicit('workspace-write', true, 'never')), true, 'unattended, write, network');
-  assert.equal(withPolicy(explicit('full-access', true, 'never')), true);
-  assert.equal(withPolicy(explicit('workspace-write', false, 'never')), false, 'network off');
-  assert.equal(withPolicy(explicit('workspace-write', true, 'on-request')), false, 'approval on request');
-  assert.equal(withPolicy(explicit('workspace-write', true, 'untrusted')), false, 'approval for untrusted commands');
+  assert.equal(withPolicy(explicit('full-access', true, 'never')), true, 'unattended, full access, network');
+  // workspace-write confines the Cat to its workspace; a preview runs with full disk access.
+  assert.equal(withPolicy(explicit('workspace-write', true, 'never')), false, 'workspace-write');
+  assert.equal(withPolicy(explicit('full-access', true, 'on-request')), false, 'approval on request');
+  assert.equal(withPolicy(explicit('full-access', true, 'untrusted')), false, 'approval for untrusted commands');
   assert.equal(withPolicy(explicit('read-only', false, 'never')), false, 'read-only');
   // A provider policy leaves approvals to the provider, so Platform cannot know they are off.
   assert.equal(withPolicy({ version: 1, mode: 'provider', constraints: { maxAccess: 'full-access', network: true } }), false);
