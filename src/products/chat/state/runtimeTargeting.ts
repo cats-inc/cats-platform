@@ -57,6 +57,7 @@ import type { DispatchRequest } from './room-routing/runtime.js';
 import { isAssistantTurnSegmentMessage } from './assistantTurnSegments.js';
 import { formatBossCatTurnInstructions, isBossCatGroupGuest, readBossCatTurnRecord } from './bossCatSurface.js';
 import { boundMessagesToJoin, readBossCatJoinSince } from '../shared/bossCatJoins.js';
+import { isBossCatJoinRequestMessage, withoutBossCatJoinRequests } from '../shared/ownerStarted.js';
 
 export type RuntimeTransportContext = 'telegram' | 'web' | 'mobile';
 
@@ -771,20 +772,23 @@ export function buildPromptForTarget(
   companionContext?: PromptCompanionContext | null,
 ): DispatchPrompt {
   const fullChannel = buildChannelView(state, channelId);
+  // SPEC-139 FR-10: the owner's join card never enters a model's context.
+  const cardIds = new Set(fullChannel.messages.filter(isBossCatJoinRequestMessage).map((message) => message.id));
+  const visibleChannel = { ...fullChannel, messages: withoutBossCatJoinRequests(fullChannel.messages) };
   // SPEC-139 FR-12: a Cat that joined through a Boss Cat join sees the last 8 messages before
   // it joined, then what follows, and no checkpoint summarizing what came before.
   const targetAssignment = findAssignedParticipant(fullChannel, request.target.participantId);
   const joinSince = readBossCatJoinSince(fullChannel,
     targetAssignment ? resolveParticipantCatId(targetAssignment) : null);
   const channel = joinSince
-    ? { ...fullChannel, messages: boundMessagesToJoin(fullChannel.messages, joinSince), workingMemory: undefined }
-    : fullChannel;
+    ? { ...visibleChannel, messages: boundMessagesToJoin(visibleChannel.messages, joinSince), workingMemory: undefined }
+    : visibleChannel;
   const promptSourceMessage = request.promptSourceMessage ?? request.sourceMessage;
-  const conversationMessages = resolveTranscriptOrCanonicalConversationMessages({
+  const conversationMessages = withoutBossCatJoinRequests(resolveTranscriptOrCanonicalConversationMessages({
     core,
     channelId,
     transcriptMessages: fullChannel.messages,
-  });
+  }), cardIds);
   const promptMessages = joinSince ? boundMessagesToJoin(conversationMessages, joinSince) : conversationMessages;
   const recentMessages = sliceRecentContextForTarget(
     promptMessages,

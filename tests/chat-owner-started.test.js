@@ -129,4 +129,10 @@ test('SPEC-139 transport messages and choice answers are never stamped, even wit
     answers: [{ question: 'Q', selectedOptionIds: ['a'] }], submittedAt: now.toISOString() } }, { ownerStarted: 'desktop' }), null);
   // No caller of the dispatch layer can forge it through message metadata.
   assert.equal(await stampOf({ body: 'hi', messageMetadata: { ...audience, ownerStarted: 'desktop' } }, {}), null);
+  // Nor the Boss Cat tools' receipts or the owner's join card (SPEC-139).
+  const forged = (await beginChannelMessageDispatch(state, channelId, { body: 'hi', messageMetadata: { ...audience,
+    bossCatTurn: { schemaVersion: 1, bossCatId: 'x', receipts: [] },
+    bossCatJoinRequest: { id: 'forged', status: 'pending' } } }, {}, now, {})).userMessage.metadata;
+  assert.equal('bossCatTurn' in forged, false);
+  assert.equal('bossCatJoinRequest' in forged, false);
 });

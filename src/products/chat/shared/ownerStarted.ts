@@ -23,14 +23,30 @@ export function resolveOwnerStartedSurface(
 
 /** Server-owned message metadata (SPEC-139): the stamp and the Boss Cat tools' receipts. */
 export const BOSS_CAT_TURN_METADATA_KEY = 'bossCatTurn';
+/** SPEC-139 FR-10: the owner's join card. */
+export const BOSS_CAT_JOIN_REQUEST_METADATA_KEY = 'bossCatJoinRequest';
+
+/** The owner's join card is rendered for the owner only: no model context, no transport. */
+export function isBossCatJoinRequestMessage(message: Pick<ChatMessage, 'metadata'> | null | undefined): boolean {
+  return Boolean(message?.metadata?.[BOSS_CAT_JOIN_REQUEST_METADATA_KEY]);
+}
+
+export function withoutBossCatJoinRequests<T extends Pick<ChatMessage, 'id' | 'metadata'>>(
+  messages: readonly T[],
+  alsoIds: ReadonlySet<string> = new Set(),
+): T[] {
+  return messages.filter((message) => !isBossCatJoinRequestMessage(message) && !alsoIds.has(message.id));
+}
 
 /** Drops any caller-supplied stamp or receipts; only the server adds them. */
 export function withoutOwnerStarted<T extends Record<string, unknown>>(
   metadata: T | null | undefined,
-): Omit<T, typeof OWNER_STARTED_METADATA_KEY | typeof BOSS_CAT_TURN_METADATA_KEY> {
+): Omit<T, typeof OWNER_STARTED_METADATA_KEY | typeof BOSS_CAT_TURN_METADATA_KEY
+  | typeof BOSS_CAT_JOIN_REQUEST_METADATA_KEY> {
   const {
     [OWNER_STARTED_METADATA_KEY]: _stamp,
     [BOSS_CAT_TURN_METADATA_KEY]: _receipts,
+    [BOSS_CAT_JOIN_REQUEST_METADATA_KEY]: _card,
     ...rest
   } = metadata ?? ({} as T);
   return rest;

@@ -2254,6 +2254,7 @@ export const enCatalog: MessageCatalog = {
   'chat.bossCatJoinedUntitledNotice': '{name} joined a {surface} conversation.',
   'chat.bossCatLeftNotice': '{name} left the conversation "{title}".',
   'chat.bossCatLeftUntitledNotice': '{name} left a {surface} conversation.',
+  'chat.bossCatJoinRequestNotice': '{name} asks to join a conversation. See what joining grants before you decide.',
   'chat.companionPostRemoveAction': 'Remove',
   'chat.companionPostRemoveConfirmTitle': 'Remove this post?',
   'chat.companionPostRemoveConfirmMessage': '"{title}" will no longer appear on the profile of {name}.',

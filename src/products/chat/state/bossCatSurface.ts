@@ -32,6 +32,7 @@ import { isAdminCoordinator } from './coordinator.js';
 import { buildBossCatBoard, readOwnerSetTitle, type BossCatBoard } from './bossCatBoard.js';
 import { appendMessage, assignCatToChannel, createChannel, removeCatFromChannel } from './model/index.js';
 import { readBossCatJoinSince, resolveBossCatJoinPolicy } from '../shared/bossCatJoins.js';
+import { appendBossCatLaneNotice, applyBossCatJoin, postBossCatJoinRequest } from './bossCatJoinRequests.js';
 import { createTranslator, messageKeys, parseMessageLocale } from '../../../shared/i18n/index.js';
 import {
   CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY,
@@ -54,16 +55,22 @@ export const BOSS_CAT_TOOL_NAMES = [
 /** Tools that act on what a board in the same run showed. */
 const BOSS_CAT_BOARD_BOUND_TOOLS: readonly string[] = [BOSS_CREATE_GROUP, BOSS_JOIN_CONVERSATION, BOSS_LEAVE_CONVERSATION];
 export { readBossCatTurnRecord };
+export {
+  BOSS_CAT_HOURLY_LIMITS,
+  attachBossCatTurnRecord,
+  countBossCatUsage,
+  reserveBossCatUsage,
+  resolveBossCatTurnGate,
+  type BossCatTurnGate,
+} from './bossCatCommon.js';
+import {
+  attachBossCatTurnRecord,
+  reserveBossCatUsage,
+  resolveBossCatTurnGate,
+} from './bossCatCommon.js';
 export const isBossCatTool = (name: string): boolean =>
   (BOSS_CAT_TOOL_NAMES as readonly string[]).includes(name);
 
-/** Per owner, across every Boss Cat, within the last hour (FR-2, FR-7, FR-9). */
-export const BOSS_CAT_HOURLY_LIMITS: Readonly<Record<BossCatUsageKind, number>> = {
-  board: 30,
-  group: 5,
-  join_request: 10,
-};
-const HOUR_MS = 60 * 60_000;
 /**
  * The board must fit the decision session's 24,000-character feedback envelope with room for
  * the receipts after it, so it is bounded by its serialized size, not only by counts.
@@ -84,48 +91,6 @@ export function resolveBossCatEvidenceDataDir(chatStatePath: string): string {
   return path.dirname(chatStatePath);
 }
 
-export interface BossCatTurnGate {
-  bossCatId: string;
-  participantId: string;
-}
-
-/**
- * FR-1, rechecked by every handler: the Boss Cat's own direct lane, a turn the owner started on
- * Desktop or mobile, and the Boss Cat as that lane's admin coordinator.
- */
-export function resolveBossCatTurnGate(
-  state: Pick<ChatState, 'channels' | 'cats'>,
-  channelId: string,
-  message: ChatMessage | null | undefined,
-): BossCatTurnGate | null {
-  const channel = state.channels.find((entry) => entry.id === channelId);
-  if (!channel || channel.status === 'archived' || !isDirectLaneChannel(channel)) return null;
-  if (!message || message.channelId !== channelId || !readOwnerStarted(message)) return null;
-  if (message.body.trimStart().startsWith('/')) return null;
-  const participantId = channel.coordinatorParticipantId;
-  if (!participantId || !isAdminCoordinator(state as ChatState, channelId, participantId)) return null;
-  const assignment = resolveChannelParticipantAssignments(channel)
-    .find((entry) => entry.participantId === participantId && entry.status === 'active');
-  const bossCatId = assignment ? resolveParticipantCatId(assignment) : null;
-  const cat = state.cats.find((entry) => entry.id === bossCatId && entry.status === 'active');
-  const laneCatId = resolveRoomRoutingState(channel.roomRouting).defaultRecipientId;
-  if (!cat || (laneCatId !== cat.id && laneCatId !== participantId)) return null;
-  return { bossCatId: cat.id, participantId };
-}
-
-export function attachBossCatTurnRecord(
-  state: ChatState,
-  channelId: string,
-  messageId: string,
-  record: BossCatTurnRecord,
-): ChatState {
-  const next = structuredClone(state);
-  const message = next.channels.find((entry) => entry.id === channelId)?.messages
-    .find((entry) => entry.id === messageId);
-  if (message) message.metadata = { ...message.metadata, [BOSS_CAT_TURN_METADATA_KEY]: record };
-  return next;
-}
-
 /**
  * Once the reply for that message settled, a stored board has done its job: the receipt keeps
  * its ids and status, and the board goes. A failed reply keeps it for the retry.
@@ -142,35 +107,6 @@ export function dropSettledBossCatBoards(state: ChatState, channelId: string, me
     ...record,
     receipts: record.receipts.map(({ board: _board, ...receipt }) => receipt),
   });
-}
-
-export function countBossCatUsage(
-  state: Pick<ChatState, 'bossCatUsage'>,
-  kind: BossCatUsageKind,
-  now: Date,
-): number {
-  const since = now.getTime() - HOUR_MS;
-  return (state.bossCatUsage ?? []).filter((entry) => entry.kind === kind && Date.parse(entry.at) > since).length;
-}
-
-/** Records one use if the hourly limit allows it. Pure; run it inside an atomic store update. */
-export function reserveBossCatUsage(
-  state: ChatState,
-  kind: BossCatUsageKind,
-  now: Date,
-): { state: ChatState; allowed: boolean } {
-  if (countBossCatUsage(state, kind, now) >= BOSS_CAT_HOURLY_LIMITS[kind]) return { state, allowed: false };
-  const since = now.getTime() - HOUR_MS;
-  return {
-    allowed: true,
-    state: {
-      ...state,
-      bossCatUsage: [
-        ...(state.bossCatUsage ?? []).filter((entry) => Date.parse(entry.at) > since),
-        { kind, at: now.toISOString() },
-      ],
-    },
-  };
 }
 
 export type BoundedBossCatBoard = BossCatBoard & { omittedCats: number; omittedGroups: number };
@@ -344,7 +280,7 @@ export interface RunBossCatDecisionLoopInput extends BossCatBoardSources {
 }
 
 export interface BossCatRecordedEvent {
-  action: 'create_group' | 'join' | 'leave';
+  action: 'create_group' | 'join' | 'join_request' | 'leave';
   bossCatId: string;
   conversationId: string;
   catIds?: string[];
@@ -443,6 +379,7 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
 
       let board: BoundedBossCatBoard | null = null;
       let createdConversationId: string | null = null;
+      let postedRequestId: string | null = null;
       const result = await boundary.invoke<unknown, unknown>({
         toolName: decision.toolName,
         input: decision.input,
@@ -474,11 +411,14 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
             });
             if ('refusal' in changed) return refuse(changed.refusal, changed.code);
             createdConversationId = changed.conversationId;
-            input.onConversationChanged?.(changed.conversationId, 'updated');
-            recordSafely(input, { action: decision.toolName === BOSS_JOIN_CONVERSATION ? 'join' : 'leave',
-              bossCatId: input.bossCatId, conversationId: changed.conversationId,
-              decisionId: decision.decisionId, at: at.toISOString() });
-            return { status: 'applied', result: { conversationId: changed.conversationId } };
+            postedRequestId = changed.requestId ?? null;
+            input.onConversationChanged?.(changed.requestId ? input.channelId : changed.conversationId, 'updated');
+            recordSafely(input, { action: changed.requestId ? 'join_request'
+              : decision.toolName === BOSS_JOIN_CONVERSATION ? 'join' : 'leave',
+            bossCatId: input.bossCatId, conversationId: changed.conversationId,
+            decisionId: decision.decisionId, at: at.toISOString() });
+            return { status: 'applied', result: { conversationId: changed.conversationId,
+              ...(changed.requestId ? { awaitingOwner: true } : {}) } };
           }
           if (typeof toolInput !== 'object' || toolInput === null || Object.keys(toolInput).length > 0) {
             return refuse('input_invalid', 'E_SCHEMA_INVALID');
@@ -518,6 +458,7 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
         at: now().toISOString(),
         ...(board ? { board } : {}),
         ...(createdConversationId ? { conversationId: createdConversationId } : {}),
+        ...(postedRequestId ? { reason: 'awaiting_owner', requestId: postedRequestId } : {}),
       });
       if (board) latestBoard = board;
       feedback.push({ toolName: decision.toolName, decisionId: decision.decisionId, result });
@@ -563,6 +504,9 @@ export function formatBossCatTurnInstructions(record: BossCatTurnRecord | null):
   for (const receipt of record.receipts) {
     if (receipt.toolName === BOSS_STATUS_BOARD && receipt.status === 'applied' && receipt.board) {
       lines.push('Status board (JSON):', '```json', JSON.stringify(receipt.board), '```');
+    } else if (receipt.toolName === BOSS_JOIN_CONVERSATION && receipt.requestId) {
+      lines.push(`${BOSS_JOIN_CONVERSATION}: the owner was asked on a card in this conversation. `
+        + 'The Boss Cat joins only if the owner approves it there.');
     } else if ((receipt.toolName === BOSS_JOIN_CONVERSATION || receipt.toolName === BOSS_LEAVE_CONVERSATION)
       && receipt.status === 'applied' && receipt.conversationId) {
       lines.push(`${receipt.toolName}: applied for conversation ${receipt.conversationId}.`);
@@ -708,7 +652,7 @@ async function changeBossCatMembership(
   board: BossCatBoard,
   priorReceipts: BossCatToolReceipt[],
   call: { toolName: string; decisionId: string; at: Date },
-): Promise<{ conversationId: string } | GroupRefusal> {
+): Promise<{ conversationId: string; requestId?: string } | GroupRefusal> {
   const record = typeof rawInput === 'object' && rawInput !== null && !Array.isArray(rawInput)
     ? rawInput as Record<string, unknown> : null;
   if (!record || Object.keys(record).some((key) => key !== 'conversationId')
@@ -720,7 +664,7 @@ async function changeBossCatMembership(
     return { refusal: 'conversation_not_on_board', code: 'E_PRECHECK_FAILED' };
   }
   const joining = call.toolName === BOSS_JOIN_CONVERSATION;
-  let outcome: { conversationId: string } | GroupRefusal = { refusal: 'not_permitted', code: 'E_PRECHECK_FAILED' };
+  let outcome: { conversationId: string; requestId?: string } | GroupRefusal = { refusal: 'not_permitted', code: 'E_PRECHECK_FAILED' };
   const refuse = (refusal: string, code: GroupRefusal['code'] = 'E_PRECHECK_FAILED') => {
     outcome = { refusal, code };
   };
@@ -739,28 +683,37 @@ async function changeBossCatMembership(
     const membership = resolveChannelParticipantAssignments(target)
       .find((entry) => entry.status === 'active' && resolveParticipantCatId(entry) === boss.id);
     let next: ChatState;
+    let requestId: string | undefined;
     if (joining) {
       if (membership) { refuse('already_member'); return latest; }
       // FR-8: evaluated when the join runs, not when it was requested.
       const policy = resolveBossCatJoinPolicy(latest);
       if (policy === 'never') { refuse('policy_never'); return latest; }
-      if (policy === 'ask') { refuse('owner_card_required'); return latest; }
-      const reserved = reserveBossCatUsage(latest, 'join_request', call.at);
-      if (!reserved.allowed) { refuse('rate_limited', 'E_BUDGET_EXCEEDED'); return latest; }
-      try {
-        next = assignCatToChannel(reserved.state, conversationId, { catId: boss.id }, call.at);
-      } catch {
-        refuse('participant_limit');
-        return latest;
+      if (policy === 'ask') {
+        // FR-10: the owner decides on a card in this lane; the join waits for that click.
+        const posted = postBossCatJoinRequest(latest, {
+          laneId: input.channelId, sourceMessageId: input.sourceMessageId, conversationId,
+          bossCatId: boss.id, requestedVia: readOwnerStarted(source)!, at: call.at,
+        });
+        if ('refusal' in posted) {
+          refuse(posted.refusal, posted.refusal === 'rate_limited' ? 'E_BUDGET_EXCEEDED' : 'E_PRECHECK_FAILED');
+          return latest;
+        }
+        next = posted.state;
+        requestId = posted.requestId;
+      } else {
+        const reserved = reserveBossCatUsage(latest, 'join_request', call.at);
+        if (!reserved.allowed) { refuse('rate_limited', 'E_BUDGET_EXCEEDED'); return latest; }
+        try {
+          next = applyBossCatJoin(reserved.state, {
+            laneId: input.channelId, sourceMessageId: input.sourceMessageId, conversationId,
+            bossCatId: boss.id, at: call.at,
+          });
+        } catch {
+          refuse('participant_limit');
+          return latest;
+        }
       }
-      next.channels = next.channels.map((entry) => entry.id === conversationId
-        ? {
-            ...entry,
-            // FR-12: nothing else about the conversation changes.
-            coordinatorParticipantId: target.coordinatorParticipantId,
-            bossCatJoins: { ...entry.bossCatJoins, [boss.id]: { since: call.at.toISOString() } },
-          }
-        : entry);
     } else {
       if (!membership || !readBossCatJoinSince(target, boss.id)) { refuse('not_joined'); return latest; }
       if (target.coordinatorParticipantId === membership.participantId) { refuse('coordinator'); return latest; }
@@ -776,36 +729,21 @@ async function changeBossCatMembership(
         refuse('cannot_leave');
         return latest;
       }
+      next = appendBossCatLaneNotice(next, {
+        laneId: input.channelId, sourceMessageId: input.sourceMessageId, target, bossName: boss.name,
+        kind: 'left', at: call.at,
+      });
     }
-    const title = readOwnerSetTitle(target);
-    const locale = parseMessageLocale(lane.language) ?? parseMessageLocale(lane.responseLanguage) ?? 'en';
-    const localizedBody: ChatMessageLocalizedBodyMetadata = {
-      key: joining
-        ? title ? messageKeys.chatBossCatJoinedNotice : messageKeys.chatBossCatJoinedUntitledNotice
-        : title ? messageKeys.chatBossCatLeftNotice : messageKeys.chatBossCatLeftUntitledNotice,
-      values: { name: boss.name, title: title ?? '', surface: target.originSurface ?? 'chat' },
-    };
-    next = appendMessage(next, input.channelId, {
-      senderKind: 'system',
-      senderName: 'Chat',
-      body: resolveChatMessageLocalizedBodyMetadata(localizedBody, createTranslator(locale)),
-    }, call.at, {
-      metadata: {
-        event: joining ? 'boss_cat_joined' : 'boss_cat_left',
-        sourceMessageId: input.sourceMessageId,
-        conversationId,
-        [CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY]: localizedBody,
-      },
-    }).state;
     next = attachBossCatTurnRecord(next, input.channelId, input.sourceMessageId, {
       schemaVersion: 1,
       bossCatId: input.bossCatId,
       receipts: [...priorReceipts, {
         toolName: call.toolName, decisionId: call.decisionId, status: 'applied',
         at: call.at.toISOString(), conversationId,
+        ...(requestId ? { reason: 'awaiting_owner', requestId } : {}),
       }],
     });
-    outcome = { conversationId };
+    outcome = requestId ? { conversationId, requestId } : { conversationId };
     return next;
   }));
   return outcome;

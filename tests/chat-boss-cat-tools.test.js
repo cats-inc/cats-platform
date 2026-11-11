@@ -497,6 +497,7 @@ function joinInvariant(channel) {
 
 function membershipDecider(hooks) {
   return async (_index, envelope) => {
+    if (hooks.action === 'none') return decision('respond');
     const offered = envelope.observation.availableTools.map((entry) => entry.manifest.name);
     if (offered.includes(BOSS_STATUS_BOARD)) return decision('board');
     const tool = hooks.action === 'join' ? BOSS_JOIN_CONVERSATION : BOSS_LEAVE_CONVERSATION;
@@ -659,7 +660,7 @@ test('SPEC-139 FR-8/FR-9: the policy decides when the join runs, and every refus
     await h.chatStore.write(assignCatToChannel(state, hooks.conversationId, { catId: h.ids.boss }, new Date()));
   } });
   assert.deepEqual(outcomes, [
-    ['ask is the default', 'refused', 'owner_card_required'],
+    ['ask is the default', 'applied', 'awaiting_owner'],
     ['never', 'refused', 'policy_never'],
     ['policy flipped after the board', 'refused', 'policy_never'],
     ['archived after the board', 'refused', 'conversation_archived'],
@@ -735,4 +736,157 @@ test('SPEC-139 FR-12: the memory service leaves out a conversation\'s records wh
   }));
   assert.match(await retrieve(false), /CHANNEL-MEMORY-MARKER/u, 'control: the channel record is retrieved');
   assert.doesNotMatch(await retrieve(true), /CHANNEL-MEMORY-MARKER|CHANNEL-FACT-MARKER/u);
+});
+
+async function postCardRequest(h) {
+  const messageId = await h.send('Join Ops.');
+  const lane = await h.laneMessages();
+  const receipt = lane.find((message) => message.id === messageId).metadata.bossCatTurn.receipts
+    .find((entry) => entry.toolName === BOSS_JOIN_CONVERSATION);
+  const card = lane.find((message) => message.metadata?.bossCatJoinRequest?.id === receipt.requestId);
+  return { messageId, receipt, card };
+}
+
+async function decide(h, requestId, decision, headers = h.headers) {
+  const response = await fetch(`${h.base}/api/channels/${h.bossLane}/boss-cat/join-requests/${requestId}/decision`,
+    { method: 'POST', headers, body: JSON.stringify({ decision }) });
+  return { status: response.status, body: await response.json() };
+}
+
+test('SPEC-139 FR-10: under 「每次問我」 a join posts the owner\'s card, which never reaches the model', async (t) => {
+  const hooks = { action: 'join' };
+  const h = await start(t, { seed: seedOps(hooks, null), decide: membershipDecider(hooks) });
+  const { receipt, card } = await postCardRequest(h);
+  assert.deepEqual([receipt.status, receipt.reason], ['applied', 'awaiting_owner']);
+  const record = card.metadata.bossCatJoinRequest;
+  assert.equal(record.status, 'pending');
+  assert.equal(record.conversationId, hooks.conversationId);
+  assert.equal(record.requestedVia, 'desktop');
+  assert.equal(Date.parse(record.expiresAt) - Date.parse(record.createdAt), 24 * 60 * 60_000);
+  assert.equal(card.metadata.origin, 'system', 'no transport mirrors it');
+  assert.doesNotMatch(card.body, /Ops|code|read_write|skip/u, 'the card body names nothing; details come from live state');
+  let state = await h.chatStore.read();
+  assert.equal(membershipOf(state, hooks.conversationId, h.ids.boss), undefined, 'nothing joins before the owner decides');
+  const instructions = h.calls.laneSends.at(-1).instructions;
+  assert.match(instructions, /asked on a card/u);
+  assert.ok(!instructions.includes(record.id) && !h.calls.laneSends.at(-1).content.includes(card.body));
+
+  // A second request for the same conversation while one is pending.
+  await h.send('Join Ops.');
+  state = await h.chatStore.read();
+  const second = state.channels.find((entry) => entry.id === h.bossLane).messages.at(-1);
+  const lastTurn = [...state.channels.find((entry) => entry.id === h.bossLane).messages].reverse()
+    .find((message) => message.metadata?.bossCatTurn).metadata.bossCatTurn;
+  assert.deepEqual(lastTurn.receipts.find((entry) => entry.toolName === BOSS_JOIN_CONVERSATION).reason, 'card_pending');
+  assert.ok(second);
+
+  // The details, for the owner only.
+  const detailsUrl = `${h.base}/api/channels/${h.bossLane}/boss-cat/join-requests/${record.id}`;
+  assert.equal((await fetch(detailsUrl)).status, 401);
+  const details = await (await fetch(detailsUrl, { headers: h.headers })).json();
+  assert.equal(details.request.conversation.title, 'Ops');
+  assert.equal(details.request.conversation.surface, 'code');
+  assert.deepEqual(details.request.conversation.participantNames.sort(), ['Kiki', 'Mochi']);
+  assert.equal(details.request.grants.codeTools, true);
+  assert.ok(details.request.grants.workspaceAccess && details.request.grants.permissionMode);
+  assert.equal(details.request.bossCat.name, 'Boss');
+  assert.equal(details.request.history.messagesBeforeJoin, 8);
+
+  // The owner approves: the server joins, once.
+  assert.equal((await decide(h, record.id, 'approve', { 'content-type': 'application/json' })).status, 401);
+  const approved = await decide(h, record.id, 'approve');
+  assert.deepEqual([approved.status, approved.body.outcome.status], [200, 'approved']);
+  state = await h.chatStore.read();
+  assert.ok(membershipOf(state, hooks.conversationId, h.ids.boss));
+  assert.ok(state.channels.find((entry) => entry.id === hooks.conversationId).bossCatJoins[h.ids.boss].since);
+  assert.ok(state.channels.find((entry) => entry.id === h.bossLane).messages
+    .some((message) => message.metadata?.event === 'boss_cat_joined'));
+  const replay = await decide(h, record.id, 'approve');
+  assert.deepEqual([replay.body.outcome.status, replay.body.outcome.refusal], ['approved', 'card_consumed']);
+  const boss = membershipOf(state, hooks.conversationId, h.ids.boss);
+  await sendInConversation(h, hooks.conversationId, boss.participantId, 'Welcome, Boss.');
+  const session = h.calls.ordinaryCreates.find(({ input }) => JSON.stringify(input).includes(hooks.conversationId)
+    && input.context?.metadata?.participantId === boss.participantId)
+    ?? h.calls.ordinaryCreates.filter(({ input }) => JSON.stringify(input).includes(hooks.conversationId)).at(-1);
+  assert.equal(session.input.workspaceAccess, details.request.grants.workspaceAccess, 'the card told the truth');
+  assert.equal(session.input.permissionMode, details.request.grants.permissionMode);
+  const evidence = await readFile(join(h.platformDir, 'state/evidence', `conversation-channel-${h.bossLane}.jsonl`), 'utf8');
+  assert.match(evidence, /"action":"join_request"/u);
+  assert.match(evidence, /"action":"owner_decision"[^\n]*"status":"approved"/u);
+});
+
+test('SPEC-139 FR-10: a declined, expired, stale or re-policied card does not join', async (t) => {
+  const cases = [
+    ['declined', null, (h, record) => decide(h, record.id, 'decline')],
+    ['expired', async (h) => {
+      const state = await h.chatStore.read();
+      for (const message of state.channels.find((entry) => entry.id === h.bossLane).messages) {
+        if (message.metadata?.bossCatJoinRequest) message.metadata.bossCatJoinRequest.expiresAt = new Date(Date.now() - 1000).toISOString();
+      }
+      await h.chatStore.write(state);
+    }],
+    ['policy_changed', async (h) => {
+      const state = await h.chatStore.read(); state.bossCatJoinPolicy = 'allow'; await h.chatStore.write(state);
+    }],
+    ['card_stale', async (h, record) => {
+      const state = await h.chatStore.read();
+      state.channels.find((entry) => entry.id === record.conversationId).runtimePermissionMode = 'default';
+      await h.chatStore.write(state);
+    }],
+  ];
+  cases.push(
+    ['demoted', async (h) => {
+      const state = await h.chatStore.read();
+      state.cats.find((cat) => cat.id === h.ids.boss).group = 'standard';
+      await h.chatStore.write(state);
+    }],
+    ['archived', async (h, record) => {
+      const state = await h.chatStore.read();
+      state.channels.find((entry) => entry.id === record.conversationId).status = 'archived';
+      await h.chatStore.write(state);
+    }],
+    ['owner added the Boss Cat meanwhile', async (h, record) => {
+      const state = await h.chatStore.read();
+      await h.chatStore.write(assignCatToChannel(state, record.conversationId, { catId: h.ids.boss }, new Date()));
+    }],
+  );
+  const outcomes = [];
+  for (const [label, prepare, act] of cases) {
+    const hooks = { action: 'join' };
+    const h = await start(t, { seed: seedOps(hooks, null), decide: membershipDecider(hooks) });
+    const { card } = await postCardRequest(h);
+    const record = card.metadata.bossCatJoinRequest;
+    await prepare?.(h, record);
+    const result = await (act ?? ((x, r) => decide(x, r.id, 'approve')))(h, record);
+    outcomes.push([label, result.body.outcome.status, result.body.outcome.refusal ?? null]);
+    const joined = await h.chatStore.read();
+    if (label !== 'owner added the Boss Cat meanwhile') {
+      assert.equal(membershipOf(joined, hooks.conversationId, h.ids.boss), undefined, label);
+    }
+    assert.equal(joined.channels.find((entry) => entry.id === hooks.conversationId).bossCatJoins, undefined, label);
+  }
+  assert.deepEqual(outcomes, [
+    ['declined', 'declined', null],
+    ['expired', 'expired', 'card_expired'],
+    ['policy_changed', 'refused', 'policy_changed'],
+    ['card_stale', 'refused', 'card_stale'],
+    ['demoted', 'refused', 'not_permitted'],
+    ['archived', 'refused', 'conversation_archived'],
+    ['owner added the Boss Cat meanwhile', 'refused', 'already_member'],
+  ]);
+});
+
+test('SPEC-139 FR-10: a later prompt shows lane notices but never the owner\'s card', async (t) => {
+  const hooks = { action: 'join' };
+  // The reply to the join request fails, so the next prompt's recent context reaches back past the card.
+  const h = await start(t, { failLane: true, seed: seedOps(hooks, null), decide: membershipDecider(hooks) });
+  const { card } = await postCardRequest(h);
+  assert.equal((await decide(h, card.metadata.bossCatJoinRequest.id, 'approve')).body.outcome.status, 'approved');
+  h.calls.failLane = false;
+  hooks.action = 'none';
+  await h.send('What happened with Ops?');
+  const prompt = `${h.calls.laneSends.at(-1).content}\n${h.calls.laneSends.at(-1).instructions}`;
+  assert.match(prompt, /Boss joined a code conversation/u, 'positive control: a lane notice is in the recent context');
+  assert.ok(!prompt.includes(card.body), 'the card is not');
+  assert.ok(!prompt.includes(card.metadata.bossCatJoinRequest.id));
 });
