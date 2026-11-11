@@ -692,7 +692,15 @@ export interface ChannelMessageMetadata extends Record<string, unknown> {
   catProductIntentProposalTransition?: CatProductIntentProposalTransitionMetadata;
   /** Server-stamped for a local owner send (SPEC-133 DC-05); a client value is always replaced. */
   desktopControlEntry?: 'local';
+  /**
+   * Server-stamped at the authenticated owner message route (SPEC-139); a client value is
+   * always dropped. Never set for transports, choice answers or other automated sources.
+   */
+  ownerStarted?: OwnerStartedSurface;
 }
+
+/** Where an owner-started message came from (SPEC-139). */
+export type OwnerStartedSurface = 'desktop' | 'mobile';
 
 export type ClientMessageIdSource = 'client' | 'server_fallback';
 

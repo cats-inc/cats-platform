@@ -7,6 +7,7 @@ import type {
 import type { ChatMessage } from '../api/contracts.js';
 import { resolveChannelCanonicalIdentity } from './model/index.js';
 import { isAssistantTurnSegmentMessage } from './assistantTurnSegments.js';
+import { OWNER_STARTED_METADATA_KEY, parseOwnerStartedSurface } from '../shared/ownerStarted.js';
 
 export type CanonicalChatUserMessage = ChatMessage & { senderKind: 'user' };
 
@@ -61,6 +62,9 @@ function buildCanonicalChatTurnMessage(
     .map((lane) => resolveRawChatParticipantId(lane.participantId, conversationId))
     .filter((participantId): participantId is string => Boolean(participantId));
   const workflowShape = readChatCoreTurnMetadataString(turn, 'workflowShape');
+  const ownerStarted = readTurnSourceSenderKind(turn) === 'user'
+    ? parseOwnerStartedSurface(readChatCoreTurnMetadataString(turn, 'ownerStarted'))
+    : null;
 
   return {
     id: sourceMessageId,
@@ -88,6 +92,7 @@ function buildCanonicalChatTurnMessage(
             workflowShape,
           }
         : {}),
+      ...(ownerStarted ? { [OWNER_STARTED_METADATA_KEY]: ownerStarted } : {}),
     },
     usage: null,
     executionProvider: null,
