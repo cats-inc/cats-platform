@@ -75,8 +75,9 @@ All product teams must treat these as frozen architectural rules:
     when one shared agent identity supports both surfaces.
 11. `MY CATS` must remain one platform-level agent home; product-local agent
     panels are contextual subsets, not alternate registries.
-12. `RECENTS` defaults must stay product-scoped through explicit
-    `originSurface` metadata, not renderer heuristics.
+12. `RECENTS` defaults must stay product-scoped through the conversation's
+    explicit `productScope`, which starts as its `originSurface`, not through
+    renderer heuristics.
 13. `Conversation` remains the canonical cross-product interaction term;
     `thread` is UI/informal language only.
 14. `Cats Code` workspace and artifact navigation must stay execution-oriented
@@ -149,9 +150,11 @@ All product teams must preserve this rule:
 Rules:
 
 - `originSurface` records the product that created a conversation and never
-  changes. `productScope` decides which product lists a conversation, owns its
-  routes and gives it tools. Read it through `readProductScope`
-  (`src/shared/productScope.ts`) and do not read `originSurface` for those.
+  changes. `productScope` decides which product lists a conversation and owns
+  its routes, and whether it receives Code's tools. Read it through
+  `readProductScope` (`src/shared/productScope.ts`) and do not read
+  `originSurface` for those. Other readers of `originSurface` are listed in
+  PLAN-134's reader inventory with the reason each one stays.
 - Product teams must stamp `originSurface` at create time instead of inferring
   it later from `repoPath`, `entryKind`, `composerMode`, `roomMode`, or other
   indirect fields.
@@ -461,8 +464,8 @@ Before a product team adds a new platform capability, confirm:
 12. If the feature surfaces agents in product-local UI, it makes explicit
     whether that UI is a contextual subset or the canonical `MY CATS` home.
 13. If the feature creates conversations or parallel groups, it stamps
-    `originSurface` and keeps product recents filtering aligned with that
-    ownership contract.
+    `originSurface`, from which the server sets the conversation's
+    `productScope`, and keeps product recents filtering on that scope.
 
 ## Integration Owner Checklist
 
@@ -482,7 +485,8 @@ When converging product work into the platform host:
 8. Verify transport-facing changes preserve explicit transport-binding identity
    across reconnect and reroute behavior.
 9. Verify new conversation entry points preserve product-scoped recents by
-   stamping `originSurface` and avoiding renderer-side ownership heuristics.
+   stamping `originSurface`, reading `productScope` for the list, and avoiding
+   renderer-side ownership heuristics.
 
 ---
 

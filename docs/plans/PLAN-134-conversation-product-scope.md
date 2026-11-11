@@ -112,7 +112,12 @@ FR-15, and FR-8's checks still limited to `code`).
       type gains the scope.
 - [x] Labels: the Catlas snapshot, and the Boss Cat board and join request, which SPEC-139
       added after the inventory was taken.
-- [x] Work: the own-WorkItem check. Work's history listing copies the scope beside the origin.
+- [x] Work: the own-record check. Work's history listing copies the scope beside the origin.
+  - The check reads the scope where it read the origin, and that decides for a Task that came
+    from a conversation and is not bound to Work. In today's projection every conversation's
+    Task is bound to Work through its WorkItem, and the WorkItem's graph object carries no
+    conversation metadata, so Work already counts both as its own for every conversation.
+    The move changes nothing that is visible, before or after a raise.
   - The copy in Core metadata is rewritten on every sync by a build that knows the field, so
     a reader of the copy sees the current scope. A build without the field keeps the copy on
     a Task and a WorkItem while it drops the conversation's field; the next sync by a build
@@ -126,19 +131,37 @@ FR-15, and FR-8's checks still limited to `code`).
 - [x] Tests: for fixtures of all three origins, every moved reader gives the same result as on
       the base commit. The differences are FR-3's no-origin conversations and FR-2's direct
       lanes created outside Chat.
-  - The suites that already covered these readers pass with three edits: the work-area
-    fixture and its route test carry the seam's `scope`, and one landing assertion changes
-    because a conversation with no recorded origin now belongs to Chat (S4).
-  - New tests cover a conversation whose scope differs from its origin, one with no recorded
-    origin, and a lane created outside Chat, for every moved reader.
+  - The suites that already covered these readers pass with four edits.
+    - The work-area fixture and its route test carry the seam's `scope`.
+    - One landing assertion changes because a conversation with no recorded origin now
+      belongs to Chat (S4).
+    - The cross-surface routing fixture creates its conversations on Chat and rewrote only
+      the origin to stand for a Code conversation. It sets the scope too. CI found this one;
+      the local run had missed that suite.
+  - New tests cover a conversation whose scope differs from its origin for every moved
+    reader. A conversation with no recorded origin and a lane created outside Chat, as a lane
+    and after it stops being one, are covered for Recents, the sidebar, the routes, the
+    links, the Catlas label and the tool checks. The diagnostic report is checked only for a
+    conversation whose scope equals its origin.
+  - An independent review ran every moved reader against the base commit on the same stored
+    conversations and found no difference for one whose scope equals its origin.
 
-**Deliverables:** readers are on the scope, with no behavior change for a conversation that has
-an origin and is not a direct lane.
+**Deliverables:** readers are on the scope, with no behavior change for a conversation whose
+scope equals its origin. That is every conversation with a recorded origin, except a direct
+lane created outside Chat and a conversation that once was one.
 
-**Result:** two differences are now visible, both for stored data no current client produces.
-A conversation or a parallel group with no recorded origin is listed, routed and labelled as
-Chat's (S4). A direct lane created outside Chat is Chat's and no longer receives Code's tools
-(S6). No conversation can have a scope above its origin until Phase 5 adds the raise.
+**Result:** three differences are now visible, all for stored data no current client produces.
+
+- A conversation or a parallel group with no recorded origin is listed, routed and labelled as
+  Chat's (S4).
+- A direct lane created outside Chat is Chat's and no longer receives Code's tools (S6).
+- An ordinary conversation that was such a lane stays at `chat`, as FR-3 says. Before, it was
+  listed and routed under its origin's product and received Code's tools when that was Code.
+  The owner cannot move it back until the raise exists.
+  - One that stopped being a lane before a build with the field first loaded it loads at its
+    origin instead, so two conversations with the same history can differ.
+
+No conversation can have a scope above its origin until Phase 5 adds the raise.
 
 ### Phase 3: Role tools at every level
 
@@ -336,10 +359,13 @@ Phase 2 moved every entry above. Two more were found in the re-sweep and moved w
 `products/chat/shared/channelPaths.ts:92`, Chat's landing conversation, and
 `products/chat/state/bossCatJoinRequests.ts:358`, whether joining brings Code's tools.
 
-Three links hard-code a product prefix and rely on the redirect:
+Four links hard-code a product prefix and rely on the redirect:
 `products/code/renderer/components/WorkspaceDetailPage.tsx:325`,
-`products/code/state/codeSessionOperation.ts:45` and
-`products/code/renderer/components/ArtifactDetailView.tsx:32`. They keep working (FR-13).
+`products/code/state/codeSessionOperation.ts:45`,
+`products/code/renderer/components/ArtifactDetailView.tsx:32` and
+`products/work/api/ownerGraphProjection.ts:28-31`, which builds `/chat/chats/:id` for every
+projected conversation because its Core kind is never `code_thread` or `work_thread`. They keep
+working (FR-13).
 
 ### Stops reading the origin (D8)
 
@@ -378,7 +404,8 @@ These gates open to every conversation that is not a direct lane.
     - `products/shared/renderer/hooks/useWorkspaceAppShellRouting.ts:36`, a narrowed type that
       the routes read.
     - `products/chat/api/resources/diagnosticRoutes.ts:66`.
-    - `products/work/state/historyListing.ts:12-60`.
+    - `products/work/state/historyListing.ts:12-60`. The `originSurface` filter of
+      `GET /api/work/history` at `:64` still selects by origin, as its name says.
 - **Catlas titling.** `products/chat/api/catlasTitles.ts:21`, `:60`.
 - **Posture.** `products/chat/state/runtime-dispatch/routing.ts:1149-1150`.
 - **Knowledge scope copy.** `products/chat/state/orchestratorKnowledge.ts:62`.

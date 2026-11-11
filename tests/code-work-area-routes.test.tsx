@@ -52,7 +52,9 @@ test('Code route rejects unavailable, non-Code, foreign and revoked conversation
   assert.equal((await fetch(url, { method: 'POST' })).status, 405);
   assert.equal((await fetch(url.replace('conversation-a', 'foreign'))).status, 404);
   context.scope = 'work'; assert.equal((await fetch(url)).status, 404);
-  context.scope = 'code'; context.owned = false;
+  // SPEC-141: the scope decides, so another origin with a code scope is served.
+  context.scope = 'code'; context.origin = 'chat'; assert.equal((await fetch(url)).status, 200);
+  context.origin = 'code'; context.owned = false;
   assert.equal((await fetch(url, { headers: { accept: 'text/event-stream' } })).status, 404);
   context.owned = true;
   let release!: () => void; let started = false;

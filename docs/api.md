@@ -932,7 +932,9 @@ other provider routes.
   `projectId`, `binding`, `originSurface`, `id`, `page`, `pageSize` (1–100).
   The managed default includes deliberate execution producers and actionable
   attempts, while `source=all` retains ordinary room history. Producer source,
-  current task binding and explicit origin are separate fields. Complete Core
+  current task binding and explicit origin are separate fields. Each item also
+  carries `productScope`, the scope copied from the conversation the record came
+  from, or `null`; the `originSurface` filter still selects by origin. Complete Core
   graph/list endpoints retain their cross-product coverage. The response
   includes lifecycle revision, total/page counts and task/project filter labels.
 - `POST /api/work/history/preview` accepts `{ subjects: [{ family: 'run' |
@@ -1780,7 +1782,8 @@ GET /api/debug/live-trace
 - `GET /api/channels/:channelId/diagnostics` requires an authenticated owner/admin
   and returns `{ filename, text }` with `Cache-Control: no-store`. Unknown
   conversations return 404; unsupported methods return 405. Collection makes no
-  provider request and writes no product data. The report identifies the executing
+  provider request and writes no product data. The report names the
+  conversation's `productScope` beside its origin. It identifies the executing
   Platform/Runtime package versions, selected conversation/cwd and at most eight
   linked session bindings/observations. Reads have a 5.5-second deadline; missing
   Runtime/session/version evidence is explicit. It includes up to eight retained

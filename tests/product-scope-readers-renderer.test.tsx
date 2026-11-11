@@ -10,6 +10,7 @@ import {
   createParallelChatGroup,
   raiseChannelProductScope,
   summarizeState,
+  updateCatProducts,
 } from '../src/products/chat/state/model/index.ts';
 import { resolveConversationOriginRoute } from '../src/products/shared/renderer/crossSurfaceConversationNavigation.ts';
 import { resolveConversationSelectSurface } from '../src/products/shared/renderer/hooks/useWorkspaceAppNavigationActions.ts';
@@ -21,19 +22,46 @@ import type { PlatformSurfaceId } from '../src/shared/platform-contract.ts';
 const NOW = new Date('2026-11-11T00:00:00.000Z');
 const PRODUCTS: PlatformSurfaceId[] = ['chat', 'code', 'work'];
 
+/** Where each conversation of the fixture lives: the product of its scope. */
+const HOME: Record<string, PlatformSurfaceId> = {
+  chat: 'chat',
+  code: 'code',
+  work: 'work',
+  // Raised by the owner: a link made before the raise still arrives.
+  raisedToCode: 'code',
+  // S4: no recorded origin.
+  noOrigin: 'chat',
+  // S6: a lane created outside Chat, while it is a lane and after its Cat left Chat.
+  laneFromCode: 'chat',
+  formerLaneFromCode: 'chat',
+};
+const LANES = ['laneFromCode'];
+
 function fixture() {
-  let state = createCat(
-    createDefaultChatState(),
-    { name: 'Milo', provider: 'claude', model: 'claude-sonnet-4', products: ['chat', 'code', 'work'] },
-    NOW,
-  );
-  const catId = state.cats[0]!.id;
+  let state = createDefaultChatState();
+  for (const name of ['Milo', 'Kiki']) {
+    state = createCat(state, { name, provider: 'claude', model: 'claude-sonnet-4', products: ['chat', 'code', 'work'] }, NOW);
+  }
+  const catId = (name: string) => state.cats.find((cat) => cat.name === name)!.id;
   const ids: Record<string, string> = {};
   const create = (key: string, input: Parameters<typeof createChannel>[1]) => {
     state = createChannel(state, input, NOW);
     ids[key] = state.selectedChannelId;
   };
   const room = (originSurface: PlatformSurfaceId, title: string) => ({ title, topic: '', originSurface });
+  const lane = (name: string, originSurface: PlatformSurfaceId) => ({
+    title: '',
+    topic: 'Hello',
+    originSurface,
+    roomMode: 'direct_message' as const,
+    defaultRecipientId: catId(name),
+    participantCatIds: [catId(name)],
+  });
+  const forgetOrigin = (channelId: string) => {
+    const channel = state.channels.find((candidate) => candidate.id === channelId)!;
+    channel.originSurface = null;
+    delete channel.productScope;
+  };
 
   create('chat', room('chat', 'Started on Chat'));
   create('code', room('code', 'Started on Code'));
@@ -41,36 +69,41 @@ function fixture() {
   create('raisedToCode', room('chat', 'Raised to Code'));
   state = raiseChannelProductScope(state, ids.raisedToCode!, 'code', NOW);
   create('noOrigin', room('work', 'No recorded origin'));
-  const legacy = state.channels.find((channel) => channel.id === ids.noOrigin)!;
-  legacy.originSurface = null;
-  delete legacy.productScope;
-  create('laneFromCode', {
-    title: '',
-    topic: 'Hello',
-    originSurface: 'code',
-    roomMode: 'direct_message',
-    defaultRecipientId: catId,
-    participantCatIds: [catId],
-  });
+  forgetOrigin(ids.noOrigin!);
+  create('laneFromCode', lane('Milo', 'code'));
+  create('formerLaneFromCode', lane('Kiki', 'code'));
+  state = updateCatProducts(state, catId('Kiki'), ['code']);
 
-  // A parallel group started on Code, and one stored before origins were recorded.
   const targets = [
     { provider: 'claude', instance: null, model: 'claude-opus-4-6', modelSelection: null },
     { provider: 'codex', instance: null, model: 'gpt-5.4', modelSelection: null },
   ];
-  state = createParallelChatGroup(state, { title: 'Compare on Code', originSurface: 'code', targets }, NOW);
-  const codeGroup = state.parallelChatGroups[0]!;
-  state = createParallelChatGroup(state, { title: 'Compare, no origin', originSurface: 'work', targets }, NOW);
-  const legacyGroup = state.parallelChatGroups[0]!;
+  const group = (title: string, originSurface: PlatformSurfaceId) => {
+    state = createParallelChatGroup(state, { title, originSurface, targets }, NOW);
+    return state.parallelChatGroups[0]!;
+  };
+  // Started on Code.
+  const codeGroup = group('Compare on Code', 'code');
+  // Stored before origins were recorded: neither the group nor its members have one.
+  const legacyGroup = group('Compare, no origin', 'work');
   legacyGroup.originSurface = null;
-  for (const memberId of legacyGroup.memberChannelIds) {
-    const member = state.channels.find((channel) => channel.id === memberId)!;
-    member.originSurface = null;
-    delete member.productScope;
-  }
+  legacyGroup.memberChannelIds.forEach(forgetOrigin);
+  // Mixed stored data: a group without an origin whose members kept theirs, and the reverse.
+  const groupWithoutOrigin = group('Compare, only the members have an origin', 'code');
+  groupWithoutOrigin.originSurface = null;
+  const membersWithoutOrigin = group('Compare, only the group has an origin', 'code');
+  membersWithoutOrigin.memberChannelIds.forEach(forgetOrigin);
 
-  const summary = summarizeState(state);
-  return { ids, summary, codeGroupId: codeGroup.id, legacyGroupId: legacyGroup.id };
+  return {
+    ids,
+    summary: summarizeState(state),
+    groups: {
+      code: codeGroup,
+      legacy: legacyGroup,
+      groupWithoutOrigin,
+      membersWithoutOrigin,
+    },
+  };
 }
 
 function recentsOn(surface: PlatformSurfaceId, input: ReturnType<typeof fixture>) {
@@ -89,70 +122,101 @@ function recentsOn(surface: PlatformSurfaceId, input: ReturnType<typeof fixture>
   };
 }
 
+function viewModelOn(
+  surface: PlatformSurfaceId,
+  input: ReturnType<typeof fixture>,
+  recentEntries?: ReturnType<typeof recentsOn>['entries'],
+) {
+  return buildConversationSidebarViewModel({
+    payload: {
+      runtime: { baseUrl: 'http://localhost:8484', reachable: true, status: 'ok' },
+      chat: { cats: [], channels: input.summary.channels, botBindings: [] },
+    },
+    helpers: {
+      isVisibleCat: () => true,
+      isDirectLaneSummary: (channel) => channel.channelKind === 'direct_message',
+    },
+    recentEntries,
+    shellSurface: surface,
+    currentPath: `/${surface}`,
+  });
+}
+
+const sorted = (values: readonly string[]) => [...values].sort();
+
 test('the sidebar lists a conversation under the product of its scope', () => {
   const input = fixture();
-  const { ids } = input;
-  const expected: Record<PlatformSurfaceId, string[]> = {
-    chat: [ids.chat!, ids.noOrigin!],
-    code: [ids.code!, ids.raisedToCode!],
-    work: [ids.work!],
-  };
+  const { ids, groups } = input;
+  const rooms = Object.keys(HOME).filter((key) => !LANES.includes(key));
   for (const surface of PRODUCTS) {
     const listed = recentsOn(surface, input);
-    assert.deepEqual([...listed.channels].sort(), [...expected[surface]].sort(), `Recents on ${surface}`);
+    const wanted = rooms.filter((key) => HOME[key] === surface).map((key) => ids[key]!);
+    // Members of a group that is not listed as one are listed on their own, by their scope.
+    if (surface === 'code') wanted.push(...groups.groupWithoutOrigin.memberChannelIds);
+    if (surface === 'chat') wanted.push(...groups.membersWithoutOrigin.memberChannelIds);
+    assert.deepEqual(sorted(listed.channels), sorted(wanted), `Recents on ${surface}`);
     assert.equal(listed.channels.includes(ids.laneFromCode!), false, 'a lane is not in Recents');
   }
 });
 
 test('a parallel group stays under its own origin, and one without an origin is under Chat', () => {
   const input = fixture();
-  assert.deepEqual(recentsOn('code', input).groups, [input.codeGroupId]);
-  assert.deepEqual(recentsOn('chat', input).groups, [input.legacyGroupId]);
+  const { groups } = input;
+  assert.deepEqual(recentsOn('code', input).groups, [groups.code.id]);
+  assert.deepEqual(recentsOn('chat', input).groups, [groups.legacy.id]);
   assert.deepEqual(recentsOn('work', input).groups, []);
 
-  // The same entries pass the view model's own surface filter.
+  // A group is listed as one only where its own product and its members' product agree. The
+  // two mixed groups are listed nowhere as a group; the test above finds their members.
+  for (const surface of PRODUCTS) {
+    const listed = recentsOn(surface, input).groups;
+    assert.equal(listed.includes(groups.groupWithoutOrigin.id), false);
+    assert.equal(listed.includes(groups.membersWithoutOrigin.id), false);
+  }
+});
+
+test("the sidebar's own surface filter agrees with the entries built for a product", () => {
+  const input = fixture();
   for (const surface of PRODUCTS) {
     const { entries } = recentsOn(surface, input);
-    const viewModel = buildConversationSidebarViewModel({
-      payload: {
-        runtime: { baseUrl: 'http://localhost:8484', reachable: true, status: 'ok' },
-        chat: { cats: [], channels: input.summary.channels, botBindings: [] },
-      },
-      helpers: { isVisibleCat: () => true, isDirectLaneSummary: () => false },
-      recentEntries: entries,
-      shellSurface: surface,
-      currentPath: `/${surface}`,
-    });
-    assert.equal(viewModel.resolvedRecentEntries.length, entries.length, `nothing is dropped on ${surface}`);
-    // An entry built for one product is not shown on another.
+    assert.equal(
+      viewModelOn(surface, input, entries).resolvedRecentEntries.length,
+      entries.length,
+      `nothing is dropped on ${surface}`,
+    );
     for (const other of PRODUCTS.filter((candidate) => candidate !== surface)) {
-      const elsewhere = buildConversationSidebarViewModel({
-        payload: {
-          runtime: { baseUrl: 'http://localhost:8484', reachable: true, status: 'ok' },
-          chat: { cats: [], channels: input.summary.channels, botBindings: [] },
-        },
-        helpers: { isVisibleCat: () => true, isDirectLaneSummary: () => false },
-        recentEntries: entries,
-        shellSurface: other,
-        currentPath: `/${other}`,
-      });
-      assert.equal(elsewhere.resolvedRecentEntries.length, 0, `${surface}'s entries are hidden on ${other}`);
+      assert.equal(
+        viewModelOn(other, input, entries).resolvedRecentEntries.length,
+        0,
+        `${surface}'s entries are hidden on ${other}`,
+      );
     }
+  }
+});
+
+test('without prepared entries the sidebar lists every conversation of the scope', () => {
+  const input = fixture();
+  const { ids, summary } = input;
+  const laneIds = new Set(LANES.map((key) => ids[key]!));
+  for (const surface of PRODUCTS) {
+    const listed = viewModelOn(surface, input).resolvedRecentEntries
+      .flatMap((entry) => (entry.kind === 'channel' ? [entry.channel.id] : []));
+    const wanted = summary.channels
+      .filter((channel) => !laneIds.has(channel.id) && channel.productScope === surface)
+      .map((channel) => channel.id);
+    assert.deepEqual(sorted(listed), sorted(wanted), `Recents on ${surface}`);
+    assert.ok(wanted.length > 0, `the fixture has conversations on ${surface}`);
+  }
+  // The scope the summaries carry is the one this file expects.
+  for (const [key, home] of Object.entries(HOME)) {
+    assert.equal(summary.channels.find((channel) => channel.id === ids[key])?.productScope, home, key);
   }
 });
 
 test('selecting a conversation opens it under the product of its scope', () => {
   const { ids, summary } = fixture();
   const summaryOf = (key: string) => summary.channels.find((channel) => channel.id === ids[key])!;
-  const expected: Record<string, PlatformSurfaceId> = {
-    chat: 'chat',
-    code: 'code',
-    work: 'work',
-    raisedToCode: 'code',
-    noOrigin: 'chat',
-    laneFromCode: 'chat',
-  };
-  for (const [key, home] of Object.entries(expected)) {
+  for (const [key, home] of Object.entries(HOME)) {
     for (const surface of PRODUCTS) {
       assert.equal(resolveConversationSelectSurface(summaryOf(key), surface), home, `${key} selected on ${surface}`);
     }
@@ -164,25 +228,14 @@ test('selecting a conversation opens it under the product of its scope', () => {
 });
 
 test('a conversation opened under another product goes to the product of its scope', () => {
-  const input = fixture();
-  const { ids, summary } = input;
+  const { ids, summary } = fixture();
   const summaryOf = (key: string) => summary.channels.find((channel) => channel.id === ids[key])!;
   const redirect = (key: string, sourceSurface: PlatformSurfaceId) => resolveConversationOriginRoute({
     sourceSurface,
     currentPath: `/${sourceSurface}/chats/${ids[key]}/canvas/artifact-1?mode=preview`,
     channel: summaryOf(key),
   });
-  const expected: Record<string, PlatformSurfaceId> = {
-    chat: 'chat',
-    code: 'code',
-    work: 'work',
-    // Raised: a link made before the raise still arrives.
-    raisedToCode: 'code',
-    // S4 and S6.
-    noOrigin: 'chat',
-    laneFromCode: 'chat',
-  };
-  for (const [key, home] of Object.entries(expected)) {
+  for (const [key, home] of Object.entries(HOME)) {
     for (const surface of PRODUCTS) {
       const target = redirect(key, surface);
       if (surface === home) {
@@ -195,4 +248,10 @@ test('a conversation opened under another product goes to the product of its sco
       }
     }
   }
+  // A conversation the payload does not list is left where it is.
+  assert.equal(resolveConversationOriginRoute({
+    sourceSurface: 'code',
+    currentPath: '/code/chats/unknown',
+    channel: undefined,
+  }), null);
 });

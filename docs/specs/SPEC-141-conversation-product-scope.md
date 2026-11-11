@@ -112,8 +112,10 @@ inventory of every `originSurface` reader.
   - A projected conversation's Core `kind` is `chat_channel` or `direct_message`, never
     `code_thread` or `work_thread` (`src/shared/chatCoreIds.ts:117`).
   - By the code as read, Work already counts every conversation's projected Task as its own,
-    because its WorkItem links to it. The origin check decides only for the WorkItem
-    (`src/products/work/api/ownerGraphProjection.ts:12`).
+    because its WorkItem links to it, and the projected WorkItem too, because its graph object
+    carries no conversation metadata. The origin check
+    (`src/products/work/api/ownerGraphProjection.ts:12`) decides only for a Task that came
+    from a conversation and is not bound to Work, which the projection does not produce.
 - **Tools.**
   - The only registered enricher attaches the `cats` server when `originSurface === 'code'`
     (`src/products/code/agentTools/enricher.ts:34`). It does not look at the conversation's
@@ -238,9 +240,12 @@ inventory of every `originSurface` reader.
     - A product's landing conversation is chosen from conversations of that scope.
 14. FR-14: Links and labels that name a conversation's product use its scope: the owner-action
     source path, the Catlas conversation link and the product label in the Catlas snapshot.
-15. FR-15: Work counts a conversation's projected WorkItem as its own when the scope is `work`.
-    This is the check that reads `metadata.originSurface === 'work'` today. The projected Task
-    already counts for every conversation, and this SPEC leaves that as it is.
+15. FR-15: Work's own-record check reads the scope where it reads
+    `metadata.originSurface === 'work'` today.
+    - The check decides only for a Task that came from a conversation and is not bound to
+      Work. The projected Task and the projected WorkItem already count for every
+      conversation, and this SPEC leaves that as it is.
+    - A raise to `work` therefore changes nothing in what Work counts as its own.
 
 #### What stays with the origin
 
@@ -413,6 +418,9 @@ were put to the owner on 2026-11-11 as defaults that stand unless the owner obje
     that stands unless the owner objects.
   - A lane created with a Code origin received the `cats` server before PLAN-134 Phase 2 and
     no longer does.
+  - Such a lane that later becomes an ordinary conversation stays at `chat` (FR-3). It was
+    listed and routed under its origin's product before, and is Chat's now, until the owner
+    raises it.
   - Desktop has no path that creates such a lane. The mobile app's only direct-lane create is
     on its Chat tab and sends `chat`.
 

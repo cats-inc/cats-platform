@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createDefaultCoreState, upsertCoreRun } from '../build/server/core/model/index.js';
+import {
+  createDefaultCoreState,
+  upsertCoreConversation,
+  upsertCoreRun,
+  upsertCoreTask,
+} from '../build/server/core/model/index.js';
 import { ownerActionView } from '../build/server/core/ownerActions.js';
 import { buildCatlasSnapshot, catlasSnapshotEntries } from '../build/server/products/chat/api/catlasSnapshot.js';
 import { resolveVisibleChatPath as resolveChatLandingPath } from '../build/server/products/chat/shared/channelPaths.js';
@@ -30,7 +35,7 @@ import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { createCodeAgentToolsInvocationEnricher } from '../build/server/products/code/agentTools/enricher.js';
 import { resolveVisibleChatPath as resolveCodeLandingPath } from '../build/server/products/code/shared/channelPaths.js';
 import { filterChatChannelsForProductRecents } from '../build/server/products/shared/recentsFilter.js';
-import { ownerManagedObject } from '../build/server/products/work/api/ownerGraphProjection.js';
+import { buildWorkGraphProjection } from '../build/server/products/work/api/workGraphProjection.js';
 import { resolveVisibleChatPath as resolveWorkLandingPath } from '../build/server/products/work/shared/channelPaths.js';
 import { listExecutionHistory } from '../build/server/products/work/state/historyListing.js';
 import { buildChatConversationId, buildChatWorkItemId } from '../build/server/shared/chatCoreIds.js';
@@ -38,11 +43,12 @@ import { isDirectLaneSource, readProductScope } from '../build/server/shared/pro
 
 // SPEC-141 FR-8 and FR-12 to FR-15 (PLAN-134 Phase 2): the readers follow the scope.
 //
-// For a conversation that has an origin and is not a direct lane, the scope equals the origin
-// until the owner raises it, so each reader answers as it did when it read the origin. The
-// existing suites for these readers pass unchanged and are that proof. This file covers what
-// they cannot: a conversation whose scope differs from its origin, one with no recorded
-// origin (S4), and a direct lane created outside Chat (S6).
+// A conversation's scope equals its origin until the owner raises it, unless it has no
+// recorded origin or is, or once was, a direct lane created outside Chat. For every other
+// conversation each reader answers as it did when it read the origin, and the suites that
+// already covered these readers are that proof. This file covers what they cannot: a
+// conversation whose scope differs from its origin, one with no recorded origin (S4), and a
+// direct lane created outside Chat, both while it is a lane and after it stops being one (S6).
 
 const NOW = new Date('2026-11-11T00:00:00.000Z');
 const LATER = new Date('2026-11-11T01:00:00.000Z');
@@ -75,7 +81,7 @@ function channelOf(state, channelId) {
  */
 function fixture() {
   let state = createDefaultChatState();
-  for (const name of ['Milo', 'Mochi']) {
+  for (const name of ['Milo', 'Mochi', 'Kiki']) {
     state = createCat(
       state,
       { name, provider: 'claude', instance: null, model: 'claude-sonnet-4', products: [...PRODUCTS] },
@@ -106,6 +112,12 @@ function fixture() {
   // Data no path produces: a lane that carries a stored scope above chat.
   create('laneWithStoredCode', lane(catId('Mochi'), 'chat'));
   channelOf(state, ids.laneWithStoredCode).productScope = 'code';
+  // S6, later: a lane created outside Chat whose Cat then left Chat. It is an ordinary
+  // conversation with a Code origin and it stays at chat, where it was as a lane (FR-3).
+  create('formerLaneFromCode', lane(catId('Kiki'), 'code'));
+  state = updateCatProducts(state, catId('Kiki'), ['code']);
+  assert.equal(channelOf(state, ids.formerLaneFromCode).channelKind, 'chat_channel');
+  assert.equal(channelOf(state, ids.formerLaneFromCode).originSurface, 'code');
 
   const expected = {
     chat: 'chat',
@@ -114,13 +126,14 @@ function fixture() {
     raisedToCode: 'code',
     raisedToWork: 'work',
     noOrigin: 'chat',
+    formerLaneFromCode: 'chat',
     laneFromCode: 'chat',
     laneWithStoredCode: 'chat',
   };
   return { state, ids, expected, catId };
 }
 
-const ROOMS = ['chat', 'code', 'work', 'raisedToCode', 'raisedToWork', 'noOrigin'];
+const ROOMS = ['chat', 'code', 'work', 'raisedToCode', 'raisedToWork', 'noOrigin', 'formerLaneFromCode'];
 const LANES = ['laneFromCode', 'laneWithStoredCode'];
 
 function summariesOf(state) {
@@ -171,8 +184,11 @@ test('the stored conversation, its summary and its view read as the same scope',
     // A summary carries the scope, and it also reads right when only the origin is there.
     const summary = toChannelSummary(channel, state);
     assert.equal(readProductScope(summary), expected[key], `${key}: summary through the rule`);
+    // Without the field the rule falls back to the origin, which is a different answer only
+    // where the stored scope is not what the origin gives.
     const { productScope: _stored, ...withoutScope } = summary;
-    const derived = key === 'raisedToCode' || key === 'raisedToWork' ? channel.originSurface : expected[key];
+    const storedDiffers = ['raisedToCode', 'raisedToWork', 'formerLaneFromCode'].includes(key);
+    const derived = storedDiffers ? channel.originSurface : expected[key];
     assert.equal(readProductScope(withoutScope), derived, `${key}: summary without the field`);
   }
 });
@@ -305,20 +321,67 @@ test('the Boss Cat board shows a conversation with the product of its scope', ()
 
   assert.equal(surfaceOn(state), 'chat');
   assert.equal(surfaceOn(raiseChannelProductScope(state, groupId, 'code', LATER)), 'code');
+
+  // S4: no recorded origin.
+  const legacy = structuredClone(state);
+  channelOf(legacy, groupId).originSurface = null;
+  delete channelOf(legacy, groupId).productScope;
+  assert.equal(surfaceOn(legacy), 'chat');
 });
 
 // ---------------------------------------------------------------------------------------------
 // FR-15: Work
 // ---------------------------------------------------------------------------------------------
 
-test("Work counts a conversation's projected WorkItem as its own when the scope is work", () => {
-  const { state, ids, expected } = fixture();
-  const core = syncCoreStateWithChatState(state, createDefaultCoreState());
+test("Work's own-record check reads the scope where it read the origin", () => {
+  // The scope decides for a Task that came from a conversation and is not bound to Work, as
+  // Work's graph projection builds it.
+  const cases = {
+    'origin-chat': [{ originSurface: 'chat' }, false],
+    'origin-code-scope-code': [{ originSurface: 'code', productScope: 'code' }, false],
+    // Written before the field existed: the origin still answers.
+    'origin-work': [{ originSurface: 'work' }, true],
+    // Raised by the owner.
+    'origin-chat-scope-work': [{ originSurface: 'chat', productScope: 'work' }, true],
+    'origin-work-scope-code': [{ originSurface: 'work', productScope: 'code' }, false],
+    // S6: a direct lane created on Work, on a record without the copy.
+    'origin-work-lane': [{ originSurface: 'work', roomRoutingMode: 'direct_message' }, false],
+  };
+  let core = upsertCoreConversation(createDefaultCoreState(), {
+    id: 'conversation',
+    title: 'Room',
+    kind: 'chat_channel',
+    sourceChannelId: 'channel',
+  }).core;
+  for (const [id, [metadata]] of Object.entries(cases)) {
+    core = upsertCoreTask(core, {
+      id,
+      title: id,
+      conversationId: 'conversation',
+      metadata: { source: 'chat-channel', ...metadata },
+    }).core;
+  }
+  const graph = buildWorkGraphProjection(core);
+  for (const [id, [, own]] of Object.entries(cases)) {
+    const object = graph.objects.find((candidate) => candidate.id === id);
+    assert.ok(object, `${id} is in the graph`);
+    assert.notEqual(object.productBinding, 'work', `${id} is not bound to Work, so the scope decides`);
+    assert.equal(object.ownerManaged, own, id);
+  }
+});
+
+test("Work already counts every conversation's projected Task and WorkItem as its own", () => {
+  // The projection binds each conversation's Task to Work through its WorkItem, and the
+  // WorkItem's graph object carries no conversation metadata. So the scope does not decide
+  // for either today, whatever the conversation's origin or scope. SPEC-141 leaves that as it
+  // is, and this pins it.
+  const { state, ids } = fixture();
+  const graph = buildWorkGraphProjection(syncCoreStateWithChatState(state, createDefaultCoreState()));
   for (const key of [...ROOMS, ...LANES]) {
-    const workItem = core.workItems.find((record) => record.id === buildChatWorkItemId(ids[key]));
-    assert.ok(workItem, `${key} has a projected WorkItem`);
-    const object = { kind: 'work_item', sourceRecordId: workItem.id, metadata: workItem.metadata, productBinding: 'unbound' };
-    assert.equal(ownerManagedObject(core, object), expected[key] === 'work', key);
+    const task = graph.objects.find((object) => object.id === `task-channel-${ids[key]}`);
+    const workItem = graph.objects.find((object) => object.id === buildChatWorkItemId(ids[key]));
+    assert.equal(task?.ownerManaged, true, `${key}: Task`);
+    assert.equal(workItem?.ownerManaged, true, `${key}: WorkItem`);
   }
 });
 
@@ -400,6 +463,22 @@ test("a Boss Cat's join request names the scope's product and whether joining br
   assert.equal(raised.details.conversation.surface, 'code');
   assert.equal(raised.details.grants.codeTools, true);
   assert.match(JSON.stringify(raised.notice.metadata), /"surface":"code"/u);
+
+  // A Code origin and a chat scope, as a lane created on Code keeps after it stops being one:
+  // joining brings no Code tools.
+  const formerLane = structuredClone(state);
+  channelOf(formerLane, targetId).originSurface = 'code';
+  const below = request(formerLane);
+  assert.equal(below.details.conversation.surface, 'chat');
+  assert.equal(below.details.grants.codeTools, false);
+
+  // S4: no recorded origin.
+  const legacy = structuredClone(state);
+  channelOf(legacy, targetId).originSurface = null;
+  delete channelOf(legacy, targetId).productScope;
+  const noOrigin = request(legacy);
+  assert.equal(noOrigin.details.conversation.surface, 'chat');
+  assert.equal(noOrigin.details.grants.codeTools, false);
 });
 
 test('the Code session and work-area seams expose the scope beside the origin', async () => {
