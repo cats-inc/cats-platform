@@ -353,66 +353,84 @@ previews and work areas appear under `/work`.
 
 **Goal:** an owner principal can read what a raise would do and perform it (FR-20 to FR-26).
 
-- [ ] `GET` and `POST /api/channels/:channelId/product-scope`, with the owner principal check,
-      the refusals and their error codes, the mutation gate and the raise revision. This is the
-      first conversation route that checks a role.
-- [ ] The system line, with event metadata that names the old and the new level, and the update
-      events.
-- [ ] Raise the state version (D9) in this pull request, the first that can store a raised
-      conversation.
-  - The version 6 upgrade in `store.ts` cannot be reused as it is. It runs on any version
-    mismatch and writes one fixed backup name, so a profile that already upgraded to 6 would
-    fail. The new upgrade needs its own branch and its own backup name.
-  - It accepts only a recognized file, keeps the original bytes, replaces the file atomically
-    and leaves the original in place on failure.
-  - Tests: a round trip that shows only the version changed; a failed upgrade; an upgrade
-    with the version 6 backup already present; and the previous build refusing the new file,
-    both on a normal read and through the store's `.bak` recovery path.
-  - Record the persisted-data boundary for the release notes here. `src/core/types.ts` is
-    frozen, so this needs integration review.
-- [ ] Confirm how a turn whose session was lost is handled today. FR-25 relies on it for a
-      failed recycle, and this plan has not read that code.
-- [ ] Stop a stale whole-state write from lowering a raised scope. The store's `write` and
-      `writeSnapshot` replace the whole chat with the caller's copy, and the conversation's
-      mutation gate does not cover them.
-  - Phase 1's review forced the interleaving: a request read the state, a raise landed, and
-    the request wrote its copy back. The conversation was at its old level again, and loading
-    keeps that level because it is a valid value.
-  - Callers that read and then write their copy back: `products/chat/api/shellRoutes.ts` (the
-    selected conversation), `app/server/telegramCommandSurface.ts` (`/mode`),
-    `app/server/platformSetupGuideCatRoutes.ts`, `app/server/platformSetupAssistantRoutes.ts`
-    and, at startup only, `app/server/chatWorkflowRecovery.ts`.
-  - Either the store refuses to write a scope lower than the one it holds, or these callers
-    move to `updateChatState`. Add a test with the forced interleaving.
-  - Adding and removing a participant in `products/chat/api/routeSupport.ts` replace one whole
-    conversation from a copy read earlier. Both run inside the conversation's mutation gate,
-    so the raise must take the same gate, as FR-22 says.
-- [ ] If Phase 2's lane-first read rule has not landed, confirm that a raised conversation
-      cannot become a direct lane. Phase 1 found no such path in consistent state: creation
-      makes a lane, the raise refuses one, and `restoreRecoverableDirectLane` sets the kind
-      only on a conversation that carries the recoverable-lane mark. A valid stored scope is
-      kept as stored (FR-3), so such a path would leave a lane above `chat`, against S6.
-- [ ] Make the Boss Cat join card's binding and SPEC-118's proposal card's cover the scope
-      before a raise exists. Both bind `collaborationExecutionRevision`, which digests the
-      origin and not the scope. A raise between the card and the owner's click would change
-      what joining grants, Code's tools among it, without making the card stale.
-  - Phase 3's security review ran it with the raise function: a proposal whose card names a
-    Chat conversation is still admitted after a raise to `code`, and both Cats are added.
-- [ ] Add the execution policy to the raise revision. The permission chip is drawn from the
-      permission mode and `runtimeExecutionPolicy`, and the digest has only the mode.
-  - Digest the policy's values in a fixed order: the stored object's key order is not
-    normalized.
-  - Update FR-7's list with it. The list also omits the archived state and the workspace kind,
-    which the digest already has.
-- [ ] Expect a raise to make a pending owner-action, history or schedule preview stale when
-      its token hashes the conversation's projected Task or WorkItem, since the scope copy on
-      those records changes. That is the intended answer to a changed record.
-- [ ] Tests that a session created without the `cats` server gains it on its next send, that a
-      running turn keeps its tools, and that a failed recycle leaves the scope raised.
-- [ ] Tests that a prepared and a running SPEC-118 collaboration are unaffected.
-- [ ] Tests that no agent tool, transport command, schedule, heartbeat or create request can
-      raise a scope.
-- [ ] Document both routes in `docs/api.md`.
+- [x] `GET` and `POST /api/channels/:channelId/product-scope`, with the owner principal check,
+      the refusals and their error codes, the mutation gate and the raise revision.
+  - `src/products/chat/api/resources/productScopeRoutes.ts`. An owner principal is an account
+    with the `owner` or `admin` role on Desktop's cookie (the auth gate enforces CSRF for a
+    POST) or mobile's bearer; a request without one is refused.
+  - This plan said it was the first conversation route that checks a role. It is not: the
+    diagnostics route and the Boss Cat join card routes check one already, and no existing
+    helper took exactly this rule.
+  - One function, `productScopeRaiseRefusal`, decides the refusal for the read, the raise and
+    the model function.
+- [x] The system line, with event metadata that names the old and the new level
+      (`product_scope_raised`, `fromScope`, `toScope`), and the update events
+      (`message_added` and `updated`).
+- [x] Raise the state version (D9) in this pull request, the first that can store a raised
+      conversation. `CATS_CORE_STATE_VERSION` is 7.
+  - A version 6 file upgrades once and keeps its original bytes in
+    `chat-state.local.json.pre-product-scope.bak`; older files keep the version 6 path and its
+    `.pre-provider-policy.bak`. Reading `.bak` to recover writes no upgrade backup, so bytes
+    that differ from an earlier upgrade's backup cannot block the recovery.
+  - Tests: an upgrade that adds nothing an ordinary load does not; an upgrade with the
+    version 6 backup already present; a version 5 file going straight to 7; a failed upgrade
+    and its retry; recovery from a version 6 `.bak` after the upgrade; a newer file refused.
+  - Checked against a copy of main's build (version 6), not as a repository test: it refuses
+    an upgraded profile on a normal read and with a damaged primary through `.bak`, and leaves
+    both files as they were.
+  - Checked on a temporary copy of the owner's real profile (primary, `.bak`,
+    `.pre-provider-policy.bak`): the upgrade's file equals one ordinary save by the version 6
+    build apart from the version and timestamps, and the backups were kept. The copies were
+    deleted and the originals not touched.
+  - **Persisted-data boundary.** Recorded in `docs/deployment.md`: the next authorized
+    Platform/Desktop release that contains this is the next minor, `0.16.0`. A profile opened
+    by it cannot be opened by 0.15.x; the restore recipe is there too. `src/core/types.ts` is
+    a frozen shared contract, and this change to it is D9's.
+- [x] Confirm how a turn whose session was lost is handled today (read, not run). A
+      `stale_session` error retries a resume of the same session; `provider_session_unavailable`
+      rotates to a replacement session in the same folder, with continuity carried in the next
+      turn (`runtime-dispatch/recovery.ts`, `runtime-dispatch/wake.ts`). Neither touches the
+      scope, and a replacement starts through the ordinary session start, so it gets the raised
+      scope's tools.
+- [x] Stop a stale whole-state write from lowering a raised scope.
+  - The store keeps a wider stored scope over the incoming copy on every write, in the file and
+    the memory store (`keepRaisedProductScopes`), with a `product_scope_kept` diagnostic. No
+    caller had to change.
+  - That also covers a writer this plan did not list, and the widest window: a continuation
+    replay (`resumeStoredWorkflowContinuationDispatch`) writes its own whole copy back through
+    `chatStore.write` throughout a turn, outside any gate. So does the participant-add path's
+    continuation recovery, for every other conversation.
+  - `shellRoutes.ts`'s selection writer, which this plan listed, is not reached by any route.
+  - A sync re-projects the Core task's scope copy from the chat, so `writeSnapshot` cannot leave
+    a stale copy there either.
+  - Test: the forced interleaving through both stores' `write` and `writeSnapshot`, a stale
+    copy's other changes still landing, and a running turn's merge.
+- [x] A raised conversation cannot become a direct lane in consistent state (Phase 2's read rule
+      reads any direct lane as `chat` anyway).
+- [x] Make the Boss Cat join card's binding and SPEC-118's proposal card's cover the scope.
+  - Not through `collaborationExecutionRevision`: a running collaboration checks that revision
+    as it goes, so a raise would stop it.
+  - The join card's digest adds the scope when it differs from the origin. A card posted before
+    this, which is at its origin's level, stays valid; checked against main's build.
+  - A proposal records the scope it was prepared at, and the owner's confirmation is refused as
+    `stale_context` when it has changed. A proposal stored without it reads as its origin's
+    level. The card names that scope's product.
+  - This reverses what SPEC-141 said of a prepared collaboration; FR-7 and the acceptance line
+    now say an admitted one, queued or running, is unaffected, and a proposal not yet confirmed
+    is stale.
+- [x] Add the execution policy to the raise revision, its values in a fixed order. FR-7's list
+      now names it, with the archived state and the workspace kind.
+- [x] Expect a raise to make a pending owner-action, history or schedule preview stale when its
+      token hashes the conversation's projected Task or WorkItem. Not tested.
+- [x] Tests that a session created without the `cats` server gains it on its next send (the
+      enricher's marker after the raise; the wrapper's first-send grant is Phase 4's), that a
+      running turn keeps the raise (the merge), and that a failed recycle leaves the scope
+      raised (no recovery path writes it, and the store keeps it).
+- [x] Tests that an admitted SPEC-118 collaboration carries on after a raise, and that a
+      confirmation after one is stale.
+- [x] Tests that nothing but the route raises a scope: `raiseChannelProductScope` has one
+      production caller, the route.
+- [x] Document both routes in `docs/api.md`.
 
 **Deliverables:** the raise works through the API and nowhere else.
 

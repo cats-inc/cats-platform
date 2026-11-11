@@ -203,9 +203,14 @@ inventory of every `originSurface` reader.
 6. FR-6: The conversation summary, the conversation view, the mobile summary and the Core
    metadata projected from a conversation carry `productScope`. They keep `originSurface`.
 7. FR-7: The raise has its own revision: a digest of the conversation's id, scope, kind, group
-   membership, participants, folder, workspace access and permission mode.
+   membership, archived state, participants, folder, workspace kind, workspace access,
+   permission mode and execution policy (the policy's values in a fixed order).
    - `collaborationExecutionRevision` is left as it is and does not cover the scope. A raise
-     therefore does not disturb a prepared or a running SPEC-118 collaboration.
+     therefore does not disturb an admitted SPEC-118 collaboration, queued or running.
+   - Each card binds the scope on its own instead (Phase 5). A SPEC-118 proposal the owner has
+     not confirmed yet is refused as stale after a raise: its card named the product the
+     conversation lived on, and a raise changes what the reused conversation's workers
+     receive. A Boss Cat join card answered after a raise is stale for the same reason.
    - The Settings > Code switch is shown in the confirmation but is not part of the digest.
 
 #### What follows the scope
@@ -304,6 +309,10 @@ inventory of every `originSurface` reader.
     the owner saw. Inside the conversation's mutation gate, the server rechecks everything in
     FR-23 and then performs the raise. If a turn holds that gate, the request waits for it, as
     any write to the conversation does.
+    - The checks and the write run inside the store's lock as well. Whole-state writers, such as
+      a continuation replay or a setup route, take that lock and not the conversation's gate.
+    - Every store write keeps a wider stored scope over the incoming copy, so a writer that
+      read the state before a raise cannot lower it (D2).
 23. FR-23: The raise is refused, with a stable error code for each case, when:
     - the caller is not an owner principal;
     - the conversation does not exist, or its stored status is archived;
@@ -466,7 +475,9 @@ were put to the owner on 2026-11-11 as defaults that stand unless the owner obje
     created.
   - A stale raise revision is refused. A change to another Cat's settings does not make it
     stale.
-  - A prepared and a running SPEC-118 collaboration are unaffected by a raise.
+  - An admitted SPEC-118 collaboration, queued or running, is unaffected by a raise. A
+    proposal the owner has not confirmed is refused as stale, and so is a Boss Cat join card
+    answered after a raise.
   - A session created without the server gains it on its next send. A running turn keeps its
     tools. A failed recycle leaves the scope raised.
   - After Code to Work, an artifact recorded earlier still opens and a running preview can be
