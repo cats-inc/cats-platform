@@ -117,7 +117,9 @@ test('actual routing repairs an existing Code conversation displayed through a C
   const root = await mkdtemp(path.join(tmpdir(), 'cats-origin-route-'));
   const f = await createConversationNavigationFixture(root);
   const id = f.ids[0];
-  f.state.channels.find((channel) => channel.id === id)!.originSurface = 'code';
+  // The fixture creates its conversations on Chat. A Code conversation carries Code's scope
+  // as well as its origin (SPEC-141), and the redirect follows the scope.
+  Object.assign(f.state.channels.find((channel) => channel.id === id)!, { originSurface: 'code', productScope: 'code' });
   const payload = f.payload(id);
   payload.chat.channels.find((channel) => channel.id === id)!.routingStatus = 'running';
   const paths: string[] = [];
@@ -159,7 +161,7 @@ for (const [parallel, outcome] of [
       Object.assign(f.state, createParallelChatGroup(f.state, { title: 'Timer compare', originSurface: 'code', targets: [target, target] }));
       id = f.state.selectedChannelId!;
     } else {
-      f.state.channels.find((channel) => channel.id === id)!.originSurface = 'code';
+      Object.assign(f.state.channels.find((channel) => channel.id === id)!, { originSurface: 'code', productScope: 'code' });
       initial.chat.channels = initial.chat.channels.filter((channel) => channel.id !== id);
     }
     const overrideCat = outcome.startsWith('override-') ? f.state.cats.find((cat) => cat.group !== 'admin') : null;
