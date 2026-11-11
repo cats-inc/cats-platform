@@ -1,5 +1,10 @@
 # Feature Specifications
 
+- [SPEC-142: Task, Run and Work tools in conversations](SPEC-142-task-run-and-work-tools-in-conversations.md)
+  — draft, 2026-11-11; not implemented. Specifies ADR-149 D10–D13: read tools for a
+  conversation's own Tasks and Runs at every level, Work Item and Project tools at `work`
+  where every write is a proposal the owner confirms, and a Work conversation that can belong
+  to a Project. All on the `cats` session server. S1–S7 and Q1–Q5 wait for the owner. PLAN-135.
 - [SPEC-141: Conversation product scope](SPEC-141-conversation-product-scope.md)
   — draft, 2026-11-11; not implemented. Specifies ADR-149: the `productScope` field, what
   follows it and what stays with the origin, the owner-only raise with its confirmation, Work
@@ -12,7 +17,7 @@
   pairing is planned for both apps.
 - [SPEC-139: Boss Cat across Cats](SPEC-139-boss-cat-across-cats.md)
   — approved, 2026-11-11, and revised after its security review; in progress under PLAN-133
-  (the owner-started stamp, the status board tool, FR-13/14 and FR-17 implemented). A status
+  (the owner-started stamp, the status board, group conversations, FR-13/14 and FR-17 implemented). A status
   board without message text, group conversations the Boss Cat creates, and joining Chat, Code
   or Work conversations under one owner switch (ask every time by default), all from the
   owner's own Desktop or mobile messages only. Counterpart of Cats Bot SPEC-012.

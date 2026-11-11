@@ -32,7 +32,7 @@ import {
   buildAssistantTurnSourceMessage,
 } from '../assistantTurnSegments.js';
 import { requireChannel, resolveChannelCanonicalIdentity } from '../model/index.js';
-import { parseOwnerStartedSurface, readOwnerStarted } from '../../shared/ownerStarted.js';
+import { parseOwnerStartedSurface, readBossCatTurnRecord, readOwnerStarted } from '../../shared/ownerStarted.js';
 import {
   buildChatAssignedParticipantId,
   buildChatLaneId,
@@ -768,6 +768,10 @@ export function projectChatChannelInteractionToCore(
           ownerStarted: readOwnerStarted(
             channel.messages.find((message) => message.id === turn.sourceMessageId),
           ) ?? parseOwnerStartedSurface(readRecordMetadataString(existingTurn, 'ownerStarted')),
+          // SPEC-139: a message rebuilt from Core must not run the Boss Cat tools again.
+          bossCatTurnCatId: readBossCatTurnRecord(
+            channel.messages.find((message) => message.id === turn.sourceMessageId),
+          )?.bossCatId ?? readRecordMetadataString(existingTurn, 'bossCatTurnCatId'),
           workflowShape: turn.workflowShape,
           workflowStageId: turn.stageId,
           reviewRequired: turn.reviewRequired,

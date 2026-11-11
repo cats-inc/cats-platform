@@ -5,16 +5,17 @@
   live at `/entities/cats/:catId/settings`; Settings drops its Cats group and keeps Assistants.
   Supersedes ADR-009's Settings-hosted registry and ADR-052's `/settings/cats`.
 - [ADR-149: Give each conversation a product scope that can be raised, never lowered](149-let-a-conversation-gain-product-scopes-and-never-lose-them.md)
-  — decided by the owner (D1–D10), 2026-11-11; not implemented. A conversation's product scope
+  — decided by the owner (D1–D13), 2026-11-11; not implemented. A conversation's product scope
   is a ladder, `chat` < `code` < `work`, so Work always includes Code. It decides which Cats
   tools and records the conversation reaches, and which product's Recents it lives in. The
   composer's surface chip sets it on a draft, and the owner can raise it later but never lower
   it; a raise moves the conversation to its new product's Recents. The role tools belong to
-  every level (D8), the state version rises with the field (D9), and Work's own tools are the
-  workspace and the project, not Task or Run (D10). P1–P3 and P6 are proposed defaults. CLI
-  permission and owner-started gates stay separate, so the scope is not a security boundary.
-  Records the risk of Work's approval-free supervised runs. Specified by the draft SPEC-141 and
-  staged by PLAN-134.
+  every level (D8), and the state version rises with the field (D9). Task and Run are the
+  foundation that agents can read from `chat` up, Work's own tools are Work Items and
+  Projects, and a Work conversation can belong to a Project (D10–D13). P1–P3 and P6 are
+  proposed defaults. CLI permission and owner-started gates stay separate, so the scope is not
+  a security boundary. Records the risk of Work's approval-free supervised runs. Specified by
+  the drafts SPEC-141 (PLAN-134) and SPEC-142 (PLAN-135).
 - [ADR-148: Manage AI tools in Settings with the first-run wizard's rows](148-manage-ai-tools-in-settings-with-the-first-run-wizards-rows.md)
   — accepted, 2026-11-11. Reverses ADR-146 point 16: Settings > Runtime gets the wizard's rows,
   log and details, Update is offered but never announced, and the host admits Settings to the

@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress: slices 1 to 3, 4a and 7 implemented |
+| Status | In progress: slices 1 to 4b and 7 implemented |
 | Owner | Cats Chat |
 | Reviewer | Owner |
 | Date | 2026-11-11 |
@@ -117,8 +117,11 @@ are tested as live behaviour.
 - [x] A stored board is dropped from its receipt once the reply for that message settles. A
       failed reply keeps it for the retry. Backticks in names and titles become quotes, so they
       cannot close the board's fence.
-- [x] Boards are bounded: 40 Cats and the 30 most recently active groups, with counts of what
-      was left out.
+- [x] Boards are bounded by their serialized size: 16,000 characters, at most 40 Cats and 30
+      groups, and 5 problem conversations per Cat. Cats needing attention come first, then the
+      most recently active groups, with counts of what was left out. A full board measured
+      47,000 characters before this bound, over the session's 24,000-character feedback
+      envelope.
 - [x] Tests: `tests/chat-boss-cat-tools.test.js`. They cover the gate matrix and, through an
       isolated server with the flag on, these cases:
       - what the stubbed Runtime receives for the decision session: its create input, and no
@@ -135,16 +138,46 @@ are tested as live behaviour.
 
 ### Slice 4b: Group conversations
 
-- [ ] `chat.boss.create_group` with ids from a board read in the same run, its title and
-      opening message bounds, and 5 groups an hour.
-- [ ] Created groups: Chat, no repository or cwd, `read_only`, `default`; the opening message
-      posted without dispatch; the invited Cats load no companion memory there; a notice in the
-      Boss Cat's lane.
-- [ ] Write each receipt in the same atomic store update as its effect. The dispatch merge keeps
-      an edit to an existing message only when no other writer touched it.
-- [ ] A retry of a message rebuilt from Core keeps the stamp but not `bossCatTurn`, so it would
-      run the tools again. Carry a marker in the Core turn metadata, or refuse tools on a rebuilt
-      message.
+- [x] `chat.boss.create_group`:
+      - it is offered only after a board was read in the same run;
+      - it takes `{ title, catIds, openingMessage }` and no other fields;
+      - the title is 1 to 80 characters with control and bidi characters removed, and the
+        opening message is 1 to 2,000 characters;
+      - every id must be another Cat on that board and still active;
+      - 5 groups an hour per owner.
+- [x] The Boss observation's policy is decided for `create_group` (`narrow_write`). A model held
+      to read-only scope (a weak worker) is offered the board alone.
+- [x] The created group:
+      - a Chat conversation with no repository or cwd, `read_only` and `default`;
+      - the Boss Cat as coordinator, plus the chosen Cats;
+      - the opening message is the Boss Cat's own message, and nothing is dispatched (R1);
+      - `bossCatGroup` marks it, so the invited Cats load no companion memory there (R2,
+        `isBossCatGroupGuest` in `resolveCompanionSessionForTarget`);
+      - the owner keeps the conversation they had open;
+      - a localized notice in the Boss Cat's lane names the group and its Cats;
+      - the owner's list updates live.
+- [x] One atomic store update does all of it together: it reserves the use, creates the group,
+      posts the notice and writes the receipt on the owner's message. The dispatch merge alone
+      would drop an edit to a message another writer touched.
+- [x] Core turn metadata carries `bossCatTurnCatId`. A message rebuilt from Core gets an empty
+      record, so a retry runs no tool and replays nothing.
+- [x] Tests in `tests/chat-boss-cat-tools.test.js`:
+      - a group created end to end, checking its policy, members, coordinator, opening message,
+        no dispatch, selection, notice, usage, the lane instructions, the Core marker and R2;
+      - refusals: ids not on the board, the Boss Cat's own id, a long title, an empty opening
+        message, extra fields, and the sixth group in an hour;
+      - `create_group` is not offered before a board;
+      - the owner writing to an invited Cat in the created group: the session Runtime receives
+        is `read_only` with `default` permissions and no repository, and the Cat's prompt
+        carries the opening message;
+      - R2 through `resolveRuntimeEnvelopeForTarget` with the real channel view: an ordinary
+        group hydrates companion memory (the positive control), and the Boss Cat's group does
+        not;
+      - a full-size board fits the envelope, attention first.
+- [x] `docs/tool-calls.md` registers both tools.
+- [ ] Remaining: the FR-16 evidence record for a creation names the tool and status only; the
+      created conversation and Cat ids are on the receipt. The weak-worker fallback (board only)
+      has no test.
 
 ### Slice 5: Joining
 

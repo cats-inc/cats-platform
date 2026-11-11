@@ -27,9 +27,16 @@ import {
 } from '../../../platform/supervision/toolBoundary.js';
 import { resolveChannelParticipantAssignments, resolveParticipantCatId } from '../shared/channelParticipants.js';
 import { isDirectLaneChannel } from '../shared/channelTopology.js';
-import { BOSS_CAT_TURN_METADATA_KEY, readOwnerStarted } from '../shared/ownerStarted.js';
+import { BOSS_CAT_TURN_METADATA_KEY, readBossCatTurnRecord, readOwnerStarted } from '../shared/ownerStarted.js';
 import { isAdminCoordinator } from './coordinator.js';
 import { buildBossCatBoard, type BossCatBoard } from './bossCatBoard.js';
+import { appendMessage, createChannel } from './model/index.js';
+import { createTranslator, messageKeys, parseMessageLocale } from '../../../shared/i18n/index.js';
+import {
+  CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY,
+  resolveChatMessageLocalizedBodyMetadata,
+  type ChatMessageLocalizedBodyMetadata,
+} from '../../../shared/chatMessageLocalization.js';
 import { resolveRoomRoutingState } from './room-routing/index.js';
 
 /**
@@ -37,7 +44,9 @@ import { resolveRoomRoutingState } from './room-routing/index.js';
  * whose input is the owner's current message and the boards it reads, nothing else.
  */
 export const BOSS_STATUS_BOARD = 'chat.boss.status_board';
-export const BOSS_CAT_TOOL_NAMES = [BOSS_STATUS_BOARD] as const;
+export const BOSS_CREATE_GROUP = 'chat.boss.create_group';
+export const BOSS_CAT_TOOL_NAMES = [BOSS_STATUS_BOARD, BOSS_CREATE_GROUP] as const;
+export { readBossCatTurnRecord };
 export const isBossCatTool = (name: string): boolean =>
   (BOSS_CAT_TOOL_NAMES as readonly string[]).includes(name);
 
@@ -48,10 +57,17 @@ export const BOSS_CAT_HOURLY_LIMITS: Readonly<Record<BossCatUsageKind, number>> 
   join_request: 10,
 };
 const HOUR_MS = 60 * 60_000;
-/** The board stays well inside the decision session's 24 KB feedback envelope. */
+/**
+ * The board must fit the decision session's 24,000-character feedback envelope with room for
+ * the receipts after it, so it is bounded by its serialized size, not only by counts.
+ */
+export const BOSS_CAT_BOARD_MAX_CHARS = 16_000;
 export const BOSS_CAT_BOARD_MAX_CATS = 40;
 export const BOSS_CAT_BOARD_MAX_GROUPS = 30;
+export const BOSS_CAT_BOARD_MAX_PROBLEMS_PER_CAT = 5;
 const BOSS_CAT_MAX_DECISION_CALLS = 3;
+export const BOSS_CAT_GROUP_TITLE_LIMIT = 80;
+export const BOSS_CAT_GROUP_OPENING_LIMIT = 2_000;
 
 /**
  * SPEC-139 FR-16: Boss Cat supervision records go under the state directory
@@ -88,11 +104,6 @@ export function resolveBossCatTurnGate(
   const laneCatId = resolveRoomRoutingState(channel.roomRouting).defaultRecipientId;
   if (!cat || (laneCatId !== cat.id && laneCatId !== participantId)) return null;
   return { bossCatId: cat.id, participantId };
-}
-
-export function readBossCatTurnRecord(message: ChatMessage | null | undefined): BossCatTurnRecord | null {
-  const record = message?.metadata?.[BOSS_CAT_TURN_METADATA_KEY] as BossCatTurnRecord | undefined;
-  return record?.schemaVersion === 1 && Array.isArray(record.receipts) ? record : null;
 }
 
 export function attachBossCatTurnRecord(
@@ -155,18 +166,49 @@ export function reserveBossCatUsage(
   };
 }
 
-/** The newest Cats and groups, with counts of what was left out. */
-export function boundBossCatBoard(board: BossCatBoard): BossCatBoard & { omittedCats: number; omittedGroups: number } {
+export type BoundedBossCatBoard = BossCatBoard & { omittedCats: number; omittedGroups: number };
+
+/**
+ * Cats that need attention come first, then groups by recent activity. What does not fit
+ * (at most 40 Cats, 30 groups and 16,000 characters) is left out, with counts of what was.
+ */
+export function boundBossCatBoard(board: BossCatBoard): BoundedBossCatBoard {
   const recency = (value: string | null | undefined) => (value ? Date.parse(value) || 0 : 0);
+  const attention = (cat: BossCatBoard['cats'][number]) => (cat.problems?.length ?? 0)
+    + (cat.waitingChoices ?? 0) + (cat.waitingApprovals ?? 0) + (cat.turnRunning ? 1 : 0)
+    + (cat.initiative?.waitingForOwner ? 1 : 0);
+  const cats = board.cats
+    .map((cat) => (cat.problems && cat.problems.length > BOSS_CAT_BOARD_MAX_PROBLEMS_PER_CAT
+      ? { ...cat, problems: cat.problems.slice(0, BOSS_CAT_BOARD_MAX_PROBLEMS_PER_CAT) }
+      : cat))
+    .map((cat, index) => ({ cat, index }))
+    .sort((left, right) => attention(right.cat) - attention(left.cat) || left.index - right.index)
+    .map(({ cat }) => cat)
+    .slice(0, BOSS_CAT_BOARD_MAX_CATS);
   const groups = [...board.groups].sort((left, right) =>
-    recency(right.lastMessageAt ?? right.createdAt) - recency(left.lastMessageAt ?? left.createdAt));
-  return {
+    recency(right.lastMessageAt ?? right.createdAt) - recency(left.lastMessageAt ?? left.createdAt))
+    .slice(0, BOSS_CAT_BOARD_MAX_GROUPS);
+  const bounded = () => ({
     generatedAt: board.generatedAt,
-    cats: board.cats.slice(0, BOSS_CAT_BOARD_MAX_CATS),
-    groups: groups.slice(0, BOSS_CAT_BOARD_MAX_GROUPS),
-    omittedCats: Math.max(0, board.cats.length - BOSS_CAT_BOARD_MAX_CATS),
-    omittedGroups: Math.max(0, groups.length - BOSS_CAT_BOARD_MAX_GROUPS),
-  };
+    cats,
+    groups,
+    omittedCats: board.cats.length - cats.length,
+    omittedGroups: board.groups.length - groups.length,
+  });
+  // Drop the least recent group, or else the Cat needing the least attention, until it fits.
+  while (JSON.stringify(bounded()).length > BOSS_CAT_BOARD_MAX_CHARS && (cats.length || groups.length)) {
+    if (groups.length >= cats.length && groups.length > 0) groups.pop();
+    else cats.pop();
+  }
+  return bounded();
+}
+
+/** R2: in a group a Boss Cat created, the Cats it invited load no companion memory. */
+export function isBossCatGroupGuest(
+  channel: Pick<ChatState['channels'][number], 'bossCatGroup'>,
+  catId: string | null | undefined,
+): boolean {
+  return Boolean(channel.bossCatGroup && catId && catId !== channel.bossCatGroup.bossCatId);
 }
 
 export function bossCatToolManifests(): SupervisedToolManifest[] {
@@ -185,19 +227,45 @@ export function bossCatToolManifests(): SupervisedToolManifest[] {
     failureCodes: ['E_SCHEMA_INVALID', 'E_TOOL_SCOPE_DENIED', 'E_PRECHECK_FAILED', 'E_BUDGET_EXCEEDED'],
     inputSchema: { id: `${BOSS_STATUS_BOARD}.input`, version: '1.0', format: 'json_schema' },
     outputSchema: { id: `${BOSS_STATUS_BOARD}.output`, version: '1.0', format: 'json_schema' },
+  }, {
+    schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,
+    name: BOSS_CREATE_GROUP,
+    manifestVersion: '1.0',
+    description: 'Start a Chat group conversation with Cats from the board read in this session. '
+      + 'It has no repository or folder access, and nobody answers until the owner writes there.',
+    sideEffect: 'local_state',
+    preflight: 'required',
+    blocking: 'blocking',
+    cancellation: 'cooperative',
+    approval: 'never',
+    evidence: 'summary',
+    failureCodes: ['E_SCHEMA_INVALID', 'E_TOOL_SCOPE_DENIED', 'E_PRECHECK_FAILED', 'E_BUDGET_EXCEEDED'],
+    inputSchema: { id: `${BOSS_CREATE_GROUP}.input`, version: '1.0', format: 'json_schema' },
+    outputSchema: { id: `${BOSS_CREATE_GROUP}.output`, version: '1.0', format: 'json_schema' },
   }];
 }
 
 export function bossCatToolDescriptors(): ProviderAgentToolDescriptor[] {
-  return bossCatToolManifests().map((manifest) => ({
-    manifest,
-    reason: 'The owner asked their Boss Cat, in its own direct conversation, about other Cats.',
-    inputHints: [
-      'Input: {} only.',
-      'Read the board only when the owner\'s message asks about other Cats or conversations. '
-        + 'Otherwise answer with a respond step; the Boss Cat then replies as usual.',
-    ],
-  }));
+  return bossCatToolManifests().map((manifest) => manifest.name === BOSS_CREATE_GROUP
+    ? {
+        manifest,
+        reason: 'Only when the owner asked, in this message, for a group conversation with other Cats.',
+        inputHints: [
+          `Input: { "title": string of 1 to ${BOSS_CAT_GROUP_TITLE_LIMIT} characters, "catIds": the ids of one `
+            + `or more other Cats from the board you read in this session, "openingMessage": string of 1 to `
+            + `${BOSS_CAT_GROUP_OPENING_LIMIT} characters }. No other fields.`,
+          'The group starts with no repository, folder or shell access. The Cats answer once the owner writes there.',
+        ],
+      }
+    : {
+        manifest,
+        reason: 'The owner asked their Boss Cat, in its own direct conversation, about other Cats.',
+        inputHints: [
+          'Input: {} only.',
+          'Read the board only when the owner\'s message asks about other Cats or conversations. '
+            + 'Otherwise answer with a respond step; the Boss Cat then replies as usual.',
+        ],
+      });
 }
 
 export const BOSS_CAT_INVARIANTS = [
@@ -227,6 +295,8 @@ export interface RunBossCatDecisionLoopInput extends BossCatBoardSources {
   isCancelled?: () => boolean;
   now?: () => Date;
   evidenceSink?: ToolBoundaryEvidenceSink;
+  /** Lets the owner's conversation list update when a group appears. */
+  onGroupCreated?: (channelId: string) => void;
 }
 
 function refuse(reason: string, code: 'E_SCHEMA_INVALID' | 'E_PRECHECK_FAILED' | 'E_BUDGET_EXCEEDED'
@@ -245,6 +315,8 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
   const boundary = createToolBoundary({ registry, evidenceSink: input.evidenceSink ?? createInMemoryToolEvidenceSink() });
   const receipts: BossCatToolReceipt[] = [];
   const feedback: ProviderAgentToolFeedback[] = [];
+  // FR-5: ids are accepted only from a board this run read.
+  let latestBoard: BossCatBoard | null = null;
   let sessionId: string | null = null;
   let stopped = false;
   let completed = false;
@@ -291,7 +363,8 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
     for (let call = 0; call < BOSS_CAT_MAX_DECISION_CALLS; call += 1) {
       const used = new Set(receipts.filter((receipt) => receipt.status === 'applied').map((receipt) => receipt.toolName));
       const availableTools = input.observation.availableTools.filter(({ manifest }) =>
-        isBossCatTool(manifest.name) && !used.has(manifest.name));
+        isBossCatTool(manifest.name) && !used.has(manifest.name)
+        && (manifest.name !== BOSS_CREATE_GROUP || latestBoard !== null));
       if (availableTools.length === 0 || input.isCancelled?.()) break;
       const response = await bounded(() => input.request({
         ...input.observation,
@@ -306,7 +379,8 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
       if (decision.kind !== 'tool_request'
         || !availableTools.some(({ manifest }) => manifest.name === decision.toolName)) break;
 
-      let board: ReturnType<typeof boundBossCatBoard> | null = null;
+      let board: BoundedBossCatBoard | null = null;
+      let createdConversationId: string | null = null;
       const result = await boundary.invoke<unknown, unknown>({
         toolName: decision.toolName,
         input: decision.input,
@@ -318,6 +392,15 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
           policyToolScope: input.observation.policy.dials.toolScope,
         },
         execute: async (toolInput) => {
+          if (decision.toolName === BOSS_CREATE_GROUP) {
+            const created = await createBossCatGroup(input, toolInput, latestBoard!, receipts, {
+              toolName: decision.toolName, decisionId: decision.decisionId, at: now(),
+            });
+            if ('refusal' in created) return refuse(created.refusal, created.code);
+            createdConversationId = created.conversationId;
+            input.onGroupCreated?.(created.conversationId);
+            return { status: 'applied', result: { conversationId: created.conversationId } };
+          }
           if (typeof toolInput !== 'object' || toolInput === null || Object.keys(toolInput).length > 0) {
             return refuse('input_invalid', 'E_SCHEMA_INVALID');
           }
@@ -355,7 +438,9 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
         ...(reason ? { reason } : {}),
         at: now().toISOString(),
         ...(board ? { board } : {}),
+        ...(createdConversationId ? { conversationId: createdConversationId } : {}),
       });
+      if (board) latestBoard = board;
       feedback.push({ toolName: decision.toolName, decisionId: decision.decisionId, result });
       if (result.status !== 'applied') break;
     }
@@ -399,9 +484,130 @@ export function formatBossCatTurnInstructions(record: BossCatTurnRecord | null):
   for (const receipt of record.receipts) {
     if (receipt.toolName === BOSS_STATUS_BOARD && receipt.status === 'applied' && receipt.board) {
       lines.push('Status board (JSON):', '```json', JSON.stringify(receipt.board), '```');
+    } else if (receipt.toolName === BOSS_CREATE_GROUP && receipt.status === 'applied' && receipt.conversationId) {
+      lines.push(`${BOSS_CREATE_GROUP}: applied. The group conversation ${receipt.conversationId} exists; `
+        + 'its Cats answer once the owner writes there.');
     } else {
       lines.push(`${receipt.toolName}: ${receipt.status}${receipt.reason ? ` (${receipt.reason})` : ''}.`);
     }
   }
   return lines.join('\n');
+}
+
+type GroupRefusal = { refusal: string; code: 'E_SCHEMA_INVALID' | 'E_PRECHECK_FAILED' | 'E_BUDGET_EXCEEDED' };
+
+function readGroupInput(raw: unknown, board: BossCatBoard, bossCatId: string):
+  { title: string; catIds: string[]; openingMessage: string } | GroupRefusal {
+  const invalid = (refusal: string): GroupRefusal => ({ refusal, code: 'E_SCHEMA_INVALID' });
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return invalid('input_invalid');
+  const record = raw as Record<string, unknown>;
+  if (Object.keys(record).some((key) => !['title', 'catIds', 'openingMessage'].includes(key))) {
+    return invalid('input_invalid');
+  }
+  const title = typeof record.title === 'string'
+    ? record.title.replace(/[\p{Cc}؜‎‏‪-‮⁦-⁩]/gu, ' ').replace(/\s+/gu, ' ').trim()
+    : '';
+  if (!title || Array.from(title).length > BOSS_CAT_GROUP_TITLE_LIMIT) return invalid('title_invalid');
+  const openingMessage = typeof record.openingMessage === 'string' ? record.openingMessage.trim() : '';
+  if (!openingMessage || Array.from(openingMessage).length > BOSS_CAT_GROUP_OPENING_LIMIT) {
+    return invalid('opening_message_invalid');
+  }
+  const catIds = Array.isArray(record.catIds) ? record.catIds : [];
+  if (catIds.length === 0 || catIds.some((id) => typeof id !== 'string')
+    || new Set(catIds).size !== catIds.length) return invalid('cats_invalid');
+  const onBoard = new Set(board.cats.map((cat) => cat.catId));
+  if ((catIds as string[]).some((id) => id === bossCatId || !onBoard.has(id))) {
+    return { refusal: 'cats_not_on_board', code: 'E_PRECHECK_FAILED' };
+  }
+  return { title, catIds: catIds as string[], openingMessage };
+}
+
+/**
+ * FR-5: a Chat group with no repository or cwd, read-only and default permissions, the Boss Cat
+ * as coordinator. The opening message is posted and nothing is dispatched (R1). The invited Cats
+ * load no companion memory there (R2). One atomic update reserves the use, creates the group,
+ * posts the notice in the lane and writes the receipt on the owner's message, so a retry never
+ * creates a second group.
+ */
+async function createBossCatGroup(
+  input: RunBossCatDecisionLoopInput,
+  rawInput: unknown,
+  board: BossCatBoard,
+  priorReceipts: BossCatToolReceipt[],
+  call: { toolName: string; decisionId: string; at: Date },
+): Promise<{ conversationId: string } | GroupRefusal> {
+  const parsed = readGroupInput(rawInput, board, input.bossCatId);
+  if ('refusal' in parsed) return parsed;
+  let outcome: { conversationId: string } | GroupRefusal = { refusal: 'not_permitted', code: 'E_PRECHECK_FAILED' };
+  await input.updateState((latest) => {
+    const lane = latest.channels.find((entry) => entry.id === input.channelId);
+    const source = lane?.messages.find((entry) => entry.id === input.sourceMessageId);
+    if (!lane || resolveBossCatTurnGate(latest, input.channelId, source)?.bossCatId !== input.bossCatId) {
+      outcome = { refusal: 'not_permitted', code: 'E_PRECHECK_FAILED' };
+      return latest;
+    }
+    const cats = parsed.catIds.map((id) => latest.cats.find((cat) => cat.id === id && cat.status === 'active'));
+    const boss = latest.cats.find((cat) => cat.id === input.bossCatId)!;
+    if (cats.some((cat) => !cat)) {
+      outcome = { refusal: 'cats_not_active', code: 'E_PRECHECK_FAILED' };
+      return latest;
+    }
+    const reserved = reserveBossCatUsage(latest, 'group', call.at);
+    if (!reserved.allowed) {
+      outcome = { refusal: 'rate_limited', code: 'E_BUDGET_EXCEEDED' };
+      return latest;
+    }
+    let next: ChatState;
+    try {
+      next = createChannel(reserved.state, {
+        title: parsed.title,
+        topic: '',
+        originSurface: 'chat',
+        entryKind: 'group',
+        participantCatIds: [boss.id, ...parsed.catIds],
+        participantOrder: [`cat:${boss.id}`, ...parsed.catIds.map((id) => `cat:${id}`)],
+        runtimeWorkspaceAccess: 'read_only',
+        runtimePermissionMode: 'default',
+      }, call.at);
+    } catch {
+      outcome = { refusal: 'participant_limit', code: 'E_PRECHECK_FAILED' };
+      return latest;
+    }
+    const conversationId = next.selectedChannelId;
+    // The owner keeps whatever conversation they had open.
+    next = { ...next, selectedChannelId: latest.selectedChannelId };
+    next.channels = next.channels.map((entry) => entry.id === conversationId
+      ? { ...entry, bossCatGroup: { bossCatId: boss.id, createdAt: call.at.toISOString() } }
+      : entry);
+    next = appendMessage(next, conversationId,
+      { senderKind: 'agent', senderName: boss.name, body: parsed.openingMessage },
+      call.at, { metadata: { targetId: boss.id, targetKind: 'cat', event: 'boss_cat_group_opening' } }).state;
+    const locale = parseMessageLocale(lane.language) ?? parseMessageLocale(lane.responseLanguage) ?? 'en';
+    const localizedBody: ChatMessageLocalizedBodyMetadata = {
+      key: messageKeys.chatBossCatGroupCreatedNotice,
+      values: { name: boss.name, title: parsed.title, cats: cats.map((cat) => cat!.name).join(', ') },
+    };
+    next = appendMessage(next, input.channelId, {
+      senderKind: 'system',
+      senderName: 'Chat',
+      body: resolveChatMessageLocalizedBodyMetadata(localizedBody, createTranslator(locale)),
+    }, call.at, {
+      metadata: {
+        event: 'boss_cat_group_created',
+        sourceMessageId: input.sourceMessageId,
+        conversationId,
+        [CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY]: localizedBody,
+      },
+    }).state;
+    const receipt: BossCatToolReceipt = {
+      toolName: call.toolName, decisionId: call.decisionId, status: 'applied',
+      at: call.at.toISOString(), conversationId,
+    };
+    next = attachBossCatTurnRecord(next, input.channelId, input.sourceMessageId, {
+      schemaVersion: 1, bossCatId: input.bossCatId, receipts: [...priorReceipts, receipt],
+    });
+    outcome = { conversationId };
+    return next;
+  });
+  return outcome;
 }
