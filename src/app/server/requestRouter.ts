@@ -494,6 +494,8 @@ export async function routeRequest(
   const chatContext = {
     ...context,
     dependencies: {
+      isPluginSkillAvailable: (skillId: string) => dependencies.shared.managedPlugins
+        ?.inventory().availableSkills.some(skill => skill.id === skillId) ?? false,
       withPlatformDataReset: dependencies.shared.withPlatformDataReset,
       runtimeDataResetAvailable: dependencies.shared.startup.mode === 'app-managed'
         && dependencies.shared.startup.managedBy === 'cats-electron',

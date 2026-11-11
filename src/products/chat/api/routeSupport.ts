@@ -164,6 +164,7 @@ import type { TransportWorkGoldenPathPort } from '../../../platform/transports/w
 import type { TelegramCommandPort } from '../../../platform/transports/telegram/commandPort.js';
 
 export interface ChatApiDependencies {
+  isPluginSkillAvailable?: (skillId: string) => boolean;
   catImages?: import('./catImages.js').ChatCatImages;
   runtimeDataResetAvailable?: boolean;
   withPlatformDataReset?: import('../../../shared/platformDataReset.js').PlatformResetCoordinator;
@@ -633,11 +634,21 @@ export async function persistCreatedCat(
   context: ChatApiRouteContext,
   input: CreateCatInput,
 ): Promise<ChatState> {
-  return updateChatState(context.dependencies.chatStore, (state) => createCat(
-    state,
-    input,
-    nowFrom(context.dependencies),
-  ));
+  return updateChatState(context.dependencies.chatStore, (state) => {
+    assertCatSkillProfileAvailable(context.dependencies, input.skillProfile);
+    return createCat(state, input, nowFrom(context.dependencies));
+  });
+}
+
+export function assertCatSkillProfileAvailable(
+  dependencies: Pick<ChatApiDependencies, 'isPluginSkillAvailable'>,
+  profile: string | null | undefined,
+): void {
+  const skillId = profile?.trim();
+  if (skillId?.startsWith('plugin:') && !dependencies.isPluginSkillAvailable?.(skillId)) {
+    throw new ChatApiError(409, 'plugin_skill_unavailable',
+      'Install and enable this Plugin in Settings before assigning its skills to a Cat.');
+  }
 }
 
 export async function persistArchivedCat(

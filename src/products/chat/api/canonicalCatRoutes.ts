@@ -14,6 +14,7 @@ import {
 import type { AssignChannelCatInput, ChatCatGroup, CreateCatInput } from './contracts.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import {
+  assertCatSkillProfileAvailable,
   buildAppShellPayload,
   handleCanonicalCatError,
   handleRestError,
@@ -113,6 +114,7 @@ async function handleCanonicalUpdateCat(
         state = renameCat(state, catId, body.name);
       }
       if (body.skillProfile !== undefined) {
+        assertCatSkillProfileAvailable(context.dependencies, body.skillProfile);
         state = updateCatSkillProfile(state, catId, body.skillProfile);
       }
       if (body.companion !== undefined) {

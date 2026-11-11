@@ -8,6 +8,39 @@ only Agency 0.1.0, SHA-256
 The immutable preview manifest's integration-pending field is historical build
 metadata; host policy and exact archive admission grant this one pilot integration.
 
+## Installation and delivery boundaries (2026-11-11 audit)
+
+Agency is optional and starts **not installed**, including in a policy-enabled
+profile. Starting Desktop or polling the inventory must not install or enable it.
+Package inclusion and installation are separate decisions: the owner permits a
+future Standard preview to carry the archive without installing it. The current
+0.15.1 preview staging does not include an Agency archive; its Settings card was
+static catalog information, not evidence of installation. Release hosting remains
+undecided. This audit does not change release pins or promote the internal pilot.
+
+The Directory picker only offers skills from a live enabled installation. Cat
+creation and profile updates enforce the same inventory check on the server;
+knowing or retaining a `plugin:` ID cannot bypass installation or enablement.
+An unavailable saved selection can still be cleared, and unrelated Cat edits
+remain possible. Existing explicit installations are not silently removed.
+
+The pilot supplies the selected Markdown body in that Runtime session's **user
+message**, prefixed with `Instructions:` on each turn. It does not install a native
+provider skill, register a system/developer message, or implement on-demand skill
+discovery. No Agency files are written into the provider's global skills directory
+or the conversation cwd. This avoids direct delivery to every Cat sharing that
+cwd, but does not isolate files, shared transcripts or model-generated content.
+
+Mixed group conversations are **not supported correctly**: the Platform exposure
+receipt is keyed to the conversation. Once a managed Cat has used Agency, creation
+or continuation of an ordinary Cat's session in that conversation is rejected by
+the replay fence. The fence also protects against replay after disable; simply
+removing it would break revocation. Per-participant delivery and conversation
+history exposure need separate contracts before claiming general per-Cat group
+support. Normal preview profiles still lack the experiment policy; installation
+currently requires the isolated profile described below. Native skills, ordinary
+preview installation and mixed groups remain further design/implementation work.
+
 ## Run an isolated source candidate
 
 Prepare current dependencies in both worktrees, including Electron. From Platform:
@@ -70,3 +103,16 @@ generation expiration, forged stop authorization, dead-writer recovery and actua
 child close versus synthetic result/cancel. Candidate UI evidence and independent
 review completion are recorded in PLAN-113 before delivery. No live model/account,
 cross-OS runtime execution or installed-release acceptance is implied.
+
+2026-11-11 availability follow-up: Platform's focused manager, Directory/Settings,
+companion/profile and REST suites passed **47 tests**. Server compilation,
+renderer typecheck, test bundling and typecheck of the changed TypeScript tests
+passed. The all-test fixture typecheck reached unrelated missing mobile
+dependencies (`expo-constants`, `@react-native-async-storage/async-storage`), so
+it is not claimed as passing. Runtime's existing managed-plugin, prompt, Claude
+and Codex suites passed **106 tests** in independent review. Additional isolated
+probes verified no startup installation and no shared-cwd Agency files, and
+reproduced the mixed-group rejection in both execution orders. The narrow fix
+received independent code review; it does not repair that group limitation.
+No data-format change, version bump, Desktop build/publication, live model call or
+manual Desktop UI acceptance was performed.
