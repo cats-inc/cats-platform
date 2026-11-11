@@ -32,6 +32,7 @@ import {
   buildAssistantTurnSourceMessage,
 } from '../assistantTurnSegments.js';
 import { requireChannel, resolveChannelCanonicalIdentity } from '../model/index.js';
+import { parseOwnerStartedSurface, readOwnerStarted } from '../../shared/ownerStarted.js';
 import {
   buildChatAssignedParticipantId,
   buildChatLaneId,
@@ -763,6 +764,10 @@ export function projectChatChannelInteractionToCore(
           sourceMessageBody:
             resolveSourceMessageBody(channel, turn.sourceMessageId)
             ?? readRecordMetadataString(existingTurn, 'sourceMessageBody'),
+          // SPEC-139: a retry rebuilt from Core keeps the source message's stamp.
+          ownerStarted: readOwnerStarted(
+            channel.messages.find((message) => message.id === turn.sourceMessageId),
+          ) ?? parseOwnerStartedSurface(readRecordMetadataString(existingTurn, 'ownerStarted')),
           workflowShape: turn.workflowShape,
           workflowStageId: turn.stageId,
           reviewRequired: turn.reviewRequired,

@@ -66,6 +66,7 @@ import {
 } from '../../shared/clientMessageIdentity.js';
 import type { RuntimeTransportContext } from '../../state/runtimeTargeting.js';
 import { isLocalOwnerRequest } from '../../../../platform/desktopControl/routes.js';
+import { resolveOwnerStartedSurface } from '../../shared/ownerStarted.js';
 
 function resolveRestMessageTransport(
   request: ChatApiRouteContext['request'],
@@ -602,6 +603,8 @@ async function handleRestSendMessage(
         now,
         {
           transport: resolveRestMessageTransport(context.request),
+          // SPEC-139: from the authenticated principal only, never from headers or the body.
+          ownerStarted: resolveOwnerStartedSurface(context.auth),
           companionStore: context.dependencies.companionStore,
           memoryService: context.dependencies.memoryService,
           chatStore: createLockedDispatchChatStore(context.dependencies.chatStore, channelId, stateBefore, () => nowFrom(context.dependencies)),

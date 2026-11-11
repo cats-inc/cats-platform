@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress: slice 1 implemented |
+| Status | In progress: slices 1 and 2 implemented |
 | Owner | Cats Chat |
 | Reviewer | Owner |
 | Date | 2026-11-11 |
@@ -47,13 +47,18 @@ are tested as live behaviour.
 
 ### Slice 2: Owner-started stamp
 
-- [ ] `handleRestSendMessage` stamps `ownerStarted` from `context.auth` only: an owner
-      principal with `browser_cookie` (CSRF already enforced) or `mobile_bearer`. Not from
-      `isLocalOwnerRequest` (loopback only, admits `admin`) or client headers.
-- [ ] A client-supplied value is always stripped. A choice answer (`choiceResponse`) is not
-      owner-started. Missing auth means not owner-started.
-- [ ] Retries keep the original message's stamp, including the canonical-core rebuild
-      (`buildCanonicalRetryMessage`). The stamp survives persist and reload.
+- [x] `handleRestSendMessage` stamps `ownerStarted: 'desktop' | 'mobile'` from `context.auth`
+      only (`resolveOwnerStartedSurface`): an `owner` principal with `browser_cookie` (CSRF
+      already enforced) or `mobile_bearer`. Not from `isLocalOwnerRequest` (loopback only,
+      admits `admin`) or client headers.
+- [x] `buildBaseUserMessageMetadata` drops any caller-supplied value on every route, and never
+      stamps a choice answer or a message with a transport binding. Missing auth means not
+      owner-started.
+- [x] The stamp lives on the source message, which a retry reuses. Core turn metadata carries
+      it, so the canonical rebuild (`buildCanonicalChatUserMessage`) keeps it. It survives
+      persist and reload. Read it with `readOwnerStarted`.
+- [x] Tests: `tests/chat-owner-started.test.js` (cookie, bearer, roles, forged values,
+      unauthenticated server, transport, choice answer, Core rebuild, reload).
 
 ### Slice 3: Status board
 

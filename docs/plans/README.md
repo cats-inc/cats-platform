@@ -2,7 +2,8 @@
 
 - [PLAN-133: Boss Cat across Cats](PLAN-133-boss-cat-across-cats.md)
   — in progress, 2026-11-11; SPEC-139 in seven slices, each guarded before it is reachable.
-  Slice 1 (FR-17, the memory checkpoint per conversation) is implemented.
+  Slices 1 (FR-17, the memory checkpoint per conversation) and 2 (the owner-started stamp) are
+  implemented.
 
 - [PLAN-132: Codex session retention](PLAN-132-codex-session-retention.md)
   — implemented, unpublished, 2026-11-11; ephemeral Catlas jobs, Runtime capability admission and
