@@ -24,7 +24,7 @@ const PRODUCTS: PlatformSurfaceId[] = ['chat', 'code', 'work'];
 function fixture() {
   let state = createCat(
     createDefaultChatState(),
-    { name: 'Milo', provider: 'claude', instance: null, model: 'claude-sonnet-4', products: ['chat', 'code', 'work'] },
+    { name: 'Milo', provider: 'claude', model: 'claude-sonnet-4', products: ['chat', 'code', 'work'] },
     NOW,
   );
   const catId = state.cats[0]!.id;
