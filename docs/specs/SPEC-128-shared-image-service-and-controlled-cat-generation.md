@@ -1,5 +1,11 @@
 # SPEC-128: Shared image service and controlled Cat generation
 
+> **2026-11-11 follow-up proposal:** [SPEC-143](SPEC-143-cat-profile-posts-media-and-sharing.md)
+> extends this service for source/avatar/cover inputs, generated video and post-owned asset-only
+> output. The current Runtime contract accepts text-to-image with no source images; the new
+> operations and publication continuation are planned work. Existing direct image delivery,
+> policy and Studio contracts remain the baseline.
+
 ## Metadata
 
 | Field | Value |

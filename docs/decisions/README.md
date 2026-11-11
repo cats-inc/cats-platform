@@ -1,5 +1,9 @@
 # Architecture Decision Records (ADR)
 
+- [ADR-151: Build Cat profile posts on managed media and share links](151-build-cat-profile-posts-on-managed-media-and-share-links.md)
+  — proposed, 2026-11-11; documentation only. Directory feed, agent-owned post lifecycle,
+  managed media inputs/outputs, heartbeat publication and revocable shared-ingress links.
+  Reuses Platform/Runtime execution and one-time settings; no per-post approval workflow.
 - [ADR-150: Manage cats in Cats Directory and keep Settings app-level](150-manage-cats-in-cats-directory-and-keep-settings-app-level.md)
   — accepted, 2026-11-11. Directory is the only place to add and edit cats; each cat's settings
   live at `/entities/cats/:catId/settings`; Settings drops its Cats group and keeps Assistants.

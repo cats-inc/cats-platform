@@ -1,5 +1,9 @@
 # Feature Specifications
 
+- [SPEC-143: Cat profile posts, media creation and sharing](SPEC-143-cat-profile-posts-media-and-sharing.md)
+  — draft, 2026-11-11; not implemented. Cat-authored image/video posts, agent create/edit/delete,
+  source directory and avatar/cover inputs, async publication, Companion initiative, revocable
+  HTTPS share pages and DM/Telegram notification. Photo-first PoC, then required video slice.
 - [SPEC-142: Task, Run and Work tools in conversations](SPEC-142-task-run-and-work-tools-in-conversations.md)
   — draft, 2026-11-11; not implemented. Specifies ADR-149 D10–D13: read tools for a
   conversation's own Tasks and Runs at every level, Work Item and Project tools at `work`

@@ -1,5 +1,11 @@
 # SPEC-085: Companion Profile, Feed, and Library IA
 
+> **2026-11-11 follow-up proposal:** [SPEC-143](SPEC-143-cat-profile-posts-media-and-sharing.md)
+> defines the next Directory feed slice: real media attachments, agent create/edit/delete,
+> source/avatar/cover generation and heartbeat publication. It is a draft, not an implementation
+> claim. Directory ownership follows ADR-150; the current text producer and owner soft remove below
+> remain the baseline. Earlier owner-promotion placeholders do not authorize a second producer.
+
 > Define the revised companion profile surface for Cats Chat: posts, separate
 > media tabs, files, activity, and a control/inspector side panel without
 > duplicating canonical settings.

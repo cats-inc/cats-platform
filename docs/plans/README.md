@@ -1,5 +1,9 @@
 # Implementation Plans
 
+- [PLAN-136: Cat profile posts, media creation and sharing](PLAN-136-cat-profile-posts-media-and-sharing.md)
+  — draft, 2026-11-11; source inventory and documents only. P0–P5 deliver a real avatar-conditioned
+  Paris photo post through the feed, heartbeat, remote share page and owner notifications;
+  P6 completes generated video and source-video recreation. No implementation or live acceptance yet.
 - [PLAN-135: Task, Run and Work tools in conversations](PLAN-135-task-run-and-work-tools-in-conversations.md)
   — draft, 2026-11-11; not started. Six phases for SPEC-142: the `cats` server at every level,
   the base tools, proposals and cards, the Work tools, a conversation in a Project, then

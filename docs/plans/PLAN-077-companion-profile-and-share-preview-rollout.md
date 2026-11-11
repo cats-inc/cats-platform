@@ -1,5 +1,11 @@
 # PLAN-077: Companion Profile and Share Preview Rollout
 
+> **2026-11-11 successor proposal:** [PLAN-136](PLAN-136-cat-profile-posts-media-and-sharing.md)
+> plans real image/video posts, agent lifecycle, source-conditioned creation, heartbeat publishing
+> and external sharing. Existing agent text posts and owner soft removal are baseline behavior;
+> historical owner-promotion tasks and the earlier no-owner-removal note below are not the current
+> contract. PLAN-136 is documentation only and does not claim the new pipeline is delivered.
+
 > Roll out the revised companion profile/feed/library IA and the companion
 > content reference previews that let posts, media, and files be inserted into
 > chat.
