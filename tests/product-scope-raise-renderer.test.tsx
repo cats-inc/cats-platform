@@ -24,7 +24,6 @@ import { useProductScopeRaise } from '../src/products/shared/renderer/hooks/useP
 import {
   postRaiseNotice,
   resetRaiseNoticesForTests,
-  subscribeRaiseNotices,
 } from '../src/products/shared/renderer/productScopeRaiseNotices.ts';
 import { stageCrossSurfaceConversationNavigationHandoff } from '../src/products/shared/renderer/crossSurfaceConversationNavigation.ts';
 import {
@@ -302,10 +301,10 @@ test('while a raise is in flight the chip is disabled and opens nothing', () => 
 });
 
 /** Mounts the raise hook with a raise request that stays open until settled. */
-function createRaiseHarness() {
+function createRaiseHarness(initialRoute: string | null = 'chat-a') {
   const toasts: string[] = [];
   let refreshes = 0;
-  let routeChannelId: string | null = 'chat-a';
+  let routeChannelId: string | null = initialRoute;
   const pending: Array<{ resolve: () => void; reject: (error: Error) => void }> = [];
   const requests: Array<[string, ProductScope, string]> = [];
   let hook!: ReturnType<typeof useProductScopeRaise>;
@@ -440,39 +439,61 @@ test('the redirect handoff carries the toast to the destination', () => {
   }
 });
 
-test('a raise whose app is gone before it settles tells the next product app', async () => {
-  const harness = createRaiseHarness();
+test('a raise whose app is gone tells the next product app, which shows another conversation', async () => {
+  const first = createRaiseHarness();
+  let next: ReturnType<typeof createRaiseHarness> | null = null;
   try {
-    act(() => { void harness.hook.control.raise('chat-a', 'code', 'rev-1'); });
-    // The owner opens Settings or another product while the raise waits on a running turn.
-    harness.unmount();
-    await harness.settleFirst('resolve');
-    const shown: string[] = [];
-    const unsubscribe = subscribeRaiseNotices((message) => shown.push(message));
-    assert.deepEqual(shown, ['This conversation moved to Code.'], 'shown by the next app to mount');
-    assert.equal(harness.hook.takeRedirectNotice('chat-a', 'code'), undefined, 'and not again on a later redirect');
-    unsubscribe();
+    act(() => { void first.hook.control.raise('chat-a', 'code', 'rev-1'); });
+    // The owner opens Settings or the Lobby while the raise waits on a running turn.
+    first.unmount();
+    await first.settleFirst('resolve');
+    next = createRaiseHarness('chat-z');
+    assert.deepEqual(next.toasts, ['This conversation moved to Code.'], 'shown by the next app to mount');
+    assert.equal(next.hook.takeRedirectNotice('chat-a', 'code'), undefined, 'and not again on a later redirect');
   } finally {
-    harness.restore();
+    next?.restore();
+    first.restore();
+  }
+});
+
+test('back on the same conversation, the toast waits for its redirect, and a second raise waits its turn', async () => {
+  const first = createRaiseHarness();
+  let back: ReturnType<typeof createRaiseHarness> | null = null;
+  try {
+    act(() => { void first.hook.control.raise('chat-a', 'code', 'rev-1'); });
+    first.unmount();
+    // The owner reopens the conversation in a new instance of the app before the raise settles.
+    back = createRaiseHarness('chat-a');
+    act(() => { void back!.hook.control.raise('chat-a', 'code', 'rev-2'); });
+    assert.deepEqual(back.requests, [], 'one raise at a time across apps');
+    assert.deepEqual(back.toasts, ['Moving this conversation…']);
+    await first.settleFirst('resolve');
+    assert.deepEqual(back.toasts, ['Moving this conversation…'], 'no toast before the redirect');
+    assert.equal(back.hook.takeRedirectNotice('chat-a', 'code'), 'This conversation moved to Code.',
+      'the redirect carries it');
+  } finally {
+    back?.restore();
+    first.restore();
   }
 });
 
 test('a refusal after the app is gone is told too, and a mounted app shows a posted message at once', async () => {
-  const harness = createRaiseHarness();
+  const first = createRaiseHarness();
+  let next: ReturnType<typeof createRaiseHarness> | null = null;
   try {
-    act(() => { void harness.hook.control.raise('chat-a', 'code', 'rev-1'); });
-    harness.unmount();
-    await harness.settleFirst(new ProductScopeRaiseError('revision_stale', 'changed'));
-    const shown: string[] = [];
-    const unsubscribe = subscribeRaiseNotices((message) => shown.push(message));
-    postRaiseNotice('later');
-    unsubscribe();
-    assert.deepEqual(shown, [
+    act(() => { void first.hook.control.raise('chat-a', 'code', 'rev-1'); });
+    first.unmount();
+    await first.settleFirst(new ProductScopeRaiseError('revision_stale', 'changed'));
+    next = createRaiseHarness('chat-a');
+    act(() => postRaiseNotice({ channelId: null, message: 'later' }));
+    assert.deepEqual(next.toasts, [
       'The conversation changed after the confirmation was shown. Nothing moved; try again.',
       'later',
     ]);
+    assert.equal(next.hook.takeRedirectNotice('chat-a', 'code'), undefined);
   } finally {
-    harness.restore();
+    next?.restore();
+    first.restore();
   }
 });
 
@@ -483,6 +504,11 @@ test('a request that got no answer keeps the toast for a redirect that may still
     await harness.settleFirst(new Error('connection reset'));
     assert.deepEqual(harness.toasts, ["Couldn't confirm the move. If the conversation did not move, try again."]);
     assert.equal(harness.hook.takeRedirectNotice('chat-a', 'work'), 'This conversation moved to Work.');
+    // If the update's redirect came first, the owner was told it moved: no contradicting toast.
+    act(() => { void harness.hook.control.raise('chat-b', 'code', 'rev-2'); });
+    assert.equal(harness.hook.takeRedirectNotice('chat-b', 'code'), 'This conversation moved to Code.');
+    await harness.settleFirst(new Error('connection reset'));
+    assert.equal(harness.toasts.length, 1);
   } finally {
     harness.restore();
   }

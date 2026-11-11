@@ -9,13 +9,17 @@ import {
   productScopeRaisedNotice,
   type ProductScopeRaiseControl,
 } from '../productScopeRaise.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 import {
+  beginRaise,
   clearPendingRaiseNotice,
+  endRaise,
   hasPendingRaiseNotice,
   postRaiseNotice,
   stagePendingRaiseNotice,
   subscribeRaiseNotices,
   takePendingRaiseNotice,
+  type RaiseNoticeMessage,
 } from '../productScopeRaiseNotices.js';
 
 type Translate = (key: MessageKey, values?: MessageInterpolationValues) => string;
@@ -49,8 +53,6 @@ export function useProductScopeRaise(options: ProductScopeRaiseOptions): {
   const { refreshAppShell, showToast, t } = options;
   const raiseRequest = options.raise ?? raiseProductScope;
   const [pendingChannelId, setPendingChannelId] = useState<string | null>(null);
-  // Locked in the handler: one raise at a time, whatever the buttons show.
-  const lockRef = useRef<string | null>(null);
   const routeChannelIdRef = useRef(options.routeChannelId);
   routeChannelIdRef.current = options.routeChannelId;
   const mountedRef = useRef(true);
@@ -58,40 +60,56 @@ export function useProductScopeRaise(options: ProductScopeRaiseOptions): {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
-  // Messages from a raise whose app is gone are shown here.
-  useEffect(() => subscribeRaiseNotices((message) => showToast(message)), [showToast]);
-
-  /** Here while this app is mounted; otherwise in whichever product app is or comes next. */
-  const tell = useCallback((message: string) => {
-    if (mountedRef.current) showToast(message); else postRaiseNotice(message);
+  /**
+   * A raise's outcome, in the app mounted now. A success about the conversation this app shows is
+   * left to that conversation's redirect, which is coming and carries the notice; anything else
+   * is shown here.
+   */
+  const receive = useCallback((entry: RaiseNoticeMessage) => {
+    if (entry.channelId !== null && hasPendingRaiseNotice(entry.channelId)) {
+      if (routeChannelIdRef.current === entry.channelId) return;
+      clearPendingRaiseNotice(entry.channelId);
+    }
+    showToast(entry.message);
   }, [showToast]);
+  useEffect(() => subscribeRaiseNotices(receive), [receive]);
 
   const raise = useCallback(async (channelId: string, target: ProductScope, revision: string): Promise<void> => {
-    if (lockRef.current !== null) return;
-    lockRef.current = channelId;
+    // One raise at a time across every product app, whatever the buttons show.
+    if (!beginRaise(channelId)) {
+      showToast(t(messageKeys.sharedProductScopeRaisePending));
+      return;
+    }
     setPendingChannelId(channelId);
     const notice = productScopeRaisedNotice(target, t);
     stagePendingRaiseNotice(channelId, target, notice);
     try {
       await raiseRequest(channelId, target, revision);
-      // Not yet handed to a redirect, and the owner is not on the conversation (or this app is
-      // gone): say so where they are, and do not pull them back.
-      if (hasPendingRaiseNotice(channelId)
-        && (!mountedRef.current || routeChannelIdRef.current !== channelId)) {
+      if (!hasPendingRaiseNotice(channelId)) {
+        // A redirect already took the notice.
+      } else if (!mountedRef.current) {
+        // This app is gone: the app mounted now decides, by what it shows.
+        postRaiseNotice({ channelId, message: notice });
+      } else if (routeChannelIdRef.current !== channelId) {
+        // The owner went elsewhere meanwhile: say so where they are, and do not pull them back.
         clearPendingRaiseNotice(channelId);
-        tell(notice);
+        showToast(notice);
       }
       if (mountedRef.current) refreshAppShell();
     } catch (error) {
-      // Without a code the request may have reached the server: keep the notice for a redirect
-      // that may still come.
-      if (error instanceof ProductScopeRaiseError && error.code) clearPendingRaiseNotice(channelId);
-      tell(describeProductScopeRaiseFailure(error, t));
+      const refused = error instanceof ProductScopeRaiseError && Boolean(error.code);
+      // Without a refusal the request may have reached the server. If a redirect already took the
+      // notice, the conversation moved and the owner was told.
+      if (!refused && !hasPendingRaiseNotice(channelId)) return;
+      // A refusal clears the notice. Without one, it stays for a redirect that may still come.
+      if (refused) clearPendingRaiseNotice(channelId);
+      const message = describeProductScopeRaiseFailure(error, t);
+      if (mountedRef.current) showToast(message); else postRaiseNotice({ channelId: null, message });
     } finally {
-      lockRef.current = null;
+      endRaise(channelId);
       if (mountedRef.current) setPendingChannelId(null);
     }
-  }, [raiseRequest, refreshAppShell, t, tell]);
+  }, [raiseRequest, refreshAppShell, showToast, t]);
 
   const report = useCallback((message: string) => showToast(message), [showToast]);
 
