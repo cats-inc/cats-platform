@@ -71,15 +71,13 @@ export interface BossCatBoardCat {
 
 /**
  * `title` is null unless the owner set it (FR-4). A conversation whose only Cats are hidden
- * carries its surface, id and age alone (`redacted`, FR-15). A one-to-one conversation (a single
- * Cat, FR-3) carries who and when but no turn state (`oneToOne`): it stays findable for a join.
+ * carries its surface, id and age alone (`redacted`, FR-15).
  */
 export interface BossCatBoardGroup {
   conversationId: string;
   surface: PlatformSurfaceId;
   createdAt: string;
   redacted: boolean;
-  oneToOne?: true;
   title?: string | null;
   participantNames?: string[];
   bossCatIsMember?: boolean;
@@ -138,20 +136,6 @@ export function isHiddenFromBossCat(cat: Pick<ChatCat, 'hiddenFromBossCat'> | nu
 /** An active conversation that is not a direct lane, on Chat, Code or Work. */
 export function isBossCatGroupConversation(channel: ChatChannelState): boolean {
   return channel.status !== 'archived' && !isDirectLaneChannel(channel);
-}
-
-/**
- * FR-3: a group conversation with a single Cat (a one-Cat Code or Work conversation, or a Chat
- * opened with one Cat outside its direct lane) is the owner's one-to-one with that Cat, so the
- * board treats it like a direct lane: who and when, never what is happening there.
- */
-export function isBossCatOneToOneConversation(channel: ChatChannelState): boolean {
-  return isBossCatGroupConversation(channel) && activeCatIds(channel).length === 1;
-}
-
-/** FR-3: where a Cat's turns, choices and approvals count: a group conversation with two or more Cats. */
-export function isBossCatSharedConversation(channel: ChatChannelState): boolean {
-  return isBossCatGroupConversation(channel) && activeCatIds(channel).length >= 2;
 }
 
 function activeCatIds(channel: ChatChannelState): string[] {
@@ -276,9 +260,9 @@ export function buildBossCatBoard(input: BuildBossCatBoardInput): BossCatBoard {
       if (isHiddenFromBossCat(cat)) return { catId: cat.id, name, hidden: true };
       const lane = findCompanionDirectLane(input.state, cat.id);
       // FR-3 and Privacy: a direct lane leaves its Cat only as its presence, its message times
-      // and the Cat's own-initiative state, and a one-to-one conversation like it, so running and
-      // failed turns, choices and approvals count in conversations shared by two or more Cats.
-      const own = channels.filter((channel) => isBossCatSharedConversation(channel)
+      // and the Cat's own-initiative state, so running and failed turns, choices and approvals
+      // count in group conversations only.
+      const own = channels.filter((channel) => isBossCatGroupConversation(channel)
         && activeCatIds(channel).includes(cat.id));
       return {
         catId: cat.id,
@@ -316,7 +300,7 @@ export function buildBossCatBoard(input: BuildBossCatBoardInput): BossCatBoard {
         createdAt: channel.createdAt,
       };
       if (otherCatIds.length > 0 && visibleNames.length === 0) return { ...identity, redacted: true };
-      const who = {
+      return {
         ...identity,
         redacted: false,
         title: readOwnerSetTitle(channel),
@@ -324,10 +308,6 @@ export function buildBossCatBoard(input: BuildBossCatBoardInput): BossCatBoard {
         bossCatIsMember: catIds.includes(input.bossCatId),
         lastOwnerMessageAt: lastMessageAt(channel, (message) => isOwnerMessage(channel, message)),
         lastMessageAt: lastMessageAt(channel),
-      };
-      if (catIds.length === 1) return { ...who, oneToOne: true as const };
-      return {
-        ...who,
         turnRunning: isTurnRunning(channel),
         turnFailed: isLatestTurnFailed(channel),
         waitingChoice: countWaitingChoices(channel) > 0,
