@@ -65,8 +65,12 @@ export function createServer(dependencies: ServerDependencies) {
   } };
   const pluginConfig = dependencies.shared.config;
   const plugins = dependencies.shared.managedPlugins ?? new ManagedPluginManager(pluginConfig.platformDir,
-    pluginConfig.managedPluginPolicy === true && Boolean(pluginConfig.platformDir) && resolve(pluginConfig.platformDir) !== resolve(join(homedir(), '.cats', 'platform')),
-    createPluginRuntimePort(pluginConfig.runtimeBaseUrl, pluginConfig.managedPluginKey ?? pluginConfig.runtimeApiKey));
+    pluginConfig.managedPluginPolicy === true && Boolean(pluginConfig.platformDir)
+      && (pluginConfig.managedPluginMode === 'desktop-preview'
+        ? Boolean(pluginConfig.managedPluginBundlePath)
+        : resolve(pluginConfig.platformDir!) !== resolve(join(homedir(), '.cats', 'platform'))),
+    createPluginRuntimePort(pluginConfig.runtimeBaseUrl, pluginConfig.managedPluginKey ?? pluginConfig.runtimeApiKey),
+    pluginConfig.managedPluginBundlePath);
   const providerSelectorClient = dependencies.shared.runtimeClient;
   const codeAgentToolGrants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
   let catImages: ChatCatImages | undefined = dependencies.chat.catImages;

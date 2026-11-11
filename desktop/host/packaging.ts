@@ -5,6 +5,7 @@ import { decodeAppPackage, meetsMinimumVersion, parseAppLock, supportsVersion, A
 
 import type { DesktopHostConfig } from './config.js';
 import { collectDesktopLicenses } from './licenses.js';
+import { collectDesktopPlugins } from './pluginBundle.js';
 import { readDesktopGoogleClientId } from './googleAuthTransport.js';
 import {
   collectRuntimeSkillContent, resolveDesktopSkillContentProfile, writeRuntimeSkillContent,
@@ -1249,6 +1250,8 @@ export async function stageDesktopPackagingOutputs(
     apps: options.apps,
   });
   const allowedPlatforms = new Set(plan.targets.map((target) => target.platform));
+  const pluginBundle = collectDesktopPlugins(config.packageRoot, plan.contentProfile);
+  plan.plugins = pluginBundle.plugins;
 
   await ensureBuiltAssets(config);
   const appDependencies = await appSidecarDependencies(config.packageRoot, [...allowedPlatforms]);
@@ -1273,6 +1276,12 @@ export async function stageDesktopPackagingOutputs(
   const licenseAssets = await collectDesktopLicenses(config.packageRoot, config.runtimePackageRoot, sidecarLayout.runtime);
   await rm(outputRoot, { recursive: true, force: true });
   await mkdir(join(outputRoot, 'shared'), { recursive: true });
+  const pluginRoot = join(outputRoot, 'shared', 'bundled-plugins');
+  await mkdir(pluginRoot, { recursive: true });
+  for (const [name, bytes] of pluginBundle.files) await writeFile(join(pluginRoot, name), bytes);
+  await writeFile(join(pluginRoot, 'bundle.json'), `${JSON.stringify({
+    schemaVersion: 1, profile: plan.contentProfile, plugins: pluginBundle.plugins,
+  }, null, 2)}\n`);
 
   const appServerStageSource = await resolveAppServerStageSource(config, sidecarLayout.app);
   await stageSidecarOutput(

@@ -635,7 +635,7 @@ export async function persistCreatedCat(
   input: CreateCatInput,
 ): Promise<ChatState> {
   return updateChatState(context.dependencies.chatStore, (state) => {
-    assertCatSkillProfileAvailable(context.dependencies, input.skillProfile);
+    assertCatSkillProfileAvailable(context.dependencies, input.skillProfile, input.provider);
     return createCat(state, input, nowFrom(context.dependencies));
   });
 }
@@ -643,11 +643,16 @@ export async function persistCreatedCat(
 export function assertCatSkillProfileAvailable(
   dependencies: Pick<ChatApiDependencies, 'isPluginSkillAvailable'>,
   profile: string | null | undefined,
+  provider: string | null | undefined,
 ): void {
   const skillId = profile?.trim();
   if (skillId?.startsWith('plugin:') && !dependencies.isPluginSkillAvailable?.(skillId)) {
     throw new ChatApiError(409, 'plugin_skill_unavailable',
       'Install and enable this Plugin in Settings before assigning its skills to a Cat.');
+  }
+  if (skillId?.startsWith('plugin:') && !['codex', 'claude'].includes(provider ?? '')) {
+    throw new ChatApiError(409, 'plugin_provider_unsupported',
+      'Agency skills require a native Codex or Claude Cat. Disable the skill before changing provider.');
   }
 }
 

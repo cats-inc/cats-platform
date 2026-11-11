@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "plugins": [{
+    "id": "agency-agents",
+    "version": "0.1.0",
+    "artifact": "agency-agents-0.1.0.catsplugin",
+    "sha256": "26afae3f0c5f551cc3bbce267c82d574963c4c2f94f48f9e8d3dcb0aa0ca07a5"
+  }]
+}

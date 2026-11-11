@@ -2482,15 +2482,9 @@ async function createMainWindow(
 
 // Hard ceiling for graceful shutdown. The supervisor gives every managed
 // service two grace windows (stdin close, then SIGTERM), so the host-level
-// watchdog derives its budget from the configured per-window grace and the
-// active service count, with a small buffer for app-level cleanup.
-const SHUTDOWN_GRACE_WINDOWS_PER_SERVICE = 2;
+// watchdog uses the supervisor's effective per-service budgets, including the
+// longer Runtime drain window, with a small buffer for app-level cleanup.
 const SHUTDOWN_WATCHDOG_BUFFER_MS = 3_000;
-
-function resolveShutdownWatchdogMs(config: DesktopHostConfig, serviceCount: number): number {
-  return (config.gracefulShutdownMs * SHUTDOWN_GRACE_WINDOWS_PER_SERVICE * Math.max(1, serviceCount))
-    + SHUTDOWN_WATCHDOG_BUFFER_MS;
-}
 
 function waitForShutdownDeadline(ms: number): Promise<'timed_out'> {
   return new Promise((resolve) => {
@@ -2513,9 +2507,7 @@ async function drainManagedServices(): Promise<{ timedOut: boolean }> {
   // Installer completion is outside the sidecar shutdown watchdog budget.
   await setupHelperDrain.drained;
   const drain = supervisor?.stopAll() ?? Promise.resolve();
-  const shutdownWatchdogMs = hostConfig
-    ? resolveShutdownWatchdogMs(hostConfig, supervisor?.getManagedServiceCount() ?? 0)
-    : SHUTDOWN_WATCHDOG_BUFFER_MS;
+  const shutdownWatchdogMs = (supervisor?.getGracefulShutdownBudgetMs() ?? 0) + SHUTDOWN_WATCHDOG_BUFFER_MS;
   const result = await Promise.race([
     drain.then(() => 'drained' as const),
     waitForShutdownDeadline(shutdownWatchdogMs),
@@ -2742,6 +2734,7 @@ async function main(): Promise<void> {
   });
   supervisor = new ManagedServiceSupervisor(hostConfig, {
     env: { ...process.env, CATS_DESKTOP_APPS_KEY: appManagementKey,
+      CATS_PLUGIN_MANAGEMENT_KEY: randomBytes(32).toString('hex'),
       CATS_DESKTOP_AUTH_KEY: desktopAuthKey, CATS_AUTH_GOOGLE_DESKTOP_CLIENT_ID: googleClientId ?? '',
     },
     ingressSecrets: createIngressSecretProtector(safeStorage, hostConfig.paths.platformDir),

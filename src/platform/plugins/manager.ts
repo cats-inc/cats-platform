@@ -52,7 +52,8 @@ export class ManagedPluginManager {
   private queue: Promise<unknown> = Promise.resolve();
   private observation: PluginObservation | null = null;
   private error?: string;
-  constructor(platformDir: string | undefined, readonly policyEnabled: boolean, private readonly runtime: PluginRuntimePort) {
+  constructor(platformDir: string | undefined, readonly policyEnabled: boolean, private readonly runtime: PluginRuntimePort,
+    private readonly bundledArchive?: string) {
     // Embedded/in-memory hosts may omit persistent storage. Never derive a
     // Plugin profile from cwd or the user's home just to construct their server.
     this.policyEnabled = policyEnabled && Boolean(platformDir);
@@ -85,7 +86,7 @@ export class ManagedPluginManager {
   private serial<T>(fn: () => Promise<T>): Promise<T> {
     const result = this.queue.then(fn); this.queue = result.catch(() => {}); return result;
   }
-  private requirePolicy(): void { if (!this.policyEnabled) throw new Error('Enable an isolated internal experiment profile to manage Plugins.'); }
+  private requirePolicy(): void { if (!this.policyEnabled) throw new Error('Plugin installation requires a supported Desktop preview or isolated internal experiment profile.'); }
   /** Conversation receipts prevent automatic transcript replay into a new Runtime
    * UUID from laundering revoked Plugin exposure after a Cat/profile change. */
   wrapClient(client: RuntimeClient): RuntimeClient {
@@ -99,10 +100,12 @@ export class ManagedPluginManager {
         const prior = key ? state.conversations[key] : undefined;
         if (!requested && prior === undefined) return { key };
         if (!key) throw new Error('Managed Plugin skills require a Cats conversation.');
-        if (prior !== undefined && !requested && (!sessionId || state.managedSessions[sessionId] !== prior)) throw new Error('Plugin conversation replay requires managed skills. Start a new conversation to change profiles.');
+        // Shared history is fenced at conversation scope, but direct skill
+        // delivery belongs to each Cat's session. Ordinary group members may
+        // run while this generation is live without receiving Agency instructions.
         if (!manager.inventory().availableSkills.length || (prior !== undefined && prior !== state.generation)) throw new Error('This conversation contains an unavailable Plugin context. Start a new conversation without replaying its history.');
         if (prior === undefined) { state.conversations[key] = state.generation; manager.save(state); }
-        return { key, generation: state.generation };
+        return { key, ...(requested ? { generation: state.generation } : {}) };
       });
     }
     return new Proxy(client, { get(target, property) {
@@ -137,11 +140,21 @@ export class ManagedPluginManager {
     const enabled = this.policyEnabled && state.installed && state.desired === 'enabled' && state.phase === 'enabled'
       && this.observation?.plugin?.enabled && this.observation.plugin.leaseUntil > Date.now()
       && this.observation.plugin.generation === state.generation;
-    return { policyEnabled: this.policyEnabled, revision: state.revision, installed: state.installed, desired: state.desired,
+    let bundledInstallAvailable = false;
+    if (this.policyEnabled && this.bundledArchive) {
+      try { inspectAgencyPackage(readFileSync(this.bundledArchive)); bundledInstallAvailable = true; } catch { /* Unavailable bundle is never installed. */ }
+    }
+    return { bundledInstallAvailable, policyEnabled: this.policyEnabled, revision: state.revision, installed: state.installed, desired: state.desired,
       phase: state.phase, observation: this.observation, error: this.error,
       availableSkills: enabled ? AGENCY_PLUGIN.skills.map(({ id, title }) => ({ id, title })) : [] };
   }
   inspect(bytes: Uint8Array): typeof AGENCY_PLUGIN { this.requirePolicy(); inspectAgencyPackage(bytes); return AGENCY_PLUGIN; }
+  async installBundled(revision: number): Promise<PluginInventory> {
+    this.requirePolicy();
+    if (!this.bundledArchive) throw new Error('This Desktop does not include an Agency installer.');
+    const installed = await this.install(readFileSync(this.bundledArchive), revision);
+    return this.enable(installed.revision);
+  }
   install(bytes: Uint8Array, revision: number): Promise<PluginInventory> {
     return this.serial(async () => {
       this.requirePolicy(); inspectAgencyPackage(bytes); const state = this.read();
@@ -216,8 +229,11 @@ export class ManagedPluginManager {
       if (state.desired !== 'enabled' && ['fencing', 'stop-pending'].includes(state.phase)) return this.reconcileRemoval(state);
       if (state.desired !== 'enabled') return;
       try {
-        await this.observe(state);
-        this.observation = await this.runtime.request('POST', '/renew', this.identity(state));
+        // An installed, still-enabled generation may survive a clean Runtime
+        // restart. Never restore disabled state or unverified CLI lifetimes.
+        assertUnlinked(this.archive); inspectAgencyPackage(readFileSync(this.archive));
+        const observed = await this.observe(state);
+        this.observation = await this.runtime.request('POST', observed.restorable ? '/restore' : '/renew', this.identity(state));
         if (state.phase !== 'enabled') { state.phase = 'enabled'; this.save(state); }
       } catch (error) { this.observation = null; this.error = String(error); }
     });

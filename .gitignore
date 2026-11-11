@@ -28,6 +28,7 @@ config/*
 !config/.gitkeep
 !config/*.example
 !config/desktop-apps.lock.json
+!config/desktop-plugins.lock.json
 !config/catlas-knowledge.json
 !config/orchestrator-knowledge.json
 !config/google-desktop-oauth.json

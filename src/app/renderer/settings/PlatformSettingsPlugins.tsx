@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog.js';
 import { SettingsActionBar, SettingsSection, SettingsSectionHeader } from '../../../design/components/settings/index.js';
 import { AGENCY_PLUGIN, type PluginInventory } from '../../../shared/managedPlugins.js';
 import { useI18n } from '../i18n/index.js';
 import { CATS_DIRECTORY_PATH } from '../../../shared/catsDirectoryPaths.js';
+import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 
 export async function pluginRequest<T>(action = '', body?: unknown): Promise<T> {
   const response = await fetch(`/api/plugins${action ? `/${action}` : ''}`, body === undefined ? undefined : {
@@ -18,14 +19,21 @@ export function PlatformSettingsPlugins() {
   const { t } = useI18n();
   const [inventory, setInventory] = useState<PluginInventory>();
   const [archive, setArchive] = useState<string>();
-  const [error, setError] = useState('');
+  const { toasts, showToast } = useToast();
+  const lastLoadError = useRef('');
   const [busy, setBusy] = useState(false);
   const { dialog, confirm, handleClose } = useConfirmDialog();
-  const refresh = useCallback(() => pluginRequest<PluginInventory>().then(setInventory).catch(error => setError(String(error))), []);
+  const refresh = useCallback(() => pluginRequest<PluginInventory>().then(next => {
+    setInventory(next); lastLoadError.current = '';
+  }).catch(error => {
+    const message = String(error);
+    if (lastLoadError.current !== message) showToast(message);
+    lastLoadError.current = message;
+  }), [showToast]);
   useEffect(() => { void refresh(); const timer = setInterval(() => void refresh(), 5000); return () => clearInterval(timer); }, [refresh]);
   async function act(action: 'install' | 'enable' | 'disable' | 'uninstall') {
     if (!inventory) return;
-    setBusy(true); setError('');
+    setBusy(true);
     try {
       let current = inventory;
       if (action === 'disable' || action === 'uninstall') {
@@ -36,12 +44,17 @@ export function PlatformSettingsPlugins() {
           confirmLabel: t(action === 'uninstall' ? 'pluginsRemove' : 'pluginsDisable'),
           message: `${t('pluginsConfirmRemoval')}\n\n${detail}${current.error ? `\n${t('pluginsOffline')}` : ''}`, defaultAction: 'cancel' })) return;
       }
-      const next = await pluginRequest<PluginInventory>(action, {
+      let next = await pluginRequest<PluginInventory>(action === 'install' && current.bundledInstallAvailable ? 'install-bundled' : action, {
         revision: current.revision, ...(archive ? { archive } : {}),
         confirmedSessions: current.observation?.affectedSessions ?? [], confirmedRuns: current.observation?.pendingRuns.map(run => run.runId) ?? [],
       });
+      if (action === 'install' && next.phase === 'installed') {
+        setInventory(next);
+        next = await pluginRequest<PluginInventory>('enable', { revision: next.revision });
+      }
       setInventory(next); if (action === 'install') setArchive(undefined);
-    } catch (error) { setError(String(error)); } finally { setBusy(false); }
+      if (next.error) showToast(next.error);
+    } catch (error) { showToast(String(error)); await refresh(); } finally { setBusy(false); }
   }
   return <>
     <SettingsSection header={<SettingsSectionHeader title={t('pluginsTitle')} description={t('pluginsDescription')} />}>
@@ -56,19 +69,18 @@ export function PlatformSettingsPlugins() {
         <p>{t('pluginsNewConversation')}</p>
         <Link to={CATS_DIRECTORY_PATH}>{t('pluginsChooseCat')}</Link>
       </>}
-      {(error || inventory?.error) && <p role="alert">{error || inventory?.error}</p>}
       <SettingsActionBar>
         {!inventory?.installed ? <>
-          <label>{t('pluginsChooseFile')}<input type="file" accept=".catsplugin" disabled={busy || !inventory?.policyEnabled} onChange={event => {
+          {!inventory?.bundledInstallAvailable && <label>{t('pluginsChooseFile')}<input type="file" accept=".catsplugin" disabled={busy || !inventory?.policyEnabled} onChange={event => {
             const file = event.target.files?.[0]; setArchive(undefined); if (!file) return;
-            if (file.size !== 40832) { setError(t('pluginsInvalidFile')); return; }
-            setBusy(true); setError('');
+            if (file.size !== 40832) { showToast(t('pluginsInvalidFile')); return; }
+            setBusy(true);
             void file.arrayBuffer().then(async buffer => {
               const encoded = btoa(String.fromCharCode(...new Uint8Array(buffer)));
               await pluginRequest('inspect', { archive: encoded }); setArchive(encoded);
-            }).catch(error => setError(String(error))).finally(() => setBusy(false));
-          }} /></label>
-          <button className="primaryButton" type="button" disabled={busy || !archive} onClick={() => void act('install')}>{t('pluginsInstall')}</button>
+            }).catch(error => showToast(String(error))).finally(() => setBusy(false));
+          }} /></label>}
+          <button className="primaryButton" type="button" disabled={busy || !inventory?.policyEnabled || (!inventory.bundledInstallAvailable && !archive)} onClick={() => void act('install')}>{t('pluginsInstall')}</button>
         </> : <>
           <button className="secondaryButton" type="button" disabled={busy || !inventory.policyEnabled || inventory.availableSkills.length > 0 || ['fencing', 'confirmation-required', 'stop-pending'].includes(inventory.phase)} onClick={() => void act('enable')}>{t('pluginsEnable')}</button>
           <button className="secondaryButton" type="button" disabled={busy || !inventory.policyEnabled} onClick={() => void act('disable')}>{t('pluginsDisable')}</button>
@@ -77,5 +89,6 @@ export function PlatformSettingsPlugins() {
       </SettingsActionBar>
     </SettingsSection>
     <ConfirmDialog dialog={dialog} onClose={handleClose} />
+    <ToastContainer toasts={toasts} />
   </>;
 }

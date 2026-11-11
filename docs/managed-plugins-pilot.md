@@ -8,38 +8,47 @@ only Agency 0.1.0, SHA-256
 The immutable preview manifest's integration-pending field is historical build
 metadata; host policy and exact archive admission grant this one pilot integration.
 
-## Installation and delivery boundaries (2026-11-11 audit)
+## Optional preview installation (2026-11-11)
 
-Agency is optional and starts **not installed**, including in a policy-enabled
-profile. Starting Desktop or polling the inventory must not install or enable it.
-Package inclusion and installation are separate decisions: the owner permits a
-future Standard preview to carry the archive without installing it. The current
-0.15.1 preview staging does not include an Agency archive; its Settings card was
-static catalog information, not evidence of installation. Release hosting remains
-undecided. This audit does not change release pins or promote the internal pilot.
+Agency starts **not installed**, including in a policy-enabled profile. Starting
+Desktop or polling inventory never installs it. Preview packaging carries the
+production archive from `vendor/` using `config/desktop-plugins.lock.json`; release
+content excludes it. The host validates the bundled bytes and passes the
+`desktop-preview` policy and a private management key to both local sidecars.
+This content choice is separate from Standard/developer signing. Downloading
+Plugins from GitHub Releases remains undecided.
 
-The Directory picker only offers skills from a live enabled installation. Cat
-creation and profile updates enforce the same inventory check on the server;
-knowing or retaining a `plugin:` ID cannot bypass installation or enablement.
-An unavailable saved selection can still be cleared, and unrelated Cat edits
-remain possible. Existing explicit installations are not silently removed.
+1. On a clean preview profile, Settings → Plugins offers **Install** without a
+   file picker. Directory Cat settings show no Agency names or saved-selection
+   hints before installation.
+2. Install verifies the immutable archive, saves it and registers the two skills
+   with Runtime. It does not assign skills to any Cat.
+3. For a native Codex or Claude Cat, select Agency Code Reviewer or Agency UX
+   Researcher in Directory. Selecting the active skill again clears it. Start a
+   new conversation to use the changed selection. Unsupported providers cannot
+   select Agency, including through the Cat API.
+4. Settings Disable/Remove previews directly affected Runtime sessions and asks
+   for confirmation. Changed impact requires fresh confirmation; unknown process
+   lifetimes keep removal pending. Start a new conversation after revocation.
 
-The pilot supplies the selected Markdown body in that Runtime session's **user
-message**, prefixed with `Instructions:` on each turn. It does not install a native
-provider skill, register a system/developer message, or implement on-demand skill
-discovery. No Agency files are written into the provider's global skills directory
-or the conversation cwd. This avoids direct delivery to every Cat sharing that
-cwd, but does not isolate files, shared transcripts or model-generated content.
+The selected Markdown is supplied in that Cat's Runtime **user message**,
+prefixed with `Instructions:` on every turn. This is instruction delivery, not a
+system/developer message or native on-demand skill discovery. No Agency files
+are written into provider-global skills directories or the conversation cwd.
+Ordinary group members can run before or after an Agency member without receiving
+its overlay, including ordinary members using other providers. They can still
+read shared history and skill-influenced output; this is not isolation of content.
 
-Mixed group conversations are **not supported correctly**: the Platform exposure
-receipt is keyed to the conversation. Once a managed Cat has used Agency, creation
-or continuation of an ordinary Cat's session in that conversation is rejected by
-the replay fence. The fence also protects against replay after disable; simply
-removing it would break revocation. Per-participant delivery and conversation
-history exposure need separate contracts before claiming general per-Cat group
-support. Normal preview profiles still lack the experiment policy; installation
-currently requires the isolated profile described below. Native skills, ordinary
-preview installation and mixed groups remain further design/implementation work.
+After disable/remove, Platform blocks subsequent requests from the whole exposed
+conversation, including a fresh Runtime UUID or cleared Cat selection. Runtime's
+durable native exposure and stop receipts cover directly selected Agency sessions.
+An ordinary group member already running may finish; it is not reported as a
+directly managed process. Existing history remains readable. Explicit prior
+installations are retained; the default-off change does not silently delete them.
+
+The earlier 0.15.1 preview had only a static Settings catalog card, no bundled
+installer; PR #437 fixed selection gating. The workflow above is the subsequent
+preview packaging extension, not a claim that 0.15.1 already shipped it.
 
 ## Run an isolated source candidate
 
@@ -59,7 +68,8 @@ both hosts must use that key instead. Remote Runtime endpoints are rejected.
 
 1. Open Settings → Plugins. Select the `.catsplugin` produced by cats-plugins.
    Inspection verifies the complete immutable archive before ZIP decoding.
-2. Install, then enable. Installation alone does not register or select skills.
+2. Install in Settings registers the package; the low-level install API still
+   separates storing bytes from enablement for recovery. Neither selects Cat skills.
 3. In a Cat's skill settings choose Agency Code Reviewer or Agency UX Researcher.
    Start a new conversation with native Codex or Claude. A hot addition to an
    existing ordinary worker is rejected. Shell, WSL, Docker and peer execution
@@ -85,8 +95,11 @@ Unverifiable locks and damaged state are preserved and fail closed.
 
 Platform renews a 30-second Runtime lease every 10 seconds. Expiration fences new
 work and requests closure of the affected CLI lifetimes. Runtime restart invalidates
-leases and never replays model requests. Re-enabling requires an explicit action
-and a new generation; old contexts remain fenced. Orphan lifetime receipts after a
+leases and never replays model requests. When the same enabled installation has
+no pending CLI lifetimes, authenticated restore preserves its generation and
+conversation exposure. Disabled/mismatched state, same-boot expiry and orphan
+receipts cannot be restored. Explicit re-enable creates a new generation; old
+contexts remain fenced. Orphan lifetime receipts after a
 crash need operator recovery. This pilot deliberately has no force-remove path that
 would pretend a stored PID or a restart is proof of termination.
 
@@ -94,25 +107,21 @@ Runtime identities are pinned per Platform profile. A different Runtime cannot
 acknowledge deletion of the old Runtime's capabilities. Built-in skills, manual
 skills/MCP and unrelated package directories are not managed by this installer.
 
-## Validation record
+## Validation scope and packaging dependency
 
-Focused automated checks cover exact archive admission, default-off policy,
-install/enable separation, stale revisions, offline removal and restart intent,
-new impact confirmation, conversation replay fencing, native rediscovery,
-generation expiration, forged stop authorization, dead-writer recovery and actual
-child close versus synthetic result/cancel. Candidate UI evidence and independent
-review completion are recorded in PLAN-113 before delivery. No live model/account,
-cross-OS runtime execution or installed-release acceptance is implied.
+Automated coverage includes pinned production preview/release staging, host
+policy/key propagation, default-off inventory, the Settings Install action,
+Directory visibility and toggling, Cat API availability/provider gates, mixed-group
+admission in both execution orders, clean restart restore and rejected restores,
+and the actual native Codex/Claude request payloads for both roles on successive
+turns. Ordinary requests receive no Agency overlay; shared cwd stays unchanged.
+Lifecycle tests retain offline removal, changed-impact confirmation, stale
+revisions, generation fencing, damaged storage and verified process-close rules.
+Detailed validation for this extension is recorded in PLAN-113 and Runtime
+PLAN-044. Native Desktop UI acceptance is unavailable in this Mac environment;
+component/API/packaging checks must not be described as manual installed UI checks.
 
-2026-11-11 availability follow-up: Platform's focused manager, Directory/Settings,
-companion/profile and REST suites passed **47 tests**. Server compilation,
-renderer typecheck, test bundling and typecheck of the changed TypeScript tests
-passed. The all-test fixture typecheck reached unrelated missing mobile
-dependencies (`expo-constants`, `@react-native-async-storage/async-storage`), so
-it is not claimed as passing. Runtime's existing managed-plugin, prompt, Claude
-and Codex suites passed **106 tests** in independent review. Additional isolated
-probes verified no startup installation and no shared-cwd Agency files, and
-reproduced the mixed-group rejection in both execution orders. The narrow fix
-received independent code review; it does not repair that group limitation.
-No data-format change, version bump, Desktop build/publication, live model call or
-manual Desktop UI acceptance was performed.
+The next Desktop source selection must include Runtime's desktop-preview policy
+and restore extension alongside this Platform change. Keep exact source pins in
+the new release preparation; do not amend a previously published release. There is
+no data-format change or implicit version bump/publication in this implementation.

@@ -650,6 +650,22 @@ requires loading its current record. Reports remain available with the task's
 Code artifacts. This records manual acceptance without running checks, changing
 task approval, claiming reviewer independence or granting publication.
 
+### Optional Agency bundle in preview
+
+Preview content includes the exact Agency 0.1.0 installer bytes pinned by
+`config/desktop-plugins.lock.json`; release content omits them. This is separate
+from Standard/developer signing. A clean profile remains uninstalled until
+Settings → Plugins → Install; only then may each Cat select a skill. No files
+are projected into provider-global or conversation-cwd skill directories.
+
+The next Desktop source selection must include the Runtime
+[preview policy, clean restore and shutdown extension](https://github.com/cats-inc/cats-runtime/pull/219)
+alongside the Platform installer. Record the full Runtime SHA in that release's
+Source selection as usual. An older Runtime cannot provide this installation
+contract; do not reuse a previously frozen Runtime pin for a new Agency preview.
+No published release is changed by this implementation. See the
+[pilot guide](managed-plugins-pilot.md) for supported providers and validation scope.
+
 ### Provider selection contract
 
 Selection-aware Platform/Desktop must connect to the matching Runtime contract

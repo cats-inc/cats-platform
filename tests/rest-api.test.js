@@ -985,6 +985,9 @@ test('Cat routes admit Agency only after explicit install and enable, and reject
         method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
       });
       assert.equal((await patch({ skillProfile: AGENCY_PLUGIN.skills[1].id })).status, 200);
+      const unsupported = await patch({ provider: 'gemini' });
+      assert.equal(unsupported.status, 409);
+      assert.equal((await unsupported.json()).error.code, 'plugin_provider_unsupported');
       assert.equal((await patch({ skillProfile: 'plugin:unknown/skill' })).status, 409);
       await post('disable', { revision: inventory.revision, confirmedSessions: [], confirmedRuns: [] });
       assert.equal((await create()).status, 409);
@@ -993,6 +996,37 @@ test('Cat routes admit Agency only after explicit install and enable, and reject
       assert.equal((await patch({ name: 'Renamed' })).status, 200);
       assert.equal((await patch({ skillProfile: null })).status, 200);
       assert.equal((await store.read()).cats[0].skillProfile, null);
+    }, store, { managedPlugins: manager });
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('preview Plugin route installs bundled bytes without an upload and leaves Cats unassigned', async () => {
+  const root = await mkdtemp(path.join(await realpath(tmpdir()), 'cats-plugin-bundled-route-'));
+  let plugin = null;
+  const manager = new ManagedPluginManager(root, true, {
+    async request(method, route, body) {
+      if (method === 'PUT') plugin = { ...body, leaseUntil: Date.now() + 30_000 };
+      return { protocol: 1, runtimeId: 'bundled-route-runtime', plugin, affectedSessions: [], pendingRuns: [] };
+    },
+  }, path.resolve('vendor/agency-agents-0.1.0.catsplugin'));
+  try {
+    const store = new MemoryChatStore();
+    await withServer(createRuntimeStub(), async baseUrl => {
+      const before = await (await fetch(`${baseUrl}/api/plugins`)).json();
+      assert.equal(before.installed, false); assert.equal(before.bundledInstallAvailable, true);
+      const response = await fetch(`${baseUrl}/api/plugins/install-bundled`, {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ revision: before.revision }),
+      });
+      assert.equal(response.status, 200);
+      const after = await response.json();
+      assert.equal(after.installed, true); assert.equal(after.availableSkills.length, 2);
+      assert.equal((await store.read()).cats.length, 0);
+      const rejected = await fetch(`${baseUrl}/api/cats`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: 'Unsupported', provider: 'gemini', skillProfile: AGENCY_PLUGIN.skills[0].id }),
+      });
+      assert.equal(rejected.status, 409);
+      assert.equal((await rejected.json()).error.code, 'plugin_provider_unsupported');
     }, store, { managedPlugins: manager });
   } finally { await rm(root, { recursive: true, force: true }); }
 });

@@ -177,6 +177,11 @@
     ],
     "extraResources": [
       {
+        "from": "build/desktop-packaging/shared/bundled-plugins",
+        "to": "app-sidecar/bundled-plugins",
+        "filter": ["**/*"]
+      },
+      {
         "from": "build/desktop-packaging/shared/app-sidecar/LICENSE",
         "to": "app-sidecar/LICENSE"
       },
