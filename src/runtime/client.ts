@@ -660,7 +660,7 @@ export class CatsRuntimeClient implements RuntimeClient {
   }
   async putMediaSource(id: string, bytes: Uint8Array) {
     const response = await fetch(`${this.baseUrl}/media/images/sources/${encodeURIComponent(id)}`, {
-      method: 'PUT', body: Buffer.from(bytes), headers: { ...this.authHeaders(), 'Content-Type': 'application/octet-stream' }, signal: AbortSignal.timeout(90000),
+      method: 'PUT', body: new Uint8Array(bytes).buffer, headers: { ...this.authHeaders(), 'Content-Type': 'application/octet-stream' }, signal: AbortSignal.timeout(90000),
     });
     const value = JSON.parse(new TextDecoder().decode(await readImageResponse(response)));
     if (value.id !== id) throw new Error('invalid_media_source');
