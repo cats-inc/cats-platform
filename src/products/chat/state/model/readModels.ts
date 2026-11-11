@@ -23,6 +23,7 @@ import {
   isDirectLaneChannel,
   normalizeChannelAssignmentsForRoomMode,
   resolveChannelKind,
+  resolveChannelProductScope,
   resolveDirectLaneRecipientId,
 } from '../../shared/channelTopology.js';
 import {
@@ -193,6 +194,8 @@ export function buildChannelView(
     roomMode: roomRouting.mode,
     participants: normalizedParticipantAssignments,
   });
+  // SPEC-141 FR-6: the view always carries the scope, also for a channel that has none stored.
+  clonedChannel.productScope = resolveChannelProductScope(clonedChannel);
   if (isDirectLaneChannel(clonedChannel)) {
     roomRouting.defaultRecipientId = resolveDirectLaneRecipientId(
       normalizedParticipantAssignments,
@@ -282,6 +285,7 @@ export function toChannelSummary(
     title: channel.title,
     topic: channel.topic,
     originSurface: channel.originSurface,
+    productScope: resolveChannelProductScope(channel),
     channelKind: resolveChannelKind({
       channelKind: channel.channelKind,
       roomMode: roomRouting.mode,

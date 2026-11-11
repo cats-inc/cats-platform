@@ -24,6 +24,7 @@ import {
   type ProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
+import { deriveProductScope } from '../../../../shared/productScope.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../../shared/platformSurfaces.js';
 import {
   inferChannelKind,
@@ -115,6 +116,12 @@ export {
   toChannelSummary,
 } from './readModels.js';
 export { bindChannelCoordinator, requireCat, requireChannel } from './shared.js';
+export {
+  ProductScopeRaiseError,
+  productScopeRaiseRevision,
+  raiseChannelProductScope,
+  type ProductScopeRaiseRefusal,
+} from './productScope.js';
 export {
   archiveCat,
   createCat,
@@ -543,6 +550,12 @@ export function createChannel(
   };
 
   syncChannelDefaultRecipientAndTopology(channel);
+  // SPEC-141 FR-2: a new conversation starts at its origin, and a direct lane at `chat`. The
+  // input cannot name a scope.
+  channel.productScope = deriveProductScope({
+    originSurface,
+    directLane: isDirectLaneChannel(channel),
+  });
   nextState.channels.unshift(channel);
   nextState.selectedChannelId = channelId;
 

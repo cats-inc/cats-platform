@@ -39,6 +39,7 @@ import {
   normalizePlatformSurface,
   normalizePlatformSurfaceList,
 } from '../../../../shared/platformSurfaces.js';
+import { deriveProductScope, isProductScope } from '../../../../shared/productScope.js';
 import {
   isRuntimePermissionMode,
   isRuntimeWorkspaceAccess,
@@ -382,6 +383,15 @@ export function normalizeChannel(
     ...normalizeBossCatJoins(channelRecord.bossCatJoins),
     topic: readString(channelRecord.topic, 'This chat is still taking shape.'),
     originSurface: normalizePlatformSurface(channelRecord.originSurface),
+    // SPEC-141 FR-3: a valid stored scope is kept, even below the origin, so loading never
+    // raises one. A missing or invalid one is derived: `chat` for a direct lane, else the
+    // origin's level, else `chat`.
+    productScope: isProductScope(channelRecord.productScope)
+      ? channelRecord.productScope
+      : deriveProductScope({
+        originSurface: channelRecord.originSurface,
+        directLane: channelKind === 'direct_message',
+      }),
     channelKind,
     recoverableDirectLaneCatId: readNullableString(channelRecord.recoverableDirectLaneCatId),
     status,

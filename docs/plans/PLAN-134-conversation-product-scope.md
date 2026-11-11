@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft; not started. The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
+| **Status** | In progress: Phase 1 is done, Phases 2 to 7 are not started. The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -36,24 +36,41 @@ that pull request records it.
 
 **Goal:** every conversation carries a scope, and nothing reads it yet (FR-1 to FR-7).
 
-- [ ] Add `productScope` to the conversation state, the summary and view types, the renderer
+- [x] Add `productScope` to the conversation state, the summary and view types, the renderer
       mirrors and the mobile summary type. The create input types do not get the field.
-- [ ] Creation stamps it: the validated origin, or `chat` for a direct lane, for a single
+  - The field is optional on the types, like `originSurface`. Code that needs a value reads
+    it through `resolveChannelProductScope`, which derives one when the field is absent.
+  - The two places where Desktop rebuilds a summary field by field copy it too.
+- [x] Creation stamps it: the validated origin, or `chat` for a direct lane, for a single
       conversation and for each parallel member.
-- [ ] Loading derives it as FR-3 says when the stored value is missing or invalid, for a direct
+- [x] Loading derives it as FR-3 says when the stored value is missing or invalid, for a direct
       lane and for a no-origin conversation or group. A valid stored value is kept, so loading
       never raises a scope.
-- [ ] Add the one raise function to the Chat model. It refuses an equal or lower level, a
+  - A parallel group stores no scope of its own (FR-5). A no-origin group's members load as
+    `chat`; listing the group's own entry under Chat is Phase 2's Recents change.
+- [x] Add the one raise function to the Chat model. It refuses an equal or lower level, a
       direct lane and a parallel member.
-- [ ] Add the raise revision helper (FR-7). `collaborationExecutionRevision` is not touched.
-- [ ] Core metadata projected from a conversation gains `productScope` beside `originSurface`:
+  - It also refuses an archived conversation and a value that is not a scope. Each refusal
+    has a stable code for Phase 5's routes.
+  - A member of an archived group is still a member. A conversation stops being one when its
+    group is dissolved or no longer lists it.
+  - No route calls it yet.
+- [x] Add the raise revision helper (FR-7). `collaborationExecutionRevision` is not touched.
+  - The folder in the digest is `repoPath`. `chatCwd` is left out: a first session fills it
+    in for a sandbox, which changes nothing the confirmation says.
+- [x] Core metadata projected from a conversation gains `productScope` beside `originSurface`:
       Task, WorkItem, Run, Mission, Trace, Checkpoint, Outcome and Activity.
-- [ ] Tests for FR-1 to FR-7, with a load-and-save round trip that shows only the new field
+- [x] Tests for FR-1 to FR-7, with a load-and-save round trip that shows only the new field
       added.
 
 **Deliverables:** the field exists everywhere and the state version is unchanged. This phase
 changes the frozen contract `src/products/chat/api/contracts.ts`, so it needs integration
 review.
+
+**Result:** the contract change is additive, one optional field on three types. Nothing reads
+the field, so S4's and S6's outcomes are stored and not yet visible: a no-origin conversation
+and a direct lane created outside Chat are stored as `chat`, and Phase 2 is where Recents and
+tool delivery start to follow that.
 
 ### Phase 2: Readers follow the scope
 
@@ -149,6 +166,10 @@ previews and work areas appear under `/work`.
     frozen, so this needs integration review.
 - [ ] Confirm how a turn whose session was lost is handled today. FR-25 relies on it for a
       failed recycle, and this plan has not read that code.
+- [ ] Confirm that a raised conversation cannot become a direct lane. Phase 1 found no such
+      path: only creation makes a lane, and the raise refuses one. A valid stored scope is kept
+      as stored (FR-3), so a path that turned a raised conversation into a lane would leave a
+      lane above `chat`, against S6.
 - [ ] Tests that a session created without the `cats` server gains it on its next send, that a
       running turn keeps its tools, and that a failed recycle leaves the scope raised.
 - [ ] Tests that a prepared and a running SPEC-118 collaboration are unaffected.
@@ -297,10 +318,13 @@ scope.
 | File | Action | Description |
 |------|--------|-------------|
 | `src/products/chat/api/contracts.ts`, `src/products/shared/api/workspaceContracts.ts`, `src/mobile/contracts.ts` | Modify | `productScope` on the state, summary and view types |
-| `src/shared/productScope.ts` | Create | The order, the comparison, the derivation and the raise revision |
+| `src/shared/productScope.ts` | Create | The order, the comparison and the derivation |
+| `src/products/chat/state/model/productScope.ts` | Create | The raise function and the raise revision, which need Chat state and a hash |
+| `src/products/chat/shared/channelTopology.ts` | Modify | `resolveChannelProductScope`, the one way to read a conversation's scope |
 | `src/core/types.ts`, `src/products/chat/state/store.ts`, `chat-snapshot/index.ts` | Modify | The state version and its upgrade (D9), in Phase 5 |
 | `src/products/chat/state/model/index.ts`, `chat-snapshot/entities.ts`, `model/readModels.ts` | Modify | Stamp, derive, raise and summarize |
 | `src/products/chat/state/core-projection/entities.ts`, `workflow.ts` | Modify | The metadata copy |
+| `src/products/shared/renderer/workspaceChatUtils.tsx`, `activeEntityMerge.ts` | Modify | The scope in Desktop's two summary copies |
 | `src/platform/runtime/invocationEnrichment.ts` | Modify | The scope on the enricher's channel type |
 | The "follows the scope" files in the inventory | Modify | Read the scope |
 | `src/products/chat/state/orchestratorKnowledge.ts`, `collaborationExecution.ts`, `orchestratorCollaboration.ts` | Modify | The role tools at every level (D8) |

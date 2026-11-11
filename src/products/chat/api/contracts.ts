@@ -45,6 +45,7 @@ import type {
   PlatformHostEnvelope,
   PlatformSurfaceId,
 } from '../../../shared/platform-contract.js';
+import type { ProductScope } from '../../../shared/productScope.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { MessageLocale } from '../../../shared/i18n/index.js';
 import type { FolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
@@ -348,6 +349,12 @@ export interface ChatChannelState {
   title: string;
   topic: string;
   originSurface?: PlatformSurfaceId | null;
+  /**
+   * SPEC-141: the conversation's level on the ladder `chat < code < work`. Creation stamps it
+   * and loading fills in a missing one. It is only ever raised, by `raiseChannelProductScope`.
+   * Read it through `resolveChannelProductScope`, which also answers for a value that is absent.
+   */
+  productScope?: ProductScope;
   channelKind?: ChatChannelKind;
   recoverableDirectLaneCatId?: string | null;
   status: ChatChannelStatus;
@@ -401,6 +408,8 @@ export interface ChatChannelSummary {
   title: string;
   topic: string;
   originSurface?: PlatformSurfaceId | null;
+  /** SPEC-141: the conversation's product scope. */
+  productScope?: ProductScope;
   channelKind?: ChatChannelKind;
   status: ChatChannelStatus;
   unreadCount: number;

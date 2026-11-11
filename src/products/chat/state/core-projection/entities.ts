@@ -58,6 +58,7 @@ import {
 } from '../room-routing/continuationContext.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../../shared/platformSurfaces.js';
 import { isAdminCat } from '../../../shared/catGroups.js';
+import { resolveChannelProductScope } from '../../shared/channelTopology.js';
 import {
   readMetadataBoolean,
   readMetadataRecord,
@@ -570,6 +571,7 @@ function buildChannelTaskMetadata(
     ...structuredClone(existingTask?.metadata ?? {}),
     source: 'chat-channel',
     originSurface: channel.originSurface,
+    productScope: resolveChannelProductScope(channel),
     channelId: channel.id,
     containerId,
     parallelGroupId,
@@ -622,6 +624,7 @@ function buildChannelWorkItemMetadata(
     ...structuredClone(existingWorkItem?.metadata ?? {}),
     source: 'chat-channel',
     originSurface: channel.originSurface,
+    productScope: resolveChannelProductScope(channel),
     channelId: channel.id,
     containerId,
     parallelGroupId,

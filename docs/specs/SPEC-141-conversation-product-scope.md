@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft, 2026-11-11, revised the same day after an independent review and again after the owner answered Q1, Q2 and Q4. The owner's decisions D1 to D13 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S2 to S6 and Q3 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects. S1 was put to the owner the same day. Not implemented |
+| **Status** | Draft, 2026-11-11, revised the same day after an independent review and again after the owner answered Q1, Q2 and Q4. The owner's decisions D1 to D13 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S2 to S6 and Q3 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects. S1 was put to the owner the same day. Implementation started: the field exists (FR-1 to FR-7, PLAN-134 Phase 1) and nothing reads it yet |
 | **Owner** | Product owner |
 | **Reviewer** | Owner; an independent review before implementation |
 | **Decision** | [ADR-149](../decisions/149-let-a-conversation-gain-product-scopes-and-never-lose-them.md) |

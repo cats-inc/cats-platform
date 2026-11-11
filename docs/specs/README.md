@@ -6,7 +6,8 @@
   where every write is a proposal the owner confirms, and a Work conversation that can belong
   to a Project. All on the `cats` session server. S1–S7 and Q1–Q5 wait for the owner. PLAN-135.
 - [SPEC-141: Conversation product scope](SPEC-141-conversation-product-scope.md)
-  — draft, 2026-11-11; not implemented. Specifies ADR-149: the `productScope` field, what
+  — draft, 2026-11-11; the field is implemented (FR-1 to FR-7, PLAN-134 Phase 1) and nothing
+  reads it yet. Specifies ADR-149: the `productScope` field, what
   follows it and what stays with the origin, the owner-only raise with its confirmation, Work
   conversations gaining Code's tools, the role tools at every level and the state version
   rise. The owner answered Q1, Q2 and Q4; S1–S6 and Q3 stand as proposals. PLAN-134.
