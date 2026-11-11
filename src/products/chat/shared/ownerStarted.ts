@@ -33,9 +33,11 @@ export const CONVERSATION_PROPOSAL_CARD_METADATA_KEY = 'conversationProposal';
  * The owner's cards, the Boss Cat join card and a proposal's card, are rendered for the owner
  * only: no model context, no transport.
  */
-export function isBossCatJoinRequestMessage(message: Pick<ChatMessage, 'metadata'> | null | undefined): boolean {
+export function isBossCatJoinRequestMessage(
+  message: (Pick<ChatMessage, 'metadata'> & { senderKind?: string }) | null | undefined,
+): boolean {
   return Boolean(message?.metadata?.[BOSS_CAT_JOIN_REQUEST_METADATA_KEY]
-    || message?.metadata?.[CONVERSATION_PROPOSAL_CARD_METADATA_KEY]);
+    || (message?.senderKind === 'system' && message.metadata?.[CONVERSATION_PROPOSAL_CARD_METADATA_KEY]));
 }
 
 export function withoutBossCatJoinRequests<T extends Pick<ChatMessage, 'id' | 'metadata'>>(
@@ -49,11 +51,12 @@ export function withoutBossCatJoinRequests<T extends Pick<ChatMessage, 'id' | 'm
 export function withoutOwnerStarted<T extends Record<string, unknown>>(
   metadata: T | null | undefined,
 ): Omit<T, typeof OWNER_STARTED_METADATA_KEY | typeof BOSS_CAT_TURN_METADATA_KEY
-  | typeof BOSS_CAT_JOIN_REQUEST_METADATA_KEY> {
+  | typeof BOSS_CAT_JOIN_REQUEST_METADATA_KEY | typeof CONVERSATION_PROPOSAL_CARD_METADATA_KEY> {
   const {
     [OWNER_STARTED_METADATA_KEY]: _stamp,
     [BOSS_CAT_TURN_METADATA_KEY]: _receipts,
     [BOSS_CAT_JOIN_REQUEST_METADATA_KEY]: _card,
+    [CONVERSATION_PROPOSAL_CARD_METADATA_KEY]: _proposal,
     ...rest
   } = metadata ?? ({} as T);
   return rest;

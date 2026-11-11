@@ -13,6 +13,8 @@ import {
   type ConversationProposalView,
 } from '../../../platform/proposals/contracts.js';
 import { productScopeIncludes } from '../../../shared/productScope.js';
+import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
+import { createAsyncKeyedGate } from '../shared/asyncControl.js';
 import { resolveChannelProductScope } from '../shared/channelTopology.js';
 import {
   buildConversationProposalDigest,
@@ -59,6 +61,10 @@ export function createConversationProposalService(options: ConversationProposalS
   decide(channelId: string, proposalId: string, decision: 'confirm' | 'decline', ownerActorId: string): Promise<ConversationProposalDecision>;
 } {
   const now = options.now ?? (() => new Date());
+  // Proposals and answers are serialized per conversation on their own gate. The conversation's
+  // mutation gate is held for a whole turn, and a tool proposing during that turn would wait on it.
+  const gate = createAsyncKeyedGate();
+  const gateKey = (channelId: string) => `proposals:${channelId}`;
 
   async function contextFor(state: ChatState, channelId: string, conversationId: string): Promise<ConversationProposalContext | null> {
     const channel = channelOf(state, channelId);
@@ -77,9 +83,11 @@ export function createConversationProposalService(options: ConversationProposalS
     async propose(input) {
       const kind = options.kinds.get(input.kind);
       if (!kind) return { refusal: 'unknown_proposal_kind', message: `No such proposal kind: ${input.kind}` };
-      return options.mutationGate.run(input.channelId, async () => {
+      // The conversation is the grant's channel; its id is derived, never taken from the caller.
+      const conversationId = buildChatConversationId(input.channelId);
+      return gate.run(gateKey(input.channelId), async () => {
         const state = await options.chatStore.read();
-        const context = await contextFor(state, input.channelId, input.conversationId);
+        const context = await contextFor(state, input.channelId, conversationId);
         if (!context) return { refusal: 'conversation_not_found', message: 'The conversation is gone.' };
         if (!productScopeIncludes(context.level, kind.level)) {
           return { refusal: 'level_too_narrow', message: `This conversation's level does not offer ${input.kind}.` };
@@ -95,13 +103,13 @@ export function createConversationProposalService(options: ConversationProposalS
           return { refusal: 'proposal_too_large', message: 'The proposal is too large.' };
         }
         const digest = buildConversationProposalDigest({
-          kind: input.kind, channelId: input.channelId, conversationId: input.conversationId,
+          kind: input.kind, channelId: input.channelId, conversationId,
           content, binding: kind.binding(content, context),
         });
         const stored: { record: ConversationProposalRecord | null; refusal: string | null } = { record: null, refusal: null };
         await updateChatState(options.chatStore, (latest) => {
           const result = postConversationProposal(latest, {
-            channelId: input.channelId, conversationId: input.conversationId, kind: input.kind, content, digest,
+            channelId: input.channelId, conversationId, kind: input.kind, content, digest,
             proposerParticipantId: input.proposerParticipantId, at: now(),
           });
           if ('refusal' in result) { stored.refusal = result.refusal; return latest; }
@@ -138,7 +146,7 @@ export function createConversationProposalService(options: ConversationProposalS
     },
 
     async decide(channelId, proposalId, decision, ownerActorId) {
-      return options.mutationGate.run(channelId, async () => {
+      return gate.run(gateKey(channelId), async () => {
         const state = await options.chatStore.read();
         const record = readConversationProposal(state, channelId, proposalId);
         if (!record) return { status: 'not_found' } as const;
@@ -158,9 +166,11 @@ export function createConversationProposalService(options: ConversationProposalS
           await close('declined', null);
           return { status: 'declined', refusal: null };
         }
-        const channel = channelOf(state, channelId);
         const kind = options.kinds.get(record.kind);
-        const context = await contextFor(state, channelId, record.conversationId);
+        // A fresh read, just before the write, for the recheck the write is bound to.
+        const fresh = await options.chatStore.read();
+        const channel = channelOf(fresh, channelId);
+        const context = await contextFor(fresh, channelId, record.conversationId);
         if (!channel || channel.status === 'archived' || !context) {
           await close('stale', 'conversation_unavailable');
           return { status: 'stale', refusal: 'conversation_unavailable' };
@@ -173,18 +183,23 @@ export function createConversationProposalService(options: ConversationProposalS
           await close('stale', 'card_stale');
           return { status: 'stale', refusal: 'card_stale' };
         }
+        // Marked before the write, so a crash between the write and its outcome never writes twice.
+        await updateChatState(options.chatStore, (latest) =>
+          updateConversationProposal(latest, channelId, proposalId, { status: 'confirming', decidedAt: at.toISOString() }));
+        let result: { summary: string };
         try {
           // FR-19: the server writes the bound content; the model supplies nothing now.
-          const result = await kind.perform(record.content, context, {
+          result = await kind.perform(record.content, context, {
             proposerParticipantId: record.proposerParticipantId, ownerActorId,
           });
-          await close('confirmed', null);
-          return { status: 'confirmed', refusal: null, summary: result.summary };
         } catch (error) {
           const code = error instanceof ConversationProposalRefusal ? error.code : 'write_failed';
           await close('failed', code);
           return { status: 'failed', refusal: code };
         }
+        // The write happened: what follows cannot turn it into a failure.
+        await close('confirmed', null);
+        return { status: 'confirmed', refusal: null, summary: result.summary };
       });
     },
   };

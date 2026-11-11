@@ -7,7 +7,11 @@ import type { CatsCoreState } from '../../core/types.js';
  * card belong to the conversation.
  */
 
-export type ConversationProposalStatus = 'open' | 'confirmed' | 'declined' | 'expired' | 'stale' | 'failed';
+/**
+ * `confirming` holds while the server performs a confirmed write; a card left there by a crash is
+ * closed and never performed twice.
+ */
+export type ConversationProposalStatus = 'open' | 'confirming' | 'confirmed' | 'declined' | 'expired' | 'stale' | 'failed';
 
 export const CONVERSATION_PROPOSAL_TTL_MS = 24 * 60 * 60_000;
 /** FR-20: at most this many open proposals per conversation. */

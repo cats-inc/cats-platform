@@ -23,7 +23,8 @@ import {
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { assignCatToChannel, createCat, createChannel } from '../build/server/products/chat/state/model/index.js';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
-import { isBossCatJoinRequestMessage, withoutBossCatJoinRequests } from '../build/server/products/chat/shared/ownerStarted.js';
+import { isBossCatJoinRequestMessage, withoutBossCatJoinRequests, withoutOwnerStarted } from '../build/server/products/chat/shared/ownerStarted.js';
+import { buildChannelView } from '../build/server/products/chat/state/model/readModels.js';
 import { createAuthenticatedTestSession, createTestAuthConfig } from './testUtils.js';
 
 const NOW = new Date('2026-11-12T08:00:00.000Z');
@@ -43,6 +44,7 @@ function trialKind(world) {
     describe: (content) => ({ title: 'Trial note', fields: [{ name: 'text', value: content.text }],
       records: [{ kind: 'other', id: 'trial', title: 'Trial' }], folderWarning: null }),
     async perform(content, _context, actors) {
+      await world.onPerform?.();
       if (world.failNext) { world.failNext = false; throw new ConversationProposalRefusal('trial_refused', 'no'); }
       world.writes.push({ content, actors });
       return { summary: 'written' };
@@ -100,6 +102,13 @@ test('FR-14, FR-15: a proposal is validated, stored as its card, and writes noth
   // Kept out of a model's context, as the owner's join card is.
   assert.equal(isBossCatJoinRequestMessage(card), true);
   assert.equal(withoutBossCatJoinRequests([card]).length, 0);
+  // Only a system message is a card, and a client cannot supply the key on its message.
+  assert.equal(isBossCatJoinRequestMessage({ ...card, senderKind: 'user' }), false);
+  assert.equal('conversationProposal' in withoutOwnerStarted({ conversationProposal: { id: 'forged' }, kept: 1 }), false);
+  // A client sees the card's id and status, not its content.
+  const viewed = buildChannelView(state, h.channelId).messages.at(-1);
+  assert.deepEqual(viewed.metadata.conversationProposal, { id: proposed.proposalId, status: 'open' });
+  assert.equal(listConversationProposals(state, h.channelId)[0].content.text, 'Remember the launch date', 'the store keeps it');
   assert.deepEqual(h.world.writes, []);
 
   assert.equal((await h.propose('')).refusal, 'text_required');
@@ -135,8 +144,14 @@ test('FR-17 to FR-19: only a confirmation performs the bound write, once, with b
   assert.deepEqual(await h.svc.decide(h.channelId, declined.proposalId, 'decline', 'owner-actor'), { status: 'declined', refusal: null });
   assert.deepEqual(h.world.writes, []);
 
+  h.world.onPerform = async () => {
+    const during = listConversationProposals(await h.store.read(), h.channelId).find((entry) => entry.id === proposalId);
+    h.world.statusDuringPerform = during.status;
+  };
   const confirmed = await h.svc.decide(h.channelId, proposalId, 'confirm', 'owner-actor');
   assert.equal(confirmed.status, 'confirmed');
+  assert.equal(h.world.statusDuringPerform, 'confirming', 'marked before the write, so a crash never writes twice');
+  assert.equal(listConversationProposals(await h.store.read(), h.channelId).find((entry) => entry.id === proposalId).status, 'confirmed');
   assert.deepEqual(h.world.writes, [{ content: { text: 'Ship it' },
     actors: { proposerParticipantId: h.participantId, ownerActorId: 'owner-actor' } }]);
   // Closed once.

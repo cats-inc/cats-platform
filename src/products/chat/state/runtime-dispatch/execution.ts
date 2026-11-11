@@ -37,6 +37,7 @@ import { waitForSessionTurnGate } from './sessionTurnGate.js';
 import { createDispatchPresentationRecorder } from './presentationRecorder.js';
 import { extractWorkflowRecommendationFromBody } from '../room-routing/recommendations.js';
 import { formatProposalOutcomeInstructions, pendingProposalOutcomes } from '../conversationProposals.js';
+import { readOwnerStarted } from '../../shared/ownerStarted.js';
 import {
   buildDispatchRuntimeContextMetadata,
   mergeRuntimeInvocationContextMetadata,
@@ -230,8 +231,12 @@ export async function executeDispatch(
         runtimeEnvelope.context,
         {
           ...dispatchContextMetadata,
-          // SPEC-142: proposals come only from the owner's own turns, not from a transport's.
-          turnTransport: transport === 'telegram' ? 'telegram' : 'web',
+          // SPEC-142: proposals come only from a turn the owner started on Desktop or mobile, by
+          // the server's own stamp on its message. It survives a retry, and a continuation, a
+          // Telegram turn, a choice answer or another principal's message has none.
+          turnOwnerStarted: Boolean(readOwnerStarted(
+            state.channels.find((entry) => entry.id === channelId)?.messages
+              .find((message) => message.id === request.sourceMessage.id) ?? null)),
           ...(knowledgeReceipt ? { productKnowledge: knowledgeReceipt } : {}),
           ...(toolIntent ? { toolIntent } : {}),
         },

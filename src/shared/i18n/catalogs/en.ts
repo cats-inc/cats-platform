@@ -2285,6 +2285,7 @@ export const enCatalog: MessageCatalog = {
   'chat.conversationProposal.confirm': 'Confirm',
   'chat.conversationProposal.decline': 'Decline',
   'chat.conversationProposal.confirmed': 'Confirmed. The change was made.',
+  'chat.conversationProposal.confirming': 'Confirmed, and being applied, or interrupted while it was. Check the records it touches.',
   'chat.conversationProposal.declined': 'Declined. Nothing was changed.',
   'chat.conversationProposal.expired': 'Expired unanswered. Nothing was changed.',
   'chat.conversationProposal.stale': 'Out of date: a record it touches changed. Nothing was changed.',

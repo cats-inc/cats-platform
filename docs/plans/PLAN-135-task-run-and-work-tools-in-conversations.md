@@ -159,14 +159,22 @@ to FR-21).
   - The record is stored in its card's message, with the conversation: a restart keeps it, a
     data reset removes it with the rest of the state, and no file format changes.
   - `src/products/chat/api/conversationProposals.ts` validates, binds and stores a proposal,
-    and answers it, under the conversation's mutation gate.
+    and answers it, on a per-conversation gate of its own: the conversation's mutation gate is
+    held for a whole turn, and a tool proposing during that turn would wait on it. The
+    conversation id is derived from the grant's channel, never taken from the caller.
+  - A confirmation is marked `confirming` before the write and closed after it, so a crash
+    never writes twice and a failure after a successful write cannot report it as failed. The
+    digest is rechecked on a fresh read just before the write.
 - [x] The card: a message with the proposal's id and no text, rendered from the store in
       Desktop and mobile, and kept out of prompts and transport mirrors.
   - Its body is one fixed line that points to Desktop, so mobile and any client that cannot
     render the card show that. Desktop renders the card from the owner-only route.
   - It is an owner card like the Boss Cat join card: the same predicate keeps both out of
     routing prompts, continuity, the companion's review and transport mirrors (`origin:
-    system`).
+    system`). Only a system message counts as a card, and a client cannot set the key.
+  - Clients see a card's id and status only: views and the messages route redact the record,
+    and its content is read through the owner-only route, which cleans and bounds every text
+    of the kind's view.
 - [x] The answering route, for an owner principal only, with the rechecks in FR-18. It does not
       use the conversation's choice answers.
   - `GET` and `POST .../decision` under `/api/channels/:id/proposals/:proposalId`. A
@@ -189,9 +197,12 @@ to FR-21).
     confirm once with both actors, out of date, expiry, a failed write, the outcome lines,
     the board, and the routes (owner only, CSRF, a member refused).
 - [x] The turn gate the Phase 1 review asked for.
-  - The chat dispatch marks each send `web` or `telegram`. A grant's `proposalsAllowed`
-    follows every send: true only for the owner's own turn of that conversation, false for a
-    Telegram turn, a heartbeat (which carries no marker) or any unmarked send.
+  - An allow-list: the chat dispatch passes `turnOwnerStarted`, read from the server's own
+    SPEC-139 stamp on the turn's source message. It survives a retry; a continuation, a
+    Telegram turn, a choice answer and another principal's message have none.
+  - A grant's `proposalsAllowed` is open only while that send runs, on every grant the worker
+    may hold (retired ones included), and never while another send of the session is in
+    flight. A heartbeat carries no marker and stays closed.
   - Tools that propose check `hostToolTurnMayPropose(grant)` (Phase 4).
 
 **Deliverables:** the proposal mechanism, with no Work tool using it yet.

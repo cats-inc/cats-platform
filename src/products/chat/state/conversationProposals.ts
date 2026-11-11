@@ -29,6 +29,21 @@ export const CONVERSATION_PROPOSAL_EVENT = 'conversation_proposal';
 export { CONVERSATION_PROPOSAL_CARD_METADATA_KEY as CONVERSATION_PROPOSAL_METADATA_KEY } from '../shared/ownerStarted.js';
 import { CONVERSATION_PROPOSAL_CARD_METADATA_KEY as CONVERSATION_PROPOSAL_METADATA_KEY } from '../shared/ownerStarted.js';
 
+/**
+ * What a client sees of a card: its id and status. The record, with its content, is read through
+ * the owner-only route.
+ */
+export function redactConversationProposalCards<T extends { senderKind: string; metadata?: Record<string, unknown> | null }>(
+  messages: readonly T[],
+): T[] {
+  return messages.map((message) => {
+    const record = message.metadata?.[CONVERSATION_PROPOSAL_METADATA_KEY] as { id?: unknown; status?: unknown } | undefined;
+    if (!record) return message;
+    return { ...message, metadata: { ...message.metadata,
+      [CONVERSATION_PROPOSAL_METADATA_KEY]: { id: record.id, status: record.status } } };
+  });
+}
+
 /** A card message, which prompts, continuity and transport mirrors leave out. */
 export function isConversationProposalCard(message: Pick<ChatMessage, 'senderKind' | 'metadata'>): boolean {
   return message.senderKind === 'system' && message.metadata?.event === CONVERSATION_PROPOSAL_EVENT;
@@ -166,7 +181,7 @@ export function updateConversationProposal(
   };
 }
 
-const OUTCOME_LINE: Record<Exclude<ConversationProposalStatus, 'open'>, string> = {
+const OUTCOME_LINE: Record<Exclude<ConversationProposalStatus, 'open' | 'confirming'>, string> = {
   confirmed: 'confirmed by the owner, and the server made the change',
   declined: 'declined by the owner; nothing was changed',
   expired: 'expired unanswered after 24 hours; nothing was changed',
@@ -187,10 +202,10 @@ export function pendingProposalOutcomes(
   if (!participantId) return { lines: [], proposalIds: [] };
   const closed = listConversationProposals(state, channelId).filter((record) =>
     record.proposerParticipantId === participantId && !record.outcomeReported
-    && effectiveProposalStatus(record, now) !== 'open');
+    && !['open', 'confirming'].includes(effectiveProposalStatus(record, now)));
   return {
     lines: closed.map((record) => {
-      const status = effectiveProposalStatus(record, now) as Exclude<ConversationProposalStatus, 'open'>;
+      const status = effectiveProposalStatus(record, now) as Exclude<ConversationProposalStatus, 'open' | 'confirming'>;
       return `Your proposal ${record.id} (${record.kind}) was ${OUTCOME_LINE[status]}.`;
     }),
     proposalIds: closed.map((record) => record.id),

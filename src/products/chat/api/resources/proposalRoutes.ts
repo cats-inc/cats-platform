@@ -3,6 +3,27 @@ import { resolveChannelParticipantAssignments } from '../../shared/channelPartic
 import { ChatApiError, handleRestError } from '../routeErrors.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
 import { isOwnerPrincipal } from './productScopeRoutes.js';
+import { cleanRecordValue, fenceRecordText } from '../../../shared/conversationRecordTools.js';
+import type { ConversationProposalView } from '../../../../platform/proposals/contracts.js';
+
+/**
+ * A kind's view is built from agent-supplied content, so every text is cleaned and bounded here,
+ * whatever the kind did. The folder (FR-16) is the field that matters most.
+ */
+function cleanView(view: ConversationProposalView | null): ConversationProposalView | null {
+  if (!view) return null;
+  const line = (value: string | null | undefined, limit: number) => fenceRecordText(value, limit)?.slice(1, -1) ?? null;
+  return {
+    title: line(view.title, 160) ?? '',
+    fields: view.fields.slice(0, 40).map((field) => ({ name: line(field.name, 80) ?? '', value: line(field.value, 1000) })),
+    records: view.records.slice(0, 20).map((record) => ({ kind: record.kind, id: cleanRecordValue(record.id), title: line(record.title, 160) })),
+    folderWarning: view.folderWarning ? {
+      folder: line(view.folderWarning.folder, 500) ?? '',
+      otherConversations: Math.max(0, Math.floor(view.folderWarning.otherConversations)),
+      workItems: Math.max(0, Math.floor(view.folderWarning.workItems)),
+    } : null,
+  };
+}
 
 /**
  * SPEC-142 FR-15 to FR-18: a proposal's card, read and answered on routes of its own. Only an
@@ -48,7 +69,7 @@ export async function routeConversationProposalResourceApi(context: ChatApiRoute
           proposer: found.record.proposerParticipantId
             ? { participantId: found.record.proposerParticipantId, name: proposer?.name ?? null }
             : null,
-          view: found.view,
+          view: cleanView(found.view),
         },
       }, { 'cache-control': 'no-store' });
       return true;

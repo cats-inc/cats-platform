@@ -45,6 +45,8 @@ interface TrackedSession {
   report: RuntimeSessionMcpDeliveryReport | undefined;
   /** The grant was issued on a send and Runtime could not say the session's folder. */
   folderUnknown?: boolean;
+  /** Sends of this session now awaiting Runtime; the turn gate opens only for a lone one. */
+  inFlight?: number;
   /**
    * Grants this session held at a narrower level (FR-3). A worker started with one may still be
    * running a turn, so each stays valid until Runtime reports the current set delivered.
@@ -197,6 +199,13 @@ export function createHostToolsClientWrapper(options: HostToolsClientWrapperOpti
     return options.server.listTools(level).map((tool) => tool.name).sort().join(' ');
   }
 
+  /** The turn gate on every grant the session's worker may hold, the retired ones included. */
+  function setTurnGate(sessionId: string, tracked: TrackedSession, open: boolean): void {
+    for (const token of [tracked.token, ...tracked.retired]) {
+      options.grants.bind(token, sessionId, { proposalsAllowed: open });
+    }
+  }
+
   function settleReport(tracked: TrackedSession, report: RuntimeSessionMcpDeliveryReport | undefined): void {
     if (!report) return;
     tracked.report = report;
@@ -281,20 +290,27 @@ export function createHostToolsClientWrapper(options: HostToolsClientWrapperOpti
                 && compareProductScopes(marker.level, tracked.level) > 0 && options.server.hasTools(marker.level)) {
                 raiseGrant(sessionId, tracked, marker);
               }
-              // The turn gate follows every send: only a marked owner's turn of this conversation
-              // may propose. A heartbeat or any other unmarked send turns it off.
-              options.grants.bind(tracked.token, sessionId, {
-                proposalsAllowed: marker?.channelId === tracked.channelId && marker.proposalsAllowed === true,
-              });
-              const result = await target.sendMessage(sessionId, content, {
-                ...input,
-                mcpServers: withServers(input?.mcpServers, descriptor(endpoint, tracked.token, tracked)),
-                instructions: tracked.report?.status === 'delivered'
-                  ? withPolicy(input?.instructions, tracked.level)
-                  : input?.instructions,
-              });
-              settleReport(tracked, result.mcpServers);
-              return result;
+              // The turn gate holds for this send only: an owner's own turn of this conversation
+              // may propose while it runs. A send while another is in flight, a heartbeat or any
+              // other unmarked send leaves it off, and it is off again when the send ends.
+              const owner = marker?.channelId === tracked.channelId && marker.proposalsAllowed === true;
+              const current = tracked;
+              current.inFlight = (current.inFlight ?? 0) + 1;
+              setTurnGate(sessionId, current, owner && current.inFlight === 1);
+              try {
+                const result = await target.sendMessage(sessionId, content, {
+                  ...input,
+                  mcpServers: withServers(input?.mcpServers, descriptor(endpoint, current.token, current)),
+                  instructions: current.report?.status === 'delivered'
+                    ? withPolicy(input?.instructions, current.level)
+                    : input?.instructions,
+                });
+                settleReport(current, result.mcpServers);
+                return result;
+              } finally {
+                current.inFlight -= 1;
+                setTurnGate(sessionId, current, false);
+              }
             };
           }
           if (property === 'resumeSession' && typeof target.resumeSession === 'function') {

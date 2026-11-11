@@ -17,8 +17,8 @@ import { hasShellExecutionPermission } from './shellPermission.js';
 export const HOST_TOOLS_HOOK_ID = 'cats-platform.host-tools' as const;
 /** The dispatch's target participant, which the marker and the grant carry. */
 export const TARGET_PARTICIPANT_METADATA_KEY = 'targetParticipantId' as const;
-/** The dispatch's transport, `web` or `telegram`, set by the chat dispatch on each send. */
-export const TURN_TRANSPORT_METADATA_KEY = 'turnTransport' as const;
+/** Whether the owner started this turn on Desktop or mobile, set by the chat dispatch on each send. */
+export const TURN_OWNER_STARTED_METADATA_KEY = 'turnOwnerStarted' as const;
 
 export function createHostToolsInvocationEnricher(): RuntimeInvocationEnricher {
   return {
@@ -43,8 +43,8 @@ export function createHostToolsInvocationEnricher(): RuntimeInvocationEnricher {
         }),
         level,
         participantId: typeof participantId === 'string' && participantId ? participantId : null,
-        // Only a dispatch that says it came from the web (Desktop, browser or mobile) may propose.
-        proposalsAllowed: input.context?.metadata?.[TURN_TRANSPORT_METADATA_KEY] === 'web',
+        // Only a turn the owner started may propose (an allow-list, so anything else fails closed).
+        proposalsAllowed: input.context?.metadata?.[TURN_OWNER_STARTED_METADATA_KEY] === true,
       };
       const labels = input.context?.labels ?? [];
       return {

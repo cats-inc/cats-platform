@@ -259,33 +259,68 @@ test('an invocation without a conversation loses a marker an earlier step left',
   }
 });
 
-test("the turn gate: only the owner's own turn may propose; a transport turn and a heartbeat may not", async () => {
+test("the turn gate: open only while an owner-started turn's send runs, on every grant the worker may hold", async () => {
   const enricher = createEnricher();
   const phase = { phase: 'message_send' as const };
-  const markerFor = (turnTransport?: string) => readMarker(enricher.enrich(
+  const markerFor = (turnOwnerStarted?: unknown) => readMarker(enricher.enrich(
     { originSurface: 'chat', id: 'channel-1' },
-    { context: { metadata: { targetParticipantId: 'participant-1', ...(turnTransport ? { turnTransport } : {}) } } },
+    { context: { metadata: { targetParticipantId: 'participant-1', ...(turnOwnerStarted !== undefined ? { turnOwnerStarted } : {}) } } },
     phase)?.context);
-  assert.equal(markerFor('web')?.proposalsAllowed, true);
-  assert.equal(markerFor('telegram')?.proposalsAllowed, false);
+  assert.equal(markerFor(true)?.proposalsAllowed, true);
+  assert.equal(markerFor(false)?.proposalsAllowed, false);
+  assert.equal(markerFor('true')?.proposalsAllowed, false, 'an allow-list: only the stamp counts');
   assert.equal(markerFor()?.proposalsAllowed, false, 'a turn that says nothing is not the owner');
 
   const host = createHostToolServer();
   host.register(BASE);
+  host.register(createCodeAgentToolsProvider({ coreStore: new MemoryCoreStore() }));
   const wrapper = createHostToolsClientWrapper({ grants: host.grants, server: host, endpoint: () => 'http://127.0.0.1:1/mcp' });
-  const { client, calls } = fakeRuntime({ sendReports: [DELIVERED, DELIVERED, DELIVERED, DELIVERED] });
+  const seen: Array<Record<string, boolean>> = [];
+  let release: (() => void) | null = null;
+  const sendTokens: string[] = [];
+  const client = {
+    async createSession() { return { id: 'rt-1', provider: 'claude', model: null, status: 'ready', cwd: '/w', mcpServers: DELIVERED }; },
+    async sendMessage(_id: string, content: string, input?: RuntimeSendMessageInput) {
+      const token = tokenOf(input?.mcpServers)!;
+      sendTokens.push(token);
+      const during: Record<string, boolean> = {};
+      for (const each of new Set(sendTokens)) during[each] = host.grants.resolve(each)?.binding.proposalsAllowed === true;
+      seen.push(during);
+      if (content === 'hold') await new Promise<void>((resolve) => { release = resolve; });
+      return { segments: [], inputTokens: 0, outputTokens: 0, tokensUsed: 0, mcpServers: { ...DELIVERED, status: 'failed' as const } };
+    },
+    async observeSession(id: string) { return { session: { id, cwd: '/w' } }; },
+    async closeSession() {},
+  } as unknown as RuntimeClient;
   const wrapped = wrapper.wrapClient(client);
   await wrapped.createSession({ provider: 'claude', context: marker('chat') } as RuntimeSessionCreateInput);
-  const token = tokenOf(calls.create[0]!.mcpServers)!;
-  const grant = () => host.grants.resolve(token)!;
-  assert.equal(hostToolTurnMayPropose(grant()), false, 'not before a turn says so');
-  const turn = (turnTransport?: string) => ({ metadata: { hostTools: { ...marker('chat').metadata.hostTools,
-    proposalsAllowed: turnTransport === 'web' } } });
-  await wrapped.sendMessage('rt-1', 'from Desktop', { context: turn('web') });
-  assert.equal(hostToolTurnMayPropose(grant()), true);
+  const turn = (owner: boolean, level: 'chat' | 'code' = 'chat') =>
+    ({ metadata: { hostTools: { ...marker(level).metadata.hostTools, proposalsAllowed: owner } } });
+  const open = () => Object.values(seen.at(-1)!).some(Boolean);
+
+  await wrapped.sendMessage('rt-1', 'from Desktop', { context: turn(true) });
+  assert.equal(open(), true, "open while the owner's send runs");
+  const chatToken = sendTokens[0]!;
+  assert.equal(host.grants.resolve(chatToken)?.binding.proposalsAllowed, false, 'and closed when it ends');
   await wrapped.sendMessage('rt-1', 'a heartbeat, which carries no marker', {});
-  assert.equal(hostToolTurnMayPropose(grant()), false);
-  await wrapped.sendMessage('rt-1', 'from Desktop again', { context: turn('web') });
-  await wrapped.sendMessage('rt-1', 'from Telegram', { context: turn('telegram') });
-  assert.equal(hostToolTurnMayPropose(grant()), false);
+  assert.equal(open(), false);
+  await wrapped.sendMessage('rt-1', 'from Telegram', { context: turn(false) });
+  assert.equal(open(), false);
+
+  // A raise keeps the old grant valid for the worker; the gate covers it too.
+  await wrapped.sendMessage('rt-1', 'owner, after a raise', { context: turn(true, 'code') });
+  const codeToken = sendTokens.at(-1)!;
+  assert.notEqual(codeToken, chatToken);
+  assert.deepEqual(seen.at(-1), { [chatToken]: true, [codeToken]: true });
+  await wrapped.sendMessage('rt-1', 'Telegram, after the raise', { context: turn(false, 'code') });
+  assert.deepEqual(seen.at(-1), { [chatToken]: false, [codeToken]: false }, 'no retired grant keeps an earlier turn open');
+
+  // A second send while one is in flight never opens the gate.
+  const held = wrapped.sendMessage('rt-1', 'hold', { context: turn(false, 'code') });
+  await new Promise((resolve) => setImmediate(resolve));
+  await wrapped.sendMessage('rt-1', 'owner, while another send is in flight', { context: turn(true, 'code') });
+  assert.equal(open(), false);
+  (release as unknown as () => void)();
+  await held;
+  assert.equal(host.grants.resolve(codeToken)?.binding.proposalsAllowed, false);
 });

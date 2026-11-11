@@ -3,7 +3,7 @@
 export interface ConversationProposalCardView {
   id: string;
   kind: string;
-  status: 'open' | 'confirmed' | 'declined' | 'expired' | 'stale' | 'failed';
+  status: 'open' | 'confirming' | 'confirmed' | 'declined' | 'expired' | 'stale' | 'failed';
   outOfDate: boolean;
   createdAt: string;
   expiresAt: string;

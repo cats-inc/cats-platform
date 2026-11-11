@@ -2238,6 +2238,7 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.conversationProposal.confirm': '確認',
   'chat.conversationProposal.decline': '拒絕',
   'chat.conversationProposal.confirmed': '已確認，變更已完成。',
+  'chat.conversationProposal.confirming': '已確認，正在套用，或在套用時中斷。請查看相關記錄。',
   'chat.conversationProposal.declined': '已拒絕，沒有任何變更。',
   'chat.conversationProposal.expired': '未回覆已過期，沒有任何變更。',
   'chat.conversationProposal.stale': '已過時：相關記錄已變更，沒有任何變更。',

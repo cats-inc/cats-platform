@@ -2317,6 +2317,7 @@ export const messageKeys = {
   chatConversationProposalConfirm: 'chat.conversationProposal.confirm',
   chatConversationProposalDecline: 'chat.conversationProposal.decline',
   chatConversationProposalConfirmed: 'chat.conversationProposal.confirmed',
+  chatConversationProposalConfirming: 'chat.conversationProposal.confirming',
   chatConversationProposalDeclined: 'chat.conversationProposal.declined',
   chatConversationProposalExpired: 'chat.conversationProposal.expired',
   chatConversationProposalStale: 'chat.conversationProposal.stale',

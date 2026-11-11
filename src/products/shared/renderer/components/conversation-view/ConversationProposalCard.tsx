@@ -61,6 +61,7 @@ export function ConversationProposalCard({ channelId, proposalId, status }: Conv
       case 'declined': return t(messageKeys.chatConversationProposalDeclined);
       case 'expired': return t(messageKeys.chatConversationProposalExpired);
       case 'stale': return t(messageKeys.chatConversationProposalStale);
+      case 'confirming': return t(messageKeys.chatConversationProposalConfirming);
       default: return t(messageKeys.chatConversationProposalFailed, { reason: value.refusal ?? '—' });
     }
   };
