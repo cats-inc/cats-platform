@@ -58,10 +58,12 @@ export async function applyChannelWorkProject(
         : workItem),
     };
     const titleOf = (id: string | null) => core.projects.find((entry) => entry.id === id)?.title ?? id;
+    // The note belongs to the conversation and names the Projects by title only. A record that
+    // names a Project's id keeps it from being deleted, and FR-27 lets the owner delete a
+    // Project once its conversations have left it.
     const nextCore = appendCoreActivity(moved, {
       kind: 'note',
       actorId: input.actorId ?? core.ownerProfile.actorId,
-      projectId: input.projectId ?? previousId,
       workItemId: projectedId,
       conversationId: buildChatConversationId(input.channelId),
       message: input.projectId
@@ -69,7 +71,7 @@ export async function applyChannelWorkProject(
         : `Took the conversation ${channel.title} out of Project: ${titleOf(previousId)}`,
       metadata: {
         ...(input.confirmedByActorId ? { confirmedByActorId: input.confirmedByActorId } : {}),
-        conversationWorkProject: { previous: previousId, projectId: input.projectId },
+        conversationWorkProject: { change: input.projectId ? (previousId ? 'moved' : 'joined') : 'left' },
       },
     }, input.now).core;
     outcome = { projectId: input.projectId,

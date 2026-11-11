@@ -20,6 +20,13 @@ import {
   resolveChannelCanonicalIdentity,
 } from '../src/products/chat/state/model/index.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
+import { ConversationProposalKindRegistry } from '../src/platform/proposals/contracts.ts';
+import { createConversationProposalService } from '../src/products/chat/api/conversationProposals.ts';
+import { createAsyncKeyedGate } from '../src/products/chat/shared/asyncControl.ts';
+import { listConversationProposals } from '../src/products/chat/state/conversationProposals.ts';
+import { createWorkProposalKinds } from '../src/products/work/agentTools/workConversationProposals.ts';
+import { createWorkIntakeDelegate } from '../src/products/work/state/workIntakeDelegate.ts';
+import { createWorkTriageDelegate } from '../src/products/work/state/workTriageDelegate.ts';
 import {
   beginChannelMessageDispatch,
   beginChannelMessageRetryDispatch,
@@ -409,7 +416,7 @@ test('SPEC-142 A1: a new Project with a folder becomes the owner card on the own
   const owner = await dispatch({ ownerStarted: 'desktop', withPort: true });
   assert.equal(owner.core.projects.length, 0, 'nothing is created before the owner confirms');
   assert.equal(owner.proposed.length, 1);
-  assert.equal(owner.proposed[0]!.kind, 'work.project.create');
+  assert.equal(owner.proposed[0]!.kind, 'work.project.create.decision');
   assert.equal(owner.proposed[0]!.channelId, owner.channelId);
   assert.deepEqual(owner.proposed[0]!.content,
     { title: 'Cats Mobile', summary: 'Mobile companion.', status: 'planned', folder: 'C:/repo/cats-mobile' });
@@ -427,6 +434,58 @@ test('SPEC-142 A1: a new Project with a folder becomes the owner card on the own
 
   const noPort = await dispatch({ ownerStarted: 'desktop', withPort: false });
   assert.equal(noPort.core.projects.length, 0, 'without proposals, a folder Project is not created at all');
+});
+
+test('SPEC-142 A1 end to end: in a Chat conversation the card is posted and the owner confirms the Project with its folder', async () => {
+  const now = new Date('2026-05-13T12:14:00.000Z');
+  const state = createChannel(createDefaultChatState(), {
+    title: '', topic: 'Work project create with a folder', originSurface: 'chat', entryKind: 'direct',
+    roomMode: 'direct_message', cats: [{ name: 'Boss Cat', provider: 'claude', instance: 'native', model: 'sonnet' }],
+  }, now);
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const store = new MemoryChatStore(state);
+  await store.writeCore(createDefaultCoreState());
+  const kinds = new ConversationProposalKindRegistry();
+  let joined = 0;
+  for (const kind of createWorkProposalKinds({
+    intake: createWorkIntakeDelegate({ coreStore: store, now: () => now }),
+    triage: createWorkTriageDelegate({ coreStore: store, now: () => now }),
+    coreStore: store,
+    platform: 'win32',
+    async joinConversationProject() { joined += 1; return null; },
+  })) kinds.register(kind);
+  const proposals = createConversationProposalService({ chatStore: store, mutationGate: createAsyncKeyedGate(), kinds, now: () => now });
+
+  await beginChannelMessageDispatch(state, channelId, { body: 'Boss Cat create project Cats Mobile' },
+    runtimeStub(), new Date('2026-05-13T12:15:00.000Z'), {
+      chatStore: store,
+      ownerStarted: 'desktop',
+      conversationProposals: proposals,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      providerAgentDecisionRequester: async () => ({
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-work-project-create-folder-e2e',
+        confidence: 'high',
+        toolName: WORK_PROJECT_CREATE_TOOL,
+        target: { kind: 'worker_tool', toolName: WORK_PROJECT_CREATE_TOOL },
+        input: { title: 'Cats Mobile', summary: 'Mobile companion.', status: 'planned', repoPath: 'C:/repo/cats-mobile' },
+        rationaleSummary: 'The owner asked for a Project in that folder.',
+      }),
+    } as never);
+
+  assert.equal((await store.readCore()).projects.length, 0, 'nothing is created before the owner confirms');
+  const cards = listConversationProposals(await store.read(), channelId);
+  assert.equal(cards.length, 1, 'a Chat conversation posts the card too (FR-29)');
+  const details = await proposals.read(channelId, cards[0]!.id);
+  assert.equal(details?.view?.folderWarning?.folder, 'C:/repo/cats-mobile', 'the card shows the folder and its warning');
+  const decided = await proposals.decide(channelId, cards[0]!.id, 'confirm', 'owner-actor');
+  assert.equal(decided.status, 'confirmed');
+  const project = (await store.readCore()).projects.find((entry) => entry.title === 'Cats Mobile');
+  assert.equal(project?.repoPath, 'C:/repo/cats-mobile');
+  assert.equal(project?.primaryConversationId, conversationId);
+  assert.equal(joined, 0, 'a conversation below Work does not join a Project');
 });
 
 test('Chat provider-agent Work Item update request writes bounded planning fields', async () => {

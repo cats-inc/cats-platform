@@ -5,7 +5,7 @@ import { isCollaborationTool } from '../orchestratorCollaboration.js';
 import { isCollaborationExecutionTool } from '../collaborationExecutionSurface.js';
 import { appendCollaborationReport } from '../orchestratorCollaborationReport.js';
 import { OWNER_STARTED_METADATA_KEY, readOwnerStarted, withoutOwnerStarted } from '../../shared/ownerStarted.js';
-import type { ConversationProposalPort } from '../../../../platform/proposals/contracts.js';
+import { WORK_PROJECT_CREATE_DECISION_PROPOSAL_KIND, type ConversationProposalPort } from '../../../../platform/proposals/contracts.js';
 import {
   attachBossCatTurnRecord,
   dropSettledBossCatBoards,
@@ -513,16 +513,12 @@ interface RouteChannelMessageOptions {
   conversationProposals?: Pick<ConversationProposalPort, 'propose'>;
 }
 
-/** SPEC-142 A1: the Work proposal kind for a new Project, registered by Work. */
-const WORK_PROJECT_CREATE_PROPOSAL_KIND = 'work.project.create';
 
 /** Why a new Project with a folder was not created, by the refusal that stopped its card. */
 function workProjectCardNotPostedMessage(title: string, refusal: string): string {
   const reason = refusal === 'project_folder_needs_owner_turn'
     ? 'its card is posted only from your own message in Cats'
-    : refusal === 'level_too_narrow'
-      ? 'its card can be posted only in a Work conversation'
-      : refusal === 'proposal_limit' || refusal === 'proposal_rate_limited'
+    : refusal === 'proposal_limit' || refusal === 'proposal_rate_limited'
         ? 'this conversation has too many cards waiting or posted in the last hour'
         : 'its card could not be posted';
   return `Did not create Project ${title}: a Project with a folder is created only when you confirm its card, `
@@ -2622,7 +2618,7 @@ async function appendWorkProjectCreateResultSidecar(input: {
       ? await input.proposals.propose({
         channelId: input.channelId,
         conversationId,
-        kind: WORK_PROJECT_CREATE_PROPOSAL_KIND,
+        kind: WORK_PROJECT_CREATE_DECISION_PROPOSAL_KIND,
         content: { title, ...(summary ? { summary } : {}), ...(status ? { status } : {}), folder: repoPath },
         proposerParticipantId: input.state.channels.find((entry) => entry.id === input.channelId)?.coordinatorParticipantId ?? null,
       })

@@ -1,5 +1,6 @@
 import type { CatsCoreState, CoreProjectRecord, CoreWorkItemRecord } from '../../../core/types.js';
 import {
+  WORK_PROJECT_CREATE_DECISION_PROPOSAL_KIND,
   ConversationProposalRefusal,
   type ConversationProposalContext,
   type ConversationProposalKind,
@@ -475,7 +476,15 @@ export function createWorkProposalKinds(options: WorkProposalKindOptions): Conve
     },
   };
 
-  return [capture, update, assign, createProject, projectFolder];
+  // SPEC-142 A1: the same card for ADR-105's decision path, which runs at every level. Only a
+  // conversation at Work joins the new Project (`joinsNewProject`).
+  const createProjectFromDecision: ConversationProposalKind = {
+    ...createProject,
+    kind: WORK_PROJECT_CREATE_DECISION_PROPOSAL_KIND,
+    level: 'chat',
+  };
+
+  return [capture, update, assign, createProject, createProjectFromDecision, projectFolder];
 }
 
 /** FR-13, FR-22: a new Project takes in its conversation when that has no Project and may have one. */

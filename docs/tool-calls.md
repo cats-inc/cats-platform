@@ -163,25 +163,35 @@ nothing and post the owner's card (see Channel Proposals in `docs/api.md`).
   `status` in a planning status): kind `work.item.update`, for a captured Work Item only.
 - `propose_work_item_project` (`workItemId`, `projectId`): kind `work.item.assign_project`.
   Any participant may name the conversation's own Project; another Project needs the admin
-  coordinator. The card warns about the Project's folder when the Work Item has a Task, because
-  its supervised runs start there without asking.
+  coordinator. A card made under the first rule is marked (`scope: conversation_project`): it is
+  refused for any other Project (`not_conversation_project`) and goes out of date when the
+  conversation's Project changes. The card warns about the Project's folder when the Work Item
+  has a Task, because its supervised runs start there without asking.
 - `propose_conversation_project` (`projectId`): kind `conversation.work_project`, admin
   coordinator only. Chat registers the kind, since the write is the conversation's, and performs
   it through the same path as the owner's own control (see Channel Work Project in
   `docs/api.md`). It is refused for a parallel member, an archived or unknown
   Project, the Project it is already in, and while a supervised run of the conversation is
-  under way. The card warns about the Project's folder.
+  queued, running, blocked or waiting for approval. The card warns about the Project's folder
+  and lists the Work Items that move with the conversation. A confirmation is refused
+  (`revision_stale`) when the owner changed the conversation's Project since the card was posted.
 - `propose_project` (`title`, `summary`, optionally `folder`): kind `work.project.create`, admin
   coordinator only, with this conversation as its primary conversation. The conversation joins
   it when it has no Project and is not a parallel member; the outcome says when a refusal kept it
-  out. A folder is an absolute path on one line, at most 500 characters, and the card shows it
-  whole with the warning.
+  out, and the card lists the Work Items that move with it. Create is keyed by title and folder:
+  a card that matches an existing Project is refused (`project_exists`) and joins nothing.
+  - A folder is an absolute path for this computer's OS, on one line, at most 500 characters,
+    with no `..` segment. Network shares and device paths (`\\host\share`, `//host`,
+    `\\?\`) are refused.
+  - Every card shows a folder whole. A hidden character in a folder stored before these checks
+    is written out as `⟦U+…⟧`, and a literal `⟦` the same way.
 - `propose_project_folder` (`folder`): kind `work.project.folder`, admin coordinator only, for
   the conversation's own Project. The card shows the old and new folder and counts the other
   conversations and Work Items in the Project, whose supervised runs all start there.
 
-A card whose Project, folder or conversation membership changed before the owner answers is out
-of date and cannot be confirmed.
+A card whose Project, folder, conversation membership, the conversation's Project revision or
+the Work Items that would move with the conversation changed before the owner answers is out of
+date and cannot be confirmed.
 
 Every proposing tool refuses with `not_owner_turn` unless the session's current turn is the
 owner's own (not a Telegram turn or a heartbeat). On confirmation the kind rechecks its records
@@ -190,9 +200,11 @@ actor and the confirming owner as `confirmedByActorId`.
 
 ADR-105's decision path keeps its roles and flags, with one change (SPEC-142 A1): a
 `work.project.create` request that names a `repoPath` no longer creates the Project. On the
-owner's own turn it posts a `work.project.create` card with that folder; on any other turn, or
-without the proposal service, it creates nothing and a system message tells the owner why.
-Without a folder it creates the Project as before.
+owner's own turn it posts a card of kind `work.project.create.decision`, which conversations at
+every level may post. It is the same card as `work.project.create`, and a conversation joins the
+new Project only when it is at Work. On any other turn, or without the proposal service, it
+creates nothing and a system message tells the owner why. Without a folder it creates the
+Project as before.
 
 ## Agent Knowledge Drafts
 

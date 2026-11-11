@@ -19,6 +19,12 @@ export const CONVERSATION_PROPOSAL_TTL_MS = 24 * 60 * 60_000;
  * the write is the conversation's; Work's tool proposes it.
  */
 export const CONVERSATION_WORK_PROJECT_PROPOSAL_KIND = 'conversation.work_project';
+/**
+ * SPEC-142 A1 (FR-29): ADR-105's decision path asks for a new Project with a folder through this
+ * kind, which any conversation may post, whatever its level. Work registers it beside its own
+ * `work.project.create`, which only Work conversations' tools propose.
+ */
+export const WORK_PROJECT_CREATE_DECISION_PROPOSAL_KIND = 'work.project.create.decision';
 /** FR-20: at most this many open proposals per conversation. */
 export const CONVERSATION_PROPOSAL_OPEN_LIMIT = 3;
 /** FR-20: at most this many proposals per conversation in an hour. */

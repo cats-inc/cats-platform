@@ -29,7 +29,7 @@ const REFUSAL_MESSAGES: Record<string, string> = {
   conversation_archived: 'An archived conversation cannot change its Project.',
   project_not_found: 'Project not found.',
   project_archived: 'That Project is archived.',
-  supervised_run_active: 'A supervised run of this conversation is queued, running or waiting for approval.',
+  supervised_run_active: 'A supervised run of this conversation is queued, running, blocked or waiting for approval.',
   revision_stale: "The conversation's Project changed since it was shown.",
 };
 

@@ -256,6 +256,8 @@ Read from Platform `7ec13d700` and Runtime `fb50e59a` on 2026-11-11, and recheck
     - It is refused for an unknown or archived Project.
     - It is refused while a supervised run of the conversation's Tasks is queued, running or
       waiting for approval. Turn Runs and the projected Work Item's status do not count.
+      - As built: a supervised run that is `blocked` counts as waiting for approval, since that
+        is how Work holds a run for the owner's decision.
 24. FR-24: The conversation's projected Work Item carries the Project. Work then lists it under
     that Project and no longer reports it as unanchored.
     - Work Items parented under the projected Work Item follow it to the new Project.
