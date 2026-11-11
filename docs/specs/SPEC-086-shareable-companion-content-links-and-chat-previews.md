@@ -1,5 +1,10 @@
 # SPEC-086: Shareable Companion Content Links and Chat Previews
 
+> **2026-11-11 follow-up proposal:** [SPEC-143](SPEC-143-cat-profile-posts-media-and-sharing.md)
+> owns the proposed external HTTPS post pages, revocable media grants and DM/Telegram link
+> notifications. This spec continues to own the internal `cats://companion/v1/...` reference
+> and transcript snapshot contract; public sharing is not implemented by this documentation update.
+
 > Define how companion posts, photos, videos, music, and files become
 > product-owned references that can be inserted into chat and rendered as
 > previews.

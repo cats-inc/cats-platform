@@ -1,5 +1,14 @@
 # Documentation Index
 
+[Cat profile posts, media creation and sharing](specs/SPEC-143-cat-profile-posts-media-and-sharing.md)
+proposes a Facebook-style Directory feed, agent post lifecycle, source/avatar/cover media creation,
+Companion publication and shared-ingress links delivered through DM/Telegram
+([ADR-151](decisions/151-build-cat-profile-posts-on-managed-media-and-share-links.md),
+[PLAN-136](plans/PLAN-136-cat-profile-posts-media-and-sharing.md)). Draft, 2026-11-11;
+documentation only. The first milestone is a real reference-image Paris post; the second includes
+generated video. [Baseline evidence](research/2026-11-11-cat-profile-publishing-baseline.md)
+distinguishes existing text/image primitives from missing reference-input/video/share capabilities.
+
 [Codex session retention](plans/PLAN-132-codex-session-retention.md) implements ephemeral
 Catlas inference through Runtime, with persistent product conversation names and
 existing continuity preserved. Scoped and isolated native acceptance passed; unpublished.
