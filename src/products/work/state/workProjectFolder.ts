@@ -10,7 +10,6 @@ import type { WorkTriageMutationContext } from './workTriageDelegate.js';
  */
 
 const UNSAFE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
-const HIDDEN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
 
 /**
  * A folder as a path on this computer: absolute for this OS, one line, bounded, with no `..`
@@ -27,14 +26,7 @@ export function normalizeWorkProjectFolder(value: unknown, platform: NodeJS.Plat
   return absolute ? folder : null;
 }
 
-/**
- * A folder as a card or a dialog shows it: whole, with any hidden character written out as
- * `\u{…}`, so a folder stored before these checks cannot look like another one.
- */
-export function visibleWorkProjectFolder(value: string | null | undefined): string | null {
-  if (typeof value !== 'string' || !value) return null;
-  return value.replace(HIDDEN, (char) => `\\u{${char.codePointAt(0)!.toString(16).toUpperCase()}}`);
-}
+export { visibleWorkProjectFolder } from '../../shared/workProjectDisplay.js';
 
 export async function setWorkProjectFolder(
   coreStore: CoreStore,

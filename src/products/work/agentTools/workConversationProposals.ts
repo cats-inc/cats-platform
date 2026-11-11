@@ -19,8 +19,8 @@ import {
 import type { WorkIntakeDelegate } from '../state/workIntakeDelegate.js';
 import type { WorkTriageDelegate } from '../state/workTriageDelegate.js';
 import type { CoreStore } from '../../../core/store.js';
-import { normalizeWorkProjectFolder, setWorkProjectFolder, visibleWorkProjectFolder } from '../state/workProjectFolder.js';
-import { buildChatWorkItemId } from '../../../shared/chatCoreIds.js';
+import { normalizeWorkProjectFolder, setWorkProjectFolder } from '../state/workProjectFolder.js';
+import { conversationMoveView, visibleWorkProjectFolder } from '../../shared/workProjectDisplay.js';
 
 /**
  * SPEC-142 FR-12 to FR-14, FR-16, FR-19: the Work writes a conversation's agents may propose
@@ -132,30 +132,6 @@ function folderText(value: unknown): string | null {
   return typeof value === 'string' ? visibleWorkProjectFolder(value) : null;
 }
 
-/**
- * The Work Items parented under the conversation's projected Work Item. They follow the
- * conversation into a Project, so a card that moves it shows and binds them (FR-16, FR-18).
- */
-export function conversationChildWorkItems(core: CatsCoreState, channelId: string): CoreWorkItemRecord[] {
-  const projectedId = buildChatWorkItemId(channelId);
-  return core.workItems.filter((entry) => entry.parentWorkItemId === projectedId);
-}
-
-const CHILD_RECORD_LIMIT = 20;
-
-/** The card's lines for what moves with the conversation. */
-export function conversationMoveView(core: CatsCoreState, channelId: string) {
-  const children = conversationChildWorkItems(core, channelId);
-  return {
-    children,
-    fields: children.length > 0 ? [{ name: 'moves with it', value: `${children.length} Work Item${children.length === 1 ? '' : 's'}`
-      + (children.some((entry) => entry.taskId) ? ', some with a Task' : '') }] : [],
-    records: children.slice(0, CHILD_RECORD_LIMIT).map((entry) => ({
-      kind: 'work_item' as const, id: cleanRecordValue(entry.id), title: fenceRecordText(entry.title, PROPOSAL_TITLE_LIMIT + 1),
-    })),
-    binding: children.map((entry) => ({ id: entry.id, taskId: entry.taskId, updatedAt: entry.updatedAt })),
-  };
-}
 
 /** FR-16: the card for a write that changes where supervised runs start. */
 function projectFolderWarning(context: ConversationProposalContext, projectId: string | null, folder: unknown) {

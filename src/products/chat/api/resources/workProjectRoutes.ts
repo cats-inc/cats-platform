@@ -5,7 +5,7 @@ import { ChatApiError, handleRestError } from '../routeErrors.js';
 import { nowFrom, type ChatApiRouteContext } from '../routeSupport.js';
 import { publishChannelMutation } from '../transportEventPublisher.js';
 import { isOwnerPrincipal } from './productScopeRoutes.js';
-import { visibleWorkProjectFolder } from '../../../work/state/workProjectFolder.js';
+import { visibleWorkProjectFolder } from '../../../shared/workProjectDisplay.js';
 
 /**
  * SPEC-142 FR-23: the owner sets, changes or clears a conversation's Project here, or by

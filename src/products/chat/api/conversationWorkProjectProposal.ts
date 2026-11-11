@@ -7,8 +7,7 @@ import {
 } from '../../../platform/proposals/contracts.js';
 import { cleanRecordValue, fenceRecordText } from '../../shared/conversationRecordTools.js';
 import { hasActiveSupervisedRun } from '../state/model/workProject.js';
-import { conversationMoveView } from '../../work/agentTools/workConversationProposals.js';
-import { visibleWorkProjectFolder } from '../../work/state/workProjectFolder.js';
+import { conversationMoveView, visibleWorkProjectFolder } from '../../shared/workProjectDisplay.js';
 import type { ChatStore } from '../state/store.js';
 import { applyChannelWorkProject } from './conversationWorkProject.js';
 
