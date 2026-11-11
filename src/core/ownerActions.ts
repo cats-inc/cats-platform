@@ -6,6 +6,7 @@ import { CoreConflictError, CoreNotFoundError, CoreValidationError } from './err
 import { effectiveOwnerListing, ownerEntry, setOwnerEntry } from './ownerLifecycle.js';
 import { applyOwnerLifecycleProjection } from './ownerLifecycleProjection.js';
 import { upsertCoreProject, upsertCoreWorkItem, upsertCoreTask, upsertCoreArtifact } from './model/index.js';
+import { detachDeletedProjectActivities } from './model/planningRecords.js';
 import { readTaskPlanningMetadata } from '../shared/taskPlanning.js';
 import { readProductScope } from '../shared/productScope.js';
 import { readCoreEffectiveDeliveryPolicy } from './governance.js';
@@ -74,7 +75,11 @@ export function applyOwnerAction(core: CatsCoreState, family: PlanningOwnerFamil
     }
     return next;
   }
-  if (action === 'delete') return applyOwnerLifecycleProjection(setOwnerEntry(core, family, id, { deleted: true, listing: 'removed', pinned: false }));
+  if (action === 'delete') {
+    // A deleted Project's notes stay as history without naming it, as `removeCoreProject` leaves them.
+    const detached = family === 'project' ? detachDeletedProjectActivities(core, id) : core;
+    return applyOwnerLifecycleProjection(setOwnerEntry(detached, family, id, { deleted: true, listing: 'removed', pinned: false }));
+  }
   const record = getOwnerRecord(core, family, id)!;
   if (action === 'complete' && view.acceptanceCriteria && (body.acceptanceConfirmed !== true || typeof body.acceptanceNote !== 'string' || !body.acceptanceNote.trim())) throw new CoreValidationError('Review the acceptance criteria and record the evidence before completing.');
   const patch: Record<string, unknown> = { id, title: record.title, metadata: record.metadata };

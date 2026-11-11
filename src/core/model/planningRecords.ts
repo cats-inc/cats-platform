@@ -313,18 +313,28 @@ export function removeCoreProject(
     return { core, removed: false };
   }
   assertOwnerRecordDeletable(core, 'project', projectId);
-  // SPEC-142 FR-27: a Project's activity notes do not block its deletion. They stay as history,
-  // detached and naming the Project by title, so no dangling anchor is left behind and a Project
-  // created again under the same id does not take them back.
-  const title = core.projects.find((project) => project.id === projectId)?.title ?? projectId;
-  const activities = core.activities.map((activity) => activity.projectId !== projectId ? activity : {
-    ...activity,
-    projectId: null,
-    metadata: { ...activity.metadata, deletedProjectTitle: title },
-  });
   return {
-    core: touchCoreState({ ...core, projects: next, activities }, nowIso),
+    core: touchCoreState({ ...detachDeletedProjectActivities(core, projectId), projects: next }, nowIso),
     removed: true,
+  };
+}
+
+/**
+ * SPEC-142 FR-27: a Project's activity notes do not block its deletion. Every path that deletes a
+ * Project (this one and the owner's lifecycle delete) keeps them as history, detached and naming
+ * the Project by title, so no dangling anchor is left behind and a Project created again under
+ * the same id does not take them back.
+ */
+export function detachDeletedProjectActivities(core: CatsCoreState, projectId: string): CatsCoreState {
+  if (!core.activities.some((activity) => activity.projectId === projectId)) return core;
+  const title = core.projects.find((project) => project.id === projectId)?.title ?? projectId;
+  return {
+    ...core,
+    activities: core.activities.map((activity) => activity.projectId !== projectId ? activity : {
+      ...activity,
+      projectId: null,
+      metadata: { ...activity.metadata, deletedProjectTitle: title },
+    }),
   };
 }
 

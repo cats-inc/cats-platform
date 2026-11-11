@@ -139,7 +139,7 @@ not this spec's dotted catalog. They call the same delegates, and:
     intent explicit.
     - Amended 2026-11-12 (SPEC-142 A1): a request that names a folder
       (`repoPath`) no longer creates the Project. On the owner's own turn it
-      posts a `work.project.create` card that shows the folder and says that
+      posts a `work.project.create.decision` card, at every level, that shows the folder and says that
       supervised runs start there without asking; the owner's confirmation
       creates it. On any other turn, or without the proposal service, nothing is
       created. Without a folder the Project is created as before.
