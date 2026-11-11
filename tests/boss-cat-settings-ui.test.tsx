@@ -136,12 +136,13 @@ test('SPEC-139 FR-10: the transcript shows the card under its notice, and an ord
     resolveParticipantDisplayName: () => '',
   });
   // The props are the transcript's own; message shapes are the minimum the item reads.
+  type TranscriptProps = React.ComponentProps<typeof TranscriptMessageItem>;
   const card = render(<TranscriptMessageItem {...(props(message('card', { event: 'boss_cat_join_request',
-    bossCatJoinRequest: { id: 'request-1', status: 'pending' } })) as never)} />);
+    bossCatJoinRequest: { id: 'request-1', status: 'pending' } })) as unknown as TranscriptProps)} />);
   await waitFor(() => assert.ok(card.queryByRole('button', { name: /Allow the join/u })));
   assert.match(card.container.textContent ?? '', /card body/u);
   card.unmount();
-  const notice = render(<TranscriptMessageItem {...(props(message('notice', { event: 'boss_cat_group_created' })) as never)} />);
+  const notice = render(<TranscriptMessageItem {...(props(message('notice', { event: 'boss_cat_group_created' })) as unknown as TranscriptProps)} />);
   assert.match(notice.container.textContent ?? '', /notice body/u);
   assert.equal(notice.queryByRole('button', { name: /Allow the join/u }), null);
   notice.unmount();
