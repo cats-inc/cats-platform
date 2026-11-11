@@ -10,6 +10,7 @@ import {
 } from '../../state/bossCatJoinRequests.js';
 import { resolveChannelCanonicalIdentity } from '../../state/model/index.js';
 import { updateChatState } from '../../state/store.js';
+import { shouldHydrateCompanionSession } from '../../companion/hydration.js';
 import { ChatApiError, handleRestError } from '../routeErrors.js';
 import { nowFrom, type ChatApiRouteContext } from '../routeSupport.js';
 import { publishChannelMutation } from '../transportEventPublisher.js';
@@ -35,8 +36,19 @@ export async function routeBossCatResourceApi(context: ChatApiRouteContext): Pro
     if (details) {
       if (context.method !== 'GET') { sendMethodNotAllowed(context.response, ['GET']); return true; }
       requireOwner(context);
-      const request = readBossCatJoinRequestDetails(await context.dependencies.chatStore.read(), {
-        laneId: details[0]!, requestId: details[1]!, now: nowFrom(context.dependencies),
+      const state = await context.dependencies.chatStore.read();
+      const now = nowFrom(context.dependencies);
+      // What the Boss Cat brings in: the same predicate hydration uses, with its box.
+      const record = state.channels.find((channel) => channel.id === details[0])?.messages
+        .map((message) => message.metadata?.[BOSS_CAT_JOIN_REQUEST_METADATA_KEY] as BossCatJoinRequestRecord | undefined)
+        .find((entry) => entry?.id === details[1]);
+      const boss = record ? state.cats.find((cat) => cat.id === record.bossCatId) : undefined;
+      const target = record ? state.channels.find((channel) => channel.id === record.conversationId) : undefined;
+      const companionMemory = boss && target && context.dependencies.companionStore
+        ? shouldHydrateCompanionSession(boss, (await context.dependencies.companionStore.getBoxSummary(boss.id, now)).box, target)
+        : undefined;
+      const request = readBossCatJoinRequestDetails(state, {
+        laneId: details[0]!, requestId: details[1]!, now, companionMemory,
       });
       if (!request) throw new ChatApiError(404, 'join_request_not_found', 'Join request not found.');
       sendJson(context.response, 200, { request }, { 'cache-control': 'no-store' });

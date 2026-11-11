@@ -497,6 +497,7 @@ function joinInvariant(channel) {
 
 function membershipDecider(hooks) {
   return async (_index, envelope) => {
+    if (hooks.action === 'none') return decision('respond');
     const offered = envelope.observation.availableTools.map((entry) => entry.manifest.name);
     if (offered.includes(BOSS_STATUS_BOARD)) return decision('board');
     const tool = hooks.action === 'join' ? BOSS_JOIN_CONVERSATION : BOSS_LEAVE_CONVERSATION;
@@ -802,6 +803,13 @@ test('SPEC-139 FR-10: under 「每次問我」 a join posts the owner\'s card, w
     .some((message) => message.metadata?.event === 'boss_cat_joined'));
   const replay = await decide(h, record.id, 'approve');
   assert.deepEqual([replay.body.outcome.status, replay.body.outcome.refusal], ['approved', 'card_consumed']);
+  const boss = membershipOf(state, hooks.conversationId, h.ids.boss);
+  await sendInConversation(h, hooks.conversationId, boss.participantId, 'Welcome, Boss.');
+  const session = h.calls.ordinaryCreates.find(({ input }) => JSON.stringify(input).includes(hooks.conversationId)
+    && input.context?.metadata?.participantId === boss.participantId)
+    ?? h.calls.ordinaryCreates.filter(({ input }) => JSON.stringify(input).includes(hooks.conversationId)).at(-1);
+  assert.equal(session.input.workspaceAccess, details.request.grants.workspaceAccess, 'the card told the truth');
+  assert.equal(session.input.permissionMode, details.request.grants.permissionMode);
   const evidence = await readFile(join(h.platformDir, 'state/evidence', `conversation-channel-${h.bossLane}.jsonl`), 'utf8');
   assert.match(evidence, /"action":"join_request"/u);
   assert.match(evidence, /"action":"owner_decision"[^\n]*"status":"approved"/u);
@@ -826,6 +834,22 @@ test('SPEC-139 FR-10: a declined, expired, stale or re-policied card does not jo
       await h.chatStore.write(state);
     }],
   ];
+  cases.push(
+    ['demoted', async (h) => {
+      const state = await h.chatStore.read();
+      state.cats.find((cat) => cat.id === h.ids.boss).group = 'standard';
+      await h.chatStore.write(state);
+    }],
+    ['archived', async (h, record) => {
+      const state = await h.chatStore.read();
+      state.channels.find((entry) => entry.id === record.conversationId).status = 'archived';
+      await h.chatStore.write(state);
+    }],
+    ['owner added the Boss Cat meanwhile', async (h, record) => {
+      const state = await h.chatStore.read();
+      await h.chatStore.write(assignCatToChannel(state, record.conversationId, { catId: h.ids.boss }, new Date()));
+    }],
+  );
   const outcomes = [];
   for (const [label, prepare, act] of cases) {
     const hooks = { action: 'join' };
@@ -835,12 +859,34 @@ test('SPEC-139 FR-10: a declined, expired, stale or re-policied card does not jo
     await prepare?.(h, record);
     const result = await (act ?? ((x, r) => decide(x, r.id, 'approve')))(h, record);
     outcomes.push([label, result.body.outcome.status, result.body.outcome.refusal ?? null]);
-    assert.equal(membershipOf(await h.chatStore.read(), hooks.conversationId, h.ids.boss), undefined, label);
+    const joined = await h.chatStore.read();
+    if (label !== 'owner added the Boss Cat meanwhile') {
+      assert.equal(membershipOf(joined, hooks.conversationId, h.ids.boss), undefined, label);
+    }
+    assert.equal(joined.channels.find((entry) => entry.id === hooks.conversationId).bossCatJoins, undefined, label);
   }
   assert.deepEqual(outcomes, [
     ['declined', 'declined', null],
     ['expired', 'expired', 'card_expired'],
     ['policy_changed', 'refused', 'policy_changed'],
     ['card_stale', 'refused', 'card_stale'],
+    ['demoted', 'refused', 'not_permitted'],
+    ['archived', 'refused', 'conversation_archived'],
+    ['owner added the Boss Cat meanwhile', 'refused', 'already_member'],
   ]);
+});
+
+test('SPEC-139 FR-10: a later prompt shows lane notices but never the owner\'s card', async (t) => {
+  const hooks = { action: 'join' };
+  // The reply to the join request fails, so the next prompt's recent context reaches back past the card.
+  const h = await start(t, { failLane: true, seed: seedOps(hooks, null), decide: membershipDecider(hooks) });
+  const { card } = await postCardRequest(h);
+  assert.equal((await decide(h, card.metadata.bossCatJoinRequest.id, 'approve')).body.outcome.status, 'approved');
+  h.calls.failLane = false;
+  hooks.action = 'none';
+  await h.send('What happened with Ops?');
+  const prompt = `${h.calls.laneSends.at(-1).content}\n${h.calls.laneSends.at(-1).instructions}`;
+  assert.match(prompt, /Boss joined a code conversation/u, 'positive control: a lane notice is in the recent context');
+  assert.ok(!prompt.includes(card.body), 'the card is not');
+  assert.ok(!prompt.includes(card.metadata.bossCatJoinRequest.id));
 });

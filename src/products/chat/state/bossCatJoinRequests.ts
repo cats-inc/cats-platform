@@ -120,10 +120,16 @@ export function applyBossCatJoin(
   return next;
 }
 
+/** Only the server's own card message: a system notice with the card event. */
+function readCardRecord(message: ChatMessage): BossCatJoinRequestRecord | null {
+  if (message.senderKind !== 'system' || message.metadata?.event !== BOSS_CAT_JOIN_REQUEST_EVENT) return null;
+  return (message.metadata?.[BOSS_CAT_JOIN_REQUEST_METADATA_KEY] as BossCatJoinRequestRecord | undefined) ?? null;
+}
+
 function readCard(state: ChatState, laneId: string, requestId: string): { message: ChatMessage; record: BossCatJoinRequestRecord } | null {
   const lane = state.channels.find((entry) => entry.id === laneId);
   for (const message of lane?.messages ?? []) {
-    const record = message.metadata?.[BOSS_CAT_JOIN_REQUEST_METADATA_KEY] as BossCatJoinRequestRecord | undefined;
+    const record = readCardRecord(message);
     if (record?.id === requestId) return { message, record };
   }
   return null;
@@ -144,7 +150,7 @@ function updateCard(
     channels: state.channels.map((channel) => channel.id !== laneId ? channel : {
       ...channel,
       messages: channel.messages.map((message) => {
-        const record = message.metadata?.[BOSS_CAT_JOIN_REQUEST_METADATA_KEY] as BossCatJoinRequestRecord | undefined;
+        const record = readCardRecord(message);
         return record?.id === requestId
           ? { ...message, metadata: { ...message.metadata, [BOSS_CAT_JOIN_REQUEST_METADATA_KEY]: { ...record, ...patch } } }
           : message;
@@ -165,11 +171,11 @@ export function postBossCatJoinRequest(
     at: Date;
   },
 ): { state: ChatState; requestId: string } | { refusal: 'card_pending' | 'rate_limited' } {
-  const lane = latest.channels.find((entry) => entry.id === input.laneId)!;
-  const pending = lane.messages.some((message) => {
-    const record = message.metadata?.[BOSS_CAT_JOIN_REQUEST_METADATA_KEY] as BossCatJoinRequestRecord | undefined;
+  // One pending card per conversation, across every Boss Cat's lane.
+  const pending = latest.channels.some((channel) => channel.messages.some((message) => {
+    const record = readCardRecord(message);
     return record?.conversationId === input.conversationId && effectiveStatus(record, input.at) === 'pending';
-  });
+  }));
   if (pending) return { refusal: 'card_pending' };
   const reserved = reserveBossCatUsage(latest, 'join_request', input.at);
   if (!reserved.allowed) return { refusal: 'rate_limited' };
@@ -296,7 +302,13 @@ export interface BossCatJoinRequestDetails {
 /** For the owner's card only, from live state. Never given to a model or a transport. */
 export function readBossCatJoinRequestDetails(
   state: ChatState,
-  input: { laneId: string; requestId: string; now: Date },
+  input: {
+    laneId: string;
+    requestId: string;
+    now: Date;
+    /** Whether hydration would load the Boss Cat's companion memory there; the route knows the box. */
+    companionMemory?: boolean;
+  },
 ): BossCatJoinRequestDetails | null {
   const card = readCard(state, input.laneId, input.requestId);
   if (!card) return null;
@@ -338,7 +350,7 @@ export function readBossCatJoinRequestDetails(
           model: boss.defaultExecutionTarget.model ?? null,
           mcpProfile: boss.mcpProfile,
           skillProfile: boss.skillProfile,
-          companionMemory: isCompanionCat(boss),
+          companionMemory: input.companionMemory ?? isCompanionCat(boss),
         }
       : null,
     history: { messagesBeforeJoin: BOSS_CAT_JOIN_PRIOR_MESSAGES },

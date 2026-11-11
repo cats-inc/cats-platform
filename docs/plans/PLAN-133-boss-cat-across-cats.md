@@ -243,7 +243,7 @@ Implemented by the Desktop session that built slices 1 to 5a, which also claims 
 
 - [x] Under 「每次問我」 a join request posts the card in the Boss Cat's lane
       (`postBossCatJoinRequest`). It counts toward the 10 an hour, and only one card per
-      conversation may be pending. The receipt says `awaiting_owner`, and the reply is told the
+      conversation may be pending, across every Boss Cat's lane. The receipt says `awaiting_owner`, and the reply is told the
       owner was asked.
 - [x] The card message carries only `bossCatJoinRequest`: ids, the digest, `requestedVia`, the
       creation and expiry times (24 hours), and the status. Its body names nothing. What joining
@@ -251,7 +251,8 @@ Implemented by the Desktop session that built slices 1 to 5a, which also claims 
       - `GET /api/channels/:laneId/boss-cat/join-requests/:requestId` returns the conversation's
         title, surface and participants;
       - the grants: repository, workspace access, permission mode, and Code tools with a shell;
-      - the Boss Cat's provider, model, MCP and skill profiles and companion memory;
+      - the Boss Cat's provider, model, MCP and skill profiles, and whether its companion memory
+        loads there (the same `shouldHydrateCompanionSession` predicate, with its box);
       - the history it will see, and where the request came from.
 - [x] The digest binds the target's `collaborationExecutionRevision`, the Boss Cat and its
       execution target, the lane, and the policy.
@@ -263,10 +264,18 @@ Implemented by the Desktop session that built slices 1 to 5a, which also claims 
       「允許」. A replay, a retry after a leave, expiry, a policy change and a stale digest are all
       refused and recorded on the card.
 - [x] The card never reaches a model or a transport:
-      - prompts drop it from the transcript and from the Core-rebuilt messages;
-      - the heartbeat's lane continuity and the SPEC-137 review leave it out;
-      - it is `origin: 'system'` and published as an update, never as `message_added`, so the
-        Telegram fanout never sees it.
+      - The prompt's recent context is the one path that shows system notices, and it drops
+        the card from the transcript and from Core-rebuilt messages. A test lets a reply fail,
+        so the next prompt reaches back past the card. The joined notice shows and the card does
+        not, and the test fails without the filter.
+      - Continuity transplants drop every system message anyway, so the filter in the
+        heartbeat's lane continuity and in the SPEC-137 review is defensive.
+      - Other readers of lane messages either read agent messages only (Catlas) or build no
+        prompt (repair, reports).
+      - The card is `origin: 'system'`, which the Telegram fanout skips whatever event carries
+        it.
+      - Only a system message with the card event is read as a card, so client metadata cannot
+        stand in for one, and dispatch strips both server-owned keys from client metadata.
 - [x] FR-16: a posted card (`join_request`) and the owner's decision (`owner_decision`) are
       recorded with ids only.
 - [x] Tests in `tests/chat-boss-cat-tools.test.js`:
@@ -274,7 +283,10 @@ Implemented by the Desktop session that built slices 1 to 5a, which also claims 
       - one pending card per conversation;
       - the details are for the owner only (401 without auth);
       - approve joins once, and a replay is refused;
-      - decline, expiry, a policy change and a stale digest do not join;
+      - the session Runtime receives afterwards has the access and permission mode the card
+        showed;
+      - nothing joins on decline, expiry, a policy change, a stale digest, a demoted Boss Cat,
+        an archived target, or a Boss Cat the owner added meanwhile;
       - the evidence records.
 
 ### Slice 6: Owner UI
