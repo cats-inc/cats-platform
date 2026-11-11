@@ -24,6 +24,13 @@ import type {
 import type { RuntimeSessionMcpDeliveryReport, RuntimeSessionMcpServer } from '../src/runtime/sessionMcpServers.ts';
 import { CODE_AGENT_PREVIEW_POLICY } from '../src/products/code/agentTools/policy.ts';
 import { createCodeAgentToolsProvider } from '../src/products/code/agentTools/service.ts';
+import { readHostToolsInvocationMarker } from '../src/platform/mcp/hostTools.ts';
+import { createHostToolsInvocationEnricher } from '../src/platform/mcp/hostToolsEnricher.ts';
+import {
+  clearRuntimeInvocationEnrichers,
+  enrichRuntimeInvocation,
+  registerRuntimeInvocationEnricher,
+} from '../src/platform/runtime/invocationEnrichment.ts';
 
 /** A provider at `chat`, standing in for the base tools PLAN-135 Phase 2 adds. */
 const BASE: HostToolProvider = {
@@ -234,4 +241,18 @@ test("a companion's lane keeps its image tools beside the host server (SPEC-142 
   assert.deepEqual(names, ['cats', CAT_IMAGE_TOOLS_SERVER_NAME]);
   assert.equal(CAT_IMAGE_TOOLS_SERVER_NAME, 'cats-images');
   imageTools.close();
+});
+
+test('an invocation without a conversation loses a marker an earlier step left', () => {
+  clearRuntimeInvocationEnrichers();
+  registerRuntimeInvocationEnricher(createHostToolsInvocationEnricher());
+  try {
+    const enriched = enrichRuntimeInvocation({ id: null }, {
+      context: { metadata: { ...marker('work').metadata, other: 1 } },
+    }, { phase: 'message_send' });
+    assert.equal(readHostToolsInvocationMarker(enriched.context), null, 'through the real pipeline, which never deletes keys');
+    assert.equal(enriched.context?.metadata?.other, 1);
+  } finally {
+    clearRuntimeInvocationEnrichers();
+  }
 });

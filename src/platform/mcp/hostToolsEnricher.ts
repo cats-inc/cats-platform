@@ -24,10 +24,10 @@ export function createHostToolsInvocationEnricher(): RuntimeInvocationEnricher {
     priority: RuntimeEnricherPriority.POST_PROCESS,
     enrich(channel, input) {
       if (!channel.id) {
-        // No conversation, no marker: drop one an earlier step may have left.
+        // No conversation, no marker: void one an earlier step may have left. The enrichment
+        // merge never deletes a key, so the marker is overwritten with null, which reads as none.
         if (!input.context?.metadata || !(HOST_TOOLS_CONTEXT_METADATA_KEY in input.context.metadata)) return null;
-        const { [HOST_TOOLS_CONTEXT_METADATA_KEY]: _dropped, ...metadata } = input.context.metadata;
-        return { context: { ...input.context, metadata } };
+        return { context: { ...input.context, metadata: { ...input.context.metadata, [HOST_TOOLS_CONTEXT_METADATA_KEY]: null } } };
       }
       const level = readProductScope(channel);
       const participantId = input.context?.metadata?.[TARGET_PARTICIPANT_METADATA_KEY];
