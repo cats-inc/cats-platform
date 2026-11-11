@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, existsSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync, existsSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ManagedPluginManager, inspectAgencyPackage, type PluginRuntimePort } from '../src/platform/plugins/manager.js';
@@ -10,7 +10,7 @@ import type { RuntimeClient, RuntimeSessionCreateInput } from '../src/runtime/cl
 
 const archive = readFileSync(join(process.cwd(), 'tests/fixtures/managed-plugins/agency-agents-0.1.0.catsplugin'));
 function fixture() {
-  const root = mkdtempSync(join(tmpdir(), 'cats-plugin-platform-'));
+  const root = mkdtempSync(join(realpathSync(tmpdir()), 'cats-plugin-platform-'));
   let offline = false; let stopCalls = 0;
   const observed: PluginObservation = { protocol: 1, runtimeId: 'test-runtime', plugin: null, affectedSessions: [], pendingRuns: [] };
   const port: PluginRuntimePort = { async request(method, path, body) {
@@ -25,6 +25,17 @@ function fixture() {
   return { root, port, observed, manager, offline: (value: boolean) => { offline = value; }, stops: () => stopCalls,
     archivePath: join(root, 'plugins', 'packages', `${AGENCY_PLUGIN.digest}.catsplugin`), cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
+test('startup leaves Agency uninstalled even when the experiment policy is enabled', async () => {
+  const f = fixture();
+  try {
+    await f.manager.tick();
+    assert.equal(f.manager.inventory().installed, false);
+    assert.equal(f.manager.inventory().phase, 'absent');
+    assert.deepEqual(f.manager.inventory().availableSkills, []);
+    assert.equal(f.observed.plugin, null);
+    assert.equal(existsSync(join(f.root, 'plugins')), false);
+  } finally { f.cleanup(); }
+});
 test('pinned archive validation, policy and separate install/enable/selection', async () => {
   const f = fixture();
   try {

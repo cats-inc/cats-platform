@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -8,6 +8,8 @@ import test from 'node:test';
 import { createServer } from '../build/server/app/server/index.js';
 import { UUID_PATTERN } from '../build/server/products/chat/shared/channelPaths.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { ManagedPluginManager } from '../build/server/platform/plugins/manager.js';
+import { AGENCY_PLUGIN } from '../build/server/shared/managedPlugins.js';
 import {
   createAuthenticatedTestSession,
   createTestAuthConfig,
@@ -94,7 +96,7 @@ function createRuntimeStub() {
   };
 }
 
-async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
+async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore(), shared = {}) {
   const now = new Date('2026-03-18T00:00:00.000Z');
   await mkdir(path.dirname(baseConfig.chatStatePath), { recursive: true });
   const auth = await createAuthenticatedTestSession({
@@ -108,6 +110,7 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
       runtimeClient,
       authStore: auth.authStore,
       now: () => now,
+      ...shared,
     },
     chat: {
       chatStore,
@@ -896,12 +899,12 @@ test('PATCH /api/cats/:catId toggles the companion role and rejects the legacy s
 
     const enableResponse = await patchCat({
       companion: true,
-      skillProfile: 'plugin:agency-agents/work/agency-code-reviewer',
+      skillProfile: 'chat-default',
     });
     assert.equal(enableResponse.status, 200);
     const enabledCat = (await enableResponse.json()).chat.cats.find((cat) => cat.id === catId);
     assert.deepEqual(enabledCat.roles, ['reviewer', 'companion']);
-    assert.equal(enabledCat.skillProfile, 'plugin:agency-agents/work/agency-code-reviewer');
+    assert.equal(enabledCat.skillProfile, 'chat-default');
 
     assert.equal((await patchCat({ skillProfile: 'companion' })).status, 400);
     assert.equal((await patchCat({ companion: 'yes' })).status, 400);
@@ -911,6 +914,87 @@ test('PATCH /api/cats/:catId toggles the companion role and rejects the legacy s
     const disabledCat = (await disableResponse.json()).chat.cats.find((cat) => cat.id === catId);
     assert.deepEqual(disabledCat.roles, ['reviewer']);
   });
+});
+
+test('Cat routes reject unavailable Agency profiles without persisting partial updates', async () => {
+  const store = new MemoryChatStore();
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const request = (route, method, body) => fetch(`${baseUrl}${route}`, {
+      method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const inventory = await (await fetch(`${baseUrl}/api/plugins`)).json();
+    assert.equal(inventory.installed, false);
+    assert.deepEqual(inventory.availableSkills, []);
+    for (const skill of AGENCY_PLUGIN.skills) {
+      const response = await request('/api/cats', 'POST', {
+        name: 'Unavailable', provider: 'codex', skillProfile: skill.id,
+      });
+      assert.equal(response.status, 409);
+      assert.equal((await response.json()).error.code, 'plugin_skill_unavailable');
+    }
+    assert.equal((await store.read()).cats.length, 0);
+    const created = await request('/api/cats', 'POST', { name: 'Ordinary', provider: 'codex' });
+    const { cat } = await created.json();
+    for (const skill of AGENCY_PLUGIN.skills) {
+      const response = await request(`/api/cats/${cat.id}`, 'PATCH', {
+        name: 'Must not be saved', companion: true, skillProfile: ` ${skill.id} `,
+      });
+      assert.equal(response.status, 409);
+      assert.equal((await response.json()).error.code, 'plugin_skill_unavailable');
+      assert.deepEqual((await store.read()).cats[0], cat);
+    }
+  }, store);
+});
+
+test('Cat routes admit Agency only after explicit install and enable, and reject it after disable', async () => {
+  const root = await mkdtemp(path.join(await realpath(tmpdir()), 'cats-plugin-selection-'));
+  let plugin = null;
+  const manager = new ManagedPluginManager(root, true, {
+    async request(method, route, body) {
+      if (method === 'PUT') plugin = { ...body, leaseUntil: Date.now() + 30_000 };
+      return { protocol: 1, runtimeId: 'selection-test-runtime', plugin, affectedSessions: [], pendingRuns: [] };
+    },
+  });
+  try {
+    const archive = await readFile(new URL('./fixtures/managed-plugins/agency-agents-0.1.0.catsplugin', import.meta.url));
+    const store = new MemoryChatStore();
+    await withServer(createRuntimeStub(), async (baseUrl) => {
+      const post = async (action, body) => {
+        const response = await fetch(`${baseUrl}/api/plugins/${action}`, {
+          method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+        });
+        assert.equal(response.status, 200);
+        return response.json();
+      };
+      const create = () => fetch(`${baseUrl}/api/cats`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: 'Reviewer', provider: 'codex', roles: ['companion'],
+          skillProfile: AGENCY_PLUGIN.skills[0].id }),
+      });
+      let inventory = await post('install', { revision: 0, archive: archive.toString('base64') });
+      assert.equal(inventory.phase, 'installed');
+      assert.equal((await create()).status, 409);
+      assert.equal((await store.read()).cats.length, 0);
+      inventory = await post('enable', { revision: inventory.revision });
+      const response = await create();
+      assert.equal(response.status, 201);
+      const { cat } = await response.json();
+      assert.equal(cat.skillProfile, AGENCY_PLUGIN.skills[0].id);
+      assert.ok(cat.roles.includes('companion'));
+      const patch = (body) => fetch(`${baseUrl}/api/cats/${cat.id}`, {
+        method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+      });
+      assert.equal((await patch({ skillProfile: AGENCY_PLUGIN.skills[1].id })).status, 200);
+      assert.equal((await patch({ skillProfile: 'plugin:unknown/skill' })).status, 409);
+      await post('disable', { revision: inventory.revision, confirmedSessions: [], confirmedRuns: [] });
+      assert.equal((await create()).status, 409);
+      assert.equal((await patch({ skillProfile: AGENCY_PLUGIN.skills[0].id })).status, 409);
+      // A stale saved selection is still editable and can be cleared without reinstalling.
+      assert.equal((await patch({ name: 'Renamed' })).status, 200);
+      assert.equal((await patch({ skillProfile: null })).status, 200);
+      assert.equal((await store.read()).cats[0].skillProfile, null);
+    }, store, { managedPlugins: manager });
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test('bot binding routes support multiple Telegram bots across Cats', async () => {

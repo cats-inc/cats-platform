@@ -134,7 +134,7 @@ export class ManagedPluginManager {
   }
   inventory(): PluginInventory {
     const state = this.read();
-    const enabled = this.policyEnabled && state.desired === 'enabled' && state.phase === 'enabled'
+    const enabled = this.policyEnabled && state.installed && state.desired === 'enabled' && state.phase === 'enabled'
       && this.observation?.plugin?.enabled && this.observation.plugin.leaseUntil > Date.now()
       && this.observation.plugin.generation === state.generation;
     return { policyEnabled: this.policyEnabled, revision: state.revision, installed: state.installed, desired: state.desired,
