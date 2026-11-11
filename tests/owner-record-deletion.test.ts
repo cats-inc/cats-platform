@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { appendCoreActivity, createDefaultCoreState, upsertCoreProject, upsertCoreWorkItem, upsertCoreTask, upsertCoreRun, removeCoreProject, removeCoreTask } from '../src/core/model/index.ts';
 import { upsertCoreWorkGraphLink } from '../src/core/model/linkRecords.ts';
 import { ownerDeleteBlockers } from '../src/core/ownerManagement.ts';
+import { applyOwnerAction, ownerActionView } from '../src/core/ownerActions.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import { buildPersistedChatSnapshot } from '../src/products/chat/state/core-snapshot/index.ts';
@@ -44,6 +45,18 @@ test("a Project's activity notes do not keep it from being deleted, but its Work
   // A Project created again under the same id does not take the old notes back.
   const again = upsertCoreProject(removed.core, { id: 'p', title: 'Project' }).core;
   assert.equal(again.activities.some((activity) => activity.projectId === 'p'), false);
+});
+
+test("the owner actions panel's delete detaches a Project's notes the same way (SPEC-142 FR-27)", () => {
+  let core = upsertCoreProject(createDefaultCoreState(), { id: 'p', title: 'Project' }).core;
+  core = appendCoreActivity(core, { kind: 'note', projectId: 'p', message: 'Created Project: Project' }).core;
+  const view = ownerActionView(core, 'project', 'p');
+  assert.deepEqual(view.actions.find((entry) => entry.action === 'delete')!.blockers, []);
+  const deleted = applyOwnerAction(core, 'project', 'p', { action: 'delete', token: view.token });
+  assert.equal(deleted.projects.some((project) => project.id === 'p'), false);
+  assert.equal(deleted.activities[0]!.projectId, null);
+  assert.equal(deleted.activities[0]!.metadata.deletedProjectTitle, 'Project');
+  assert.deepEqual(ownerAnchorDiagnostics(deleted).filter((entry) => entry.kind === 'broken_fk'), []);
 });
 
 test('WorkGraphLinks survive snapshot normalization and owner mutations, including unresolved endpoints', async () => {

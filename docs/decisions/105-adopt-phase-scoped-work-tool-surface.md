@@ -114,8 +114,9 @@ the [Tool Call Registry](../tool-calls.md#work-conversation-tools).
 - The decision path this ADR describes keeps its roles and flags, with one
   change (SPEC-142 A1): `work.project.create` with a folder (`repoPath`) no
   longer creates the Project. On the owner's own turn it posts a
-  `work.project.create` card that shows the folder and its warning, and the card
-  is the decision's only result. On any other turn, or without the proposal
+  `work.project.create.decision` card, which conversations at every level may
+  post, that shows the folder and its warning, and the card is the decision's
+  only result. On any other turn, or without the proposal
   service, nothing is created, and a system message tells the owner why.
   Without a folder the Project is created as before.
 
