@@ -37,8 +37,9 @@ export interface SelectProductRecentsOptions {
 }
 
 /**
- * Returns the channels whose `originSurface` matches the given
- * product, capped to `recentLimit`. Drives the `Recents (Chat)` /
+ * Returns the channels whose product scope is the given product,
+ * capped to `recentLimit`. The scope starts as the channel's
+ * `originSurface` (SPEC-141). Drives the `Recents (Chat)` /
  * `Recents (Code)` / `Recents (Work)` lists on the trimmed product
  * sidebars. Matches the SPEC-070 product-scoped recents pattern.
  *
@@ -46,9 +47,9 @@ export interface SelectProductRecentsOptions {
  * (`src/app/renderer/productShell/conversationSidebarViewModel.ts`'s
  * `recentsChannels` filter):
  *
- *   - `originSurface === product` (this is the product-scoping rule
- *     SPEC-070 introduced; equivalent to web's
- *     `channelMatchesActiveSurface`)
+ *   - the channel's product scope is `product` (the product-scoping
+ *     rule SPEC-070 introduced, on the scope since SPEC-141;
+ *     equivalent to web's `channelMatchesActiveSurface`)
  *   - `channelKind !== 'direct_message'` (mirrors web's
  *     `!isDirectLaneSummary`; DMs live under the dedicated DIRECT
  *     MESSAGES section on the Chat tab, never in the product

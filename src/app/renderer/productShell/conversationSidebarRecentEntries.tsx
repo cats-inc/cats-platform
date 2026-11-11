@@ -4,7 +4,7 @@ import {
   type ConversationSidebarChannel,
   type ConversationSidebarRecentEntry,
 } from './ConversationSidebar.js';
-import { resolveConversationSidebarChannelSurface } from './conversationSidebarViewModel.js';
+import { resolveConversationSidebarGroupSurface } from './conversationSidebarViewModel.js';
 
 interface ConversationSidebarParallelGroupMember {
   channelId: string;
@@ -54,7 +54,7 @@ export function buildConversationSidebarRecentEntries<
   const activeParallelChatGroups = (input.parallelChatGroups ?? []).filter(
     (group) =>
       group.status === 'active'
-      && resolveConversationSidebarChannelSurface(group.originSurface) === input.activeSurface,
+      && resolveConversationSidebarGroupSurface(group.originSurface) === input.activeSurface,
   );
   const parallelChatGroupByChannelId = new Map<string, typeof activeParallelChatGroups[number]>();
 

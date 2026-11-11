@@ -11,6 +11,7 @@ import type { NavigateFunction } from 'react-router-dom';
 import type { AppShellPayload as WorkspaceAppShellPayload } from '../../api/workspaceContracts.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import { resolvePlatformSurfaceRoutePrefix } from '../../../../shared/platformProducts.js';
+import { readProductScope } from '../../../../shared/productScope.js';
 import {
   messageKeys,
   type MessageInterpolationValues,
@@ -87,9 +88,22 @@ export interface WorkspaceNavigationChannelRef {
   title?: string | null;
   pendingProvider?: string | null;
   originSurface?: PlatformSurfaceId | null;
+  /** SPEC-141: the product whose routes own the conversation. */
+  productScope?: PlatformSurfaceId | null;
   channelKind?: 'chat_channel' | 'direct_message' | null;
   defaultRecipientCatId?: string | null;
   roomMode?: RoomRoutingMode | null;
+}
+
+/**
+ * SPEC-141 FR-13: selecting a conversation opens it under the product of its scope. A
+ * conversation the payload does not list yet opens where the owner is.
+ */
+export function resolveConversationSelectSurface(
+  channel: WorkspaceNavigationChannelRef | null,
+  shellSurface: PlatformSurfaceId,
+): PlatformSurfaceId {
+  return channel ? readProductScope(channel) : shellSurface;
 }
 
 export interface WorkspaceNavigationPayloadLike {
@@ -346,7 +360,7 @@ export function useWorkspaceAppNavigationActions<
     const selectedChannel = state.status === 'ready'
       ? state.payload.chat.channels.find((channel) => channel.id === channelId) ?? null
       : null;
-    const targetSurface = selectedChannel?.originSurface ?? platformShellSurface;
+    const targetSurface = resolveConversationSelectSurface(selectedChannel, platformShellSurface);
     const targetRoute = stageCrossSurfaceConversationNavigationHandoff({
       sourceSurface: platformShellSurface,
       targetSurface,

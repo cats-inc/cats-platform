@@ -11,6 +11,13 @@ export type RuntimeInvocationEnrichmentPhase = 'session_create' | 'message_send'
 
 export interface RuntimeInvocationEnrichmentChannel {
   originSurface?: string | null;
+  /**
+   * SPEC-141: the stored scope, with the kind and the routing mode the read rule needs. An
+   * enricher decides what a conversation receives with `readProductScope`, not the origin.
+   */
+  productScope?: string | null;
+  channelKind?: string | null;
+  roomRouting?: { mode?: string | null } | null;
   id?: string | null;
   title?: string | null;
   chatCwd?: string | null;

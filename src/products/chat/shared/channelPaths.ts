@@ -1,5 +1,6 @@
 import type { ChatChannelSummary } from '../api/contracts.js';
 import { isDirectLaneSummary } from './channelTopology.js';
+import { readProductScope } from '../../../shared/productScope.js';
 import { resolvePlatformSurfaceRoutePrefix } from '../../../shared/platformProducts.js';
 
 export const UUID_PATTERN =
@@ -85,11 +86,12 @@ export function resolveDefaultChatPath(selectedChannelId: string | null | undefi
 }
 
 export function resolveVisibleChatPath(
-  channels: ReadonlyArray<Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind' | 'originSurface'>>,
+  channels: ReadonlyArray<Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind' | 'originSurface' | 'productScope'>>,
   selectedChannelId: string | null | undefined,
 ): string {
+  // SPEC-141 FR-13: Chat's landing conversation is one whose scope is chat.
   const visibleChannels = channels.filter((channel) =>
-    channel.originSurface === 'chat');
+    readProductScope(channel) === 'chat');
   const normalized = selectedChannelId?.trim() ?? '';
   const selectedVisible = visibleChannels.find((channel) =>
     channel.id === normalized && !isDirectLaneSummary(channel),

@@ -33,7 +33,7 @@ import {
 
 const APP_SHELL_BACKGROUND_REFRESH_MS = 5_000;
 
-type RoutingChannelLike = Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind' | 'originSurface'>;
+type RoutingChannelLike = Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind' | 'originSurface' | 'productScope'>;
 type RoutingCatLike = { id: string; status: string };
 
 export interface WorkspaceRoutingPayloadLike {

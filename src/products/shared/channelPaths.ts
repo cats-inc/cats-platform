@@ -1,4 +1,5 @@
 import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
+import { readProductScope } from '../../shared/productScope.js';
 import type { RoomRoutingMode } from '../../shared/roomRouting.js';
 import { isDirectLaneSummary, type ProductChannelKind } from './channelTopology.js';
 
@@ -17,6 +18,8 @@ type WorkspaceChannelSummaryRef = {
   roomMode?: RoomRoutingMode | null;
   channelKind?: ProductChannelKind | null;
   originSurface?: PlatformSurfaceId | null;
+  /** SPEC-141: the product whose routes own the conversation. */
+  productScope?: PlatformSurfaceId | null;
 };
 
 function normalizeRouteToken(value: string | null | undefined): string | null {
@@ -120,9 +123,10 @@ export function resolveWorkspaceVisibleChatPath(
   selectedChannelId: string | null | undefined,
   activeSurface?: PlatformSurfaceId,
 ): string {
+  // SPEC-141 FR-13: a product's landing conversation is one of its scope.
   const visibleChannels = activeSurface
     ? channels.filter((channel) =>
-      channel.originSurface === activeSurface)
+      readProductScope(channel) === activeSurface)
     : channels;
   const normalized = selectedChannelId?.trim() ?? '';
   const selectedVisible = visibleChannels.find((channel) =>

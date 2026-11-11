@@ -5,6 +5,7 @@ import {
   type RuntimeInvocationEnricher,
 } from '../../../platform/runtime/invocationEnrichment.js';
 import { hasShellExecutionPermission } from './shellPermission.js';
+import { readProductScope } from '../../../shared/productScope.js';
 
 /**
  * Marks Code conversation invocations so the Code runtime-client wrapper can
@@ -31,7 +32,8 @@ export function createCodeAgentToolsInvocationEnricher(): RuntimeInvocationEnric
     id: CODE_AGENT_TOOLS_HOOK_ID,
     priority: RuntimeEnricherPriority.POST_PROCESS,
     enrich(channel, input) {
-      if (channel.originSurface !== 'code' || !channel.id) return null;
+      // SPEC-141 FR-8: Code's tools follow the scope. Work conversations join in a later phase.
+      if (readProductScope(channel) !== 'code' || !channel.id) return null;
       const marker: CodeAgentToolsInvocationMarker = {
         channelId: channel.id,
         workspacePath: channel.chatCwd ?? channel.repoPath ?? null,

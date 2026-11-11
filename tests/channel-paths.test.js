@@ -58,9 +58,11 @@ test('resolveVisibleChatPath skips hidden direct lanes when choosing Chats overv
     resolveVisibleChatPath([{ id: 'code-1', roomMode: 'chat_channel', originSurface: 'code' }], 'code-1'),
     NEW_CHAT_PATH,
   );
+  // SPEC-141 FR-3 (S4): a conversation with no recorded origin is treated as chat, so Chat can
+  // land on it. Before, it belonged to no product and was skipped.
   assert.equal(
     resolveVisibleChatPath([{ id: 'legacy-1', roomMode: 'chat_channel' }], 'legacy-1'),
-    NEW_CHAT_PATH,
+    '/chat/chats/legacy-1',
   );
 });
 

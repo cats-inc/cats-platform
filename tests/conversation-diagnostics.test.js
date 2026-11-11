@@ -105,6 +105,8 @@ for (const originSurface of ['chat', 'code']) test(`${originSurface}: selected i
     if (text !== 'Runtime offline') assert.ok(report.text.includes(text), text);
   }
   assert.ok(!report.text.includes('private-')); assert.ok(!report.text.includes('unrelated-session'));
+  // SPEC-141: the report names the conversation's product scope beside its origin.
+  assert.match(report.text, /"surface": "chat",\s+"productScope": "chat"/u);
   assert.equal(delivered, undefined, 'collecting makes no model request');
   unavailable = true;
   const partial = await (await fetch(url, { headers })).json();

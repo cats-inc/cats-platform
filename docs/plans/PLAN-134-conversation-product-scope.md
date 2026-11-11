@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In progress: Phase 1 is done, Phases 2 to 7 are not started. The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
+| **Status** | In progress: Phases 1 and 2 are done, Phases 3 to 7 are not started. The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -88,41 +88,80 @@ writes and the execution policy in the revision).
 **Goal:** every reader in the inventory's "follows the scope" group reads the scope (FR-12 to
 FR-15, and FR-8's checks still limited to `code`).
 
-- [ ] Put the read rule in `src/shared/productScope.ts`, where every reader can import it.
+- [x] Put the read rule in `src/shared/productScope.ts`, where every reader can import it.
   - Readers in `products/shared`, `app/renderer`, `core` and mobile cannot import Chat's
     `resolveChannelProductScope`: `tests/dependency-graph.test.js` keeps the edges from
-    `products/shared` into Chat exact, and `core` imports no product.
-  - Proposed rule, which the owner has not seen: a direct lane reads as `chat` whatever is
-    stored, then a valid stored value as stored, else the derived one.
-    - Today the lane check runs only when nothing valid is stored. A lane that carried a
-      stored `code` would therefore receive Code's tools once tools follow the scope.
+    `products/shared` into Chat exact, and `core` imports no product. They call
+    `readProductScope`, and Chat's helper calls it too.
+  - The rule reads a direct lane as `chat` whatever is stored, then a valid stored value as
+    stored, else the derived one. The owner was told of the lane-first order on 2026-11-11 as
+    a default that stands unless the owner objects.
+    - Before, the lane check ran only when nothing valid was stored. A lane that carried a
+      stored `code` would have received Code's tools once tools follow the scope.
     - No consistent state has such a lane. Creation makes a lane at `chat`, the raise refuses
       one, and `restoreRecoverableDirectLane` sets the kind only on a conversation that
       carries the recoverable-lane mark, which only a lane gets.
-    - The stored value is left as it is, so nothing is lowered (D2). The rule narrows FR-3's
-      "kept as stored" for a lane and makes S6 hold on every read; SPEC-141 changes with it.
-  - Chat's helper calls the shared rule, and the loader keeps a valid stored value as stored.
-  - A summary decides whether it is a lane by `channelKind`, else by `roomMode`. Chat's helper
-    looks at `channelKind` and `roomRouting.mode`, and a summary has no `roomRouting`.
-- [ ] Recents: the shared filter and the sidebar view model.
-- [ ] Routes: the landing conversation, the redirect, the selection target, the owner-action
+    - The stored value is left as it is, so nothing is lowered (D2), and the loader keeps a
+      valid stored value as stored. SPEC-141's FR-3 and S6 say so now.
+  - One rule serves every shape: a stored conversation and a view say they are a lane by
+    `channelKind` or `roomRouting.mode`, a summary by `channelKind` or `roomMode`.
+- [x] Recents: the shared filter, which Desktop and mobile use, and the sidebar view model. A
+      parallel group is listed under its own origin, and under Chat when it has none.
+- [x] Routes: the landing conversation, the redirect, the selection target, the owner-action
       source path and the Catlas conversation link. The routing hook's narrowed conversation
       type gains the scope.
-- [ ] Labels: the Catlas snapshot.
-- [ ] Work: the own-WorkItem check. Work's history listing copies the scope beside the origin.
+- [x] Labels: the Catlas snapshot, and the Boss Cat board and join request, which SPEC-139
+      added after the inventory was taken.
+- [x] Work: the own-record check. Work's history listing copies the scope beside the origin.
+  - The check reads the scope where it read the origin, and that decides for a Task that came
+    from a conversation and is not bound to Work. In today's projection every conversation's
+    Task is bound to Work through its WorkItem, and the WorkItem's graph object carries no
+    conversation metadata, so Work already counts both as its own for every conversation.
+    The move changes nothing that is visible, before or after a raise.
   - The copy in Core metadata is rewritten on every sync by a build that knows the field, so
     a reader of the copy sees the current scope. A build without the field keeps the copy on
     a Task and a WorkItem while it drops the conversation's field; the next sync by a build
     with the field corrects it.
-- [ ] The conversation diagnostic report shows the scope beside the origin.
-- [ ] Tools: the enricher's channel type, the enricher, the Code session verification and the
-      Code work areas read the scope, still accepting `code` only.
-- [ ] Tests: for fixtures of all three origins, every moved reader gives the same result as on
+- [x] The conversation diagnostic report shows the scope beside the origin.
+- [x] Tools: the enricher's channel type, the enricher, the Code session verification and the
+      Code work areas read the scope, still accepting `code` only. So does the Boss Cat join
+      request's statement that joining brings Code's tools.
+  - The two seams through which Code asks Chat about a conversation carry `scope` beside
+    `origin`.
+- [x] Tests: for fixtures of all three origins, every moved reader gives the same result as on
       the base commit. The differences are FR-3's no-origin conversations and FR-2's direct
       lanes created outside Chat.
+  - The suites that already covered these readers pass with four edits.
+    - The work-area fixture and its route test carry the seam's `scope`.
+    - One landing assertion changes because a conversation with no recorded origin now
+      belongs to Chat (S4).
+    - The cross-surface routing fixture creates its conversations on Chat and rewrote only
+      the origin to stand for a Code conversation. It sets the scope too. CI found this one;
+      the local run had missed that suite.
+  - New tests cover a conversation whose scope differs from its origin for every moved
+    reader. A conversation with no recorded origin and a lane created outside Chat, as a lane
+    and after it stops being one, are covered for Recents, the sidebar, the routes, the
+    links, the Catlas label and the tool checks. The diagnostic report is checked only for a
+    conversation whose scope equals its origin.
+  - An independent review ran every moved reader against the base commit on the same stored
+    conversations and found no difference for one whose scope equals its origin.
 
-**Deliverables:** readers are on the scope, with no behavior change for a conversation that has
-an origin and is not a direct lane.
+**Deliverables:** readers are on the scope, with no behavior change for a conversation whose
+scope equals its origin. That is every conversation with a recorded origin, except a direct
+lane created outside Chat and a conversation that once was one.
+
+**Result:** three differences are now visible, all for stored data no current client produces.
+
+- A conversation or a parallel group with no recorded origin is listed, routed and labelled as
+  Chat's (S4).
+- A direct lane created outside Chat is Chat's and no longer receives Code's tools (S6).
+- An ordinary conversation that was such a lane stays at `chat`, as FR-3 says. Before, it was
+  listed and routed under its origin's product and received Code's tools when that was Code.
+  The owner cannot move it back until the raise exists.
+  - One that stopped being a lane before a build with the field first loaded it loads at its
+    origin instead, so two conversations with the same history can differ.
+
+No conversation can have a scope above its origin until Phase 5 adds the raise.
 
 ### Phase 3: Role tools at every level
 
@@ -150,7 +189,9 @@ Work conversations too (D8; FR-19).
 
 **Goal:** conversations on Work have Code's tools and can show them (D5; FR-8 to FR-11).
 
-- [ ] The enricher, the Code session verification and the Code work areas accept `work`.
+- [ ] The enricher, the Code session verification and the Code work areas accept `work`. So
+      does the Boss Cat join request's statement that joining brings Code's tools, with
+      SPEC-139 FR-8's hint and the card's text.
 - [ ] Make Code's conversation parts usable from Work's route: the preview controls, the
       preview button, the work areas panel and the folder and permission chips. They live in
       `src/products/code/renderer/components/`, and `tests/dependency-graph.test.js` forbids
@@ -219,6 +260,10 @@ previews and work areas appear under `/work`.
       makes a lane, the raise refuses one, and `restoreRecoverableDirectLane` sets the kind
       only on a conversation that carries the recoverable-lane mark. A valid stored scope is
       kept as stored (FR-3), so such a path would leave a lane above `chat`, against S6.
+- [ ] Make the Boss Cat join card's binding cover the scope before a raise exists. The card
+      binds `collaborationExecutionRevision`, which digests the origin and not the scope. A
+      raise between the card and the owner's click would change what joining grants, Code's
+      tools among it, without making the card stale.
 - [ ] Add the execution policy to the raise revision. The permission chip is drawn from the
       permission mode and `runtimeExecutionPolicy`, and the digest has only the mode.
   - Digest the policy's values in a fixed order: the stored object's key order is not
@@ -257,12 +302,12 @@ previews and work areas appear under `/work`.
 - [ ] Amend ADR-069, ADR-073, ADR-126 and SPEC-123 as SPEC-141's metadata lists. ADR-098 and
       SPEC-101 too, if a canvas surface kind was added.
 - [ ] If S1 stands, reword SPEC-137 FR-7 from "Chat conversation" to "created on Chat".
-- [ ] Amend SPEC-139 FR-3, FR-6, FR-8 and FR-10, and make its join card's binding cover the
-      scope. PLAN-133 is building SPEC-139 now, in another session.
-  - Its join slice binds the card to `collaborationExecutionRevision`, which FR-7 keeps free of
-    the scope, and names Code's tools for Code only.
-  - Whichever lands second, PLAN-133's join slice or this plan's Phase 4, updates the hint, the
-    card's text and the binding. This plan does not edit SPEC-139 or PLAN-133 before then.
+- [ ] Amend SPEC-139 FR-3, FR-6, FR-8 and FR-10 to say "scope" where they say a conversation's
+      surface.
+  - PLAN-133's join slice landed before this plan's Phase 2. Phase 2 moved the board's and
+    the join request's product label, and the statement about Code's tools, to the scope.
+  - Phase 4 updates the hint and the card's text for Work, and Phase 5 makes the card's
+    binding cover the scope.
 - [ ] Terminology: mark the product scope row as implemented, and correct the entry-preset rows
       that describe records the code does not create.
 - [ ] `docs/tool-calls.md`: who receives the `cats` tools.
@@ -283,7 +328,9 @@ previews and work areas appear under `/work`.
 ## Reader Inventory
 
 From a sweep of Platform `36d4bb458` on 2026-11-11: 145 mentions of `originSurface` in 54
-source files, tests excluded. Paths are under `src/`.
+source files, tests excluded. Paths are under `src/`. Re-swept on `c37152b45` before Phase 2:
+157 mentions in 59 files. The additions are SPEC-139's Boss Cat readers and Chat's own landing
+helper, listed below; line numbers are from the sweep that found each entry.
 
 ### Follows the scope
 
@@ -304,13 +351,21 @@ source files, tests excluded. Paths are under `src/`.
   - `products/shared/renderer/hooks/useWorkspaceAppNavigationActions.ts:349`.
   - `core/ownerActions.ts:48`, which reads the Core metadata copy.
   - `products/chat/api/guideCatAssist.ts:113`.
-- **Labels.** `products/chat/api/catlasSnapshot.ts:87`.
+- **Labels.** `products/chat/api/catlasSnapshot.ts:87`, `products/chat/state/bossCatBoard.ts:299`
+  and `products/chat/state/bossCatJoinRequests.ts:78`, `:347`.
 - **Work.** `products/work/api/ownerGraphProjection.ts:12`.
 
-Three links hard-code a product prefix and rely on the redirect:
+Phase 2 moved every entry above. Two more were found in the re-sweep and moved with them:
+`products/chat/shared/channelPaths.ts:92`, Chat's landing conversation, and
+`products/chat/state/bossCatJoinRequests.ts:358`, whether joining brings Code's tools.
+
+Four links hard-code a product prefix and rely on the redirect:
 `products/code/renderer/components/WorkspaceDetailPage.tsx:325`,
-`products/code/state/codeSessionOperation.ts:45` and
-`products/code/renderer/components/ArtifactDetailView.tsx:32`. They keep working (FR-13).
+`products/code/state/codeSessionOperation.ts:45`,
+`products/code/renderer/components/ArtifactDetailView.tsx:32` and
+`products/work/api/ownerGraphProjection.ts:28-31`, which builds `/chat/chats/:id` for every
+projected conversation because its Core kind is never `code_thread` or `work_thread`. They keep
+working (FR-13).
 
 ### Stops reading the origin (D8)
 
@@ -345,11 +400,12 @@ These gates open to every conversation that is not a direct lane.
       summary at `:388` keeps only its origin, since a group has no scope (FR-5).
     - `products/chat/state/core-projection/entities.ts:572`, `:624` and `workflow.ts:207-479`.
     - `products/shared/renderer/workspaceChatUtils.tsx:525` and `activeEntityMerge.ts:183`.
-  - In Phase 2:
+  - Done in Phase 2:
     - `products/shared/renderer/hooks/useWorkspaceAppShellRouting.ts:36`, a narrowed type that
       the routes read.
     - `products/chat/api/resources/diagnosticRoutes.ts:66`.
-    - `products/work/state/historyListing.ts:12-60`.
+    - `products/work/state/historyListing.ts:12-60`. The `originSurface` filter of
+      `GET /api/work/history` at `:64` still selects by origin, as its name says.
 - **Catlas titling.** `products/chat/api/catlasTitles.ts:21`, `:60`.
 - **Posture.** `products/chat/state/runtime-dispatch/routing.ts:1149-1150`.
 - **Knowledge scope copy.** `products/chat/state/orchestratorKnowledge.ts:62`.

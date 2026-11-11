@@ -1,4 +1,5 @@
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import { readProductScope, type ProductScopeSource } from '../../../shared/productScope.js';
 import type { AppShellPayload } from '../api/workspaceContracts.js';
 import {
   buildCrossSurfaceChannelPath,
@@ -9,14 +10,19 @@ import {
   type CrossSurfaceNavigationRouteTarget,
 } from './crossSurfaceNavigationHandoff.js';
 
-/** Route persisted conversations through their owning product, retaining canvas/query state. */
+/**
+ * Route persisted conversations through their owning product, retaining canvas/query state.
+ * The owning product is the one of the conversation's scope (SPEC-141 FR-13), so a link made
+ * before a raise, or one that hard-codes a product prefix, still arrives.
+ */
 export function resolveConversationOriginRoute(input: {
   sourceSurface: PlatformSurfaceId;
   currentPath: string;
-  channel: { id: string; originSurface?: PlatformSurfaceId | null } | null | undefined;
+  channel: ({ id: string } & ProductScopeSource) | null | undefined;
 }): CrossSurfaceNavigationRouteTarget | null {
-  const targetSurface = input.channel?.originSurface;
-  if (!input.channel || !targetSurface || targetSurface === input.sourceSurface) return null;
+  if (!input.channel) return null;
+  const targetSurface = readProductScope(input.channel);
+  if (targetSurface === input.sourceSurface) return null;
   const sourcePath = buildCrossSurfaceChannelPath(input.sourceSurface, input.channel.id);
   const suffix = input.currentPath.slice(sourcePath.length);
   if (!input.currentPath.startsWith(sourcePath) || (suffix && !/^[/?#]/u.test(suffix))) return null;

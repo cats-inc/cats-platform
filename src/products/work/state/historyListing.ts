@@ -3,6 +3,7 @@ import { ownerEntry } from '../../../core/ownerLifecycle.js';
 import { CoreValidationError } from '../../../core/errors.js';
 import { executionSource, isTerminalHistory } from './historyManagement.js';
 import { resolveTaskProductBinding } from '../api/projectionSupport.js';
+import { isProductScope } from '../../../shared/productScope.js';
 
 export interface ExecutionHistoryItem {
   family: 'run' | 'mission'; id: string; title: string; status: string; summary: string | null;
@@ -10,6 +11,8 @@ export interface ExecutionHistoryItem {
   taskTitle: string | null; projectId: string | null; parentRunId: string | null; parentRunTitle: string | null;
   path: string; logsClearedAt: string | null;
   productBinding: string; originSurface: string | null;
+  /** SPEC-141: the scope copied from the conversation the record came from, when it has one. */
+  productScope: string | null;
 }
 export interface ExecutionHistoryList {
   items: ExecutionHistoryItem[]; total: number; allSourcesTotal: number; page: number; pageSize: number; revision: number;
@@ -45,6 +48,7 @@ export function listExecutionHistory(core: CatsCoreState, params: URLSearchParam
       parentRunId, parentRunTitle: core.runs.find(run => run.id === parentRunId)?.title ?? null,
       productBinding: task ? resolveTaskProductBinding(core, task) : 'unbound',
       originSurface: ['chat', 'code', 'work'].includes(String(record.metadata.originSurface)) ? String(record.metadata.originSurface) : null,
+      productScope: isProductScope(record.metadata.productScope) ? record.metadata.productScope : null,
       path: family === 'run' ? `/work/tasks/${encodeURIComponent(taskId ?? 'orphan')}/runs/${encodeURIComponent(record.id)}` : `/work/missions/${encodeURIComponent(record.id)}`,
       logsClearedAt: intent?.logsClearedAt ?? null };
   });

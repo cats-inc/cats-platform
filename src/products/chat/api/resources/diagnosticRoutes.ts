@@ -3,6 +3,7 @@ import { matchRoute, sendJson, sendMethodNotAllowed } from '../../../../shared/h
 import { readServerLiveTrace } from '../../../../shared/liveTrace.js';
 import { diagnosticText, diagnosticTrace, readDiagnosticWithin } from '../../../shared/diagnosticReport.js';
 import { collectParticipantLeaseAttachments } from '../../shared/channelParticipants.js';
+import { resolveChannelProductScope } from '../../shared/channelTopology.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
 
 export async function routeConversationDiagnostics(context: ChatApiRouteContext): Promise<boolean> {
@@ -63,7 +64,7 @@ export async function routeConversationDiagnostics(context: ChatApiRouteContext)
     },
     conversation: {
       id: diagnosticText(channel.id, 160), title: diagnosticText(channel.title, 300),
-      surface: channel.originSurface ?? null, status: channel.status,
+      surface: channel.originSurface ?? null, productScope: resolveChannelProductScope(channel), status: channel.status,
       repoPath: diagnosticText(channel.repoPath), cwd: diagnosticText(channel.chatCwd),
       workspaceKind: channel.runtimeWorkspaceKind ?? null,
       workspaceAccess: channel.runtimeWorkspaceAccess ?? null,

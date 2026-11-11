@@ -9,6 +9,7 @@ import {
   resolveParticipantLeaseAttachment,
 } from '../shared/channelParticipants.js';
 import type { ChatChannelState } from '../api/contracts.js';
+import { resolveChannelProductScope } from '../shared/channelTopology.js';
 
 /** A Code session runs in its conversation's one participant, the target it opened with. */
 function resolveCodeSessionId(channel: ChatChannelState): string | null {
@@ -39,6 +40,7 @@ export function createConversationSessionDelegate(store: ChatStore, runtimeDataD
       await store.updateSnapshot(({ chat, core }) => {
         const channel = chat.channels.find(row => row.id === channelId);
         valid = check(core, channel ? { id: channel.id, origin: channel.originSurface ?? '',
+          scope: resolveChannelProductScope(channel),
           archived: channel.status === 'archived', cwd: channel.repoPath,
           workspaceKind: channel.runtimeWorkspaceKind ?? null, workspaceAccess: channel.runtimeWorkspaceAccess ?? null,
           permissionMode: channel.runtimePermissionMode ?? null,

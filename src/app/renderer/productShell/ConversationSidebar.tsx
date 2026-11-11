@@ -45,6 +45,8 @@ export interface ConversationSidebarChannel {
   id: string;
   title: string;
   originSurface?: PlatformSurfaceId | null;
+  /** SPEC-141: the product that lists the conversation. */
+  productScope?: PlatformSurfaceId | null;
   defaultRecipientCatId?: string | null;
   defaultRecipientLeaseStatus?: ParticipantSessionStatus | null;
   channelKind?: 'chat_channel' | 'direct_message' | null;
