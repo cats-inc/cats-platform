@@ -691,6 +691,7 @@ export interface DesktopUpdateContract {
 }
 
 export interface DesktopPackagingPlan {
+  plugins?: import('./pluginBundle.js').DesktopPluginPin[];
   contentProfile: 'release' | 'preview';
   apps?: Array<{ id: string; version: string; sha256: string; artifact: string }>;
   strategy: 'electron-sidecar-bundle';

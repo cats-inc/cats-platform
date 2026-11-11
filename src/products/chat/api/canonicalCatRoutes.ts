@@ -113,8 +113,13 @@ async function handleCanonicalUpdateCat(
       if (body.name !== undefined) {
         state = renameCat(state, catId, body.name);
       }
+      if (body.skillProfile !== undefined || updatesExecution) {
+        const cat = requireCat(state, catId);
+        assertCatSkillProfileAvailable(context.dependencies,
+          body.skillProfile === undefined ? cat.skillProfile : body.skillProfile,
+          body.provider ?? cat.defaultExecutionTarget.provider);
+      }
       if (body.skillProfile !== undefined) {
-        assertCatSkillProfileAvailable(context.dependencies, body.skillProfile);
         state = updateCatSkillProfile(state, catId, body.skillProfile);
       }
       if (body.companion !== undefined) {

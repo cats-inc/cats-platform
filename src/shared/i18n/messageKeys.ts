@@ -324,6 +324,7 @@ export const messageKeys = {
   pluginsUnavailable: 'plugins.Unavailable',
   pluginsPendingExplanation: 'plugins.PendingExplanation',
   pluginsNewConversation: 'plugins.NewConversation',
+  pluginsSupportedProviders: 'plugins.SupportedProviders',
   pluginsChooseCat: 'plugins.ChooseCat',
   pluginsChooseFile: 'plugins.ChooseFile',
   pluginsInvalidFile: 'plugins.InvalidFile',

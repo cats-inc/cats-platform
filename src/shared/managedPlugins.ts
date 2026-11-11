@@ -10,11 +10,13 @@ export const AGENCY_PLUGIN = {
 export interface PluginIdentity { hostId: string; id: string; version: string; digest: string; generation: number }
 export interface PluginObservation {
   protocol: 1; runtimeId: string;
+  restorable?: boolean;
   plugin: (PluginIdentity & { enabled: boolean; leaseUntil: number }) | null;
   affectedSessions: string[];
   pendingRuns: Array<{ sessionId: string; runId: string; orphaned: boolean }>;
 }
 export interface PluginInventory {
+  bundledInstallAvailable?: boolean;
   policyEnabled: boolean;
   revision: number;
   installed: boolean;

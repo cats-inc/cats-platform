@@ -44,6 +44,8 @@ export interface AppConfig {
   runtimeBaseUrl: string;
   runtimeApiKey: string;
   managedPluginPolicy?: boolean;
+  managedPluginMode?: 'internal-experiment' | 'desktop-preview';
+  managedPluginBundlePath?: string;
   managedPluginKey?: string;
   runtimeSessionCreateTimeoutMs: number;
   runtimeSessionCreateSlowWarningMs: number;
@@ -282,7 +284,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     runtimeCatalogPackageRoot: env.CATS_RUNTIME_PACKAGE_ROOT?.trim() || undefined,
     runtimeCatalogConfigPath: env.CATS_RUNTIME_CATALOG_CONFIG_PATH?.trim() || undefined,
     runtimeApiKey: resolveRuntimeApiKey(env),
-    managedPluginPolicy: env.CATS_PLUGIN_POLICY === 'internal-experiment' && Boolean(env.CATS_PLATFORM_DIR),
+    managedPluginPolicy: ['internal-experiment', 'desktop-preview'].includes(env.CATS_PLUGIN_POLICY ?? '') && Boolean(env.CATS_PLATFORM_DIR),
+    managedPluginMode: env.CATS_PLUGIN_POLICY === 'desktop-preview' ? 'desktop-preview' : 'internal-experiment',
+    managedPluginBundlePath: env.CATS_PLUGIN_POLICY === 'desktop-preview' ? env.CATS_PLUGIN_BUNDLE_PATH : undefined,
     managedPluginKey: resolveRuntimeApiKey(env) || env.CATS_PLUGIN_MANAGEMENT_KEY,
     runtimeSessionCreateTimeoutMs,
     runtimeSessionCreateSlowWarningMs: parsePositiveInt(

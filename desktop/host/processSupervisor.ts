@@ -7,6 +7,7 @@ import { reportHostError } from './hostDiagnostics.js';
 import { delimiter, dirname, join, posix, win32 } from 'node:path';
 
 import type { DesktopHostConfig } from './config.js';
+import { readDesktopPluginArchive } from './pluginBundle.js';
 import { assertDesktopCandidatePaths, assertDesktopCandidatePortAvailable, createDesktopCandidateEnv } from './candidateProfile.js';
 import type { ManagedServiceName, ManagedServiceSnapshot } from './contracts.js';
 import { attachIngressSecretBroker } from './ingressSecrets.js';
@@ -538,7 +539,21 @@ export function buildManagedServiceSpecs(
 ): ManagedServiceSpec[] {
   const managedEnv = createManagedServiceEnv(config.candidateProfile
     ? createDesktopCandidateEnv(config.candidateProfile, env) : env, platform);
+  if (config.packaged) {
+    delete managedEnv.CATS_PLUGIN_POLICY;
+    delete managedEnv.CATS_PLUGIN_BUNDLE_PATH;
+    let archive: string | undefined;
+    try { archive = readDesktopPluginArchive(config.packageRoot); }
+    catch (error) { reportHostError('Bundled Plugin unavailable', error); }
+    if (archive && managedEnv.CATS_PLUGIN_MANAGEMENT_KEY) {
+      managedEnv.CATS_PLUGIN_POLICY = 'desktop-preview';
+      managedEnv.CATS_PLUGIN_BUNDLE_PATH = archive;
+    } else {
+      delete managedEnv.CATS_PLUGIN_MANAGEMENT_KEY;
+    }
+  }
   const runtimeManagedEnv = { ...managedEnv };
+  delete runtimeManagedEnv.CATS_PLUGIN_BUNDLE_PATH;
   delete runtimeManagedEnv.CATS_AUTH_SESSION_SECRET;
   delete runtimeManagedEnv.CATS_DESKTOP_APPS_KEY;
   delete runtimeManagedEnv.CATS_DESKTOP_AUTH_KEY;
@@ -992,6 +1007,16 @@ export class ManagedServiceSupervisor {
     }
   }
 
+  private shutdownGraceMs(name: ManagedServiceName): number {
+    // Runtime needs its six-second native close drain to finish before the host
+    // escalates; otherwise a clean Desktop exit can leave false orphan receipts.
+    return name === 'cats-runtime' ? Math.max(this.config.gracefulShutdownMs, 7000) : this.config.gracefulShutdownMs;
+  }
+
+  getGracefulShutdownBudgetMs(): number {
+    return [...this.handles.keys()].reduce((total, name) => total + this.shutdownGraceMs(name) * 2, 0);
+  }
+
   private async stopService(name: ManagedServiceName): Promise<void> {
     const handle = this.handles.get(name);
     if (!handle?.child) {
@@ -1011,11 +1036,12 @@ export class ManagedServiceSupervisor {
       child.stdin.end();
     }
 
-    await Promise.race([waitForExit, waitForTimeout(this.config.gracefulShutdownMs)]);
+    const graceMs = this.shutdownGraceMs(name);
+    await Promise.race([waitForExit, waitForTimeout(graceMs)]);
 
     if (child.exitCode === null && child.signalCode === null) {
       child.kill('SIGTERM');
-      await Promise.race([waitForExit, waitForTimeout(this.config.gracefulShutdownMs)]);
+      await Promise.race([waitForExit, waitForTimeout(graceMs)]);
     }
 
     if (child.exitCode === null && child.signalCode === null) {

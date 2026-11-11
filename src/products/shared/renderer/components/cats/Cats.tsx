@@ -788,7 +788,7 @@ export function CatsCanvas({
                   className="catsSubCard"
                   header={<SettingsSectionHeader title={t(messageKeys.sharedSettingsCatsSkillProfileLabel)} nested />}
                 >
-                  <PluginSkillOptions value={catForm.skillProfile} disabled={false} onChange={id => setCatForm({ ...catForm, skillProfile: id })} />
+                  <PluginSkillOptions value={catForm.skillProfile} provider={catForm.provider} disabled={false} onChange={id => setCatForm({ ...catForm, skillProfile: id })} />
                   <div className="skillPills">
                     {SKILL_PROFILES.map((profile) => (
                       <button
@@ -1028,7 +1028,7 @@ export function CatsCanvas({
                   className="catsSubCard"
                   header={<SettingsSectionHeader title={t(messageKeys.sharedSettingsCatsSkillProfileLabel)} nested />}
                 >
-                  <PluginSkillOptions value={selectedCat.skillProfile} disabled={isArchived} onChange={id => { void commitCatProfile(selectedCat.id, { skillProfile: id }, t(messageKeys.sharedSettingsCatsChangeSkillProfileError)); }} />
+                  <PluginSkillOptions value={selectedCat.skillProfile} provider={selectedCat.defaultExecutionTarget.provider ?? ''} disabled={isArchived} onChange={id => { void commitCatProfile(selectedCat.id, { skillProfile: id }, t(messageKeys.sharedSettingsCatsChangeSkillProfileError)); }} />
                   <div className="skillPills">
                     {SKILL_PROFILES.map((profile) => {
                       const active = (selectedCat.skillProfile ?? 'chat-default') === profile.value;

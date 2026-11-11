@@ -18,6 +18,20 @@ work; there is no product release authorization.
 
 ## Summary
 
+2026-11-11 preview extension: the next preview build includes the archive pinned in
+`config/desktop-plugins.lock.json` under `app-sidecar/bundled-plugins`, independent
+of signing profile. It starts uninstalled. `POST /api/plugins/install-bundled`
+accepts the inventory revision and performs exact-byte install plus registration;
+inventory advertises `bundledInstallAvailable` only for a verified local archive.
+No Cat is created or assigned automatically. Directory hides Agency information
+before installation, then offers a per-Cat toggle for native Codex/Claude. Cat
+create/update rejects unavailable skills and unsupported providers on the server.
+Selection applies to a new conversation. No provider global/cwd skill projection
+is used. Both mixed-group execution orders work without giving ordinary Cats an
+Agency overlay; all subsequent turns of a revoked conversation remain fenced.
+Platform uses Runtime's additive `restorable` observation and `/restore` endpoint
+to retain the generation after clean restart, never to clear orphan run receipts.
+
 The 2026-09-29 pilot implements the following: local file inspect/install, a standalone
 Settings Plugins tab, separate install and enable, explicit skill selection per Cat, impact
 preview and confirmation, disable and remove, and restart reconciliation.

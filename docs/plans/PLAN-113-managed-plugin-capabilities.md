@@ -13,6 +13,43 @@
 
 ## Overview
 
+### 2026-11-11 clean preview installation
+
+The owner authorized optional bundling in Standard preview, Settings installation,
+installation-gated Cat options and real conversation use. GitHub Release Plugin
+distribution remains undecided; this is implementation, not release authorization.
+
+- [x] Production archive and exact lock, preview-only staging and packaged host policy.
+- [x] Clean startup remains absent; one-click Install verifies/registers without assigning Cats.
+- [x] Directory hides Agency before installation; per-Cat toggle and server provider/availability gates.
+- [x] Per-session instruction delivery, mixed-group admission in either order, retained revoke fence.
+- [x] Same-generation clean restart restore plus actual native shutdown drain in Runtime.
+- [x] Focused automation and independent review with no remaining blockers.
+
+Platform's 120 distinct focused tests passed: bundle/packaging/supervisor 59,
+host close behavior 4, manager 10, Settings/Directory 7, conversation selection 2,
+config 14 and REST 24. Desktop's Runtime grace windows cover the native shutdown
+drain, and the host watchdog uses those same per-service budgets.
+Server/Desktop compilation, renderer typecheck, test bundling and changed-test
+typecheck passed. The unrelated full test fixture typecheck still requires local
+mobile dependencies and is not claimed here. Runtime's matching extension passed
+139 focused tests and compilation; independent review ran 30 targeted cases.
+
+Three real native Codex turns also passed with ephemeral persistence confirmed:
+no selection returned `ROLE: none`; Code Reviewer and UX Researcher selections
+returned those roles and their respective priorities. The path used actual Cat
+profile/channel envelope resolution and Runtime/provider instruction construction.
+No tools were invoked, and isolated temporary state was removed. Both native
+provider payloads are covered automatically; no live Claude call or manual Mac
+Desktop UI acceptance is implied (computer use is unavailable in this environment).
+
+The next Desktop source selection must include the matching Runtime
+[preview policy/restore/shutdown changes](https://github.com/cats-inc/cats-runtime/pull/219).
+No persisted schema migration, version bump,
+published release edit or Desktop installation was performed.
+
+### Original pilot
+
 2026-09-29 execution update (takes precedence over the unauthorized wording of the original
 proposal below): implementation has started in independent Platform and Runtime worktrees.
 The Producer's pinned 0.1.0 artifact is unchanged.

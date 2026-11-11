@@ -52,11 +52,10 @@ test('desktop host keeps tray locked while shutdown drains services', async () =
   // handoff needs the identical stop-then-force-stop behaviour.
   assert.match(source, /const activeTrayController = trayController;[\s\S]*try \{[\s\S]*voiceCaptureController\?\.dispose\(\);[\s\S]*activeTrayController\?\.updateMenu\(buildDesktopTrayQuittingMenuState\(app\.getLocale\(\)\)\);[\s\S]*await drainManagedServices\(\);[\s\S]*\} catch \(error\) \{[\s\S]*\} finally \{[\s\S]*activeTrayController\?\.dispose\(\);[\s\S]*exitingAfterShutdown = true;[\s\S]*app\.exit\(shutdownExitCode\);/u);
   assert.match(source, /async function drainManagedServices\(\): Promise<\{ timedOut: boolean \}> \{[\s\S]*supervisor\?\.stopAll\(\)/u);
-  // Watchdog derives from gracefulShutdownMs and managed service count; a
+  // Watchdog uses the supervisor's effective per-service budgets; a
   // timeout force-stops children before letting the Electron host exit.
-  assert.match(source, /SHUTDOWN_GRACE_WINDOWS_PER_SERVICE = 2;/u);
   assert.match(source, /SHUTDOWN_WATCHDOG_BUFFER_MS = 3_000;/u);
-  assert.match(source, /resolveShutdownWatchdogMs\(hostConfig, supervisor\?\.getManagedServiceCount\(\) \?\? 0\)/u);
+  assert.match(source, /supervisor\?\.getGracefulShutdownBudgetMs\(\) \?\? 0\) \+ SHUTDOWN_WATCHDOG_BUFFER_MS/u);
   assert.match(source, /Promise\.race\(\[[\s\S]*drain[\s\S]*waitForShutdownDeadline\(shutdownWatchdogMs\)/u);
   assert.match(source, /shutdown watchdog tripped/u);
   assert.match(source, /await supervisor\?\.forceStopAll\(\);/u);

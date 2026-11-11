@@ -553,6 +553,23 @@ test('stopService gives SIGTERM its own grace window before SIGKILL', async () =
   assert.deepEqual(child.killCalls, ['SIGTERM']);
 });
 
+test('Runtime shutdown has room to drain native children and shares that budget with the host watchdog', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const options = { userDataDir: '/tmp/cats-shutdown-budget/profile', catsHomeDir: '/tmp/cats-shutdown-budget/home' };
+  const supervisor = new ManagedServiceSupervisor(resolveDesktopHostConfig({ ...options, env: {} }));
+  assert.equal(supervisor.getGracefulShutdownBudgetMs() + 3000, 23_000);
+  const extended = new ManagedServiceSupervisor(resolveDesktopHostConfig({ ...options, env: { CATS_DESKTOP_GRACEFUL_SHUTDOWN_MS: '9000' } }));
+  assert.equal(extended.getGracefulShutdownBudgetMs() + 3000, 39_000);
+  const child = new FakeChildProcess(); supervisor.handles.get('cats-runtime').child = child;
+  const stop = supervisor.stopService('cats-runtime');
+  t.mock.timers.tick(6999); await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(child.killCalls, []);
+  t.mock.timers.tick(1); await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(child.killCalls, ['SIGTERM']);
+  t.mock.timers.tick(5); await stop;
+  assert.deepEqual(child.killCalls, ['SIGTERM']);
+});
+
 test('forceStopAll SIGKILLs live managed services for host watchdog recovery', async () => {
   const config = resolveDesktopHostConfig({
     env: {},

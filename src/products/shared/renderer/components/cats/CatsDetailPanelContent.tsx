@@ -196,7 +196,7 @@ export function CatsDetailPanelContent({
       {shouldRender('skill') ? (
         <div className="catDetailSection">
           <p className="sectionLabel">{t(messageKeys.sharedSettingsCatsSkillProfileLabel)}</p>
-          <PluginSkillOptions value={cat.skillProfile} disabled={isCatBusy(busy, 'skill', cat.id)} onChange={id => void onSkillChange(cat.id, id)} />
+          <PluginSkillOptions value={cat.skillProfile} provider={cat.defaultExecutionTarget.provider ?? ''} disabled={isCatBusy(busy, 'skill', cat.id)} onChange={id => void onSkillChange(cat.id, id)} />
           <div className="skillPills">
             {SKILL_PROFILES.map((profile) => (
               <button

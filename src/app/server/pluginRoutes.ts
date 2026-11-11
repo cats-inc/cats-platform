@@ -18,6 +18,7 @@ export async function routePluginApi(request: IncomingMessage, response: ServerR
     const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string, unknown>;
     let result: unknown;
     switch (url.pathname) {
+      case '/api/plugins/install-bundled': result = await manager.installBundled(Number(body.revision)); break;
       case '/api/plugins/inspect':
       case '/api/plugins/install': {
         if (typeof body.archive !== 'string' || !/^[A-Za-z0-9+/]+=*$/.test(body.archive)) throw new Error('Choose a .catsplugin file.');

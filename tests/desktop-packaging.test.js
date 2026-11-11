@@ -1904,6 +1904,8 @@ test('stageDesktopPackagingOutputs replaces preview assets as release, records e
   await seedFile(join(packageRoot, 'build', 'desktop', 'preload.cjs'), 'module.exports = {};');
   await seedFile(join(packageRoot, 'package.json'), '{"name":"@cats-inc/cats-platform","type":"module"}');
   await seedWindowsSetupAssets(packageRoot);
+  await seedFile(join(packageRoot, 'config/desktop-plugins.lock.json'), await readFile(new URL('../config/desktop-plugins.lock.json', import.meta.url)));
+  await seedFile(join(packageRoot, 'vendor/agency-agents-0.1.0.catsplugin'), await readFile(new URL('../vendor/agency-agents-0.1.0.catsplugin', import.meta.url)));
   await seedRuntimeSidecar(runtimeRoot);
   const config = resolveDesktopHostConfig({ env: {
     CATS_DESKTOP_APP_ENTRY: join(packageRoot, 'build', 'server', 'index.js'),
@@ -1917,6 +1919,14 @@ test('stageDesktopPackagingOutputs replaces preview assets as release, records e
   for (const contentProfile of ['preview', 'release']) {
     const plan = await stageDesktopPackagingOutputs(config, { outputRoot, platforms: ['windows'], contentProfile });
     assert.equal(plan.contentProfile, contentProfile);
+    const pluginBundle = JSON.parse(await readFile(join(outputRoot, 'shared/bundled-plugins/bundle.json'), 'utf8'));
+    assert.equal(pluginBundle.profile, contentProfile);
+    assert.deepEqual(pluginBundle.plugins, plan.plugins);
+    assert.equal(plan.plugins.length, contentProfile === 'preview' ? 1 : 0);
+    if (contentProfile === 'preview') {
+      const bytes = await readFile(join(outputRoot, 'shared/bundled-plugins', plan.plugins[0].artifact));
+      assert.equal(sha256(bytes), plan.plugins[0].sha256);
+    } else await assert.rejects(access(join(outputRoot, 'shared/bundled-plugins/agency-agents-0.1.0.catsplugin')));
     assert.equal(JSON.parse(await readFile(join(skillRoot, 'content-profile.json'), 'utf8')).profile, contentProfile);
     if (contentProfile === 'preview') {
       assert.equal(await readFile(join(skillRoot, 'preview', 'fixture-preview', 'references', 'workflow.md'), 'utf8'), 'Preview resource');
@@ -1957,6 +1967,13 @@ test('stageDesktopPackagingOutputs replaces preview assets as release, records e
   }
   const marker = join(outputRoot, 'preserve.txt');
   await writeFile(marker, 'existing release stage');
+  const pluginLock = join(packageRoot, 'config/desktop-plugins.lock.json');
+  const originalLock = await readFile(pluginLock);
+  const invalidLock = JSON.parse(originalLock.toString('utf8')); invalidLock.plugins[0].sha256 = '0'.repeat(64);
+  await writeFile(pluginLock, JSON.stringify(invalidLock));
+  await assert.rejects(stageDesktopPackagingOutputs(config, { outputRoot, platforms: ['windows'], contentProfile: 'preview' }), /Unsupported Desktop Plugin/);
+  assert.equal(await readFile(marker, 'utf8'), 'existing release stage');
+  await writeFile(pluginLock, originalLock);
   const source = join(packageRoot, 'config/catlas-knowledge.json');
   const original = await readFile(source);
   const valid = JSON.parse(original.toString('utf8'));

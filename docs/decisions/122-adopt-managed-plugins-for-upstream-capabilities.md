@@ -2,6 +2,24 @@
 
 ## Status
 
+2026-11-11: The owner authorized ordinary Desktop preview installation. Preview
+packaging retains the exact Agency 0.1.0 archive as an optional installer source;
+release content excludes it. Standard signing policy is independent of this
+content choice. A verified packaged preview grants `desktop-preview` policy to
+both sidecars using a private host-generated management key. Bundling and startup
+do not install anything. Settings Install registers the package; each Cat still
+requires an explicit skill selection, visible only after installation.
+
+Delivery remains per-session instructions on every native Codex/Claude turn,
+never global or shared-cwd native skill files. Ordinary group participants do not
+receive the instruction overlay and may run while the package is live. Shared
+history can contain skill-influenced output, so the conversation-wide fence stays
+after disable/remove. Runtime stop receipts cover directly exposed native sessions;
+an ordinary in-flight group member may finish and is not claimed as Runtime-tainted.
+Clean restart can restore the same still-enabled generation only with no pending
+CLI lifetimes; disabled, mismatched, orphaned and same-boot expired state cannot
+be restored. No persistence schema changes or general Plugin SDK are introduced.
+
 2026-09-29: The user authorized continuing with Desktop install/remove and Runtime
 integration. The Agency skills-only pilot below is adopted; the general Plugin SDK, provider
 adapters, MCP, executable hooks and formal release remain out of scope. The host admits the
