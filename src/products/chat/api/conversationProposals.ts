@@ -16,6 +16,7 @@ import { productScopeIncludes } from '../../../shared/productScope.js';
 import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 import { createAsyncKeyedGate } from '../shared/asyncControl.js';
 import { resolveChannelProductScope } from '../shared/channelTopology.js';
+import { readChannelWorkProjectId } from '../state/model/workProject.js';
 import {
   buildConversationProposalDigest,
   effectiveProposalStatus,
@@ -69,7 +70,16 @@ export function createConversationProposalService(options: ConversationProposalS
   async function contextFor(state: ChatState, channelId: string, conversationId: string): Promise<ConversationProposalContext | null> {
     const channel = channelOf(state, channelId);
     if (!channel) return null;
-    return { channelId, conversationId, core: await options.chatStore.readCore(), level: resolveChannelProductScope(channel) };
+    return {
+      channelId,
+      conversationId,
+      core: await options.chatStore.readCore(),
+      level: resolveChannelProductScope(channel),
+      parallelMember: state.parallelChatGroups.some((group) => group.status === 'active' && group.memberChannelIds.includes(channelId)),
+      workProjectId: readChannelWorkProjectId(channel),
+      otherConversationsInProject: (projectId) => state.channels
+        .filter((entry) => entry.id !== channelId && readChannelWorkProjectId(entry) === projectId).length,
+    };
   }
 
   function digestOf(record: Pick<ConversationProposalRecord, 'kind' | 'channelId' | 'conversationId' | 'content'>,

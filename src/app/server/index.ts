@@ -27,6 +27,8 @@ import { createCodeAgentToolsProvider } from '../../products/code/agentTools/ser
 import { createConversationRecordToolsProvider } from '../../products/shared/conversationRecordTools.js';
 import { ConversationProposalKindRegistry } from '../../platform/proposals/contracts.js';
 import { createConversationProposalService } from '../../products/chat/api/conversationProposals.js';
+import { applyChannelWorkProject } from '../../products/chat/api/conversationWorkProject.js';
+import { createConversationWorkProjectProposalKind } from '../../products/chat/api/conversationWorkProjectProposal.js';
 import { createWorkProposalKinds } from '../../products/work/agentTools/workConversationProposals.js';
 import { createWorkConversationToolsProvider } from '../../products/work/agentTools/workConversationTools.js';
 import { createWorkIntakeDelegate } from '../../products/work/state/workIntakeDelegate.js';
@@ -181,7 +183,19 @@ export function createServer(dependencies: ServerDependencies) {
     triage: createWorkTriageDelegate({ coreStore: resolvedDependencies.work.coreStore, now: resolvedDependencies.work.now }),
   };
   if (!resolvedDependencies.chat.proposalKinds) {
-    for (const kind of createWorkProposalKinds(workDelegates)) proposalKinds.register(kind);
+    const chatStore = resolvedDependencies.chat.chatStore;
+    const now = () => resolvedDependencies.shared.now?.() ?? new Date();
+    for (const kind of createWorkProposalKinds({
+      ...workDelegates,
+      coreStore: resolvedDependencies.work.coreStore,
+      // FR-13: a confirmed new Project takes in its conversation, through the conversation's own write.
+      async joinConversationProject(channelId, projectId) {
+        const outcome = await applyChannelWorkProject(chatStore, { channelId, projectId, now: now() });
+        return 'refusal' in outcome ? outcome.refusal : null;
+      },
+    })) proposalKinds.register(kind);
+    // SPEC-142 FR-13, FR-22 (PLAN-135 Phase 5): the conversation's own Project.
+    proposalKinds.register(createConversationWorkProjectProposalKind({ chatStore, now }));
   }
   resolvedDependencies.chat.conversationProposals = createConversationProposalService({
     chatStore: resolvedDependencies.chat.chatStore,

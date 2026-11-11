@@ -798,7 +798,32 @@ but at least one must be present (`400 participant_update_required`):
 
 Returns `{ updated: true, channelId, participantId }`.
 
-### Channel Proposals
+### Channel Work Project
+
+SPEC-142 FR-22 to FR-24. A conversation at Work that is not a direct lane or a parallel member can
+belong to one Project. Only an owner principal (cookie with CSRF, or mobile bearer) may call
+these routes; any other principal gets `403 owner_required`.
+
+- `GET /api/channels/:channelId/work-project` returns `projectId`, `project` (`id`, `title`,
+  `status`, `folder`), `revision`, `canChange` with the standing `refusal` when it cannot change,
+  and `projects`: every Project that is not archived, with its `folder` and how many other
+  conversations (`otherConversations`) and Work Items (`workItems`) it holds.
+- `POST /api/channels/:channelId/work-project` with `{ "projectId": string | null, "revision":
+  number }` sets, changes or clears it. `revision` is the one the owner saw; a different one is
+  `409 revision_stale`. It answers `{ projectId, revision }`.
+  - Refusals (409 unless noted): `not_work_level`, `direct_lane`, `parallel_member`,
+    `conversation_archived`, `project_not_found` (404), `project_archived`,
+    `supervised_run_active` (a supervised run of the conversation's Tasks queued, running or
+    waiting for approval; Turn Runs do not count), `revision_required` and `invalid_project`
+    (400).
+  - The change is one atomic write of the conversation and Core: the projected Work Item takes
+    the Project, the Work Items parented under it follow, and an activity records the actor and,
+    for a confirmed proposal, `confirmedByActorId`. It does not wait for a running turn, and a
+    turn's later write of an older copy keeps it.
+
+A confirmed `conversation.work_project` card performs the same write.
+
+## Channel Proposals
 
 ```text
 GET  /api/channels/{channelId}/proposals/{proposalId}

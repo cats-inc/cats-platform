@@ -355,6 +355,13 @@ export interface ChatChannelState {
    * Read it through `resolveChannelProductScope`, which also answers for a value that is absent.
    */
   productScope?: ProductScope;
+  /**
+   * SPEC-142 FR-22: the Project a conversation at `work` belongs to. Only the owner sets it (the
+   * conversation's control or a confirmed proposal), through `setChannelWorkProject`.
+   * `workProjectRevision` counts those changes, so a stale whole-state write cannot undo one.
+   */
+  workProjectId?: string | null;
+  workProjectRevision?: number;
   channelKind?: ChatChannelKind;
   recoverableDirectLaneCatId?: string | null;
   status: ChatChannelStatus;
@@ -410,6 +417,8 @@ export interface ChatChannelSummary {
   originSurface?: PlatformSurfaceId | null;
   /** SPEC-141: the conversation's product scope. */
   productScope?: ProductScope;
+  /** SPEC-142 FR-22: the conversation's Project, when it belongs to one. */
+  workProjectId?: string | null;
   channelKind?: ChatChannelKind;
   status: ChatChannelStatus;
   unreadCount: number;

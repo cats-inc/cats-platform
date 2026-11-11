@@ -12,6 +12,8 @@ import { readCoreEffectiveDeliveryPolicy } from './governance.js';
 
 const collections = { project: 'projects', work_item: 'workItems', task: 'tasks', artifact: 'artifacts' } as const;
 const terminal = (status: string) => ['completed', 'failed', 'cancelled'].includes(status);
+/** A conversation's Turn Run, which the conversation's own turns start and finish. */
+const isTurnRun = (run: { metadata?: Record<string, unknown> | null }) => run.metadata?.source === 'chat-room-workflow';
 const token = (core: CatsCoreState) => createHash('sha256').update(JSON.stringify({
   projects: core.projects, workItems: core.workItems, tasks: core.tasks, runs: core.runs, missions: core.missions,
   artifacts: core.artifacts, checkpoints: core.checkpoints, outcomes: core.outcomes, traces: core.traces,
@@ -26,8 +28,9 @@ export function ownerActionView(core: CatsCoreState, family: PlanningOwnerFamily
   const derived = ['chat-channel', 'chat-room-workflow'].includes(source);
   const dependencies = ownerRecordDependencies(core, family, id);
   const taskIds = new Set(family === 'task' ? [id] : core.workItems.filter(item => family === 'project' ? item.projectId === id : item.id === id).flatMap(item => item.taskId ? [item.taskId] : []));
-  const active = core.runs.some(run => !terminal(run.status) && (run.taskId && taskIds.has(run.taskId) || dependencies.some(dep => dep.family === 'run' && dep.id === run.id)))
-    ;
+  // SPEC-142 FR-27: a member conversation's Turn Runs are not its Project's active work.
+  const active = core.runs.some(run => !terminal(run.status) && !(family === 'project' && isTurnRun(run))
+    && (run.taskId && taskIds.has(run.taskId) || dependencies.some(dep => dep.family === 'run' && dep.id === run.id)));
   const pendingApproval = core.tasks.some(task => taskIds.has(task.id) && task.status === 'pending_approval') || core.approvalBindings.some(binding => (binding.subjectId === id || taskIds.has(binding.approvalTaskId)) && core.tasks.some(task => task.id === binding.approvalTaskId && task.approval.status === 'pending'))
     || family === 'task' && (record as CoreTaskRecord).approval.status === 'pending';
   const gated = !!record.metadata.workGoldenPath || source === 'transport-work'

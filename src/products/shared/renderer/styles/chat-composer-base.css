@@ -1051,6 +1051,49 @@ button.conversationScopeChip:disabled {
   gap: 12px;
 }
 
+/* SPEC-142 FR-23: a Work conversation's Project, which the owner sets, changes or clears. */
+button.conversationWorkProjectChip {
+  padding: 0 8px;
+  max-width: 220px;
+  font-family: inherit;
+  cursor: pointer;
+  background: var(--surface-muted, rgba(127, 127, 127, 0.08));
+  color: var(--text);
+  border-color: var(--border, rgba(127, 127, 127, 0.25));
+}
+
+button.conversationWorkProjectChip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.conversationWorkProjectChip:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+button.conversationWorkProjectChip:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.conversationWorkProjectMenuFolder {
+  margin-left: auto;
+  padding-left: 12px;
+  max-width: 220px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversationWorkProjectDialog {
+  width: min(460px, calc(100vw - 48px));
+  gap: 10px;
+  overflow-wrap: anywhere;
+}
+
 .productScopeRaiseSection {
   display: grid;
   gap: 4px;

@@ -18,17 +18,21 @@ import {
 } from '../shared/workToolSurface.js';
 import type { WorkIntakeDelegate } from '../state/workIntakeDelegate.js';
 import type { WorkTriageDelegate } from '../state/workTriageDelegate.js';
+import type { CoreStore } from '../../../core/store.js';
+import { normalizeWorkProjectFolder, setWorkProjectFolder } from '../state/workProjectFolder.js';
 
 /**
- * SPEC-142 FR-12 to FR-14, FR-19: the Work writes a conversation's agents may propose without a
- * Project of their own (PLAN-135 Phase 4). Each is performed on the owner's confirmation through
- * Work's existing delegate, which records the proposer and the confirming owner.
+ * SPEC-142 FR-12 to FR-14, FR-16, FR-19: the Work writes a conversation's agents may propose
+ * (PLAN-135 Phases 4 and 5). Each is performed on the owner's confirmation through Work's
+ * delegate, which records the proposer and the confirming owner. A write that changes where a
+ * supervised run starts carries the folder warning on its card.
  */
 
 export const WORK_PROPOSAL_CAPTURE = 'work.item.capture';
 export const WORK_PROPOSAL_UPDATE = 'work.item.update';
 export const WORK_PROPOSAL_ASSIGN_PROJECT = 'work.item.assign_project';
 export const WORK_PROPOSAL_CREATE_PROJECT = 'work.project.create';
+export const WORK_PROPOSAL_PROJECT_FOLDER = 'work.project.folder';
 export const WORK_PROPOSAL_MAX_ITEMS = 8;
 
 const DERIVED_SOURCES = new Set(['chat-channel', 'chat-room-workflow']);
@@ -120,6 +124,33 @@ function text(value: unknown): string | null {
   return fenceRecordText(typeof value === 'string' ? value : null, PROPOSAL_SUMMARY_LIMIT + 1);
 }
 
+/**
+ * A folder as the card shows it. A proposed folder is already a clean path (`normalizeWorkProjectFolder`)
+ * and is shown whole; an existing Project's folder loses invisible characters.
+ */
+function folderText(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const flat = value.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, '').trim();
+  return flat ? Array.from(GRAPHEMES.segment(flat), (part) => part.segment).slice(0, 600).join('') : null;
+}
+
+/** FR-16: the card for a write that changes where supervised runs start. */
+function projectFolderWarning(context: ConversationProposalContext, projectId: string | null, folder: unknown) {
+  const shown = folderText(folder);
+  if (!shown) return null;
+  return {
+    folder: shown,
+    otherConversations: projectId ? context.otherConversationsInProject(projectId) : 0,
+    workItems: projectId ? context.core.workItems.filter((entry) => entry.projectId === projectId).length : 0,
+  };
+}
+
+function projectRecord(context: ConversationProposalContext, projectId: string | null) {
+  if (!projectId) return [];
+  const project = context.core.projects.find((entry) => entry.id === projectId);
+  return [{ kind: 'project' as const, id: cleanRecordValue(projectId), title: text(project?.title) }];
+}
+
 function optionalString(value: unknown, name: string): string | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'string') throw new ConversationProposalRefusal('invalid_arguments', `${name} must be text.`);
@@ -129,6 +160,14 @@ function optionalString(value: unknown, name: string): string | undefined {
 export interface WorkProposalKindOptions {
   intake: Pick<WorkIntakeDelegate, 'capture'>;
   triage: Pick<WorkTriageDelegate, 'updateWorkItem' | 'assignWorkItemProject' | 'createProject'>;
+  /** For the new Work write, a folder for an existing Project (FR-19). */
+  coreStore: CoreStore;
+  /**
+   * FR-13: a confirmed new Project takes in its conversation when that has no Project. The
+   * conversation is Chat's to write, so the server supplies this. It returns a refusal code
+   * (FR-23) or null when the conversation joined.
+   */
+  joinConversationProject(channelId: string, projectId: string): Promise<string | null>;
 }
 
 export function createWorkProposalKinds(options: WorkProposalKindOptions): ConversationProposalKind[] {
@@ -164,9 +203,12 @@ export function createWorkProposalKinds(options: WorkProposalKindOptions): Conve
         }),
       };
     },
-    // New records touch nothing yet; Phase 5 adds the conversation's Project.
-    binding: () => null,
-    describe(content): ConversationProposalView {
+    // The Project the new Work Items join: a change to it makes the card out of date.
+    binding: (_content, context) => ({
+      workProjectId: context.workProjectId,
+      project: context.workProjectId ? projectBinding(context.core.projects.find((entry) => entry.id === context.workProjectId)) : null,
+    }),
+    describe(content, context): ConversationProposalView {
       const items = content.items as Array<Record<string, string | null>>;
       return {
         title: items.length === 1 ? 'New Work Item' : `${items.length} new Work Items`,
@@ -176,7 +218,8 @@ export function createWorkProposalKinds(options: WorkProposalKindOptions): Conve
           ...(item.kind ? [{ name: `${index + 1}. kind`, value: cleanRecordValue(item.kind) }] : []),
           ...(item.priority ? [{ name: `${index + 1}. priority`, value: cleanRecordValue(item.priority) }] : []),
         ]),
-        records: [{ kind: 'conversation', id: null, title: 'This conversation' }],
+        records: [{ kind: 'conversation', id: null, title: 'This conversation' }, ...projectRecord(context, context.workProjectId)],
+        // A new Work Item has no Task, so no supervised run starts from it yet (FR-16).
         folderWarning: null,
       };
     },
@@ -191,7 +234,12 @@ export function createWorkProposalKinds(options: WorkProposalKindOptions): Conve
           ...(item.priority ? { priority: item.priority as WorkItemPriorityHint } : {}),
           status: 'draft',
           source: { surface: 'chat', conversationId: context.conversationId, channelId: context.channelId },
-        }, { actorRef: proposerActor(actors.proposerParticipantId, context), confirmedByActorId: actors.ownerActorId }));
+        }, {
+          actorRef: proposerActor(actors.proposerParticipantId, context),
+          confirmedByActorId: actors.ownerActorId,
+          // FR-12, FR-19: the new Work write, capture into the conversation's Project.
+          ...(context.workProjectId ? { intoProjectId: context.workProjectId } : {}),
+        }));
         ids.push(result.workItemId);
       }
       return { summary: `Captured ${ids.length} Work Item${ids.length === 1 ? '' : 's'}: ${ids.join(', ')}` };
@@ -261,13 +309,9 @@ export function createWorkProposalKinds(options: WorkProposalKindOptions): Conve
       const project = context.core.projects.find((entry) => entry.id === content.projectId);
       // FR-16: a Work Item with a Task, put into a Project with a folder, starts its supervised
       // runs there without asking.
-      const folderWarning = project?.repoPath && workItem?.taskId ? {
-        folder: cleanRecordValue(project.repoPath) ?? '',
-        otherConversations: new Set(context.core.workItems
-          .filter((entry) => entry.projectId === project.id && entry.conversationId && entry.conversationId !== context.conversationId)
-          .map((entry) => entry.conversationId)).size,
-        workItems: context.core.workItems.filter((entry) => entry.projectId === project.id).length,
-      } : null;
+      const folderWarning = project?.repoPath && workItem?.taskId
+        ? projectFolderWarning(context, project.id, project.repoPath)
+        : null;
       return {
         title: 'Put a Work Item into a Project',
         fields: [{ name: 'project', value: text(project?.title) }],
@@ -293,42 +337,106 @@ export function createWorkProposalKinds(options: WorkProposalKindOptions): Conve
     level: 'work',
     validate(content) {
       const raw = content && typeof content === 'object' ? content as Record<string, unknown> : {};
-      if (raw.repoPath !== undefined || raw.folder !== undefined) {
-        // PLAN-135 Phase 5 adds a folder, with its warning.
-        throw new ConversationProposalRefusal('folder_not_supported', 'A new Project with a folder is not offered yet.');
-      }
       const title = proposalLine(raw.title, 'title', PROPOSAL_TITLE_LIMIT);
       if (!title) throw new ConversationProposalRefusal('invalid_arguments', 'title is required.');
       const summary = proposalLine(raw.summary, 'summary', PROPOSAL_SUMMARY_LIMIT);
+      const requested = raw.folder ?? raw.repoPath;
+      const folder = requested === undefined || requested === null ? null : normalizeWorkProjectFolder(requested);
+      if (requested !== undefined && requested !== null && !folder) {
+        throw new ConversationProposalRefusal('invalid_folder', 'The folder must be an absolute path on one line.');
+      }
+      // ADR-105's path may name a status; the tool does not.
+      const status = optionalString(raw.status, 'status') ?? 'planned';
       // Work's own checks, so a card the owner confirms is one Work accepts.
-      const errors = validateWorkProjectCreateInput({ title, ...(summary ? { summary } : {}), status: 'planned' });
+      const errors = validateWorkProjectCreateInput({ title, ...(summary ? { summary } : {}), status,
+        ...(folder ? { repoPath: folder } : {}) });
       if (errors.length > 0) refuseInvalid(errors, 'The Project is not valid.');
-      return { title, ...(summary ? { summary } : {}) };
+      return { title, ...(summary ? { summary } : {}), status, ...(folder ? { folder } : {}) };
     },
-    binding: () => null,
-    describe(content): ConversationProposalView {
+    // Whether the conversation joins the new Project depends on its own Project now.
+    binding: (_content, context) => ({ workProjectId: context.workProjectId, parallelMember: context.parallelMember }),
+    describe(content, context): ConversationProposalView {
+      const joins = joinsNewProject(context);
       return {
         title: 'New Project',
         fields: [
           { name: 'title', value: text(content.title) },
           ...(content.summary ? [{ name: 'summary', value: text(content.summary) }] : []),
-          { name: 'folder', value: null },
+          { name: 'status', value: cleanRecordValue(String(content.status ?? 'planned')) },
+          { name: 'folder', value: folderText(content.folder) },
         ],
-        records: [{ kind: 'conversation', id: null, title: 'This conversation, as its primary conversation' }],
-        folderWarning: null,
+        records: [{ kind: 'conversation', id: null, title: joins
+          ? 'This conversation, as its primary conversation, which joins the new Project'
+          : 'This conversation, as its primary conversation' }],
+        // FR-16: a new Project with a folder starts its supervised runs there without asking.
+        folderWarning: projectFolderWarning(context, null, content.folder),
       };
     },
     async perform(content, context, actors) {
       const result = applied(await options.triage.createProject({
         title: String(content.title),
         ...(content.summary ? { summary: String(content.summary) } : {}),
-        status: 'planned',
+        status: (content.status ?? 'planned') as never,
+        ...(typeof content.folder === 'string' ? { repoPath: content.folder } : {}),
         // FR-28: confirming a new Project from a conversation makes it the primary conversation.
         primaryConversationId: context.conversationId,
       }, { actorRef: proposerActor(actors.proposerParticipantId, context), confirmedByActorId: actors.ownerActorId }));
-      return { summary: `Created Project ${result.projectId}` };
+      // FR-13: the conversation joins it when it has no Project and can belong to one.
+      if (!joinsNewProject(context)) return { summary: `Created Project ${result.projectId}` };
+      const refusal = await options.joinConversationProject(context.channelId, result.projectId);
+      return { summary: refusal
+        ? `Created Project ${result.projectId}; the conversation did not join it (${refusal})`
+        : `Created Project ${result.projectId}, and the conversation joined it` };
     },
   };
 
-  return [capture, update, assign, createProject];
+  // FR-13: the folder of the conversation's Project, for an admin coordinator. Other conversations'
+  // supervised runs may start there, so the card counts them (FR-16).
+  const projectFolder: ConversationProposalKind = {
+    kind: WORK_PROPOSAL_PROJECT_FOLDER,
+    level: 'work',
+    validate(content, context) {
+      if (!context.workProjectId) {
+        throw new ConversationProposalRefusal('no_conversation_project', 'This conversation belongs to no Project.');
+      }
+      const project = requireProject(context.core, context.workProjectId);
+      const folder = normalizeWorkProjectFolder((content as { folder?: unknown } | null)?.folder);
+      if (!folder) throw new ConversationProposalRefusal('invalid_folder', 'The folder must be an absolute path on one line.');
+      if (folder === project.repoPath) throw new ConversationProposalRefusal('unchanged', 'That is already the Project\'s folder.');
+      return { projectId: project.id, folder };
+    },
+    binding: (content, context) => ({
+      workProjectId: context.workProjectId,
+      project: projectBinding(context.core.projects.find((entry) => entry.id === content.projectId)),
+    }),
+    describe(content, context): ConversationProposalView {
+      const project = context.core.projects.find((entry) => entry.id === content.projectId);
+      return {
+        title: "Set the folder of this conversation's Project",
+        fields: [
+          { name: 'folder', value: folderText(content.folder) },
+          { name: 'previous folder', value: folderText(project?.repoPath) },
+        ],
+        records: projectRecord(context, String(content.projectId)),
+        folderWarning: projectFolderWarning(context, String(content.projectId), content.folder),
+      };
+    },
+    async perform(content, context, actors) {
+      // FR-14: only the Project the conversation is in.
+      if (context.workProjectId !== content.projectId) {
+        throw new ConversationProposalRefusal('not_conversation_project', "The conversation's Project changed.");
+      }
+      applied(await setWorkProjectFolder(options.coreStore, {
+        projectId: String(content.projectId), folder: String(content.folder),
+      }, { actorRef: proposerActor(actors.proposerParticipantId, context), confirmedByActorId: actors.ownerActorId }));
+      return { summary: `Set the folder of Project ${String(content.projectId)}` };
+    },
+  };
+
+  return [capture, update, assign, createProject, projectFolder];
+}
+
+/** FR-13, FR-22: a new Project takes in its conversation when that has no Project and may have one. */
+function joinsNewProject(context: ConversationProposalContext): boolean {
+  return !context.workProjectId && !context.parallelMember && context.level === 'work';
 }

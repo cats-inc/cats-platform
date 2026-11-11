@@ -14,6 +14,11 @@ import type { CatsCoreState } from '../../core/types.js';
 export type ConversationProposalStatus = 'open' | 'confirming' | 'confirmed' | 'declined' | 'expired' | 'stale' | 'failed';
 
 export const CONVERSATION_PROPOSAL_TTL_MS = 24 * 60 * 60_000;
+/**
+ * SPEC-142 FR-13, FR-22: putting the conversation into a Project. Chat registers the kind, since
+ * the write is the conversation's; Work's tool proposes it.
+ */
+export const CONVERSATION_WORK_PROJECT_PROPOSAL_KIND = 'conversation.work_project';
 /** FR-20: at most this many open proposals per conversation. */
 export const CONVERSATION_PROPOSAL_OPEN_LIMIT = 3;
 /** FR-20: at most this many proposals per conversation in an hour. */
@@ -48,8 +53,14 @@ export interface ConversationProposalContext {
   channelId: string;
   conversationId: string;
   core: CatsCoreState;
-  /** The conversation's level and whether it is a parallel member (FR-14). */
+  /** The conversation's level. */
   level: 'chat' | 'code' | 'work';
+  /** Whether it is a member of an active parallel group, which cannot belong to a Project (FR-14, FR-22). */
+  parallelMember: boolean;
+  /** The Project the conversation belongs to (FR-22), or null. */
+  workProjectId: string | null;
+  /** FR-16: how many other conversations belong to this Project. */
+  otherConversationsInProject(projectId: string): number;
 }
 
 /** One line of the card: a field and the exact value that will be written. */

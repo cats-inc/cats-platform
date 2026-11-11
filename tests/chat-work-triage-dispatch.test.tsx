@@ -369,6 +369,61 @@ test('Chat provider-agent Work project create request writes one Project', async
   assert.match(resultMessage?.body ?? '', /^Created Project Cats Mobile \(project-/u);
 });
 
+test('SPEC-142 A1: a new Project with a folder becomes the owner card on the owner turn, and is not created', async () => {
+  const now = new Date('2026-05-13T12:12:00.000Z');
+  async function dispatch(options: { ownerStarted: 'desktop' | null; withPort: boolean }) {
+    const state = createChannel(createDefaultChatState(), {
+      title: '', topic: 'Work project create with a folder', originSurface: 'chat', entryKind: 'direct',
+      roomMode: 'direct_message', cats: [{ name: 'Boss Cat', provider: 'claude', instance: 'native', model: 'sonnet' }],
+    }, now);
+    const channelId = state.selectedChannelId;
+    const store = new MemoryChatStore(state);
+    await store.writeCore(createDefaultCoreState());
+    const proposed: Array<Record<string, unknown>> = [];
+    const begun = await beginChannelMessageDispatch(state, channelId, { body: 'Boss Cat create project Cats Mobile' },
+      runtimeStub(), new Date('2026-05-13T12:13:00.000Z'), {
+        chatStore: store,
+        ownerStarted: options.ownerStarted,
+        ...(options.withPort ? { conversationProposals: {
+          async propose(input: Record<string, unknown>) {
+            proposed.push(input);
+            return { proposalId: 'proposal-1', expiresAt: '2026-05-14T12:13:00.000Z' };
+          },
+        } } : {}),
+        providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+        providerAgentDecisionRequester: async () => ({
+          contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+          kind: 'tool_request',
+          decisionId: 'decision-work-project-create-folder',
+          confidence: 'high',
+          toolName: WORK_PROJECT_CREATE_TOOL,
+          target: { kind: 'worker_tool', toolName: WORK_PROJECT_CREATE_TOOL },
+          input: { title: 'Cats Mobile', summary: 'Mobile companion.', status: 'planned', repoPath: 'C:/repo/cats-mobile' },
+          rationaleSummary: 'The owner asked for a Project in that folder.',
+        }),
+      } as never);
+    const core = await store.readCore();
+    return { begun, channelId, core, proposed };
+  }
+
+  const owner = await dispatch({ ownerStarted: 'desktop', withPort: true });
+  assert.equal(owner.core.projects.length, 0, 'nothing is created before the owner confirms');
+  assert.equal(owner.proposed.length, 1);
+  assert.equal(owner.proposed[0]!.kind, 'work.project.create');
+  assert.equal(owner.proposed[0]!.channelId, owner.channelId);
+  assert.deepEqual(owner.proposed[0]!.content,
+    { title: 'Cats Mobile', summary: 'Mobile companion.', status: 'planned', folder: 'C:/repo/cats-mobile' });
+  assert.equal(requireChannel(owner.begun.state, owner.channelId).messages.some((message) =>
+    message.metadata.workProjectCreateResult), false);
+
+  const transport = await dispatch({ ownerStarted: null, withPort: true });
+  assert.equal(transport.core.projects.length, 0);
+  assert.equal(transport.proposed.length, 0, 'a turn the owner did not start posts no card');
+
+  const noPort = await dispatch({ ownerStarted: 'desktop', withPort: false });
+  assert.equal(noPort.core.projects.length, 0, 'without proposals, a folder Project is not created at all');
+});
+
 test('Chat provider-agent Work Item update request writes bounded planning fields', async () => {
   const now = new Date('2026-05-13T12:20:00.000Z');
   const state = createChannel(

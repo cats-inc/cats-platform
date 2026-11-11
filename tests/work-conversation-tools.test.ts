@@ -15,6 +15,7 @@ import {
   WORK_PROPOSAL_ASSIGN_PROJECT,
   WORK_PROPOSAL_CAPTURE,
   WORK_PROPOSAL_CREATE_PROJECT,
+  WORK_PROPOSAL_PROJECT_FOLDER,
   WORK_PROPOSAL_UPDATE,
 } from '../src/products/work/agentTools/workConversationProposals.js';
 import { createWorkConversationToolsProvider } from '../src/products/work/agentTools/workConversationTools.js';
@@ -44,16 +45,27 @@ function seedCore(): CatsCoreState {
   return core;
 }
 
-function setup() {
+function setup(options: { workProjectId?: string | null; parallelMember?: boolean; joinRefusal?: string | null } = {}) {
   const coreStore = new MemoryCoreStore(seedCore());
   const intake = createWorkIntakeDelegate({ coreStore, now: () => NOW });
   const triage = createWorkTriageDelegate({ coreStore, now: () => NOW });
   const kinds = new ConversationProposalKindRegistry();
-  for (const kind of createWorkProposalKinds({ intake, triage })) kinds.register(kind);
-  const context = async (): Promise<ConversationProposalContext> =>
-    ({ channelId: 'own', conversationId: OWN, core: await coreStore.readCore(), level: 'work' });
+  const joins: Array<{ channelId: string; projectId: string }> = [];
+  for (const kind of createWorkProposalKinds({
+    intake, triage, coreStore,
+    async joinConversationProject(channelId, projectId) {
+      joins.push({ channelId, projectId });
+      return options.joinRefusal ?? null;
+    },
+  })) kinds.register(kind);
+  const context = async (): Promise<ConversationProposalContext> => ({
+    channelId: 'own', conversationId: OWN, core: await coreStore.readCore(), level: 'work',
+    parallelMember: options.parallelMember ?? false,
+    workProjectId: options.workProjectId ?? null,
+    otherConversationsInProject: (projectId) => projectId === 'project-site' ? 2 : 0,
+  });
   const actors = { proposerParticipantId: 'participant-1', ownerActorId: 'owner-actor' };
-  return { coreStore, kinds, context, actors };
+  return { coreStore, kinds, context, actors, joins };
 }
 
 function refusalOf(action: () => unknown): string | null {
@@ -112,22 +124,118 @@ test('assign: into an existing Project, with the folder warning when the Work It
   const plain = kind.validate({ workItemId: 'wi-captured', projectId: 'project-site' }, ctx);
   assert.equal(kind.describe(plain, ctx).folderWarning, null, 'no Task, so no supervised run starts there');
   const withTask = kind.validate({ workItemId: 'wi-with-task', projectId: 'project-site' }, ctx);
-  assert.deepEqual(kind.describe(withTask, ctx).folderWarning, { folder: 'C:/work/site', otherConversations: 0, workItems: 0 });
+  assert.deepEqual(kind.describe(withTask, ctx).folderWarning, { folder: 'C:/work/site', otherConversations: 2, workItems: 0 });
   await kind.perform(plain, ctx, h.actors);
   assert.equal((await h.coreStore.readCore()).workItems.find((entry) => entry.id === 'wi-captured')!.projectId, 'project-site');
 });
 
-test('create project: without a folder, with this conversation as its primary conversation', async () => {
+test('create project: this conversation as its primary conversation, and it joins the Project when it has none', async () => {
   const h = setup();
   const kind = h.kinds.get(WORK_PROPOSAL_CREATE_PROJECT)!;
   const ctx = await h.context();
-  assert.equal(refusalOf(() => kind.validate({ title: 'Docs', repoPath: 'C:/x' }, ctx)), 'folder_not_supported');
   assert.equal(refusalOf(() => kind.validate({ summary: 'no title' }, ctx)), 'invalid_arguments');
   const content = kind.validate({ title: 'Docs site', summary: 'Public docs' }, ctx);
-  await kind.perform(content, ctx, h.actors);
+  assert.equal(kind.describe(content, ctx).folderWarning, null);
+  const result = await kind.perform(content, ctx, h.actors);
   const project = (await h.coreStore.readCore()).projects.find((entry) => entry.title === 'Docs site')!;
   assert.equal(project.repoPath, null);
-  assert.equal(project.primaryConversationId, OWN);
+  assert.equal(project.status, 'planned');
+  assert.equal(project.primaryConversationId, OWN, 'FR-28');
+  assert.deepEqual(h.joins, [{ channelId: 'own', projectId: project.id }], 'FR-13: the conversation joins it');
+  assert.match(result.summary, /the conversation joined it/u);
+});
+
+test('create project with a folder: an absolute path on one line, shown whole with the warning (A1)', async () => {
+  const h = setup();
+  const kind = h.kinds.get(WORK_PROPOSAL_CREATE_PROJECT)!;
+  const ctx = await h.context();
+  assert.equal(refusalOf(() => kind.validate({ title: 'Docs', folder: 'relative/path' }, ctx)), 'invalid_folder');
+  assert.equal(refusalOf(() => kind.validate({ title: 'Docs', folder: 'C:/x' + String.fromCharCode(10) + 'y' }, ctx)), 'invalid_folder');
+  assert.equal(refusalOf(() => kind.validate({ title: 'Docs', folder: 'C:/x' + String.fromCodePoint(0x202E) }, ctx)), 'invalid_folder');
+  assert.equal(refusalOf(() => kind.validate({ title: 'Docs', folder: 'C:/x' + String.fromCharCode(0x2028) + 'y' }, ctx)), 'invalid_folder');
+  assert.equal(refusalOf(() => kind.validate({ title: 'Docs', folder: 'C:/' + 'd'.repeat(600) }, ctx)), 'invalid_folder');
+  const longFolder = 'C:/' + 'd'.repeat(400);
+  const content = kind.validate({ title: 'Docs', folder: longFolder, status: 'active' }, ctx);
+  const view = kind.describe(content, ctx);
+  assert.equal(view.fields.find((field) => field.name === 'folder')!.value, longFolder, 'shown whole');
+  assert.deepEqual(view.folderWarning, { folder: longFolder, otherConversations: 0, workItems: 0 });
+  // ADR-105's path names the folder as repoPath.
+  assert.deepEqual(kind.validate({ title: 'Docs', repoPath: 'C:/docs' }, ctx), { title: 'Docs', status: 'planned', folder: 'C:/docs' });
+  await kind.perform(content, ctx, h.actors);
+  const project = (await h.coreStore.readCore()).projects.find((entry) => entry.title === 'Docs')!;
+  assert.equal(project.repoPath, longFolder);
+  assert.equal(project.status, 'active');
+});
+
+test('create project: a conversation in a Project, or a parallel member, does not join; a refused join is told', async () => {
+  for (const options of [{ workProjectId: 'project-site' }, { parallelMember: true }]) {
+    const h = setup(options);
+    const kind = h.kinds.get(WORK_PROPOSAL_CREATE_PROJECT)!;
+    const ctx = await h.context();
+    const content = kind.validate({ title: 'Side' }, ctx);
+    assert.match(kind.describe(content, ctx).records[0]!.title!, /primary conversation$/u);
+    await kind.perform(content, ctx, h.actors);
+    assert.deepEqual(h.joins, []);
+  }
+  const refused = setup({ joinRefusal: 'supervised_run_active' });
+  const kind = refused.kinds.get(WORK_PROPOSAL_CREATE_PROJECT)!;
+  const ctx = await refused.context();
+  const result = await kind.perform(kind.validate({ title: 'Later' }, ctx), ctx, refused.actors);
+  assert.match(result.summary, /did not join it \(supervised_run_active\)/u);
+  // Whether it joins is part of the card: a change makes it out of date.
+  const joined = await setup({ workProjectId: 'project-site' }).context();
+  assert.notEqual(JSON.stringify(kind.binding({}, ctx)), JSON.stringify(kind.binding({}, joined)));
+});
+
+test("capture joins the conversation's Project in the same write (FR-12, FR-19)", async () => {
+  const h = setup({ workProjectId: 'project-site' });
+  const kind = h.kinds.get(WORK_PROPOSAL_CAPTURE)!;
+  const ctx = await h.context();
+  const content = kind.validate({ items: [{ title: 'Ship the page' }] }, ctx);
+  const view = kind.describe(content, ctx);
+  assert.deepEqual(view.records.map((record) => record.kind), ['conversation', 'project']);
+  assert.equal(view.folderWarning, null, 'a new Work Item has no Task');
+  await kind.perform(content, ctx, h.actors);
+  const core = await h.coreStore.readCore();
+  const created = core.workItems.find((entry) => entry.title === 'Ship the page')!;
+  assert.equal(created.projectId, 'project-site');
+  // The Project is bound: if the conversation leaves it, the card goes out of date.
+  const left = await setup().context();
+  assert.notEqual(JSON.stringify(kind.binding(content, ctx)), JSON.stringify(kind.binding(content, left)));
+  // A Project archived meanwhile refuses the capture instead of filing into it.
+  const archived = setup({ workProjectId: 'project-old' });
+  const archivedKind = archived.kinds.get(WORK_PROPOSAL_CAPTURE)!;
+  const archivedCtx = await archived.context();
+  await assert.rejects(archivedKind.perform(archivedKind.validate({ items: [{ title: 'Nope' }] }, archivedCtx), archivedCtx, archived.actors),
+    (error: unknown) => error instanceof ConversationProposalRefusal);
+  assert.equal((await archived.coreStore.readCore()).workItems.some((entry) => entry.title === 'Nope'), false);
+});
+
+test("project folder: only the conversation's own Project, with the reach of the change on the card (FR-13, FR-16)", async () => {
+  const none = setup();
+  const kind = none.kinds.get(WORK_PROPOSAL_PROJECT_FOLDER)!;
+  const noneCtx = await none.context();
+  assert.equal(refusalOf(() => kind.validate({ folder: 'C:/new' }, noneCtx)), 'no_conversation_project');
+  const h = setup({ workProjectId: 'project-site' });
+  const ctx = await h.context();
+  const kindOf = h.kinds.get(WORK_PROPOSAL_PROJECT_FOLDER)!;
+  assert.equal(refusalOf(() => kindOf.validate({ folder: 'not/absolute' }, ctx)), 'invalid_folder');
+  assert.equal(refusalOf(() => kindOf.validate({ folder: 'C:/work/site' }, ctx)), 'unchanged');
+  const content = kindOf.validate({ folder: 'D:/sites/main' }, ctx);
+  assert.deepEqual(content, { projectId: 'project-site', folder: 'D:/sites/main' });
+  const view = kindOf.describe(content, ctx);
+  assert.equal(view.fields.find((field) => field.name === 'previous folder')!.value, 'C:/work/site');
+  assert.deepEqual(view.folderWarning, { folder: 'D:/sites/main', otherConversations: 2, workItems: 0 });
+  // The proposer's conversation left the Project before the owner confirmed: nothing is written.
+  const moved = { ...ctx, workProjectId: null };
+  await assert.rejects(kindOf.perform(content, moved, h.actors), (error: unknown) =>
+    error instanceof ConversationProposalRefusal && error.code === 'not_conversation_project');
+  await kindOf.perform(content, ctx, h.actors);
+  const core = await h.coreStore.readCore();
+  assert.equal(core.projects.find((entry) => entry.id === 'project-site')!.repoPath, 'D:/sites/main');
+  const activity = core.activities.find((entry) => entry.projectId === 'project-site' && entry.metadata.workProjectFolder)!;
+  assert.equal(activity.actorId, 'chat-participant:participant-1');
+  assert.equal(activity.metadata.confirmedByActorId, 'owner-actor');
 });
 
 function grant(overrides: Partial<HostToolGrant['binding']> = {}): HostToolGrant {
@@ -231,4 +339,45 @@ test('the admin coordinator rule is the one ADR-105 uses', () => {
   assert.equal(isAdminCoordinator(state, channelId, participantOf(kiki)), false, 'the coordinator, but not an admin Cat');
   assert.equal(isAdminCoordinator(state, channelId, participantOf(boss)), false, 'an admin Cat, but not the coordinator');
   assert.equal(isAdminCoordinator(state, channelId, null), false);
+});
+
+test("Phase 5 tools: the conversation's Project in get_work_items, and who may propose what beyond it", async () => {
+  const h = setup();
+  const core = await h.coreStore.readCore();
+  // The conversation's Project, as its projected Work Item carries it.
+  await h.coreStore.writeCore({ ...core, workItems: [...core.workItems,
+    { ...core.workItems.find((entry) => entry.id === 'wi-projected')!, id: 'work-item-chat-channel-own', projectId: 'project-site' }] });
+  const proposals: Array<Record<string, unknown>> = [];
+  let admin = false;
+  const provider = createWorkConversationToolsProvider({
+    coreStore: h.coreStore,
+    proposals: { async propose(input) { proposals.push(input as never); return { proposalId: 'p-1', expiresAt: 'later' }; } },
+    async isAdminCoordinator() { return admin; },
+  });
+  assert.deepEqual(provider.tools.map((tool) => tool.name), ['get_work_items', 'find_projects', 'propose_work_items',
+    'propose_work_item_change', 'propose_work_item_project', 'propose_conversation_project', 'propose_project', 'propose_project_folder']);
+  const items = (await provider.callTool('get_work_items', {}, grant())).structuredContent as { project: Record<string, unknown> | null };
+  assert.deepEqual(items.project, { id: 'project-site', title: '«Site»', status: 'active', folder: '«C:/work/site»' });
+
+  // FR-12: the conversation's own Project is open to any participant.
+  const own = await provider.callTool('propose_work_item_project', { workItemId: 'wi-captured', projectId: 'project-site' }, grant());
+  assert.equal(own.isError, undefined);
+  // FR-13: any other Project, the conversation's Project and a folder need an admin coordinator.
+  for (const [name, args] of [
+    ['propose_work_item_project', { workItemId: 'wi-captured', projectId: 'project-other' }],
+    ['propose_conversation_project', { projectId: 'project-site' }],
+    ['propose_project_folder', { folder: 'D:/x' }],
+    ['propose_project', { title: 'X', folder: 'D:/x' }],
+  ] as const) {
+    const denied = await provider.callTool(name, args as Record<string, unknown>, grant());
+    assert.equal((denied.structuredContent as { error: { code: string } }).error.code, 'admin_coordinator_required', name);
+  }
+  admin = true;
+  await provider.callTool('propose_conversation_project', { projectId: 'project-site' }, grant());
+  await provider.callTool('propose_project_folder', { folder: 'D:/x' }, grant());
+  assert.deepEqual(proposals.map((entry) => entry.kind),
+    [WORK_PROPOSAL_ASSIGN_PROJECT, 'conversation.work_project', WORK_PROPOSAL_PROJECT_FOLDER]);
+  // Not on a turn the owner did not start, admin or not.
+  const notOwner = await provider.callTool('propose_project_folder', { folder: 'D:/y' }, grant({ proposalsAllowed: false }));
+  assert.equal((notOwner.structuredContent as { error: { code: string } }).error.code, 'not_owner_turn');
 });

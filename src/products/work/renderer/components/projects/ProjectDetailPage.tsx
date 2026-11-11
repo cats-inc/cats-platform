@@ -254,6 +254,39 @@ export function ProjectDetailPage(): JSX.Element {
           removeDisabled={unlinkExternalMutation.isPending}
         />
 
+        {/* SPEC-142 FR-24, FR-27: the conversations in this Project, each taken out from itself. */}
+        <section className="projectDetail__section">
+          <header className="projectDetail__sectionHeader">
+            <h2>{t("workProjectConversationsTitle")}</h2>
+            <span className="projectDetail__sectionCount">
+              {project.memberConversations?.length ?? 0}
+            </span>
+          </header>
+          {(project.memberConversations?.length ?? 0) === 0 ? (
+            <p className="projectDetail__empty">{t("workProjectNoConversations")}</p>
+          ) : (
+            <>
+              <p className="projectDetail__empty">{t("workProjectConversationsHint")}</p>
+              <ul className="projectDetail__items">
+                {(project.memberConversations ?? []).map((conversation) => (
+                  <li key={conversation.conversationId} className="projectDetail__item">
+                    {conversation.sourceChannelId ? (
+                      <Link
+                        className="projectDetail__itemTitle"
+                        to={`/work/chats/${encodeURIComponent(conversation.sourceChannelId)}`}
+                      >
+                        {conversation.title}
+                      </Link>
+                    ) : (
+                      <span className="projectDetail__itemTitle">{conversation.title}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+
         <ItemsSection
           title={t("workProjectWorkItemsTitle")}
           items={workItems}

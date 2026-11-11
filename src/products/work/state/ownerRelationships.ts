@@ -26,7 +26,10 @@ export function ownerRelationshipView(core: CatsCoreState, family: string, id: s
   if (!record) throw new CoreNotFoundError('Object no longer exists.');
   const metadata = record.metadata as Record<string, unknown> | undefined;
   const taskIds = new Set(family === 'task' ? [id] : family === 'project' ? core.workItems.filter(item => item.projectId === id).flatMap(item => item.taskId ? [item.taskId] : []) : typeof record.taskId === 'string' ? [record.taskId] : []);
-  const activeRun = core.runs.some(run => ['running', 'queued', 'blocked'].includes(run.status) && (run.id === record.runId || run.id === id && family === 'run' || !!run.taskId && taskIds.has(run.taskId)));
+  // SPEC-142 FR-27: a member conversation's Turn Runs are not its Project's active work.
+  const activeRun = core.runs.some(run => ['running', 'queued', 'blocked'].includes(run.status)
+    && !(family === 'project' && run.metadata?.source === 'chat-room-workflow')
+    && (run.id === record.runId || run.id === id && family === 'run' || !!run.taskId && taskIds.has(run.taskId)));
   const blockers = [
     ...(['chat-channel', 'chat-room-workflow'].includes(String(metadata?.source)) ? ['This relationship is controlled by its source conversation. Repair it at the source.'] : []),
     ...(activeRun || ['in_progress', 'pending_approval', 'running', 'queued'].includes(String(record.status)) ? ['Stop active execution and resolve approval before changing its anchors.'] : []),

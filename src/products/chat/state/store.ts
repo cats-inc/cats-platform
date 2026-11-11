@@ -4,6 +4,7 @@ import { normalizeOwnerLifecycle, OwnerLifecycleFormatError } from '../../../cor
 import { compactOwnerWorkflowHistory } from './ownerHistory.js';
 import { keepRaisedProductScopes } from './model/productScope.js';
 import { keepProposalProgress } from './conversationProposals.js';
+import { keepOwnerWorkProjects } from './model/workProject.js';
 import { copyFile, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -49,7 +50,12 @@ function keepStoredProductScopes(source: string, stored: ChatState, incoming: Ch
   if (proposals.keptChannelIds.length > 0) {
     reportStoreDiagnostic('proposal_progress_kept', { store: source, channelIds: proposals.keptChannelIds });
   }
-  return proposals.state;
+  // SPEC-142 FR-23: nor does it undo the owner's change of a conversation's Project.
+  const kept = keepOwnerWorkProjects(stored, proposals.state);
+  if (kept.keptChannelIds.length > 0) {
+    reportStoreDiagnostic('work_project_kept', { store: source, channelIds: kept.keptChannelIds });
+  }
+  return kept.state;
 }
 
 function reportStoreDiagnostic(

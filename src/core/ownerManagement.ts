@@ -48,6 +48,9 @@ export function ownerRecordDependencies(core: CatsCoreState, family: OwnerSubjec
   return dependencies;
 }
 
+/** The Work Item a conversation projects (`buildChatWorkItemId`). */
+const PROJECTED_WORK_ITEM_PREFIX = 'work-item-chat-channel-';
+
 export function ownerDeleteBlockers(core: CatsCoreState, family: OwnerSubjectFamily, id: string): string[] {
   const record = getOwnerRecord(core, family, id);
   if (!record) return ['Object no longer exists.'];
@@ -58,6 +61,12 @@ export function ownerDeleteBlockers(core: CatsCoreState, family: OwnerSubjectFam
   if (['in_progress', 'pending_approval', 'running', 'queued', 'planned'].includes(record.status)
     && family !== 'project' && family !== 'work_item') blockers.push('Finish or cancel active work before deleting its record.');
   if (family === 'artifact' && record.status === 'published') blockers.push('Published evidence is protected. Archive it instead.');
+  // SPEC-142 FR-27: a Project cannot be deleted while conversations belong to it. Each is taken out
+  // from the conversation, which Work links to.
+  if (family === 'project') {
+    const conversations = core.workItems.filter(item => item.projectId === id && item.id.startsWith(PROJECTED_WORK_ITEM_PREFIX));
+    if (conversations.length) blockers.push(`Take its conversations out of this Project first: ${conversations.map(item => item.title).join(', ')}`);
+  }
   for (const dependency of ownerRecordDependencies(core, family, id)) blockers.push(`${dependency.family}: ${dependency.title}`);
   return blockers;
 }

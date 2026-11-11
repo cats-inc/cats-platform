@@ -62,6 +62,8 @@ import { DesktopControlConversation } from '../desktop-control/DesktopControlCon
 import { buildChatConversationId } from '../../../../../shared/chatCoreIds.js';
 import { ConversationViewTopBar } from './ConversationViewTopBar.js';
 import { ConversationScopeChip } from '../ConversationScopeChip.js';
+import { ConversationWorkProjectChip } from '../ConversationWorkProjectChip.js';
+import { readProductScope } from '../../../../../shared/productScope.js';
 import type { ProductScopeRaiseControl } from '../../productScopeRaise.js';
 import { buildConversationSidePanelSections, type BuildConversationSidePanelSectionsOptions } from './ConversationSidePanelSections.js';
 import { ConversationComposerArea } from './ConversationComposerArea.js';
@@ -1052,14 +1054,17 @@ export function ConversationView({
   const composerHeaderWhereExtras = renderComposerHeaderWhereExtras?.(viewContext) ?? null;
   const composerFooterAccessory = renderComposerFooterAccessory?.(viewContext) ?? null;
   // SPEC-141 FR-27: every existing conversation names its scope, in Chat as well.
+  // As the server counts it: a member of an active group only.
+  const parallelMember = compareGroup?.status === 'active' || (payload.chat.parallelChatGroups ?? []).some((group) =>
+    group.status === 'active' && group.memberChannelIds.includes(selectedChannel.id));
   const composerSurfaceTag = (
-    <ConversationScopeChip
-      channel={selectedChannel}
-      // As the server counts it: a member of an active group only.
-      parallelMember={compareGroup?.status === 'active' || (payload.chat.parallelChatGroups ?? []).some((group) =>
-        group.status === 'active' && group.memberChannelIds.includes(selectedChannel.id))}
-      control={productScopeRaise}
-    />
+    <>
+      <ConversationScopeChip channel={selectedChannel} parallelMember={parallelMember} control={productScopeRaise} />
+      {/* SPEC-142 FR-22, FR-23: the owner's control of a Work conversation's Project. */}
+      {productScopeRaise && readProductScope(selectedChannel) === 'work' && !parallelMember ? (
+        <ConversationWorkProjectChip channel={selectedChannel} report={productScopeRaise.report} />
+      ) : null}
+    </>
   );
 
   function navigateCompareMember(direction: 'prev' | 'next'): void {
