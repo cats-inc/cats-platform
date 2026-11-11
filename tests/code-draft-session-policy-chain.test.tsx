@@ -251,10 +251,11 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
     // Code sessions carry the agent-tools marker; the tools arrive as MCP, not prompt text.
     assert.doesNotMatch(runtimeClient.createdSessions[0]?.instructions ?? '', /declare_artifact/u);
     const agentToolsMarker =
-      runtimeClient.createdSessions[0]?.context?.metadata?.codeAgentTools as
+      runtimeClient.createdSessions[0]?.context?.metadata?.hostTools as
         | Record<string, unknown>
         | undefined;
     assert.equal(agentToolsMarker?.channelId, channelId);
+    assert.equal(agentToolsMarker?.level, 'code');
     // A read-only session cannot run shell commands, so it may not start dev previews.
     assert.equal(agentToolsMarker?.shellExecution, false);
 
@@ -275,9 +276,10 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
     assert.doesNotMatch(turnInstructions, /show_in_canvas/u);
     assert.match(turnInstructions, /\/api\/code\/knowledge\/agent/u, 'ordinary turn can submit a knowledge draft');
     const turnMarker =
-      runtimeClient.sentMessages[0]?.input?.context?.metadata?.codeAgentTools as
+      runtimeClient.sentMessages[0]?.input?.context?.metadata?.hostTools as
         | Record<string, unknown>
         | undefined;
     assert.equal(turnMarker?.channelId, channelId);
+    assert.equal(turnMarker?.level, 'code');
   });
 });

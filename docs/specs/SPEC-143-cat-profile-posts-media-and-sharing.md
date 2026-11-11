@@ -128,7 +128,7 @@ Runtime companion change 中版本化並測試，Platform 依 capabilities 選�
 
 ### FR-4 — Agent tools 與發表流程
 
-工具透過 session 的既有 `cats` MCP 組合，角色工具在 Chat scope 可用，不依賴尚未完成的
+工具透過 session 的既有 `cats-images` MCP server（PLAN-135 Phase 1 由 `cats` 改名，以免與 host 的 `cats` server 同名），角色工具在 Chat scope 可用，不依賴尚未完成的
 Work proposal queue。Cat、owner、conversation 由 host 決定，模型不能指定別的 Cat 或收件者。
 以下名稱為 PoC 對外工具介面，現有 domain executor 繼續共用。
 

@@ -497,8 +497,8 @@ callers.
 | First channel | `mcp_tool` (runtime session MCP) |
 | Tool name | `declare_artifact` |
 | Implementation entry point | `src/products/code/shared/artifactDeclaration.ts` |
-| MCP server | `src/products/code/agentTools/service.ts` |
-| Session wiring | `src/products/code/agentTools/enricher.ts`, `src/products/code/agentTools/runtimeClientWrapper.ts` |
+| MCP server | `src/platform/mcp/hostTools.ts`, with Code's tools as a provider in `src/products/code/agentTools/service.ts` |
+| Session wiring | `src/platform/mcp/hostToolsEnricher.ts`, `src/platform/mcp/hostToolsClientWrapper.ts` |
 | Related SPEC | [SPEC-092](./specs/SPEC-092-code-artifact-declaration-contract.md) |
 | Related ADR | [ADR-088](./decisions/088-use-structured-artifact-declarations-for-code-materialization.md) |
 | Related PLAN | [PLAN-081](./plans/PLAN-081-code-artifact-declaration-rollout.md) |
@@ -567,16 +567,28 @@ When a conversation's product scope is `code` or `work` (Work includes Code,
 ADR-149 D5; the scope starts as the conversation's `originSurface`, and a direct
 message is always `chat`; see
 [SPEC-141](specs/SPEC-141-conversation-product-scope.md)), the
-Code agent-tools enricher adds a secret-free marker at
-`context.metadata.codeAgentTools` (`channelId`, `workspacePath`,
-`shellExecution`) and the
-`product:code` label on session create and message send. The label names
-Code's tools, not the product the conversation lives on. Only a conversation's
-own turns and session starts pass through the enricher; Work's supervised runs,
-schedules and the golden path use their own sessions and get no `cats` server.
+The `cats` server is the host's tool server (SPEC-142 FR-1 to FR-5). Products
+register tool providers with it; each provider names the narrowest level whose
+conversations list its tools. Code's tools start at `code`, so Work lists them
+too (ADR-149 D5). A grant lists the tools of its level, and its MCP
+`instructions` and the turn policy name only those tools. A call to a tool
+outside the grant's level is refused.
 
-The Code runtime-client wrapper sits inside the supervision boundary. It turns
-that marker into the `cats` MCP server:
+The host-tools enricher adds a secret-free marker at
+`context.metadata.hostTools` (`channelId`, `workspacePath`, `shellExecution`,
+`level`, `participantId`) to every conversation's session create and message
+send, direct lanes included at `chat` (SPEC-142 A3). `participantId` is the
+dispatch's `targetParticipantId`. The `product:code` label is added only when
+the level includes `code`: it names Code's tools, not the product the
+conversation lives on. Only a conversation's own turns and session starts pass
+through the enricher; Work's supervised runs, schedules and the golden path use
+their own sessions and get no `cats` server.
+
+The host-tools wrapper sits inside the supervision boundary. It turns that
+marker into the `cats` MCP server:
+
+- A level that lists no tool gets no server and no policy. Until the base tools
+  of SPEC-142 FR-6 to FR-9 land, that is every `chat` conversation.
 
 - It issues a session grant before create, because the CLI connects while it
   spawns, and binds the grant to the returned runtime session id and the folder
@@ -588,11 +600,18 @@ that marker into the `cats` MCP server:
   Runtime (`workspace.runtimeCwd`, else `cwd`), and to no folder when Runtime
   cannot say, so the tools that need one refuse (SPEC-141 FR-25).
 - It sends `mcpServers` on create, send and resume, keeping the servers the call
-  already carries, such as `cats-desktop`, and replacing only entries named like
-  its own.
-- It adds the SPEC-123 preview policy to a turn's instructions only while
-  Runtime reports the server as `delivered` for that session.
-- It revokes the grant on close and delete.
+  already carries, such as `cats-desktop` or `cats-images`, replacing only
+  entries named like its own, and in name order: Runtime recycles a worker when
+  its set's fingerprint changes, and the fingerprint follows the order.
+- After a raise, the session's next send carries a new grant at the new level, so
+  Runtime recycles the worker and the agent lists its tools again (SPEC-142
+  FR-3). The old grant stays valid until Runtime reports the new set
+  `delivered`, so a worker still running with it keeps its tools. When the wider
+  level lists the same tools, the grant takes the new level and nothing
+  recycles.
+- It adds the turn policy of the grant's level to a turn's instructions only
+  while Runtime reports the server as `delivered` for that session.
+- It revokes the session's grants on close and delete.
 
 The bearer never enters context metadata, Core records or supervision evidence.
 The tools execute in Platform through `/api/code/agent-tools/mcp`, which is
@@ -1035,7 +1054,7 @@ for the close-vs-collapse semantics.
 
 ### Cat profile publications (SPEC-143 PoC)
 
-The existing session-bound `cats` MCP server adds `media_list`, `media_import`, `media_generate`,
+The existing session-bound `cats-images` MCP server adds `media_list`, `media_import`, `media_generate`,
 `media_status`, `post_create`, `post_list`, `post_get`, `post_update`, `post_delete`, `post_share`
 and `post_notify`. Scope comes from the active Cat's own direct lane and originating turn;
 tool arguments never select a different Cat or arbitrary notification recipient.

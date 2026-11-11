@@ -143,7 +143,7 @@ test('start_dev_preview runs a Next.js script through npm and a restart reuses t
   }).core);
   const previews = createCodeConversationPreviews({ supervisor, coreStore: store, previewServersEnabled: async () => true });
   const context: DevPreviewContext = {
-    binding: { channelId: CHANNEL, conversationId: `conversation-channel-${CHANNEL}`, workspacePath: root, actorId: null, shellExecution: true },
+    binding: { channelId: CHANNEL, conversationId: `conversation-channel-${CHANNEL}`, workspacePath: root, actorId: null, shellExecution: true, level: 'code', participantId: null },
     supervisor,
     devLeases: previews.devLeases,
     staticLeases: previews.staticLeases,

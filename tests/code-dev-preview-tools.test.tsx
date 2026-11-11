@@ -20,7 +20,7 @@ import {
   type DevPreviewContext,
 } from '../src/products/code/agentTools/devPreview.ts';
 import { CODE_AGENT_PREVIEW_POLICY } from '../src/products/code/agentTools/policy.ts';
-import { hasShellExecutionPermission } from '../src/products/code/agentTools/shellPermission.ts';
+import { hasShellExecutionPermission } from '../src/platform/mcp/shellPermission.ts';
 import {
   DEFAULT_LIVE_PREVIEW_CONFIG,
   STATIC_LIVE_PREVIEW_PROFILE,
@@ -123,6 +123,8 @@ function setup(
       workspacePath: root,
       actorId: 'cat-1',
       shellExecution: true,
+      level: 'code',
+      participantId: null,
       ...binding,
     },
     supervisor,

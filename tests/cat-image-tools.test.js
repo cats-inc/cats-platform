@@ -35,7 +35,7 @@ async function fixture(t, overrides = {}) {
 test('real MCP supplies a stable session credential, a host-derived request and deferred dispatch', async t => {
   const f = await fixture(t); const tokens = []; let inputCount = 0;
   const client = f.tools.wrapClient({ async sendMessage(id, content, input) {
-    inputCount++; const token = input.mcpServers.find(server => server.name === 'cats').auth.token; tokens.push(token);
+    inputCount++; const token = input.mcpServers.find(server => server.name === 'cats-images').auth.token; tokens.push(token);
     assert.equal(input.mcpServers[0].name, 'plugin-fixture');
     assert.equal(f.released.length, inputCount - 1);
     const list = await (await f.call(token, 'tools/list')).json(); assert.equal(list.result.tools[0].name, 'image_generate');
@@ -126,7 +126,7 @@ test('a blocked turn explains its current restriction, revokes stale tools, and 
     { name: 'plugin-fixture', transport: 'http', url: 'http://127.0.0.1/plugin' },
   ] };
   await client.sendMessage('source-chat', 'first', options);
-  const original = sent[0].mcpServers.find(server => server.name === 'cats');
+  const original = sent[0].mcpServers.find(server => server.name === 'cats-images');
   blocked = true;
   await client.sendMessage('source-chat', 'late request', options);
   assert.deepEqual(sent[1].mcpServers, options.mcpServers);
@@ -138,7 +138,7 @@ test('a blocked turn explains its current restriction, revokes stale tools, and 
   assert.equal((await f.call(original.auth.token, 'tools/list')).status, 401);
   blocked = false;
   await client.sendMessage('source-chat', 'next morning', options);
-  const recovered = sent[2].mcpServers.find(server => server.name === 'cats');
+  const recovered = sent[2].mcpServers.find(server => server.name === 'cats-images');
   assert.ok(recovered); assert.notEqual(recovered.auth.token, original.auth.token);
   assert.equal(sent[2].instructions.includes('image_service_unavailable'), false);
   assert.deepEqual(f.submitted, []);

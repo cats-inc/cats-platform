@@ -89,7 +89,7 @@ import { MemoryChatStore } from '../../products/chat/state/store.js';
 import { createAsyncKeyedGate } from '../../products/chat/shared/asyncControl.js';
 import { createChatTaskExecutionLocator } from '../../products/chat/state/taskExecutionLocator.js';
 import { createChatTelegramRoomBridge } from '../../products/chat/state/telegramBridgeAdapter.js';
-import { registerCodeAgentToolsInvocationEnricher } from '../../products/code/agentTools/enricher.js';
+import { registerHostToolsInvocationEnricher } from '../../platform/mcp/hostToolsEnricher.js';
 import type { AppConfig } from '../../config.js';
 import { createCodeCatlasHelpService } from '../../products/code/state/catlasHelp.js';
 import { createCodeSessionOperationService } from '../../products/code/state/codeSessionOperation.js';
@@ -218,7 +218,7 @@ export function resolveServerDependencies(
     },
   };
 
-  registerCodeAgentToolsInvocationEnricher();
+  registerHostToolsInvocationEnricher();
   const livePreviewSupervisor = dependencies.code?.livePreviewSupervisor
     ?? createCodeLivePreviewSupervisor(
       dependencies.shared.config.codeLivePreview ?? DEFAULT_LIVE_PREVIEW_CONFIG,

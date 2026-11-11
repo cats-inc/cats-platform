@@ -10,7 +10,8 @@ import { createServer } from '../build/server/app/server/index.js';
 import { ChatEventHub } from '../build/server/products/chat/api/chatEventHub.js';
 import { isOwnerPrincipal } from '../build/server/products/chat/api/resources/productScopeRoutes.js';
 import { resolveChannelProductScope } from '../build/server/products/chat/shared/channelTopology.js';
-import { createCodeAgentToolsInvocationEnricher, readCodeAgentToolsInvocationMarker } from '../build/server/products/code/agentTools/enricher.js';
+import { createHostToolsInvocationEnricher } from '../build/server/platform/mcp/hostToolsEnricher.js';
+import { readHostToolsInvocationMarker } from '../build/server/platform/mcp/hostTools.js';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import {
   appendMessage,
@@ -157,10 +158,11 @@ test('FR-22 and FR-24: the owner raises a conversation, with one system line and
   assert.ok(mutations.includes('updated'), JSON.stringify(mutations));
 
   // FR-25: the next turn of each participant carries Code's tools; nothing restarts now.
-  const enricher = createCodeAgentToolsInvocationEnricher();
-  assert.equal(enricher.enrich(channelOf(before, h.ids.chat), {}, { phase: 'message_send' }), null, 'before the raise');
-  assert.equal(readCodeAgentToolsInvocationMarker(
-    enricher.enrich(raised, {}, { phase: 'message_send' })?.context)?.channelId, h.ids.chat, 'after it');
+  const enricher = createHostToolsInvocationEnricher();
+  const levelOf = (channel) => readHostToolsInvocationMarker(
+    enricher.enrich(channel, {}, { phase: 'message_send' })?.context)?.level;
+  assert.equal(levelOf(channelOf(before, h.ids.chat)), 'chat', 'before the raise');
+  assert.equal(levelOf(raised), 'code', 'after it');
 
   // And on to Work with the new revision.
   const next = await (await h.read(h.ids.chat)).json();

@@ -50,7 +50,7 @@ export const COMPANION_PUBLICATION_TOOLS: McpToolDefinition[] = [
   tool('post_notify', 'Send a post link to the owner via DM or their pinned Telegram binding. The host selects the recipient; repeated requests do not send twice.',
     { postId: text, destination: { type: 'string', enum: ['dm', 'telegram'] }, retry: { type: 'boolean' } }, ['postId', 'destination']),
 ];
-export const COMPANION_PUBLICATION_INSTRUCTIONS = 'Your Cats profile tools are available in the same cats MCP server. '
+export const COMPANION_PUBLICATION_INSTRUCTIONS = 'Your Cats profile tools are available in the same cats-images MCP server. '
   + 'Use media_list for your avatar, cover and owner-selected source folder; media_import copies a source for attachments. '
   + 'Use post_create, post_update and post_delete to manage your own profile feed. post_share creates a link, post_notify queues its owner notification. '
   + 'For AI media call media_generate, then post_create with its pendingJobIds and the final post text, set share and notify on that post request if the owner wants a link, then end this turn. The host publishes when the media is ready; no second model turn is needed. '

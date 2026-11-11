@@ -8,7 +8,7 @@ import {
   assembleProductKnowledgeContext,
 } from '../build/server/platform/knowledge/productKnowledge.js';
 import { loadOrchestratorKnowledge } from '../build/server/products/chat/state/orchestratorKnowledge.js';
-import { registerCodeAgentToolsInvocationEnricher } from '../build/server/products/code/agentTools/enricher.js';
+import { registerHostToolsInvocationEnricher } from '../build/server/platform/mcp/hostToolsEnricher.js';
 import { executeDispatch } from '../build/server/products/chat/state/runtime-dispatch/execution.js';
 import { inspectLocalKnowledge, mutateLocalKnowledge } from '../build/server/platform/knowledge/localKnowledge.js';
 import { createChatProviderAgentDecisionRequester } from '../build/server/products/chat/state/providerAgentDecisionRequester.js';
@@ -330,7 +330,7 @@ test('a coordinator answers with orchestrator knowledge wherever the conversatio
   // on Chat, and this test asserted that Code and Work received none. A conversation with no
   // recorded origin received none either; it is Chat's everywhere else, and now here.
   // The server registers Code's enricher at startup; a Code conversation keeps what it adds.
-  registerCodeAgentToolsInvocationEnricher();
+  registerHostToolsInvocationEnricher();
   const platformDir = await emptyProfile(t);
   const requester = createChatProviderAgentDecisionRequester({ platformDir });
   for (const originSurface of ORIGINS) {
@@ -346,7 +346,8 @@ test('a coordinator answers with orchestrator knowledge wherever the conversatio
     // tools, on Code or on Work (ADR-149 D5, PLAN-134 Phase 4).
     const hasCodeTools = originSurface === 'code' || originSurface === 'work';
     assert.equal(call.input.context.labels?.includes('product:code') ?? false, hasCodeTools, label(originSurface));
-    assert.equal(call.input.context.metadata.codeAgentTools !== undefined, hasCodeTools, label(originSurface));
+    // Every conversation is marked with its level (SPEC-142 FR-1); only Code and Work list Code's tools.
+    assert.equal(['code', 'work'].includes(call.input.context.metadata.hostTools?.level), hasCodeTools, label(originSurface));
 
     const decisionClient = runtime(JSON.stringify(decision()));
     await requester({ state: h.state, channelId: h.channelId,
@@ -455,7 +456,7 @@ test('the one agent of a conversation started without naming anyone coordinates 
   // model as the conversation's one participant, which coordinates it. On Chat it received the
   // Orchestrator role already. Since SPEC-141 FR-19 it does on Code and Work too, where this
   // agent is the one doing the coding task, and the role comes with every turn.
-  registerCodeAgentToolsInvocationEnricher();
+  registerHostToolsInvocationEnricher();
   const platformDir = await emptyProfile(t);
   for (const originSurface of ['chat', 'code', 'work']) {
     for (const [body, expected] of [
@@ -476,7 +477,7 @@ test('the one agent of a conversation started without naming anyone coordinates 
       assert.match(knowledge.entries[0].content, /You are the Cats Orchestrator \(visible Boss Cat\)/u);
       // Code's own instructions and marker still go with it, on Code and on Work (ADR-149 D5);
       // the knowledge is added to them.
-      assert.equal(client.calls.send[0].input.context.metadata.codeAgentTools !== undefined,
+      assert.equal(['code', 'work'].includes(client.calls.send[0].input.context.metadata.hostTools?.level),
         originSurface === 'code' || originSurface === 'work', originSurface);
     }
   }

@@ -3,67 +3,78 @@ import type {
   RuntimeSendMessageInput,
   RuntimeSessionCreateInput,
   RuntimeSessionResumeInput,
-} from '../../../platform/runtime/client.js';
-import type { McpSessionGrantStore } from '../../../platform/mcp/sessionGrants.js';
+} from '../runtime/client.js';
+import type { McpSessionGrantStore } from './sessionGrants.js';
 import type {
   RuntimeSessionMcpDeliveryReport,
   RuntimeSessionMcpServer,
-} from '../../../runtime/sessionMcpServers.js';
-import { CODE_AGENT_TOOLS_SERVER_NAME, type CodeAgentToolGrantBinding } from './contracts.js';
-import { readCodeAgentToolsInvocationMarker, type CodeAgentToolsInvocationMarker } from './enricher.js';
-import { CODE_AGENT_PREVIEW_POLICY } from './policy.js';
+} from '../../runtime/sessionMcpServers.js';
+import { compareProductScopes, type ProductScope } from '../../shared/productScope.js';
+import {
+  HOST_TOOLS_SERVER_NAME,
+  readHostToolsInvocationMarker,
+  type HostToolGrantBinding,
+  type HostToolServer,
+  type HostToolsInvocationMarker,
+} from './hostTools.js';
 import { hasShellExecutionPermission } from './shellPermission.js';
-import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
+import { buildChatConversationId } from '../../shared/chatCoreIds.js';
 import {
   composeSessionMcpServers,
   type SessionMcpServerContribution,
   type SessionMcpServerContributor,
-} from '../../../platform/mcp/sessionMcpServerContributions.js';
+} from './sessionMcpServerContributions.js';
 
 /**
- * Attaches the `cats` MCP server to Code conversation sessions (ADR-126).
+ * Attaches the host's `cats` server to a conversation's sessions (ADR-126; SPEC-142 FR-1 to
+ * FR-5).
  *
- * This wrapper sits inside the supervision boundary, so the secret-bearing
- * `mcpServers` descriptor never reaches supervision evidence or Core records.
- * Grants are issued before create, because the CLI connects while spawning,
- * bound to the runtime session id, and revoked on close or delete. The
- * preview policy is added to a turn only while Runtime reports the server as
- * delivered for that session.
+ * This wrapper sits inside the supervision boundary, so the secret-bearing `mcpServers`
+ * descriptor never reaches supervision evidence or Core records. Grants are issued before
+ * create, because the CLI connects while spawning, bound to the runtime session id, and revoked
+ * on close or delete. A grant lists the tools of its level. A level with no tools gets no server.
+ * The turn policy is added only while Runtime reports the server as delivered for that session.
  */
 
 interface TrackedSession {
   token: string;
   channelId: string;
   workspacePath: string | null;
+  level: ProductScope;
+  participantId: string | null;
   report: RuntimeSessionMcpDeliveryReport | undefined;
   /** The grant was issued on a send and Runtime could not say the session's folder. */
   folderUnknown?: boolean;
+  /**
+   * Grants this session held at a narrower level (FR-3). A worker started with one may still be
+   * running a turn, so each stays valid until Runtime reports the current set delivered.
+   */
+  retired: string[];
 }
 
-export interface CodeAgentToolsClientWrapperOptions {
-  grants: McpSessionGrantStore<CodeAgentToolGrantBinding>;
+export interface HostToolsClientWrapperOptions {
+  grants: McpSessionGrantStore<HostToolGrantBinding>;
+  server: Pick<HostToolServer, 'hasTools' | 'instructions' | 'listTools'>;
   /** The loopback MCP URL, or null while Platform cannot offer it. */
   endpoint(): string | null;
-  /** A Code conversation gained a session with the `cats` server. */
+  /** A conversation gained a session with the `cats` server. */
   onSessionStarted?(channelId: string): void;
-  /** A Code conversation's session was closed or deleted and its grant revoked. */
+  /** A conversation's session was closed or deleted and its grants revoked. */
   onSessionEnded?(channelId: string, reason: 'closed' | 'deleted'): void;
   /**
-   * Further MCP servers for the same descriptor, such as a user-granted App
-   * endpoint or a plugin server (ADR-126, PLAN-116 F5). They are composed with
-   * `cats`; a contributor that fails or names a server wrongly is left out.
+   * Further MCP servers for the same descriptor, such as a user-granted App endpoint or a
+   * plugin server (ADR-126, PLAN-116 F5). They are composed with `cats`; a contributor that
+   * fails or names a server wrongly is left out.
    */
   contributors?: readonly SessionMcpServerContributor[];
   onContributionError?(contributorId: string, error: unknown): void;
 }
 
-export interface CodeAgentToolsClientWrapper {
+export interface HostToolsClientWrapper {
   wrapClient<Client extends RuntimeClient>(client: Client): Client;
 }
 
-export function createCodeAgentToolsClientWrapper(
-  options: CodeAgentToolsClientWrapperOptions,
-): CodeAgentToolsClientWrapper {
+export function createHostToolsClientWrapper(options: HostToolsClientWrapperOptions): HostToolsClientWrapper {
   const sessions = new Map<string, TrackedSession>();
 
   function descriptor(
@@ -73,7 +84,7 @@ export function createCodeAgentToolsClientWrapper(
   ): RuntimeSessionMcpServer[] {
     const contributions: SessionMcpServerContribution[] = [{
       origin: { kind: 'host' },
-      server: { name: CODE_AGENT_TOOLS_SERVER_NAME, transport: 'http', url: endpoint, auth: { kind: 'bearer_env', token } },
+      server: { name: HOST_TOOLS_SERVER_NAME, transport: 'http', url: endpoint, auth: { kind: 'bearer_env', token } },
     }];
     const context = {
       channelId: session.channelId,
@@ -93,39 +104,48 @@ export function createCodeAgentToolsClientWrapper(
     return composeSessionMcpServers(contributions);
   }
 
-  function issue(marker: CodeAgentToolsInvocationMarker, shellExecution = marker.shellExecution): string {
+  function issue(marker: HostToolsInvocationMarker, shellExecution = marker.shellExecution): string {
     return options.grants.issue({
       channelId: marker.channelId,
       conversationId: buildChatConversationId(marker.channelId),
       workspacePath: marker.workspacePath,
       actorId: null,
       shellExecution,
+      level: marker.level,
+      participantId: marker.participantId,
     }).token;
+  }
+
+  function attaches(marker: HostToolsInvocationMarker | null): marker is HostToolsInvocationMarker {
+    return marker !== null && options.server.hasTools(marker.level);
   }
 
   function forget(sessionId: string, reason: 'closed' | 'deleted'): void {
     const tracked = sessions.get(sessionId);
     if (!tracked) return;
-    options.grants.revoke(tracked.token);
+    for (const token of [tracked.token, ...tracked.retired]) options.grants.revoke(token);
     sessions.delete(sessionId);
     options.onSessionEnded?.(tracked.channelId, reason);
   }
 
-  function withPolicy(instructions: string | null | undefined): string {
-    return [instructions?.trim(), CODE_AGENT_PREVIEW_POLICY].filter(Boolean).join('\n\n');
+  /** FR-5: the policy of the level this session's current grant lists. */
+  function withPolicy(instructions: string | null | undefined, level: ProductScope): string | undefined {
+    return [instructions?.trim(), options.server.instructions(level)].filter(Boolean).join('\n\n') || undefined;
   }
 
   /**
-   * Code's servers join the ones the call already carries, such as the desktop control
-   * server, and replace only entries with their own names. Replacing the whole list dropped
-   * every other server from Code conversations.
+   * The host's servers join the ones the call already carries, such as the desktop control
+   * server, and replace only entries with their own names (FR-4). The result is in name order:
+   * Runtime recycles a worker when its set's fingerprint changes, and the fingerprint follows
+   * the order, so create, send and resume must send the same set the same way.
    */
   function withServers(
     incoming: readonly RuntimeSessionMcpServer[] | undefined,
     own: RuntimeSessionMcpServer[],
   ): RuntimeSessionMcpServer[] {
     const names = new Set(own.map((server) => server.name));
-    return [...(incoming ?? []).filter((server) => !names.has(server.name)), ...own];
+    return [...(incoming ?? []).filter((server) => !names.has(server.name)), ...own]
+      .sort((left, right) => (left.name < right.name ? -1 : left.name > right.name ? 1 : 0));
   }
 
   /**
@@ -145,15 +165,56 @@ export function createCodeAgentToolsClientWrapper(
     }
   }
 
+  /**
+   * FR-3: the conversation reached a wider level since this session's grant was issued. When that
+   * level lists other tools, its next send carries a new grant, so Runtime recycles the worker and
+   * the agent lists its tools again. When it lists the same ones (Code to Work, until Work has
+   * tools of its own), the grant takes the new level and nothing recycles.
+   */
+  function raiseGrant(sessionId: string, tracked: TrackedSession, marker: HostToolsInvocationMarker): void {
+    const current = options.grants.resolve(tracked.token);
+    const participantId = marker.participantId ?? tracked.participantId;
+    // The same tools at the wider level: the worker keeps its grant, now at that level. Only a
+    // changed tool list is worth recycling the worker for.
+    const sameTools = toolNames(marker.level) === toolNames(tracked.level);
+    if (sameTools && current) {
+      options.grants.bind(tracked.token, sessionId, { level: marker.level, participantId });
+      tracked.level = marker.level;
+      tracked.participantId = participantId;
+      return;
+    }
+    // Without the current grant (only after a data reset), fail closed on the shell posture.
+    const token = issue({ ...marker, participantId }, current?.binding.shellExecution ?? false);
+    options.grants.bind(token, sessionId, { workspacePath: current?.binding.workspacePath ?? null });
+    tracked.retired.push(tracked.token);
+    tracked.token = token;
+    tracked.level = marker.level;
+    tracked.participantId = participantId;
+    tracked.report = undefined;
+  }
+
+  function toolNames(level: ProductScope): string {
+    return options.server.listTools(level).map((tool) => tool.name).sort().join(' ');
+  }
+
+  function settleReport(tracked: TrackedSession, report: RuntimeSessionMcpDeliveryReport | undefined): void {
+    if (!report) return;
+    tracked.report = report;
+    // The worker runs the current set, so nothing still holds a narrower grant.
+    if (report.status === 'delivered' && tracked.retired.length > 0) {
+      for (const token of tracked.retired.splice(0)) options.grants.revoke(token);
+    }
+  }
+
   return {
     wrapClient<Client extends RuntimeClient>(client: Client): Client {
       return new Proxy(client, {
         get(target, property) {
           if (property === 'createSession') {
             return async (input: RuntimeSessionCreateInput) => {
-              const marker = readCodeAgentToolsInvocationMarker(input.context);
+              const marker = readHostToolsInvocationMarker(input.context);
               const endpoint = options.endpoint();
-              if (!marker || !endpoint) return target.createSession(input);
+              if (!attaches(marker) || !endpoint) return target.createSession(input);
               // The create input carries the effective posture, including a
               // whitelist's allowed tools.
               const token = issue(marker, hasShellExecutionPermission(input));
@@ -169,7 +230,10 @@ export function createCodeAgentToolsClientWrapper(
                   token,
                   channelId: marker.channelId,
                   workspacePath: marker.workspacePath,
+                  level: marker.level,
+                  participantId: marker.participantId,
                   report: session.mcpServers,
+                  retired: [],
                 });
                 options.onSessionStarted?.(marker.channelId);
                 return session;
@@ -182,27 +246,25 @@ export function createCodeAgentToolsClientWrapper(
           if (property === 'sendMessage') {
             return async (sessionId: string, content: string, input?: RuntimeSendMessageInput) => {
               const endpoint = options.endpoint();
+              const marker = readHostToolsInvocationMarker(input?.context);
               let tracked = sessions.get(sessionId);
-              if (!tracked && endpoint) {
+              if (!tracked && endpoint && attaches(marker)) {
                 // Platform restarted (grants are memory-only), or the session started before
-                // its conversation had Code's tools, such as a Work conversation's session from
-                // before Work included Code. Issue a grant; Runtime sees a changed set and
-                // restarts the worker through resume. The grant is bound to the folder the
-                // session works in, not the conversation's (SPEC-141 FR-25).
-                const marker = readCodeAgentToolsInvocationMarker(input?.context);
-                if (marker) {
-                  const workspacePath = await sessionWorkspacePath(target, sessionId);
-                  // Another send for this session may have issued its grant while Runtime was
-                  // asked for the folder. Issue at most one grant per session.
-                  tracked = sessions.get(sessionId);
-                  if (!tracked) {
-                    const token = issue(marker);
-                    options.grants.bind(token, sessionId, { workspacePath });
-                    tracked = { token, channelId: marker.channelId, workspacePath: marker.workspacePath,
-                      report: undefined, folderUnknown: workspacePath === null };
-                    sessions.set(sessionId, tracked);
-                    options.onSessionStarted?.(marker.channelId);
-                  }
+                // its conversation's level had any tool. Issue a grant; Runtime sees a changed
+                // set and restarts the worker through resume. The grant is bound to the folder
+                // the session works in, not the conversation's (SPEC-141 FR-25).
+                const workspacePath = await sessionWorkspacePath(target, sessionId);
+                // Another send for this session may have issued its grant while Runtime was
+                // asked for the folder. Issue at most one grant per session.
+                tracked = sessions.get(sessionId);
+                if (!tracked) {
+                  const token = issue(marker);
+                  options.grants.bind(token, sessionId, { workspacePath });
+                  tracked = { token, channelId: marker.channelId, workspacePath: marker.workspacePath,
+                    level: marker.level, participantId: marker.participantId,
+                    report: undefined, folderUnknown: workspacePath === null, retired: [] };
+                  sessions.set(sessionId, tracked);
+                  options.onSessionStarted?.(marker.channelId);
                 }
               } else if (tracked?.folderUnknown && endpoint) {
                 // Runtime could not say where the session works when its grant was issued. Ask
@@ -214,14 +276,19 @@ export function createCodeAgentToolsClientWrapper(
                 }
               }
               if (!tracked || !endpoint) return target.sendMessage(sessionId, content, input);
+              // Levels only rise (SPEC-141 D2), so only a wider one is acted on.
+              if (marker && marker.channelId === tracked.channelId
+                && compareProductScopes(marker.level, tracked.level) > 0 && options.server.hasTools(marker.level)) {
+                raiseGrant(sessionId, tracked, marker);
+              }
               const result = await target.sendMessage(sessionId, content, {
                 ...input,
                 mcpServers: withServers(input?.mcpServers, descriptor(endpoint, tracked.token, tracked)),
                 instructions: tracked.report?.status === 'delivered'
-                  ? withPolicy(input?.instructions)
+                  ? withPolicy(input?.instructions, tracked.level)
                   : input?.instructions,
               });
-              if (result.mcpServers) tracked.report = result.mcpServers;
+              settleReport(tracked, result.mcpServers);
               return result;
             };
           }
@@ -234,7 +301,7 @@ export function createCodeAgentToolsClientWrapper(
                 ...input,
                 mcpServers: withServers(input?.mcpServers, descriptor(endpoint, tracked.token, tracked)),
               });
-              if (session.mcpServers) tracked.report = session.mcpServers;
+              settleReport(tracked, session.mcpServers);
               if (session.cwd) {
                 options.grants.bind(tracked.token, sessionId, { workspacePath: session.cwd });
                 tracked.folderUnknown = false;

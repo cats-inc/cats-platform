@@ -37,6 +37,8 @@ const BINDING: CodeAgentToolGrantBinding = {
   workspacePath: '/workspace/calculator',
   actorId: 'cat-1',
   shellExecution: true,
+  level: 'code',
+  participantId: null,
 };
 
 interface Harness {

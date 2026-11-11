@@ -17,7 +17,7 @@ import {
   type SessionMcpServerContributor,
 } from '../src/platform/mcp/sessionMcpServerContributions.ts';
 import type { CodeAgentToolGrantBinding } from '../src/products/code/agentTools/contracts.ts';
-import { createCodeAgentToolsClientWrapper } from '../src/products/code/agentTools/runtimeClientWrapper.ts';
+import { createHostToolsClientWrapper } from '../src/platform/mcp/hostToolsClientWrapper.ts';
 
 const APP_SERVER = {
   name: 'app-cats-ask',
@@ -90,20 +90,22 @@ test('the Code wrapper delivers contributed servers through the same descriptor 
     },
     { id: 'throwing', contribute: () => { throw new Error('boom'); } },
   ];
-  const wrapper = createCodeAgentToolsClientWrapper({
+  const wrapper = createHostToolsClientWrapper({
     grants: new McpSessionGrantStore<CodeAgentToolGrantBinding>(),
+    server: { hasTools: () => true, instructions: () => undefined, listTools: () => [] },
     endpoint: () => 'http://127.0.0.1:9/api/code/agent-tools/mcp',
     contributors,
     onContributionError: (id) => failures.push(id),
   });
   const wrapped = wrapper.wrapClient(client);
-  const context = { metadata: { codeAgentTools: { channelId: 'channel-1', workspacePath: '/workspace', shellExecution: true } } };
+  const context = { metadata: { hostTools: { level: 'code', channelId: 'channel-1', workspacePath: '/workspace', shellExecution: true } } };
   await wrapped.createSession({ provider: 'claude', context } as RuntimeSessionCreateInput);
   await wrapped.sendMessage('rt-1', 'hi', { context });
   await wrapped.resumeSession!('rt-1');
 
   for (const servers of [calls.create[0]?.mcpServers, calls.send[0]?.mcpServers, calls.resume[0]?.mcpServers]) {
-    assert.deepEqual(servers?.map((server) => server.name), ['cats', 'app-cats-ask']);
+    // In name order, so every call sends the set Runtime fingerprints the same way.
+    assert.deepEqual(servers?.map((server) => server.name), ['app-cats-ask', 'cats']);
   }
   assert.deepEqual(seen[0], { channelId: 'channel-1', conversationId: 'conversation-channel-channel-1', workspacePath: '/workspace' });
   assert.deepEqual([...new Set(failures)], ['broken-plugin', 'throwing'], 'bad contributors are left out, cats still arrives');
