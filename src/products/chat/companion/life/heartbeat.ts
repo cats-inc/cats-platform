@@ -41,6 +41,8 @@ export interface CompanionHeartbeatPromptInput {
   unanswered?: number;
   /** SPEC-137 FR-7: `assist` only, the excerpts of the Cat's recent conversations. */
   review?: string | null;
+  /** SPEC-139 FR-13: the review carries a Boss Cat's peer section. */
+  peers?: boolean;
 }
 
 export function describeDuration(fromMs: number, toMs: number): string | null {
@@ -111,6 +113,10 @@ export function buildCompanionHeartbeatPrompt(input: CompanionHeartbeatPromptInp
       'they would come back to. If you find one, reply with only a short message (one to three sentences) that',
       'names it, suggests one concrete next step and offers to continue; name the conversation when it is not',
       'this one. Write it in your own voice. It is sent to your owner exactly as you write it.',
+      ...(input.peers
+        ? ['Work listed for your owner\'s other Cats is theirs, not yours: point it out and suggest your owner open',
+          'that conversation, but do not offer to continue it yourself.']
+        : []),
       'Do not start the work now, and do not repeat a suggestion you already made unless something changed.',
       `If nothing is unfinished, or you would only repeat yourself, reply with exactly ${COMPANION_HEARTBEAT_QUIET_TOKEN}.`,
       quiet,

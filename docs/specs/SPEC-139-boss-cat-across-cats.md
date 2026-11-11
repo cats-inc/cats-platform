@@ -4,10 +4,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Approved by the owner on 2026-11-11 (D1 to D3). Revised the same day after the independent security review (see Security Review), with the conservative choices R1 to R4. Implementation in progress under [PLAN-133](../plans/PLAN-133-boss-cat-across-cats.md): FR-1 to FR-7 (with R1 and R2), FR-15's board side, FR-16 for boards and groups and FR-17 are implemented; joining, the UI and FR-13/14 are not |
+| **Status** | Approved by the owner on 2026-11-11 (D1 to D3). Revised the same day after the independent security review (see Security Review), with the conservative choices R1 to R4. Implementation in progress under [PLAN-133](../plans/PLAN-133-boss-cat-across-cats.md): FR-1 to FR-7 (with R1 and R2), FR-13/14 (the Boss Cat's own initiative), FR-15's board side, FR-16 for boards and groups and FR-17 are implemented; joining and the UI are not |
 | **Owner** | Product owner |
 | **Reviewer** | Owner; independent security review on 2026-11-11 |
-| **Updates** | SPEC-125 FR-17 (three new actions beyond the conversation, and the turns they may run in); SPEC-118's K2 direct-lane exclusion (the Boss Cat tools, not K2, may run for a Boss Cat's own direct lane, from Desktop or mobile only; transports stay excluded); SPEC-137 FR-7 (a Boss Cat's `assist` review drops other Cats' lines and gains a peer section); the memory checkpoint (`memoryLayers.ts`, FR-17) |
+| **Updates** | SPEC-125 FR-17 (three new actions beyond the conversation, and the turns they may run in); SPEC-118's K2 direct-lane exclusion (the Boss Cat tools, not K2, may run for a Boss Cat's own direct lane, from Desktop or mobile only; transports stay excluded); SPEC-137 FR-7 (a Boss Cat's `assist` review leaves out other Cats' words and gains a peer section); the memory checkpoint (`memoryLayers.ts`, FR-17) |
 | **Keeps** | SPEC-118 FR-05: no tool returns another conversation's contents. A direct lane holds only its own Cat (SPEC-125, `assignCatToChannel`). These are limits on the server's tools, not a security boundary: every Cat's provider CLI runs under the owner's OS account and can edit app state, these settings included |
 | **Counterpart** | Cats Bot SPEC-012 Phase 1. Desktop differs by design: it has group conversations the owner speaks in, so it needs no contact notes and no status questions |
 | **Related finding** | Desktop's Telegram bindings did not pin the owner's Telegram account: any private chat with the bot reached the bound Cat's direct lane as a `user` message. That affected every Cat and is fixed by [SPEC-140](SPEC-140-telegram-owner-pin.md). This spec still never trusts a transport message |
@@ -196,21 +196,57 @@ board, nothing else.
 
 #### The Boss Cat's own initiative
 
-13. FR-13: In `assist` mode, a Boss Cat's review (SPEC-137 FR-7) leaves out other Cats' lines and
+13. FR-13: In `assist` mode, a Boss Cat's review (SPEC-137 FR-7) leaves out other Cats' words and
     gains a peer section built from the board, under FR-4's title rule.
-    - The prompt asks it to suggest one next step in its own direct lane, naming the Cat and
-      the conversation.
+    - The prompt asks it to point out one Cat's work that needs the owner, naming the Cat and
+      the conversation, and to suggest the owner open that conversation. It does not offer to
+      do that work itself.
     - A heartbeat is not owner-started, so the server refuses the tools from it.
     - Because the tools run in the isolated decision session (FR-1), a short reply such as
-      「好」 names nothing: the owner's own message must name the conversation or the Cats.
+      「好」 names nothing: the owner's own message must name the conversation or the Cats. The
+      section says so.
+    - The peer section lists each other Cat that needs the owner: its failed and interrupted
+      turns of the last 7 days with the places they happened, and its waiting choices and
+      approvals. A place is an owner-set title, or else the surface and age.
+    - Only group conversations count. A direct lane leaves its Cat only as message times
+      (Goals, Privacy), so nothing in another Cat's direct lane reaches the section.
+    - Its Cat lines total at most 12 Cats and 3,000 characters, with a count of the rest. Cats
+      with something the last look did not see come first.
+    - A hidden Cat (FR-15) is left out of the section.
+    - Approvals come from Core. A Core that cannot be read leaves them out and does not stop
+      the life loop; a board that cannot be built costs only the section.
+    - Other Cats' words are left out of the Boss Cat's own conversations, also second-hand:
+      - A run of other Cats' messages shows as one line, 「«name», … (other Cats) replied」, so
+        an owner's request another Cat answered does not look unfinished (the owner's choice on
+        2026-11-11).
+      - Only notices about the Boss Cat's own turns are shown; the rest, which can quote
+        another Cat's output or error, are not.
+      - The owner's answer to another Cat's choice names that Cat, not the choice.
+      - A collaboration report the Boss Cat posted, which quotes other Cats, is not quoted.
+      - These lines are not part of the fingerprint, so another Cat writing in a shared
+        conversation is no news to the Boss Cat's own review.
+      - The name of a hidden Cat that writes in such a conversation still shows, since the Boss
+        Cat takes part in it and its own sessions see that message anyway.
 14. FR-14: The `assist` skip (SPEC-137 FR-8) also fingerprints the peer section's attention
     items.
+    - Each item is marked by id: a failed or interrupted turn, a waiting choice card, a pending
+      approval. Only an item the last quiet look did not see runs a turn, so an item settled
+      and another arriving between two looks is still news.
+    - After a quiet look, a Cat shown in the section keeps only the marks it shows now. A Cat
+      the bounds left out, or one that is hidden or gone, keeps its old marks, so the first is
+      still news and the others' return with the same picture is not.
+    - While Core cannot be read, the approvals seen before are kept, so Core coming back is no
+      news.
+    - A heartbeat that speaks marks nothing seen; SPEC-137's back-off limits how often it
+      looks again.
+    - Like SPEC-137 FR-8's fingerprint, the marks live in the process's memory: after a
+      restart, each Boss Cat looks once more.
 
 #### Owner control and privacy
 
 15. FR-15: Each Cat has a switch, 「讓主控貓看到這隻 Cat 的狀態」, on by default, on its settings in
     Cats Directory (`/entities/cats/:catId/settings`). When it is off:
-    - the board and the peer section show only the Cat's name;
+    - the board shows only the Cat's name, and the peer section leaves it out (FR-13);
     - group entries leave the Cat out of their participant lists;
     - a conversation whose only Cat participants are hidden appears as surface, id and age.
 
@@ -241,8 +277,10 @@ board, nothing else.
   - A group conversation shows up on the board only as its owner-set title, surface and visible
     participants.
   - Its content reaches the Boss Cat only after a join the owner allowed.
-- **Cost**: the board and the peer section run no extra model turn. Creation and joining
-  happen only when the owner starts the turn, within FR-2, FR-7 and FR-9's limits.
+- **Cost**: the board and the peer section are built without the model. A peer item the Boss
+  Cat has not seen can make an `assist` heartbeat run its one turn, within SPEC-137's rhythm
+  and back-off. Creation and joining happen only when the owner starts the turn, within FR-2,
+  FR-7 and FR-9's limits.
 
 ## Design Overview
 
@@ -251,8 +289,9 @@ board, nothing else.
 - **Tools.** `src/products/chat/state/bossCatSurface.ts` (new) defines the four tools and
   their server handlers. The provider-agent decision path offers them under FR-1, and the
   handlers recheck FR-1.
-- **Board.** `src/products/chat/state/bossCatBoard.ts` (new) builds the board. SPEC-137's
-  `review.ts` reuses it for the peer section.
+- **Board.** `src/products/chat/state/bossCatBoard.ts` (new) builds the board.
+  `companion/life/peerSection.ts` builds the peer section from it, and the life loop
+  (`companion/life/loop.ts`) builds both only when a Boss Cat's `assist` heartbeat is due.
 - **Creating and joining.** Creation uses the channel creation path with an explicit
   `read_only`/`default` policy and no dispatch. Joining uses `assignCatToChannel`. Continuity
   in `runtimeTargeting.ts` is bounded by `joinedAt`.
@@ -292,7 +331,8 @@ board, nothing else.
     replacement and a rejoin.
 - A Boss Cat's `assist` review has no other Cat's lines, includes the peer section, and skips
   when nothing changed. A reply of 「好」 after a suggestion runs no tool.
-- A hidden Cat appears only by name, and is left out of group participant lists.
+- A hidden Cat appears on the board only by name, not in the peer section, and is left out of
+  group participant lists.
 - A conversation's memory checkpoint never carries another conversation's title, snippet or
   open loop. Markers in a direct lane's owner question and in a companion note stay out of
   group prompts.

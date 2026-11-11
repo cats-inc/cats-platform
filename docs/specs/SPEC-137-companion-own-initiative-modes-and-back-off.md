@@ -76,6 +76,9 @@ answer. Cats Desktop and Cats Bot behave and read alike.
 8. FR-8: An `assist` heartbeat with nothing to review, or whose fingerprint (the newest
    non-heartbeat message of each conversation in it) equals the one its last quiet review saw
    in this process, runs no turn (`skipped`) and draws the next regular delay.
+   - A Boss Cat's review leaves out other Cats' words, also second-hand (a run of their
+     messages shows as their names having replied), keeps them out of its fingerprint, and gains
+     a peer section whose items are fingerprinted by id (SPEC-139 FR-13, FR-14).
 9. FR-9: Only `companion` says good night (SPEC-124 FR-24), and only while nothing is
    unanswered.
 10. FR-10: Both prompts state how many unprompted messages went unanswered, and the `companion`

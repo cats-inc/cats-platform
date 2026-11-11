@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress: slices 1 to 4b implemented |
+| Status | In progress: slices 1 to 4b and 7 implemented |
 | Owner | Cats Chat |
 | Reviewer | Owner |
 | Date | 2026-11-11 |
@@ -200,8 +200,19 @@ are tested as live behaviour.
 
 ### Slice 7: Own initiative (FR-13, FR-14)
 
-- [ ] A Boss Cat's `assist` review drops other Cats' lines and gains the peer section.
-- [ ] The `assist` skip fingerprints the peer section's attention items.
+- [x] A Boss Cat's `assist` review leaves out other Cats' words (`leaveOutOtherCats` in
+      `review.ts`): runs of their messages fold into one 「«name», … replied」 line, only notices
+      about its own turns show, the owner's answers to their choices name no content, and a collaboration
+      report is not quoted; none of these count for the fingerprint.
+- [x] The peer section (`companion/life/peerSection.ts`) is built from `buildBossCatBoard`,
+      only when a heartbeat is due, from group conversations only (direct lanes stay out), with
+      approvals from Core (`readCore`, optional and fail-safe). A board that throws costs only
+      the section. The prompt (`peers`) asks the Boss Cat to point out, not to offer to continue.
+- [x] The `assist` skip fingerprints the peer section's items by id (turns, choice cards,
+      approvals); only an unseen item runs a turn. Cats left out by the 12-Cat or 3,000-character
+      bound stay unseen and come first, and approvals seen before survive a Core read failure.
+- [x] Tests: `tests/chat-boss-cat-own-initiative.test.js`, also exercised against the #421
+      attention rule.
 
 ## Contract Changes
 
