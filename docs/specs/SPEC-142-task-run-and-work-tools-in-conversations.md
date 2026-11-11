@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft, 2026-11-11, revised the same day after an independent review. The owner's decisions D11 to D13 are fixed by ADR-149. S1 to S7 are this SPEC's own proposals and Q1 to Q5 are open; the owner has seen S1, S5 and S7 in outline and none of the rest. Not implemented |
+| **Status** | Draft, 2026-11-11, revised the same day after an independent review. The owner's decisions D11 to D13 are fixed by ADR-149. On 2026-11-12 the owner answered Q3 to Q5 as recommended (see Owner Answers) and asked for the plan to be carried out in full; S1 to S7 proceed as this SPEC's proposals under that instruction. Q1 and Q2 stay open. Not implemented |
 | **Owner** | Product owner |
 | **Reviewer** | Owner; an independent review before implementation |
 | **Decision** | [ADR-149](../decisions/149-let-a-conversation-gain-product-scopes-and-never-lose-them.md) D10 to D13, on top of [ADR-105](../decisions/105-adopt-phase-scoped-work-tool-surface.md) and [ADR-126](../decisions/126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md) |
@@ -40,10 +40,10 @@ conversation, and then the server writes (S1).
 - Creating a Task or starting a Run from a tool. D13 keeps both with the confirmations that
   exist today: SPEC-118's role runs, ADR-105's execution preparation and Work's own pages.
 - The external tracker tools. They stay on ADR-105's path.
-- Changing ADR-105's decision path, SPEC-118 or SPEC-139.
+- Changing ADR-105's decision path, SPEC-118 or SPEC-139, except for a new Project with a
+  folder, which goes through a card (A1).
 - Tools for Work's supervised runs, golden-path runs or schedules. Their sessions get no Cats
   tool today, and this SPEC leaves that.
-- Direct lanes (S2).
 - A general create, read, update and delete API over Work's records. ADR-105 rejected it.
 - A new "workspace" record. The owner's "workspace" meant the Work Item.
 
@@ -144,9 +144,10 @@ Read from Platform `7ec13d700` and Runtime `fb50e59a` on 2026-11-11, and recheck
 
 #### Delivery
 
-1. FR-1: The `cats` session server goes to every conversation that is not a direct lane. It
+1. FR-1: The `cats` session server goes to every conversation, direct lanes included (A3). It
    lists tools by the conversation's level:
-   - every level: the base tools (FR-6 to FR-9);
+   - every level: the base tools (FR-6 to FR-9). A direct lane, whose level is always `chat`,
+     lists these and nothing else;
    - `code` and `work`: Code's tools, as SPEC-141 FR-8 says;
    - `work`: the Work tools (FR-10 to FR-14).
 2. FR-2: The server reads the level when it lists tools and again when a tool is called. A
@@ -274,8 +275,11 @@ Read from Platform `7ec13d700` and Runtime `fb50e59a` on 2026-11-11, and recheck
 
 #### What stays
 
-29. FR-29: ADR-105's decision path, its roles and its flags stay as they are. A Work
-    conversation may then be offered the same change on both paths.
+29. FR-29: ADR-105's decision path, its roles and its flags stay as they are, with one change
+    (A1): a new Project that comes with a folder is not created at once. It becomes a proposal
+    with the folder warning of FR-16, and the owner's confirmation creates it. A new Project
+    without a folder is created as before, with the flag on and off. A Work conversation may
+    then be offered the same change on both paths.
 30. FR-30: No tool changes CLI permission.
     - Under the default policy these tools run without a provider prompt, as session tools do
       today. A proposal still needs its card.
@@ -292,8 +296,8 @@ Read from Platform `7ec13d700` and Runtime `fb50e59a` on 2026-11-11, and recheck
     (FR-17) and the binding (FR-18).
   - A Project's folder decides where approval-free supervised runs start. Through these tools
     it changes only by a card that says so (FR-16).
-  - ADR-105's path can still create a Project with a folder that the model supplied, after
-    re-checking the owner's wording, and Work's pages cannot change a folder at all (Q3).
+  - ADR-105's path no longer creates a Project with a folder that the model supplied: that
+    becomes a card with the folder warning (A1). Work's pages cannot change a folder at all.
   - Names, titles and summaries that tools return are cut to a bounded length, stripped of
     control and bidirectional-override characters, and fenced as data. That is by prompt only.
 - **Privacy**:
@@ -307,7 +311,7 @@ Read from Platform `7ec13d700` and Runtime `fb50e59a` on 2026-11-11, and recheck
   - It ships at or after the state version rise that ADR-149 D9 decided for the product scope.
     If it lands in a later release, it needs a rise of its own.
 - **Cost**:
-  - Every conversation that is not a direct lane gains a session server and three tool
+  - Every conversation, direct lanes included, gains a session server and three tool
     definitions.
   - Each live session recycles its worker on its first turn after this ships. Grants are kept
     in memory, so it also recycles on its first turn after each Platform restart, as Code
@@ -336,10 +340,10 @@ These are this SPEC's choices, not owner decisions.
 
 - S1: Every write is a proposal that the owner confirms on a card (FR-14 to FR-19). A session
   tool runs without a prompt by default, so without this an agent could write to Work unasked.
-- S2: Direct lanes get none of these tools (FR-1). This narrows D13, which says "from the
-  `chat` level up", and it needs the owner's explicit yes (Q5). The reasons are that the image
-  tools already use the server name `cats` there, and that lanes take transport and heartbeat
-  turns.
+- S2: Direct lanes get none of these tools (FR-1). Withdrawn: the owner answered Q5 the other
+  way (A3). It had two reasons. The image tools already use the server name `cats` in a
+  companion's lane, which PLAN-135 Phase 1 resolves before lanes get the server. Lanes also
+  take transport and heartbeat turns, which then can read the lane's own records.
 - S3: Finding the owner's Projects and proposing beyond the conversation need an admin
   coordinator (FR-11, FR-13), as ADR-149 Decision 6 and SPEC-125 FR-17 say for actions beyond
   the conversation. Proposals within the conversation are open to every participant, which
@@ -359,7 +363,8 @@ These are this SPEC's choices, not owner decisions.
   - A conversation at each level lists exactly its level's tools, and a call outside the level
     is refused.
   - The server's instructions and the turn policy name no tool the level does not list.
-  - A direct lane gets no `cats` server from this SPEC, and its image tools still work.
+  - A direct lane gets the `cats` server with the base tools only, and a companion's image
+    tools still work beside it.
   - After a raise, the next turn lists the new level's tools, and a turn that was running
     keeps the old ones.
   - A session with the desktop control server keeps it on create, send and resume.
@@ -407,14 +412,28 @@ These are this SPEC's choices, not owner decisions.
 - [ ] Q2: Should an agent be able to propose a Task for one of the conversation's Work Items?
       ADR-105 already has this for Boss Cats, behind the owner's confirmation. This SPEC leaves
       it there (S4).
-- [ ] Q3: ADR-105's path lets a model supply a new Project's folder, after a re-check of the
+- [x] Q3: ADR-105's path lets a model supply a new Project's folder, after a re-check of the
       owner's wording and with no folder warning. Should that stay, or go through a card too?
-- [ ] Q4: Should every participant of a Work conversation be able to find the owner's Projects
+      Answered: a card (A1).
+- [x] Q4: Should every participant of a Work conversation be able to find the owner's Projects
       and propose a new Project or a move into another one? S3 limits both to an admin
       coordinator. With that limit, a Work conversation whose only participant is a plain
       provider and model can organize its own Work Items but cannot start a Project.
-- [ ] Q5: Should a direct lane's agent get the read tools for Tasks and Runs? D13 says every
-      level; S2 leaves lanes out.
+      Answered: keep S3's limit (A2).
+- [x] Q5: Should a direct lane's agent get the read tools for Tasks and Runs? D13 says every
+      level; S2 leaves lanes out. Answered: yes, for the lane's own records (A3).
+
+## Owner Answers
+
+Given on 2026-11-12, each as this SPEC recommended.
+
+- A1 (Q3): ADR-105's path creates a new Project with a folder only through a card that shows
+  the folder and its warning (FR-16, FR-29). A new Project without a folder is unchanged.
+- A2 (Q4): S3 stays. Finding the owner's Projects and proposing beyond the conversation need an
+  admin coordinator. A Work conversation whose only participant is a plain provider and model
+  can organize its own Work Items but cannot start a Project.
+- A3 (Q5): A direct lane's agent gets the base tools (FR-6 to FR-9) for the lane's own Tasks and
+  Runs. S2 is withdrawn. The lane gets nothing else from this SPEC: its level is `chat`.
 
 ## References
 

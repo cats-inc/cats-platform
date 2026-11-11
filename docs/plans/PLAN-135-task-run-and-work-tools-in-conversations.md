@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft; not started. It waits for the owner on SPEC-142's S1 to S7 and Q3 to Q5, and for PLAN-134: Phases 1, 2 and 4 before Phase 1 here, and Phase 5 before Phase 5 here |
+| **Status** | In progress from 2026-11-12. The owner answered SPEC-142's Q3 to Q5 (A1 to A3) and asked for the plan to be carried out in full. PLAN-134 Phases 1 to 5 have landed |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -43,9 +43,12 @@ instructions listed by level (FR-1 to FR-5).
 - [ ] Move the server, its grants and its wrapper from `src/products/code/agentTools/` to
       `src/platform/mcp/`, and compose it from tool providers that the host registers. Code's
       tools become the first provider.
-- [ ] The enricher marks every conversation that is not a direct lane. Its channel type gains
-      the conversation's kind, and the check uses `isDirectLaneChannel`, which also reads the
-      routing mode.
+- [ ] The enricher marks every conversation, direct lanes included (SPEC-142 A3). Its channel
+      type gains the conversation's kind, so a lane is listed at `chat` whatever it stores.
+- [ ] Before lanes get the marker, resolve the image tools' server, which a companion's lane
+      already receives under the name `cats`. The wrapper's merge rule would replace it.
+      Rename it or make it a provider of the host server, after finding everything that names
+      it or its tools.
 - [ ] The marker and the grant carry the level and the participant. Today they carry neither.
 - [ ] The tool list and the server's `instructions` are built per grant. Today the
       instructions are one fixed string.
@@ -55,8 +58,10 @@ instructions listed by level (FR-1 to FR-5).
       Phase 4 makes that fix; this phase adds the test with the desktop control server, and
       fixes the order in which servers are merged, because Runtime's fingerprint depends on
       it.
-- [ ] Tests for FR-1 to FR-5, including a direct lane with image tools, where a second `cats`
-      server would make Runtime refuse the send.
+- [ ] Tests for FR-1 to FR-5, including a direct lane with image tools, which keeps them beside
+      the host server, through the real wrapper stack in `src/app/server/index.ts`.
+- [ ] Decide and record whether a lane's transport and heartbeat turns get the read tools, and
+      put it to the security review.
 
 **Deliverables:** conversations at `chat` have the server with no tool yet, and nothing
 changes for `code` and `work`.
@@ -140,6 +145,8 @@ folder goes through a card that says so (D12; FR-12, FR-13, FR-16, FR-22 to FR-2
   - [ ] a new Project with a folder, through the existing create delegate, for an admin
         coordinator.
 - [ ] The folder warning on every card in FR-16.
+- [ ] ADR-105's Project create with a folder becomes a proposal and its card (SPEC-142 A1).
+      Without a folder it is unchanged, with its flag on and off.
 - [ ] Work's side: the projected Work Item under its Project, a Project's page listing its
       conversations with links, and the blocker rules of FR-27.
 - [ ] Tests, including the supervised run's folder (FR-26), a blocked Turn Run not refusing a
@@ -165,9 +172,7 @@ folder goes through a card that says so (D12; FR-12, FR-13, FR-16, FR-22 to FR-2
 - Creating a Task or starting a Run from a tool.
 - The external tracker tools.
 - Tools for supervised runs, golden-path runs and schedules.
-- Direct lanes (SPEC-142 Q5).
 - Picking a Project on a Work draft (SPEC-142 Q1).
-- Changing how ADR-105's path takes a folder (SPEC-142 Q3).
 
 ## Proposed Tool Names
 
