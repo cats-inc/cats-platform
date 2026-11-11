@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In progress from 2026-11-12. The owner answered SPEC-142's Q3 to Q5 (A1 to A3) and asked for the plan to be carried out in full. PLAN-134 Phases 1 to 5 have landed. Phase 1 is done |
+| **Status** | In progress from 2026-11-12. The owner answered SPEC-142's Q3 to Q5 (A1 to A3) and asked for the plan to be carried out in full. PLAN-134 Phases 1 to 5 have landed. Phases 1 and 2 are done |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -121,14 +121,28 @@ conversations get no server until Phase 2 gives them a tool.
 
 **Goal:** an agent can read its conversation's Tasks and Runs (D13; FR-6 to FR-9).
 
-- [ ] The three read tools, over Core's Task, Run, Outcome and Checkpoint records, as a
+- [x] The three read tools, over Core's Task, Run, Outcome and Checkpoint records, as a
       provider under `src/products/shared/`.
-- [ ] The "own records" rule in one helper, by conversation id only, used by every tool in
+  - `get_tasks`, `list_runs` and `get_run` in `conversationRecordTools.ts`, at level `chat`,
+    registered in `src/app/server/index.ts` before Code's tools. With them every conversation
+    gets the `cats` server.
+- [x] The "own records" rule in one helper, by conversation id only, used by every tool in
       this plan.
-- [ ] Turn Runs left out of the list unless asked for.
-- [ ] Bounds and fencing for every text field.
-- [ ] Tests, including a SPEC-118 role Task that belongs to another conversation.
-- [ ] Add the tools to `docs/tool-calls.md`.
+  - `conversationOwnRecords.ts`. A Run of an own Task counts only when it names no
+    conversation, and an Outcome or Checkpoint only when it names no other conversation.
+- [x] Turn Runs left out of the list unless asked for.
+- [x] Bounds and fencing for every text field.
+  - 50 Tasks; 20 Runs by default and 50 at most; titles and labels 160 characters and
+    summaries 1,000. Each is one line, without control or bidirectional-override characters,
+    and fenced in `«»`.
+- [x] Tests, including a SPEC-118 role Task that belongs to another conversation.
+  - `tests/conversation-record-tools.test.js`: the own-records rule, each tool's fields and
+    bounds, a role Task and Run, another conversation's Outcome on the same Run, refused
+    arguments and a hostile title.
+  - End to end through `createServer`: a Chat conversation's session gets the server at
+    create, lists the three tools and not Code's, reads its own projected Task, and is
+    refused Code's tools. This is the end-to-end check Phase 1 left for this phase.
+- [x] Add the tools to `docs/tool-calls.md`.
 
 **Deliverables:** the base tools at every level.
 

@@ -24,6 +24,7 @@ import { McpSessionGrantStore } from '../../platform/mcp/sessionGrants.js';
 import { createHostToolServer, HOST_TOOLS_MCP_PATH, type HostToolGrantBinding } from '../../platform/mcp/hostTools.js';
 import { createHostToolsClientWrapper } from '../../platform/mcp/hostToolsClientWrapper.js';
 import { createCodeAgentToolsProvider } from '../../products/code/agentTools/service.js';
+import { createConversationRecordToolsProvider } from '../../products/shared/conversationRecordTools.js';
 import { createCatImageTools, CAT_IMAGE_TOOLS_PATH } from '../../platform/multimedia/catImageTools.js';
 import { createDesktopControlForServer, DESKTOP_CONTROL_MCP_PATH } from '../../platform/desktopControl/server.js';
 import { routeDesktopControlHost } from '../../platform/desktopControl/routes.js';
@@ -242,6 +243,8 @@ export function createServer(dependencies: ServerDependencies) {
 
   // Internal bearer MCP precedes Platform cookie auth. The public ingress
   // rejects this route before dispatch, including traffic from a loopback tunnel.
+  // SPEC-142 FR-6 to FR-9: the base tools, at every level, so every conversation gets the server.
+  hostTools.register(createConversationRecordToolsProvider({ coreStore: resolvedDependencies.shared.coreStore }));
   hostTools.register(createCodeAgentToolsProvider({
     coreStore: resolvedDependencies.code.coreStore,
     livePreviewSupervisor: resolvedDependencies.code.livePreviewSupervisor,

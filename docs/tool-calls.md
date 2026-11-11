@@ -94,10 +94,44 @@ validation and full CI pass; live/native and installed-profile acceptance remain
 | `work.external.unlink_issue` | Cats Work | Product delegate, HTTP route, Work detail UI, and Chat provider-agent observation/tool-request executor implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.lookup` | Cats Work | Product delegate, Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Strong Cat / Boss Cat triage with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.create` | Cats Work | Product delegate, explicit Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `get_tasks` / `list_runs` / `get_run` | Shared | Delivered through the `cats` MCP server at every level, direct lanes included (SPEC-142 FR-6 to FR-9): the conversation's own Tasks and Runs, read-only | `mcp_tool` (runtime session MCP) | Every conversation's agents | [Conversation Record Tools](#conversation-record-tools) |
 | `declare_artifact` | Cats Code | Delivered through the Platform-hosted `cats` MCP server (ADR-126); results return to the agent in the same turn; the HTTP submit route remains for product callers | `mcp_tool` (runtime session MCP) | Code assistant / Code UI import flow | [Declare Artifact](#declare_artifact) |
 | `show_in_canvas` | Cats Code | Delivered through the `cats` MCP server (SPEC-123): workspace `path`, https `url` or `artifactId` | `mcp_tool` (runtime session MCP) | Code assistant | [Artifact Canvas Tools](#artifact-canvas-tools) |
 | `clear_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request parent-surface navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
 | `start_dev_preview` / `get_preview_status` / `stop_preview` | Cats Code | Delivered through the `cats` MCP server (SPEC-123 CAP-07 to CAP-09): Vite and npm-script dev servers behind the Settings > Code opt-in and the session's shell permission | `mcp_tool` (runtime session MCP) | Code assistant | [Dev Preview Tools](#dev-preview-tools) |
+
+## Conversation Record Tools
+
+`src/products/shared/conversationRecordTools.ts` registers the base tools with the host's `cats`
+server at level `chat`, so every conversation's sessions list them (SPEC-142 FR-1, FR-6 to
+FR-9). They read Core and write nothing.
+
+- `get_tasks` lists the conversation's own Tasks, most recently updated first: `id`, `title`,
+  `status`, `approval` (the approval status), `parentTaskId` and `summary`. At most 50, with
+  `truncated`.
+- `list_runs` lists its own Runs, newest first: `id`, `title`, `status`, `taskId`, `startedAt`,
+  `completedAt`, `summary` and `turnRun`.
+  - The Run of each chat turn (`metadata.source` `chat-room-workflow`) is left out unless
+    `includeTurnRuns` is `true`; `turnRunsLeftOut` counts them.
+  - `limit` is 1 to 50, 20 by default.
+- `get_run` takes `runId` and returns that Run with its Outcome (`status`, `title`, `summary`,
+  `recordedAt`) and its latest Checkpoint (`label`, `status`, `summary`, `updatedAt`). Another
+  conversation's Run, or one that does not exist, is `run_not_found`.
+
+Own records come from one helper, `src/products/shared/conversationOwnRecords.ts`, by
+conversation id only:
+
+- a Task whose conversation it is;
+- a Run whose conversation it is, or a Run of one of those Tasks that names no conversation;
+- an Outcome or Checkpoint of such a Run that names no other conversation.
+
+A record that names another conversation is never returned, even under one of its Tasks. A
+SPEC-118 role Task, for example, belongs to the collaboration conversation.
+
+Every title, summary and label is one line, without control or bidirectional-override
+characters, cut to a bounded length (160 for titles and labels, 1,000 for summaries) and
+fenced in `«»`, which it cannot close. The tool descriptions and the turn policy say those
+are data. No transcript is returned. A bad argument is `invalid_arguments`.
 
 ## Agent Knowledge Drafts
 
@@ -587,8 +621,8 @@ their own sessions and get no `cats` server.
 The host-tools wrapper sits inside the supervision boundary. It turns that
 marker into the `cats` MCP server:
 
-- A level that lists no tool gets no server and no policy. Until the base tools
-  of SPEC-142 FR-6 to FR-9 land, that is every `chat` conversation.
+- A level that lists no tool gets no server and no policy. Since the base tools
+  (SPEC-142 FR-6 to FR-9) list at `chat`, every level has one.
 
 - It issues a session grant before create, because the CLI connects while it
   spawns, and binds the grant to the returned runtime session id and the folder
