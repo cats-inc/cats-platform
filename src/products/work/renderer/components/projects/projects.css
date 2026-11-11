@@ -491,6 +491,12 @@ main.canvas:has(> .projectDetail) {
   gap: 18px;
 }
 
+/* The column scrolls; its sections keep their height. A flex item with overflow: hidden
+ * would otherwise shrink to its header once the page is taller than the window. */
+.projectDetail__main > * {
+  flex-shrink: 0;
+}
+
 .projectDetail__main > .projectDetail__section:first-child {
   margin-top: 18px;
 }
