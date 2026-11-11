@@ -28,6 +28,7 @@ import { recoverCollaborations, executeCollaborationRole, recordCollaborationUsa
 import { createDefaultCoreState, upsertCoreTask, upsertCoreRun, upsertCoreWorkItem } from '../build/server/core/model/index.js';
 import { syncCoreStateWithChatState } from '../build/server/products/chat/state/core-projection/index.js';
 import { prepareDispatchTurnForUserMessage } from '../build/server/products/chat/state/runtime-dispatch/turn.js';
+import { beginChannelMessageRetryDispatch } from '../build/server/products/chat/state/runtime-dispatch/routing.js';
 import { buildChoiceResponseBody } from '../build/server/products/shared/messageChoices.js';
 import { buildChatConversationId } from '../build/server/shared/chatCoreIds.js';
 import { checkoutTaskExecution } from '../build/server/core/taskLifecycle.js';
@@ -1120,18 +1121,25 @@ function confirmationTurn(h, { withChoice = true, forged = false, anchor = null,
     choiceResponse = { ...choiceResponse, sourceMessageId: other.message.id };
   }
   const body = buildChoiceResponseBody(choiceResponse, h.card.choices);
+  // A typed message names the Boss Cat as its recipient, and stores it as the send route does.
+  const metadata = {
+    ...(withChoice ? {} : { recipientParticipantIds: [h.bossId] }),
+    ...(anchor ? { productIntentIntakeRef: { workItemId: anchor } } : {}),
+  };
   const appended = appendMessage(state, h.channelId, { body, senderKind: 'user', senderName: 'Owner' }, h.now, {
     ...(withChoice ? { choiceResponse } : {}),
-    ...(anchor ? { metadata: { productIntentIntakeRef: { workItemId: anchor } } } : {}),
+    ...(Object.keys(metadata).length ? { metadata } : {}),
   });
   const prepared = prepareDispatchTurnForUserMessage(appended.state, h.channelId,
     { body, ...(withChoice ? { choiceResponse } : { messageMetadata: { recipientParticipantIds: [h.bossId] } }) },
     appended.message, h.now, core, { enableCollaborationReads: true, enableCollaborationExecution: true });
-  return { body, tools: (prepared.providerAgentObservation?.availableTools ?? []).map(({ manifest }) => manifest.name) };
+  return { body, tools: (prepared.providerAgentObservation?.availableTools ?? []).map(({ manifest }) => manifest.name),
+    state: appended.state, core, messageId: appended.message.id };
 }
 
 test("the owner's click on a collaboration card is not taken by a Work phase", () => {
   const executionTools = collaborationExecutionDescriptors().map(({ manifest }) => manifest.name).sort();
+  const readTools = collaborationToolDescriptors(policy).map(({ manifest }) => manifest.name).sort();
   for (const originSurface of ['chat', 'work', 'code']) {
     const h = fixture({ intent: 'reuse_current', confirm: false, originSurface, locale: 'en' });
 
@@ -1149,16 +1157,38 @@ test("the owner's click on a collaboration card is not taken by a Work phase", (
     assert.equal(forged.tools.includes(WORK_PREPARE_EXECUTION), false, originSurface);
     assert.equal(forged.tools.some((name) => executionTools.includes(name)), false, originSurface);
 
-    // "Not now" repeats the card's question, so it carried the same words. It starts nothing.
+    // "Not now" repeats the card's question, so it carried the same words. It admits nothing
+    // and reaches no Work phase. Like any message to the Boss Cat it is offered the read tools,
+    // with the card's text as the goal: a new proposal would need another click.
     const declined = confirmationTurn(h, { select: 'decline_collaboration' });
     assert.match(declined.body, /Execute this scope and budget\?[\s\S]*Not now/u);
-    assert.equal(declined.tools.includes(WORK_PREPARE_EXECUTION), false, originSurface);
-    assert.equal(declined.tools.some((name) => executionTools.includes(name)), false, originSurface);
+    assert.deepEqual([...declined.tools].sort(), readTools, originSurface);
 
     // The rule is the collaboration card's alone: the same answer to any other card is a
     // request to Work, as before.
     const elsewhere = confirmationTurn(h, { otherCard: true });
     assert.deepEqual(elsewhere.tools, [WORK_PREPARE_EXECUTION], originSurface);
+  }
+});
+
+test('a retried click on a collaboration card is not taken by a Work phase either', async () => {
+  // Retry rebuilds the turn from the stored message, choice answer included, so the same rule
+  // applies. A retried typed message still reaches Work, which shows the open Work Item is seen.
+  const executionTools = collaborationExecutionDescriptors().map(({ manifest }) => manifest.name).sort();
+  for (const originSurface of ['chat', 'work']) {
+    for (const withChoice of [true, false]) {
+      const h = fixture({ intent: 'reuse_current', confirm: false, originSurface, locale: 'en' });
+      const sent = confirmationTurn(h, { withChoice });
+      const store = new MemoryChatStore(sent.state);
+      await store.updateCore((core) => upsertCoreWorkItem(core, { id: 'work-item-open', title: 'Unrelated open item',
+        status: 'planned', conversationId: buildChatConversationId(h.channelId) }, h.now).core);
+      const begun = await beginChannelMessageRetryDispatch(await store.read(), h.channelId, sent.messageId,
+        clients(h).runtime, h.now, { chatStore: store, enableCollaborationReads: true, enableCollaborationExecution: true });
+      const tools = (begun.preparedTurn?.providerAgentObservation?.availableTools ?? []).map(({ manifest }) => manifest.name);
+      const label = `${originSurface}: ${withChoice ? 'retried click' : 'retried typed words'}`;
+      if (withChoice) assert.deepEqual([...tools].sort(), executionTools, label);
+      else assert.deepEqual(tools, [WORK_PREPARE_EXECUTION], label);
+    }
   }
 });
 

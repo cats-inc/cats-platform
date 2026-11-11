@@ -118,8 +118,8 @@ conversation's coordinator. Other Cats do not inherit this role.
 A conversation started without naming anyone is not such a turn. Its one
 participant is the remembered provider and model, which coordinates the
 conversation and so receives the role. An earlier revision of this section said
-that a provider-selected default Chat keeps its ordinary identity; that stopped
-being what the code did once such a conversation had a participant.
+that a provider-selected default Chat keeps its ordinary identity; the code as
+of 2026-11-11 does not do that.
 
 Until 2026-11-11 it also required a Chat origin. The owner ended that limit
 (ADR-149 D8, [SPEC-141](SPEC-141-conversation-product-scope.md) FR-19): the
@@ -470,7 +470,9 @@ conversation created on Chat unless it says what is new.
   answer goes back to the Cat that asked, with the Cat's question and label as
   its body, and that body is the goal the read tools work from. New reach: on
   Code and Work the coordinator reads repository content. The card does not
-  show the goal.
+  show the goal. The same holds for "Not now" on a proposal card: it admits
+  nothing and reaches no Work phase, but it is offered the read tools with the
+  card's own text as the goal, and a new proposal needs another click.
 - **Local knowledge reaches every coordinator.** Default settings, new. An
   adopted local contribution replaces an entry's text, and that text now lands
   in Code and Work conversations too. The store is a plain file under the
