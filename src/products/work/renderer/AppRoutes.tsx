@@ -12,7 +12,6 @@ import {
 import type { FolderBrowserContentProps } from './components/FolderBrowser.js';
 import type { ConversationViewProps } from '../../shared/renderer/components/conversation-view/ConversationView.js';
 import { ActiveSessionPermissionChip } from '../../shared/renderer/components/ActiveSessionPermissionChip.js';
-import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSurfaceChip.js';
 import type { CanvasRouteOptions } from '../../shared/artifactCanvas/contracts.js';
 // Work includes Code (ADR-149 D5, SPEC-141 FR-10): a Work conversation is shown with Code's
 // conversation parts. These are the exact edges tests/dependency-graph.test.js allows.
@@ -156,7 +155,6 @@ export function AppRoutes({
         renderComposerHeaderWhereExtras={(ctx) => (
           <ActiveCodeComposerChips channel={ctx.selectedChannel} placement="where" />
         )}
-        renderComposerSurfaceTag={() => <ComposerSurfaceChip surface="work" />}
         renderTopBarExtraActions={(ctx) => (
           <CodeCanvasPreviewButton
             channelId={ctx.selectedChannel.id}

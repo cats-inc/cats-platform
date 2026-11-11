@@ -39,6 +39,8 @@ export interface CrossSurfaceNavigationOptimisticState {
   selectedChannelId?: string | null;
   /** Transient first-send feedback carried to the created conversation on a failed ACK. */
   feedback?: string;
+  /** A toast the destination shows once, such as a raise naming its new product (SPEC-141 FR-30). */
+  notice?: string;
 }
 
 export interface CrossSurfaceNavigationHandoffBundle {

@@ -61,6 +61,8 @@ import { ProviderConversationControls } from '../provider-interactions/ProviderC
 import { DesktopControlConversation } from '../desktop-control/DesktopControlConversation.js';
 import { buildChatConversationId } from '../../../../../shared/chatCoreIds.js';
 import { ConversationViewTopBar } from './ConversationViewTopBar.js';
+import { ConversationScopeChip } from '../ConversationScopeChip.js';
+import type { ProductScopeRaiseControl } from '../../productScopeRaise.js';
 import { buildConversationSidePanelSections, type BuildConversationSidePanelSectionsOptions } from './ConversationSidePanelSections.js';
 import { ConversationComposerArea } from './ConversationComposerArea.js';
 import { ConversationComposerTargetSlot } from './ConversationComposerTargetSlot.js';
@@ -269,7 +271,8 @@ export interface ConversationViewProps {
   renderComposerHeaderAccessory?: (context: ConversationViewRenderContext) => ReactNode;
   renderComposerHeaderWhereExtras?: (context: ConversationViewRenderContext) => ReactNode;
   renderComposerFooterAccessory?: (context: ConversationViewRenderContext) => ReactNode;
-  renderComposerSurfaceTag?: (context: ConversationViewRenderContext) => ReactNode;
+  /** SPEC-141 FR-28: the owner's raise from the conversation's scope chip, where the app offers it. */
+  productScopeRaise?: ProductScopeRaiseControl;
   buildSidePanelSections?: (
     options: BuildConversationSidePanelSectionsOptions,
   ) => SidePanelSection[];
@@ -343,7 +346,7 @@ export function ConversationView({
   renderComposerHeaderAccessory,
   renderComposerHeaderWhereExtras,
   renderComposerFooterAccessory,
-  renderComposerSurfaceTag,
+  productScopeRaise,
   buildSidePanelSections,
   sidePanelTitle = '',
   buildParticipantInspectionAction,
@@ -1048,7 +1051,16 @@ export function ConversationView({
   const composerHeaderAccessory = renderComposerHeaderAccessory?.(viewContext) ?? null;
   const composerHeaderWhereExtras = renderComposerHeaderWhereExtras?.(viewContext) ?? null;
   const composerFooterAccessory = renderComposerFooterAccessory?.(viewContext) ?? null;
-  const composerSurfaceTag = renderComposerSurfaceTag?.(viewContext) ?? null;
+  // SPEC-141 FR-27: every existing conversation names its scope, in Chat as well.
+  const composerSurfaceTag = (
+    <ConversationScopeChip
+      channel={selectedChannel}
+      // As the server counts it: a member of an active group only.
+      parallelMember={compareGroup?.status === 'active' || (payload.chat.parallelChatGroups ?? []).some((group) =>
+        group.status === 'active' && group.memberChannelIds.includes(selectedChannel.id))}
+      control={productScopeRaise}
+    />
+  );
 
   function navigateCompareMember(direction: 'prev' | 'next'): void {
     const channelId = direction === 'prev' ? comparePrevChannelId : compareNextChannelId;
