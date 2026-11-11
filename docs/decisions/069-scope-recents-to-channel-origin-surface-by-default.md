@@ -5,7 +5,11 @@
 
 ## Status
 
-Accepted
+Accepted. Amended 2026-11-12 by
+[ADR-149](149-let-a-conversation-gain-product-scopes-and-never-lose-them.md) and
+[SPEC-141](../specs/SPEC-141-conversation-product-scope.md): Recents and a
+conversation's route follow its product scope, not `originSurface`, and the
+section 3 fallback is in effect.
 
 ## Context
 
@@ -57,6 +61,20 @@ compatibility, because historical data was effectively Chat-owned.
 During rollout, raw legacy HTTP create callers may also be normalized to
 `chat` at the route boundary for compatibility. Product-owned typed create
 paths must not rely on that seam.
+
+**Amendment (2026-11-12): Recents follow the product scope.** Since ADR-149 D7
+and SPEC-141 FR-12 and FR-13, a conversation is listed in the Recents of its
+product scope and opens on that product's route. `originSurface` still records
+where it was created and never changes.
+
+- The scope starts at the origin, and a direct lane is always `chat`.
+- Only the owner can raise a scope, and nothing lowers it. A raise moves the
+  conversation to the wider product's Recents, and a link under its old product
+  redirects to the new route.
+- A parallel group has no scope of its own. Its Recents entry stays under its
+  `originSurface`.
+- Section 3 is now in effect: a conversation or a parallel group with no
+  recorded origin is listed under Chat (SPEC-141 S4).
 
 ### 4. Cross-product recents are optional and secondary
 

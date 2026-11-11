@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In progress: Phases 1 to 6 are done, Phase 7 is not started. The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
+| **Status** | Done on `main` on 2026-11-12, apart from the checks that need a provider turn: Phase 4's candidate check and Phase 7's provider acceptance did not run (see each). The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -344,7 +344,8 @@ real provider.
         Work conversation. Three existing expectations flipped as D5 intends: Code's tools
         for `code` only, Work's work areas refused, and Work's routes without a canvas.
   - [ ] The candidate check was not run. It needs a built Desktop on an isolated profile and
-        a real agent turn that calls the tools, so it stays for Phase 7's acceptance.
+        a real agent turn that calls the tools, so it stays for Phase 7's acceptance, which
+        could not run either (see there).
 
 **Deliverables:** a conversation created on Work receives the `cats` server, and its canvas,
 previews and work areas appear under `/work`.
@@ -493,25 +494,49 @@ previews and work areas appear under `/work`.
 
 ### Phase 7: Documents and acceptance
 
-- [ ] Amend ADR-069, ADR-073, ADR-126 and SPEC-123 as SPEC-141's metadata lists. ADR-098 and
+- [x] Amend ADR-069, ADR-073, ADR-126 and SPEC-123 as SPEC-141's metadata lists. ADR-098 and
       SPEC-101 too, if a canvas surface kind was added.
-- [ ] If S1 stands, reword SPEC-137 FR-7 from "Chat conversation" to "created on Chat".
-- [ ] Amend SPEC-139 FR-3, FR-6, FR-8 and FR-10 to say "scope" where they say a conversation's
+  - As built (2026-11-12): dated amendments, ADR-126 and SPEC-123 once for both plans; no
+    surface kind was added, so ADR-098 and SPEC-101 are unchanged. SPEC-118 and
+    `docs/agent-control-surfaces.md` (amended in Phase 3) got residue fixes only.
+- [x] If S1 stands, reword SPEC-137 FR-7 from "Chat conversation" to "created on Chat".
+  - As built: SPEC-141 records S1 as a default put to the owner and no objection; FR-7 now
+    says created on Chat or with no recorded origin, as `review.ts` reads it.
+- [x] Amend SPEC-139 FR-3, FR-6, FR-8 and FR-10 to say "scope" where they say a conversation's
       surface.
+  - As built: all four read the scope, and FR-10's binding lists it; the hint and the card
+    still name Code's tools only, and the notes say so.
   - PLAN-133's join slice landed before this plan's Phase 2. Phase 2 moved the board's and
     the join request's product label, and the statement about Code's tools, to the scope.
   - Phase 4 updates the hint and the card's text for Work, and Phase 5 makes the card's
     binding cover the scope.
-- [ ] Terminology: mark the product scope row as implemented, and correct the entry-preset rows
+- [x] Terminology: mark the product scope row as implemented, and correct the entry-preset rows
       that describe records the code does not create.
-- [ ] `docs/tool-calls.md`: who receives the `cats` tools.
-- [ ] Check that the persisted-data boundary recorded in Phase 5 reached the release notes. No
+  - As built: the row says implemented, not yet released; New Chat, New Code and New Work state
+    the projected Task and WorkItem and no Project. Team Code and Peer Code are unchanged.
+- [x] `docs/tool-calls.md`: who receives the `cats` tools.
+  - As built: the server goes to every conversation and lists tools by scope; `find_projects`
+    names its owner-turn refusal.
+- [x] Check that the persisted-data boundary recorded in Phase 5 reached the release notes. No
       bump here.
+  - Checked 2026-11-12: not in `docs/release-notes.md` yet (no unreleased section);
+    `docs/deployment.md` records it for 0.16.0, with the product scope and, since
+    PLAN-135 Phase 5, a Work conversation's Project.
 - [ ] Provider acceptance: the mid-conversation tool delivery with Claude Code and with Codex.
+  - Not run on 2026-11-12. In an isolated candidate (`npm run desktop:candidate`, synthetic
+    owner), Codex refused before any model turn because its native Windows sandbox is not set
+    up on this machine, and Claude Code reported that it is not logged in inside the isolated
+    home. Setting up either would change the owner's own configuration. What was confirmed
+    without a model: both sessions carried the `cats` grant marker at level `work`, with the
+    participant and the proposal gate open on the owner's turn.
 - [ ] Provider acceptance: a Code session with one agent still does its coding task. Since
       Phase 3 that agent is told it is the Cats Orchestrator with every turn, and a coding
       request brings the collaboration and recovery procedures. No model was run against it.
-- [ ] Update ADR-149's status.
+  - Not run on 2026-11-12, for the same reasons as the item above. The instructions this
+    agent receives are covered by the orchestrator tests; whether a model still codes with them
+    is not checked.
+- [x] Update ADR-149's status.
+  - As built: implemented on `main`, not yet released, with the acceptance that did not run.
 
 ## Not in This Plan
 

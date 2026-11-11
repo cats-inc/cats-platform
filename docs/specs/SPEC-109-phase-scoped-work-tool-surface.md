@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Active / MVP Implemented |
+| **Status** | Active / MVP Implemented. Amended 2026-11-12 by [SPEC-142](./SPEC-142-task-run-and-work-tools-in-conversations.md) (Implementation Status, FR-12, FR-19) |
 | **Owner** | Codex |
 | **Reviewer** | TBD |
 
@@ -47,6 +47,22 @@ The MVP tool surface landed on 2026-05-13. Current implementation includes:
 Automatic bidirectional external tracker sync, credential handling, remote
 write approval, and runtime MCP execution adapters for the full Work catalog
 remain follow-up work under ADR-106 and future rollout slices.
+
+**Second channel (amended 2026-11-12, SPEC-142).** A conversation whose product
+scope is `work` also reaches Work's tools through the host's `cats` session MCP
+server: `get_work_items`, `find_projects` and six proposing tools (see
+[Work Conversation Tools](../tool-calls.md#work-conversation-tools)). They are
+not this spec's dotted catalog. They call the same delegates, and:
+
+- every write is a proposal that the owner confirms on a card in the
+  conversation. The server then performs it, recording the proposing
+  participant and the confirming owner;
+- they are not limited by a Cat's capability profile, for reads or for
+  proposals. The gates are the conversation's level, an admin coordinator for
+  `find_projects` and for proposals beyond the conversation, and the owner's own
+  turn for every proposal and for `find_projects`;
+- this spec's decision path keeps its roles and flags, except for FR-12's change
+  below.
 
 ## Goals
 
@@ -121,6 +137,12 @@ remain follow-up work under ADR-106 and future rollout slices.
 12. **FR-12 (Project create).** The `work.project.create` tool shall create a
     Project only when the owner request or triage context makes a real grouping
     intent explicit.
+    - Amended 2026-11-12 (SPEC-142 A1): a request that names a folder
+      (`repoPath`) no longer creates the Project. On the owner's own turn it
+      posts a `work.project.create` card that shows the folder and says that
+      supervised runs start there without asking; the owner's confirmation
+      creates it. On any other turn, or without the proposal service, nothing is
+      created. Without a folder the Project is created as before.
 13. **FR-13 (Project assignment).** The `work.item.assign_project` tool shall
     attach a Work Item to a Project while preserving the original source
     provenance.
@@ -142,6 +164,10 @@ remain follow-up work under ADR-106 and future rollout slices.
 19. **FR-19 (Weak/unknown gate).** Weak or unknown Cats shall not receive
     mutating Work tools. They may receive read-only context or proposal-only
     surfaces when policy allows.
+    - Amended 2026-11-12 (SPEC-142): on the `cats` session server every Work
+      tool reads or proposes, so it applies no capability profile. Any
+      participant of a Work conversation, a weak or unknown Cat included, can
+      read the conversation's Work Items and propose changes within it.
 20. **FR-20 (External binding).** External tracker tools shall write bindings
     that connect Cats Work Items to external issues. They shall not replace the
     Cats Work Item id, status enum, or Core record shape.

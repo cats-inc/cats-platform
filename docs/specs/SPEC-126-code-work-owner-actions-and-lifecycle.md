@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | Approved, 2026-10-20; implementation/scoped acceptance complete; latest-main integration and auto-merge PR authorized |
+| **Status** | Approved, 2026-10-20; implementation/scoped acceptance complete; latest-main integration and auto-merge PR authorized. Amended 2026-11-12 by SPEC-142 (FR-12: a conversation's Project and a Project's blockers) |
 | **Owner** | Platform product/Core integration |
 | **Reviewer** | Owner |
 | **Related ADR** | [ADR-133](../decisions/133-give-code-and-work-owner-actions-and-source-aware-lifecycle.md) |
@@ -142,6 +142,18 @@ claiming a capability is still missing.
     filters and list action menus alongside existing create/delete/pin controls.
     Before deletion, show linked work and offer valid move/detach choices or a
     blocker; deleting a Project shall not silently destroy its children's work.
+    - Amended 2026-11-12
+      ([SPEC-142](SPEC-142-task-run-and-work-tools-in-conversations.md) FR-22 to
+      FR-27): a Work conversation can belong to a Project. The conversation
+      stores the Project, its projected Work Item carries it, and the Project
+      page lists its conversations with links. For the Project's own actions:
+      - the Turn Runs of its conversations, the Runs the projection writes for
+        each chat turn, are not active work when Work decides whether the
+        Project can be edited, paused, resumed or archived, or its anchors
+        changed. Other Runs of their Tasks still are;
+      - a Project cannot be deleted while conversations belong to it. The
+        blocker names them, and the owner takes each one out from its
+        conversation.
 13. **FR-13 — Work Items.** Add edit, priority, move/relink Project, complete/
     reopen, archive/restore and a contextual prepare/start Task action. Keep
     external issue import/binding behavior explicit; a local removal shall not

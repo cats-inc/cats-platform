@@ -5,7 +5,11 @@
 
 ## Status
 
-Accepted
+Accepted. Amended 2026-11-12 by
+[ADR-149](149-let-a-conversation-gain-product-scopes-and-never-lose-them.md) and
+[SPEC-141](../specs/SPEC-141-conversation-product-scope.md): a submit also sets
+the conversation's starting product scope, Recents and routes follow that scope,
+and a Work activation creates no Project. See the amendment under section 1.
 
 ## Context
 
@@ -77,6 +81,22 @@ Rules:
   activation, not after a separate promote step.
 - the first slice does **not** add a new persisted `sourceSurface` or
   `launchSurface` field
+
+**Amendment (2026-11-12): product scope (ADR-149, SPEC-141).**
+
+- On submit, `targetSurface` sets the new conversation's starting
+  `productScope` as well as its `originSurface` (ADR-149 D6). The owner can
+  raise the scope later from the conversation's chip. That is not a draft
+  switch, and it does not change `originSurface`.
+- Recents and routes follow the product scope (ADR-069 as amended), so
+  `originSurface` no longer decides which product a conversation belongs to.
+  The Consequences line that calls it the authoritative product-ownership field
+  now holds only for where the conversation was created.
+- The `targetSurface = 'work'` rule above says the activation creates a
+  `Project`. The code creates none. Every conversation, whatever its surface,
+  is projected into Core with one `WorkItem` and one `Task` linked through
+  `WorkItem.taskId`. A Work conversation starts with no Project and can join one
+  later (SPEC-142 FR-22).
 
 ### 2. Use a platform-owned cross-surface draft dispatcher
 

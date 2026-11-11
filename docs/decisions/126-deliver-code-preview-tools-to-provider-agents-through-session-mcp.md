@@ -10,6 +10,14 @@ posture, one-call tool shape, Claude Code and Codex first, and Vite first. On
 decided that the Settings > Code preview-server switch stays off by default.
 Delivery: [PLAN-116](../plans/PLAN-116-code-agent-artifact-preview-rollout.md).
 
+Amended 2026-11-12 by
+[ADR-149](149-let-a-conversation-gain-product-scopes-and-never-lose-them.md),
+[SPEC-141](../specs/SPEC-141-conversation-product-scope.md) and
+[SPEC-142](../specs/SPEC-142-task-run-and-work-tools-in-conversations.md): the
+`cats` server is the host's tool server, attached to every conversation and
+listing tools by the conversation's product scope (decisions 1, 3 and 5). Work's
+tools for a conversation now come through it too; ADR-105's decision path stays.
+
 ## Context
 
 Cats Code should behave like Manus: when a Cat (a provider CLI worker such as
@@ -47,6 +55,18 @@ As a result, no provider agent in Cats Code can open a preview today.
    the agent calls them and return structured results in the same turn,
    including diagnostics and log tails on failure. This is the only execution
    path for agent-initiated canvas and preview effects.
+
+   *Amended 2026-11-12 (ADR-149, SPEC-141, SPEC-142).* The server is now the
+   host's, not Code's. `src/platform/mcp/hostTools.ts` composes it from tool
+   providers that the host registers, each at the narrowest product scope that
+   lists it: the reads of a conversation's own Tasks and Runs at `chat`, Code's
+   tools at `code` and Work's tools at `work`. Each level includes the ones below.
+   The server went first to conversations created on Code, then to conversations
+   whose scope is `code` or `work`, and now goes to every conversation's
+   sessions, direct lanes included. Work's supervised runs, schedules and the
+   golden path still get none. The endpoint path `/api/code/agent-tools/mcp` is
+   unchanged. The companion image tools' server, which also used the name
+   `cats`, is now `cats-images`.
 2. **Runtime delivers them generically.** cats-runtime gains a provider-neutral
    session capability: `mcpServers` descriptors on session create and message
    send. Each CLI adapter maps them to its native configuration, without putting
@@ -70,6 +90,17 @@ As a result, no provider agent in Cats Code can open a preview today.
    internal listener, with the same Platform router behind an explicit boundary. The
    grant is revoked when the session closes or the conversation is deleted. It
    never appears in transcripts, Activity, URLs, logs or runtime session reads.
+
+   *Amended 2026-11-12 (SPEC-141 FR-25, SPEC-142 FR-3).* A grant is bound to the
+   runtime session, one conversation, the folder that session runs in, the
+   conversation's product scope and the participant the dispatch names. Its
+   actor id is always null. When the owner raises the scope and the wider level
+   lists other tools, the session's next send carries a new grant at that level:
+   the changed token makes Runtime recycle the worker, and the agent lists its
+   tools again. The old grant stays valid until Runtime reports the new set
+   delivered, and is then revoked. When the wider level lists the same tools,
+   the grant takes the new level in place and nothing recycles. Every current
+   raise adds tools, so each issues a new grant.
 4. **Retire the dead path in the same change.** When MCP execution lands, remove
    the `runtimeToolCatalog` metadata and the exact-name `tool_use` observation
    processors. Keep the materialization, projection, Activity and render-intent
@@ -80,6 +111,10 @@ As a result, no provider agent in Cats Code can open a preview today.
    server. The same policy appears in the MCP server `instructions` and in tool
    descriptions. A provider without support gets no preview instructions and no
    phantom tool names.
+
+   *Amended 2026-11-12 (SPEC-142 FR-5).* The policy is per grant. The server's
+   `instructions` and the turn policy are the instructions of the providers that
+   the grant's level lists, so they name no tool the session does not have.
 6. **Initial providers.** The first providers are Claude Code and Codex, the
    current `strong_agent` candidates. Other adapters join once their mapping is
    implemented and verified.

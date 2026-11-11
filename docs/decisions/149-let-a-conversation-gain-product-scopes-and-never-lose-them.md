@@ -4,7 +4,11 @@
 
 Decided by the owner on 2026-11-11 (D1 to D13), who left the name to the agent (Decision 1).
 P1 to P3 and P6 are proposed defaults the owner may change. P4 became D7, and P5 is now a
-proposal of the SPEC. Nothing is implemented. Two draft SPECs specify it:
+proposal of the SPEC. Implemented on `main` on 2026-11-12 through PLAN-134 (#433 to #446) and
+PLAN-135 (#447 to #451), with the amendments below made in each document. Not yet in a release:
+the first one with it must be 0.16.0, since it writes chat state version 7
+([deployment](../deployment.md)). Provider acceptance with Claude Code and Codex did not run (see
+PLAN-134 Phase 7). Two SPECs specify it:
 
 - [SPEC-141](../specs/SPEC-141-conversation-product-scope.md), the scope itself, staged by
   [PLAN-134](../plans/PLAN-134-conversation-product-scope.md);

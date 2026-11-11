@@ -75,10 +75,13 @@ The Orchestrator role goes to a conversation's coordinator only. That includes
 the one participant of a conversation started without naming anyone, which is
 the remembered provider and model. Code/Work retain their
 product-owned instructions despite sharing the internal actor slot. Since
-SPEC-141 FR-19 the coordinator of a Code or Work conversation, or of one stored
-with no recorded origin, also receives the
-Orchestrator knowledge, added to those instructions, and a Boss Cat coordinator
-there can receive K2's operations. K2's opt-in
+SPEC-141 FR-19 neither the Orchestrator knowledge nor the collaboration
+operations depend on where a conversation was created or on its product scope.
+The coordinator of a Code or Work conversation, or of one stored with no
+recorded origin, also receives the knowledge, added to those instructions. A
+Boss Cat coordinator of a conversation that is not a direct lane can be offered
+K2's and K3's operations. SPEC-118's other conditions stay, including the
+provider-agent decision flag, which is off by default. K2's opt-in
 read/preparation operations use the existing observation/decision policy gate
 and supervised tool boundary, with structured feedback to the same session.
 K3 adds owner-confirmed conversation/membership and fixed-role Work operations.
@@ -310,4 +313,4 @@ Then update:
 ---
 
 *Created: 2026-04-29*
-*Last updated: 2026-09-27*
+*Last updated: 2026-11-12*

@@ -153,7 +153,8 @@ nothing and post the owner's card (see Channel Proposals in `docs/api.md`).
   conversation and no proposal can change it. `project` is the conversation's Project (`id`,
   `title`, `status`, `folder`), or null.
 - `find_projects` (`query`, `limit` up to 20): the owner's Projects by name, not archived. Only
-  the conversation's coordinator, when it is an admin Cat, may call it.
+  the conversation's coordinator, when it is an admin Cat, may call it, and only on the
+  owner's own turn (`not_owner_turn` otherwise), because it returns the owner's folders.
 - `propose_work_items` (`items`, 1 to 8, each `title` and optionally `summary`, `kind`,
   `priority`): kind `work.item.capture`, performed through capture as drafts that name this
   conversation. When the conversation belongs to a Project, they are captured into it in the
@@ -190,8 +191,8 @@ actor and the confirming owner as `confirmedByActorId`.
 ADR-105's decision path keeps its roles and flags, with one change (SPEC-142 A1): a
 `work.project.create` request that names a `repoPath` no longer creates the Project. On the
 owner's own turn it posts a `work.project.create` card with that folder; on any other turn, or
-without the proposal service, it creates nothing. Without a folder it creates the Project as
-before.
+without the proposal service, it creates nothing and a system message tells the owner why.
+Without a folder it creates the Project as before.
 
 ## Agent Knowledge Drafts
 
@@ -587,7 +588,7 @@ callers.
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Served by the Platform-hosted `cats` MCP server, which Runtime configures into the sessions of Code and Work conversations. Platform executes the call and returns the result in the same turn. The earlier `tool_use` observation path, runtime tool catalog, onboarding block and `artifactClaims[]` finalization gate were retired (ADR-126 decision 4). |
+| Current status | Served by the Platform-hosted `cats` MCP server, which Runtime configures into every conversation's sessions and which lists this tool for conversations whose product scope is `code` or `work`. Platform executes the call and returns the result in the same turn. The earlier `tool_use` observation path, runtime tool catalog, onboarding block and `artifactClaims[]` finalization gate were retired (ADR-126 decision 4). |
 | First channel | `mcp_tool` (runtime session MCP) |
 | Tool name | `declare_artifact` |
 | Implementation entry point | `src/products/code/shared/artifactDeclaration.ts` |
@@ -657,15 +658,16 @@ rather than to a later hook that happened to receive the merged context.
 Assistant metadata contributions are stored under each enricher id rather than
 flattened into Chat metadata.
 
-When a conversation's product scope is `code` or `work` (Work includes Code,
-ADR-149 D5; the scope starts as the conversation's `originSurface`, and a direct
-message is always `chat`; see
-[SPEC-141](specs/SPEC-141-conversation-product-scope.md)), the
-The `cats` server is the host's tool server (SPEC-142 FR-1 to FR-5). Products
-register tool providers with it; each provider names the narrowest level whose
-conversations list its tools. Code's tools start at `code`, so Work lists them
-too (ADR-149 D5). A grant lists the tools of its level, and its MCP
-`instructions` and the turn policy name only those tools. A call to a tool
+The `cats` server is the host's tool server (SPEC-142 FR-1 to FR-5). It goes to
+every conversation's sessions, direct lanes included, and lists tools by the
+conversation's product scope
+([SPEC-141](specs/SPEC-141-conversation-product-scope.md): the scope starts as
+the conversation's `originSurface`, a direct message is always `chat`, and only
+the owner can raise it). Products register tool providers with the server; each
+provider names the narrowest level whose conversations list its tools. The base
+tools start at `chat`, Code's tools at `code`, so Work lists them too (ADR-149
+D5), and Work's tools at `work`. A grant lists the tools of its level, and its
+MCP `instructions` and the turn policy name only those tools. A call to a tool
 outside the grant's level is refused.
 
 The host-tools enricher adds a secret-free marker at
@@ -683,7 +685,6 @@ marker into the `cats` MCP server:
 
 - A level that lists no tool gets no server and no policy. Since the base tools
   (SPEC-142 FR-6 to FR-9) list at `chat`, every level has one.
-
 - It issues a session grant before create, because the CLI connects while it
   spawns, and binds the grant to the returned runtime session id and the folder
   Runtime resolved for it.

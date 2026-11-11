@@ -96,6 +96,9 @@ PLAN-134 Phase 5 writes chat state version 7, so the next authorized
 Platform/Desktop release that contains it is the next minor, `0.16.0`, not a
 0.15.x patch. Its release notes must say that a profile it opens can no longer
 be opened by 0.15.x, which refuses a newer version and leaves the files alone.
+Version 7 also carries a Work conversation's Project (`workProjectId` and
+`workProjectRevision`, SPEC-142 FR-22, PLAN-135 Phase 5): optional fields that a
+file without them reads as no Project, so they need no upgrade of their own.
 - The upgrade runs once per version 6 file it meets, and otherwise writes what
   any save writes. It keeps the version 6 bytes first, also when it recovers
   from a version 6 `.bak`, in `chat-state.local.json.pre-product-scope.bak`, or,

@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft, 2026-11-11, revised the same day after an independent review. The owner's decisions D11 to D13 are fixed by ADR-149. On 2026-11-12 the owner answered Q3 to Q5 as recommended (see Owner Answers) and asked for the plan to be carried out in full; S1 to S7 proceed as this SPEC's proposals under that instruction. Q1 and Q2 stay open. Not implemented |
+| **Status** | Draft, 2026-11-11, revised the same day after an independent review. The owner's decisions D11 to D13 are fixed by ADR-149. On 2026-11-12 the owner answered Q3 to Q5 as recommended (see Owner Answers) and asked for the plan to be carried out in full; S1 to S7 proceed as this SPEC's proposals under that instruction. Q1 and Q2 stay open. Implemented on `main` on 2026-11-12 through PLAN-135 Phases 1 to 6 (#447 to #451 and the documents that follow); not yet in a release. Provider acceptance did not run (PLAN-135 Phase 6) |
 | **Owner** | Product owner |
 | **Reviewer** | Owner; an independent review before implementation |
 | **Decision** | [ADR-149](../decisions/149-let-a-conversation-gain-product-scopes-and-never-lose-them.md) D10 to D13, on top of [ADR-105](../decisions/105-adopt-phase-scoped-work-tool-surface.md) and [ADR-126](../decisions/126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md) |
@@ -186,6 +186,8 @@ Read from Platform `7ec13d700` and Runtime `fb50e59a` on 2026-11-11, and recheck
     title, status, priority, Project, Task, folder and summary.
 11. FR-11: At `work`, an admin coordinator can find the owner's Projects by name: id, title,
     status, folder and summary, bounded like FR-9. S3 would open this to every participant.
+    - As built (PLAN-135 Phase 4 review): only on the owner's own turn as well, since it returns
+      the owner's other Projects and their folders.
 
 #### Work tools: proposing (D11, D12)
 
