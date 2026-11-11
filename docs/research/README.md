@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-11-11-cat-profile-publication-poc](2026-11-11-cat-profile-publication-poc.md) | 2026-11-11 | Cat profile publication PoC | Native references, isolated Desktop screenshots, regression/review evidence and external acceptance limits |
 | [2026-11-11-cat-profile-publishing-baseline](2026-11-11-cat-profile-publishing-baseline.md) | 2026-11-11 | Cat profile publishing PoC | Source-backed post/media/cover gaps; shared ingress and Serve/Funnel/ngrok/Telegram primary references; no live acceptance |
 | [2026-11-01-provider-catalog-consumer-validation](2026-11-01-provider-catalog-consumer-validation.md) | 2026-11-01 | Seven requested Runtime catalogs | Six refreshed plus retained Copilot; normalizers, focused suites and actual HTTP projections |
 | [conversation-ui-acceptance](conversation-ui-acceptance.md) | 2026-10-30 | Shared Desktop/Bot message hierarchy | Packed dual-consumer candidate, durable data compatibility, actual product captures and completed UI-1 through UI-6 review |

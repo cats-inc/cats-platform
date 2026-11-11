@@ -331,7 +331,7 @@ shared core and does not move Cat-local storage into `cats-runtime`.
   source fields, regenerates source-owned derived records, and returns:
   - `{ box, source, derivedRecords, canonicalSync }`
 - `DELETE /api/cats/{catId}/companion-box/sources/{sourceId}` removes the raw
-  source, prunes source-owned derived records, removes stale source refs from
+  source, prunes source-owned derived records while retaining published profile posts, removes stale source refs from
   companion memory, and returns:
   - `{ deleted, sourceId, removedDerivedIds, prunedMemoryIds, canonicalSync }`
 - `GET /api/cats/{catId}/companion-box/sources` returns `{ sources: [...] }`
@@ -4043,3 +4043,23 @@ Code and Relay stop the selected attempt through the canonical Work Run stop end
 ### Work relationship repair
 
 `GET /api/work/relationships/:family/:id` returns permitted nullable anchor fields, current target, valid choices, source/active/approval blockers and a snapshot token. `POST` applies `{token,field,targetId}`; `null` explicitly detaches a nullable anchor. Parent cycles and inconsistent Work Item Project hierarchies are rejected. Derived sources, active work, open checkpoints and published delivery evidence retain their authoritative controls. For `family=link`, GET returns planning endpoint choices and POST `{token,source:"family:id",target:"family:id"}` relinks canonically; duplicate links merge with a truthful `merged` result. `POST /api/work/relationships/orphan-links` previews `{action:"preview",ids}` and applies `{action:"apply",ids,token}` to 1–100 exact orphan identities. Resolved/changed endpoints invalidate apply. Optional lifecycle `removedLinkIds` prevent deleted links returning through source rebuilds or recovery backups.
+
+
+### Cat profile publication PoC (SPEC-143)
+
+Feature-branch implementation; see [PLAN-136](plans/PLAN-136-cat-profile-posts-media-and-sharing.md)
+for acceptance limits. All owner routes use the existing authenticated Cat scope.
+
+| Route below `/api/cats/{catId}/companion-box` | Methods | Purpose |
+| --- | --- | --- |
+| `/posts`, `/posts/{postId}` | GET/POST; GET/PATCH/DELETE | Cursor list, create, revisioned edit and tombstone |
+| `/media`, `/media/{assetId}` | GET/POST; GET/HEAD | Library, validated raw-byte upload and Range preview |
+| `/media-import` | POST | Import one relative path from the Cat's selected source folder |
+| `/media-settings` | GET/PATCH | Cover, profile references and automatic creation/share/notification limits |
+| `/generations`, `/generations/{intentId}` | GET/POST; DELETE | Queue generated post, inspect pending/failed intent, cancel |
+| `/posts/{postId}/share` | POST/DELETE | Create idempotent link or revoke all active grants |
+| `/posts/{postId}/notify` | POST | Pin owner DM/Telegram destination; bounded explicit failed retry |
+
+Creation requires `requestKey`; edits also require `expectedRevision`. Attachments use asset IDs,
+never arbitrary paths. Public GET/HEAD `/s/companion/{token}` and `/media/{assetId}` beneath it
+require a live per-post grant, not a Desktop login. Private routes remain authenticated.

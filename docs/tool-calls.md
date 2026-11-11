@@ -1031,3 +1031,16 @@ for the close-vs-collapse semantics.
 
 *Created: 2026-04-29*
 *Last updated: 2026-05-13*
+
+
+### Cat profile publications (SPEC-143 PoC)
+
+The existing session-bound `cats` MCP server adds `media_list`, `media_import`, `media_generate`,
+`media_status`, `post_create`, `post_list`, `post_get`, `post_update`, `post_delete`, `post_share`
+and `post_notify`. Scope comes from the active Cat's own direct lane and originating turn;
+tool arguments never select a different Cat or arbitrary notification recipient.
+`media_generate` queues held work; `post_create` can bind `pendingJobIds`. The host releases
+execution when that turn ends and publishes once after validated completion. Existing
+`image_generate` direct delivery remains separate from asset-only profile publication.
+See [SPEC-143](specs/SPEC-143-cat-profile-posts-media-and-sharing.md) for request semantics
+and [PLAN-136](plans/PLAN-136-cat-profile-posts-media-and-sharing.md) for observed limits.
