@@ -32,7 +32,7 @@ import {
   updateCatProducts,
 } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
-import { createCodeAgentToolsInvocationEnricher } from '../build/server/products/code/agentTools/enricher.js';
+import { createHostToolsInvocationEnricher } from '../build/server/platform/mcp/hostToolsEnricher.js';
 import { resolveVisibleChatPath as resolveCodeLandingPath } from '../build/server/products/code/shared/channelPaths.js';
 import { filterChatChannelsForProductRecents } from '../build/server/products/shared/recentsFilter.js';
 import { buildWorkGraphProjection } from '../build/server/products/work/api/workGraphProjection.js';
@@ -419,13 +419,13 @@ test("Code's tools go to a conversation whose scope is code or work", () => {
   // PLAN-134 Phase 4 (ADR-149 D5): Work includes Code. Until then this test asserted that only
   // a `code` scope received them.
   const { state, ids, expected } = fixture();
-  const enricher = createCodeAgentToolsInvocationEnricher();
+  const enricher = createHostToolsInvocationEnricher();
   for (const key of [...ROOMS, ...LANES]) {
     const contribution = enricher.enrich(channelOf(state, ids[key]), { context: {} }, { phase: 'session_create' });
-    assert.equal(contribution !== null, expected[key] === 'code' || expected[key] === 'work', key);
-    if (contribution) {
-      assert.ok(contribution.context.labels.includes('product:code'), key);
-    }
+    const codeTools = expected[key] === 'code' || expected[key] === 'work';
+    // Every conversation is marked with its level (SPEC-142 FR-1); Code's label follows Code's tools.
+    assert.equal(contribution.context.metadata.hostTools.level, expected[key], key);
+    assert.equal(contribution.context.labels.includes('product:code'), codeTools, key);
   }
 });
 

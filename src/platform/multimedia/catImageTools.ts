@@ -8,6 +8,11 @@ import { CatImageService, presentCatImage } from './catImages.js';
 import type { CatImageCaller } from './catImagePolicy.js';
 
 export const CAT_IMAGE_TOOLS_PATH = '/api/internal/cat-image-tools/mcp';
+/**
+ * Its own name beside the host's `cats` server, which a direct lane also receives (SPEC-142 A3):
+ * two servers with one name would replace each other.
+ */
+export const CAT_IMAGE_TOOLS_SERVER_NAME = 'cats-images';
 interface Turn extends CatImageTurnResolution { expiresAt: number; active: boolean; cancelled?: boolean; }
 interface Session { token: string; turn?: Turn; }
 export interface CatImageTurnResolution {
@@ -17,11 +22,11 @@ export interface CatImageTurnResolution {
   publication?: { channelId: string; requestKey: string; heartbeatKind?: 'wake' | 'regular' | 'bedtime' };
 }
 const instructions = 'Current Cats image-tool availability (supersedes earlier snapshots): available. '
-  + 'You can use the cats image_generate tool when an image would be useful to your owner. '
+  + 'You can use the cats-images image_generate tool when an image would be useful to your owner. '
   + 'It queues one image with a caption for this conversation and its authorized Telegram binding. '
   + 'Image generation has no hours-of-day restriction. Companion rhythm only schedules proactive interactions; '
   + 'it does not limit this service or stop an accepted image job. '
-  + 'For an owner image request, use cats image_generate. Provider-native image tools and imagegen skills '
+  + 'For an owner image request, use cats-images image_generate. Provider-native image tools and imagegen skills '
   + 'do not create the Cats image job or its Telegram delivery. '
   + 'End this turn after queuing: generation starts after your turn releases its resources. '
   + 'A queued job is not proof of generation or Telegram delivery. Never claim it was sent until the job reports delivery.';
@@ -53,7 +58,7 @@ export function createCatImageTools(options: {
   const pendingTurns = new Set<{ sessionId: string; cancelled: boolean }>();
   const now = options.now ?? Date.now;
   let closed = false;
-  const descriptor = (endpoint: string, token: string) => ({ name: 'cats', transport: 'http' as const,
+  const descriptor = (endpoint: string, token: string) => ({ name: CAT_IMAGE_TOOLS_SERVER_NAME, transport: 'http' as const,
     url: endpoint, auth: { kind: 'bearer_env' as const, token } });
   function revoke(sessionId: string) {
     for (const pending of pendingTurns) if (pending.sessionId === sessionId) pending.cancelled = true;
@@ -85,7 +90,7 @@ export function createCatImageTools(options: {
             const tracked = sessions.has(sessionId); revoke(sessionId);
             return target.sendMessage(sessionId, content, tracked ? { ...input, mcpServers: input.mcpServers ?? [] } : input);
           }
-          if (input.mcpServers?.some(server => server.name === 'cats')) throw new MediaImageError('image_tool_scope_conflict', 409);
+          if (input.mcpServers?.some(server => server.name === CAT_IMAGE_TOOLS_SERVER_NAME)) throw new MediaImageError('image_tool_scope_conflict', 409);
           if (resolved.unavailable && !resolved.publication) {
             revoke(sessionId);
             // A restarted host has no in-memory grant, but Runtime may still hold
@@ -124,7 +129,7 @@ export function createCatImageTools(options: {
         };
         if (property === 'resumeSession' && target.resumeSession) return async (sessionId: string, input?: RuntimeSessionResumeInput) => {
           const session = sessions.get(sessionId); const endpoint = options.endpoint();
-          if (!session || !endpoint || input?.mcpServers?.some(server => server.name === 'cats')) return target.resumeSession!(sessionId, input);
+          if (!session || !endpoint || input?.mcpServers?.some(server => server.name === CAT_IMAGE_TOOLS_SERVER_NAME)) return target.resumeSession!(sessionId, input);
           return target.resumeSession!(sessionId, { ...input, mcpServers: [...(input?.mcpServers ?? []), descriptor(endpoint, session.token)] });
         };
         if (property === 'cancelSession' || property === 'closeSession' || property === 'deleteSession') return async (sessionId: string) => {
@@ -156,7 +161,7 @@ export function createCatImageTools(options: {
         return session;
       },
       server: {
-        name: 'cats', version: '1.0.0', instructions: options.publications
+        name: CAT_IMAGE_TOOLS_SERVER_NAME, version: '1.0.0', instructions: options.publications
           ? 'Use only tools listed for your current Cat turn. Profile posts and direct conversation image delivery have distinct receipts; check the result before claiming completion.' : instructions,
         listTools: session => [...(session.turn?.publication ? options.publications?.tools ?? [] : []),
           ...(session.turn?.unavailable ? [] : [{ name: 'image_generate', description: 'Queue one controlled image and its caption for your owner. '

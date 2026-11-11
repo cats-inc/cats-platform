@@ -1,41 +1,32 @@
-import type { RuntimeSessionInvocationContext } from '../../../platform/runtime/client.js';
 import {
   RuntimeEnricherPriority,
   registerRuntimeInvocationEnricher,
   type RuntimeInvocationEnricher,
-} from '../../../platform/runtime/invocationEnrichment.js';
+} from '../runtime/invocationEnrichment.js';
+import { productScopeIncludes, readProductScope } from '../../shared/productScope.js';
+import { HOST_TOOLS_CONTEXT_METADATA_KEY, type HostToolsInvocationMarker } from './hostTools.js';
 import { hasShellExecutionPermission } from './shellPermission.js';
-import { productScopeIncludes, readProductScope } from '../../../shared/productScope.js';
 
 /**
- * Marks Code conversation invocations so the Code runtime-client wrapper can
- * attach the `cats` MCP server (ADR-126). The marker carries no secret; the
+ * Marks every conversation's invocations with its level, so the host tools wrapper can attach
+ * the `cats` server with the tools that level lists (SPEC-142 FR-1, A3). Direct lanes are marked
+ * too: the read rule lists them at `chat` whatever they store. The marker carries no secret; the
  * wrapper adds `mcpServers` inside the supervision boundary.
  */
 
-export const CODE_AGENT_TOOLS_HOOK_ID = 'cats-code.agent-tools' as const;
-export const CODE_AGENT_TOOLS_CONTEXT_METADATA_KEY = 'codeAgentTools' as const;
+export const HOST_TOOLS_HOOK_ID = 'cats-platform.host-tools' as const;
+/** The dispatch's target participant, which the marker and the grant carry. */
+export const TARGET_PARTICIPANT_METADATA_KEY = 'targetParticipantId' as const;
 
-export interface CodeAgentToolsInvocationMarker {
-  channelId: string;
-  workspacePath: string | null;
-  /**
-   * The channel's shell posture, used when a session's create input is not
-   * available (after a Platform restart). A whitelist here counts as no shell,
-   * because the channel does not carry the allowed tools.
-   */
-  shellExecution: boolean;
-}
-
-export function createCodeAgentToolsInvocationEnricher(): RuntimeInvocationEnricher {
+export function createHostToolsInvocationEnricher(): RuntimeInvocationEnricher {
   return {
-    id: CODE_AGENT_TOOLS_HOOK_ID,
+    id: HOST_TOOLS_HOOK_ID,
     priority: RuntimeEnricherPriority.POST_PROCESS,
     enrich(channel, input) {
-      // SPEC-141 FR-8: Code's tools follow the scope, and Work includes Code (ADR-149 D5). A
-      // direct lane reads as `chat`, so it never carries the marker.
-      if (!productScopeIncludes(readProductScope(channel), 'code') || !channel.id) return null;
-      const marker: CodeAgentToolsInvocationMarker = {
+      if (!channel.id) return null;
+      const level = readProductScope(channel);
+      const participantId = input.context?.metadata?.[TARGET_PARTICIPANT_METADATA_KEY];
+      const marker: HostToolsInvocationMarker = {
         channelId: channel.id,
         workspacePath: channel.chatCwd ?? channel.repoPath ?? null,
         shellExecution: hasShellExecutionPermission({
@@ -43,14 +34,18 @@ export function createCodeAgentToolsInvocationEnricher(): RuntimeInvocationEnric
           permissionMode: channel.runtimePermissionMode,
           executionPolicy: channel.runtimeExecutionPolicy ?? null,
         }),
+        level,
+        participantId: typeof participantId === 'string' && participantId ? participantId : null,
       };
+      const labels = input.context?.labels ?? [];
       return {
         context: {
           ...(input.context ?? {}),
-          labels: [...new Set([...(input.context?.labels ?? []), 'product:code'])],
+          // Code's label follows Code's tools (SPEC-141 FR-8; Work includes Code, ADR-149 D5).
+          labels: productScopeIncludes(level, 'code') ? [...new Set([...labels, 'product:code'])] : [...labels],
           metadata: {
             ...(input.context?.metadata ?? {}),
-            [CODE_AGENT_TOOLS_CONTEXT_METADATA_KEY]: marker,
+            [HOST_TOOLS_CONTEXT_METADATA_KEY]: marker,
           },
         },
       };
@@ -58,20 +53,6 @@ export function createCodeAgentToolsInvocationEnricher(): RuntimeInvocationEnric
   };
 }
 
-export function registerCodeAgentToolsInvocationEnricher(): void {
-  registerRuntimeInvocationEnricher(createCodeAgentToolsInvocationEnricher());
-}
-
-export function readCodeAgentToolsInvocationMarker(
-  context: Pick<RuntimeSessionInvocationContext, 'metadata'> | undefined,
-): CodeAgentToolsInvocationMarker | null {
-  const value = context?.metadata?.[CODE_AGENT_TOOLS_CONTEXT_METADATA_KEY];
-  if (!value || typeof value !== 'object') return null;
-  const { channelId, workspacePath, shellExecution } = value as Record<string, unknown>;
-  if (typeof channelId !== 'string' || !channelId) return null;
-  return {
-    channelId,
-    workspacePath: typeof workspacePath === 'string' ? workspacePath : null,
-    shellExecution: shellExecution === true,
-  };
+export function registerHostToolsInvocationEnricher(): void {
+  registerRuntimeInvocationEnricher(createHostToolsInvocationEnricher());
 }

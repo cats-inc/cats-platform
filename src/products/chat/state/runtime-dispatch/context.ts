@@ -42,6 +42,8 @@ export function buildDispatchRuntimeContextMetadata(
       request.target.participantId,
     ),
     sourceMessageId: request.sourceMessage.id,
+    // The participant whose session runs this turn; the host tools' grant names it (SPEC-142).
+    targetParticipantId: request.target.participantId,
     trigger: request.trigger,
     dispatchDepth: request.depth,
     branchStrategy: request.branchStrategy,

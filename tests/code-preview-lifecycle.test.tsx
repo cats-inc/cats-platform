@@ -19,7 +19,7 @@ import type {
 import { McpSessionGrantStore } from '../src/platform/mcp/sessionGrants.ts';
 import { routeCodeLivePreviewApi } from '../src/products/code/api/livePreviewRoutes.ts';
 import type { CodeAgentToolGrantBinding } from '../src/products/code/agentTools/contracts.ts';
-import { createCodeAgentToolsClientWrapper } from '../src/products/code/agentTools/runtimeClientWrapper.ts';
+import { createHostToolsClientWrapper } from '../src/platform/mcp/hostToolsClientWrapper.ts';
 import { runShowInCanvas } from '../src/products/code/agentTools/showInCanvas.ts';
 import {
   CODE_LIVE_PREVIEW_PRODUCER_IDENTITY,
@@ -103,7 +103,7 @@ function makeStore() {
 
 async function showStatic(store: MemoryCoreStore, supervisor: LivePreviewSupervisor, root: string, previews: ReturnType<typeof createCodeConversationPreviews>) {
   const binding: CodeAgentToolGrantBinding = {
-    channelId: CHANNEL, conversationId: `conversation-channel-${CHANNEL}`, workspacePath: root, actorId: null, shellExecution: true,
+    channelId: CHANNEL, conversationId: `conversation-channel-${CHANNEL}`, workspacePath: root, actorId: null, shellExecution: true, level: 'code', participantId: null,
   };
   const shown = await runShowInCanvas({ path: 'site' }, {
     binding,
@@ -288,8 +288,9 @@ test('a dev preview restarts only while preview servers are allowed', async (t) 
 test('the Code runtime wrapper reports when a conversation gains and loses sessions', async () => {
   const events: string[] = [];
   const grants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
-  const wrapper = createCodeAgentToolsClientWrapper({
+  const wrapper = createHostToolsClientWrapper({
     grants,
+    server: { hasTools: () => true, instructions: () => undefined },
     endpoint: () => 'http://127.0.0.1:1/api/code/agent-tools/mcp',
     onSessionStarted: (channelId) => events.push(`start:${channelId}`),
     onSessionEnded: (channelId, reason) => events.push(`${reason}:${channelId}:${grants.some((grant) => grant.binding.channelId === channelId)}`),
@@ -303,7 +304,7 @@ test('the Code runtime wrapper reports when a conversation gains and loses sessi
     async closeSession() {},
     async deleteSession() { return { status: 'deleted' }; },
   } as unknown as RuntimeClient);
-  const context = { metadata: { codeAgentTools: { channelId: CHANNEL, workspacePath: '/w', shellExecution: true } } };
+  const context = { metadata: { hostTools: { level: 'code', channelId: CHANNEL, workspacePath: '/w', shellExecution: true } } };
   await client.createSession({ provider: 'claude', context } as RuntimeSessionCreateInput);
   await client.createSession({ provider: 'claude', context } as RuntimeSessionCreateInput);
   await client.closeSession('rt-1');

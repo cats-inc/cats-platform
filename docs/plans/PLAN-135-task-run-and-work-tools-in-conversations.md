@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In progress from 2026-11-12. The owner answered SPEC-142's Q3 to Q5 (A1 to A3) and asked for the plan to be carried out in full. PLAN-134 Phases 1 to 5 have landed |
+| **Status** | In progress from 2026-11-12. The owner answered SPEC-142's Q3 to Q5 (A1 to A3) and asked for the plan to be carried out in full. PLAN-134 Phases 1 to 5 have landed. Phase 1 is done |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -40,31 +40,70 @@ No version bump or publication is part of this plan.
 **Goal:** every conversation that is not a direct lane has the `cats` server, with tools and
 instructions listed by level (FR-1 to FR-5).
 
-- [ ] Move the server, its grants and its wrapper from `src/products/code/agentTools/` to
+- [x] Move the server, its grants and its wrapper from `src/products/code/agentTools/` to
       `src/platform/mcp/`, and compose it from tool providers that the host registers. Code's
       tools become the first provider.
-- [ ] The enricher marks every conversation, direct lanes included (SPEC-142 A3). Its channel
+  - `hostTools.ts` (the server, its grants and the provider contract),
+    `hostToolsEnricher.ts`, `hostToolsClientWrapper.ts` and `shellPermission.ts`. The first
+    commit is the pure move.
+  - Code's tools are `createCodeAgentToolsProvider`, at level `code`, registered by
+    `src/app/server/index.ts` once Code's dependencies are resolved. The endpoint path
+    `/api/code/agent-tools/mcp` is unchanged, because the public ingress already refuses it.
+- [x] The enricher marks every conversation, direct lanes included (SPEC-142 A3). Its channel
       type gains the conversation's kind, so a lane is listed at `chat` whatever it stores.
-- [ ] Before lanes get the marker, resolve the image tools' server, which a companion's lane
+  - The channel type already carried the kind and the routing mode (PLAN-134 Phase 2).
+  - The marker moved from `codeAgentTools` to `hostTools`. `product:code` is added only when
+    the level includes `code`.
+- [x] Before lanes get the marker, resolve the image tools' server, which a companion's lane
       already receives under the name `cats`. The wrapper's merge rule would replace it.
       Rename it or make it a provider of the host server, after finding everything that names
       it or its tools.
-- [ ] The marker and the grant carry the level and the participant. Today they carry neither.
-- [ ] The tool list and the server's `instructions` are built per grant. Today the
+  - Renamed `cats-images`. Its turn-scoped grants and the Telegram delivery stay its own.
+  - Its instructions and the profile publication instructions name it. Nothing else in
+    Platform, Runtime or Cats Bot names that server: Runtime's tests use `cats` only as a
+    generic name, and Claude Code's `mcp__cats__…` names appear only in Code's policy.
+- [x] The marker and the grant carry the level and the participant. Today they carry neither.
+  - The participant is the dispatch's target, which the dispatch context now carries as
+    `targetParticipantId`. A session start or a send without one carries `null`.
+- [x] The tool list and the server's `instructions` are built per grant. Today the
       instructions are one fixed string.
-- [ ] The wrapper issues a new grant when the level it sees has changed, and keeps the old one
+  - `McpServerDefinition.instructions` may be a function of the caller. The turn policy is
+    the instructions of the providers the grant's level lists.
+  - A level with no tool gets no server and no policy. So in this phase nothing changes for
+    `chat` conversations: no server, and no worker recycle for nothing. Phase 2's base tools
+    give every level a tool.
+- [x] The wrapper issues a new grant when the level it sees has changed, and keeps the old one
       valid until the worker is recycled (FR-3).
-- [ ] Confirm that the wrapper keeps the other servers on create, send and resume. PLAN-134
+  - The old grants are revoked once Runtime reports the new set `delivered`, or when the
+    session closes. The new grant keeps the session's folder and shell posture.
+- [x] Confirm that the wrapper keeps the other servers on create, send and resume. PLAN-134
       Phase 4 makes that fix; this phase adds the test with the desktop control server, and
       fixes the order in which servers are merged, because Runtime's fingerprint depends on
       it.
-- [ ] Tests for FR-1 to FR-5, including a direct lane with image tools, which keeps them beside
+  - The merged list is sorted by name on every call. The test with `cats-desktop` was in
+    PLAN-134 Phase 4; it now checks the order too.
+- [x] Tests for FR-1 to FR-5, including a direct lane with image tools, which keeps them beside
       the host server, through the real wrapper stack in `src/app/server/index.ts`.
-- [ ] Decide and record whether a lane's transport and heartbeat turns get the read tools, and
+  - `tests/host-tool-server.test.tsx`: tools and instructions by level over real MCP calls, a
+    call outside the level refused, registration clashes, no server for a level without tools,
+    the raise's new grant and the old one's revocation, and a lane's image tools beside the
+    host server through the image wrapper and the host wrapper in the app's order.
+  - Not through `createServer` itself: no level reaches the lane's host server until Phase 2
+    lists a base tool. Phase 2 adds that check end to end.
+- [x] Decide and record whether a lane's transport and heartbeat turns get the read tools, and
       put it to the security review.
+  - Decided: they do, as the lane's other turns do. The tools read only the lane's own Tasks
+    and Runs (FR-9), which those turns' agent already works in, and write nothing. Holding them
+    back would need a per-turn grant, which Runtime would see as a new set and recycle the
+    worker for on every heartbeat.
+- [x] Checked in Runtime: a provider that cannot take session servers is sent none and its
+      report says `unsupported`; nothing fails (`RuntimeSessionManager.supportsSessionMcpServers`).
+      A hosted ACP agent that is offered servers but advertises no MCP capability fails its
+      session, as a Code conversation's does today. This is unchanged by this phase.
 
-**Deliverables:** conversations at `chat` have the server with no tool yet, and nothing
-changes for `code` and `work`.
+**Deliverables:** the host server with Code's tools as its first provider, and every
+conversation marked with its level. Nothing changes for `code` and `work`, and `chat`
+conversations get no server until Phase 2 gives them a tool.
 
 ### Phase 2: Base tools
 

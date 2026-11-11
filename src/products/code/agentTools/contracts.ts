@@ -3,19 +3,15 @@
  * Runtime configures into Code conversation sessions (ADR-126).
  */
 
-export const CODE_AGENT_TOOLS_MCP_PATH = '/api/code/agent-tools/mcp';
-export const CODE_AGENT_TOOLS_SERVER_NAME = 'cats';
-export const CODE_AGENT_TOOLS_SERVER_VERSION = '1.0.0';
+import type { HostToolGrantBinding } from '../../../platform/mcp/hostTools.js';
 
-/** What a session grant is bound to; everything a tool call may act on. */
-export interface CodeAgentToolGrantBinding {
-  /** Chat channel id; also the `code_conversation` canvas surface id. */
-  channelId: string;
-  /** Core conversation id (`conversation-channel-<channelId>`). */
-  conversationId: string;
-  workspacePath: string | null;
-  /** The Cat actor the grant was issued for. */
-  actorId: string | null;
-  /** Whether the session may run shell commands, which dev previews require (CAP-08). */
-  shellExecution: boolean;
-}
+export {
+  HOST_TOOLS_MCP_PATH as CODE_AGENT_TOOLS_MCP_PATH,
+  HOST_TOOLS_SERVER_NAME as CODE_AGENT_TOOLS_SERVER_NAME,
+} from '../../../platform/mcp/hostTools.js';
+
+/**
+ * What a session grant is bound to; everything a tool call may act on. Since SPEC-142 the grant
+ * is the host server's, and Code's tools are one provider on it.
+ */
+export type CodeAgentToolGrantBinding = HostToolGrantBinding;

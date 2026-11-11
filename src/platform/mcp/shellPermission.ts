@@ -1,4 +1,4 @@
-import type { SessionExecutionPolicy } from '../../../shared/providerInteractions.js';
+import type { SessionExecutionPolicy } from '../../shared/providerInteractions.js';
 
 /**
  * SPEC-123 CAP-08: a Cat may start a dev preview only when its session can

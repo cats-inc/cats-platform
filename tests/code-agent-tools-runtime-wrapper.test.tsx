@@ -10,17 +10,16 @@ import type {
   RuntimeSessionInfo,
   RuntimeSessionResumeInput,
 } from '../src/platform/runtime/client.ts';
-import type { CodeAgentToolGrantBinding } from '../src/products/code/agentTools/contracts.ts';
-import {
-  createCodeAgentToolsInvocationEnricher,
-  readCodeAgentToolsInvocationMarker,
-} from '../src/products/code/agentTools/enricher.ts';
+import { MemoryCoreStore } from '../src/core/store.ts';
+import { readHostToolsInvocationMarker, type HostToolGrantBinding } from '../src/platform/mcp/hostTools.ts';
+import { createHostToolsInvocationEnricher } from '../src/platform/mcp/hostToolsEnricher.ts';
 import { CODE_AGENT_PREVIEW_POLICY } from '../src/products/code/agentTools/policy.ts';
-import { createCodeAgentToolsClientWrapper } from '../src/products/code/agentTools/runtimeClientWrapper.ts';
+import { createCodeAgentToolsService } from '../src/products/code/agentTools/service.ts';
+import { createHostToolsClientWrapper } from '../src/platform/mcp/hostToolsClientWrapper.ts';
 import type { RuntimeSessionMcpDeliveryReport } from '../src/runtime/sessionMcpServers.ts';
 
 const ENDPOINT = 'http://127.0.0.1:8181/api/code/agent-tools/mcp';
-const MARKER_CONTEXT = { metadata: { codeAgentTools: { channelId: 'channel-1', workspacePath: '/workspace' } } };
+const MARKER_CONTEXT = { metadata: { hostTools: { channelId: 'channel-1', workspacePath: '/workspace', level: 'code' } } };
 const DELIVERED: RuntimeSessionMcpDeliveryReport = { status: 'delivered', servers: [{ name: 'cats', connection: 'unknown' }] };
 
 function fakeClient(options: { createReport?: RuntimeSessionMcpDeliveryReport; sendReports?: RuntimeSessionMcpDeliveryReport[]; failCreate?: boolean; createCwd?: string } = {}) {
@@ -53,29 +52,42 @@ function fakeClient(options: { createReport?: RuntimeSessionMcpDeliveryReport; s
 }
 
 function setup(endpoint: string | null = ENDPOINT) {
-  const grants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
-  const wrapper = createCodeAgentToolsClientWrapper({ grants, endpoint: () => endpoint });
-  return { grants, wrapper };
+  const grants = new McpSessionGrantStore<HostToolGrantBinding>();
+  // The host server with Code's tools, as the app registers them.
+  const server = createCodeAgentToolsService({ grants, coreStore: new MemoryCoreStore() });
+  const wrapper = createHostToolsClientWrapper({ grants, server, endpoint: () => endpoint });
+  return { grants, wrapper, server };
 }
 
-test('the marker enricher tags Code conversations only', () => {
-  const enricher = createCodeAgentToolsInvocationEnricher();
+test('the marker enricher tags every conversation with its level and participant', () => {
+  const enricher = createHostToolsInvocationEnricher();
   const phase = { phase: 'session_create' as const };
-  const code = enricher.enrich({ originSurface: 'code', id: 'channel-1', chatCwd: '/workspace' }, {}, phase);
-  assert.deepEqual(readCodeAgentToolsInvocationMarker(code?.context), {
+  const code = enricher.enrich({ originSurface: 'code', id: 'channel-1', chatCwd: '/workspace' },
+    { context: { metadata: { targetParticipantId: 'participant-7' } } }, phase);
+  assert.deepEqual(readHostToolsInvocationMarker(code?.context), {
     channelId: 'channel-1',
     workspacePath: '/workspace',
     shellExecution: true,
+    level: 'code',
+    participantId: 'participant-7',
   });
-  assert.equal(enricher.enrich({ originSurface: 'chat', id: 'channel-2' }, {}, phase), null);
+  assert.deepEqual(code?.context?.labels, ['product:code']);
+  const chat = enricher.enrich({ originSurface: 'chat', id: 'channel-2' }, {}, phase);
+  assert.equal(readHostToolsInvocationMarker(chat?.context)?.level, 'chat');
+  assert.equal(readHostToolsInvocationMarker(chat?.context)?.participantId, null);
+  assert.deepEqual(chat?.context?.labels, [], "Code's label follows Code's tools");
+  // SPEC-142 A3: a direct lane is marked too, at `chat` whatever it stores.
+  const lane = enricher.enrich({ originSurface: 'code', productScope: 'work', channelKind: 'direct_message', id: 'lane-1' }, {}, phase);
+  assert.equal(readHostToolsInvocationMarker(lane?.context)?.level, 'chat');
+  assert.equal(enricher.enrich({ originSurface: 'chat', id: '' }, {}, phase), null);
   const readOnly = enricher.enrich({
     originSurface: 'code', id: 'channel-3', runtimeWorkspaceAccess: 'read_only', runtimePermissionMode: 'default',
   }, {}, phase);
-  assert.equal(readCodeAgentToolsInvocationMarker(readOnly?.context)?.shellExecution, false);
+  assert.equal(readHostToolsInvocationMarker(readOnly?.context)?.shellExecution, false);
   const whitelist = enricher.enrich({
     originSurface: 'code', id: 'channel-4', runtimeWorkspaceAccess: 'read_write', runtimePermissionMode: 'whitelist',
   }, {}, phase);
-  assert.equal(readCodeAgentToolsInvocationMarker(whitelist?.context)?.shellExecution, false,
+  assert.equal(readHostToolsInvocationMarker(whitelist?.context)?.shellExecution, false,
     'a channel whitelist without its tools counts as no shell');
 });
 
@@ -96,7 +108,7 @@ test('the grant records whether the session may run shell commands (SPEC-123 CAP
 
   // After a Platform restart the turn's marker supplies the channel posture.
   const { client, calls } = fakeClient();
-  const context = { metadata: { codeAgentTools: { channelId: 'channel-1', workspacePath: '/workspace', shellExecution: false } } };
+  const context = { metadata: { hostTools: { level: 'code', channelId: 'channel-1', workspacePath: '/workspace', shellExecution: false } } };
   await wrapper.wrapClient(client).sendMessage('rt-restarted', 'hi', { context });
   const server = calls.send[0]!.mcpServers![0]!;
   assert.equal(grants.resolve(server.auth.kind === 'bearer_env' ? server.auth.token : '')?.binding.shellExecution, false);
@@ -150,9 +162,9 @@ test('the grant uses the workspace Runtime resolved for the session', async () =
   const secondToken = second.auth.kind === 'bearer_env' ? second.auth.token : '';
   assert.equal(grants.resolve(secondToken)?.binding.workspacePath, '/repo');
 
-  const enricher = createCodeAgentToolsInvocationEnricher();
+  const enricher = createHostToolsInvocationEnricher();
   const repoOnly = enricher.enrich({ originSurface: 'code', id: 'channel-9', repoPath: '/repo' }, {}, { phase: 'session_create' });
-  assert.equal(readCodeAgentToolsInvocationMarker(repoOnly?.context)?.workspacePath, '/repo');
+  assert.equal(readHostToolsInvocationMarker(repoOnly?.context)?.workspacePath, '/repo');
 });
 
 test('non-Code sessions, a missing endpoint and failed creates stay untouched', async () => {
@@ -185,8 +197,8 @@ test('after a Platform restart a Code send issues a fresh grant without the poli
   assert.ok(calls.send[1]!.instructions?.includes(CODE_AGENT_PREVIEW_POLICY));
 });
 
-test('SPEC-141 FR-8: Work conversations get the marker too, and a direct lane never does', () => {
-  const enricher = createCodeAgentToolsInvocationEnricher();
+test("SPEC-141 FR-8: Work conversations list Code's tools too, and a direct lane lists them never", () => {
+  const enricher = createHostToolsInvocationEnricher();
   const phase = { phase: 'session_create' as const };
   // Work includes Code (ADR-149 D5): by the stored scope, or by the origin when none is stored.
   for (const channel of [
@@ -195,18 +207,22 @@ test('SPEC-141 FR-8: Work conversations get the marker too, and a direct lane ne
     { originSurface: 'chat', productScope: 'code', id: 'raised-to-code', chatCwd: '/workspace' },
   ]) {
     const enriched = enricher.enrich(channel, {}, phase);
-    assert.equal(readCodeAgentToolsInvocationMarker(enriched?.context)?.channelId, channel.id, channel.id);
+    const marker = readHostToolsInvocationMarker(enriched?.context);
+    assert.equal(marker?.channelId, channel.id, channel.id);
+    assert.ok(marker && ['code', 'work'].includes(marker.level), channel.id);
     assert.ok(enriched?.context?.labels?.includes('product:code'), channel.id);
   }
-  // A direct lane reads as chat whatever it stores. Image tools use the name `cats` in a
-  // companion's lane, so Code's server must never be offered there.
+  // A direct lane reads as chat whatever it stores (SPEC-142 A3), so its grant never lists
+  // Code's tools.
   for (const lane of [
     { originSurface: 'work', channelKind: 'direct_message', id: 'lane-1' },
     { originSurface: 'code', productScope: 'work', roomRouting: { mode: 'direct_message' }, id: 'lane-2' },
+    { originSurface: 'work', productScope: 'chat', id: 'kept-at-chat' },
   ]) {
-    assert.equal(enricher.enrich(lane, {}, phase), null, lane.id);
+    const enriched = enricher.enrich(lane, {}, phase);
+    assert.equal(readHostToolsInvocationMarker(enriched?.context)?.level, 'chat', lane.id);
+    assert.ok(!enriched?.context?.labels?.includes('product:code'), lane.id);
   }
-  assert.equal(enricher.enrich({ originSurface: 'work', productScope: 'chat', id: 'kept-at-chat' }, {}, phase), null);
 });
 
 test("Code's servers join the call's other servers on create, send and resume", async () => {
@@ -220,12 +236,13 @@ test("Code's servers join the call's other servers on create, send and resume", 
   const names = (servers?: Array<{ name: string }>) => (servers ?? []).map((server) => server.name);
 
   await wrapped.createSession({ provider: 'claude', context: MARKER_CONTEXT, mcpServers: [desktop] } as RuntimeSessionCreateInput);
-  assert.deepEqual(names(calls.create[0]!.mcpServers), ['cats-desktop', 'cats']);
+  // In name order on every call: Runtime's fingerprint follows the order (PLAN-135 Phase 1).
+  assert.deepEqual(names(calls.create[0]!.mcpServers), ['cats', 'cats-desktop']);
   await wrapped.sendMessage('rt-1', 'hello', { context: MARKER_CONTEXT, mcpServers: [desktop, stale] });
-  assert.deepEqual(names(calls.send[0]!.mcpServers), ['cats-desktop', 'cats'], 'its own name replaces a stale entry');
-  assert.equal(calls.send[0]!.mcpServers![1]!.url, ENDPOINT);
+  assert.deepEqual(names(calls.send[0]!.mcpServers), ['cats', 'cats-desktop'], 'its own name replaces a stale entry');
+  assert.equal(calls.send[0]!.mcpServers!.find((server) => server.name === 'cats')!.url, ENDPOINT);
   await wrapped.resumeSession!('rt-1', { mcpServers: [desktop] });
-  assert.deepEqual(names(calls.resume[0]!.mcpServers), ['cats-desktop', 'cats']);
+  assert.deepEqual(names(calls.resume[0]!.mcpServers), ['cats', 'cats-desktop']);
 
   // An explicit empty list from an outer wrapper, which drops its own server, leaves only Code's.
   await wrapped.sendMessage('rt-1', 'again', { context: MARKER_CONTEXT, mcpServers: [] });
@@ -316,11 +333,11 @@ test('a grant issued without a folder gets one when Runtime can later say it', a
 
 test("a conversation's execution policy reaches the grant's shell posture", async () => {
   // Without a shell the grant cannot start a dev preview (SPEC-123 CAP-08).
-  const enricher = createCodeAgentToolsInvocationEnricher();
+  const enricher = createHostToolsInvocationEnricher();
   const phase = { phase: 'message_send' as const };
   const policy = (network: boolean, approval: 'never' | 'on-request') =>
     ({ version: 1 as const, mode: 'explicit' as const, access: 'full-access' as const, network, approval });
-  const markerFor = (runtimeExecutionPolicy: ReturnType<typeof policy> | null) => readCodeAgentToolsInvocationMarker(
+  const markerFor = (runtimeExecutionPolicy: ReturnType<typeof policy> | null) => readHostToolsInvocationMarker(
     enricher.enrich({ originSurface: 'work', id: 'channel-p', runtimePermissionMode: 'skip', runtimeExecutionPolicy }, {}, phase)?.context);
   assert.equal(markerFor(null)?.shellExecution, true);
   assert.equal(markerFor(policy(true, 'never'))?.shellExecution, true);

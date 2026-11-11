@@ -145,9 +145,9 @@ for (const trigger of ['manual', 'heartbeat']) test(`${trigger} image request re
   const runtimeClient = tools.wrapClient({ ...f.runtimeClient, async sendMessage(id, _content, input) {
     sourceCalls++;
     suppliedTools = (input.mcpServers ?? []).map(server => server.name);
-    const descriptor = input.mcpServers?.find(server => server.name === 'cats');
+    const descriptor = input.mcpServers?.find(server => server.name === 'cats-images');
     if (descriptor) {
-      assert.match(input.instructions, /cats image_generate/);
+      assert.match(input.instructions, /cats-images image_generate/);
       const response = await fetch(descriptor.url, { method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${descriptor.auth.token}` },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call',
@@ -178,7 +178,7 @@ for (const trigger of ['manual', 'heartbeat']) test(`${trigger} image request re
       now: f.now(), awakeSince: null, lastOwnerMessageAt: null }), 'quiet');
   }
   assert.equal(sourceCalls, 1);
-  assert.ok(suppliedTools.includes('cats'), 'the actual Telegram reply must receive the platform image tools');
+  assert.ok(suppliedTools.includes('cats-images'), 'the actual Telegram reply must receive the platform image tools');
   f.advance(3600_000); // Accepted work finishes after bedtime, at 23:39.
   await f.store.write(setChannelStatus(await f.store.read(), f.laneId, 'watching', f.now()));
   for (let n = 0; n < 200 && !(await f.service.status('account-owner', f.catId)).jobs.some(job => job.status === 'succeeded'); n++) {

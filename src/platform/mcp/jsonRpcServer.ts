@@ -28,7 +28,8 @@ export interface McpToolCallResult {
 export interface McpServerDefinition<Context> {
   name: string;
   version: string;
-  instructions?: string;
+  /** Fixed, or built for the caller, so that it names only the tools the caller is listed. */
+  instructions?: string | ((context: Context) => string | undefined);
   listTools(context: Context): McpToolDefinition[];
   callTool(name: string, args: Record<string, unknown>, context: Context): Promise<McpToolCallResult>;
 }
@@ -137,11 +138,14 @@ async function dispatch<Context>(
         && SUPPORTED_MCP_PROTOCOL_VERSIONS.includes(requested as never)
         ? requested
         : SUPPORTED_MCP_PROTOCOL_VERSIONS[0];
+      const instructions = typeof server.instructions === 'function'
+        ? server.instructions(context)
+        : server.instructions;
       return {
         protocolVersion,
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: server.name, version: server.version },
-        ...(server.instructions ? { instructions: server.instructions } : {}),
+        ...(instructions ? { instructions } : {}),
       };
     }
     case 'ping':

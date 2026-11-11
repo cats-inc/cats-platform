@@ -1,14 +1,16 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
-
 import type { CoreStore } from '../../../core/store.js';
 import {
-  handleMcpHttpRequest,
   mcpTextResult,
-  type McpServerDefinition,
   type McpToolCallResult,
   type McpToolDefinition,
 } from '../../../platform/mcp/jsonRpcServer.js';
-import { McpSessionGrantStore, type McpSessionGrant } from '../../../platform/mcp/sessionGrants.js';
+import {
+  createHostToolServer,
+  type HostToolGrant,
+  type HostToolProvider,
+  type HostToolServer,
+} from '../../../platform/mcp/hostTools.js';
+import type { McpSessionGrantStore } from '../../../platform/mcp/sessionGrants.js';
 import { appendArtifactCanvasIntentActivity } from '../../shared/artifactCanvas/activity.js';
 import {
   ARTIFACT_CANVAS_CLEAR_TOOL_DEFINITION,
@@ -44,14 +46,9 @@ import {
 } from './devPreview.js';
 import { CODE_AGENT_PREVIEW_POLICY } from './policy.js';
 import { runShowInCanvas, SHOW_IN_CANVAS_TOOL } from './showInCanvas.js';
-import {
-  CODE_AGENT_TOOLS_MCP_PATH,
-  CODE_AGENT_TOOLS_SERVER_NAME,
-  CODE_AGENT_TOOLS_SERVER_VERSION,
-  type CodeAgentToolGrantBinding,
-} from './contracts.js';
+import type { CodeAgentToolGrantBinding } from './contracts.js';
 
-export type CodeAgentToolGrant = McpSessionGrant<CodeAgentToolGrantBinding>;
+export type CodeAgentToolGrant = HostToolGrant;
 
 export interface CodeAgentToolsServiceOptions {
   coreStore: Pick<CoreStore, 'updateCore'>;
@@ -61,18 +58,12 @@ export interface CodeAgentToolsServiceOptions {
   previewServersEnabled?: () => Promise<boolean>;
   /** Per-conversation leases shared with the Code canvas controls (CAP-13/14). */
   conversationPreviews?: CodeConversationPreviews;
-  grants?: McpSessionGrantStore<CodeAgentToolGrantBinding>;
   policyConfig?: ArtifactCanvasPolicyConfig;
   renderIntentHub?: ArtifactCanvasRenderIntentHub;
   now?: () => Date;
 }
 
-export interface CodeAgentToolsService {
-  clearForReset(): void;
-  grants: McpSessionGrantStore<CodeAgentToolGrantBinding>;
-  /** Serve the MCP endpoint; returns false for any other path. */
-  route(request: IncomingMessage, response: ServerResponse): Promise<boolean>;
-}
+export const CODE_AGENT_TOOLS_PROVIDER_ID = 'cats-code.agent-tools' as const;
 
 const DECLARE_TOOL: McpToolDefinition = {
   name: CODE_ARTIFACT_DECLARATION_TOOL.definition.name,
@@ -86,8 +77,11 @@ const CLEAR_TOOL: McpToolDefinition = {
   inputSchema: ARTIFACT_CANVAS_CLEAR_TOOL_DEFINITION.inputSchema as unknown as Record<string, unknown>,
 };
 
-export function createCodeAgentToolsService(options: CodeAgentToolsServiceOptions): CodeAgentToolsService {
-  const grants = options.grants ?? new McpSessionGrantStore<CodeAgentToolGrantBinding>(options.now);
+/**
+ * Code's tools on the host's `cats` server (ADR-126, SPEC-123), listed from the `code` level up
+ * (SPEC-141 FR-8; Work includes Code, ADR-149 D5).
+ */
+export function createCodeAgentToolsProvider(options: CodeAgentToolsServiceOptions): HostToolProvider {
   const now = options.now ?? (() => new Date());
   const policyConfig = options.policyConfig ?? DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG;
   const hub = options.renderIntentHub ?? getDefaultArtifactCanvasRenderIntentHub();
@@ -95,11 +89,11 @@ export function createCodeAgentToolsService(options: CodeAgentToolsServiceOption
   const devLeases = options.conversationPreviews?.devLeases ?? new Map<string, string>();
   const previewServersEnabled = options.previewServersEnabled ?? (async () => false);
 
-  const server: McpServerDefinition<CodeAgentToolGrant> = {
-    name: CODE_AGENT_TOOLS_SERVER_NAME,
-    version: CODE_AGENT_TOOLS_SERVER_VERSION,
+  const provider: HostToolProvider = {
+    id: CODE_AGENT_TOOLS_PROVIDER_ID,
+    level: 'code',
     instructions: CODE_AGENT_PREVIEW_POLICY,
-    listTools: () => [
+    tools: [
       SHOW_IN_CANVAS_TOOL,
       START_DEV_PREVIEW_TOOL,
       GET_PREVIEW_STATUS_TOOL,
@@ -107,6 +101,11 @@ export function createCodeAgentToolsService(options: CodeAgentToolsServiceOption
       DECLARE_TOOL,
       CLEAR_TOOL,
     ],
+    clearForReset() {
+      options.conversationPreviews?.clearForReset();
+      staticLeases.clear();
+      devLeases.clear();
+    },
     async callTool(name, args, grant) {
       const supervisor = options.livePreviewSupervisor ?? null;
       if (name === START_DEV_PREVIEW_TOOL.name) {
@@ -216,30 +215,14 @@ export function createCodeAgentToolsService(options: CodeAgentToolsServiceOption
     return mcpTextResult({ cleared: true, canvasPath: targetUrl });
   }
 
-  return {
-    grants,
-    clearForReset() {
-      // Forget the leases first, so revoking every grant stops nothing twice.
-      options.conversationPreviews?.clearForReset();
-      staticLeases.clear();
-      devLeases.clear();
-      grants.revokeWhere(() => true);
-    },
-    async route(request, response) {
-      const pathname = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
-      if (pathname !== CODE_AGENT_TOOLS_MCP_PATH) return false;
-      await handleMcpHttpRequest(request, response, {
-        server,
-        authorize(token, method) {
-          const grant = grants.resolve(token);
-          if (!grant) return null;
-          // CLIs connect while spawning, before the session id is known;
-          // acting on the conversation needs the bound session.
-          if (method === 'tools/call' && grant.state !== 'bound') return null;
-          return grant;
-        },
-      });
-      return true;
-    },
-  };
+  return provider;
+}
+
+/** A host server with only Code's tools, as Code's tests and tools use it. */
+export function createCodeAgentToolsService(
+  options: CodeAgentToolsServiceOptions & { grants?: McpSessionGrantStore<CodeAgentToolGrantBinding> },
+): HostToolServer {
+  const server = createHostToolServer({ grants: options.grants, now: options.now });
+  server.register(createCodeAgentToolsProvider(options));
+  return server;
 }

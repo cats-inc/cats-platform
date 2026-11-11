@@ -21,12 +21,9 @@ import { createAgentKnowledgeBridge, AGENT_KNOWLEDGE_PATH } from '../../platform
 import { isLoopbackAuthHost } from '../../platform/auth/effectiveMode.js';
 import { runServerStartupRecoveryPasses } from './startupRecovery.js';
 import { McpSessionGrantStore } from '../../platform/mcp/sessionGrants.js';
-import {
-  CODE_AGENT_TOOLS_MCP_PATH,
-  type CodeAgentToolGrantBinding,
-} from '../../products/code/agentTools/contracts.js';
-import { createCodeAgentToolsClientWrapper } from '../../products/code/agentTools/runtimeClientWrapper.js';
-import { createCodeAgentToolsService } from '../../products/code/agentTools/service.js';
+import { createHostToolServer, HOST_TOOLS_MCP_PATH, type HostToolGrantBinding } from '../../platform/mcp/hostTools.js';
+import { createHostToolsClientWrapper } from '../../platform/mcp/hostToolsClientWrapper.js';
+import { createCodeAgentToolsProvider } from '../../products/code/agentTools/service.js';
 import { createCatImageTools, CAT_IMAGE_TOOLS_PATH } from '../../platform/multimedia/catImageTools.js';
 import { createDesktopControlForServer, DESKTOP_CONTROL_MCP_PATH } from '../../platform/desktopControl/server.js';
 import { routeDesktopControlHost } from '../../platform/desktopControl/routes.js';
@@ -74,7 +71,10 @@ export function createServer(dependencies: ServerDependencies) {
     createPluginRuntimePort(pluginConfig.runtimeBaseUrl, pluginConfig.managedPluginKey ?? pluginConfig.runtimeApiKey),
     pluginConfig.managedPluginBundlePath);
   const providerSelectorClient = dependencies.shared.runtimeClient;
-  const codeAgentToolGrants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
+  // The host's `cats` server (SPEC-142 FR-1). Products register their tools below, once their
+  // dependencies are resolved.
+  const hostToolGrants = new McpSessionGrantStore<HostToolGrantBinding>(dependencies.shared.now);
+  const hostTools = createHostToolServer({ grants: hostToolGrants });
   let catImages: ChatCatImages | undefined = dependencies.chat.catImages;
   let publications: ChatCompanionPublications | undefined = dependencies.chat.companionPublications;
   let catImageToolsEndpoint: string | null = null;
@@ -111,17 +111,18 @@ export function createServer(dependencies: ServerDependencies) {
     chatStore: () => dependencies.chat.chatStore,
     runtimeClient: providerSelectorClient,
   });
-  let codeAgentToolsEndpoint: string | null = null;
+  let hostToolsEndpoint: string | null = null;
   let codeConversationPreviews: CodeConversationPreviews | undefined;
-  const codeAgentToolsClients = createCodeAgentToolsClientWrapper({
-    grants: codeAgentToolGrants,
-    endpoint: () => codeAgentToolsEndpoint,
+  const hostToolsClients = createHostToolsClientWrapper({
+    grants: hostToolGrants,
+    server: hostTools,
+    endpoint: () => hostToolsEndpoint,
     // SPEC-123 CAP-13: a conversation's previews stop when its last session
     // ends; a closed session waits a grace period in case it is being replaced.
     onSessionStarted: (channelId) => codeConversationPreviews?.retain(channelId),
     onSessionEnded: (channelId, reason) => codeConversationPreviews?.release(channelId, {
       immediate: reason === 'deleted',
-      stillInUse: () => codeAgentToolGrants.some((grant) => grant.binding.channelId === channelId),
+      stillInUse: () => hostToolGrants.some((grant) => grant.binding.channelId === channelId),
     }),
   });
   let knowledgeEndpoint: string | null = null;
@@ -141,8 +142,8 @@ export function createServer(dependencies: ServerDependencies) {
   });
   dependencies = {
     ...dependencies,
-    shared: { ...dependencies.shared, managedPlugins: plugins, runtimeClient: desktopControl.wrapClient(plugins.wrapClient(knowledge.wrapClient(catImageTools.wrapClient(codeAgentToolsClients.wrapClient(dependencies.shared.runtimeClient))))) },
-    ...(dependencies.code?.runtimeClient ? { code: { ...dependencies.code, runtimeClient: plugins.wrapClient(knowledge.wrapClient(codeAgentToolsClients.wrapClient(dependencies.code.runtimeClient))) } } : {}),
+    shared: { ...dependencies.shared, managedPlugins: plugins, runtimeClient: desktopControl.wrapClient(plugins.wrapClient(knowledge.wrapClient(catImageTools.wrapClient(hostToolsClients.wrapClient(dependencies.shared.runtimeClient))))) },
+    ...(dependencies.code?.runtimeClient ? { code: { ...dependencies.code, runtimeClient: plugins.wrapClient(knowledge.wrapClient(hostToolsClients.wrapClient(dependencies.code.runtimeClient))) } } : {}),
     ...(dependencies.work?.runtimeClient ? { work: { ...dependencies.work, runtimeClient: plugins.wrapClient(knowledge.wrapClient(dependencies.work.runtimeClient)) } } : {}),
   };
   const resolvedDependencies = resolveServerDependencies(dependencies);
@@ -241,15 +242,14 @@ export function createServer(dependencies: ServerDependencies) {
 
   // Internal bearer MCP precedes Platform cookie auth. The public ingress
   // rejects this route before dispatch, including traffic from a loopback tunnel.
-  const codeAgentTools = createCodeAgentToolsService({
+  hostTools.register(createCodeAgentToolsProvider({
     coreStore: resolvedDependencies.code.coreStore,
     livePreviewSupervisor: resolvedDependencies.code.livePreviewSupervisor,
     previewServersEnabled: () => readCodePreviewServersEnabled(resolvedDependencies.shared.config.chatStatePath),
     conversationPreviews: resolvedDependencies.code.conversationPreviews,
-    grants: codeAgentToolGrants,
     policyConfig: resolvedDependencies.shared.config.artifactCanvas,
     now: resolvedDependencies.shared.now,
-  });
+  }));
 
   const dispatchProduct = async (request: IncomingMessage, response: ServerResponse) => {
     const entry = platformRequestEntry(request);
@@ -259,7 +259,7 @@ export function createServer(dependencies: ServerDependencies) {
     if (request.headers.origin === 'null') {
       sendJson(response, 403, { error: 'opaque_origin_denied' }); return;
     }
-    if (await codeAgentTools.route(request, response)) return;
+    if (await hostTools.route(request, response)) return;
     if (await catImageTools.route(request, response)) return;
     if (await desktopControl.route(request, response)) return;
     if (await routeDesktopControlHost(request, response, desktopControl, dependencies.shared.desktopAuthKey)) return;
@@ -338,7 +338,7 @@ export function createServer(dependencies: ServerDependencies) {
         catImageTools.revoke();
         desktopControl.reset();
         await catImages?.clearForReset();
-        codeAgentTools.clearForReset();
+        hostTools.clearForReset();
         getDefaultArtifactCanvasRenderIntentHub().clearForReset();
         await resolvedDependencies.code.livePreviewSupervisor?.clearForReset();
         if (resolvedDependencies.code.livePreviewStore !== resolvedDependencies.code.livePreviewSupervisor) {
@@ -429,7 +429,7 @@ export function createServer(dependencies: ServerDependencies) {
     if (address && typeof address !== 'string' && isLoopbackAuthHost(runtimeHost)) {
       const host = address.family === 'IPv6' ? '[::1]' : '127.0.0.1';
       knowledgeEndpoint = `http://${host}:${address.port}${AGENT_KNOWLEDGE_PATH}`;
-      codeAgentToolsEndpoint = `http://${host}:${address.port}${CODE_AGENT_TOOLS_MCP_PATH}`;
+      hostToolsEndpoint = `http://${host}:${address.port}${HOST_TOOLS_MCP_PATH}`;
       catImageToolsEndpoint = `http://${host}:${address.port}${CAT_IMAGE_TOOLS_PATH}`;
       desktopControlEndpoint = `http://${host}:${address.port}${DESKTOP_CONTROL_MCP_PATH}`;
     }
