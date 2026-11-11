@@ -143,12 +143,12 @@ test('the confirmation names what a raise to Code adds, who gains it, what stays
   assert.match(content.permanent, /can't be undone/u);
 });
 
-test('a raise to Work says no Work tool is added yet, from Chat and from Code', () => {
+test('a raise to Work names the Work tools it adds, from Chat and from Code', () => {
   const fromChat = buildProductScopeRaiseConfirmation(view({ livePreviewsEnabled: true }), 'work', en);
   assert.equal(fromChat.adds.length, 5);
   assert.match(fromChat.adds[1]!, /so they can run live previews too/u);
   assert.equal(fromChat.adds.at(-2), "Work lists the conversation's Work Item as its own.");
-  assert.equal(fromChat.adds.at(-1), 'No Work tool is added to its agents yet.');
+  assert.equal(fromChat.adds.at(-1), "Its agents get Work's tools: they read this conversation's Work Items and propose changes you confirm.");
   const fromCode = buildProductScopeRaiseConfirmation(view({
     scope: 'code',
     widerLevels: ['work'],
@@ -159,7 +159,7 @@ test('a raise to Work says no Work tool is added yet, from Chat and from Code', 
   assert.deepEqual(fromCode.adds, [
     "Code's tools and conversation parts stay as they are.",
     "Work lists the conversation's Work Item as its own.",
-    'No Work tool is added to its agents yet.',
+    "Its agents get Work's tools: they read this conversation's Work Items and propose changes you confirm.",
   ]);
   assert.equal(fromCode.participants, 'No one has joined yet. Anyone added later works at this level.');
   assert.deepEqual(fromCode.unchanged, ['Folder: a sandbox, with no folder of yours', 'CLI permission: Workspace write (legacy)']);
@@ -173,13 +173,13 @@ test('the confirmation and refusals exist in zh-TW, for each transition', () => 
   assert.deepEqual(toCode.unchanged, ['資料夾：C:/repo/app', 'CLI 權限：唯讀']);
   const content = buildProductScopeRaiseConfirmation(view(), 'work', zh);
   assert.equal(content.title, '要把這個對話移到 Work 嗎？');
-  assert.equal(content.adds.at(-1), '目前還不會為它的 agent 新增 Work 的工具。');
+  assert.equal(content.adds.at(-1), '它的 agent 會取得 Work 的工具：讀取這個對話的工作項目，並提出由你確認的變更。');
   assert.match(content.permanent, /無法復原/u);
   const fromCode = buildProductScopeRaiseConfirmation(view({ scope: 'code', widerLevels: ['work'] }), 'work', zh);
   assert.deepEqual(fromCode.adds, [
     'Code 的工具與對話元件維持不變。',
     'Work 會把這個對話的工作項目列為自己的。',
-    '目前還不會為它的 agent 新增 Work 的工具。',
+    '它的 agent 會取得 Work 的工具：讀取這個對話的工作項目，並提出由你確認的變更。',
   ]);
   for (const line of [...toCode.adds, ...content.adds, toCode.participants, toCode.moves]) {
     assert.doesNotMatch(line, /shared\.productScopeRaise/u, 'every line has zh-TW copy');

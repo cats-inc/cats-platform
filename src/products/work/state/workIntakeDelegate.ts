@@ -36,6 +36,11 @@ export interface WorkIntakeDelegateOptions {
 
 export interface WorkIntakeCaptureContext {
   actorRef: string;
+  /**
+   * SPEC-142 FR-19: the owner who confirmed a proposal, when the write performs one. `actorRef`
+   * is then the participant that proposed it, and the record keeps both.
+   */
+  confirmedByActorId?: string;
   actionId?: string;
   runId?: string;
 }
@@ -124,6 +129,7 @@ export function createWorkIntakeDelegate(
               conversationId: sourceRef.conversationId ?? null,
               message: `Captured Work Item: ${workItemWrite.workItem.title}`,
               metadata: {
+                ...(context.confirmedByActorId ? { confirmedByActorId: context.confirmedByActorId } : {}),
                 [WORK_INTAKE_METADATA_KEY]: {
                   schemaVersion: WORK_INTAKE_METADATA_VERSION,
                   phase: 'intake',

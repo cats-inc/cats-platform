@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In progress from 2026-11-12. The owner answered SPEC-142's Q3 to Q5 (A1 to A3) and asked for the plan to be carried out in full. PLAN-134 Phases 1 to 5 have landed. Phases 1 to 3 are done |
+| **Status** | In progress from 2026-11-12. The owner answered SPEC-142's Q3 to Q5 (A1 to A3) and asked for the plan to be carried out in full. PLAN-134 Phases 1 to 5 have landed. Phases 1 to 4 are done |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -218,23 +218,38 @@ to FR-21).
 **Goal:** at `work`, an agent can read and propose changes to Work Items and Projects (D11,
 D12; FR-10 to FR-14, without the parts that need a conversation's Project).
 
-- [ ] The read tools: the conversation's Work Items, and finding Projects for an admin
+- [x] The read tools: the conversation's Work Items, and finding Projects for an admin
       coordinator.
-- [ ] Proposal kinds that existing delegates can perform:
-  - [ ] new Work Items, through split and capture;
-  - [ ] a change to a captured Work Item, through update;
-  - [ ] a captured Work Item into a Project, through assign, for an admin coordinator;
-  - [ ] a new Project without a folder, through Project create, for an admin coordinator.
-- [ ] The checks of FR-14 in the tool layer, before a proposal is stored and again on
+  - `get_work_items` and `find_projects` in `src/products/work/agentTools/workConversationTools.ts`,
+    a provider at `work`. `get_work_items` marks the projected Work Item; `project` stays null
+    until Phase 5. The admin coordinator check (the coordinator, when it is an admin Cat) is
+    supplied by the server, which reads the conversation.
+- [x] Proposal kinds that existing delegates can perform:
+  - [x] new Work Items, through capture (`propose_work_items`, up to 8 in one card);
+  - [x] a change to a captured Work Item, through update (`propose_work_item_change`);
+  - [x] a captured Work Item into a Project, through assign, for an admin coordinator
+        (`propose_work_item_project`), with the folder warning when the Work Item has a Task;
+  - [x] a new Project without a folder, through Project create, for an admin coordinator
+        (`propose_project`). It names the conversation as its primary conversation (FR-28).
+- [x] The checks of FR-14 in the tool layer, before a proposal is stored and again on
       confirmation: not the projected Work Item, not another conversation's records.
-- [ ] The delegates' context carries the proposer and the confirming owner. Today it carries
+  - In the kinds' `validate` and again in `perform`. Another conversation's Work Item reads
+    as missing.
+- [x] The delegates' context carries the proposer and the confirming owner. Today it carries
       one actor.
-- [ ] Tests for each kind, for each refusal, and for ADR-105's path still behaving as before.
+  - `confirmedByActorId` beside `actorRef` (the proposing participant), kept in the activity's
+    metadata.
+- [x] Tests for each kind, for each refusal, and for ADR-105's path still behaving as before.
+  - `tests/work-conversation-tools.test.ts`. ADR-105's path is untouched: its delegates gained
+    only an optional field, and its suites pass.
 - [ ] An independent security review before merge: this is the first path on which a session
       tool leads to a Work write.
-- [ ] Add the tools to `docs/tool-calls.md`.
-- [ ] Change the raise confirmation's line that no Work tool is added yet (SPEC-141 FR-29,
+- [x] Add the tools to `docs/tool-calls.md`.
+- [x] Every proposing tool refuses unless the turn is the owner's own (the Phase 3 turn gate).
+- [x] Change the raise confirmation's line that no Work tool is added yet (SPEC-141 FR-29,
       `shared.productScopeRaise.addsNoWorkTool`) to name the tools a Work conversation now gets.
+  - Now `addsWorkTools`: "Its agents get Work's tools: they read this conversation's Work Items
+    and propose changes you confirm." SPEC-141 FR-29's wording is amended in Phase 6.
 
 **Deliverables:** the Work tools, except those that need a conversation's Project or a folder.
 

@@ -2745,7 +2745,7 @@ export const enCatalog: MessageCatalog = {
   'shared.productScopeRaise.addsCodeView': 'Code\'s conversation parts: the canvas and its preview button, the work areas panel, and the folder and permission chips.',
   'shared.productScopeRaise.keepsCode': 'Code\'s tools and conversation parts stay as they are.',
   'shared.productScopeRaise.addsWorkItem': "Work lists the conversation's Work Item as its own.",
-  'shared.productScopeRaise.addsNoWorkTool': 'No Work tool is added to its agents yet.',
+  'shared.productScopeRaise.addsWorkTools': "Its agents get Work's tools: they read this conversation's Work Items and propose changes you confirm.",
   'shared.productScopeRaise.participantsHeading': 'Who',
   'shared.productScopeRaise.participants': '{names}, from their next turn. Anyone added later works at this level too.',
   'shared.productScopeRaise.participantsNone': 'No one has joined yet. Anyone added later works at this level.',

@@ -27,6 +27,11 @@ import { createCodeAgentToolsProvider } from '../../products/code/agentTools/ser
 import { createConversationRecordToolsProvider } from '../../products/shared/conversationRecordTools.js';
 import { ConversationProposalKindRegistry } from '../../platform/proposals/contracts.js';
 import { createConversationProposalService } from '../../products/chat/api/conversationProposals.js';
+import { createWorkProposalKinds } from '../../products/work/agentTools/workConversationProposals.js';
+import { createWorkConversationToolsProvider } from '../../products/work/agentTools/workConversationTools.js';
+import { createWorkIntakeDelegate } from '../../products/work/state/workIntakeDelegate.js';
+import { createWorkTriageDelegate } from '../../products/work/state/workTriageDelegate.js';
+import { resolveChannelParticipantAssignments, resolveParticipantCatId } from '../../products/chat/shared/channelParticipants.js';
 import { publishChannelMutation } from '../../products/chat/api/transportEventPublisher.js';
 import { createCatImageTools, CAT_IMAGE_TOOLS_PATH } from '../../platform/multimedia/catImageTools.js';
 import { createDesktopControlForServer, DESKTOP_CONTROL_MCP_PATH } from '../../platform/desktopControl/server.js';
@@ -170,6 +175,14 @@ export function createServer(dependencies: ServerDependencies) {
   resolvedDependencies.chat.companionPublications = publications;
   // SPEC-142 FR-14 to FR-20: the products that own a write register its proposal kind here.
   const proposalKinds = resolvedDependencies.chat.proposalKinds ?? new ConversationProposalKindRegistry();
+  // SPEC-142 FR-12, FR-13 (PLAN-135 Phase 4): Work's writes, performed on the owner's confirmation.
+  const workDelegates = {
+    intake: createWorkIntakeDelegate({ coreStore: resolvedDependencies.work.coreStore, now: resolvedDependencies.work.now }),
+    triage: createWorkTriageDelegate({ coreStore: resolvedDependencies.work.coreStore, now: resolvedDependencies.work.now }),
+  };
+  if (!resolvedDependencies.chat.proposalKinds) {
+    for (const kind of createWorkProposalKinds(workDelegates)) proposalKinds.register(kind);
+  }
   resolvedDependencies.chat.conversationProposals = createConversationProposalService({
     chatStore: resolvedDependencies.chat.chatStore,
     mutationGate: resolvedDependencies.chat.mutationGate,
@@ -257,6 +270,21 @@ export function createServer(dependencies: ServerDependencies) {
   // rejects this route before dispatch, including traffic from a loopback tunnel.
   // SPEC-142 FR-6 to FR-9: the base tools, at every level, so every conversation gets the server.
   hostTools.register(createConversationRecordToolsProvider({ coreStore: resolvedDependencies.shared.coreStore }));
+  // SPEC-142 FR-10 to FR-14: Work's tools, at `work`.
+  hostTools.register(createWorkConversationToolsProvider({
+    coreStore: resolvedDependencies.work.coreStore,
+    proposals: resolvedDependencies.chat.conversationProposals!,
+    async isAdminCoordinator(channelId, participantId) {
+      if (!participantId) return false;
+      const state = await resolvedDependencies.chat.chatStore.read();
+      const channel = state.channels.find((entry) => entry.id === channelId);
+      if (!channel || channel.coordinatorParticipantId !== participantId) return false;
+      const assignment = resolveChannelParticipantAssignments(channel)
+        .find((entry) => entry.participantId === participantId && entry.status === 'active');
+      const catId = assignment ? resolveParticipantCatId(assignment) : null;
+      return Boolean(catId && state.cats.find((cat) => cat.id === catId)?.group === 'admin');
+    },
+  }));
   hostTools.register(createCodeAgentToolsProvider({
     coreStore: resolvedDependencies.code.coreStore,
     livePreviewSupervisor: resolvedDependencies.code.livePreviewSupervisor,
