@@ -51,7 +51,9 @@ const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 export function proposalLine(value: unknown, name: string, limit: number): string | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'string') throw new ConversationProposalRefusal('invalid_arguments', `${name} must be text.`);
-  const line = value.replace(/\p{Cf}/gu, '').replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, ' ').replace(/\s+/gu, ' ').trim();
+  // The card fences each value in «»; the text cannot carry its own fence marks.
+  const line = value.replace(/\p{Cf}/gu, '').replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, ' ').replace(/[«»]/gu, '"')
+    .replace(/\s+/gu, ' ').trim();
   if (!line) return undefined;
   if (Array.from(GRAPHEMES.segment(line)).length > limit) {
     throw new ConversationProposalRefusal('too_long', `${name} is longer than ${limit} characters.`);

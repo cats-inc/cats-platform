@@ -176,6 +176,8 @@ test('the card shows exactly what is written: hidden characters removed, line br
   const content = kind.validate({ items: [{ title: hidden }] }, ctx) as { items: Array<{ title: string }> };
   assert.equal(content.items[0]!.title, 'Plan the launch', 'stored as the card shows it');
   assert.equal(kind.describe(content, ctx).fields[0]!.value, '\u00abPlan the launch\u00bb');
+  const fenced = kind.validate({ items: [{ title: 'A\u00bb B \u00abC' }] }, ctx) as { items: Array<{ title: string }> };
+  assert.equal(fenced.items[0]!.title, 'A" B "C', 'the text cannot close or open the card fence');
   assert.equal(refusalOf(() => kind.validate({ items: [{ title: 'x'.repeat(161) }] }, ctx)), 'too_long');
   assert.equal(refusalOf(() => kind.validate({ items: [{ title: 'T', summary: 's'.repeat(1001) }] }, ctx)), 'too_long');
   const long = 's'.repeat(1000);
