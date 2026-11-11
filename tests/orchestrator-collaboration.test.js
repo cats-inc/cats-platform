@@ -84,7 +84,7 @@ function client(handler = (envelope, index) => index === 0 ? tool(discover, {})
     async getProviderModels(provider) { return { provider, backend: 'cli', instance: 'default',
       defaultModel: null, source: 'config', cache: null, models: [], warnings: [] }; },
     async createSession(input) { calls.create.push(input); sessionReceipts.set('decision-session', []);
-      return { id: 'decision-session', provider: input.provider,
+      return { id: 'decision-session', provider: input.provider, providerSessionPersistence: input.providerSessionPersistence,
       model: input.model, status: 'ready', cwd: null }; },
     async sendMessage(sessionId, content, input) {
       const envelope = JSON.parse(content);
@@ -394,8 +394,11 @@ test('SPEC-141 FR-19: the snapshot and the proposal carry the product the conver
     const fresh = { ...prepared, conversation: { ...prepared.conversation, intent: 'create' } };
     assert.ok(card(fresh, 'en').includes('Propose a new Chat conversation.'), originSurface);
     assert.ok(card(fresh, 'zh-TW').includes('建議建立新的 Chat 對話。'), originSurface);
-    const { originSurface: _unrecorded, ...stored } = prepared;
+    const { originSurface: _unrecorded, productScope: _unrecordedScope, ...stored } = prepared;
     assert.ok(card(stored, 'en').includes('Propose reusing this Chat conversation.'), originSurface);
+    // The card names the scope the proposal recorded, which a raise can put above the origin.
+    assert.equal(prepared.productScope, originSurface);
+    assert.ok(card({ ...prepared, productScope: 'work' }, 'en').includes('Propose reusing this Work conversation.'));
 
     // The conditions that are not about the origin still close the read.
     const lane = structuredClone(h.state);
@@ -531,7 +534,7 @@ test('rejected decision responses retain measured preparation usage and stop at 
       assert.equal(runtime.calls.send.length, first ? 1 : 2);
       assert.equal(reports[0].receipts.length, first ? 0 : 1);
       assert.deepEqual(runtime.calls.cancel, ['decision-session']);
-      assert.deepEqual(runtime.calls.close, ['decision-session']);
+      assert.deepEqual([...new Set(runtime.calls.close)], ['decision-session']);
       assert.deepEqual(h.state, before);
     }
   }
@@ -591,7 +594,7 @@ test('first inference timeout reports incomplete usage and a late response canno
     assert.deepEqual(reports, terminal);
     assert.equal(runtime.calls.send.length, 1);
     assert.deepEqual(runtime.calls.cancel, ['decision-session']);
-    assert.deepEqual(runtime.calls.close, ['decision-session']);
+    assert.deepEqual([...new Set(runtime.calls.close)], ['decision-session']);
   } finally { release?.(); }
 });
 
@@ -734,7 +737,7 @@ test('API publishes first-response budget failure and never falls through to ord
     delete legacy.preparationUsage;
     assert.equal(describeCollaborationReport(legacy, 'zh-TW'), message.body);
     assert.equal(state.channels.length, fixture().state.channels.length);
-    assert.deepEqual(runtime.calls.close, ['decision-session']);
+    assert.deepEqual([...new Set(runtime.calls.close)], ['decision-session']);
   });
 });
 

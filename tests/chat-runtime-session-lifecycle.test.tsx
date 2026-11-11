@@ -15,7 +15,7 @@ import {
   setChannelParticipantLease,
 } from '../src/products/chat/state/model/index.ts';
 import { routeChannelMessage } from '../src/products/chat/state/runtime-dispatch/routing.ts';
-import { mergeCompletedDispatchState } from '../src/products/chat/state/runtime-dispatch/merge.ts';
+import { mergeCompletedDispatchState, createMergedDispatchChatStore } from '../src/products/chat/state/runtime-dispatch/merge.ts';
 import { wakeChannelEntryParticipant } from '../src/products/chat/state/runtime-session/activation.ts';
 import { resumeRuntimeSession } from '../src/products/chat/state/runtime-session/sessionResume.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
@@ -489,6 +489,95 @@ test('dispatch merge preserves ready lease advancement for the same runtime sess
     channel.messages.some((message) => message.senderKind === 'agent' && message.body === 'Done.'),
     true,
   );
+});
+
+for (const status of ['ready', 'error'] as const) {
+  test(`dispatch recovery survives a concurrent ${status} update to its old lease`, async () => {
+    const { state, channelId, participantId } = createDirectState();
+    const now = new Date('2026-11-11T03:39:00Z');
+    const runtime = resumableRuntimeStub();
+    const baseline = (await routeChannelMessage(state, channelId, { body: 'First' }, runtime, now)).state;
+    runtime.sentSessionIds.length = 0;
+    const latest = setChannelParticipantLease(baseline, channelId, participantId, {
+      status, lastUsedAt: '2026-11-11T03:40:00Z', lastError: status === 'error' ? 'old stream ended' : null,
+    }, now);
+    const recovered = setChannelParticipantLease(baseline, channelId, participantId, {
+      sessionId: 'recovered-session', status: 'ready', lastError: null,
+    }, now);
+    const merged = mergeCompletedDispatchState(latest, baseline, recovered, channelId, now);
+    assert.equal(resolveParticipantLeaseAttachment(requireChannel(merged, channelId), participantId)?.sessionId, 'recovered-session');
+    assert.equal(requireChannel(merged, channelId).catAssignments[0]?.execution.lease.sessionId, 'recovered-session');
+    const resume = runtime.resumeSession!.bind(runtime);
+    runtime.resumeSession = async (id, input) => ({ ...await resume(id, input), id });
+    const next = await routeChannelMessage(merged, channelId, { body: 'Continue' }, runtime, now);
+    assert.deepEqual(runtime.sentSessionIds, ['recovered-session']);
+    assert.equal(runtime.createCalls, 1, 'the next activity must not recover the old session again');
+    assert.equal(resolveParticipantLeaseAttachment(requireChannel(next.state, channelId), participantId)?.sessionId, 'recovered-session');
+  });
+}
+
+for (const status of ['error', 'closed'] as const) {
+  test(`an explicit owner turn can retry an existing ${status} lease`, async () => {
+    const { state, channelId, participantId } = createDirectState();
+    const now = new Date('2026-11-11T03:39:00Z');
+    const runtime = resumableRuntimeStub();
+    const first = await routeChannelMessage(state, channelId, { body: 'First' }, runtime, now);
+    const paused = setChannelParticipantLease(first.state, channelId, participantId, { status, lastError: 'retry fixture error' }, now);
+    runtime.sentSessionIds.length = 0;
+    const result = await routeChannelMessage(paused, channelId, { body: 'Retry' }, runtime, now);
+    assert.equal(result.results[0]?.status, 'sent');
+    assert.deepEqual(runtime.sentSessionIds, ['session-direct-1']);
+    assert.equal(runtime.createCalls, 1);
+  });
+}
+
+test('dispatch recovery preserves an explicit concurrent reset', () => {
+  const { state, channelId, participantId } = createDirectState();
+  const now = new Date('2026-11-11T03:39:00Z');
+  const baseline = setChannelParticipantLease(state, channelId, participantId, { sessionId: 'old-session', status: 'ready' }, now);
+  const reset = setChannelParticipantLease(baseline, channelId, participantId, { sessionId: null, status: 'closed' }, now);
+  const recovered = setChannelParticipantLease(baseline, channelId, participantId, { sessionId: 'replacement', status: 'ready' }, now);
+  const merged = mergeCompletedDispatchState(reset, baseline, recovered, channelId, now);
+  assert.equal(resolveParticipantLeaseAttachment(requireChannel(merged, channelId), participantId)?.sessionId, null);
+});
+
+test('a recovery merged after DM sleep keeps its new identity closed and releases its worker', async () => {
+  const { state, channelId, participantId } = createDirectState();
+  const now = new Date('2026-11-11T03:39:00Z');
+  const baseline = setChannelParticipantLease(state, channelId, participantId, { sessionId: 'old', status: 'ready' }, now);
+  const sleeping = setChannelParticipantLease(baseline, channelId, participantId, { status: 'closed' }, now);
+  const recovered = setChannelParticipantLease(baseline, channelId, participantId, { sessionId: 'new', status: 'ready' }, now);
+  const merged = mergeCompletedDispatchState(sleeping, baseline, recovered, channelId, now);
+  const lease = resolveParticipantLeaseAttachment(requireChannel(merged, channelId), participantId);
+  assert.equal(lease?.sessionId, 'new');
+  assert.equal(lease?.status, 'closed');
+  const runtime = resumableRuntimeStub();
+  let gateDepth = 0;
+  const writer = createMergedDispatchChatStore({
+    chatStore: new MemoryChatStore(sleeping), channelId, baselineState: baseline, now: () => now,
+    mutationGate: { async run(_key, operation) { gateDepth++; try { return await operation(); } finally { gateDepth--; } } },
+    runtimeClient: { async closeSession(id) { assert.ok(gateDepth > 0, 'cleanup stays under the channel gate'); await runtime.closeSession(id); } },
+  });
+  const persisted = await writer.write(recovered);
+  assert.equal(resolveParticipantLeaseAttachment(requireChannel(persisted, channelId), participantId)?.status, 'closed');
+  assert.deepEqual(runtime.closeCalls, ['new']);
+});
+
+test('a non-atomic dispatch store releases a candidate after the conversation was removed', async () => {
+  const { state, channelId, participantId } = createDirectState();
+  const now = new Date('2026-11-11T03:39:00Z');
+  const candidate = setChannelParticipantLease(state, channelId, participantId, { sessionId: 'candidate', status: 'ready' }, now);
+  const memory = new MemoryChatStore(state);
+  const removed = { ...state, channels: [] };
+  const runtime = resumableRuntimeStub();
+  const writer = createMergedDispatchChatStore({
+    chatStore: { read: async () => removed, write: async value => value,
+      readCore: memory.readCore.bind(memory), writeCore: memory.writeCore.bind(memory), updateCore: memory.updateCore.bind(memory) },
+    channelId, baselineState: state, now: () => now,
+    mutationGate: { run: async (_key, operation) => operation() }, runtimeClient: runtime,
+  });
+  assert.equal((await writer.write(candidate)).channels.length, 0);
+  assert.deepEqual(runtime.closeCalls, ['candidate']);
 });
 
 test('dispatch merge keeps terminal dispatch lease status for the same runtime session', () => {

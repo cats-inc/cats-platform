@@ -1,6 +1,9 @@
 import type { ProviderModelSelection } from '../shared/providerSelection.js';
 
-export const CATS_CORE_STATE_VERSION = 6 as const;
+// 7: SPEC-141 D9. A raised conversation's product scope must not be lowered by an older build,
+// which drops or ignores a value it does not know and writes its own copy back. Builds refuse a
+// file newer than their own version. 6: provider execution policies.
+export const CATS_CORE_STATE_VERSION = 7 as const;
 
 export const CORE_CANONICAL_ID_KEYS = [
   'agentId',

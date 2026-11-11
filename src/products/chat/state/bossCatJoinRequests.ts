@@ -17,7 +17,7 @@ import {
 import { isCompanionCat } from '../../../shared/companionRole.js';
 import { resolveChannelParticipantAssignments, resolveParticipantCatId } from '../shared/channelParticipants.js';
 import { isDirectLaneChannel, resolveChannelProductScope } from '../shared/channelTopology.js';
-import { productScopeIncludes } from '../../../shared/productScope.js';
+import { deriveProductScope, productScopeIncludes } from '../../../shared/productScope.js';
 import { BOSS_CAT_JOIN_PRIOR_MESSAGES, resolveBossCatJoinPolicy } from '../shared/bossCatJoins.js';
 import { BOSS_CAT_JOIN_REQUEST_METADATA_KEY } from '../shared/ownerStarted.js';
 import { readOwnerSetTitle } from './bossCatBoard.js';
@@ -44,6 +44,14 @@ export function buildBossCatJoinDigest(
   input: { laneId: string; conversationId: string; bossCatId: string },
 ): string {
   const boss = state.cats.find((cat) => cat.id === input.bossCatId);
+  // SPEC-141: what joining grants follows the conversation's scope (Code's tools from `code` up).
+  // A raise between the card and the owner's answer makes the card stale. The scope enters the
+  // digest only when it differs from the origin, so a card posted before scopes existed, which
+  // can only be at its origin's level, stays valid.
+  const target = state.channels.find((channel) => channel.id === input.conversationId);
+  const scope = target ? resolveChannelProductScope(target) : null;
+  const raisedScope = target && scope !== deriveProductScope({
+    originSurface: target.originSurface, directLane: isDirectLaneChannel(target) }) ? scope : null;
   return knowledgeDigest(JSON.stringify({
     conversationRevision: collaborationExecutionRevision(state, input.conversationId),
     bossCatId: input.bossCatId,
@@ -51,6 +59,7 @@ export function buildBossCatJoinDigest(
     modelSelection: boss?.defaultModelSelection ?? null,
     sourceConversationId: input.laneId,
     policy: resolveBossCatJoinPolicy(state),
+    ...(raisedScope ? { productScope: raisedScope } : {}),
   }));
 }
 

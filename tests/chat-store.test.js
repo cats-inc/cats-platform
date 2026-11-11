@@ -27,6 +27,7 @@ import { UUID_PATTERN } from '../build/server/products/chat/shared/channelPaths.
 import { buildChatWorkItemId, CHAT_ROOT_CONTAINER_ID } from '../build/server/shared/chatCoreIds.js';
 import { normalizeMessage } from '../build/server/products/chat/state/chat-snapshot/entities.js';
 import { FileChatStore } from '../build/server/products/chat/state/store.js';
+import { CATS_CORE_STATE_VERSION } from '../build/server/core/types.js';
 
 test('FileChatStore persists configured channels, cats, assignments, and messages to disk', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
@@ -90,7 +91,7 @@ test('FileChatStore persists configured channels, cats, assignments, and message
   const parsedState = JSON.parse(rawState);
   const createdChannel = parsedState.chat.channels.find((channel) => channel.id === channelId);
 
-  assert.equal(parsedState.version, 6);
+  assert.equal(parsedState.version, CATS_CORE_STATE_VERSION);
   assert.match(parsedState.chat.selectedChannelId, UUID_PATTERN);
   assert.equal(parsedState.chat.selectedChannelId, channelId);
   assert.equal(parsedState.chat.cats.length, 2);
@@ -1843,7 +1844,7 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
 
   const reloadedCore = await reloadedStore.readCore();
 
-  assert.equal(reloadedCore.version, 6);
+  assert.equal(reloadedCore.version, CATS_CORE_STATE_VERSION);
   assert.equal(reloadedCore.ownerProfile.displayName, 'Boss Owner');
   assert.equal(reloadedCore.guideCat?.name, 'Catlas');
   assert.equal(reloadedCore.guideCat?.status, 'dismissed');

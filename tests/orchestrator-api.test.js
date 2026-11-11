@@ -197,6 +197,7 @@ function createRuntimeStub(options = {}) {
       const session = {
         id: sessionId,
         provider: input.provider,
+        providerSessionPersistence: input.providerSessionPersistence,
         model: input.model ?? null,
         status: 'ready',
         cwd: input.cwd ?? path.join(tmpdir(), '.cats', 'runtime', 'sessions', sessionId),
@@ -249,6 +250,7 @@ function createRuntimeStub(options = {}) {
     async observeSession(sessionId) {
       return {
         session: {
+          ...sessions.get(sessionId)?.session,
           id: sessionId,
           inspection: {
             state: 'idle',

@@ -351,6 +351,7 @@ export async function finalizeParallelChatBodies(
 
       try {
         const dispatchChatStore = createMergedDispatchChatStore({
+          runtimeClient: context.dependencies.runtimeClient,
           chatStore: context.dependencies.chatStore,
           mutationGate: context.dependencies.mutationGate,
           channelId: dispatch.channelId,

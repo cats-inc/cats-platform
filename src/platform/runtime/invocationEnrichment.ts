@@ -6,6 +6,7 @@ import type {
   RuntimeSessionInvocationContext,
 } from './client.js';
 import { clearRuntimeAssistantFinalizationGates } from './assistantFinalization.js';
+import type { SessionExecutionPolicy } from '../../shared/providerInteractions.js';
 
 export type RuntimeInvocationEnrichmentPhase = 'session_create' | 'message_send';
 
@@ -24,6 +25,8 @@ export interface RuntimeInvocationEnrichmentChannel {
   repoPath?: string | null;
   runtimeWorkspaceAccess?: string | null;
   runtimePermissionMode?: string | null;
+  /** A provider execution policy replaces the permission mode when set. */
+  runtimeExecutionPolicy?: SessionExecutionPolicy | null;
 }
 
 export interface RuntimeInvocationEnrichmentInput {

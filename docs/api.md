@@ -668,7 +668,9 @@ Each channel summary and view also carries `productScope` (`chat`, `code` or
 - It decides which product lists the conversation and owns its routes, and
   whether its agents receive Code's tools. A direct message is always `chat`.
   `originSurface` stays as the record of where the conversation was created.
-- No route changes it yet.
+- Only the owner raises it, through
+  [Channel Product Scope](#channel-product-scope). It never falls: a write that
+  carries a lower value keeps the stored one.
 
 ### Channel Messages
 
@@ -795,6 +797,49 @@ but at least one must be present (`400 participant_update_required`):
   model selection or `null` (`400 participant_model_selection_invalid`).
 
 Returns `{ updated: true, channelId, participantId }`.
+
+### Channel Product Scope
+
+```text
+GET  /api/channels/{channelId}/product-scope
+POST /api/channels/{channelId}/product-scope
+```
+
+Raises a conversation's `productScope` from `chat` to `code` or `work`, or from
+`code` to `work` ([SPEC-141](specs/SPEC-141-conversation-product-scope.md)
+FR-20 to FR-26). Both routes require an owner principal: an account with the
+`owner` or `admin` role, on Desktop's cookie (with its CSRF token for `POST`) or
+on mobile's bearer. Anyone else gets `403 owner_required`. No agent tool,
+transport command, schedule or create request reaches the raise.
+
+`GET` returns what a raise would do:
+
+- `scope`, `origin`;
+- `canRaise`, and `refusal` with the code below when it cannot be raised;
+- `widerLevels`, the levels it can be raised to;
+- `participants` (`id`, `name`, `kind`), who work under the new level from
+  their next turn;
+- `workspace` (`repoPath`, `chatCwd`, `workspaceKind`, `workspaceAccess`,
+  `permissionMode`, `executionPolicy`), none of which a raise changes;
+- `livePreviewsEnabled`, Settings › Code's switch;
+- `revision`, the raise revision to send back.
+
+`POST` takes `{ "target": "code" | "work", "revision": "<from GET>" }`. Inside
+the conversation's mutation gate and the store's lock it rechecks the
+conversation, then sets the scope, adds one system line (metadata `event:
+"product_scope_raised"`, `fromScope`, `toScope`) and publishes the
+conversation's update events. Nothing else changes: participants, coordinator,
+folder, access, permission mode and origin stay, and no session restarts; each
+participant's next turn carries the new level's tools. It returns the `GET`
+payload for the raised conversation with `from` and `to`.
+
+Refusals change nothing:
+
+- `400 revision_required`, `400 invalid_scope`;
+- `404 channel_not_found`;
+- `409 not_wider` (the target is not wider than the current scope),
+  `409 archived`, `409 direct_lane`, `409 parallel_member`;
+- `409 revision_stale`: something the confirmation shows changed since `GET`.
 
 ### Channel Activations
 

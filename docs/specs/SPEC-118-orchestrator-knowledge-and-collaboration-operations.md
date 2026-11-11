@@ -277,6 +277,13 @@ workers participants of it, so on a Code conversation they receive what its
 participants receive, Code's session tools included. The card names the product
 of the conversation it would reuse.
 
+A proposal also records the source conversation's product scope (SPEC-141). A
+raise between the card and the owner's confirmation changes what the reused
+conversation's workers receive, so the confirmation is refused as
+`stale_context`. A proposal stored before the scope was recorded reads as its
+origin's level. An admitted collaboration, queued or running, does not check the
+scope and carries on after a raise.
+
 The owner's answer to a proposal card is that answer and nothing else. Its body
 is the card's own question and the chosen label, and in English those words
 ("Execute this scope and budget?", "Execute proposal") match Work's
@@ -469,8 +476,9 @@ conversation created on Chat unless it says what is new.
     failure, so the turn continues without a decision and nothing says why. With
     the decision flag off, the only one-shot decision is a companion lane's post
     decision, so a companion Cat on one of those providers no longer posts.
-    Whether to restore that, and how without giving the owner's text to a
-    session that skips approvals, is the owner's decision.
+    Decided 2026-11-11 (the owner left it to the implementer): it stays so.
+    Restoring it would put the owner's text back into a session that skips
+    approvals, the risk this fix removed.
   - Platform's client sends `sharingMode` only when no workspace kind is given,
     so `isolated` is not sent with this posture, as it was not for the Boss
     Cat's. The Runtime pinned for Desktop was not checked, and no live provider

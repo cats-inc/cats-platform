@@ -138,10 +138,20 @@ async function requestDecision(input: ProviderAgentAdapterInput): Promise<Provid
   const createdSession = input.target.sessionId
     ? null
     : await createProviderAgentSession(input);
+  let completed = false;
   try {
-    return await sendDecisionRequest(input, content, prepared, createdSession);
+    if (input.target.provider === 'codex') {
+      const session = createdSession ?? (await input.runtimeClient.observeSession(input.target.sessionId!)).session;
+      if (session.id !== (input.target.sessionId ?? createdSession?.id)
+        || session.provider !== 'codex' || session.providerSessionPersistence !== 'ephemeral') {
+        throw new ProviderAgentAdapterError('INVALID_RUNTIME_RESPONSE', 'Provider-agent decisions require an ephemeral Codex session.');
+      }
+    }
+    const result = await sendDecisionRequest(input, content, prepared, createdSession);
+    completed = true;
+    return result;
   } finally {
-    if (input.closeCreatedSession && createdSession) {
+    if (createdSession && (input.closeCreatedSession || !completed)) {
       await Promise.resolve()
         .then(() => input.runtimeClient.closeSession(createdSession.id))
         .catch(() => {});
@@ -281,6 +291,7 @@ function createProviderAgentSession(
 ): Promise<RuntimeSessionInfo> {
   const sessionInput = {
     ...(input.target.createInput ?? {}),
+    ...(input.target.provider === 'codex' ? { providerSessionPersistence: 'ephemeral' as const } : {}),
     provider: input.target.provider,
     instance: input.target.instance ?? undefined,
     model: input.target.model ?? undefined,

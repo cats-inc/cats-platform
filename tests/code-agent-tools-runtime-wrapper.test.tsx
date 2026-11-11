@@ -313,3 +313,25 @@ test('a grant issued without a folder gets one when Runtime can later say it', a
   await wrapped.sendMessage('rt-late', 'three', { context: MARKER_CONTEXT });
   assert.equal(answers, 2, 'once known, the folder is not asked for again');
 });
+
+test("a conversation's execution policy reaches the grant's shell posture", async () => {
+  // Without a shell the grant cannot start a dev preview (SPEC-123 CAP-08).
+  const enricher = createCodeAgentToolsInvocationEnricher();
+  const phase = { phase: 'message_send' as const };
+  const policy = (network: boolean, approval: 'never' | 'on-request') =>
+    ({ version: 1 as const, mode: 'explicit' as const, access: 'full-access' as const, network, approval });
+  const markerFor = (runtimeExecutionPolicy: ReturnType<typeof policy> | null) => readCodeAgentToolsInvocationMarker(
+    enricher.enrich({ originSurface: 'work', id: 'channel-p', runtimePermissionMode: 'skip', runtimeExecutionPolicy }, {}, phase)?.context);
+  assert.equal(markerFor(null)?.shellExecution, true);
+  assert.equal(markerFor(policy(true, 'never'))?.shellExecution, true);
+  assert.equal(markerFor(policy(false, 'never'))?.shellExecution, false);
+  assert.equal(markerFor(policy(true, 'on-request'))?.shellExecution, false);
+
+  // The create input carries the effective policy too.
+  const { grants, wrapper } = setup();
+  const { client, calls } = fakeClient();
+  await wrapper.wrapClient(client).createSession({ provider: 'codex', context: MARKER_CONTEXT,
+    executionPolicy: policy(false, 'never') } as RuntimeSessionCreateInput);
+  const server = calls.create[0]!.mcpServers!.find((entry) => entry.name === 'cats')!;
+  assert.equal(grants.resolve(server.auth.kind === 'bearer_env' ? server.auth.token : '')?.binding.shellExecution, false);
+});

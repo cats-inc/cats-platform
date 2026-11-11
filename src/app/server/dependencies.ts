@@ -457,7 +457,7 @@ export function resolveServerDependencies(
       ...request,
       senderName: request.senderName ?? undefined,
       chatStore: createLockedDispatchChatStore(dependencies.chat.chatStore, request.channelId,
-        await dependencies.chat.chatStore.read(), () => dependencies.shared.now?.() ?? new Date()),
+        await dependencies.chat.chatStore.read(), () => dependencies.shared.now?.() ?? new Date(), dependencies.shared.runtimeClient),
       channelRouter: orchestratorChannelRouter,
       plannerSurface: orchestratorPlannerSurface,
       runtimeClient: dependencies.shared.runtimeClient,

@@ -378,8 +378,10 @@ test('the create routes set the scope from the origin and ignore one named in th
 // FR-3: loading
 // ---------------------------------------------------------------------------------------------
 
-test('the state version is unchanged by the field', () => {
-  assert.equal(CATS_CORE_STATE_VERSION, 6);
+test('the state version rises with the raise, not with the field (D9)', () => {
+  // Phase 1 kept version 6: a dropped field derived again to the same value. Phase 5 adds the
+  // raise, so a raised conversation must not reach an older build, and the version is 7.
+  assert.equal(CATS_CORE_STATE_VERSION, 7);
 });
 
 test('loading a file written before the field existed and saving it adds the field and nothing else', async () => {
@@ -404,7 +406,7 @@ test('loading a file written before the field existed and saving it adds the fie
   await store.write(state);
   const saved = JSON.parse(await readFile(statePath, 'utf8'));
 
-  assert.equal(saved.version, 6);
+  assert.equal(saved.version, CATS_CORE_STATE_VERSION);
   assert.deepEqual(
     withoutWriteTime(withoutProductScope(saved)),
     withoutWriteTime(before),

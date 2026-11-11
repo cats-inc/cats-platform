@@ -247,6 +247,7 @@ async function continueAcknowledgedChannelDispatchInBackground(
 
   const dispatchNow = nowFrom(context.dependencies);
   const dispatchChatStore = createMergedDispatchChatStore({
+    runtimeClient: context.dependencies.runtimeClient,
     chatStore: context.dependencies.chatStore,
     mutationGate: context.dependencies.mutationGate,
     channelId,
@@ -607,7 +608,7 @@ async function handleRestSendMessage(
           ownerStarted: resolveOwnerStartedSurface(context.auth),
           companionStore: context.dependencies.companionStore,
           memoryService: context.dependencies.memoryService,
-          chatStore: createLockedDispatchChatStore(context.dependencies.chatStore, channelId, stateBefore, () => nowFrom(context.dependencies)),
+          chatStore: createLockedDispatchChatStore(context.dependencies.chatStore, channelId, stateBefore, () => nowFrom(context.dependencies), context.dependencies.runtimeClient),
           chatStatePath: context.dependencies.config.chatStatePath,
           runtimeDataDir: context.dependencies.config.runtimeDataDir,
           runtimeRecovery: {
@@ -760,7 +761,7 @@ async function handleRestRetryMessage(
         {
           companionStore: context.dependencies.companionStore,
           memoryService: context.dependencies.memoryService,
-          chatStore: createLockedDispatchChatStore(context.dependencies.chatStore, channelId, state, () => nowFrom(context.dependencies)),
+          chatStore: createLockedDispatchChatStore(context.dependencies.chatStore, channelId, state, () => nowFrom(context.dependencies), context.dependencies.runtimeClient),
           chatStatePath: context.dependencies.config.chatStatePath,
           runtimeDataDir: context.dependencies.config.runtimeDataDir,
           runtimeRecovery: {

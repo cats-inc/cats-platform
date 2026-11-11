@@ -91,6 +91,31 @@ Record the selected Runtime source and its upgrade capability; Desktop delegates
 Runtime-owned data migration to Runtime instead of rewriting the same file itself.
 These rules do not authorize version bumps or publication in a documentation task.
 
+**Chat state version 7 (product scope, SPEC-141 D9).** Platform `main` from
+PLAN-134 Phase 5 writes chat state version 7, so the next authorized
+Platform/Desktop release that contains it is the next minor, `0.16.0`, not a
+0.15.x patch. Its release notes must say that a profile it opens can no longer
+be opened by 0.15.x, which refuses a newer version and leaves the files alone.
+- The upgrade runs once per version 6 file it meets, and otherwise writes what
+  any save writes. It keeps the version 6 bytes first, also when it recovers
+  from a version 6 `.bak`, in `chat-state.local.json.pre-product-scope.bak`, or,
+  when that name already holds other bytes, beside it as
+  `chat-state.local.json.pre-product-scope.<digest>.bak`. Accept it on an
+  isolated copy of a real 0.15.x profile, including repeat startup and a failed
+  upgrade.
+- Going back to 0.15.x: stop Desktop, take the newest
+  `chat-state.local.json.pre-product-scope*.bak` and copy it over both
+  `chat-state.local.json` and `chat-state.local.json.bak`. Replacing the primary
+  alone is not enough, because 0.15.x also refuses to rotate a version 7 `.bak`.
+  Changes made after the upgrade are lost. A profile that came from version 5
+  has no such file; its version 5 bytes are in
+  `chat-state.local.json.pre-provider-policy.bak`, which 0.15.x upgrades to 6
+  again.
+- Opening the profile with the new build again later upgrades it again and keeps
+  the newer version 6 bytes beside the earlier ones.
+- Any build from `main` that opens a profile upgrades it, so do not point a
+  development build at a profile that an installed 0.15.x Desktop still uses.
+
 The next Platform npm publication, the 0.6.0 minor, adds the public
 `@cats-inc/cats-platform/app-sdk` entry
 ([ADR-123](decisions/123-expose-app-sdk-contract-as-platform-npm-subpath.md)). Its `exports`

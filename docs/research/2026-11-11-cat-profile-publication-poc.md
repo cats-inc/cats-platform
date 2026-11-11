@@ -3,6 +3,8 @@
 Implementation branches: Platform `feat/companion-profile-poc`, Runtime
 `feat/companion-media-poc`. Product scope and remaining acceptance are tracked in
 [PLAN-136](../plans/PLAN-136-cat-profile-posts-media-and-sharing.md).
+Implementation PRs: [Platform #443](https://github.com/cats-inc/cats-platform/pull/443)
+and [Runtime #221](https://github.com/cats-inc/cats-runtime/pull/221).
 
 ## Native generation
 
@@ -46,8 +48,10 @@ an exact-final-package acceptance claim.
 
 ## Checks and independent review
 
-- Platform server build and renderer `tsc --noEmit` passed; the standard candidate
-  also completed Runtime, server, renderer and Desktop builds.
+- Platform server build and full server/Desktop/renderer/test/mobile typecheck
+  passed. The shared Runtime client uploads a copied `ArrayBuffer`, without a
+  Node-only `Buffer` dependency in mobile consumers. The standard candidate also
+  completed Runtime, server, renderer and Desktop builds.
 - Initial affected Platform batch: 110/110 passed (ledger, existing direct image
   delivery, generation, media/store, heartbeat and initiative).
 - Added regression coverage passed: policy-account idempotency, commit-time share
@@ -55,8 +59,14 @@ an exact-final-package acceptance claim.
   final async notification lookup revocation, and real authenticated host plus
   dedicated ingress. Final core publication/MCP batch: 33/33 passed.
 - Bundled UI/post/ingress regression batch: 20/20 passed after marking native
-  Sharp external in the test bundle. Renderer bundle's optional Expo-config
-  warning remains; mobile dependencies were not installed for this Desktop PoC.
+  Sharp external in the test bundle. The initial bundle warned about an absent
+  optional Expo config; locked mobile dependencies were subsequently installed
+  for the successful full typecheck.
+- After rebasing onto main, the affected service/heartbeat/media/MCP batch passed
+  127/127, the bundled batch passed 20/20, and the dependency boundary test passed.
+  After the portable upload correction, the server rebuild and full typecheck
+  passed again, along with 35/35 Runtime-client/generation tests. These checks used
+  the repository's isolated test home rather than the owner's persisted state.
 - Runtime image/reference tests: 18/18 passed, including real local MP4 decode
   and frame extraction, legacy contract 2 and bounded native invocation arguments.
 - Independent agent review closed all reported P1/P2 findings; its isolated probes

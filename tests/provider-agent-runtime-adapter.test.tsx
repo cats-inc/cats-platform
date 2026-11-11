@@ -220,6 +220,7 @@ function createRuntimeStub(
       return {
         id: 'runtime-session-1',
         provider: input.provider,
+        providerSessionPersistence: input.providerSessionPersistence,
         model: input.model ?? null,
         status: 'ready',
         cwd: input.cwd ?? null,
@@ -245,8 +246,8 @@ function createRuntimeStub(
         tokensUsed: 2,
       };
     },
-    async observeSession() {
-      return { session: {} };
+    async observeSession(id: string) {
+      return { session: { id, provider: 'codex', providerSessionPersistence: 'ephemeral' } };
     },
     async streamSession() {},
     async createWakeup() {
@@ -293,6 +294,7 @@ test('provider-agent adapter creates a supervised runtime session and validates 
   assert.equal(result.sessionId, 'runtime-session-1');
   assert.equal(result.decision.kind, 'semantic_plan');
   assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.equal((runtimeClient.createdSessions[0] as RuntimeSessionCreateInput).providerSessionPersistence, 'ephemeral');
   assert.equal(runtimeClient.sentMessages.length, 1);
   assert.equal(evidenceSink.read().length, 2);
 
@@ -349,6 +351,49 @@ test('provider-agent adapter can use an existing runtime session', async () => {
   assert.equal(runtimeClient.createdSessions.length, 0);
   assert.equal(runtimeClient.sentMessages[0]?.sessionId, 'existing-session');
 });
+
+test('a collaboration decision closes an owned session with a mismatched provider before send', async () => {
+  const client = createRuntimeStub(semanticPlanDecision());
+  const create = client.createSession.bind(client);
+  const closed: string[] = [];
+  client.createSession = async (input) => ({ ...await create(input), provider: 'claude' });
+  client.closeSession = async (id) => { closed.push(id); };
+  await assert.rejects(requestProviderAgentDecision({
+    runtimeClient: client, observation: observation(), closeCreatedSession: false,
+    target: { provider: 'codex' },
+    supervision: { product: 'cats-chat', surface: 'decision', runId: 'run-1',
+      actionId: 'action-1', actorRef: 'agent:codex', reason: 'decision' },
+  }), /ephemeral Codex session/);
+  assert.equal(client.sentMessages.length, 0);
+  assert.deepEqual(closed, ['runtime-session-1']);
+});
+
+for (const persistence of [undefined, 'persistent'] as const) {
+  test(`provider-agent rejects ${persistence ?? 'missing'} persistence before sending and closes only its own session`, async () => {
+    for (const existing of [false, true]) {
+      const client = createRuntimeStub(semanticPlanDecision());
+      const closed: string[] = [];
+      const create = client.createSession.bind(client);
+      const observe = client.observeSession.bind(client);
+      client.createSession = async (input) => ({ ...await create(input), providerSessionPersistence: persistence });
+      client.observeSession = async (id) => {
+        const result = await observe(id);
+        return { ...result, session: { ...result.session, providerSessionPersistence: persistence } };
+      };
+      client.closeSession = async (id) => { closed.push(id); };
+      await assert.rejects(requestProviderAgentDecision({
+        runtimeClient: client, observation: observation(),
+        target: { provider: 'codex', model: 'gpt-5.4',
+          ...(existing ? { sessionId: 'existing-session' } : { createInput: { providerSessionPersistence: 'persistent' } }) },
+        supervision: { product: 'cats-chat', surface: 'decision', runId: 'run-1',
+          actionId: 'action-1', actorRef: 'agent:codex', reason: 'decision' },
+      }), /ephemeral Codex session/);
+      assert.equal(client.sentMessages.length, 0);
+      assert.deepEqual(closed, existing ? [] : ['runtime-session-1']);
+      if (!existing) assert.equal((client.createdSessions[0] as RuntimeSessionCreateInput).providerSessionPersistence, 'ephemeral');
+    }
+  });
+}
 
 test('provider-agent adapter preserves the provider-authored semantic plan', async () => {
   const providerAuthoredDecision: ProviderAgentSemanticPlanDecision = {
