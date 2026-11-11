@@ -213,11 +213,14 @@ export function findLastOwnerMessageAt(lane: OwnerChannel): Date | null {
  * latest message, or turning own initiative on). The lane is the record, so a
  * restart is never an answer. A good night expects no answer and is not counted.
  */
-export function countUnansweredHeartbeats(lane: Pick<ChatChannelState, 'messages'>, since: number): number {
-  let count = 0;
+export function countUnansweredHeartbeats(lane: Pick<ChatChannelState, 'messages'>, since: number,
+  publications: Array<{ actionId: string; createdAt: string; kind: string }> = []): number {
+  const actions = new Set<string>();
   for (const message of lane.messages) {
     const kind = readHeartbeatKind(message);
-    if ((kind === 'wake' || kind === 'regular') && Date.parse(message.createdAt) > since) count += 1;
+    const stamp = message.metadata?.[COMPANION_HEARTBEAT_METADATA_KEY] as { actionId?: string } | undefined;
+    if ((kind === 'wake' || kind === 'regular') && Date.parse(message.createdAt) > since) actions.add(stamp?.actionId ?? message.id);
   }
-  return count;
+  for (const post of publications) if (post.kind !== 'bedtime' && Date.parse(post.createdAt) > since) actions.add(post.actionId);
+  return actions.size;
 }

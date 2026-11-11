@@ -38,6 +38,9 @@ export interface CatImageCaller {
 }
 
 export interface CatImageJob extends MediaImageExecution {
+  /** Profile publication owns the eventual post and notification, never direct image delivery. */
+  deliveryMode?: 'profile';
+  publicationLimits?: { dailyLimit: number; intervalMinutes: number };
   schemaVersion: 1;
   requestId: string;
   accountId: string;

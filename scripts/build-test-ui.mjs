@@ -28,7 +28,7 @@ if (entryPoints.length === 0) {
 await build({
   entryPoints,
   bundle: true,
-  external: ['jsdom', 'typescript', '#cats-app-package'],
+  external: ['jsdom', 'typescript', 'sharp', '#cats-app-package'],
   platform: 'node',
   format: 'esm',
   outbase: testsDir,

@@ -65,7 +65,7 @@ const MAX_SESSIONS_PATTERN = /\bmax sessions\b[^.]*\breached\b/iu;
 
 export interface CompanionLifeLoopDependencies {
   readChatState(): Promise<ChatState>;
-  readCompanionSnapshot(): Promise<Pick<CompanionSnapshot, 'boxes'>>;
+  readCompanionSnapshot(): Promise<Pick<CompanionSnapshot, 'boxes'> & Partial<Pick<CompanionSnapshot, 'derived'>>>;
   runtimeClient: Pick<RuntimeClient, 'observeSession' | 'getHealth'>;
   activityStore?: CompanionActivityStore;
   /** An admitted image may temporarily own this Cat's idle Runtime slot. */
@@ -143,6 +143,7 @@ function resolveRestStartedAt(bedtime: string, now: Date): Date {
 
 export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependencies) {
   const memory = new Map<string, CatLifeMemory>();
+  let publishedHeartbeats: CompanionSnapshot['derived'] = [];
   const random = dependencies.random ?? Math.random;
 
   function rememberFor(catId: string): CatLifeMemory {
@@ -215,7 +216,9 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
     const lastOwnerAt = findLastOwnerMessageAcross(state.channels, cat.id);
     const enabledAt = life.enabledAt ? Date.parse(life.enabledAt) : Number.NaN;
     const answeredAt = Math.max(lastOwnerAt, Number.isFinite(enabledAt) ? enabledAt : Number.NEGATIVE_INFINITY);
-    return { mode, answeredAt, lastOwnerAt, unanswered: countUnansweredHeartbeats(lane, answeredAt) };
+    const publications = publishedHeartbeats.filter(row => row.catId === cat.id && typeof row.metadata.profileHeartbeatActionId === 'string')
+      .map(row => ({ actionId: String(row.metadata.profileHeartbeatActionId), createdAt: row.createdAt, kind: String(row.metadata.profileHeartbeatKind) }));
+    return { mode, answeredAt, lastOwnerAt, unanswered: countUnansweredHeartbeats(lane, answeredAt, publications) };
   }
 
   function forgetAwake(remembered: CatLifeMemory): void {
@@ -229,6 +232,7 @@ export function createCompanionLifeLoop(dependencies: CompanionLifeLoopDependenc
       dependencies.readChatState(),
       dependencies.readCompanionSnapshot(),
     ]);
+    publishedHeartbeats = snapshot.derived ?? [];
     const entries: CompanionLifeTickEntry[] = [];
     let runtimeReachable: boolean | null = null;
     const ensureRuntimeReachable = async (): Promise<boolean> => {

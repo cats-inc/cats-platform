@@ -97,7 +97,7 @@ export async function appendCompanionPostResultSidecar(input: {
   if (!input.companionStore) {
     return ignore('missing_companion_store');
   }
-  const toolInput = readPostInput(decision.input, cat.id);
+  const toolInput = readPostInput(decision.input, cat.id, `turn:${input.channelId}:${input.userMessage.id}`);
   if (!toolInput) {
     return ignore('input_invalid');
   }
@@ -173,7 +173,7 @@ export async function appendCompanionPostResultSidecar(input: {
   };
 }
 
-function readPostInput(value: unknown, catId: string): CompanionContentPostCreateInput | null {
+function readPostInput(value: unknown, catId: string, requestKey: string): CompanionContentPostCreateInput | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null;
   }
@@ -184,6 +184,7 @@ function readPostInput(value: unknown, catId: string): CompanionContentPostCreat
 
   return {
     catId,
+    requestKey,
     body: record.body,
     ...(typeof record.title === 'string' ? { title: record.title } : {}),
     ...(Array.isArray(record.tags)

@@ -104,7 +104,8 @@ function collectDerivedIdsForSource(
   sourceId: string,
 ): string[] {
   return snapshot.derived
-    .filter((record) => record.boxId === box.id && record.sourceIds.includes(sourceId))
+    .filter((record) => record.boxId === box.id && record.sourceIds.includes(sourceId)
+      && record.metadata.profileSurface !== 'post')
     .map((record) => record.id);
 }
 
@@ -118,7 +119,7 @@ function replaceDerivedForSource(
   snapshot.derived = [
     ...nextDerived,
     ...snapshot.derived.filter((record) =>
-      !(record.boxId === box.id && record.sourceIds.includes(sourceId)),
+      !(record.boxId === box.id && record.sourceIds.includes(sourceId) && record.metadata.profileSurface !== 'post'),
     ),
   ];
   box.derivedIds = [
@@ -240,7 +241,7 @@ export function deleteCompanionSource(
   box.sourceIds = box.sourceIds.filter((id) => id !== sourceId);
   box.derivedIds = box.derivedIds.filter((id) => !removedDerivedIds.includes(id));
   snapshot.derived = snapshot.derived.filter((record) =>
-    !(record.boxId === box.id && record.sourceIds.includes(sourceId)),
+    !(record.boxId === box.id && record.sourceIds.includes(sourceId) && record.metadata.profileSurface !== 'post'),
   );
   box.updatedAt = nowIso;
   snapshot.updatedAt = nowIso;

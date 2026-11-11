@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
-  CompanionDerivedRecord,
+  CompanionPostAttachment,
   CompanionSourceKind,
   CompanionSourceRecord,
 } from './contracts.js';
 import { COMPANION_PROFILE_METADATA_KEYS } from './profileReadModel.js';
+import { CompanionPostService, CompanionPostError } from './postService.js';
 import type { CompanionBoxStore } from '../state/companion-box/index.js';
 import {
   DEFAULT_SUPERVISION_SCHEMA_VERSION,
@@ -73,6 +74,8 @@ export interface CompanionContentReadResult extends CompanionContentListItem {
 
 export interface CompanionContentPostCreateInput {
   catId: string;
+  requestKey?: string;
+  attachments?: CompanionPostAttachment[];
   title?: string | null;
   body: string;
   sourceIds?: string[];
@@ -357,14 +360,17 @@ function createCompanionContentPostCreateExecutor(input: {
       );
     }
 
-    const sources = await input.companionStore.listSources(
-      normalized.result.catId,
-      input.now?.(),
-    );
-    const sourceById = new Map(sources.map((source) => [source.id, source]));
+    const snapshot = await input.companionStore.readSnapshot();
+    const sourceById = new Map(snapshot.sources.filter(source => source.catId === normalized.result.catId)
+      .map((source) => [source.id, source]));
+    const receipt = snapshot.publicationIntents.find(row => row.catId === normalized.result.catId
+      && row.requestKey === rawInput.requestKey);
     for (const sourceId of normalized.result.sourceIds) {
       const source = sourceById.get(sourceId) ?? null;
       if (!source) {
+        // A full-Cat scope may replay an immutable receipt after its lineage was removed.
+        if (receipt?.sourceIds.includes(sourceId) && !scope.sourceKinds?.length
+          && (!scope.sourceIds?.length || scope.sourceIds.includes(sourceId))) continue;
         return rejected('E_PRECHECK_FAILED', `Companion content source not found: ${sourceId}`);
       }
       if (!sourceAllowedByScope(scope, source)) {
@@ -376,30 +382,15 @@ function createCompanionContentPostCreateExecutor(input: {
     }
 
     const nowIso = (input.now?.() ?? new Date()).toISOString();
-    const box = await input.companionStore.getBox(normalized.result.catId, input.now?.());
-    const record: CompanionDerivedRecord = {
-      id: `companion-derived-${randomUUID()}`,
-      boxId: box.id,
-      catId: normalized.result.catId,
-      kind: 'normalized_note',
-      sourceIds: normalized.result.sourceIds,
-      title: normalized.result.title,
-      content: normalized.result.body,
-      tags: normalized.result.tags,
-      metadata: {
-        [COMPANION_PROFILE_METADATA_KEYS.surface]: COMPANION_PROFILE_METADATA_KEYS.postSurface,
-        [COMPANION_PROFILE_METADATA_KEYS.postStatus]: 'active',
-        [COMPANION_PROFILE_METADATA_KEYS.publishedAt]: nowIso,
-      },
-      createdAt: nowIso,
-      updatedAt: nowIso,
-    };
-
-    const stored = await input.companionStore.upsertDerived(
-      normalized.result.catId,
-      record,
-      new Date(nowIso),
-    );
+    let stored;
+    try {
+      stored = await new CompanionPostService(input.companionStore, () => new Date(nowIso))
+        .create(normalized.result.catId, { ...normalized.result,
+          requestKey: rawInput.requestKey ?? randomUUID(), attachments: rawInput.attachments });
+    } catch (error) {
+      if (error instanceof CompanionPostError) return rejected('E_PRECHECK_FAILED', error.code);
+      throw error;
+    }
 
     return {
       status: 'applied',
@@ -411,7 +402,7 @@ function createCompanionContentPostCreateExecutor(input: {
         bodyPreview: createPreview(stored.content, 240),
         sourceIds: [...stored.sourceIds],
         tags: [...stored.tags],
-        publishedAt: nowIso,
+        publishedAt: String(stored.metadata[COMPANION_PROFILE_METADATA_KEYS.publishedAt] ?? stored.createdAt),
       },
     };
   };

@@ -165,6 +165,7 @@ import type { TelegramCommandPort } from '../../../platform/transports/telegram/
 
 export interface ChatApiDependencies {
   isPluginSkillAvailable?: (skillId: string) => boolean;
+  companionPublications?: import('./companionPublications.js').ChatCompanionPublications;
   catImages?: import('./catImages.js').ChatCatImages;
   runtimeDataResetAvailable?: boolean;
   withPlatformDataReset?: import('../../../shared/platformDataReset.js').PlatformResetCoordinator;

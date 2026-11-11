@@ -10570,7 +10570,11 @@ test('a default participant without a cwd gets an isolated runtime session', asy
       const channelResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`);
       assert.equal(channelResponse.status, 200);
       const payload = await channelResponse.json();
+      const reply = payload.channel.messages.findLast(
+        (message) => message.metadata?.targetKind === 'cat',
+      );
       return payload.channel.assignedParticipants[0]?.execution.lease.sessionId === 'session-1'
+        && reply?.senderKind === 'agent'
         ? payload
         : null;
     });

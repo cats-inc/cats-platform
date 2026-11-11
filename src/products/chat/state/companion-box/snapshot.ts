@@ -23,6 +23,7 @@ import {
 } from '../../companion/validation.js';
 import { createDefaultCompanionResponseProfile } from '../../companion/sourceIngestion.js';
 import { normalizeCompanionLifeProfile } from '../../companion/life/profile.js';
+import { emptyPublicationState, normalizePublicationState } from './publicationSnapshot.js';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -76,12 +77,13 @@ export function resolveCompanionStorageRoot(snapshotPath: string): string {
 
 export function createEmptySnapshot(nowIso: string): CompanionSnapshot {
   return {
-    version: 1,
+    version: 2,
     updatedAt: nowIso,
     boxes: [],
     sources: [],
     derived: [],
     memory: [],
+    ...emptyPublicationState(),
   };
 }
 
@@ -124,6 +126,7 @@ function normalizeBox(rawBox: unknown, nowIso: string): CompanionBox | null {
   }
 
   return {
+    ...boxRecord,
     id,
     catId,
     sourceIds: readStringArray(boxRecord.sourceIds),
@@ -161,6 +164,7 @@ function normalizeSource(rawSource: unknown, nowIso: string): CompanionSourceRec
   }
 
   return {
+    ...record,
     id,
     boxId,
     catId,
@@ -211,6 +215,7 @@ function normalizeDerived(rawRecord: unknown, nowIso: string): CompanionDerivedR
   }
 
   return {
+    ...record,
     id,
     boxId,
     catId,
@@ -249,6 +254,7 @@ function normalizeMemory(rawRecord: unknown, nowIso: string): CompanionMemoryRec
   }
 
   return {
+    ...record,
     id,
     boxId,
     catId,
@@ -270,12 +276,17 @@ export function normalizeSnapshot(
   nowIso: string = new Date().toISOString(),
 ): CompanionSnapshot {
   const snapshotRecord = asRecord(rawSnapshot);
-  if (!snapshotRecord) {
-    return createEmptySnapshot(nowIso);
+  if (!snapshotRecord || ![1, 2].includes(Number(snapshotRecord.version))
+    || typeof snapshotRecord.version !== 'number') {
+    throw new Error('Unsupported companion snapshot version; the original data was preserved.');
   }
 
-  return {
-    version: 1,
+  for (const name of ['boxes', 'sources', 'derived', 'memory']) {
+    if (!Array.isArray(snapshotRecord[name])) throw new Error(`Invalid companion collection: ${name}`);
+  }
+  const snapshot: CompanionSnapshot = {
+    ...snapshotRecord,
+    version: 2,
     updatedAt: readString(snapshotRecord.updatedAt, nowIso),
     boxes: Array.isArray(snapshotRecord.boxes)
       ? snapshotRecord.boxes
@@ -297,7 +308,16 @@ export function normalizeSnapshot(
           .map((record) => normalizeMemory(record, nowIso))
           .filter((record): record is CompanionMemoryRecord => record !== null)
       : [],
+    ...(snapshotRecord.version === 1 ? emptyPublicationState() : normalizePublicationState(snapshotRecord)),
   };
+  for (const name of ['boxes', 'sources', 'derived', 'memory'] as const) {
+    const before = snapshotRecord[name] as unknown[];
+    if (snapshot[name].length !== before.length
+      || new Set(snapshot[name].map(row => row.id)).size !== before.length) {
+      throw new Error(`Invalid companion collection: ${name}; refusing a lossy upgrade.`);
+    }
+  }
+  return snapshot;
 }
 
 export function buildStorageLayout(catId: string, snapshotPath: string): CompanionStorageLayout {

@@ -22,7 +22,8 @@ import { buildRoomMessageMutationDetail, publishRoomMutation } from './transport
 import type { ChatApiDependencies, ChatApiRouteContext } from './routeSupport.js';
 
 type Dependencies = Pick<ChatApiDependencies, 'chatStore' | 'runtimeClient' | 'config' | 'mutationGate' | 'telegramRelay' | 'eventHub' | 'now'>
-  & Partial<Pick<ChatApiDependencies, 'authStore'>> & { isTurnActive?(sessionId: string): boolean };
+  & Partial<Pick<ChatApiDependencies, 'authStore'>> & { isTurnActive?(sessionId: string): boolean;
+    preparePublicationSources?(job: CatImageJob): Promise<void>; authorizePublication?(caller: CatImageCaller): Promise<void> };
 const editable = ['enabled', 'manual', 'proactive', 'targetId', 'profileId', 'profileRevision', 'agentConfigId',
   'dailyLimit', 'totalLimit', 'minIntervalMinutes', 'timeZone', 'expiresAt', 'bindingId'] as const;
 function presentPolicy(policy: CatImagePolicy | undefined) {
@@ -88,6 +89,15 @@ export function createChatCatImages(dependencies: Dependencies) {
     if (!ledger) {
       ledger = new CatImageLedger(filename);
       execution = new CatImageService({ ledger, runtimeClient: dependencies.runtimeClient, assetsDir, now,
+        prepareSources: job => dependencies.preparePublicationSources?.(job) ?? Promise.reject(new MediaImageError('image_source_unavailable', 503)),
+        async authorizePublication(caller) {
+          const source = await context(caller.catId);
+          const ownerProfile = caller.runtimeSessionId === `owner-profile:${caller.catId}` && caller.trigger === 'manual';
+          if (stopped || !source.cat || source.cat.status !== 'active' || source.core.ownerProfile.actorId !== caller.ownerActorId
+            || (!ownerProfile && (!source.lane || !['active', 'watching'].includes(source.lane.status)
+              || buildChatConversationId(source.lane.id) !== caller.conversationId))) throw new MediaImageError('image_not_authorized', 403);
+          await dependencies.authorizePublication?.(caller);
+        },
         async canReleaseTurn(sessionId) {
           if (dependencies.isTurnActive?.(sessionId)) return false;
           try {
@@ -168,6 +178,8 @@ export function createChatCatImages(dependencies: Dependencies) {
   }
 
   return {
+    releaseTurn(id: string) { execution?.releaseTurn(id); },
+    async cancelTurn(id: string) { await execution?.cancelTurn(id); },
     service(): CatImageService { open(); return execution!; },
     async resolveTurn(sessionId: string, input: RuntimeSendMessageInput): Promise<CatImageTurnResolution | null> {
       if (!ledger && !existsSync(filename)) return null;

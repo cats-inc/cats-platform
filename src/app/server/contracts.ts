@@ -100,6 +100,7 @@ export interface SharedServerDependencies {
 
 export interface ChatServerDependencies {
   catImages?: import('../../products/chat/api/catImages.js').ChatCatImages;
+  companionPublications?: import('../../products/chat/api/companionPublications.js').ChatCompanionPublications;
   chatStore: ChatStore;
   mutationGate?: AsyncKeyedGate;
   companionStore?: CompanionBoxStore;

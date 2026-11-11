@@ -1144,3 +1144,89 @@
   gap: 8px;
   margin-top: 4px;
 }
+
+/* Directory profile timeline */
+.companionPublicationSettings label { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 12px; }
+.companionPublicationSettings input[type='number'] { width: 70px; margin-left: auto; border: 1px solid var(--border); background: var(--panel-hover); color: var(--text); border-radius: 5px; padding: 5px; }
+.companionTimeline { display: grid; grid-template-columns: minmax(180px, 0.65fr) minmax(0, 1.65fr); align-items: start; gap: 24px; max-width: 1120px; margin: 0 auto; }
+.companionTimelineMain { min-width: 0; }
+.companionTimelineIntro, .companionPostComposer, .companionProfilePostCard { background: var(--surface, var(--app-bg)); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 3px 14px #00000006; }
+.companionTimelineIntro { padding: 22px; }
+.companionTimelineIntro h2, .companionTimelineHeading h2 { font-size: 17px; margin: 0; }
+.companionTimelineIntro p { font-size: 13px; line-height: 1.8; color: var(--muted); margin: 10px 0 0; }
+.companionTimelinePhotoPreview { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; margin-top: 20px; }
+.companionTimelinePhotoPreview button { padding: 0; border: 0; background: none; cursor: pointer; }
+.companionTimelinePhotoPreview img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; display: block; }
+.companionTimelineHeading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; margin: 24px 2px 14px; }
+.companionTimelineHeading span { font-size: 12px; color: var(--muted); }
+.companionProfilePostList { display: grid; gap: 20px; }
+.companionProfilePostCard { min-width: 0; overflow: visible; }
+.companionProfilePostHeader { display: flex; align-items: center; gap: 11px; padding: 18px 20px 12px; }
+.companionPostAvatar { object-fit: cover; flex-shrink: 0; width: 42px; height: 42px; }
+.companionPostIdentity { flex: 1; min-width: 0; }
+.companionPostIdentity strong { display: block; font-size: 14px; margin-bottom: 4px; }
+.companionProfilePostCard .companionPostMeta { display: block; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.companionPostAi { font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 20px; padding: 4px 8px; white-space: nowrap; }
+.companionPostText { padding: 0 20px 16px; }
+.companionProfilePostTitle { font-size: 16px; line-height: 1.6; margin: 0 0 6px; }
+.companionProfilePostBody { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.8; margin: 0; }
+.companionProfilePostMediaGrid { display: grid; gap: 3px; background: var(--panel-hover); grid-template-columns: 1fr; }
+.companionProfilePostMediaGrid[data-count='2'], .companionProfilePostMediaGrid[data-count='3'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.companionProfilePostMediaGrid > button { border: 0; padding: 0; background: none; cursor: zoom-in; overflow: hidden; }
+.companionProfilePostMediaGrid img { display: block; width: 100%; height: auto; max-height: 650px; object-fit: contain; }
+.companionProfilePostMediaGrid[data-count='2'] img, .companionProfilePostMediaGrid[data-count='3'] img { height: 100%; aspect-ratio: 1; object-fit: cover; }
+.companionProfilePostMediaGrid video { display: block; width: 100%; max-height: 650px; background: #151515; }
+.companionProfilePostTags { display: flex; gap: 8px; padding: 12px 20px 0; color: var(--accent); font-size: 12px; flex-wrap: wrap; }
+.companionProfilePostCard .companionPostActions { padding: 7px 12px; margin-top: 12px; }
+.companionPostActions > button { flex: 1; padding: 9px 4px; font: inherit; font-size: 12px; color: var(--muted); border: none; border-radius: 6px; background: transparent; cursor: pointer; }
+.companionPostActions > button:hover { background: var(--panel-hover); color: var(--text); }
+.companionPostMenu { position: relative; }
+.companionPostMenu summary { list-style: none; cursor: pointer; color: var(--muted); padding: 6px; border-radius: 6px; }
+.companionPostMenu summary::-webkit-details-marker { display: none; }
+.companionPostMenu[open] > div { z-index: 3; display: grid; position: absolute; right: 0; min-width: 150px; background: var(--surface, var(--app-bg)); border: 1px solid var(--border); box-shadow: 0 8px 24px #0002; padding: 6px; border-radius: 8px; }
+.companionPostMenu button { padding: 9px 12px; text-align: start; color: var(--text); background: none; border: 0; cursor: pointer; font-size: 12px; }
+.companionPostMenu button:hover { background: var(--panel-hover); }
+.companionPostComposer { padding: 20px; }
+.companionComposerIdentity { display: flex; gap: 12px; }
+.companionComposerField { flex: 1; min-width: 0; }
+.companionComposerLabel { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.companionComposerField textarea, .companionPostEditor textarea { box-sizing: border-box; display: block; width: 100%; resize: vertical; border: 0; background: var(--panel-hover); color: var(--text); padding: 12px 14px; border-radius: 10px; font: inherit; font-size: 14px; line-height: 1.7; }
+.companionComposerField textarea::placeholder { color: var(--muted); }
+.companionComposerActions { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border); margin-top: 16px; padding-top: 12px; }
+.companionPhotoButton { display: inline-flex; gap: 7px; align-items: center; cursor: pointer; font-size: 13px; color: var(--muted); }
+.companionPhotoButton input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.companionPhotoButton:focus-within { outline: 2px solid var(--accent); outline-offset: 4px; }
+.companionPhotoButton[aria-disabled='true'] { opacity: 0.5; cursor: default; }
+.companionPhotoButton > span { font-size: 23px; color: var(--accent); }
+.companionComposerPreviews { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.companionComposerPreviews > div { position: relative; }
+.companionComposerPreviews img { width: 90px; height: 90px; border-radius: 8px; object-fit: cover; }
+.companionComposerPreviews button { position: absolute; top: 3px; right: 3px; border: 0; border-radius: 50%; width: 22px; height: 22px; background: #111a; color: white; cursor: pointer; }
+.companionPostEditor { padding: 0 20px 16px; }
+.companionPostEditor > div { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+.companionPostEditor button, .companionPostShare button { border: 1px solid var(--border); border-radius: 6px; background: var(--panel-hover); color: var(--text); padding: 7px 10px; cursor: pointer; }
+.companionPostShare { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 20px; font-size: 12px; }
+.companionPostShare input { flex: 1; min-width: 100px; border: 1px solid var(--border); background: var(--panel-hover); color: var(--text); padding: 8px; border-radius: 6px; }
+.companionPostNotice, .companionPostError { font-size: 12px; padding: 10px 20px; margin: 0; color: var(--muted); line-height: 1.6; }
+.companionPostError { color: var(--danger); }
+.companionPhotoViewer { padding: 0; border: 0; background: transparent; max-width: 94vw; max-height: 92vh; overflow: visible; }
+.companionPhotoViewer::backdrop { background: #101013e8; }
+.companionPhotoViewer img { max-width: 94vw; max-height: 88vh; display: block; object-fit: contain; }
+.companionPhotoViewer button { position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border: 0; border-radius: 50%; font-size: 24px; color: white; background: #181818c9; cursor: pointer; }
+.companionProfileMediaList { display: grid; list-style: none; padding: 0; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.companionProfileMediaTile img, .companionProfileMediaTile video { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 9px; }
+@media (max-width: 900px) { .companionTimeline { grid-template-columns: minmax(0, 1fr); max-width: 720px; } .companionTimelineIntro { display: none; } }
+@media (max-width: 520px) { .companionProfilePostHeader { padding: 14px 12px 10px; } .companionPostText { padding: 0 12px 12px; } .companionPostComposer { padding: 14px; } .companionPostAi { font-size: 10px; } .companionTimelineHeading span { display: none; } }
+
+.companionAiComposer { border-top: 1px solid var(--line, #e4ded8); margin-top: 12px; padding-top: 14px; }
+.companionAiComposer summary { cursor: pointer; color: var(--accent, #9c5d38); font-weight: 600; }
+.companionAiFields { display: grid; gap: 14px; padding: 16px 0 0; }
+.companionAiFields label { display: grid; gap: 6px; font-size: 13px; }
+.companionAiFields textarea, .companionAiFields select { width: 100%; border: 1px solid var(--line, #e4ded8); border-radius: 9px; padding: 10px; background: var(--surface, #fff); color: inherit; }
+.companionReferencePicker { display: flex; flex-wrap: wrap; gap: 8px; max-height: 220px; overflow: auto; }
+.companionReferencePicker label { width: 80px; padding: 5px; border: 2px solid transparent; border-radius: 10px; cursor: pointer; }
+.companionReferencePicker label.selected { border-color: var(--accent, #9c5d38); }
+.companionReferencePicker img { width: 66px; height: 66px; object-fit: cover; border-radius: 6px; }
+.companionPendingPost { border: 1px dashed var(--accent, #9c5d38); border-radius: 14px; padding: 20px; background: var(--surface, #fff); }
+.companionPendingPost p { white-space: pre-wrap; font-size: 14px; }
+.companionComposerPreviews video { max-width: 160px; max-height: 130px; border-radius: 8px; }

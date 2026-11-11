@@ -114,7 +114,8 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.1",
     "remark-breaks": "^4.0.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@electron/asar": "3.4.1",
@@ -134,7 +135,6 @@
     "png-to-ico": "^3.0.1",
     "rcedit": "^5.0.2",
     "remark-parse": "^11.0.0",
-    "sharp": "^0.35.3",
     "tsx": "^4.21.0",
     "typescript": "^5.0.0",
     "unified": "^11.0.5",

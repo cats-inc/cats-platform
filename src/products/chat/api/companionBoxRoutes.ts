@@ -1,4 +1,5 @@
 import { stat } from 'node:fs/promises';
+import { routeCompanionPublicationApi } from './companionPublicationRoutes.js';
 
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { isCompanionCat } from '../../../shared/companionRole.js';
@@ -30,6 +31,7 @@ import {
 } from '../companion/activityProjection.js';
 import { parseCompanionContentReference } from '../companion/contentReference.js';
 import { validateCompanionLifeUpdate } from '../companion/life/profile.js';
+import { CompanionPostService, CompanionPostError } from '../companion/postService.js';
 import {
   resolveCompanionContentReference,
   type CompanionContentLookupResult,
@@ -332,8 +334,8 @@ async function handleGetCompanionProfileReadModel(
 ): Promise<void> {
   try {
     await resolveCatContext(context, catId);
-    const derived = await context.dependencies.companionStore.listDerived(catId);
-    const profile = projectCompanionProfile({ derived });
+    const snapshot = await context.dependencies.companionStore.readSnapshot();
+    const profile = projectCompanionProfile({ derived: snapshot.derived.filter(row => row.catId === catId), mediaAssets: snapshot.mediaAssets, shareGrants: snapshot.shareGrants });
     sendJson(context.response, 200, { profile });
   } catch (error) {
     handleCanonicalCatError(context, error);
@@ -353,30 +355,10 @@ async function handleRemoveCompanionProfilePost(
 ): Promise<void> {
   try {
     await resolveCatContext(context, catId);
-    const derivedId = postId.startsWith(COMPANION_POST_ID_PREFIX)
-      ? postId.slice(COMPANION_POST_ID_PREFIX.length)
-      : postId;
-    const derived = await context.dependencies.companionStore.listDerived(catId);
-    const record = derived.find((candidate) => candidate.id === derivedId);
-    if (
-      !record
-      || record.metadata[COMPANION_PROFILE_METADATA_KEYS.surface]
-        !== COMPANION_PROFILE_METADATA_KEYS.postSurface
-    ) {
-      sendRestError(context, 404, 'companion_post_not_found', `Companion post not found: ${postId}`);
-      return;
-    }
-    const canonicalPostId = `${COMPANION_POST_ID_PREFIX}${record.id}`;
-    if (record.metadata[COMPANION_PROFILE_METADATA_KEYS.postStatus] !== 'removed') {
-      const now = new Date();
-      await context.dependencies.companionStore.upsertDerived(catId, {
-        ...record,
-        metadata: {
-          ...record.metadata,
-          [COMPANION_PROFILE_METADATA_KEYS.postStatus]: 'removed',
-        },
-        updatedAt: now.toISOString(),
-      }, now);
+    const result = await new CompanionPostService(context.dependencies.companionStore, context.dependencies.now)
+      .remove(catId, postId);
+    const canonicalPostId = result.postId;
+    if (result.changed) {
       await recordCompanionActivity(context, {
         catId,
         group: 'post_removed',
@@ -386,6 +368,10 @@ async function handleRemoveCompanionProfilePost(
     }
     sendJson(context.response, 200, { removed: true, postId: canonicalPostId });
   } catch (error) {
+    if (error instanceof CompanionPostError) {
+      sendRestError(context, error.status, error.code, error.code);
+      return;
+    }
     handleCanonicalCatError(context, error);
   }
 }
@@ -750,6 +736,7 @@ async function handleGetCompanionSessionContext(
 export async function routeCompanionBoxApi(
   context: ChatApiRouteContext,
 ): Promise<boolean> {
+  if (await routeCompanionPublicationApi(context)) return true;
   const sessionContextMatch = matchRoute(
     context.url.pathname,
     /^\/api\/cats\/([^/]+)\/companion-box\/session-context$/u,

@@ -60,6 +60,16 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     return cloneSnapshot(this.snapshot);
   }
 
+  async transaction<T>(mutate: (snapshot: CompanionSnapshot) => T): Promise<T> {
+    const next = cloneSnapshot(this.snapshot);
+    const result = mutate(next);
+    if (result instanceof Promise) throw new Error('Companion transactions must be synchronous.');
+    const validated = normalizeSnapshot(next);
+    const detached = structuredClone(result);
+    this.snapshot = validated;
+    return detached;
+  }
+
   async getBox(catId: string, now: Date = new Date()) {
     return structuredClone(ensureCompanionBox(this.snapshot, catId, isoAt(now)).box);
   }

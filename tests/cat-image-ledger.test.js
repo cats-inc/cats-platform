@@ -442,3 +442,16 @@ test('a second process temporarily missing the receipt cannot cancel the late ma
   assert.equal(f.ledger.get(job.id).status, 'succeeded'); assert.equal(base.cancelled(), 0); assert.equal(base.calls(), 1);
   await first.close(); await observer.close();
 });
+
+
+test('profile request identity and budget survive adding a policy under another account', async t => {
+  const f = await fixture(t); const beforePolicy = { ...caller, accountId: 'actor-owner', trigger: 'manual' };
+  const input = request({ operation: 'image.edit', sourceIds: [randomUUID()], options: {} });
+  const selection = { targetId: 'grok/native', profileId: 'grok-reference', profileRevision: '1', agentConfigId: 'grok-4.7-xhigh' };
+  const limits = { dailyLimit: 20, intervalMinutes: 0 };
+  const first = f.ledger.admitPublication(beforePolicy, input, selection, limits, at, true);
+  const saved = f.ledger.savePolicy(policy(), 0);
+  const repeated = f.ledger.admitPublication(caller, input, selection, limits, at, true);
+  assert.equal(repeated.created, false); assert.equal(repeated.job.id, first.job.id);
+  assert.equal(f.ledger.list().length, 1); assert.equal(f.ledger.budget(caller, saved, at).totalUsed, 1);
+});

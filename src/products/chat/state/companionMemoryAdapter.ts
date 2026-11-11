@@ -50,6 +50,29 @@ export class MemoryAwareCompanionBoxStore implements CanonicalSyncAwareCompanion
     return this.delegate.readSnapshot();
   }
 
+  async transaction<T>(mutate: (snapshot: Awaited<ReturnType<CompanionBoxStore['readSnapshot']>>) => T): Promise<T> {
+    const changed = new Set<string>();
+    const result = await this.delegate.transaction(snapshot => {
+      const signatures = () => new Map(snapshot.boxes.map(box => [box.catId, JSON.stringify({
+        responseProfile: box.responseProfile,
+        sources: snapshot.sources.filter(row => row.catId === box.catId),
+        derived: snapshot.derived.filter(row => row.catId === box.catId),
+        memory: snapshot.memory.filter(row => row.catId === box.catId),
+      })]));
+      const before = signatures();
+      const value = mutate(snapshot);
+      if (value instanceof Promise) throw new Error('Companion transactions must be synchronous.');
+      const after = signatures();
+      for (const catId of new Set([...before.keys(), ...after.keys()])) {
+        if (before.get(catId) !== after.get(catId)) changed.add(catId);
+      }
+      return value;
+    });
+    // Synchronize after the storage lock is released: maintenance reads this store.
+    for (const catId of changed) await this.syncCanonicalCompanionMemory(catId);
+    return result;
+  }
+
   async getBox(catId: string, now?: Date) {
     return this.delegate.getBox(catId, now);
   }

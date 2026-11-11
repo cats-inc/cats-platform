@@ -142,6 +142,7 @@ export function createCompanionHeartbeatSpeaker(
           context: mergeRuntimeInvocationContextMetadata(envelope.context, {
             continuityMode: continuity.mode,
             continuityDeliveryMode: continuity.instructions ? 'turn_instructions' : 'none',
+            companionHeartbeatKind: request.kind,
           }),
           skills: envelope.skills,
         },
@@ -186,8 +187,11 @@ export function createCompanionHeartbeatSpeaker(
 
     const directive = extractCompanionPhotoDirective(replyText);
     const reply = parseCompanionHeartbeatReply(directive.body);
+    const heartbeatActionId = `companion-heartbeat:${request.catId}:${request.now.toISOString()}`;
+    const published = (await dependencies.companionStore.readSnapshot()).derived.some(row => row.catId === request.catId
+      && row.metadata.profileHeartbeatActionId === heartbeatActionId);
     if (reply.quiet && directive.requested === null) {
-      return 'quiet';
+      return published ? 'spoke' : 'quiet';
     }
     const text = reply.quiet ? '' : reply.body;
     const photo = await attachCompanionAlbumPhoto({
@@ -213,7 +217,7 @@ export function createCompanionHeartbeatSpeaker(
             metadata: {
               // Not an assistant turn segment: live indicators must not read it as a reply.
               event: COMPANION_HEARTBEAT_EVENT,
-              [COMPANION_HEARTBEAT_METADATA_KEY]: { kind: request.kind },
+              [COMPANION_HEARTBEAT_METADATA_KEY]: { kind: request.kind, actionId: heartbeatActionId },
               targetKind: 'cat',
               targetId: request.catId,
               sessionId: request.sessionId,

@@ -21,7 +21,7 @@ export function createCatImageDelivery(options: {
   let closed = false;
   async function sweep(): Promise<void> {
     options.ledger.recoverDeliveries(options.now());
-    for (const job of options.ledger.list().filter(job => job.status === 'succeeded')) {
+    for (const job of options.ledger.list().filter(job => job.status === 'succeeded' && job.deliveryMode !== 'profile')) {
       if (closed) return;
       options.ledger.ensureDelivery(job.id, options.now());
       const claim = options.ledger.claimDelivery(job.id, options.now());

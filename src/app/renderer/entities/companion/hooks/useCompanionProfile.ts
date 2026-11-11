@@ -33,6 +33,13 @@ export function useCompanionProfile(input: {
   const [error, setError] = useState<string | null>(null);
   const [refreshCount, setRefreshCount] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    if (!input.enabled) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') setRefreshCount(value => value + 1);
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, [input.enabled, input.catId]);
 
   useEffect(() => {
     if (!input.enabled) {

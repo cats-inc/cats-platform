@@ -130,9 +130,9 @@ export function projectImageJob(value: unknown): RuntimeImageJob {
     error: input.error == null ? null : IMAGE_ERRORS.has(String(input.error)) ? String(input.error) : 'generation_failed' };
 }
 
-export async function readImageResponse(response: Response, binary = false): Promise<Uint8Array> {
+export async function readImageResponse(response: Response, binary = false, binaryLimit = IMAGE_MAX_BYTES): Promise<Uint8Array> {
   if (!response.body) throw new RuntimeImageError('image_service_unavailable');
-  const limit = binary ? IMAGE_MAX_BYTES : 32 * 1024;
+  const limit = binary ? binaryLimit : 32 * 1024;
   const reader = response.body.getReader();
   let size = 0; const chunks: Uint8Array[] = [];
   try {

@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { IMAGE_ID, IMAGE_PROVIDERS, type RuntimeImageProvider } from '../../runtime/images.js';
 import type { RuntimeImageJob } from '../../runtime/images.js';
+import { projectMediaOutput, type RuntimeMediaJob } from '../../runtime/media.js';
 import { IMAGE_PREEXECUTION_REFUSALS, isActiveImage, MediaImageError, type MediaImagePatch } from './imageExecution.js';
 import {
   authorizeCatImagePolicy, imagePolicyDay, validateCatImagePolicy,
@@ -45,7 +46,9 @@ function jobFrom(row: Record<string, unknown> | undefined): CatImageJob | undefi
     || typeof job.status !== 'string' || !statuses.has(job.status)
     || !['manual', 'heartbeat'].includes(String(job.trigger))
     || !IMAGE_PROVIDERS.includes(job.provider as RuntimeImageProvider)
-    || typeof job.instance !== 'string' || job.operation !== 'image.generate'
+    || typeof job.instance !== 'string' || !['image.generate', 'image.edit', 'video.generate'].includes(String(job.operation))
+    || (job.operation !== 'image.generate' && (job.deliveryMode !== 'profile' || !Array.isArray(job.sourceIds)
+      || !job.sourceIds.length || job.sourceIds.length > 3 || job.sourceIds.some(id => !IMAGE_ID.test(String(id)))))
     || typeof job.prompt !== 'string' || typeof job.caption !== 'string' || typeof job.runtimeTerminalObserved !== 'boolean'
     || !['held', 'released', 'submitted'].includes(String(job.dispatchState))
     || !Number.isFinite(Date.parse(String(job.createdAt))) || !Number.isFinite(Date.parse(String(job.updatedAt)))
@@ -53,6 +56,9 @@ function jobFrom(row: Record<string, unknown> | undefined): CatImageJob | undefi
     || !Array.isArray(job.warnings) || !job.warnings.every((warning) => typeof warning === 'string')
     || (job.error !== null && typeof job.error !== 'string')) throw new MediaImageError('media_state_invalid', 503);
   if (job.output !== null) {
+    try { projectMediaOutput(job.output); } catch { throw new MediaImageError('media_state_invalid', 503); }
+    /* The Runtime projection validates both image and video bounds. */
+    if (job.operation === 'image.generate') {
     if (!job.output || typeof job.output !== 'object') throw new MediaImageError('media_state_invalid', 503);
     const output = job.output as Record<string, unknown>;
     if (!['image/jpeg', 'image/png'].includes(String(output.mimeType)) || !Number.isSafeInteger(output.bytes)
@@ -61,6 +67,7 @@ function jobFrom(row: Record<string, unknown> | undefined): CatImageJob | undefi
       || Number(output.width) < 1 || Number(output.width) > 4096 || Number(output.height) < 1 || Number(output.height) > 4096
       || typeof output.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(output.sha256)) {
       throw new MediaImageError('media_state_invalid', 503);
+    }
     }
   }
   return value as CatImageJob;
@@ -158,6 +165,7 @@ export class CatImageLedger {
       this.assertWritable();
       const previous = this.delivery(jobId); if (previous) return previous;
       const job = this.get(jobId);
+      if (job?.deliveryMode === 'profile') throw new MediaImageError('profile_delivery_managed', 409);
       if (!job || job.status !== 'succeeded' || !job.output) throw new MediaImageError('image_not_ready', 409);
       const delivery: CatImageDelivery = { schemaVersion: 1, id: job.id, jobId: job.id, assetSha256: job.output.sha256,
         conversationId: job.conversationId, bindingId: job.bindingId, bindingRevision: job.bindingRevision,
@@ -319,7 +327,7 @@ export class CatImageLedger {
   }
 
   private budgetInside(caller: Pick<CatImageCaller, 'accountId' | 'ownerActorId' | 'catId'>, policy: CatImagePolicy, now: Date) {
-    const rows = this.database.prepare('SELECT bucket,admitted_at FROM reservations WHERE caller_key=? AND released=0').all(callerKey(caller));
+    const rows = this.database.prepare("SELECT reservations.bucket,reservations.admitted_at FROM reservations JOIN jobs ON jobs.id=reservations.job_id WHERE reservations.released=0 AND json_extract(jobs.document,'$.ownerActorId')=? AND json_extract(jobs.document,'$.catId')=?").all(caller.ownerActorId, caller.catId);
     const timeZone = this.budgetZone(caller, now);
     const bucket = imagePolicyDay({ timeZone }, now);
     const formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -385,6 +393,65 @@ export class CatImageLedger {
     });
   }
 
+  publicationPolicy(caller: CatImageCaller) {
+    return this.policies().find(row => row.ownerActorId === caller.ownerActorId && row.catId === caller.catId);
+  }
+
+  authorizePublication(job: CatImageJob, now: Date) {
+    const policy = this.publicationPolicy(job);
+    if (policy) {
+      authorizeCatImagePolicy(policy, { ...job, accountId: policy.accountId }, now);
+      if (policy.targetId !== job.targetId || policy.id !== job.policyId || policy.revision !== job.policyRevision) throw new MediaImageError('image_not_authorized', 403);
+    } else if (job.policyId !== 'profile-default') throw new MediaImageError('image_not_authorized', 403);
+  }
+
+  admitPublication(caller: CatImageCaller, request: CatImageRequest & { sourceIds: string[]; operation: 'image.edit' | 'video.generate';
+    options: { durationSeconds?: 6 | 10 } }, selection: { targetId: string; profileId: string; profileRevision: string; agentConfigId: string },
+    limits: { dailyLimit: number; intervalMinutes: number }, now: Date, defer: boolean): { job: CatImageJob; created: boolean } {
+    if (!IMAGE_ID.test(request.requestId) || !request.prompt.trim() || request.prompt.length > 2000 || request.caption.length > 1024
+      || request.sourceIds.length < 1 || request.sourceIds.length > (request.operation === 'video.generate' ? 1 : 3)
+      || request.sourceIds.some(id => !IMAGE_ID.test(id))) throw new MediaImageError('invalid_image_request');
+    return this.transaction(() => {
+      this.assertWritable();
+      const policy = this.publicationPolicy(caller);
+      const identity = policy ? { ...caller, accountId: policy.accountId } : caller;
+      const requestKey = hash(['profile', caller.ownerActorId, caller.catId, request.requestId]);
+      const existing = jobFrom(this.database.prepare('SELECT document FROM jobs WHERE request_key=?').get(requestKey));
+      if (existing) {
+        if (existing.deliveryMode !== 'profile' || existing.prompt !== request.prompt.trim() || existing.operation !== request.operation
+          || JSON.stringify(existing.sourceIds) !== JSON.stringify(request.sourceIds) || JSON.stringify(existing.options) !== JSON.stringify(request.options)) throw new MediaImageError('image_request_conflict', 409);
+        return { job: existing, created: false };
+      }
+      if (policy) {
+        authorizeCatImagePolicy(policy, identity, now);
+        if (policy.targetId !== selection.targetId) throw new MediaImageError('image_profile_unavailable', 409);
+      }
+      const rows = this.database.prepare("SELECT jobs.document,reservations.admitted_at FROM jobs JOIN reservations ON jobs.id=reservations.job_id WHERE reservations.released=0 AND json_extract(jobs.document,'$.ownerActorId')=? AND json_extract(jobs.document,'$.catId')=?")
+        .all(caller.ownerActorId, caller.catId);
+      const timeZone = policy?.timeZone ?? 'UTC'; const bucket = imagePolicyDay({ timeZone }, now);
+      const daily = rows.filter(row => imagePolicyDay({ timeZone }, new Date(Number(row.admitted_at))) === bucket).length;
+      const dailyLimit = Math.min(limits.dailyLimit, policy?.dailyLimit ?? limits.dailyLimit);
+      const interval = Math.max(limits.intervalMinutes, policy?.minIntervalMinutes ?? 0);
+      if (daily >= dailyLimit || rows.length >= (policy?.totalLimit ?? 1000)) throw new MediaImageError('image_budget_exhausted', 429);
+      if (rows.some(row => now.getTime() - Number(row.admitted_at) < interval * 60_000)) throw new MediaImageError('image_interval_active', 429);
+      if (this.list().some(job => job.ownerActorId === caller.ownerActorId && job.catId === caller.catId
+        && (isActiveImage(job) || (job.status === 'interrupted' && !job.runtimeTerminalObserved)))) throw new MediaImageError('image_service_busy', 429);
+      const [provider, instance] = selection.targetId.split('/');
+      if (provider !== 'grok' || !instance) throw new MediaImageError('image_profile_unavailable', 503);
+      const id = randomUUID(); const at = now.toISOString();
+      const job: CatImageJob = { ...identity, ...selection, schemaVersion: 1, id, requestId: request.requestId,
+        provider, instance, operation: request.operation, sourceIds: request.sourceIds, options: request.options,
+        deliveryMode: 'profile', publicationLimits: limits, caption: request.caption.trim(), prompt: request.prompt.trim(),
+        policyId: policy?.id ?? 'profile-default', policyRevision: policy?.revision ?? 1, bindingId: 'profile', bindingRevision: '1',
+        status: 'submitting', agentModel: null, agentEffort: null, error: null, warnings: [], executionOutcome: null, output: null,
+        createdAt: at, updatedAt: at, cancelRequestedAt: null, runtimeTerminalObserved: false, dispatchState: defer ? 'held' : 'released' };
+      this.database.prepare('INSERT INTO jobs(id,request_key,caller_key,status,created_at,document) VALUES(?,?,?,?,?,?)')
+        .run(id, requestKey, callerKey(identity), job.status, now.getTime(), JSON.stringify(job));
+      this.database.prepare('INSERT INTO reservations(job_id,caller_key,bucket,admitted_at) VALUES(?,?,?,?)').run(id, callerKey(identity), bucket, now.getTime());
+      return { job, created: true };
+    });
+  }
+
   releaseTurn(runtimeSessionId: string, now: Date): CatImageJob[] {
     return this.transaction(() => this.list().filter(job => job.runtimeSessionId === runtimeSessionId
       && job.dispatchState === 'held' && job.status === 'submitting').map(job => {
@@ -399,9 +466,12 @@ export class CatImageLedger {
       this.assertWritable();
       const job = this.get(id);
       if (!job || job.status !== 'submitting' || job.dispatchState !== 'released') return false;
-      const policy = authorizeCatImagePolicy(this.policy(job), job, now);
-      if (policy.id !== job.policyId || policy.revision !== job.policyRevision || policy.bindingId !== job.bindingId
-        || policy.bindingRevision !== job.bindingRevision) throw new MediaImageError('image_not_authorized', 403);
+      if (job.deliveryMode === 'profile') this.authorizePublication(job, now);
+      else {
+        const policy = authorizeCatImagePolicy(this.policy(job), job, now);
+        if (policy.id !== job.policyId || policy.revision !== job.policyRevision || policy.bindingId !== job.bindingId
+          || policy.bindingRevision !== job.bindingRevision) throw new MediaImageError('image_not_authorized', 403);
+      }
       const next: CatImageJob = { ...job, dispatchState: 'submitted', updatedAt: now.toISOString() };
       this.database.prepare('UPDATE jobs SET document=? WHERE id=?').run(JSON.stringify(next), id);
       return true;
@@ -450,7 +520,7 @@ export class CatImageLedger {
     });
   }
 
-  observeRuntime(id: string, remote: RuntimeImageJob, now: Date): void {
+  observeRuntime(id: string, remote: RuntimeMediaJob, now: Date): void {
     this.transaction(() => {
       const job = this.get(id);
       if (!job || remote.id !== id || remote.targetId !== job.targetId || remote.prompt !== job.prompt
