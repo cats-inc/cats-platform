@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft, 2026-11-11, revised the same day after an independent review and again after the owner answered Q1, Q2 and Q4. The owner's decisions D1 to D10 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S2 to S6 and Q3 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects. S1 and Q5 are new in this revision and the owner has not seen them. Not implemented |
+| **Status** | Draft, 2026-11-11, revised the same day after an independent review and again after the owner answered Q1, Q2 and Q4. The owner's decisions D1 to D13 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S2 to S6 and Q3 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects. S1 was put to the owner the same day. Not implemented |
 | **Owner** | Product owner |
 | **Reviewer** | Owner; an independent review before implementation |
 | **Decision** | [ADR-149](../decisions/149-let-a-conversation-gain-product-scopes-and-never-lose-them.md) |
@@ -37,9 +37,9 @@ What a raise does in this version:
   - Everything a raise to Code gives.
   - The conversation moves to Work's Recents and opens under `/work`, and Work counts its Work
     Item as its own.
-  - Its agents get no Work tool from this SPEC. Work's own tools are the workspace and the
-    project, and a separate SPEC specifies them (D10). Task and Run are the foundation, not
-    Work tools.
+  - Its agents get no Work tool from this SPEC. Work's own tools are Work Items and Projects
+    (D11), and [SPEC-142](SPEC-142-task-run-and-work-tools-in-conversations.md) specifies
+    them. Task and Run are the foundation, not Work tools (D10).
 
 A raise creates no record, changes no participant, folder or CLI permission, and removes no
 tool. The conversation is then shown with its new product's view and preferences (FR-11).
@@ -61,7 +61,8 @@ every level, in Code and Work conversations as well as Chat ones (D8).
 
 ## Non-Goals
 
-- Work's own agent tools, the workspace and the project. A separate SPEC specifies them (D10).
+- Work's own agent tools for Work Items and Projects, and the read tools for Tasks and Runs.
+  SPEC-142 specifies both (D11 to D13).
 - A raise proposed or performed by an agent, a transport, a schedule or a heartbeat.
 - Raising a direct lane, a parallel group or its members (P3).
 - Lowering a scope, or undoing a raise.
@@ -214,6 +215,8 @@ inventory of every `originSurface` reader.
    - The checks that verify a Code session or serve Code work areas only for
      `origin === 'code'` accept the scope the same way.
    - A direct lane's scope is `chat`, so it receives none of this.
+   - SPEC-142 later attaches the `cats` server at every level and lists Code's tools on it only
+     for `code` and `work`. What this requirement fixes is who gets Code's tools.
 9. FR-9: A conversation's canvas and live previews open beside it on the product where it
    lives. The tools stop assuming Code's route for every conversation.
    - Canvas and preview state recorded earlier keeps working after a raise and after this
@@ -301,7 +304,9 @@ inventory of every `originSurface` reader.
 25. FR-25: The raise restarts no session.
     - A turn that is running finishes with the tools it started with.
     - Each participant's next turn carries the new tool set, and Runtime recycles the worker
-      through resume.
+      through resume. Once SPEC-142 attaches the server at `chat`, the server set no longer
+      changes on a raise, so the session's next send carries a new grant to the same effect
+      (SPEC-142 FR-3). The raise itself still does only what FR-24 lists.
     - The grant for a session that gains the server is bound to the folder that session runs
       in, not to the conversation's folder. This also applies to every Work conversation's
       first turn after D5 ships.
@@ -384,11 +389,11 @@ inventory of every `originSurface` reader.
 
 ## Proposals for the Owner
 
-These are this SPEC's choices, not owner decisions. The owner may change any of them. S2 to S6
+These are this SPEC's choices, not owner decisions. The owner may change any of them. All six
 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects.
 
-- S1: The companion's life review keeps reading the origin (FR-19). This is new: the owner's
-  answer on D8 named the collaboration tools and orchestrator knowledge, not the review.
+- S1: The companion's life review keeps reading the origin (FR-19). The owner's answer on D8
+  named the collaboration tools and orchestrator knowledge, not the review.
 - S2: A raise creates no record (FR-24). ADR-149's P5 expected entry records; the projection
   already gives every conversation a Task and a WorkItem.
 - S3: Version one has no raise control on mobile. Mobile lists follow the scope, and the raise
@@ -419,10 +424,10 @@ were put to the owner on 2026-11-11 as defaults that stand unless the owner obje
   landing conversations, tool delivery and Work's own-WorkItem check give the same results as
   on the base commit, for fixtures of all three origins.
 - **D5.**
-  - A conversation created on Work receives the `cats` server. Its canvas, preview controls,
+  - A conversation created on Work receives Code's tools. Its canvas, preview controls,
     preview button, work areas panel and chips appear on Work's route.
-  - A conversation created on Chat still receives none, and neither does a direct lane of any
-    origin.
+  - A conversation created on Chat still receives none of Code's tools, and neither does a
+    direct lane of any origin.
   - A supervised Work run still receives none.
   - The grant of a worktree or sandbox conversation is bound to its session's folder.
 - **Raising.**
@@ -461,18 +466,17 @@ were put to the owner on 2026-11-11 as defaults that stand unless the owner obje
 
 ## Open Questions
 
-- [x] Q1: Should a Work conversation's agents get Work tools? Answered on 2026-11-11 (D10):
-      Task and Run are the foundation, not Work tools. Work's own tools are the workspace and
-      the project, and a separate SPEC specifies them.
+- [x] Q1: Should a Work conversation's agents get Work tools? Answered on 2026-11-11 (D10,
+      D11): Task and Run are the foundation, not Work tools. Work's own tools are Work Items
+      and Projects, and SPEC-142 specifies them.
 - [x] Q2: Should SPEC-118's collaboration tools and orchestrator knowledge be offered in every
       conversation? Answered on 2026-11-11 (D8): yes, Code and Work conversations have them
       too (FR-19).
 - [ ] Q3: Should the mobile app get a raise control in version one? S3 says no, and stands
       unless the owner objects.
 - [x] Q4: Should the state version rise? Answered on 2026-11-11 (D9): yes (Compatibility).
-- [ ] Q5: Task and Run are the foundation (D10), yet no level gives an agent a tool for them.
-      Code's `cats` server has none, and the ones that exist sit on SPEC-118's and ADR-105's
-      role paths. Should a conversation's agents get Task and Run tools, and from which level?
+- [x] Q5: Should a conversation's agents get Task and Run tools, and from which level?
+      Answered on 2026-11-11 (D13): from `chat` up, read-only. SPEC-142 specifies them.
 
 ## References
 

@@ -1,5 +1,10 @@
 # Feature Specifications
 
+- [SPEC-142: Task, Run and Work tools in conversations](SPEC-142-task-run-and-work-tools-in-conversations.md)
+  — draft, 2026-11-11; not implemented. Specifies ADR-149 D10–D13: read tools for a
+  conversation's own Tasks and Runs at every level, Work Item and Project tools at `work`
+  where every write is a proposal the owner confirms, and a Work conversation that can belong
+  to a Project. All on the `cats` session server. S1–S7 and Q1–Q5 wait for the owner. PLAN-135.
 - [SPEC-141: Conversation product scope](SPEC-141-conversation-product-scope.md)
   — draft, 2026-11-11; not implemented. Specifies ADR-149: the `productScope` field, what
   follows it and what stays with the origin, the owner-only raise with its confirmation, Work
