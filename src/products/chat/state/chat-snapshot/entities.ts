@@ -120,6 +120,15 @@ export function normalizeMessage(rawMessage: unknown, channelId: string): ChatMe
   };
 }
 
+/** SPEC-139 FR-5 marker; anything malformed is dropped. */
+function normalizeBossCatGroup(raw: unknown): Pick<ChatChannelState, 'bossCatGroup'> {
+  const record = asRecord(raw);
+  return typeof record?.bossCatId === 'string' && record.bossCatId
+    && typeof record.createdAt === 'string' && record.createdAt
+    ? { bossCatGroup: { bossCatId: record.bossCatId, createdAt: record.createdAt } }
+    : {};
+}
+
 export function normalizeChatCat(rawCat: unknown): ChatCat | null {
   const catRecord = asRecord(rawCat);
   if (!catRecord) {
@@ -358,6 +367,7 @@ export function normalizeChannel(
     titleSource: channelRecord.titleSource === 'draft' || channelRecord.titleSource === 'catlas'
       || channelRecord.titleSource === 'owner' ? channelRecord.titleSource : 'manual',
     catlasTitleAttempts: normalizeCatlasTitleAttempts(channelRecord.catlasTitleAttempts),
+    ...normalizeBossCatGroup(channelRecord.bossCatGroup),
     topic: readString(channelRecord.topic, 'This chat is still taking shape.'),
     originSurface: normalizePlatformSurface(channelRecord.originSurface),
     channelKind,

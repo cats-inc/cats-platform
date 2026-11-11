@@ -1,4 +1,4 @@
-import type { ChatMessage, OwnerStartedSurface } from '../api/contracts.js';
+import type { BossCatTurnRecord, ChatMessage, OwnerStartedSurface } from '../api/contracts.js';
 import type { RouteAuthContext } from '../../../shared/http.js';
 
 /**
@@ -43,6 +43,11 @@ export function readOwnerStarted(
     return null;
   }
   return parseOwnerStartedSurface(message.metadata?.[OWNER_STARTED_METADATA_KEY]);
+}
+
+export function readBossCatTurnRecord(message: Pick<ChatMessage, 'metadata'> | null | undefined): BossCatTurnRecord | null {
+  const record = message?.metadata?.[BOSS_CAT_TURN_METADATA_KEY] as BossCatTurnRecord | undefined;
+  return record?.schemaVersion === 1 && Array.isArray(record.receipts) ? record : null;
 }
 
 export function parseOwnerStartedSurface(value: unknown): OwnerStartedSurface | null {

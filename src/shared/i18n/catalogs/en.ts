@@ -2249,6 +2249,7 @@ export const enCatalog: MessageCatalog = {
   'chat.companionFeedTabActivity': 'Activity',
   'chat.companionFeedNavAriaLabel': 'Companion feed',
   'chat.companionPostPublishedNotice': '{name} posted "{title}" on their profile.',
+  'chat.bossCatGroupCreatedNotice': '{name} started the group conversation "{title}" with {cats}. They reply once you write there.',
   'chat.companionPostRemoveAction': 'Remove',
   'chat.companionPostRemoveConfirmTitle': 'Remove this post?',
   'chat.companionPostRemoveConfirmMessage': '"{title}" will no longer appear on the profile of {name}.',

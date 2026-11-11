@@ -7,7 +7,11 @@ import type {
 import type { ChatMessage } from '../api/contracts.js';
 import { resolveChannelCanonicalIdentity } from './model/index.js';
 import { isAssistantTurnSegmentMessage } from './assistantTurnSegments.js';
-import { OWNER_STARTED_METADATA_KEY, parseOwnerStartedSurface } from '../shared/ownerStarted.js';
+import {
+  BOSS_CAT_TURN_METADATA_KEY,
+  OWNER_STARTED_METADATA_KEY,
+  parseOwnerStartedSurface,
+} from '../shared/ownerStarted.js';
 
 export type CanonicalChatUserMessage = ChatMessage & { senderKind: 'user' };
 
@@ -65,6 +69,10 @@ function buildCanonicalChatTurnMessage(
   const ownerStarted = readTurnSourceSenderKind(turn) === 'user'
     ? parseOwnerStartedSurface(readChatCoreTurnMetadataString(turn, 'ownerStarted'))
     : null;
+  // The tools already ran for this message: an empty record replays nothing and runs nothing.
+  const bossCatTurnCatId = readTurnSourceSenderKind(turn) === 'user'
+    ? readChatCoreTurnMetadataString(turn, 'bossCatTurnCatId')
+    : null;
 
   return {
     id: sourceMessageId,
@@ -93,6 +101,9 @@ function buildCanonicalChatTurnMessage(
           }
         : {}),
       ...(ownerStarted ? { [OWNER_STARTED_METADATA_KEY]: ownerStarted } : {}),
+      ...(bossCatTurnCatId
+        ? { [BOSS_CAT_TURN_METADATA_KEY]: { schemaVersion: 1, bossCatId: bossCatTurnCatId, receipts: [] } }
+        : {}),
     },
     usage: null,
     executionProvider: null,

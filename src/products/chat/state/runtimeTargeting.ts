@@ -55,7 +55,7 @@ import {
 import { resolveRoomRoutingState } from './room-routing/index.js';
 import type { DispatchRequest } from './room-routing/runtime.js';
 import { isAssistantTurnSegmentMessage } from './assistantTurnSegments.js';
-import { formatBossCatTurnInstructions, readBossCatTurnRecord } from './bossCatSurface.js';
+import { formatBossCatTurnInstructions, isBossCatGroupGuest, readBossCatTurnRecord } from './bossCatSurface.js';
 
 export type RuntimeTransportContext = 'telegram' | 'web' | 'mobile';
 
@@ -321,6 +321,10 @@ async function resolveCompanionSessionForTarget(
     return null;
   }
 
+  // SPEC-139 R2: Cats invited into a Boss Cat's group carry no companion memory there.
+  if (isBossCatGroupGuest(channel, catId)) {
+    return null;
+  }
   const cat = requireCat(state, catId);
   const summary = await companionStore.getBoxSummary(cat.id, now);
   if (!shouldHydrateCompanionSession(cat, summary.box, channel)) {

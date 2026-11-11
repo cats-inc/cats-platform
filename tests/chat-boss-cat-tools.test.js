@@ -10,16 +10,24 @@ import { createDefaultChatState } from '../build/server/products/chat/state/defa
 import {
   appendMessage,
   assignCatToChannel,
+  buildChannelView,
   createCat,
   createChannel,
 } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import {
+  BOSS_CREATE_GROUP,
   BOSS_STATUS_BOARD,
   bossCatToolDescriptors,
+  isBossCatGroupGuest,
+  boundBossCatBoard,
+  readBossCatTurnRecord,
   resolveBossCatTurnGate,
   runBossCatDecisionLoop,
 } from '../build/server/products/chat/state/bossCatSurface.js';
+import { resolveRuntimeEnvelopeForTarget } from '../build/server/products/chat/state/runtimeTargeting.js';
+import { normalizeChatState } from '../build/server/products/chat/state/chat-snapshot/index.js';
+import { buildCanonicalChatUserMessage } from '../build/server/products/chat/state/chatCoreInterop.js';
 import { createAuthenticatedTestSession, createTestAuthConfig, waitForCondition } from './testUtils.js';
 
 const NOW = new Date('2026-11-11T12:00:00.000Z');
@@ -80,6 +88,19 @@ test('SPEC-139 FR-1: the tools are offered only for an owner-started turn in the
   assert.equal(resolveBossCatTurnGate(demoted, bossLane, ownerMessage(bossLane, 'Who is stuck?')), null);
 });
 
+function createGroup(input) {
+  return { contractVersion: 1, kind: 'tool_request', decisionId: 'create-group', confidence: 'high',
+    toolName: BOSS_CREATE_GROUP, target: { kind: 'worker_tool', toolName: BOSS_CREATE_GROUP }, input,
+    expectedOutputSchemaRef: { id: `${BOSS_CREATE_GROUP}.output`, version: '1.0', format: 'json_schema' },
+    rationaleSummary: 'The owner asked for a group.' };
+}
+
+/** Reads the board this session received and picks Cats from it by name. */
+function boardCatIds(envelope, ...names) {
+  const board = envelope.toolResults?.find((entry) => entry.toolName === BOSS_STATUS_BOARD)?.result?.result;
+  return names.map((name) => board?.cats.find((cat) => cat.name === name)?.catId ?? `missing-${name}`);
+}
+
 function decision(kind) {
   if (kind === 'garbage') return 'not a decision';
   return kind === 'board'
@@ -92,7 +113,7 @@ function decision(kind) {
 }
 
 function runtime(platformDir, { decide = () => decision('board'), failLane = false } = {}) {
-  const calls = { decisionCreates: [], decisionSends: [], laneSends: [], closed: [], cancelled: [], failLane };
+  const calls = { decisionCreates: [], decisionSends: [], ordinaryCreates: [], laneSends: [], closed: [], cancelled: [], failLane };
   return {
     calls,
     async getHealth() { return { reachable: true, status: 'ok', version: '0.3.1' }; },
@@ -110,7 +131,9 @@ function runtime(platformDir, { decide = () => decision('board'), failLane = fal
         // Any other decision (companion posts, Work intake) answers with a plain respond.
         return { id: 'other-decision-session', provider: input.provider, model: input.model, status: 'ready', cwd: null };
       }
-      return { id: 'lane-session', provider: input.provider, model: input.model, status: 'ready', cwd: platformDir };
+      const id = `session-${calls.ordinaryCreates.length + 1}`;
+      calls.ordinaryCreates.push({ id, input });
+      return { id, provider: input.provider, model: input.model, status: 'ready', cwd: input.cwd ?? platformDir };
     },
     async observeSession(id) { return { session: { id, status: 'ready', provider: 'claude', model: 'fixture', cwd: platformDir } }; },
     async cancelSession(id) { calls.cancelled.push(id); },
@@ -118,18 +141,18 @@ function runtime(platformDir, { decide = () => decision('board'), failLane = fal
     async sendMessage(sessionId, content, options) {
       if (sessionId === 'decision-session') {
         calls.decisionSends.push(content);
-        const value = decide(calls.decisionSends.length - 1);
+        const value = decide(calls.decisionSends.length - 1, JSON.parse(content));
         if (typeof value === 'string') {
           return { segments: [{ kind: 'text', text: value, toolName: null, toolId: null }], inputTokens: 1, outputTokens: 1, tokensUsed: 2 };
         }
-        return { segments: [{ kind: 'text', text: JSON.stringify(decide(calls.decisionSends.length - 1)), toolName: null, toolId: null }],
+        return { segments: [{ kind: 'text', text: JSON.stringify(value), toolName: null, toolId: null }],
           inputTokens: 10, outputTokens: 10, tokensUsed: 20 };
       }
       if (sessionId === 'other-decision-session') {
         return { segments: [{ kind: 'text', text: JSON.stringify(decision('respond')), toolName: null, toolId: null }],
           inputTokens: 1, outputTokens: 1, tokensUsed: 2 };
       }
-      calls.laneSends.push({ content, instructions: options?.instructions ?? '' });
+      calls.laneSends.push({ sessionId, content, instructions: options?.instructions ?? '' });
       if (calls.failLane) throw new Error('Injected lane failure.');
       return { segments: [{ kind: 'text', text: 'Lane reply.', toolName: null, toolId: null }], inputTokens: 1, outputTokens: 1, tokensUsed: 2 };
     },
@@ -186,7 +209,10 @@ test('SPEC-139 FR-1/FR-2: an isolated session reads the board, and the lane repl
   assert.equal(created.sharingMode, 'isolated');
   assert.deepEqual(created.skills, { requestedSkills: [], strict: true });
   assert.equal(created.cwd, undefined);
-  assert.equal(h.calls.decisionSends.length, 1, 'the board leaves nothing more to decide');
+  // The board call, then one more where only create_group is offered; the stub declines it.
+  assert.deepEqual(h.calls.decisionSends.map((content) =>
+    JSON.parse(content).observation.availableTools.map((entry) => entry.manifest.name)),
+  [[BOSS_STATUS_BOARD, BOSS_CREATE_GROUP].filter((name) => name === BOSS_STATUS_BOARD), [BOSS_CREATE_GROUP]]);
   const decisionInput = h.calls.decisionSends.join('\n');
   assert.match(decisionInput, /Which Cats need my attention\?/u);
   assert.doesNotMatch(decisionInput, /LANE-HISTORY-MARKER|LANE-REPLY-MARKER|GROUP-MESSAGE-MARKER|MOCHI-LANE-MARKER/u);
@@ -304,4 +330,145 @@ test('SPEC-139: a Desktop retry of a message that was not owner-started runs no 
   const source = (await h.laneMessages()).find((message) => message.id === messageId);
   assert.equal(source.metadata.ownerStarted, undefined);
   assert.equal(source.metadata.bossCatTurn, undefined);
+});
+
+const withGroup = (input) => (index, envelope) => index === 0 ? decision('board')
+  : createGroup(typeof input === 'function' ? input(envelope) : input);
+
+test('SPEC-139 FR-5: create_group makes a blank read-only Chat group that waits for the owner', async (t) => {
+  const h = await start(t, { decide: withGroup((envelope) => ({ title: 'Release check',
+    catIds: boardCatIds(envelope, 'Kiki', 'Mochi'), openingMessage: 'Kiki and Mochi, let us review the release.' })) });
+  const messageId = await h.send('Start a group with Kiki and Mochi about the release.');
+  const state = await h.chatStore.read();
+  const receipts = state.channels.find((entry) => entry.id === h.bossLane).messages
+    .find((message) => message.id === messageId).metadata.bossCatTurn.receipts;
+  assert.deepEqual(receipts.map((receipt) => [receipt.toolName, receipt.status]),
+    [[BOSS_STATUS_BOARD, 'applied'], [BOSS_CREATE_GROUP, 'applied']]);
+  const group = state.channels.find((entry) => entry.id === receipts[1].conversationId);
+  assert.equal(group.originSurface, 'chat');
+  assert.equal(group.repoPath ?? null, null);
+  assert.equal(group.chatCwd ?? null, null);
+  assert.equal(group.runtimeWorkspaceAccess, 'read_only');
+  assert.equal(group.runtimePermissionMode, 'default');
+  assert.deepEqual(group.bossCatGroup.bossCatId, h.ids.boss);
+  const active = group.participantAssignments.filter((entry) => entry.status === 'active');
+  assert.deepEqual(active.map((entry) => entry.sourceRefId ?? entry.participantId).sort(),
+    [h.ids.boss, h.ids.kiki, h.ids.mochi].sort());
+  assert.equal(group.coordinatorParticipantId, active.find((entry) => (entry.sourceRefId ?? entry.participantId) === h.ids.boss).participantId);
+  assert.deepEqual(group.messages.filter((message) => message.senderKind !== 'system')
+    .map((message) => [message.senderKind, message.senderName, message.body]),
+    [['agent', 'Boss', 'Kiki and Mochi, let us review the release.']]);
+  assert.equal(group.roomRouting.workflow.activeTurn, null, 'R1: nothing is dispatched until the owner writes');
+  assert.equal(h.calls.ordinaryCreates.some(({ input }) => JSON.stringify(input).includes(group.id)), false,
+    'no session opens for the group before the owner writes');
+  assert.equal(state.selectedChannelId, h.bossLane, 'the owner stays where they were');
+  assert.ok(state.channels.find((entry) => entry.id === h.bossLane).messages
+    .some((message) => message.metadata?.event === 'boss_cat_group_created' && message.metadata.conversationId === group.id));
+  assert.equal(state.bossCatUsage.filter((entry) => entry.kind === 'group').length, 1);
+  assert.match(h.calls.laneSends.at(-1).instructions, new RegExp(`create_group: applied\\. The group conversation ${group.id}`, 'u'));
+  // A retry of the message rebuilt from Core finds the tools already ran.
+  const rebuilt = buildCanonicalChatUserMessage(await h.chatStore.readCore(), h.bossLane, messageId);
+  assert.equal(readBossCatTurnRecord(rebuilt)?.bossCatId, h.ids.boss);
+  // R2: the invited Cats carry no companion memory in it; the Boss Cat itself is not a guest.
+  assert.equal(isBossCatGroupGuest(group, h.ids.kiki), true);
+  assert.equal(isBossCatGroupGuest(group, h.ids.boss), false);
+  assert.equal(isBossCatGroupGuest({}, h.ids.kiki), false);
+  assert.deepEqual(buildChannelView(state, group.id).bossCatGroup, group.bossCatGroup, 'the prompt path sees the marker');
+  assert.deepEqual(normalizeChatState(JSON.parse(JSON.stringify(state))).channels
+    .find((entry) => entry.id === group.id).bossCatGroup, group.bossCatGroup, 'the marker survives a reload');
+
+  // The owner writes to Kiki in the group: the session Runtime receives is read-only with
+  // default permissions and no repository, and Kiki's prompt carries the opening message.
+  const kiki = active.find((entry) => (entry.sourceRefId ?? entry.participantId) === h.ids.kiki);
+  const sendsBefore = h.calls.laneSends.length;
+  const response = await fetch(`${h.base}/api/channels/${group.id}/messages`, { method: 'POST', headers: h.headers,
+    body: JSON.stringify({ body: 'Kiki, start with the changelog.', messageMetadata: { recipientParticipantIds: [kiki.participantId] } }) });
+  assert.equal(response.status, 200, await response.clone().text());
+  await waitForCondition(() => h.calls.laneSends.length > sendsBefore, { timeoutMs: 15_000 });
+  const groupSession = h.calls.ordinaryCreates.find(({ input }) => JSON.stringify(input).includes(group.id));
+  assert.ok(groupSession, 'a session opened for the group once the owner wrote');
+  assert.equal(groupSession.input.workspaceAccess, 'read_only');
+  assert.equal(groupSession.input.permissionMode, 'default');
+  assert.equal(groupSession.input.repoPath ?? null, null);
+  assert.ok(!String(groupSession.input.cwd ?? '').includes('cats-platform'));
+  const groupSend = h.calls.laneSends.find((entry) => entry.sessionId === groupSession.id);
+  assert.match(`${groupSend.content}\n${groupSend.instructions}`, /let us review the release/u);
+});
+
+test('SPEC-139 R2: an invited Cat hydrates no companion memory in a Boss Cat group, as it would elsewhere', async () => {
+  const { state, ids } = world();
+  state.cats.find((cat) => cat.id === ids.kiki).roles = ['companion'];
+  const companionStore = {
+    async getBoxSummary() { return { box: { sourceIds: [], derivedIds: [] } }; },
+    async buildSessionContext() { return { ownerNotes: ['COMPANION-NOTE-MARKER'] }; },
+  };
+  const hydrated = async (bossGroup) => {
+    let next = createChannel(state, { title: 'Group', topic: '', originSurface: 'chat',
+      participantCatIds: [ids.boss, ids.kiki] }, NOW);
+    const channelId = next.selectedChannelId;
+    if (bossGroup) next.channels.find((entry) => entry.id === channelId).bossCatGroup = { bossCatId: ids.boss, createdAt: NOW.toISOString() };
+    const view = buildChannelView(next, channelId);
+    const kiki = view.assignedParticipants.find((entry) => (entry.sourceRefId ?? entry.participantId) === ids.kiki);
+    const envelope = await resolveRuntimeEnvelopeForTarget(next, view,
+      { participantKind: 'cat', participantId: kiki.participantId, participantName: kiki.name }, undefined, null, NOW, companionStore);
+    return JSON.stringify(envelope.companionSession ?? null);
+  };
+  assert.match(await hydrated(false), /COMPANION-NOTE-MARKER/u, 'positive control: an ordinary group carries the note');
+  assert.doesNotMatch(await hydrated(true), /COMPANION-NOTE-MARKER/u);
+});
+
+test('SPEC-139: a full board fits the decision session envelope, attention first', () => {
+  const iso = NOW.toISOString();
+  const name = (index) => `${'N'.repeat(76)}${String(index).padStart(4, '0')}`;
+  const cats = Array.from({ length: 60 }, (_, index) => ({ catId: `cat-${index}`, name: name(index), hidden: false,
+    group: 'standard', lane: { presence: 'sleeping', lastOwnerMessageAt: iso, lastCatMessageAt: iso },
+    initiative: null, turnRunning: false, waitingChoices: 0, waitingApprovals: 0,
+    problems: index === 59 ? [{ conversationId: 'c', failed: 1, interrupted: 0 }] : [] }));
+  const groups = Array.from({ length: 50 }, (_, index) => ({ conversationId: `g-${index}`, surface: 'chat', createdAt: iso,
+    redacted: false, title: name(index), participantNames: [name(1), name(2), name(3)], bossCatIsMember: false,
+    lastOwnerMessageAt: iso, lastMessageAt: new Date(NOW.getTime() - index * 1000).toISOString(),
+    turnRunning: false, turnFailed: false, waitingChoice: false }));
+  const board = boundBossCatBoard({ generatedAt: iso, cats, groups });
+  const feedback = [{ toolName: BOSS_STATUS_BOARD, decisionId: 'read-board', result: { status: 'applied', result: board } }];
+  assert.ok(JSON.stringify(feedback).length < 24_000 - 2_000, `${JSON.stringify(feedback).length} characters`);
+  assert.equal(board.cats[0].catId, 'cat-59', 'the Cat with a failed turn comes first');
+  assert.equal(board.groups[0].conversationId, 'g-0', 'the most recent group comes first');
+  assert.equal(board.omittedCats + board.cats.length, 60);
+  assert.equal(board.omittedGroups + board.groups.length, 50);
+});
+
+test('SPEC-139 FR-5/FR-7: ids not on the board, bad input and the sixth group in an hour are refused', async (t) => {
+  const cases = [
+    [{ title: 'X', catIds: ['cat-not-on-board'], openingMessage: 'Hi' }, 'cats_not_on_board'],
+    [(envelope) => ({ title: 'X', catIds: boardCatIds(envelope, 'Boss'), openingMessage: 'Hi' }), 'cats_not_on_board'],
+    [(envelope) => ({ title: 'x'.repeat(81), catIds: boardCatIds(envelope, 'Kiki'), openingMessage: 'Hi' }), 'title_invalid'],
+    [(envelope) => ({ title: 'X', catIds: boardCatIds(envelope, 'Kiki'), openingMessage: '' }), 'opening_message_invalid'],
+    [(envelope) => ({ title: 'X', catIds: boardCatIds(envelope, 'Kiki'), openingMessage: 'Hi', repoPath: '/x' }), 'input_invalid'],
+  ];
+  for (const [input, reason] of cases) {
+    const h = await start(t, { decide: withGroup(input) });
+    const channelsBefore = (await h.chatStore.read()).channels.length;
+    const messageId = await h.send('Start a group.');
+    const receipt = (await h.laneMessages()).find((message) => message.id === messageId).metadata.bossCatTurn.receipts[1];
+    assert.deepEqual([receipt.status, receipt.reason], ['refused', reason]);
+    assert.equal((await h.chatStore.read()).channels.length, channelsBefore);
+  }
+  const limited = await start(t, {
+    decide: withGroup((envelope) => ({ title: 'X', catIds: boardCatIds(envelope, 'Kiki'), openingMessage: 'Hi' })),
+    seed: (state) => { state.bossCatUsage = Array.from({ length: 5 }, () => ({ kind: 'group', at: new Date().toISOString() })); },
+  });
+  const messageId = await limited.send('Start a group.');
+  const receipt = (await limited.laneMessages()).find((message) => message.id === messageId).metadata.bossCatTurn.receipts[1];
+  assert.deepEqual([receipt.status, receipt.reason], ['refused', 'rate_limited']);
+});
+
+test('SPEC-139 FR-5: create_group is not offered before a board was read in the session', async (t) => {
+  const h = await start(t, { decide: () => createGroup({ title: 'X', catIds: ['any'], openingMessage: 'Hi' }) });
+  const firstTools = [];
+  const messageId = await h.send('Start a group.');
+  for (const content of h.calls.decisionSends) {
+    firstTools.push(JSON.parse(content).observation.availableTools.map((entry) => entry.manifest.name));
+  }
+  assert.deepEqual(firstTools[0], [BOSS_STATUS_BOARD]);
+  assert.equal((await h.laneMessages()).find((message) => message.id === messageId).metadata.bossCatTurn, undefined);
 });
