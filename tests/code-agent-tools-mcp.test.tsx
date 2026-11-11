@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import test from 'node:test';
 
-import { createDefaultCoreState } from '../src/core/model/index.ts';
+import { createDefaultCoreState, upsertCoreTask } from '../src/core/model/index.ts';
+import { buildChatTaskId } from '../src/shared/chatCoreIds.ts';
 import { upsertCoreConversation } from '../src/core/model/structuralRecords.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import { McpSessionGrantStore } from '../src/platform/mcp/sessionGrants.ts';
@@ -50,13 +51,20 @@ async function startHarness(options: {
   workspacePath?: string;
   supervisor?: LivePreviewSupervisor;
   policyConfig?: ArtifactCanvasPolicyConfig;
+  /** The conversation's Core task metadata, which carries its scope (SPEC-141). */
+  taskMetadata?: Record<string, unknown>;
 } = {}): Promise<Harness> {
-  const core = upsertCoreConversation(createDefaultCoreState(), {
+  let core = upsertCoreConversation(createDefaultCoreState(), {
     id: BINDING.conversationId,
     title: 'Calculator',
     kind: 'code_thread',
     status: 'active',
   }).core;
+  if (options.taskMetadata) {
+    core = upsertCoreTask(core, { id: buildChatTaskId(BINDING.channelId), title: 'Calculator',
+      conversationId: BINDING.conversationId, status: 'in_progress', metadata: options.taskMetadata },
+    new Date('2026-11-11T00:00:00.000Z')).core;
+  }
   const store = new MemoryCoreStore(core);
   const grants = new McpSessionGrantStore<CodeAgentToolGrantBinding>();
   const hub = new ArtifactCanvasRenderIntentHub();
@@ -389,4 +397,56 @@ test('show_in_canvas preserves the artifact but returns a coded error when no vi
     assert.equal(failed.isError, true);
     assert.equal(failed.structuredContent.error.code, 'canvas_render_failed');
   } finally { await harness.close(); }
+});
+
+test('SPEC-141 FR-9: the canvas tools open a Work conversation canvas under Work', async () => {
+  // PLAN-134 Phase 4 (ADR-149 D5). The surface kind stays code_conversation; the route follows
+  // the conversation's scope, read from its Core task.
+  const base = mkdtempSync(join(tmpdir(), 'cats-agent-work-show-'));
+  const workspace = join(base, 'workspace');
+  mkdirSync(join(workspace, 'site'), { recursive: true });
+  writeFileSync(join(workspace, 'site', 'index.html'), '<!doctype html><title>Site</title>');
+  const policyConfig = {
+    ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+    scriptedPreviewProducerAllowlist: [
+      { producerKind: 'tool' as const, producerIdentity: CODE_LIVE_PREVIEW_PRODUCER_IDENTITY },
+    ],
+  };
+  const supervisor = createCodeLivePreviewSupervisor({
+    ...DEFAULT_LIVE_PREVIEW_CONFIG,
+    portRange: { start: 47200, end: 47209 },
+  });
+  const harness = await startHarness({ workspacePath: workspace, supervisor, policyConfig,
+    taskMetadata: { source: 'chat-channel', originSurface: 'work', productScope: 'work', channelId: BINDING.channelId } });
+  try {
+    const { token } = harness.grants.issue({ ...BINDING, workspacePath: workspace });
+    harness.grants.bind(token, 'runtime-session-1');
+    const intents: ArtifactCanvasNavigateIntent[] = [];
+    harness.hub.subscribe({
+      surface: { kind: 'code_conversation', surfaceId: BINDING.channelId },
+      sessionId: 'browser-1',
+      send: (intent) => {
+        intents.push(intent);
+        harness.hub.acknowledge({ intentId: intent.intentId, sessionId: 'browser-1',
+          receipt: { intentId: intent.intentId, artifactId: intent.artifactId, status: 'rendered' } });
+      },
+    });
+    const call = async (name: string, args: Record<string, unknown>) =>
+      (await rpc(harness, token, 'tools/call', { name, arguments: args })).json.result;
+
+    const page = await call('show_in_canvas', { path: 'site/index.html', title: 'Site' });
+    assert.equal(page.isError, undefined, JSON.stringify(page));
+    const shown = page.structuredContent as { artifactId: string; canvasPath: string };
+    assert.equal(shown.canvasPath, `/work/chats/channel-1/canvas/${shown.artifactId}`);
+    assert.equal(intents.at(-1)?.targetUrl, shown.canvasPath);
+    assert.deepEqual(intents.at(-1)?.surface, { kind: 'code_conversation', surfaceId: BINDING.channelId });
+
+    const cleared = await call('clear_canvas', {});
+    assert.deepEqual(cleared.structuredContent, { cleared: true, canvasPath: '/work/chats/channel-1' });
+    assert.equal(intents.at(-1)?.targetUrl, '/work/chats/channel-1');
+  } finally {
+    await supervisor.stopAll('test_cleanup');
+    await harness.close();
+    rmSync(base, { recursive: true, force: true });
+  }
 });

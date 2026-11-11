@@ -10,12 +10,16 @@ import {
   type AddCatPanelProps,
 } from './components/AddCatPanel.js';
 import type { FolderBrowserContentProps } from './components/FolderBrowser.js';
-import {
-  ConversationView,
-  type ConversationViewProps,
-} from '../../shared/renderer/components/conversation-view/ConversationView.js';
+import type { ConversationViewProps } from '../../shared/renderer/components/conversation-view/ConversationView.js';
 import { ActiveSessionPermissionChip } from '../../shared/renderer/components/ActiveSessionPermissionChip.js';
 import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSurfaceChip.js';
+import type { CanvasRouteOptions } from '../../shared/artifactCanvas/contracts.js';
+// Work includes Code (ADR-149 D5, SPEC-141 FR-10): a Work conversation is shown with Code's
+// conversation parts. These are the exact edges tests/dependency-graph.test.js allows.
+import { CodeConversationView } from '../../code/renderer/components/CodeConversationView.js';
+import { CodePreviewCanvasControls } from '../../code/renderer/components/CodePreviewCanvasControls.js';
+import { CodeCanvasPreviewButton } from '../../code/renderer/components/CodeCanvasPreviewButton.js';
+import { ActiveCodeComposerChips } from '../../code/renderer/components/ActiveCodeComposerChips.js';
 import {
   NewChatDraft,
   type NewChatDraftProps,
@@ -50,6 +54,8 @@ type DraftSurfaceProps = Omit<
   NewChatDraftProps,
   'payload' | 'onOpenAddCat' | 'allowAddCat'
 >;
+
+const WORK_CONVERSATION_CANVAS_ROUTE: CanvasRouteOptions = { conversationProduct: 'work' };
 
 export interface AppRoutesProps extends Omit<
   WorkspaceAppRoutesProps,
@@ -90,6 +96,11 @@ export function AppRoutes({
     addCatOpen,
     entryPath: resolveAppEntryPath(payload.setupCompleteAt),
     chatsPath: resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId),
+    // The conversation's canvas opens beside it on Work (SPEC-141 FR-9). The surface kind is
+    // Code's, so previews and artifacts recorded under it keep working.
+    chatCanvasSurfaceKind: 'code_conversation',
+    chatCanvasControls: CodePreviewCanvasControls,
+    chatCanvasRoute: WORK_CONVERSATION_CANVAS_ROUTE,
     extraRoutes: [
       <Route key="overview" path="overview" element={<WorkOverviewPage />} />,
       <Route key="war-room" path="war-room" element={<RetainedOverviewEntry />} />,
@@ -129,7 +140,10 @@ export function AppRoutes({
     ],
     renderBootShell: () => <BootShell />,
     renderConversationView: (channel, options) => (
-      <ConversationView
+      // Work's conversation view and preferences (FR-11), with Code's parts (FR-10): the work
+      // areas panel, the preview button, and the branch and workspace chip beside the folder.
+      <CodeConversationView
+        key={`${payload.scopeId}:${channel.id}`}
         {...chatSurfaceProps}
         payload={payload}
         selectedChannel={channel}
@@ -139,7 +153,17 @@ export function AppRoutes({
         renderComposerHeaderAccessory={(ctx) => (
           <ActiveSessionPermissionChip channel={ctx.selectedChannel} />
         )}
+        renderComposerHeaderWhereExtras={(ctx) => (
+          <ActiveCodeComposerChips channel={ctx.selectedChannel} placement="where" />
+        )}
         renderComposerSurfaceTag={() => <ComposerSurfaceChip surface="work" />}
+        renderTopBarExtraActions={(ctx) => (
+          <CodeCanvasPreviewButton
+            channelId={ctx.selectedChannel.id}
+            artifactId={ctx.operatorView?.latestCanvasArtifactId ?? null}
+            canvasRoute={WORK_CONVERSATION_CANVAS_ROUTE}
+          />
+        )}
       />
     ),
     renderNewChatDraft: (options) => (

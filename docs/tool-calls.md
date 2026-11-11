@@ -493,7 +493,7 @@ callers.
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Served by the Platform-hosted `cats` MCP server, which Runtime configures into Code conversation sessions. Platform executes the call and returns the result in the same turn. The earlier `tool_use` observation path, runtime tool catalog, onboarding block and `artifactClaims[]` finalization gate were retired (ADR-126 decision 4). |
+| Current status | Served by the Platform-hosted `cats` MCP server, which Runtime configures into the sessions of Code and Work conversations. Platform executes the call and returns the result in the same turn. The earlier `tool_use` observation path, runtime tool catalog, onboarding block and `artifactClaims[]` finalization gate were retired (ADR-126 decision 4). |
 | First channel | `mcp_tool` (runtime session MCP) |
 | Tool name | `declare_artifact` |
 | Implementation entry point | `src/products/code/shared/artifactDeclaration.ts` |
@@ -728,7 +728,7 @@ active product surface opens in the shared Artifact Canvas.
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Served by the `cats` MCP server beside the Code conversation (`code_conversation` surface). `show_in_canvas` takes a workspace `path`, an https `url` or an `artifactId` (SPEC-123 amends the `declarationId` input away). |
+| Current status | Served by the `cats` MCP server beside a Code or Work conversation (`code_conversation` surface, opened under `/code/chats` or `/work/chats` by the conversation's scope). `show_in_canvas` takes a workspace `path`, an https `url` or an `artifactId` (SPEC-123 amends the `declarationId` input away). |
 | First channel | `mcp_tool` (runtime session MCP) |
 | Tool names | `show_in_canvas`, `clear_canvas` |
 | Implementation entry point | `src/products/code/agentTools/showInCanvas.ts`, `src/products/code/agentTools/service.ts` |

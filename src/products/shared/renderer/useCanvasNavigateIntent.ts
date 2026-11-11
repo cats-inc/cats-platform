@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   ARTIFACT_CANVAS_RENDER_INTENT_ACK_PATH,
   buildArtifactCanvasRenderIntentStreamUrl,
+  canvasSurfaceRouteRegistry,
+  type CanvasRouteOptions,
   type ArtifactCanvasNavigateIntent,
   type ArtifactCanvasRenderReceipt,
   type CanvasSurfaceRef,
@@ -11,9 +13,13 @@ import {
 
 const ACK_RETRY_DELAYS_MS = [250, 500, 1000] as const;
 
-export function useCanvasNavigateIntent(surface: CanvasSurfaceRef | null): ArtifactCanvasNavigateIntent | null {
+export function useCanvasNavigateIntent(
+  surface: CanvasSurfaceRef | null,
+  route?: CanvasRouteOptions,
+): ArtifactCanvasNavigateIntent | null {
   const navigate = useNavigate();
   const [pendingIntent, setPendingIntent] = useState<ArtifactCanvasNavigateIntent | null>(null);
+  const conversationProduct = route?.conversationProduct;
 
   useEffect(() => {
     if (!surface || typeof EventSource === 'undefined') {
@@ -27,7 +33,7 @@ export function useCanvasNavigateIntent(surface: CanvasSurfaceRef | null): Artif
         return;
       }
       setPendingIntent(intent);
-      navigate(intent.targetUrl);
+      navigate(routeIntentTarget(intent, surface, { conversationProduct }));
       // A clear has no viewer. A show is acknowledged by CanvasPane on load.
       if (intent.artifactId === null) {
         globalThis.setTimeout(() => void ackArtifactCanvasNavigateIntent(intent.intentId), 0);
@@ -39,9 +45,29 @@ export function useCanvasNavigateIntent(surface: CanvasSurfaceRef | null): Artif
       source.removeEventListener('artifact_canvas_intent', handleIntent);
       source.close();
     };
-  }, [navigate, surface]);
+  }, [navigate, surface, conversationProduct]);
   return surface && pendingIntent && surfacesEqual(pendingIntent.surface, surface)
     ? pendingIntent : null;
+}
+
+/**
+ * The frame that receives an intent knows the product its surface lives on (SPEC-141 FR-9).
+ * An intent's URL for this same surface opens under the frame's route, so a conversation whose
+ * product changed after the intent was made still opens its canvas where it is shown. Any other
+ * URL is followed as given.
+ */
+export function routeIntentTarget(
+  intent: Pick<ArtifactCanvasNavigateIntent, 'targetUrl'>,
+  surface: CanvasSurfaceRef,
+  route: CanvasRouteOptions,
+): string {
+  const parsed = canvasSurfaceRouteRegistry.parse(intent.targetUrl);
+  if (!parsed || !surfacesEqual(parsed.surface, surface)) {
+    return intent.targetUrl;
+  }
+  return parsed.kind === 'canvas'
+    ? canvasSurfaceRouteRegistry.canvasUrl(surface, parsed.artifactId, parsed.presentationRequested, route)
+    : canvasSurfaceRouteRegistry.parentUrl(surface, route);
 }
 
 export async function ackArtifactCanvasNavigateIntent(

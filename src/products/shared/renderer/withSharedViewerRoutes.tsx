@@ -23,6 +23,7 @@ import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../app/renderer/i18n/index.js';
 import {
   canvasSurfaceRouteRegistry,
+  type CanvasRouteOptions,
   type CanvasSurfaceKind,
   type CanvasSurfaceRef,
   type ArtifactCanvasNavigateIntent,
@@ -38,6 +39,12 @@ export interface SharedViewerRoutesInput {
   element: ReactNode;
   /** Product controls shown under the canvas top bar, e.g. Code preview lease controls. */
   canvasControls?: ComponentType<ArtifactCanvasControlsProps>;
+  /**
+   * The product route this frame's canvas opens under, for a kind that can live on more than
+   * one product (SPEC-141 FR-9). Its Close goes there, and an intent for this surface is
+   * opened there.
+   */
+  canvasRoute?: CanvasRouteOptions;
 }
 
 export interface ArtifactCanvasControlsProps {
@@ -71,6 +78,7 @@ export function withSharedViewerRoutes(input: SharedViewerRoutesInput): ReactEle
           surfaceKind={input.surfaceKind}
           surfaceIdParam={input.surfaceIdParam}
           canvasControls={input.canvasControls}
+          canvasRouteOptions={input.canvasRoute}
         >
           {input.element}
         </SharedViewerSurfaceFrame>
@@ -90,11 +98,13 @@ function SharedViewerSurfaceFrame({
   surfaceKind,
   surfaceIdParam,
   canvasControls,
+  canvasRouteOptions,
   children,
 }: {
   surfaceKind: CanvasSurfaceKind;
   surfaceIdParam: string;
   canvasControls?: ComponentType<ArtifactCanvasControlsProps>;
+  canvasRouteOptions?: CanvasRouteOptions;
   children: ReactNode;
 }): JSX.Element {
   const { t } = useI18n();
@@ -106,7 +116,7 @@ function SharedViewerSurfaceFrame({
     () => surfaceId ? { kind: surfaceKind, surfaceId } : null,
     [surfaceId, surfaceKind],
   );
-  const renderIntent = useCanvasNavigateIntent(surface);
+  const renderIntent = useCanvasNavigateIntent(surface, canvasRouteOptions);
   const canvasRoute = surface
     ? canvasSurfaceRouteRegistry.parse(location.pathname)
     : null;
@@ -201,7 +211,7 @@ function SharedViewerSurfaceFrame({
     return <>{children}</>;
   }
 
-  const parentUrl = canvasSurfaceRouteRegistry.parentUrl(surface);
+  const parentUrl = canvasSurfaceRouteRegistry.parentUrl(surface, canvasRouteOptions);
   if (!hasCanvasPane) {
     return <>{children}</>;
   }

@@ -64,6 +64,14 @@ const ALLOWED_BOUNDARY_IMPORTS = new Set([
   'products/chat/state/orchestratorCollaborationReport.ts -> products/work/state/collaborationRecords.ts',
   'products/chat/state/runtime-dispatch/routing.ts -> products/work/state/collaborationRecords.ts',
 
+  // ADR-149 D5 / SPEC-141 FR-10: Work includes Code, so Work's conversation route mounts
+  // Code's conversation parts. Exact edges from Work's route file only; nothing else in Work
+  // may import Code.
+  'products/work/renderer/AppRoutes.tsx -> products/code/renderer/components/CodeConversationView.tsx',
+  'products/work/renderer/AppRoutes.tsx -> products/code/renderer/components/CodePreviewCanvasControls.tsx',
+  'products/work/renderer/AppRoutes.tsx -> products/code/renderer/components/CodeCanvasPreviewButton.tsx',
+  'products/work/renderer/AppRoutes.tsx -> products/code/renderer/components/ActiveCodeComposerChips.tsx',
+
   // The shared product shell still reuses chat-specific participant and
   // composer utilities. These are exact edges, not product-wide exemptions.
   'products/shared/channelParticipants.ts -> products/chat/shared/channelParticipants.ts',

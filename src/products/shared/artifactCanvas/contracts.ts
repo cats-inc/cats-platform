@@ -252,6 +252,25 @@ export interface CanvasArtifactUrlParse {
 
 export type CanvasUrlParse = CanvasParentUrlParse | CanvasArtifactUrlParse;
 
+/**
+ * SPEC-141 FR-9: the product whose route a `code_conversation` canvas opens under. A
+ * conversation with Code's tools lives on Code or on Work (ADR-149 D5); the surface kind stays
+ * the same, so previews and artifacts recorded under it keep working when the route changes.
+ */
+export type CodeConversationRouteProduct = 'code' | 'work';
+
+export interface CanvasRouteOptions {
+  /** For `code_conversation` only; Code when absent. Other kinds ignore it. */
+  conversationProduct?: CodeConversationRouteProduct;
+}
+
+const CODE_CONVERSATION_ROUTE_PREFIXES: Record<CodeConversationRouteProduct, string> = {
+  code: '/code/chats',
+  work: '/work/chats',
+};
+
+// The default route of each kind. A `code_conversation` canvas may also open under Work's route
+// (CODE_CONVERSATION_ROUTE_PREFIXES).
 const SURFACE_ROUTE_PREFIXES: Record<CanvasSurfaceKind, string> = {
   code_task: '/code/tasks',
   code_codespace: '/code/codespaces',
@@ -263,11 +282,12 @@ const SURFACE_ROUTE_PREFIXES: Record<CanvasSurfaceKind, string> = {
 };
 
 export interface CanvasSurfaceRouteRegistry {
-  parentUrl(surface: CanvasSurfaceRef): string;
+  parentUrl(surface: CanvasSurfaceRef, route?: CanvasRouteOptions): string;
   canvasUrl(
     surface: CanvasSurfaceRef,
     artifactId: string,
     presentation?: ArtifactCanvasPresentationInput,
+    route?: CanvasRouteOptions,
   ): string;
   projectionApiUrl(
     surface: CanvasSurfaceRef,
@@ -279,11 +299,11 @@ export interface CanvasSurfaceRouteRegistry {
 }
 
 export const canvasSurfaceRouteRegistry: CanvasSurfaceRouteRegistry = {
-  parentUrl(surface) {
-    return composeParentUrl(surface);
+  parentUrl(surface, route) {
+    return composeParentUrl(surface, route);
   },
-  canvasUrl(surface, artifactId, presentation = 'auto') {
-    return composeCanvasUrl(surface, artifactId, presentation);
+  canvasUrl(surface, artifactId, presentation = 'auto', route) {
+    return composeCanvasUrl(surface, artifactId, presentation, route);
   },
   projectionApiUrl(surface, artifactId, presentation = 'auto') {
     return composeProjectionApiUrl(surface, artifactId, presentation);
@@ -386,11 +406,12 @@ export function composeArtifactCanvasNavigateIntent(input: {
   policyVersion: string;
   triggeredAt: string;
   ttlMs?: number;
+  route?: CanvasRouteOptions;
 }): ArtifactCanvasNavigateIntent {
   const ttlMs = input.ttlMs ?? 30_000;
   const targetUrl = input.artifactId
-    ? composeCanvasUrl(input.surface, input.artifactId, input.presentationRequested ?? 'auto')
-    : composeParentUrl(input.surface);
+    ? composeCanvasUrl(input.surface, input.artifactId, input.presentationRequested ?? 'auto', input.route)
+    : composeParentUrl(input.surface, input.route);
   return {
     intentId: input.intentId,
     activityId: input.activityId,
@@ -404,19 +425,26 @@ export function composeArtifactCanvasNavigateIntent(input: {
   };
 }
 
-function composeParentUrl(surface: CanvasSurfaceRef): string {
+function surfaceRoutePrefix(kind: CanvasSurfaceKind, route?: CanvasRouteOptions): string {
+  return kind === 'code_conversation'
+    ? CODE_CONVERSATION_ROUTE_PREFIXES[route?.conversationProduct === 'work' ? 'work' : 'code']
+    : SURFACE_ROUTE_PREFIXES[kind];
+}
+
+function composeParentUrl(surface: CanvasSurfaceRef, route?: CanvasRouteOptions): string {
   assertCanvasSurface(surface);
-  return `${SURFACE_ROUTE_PREFIXES[surface.kind]}/${encodeURIComponent(surface.surfaceId)}`;
+  return `${surfaceRoutePrefix(surface.kind, route)}/${encodeURIComponent(surface.surfaceId)}`;
 }
 
 function composeCanvasUrl(
   surface: CanvasSurfaceRef,
   artifactId: string,
   presentation: ArtifactCanvasPresentationInput = 'auto',
+  route?: CanvasRouteOptions,
 ): string {
   assertCanvasSurface(surface);
   const normalizedArtifactId = normalizeRequiredPathToken(artifactId, 'artifactId');
-  const parent = composeParentUrl(surface);
+  const parent = composeParentUrl(surface, route);
   const base = `${parent}/canvas/${encodeURIComponent(normalizedArtifactId)}`;
   return presentation === 'auto'
     ? base
@@ -438,10 +466,19 @@ function composeProjectionApiUrl(
     : `${base}/view/${presentation}`;
 }
 
+// Each kind's routes, with the options that compose them, so parsing a URL and composing it
+// again gives the same route.
+type SurfaceRoute = { kind: CanvasSurfaceKind; route?: CanvasRouteOptions };
+const SURFACE_ROUTES: readonly SurfaceRoute[] =
+  ARTIFACT_CANVAS_SURFACE_KINDS.flatMap((kind): SurfaceRoute[] => kind === 'code_conversation'
+    ? (Object.keys(CODE_CONVERSATION_ROUTE_PREFIXES) as CodeConversationRouteProduct[])
+      .map((conversationProduct) => ({ kind, route: { conversationProduct } }))
+    : [{ kind }]);
+
 function parseCanvasSurfacePath(pathname: string): CanvasUrlParse | null {
   const segments = splitPath(pathname);
-  for (const surfaceKind of ARTIFACT_CANVAS_SURFACE_KINDS) {
-    const prefixSegments = splitPath(SURFACE_ROUTE_PREFIXES[surfaceKind]);
+  for (const { kind: surfaceKind, route } of SURFACE_ROUTES) {
+    const prefixSegments = splitPath(surfaceRoutePrefix(surfaceKind, route));
     if (!startsWithSegments(segments, prefixSegments)) {
       continue;
     }
@@ -450,7 +487,7 @@ function parseCanvasSurfacePath(pathname: string): CanvasUrlParse | null {
       continue;
     }
     const surface = { kind: surfaceKind, surfaceId: decodeURIComponent(surfaceId) };
-    const parentUrl = composeParentUrl(surface);
+    const parentUrl = composeParentUrl(surface, route);
     if (segments.length === prefixSegments.length + 1) {
       return { kind: 'parent', surface, parentUrl };
     }
@@ -462,6 +499,7 @@ function parseCanvasSurfacePath(pathname: string): CanvasUrlParse | null {
       parentUrl,
       tail: segments.slice(prefixSegments.length + 2),
       composeCanvas: true,
+      route,
     });
   }
   return null;
@@ -501,6 +539,7 @@ function parseCanvasTail(input: {
   parentUrl: string;
   tail: string[];
   composeCanvas: boolean;
+  route?: CanvasRouteOptions;
 }): CanvasArtifactUrlParse | null {
   const artifactId = input.tail[0];
   if (!artifactId) {
@@ -521,7 +560,7 @@ function parseCanvasTail(input: {
     surface: input.surface,
     parentUrl: input.parentUrl,
     canvasUrl: input.composeCanvas
-      ? composeCanvasUrl(input.surface, decodeURIComponent(artifactId), presentationRequested)
+      ? composeCanvasUrl(input.surface, decodeURIComponent(artifactId), presentationRequested, input.route)
       : composeProjectionApiUrl(
         input.surface,
         decodeURIComponent(artifactId),

@@ -12,6 +12,7 @@ import {
   type ArtifactCanvasPresentationInput,
   type CanvasSurfaceRef,
 } from '../../shared/artifactCanvas/contracts.js';
+import { resolveCanvasRouteOptions } from '../../shared/artifactCanvas/conversationRoute.js';
 import type {
   ArtifactCanvasPolicyConfig,
   ArtifactCanvasSupervisorPreviewLeaseStore,
@@ -313,7 +314,9 @@ async function showArtifact(
       outcome = failure({ code: projection.error.code, message: projection.error.message });
       return core;
     }
-    const targetUrl = canvasSurfaceRouteRegistry.canvasUrl(surface, artifactId, presentation);
+    // The canvas opens on the product where the conversation lives (SPEC-141 FR-9).
+    const route = resolveCanvasRouteOptions(core, surface);
+    const targetUrl = canvasSurfaceRouteRegistry.canvasUrl(surface, artifactId, presentation, route);
     const activity = appendArtifactCanvasIntentActivity({
       core,
       kind: 'artifact_canvas_show_intent',
@@ -335,6 +338,7 @@ async function showArtifact(
       presentationRequested: projection.projection.presentationRequested,
       policyVersion: projection.projection.policyVersion,
       triggeredAt: at.toISOString(),
+      route,
     });
     payload = {
       artifactId,

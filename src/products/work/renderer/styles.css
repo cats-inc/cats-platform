@@ -1,4 +1,6 @@
 @import '../../shared/renderer/styles.css';
+/* Work includes Code (ADR-149 D5): a Work conversation shows Code's work areas panel. */
+@import '../../code/renderer/styles/code-work-areas.css';
 @import './components/projects/projects.css';
 @import './components/runs/runs.css';
 @import './components/runs/historyManagement.css';
