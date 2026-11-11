@@ -315,6 +315,15 @@ folder goes through a card that says so (D12; FR-12, FR-13, FR-16, FR-22 to FR-2
     as a blocker. The first walk found that the file store dropped the conversation's Project,
     and the walk also found the Project page's sections shrinking to their headers; both are
     fixed in #451.
+  - Follow-up after #451 (a third candidate and a review of the merged code): the Project page
+    shows its sections in full, with the conversation as a link that opens it. ADR-105's
+    folder card is posted at every level (`work.project.create.decision`), tested end to end
+    in a Chat conversation through the owner's confirmation. A Project its conversations have
+    left can be deleted, since its activity notes no longer block deletion. A `blocked`
+    supervised run counts as under way.
+  - No card of any Work or Project kind was seen in Desktop: posting one needs a model turn.
+    The card's rendering, folder warning and answer are covered by
+    `tests/conversation-proposal-card-renderer.test.tsx`, added in the follow-up.
 
 **Deliverables:** Project membership, the folder proposals and the remaining Work tools.
 
@@ -333,12 +342,18 @@ folder goes through a card that says so (D12; FR-12, FR-13, FR-16, FR-22 to FR-2
   - As built: SPEC-126 FR-12 and the terminology record FR-22 to FR-27, with Turn Run defined.
 - [ ] Provider acceptance: Claude Code and Codex each list the tools at all three levels and
       complete a read and a proposal, under the default policy and an interactive one.
-  - Not run on 2026-11-12. In an isolated candidate (`npm run desktop:candidate`, synthetic
-    owner), Codex refused before any model turn because its native Windows sandbox is not set
-    up on this machine, and Claude Code reported that it is not logged in inside the isolated
-    home. Setting up either would change the owner's own configuration. What was confirmed
-    without a model: both sessions carried the `cats` grant marker at level `work`, with the
-    participant and the proposal gate open on the owner's turn.
+  - Not run on 2026-11-12. Observed in isolated candidates (`npm run desktop:candidate`,
+    synthetic owner), twice for Codex:
+    - Codex refused before any model turn: "Codex effective permission mismatch: requested
+      workspace-write / never, received readOnly / never ... On native Windows, check
+      windows.sandbox". The session's permission chip was disabled, so a read-only session
+      could not be tried from the composer.
+    - Claude Code answered "Not logged in · Please run /login"; the candidate runs it with its
+      own home directory.
+    - Logging in or setting up Codex's sandbox was not attempted, since either changes CLI
+      configuration on the owner's machine.
+    - Confirmed without a model: both sessions carried the `cats` grant marker at level `work`,
+      with the participant and the proposal gate open on the owner's turn.
 - [x] Update ADR-149's status.
   - As built: with PLAN-134 Phase 7's update.
 

@@ -523,12 +523,18 @@ previews and work areas appear under `/work`.
     `docs/deployment.md` records it for 0.16.0, with the product scope and, since
     PLAN-135 Phase 5, a Work conversation's Project.
 - [ ] Provider acceptance: the mid-conversation tool delivery with Claude Code and with Codex.
-  - Not run on 2026-11-12. In an isolated candidate (`npm run desktop:candidate`, synthetic
-    owner), Codex refused before any model turn because its native Windows sandbox is not set
-    up on this machine, and Claude Code reported that it is not logged in inside the isolated
-    home. Setting up either would change the owner's own configuration. What was confirmed
-    without a model: both sessions carried the `cats` grant marker at level `work`, with the
-    participant and the proposal gate open on the owner's turn.
+  - Not run on 2026-11-12. Observed in isolated candidates (`npm run desktop:candidate`,
+    synthetic owner), twice for Codex:
+    - Codex refused before any model turn: "Codex effective permission mismatch: requested
+      workspace-write / never, received readOnly / never ... On native Windows, check
+      windows.sandbox". The session's permission chip was disabled, so a read-only session
+      could not be tried from the composer.
+    - Claude Code answered "Not logged in · Please run /login"; the candidate runs it with its
+      own home directory.
+    - Logging in or setting up Codex's sandbox was not attempted, since either changes CLI
+      configuration on the owner's machine.
+    - Confirmed without a model: both sessions carried the `cats` grant marker at level `work`,
+      with the participant and the proposal gate open on the owner's turn.
 - [ ] Provider acceptance: a Code session with one agent still does its coding task. Since
       Phase 3 that agent is told it is the Cats Orchestrator with every turn, and a coding
       request brings the collaboration and recovery procedures. No model was run against it.
