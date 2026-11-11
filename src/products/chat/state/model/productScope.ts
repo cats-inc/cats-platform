@@ -11,7 +11,6 @@ import {
   isDirectLaneChannel,
   resolveChannelProductScope,
 } from '../../shared/channelTopology.js';
-import { findParallelChatGroupByChannelId } from './channelGroups.js';
 import { cloneState, isoAt, requireChannel } from './shared.js';
 
 /** SPEC-141 FR-23: why a raise is refused. Each value is a stable code for callers to map. */
@@ -31,18 +30,21 @@ export class ProductScopeRaiseError extends Error {
 }
 
 /**
- * A member of any parallel group, whatever the group's status: the group's Recents entry still
- * lists it. A conversation stops being one when its group is dissolved or no longer lists it.
+ * SPEC-141: a parallel member belongs to an active group, which Recents lists as one entry.
+ * The members of a group that is not active are listed as ordinary conversations, and a
+ * conversation whose group was dissolved, or no longer lists it, is one again.
  */
 function isParallelMember(state: ChatState, channelId: string): boolean {
-  return findParallelChatGroupByChannelId(state, channelId) !== null;
+  return state.parallelChatGroups.some((group) =>
+    group.status === 'active' && group.memberChannelIds.includes(channelId));
 }
 
 /**
  * SPEC-141 FR-4: the one place a conversation's product scope changes after creation. It only
  * raises: an equal or lower level is refused, and so are a direct lane and a parallel member
  * (FR-5). Who may call it, and what the owner saw first, are the caller's checks (FR-20 to
- * FR-23).
+ * FR-23). A conversation that does not exist throws from `requireChannel`, as in every model
+ * function, and is the caller's to map as well.
  */
 export function raiseChannelProductScope(
   state: ChatState,

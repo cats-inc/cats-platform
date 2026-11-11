@@ -14,6 +14,7 @@ import { createDefaultChatState } from '../build/server/products/chat/state/defa
 import {
   ProductScopeRaiseError,
   appendMessage,
+  archiveCat,
   assignCatToChannel,
   buildChannelView,
   createCat,
@@ -21,11 +22,14 @@ import {
   createParallelChatGroup,
   productScopeRaiseRevision,
   raiseChannelProductScope,
+  removeCatFromChannel,
   renameChannel,
   selectChannel,
   setChannelChatCwd,
+  setChannelRoomRouting,
   setChannelStatus,
   toChannelSummary,
+  unarchiveCat,
   ungroupParallelChatGroup,
   updateCatProducts,
 } from '../build/server/products/chat/state/model/index.js';
@@ -87,6 +91,30 @@ function groupInput(originSurface) {
       { provider: 'claude', instance: null, model: 'claude-opus-4-6', modelSelection: null },
       { provider: 'codex', instance: null, model: 'gpt-5.4', modelSelection: null },
     ],
+  };
+}
+
+/** A Runtime that is reachable and is never asked to run anything. */
+function idleRuntimeClient() {
+  return {
+    async getHealth() {
+      return { baseUrl: 'http://127.0.0.1:3110', reachable: true, status: 'ok', service: 'cats-runtime' };
+    },
+    async getProviderConfig() {
+      return {};
+    },
+    async getProviderModels(provider) {
+      return {
+        provider,
+        backend: 'cli',
+        instance: 'default',
+        defaultModel: `${provider}-default`,
+        source: 'config',
+        cache: null,
+        models: [],
+        warnings: [],
+      };
+    },
   };
 }
 
@@ -271,7 +299,7 @@ test('each member of a parallel group starts at the group origin, and the group 
   }
 });
 
-test('POST /api/channels sets the scope from the origin and ignores one named in the request', async () => {
+test('the create routes set the scope from the origin and ignore one named in the request', async () => {
   const workingDir = await mkdtemp(path.join(os.tmpdir(), 'cats-product-scope-api-'));
   const authConfig = createTestAuthConfig();
   const auth = await createAuthenticatedTestSession({
@@ -289,7 +317,7 @@ test('POST /api/channels sets the scope from the origin and ignores one named in
     chatStatePath: path.join(workingDir, 'platform', 'state', 'chat-state.local.json'),
   };
   const server = createServer({
-    shared: { config, runtimeClient: {}, authStore: auth.authStore, now: () => NOW },
+    shared: { config, runtimeClient: idleRuntimeClient(), authStore: auth.authStore, now: () => NOW },
     chat: { chatStore },
   });
   server.listen(0, '127.0.0.1');
@@ -324,10 +352,21 @@ test('POST /api/channels sets the scope from the origin and ignores one named in
     assert.equal(lane.originSurface, 'work');
     assert.equal(lane.productScope, 'chat', 'a direct lane is chat whatever its origin');
 
+    const groupResponse = await post('/api/parallel-chat-groups', {
+      ...groupInput('code'),
+      productScope: 'work',
+    });
+    assert.equal(groupResponse.status, 201);
+    const { group } = await groupResponse.json();
+
     const state = await chatStore.read();
     assert.equal(channelOf(state, chatRoom.id).productScope, 'chat');
     assert.equal(channelOf(state, codeRoom.id).productScope, 'code');
     assert.equal(channelOf(state, lane.id).productScope, 'chat');
+    assert.equal(group.memberChannelIds.length, 2);
+    for (const memberId of group.memberChannelIds) {
+      assert.equal(channelOf(state, memberId).productScope, 'code', 'a member follows the group origin');
+    }
   } finally {
     restoreFetch();
     server.close();
@@ -436,6 +475,22 @@ test('a conversation or a group with no recorded origin loads as chat', async ()
   const group = state.parallelChatGroups.find((candidate) => candidate.id === ids.group);
   assert.equal(group.originSurface, null);
   assert.equal('productScope' in group, false, 'a group has no scope of its own');
+});
+
+test('members of a group with no recorded origin load by their own origin', async () => {
+  const { ids, text } = await writeFixtureFile();
+  const file = withoutProductScope(JSON.parse(text));
+  delete file.chat.parallelChatGroups.find((group) => group.id === ids.group).originSurface;
+
+  const { state } = await loadFile(file);
+
+  const group = state.parallelChatGroups.find((candidate) => candidate.id === ids.group);
+  assert.equal(group.originSurface, null);
+  assert.equal('productScope' in group, false);
+  for (const memberId of ids.members) {
+    assert.equal(channelOf(state, memberId).originSurface, 'code');
+    assert.equal(channelOf(state, memberId).productScope, 'code');
+  }
 });
 
 test('a valid stored scope is kept as stored, below the origin and above it', async () => {
@@ -547,13 +602,12 @@ test('a parallel member cannot be raised, and a former member can', () => {
 
   assert.throws(() => raiseChannelProductScope(created, memberId, 'code'), refuses('parallel_member'));
 
-  // An archived group still lists its members under its own Recents entry.
+  // SPEC-141: a parallel member belongs to an active group. Recents lists the members of a
+  // group that is not active as ordinary conversations, so they are raised like one.
   const archivedGroup = structuredClone(created);
   archivedGroup.parallelChatGroups[0].status = 'archived';
-  assert.throws(
-    () => raiseChannelProductScope(archivedGroup, memberId, 'code'),
-    refuses('parallel_member'),
-  );
+  const raisedInArchivedGroup = raiseChannelProductScope(archivedGroup, memberId, 'code');
+  assert.equal(channelOf(raisedInArchivedGroup, memberId).productScope, 'code');
 
   const ungrouped = ungroupParallelChatGroup(created, group.id, NOW);
   const raised = raiseChannelProductScope(ungrouped, memberId, 'code');
@@ -562,18 +616,49 @@ test('a parallel member cannot be raised, and a former member can', () => {
 
 test('no other change to a conversation moves its scope', async () => {
   const { state, catId } = stateWithCat();
-  let next = createChannel(state, roomInput('chat'), NOW);
+  let next = createCat(
+    state,
+    { name: 'Mochi', provider: 'codex', instance: null, model: 'gpt-5.4', products: ['chat', 'code'] },
+    NOW,
+  );
+  const mochiId = next.cats.find((cat) => cat.name === 'Mochi').id;
+  next = createChannel(next, roomInput('chat'), NOW);
   const channelId = next.selectedChannelId;
   next = raiseChannelProductScope(next, channelId, 'work', NOW);
 
-  next = renameChannel(next, channelId, 'Renamed', LATER);
-  next = assignCatToChannel(next, channelId, { catId, provider: 'claude' }, LATER);
-  next = appendMessage(next, channelId, { senderKind: 'user', senderName: 'Owner', body: 'Hello' }, LATER).state;
-  next = setChannelChatCwd(next, channelId, 'C:/work/demo', LATER);
-  next = setChannelStatus(next, channelId, 'archived');
-  next = setChannelStatus(next, channelId, 'active');
-  next = selectChannel(next, channelId);
-  assert.equal(channelOf(next, channelId).productScope, 'work');
+  const steps = [
+    (current) => renameChannel(current, channelId, 'Renamed', LATER),
+    (current) => assignCatToChannel(current, channelId, { catId, provider: 'claude' }, LATER),
+    (current) => assignCatToChannel(current, channelId, { catId: mochiId, provider: 'codex' }, LATER),
+    (current) => appendMessage(
+      current,
+      channelId,
+      { senderKind: 'user', senderName: 'Owner', body: 'Hello' },
+      LATER,
+    ).state,
+    (current) => setChannelChatCwd(current, channelId, 'C:/work/demo', LATER),
+    (current) => setChannelRoomRouting(
+      current,
+      channelId,
+      structuredClone(channelOf(current, channelId).roomRouting),
+      LATER,
+    ),
+    (current) => setChannelStatus(current, channelId, 'archived'),
+    (current) => setChannelStatus(current, channelId, 'active'),
+    (current) => selectChannel(current, channelId),
+    // The ones that restructure a conversation: a participant leaves, a Cat is archived and
+    // comes back, and a Cat leaves Chat altogether.
+    (current) => removeCatFromChannel(current, channelId, mochiId, LATER),
+    (current) => archiveCat(current, catId, LATER),
+    (current) => unarchiveCat(current, catId, LATER),
+    (current) => updateCatProducts(current, catId, ['code']),
+  ];
+  steps.forEach((step, index) => {
+    next = step(next);
+    const channel = channelOf(next, channelId);
+    assert.equal(channel.productScope, 'work', 'step ' + (index + 1) + ' leaves the scope alone');
+    assert.equal(channel.originSurface, 'chat', 'step ' + (index + 1) + ' leaves the origin alone');
+  });
 
   const statePath = await newStatePath();
   await new FileChatStore(statePath).write(next);
@@ -601,9 +686,11 @@ test('a raise that lands while a turn is running survives the turn', () => {
   assert.equal(channel.messages.at(-1).body, 'Done.', "the turn's own changes are kept");
 });
 
-test('only creation, the raise and the view write the field', async () => {
+test('only creation, the raise and the view assign the field', async () => {
   // SPEC-141 FR-4: after creation, raiseChannelProductScope is the one writer. The view sets
   // the field on its own copy. Add a file here only for a change the spec allows.
+  // This sees assignments only. The loader, the summary and the projection set the field in an
+  // object literal, and a spread or a whole-object replacement is not an assignment either.
   const allowed = new Map([
     ['products/chat/state/model/index.ts', 1],
     ['products/chat/state/model/productScope.ts', 1],
@@ -661,7 +748,10 @@ test('the raise revision follows what the confirmation shows and nothing else', 
   channelOf(otherPermission, channelId).runtimePermissionMode = 'default';
   const otherKind = structuredClone(next);
   channelOf(otherKind, channelId).runtimeWorkspaceKind = 'worktree';
-  for (const changed of [raised, withCat, archived, otherFolder, otherAccess, otherPermission, otherKind]) {
+  const asLane = structuredClone(next);
+  channelOf(asLane, channelId).channelKind = 'direct_message';
+  const stale = [raised, withCat, archived, otherFolder, otherAccess, otherPermission, otherKind, asLane];
+  for (const changed of stale) {
     assert.notEqual(productScopeRaiseRevision(changed, channelId), revision);
   }
 
