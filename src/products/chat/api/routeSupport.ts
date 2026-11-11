@@ -193,6 +193,8 @@ export interface ChatApiDependencies {
   memoryService: CatsMemoryService;
   eventHub?: ChatEventHub;
   providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
+  /** SPEC-142 FR-14 to FR-20: proposals and their cards. */
+  conversationProposals?: import('./conversationProposals.js').ConversationProposalService;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
   externalIssueImport?: ExternalIssueImportFetchOptions;

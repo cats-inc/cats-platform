@@ -281,6 +281,11 @@ export function createHostToolsClientWrapper(options: HostToolsClientWrapperOpti
                 && compareProductScopes(marker.level, tracked.level) > 0 && options.server.hasTools(marker.level)) {
                 raiseGrant(sessionId, tracked, marker);
               }
+              // The turn gate follows every send: only a marked owner's turn of this conversation
+              // may propose. A heartbeat or any other unmarked send turns it off.
+              options.grants.bind(tracked.token, sessionId, {
+                proposalsAllowed: marker?.channelId === tracked.channelId && marker.proposalsAllowed === true,
+              });
               const result = await target.sendMessage(sessionId, content, {
                 ...input,
                 mcpServers: withServers(input?.mcpServers, descriptor(endpoint, tracked.token, tracked)),

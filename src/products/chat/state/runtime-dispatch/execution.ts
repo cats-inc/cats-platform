@@ -36,6 +36,7 @@ import { applyCompanionPhotoDirective } from './companionPhoto.js';
 import { waitForSessionTurnGate } from './sessionTurnGate.js';
 import { createDispatchPresentationRecorder } from './presentationRecorder.js';
 import { extractWorkflowRecommendationFromBody } from '../room-routing/recommendations.js';
+import { formatProposalOutcomeInstructions, pendingProposalOutcomes } from '../conversationProposals.js';
 import {
   buildDispatchRuntimeContextMetadata,
   mergeRuntimeInvocationContextMetadata,
@@ -60,6 +61,8 @@ export interface DispatchExecution extends DispatchRequest {
   errorRejectionCode?: string | null;
   leasePatch?: DispatchLeasePatch;
   channelChatCwd?: string;
+  /** SPEC-142 FR-21: proposal outcomes this turn told its participant, marked as told once applied. */
+  reportedProposalIds?: string[];
   recoveredMessages?: ChatMessage[];
   runtimeAssistantMetadata?: Record<string, unknown>;
   runtimeFinalization?: Record<string, unknown> | null;
@@ -217,13 +220,18 @@ export async function executeDispatch(
         })
       : null;
     const knowledgeReceipt = knowledge ? productKnowledgeReceipt(knowledge) : null;
+    // SPEC-142 FR-21: the outcome of each of this participant's closed proposals, once.
+    const proposalOutcomes = pendingProposalOutcomes(state, channelId, request.target.participantId, now);
     const runtimeInvocationInput = enrichRuntimeInvocation(channel, {
-      instructions: [dispatchPrompt.instructions?.trim(), knowledge && productKnowledgeInstructions(knowledge)]
+      instructions: [dispatchPrompt.instructions?.trim(), knowledge && productKnowledgeInstructions(knowledge),
+        formatProposalOutcomeInstructions(proposalOutcomes.lines)]
         .filter(Boolean).join('\n\n') || undefined,
       context: mergeRuntimeInvocationContextMetadata(
         runtimeEnvelope.context,
         {
           ...dispatchContextMetadata,
+          // SPEC-142: proposals come only from the owner's own turns, not from a transport's.
+          turnTransport: transport === 'telegram' ? 'telegram' : 'web',
           ...(knowledgeReceipt ? { productKnowledge: knowledgeReceipt } : {}),
           ...(toolIntent ? { toolIntent } : {}),
         },
@@ -313,6 +321,7 @@ export async function executeDispatch(
         : {}),
       ...(runtimeResult.finalization ? { runtimeFinalization: runtimeResult.finalization } : {}),
       terminalMessageMetadata: { ...companionPhoto.metadata, presentation },
+      ...(proposalOutcomes.proposalIds.length > 0 ? { reportedProposalIds: proposalOutcomes.proposalIds } : {}),
     };
   } catch (error) {
     const errorSignal = readRuntimeErrorSignal(error);

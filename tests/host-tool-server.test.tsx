@@ -31,6 +31,8 @@ import {
   enrichRuntimeInvocation,
   registerRuntimeInvocationEnricher,
 } from '../src/platform/runtime/invocationEnrichment.ts';
+import { hostToolTurnMayPropose, readHostToolsInvocationMarker as readMarker } from '../src/platform/mcp/hostTools.ts';
+import { createHostToolsInvocationEnricher as createEnricher } from '../src/platform/mcp/hostToolsEnricher.ts';
 
 /** A provider at `chat`, standing in for the base tools PLAN-135 Phase 2 adds. */
 const BASE: HostToolProvider = {
@@ -255,4 +257,35 @@ test('an invocation without a conversation loses a marker an earlier step left',
   } finally {
     clearRuntimeInvocationEnrichers();
   }
+});
+
+test("the turn gate: only the owner's own turn may propose; a transport turn and a heartbeat may not", async () => {
+  const enricher = createEnricher();
+  const phase = { phase: 'message_send' as const };
+  const markerFor = (turnTransport?: string) => readMarker(enricher.enrich(
+    { originSurface: 'chat', id: 'channel-1' },
+    { context: { metadata: { targetParticipantId: 'participant-1', ...(turnTransport ? { turnTransport } : {}) } } },
+    phase)?.context);
+  assert.equal(markerFor('web')?.proposalsAllowed, true);
+  assert.equal(markerFor('telegram')?.proposalsAllowed, false);
+  assert.equal(markerFor()?.proposalsAllowed, false, 'a turn that says nothing is not the owner');
+
+  const host = createHostToolServer();
+  host.register(BASE);
+  const wrapper = createHostToolsClientWrapper({ grants: host.grants, server: host, endpoint: () => 'http://127.0.0.1:1/mcp' });
+  const { client, calls } = fakeRuntime({ sendReports: [DELIVERED, DELIVERED, DELIVERED, DELIVERED] });
+  const wrapped = wrapper.wrapClient(client);
+  await wrapped.createSession({ provider: 'claude', context: marker('chat') } as RuntimeSessionCreateInput);
+  const token = tokenOf(calls.create[0]!.mcpServers)!;
+  const grant = () => host.grants.resolve(token)!;
+  assert.equal(hostToolTurnMayPropose(grant()), false, 'not before a turn says so');
+  const turn = (turnTransport?: string) => ({ metadata: { hostTools: { ...marker('chat').metadata.hostTools,
+    proposalsAllowed: turnTransport === 'web' } } });
+  await wrapped.sendMessage('rt-1', 'from Desktop', { context: turn('web') });
+  assert.equal(hostToolTurnMayPropose(grant()), true);
+  await wrapped.sendMessage('rt-1', 'a heartbeat, which carries no marker', {});
+  assert.equal(hostToolTurnMayPropose(grant()), false);
+  await wrapped.sendMessage('rt-1', 'from Desktop again', { context: turn('web') });
+  await wrapped.sendMessage('rt-1', 'from Telegram', { context: turn('telegram') });
+  assert.equal(hostToolTurnMayPropose(grant()), false);
 });

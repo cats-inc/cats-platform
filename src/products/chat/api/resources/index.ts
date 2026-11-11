@@ -6,6 +6,7 @@ import { routeConversationDiagnostics } from './diagnosticRoutes.js';
 import { routeChatChannelResourceApi } from './channelRoutes.js';
 import { routeBossCatResourceApi } from './bossCatRoutes.js';
 import { routeProductScopeResourceApi } from './productScopeRoutes.js';
+import { routeConversationProposalResourceApi } from './proposalRoutes.js';
 import { routeParallelChatGroupResourceApi } from './parallelChatGroupRoutes.js';
 import { routeChatEventApi } from './eventRoutes.js';
 import { routeChatOrchestratorResourceApi } from './orchestratorRoutes.js';
@@ -39,6 +40,10 @@ export async function routeChatResourceApi(
   }
 
   if (await routeBossCatResourceApi(context)) {
+    return true;
+  }
+
+  if (await routeConversationProposalResourceApi(context)) {
     return true;
   }
 

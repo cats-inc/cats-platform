@@ -39,6 +39,17 @@ export interface HostToolGrantBinding {
   level: ProductScope;
   /** The participant whose session holds the grant, when the dispatch named one. */
   participantId: string | null;
+  /**
+   * Whether the session's current turn is the owner's own (Desktop, web or mobile), the only
+   * turns that may propose a write (SPEC-142; PLAN-135 Phase 1's turn gate). Updated on every
+   * send. A transport turn, a heartbeat and a turn the enricher did not mark are not.
+   */
+  proposalsAllowed?: boolean;
+}
+
+/** PLAN-135: a tool that proposes or writes refuses unless the current turn is the owner's own. */
+export function hostToolTurnMayPropose(grant: HostToolGrant): boolean {
+  return grant.binding.proposalsAllowed === true;
 }
 
 export type HostToolGrant = McpSessionGrant<HostToolGrantBinding>;
@@ -66,6 +77,8 @@ export interface HostToolsInvocationMarker {
   shellExecution: boolean;
   level: ProductScope;
   participantId: string | null;
+  /** The turn is the owner's own, not a transport's (see `HostToolGrantBinding`). */
+  proposalsAllowed?: boolean;
 }
 
 export function readHostToolsInvocationMarker(
@@ -73,7 +86,7 @@ export function readHostToolsInvocationMarker(
 ): HostToolsInvocationMarker | null {
   const value = context?.metadata?.[HOST_TOOLS_CONTEXT_METADATA_KEY];
   if (!value || typeof value !== 'object') return null;
-  const { channelId, workspacePath, shellExecution, level, participantId } = value as Record<string, unknown>;
+  const { channelId, workspacePath, shellExecution, level, participantId, proposalsAllowed } = value as Record<string, unknown>;
   if (typeof channelId !== 'string' || !channelId || !isProductScope(level)) return null;
   return {
     channelId,
@@ -81,6 +94,7 @@ export function readHostToolsInvocationMarker(
     shellExecution: shellExecution === true,
     level,
     participantId: typeof participantId === 'string' && participantId ? participantId : null,
+    proposalsAllowed: proposalsAllowed === true,
   };
 }
 

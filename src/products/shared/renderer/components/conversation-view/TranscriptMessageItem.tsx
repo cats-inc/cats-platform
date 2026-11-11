@@ -29,6 +29,7 @@ import {
 } from './TranscriptMessageActions.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import { BossCatJoinRequestCard } from './BossCatJoinRequestCard.js';
+import { ConversationProposalCard } from './ConversationProposalCard.js';
 import type {
   ResolvedChannelParticipant,
 } from '../../../channelParticipants.js';
@@ -167,6 +168,10 @@ export function TranscriptMessageItem({
   const bossCatJoinRequest = message.senderKind === 'system' && message.metadata?.event === 'boss_cat_join_request'
     ? message.metadata.bossCatJoinRequest as { id?: unknown; status?: unknown; refusal?: unknown } | undefined
     : undefined;
+  // SPEC-142 FR-15: a proposal's card, a system notice with the card event.
+  const conversationProposal = message.senderKind === 'system' && message.metadata?.event === 'conversation_proposal'
+    ? message.metadata.conversationProposal as { id?: unknown; status?: unknown } | undefined
+    : undefined;
   const speakerHeader = (showSpeakerHeader && message.senderKind !== 'user' && message.senderKind !== 'system' ? (
           transcriptParticipant ? (
             <div className="transcriptMessageTop">
@@ -246,6 +251,9 @@ export function TranscriptMessageItem({
         <BossCatJoinRequestCard laneId={selectedChannelId} requestId={bossCatJoinRequest.id}
           status={String(bossCatJoinRequest.status ?? '')}
           refusal={typeof bossCatJoinRequest.refusal === 'string' ? bossCatJoinRequest.refusal : null} />
+      ) : last && typeof conversationProposal?.id === 'string' ? (
+        <ConversationProposalCard channelId={selectedChannelId} proposalId={conversationProposal.id}
+          status={String(conversationProposal.status ?? '')} />
       ) : null}
     >
         {last ? <CatImageAttachment key={message.id} metadata={message.metadata} /> : null}

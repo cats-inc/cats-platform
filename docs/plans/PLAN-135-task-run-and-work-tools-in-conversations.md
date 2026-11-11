@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In progress from 2026-11-12. The owner answered SPEC-142's Q3 to Q5 (A1 to A3) and asked for the plan to be carried out in full. PLAN-134 Phases 1 to 5 have landed. Phases 1 and 2 are done |
+| **Status** | In progress from 2026-11-12. The owner answered SPEC-142's Q3 to Q5 (A1 to A3) and asked for the plan to be carried out in full. PLAN-134 Phases 1 to 5 have landed. Phases 1 to 3 are done |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -152,17 +152,47 @@ conversations get no server until Phase 2 gives them a tool.
 **Goal:** a tool can ask for a write, and only the owner's confirmation performs it (S1; FR-15
 to FR-21).
 
-- [ ] The proposal store: content, binding digest, proposer, state and expiry. Its interface
+- [x] The proposal store: content, binding digest, proposer, state and expiry. Its interface
       lives in `src/platform/`, so that Work's tools and Chat's card can both use it.
-- [ ] The card: a message with the proposal's id and no text, rendered from the store in
+  - `src/platform/proposals/contracts.ts`: the record, the kind interface (`validate`,
+    `binding`, `describe`, `perform`), the registry and the port a tool proposes through.
+  - The record is stored in its card's message, with the conversation: a restart keeps it, a
+    data reset removes it with the rest of the state, and no file format changes.
+  - `src/products/chat/api/conversationProposals.ts` validates, binds and stores a proposal,
+    and answers it, under the conversation's mutation gate.
+- [x] The card: a message with the proposal's id and no text, rendered from the store in
       Desktop and mobile, and kept out of prompts and transport mirrors.
-- [ ] The answering route, for an owner principal only, with the rechecks in FR-18. It does not
+  - Its body is one fixed line that points to Desktop, so mobile and any client that cannot
+    render the card show that. Desktop renders the card from the owner-only route.
+  - It is an owner card like the Boss Cat join card: the same predicate keeps both out of
+    routing prompts, continuity, the companion's review and transport mirrors (`origin:
+    system`).
+- [x] The answering route, for an owner principal only, with the rechecks in FR-18. It does not
       use the conversation's choice answers.
-- [ ] Closing a card that expired or went out of date, so it frees its place and stops showing
+  - `GET` and `POST .../decision` under `/api/channels/:id/proposals/:proposalId`. A
+    confirmation rechecks the card's status, its expiry, the conversation and the digest
+    against the records as they are now, then performs the write with both actors.
+- [x] Closing a card that expired or went out of date, so it frees its place and stops showing
       as waiting, including on the Boss Cat board.
-- [ ] The limits in FR-20 and the outcome line in FR-21.
-- [ ] If PLAN-133's bound card has landed, build on it and keep one card mechanism.
-- [ ] Tests with one trial proposal kind that writes nothing outside the test.
+  - An expired card reads as expired at once, and is stored so on the next answer or outcome.
+    An out-of-date card is closed as `stale` when the owner answers it, and says so before.
+  - The board counts a Cat's open proposals with its waiting approvals.
+- [x] The limits in FR-20 and the outcome line in FR-21.
+  - 3 open and 10 an hour per conversation, with a refusal the agent can read.
+  - The proposer's next turn gets one line per closed proposal (ids and kinds, no content),
+    marked as told when that turn's result is applied.
+- [x] If PLAN-133's bound card has landed, build on it and keep one card mechanism.
+  - The join card's pattern: the record in its card's message, owner-only routes, a digest
+    rechecked on the answer, 24 hours, and the same owner-card predicate.
+- [x] Tests with one trial proposal kind that writes nothing outside the test.
+  - `tests/conversation-proposals.test.js`: storing and refusing, the limits, decline,
+    confirm once with both actors, out of date, expiry, a failed write, the outcome lines,
+    the board, and the routes (owner only, CSRF, a member refused).
+- [x] The turn gate the Phase 1 review asked for.
+  - The chat dispatch marks each send `web` or `telegram`. A grant's `proposalsAllowed`
+    follows every send: true only for the owner's own turn of that conversation, false for a
+    Telegram turn, a heartbeat (which carries no marker) or any unmarked send.
+  - Tools that propose check `hostToolTurnMayPropose(grant)` (Phase 4).
 
 **Deliverables:** the proposal mechanism, with no Work tool using it yet.
 

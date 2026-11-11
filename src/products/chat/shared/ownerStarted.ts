@@ -26,9 +26,16 @@ export const BOSS_CAT_TURN_METADATA_KEY = 'bossCatTurn';
 /** SPEC-139 FR-10: the owner's join card. */
 export const BOSS_CAT_JOIN_REQUEST_METADATA_KEY = 'bossCatJoinRequest';
 
-/** The owner's join card is rendered for the owner only: no model context, no transport. */
+/** A proposal's card (SPEC-142 FR-15), the other card rendered for the owner only. */
+export const CONVERSATION_PROPOSAL_CARD_METADATA_KEY = 'conversationProposal';
+
+/**
+ * The owner's cards, the Boss Cat join card and a proposal's card, are rendered for the owner
+ * only: no model context, no transport.
+ */
 export function isBossCatJoinRequestMessage(message: Pick<ChatMessage, 'metadata'> | null | undefined): boolean {
-  return Boolean(message?.metadata?.[BOSS_CAT_JOIN_REQUEST_METADATA_KEY]);
+  return Boolean(message?.metadata?.[BOSS_CAT_JOIN_REQUEST_METADATA_KEY]
+    || message?.metadata?.[CONVERSATION_PROPOSAL_CARD_METADATA_KEY]);
 }
 
 export function withoutBossCatJoinRequests<T extends Pick<ChatMessage, 'id' | 'metadata'>>(

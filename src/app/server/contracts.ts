@@ -101,6 +101,10 @@ export interface SharedServerDependencies {
 export interface ChatServerDependencies {
   catImages?: import('../../products/chat/api/catImages.js').ChatCatImages;
   companionPublications?: import('../../products/chat/api/companionPublications.js').ChatCompanionPublications;
+  /** SPEC-142 FR-14 to FR-20: proposals and their cards. */
+  conversationProposals?: import('../../products/chat/api/conversationProposals.js').ConversationProposalService;
+  /** The proposal kinds the products register; a test may supply its own. */
+  proposalKinds?: import('../../platform/proposals/contracts.js').ConversationProposalKindRegistry;
   chatStore: ChatStore;
   mutationGate?: AsyncKeyedGate;
   companionStore?: CompanionBoxStore;
