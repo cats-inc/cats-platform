@@ -236,9 +236,17 @@ Documentation/rules-only changes use diff and reference review.
 Use focused Node test files, rebuilding only the artifacts those tests consume:
 
 ```bash
-node --test --test-isolation=none tests/<name>.test.js
-node --test --test-isolation=none build/test/<name>.test.js
+npm run test:file -- tests/<name>.test.js
+npm run test:file -- build/test/<name>.test.js
 ```
+
+`test:file` is `node --test --test-isolation=none` with
+`scripts/testing/isolate-cats-home.mjs` loaded first, as `npm test` loads it. It
+points `CATS_RUNTIME_DIR` and `CATS_PLATFORM_DIR` at a temporary folder for the
+run unless they are set. A plain `node --test` run leaves them unset, and many
+tests then write conversations and attachment folders into your own `~/.cats`
+and read its local knowledge. When you run `node --test` directly, add
+`--import ./scripts/testing/isolate-cats-home.mjs` or set both variables.
 
 The first form may require a fresh `build:server` or `build:host`, depending on
 its imports. The second requires `build:test-ui` for the selected TypeScript/UI
