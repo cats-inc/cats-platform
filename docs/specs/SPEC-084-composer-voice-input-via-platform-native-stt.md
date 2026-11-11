@@ -211,6 +211,11 @@ the end-to-end transcription goal has been met.
     System Settings" action that opens Privacy & Security > Microphone
     for `permission_denied` or Privacy & Security > Speech Recognition
     for `speech_permission_denied` (ADR-147).
+    Before creating a microphone recognition task or recording tap, check the
+    input node's hardware input format for a nonzero sample rate and channel
+    count. Missing or disabled input emits `mic_unavailable` and `end`; an
+    output-scope default format does not establish that a microphone exists.
+    Use the validated hardware format for the tap.
 14. On Windows, the helper shall handle `UnauthorizedAccessException` and
     similar permission errors by emitting `permission_denied` with a
     toast pointing at Settings > Privacy & Security > Microphone.
@@ -235,6 +240,11 @@ the end-to-end transcription goal has been met.
 19. The host shall log helper stderr to the existing host log surface
     (truncated per line) but shall **not** forward stderr content to the
     renderer. Renderer-visible failures use the typed `error` event only.
+    The macOS CLI shall deliver recognition callbacks on a dedicated serial
+    background queue, since its main thread waits for completion. Suspend that
+    queue during microphone startup so an immediate recognition error cannot
+    tear down audio before the recording tap is installed; resume after `ready`
+    or startup-failure cleanup.
 20. The Electron host shall register
     `session.defaultSession.setPermissionRequestHandler` on host startup,
     before the main window loads. The handler shall:

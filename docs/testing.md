@@ -511,6 +511,45 @@ These smoke-checks validate:
 - the packaged `desktop-package-plan.json` still advertises the expected
   target platform and helper rollout
 
+## macOS native voice regressions
+
+Run the native regressions with Xcode:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --package-path desktop/native/macos-stt
+```
+
+The missing-input test calls the production microphone capture path and requires exactly
+`mic_unavailable` followed by `end`, without requesting permission, starting
+recognition or recording audio. It skips when an input device is available.
+It first queries CoreAudio's default input device, avoiding an `AVAudioEngine`
+input node (which can request permission when a microphone is connected).
+The 2026-11-11 Mac mini reproduction had a hardware input format of 0 Hz / 0
+channels while the output scope reported a default 44100 Hz / 2 channels; both
+installed Desktop and Bot helpers crashed at tap installation. Permission grants
+do not provide input hardware. This test covers that failure, not successful
+dictation or signed-package microphone acceptance.
+
+Local validation on 2026-11-11: the native regression passed (1 test, not
+skipped), the focused voice host/source/lifecycle suites passed (21 tests),
+`npm run build:host` passed, and the release helper built for arm64 and x86_64.
+Independent review found no issues. Installed applications were not replaced.
+
+After a USB microphone was connected, installed Bot emitted only `ready`
+(`zh-TW`, `on-device`) and `end` during a spoken session; no partial/final event
+or draft text arrived. The callback-progress regression failed before the fix
+and passed afterward: a callback scheduled on the production recognizer's queue
+must run while the main thread waits. Speech defaults to the
+[main queue](https://developer.apple.com/documentation/speech/sfspeechrecognizer/queue),
+so a CLI blocking that thread cannot receive results or errors. The helper now
+uses a serial background queue and suspends it during microphone startup.
+With the microphone connected, each helper's native run passed the callback
+test and skipped the missing-input test. This proves queue progress, not live
+transcription after the fix; the installed apps still carry the previous helper.
+Both updated release helpers rebuilt successfully with arm64/x86_64 slices,
+and the native-helper source contract tests passed (2 per repository).
+Independent review found no blocking issues in the callback/lifecycle change.
+
 ## Mocking Guidelines
 
 - Prefer in-process stub objects for runtime clients
