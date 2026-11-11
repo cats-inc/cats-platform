@@ -456,7 +456,8 @@ test('heartbeat carries the same DM conversation, identity and language even bef
   await withHeartbeatServer(async ({ cat, lane, sessionId, now, runtimeClient, chatStore, speak }) => {
     let state = await chatStore.read();
     state.globalOrchestrator.systemPrompt = 'Be a gentle, attentive companion.';
-    state.cats.find((row) => row.id === cat.id).memory.facts = ['Our seaside bench is blue.'];
+    // SPEC-139 FR-17: the shared slot holds whatever conversation refreshed last; no prompt reads it.
+    state.cats.find((row) => row.id === cat.id).memory.facts = ['STALE_SHARED_SLOT_FACT'];
     state = appendMessage(state, lane.id, { senderKind: 'user', senderName: 'Owner', body: '晚安，明天陪我去海邊。' }, now).state;
     state = appendMessage(state, lane.id, { senderKind: 'agent', senderName: cat.name, body: '好呀，我會陪你。' }, now, {
       metadata: { event: 'assistant_turn_segment', targetId: cat.id, targetKind: 'cat', sessionId: 'old-session' },
@@ -475,7 +476,8 @@ test('heartbeat carries the same DM conversation, identity and language even bef
     assert.doesNotMatch(prompt, /UNRELATED_PRIVATE_CONVERSATION_SECRET/u);
     assert.match(prompt, /You are Mochi/u);
     assert.match(prompt, /gentle, attentive companion/u);
-    assert.match(prompt, /Our seaside bench is blue/u);
+    assert.match(prompt, /Your memory checkpoint:\nSummary: Mochi recently helped in [^\n]*: 好呀，我會陪你。/u);
+    assert.doesNotMatch(prompt, /STALE_SHARED_SLOT_FACT/u);
     assert.match(prompt, /language.*owner.*conversation/iu);
     assert.doesNotMatch(prompt, /Reply to the user in English/u);
     assert.equal(sent.options.context.metadata.channelId, lane.id);

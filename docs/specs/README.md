@@ -6,7 +6,8 @@
   to them. A reset collects candidates for the owner to pick, never first-come. Deep-link
   pairing is planned for both apps.
 - [SPEC-139: Boss Cat across Cats](SPEC-139-boss-cat-across-cats.md)
-  — approved, 2026-11-11, and revised after its security review; not implemented. A status
+  — approved, 2026-11-11, and revised after its security review; in progress under PLAN-133
+  (FR-17 implemented). A status
   board without message text, group conversations the Boss Cat creates, and joining Chat, Code
   or Work conversations under one owner switch (ask every time by default), all from the
   owner's own Desktop or mobile messages only. Counterpart of Cats Bot SPEC-012.

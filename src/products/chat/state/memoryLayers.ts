@@ -1,5 +1,6 @@
 import type {
   ChatCat,
+  ChatChannelParticipant,
   ChatChannelState,
   ChatChannelView,
   ChatMessage,
@@ -148,6 +149,37 @@ function deriveCatMemory(
     ]).slice(0, 6),
     openLoops: (currentChannel.workingMemory?.openLoops ?? []).slice(0, 3),
     updatedAt: nowIso,
+  };
+}
+
+/**
+ * The participant's own checkpoint for one conversation's prompt (SPEC-139 FR-17).
+ * `cat.memory` is a single slot that whichever conversation refreshed last overwrites, so its
+ * summary, "Recent rooms" and open loops can come from another conversation. A prompt derives
+ * this instead, from the target conversation alone.
+ */
+export function deriveConversationCheckpoint(
+  participant: Pick<ChatChannelParticipant, 'name' | 'roles' | 'skillProfile' | 'execution'>,
+  channel: ChatChannelView,
+): MemoryCheckpointSummary {
+  const lastOwnMessage = latestMessageBy(
+    channel,
+    (message) => message.senderKind === 'agent' && message.senderName === participant.name,
+  );
+  return {
+    summary: normalizeText(
+      lastOwnMessage
+        ? `${participant.name} recently helped in ${channel.title}: ${lastOwnMessage.body}`
+        : `${participant.name} is currently participating in ${channel.title}.`,
+      220,
+    ) || null,
+    facts: uniqueStrings([
+      participant.roles.length > 0 ? `Roles: ${participant.roles.join(', ')}` : null,
+      participant.skillProfile ? `Skill profile: ${participant.skillProfile}` : null,
+      `Default target: ${participant.execution.target.provider}`,
+    ]),
+    openLoops: (channel.workingMemory?.openLoops ?? deriveOpenLoops(channel)).slice(0, 3),
+    updatedAt: channel.workingMemory?.updatedAt ?? channel.updatedAt,
   };
 }
 

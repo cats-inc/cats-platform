@@ -15,6 +15,7 @@ import { isCompanionCat } from '../../../shared/companionRole.js';
 import { COMPANION_PROFILE_METADATA_KEYS } from '../companion/profileReadModel.js';
 import type { MemoryRetrievalContext } from '../../../platform/memory/contracts.js';
 import { buildChoiceResponseBody } from '../shared/messageChoices.js';
+import { deriveConversationCheckpoint } from './memoryLayers.js';
 
 /**
  * Owner-curated companion box content for one Cat. Shape-compatible with the
@@ -729,7 +730,7 @@ export function buildCatConversationContext(
     languageInstruction(channel.responseLanguage),
     `Global orchestrator guidance:\n${orchestrator.systemPrompt}`,
     `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
-    `Your memory checkpoint:\n${formatMemoryCheckpoint(cat.memory)}`,
+    `Your memory checkpoint:\n${formatMemoryCheckpoint(deriveConversationCheckpoint(cat, channel))}`,
     channel.workingMemory
       ? `Conversation memory checkpoint:\n${formatMemoryCheckpoint(channel.workingMemory)}`
       : null,

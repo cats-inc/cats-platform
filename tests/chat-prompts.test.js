@@ -4,9 +4,12 @@ import test from 'node:test';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import {
   appendMessage,
+  assignCatToChannel,
   buildChannelView,
+  createCat,
   createChannel as createChatChannel,
 } from '../build/server/products/chat/state/model/index.js';
+import { refreshDerivedMemoryLayers } from '../build/server/products/chat/state/memoryLayers.js';
 import {
   buildCatPrompt,
   buildBoundedRecentContextInstructions,
@@ -647,4 +650,45 @@ test('multi-participant cat routing keeps continuity metadata null when no hando
   assert.equal(prompt.instructions ?? null, null);
   assert.equal(prompt.continuityMode ?? null, null);
   assert.equal(prompt.continuityDeliveryMode ?? null, null);
+});
+
+test('a group prompt carries no checkpoint from the Cat direct lane (SPEC-139 FR-17)', () => {
+  const now = new Date('2026-11-11T00:00:00.000Z');
+  let state = createCat(createDefaultChatState(), { name: 'Mochi', provider: 'claude' }, now);
+  const catId = state.cats[0].id;
+  state = createChatChannel(state, {
+    title: 'Group room', topic: 'Release planning.', originSurface: 'chat',
+  }, now);
+  const groupId = state.selectedChannelId;
+  state = assignCatToChannel(state, groupId, { catId, provider: 'claude' }, now);
+  state = appendMessage(state, groupId,
+    { senderKind: 'agent', senderName: 'Mochi', body: 'GROUP-OWN-REPLY' },
+    new Date('2026-11-11T00:00:01.000Z')).state;
+  state = refreshDerivedMemoryLayers(state, groupId, new Date('2026-11-11T00:00:01.000Z'));
+
+  state = createChatChannel(state, {
+    title: 'LANE-TITLE-MARKER', topic: 'Private lane.', originSurface: 'chat',
+    roomMode: 'direct_message', defaultRecipientId: catId,
+  }, now);
+  const laneId = state.selectedChannelId;
+  state = assignCatToChannel(state, laneId, { catId, provider: 'claude' }, now);
+  state = appendMessage(state, laneId,
+    { senderKind: 'user', senderName: 'Owner', body: 'Can you keep LANE-QUESTION-MARKER private?' },
+    new Date('2026-11-11T00:00:02.000Z')).state;
+  state = appendMessage(state, laneId,
+    { senderKind: 'agent', senderName: 'Mochi', body: 'LANE-REPLY-MARKER' },
+    new Date('2026-11-11T00:00:03.000Z')).state;
+  // The lane refreshes last, so the stored slot now describes the lane.
+  state = refreshDerivedMemoryLayers(state, laneId, new Date('2026-11-11T00:00:03.000Z'));
+  assert.match(JSON.stringify(state.cats.find((cat) => cat.id === catId).memory), /LANE-/u);
+
+  const group = buildChannelView(state, groupId);
+  const mochi = group.assignedParticipants.find((participant) => participant.name === 'Mochi');
+  const prompt = buildCatPrompt(group, state.globalOrchestrator, mochi, {
+    id: 'message-current', channelId: groupId, senderKind: 'user', senderName: 'Owner',
+    body: 'What is next?', mentions: [], metadata: {}, usage: null,
+    createdAt: '2026-11-11T00:00:04.000Z',
+  });
+  assert.doesNotMatch(prompt, /LANE-/u);
+  assert.match(prompt, /Your memory checkpoint:\nSummary: Mochi recently helped in Group room: GROUP-OWN-REPLY/u);
 });
