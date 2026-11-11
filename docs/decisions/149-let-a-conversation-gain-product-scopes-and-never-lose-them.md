@@ -2,18 +2,22 @@
 
 ## Status
 
-Decided by the owner on 2026-11-11 (D1 to D10), who left the name to the agent (Decision 1).
+Decided by the owner on 2026-11-11 (D1 to D13), who left the name to the agent (Decision 1).
 P1 to P3 and P6 are proposed defaults the owner may change. P4 became D7, and P5 is now a
-proposal of the SPEC. Nothing is implemented. The draft
-[SPEC-141](../specs/SPEC-141-conversation-product-scope.md) specifies it and
-[PLAN-134](../plans/PLAN-134-conversation-product-scope.md) stages it.
+proposal of the SPEC. Nothing is implemented. Two draft SPECs specify it:
+
+- [SPEC-141](../specs/SPEC-141-conversation-product-scope.md), the scope itself, staged by
+  [PLAN-134](../plans/PLAN-134-conversation-product-scope.md);
+- [SPEC-142](../specs/SPEC-142-task-run-and-work-tools-in-conversations.md), the Task, Run and
+  Work tools (D10 to D13), staged by
+  [PLAN-135](../plans/PLAN-135-task-run-and-work-tools-in-conversations.md).
 
 When implemented, it will:
 
 - amend [ADR-126](126-deliver-code-preview-tools-to-provider-agents-through-session-mcp.md):
-  the `cats` session MCP server goes to every conversation whose product scope is `code` or
-  `work`, not only to conversations created on Code, so existing Work conversations gain it
-  (D5);
+  Code's tools go to every conversation whose product scope is `code` or `work`, not only to
+  conversations created on Code, so existing Work conversations gain them (D5). SPEC-142 then
+  attaches the `cats` server itself at every level and lists each level's tools on it (D13);
 - extend [ADR-073](073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md) without
   reversing it: a draft's surface chip still sets `originSurface`, now sets the starting product
   scope too (D6), and a conversation's scope can be raised afterwards;
@@ -46,8 +50,10 @@ What exists today, read from the code on 2026-11-11:
   - [SPEC-118](../specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md)'s
     collaboration tools are offered to a Chat Orchestrator, behind the provider-agent decision
     flag, which is off by default. SPEC-118 excludes Code and Work conversations.
-  - [ADR-105](105-adopt-phase-scoped-work-tool-surface.md)'s Work intake tools are offered to
-    strong Cats and Boss Cats in Chat and Telegram.
+  - [ADR-105](105-adopt-phase-scoped-work-tool-surface.md)'s Work tools are offered to strong
+    Cats and Boss Cats on the provider-agent decision path, behind flags that are off by
+    default. That path does not check where the conversation was created, and it also serves
+    Telegram.
   - Desktop control ([ADR-141](141-host-a-consented-desktop-control-mcp-for-provider-sessions.md))
     and the Boss Cat tools (SPEC-139, not implemented) need a turn the owner started.
 - **CLI permission does not follow the surface.**
@@ -146,14 +152,15 @@ User-facing copy names the product, as the surface chip already does, and needs 
 A scope decides which Cats tools and APIs the conversation's participants may use, and which
 product records the conversation anchors:
 
-- `chat`: the conversation itself.
+- `chat`: the conversation itself. Its agents can read the conversation's own Tasks and Runs,
+  which are the foundation under every level (D10, D13).
 - `code`: everything in `chat`, plus its codespace (the conversation's folder, or its sandbox),
-  its Task family and Runs, artifacts, the canvas and live previews.
+  artifacts, the canvas and live previews.
 - `work`: everything in `code`, plus a place in Work, which counts the conversation's WorkItem
   as its own.
-  - Work's own agent tools are the workspace and the project (D10). No Work tool is delivered
-    to sessions today, and a separate SPEC will specify them.
-  - Task and Run are the foundation under every level, not Work tools (D10).
+  - Work's own agent tools are Work Items and Projects, including a Project's folder (D11).
+  - A Work conversation can belong to a Project (D12).
+  - No Work tool is delivered to sessions today. SPEC-142 specifies them.
 
 A tool still appears only once it is delivered to the session (ADR-126 point 5).
 
@@ -188,8 +195,12 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 - D9: The state version rises with the new field, so an older build refuses the file instead
   of dropping the field and lowering a raised conversation.
 - D10: Task and Run are the foundation, not Work tools. Work's own tools are the workspace and
-  the project, and they get their own SPEC. That SPEC also settles what "workspace" names
-  here; this record does not.
+  the project, and they get their own SPEC. D11 settles what "workspace" meant.
+- D11: The owner's "workspace" meant the Work Item. Work's own tools are Work Items and
+  Projects, including the folder a Project works in.
+- D12: Agents can manage Projects, and a Work conversation can belong to a Project.
+- D13: From the `chat` level up, a conversation's agents can read its own Tasks and Runs.
+  Creating a Task or starting a Run still needs the owner's confirmation.
 
 ### 8. Proposed defaults (the owner may change them)
 
@@ -220,6 +231,10 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 - **Widened by D5.** Every Work conversation gains Code's tools under those same defaults.
   Work's supervised runs start their own sessions and receive none of them; SPEC-141 leaves
   that as it is.
+- **Widened by D11 and D12.** A supervised run starts in its Project's folder. Putting a
+  conversation into a Project, or changing a Project's folder, therefore changes where such a
+  run starts. SPEC-142 requires a card that shows the folder and says so before either
+  happens through its tools.
 - **Inferred, not verified.** Work is where runs become repetitive and unattended: ADR-082
   plans for high-frequency runs, and schedules and triggers are Work rules. Once a schedule or
   trigger starts such a run, it acts with no one watching, and text from imported issues,
@@ -255,7 +270,8 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
   must make the move visible, so the conversation is not lost.
 - It changes two frozen shared contracts, which need integration review: the channel state in
   `src/products/chat/api/contracts.ts` and, for D9, the state version in `src/core/types.ts`.
-  SPEC-141 found no change needed under `src/app/server/**`.
+  SPEC-141 found no change needed under `src/app/server/**`. SPEC-142 needs one there: the
+  host composes the tool server from its providers.
 - D8 ends SPEC-118's limit to conversations created on Chat. Its collaboration tools then
   reach Code and Work conversations, which run in a folder. SPEC-118's other conditions stay.
 - D9 means a build older than the upgrade can no longer open the profile.
@@ -323,4 +339,4 @@ A tool still appears only once it is delivered to the session (ADR-126 point 5).
 ---
 
 *Decision made: 2026-11-11*
-*Decision makers: owner (D1 to D10); drafted by Claude*
+*Decision makers: owner (D1 to D13); drafted by Claude*

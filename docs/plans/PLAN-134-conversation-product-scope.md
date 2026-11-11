@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft; not started. The owner answered SPEC-141's Q1, Q2 and Q4 on 2026-11-11 (ADR-149 D8 to D10). The remaining proposals stand unless the owner objects |
+| **Status** | Draft; not started. The owner answered SPEC-141's Q1, Q2, Q4 and Q5 on 2026-11-11 (ADR-149 D8 to D13). The remaining proposals stand unless the owner objects |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -113,6 +113,11 @@ Work conversations too (D8; FR-19).
         `contracts.ts` and `CodeCanvasPreviewButton.tsx`.
 - [ ] Keep earlier canvas and preview state working (FR-9).
 - [ ] Bind the grant of a session that gains the server to that session's folder (FR-25).
+- [ ] Keep the other servers on the session. Code's wrapper replaces the server list with its
+      own on create, send and resume (`runtimeClientWrapper.ts:129`, `:168`, `:184`), which by
+      the code as read drops the desktop control server on Code conversations today. D5 would
+      spread that to Work conversations, so this phase makes the fix. PLAN-135 Phase 1 relies
+      on it.
 - [ ] Review copy and labels that say "Cats Code" for a conversation that now may live on Work
       (`policy.ts`, `service.ts`, the `product:code` label).
 - [ ] Tests, plus an isolated candidate check of a Work conversation that shows an artifact and
@@ -189,8 +194,8 @@ previews and work areas appear under `/work`.
 
 ## Not in This Plan
 
-- Work's own agent tools, the workspace and the project (ADR-149 D10). They get their own
-  SPEC.
+- The read tools for Tasks and Runs, Work's own tools for Work Items and Projects, and a
+  conversation's Project (ADR-149 D10 to D13). SPEC-142 and PLAN-135 cover them.
 - A raise control in the mobile app (SPEC-141 Q3).
 - A raise proposed by an agent.
 - Raising direct lanes or parallel groups.
