@@ -839,6 +839,13 @@ test('SPEC-139 FR-10: a declined, expired, stale or re-policied card does not jo
       state.channels.find((entry) => entry.id === record.conversationId).runtimePermissionMode = 'default';
       await h.chatStore.write(state);
     }],
+    // SPEC-141 Phase 5: a raise changes what joining grants and where the conversation lives, so
+    // a card answered after it is stale. Ops was created on Code.
+    ['raised after the card', async (h, record) => {
+      const state = await h.chatStore.read();
+      state.channels.find((entry) => entry.id === record.conversationId).productScope = 'work';
+      await h.chatStore.write(state);
+    }],
   ];
   cases.push(
     ['demoted', async (h) => {
@@ -876,6 +883,7 @@ test('SPEC-139 FR-10: a declined, expired, stale or re-policied card does not jo
     ['expired', 'expired', 'card_expired'],
     ['policy_changed', 'refused', 'policy_changed'],
     ['card_stale', 'refused', 'card_stale'],
+    ['raised after the card', 'refused', 'card_stale'],
     ['demoted', 'refused', 'not_permitted'],
     ['archived', 'refused', 'conversation_archived'],
     ['owner added the Boss Cat meanwhile', 'refused', 'already_member'],
