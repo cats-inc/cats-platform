@@ -2,6 +2,7 @@ import type { ChatChannelState, ChatState } from '../../api/contracts.js';
 import type { CatsCoreState } from '../../../../core/types.js';
 import {
   BOSS_CAT_BOARD_PROBLEM_WINDOW_MS,
+  isBossCatGroupConversation,
   sanitizeBoardText,
   type BossCatBoard,
   type BossCatBoardCat,
@@ -11,7 +12,6 @@ import {
   resolveChannelParticipantAssignments,
   resolveParticipantCatId,
 } from '../../shared/channelParticipants.js';
-import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import { describeDuration, isOwnerMessage } from './heartbeat.js';
 
 /**
@@ -20,9 +20,9 @@ import { describeDuration, isOwnerMessage } from './heartbeat.js';
  * names and owner-set titles, fenced as data, and otherwise counts, surfaces
  * and ages. No Cat's or owner's words are in it.
  *
- * A direct lane never leaves its Cat except as message times (SPEC-139 Goals
- * and Privacy), so nothing in another Cat's direct lane is counted here:
- * only its group conversations.
+ * A direct lane leaves its Cat only as its presence, its message times and
+ * the Cat's own-initiative state (SPEC-139 FR-3), so nothing in another Cat's
+ * direct lane is counted here, as on the board: only its group conversations.
  *
  * Its marks name each item the text counts (a failed or interrupted turn, a
  * waiting choice card, a pending approval) by id, so an item settled and
@@ -195,8 +195,7 @@ export function buildBossCatPeerSection(input: BuildBossCatPeerSectionInput): Bo
   for (const cat of input.board.cats) {
     if (cat.hidden) continue;
     // Another Cat's direct lane leaves it only as message times.
-    const own = channels.filter((channel) => channel.status !== 'archived' && !isDirectLaneChannel(channel)
-      && isCatActiveIn(channel, cat.catId));
+    const own = channels.filter((channel) => isBossCatGroupConversation(channel) && isCatActiveIn(channel, cat.catId));
     const ownIds = new Set(own.map((channel) => channel.id));
     const conversationIds = new Set(own.map((channel) =>
       resolveChannelCanonicalIdentity({ channels } as ChatState, channel.id).conversationId));

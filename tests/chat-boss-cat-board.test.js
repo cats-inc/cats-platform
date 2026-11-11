@@ -77,7 +77,7 @@ test('SPEC-139 FR-3/FR-4: the board has every field and no message text', () => 
   assert.equal(mochi.hidden, false);
   assert.equal(mochi.lane.lastOwnerMessageAt, at(30).toISOString());
   assert.equal(mochi.lane.lastCatMessageAt, at(20).toISOString());
-  assert.ok(['sleeping', 'waking_up', 'awake', 'error'].includes(mochi.lane.presence));
+  assert.ok(['awake', 'asleep'].includes(mochi.lane.presence), 'awake or asleep, nothing finer');
   assert.deepEqual(mochi.initiative, { mode: 'companion', unanswered: 0, waitingForOwner: false });
   const kiki = board.cats.find((cat) => cat.catId === ids.kiki);
   assert.equal(kiki.lane, null);
@@ -182,6 +182,57 @@ test('SPEC-139 FR-3: pending owner approvals on the Cat conversations are counte
   const board = buildBossCatBoard({ state, bossCatId: ids.boss, now: NOW, core });
   assert.equal(board.cats.find((cat) => cat.catId === ids.mochi).waitingApprovals, 2, 'group: t-1 and the bound t-4');
   assert.equal(board.cats.find((cat) => cat.catId === ids.kiki).waitingApprovals, 3, 'group and code');
+});
+
+test('SPEC-139 FR-3 and Privacy: a direct lane leaves its Cat only as presence, message times and own initiative', () => {
+  const { state, ids, lane, group } = fixture();
+  const laneChannel = state.channels.find((entry) => entry.id === lane);
+  const turn = (id, minutesAgo, targetStatus) => ({ id, status: targetStatus === 'running' ? 'running' : 'completed',
+    sourceMessageId: 'm', sourceSenderKind: 'user', sourceSenderName: 'Owner', guard: null, stageId: 'dispatch',
+    workflowShape: 'sequential', reviewRequired: false, lastCheckpointId: null, convergeTargetId: null,
+    continuationCount: 0, dispatchCount: 1,
+    targetStatuses: [{ status: targetStatus, participant: { participantKind: 'cat', participantId: ids.mochi, participantName: 'x' } }],
+    events: [], startedAt: at(minutesAgo).toISOString(), updatedAt: at(minutesAgo).toISOString(), completedAt: null });
+  laneChannel.roomRouting.workflow.activeTurn = turn('lane-running', 1, 'running');
+  laneChannel.roomRouting.workflow.turnHistory = [turn('lane-failed', 15, 'failed'), turn('lane-cancelled', 16, 'cancelled')];
+  laneChannel.messages.push({ ...laneChannel.messages.at(-1), id: 'lane-choice', createdAt: at(10).toISOString(),
+    choices: [{ question: 'LANE-CHOICE-MARKER', options: [{ id: 'a', label: 'LANE-OPTION-MARKER' }] }] });
+  const conversationId = (channelId) => `conversation-channel-${channelId}`;
+  const core = {
+    tasks: [{ id: 'lane-task', conversationId: conversationId(lane), approval: { status: 'pending' } },
+      { id: 'lane-bound', conversationId: null, approval: { status: 'pending' } }],
+    approvalBindings: [{ approvalTaskId: 'lane-bound', conversationId: conversationId(lane) }],
+  };
+  const setLaneLease = (status) => {
+    for (const assignment of [...(laneChannel.participantAssignments ?? []), ...(laneChannel.catAssignments ?? [])]) {
+      if (assignment.execution?.lease) Object.assign(assignment.execution.lease, { status, sessionId: 'lane-session' });
+    }
+  };
+  setLaneLease('error');
+
+  const board = buildBossCatBoard({ state, bossCatId: ids.boss, now: NOW, core });
+  const mochi = board.cats.find((cat) => cat.catId === ids.mochi);
+  assert.equal(mochi.turnRunning, false, 'a turn running in its direct lane is not shown');
+  assert.deepEqual(mochi.problems, [], 'nor its failed or interrupted turns there');
+  assert.equal(mochi.waitingChoices, 0, 'nor a choice waiting there');
+  assert.equal(mochi.waitingApprovals, 0, 'nor an approval for it, by its own conversation or a binding');
+  assert.equal(mochi.lane.lastOwnerMessageAt, at(30).toISOString(), 'its message times stay');
+  assert.equal(mochi.lane.presence, 'asleep', 'a failing lane reads as asleep, not as an error');
+  assert.equal(JSON.stringify(board).includes(lane), false, 'the lane is not named anywhere on the board');
+  assert.doesNotMatch(JSON.stringify(board), /MARKER/u);
+  setLaneLease('ready');
+  assert.equal(buildBossCatBoard({ state, bossCatId: ids.boss, now: NOW, core }).cats
+    .find((cat) => cat.catId === ids.mochi).lane.presence, 'awake');
+
+  // The same Cat's group conversations still count.
+  const groupChannel = state.channels.find((entry) => entry.id === group);
+  groupChannel.roomRouting.workflow.turnHistory = [turn('group-failed', 20, 'failed')];
+  groupChannel.roomRouting.workflow.activeTurn = turn('group-running', 2, 'running');
+  core.tasks.push({ id: 'group-task', conversationId: conversationId(group), approval: { status: 'pending' } });
+  const again = buildBossCatBoard({ state, bossCatId: ids.boss, now: NOW, core }).cats.find((cat) => cat.catId === ids.mochi);
+  assert.equal(again.turnRunning, true, 'a turn running in a group conversation still shows');
+  assert.deepEqual(again.problems, [{ conversationId: group, failed: 1, interrupted: 0 }]);
+  assert.equal(again.waitingApprovals, 1);
 });
 
 test('SPEC-139 FR-3: a real failed turn shows on the Cat and the group', async (t) => {

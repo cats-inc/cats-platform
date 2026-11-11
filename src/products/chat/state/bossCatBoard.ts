@@ -13,7 +13,7 @@ import {
   resolveParticipantCatId,
 } from '../shared/channelParticipants.js';
 import { isDirectLaneChannel } from '../shared/channelTopology.js';
-import { resolveChatLifecycleState, type ChatLifecycleState } from '../shared/lifecycle.js';
+import { resolveChatLifecycleState } from '../shared/lifecycle.js';
 import {
   COMPANION_HEARTBEAT_MAX_UNANSWERED,
   countUnansweredHeartbeats,
@@ -46,7 +46,11 @@ export interface BossCatBoardInitiative {
 }
 
 export interface BossCatBoardLane {
-  presence: ChatLifecycleState;
+  /**
+   * FR-3: awake or asleep, nothing finer. Waking and an error both read as asleep, so the
+   * board does not show how a Cat's direct lane is failing.
+   */
+  presence: 'awake' | 'asleep';
   lastOwnerMessageAt: string | null;
   lastCatMessageAt: string | null;
 }
@@ -255,7 +259,10 @@ export function buildBossCatBoard(input: BuildBossCatBoardInput): BossCatBoard {
       const name = sanitizeBoardText(cat.name) ?? 'Cat';
       if (isHiddenFromBossCat(cat)) return { catId: cat.id, name, hidden: true };
       const lane = findCompanionDirectLane(input.state, cat.id);
-      const own = channels.filter((channel) => channel.status !== 'archived'
+      // FR-3 and Privacy: a direct lane leaves its Cat only as its presence, its message times
+      // and the Cat's own-initiative state, so running and failed turns, choices and approvals
+      // count in group conversations only.
+      const own = channels.filter((channel) => isBossCatGroupConversation(channel)
         && activeCatIds(channel).includes(cat.id));
       return {
         catId: cat.id,
@@ -264,7 +271,7 @@ export function buildBossCatBoard(input: BuildBossCatBoardInput): BossCatBoard {
         group: cat.group,
         lane: lane
           ? {
-              presence: resolveChatLifecycleState(resolveLeadParticipantLease(lane)?.status),
+              presence: resolveChatLifecycleState(resolveLeadParticipantLease(lane)?.status) === 'awake' ? 'awake' : 'asleep',
               lastOwnerMessageAt: lastMessageAt(lane, (message) => isOwnerMessage(lane, message)),
               lastCatMessageAt: lastMessageAt(lane, (message) => message.senderKind === 'agent'),
             }

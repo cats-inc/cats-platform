@@ -91,15 +91,20 @@ board, nothing else.
      - its name and group, and whether its direct lane is awake or asleep;
      - its own initiative: the effective mode, the unanswered count, and whether it waits for
        the owner (SPEC-137);
-     - whether a turn is running;
-     - turns that failed or were interrupted in the last 7 days, per conversation;
-     - how many owner choices and approvals wait.
+     - in its group conversations only, never its direct lane (Goals, Privacy):
+       - whether a turn is running;
+       - turns that failed or were interrupted in the last 7 days, per conversation;
+       - how many owner choices and approvals wait.
    - **Each group conversation**, with FR-4 and FR-15 applied:
      - id, title, surface and participant names;
      - whether the Boss Cat is a member;
      - the owner's last message time and the last message time;
      - whether a turn is running, failed, or waits for an owner choice.
-   - **Each direct lane**: only the owner's and the Cat's last message times.
+   - **Each direct lane**: only the owner's and the Cat's last message times, and its presence,
+     awake or asleep and nothing finer (waking and an error read as asleep). Its Cat's
+     own-initiative state is read from it (SPEC-137). These two are the only things beyond the
+     message times of Goals and Privacy that leave a direct lane; nothing else in it reaches the
+     board.
 4. FR-4: The board's only free text is Cat names and conversation titles the owner set
    (`titleSource: 'owner'`, which only the owner's rename sets).
    - `manual` is not enough: it is the creation default (K3 conversations take the owner's
@@ -208,8 +213,8 @@ board, nothing else.
     - The peer section lists each other Cat that needs the owner: its failed and interrupted
       turns of the last 7 days with the places they happened, and its waiting choices and
       approvals. A place is an owner-set title, or else the surface and age.
-    - Only group conversations count. A direct lane leaves its Cat only as message times
-      (Goals, Privacy), so nothing in another Cat's direct lane reaches the section.
+    - Only group conversations count. A direct lane leaves its Cat only as FR-3 allows, so
+      nothing in another Cat's direct lane reaches the section.
     - Its Cat lines total at most 12 Cats and 3,000 characters, with a count of the rest. Cats
       with something the last look did not see come first.
     - A hidden Cat (FR-15) is left out of the section.
@@ -315,6 +320,8 @@ board, nothing else.
   - The board has every FR-3 field and no message text.
   - Drafted, model-set and sender-name titles appear as surface, id and age.
   - A marker in messages, choices and errors never shows.
+  - A running, failed or interrupted turn, a waiting choice and a pending approval in a Cat's
+    direct lane never show, and its presence reads only awake or asleep.
   - The 31st call within an hour is refused.
 - `create_group`:
   - It makes a Chat conversation with no repository or cwd, `read_only` and `default`.
