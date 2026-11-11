@@ -36,6 +36,8 @@ interface TrackedSession {
   channelId: string;
   workspacePath: string | null;
   report: RuntimeSessionMcpDeliveryReport | undefined;
+  /** The grant was issued on a send and Runtime could not say the session's folder. */
+  folderUnknown?: boolean;
 }
 
 export interface CodeAgentToolsClientWrapperOptions {
@@ -113,6 +115,36 @@ export function createCodeAgentToolsClientWrapper(
     return [instructions?.trim(), CODE_AGENT_PREVIEW_POLICY].filter(Boolean).join('\n\n');
   }
 
+  /**
+   * Code's servers join the ones the call already carries, such as the desktop control
+   * server, and replace only entries with their own names. Replacing the whole list dropped
+   * every other server from Code conversations.
+   */
+  function withServers(
+    incoming: readonly RuntimeSessionMcpServer[] | undefined,
+    own: RuntimeSessionMcpServer[],
+  ): RuntimeSessionMcpServer[] {
+    const names = new Set(own.map((server) => server.name));
+    return [...(incoming ?? []).filter((server) => !names.has(server.name)), ...own];
+  }
+
+  /**
+   * The folder a running session works in (SPEC-141 FR-25), which a worktree or sandbox makes
+   * different from the conversation's folder. Unknown when Runtime cannot say, and the tools
+   * then refuse to act on a folder.
+   */
+  async function sessionWorkspacePath(target: RuntimeClient, sessionId: string): Promise<string | null> {
+    try {
+      const { session } = await target.observeSession(sessionId);
+      const workspace = session.workspace as Record<string, unknown> | undefined;
+      const runtimeCwd = workspace?.runtimeCwd;
+      if (typeof runtimeCwd === 'string' && runtimeCwd) return runtimeCwd;
+      return typeof session.cwd === 'string' && session.cwd ? session.cwd : null;
+    } catch {
+      return null;
+    }
+  }
+
   return {
     wrapClient<Client extends RuntimeClient>(client: Client): Client {
       return new Proxy(client, {
@@ -126,7 +158,8 @@ export function createCodeAgentToolsClientWrapper(
               // whitelist's allowed tools.
               const token = issue(marker, hasShellExecutionPermission(input));
               try {
-                const session = await target.createSession({ ...input, mcpServers: descriptor(endpoint, token, marker) });
+                const session = await target.createSession({ ...input,
+                  mcpServers: withServers(input.mcpServers, descriptor(endpoint, token, marker)) });
                 // Runtime's resolved cwd is the workspace the Cat writes to
                 // (a worktree or sandbox can differ from the channel's repo path).
                 options.grants.bind(token, session.id, {
@@ -151,21 +184,39 @@ export function createCodeAgentToolsClientWrapper(
               const endpoint = options.endpoint();
               let tracked = sessions.get(sessionId);
               if (!tracked && endpoint) {
-                // Platform restarted: grants are memory-only, so issue a new one.
-                // Runtime sees a changed set and restarts the worker through resume.
+                // Platform restarted (grants are memory-only), or the session started before
+                // its conversation had Code's tools, such as a Work conversation's session from
+                // before Work included Code. Issue a grant; Runtime sees a changed set and
+                // restarts the worker through resume. The grant is bound to the folder the
+                // session works in, not the conversation's (SPEC-141 FR-25).
                 const marker = readCodeAgentToolsInvocationMarker(input?.context);
                 if (marker) {
-                  const token = issue(marker);
-                  options.grants.bind(token, sessionId);
-                  tracked = { token, channelId: marker.channelId, workspacePath: marker.workspacePath, report: undefined };
-                  sessions.set(sessionId, tracked);
-                  options.onSessionStarted?.(marker.channelId);
+                  const workspacePath = await sessionWorkspacePath(target, sessionId);
+                  // Another send for this session may have issued its grant while Runtime was
+                  // asked for the folder. Issue at most one grant per session.
+                  tracked = sessions.get(sessionId);
+                  if (!tracked) {
+                    const token = issue(marker);
+                    options.grants.bind(token, sessionId, { workspacePath });
+                    tracked = { token, channelId: marker.channelId, workspacePath: marker.workspacePath,
+                      report: undefined, folderUnknown: workspacePath === null };
+                    sessions.set(sessionId, tracked);
+                    options.onSessionStarted?.(marker.channelId);
+                  }
+                }
+              } else if (tracked?.folderUnknown && endpoint) {
+                // Runtime could not say where the session works when its grant was issued. Ask
+                // again, so one failed read does not leave the tools without a folder.
+                const workspacePath = await sessionWorkspacePath(target, sessionId);
+                if (workspacePath && sessions.get(sessionId) === tracked) {
+                  options.grants.bind(tracked.token, sessionId, { workspacePath });
+                  tracked.folderUnknown = false;
                 }
               }
               if (!tracked || !endpoint) return target.sendMessage(sessionId, content, input);
               const result = await target.sendMessage(sessionId, content, {
                 ...input,
-                mcpServers: descriptor(endpoint, tracked.token, tracked),
+                mcpServers: withServers(input?.mcpServers, descriptor(endpoint, tracked.token, tracked)),
                 instructions: tracked.report?.status === 'delivered'
                   ? withPolicy(input?.instructions)
                   : input?.instructions,
@@ -181,10 +232,13 @@ export function createCodeAgentToolsClientWrapper(
               if (!tracked || !endpoint) return target.resumeSession!(sessionId, input);
               const session = await target.resumeSession!(sessionId, {
                 ...input,
-                mcpServers: descriptor(endpoint, tracked.token, tracked),
+                mcpServers: withServers(input?.mcpServers, descriptor(endpoint, tracked.token, tracked)),
               });
               if (session.mcpServers) tracked.report = session.mcpServers;
-              if (session.cwd) options.grants.bind(tracked.token, sessionId, { workspacePath: session.cwd });
+              if (session.cwd) {
+                options.grants.bind(tracked.token, sessionId, { workspacePath: session.cwd });
+                tracked.folderUnknown = false;
+              }
               return session;
             };
           }

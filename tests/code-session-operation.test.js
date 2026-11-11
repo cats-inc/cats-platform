@@ -193,7 +193,12 @@ test('a Code session is confirmed by the conversation scope, not by its origin',
   await rewrite(channel => { channel.originSurface = 'chat'; });
   assert.equal((await createCodeSessionOperationService(f.options).open(f.draft, request, f.signal)).status, 'verified');
 
-  // A Code origin and another scope: no longer one.
+  // Work includes Code (ADR-149 D5, PLAN-134 Phase 4): a session whose conversation now lives on
+  // Work is still a Code session.
+  await rewrite(channel => { channel.originSurface = 'code'; channel.productScope = 'work'; });
+  assert.equal((await createCodeSessionOperationService(f.options).open(f.draft, request, f.signal)).status, 'verified');
+
+  // A Code origin and the chat scope: no longer one.
   await rewrite(channel => { channel.originSurface = 'code'; channel.productScope = 'chat'; });
   assert.equal((await createCodeSessionOperationService(f.options).open(f.draft, request, f.signal)).status, 'unconfirmed');
 });

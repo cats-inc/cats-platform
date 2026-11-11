@@ -12,6 +12,7 @@ import {
   type ArtifactCanvasPresentationInput,
   type CanvasSurfaceRef,
 } from '../../shared/artifactCanvas/contracts.js';
+import { resolveCanvasRouteOptions } from '../../shared/artifactCanvas/conversationRoute.js';
 import type {
   ArtifactCanvasPolicyConfig,
   ArtifactCanvasSupervisorPreviewLeaseStore,
@@ -37,7 +38,7 @@ import { confirmCanvasPresentation } from './canvasConfirmation.js';
 export const SHOW_IN_CANVAS_TOOL: McpToolDefinition = {
   name: 'show_in_canvas',
   description: [
-    'Open something a person should look at in the preview canvas beside this Cats Code conversation.',
+    'Open something a person should look at in the preview canvas beside this conversation.',
     'Pass exactly one of: path (a workspace HTML page, a directory with index.html, an image, a PDF,',
     'a Markdown document or a text file),',
     'url (an https page, shown without scripts) or artifactId.',
@@ -119,7 +120,7 @@ async function showWorkspacePath(
   context: ShowInCanvasContext,
 ): Promise<McpToolCallResult> {
   if (!context.supervisor) {
-    return failure({ code: 'previews_unavailable', message: 'Cats Code previews are not available on this host.' });
+    return failure({ code: 'previews_unavailable', message: 'Cats previews are not available on this host.' });
   }
   const workspace = context.binding.workspacePath;
   if (!workspace) {
@@ -313,7 +314,9 @@ async function showArtifact(
       outcome = failure({ code: projection.error.code, message: projection.error.message });
       return core;
     }
-    const targetUrl = canvasSurfaceRouteRegistry.canvasUrl(surface, artifactId, presentation);
+    // The canvas opens on the product where the conversation lives (SPEC-141 FR-9).
+    const route = resolveCanvasRouteOptions(core, surface);
+    const targetUrl = canvasSurfaceRouteRegistry.canvasUrl(surface, artifactId, presentation, route);
     const activity = appendArtifactCanvasIntentActivity({
       core,
       kind: 'artifact_canvas_show_intent',
@@ -335,6 +338,7 @@ async function showArtifact(
       presentationRequested: projection.projection.presentationRequested,
       policyVersion: projection.projection.policyVersion,
       triggeredAt: at.toISOString(),
+      route,
     });
     payload = {
       artifactId,

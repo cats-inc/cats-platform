@@ -342,9 +342,11 @@ test('a coordinator answers with orchestrator knowledge wherever the conversatio
     const knowledge = deliveredContext(call);
     assert.match(knowledge.entries[0].content, /Cats Orchestrator/u, label(originSurface));
     assert.equal(knowledge.scope.originSurface, originSurface, 'the scope copy keeps the real origin');
-    // Code's own delivery is untouched: its label and marker go to a Code conversation only.
-    assert.equal(call.input.context.labels?.includes('product:code') ?? false, originSurface === 'code');
-    assert.equal(call.input.context.metadata.codeAgentTools !== undefined, originSurface === 'code');
+    // Code's own delivery is untouched: its label and marker go to a conversation with Code's
+    // tools, on Code or on Work (ADR-149 D5, PLAN-134 Phase 4).
+    const hasCodeTools = originSurface === 'code' || originSurface === 'work';
+    assert.equal(call.input.context.labels?.includes('product:code') ?? false, hasCodeTools, label(originSurface));
+    assert.equal(call.input.context.metadata.codeAgentTools !== undefined, hasCodeTools, label(originSurface));
 
     const decisionClient = runtime(JSON.stringify(decision()));
     await requester({ state: h.state, channelId: h.channelId,
@@ -472,8 +474,10 @@ test('the one agent of a conversation started without naming anyone coordinates 
       const knowledge = deliveredContext(client.calls.send[0]);
       assert.deepEqual(knowledge.entries.map((entry) => entry.id), expected, `${originSurface}: ${body}`);
       assert.match(knowledge.entries[0].content, /You are the Cats Orchestrator \(visible Boss Cat\)/u);
-      // Code's own instructions and marker still go with it; the knowledge is added to them.
-      assert.equal(client.calls.send[0].input.context.metadata.codeAgentTools !== undefined, originSurface === 'code');
+      // Code's own instructions and marker still go with it, on Code and on Work (ADR-149 D5);
+      // the knowledge is added to them.
+      assert.equal(client.calls.send[0].input.context.metadata.codeAgentTools !== undefined,
+        originSurface === 'code' || originSurface === 'work', originSurface);
     }
   }
 });

@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { canvasSurfaceRouteRegistry, type CanvasSurfaceRef } from '../../../shared/artifactCanvas/contracts.js';
+import { canvasSurfaceRouteRegistry, type CanvasRouteOptions, type CanvasSurfaceRef } from '../../../shared/artifactCanvas/contracts.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
@@ -12,9 +12,12 @@ import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 export function CodeCanvasPreviewButton({
   channelId,
   artifactId,
+  canvasRoute,
 }: {
   channelId: string;
   artifactId: string | null;
+  /** The product route the canvas opens under: Code's, or Work's (SPEC-141 FR-9). */
+  canvasRoute?: CanvasRouteOptions;
 }): JSX.Element | null {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -34,7 +37,7 @@ export function CodeCanvasPreviewButton({
       type="button"
       aria-label={label}
       title={label}
-      onClick={() => navigate(canvasSurfaceRouteRegistry.canvasUrl(surface, artifactId))}
+      onClick={() => navigate(canvasSurfaceRouteRegistry.canvasUrl(surface, artifactId, 'auto', canvasRoute))}
     >
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8s-2.4 4.5-6.5 4.5S1.5 8 1.5 8Z" />
