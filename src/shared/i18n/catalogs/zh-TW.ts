@@ -2733,7 +2733,7 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.workProject.left': '此對話已不屬於任何專案。',
   'shared.workProject.error.parallelMember': '平行群組中的對話不能屬於專案。',
   'shared.workProject.error.archived': '已封存的對話無法變更專案。',
-  'shared.workProject.error.runActive': '此對話有受監督執行正在排隊、執行、受阻或等待核准。請在結束後再變更專案。',
+  'shared.workProject.error.runActive': '此對話有受監督執行正在排隊、執行、受阻或等待核准。請先在 Work 的執行中完成或停止它，再變更專案。',
   'shared.workProject.error.projectGone': '該專案已不存在或已封存。',
   'shared.workProject.error.stale': '此對話的專案在顯示後已變更，請重新查看。',
   'shared.workProject.error.notWork': '只有 Work 中的對話可以屬於專案。',

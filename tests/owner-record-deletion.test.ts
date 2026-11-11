@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createServer } from 'node:http';
-import { createDefaultCoreState, upsertCoreProject, upsertCoreWorkItem, upsertCoreTask, upsertCoreRun, removeCoreProject, removeCoreTask } from '../src/core/model/index.ts';
+import { appendCoreActivity, createDefaultCoreState, upsertCoreProject, upsertCoreWorkItem, upsertCoreTask, upsertCoreRun, removeCoreProject, removeCoreTask } from '../src/core/model/index.ts';
 import { upsertCoreWorkGraphLink } from '../src/core/model/linkRecords.ts';
 import { ownerDeleteBlockers } from '../src/core/ownerManagement.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
@@ -24,6 +24,18 @@ test('referenced planning objects and active/derived tasks cannot be removed at 
   assert.ok(ownerDeleteBlockers(core, 'task', 't').some(reason => reason.includes('Attempt')));
   assert.equal(core.projects.length, 1);
   assert.equal(core.tasks.length, 1);
+});
+
+test("a Project's activity notes do not keep it from being deleted, but its Work Items still do (SPEC-142 FR-27)", () => {
+  let core = upsertCoreProject(createDefaultCoreState(), { id: 'p', title: 'Project' }).core;
+  core = appendCoreActivity(core, { kind: 'note', projectId: 'p', message: 'Created Project: Project' }).core;
+  core = upsertCoreWorkItem(core, { id: 'w', title: 'Work', projectId: 'p' }).core;
+  assert.deepEqual(ownerDeleteBlockers(core, 'project', 'p'), ['work_item: Work']);
+  core = { ...core, workItems: core.workItems.map((item) => ({ ...item, projectId: null })) };
+  assert.deepEqual(ownerDeleteBlockers(core, 'project', 'p'), []);
+  const removed = removeCoreProject(core, 'p');
+  assert.equal(removed.removed, true);
+  assert.equal(removed.core.activities.length, 1, 'the history stays');
 });
 
 test('WorkGraphLinks survive snapshot normalization and owner mutations, including unresolved endpoints', async () => {

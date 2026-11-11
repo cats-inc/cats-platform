@@ -2789,7 +2789,7 @@ export const enCatalog: MessageCatalog = {
   'shared.workProject.left': 'The conversation is no longer in a project.',
   'shared.workProject.error.parallelMember': 'A conversation in a parallel group cannot belong to a project.',
   'shared.workProject.error.archived': 'An archived conversation cannot change its project.',
-  'shared.workProject.error.runActive': 'A supervised run of this conversation is queued, running, blocked or waiting for approval. Change the project when it ends.',
+  'shared.workProject.error.runActive': 'A supervised run of this conversation is queued, running, blocked or waiting for approval. Finish or stop it among Work runs, then change the project.',
   'shared.workProject.error.projectGone': 'That project no longer exists or is archived.',
   'shared.workProject.error.stale': 'The conversation\'s project changed since it was shown. Look again.',
   'shared.workProject.error.notWork': 'Only a conversation in Work can belong to a project.',

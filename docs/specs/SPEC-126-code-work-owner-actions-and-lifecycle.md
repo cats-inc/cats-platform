@@ -154,6 +154,9 @@ claiming a capability is still missing.
       - a Project cannot be deleted while conversations belong to it. The
         blocker names them, and the owner takes each one out from its
         conversation.
+      - its activity notes are history, not work in it: they stay, and they do
+        not keep the owner from deleting the Project. Its Work Items and other
+        records still do.
 13. **FR-13 — Work Items.** Add edit, priority, move/relink Project, complete/
     reopen, archive/restore and a contextual prepare/start Task action. Keep
     external issue import/binding behavior explicit; a local removal shall not
