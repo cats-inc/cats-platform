@@ -16,6 +16,7 @@ import {
   composeArtifactCanvasNavigateIntent,
   type CanvasSurfaceRef,
 } from '../../shared/artifactCanvas/contracts.js';
+import { resolveCanvasRouteOptions } from '../../shared/artifactCanvas/conversationRoute.js';
 import {
   DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
   buildArtifactCanvasPolicyVersion,
@@ -81,7 +82,7 @@ const DECLARE_TOOL: McpToolDefinition = {
 
 const CLEAR_TOOL: McpToolDefinition = {
   name: ARTIFACT_CANVAS_CLEAR_TOOL_DEFINITION.name,
-  description: 'Close the preview canvas beside this Cats Code conversation.',
+  description: 'Close the preview canvas beside this conversation.',
   inputSchema: ARTIFACT_CANVAS_CLEAR_TOOL_DEFINITION.inputSchema as unknown as Record<string, unknown>,
 };
 
@@ -179,11 +180,15 @@ export function createCodeAgentToolsService(options: CodeAgentToolsServiceOption
 
   async function clearCanvas(grant: CodeAgentToolGrant): Promise<McpToolCallResult> {
     const surface: CanvasSurfaceRef = { kind: 'code_conversation', surfaceId: grant.binding.channelId };
-    const targetUrl = canvasSurfaceRouteRegistry.parentUrl(surface);
     const policyVersion = buildArtifactCanvasPolicyVersion(policyConfig).policyVersion;
     const at = now();
     let activity!: ReturnType<typeof appendArtifactCanvasIntentActivity>;
+    let route: ReturnType<typeof resolveCanvasRouteOptions> = {};
+    let targetUrl = '';
     await options.coreStore.updateCore((core) => {
+      // The conversation's own route, on Code or on Work (SPEC-141 FR-9).
+      route = resolveCanvasRouteOptions(core, surface);
+      targetUrl = canvasSurfaceRouteRegistry.parentUrl(surface, route);
       activity = appendArtifactCanvasIntentActivity({
         core,
         kind: 'artifact_canvas_clear_intent',
@@ -204,6 +209,7 @@ export function createCodeAgentToolsService(options: CodeAgentToolsServiceOption
         presentationRequested: null,
         policyVersion,
         triggeredAt: at.toISOString(),
+        route,
       }),
       now: at,
     });

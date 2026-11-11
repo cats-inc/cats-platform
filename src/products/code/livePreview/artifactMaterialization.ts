@@ -18,6 +18,7 @@ import {
   type ArtifactCanvasPresentationInput,
   type CanvasSurfaceRef,
 } from '../../shared/artifactCanvas/contracts.js';
+import { resolveCanvasRouteOptions } from '../../shared/artifactCanvas/conversationRoute.js';
 import {
   DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
   type ArtifactCanvasPolicyConfig,
@@ -207,10 +208,13 @@ export function prepareLivePreviewArtifactCanvasShow(
     };
   }
 
+  // A conversation's preview opens on the product where it lives (SPEC-141 FR-9).
+  const route = resolveCanvasRouteOptions(materialized.core, materialized.lease.surface);
   const targetUrl = canvasSurfaceRouteRegistry.canvasUrl(
     materialized.lease.surface,
     materialized.artifact.id,
     presentationRequested,
+    route,
   );
   const activity = appendArtifactCanvasIntentActivity({
     core: materialized.core,
@@ -239,6 +243,7 @@ export function prepareLivePreviewArtifactCanvasShow(
     presentationRequested,
     policyVersion: projection.projection.policyVersion,
     triggeredAt: now.toISOString(),
+    route,
   });
   return {
     status: 'prepared',

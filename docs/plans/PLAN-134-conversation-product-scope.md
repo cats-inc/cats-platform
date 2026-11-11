@@ -270,30 +270,79 @@ real provider.
 
 **Goal:** conversations on Work have Code's tools and can show them (D5; FR-8 to FR-11).
 
-- [ ] The enricher, the Code session verification and the Code work areas accept `work`. So
+- [x] The enricher, the Code session verification and the Code work areas accept `work`. So
       does the Boss Cat join request's statement that joining brings Code's tools, with
       SPEC-139 FR-8's hint and the card's text.
-- [ ] Make Code's conversation parts usable from Work's route: the preview controls, the
-      preview button, the work areas panel and the folder and permission chips. They live in
-      `src/products/code/renderer/components/`, and `tests/dependency-graph.test.js` forbids
-      Work importing Code, so they move to `src/products/shared/` or get an explicit allowance.
-- [ ] Decide how the canvas finds its route (see Technical Decisions), then make
+  - One predicate, `productScopeIncludes` in `src/shared/productScope.ts`, decides it at all
+    four places. A direct lane reads as `chat` and gets none of it.
+  - Who gets the `cats` server: a conversation's own turns and session starts, the only
+    callers of the invocation enrichment. Work's supervised runs, schedules and the golden
+    path carry no marker, because they never pass through the enrichment, so the wrapper adds
+    no server to them. FR-8 names conversations, so this is what it asks for.
+    - It is the marker, not the client, that keeps them out. In production Work gets the
+      shared runtime client, which the Code wrapper wraps (`src/index.ts`,
+      `app/server/dependencies.ts`). A marker added to a Work run's context would bring the
+      server with it.
+- [x] Make Code's conversation parts usable from Work's route: the preview controls, the
+      preview button, the work areas panel and the folder and permission chips.
+  - They stay in `src/products/code/renderer/components/`. `tests/dependency-graph.test.js`
+    allows four exact edges from Work's route file to them, as it does for other
+    product-to-product seams. Moving them would have moved their Code hooks, API paths and a
+    server type with them.
+  - The folder chip and the permission chip were shared already. Work adds Code's branch and
+    workspace chip beside the folder, and keeps its own view and preferences (FR-11): the
+    work areas panel comes from `CodeConversationView` with `behaviorSurface="work"`.
+  - Work's stylesheet imports Code's work areas styles.
+- [x] Decide how the canvas finds its route (see Technical Decisions), then make
       `showInCanvas.ts`, `devPreview.ts`, `service.ts`, `conversationPreviews.ts` and
       `artifactMaterialization.ts` follow it.
-  - [ ] If a surface kind is added, also update the hand-written kind list in
-        `src/products/shared/artifactCanvas/iframePolicy.ts`, `projection.ts`, `activity.ts`,
-        `contracts.ts` and `CodeCanvasPreviewButton.tsx`.
-- [ ] Keep earlier canvas and preview state working (FR-9).
-- [ ] Bind the grant of a session that gains the server to that session's folder (FR-25).
-- [ ] Keep the other servers on the session. Code's wrapper replaces the server list with its
-      own on create, send and resume (`runtimeClientWrapper.ts:129`, `:168`, `:184`), which by
-      the code as read drops the desktop control server on Code conversations today. D5 would
-      spread that to Work conversations, so this phase makes the fix. PLAN-135 Phase 1 relies
-      on it.
-- [ ] Review copy and labels that say "Cats Code" for a conversation that now may live on Work
+  - The URL is built in `showInCanvas.ts`, `service.ts` and `artifactMaterialization.ts`;
+    `devPreview.ts` and `conversationPreviews.ts` build none and needed no change.
+  - [x] If a surface kind is added, also update the hand-written kind list. No kind was
+        added.
+- [x] Keep earlier canvas and preview state working (FR-9). The kind is unchanged, so stored
+      artifacts, their preview source surfaces and running leases are read as before. A
+      stored Activity's `targetUrl` is never read back.
+- [x] Bind the grant of a session that gains the server to that session's folder (FR-25).
+  - The wrapper reads the folder from Runtime (`workspace.runtimeCwd`, else `cwd`, the order
+    Runtime uses itself). When Runtime cannot say, the grant has no folder and the tools that
+    need one answer `workspace_unknown`.
+  - The same path serves a Platform restart, which now also binds the session's folder
+    instead of the conversation's.
+  - When Runtime cannot say at first, the next send asks again, so one failed read does not
+    leave the grant without a folder.
+  - Two sends racing on a session that has no grant yet issue one grant, not two. The
+    review of this phase ran the race: two grants, and closing the session revoked one, so
+    the conversation's previews would not stop.
+- [x] Keep the other servers on the session. Code's wrapper keeps the servers a call already
+      carries and replaces only entries named like its own, on create, send and resume.
+  - The image tools' server is also named `cats`. It is offered only in a companion's
+    direct lane, whose scope is `chat`, so the two never meet.
+- [x] Review copy and labels that say "Cats Code" for a conversation that now may live on Work
       (`policy.ts`, `service.ts`, the `product:code` label).
+  - The model-facing descriptions, the preview policy and the "not available" message say
+    Cats, not Cats Code.
+  - The `product:code` label stays. It names Code's tools, nothing in Platform reads it, and
+    renaming it could break a reader outside Platform.
+  - The join hint and card no longer say the Code tools include a shell; a shell comes from
+    the conversation's permission.
+- [ ] Known, not changed here: a dev preview ignores the conversation's execution policy.
+      `shellPermission.ts` and the enricher decide whether a session may start one from the
+      access and permission mode alone, so a policy that turns off network or asks for every
+      approval still lets `start_dev_preview` run a package.json script in Platform's own
+      process. This held for Code conversations before; Work includes Code, so it now holds
+      for Work conversations too. It needs Settings › Code's preview switch, which is off by
+      default. It needs a change of its own.
 - [ ] Tests, plus an isolated candidate check of a Work conversation that shows an artifact and
       a live preview.
+  - [x] Tests: the scope predicate at the four places, the wrapper keeping other servers and
+        binding a gaining session's folder, the registry composing and parsing Work's route,
+        the route read from Core, an intent re-targeted by its frame, Work's route rendering
+        the canvas pane, and `show_in_canvas` and `clear_canvas` returning Work's route for a
+        Work conversation. Three existing expectations flipped as D5 intends: Code's tools
+        for `code` only, Work's work areas refused, and Work's routes without a canvas.
+  - [ ] The candidate check was not run. It needs a built Desktop on an isolated profile and
+        a real agent turn that calls the tools, so it stays for Phase 7's acceptance.
 
 **Deliverables:** a conversation created on Work receives the `cats` server, and its canvas,
 previews and work areas appear under `/work`.
@@ -559,14 +608,25 @@ Runtime client that carries the Code tools wrapper.
     ordinary conversation. If an older build wrote the file, it would load at its origin's
     level. No client is known to create such a lane.
   - The version 6 upgrade cannot be reused as it is (see Phase 5).
-- **The canvas route, to decide in Phase 4.** A canvas surface kind fixes its route today, so
-  `code_conversation` always opens under `/code`. Two ways forward:
+- **The canvas route, decided in Phase 4: keep `code_conversation` and resolve its route from
+  the conversation's scope.** A canvas surface kind fixed its route, so `code_conversation`
+  always opened under `/code`. Two ways forward were open:
   - add a kind for Work conversations, which needs every kind list updated and a rule for
     state recorded under the old kind;
   - keep `code_conversation` and resolve its route from the conversation's scope, which keeps
     earlier state valid.
 
-  Either must satisfy FR-9.
+  The second was chosen for FR-9. Artifacts store the kind as their preview source surface and
+  leases compare it, so a new kind would have had to migrate them, and a Phase 5 raise from
+  `code` to `work` would have had to migrate them again. With the kind kept, a raise changes
+  only where the next URL points.
+  - The registry composes a `code_conversation` URL under `/code/chats` or `/work/chats` from
+    a route option, and parses both back to the same surface.
+  - The server reads the option from the scope copy on the conversation's Core task.
+  - A frame opens an intent for its own surface under its own route, so an intent made before
+    a conversation moved still opens beside it.
+  - A `/code/chats/<id>/canvas/<artifact>` link for a Work conversation is redirected to
+    Work's route with the canvas path kept (FR-13), and Work now renders it.
 - **The raise has its own revision.** `collaborationExecutionRevision` also digests every Cat's
   settings and is checked by running collaborations, so reusing it would refuse raises for
   unrelated changes and would stop a collaboration on a raise.

@@ -4,7 +4,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import type { AppShellPayload } from '../api/workspaceContracts.js';
 import type { SelectedChannelView } from './workspaceChatUtils.js';
-import type { CanvasSurfaceKind } from '../artifactCanvas/contracts.js';
+import type { CanvasRouteOptions, CanvasSurfaceKind } from '../artifactCanvas/contracts.js';
 import { withSharedViewerRoutes, type ArtifactCanvasControlsProps } from './withSharedViewerRoutes.js';
 
 export interface WorkspaceAppRoutesProps {
@@ -16,10 +16,15 @@ export interface WorkspaceAppRoutesProps {
   entryPath: string;
   chatsPath: string;
   extraRoutes?: ReactNode;
-  /** Mounts the Artifact Canvas beside the conversation when set (Code only). */
+  /**
+   * Mounts the Artifact Canvas beside the conversation when set: on Code, and on Work, which
+   * includes Code (ADR-149 D5).
+   */
   chatCanvasSurfaceKind?: CanvasSurfaceKind;
   /** Product controls under that canvas's top bar. */
   chatCanvasControls?: ComponentType<ArtifactCanvasControlsProps>;
+  /** The product route that canvas opens under (SPEC-141 FR-9). */
+  chatCanvasRoute?: CanvasRouteOptions;
   renderBootShell: () => ReactNode;
   renderConversationView: (
     channel: SelectedChannelView,
@@ -51,6 +56,7 @@ export function WorkspaceAppRoutes({
   extraRoutes = null,
   chatCanvasSurfaceKind,
   chatCanvasControls,
+  chatCanvasRoute,
   renderBootShell,
   renderConversationView,
   renderNewChatDraft,
@@ -77,6 +83,7 @@ export function WorkspaceAppRoutes({
             surfaceIdParam: 'channelId',
             element: chatElement,
             canvasControls: chatCanvasControls,
+            canvasRoute: chatCanvasRoute,
           })
           : <Route path="chats/:channelId" element={chatElement} />}
         <Route

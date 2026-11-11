@@ -70,11 +70,16 @@ test('code_conversation anchors Activity and artifacts on the Core conversation 
   assert.equal(isArtifactAnchoredToSurface({ conversationId: 'channel-7' } as CoreArtifactRecord, SURFACE), false);
 });
 
-test('Code mounts the Artifact Canvas beside its conversation route only', async () => {
+test('Code and Work mount the Artifact Canvas beside their conversation route', async () => {
   const codeRoutes = await readFile(path.join(process.cwd(), 'src/products/code/renderer/AppRoutes.tsx'), 'utf8');
   assert.match(codeRoutes, /chatCanvasSurfaceKind: 'code_conversation'/u);
+  // Work includes Code (ADR-149 D5, PLAN-134 Phase 4). Until then this asserted that Work's
+  // routes had no conversation canvas.
   const workRoutes = await readFile(path.join(process.cwd(), 'src/products/work/renderer/AppRoutes.tsx'), 'utf8');
-  assert.doesNotMatch(workRoutes, /chatCanvasSurfaceKind/u);
+  assert.match(workRoutes, /chatCanvasSurfaceKind: 'code_conversation'/u);
+  assert.match(workRoutes, /chatCanvasRoute: WORK_CONVERSATION_CANVAS_ROUTE/u);
+  const chatRoutes = await readFile(path.join(process.cwd(), 'src/products/chat/renderer/AppRoutes.tsx'), 'utf8');
+  assert.doesNotMatch(chatRoutes, /code_conversation/u);
 
   const markup = renderToStaticMarkup(
     <StaticRouter location="/code/chats/channel-7/canvas/artifact-1">

@@ -17,6 +17,7 @@ import {
 import { isCompanionCat } from '../../../shared/companionRole.js';
 import { resolveChannelParticipantAssignments, resolveParticipantCatId } from '../shared/channelParticipants.js';
 import { isDirectLaneChannel, resolveChannelProductScope } from '../shared/channelTopology.js';
+import { productScopeIncludes } from '../../../shared/productScope.js';
 import { BOSS_CAT_JOIN_PRIOR_MESSAGES, resolveBossCatJoinPolicy } from '../shared/bossCatJoins.js';
 import { BOSS_CAT_JOIN_REQUEST_METADATA_KEY } from '../shared/ownerStarted.js';
 import { readOwnerSetTitle } from './bossCatBoard.js';
@@ -355,7 +356,8 @@ export function readBossCatJoinRequestDetails(
           repoPath: target.repoPath ?? null,
           workspaceAccess: policy.workspaceAccess,
           permissionMode: policy.permissionMode,
-          codeTools: resolveChannelProductScope(target) === 'code',
+          // Work includes Code (ADR-149 D5): joining a Work conversation brings Code's tools too.
+          codeTools: productScopeIncludes(resolveChannelProductScope(target), 'code'),
         }
       : null,
     bossCat: boss

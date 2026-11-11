@@ -51,7 +51,12 @@ test('Code route rejects unavailable, non-Code, foreign and revoked conversation
   const url = await serve(t, service);
   assert.equal((await fetch(url, { method: 'POST' })).status, 405);
   assert.equal((await fetch(url.replace('conversation-a', 'foreign'))).status, 404);
-  context.scope = 'work'; assert.equal((await fetch(url)).status, 404);
+  context.scope = 'chat'; assert.equal((await fetch(url)).status, 404);
+  // Work includes Code (ADR-149 D5, PLAN-134 Phase 4): a Work conversation's work areas are
+  // served. Until then this asserted 404 for `work`.
+  context.scope = 'work'; context.origin = 'work'; assert.equal((await fetch(url)).status, 200);
+  // A value that is not a scope serves nothing.
+  context.scope = 'unknown'; assert.equal((await fetch(url)).status, 404);
   // SPEC-141: the scope decides, so another origin with a code scope is served.
   context.scope = 'code'; context.origin = 'chat'; assert.equal((await fetch(url)).status, 200);
   context.origin = 'code'; context.owned = false;

@@ -94,7 +94,7 @@ export async function runStartDevPreview(
 ): Promise<McpToolCallResult> {
   const supervisor = context.supervisor;
   if (!supervisor) {
-    return failure({ code: 'previews_unavailable', message: 'Cats Code previews are not available on this host.' });
+    return failure({ code: 'previews_unavailable', message: 'Cats previews are not available on this host.' });
   }
   if (!await context.previewServersEnabled()) {
     return failure({
@@ -340,7 +340,7 @@ function ownedLease(
   context: Pick<DevPreviewContext, 'binding' | 'supervisor'>,
 ) {
   if (!context.supervisor) {
-    return { code: 'previews_unavailable', message: 'Cats Code previews are not available on this host.' };
+    return { code: 'previews_unavailable', message: 'Cats previews are not available on this host.' };
   }
   const lease = typeof previewId === 'string' ? context.supervisor.getLease(previewId) : null;
   if (!lease || lease.surface.kind !== 'code_conversation' || lease.surface.surfaceId !== context.binding.channelId) {
