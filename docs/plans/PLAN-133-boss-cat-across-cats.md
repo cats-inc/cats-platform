@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress: slices 1 and 2 implemented |
+| Status | In progress: slices 1 to 3 implemented |
 | Owner | Cats Chat |
 | Reviewer | Owner |
 | Date | 2026-11-11 |
@@ -62,10 +62,28 @@ are tested as live behaviour.
 
 ### Slice 3: Status board
 
-- [ ] `bossCatBoard.ts` builds FR-3 from Chat and Core state, as a pure function.
-- [ ] FR-4 title rule: only `titleSource: 'manual'` titles; others appear as surface, id and
-      age. Names and titles cut to 80 characters, control and bidi-override characters removed.
-- [ ] FR-15 per-Cat visibility field, absent meaning visible.
+- [x] `bossCatBoard.ts` builds FR-3 as a pure function of Chat state, own-initiative profiles
+      and Core approvals. Nothing reads it yet. Definitions it fixes:
+      - a lane's presence follows the UI's status dot (its lead lease, `resolveChatLifecycleState`);
+      - initiative is read as the life loop reads it (SPEC-137), only for companion Cats;
+      - a choice card waits while nobody answered it and the owner has not written past it;
+        a Cat's count covers the cards it posted;
+      - approvals are Core tasks with `approval.status: 'pending'` on the Cat's conversations,
+        by the task's own conversation or an approval binding;
+      - a failed or interrupted turn is one of the last 7 days whose target for that Cat
+        failed, was blocked, or was cancelled;
+      - group participants are Cat names only; temporary participants' names are free text.
+- [x] FR-4 title rule: `manual` is the creation default and what older data was normalized
+      to, so it proves nothing. The owner's renames (`renameChannel`, `renameParallelChatGroup`)
+      now set a new value, `titleSource: 'owner'`, and the board shows only those. The board
+      never reads topics, where a transport's sender name lives. Names and titles cut to 80
+      characters, control and bidi-override characters removed.
+- [x] FR-15: `ChatCat.hiddenFromBossCat?: true`, absent meaning visible, kept by the snapshot
+      normalizer. A hidden Cat shows by name only and leaves group participant lists. A group
+      of only hidden Cats shows its surface, id and age, nothing else (`redacted`).
+- [x] Tests: `tests/chat-boss-cat-board.test.js` (every field, markers in messages, choices,
+      errors, topics and paths never show, title rule, hidden Cats, reload, approvals, and a
+      real failed turn through an isolated test server).
 
 ### Slice 4: Tool surface, board and groups
 
@@ -111,7 +129,8 @@ additive fields, each introduced in the slice that uses it:
 
 - `ChannelMessageMetadata.ownerStarted` (slice 2): server-stamped, records Desktop or mobile.
 - the per-Cat visibility field on `ChatCat` (slice 3).
-- a `titleSource` value for model-set group titles (slice 4).
+- `titleSource: 'owner'`, set only by the owner's renames (slice 3). Model-set group titles
+  keep the `manual` default, which the board does not show.
 - a channel marker for groups the Boss Cat created, read by companion memory loading (slice 4).
 - Boss Cat preferences (join policy) and usage counters on `ChatState` (slices 4 and 5).
 - the join card's message metadata (slice 5).

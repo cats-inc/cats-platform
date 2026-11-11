@@ -309,7 +309,7 @@ export interface ChatMessage {
 }
 
 export interface ChatChannelState {
-  titleSource?: 'draft' | 'catlas' | 'manual';
+  titleSource?: 'draft' | 'catlas' | 'manual' | 'owner';
   catlasTitleAttempts?: { count: number; lastReplyId: string };
   id: string;
   title: string;

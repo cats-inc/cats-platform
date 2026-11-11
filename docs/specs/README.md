@@ -11,7 +11,7 @@
   pairing is planned for both apps.
 - [SPEC-139: Boss Cat across Cats](SPEC-139-boss-cat-across-cats.md)
   — approved, 2026-11-11, and revised after its security review; in progress under PLAN-133
-  (FR-17 and the owner-started stamp implemented). A status
+  (FR-17, the owner-started stamp and the board builder implemented). A status
   board without message text, group conversations the Boss Cat creates, and joining Chat, Code
   or Work conversations under one owner switch (ask every time by default), all from the
   owner's own Desktop or mobile messages only. Counterpart of Cats Bot SPEC-012.

@@ -31,7 +31,7 @@ test('manual rename wins while the title model is in flight and receipt records 
   await updateChatState(f.store, state => renameChannel(state, f.channelId, 'Owner rename'));
   release.resolve(); await pending;
   const channel = (await f.store.read()).channels.find(item => item.id === f.channelId);
-  assert.equal(channel.title, 'Owner rename'); assert.equal(channel.titleSource, 'manual');
+  assert.equal(channel.title, 'Owner rename'); assert.equal(channel.titleSource, 'owner');
   const receipts = JSON.parse(await readFile(catlasStatePath(f.chatStatePath, 'receipts'), 'utf8')).receipts;
   assert.deepEqual(receipts[0].units[0].reasons, ['title_changed']);
 });
