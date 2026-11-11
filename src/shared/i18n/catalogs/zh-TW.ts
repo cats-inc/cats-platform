@@ -2207,6 +2207,7 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.bossCatJoinedUntitledNotice': '{name} 加入了一個 {surface} 對話。',
   'chat.bossCatLeftNotice': '{name} 離開了對話「{title}」。',
   'chat.bossCatLeftUntitledNotice': '{name} 離開了一個 {surface} 對話。',
+  'chat.bossCatJoinRequestNotice': '{name} 想加入一個對話。決定前，先看看加入會帶來什麼。',
   'chat.companionPostRemoveAction': '移除',
   'chat.companionPostRemoveConfirmTitle': '要移除這篇貼文嗎？',
   'chat.companionPostRemoveConfirmMessage': '「{title}」將不再顯示在 {name} 的個人頁。',

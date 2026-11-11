@@ -2286,6 +2286,7 @@ export const messageKeys = {
   chatBossCatJoinedUntitledNotice: 'chat.bossCatJoinedUntitledNotice',
   chatBossCatLeftNotice: 'chat.bossCatLeftNotice',
   chatBossCatLeftUntitledNotice: 'chat.bossCatLeftUntitledNotice',
+  chatBossCatJoinRequestNotice: 'chat.bossCatJoinRequestNotice',
   chatCompanionPostRemoveAction: 'chat.companionPostRemoveAction',
   chatCompanionPostRemoveConfirmTitle: 'chat.companionPostRemoveConfirmTitle',
   chatCompanionPostRemoveConfirmMessage: 'chat.companionPostRemoveConfirmMessage',

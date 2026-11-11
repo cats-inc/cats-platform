@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress: slices 1 to 5a and 7 implemented; 5b and 6 claimed (see below) |
+| Status | In progress: slices 1 to 5b and 7 implemented; 6 claimed (see below) |
 | Owner | Cats Chat |
 | Reviewer | Owner |
 | Date | 2026-11-11 |
@@ -239,13 +239,43 @@ are tested as live behaviour.
 
 ### Slice 5b: The owner's card under 「每次問我」
 
-Claimed on 2026-11-11 by the Desktop session that built slices 1 to 5a. Another session took
-slice 7 in parallel; coordinate here before starting 5b or 6.
+Implemented by the Desktop session that built slices 1 to 5a, which also claims slice 6.
 
-- [ ] The card: its own route, digest binding, server-performed join, consumed once, 24-hour
-      expiry, one pending card per conversation, excluded from model context and the transport
-      mirror.
-- [ ] Under 「每次問我」 a join request posts the card instead of refusing.
+- [x] Under 「每次問我」 a join request posts the card in the Boss Cat's lane
+      (`postBossCatJoinRequest`). It counts toward the 10 an hour, and only one card per
+      conversation may be pending. The receipt says `awaiting_owner`, and the reply is told the
+      owner was asked.
+- [x] The card message carries only `bossCatJoinRequest`: ids, the digest, `requestedVia`, the
+      creation and expiry times (24 hours), and the status. Its body names nothing. What joining
+      grants comes from live state, and only the owner reads it:
+      - `GET /api/channels/:laneId/boss-cat/join-requests/:requestId` returns the conversation's
+        title, surface and participants;
+      - the grants: repository, workspace access, permission mode, and Code tools with a shell;
+      - the Boss Cat's provider, model, MCP and skill profiles and companion memory;
+      - the history it will see, and where the request came from.
+- [x] The digest binds the target's `collaborationExecutionRevision`, the Boss Cat and its
+      execution target, the lane, and the policy.
+- [x] `POST …/decision` with `approve` or `decline` requires the owner principal (cookie or
+      bearer), so Telegram cannot answer (D3). It runs under the target conversation's gate.
+      `decideBossCatJoinRequest` decides only a pending card, and only once. It checks expiry,
+      then that the policy is still 「每次問我」, then the gate on the original owner message,
+      the target, and the digest. Then the server joins through the same `applyBossCatJoin` as
+      「允許」. A replay, a retry after a leave, expiry, a policy change and a stale digest are all
+      refused and recorded on the card.
+- [x] The card never reaches a model or a transport:
+      - prompts drop it from the transcript and from the Core-rebuilt messages;
+      - the heartbeat's lane continuity and the SPEC-137 review leave it out;
+      - it is `origin: 'system'` and published as an update, never as `message_added`, so the
+        Telegram fanout never sees it.
+- [x] FR-16: a posted card (`join_request`) and the owner's decision (`owner_decision`) are
+      recorded with ids only.
+- [x] Tests in `tests/chat-boss-cat-tools.test.js`:
+      - the card is posted, names nothing, and stays out of the reply's prompt;
+      - one pending card per conversation;
+      - the details are for the owner only (401 without auth);
+      - approve joins once, and a replay is refused;
+      - decline, expiry, a policy change and a stale digest do not join;
+      - the evidence records.
 
 ### Slice 6: Owner UI
 

@@ -6,6 +6,7 @@ import {
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import { describeDuration, isOwnerMessage, readCompanionHeartbeatKind } from './heartbeat.js';
 import { boundMessagesToJoin, readBossCatJoinSince } from '../../shared/bossCatJoins.js';
+import { withoutBossCatJoinRequests } from '../../shared/ownerStarted.js';
 
 /**
  * SPEC-137 FR-7: what an `assist` heartbeat looks over. The Cat reviews its
@@ -222,7 +223,7 @@ export function buildCompanionWorkReview(
   const since = now.getTime() - COMPANION_REVIEW_LOOKBACK_MS;
   const recent = channels
     .filter((channel) => isCatChatConversation(channel, catId))
-    .map((channel) => boundToJoin(channel, catId))
+    .map((channel) => boundToJoin({ ...channel, messages: withoutBossCatJoinRequests(channel.messages) }, catId))
     .map((channel) => ({ channel, ownerAt: lastOwnerAt(channel) }))
     .filter((entry) => Number.isFinite(entry.ownerAt) && entry.ownerAt >= since)
     .sort((a, b) => b.ownerAt - a.ownerAt);

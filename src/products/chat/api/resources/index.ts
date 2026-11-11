@@ -4,6 +4,7 @@ import type {
 import { routeChatDebugResourceApi } from './debugRoutes.js';
 import { routeConversationDiagnostics } from './diagnosticRoutes.js';
 import { routeChatChannelResourceApi } from './channelRoutes.js';
+import { routeBossCatResourceApi } from './bossCatRoutes.js';
 import { routeParallelChatGroupResourceApi } from './parallelChatGroupRoutes.js';
 import { routeChatEventApi } from './eventRoutes.js';
 import { routeChatOrchestratorResourceApi } from './orchestratorRoutes.js';
@@ -33,6 +34,10 @@ export async function routeChatResourceApi(
   }
 
   if (await routeParallelChatGroupResourceApi(context)) {
+    return true;
+  }
+
+  if (await routeBossCatResourceApi(context)) {
     return true;
   }
 

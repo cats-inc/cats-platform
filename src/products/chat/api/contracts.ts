@@ -571,6 +571,8 @@ export interface BossCatToolReceipt {
   board?: unknown;
   /** The conversation an applied `chat.boss.create_group` created. */
   conversationId?: string;
+  /** The owner's card a join request posted under 「每次問我」. */
+  requestId?: string;
 }
 
 /**
@@ -755,6 +757,28 @@ export interface ChannelMessageMetadata extends Record<string, unknown> {
   ownerStarted?: OwnerStartedSurface;
   /** Server-owned (SPEC-139); a client value is always dropped. */
   bossCatTurn?: BossCatTurnRecord;
+  /** SPEC-139 FR-10: the owner's join card, server-owned; it never reaches a model or a transport. */
+  bossCatJoinRequest?: BossCatJoinRequestRecord;
+}
+
+export type BossCatJoinRequestStatus = 'pending' | 'approved' | 'declined' | 'expired' | 'refused';
+
+/**
+ * The card's binding: ids, a digest and timestamps only. What joining grants is rendered from
+ * live state when the owner opens it.
+ */
+export interface BossCatJoinRequestRecord {
+  id: string;
+  bossCatId: string;
+  conversationId: string;
+  sourceMessageId: string;
+  requestedVia: OwnerStartedSurface;
+  digest: string;
+  createdAt: string;
+  expiresAt: string;
+  status: BossCatJoinRequestStatus;
+  decidedAt?: string;
+  refusal?: string;
 }
 
 /** Where an owner-started message came from (SPEC-139). */
