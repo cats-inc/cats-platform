@@ -238,8 +238,9 @@ export function bossCatToolDescriptors(): ProviderAgentToolDescriptor[] {
           'Input: {} only.',
           'Read the board only when the owner\'s message asks about other Cats or conversations. '
             + 'Otherwise answer with a respond step; the Boss Cat then replies as usual.',
-          'A Cat\'s running turns, problems, choices and approvals cover its group conversations only; '
-            + 'its direct lane shows only as presence (awake or asleep) and message times.',
+          'A Cat\'s running turns, problems, choices and approvals cover conversations shared by two or more '
+            + 'Cats only. Its direct lane shows only as presence (awake or asleep) and message times, and a '
+            + 'one-to-one conversation (oneToOne) only as who and when.',
         ],
       });
 }

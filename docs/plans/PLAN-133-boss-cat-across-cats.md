@@ -76,9 +76,13 @@ are tested as live behaviour.
         that conversation (as Cats Bot SPEC-012 FR-2 defines attention);
       - group participants are Cat names only; temporary participants' names are free text.
       - a Cat's running turns, failed or interrupted turns, waiting choices and approvals
-        count in its group conversations only; its direct lane leaves it only as its presence
-        (awake or asleep), its message times and the Cat's own-initiative state (SPEC-139 FR-3,
-        Goals and Privacy; the owner's call on 2026-11-11, matching the peer section of slice 7).
+        count in conversations shared by two or more Cats only; its direct lane leaves it only as
+        its presence (awake or asleep), its message times and the Cat's own-initiative state
+        (SPEC-139 FR-3, Goals and Privacy; the owner's call on 2026-11-11, matching the peer
+        section of slice 7);
+      - a one-to-one conversation (one Cat, not a direct lane) is treated the same way: its
+        board entry (`oneToOne`) shows who and when but no turn state, and it stays on the board
+        so it can be joined (the owner's call on 2026-11-11).
       - a lane's presence follows the UI's status dot, coarsened to awake or asleep: waking and
         an error read as asleep.
 - [x] FR-4 title rule: `manual` is the creation default and what older data was normalized
