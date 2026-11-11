@@ -1,3 +1,4 @@
+import { redactConversationProposalCards } from '../conversationProposals.js';
 import type {
   ChannelParticipantAssignment,
   ChannelCatAssignment,
@@ -189,6 +190,8 @@ export function buildChannelView(
   );
   clonedChannel.participantAssignments = normalizedParticipantAssignments;
   clonedChannel.catAssignments = normalizedCatAssignments;
+  // SPEC-142 FR-15: a client sees a proposal card's id and status; its content is owner-only.
+  clonedChannel.messages = redactConversationProposalCards(clonedChannel.messages);
   clonedChannel.channelKind = resolveChannelKind({
     channelKind: clonedChannel.channelKind,
     roomMode: roomRouting.mode,
@@ -325,7 +328,7 @@ export function exportChannel(state: ChatState, channelId: string): ChannelExpor
   return {
     exportedAt: new Date().toISOString(),
     orchestrator: structuredClone(state.globalOrchestrator),
-    channel: structuredClone(channel),
+    channel: { ...structuredClone(channel), messages: redactConversationProposalCards(structuredClone(channel.messages)) },
     assignedParticipants: view.assignedParticipants,
     assignedCats: view.assignedCats,
   };

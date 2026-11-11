@@ -798,6 +798,27 @@ but at least one must be present (`400 participant_update_required`):
 
 Returns `{ updated: true, channelId, participantId }`.
 
+### Channel Proposals
+
+```text
+GET  /api/channels/{channelId}/proposals/{proposalId}
+POST /api/channels/{channelId}/proposals/{proposalId}/decision
+```
+
+A write an agent proposed, and the owner's answer
+([SPEC-142](specs/SPEC-142-task-run-and-work-tools-in-conversations.md) FR-15 to FR-21). Both
+routes require an owner principal, as the product scope routes do; anyone else gets
+`403 owner_required`.
+
+- `GET` returns `{ proposal }`: `id`, `kind`, `status` (`open`, `confirmed`, `declined`,
+  `expired`, `stale` or `failed`), `outOfDate`, `createdAt`, `expiresAt`, `decidedAt`,
+  `refusal`, `proposer` (`participantId`, `name`) and `view` (`title`, `fields`, `records`,
+  `folderWarning`). `view` is null when this build does not know the kind.
+- `POST` takes `{ "decision": "confirm" | "decline" }` and returns `{ outcome }` with `status`
+  and `refusal`. A card is answered once. A confirmation rechecks the card and the records it
+  touches, then the server performs the write; the model supplies nothing at that point.
+- Unknown cards are `404 proposal_not_found`; a bad decision is `400 invalid_decision`.
+
 ### Channel Product Scope
 
 ```text

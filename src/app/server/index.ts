@@ -25,6 +25,9 @@ import { createHostToolServer, HOST_TOOLS_MCP_PATH, type HostToolGrantBinding } 
 import { createHostToolsClientWrapper } from '../../platform/mcp/hostToolsClientWrapper.js';
 import { createCodeAgentToolsProvider } from '../../products/code/agentTools/service.js';
 import { createConversationRecordToolsProvider } from '../../products/shared/conversationRecordTools.js';
+import { ConversationProposalKindRegistry } from '../../platform/proposals/contracts.js';
+import { createConversationProposalService } from '../../products/chat/api/conversationProposals.js';
+import { publishChannelMutation } from '../../products/chat/api/transportEventPublisher.js';
 import { createCatImageTools, CAT_IMAGE_TOOLS_PATH } from '../../platform/multimedia/catImageTools.js';
 import { createDesktopControlForServer, DESKTOP_CONTROL_MCP_PATH } from '../../platform/desktopControl/server.js';
 import { routeDesktopControlHost } from '../../platform/desktopControl/routes.js';
@@ -165,6 +168,15 @@ export function createServer(dependencies: ServerDependencies) {
       publicOrigin: () => resolvedDependencies.shared.platformIngress?.publicOrigin(), imageService: () => catImages?.service() });
   }
   resolvedDependencies.chat.companionPublications = publications;
+  // SPEC-142 FR-14 to FR-20: the products that own a write register its proposal kind here.
+  const proposalKinds = resolvedDependencies.chat.proposalKinds ?? new ConversationProposalKindRegistry();
+  resolvedDependencies.chat.conversationProposals = createConversationProposalService({
+    chatStore: resolvedDependencies.chat.chatStore,
+    mutationGate: resolvedDependencies.chat.mutationGate,
+    kinds: proposalKinds,
+    now: resolvedDependencies.shared.now,
+    onChanged: (channelId) => publishChannelMutation(resolvedDependencies.chat.eventHub, channelId, 'updated'),
+  });
   codeConversationPreviews = resolvedDependencies.code.conversationPreviews;
   let pluginTimer: ReturnType<typeof setInterval> | undefined;
   resolvedDependencies.shared.providerSelectorClient = providerSelectorClient;

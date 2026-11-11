@@ -1,3 +1,4 @@
+import { redactConversationProposalCards } from '../../state/conversationProposals.js';
 import { queueCatlasConversationTitle } from '../catlasTitles.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import { enrichConversationPresentation } from '../../shared/conversationPresentationView.js';
@@ -553,7 +554,8 @@ async function handleRestListMessages(
     requireValidChatScopeId(chatScopeId);
     const state = await context.dependencies.chatStore.read();
     sendJson(context.response, 200, {
-      messages: requireChannel(state, channelId).messages,
+      // SPEC-142 FR-15: a proposal card's content is read through the owner-only route.
+      messages: redactConversationProposalCards(requireChannel(state, channelId).messages),
     });
   } catch (error) {
     handleRestError(context, error);

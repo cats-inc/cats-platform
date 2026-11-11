@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In progress from 2026-11-12. The owner answered SPEC-142's Q3 to Q5 (A1 to A3) and asked for the plan to be carried out in full. PLAN-134 Phases 1 to 5 have landed. Phases 1 and 2 are done |
+| **Status** | In progress from 2026-11-12. The owner answered SPEC-142's Q3 to Q5 (A1 to A3) and asked for the plan to be carried out in full. PLAN-134 Phases 1 to 5 have landed. Phases 1 to 3 are done |
 | **Owner** | Product owner |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Independent agent before each merge |
@@ -152,17 +152,64 @@ conversations get no server until Phase 2 gives them a tool.
 **Goal:** a tool can ask for a write, and only the owner's confirmation performs it (S1; FR-15
 to FR-21).
 
-- [ ] The proposal store: content, binding digest, proposer, state and expiry. Its interface
+- [x] The proposal store: content, binding digest, proposer, state and expiry. Its interface
       lives in `src/platform/`, so that Work's tools and Chat's card can both use it.
-- [ ] The card: a message with the proposal's id and no text, rendered from the store in
+  - `src/platform/proposals/contracts.ts`: the record, the kind interface (`validate`,
+    `binding`, `describe`, `perform`), the registry and the port a tool proposes through.
+  - The record is stored in its card's message, with the conversation: a restart keeps it, a
+    data reset removes it with the rest of the state, and no file format changes.
+  - `src/products/chat/api/conversationProposals.ts` validates, binds and stores a proposal,
+    and answers it, on a per-conversation gate of its own: the conversation's mutation gate is
+    held for a whole turn, and a tool proposing during that turn would wait on it. The
+    conversation id is derived from the grant's channel, never taken from the caller.
+  - A confirmation is marked `confirming` before the write and closed after it, so a crash
+    never writes twice and a failure after a successful write cannot report it as failed. The
+    digest is rechecked on a fresh read just before the write.
+  - A card's progress only moves forward in the store, as a raised scope does: a whole-state
+    writer that read the state before an answer (a continuation replay) cannot reopen the card
+    or drop one posted meanwhile (`keepProposalProgress`).
+  - Fails closed, by design: a follow-up hop inside an owner's turn takes an agent's message as
+    its source and cannot propose, and a send that overlaps an owner's send closes the gate for
+    the rest of that turn.
+- [x] The card: a message with the proposal's id and no text, rendered from the store in
       Desktop and mobile, and kept out of prompts and transport mirrors.
-- [ ] The answering route, for an owner principal only, with the rechecks in FR-18. It does not
+  - Its body is one fixed line that points to Desktop, so mobile and any client that cannot
+    render the card show that. Desktop renders the card from the owner-only route.
+  - It is an owner card like the Boss Cat join card: the same predicate keeps both out of
+    routing prompts, continuity, the companion's review and transport mirrors (`origin:
+    system`). Only a system message counts as a card, and a client cannot set the key.
+  - Clients see a card's id and status only: views and the messages route redact the record,
+    and its content is read through the owner-only route, which cleans and bounds every text
+    of the kind's view.
+- [x] The answering route, for an owner principal only, with the rechecks in FR-18. It does not
       use the conversation's choice answers.
-- [ ] Closing a card that expired or went out of date, so it frees its place and stops showing
+  - `GET` and `POST .../decision` under `/api/channels/:id/proposals/:proposalId`. A
+    confirmation rechecks the card's status, its expiry, the conversation and the digest
+    against the records as they are now, then performs the write with both actors.
+- [x] Closing a card that expired or went out of date, so it frees its place and stops showing
       as waiting, including on the Boss Cat board.
-- [ ] The limits in FR-20 and the outcome line in FR-21.
-- [ ] If PLAN-133's bound card has landed, build on it and keep one card mechanism.
-- [ ] Tests with one trial proposal kind that writes nothing outside the test.
+  - An expired card reads as expired at once, and is stored so on the next answer or outcome.
+    An out-of-date card is closed as `stale` when the owner answers it, and says so before.
+  - The board counts a Cat's open proposals with its waiting approvals.
+- [x] The limits in FR-20 and the outcome line in FR-21.
+  - 3 open and 10 an hour per conversation, with a refusal the agent can read.
+  - The proposer's next turn gets one line per closed proposal (ids and kinds, no content),
+    marked as told when that turn's result is applied.
+- [x] If PLAN-133's bound card has landed, build on it and keep one card mechanism.
+  - The join card's pattern: the record in its card's message, owner-only routes, a digest
+    rechecked on the answer, 24 hours, and the same owner-card predicate.
+- [x] Tests with one trial proposal kind that writes nothing outside the test.
+  - `tests/conversation-proposals.test.js`: storing and refusing, the limits, decline,
+    confirm once with both actors, out of date, expiry, a failed write, the outcome lines,
+    the board, and the routes (owner only, CSRF, a member refused).
+- [x] The turn gate the Phase 1 review asked for.
+  - An allow-list: the chat dispatch passes `turnOwnerStarted`, read from the server's own
+    SPEC-139 stamp on the turn's source message. It survives a retry; a continuation, a
+    Telegram turn, a choice answer and another principal's message have none.
+  - A grant's `proposalsAllowed` is open only while that send runs, on every grant the worker
+    may hold (retired ones included), and never while another send of the session is in
+    flight. A heartbeat carries no marker and stays closed.
+  - Tools that propose check `hostToolTurnMayPropose(grant)` (Phase 4).
 
 **Deliverables:** the proposal mechanism, with no Work tool using it yet.
 

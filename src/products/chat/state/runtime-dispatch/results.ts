@@ -1,3 +1,4 @@
+import { markProposalOutcomesReported } from '../conversationProposals.js';
 import { randomUUID } from 'node:crypto';
 import { readConversationPresentation } from '@cats-inc/platform-ui-web/contracts';
 
@@ -522,6 +523,10 @@ export function applyDispatchExecutions(
   let blockedResolution: BlockedDispatchResolution | null = null;
 
   for (const execution of executions) {
+    // SPEC-142 FR-21: the participant was told these outcomes in this turn's instructions.
+    if (execution.reportedProposalIds?.length && !execution.error) {
+      nextState = markProposalOutcomesReported(nextState, channelId, execution.reportedProposalIds, now);
+    }
     outcome.totalDispatchCount += 1;
     activeTurn.dispatchCount = outcome.totalDispatchCount;
     const targetKey = participantKey(execution.target);

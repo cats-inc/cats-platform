@@ -70,6 +70,8 @@ test('the marker enricher tags every conversation with its level and participant
     shellExecution: true,
     level: 'code',
     participantId: 'participant-7',
+    // SPEC-142 Phase 3: closed unless the turn carries the owner's stamp.
+    proposalsAllowed: false,
   });
   assert.deepEqual(code?.context?.labels, ['product:code']);
   const chat = enricher.enrich({ originSurface: 'chat', id: 'channel-2' }, {}, phase);

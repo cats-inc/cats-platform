@@ -23,6 +23,7 @@ import { findLastOwnerMessageAcross } from '../companion/life/review.js';
 import { findCompanionDirectLane } from '../companion/life/presence.js';
 import { isCompanionCat } from '../../../shared/companionRole.js';
 import { resolveChannelCanonicalIdentity, resolveLeadParticipantLease } from './model/index.js';
+import { effectiveProposalStatus, listConversationProposals } from './conversationProposals.js';
 
 /**
  * SPEC-139 status board, built by the server without the model. Its only free text is Cat names
@@ -187,6 +188,19 @@ function countWaitingChoices(channel: ChatChannelState, catId?: string): number 
   return count;
 }
 
+/**
+ * SPEC-142 FR-15: this Cat's proposals still waiting on the owner's card. A card that expired or
+ * went out of date no longer counts.
+ */
+function countOpenProposals(channel: ChatChannelState, catId: string, now: Date): number {
+  const participantIds = new Set(resolveChannelParticipantAssignments(channel)
+    .filter((assignment) => resolveParticipantCatId(assignment) === catId)
+    .map((assignment) => assignment.participantId));
+  return listConversationProposals({ channels: [channel] } as ChatState, channel.id)
+    .filter((record) => record.proposerParticipantId !== null && participantIds.has(record.proposerParticipantId)
+      && effectiveProposalStatus(record, now) === 'open').length;
+}
+
 function countPendingApprovals(
   core: BuildBossCatBoardInput['core'],
   conversationIds: ReadonlySet<string>,
@@ -280,7 +294,8 @@ export function buildBossCatBoard(input: BuildBossCatBoardInput): BossCatBoard {
         turnRunning: own.some(isTurnRunning),
         problems: catProblems(own, cat.id, since),
         waitingChoices: own.reduce((total, channel) => total + countWaitingChoices(channel, cat.id), 0),
-        waitingApprovals: countPendingApprovals(input.core, new Set(own.map(conversationIdOf))),
+        waitingApprovals: countPendingApprovals(input.core, new Set(own.map(conversationIdOf)))
+          + own.reduce((total, channel) => total + countOpenProposals(channel, cat.id, input.now), 0),
       };
     });
 
