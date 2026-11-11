@@ -71,6 +71,8 @@ validation and full CI pass; live/native and installed-profile acceptance remain
 | `chat.collaboration.ensure_conversation` | Cats Chat | Implemented; owner-confirmed K3 | `provider_agent_tool_request` | Orchestrator with admitted proposal and narrow write scope | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
 | `chat.boss.status_board` | Cats Chat | Implemented; behind the decision flag | `provider_agent_tool_request` | A Boss Cat in its own direct lane, owner-started Desktop or mobile turn | [Boss Cat Tools](#boss-cat-tools) |
 | `chat.boss.create_group` | Cats Chat | Implemented; behind the decision flag | `provider_agent_tool_request` | Same, after a board in the same session, narrow write scope | [Boss Cat Tools](#boss-cat-tools) |
+| `chat.boss.join_conversation` | Cats Chat | Implemented under 「允許」; the 「每次問我」 card is pending | `provider_agent_tool_request` | Same | [Boss Cat Tools](#boss-cat-tools) |
+| `chat.boss.leave_conversation` | Cats Chat | Implemented; behind the decision flag | `provider_agent_tool_request` | Same, for a conversation the Boss Cat joined | [Boss Cat Tools](#boss-cat-tools) |
 | `chat.collaboration.ensure_participants` | Cats Chat | Implemented; owner-confirmed K3 | `provider_agent_tool_request` | Same admitted scope | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
 | `work.collaboration.request_role` | Cats Work | Implemented; queues a fixed Run only | `provider_agent_tool_request` | Same admitted scope; host separately authorizes execution | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
 | `work.collaboration.inspect` | Cats Work | Implemented; own-intent read only | `provider_agent_tool_request` / host inspection | Same admitted scope | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
@@ -180,6 +182,8 @@ the reply receives them as per-turn instructions.
 |-----------|-------------|-------------------------------|
 | `chat.boss.status_board` | `{}` | No mutation; the board (no message text), bounded to 16,000 characters; 30 an hour per owner |
 | `chat.boss.create_group` | `{ "title", "catIds", "openingMessage" }` | Local state; a read-only Chat group with the Boss Cat as coordinator, the opening message posted without dispatch; 5 an hour per owner |
+| `chat.boss.join_conversation` | `{ "conversationId" }` | Local state; under 「允許」 an ordinary participant, continuity bounded to 8 messages before the join; 10 an hour per owner |
+| `chat.boss.leave_conversation` | `{ "conversationId" }` | Local state; leaves a conversation the Boss Cat joined |
 
 ## Orchestrator Collaboration Execution
 

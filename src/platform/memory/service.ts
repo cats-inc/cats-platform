@@ -82,6 +82,8 @@ export interface BuildMemoryRetrievalContextInput {
   projectIds?: string[];
   queryHints?: string[];
   now?: Date;
+  /** Leave out the channel's records and its working memory (SPEC-139 FR-12). */
+  excludeChannelMemory?: boolean;
 }
 
 export interface CatsMemoryService {
@@ -124,6 +126,7 @@ export interface CatsMemoryService {
     projectIds?: string[];
     queryHints?: string[];
     now?: Date;
+    excludeChannelMemory?: boolean;
   }): Promise<MemoryRetrievalContext>;
   buildChannelRetrievalContext(input: {
     channelId: string;
@@ -480,7 +483,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       includeOwnerProfile: input.includeOwnerProfile,
       channelTitle: readNonEmptyString(input.channelTitle) ?? channel?.title,
       channelTopic: readNonEmptyString(input.channelTopic) ?? channel?.topic,
-      workingMemory: input.workingMemory ?? channel?.workingMemory,
+      workingMemory: input.excludeChannelMemory ? undefined : input.workingMemory ?? channel?.workingMemory,
       roomMode: input.roomMode ?? channel?.roomRouting?.mode ?? null,
       transport: input.transport ?? null,
       relationshipIds,
@@ -489,7 +492,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       canonicalRecords: [
         ...catRecords,
         ...ownerRecords,
-        ...channelRecords,
+        ...(input.excludeChannelMemory ? [] : channelRecords),
         ...relationshipRecords,
         ...projectRecords,
       ],
@@ -516,6 +519,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
     projectIds?: string[];
     queryHints?: string[];
     now?: Date;
+    excludeChannelMemory?: boolean;
   }): Promise<MemoryRetrievalContext> {
     return this.buildRetrievalContext({
       catId: input.cat.id,
@@ -530,6 +534,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       projectIds: input.projectIds,
       queryHints: input.queryHints,
       now: input.now,
+      excludeChannelMemory: input.excludeChannelMemory,
     });
   }
 

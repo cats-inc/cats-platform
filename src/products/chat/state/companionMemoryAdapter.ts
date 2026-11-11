@@ -164,6 +164,7 @@ export class MemoryAwareCompanionBoxStore implements CanonicalSyncAwareCompanion
         transport: input.transport,
         companionStore: this.delegate,
         now: input.now,
+        excludeChannelMemory: input.excludeChannelMemory,
       }),
     };
   }

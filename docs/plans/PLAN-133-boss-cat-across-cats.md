@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress: slices 1 to 4b and 7 implemented |
+| Status | In progress: slices 1 to 5a and 7 implemented; 5b and 6 claimed (see below) |
 | Owner | Cats Chat |
 | Reviewer | Owner |
 | Date | 2026-11-11 |
@@ -175,23 +175,81 @@ are tested as live behaviour.
         not;
       - a full-size board fits the envelope, attention first.
 - [x] `docs/tool-calls.md` registers both tools.
-- [ ] Remaining: the FR-16 evidence record for a creation names the tool and status only; the
-      created conversation and Cat ids are on the receipt. The weak-worker fallback (board only)
-      has no test.
+- [x] FR-16: slice 5a adds an ids-only evidence event for a creation, with the created
+      conversation and the invited Cat ids.
+- [ ] Remaining: the weak-worker fallback (board only) has no test.
 
-### Slice 5: Joining
+### Slice 5a: Joining under 「允許」, leaving, and the bound
 
-- [ ] Join policy storage (absent reads as 「每次問我」), evaluated when the join runs.
-- [ ] `chat.boss.join_conversation` refusals and limits (10 an hour, one pending card per
-      conversation); `chat.boss.leave_conversation`.
-- [ ] Continuity bounded by `joinedAt` in `runtimeTargeting.ts`, across session replacement
-      and rejoin; the last 8 messages before joining.
-- [ ] The owner card: its own route, digest binding, server-performed join, consumed once,
-      24-hour expiry, excluded from model context and the transport mirror.
-- [ ] Under 「每次問我」 with no card, the join is refused. Under 「允許」, join after rechecks and
-      post a notice.
+- [x] `ChatState.bossCatJoinPolicy` (`never`, `ask`, `allow`). It is absent unless set, and
+      absent reads as 「每次問我」. It is read inside the atomic update that performs a join. 5a
+      adds no setter: the owner must see what joining grants before allowing it, and that hint
+      ships with the Settings page in slice 6. Tests seed `allow`.
+- [x] `chat.boss.join_conversation` takes a conversation from this run's board. Every check runs
+      inside one atomic update:
+      - the gate;
+      - not a direct lane, not archived, not already a member;
+      - the policy: 「不允許」 refuses, and 「每次問我」 refuses with `owner_card_required` until
+        slice 5b's card;
+      - 10 join requests an hour;
+      - the participant limit.
+- [x] The join itself is the ordinary `assignCatToChannel`, so the conversation shows "joined
+      the chat". The coordinator is kept, and a test asserts that the default recipient, channel
+      kind, status, surface, repository, cwd, workspace access, permission mode and title do not
+      change, on a Code conversation with no coordinator. A localized notice goes to the Boss
+      Cat's lane (FR-11), with the board's title rule.
+- [x] FR-12 bound: `ChatChannelState.bossCatJoins[catId].since`, written in the same update.
+      For that Cat in that conversation, the prompt's transcript, the recent context and any
+      continuity transplant are the last 8 messages before `since` and everything after
+      (`boundMessagesToJoin`). It gets no conversation checkpoint, and its companion retrieval
+      leaves out that conversation's records and working memory (`excludeChannelMemory` down
+      to the memory service). The SPEC-137 review bounds a joined conversation's lines the
+      same way.
+- [x] `chat.boss.leave_conversation` applies only to a conversation the Boss Cat joined, never
+      one it coordinates, and never while it has a running turn there. It uses
+      `removeCatFromChannel`, which clears the bound for any removal, so a later manual re-add by
+      the owner gets ordinary continuity.
+- [x] FR-16: create, join and leave each append an ids-only evidence event with the target
+      conversation (and the invited Cat ids), beside the tool boundary's record. The change
+      has committed by then, so a failed record is logged and does not undo or refuse it.
+- [x] A join or leave writes the other conversation under that conversation's own mutation
+      gate (`runChatMutation`), as K3 does. The join starts no session; the first turn does.
+      `assignCatToChannel` already holds every check the owner's REST assign path relies on.
+- [x] Tests in `tests/chat-boss-cat-tools.test.js`, asserted on what the stubbed Runtime
+      receives:
+      - a marker older than the 8-message window, and one posted while the Boss Cat was away;
+      - the first turn, a replaced session, and a leave followed by a rejoin;
+      - the positive control: an ordinary participant in a new session sees the old marker;
+      - every refusal, including the policy and the archive state changed between the board
+        read and the join;
+      - the old owner message as the conversation's only question: the ordinary participant
+        sees it under Open loops, and the joined Boss Cat never sees it;
+      - the whole conversation, apart from its assignments, the joined notice and the bound,
+        unchanged by a join into a Code conversation with no coordinator and into a Work
+        conversation with one;
+      - the companion path: a joined Cat's `buildSessionContext` gets `excludeChannelMemory`
+        and no working memory, with an ordinary Cat as the control. The memory service returns
+        a channel record without the flag and leaves it out with it.
+- [ ] Before slice 6 adds the setter, check:
+      - where a transport or dispatch message lands in a single-participant conversation after
+        a join, and the composer's default audience;
+      - that a rejoin shows "joined the chat";
+      - Code and Work prompt builders that read `channel.messages`;
+      - that `participant_limit` labels every `assignCatToChannel` throw, which is coarse.
+
+### Slice 5b: The owner's card under 「每次問我」
+
+Claimed on 2026-11-11 by the Desktop session that built slices 1 to 5a. Another session took
+slice 7 in parallel; coordinate here before starting 5b or 6.
+
+- [ ] The card: its own route, digest binding, server-performed join, consumed once, 24-hour
+      expiry, one pending card per conversation, excluded from model context and the transport
+      mirror.
+- [ ] Under 「每次問我」 a join request posts the card instead of refusing.
 
 ### Slice 6: Owner UI
+
+Claimed with slice 5b, by the same session.
 
 - [ ] Settings › 主控貓 (`/settings/boss-cat`) after 「助理」, with the FR-8 hint;
       `/settings/boss-cat` joins `BASE_RESERVED_SETTINGS_PATHS`.

@@ -56,6 +56,7 @@ import { resolveRoomRoutingState } from './room-routing/index.js';
 import type { DispatchRequest } from './room-routing/runtime.js';
 import { isAssistantTurnSegmentMessage } from './assistantTurnSegments.js';
 import { formatBossCatTurnInstructions, isBossCatGroupGuest, readBossCatTurnRecord } from './bossCatSurface.js';
+import { boundMessagesToJoin, readBossCatJoinSince } from '../shared/bossCatJoins.js';
 
 export type RuntimeTransportContext = 'telegram' | 'web' | 'mobile';
 
@@ -330,6 +331,8 @@ async function resolveCompanionSessionForTarget(
   if (!shouldHydrateCompanionSession(cat, summary.box, channel)) {
     return null;
   }
+  // SPEC-139 FR-12: a joined Cat brings its own memory, but none summarizing this conversation.
+  const joined = readBossCatJoinSince(channel, catId) !== null;
 
   return companionStore.buildSessionContext({
     cat,
@@ -337,12 +340,13 @@ async function resolveCompanionSessionForTarget(
       id: channel.id,
       title: channel.title,
       topic: channel.topic,
-      workingMemory: channel.workingMemory,
+      workingMemory: joined ? undefined : channel.workingMemory,
       roomRouting: channel.roomRouting,
     },
     requestedSkills: skillManifest?.requestedSkills ?? [],
     transport: resolveTransportContext(channel, transport),
     now,
+    ...(joined ? { excludeChannelMemory: true } : {}),
   });
 }
 
@@ -766,13 +770,22 @@ export function buildPromptForTarget(
   core?: CatsCoreState,
   companionContext?: PromptCompanionContext | null,
 ): DispatchPrompt {
-  const channel = buildChannelView(state, channelId);
+  const fullChannel = buildChannelView(state, channelId);
+  // SPEC-139 FR-12: a Cat that joined through a Boss Cat join sees the last 8 messages before
+  // it joined, then what follows, and no checkpoint summarizing what came before.
+  const targetAssignment = findAssignedParticipant(fullChannel, request.target.participantId);
+  const joinSince = readBossCatJoinSince(fullChannel,
+    targetAssignment ? resolveParticipantCatId(targetAssignment) : null);
+  const channel = joinSince
+    ? { ...fullChannel, messages: boundMessagesToJoin(fullChannel.messages, joinSince), workingMemory: undefined }
+    : fullChannel;
   const promptSourceMessage = request.promptSourceMessage ?? request.sourceMessage;
-  const promptMessages = resolveTranscriptOrCanonicalConversationMessages({
+  const conversationMessages = resolveTranscriptOrCanonicalConversationMessages({
     core,
     channelId,
-    transcriptMessages: channel.messages,
+    transcriptMessages: fullChannel.messages,
   });
+  const promptMessages = joinSince ? boundMessagesToJoin(conversationMessages, joinSince) : conversationMessages;
   const recentMessages = sliceRecentContextForTarget(
     promptMessages,
     request.target,

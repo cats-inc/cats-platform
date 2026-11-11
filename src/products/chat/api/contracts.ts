@@ -339,6 +339,11 @@ export interface ChatChannelState {
    * companion memory here (R2).
    */
   bossCatGroup?: { bossCatId: string; createdAt: string };
+  /**
+   * SPEC-139 FR-12: Cats that joined through a Boss Cat join, by Cat id. Their continuity here
+   * starts 8 messages before `since`. Cleared when the Cat leaves or is removed.
+   */
+  bossCatJoins?: Record<string, { since: string }>;
   id: string;
   title: string;
   topic: string;
@@ -542,7 +547,11 @@ export interface ChatState {
   folderBrowsePreferences?: FolderBrowsePreferences;
   /** SPEC-139: Boss Cat tool use within the last hour, across every Boss Cat (FR-2, FR-7, FR-9). */
   bossCatUsage?: BossCatUsageEntry[];
+  /** SPEC-139 FR-8: 「主控貓加入其他對話」 for every Boss Cat; absent means 「每次問我」 (`ask`). */
+  bossCatJoinPolicy?: BossCatJoinPolicy;
 }
+
+export type BossCatJoinPolicy = 'never' | 'ask' | 'allow';
 
 export type BossCatUsageKind = 'board' | 'group' | 'join_request';
 
