@@ -4,11 +4,11 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft, 2026-11-11, revised the same day after an independent review. The owner's decisions D1 to D7 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S1 to S6 are proposals, and Q1 to Q4 are open; all need the owner before implementation. Not implemented |
+| **Status** | Draft, 2026-11-11, revised the same day after an independent review and again after the owner answered Q1, Q2 and Q4. The owner's decisions D1 to D10 are fixed by ADR-149. ADR-149's P1 to P3 and P6 and this SPEC's S2 to S6 and Q3 were put to the owner on 2026-11-11 as defaults that stand unless the owner objects. S1 and Q5 are new in this revision and the owner has not seen them. Not implemented |
 | **Owner** | Product owner |
 | **Reviewer** | Owner; an independent review before implementation |
 | **Decision** | [ADR-149](../decisions/149-let-a-conversation-gain-product-scopes-and-never-lose-them.md) |
-| **Updates when implemented** | ADR-069 (Recents and routes follow the scope; its section 3 fallback takes effect), ADR-073 (see below), ADR-098 and SPEC-101 (canvas surface kinds, if one is added), ADR-126 and SPEC-123 (who receives the `cats` server), SPEC-118 and SPEC-137 FR-7 (wording, if S1 stands), SPEC-139 FR-3, FR-6, FR-8 and FR-10, and the terminology |
+| **Updates when implemented** | ADR-069 (Recents and routes follow the scope; its section 3 fallback takes effect), ADR-073 (see below), ADR-098 and SPEC-101 (canvas surface kinds, if one is added), ADR-126 and SPEC-123 (who receives the `cats` server), SPEC-118 (its limit to conversations created on Chat ends, D8), SPEC-137 FR-7 (wording, if S1 stands), SPEC-139 FR-3, FR-6, FR-8 and FR-10, `docs/tool-calls.md` and `docs/agent-control-surfaces.md` (who is offered the collaboration tools), and the terminology |
 | **Plan** | [PLAN-134](../plans/PLAN-134-conversation-product-scope.md) |
 
 ADR-073 needs three updates:
@@ -37,30 +37,38 @@ What a raise does in this version:
   - Everything a raise to Code gives.
   - The conversation moves to Work's Recents and opens under `/work`, and Work counts its Work
     Item as its own.
-  - Its agents get no Work tool. No Work tool is delivered to sessions today (Q1).
+  - Its agents get no Work tool from this SPEC. Work's own tools are the workspace and the
+    project, and a separate SPEC specifies them (D10). Task and Run are the foundation, not
+    Work tools.
 
 A raise creates no record, changes no participant, folder or CLI permission, and removes no
 tool. The conversation is then shown with its new product's view and preferences (FR-11).
+
+Apart from raises, orchestrator knowledge and SPEC-118's collaboration tools are offered at
+every level, in Code and Work conversations as well as Chat ones (D8).
 
 ## Goals
 
 - One field says where a conversation lives and whether it has Code's tools.
 - A raise is the owner's own informed choice, shown before it happens, and permanent.
 - A raise removes no tool, participant or record from the conversation.
-- Conversations that are not raised behave as today, with three intended changes:
+- Conversations that are not raised behave as today, with four intended changes:
   - conversations on Work gain Code's tools (D5);
+  - conversations created on Code or Work gain orchestrator knowledge and SPEC-118's
+    collaboration tools (D8);
   - conversations with no recorded origin become visible in Chat's Recents (S4);
   - a direct lane created outside Chat stops receiving Code's tools (S6).
 
 ## Non-Goals
 
-- Tools that let agents use Projects, Tasks or Runs from a Work conversation (Q1).
+- Work's own agent tools, the workspace and the project. A separate SPEC specifies them (D10).
 - A raise proposed or performed by an agent, a transport, a schedule or a heartbeat.
 - Raising a direct lane, a parallel group or its members (P3).
 - Lowering a scope, or undoing a raise.
 - Changing CLI permission (D4), or adding a live permission editor.
 - Changing the product posture commands `/chat`, `/code` and `/work` (ADR-101, ADR-103).
-- Changing which conversations get SPEC-118's or SPEC-139's role-gated tools (S1, Q2).
+- Changing SPEC-139's rules, or any SPEC-118 rule other than its limit to conversations
+  created on Chat (D8).
 - A raise control in the mobile app (S3, Q3).
 - Work's supervised runs. They are not conversations, their Runtime client carries no Code
   tools wrapper (`src/app/server/index.ts:130`), and this SPEC leaves them so.
@@ -239,13 +247,25 @@ inventory of every `originSurface` reader.
     anchor survives a raise.
 18. FR-18: Catlas keeps deciding whether to title a conversation from the draft surface it was
     created on.
-19. FR-19 (S1): The gates that say "Chat only" today keep reading the origin:
-    - orchestrator knowledge and the collaboration tool descriptors;
-    - SPEC-118's execution checks;
-    - the companion's life review.
+#### Role tools at every level
 
-    A raise therefore removes none of them from a conversation created on Chat, and gives none
-    of them to a conversation created on Code or Work.
+19. FR-19 (D8): Orchestrator knowledge and SPEC-118's collaboration tools are offered in every
+    conversation that is not a direct lane, whatever its origin or scope. Three gates stop
+    reading the origin: orchestrator knowledge, the collaboration tool descriptors and
+    SPEC-118's execution checks.
+    - Every other SPEC-118 condition stays, including:
+      - the decision flag, which is off by default;
+      - an admin coordinator;
+      - the owner's confirmation before anything is created or run;
+      - a folder on the conversation that starts an implementation;
+      - no direct lane and no archived conversation;
+      - its exclusions of default-provider Chat, direct Cat replies, transports and direct
+        Orchestrator dispatch.
+    - Code's and Work's own product instructions stay. Orchestrator knowledge is added to them.
+    - A conversation that SPEC-118 creates is still created on Chat.
+    - The companion's life review is not part of D8. It keeps reading the origin (S1), so a
+      conversation created on Chat is still reviewed after a raise, and one created on Code or
+      Work is still not reviewed, as SPEC-137 FR-7 says.
 
 #### Raising
 
@@ -322,16 +342,26 @@ inventory of every `originSurface` reader.
   - Desktop renders the confirmation from server state. It never enters a model's context.
   - D5 widens ADR-149's recorded Work risk: conversations on Work gain Code's tools under the
     same approval-free defaults.
+  - D8 widens SPEC-118: its collaboration tools reach Code and Work conversations, which run
+    in a folder and, by default, without approvals. SPEC-118's other conditions stay (FR-19),
+    and PLAN-134 asks for an independent security review of that phase.
 - **Privacy**: The system line carries the two levels and nothing else.
 - **Compatibility**:
-  - `productScope` is a new stored field. A build without it drops the field on its next
-    write, which would silently lower a raised conversation. D2 forbids lowering.
-  - Q4 asks the owner to choose between two answers:
-    - raise the state version, so an older build refuses the file. This needs the tested
-      upgrade path the version policy asks for, with a backup and an atomic replacement, and it
-      changes the frozen `src/core/types.ts`;
-    - keep the version and accept that running an older build undoes raises.
-  - Loading older data needs no other migration step than FR-3.
+  - `productScope` is a new stored field. A build without it would drop the field on its next
+    write and silently lower a raised conversation, which D2 forbids.
+  - The state version therefore rises (D9), and an older build refuses the file, as it does
+    for any newer version today.
+  - It rises in the change that first lets a conversation be raised. Until then a dropped
+    field derives again to the same value. The one corner before that is S6's lane created
+    outside Chat that later became an ordinary conversation: after an older build's write it
+    would load at its origin's level.
+  - The upgrade follows the version policy:
+    - it accepts only a file it recognizes;
+    - it keeps a backup of the original bytes that later writes never rotate;
+    - it replaces the file atomically;
+    - on failure it leaves the original in place and reports the failure.
+  - A new state version is a persisted-data boundary, so the release that ships it starts a
+    new minor line. The state version lives in the frozen `src/core/types.ts`.
   - This SPEC and its plan include no version bump and no publication.
 - **Performance**: A raise is one state write. Listing and routing read one more field.
 
@@ -339,10 +369,11 @@ inventory of every `originSurface` reader.
 
 - **State.** `productScope` sits beside `originSurface` on the conversation state. Loading
   derives a missing value (FR-3), creation stamps it (FR-2), and one function raises it (FR-4).
-- **Readers.** Each reader in PLAN-134's inventory moves as FR-8 to FR-19 say. While every
+- **Readers.** Each reader in PLAN-134's inventory moves as FR-8 to FR-18 say. While every
   scope still equals its origin, moving a reader changes nothing, and tests prove that before
   D5 lands. The exceptions are the no-origin conversations of FR-3 and the direct lanes of
   FR-2.
+- **D8.** The three gates of FR-19 stop reading the origin and keep their other conditions.
 - **D5.** The enricher marks conversations of scope `code` and `work`. Code's conversation
   parts become available to Work's route, and the canvas resolves its route from the scope.
   PLAN-134 decides between a new canvas surface kind and resolving the existing one.
@@ -353,9 +384,11 @@ inventory of every `originSurface` reader.
 
 ## Proposals for the Owner
 
-These are this SPEC's choices, not owner decisions. The owner may change any of them.
+These are this SPEC's choices, not owner decisions. The owner may change any of them. S2 to S6
+were put to the owner on 2026-11-11 as defaults that stand unless the owner objects.
 
-- S1: The Chat-only gates keep reading the origin (FR-19). The other choice is Q2.
+- S1: The companion's life review keeps reading the origin (FR-19). This is new: the owner's
+  answer on D8 named the collaboration tools and orchestrator knowledge, not the review.
 - S2: A raise creates no record (FR-24). ADR-149's P5 expected entry records; the projection
   already gives every conversation a Task and a WorkItem.
 - S3: Version one has no raise control on mobile. Mobile lists follow the scope, and the raise
@@ -377,6 +410,11 @@ These are this SPEC's choices, not owner decisions. The owner may change any of 
     and changes nothing else.
   - The raise function refuses an equal or lower level, a direct lane and a parallel member. A
     former lane and a former member can be raised. No other mutator changes the field.
+  - A file of the previous state version upgrades with a backup of its original bytes, also
+    when the backup of an earlier upgrade is already present. A failed upgrade leaves the
+    original in place.
+  - A build of the previous version refuses the upgraded file, on a normal read and on its
+    backup recovery path.
 - **Readers, before D5.** With every scope equal to its origin, Recents, routes, redirects,
   landing conversations, tool delivery and Work's own-WorkItem check give the same results as
   on the base commit, for fixtures of all three origins.
@@ -400,9 +438,16 @@ These are this SPEC's choices, not owner decisions. The owner may change any of 
   - After Code to Work, an artifact recorded earlier still opens and a running preview can be
     read, stopped and restarted.
   - No agent tool, transport command, schedule, heartbeat or create request can raise a scope.
+- **Role tools (D8).**
+  - Orchestrator knowledge and the collaboration descriptors are offered in conversations of
+    every origin and scope, and never in a direct lane or an archived conversation.
+  - Each remaining SPEC-118 condition still refuses: the flag off, a coordinator who is not an
+    admin, no owner confirmation, and no folder for an implementation.
+  - A conversation SPEC-118 creates is created on Chat.
+  - Code's and Work's own product instructions are still delivered alongside the knowledge.
 - **What stays.**
-  - After a raise from Chat, orchestrator knowledge, the collaboration descriptors and the
-    companion's review still apply. A conversation created on Code or Work still gets none.
+  - The companion's review follows the origin: it still covers a conversation raised from
+    Chat and still skips one created on Code or Work.
   - `/code` and `/work` leave the scope alone, and an active anchor still matches after a
     raise.
 - **Desktop.**
@@ -416,17 +461,18 @@ These are this SPEC's choices, not owner decisions. The owner may change any of 
 
 ## Open Questions
 
-- [ ] Q1: Should a Work conversation's agents get Work tools for Projects, Work Items, Tasks
-      and Runs, as the owner first described? None is delivered to sessions today, and
-      ADR-105's tools are offered from Chat by role. This SPEC leaves them out; a later SPEC
-      would add them.
-- [ ] Q2: Should SPEC-118's collaboration tools and orchestrator knowledge be offered in every
-      conversation, as "each level includes everything below" suggests? SPEC-118 limits them to
-      conversations created on Chat. S1 keeps that.
-- [ ] Q3: Should the mobile app get a raise control in version one?
-- [ ] Q4: Should the state version rise, so that an older build refuses the file instead of
-      undoing raises (Compatibility)? Raising it is the safer answer under D2, and its cost is
-      that an older build can no longer open the profile.
+- [x] Q1: Should a Work conversation's agents get Work tools? Answered on 2026-11-11 (D10):
+      Task and Run are the foundation, not Work tools. Work's own tools are the workspace and
+      the project, and a separate SPEC specifies them.
+- [x] Q2: Should SPEC-118's collaboration tools and orchestrator knowledge be offered in every
+      conversation? Answered on 2026-11-11 (D8): yes, Code and Work conversations have them
+      too (FR-19).
+- [ ] Q3: Should the mobile app get a raise control in version one? S3 says no, and stands
+      unless the owner objects.
+- [x] Q4: Should the state version rise? Answered on 2026-11-11 (D9): yes (Compatibility).
+- [ ] Q5: Task and Run are the foundation (D10), yet no level gives an agent a tool for them.
+      Code's `cats` server has none, and the ones that exist sit on SPEC-118's and ADR-105's
+      role paths. Should a conversation's agents get Task and Run tools, and from which level?
 
 ## References
 
