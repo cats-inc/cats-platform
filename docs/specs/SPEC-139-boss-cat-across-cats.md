@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Approved by the owner on 2026-11-11 (D1 to D3). Revised the same day after the independent security review (see Security Review), with the conservative choices R1 to R4. Implementation in progress under [PLAN-133](../plans/PLAN-133-boss-cat-across-cats.md): FR-1 to FR-7 (with R1 and R2), FR-13/14 (the Boss Cat's own initiative), FR-15's board side, FR-16 for boards and groups and FR-17 are implemented; joining and the UI are not |
+| **Status** | Approved by the owner on 2026-11-11 (D1 to D3). Revised the same day after the independent security review (see Security Review), with the conservative choices R1 to R4. Implementation in progress under [PLAN-133](../plans/PLAN-133-boss-cat-across-cats.md): FR-1 to FR-7 (with R1 and R2), FR-8's policy value, FR-9 and FR-11 to FR-12 under 「允許」 (joining and leaving, with the continuity bound), FR-13/14 (the Boss Cat's own initiative), FR-15's board side, FR-16 and FR-17 are implemented; the owner's card under 「每次問我」 (FR-10) and the UI are not |
 | **Owner** | Product owner |
 | **Reviewer** | Owner; independent security review on 2026-11-11 |
 | **Updates** | SPEC-125 FR-17 (three new actions beyond the conversation, and the turns they may run in); SPEC-118's K2 direct-lane exclusion (the Boss Cat tools, not K2, may run for a Boss Cat's own direct lane, from Desktop or mobile only; transports stay excluded); SPEC-137 FR-7 (a Boss Cat's `assist` review leaves out other Cats' words and gains a peer section); the memory checkpoint (`memoryLayers.ts`, FR-17) |

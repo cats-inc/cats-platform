@@ -149,6 +149,10 @@ export function normalizeChatState(rawState: unknown): ChatState {
     ...(Array.isArray(stateRecord.bossCatUsage)
       ? { bossCatUsage: normalizeBossCatUsage(stateRecord.bossCatUsage) }
       : {}),
+    ...(stateRecord.bossCatJoinPolicy === 'never' || stateRecord.bossCatJoinPolicy === 'ask'
+      || stateRecord.bossCatJoinPolicy === 'allow'
+      ? { bossCatJoinPolicy: stateRecord.bossCatJoinPolicy }
+      : {}),
   };
 }
 

@@ -22,6 +22,7 @@ import { createProviderAgentPromptSession } from '../../../platform/orchestratio
 import { isBossCatTool, runBossCatDecisionLoop, type BossCatBoardSources } from './bossCatSurface.js';
 import { updateChatState } from './store.js';
 import { createDurableToolEvidenceSink } from '../../../platform/supervision/evidenceSink.js';
+import { appendEvidenceEvent } from '../../../platform/persistence/evidence.js';
 import { resolveCollaborationPreparationBudget,
   type CollaborationPreparationBudget } from '../shared/collaborationPreparationBudget.js';
 
@@ -222,7 +223,22 @@ async function runBossCatDecision(
     updateState: (mutate) => updateChatState(chatStore, mutate),
     readCore: () => chatStore.readCore(),
     readLifeProfiles: options.readLifeProfiles,
-    onGroupCreated: (channelId) => options.publishCollaboration?.(channelId, 'created'),
+    onConversationChanged: (channelId, action) => options.publishCollaboration?.(channelId, action),
+    runChatMutation: options.runChatMutation,
+    recordEvent: options.evidenceDataDir
+      ? (event) => appendEvidenceEvent(options.evidenceDataDir!,
+          resolveChannelCanonicalIdentity(input.state, input.channelId).conversationId, {
+            id: `boss-cat:${event.decisionId}:${event.action}`,
+            conversationId: resolveChannelCanonicalIdentity(input.state, input.channelId).conversationId,
+            sessionId: null,
+            layer: 'evidence',
+            actorId: input.observation.actor.actorRef,
+            kind: 'system_event',
+            timestamp: event.at,
+            payload: { source: 'boss_cat_tool', action: event.action, bossCatId: event.bossCatId,
+              targetConversationId: event.conversationId, ...(event.catIds ? { catIds: event.catIds } : {}) },
+          })
+      : undefined,
     evidenceSink: options.evidenceDataDir
       ? createDurableToolEvidenceSink({
           dataDir: options.evidenceDataDir,

@@ -29,8 +29,9 @@ import { resolveChannelParticipantAssignments, resolveParticipantCatId } from '.
 import { isDirectLaneChannel } from '../shared/channelTopology.js';
 import { BOSS_CAT_TURN_METADATA_KEY, readBossCatTurnRecord, readOwnerStarted } from '../shared/ownerStarted.js';
 import { isAdminCoordinator } from './coordinator.js';
-import { buildBossCatBoard, type BossCatBoard } from './bossCatBoard.js';
-import { appendMessage, createChannel } from './model/index.js';
+import { buildBossCatBoard, readOwnerSetTitle, type BossCatBoard } from './bossCatBoard.js';
+import { appendMessage, assignCatToChannel, createChannel, removeCatFromChannel } from './model/index.js';
+import { readBossCatJoinSince, resolveBossCatJoinPolicy } from '../shared/bossCatJoins.js';
 import { createTranslator, messageKeys, parseMessageLocale } from '../../../shared/i18n/index.js';
 import {
   CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY,
@@ -45,7 +46,13 @@ import { resolveRoomRoutingState } from './room-routing/index.js';
  */
 export const BOSS_STATUS_BOARD = 'chat.boss.status_board';
 export const BOSS_CREATE_GROUP = 'chat.boss.create_group';
-export const BOSS_CAT_TOOL_NAMES = [BOSS_STATUS_BOARD, BOSS_CREATE_GROUP] as const;
+export const BOSS_JOIN_CONVERSATION = 'chat.boss.join_conversation';
+export const BOSS_LEAVE_CONVERSATION = 'chat.boss.leave_conversation';
+export const BOSS_CAT_TOOL_NAMES = [
+  BOSS_STATUS_BOARD, BOSS_CREATE_GROUP, BOSS_JOIN_CONVERSATION, BOSS_LEAVE_CONVERSATION,
+] as const;
+/** Tools that act on what a board in the same run showed. */
+const BOSS_CAT_BOARD_BOUND_TOOLS: readonly string[] = [BOSS_CREATE_GROUP, BOSS_JOIN_CONVERSATION, BOSS_LEAVE_CONVERSATION];
 export { readBossCatTurnRecord };
 export const isBossCatTool = (name: string): boolean =>
   (BOSS_CAT_TOOL_NAMES as readonly string[]).includes(name);
@@ -242,11 +249,42 @@ export function bossCatToolManifests(): SupervisedToolManifest[] {
     failureCodes: ['E_SCHEMA_INVALID', 'E_TOOL_SCOPE_DENIED', 'E_PRECHECK_FAILED', 'E_BUDGET_EXCEEDED'],
     inputSchema: { id: `${BOSS_CREATE_GROUP}.input`, version: '1.0', format: 'json_schema' },
     outputSchema: { id: `${BOSS_CREATE_GROUP}.output`, version: '1.0', format: 'json_schema' },
-  }];
+  }, ...[BOSS_JOIN_CONVERSATION, BOSS_LEAVE_CONVERSATION].map((name): SupervisedToolManifest => ({
+    schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,
+    name,
+    manifestVersion: '1.0',
+    description: name === BOSS_JOIN_CONVERSATION
+      ? 'Join a group conversation from the board read in this session as an ordinary participant, '
+        + 'as the owner\'s join policy allows. Nothing else about the conversation changes.'
+      : 'Leave a conversation this Boss Cat joined.',
+    sideEffect: 'local_state',
+    preflight: 'required',
+    blocking: 'blocking',
+    cancellation: 'cooperative',
+    approval: 'never',
+    evidence: 'summary',
+    failureCodes: ['E_SCHEMA_INVALID', 'E_TOOL_SCOPE_DENIED', 'E_PRECHECK_FAILED', 'E_BUDGET_EXCEEDED'],
+    inputSchema: { id: `${name}.input`, version: '1.0', format: 'json_schema' },
+    outputSchema: { id: `${name}.output`, version: '1.0', format: 'json_schema' },
+  }))];
 }
 
 export function bossCatToolDescriptors(): ProviderAgentToolDescriptor[] {
-  return bossCatToolManifests().map((manifest) => manifest.name === BOSS_CREATE_GROUP
+  return bossCatToolManifests().map((manifest) => manifest.name === BOSS_JOIN_CONVERSATION
+    || manifest.name === BOSS_LEAVE_CONVERSATION
+    ? {
+        manifest,
+        reason: manifest.name === BOSS_JOIN_CONVERSATION
+          ? 'Only when the owner asked, in this message, for their Boss Cat to join that conversation.'
+          : 'Only when the owner asked, in this message, for their Boss Cat to leave that conversation.',
+        inputHints: [
+          'Input: { "conversationId": the id of a conversation on the board you read in this session }. No other fields.',
+          manifest.name === BOSS_JOIN_CONVERSATION
+            ? 'The owner\'s join policy decides; a refusal is final for this message.'
+            : 'Only a conversation this Boss Cat joined, not one it coordinates.',
+        ],
+      }
+    : manifest.name === BOSS_CREATE_GROUP
     ? {
         manifest,
         reason: 'Only when the owner asked, in this message, for a group conversation with other Cats.',
@@ -297,8 +335,30 @@ export interface RunBossCatDecisionLoopInput extends BossCatBoardSources {
   isCancelled?: () => boolean;
   now?: () => Date;
   evidenceSink?: ToolBoundaryEvidenceSink;
-  /** Lets the owner's conversation list update when a group appears. */
-  onGroupCreated?: (channelId: string) => void;
+  /** Lets the owner's conversation list update when a group appears or its members change. */
+  onConversationChanged?: (channelId: string, action: 'created' | 'updated') => void;
+  /** FR-16: an ids-only supervision record of what a tool changed. */
+  recordEvent?: (event: BossCatRecordedEvent) => void;
+  /** Serializes a write to another conversation with that conversation's own writers. */
+  runChatMutation?: <T>(channelId: string, operation: () => Promise<T>) => Promise<T>;
+}
+
+export interface BossCatRecordedEvent {
+  action: 'create_group' | 'join' | 'leave';
+  bossCatId: string;
+  conversationId: string;
+  catIds?: string[];
+  decisionId: string;
+  at: string;
+}
+
+/** The change already committed; a failed record must not turn it into a refusal. */
+function recordSafely(input: RunBossCatDecisionLoopInput, event: BossCatRecordedEvent): void {
+  try {
+    input.recordEvent?.(event);
+  } catch {
+    console.warn('Boss Cat record not written.', { action: event.action, conversationId: event.conversationId });
+  }
 }
 
 function refuse(reason: string, code: 'E_SCHEMA_INVALID' | 'E_PRECHECK_FAILED' | 'E_BUDGET_EXCEEDED'
@@ -366,7 +426,7 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
       const used = new Set(receipts.filter((receipt) => receipt.status === 'applied').map((receipt) => receipt.toolName));
       const availableTools = input.observation.availableTools.filter(({ manifest }) =>
         isBossCatTool(manifest.name) && !used.has(manifest.name)
-        && (manifest.name !== BOSS_CREATE_GROUP || latestBoard !== null));
+        && (!BOSS_CAT_BOARD_BOUND_TOOLS.includes(manifest.name) || latestBoard !== null));
       if (availableTools.length === 0 || input.isCancelled?.()) break;
       const response = await bounded(() => input.request({
         ...input.observation,
@@ -395,13 +455,30 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
         },
         execute: async (toolInput) => {
           if (decision.toolName === BOSS_CREATE_GROUP) {
+            const at = now();
             const created = await createBossCatGroup(input, toolInput, latestBoard!, receipts, {
-              toolName: decision.toolName, decisionId: decision.decisionId, at: now(),
+              toolName: decision.toolName, decisionId: decision.decisionId, at,
             });
             if ('refusal' in created) return refuse(created.refusal, created.code);
             createdConversationId = created.conversationId;
-            input.onGroupCreated?.(created.conversationId);
+            input.onConversationChanged?.(created.conversationId, 'created');
+            recordSafely(input, { action: 'create_group', bossCatId: input.bossCatId,
+              conversationId: created.conversationId, catIds: created.catIds,
+              decisionId: decision.decisionId, at: at.toISOString() });
             return { status: 'applied', result: { conversationId: created.conversationId } };
+          }
+          if (decision.toolName === BOSS_JOIN_CONVERSATION || decision.toolName === BOSS_LEAVE_CONVERSATION) {
+            const at = now();
+            const changed = await changeBossCatMembership(input, toolInput, latestBoard!, receipts, {
+              toolName: decision.toolName, decisionId: decision.decisionId, at,
+            });
+            if ('refusal' in changed) return refuse(changed.refusal, changed.code);
+            createdConversationId = changed.conversationId;
+            input.onConversationChanged?.(changed.conversationId, 'updated');
+            recordSafely(input, { action: decision.toolName === BOSS_JOIN_CONVERSATION ? 'join' : 'leave',
+              bossCatId: input.bossCatId, conversationId: changed.conversationId,
+              decisionId: decision.decisionId, at: at.toISOString() });
+            return { status: 'applied', result: { conversationId: changed.conversationId } };
           }
           if (typeof toolInput !== 'object' || toolInput === null || Object.keys(toolInput).length > 0) {
             return refuse('input_invalid', 'E_SCHEMA_INVALID');
@@ -486,6 +563,9 @@ export function formatBossCatTurnInstructions(record: BossCatTurnRecord | null):
   for (const receipt of record.receipts) {
     if (receipt.toolName === BOSS_STATUS_BOARD && receipt.status === 'applied' && receipt.board) {
       lines.push('Status board (JSON):', '```json', JSON.stringify(receipt.board), '```');
+    } else if ((receipt.toolName === BOSS_JOIN_CONVERSATION || receipt.toolName === BOSS_LEAVE_CONVERSATION)
+      && receipt.status === 'applied' && receipt.conversationId) {
+      lines.push(`${receipt.toolName}: applied for conversation ${receipt.conversationId}.`);
     } else if (receipt.toolName === BOSS_CREATE_GROUP && receipt.status === 'applied' && receipt.conversationId) {
       lines.push(`${BOSS_CREATE_GROUP}: applied. The group conversation ${receipt.conversationId} exists; `
         + 'its Cats answer once the owner writes there.');
@@ -537,10 +617,10 @@ async function createBossCatGroup(
   board: BossCatBoard,
   priorReceipts: BossCatToolReceipt[],
   call: { toolName: string; decisionId: string; at: Date },
-): Promise<{ conversationId: string } | GroupRefusal> {
+): Promise<{ conversationId: string; catIds: string[] } | GroupRefusal> {
   const parsed = readGroupInput(rawInput, board, input.bossCatId);
   if ('refusal' in parsed) return parsed;
-  let outcome: { conversationId: string } | GroupRefusal = { refusal: 'not_permitted', code: 'E_PRECHECK_FAILED' };
+  let outcome: { conversationId: string; catIds: string[] } | GroupRefusal = { refusal: 'not_permitted', code: 'E_PRECHECK_FAILED' };
   await input.updateState((latest) => {
     const lane = latest.channels.find((entry) => entry.id === input.channelId);
     const source = lane?.messages.find((entry) => entry.id === input.sourceMessageId);
@@ -608,8 +688,125 @@ async function createBossCatGroup(
     next = attachBossCatTurnRecord(next, input.channelId, input.sourceMessageId, {
       schemaVersion: 1, bossCatId: input.bossCatId, receipts: [...priorReceipts, receipt],
     });
-    outcome = { conversationId };
+    outcome = { conversationId, catIds: parsed.catIds };
     return next;
   });
+  return outcome;
+}
+
+/**
+ * FR-9, FR-11, FR-12: join a conversation from this run's board under 「允許」, or leave one this
+ * Boss Cat joined. Everything is rechecked inside one atomic update, which also posts the lane
+ * notice and writes the receipt. A join is an ordinary assignment: the conversation shows
+ * "joined the chat", and its coordinator, audience, workspace and permissions stay as they were.
+ * Under 「每次問我」 the owner's card is required, which comes with the next slice; until then
+ * that join is refused.
+ */
+async function changeBossCatMembership(
+  input: RunBossCatDecisionLoopInput,
+  rawInput: unknown,
+  board: BossCatBoard,
+  priorReceipts: BossCatToolReceipt[],
+  call: { toolName: string; decisionId: string; at: Date },
+): Promise<{ conversationId: string } | GroupRefusal> {
+  const record = typeof rawInput === 'object' && rawInput !== null && !Array.isArray(rawInput)
+    ? rawInput as Record<string, unknown> : null;
+  if (!record || Object.keys(record).some((key) => key !== 'conversationId')
+    || typeof record.conversationId !== 'string') {
+    return { refusal: 'input_invalid', code: 'E_SCHEMA_INVALID' };
+  }
+  const conversationId = record.conversationId;
+  if (!board.groups.some((group) => group.conversationId === conversationId)) {
+    return { refusal: 'conversation_not_on_board', code: 'E_PRECHECK_FAILED' };
+  }
+  const joining = call.toolName === BOSS_JOIN_CONVERSATION;
+  let outcome: { conversationId: string } | GroupRefusal = { refusal: 'not_permitted', code: 'E_PRECHECK_FAILED' };
+  const refuse = (refusal: string, code: GroupRefusal['code'] = 'E_PRECHECK_FAILED') => {
+    outcome = { refusal, code };
+  };
+  const serialize = input.runChatMutation ?? (<T>(_channelId: string, operation: () => Promise<T>) => operation());
+  await serialize(conversationId, () => input.updateState((latest) => {
+    const lane = latest.channels.find((entry) => entry.id === input.channelId);
+    const source = lane?.messages.find((entry) => entry.id === input.sourceMessageId);
+    if (!lane || resolveBossCatTurnGate(latest, input.channelId, source)?.bossCatId !== input.bossCatId) {
+      refuse('not_permitted');
+      return latest;
+    }
+    const target = latest.channels.find((entry) => entry.id === conversationId);
+    if (!target || isDirectLaneChannel(target)) { refuse('conversation_not_joinable'); return latest; }
+    if (target.status === 'archived') { refuse('conversation_archived'); return latest; }
+    const boss = latest.cats.find((cat) => cat.id === input.bossCatId)!;
+    const membership = resolveChannelParticipantAssignments(target)
+      .find((entry) => entry.status === 'active' && resolveParticipantCatId(entry) === boss.id);
+    let next: ChatState;
+    if (joining) {
+      if (membership) { refuse('already_member'); return latest; }
+      // FR-8: evaluated when the join runs, not when it was requested.
+      const policy = resolveBossCatJoinPolicy(latest);
+      if (policy === 'never') { refuse('policy_never'); return latest; }
+      if (policy === 'ask') { refuse('owner_card_required'); return latest; }
+      const reserved = reserveBossCatUsage(latest, 'join_request', call.at);
+      if (!reserved.allowed) { refuse('rate_limited', 'E_BUDGET_EXCEEDED'); return latest; }
+      try {
+        next = assignCatToChannel(reserved.state, conversationId, { catId: boss.id }, call.at);
+      } catch {
+        refuse('participant_limit');
+        return latest;
+      }
+      next.channels = next.channels.map((entry) => entry.id === conversationId
+        ? {
+            ...entry,
+            // FR-12: nothing else about the conversation changes.
+            coordinatorParticipantId: target.coordinatorParticipantId,
+            bossCatJoins: { ...entry.bossCatJoins, [boss.id]: { since: call.at.toISOString() } },
+          }
+        : entry);
+    } else {
+      if (!membership || !readBossCatJoinSince(target, boss.id)) { refuse('not_joined'); return latest; }
+      if (target.coordinatorParticipantId === membership.participantId) { refuse('coordinator'); return latest; }
+      const turn = target.roomRouting?.workflow?.activeTurn;
+      if (turn && turn.targetStatuses.some((entry) => entry.participant.participantId === membership.participantId
+        && (entry.status === 'running' || entry.status === 'pending'))) {
+        refuse('turn_running');
+        return latest;
+      }
+      try {
+        next = removeCatFromChannel(latest, conversationId, boss.id, call.at);
+      } catch {
+        refuse('cannot_leave');
+        return latest;
+      }
+    }
+    const title = readOwnerSetTitle(target);
+    const locale = parseMessageLocale(lane.language) ?? parseMessageLocale(lane.responseLanguage) ?? 'en';
+    const localizedBody: ChatMessageLocalizedBodyMetadata = {
+      key: joining
+        ? title ? messageKeys.chatBossCatJoinedNotice : messageKeys.chatBossCatJoinedUntitledNotice
+        : title ? messageKeys.chatBossCatLeftNotice : messageKeys.chatBossCatLeftUntitledNotice,
+      values: { name: boss.name, title: title ?? '', surface: target.originSurface ?? 'chat' },
+    };
+    next = appendMessage(next, input.channelId, {
+      senderKind: 'system',
+      senderName: 'Chat',
+      body: resolveChatMessageLocalizedBodyMetadata(localizedBody, createTranslator(locale)),
+    }, call.at, {
+      metadata: {
+        event: joining ? 'boss_cat_joined' : 'boss_cat_left',
+        sourceMessageId: input.sourceMessageId,
+        conversationId,
+        [CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY]: localizedBody,
+      },
+    }).state;
+    next = attachBossCatTurnRecord(next, input.channelId, input.sourceMessageId, {
+      schemaVersion: 1,
+      bossCatId: input.bossCatId,
+      receipts: [...priorReceipts, {
+        toolName: call.toolName, decisionId: call.decisionId, status: 'applied',
+        at: call.at.toISOString(), conversationId,
+      }],
+    });
+    outcome = { conversationId };
+    return next;
+  }));
   return outcome;
 }
