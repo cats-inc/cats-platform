@@ -258,29 +258,55 @@ D12; FR-10 to FR-14, without the parts that need a conversation's Project).
 **Goal:** a Work conversation can belong to a Project, and every change to a run's starting
 folder goes through a card that says so (D12; FR-12, FR-13, FR-16, FR-22 to FR-28).
 
-- [ ] The Project id on the conversation state. It lands after PLAN-134 Phase 5 and under its
+- [x] The Project id on the conversation state. It lands after PLAN-134 Phase 5 and under its
       state version rise, or with a rise of its own if that release has shipped. This changes
       the frozen `src/products/chat/api/contracts.ts`.
-- [ ] The projection copies it onto the projected Work Item, moves that Work Item's children
+  - As built: `workProjectId` and `workProjectRevision` are optional fields under chat state
+    version 7, which has not shipped (latest release 0.15.1), so no rise of its own. A profile
+    without them reads as no Project. The store keeps a newer revision over an incoming copy
+    (`keepOwnerWorkProjects`), as it keeps raised scopes and proposal progress.
+- [x] The projection copies it onto the projected Work Item, moves that Work Item's children
       with it, and writes no Project when the Project no longer exists.
-- [ ] The owner's control on a Work conversation in Desktop: set, change and clear, with the
+  - As built: `applyChannelWorkProject` (`src/products/chat/api/conversationWorkProject.ts`)
+    writes the conversation and Core in one snapshot update, moves the children and records an
+    activity with both actors. The projection drops a Project id that Core no longer has.
+- [x] The owner's control on a Work conversation in Desktop: set, change and clear, with the
       refusals in FR-23.
-- [ ] Two new Work writes, each with its delegate under Work:
-  - [ ] capture into the conversation's Project;
-  - [ ] a folder for an existing Project.
-- [ ] The remaining proposal kinds:
-  - [ ] the conversation's Project, which is a write to the conversation;
-  - [ ] a captured Work Item into the conversation's Project;
-  - [ ] a folder for the conversation's Project, for an admin coordinator;
-  - [ ] a new Project with a folder, through the existing create delegate, for an admin
-        coordinator.
-- [ ] The folder warning on every card in FR-16.
-- [ ] ADR-105's Project create with a folder becomes a proposal and its card (SPEC-142 A1).
+  - As built: `ConversationWorkProjectChip` beside the scope chip, for a conversation at Work
+    that is not a parallel member. Its confirmation names the folder where the conversation's
+    supervised runs would start, or the sandbox, and how many conversations and Work Items the
+    Project holds. Route: `GET`/`POST /api/channels/:id/work-project`, owner only, bound to the
+    revision shown, not waiting for a running turn.
+- [x] Two new Work writes, each with its delegate under Work:
+  - [x] capture into the conversation's Project (`intoProjectId` on the intake delegate's
+        capture context, one write);
+  - [x] a folder for an existing Project (`src/products/work/state/workProjectFolder.ts`).
+- [x] The remaining proposal kinds:
+  - [x] the conversation's Project, which is a write to the conversation
+        (`conversation.work_project`, registered by Chat);
+  - [x] a captured Work Item into the conversation's Project (`propose_work_item_project` opens
+        to any participant for the conversation's own Project);
+  - [x] a folder for the conversation's Project, for an admin coordinator
+        (`work.project.folder`, `propose_project_folder`);
+  - [x] a new Project with a folder, through the existing create delegate, for an admin
+        coordinator. The conversation joins it when it has no Project.
+- [x] The folder warning on every card in FR-16.
+- [x] ADR-105's Project create with a folder becomes a proposal and its card (SPEC-142 A1).
       Without a folder it is unchanged, with its flag on and off.
-- [ ] Work's side: the projected Work Item under its Project, a Project's page listing its
+  - As built: on the owner's own turn only (the SPEC-139 stamp); otherwise, and without the
+    proposal service, nothing is created.
+- [x] Work's side: the projected Work Item under its Project, a Project's page listing its
       conversations with links, and the blocker rules of FR-27.
-- [ ] Tests, including the supervised run's folder (FR-26), a blocked Turn Run not refusing a
+  - As built: Turn Runs no longer count as a Project's active work for edit, pause, archive or
+    its anchors; a Project with conversations names them as a delete blocker; the Project page
+    lists them with links (`memberConversations` on the project list projection).
+- [x] Tests, including the supervised run's folder (FR-26), a blocked Turn Run not refusing a
       change, and Work's routes still refusing to edit the projected Work Item.
+  - As built: `tests/conversation-work-project.test.js`,
+    `tests/conversation-work-project-renderer.test.tsx`, Phase 5 cases in
+    `tests/work-conversation-tools.test.ts` and the A1 case in
+    `tests/chat-work-triage-dispatch.test.tsx`. FR-26 is checked through the projected Work
+    Item's Project and Task, which Work's supervised-run target reads for its folder.
 - [ ] An isolated candidate walk with screenshots.
 
 **Deliverables:** Project membership, the folder proposals and the remaining Work tools.

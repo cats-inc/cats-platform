@@ -94,7 +94,7 @@ validation and full CI pass; live/native and installed-profile acceptance remain
 | `work.external.unlink_issue` | Cats Work | Product delegate, HTTP route, Work detail UI, and Chat provider-agent observation/tool-request executor implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.lookup` | Cats Work | Product delegate, Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Strong Cat / Boss Cat triage with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.create` | Cats Work | Product delegate, explicit Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
-| `get_work_items` / `find_projects` / `propose_work_items` / `propose_work_item_change` / `propose_work_item_project` / `propose_project` | Cats Work | Delivered through the `cats` MCP server at `work` (SPEC-142 FR-10 to FR-14); proposals become the owner's cards | `mcp_tool` (runtime session MCP) | Work conversations' agents | [Work Conversation Tools](#work-conversation-tools) |
+| `get_work_items` / `find_projects` / `propose_work_items` / `propose_work_item_change` / `propose_work_item_project` / `propose_conversation_project` / `propose_project` / `propose_project_folder` | Cats Work | Delivered through the `cats` MCP server at `work` (SPEC-142 FR-10 to FR-14); proposals become the owner's cards | `mcp_tool` (runtime session MCP) | Work conversations' agents | [Work Conversation Tools](#work-conversation-tools) |
 | `get_tasks` / `list_runs` / `get_run` | Shared | Delivered through the `cats` MCP server at every level, direct lanes included (SPEC-142 FR-6 to FR-9): the conversation's own Tasks and Runs, read-only | `mcp_tool` (runtime session MCP) | Every conversation's agents | [Conversation Record Tools](#conversation-record-tools) |
 | `declare_artifact` | Cats Code | Delivered through the Platform-hosted `cats` MCP server (ADR-126); results return to the agent in the same turn; the HTTP submit route remains for product callers | `mcp_tool` (runtime session MCP) | Code assistant / Code UI import flow | [Declare Artifact](#declare_artifact) |
 | `show_in_canvas` | Cats Code | Delivered through the `cats` MCP server (SPEC-123): workspace `path`, https `url` or `artifactId` | `mcp_tool` (runtime session MCP) | Code assistant | [Artifact Canvas Tools](#artifact-canvas-tools) |
@@ -150,25 +150,48 @@ nothing and post the owner's card (see Channel Proposals in `docs/api.md`).
 - `get_work_items`: the conversation's own Work Items (those that name its conversation),
   newest first, at most 50: `id`, `title`, `status`, `priority`, `kind`, `projectId`,
   `projectTitle`, `taskId`, `folder`, `summary` and `projected`. The projected one follows the
-  conversation and no proposal can change it. `project` is the conversation's Project, null
-  until PLAN-135 Phase 5.
+  conversation and no proposal can change it. `project` is the conversation's Project (`id`,
+  `title`, `status`, `folder`), or null.
 - `find_projects` (`query`, `limit` up to 20): the owner's Projects by name, not archived. Only
   the conversation's coordinator, when it is an admin Cat, may call it.
 - `propose_work_items` (`items`, 1 to 8, each `title` and optionally `summary`, `kind`,
   `priority`): kind `work.item.capture`, performed through capture as drafts that name this
-  conversation.
+  conversation. When the conversation belongs to a Project, they are captured into it in the
+  same write; a Project gone or archived by then refuses the capture.
 - `propose_work_item_change` (`workItemId` and any of `title`, `summary`, `kind`, `priority`,
   `status` in a planning status): kind `work.item.update`, for a captured Work Item only.
-- `propose_work_item_project` (`workItemId`, `projectId`): kind `work.item.assign_project`,
-  admin coordinator only. The card warns about the Project's folder when the Work Item has a
-  Task, because its supervised runs start there without asking.
-- `propose_project` (`title`, `summary`): kind `work.project.create`, admin coordinator only,
-  without a folder, with this conversation as its primary conversation.
+- `propose_work_item_project` (`workItemId`, `projectId`): kind `work.item.assign_project`.
+  Any participant may name the conversation's own Project; another Project needs the admin
+  coordinator. The card warns about the Project's folder when the Work Item has a Task, because
+  its supervised runs start there without asking.
+- `propose_conversation_project` (`projectId`): kind `conversation.work_project`, admin
+  coordinator only. Chat registers the kind, since the write is the conversation's, and performs
+  it through the same path as the owner's own control (see Channel Work Project in
+  `docs/api.md`). It is refused for a parallel member, an archived or unknown
+  Project, the Project it is already in, and while a supervised run of the conversation is
+  under way. The card warns about the Project's folder.
+- `propose_project` (`title`, `summary`, optionally `folder`): kind `work.project.create`, admin
+  coordinator only, with this conversation as its primary conversation. The conversation joins
+  it when it has no Project and is not a parallel member; the outcome says when a refusal kept it
+  out. A folder is an absolute path on one line, at most 500 characters, and the card shows it
+  whole with the warning.
+- `propose_project_folder` (`folder`): kind `work.project.folder`, admin coordinator only, for
+  the conversation's own Project. The card shows the old and new folder and counts the other
+  conversations and Work Items in the Project, whose supervised runs all start there.
+
+A card whose Project, folder or conversation membership changed before the owner answers is out
+of date and cannot be confirmed.
 
 Every proposing tool refuses with `not_owner_turn` unless the session's current turn is the
 owner's own (not a Telegram turn or a heartbeat). On confirmation the kind rechecks its records
 and performs the write through Work's delegate, which records the proposing participant as the
-actor and the confirming owner as `confirmedByActorId`. ADR-105's decision path is unchanged.
+actor and the confirming owner as `confirmedByActorId`.
+
+ADR-105's decision path keeps its roles and flags, with one change (SPEC-142 A1): a
+`work.project.create` request that names a `repoPath` no longer creates the Project. On the
+owner's own turn it posts a `work.project.create` card with that folder; on any other turn, or
+without the proposal service, it creates nothing. Without a folder it creates the Project as
+before.
 
 ## Agent Knowledge Drafts
 

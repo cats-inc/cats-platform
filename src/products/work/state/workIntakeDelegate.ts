@@ -41,6 +41,11 @@ export interface WorkIntakeCaptureContext {
    * is then the participant that proposed it, and the record keeps both.
    */
   confirmedByActorId?: string;
+  /**
+   * SPEC-142 FR-12, FR-19: capture into this Project, the new Work write for a conversation that
+   * belongs to one. A Project that is gone or archived refuses the capture.
+   */
+  intoProjectId?: string;
   actionId?: string;
   runId?: string;
 }
@@ -85,6 +90,7 @@ export function createWorkIntakeDelegate(
       const workItemId = createWorkItemId(idempotencyKey);
       let created = false;
       let capturedWorkItem: CoreWorkItemRecord | null = null;
+      let projectRefusal: string | null = null;
 
       try {
         const persisted = await options.coreStore.updateCore((core) => {
@@ -92,6 +98,13 @@ export function createWorkIntakeDelegate(
           if (existing !== null) {
             capturedWorkItem = existing;
             created = false;
+            return core;
+          }
+          const project = context.intoProjectId
+            ? core.projects.find((entry) => entry.id === context.intoProjectId) ?? null
+            : null;
+          if (context.intoProjectId && (!project || project.status === 'archived')) {
+            projectRefusal = project ? 'That Project is archived.' : 'Project not found.';
             return core;
           }
 
@@ -102,7 +115,7 @@ export function createWorkIntakeDelegate(
               title: input.title,
               status: input.status ?? 'draft',
               ownerActorId: core.ownerProfile.actorId,
-              projectId: null,
+              projectId: project?.id ?? null,
               conversationId: sourceRef.conversationId ?? null,
               taskId: null,
               parentWorkItemId: null,
@@ -126,6 +139,7 @@ export function createWorkIntakeDelegate(
               kind: 'work_item_updated',
               actorId: context.actorRef,
               workItemId: workItemWrite.workItem.id,
+              projectId: project?.id ?? null,
               conversationId: sourceRef.conversationId ?? null,
               message: `Captured Work Item: ${workItemWrite.workItem.title}`,
               metadata: {
@@ -149,6 +163,7 @@ export function createWorkIntakeDelegate(
           return activityWrite.core;
         });
 
+        if (projectRefusal) return rejected('E_PRECHECK_FAILED', projectRefusal);
         capturedWorkItem =
           capturedWorkItem
           ?? persisted.workItems.find((workItem) => workItem.id === workItemId)

@@ -4,7 +4,8 @@ import type { CollaborationReport } from '../orchestratorCollaboration.js';
 import { isCollaborationTool } from '../orchestratorCollaboration.js';
 import { isCollaborationExecutionTool } from '../collaborationExecutionSurface.js';
 import { appendCollaborationReport } from '../orchestratorCollaborationReport.js';
-import { OWNER_STARTED_METADATA_KEY, withoutOwnerStarted } from '../../shared/ownerStarted.js';
+import { OWNER_STARTED_METADATA_KEY, readOwnerStarted, withoutOwnerStarted } from '../../shared/ownerStarted.js';
+import type { ConversationProposalPort } from '../../../../platform/proposals/contracts.js';
 import {
   attachBossCatTurnRecord,
   dropSettledBossCatBoards,
@@ -505,6 +506,27 @@ interface RouteChannelMessageOptions {
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
   naturalProductIntentMode?: ChatNaturalProductIntentMode;
   externalIssueImport?: ExternalIssueImportFetchOptions;
+  /**
+   * SPEC-142 A1: a new Project with a folder becomes the owner's card instead of being created.
+   * Without the port, such a Project is not created.
+   */
+  conversationProposals?: Pick<ConversationProposalPort, 'propose'>;
+}
+
+/** SPEC-142 A1: the Work proposal kind for a new Project, registered by Work. */
+const WORK_PROJECT_CREATE_PROPOSAL_KIND = 'work.project.create';
+
+/** Why a new Project with a folder was not created, by the refusal that stopped its card. */
+function workProjectCardNotPostedMessage(title: string, refusal: string): string {
+  const reason = refusal === 'project_folder_needs_owner_turn'
+    ? 'its card is posted only from your own message in Cats'
+    : refusal === 'level_too_narrow'
+      ? 'its card can be posted only in a Work conversation'
+      : refusal === 'proposal_limit' || refusal === 'proposal_rate_limited'
+        ? 'this conversation has too many cards waiting or posted in the last hour'
+        : 'its card could not be posted';
+  return `Did not create Project ${title}: a Project with a folder is created only when you confirm its card, `
+    + `and ${reason} (${refusal}).`;
 }
 
 interface ClientMessageAppendPlan {
@@ -2521,6 +2543,7 @@ async function appendWorkProjectCreateResultSidecar(input: {
   userMessage: ChatMessage;
   providerAgentDecision: ProviderAgentDecision | null;
   chatStore?: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>;
+  proposals?: Pick<ConversationProposalPort, 'propose'>;
   now: Date;
 }): Promise<{ state: ChatState; resultMessage: ChatMessage | null }> {
   if (
@@ -2592,6 +2615,37 @@ async function appendWorkProjectCreateResultSidecar(input: {
   const status = isWorkProjectCreateStatus(requestedInput.record.status)
     ? requestedInput.record.status
     : undefined;
+  if (repoPath) {
+    // SPEC-142 A1 (FR-29): a Project's folder is where supervised runs start without asking, so a
+    // new Project with a folder waits for the owner's card. Only the owner's own turn posts one.
+    const posted = readOwnerStarted(input.userMessage) && input.proposals
+      ? await input.proposals.propose({
+        channelId: input.channelId,
+        conversationId,
+        kind: WORK_PROJECT_CREATE_PROPOSAL_KIND,
+        content: { title, ...(summary ? { summary } : {}), ...(status ? { status } : {}), folder: repoPath },
+        proposerParticipantId: input.state.channels.find((entry) => entry.id === input.channelId)?.coordinatorParticipantId ?? null,
+      })
+      : { refusal: 'project_folder_needs_owner_turn', message: '' };
+    // A posted card is the conversation's message; nothing is created until the owner confirms it.
+    if (!('refusal' in posted)) return { state: input.state, resultMessage: null };
+    warnWorkProjectCreateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: posted.refusal,
+    });
+    // The owner learns why nothing happened, not only the log.
+    const deferred = appendMessage(input.state, input.channelId, {
+      senderKind: 'system',
+      senderName: 'Cats Work',
+      body: workProjectCardNotPostedMessage(title, posted.refusal),
+    }, input.now, {
+      metadata: { event: 'work_project_create_deferred', sourceMessageId: input.userMessage.id, refusal: posted.refusal },
+      incrementUnread: false,
+    });
+    return { state: refreshDerivedMemoryLayers(deferred.state, input.channelId, input.now), resultMessage: deferred.message };
+  }
   const delegate = createWorkTriageDelegate({
     coreStore: input.chatStore,
     now: () => input.now,
@@ -7102,6 +7156,7 @@ export async function beginChannelMessageDispatch(
     userMessage: preparedTurn.userMessage,
     providerAgentDecision,
     chatStore: options.chatStore,
+    proposals: options.conversationProposals,
     now,
   });
   nextState = workProjectCreateSidecar.state;
@@ -7423,6 +7478,7 @@ export async function beginChannelMessageRetryDispatch(
     userMessage: sourceMessage,
     providerAgentDecision,
     chatStore: options.chatStore,
+    proposals: options.conversationProposals,
     now,
   });
   nextState = workProjectCreateSidecar.state;

@@ -131,6 +131,8 @@ export interface WorkProjectListItem {
   primaryConversationId: string | null;
   primaryConversationTitle: string | null;
   primaryConversationSourceChannelId: string | null;
+  /** SPEC-142 FR-24, FR-27: the conversations that belong to this Project. */
+  memberConversations?: Array<{ conversationId: string; title: string; sourceChannelId: string | null }>;
   ownerActorId: string;
   ownerName: string;
   attention: WorkAttentionState;
@@ -591,6 +593,16 @@ function buildProjectListItems(
         primaryConversationId: project.primaryConversationId,
         primaryConversationTitle: primaryConversation?.title ?? null,
         primaryConversationSourceChannelId: primaryConversation?.sourceChannelId ?? null,
+        memberConversations: linkedWorkItems
+          .filter((workItem) => workItem.id.startsWith('work-item-chat-channel-') && workItem.conversationId)
+          .map((workItem) => {
+            const conversation = core.conversations.find((entry) => entry.id === workItem.conversationId);
+            return {
+              conversationId: workItem.conversationId!,
+              title: conversation?.title ?? workItem.title,
+              sourceChannelId: conversation?.sourceChannelId ?? null,
+            };
+          }),
         ownerActorId: project.ownerActorId,
         ownerName: resolveActorName(core, project.ownerActorId),
         attention: deriveAttentionFromStatus(project.status),

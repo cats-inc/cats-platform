@@ -1,23 +1,26 @@
 import type { CatsCoreState, CoreWorkItemRecord } from '../../../core/types.js';
 import { mcpTextResult, type McpToolCallResult, type McpToolDefinition } from '../../../platform/mcp/jsonRpcServer.js';
 import { hostToolTurnMayPropose, type HostToolGrant, type HostToolProvider } from '../../../platform/mcp/hostTools.js';
-import type { ConversationProposalPort } from '../../../platform/proposals/contracts.js';
+import { CONVERSATION_WORK_PROJECT_PROPOSAL_KIND, type ConversationProposalPort } from '../../../platform/proposals/contracts.js';
 import { cleanRecordValue, fenceRecordText } from '../../shared/conversationRecordTools.js';
 import { WORK_ITEM_KIND_VALUES, WORK_ITEM_PRIORITY_HINT_VALUES, WORK_ITEM_TRIAGE_STATUS_VALUES } from '../shared/workToolSurface.js';
 import { lookupWorkProjects, readExistingWorkItemTriageMetadata } from '../state/workTriageDelegate.js';
+import { buildChatWorkItemId } from '../../../shared/chatCoreIds.js';
 import {
   isProjectedWorkItem,
   WORK_PROPOSAL_ASSIGN_PROJECT,
+  CONVERSATION_PROJECT_SCOPE,
   WORK_PROPOSAL_CAPTURE,
   WORK_PROPOSAL_CREATE_PROJECT,
   WORK_PROPOSAL_MAX_ITEMS,
+  WORK_PROPOSAL_PROJECT_FOLDER,
   WORK_PROPOSAL_UPDATE,
 } from './workConversationProposals.js';
 
 /**
  * SPEC-142 FR-10 to FR-14: Work's tools on the host `cats` server, at the `work` level (PLAN-135
- * Phase 4). Reads return the conversation's own Work Items, and Projects for an admin
- * coordinator. Proposals write nothing: each becomes the owner's card.
+ * Phases 4 and 5). Reads return the conversation's own Work Items and its Project, and other
+ * Projects for an admin coordinator. Proposals write nothing: each becomes the owner's card.
  */
 
 export const WORK_CONVERSATION_TOOLS_PROVIDER_ID = 'cats-work.conversation-tools' as const;
@@ -36,8 +39,9 @@ const workItemFields = {
 
 export const GET_WORK_ITEMS_TOOL: McpToolDefinition = {
   name: 'get_work_items',
-  description: "List this conversation's own Work Items: id, title, status, priority, kind, Project, Task, folder and summary. "
-    + "`projected` marks the one that follows the conversation itself; proposals cannot change it. Read-only. " + DATA_NOTE,
+  description: "List this conversation's own Work Items: id, title, status, priority, kind, Project, Task, folder and summary, "
+    + "and the Project this conversation belongs to, if any. `projected` marks the Work Item that follows the conversation "
+    + 'itself; proposals cannot change it. Read-only. ' + DATA_NOTE,
   inputSchema: { type: 'object', properties: {}, additionalProperties: false },
 };
 
@@ -88,8 +92,8 @@ export const PROPOSE_WORK_ITEM_CHANGE_TOOL: McpToolDefinition = {
 
 export const PROPOSE_WORK_ITEM_PROJECT_TOOL: McpToolDefinition = {
   name: 'propose_work_item_project',
-  description: "Propose putting one of this conversation's captured Work Items into a Project found with find_projects. "
-    + `Only an admin coordinator may use it. ${PROPOSE_NOTE}`,
+  description: "Propose putting one of this conversation's captured Work Items into this conversation's Project. Only an admin "
+    + `coordinator may name another Project, found with find_projects. ${PROPOSE_NOTE}`,
   inputSchema: {
     type: 'object',
     properties: { workItemId: { type: 'string' }, projectId: { type: 'string' } },
@@ -98,22 +102,51 @@ export const PROPOSE_WORK_ITEM_PROJECT_TOOL: McpToolDefinition = {
   },
 };
 
+const FOLDER_FIELD = { type: 'string', maxLength: 500, description: 'An absolute path on this computer.' };
+
 export const PROPOSE_PROJECT_TOOL: McpToolDefinition = {
   name: 'propose_project',
-  description: 'Propose a new Project, with a title and a summary, whose primary conversation is this one. Only an admin '
-    + `coordinator may use it. ${PROPOSE_NOTE}`,
+  description: 'Propose a new Project, with a title, a summary and optionally a folder, whose primary conversation is this '
+    + 'one. This conversation joins it when it has no Project. Supervised runs of its Work Items start in the folder without '
+    + `asking, and the card says so. Only an admin coordinator may use it. ${PROPOSE_NOTE}`,
   inputSchema: {
     type: 'object',
-    properties: LINE_FIELDS,
+    properties: { ...LINE_FIELDS, folder: FOLDER_FIELD },
     required: ['title'],
+    additionalProperties: false,
+  },
+};
+
+export const PROPOSE_CONVERSATION_PROJECT_TOOL: McpToolDefinition = {
+  name: 'propose_conversation_project',
+  description: 'Propose putting this conversation into a Project found with find_projects. Its supervised runs then start '
+    + "in that Project's folder, and the card says so. Only an admin coordinator may use it. " + PROPOSE_NOTE,
+  inputSchema: {
+    type: 'object',
+    properties: { projectId: { type: 'string' } },
+    required: ['projectId'],
+    additionalProperties: false,
+  },
+};
+
+export const PROPOSE_PROJECT_FOLDER_TOOL: McpToolDefinition = {
+  name: 'propose_project_folder',
+  description: "Propose a folder for this conversation's Project. The supervised runs of every Work Item in that Project, "
+    + 'from any conversation, then start there without asking, and the card says so. Only an admin coordinator may use it. '
+    + PROPOSE_NOTE,
+  inputSchema: {
+    type: 'object',
+    properties: { folder: FOLDER_FIELD },
+    required: ['folder'],
     additionalProperties: false,
   },
 };
 
 export const WORK_CONVERSATION_TOOLS_POLICY = [
   'At Work, Cats lets you read and propose changes to this conversation\'s Work Items through the `cats` MCP server',
-  '(in Claude Code: mcp__cats__get_work_items, mcp__cats__propose_work_items, mcp__cats__propose_work_item_change;',
-  'for an admin coordinator also mcp__cats__find_projects, mcp__cats__propose_work_item_project, mcp__cats__propose_project).',
+  '(in Claude Code: mcp__cats__get_work_items, mcp__cats__propose_work_items, mcp__cats__propose_work_item_change,',
+  "mcp__cats__propose_work_item_project for this conversation's Project; for an admin coordinator also mcp__cats__find_projects,",
+  'mcp__cats__propose_conversation_project, mcp__cats__propose_project, mcp__cats__propose_project_folder).',
   'A proposal changes nothing until the owner confirms its card. Propose only what the owner asked for or plainly needs.',
   DATA_NOTE,
 ].join(' ');
@@ -142,6 +175,11 @@ function workItemView(core: CatsCoreState, workItem: CoreWorkItemRecord) {
     summary: fenceRecordText(workItem.summary, 1000),
     projected: isProjectedWorkItem(workItem),
   };
+}
+
+/** The conversation's Project, as its projected Work Item carries it (FR-24). */
+function conversationProjectId(core: CatsCoreState, channelId: string): string | null {
+  return core.workItems.find((entry) => entry.id === buildChatWorkItemId(channelId))?.projectId ?? null;
 }
 
 function refused(code: string, message: string): McpToolCallResult {
@@ -176,7 +214,7 @@ export function createWorkConversationToolsProvider(options: WorkConversationToo
     level: 'work',
     instructions: WORK_CONVERSATION_TOOLS_POLICY,
     tools: [GET_WORK_ITEMS_TOOL, FIND_PROJECTS_TOOL, PROPOSE_WORK_ITEMS_TOOL, PROPOSE_WORK_ITEM_CHANGE_TOOL,
-      PROPOSE_WORK_ITEM_PROJECT_TOOL, PROPOSE_PROJECT_TOOL],
+      PROPOSE_WORK_ITEM_PROJECT_TOOL, PROPOSE_CONVERSATION_PROJECT_TOOL, PROPOSE_PROJECT_TOOL, PROPOSE_PROJECT_FOLDER_TOOL],
     async callTool(name, args, grant) {
       switch (name) {
         case GET_WORK_ITEMS_TOOL.name: {
@@ -188,8 +226,16 @@ export function createWorkConversationToolsProvider(options: WorkConversationToo
           return mcpTextResult({
             workItems: own.slice(0, WORK_ITEM_LIMIT).map((workItem) => workItemView(core, workItem)),
             truncated: own.length > WORK_ITEM_LIMIT,
-            // PLAN-135 Phase 5 gives a conversation a Project.
-            project: null,
+            project: (() => {
+              const projectId = conversationProjectId(core, grant.binding.channelId);
+              const project = projectId ? core.projects.find((entry) => entry.id === projectId) : undefined;
+              return project ? {
+                id: cleanRecordValue(project.id),
+                title: fenceRecordText(project.title, 160),
+                status: project.status,
+                folder: project.repoPath ? fenceRecordText(project.repoPath, 300) : null,
+              } : null;
+            })(),
           });
         }
         case FIND_PROJECTS_TOOL.name: {
@@ -226,12 +272,27 @@ export function createWorkConversationToolsProvider(options: WorkConversationToo
         case PROPOSE_WORK_ITEM_CHANGE_TOOL.name:
           return propose(grant, WORK_PROPOSAL_UPDATE, args);
         case PROPOSE_WORK_ITEM_PROJECT_TOOL.name: {
+          // FR-12: the conversation's own Project is open to any participant; FR-13: another
+          // Project needs an admin coordinator.
+          const own = conversationProjectId(await options.coreStore.readCore(), grant.binding.channelId);
+          if (await options.isAdminCoordinator(grant.binding.channelId, grant.binding.participantId)) {
+            return propose(grant, WORK_PROPOSAL_ASSIGN_PROJECT, args);
+          }
+          if (own === null || args.projectId !== own) return (await requireAdmin(grant))!;
+          // The card is marked, so it stays bound to the conversation's Project until confirmed.
+          return propose(grant, WORK_PROPOSAL_ASSIGN_PROJECT, { ...args, scope: CONVERSATION_PROJECT_SCOPE });
+        }
+        case PROPOSE_CONVERSATION_PROJECT_TOOL.name: {
           const denied = await requireAdmin(grant);
-          return denied ?? propose(grant, WORK_PROPOSAL_ASSIGN_PROJECT, args);
+          return denied ?? propose(grant, CONVERSATION_WORK_PROJECT_PROPOSAL_KIND, args);
         }
         case PROPOSE_PROJECT_TOOL.name: {
           const denied = await requireAdmin(grant);
           return denied ?? propose(grant, WORK_PROPOSAL_CREATE_PROJECT, args);
+        }
+        case PROPOSE_PROJECT_FOLDER_TOOL.name: {
+          const denied = await requireAdmin(grant);
+          return denied ?? propose(grant, WORK_PROPOSAL_PROJECT_FOLDER, args);
         }
         default:
           return refused('unknown_tool', `Unknown tool: ${name}`);

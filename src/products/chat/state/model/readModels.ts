@@ -289,6 +289,7 @@ export function toChannelSummary(
     topic: channel.topic,
     originSurface: channel.originSurface,
     productScope: resolveChannelProductScope(channel),
+    workProjectId: channel.workProjectId ?? null,
     channelKind: resolveChannelKind({
       channelKind: channel.channelKind,
       roomMode: roomRouting.mode,

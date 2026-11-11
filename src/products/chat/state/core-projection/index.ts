@@ -119,8 +119,12 @@ export function syncCoreStateWithChatState(
       existingTasks.get(buildChatTaskId(channel.id)) as CoreTaskRecord | null ?? null,
     ),
   );
+  // SPEC-142 FR-24: the projected Work Item carries its conversation's Project, unless that
+  // Project no longer exists.
+  const knownProjectIds = new Set((existingCore.projects ?? []).map((project) => project.id));
   const workItems = chat.channels.map((channel) =>
     createWorkItemFromChannel(
+      knownProjectIds,
       channel,
       ownerProfile.actorId,
       readChannelCanonicalIdentity(channel.id).conversationId,

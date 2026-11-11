@@ -1014,6 +1014,7 @@ export function createTaskFromChannel(
 }
 
 export function createWorkItemFromChannel(
+  knownProjectIds: ReadonlySet<string>,
   channel: ChatChannelState,
   ownerActorId: string,
   conversationId: string,
@@ -1034,7 +1035,7 @@ export function createWorkItemFromChannel(
     id: buildChatWorkItemId(channel.id),
     title: channel.title,
     status,
-    projectId: null,
+    projectId: channel.workProjectId && knownProjectIds.has(channel.workProjectId) ? channel.workProjectId : null,
     conversationId,
     taskId: buildChatTaskId(channel.id),
     parentWorkItemId: null,
