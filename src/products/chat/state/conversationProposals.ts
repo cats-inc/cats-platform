@@ -55,6 +55,60 @@ function readRecord(message: ChatMessage): ConversationProposalRecord | null {
   return record && typeof record.id === 'string' ? record : null;
 }
 
+const PROGRESS: Record<ConversationProposalStatus, number> = {
+  open: 0, confirming: 1, confirmed: 2, declined: 2, expired: 2, stale: 2, failed: 2,
+};
+
+/**
+ * FR-18: a card's progress only moves forward. A whole-state writer that read the state before an
+ * answer (a continuation replay writes its own copy back throughout a turn) cannot reopen a card
+ * or undo its outcome, and cannot drop a card posted meanwhile. Pure; the store runs it on every
+ * write.
+ */
+export function keepProposalProgress(stored: ChatState, incoming: ChatState): { state: ChatState; keptChannelIds: string[] } {
+  const keptChannelIds: string[] = [];
+  const storedById = new Map(stored.channels.map((channel) => [channel.id, channel]));
+  let next = incoming;
+  incoming.channels.forEach((channel, index) => {
+    const previous = storedById.get(channel.id);
+    if (!previous) return;
+    const storedCards = previous.messages.filter((message) => readRecord(message) !== null);
+    if (storedCards.length === 0) return;
+    const storedById2 = new Map(storedCards.map((message) => [readRecord(message)!.id, message]));
+    let changed = false;
+    const seen = new Set<string>();
+    const messages = channel.messages.map((message) => {
+      const record = readRecord(message);
+      if (!record) return message;
+      seen.add(record.id);
+      const kept = storedById2.get(record.id);
+      const keptRecord = kept ? readRecord(kept)! : null;
+      if (!keptRecord) return message;
+      const ahead = PROGRESS[keptRecord.status] > PROGRESS[record.status]
+        || (keptRecord.outcomeReported && !record.outcomeReported);
+      if (!ahead) return message;
+      changed = true;
+      return { ...message, metadata: { ...message.metadata, [CONVERSATION_PROPOSAL_METADATA_KEY]: {
+        ...record,
+        ...(PROGRESS[keptRecord.status] > PROGRESS[record.status]
+          ? { status: keptRecord.status, decidedAt: keptRecord.decidedAt, refusal: keptRecord.refusal } : {}),
+        outcomeReported: record.outcomeReported || keptRecord.outcomeReported,
+      } } };
+    });
+    const missing = storedCards.filter((message) => !seen.has(readRecord(message)!.id));
+    if (missing.length > 0) {
+      changed = true;
+      messages.push(...missing);
+      messages.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    }
+    if (!changed) return;
+    if (next === incoming) next = { ...incoming, channels: [...incoming.channels] };
+    next.channels[index] = { ...channel, messages };
+    keptChannelIds.push(channel.id);
+  });
+  return { state: next, keptChannelIds };
+}
+
 /** FR-18: an open card past its time reads as expired; the stored status catches up on the next write. */
 export function effectiveProposalStatus(record: ConversationProposalRecord, now: Date): ConversationProposalStatus {
   return record.status === 'open' && now.getTime() > Date.parse(record.expiresAt) ? 'expired' : record.status;

@@ -3,6 +3,7 @@ import { ProviderPolicyFormatError, parseProviderExecutionPolicy, assertProvider
 import { normalizeOwnerLifecycle, OwnerLifecycleFormatError } from '../../../core/ownerLifecycle.js';
 import { compactOwnerWorkflowHistory } from './ownerHistory.js';
 import { keepRaisedProductScopes } from './model/productScope.js';
+import { keepProposalProgress } from './conversationProposals.js';
 import { copyFile, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -43,7 +44,12 @@ function keepStoredProductScopes(source: string, stored: ChatState, incoming: Ch
   if (keptChannelIds.length > 0) {
     reportStoreDiagnostic('product_scope_kept', { store: source, channelIds: keptChannelIds });
   }
-  return state;
+  // SPEC-142 FR-18: nor does it reopen a proposal's card or drop one posted meanwhile.
+  const proposals = keepProposalProgress(stored, state);
+  if (proposals.keptChannelIds.length > 0) {
+    reportStoreDiagnostic('proposal_progress_kept', { store: source, channelIds: proposals.keptChannelIds });
+  }
+  return proposals.state;
 }
 
 function reportStoreDiagnostic(

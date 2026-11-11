@@ -165,6 +165,12 @@ to FR-21).
   - A confirmation is marked `confirming` before the write and closed after it, so a crash
     never writes twice and a failure after a successful write cannot report it as failed. The
     digest is rechecked on a fresh read just before the write.
+  - A card's progress only moves forward in the store, as a raised scope does: a whole-state
+    writer that read the state before an answer (a continuation replay) cannot reopen the card
+    or drop one posted meanwhile (`keepProposalProgress`).
+  - Fails closed, by design: a follow-up hop inside an owner's turn takes an agent's message as
+    its source and cannot propose, and a send that overlaps an owner's send closes the gate for
+    the rest of that turn.
 - [x] The card: a message with the proposal's id and no text, rendered from the store in
       Desktop and mobile, and kept out of prompts and transport mirrors.
   - Its body is one fixed line that points to Desktop, so mobile and any client that cannot

@@ -328,7 +328,7 @@ export function exportChannel(state: ChatState, channelId: string): ChannelExpor
   return {
     exportedAt: new Date().toISOString(),
     orchestrator: structuredClone(state.globalOrchestrator),
-    channel: structuredClone(channel),
+    channel: { ...structuredClone(channel), messages: redactConversationProposalCards(structuredClone(channel.messages)) },
     assignedParticipants: view.assignedParticipants,
     assignedCats: view.assignedCats,
   };

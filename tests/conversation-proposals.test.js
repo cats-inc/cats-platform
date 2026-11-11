@@ -160,6 +160,21 @@ test('FR-17 to FR-19: only a confirmation performs the bound write, once, with b
   assert.deepEqual(await h.svc.decide(h.channelId, 'nope', 'confirm', 'owner-actor'), { status: 'not_found' });
 });
 
+test('FR-18: a stale whole-state write cannot reopen a card or drop one posted meanwhile', async () => {
+  const h = setup();
+  const { proposalId } = await h.propose('Write once');
+  // A continuation replay read the state here, and writes its copy back later.
+  const stale = await h.store.read();
+  await h.svc.decide(h.channelId, proposalId, 'confirm', 'owner-actor');
+  const posted = await h.propose('Posted meanwhile');
+  await h.store.write(stale);
+  const after = listConversationProposals(await h.store.read(), h.channelId);
+  assert.equal(after.find((entry) => entry.id === proposalId).status, 'confirmed', 'not reopened');
+  assert.ok(after.some((entry) => entry.id === posted.proposalId), 'not dropped');
+  assert.deepEqual(await h.svc.decide(h.channelId, proposalId, 'confirm', 'owner-actor'), { status: 'confirmed', refusal: 'card_closed' });
+  assert.equal(h.world.writes.length, 1, 'written once');
+});
+
 test('FR-18: a changed record makes the card out of date, and 24 hours expire it', async () => {
   const h = setup();
   const stale = await h.propose('Bound to revision 1');
