@@ -191,6 +191,8 @@ export interface ParticipantExecutionState {
 export type ChatCatGroup = 'admin' | 'standard';
 
 export interface ChatCat {
+  /** SPEC-139 FR-15: the owner turned off 「讓主控貓看到這隻 Cat 的狀態」; absent means visible. */
+  hiddenFromBossCat?: true;
   id: string;
   name: string;
   group: ChatCatGroup;
@@ -539,6 +541,8 @@ export interface ChatShellState {
   folderBrowsePreferences?: FolderBrowsePreferences;
   botBindings: ChatBotBindingSummary[];
   newChatAssist?: GuideCatAssistSurfaceReadModel | null;
+  /** SPEC-139 FR-8, resolved: absent state reads as `ask`. */
+  bossCatJoinPolicy?: 'never' | 'ask' | 'allow';
 }
 
 export interface AppShellPayload extends PlatformHostEnvelope {

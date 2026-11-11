@@ -661,6 +661,8 @@ export async function updateCatProfile(
     mcpProfile?: string | null;
     name?: string;
     group?: 'admin' | 'standard';
+    /** SPEC-139 FR-15: 「讓主控貓看到這隻 Cat 的狀態」. */
+    bossCatStatusVisible?: boolean;
     products?: string[];
     archive?: boolean;
     unarchive?: boolean;

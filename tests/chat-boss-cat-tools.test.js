@@ -198,7 +198,7 @@ async function start(t, { withAuth = true, decisionEnabled = true, seed, ...runt
     { timeoutMs: 15_000 });
     return message.id;
   };
-  return { ...fixture, base, headers, chatStore, platformDir, calls: runtimeClient.calls, laneMessages, send };
+  return { ...fixture, base, headers, chatStore, platformDir, auth, calls: runtimeClient.calls, laneMessages, send };
 }
 
 test('SPEC-139 FR-1/FR-2: an isolated session reads the board, and the lane reply receives it', async (t) => {
@@ -889,4 +889,37 @@ test('SPEC-139 FR-10: a later prompt shows lane notices but never the owner\'s c
   assert.match(prompt, /Boss joined a code conversation/u, 'positive control: a lane notice is in the recent context');
   assert.ok(!prompt.includes(card.body), 'the card is not');
   assert.ok(!prompt.includes(card.metadata.bossCatJoinRequest.id));
+});
+
+test('SPEC-139 FR-8: only the owner sets the join policy, and the app shell carries it', async (t) => {
+  const h = await start(t, { decide: () => decision('respond') });
+  const patch = (body, headers = h.headers) => fetch(`${h.base}/api/preferences`,
+    { method: 'PATCH', headers, body: JSON.stringify(body) });
+  const shell = async () => (await (await fetch(`${h.base}/api/app-shell`, { headers: h.headers })).json());
+  assert.equal((await shell()).chat.bossCatJoinPolicy, 'ask', 'absent reads as 「每次問我」');
+  assert.equal((await patch({ bossCatJoinPolicy: 'sometimes' })).status, 400);
+  assert.equal((await patch({ bossCatJoinPolicy: 'allow' }, { 'content-type': 'application/json' })).status, 401);
+  assert.equal((await patch({ bossCatJoinPolicy: 'allow' })).status, 200);
+  assert.equal((await h.chatStore.read()).bossCatJoinPolicy, 'allow');
+  assert.equal((await shell()).chat.bossCatJoinPolicy, 'allow');
+  // A signed-in member who is not the owner cannot widen what Boss Cats may do.
+  const authState = await h.auth.authStore.readState();
+  authState.memberships[0].roles = ['member'];
+  await h.auth.authStore.writeState(authState);
+  const denied = await patch({ bossCatJoinPolicy: 'never' });
+  assert.equal(denied.status, 403);
+  assert.equal((await h.chatStore.read()).bossCatJoinPolicy, 'allow');
+});
+
+test('SPEC-139 FR-15: each Cat\'s visibility switch, absent meaning visible', async (t) => {
+  const h = await start(t, { decide: () => decision('respond') });
+  const setVisible = (visible) => fetch(`${h.base}/api/cats/${h.ids.kiki}`, {
+    method: 'PATCH', headers: h.headers, body: JSON.stringify({ bossCatStatusVisible: visible }) });
+  const kiki = async () => (await h.chatStore.read()).cats.find((cat) => cat.id === h.ids.kiki);
+  assert.equal((await kiki()).hiddenFromBossCat, undefined);
+  assert.equal((await setVisible(false)).status, 200);
+  assert.equal((await kiki()).hiddenFromBossCat, true);
+  assert.equal((await setVisible(true)).status, 200);
+  assert.equal((await kiki()).hiddenFromBossCat, undefined);
+  assert.equal((await setVisible('no')).status >= 400, true);
 });

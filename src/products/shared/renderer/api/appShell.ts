@@ -117,6 +117,28 @@ export async function updateConversationBehaviorPreference(
   );
 }
 
+/** SPEC-139 FR-8: the owner's one join policy for every Boss Cat. */
+export async function updateBossCatJoinPolicyPreference(
+  policy: 'never' | 'ask' | 'allow',
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch('/api/preferences', {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ bossCatJoinPolicy: policy }),
+    signal,
+  });
+
+  return mutateAndRefetch(
+    response,
+    `cats Boss Cat join policy update returned ${response.status}`,
+    signal,
+  );
+}
+
 export async function updateAdvancedDraftControlsPreference(
   patch: AdvancedDraftControlsPatch,
   signal?: AbortSignal,

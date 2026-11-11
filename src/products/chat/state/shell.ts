@@ -26,6 +26,7 @@ import { listPlatformProductDescriptors } from '../../../shared/platformProducts
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
 import { cloneAdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
 import { cloneConversationBehaviorPreferences } from '../../shared/conversationBehavior.js';
+import { resolveBossCatJoinPolicy } from '../shared/bossCatJoins.js';
 import { createDefaultFolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
 import type { AppShellPayload, ChatBotBindingSummary, ChatCatGroup, ChatState } from '../api/contracts.js';
 import { createUnavailableRuntimeSetupSummary } from '../../../runtime/setup.js';
@@ -157,6 +158,7 @@ export function createAppShell(
       folderBrowsePreferences: structuredClone(
         chat.folderBrowsePreferences ?? createDefaultFolderBrowsePreferences(),
       ),
+      bossCatJoinPolicy: resolveBossCatJoinPolicy(chat),
       botBindings,
       newChatAssist: structuredClone(setup?.newChatAssist ?? null),
     },

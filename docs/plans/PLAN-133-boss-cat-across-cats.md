@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | In progress: slices 1 to 5b and 7 implemented; 6 claimed (see below) |
+| Status | In progress: slices 1 to 7 implemented on Desktop; the mobile join card remains (slice 6c) |
 | Owner | Cats Chat |
 | Reviewer | Owner |
 | Date | 2026-11-11 |
@@ -304,10 +304,34 @@ Implemented by the Desktop session that built slices 1 to 5a, which also claims 
 
 Claimed with slice 5b, by the same session.
 
-- [ ] Settings › 主控貓 (`/settings/boss-cat`) after 「助理」, with the FR-8 hint;
-      `/settings/boss-cat` joins `BASE_RESERVED_SETTINGS_PATHS`.
-- [ ] The FR-15 switch on `/entities/cats/:catId/settings`, next to the admin switch.
-- [ ] The join card in the Desktop and mobile conversation views.
+- [x] Settings › 主控貓 (`/settings/boss-cat`, `SettingsBossCat.tsx`) sits after 「助理」.
+      - Its one setting is 「主控貓加入其他對話」: 不允許, 每次問我 or 允許, showing 每次問我 when
+        unset.
+      - The FR-8 hint says joining a Code or Work conversation grants its workspace, and Code
+        also a shell.
+      - Saving goes through `PATCH /api/preferences` with `bossCatJoinPolicy`. That field needs
+        the owner principal (cookie or bearer); anyone else gets 403, and a bad value 400.
+      - The app shell carries the resolved policy, and errors show as toasts (SPEC-073).
+      - `/settings/boss-cat` joins `BASE_RESERVED_SETTINGS_PATHS`.
+- [x] The FR-15 switch, 「讓主控貓看到這隻 Cat 的狀態」, sits on each Cat's settings in Cats
+      Directory, next to the admin switch. It uses `PATCH /api/cats/:id` with
+      `bossCatStatusVisible` (`setCatBossCatVisibility`). Its hint says it does not change the
+      join policy.
+- [x] The join card in the Desktop conversation view (`BossCatJoinRequestCard.tsx`, under the
+      card's own notice):
+      - it reads the live details and answers through the owner-only routes;
+      - each state reads differently: pending with the two buttons, approved, declined,
+        expired, refused with its reason (policy changed, stale, demoted, archived, already a
+        member, full), and gone.
+- [x] Tests:
+      - `tests/chat-boss-cat-tools.test.js`: the owner-only setter (400, 401, 403 for a member)
+        and the shell payload, and the visibility switch;
+      - `tests/boss-cat-settings-ui.test.tsx`: the route and section, the page's default and its
+        save, and the card's grants, approval and every settled state.
+- [ ] 6c: the join card in the mobile conversation view. Until then mobile shows the card's
+      notice, and the owner answers on Desktop; the routes already accept the mobile bearer.
+- [ ] Not yet seen in the running app: the page, the switch and the card were checked by tests
+      and type checks only.
 
 ### Slice 7: Own initiative (FR-13, FR-14)
 

@@ -921,6 +921,26 @@ export function CatsCanvas({
                           <span>{t(messageKeys.sharedSettingsCatsMakeBossCatLabel, { name: selectedCat.name })}</span>
                         </label>
                       ) : null}
+                      {/* SPEC-139 FR-15: next to the admin switch, on each Cat's own settings. */}
+                      {!isArchived ? (
+                        <label
+                          className="fieldLabelInline catsIdentityBossToggle"
+                          data-tooltip={t(messageKeys.sharedSettingsCatsBossCatVisibilityHint)}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedCat.hiddenFromBossCat !== true}
+                            onChange={async (event) => {
+                              await commitCatProfile(
+                                selectedCat.id,
+                                { bossCatStatusVisible: event.target.checked },
+                                t(messageKeys.sharedSettingsCatsBossCatVisibilityError),
+                              );
+                            }}
+                          />
+                          <span>{t(messageKeys.sharedSettingsCatsBossCatVisibilityLabel)}</span>
+                        </label>
+                      ) : null}
                     </div>
                   </div>
                   <label className="fieldLabel">

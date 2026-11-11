@@ -632,6 +632,8 @@ export interface ChatShellState {
   folderBrowsePreferences?: FolderBrowsePreferences;
   botBindings: ChatBotBindingSummary[];
   newChatAssist?: GuideCatAssistSurfaceReadModel | null;
+  /** SPEC-139 FR-8, resolved: absent state reads as `ask`. */
+  bossCatJoinPolicy?: 'never' | 'ask' | 'allow';
 }
 
 export interface AppShellPayload extends PlatformHostEnvelope {

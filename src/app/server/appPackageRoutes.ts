@@ -101,6 +101,8 @@ const BASE_RESERVED_SETTINGS_PATHS = [
   // App cannot claim the old "My Cats" address.
   '/settings/cats',
   '/settings/assistants',
+  // SPEC-139 FR-8: the Boss Cat join policy.
+  '/settings/boss-cat',
   '/settings/apps',
   '/settings/remote-access',
   '/settings/plugins',
