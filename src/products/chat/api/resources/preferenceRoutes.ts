@@ -29,6 +29,9 @@ import {
   type ChatApiRouteContext,
 } from '../routeSupport.js';
 import type { ChatState } from '../../api/contracts.js';
+import { ChatApiError } from '../routeErrors.js';
+import { resolveOwnerStartedSurface } from '../../shared/ownerStarted.js';
+import { resolveBossCatJoinPolicy } from '../../shared/bossCatJoins.js';
 
 const PREFERENCES_MUTATION_GATE_KEY = 'preferences';
 
@@ -41,6 +44,7 @@ function serializePreferences(state: ChatState) {
     advancedDraftControls:
       state.advancedDraftControls ?? createDefaultAdvancedDraftControlsPreferences(),
     folderBrowsePreferences: state.folderBrowsePreferences ?? createDefaultFolderBrowsePreferences(),
+    bossCatJoinPolicy: resolveBossCatJoinPolicy(state),
   };
 }
 
@@ -61,9 +65,13 @@ function applyPreferencePatch(
       directLaneCatId?: string | null;
       path?: string | null;
     };
+    bossCatJoinPolicy?: unknown;
   },
 ): ChatState {
   let nextState = state;
+  if (body.bossCatJoinPolicy === 'never' || body.bossCatJoinPolicy === 'ask' || body.bossCatJoinPolicy === 'allow') {
+    nextState = { ...nextState, bossCatJoinPolicy: body.bossCatJoinPolicy };
+  }
 
   if (body.conversationBehavior && typeof body.conversationBehavior === 'object') {
     nextState = {
@@ -154,7 +162,17 @@ async function handleRestUpdatePreferences(
         directLaneCatId?: string | null;
         path?: string | null;
       };
+      bossCatJoinPolicy?: unknown;
     }>(context.request);
+    // SPEC-139 FR-8: only the owner, signed in on Desktop or mobile, sets the join policy.
+    if (body.bossCatJoinPolicy !== undefined) {
+      if (body.bossCatJoinPolicy !== 'never' && body.bossCatJoinPolicy !== 'ask' && body.bossCatJoinPolicy !== 'allow') {
+        throw new ChatApiError(400, 'invalid_boss_cat_join_policy', 'bossCatJoinPolicy must be never, ask or allow.');
+      }
+      if (!resolveOwnerStartedSurface(context.auth)) {
+        throw new ChatApiError(403, 'owner_required', 'Only the owner can change the Boss Cat join policy.');
+      }
+    }
     const persisted = await context.dependencies.mutationGate.run(
       PREFERENCES_MUTATION_GATE_KEY,
       async () => (

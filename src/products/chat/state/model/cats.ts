@@ -436,6 +436,26 @@ export function setCatGroup(
   return nextState;
 }
 
+/** SPEC-139 FR-15: 「讓主控貓看到這隻 Cat 的狀態」, on unless the owner turns it off. */
+export function setCatBossCatVisibility(
+  state: ChatState,
+  catId: string,
+  visible: boolean,
+): ChatState {
+  const nextState = cloneState(state);
+  const cat = nextState.cats.find((p) => p.id === catId);
+  if (!cat) {
+    throw new Error(`Cat not found: ${catId}`);
+  }
+  if ((cat.hiddenFromBossCat !== true) === visible) {
+    return state;
+  }
+  if (visible) delete cat.hiddenFromBossCat;
+  else cat.hiddenFromBossCat = true;
+  cat.updatedAt = new Date().toISOString();
+  return nextState;
+}
+
 export function updateCatProducts(
   state: ChatState,
   catId: string,

@@ -189,6 +189,16 @@ export function SettingsAppShellSidebar({
                 {t(messageKeys.settingsShellSubsectionAssistants)}
               </span>
             </button>
+            {/* SPEC-139 FR-8: the one join policy for every Boss Cat (ADR-150 decision 5). */}
+            <button
+              type="button"
+              className={navItemClass(isSection('/settings/boss-cat'))}
+              onClick={() => navigate('/settings/boss-cat')}
+            >
+              <span className="navLabel">
+                {t(messageKeys.settingsShellSubsectionBossCat)}
+              </span>
+            </button>
           </nav>
 
           {productEntries.length > 0 ? (

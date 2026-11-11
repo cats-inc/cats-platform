@@ -12,6 +12,7 @@ export {
   refetchAfterMutation,
   updateChatOrchestrator,
   updateAdvancedDraftControlsPreference,
+  updateBossCatJoinPolicyPreference,
   updateConversationBehaviorPreference,
   updateFolderBrowsePreference,
   updateNewChatDefaultsPreference,

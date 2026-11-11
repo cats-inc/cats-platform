@@ -5,6 +5,7 @@ import type { AppShellPayload as WorkspaceAppShellPayload } from '../../../produ
 import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
 import { SettingsAssistants } from './SettingsAssistants.js';
+import { SettingsBossCat } from './SettingsBossCat.js';
 import { ModelSettingsFocusOnArrival } from '../SavedSelectionAvatarAttention.js';
 import { PlatformSettingsApps } from './PlatformSettingsApps.js';
 import { PlatformSettingsRemoteAccess } from './PlatformSettingsRemoteAccess.js';
@@ -44,6 +45,9 @@ export function resolveSettingsSectionConfig(
   }
   if (isSettingsSectionPath(pathname, '/settings/assistants')) {
     return { section: 'assistants', title: translate('settingsRouteTitleAssistants') };
+  }
+  if (isSettingsSectionPath(pathname, '/settings/boss-cat')) {
+    return { section: 'boss-cat', title: translate('settingsRouteTitleBossCat') };
   }
   if (isSettingsSectionPath(pathname, '/settings/chat')) {
     return { section: 'chat', title: translate('settingsRouteTitleChat') };
@@ -114,6 +118,15 @@ export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShel
             />
             <ModelSettingsFocusOnArrival />
           </>
+        )}
+      />
+      <Route
+        path="boss-cat"
+        element={(
+          <SettingsBossCat
+            payload={payload}
+            onPayloadUpdate={onWorkspacePayloadUpdate}
+          />
         )}
       />
       <Route

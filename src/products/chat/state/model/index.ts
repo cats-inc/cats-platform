@@ -122,6 +122,7 @@ export {
   isDefaultCatName,
   pickAvatarColor,
   renameCat,
+  setCatBossCatVisibility,
   setCatGroup,
   setCatCompanion,
   unarchiveCat,

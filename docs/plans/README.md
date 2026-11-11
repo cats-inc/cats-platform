@@ -15,7 +15,7 @@
   owner-started stamp, the status board, the board tool in an isolated session, group
   conversations the Boss Cat creates, joining (under 「允許」, or the owner's card under
   「每次問我」) and leaving with the continuity bound, and the Boss Cat's own initiative with a
-  peer section. The UI (slice 6) remains.
+  peer section, and the owner UI on Desktop (slice 6). The mobile join card remains.
 
 - [PLAN-132: Codex session retention](PLAN-132-codex-session-retention.md)
   — implemented, unpublished, 2026-11-11; ephemeral Catlas jobs, Runtime capability admission and

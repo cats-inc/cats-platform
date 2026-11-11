@@ -101,22 +101,38 @@ export function appendBossCatLaneNotice(
  */
 export function applyBossCatJoin(
   state: ChatState,
-  input: { laneId: string; sourceMessageId: string; conversationId: string; bossCatId: string; at: Date },
+  input: {
+    laneId: string;
+    sourceMessageId: string;
+    conversationId: string;
+    bossCatId: string;
+    at: Date;
+    /** The card's own line already says so when the owner approved it there. */
+    laneNotice?: boolean;
+  },
 ): ChatState {
   const target = state.channels.find((entry) => entry.id === input.conversationId)!;
   const boss = state.cats.find((cat) => cat.id === input.bossCatId)!;
   let next = assignCatToChannel(state, input.conversationId, { catId: boss.id }, input.at);
+  const at = input.at.toISOString();
   next.channels = next.channels.map((entry) => entry.id === input.conversationId
     ? {
         ...entry,
         coordinatorParticipantId: target.coordinatorParticipantId,
-        bossCatJoins: { ...entry.bossCatJoins, [boss.id]: { since: input.at.toISOString() } },
+        bossCatJoins: { ...entry.bossCatJoins, [boss.id]: { since: at } },
+        // FR-16: a rejoin shows as a join, like the first time.
+        messages: entry.messages.map((message) => message.createdAt === at
+          && message.metadata?.event === 'cat_assignment_reused' && message.metadata?.catId === boss.id
+          ? { ...message, body: `${boss.name} joined the chat.`, metadata: { ...message.metadata, event: 'cat_assigned' } }
+          : message),
       }
     : entry);
-  next = appendBossCatLaneNotice(next, {
-    laneId: input.laneId, sourceMessageId: input.sourceMessageId, target, bossName: boss.name,
-    kind: 'joined', at: input.at,
-  });
+  if (input.laneNotice !== false) {
+    next = appendBossCatLaneNotice(next, {
+      laneId: input.laneId, sourceMessageId: input.sourceMessageId, target, bossName: boss.name,
+      kind: 'joined', at: input.at,
+    });
+  }
   return next;
 }
 
@@ -255,7 +271,7 @@ export function decideBossCatJoinRequest(
   let next: ChatState;
   try {
     next = applyBossCatJoin(latest, {
-      laneId: input.laneId, sourceMessageId: record.sourceMessageId, at: input.now, ...ids,
+      laneId: input.laneId, sourceMessageId: record.sourceMessageId, at: input.now, laneNotice: false, ...ids,
     });
   } catch {
     return refuse('participant_limit');

@@ -3,6 +3,7 @@ import {
   buildChannelView,
   renameCat,
   requireCat,
+  setCatBossCatVisibility,
   setCatGroup,
   setCatCompanion,
   updateCatExecutionTarget,
@@ -79,6 +80,7 @@ async function handleCanonicalUpdateCat(
       mcpProfile?: string | null;
       name?: string;
       group?: ChatCatGroup;
+      bossCatStatusVisible?: boolean;
       products?: string[];
       archive?: boolean;
       unarchive?: boolean;
@@ -124,6 +126,12 @@ async function handleCanonicalUpdateCat(
       }
       if (body.group !== undefined) {
         state = setCatGroup(state, catId, body.group);
+      }
+      if (body.bossCatStatusVisible !== undefined) {
+        if (typeof body.bossCatStatusVisible !== 'boolean') {
+          throw new Error('Cat bossCatStatusVisible must be a boolean');
+        }
+        state = setCatBossCatVisibility(state, catId, body.bossCatStatusVisible);
       }
       if (body.products !== undefined) {
         state = updateCatProducts(state, catId, body.products);
