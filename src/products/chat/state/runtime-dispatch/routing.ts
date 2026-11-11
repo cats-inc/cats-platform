@@ -7,6 +7,7 @@ import { appendCollaborationReport } from '../orchestratorCollaborationReport.js
 import { OWNER_STARTED_METADATA_KEY, withoutOwnerStarted } from '../../shared/ownerStarted.js';
 import {
   attachBossCatTurnRecord,
+  dropSettledBossCatBoards,
   readBossCatTurnRecord,
   resolveBossCatTurnGate,
 } from '../bossCatSurface.js';
@@ -7628,6 +7629,7 @@ export async function continueBegunChannelMessageDispatch(
     userMessageId: userMessage.id,
     describeGuardReason,
   });
+  nextState = dropSettledBossCatBoards(nextState, channelId, userMessage.id);
   nextState = await persistInFlightDispatchState(options.chatStore, nextState);
   options.onStateWritten?.(channelId);
 

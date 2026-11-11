@@ -228,8 +228,8 @@ async function runBossCatDecision(
           conversationId: resolveChannelCanonicalIdentity(input.state, input.channelId).conversationId,
         })
       : undefined,
-    request: async (observation, sessionId, feedback) => requestProviderAgentDecision({
-      runtimeClient: input.runtimeClient,
+    request: async (observation, runtime, sessionId, feedback) => requestProviderAgentDecision({
+      runtimeClient: runtime,
       observation,
       toolResults: feedback.length > 0 ? feedback : undefined,
       promptSession,

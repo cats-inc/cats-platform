@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -16,7 +16,9 @@ import {
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import {
   BOSS_STATUS_BOARD,
+  bossCatToolDescriptors,
   resolveBossCatTurnGate,
+  runBossCatDecisionLoop,
 } from '../build/server/products/chat/state/bossCatSurface.js';
 import { createAuthenticatedTestSession, createTestAuthConfig, waitForCondition } from './testUtils.js';
 
@@ -79,6 +81,7 @@ test('SPEC-139 FR-1: the tools are offered only for an owner-started turn in the
 });
 
 function decision(kind) {
+  if (kind === 'garbage') return 'not a decision';
   return kind === 'board'
     ? { contractVersion: 1, kind: 'tool_request', decisionId: 'read-board', confidence: 'high',
       toolName: BOSS_STATUS_BOARD, target: { kind: 'worker_tool', toolName: BOSS_STATUS_BOARD }, input: {},
@@ -89,7 +92,7 @@ function decision(kind) {
 }
 
 function runtime(platformDir, { decide = () => decision('board'), failLane = false } = {}) {
-  const calls = { decisionCreates: [], decisionSends: [], laneSends: [], closed: [], failLane };
+  const calls = { decisionCreates: [], decisionSends: [], laneSends: [], closed: [], cancelled: [], failLane };
   return {
     calls,
     async getHealth() { return { reachable: true, status: 'ok', version: '0.3.1' }; },
@@ -110,11 +113,15 @@ function runtime(platformDir, { decide = () => decision('board'), failLane = fal
       return { id: 'lane-session', provider: input.provider, model: input.model, status: 'ready', cwd: platformDir };
     },
     async observeSession(id) { return { session: { id, status: 'ready', provider: 'claude', model: 'fixture', cwd: platformDir } }; },
-    async cancelSession() {},
+    async cancelSession(id) { calls.cancelled.push(id); },
     async closeSession(id) { calls.closed.push(id); },
     async sendMessage(sessionId, content, options) {
       if (sessionId === 'decision-session') {
         calls.decisionSends.push(content);
+        const value = decide(calls.decisionSends.length - 1);
+        if (typeof value === 'string') {
+          return { segments: [{ kind: 'text', text: value, toolName: null, toolId: null }], inputTokens: 1, outputTokens: 1, tokensUsed: 2 };
+        }
         return { segments: [{ kind: 'text', text: JSON.stringify(decide(calls.decisionSends.length - 1)), toolName: null, toolId: null }],
           inputTokens: 10, outputTokens: 10, tokensUsed: 20 };
       }
@@ -139,6 +146,9 @@ async function start(t, { withAuth = true, decisionEnabled = true, seed, ...runt
   const fixture = world(new Date());
   seed?.(fixture.state);
   await chatStore.write(fixture.state);
+  // In the app `chatStatePath` is a file; evidence must not be written beneath it.
+  await mkdir(join(platformDir, 'state'), { recursive: true });
+  await writeFile(join(platformDir, 'state/chat.json'), '{}');
   const runtimeClient = runtime(platformDir, runtimeOptions);
   const server = createServer({ shared: { config: { host: '127.0.0.1', port: 0, runtimeBaseUrl: 'http://127.0.0.1:3110',
     runtimeApiKey: '', platformDir, chatStatePath: join(platformDir, 'state/chat.json'), runtimeDataDir: join(platformDir, 'runtime'),
@@ -190,10 +200,11 @@ test('SPEC-139 FR-1/FR-2: an isolated session reads the board, and the lane repl
   const source = (await h.laneMessages()).find((message) => message.id === messageId);
   assert.equal(source.metadata.ownerStarted, 'desktop');
   assert.equal(source.metadata.bossCatTurn.receipts[0].status, 'applied');
+  assert.equal(source.metadata.bossCatTurn.receipts[0].board, undefined, 'a settled reply drops the stored board');
   assert.equal((await h.chatStore.read()).bossCatUsage.filter((entry) => entry.kind === 'board').length, 1);
 
   // FR-16: the supervision record names the call with ids only.
-  const evidence = await readFile(join(h.platformDir, 'state/chat.json/evidence',
+  const evidence = await readFile(join(h.platformDir, 'state/evidence',
     `conversation-channel-${h.bossLane}.jsonl`), 'utf8');
   assert.match(evidence, /chat\.boss\.status_board/u);
   assert.doesNotMatch(evidence, /Kiki|Mochi|Which Cats/u);
@@ -233,4 +244,64 @@ test('SPEC-139: a retry replays the receipts and calls no tool again', async (t)
   assert.equal(h.calls.decisionCreates.length, 1, 'no second decision session');
   assert.match(h.calls.laneSends.at(-1).instructions, /Status board \(JSON\)/u);
   assert.equal((await h.chatStore.read()).bossCatUsage.length, 1);
+});
+
+test('SPEC-139: a malformed decision closes its session, and the reply still arrives', async (t) => {
+  const h = await start(t, { decide: () => decision('garbage') });
+  const messageId = await h.send('Which Cats need my attention?');
+  assert.equal(h.calls.decisionCreates.length, 1);
+  assert.ok(h.calls.closed.includes('decision-session'));
+  assert.ok(h.calls.cancelled.includes('decision-session'), 'a stopped decision is cancelled first');
+  assert.doesNotMatch(h.calls.laneSends.at(-1).instructions, /Status board/u);
+  const source = (await h.laneMessages()).find((message) => message.id === messageId);
+  assert.equal(source.metadata.bossCatTurn, undefined);
+});
+
+test('SPEC-139: a decision that never answers stops at its deadline and closes its session', async () => {
+  const { state, ids, bossLane } = world();
+  const calls = { cancelled: [], closed: [] };
+  const runtimeClient = {
+    async createSession() { return { id: 'decision-session', status: 'ready' }; },
+    async sendMessage() { return new Promise(() => {}); },
+    async cancelSession(id) { calls.cancelled.push(id); },
+    async closeSession(id) { calls.closed.push(id); },
+  };
+  const started = Date.now();
+  const record = await runBossCatDecisionLoop({
+    channelId: bossLane, sourceMessageId: 'message-1', bossCatId: ids.boss,
+    observation: { observationId: 'o', runId: 'r', availableTools: bossCatToolDescriptors(),
+      actor: { actorRef: `cat:${ids.boss}` }, policy: { dials: { toolScope: 'read_only' } },
+      budget: { maxDurationMs: 50, hardStop: true } },
+    runtimeClient,
+    readState: async () => state,
+    updateState: async (mutate) => mutate(state),
+    request: async (_observation, runtime) => {
+      const created = await runtime.createSession({});
+      return runtime.sendMessage(created.id, 'x');
+    },
+  });
+  assert.equal(record, null);
+  assert.ok(Date.now() - started < 3_000);
+  assert.deepEqual(calls.cancelled, ['decision-session']);
+  assert.deepEqual(calls.closed, ['decision-session']);
+});
+
+test('SPEC-139: a Desktop retry of a message that was not owner-started runs no tool', async (t) => {
+  const h = await start(t, { failLane: true, decide: () => decision('respond') });
+  const messageId = await h.send('Which Cats need my attention?');
+  // As if it had come from Telegram: the stored message carries no stamp.
+  const state = await h.chatStore.read();
+  delete state.channels.find((entry) => entry.id === h.bossLane).messages
+    .find((message) => message.id === messageId).metadata.ownerStarted;
+  await h.chatStore.write(state);
+  const decisions = h.calls.decisionCreates.length;
+  const failedSends = h.calls.laneSends.length;
+  h.calls.failLane = false;
+  const retry = await fetch(`${h.base}/api/channels/${h.bossLane}/messages/${messageId}/retry`, { method: 'POST', headers: h.headers });
+  assert.equal(retry.status, 200, await retry.clone().text());
+  await waitForCondition(() => h.calls.laneSends.length > failedSends, { timeoutMs: 15_000 });
+  assert.equal(h.calls.decisionCreates.length, decisions);
+  const source = (await h.laneMessages()).find((message) => message.id === messageId);
+  assert.equal(source.metadata.ownerStarted, undefined);
+  assert.equal(source.metadata.bossCatTurn, undefined);
 });

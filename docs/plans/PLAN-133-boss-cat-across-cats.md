@@ -102,9 +102,21 @@ are tested as live behaviour.
 - [x] The decision session has its own create input: sandbox, `read_only`, `default`,
       isolated, no skills, no cwd, no product knowledge. It sees the owner's message only (and,
       in later calls, the receipts). It is closed when the loop ends.
+- [x] The loop carries K2's guards:
+      - the session id is captured at creation, so a failed call still cancels and closes it;
+      - a hard deadline (the observation's 30 s) and Stop polling, since the lane's turn is
+        already active;
+      - native tool activity is refused;
+      - a stopped loop logs a diagnostic with ids only and falls through to the reply.
 - [x] Limits are persisted in `ChatState.bossCatUsage`: 30 boards an hour per owner, across
-      every Boss Cat. FR-16: the tool boundary writes a durable evidence record (ids and
-      status) in the directory Work and Code use, which data reset clears.
+      every Boss Cat.
+- [x] FR-16: the tool boundary writes a durable evidence record, with ids and status, to
+      `<platform>/state/evidence/<conversation>.jsonl`. Data reset clears that directory.
+      (`chatStatePath` is a file, so it cannot be the evidence directory. Work and Code
+      default to it today; that is a separate problem.)
+- [x] A stored board is dropped from its receipt once the reply for that message settles. A
+      failed reply keeps it for the retry. Backticks in names and titles become quotes, so they
+      cannot close the board's fence.
 - [x] Boards are bounded: 40 Cats and the 30 most recently active groups, with counts of what
       was left out.
 - [x] Tests: `tests/chat-boss-cat-tools.test.js`. They cover the gate matrix and, through an
@@ -116,7 +128,10 @@ are tested as live behaviour.
       - no tools without an authenticated owner, with the flag off, or when the Boss Cat
         declines;
       - a retry replaying receipts;
-      - the evidence record.
+      - the evidence record, with a real file at `chatStatePath`;
+      - a malformed decision, which closes its session while the reply still arrives;
+      - a decision that never answers, which stops at its deadline;
+      - a Desktop retry of a message that carries no stamp.
 
 ### Slice 4b: Group conversations
 
@@ -125,6 +140,11 @@ are tested as live behaviour.
 - [ ] Created groups: Chat, no repository or cwd, `read_only`, `default`; the opening message
       posted without dispatch; the invited Cats load no companion memory there; a notice in the
       Boss Cat's lane.
+- [ ] Write each receipt in the same atomic store update as its effect. The dispatch merge keeps
+      an edit to an existing message only when no other writer touched it.
+- [ ] A retry of a message rebuilt from Core keeps the stamp but not `bossCatTurn`, so it would
+      run the tools again. Carry a marker in the Core turn metadata, or refuse tools on a rebuilt
+      message.
 
 ### Slice 5: Joining
 

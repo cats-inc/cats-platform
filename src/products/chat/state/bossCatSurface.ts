@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type {
   BossCatToolReceipt,
   BossCatTurnRecord,
@@ -52,6 +53,14 @@ export const BOSS_CAT_BOARD_MAX_CATS = 40;
 export const BOSS_CAT_BOARD_MAX_GROUPS = 30;
 const BOSS_CAT_MAX_DECISION_CALLS = 3;
 
+/**
+ * SPEC-139 FR-16: Boss Cat supervision records go under the state directory
+ * (`<platform>/state/evidence/<conversation>.jsonl`). `chatStatePath` itself is a file.
+ */
+export function resolveBossCatEvidenceDataDir(chatStatePath: string): string {
+  return path.dirname(chatStatePath);
+}
+
 export interface BossCatTurnGate {
   bossCatId: string;
   participantId: string;
@@ -97,6 +106,24 @@ export function attachBossCatTurnRecord(
     .find((entry) => entry.id === messageId);
   if (message) message.metadata = { ...message.metadata, [BOSS_CAT_TURN_METADATA_KEY]: record };
   return next;
+}
+
+/**
+ * Once the reply for that message settled, a stored board has done its job: the receipt keeps
+ * its ids and status, and the board goes. A failed reply keeps it for the retry.
+ */
+export function dropSettledBossCatBoards(state: ChatState, channelId: string, messageId: string): ChatState {
+  const channel = state.channels.find((entry) => entry.id === channelId);
+  const message = channel?.messages.find((entry) => entry.id === messageId);
+  const record = readBossCatTurnRecord(message);
+  if (!record?.receipts.some((receipt) => receipt.board !== undefined)
+    || channel?.roomRouting?.lastOutcome?.status === 'error') {
+    return state;
+  }
+  return attachBossCatTurnRecord(state, channelId, messageId, {
+    ...record,
+    receipts: record.receipts.map(({ board: _board, ...receipt }) => receipt),
+  });
 }
 
 export function countBossCatUsage(
@@ -191,9 +218,12 @@ export interface RunBossCatDecisionLoopInput extends BossCatBoardSources {
   bossCatId: string;
   observation: ProviderAgentBoundedObservation;
   runtimeClient: RuntimeClient;
-  /** One isolated decision; the session is reused across calls and closed by the loop. */
-  request: (observation: ProviderAgentBoundedObservation, sessionId: string | null,
-    feedback: ProviderAgentToolFeedback[]) => Promise<ProviderAgentAdapterResult>;
+  /**
+   * One isolated decision through `runtime` (the loop's guarded client); the session is reused
+   * across calls and closed by the loop.
+   */
+  request: (observation: ProviderAgentBoundedObservation, runtime: RuntimeClient,
+    sessionId: string | null, feedback: ProviderAgentToolFeedback[]) => Promise<ProviderAgentAdapterResult>;
   isCancelled?: () => boolean;
   now?: () => Date;
   evidenceSink?: ToolBoundaryEvidenceSink;
@@ -216,17 +246,61 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
   const receipts: BossCatToolReceipt[] = [];
   const feedback: ProviderAgentToolFeedback[] = [];
   let sessionId: string | null = null;
+  let stopped = false;
+  let completed = false;
+  // Like K2: the session id is captured at creation, so a call that fails afterwards still
+  // closes it, and nothing runs once the loop has stopped.
+  const runtime = new Proxy(input.runtimeClient, {
+    get(target, property) {
+      if (property === 'createSession') {
+        return async (...args: Parameters<RuntimeClient['createSession']>) => {
+          const created = await target.createSession(...args);
+          sessionId = created.id;
+          if (stopped) throw new Error('boss_cat_stopped');
+          return created;
+        };
+      }
+      if (property === 'sendMessage') {
+        return async (...args: Parameters<RuntimeClient['sendMessage']>) => {
+          if (stopped) throw new Error('boss_cat_stopped');
+          return target.sendMessage(...args);
+        };
+      }
+      const value = Reflect.get(target, property);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+  // The lane's turn is already active, so the decision has a hard deadline and honors Stop.
+  const deadline = Date.now() + (input.observation.budget.maxDurationMs ?? 30_000);
+  const bounded = async <T>(operation: () => Promise<T>): Promise<T> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let poll: ReturnType<typeof setInterval> | undefined;
+    try {
+      return await Promise.race([operation(), new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('budget_exhausted')), Math.max(1, deadline - Date.now()));
+        poll = setInterval(() => {
+          if (input.isCancelled?.()) reject(new Error('cancelled'));
+        }, 100);
+      })]);
+    } finally {
+      clearTimeout(timer);
+      clearInterval(poll);
+    }
+  };
   try {
     for (let call = 0; call < BOSS_CAT_MAX_DECISION_CALLS; call += 1) {
       const used = new Set(receipts.filter((receipt) => receipt.status === 'applied').map((receipt) => receipt.toolName));
       const availableTools = input.observation.availableTools.filter(({ manifest }) =>
         isBossCatTool(manifest.name) && !used.has(manifest.name));
       if (availableTools.length === 0 || input.isCancelled?.()) break;
-      const response = await input.request({
+      const response = await bounded(() => input.request({
         ...input.observation,
         observationId: `${input.observation.observationId}:boss:${call}`,
         availableTools,
-      }, sessionId, feedback);
+      }, runtime, sessionId, feedback));
+      if (response.runtimeMessage.segments.some((segment) => segment.kind !== 'text')) {
+        throw new Error('native_tool_activity');
+      }
       sessionId = response.sessionId;
       const decision = response.decision;
       if (decision.kind !== 'tool_request'
@@ -285,12 +359,28 @@ export async function runBossCatDecisionLoop(input: RunBossCatDecisionLoopInput)
       feedback.push({ toolName: decision.toolName, decisionId: decision.decisionId, result });
       if (result.status !== 'applied') break;
     }
-  } catch {
+    completed = true;
+  } catch (error) {
     // A failed decision before any tool falls through to the ordinary reply; after one, the
-    // receipts so far still reach it.
+    // receipts so far still reach it. Ids only: never the message, the board or the error text.
+    console.warn('Boss Cat decision stopped.', {
+      channelId: input.channelId,
+      sourceMessageId: input.sourceMessageId,
+      reason: error instanceof Error && /^[a-z_]+$/u.test(error.message) ? error.message : 'decision_failed',
+      receipts: receipts.length,
+    });
   } finally {
-    if (sessionId) {
-      await input.runtimeClient.closeSession(sessionId).catch(() => {});
+    stopped = true;
+    const id: string | null = sessionId;
+    if (id) {
+      const cleanup = async () => {
+        if (!completed) await input.runtimeClient.cancelSession(id).catch(() => {});
+        await input.runtimeClient.closeSession(id).catch(() => {});
+      };
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([cleanup(), new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, 1000);
+      })]).finally(() => clearTimeout(timer));
     }
   }
   return receipts.length > 0 ? { schemaVersion: 1, bossCatId: input.bossCatId, receipts } : null;

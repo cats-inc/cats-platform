@@ -102,9 +102,12 @@ export interface BuildBossCatBoardInput {
 // Control characters, and bidirectional embeddings, overrides, isolates and marks.
 const UNSAFE_TEXT = /[\p{Cc}؜‎‏‪-‮⁦-⁩]/gu;
 
-/** FR-4: one line, no control or bidi-override characters, at most 80 characters. */
+/**
+ * FR-4: one line, no control or bidi-override characters, at most 80 characters. Backticks
+ * become quotes, so a name or title cannot close the fence the board travels in.
+ */
 export function sanitizeBoardText(value: string | null | undefined): string | null {
-  const flat = (value ?? '').replace(UNSAFE_TEXT, ' ').replace(/\s+/gu, ' ').trim();
+  const flat = (value ?? '').replace(UNSAFE_TEXT, ' ').replace(/`/gu, "'").replace(/\s+/gu, ' ').trim();
   if (!flat) return null;
   const characters = Array.from(flat);
   return characters.length > BOSS_CAT_BOARD_TEXT_LIMIT

@@ -4,6 +4,7 @@ import type { IncomingMessage } from 'node:http';
 import { access, readFile, readdir, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { resolveBossCatEvidenceDataDir } from '../../products/chat/state/bossCatSurface.js';
 import { createPlatformChildProcessEnv } from '../../shared/platformChildProcessEnv.js';
 import { resolvePlatformPackageRoot } from '../../shared/platformPaths.js';
 import type { ResolvedServerDependencies } from './contracts.js';
@@ -496,7 +497,8 @@ export async function routeRequest(
       withPlatformDataReset: dependencies.shared.withPlatformDataReset,
       runtimeDataResetAvailable: dependencies.shared.startup.mode === 'app-managed'
         && dependencies.shared.startup.managedBy === 'cats-electron',
-      resetEvidenceDirectories: [dependencies.work.evidenceDataDir, dependencies.code.evidenceDataDir]
+      resetEvidenceDirectories: [dependencies.work.evidenceDataDir, dependencies.code.evidenceDataDir,
+        resolveBossCatEvidenceDataDir(dependencies.shared.config.chatStatePath)]
         .filter((directory): directory is string => typeof directory === 'string')
         .map(directory => `${directory}/evidence`),
       config: dependencies.shared.config,
