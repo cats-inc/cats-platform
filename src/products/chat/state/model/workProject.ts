@@ -21,7 +21,8 @@ export type WorkProjectRefusal =
   | 'project_archived'
   | 'supervised_run_active';
 
-const ACTIVE_RUN = new Set(['queued', 'running']);
+/** A supervised run under way or waiting for the owner; `blocked` is how Work holds one for a decision. */
+const ACTIVE_RUN = new Set(['queued', 'running', 'blocked']);
 
 export function readChannelWorkProjectId(channel: Pick<ChatChannelState, 'workProjectId'>): string | null {
   return typeof channel.workProjectId === 'string' && channel.workProjectId ? channel.workProjectId : null;
@@ -32,8 +33,8 @@ function isParallelMember(state: ChatState, channelId: string): boolean {
 }
 
 /**
- * FR-23: a supervised run of the conversation's Tasks that is queued, running or waiting for
- * approval. Turn Runs and the projected Work Item's status do not count.
+ * FR-23: a supervised run of the conversation's Tasks that is queued, running, blocked or waiting
+ * for approval. Turn Runs and the projected Work Item's status do not count.
  */
 export function hasActiveSupervisedRun(core: Pick<CatsCoreState, 'tasks' | 'runs'>, conversationId: string): boolean {
   const taskIds = new Set(core.tasks.filter((task) => task.conversationId === conversationId).map((task) => task.id));

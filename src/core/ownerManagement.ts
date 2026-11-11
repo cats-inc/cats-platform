@@ -67,7 +67,12 @@ export function ownerDeleteBlockers(core: CatsCoreState, family: OwnerSubjectFam
     const conversations = core.workItems.filter(item => item.projectId === id && item.id.startsWith(PROJECTED_WORK_ITEM_PREFIX));
     if (conversations.length) blockers.push(`Take its conversations out of this Project first: ${conversations.map(item => item.title).join(', ')}`);
   }
-  for (const dependency of ownerRecordDependencies(core, family, id)) blockers.push(`${dependency.family}: ${dependency.title}`);
+  for (const dependency of ownerRecordDependencies(core, family, id)) {
+    // SPEC-142 FR-27: a Project's activity notes are its history, not work in it. They stay, naming
+    // a Project that is gone, and do not keep the owner from deleting it.
+    if (family === 'project' && dependency.family === 'activity') continue;
+    blockers.push(`${dependency.family}: ${dependency.title}`);
+  }
   return blockers;
 }
 

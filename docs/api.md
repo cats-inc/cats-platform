@@ -813,13 +813,15 @@ these routes; any other principal gets `403 owner_required`.
   `409 revision_stale`. It answers `{ projectId, revision }`.
   - Refusals (409 unless noted): `not_work_level`, `direct_lane`, `parallel_member`,
     `conversation_archived`, `project_not_found` (404), `project_archived`,
-    `supervised_run_active` (a supervised run of the conversation's Tasks queued, running or
-    waiting for approval; Turn Runs do not count), `revision_required` and `invalid_project`
-    (400).
+    `supervised_run_active` (a supervised run of the conversation's Tasks queued, running,
+    blocked or waiting for approval; Turn Runs do not count), `revision_required` and
+    `invalid_project` (400).
   - The change is one atomic write of the conversation and Core: the projected Work Item takes
     the Project, the Work Items parented under it follow, and an activity records the actor and,
-    for a confirmed proposal, `confirmedByActorId`. It does not wait for a running turn, and a
-    turn's later write of an older copy keeps it.
+    for a confirmed proposal, `confirmedByActorId`. The note names the conversation and the
+    Projects by title only, so a Project the conversation has left can be deleted. It does not
+    wait for a running turn, and a turn's later write of an older copy keeps it.
+  - Folders in the answer are shown whole, with any hidden character written out as `⟦U+…⟧`.
 
 A confirmed `conversation.work_project` card performs the same write.
 

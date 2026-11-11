@@ -61,7 +61,8 @@ test('the owner puts a Work conversation into a Project: its projected Work Item
   assert.equal(core.workItems.find((entry) => entry.id === 'wi-child').projectId, 'project-site');
   const activity = core.activities.find((entry) => entry.metadata?.conversationWorkProject);
   assert.equal(activity.actorId, core.ownerProfile.actorId);
-  assert.deepEqual(activity.metadata.conversationWorkProject, { previous: null, projectId: 'project-site' });
+  assert.deepEqual(activity.metadata.conversationWorkProject, { change: 'joined' });
+  assert.equal(activity.projectId, null, 'the note belongs to the conversation, not to the Project');
 
   // Work lists the conversation under the Project.
   const listed = buildWorkProjectListProjection(core).projects.find((entry) => entry.id === 'project-site');
@@ -111,11 +112,15 @@ test('the refusals of FR-23: level, archived or unknown Project, and a supervise
   assert.deepEqual(await applyChannelWorkProject(store, { channelId, projectId: 'nope', now: NOW }), { refusal: 'project_not_found' });
   // A Turn Run, even blocked or running, does not count.
   await addRun(store, channelId, { status: 'running', turn: true });
-  await addRun(store, channelId, { status: 'blocked', turn: false });
+  await addRun(store, channelId, { status: 'blocked', turn: true });
   assert.equal('refusal' in await applyChannelWorkProject(store, { channelId, projectId: 'project-site', now: NOW }), false);
-  await addRun(store, channelId, { status: 'queued', turn: false });
-  assert.deepEqual(await applyChannelWorkProject(store, { channelId, projectId: 'project-bare', now: NOW }),
-    { refusal: 'supervised_run_active' });
+  // A supervised run that is blocked waits for the owner, so it counts, as queued or running does.
+  for (const status of ['blocked', 'queued', 'running']) {
+    const fresh = await setup();
+    await addRun(fresh.store, fresh.channelId, { status, turn: false });
+    assert.deepEqual(await applyChannelWorkProject(fresh.store, { channelId: fresh.channelId, projectId: 'project-bare', now: NOW }),
+      { refusal: 'supervised_run_active' }, status);
+  }
 });
 
 test('a parallel member cannot belong to a Project', async () => {
@@ -162,6 +167,16 @@ test('FR-27: Turn Runs are not a Project\'s active work, and conversations block
   // Work's own controls still refuse to edit the projected Work Item.
   const own = ownerActionView(await store.readCore(), 'work_item', `work-item-chat-channel-${channelId}`);
   assert.ok(own.actions.find((entry) => entry.action === 'edit').blockers.some((line) => /source conversation/u.test(line)));
+});
+
+test('FR-27: a Project its conversations have left can be deleted again', async () => {
+  const { store, channelId } = await setup();
+  await applyChannelWorkProject(store, { channelId, projectId: 'project-bare', now: NOW });
+  const deleteBlockers = async () => ownerActionView(await store.readCore(), 'project', 'project-bare')
+    .actions.find((entry) => entry.action === 'delete').blockers;
+  assert.notDeepEqual(await deleteBlockers(), []);
+  await applyChannelWorkProject(store, { channelId, projectId: null, now: NOW });
+  assert.deepEqual(await deleteBlockers(), [], 'neither the join nor the leave note names the Project');
 });
 
 test('the conversation kind: an admin coordinator proposes, the owner confirms, both are recorded (FR-13, FR-16, FR-19)', async () => {
