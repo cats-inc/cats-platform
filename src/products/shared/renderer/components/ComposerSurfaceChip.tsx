@@ -8,6 +8,7 @@ export interface ComposerSurfaceChipProps {
   surface: PlatformSurfaceId;
   onDismiss?: () => void;
   disabled?: boolean;
+  title?: string;
 }
 
 const SURFACE_LABEL_KEYS: Record<PlatformSurfaceId, keyof typeof messageKeys> = {
@@ -16,7 +17,7 @@ const SURFACE_LABEL_KEYS: Record<PlatformSurfaceId, keyof typeof messageKeys> = 
   code: 'sharedComposerSurfaceLabelCode',
 };
 
-function renderSurfaceIcon(surface: PlatformSurfaceId): ReactNode {
+export function renderSurfaceIcon(surface: PlatformSurfaceId): ReactNode {
   const common = {
     width: 12,
     height: 12,
@@ -51,11 +52,11 @@ function renderSurfaceIcon(surface: PlatformSurfaceId): ReactNode {
   );
 }
 
-export function ComposerSurfaceChip({ surface, onDismiss, disabled = false }: ComposerSurfaceChipProps) {
+export function ComposerSurfaceChip({ surface, onDismiss, disabled = false, title }: ComposerSurfaceChipProps) {
   const { t } = useI18n();
   const label = t(messageKeys[SURFACE_LABEL_KEYS[surface]]);
   return (
-    <span className={`composerSurfaceChip composerSurfaceChip${capitalize(surface)}`}>
+    <span className={`composerSurfaceChip composerSurfaceChip${capitalize(surface)}`} title={title}>
       {renderSurfaceIcon(surface)}
       <span>{label}</span>
       {onDismiss ? (
@@ -75,6 +76,6 @@ export function ComposerSurfaceChip({ surface, onDismiss, disabled = false }: Co
   );
 }
 
-function capitalize<T extends string>(value: T): Capitalize<T> {
+export function capitalize<T extends string>(value: T): Capitalize<T> {
   return (value.charAt(0).toUpperCase() + value.slice(1)) as Capitalize<T>;
 }

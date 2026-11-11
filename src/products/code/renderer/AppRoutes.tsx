@@ -18,7 +18,6 @@ import { CodeConversationView } from './components/CodeConversationView.js';
 import { CodeCanvasPreviewButton } from './components/CodeCanvasPreviewButton.js';
 import { CodePreviewCanvasControls } from './components/CodePreviewCanvasControls.js';
 import { CodeTaskPillsBar } from './components/CodeTaskPillsBar.js';
-import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSurfaceChip.js';
 import { ArtifactDetailView } from './components/ArtifactDetailView.js';
 import { KnowledgeContributionsPage } from './components/KnowledgeContributionsPage.js';
 import { ArtifactsListPage } from './components/artifacts/ArtifactsListPage.js';
@@ -154,7 +153,6 @@ export function AppRoutes({
           <ActiveCodeComposerChips channel={ctx.selectedChannel} placement="where" />
         )}
         renderComposerFooterAccessory={() => <CodeTaskPillsBar />}
-        renderComposerSurfaceTag={() => <ComposerSurfaceChip surface="code" />}
         renderTopBarExtraActions={(ctx) => (
           <CodeCanvasPreviewButton
             channelId={ctx.selectedChannel.id}

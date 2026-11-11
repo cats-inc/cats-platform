@@ -40,6 +40,7 @@ export interface StageCrossSurfaceConversationNavigationHandoffInput {
   pendingExecution?: boolean;
   parallelGroupId?: string;
   destinationPath?: string;
+  notice?: string;
 }
 
 export function stageCrossSurfaceConversationNavigationHandoff(
@@ -75,6 +76,7 @@ export function stageCrossSurfaceConversationNavigationHandoff(
     optimisticState: {
       pendingExecution: input.pendingExecution ?? false,
       selectedChannelId: entityId,
+      ...(input.notice ? { notice: input.notice } : {}),
     },
   });
 

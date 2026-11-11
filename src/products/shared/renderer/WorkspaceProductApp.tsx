@@ -93,6 +93,7 @@ import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiAct
 import { useWorkspaceAppNavigationActions } from "./hooks/useWorkspaceAppNavigationActions.js";
 import { useWorkspaceAppShellRouting } from "./hooks/useWorkspaceAppShellRouting.js";
 import { stageCrossSurfaceConversationNavigationHandoff } from "./crossSurfaceConversationNavigation.js";
+import { useProductScopeRaise } from "./hooks/useProductScopeRaise.js";
 import { supportsParticipantAudienceSelection } from "../../chat/shared/channelTopology.js";
 import { useWorkspaceChatEvents } from "./hooks/useWorkspaceChatEvents.js";
 import { useWorkspaceCatAssignmentActions } from "./hooks/useWorkspaceCatAssignmentActions.js";
@@ -295,6 +296,15 @@ export function createWorkspaceProductApp({
       () => buildCrossSurfaceNavigationMatchPath(location.pathname, location.search),
       [location.pathname, location.search],
     );
+    // SPEC-141 FR-30: a toast handed over by the redirect that brought the owner here, read
+    // before the routing hook consumes the handoff and shown once.
+    const arrivalNoticeRef = useRef<string | null | undefined>(undefined);
+    if (arrivalNoticeRef.current === undefined) {
+      arrivalNoticeRef.current = peekCrossSurfaceNavigationHandoffForMatch({
+        surface: shellSurface,
+        path: currentNavigationPath,
+      })?.optimisticState?.notice ?? null;
+    }
     const initialWarmPayload = useMemo(
       () => peekCrossSurfaceNavigationSnapshot({
         surface: shellSurface,
@@ -506,6 +516,18 @@ export function createWorkspaceProductApp({
       setState,
       enabled: state.status === 'ready',
     });
+    const { control: productScopeRaise, takeRedirectNotice } = useProductScopeRaise({
+      routeChannelId,
+      refreshAppShell,
+      showToast,
+      t,
+    });
+    useEffect(() => {
+      const notice = arrivalNoticeRef.current;
+      if (!notice) return;
+      arrivalNoticeRef.current = null;
+      showToast(notice);
+    }, [showToast]);
 
     const [companionMode, setCompanionMode] = useState(false);
     const previousMyCatIdRef = useRef(routeMyCatId);
@@ -1592,6 +1614,7 @@ export function createWorkspaceProductApp({
           snapshotPayload: state.payload,
           destinationPath: destination.path,
           parallelGroupId: group?.id,
+          notice: takeRedirectNotice(routeChannelId, destination.surface),
           pendingExecution: state.payload.chat.channels.some((channel) =>
             ids.includes(channel.id) && channel.routingStatus === 'running'),
         });
@@ -1887,6 +1910,7 @@ export function createWorkspaceProductApp({
                     compareGroup: selectedParallelChatGroup,
                     compareSendScope,
                     onCompareSendScopeChange: setCompareSendScope,
+                    productScopeRaise,
                   }}
                   draftSurfaceProps={{
                     draftSurface,
