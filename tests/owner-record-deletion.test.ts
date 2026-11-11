@@ -9,6 +9,7 @@ import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import { buildPersistedChatSnapshot } from '../src/products/chat/state/core-snapshot/index.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import { routeWorkApi } from '../src/products/work/api/index.ts';
+import { ownerAnchorDiagnostics } from '../src/products/work/api/ownerGraphProjection.ts';
 import { setOwnerEntry } from '../src/core/ownerLifecycle.ts';
 
 test('referenced planning objects and active/derived tasks cannot be removed at the Core boundary', () => {
@@ -36,6 +37,13 @@ test("a Project's activity notes do not keep it from being deleted, but its Work
   const removed = removeCoreProject(core, 'p');
   assert.equal(removed.removed, true);
   assert.equal(removed.core.activities.length, 1, 'the history stays');
+  assert.equal(removed.core.activities[0]!.projectId, null, 'detached, so no dangling anchor is left');
+  assert.equal(removed.core.activities[0]!.metadata.deletedProjectTitle, 'Project');
+  assert.deepEqual(ownerAnchorDiagnostics(removed.core).filter((entry) => entry.kind === 'broken_fk'), [],
+    'deleting a Project manufactures no broken link');
+  // A Project created again under the same id does not take the old notes back.
+  const again = upsertCoreProject(removed.core, { id: 'p', title: 'Project' }).core;
+  assert.equal(again.activities.some((activity) => activity.projectId === 'p'), false);
 });
 
 test('WorkGraphLinks survive snapshot normalization and owner mutations, including unresolved endpoints', async () => {

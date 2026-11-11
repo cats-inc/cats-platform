@@ -313,8 +313,17 @@ export function removeCoreProject(
     return { core, removed: false };
   }
   assertOwnerRecordDeletable(core, 'project', projectId);
+  // SPEC-142 FR-27: a Project's activity notes do not block its deletion. They stay as history,
+  // detached and naming the Project by title, so no dangling anchor is left behind and a Project
+  // created again under the same id does not take them back.
+  const title = core.projects.find((project) => project.id === projectId)?.title ?? projectId;
+  const activities = core.activities.map((activity) => activity.projectId !== projectId ? activity : {
+    ...activity,
+    projectId: null,
+    metadata: { ...activity.metadata, deletedProjectTitle: title },
+  });
   return {
-    core: touchCoreState({ ...core, projects: next }, nowIso),
+    core: touchCoreState({ ...core, projects: next, activities }, nowIso),
     removed: true,
   };
 }
