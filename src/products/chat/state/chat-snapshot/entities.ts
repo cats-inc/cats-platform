@@ -277,6 +277,15 @@ function normalizeParticipantAssignment(
   };
 }
 
+/** A stored Project id and its revision, kept as written; absent ones stay absent. */
+function normalizeWorkProject(record: Record<string, unknown>): Pick<ChatChannelState, 'workProjectId' | 'workProjectRevision'> {
+  const projectId = readNullableString(record.workProjectId);
+  const revision = typeof record.workProjectRevision === 'number' && Number.isSafeInteger(record.workProjectRevision)
+    && record.workProjectRevision >= 0 ? record.workProjectRevision : undefined;
+  if (!projectId && revision === undefined) return {};
+  return { workProjectId: projectId, workProjectRevision: revision ?? 0 };
+}
+
 export function normalizeChannel(
   rawChannel: unknown,
   catsById: Map<string, ChatCat>,
@@ -392,6 +401,8 @@ export function normalizeChannel(
         originSurface: channelRecord.originSurface,
         directLane: channelKind === 'direct_message',
       }),
+    // SPEC-142 FR-22: the conversation's Project and the count of the owner's changes to it.
+    ...normalizeWorkProject(channelRecord),
     channelKind,
     recoverableDirectLaneCatId: readNullableString(channelRecord.recoverableDirectLaneCatId),
     status,

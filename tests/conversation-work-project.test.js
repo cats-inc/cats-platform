@@ -13,7 +13,7 @@ import { applyChannelWorkProject } from '../build/server/products/chat/api/conve
 import { createConversationWorkProjectProposalKind } from '../build/server/products/chat/api/conversationWorkProjectProposal.js';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import { createCat, createChannel } from '../build/server/products/chat/state/model/index.js';
-import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { FileChatStore, MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { buildWorkProjectListProjection } from '../build/server/products/work/api/projection.js';
 import { createAuthenticatedTestSession, createTestAuthConfig } from './testUtils.js';
 
@@ -73,6 +73,33 @@ test('the owner puts a Work conversation into a Project: its projected Work Item
   assert.deepEqual(await applyChannelWorkProject(store, { channelId, projectId: null, expectedRevision: 1, now: NOW }),
     { projectId: null, revision: 2 });
   assert.equal(projected(await store.readCore(), channelId).projectId, null);
+});
+
+test('the Project and its revision survive the state file, and a cleared one stays cleared', async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'cats-work-project-file-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const statePath = path.join(dir, 'chat-state.local.json');
+  const store = new FileChatStore(statePath);
+  let state = createChannel(await store.read(), { title: 'Launch', topic: 'Launch plan', originSurface: 'work' }, NOW);
+  const channelId = state.selectedChannelId;
+  await store.write(state);
+  const core = await store.readCore();
+  await store.writeCore(upsertCoreProject(core, { id: 'project-site', title: 'Site', status: 'active', summary: null }, NOW).core);
+  const stale = await store.read();
+  assert.deepEqual(await applyChannelWorkProject(store, { channelId, projectId: 'project-site', expectedRevision: 0, now: NOW }),
+    { projectId: 'project-site', revision: 1 });
+  const reopened = new FileChatStore(statePath);
+  let channel = (await reopened.read()).channels.find((entry) => entry.id === channelId);
+  assert.equal(channel.workProjectId, 'project-site', 'a fresh read of the file keeps the Project');
+  assert.equal(channel.workProjectRevision, 1);
+  assert.equal(projected(await reopened.readCore(), channelId).projectId, 'project-site');
+  await reopened.write(stale);
+  channel = (await new FileChatStore(statePath).read()).channels.find((entry) => entry.id === channelId);
+  assert.equal(channel.workProjectId, 'project-site', 'a stale whole-state write through the file store keeps it');
+  await applyChannelWorkProject(reopened, { channelId, projectId: null, expectedRevision: 1, now: NOW });
+  channel = (await new FileChatStore(statePath).read()).channels.find((entry) => entry.id === channelId);
+  assert.equal(channel.workProjectId, null);
+  assert.equal(channel.workProjectRevision, 2, 'the revision outlives a clear, so an older copy cannot bring the Project back');
 });
 
 test('the refusals of FR-23: level, archived or unknown Project, and a supervised run under way', async () => {
