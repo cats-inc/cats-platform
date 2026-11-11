@@ -77,8 +77,8 @@ instructions listed by level (FR-1 to FR-5).
       valid until the worker is recycled (FR-3).
   - The old grants are revoked once Runtime reports the new set `delivered`, or when the
     session closes. The new grant keeps the session's folder, shell posture and participant.
-  - Only a wider level is acted on. When it lists the same tools (Code to Work, until Work has
-    tools), the grant takes the new level in place and nothing recycles.
+  - Only a wider level is acted on. When it lists the same tools, the grant takes the new level
+    in place and nothing recycles. Since Phase 4, Code to Work lists Work's tools and recycles.
   - Without the current grant, which happens only after a data reset, the new grant has no
     shell posture (fails closed).
 - [x] Confirm that the wrapper keeps the other servers on create, send and resume. PLAN-134

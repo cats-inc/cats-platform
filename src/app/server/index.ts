@@ -31,7 +31,7 @@ import { createWorkProposalKinds } from '../../products/work/agentTools/workConv
 import { createWorkConversationToolsProvider } from '../../products/work/agentTools/workConversationTools.js';
 import { createWorkIntakeDelegate } from '../../products/work/state/workIntakeDelegate.js';
 import { createWorkTriageDelegate } from '../../products/work/state/workTriageDelegate.js';
-import { resolveChannelParticipantAssignments, resolveParticipantCatId } from '../../products/chat/shared/channelParticipants.js';
+import { isAdminCoordinator as isChatAdminCoordinator } from '../../products/chat/state/coordinator.js';
 import { publishChannelMutation } from '../../products/chat/api/transportEventPublisher.js';
 import { createCatImageTools, CAT_IMAGE_TOOLS_PATH } from '../../platform/multimedia/catImageTools.js';
 import { createDesktopControlForServer, DESKTOP_CONTROL_MCP_PATH } from '../../platform/desktopControl/server.js';
@@ -274,15 +274,11 @@ export function createServer(dependencies: ServerDependencies) {
   hostTools.register(createWorkConversationToolsProvider({
     coreStore: resolvedDependencies.work.coreStore,
     proposals: resolvedDependencies.chat.conversationProposals!,
+    // The rule ADR-105's path uses (SPEC-125 FR-17), read from the conversation as it is now.
     async isAdminCoordinator(channelId, participantId) {
       if (!participantId) return false;
       const state = await resolvedDependencies.chat.chatStore.read();
-      const channel = state.channels.find((entry) => entry.id === channelId);
-      if (!channel || channel.coordinatorParticipantId !== participantId) return false;
-      const assignment = resolveChannelParticipantAssignments(channel)
-        .find((entry) => entry.participantId === participantId && entry.status === 'active');
-      const catId = assignment ? resolveParticipantCatId(assignment) : null;
-      return Boolean(catId && state.cats.find((cat) => cat.id === catId)?.group === 'admin');
+      return state.channels.some((entry) => entry.id === channelId) && isChatAdminCoordinator(state, channelId, participantId);
     },
   }));
   hostTools.register(createCodeAgentToolsProvider({

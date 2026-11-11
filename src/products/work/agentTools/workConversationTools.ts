@@ -28,8 +28,8 @@ const PROPOSE_NOTE = "It writes nothing: it posts a card the owner confirms or d
   + "Only the owner's own turns may propose.";
 
 const workItemFields = {
-  title: { type: 'string', maxLength: 180 },
-  summary: { type: 'string', maxLength: 2000 },
+  title: { type: 'string', maxLength: 160 },
+  summary: { type: 'string', maxLength: 1000 },
   kind: { type: 'string', enum: [...WORK_ITEM_KIND_VALUES] },
   priority: { type: 'string', enum: [...WORK_ITEM_PRIORITY_HINT_VALUES] },
 };
@@ -44,12 +44,17 @@ export const GET_WORK_ITEMS_TOOL: McpToolDefinition = {
 export const FIND_PROJECTS_TOOL: McpToolDefinition = {
   name: 'find_projects',
   description: "Find the owner's Projects by name: id, title, status, folder and summary. Only this conversation's coordinator, "
-    + 'when it is an admin Cat, may use it. Read-only. ' + DATA_NOTE,
+    + "when it is an admin Cat, may use it, and only on the owner's own turn. Read-only. " + DATA_NOTE,
   inputSchema: {
     type: 'object',
     properties: { query: { type: 'string', maxLength: 120 }, limit: { type: 'integer', minimum: 1, maximum: PROJECT_LIMIT } },
     additionalProperties: false,
   },
+};
+
+const LINE_FIELDS = {
+  title: { type: 'string', maxLength: 160 },
+  summary: { type: 'string', maxLength: 1000 },
 };
 
 export const PROPOSE_WORK_ITEMS_TOOL: McpToolDefinition = {
@@ -99,7 +104,7 @@ export const PROPOSE_PROJECT_TOOL: McpToolDefinition = {
     + `coordinator may use it. ${PROPOSE_NOTE}`,
   inputSchema: {
     type: 'object',
-    properties: { title: { type: 'string', maxLength: 180 }, summary: { type: 'string', maxLength: 2000 } },
+    properties: LINE_FIELDS,
     required: ['title'],
     additionalProperties: false,
   },
@@ -127,8 +132,9 @@ function workItemView(core: CatsCoreState, workItem: CoreWorkItemRecord) {
     id: cleanRecordValue(workItem.id),
     title: fenceRecordText(workItem.title, 160),
     status: workItem.status,
-    priority: cleanRecordValue(triage.priority),
-    kind: cleanRecordValue(triage.kind),
+    // Metadata takes any string: only the known values are passed on.
+    priority: (WORK_ITEM_PRIORITY_HINT_VALUES as readonly string[]).includes(triage.priority ?? '') ? triage.priority : null,
+    kind: (WORK_ITEM_KIND_VALUES as readonly string[]).includes(triage.kind ?? '') ? triage.kind : null,
     projectId: cleanRecordValue(workItem.projectId),
     projectTitle: fenceRecordText(project?.title, 160),
     taskId: cleanRecordValue(workItem.taskId),
@@ -187,6 +193,11 @@ export function createWorkConversationToolsProvider(options: WorkConversationToo
           });
         }
         case FIND_PROJECTS_TOOL.name: {
+          // The owner's other Projects, folders included: only on the owner's own turn, so text
+          // injected through a Telegram turn cannot send them out.
+          if (!hostToolTurnMayPropose(grant)) {
+            return refused('not_owner_turn', "Projects can be looked up only on the owner's own turn in Cats.");
+          }
           const denied = await requireAdmin(grant);
           if (denied) return denied;
           if (args.query !== undefined && typeof args.query !== 'string') return refused('invalid_arguments', 'query must be text.');

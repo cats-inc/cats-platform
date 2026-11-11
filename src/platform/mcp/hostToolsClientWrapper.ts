@@ -170,8 +170,9 @@ export function createHostToolsClientWrapper(options: HostToolsClientWrapperOpti
   /**
    * FR-3: the conversation reached a wider level since this session's grant was issued. When that
    * level lists other tools, its next send carries a new grant, so Runtime recycles the worker and
-   * the agent lists its tools again. When it lists the same ones (Code to Work, until Work has
-   * tools of its own), the grant takes the new level and nothing recycles.
+   * the agent lists its tools again. When it lists the same ones (a level whose providers add no
+   * tool), the grant takes the new level and nothing recycles. Code to Work lists Work's tools,
+   * so it recycles.
    */
   function raiseGrant(sessionId: string, tracked: TrackedSession, marker: HostToolsInvocationMarker): void {
     const current = options.grants.resolve(tracked.token);

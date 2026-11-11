@@ -11,6 +11,7 @@ import {
   validateWorkItemAssignProjectInput,
   validateWorkItemCaptureInput,
   validateWorkItemUpdateInput,
+  validateWorkProjectCreateInput,
   type WorkItemKind,
   type WorkItemPriorityHint,
   type WorkItemTriageStatus,
@@ -31,10 +32,31 @@ export const WORK_PROPOSAL_CREATE_PROJECT = 'work.project.create';
 export const WORK_PROPOSAL_MAX_ITEMS = 8;
 
 const DERIVED_SOURCES = new Set(['chat-channel', 'chat-room-workflow']);
+const PROJECTED_ID_PREFIX = 'work-item-chat-channel-';
 
 /** The Work Item the projection rebuilds from the conversation: readable, never changed by a tool. */
 export function isProjectedWorkItem(workItem: CoreWorkItemRecord): boolean {
-  return DERIVED_SOURCES.has(String(workItem.metadata?.source ?? ''));
+  return DERIVED_SOURCES.has(String(workItem.metadata?.source ?? '')) || workItem.id.startsWith(PROJECTED_ID_PREFIX);
+}
+
+/** Limits that a card shows in full, so what the owner reads is exactly what is written (FR-15). */
+export const PROPOSAL_TITLE_LIMIT = 160;
+export const PROPOSAL_SUMMARY_LIMIT = 1000;
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+/**
+ * A proposed text as it will be stored: invisible format characters removed, controls and line
+ * breaks made spaces, one line, within `limit` characters. Longer text is refused, never cut.
+ */
+export function proposalLine(value: unknown, name: string, limit: number): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string') throw new ConversationProposalRefusal('invalid_arguments', `${name} must be text.`);
+  const line = value.replace(/\p{Cf}/gu, '').replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, ' ').replace(/\s+/gu, ' ').trim();
+  if (!line) return undefined;
+  if (Array.from(GRAPHEMES.segment(line)).length > limit) {
+    throw new ConversationProposalRefusal('too_long', `${name} is longer than ${limit} characters.`);
+  }
+  return line;
 }
 
 /** FR-14: one of the conversation's captured Work Items, or a refusal. */
@@ -93,7 +115,7 @@ function proposerActor(participantId: string | null, context: ConversationPropos
 }
 
 function text(value: unknown): string | null {
-  return fenceRecordText(typeof value === 'string' ? value : null, 400);
+  return fenceRecordText(typeof value === 'string' ? value : null, PROPOSAL_SUMMARY_LIMIT + 1);
 }
 
 function optionalString(value: unknown, name: string): string | undefined {
@@ -120,8 +142,8 @@ export function createWorkProposalKinds(options: WorkProposalKindOptions): Conve
         items: items.map((entry) => {
           const item = entry && typeof entry === 'object' ? entry as Record<string, unknown> : {};
           const input = {
-            title: optionalString(item.title, 'title') ?? '',
-            summary: optionalString(item.summary, 'summary'),
+            title: proposalLine(item.title, 'title', PROPOSAL_TITLE_LIMIT) ?? '',
+            summary: proposalLine(item.summary, 'summary', PROPOSAL_SUMMARY_LIMIT),
             kind: optionalString(item.kind, 'kind') as WorkItemKind | undefined,
             priority: optionalString(item.priority, 'priority') as WorkItemPriorityHint | undefined,
             status: 'draft' as const,
@@ -130,6 +152,13 @@ export function createWorkProposalKinds(options: WorkProposalKindOptions): Conve
           const errors = validateWorkItemCaptureInput(input);
           if (errors.length > 0) refuseInvalid(errors, 'A Work Item is not valid.');
           return { title: input.title, summary: input.summary ?? null, kind: input.kind ?? null, priority: input.priority ?? null };
+        }).map((item, index, all) => {
+          // Capture is keyed by title and summary: two alike would write one Work Item.
+          const key = `${item.title.toLowerCase()}\n${(item.summary ?? '').toLowerCase()}`;
+          if (all.findIndex((other) => `${other.title.toLowerCase()}\n${(other.summary ?? '').toLowerCase()}` === key) !== index) {
+            throw new ConversationProposalRefusal('duplicate_items', 'Two proposed Work Items have the same title and summary.');
+          }
+          return item;
         }),
       };
     },
@@ -175,8 +204,8 @@ export function createWorkProposalKinds(options: WorkProposalKindOptions): Conve
       const workItem = requireCapturedWorkItem(context.core, context.conversationId, raw.workItemId);
       const input = {
         workItemId: workItem.id,
-        title: optionalString(raw.title, 'title'),
-        summary: optionalString(raw.summary, 'summary'),
+        title: proposalLine(raw.title, 'title', PROPOSAL_TITLE_LIMIT),
+        summary: proposalLine(raw.summary, 'summary', PROPOSAL_SUMMARY_LIMIT),
         status: optionalString(raw.status, 'status') as WorkItemTriageStatus | undefined,
         kind: optionalString(raw.kind, 'kind') as WorkItemKind | undefined,
         priority: optionalString(raw.priority, 'priority') as WorkItemPriorityHint | undefined,
@@ -266,9 +295,13 @@ export function createWorkProposalKinds(options: WorkProposalKindOptions): Conve
         // PLAN-135 Phase 5 adds a folder, with its warning.
         throw new ConversationProposalRefusal('folder_not_supported', 'A new Project with a folder is not offered yet.');
       }
-      const title = optionalString(raw.title, 'title');
+      const title = proposalLine(raw.title, 'title', PROPOSAL_TITLE_LIMIT);
       if (!title) throw new ConversationProposalRefusal('invalid_arguments', 'title is required.');
-      return { title: title.slice(0, 180), ...(optionalString(raw.summary, 'summary') ? { summary: optionalString(raw.summary, 'summary')!.slice(0, 2000) } : {}) };
+      const summary = proposalLine(raw.summary, 'summary', PROPOSAL_SUMMARY_LIMIT);
+      // Work's own checks, so a card the owner confirms is one Work accepts.
+      const errors = validateWorkProjectCreateInput({ title, ...(summary ? { summary } : {}), status: 'planned' });
+      if (errors.length > 0) refuseInvalid(errors, 'The Project is not valid.');
+      return { title, ...(summary ? { summary } : {}) };
     },
     binding: () => null,
     describe(content): ConversationProposalView {
